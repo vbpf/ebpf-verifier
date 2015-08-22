@@ -8,15 +8,16 @@ use as a reference. This document lists each valid eBPF opcode.
 
 ## Instruction encoding
 
-An eBPF program is a sequence of 8-byte instructions. This project assumes each
-instruction is encoded in host byte order.
+An eBPF program is a sequence of 64-bit instructions. This project assumes each
+instruction is encoded in host byte order, but the byte order is not relevant
+to this spec.
 
 All eBPF instructions have the same basic encoding:
 
-    lsb                                                        msb
-    +--------+----+----+----------------+------------------------+
-    |opcode  |dst |src |offset          |immediate               |
-    +--------+----+----+----------------+------------------------+
+    msb                                                        lsb
+    +---------------------------------------------------+--------+
+    |immediate               |offset          |src |dst |opcode  |
+    +---------------------------------------------------+--------+
 
 From least significant to most significant bit:
 
@@ -54,20 +55,21 @@ TODO
 
 #### Opcode structure
 
-    +---+-+----+
-    |001|s|op  |
-    +---+-+----+
+    msb      lsb
+    +----------+
+    |op  |s|100|
+    +----------+
 
-If the 's' bit is zero, then the source operand is `imm`. If 's' is one, then
-the source operand is `src_reg`. The 'op' field specifies which ALU operation
+If the `s` bit is zero, then the source operand is `imm`. If `s` is one, then
+the source operand is `src_reg`. The `op` field specifies which ALU operation
 (add/multiply/etc) is to be performed.
 
 #### ADD
 
-    +---+-+----+
-    |001|0|0000| 0x04: dst_reg += imm; dst_reg &= 0xffffffff
-    |001|1|0000| 0x0c: dst_reg += src_reg; dst_reg &= 0xffffffff
-    +---+-+----+
+    +----------+
+    |0000|0|100| 0x04: dst_reg += imm; dst_reg &= 0xffffffff
+    |0000|1|100| 0x0c: dst_reg += src_reg; dst_reg &= 0xffffffff
+    +----------+
 
 ### JMP
 
