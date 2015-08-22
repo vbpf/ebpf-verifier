@@ -1,4 +1,4 @@
-# ubpf
+# uBPF
 
 Userspace eBPF VM (eventually)
 
