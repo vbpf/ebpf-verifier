@@ -22,8 +22,8 @@ All eBPF instructions have the same basic encoding:
 From least significant to most significant bit:
 
  - 8 bit opcode
- - 4 bit destination register (dst_reg)
- - 4 bit source register (src_reg)
+ - 4 bit destination register (dst)
+ - 4 bit source register (src)
  - 16 bit offset
  - 32 bit immediate (imm)
 
