@@ -15,9 +15,9 @@ to this spec.
 All eBPF instructions have the same basic encoding:
 
     msb                                                        lsb
-    +---------------------------------------------------+--------+
+    +------------------------+----------------+----+----+--------+
     |immediate               |offset          |src |dst |opcode  |
-    +---------------------------------------------------+--------+
+    +------------------------+----------------+----+----+--------+
 
 From least significant to most significant bit:
 
@@ -56,9 +56,9 @@ TODO
 Opcode structure:
 
     msb      lsb
-    +----------+
+    +----+-+---+
     |op  |s|100|
-    +----------+
+    +----+-+---+
 
 If the `s` bit is zero, then the source operand is `imm`. If `s` is one, then
 the source operand is `src_reg`. The `op` field specifies which ALU operation
@@ -101,9 +101,9 @@ Opcode | Mnemonic              | Pseudocode
 Opcode structure:
 
     msb      lsb
-    +----------+
+    +----+-+---+
     |op  |s|101|
-    +----------+
+    +----+-+---+
 
 If the `s` bit is zero, then the source operand is `imm`. If `s` is one, then
 the source operand is `src_reg`. The `op` field specifies which type of branch
@@ -134,9 +134,9 @@ Opcode | Mnemonic            | Pseudocode
 Opcode structure:
 
     msb      lsb
-    +----------+
+    +----+-+---+
     |op  |s|111|
-    +----------+
+    +----+-+---+
 
 If the `s` bit is zero, then the source operand is `imm`. If `s` is one, then
 the source operand is `src_reg`. The `op` field specifies which ALU operation
