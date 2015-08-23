@@ -53,7 +53,7 @@ TODO
 
 ### ALU
 
-#### Opcode structure
+Opcode structure:
 
     msb      lsb
     +----------+
@@ -98,7 +98,7 @@ Opcode | Mnemonic              | Pseudocode
 
 ### JMP
 
-#### Opcode structure
+Opcode structure:
 
     msb      lsb
     +----------+
