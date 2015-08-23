@@ -62,16 +62,37 @@ TODO
 
 If the `s` bit is zero, then the source operand is `imm`. If `s` is one, then
 the source operand is `src_reg`. The `op` field specifies which ALU operation
-(add/multiply/etc) is to be performed.
+(add/multiply/etc) is to be performed. All opcodes in this class zero out the
+high 32 bits of the destination register.
 
-#### ADD
-
-    +----------+
-    |0000|0|100| 0x04: dst_reg += imm; dst_reg &= 0xffffffff
-    |0000|1|100| 0x0c: dst_reg += src_reg; dst_reg &= 0xffffffff
-    +----------+
-
-TODO remaining ALU opcodes
+Opcode | Mnemonic            | Pseudocode
+-------|---------------------|------------------------------
+0x04   | ADD dst, imm        | dst += imm; dst &= 0xffffffff
+0x0c   | ADD dst, src        | dst += src; dst &= 0xffffffff
+0x14   | SUB dst, imm        | dst -= imm; dst &= 0xffffffff
+0x1c   | SUB dst, src        | dst -= src; dst &= 0xffffffff
+0x24   | MUL dst, imm        | dst *= imm; dst &= 0xffffffff
+0x2c   | MUL dst, src        | dst *= src; dst &= 0xffffffff
+0x34   | DIV dst, imm        | dst /= imm; dst &= 0xffffffff
+0x3c   | DIV dst, src        | dst /= src; dst &= 0xffffffff
+0x44   | OR dst, imm         | dst |= imm; dst &= 0xffffffff
+0x4c   | OR dst, src         | dst |= src; dst &= 0xffffffff
+0x54   | AND dst, imm        | dst &= imm; dst &= 0xffffffff
+0x5c   | AND dst, src        | dst &= src; dst &= 0xffffffff
+0x64   | LSH dst, imm        | dst <<= imm; dst &= 0xffffffff
+0x6c   | LSH dst, src        | dst <<= src; dst &= 0xffffffff
+0x74   | RSH dst, imm        | dst >>= imm (logical); dst &= 0xffffffff
+0x7c   | RSH dst, src        | dst >>= src (logical); dst &= 0xffffffff
+0x84   | NEG dst             | dst = -dst; dst &= 0xffffffff
+0x94   | MOD dst, imm        | dst %= imm; dst &= 0xffffffff
+0x9c   | MOD dst, src        | dst %= src; dst &= 0xffffffff
+0xa4   | XOR dst, imm        | dst ^= imm; dst &= 0xffffffff
+0xac   | XOR dst, src        | dst ^= src; dst &= 0xffffffff
+0xb4   | MOV dst, imm        | dst = imm; dst &= 0xffffffff
+0xbc   | MOV dst, src        | dst = src; dst &= 0xffffffff
+0xc4   | ARSH dst, imm       | dst >>= imm (arithmetic); dst &= 0xffffffff
+0xcc   | ARSH dst, src       | dst >>= src (arithmetic); dst &= 0xffffffff
+0xd4   | END (imm) dst       | dst += imm; dst &= 0xffffffff
 
 ### JMP
 
