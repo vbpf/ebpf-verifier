@@ -70,8 +70,8 @@ Opcode | Mnemonic              | Pseudocode
 0x2c   | MUL dst, src          | dst *= src; dst &= 0xffffffff
 0x34   | DIV dst, imm          | dst /= imm; dst &= 0xffffffff
 0x3c   | DIV dst, src          | dst /= src; dst &= 0xffffffff
-0x44   | OR dst, imm           | dst |= imm; dst &= 0xffffffff
-0x4c   | OR dst, src           | dst |= src; dst &= 0xffffffff
+0x44   | OR dst, imm           | dst \|= imm; dst &= 0xffffffff
+0x4c   | OR dst, src           | dst \|= src; dst &= 0xffffffff
 0x54   | AND dst, imm          | dst &= imm; dst &= 0xffffffff
 0x5c   | AND dst, src          | dst &= src; dst &= 0xffffffff
 0x64   | LSH dst, imm          | dst <<= imm; dst &= 0xffffffff
@@ -103,8 +103,8 @@ Opcode | Mnemonic              | Pseudocode
 0x2f   | MUL dst, src          | dst *= src
 0x37   | DIV dst, imm          | dst /= imm
 0x3f   | DIV dst, src          | dst /= src
-0x47   | OR dst, imm           | dst |= imm
-0x4f   | OR dst, src           | dst |= src
+0x47   | OR dst, imm           | dst \|= imm
+0x4f   | OR dst, src           | dst \|= src
 0x57   | AND dst, imm          | dst &= imm
 0x5f   | AND dst, src          | dst &= src
 0x67   | LSH dst, imm          | dst <<= imm
