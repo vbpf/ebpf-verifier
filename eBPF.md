@@ -134,10 +134,10 @@ Opcode | Mnemonic                 | Pseudocode
 0x69   | LDXH dst, [src+off]  | dst = *(uint16_t *) (src + off)
 0x71   | LDXB dst, [src+off]  | dst = *(uint8_t *) (src + off)
 0x79   | LDXDW dst, [src+off] | dst = *(uint64_t *) (src + off)
-0x62   | STXW [dst+off], imm  | *(uint32_t *) (dst + off) = imm
-0x6a   | STXH [dst+off], imm  | *(uint16_t *) (dst + off) = imm
-0x72   | STXB [dst+off], imm  | *(uint8_t *) (dst + off) = imm
-0x7a   | STXDW [dst+off], imm | *(uint64_t *) (dst + off) = imm
+0x62   | STW [dst+off], imm   | *(uint32_t *) (dst + off) = imm
+0x6a   | STH [dst+off], imm   | *(uint16_t *) (dst + off) = imm
+0x72   | STB [dst+off], imm   | *(uint8_t *) (dst + off) = imm
+0x7a   | STDW [dst+off], imm  | *(uint64_t *) (dst + off) = imm
 0x63   | STXW [dst+off], src  | *(uint32_t *) (dst + off) = src
 0x6b   | STXH [dst+off], src  | *(uint16_t *) (dst + off) = src
 0x73   | STXB [dst+off], src  | *(uint8_t *) (dst + off) = src
