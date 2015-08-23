@@ -128,8 +128,8 @@ Opcode | Mnemonic                 | Pseudocode
 
 TODO document non-MEM opcodes.
 
-Opcode | Mnemonic                 | Pseudocode
--------|--------------------------|--------------------------------
+Opcode | Mnemonic             | Pseudocode
+-------|----------------------|--------------------------------
 0x61   | LDXW dst, [src+off]  | dst = *(uint32_t *) (src + off)
 0x69   | LDXH dst, [src+off]  | dst = *(uint16_t *) (src + off)
 0x71   | LDXB dst, [src+off]  | dst = *(uint8_t *) (src + off)
