@@ -102,7 +102,7 @@ Opcode structure:
 
     msb      lsb
     +----------+
-    |op  |s|100|
+    |op  |s|101|
     +----------+
 
 If the `s` bit is zero, then the source operand is `imm`. If `s` is one, then
@@ -131,4 +131,44 @@ Opcode | Mnemonic            | Pseudocode
 
 ### ALU64
 
-TODO
+Opcode structure:
+
+    msb      lsb
+    +----------+
+    |op  |s|111|
+    +----------+
+
+If the `s` bit is zero, then the source operand is `imm`. If `s` is one, then
+the source operand is `src_reg`. The `op` field specifies which ALU operation
+(add/multiply/etc) is to be performed.
+
+Opcode | Mnemonic              | Pseudocode
+-------|-----------------------|------------------------------
+0x07   | ADD dst, imm          | dst += imm
+0x0f   | ADD dst, src          | dst += src
+0x17   | SUB dst, imm          | dst -= imm
+0x1f   | SUB dst, src          | dst -= src
+0x27   | MUL dst, imm          | dst *= imm
+0x2f   | MUL dst, src          | dst *= src
+0x37   | DIV dst, imm          | dst /= imm
+0x3f   | DIV dst, src          | dst /= src
+0x47   | OR dst, imm           | dst |= imm
+0x4f   | OR dst, src           | dst |= src
+0x57   | AND dst, imm          | dst &= imm
+0x5f   | AND dst, src          | dst &= src
+0x67   | LSH dst, imm          | dst <<= imm
+0x6f   | LSH dst, src          | dst <<= src
+0x77   | RSH dst, imm          | dst >>= imm (logical)
+0x7f   | RSH dst, src          | dst >>= src (logical)
+0x87   | NEG dst               | dst = -dst
+0x9f   | MOD dst, imm          | dst %= imm
+0x97   | MOD dst, src          | dst %= src
+0xaf   | XOR dst, imm          | dst ^= imm
+0xa7   | XOR dst, src          | dst ^= src
+0xbf   | MOV dst, imm          | dst = imm
+0xb7   | MOV dst, src          | dst = src
+0xcf   | ARSH dst, imm         | dst >>= imm (arithmetic)
+0xc7   | ARSH dst, src         | dst >>= src (arithmetic)
+0xd7   | END16 dst (imm == 16) | dst = bswap16(dst)
+0xd7   | END32 dst (imm == 32) | dst = bswap32(dst)
+0xd7   | END64 dst (imm == 64) | dst = bswap64(dst)
