@@ -30,65 +30,35 @@ From least significant to most significant bit:
 Most instructions do not use all of these fields. Unused fields should be
 zeroed.
 
-## Instruction classes
-
 The low 3 bits of the opcode field are the "instruction class".
 This groups together related opcodes.
 
-### LD
-
-TODO
-
-### LDX
-
-Opcode structure:
+LD/LDX/ST/STX opcode structure:
 
     msb      lsb
     +---+--+---+
-    |mde|sz|001|
+    |mde|sz|cls|
     +---+--+---+
 
 The `sz` field specifies the size of the memory location. The `mde` field is
 the memory access mode. uBPF only supports the generic "MEM" access mode.
 
-Opcode | Mnemonic                 | Pseudocode
--------|--------------------------|--------------------------------
-0x61   | LDXW MEM [dst+off], src  | dst = *(uint32_t *) (src + off)
-0x69   | LDXH MEM [dst+off], src  | dst = *(uint16_t *) (src + off)
-0x71   | LDXB MEM [dst+off], src  | dst = *(uint8_t *) (src + off)
-0x79   | LDXDW MEM [dst+off], src | dst = *(uint64_t *) (src + off)
-
-### ST
-
-Opcode | Mnemonic                 | Pseudocode
--------|--------------------------|--------------------------------
-0x62   | STXW MEM [dst+off], imm  | *(uint32_t *) (dst + off) = imm
-0x6a   | STXH MEM [dst+off], imm  | *(uint16_t *) (dst + off) = imm
-0x72   | STXB MEM [dst+off], imm  | *(uint8_t *) (dst + off) = imm
-0x7a   | STXDW MEM [dst+off], imm | *(uint64_t *) (dst + off) = imm
-
-### STX
-
-Opcode | Mnemonic                 | Pseudocode
--------|--------------------------|--------------------------------
-0x63   | STXW MEM [dst+off], src  | *(uint32_t *) (dst + off) = src
-0x6b   | STXH MEM [dst+off], src  | *(uint16_t *) (dst + off) = src
-0x73   | STXB MEM [dst+off], src  | *(uint8_t *) (dst + off) = src
-0x7b   | STXDW MEM [dst+off], src | *(uint64_t *) (dst + off) = src
-
-### ALU
-
-Opcode structure:
+ALU/ALU64/JMP opcode structure:
 
     msb      lsb
     +----+-+---+
-    |op  |s|100|
+    |op  |s|cls|
     +----+-+---+
 
 If the `s` bit is zero, then the source operand is `imm`. If `s` is one, then
-the source operand is `src_reg`. The `op` field specifies which ALU operation
-(add/multiply/etc) is to be performed. All opcodes in this class zero out the
-high 32 bits of the destination register.
+the source operand is `src`. The `op` field specifies which ALU or branch
+operation is to be performed.
+
+## ALU Instructions
+
+### 32-bit
+
+These instructions zero the upper 32 bits of the destination register.
 
 Opcode | Mnemonic              | Pseudocode
 -------|-----------------------|------------------------------
@@ -121,51 +91,7 @@ Opcode | Mnemonic              | Pseudocode
 0xd4   | END32 dst (imm == 32) | dst = bswap32(dst); dst &= 0xffffffff
 0xd4   | END64 dst (imm == 64) | dst = bswap64(dst); dst &= 0xffffffff
 
-### JMP
-
-Opcode structure:
-
-    msb      lsb
-    +----+-+---+
-    |op  |s|101|
-    +----+-+---+
-
-If the `s` bit is zero, then the source operand is `imm`. If `s` is one, then
-the source operand is `src_reg`. The `op` field specifies which type of branch
-is to be performed.
-
-Opcode | Mnemonic            | Pseudocode
--------|---------------------|------------------------
-0x05   | JA +off             | PC += off
-0x15   | JEQ dst, imm, +off  | PC += off if dst == imm
-0x1d   | JEQ dst, src, +off  | PC += off if dst == src
-0x25   | JGT dst, imm, +off  | PC += off if dst > imm
-0x2d   | JGT dst, src, +off  | PC += off if dst > src
-0x35   | JGE dst, imm, +off  | PC += off if dst >= imm
-0x3d   | JGE dst, src, +off  | PC += off if dst >= src
-0x45   | JSET dst, imm, +off | PC += off if dst & imm
-0x4d   | JSET dst, src, +off | PC += off if dst & src
-0x55   | JNE dst, imm, +off  | PC += off if dst != imm
-0x5d   | JNE dst, src, +off  | PC += off if dst != src
-0x65   | JSGT dst, imm, +off | PC += off if dst > imm (signed)
-0x6d   | JSGT dst, src, +off | PC += off if dst > src (signed)
-0x75   | JSGE dst, imm, +off | PC += off if dst >= imm (signed)
-0x7d   | JSGE dst, src, +off | PC += off if dst >= src (signed)
-0x85   | CALL imm            | PC = imm
-0x95   | EXIT                | return r0
-
-### ALU64
-
-Opcode structure:
-
-    msb      lsb
-    +----+-+---+
-    |op  |s|111|
-    +----+-+---+
-
-If the `s` bit is zero, then the source operand is `imm`. If `s` is one, then
-the source operand is `src_reg`. The `op` field specifies which ALU operation
-(add/multiply/etc) is to be performed.
+### 64-bit
 
 Opcode | Mnemonic              | Pseudocode
 -------|-----------------------|------------------------------
@@ -197,3 +123,42 @@ Opcode | Mnemonic              | Pseudocode
 0xd7   | END16 dst (imm == 16) | dst = bswap16(dst)
 0xd7   | END32 dst (imm == 32) | dst = bswap32(dst)
 0xd7   | END64 dst (imm == 64) | dst = bswap64(dst)
+
+## Memory Instructions
+
+Opcode | Mnemonic                 | Pseudocode
+-------|--------------------------|--------------------------------
+0x61   | LDXW MEM [dst+off], src  | dst = *(uint32_t *) (src + off)
+0x69   | LDXH MEM [dst+off], src  | dst = *(uint16_t *) (src + off)
+0x71   | LDXB MEM [dst+off], src  | dst = *(uint8_t *) (src + off)
+0x79   | LDXDW MEM [dst+off], src | dst = *(uint64_t *) (src + off)
+0x62   | STXW MEM [dst+off], imm  | *(uint32_t *) (dst + off) = imm
+0x6a   | STXH MEM [dst+off], imm  | *(uint16_t *) (dst + off) = imm
+0x72   | STXB MEM [dst+off], imm  | *(uint8_t *) (dst + off) = imm
+0x7a   | STXDW MEM [dst+off], imm | *(uint64_t *) (dst + off) = imm
+0x63   | STXW MEM [dst+off], src  | *(uint32_t *) (dst + off) = src
+0x6b   | STXH MEM [dst+off], src  | *(uint16_t *) (dst + off) = src
+0x73   | STXB MEM [dst+off], src  | *(uint8_t *) (dst + off) = src
+0x7b   | STXDW MEM [dst+off], src | *(uint64_t *) (dst + off) = src
+
+## Branch Instructions
+
+Opcode | Mnemonic            | Pseudocode
+-------|---------------------|------------------------
+0x05   | JA +off             | PC += off
+0x15   | JEQ dst, imm, +off  | PC += off if dst == imm
+0x1d   | JEQ dst, src, +off  | PC += off if dst == src
+0x25   | JGT dst, imm, +off  | PC += off if dst > imm
+0x2d   | JGT dst, src, +off  | PC += off if dst > src
+0x35   | JGE dst, imm, +off  | PC += off if dst >= imm
+0x3d   | JGE dst, src, +off  | PC += off if dst >= src
+0x45   | JSET dst, imm, +off | PC += off if dst & imm
+0x4d   | JSET dst, src, +off | PC += off if dst & src
+0x55   | JNE dst, imm, +off  | PC += off if dst != imm
+0x5d   | JNE dst, src, +off  | PC += off if dst != src
+0x65   | JSGT dst, imm, +off | PC += off if dst > imm (signed)
+0x6d   | JSGT dst, src, +off | PC += off if dst > src (signed)
+0x75   | JSGE dst, imm, +off | PC += off if dst >= imm (signed)
+0x7d   | JSGE dst, src, +off | PC += off if dst >= src (signed)
+0x85   | CALL imm            | PC = imm
+0x95   | EXIT                | return r0
