@@ -71,9 +71,30 @@ the source operand is `src_reg`. The `op` field specifies which ALU operation
     |0000|1|100| 0x0c: dst_reg += src_reg; dst_reg &= 0xffffffff
     +----------+
 
+TODO remaining ALU opcodes
+
 ### JMP
 
-TODO
+#### Opcode structure
+
+    msb      lsb
+    +----------+
+    |op  |s|100|
+    +----------+
+
+If the `s` bit is zero, then the source operand is `imm`. If `s` is one, then
+the source operand is `src_reg`. The `op` field specifies which ALU operation
+(add/multiply/etc) is to be performed.
+
+Opcode | Mnemonic           | Pseudocode
+-------|--------------------|------------------------
+0x5    | JA +off            | PC += off
+0x15   | JEQ dst, imm, +off | PC += off if dst == imm
+0x1d   | JEQ dst, src, +off | PC += off if dst == src
+0x25   | JGT dst, imm, +off | PC += off if dst >= imm
+0x2d   | JGT dst, src, +off | PC += off if dst >= src
+
+TODO remaining JMP opcodes
 
 ### ALU64
 
