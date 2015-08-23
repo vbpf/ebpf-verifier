@@ -126,20 +126,22 @@ Opcode | Mnemonic                 | Pseudocode
 
 ## Memory Instructions
 
+TODO document non-MEM opcodes.
+
 Opcode | Mnemonic                 | Pseudocode
 -------|--------------------------|--------------------------------
-0x61   | LDXW MEM dst, [src+off]  | dst = *(uint32_t *) (src + off)
-0x69   | LDXH MEM dst, [src+off]  | dst = *(uint16_t *) (src + off)
-0x71   | LDXB MEM dst, [src+off]  | dst = *(uint8_t *) (src + off)
-0x79   | LDXDW MEM dst, [src+off] | dst = *(uint64_t *) (src + off)
-0x62   | STXW MEM [dst+off], imm  | *(uint32_t *) (dst + off) = imm
-0x6a   | STXH MEM [dst+off], imm  | *(uint16_t *) (dst + off) = imm
-0x72   | STXB MEM [dst+off], imm  | *(uint8_t *) (dst + off) = imm
-0x7a   | STXDW MEM [dst+off], imm | *(uint64_t *) (dst + off) = imm
-0x63   | STXW MEM [dst+off], src  | *(uint32_t *) (dst + off) = src
-0x6b   | STXH MEM [dst+off], src  | *(uint16_t *) (dst + off) = src
-0x73   | STXB MEM [dst+off], src  | *(uint8_t *) (dst + off) = src
-0x7b   | STXDW MEM [dst+off], src | *(uint64_t *) (dst + off) = src
+0x61   | LDXW dst, [src+off]  | dst = *(uint32_t *) (src + off)
+0x69   | LDXH dst, [src+off]  | dst = *(uint16_t *) (src + off)
+0x71   | LDXB dst, [src+off]  | dst = *(uint8_t *) (src + off)
+0x79   | LDXDW dst, [src+off] | dst = *(uint64_t *) (src + off)
+0x62   | STXW [dst+off], imm  | *(uint32_t *) (dst + off) = imm
+0x6a   | STXH [dst+off], imm  | *(uint16_t *) (dst + off) = imm
+0x72   | STXB [dst+off], imm  | *(uint8_t *) (dst + off) = imm
+0x7a   | STXDW [dst+off], imm | *(uint64_t *) (dst + off) = imm
+0x63   | STXW [dst+off], src  | *(uint32_t *) (dst + off) = src
+0x6b   | STXH [dst+off], src  | *(uint16_t *) (dst + off) = src
+0x73   | STXB [dst+off], src  | *(uint8_t *) (dst + off) = src
+0x7b   | STXDW [dst+off], src | *(uint64_t *) (dst + off) = src
 
 ## Branch Instructions
 
