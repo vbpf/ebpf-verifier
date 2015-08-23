@@ -128,10 +128,10 @@ Opcode | Mnemonic                 | Pseudocode
 
 Opcode | Mnemonic                 | Pseudocode
 -------|--------------------------|--------------------------------
-0x61   | LDXW MEM [dst+off], src  | dst = *(uint32_t *) (src + off)
-0x69   | LDXH MEM [dst+off], src  | dst = *(uint16_t *) (src + off)
-0x71   | LDXB MEM [dst+off], src  | dst = *(uint8_t *) (src + off)
-0x79   | LDXDW MEM [dst+off], src | dst = *(uint64_t *) (src + off)
+0x61   | LDXW MEM dst, [src+off]  | dst = *(uint32_t *) (src + off)
+0x69   | LDXH MEM dst, [src+off]  | dst = *(uint16_t *) (src + off)
+0x71   | LDXB MEM dst, [src+off]  | dst = *(uint8_t *) (src + off)
+0x79   | LDXDW MEM dst, [src+off] | dst = *(uint64_t *) (src + off)
 0x62   | STXW MEM [dst+off], imm  | *(uint32_t *) (dst + off) = imm
 0x6a   | STXH MEM [dst+off], imm  | *(uint16_t *) (dst + off) = imm
 0x72   | STXB MEM [dst+off], imm  | *(uint8_t *) (dst + off) = imm
