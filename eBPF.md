@@ -83,18 +83,28 @@ TODO remaining ALU opcodes
     +----------+
 
 If the `s` bit is zero, then the source operand is `imm`. If `s` is one, then
-the source operand is `src_reg`. The `op` field specifies which ALU operation
-(add/multiply/etc) is to be performed.
+the source operand is `src_reg`. The `op` field specifies which type of branch
+is to be performed.
 
-Opcode | Mnemonic           | Pseudocode
--------|--------------------|------------------------
-0x5    | JA +off            | PC += off
-0x15   | JEQ dst, imm, +off | PC += off if dst == imm
-0x1d   | JEQ dst, src, +off | PC += off if dst == src
-0x25   | JGT dst, imm, +off | PC += off if dst >= imm
-0x2d   | JGT dst, src, +off | PC += off if dst >= src
-
-TODO remaining JMP opcodes
+Opcode | Mnemonic            | Pseudocode
+-------|---------------------|------------------------
+0x05   | JA +off             | PC += off
+0x15   | JEQ dst, imm, +off  | PC += off if dst == imm
+0x1d   | JEQ dst, src, +off  | PC += off if dst == src
+0x25   | JGT dst, imm, +off  | PC += off if dst > imm
+0x2d   | JGT dst, src, +off  | PC += off if dst > src
+0x35   | JGE dst, imm, +off  | PC += off if dst >= imm
+0x3d   | JGE dst, src, +off  | PC += off if dst >= src
+0x45   | JSET dst, imm, +off | PC += off if dst & imm
+0x4d   | JSET dst, src, +off | PC += off if dst & src
+0x55   | JNE dst, imm, +off  | PC += off if dst != imm
+0x5d   | JNE dst, src, +off  | PC += off if dst != src
+0x65   | JSGT dst, imm, +off | PC += off if dst > imm (signed)
+0x6d   | JSGT dst, src, +off | PC += off if dst > src (signed)
+0x75   | JSGE dst, imm, +off | PC += off if dst >= imm (signed)
+0x7d   | JSGE dst, src, +off | PC += off if dst >= src (signed)
+0x85   | CALL imm            | PC = imm
+0x95   | EXIT                | return r0
 
 ### ALU64
 
