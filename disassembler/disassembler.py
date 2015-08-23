@@ -134,18 +134,19 @@ def disassemble_one(data, offset):
         size = (code >> 3) & 3
         mode = (code >> 5) & 7
         mode_name = MODES.get(mode, str(mode))
+        # TODO use different syntax for non-MEM instructions
         size_name = SIZES.get(size, str(size))
         if cls == BPF_CLASS_LD and mode_name == "IMM":
-            return "%s %s %s, %s" % (class_name + size_name, mode_name, R(dst_reg), I(imm))
+            return "%s %s, %s" % (class_name + size_name, R(dst_reg), I(imm))
         elif cls == BPF_CLASS_LD:
             # Probably not correct
-            return "%s %s %s, %s" % (class_name + size_name, mode_name, M(R(dst_reg), off), I(imm))
+            return "%s %s, %s" % (class_name + size_name, M(R(dst_reg), off), I(imm))
         elif cls == BPF_CLASS_LDX:
-            return "%s %s %s, %s" % (class_name + size_name, mode_name, R(dst_reg), M(R(src_reg), off))
+            return "%s %s, %s" % (class_name + size_name, R(dst_reg), M(R(src_reg), off))
         elif cls == BPF_CLASS_ST:
-            return "%s %s %s, %s" % (class_name + size_name, mode_name, M(R(dst_reg), off), I(imm))
+            return "%s %s, %s" % (class_name + size_name, M(R(dst_reg), off), I(imm))
         elif cls == BPF_CLASS_STX:
-            return "%s %s %s, %s" % (class_name + size_name, mode_name, M(R(dst_reg), off), R(src_reg))
+            return "%s %s, %s" % (class_name + size_name, M(R(dst_reg), off), R(src_reg))
     else:
         return "unknown instruction %#x" % code
 
