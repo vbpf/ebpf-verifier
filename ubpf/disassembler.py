@@ -73,7 +73,7 @@ def R(reg):
     return "r" + str(reg)
 
 def I(imm):
-    return "$%x" % imm
+    return "%#x" % imm
 
 def M(base, off):
     if off != 0:

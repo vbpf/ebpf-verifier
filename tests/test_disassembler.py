@@ -8,8 +8,8 @@ class DisassemblerTests(unittest.TestCase):
         self.assertEquals(expected, ubpf.disassembler.disassemble_one(data, 0))
 
     def test_alu(self):
-        self.check(0x0000000200000104, "ADD r1, $2")
-        self.check(0xffffffff00000904, "ADD r9, $ffffffff")
+        self.check(0x0000000200000104, "ADD r1, 0x2")
+        self.check(0xffffffff00000904, "ADD r9, 0xffffffff")
         self.check(0x000000000000210c, "ADD r1, r2")
         self.check(0x000000000000211c, "SUB r1, r2")
         self.check(0x000000000000212c, "MUL r1, r2")
@@ -28,8 +28,8 @@ class DisassemblerTests(unittest.TestCase):
         self.check(0x00000040000001d4, "END64 r1")
 
     def test_alu64(self):
-        self.check(0x0000000200000107, "ADD64 r1, $2")
-        self.check(0xffffffff00000907, "ADD64 r9, $ffffffff")
+        self.check(0x0000000200000107, "ADD64 r1, 0x2")
+        self.check(0xffffffff00000907, "ADD64 r9, 0xffffffff")
         self.check(0x000000000000210f, "ADD64 r1, r2")
         self.check(0x000000000000211f, "SUB64 r1, r2")
         self.check(0x000000000000212f, "MUL64 r1, r2")
@@ -52,7 +52,7 @@ class DisassemblerTests(unittest.TestCase):
         self.check(0x000000007fff0005, "JA +32767")
         self.check(0x00000000ffff0005, "JA -1")
         self.check(0x0000000080000005, "JA -32768")
-        self.check(0x0000003300010115, "JEQ r1, $33, +1")
+        self.check(0x0000003300010115, "JEQ r1, 0x33, +1")
         self.check(0x000000000001211d, "JEQ r1, r2, +1")
         self.check(0x000000000001212d, "JGT r1, r2, +1")
         self.check(0x000000000001213d, "JGE r1, r2, +1")
@@ -60,7 +60,7 @@ class DisassemblerTests(unittest.TestCase):
         self.check(0x000000000001215d, "JNE r1, r2, +1")
         self.check(0x000000000001216d, "JSGT r1, r2, +1")
         self.check(0x000000000001217d, "JSGE r1, r2, +1")
-        self.check(0x0000000100000085, "CALL $1")
+        self.check(0x0000000100000085, "CALL 0x1")
         self.check(0x0000000000000095, "EXIT")
 
     # TODO test ld
@@ -76,11 +76,11 @@ class DisassemblerTests(unittest.TestCase):
         self.check(0x0000000080002161, "LDXW r1, [r2-32768]")
 
     def test_st(self):
-        self.check(0x0000003300000162, "STW [r1], $33")
-        self.check(0x0000003300010162, "STW [r1+1], $33")
-        self.check(0x000000337fff0162, "STW [r1+32767], $33")
-        self.check(0x00000033ffff0162, "STW [r1-1], $33")
-        self.check(0x0000003380000162, "STW [r1-32768], $33")
+        self.check(0x0000003300000162, "STW [r1], 0x33")
+        self.check(0x0000003300010162, "STW [r1+1], 0x33")
+        self.check(0x000000337fff0162, "STW [r1+32767], 0x33")
+        self.check(0x00000033ffff0162, "STW [r1-1], 0x33")
+        self.check(0x0000003380000162, "STW [r1-32768], 0x33")
 
     def test_stx(self):
         self.check(0x0000000000002163, "STXW [r1], r2")
