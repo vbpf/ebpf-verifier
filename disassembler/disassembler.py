@@ -74,6 +74,7 @@ BPF_CLASS_ALU = 4
 BPF_CLASS_JMP = 5
 BPF_CLASS_ALU64 = 7
 
+BPF_ALU_NEG = 8
 BPF_ALU_END = 13
 
 def R(reg):
@@ -109,8 +110,12 @@ def disassemble_one(data, offset):
         if cls == BPF_CLASS_ALU64:
             opcode_name += "64"
 
-        if opcode == BPF_ALU_END:
+        if opcode == BPF_ALU_END and cls == BPF_CLASS_ALU64:
+            return "%s_%d %s" % (opcode_name, imm, R(dst_reg))
+        elif opcode == BPF_ALU_END:
             return "%s%d %s" % (opcode_name, imm, R(dst_reg))
+        elif opcode == BPF_ALU_NEG:
+            return "%s %s" % (opcode_name, R(dst_reg))
         elif source == 0:
             return "%s %s, %s" % (opcode_name, R(dst_reg), I(imm))
         else:
