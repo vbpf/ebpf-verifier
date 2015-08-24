@@ -14,9 +14,9 @@ def keywords(vs):
 hexnum = SignificantLiteral('0x') + +CharIn(hexchars)
 decnum = +Digit()
 offset = (CharIn("+-") + Exact(hexnum | decnum))[flatten]["".join][lambda x: int(x, 0)]
+imm = (-CharIn("+-") + Exact(hexnum | decnum))[flatten]["".join][lambda x: int(x, 0)][Imm]
 
 reg = Literal('r') + integer[int][Reg]
-imm = Literal('$') + Word(hexchars)[lambda x: int(x, 16)][Imm]
 memref = (Literal('[') + reg + Optional(offset, 0) + Literal(']'))[lambda x: MemRef(*x)]
 
 unary_alu_ops = ['NEG', 'NEG64', 'END16', 'END64_16', 'END32', 'END64_32', 'END64', 'END64_64']

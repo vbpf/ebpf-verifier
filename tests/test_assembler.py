@@ -8,8 +8,8 @@ class AssemblerTests(unittest.TestCase):
         self.assertEquals(expected_bin, ubpf.assembler.assemble(source))
 
     def test_alu(self):
-        self.check("ADD r1, $2", 0x0000000200000104)
-        self.check("ADD r9, $ffffffff", 0xffffffff00000904)
+        self.check("ADD r1, 2", 0x0000000200000104)
+        self.check("ADD r9, 0xffffffff", 0xffffffff00000904)
         self.check("ADD r1, r2", 0x000000000000210c)
         self.check("SUB r1, r2", 0x000000000000211c)
         self.check("MUL r1, r2", 0x000000000000212c)
@@ -28,8 +28,8 @@ class AssemblerTests(unittest.TestCase):
         self.check("END64 r1", 0x00000040000001d4)
 
     def test_alu64(self):
-        self.check("ADD64 r1, $2", 0x0000000200000107)
-        self.check("ADD64 r9, $ffffffff", 0xffffffff00000907)
+        self.check("ADD64 r1, 2", 0x0000000200000107)
+        self.check("ADD64 r9, 0xffffffff", 0xffffffff00000907)
         self.check("ADD64 r1, r2", 0x000000000000210f)
         self.check("SUB64 r1, r2", 0x000000000000211f)
         self.check("MUL64 r1, r2", 0x000000000000212f)
@@ -52,7 +52,7 @@ class AssemblerTests(unittest.TestCase):
         self.check("JA +32767", 0x000000007fff0005)
         self.check("JA -1", 0x00000000ffff0005)
         self.check("JA -32768", 0x0000000080000005)
-        self.check("JEQ r1, $33, +1", 0x0000003300010115)
+        self.check("JEQ r1, 0x33, +1", 0x0000003300010115)
         self.check("JEQ r1, r2, +1", 0x000000000001211d)
         self.check("JGT r1, r2, +1", 0x000000000001212d)
         self.check("JGE r1, r2, +1", 0x000000000001213d)
@@ -60,7 +60,7 @@ class AssemblerTests(unittest.TestCase):
         self.check("JNE r1, r2, +1", 0x000000000001215d)
         self.check("JSGT r1, r2, +1", 0x000000000001216d)
         self.check("JSGE r1, r2, +1", 0x000000000001217d)
-        self.check("CALL $1", 0x0000000100000085)
+        self.check("CALL 0x1", 0x0000000100000085)
         self.check("EXIT", 0x0000000000000095)
 
     # TODO test ld
@@ -76,11 +76,11 @@ class AssemblerTests(unittest.TestCase):
         self.check("LDXW r1, [r2-32768]", 0x0000000080002161)
 
     def test_st(self):
-        self.check("STW [r1], $33", 0x0000003300000162)
-        self.check("STW [r1+1], $33", 0x0000003300010162)
-        self.check("STW [r1+32767], $33", 0x000000337fff0162)
-        self.check("STW [r1-1], $33", 0x00000033ffff0162)
-        self.check("STW [r1-32768], $33", 0x0000003380000162)
+        self.check("STW [r1], 0x33", 0x0000003300000162)
+        self.check("STW [r1+1], 0x33", 0x0000003300010162)
+        self.check("STW [r1+32767], 0x33", 0x000000337fff0162)
+        self.check("STW [r1-1], 0x33", 0x00000033ffff0162)
+        self.check("STW [r1-32768], 0x33", 0x0000003380000162)
 
     def test_stx(self):
         self.check("STXW [r1], r2", 0x0000000000002163)
