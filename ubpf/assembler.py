@@ -1,10 +1,3 @@
-#!/usr/bin/env python
-"""
-eBPF assembler
-
-Very simple single-pass assembler. Only exists to assemble testcases
-for the interpreter.
-"""
 from asm_parser import parse, Reg, Imm, MemRef
 import struct
 import StringIO
@@ -122,12 +115,3 @@ def assemble(source):
     for inst in insts:
         output.write(assemble_one(inst))
     return output.getvalue()
-
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('input', type=argparse.FileType('r'), default='-')
-    parser.add_argument('output', type=argparse.FileType('w'), default='-')
-    args = parser.parse_args()
-
-    args.output.write(assemble(args.input.read()))

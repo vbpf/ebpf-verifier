@@ -1,12 +1,11 @@
-#!/usr/bin/env python
 import unittest
 import struct
-import disassembler
+import ubpf.disassembler
 
 class DisassemblerTests(unittest.TestCase):
     def check(self, inst, expected):
         data = struct.pack("L", inst)
-        self.assertEquals(expected, disassembler.disassemble_one(data, 0))
+        self.assertEquals(expected, ubpf.disassembler.disassemble_one(data, 0))
 
     def test_alu(self):
         self.check(0x0000000200000104, "ADD r1, $2")

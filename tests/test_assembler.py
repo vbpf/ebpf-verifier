@@ -1,12 +1,11 @@
-#!/usr/bin/env python
 import unittest
 import struct
-import assembler
+import ubpf.assembler
 
 class AssemblerTests(unittest.TestCase):
     def check(self, source, expected):
         expected_bin = struct.pack("L", expected)
-        self.assertEquals(expected_bin, assembler.assemble(source))
+        self.assertEquals(expected_bin, ubpf.assembler.assemble(source))
 
     def test_alu(self):
         self.check("ADD r1, $2", 0x0000000200000104)

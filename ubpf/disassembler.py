@@ -5,9 +5,8 @@ eBPF disassembler
 Reads the given file or stdin. The input should be raw eBPF
 instructions (not an ELF object file).
 """
-import sys
 import struct
-import argparse
+import StringIO
 
 Inst = struct.Struct("BBHI")
 
@@ -155,13 +154,15 @@ def disassemble_one(data, offset):
     else:
         return "unknown instruction %#x" % code
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('file', type=argparse.FileType('r'), default='-')
-    args = parser.parse_args()
-
-    data = args.file.read()
     offset = 0
     while offset < len(data):
         print disassemble_one(data, offset)
         offset += 8
+
+def disassemble(data):
+    output = StringIO.StringIO()
+    offset = 0
+    while offset < len(data):
+        output.write(disassemble_one(data, offset) + "\n")
+        offset += 8
+    return output.getvalue()
