@@ -5,7 +5,7 @@ eBPF assembler
 Very simple single-pass assembler. Only exists to assemble testcases
 for the interpreter.
 """
-from parser import parse, Reg, Imm, MemRef
+from asm_parser import parse, Reg, Imm, MemRef
 import struct
 import StringIO
 
