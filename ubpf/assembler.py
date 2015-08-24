@@ -5,61 +5,61 @@ import StringIO
 Inst = struct.Struct("BBHI")
 
 MEM_SIZES = {
-    'W': 0,
-    'H': 1,
-    'B': 2,
-    'DW': 3,
+    'w': 0,
+    'h': 1,
+    'b': 2,
+    'dw': 3,
 }
 
-MEM_LOAD_OPS = { 'LDX' + k: (0x61 | (v << 3)) for k, v in MEM_SIZES.items() }
-MEM_STORE_IMM_OPS = { 'ST' + k: (0x62 | (v << 3))  for k, v in MEM_SIZES.items() }
-MEM_STORE_REG_OPS = { 'STX' + k: (0x63 | (v << 3)) for k, v in MEM_SIZES.items() }
+MEM_LOAD_OPS = { 'ldx' + k: (0x61 | (v << 3)) for k, v in MEM_SIZES.items() }
+MEM_STORE_IMM_OPS = { 'st' + k: (0x62 | (v << 3))  for k, v in MEM_SIZES.items() }
+MEM_STORE_REG_OPS = { 'stx' + k: (0x63 | (v << 3)) for k, v in MEM_SIZES.items() }
 
 UNARY_ALU_OPS = {
-    'NEG': 8,
+    'neg': 8,
 }
 
 BINARY_ALU_OPS = {
-    'ADD': 0,
-    'SUB': 1,
-    'MUL': 2,
-    'DIV': 3,
-    'OR': 4,
-    'AND': 5,
-    'LSH': 6,
-    'RSH': 7,
-    'MOD': 9,
-    'XOR': 10,
-    'MOV': 11,
-    'ARSH': 12,
+    'add': 0,
+    'sub': 1,
+    'mul': 2,
+    'div': 3,
+    'or': 4,
+    'and': 5,
+    'lsh': 6,
+    'rsh': 7,
+    'mod': 9,
+    'xor': 10,
+    'mov': 11,
+    'arsh': 12,
 }
 
 UNARY_ALU64_OPS = { k + '64': v for k, v in UNARY_ALU_OPS.items() }
 BINARY_ALU64_OPS = { k + '64': v for k, v in BINARY_ALU_OPS.items() }
 
 END_OPS = {
-    'END16': (0xd4, 16),
-    'END32': (0xd4, 32),
-    'END64': (0xd4, 64),
-    'END64_16': (0xd7, 16),
-    'END64_32': (0xd7, 32),
-    'END64_64': (0xd7, 64),
+    'end16': (0xd4, 16),
+    'end32': (0xd4, 32),
+    'end64': (0xd4, 64),
+    'end64_16': (0xd7, 16),
+    'end64_32': (0xd7, 32),
+    'end64_64': (0xd7, 64),
 }
 
 JMP_CMP_OPS = {
-    'JEQ': 1,
-    'JGT': 2,
-    'JGE': 3,
-    'JSET': 4,
-    'JNE': 5,
-    'JSGT': 6,
-    'JSGE': 7,
+    'jeq': 1,
+    'jgt': 2,
+    'jge': 3,
+    'jset': 4,
+    'jne': 5,
+    'jsgt': 6,
+    'jsge': 7,
 }
 
 JMP_MISC_OPS = {
-    'JA': 0,
-    'CALL': 8,
-    'EXIT': 9,
+    'ja': 0,
+    'call': 8,
+    'exit': 9,
 }
 
 def pack(opcode, dst, src, offset, imm):
@@ -100,11 +100,11 @@ def assemble_one(inst):
         return assemble_binop(op, 0x05, JMP_CMP_OPS, inst[1], inst[2], inst[3])
     elif op in JMP_MISC_OPS:
         opcode = 0x05 | (JMP_MISC_OPS[op] << 4)
-        if op == 'JA':
+        if op == 'ja':
             return pack(opcode, 0, 0, inst[1], 0)
-        elif op == 'CALL':
+        elif op == 'call':
             return pack(opcode, 0, 0, 0, inst[1].value)
-        elif op == 'EXIT':
+        elif op == 'exit':
             return pack(opcode, 0, 0, 0, 0)
     else:
         raise ValueError("unexpected instruction %r" % op)

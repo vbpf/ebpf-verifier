@@ -19,31 +19,31 @@ imm = (-CharIn("+-") + Exact(hexnum | decnum))[flatten]["".join][lambda x: int(x
 reg = Literal('r') + integer[int][Reg]
 memref = (Literal('[') + reg + Optional(offset, 0) + Literal(']'))[lambda x: MemRef(*x)]
 
-unary_alu_ops = ['NEG', 'NEG64', 'END16', 'END64_16', 'END32', 'END64_32', 'END64', 'END64_64']
-binary_alu_ops = ['ADD', 'SUB', 'MUL', 'DIV', 'OR', 'AND', 'LSH', 'RSH',
-                  'MOD', 'XOR', 'MOV', 'ARSH']
+unary_alu_ops = ['neg', 'neg64', 'end16', 'end64_16', 'end32', 'end64_32', 'end64', 'end64_64']
+binary_alu_ops = ['add', 'sub', 'mul', 'div', 'or', 'and', 'lsh', 'rsh',
+                  'mod', 'xor', 'mov', 'arsh']
 binary_alu_ops.extend([x + '64' for x in binary_alu_ops])
 
 alu_instruction = \
     (keywords(unary_alu_ops) + reg) | \
     (keywords(binary_alu_ops) + reg + "," + (reg | imm))
 
-mem_sizes = ['W', 'H', 'B', 'DW']
-mem_store_reg_ops = ['STX' + s for s in mem_sizes]
-mem_store_imm_ops = ['ST' + s for s in mem_sizes]
-mem_load_ops = ['LDX' + s for s in mem_sizes]
+mem_sizes = ['w', 'h', 'b', 'dw']
+mem_store_reg_ops = ['stx' + s for s in mem_sizes]
+mem_store_imm_ops = ['st' + s for s in mem_sizes]
+mem_load_ops = ['ldx' + s for s in mem_sizes]
 
 mem_instruction = \
     (keywords(mem_store_reg_ops) + memref + "," + reg) | \
     (keywords(mem_store_imm_ops) + memref + "," + imm) | \
     (keywords(mem_load_ops) + reg + "," + memref)
 
-jmp_cmp_ops = ['JEQ', 'JGT', 'JGE', 'JSET', 'JNE', 'JSGT', 'JSGE']
+jmp_cmp_ops = ['jeq', 'jgt', 'jge', 'jset', 'jne', 'jsgt', 'jsge']
 jmp_instruction = \
     (keywords(jmp_cmp_ops) + reg + "," + (reg | imm) + "," + offset) | \
-    (keywords(['JA']) + offset) | \
-    (keywords(['CALL']) + imm) | \
-    (keywords(['EXIT'])[lambda x: (x, )])
+    (keywords(['ja']) + offset) | \
+    (keywords(['call']) + imm) | \
+    (keywords(['exit'])[lambda x: (x, )])
 
 instruction = alu_instruction | mem_instruction | jmp_instruction
 
