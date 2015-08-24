@@ -4,58 +4,58 @@ import StringIO
 Inst = struct.Struct("BBHI")
 
 CLASSES = {
-    0: "LD",
-    1: "LDX",
-    2: "ST",
-    3: "STX",
-    4: "ALU",
-    5: "JMP",
-    7: "ALU64",
+    0: "ld",
+    1: "ldx",
+    2: "st",
+    3: "stx",
+    4: "alu",
+    5: "jmp",
+    7: "alu64",
 }
 
 ALU_OPCODES = {
-    0: 'ADD',
-    1: 'SUB',
-    2: 'MUL',
-    3: 'DIV',
-    4: 'OR',
-    5: 'AND',
-    6: 'LSH',
-    7: 'RSH',
-    8: 'NEG',
-    9: 'MOD',
-    10: 'XOR',
-    11: 'MOV',
-    12: 'ARSH',
-    13: 'END',
+    0: 'add',
+    1: 'sub',
+    2: 'mul',
+    3: 'div',
+    4: 'or',
+    5: 'and',
+    6: 'lsh',
+    7: 'rsh',
+    8: 'neg',
+    9: 'mod',
+    10: 'xor',
+    11: 'mov',
+    12: 'arsh',
+    13: 'end',
 }
 
 JMP_OPCODES = {
-    0: 'JA',
-    1: 'JEQ',
-    2: 'JGT',
-    3: 'JGE',
-    4: 'JSET',
-    5: 'JNE',
-    6: 'JSGT',
-    7: 'JSGE',
-    8: 'CALL',
-    9: 'EXIT',
+    0: 'ja',
+    1: 'jeq',
+    2: 'jgt',
+    3: 'jge',
+    4: 'jset',
+    5: 'jne',
+    6: 'jsgt',
+    7: 'jsge',
+    8: 'call',
+    9: 'exit',
 }
 
 MODES = {
-    0: 'IMM',
-    1: 'ABS',
-    2: 'IND',
-    3: 'MEM',
-    6: 'XADD',
+    0: 'imm',
+    1: 'abs',
+    2: 'ind',
+    3: 'mem',
+    6: 'xadd',
 }
 
 SIZES = {
-    0: 'W',
-    1: 'H',
-    2: 'B',
-    3: 'DW',
+    0: 'w',
+    1: 'h',
+    2: 'b',
+    3: 'dw',
 }
 
 BPF_CLASS_LD = 0
@@ -117,11 +117,11 @@ def disassemble_one(data, offset):
         opcode = (code >> 4) & 0xf
         opcode_name = JMP_OPCODES.get(opcode)
 
-        if opcode_name == "EXIT":
-            return "EXIT"
-        elif opcode_name == "CALL":
+        if opcode_name == "exit":
+            return opcode_name
+        elif opcode_name == "call":
             return "%s %s" % (opcode_name, I(imm))
-        elif opcode_name == "JA":
+        elif opcode_name == "ja":
             return "%s %s" % (opcode_name, O(off))
         elif source == 0:
             return "%s %s, %s, %s" % (opcode_name, R(dst_reg), I(imm), O(off))
@@ -133,7 +133,7 @@ def disassemble_one(data, offset):
         mode_name = MODES.get(mode, str(mode))
         # TODO use different syntax for non-MEM instructions
         size_name = SIZES.get(size, str(size))
-        if cls == BPF_CLASS_LD and mode_name == "IMM":
+        if cls == BPF_CLASS_LD and mode_name == "imm":
             return "%s %s, %s" % (class_name + size_name, R(dst_reg), I(imm))
         elif cls == BPF_CLASS_LD:
             # Probably not correct
