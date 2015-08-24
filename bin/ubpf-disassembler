@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """
-eBPF assembler
+eBPF disassembler
 
-Very simple single-pass assembler. Only exists to assemble testcases
-for the interpreter.
+Reads the given file or stdin. The input should be raw eBPF
+instructions (not an ELF object file).
 """
 
 import argparse

@@ -1,10 +1,3 @@
-#!/usr/bin/env python
-"""
-eBPF disassembler
-
-Reads the given file or stdin. The input should be raw eBPF
-instructions (not an ELF object file).
-"""
 import struct
 import StringIO
 
