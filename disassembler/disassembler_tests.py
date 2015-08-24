@@ -19,14 +19,14 @@ class DisassemblerTests(unittest.TestCase):
         self.check(0x000000000000215c, "AND r1, r2")
         self.check(0x000000000000216c, "LSH r1, r2")
         self.check(0x000000000000217c, "RSH r1, r2")
-        self.check(0x000000000000218c, "NEG r1, r2")
+        self.check(0x000000000000018c, "NEG r1")
         self.check(0x000000000000219c, "MOD r1, r2")
         self.check(0x00000000000021ac, "XOR r1, r2")
         self.check(0x00000000000021bc, "MOV r1, r2")
         self.check(0x00000000000021cc, "ARSH r1, r2")
-        self.check(0x00000010000001dc, "END16 r1")
-        self.check(0x00000020000001dc, "END32 r1")
-        self.check(0x00000040000001dc, "END64 r1")
+        self.check(0x00000010000001d4, "END16 r1")
+        self.check(0x00000020000001d4, "END32 r1")
+        self.check(0x00000040000001d4, "END64 r1")
 
     def test_alu64(self):
         self.check(0x0000000200000107, "ADD64 r1, $2")
@@ -39,14 +39,14 @@ class DisassemblerTests(unittest.TestCase):
         self.check(0x000000000000215f, "AND64 r1, r2")
         self.check(0x000000000000216f, "LSH64 r1, r2")
         self.check(0x000000000000217f, "RSH64 r1, r2")
-        self.check(0x000000000000218f, "NEG64 r1, r2")
+        self.check(0x000000000000018f, "NEG64 r1")
         self.check(0x000000000000219f, "MOD64 r1, r2")
         self.check(0x00000000000021af, "XOR64 r1, r2")
         self.check(0x00000000000021bf, "MOV64 r1, r2")
         self.check(0x00000000000021cf, "ARSH64 r1, r2")
-        self.check(0x00000010000001df, "END6416 r1") # XXX
-        self.check(0x00000020000001df, "END6432 r1") # XXX
-        self.check(0x00000040000001df, "END6464 r1") # XXX
+        self.check(0x00000010000001d7, "END64_16 r1")
+        self.check(0x00000020000001d7, "END64_32 r1")
+        self.check(0x00000040000001d7, "END64_64 r1")
 
     def test_jmp(self):
         self.check(0x0000000000010005, "JA +1")
