@@ -1,5 +1,6 @@
 import struct
 import difflib
+from nose.plugins.skip import Skip, SkipTest
 import ubpf.disassembler
 import testdata
 

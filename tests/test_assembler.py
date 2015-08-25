@@ -1,4 +1,5 @@
 import struct
+from nose.plugins.skip import Skip, SkipTest
 import ubpf.assembler
 import ubpf.disassembler
 import testdata
