@@ -31,6 +31,9 @@ struct ebpf_inst {
 
 #define EBPF_OP_ADD_IMM 0x04
 #define EBPF_OP_ADD_REG 0x0c
+#define EBPF_OP_MOV_IMM 0xb4
+#define EBPF_OP_MOV_REG 0xbc
+
 #define EBPF_OP_JGT_IMM 0x25
 #define EBPF_OP_JGT_REG 0x2d
 #define EBPF_OP_JGE_IMM 0x35

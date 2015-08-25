@@ -101,12 +101,20 @@ ubpf_exec(const struct ubpf_vm *vm, void *ctx)
         struct ebpf_inst inst = insts[pc++];
 
         switch (inst.opcode) {
+        case EBPF_OP_ADD_IMM:
+            reg[inst.dst] += inst.imm;
+            reg[inst.dst] &= UINT32_MAX;
+            break;
         case EBPF_OP_ADD_REG:
             reg[inst.dst] += reg[inst.src];
             reg[inst.dst] &= UINT32_MAX;
             break;
-        case EBPF_OP_ADD_IMM:
-            reg[inst.dst] += inst.imm;
+        case EBPF_OP_MOV_IMM:
+            reg[inst.dst] = inst.imm;
+            reg[inst.dst] &= UINT32_MAX;
+            break;
+        case EBPF_OP_MOV_REG:
+            reg[inst.dst] = reg[inst.src];
             reg[inst.dst] &= UINT32_MAX;
             break;
         case EBPF_OP_JGT_IMM:
@@ -156,6 +164,8 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         switch (inst.opcode) {
         case EBPF_OP_ADD_REG:
         case EBPF_OP_ADD_IMM:
+        case EBPF_OP_MOV_REG:
+        case EBPF_OP_MOV_IMM:
         case EBPF_OP_JGE_REG:
         case EBPF_OP_JGE_IMM:
         case EBPF_OP_JGT_REG:
