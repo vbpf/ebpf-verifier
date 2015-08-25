@@ -1,5 +1,5 @@
 -- asm
-add r1, 2
+add r1, 0x2
 add r9, 0xffffffff
 add r1, r2
 sub r1, r2

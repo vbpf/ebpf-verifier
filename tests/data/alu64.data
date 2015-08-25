@@ -1,5 +1,5 @@
 -- asm
-add64 r1, 2
+add64 r1, 0x2
 add64 r9, 0xffffffff
 add64 r1, r2
 sub64 r1, r2
