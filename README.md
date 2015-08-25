@@ -1,6 +1,6 @@
 # uBPF
 
-Userspace eBPF VM (eventually)
+Userspace eBPF VM
 
 ## About
 
@@ -8,8 +8,13 @@ This project aims to create an Apache-licensed library for executing eBPF progra
 
 [Linux documentation for the eBPF instruction set] (https://www.kernel.org/doc/Documentation/networking/filter.txt).
 
-Currently this project includes an eBPF assembler, disassembler, and
-[instruction set reference](eBPF.md).
+Currently this project includes an eBPF assembler, disassembler, partial
+interpreter, and [instruction set reference](eBPF.md).
+
+## Building
+
+Run `make -c vm` to build the VM. This produces a static library `libubpf.a`
+and a simple executable used by the testsuite.
 
 ## Contributing
 
