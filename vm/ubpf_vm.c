@@ -88,7 +88,11 @@ ubpf_exec(const struct ubpf_vm *vm, void *ctx)
     uint16_t pc = 0;
     const struct ebpf_inst *insts = vm->insts;
     uint16_t num_insts = vm->num_insts;
-    uint64_t reg[16] = { 0 };
+    uint64_t reg[16];
+
+    /* TODO remove this when the verifier can prove uninitialized registers are
+     * not read from */
+    memset(reg, 0xff, sizeof(reg));
 
     while (1) {
         const uint16_t cur_pc = pc;
