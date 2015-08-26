@@ -309,33 +309,56 @@ ubpf_exec(const struct ubpf_vm *vm, uint64_t arg)
          * Needed since we don't have a verifier yet.
          */
 #define MEM_SIZE 1024*1024
-#define BOUNDS_CHECK(size) \
+#define BOUNDS_CHECK_LOAD(size) \
     do { \
         uint64_t addr = reg[inst.src] + inst.offset; \
         if (!arg || addr < arg || (addr + size) > (arg + MEM_SIZE)) { \
-            fprintf(stderr, "uBPF error: out of bounds memory access at PC %u, addr 0x%"PRIx64", size %d\n", cur_pc, addr, size); \
+            fprintf(stderr, "uBPF error: out of bounds memory load at PC %u, addr 0x%"PRIx64", size %d\n", cur_pc, addr, size); \
+            return UINT64_MAX; \
+        } \
+    } while (0)
+#define BOUNDS_CHECK_STORE(size) \
+    do { \
+        uint64_t addr = reg[inst.dst] + inst.offset; \
+        if (!arg || addr < arg || (addr + size) > (arg + MEM_SIZE)) { \
+            fprintf(stderr, "uBPF error: out of bounds memory store at PC %u, addr 0x%"PRIx64", size %d\n", cur_pc, addr, size); \
             return UINT64_MAX; \
         } \
     } while (0)
 
         case EBPF_OP_LDXW:
-            BOUNDS_CHECK(4);
+            BOUNDS_CHECK_LOAD(4);
             reg[inst.dst] = *(uint32_t *)(uintptr_t)(reg[inst.src] + inst.offset);
             break;
         case EBPF_OP_LDXH:
-            BOUNDS_CHECK(2);
+            BOUNDS_CHECK_LOAD(2);
             reg[inst.dst] = *(uint16_t *)(uintptr_t)(reg[inst.src] + inst.offset);
             break;
         case EBPF_OP_LDXB:
-            BOUNDS_CHECK(1);
+            BOUNDS_CHECK_LOAD(1);
             reg[inst.dst] = *(uint8_t *)(uintptr_t)(reg[inst.src] + inst.offset);
             break;
         case EBPF_OP_LDXDW:
-            BOUNDS_CHECK(1);
+            BOUNDS_CHECK_LOAD(8);
             reg[inst.dst] = *(uint64_t *)(uintptr_t)(reg[inst.src] + inst.offset);
             break;
 
-        /* TODO remaining MEM opcodes */
+        case EBPF_OP_STW:
+            BOUNDS_CHECK_STORE(4);
+            *(uint32_t *)(uintptr_t)(reg[inst.dst] + inst.offset) = inst.imm;
+            break;
+        case EBPF_OP_STH:
+            BOUNDS_CHECK_STORE(2);
+            *(uint16_t *)(uintptr_t)(reg[inst.dst] + inst.offset) = inst.imm;
+            break;
+        case EBPF_OP_STB:
+            BOUNDS_CHECK_STORE(1);
+            *(uint8_t *)(uintptr_t)(reg[inst.dst] + inst.offset) = inst.imm;
+            break;
+        case EBPF_OP_STDW:
+            BOUNDS_CHECK_STORE(8);
+            *(uint64_t *)(uintptr_t)(reg[inst.dst] + inst.offset) = inst.imm;
+            break;
 
         case EBPF_OP_JA:
             pc += inst.offset;
@@ -472,6 +495,10 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_LDXH:
         case EBPF_OP_LDXB:
         case EBPF_OP_LDXDW:
+        case EBPF_OP_STW:
+        case EBPF_OP_STH:
+        case EBPF_OP_STB:
+        case EBPF_OP_STDW:
             break;
 
         case EBPF_OP_JA:
