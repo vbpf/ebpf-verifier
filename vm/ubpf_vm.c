@@ -294,6 +294,19 @@ ubpf_exec(const struct ubpf_vm *vm, void *ctx)
 
         /* TODO MEM opcodes */
 
+        case EBPF_OP_JA:
+            pc += inst.offset;
+            break;
+        case EBPF_OP_JEQ_IMM:
+            if (reg[inst.dst] == inst.imm) {
+                pc += inst.offset;
+            }
+            break;
+        case EBPF_OP_JEQ_REG:
+            if (reg[inst.dst] == reg[inst.src]) {
+                pc += inst.offset;
+            }
+            break;
         case EBPF_OP_JGT_IMM:
             if (reg[inst.dst] > (uint32_t)inst.imm) {
                 pc += inst.offset;
@@ -311,6 +324,26 @@ ubpf_exec(const struct ubpf_vm *vm, void *ctx)
             break;
         case EBPF_OP_JGE_REG:
             if (reg[inst.dst] >= reg[inst.src]) {
+                pc += inst.offset;
+            }
+            break;
+        case EBPF_OP_JSET_IMM:
+            if (reg[inst.dst] & inst.imm) {
+                pc += inst.offset;
+            }
+            break;
+        case EBPF_OP_JSET_REG:
+            if (reg[inst.dst] & reg[inst.src]) {
+                pc += inst.offset;
+            }
+            break;
+        case EBPF_OP_JNE_IMM:
+            if (reg[inst.dst] != inst.imm) {
+                pc += inst.offset;
+            }
+            break;
+        case EBPF_OP_JNE_REG:
+            if (reg[inst.dst] != reg[inst.src]) {
                 pc += inst.offset;
             }
             break;
@@ -396,10 +429,17 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_ARSH64_REG:
             break;
 
-        case EBPF_OP_JGE_REG:
-        case EBPF_OP_JGE_IMM:
+        case EBPF_OP_JA:
+        case EBPF_OP_JEQ_REG:
+        case EBPF_OP_JEQ_IMM:
         case EBPF_OP_JGT_REG:
         case EBPF_OP_JGT_IMM:
+        case EBPF_OP_JGE_REG:
+        case EBPF_OP_JGE_IMM:
+        case EBPF_OP_JSET_REG:
+        case EBPF_OP_JSET_IMM:
+        case EBPF_OP_JNE_REG:
+        case EBPF_OP_JNE_IMM:
         case EBPF_OP_EXIT:
             break;
 
