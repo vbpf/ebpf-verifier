@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <inttypes.h>
 #include "ebpf.h"
 #include "ubpf.h"
 
@@ -302,7 +303,39 @@ ubpf_exec(const struct ubpf_vm *vm, uint64_t arg)
             break;
         /* TODO endian opcodes */
 
-        /* TODO MEM opcodes */
+        /*
+         * HACK runtime bounds check
+         *
+         * Needed since we don't have a verifier yet.
+         */
+#define MEM_SIZE 1024*1024
+#define BOUNDS_CHECK(size) \
+    do { \
+        uint64_t addr = reg[inst.src] + inst.offset; \
+        if (!arg || addr < arg || (addr + size) > (arg + MEM_SIZE)) { \
+            fprintf(stderr, "uBPF error: out of bounds memory access at PC %u, addr 0x%"PRIx64", size %d\n", cur_pc, addr, size); \
+            return UINT64_MAX; \
+        } \
+    } while (0)
+
+        case EBPF_OP_LDXW:
+            BOUNDS_CHECK(4);
+            reg[inst.dst] = *(uint32_t *)(uintptr_t)(reg[inst.src] + inst.offset);
+            break;
+        case EBPF_OP_LDXH:
+            BOUNDS_CHECK(2);
+            reg[inst.dst] = *(uint16_t *)(uintptr_t)(reg[inst.src] + inst.offset);
+            break;
+        case EBPF_OP_LDXB:
+            BOUNDS_CHECK(1);
+            reg[inst.dst] = *(uint8_t *)(uintptr_t)(reg[inst.src] + inst.offset);
+            break;
+        case EBPF_OP_LDXDW:
+            BOUNDS_CHECK(1);
+            reg[inst.dst] = *(uint64_t *)(uintptr_t)(reg[inst.src] + inst.offset);
+            break;
+
+        /* TODO remaining MEM opcodes */
 
         case EBPF_OP_JA:
             pc += inst.offset;
@@ -433,6 +466,12 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_MOV64_REG:
         case EBPF_OP_ARSH64_IMM:
         case EBPF_OP_ARSH64_REG:
+            break;
+
+        case EBPF_OP_LDXW:
+        case EBPF_OP_LDXH:
+        case EBPF_OP_LDXB:
+        case EBPF_OP_LDXDW:
             break;
 
         case EBPF_OP_JA:
