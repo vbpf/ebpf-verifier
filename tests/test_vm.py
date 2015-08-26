@@ -16,10 +16,9 @@ def check_datafile(filename):
     if not os.path.exists(VM):
         raise SkipTest("VM not found")
 
-
     code = ubpf.assembler.assemble(data['asm'])
 
-    vm = Popen([VM], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    vm = Popen([VM, '-'], stdin=PIPE, stdout=PIPE, stderr=PIPE)
 
     stdout, stderr = vm.communicate(code)
 

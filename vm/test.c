@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
 #include <getopt.h>
 #include "ubpf.h"
 
@@ -58,16 +59,34 @@ int main(int argc, char **argv)
         }
     }
 
+    if (argc != optind + 1) {
+        usage(argv[0]);
+        return 1;
+    }
+
+    const char *filename = argv[optind];
+    FILE *file;
+    if (!strcmp(filename, "-")) {
+        file = fdopen(STDIN_FILENO, "r");
+    } else {
+        file = fopen(filename, "r");
+    }
+
+    if (file == NULL) {
+        perror("fopen");
+        return 1;
+    }
+
     int maxlen = 65536*8;
     void *code = malloc(maxlen);
     int offset = 0;
     int rv;
-    while ((rv = read(STDIN_FILENO, code+offset, maxlen-offset)) > 0) {
+    while ((rv = fread(code+offset, 1, maxlen-offset, file)) > 0) {
         offset += rv;
     }
 
-    if (rv < 0) {
-        perror("read");
+    if (ferror(file)) {
+        perror("fread");
         return 1;
     }
 
