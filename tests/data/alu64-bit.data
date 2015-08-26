@@ -1,0 +1,38 @@
+-- asm
+mov64 r0, 0
+mov64 r1, 1
+mov64 r2, 2
+mov64 r3, 3
+mov64 r4, 4
+mov64 r5, 5
+mov64 r6, 6
+mov64 r7, 7
+mov64 r8, 8
+# r0 == 0
+
+or64 r0, r5
+or64 r0, 0xa0
+# r0 == 0xa5
+
+and64 r0, 0xa3
+mov64 r9, 0x91
+and64 r0, r9
+# r0 == 0x21
+
+lsh64 r0, 32
+lsh64 r0, 22
+lsh64 r0, r8
+# r0 == 0x40000000
+
+rsh64 r0, 32
+rsh64 r0, 19
+rsh64 r0, r7
+# r0 == 0x10
+
+xor64 r0, 0x03
+xor64 r0, r2
+# r0 == 0x11
+
+exit
+-- result
+0x11
