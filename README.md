@@ -2,6 +2,8 @@
 
 Userspace eBPF VM
 
+[![Build Status](https://travis-ci.org/rlane/ubpf.svg?branch=master)](https://travis-ci.org/rlane/ubpf)
+
 ## About
 
 This project aims to create an Apache-licensed library for executing eBPF programs. The primary implementation of eBPF lives in the Linux kernel, but due to its GPL license it can't be used in many projects.
