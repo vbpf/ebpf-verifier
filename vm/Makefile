@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-CFLAGS := -Wall -Werror -Iinc -O2
+CFLAGS := -Wall -Werror -Iinc -O2 -g
 
 all: libubpf.a test
 
