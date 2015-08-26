@@ -45,7 +45,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    uint64_t ret = ubpf_exec(vm, NULL);
+    uint64_t ret = ubpf_exec(vm, 0);
     printf("0x%"PRIx64"\n", ret);
 
     ubpf_destroy(vm);

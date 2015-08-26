@@ -83,7 +83,7 @@ ubpf_destroy(struct ubpf_vm *vm)
 }
 
 uint64_t
-ubpf_exec(const struct ubpf_vm *vm, void *ctx)
+ubpf_exec(const struct ubpf_vm *vm, uint64_t arg)
 {
     uint16_t pc = 0;
     const struct ebpf_inst *insts = vm->insts;
@@ -94,7 +94,7 @@ ubpf_exec(const struct ubpf_vm *vm, void *ctx)
      * not read from */
     memset(reg, 0xff, sizeof(reg));
 
-    reg[1] = (uintptr_t)ctx;
+    reg[1] = arg;
 
     while (1) {
         const uint16_t cur_pc = pc;
