@@ -31,7 +31,7 @@ struct ebpf_inst {
 
 #define EBPF_CLS_LDX 0x01
 #define EBPF_CLS_ST 0x02
-#define EBPF_CLS_STW 0x03
+#define EBPF_CLS_STX 0x03
 #define EBPF_CLS_ALU 0x04
 #define EBPF_CLS_JMP 0x05
 #define EBPF_CLS_ALU64 0x07

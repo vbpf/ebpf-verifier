@@ -360,6 +360,23 @@ ubpf_exec(const struct ubpf_vm *vm, uint64_t arg)
             *(uint64_t *)(uintptr_t)(reg[inst.dst] + inst.offset) = inst.imm;
             break;
 
+        case EBPF_OP_STXW:
+            BOUNDS_CHECK_STORE(4);
+            *(uint32_t *)(uintptr_t)(reg[inst.dst] + inst.offset) = reg[inst.src];
+            break;
+        case EBPF_OP_STXH:
+            BOUNDS_CHECK_STORE(2);
+            *(uint16_t *)(uintptr_t)(reg[inst.dst] + inst.offset) = reg[inst.src];
+            break;
+        case EBPF_OP_STXB:
+            BOUNDS_CHECK_STORE(1);
+            *(uint8_t *)(uintptr_t)(reg[inst.dst] + inst.offset) = reg[inst.src];
+            break;
+        case EBPF_OP_STXDW:
+            BOUNDS_CHECK_STORE(8);
+            *(uint64_t *)(uintptr_t)(reg[inst.dst] + inst.offset) = reg[inst.src];
+            break;
+
         case EBPF_OP_JA:
             pc += inst.offset;
             break;
@@ -499,6 +516,10 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_STH:
         case EBPF_OP_STB:
         case EBPF_OP_STDW:
+        case EBPF_OP_STXW:
+        case EBPF_OP_STXH:
+        case EBPF_OP_STXB:
+        case EBPF_OP_STXDW:
             break;
 
         case EBPF_OP_JA:

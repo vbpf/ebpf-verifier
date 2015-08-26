@@ -1,0 +1,11 @@
+-- asm
+mov64 r2, 0x88776655
+lsh64 r2, 32
+or64 r2, 0x44332211
+stxdw [r1+2], r2
+ldxdw r0, [r1+2]
+exit
+-- mem
+aa bb ff ff ff ff ff ff ff ff cc dd
+-- result
+0x8877665544332211
