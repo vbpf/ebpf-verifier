@@ -3,6 +3,7 @@
 Userspace eBPF VM
 
 [![Build Status](https://travis-ci.org/rlane/ubpf.svg?branch=master)](https://travis-ci.org/rlane/ubpf)
+[![Coverage Status](https://coveralls.io/repos/rlane/ubpf/badge.svg?branch=master&service=github)](https://coveralls.io/github/rlane/ubpf?branch=master)
 
 ## About
 
