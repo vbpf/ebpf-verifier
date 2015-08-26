@@ -1,7 +1,9 @@
 -- asm
 mov r0, 1
 lsh64 r0, 63
-arsh64 r0, 60
+arsh64 r0, 55
+mov r1, 5
+arsh64 r0, r1
 exit
 -- result
 0xfffffffffffffff8

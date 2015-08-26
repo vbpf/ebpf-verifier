@@ -1,0 +1,20 @@
+-- asm
+mov r0, 0xb1858436
+lsh64 r0, 32
+or64 r0, 0x100dc5c8
+# r0 == 0xb1858436100dc5c8
+
+mov r1, 0xdde263e
+lsh64 r1, 32
+or64 r1, 0x3cbef7f3
+# r1 == 0xdde263e3cbef7f3
+
+mod64 r0, r1
+# r0 == 0xb1bb94b371a2664
+
+mod64 r0, 0x658f1778
+# r0 == 0x30ba5a04
+
+exit
+-- result
+0x30ba5a04
