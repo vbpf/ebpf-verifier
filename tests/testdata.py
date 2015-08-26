@@ -50,5 +50,11 @@ def read(name):
             num, _, _ = line.partition("#")
             insts.append(int(num, 0))
         data['raw'] = insts
+    #
+    # Special case: convert 'mem' section into binary
+    # The string '00 11\n22 33' results in "\x00\x11\x22\x33"
+    if 'mem' in data:
+        hex_strs = data['mem'].split()
+        data['mem'] = ''.join(map(lambda x: chr(int(x, 16)), hex_strs))
 
     return data

@@ -1,4 +1,5 @@
 import os
+import tempfile
 from subprocess import Popen, PIPE
 from nose.plugins.skip import Skip, SkipTest
 import ubpf.assembler
@@ -19,11 +20,25 @@ def check_datafile(filename):
         raise SkipTest("VM not found")
 
     code = ubpf.assembler.assemble(data['asm'])
-    arg = data.get('arg', '0')
+    memfile = None
 
-    vm = Popen([VM, '-a', arg, '-'], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    cmd = [VM]
+    if 'arg' in data:
+        cmd.extend(['-a', data['arg']])
+    elif 'mem' in data:
+        memfile = tempfile.NamedTemporaryFile()
+        memfile.write(data['mem'])
+        memfile.flush()
+        cmd.extend(['-m', memfile.name])
+
+    cmd.append('-')
+
+    vm = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
 
     stdout, stderr = vm.communicate(code)
+
+    if memfile:
+        memfile.close()
 
     if vm.returncode != 0:
         raise AssertionError("VM exited with status %d, stderr=%r" % (vm.returncode, stderr.strip()))
