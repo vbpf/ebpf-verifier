@@ -14,8 +14,8 @@ def check_datafile(filename):
     data = testdata.read(filename)
     if 'asm' not in data:
         raise SkipTest("no asm section in datafile")
-    if 'result' not in data:
-        raise SkipTest("no result section in datafile")
+    if 'result' not in data and 'error' not in data:
+        raise SkipTest("no result or error section in datafile")
     if not os.path.exists(VM):
         raise SkipTest("VM not found")
 
@@ -36,18 +36,24 @@ def check_datafile(filename):
     vm = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
 
     stdout, stderr = vm.communicate(code)
+    stderr = stderr.strip()
 
     if memfile:
         memfile.close()
 
-    if vm.returncode != 0:
-        raise AssertionError("VM exited with status %d, stderr=%r" % (vm.returncode, stderr.strip()))
-
-    expected = int(data['result'], 0)
-    result = int(stdout, 0)
-
-    if expected != result:
-        raise AssertionError("Expected result 0x%x, got 0x%x, stderr=%r" % (expected, result, stderr.strip()))
+    if 'error' in data:
+        if vm.returncode == 0:
+            raise AssertionError("Expected error %r" % data['error'])
+        elif data['error'] != stderr:
+            raise AssertionError("Expected error %r, got %r" % (data['error'], stderr))
+    else:
+        if vm.returncode != 0:
+            raise AssertionError("VM exited with status %d, stderr=%r" % (vm.returncode, stderr.strip()))
+        else:
+            expected = int(data['result'], 0)
+            result = int(stdout, 0)
+            if expected != result:
+                raise AssertionError("Expected result 0x%x, got 0x%x, stderr=%r" % (expected, result, stderr.strip()))
 
 def test_datafiles():
     # Nose test generator

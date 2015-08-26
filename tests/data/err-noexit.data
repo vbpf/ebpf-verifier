@@ -1,0 +1,4 @@
+-- asm
+mov r0, 0
+-- result
+0xffffffffffffffff

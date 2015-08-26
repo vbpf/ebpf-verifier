@@ -1,0 +1,4 @@
+-- asm
+ja -1
+-- error
+Failed to create VM: infinite loop at PC 0
