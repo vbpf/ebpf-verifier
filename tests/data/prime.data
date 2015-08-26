@@ -1,0 +1,35 @@
+# Compiled by Clang
+-- c
+#include <stdint.h>
+#include <stdbool.h>
+
+uint64_t entry(uint64_t arg)
+{
+    int i = 0;
+    for (i = 2; i < arg; i++) {
+        if (arg % i == 0) {
+            return false;
+        }
+    }
+    return true;
+}
+-- asm
+mov64 r0, 0x1
+mov64 r2, 0x2
+jgt r1, 0x2, +4
+ja +10
+add64 r2, 0x1
+mov64 r0, 0x1
+jge r2, r1, +7
+mov64 r3, r1
+div64 r3, r2
+mul64 r3, r2
+mov64 r4, r1
+sub64 r4, r3
+mov64 r0, 0x0
+jne r4, 0x0, -10
+exit
+-- arg
+67
+-- result
+0x1
