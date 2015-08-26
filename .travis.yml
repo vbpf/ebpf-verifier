@@ -5,8 +5,8 @@ python:
   - "2.7"
 # command to install dependencies
 install: 
-  - pip install -r requirements.txt
-  - pip install cpp-coveralls
+  - pip install --user -r requirements.txt
+  - pip install --user cpp-coveralls
 # command to run tests
 script: 
   - make -C vm COVERAGE=1
