@@ -211,7 +211,86 @@ ubpf_exec(const struct ubpf_vm *vm, void *ctx)
             break;
         /* TODO endian opcodes */
 
-        /* TODO ALU64 opcodes */
+        case EBPF_OP_ADD64_IMM:
+            reg[inst.dst] += inst.imm;
+            break;
+        case EBPF_OP_ADD64_REG:
+            reg[inst.dst] += reg[inst.src];
+            break;
+        case EBPF_OP_SUB64_IMM:
+            reg[inst.dst] -= inst.imm;
+            break;
+        case EBPF_OP_SUB64_REG:
+            reg[inst.dst] -= reg[inst.src];
+            break;
+        case EBPF_OP_MUL64_IMM:
+            reg[inst.dst] *= inst.imm;
+            break;
+        case EBPF_OP_MUL64_REG:
+            reg[inst.dst] *= reg[inst.src];
+            break;
+        case EBPF_OP_DIV64_IMM:
+            /* TODO catch division by zero */
+            reg[inst.dst] /= inst.imm;
+            break;
+        case EBPF_OP_DIV64_REG:
+            /* TODO catch division by zero */
+            reg[inst.dst] /= reg[inst.src];
+            break;
+        case EBPF_OP_OR64_IMM:
+            reg[inst.dst] |= inst.imm;
+            break;
+        case EBPF_OP_OR64_REG:
+            reg[inst.dst] |= reg[inst.src];
+            break;
+        case EBPF_OP_AND64_IMM:
+            reg[inst.dst] &= inst.imm;
+            break;
+        case EBPF_OP_AND64_REG:
+            reg[inst.dst] &= reg[inst.src];
+            break;
+        case EBPF_OP_LSH64_IMM:
+            reg[inst.dst] <<= inst.imm;
+            break;
+        case EBPF_OP_LSH64_REG:
+            reg[inst.dst] <<= reg[inst.src];
+            break;
+        case EBPF_OP_RSH64_IMM:
+            reg[inst.dst] >>= inst.imm;
+            break;
+        case EBPF_OP_RSH64_REG:
+            reg[inst.dst] >>= reg[inst.src];
+            break;
+        case EBPF_OP_NEG64:
+            reg[inst.dst] = -reg[inst.dst];
+            break;
+        case EBPF_OP_MOD64_IMM:
+            /* TODO catch division by zero */
+            reg[inst.dst] %= inst.imm;
+            break;
+        case EBPF_OP_MOD64_REG:
+            /* TODO catch division by zero */
+            reg[inst.dst] %= reg[inst.src];
+            break;
+        case EBPF_OP_XOR64_IMM:
+            reg[inst.dst] ^= inst.imm;
+            break;
+        case EBPF_OP_XOR64_REG:
+            reg[inst.dst] ^= reg[inst.src];
+            break;
+        case EBPF_OP_MOV64_IMM:
+            reg[inst.dst] = inst.imm;
+            break;
+        case EBPF_OP_MOV64_REG:
+            reg[inst.dst] = reg[inst.src];
+            break;
+        case EBPF_OP_ARSH64_IMM:
+            reg[inst.dst] = (int64_t)reg[inst.dst] >> inst.imm;
+            break;
+        case EBPF_OP_ARSH64_REG:
+            reg[inst.dst] = (int64_t)reg[inst.dst] >> reg[inst.src];
+            break;
+        /* TODO endian opcodes */
 
         /* TODO MEM opcodes */
 
@@ -288,6 +367,33 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_MOV_REG:
         case EBPF_OP_ARSH_IMM:
         case EBPF_OP_ARSH_REG:
+            break;
+
+        case EBPF_OP_ADD64_IMM:
+        case EBPF_OP_ADD64_REG:
+        case EBPF_OP_SUB64_IMM:
+        case EBPF_OP_SUB64_REG:
+        case EBPF_OP_MUL64_IMM:
+        case EBPF_OP_MUL64_REG:
+        case EBPF_OP_DIV64_IMM:
+        case EBPF_OP_DIV64_REG:
+        case EBPF_OP_OR64_IMM:
+        case EBPF_OP_OR64_REG:
+        case EBPF_OP_AND64_IMM:
+        case EBPF_OP_AND64_REG:
+        case EBPF_OP_LSH64_IMM:
+        case EBPF_OP_LSH64_REG:
+        case EBPF_OP_RSH64_IMM:
+        case EBPF_OP_RSH64_REG:
+        case EBPF_OP_NEG64:
+        case EBPF_OP_MOD64_IMM:
+        case EBPF_OP_MOD64_REG:
+        case EBPF_OP_XOR64_IMM:
+        case EBPF_OP_XOR64_REG:
+        case EBPF_OP_MOV64_IMM:
+        case EBPF_OP_MOV64_REG:
+        case EBPF_OP_ARSH64_IMM:
+        case EBPF_OP_ARSH64_REG:
             break;
 
         case EBPF_OP_JGE_REG:
