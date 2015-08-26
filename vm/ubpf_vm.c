@@ -446,6 +446,12 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_JSET_IMM:
         case EBPF_OP_JNE_REG:
         case EBPF_OP_JNE_IMM:
+            if (inst.offset == -1) {
+                *errmsg = error("infinite loop at PC %d", i);
+                return false;
+            }
+            break;
+
         case EBPF_OP_EXIT:
             break;
 
