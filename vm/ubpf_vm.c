@@ -94,6 +94,8 @@ ubpf_exec(const struct ubpf_vm *vm, void *ctx)
      * not read from */
     memset(reg, 0xff, sizeof(reg));
 
+    reg[1] = (uintptr_t)ctx;
+
     while (1) {
         const uint16_t cur_pc = pc;
         if (pc >= num_insts) {
