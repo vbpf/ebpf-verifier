@@ -18,11 +18,45 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <getopt.h>
 #include "ubpf.h"
+
+static void usage(const char *name)
+{
+    fprintf(stderr, "usage: %s [-h] [-a|--arg INT] BINARY\n", name);
+    fprintf(stderr, "\nExecutes the eBPF code in BINARY and prints the result to stdout.\n");
+    fprintf(stderr, "If ARG is given it will be passed in r1. Otherwise r1 will be zero.\n");
+}
 
 int main(int argc, char **argv)
 {
-    /* TODO arg parsing */
+    struct option longopts[] = {
+        { .name = "help", .val = 'h', },
+        { .name = "arg", .val = 'a', .has_arg=1 },
+    };
+
+    uint64_t arg = 0;
+
+    int opt;
+    while ((opt = getopt_long(argc, argv, "ha:", longopts, NULL)) != -1) {
+        switch (opt) {
+        case 'a': {
+            char *endptr;
+            arg = strtoull(optarg, &endptr, 0);
+            if (*endptr) {
+                fprintf(stderr, "Invalid --arg option.\n");
+                return 1;
+            }
+            break;
+        }
+        case 'h':
+            usage(argv[0]);
+            return 0;
+        default:
+            usage(argv[0]);
+            return 1;
+        }
+    }
 
     int maxlen = 65536*8;
     void *code = malloc(maxlen);
@@ -45,7 +79,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    uint64_t ret = ubpf_exec(vm, 0);
+    uint64_t ret = ubpf_exec(vm, arg);
     printf("0x%"PRIx64"\n", ret);
 
     ubpf_destroy(vm);
