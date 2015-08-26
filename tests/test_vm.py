@@ -7,6 +7,8 @@ VM = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "vm", "test
 
 def check_datafile(filename):
     """
+    Given assembly source code and an expected result, run the eBPF program and
+    verify that the result matches.
     """
     data = testdata.read(filename)
     if 'asm' not in data:
