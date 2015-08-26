@@ -132,12 +132,14 @@ ubpf_exec(const struct ubpf_vm *vm, uint64_t arg)
             reg[inst.dst] &= UINT32_MAX;
             break;
         case EBPF_OP_DIV_IMM:
-            /* TODO catch division by zero */
             reg[inst.dst] /= inst.imm;
             reg[inst.dst] &= UINT32_MAX;
             break;
         case EBPF_OP_DIV_REG:
-            /* TODO catch division by zero */
+            if (reg[inst.src] == 0) {
+                fprintf(stderr, "uBPF error: division by zero at PC %u\n", cur_pc);
+                return UINT64_MAX;
+            }
             reg[inst.dst] /= reg[inst.src];
             reg[inst.dst] &= UINT32_MAX;
             break;
@@ -178,12 +180,14 @@ ubpf_exec(const struct ubpf_vm *vm, uint64_t arg)
             reg[inst.dst] &= UINT32_MAX;
             break;
         case EBPF_OP_MOD_IMM:
-            /* TODO catch division by zero */
             reg[inst.dst] %= inst.imm;
             reg[inst.dst] &= UINT32_MAX;
             break;
         case EBPF_OP_MOD_REG:
-            /* TODO catch division by zero */
+            if (reg[inst.src] == 0) {
+                fprintf(stderr, "uBPF error: division by zero at PC %u\n", cur_pc);
+                return UINT64_MAX;
+            }
             reg[inst.dst] %= reg[inst.src];
             reg[inst.dst] &= UINT32_MAX;
             break;
@@ -232,11 +236,13 @@ ubpf_exec(const struct ubpf_vm *vm, uint64_t arg)
             reg[inst.dst] *= reg[inst.src];
             break;
         case EBPF_OP_DIV64_IMM:
-            /* TODO catch division by zero */
             reg[inst.dst] /= inst.imm;
             break;
         case EBPF_OP_DIV64_REG:
-            /* TODO catch division by zero */
+            if (reg[inst.src] == 0) {
+                fprintf(stderr, "uBPF error: division by zero at PC %u\n", cur_pc);
+                return UINT64_MAX;
+            }
             reg[inst.dst] /= reg[inst.src];
             break;
         case EBPF_OP_OR64_IMM:
@@ -267,11 +273,13 @@ ubpf_exec(const struct ubpf_vm *vm, uint64_t arg)
             reg[inst.dst] = -reg[inst.dst];
             break;
         case EBPF_OP_MOD64_IMM:
-            /* TODO catch division by zero */
             reg[inst.dst] %= inst.imm;
             break;
         case EBPF_OP_MOD64_REG:
-            /* TODO catch division by zero */
+            if (reg[inst.src] == 0) {
+                fprintf(stderr, "uBPF error: division by zero at PC %u\n", cur_pc);
+                return UINT64_MAX;
+            }
             reg[inst.dst] %= reg[inst.src];
             break;
         case EBPF_OP_XOR64_IMM:
@@ -383,7 +391,6 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_SUB_REG:
         case EBPF_OP_MUL_IMM:
         case EBPF_OP_MUL_REG:
-        case EBPF_OP_DIV_IMM:
         case EBPF_OP_DIV_REG:
         case EBPF_OP_OR_IMM:
         case EBPF_OP_OR_REG:
@@ -394,7 +401,6 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_RSH_IMM:
         case EBPF_OP_RSH_REG:
         case EBPF_OP_NEG:
-        case EBPF_OP_MOD_IMM:
         case EBPF_OP_MOD_REG:
         case EBPF_OP_XOR_IMM:
         case EBPF_OP_XOR_REG:
@@ -410,7 +416,6 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_SUB64_REG:
         case EBPF_OP_MUL64_IMM:
         case EBPF_OP_MUL64_REG:
-        case EBPF_OP_DIV64_IMM:
         case EBPF_OP_DIV64_REG:
         case EBPF_OP_OR64_IMM:
         case EBPF_OP_OR64_REG:
@@ -421,7 +426,6 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_RSH64_IMM:
         case EBPF_OP_RSH64_REG:
         case EBPF_OP_NEG64:
-        case EBPF_OP_MOD64_IMM:
         case EBPF_OP_MOD64_REG:
         case EBPF_OP_XOR64_IMM:
         case EBPF_OP_XOR64_REG:
@@ -443,6 +447,16 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_JNE_REG:
         case EBPF_OP_JNE_IMM:
         case EBPF_OP_EXIT:
+            break;
+
+        case EBPF_OP_DIV_IMM:
+        case EBPF_OP_MOD_IMM:
+        case EBPF_OP_DIV64_IMM:
+        case EBPF_OP_MOD64_IMM:
+            if (inst.imm == 0) {
+                *errmsg = error("division by zero at PC %d", i);
+                return false;
+            }
             break;
 
         default:
