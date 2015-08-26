@@ -12,7 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-CFLAGS := -Wall -Werror -Iinc -O2 -g
+ifeq ($(COVERAGE),1)
+COVERAGE_CFLAGS := -fprofile-arcs -ftest-coverage
+COVERAGE_LDFLAGS := -fprofile-arcs
+endif
+
+CFLAGS := -Wall -Werror -Iinc -O2 -g $(COVERAGE_CFLAGS)
+LDFLAGS := $(COVERAGE_LDFLAGS)
 
 all: libubpf.a test
 
