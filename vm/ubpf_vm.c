@@ -101,7 +101,7 @@ ubpf_exec(const struct ubpf_vm *vm, uint64_t arg)
         const uint16_t cur_pc = pc;
         if (pc >= num_insts) {
             /* TODO validate control flow */
-            fprintf(stderr, "reached end of instructions\n");
+            fprintf(stderr, "uBPF error: reached end of instructions\n");
             return UINT64_MAX;
         }
 

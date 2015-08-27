@@ -1,0 +1,8 @@
+-- asm
+mov r0, 1
+mov r1, 0
+mod64 r0, r1
+-- result
+0xffffffffffffffff
+-- error
+uBPF error: division by zero at PC 2

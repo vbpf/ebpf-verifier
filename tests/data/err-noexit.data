@@ -2,3 +2,5 @@
 mov r0, 0
 -- result
 0xffffffffffffffff
+-- error
+uBPF error: reached end of instructions
