@@ -1,6 +1,7 @@
 import os
 import tempfile
 import struct
+import re
 from subprocess import Popen, PIPE
 from nose.plugins.skip import Skip, SkipTest
 import ubpf.assembler
@@ -15,7 +16,7 @@ def check_datafile(filename):
     data = testdata.read(filename)
     if 'asm' not in data and 'raw' not in data:
         raise SkipTest("no asm or raw section in datafile")
-    if 'result' not in data and 'error' not in data:
+    if 'result' not in data and 'error' not in data and 'error pattern' not in data:
         raise SkipTest("no result or error section in datafile")
     if not os.path.exists(VM):
         raise SkipTest("VM not found")
@@ -46,9 +47,15 @@ def check_datafile(filename):
     if memfile:
         memfile.close()
 
-    error = data.get('error', '')
-    if error != stderr:
-        raise AssertionError("Expected error %r, got %r" % (error, stderr))
+    if 'error' in data:
+        if data['error'] != stderr:
+            raise AssertionError("Expected error %r, got %r" % (data['error'], stderr))
+    elif 'error pattern' in data:
+        if not re.search(data['error pattern'], stderr):
+            raise AssertionError("Expected error matching %r, got %r" % (data['error pattern'], stderr))
+    else:
+        if stderr:
+            raise AssertionError("Unexpected error %r" % stderr)
 
     if 'result' in data:
         if vm.returncode != 0:
