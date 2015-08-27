@@ -1,0 +1,4 @@
+-- raw
+0x5566778800000018
+-- error
+Failed to create VM: incomplete lddw at PC 0

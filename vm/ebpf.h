@@ -29,6 +29,7 @@ struct ebpf_inst {
     int32_t imm;
 };
 
+#define EBPF_CLS_LD 0x00
 #define EBPF_CLS_LDX 0x01
 #define EBPF_CLS_ST 0x02
 #define EBPF_CLS_STX 0x03
@@ -45,6 +46,7 @@ struct ebpf_inst {
 #define EBPF_SIZE_DW 0x18
 
 /* Other memory modes are not yet supported */
+#define EBPF_MODE_IMM 0x00
 #define EBPF_MODE_MEM 0x60
 
 #define EBPF_OP_ADD_IMM  (EBPF_CLS_ALU|EBPF_SRC_IMM|0x00)
@@ -113,6 +115,7 @@ struct ebpf_inst {
 #define EBPF_OP_STXH  (EBPF_CLS_STX|EBPF_MODE_MEM|EBPF_SIZE_H)
 #define EBPF_OP_STXB  (EBPF_CLS_STX|EBPF_MODE_MEM|EBPF_SIZE_B)
 #define EBPF_OP_STXDW (EBPF_CLS_STX|EBPF_MODE_MEM|EBPF_SIZE_DW)
+#define EBPF_OP_LDDW  (EBPF_CLS_LD|EBPF_MODE_IMM|EBPF_SIZE_DW)
 
 #define EBPF_OP_JA       (EBPF_CLS_JMP|0x00)
 #define EBPF_OP_JEQ_IMM  (EBPF_CLS_JMP|EBPF_SRC_IMM|0x10)

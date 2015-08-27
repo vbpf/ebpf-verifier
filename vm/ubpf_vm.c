@@ -395,6 +395,10 @@ ubpf_exec(const struct ubpf_vm *vm, uint64_t arg)
             *(uint64_t *)(uintptr_t)(reg[inst.dst] + inst.offset) = reg[inst.src];
             break;
 
+        case EBPF_OP_LDDW:
+            reg[inst.dst] = inst.imm | ((uint64_t)insts[pc++].imm << 32);
+            break;
+
         case EBPF_OP_JA:
             pc += inst.offset;
             break;
@@ -546,6 +550,14 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_STXH:
         case EBPF_OP_STXB:
         case EBPF_OP_STXDW:
+            break;
+
+        case EBPF_OP_LDDW:
+            if (i + 1 >= num_insts || insts[i+1].opcode != 0) {
+                *errmsg = error("incomplete lddw at PC %d", i);
+                return false;
+            }
+            i++; /* Skip next instruction */
             break;
 
         case EBPF_OP_JA:
