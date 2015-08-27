@@ -1,4 +1,5 @@
 import struct
+import difflib
 from nose.plugins.skip import Skip, SkipTest
 import ubpf.assembler
 import ubpf.disassembler
@@ -29,7 +30,7 @@ def check_datafile(filename):
     disassembled2 = ubpf.disassembler.disassemble(reassembled)
 
     if disassembled != disassembled2:
-        diff = difflib.unified_diff(diassembled.splitlines(), disassembled2.splitlines(), lineterm="")
+        diff = difflib.unified_diff(disassembled.splitlines(), disassembled2.splitlines(), lineterm="")
         formatted = ''.join('  %s\n' % x for x in diff)
         raise AssertionError("Assembly differs:\n%s" % formatted)
 

@@ -77,6 +77,10 @@ def assemble_one(inst):
     if op in MEM_LOAD_OPS:
         opcode = MEM_LOAD_OPS[op]
         return pack(opcode, inst[1].num, inst[2].reg.num, inst[2].offset, 0)
+    elif op == "lddw":
+        a = pack(0x18, inst[1].num, 0, 0, inst[2].value)
+        b = pack(0, 0, 0, 0, inst[2].value >> 32)
+        return a + b
     elif op in MEM_STORE_IMM_OPS:
         opcode = MEM_STORE_IMM_OPS[op]
         return pack(opcode, inst[1].reg.num, 0, inst[1].offset, inst[2].value)

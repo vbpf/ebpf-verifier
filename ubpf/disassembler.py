@@ -132,29 +132,30 @@ def disassemble_one(data, offset):
         mode_name = MODES.get(mode, str(mode))
         # TODO use different syntax for non-MEM instructions
         size_name = SIZES.get(size, str(size))
-        if cls == BPF_CLASS_LD and mode_name == "imm":
+        if code == 0x18: # lddw
+            _, _, _, imm2 = Inst.unpack_from(data, offset+8)
+            imm = (imm2 << 32) | imm
             return "%s %s, %s" % (class_name + size_name, R(dst_reg), I(imm))
-        elif cls == BPF_CLASS_LD:
-            # Probably not correct
-            return "%s %s, %s" % (class_name + size_name, M(R(dst_reg), off), I(imm))
+        elif code == 0x00:
+            # Second instruction of lddw
+            return None
         elif cls == BPF_CLASS_LDX:
             return "%s %s, %s" % (class_name + size_name, R(dst_reg), M(R(src_reg), off))
         elif cls == BPF_CLASS_ST:
             return "%s %s, %s" % (class_name + size_name, M(R(dst_reg), off), I(imm))
         elif cls == BPF_CLASS_STX:
             return "%s %s, %s" % (class_name + size_name, M(R(dst_reg), off), R(src_reg))
+        else:
+            return "unknown mem instruction %#x" % code
     else:
         return "unknown instruction %#x" % code
-
-    offset = 0
-    while offset < len(data):
-        print disassemble_one(data, offset)
-        offset += 8
 
 def disassemble(data):
     output = StringIO.StringIO()
     offset = 0
     while offset < len(data):
-        output.write(disassemble_one(data, offset) + "\n")
+        s = disassemble_one(data, offset)
+        if s:
+            output.write(s + "\n")
         offset += 8
     return output.getvalue()

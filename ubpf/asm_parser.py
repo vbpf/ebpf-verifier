@@ -36,7 +36,8 @@ mem_load_ops = ['ldx' + s for s in mem_sizes]
 mem_instruction = \
     (keywords(mem_store_reg_ops) + memref + "," + reg) | \
     (keywords(mem_store_imm_ops) + memref + "," + imm) | \
-    (keywords(mem_load_ops) + reg + "," + memref)
+    (keywords(mem_load_ops) + reg + "," + memref) | \
+    (keywords(["lddw"]) + reg + "," + imm)
 
 jmp_cmp_ops = ['jeq', 'jgt', 'jge', 'jset', 'jne', 'jsgt', 'jsge']
 jmp_instruction = \
