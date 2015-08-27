@@ -87,9 +87,12 @@ Opcode | Mnemonic              | Pseudocode
 0xbc   | mov dst, src          | dst = src; dst &= 0xffffffff
 0xc4   | arsh dst, imm         | dst >>= imm (arithmetic); dst &= 0xffffffff
 0xcc   | arsh dst, src         | dst >>= src (arithmetic); dst &= 0xffffffff
-0xd4   | end16 dst (imm == 16) | dst = bswap16(dst); dst &= 0xffffffff
-0xd4   | end32 dst (imm == 32) | dst = bswap32(dst); dst &= 0xffffffff
-0xd4   | end64 dst (imm == 64) | dst = bswap64(dst); dst &= 0xffffffff
+0xd4   | le16 dst (imm == 16)  | dst = htole16(dst)
+0xd4   | le32 dst (imm == 32)  | dst = htole32(dst)
+0xd4   | le64 dst (imm == 64)  | dst = htole64(dst)
+0xdc   | be16 dst (imm == 16)  | dst = htobe16(dst)
+0xdc   | be32 dst (imm == 32)  | dst = htobe32(dst)
+0xdc   | be64 dst (imm == 64)  | dst = htobe64(dst)
 
 ### 64-bit
 
@@ -120,9 +123,6 @@ Opcode | Mnemonic                 | Pseudocode
 0xb7   | mov64 dst, src           | dst = src
 0xcf   | arsh64 dst, imm          | dst >>= imm (arithmetic)
 0xc7   | arsh64 dst, src          | dst >>= src (arithmetic)
-0xd7   | end64_16 dst (imm == 16) | dst = bswap16(dst)
-0xd7   | end64_32 dst (imm == 32) | dst = bswap32(dst)
-0xd7   | end64_64 dst (imm == 64) | dst = bswap64(dst)
 
 ## Memory Instructions
 
