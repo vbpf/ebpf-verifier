@@ -14,6 +14,7 @@ uint64_t entry(uint64_t arg)
     return true;
 }
 -- asm
+mov r1, 67
 mov r0, 0x1
 mov r2, 0x2
 jgt r1, 0x2, +4
@@ -29,7 +30,5 @@ sub r4, r3
 mov r0, 0x0
 jne r4, 0x0, -10
 exit
--- arg
-67
 -- result
 0x1

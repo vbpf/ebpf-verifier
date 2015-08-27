@@ -29,9 +29,7 @@ def check_datafile(filename):
     memfile = None
 
     cmd = [VM]
-    if 'arg' in data:
-        cmd.extend(['-a', data['arg']])
-    elif 'mem' in data:
+    if 'mem' in data:
         memfile = tempfile.NamedTemporaryFile()
         memfile.write(data['mem'])
         memfile.flush()

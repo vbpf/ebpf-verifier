@@ -1,4 +1,6 @@
 -- asm
+mov r1, 51
+
 # Create lookup table
 stdw [r10-16], 0xab
 stdw [r10-8], 0xcd
@@ -11,7 +13,5 @@ add r2, r1
 ldxdw r0, [r2-16]
 
 exit
--- arg
-51
 -- result
 0xcd
