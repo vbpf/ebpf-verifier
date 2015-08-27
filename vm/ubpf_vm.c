@@ -25,6 +25,8 @@
 #include "ubpf.h"
 
 #define MAX_INSTS 65536
+#define CTX_SIZE 1024*1024
+#define STACK_SIZE 128
 
 struct ubpf_vm {
     struct ebpf_inst *insts;
@@ -32,6 +34,7 @@ struct ubpf_vm {
 };
 
 static bool validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg);
+static bool bounds_check(void *addr, int size, const char *type, uint16_t cur_pc, void *ctx, void *stack);
 
 static char *
 error(const char *fmt, ...)
@@ -86,16 +89,19 @@ ubpf_destroy(struct ubpf_vm *vm)
 uint64_t
 ubpf_exec(const struct ubpf_vm *vm, uint64_t arg)
 {
+    void *ctx = (void *)(uintptr_t)arg;
     uint16_t pc = 0;
     const struct ebpf_inst *insts = vm->insts;
     uint16_t num_insts = vm->num_insts;
     uint64_t reg[16];
+    uint64_t stack[(STACK_SIZE+7)/8];
 
     /* TODO remove this when the verifier can prove uninitialized registers are
      * not read from */
     memset(reg, 0xff, sizeof(reg));
 
     reg[1] = arg;
+    reg[10] = (uintptr_t)stack + sizeof(stack);
 
     while (1) {
         const uint16_t cur_pc = pc;
@@ -326,20 +332,15 @@ ubpf_exec(const struct ubpf_vm *vm, uint64_t arg)
          *
          * Needed since we don't have a verifier yet.
          */
-#define MEM_SIZE 1024*1024
 #define BOUNDS_CHECK_LOAD(size) \
     do { \
-        uint64_t addr = reg[inst.src] + inst.offset; \
-        if (!arg || addr < arg || (addr + size) > (arg + MEM_SIZE)) { \
-            fprintf(stderr, "uBPF error: out of bounds memory load at PC %u, addr 0x%"PRIx64", size %d\n", cur_pc, addr, size); \
+        if (!bounds_check((void *)reg[inst.src] + inst.offset, size, "load", cur_pc, ctx, stack)) { \
             return UINT64_MAX; \
         } \
     } while (0)
 #define BOUNDS_CHECK_STORE(size) \
     do { \
-        uint64_t addr = reg[inst.dst] + inst.offset; \
-        if (!arg || addr < arg || (addr + size) > (arg + MEM_SIZE)) { \
-            fprintf(stderr, "uBPF error: out of bounds memory store at PC %u, addr 0x%"PRIx64", size %d\n", cur_pc, addr, size); \
+        if (!bounds_check((void *)reg[inst.dst] + inst.offset, size, "store", cur_pc, ctx, stack)) { \
             return UINT64_MAX; \
         } \
     } while (0)
@@ -499,6 +500,8 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
     int i;
     for (i = 0; i < num_insts; i++) {
         struct ebpf_inst inst = insts[i];
+        bool store = false;
+
         switch (inst.opcode) {
         case EBPF_OP_ADD_IMM:
         case EBPF_OP_ADD_REG:
@@ -562,6 +565,8 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_LDXH:
         case EBPF_OP_LDXB:
         case EBPF_OP_LDXDW:
+            break;
+
         case EBPF_OP_STW:
         case EBPF_OP_STH:
         case EBPF_OP_STB:
@@ -570,6 +575,7 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_STXH:
         case EBPF_OP_STXB:
         case EBPF_OP_STXDW:
+            store = true;
             break;
 
         case EBPF_OP_LDDW:
@@ -624,11 +630,27 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
             return false;
         }
 
-        if (inst.dst > 9) {
+        if (inst.dst > 9 && !(store && inst.dst == 10)) {
             *errmsg = error("invalid destination register at PC %d", i);
             return false;
         }
     }
 
     return true;
+}
+
+static bool
+bounds_check(void *addr, int size, const char *type, uint16_t cur_pc, void *ctx, void *stack)
+{
+    if (ctx && (addr >= ctx && (addr + size) <= (ctx + CTX_SIZE))) {
+        /* Context access */
+        return true;
+    } else if (addr >= stack && (addr + size) <= (stack + STACK_SIZE)) {
+        /* Stack access */
+        return true;
+    } else {
+        fprintf(stderr, "uBPF error: out of bounds memory %s at PC %u, addr %p, size %d\n", type, cur_pc, addr, size);
+        fprintf(stderr, "ctx %p/%d stack %p/%d\n", ctx, CTX_SIZE, stack, STACK_SIZE);
+        return false;
+    }
 }
