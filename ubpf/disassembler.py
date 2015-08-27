@@ -27,7 +27,7 @@ ALU_OPCODES = {
     10: 'xor',
     11: 'mov',
     12: 'arsh',
-    13: 'end',
+    13: '(endian)',
 }
 
 JMP_OPCODES = {
@@ -102,9 +102,8 @@ def disassemble_one(data, offset):
         if cls == BPF_CLASS_ALU64:
             opcode_name += "64"
 
-        if opcode == BPF_ALU_END and cls == BPF_CLASS_ALU64:
-            return "%s_%d %s" % (opcode_name, imm, R(dst_reg))
-        elif opcode == BPF_ALU_END:
+        if opcode == BPF_ALU_END:
+            opcode_name = source == 1 and "be" or "le"
             return "%s%d %s" % (opcode_name, imm, R(dst_reg))
         elif opcode == BPF_ALU_NEG:
             return "%s %s" % (opcode_name, R(dst_reg))

@@ -38,12 +38,12 @@ UNARY_ALU64_OPS = { k + '64': v for k, v in UNARY_ALU_OPS.items() }
 BINARY_ALU64_OPS = { k + '64': v for k, v in BINARY_ALU_OPS.items() }
 
 END_OPS = {
-    'end16': (0xd4, 16),
-    'end32': (0xd4, 32),
-    'end64': (0xd4, 64),
-    'end64_16': (0xd7, 16),
-    'end64_32': (0xd7, 32),
-    'end64_64': (0xd7, 64),
+    'le16': (0xd4, 16),
+    'le32': (0xd4, 32),
+    'le64': (0xd4, 64),
+    'be16': (0xdc, 16),
+    'be32': (0xdc, 32),
+    'be64': (0xdc, 64),
 }
 
 JMP_CMP_OPS = {
