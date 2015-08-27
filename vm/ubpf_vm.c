@@ -216,7 +216,26 @@ ubpf_exec(const struct ubpf_vm *vm, uint64_t arg)
             reg[inst.dst] = (int32_t)reg[inst.dst] >> reg[inst.src];
             reg[inst.dst] &= UINT32_MAX;
             break;
-        /* TODO endian opcodes */
+
+        case EBPF_OP_LE:
+            if (inst.imm == 16) {
+                reg[inst.dst] = htole16(reg[inst.dst]);
+            } else if (inst.imm == 32) {
+                reg[inst.dst] = htole32(reg[inst.dst]);
+            } else if (inst.imm == 64) {
+                reg[inst.dst] = htole64(reg[inst.dst]);
+            }
+            break;
+        case EBPF_OP_BE:
+            if (inst.imm == 16) {
+                reg[inst.dst] = htobe16(reg[inst.dst]);
+            } else if (inst.imm == 32) {
+                reg[inst.dst] = htobe32(reg[inst.dst]);
+            } else if (inst.imm == 64) {
+                reg[inst.dst] = htobe64(reg[inst.dst]);
+            }
+            break;
+
 
         case EBPF_OP_ADD64_IMM:
             reg[inst.dst] += inst.imm;
@@ -301,7 +320,6 @@ ubpf_exec(const struct ubpf_vm *vm, uint64_t arg)
         case EBPF_OP_ARSH64_REG:
             reg[inst.dst] = (int64_t)reg[inst.dst] >> reg[inst.src];
             break;
-        /* TODO endian opcodes */
 
         /*
          * HACK runtime bounds check
@@ -481,6 +499,14 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_MOV_REG:
         case EBPF_OP_ARSH_IMM:
         case EBPF_OP_ARSH_REG:
+            break;
+
+        case EBPF_OP_LE:
+        case EBPF_OP_BE:
+            if (inst.imm != 16 && inst.imm != 32 && inst.imm != 64) {
+                *errmsg = error("invalid endian immediate at PC %d", i);
+                return false;
+            }
             break;
 
         case EBPF_OP_ADD64_IMM:
