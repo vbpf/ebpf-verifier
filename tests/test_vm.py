@@ -1,5 +1,6 @@
 import os
 import tempfile
+import struct
 from subprocess import Popen, PIPE
 from nose.plugins.skip import Skip, SkipTest
 import ubpf.assembler
@@ -12,14 +13,18 @@ def check_datafile(filename):
     verify that the result matches.
     """
     data = testdata.read(filename)
-    if 'asm' not in data:
-        raise SkipTest("no asm section in datafile")
+    if 'asm' not in data and 'raw' not in data:
+        raise SkipTest("no asm or raw section in datafile")
     if 'result' not in data and 'error' not in data:
         raise SkipTest("no result or error section in datafile")
     if not os.path.exists(VM):
         raise SkipTest("VM not found")
 
-    code = ubpf.assembler.assemble(data['asm'])
+    if 'raw' in data:
+        code = ''.join(struct.pack("=Q", x) for x in data['raw'])
+    else:
+        code = ubpf.assembler.assemble(data['asm'])
+
     memfile = None
 
     cmd = [VM]
