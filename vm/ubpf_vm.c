@@ -452,10 +452,30 @@ ubpf_exec(const struct ubpf_vm *vm, uint64_t arg)
                 pc += inst.offset;
             }
             break;
+        case EBPF_OP_JSGT_IMM:
+            if ((int64_t)reg[inst.dst] > inst.imm) {
+                pc += inst.offset;
+            }
+            break;
+        case EBPF_OP_JSGT_REG:
+            if ((int64_t)reg[inst.dst] > (int64_t)reg[inst.src]) {
+                pc += inst.offset;
+            }
+            break;
+        case EBPF_OP_JSGE_IMM:
+            if ((int64_t)reg[inst.dst] >= inst.imm) {
+                pc += inst.offset;
+            }
+            break;
+        case EBPF_OP_JSGE_REG:
+            if ((int64_t)reg[inst.dst] >= (int64_t)reg[inst.src]) {
+                pc += inst.offset;
+            }
+            break;
         case EBPF_OP_EXIT:
             return reg[0];
 
-        /* TODO remaining JMP opcodes */
+        /* TODO CALL opcode */
 
         default:
             /* Should have been caught by validate() */
@@ -571,6 +591,10 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_JSET_IMM:
         case EBPF_OP_JNE_REG:
         case EBPF_OP_JNE_IMM:
+        case EBPF_OP_JSGT_IMM:
+        case EBPF_OP_JSGT_REG:
+        case EBPF_OP_JSGE_IMM:
+        case EBPF_OP_JSGE_REG:
             if (inst.offset == -1) {
                 *errmsg = error("infinite loop at PC %d", i);
                 return false;

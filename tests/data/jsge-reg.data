@@ -1,0 +1,17 @@
+-- asm
+mov r0, 0
+mov64 r1, 0xfffffffe
+mov64 r2, 0xffffffff
+mov r3, 0
+jsge r1, r2, +5 # Not taken
+jsge r1, r3, +4 # Not taken
+
+mov r0, 1
+mov64 r1, r2
+jsge r1, r2, +1 # Taken
+
+mov r0, 2 # Skipped
+
+exit
+-- result
+0x1
