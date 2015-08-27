@@ -99,8 +99,8 @@ def disassemble_one(data, offset):
         source = (code >> 3) & 1
         opcode = (code >> 4) & 0xf
         opcode_name = ALU_OPCODES.get(opcode)
-        if cls == BPF_CLASS_ALU64:
-            opcode_name += "64"
+        if cls == BPF_CLASS_ALU:
+            opcode_name += "32"
 
         if opcode == BPF_ALU_END:
             opcode_name = source == 1 and "be" or "le"

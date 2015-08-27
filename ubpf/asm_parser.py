@@ -19,10 +19,10 @@ imm = (-CharIn("+-") + Exact(hexnum | decnum))[flatten]["".join][lambda x: int(x
 reg = Literal('r') + integer[int][Reg]
 memref = (Literal('[') + reg + Optional(offset, 0) + Literal(']'))[lambda x: MemRef(*x)]
 
-unary_alu_ops = ['neg', 'neg64', 'le16', 'le32', 'le64', 'be16', 'be32', 'be64']
+unary_alu_ops = ['neg', 'neg32', 'le16', 'le32', 'le64', 'be16', 'be32', 'be64']
 binary_alu_ops = ['add', 'sub', 'mul', 'div', 'or', 'and', 'lsh', 'rsh',
                   'mod', 'xor', 'mov', 'arsh']
-binary_alu_ops.extend([x + '64' for x in binary_alu_ops])
+binary_alu_ops.extend([x + '32' for x in binary_alu_ops])
 
 alu_instruction = \
     (keywords(unary_alu_ops) + reg) | \

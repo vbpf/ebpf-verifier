@@ -55,19 +55,19 @@ uint64_t entry(void *mem)
     return 0;
 }
 -- asm
-mov64 r2, 0xe
+mov r2, 0xe
 ldxh r3, [r1+12]
 jne r3, 0x81, +2
-mov64 r2, 0x12
+mov r2, 0x12
 ldxh r3, [r1+16]
-and64 r3, 0xffff
+and r3, 0xffff
 jne r3, 0x8, +5
-add64 r1, r2
-mov64 r0, 0x1
+add r1, r2
+mov r0, 0x1
 ldxw r1, [r1+16]
-and64 r1, 0xffffff
+and r1, 0xffffff
 jeq r1, 0x1a8c0, +1
-mov64 r0, 0x0
+mov r0, 0x0
 exit
 -- mem
 00 00 c0 9f a0 97 00 a0 

@@ -1,19 +1,19 @@
 -- asm
-add64 r1, 0x2
-add64 r9, 0xffffffff
-add64 r1, r2
-sub64 r1, r2
-mul64 r1, r2
-div64 r1, r2
-or64 r1, r2
-and64 r1, r2
-lsh64 r1, r2
-rsh64 r1, r2
-neg64 r1
-mod64 r1, r2
-xor64 r1, r2
-mov64 r1, r2
-arsh64 r1, r2
+add r1, 0x2
+add r9, 0xffffffff
+add r1, r2
+sub r1, r2
+mul r1, r2
+div r1, r2
+or r1, r2
+and r1, r2
+lsh r1, r2
+rsh r1, r2
+neg r1
+mod r1, r2
+xor r1, r2
+mov r1, r2
+arsh r1, r2
 -- raw 
 0x0000000200000107
 0xffffffff00000907

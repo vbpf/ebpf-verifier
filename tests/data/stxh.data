@@ -1,5 +1,5 @@
 -- asm
-mov r2, 0x2211
+mov32 r2, 0x2211
 stxh [r1+2], r2
 ldxh r0, [r1+2]
 exit

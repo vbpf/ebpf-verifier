@@ -1,19 +1,19 @@
 -- asm
-add r1, 0x2
-add r9, 0xffffffff
-add r1, r2
-sub r1, r2
-mul r1, r2
-div r1, r2
-or r1, r2
-and r1, r2
-lsh r1, r2
-rsh r1, r2
-neg r1
-mod r1, r2
-xor r1, r2
-mov r1, r2
-arsh r1, r2
+add32 r1, 0x2
+add32 r9, 0xffffffff
+add32 r1, r2
+sub32 r1, r2
+mul32 r1, r2
+div32 r1, r2
+or32 r1, r2
+and32 r1, r2
+lsh32 r1, r2
+rsh32 r1, r2
+neg32 r1
+mod32 r1, r2
+xor32 r1, r2
+mov32 r1, r2
+arsh32 r1, r2
 le16 r1
 le32 r1
 le64 r1

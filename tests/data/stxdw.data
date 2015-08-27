@@ -1,7 +1,7 @@
 -- asm
-mov64 r2, 0x88776655
-lsh64 r2, 32
-or64 r2, 0x44332211
+mov r2, 0x88776655
+lsh r2, 32
+or r2, 0x44332211
 stxdw [r1+2], r2
 ldxdw r0, [r1+2]
 exit

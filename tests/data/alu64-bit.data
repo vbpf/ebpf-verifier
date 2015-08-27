@@ -1,36 +1,36 @@
 -- asm
-mov64 r0, 0
-mov64 r1, 1
-mov64 r2, 2
-mov64 r3, 3
-mov64 r4, 4
-mov64 r5, 5
-mov64 r6, 6
-mov64 r7, 7
-mov64 r8, 8
+mov r0, 0
+mov r1, 1
+mov r2, 2
+mov r3, 3
+mov r4, 4
+mov r5, 5
+mov r6, 6
+mov r7, 7
+mov r8, 8
 # r0 == 0
 
-or64 r0, r5
-or64 r0, 0xa0
+or r0, r5
+or r0, 0xa0
 # r0 == 0xa5
 
-and64 r0, 0xa3
-mov64 r9, 0x91
-and64 r0, r9
+and r0, 0xa3
+mov r9, 0x91
+and r0, r9
 # r0 == 0x21
 
-lsh64 r0, 32
-lsh64 r0, 22
-lsh64 r0, r8
+lsh r0, 32
+lsh r0, 22
+lsh r0, r8
 # r0 == 0x40000000
 
-rsh64 r0, 32
-rsh64 r0, 19
-rsh64 r0, r7
+rsh r0, 32
+rsh r0, 19
+rsh r0, r7
 # r0 == 0x10
 
-xor64 r0, 0x03
-xor64 r0, r2
+xor r0, 0x03
+xor r0, r2
 # r0 == 0x11
 
 exit

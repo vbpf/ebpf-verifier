@@ -34,8 +34,8 @@ BINARY_ALU_OPS = {
     'arsh': 12,
 }
 
-UNARY_ALU64_OPS = { k + '64': v for k, v in UNARY_ALU_OPS.items() }
-BINARY_ALU64_OPS = { k + '64': v for k, v in BINARY_ALU_OPS.items() }
+UNARY_ALU32_OPS = { k + '32': v for k, v in UNARY_ALU_OPS.items() }
+BINARY_ALU32_OPS = { k + '32': v for k, v in BINARY_ALU_OPS.items() }
 
 END_OPS = {
     'le16': (0xd4, 16),
@@ -88,15 +88,15 @@ def assemble_one(inst):
         opcode = MEM_STORE_REG_OPS[op]
         return pack(opcode, inst[1].reg.num, inst[2].num, inst[1].offset, 0)
     elif op in UNARY_ALU_OPS:
-        opcode = 0x04 | (UNARY_ALU_OPS[op] << 4)
+        opcode = 0x07 | (UNARY_ALU_OPS[op] << 4)
         return pack(opcode, inst[1].num, 0, 0, 0)
-    elif op in UNARY_ALU64_OPS:
-        opcode = 0x07 | (UNARY_ALU64_OPS[op] << 4)
+    elif op in UNARY_ALU32_OPS:
+        opcode = 0x04 | (UNARY_ALU32_OPS[op] << 4)
         return pack(opcode, inst[1].num, 0, 0, 0)
     elif op in BINARY_ALU_OPS:
-        return assemble_binop(op, 0x04, BINARY_ALU_OPS, inst[1], inst[2], 0)
-    elif op in BINARY_ALU64_OPS:
-        return assemble_binop(op, 0x07, BINARY_ALU64_OPS, inst[1], inst[2], 0)
+        return assemble_binop(op, 0x07, BINARY_ALU_OPS, inst[1], inst[2], 0)
+    elif op in BINARY_ALU32_OPS:
+        return assemble_binop(op, 0x04, BINARY_ALU32_OPS, inst[1], inst[2], 0)
     elif op in END_OPS:
         opcode, imm = END_OPS[op]
         return pack(opcode, inst[1].num, 0, 0, imm)
