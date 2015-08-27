@@ -56,73 +56,78 @@ operation is to be performed.
 
 ## ALU Instructions
 
+### 64-bit
+
+Opcode | Mnemonic      | Pseudocode
+-------|---------------|-----------------------
+0x07   | add dst, imm  | dst += imm
+0x0f   | add dst, src  | dst += src
+0x17   | sub dst, imm  | dst -= imm
+0x1f   | sub dst, src  | dst -= src
+0x27   | mul dst, imm  | dst *= imm
+0x2f   | mul dst, src  | dst *= src
+0x37   | div dst, imm  | dst /= imm
+0x3f   | div dst, src  | dst /= src
+0x47   | or dst, imm   | dst \|= imm
+0x4f   | or dst, src   | dst \|= src
+0x57   | and dst, imm  | dst &= imm
+0x5f   | and dst, src  | dst &= src
+0x67   | lsh dst, imm  | dst <<= imm
+0x6f   | lsh dst, src  | dst <<= src
+0x77   | rsh dst, imm  | dst >>= imm (logical)
+0x7f   | rsh dst, src  | dst >>= src (logical)
+0x87   | neg dst       | dst = -dst
+0x9f   | mod dst, imm  | dst %= imm
+0x97   | mod dst, src  | dst %= src
+0xaf   | xor dst, imm  | dst ^= imm
+0xa7   | xor dst, src  | dst ^= src
+0xbf   | mov dst, imm  | dst = imm
+0xb7   | mov dst, src  | dst = src
+0xcf   | arsh dst, imm | dst >>= imm (arithmetic)
+0xc7   | arsh dst, src | dst >>= src (arithmetic)
+
 ### 32-bit
 
 These instructions zero the upper 32 bits of the destination register.
 
-Opcode | Mnemonic              | Pseudocode
--------|-----------------------|------------------------------
-0x04   | add dst, imm          | dst += imm; dst &= 0xffffffff
-0x0c   | add dst, src          | dst += src; dst &= 0xffffffff
-0x14   | sub dst, imm          | dst -= imm; dst &= 0xffffffff
-0x1c   | sub dst, src          | dst -= src; dst &= 0xffffffff
-0x24   | mul dst, imm          | dst *= imm; dst &= 0xffffffff
-0x2c   | mul dst, src          | dst *= src; dst &= 0xffffffff
-0x34   | div dst, imm          | dst /= imm; dst &= 0xffffffff
-0x3c   | div dst, src          | dst /= src; dst &= 0xffffffff
-0x44   | or dst, imm           | dst \|= imm; dst &= 0xffffffff
-0x4c   | or dst, src           | dst \|= src; dst &= 0xffffffff
-0x54   | and dst, imm          | dst &= imm; dst &= 0xffffffff
-0x5c   | and dst, src          | dst &= src; dst &= 0xffffffff
-0x64   | lsh dst, imm          | dst <<= imm; dst &= 0xffffffff
-0x6c   | lsh dst, src          | dst <<= src; dst &= 0xffffffff
-0x74   | rsh dst, imm          | dst >>= imm (logical); dst &= 0xffffffff
-0x7c   | rsh dst, src          | dst >>= src (logical); dst &= 0xffffffff
-0x84   | neg dst               | dst = -dst; dst &= 0xffffffff
-0x94   | mod dst, imm          | dst %= imm; dst &= 0xffffffff
-0x9c   | mod dst, src          | dst %= src; dst &= 0xffffffff
-0xa4   | xor dst, imm          | dst ^= imm; dst &= 0xffffffff
-0xac   | xor dst, src          | dst ^= src; dst &= 0xffffffff
-0xb4   | mov dst, imm          | dst = imm; dst &= 0xffffffff
-0xbc   | mov dst, src          | dst = src; dst &= 0xffffffff
-0xc4   | arsh dst, imm         | dst >>= imm (arithmetic); dst &= 0xffffffff
-0xcc   | arsh dst, src         | dst >>= src (arithmetic); dst &= 0xffffffff
-0xd4   | le16 dst (imm == 16)  | dst = htole16(dst)
-0xd4   | le32 dst (imm == 32)  | dst = htole32(dst)
-0xd4   | le64 dst (imm == 64)  | dst = htole64(dst)
-0xdc   | be16 dst (imm == 16)  | dst = htobe16(dst)
-0xdc   | be32 dst (imm == 32)  | dst = htobe32(dst)
-0xdc   | be64 dst (imm == 64)  | dst = htobe64(dst)
+Opcode | Mnemonic        | Pseudocode
+-------|-----------------|------------------------------
+0x04   | add32 dst, imm  | dst += imm; dst &= 0xffffffff
+0x0c   | add32 dst, src  | dst += src; dst &= 0xffffffff
+0x14   | sub32 dst, imm  | dst -= imm; dst &= 0xffffffff
+0x1c   | sub32 dst, src  | dst -= src; dst &= 0xffffffff
+0x24   | mul32 dst, imm  | dst *= imm; dst &= 0xffffffff
+0x2c   | mul32 dst, src  | dst *= src; dst &= 0xffffffff
+0x34   | div32 dst, imm  | dst /= imm; dst &= 0xffffffff
+0x3c   | div32 dst, src  | dst /= src; dst &= 0xffffffff
+0x44   | or32 dst, imm   | dst \|= imm; dst &= 0xffffffff
+0x4c   | or32 dst, src   | dst \|= src; dst &= 0xffffffff
+0x54   | and32 dst, imm  | dst &= imm; dst &= 0xffffffff
+0x5c   | and32 dst, src  | dst &= src; dst &= 0xffffffff
+0x64   | lsh32 dst, imm  | dst <<= imm; dst &= 0xffffffff
+0x6c   | lsh32 dst, src  | dst <<= src; dst &= 0xffffffff
+0x74   | rsh32 dst, imm  | dst >>= imm (logical); dst &= 0xffffffff
+0x7c   | rsh32 dst, src  | dst >>= src (logical); dst &= 0xffffffff
+0x84   | neg32 dst       | dst = -dst; dst &= 0xffffffff
+0x94   | mod32 dst, imm  | dst %= imm; dst &= 0xffffffff
+0x9c   | mod32 dst, src  | dst %= src; dst &= 0xffffffff
+0xa4   | xor32 dst, imm  | dst ^= imm; dst &= 0xffffffff
+0xac   | xor32 dst, src  | dst ^= src; dst &= 0xffffffff
+0xb4   | mov32 dst, imm  | dst = imm; dst &= 0xffffffff
+0xbc   | mov32 dst, src  | dst = src; dst &= 0xffffffff
+0xc4   | arsh32 dst, imm | dst >>= imm (arithmetic); dst &= 0xffffffff
+0xcc   | arsh32 dst, src | dst >>= src (arithmetic); dst &= 0xffffffff
 
-### 64-bit
+### Byteswap instructions
 
-Opcode | Mnemonic                 | Pseudocode
--------|--------------------------|------------------------------
-0x07   | add64 dst, imm           | dst += imm
-0x0f   | add64 dst, src           | dst += src
-0x17   | sub64 dst, imm           | dst -= imm
-0x1f   | sub64 dst, src           | dst -= src
-0x27   | mul64 dst, imm           | dst *= imm
-0x2f   | mul64 dst, src           | dst *= src
-0x37   | div64 dst, imm           | dst /= imm
-0x3f   | div64 dst, src           | dst /= src
-0x47   | or64 dst, imm            | dst \|= imm
-0x4f   | or64 dst, src            | dst \|= src
-0x57   | and64 dst, imm           | dst &= imm
-0x5f   | and64 dst, src           | dst &= src
-0x67   | lsh64 dst, imm           | dst <<= imm
-0x6f   | lsh64 dst, src           | dst <<= src
-0x77   | rsh64 dst, imm           | dst >>= imm (logical)
-0x7f   | rsh64 dst, src           | dst >>= src (logical)
-0x87   | neg64 dst                | dst = -dst
-0x9f   | mod64 dst, imm           | dst %= imm
-0x97   | mod64 dst, src           | dst %= src
-0xaf   | xor64 dst, imm           | dst ^= imm
-0xa7   | xor64 dst, src           | dst ^= src
-0xbf   | mov64 dst, imm           | dst = imm
-0xb7   | mov64 dst, src           | dst = src
-0xcf   | arsh64 dst, imm          | dst >>= imm (arithmetic)
-0xc7   | arsh64 dst, src          | dst >>= src (arithmetic)
+Opcode           | Mnemonic | Pseudocode
+-----------------|----------|-------------------
+0xd4 (imm == 16) | le16 dst | dst = htole16(dst)
+0xd4 (imm == 32) | le32 dst | dst = htole32(dst)
+0xd4 (imm == 64) | le64 dst | dst = htole64(dst)
+0xdc (imm == 16) | be16 dst | dst = htobe16(dst)
+0xdc (imm == 32) | be32 dst | dst = htobe32(dst)
+0xdc (imm == 64) | be64 dst | dst = htobe64(dst)
 
 ## Memory Instructions
 
