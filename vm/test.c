@@ -75,7 +75,7 @@ int main(int argc, char **argv)
 
     const char *code_filename = argv[optind];
     size_t code_len;
-    void *code = readfile(code_filename, 65536*8, &code_len);
+    void *code = readfile(code_filename, 1024*1024, &code_len);
     if (code == NULL) {
         return 1;
     }
