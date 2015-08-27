@@ -24,6 +24,6 @@ struct ubpf_vm;
 struct ubpf_vm *ubpf_create(const void *code, uint32_t code_len, char **errmsg);
 void ubpf_destroy(struct ubpf_vm *vm);
 
-uint64_t ubpf_exec(const struct ubpf_vm *vm, uint64_t arg);
+uint64_t ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len);
 
 #endif

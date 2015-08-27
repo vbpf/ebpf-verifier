@@ -27,9 +27,8 @@ static void *readfile(const char *path, size_t maxlen, size_t *len);
 
 static void usage(const char *name)
 {
-    fprintf(stderr, "usage: %s [-h] [-a|--arg INT] [-m|--mem PATH] BINARY\n", name);
+    fprintf(stderr, "usage: %s [-h] [-m|--mem PATH] BINARY\n", name);
     fprintf(stderr, "\nExecutes the eBPF code in BINARY and prints the result to stdout.\n");
-    fprintf(stderr, "If --arg is given then it will be passed in r1. Otherwise r1 will be zero.\n");
     fprintf(stderr, "If --mem is given then the specified file will be read and a pointer\nto its data passed in r1.\n");
 }
 
@@ -37,25 +36,14 @@ int main(int argc, char **argv)
 {
     struct option longopts[] = {
         { .name = "help", .val = 'h', },
-        { .name = "arg", .val = 'a', .has_arg=1 },
         { .name = "mem", .val = 'm', .has_arg=1 },
     };
 
-    uint64_t arg = 0;
     const char *mem_filename = NULL;
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "ha:m:", longopts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hm:", longopts, NULL)) != -1) {
         switch (opt) {
-        case 'a': {
-            char *endptr;
-            arg = strtoull(optarg, &endptr, 0);
-            if (*endptr) {
-                fprintf(stderr, "Invalid --arg option.\n");
-                return 1;
-            }
-            break;
-        }
         case 'm':
             mem_filename = optarg;
             break;
@@ -80,18 +68,13 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    size_t mem_len = 0;
+    void *mem = NULL;
     if (mem_filename != NULL) {
-        if (arg != 0) {
-            fprintf(stderr, "Can't specify both --arg and --mem\n");
-            return 1;
-        }
-
-        void *mem = readfile(mem_filename, 1024*1024, NULL);
+        mem = readfile(mem_filename, 1024*1024, &mem_len);
         if (mem == NULL) {
             return 1;
         }
-
-        arg = (uintptr_t)mem;
     }
 
     char *errmsg;
@@ -102,7 +85,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    uint64_t ret = ubpf_exec(vm, arg);
+    uint64_t ret = ubpf_exec(vm, mem, mem_len);
     printf("0x%"PRIx64"\n", ret);
 
     ubpf_destroy(vm);
