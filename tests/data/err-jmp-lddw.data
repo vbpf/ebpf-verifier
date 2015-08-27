@@ -1,0 +1,6 @@
+-- asm
+ja +1
+lddw r0, 0x1122334455667788
+exit
+-- error
+Failed to create VM: jump to middle of lddw at PC 0

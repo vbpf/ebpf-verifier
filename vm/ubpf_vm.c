@@ -603,6 +603,14 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
                 *errmsg = error("infinite loop at PC %d", i);
                 return false;
             }
+            int new_pc = i + 1 + inst.offset;
+            if (new_pc < 0 || new_pc >= num_insts) {
+                *errmsg = error("jump out of bounds at PC %d", i);
+                return false;
+            } else if (insts[new_pc].opcode == 0) {
+                *errmsg = error("jump to middle of lddw at PC %d", i);
+                return false;
+            }
             break;
 
         case EBPF_OP_EXIT:
