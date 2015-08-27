@@ -618,6 +618,16 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
             *errmsg = error("unknown opcode 0x%02x at PC %d", inst.opcode, i);
             return false;
         }
+
+        if (inst.src > 10) {
+            *errmsg = error("invalid source register at PC %d", i);
+            return false;
+        }
+
+        if (inst.dst > 9) {
+            *errmsg = error("invalid destination register at PC %d", i);
+            return false;
+        }
     }
 
     return true;
