@@ -92,8 +92,14 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
     dasm_growpc(&d, vm->num_insts);
 
     dasm_State **dasm = &d;
+
+    /* Prologue */
     |.code
     |->entry:
+    /* rbx (aka r3), rbp (aka r5), and r12 are callee save */
+    | push r3
+    | push r5
+    | push r12
 
     int i;
     for (i = 0; i < vm->num_insts; i++) {
@@ -119,7 +125,7 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
             | jg =>i+inst.offset+1
             break;
         case EBPF_OP_EXIT:
-            | ret
+            | jmp ->exit
             break;
         default:
             *errmsg = ubpf_error("unknown opcode 0x%02x at PC %d", inst.opcode, i);
@@ -128,6 +134,13 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
 
         bounce_dst_back(dasm, inst.dst);
     }
+
+    /* Epilogue */
+    | ->exit:
+    | pop r12
+    | pop r5
+    | pop r3
+    | ret
 
     if ((ret = dasm_link(dasm, &jitted_size)) != DASM_S_OK) {
         *errmsg = ubpf_error("internal uBPF error: dasm_link failed: %d", ret);
