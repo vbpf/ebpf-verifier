@@ -1,13 +1,14 @@
+-- jit
 -- asm
-mov32 r0, 0
-mov32 r1, 5
-mov32 r2, 6
-mov32 r3, 4
+mov r0, 0
+mov r1, 5
+mov r2, 6
+mov r3, 4
 jgt r1, r2, +2 # Not taken
 jgt r1, r1, +1 # Not taken
 jgt r1, r3, +1 # Taken
 exit
-mov32 r0, 1
+mov r0, 1
 exit
 -- result
 0x1
