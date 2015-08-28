@@ -102,6 +102,9 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
     | push r5
     | push r12
 
+    /* First argument passed in rdi (aka r7) */
+    | mov r1, r7
+
     int i;
     for (i = 0; i < vm->num_insts; i++) {
         struct ebpf_inst inst = vm->insts[i];
