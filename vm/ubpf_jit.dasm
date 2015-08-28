@@ -108,6 +108,7 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
 
         int src = bounce_src(dasm, inst.src);
         int dst = bounce_dst(dasm, inst.dst);
+        int jmp_target = i + inst.offset + 1;
 
         switch (inst.opcode) {
         case EBPF_OP_MOV64_IMM:
@@ -118,11 +119,11 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
             | mov Rq(dst), Rq(src)
             break;
         case EBPF_OP_JA:
-            | jmp =>i+inst.offset+1
+            | jmp =>jmp_target
             break;
         case EBPF_OP_JGT_REG:
             | cmp Rq(dst), Rq(src)
-            | jg =>i+inst.offset+1
+            | jg =>jmp_target
             break;
         case EBPF_OP_EXIT:
             | jmp ->exit
