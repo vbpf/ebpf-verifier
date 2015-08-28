@@ -17,7 +17,6 @@ COVERAGE_CFLAGS := -fprofile-arcs -ftest-coverage
 COVERAGE_LDFLAGS := -fprofile-arcs
 endif
 
-LUA := luajit
 DYNASM := ../luajit-2.0/dynasm
 
 CFLAGS := -Wall -Werror -Iinc -I$(DYNASM) -O2 -g $(COVERAGE_CFLAGS)
@@ -25,13 +24,16 @@ LDFLAGS := $(COVERAGE_LDFLAGS)
 
 all: libubpf.a test
 
-%.c: %.dasm
-	LUA_PATH=$(DYNASM)/?.lua $(LUA) $(DYNASM)/dynasm.lua -o $@ $<
+%.c: %.dasm minilua
+	LUA_PATH=$(DYNASM)/?.lua ./minilua $(DYNASM)/dynasm.lua -o $@ $<
 
 libubpf.a: ubpf_vm.o ubpf_jit.o
 	ar rc $@ $^
 
 test: test.o libubpf.a
+
+minilua: ../luajit-2.0/src/host/minilua.c
+	$(CC) -o $@ $< -lm
 
 clean:
 	rm -f test libubpf.a *.o ubpf_jit.c
