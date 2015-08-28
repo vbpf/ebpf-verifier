@@ -197,8 +197,7 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
             break;
         case EBPF_OP_BE:
             if (inst.imm == 16) {
-                /* TODO */
-                abort();
+                | rol Rw(dst), 8
             } else if (inst.imm == 32) {
                 | bswap Rd(dst)
             } else if (inst.imm == 64) {
