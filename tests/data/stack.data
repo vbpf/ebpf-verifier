@@ -15,3 +15,5 @@ ldxdw r0, [r2-16]
 exit
 -- result
 0xcd
+-- no jit
+stack not implemented

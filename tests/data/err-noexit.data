@@ -4,3 +4,5 @@ mov32 r0, 0
 0xffffffffffffffff
 -- error
 uBPF error: reached end of instructions
+-- no jit
+exit check not implemented

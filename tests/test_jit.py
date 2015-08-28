@@ -20,8 +20,8 @@ def check_datafile(filename):
         raise SkipTest("no result or error section in datafile")
     if not os.path.exists(VM):
         raise SkipTest("VM not found")
-    if 'jit' not in data:
-        raise SkipTest("JIT not enabled for this testcase")
+    if 'no jit' in data:
+        raise SkipTest("JIT disabled for this testcase (%s)" % data['no jit'])
 
     if 'raw' in data:
         code = ''.join(struct.pack("=Q", x) for x in data['raw'])

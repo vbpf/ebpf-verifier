@@ -34,3 +34,5 @@ xor32 r0, r2
 exit
 -- result
 0x11
+-- no jit
+shift by register not supported

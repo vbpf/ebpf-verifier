@@ -6,3 +6,5 @@ mod r0, r1
 0xffffffffffffffff
 -- error
 uBPF error: division by zero at PC 2
+-- no jit
+mod not supported

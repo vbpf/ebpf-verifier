@@ -7,3 +7,5 @@ arsh r0, r1
 exit
 -- result
 0xfffffffffffffff8
+-- no jit
+shift by register not supported

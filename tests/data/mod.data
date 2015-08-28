@@ -10,3 +10,5 @@ mod32 r0, r1
 exit
 -- result
 0x5
+-- no jit
+mod not implemented
