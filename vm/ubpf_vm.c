@@ -21,32 +21,14 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include <inttypes.h>
-#include "ebpf.h"
-#include "ubpf.h"
+#include <sys/mman.h>
+#include "ubpf_int.h"
 
 #define MAX_INSTS 65536
 #define STACK_SIZE 128
 
-struct ubpf_vm {
-    struct ebpf_inst *insts;
-    uint16_t num_insts;
-};
-
 static bool validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg);
 static bool bounds_check(void *addr, int size, const char *type, uint16_t cur_pc, void *mem, size_t mem_len, void *stack);
-
-static char *
-error(const char *fmt, ...)
-{
-    char *msg;
-    va_list ap;
-    va_start(ap, fmt);
-    if (vasprintf(&msg, fmt, ap) < 0) {
-        msg = NULL;
-    }
-    va_end(ap);
-    return msg;
-}
 
 struct ubpf_vm *
 ubpf_create(const void *code, uint32_t code_len, char **errmsg)
@@ -54,7 +36,7 @@ ubpf_create(const void *code, uint32_t code_len, char **errmsg)
     *errmsg = NULL;
 
     if (code_len % 8 != 0) {
-        *errmsg = error("code_len must be a multiple of 8");
+        *errmsg = ubpf_error("code_len must be a multiple of 8");
         return NULL;
     }
 
@@ -81,6 +63,9 @@ ubpf_create(const void *code, uint32_t code_len, char **errmsg)
 void
 ubpf_destroy(struct ubpf_vm *vm)
 {
+    if (vm->jitted) {
+        munmap(vm->jitted, vm->jitted_size);
+    }
     free(vm->insts);
     free(vm);
 }
@@ -491,7 +476,7 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
     /* TODO validate jmp offsets */
 
     if (num_insts >= MAX_INSTS) {
-        *errmsg = error("too many instructions (max %u)", MAX_INSTS);
+        *errmsg = ubpf_error("too many instructions (max %u)", MAX_INSTS);
         return false;
     }
 
@@ -529,7 +514,7 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_LE:
         case EBPF_OP_BE:
             if (inst.imm != 16 && inst.imm != 32 && inst.imm != 64) {
-                *errmsg = error("invalid endian immediate at PC %d", i);
+                *errmsg = ubpf_error("invalid endian immediate at PC %d", i);
                 return false;
             }
             break;
@@ -578,7 +563,7 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
 
         case EBPF_OP_LDDW:
             if (i + 1 >= num_insts || insts[i+1].opcode != 0) {
-                *errmsg = error("incomplete lddw at PC %d", i);
+                *errmsg = ubpf_error("incomplete lddw at PC %d", i);
                 return false;
             }
             i++; /* Skip next instruction */
@@ -600,15 +585,15 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_JSGE_IMM:
         case EBPF_OP_JSGE_REG:
             if (inst.offset == -1) {
-                *errmsg = error("infinite loop at PC %d", i);
+                *errmsg = ubpf_error("infinite loop at PC %d", i);
                 return false;
             }
             int new_pc = i + 1 + inst.offset;
             if (new_pc < 0 || new_pc >= num_insts) {
-                *errmsg = error("jump out of bounds at PC %d", i);
+                *errmsg = ubpf_error("jump out of bounds at PC %d", i);
                 return false;
             } else if (insts[new_pc].opcode == 0) {
-                *errmsg = error("jump to middle of lddw at PC %d", i);
+                *errmsg = ubpf_error("jump to middle of lddw at PC %d", i);
                 return false;
             }
             break;
@@ -621,23 +606,23 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
         case EBPF_OP_DIV64_IMM:
         case EBPF_OP_MOD64_IMM:
             if (inst.imm == 0) {
-                *errmsg = error("division by zero at PC %d", i);
+                *errmsg = ubpf_error("division by zero at PC %d", i);
                 return false;
             }
             break;
 
         default:
-            *errmsg = error("unknown opcode 0x%02x at PC %d", inst.opcode, i);
+            *errmsg = ubpf_error("unknown opcode 0x%02x at PC %d", inst.opcode, i);
             return false;
         }
 
         if (inst.src > 10) {
-            *errmsg = error("invalid source register at PC %d", i);
+            *errmsg = ubpf_error("invalid source register at PC %d", i);
             return false;
         }
 
         if (inst.dst > 9 && !(store && inst.dst == 10)) {
-            *errmsg = error("invalid destination register at PC %d", i);
+            *errmsg = ubpf_error("invalid destination register at PC %d", i);
             return false;
         }
     }
@@ -659,4 +644,17 @@ bounds_check(void *addr, int size, const char *type, uint16_t cur_pc, void *mem,
         fprintf(stderr, "mem %p/%zd stack %p/%d\n", mem, mem_len, stack, STACK_SIZE);
         return false;
     }
+}
+
+char *
+ubpf_error(const char *fmt, ...)
+{
+    char *msg;
+    va_list ap;
+    va_start(ap, fmt);
+    if (vasprintf(&msg, fmt, ap) < 0) {
+        msg = NULL;
+    }
+    va_end(ap);
+    return msg;
 }

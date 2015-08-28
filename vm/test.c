@@ -16,6 +16,7 @@
 
 #include <inttypes.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -27,9 +28,10 @@ static void *readfile(const char *path, size_t maxlen, size_t *len);
 
 static void usage(const char *name)
 {
-    fprintf(stderr, "usage: %s [-h] [-m|--mem PATH] BINARY\n", name);
+    fprintf(stderr, "usage: %s [-h] [-j|--jit] [-m|--mem PATH] BINARY\n", name);
     fprintf(stderr, "\nExecutes the eBPF code in BINARY and prints the result to stdout.\n");
     fprintf(stderr, "If --mem is given then the specified file will be read and a pointer\nto its data passed in r1.\n");
+    fprintf(stderr, "If --jit is given then the JIT compiler will be used.\n");
 }
 
 int main(int argc, char **argv)
@@ -37,15 +39,20 @@ int main(int argc, char **argv)
     struct option longopts[] = {
         { .name = "help", .val = 'h', },
         { .name = "mem", .val = 'm', .has_arg=1 },
+        { .name = "jit", .val = 'm' },
     };
 
     const char *mem_filename = NULL;
+    bool jit = false;
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hm:", longopts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hm:j", longopts, NULL)) != -1) {
         switch (opt) {
         case 'm':
             mem_filename = optarg;
+            break;
+        case 'j':
+            jit = true;
             break;
         case 'h':
             usage(argv[0]);
@@ -85,7 +92,20 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    uint64_t ret = ubpf_exec(vm, mem, mem_len);
+    uint64_t ret;
+
+    if (jit) {
+        ubpf_jit_fn fn = ubpf_compile(vm, &errmsg);
+        if (fn == NULL) {
+            fprintf(stderr, "Failed to compile: %s\n", errmsg);
+            free(errmsg);
+            return 1;
+        }
+        ret = fn(mem, mem_len);
+    } else {
+        ret = ubpf_exec(vm, mem, mem_len);
+    }
+
     printf("0x%"PRIx64"\n", ret);
 
     ubpf_destroy(vm);

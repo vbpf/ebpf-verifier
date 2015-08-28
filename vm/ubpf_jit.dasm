@@ -1,0 +1,228 @@
+/*
+ * Copyright 2015 Big Switch Networks, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <inttypes.h>
+#include <sys/mman.h>
+#include <errno.h>
+#include "ubpf_int.h"
+
+#define DASM_CHECKS
+#include <dasm_proto.h>
+#include <dasm_x86.h>
+
+|.arch x64
+
+/* The hardcoded dasm_State variable name is confusing given our use of 'dst' */
+#define dasm Dst
+
+/*
+ * DynASM can only dynamically address r0-r7.
+ *
+ * When a register above 5 is used, we copy it into r6 or r7 and then pass the
+ * "bounce register" to the actual instruction. If it was the dst register then
+ * we copy it back.
+ *
+ * CPU register r0-r5 maps to eBPF registers 0-5 directly.
+ * r6: dst bounce register.
+ * r7: src bounce register.
+ * r8: eBPF register 6.
+ * r9: eBPF register 7.
+ * r10: eBPF register 8.
+ * r11: eBPF register 9.
+ * r12: eBPF register 10.
+ */
+#define NUM_DIRECT_REGS 6
+#define BOUNCE_DST 6
+#define BOUNCE_SRC 7
+|.define BOUNCE_DST, r6
+|.define BOUNCE_SRC, r7
+|.define R6, r8
+|.define R7, r9
+|.define R8, r10
+|.define R9, r11
+|.define R10, r12
+
+static int bounce_dst(dasm_State **dasm, int dst);
+static int bounce_src(dasm_State **dasm, int src);
+static void bounce_dst_back(dasm_State **dasm, int dst);
+
+|.actionlist actions
+
+ubpf_jit_fn
+ubpf_compile(struct ubpf_vm *vm, char **errmsg)
+{
+    dasm_State *d;
+    void *jitted = NULL;
+    size_t jitted_size;
+    int ret;
+
+    *errmsg = NULL;
+
+    if (vm->jitted) {
+        return vm->jitted;
+    }
+
+    |.section code
+    dasm_init(&d, DASM_MAXSECTION);
+    dasm_setup(&d, actions);
+
+    |.globals lbl_
+    void *labels[lbl__MAX];
+    dasm_setupglobal(&d, labels, lbl__MAX);
+
+    dasm_growpc(&d, vm->num_insts);
+
+    dasm_State **dasm = &d;
+    |.code
+    |->entry:
+
+    int i;
+    for (i = 0; i < vm->num_insts; i++) {
+        struct ebpf_inst inst = vm->insts[i];
+        |=>i:
+
+        int src = bounce_src(dasm, inst.src);
+        int dst = bounce_dst(dasm, inst.dst);
+
+        switch (inst.opcode) {
+        case EBPF_OP_MOV64_IMM:
+            /* TODO use shorter mov for smaller immediates */
+            | mov Rq(dst), inst.imm
+            break;
+        case EBPF_OP_MOV64_REG:
+            | mov Rq(dst), Rq(src)
+            break;
+        case EBPF_OP_JA:
+            | jmp =>i+inst.offset+1
+            break;
+        case EBPF_OP_JGT_REG:
+            | cmp Rq(dst), Rq(src)
+            | jg =>i+inst.offset+1
+            break;
+        case EBPF_OP_EXIT:
+            | ret
+            break;
+        default:
+            *errmsg = ubpf_error("unknown opcode 0x%02x at PC %d", inst.opcode, i);
+            goto error;
+        }
+
+        bounce_dst_back(dasm, inst.dst);
+    }
+
+    if ((ret = dasm_link(dasm, &jitted_size)) != DASM_S_OK) {
+        *errmsg = ubpf_error("internal uBPF error: dasm_link failed: %d", ret);
+        goto error;
+    }
+
+    jitted = mmap(0, jitted_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (jitted == MAP_FAILED) {
+        *errmsg = ubpf_error("internal uBPF error: mmap failed: %s\n", strerror(errno));
+        goto error;
+    }
+
+    if ((ret = dasm_encode(dasm, jitted)) != DASM_S_OK) {
+        *errmsg = ubpf_error("internal uBPF error: dasm_encode failed: %d\n", ret);
+        goto error;
+    }
+
+    if (mprotect(jitted, jitted_size, PROT_READ | PROT_EXEC) < 0) {
+        *errmsg = ubpf_error("internal uBPF error: mprotect failed: %s\n", strerror(errno));
+        goto error;
+    }
+
+    dasm_free(dasm);
+    vm->jitted = labels[lbl_entry];
+    vm->jitted_size = jitted_size;
+    return vm->jitted;
+
+error:
+    dasm_free(dasm);
+    if (jitted) {
+        munmap(jitted, jitted_size);
+    }
+    return NULL;
+}
+
+static int
+bounce_dst(dasm_State **dasm, int dst)
+{
+    /* TODO omit MOV if dst is not read (mov, lddw, ...) */
+    if (dst >= NUM_DIRECT_REGS) {
+        if (dst == 6) {
+            | mov BOUNCE_DST, R6
+        } else if (dst == 7) {
+            | mov BOUNCE_DST, R7
+        } else if (dst == 8) {
+            | mov BOUNCE_DST, R8
+        } else if (dst == 9) {
+            | mov BOUNCE_DST, R9
+        } else if (dst == 10) {
+            | mov BOUNCE_DST, R10
+        } else {
+            abort();
+        }
+        return BOUNCE_DST;
+    } else {
+        return dst;
+    }
+}
+
+static int
+bounce_src(dasm_State **dasm, int src)
+{
+    if (src >= NUM_DIRECT_REGS) {
+        if (src == 6) {
+            | mov BOUNCE_SRC, R6
+        } else if (src == 7) {
+            | mov BOUNCE_SRC, R7
+        } else if (src == 8) {
+            | mov BOUNCE_SRC, R8
+        } else if (src == 9) {
+            | mov BOUNCE_SRC, R9
+        } else if (src == 10) {
+            | mov BOUNCE_SRC, R10
+        } else {
+            abort();
+        }
+        return BOUNCE_SRC;
+    } else {
+        return src;
+    }
+}
+
+static void
+bounce_dst_back(dasm_State **dasm, int dst)
+{
+    /* TODO omit if dst is not written to (j*, st*, ...) */
+    if (dst == 6) {
+        | mov R6, BOUNCE_DST
+    } else if (dst == 7) {
+        | mov R7, BOUNCE_DST
+    } else if (dst == 8) {
+        | mov R8, BOUNCE_DST
+    } else if (dst == 9) {
+        | mov R9, BOUNCE_DST
+    } else if (dst == 10) {
+        | mov R10, BOUNCE_DST
+    }
+}

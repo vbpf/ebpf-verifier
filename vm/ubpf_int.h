@@ -14,19 +14,21 @@
  * limitations under the License.
  */
 
-#ifndef UBPF_H
-#define UBPF_H
+#ifndef UBPF_INT_H
+#define UBPF_INT_H
 
-#include <stdint.h>
+#include <ubpf.h>
+#include "ebpf.h"
 
-struct ubpf_vm;
-typedef uint64_t (*ubpf_jit_fn)(void *mem, size_t mem_len);
+struct ebpf_inst;
 
-struct ubpf_vm *ubpf_create(const void *code, uint32_t code_len, char **errmsg);
-void ubpf_destroy(struct ubpf_vm *vm);
+struct ubpf_vm {
+    struct ebpf_inst *insts;
+    uint16_t num_insts;
+    ubpf_jit_fn jitted;
+    size_t jitted_size;
+};
 
-uint64_t ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len);
-
-ubpf_jit_fn ubpf_compile(struct ubpf_vm *vm, char **errmsg);
+char *ubpf_error(const char *fmt, ...);
 
 #endif
