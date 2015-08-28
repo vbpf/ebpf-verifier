@@ -112,6 +112,160 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         int jmp_target = i + inst.offset + 1;
 
         switch (inst.opcode) {
+        case EBPF_OP_ADD_IMM:
+            | add Rd(dst), inst.imm
+            break;
+        case EBPF_OP_ADD_REG:
+            | add Rd(dst), Rd(src)
+            break;
+        case EBPF_OP_SUB_IMM:
+            | sub Rd(dst), inst.imm
+            break;
+        case EBPF_OP_SUB_REG:
+            | sub Rd(dst), Rd(src)
+            break;
+#if 0
+        case EBPF_OP_MUL_IMM:
+            break;
+        case EBPF_OP_MUL_REG:
+            break;
+        case EBPF_OP_DIV_IMM:
+            break;
+        case EBPF_OP_DIV_REG:
+            break;
+#endif
+        case EBPF_OP_OR_IMM:
+            | or Rd(dst), inst.imm
+            break;
+        case EBPF_OP_OR_REG:
+            | or Rd(dst), Rd(src)
+            break;
+        case EBPF_OP_AND_IMM:
+            | and Rd(dst), inst.imm
+            break;
+        case EBPF_OP_AND_REG:
+            | and Rd(dst), Rd(src)
+            break;
+        case EBPF_OP_LSH_IMM:
+            | shl Rd(dst), inst.imm
+            break;
+#if 0
+        case EBPF_OP_LSH_REG:
+            break;
+#endif
+        case EBPF_OP_RSH_IMM:
+            | shr Rd(dst), inst.imm
+            break;
+#if 0
+        case EBPF_OP_RSH_REG:
+            break;
+#endif
+        case EBPF_OP_NEG:
+            | neg Rd(dst)
+            break;
+#if 0
+        case EBPF_OP_MOD_IMM:
+            break;
+        case EBPF_OP_MOD_REG:
+            break;
+#endif
+        case EBPF_OP_XOR_IMM:
+            | xor Rd(dst), inst.imm
+            break;
+        case EBPF_OP_XOR_REG:
+            | xor Rd(dst), Rd(src)
+            break;
+        case EBPF_OP_MOV_IMM:
+            | mov Rd(dst), inst.imm
+            break;
+        case EBPF_OP_MOV_REG:
+            | mov Rd(dst), Rd(src)
+            break;
+        case EBPF_OP_ARSH_IMM:
+            | sar Rd(dst), inst.imm
+            break;
+#if 0
+        case EBPF_OP_ARSH_REG:
+            break;
+#endif
+
+        case EBPF_OP_LE:
+            /* No-op */
+            break;
+        case EBPF_OP_BE:
+            if (inst.imm == 16) {
+                /* TODO */
+                abort();
+            } else if (inst.imm == 32) {
+                | bswap Rd(dst)
+            } else if (inst.imm == 64) {
+                | bswap Rq(dst)
+            }
+            break;
+
+        case EBPF_OP_ADD64_IMM:
+            | add Rq(dst), inst.imm
+            break;
+        case EBPF_OP_ADD64_REG:
+            | add Rq(dst), Rq(src)
+            break;
+        case EBPF_OP_SUB64_IMM:
+            | sub Rq(dst), inst.imm
+            break;
+        case EBPF_OP_SUB64_REG:
+            | sub Rq(dst), Rq(src)
+            break;
+#if 0
+        case EBPF_OP_MUL64_IMM:
+            break;
+        case EBPF_OP_MUL64_REG:
+            break;
+        case EBPF_OP_DIV64_IMM:
+            break;
+        case EBPF_OP_DIV64_REG:
+            break;
+#endif
+        case EBPF_OP_OR64_IMM:
+            | or Rq(dst), inst.imm
+            break;
+        case EBPF_OP_OR64_REG:
+            | or Rq(dst), Rq(src)
+            break;
+        case EBPF_OP_AND64_IMM:
+            | and Rq(dst), inst.imm
+            break;
+        case EBPF_OP_AND64_REG:
+            | and Rq(dst), Rq(src)
+            break;
+        case EBPF_OP_LSH64_IMM:
+            | shl Rq(dst), inst.imm
+            break;
+#if 0
+        case EBPF_OP_LSH64_REG:
+            break;
+#endif
+        case EBPF_OP_RSH64_IMM:
+            | shr Rq(dst), inst.imm
+            break;
+#if 0
+        case EBPF_OP_RSH64_REG:
+            break;
+#endif
+        case EBPF_OP_NEG64:
+            | neg Rq(dst)
+            break;
+#if 0
+        case EBPF_OP_MOD64_IMM:
+            break;
+        case EBPF_OP_MOD64_REG:
+            break;
+#endif
+        case EBPF_OP_XOR64_IMM:
+            | xor Rq(dst), inst.imm
+            break;
+        case EBPF_OP_XOR64_REG:
+            | xor Rq(dst), Rq(src)
+            break;
         case EBPF_OP_MOV64_IMM:
             /* TODO use shorter mov for smaller immediates */
             | mov Rq(dst), inst.imm
@@ -119,16 +273,80 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         case EBPF_OP_MOV64_REG:
             | mov Rq(dst), Rq(src)
             break;
+        case EBPF_OP_ARSH64_IMM:
+            | sar Rq(dst), inst.imm
+            break;
+#if 0
+        case EBPF_OP_ARSH_REG:
+            break;
+#endif
+
+        /* TODO MEM opcodes */
+
         case EBPF_OP_JA:
             | jmp =>jmp_target
             break;
+        case EBPF_OP_JEQ_IMM:
+            | cmp Rq(dst), inst.imm
+            | je =>jmp_target
+            break;
+        case EBPF_OP_JEQ_REG:
+            | cmp Rq(dst), Rq(src)
+            | je =>jmp_target
+            break;
+        case EBPF_OP_JGT_IMM:
+            | cmp Rq(dst), inst.imm
+            | ja =>jmp_target
+            break;
         case EBPF_OP_JGT_REG:
+            | cmp Rq(dst), Rq(src)
+            | ja =>jmp_target
+            break;
+        case EBPF_OP_JGE_IMM:
+            | cmp Rq(dst), inst.imm
+            | jae =>jmp_target
+            break;
+        case EBPF_OP_JGE_REG:
+            | cmp Rq(dst), Rq(src)
+            | jae =>jmp_target
+            break;
+        case EBPF_OP_JSET_IMM:
+            | test Rq(dst), inst.imm
+            | jnz =>jmp_target
+            break;
+        case EBPF_OP_JSET_REG:
+            | test Rq(dst), Rq(src)
+            | jnz =>jmp_target
+            break;
+        case EBPF_OP_JNE_IMM:
+            | cmp Rq(dst), inst.imm
+            | jne =>jmp_target
+            break;
+        case EBPF_OP_JNE_REG:
+            | cmp Rq(dst), Rq(src)
+            | jne =>jmp_target
+            break;
+        case EBPF_OP_JSGT_IMM:
+            | cmp Rq(dst), inst.imm
+            | jg =>jmp_target
+            break;
+        case EBPF_OP_JSGT_REG:
             | cmp Rq(dst), Rq(src)
             | jg =>jmp_target
             break;
+        case EBPF_OP_JSGE_IMM:
+            | cmp Rq(dst), inst.imm
+            | jge =>jmp_target
+            break;
+        case EBPF_OP_JSGE_REG:
+            | cmp Rq(dst), Rq(src)
+            | jge =>jmp_target
+            break;
         case EBPF_OP_EXIT:
+            /* TODO omit if last instruction */
             | jmp ->exit
             break;
+
         default:
             *errmsg = ubpf_error("unknown opcode 0x%02x at PC %d", inst.opcode, i);
             goto error;
