@@ -30,44 +30,46 @@ def check_datafile(filename):
 
     memfile = None
 
-    cmd = [VM]
     if 'mem' in data:
         memfile = tempfile.NamedTemporaryFile()
         memfile.write(data['mem'])
         memfile.flush()
-        cmd.extend(['-m', memfile.name])
 
-    cmd.append('-j')
-    cmd.append('-')
+    try:
+        for register_offset in xrange(0, 10):
+            cmd = [VM]
+            if memfile:
+                cmd.extend(['-m', memfile.name])
+            cmd.extend(['-j', '-r', str(register_offset), '-'])
 
-    vm = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+            vm = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
 
-    stdout, stderr = vm.communicate(code)
-    stderr = stderr.strip()
+            stdout, stderr = vm.communicate(code)
+            stderr = stderr.strip()
 
-    if memfile:
-        memfile.close()
+            if 'error' in data:
+                if data['error'] != stderr:
+                    raise AssertionError("Expected error %r, got %r" % (data['error'], stderr))
+            elif 'error pattern' in data:
+                if not re.search(data['error pattern'], stderr):
+                    raise AssertionError("Expected error matching %r, got %r" % (data['error pattern'], stderr))
+            else:
+                if stderr:
+                    raise AssertionError("Unexpected error %r" % stderr)
 
-    if 'error' in data:
-        if data['error'] != stderr:
-            raise AssertionError("Expected error %r, got %r" % (data['error'], stderr))
-    elif 'error pattern' in data:
-        if not re.search(data['error pattern'], stderr):
-            raise AssertionError("Expected error matching %r, got %r" % (data['error pattern'], stderr))
-    else:
-        if stderr:
-            raise AssertionError("Unexpected error %r" % stderr)
-
-    if 'result' in data:
-        if vm.returncode != 0:
-            raise AssertionError("VM exited with status %d, stderr=%r" % (vm.returncode, stderr))
-        expected = int(data['result'], 0)
-        result = int(stdout, 0)
-        if expected != result:
-            raise AssertionError("Expected result 0x%x, got 0x%x, stderr=%r" % (expected, result, stderr))
-    else:
-        if vm.returncode == 0:
-            raise AssertionError("Expected VM to exit with an error code")
+            if 'result' in data:
+                if vm.returncode != 0:
+                    raise AssertionError("VM exited with status %d, stderr=%r" % (vm.returncode, stderr))
+                expected = int(data['result'], 0)
+                result = int(stdout, 0)
+                if expected != result:
+                    raise AssertionError("Expected result 0x%x, got 0x%x, stderr=%r" % (expected, result, stderr))
+            else:
+                if vm.returncode == 0:
+                    raise AssertionError("Expected VM to exit with an error code")
+    finally:
+        if memfile:
+            memfile.close()
 
 def test_datafiles():
     # Nose test generator
