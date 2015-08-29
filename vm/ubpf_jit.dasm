@@ -54,7 +54,9 @@
  * r12, r13, and rsp are callee save.
  * The first argument for an x86 function comes in rdi and the second in rsi.
  * The return value for an x86 function is in rax.
+ * rcx (cl) is a required operand for shifts by a register. We reserve it.
  */
+#define RCX 1
 static int
 map_register(int r)
 {
@@ -156,17 +158,17 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         case EBPF_OP_LSH_IMM:
             | shl Rd(dst), inst.imm
             break;
-#if 0
         case EBPF_OP_LSH_REG:
+            | mov Rq(RCX), Rq(src)
+            | shl Rd(dst), cl
             break;
-#endif
         case EBPF_OP_RSH_IMM:
             | shr Rd(dst), inst.imm
             break;
-#if 0
         case EBPF_OP_RSH_REG:
+            | mov Rq(RCX), Rq(src)
+            | shr Rd(dst), cl
             break;
-#endif
         case EBPF_OP_NEG:
             | neg Rd(dst)
             break;
@@ -191,10 +193,10 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         case EBPF_OP_ARSH_IMM:
             | sar Rd(dst), inst.imm
             break;
-#if 0
         case EBPF_OP_ARSH_REG:
+            | mov Rq(RCX), Rq(src)
+            | sar Rd(dst), cl
             break;
-#endif
 
         case EBPF_OP_LE:
             /* No-op */
@@ -246,17 +248,17 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         case EBPF_OP_LSH64_IMM:
             | shl Rq(dst), inst.imm
             break;
-#if 0
         case EBPF_OP_LSH64_REG:
+            | mov Rq(RCX), Rq(src)
+            | shl Rq(dst), cl
             break;
-#endif
         case EBPF_OP_RSH64_IMM:
             | shr Rq(dst), inst.imm
             break;
-#if 0
         case EBPF_OP_RSH64_REG:
+            | mov Rq(RCX), Rq(src)
+            | shr Rq(dst), cl
             break;
-#endif
         case EBPF_OP_NEG64:
             | neg Rq(dst)
             break;
@@ -282,10 +284,10 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         case EBPF_OP_ARSH64_IMM:
             | sar Rq(dst), inst.imm
             break;
-#if 0
-        case EBPF_OP_ARSH_REG:
+        case EBPF_OP_ARSH64_REG:
+            | mov Rq(RCX), Rq(src)
+            | sar Rq(dst), cl
             break;
-#endif
 
         case EBPF_OP_JA:
             | jmp =>jmp_target
@@ -386,7 +388,7 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         case EBPF_OP_STXB:
             /* Rb(src) generates the wrong byte registers */
             /* mov rcx, Rq(src) also did not work */
-            | mov Rq(1), Rq(src)
+            | mov Rq(RCX), Rq(src)
             | mov byte [Rq(dst)+inst.offset], cl
             break;
         case EBPF_OP_STXDW:

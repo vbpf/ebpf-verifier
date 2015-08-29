@@ -7,5 +7,3 @@ arsh32 r0, r1
 exit
 -- result
 0xffff8000
--- no jit
-shift by register not supported
