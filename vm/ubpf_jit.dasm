@@ -360,7 +360,10 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
             | movzx Rq(dst), word [Rq(src)+inst.offset]
             break;
         case EBPF_OP_LDXB:
-            | movzx Rq(dst), byte [Rq(src)+inst.offset]
+            /* movzx is not assembled correctly */
+            | xor ecx, ecx
+            | mov cl, byte [Rq(src)+inst.offset]
+            | mov Rq(dst), Rq(RCX)
             break;
         case EBPF_OP_LDXDW:
             | mov Rq(dst), qword [Rq(src)+inst.offset]
