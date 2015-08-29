@@ -17,7 +17,7 @@ COVERAGE_CFLAGS := -fprofile-arcs -ftest-coverage
 COVERAGE_LDFLAGS := -fprofile-arcs
 endif
 
-DYNASM := ../luajit-2.0/dynasm
+DYNASM := ../dynasm
 
 CFLAGS := -Wall -Werror -Iinc -I$(DYNASM) -O2 -g $(COVERAGE_CFLAGS)
 LDFLAGS := $(COVERAGE_LDFLAGS)
