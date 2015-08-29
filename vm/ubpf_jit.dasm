@@ -206,7 +206,10 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
             if (inst.imm == 16) {
                 | rol Rw(dst), 8
             } else if (inst.imm == 32) {
-                | bswap Rd(dst)
+                /* bswap of r8d+ is misassembled */
+                | mov Rq(RCX), Rq(dst)
+                | bswap ecx
+                | mov Rd(dst), ecx
             } else if (inst.imm == 64) {
                 | bswap Rq(dst)
             }
