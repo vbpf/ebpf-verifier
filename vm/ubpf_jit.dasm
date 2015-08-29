@@ -24,6 +24,7 @@
 #include <inttypes.h>
 #include <sys/mman.h>
 #include <errno.h>
+#include <assert.h>
 #include "ubpf_int.h"
 
 #define DASM_CHECKS
@@ -38,42 +39,76 @@
 /*
  * Register mapping:
  *
- * x86 -> eBPF
- * rax -> r0
- * rdi -> r1
- * rsi -> r2
- * rdx -> r3
- * r8  -> r4
- * r9  -> r5
- * r10 -> r6
- * r11 -> r7
- * r12 -> r8
- * r13 -> r9
- * rsp -> r10
+ * eBPF -> x86
+ * 0 -> rax
+ * 1 -> rdi
+ * 2 -> rsi
+ * 3 -> rdx
+ * 4 -> r8
+ * 5 -> r9
+ * 6 -> r10
+ * 7 -> r11
+ * 8 -> r13
+ * 9 -> r14
+ * 10 -> rsp
  *
- * r12, r13, and rsp are callee save.
+ * r13, r14, and rsp are callee save.
  * The first argument for an x86 function comes in rdi and the second in rsi.
  * The return value for an x86 function is in rax.
  * rcx (cl) is a required operand for shifts by a register. We reserve it.
  */
+#define RAX 0
 #define RCX 1
+#define RDX 2
+#define RBX 3
+#define RSP 4
+/* rbp is unused */
+#define RSI 6
+#define RDI 7
+#define R8  8
+#define R9  9
+#define R10 10
+#define R11 11
+/* r12 is unused (encoding problems) */
+#define R13 13
+#define R14 14
+/* r15 is unused */
+
+/* For testing, this changes the mapping between x86 and eBPF registers */
+static int register_offset = 0;
+
+/* Return the x86 register for the given eBPF register */
 static int
 map_register(int r)
 {
-    switch (r) {
-    case 0: return 0;
-    case 1: return 7;
-    case 2: return 6;
-    case 3: return 2;
-    case 4: return 8;
-    case 5: return 9;
-    case 6: return 10;
-    case 7: return 11;
-    case 8: return 12;
-    case 9: return 13;
-    case 10: return 4;
-    default: abort();
+    static int map[] = {
+        RAX,
+        RDI,
+        RSI,
+        RDX,
+        R8,
+        R9,
+        R10,
+        R11,
+        R13,
+        R14,
+    };
+
+    const int map_size = sizeof(map)/sizeof(map[0]);
+    assert(map_size == 10);
+
+    if (r == 10) {
+        return RSP;
+    } else {
+        assert(r < map_size);
+        return map[(r+register_offset) % map_size];
     }
+}
+
+void
+ubpf_set_register_offset(int x)
+{
+    register_offset = x;
 }
 
 |.actionlist actions
@@ -108,9 +143,14 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
     /* Prologue */
     |.code
     |->entry:
-    /* r12 and r13 are callee save */
-    | push r12
+    /* r32 and r14 are callee save */
     | push r13
+    | push r14
+
+    /* Move rdi into register 1 */
+    if (map_register(1) != RDI) {
+        | mov Rq(map_register(1)), rdi
+    }
 
     int i;
     for (i = 0; i < vm->num_insts; i++) {
@@ -416,8 +456,12 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
 
     /* Epilogue */
     | ->exit:
+    /* Move register 0 into rax */
+    if (map_register(0) != RAX) {
+        | mov Rq(RAX), Rq(map_register(0))
+    }
+    | pop r14
     | pop r13
-    | pop r12
     | ret
 
     if ((ret = dasm_link(dasm, &jitted_size)) != DASM_S_OK) {
