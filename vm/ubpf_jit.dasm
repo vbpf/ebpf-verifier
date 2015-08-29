@@ -94,11 +94,12 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
 
     |.section code
     dasm_init(&d, DASM_MAXSECTION);
-    dasm_setup(&d, actions);
 
     |.globals lbl_
     void *labels[lbl__MAX];
     dasm_setupglobal(&d, labels, lbl__MAX);
+
+    dasm_setup(&d, actions);
 
     dasm_growpc(&d, vm->num_insts);
 
