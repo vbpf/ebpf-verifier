@@ -24,6 +24,7 @@
 #include <errno.h>
 #include "ubpf.h"
 
+void ubpf_set_register_offset(int x);
 static void *readfile(const char *path, size_t maxlen, size_t *len);
 
 static void usage(const char *name)
@@ -32,6 +33,8 @@ static void usage(const char *name)
     fprintf(stderr, "\nExecutes the eBPF code in BINARY and prints the result to stdout.\n");
     fprintf(stderr, "If --mem is given then the specified file will be read and a pointer\nto its data passed in r1.\n");
     fprintf(stderr, "If --jit is given then the JIT compiler will be used.\n");
+    fprintf(stderr, "\nOther options:\n");
+    fprintf(stderr, "  -r, --register-offset NUM: Change the mapping from eBPF to x86 registers\n");
 }
 
 int main(int argc, char **argv)
@@ -40,19 +43,23 @@ int main(int argc, char **argv)
         { .name = "help", .val = 'h', },
         { .name = "mem", .val = 'm', .has_arg=1 },
         { .name = "jit", .val = 'm' },
+        { .name = "register-offset", .val = 'r', .has_arg=1 },
     };
 
     const char *mem_filename = NULL;
     bool jit = false;
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hm:j", longopts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hm:jr:", longopts, NULL)) != -1) {
         switch (opt) {
         case 'm':
             mem_filename = optarg;
             break;
         case 'j':
             jit = true;
+            break;
+        case 'r':
+            ubpf_set_register_offset(atoi(optarg));
             break;
         case 'h':
             usage(argv[0]);
