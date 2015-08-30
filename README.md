@@ -11,8 +11,8 @@ This project aims to create an Apache-licensed library for executing eBPF progra
 
 [Linux documentation for the eBPF instruction set] (https://www.kernel.org/doc/Documentation/networking/filter.txt).
 
-Currently this project includes an eBPF assembler, disassembler, partial
-interpreter, and [instruction set reference](eBPF.md).
+This project includes an eBPF assembler, disassembler, interpreter,
+JIT compiler for x86-64, and [instruction set reference](eBPF.md).
 
 ## Building
 
