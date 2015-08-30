@@ -174,10 +174,7 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         case EBPF_OP_SUB_REG:
             | sub Rd(dst), Rd(src)
             break;
-#if 0
         case EBPF_OP_MUL_IMM:
-            break;
-#endif
         case EBPF_OP_MUL_REG:
             if (dst != RAX) {
                 | push rax
@@ -185,7 +182,11 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
             if (dst != RDX) {
                 | push rdx
             }
-            | mov Rq(RCX), Rq(src)
+            if (inst.opcode == EBPF_OP_MUL_IMM) {
+                | mov Rq(RCX), inst.imm
+            } else {
+                | mov Rq(RCX), Rq(src)
+            }
             | mov Rq(RAX), Rq(dst)
             | mul ecx
             if (dst != RDX) {
@@ -288,10 +289,7 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         case EBPF_OP_SUB64_REG:
             | sub Rq(dst), Rq(src)
             break;
-#if 0
         case EBPF_OP_MUL64_IMM:
-            break;
-#endif
         case EBPF_OP_MUL64_REG:
             if (dst != RAX) {
                 | push rax
@@ -299,7 +297,11 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
             if (dst != RDX) {
                 | push rdx
             }
-            | mov Rq(RCX), Rq(src)
+            if (inst.opcode == EBPF_OP_MUL64_IMM) {
+                | mov Rq(RCX), inst.imm
+            } else {
+                | mov Rq(RCX), Rq(src)
+            }
             | mov Rq(RAX), Rq(dst)
             | mul rcx
             if (dst != RDX) {
