@@ -36,6 +36,8 @@
 /* The hardcoded dasm_State variable name is confusing given our use of 'dst' */
 #define dasm Dst
 
+#define STACK_SIZE 128
+
 /*
  * Register mapping:
  *
@@ -50,12 +52,13 @@
  * 7 -> r11
  * 8 -> r13
  * 9 -> r14
- * 10 -> rsp
+ * 10 -> r15
  *
- * r13, r14, and rsp are callee save.
+ * r13, r14, and r15 are callee save.
  * The first argument for an x86 function comes in rdi and the second in rsi.
  * The return value for an x86 function is in rax.
  * rcx (cl) is a required operand for shifts by a register. We reserve it.
+ * rsp could not be used for the stack pointer due to encoding issues.
  */
 #define RAX 0
 #define RCX 1
@@ -72,9 +75,10 @@
 /* r12 is unused (encoding problems) */
 #define R13 13
 #define R14 14
-/* r15 is unused */
+#define R15 15
 
-static int register_map[] = {
+#define REGISTER_MAP_SIZE 11
+static int register_map[REGISTER_MAP_SIZE] = {
     RAX,
     RDI,
     RSI,
@@ -85,21 +89,15 @@ static int register_map[] = {
     R11,
     R13,
     R14,
+    R15,
 };
 
 /* Return the x86 register for the given eBPF register */
 static int
 map_register(int r)
 {
-    const int map_size = sizeof(register_map)/sizeof(register_map[0]);
-    assert(map_size == 10);
-
-    if (r == 10) {
-        return RSP;
-    } else {
-        assert(r < map_size);
-        return register_map[r % map_size];
-    }
+    assert(r < REGISTER_MAP_SIZE);
+    return register_map[r % REGISTER_MAP_SIZE];
 }
 
 /* For testing, this changes the mapping between x86 and eBPF registers */
@@ -107,17 +105,17 @@ void
 ubpf_set_register_offset(int x)
 {
     int i;
-    if (x < 10) {
-        int tmp[10];
+    if (x < REGISTER_MAP_SIZE) {
+        int tmp[REGISTER_MAP_SIZE];
         memcpy(tmp, register_map, sizeof(register_map));
-        for (i = 0; i < 10; i++) {
-            register_map[i] = tmp[(i+x)%10];
+        for (i = 0; i < REGISTER_MAP_SIZE; i++) {
+            register_map[i] = tmp[(i+x)%REGISTER_MAP_SIZE];
         }
     } else {
         /* Shuffle array */
         unsigned int seed = x;
-        for (i = 0; i < 9; i++) {
-            int j = i + (rand_r(&seed) % (10-i));
+        for (i = 0; i < REGISTER_MAP_SIZE-1; i++) {
+            int j = i + (rand_r(&seed) % (REGISTER_MAP_SIZE-i));
             int tmp = register_map[j];
             register_map[j] = register_map[i];
             register_map[i] = tmp;
@@ -159,7 +157,7 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
     /* Prologue */
     |.code
     |->entry:
-    /* r32 and r14 are callee save */
+    /* r13, r14, and r15 are callee save */
     | push r13
     | push r14
     | push r15
@@ -168,6 +166,10 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
     if (map_register(1) != RDI) {
         | mov Rq(map_register(1)), rdi
     }
+
+    /* Allocate stack space and store address in r10 */
+    | sub rsp, STACK_SIZE
+    | mov Rq(map_register(10)), Rq(RSP)
 
     int i;
     for (i = 0; i < vm->num_insts; i++) {
@@ -469,6 +471,7 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         | mov Rq(RAX), Rq(map_register(0))
     }
     | ->exit2:
+    | add rsp, STACK_SIZE
     | pop r15
     | pop r14
     | pop r13
