@@ -111,6 +111,8 @@ ubpf_set_register_offset(int x)
     register_offset = x;
 }
 
+static void muldivmod(dasm_State **dasm, uint8_t opcode, int src, int dst, int32_t imm);
+
 |.actionlist actions
 
 ubpf_jit_fn
@@ -179,52 +181,9 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         case EBPF_OP_DIV_IMM:
         case EBPF_OP_DIV_REG:
         case EBPF_OP_MOD_IMM:
-        case EBPF_OP_MOD_REG: {
-            bool imm = inst.opcode == EBPF_OP_MUL_IMM ||
-                       inst.opcode == EBPF_OP_DIV_IMM ||
-                       inst.opcode == EBPF_OP_MOD_IMM;
-
-            bool mul = inst.opcode == EBPF_OP_MUL_IMM ||
-                       inst.opcode == EBPF_OP_MUL_REG;
-
-            bool div = inst.opcode == EBPF_OP_DIV_IMM ||
-                       inst.opcode == EBPF_OP_DIV_REG;
-
-            bool mod = inst.opcode == EBPF_OP_MOD_IMM ||
-                       inst.opcode == EBPF_OP_MOD_REG;
-
-            if (dst != RAX) {
-                | push rax
-            }
-            if (dst != RDX) {
-                | push rdx
-            }
-            if (imm) {
-                | mov Rq(RCX), inst.imm
-            } else {
-                | mov Rq(RCX), Rq(src)
-            }
-            | mov Rq(RAX), Rq(dst)
-            if (div || mod) {
-                | xor edx, edx
-                | div ecx
-            } else {
-                | mul ecx
-            }
-            if (dst != RDX) {
-                if (mod) {
-                    | mov Rq(dst), Rq(RDX)
-                }
-                | pop rdx
-            }
-            if (dst != RAX) {
-                if (div || mul) {
-                    | mov Rq(dst), Rq(RAX)
-                }
-                | pop rax
-            }
+        case EBPF_OP_MOD_REG:
+            muldivmod(dasm, inst.opcode, src, dst, inst.imm);
             break;
-        }
         case EBPF_OP_OR_IMM:
             | or Rd(dst), inst.imm
             break;
@@ -310,52 +269,9 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         case EBPF_OP_DIV64_IMM:
         case EBPF_OP_DIV64_REG:
         case EBPF_OP_MOD64_IMM:
-        case EBPF_OP_MOD64_REG: {
-            bool imm = inst.opcode == EBPF_OP_MUL64_IMM ||
-                       inst.opcode == EBPF_OP_DIV64_IMM ||
-                       inst.opcode == EBPF_OP_MOD64_IMM;
-
-            bool mul = inst.opcode == EBPF_OP_MUL64_IMM ||
-                       inst.opcode == EBPF_OP_MUL64_REG;
-
-            bool div = inst.opcode == EBPF_OP_DIV64_IMM ||
-                       inst.opcode == EBPF_OP_DIV64_REG;
-
-            bool mod = inst.opcode == EBPF_OP_MOD64_IMM ||
-                       inst.opcode == EBPF_OP_MOD64_REG;
-
-            if (dst != RAX) {
-                | push rax
-            }
-            if (dst != RDX) {
-                | push rdx
-            }
-            if (imm) {
-                | mov Rq(RCX), inst.imm
-            } else {
-                | mov Rq(RCX), Rq(src)
-            }
-            | mov Rq(RAX), Rq(dst)
-            if (div || mod) {
-                | xor edx, edx
-                | div rcx
-            } else {
-                | mul rcx
-            }
-            if (dst != RDX) {
-                if (mod) {
-                    | mov Rq(dst), Rq(RDX)
-                }
-                | pop rdx
-            }
-            if (dst != RAX) {
-                if (div || mul) {
-                    | mov Rq(dst), Rq(RAX)
-                }
-                | pop rax
-            }
+        case EBPF_OP_MOD64_REG:
+            muldivmod(dasm, inst.opcode, src, dst, inst.imm);
             break;
-        }
         case EBPF_OP_OR64_IMM:
             | or Rq(dst), inst.imm
             break;
@@ -572,4 +488,52 @@ error:
         munmap(jitted, jitted_size);
     }
     return NULL;
+}
+
+static void
+muldivmod(dasm_State **dasm, uint8_t opcode, int src, int dst, int32_t imm)
+{
+    bool mul = (opcode & EBPF_ALU_OP_MASK) == (EBPF_OP_MUL_IMM & EBPF_ALU_OP_MASK);
+    bool div = (opcode & EBPF_ALU_OP_MASK) == (EBPF_OP_DIV_IMM & EBPF_ALU_OP_MASK);
+    bool mod = (opcode & EBPF_ALU_OP_MASK) == (EBPF_OP_MOD_IMM & EBPF_ALU_OP_MASK);
+    bool is64 = (opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64;
+
+    if (dst != RAX) {
+        | push rax
+    }
+    if (dst != RDX) {
+        | push rdx
+    }
+    if (imm) {
+        | mov Rq(RCX), imm
+    } else {
+        | mov Rq(RCX), Rq(src)
+    }
+    | mov Rq(RAX), Rq(dst)
+    if (div || mod) {
+        | xor edx, edx
+        if (is64) {
+            | div rcx
+        } else {
+            | div ecx
+        }
+    } else {
+        if (is64) {
+            | mul rcx
+        } else {
+            | mul ecx
+        }
+    }
+    if (dst != RDX) {
+        if (mod) {
+            | mov Rq(dst), Rq(RDX)
+        }
+        | pop rdx
+    }
+    if (dst != RAX) {
+        if (div || mul) {
+            | mov Rq(dst), Rq(RAX)
+        }
+        | pop rax
+    }
 }

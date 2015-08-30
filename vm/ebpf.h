@@ -29,6 +29,9 @@ struct ebpf_inst {
     int32_t imm;
 };
 
+#define EBPF_CLS_MASK 0x07
+#define EBPF_ALU_OP_MASK 0xf0
+
 #define EBPF_CLS_LD 0x00
 #define EBPF_CLS_LDX 0x01
 #define EBPF_CLS_ST 0x02
