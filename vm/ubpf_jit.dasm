@@ -301,12 +301,6 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         case EBPF_OP_NEG64:
             | neg Rq(dst)
             break;
-#if 0
-        case EBPF_OP_MOD64_IMM:
-            break;
-        case EBPF_OP_MOD64_REG:
-            break;
-#endif
         case EBPF_OP_XOR64_IMM:
             | xor Rq(dst), inst.imm
             break;
