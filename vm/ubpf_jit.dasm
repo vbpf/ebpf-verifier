@@ -177,8 +177,26 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
 #if 0
         case EBPF_OP_MUL_IMM:
             break;
+#endif
         case EBPF_OP_MUL_REG:
+            if (dst != RAX) {
+                | push rax
+            }
+            if (dst != RDX) {
+                | push rdx
+            }
+            | mov Rq(RCX), Rq(src)
+            | mov Rq(RAX), Rq(dst)
+            | mul ecx
+            if (dst != RDX) {
+                | pop rdx
+            }
+            if (dst != RAX) {
+                | mov Rq(dst), Rq(RAX)
+                | pop rax
+            }
             break;
+#if 0
         case EBPF_OP_DIV_IMM:
             break;
         case EBPF_OP_DIV_REG:
