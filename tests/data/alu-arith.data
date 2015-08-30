@@ -30,5 +30,3 @@ div32 r0, r4
 exit
 -- result
 0x2a
--- no jit
-mul and div not supported

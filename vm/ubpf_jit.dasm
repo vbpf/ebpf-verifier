@@ -176,19 +176,28 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
             break;
         case EBPF_OP_MUL_IMM:
         case EBPF_OP_MUL_REG:
+        case EBPF_OP_DIV_IMM:
+        case EBPF_OP_DIV_REG:
             if (dst != RAX) {
                 | push rax
             }
             if (dst != RDX) {
                 | push rdx
             }
-            if (inst.opcode == EBPF_OP_MUL_IMM) {
+            if (inst.opcode == EBPF_OP_MUL_IMM ||
+                    inst.opcode == EBPF_OP_DIV_IMM) {
                 | mov Rq(RCX), inst.imm
             } else {
                 | mov Rq(RCX), Rq(src)
             }
             | mov Rq(RAX), Rq(dst)
-            | mul ecx
+            if (inst.opcode == EBPF_OP_MUL_IMM ||
+                    inst.opcode == EBPF_OP_MUL_REG) {
+                | mul ecx
+            } else {
+                | xor edx, edx
+                | div ecx
+            }
             if (dst != RDX) {
                 | pop rdx
             }
@@ -197,12 +206,6 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
                 | pop rax
             }
             break;
-#if 0
-        case EBPF_OP_DIV_IMM:
-            break;
-        case EBPF_OP_DIV_REG:
-            break;
-#endif
         case EBPF_OP_OR_IMM:
             | or Rd(dst), inst.imm
             break;
@@ -291,19 +294,28 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
             break;
         case EBPF_OP_MUL64_IMM:
         case EBPF_OP_MUL64_REG:
+        case EBPF_OP_DIV64_IMM:
+        case EBPF_OP_DIV64_REG:
             if (dst != RAX) {
                 | push rax
             }
             if (dst != RDX) {
                 | push rdx
             }
-            if (inst.opcode == EBPF_OP_MUL64_IMM) {
+            if (inst.opcode == EBPF_OP_MUL64_IMM ||
+                    inst.opcode == EBPF_OP_DIV64_IMM) {
                 | mov Rq(RCX), inst.imm
             } else {
                 | mov Rq(RCX), Rq(src)
             }
             | mov Rq(RAX), Rq(dst)
-            | mul rcx
+            if (inst.opcode == EBPF_OP_MUL64_IMM ||
+                    inst.opcode == EBPF_OP_MUL64_REG) {
+                | mul rcx
+            } else {
+                | xor edx, edx
+                | div rcx
+            }
             if (dst != RDX) {
                 | pop rdx
             }
@@ -312,12 +324,6 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
                 | pop rax
             }
             break;
-#if 0
-        case EBPF_OP_DIV64_IMM:
-            break;
-        case EBPF_OP_DIV64_REG:
-            break;
-#endif
         case EBPF_OP_OR64_IMM:
             | or Rq(dst), inst.imm
             break;

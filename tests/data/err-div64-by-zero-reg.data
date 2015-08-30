@@ -7,4 +7,4 @@ div r0, r1
 -- error
 uBPF error: division by zero at PC 2
 -- no jit
-div not supported
+div by zero not supported
