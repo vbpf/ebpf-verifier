@@ -7,5 +7,3 @@ exit
 0x0000000000000095
 -- result
 0x1122334455667788
--- no jit
-lddw not implemented

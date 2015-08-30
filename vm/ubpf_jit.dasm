@@ -452,6 +452,13 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
             | mov qword [Rq(dst)+inst.offset], Rq(src)
             break;
 
+        case EBPF_OP_LDDW: {
+            struct ebpf_inst inst2 = vm->insts[++i];
+            uint64_t imm = inst.imm | ((uint64_t)inst2.imm << 32);
+            | mov64 Rq(dst), imm
+            break;
+        }
+
         default:
             *errmsg = ubpf_error("unknown opcode 0x%02x at PC %d", inst.opcode, i);
             goto error;
