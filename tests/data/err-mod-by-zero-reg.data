@@ -2,6 +2,7 @@
 mov32 r0, 1
 mov32 r1, 0
 mod32 r0, r1
+exit
 -- result
 0xffffffffffffffff
 -- error

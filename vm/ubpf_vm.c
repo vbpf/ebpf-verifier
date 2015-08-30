@@ -89,8 +89,8 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
     while (1) {
         const uint16_t cur_pc = pc;
         if (pc >= num_insts) {
-            /* TODO validate control flow */
-            fprintf(stderr, "uBPF error: reached end of instructions\n");
+            /* Should have been caught by validate() */
+            fprintf(stderr, "internal uBPF error: reached end of instructions\n");
             return UINT64_MAX;
         }
 
@@ -472,11 +472,13 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
 static bool
 validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
 {
-    /* TODO validate registers */
-    /* TODO validate jmp offsets */
-
     if (num_insts >= MAX_INSTS) {
         *errmsg = ubpf_error("too many instructions (max %u)", MAX_INSTS);
+        return false;
+    }
+
+    if (insts[num_insts-1].opcode != EBPF_OP_EXIT) {
+        *errmsg = ubpf_error("no exit at end of instructions");
         return false;
     }
 

@@ -1,4 +1,5 @@
 -- asm
 ja -1
+exit
 -- error
 Failed to create VM: infinite loop at PC 0
