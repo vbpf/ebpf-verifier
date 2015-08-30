@@ -154,6 +154,11 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
 
     dasm_State **dasm = &d;
 
+    if ((ret = dasm_checkstep(dasm, 0)) != DASM_S_OK) {
+        *errmsg = ubpf_error("DynASM error %#x before prologue", ret);
+        goto error;
+    }
+
     /* Prologue */
     |.code
     |->entry:
@@ -170,6 +175,11 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
     /* Allocate stack space and store address in r10 */
     | sub rsp, STACK_SIZE
     | mov Rq(map_register(10)), Rq(RSP)
+
+    if ((ret = dasm_checkstep(dasm, 0)) != DASM_S_OK) {
+        *errmsg = ubpf_error("DynASM error %#x after prologue", ret);
+        goto error;
+    }
 
     int i;
     for (i = 0; i < vm->num_insts; i++) {
@@ -464,9 +474,8 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
             goto error;
         }
 
-        int err;
-        if ((err = dasm_checkstep(dasm, 0)) != DASM_S_OK) {
-            *errmsg = ubpf_error("DynASM error %#x at PC %d", err, i);
+        if ((ret = dasm_checkstep(dasm, 0)) != DASM_S_OK) {
+            *errmsg = ubpf_error("DynASM error %#x at PC %d: opcode %02x src %u dst %u", ret, i, inst.opcode, src, dst);
             goto error;
         }
     }
@@ -494,6 +503,11 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
     | mov rax, -1
     | jmp ->exit2
 
+    if ((ret = dasm_checkstep(dasm, 0)) != DASM_S_OK) {
+        *errmsg = ubpf_error("DynASM error %#x after epilogue", ret);
+        goto error;
+    }
+
     if ((ret = dasm_link(dasm, &jitted_size)) != DASM_S_OK) {
         *errmsg = ubpf_error("internal uBPF error: dasm_link failed: %d", ret);
         goto error;
@@ -514,6 +528,8 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         *errmsg = ubpf_error("internal uBPF error: mprotect failed: %s\n", strerror(errno));
         goto error;
     }
+
+    assert(labels[lbl_entry] == jitted);
 
     dasm_free(dasm);
     vm->jitted = labels[lbl_entry];
