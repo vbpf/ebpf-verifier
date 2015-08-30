@@ -125,7 +125,7 @@ ubpf_set_register_offset(int x)
     }
 }
 
-static void muldivmod(dasm_State **dasm, uint8_t opcode, int src, int dst, int32_t imm);
+static void muldivmod(dasm_State **dasm, uint16_t pc, uint8_t opcode, int src, int dst, int32_t imm);
 
 |.actionlist actions
 
@@ -162,6 +162,7 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
     /* r32 and r14 are callee save */
     | push r13
     | push r14
+    | push r15
 
     /* Move rdi into register 1 */
     if (map_register(1) != RDI) {
@@ -196,7 +197,7 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         case EBPF_OP_DIV_REG:
         case EBPF_OP_MOD_IMM:
         case EBPF_OP_MOD_REG:
-            muldivmod(dasm, inst.opcode, src, dst, inst.imm);
+            muldivmod(dasm, i, inst.opcode, src, dst, inst.imm);
             break;
         case EBPF_OP_OR_IMM:
             | or Rd(dst), inst.imm
@@ -284,7 +285,7 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         case EBPF_OP_DIV64_REG:
         case EBPF_OP_MOD64_IMM:
         case EBPF_OP_MOD64_REG:
-            muldivmod(dasm, inst.opcode, src, dst, inst.imm);
+            muldivmod(dasm, i, inst.opcode, src, dst, inst.imm);
             break;
         case EBPF_OP_OR64_IMM:
             | or Rq(dst), inst.imm
@@ -461,9 +462,21 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
     if (map_register(0) != RAX) {
         | mov Rq(RAX), Rq(map_register(0))
     }
+    | ->exit2:
+    | pop r15
     | pop r14
     | pop r13
     | ret
+
+    /* Division by zero handler */
+    const char *div_by_zero_fmt = "uBPF error: division by zero at PC %u\n";
+    | ->div_by_zero:
+    | mov64 rdi, (uintptr_t)stderr
+    | mov64 rsi, (uintptr_t)div_by_zero_fmt
+    | mov64 rax, (uintptr_t)fprintf
+    | call rax
+    | mov rax, -1
+    | jmp ->exit2
 
     if ((ret = dasm_link(dasm, &jitted_size)) != DASM_S_OK) {
         *errmsg = ubpf_error("internal uBPF error: dasm_link failed: %d", ret);
@@ -500,12 +513,24 @@ error:
 }
 
 static void
-muldivmod(dasm_State **dasm, uint8_t opcode, int src, int dst, int32_t imm)
+muldivmod(dasm_State **dasm, uint16_t pc, uint8_t opcode, int src, int dst, int32_t imm)
 {
     bool mul = (opcode & EBPF_ALU_OP_MASK) == (EBPF_OP_MUL_IMM & EBPF_ALU_OP_MASK);
     bool div = (opcode & EBPF_ALU_OP_MASK) == (EBPF_OP_DIV_IMM & EBPF_ALU_OP_MASK);
     bool mod = (opcode & EBPF_ALU_OP_MASK) == (EBPF_OP_MOD_IMM & EBPF_ALU_OP_MASK);
     bool is64 = (opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64;
+
+    if (div || mod) {
+        if (is64) {
+            | test Rq(src), Rq(src)
+        } else {
+            | test Rd(src), Rd(src)
+        }
+        | jnz >1
+        | mov rdx, pc
+        | jmp ->div_by_zero
+        |1:
+    }
 
     if (dst != RAX) {
         | push rax
