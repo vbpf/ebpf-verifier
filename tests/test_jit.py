@@ -36,7 +36,7 @@ def check_datafile(filename):
         memfile.flush()
 
     try:
-        for register_offset in xrange(0, 10):
+        for register_offset in xrange(0, 20):
             cmd = [VM]
             if memfile:
                 cmd.extend(['-m', memfile.name])

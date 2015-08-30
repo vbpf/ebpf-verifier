@@ -74,41 +74,55 @@
 #define R14 14
 /* r15 is unused */
 
-/* For testing, this changes the mapping between x86 and eBPF registers */
-static int register_offset = 0;
+static int register_map[] = {
+    RAX,
+    RDI,
+    RSI,
+    RDX,
+    R8,
+    R9,
+    R10,
+    R11,
+    R13,
+    R14,
+};
 
 /* Return the x86 register for the given eBPF register */
 static int
 map_register(int r)
 {
-    static int map[] = {
-        RAX,
-        RDI,
-        RSI,
-        RDX,
-        R8,
-        R9,
-        R10,
-        R11,
-        R13,
-        R14,
-    };
-
-    const int map_size = sizeof(map)/sizeof(map[0]);
+    const int map_size = sizeof(register_map)/sizeof(register_map[0]);
     assert(map_size == 10);
 
     if (r == 10) {
         return RSP;
     } else {
         assert(r < map_size);
-        return map[(r+register_offset) % map_size];
+        return register_map[r % map_size];
     }
 }
 
+/* For testing, this changes the mapping between x86 and eBPF registers */
 void
 ubpf_set_register_offset(int x)
 {
-    register_offset = x;
+    int i;
+    if (x < 10) {
+        int tmp[10];
+        memcpy(tmp, register_map, sizeof(register_map));
+        for (i = 0; i < 10; i++) {
+            register_map[i] = tmp[(i+x)%10];
+        }
+    } else {
+        /* Shuffle array */
+        unsigned int seed = x;
+        for (i = 0; i < 9; i++) {
+            int j = i + (rand_r(&seed) % (10-i));
+            int tmp = register_map[j];
+            register_map[j] = register_map[i];
+            register_map[i] = tmp;
+        }
+    }
 }
 
 static void muldivmod(dasm_State **dasm, uint8_t opcode, int src, int dst, int32_t imm);
