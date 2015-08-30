@@ -32,5 +32,3 @@ jne r4, 0x0, -10
 exit
 -- result
 0x1
--- no jit
-mod not implemented

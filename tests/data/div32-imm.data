@@ -1,0 +1,6 @@
+-- asm
+mov r0, 0xc
+div32 r0, 4
+exit
+-- result
+0x3

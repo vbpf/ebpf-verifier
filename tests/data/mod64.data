@@ -18,5 +18,3 @@ mod r0, 0x658f1778
 exit
 -- result
 0x30ba5a04
--- no jit
-mod not implemented
