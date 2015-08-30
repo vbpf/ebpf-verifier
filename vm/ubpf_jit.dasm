@@ -454,6 +454,12 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
             *errmsg = ubpf_error("unknown opcode 0x%02x at PC %d", inst.opcode, i);
             goto error;
         }
+
+        int err;
+        if ((err = dasm_checkstep(dasm, 0)) != DASM_S_OK) {
+            *errmsg = ubpf_error("DynASM error %#x at PC %d", err, i);
+            goto error;
+        }
     }
 
     /* Epilogue */
