@@ -382,8 +382,9 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
             | jge =>jmp_target
             break;
         case EBPF_OP_EXIT:
-            /* TODO omit if last instruction */
-            | jmp ->exit
+            if (i != vm->num_insts - 1) {
+                | jmp ->exit
+            }
             break;
 
         case EBPF_OP_LDXW:
