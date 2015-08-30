@@ -44,7 +44,7 @@ ubpf_create(const void *code, uint32_t code_len, char **errmsg)
         return NULL;
     }
 
-    struct ubpf_vm *vm = malloc(sizeof(*vm));
+    struct ubpf_vm *vm = calloc(1, sizeof(*vm));
     if (!vm) {
         return NULL;
     }
