@@ -380,7 +380,7 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
             break;
 
         case EBPF_OP_LDDW:
-            reg[inst.dst] = inst.imm | ((uint64_t)insts[pc++].imm << 32);
+            reg[inst.dst] = (uint32_t)inst.imm | ((uint64_t)insts[pc++].imm << 32);
             break;
 
         case EBPF_OP_JA:

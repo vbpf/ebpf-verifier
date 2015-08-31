@@ -464,7 +464,7 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
 
         case EBPF_OP_LDDW: {
             struct ebpf_inst inst2 = vm->insts[++i];
-            uint64_t imm = inst.imm | ((uint64_t)inst2.imm << 32);
+            uint64_t imm = (uint32_t)inst.imm | ((uint64_t)inst2.imm << 32);
             | mov64 Rq(dst), imm
             break;
         }
