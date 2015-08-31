@@ -1,5 +1,5 @@
 -- asm
-mov r0, 0xc
+lddw r0, 0x10000000c
 div32 r0, 4
 exit
 -- result

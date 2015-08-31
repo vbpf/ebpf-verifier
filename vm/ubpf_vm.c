@@ -70,6 +70,12 @@ ubpf_destroy(struct ubpf_vm *vm)
     free(vm);
 }
 
+static uint32_t
+u32(uint64_t x)
+{
+    return x;
+}
+
 uint64_t
 ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
 {
@@ -122,7 +128,7 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
             reg[inst.dst] &= UINT32_MAX;
             break;
         case EBPF_OP_DIV_IMM:
-            reg[inst.dst] /= inst.imm;
+            reg[inst.dst] = u32(reg[inst.dst]) / u32(inst.imm);
             reg[inst.dst] &= UINT32_MAX;
             break;
         case EBPF_OP_DIV_REG:
@@ -130,7 +136,7 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
                 fprintf(stderr, "uBPF error: division by zero at PC %u\n", cur_pc);
                 return UINT64_MAX;
             }
-            reg[inst.dst] /= reg[inst.src];
+            reg[inst.dst] = u32(reg[inst.dst]) / u32(reg[inst.src]);
             reg[inst.dst] &= UINT32_MAX;
             break;
         case EBPF_OP_OR_IMM:
@@ -158,11 +164,11 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
             reg[inst.dst] &= UINT32_MAX;
             break;
         case EBPF_OP_RSH_IMM:
-            reg[inst.dst] >>= inst.imm;
+            reg[inst.dst] = u32(reg[inst.dst]) >> inst.imm;
             reg[inst.dst] &= UINT32_MAX;
             break;
         case EBPF_OP_RSH_REG:
-            reg[inst.dst] >>= reg[inst.src];
+            reg[inst.dst] = u32(reg[inst.dst]) >> reg[inst.src];
             reg[inst.dst] &= UINT32_MAX;
             break;
         case EBPF_OP_NEG:
@@ -170,7 +176,7 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
             reg[inst.dst] &= UINT32_MAX;
             break;
         case EBPF_OP_MOD_IMM:
-            reg[inst.dst] %= inst.imm;
+            reg[inst.dst] = u32(reg[inst.dst]) % u32(inst.imm);
             reg[inst.dst] &= UINT32_MAX;
             break;
         case EBPF_OP_MOD_REG:
@@ -178,8 +184,7 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
                 fprintf(stderr, "uBPF error: division by zero at PC %u\n", cur_pc);
                 return UINT64_MAX;
             }
-            reg[inst.dst] %= reg[inst.src];
-            reg[inst.dst] &= UINT32_MAX;
+            reg[inst.dst] = u32(reg[inst.dst]) % u32(reg[inst.src]);
             break;
         case EBPF_OP_XOR_IMM:
             reg[inst.dst] ^= inst.imm;
@@ -202,7 +207,7 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
             reg[inst.dst] &= UINT32_MAX;
             break;
         case EBPF_OP_ARSH_REG:
-            reg[inst.dst] = (int32_t)reg[inst.dst] >> reg[inst.src];
+            reg[inst.dst] = (int32_t)reg[inst.dst] >> u32(reg[inst.src]);
             reg[inst.dst] &= UINT32_MAX;
             break;
 
