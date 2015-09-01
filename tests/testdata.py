@@ -11,7 +11,7 @@ def list_files():
 
     result = []
     for dirname, dirnames, filenames in os.walk(_test_data_dir):
-        dirname = (os.path.relpath(dirname, _test_data_dir) + '/')[2:]
+        dirname = (os.path.relpath(dirname, _test_data_dir) + '/').replace('./', '')
         for filename in filenames:
             if filename.endswith('.data') and not filename.startswith('.'):
                 result.append(dirname + filename)
