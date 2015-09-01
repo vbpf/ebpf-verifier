@@ -42,6 +42,17 @@ def read(name):
                 section_lines[cur_section].append(line)
     data = { section: '\n'.join(lines) for (section, lines) in section_lines.items() }
 
+    # Resolve links
+    for k in data:
+        if '@' in k:
+            del data[k]
+            section, path = k.split('@')
+            section = section.strip()
+            path = path.strip()
+            fullpath = os.path.join(_test_data_dir, os.path.dirname(name), path)
+            with file(fullpath) as f:
+                data[section] = f.read()
+
     # Special case: convert 'raw' section into binary
     # Each line is parsed as an integer representing an instruction.
     if 'raw' in data:
