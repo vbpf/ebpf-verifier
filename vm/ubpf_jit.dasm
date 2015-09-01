@@ -269,14 +269,22 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
                 | and Rd(dst), 0xffff
             } else if (inst.imm == 32) {
                 /* bswap of r8d+ is misassembled */
-                | mov Rq(RCX), Rq(dst)
-                | bswap ecx
-                | mov Rd(dst), ecx
+                if (dst < 8) {
+                    | bswap Rd(dst)
+                } else {
+                    | mov Rq(RCX), Rq(dst)
+                    | bswap ecx
+                    | mov Rd(dst), ecx
+                }
             } else if (inst.imm == 64) {
                 /* bswap of r8+ is misassembled */
-                | mov Rq(RCX), Rq(dst)
-                | bswap rcx
-                | mov Rq(dst), rcx
+                if (dst < 8) {
+                    | bswap Rq(dst)
+                } else {
+                    | mov Rq(RCX), Rq(dst)
+                    | bswap rcx
+                    | mov Rq(dst), rcx
+                }
             }
             break;
 
