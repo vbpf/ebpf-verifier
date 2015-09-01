@@ -34,6 +34,20 @@ def main():
     if 'mem' in data:
         writefile('mem', data['mem'])
 
+        # Probably a packet, so write out a pcap file
+        writefile('pcap',
+            struct.pack('=IHHIIIIIIII',
+                0xa1b2c3d4, # magic
+                2, 4, # version
+                0, # time zone offset
+                0, # time stamp accuracy
+                65535, # snapshot length
+                1, # link layer type
+                0, 0, # timestamp
+                len(data['mem']), # length
+                len(data['mem'])) # length
+            + data['mem'])
+
     if 'raw' in data:
         code = ''.join(struct.pack("=Q", x) for x in data['raw'])
     elif 'asm' in data:
