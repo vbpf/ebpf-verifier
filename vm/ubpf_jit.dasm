@@ -266,6 +266,7 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         case EBPF_OP_BE:
             if (inst.imm == 16) {
                 | rol Rw(dst), 8
+                | and Rd(dst), 0xffff
             } else if (inst.imm == 32) {
                 /* bswap of r8d+ is misassembled */
                 | mov Rq(RCX), Rq(dst)
