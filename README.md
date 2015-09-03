@@ -21,7 +21,7 @@ and a simple executable used by the testsuite.
 
 ## Compiling C to eBPF
 
-You'll need Clang and LLVM 3.7.
+You'll need [Clang 3.7] (http://llvm.org/releases/download.html#3.7.0).
 
     clang-3.7 -O2 -target bpf -c prog.c -o prog.o
     objcopy -I elf64-little -O binary prog.o prog.bin
