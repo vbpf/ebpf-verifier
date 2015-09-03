@@ -1,7 +1,7 @@
 PROG := tcp-sack
 
 $(PROG).asm: $(PROG).bin
-	../../../bin/ubpf-disassembler $^ $@
+	../../bin/ubpf-disassembler $^ $@
 
 $(PROG).bin: $(PROG).o
 	objcopy -I elf64-little -O binary $^ $@
