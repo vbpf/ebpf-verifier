@@ -81,25 +81,14 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
 {
     uint16_t pc = 0;
     const struct ebpf_inst *insts = vm->insts;
-    uint16_t num_insts = vm->num_insts;
     uint64_t reg[16];
     uint64_t stack[(STACK_SIZE+7)/8];
-
-    /* TODO remove this when the verifier can prove uninitialized registers are
-     * not read from */
-    memset(reg, 0xff, sizeof(reg));
 
     reg[1] = (uintptr_t)mem;
     reg[10] = (uintptr_t)stack + sizeof(stack);
 
     while (1) {
         const uint16_t cur_pc = pc;
-        if (pc >= num_insts) {
-            /* Should have been caught by validate() */
-            fprintf(stderr, "internal uBPF error: reached end of instructions\n");
-            return UINT64_MAX;
-        }
-
         struct ebpf_inst inst = insts[pc++];
 
         switch (inst.opcode) {
@@ -465,11 +454,6 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
             return reg[0];
 
         /* TODO CALL opcode */
-
-        default:
-            /* Should have been caught by validate() */
-            fprintf(stderr, "internal uBPF error: unknown opcode 0x%02x at PC %u\n", inst.opcode, cur_pc);
-            return UINT64_MAX;
         }
     }
 }
