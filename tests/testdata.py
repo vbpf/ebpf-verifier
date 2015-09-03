@@ -1,4 +1,5 @@
 import os
+import re
 
 _test_data_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
 
@@ -64,8 +65,13 @@ def read(name):
     #
     # Special case: convert 'mem' section into binary
     # The string '00 11\n22 33' results in "\x00\x11\x22\x33"
+    # Ignores hexdump prefix ending with a colon.
     if 'mem' in data:
-        hex_strs = data['mem'].split()
+        hex_strs = []
+        for line in data['mem'].splitlines():
+            if ':' in line:
+                line = line[(line.rindex(':')+1):]
+            hex_strs.extend(re.findall(r"[0-9A-Fa-f]{2}", line))
         data['mem'] = ''.join(map(lambda x: chr(int(x, 16)), hex_strs))
 
     return data
