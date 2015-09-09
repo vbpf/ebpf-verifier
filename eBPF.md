@@ -169,5 +169,5 @@ Opcode | Mnemonic            | Pseudocode
 0x6d   | jsgt dst, src, +off | PC += off if dst > src (signed)
 0x75   | jsge dst, imm, +off | PC += off if dst >= imm (signed)
 0x7d   | jsge dst, src, +off | PC += off if dst >= src (signed)
-0x85   | call imm            | PC = imm
+0x85   | call imm            | Function call
 0x95   | exit                | return r0
