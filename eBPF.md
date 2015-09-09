@@ -88,35 +88,36 @@ Opcode | Mnemonic      | Pseudocode
 
 ### 32-bit
 
-These instructions zero the upper 32 bits of the destination register.
+These instructions use only the lower 32 bits of their operands and zero the
+upper 32 bits of the destination register.
 
 Opcode | Mnemonic        | Pseudocode
 -------|-----------------|------------------------------
-0x04   | add32 dst, imm  | dst += imm; dst &= 0xffffffff
-0x0c   | add32 dst, src  | dst += src; dst &= 0xffffffff
-0x14   | sub32 dst, imm  | dst -= imm; dst &= 0xffffffff
-0x1c   | sub32 dst, src  | dst -= src; dst &= 0xffffffff
-0x24   | mul32 dst, imm  | dst *= imm; dst &= 0xffffffff
-0x2c   | mul32 dst, src  | dst *= src; dst &= 0xffffffff
-0x34   | div32 dst, imm  | dst /= imm; dst &= 0xffffffff
-0x3c   | div32 dst, src  | dst /= src; dst &= 0xffffffff
-0x44   | or32 dst, imm   | dst \|= imm; dst &= 0xffffffff
-0x4c   | or32 dst, src   | dst \|= src; dst &= 0xffffffff
-0x54   | and32 dst, imm  | dst &= imm; dst &= 0xffffffff
-0x5c   | and32 dst, src  | dst &= src; dst &= 0xffffffff
-0x64   | lsh32 dst, imm  | dst <<= imm; dst &= 0xffffffff
-0x6c   | lsh32 dst, src  | dst <<= src; dst &= 0xffffffff
-0x74   | rsh32 dst, imm  | dst >>= imm (logical); dst &= 0xffffffff
-0x7c   | rsh32 dst, src  | dst >>= src (logical); dst &= 0xffffffff
-0x84   | neg32 dst       | dst = -dst; dst &= 0xffffffff
-0x94   | mod32 dst, imm  | dst %= imm; dst &= 0xffffffff
-0x9c   | mod32 dst, src  | dst %= src; dst &= 0xffffffff
-0xa4   | xor32 dst, imm  | dst ^= imm; dst &= 0xffffffff
-0xac   | xor32 dst, src  | dst ^= src; dst &= 0xffffffff
-0xb4   | mov32 dst, imm  | dst = imm; dst &= 0xffffffff
-0xbc   | mov32 dst, src  | dst = src; dst &= 0xffffffff
-0xc4   | arsh32 dst, imm | dst >>= imm (arithmetic); dst &= 0xffffffff
-0xcc   | arsh32 dst, src | dst >>= src (arithmetic); dst &= 0xffffffff
+0x04   | add32 dst, imm  | dst += imm
+0x0c   | add32 dst, src  | dst += src
+0x14   | sub32 dst, imm  | dst -= imm
+0x1c   | sub32 dst, src  | dst -= src
+0x24   | mul32 dst, imm  | dst *= imm
+0x2c   | mul32 dst, src  | dst *= src
+0x34   | div32 dst, imm  | dst /= imm
+0x3c   | div32 dst, src  | dst /= src
+0x44   | or32 dst, imm   | dst \|= imm
+0x4c   | or32 dst, src   | dst \|= src
+0x54   | and32 dst, imm  | dst &= imm
+0x5c   | and32 dst, src  | dst &= src
+0x64   | lsh32 dst, imm  | dst <<= imm
+0x6c   | lsh32 dst, src  | dst <<= src
+0x74   | rsh32 dst, imm  | dst >>= imm (logical)
+0x7c   | rsh32 dst, src  | dst >>= src (logical)
+0x84   | neg32 dst       | dst = -dst
+0x94   | mod32 dst, imm  | dst %= imm
+0x9c   | mod32 dst, src  | dst %= src
+0xa4   | xor32 dst, imm  | dst ^= imm
+0xac   | xor32 dst, src  | dst ^= src
+0xb4   | mov32 dst, imm  | dst = imm
+0xbc   | mov32 dst, src  | dst = src
+0xc4   | arsh32 dst, imm | dst >>= imm (arithmetic)
+0xcc   | arsh32 dst, src | dst >>= src (arithmetic)
 
 ### Byteswap instructions
 
