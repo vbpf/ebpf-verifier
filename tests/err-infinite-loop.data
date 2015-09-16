@@ -2,4 +2,4 @@
 ja -1
 exit
 -- error
-Failed to create VM: infinite loop at PC 0
+Failed to load code: infinite loop at PC 0

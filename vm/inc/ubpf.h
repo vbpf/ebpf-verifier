@@ -22,8 +22,21 @@
 struct ubpf_vm;
 typedef uint64_t (*ubpf_jit_fn)(void *mem, size_t mem_len);
 
-struct ubpf_vm *ubpf_create(const void *code, uint32_t code_len, char **errmsg);
+struct ubpf_vm *ubpf_create(void);
 void ubpf_destroy(struct ubpf_vm *vm);
+
+/*
+ * Load code into a VM
+ *
+ * This must be done before calling ubpf_exec or ubpf_compile.
+ *
+ * 'code' should point to eBPF bytecodes and 'code_len' should be the size in
+ * bytes of that buffer.
+ *
+ * Returns 0 on success, -1 on error. In case of error a pointer to the error
+ * message will be stored in 'errmsg' and should be freed by the caller.
+ */
+int ubpf_load(struct ubpf_vm *vm, const void *code, uint32_t code_len, char **errmsg);
 
 uint64_t ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len);
 

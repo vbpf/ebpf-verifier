@@ -91,10 +91,15 @@ int main(int argc, char **argv)
         }
     }
 
+    struct ubpf_vm *vm = ubpf_create();
+    if (!vm) {
+        fprintf(stderr, "Failed to create VM\n");
+        return 1;
+    }
+
     char *errmsg;
-    struct ubpf_vm *vm = ubpf_create(code, code_len, &errmsg);
-    if (vm == NULL) {
-        fprintf(stderr, "Failed to create VM: %s\n", errmsg);
+    if (ubpf_load(vm, code, code_len, &errmsg) < 0) {
+        fprintf(stderr, "Failed to load code: %s\n", errmsg);
         free(errmsg);
         return 1;
     }

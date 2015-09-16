@@ -2,4 +2,4 @@
 ja +2
 exit
 -- error
-Failed to create VM: jump out of bounds at PC 0
+Failed to load code: jump out of bounds at PC 0

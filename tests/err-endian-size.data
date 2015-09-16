@@ -3,4 +3,4 @@
 0x00000000000010b7
 0x0000000000000095
 -- error
-Failed to create VM: invalid endian immediate at PC 0
+Failed to load code: invalid endian immediate at PC 0

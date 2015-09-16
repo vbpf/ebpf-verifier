@@ -31,33 +31,9 @@ static bool validate(const struct ebpf_inst *insts, uint32_t num_insts, char **e
 static bool bounds_check(void *addr, int size, const char *type, uint16_t cur_pc, void *mem, size_t mem_len, void *stack);
 
 struct ubpf_vm *
-ubpf_create(const void *code, uint32_t code_len, char **errmsg)
+ubpf_create(void)
 {
-    *errmsg = NULL;
-
-    if (code_len % 8 != 0) {
-        *errmsg = ubpf_error("code_len must be a multiple of 8");
-        return NULL;
-    }
-
-    if (!validate(code, code_len/8, errmsg)) {
-        return NULL;
-    }
-
-    struct ubpf_vm *vm = calloc(1, sizeof(*vm));
-    if (!vm) {
-        return NULL;
-    }
-
-    vm->insts = malloc(code_len);
-    if (vm->insts == NULL) {
-        return NULL;
-    }
-
-    memcpy(vm->insts, code, code_len);
-    vm->num_insts = code_len/sizeof(vm->insts[0]);
-
-    return vm;
+    return calloc(1, sizeof(struct ubpf_vm));
 }
 
 void
@@ -68,6 +44,37 @@ ubpf_destroy(struct ubpf_vm *vm)
     }
     free(vm->insts);
     free(vm);
+}
+
+int
+ubpf_load(struct ubpf_vm *vm, const void *code, uint32_t code_len, char **errmsg)
+{
+    *errmsg = NULL;
+
+    if (vm->insts) {
+        *errmsg = ubpf_error("code has already been loaded into this VM");
+        return -1;
+    }
+
+    if (code_len % 8 != 0) {
+        *errmsg = ubpf_error("code_len must be a multiple of 8");
+        return -1;
+    }
+
+    if (!validate(code, code_len/8, errmsg)) {
+        return -1;
+    }
+
+    vm->insts = malloc(code_len);
+    if (vm->insts == NULL) {
+        *errmsg = ubpf_error("out of memory");
+        return -1;
+    }
+
+    memcpy(vm->insts, code, code_len);
+    vm->num_insts = code_len/sizeof(vm->insts[0]);
+
+    return 0;
 }
 
 static uint32_t
@@ -83,6 +90,11 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
     const struct ebpf_inst *insts = vm->insts;
     uint64_t reg[16];
     uint64_t stack[(STACK_SIZE+7)/8];
+
+    if (!insts) {
+        /* Code must be loaded before we can execute */
+        return UINT64_MAX;
+    }
 
     reg[1] = (uintptr_t)mem;
     reg[10] = (uintptr_t)stack + sizeof(stack);

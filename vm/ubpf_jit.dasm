@@ -141,6 +141,11 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         return vm->jitted;
     }
 
+    if (!vm->insts) {
+        *errmsg = ubpf_error("code has not been loaded into this VM");
+        return NULL;
+    }
+
     |.section code
     dasm_init(&d, DASM_MAXSECTION);
 
