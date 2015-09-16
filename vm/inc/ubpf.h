@@ -52,6 +52,24 @@ int ubpf_register(struct ubpf_vm *vm, unsigned int idx, const char *name, void *
  */
 int ubpf_load(struct ubpf_vm *vm, const void *code, uint32_t code_len, char **errmsg);
 
+/*
+ * Load code from an ELF file
+ *
+ * This must be done before calling ubpf_exec or ubpf_compile and after
+ * registering all functions.
+ *
+ * 'elf' should point to a copy of an ELF file in memory and 'elf_len' should
+ * be the size in bytes of that buffer.
+ *
+ * The ELF file must be 64-bit little-endian with a single text section
+ * containing the eBPF bytecodes. This is compatible with the output of
+ * Clang.
+ *
+ * Returns 0 on success, -1 on error. In case of error a pointer to the error
+ * message will be stored in 'errmsg' and should be freed by the caller.
+ */
+int ubpf_load_elf(struct ubpf_vm *vm, const void *elf, size_t elf_len, char **errmsg);
+
 uint64_t ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len);
 
 ubpf_jit_fn ubpf_compile(struct ubpf_vm *vm, char **errmsg);

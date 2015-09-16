@@ -1,0 +1,4 @@
+-- pyelf
+symtab_shdr.sh_type = 'SHT_REL'
+-- error
+Failed to load code: rel section found but not supported

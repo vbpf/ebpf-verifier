@@ -23,6 +23,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <errno.h>
+#include <elf.h>
 #include "ubpf.h"
 
 void ubpf_set_register_offset(int x);
@@ -31,7 +32,7 @@ static void register_functions(struct ubpf_vm *vm);
 
 static void usage(const char *name)
 {
-    fprintf(stderr, "usage: %s [-h] [-j|--jit] [-m|--mem PATH] BINARY\n", name);
+    fprintf(stderr, "usage: %s [-h] [-j|--jit] [-m|--mem PATH] [-e|--elf] BINARY\n", name);
     fprintf(stderr, "\nExecutes the eBPF code in BINARY and prints the result to stdout.\n");
     fprintf(stderr, "If --mem is given then the specified file will be read and a pointer\nto its data passed in r1.\n");
     fprintf(stderr, "If --jit is given then the JIT compiler will be used.\n");
@@ -52,7 +53,7 @@ int main(int argc, char **argv)
     bool jit = false;
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hm:jr:", longopts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hm:jer:", longopts, NULL)) != -1) {
         switch (opt) {
         case 'm':
             mem_filename = optarg;
@@ -101,10 +102,24 @@ int main(int argc, char **argv)
 
     register_functions(vm);
 
+    /* 
+     * The ELF magic corresponds to an RSH instruction with an offset,
+     * which is invalid.
+     */
+    bool elf = code_len >= SELFMAG && !memcmp(code, ELFMAG, SELFMAG);
+
     char *errmsg;
-    if (ubpf_load(vm, code, code_len, &errmsg) < 0) {
+    int rv;
+    if (elf) {
+	rv = ubpf_load_elf(vm, code, code_len, &errmsg);
+    } else {
+	rv = ubpf_load(vm, code, code_len, &errmsg);
+    }
+
+    if (rv < 0) {
         fprintf(stderr, "Failed to load code: %s\n", errmsg);
         free(errmsg);
+        ubpf_destroy(vm);
         return 1;
     }
 
