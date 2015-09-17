@@ -26,9 +26,8 @@ and a simple executable used by the testsuite.
 You'll need [Clang 3.7] (http://llvm.org/releases/download.html#3.7.0).
 
     clang-3.7 -O2 -target bpf -c prog.c -o prog.o
-    objcopy -I elf64-little -O binary prog.o prog.bin
 
-You can then pass the contents of `prog.bin` to `ubpf_create`, or to the stdin of
+You can then pass the contents of `prog.o` to `ubpf_load_elf`, or to the stdin of
 the `vm/test` binary.
 
 ## Contributing
