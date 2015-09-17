@@ -183,8 +183,26 @@ gather_bytes(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint8_t e)
 }
 
 static void
+trash_registers(void)
+{
+    /* Overwrite all caller-save registers */
+    asm(
+        "mov $0xf0, %rax;"
+        "mov $0xf1, %rcx;"
+        "mov $0xf2, %rdx;"
+        "mov $0xf3, %rsi;"
+        "mov $0xf4, %rdi;"
+        "mov $0xf5, %r8;"
+        "mov $0xf6, %r9;"
+        "mov $0xf7, %r10;"
+        "mov $0xf8, %r11;"
+    );
+}
+
+static void
 register_functions(struct ubpf_vm *vm)
 {
     ubpf_register(vm, 0, "gather_bytes", gather_bytes);
     ubpf_register(vm, 1, "memfrob", memfrob);
+    ubpf_register(vm, 2, "trash_registers", trash_registers);
 }

@@ -35,8 +35,13 @@ def check_datafile(filename):
         memfile.write(data['mem'])
         memfile.flush()
 
+    num_register_offsets = 20
+    if 'no register offset' in data:
+        # The JIT relies on a fixed register mapping for the call instruction
+        num_register_offsets = 1
+
     try:
-        for register_offset in xrange(0, 20):
+        for register_offset in xrange(0, num_register_offsets):
             cmd = [VM]
             if memfile:
                 cmd.extend(['-m', memfile.name])

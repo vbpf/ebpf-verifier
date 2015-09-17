@@ -10,5 +10,5 @@ exit
 01 02 03 04 05 06 07 08
 -- result
 0x102292e2f2c0708
--- no jit
-CALL not yet implemented
+-- no register offset
+call instruction
