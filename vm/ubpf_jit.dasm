@@ -46,26 +46,34 @@
  * 1 -> rdi
  * 2 -> rsi
  * 3 -> rdx
- * 4 -> r8
- * 5 -> r9
- * 6 -> r10
- * 7 -> r11
- * 8 -> r13
- * 9 -> r14
- * 10 -> r15
+ * 4 -> r9
+ * 5 -> r8
+ * 6 -> rbx
+ * 7 -> r13
+ * 8 -> r14
+ * 9 -> r15
+ * 10 -> rbp
  *
- * r13, r14, and r15 are callee save.
- * The first argument for an x86 function comes in rdi and the second in rsi.
- * The return value for an x86 function is in rax.
+ * eBPF calling convention:
+ * - Registers r6-r10 are callee save.
+ * - Function call arguments go in r1-r5.
+ * - Return value goes in r0.
+ *
+ * x86 calling convention:
+ * - Registers rbp, rbx, r12, r13, r14, and r15 are callee save.
+ * - Function call arguments go in rdi, rsi, rdx, rcx, r8, and r9.
+ * - Return value goes in rax.
+ *
  * rcx (cl) is a required operand for shifts by a register. We reserve it.
- * rsp could not be used for the stack pointer due to encoding issues.
+ * rsp could not be used for the stack pointer due to DynASM issues.
+ * r12 could not be used due to DynASM issues.
  */
 #define RAX 0
 #define RCX 1
 #define RDX 2
 #define RBX 3
 #define RSP 4
-/* rbp is unused */
+#define RBP 5
 #define RSI 6
 #define RDI 7
 #define R8  8
@@ -83,13 +91,13 @@ static int register_map[REGISTER_MAP_SIZE] = {
     RDI,
     RSI,
     RDX,
-    R8,
     R9,
-    R10,
-    R11,
+    R8,
+    RBX,
     R13,
     R14,
     R15,
+    RBP,
 };
 
 /* Return the x86 register for the given eBPF register */
@@ -167,7 +175,10 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
     /* Prologue */
     |.code
     |->entry:
-    /* r13, r14, and r15 are callee save */
+    /* rbp, rbx, r13, r14, and r15 are callee save */
+    /* TODO don't save registers we don't write to */
+    | push rbp
+    | push rbx
     | push r13
     | push r14
     | push r15
@@ -423,18 +434,11 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
             | jge =>jmp_target
             break;
         case EBPF_OP_CALL:
-            /* TODO use callee save registers for these */
-            | push r10
-            | push r11
-            /* TODO fix register assignment */
-            | mov rcx, r8
-            | mov r8, r9
+            /* We reserve RCX for shifts */
+            | mov rcx, r9
             /* TODO direct call */
             | mov rax, vm->ext_funcs[inst.imm]
             | call rax
-            /* TODO use callee save registers for these */
-            | pop r11
-            | pop r10
             break;
         case EBPF_OP_EXIT:
             if (i != vm->num_insts - 1) {
@@ -516,6 +520,8 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
     | pop r15
     | pop r14
     | pop r13
+    | pop rbx
+    | pop rbp
     | ret
 
     /* Division by zero handler */
