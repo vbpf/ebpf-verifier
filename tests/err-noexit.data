@@ -1,4 +1,4 @@
 -- asm
 mov32 r0, 0
 -- error
-Failed to create VM: no exit at end of instructions
+Failed to load code: no exit at end of instructions

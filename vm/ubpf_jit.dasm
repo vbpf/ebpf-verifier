@@ -141,6 +141,11 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         return vm->jitted;
     }
 
+    if (!vm->insts) {
+        *errmsg = ubpf_error("code has not been loaded into this VM");
+        return NULL;
+    }
+
     |.section code
     dasm_init(&d, DASM_MAXSECTION);
 
@@ -416,6 +421,20 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
         case EBPF_OP_JSGE_REG:
             | cmp Rq(dst), Rq(src)
             | jge =>jmp_target
+            break;
+        case EBPF_OP_CALL:
+            /* TODO use callee save registers for these */
+            | push r10
+            | push r11
+            /* TODO fix register assignment */
+            | mov rcx, r8
+            | mov r8, r9
+            /* TODO direct call */
+            | mov rax, vm->ext_funcs[inst.imm]
+            | call rax
+            /* TODO use callee save registers for these */
+            | pop r11
+            | pop r10
             break;
         case EBPF_OP_EXIT:
             if (i != vm->num_insts - 1) {

@@ -2,4 +2,4 @@
 0x0000000000000006
 0x0000000000000095
 -- error
-Failed to create VM: unknown opcode 0x06 at PC 0
+Failed to load code: unknown opcode 0x06 at PC 0

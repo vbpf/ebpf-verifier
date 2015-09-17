@@ -22,8 +22,35 @@
 struct ubpf_vm;
 typedef uint64_t (*ubpf_jit_fn)(void *mem, size_t mem_len);
 
-struct ubpf_vm *ubpf_create(const void *code, uint32_t code_len, char **errmsg);
+struct ubpf_vm *ubpf_create(void);
 void ubpf_destroy(struct ubpf_vm *vm);
+
+/*
+ * Register an external function
+ *
+ * The immediate field of a CALL instruction is an index into an array of
+ * functions registered by the user. This API associates a function with
+ * an index.
+ *
+ * 'name' should be a string with a lifetime longer than the VM.
+ *
+ * Returns 0 on success, -1 on error.
+ */
+int ubpf_register(struct ubpf_vm *vm, unsigned int idx, const char *name, void *fn);
+
+/*
+ * Load code into a VM
+ *
+ * This must be done before calling ubpf_exec or ubpf_compile and after
+ * registering all functions.
+ *
+ * 'code' should point to eBPF bytecodes and 'code_len' should be the size in
+ * bytes of that buffer.
+ *
+ * Returns 0 on success, -1 on error. In case of error a pointer to the error
+ * message will be stored in 'errmsg' and should be freed by the caller.
+ */
+int ubpf_load(struct ubpf_vm *vm, const void *code, uint32_t code_len, char **errmsg);
 
 uint64_t ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len);
 

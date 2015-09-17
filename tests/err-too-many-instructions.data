@@ -65537,4 +65537,4 @@
 0x00000000000001b7
 0x0000000000000095
 -- error
-Failed to create VM: too many instructions (max 65536)
+Failed to load code: too many instructions (max 65536)

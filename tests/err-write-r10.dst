@@ -2,4 +2,4 @@
 mov r10, 1
 exit
 -- error
-Failed to create VM: invalid destination register at PC 0
+Failed to load code: invalid destination register at PC 0
