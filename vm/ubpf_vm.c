@@ -26,14 +26,32 @@
 
 #define MAX_INSTS 65536
 #define STACK_SIZE 128
+#define MAX_EXT_FUNCS 64
 
-static bool validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg);
+static bool validate(const struct ubpf_vm *vm, const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg);
 static bool bounds_check(void *addr, int size, const char *type, uint16_t cur_pc, void *mem, size_t mem_len, void *stack);
 
 struct ubpf_vm *
 ubpf_create(void)
 {
-    return calloc(1, sizeof(struct ubpf_vm));
+    struct ubpf_vm *vm = calloc(1, sizeof(*vm));
+    if (vm == NULL) {
+        return NULL;
+    }
+
+    vm->ext_funcs = calloc(MAX_EXT_FUNCS, sizeof(*vm->ext_funcs));
+    if (vm->ext_funcs == NULL) {
+        ubpf_destroy(vm);
+        return NULL;
+    }
+
+    vm->ext_func_names = calloc(MAX_EXT_FUNCS, sizeof(*vm->ext_func_names));
+    if (vm->ext_func_names == NULL) {
+        ubpf_destroy(vm);
+        return NULL;
+    }
+
+    return vm;
 }
 
 void
@@ -43,7 +61,21 @@ ubpf_destroy(struct ubpf_vm *vm)
         munmap(vm->jitted, vm->jitted_size);
     }
     free(vm->insts);
+    free(vm->ext_funcs);
+    free(vm->ext_func_names);
     free(vm);
+}
+
+int
+ubpf_register(struct ubpf_vm *vm, unsigned int idx, const char *name, void *fn)
+{
+    if (idx >= MAX_EXT_FUNCS) {
+        return -1;
+    }
+
+    vm->ext_funcs[idx] = (ext_func)fn;
+    vm->ext_func_names[idx] = name;
+    return 0;
 }
 
 int
@@ -61,7 +93,7 @@ ubpf_load(struct ubpf_vm *vm, const void *code, uint32_t code_len, char **errmsg
         return -1;
     }
 
-    if (!validate(code, code_len/8, errmsg)) {
+    if (!validate(vm, code, code_len/8, errmsg)) {
         return -1;
     }
 
@@ -464,14 +496,15 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
             break;
         case EBPF_OP_EXIT:
             return reg[0];
-
-        /* TODO CALL opcode */
+        case EBPF_OP_CALL:
+            reg[0] = vm->ext_funcs[inst.imm](reg[1], reg[2], reg[3], reg[4], reg[5]);
+            break;
         }
     }
 }
 
 static bool
-validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
+validate(const struct ubpf_vm *vm, const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
 {
     if (num_insts >= MAX_INSTS) {
         *errmsg = ubpf_error("too many instructions (max %u)", MAX_INSTS);
@@ -597,6 +630,17 @@ validate(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg)
                 return false;
             } else if (insts[new_pc].opcode == 0) {
                 *errmsg = ubpf_error("jump to middle of lddw at PC %d", i);
+                return false;
+            }
+            break;
+
+        case EBPF_OP_CALL:
+            if (inst.imm < 0 || inst.imm >= MAX_EXT_FUNCS) {
+                *errmsg = ubpf_error("invalid call immediate at PC %d", i);
+                return false;
+            }
+            if (!vm->ext_funcs[inst.imm]) {
+                *errmsg = ubpf_error("call to nonexistent function %u at PC %d", inst.imm, i);
                 return false;
             }
             break;

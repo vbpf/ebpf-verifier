@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#define _GNU_SOURCE
 #include <inttypes.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -26,6 +27,7 @@
 
 void ubpf_set_register_offset(int x);
 static void *readfile(const char *path, size_t maxlen, size_t *len);
+static void register_functions(struct ubpf_vm *vm);
 
 static void usage(const char *name)
 {
@@ -97,6 +99,8 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    register_functions(vm);
+
     char *errmsg;
     if (ubpf_load(vm, code, code_len, &errmsg) < 0) {
         fprintf(stderr, "Failed to load code: %s\n", errmsg);
@@ -166,4 +170,21 @@ static void *readfile(const char *path, size_t maxlen, size_t *len)
         *len = offset;
     }
     return data;
+}
+
+static uint64_t
+gather_bytes(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint8_t e)
+{
+    return ((uint64_t)a << 32) |
+        ((uint32_t)b << 24) |
+        ((uint32_t)c << 16) |
+        ((uint16_t)d << 8) |
+        e;
+}
+
+static void
+register_functions(struct ubpf_vm *vm)
+{
+    ubpf_register(vm, 0, "gather_bytes", gather_bytes);
+    ubpf_register(vm, 1, "memfrob", memfrob);
 }

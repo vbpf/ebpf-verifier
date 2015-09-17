@@ -26,9 +26,23 @@ struct ubpf_vm *ubpf_create(void);
 void ubpf_destroy(struct ubpf_vm *vm);
 
 /*
+ * Register an external function
+ *
+ * The immediate field of a CALL instruction is an index into an array of
+ * functions registered by the user. This API associates a function with
+ * an index.
+ *
+ * 'name' should be a string with a lifetime longer than the VM.
+ *
+ * Returns 0 on success, -1 on error.
+ */
+int ubpf_register(struct ubpf_vm *vm, unsigned int idx, const char *name, void *fn);
+
+/*
  * Load code into a VM
  *
- * This must be done before calling ubpf_exec or ubpf_compile.
+ * This must be done before calling ubpf_exec or ubpf_compile and after
+ * registering all functions.
  *
  * 'code' should point to eBPF bytecodes and 'code_len' should be the size in
  * bytes of that buffer.
