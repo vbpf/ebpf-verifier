@@ -12,4 +12,4 @@ script:
   - make -C vm COVERAGE=1
   - nosetests -v
 after_success:
-  - coveralls --gcov-options '\-lp' -i $PWD/vm/ubpf_vm.c -i $PWD/vm/ubpf_jit.dasm
+  - coveralls --gcov-options '\-lp' -i $PWD/vm/ubpf_vm.c -i $PWD/vm/ubpf_jit.dasm -i $PWD/vm/ubpf_loader.c
