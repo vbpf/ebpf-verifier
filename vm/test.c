@@ -139,7 +139,7 @@ static void *readfile(const char *path, size_t maxlen, size_t *len)
     }
 
     if (file == NULL) {
-        fprintf(stderr, "Failed to open %s: %s", path, strerror(errno));
+        fprintf(stderr, "Failed to open %s: %s\n", path, strerror(errno));
         return NULL;
     }
 
@@ -151,7 +151,7 @@ static void *readfile(const char *path, size_t maxlen, size_t *len)
     }
 
     if (ferror(file)) {
-        fprintf(stderr, "Failed to read %s: %s", path, strerror(errno));
+        fprintf(stderr, "Failed to read %s: %s\n", path, strerror(errno));
         fclose(file);
         free(data);
         return NULL;
