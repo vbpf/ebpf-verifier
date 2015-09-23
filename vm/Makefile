@@ -12,15 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ifeq ($(COVERAGE),1)
-COVERAGE_CFLAGS := -fprofile-arcs -ftest-coverage
-COVERAGE_LDFLAGS := -fprofile-arcs
-endif
-
 DYNASM := ../dynasm
 
-CFLAGS := -Wall -Werror -Iinc -I$(DYNASM) -O2 -g $(COVERAGE_CFLAGS)
-LDFLAGS := $(COVERAGE_LDFLAGS)
+CFLAGS := -Wall -Werror -Iinc -I$(DYNASM) -O2 -g
+
+ifeq ($(COVERAGE),1)
+CFLAGS += -fprofile-arcs -ftest-coverage
+LDFLAGS += -fprofile-arcs
+endif
+
+ifeq ($(ASAN),1)
+CFLAGS += -fsanitize=address
+LDFLAGS += -fsanitize=address
+endif
 
 all: libubpf.a test
 
