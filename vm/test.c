@@ -24,6 +24,7 @@
 #include <getopt.h>
 #include <errno.h>
 #include <elf.h>
+#include <math.h>
 #include "ubpf.h"
 
 void ubpf_set_register_offset(int x);
@@ -214,10 +215,17 @@ trash_registers(void)
     );
 }
 
+static uint32_t
+sqrti(uint32_t x)
+{
+    return sqrt(x);
+}
+
 static void
 register_functions(struct ubpf_vm *vm)
 {
     ubpf_register(vm, 0, "gather_bytes", gather_bytes);
     ubpf_register(vm, 1, "memfrob", memfrob);
     ubpf_register(vm, 2, "trash_registers", trash_registers);
+    ubpf_register(vm, 3, "sqrti", sqrti);
 }

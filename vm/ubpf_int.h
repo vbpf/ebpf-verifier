@@ -33,5 +33,6 @@ struct ubpf_vm {
 };
 
 char *ubpf_error(const char *fmt, ...);
+unsigned int ubpf_lookup_registered_function(struct ubpf_vm *vm, const char *name);
 
 #endif
