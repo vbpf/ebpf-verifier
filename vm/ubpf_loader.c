@@ -24,12 +24,27 @@
 #include "ubpf_int.h"
 #include <elf.h>
 
+struct bounds {
+    const void *base;
+    uint64_t size;
+};
+
+static const void *
+bounds_check(struct bounds *bounds, uint64_t offset, uint64_t size)
+{
+    if (offset + size > bounds->size || offset + size < offset) {
+        return NULL;
+    }
+    return bounds->base + offset;
+}
+
 int
 ubpf_load_elf(struct ubpf_vm *vm, const void *elf, size_t elf_size, char **errmsg)
 {
-    const Elf64_Ehdr *ehdr = elf;
+    struct bounds b = { .base=elf, .size=elf_size };
 
-    if (elf_size < sizeof(*ehdr)) {
+    const Elf64_Ehdr *ehdr = bounds_check(&b, 0, sizeof(*ehdr));
+    if (!ehdr) {
         *errmsg = ubpf_error("not enough data for ELF header");
         goto error;
     }
@@ -69,19 +84,13 @@ ubpf_load_elf(struct ubpf_vm *vm, const void *elf, size_t elf_size, char **errms
         goto error;
     }
 
-    if (ehdr->e_shoff == 0 || ehdr->e_shoff + ehdr->e_shentsize * ehdr->e_shnum > elf_size || ehdr->e_shoff + ehdr->e_shentsize * ehdr->e_shnum < ehdr->e_shoff) {
-        *errmsg = ubpf_error("bad section header offset or size");
-        goto error;
-    }
-
     const Elf64_Shdr *text_shdr = NULL;
 
-    const Elf64_Shdr *shdr = elf + ehdr->e_shoff;
     int i;
     for (i = 0; i < ehdr->e_shnum; i++) {
-        if (shdr->sh_offset + shdr->sh_size > elf_size ||
-                shdr->sh_offset + shdr->sh_size < shdr->sh_offset) {
-            *errmsg = ubpf_error("bad section offset or size");
+        const Elf64_Shdr *shdr = bounds_check(&b, ehdr->e_shoff + i*ehdr->e_shentsize, sizeof(*shdr));
+        if (!shdr) {
+            *errmsg = ubpf_error("bad section header offset or size");
             goto error;
         }
 
@@ -92,8 +101,6 @@ ubpf_load_elf(struct ubpf_vm *vm, const void *elf, size_t elf_size, char **errms
             *errmsg = ubpf_error("rel section found but not supported");
             goto error;
         }
-
-        shdr = (void *)shdr + ehdr->e_shentsize;
     }
 
     if (!text_shdr) {
@@ -101,7 +108,13 @@ ubpf_load_elf(struct ubpf_vm *vm, const void *elf, size_t elf_size, char **errms
         goto error;
     }
 
-    return ubpf_load(vm, elf + text_shdr->sh_offset, text_shdr->sh_size, errmsg);
+    const void *text_data = bounds_check(&b, text_shdr->sh_offset, text_shdr->sh_size);
+    if (!text_data) {
+        *errmsg = ubpf_error("bad text section offset or size");
+        goto error;
+    }
+
+    return ubpf_load(vm, text_data, text_shdr->sh_size, errmsg);
 
 error:
     return -1;
