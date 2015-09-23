@@ -15,6 +15,7 @@
 DYNASM := ../dynasm
 
 CFLAGS := -Wall -Werror -Iinc -I$(DYNASM) -O2 -g
+LDLIBS := -lm
 
 ifeq ($(COVERAGE),1)
 CFLAGS += -fprofile-arcs -ftest-coverage
