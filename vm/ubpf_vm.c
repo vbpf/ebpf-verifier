@@ -78,6 +78,19 @@ ubpf_register(struct ubpf_vm *vm, unsigned int idx, const char *name, void *fn)
     return 0;
 }
 
+unsigned int
+ubpf_lookup_registered_function(struct ubpf_vm *vm, const char *name)
+{
+    int i;
+    for (i = 0; i < MAX_EXT_FUNCS; i++) {
+        const char *other = vm->ext_func_names[i];
+        if (other && !strcmp(other, name)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 int
 ubpf_load(struct ubpf_vm *vm, const void *code, uint32_t code_len, char **errmsg)
 {

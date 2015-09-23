@@ -1,4 +1,4 @@
 -- pyelf
-ehdr.e_shnum = 1024
+ehdr.e_shentsize = 1024
 -- error
 Failed to load code: bad section header offset or size
