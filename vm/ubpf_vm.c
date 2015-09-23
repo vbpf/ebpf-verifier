@@ -524,7 +524,7 @@ validate(const struct ubpf_vm *vm, const struct ebpf_inst *insts, uint32_t num_i
         return false;
     }
 
-    if (insts[num_insts-1].opcode != EBPF_OP_EXIT) {
+    if (num_insts == 0 || insts[num_insts-1].opcode != EBPF_OP_EXIT) {
         *errmsg = ubpf_error("no exit at end of instructions");
         return false;
     }
