@@ -32,7 +32,9 @@ all: libubpf.a test
 %.c: %.dasm minilua
 	LUA_PATH=$(DYNASM)/?.lua ./minilua $(DYNASM)/dynasm.lua -o $@ $<
 
-libubpf.a: ubpf_vm.o ubpf_jit.o ubpf_loader.o
+ubpf_jit_x86_64.o: ubpf_jit_x86_64.c ubpf_jit_x86_64.h
+
+libubpf.a: ubpf_vm.o ubpf_jit_x86_64.o ubpf_loader.o
 	ar rc $@ $^
 
 test: test.o libubpf.a
