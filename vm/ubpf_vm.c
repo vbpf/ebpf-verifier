@@ -24,8 +24,6 @@
 #include <sys/mman.h>
 #include "ubpf_int.h"
 
-#define MAX_INSTS 65536
-#define STACK_SIZE 128
 #define MAX_EXT_FUNCS 64
 
 static bool validate(const struct ubpf_vm *vm, const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg);
