@@ -1,6 +1,0 @@
-[submodule "luajit-2.0"]
-	path = luajit-2.0
-	url = git://github.com/floodlight/luajit-2.0
-[submodule "dynasm"]
-	path = dynasm
-	url = https://github.com/MoarVM/dynasm.git
