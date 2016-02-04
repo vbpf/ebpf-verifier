@@ -178,7 +178,7 @@ ubpf_load_elf(struct ubpf_vm *vm, const void *elf, size_t elf_size, char **errms
             const Elf64_Rel *r = &rs[j];
 
             if (ELF64_R_TYPE(r->r_info) != 2) {
-                *errmsg = ubpf_error("bad relocation type");
+                *errmsg = ubpf_error("bad relocation type %u", ELF64_R_TYPE(r->r_info));
                 goto error;
             }
 
