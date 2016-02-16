@@ -228,4 +228,5 @@ register_functions(struct ubpf_vm *vm)
     ubpf_register(vm, 1, "memfrob", memfrob);
     ubpf_register(vm, 2, "trash_registers", trash_registers);
     ubpf_register(vm, 3, "sqrti", sqrti);
+    ubpf_register(vm, 4, "strcmp_ext", strcmp);
 }
