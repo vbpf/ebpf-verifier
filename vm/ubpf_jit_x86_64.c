@@ -92,11 +92,11 @@ translate(struct ubpf_vm *vm, struct jit_state *state, char **errmsg)
         emit_mov(state, RDI, map_register(1));
     }
 
-    /* Allocate stack space */
-    emit_alu64_imm32(state, 0x81, 5, RSP, STACK_SIZE);
-
     /* Copy stack pointer to R10 */
     emit_mov(state, RSP, map_register(10));
+
+    /* Allocate stack space */
+    emit_alu64_imm32(state, 0x81, 5, RSP, STACK_SIZE);
 
     int i;
     for (i = 0; i < vm->num_insts; i++) {
