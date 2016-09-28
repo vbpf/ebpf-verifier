@@ -48,6 +48,7 @@ int main(int argc, char **argv)
         { .name = "mem", .val = 'm', .has_arg=1 },
         { .name = "jit", .val = 'j' },
         { .name = "register-offset", .val = 'r', .has_arg=1 },
+        { }
     };
 
     const char *mem_filename = NULL;
