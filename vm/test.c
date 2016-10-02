@@ -33,7 +33,7 @@ static void register_functions(struct ubpf_vm *vm);
 
 static void usage(const char *name)
 {
-    fprintf(stderr, "usage: %s [-h] [-j|--jit] [-m|--mem PATH] [-e|--elf] BINARY\n", name);
+    fprintf(stderr, "usage: %s [-h] [-j|--jit] [-m|--mem PATH] BINARY\n", name);
     fprintf(stderr, "\nExecutes the eBPF code in BINARY and prints the result to stdout.\n");
     fprintf(stderr, "If --mem is given then the specified file will be read and a pointer\nto its data passed in r1.\n");
     fprintf(stderr, "If --jit is given then the JIT compiler will be used.\n");
@@ -46,15 +46,16 @@ int main(int argc, char **argv)
     struct option longopts[] = {
         { .name = "help", .val = 'h', },
         { .name = "mem", .val = 'm', .has_arg=1 },
-        { .name = "jit", .val = 'm' },
+        { .name = "jit", .val = 'j' },
         { .name = "register-offset", .val = 'r', .has_arg=1 },
+        { }
     };
 
     const char *mem_filename = NULL;
     bool jit = false;
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hm:jer:", longopts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hm:jr:", longopts, NULL)) != -1) {
         switch (opt) {
         case 'm':
             mem_filename = optarg;
