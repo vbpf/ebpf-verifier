@@ -21,8 +21,9 @@
 #ifndef UBPF_JIT_X86_64_H
 #define UBPF_JIT_X86_64_H
 
-#include <string.h>
+#include <assert.h>
 #include <stdint.h>
+#include <string.h>
 
 #define RAX 0
 #define RCX 1
