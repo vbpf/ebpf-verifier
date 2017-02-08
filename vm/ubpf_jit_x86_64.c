@@ -1,5 +1,6 @@
 /*
  * Copyright 2015 Big Switch Networks, Inc
+ * Copyright 2017 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -512,6 +513,17 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
     size_t jitted_size;
     struct jit_state state;
 
+    if (vm->jitted) {
+        return vm->jitted;
+    }
+
+    *errmsg = NULL;
+
+    if (!vm->insts) {
+        *errmsg = ubpf_error("code has not been loaded into this VM");
+        return NULL;
+    }
+
     state.offset = 0;
     state.size = 65536;
     state.buf = calloc(state.size, 1);
@@ -519,19 +531,8 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
     state.jumps = calloc(MAX_INSTS, sizeof(state.jumps[0]));
     state.num_jumps = 0;
 
-    *errmsg = NULL;
-
-    if (vm->jitted) {
-        return vm->jitted;
-    }
-
-    if (!vm->insts) {
-        *errmsg = ubpf_error("code has not been loaded into this VM");
-        return NULL;
-    }
-
     if (translate(vm, &state, errmsg) < 0) {
-        goto error;
+        goto out;
     }
 
     resolve_jumps(vm, &state);
@@ -540,25 +541,25 @@ ubpf_compile(struct ubpf_vm *vm, char **errmsg)
     jitted = mmap(0, jitted_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (jitted == MAP_FAILED) {
         *errmsg = ubpf_error("internal uBPF error: mmap failed: %s\n", strerror(errno));
-        goto error;
+        goto out;
     }
 
     memcpy(jitted, state.buf, jitted_size);
 
     if (mprotect(jitted, jitted_size, PROT_READ | PROT_EXEC) < 0) {
         *errmsg = ubpf_error("internal uBPF error: mprotect failed: %s\n", strerror(errno));
-        goto error;
+        goto out;
     }
 
-    free(state.buf);
     vm->jitted = jitted;
     vm->jitted_size = jitted_size;
-    return vm->jitted;
 
-error:
-    if (jitted) {
+out:
+    free(state.buf);
+    free(state.pc_locs);
+    free(state.jumps);
+    if (jitted && vm->jitted == NULL) {
         munmap(jitted, jitted_size);
     }
-    free(state.buf);
-    return NULL;
+    return vm->jitted;
 }
