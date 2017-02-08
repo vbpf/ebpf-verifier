@@ -1,5 +1,6 @@
 /*
  * Copyright 2015 Big Switch Networks, Inc
+ * Copyright 2017 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -117,6 +118,8 @@ int main(int argc, char **argv)
     } else {
 	rv = ubpf_load(vm, code, code_len, &errmsg);
     }
+
+    free(code);
 
     if (rv < 0) {
         fprintf(stderr, "Failed to load code: %s\n", errmsg);
