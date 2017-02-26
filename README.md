@@ -18,7 +18,7 @@ and JIT compiler for x86-64.
 
 ## Building
 
-Run `make -c vm` to build the VM. This produces a static library `libubpf.a`
+Run `make -C vm` to build the VM. This produces a static library `libubpf.a`
 and a simple executable used by the testsuite.
 
 ## Compiling C to eBPF
