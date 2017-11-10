@@ -41,6 +41,10 @@ JMP_OPCODES = {
     7: 'jsge',
     8: 'call',
     9: 'exit',
+    10: 'jlt',
+    11: 'jle',
+    12: 'jslt',
+    13: 'jsle',
 }
 
 MODES = {

@@ -54,6 +54,10 @@ JMP_CMP_OPS = {
     'jne': 5,
     'jsgt': 6,
     'jsge': 7,
+    'jlt': 10,
+    'jle': 11,
+    'jslt': 12,
+    'jsle': 13,
 }
 
 JMP_MISC_OPS = {
