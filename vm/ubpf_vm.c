@@ -465,6 +465,26 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
                 pc += inst.offset;
             }
             break;
+        case EBPF_OP_JLT_IMM:
+            if (reg[inst.dst] < (uint32_t)inst.imm) {
+                pc += inst.offset;
+            }
+            break;
+        case EBPF_OP_JLT_REG:
+            if (reg[inst.dst] < reg[inst.src]) {
+                pc += inst.offset;
+            }
+            break;
+        case EBPF_OP_JLE_IMM:
+            if (reg[inst.dst] <= (uint32_t)inst.imm) {
+                pc += inst.offset;
+            }
+            break;
+        case EBPF_OP_JLE_REG:
+            if (reg[inst.dst] <= reg[inst.src]) {
+                pc += inst.offset;
+            }
+            break;
         case EBPF_OP_JSET_IMM:
             if (reg[inst.dst] & inst.imm) {
                 pc += inst.offset;
@@ -502,6 +522,26 @@ ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len)
             break;
         case EBPF_OP_JSGE_REG:
             if ((int64_t)reg[inst.dst] >= (int64_t)reg[inst.src]) {
+                pc += inst.offset;
+            }
+            break;
+        case EBPF_OP_JSLT_IMM:
+            if ((int64_t)reg[inst.dst] < inst.imm) {
+                pc += inst.offset;
+            }
+            break;
+        case EBPF_OP_JSLT_REG:
+            if ((int64_t)reg[inst.dst] < (int64_t)reg[inst.src]) {
+                pc += inst.offset;
+            }
+            break;
+        case EBPF_OP_JSLE_IMM:
+            if ((int64_t)reg[inst.dst] <= inst.imm) {
+                pc += inst.offset;
+            }
+            break;
+        case EBPF_OP_JSLE_REG:
+            if ((int64_t)reg[inst.dst] <= (int64_t)reg[inst.src]) {
                 pc += inst.offset;
             }
             break;
@@ -623,6 +663,10 @@ validate(const struct ubpf_vm *vm, const struct ebpf_inst *insts, uint32_t num_i
         case EBPF_OP_JGT_IMM:
         case EBPF_OP_JGE_REG:
         case EBPF_OP_JGE_IMM:
+        case EBPF_OP_JLT_REG:
+        case EBPF_OP_JLT_IMM:
+        case EBPF_OP_JLE_REG:
+        case EBPF_OP_JLE_IMM:
         case EBPF_OP_JSET_REG:
         case EBPF_OP_JSET_IMM:
         case EBPF_OP_JNE_REG:
@@ -631,6 +675,10 @@ validate(const struct ubpf_vm *vm, const struct ebpf_inst *insts, uint32_t num_i
         case EBPF_OP_JSGT_REG:
         case EBPF_OP_JSGE_IMM:
         case EBPF_OP_JSGE_REG:
+        case EBPF_OP_JSLT_IMM:
+        case EBPF_OP_JSLT_REG:
+        case EBPF_OP_JSLE_IMM:
+        case EBPF_OP_JSLE_REG:
             if (inst.offset == -1) {
                 *errmsg = ubpf_error("infinite loop at PC %d", i);
                 return false;

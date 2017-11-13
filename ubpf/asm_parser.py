@@ -39,7 +39,7 @@ mem_instruction = \
     (keywords(mem_load_ops) + reg + "," + memref) | \
     (keywords(["lddw"]) + reg + "," + imm)
 
-jmp_cmp_ops = ['jeq', 'jgt', 'jge', 'jset', 'jne', 'jsgt', 'jsge']
+jmp_cmp_ops = ['jeq', 'jgt', 'jge', 'jlt', 'jle', 'jset', 'jne', 'jsgt', 'jsge', 'jslt', 'jsle']
 jmp_instruction = \
     (keywords(jmp_cmp_ops) + reg + "," + (reg | imm) + "," + offset) | \
     (keywords(['ja']) + offset) | \

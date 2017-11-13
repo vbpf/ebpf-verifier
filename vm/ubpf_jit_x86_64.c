@@ -293,6 +293,22 @@ translate(struct ubpf_vm *vm, struct jit_state *state, char **errmsg)
             emit_cmp(state, src, dst);
             emit_jcc(state, 0x83, target_pc);
             break;
+        case EBPF_OP_JLT_IMM:
+            emit_cmp_imm32(state, dst, inst.imm);
+            emit_jcc(state, 0x82, target_pc);
+            break;
+        case EBPF_OP_JLT_REG:
+            emit_cmp(state, src, dst);
+            emit_jcc(state, 0x82, target_pc);
+            break;
+        case EBPF_OP_JLE_IMM:
+            emit_cmp_imm32(state, dst, inst.imm);
+            emit_jcc(state, 0x86, target_pc);
+            break;
+        case EBPF_OP_JLE_REG:
+            emit_cmp(state, src, dst);
+            emit_jcc(state, 0x86, target_pc);
+            break;
         case EBPF_OP_JSET_IMM:
             emit_alu64_imm32(state, 0xf7, 0, dst, inst.imm);
             emit_jcc(state, 0x85, target_pc);
@@ -324,6 +340,22 @@ translate(struct ubpf_vm *vm, struct jit_state *state, char **errmsg)
         case EBPF_OP_JSGE_REG:
             emit_cmp(state, src, dst);
             emit_jcc(state, 0x8d, target_pc);
+            break;
+        case EBPF_OP_JSLT_IMM:
+            emit_cmp_imm32(state, dst, inst.imm);
+            emit_jcc(state, 0x8c, target_pc);
+            break;
+        case EBPF_OP_JSLT_REG:
+            emit_cmp(state, src, dst);
+            emit_jcc(state, 0x8c, target_pc);
+            break;
+        case EBPF_OP_JSLE_IMM:
+            emit_cmp_imm32(state, dst, inst.imm);
+            emit_jcc(state, 0x8e, target_pc);
+            break;
+        case EBPF_OP_JSLE_REG:
+            emit_cmp(state, src, dst);
+            emit_jcc(state, 0x8e, target_pc);
             break;
         case EBPF_OP_CALL:
             /* We reserve RCX for shifts */
