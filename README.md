@@ -9,9 +9,9 @@ Userspace eBPF VM
 
 This project aims to create an Apache-licensed library for executing eBPF programs. The primary implementation of eBPF lives in the Linux kernel, but due to its GPL license it can't be used in many projects.
 
-[Linux documentation for the eBPF instruction set] (https://www.kernel.org/doc/Documentation/networking/filter.txt)
+[Linux documentation for the eBPF instruction set](https://www.kernel.org/doc/Documentation/networking/filter.txt)
 
-[Instruction set reference] (https://github.com/iovisor/bpf-docs/blob/master/eBPF.md)
+[Instruction set reference](https://github.com/iovisor/bpf-docs/blob/master/eBPF.md)
 
 This project includes an eBPF assembler, disassembler, interpreter,
 and JIT compiler for x86-64.
@@ -23,7 +23,7 @@ and a simple executable used by the testsuite.
 
 ## Compiling C to eBPF
 
-You'll need [Clang 3.7] (http://llvm.org/releases/download.html#3.7.0).
+You'll need [Clang 3.7](http://llvm.org/releases/download.html#3.7.0).
 
     clang-3.7 -O2 -target bpf -c prog.c -o prog.o
 
