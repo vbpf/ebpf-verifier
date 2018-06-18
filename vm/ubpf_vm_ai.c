@@ -84,59 +84,59 @@ compute_pending(const struct ebpf_inst *insts, uint32_t num_insts)
     return pending;
 }
 
-void
-print_pending(int* pending, const struct ebpf_inst *insts, uint32_t num_insts)
+bool
+abs_step(const struct ebpf_inst* insts, struct abs_state *states, uint16_t pc, char** errmsg)
 {
-    for (uint16_t pc = 0; pc < num_insts; pc++) {
-        fprintf(stderr, "%d: pending %d (ins 0x%x)", pc, pending[pc], insts[pc].opcode);
-        if (is_jmp(insts[pc].opcode))
-            fprintf(stderr, " jmp to %d", pc + 1 + insts[pc].offset);
-        fprintf(stderr, "\n");
+    struct ebpf_inst inst = insts[pc];
+    if (is_jmp(inst.opcode)) {
+        uint16_t target = pc + 1 + inst.offset;
+        abs_join(&states[target], abs_execute_assume(&states[pc], inst, true));
+        abs_join(&states[pc + 1], abs_execute_assume(&states[pc], inst, false));
+    } else if (!is_unconditional_jmp(inst.opcode)) {
+        if (inst.opcode == EBPF_OP_LDDW) {
+            inst.opcode = EBPF_OP_MOV64_REG;
+            inst.src = 12;
+            states[pc].reg[12] = (uint32_t)inst.imm | ((uint64_t)insts[pc+1].imm << 32);
+        }
+        abs_join(&states[pc + 1], abs_execute(&states[pc], inst));
+        if (inst.opcode & EBPF_MODE_MEM) {
+            if (!abs_bounds_check(&states[pc], inst)) {
+                *errmsg = "AI failed to pass bound checks";
+                return false;
+            }
+        }
     }
+    return true;
 }
 
 bool
 ai_validate(const struct ebpf_inst *insts, uint32_t num_insts, void* ctx, char** errmsg)
 {
     int *pending = compute_pending(insts, num_insts);
-    // states[i] contains the state just before instruction i
-    //struct abs_state *states = malloc(num_insts * sizeof(*states));
-    //for (int i = 0; i < num_insts; i++) {
-    //    states[i] = abs_bottom;
-    //}
+
     uint16_t *worklist = malloc(num_insts * sizeof(*worklist));
     int wi = 0;
     worklist[wi++] = 0;
 
-    //uint64_t stack[(STACK_SIZE+7)/8];
-    //abs_initialize_state(&states[0], ctx, stack);
+    // states[i] contains the state just before instruction i
+    struct abs_state *states = malloc(num_insts * sizeof(*states));
+    for (int i = 0; i < num_insts; i++) {
+       states[i] = abs_bottom;
+    }
+
+    uint64_t stack[(STACK_SIZE+7)/8];
+    abs_initialize_state(&states[0], ctx, stack);
     
+    bool res = true;
     while (wi != 0) {
         assert(wi > 0);
         uint16_t pc = worklist[--wi];
 
-        /*
-        struct ebpf_inst inst = insts[pc];
-        if (is_jmp(inst.opcode)) {
-            uint16_t target = pc + 1 + inst.offset;
-            //fprintf(stderr, "push wi %d\n", wi);
-            //abs_join(&states[target], abs_execute_assume(&states[cur_pc], inst, true));
-            //abs_join(&states[pc], abs_execute_assume(&states[cur_pc], inst, false));
-        } else {
-            if (inst.opcode == EBPF_OP_LDDW) {
-                inst.opcode = EBPF_OP_MOV64_REG;
-                inst.src = 12;
-                //states[pc].reg[12] = (uint32_t)inst.imm | ((uint64_t)insts[pc+1].imm << 32);
-            }
-            //abs_join(&states[pc], abs_execute(&states[cur_pc], inst));
-            //if (inst.opcode & EBPF_MODE_MEM) {
-            //    if (!abs_bounds_check(&states[cur_pc], inst)) {
-            //        *errmsg = "AI failed to pass bound checks";
-            //        return false;
-            //    }
-            //}
+        bool ok = abs_step(insts, states, pc, errmsg);
+        if (!ok) {
+            res = false;
+            break;
         }
-        */
 
         if (is_jmp(insts[pc].opcode)) {
             uint16_t target = pc + 1 + insts[pc].offset;
@@ -154,5 +154,20 @@ ai_validate(const struct ebpf_inst *insts, uint32_t num_insts, void* ctx, char**
         }
     }
 
-    return true;
+    free(pending);
+    free(worklist);
+    free(states);
+
+    return res;
+}
+
+void
+print_pending(int* pending, const struct ebpf_inst *insts, uint32_t num_insts)
+{
+    for (uint16_t pc = 0; pc < num_insts; pc++) {
+        fprintf(stderr, "%d: pending %d (ins 0x%x)", pc, pending[pc], insts[pc].opcode);
+        if (is_jmp(insts[pc].opcode))
+            fprintf(stderr, " jmp to %d", pc + 1 + insts[pc].offset);
+        fprintf(stderr, "\n");
+    }
 }
