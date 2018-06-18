@@ -73,17 +73,26 @@ compute_pending(const struct ebpf_inst *insts, uint32_t num_insts)
 
     for (uint16_t pc = 0; pc < num_insts; pc++) {
         if (is_jmp(insts[pc].opcode)) {
-            pending[pc + insts[pc].offset]++;
+            pending[pc + 1 + insts[pc].offset]++;
         }
         if (!is_unconditional_jmp(insts[pc].opcode)) {
+            if (insts[pc].opcode == EBPF_OP_LDDW)
+                pc++;
             pending[pc + 1]++;
         }
     }
-
-    for (uint16_t pc = 0; pc < num_insts; pc++) {
-        //fprintf(stderr, "%d: pending %d (ins 0x%x) jmp to %d\n", pc, pending[pc], insts[pc].opcode, is_jmp(insts[pc].opcode) ? pc + insts[pc].offset : -1);
-    }
     return pending;
+}
+
+void
+print_pending(int* pending, const struct ebpf_inst *insts, uint32_t num_insts)
+{
+    for (uint16_t pc = 0; pc < num_insts; pc++) {
+        fprintf(stderr, "%d: pending %d (ins 0x%x)", pc, pending[pc], insts[pc].opcode);
+        if (is_jmp(insts[pc].opcode))
+            fprintf(stderr, " jmp to %d", pc + 1 + insts[pc].offset);
+        fprintf(stderr, "\n");
+    }
 }
 
 bool
@@ -91,53 +100,33 @@ ai_validate(const struct ebpf_inst *insts, uint32_t num_insts, void* ctx, char**
 {
     int *pending = compute_pending(insts, num_insts);
     // states[i] contains the state just before instruction i
-    struct abs_state *states = malloc(num_insts * sizeof(*states));
-    for (int i = 0; i < num_insts; i++) {
-        states[i] = abs_bottom;
-    }
+    //struct abs_state *states = malloc(num_insts * sizeof(*states));
+    //for (int i = 0; i < num_insts; i++) {
+    //    states[i] = abs_bottom;
+    //}
     uint16_t *worklist = malloc(num_insts * sizeof(*worklist));
     int wi = 0;
+    worklist[wi++] = 0;
 
     //uint64_t stack[(STACK_SIZE+7)/8];
     //abs_initialize_state(&states[0], ctx, stack);
     
-    uint16_t pc = 0;
-    while (1) {
-        assert(pending[pc] > 0);
-        pending[pc]--;
+    while (wi != 0) {
+        assert(wi > 0);
+        uint16_t pc = worklist[--wi];
 
-        if (pending[pc] > 0) {
-            // Can't continue; jump back
-            //fprintf(stderr, "pop wi %d\n", wi);
-            assert(wi > 0);
-            pc = worklist[--wi];
-            continue;
-        }
+        /*
         struct ebpf_inst inst = insts[pc];
-
-        if (inst.opcode == EBPF_OP_JA) {
-            pc += inst.offset;
-            //copy state?
-            continue;
-        }
-
-        if (inst.opcode == EBPF_OP_EXIT) {
-            return true;
-        }
-
         if (is_jmp(inst.opcode)) {
-            assert(wi < num_insts);
-            uint16_t target = pc + inst.offset;
+            uint16_t target = pc + 1 + inst.offset;
             //fprintf(stderr, "push wi %d\n", wi);
-            worklist[wi++] = target;
             //abs_join(&states[target], abs_execute_assume(&states[cur_pc], inst, true));
             //abs_join(&states[pc], abs_execute_assume(&states[cur_pc], inst, false));
         } else {
             if (inst.opcode == EBPF_OP_LDDW) {
                 inst.opcode = EBPF_OP_MOV64_REG;
                 inst.src = 12;
-                states[pc].reg[12] = (uint32_t)inst.imm | ((uint64_t)insts[pc+1].imm << 32);
-                pc++;
+                //states[pc].reg[12] = (uint32_t)inst.imm | ((uint64_t)insts[pc+1].imm << 32);
             }
             //abs_join(&states[pc], abs_execute(&states[cur_pc], inst));
             //if (inst.opcode & EBPF_MODE_MEM) {
@@ -147,6 +136,23 @@ ai_validate(const struct ebpf_inst *insts, uint32_t num_insts, void* ctx, char**
             //    }
             //}
         }
-        pc++;
+        */
+
+        if (is_jmp(insts[pc].opcode)) {
+            uint16_t target = pc + 1 + insts[pc].offset;
+            pending[target]--;
+            if (pending[target] == 0)
+                worklist[wi++] = target;
+        }
+
+        if (!is_unconditional_jmp(insts[pc].opcode)) {
+            if (insts[pc].opcode == EBPF_OP_LDDW)
+                pc++;
+            pending[pc + 1]--;
+            if (pending[pc + 1] == 0)
+                worklist[wi++] = pc + 1;
+        }
     }
+
+    return true;
 }
