@@ -104,11 +104,12 @@ ubpf_load(struct ubpf_vm *vm, const void *code, uint32_t code_len, char **errmsg
         return -1;
     }
 
-    bool ai_validate(const struct ebpf_inst *insts, uint32_t num_insts, void* ctx);
-    if (!ai_validate(code, code_len/8, NULL)) {
+    if (!validate(vm, code, code_len/8, errmsg)) {
         return -1;
     }
-    if (!validate(vm, code, code_len/8, errmsg)) {
+    
+    bool ai_validate(const struct ebpf_inst *insts, uint32_t num_insts, void* ctx, char** errmsg);
+    if (!ai_validate(code, code_len/8, NULL, errmsg)) {
         return -1;
     }
 
