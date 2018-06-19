@@ -109,15 +109,16 @@ abs_step(const struct ebpf_inst* insts, struct abs_state *states, uint16_t pc, c
             inst.src = 12;
             states[pc].reg[12] = (uint32_t)inst.imm | ((uint64_t)insts[pc+1].imm << 32);
         }
-        abs_join(&states[target], abs_execute(&states[pc], inst));
-        if (!abs_bounds_check(&states[pc], inst)) {
-            char* msg = malloc(sizeof("AI failed to pass bound checks"));
-            strcpy(*errmsg, msg);
+        struct abs_state next = abs_execute(&states[pc], inst);
+        abs_join(&states[target], next);
+        if (abs_bounds_fail(&states[pc], inst)) {
+            *errmsg = malloc(sizeof("AI failed to pass bound checks"));
+            strcpy(*errmsg, "AI failed to pass bound checks");
             return false;
         }
-        if (!abs_divzero_check(&states[pc], inst)) {
-            char* msg = malloc(sizeof("AI failed to pass divzero checks"));
-            strcpy(*errmsg, msg);
+        if (abs_divzero_fail(&states[pc], inst)) {
+            *errmsg = malloc(sizeof("AI failed to pass divzero checks"));
+            strcpy(*errmsg, "AI failed to pass divzero checks");
             return false;
         }
     }
@@ -136,6 +137,7 @@ ai_validate(const struct ebpf_inst *insts, uint32_t num_insts, void* ctx, char**
     for (int i = 0; i < num_insts; i++) {
        states[i] = abs_bottom;
     }
+    states[0].bot = false;
 
     uint64_t stack[(STACK_SIZE+7)/8];
     abs_initialize_state(&states[0], ctx, stack);

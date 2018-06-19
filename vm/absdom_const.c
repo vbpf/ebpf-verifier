@@ -10,7 +10,17 @@
 
 #include "ubpf_vm_ai.h"
 
-const struct abs_state abs_bottom = { { 0 }, { 0 } }; // second zero makes unknowns
+void logg(const char* format, ...)
+{
+    FILE *fp = fopen("log.txt","a");
+    va_list argptr;
+    va_start(argptr, format);
+    vfprintf(fp, format, argptr);
+    va_end(argptr);
+    fclose(fp);
+}
+
+const struct abs_state abs_bottom = { { 0 }, { 0 }, true }; // second zero makes unknowns
 
 void 
 abs_initialize_state(struct abs_state *state, void* ctx, void* stack)
@@ -30,6 +40,7 @@ abs_execute_assume(struct abs_state *_state, struct ebpf_inst inst, bool taken)
 {
     struct abs_state res = *_state;
     struct abs_state* state = &res;
+    abs_print(_state, __func__);
     // TODO: check feasibility; this might cause problems with pending.
     if ((taken && inst.opcode == EBPF_OP_JEQ_IMM)
     || (!taken && inst.opcode == EBPF_OP_JNE_IMM)) {
@@ -42,16 +53,23 @@ abs_execute_assume(struct abs_state *_state, struct ebpf_inst inst, bool taken)
         state->reg[inst.dst] = state->reg[inst.src];
         // we don't track correlation
     }
+    abs_print(&res, __func__);
     return res;
 }
 
 void
 abs_join(struct abs_state *state, struct abs_state other)
-{  
-    for (int r = 1; r < 11; r++) {
-        if (!other.known[r] || state->reg[r] != other.known[r])
-            state->known[r] = false;
+{
+    abs_print(state, __func__);
+    if (state->bot) {
+        *state = other;
+    } else {
+        for (int r = 1; r < 11; r++) {
+            if (!other.known[r] || state->reg[r] != other.known[r])
+                state->known[r] = false;
+        }
     }
+    abs_print(state, __func__);
 }
 
 static bool
@@ -93,16 +111,16 @@ u32(uint64_t x)
 }
 
 bool
-abs_bounds_check(struct abs_state *state, struct ebpf_inst inst) {
-    if (inst.opcode & EBPF_MODE_MEM) {
-        return bounds_check((void *)state->reg[inst.src] + inst.offset, access_width(inst.opcode),
+abs_bounds_fail(struct abs_state *state, struct ebpf_inst inst) {
+    if (access_width(inst.opcode) >0 && inst.opcode & EBPF_MODE_MEM) {
+        return !bounds_check((void *)state->reg[inst.src] + inst.offset, access_width(inst.opcode),
                 (void*)state->reg[10], 4096, (void*)state->reg[1]);
     }
-    return true;
+    return false;
 }
 
 bool
-abs_divzero_check(struct abs_state *state, struct ebpf_inst inst) {
+abs_divzero_fail(struct abs_state *state, struct ebpf_inst inst) {
     return (inst.opcode == EBPF_OP_DIV64_REG && (!state->known[inst.dst] ||     state->reg[inst.dst]  == 0))
         || (inst.opcode == EBPF_OP_DIV_REG   && (!state->known[inst.dst] || u32(state->reg[inst.dst]) == 0));
 }
@@ -111,6 +129,7 @@ struct abs_state
 abs_execute(struct abs_state *_state, struct ebpf_inst inst)
 {
     struct abs_state res = *_state;
+    abs_print(_state, __func__);
     struct abs_state* state = &res;
     if (inst.opcode == EBPF_OP_CALL) {
         for (int r=1; r <= 6; r++) {
@@ -359,5 +378,31 @@ abs_execute(struct abs_state *_state, struct ebpf_inst inst)
     default: break;
     }
     #undef reg
+    abs_print(&res, __func__);
     return res;
+}
+
+static int count;
+
+void
+abs_print(struct abs_state *state, const char* s)
+{
+
+    FILE *fp = fopen("log.txt","a");
+    fprintf(fp, "%15s: ", s);
+    fprintf(fp, "%d) ", count);
+    if (state->bot) {
+        fprintf(fp, "BOT");
+    } else {
+        for (int r=0; r < 11; r++) {
+            fprintf(fp, "r%d: ", r);
+            if (state->known[r])
+                fprintf(fp, "%lu; ", state->reg[r]);
+            else
+                fprintf(fp, "?; ");
+        }
+    }
+    fprintf(fp, "\n");
+    count++;
+    fclose(fp);
 }
