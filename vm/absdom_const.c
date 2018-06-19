@@ -25,16 +25,14 @@ void logg(const char* format, ...)
 const struct abs_state abs_bottom = { { 0 }, { 0 }, true }; // second zero makes unknowns
 
 void 
-abs_initialize_state(struct abs_state *state, void* ctx, void* stack)
+abs_initialize_state(struct abs_state *state)
 {
     for (int i = 0; i < 11; i++) {
         state->known[i] = false;
     }
-    state->known[1] = true;
-    state->reg[1] = (uint64_t)stack;
+    state->known[1] = false;
 
-    state->known[10] = true;
-    state->reg[10] = (uint64_t)ctx;
+    state->known[10] = false;
 }
 
 struct abs_state
@@ -74,19 +72,6 @@ abs_join(struct abs_state *state, struct abs_state other)
     abs_print(state, __func__);
 }
 
-static bool
-bounds_check(void *addr, int size, void *mem, size_t mem_len, void *stack)
-{
-    if (mem && (addr >= mem && (addr + size) <= (mem + mem_len))) {
-        /* Context access */
-        return true;
-    } else if (addr >= stack && (addr + size) <= (stack + STACK_SIZE)) {
-        /* Stack access */
-        return true;
-    }
-    return false;
-}
-
 static int
 access_width(uint8_t opcode) {
     switch (opcode) {
@@ -114,9 +99,13 @@ u32(uint64_t x)
 
 bool
 abs_bounds_fail(struct abs_state *state, struct ebpf_inst inst) {
-    if (access_width(inst.opcode) >0 && inst.opcode & EBPF_MODE_MEM) {
-        return !bounds_check((void *)state->reg[inst.src] + inst.offset, access_width(inst.opcode),
-                (void*)state->reg[10], 4096, (void*)state->reg[1]);
+    if (access_width(inst.opcode) > 0 && (inst.opcode & EBPF_MODE_MEM)) {
+        uint8_t r = (inst.opcode & EBPF_CLS_LD) || (inst.opcode & EBPF_CLS_LDX) ? inst.src : inst.dst;
+        if (r == 1) { // FIX: SHOULD BE 10! ubpf plays it differently for some reason
+            return inst.offset < 0 || inst.offset > STACK_SIZE;
+        }
+        //!bounds_check((void *)state->reg[r] + inst.offset, access_width(inst.opcode),(void*)state->reg[10], 4096);
+        return true; 
     }
     return false;
 }

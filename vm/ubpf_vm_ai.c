@@ -124,7 +124,7 @@ abs_step(const struct ebpf_inst* insts, struct abs_state *states, uint16_t pc, c
 }
 
 bool
-ai_validate(const struct ebpf_inst *insts, uint32_t num_insts, void* ctx, char** errmsg)
+ai_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
 {
     int *pending = compute_pending(insts, num_insts);
 
@@ -137,8 +137,7 @@ ai_validate(const struct ebpf_inst *insts, uint32_t num_insts, void* ctx, char**
     }
     states[0].bot = false;
 
-    uint64_t stack[(STACK_SIZE+7)/8];
-    abs_initialize_state(&states[0], ctx, stack);
+    abs_initialize_state(&states[0]);
     
     bool res = true;
     uint16_t pc = 0;
@@ -172,18 +171,3 @@ ai_validate(const struct ebpf_inst *insts, uint32_t num_insts, void* ctx, char**
 
     return res;
 }
-/*
-static void
-print_pending(int* pending, const struct ebpf_inst *insts, uint32_t num_insts)
-{
-    for (uint16_t pc = 0; pc < num_insts; pc++) {
-        fprintf(stderr, "%d: pending %d (ins 0x%x)", pc, pending[pc], insts[pc].opcode);
-        
-        uint16_t target;
-        if (is_jmp(insts[pc], pc, &target)) {
-            fprintf(stderr, " jmp to %d", target);
-        }
-        fprintf(stderr, "\n");
-    }
-}
-*/
