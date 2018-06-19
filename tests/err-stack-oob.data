@@ -2,8 +2,6 @@
 stb [r10], 0
 exit
 -- error pattern
-uBPF error: out of bounds memory store at PC 0, addr .*, size 1
--- result
-0xffffffffffffffff
+Failed to load code: out of bounds memory store at PC 0
 -- no jit
 stack oob check not implemented
