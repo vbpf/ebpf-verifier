@@ -10,7 +10,7 @@
 
 #include "ubpf_int.h"
 
-#include "ubpf_vm_ai.h"
+#include "abs_interp.h"
 
 void logg(const char* format, ...)
 {
@@ -114,7 +114,7 @@ abs_bounds_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, cha
         //!bounds_check((void *)state->reg[r] + inst.offset, access_width(inst.opcode),(void*)state->reg[10], 4096);
 
         if (fail) {
-            *errmsg = ubpf_error("out of bounds memory %s at PC %d r%d[%u]",
+            *errmsg = ubpf_error("out of bounds memory %s at PC %d [r%d%+d]",
                                  is_load ? "load" : "store", pc, is_load ? inst.src : inst.dst, inst.offset);
         }
         return fail; 

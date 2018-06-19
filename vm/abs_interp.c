@@ -25,7 +25,7 @@
 #include <assert.h>
 
 #include "ubpf_int.h"
-#include "ubpf_vm_ai.h"
+#include "abs_interp.h"
 
 static bool
 is_jmp(struct ebpf_inst inst, uint16_t pc, uint16_t* out_target) {
