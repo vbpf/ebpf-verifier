@@ -40,7 +40,7 @@ abs_execute_assume(struct abs_state *_state, struct ebpf_inst inst, bool taken)
 {
     struct abs_state res = *_state;
     struct abs_state* state = &res;
-    abs_print(_state, __func__);
+
     // TODO: check feasibility; this might cause problems with pending.
     if ((taken && inst.opcode == EBPF_OP_JEQ_IMM)
     || (!taken && inst.opcode == EBPF_OP_JNE_IMM)) {
@@ -53,41 +53,38 @@ abs_execute_assume(struct abs_state *_state, struct ebpf_inst inst, bool taken)
         state->reg[inst.dst] = state->reg[inst.src];
         // we don't track correlation
     }
-    abs_print(&res, __func__);
     return res;
 }
 
 void
 abs_join(struct abs_state *state, struct abs_state other)
 {
-    abs_print(state, __func__);
     if (state->bot) {
         *state = other;
     } else {
         for (int r = 1; r < 11; r++) {
-            if (!other.known[r] || state->reg[r] != other.known[r])
+            if (!other.known[r] || state->reg[r] != other.reg[r])
                 state->known[r] = false;
         }
     }
-    abs_print(state, __func__);
 }
 
 static int
 access_width(uint8_t opcode) {
     switch (opcode) {
-    case EBPF_OP_LDXW: return 4;
-    case EBPF_OP_LDXH: return 2;
-    case EBPF_OP_LDXB: return 1;
-    case EBPF_OP_LDXDW: return 8;
-    case EBPF_OP_STW: return 4;
-    case EBPF_OP_STH: return 2;
-    case EBPF_OP_STB: return 1;
-    case EBPF_OP_STDW: return 8;
-    case EBPF_OP_STXW: return 4;
-    case EBPF_OP_STXH: return 2;
+    case EBPF_OP_LDXB:
+    case EBPF_OP_STB:
     case EBPF_OP_STXB: return 1;
+    case EBPF_OP_LDXH:
+    case EBPF_OP_STH:
+    case EBPF_OP_STXH: return 2;
+    case EBPF_OP_LDXW:
+    case EBPF_OP_STW:
+    case EBPF_OP_STXW: return 4;
+    case EBPF_OP_LDXDW:
+    case EBPF_OP_STDW:
     case EBPF_OP_STXDW: return 8;
-    default: return -100;
+    default: return -1;
     }
 }
 
@@ -112,8 +109,6 @@ abs_bounds_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, cha
         } else {
             fail = true;
         }
-        //!bounds_check((void *)state->reg[r] + inst.offset, access_width(inst.opcode),(void*)state->reg[10], 4096);
-
         if (fail) {
             *errmsg = ubpf_error("out of bounds memory %s at PC %d [r%d%+d]",
                                  is_load ? "load" : "store", pc, is_load ? inst.src : inst.dst, inst.offset);
@@ -125,10 +120,16 @@ abs_bounds_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, cha
 
 bool
 abs_divzero_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, char** errmsg) {
-    if (   ((inst.opcode == EBPF_OP_DIV64_REG || inst.opcode == EBPF_OP_MOD64_REG) && (!state->known[inst.src] ||     state->reg[inst.src]  == 0))
-        || ((inst.opcode == EBPF_OP_DIV_REG   || inst.opcode == EBPF_OP_MOD_REG)   && (!state->known[inst.src] || u32(state->reg[inst.src]) == 0))) {
-        *errmsg = ubpf_error("division by zero at PC %d", pc);
-        return true;
+    bool div = (inst.opcode & EBPF_ALU_OP_MASK) == (EBPF_OP_DIV_REG & EBPF_ALU_OP_MASK);
+    bool mod = (inst.opcode & EBPF_ALU_OP_MASK) == (EBPF_OP_MOD_REG & EBPF_ALU_OP_MASK);
+    if (div || mod) {
+        bool is64 = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64;
+        if (!state->known[inst.src]
+        || ( is64 &&     state->reg[inst.src]  == 0)
+        || (!is64 && u32(state->reg[inst.src]) == 0)) {
+            *errmsg = ubpf_error("division by zero at PC %d", pc);
+            return true;
+        }
     }
     return false;
 }
@@ -137,7 +138,6 @@ struct abs_state
 abs_execute(struct abs_state *_state, struct ebpf_inst inst)
 {
     struct abs_state res = *_state;
-    abs_print(_state, __func__);
     struct abs_state* state = &res;
     if (inst.opcode == EBPF_OP_CALL) {
         for (int r=1; r <= 6; r++) {
@@ -369,22 +369,19 @@ abs_execute(struct abs_state *_state, struct ebpf_inst inst)
         break;
     
     case EBPF_OP_LDDW:
-        // TODO: assert false - already transformed
+        assert(false); // already transformed
         break;
 
     default: break;
     }
     #undef reg
-    abs_print(&res, __func__);
     return res;
 }
-
-static int count;
 
 void
 abs_print(struct abs_state *state, const char* s)
 {
-
+    static int count = 0;
     FILE *fp = fopen("log.txt","a");
     fprintf(fp, "%15s: ", s);
     fprintf(fp, "%d) ", count);
