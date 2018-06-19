@@ -98,22 +98,38 @@ u32(uint64_t x)
 }
 
 bool
-abs_bounds_fail(struct abs_state *state, struct ebpf_inst inst) {
-    if (access_width(inst.opcode) > 0 && (inst.opcode & EBPF_MODE_MEM)) {
-        uint8_t r = (inst.opcode & EBPF_CLS_LD) || (inst.opcode & EBPF_CLS_LDX) ? inst.src : inst.dst;
-        if (r == 1) { // FIX: SHOULD BE 10! ubpf plays it differently for some reason
-            return inst.offset < 0 || inst.offset > STACK_SIZE;
+abs_bounds_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, char** errmsg) {
+    if (access_width(inst.opcode) > 0) {
+        bool is_load = ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD) || ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LDX);
+        uint8_t r = is_load ? inst.src : inst.dst;
+        bool fail;
+        if (r == 10) {
+            fail = inst.offset >= 0 || inst.offset < -STACK_SIZE;
+        } else if (r == 1) {
+            // unsafely assume this is context pointer
+            fail = inst.offset < 0 || inst.offset > 4095;
+        } else {
+            fail = true;
         }
         //!bounds_check((void *)state->reg[r] + inst.offset, access_width(inst.opcode),(void*)state->reg[10], 4096);
-        return true; 
+
+        if (fail) {
+            *errmsg = ubpf_error("out of bounds memory %s at PC %d r%d[%u]",
+                                 is_load ? "load" : "store", pc, is_load ? inst.src : inst.dst, inst.offset);
+        }
+        return fail; 
     }
     return false;
 }
 
 bool
-abs_divzero_fail(struct abs_state *state, struct ebpf_inst inst) {
-    return ((inst.opcode == EBPF_OP_DIV64_REG || inst.opcode == EBPF_OP_MOD64_REG) && (!state->known[inst.src] ||     state->reg[inst.src]  == 0))
-        || ((inst.opcode == EBPF_OP_DIV_REG   ||  inst.opcode == EBPF_OP_MOD_REG)  && (!state->known[inst.src] || u32(state->reg[inst.src]) == 0));
+abs_divzero_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, char** errmsg) {
+    if (   ((inst.opcode == EBPF_OP_DIV64_REG || inst.opcode == EBPF_OP_MOD64_REG) && (!state->known[inst.src] ||     state->reg[inst.src]  == 0))
+        || ((inst.opcode == EBPF_OP_DIV_REG   || inst.opcode == EBPF_OP_MOD_REG)   && (!state->known[inst.src] || u32(state->reg[inst.src]) == 0))) {
+        *errmsg = ubpf_error("division by zero at PC %d", pc);
+        return true;
+    }
+    return false;
 }
 
 struct abs_state

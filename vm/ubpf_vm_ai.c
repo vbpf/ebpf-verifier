@@ -109,13 +109,10 @@ abs_step(const struct ebpf_inst* insts, struct abs_state *states, uint16_t pc, c
             inst.src = 12;
             states[pc].reg[12] = (uint32_t)inst.imm | ((uint64_t)insts[pc+1].imm << 32);
         }
-        if (abs_bounds_fail(&states[pc], inst)) {
-            const char* kind = ((inst.opcode & EBPF_CLS_LD) || (inst.opcode & EBPF_CLS_LDX)) ? "load" : "store";
-            *errmsg = ubpf_error("out of bounds memory %s at PC %d", kind, pc);
+        if (abs_bounds_fail(&states[pc], inst, pc, errmsg)) {
             return false;
         }
-        if (abs_divzero_fail(&states[pc], inst)) {
-            *errmsg = ubpf_error("division by zero at PC %d", pc);
+        if (abs_divzero_fail(&states[pc], inst, pc, errmsg)) {
             return false;
         }
         abs_join(&states[target], abs_execute(&states[pc], inst));

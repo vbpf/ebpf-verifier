@@ -17,8 +17,8 @@ bool ai_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errms
 void abs_initialize_state(struct abs_state *state);
 void abs_join(struct abs_state *state, struct abs_state other);
 
-bool abs_bounds_fail(struct abs_state *state, struct ebpf_inst inst);
-bool abs_divzero_fail(struct abs_state *state, struct ebpf_inst inst);
+bool abs_bounds_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, char** errmsg);
+bool abs_divzero_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, char** errmsg);
 
 struct abs_state abs_execute_assume(struct abs_state *state, struct ebpf_inst inst, bool taken);
 struct abs_state abs_execute(struct abs_state *state, struct ebpf_inst inst);
