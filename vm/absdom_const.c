@@ -6,6 +6,8 @@
 #include <stdarg.h>
 #include <inttypes.h>
 #include <sys/mman.h>
+#include <assert.h>
+
 #include "ubpf_int.h"
 
 #include "ubpf_vm_ai.h"
@@ -121,8 +123,8 @@ abs_bounds_fail(struct abs_state *state, struct ebpf_inst inst) {
 
 bool
 abs_divzero_fail(struct abs_state *state, struct ebpf_inst inst) {
-    return (inst.opcode == EBPF_OP_DIV64_REG && (!state->known[inst.dst] ||     state->reg[inst.dst]  == 0))
-        || (inst.opcode == EBPF_OP_DIV_REG   && (!state->known[inst.dst] || u32(state->reg[inst.dst]) == 0));
+    return ((inst.opcode == EBPF_OP_DIV64_REG || inst.opcode == EBPF_OP_MOD64_REG) && (!state->known[inst.src] ||     state->reg[inst.src]  == 0))
+        || ((inst.opcode == EBPF_OP_DIV_REG   ||  inst.opcode == EBPF_OP_MOD_REG)  && (!state->known[inst.src] || u32(state->reg[inst.src]) == 0));
 }
 
 struct abs_state
@@ -188,10 +190,7 @@ abs_execute(struct abs_state *_state, struct ebpf_inst inst)
         reg[inst.dst] &= UINT32_MAX;
         break;
     case EBPF_OP_DIV_REG:
-        if (reg[inst.src] == 0) {
-            fprintf(stderr, "uBPF error: division by zero\n");
-            return res;
-        }
+        assert(reg[inst.src] != 0);
         reg[inst.dst] = u32(reg[inst.dst]) / u32(reg[inst.src]);
         reg[inst.dst] &= UINT32_MAX;
         break;
@@ -236,10 +235,7 @@ abs_execute(struct abs_state *_state, struct ebpf_inst inst)
         reg[inst.dst] &= UINT32_MAX;
         break;
     case EBPF_OP_MOD_REG:
-        if (reg[inst.src] == 0) {
-            fprintf(stderr, "uBPF error: division by zero\n");
-            return res;
-        }
+        assert(reg[inst.src] != 0);
         reg[inst.dst] = u32(reg[inst.dst]) % u32(reg[inst.src]);
         break;
     case EBPF_OP_XOR_IMM:
@@ -309,10 +305,7 @@ abs_execute(struct abs_state *_state, struct ebpf_inst inst)
         reg[inst.dst] /= inst.imm;
         break;
     case EBPF_OP_DIV64_REG:
-        if (reg[inst.src] == 0) {
-            fprintf(stderr, "uBPF error: division by zero\n");
-            return res;
-        }
+        assert(reg[inst.src] != 0);
         reg[inst.dst] /= reg[inst.src];
         break;
     case EBPF_OP_OR64_IMM:
@@ -346,10 +339,7 @@ abs_execute(struct abs_state *_state, struct ebpf_inst inst)
         reg[inst.dst] %= inst.imm;
         break;
     case EBPF_OP_MOD64_REG:
-        if (reg[inst.src] == 0) {
-            fprintf(stderr, "uBPF error: division by zero\n");
-            return res;
-        }
+        assert(reg[inst.src] != 0);
         reg[inst.dst] %= reg[inst.src];
         break;
     case EBPF_OP_XOR64_IMM:

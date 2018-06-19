@@ -109,18 +109,19 @@ abs_step(const struct ebpf_inst* insts, struct abs_state *states, uint16_t pc, c
             inst.src = 12;
             states[pc].reg[12] = (uint32_t)inst.imm | ((uint64_t)insts[pc+1].imm << 32);
         }
-        struct abs_state next = abs_execute(&states[pc], inst);
-        abs_join(&states[target], next);
         if (abs_bounds_fail(&states[pc], inst)) {
-            *errmsg = malloc(sizeof("AI failed to pass bound checks"));
-            strcpy(*errmsg, "AI failed to pass bound checks");
+            *errmsg = malloc(sizeof("uBPF error: out of bounds memory store at PC xxxxxxx"));
+            const char* kind = ((inst.opcode & EBPF_CLS_LD) || (inst.opcode & EBPF_CLS_LDX)) ? "load" : "store";
+            sprintf(*errmsg, "uBPF error: out of bounds memory %s at PC %d", kind, pc);
             return false;
         }
         if (abs_divzero_fail(&states[pc], inst)) {
-            *errmsg = malloc(sizeof("AI failed to pass divzero checks"));
-            strcpy(*errmsg, "AI failed to pass divzero checks");
+            *errmsg = malloc(sizeof("uBPF error: division by zero at PC xxxxxxx"));
+            sprintf(*errmsg, "uBPF error: division by zero at PC %d", pc);
             return false;
         }
+        struct abs_state next = abs_execute(&states[pc], inst);
+        abs_join(&states[target], next);
     }
     return true;
 }
