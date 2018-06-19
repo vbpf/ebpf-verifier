@@ -15,7 +15,10 @@ bool ai_validate(const struct ebpf_inst *insts, uint32_t num_insts, void *ctx, c
 
 void abs_initialize_state(struct abs_state *state, void *ctx, void *stack);
 void abs_join(struct abs_state *state, struct abs_state other);
+
 bool abs_bounds_check(struct abs_state *state, struct ebpf_inst inst);
+bool abs_divzero_check(struct abs_state *state, struct ebpf_inst inst);
+
 struct abs_state abs_execute_assume(struct abs_state *state, struct ebpf_inst inst, bool taken);
 struct abs_state abs_execute(struct abs_state *state, struct ebpf_inst inst);
 

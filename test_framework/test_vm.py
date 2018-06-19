@@ -41,6 +41,8 @@ def check_datafile(filename):
 
     stdout, stderr = vm.communicate(code)
     stderr = stderr.strip()
+    print(stdout)
+    print(stderr)
 
     if memfile:
         memfile.close()

@@ -86,25 +86,39 @@ access_width(uint8_t opcode) {
     }
 }
 
-bool
-abs_bounds_check(struct abs_state *state, struct ebpf_inst inst) {
-    return bounds_check((void *)state->reg[inst.src] + inst.offset, access_width(inst.opcode),
-            (void*)state->reg[10], 4096, (void*)state->reg[1]);
-}
-
-
 static uint32_t
 u32(uint64_t x)
 {
     return x;
 }
 
+bool
+abs_bounds_check(struct abs_state *state, struct ebpf_inst inst) {
+    if (inst.opcode & EBPF_MODE_MEM) {
+        return bounds_check((void *)state->reg[inst.src] + inst.offset, access_width(inst.opcode),
+                (void*)state->reg[10], 4096, (void*)state->reg[1]);
+    }
+    return true;
+}
+
+bool
+abs_divzero_check(struct abs_state *state, struct ebpf_inst inst) {
+    return (inst.opcode == EBPF_OP_DIV64_REG && (!state->known[inst.dst] ||     state->reg[inst.dst]  == 0))
+        || (inst.opcode == EBPF_OP_DIV_REG   && (!state->known[inst.dst] || u32(state->reg[inst.dst]) == 0));
+}
 
 struct abs_state
 abs_execute(struct abs_state *_state, struct ebpf_inst inst)
 {
     struct abs_state res = *_state;
     struct abs_state* state = &res;
+    if (inst.opcode == EBPF_OP_CALL) {
+        for (int r=1; r <= 6; r++) {
+            state->known[r] = false;
+        }
+        // r0 depends on the particular function
+        state->known[0] = false;
+    }
     if (!(inst.opcode & EBPF_CLS_ALU || inst.opcode & EBPF_CLS_ALU64))
         return res;
 
