@@ -83,12 +83,9 @@ compute_pending(const struct ebpf_inst *insts, uint32_t num_insts)
     for (uint16_t pc = 0; pc < num_insts; pc++) {
         uint16_t target;
         if (is_jmp(insts[pc], pc, &target)) {
-            assert(target < num_insts);
-            assert(target >= 0);
             pending[target]++;
         }
         if (has_fallthrough(insts[pc], pc, &target)) {
-            assert(target < num_insts);
             pending[target]++;
         }
     }

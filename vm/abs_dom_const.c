@@ -100,7 +100,8 @@ u32(uint64_t x)
 bool
 abs_bounds_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, char** errmsg) {
     if (access_width(inst.opcode) > 0) {
-        bool is_load = ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD) || ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LDX);
+        bool is_load = ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD)
+                    || ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LDX);
         uint8_t r = is_load ? inst.src : inst.dst;
         bool fail;
         if (r == 10) {
@@ -145,7 +146,8 @@ abs_execute(struct abs_state *_state, struct ebpf_inst inst)
         // r0 depends on the particular function
         state->known[0] = false;
     }
-    if (!(inst.opcode & EBPF_CLS_ALU || inst.opcode & EBPF_CLS_ALU64))
+    if (!( (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU
+        || (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64))
         return res;
 
     if (inst.opcode & EBPF_SRC_REG && !state->known[inst.src]) {
