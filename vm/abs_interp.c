@@ -104,7 +104,8 @@ abs_step(const struct ebpf_inst* insts, struct abs_state *states, uint16_t pc, c
         if (inst.opcode == EBPF_OP_LDDW) {
             inst.opcode = EBPF_OP_MOV64_REG;
             inst.src = 12;
-            states[pc].reg[12] = (uint32_t)inst.imm | ((uint64_t)insts[pc+1].imm << 32);
+            states[pc].reg[12].value = (uint32_t)inst.imm | ((uint64_t)insts[pc+1].imm << 32);
+            states[pc].reg[12].known = true;
         }
         if (abs_bounds_fail(&states[pc], inst, pc, errmsg)) {
             return false;
@@ -127,10 +128,8 @@ abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
     // states[i] contains the state just before instruction i
     struct abs_state *states = malloc(num_insts * sizeof(*states));
     for (int i = 0; i < num_insts; i++) {
-       states[i] = abs_bottom;
+       states[i].bot = true;
     }
-    states[0].bot = false;
-
     abs_initialize_state(&states[0]);
     
     bool res = true;

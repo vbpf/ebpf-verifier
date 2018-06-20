@@ -4,13 +4,15 @@
 
 #include "ubpf_int.h"
 
-struct abs_state {
-    uint64_t reg[16];
-    bool known[16];
-    bool bot;
+struct abs_dom_const {
+    bool known;
+    uint64_t value;
 };
 
-extern const struct abs_state abs_bottom;
+struct abs_state {
+    struct abs_dom_const reg[16];
+    bool bot;
+};
 
 bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg);
 
