@@ -159,7 +159,7 @@ abs_execute(struct abs_state *_state, struct ebpf_inst inst)
     struct abs_state* state = &res;
 
     if (inst.opcode == EBPF_OP_CALL) {
-        for (int r=1; r <= 6; r++) {
+        for (int r=1; r <= 5; r++) {
             state->known[r] = false;
         }
         // r0 depends on the particular function
