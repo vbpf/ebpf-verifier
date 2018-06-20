@@ -12,7 +12,7 @@ struct abs_state {
 
 extern const struct abs_state abs_bottom;
 
-bool ai_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg);
+bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg);
 
 void abs_initialize_state(struct abs_state *state);
 void abs_join(struct abs_state *state, struct abs_state other);

@@ -118,7 +118,7 @@ abs_step(const struct ebpf_inst* insts, struct abs_state *states, uint16_t pc, c
 }
 
 bool
-ai_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
+abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
 {
     int *pending = compute_pending(insts, num_insts);
 

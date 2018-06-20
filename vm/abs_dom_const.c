@@ -96,26 +96,28 @@ u32(uint64_t x)
 
 bool
 abs_bounds_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, char** errmsg) {
-    if (access_width(inst.opcode) > 0) {
-        bool is_load = ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD)
-                    || ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LDX);
-        uint8_t r = is_load ? inst.src : inst.dst;
-        bool fail;
-        if (r == 10) {
-            fail = inst.offset >= 0 || inst.offset < -STACK_SIZE;
-        } else if (r == 1) {
-            // unsafely assume this is context pointer
-            fail = inst.offset < 0 || inst.offset > 4095;
-        } else {
-            fail = true;
-        }
-        if (fail) {
-            *errmsg = ubpf_error("out of bounds memory %s at PC %d [r%d%+d]",
-                                 is_load ? "load" : "store", pc, is_load ? inst.src : inst.dst, inst.offset);
-        }
-        return fail; 
+    int width = access_width(inst.opcode);
+    if (width <= 0) {
+        return false;
     }
-    return false;
+
+    bool is_load = ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD)
+                || ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LDX);
+    uint8_t r = is_load ? inst.src : inst.dst;
+    bool fail;
+    if (r == 10) {
+        fail = inst.offset + width > 0 || inst.offset < -STACK_SIZE;
+    } else if (r == 1) {
+        // unsafely assume this is context pointer
+        fail = inst.offset < 0 || inst.offset + width > 4096;
+    } else {
+        fail = true;
+    }
+    if (fail) {
+        *errmsg = ubpf_error("out of bounds memory %s at PC %d [r%d%+d]",
+                            is_load ? "load" : "store", pc, is_load ? inst.src : inst.dst, inst.offset);
+    }
+    return fail;
 }
 
 bool
@@ -134,11 +136,28 @@ abs_divzero_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, ch
     return false;
 }
 
+static bool
+is_mov(uint8_t opcode)
+{
+    return opcode == EBPF_OP_MOV64_IMM
+        || opcode == EBPF_OP_MOV64_REG
+        || opcode == EBPF_OP_MOV_IMM
+        || opcode == EBPF_OP_MOV_REG;
+}
+
+static bool
+is_alu(uint8_t opcode)
+{
+    return (opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU
+        || (opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64;
+}
+
 struct abs_state
 abs_execute(struct abs_state *_state, struct ebpf_inst inst)
 {
     struct abs_state res = *_state;
     struct abs_state* state = &res;
+
     if (inst.opcode == EBPF_OP_CALL) {
         for (int r=1; r <= 6; r++) {
             state->known[r] = false;
@@ -146,8 +165,7 @@ abs_execute(struct abs_state *_state, struct ebpf_inst inst)
         // r0 depends on the particular function
         state->known[0] = false;
     }
-    if (!( (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU
-        || (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64))
+    if (!is_alu(inst.opcode))
         return res;
 
     if (inst.opcode & EBPF_SRC_REG && !state->known[inst.src]) {
@@ -155,11 +173,8 @@ abs_execute(struct abs_state *_state, struct ebpf_inst inst)
         return res;
     }
 
-    if (!state->known[inst.dst]
-        && inst.opcode != EBPF_OP_MOV64_IMM
-        && inst.opcode != EBPF_OP_MOV64_REG
-        && inst.opcode != EBPF_OP_MOV_IMM
-        && inst.opcode != EBPF_OP_MOV_REG) {
+    // if it's not mov, the dst register is also important for definedness
+    if (!state->known[inst.dst] && !is_mov(inst.opcode)) {
         state->known[inst.dst] = false;
         return res;
     }
