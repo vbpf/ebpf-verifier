@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Big Switch Networks, Inc
+ * Copyright 2018 VMware, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,35 +29,13 @@
 
 static bool
 is_jmp(struct ebpf_inst inst, uint16_t pc, uint16_t* out_target) {
-    switch (inst.opcode) {
-    case EBPF_OP_JA:
-    case EBPF_OP_JEQ_REG:
-    case EBPF_OP_JEQ_IMM:
-    case EBPF_OP_JGT_REG:
-    case EBPF_OP_JGT_IMM:
-    case EBPF_OP_JGE_REG:
-    case EBPF_OP_JGE_IMM:
-    case EBPF_OP_JLT_REG:
-    case EBPF_OP_JLT_IMM:
-    case EBPF_OP_JLE_REG:
-    case EBPF_OP_JLE_IMM:
-    case EBPF_OP_JSET_REG:
-    case EBPF_OP_JSET_IMM:
-    case EBPF_OP_JNE_REG:
-    case EBPF_OP_JNE_IMM:
-    case EBPF_OP_JSGT_IMM:
-    case EBPF_OP_JSGT_REG:
-    case EBPF_OP_JSGE_IMM:
-    case EBPF_OP_JSGE_REG:
-    case EBPF_OP_JSLT_IMM:
-    case EBPF_OP_JSLT_REG:
-    case EBPF_OP_JSLE_IMM:
-    case EBPF_OP_JSLE_REG:
+    if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_JMP
+            && inst.opcode != EBPF_OP_CALL
+            && inst.opcode != EBPF_OP_EXIT) {
         *out_target = pc + 1 + inst.offset;
         return true;
-    default:
-        return false;
     }
+    return false;
 }
 
 static bool
@@ -101,19 +79,13 @@ abs_step(const struct ebpf_inst* insts, struct abs_state *states, uint16_t pc, c
         abs_join(&states[target], abs_execute_assume(&states[pc], inst, true));
         abs_join(&states[pc + 1], abs_execute_assume(&states[pc], inst, false));
     } else if (has_fallthrough(insts[pc], pc, &target)) {
-        if (inst.opcode == EBPF_OP_LDDW) {
-            inst.opcode = EBPF_OP_MOV64_REG;
-            inst.src = 12;
-            states[pc].reg[12].value = (uint32_t)inst.imm | ((uint64_t)insts[pc+1].imm << 32);
-            states[pc].reg[12].known = true;
-        }
         if (abs_bounds_fail(&states[pc], inst, pc, errmsg)) {
             return false;
         }
         if (abs_divzero_fail(&states[pc], inst, pc, errmsg)) {
             return false;
         }
-        abs_join(&states[target], abs_execute(&states[pc], inst));
+        abs_join(&states[target], abs_execute(&states[pc], inst, insts[pc+1].imm));
     }
     return true;
 }
@@ -128,13 +100,14 @@ abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
     // states[i] contains the state just before instruction i
     struct abs_state *states = malloc(num_insts * sizeof(*states));
     for (int i = 0; i < num_insts; i++) {
-       states[i].bot = true;
+        abs_initialize_unreached(&states[i]);
     }
-    abs_initialize_state(&states[0]);
     
     bool res = true;
     uint16_t pc = 0;
     available[0] = pc;
+    abs_initialize_entry(&states[0]);
+    
     for (int wi = 1; wi != 0; pc = available[--wi]) {
         assert(wi > 0);
 

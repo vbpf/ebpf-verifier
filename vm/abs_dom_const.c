@@ -1,3 +1,19 @@
+/*
+ * Copyright 2018 VMware, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
@@ -25,11 +41,17 @@ void logg(const char* format, ...)
 const struct abs_dom_const abs_top = { false, 0 }; // second zero makes unknowns
 
 void 
-abs_initialize_state(struct abs_state *state)
+abs_initialize_entry(struct abs_state *state)
 {
     for (int i = 0; i < 11; i++) {
         state->reg[i] = abs_top;
     }
+}
+
+void 
+abs_initialize_unreached(struct abs_state *state)
+{
+    state->bot = true;
 }
 
 struct abs_state
@@ -150,11 +172,18 @@ is_alu(uint8_t opcode)
 }
 
 struct abs_state
-abs_execute(struct abs_state *_state, struct ebpf_inst inst)
+abs_execute(struct abs_state *_state, struct ebpf_inst inst, int32_t imm)
 {
+    // TODO: maybe combining execute and join can give us more precision?
+    // (it can be an optimization for a specific domain, with default implementation as execute then join)
     struct abs_state res = *_state;
     struct abs_state* state = &res;
 
+    if (inst.opcode == EBPF_OP_LDDW) {
+        res.reg[inst.dst].value = (uint32_t)inst.imm | ((uint64_t)imm << 32);
+        return res;
+    }
+    
     if (inst.opcode == EBPF_OP_CALL) {
         for (int r=1; r <= 5; r++) {
             state->reg[r].known = false;
@@ -162,6 +191,7 @@ abs_execute(struct abs_state *_state, struct ebpf_inst inst)
         // r0 depends on the particular function
         state->reg[0].known = false;
     }
+
     if (!is_alu(inst.opcode))
         return res;
 
@@ -379,11 +409,6 @@ abs_execute(struct abs_state *_state, struct ebpf_inst inst)
     case EBPF_OP_ARSH64_REG:
         reg(inst.dst) = (int64_t)reg(inst.dst) >> reg(inst.src);
         break;
-    
-    case EBPF_OP_LDDW:
-        assert(false); // already transformed
-        break;
-
     default: break;
     }
     #undef reg
