@@ -76,8 +76,8 @@ abs_step(const struct ebpf_inst* insts, struct abs_state *states, uint16_t pc, c
     struct ebpf_inst inst = insts[pc];
     uint16_t target;
     if (is_jmp(insts[pc], pc, &target)) {
-        abs_join(&states[target], abs_execute_assume(&states[pc], inst, true));
-        abs_join(&states[pc + 1], abs_execute_assume(&states[pc], inst, false));
+        abs_execute_assume(&states[target], &states[pc], inst, true);
+        abs_execute_assume(&states[pc + 1], &states[pc], inst, false);
     } else if (has_fallthrough(insts[pc], pc, &target)) {
         if (abs_bounds_fail(&states[pc], inst, pc, errmsg)) {
             return false;
@@ -85,7 +85,7 @@ abs_step(const struct ebpf_inst* insts, struct abs_state *states, uint16_t pc, c
         if (abs_divzero_fail(&states[pc], inst, pc, errmsg)) {
             return false;
         }
-        abs_join(&states[target], abs_execute(&states[pc], inst, insts[pc+1].imm));
+        abs_execute(&states[target], &states[pc], inst, insts[pc+1].imm);
     }
     return true;
 }
@@ -107,7 +107,7 @@ abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
     uint16_t pc = 0;
     available[0] = pc;
     abs_initialize_entry(&states[0]);
-    
+
     for (int wi = 1; wi != 0; pc = available[--wi]) {
         assert(wi > 0);
 
