@@ -21,7 +21,7 @@
 #include "abs_dom.h"
 
 struct abs_state {
-    struct abs_dom_const reg[16];
+    struct abs_dom_value reg[16];
     bool bot;
 };
 
@@ -38,4 +38,5 @@ void abs_execute_assume(struct abs_state *to, struct abs_state *from, struct ebp
 void abs_execute(struct abs_state *to, struct abs_state *from, struct ebpf_inst inst, int32_t imm);
 
 void abs_print(struct abs_state *state, const char* s);
+
 #endif

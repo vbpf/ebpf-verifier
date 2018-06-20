@@ -19,14 +19,23 @@
 
 #include "ubpf_int.h"
 
-struct abs_dom_const {
+struct abs_dom_value {
     bool known;
     uint64_t value;
 };
 
-extern const struct abs_dom_const abs_top;
+extern const struct abs_dom_value abs_top;
 
-struct abs_dom_const abs_const_join(struct abs_dom_const dst, struct abs_dom_const src);
-uint64_t do_const_alu(uint8_t opcode, int32_t imm, uint64_t dst_val, uint64_t src_val);
+struct abs_dom_value abs_dom_fromconst(uint64_t value);
+bool abs_dom_maybe_zero(struct abs_dom_value, bool is64);
+struct abs_dom_value abs_dom_join(struct abs_dom_value dst, struct abs_dom_value src);
+struct abs_dom_value abs_dom_alu(uint8_t opcode, int32_t imm, struct abs_dom_value dst, struct abs_dom_value src);
+struct abs_dom_value abs_dom_call(struct ebpf_inst inst,
+    struct abs_dom_value r1,
+    struct abs_dom_value r2,
+    struct abs_dom_value r3,
+    struct abs_dom_value r4,
+    struct abs_dom_value r5
+);
 
 #endif

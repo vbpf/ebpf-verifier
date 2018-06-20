@@ -48,16 +48,10 @@ abs_join(struct abs_state *state, struct abs_state other)
     if (state->bot) {
         *state = other;
     } else {
-        for (int r = 1; r < 11; r++) {
-            state->reg[r] = abs_const_join(state->reg[r], other.reg[r]);
+        for (int r = 0; r < 11; r++) {
+            state->reg[r] = abs_dom_join(state->reg[r], other.reg[r]);
         }
     }
-}
-
-static uint32_t
-u32(uint64_t x)
-{
-    return x;
 }
 
 static int
@@ -111,23 +105,12 @@ abs_divzero_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, ch
     bool mod = (inst.opcode & EBPF_ALU_OP_MASK) == (EBPF_OP_MOD_REG & EBPF_ALU_OP_MASK);
     if (div || mod) {
         bool is64 = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64;
-        if (!state->reg[inst.src].known
-        || ( is64 &&     state->reg[inst.src].value  == 0)
-        || (!is64 && u32(state->reg[inst.src].value) == 0)) {
+        if (abs_dom_maybe_zero(state->reg[inst.src], is64)) {
             *errmsg = ubpf_error("division by zero at PC %d", pc);
             return true;
         }
     }
     return false;
-}
-
-static bool
-is_mov(uint8_t opcode)
-{
-    return opcode == EBPF_OP_MOV64_IMM
-        || opcode == EBPF_OP_MOV64_REG
-        || opcode == EBPF_OP_MOV_IMM
-        || opcode == EBPF_OP_MOV_REG;
 }
 
 static bool
@@ -144,23 +127,14 @@ abs_execute(struct abs_state *to, struct abs_state *from, struct ebpf_inst inst,
     struct abs_state state = *from;
 
     if (inst.opcode == EBPF_OP_LDDW) {
-        state.reg[inst.dst].value = (uint32_t)inst.imm | ((uint64_t)imm << 32);
+        state.reg[inst.dst] = abs_dom_fromconst((uint32_t)inst.imm | ((uint64_t)imm << 32));
     } else if (inst.opcode == EBPF_OP_CALL) {
+        state.reg[0] = abs_dom_call(inst, state.reg[1], state.reg[2], state.reg[3], state.reg[4], state.reg[5]);
         for (int r=1; r <= 5; r++) {
-            state.reg[r].known = false;
+            state.reg[r] = abs_top;
         }
-        // r0 depends on the particular function
-        state.reg[0].known = false;
-    } else if (!is_alu(inst.opcode)) {
-        
-    } else if (inst.opcode & EBPF_SRC_REG && !state.reg[inst.src].known) {
-        state.reg[inst.dst].known = false;
-    } else if (!state.reg[inst.dst].known && !is_mov(inst.opcode)) {
-        // if it's not mov, the dst register is also important for definedness
-        state.reg[inst.dst].known = false;
-    } else {
-        state.reg[inst.dst].known = true;
-        state.reg[inst.dst].value = do_const_alu(inst.opcode, inst.imm, state.reg[inst.dst].value, state.reg[inst.src].value);
+    } else if (is_alu(inst.opcode)) {
+        state.reg[inst.dst] = abs_dom_alu(inst.opcode, inst.imm, state.reg[inst.dst], state.reg[inst.src]);
     }
 
     abs_join(to, state);
@@ -174,15 +148,14 @@ abs_execute_assume(struct abs_state *to, struct abs_state *from, struct ebpf_ins
     // TODO: check feasibility; this might cause problems with pending.
     if ((taken && inst.opcode == EBPF_OP_JEQ_IMM)
     || (!taken && inst.opcode == EBPF_OP_JNE_IMM)) {
-        state.reg[inst.dst].known = true;
-        state.reg[inst.dst].value = inst.imm;
+        state.reg[inst.dst] = abs_dom_alu(EBPF_OP_MOV_IMM, inst.imm, state.reg[inst.dst], abs_top);
     }
     if ((taken && inst.opcode == EBPF_OP_JEQ_REG)
     || (!taken && inst.opcode == EBPF_OP_JNE_REG)) {
-        state.reg[inst.dst].known = true;
-        state.reg[inst.dst].value = state.reg[inst.src].value;
+        state.reg[inst.dst] = abs_dom_alu(EBPF_OP_MOV_REG, 0, state.reg[inst.dst], state.reg[inst.src]);
         // we don't track correlation
     }
+    // TODO: havoc on taken and JNE, !taken and JEQ
     
     abs_join(to, state);
 }

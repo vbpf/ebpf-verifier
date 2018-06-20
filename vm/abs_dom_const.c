@@ -26,7 +26,7 @@
 #include "abs_interp.h"
 #include "abs_dom.h"
 
-const struct abs_dom_const abs_top = { false, 0 }; // second zero makes unknowns
+const struct abs_dom_value abs_top = { false, 0 }; // second zero makes unknowns
 
 static uint32_t
 u32(uint64_t x)
@@ -34,17 +34,58 @@ u32(uint64_t x)
     return x;
 }
 
-struct abs_dom_const
-abs_const_join(struct abs_dom_const dst, struct abs_dom_const src)
+static bool
+is_mov(uint8_t opcode)
+{
+    return opcode == EBPF_OP_MOV64_IMM
+        || opcode == EBPF_OP_MOV64_REG
+        || opcode == EBPF_OP_MOV_IMM
+        || opcode == EBPF_OP_MOV_REG;
+}
+
+struct abs_dom_value
+abs_dom_join(struct abs_dom_value dst, struct abs_dom_value src)
 {
     if (!src.known || src.value != dst.value)
         dst.known = false;
     return dst;
 }
 
-uint64_t
-do_const_alu(uint8_t opcode, int32_t imm, uint64_t dst_val, uint64_t src_val)
+struct abs_dom_value
+abs_dom_fromconst(uint64_t value)
 {
+    return (struct abs_dom_value){ true, value };
+}
+
+bool
+abs_dom_maybe_zero(struct abs_dom_value v, bool is64)
+{
+    return !v.known || (is64 ? v.value : u32(v.value)) == 0;
+}
+
+struct abs_dom_value
+abs_dom_call(struct ebpf_inst inst,
+    struct abs_dom_value r1,
+    struct abs_dom_value r2,
+    struct abs_dom_value r3,
+    struct abs_dom_value r4,
+    struct abs_dom_value r5
+)
+{
+    return abs_top;
+}
+
+struct abs_dom_value
+abs_dom_alu(uint8_t opcode, int32_t imm, struct abs_dom_value dst, struct abs_dom_value src)
+{
+    if (((opcode & EBPF_SRC_REG) && !src.known)
+        || (!dst.known && !is_mov(opcode))) {
+        // if it's not mov, the dst register is also important for definedness
+        dst.known = false;
+        return dst;
+    }
+    uint64_t dst_val = dst.value;
+    uint64_t src_val = src.value;
     switch (opcode) {
     case EBPF_OP_ADD_IMM:
         dst_val += imm;
@@ -247,5 +288,7 @@ do_const_alu(uint8_t opcode, int32_t imm, uint64_t dst_val, uint64_t src_val)
     default:
         assert(false);
     }
-    return dst_val;
+    dst.value = dst_val;
+    dst.known = true;
+    return dst;
 }
