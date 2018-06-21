@@ -26,13 +26,13 @@
 
 #include "ubpf_int.h"
 #include "abs_dom.h"
-#include "abs_interp.h"
+#include "abs_state.h"
 
 void 
 abs_initialize_entry(struct abs_state *state)
 {
     for (int i = 0; i < 11; i++) {
-        state->reg[i] = abs_top;
+        state->reg[i] = abs_dom_top;
     }
 }
 
@@ -126,13 +126,13 @@ abs_execute(struct abs_state *to, struct abs_state *from, struct ebpf_inst inst,
     // (it can be an optimization for a specific domain, with default implementation as execute then join)
     struct abs_state state = *from;
 
-    if (inst.opcode == EBPF_OP_LDDW) {
-        state.reg[inst.dst] = abs_dom_fromconst((uint32_t)inst.imm | ((uint64_t)imm << 32));
-    } else if (inst.opcode == EBPF_OP_CALL) {
+    if (inst.opcode == EBPF_OP_CALL) {
         state.reg[0] = abs_dom_call(inst, state.reg[1], state.reg[2], state.reg[3], state.reg[4], state.reg[5]);
-        for (int r=1; r <= 5; r++) {
-            state.reg[r] = abs_top;
+        for (int r = 1; r <= 5; r++) {
+            state.reg[r] = abs_dom_top;
         }
+    } else if (inst.opcode == EBPF_OP_LDDW) {
+        state.reg[inst.dst] = abs_dom_fromconst((uint32_t)inst.imm | ((uint64_t)imm << 32));
     } else if (is_alu(inst.opcode)) {
         state.reg[inst.dst] = abs_dom_alu(inst.opcode, inst.imm, state.reg[inst.dst], state.reg[inst.src]);
     }
@@ -144,18 +144,12 @@ void
 abs_execute_assume(struct abs_state *to, struct abs_state *from, struct ebpf_inst inst, bool taken)
 {
     struct abs_state state = *from;
+    struct abs_dom_value dummy = abs_dom_fromconst(inst.imm);
 
     // TODO: check feasibility; this might cause problems with pending.
-    if ((taken && inst.opcode == EBPF_OP_JEQ_IMM)
-    || (!taken && inst.opcode == EBPF_OP_JNE_IMM)) {
-        state.reg[inst.dst] = abs_dom_alu(EBPF_OP_MOV_IMM, inst.imm, state.reg[inst.dst], abs_top);
-    }
-    if ((taken && inst.opcode == EBPF_OP_JEQ_REG)
-    || (!taken && inst.opcode == EBPF_OP_JNE_REG)) {
-        state.reg[inst.dst] = abs_dom_alu(EBPF_OP_MOV_REG, 0, state.reg[inst.dst], state.reg[inst.src]);
-        // we don't track correlation
-    }
-    // TODO: havoc on taken and JNE, !taken and JEQ
-    
+    struct abs_dom_value *v2 = (inst.opcode | EBPF_SRC_IMM) ? &dummy : &state.reg[inst.src];
+    abs_dom_assume(inst.opcode, taken, &state.reg[inst.dst], v2);
+    if (v2->bot == true)
+        state.bot = true;
     abs_join(to, state);
 }

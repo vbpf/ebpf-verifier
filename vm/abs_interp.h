@@ -14,29 +14,11 @@
  * limitations under the License.
  */
 
-#ifndef UBPF_VM_AI_H
-#define UBPF_VM_AI_H
+#ifndef ABS_INTERP_H
+#define ABS_INTERP_H
 
 #include "ubpf_int.h"
-#include "abs_dom.h"
-
-struct abs_state {
-    struct abs_dom_value reg[16];
-    bool bot;
-};
-
 
 bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg);
-
-void abs_initialize_entry(struct abs_state *state);
-void abs_initialize_unreached(struct abs_state *state);
-
-bool abs_bounds_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, char** errmsg);
-bool abs_divzero_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, char** errmsg);
-
-void abs_execute_assume(struct abs_state *to, struct abs_state *from, struct ebpf_inst inst, bool taken);
-void abs_execute(struct abs_state *to, struct abs_state *from, struct ebpf_inst inst, int32_t imm);
-
-void abs_print(struct abs_state *state, const char* s);
 
 #endif

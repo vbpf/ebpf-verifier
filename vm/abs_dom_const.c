@@ -26,7 +26,8 @@
 #include "abs_interp.h"
 #include "abs_dom.h"
 
-const struct abs_dom_value abs_top = { false, 0 }; // second zero makes unknowns
+const struct abs_dom_value abs_dom_top = { false, 0, false }; // second zero makes unknowns
+const struct abs_dom_value abs_dom_bot = { true, 0, true };
 
 static uint32_t
 u32(uint64_t x)
@@ -54,7 +55,7 @@ abs_dom_join(struct abs_dom_value dst, struct abs_dom_value src)
 struct abs_dom_value
 abs_dom_fromconst(uint64_t value)
 {
-    return (struct abs_dom_value){ true, value };
+    return (struct abs_dom_value){ true, value, false };
 }
 
 bool
@@ -72,7 +73,61 @@ abs_dom_call(struct ebpf_inst inst,
     struct abs_dom_value r5
 )
 {
-    return abs_top;
+    return abs_dom_top;
+}
+
+static bool
+implies_eq(uint8_t opcode, bool taken)
+{
+    switch (opcode) {
+    case EBPF_OP_JEQ_IMM: case EBPF_OP_JEQ_REG:
+        return taken;
+                   
+    case EBPF_OP_JNE_IMM: case EBPF_OP_JNE_REG:
+        return !taken;
+    default:
+        return false;
+    }
+}
+
+static bool
+implies_neq(uint8_t opcode, bool taken)
+{
+    switch (opcode) {
+    case EBPF_OP_JEQ_IMM: case EBPF_OP_JEQ_REG:
+    case EBPF_OP_JGE_IMM: case EBPF_OP_JGE_REG: case EBPF_OP_JSGE_IMM: case EBPF_OP_JSGE_REG:
+    case EBPF_OP_JLE_IMM: case EBPF_OP_JLE_REG: case EBPF_OP_JSLE_IMM: case EBPF_OP_JSLE_REG:
+        return !taken;
+
+    case EBPF_OP_JNE_IMM: case EBPF_OP_JNE_REG:
+    case EBPF_OP_JGT_IMM: case EBPF_OP_JGT_REG: case EBPF_OP_JSGT_IMM: case EBPF_OP_JSGT_REG:
+    case EBPF_OP_JLT_IMM: case EBPF_OP_JLT_REG: case EBPF_OP_JSLT_IMM: case EBPF_OP_JSLT_REG:
+        return taken;
+    default:
+        return false;
+    }
+}
+
+void
+abs_dom_assume(uint8_t opcode, bool taken, struct abs_dom_value *v1, struct abs_dom_value *v2)
+{
+    if (implies_eq(opcode, taken)) {
+        // meet
+        if (v1->known && v2->known && v1->value != v2->value) {
+            *v2 = *v1 = abs_dom_bot;
+            return;
+        }
+        if (v1->known) *v2 = *v1;
+        else *v1 = *v2;
+        return;
+    }
+    if (implies_neq(opcode, taken)) {
+        if (v1->known && v2->known && v1->value == v2->value) {
+            *v2 = *v1 = abs_dom_bot;
+            return;
+        }
+        return;
+    }
 }
 
 struct abs_dom_value

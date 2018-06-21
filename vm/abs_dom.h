@@ -22,14 +22,17 @@
 struct abs_dom_value {
     bool known;
     uint64_t value;
+    bool bot;
 };
 
-extern const struct abs_dom_value abs_top;
+extern const struct abs_dom_value abs_dom_top;
+extern const struct abs_dom_value abs_dom_bot;
 
 struct abs_dom_value abs_dom_fromconst(uint64_t value);
 bool abs_dom_maybe_zero(struct abs_dom_value, bool is64);
 struct abs_dom_value abs_dom_join(struct abs_dom_value dst, struct abs_dom_value src);
 struct abs_dom_value abs_dom_alu(uint8_t opcode, int32_t imm, struct abs_dom_value dst, struct abs_dom_value src);
+void abs_dom_assume(uint8_t opcode, bool taken, struct abs_dom_value *v1, struct abs_dom_value *v2);
 struct abs_dom_value abs_dom_call(struct ebpf_inst inst,
     struct abs_dom_value r1,
     struct abs_dom_value r2,
