@@ -1,0 +1,14 @@
+-- asm
+ldxdw r1, [r1+0x68]
+stxdw [r10+0xfff8], r1
+mov r2, r10
+add r2, 0xfffffff8
+lddw r1, 0x0
+call 0x3
+mov r0, 0x0
+exit
+-- mem
+0x112233445566778899aabbccddeeff112233445566778899aabbccddeeff112233445566778899aabbccddeeff112233445566778899aabbccddeeff112233445566778899aabbccddeeff112233445566778899aabbccddeeff112233445566778899aabbccddeeff112233445566778899aabbccddeeff
+-- result
+0x0
+

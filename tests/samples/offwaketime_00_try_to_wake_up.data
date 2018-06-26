@@ -1,0 +1,26 @@
+--asm
+mov r7, r1
+ldxdw r3, [r7+0x70]
+add r3, 0x488
+mov r6, r10
+add r6, 0xffffffe4
+mov r1, r6
+mov r2, 0x4
+call 0x4
+mov r8, r10
+add r8, 0xffffffe8
+mov r1, r8
+mov r2, 0x10
+call 0x10
+mov r1, r7
+lddw r2, 0x0
+mov r3, 0x200
+call 0x1b
+stxw [r10+0xfff8], r0
+lddw r1, 0x0
+mov r2, r6
+mov r3, r8
+mov r4, 0x0
+call 0x2
+mov r0, 0x0
+exit

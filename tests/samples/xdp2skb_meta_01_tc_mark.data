@@ -1,0 +1,14 @@
+-- asm
+mov r2, 0x29
+ldxw r4, [r1+0x4c]
+ldxw r3, [r1+0x8c]
+mov r5, r3
+add r5, 0x4
+jgt r5, r4, +0x1
+ldxw r2, [r3+0x0]
+stxw [r1+0x8], r2
+mov r0, 0x0
+exit
+-- error
+Failed to load code: out of bounds memory load at PC 6 [r3+0]
+
