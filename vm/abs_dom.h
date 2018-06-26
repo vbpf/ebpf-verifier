@@ -17,22 +17,52 @@
 #ifndef ABS_DOM_H
 #define ABS_DOM_H
 
+#include <stdio.h>
 #include "ubpf_int.h"
 
+typedef enum {
+	T_NOINIT = -1,
+	T_T,
+	T_BOT,
+	T_UNKNOWN,
+	T_NUM,
+	T_STACK,
+	T_CTX,
+	T_MAYBE_MAP,
+	T_MAP,
+} type_t;
+
 struct abs_dom_value {
-    bool known;
+    type_t type;
     uint64_t value;
-    bool bot;
 };
 
 extern const struct abs_dom_value abs_dom_top;
+extern const struct abs_dom_value abs_dom_unknown;
 extern const struct abs_dom_value abs_dom_bot;
 
+extern const struct abs_dom_value abs_dom_ctx;
+extern const struct abs_dom_value abs_dom_stack;
+
 struct abs_dom_value abs_dom_fromconst(uint64_t value);
-bool abs_dom_maybe_zero(struct abs_dom_value, bool is64);
+
 struct abs_dom_value abs_dom_join(struct abs_dom_value dst, struct abs_dom_value src);
+
 struct abs_dom_value abs_dom_alu(uint8_t opcode, int32_t imm, struct abs_dom_value dst, struct abs_dom_value src);
+
 void abs_dom_assume(uint8_t opcode, bool taken, struct abs_dom_value *v1, struct abs_dom_value *v2);
+
+bool abs_dom_maybe_zero(struct abs_dom_value, bool is64);
+
+bool abs_dom_out_of_bounds(struct abs_dom_value v, int16_t offset, int width);
+
+bool abs_dom_is_initialized(struct abs_dom_value v);
+
+bool abs_dom_is_bot(struct abs_dom_value v);
+
+
+void abs_dom_print(FILE *f, struct abs_dom_value v);
+
 struct abs_dom_value abs_dom_call(struct ebpf_inst inst,
     struct abs_dom_value r1,
     struct abs_dom_value r2,

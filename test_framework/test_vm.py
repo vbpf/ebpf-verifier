@@ -70,4 +70,5 @@ def test_datafiles():
     # Nose test generator
     # Creates a testcase for each datafile
     for filename in testdata.list_files():
-        yield check_datafile, filename
+        if filename.endswith('stack.data'):
+            yield check_datafile, filename

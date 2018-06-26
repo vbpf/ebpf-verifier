@@ -34,6 +34,9 @@ abs_initialize_entry(struct abs_state *state)
     for (int i = 0; i < 11; i++) {
         state->reg[i] = abs_dom_top;
     }
+    state->reg[1] = abs_dom_ctx;
+    state->reg[10] = abs_dom_stack;
+    state->bot = false;
 }
 
 void 
@@ -50,8 +53,24 @@ abs_join(struct abs_state *state, struct abs_state other)
     } else {
         for (int r = 0; r < 11; r++) {
             state->reg[r] = abs_dom_join(state->reg[r], other.reg[r]);
-        }
+        } 
     }
+}
+
+static void
+print_state(const char* header, struct abs_state *state, uint16_t pc)
+{
+    FILE *f = fopen("log.txt", "a");
+    fprintf(f, "(%15s) %2u: ", header, pc);
+    if (state->bot) {
+        fprintf(f, "BOT");
+    } else for (int r = 0; r < 11; r++) {
+	    fprintf(f, "r%d=", r);
+        abs_dom_print(f, state->reg[r]);
+	    fprintf(f, "; ");
+    }
+    fprintf(f, "\n");
+    fclose(f);
 }
 
 static int
@@ -73,46 +92,6 @@ access_width(uint8_t opcode) {
     }
 }
 
-bool
-abs_bounds_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, char** errmsg) {
-    int width = access_width(inst.opcode);
-    if (width <= 0) {
-        return false;
-    }
-
-    bool is_load = ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD)
-                || ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LDX);
-    uint8_t r = is_load ? inst.src : inst.dst;
-    bool fail;
-    if (r == 10) {
-        fail = inst.offset + width > 0 || inst.offset < -STACK_SIZE;
-    } else if (r == 1) {
-        // unsafely assume this is context pointer
-        fail = inst.offset < 0 || inst.offset + width > 4096;
-    } else {
-        fail = true;
-    }
-    if (fail) {
-        *errmsg = ubpf_error("out of bounds memory %s at PC %d [r%d%+d]",
-                            is_load ? "load" : "store", pc, is_load ? inst.src : inst.dst, inst.offset);
-    }
-    return fail;
-}
-
-bool
-abs_divzero_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, char** errmsg) {
-    bool div = (inst.opcode & EBPF_ALU_OP_MASK) == (EBPF_OP_DIV_REG & EBPF_ALU_OP_MASK);
-    bool mod = (inst.opcode & EBPF_ALU_OP_MASK) == (EBPF_OP_MOD_REG & EBPF_ALU_OP_MASK);
-    if (div || mod) {
-        bool is64 = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64;
-        if (abs_dom_maybe_zero(state->reg[inst.src], is64)) {
-            *errmsg = ubpf_error("division by zero at PC %d", pc);
-            return true;
-        }
-    }
-    return false;
-}
-
 static bool
 is_alu(uint8_t opcode)
 {
@@ -121,35 +100,68 @@ is_alu(uint8_t opcode)
 }
 
 void
-abs_execute(struct abs_state *to, struct abs_state *from, struct ebpf_inst inst, int32_t imm)
+abs_execute(struct abs_state *to, struct abs_state *from, struct ebpf_inst inst,
+            int32_t imm, bool taken, uint16_t pc, char** errmsg)
 {
+    print_state("before command", from, pc);
     // (it can be an optimization for a specific domain, with default implementation as execute then join)
     struct abs_state state = *from;
-
+    if (inst.opcode == EBPF_OP_EXIT) {
+        if (!abs_dom_is_initialized(state.reg[0])) {
+            *errmsg = ubpf_error("r0 must be initialized to a numerical value before exit");
+	    return;
+        }
+    }
     if (inst.opcode == EBPF_OP_CALL) {
         state.reg[0] = abs_dom_call(inst, state.reg[1], state.reg[2], state.reg[3], state.reg[4], state.reg[5]);
         for (int r = 1; r <= 5; r++) {
             state.reg[r] = abs_dom_top;
         }
+    } else if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_JMP) {
+        struct abs_dom_value dummy = abs_dom_fromconst(inst.imm);
+        // TODO: check feasibility; this might cause problems with pending.
+        struct abs_dom_value *v2 = (inst.opcode | EBPF_SRC_IMM) ? &dummy : &state.reg[inst.src];
+        abs_dom_assume(inst.opcode, taken, &state.reg[inst.dst], v2);
+        if (abs_dom_is_bot(state.reg[inst.dst]) || abs_dom_is_bot(*v2)) {
+            state.bot = true;
+        }
     } else if (inst.opcode == EBPF_OP_LDDW) {
         state.reg[inst.dst] = abs_dom_fromconst((uint32_t)inst.imm | ((uint64_t)imm << 32));
     } else if (is_alu(inst.opcode)) {
+        bool div = (inst.opcode == EBPF_OP_DIV_REG || inst.opcode == EBPF_OP_DIV64_REG);
+        bool mod = (inst.opcode == EBPF_OP_MOD_REG || inst.opcode == EBPF_OP_MOD64_REG);
+        if (div || mod) {
+            bool is64 = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64;
+            if (abs_dom_maybe_zero(state.reg[inst.src], is64)) {
+                *errmsg = ubpf_error("division by zero at PC %d", pc);
+                return;
+            }
+        }
         state.reg[inst.dst] = abs_dom_alu(inst.opcode, inst.imm, state.reg[inst.dst], state.reg[inst.src]);
+    } else {
+        int width = access_width(inst.opcode);
+        assert(width > 0);
+        bool is_load = ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD)
+                    || ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LDX);
+
+        uint8_t r = is_load ? inst.src : inst.dst;
+        if (abs_dom_out_of_bounds(state.reg[r], inst.offset, width)) {
+            *errmsg = ubpf_error("out of bounds memory %s at PC %d [r%d%+d]",
+                                is_load ? "load" : "store", pc, is_load ? inst.src : inst.dst, inst.offset);
+            return;
+        }
+        if (is_load) {
+            state.reg[inst.dst] = abs_dom_unknown;
+        }
     }
 
-    abs_join(to, state);
-}
+    print_state("before join", &state, pc);
+    print_state("joining with", to, pc);
+    bool bot = to->bot;
 
-void
-abs_execute_assume(struct abs_state *to, struct abs_state *from, struct ebpf_inst inst, bool taken)
-{
-    struct abs_state state = *from;
-    struct abs_dom_value dummy = abs_dom_fromconst(inst.imm);
-
-    // TODO: check feasibility; this might cause problems with pending.
-    struct abs_dom_value *v2 = (inst.opcode | EBPF_SRC_IMM) ? &dummy : &state.reg[inst.src];
-    abs_dom_assume(inst.opcode, taken, &state.reg[inst.dst], v2);
-    if (v2->bot == true)
-        state.bot = true;
     abs_join(to, state);
+
+    if (!bot)
+        print_state("after join", to, pc);
+    int _ = system("echo >> log.txt"); taken = (bool)_;
 }
