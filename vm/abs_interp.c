@@ -45,8 +45,9 @@ has_fallthrough(struct ebpf_inst inst, uint16_t pc, uint16_t* out_target) {
         /* eBPF has one 16-byte instruction: BPF_LD | BPF_DW | BPF_IMM which consists
         of two consecutive 'struct ebpf_inst' 8-byte blocks and interpreted as single
         instruction that loads 64-bit immediate value into a dst_reg. */
-        if (inst.opcode == EBPF_OP_LDDW)
+        if (inst.opcode == EBPF_OP_LDDW) {
             pc++;
+        }
         *out_target = pc + 1;
         return true;
     }
@@ -66,29 +67,11 @@ compute_pending(const struct ebpf_inst *insts, uint32_t num_insts)
         }
         if (has_fallthrough(insts[pc], pc, &target)) {
             pending[target]++;
+            // skip imm of lddw
+            pc = target - 1;
         }
     }
     return pending;
-}
-
-static bool
-abs_step(const struct ebpf_inst* insts, struct abs_state *states, uint16_t pc, char** errmsg)
-{
-    struct ebpf_inst inst = insts[pc];
-    uint16_t target;
-    if (is_jmp(insts[pc], pc, &target)) {
-        abs_execute_assume(&states[target], &states[pc], inst, true);
-        abs_execute_assume(&states[pc + 1], &states[pc], inst, false);
-    } else if (has_fallthrough(insts[pc], pc, &target)) {
-        if (abs_bounds_fail(&states[pc], inst, pc, errmsg)) {
-            return false;
-        }
-        if (abs_divzero_fail(&states[pc], inst, pc, errmsg)) {
-            return false;
-        }
-        abs_execute(&states[target], &states[pc], inst, insts[pc+1].imm);
-    }
-    return true;
 }
 
 bool
@@ -96,45 +79,53 @@ abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
 {
     int *pending = compute_pending(insts, num_insts);
 
-    uint16_t *available = malloc(num_insts * sizeof(*available));
+    uint16_t available[num_insts];
 
     // states[i] contains the state just before instruction i
-    struct abs_state *states = malloc(num_insts * sizeof(*states));
+    struct abs_state states[num_insts];
     for (int i = 0; i < num_insts; i++) {
         abs_initialize_unreached(&states[i]);
     }
     
     bool res = true;
-    uint16_t pc = 0;
-    available[0] = pc;
+    available[0] = 0;
     abs_initialize_entry(&states[0]);
 
-    for (int wi = 1; wi != 0; pc = available[--wi]) {
-        assert(wi > 0);
+    assert(*errmsg == NULL);
 
-        bool ok = abs_step(insts, states, pc, errmsg);
-        if (!ok) {
+    int wi = 1;
+    do {
+        const uint16_t pc = available[--wi];
+        const struct ebpf_inst inst = insts[pc];
+
+        uint16_t target;
+        if (is_jmp(inst, pc, &target)) {
+            abs_execute(&states[target], &states[pc], inst, 0, true, pc, errmsg);
+            pending[target]--;
+            if (pending[target] == 0)
+                available[wi++] = target;
+        }
+
+        if (*errmsg != NULL) {
             res = false;
             break;
         }
-
-        uint16_t target;
-        if (is_jmp(insts[pc], pc, &target)) {
+        if (has_fallthrough(inst, pc, &target)) {
+            abs_execute(&states[target], &states[pc], inst, insts[pc+1].imm, false, pc, errmsg);
             pending[target]--;
             if (pending[target] == 0)
                 available[wi++] = target;
+        } 
+        if (inst.opcode == EBPF_OP_EXIT) {
+            break;
         }
-
-        if (has_fallthrough(insts[pc], pc, &target)) {
-            pending[target]--;
-            if (pending[target] == 0)
-                available[wi++] = target;
+        if (*errmsg != NULL) {
+            res = false;
+            break;
         }
-    }
+    } while (wi > 0);
 
     free(pending);
-    free(available);
-    free(states);
 
     return res;
 }

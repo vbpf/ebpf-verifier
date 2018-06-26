@@ -28,11 +28,8 @@ struct abs_state {
 void abs_initialize_entry(struct abs_state *state);
 void abs_initialize_unreached(struct abs_state *state);
 
-bool abs_bounds_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, char** errmsg);
-bool abs_divzero_fail(struct abs_state *state, struct ebpf_inst inst, uint16_t pc, char** errmsg);
-
-void abs_execute_assume(struct abs_state *to, struct abs_state *from, struct ebpf_inst inst, bool taken);
-void abs_execute(struct abs_state *to, struct abs_state *from, struct ebpf_inst inst, int32_t imm);
+void abs_execute(struct abs_state *to, struct abs_state *from,
+                 struct ebpf_inst inst, int32_t imm, bool taken, uint16_t pc, char** errmsg);
 
 void abs_print(struct abs_state *state, const char* s);
 

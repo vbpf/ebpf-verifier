@@ -225,6 +225,12 @@ sqrti(uint32_t x)
     return sqrt(x);
 }
 
+static uint32_t
+id(uint32_t x)
+{
+    return x;
+}
+
 static void
 register_functions(struct ubpf_vm *vm)
 {
@@ -233,4 +239,5 @@ register_functions(struct ubpf_vm *vm)
     ubpf_register(vm, 2, "trash_registers", trash_registers);
     ubpf_register(vm, 3, "sqrti", sqrti);
     ubpf_register(vm, 4, "strcmp_ext", strcmp);
+    ubpf_register(vm, 0x33, "unknown", id);
 }

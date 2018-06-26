@@ -26,8 +26,24 @@
 #include "abs_interp.h"
 #include "abs_dom.h"
 
-const struct abs_dom_value abs_dom_top = { false, 0, false }; // second zero makes unknowns
-const struct abs_dom_value abs_dom_bot = { true, 0, true };
+const struct abs_dom_value abs_dom_top = { T_NOINIT, 0 };
+const struct abs_dom_value abs_dom_unknown = (struct abs_dom_value){ T_UNKNOWN, 0 };
+const struct abs_dom_value abs_dom_bot = { T_BOT, 0 };
+
+const struct abs_dom_value abs_dom_ctx = { T_CTX, 0 };
+const struct abs_dom_value abs_dom_stack = { T_STACK, 0 };
+
+bool
+abs_dom_is_bot(struct abs_dom_value v)
+{
+    return v.type == T_BOT;
+}
+
+bool
+abs_dom_is_initialized(struct abs_dom_value v)
+{
+    return v.type != T_NOINIT;
+}
 
 static uint32_t
 u32(uint64_t x)
@@ -36,32 +52,25 @@ u32(uint64_t x)
 }
 
 static bool
-is_mov(uint8_t opcode)
+known(struct abs_dom_value t)
 {
-    return opcode == EBPF_OP_MOV64_IMM
-        || opcode == EBPF_OP_MOV64_REG
-        || opcode == EBPF_OP_MOV_IMM
-        || opcode == EBPF_OP_MOV_REG;
+    return t.type != T_UNKNOWN && t.type != T_NOINIT;
 }
 
 struct abs_dom_value
 abs_dom_join(struct abs_dom_value dst, struct abs_dom_value src)
 {
-    if (!src.known || src.value != dst.value)
-        dst.known = false;
+    if (src.type == T_NOINIT)
+        dst.type = T_NOINIT;
+    else if (!known(src) || src.value != dst.value)
+        dst.type = T_UNKNOWN;
     return dst;
 }
 
 struct abs_dom_value
 abs_dom_fromconst(uint64_t value)
 {
-    return (struct abs_dom_value){ true, value, false };
-}
-
-bool
-abs_dom_maybe_zero(struct abs_dom_value v, bool is64)
-{
-    return !v.known || (is64 ? v.value : u32(v.value)) == 0;
+    return (struct abs_dom_value){ T_NUM, value };
 }
 
 struct abs_dom_value
@@ -73,6 +82,10 @@ abs_dom_call(struct ebpf_inst inst,
     struct abs_dom_value r5
 )
 {
+    if (inst.imm == 0x1) {
+        // TODO: differntiate maps
+        return (struct abs_dom_value) { T_MAYBE_MAP, 0x0};
+    }
     return abs_dom_top;
 }
 
@@ -108,21 +121,63 @@ implies_neq(uint8_t opcode, bool taken)
     }
 }
 
+bool
+abs_dom_maybe_zero(struct abs_dom_value v, bool is64)
+{
+    return !known(v) || (is64 ? v.value : u32(v.value)) == 0;
+}
+
+void
+abs_dom_print(FILE* f, struct abs_dom_value v)
+{
+    fprintf(f, "{%2d, %2ld}", v.type, (int64_t)v.value);
+}
+
 void
 abs_dom_assume(uint8_t opcode, bool taken, struct abs_dom_value *v1, struct abs_dom_value *v2)
 {
     if (implies_eq(opcode, taken)) {
+        // FIX and deduplicate 
+        if (v1->type == T_MAYBE_MAP) {
+            if (v2->type == T_NUM) {
+                v1->type = T_NUM; 
+            } else if (v2->type == T_MAP) {
+                v1->type = T_MAP;
+            }
+            return;
+        } else if (v2->type == T_MAYBE_MAP){
+            if (v1->type == T_NUM)
+                v2->type = T_NUM;
+            else if (v1->type == T_MAP)
+                v2->type = T_MAP;
+            return;
+        }
+
         // meet
-        if (v1->known && v2->known && v1->value != v2->value) {
+        if (known(*v1) && known(*v2) && v1->value != v2->value) {
             *v2 = *v1 = abs_dom_bot;
             return;
         }
-        if (v1->known) *v2 = *v1;
+        if (known(*v1)) *v2 = *v1;
         else *v1 = *v2;
         return;
     }
     if (implies_neq(opcode, taken)) {
-        if (v1->known && v2->known && v1->value == v2->value) {
+        // FIX and deduplicate 
+        if (v1->type == T_MAYBE_MAP) {
+            if (v2->type == T_NUM && v2->value == 0)
+                v1->type = T_MAP;
+            else if (v2->type == T_MAP)
+                v1->type = T_UNKNOWN;
+            return;
+        } else if (v2->type == T_MAYBE_MAP) {
+            if (v1->type == T_NUM && v1->value == 0)
+                v2->type = T_MAP;
+            else if (v1->type == T_MAP)
+                v2->type = T_UNKNOWN;
+            return;
+        }
+        if (known(*v1) && known(*v2) && v1->value == v2->value) {
             *v2 = *v1 = abs_dom_bot;
             return;
         }
@@ -130,15 +185,70 @@ abs_dom_assume(uint8_t opcode, bool taken, struct abs_dom_value *v1, struct abs_
     }
 }
 
+bool
+abs_dom_out_of_bounds(struct abs_dom_value v, int16_t offset, int width)
+{
+    switch (v.type) {
+    case T_STACK:
+        return (int64_t)v.value + offset + width > 0 || (int64_t)v.value + offset < -STACK_SIZE;
+    case T_CTX:
+        return (int64_t)v.value + offset < 0 || (int64_t)v.value + offset + width > 4096;
+    case T_MAP:
+        // ARBITRARY. TODO: actual numbers
+        return (int64_t)v.value + offset < 0 || (int64_t)v.value + offset + width > 4096;
+    default:
+        return true;
+    }
+}
+
+static bool
+is_reg(uint8_t opcode)
+{
+    return opcode & EBPF_SRC_REG;
+}
+
+static type_t
+abs_dom_type_alu(uint8_t opcode, type_t dst, type_t src, int32_t imm)
+{
+    if (opcode == EBPF_OP_MOV_IMM || opcode == EBPF_OP_MOV64_IMM)
+        return T_NUM;
+    if (is_reg(opcode)) {
+        if (src == T_NOINIT) {
+            return T_BOT;
+        }
+    }
+    if (opcode == EBPF_OP_MOV_REG || opcode == EBPF_OP_MOV64_REG)
+        return src;
+    if (dst == T_NOINIT) {
+        return T_BOT;
+    }
+    if (dst == T_UNKNOWN)
+        return T_UNKNOWN;
+    switch (opcode) {
+    case EBPF_OP_ADD_IMM: case EBPF_OP_ADD64_IMM:
+    case EBPF_OP_SUB_IMM: case EBPF_OP_SUB64_IMM:
+        return dst;
+    case EBPF_OP_ADD_REG: case EBPF_OP_ADD64_REG:
+        if (dst != T_NUM && src == T_NUM) return dst;
+        if (src != T_NUM && dst == T_NUM) return src;
+        // TODO: imprecise. In case one is a pointer and the offset is unknown, we can do better with unknown value and known type
+        return T_UNKNOWN;
+    case EBPF_OP_SUB_REG: case EBPF_OP_SUB64_REG:
+        // unsafe for different maps
+        return (src == dst) ? T_NUM : T_UNKNOWN;
+    default:
+        return (dst == T_NUM && ((opcode & EBPF_SRC_REG) == 0 || src == T_NUM)) ? T_NUM : T_UNKNOWN;
+    }
+}
+
 struct abs_dom_value
 abs_dom_alu(uint8_t opcode, int32_t imm, struct abs_dom_value dst, struct abs_dom_value src)
 {
-    if (((opcode & EBPF_SRC_REG) && !src.known)
-        || (!dst.known && !is_mov(opcode))) {
-        // if it's not mov, the dst register is also important for definedness
-        dst.known = false;
+    dst.type = abs_dom_type_alu(opcode, dst.type, src.type, imm);
+    if (dst.type == T_UNKNOWN || dst.type == T_NOINIT || dst.type == T_BOT) {
         return dst;
     }
+
     uint64_t dst_val = dst.value;
     uint64_t src_val = src.value;
     switch (opcode) {
@@ -344,6 +454,5 @@ abs_dom_alu(uint8_t opcode, int32_t imm, struct abs_dom_value dst, struct abs_do
         assert(false);
     }
     dst.value = dst_val;
-    dst.known = true;
     return dst;
 }
