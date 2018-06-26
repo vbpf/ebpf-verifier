@@ -1,0 +1,77 @@
+--asm
+ldxw r9, [r1+0x50]
+ldxw r8, [r1+0x4c]
+mov r7, 0x0
+stxw [r10+0xfffc], r7
+mov r1, r8
+add r1, 0xe
+jgt r1, r9, +0x4e
+mov r2, r10
+add r2, 0xfffffffc
+lddw r1, 0x0
+call 0x1
+mov r6, r0
+jeq r6, 0x0, +0x47
+ldxh r1, [r8+0xc]
+jeq r1, 0xdd86, +0x1f
+jne r1, 0x8, +0x44
+lddw r1, 0xa78253a34726464
+stxdw [r10+0xffe0], r1
+lddw r1, 0x61642064253a7865
+stxdw [r10+0xffd8], r1
+lddw r1, 0x646e696669206f74
+stxdw [r10+0xffd0], r1
+lddw r1, 0x2064726177726f66
+stxdw [r10+0xffc8], r1
+lddw r1, 0x2073736572676e69
+stxdw [r10+0xffc0], r1
+mov r7, 0x0
+stxb [r10+0xffe8], r7
+mov r1, r8
+add r1, 0x22
+jgt r1, r9, +0x30
+ldxb r1, [r8+0x17]
+jne r1, 0x4, +0x2e
+ldxw r4, [r8+0x1e]
+ldxw r3, [r6+0x0]
+be32 r4
+mov r1, r10
+add r1, 0xffffffc0
+mov r2, 0x29
+call 0x6
+ja +0x22
+mov r1, 0xa78253a
+stxw [r10+0xffe8], r1
+lddw r1, 0x3a78253a36726464
+stxdw [r10+0xffe0], r1
+lddw r1, 0x61642064253a7865
+stxdw [r10+0xffd8], r1
+lddw r1, 0x646e696669206f74
+stxdw [r10+0xffd0], r1
+lddw r1, 0x2064726177726f66
+stxdw [r10+0xffc8], r1
+lddw r1, 0x2073736572676e69
+stxdw [r10+0xffc0], r1
+mov r7, 0x0
+stxb [r10+0xffec], r7
+mov r1, r8
+add r1, 0x36
+jgt r1, r9, +0x10
+ldxb r1, [r8+0x14]
+jeq r1, 0x29, +0x1
+jne r1, 0x4, +0xd
+ldxw r5, [r8+0x32]
+ldxw r4, [r8+0x26]
+ldxw r3, [r6+0x0]
+be32 r4
+be32 r5
+mov r1, r10
+add r1, 0xffffffc0
+mov r2, 0x2d
+call 0x6
+ldxw r1, [r6+0x0]
+mov r2, 0x1
+call 0x17
+mov r7, r0
+mov r0, r7
+exit

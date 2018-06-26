@@ -1,0 +1,121 @@
+--asm
+mov r6, r1
+mov r1, 0x756c
+stxh [r10+0xfff4], r1
+mov r1, 0x6c25203a
+stxw [r10+0xfff0], r1
+lddw r1, 0x676e696e6e755220
+stxdw [r10+0xffe8], r1
+lddw r1, 0x656d6954202c756c
+stxdw [r10+0xffe0], r1
+lddw r1, 0x6c25203a64656c62
+stxdw [r10+0xffd8], r1
+lddw r1, 0x616e4520656d6954
+stxdw [r10+0xffd0], r1
+mov r1, 0x0
+stxb [r10+0xfff6], r1
+mov r2, 0x6425203a
+stxw [r10+0xffc8], r2
+lddw r2, 0x65646f4372724520
+stxdw [r10+0xffc0], r2
+lddw r2, 0x2c64656c69614620
+stxdw [r10+0xffb8], r2
+lddw r2, 0x656d695420746547
+stxdw [r10+0xffb0], r2
+stxb [r10+0xffcc], r1
+lddw r2, 0x786c6c25203a74
+stxdw [r10+0xffa8], r2
+lddw r2, 0x6e657665206e6f20
+stxdw [r10+0xffa0], r2
+lddw r2, 0x646564726f636572
+stxdw [r10+0xff98], r2
+lddw r2, 0x2073736572646441
+stxdw [r10+0xff90], r2
+stxb [r10+0xff8a], r1
+mov r1, 0x786c
+stxh [r10+0xff88], r1
+lddw r1, 0x6c2520706920646c
+stxdw [r10+0xff80], r1
+lddw r1, 0x6c2520646f697265
+stxdw [r10+0xff78], r1
+lddw r1, 0x702064252d555043
+stxdw [r10+0xff70], r1
+call 0x8
+mov r7, r0
+mov r1, 0x1
+stxdw [r10+0xff38], r1
+ldxdw r1, [r6+0xa8]
+mov r2, 0x2710
+jgt r2, r1, +0x4a
+mov r1, r10
+add r1, 0xffffff40
+mov r2, 0x10
+call 0x10
+mov r1, r6
+lddw r2, 0x0
+mov r3, 0x200
+call 0x1b
+stxw [r10+0xff50], r0
+mov r1, r6
+lddw r2, 0x0
+mov r3, 0x300
+call 0x1b
+stxw [r10+0xff54], r0
+ldxw r1, [r10+0xff50]
+and r1, r0
+lsh r1, 0x20
+arsh r1, 0x20
+jsgt r1, 0xffffffff, +0x8
+ldxdw r5, [r6+0x80]
+ldxdw r4, [r6+0xa8]
+mov r1, r10
+add r1, 0xffffff70
+mov r2, 0x1b
+mov r3, r7
+call 0x6
+ja +0x2d
+mov r2, r10
+add r2, 0xffffff58
+mov r1, r6
+mov r3, 0x18
+call 0x38
+mov r1, r0
+lsh r1, 0x20
+rsh r1, 0x20
+jne r1, 0x0, +0x7
+ldxdw r4, [r10+0xff68]
+ldxdw r3, [r10+0xff60]
+mov r1, r10
+add r1, 0xffffffd0
+mov r2, 0x27
+call 0x6
+ja +0x5
+mov r1, r10
+add r1, 0xffffffb0
+mov r2, 0x1d
+mov r3, r0
+call 0x6
+ldxdw r3, [r6+0xb0]
+jeq r3, 0x0, +0x4
+mov r1, r10
+add r1, 0xffffff90
+mov r2, 0x20
+call 0x6
+mov r2, r10
+add r2, 0xffffff40
+lddw r1, 0x0
+call 0x1
+jeq r0, 0x0, +0x4
+ldxdw r1, [r0+0x0]
+add r1, 0x1
+stxdw [r0+0x0], r1
+ja +0x8
+mov r2, r10
+add r2, 0xffffff40
+mov r3, r10
+add r3, 0xffffff38
+lddw r1, 0x0
+mov r4, 0x1
+call 0x2
+mov r0, 0x0
+exit

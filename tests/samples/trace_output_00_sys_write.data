@@ -1,0 +1,18 @@
+-- asm
+mov r6, r1
+call 0xe
+stxdw [r10+0xfff0], r0
+mov r1, 0x12345678
+stxdw [r10+0xfff8], r1
+mov r4, r10
+add r4, 0xfffffff0
+mov r1, r6
+lddw r2, 0x0
+mov r3, 0x0
+mov r5, 0x10
+call 0x19
+mov r0, 0x0
+exit
+-- error
+Failed to load code: call to nonexistent function 14 at PC 1
+

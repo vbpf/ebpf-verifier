@@ -1,0 +1,9 @@
+-- asm
+ldxw r2, [r1+0x28]
+add r2, 0x1
+mov r3, 0x0
+call 0xd
+mov r0, 0x2
+exit
+-- error
+Failed to load code: call to nonexistent function 13 at PC 3

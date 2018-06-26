@@ -80,5 +80,5 @@ a0 ec 00 00 00 00 a0 02
 05 b4 04 02 08 0a 00 9c 
 27 24 00 00 00 00 01 03 
 03 00 
--- result
-0x1
+-- error
+Failed to load code: out of bounds memory load at PC 9 [r1+16]

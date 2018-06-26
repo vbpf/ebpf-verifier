@@ -1,0 +1,62 @@
+--asm
+mov r6, r1
+ldxdw r1, [r6+0x40]
+mov r2, r1
+lsh r2, 0x20
+rsh r2, 0x20
+jeq r2, 0x31d90000, +0xa
+lddw r2, 0xffffffff00000000
+and r1, r2
+lddw r2, 0xd93100000000
+jeq r1, r2, +0x4
+lddw r1, 0xffffffff
+stxw [r6+0x4], r1
+ja +0x32
+ldxw r8, [r6+0x0]
+mov r1, 0x0
+stxb [r10+0xfff0], r1
+lddw r1, 0xa6425203a646e61
+stxdw [r10+0xffe8], r1
+lddw r1, 0x6d6d6f6320465042
+stxdw [r10+0xffe0], r1
+mov r1, r10
+add r1, 0xffffffe0
+mov r2, 0x11
+mov r3, r8
+call 0x6
+lddw r7, 0xffffffff
+jne r8, 0x1, +0x14
+ldxw r1, [r6+0x14]
+jne r1, 0xa, +0x12
+ldxdw r1, [r6+0x20]
+mov r3, r1
+lsh r3, 0x20
+rsh r3, 0x20
+ldxdw r2, [r6+0x30]
+mov r4, r2
+lsh r4, 0x20
+rsh r4, 0x20
+jne r4, r3, +0x9
+rsh r1, 0x20
+and r1, 0xf0ff
+be32 r1
+rsh r2, 0x20
+and r2, 0xf0ff
+be32 r2
+mov r7, 0xa
+jeq r2, r1, +0x1
+mov r7, 0xffffffff
+mov r1, 0xa
+stxh [r10+0xffec], r1
+mov r1, 0x64252067
+stxw [r10+0xffe8], r1
+lddw r1, 0x6e696e7275746552
+stxdw [r10+0xffe0], r1
+mov r1, r10
+add r1, 0xffffffe0
+mov r2, 0xe
+mov r3, r7
+call 0x6
+stxw [r6+0x4], r7
+mov r0, 0x1
+exit

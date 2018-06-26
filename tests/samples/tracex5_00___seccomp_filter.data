@@ -1,0 +1,29 @@
+--asm
+ldxdw r6, [r1+0x70]
+lddw r2, 0x0
+mov r3, r6
+call 0xc
+mov r1, r6
+add r1, 0xffffff9a
+lsh r1, 0x20
+rsh r1, 0x20
+jgt r1, 0x16, +0x16
+mov r1, 0x0
+stxb [r10+0xfff8], r1
+lddw r1, 0xa296469672f6469
+stxdw [r10+0xfff0], r1
+lddw r1, 0x702f646975207465
+stxdw [r10+0xffe8], r1
+lddw r1, 0x732f74656720666f
+stxdw [r10+0xffe0], r1
+lddw r1, 0x20656e6f28206425
+stxdw [r10+0xffd8], r1
+lddw r1, 0x3d6c6c6163737973
+stxdw [r10+0xffd0], r1
+mov r1, r10
+add r1, 0xffffffd0
+mov r2, 0x29
+mov r3, r6
+call 0x6
+mov r0, 0x0
+exit
