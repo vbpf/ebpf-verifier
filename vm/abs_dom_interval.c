@@ -27,11 +27,13 @@
 #include "abs_dom.h"
 
 const struct abs_dom_value abs_dom_top = { T_NOINIT, 0, -1 };
-const struct abs_dom_value abs_dom_unknown = (struct abs_dom_value){ T_UNKNOWN, 0, (uint64_t)-1 };
+const struct abs_dom_value abs_dom_unknown = (struct abs_dom_value){ T_NUM, 0, (uint64_t)-1 };
 const struct abs_dom_value abs_dom_bot = { T_BOT, (uint64_t)-1, 0 };
 
 const struct abs_dom_value abs_dom_ctx = { T_CTX, 0, 0 };
 const struct abs_dom_value abs_dom_stack = { T_STACK, 0, 0 };
+
+static uint64_t alu_single(uint8_t opcode, uint64_t dst_val, uint64_t src_val, int32_t imm);
 
 static uint64_t
 min(uint64_t a, uint64_t b)
@@ -328,6 +330,35 @@ abs_dom_type_alu(uint8_t opcode, type_t dst, type_t src, int32_t imm)
     }
 }
 
+static bool
+is_imm(uint8_t opcode)
+{
+    return (opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU
+        && opcode != EBPF_OP_NEG && opcode != EBPF_OP_NEG64
+        && !(opcode & EBPF_MODE_IMM);
+}
+
+// monotone: if not overflows, maintains min and max of unsigned
+// also overflows only if the min/max overflows
+static bool
+is_monotone(uint8_t opcode)
+{
+switch (opcode) {
+    case EBPF_OP_ADD_IMM:    case EBPF_OP_ADD_REG:    case EBPF_OP_ADD64_IMM:  case EBPF_OP_ADD64_REG:
+    case EBPF_OP_SUB_IMM:    case EBPF_OP_SUB_REG:    case EBPF_OP_SUB64_IMM:  case EBPF_OP_SUB64_REG:
+    case EBPF_OP_MUL_IMM:    case EBPF_OP_MUL_REG:    case EBPF_OP_MUL64_IMM:  case EBPF_OP_MUL64_REG:
+    case EBPF_OP_OR_IMM:     case EBPF_OP_OR_REG:     case EBPF_OP_OR64_IMM:   case EBPF_OP_OR64_REG:
+    case EBPF_OP_AND_IMM:    case EBPF_OP_AND_REG:    case EBPF_OP_AND64_IMM:  case EBPF_OP_AND64_REG:
+    case EBPF_OP_LSH_IMM:    case EBPF_OP_LSH_REG:    case EBPF_OP_LSH64_IMM:  case EBPF_OP_LSH64_REG:
+    case EBPF_OP_RSH_IMM:    case EBPF_OP_RSH_REG:    case EBPF_OP_RSH64_IMM:  case EBPF_OP_RSH64_REG:
+    case EBPF_OP_ARSH_IMM:   case EBPF_OP_ARSH_REG:   case EBPF_OP_ARSH64_IMM: case EBPF_OP_ARSH64_REG:
+        return true;
+    default:
+        return false;
+    }
+}
+
+
 struct abs_dom_value
 abs_dom_alu(uint8_t opcode, int32_t imm, struct abs_dom_value dst, struct abs_dom_value src)
 {
@@ -339,14 +370,53 @@ abs_dom_alu(uint8_t opcode, int32_t imm, struct abs_dom_value dst, struct abs_do
     if (dst.type == T_UNKNOWN || dst.type == T_NOINIT || dst.type == T_BOT) {
         return dst;
     }
-    if (dst.maxvalue > dst.minvalue || src.maxvalue > src.minvalue) {
-        dst.minvalue = 0;
-        dst.maxvalue = (uint64_t)-1;
+    if (dst.maxvalue - dst.minvalue <= 1 && is_imm(opcode)) {
+        uint64_t a = alu_single(opcode, dst.minvalue, src.minvalue, imm);
+        uint64_t b = alu_single(opcode, dst.maxvalue, src.maxvalue, imm);
+        dst.minvalue = min(a, b);
+        dst.maxvalue = max(a, b);
         return dst;
     }
+    if (is_monotone(opcode)) {
+        uint64_t a1 = alu_single(opcode, dst.minvalue, src.minvalue, imm);
+        uint64_t a2 = alu_single(opcode, dst.minvalue, src.maxvalue, imm);
+        uint64_t b1 = alu_single(opcode, dst.maxvalue, src.minvalue, imm);
+        uint64_t b2 = alu_single(opcode, dst.maxvalue, src.maxvalue, imm);
+        if (max(a1, a2) <= min(b1, b2)) {
+            dst.minvalue = min(a1, a2);
+            dst.maxvalue = max(b1, b2);
+            return dst;
+        }
+    }
+    if (dst.minvalue <= dst.maxvalue && src.minvalue <= src.maxvalue
+    && (dst.maxvalue - dst.minvalue <= 10 && src.maxvalue - src.minvalue <= 10)) {
+        uint64_t tmin = (uint64_t)-1;
+        uint64_t tmax = 0; 
+        // don't overflow in loop
+        for (uint64_t a = dst.minvalue; ; a++) {
+            for (uint64_t b = src.minvalue; ; b++) {
+                uint64_t t = alu_single(opcode, a, b, imm);
+                tmin = min(tmin, t);
+                tmax = max(tmin, t);
+                if (b == src.maxvalue)
+                    break;
+            }
+            if (a == dst.maxvalue)
+                break;
+        }
+        dst.minvalue = tmin;
+        dst.maxvalue = tmax;
+        return dst;
+    }
+    dst.minvalue = 0;
+    dst.maxvalue = (uint64_t)-1;
+    return dst;
+}
 
-    uint64_t dst_val = dst.minvalue;
-    uint64_t src_val = src.minvalue;
+
+static uint64_t
+alu_single(uint8_t opcode, uint64_t dst_val, uint64_t src_val, int32_t imm)
+{
     switch (opcode) {
     case EBPF_OP_ADD_IMM:
         dst_val += imm;
@@ -550,6 +620,5 @@ abs_dom_alu(uint8_t opcode, int32_t imm, struct abs_dom_value dst, struct abs_do
         fprintf(stderr, "%d\n", opcode);
         assert(false);
     }
-    dst.minvalue = dst.maxvalue = dst_val;
-    return dst;
+    return dst_val;
 }
