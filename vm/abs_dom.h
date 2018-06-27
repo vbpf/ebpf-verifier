@@ -34,7 +34,8 @@ typedef enum {
 
 struct abs_dom_value {
     type_t type;
-    uint64_t value;
+    uint64_t minvalue;
+    uint64_t maxvalue;
 };
 
 extern const struct abs_dom_value abs_dom_top;

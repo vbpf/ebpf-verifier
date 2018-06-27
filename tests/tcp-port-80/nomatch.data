@@ -9,5 +9,5 @@ Incorrect TCP src/dst ports
 44 44 44 44 44 44 44 44 44 44 44 44 44 44 44 44
 44 44 44 44 44 44 44 44 44 44 44 44 44 44 44 44
 44 44 44 44
--- error
-Failed to load code: out of bounds memory load at PC 13 [r1+2]
+-- result
+0x0

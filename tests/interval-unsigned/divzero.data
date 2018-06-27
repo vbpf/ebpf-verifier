@@ -1,0 +1,12 @@
+-- asm
+mov r0, 0x4
+mov r2, 1
+
+ldxw r3, [r1+0]
+jeq r3, 0x1, +1
+
+mul r2, 0
+div r0, r2
+exit
+-- error
+Failed to load code: division by zero at PC 5

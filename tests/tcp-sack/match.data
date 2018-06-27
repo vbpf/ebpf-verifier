@@ -1,4 +1,4 @@
 -- asm @ tcp-sack.asm
 -- mem @ pkt-sack.hex
--- error
-Failed to load code: out of bounds memory load at PC 14 [r1+12]
+-- result
+0x1

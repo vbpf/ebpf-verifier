@@ -1,0 +1,14 @@
+-- asm
+mov r0, 0x4
+mov r2, 1
+
+ldxw r3, [r1+0]
+jeq r3, 0x1, +1
+
+mov r2, 2
+div r0, r2
+exit
+--mem
+01000000
+-- result
+0x4
