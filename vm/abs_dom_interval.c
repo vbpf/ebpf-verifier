@@ -26,12 +26,12 @@
 #include "abs_interp.h"
 #include "abs_dom.h"
 
-const struct abs_dom_value abs_dom_top = { T_NOINIT, 0 };
-const struct abs_dom_value abs_dom_unknown = (struct abs_dom_value){ T_UNKNOWN, 0 };
-const struct abs_dom_value abs_dom_bot = { T_BOT, 0 };
+const struct abs_dom_value abs_dom_top = { T_NOINIT, 0, -1 };
+const struct abs_dom_value abs_dom_unknown = (struct abs_dom_value){ T_UNKNOWN, 0, (uint64_t)-1 };
+const struct abs_dom_value abs_dom_bot = { T_BOT, (uint64_t)-1, 0 };
 
-const struct abs_dom_value abs_dom_ctx = { T_CTX, 0 };
-const struct abs_dom_value abs_dom_stack = { T_STACK, 0 };
+const struct abs_dom_value abs_dom_ctx = { T_CTX, 0, 0 };
+const struct abs_dom_value abs_dom_stack = { T_STACK, 0, 0 };
 
 bool
 abs_dom_is_bot(struct abs_dom_value v)
@@ -52,6 +52,12 @@ u32(uint64_t x)
 }
 
 static bool
+issingle(struct abs_dom_value v)
+{
+    return v.minvalue == v.maxvalue;
+}
+
+static bool
 known(struct abs_dom_value t)
 {
     return t.type != T_UNKNOWN && t.type != T_NOINIT;
@@ -62,15 +68,20 @@ abs_dom_join(struct abs_dom_value dst, struct abs_dom_value src)
 {
     if (src.type == T_NOINIT)
         dst.type = T_NOINIT;
-    else if (!known(src) || src.value != dst.value)
-        dst.type = T_UNKNOWN;
+    else {
+        if (src.minvalue < dst.minvalue)
+            dst.minvalue = src.minvalue;
+
+        if (src.maxvalue > dst.maxvalue)
+            dst.maxvalue = src.maxvalue;
+    }
     return dst;
 }
 
 struct abs_dom_value
 abs_dom_fromconst(uint64_t value)
 {
-    return (struct abs_dom_value){ T_NUM, value };
+    return (struct abs_dom_value){ T_NUM, value, value };
 }
 
 struct abs_dom_value
@@ -124,13 +135,13 @@ implies_neq(uint8_t opcode, bool taken)
 bool
 abs_dom_maybe_zero(struct abs_dom_value v, bool is64)
 {
-    return !known(v) || (is64 ? v.value : u32(v.value)) == 0;
+    return !known(v) || (is64 ? v.minvalue : u32(v.minvalue)) == 0;
 }
 
 void
 abs_dom_print(FILE* f, struct abs_dom_value v)
 {
-    fprintf(f, "{%2d, %2ld}", v.type, (int64_t)v.value);
+    fprintf(f, "{%2d,[%2ld-%ld]}", v.type, (int64_t)v.minvalue, (int64_t)v.maxvalue);
 }
 
 void
@@ -154,32 +165,38 @@ abs_dom_assume(uint8_t opcode, bool taken, struct abs_dom_value *v1, struct abs_
         }
 
         // meet
-        if (known(*v1) && known(*v2) && v1->value != v2->value) {
-            *v2 = *v1 = abs_dom_bot;
+        if (known(*v1) && v1->type == v2->type) { //TODO: handle when one is MAYBE
+            if (v1->minvalue > v2->maxvalue || v1->maxvalue < v2->minvalue)
+                *v1 = *v2 = abs_dom_bot;
+            *v1 = *v2 = (struct abs_dom_value){
+                v1->type,
+                (v1->minvalue < v2->minvalue ? v2 : v1)->minvalue,
+                (v1->maxvalue > v2->maxvalue ? v2 : v1)->maxvalue
+            };
             return;
         }
-        if (known(*v1)) *v2 = *v1;
-        else *v1 = *v2;
         return;
     }
     if (implies_neq(opcode, taken)) {
         // FIX and deduplicate 
         if (v1->type == T_MAYBE_MAP) {
-            if (v2->type == T_NUM && v2->value == 0)
+            if (v2->type == T_NUM && v2->maxvalue == 0)
                 v1->type = T_MAP;
             else if (v2->type == T_MAP)
                 v1->type = T_UNKNOWN;
             return;
         } else if (v2->type == T_MAYBE_MAP) {
-            if (v1->type == T_NUM && v1->value == 0)
+            if (v1->type == T_NUM && v2->maxvalue == 0)
                 v2->type = T_MAP;
             else if (v1->type == T_MAP)
                 v2->type = T_UNKNOWN;
             return;
         }
-        if (known(*v1) && known(*v2) && v1->value == v2->value) {
-            *v2 = *v1 = abs_dom_bot;
-            return;
+        if (known(*v1) && known(*v2)) {
+            if (issingle(*v1) && v1->minvalue == v2->maxvalue) v2->maxvalue--;
+            if (issingle(*v1) && v1->minvalue == v2->minvalue) v2->minvalue++;
+            if (issingle(*v2) && v2->minvalue == v1->maxvalue) v1->maxvalue--;
+            if (issingle(*v2) && v2->minvalue == v1->minvalue) v1->minvalue++;
         }
         return;
     }
@@ -188,14 +205,15 @@ abs_dom_assume(uint8_t opcode, bool taken, struct abs_dom_value *v1, struct abs_
 bool
 abs_dom_out_of_bounds(struct abs_dom_value v, int16_t offset, int width)
 {
+    // FIX: interval is unsigned only. Should consider only signed.
     switch (v.type) {
-    case T_STACK:
-        return (int64_t)v.value + offset + width > 0 || (int64_t)v.value + offset < -STACK_SIZE;
-    case T_CTX:
-        return (int64_t)v.value + offset < 0 || (int64_t)v.value + offset + width > 4096;
+    case T_STACK: 
+        return (int64_t)v.minvalue + offset + width > 0 || (int64_t)v.maxvalue + offset < -STACK_SIZE;
+    case T_CTX: // FIX too
+        return v.maxvalue + offset + width > 4096;
     case T_MAP:
         // ARBITRARY. TODO: actual numbers
-        return (int64_t)v.value + offset < 0 || (int64_t)v.value + offset + width > 4096;
+        return false; //v.maxvalue == 0;
     default:
         return true;
     }
@@ -217,8 +235,7 @@ abs_dom_type_alu(uint8_t opcode, type_t dst, type_t src, int32_t imm)
             return T_BOT;
         }
     }
-    if (opcode == EBPF_OP_MOV_REG || opcode == EBPF_OP_MOV64_REG)
-        return src;
+    assert(!(opcode == EBPF_OP_MOV_REG || opcode == EBPF_OP_MOV64_REG));
     if (dst == T_NOINIT) {
         return T_BOT;
     }
@@ -244,13 +261,22 @@ abs_dom_type_alu(uint8_t opcode, type_t dst, type_t src, int32_t imm)
 struct abs_dom_value
 abs_dom_alu(uint8_t opcode, int32_t imm, struct abs_dom_value dst, struct abs_dom_value src)
 {
+    if (opcode == EBPF_OP_MOV_REG || opcode == EBPF_OP_MOV64_REG)
+        return src;
+    if (opcode == EBPF_OP_MOV_IMM || opcode == EBPF_OP_MOV64_IMM)
+        return abs_dom_fromconst(imm);
     dst.type = abs_dom_type_alu(opcode, dst.type, src.type, imm);
     if (dst.type == T_UNKNOWN || dst.type == T_NOINIT || dst.type == T_BOT) {
         return dst;
     }
+    if (dst.maxvalue > dst.minvalue || src.maxvalue > src.minvalue) {
+        dst.minvalue = 0;
+        dst.maxvalue = (uint64_t)-1;
+        return dst;
+    }
 
-    uint64_t dst_val = dst.value;
-    uint64_t src_val = src.value;
+    uint64_t dst_val = dst.minvalue;
+    uint64_t src_val = src.minvalue;
     switch (opcode) {
     case EBPF_OP_ADD_IMM:
         dst_val += imm;
@@ -451,8 +477,9 @@ abs_dom_alu(uint8_t opcode, int32_t imm, struct abs_dom_value dst, struct abs_do
         dst_val = (int64_t)dst_val >> src_val;
         break;
     default:
+        fprintf(stderr, "%d\n", opcode);
         assert(false);
     }
-    dst.value = dst_val;
+    dst.minvalue = dst.maxvalue = dst_val;
     return dst;
 }
