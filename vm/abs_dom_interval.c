@@ -226,8 +226,8 @@ abs_dom_assume(uint8_t opcode, bool taken, struct abs_dom_value *v1, struct abs_
                 *v1 = *v2 = abs_dom_bot;
             *v1 = *v2 = (struct abs_dom_value){
                 v1->type,
-                (v1->minvalue < v2->minvalue ? v2 : v1)->minvalue,
-                (v1->maxvalue > v2->maxvalue ? v2 : v1)->maxvalue
+                max(v1->minvalue, v2->minvalue),
+                min(v1->maxvalue, v2->maxvalue)
             };
             return;
         }
@@ -282,7 +282,9 @@ abs_dom_out_of_bounds(struct abs_dom_value v, int16_t offset, int width)
     case T_STACK: 
         return (int64_t)v.minvalue + offset + width > 0 || (int64_t)v.maxvalue + offset < -STACK_SIZE;
     case T_CTX: // FIX too
-        return v.maxvalue + offset + width > 4096;
+        return (offset > 0 && (int64_t)v.maxvalue + offset < v.maxvalue)
+            || (offset < 0 && (int64_t)v.minvalue + offset < 0)
+            || v.maxvalue + offset + width > 4096;
     case T_MAP:
         // ARBITRARY. TODO: actual numbers
         return false; //v.maxvalue == 0;
@@ -379,17 +381,17 @@ abs_dom_alu(uint8_t opcode, int32_t imm, struct abs_dom_value dst, struct abs_do
     }
     if (is_monotone(opcode)) {
         uint64_t a1 = alu_single(opcode, dst.minvalue, src.minvalue, imm);
-        uint64_t a2 = alu_single(opcode, dst.minvalue, src.maxvalue, imm);
-        uint64_t b1 = alu_single(opcode, dst.maxvalue, src.minvalue, imm);
+        //uint64_t a2 = alu_single(opcode, dst.minvalue, src.maxvalue, imm);
+        //uint64_t b1 = alu_single(opcode, dst.maxvalue, src.minvalue, imm);
         uint64_t b2 = alu_single(opcode, dst.maxvalue, src.maxvalue, imm);
-        if (max(a1, a2) <= min(b1, b2)) {
-            dst.minvalue = min(a1, a2);
-            dst.maxvalue = max(b1, b2);
+        if (a1 <= b2) {
+            dst.minvalue = a1; //min(a1, a2);
+            dst.maxvalue = b2; // max(b1, b2);
             return dst;
         }
     }
     if (dst.minvalue <= dst.maxvalue && src.minvalue <= src.maxvalue
-    && (dst.maxvalue - dst.minvalue <= 10 && src.maxvalue - src.minvalue <= 10)) {
+    && (dst.maxvalue - dst.minvalue < 2 && src.maxvalue - src.minvalue < 2)) {
         uint64_t tmin = (uint64_t)-1;
         uint64_t tmax = 0; 
         // don't overflow in loop
