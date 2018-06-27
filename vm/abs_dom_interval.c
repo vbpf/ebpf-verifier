@@ -33,6 +33,18 @@ const struct abs_dom_value abs_dom_bot = { T_BOT, (uint64_t)-1, 0 };
 const struct abs_dom_value abs_dom_ctx = { T_CTX, 0, 0 };
 const struct abs_dom_value abs_dom_stack = { T_STACK, 0, 0 };
 
+static uint64_t
+min(uint64_t a, uint64_t b)
+{
+    return a < b ? a : b;
+}
+
+static uint64_t
+max(uint64_t a, uint64_t b)
+{
+    return a > b ? a : b;
+}
+
 bool
 abs_dom_is_bot(struct abs_dom_value v)
 {
@@ -144,10 +156,52 @@ abs_dom_print(FILE* f, struct abs_dom_value v)
     fprintf(f, "{%2d,[%2ld-%ld]}", v.type, (int64_t)v.minvalue, (int64_t)v.maxvalue);
 }
 
+static bool
+implies_unsigned_lte(uint8_t opcode, bool taken, struct abs_dom_value **smaller, struct abs_dom_value **higher)
+{
+    switch (opcode) {
+    case EBPF_OP_JGE_IMM: case EBPF_OP_JGE_REG:
+    case EBPF_OP_JGT_IMM: case EBPF_OP_JGT_REG:
+        if (!taken) {
+            struct abs_dom_value *tmp = *smaller;
+            *smaller = *higher;
+            *higher = tmp;
+            return true;
+        }
+        return false;
+
+    case EBPF_OP_JLE_IMM: case EBPF_OP_JLE_REG:
+    case EBPF_OP_JLT_IMM: case EBPF_OP_JLT_REG:
+        if (taken) {
+            struct abs_dom_value *tmp = *smaller;
+            *smaller = *higher;
+            *higher = tmp;
+            return true;
+        }
+        return false;
+    default:
+        return false;
+    }
+}
+
+static bool
+implies_unsigned_lt(uint8_t opcode, bool taken, struct abs_dom_value **smaller, struct abs_dom_value **higher)
+{
+    return implies_neq(opcode, taken) && implies_unsigned_lte(opcode, taken, smaller, higher);
+}
+
 void
 abs_dom_assume(uint8_t opcode, bool taken, struct abs_dom_value *v1, struct abs_dom_value *v2)
 {
     if (implies_eq(opcode, taken)) {
+        if (known(*v1) && !known(*v2)) {
+            *v2 = *v1;
+            return;
+        }
+        if (known(*v2) && !known(*v1)) {
+            *v1 = *v2;
+            return;
+        }
         // FIX and deduplicate 
         if (v1->type == T_MAYBE_MAP) {
             if (v2->type == T_NUM) {
@@ -177,6 +231,21 @@ abs_dom_assume(uint8_t opcode, bool taken, struct abs_dom_value *v1, struct abs_
         }
         return;
     }
+
+    if (!known(*v1) || !known(*v2) || v1->type != v2->type) {
+        return;
+    }
+
+    struct abs_dom_value *smaller = v1, *higher = v2;
+    if (implies_unsigned_lte(opcode, taken, &smaller, &higher)) {
+        smaller->maxvalue = min(smaller->maxvalue, higher->maxvalue);
+        higher->minvalue = max(smaller->minvalue, higher->minvalue);
+    }
+    if (implies_unsigned_lt(opcode, taken, &smaller, &higher)) {
+        smaller->maxvalue = min(smaller->maxvalue, higher->maxvalue - 1);
+        higher->minvalue = max(smaller->minvalue + 1, higher->minvalue);
+    }
+
     if (implies_neq(opcode, taken)) {
         // FIX and deduplicate 
         if (v1->type == T_MAYBE_MAP) {
@@ -200,6 +269,7 @@ abs_dom_assume(uint8_t opcode, bool taken, struct abs_dom_value *v1, struct abs_
         }
         return;
     }
+
 }
 
 bool
