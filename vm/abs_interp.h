@@ -17,8 +17,6 @@
 #ifndef ABS_INTERP_H
 #define ABS_INTERP_H
 
-#include "ubpf_int.h"
-
 /*** Interface to the vm.
  true if valid; *errmsg will point to NULL
  false if invalid; *errmsg will point to a heap-allocated error message

@@ -14,16 +14,10 @@
  * limitations under the License.
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stdarg.h>
+#include <stdlib.h>  // free / calloc
 #include <inttypes.h>
-#include <sys/mman.h>
 #include <assert.h>
 
-#include "ubpf_int.h"
 #include "abs_interp.h"
 #include "abs_state.h"
 

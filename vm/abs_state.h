@@ -17,7 +17,6 @@
 #ifndef ABS_STATE_H
 #define ABS_STATE_H
 
-#include "ubpf_int.h"
 #include "abs_dom.h"
 
 struct abs_state {

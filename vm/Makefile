@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-CFLAGS := -Wall -Werror -Iinc -O2 -g
-CPPFLAGS := -Wall -Werror -Iinc -O2 -g
+CFLAGS := -Wall -Werror -Iinc -g3
+CPPFLAGS := -Wall -Werror -Iinc -g3 \
+	-I../../crab/build/include -I../../crab/include -Wno-unused-local-typedefs
 LDLIBS := -lm
 
 ifeq ($(COVERAGE),1)
