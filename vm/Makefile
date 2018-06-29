@@ -13,7 +13,7 @@
 # limitations under the License.
 
 CFLAGS := -Wall -Werror -Iinc -g3
-CPPFLAGS := -Wall -Werror -Iinc -g3 -std=c++11 \
+CPPFLAGS := -Wall -Werror -Iinc -g3 \
 	-I../../crab/build/include -I../../crab/include -Wno-unused-local-typedefs
 LDLIBS := -lm
 

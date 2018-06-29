@@ -40,10 +40,10 @@ namespace crab {
 
     /// BEGIN MUST BE DEFINED BY CRAB CLIENT
     // A variable factory based on integers
-    using variable_factory_t = cfg::var_factory_impl::int_variable_factory;
+    using variable_factory_t = cfg::var_factory_impl::str_variable_factory;
     using varname_t = typename variable_factory_t::varname_t;
-    using basic_block_label_t = std::pair<uint16_t, uint16_t>;
-    template<> inline std::string get_label_str(basic_block_label_t e) { return std::to_string(e.first) + "-" + std::to_string(e.second); }
+    using basic_block_label_t = std::string;
+    template<> inline std::string get_label_str(basic_block_label_t e) { return e; }
     /// END MUST BE DEFINED BY CRAB CLIENT    
 
   }
@@ -90,13 +90,13 @@ has_fallthrough(struct ebpf_inst inst, uint16_t pc, uint16_t* out_target) {
 static basic_block_label_t
 label(uint16_t pc)
 {
-    return {pc, pc};
+    return std::to_string(pc);
 }
 
 static basic_block_label_t
 label(uint16_t pc, uint16_t target)
 {
-    return {pc, target};
+    return std::to_string(pc) + "-" + std::to_string(target);
 }
 
 static void
@@ -107,7 +107,7 @@ build_cfg(const struct ebpf_inst *insts, uint32_t num_insts)
     cfg_t cfg(label(0));
 
     variable_factory_t vfac;	
-    var r0(vfac[0], crab::INT_TYPE, 64);
+    var r0(vfac["r0"], crab::INT_TYPE, 64);
 
     for (uint16_t pc = 0; pc < num_insts; pc++) {
         uint16_t target;
