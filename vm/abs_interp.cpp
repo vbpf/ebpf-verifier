@@ -21,6 +21,39 @@
 #include "abs_interp.h"
 #include "abs_state.h"
 
+#include <crab/config.h>
+#include <crab/common/types.hpp>
+#include <crab/common/debug.hpp>
+#include <crab/cfg/cfg.hpp>
+#include <crab/cfg/cfg_bgl.hpp>
+#include <crab/cg/cg.hpp>
+#include <crab/cg/cg_bgl.hpp> 
+#include <crab/cfg/var_factory.hpp>
+//using namespace crab;
+
+namespace crab {
+
+  namespace cfg_impl {
+
+    /// BEGIN MUST BE DEFINED BY CRAB CLIENT
+    // A variable factory based on strings
+    using variable_factory_t = cfg::var_factory_impl::str_variable_factory;
+    using varname_t = typename variable_factory_t::varname_t;
+    using basic_block_label_t = std::string;
+    template<> inline std::string get_label_str(std::string e) { return e; }
+    /// END MUST BE DEFINED BY CRAB CLIENT    
+
+    /// CFG over integers
+    using cfg_t = cfg::Cfg<basic_block_label_t, varname_t, ikos::z_number>;
+    using cfg_ref_t = cfg::cfg_ref<cfg_t>;
+    using cfg_rev_t = cfg::cfg_rev<cfg_ref_t>;
+    using basic_block_t = cfg_t::basic_block_t;
+    using var = ikos::variable<ikos::z_number, varname_t>;
+    using lin_t = ikos::linear_expression<ikos::z_number, varname_t>;
+    using lin_cst_t = ikos::linear_constraint<ikos::z_number, varname_t>;
+  }
+}
+
 static bool
 is_jmp(struct ebpf_inst inst, uint16_t pc, uint16_t* out_target) {
     if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_JMP
@@ -46,9 +79,6 @@ has_fallthrough(struct ebpf_inst inst, uint16_t pc, uint16_t* out_target) {
     }
     return false;
 }
-struct block {
-    uint16_t begin, end;
-};
 
 static int*
 compute_pending(const struct ebpf_inst *insts, uint32_t num_insts)
