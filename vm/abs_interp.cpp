@@ -62,7 +62,8 @@ using lin_t = ikos::linear_expression<ikos::z_number, crab::cfg_impl::varname_t>
 using lin_cst_t = ikos::linear_constraint<ikos::z_number, crab::cfg_impl::varname_t>;
 
 static bool
-is_jmp(struct ebpf_inst inst, uint16_t pc, uint16_t* out_target) {
+is_jmp(struct ebpf_inst inst, uint16_t pc, uint16_t* out_target)
+{
     if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_JMP
             && inst.opcode != EBPF_OP_CALL
             && inst.opcode != EBPF_OP_EXIT) {
@@ -73,7 +74,8 @@ is_jmp(struct ebpf_inst inst, uint16_t pc, uint16_t* out_target) {
 }
 
 static bool
-has_fallthrough(struct ebpf_inst inst, uint16_t pc, uint16_t* out_target) {
+has_fallthrough(struct ebpf_inst inst, uint16_t pc, uint16_t* out_target)
+{
     if (inst.opcode != EBPF_OP_JA && inst.opcode != EBPF_OP_EXIT) {
         /* eBPF has one 16-byte instruction: BPF_LD | BPF_DW | BPF_IMM which consists
         of two consecutive 'struct ebpf_inst' 8-byte blocks and interpreted as single
@@ -100,6 +102,25 @@ label(uint16_t pc, uint16_t target)
 }
 
 static void
+build_jmp(cfg_t& cfg, uint16_t pc, uint16_t target, lin_cst_t cst)
+{
+    basic_block_t& assumption = cfg.insert(label(pc, target));
+    cfg.get_node(label(pc)) >> assumption;
+    // FIX:
+    cfg.insert(label(target));
+    assumption >> cfg.get_node(label(target));
+    assumption.assume(cst);
+}
+
+static void
+link(cfg_t& cfg, uint16_t pc, uint16_t target)
+{
+    // FIX:
+    cfg.insert(label(target));
+    cfg.get_node(label(pc)) >> cfg.get_node(label(target));
+}
+
+static void
 build_cfg(const struct ebpf_inst *insts, uint32_t num_insts)
 {
     // nodes are named based on the pc just before the instruction
@@ -114,24 +135,16 @@ build_cfg(const struct ebpf_inst *insts, uint32_t num_insts)
         bool jmp = is_jmp(insts[pc], pc, &target);
         if (jmp) {
             if (insts[pc].opcode != EBPF_OP_JA)  {
-                basic_block_t& assumption = cfg.insert(label(pc, target));
-                cfg.get_node(label(pc)) >> assumption;
-                assumption >> cfg.get_node(label(target));
-
-                assumption.assume(r0 <= r0);
+                build_jmp(cfg, pc, target, r0 <= r0);
             } else {
-                cfg.get_node(label(pc)) >> cfg.get_node(label(target));
+                link(cfg, pc, target);
             }
         }
         if (has_fallthrough(insts[pc], pc, &target)) {
             if (jmp) {
-                basic_block_t& assumption = cfg.insert(label(pc, target));
-                cfg.get_node(label(pc)) >> assumption;
-                assumption >> cfg.get_node(label(target));
-
-                assumption.assume(r0 > r0);
+                build_jmp(cfg, pc, target, r0 > r0);
             } else {
-                cfg.get_node(label(pc)) >> cfg.get_node(label(target));
+                link(cfg, pc, target);
             }
             // skip imm of lddw
             pc = target - 1;

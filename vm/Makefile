@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-CFLAGS := -Wall -Werror -Iinc -g3
-CPPFLAGS := -Wall -Werror -Iinc -g3 \
-	-I../../crab/build/include -I../../crab/include -Wno-unused-local-typedefs
+CFLAGS := -Wall -Werror -Iinc -g3 -fPIC
+CXXFLAGS := -Wall -Werror -Iinc -g3 -std=c++17 -fPIC \
+	-I../../crab/build/include -I../../crab/include -Wno-unused-local-typedefs 
 LDLIBS := -lm
 
 ifeq ($(COVERAGE),1)
@@ -27,14 +27,20 @@ CFLAGS += -fsanitize=address
 LDFLAGS += -fsanitize=address
 endif
 
+# before runnind:
+# LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/workspace/crab/build/lib/:~/workspace/ubpf/vm/
+# export LD_LIBRARY_PATH
+# TODO: how to avoid this
+
 all: libubpf.a test
 
 ubpf_jit_x86_64.o: ubpf_jit_x86_64.c ubpf_jit_x86_64.h
 
-libubpf.a: abs_interp.o abs_state_regs.o abs_dom_const.o ubpf_vm.o ubpf_jit_x86_64.o ubpf_loader.o
-	ar rc $@ $^
+libubpf.a: abs_interp.o abs_state_regs.o abs_dom_const.o ubpf_vm.o ubpf_jit_x86_64.o ubpf_loader.o 
+	g++ -shared -o $@ $^
 
 test: test.o libubpf.a
+	g++ -o $@ $^ -lgmp  -L ../../crab/build/lib -lCrab
 
 clean:
 	rm -f test libubpf.a *.o
