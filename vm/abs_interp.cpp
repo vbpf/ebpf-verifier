@@ -29,30 +29,37 @@
 #include <crab/cg/cg.hpp>
 #include <crab/cg/cg_bgl.hpp> 
 #include <crab/cfg/var_factory.hpp>
-//using namespace crab;
+
+#include <vector>
+using std::vector;
+
 
 namespace crab {
 
   namespace cfg_impl {
 
     /// BEGIN MUST BE DEFINED BY CRAB CLIENT
-    // A variable factory based on strings
-    using variable_factory_t = cfg::var_factory_impl::str_variable_factory;
+    // A variable factory based on integers
+    using variable_factory_t = cfg::var_factory_impl::int_variable_factory;
     using varname_t = typename variable_factory_t::varname_t;
-    using basic_block_label_t = std::string;
-    template<> inline std::string get_label_str(std::string e) { return e; }
+    using basic_block_label_t = std::pair<uint16_t, uint16_t>;
+    template<> inline std::string get_label_str(basic_block_label_t e) { return std::to_string(e.first) + "-" + std::to_string(e.second); }
     /// END MUST BE DEFINED BY CRAB CLIENT    
 
-    /// CFG over integers
-    using cfg_t = cfg::Cfg<basic_block_label_t, varname_t, ikos::z_number>;
-    using cfg_ref_t = cfg::cfg_ref<cfg_t>;
-    using cfg_rev_t = cfg::cfg_rev<cfg_ref_t>;
-    using basic_block_t = cfg_t::basic_block_t;
-    using var = ikos::variable<ikos::z_number, varname_t>;
-    using lin_t = ikos::linear_expression<ikos::z_number, varname_t>;
-    using lin_cst_t = ikos::linear_constraint<ikos::z_number, varname_t>;
   }
 }
+using crab::cfg_impl::variable_factory_t;
+using crab::cfg_impl::varname_t;
+using crab::cfg_impl::basic_block_label_t;
+
+/// CFG over integers
+using cfg_t = crab::cfg::Cfg<crab::cfg_impl::basic_block_label_t, crab::cfg_impl::varname_t, ikos::z_number>;
+using cfg_ref_t = crab::cfg::cfg_ref<cfg_t>;
+using cfg_rev_t = crab::cfg::cfg_rev<cfg_ref_t>;
+using basic_block_t = cfg_t::basic_block_t;
+using var = ikos::variable<ikos::z_number, crab::cfg_impl::varname_t>;
+using lin_t = ikos::linear_expression<ikos::z_number, crab::cfg_impl::varname_t>;
+using lin_cst_t = ikos::linear_constraint<ikos::z_number, crab::cfg_impl::varname_t>;
 
 static bool
 is_jmp(struct ebpf_inst inst, uint16_t pc, uint16_t* out_target) {
@@ -80,105 +87,62 @@ has_fallthrough(struct ebpf_inst inst, uint16_t pc, uint16_t* out_target) {
     return false;
 }
 
-static int*
-compute_pending(const struct ebpf_inst *insts, uint32_t num_insts)
+static basic_block_label_t
+label(uint16_t pc)
 {
-    int *pending = (int*)calloc(num_insts, sizeof(*pending));
-    pending[0] = 1;
+    return {pc, pc};
+}
+
+static basic_block_label_t
+label(uint16_t pc, uint16_t target)
+{
+    return {pc, target};
+}
+
+static void
+build_cfg(const struct ebpf_inst *insts, uint32_t num_insts)
+{
+    // nodes are named based on the pc just before the instruction
+    // assumption nodes are named as {jmp, target}
+    cfg_t cfg(label(0));
+
+    variable_factory_t vfac;	
+    var r0(vfac[0], crab::INT_TYPE, 64);
 
     for (uint16_t pc = 0; pc < num_insts; pc++) {
         uint16_t target;
-        if (is_jmp(insts[pc], pc, &target)) {
-            pending[target]++;
+        bool jmp = is_jmp(insts[pc], pc, &target);
+        if (jmp) {
+            if (insts[pc].opcode != EBPF_OP_JA)  {
+                basic_block_t& assumption = cfg.insert(label(pc, target));
+                cfg.get_node(label(pc)) >> assumption;
+                assumption >> cfg.get_node(label(target));
+
+                assumption.assume(r0 <= r0);
+            } else {
+                cfg.get_node(label(pc)) >> cfg.get_node(label(target));
+            }
         }
         if (has_fallthrough(insts[pc], pc, &target)) {
-            pending[target]++;
+            if (jmp) {
+                basic_block_t& assumption = cfg.insert(label(pc, target));
+                cfg.get_node(label(pc)) >> assumption;
+                assumption >> cfg.get_node(label(target));
+
+                assumption.assume(r0 > r0);
+            } else {
+                cfg.get_node(label(pc)) >> cfg.get_node(label(target));
+            }
             // skip imm of lddw
             pc = target - 1;
         }
     }
-    return pending;
-}
-
-static void
-next(const struct ebpf_inst *insts, uint16_t *pc) {
-    if (insts[*pc].opcode == EBPF_OP_LDDW) {
-        (*pc)++;
-    }
-    (*pc)++;
-}
-
-static int
-compute_basicblocks(const struct ebpf_inst *insts, uint32_t num_insts, int *pending, int** blocks_out)
-{
-    int *blocks = (int*)calloc(num_insts, sizeof(*blocks));
-    int this_block = 1;
-    for (uint16_t pc = 0; pc < num_insts; next(insts, &pc)) {
-        blocks[pc] = this_block;
-        uint16_t _;
-        if (pending[pc] > 1 || is_jmp(insts[pc], pc, &_)) {
-            this_block++;
-            do pc++; while (pending[pc] == 0);
-        }
-    }
-    *blocks_out = blocks;
-    return this_block;
+    return ;
 }
 
 bool
 abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
 {
-    int *pending = compute_pending(insts, num_insts);
-    int *blocks;
-    int nblocks = compute_basicblocks(insts, num_insts, pending, &blocks);
-    nblocks = nblocks;
-    uint16_t available[num_insts];
-
-    // states[i] contains the state just before instruction i
-    struct abs_state states[num_insts];
-    for (uint32_t i = 0; i < num_insts; i++) {
-        abs_initialize_unreached(&states[i]);
-    }
-    
-    bool res = true;
-    available[0] = 0;
-    abs_initialize_entry(&states[0]);
-
-    assert(*errmsg == NULL);
-
-    int wi = 1;
-    do {
-        const uint16_t pc = available[--wi];
-        const struct ebpf_inst inst = insts[pc];
-
-        uint16_t target;
-        if (is_jmp(inst, pc, &target)) {
-            abs_execute(&states[target], &states[pc], inst, 0, true, pc, errmsg);
-            pending[target]--;
-            if (pending[target] == 0)
-                available[wi++] = target;
-        }
-
-        if (*errmsg != NULL) {
-            res = false;
-            break;
-        }
-        if (has_fallthrough(inst, pc, &target)) {
-            abs_execute(&states[target], &states[pc], inst, insts[pc+1].imm, false, pc, errmsg);
-            pending[target]--;
-            if (pending[target] == 0)
-                available[wi++] = target;
-        } 
-        if (inst.opcode == EBPF_OP_EXIT) {
-            break;
-        }
-        if (*errmsg != NULL) {
-            res = false;
-            break;
-        }
-    } while (wi > 0);
-
-    free(pending);
-
-    return res;
+    build_cfg(insts, num_insts);
+    return false;
 }
