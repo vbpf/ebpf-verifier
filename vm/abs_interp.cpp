@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -53,11 +52,14 @@ has_fallthrough(struct ebpf_inst inst, uint16_t pc, uint16_t* out_target) {
     }
     return false;
 }
+struct block {
+    uint16_t begin, end;
+};
 
 static int*
 compute_pending(const struct ebpf_inst *insts, uint32_t num_insts)
 {
-    int *pending = calloc(num_insts, sizeof(*pending));
+    int *pending = (int*)calloc(num_insts, sizeof(*pending));
     pending[0] = 1;
 
     for (uint16_t pc = 0; pc < num_insts; pc++) {
@@ -74,16 +76,43 @@ compute_pending(const struct ebpf_inst *insts, uint32_t num_insts)
     return pending;
 }
 
+static void
+next(const struct ebpf_inst *insts, uint16_t *pc) {
+    if (insts[*pc].opcode == EBPF_OP_LDDW) {
+        (*pc)++;
+    }
+    (*pc)++;
+}
+
+static int
+compute_basicblocks(const struct ebpf_inst *insts, uint32_t num_insts, int *pending, int** blocks_out)
+{
+    int *blocks = (int*)calloc(num_insts, sizeof(*blocks));
+    int this_block = 1;
+    for (uint16_t pc = 0; pc < num_insts; next(insts, &pc)) {
+        blocks[pc] = this_block;
+        uint16_t _;
+        if (pending[pc] > 1 || is_jmp(insts[pc], pc, &_)) {
+            this_block++;
+            do pc++; while (pending[pc] == 0);
+        }
+    }
+    *blocks_out = blocks;
+    return this_block;
+}
+
 bool
 abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
 {
     int *pending = compute_pending(insts, num_insts);
-
+    int *blocks;
+    int nblocks = compute_basicblocks(insts, num_insts, pending, &blocks);
+    nblocks = nblocks;
     uint16_t available[num_insts];
 
     // states[i] contains the state just before instruction i
     struct abs_state states[num_insts];
-    for (int i = 0; i < num_insts; i++) {
+    for (uint32_t i = 0; i < num_insts; i++) {
         abs_initialize_unreached(&states[i]);
     }
     

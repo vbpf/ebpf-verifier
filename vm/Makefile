@@ -13,6 +13,7 @@
 # limitations under the License.
 
 CFLAGS := -Wall -Werror -Iinc -O2 -g
+CPPFLAGS := -Wall -Werror -Iinc -O2 -g
 LDLIBS := -lm
 
 ifeq ($(COVERAGE),1)
