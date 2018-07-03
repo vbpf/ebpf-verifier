@@ -31,15 +31,20 @@
 #include <crab/cfg/var_factory.hpp>
 
 #include <vector>
-using std::vector;
+#include <string>
 
+#include <boost/optional.hpp>
+
+using boost::optional;
+using std::vector;
+using std::to_string;
 
 namespace crab {
 
   namespace cfg_impl {
 
     /// BEGIN MUST BE DEFINED BY CRAB CLIENT
-    // A variable factory based on integers
+    // A variable factory based on strings
     using variable_factory_t = cfg::var_factory_impl::str_variable_factory;
     using varname_t = typename variable_factory_t::varname_t;
     using basic_block_label_t = std::string;
@@ -51,30 +56,27 @@ namespace crab {
 using crab::cfg_impl::variable_factory_t;
 using crab::cfg_impl::varname_t;
 using crab::cfg_impl::basic_block_label_t;
+using ikos::z_number;
 
 /// CFG over integers
-using cfg_t = crab::cfg::Cfg<crab::cfg_impl::basic_block_label_t, crab::cfg_impl::varname_t, ikos::z_number>;
-using cfg_ref_t = crab::cfg::cfg_ref<cfg_t>;
-using cfg_rev_t = crab::cfg::cfg_rev<cfg_ref_t>;
+using cfg_t         = crab::cfg::Cfg<basic_block_label_t, varname_t, z_number>;
 using basic_block_t = cfg_t::basic_block_t;
-using var = ikos::variable<ikos::z_number, crab::cfg_impl::varname_t>;
-using lin_t = ikos::linear_expression<ikos::z_number, crab::cfg_impl::varname_t>;
-using lin_cst_t = ikos::linear_constraint<ikos::z_number, crab::cfg_impl::varname_t>;
+using var           = ikos::variable<z_number, varname_t>;
+using lin_cst_t     = ikos::linear_constraint<z_number, varname_t>;
 
-static bool
-is_jmp(struct ebpf_inst inst, uint16_t pc, uint16_t* out_target)
+static optional<uint16_t>
+is_jmp(struct ebpf_inst inst, uint16_t pc)
 {
     if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_JMP
             && inst.opcode != EBPF_OP_CALL
             && inst.opcode != EBPF_OP_EXIT) {
-        *out_target = pc + 1 + inst.offset;
-        return true;
+        return pc + 1 + inst.offset;
     }
-    return false;
+    return boost::none;
 }
 
-static bool
-has_fallthrough(struct ebpf_inst inst, uint16_t pc, uint16_t* out_target)
+static optional<uint16_t>
+has_fallthrough(struct ebpf_inst inst, uint16_t pc)
 {
     if (inst.opcode != EBPF_OP_JA && inst.opcode != EBPF_OP_EXIT) {
         /* eBPF has one 16-byte instruction: BPF_LD | BPF_DW | BPF_IMM which consists
@@ -83,22 +85,21 @@ has_fallthrough(struct ebpf_inst inst, uint16_t pc, uint16_t* out_target)
         if (inst.opcode == EBPF_OP_LDDW) {
             pc++;
         }
-        *out_target = pc + 1;
-        return true;
+        return pc + 1;
     }
-    return false;
+    return boost::none;
 }
 
 static basic_block_label_t
 label(uint16_t pc)
 {
-    return std::to_string(pc);
+    return to_string(pc);
 }
 
 static basic_block_label_t
 label(uint16_t pc, uint16_t target)
 {
-    return std::to_string(pc) + "-" + std::to_string(target);
+    return to_string(pc) + "-" + to_string(target);
 }
 
 static void
@@ -106,56 +107,45 @@ build_jmp(cfg_t& cfg, uint16_t pc, uint16_t target, lin_cst_t cst)
 {
     basic_block_t& assumption = cfg.insert(label(pc, target));
     cfg.get_node(label(pc)) >> assumption;
-    // FIX:
-    cfg.insert(label(target));
-    assumption >> cfg.get_node(label(target));
+    assumption >> cfg.insert(label(target));
     assumption.assume(cst);
 }
 
 static void
 link(cfg_t& cfg, uint16_t pc, uint16_t target)
 {
-    // FIX:
-    cfg.insert(label(target));
-    cfg.get_node(label(pc)) >> cfg.get_node(label(target));
+    cfg.get_node(label(pc)) >> cfg.insert(label(target));
 }
 
-static void
-build_cfg(const struct ebpf_inst *insts, uint32_t num_insts)
+bool
+abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
 {
     // nodes are named based on the pc just before the instruction
-    // assumption nodes are named as {jmp, target}
+    // assumption nodes are named "pc-target"
     cfg_t cfg(label(0));
 
     variable_factory_t vfac;	
     var r0(vfac["r0"], crab::INT_TYPE, 64);
 
     for (uint16_t pc = 0; pc < num_insts; pc++) {
-        uint16_t target;
-        bool jmp = is_jmp(insts[pc], pc, &target);
-        if (jmp) {
+        optional<uint16_t> jmp_target = is_jmp(insts[pc], pc);
+        optional<uint16_t> fall_target = has_fallthrough(insts[pc], pc);
+        if (jmp_target) {
             if (insts[pc].opcode != EBPF_OP_JA)  {
-                build_jmp(cfg, pc, target, r0 <= r0);
+                build_jmp(cfg, pc, *jmp_target, r0 <= r0);
             } else {
-                link(cfg, pc, target);
+                link(cfg, pc, *jmp_target);
             }
         }
-        if (has_fallthrough(insts[pc], pc, &target)) {
-            if (jmp) {
-                build_jmp(cfg, pc, target, r0 > r0);
+        if (fall_target) {
+            if (jmp_target) {
+                build_jmp(cfg, pc, *fall_target, r0 > r0);
             } else {
-                link(cfg, pc, target);
+                link(cfg, pc, *fall_target);
             }
             // skip imm of lddw
-            pc = target - 1;
+            pc = *fall_target - 1;
         }
     }
-    return ;
-}
-
-bool
-abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
-{
-    build_cfg(insts, num_insts);
     return false;
 }
