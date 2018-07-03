@@ -18,51 +18,19 @@
 #include <inttypes.h>
 #include <assert.h>
 
-#include "abs_interp.h"
-#include "abs_state.h"
-
-#include <crab/config.h>
-#include <crab/common/types.hpp>
-#include <crab/common/debug.hpp>
-#include <crab/cfg/cfg.hpp>
-#include <crab/cfg/cfg_bgl.hpp>
-#include <crab/cg/cg.hpp>
-#include <crab/cg/cg_bgl.hpp> 
-#include <crab/cfg/var_factory.hpp>
-
 #include <vector>
 #include <string>
 
 #include <boost/optional.hpp>
 
+#include "abs_common.hpp"
+#include "abs_cst_regs.hpp"
+
+#include "abs_interp.h"
+#include "abs_state.h"
+
 using boost::optional;
-using std::vector;
 using std::to_string;
-
-namespace crab {
-
-  namespace cfg_impl {
-
-    /// BEGIN MUST BE DEFINED BY CRAB CLIENT
-    // A variable factory based on strings
-    using variable_factory_t = cfg::var_factory_impl::str_variable_factory;
-    using varname_t = typename variable_factory_t::varname_t;
-    using basic_block_label_t = std::string;
-    template<> inline std::string get_label_str(basic_block_label_t e) { return e; }
-    /// END MUST BE DEFINED BY CRAB CLIENT    
-
-  }
-}
-using crab::cfg_impl::variable_factory_t;
-using crab::cfg_impl::varname_t;
-using crab::cfg_impl::basic_block_label_t;
-using ikos::z_number;
-
-/// CFG over integers
-using cfg_t         = crab::cfg::Cfg<basic_block_label_t, varname_t, z_number>;
-using basic_block_t = cfg_t::basic_block_t;
-using var           = ikos::variable<z_number, varname_t>;
-using lin_cst_t     = ikos::linear_constraint<z_number, varname_t>;
 
 static optional<uint16_t>
 is_jmp(struct ebpf_inst inst, uint16_t pc)
@@ -75,7 +43,7 @@ is_jmp(struct ebpf_inst inst, uint16_t pc)
     return boost::none;
 }
 
-static optional<uint16_t>
+static boost::optional<uint16_t>
 has_fallthrough(struct ebpf_inst inst, uint16_t pc)
 {
     if (inst.opcode != EBPF_OP_JA && inst.opcode != EBPF_OP_EXIT) {
@@ -102,13 +70,13 @@ label(uint16_t pc, uint16_t target)
     return to_string(pc) + "-" + to_string(target);
 }
 
-static void
-build_jmp(cfg_t& cfg, uint16_t pc, uint16_t target, lin_cst_t cst)
+static basic_block_t&
+build_jmp(cfg_t& cfg, uint16_t pc, uint16_t target)
 {
     basic_block_t& assumption = cfg.insert(label(pc, target));
     cfg.get_node(label(pc)) >> assumption;
     assumption >> cfg.insert(label(target));
-    assumption.assume(cst);
+    return assumption;
 }
 
 static void
@@ -124,22 +92,28 @@ abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
     // assumption nodes are named "pc-target"
     cfg_t cfg(label(0));
 
-    variable_factory_t vfac;	
-    var r0(vfac["r0"], crab::INT_TYPE, 64);
+    cst_regs regs;
 
     for (uint16_t pc = 0; pc < num_insts; pc++) {
+        auto inst = insts[pc];
+
+        regs.exec(inst, cfg.insert(label(pc)));
+
         optional<uint16_t> jmp_target = is_jmp(insts[pc], pc);
         optional<uint16_t> fall_target = has_fallthrough(insts[pc], pc);
         if (jmp_target) {
-            if (insts[pc].opcode != EBPF_OP_JA)  {
-                build_jmp(cfg, pc, *jmp_target, r0 <= r0);
+            if (inst.opcode != EBPF_OP_JA)  {
+                auto& assumption = build_jmp(cfg, pc, *jmp_target);
+                regs.jump(inst, assumption, true);
             } else {
                 link(cfg, pc, *jmp_target);
             }
         }
+        
         if (fall_target) {
             if (jmp_target) {
-                build_jmp(cfg, pc, *fall_target, r0 > r0);
+                auto& assumption = build_jmp(cfg, pc, *fall_target);
+                regs.jump(inst, assumption, false);
             } else {
                 link(cfg, pc, *fall_target);
             }

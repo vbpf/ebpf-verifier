@@ -32,7 +32,7 @@ all: libubpf.a test
 
 ubpf_jit_x86_64.o: ubpf_jit_x86_64.c ubpf_jit_x86_64.h
 
-libubpf.a: abs_interp.o abs_state_regs.o abs_dom_const.o ubpf_vm.o ubpf_jit_x86_64.o ubpf_loader.o
+libubpf.a: abs_interp.o abs_cst_regs.o abs_state_regs.o abs_dom_const.o ubpf_vm.o ubpf_jit_x86_64.o ubpf_loader.o
 	ar rc $@ $^
 
 test: test.o libubpf.a
