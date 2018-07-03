@@ -24,9 +24,8 @@ namespace crab {
     /// END MUST BE DEFINED BY CRAB CLIENT    
 
   }
-
 }
-using crab::cfg_impl::variable_factory_t;
+
 using crab::cfg_impl::varname_t;
 using crab::cfg_impl::basic_block_label_t;
 using ikos::z_number;
@@ -34,7 +33,4 @@ using ikos::z_number;
 /// CFG over integers
 using cfg_t         = crab::cfg::Cfg<basic_block_label_t, varname_t, z_number>;
 using basic_block_t = cfg_t::basic_block_t;
-using var_t         = ikos::variable<z_number, varname_t>;
-using lin_cst_t     = ikos::linear_constraint<z_number, varname_t>;
-
 #endif

@@ -10,49 +10,49 @@
 
 
 cst_regs::cst_regs() {
-    for (int i=0; i < 11; i++) {
+    for (int i=0; i < 16; i++) {
         auto name = std::string("r") + std::to_string(i);
         regs.emplace_back(vfac[name], crab::INT_TYPE, 64);
     }
 }
 
-
 static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& dst, var_t& src)
 {
     switch (opcode) {
-    case EBPF_OP_JEQ_IMM: return dst == imm; 
-    case EBPF_OP_JEQ_REG: return dst == src;
+    case EBPF_OP_JEQ_IMM:  return dst == imm; 
+    //case EBPF_OP_JEQ_REG:  return dst == src;
 
-    case EBPF_OP_JGE_IMM: return dst >= imm; // FIX unsigned
-    case EBPF_OP_JGE_REG: return dst >= src; // FIX unsigned
+    case EBPF_OP_JGE_IMM:  return dst >= imm; // FIX unsigned
+    case EBPF_OP_JGE_REG:  return dst >= src; // FIX unsigned
 
     case EBPF_OP_JSGE_IMM: return dst >= imm;
     case EBPF_OP_JSGE_REG: return dst >= src;
     
-    case EBPF_OP_JLE_IMM: return dst <= imm; // FIX unsigned
-    case EBPF_OP_JLE_REG: return dst <= src; // FIX unsigned
+    case EBPF_OP_JLE_IMM:  return dst <= imm; // FIX unsigned
+    case EBPF_OP_JLE_REG:  return dst <= src; // FIX unsigned
     case EBPF_OP_JSLE_IMM: return dst <= imm;
     case EBPF_OP_JSLE_REG: return dst <= src;
 
-    case EBPF_OP_JNE_IMM: return dst != imm;
-    case EBPF_OP_JNE_REG: return dst != src;
+    case EBPF_OP_JNE_IMM:  return dst != imm;
+    // case EBPF_OP_JNE_REG:  return dst != src;
     
-    case EBPF_OP_JGT_IMM: return dst > imm; // FIX unsigned
-    case EBPF_OP_JGT_REG: return dst > src; // FIX unsigned
+    case EBPF_OP_JGT_IMM:  return dst > imm; // FIX unsigned
+    case EBPF_OP_JGT_REG:  return dst > src; // FIX unsigned
     case EBPF_OP_JSGT_IMM: return dst > imm;
     case EBPF_OP_JSGT_REG: return dst > src;
 
-    case EBPF_OP_JLT_IMM: return dst < imm; // FIX unsigned
-    case EBPF_OP_JLT_REG: return dst < src; // FIX unsigned
+    case EBPF_OP_JLT_IMM:  return dst < imm; // FIX unsigned
+    //case EBPF_OP_JLT_REG:  return dst < src; // FIX unsigned
     case EBPF_OP_JSLT_IMM: return dst < imm;
-    case EBPF_OP_JSLT_REG: return dst < src;
+    //case EBPF_OP_JSLT_REG: return dst < src;
     } 
+    assert(false);
 };
 
 void cst_regs::jump(ebpf_inst inst, basic_block_t& block, bool taken)
 {
-    auto cst = jmp_to_cst(inst.opcode, inst.imm, regs[inst.dst], regs[inst.src]);
-    if (!taken) cst = !cst;
+    lin_cst_t cst = jmp_to_cst(inst.opcode, inst.imm, regs[inst.dst], regs[inst.src]);
+    // if (!taken) cst = !cst; ???
     block.assume(cst);
 }
 
@@ -129,7 +129,7 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
         block.bitwise_and(dst, dst, UINT32_MAX);
         break;
     case EBPF_OP_NEG:
-        block.sub(dst, 0, dst); // ???
+        //block.sub(dst, 0, dst); // ???
         block.bitwise_and(dst, dst, UINT32_MAX);
         break;
     case EBPF_OP_MOD_IMM:
@@ -177,6 +177,7 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
         }*/
         break;
     case EBPF_OP_BE:
+        assert(false);
         /*
         assert(false);
         if (imm == 16) {
@@ -238,7 +239,7 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
         block.ashr(dst, dst, src);
         break;
     case EBPF_OP_NEG64:
-        block.sub(dst, 0, dst); // ???
+        //block.sub(dst, 0, dst); // ???
         break;
     case EBPF_OP_MOD64_IMM:
         block.rem(dst, dst, imm);
@@ -266,6 +267,7 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
         block.ashr(dst, dst, src); // = (int64_t)dst >> src;
         break;
     default:
-        assert(false);
+        // jumps - no op
+        break;
     }  
 }
