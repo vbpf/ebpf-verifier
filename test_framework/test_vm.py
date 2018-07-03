@@ -41,6 +41,7 @@ def check_datafile(filename):
 
     stdout, stderr = vm.communicate(code)
     stderr = stderr.strip()
+    print(stdout)
 
     if memfile:
         memfile.close()
@@ -70,5 +71,5 @@ def test_datafiles():
     # Nose test generator
     # Creates a testcase for each datafile
     for filename in testdata.list_files():
-        if filename.endswith('stack.data'):
+        if True or filename.endswith('stack.data'):
             yield check_datafile, filename
