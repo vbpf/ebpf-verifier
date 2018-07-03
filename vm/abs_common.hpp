@@ -28,9 +28,8 @@ namespace crab {
 
 using crab::cfg_impl::varname_t;
 using crab::cfg_impl::basic_block_label_t;
-using ikos::z_number;
 
 /// CFG over integers
-using cfg_t         = crab::cfg::Cfg<basic_block_label_t, varname_t, z_number>;
+using cfg_t         = crab::cfg::Cfg<basic_block_label_t, varname_t, ikos::z_number>;
 using basic_block_t = cfg_t::basic_block_t;
 #endif

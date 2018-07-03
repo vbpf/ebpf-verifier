@@ -49,11 +49,51 @@ static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& dst, var_t& src)
     assert(false);
 };
 
+static uint8_t reverse(uint8_t opcode)
+{
+    switch (opcode) {
+    case EBPF_OP_JEQ_IMM:  return EBPF_OP_JNE_IMM;
+    case EBPF_OP_JEQ_REG:  return EBPF_OP_JNE_REG;
+
+    case EBPF_OP_JGE_IMM:  return EBPF_OP_JLT_IMM;
+    case EBPF_OP_JGE_REG:  return EBPF_OP_JLT_REG;
+
+    case EBPF_OP_JSGE_IMM: return EBPF_OP_JSLT_IMM;
+    case EBPF_OP_JSGE_REG: return EBPF_OP_JSLT_REG;
+    
+    case EBPF_OP_JLE_IMM:  return EBPF_OP_JGT_IMM;
+    case EBPF_OP_JLE_REG:  return EBPF_OP_JGT_REG;
+
+    case EBPF_OP_JSLE_IMM: return EBPF_OP_JSGT_IMM;
+    case EBPF_OP_JSLE_REG: return EBPF_OP_JSGT_REG;
+
+    case EBPF_OP_JNE_IMM:  return EBPF_OP_JEQ_IMM;
+    case EBPF_OP_JNE_REG:  return EBPF_OP_JEQ_REG;
+    
+    case EBPF_OP_JGT_IMM:  return EBPF_OP_JLE_IMM;
+    case EBPF_OP_JGT_REG:  return EBPF_OP_JLE_REG;
+    case EBPF_OP_JSGT_IMM: return EBPF_OP_JSLE_IMM;
+    case EBPF_OP_JSGT_REG: return EBPF_OP_JSLE_REG;
+
+    case EBPF_OP_JLT_IMM:  return EBPF_OP_JGE_IMM;
+    case EBPF_OP_JLT_REG:  return EBPF_OP_JGE_REG;
+    case EBPF_OP_JSLT_IMM: return EBPF_OP_JSGE_IMM;
+    case EBPF_OP_JSLT_REG: return EBPF_OP_JSGE_REG;
+    } 
+    assert(false);
+};
+
+
 void cst_regs::jump(ebpf_inst inst, basic_block_t& block, bool taken)
 {
-    lin_cst_t cst = jmp_to_cst(inst.opcode, inst.imm, regs[inst.dst], regs[inst.src]);
-    // if (!taken) cst = !cst; ???
+    uint8_t opcode = taken ? inst.opcode : reverse(inst.opcode);
+    lin_cst_t cst = jmp_to_cst(opcode, inst.imm, regs[inst.dst], regs[inst.src]);
     block.assume(cst);
+}
+
+static void wrap32(basic_block_t& block, var_t& dst)
+{
+    block.bitwise_and(dst, dst, UINT32_MAX);
 }
 
 void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
@@ -65,76 +105,76 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
     switch (inst.opcode) {
     case EBPF_OP_ADD_IMM:
         block.add(dst, dst, imm);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_ADD_REG:
         block.add(dst, dst, src);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_SUB_IMM:
         block.sub(dst, dst, imm);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_SUB_REG:
         block.sub(dst, dst, src);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_MUL_IMM:
         block.mul(dst, dst, imm);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_MUL_REG:
         block.mul(dst, dst, src);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_DIV_IMM:
         block.div(dst, dst, src); // TODO: u32(dst) / u32(imm);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_DIV_REG:
         block.assertion(src != 0);
         block.div(dst, dst, src); // TODO: u32(dst) / u32(src);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_OR_IMM:
         block.bitwise_or(dst, dst, imm);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_OR_REG:
         block.bitwise_or(dst, dst, src);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_AND_IMM:
         block.bitwise_and(dst, dst, imm);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_AND_REG:
         block.bitwise_and(dst, dst, src);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_LSH_IMM:
         block.shl(dst, dst, imm);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_LSH_REG:
         block.shl(dst, dst, src);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_RSH_IMM:
         block.lshr(dst, dst, imm); // TODO u32(dst) >> imm;
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_RSH_REG:
         block.lshr(dst, dst, src); // TODO u32(dst) >> src;
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_NEG:
-        //block.sub(dst, 0, dst); // ???
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        block.mul(dst, dst, -1); // ???
+        wrap32(block, dst);
         break;
     case EBPF_OP_MOD_IMM:
         block.rem(dst, dst, imm); // FIX: dst = u32(dst) % u32(imm);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_MOD_REG:
         block.assertion(src != 0);
@@ -142,27 +182,27 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
         break;
     case EBPF_OP_XOR_IMM:
         block.bitwise_xor(dst, dst, imm);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_XOR_REG:
         block.bitwise_xor(dst, dst, src);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_MOV_IMM:
         block.assign(dst, imm);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_MOV_REG:
         block.assign(dst, src);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_ARSH_IMM:
         block.ashr(dst, dst, imm); // FIX: (int32_t)dst >> imm;
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
     case EBPF_OP_ARSH_REG:
         block.ashr(dst, dst, src); // FIX = (int32_t)dst >> u32(src);
-        block.bitwise_and(dst, dst, UINT32_MAX);
+        wrap32(block, dst);
         break;
 
     case EBPF_OP_LE:
