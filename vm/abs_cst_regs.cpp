@@ -282,7 +282,7 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
         block.ashr(dst, dst, src);
         break;
     case EBPF_OP_NEG64:
-        //block.sub(dst, 0, dst); // ???
+        block.mul(dst, dst, -1); // ???
         break;
     case EBPF_OP_MOD64_IMM:
         block.rem(dst, dst, imm);
