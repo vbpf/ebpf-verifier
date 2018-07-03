@@ -19,8 +19,9 @@ cst_regs::cst_regs() {
 static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& dst, var_t& src)
 {
     switch (opcode) {
-    case EBPF_OP_JEQ_IMM:  return dst == imm; 
-    //case EBPF_OP_JEQ_REG:  return dst == src;
+    case EBPF_OP_JEQ_IMM:  return dst == imm;
+    case EBPF_OP_JEQ_REG:
+        return lin_cst_t(dst - src, lin_cst_t::EQUALITY);
 
     case EBPF_OP_JGE_IMM:  return dst >= imm; // FIX unsigned
     case EBPF_OP_JGE_REG:  return dst >= src; // FIX unsigned
@@ -34,7 +35,8 @@ static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& dst, var_t& src)
     case EBPF_OP_JSLE_REG: return dst <= src;
 
     case EBPF_OP_JNE_IMM:  return dst != imm;
-    // case EBPF_OP_JNE_REG:  return dst != src;
+    case EBPF_OP_JNE_REG:
+        return lin_cst_t(dst - src, lin_cst_t::INEQUALITY);
     
     case EBPF_OP_JGT_IMM:  return dst > imm; // FIX unsigned
     case EBPF_OP_JGT_REG:  return dst > src; // FIX unsigned
@@ -42,10 +44,11 @@ static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& dst, var_t& src)
     case EBPF_OP_JSGT_REG: return dst > src;
 
     case EBPF_OP_JLT_IMM:  return dst < imm; // FIX unsigned
-    //case EBPF_OP_JLT_REG:  return dst < src; // FIX unsigned
+    // Note: reverse the test as a workaround strange lookup:
+    case EBPF_OP_JLT_REG:  return src > dst; // FIX unsigned
     case EBPF_OP_JSLT_IMM: return dst < imm;
-    //case EBPF_OP_JSLT_REG: return dst < src;
-    } 
+    case EBPF_OP_JSLT_REG: return src > dst;
+    }
     assert(false);
 };
 
@@ -206,7 +209,7 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
         break;
 
     case EBPF_OP_LE:
-        assert(false);
+        // TODO: implement
         /*
         if (imm == 16) {
             dst = htole16(dst);
@@ -217,7 +220,7 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
         }*/
         break;
     case EBPF_OP_BE:
-        assert(false);
+        // TODO: implement
         /*
         assert(false);
         if (imm == 16) {
