@@ -36,7 +36,6 @@ static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& dst, var_t& src)
 
     case EBPF_OP_JNE_IMM:  return dst != imm;
     case EBPF_OP_JNE_REG:
-        // FIX: seems to be wrong (x-y <= 0)
         return lin_cst_t(dst - src, lin_cst_t::DISEQUATION);
     
     case EBPF_OP_JGT_IMM:  return dst > imm; // FIX unsigned

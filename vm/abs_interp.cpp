@@ -40,6 +40,18 @@
 using boost::optional;
 using std::to_string;
 
+static void analyze(cfg_t& cfg)
+{
+    using namespace crab;
+    using namespace crab::cfg;
+    using namespace crab::cfg_impl;
+    using namespace crab::checker;
+    using namespace crab::analyzer;
+
+    liveness<cfg_ref<cfg_t>> live(cfg);  
+    crab::outs() << cfg << "\n";
+}
+
 static auto is_jmp(struct ebpf_inst inst, uint16_t pc) -> optional<uint16_t>
 {
     if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_JMP
@@ -85,18 +97,6 @@ static auto build_jmp(cfg_t& cfg, uint16_t pc, uint16_t target) -> basic_block_t
 static void link(cfg_t& cfg, uint16_t pc, uint16_t target)
 {
     cfg.get_node(label(pc)) >> cfg.insert(label(target));
-}
-
-void analyze(cfg_t& cfg)
-{
-    using namespace crab;
-    using namespace crab::cfg;
-    using namespace crab::cfg_impl;
-    using namespace crab::checker;
-    using namespace crab::analyzer;
-
-    liveness<cfg_ref<cfg_t>> live(cfg);  
-    crab::outs() << cfg << "\n";
 }
 
 bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
