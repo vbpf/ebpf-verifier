@@ -50,7 +50,7 @@ static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& dst, var_t& src)
     case EBPF_OP_JSLT_REG: return src > dst;
     }
     assert(false);
-};
+}
 
 static uint8_t reverse(uint8_t opcode)
 {
@@ -84,7 +84,7 @@ static uint8_t reverse(uint8_t opcode)
     case EBPF_OP_JSLT_REG: return EBPF_OP_JSGE_REG;
     } 
     assert(false);
-};
+}
 
 
 void cst_regs::jump(ebpf_inst inst, basic_block_t& block, bool taken)
