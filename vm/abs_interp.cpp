@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <stdlib.h>  // free / calloc
 #include <inttypes.h>
 #include <assert.h>
 
@@ -22,9 +21,6 @@
 #include <string>
 
 #include <boost/optional.hpp>
-
-#include "abs_common.hpp"
-#include "abs_cst_regs.hpp"
 
 #include <crab/checkers/base_property.hpp>
 #include <crab/checkers/null.hpp>
@@ -34,21 +30,22 @@
 #include <crab/analysis/dataflow/assertion_crawler.hpp>
 #include <crab/analysis/dataflow/assumptions.hpp>
 
+#include "abs_common.hpp"
+#include "abs_cst_regs.hpp"
 #include "abs_interp.h"
-#include "abs_state.h"
+#include "abs_cfg.hpp"
 
 using boost::optional;
-using std::to_string;
+
+using namespace crab;
+using namespace crab::cfg;
+using namespace crab::cfg_impl;
+using namespace crab::checker;
+using namespace crab::analyzer;
+using cfg_ref_t = cfg_ref<cfg_t>;
 
 static void analyze(cfg_t& cfg)
 {
-    using namespace crab;
-    using namespace crab::cfg;
-    using namespace crab::cfg_impl;
-    using namespace crab::checker;
-    using namespace crab::analyzer;
-
-    using cfg_ref_t = cfg_ref<cfg_t>;
     liveness<cfg_ref_t> live(cfg);
     live.exec();
     crab::outs() << cfg << "\n";
@@ -77,92 +74,10 @@ static void analyze(cfg_t& cfg)
     //crab::outs () << "Abstract trace: " << wto << "\n";
 }
 
-static auto get_jump(struct ebpf_inst inst, uint16_t pc) -> optional<uint16_t>
-{
-    if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_JMP
-            && inst.opcode != EBPF_OP_CALL
-            && inst.opcode != EBPF_OP_EXIT) {
-        return pc + 1 + inst.offset;
-    }
-    return boost::none;
-}
-
-static auto get_fallthrough(struct ebpf_inst inst, uint16_t pc) -> optional<uint16_t>
-{
-    if (inst.opcode != EBPF_OP_JA && inst.opcode != EBPF_OP_EXIT) {
-        /* eBPF has one 16-byte instruction: BPF_LD | BPF_DW | BPF_IMM which consists
-        of two consecutive 'struct ebpf_inst' 8-byte blocks and interpreted as single
-        instruction that loads 64-bit immediate value into a dst_reg. */
-        if (inst.opcode == EBPF_OP_LDDW) {
-            pc++;
-        }
-        return pc + 1;
-    }
-    return boost::none;
-}
-
-static auto label(uint16_t pc) -> basic_block_label_t
-{
-    return to_string(pc);
-}
-
-static auto label(uint16_t pc, uint16_t target) -> basic_block_label_t
-{
-    return to_string(pc) + "-" + to_string(target);
-}
-
-static auto build_jmp(cfg_t& cfg, uint16_t pc, uint16_t target) -> basic_block_t&
-{
-    basic_block_t& assumption = cfg.insert(label(pc, target));
-    cfg.get_node(label(pc)) >> assumption;
-    assumption >> cfg.insert(label(target));
-    return assumption;
-}
-
-static void link(cfg_t& cfg, uint16_t pc, uint16_t target)
-{
-    cfg.get_node(label(pc)) >> cfg.insert(label(target));
-}
-
-
 bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
 {
     cfg_t cfg(label(0));
-
-    cst_regs regs;
-
-    for (uint16_t pc = 0; pc < num_insts; pc++) {
-        auto inst = insts[pc];
-
-        regs.exec(inst, cfg.insert(label(pc)));
-
-        if (inst.opcode == EBPF_OP_EXIT) {
-            cfg.set_exit(label(pc));
-        }
-
-        optional<uint16_t> jmp_target = get_jump(insts[pc], pc);
-        optional<uint16_t> fall_target = get_fallthrough(insts[pc], pc);
-        if (jmp_target) {
-            if (inst.opcode != EBPF_OP_JA)  {
-                auto& assumption = build_jmp(cfg, pc, *jmp_target);
-                regs.jump(inst, assumption, true);
-            } else {
-                link(cfg, pc, *jmp_target);
-            }
-        }
-        
-        if (fall_target) {
-            if (jmp_target) {
-                auto& assumption = build_jmp(cfg, pc, *fall_target);
-                regs.jump(inst, assumption, false);
-            } else {
-                link(cfg, pc, *fall_target);
-            }
-            // skip imm of lddw
-            pc = *fall_target - 1;
-        }
-    }
-    cfg.simplify();
+    build_cfg(cfg, {insts, insts + num_insts});
     analyze(cfg);
     return false;
 }
