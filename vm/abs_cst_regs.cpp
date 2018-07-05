@@ -8,11 +8,30 @@
 
 #include "abs_cst_regs.hpp"
 
+constexpr int STACK_SIZE=512;
 
 cst_regs::cst_regs() {
     for (int i=0; i < 16; i++) {
         auto name = std::string("r") + std::to_string(i);
         regs.emplace_back(vfac[name], crab::INT_TYPE, 64);
+    }
+}
+
+static int access_width(uint8_t opcode) {
+    switch (opcode) {
+    case EBPF_OP_LDXB:
+    case EBPF_OP_STB:
+    case EBPF_OP_STXB: return 1;
+    case EBPF_OP_LDXH:
+    case EBPF_OP_STH:
+    case EBPF_OP_STXH: return 2;
+    case EBPF_OP_LDXW:
+    case EBPF_OP_STW:
+    case EBPF_OP_STXW: return 4;
+    case EBPF_OP_LDXDW:
+    case EBPF_OP_STDW:
+    case EBPF_OP_STXDW: return 8;
+    default: return -1;
     }
 }
 
@@ -305,9 +324,32 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
     case EBPF_OP_ARSH64_REG:
         block.ashr(dst, dst, src); // = (int64_t)dst >> src;
         break;
+    case EBPF_OP_LDDW:
+        block.assign(dst, (uint32_t)inst.imm | ((uint64_t)imm << 32));
+        break;
     default:
         // jumps - no op
         // TODO: loads and stores
+        int width = access_width(inst.opcode);
+        if (width > 0) {
+            bool is_load = ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD)
+                        || ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LDX);
+
+            uint8_t r = is_load ? inst.src : inst.dst;
+
+            var_t& memreg = regs[r];
+            if (r == 10) {
+                // TODO for r10 itself this is pointless
+                block.assertion(memreg + inst.offset <= -width);
+                block.assertion(memreg + inst.offset >= -STACK_SIZE);
+            }
+            /*
+            if (memreg is ctx) {
+                block.assertion(memreg + offset < 0);
+                block.assertion(memreg + offset > 4096 - width);
+            }
+            */
+        }
         break;
     }  
 }

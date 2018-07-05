@@ -77,7 +77,7 @@ static void analyze(cfg_t& cfg)
 
 bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
 {
-    cfg_t cfg(label(0));
+    cfg_t cfg(label(0), ARR);
     build_cfg(cfg, {insts, insts + num_insts});
     analyze(cfg);
     return false;
