@@ -52,7 +52,7 @@ static void analyze(cfg_t& cfg)
     crab::outs() << cfg << "\n";
 }
 
-static auto is_jmp(struct ebpf_inst inst, uint16_t pc) -> optional<uint16_t>
+static auto get_jump(struct ebpf_inst inst, uint16_t pc) -> optional<uint16_t>
 {
     if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_JMP
             && inst.opcode != EBPF_OP_CALL
@@ -62,7 +62,7 @@ static auto is_jmp(struct ebpf_inst inst, uint16_t pc) -> optional<uint16_t>
     return boost::none;
 }
 
-static auto has_fallthrough(struct ebpf_inst inst, uint16_t pc) -> optional<uint16_t>
+static auto get_fallthrough(struct ebpf_inst inst, uint16_t pc) -> optional<uint16_t>
 {
     if (inst.opcode != EBPF_OP_JA && inst.opcode != EBPF_OP_EXIT) {
         /* eBPF has one 16-byte instruction: BPF_LD | BPF_DW | BPF_IMM which consists
@@ -99,6 +99,7 @@ static void link(cfg_t& cfg, uint16_t pc, uint16_t target)
     cfg.get_node(label(pc)) >> cfg.insert(label(target));
 }
 
+
 bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
 {
     cfg_t cfg(label(0));
@@ -114,8 +115,8 @@ bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errm
             cfg.set_exit(label(pc));
         }
 
-        optional<uint16_t> jmp_target = is_jmp(insts[pc], pc);
-        optional<uint16_t> fall_target = has_fallthrough(insts[pc], pc);
+        optional<uint16_t> jmp_target = get_jump(insts[pc], pc);
+        optional<uint16_t> fall_target = get_fallthrough(insts[pc], pc);
         if (jmp_target) {
             if (inst.opcode != EBPF_OP_JA)  {
                 auto& assumption = build_jmp(cfg, pc, *jmp_target);
@@ -136,6 +137,7 @@ bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errm
             pc = *fall_target - 1;
         }
     }
+    cfg.simplify();
     analyze(cfg);
     return false;
 }
