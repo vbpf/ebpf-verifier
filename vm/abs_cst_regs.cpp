@@ -135,7 +135,6 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
         wrap32(block, dst);
         break;
     case EBPF_OP_DIV_REG:
-        block.assertion(src != 0);
         block.div(dst, dst, src); // TODO: u32(dst) / u32(src);
         wrap32(block, dst);
         break;
@@ -180,7 +179,6 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
         wrap32(block, dst);
         break;
     case EBPF_OP_MOD_REG:
-        block.assertion(src != 0);
         block.rem(dst, dst, src); // FIX: dst = u32(dst) % u32(src);
         break;
     case EBPF_OP_XOR_IMM:
@@ -254,7 +252,6 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
         block.div(dst, dst, imm);
         break;
     case EBPF_OP_DIV64_REG:
-        block.assertion(src != 0);
         block.div(dst, dst, src);
         break;
     case EBPF_OP_OR64_IMM:
@@ -288,7 +285,6 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
         block.rem(dst, dst, imm);
         break;
     case EBPF_OP_MOD64_REG:
-        block.assertion(src != 0);
         block.rem(dst, dst, src);
         break;
     case EBPF_OP_XOR64_IMM:

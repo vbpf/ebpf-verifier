@@ -43,6 +43,10 @@ using namespace crab::cfg_impl;
 using namespace crab::checker;
 using namespace crab::analyzer;
 using cfg_ref_t = cfg_ref<cfg_t>;
+using dom_t = ikos::interval_domain<ikos::z_number, varname_t>;
+using analyzer_t = intra_fwd_analyzer<cfg_ref_t, dom_t>;
+using checker_t = intra_checker<analyzer_t>;
+using prop_checker_ptr = typename checker_t::prop_checker_ptr;
 
 static void analyze(cfg_t& cfg)
 {
@@ -50,8 +54,6 @@ static void analyze(cfg_t& cfg)
     live.exec();
     crab::outs() << cfg << "\n";
    
-    using dom_t = ikos::interval_domain<ikos::z_number, varname_t>;
-    using analyzer_t = intra_fwd_analyzer<cfg_ref_t, dom_t>;
     dom_t inv = dom_t::top();
     analyzer_t analyzer(cfg, inv, &live, 1, 2, 20);
     typename analyzer_t::assumption_map_t assumptions;
@@ -63,11 +65,10 @@ static void analyze(cfg_t& cfg)
         crab::outs() << crab::cfg_impl::get_label_str(block.label()) << "=" << inv << "\n";
     }
 
-    using checker_t = crab::checker::intra_checker<analyzer_t>;
-    using assert_checker_t = crab::checker::assert_property_checker<analyzer_t>;
     const int verbose = 2;
-    typename checker_t::prop_checker_ptr prop(new assert_checker_t(verbose));
-    checker_t checker(analyzer, {prop});
+    prop_checker_ptr assertions(new assert_property_checker<analyzer_t>(verbose));
+    prop_checker_ptr div_zero(new div_zero_property_checker<analyzer_t>(verbose));
+    checker_t checker(analyzer, {assertions, div_zero});
     checker.run();
     checker.show(crab::outs());
     //auto &wto = analyzer.get_wto();

@@ -30,7 +30,9 @@
 using boost::optional;
 using std::to_string;
 
-static auto get_jump(struct ebpf_inst inst, uint16_t pc) -> optional<uint16_t>
+using pc_t = uint16_t;
+
+static auto get_jump(struct ebpf_inst inst, pc_t pc) -> optional<pc_t>
 {
     if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_JMP
             && inst.opcode != EBPF_OP_CALL
@@ -40,7 +42,7 @@ static auto get_jump(struct ebpf_inst inst, uint16_t pc) -> optional<uint16_t>
     return boost::none;
 }
 
-static auto get_fallthrough(struct ebpf_inst inst, uint16_t pc) -> optional<uint16_t>
+static auto get_fall(struct ebpf_inst inst, pc_t pc) -> optional<pc_t>
 {
     if (inst.opcode != EBPF_OP_JA && inst.opcode != EBPF_OP_EXIT) {
         /* eBPF has one 16-byte instruction: BPF_LD | BPF_DW | BPF_IMM which consists
@@ -53,7 +55,8 @@ static auto get_fallthrough(struct ebpf_inst inst, uint16_t pc) -> optional<uint
     }
     return boost::none;
 }
-static auto build_jmp(cfg_t& cfg, uint16_t pc, uint16_t target) -> basic_block_t&
+
+static auto build_jump(cfg_t& cfg, pc_t pc, pc_t target) -> basic_block_t&
 {
     basic_block_t& assumption = cfg.insert(label(pc, target));
     cfg.get_node(label(pc)) >> assumption;
@@ -61,7 +64,7 @@ static auto build_jmp(cfg_t& cfg, uint16_t pc, uint16_t target) -> basic_block_t
     return assumption;
 }
 
-static void link(cfg_t& cfg, uint16_t pc, uint16_t target)
+static void link(cfg_t& cfg, pc_t pc, pc_t target)
 {
     cfg.get_node(label(pc)) >> cfg.insert(label(target));
 }
@@ -70,7 +73,7 @@ void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts)
 {
     cst_regs regs;
 
-    for (uint16_t pc = 0; pc < insts.size(); pc++) {
+    for (pc_t pc = 0; pc < insts.size(); pc++) {
         auto inst = insts[pc];
 
         regs.exec(inst, cfg.insert(label(pc)));
@@ -79,20 +82,20 @@ void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts)
             cfg.set_exit(label(pc));
         }
 
-        optional<uint16_t> jmp_target = get_jump(insts[pc], pc);
-        optional<uint16_t> fall_target = get_fallthrough(insts[pc], pc);
-        if (jmp_target) {
+        optional<pc_t> jump_target = get_jump(insts[pc], pc);
+        optional<pc_t> fall_target = get_fall(insts[pc], pc);
+        if (jump_target) {
             if (inst.opcode != EBPF_OP_JA)  {
-                auto& assumption = build_jmp(cfg, pc, *jmp_target);
+                auto& assumption = build_jump(cfg, pc, *jump_target);
                 regs.jump(inst, assumption, true);
             } else {
-                link(cfg, pc, *jmp_target);
+                link(cfg, pc, *jump_target);
             }
         }
         
         if (fall_target) {
-            if (jmp_target) {
-                auto& assumption = build_jmp(cfg, pc, *fall_target);
+            if (jump_target) {
+                auto& assumption = build_jump(cfg, pc, *fall_target);
                 regs.jump(inst, assumption, false);
             } else {
                 link(cfg, pc, *fall_target);
