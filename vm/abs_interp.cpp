@@ -48,8 +48,33 @@ static void analyze(cfg_t& cfg)
     using namespace crab::checker;
     using namespace crab::analyzer;
 
-    liveness<cfg_ref<cfg_t>> live(cfg);  
+    using cfg_ref_t = cfg_ref<cfg_t>;
+    liveness<cfg_ref_t> live(cfg);
+    live.exec();
     crab::outs() << cfg << "\n";
+   
+    using dom_t = ikos::interval_domain<ikos::z_number, varname_t>;
+    using analyzer_t = intra_fwd_analyzer<cfg_ref_t, dom_t>;
+    dom_t inv = dom_t::top();
+    analyzer_t analyzer(cfg, inv, &live, 1, 2, 20);
+    typename analyzer_t::assumption_map_t assumptions;
+    analyzer.run("0", assumptions);
+
+    crab::outs() << "Invariants:\n";
+    for (auto &block : cfg) {
+        auto inv = analyzer[block.label()];
+        crab::outs() << crab::cfg_impl::get_label_str(block.label()) << "=" << inv << "\n";
+    }
+
+    using checker_t = crab::checker::intra_checker<analyzer_t>;
+    using assert_checker_t = crab::checker::assert_property_checker<analyzer_t>;
+    const int verbose = 2;
+    typename checker_t::prop_checker_ptr prop(new assert_checker_t(verbose));
+    checker_t checker(analyzer, {prop});
+    checker.run();
+    checker.show(crab::outs());
+    //auto &wto = analyzer.get_wto();
+    //crab::outs () << "Abstract trace: " << wto << "\n";
 }
 
 static auto get_jump(struct ebpf_inst inst, uint16_t pc) -> optional<uint16_t>
