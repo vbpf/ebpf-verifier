@@ -8,16 +8,16 @@
 
 #include "abs_cst_regs.hpp"
 
-constexpr int STACK_SIZE=512;
-
-cst_regs::cst_regs() {
+cst_regs::cst_regs()
+{
     for (int i=0; i < 16; i++) {
         auto name = std::string("r") + std::to_string(i);
         regs.emplace_back(vfac[name], crab::INT_TYPE, 64);
     }
 }
 
-static int access_width(uint8_t opcode) {
+static int access_width(uint8_t opcode)
+{
     switch (opcode) {
     case EBPF_OP_LDXB:
     case EBPF_OP_STB:
@@ -339,9 +339,14 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
 
             var_t& memreg = regs[r];
             if (r == 10) {
-                // TODO for r10 itself this is pointless
+                var_t& target = regs[is_load ? inst.dst : inst.src];
                 block.assertion(memreg + inst.offset <= -width);
                 block.assertion(memreg + inst.offset >= -STACK_SIZE);
+                if (is_load) {
+                    block.array_load(target, stack, -inst.offset, width);
+                } else {
+                    block.array_store(stack, -inst.offset, target, width);
+                }
             }
             /*
             if (memreg is ctx) {
