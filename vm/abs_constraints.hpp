@@ -17,7 +17,7 @@ using lin_cst_t = ikos::linear_constraint<z_number, varname_t>;
 
 constexpr int STACK_SIZE=512;
 
-class cst_regs
+class constraints
 {
     variable_factory_t vfac;	
     std::vector<var_t> regs;
@@ -25,7 +25,7 @@ class cst_regs
     var_t ctx{vfac["ctx"], crab::ARR_INT_TYPE, 64};
 
 public:
-    cst_regs(basic_block_t& entry);
+    constraints(basic_block_t& entry);
 
     void jump(ebpf_inst inst, basic_block_t& block, bool taken);
     void exec(ebpf_inst inst, basic_block_t& block);

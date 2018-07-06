@@ -34,11 +34,14 @@
 #include <crab/domains/sparse_dbm.hpp>
 #include <crab/domains/split_dbm.hpp>
 
+
+#include "ebpf.h"
+
 #include "crab_lang.hpp"
 #include "crab_dom.hpp"
 
 #include "abs_common.hpp"
-#include "abs_cst_regs.hpp"
+//#include "abs_constraints.hpp"
 #include "abs_interp.h"
 #include "abs_cfg.hpp"
 
@@ -73,10 +76,10 @@ static void analyze(cfg_t& cfg)
 
     const int verbose = 2;
     prop_checker_ptr assertions(new assert_property_checker<analyzer_t>(verbose));
-    //prop_checker_ptr div_zero(new div_zero_property_checker<analyzer_t>(verbose));
+    prop_checker_ptr div_zero(new div_zero_property_checker<analyzer_t>(verbose));
     checker_t checker(analyzer, {
         assertions
-        //, div_zero
+        , div_zero
     });
     checker.run();
     checker.show(crab::outs());

@@ -6,9 +6,9 @@
 
 #include "abs_common.hpp"
 
-#include "abs_cst_regs.hpp"
+#include "abs_constraints.hpp"
 
-cst_regs::cst_regs(basic_block_t& entry)
+constraints::constraints(basic_block_t& entry)
 {
     for (int i=0; i < 16; i++) {
         auto name = std::string("r") + std::to_string(i);
@@ -108,7 +108,7 @@ static uint8_t reverse(uint8_t opcode)
 }
 
 
-void cst_regs::jump(ebpf_inst inst, basic_block_t& block, bool taken)
+void constraints::jump(ebpf_inst inst, basic_block_t& block, bool taken)
 {
     uint8_t opcode = taken ? inst.opcode : reverse(inst.opcode);
     lin_cst_t cst = jmp_to_cst(opcode, inst.imm, regs[inst.dst], regs[inst.src]);
@@ -120,7 +120,7 @@ static void wrap32(basic_block_t& block, var_t& dst)
     block.bitwise_and(dst, dst, UINT32_MAX);
 }
 
-void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
+void constraints::exec(ebpf_inst inst, basic_block_t& block)
 {
     var_t& dst = regs[inst.dst];
     var_t& src = regs[inst.src];
@@ -332,9 +332,10 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
     case EBPF_OP_CALL:
         for (int i=1; i<=5; i++)
             block.havoc(regs[i]);
+        block.havoc(regs[0]);
+        break;
     default:
         // jumps - no op
-        // TODO: loads and stores
         int width = access_width(inst.opcode);
         if (width > 0) {
             bool is_load = ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD)
@@ -342,26 +343,27 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
 
             uint8_t r = is_load ? inst.src : inst.dst;
 
-            var_t& memreg = regs[r];
+            var_t& target = regs[is_load ? inst.dst : inst.src];
             if (r == 10) {
-                var_t& target = regs[is_load ? inst.dst : inst.src];
-                block.assertion(memreg + inst.offset <= -width);
-                block.assertion(memreg >= -STACK_SIZE);
+                auto offset = -inst.offset;
+                // not dynamic
+                assert(offset >= width);
+                assert(offset <= STACK_SIZE);
                 if (is_load) {
-                    block.array_load(target, stack, -inst.offset, width);
+                    block.array_load(target, stack, offset, width);
                 } else {
-                    block.array_store(stack, -inst.offset, target, width);
+                    block.array_store(stack, offset, target, width);
                 }
-            }
-            if (r == 1) {
-                var_t& target = regs[is_load ? inst.dst : inst.src];
-                block.assertion(memreg >= 0);
-                block.assertion(memreg + inst.offset <= 4096 - width);
+            } else if (r == 1) {
+                block.assertion(regs[1] + inst.offset >= 0);
+                block.assertion(regs[1] + inst.offset <= 4096 - width);
                 if (is_load) {
-                    block.array_load(target, stack, inst.offset, width);
+                    block.array_load(target, ctx, regs[1] + inst.offset, width);
                 } else {
-                    block.array_store(stack, inst.offset, target, width);
+                    block.array_store(ctx, regs[1] + inst.offset, target, width);
                 }
+            } else if (is_load) {
+                block.havoc(target);
             }
         }
         break;
