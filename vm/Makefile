@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-CFLAGS := -Wall -Werror -Iinc -O2 -g
-CXXFLAGS := -Wall -Werror -Iinc -g3 -std=c++17 \
-	-Wno-unused-local-typedefs 
+CFLAGS := -Wall -Werror -Iinc -O2 -g3
+CXXFLAGS := -Wall -Werror -Iinc -g3 -std=c++17 -Wno-unused-local-typedefs 
 
 LDLIBS := -lCrab -lm -lstdc++ -lgmp 
 

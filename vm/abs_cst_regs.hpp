@@ -22,9 +22,10 @@ class cst_regs
     variable_factory_t vfac;	
     std::vector<var_t> regs;
     var_t stack{vfac["stack"], crab::ARR_INT_TYPE, 64};
+    var_t ctx{vfac["ctx"], crab::ARR_INT_TYPE, 64};
 
 public:
-    cst_regs();
+    cst_regs(basic_block_t& entry);
 
     void jump(ebpf_inst inst, basic_block_t& block, bool taken);
     void exec(ebpf_inst inst, basic_block_t& block);

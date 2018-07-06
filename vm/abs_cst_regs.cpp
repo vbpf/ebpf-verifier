@@ -8,12 +8,14 @@
 
 #include "abs_cst_regs.hpp"
 
-cst_regs::cst_regs()
+cst_regs::cst_regs(basic_block_t& entry)
 {
     for (int i=0; i < 16; i++) {
         auto name = std::string("r") + std::to_string(i);
         regs.emplace_back(vfac[name], crab::INT_TYPE, 64);
     }
+    entry.assume(regs[10] == 0);
+    entry.assume(regs[1] == 0);
 }
 
 static int access_width(uint8_t opcode)
@@ -327,6 +329,9 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
     case EBPF_OP_LDDW:
         block.assign(dst, (uint32_t)inst.imm | ((uint64_t)imm << 32));
         break;
+    case EBPF_OP_CALL:
+        for (int i=1; i<=5; i++)
+            block.havoc(regs[i]);
     default:
         // jumps - no op
         // TODO: loads and stores
@@ -341,19 +346,23 @@ void cst_regs::exec(ebpf_inst inst, basic_block_t& block)
             if (r == 10) {
                 var_t& target = regs[is_load ? inst.dst : inst.src];
                 block.assertion(memreg + inst.offset <= -width);
-                block.assertion(memreg + inst.offset >= -STACK_SIZE);
+                block.assertion(memreg >= -STACK_SIZE);
                 if (is_load) {
                     block.array_load(target, stack, -inst.offset, width);
                 } else {
                     block.array_store(stack, -inst.offset, target, width);
                 }
             }
-            /*
-            if (memreg is ctx) {
-                block.assertion(memreg + offset < 0);
-                block.assertion(memreg + offset > 4096 - width);
+            if (r == 1) {
+                var_t& target = regs[is_load ? inst.dst : inst.src];
+                block.assertion(memreg >= 0);
+                block.assertion(memreg + inst.offset <= 4096 - width);
+                if (is_load) {
+                    block.array_load(target, stack, inst.offset, width);
+                } else {
+                    block.array_store(stack, inst.offset, target, width);
+                }
             }
-            */
         }
         break;
     }  

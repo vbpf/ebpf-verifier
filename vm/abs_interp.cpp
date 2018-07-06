@@ -23,46 +23,47 @@
 #include <boost/optional.hpp>
 
 #include <crab/checkers/base_property.hpp>
-#include <crab/checkers/null.hpp>
 #include <crab/checkers/div_zero.hpp>
 #include <crab/checkers/assertion.hpp>
 #include <crab/checkers/checker.hpp>
-#include <crab/analysis/dataflow/assertion_crawler.hpp>
 #include <crab/analysis/dataflow/assumptions.hpp>
+#include <crab/domains/wrapped_interval_domain.hpp>
+#include <crab/domains/array_sparse_graph.hpp>
+#include <crab/domains/dis_intervals.hpp>
+#include <crab/domains/wrapped_interval_domain.hpp>
 
 #include "abs_common.hpp"
 #include "abs_cst_regs.hpp"
 #include "abs_interp.h"
 #include "abs_cfg.hpp"
 
-using boost::optional;
-
-using namespace crab;
 using namespace crab::cfg;
-using namespace crab::cfg_impl;
 using namespace crab::checker;
 using namespace crab::analyzer;
+using namespace crab::domains;
 using cfg_ref_t = cfg_ref<cfg_t>;
-using dom_t = ikos::interval_domain<ikos::z_number, varname_t>;
+using dom_t = wrapped_interval_domain<ikos::z_number, varname_t>;
+//using dom_t = dis_interval_domain<ikos::z_number, varname_t>; 
 using analyzer_t = intra_fwd_analyzer<cfg_ref_t, dom_t>;
 using checker_t = intra_checker<analyzer_t>;
-using prop_checker_ptr = typename checker_t::prop_checker_ptr;
+using prop_checker_ptr = checker_t::prop_checker_ptr;
 
 static void analyze(cfg_t& cfg)
 {
     liveness<cfg_ref_t> live(cfg);
     live.exec();
-    crab::outs() << cfg << "\n";
+    //crab::outs() << cfg << "\n";
    
     dom_t inv = dom_t::top();
     analyzer_t analyzer(cfg, inv, &live, 1, 2, 20);
     typename analyzer_t::assumption_map_t assumptions;
-    analyzer.run("0", assumptions);
+    analyzer.run(label(0), assumptions);
 
     crab::outs() << "Invariants:\n";
     for (auto &block : cfg) {
         auto inv = analyzer[block.label()];
-        crab::outs() << crab::cfg_impl::get_label_str(block.label()) << "=" << inv << "\n";
+        crab::outs() << "\n" << inv << "\n";
+        block.write(crab::outs());
     }
 
     const int verbose = 2;
