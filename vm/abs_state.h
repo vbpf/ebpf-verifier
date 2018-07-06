@@ -17,13 +17,16 @@
 #ifndef ABS_STATE_H
 #define ABS_STATE_H
 
-#include "ubpf_int.h"
 #include "abs_dom.h"
 
 struct abs_state {
     struct abs_dom_value reg[16];
     bool bot;
 };
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void abs_initialize_entry(struct abs_state *state);
 void abs_initialize_unreached(struct abs_state *state);
@@ -32,5 +35,9 @@ void abs_execute(struct abs_state *to, struct abs_state *from,
                  struct ebpf_inst inst, int32_t imm, bool taken, uint16_t pc, char** errmsg);
 
 void abs_print(struct abs_state *state, const char* s);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

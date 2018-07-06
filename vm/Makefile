@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-CFLAGS := -Wall -Werror -Iinc -O2 -g
-LDLIBS := -lm
+CFLAGS := -Wall -Werror -Iinc -O2 -g3
+CXXFLAGS := -Wall -Werror -Iinc -I../../crab/build/run/ldd/include/ldd/ -I../../crab/build/run/apron/include/ -g3 -std=c++17 -Wno-unused-local-typedefs 
+
+LDLIBS := -lCrab -lm -lstdc++ -lgmp 
 
 ifeq ($(COVERAGE),1)
 CFLAGS += -fprofile-arcs -ftest-coverage
@@ -29,7 +31,7 @@ all: libubpf.a test
 
 ubpf_jit_x86_64.o: ubpf_jit_x86_64.c ubpf_jit_x86_64.h
 
-libubpf.a: abs_interp.o abs_state_regs.o abs_dom_const.o ubpf_vm.o ubpf_jit_x86_64.o ubpf_loader.o
+libubpf.a: abs_interp.o abs_cfg.o abs_constraints.o ubpf_vm.o ubpf_jit_x86_64.o ubpf_loader.o
 	ar rc $@ $^
 
 test: test.o libubpf.a
