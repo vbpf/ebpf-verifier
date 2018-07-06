@@ -31,6 +31,11 @@
 #include <crab/domains/array_sparse_graph.hpp>
 #include <crab/domains/dis_intervals.hpp>
 #include <crab/domains/wrapped_interval_domain.hpp>
+#include <crab/domains/sparse_dbm.hpp>
+#include <crab/domains/split_dbm.hpp>
+
+#include "crab_lang.hpp"
+#include "crab_dom.hpp"
 
 #include "abs_common.hpp"
 #include "abs_cst_regs.hpp"
@@ -41,9 +46,10 @@ using namespace crab::cfg;
 using namespace crab::checker;
 using namespace crab::analyzer;
 using namespace crab::domains;
+using namespace crab::domain_impl;
 using cfg_ref_t = cfg_ref<cfg_t>;
-using dom_t = wrapped_interval_domain<ikos::z_number, varname_t>;
-//using dom_t = dis_interval_domain<ikos::z_number, varname_t>; 
+
+using dom_t = z_dis_interval_domain_t; // z_num_domain_t;
 using analyzer_t = intra_fwd_analyzer<cfg_ref_t, dom_t>;
 using checker_t = intra_checker<analyzer_t>;
 using prop_checker_ptr = checker_t::prop_checker_ptr;
@@ -52,9 +58,8 @@ static void analyze(cfg_t& cfg)
 {
     liveness<cfg_ref_t> live(cfg);
     live.exec();
-    //crab::outs() << cfg << "\n";
    
-    dom_t inv = dom_t::top();
+    auto inv = dom_t::top();
     analyzer_t analyzer(cfg, inv, &live, 1, 2, 20);
     typename analyzer_t::assumption_map_t assumptions;
     analyzer.run(label(0), assumptions);
@@ -68,8 +73,11 @@ static void analyze(cfg_t& cfg)
 
     const int verbose = 2;
     prop_checker_ptr assertions(new assert_property_checker<analyzer_t>(verbose));
-    prop_checker_ptr div_zero(new div_zero_property_checker<analyzer_t>(verbose));
-    checker_t checker(analyzer, {assertions, div_zero});
+    //prop_checker_ptr div_zero(new div_zero_property_checker<analyzer_t>(verbose));
+    checker_t checker(analyzer, {
+        assertions
+        //, div_zero
+    });
     checker.run();
     checker.show(crab::outs());
     //auto &wto = analyzer.get_wto();

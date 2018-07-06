@@ -20,7 +20,7 @@ namespace crab {
     using variable_factory_t = cfg::var_factory_impl::str_variable_factory;
     using varname_t = typename variable_factory_t::varname_t;
     using basic_block_label_t = std::string;
-    template<> inline std::string get_label_str(basic_block_label_t e) { return e; }
+    //template<> inline std::string get_label_str(std::string e) { return e; }
     /// END MUST BE DEFINED BY CRAB CLIENT    
 
   }
