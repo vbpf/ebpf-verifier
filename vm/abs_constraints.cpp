@@ -14,8 +14,15 @@ constraints::constraints(basic_block_t& entry)
         auto name = std::string("r") + std::to_string(i);
         regs.emplace_back(vfac[name], crab::INT_TYPE, 64);
     }
-    entry.assume(regs[10] == 0);
-    entry.assume(regs[1] == 0);
+    entry.assume(regs[10] != 0);
+    entry.assume(regs[1] != 0);
+
+    for (int i=0; i < 16; i++) {
+        auto name = std::string("off") + std::to_string(i);
+        reg_offsets.emplace_back(vfac[name], crab::INT_TYPE, 64);
+    }
+    entry.assume(reg_offsets[10] == 0);
+    entry.assume(reg_offsets[1] == 0);
 }
 
 static int access_width(uint8_t opcode)
@@ -36,6 +43,30 @@ static int access_width(uint8_t opcode)
     default: return -1;
     }
 }
+
+static lin_cst_t jmp_to_cst_offsets(uint8_t opcode, int imm, var_t& dst, var_t& src)
+{
+    switch (opcode) {
+    case EBPF_OP_JEQ_REG:
+        return lin_cst_t(dst - src, lin_cst_t::EQUALITY);
+
+    case EBPF_OP_JGE_REG:  return dst >= src; // FIX unsigned
+    case EBPF_OP_JSGE_REG: return dst >= src;
+    case EBPF_OP_JLE_REG:  return dst <= src; // FIX unsigned
+    case EBPF_OP_JSLE_REG: return dst <= src;
+    case EBPF_OP_JNE_REG:
+        return lin_cst_t(dst - src, lin_cst_t::DISEQUATION);
+    
+    case EBPF_OP_JGT_REG:  return dst > src; // FIX unsigned
+    case EBPF_OP_JSGT_REG: return dst > src;
+
+    // Note: reverse the test as a workaround strange lookup:
+    case EBPF_OP_JLT_REG:  return src > dst; // FIX unsigned
+    case EBPF_OP_JSLT_REG: return src > dst;
+    }
+    return dst - dst == 0;
+}
+
 
 static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& dst, var_t& src)
 {
@@ -113,6 +144,9 @@ void constraints::jump(ebpf_inst inst, basic_block_t& block, bool taken)
     uint8_t opcode = taken ? inst.opcode : reverse(inst.opcode);
     lin_cst_t cst = jmp_to_cst(opcode, inst.imm, regs[inst.dst], regs[inst.src]);
     block.assume(cst);
+
+    lin_cst_t offset_cst = jmp_to_cst_offsets(opcode, inst.imm, reg_offsets[inst.dst], reg_offsets[inst.src]);
+    block.assume(offset_cst);
 }
 
 static void wrap32(basic_block_t& block, var_t& dst)
@@ -120,8 +154,15 @@ static void wrap32(basic_block_t& block, var_t& dst)
     block.bitwise_and(dst, dst, UINT32_MAX);
 }
 
+static bool is_load(uint8_t opcode)
+{
+    return ((opcode & EBPF_CLS_MASK) == EBPF_CLS_LD)
+        || ((opcode & EBPF_CLS_MASK) == EBPF_CLS_LDX);
+}
+
 void constraints::exec(ebpf_inst inst, basic_block_t& block)
 {
+    exec_offsets(inst, block);
     var_t& dst = regs[inst.dst];
     var_t& src = regs[inst.src];
     int imm = inst.imm;
@@ -229,6 +270,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block)
 
     case EBPF_OP_LE:
         // TODO: implement
+        block.havoc(dst);
         /*
         if (imm == 16) {
             dst = htole16(dst);
@@ -240,8 +282,8 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block)
         break;
     case EBPF_OP_BE:
         // TODO: implement
+        block.havoc(dst);
         /*
-        assert(false);
         if (imm == 16) {
             dst = htobe16(dst);
         } else if (imm == 32) {
@@ -338,31 +380,141 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block)
         // jumps - no op
         int width = access_width(inst.opcode);
         if (width > 0) {
-            bool is_load = ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD)
-                        || ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LDX);
+            // loads and stores are handles by offsets
+            uint8_t r = is_load(inst.opcode) ? inst.src : inst.dst;
+            block.assertion(regs[r] != 0);
+            if (is_load(inst.opcode)) {
+                block.havoc(regs[inst.dst]);
+            }
+        }
+        break;
+    }  
+}
 
-            uint8_t r = is_load ? inst.src : inst.dst;
+void constraints::exec_offsets(ebpf_inst inst, basic_block_t& block)
+{
+    var_t& dst = reg_offsets[inst.dst];
+    var_t& src = reg_offsets[inst.src];
+    int imm = inst.imm;
 
-            var_t& target = regs[is_load ? inst.dst : inst.src];
+    switch (inst.opcode) {
+    case EBPF_OP_ADD_IMM:
+        block.add(dst, dst, imm);
+        break;
+    case EBPF_OP_ADD_REG:
+        block.add(dst, dst, src);
+        break;
+    case EBPF_OP_SUB_IMM:
+        block.sub(dst, dst, imm);
+        break;
+    case EBPF_OP_SUB_REG:
+        block.sub(dst, dst, src);
+        break;
+    case EBPF_OP_MUL_IMM:
+    case EBPF_OP_MUL_REG:
+    case EBPF_OP_DIV_IMM:
+    case EBPF_OP_DIV_REG:
+    case EBPF_OP_OR_IMM:
+    case EBPF_OP_OR_REG:
+    case EBPF_OP_AND_IMM:
+    case EBPF_OP_AND_REG:
+    case EBPF_OP_LSH_IMM:
+    case EBPF_OP_LSH_REG:
+    case EBPF_OP_RSH_IMM:
+    case EBPF_OP_RSH_REG:
+    case EBPF_OP_NEG:
+    case EBPF_OP_MOD_IMM:
+    case EBPF_OP_MOD_REG:
+    case EBPF_OP_XOR_IMM:
+    case EBPF_OP_XOR_REG:
+    case EBPF_OP_MOV_IMM: // Meaningless for offset
+    case EBPF_OP_MOV_REG:
+        block.assign(dst, src);
+        // wrap32(block, dst); TODO: verify that this is harmless
+        break;
+    case EBPF_OP_ARSH_IMM:
+    case EBPF_OP_ARSH_REG:
+
+    case EBPF_OP_LE:
+    case EBPF_OP_BE:
+        block.havoc(dst);
+        break;
+
+    case EBPF_OP_ADD64_IMM:
+        block.add(dst, dst, imm);
+        break;
+    case EBPF_OP_ADD64_REG:
+        block.add(dst, dst, src);
+        break;
+    case EBPF_OP_SUB64_IMM:
+        block.sub(dst, dst, imm);
+        break;
+    case EBPF_OP_SUB64_REG:
+        block.sub(dst, dst, src);
+        break;
+    case EBPF_OP_MUL64_IMM:
+    case EBPF_OP_MUL64_REG:
+    case EBPF_OP_DIV64_IMM:
+    case EBPF_OP_DIV64_REG:
+    case EBPF_OP_OR64_IMM:
+    case EBPF_OP_OR64_REG:
+    case EBPF_OP_AND64_IMM:
+    case EBPF_OP_AND64_REG:
+    case EBPF_OP_LSH64_IMM:
+    case EBPF_OP_LSH64_REG:
+    case EBPF_OP_RSH64_IMM:
+    case EBPF_OP_RSH64_REG:
+    case EBPF_OP_NEG64:
+    case EBPF_OP_MOD64_IMM:
+    case EBPF_OP_MOD64_REG:
+    case EBPF_OP_XOR64_IMM:
+    case EBPF_OP_XOR64_REG:
+        block.havoc(dst);
+        break;
+    case EBPF_OP_MOV64_IMM: // Meaningless for offsets
+        block.havoc(dst);
+        break;
+    case EBPF_OP_MOV64_REG:
+        block.assign(dst, src);
+        break;
+    case EBPF_OP_ARSH64_IMM:
+    case EBPF_OP_ARSH64_REG:
+    case EBPF_OP_LDDW:
+    case EBPF_OP_CALL:
+        for (int i=1; i<=5; i++)
+            block.havoc(reg_offsets[i]);
+        if (inst.imm == 0x1) {
+            block.assign(dst, 0);
+        } else {
+            block.havoc(reg_offsets[0]);
+        }
+        break;
+    default:
+        // jumps - no op
+        int width = access_width(inst.opcode);
+        if (width > 0) {
+            var_t& target = reg_offsets[is_load(inst.opcode) ? inst.dst : inst.src];
+            uint8_t r = is_load(inst.opcode) ? inst.src : inst.dst;
             if (r == 10) {
                 auto offset = -inst.offset;
                 // not dynamic
                 assert(offset >= width);
                 assert(offset <= STACK_SIZE);
-                if (is_load) {
+                if (is_load(inst.opcode)) {
                     block.array_load(target, stack, offset, width);
                 } else {
                     block.array_store(stack, offset, target, width);
                 }
             } else if (r == 1) {
-                block.assertion(regs[1] + inst.offset >= 0);
-                block.assertion(regs[1] + inst.offset <= 4096 - width);
-                if (is_load) {
-                    block.array_load(target, ctx, regs[1] + inst.offset, width);
+                auto addr = reg_offsets[1] + inst.offset;
+                block.assertion(addr >= 0);
+                block.assertion(addr <= 4096 - width);
+                if (is_load(inst.opcode)) {
+                    block.array_load(target, ctx, addr, width);
                 } else {
-                    block.array_store(ctx, regs[1] + inst.offset, target, width);
+                    block.array_store(ctx, addr, target, width);
                 }
-            } else if (is_load) {
+            } else if (is_load(inst.opcode)) {
                 block.havoc(target);
             }
         }

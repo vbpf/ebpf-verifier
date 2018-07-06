@@ -61,7 +61,6 @@ static void analyze(cfg_t& cfg)
 {
     liveness<cfg_ref_t> live(cfg);
     live.exec();
-   
     auto inv = dom_t::top();
     analyzer_t analyzer(cfg, inv, &live, 1, 2, 20);
     typename analyzer_t::assumption_map_t assumptions;

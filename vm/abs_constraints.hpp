@@ -17,13 +17,17 @@ using lin_cst_t = ikos::linear_constraint<z_number, varname_t>;
 
 constexpr int STACK_SIZE=512;
 
+// hand-crafted mix of absolute values and offsets 
 class constraints
 {
     variable_factory_t vfac;	
     std::vector<var_t> regs;
+    std::vector<var_t> reg_offsets;
     var_t stack{vfac["stack"], crab::ARR_INT_TYPE, 64};
     var_t ctx{vfac["ctx"], crab::ARR_INT_TYPE, 64};
 
+    void exec_offsets(ebpf_inst inst, basic_block_t& block);
+    //void jump_offsets(ebpf_inst inst, basic_block_t& block, bool taken);
 public:
     constraints(basic_block_t& entry);
 
