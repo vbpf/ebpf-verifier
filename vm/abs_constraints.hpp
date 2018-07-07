@@ -18,7 +18,7 @@ using lin_cst_t = ikos::linear_constraint<z_number, varname_t>;
 constexpr int STACK_SIZE=512;
 
 // hand-crafted mix of absolute values and offsets 
-class constraints
+class constraints final
 {
 
     struct dom_t {
@@ -37,6 +37,7 @@ class constraints
     var_t ctx{vfac["ctx"], crab::ARR_INT_TYPE, 64};
 
     void exec_offsets(ebpf_inst inst, basic_block_t& block);
+    void exec_values(ebpf_inst inst, basic_block_t& block);
     //void jump_offsets(ebpf_inst inst, basic_block_t& block, bool taken);
 public:
     constraints(basic_block_t& entry);

@@ -8,6 +8,8 @@
 
 #include "abs_constraints.hpp"
 
+using std::tuple;
+
 constraints::constraints(basic_block_t& entry)
 {
     for (int i=0; i < 16; i++) {
@@ -157,6 +159,11 @@ static bool is_load(uint8_t opcode)
 void constraints::exec(ebpf_inst inst, basic_block_t& block)
 {
     exec_offsets(inst, block);
+    exec_values(inst, block);
+}
+
+void constraints::exec_values(ebpf_inst inst, basic_block_t& block)
+{
     var_t& dst = regs[inst.dst].value;
     var_t& src = regs[inst.src].value;
     int imm = inst.imm;
@@ -375,10 +382,10 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block)
         int width = access_width(inst.opcode);
         if (width > 0) {
             // loads and stores are handles by offsets
-            uint8_t r = is_load(inst.opcode) ? inst.src : inst.dst;
-            block.assertion(regs[r].value != 0);
+            auto [memreg, target] = is_load(inst.opcode) ? tuple{src, dst} : tuple{dst, src};
+            block.assertion(memreg != 0);
             if (is_load(inst.opcode)) {
-                block.havoc(regs[inst.dst].value);
+                block.havoc(target);
             }
         }
         break;
@@ -488,7 +495,7 @@ void constraints::exec_offsets(ebpf_inst inst, basic_block_t& block)
         // jumps - no op
         int width = access_width(inst.opcode);
         if (width > 0) {
-            var_t& target = regs[is_load(inst.opcode) ? inst.dst : inst.src].offset;
+            auto [memreg, target] = is_load(inst.opcode) ? tuple{src, dst} : tuple{dst, src};
             uint8_t r = is_load(inst.opcode) ? inst.src : inst.dst;
             if (r == 10) {
                 auto offset = -inst.offset;
@@ -501,7 +508,7 @@ void constraints::exec_offsets(ebpf_inst inst, basic_block_t& block)
                     block.array_store(stack, offset, target, width);
                 }
             } else if (r == 1) {
-                auto addr = regs[1].offset + inst.offset;
+                auto addr = memreg + inst.offset;
                 block.assertion(addr >= 0);
                 block.assertion(addr <= 4096 - width);
                 if (is_load(inst.opcode)) {
