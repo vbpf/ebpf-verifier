@@ -11,18 +11,12 @@
 constraints::constraints(basic_block_t& entry)
 {
     for (int i=0; i < 16; i++) {
-        auto name = std::string("r") + std::to_string(i);
-        regs.emplace_back(vfac[name], crab::INT_TYPE, 64);
+        regs.emplace_back(vfac, i);
     }
-    entry.assume(regs[10] != 0);
-    entry.assume(regs[1] != 0);
-
-    for (int i=0; i < 16; i++) {
-        auto name = std::string("off") + std::to_string(i);
-        reg_offsets.emplace_back(vfac[name], crab::INT_TYPE, 64);
-    }
-    entry.assume(reg_offsets[10] == 0);
-    entry.assume(reg_offsets[1] == 0);
+    entry.assume(regs[10].value != 0);
+    entry.assume(regs[10].offset == 0);
+    entry.assume(regs[1].value != 0);
+    entry.assume(regs[1].offset == 0);
 }
 
 static int access_width(uint8_t opcode)
@@ -142,10 +136,10 @@ static uint8_t reverse(uint8_t opcode)
 void constraints::jump(ebpf_inst inst, basic_block_t& block, bool taken)
 {
     uint8_t opcode = taken ? inst.opcode : reverse(inst.opcode);
-    lin_cst_t cst = jmp_to_cst(opcode, inst.imm, regs[inst.dst], regs[inst.src]);
+    lin_cst_t cst = jmp_to_cst(opcode, inst.imm, regs[inst.dst].value, regs[inst.src].value);
     block.assume(cst);
 
-    lin_cst_t offset_cst = jmp_to_cst_offsets(opcode, inst.imm, reg_offsets[inst.dst], reg_offsets[inst.src]);
+    lin_cst_t offset_cst = jmp_to_cst_offsets(opcode, inst.imm, regs[inst.dst].offset, regs[inst.src].offset);
     block.assume(offset_cst);
 }
 
@@ -163,8 +157,8 @@ static bool is_load(uint8_t opcode)
 void constraints::exec(ebpf_inst inst, basic_block_t& block)
 {
     exec_offsets(inst, block);
-    var_t& dst = regs[inst.dst];
-    var_t& src = regs[inst.src];
+    var_t& dst = regs[inst.dst].value;
+    var_t& src = regs[inst.src].value;
     int imm = inst.imm;
 
     switch (inst.opcode) {
@@ -373,8 +367,8 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block)
         break;
     case EBPF_OP_CALL:
         for (int i=1; i<=5; i++)
-            block.havoc(regs[i]);
-        block.havoc(regs[0]);
+            block.havoc(regs[i].value);
+        block.havoc(regs[0].value);
         break;
     default:
         // jumps - no op
@@ -382,9 +376,9 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block)
         if (width > 0) {
             // loads and stores are handles by offsets
             uint8_t r = is_load(inst.opcode) ? inst.src : inst.dst;
-            block.assertion(regs[r] != 0);
+            block.assertion(regs[r].value != 0);
             if (is_load(inst.opcode)) {
-                block.havoc(regs[inst.dst]);
+                block.havoc(regs[inst.dst].value);
             }
         }
         break;
@@ -393,8 +387,8 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block)
 
 void constraints::exec_offsets(ebpf_inst inst, basic_block_t& block)
 {
-    var_t& dst = reg_offsets[inst.dst];
-    var_t& src = reg_offsets[inst.src];
+    var_t& dst = regs[inst.dst].offset;
+    var_t& src = regs[inst.src].offset;
     int imm = inst.imm;
 
     switch (inst.opcode) {
@@ -481,19 +475,20 @@ void constraints::exec_offsets(ebpf_inst inst, basic_block_t& block)
     case EBPF_OP_ARSH64_REG:
     case EBPF_OP_LDDW:
     case EBPF_OP_CALL:
-        for (int i=1; i<=5; i++)
-            block.havoc(reg_offsets[i]);
+        for (int i=1; i<=5; i++) {
+            block.havoc(regs[i].offset);
+        }
         if (inst.imm == 0x1) {
             block.assign(dst, 0);
         } else {
-            block.havoc(reg_offsets[0]);
+            block.havoc(regs[0].offset);
         }
         break;
     default:
         // jumps - no op
         int width = access_width(inst.opcode);
         if (width > 0) {
-            var_t& target = reg_offsets[is_load(inst.opcode) ? inst.dst : inst.src];
+            var_t& target = regs[is_load(inst.opcode) ? inst.dst : inst.src].offset;
             uint8_t r = is_load(inst.opcode) ? inst.src : inst.dst;
             if (r == 10) {
                 auto offset = -inst.offset;
@@ -506,7 +501,7 @@ void constraints::exec_offsets(ebpf_inst inst, basic_block_t& block)
                     block.array_store(stack, offset, target, width);
                 }
             } else if (r == 1) {
-                auto addr = reg_offsets[1] + inst.offset;
+                auto addr = regs[1].offset + inst.offset;
                 block.assertion(addr >= 0);
                 block.assertion(addr <= 4096 - width);
                 if (is_load(inst.opcode)) {

@@ -20,9 +20,19 @@ constexpr int STACK_SIZE=512;
 // hand-crafted mix of absolute values and offsets 
 class constraints
 {
+
+    struct dom_t {
+        var_t value;
+        var_t offset;
+        // TODO: region
+        dom_t(variable_factory_t& vfac, int i) :
+            value{vfac[std::string("r") + std::to_string(i)], crab::INT_TYPE, 64}, 
+            offset{vfac[std::string("off") + std::to_string(i)], crab::INT_TYPE, 64}
+        { }
+    };
+
     variable_factory_t vfac;	
-    std::vector<var_t> regs;
-    std::vector<var_t> reg_offsets;
+    std::vector<dom_t> regs;
     var_t stack{vfac["stack"], crab::ARR_INT_TYPE, 64};
     var_t ctx{vfac["ctx"], crab::ARR_INT_TYPE, 64};
 
