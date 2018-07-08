@@ -409,6 +409,7 @@ void constraints::exec_offsets(ebpf_inst inst, basic_block_t& block)
         block.sub(dst, dst, imm);
         break;
     case EBPF_OP_SUB_REG:
+        // TODO: meet of this and "value - value"
         block.sub(dst, dst, src);
         break;
     case EBPF_OP_MUL_IMM:
@@ -428,6 +429,8 @@ void constraints::exec_offsets(ebpf_inst inst, basic_block_t& block)
     case EBPF_OP_MOD_REG:
     case EBPF_OP_XOR_IMM:
     case EBPF_OP_XOR_REG:
+        block.havoc(dst);
+        break;
     case EBPF_OP_MOV_IMM: // Meaningless for offset
         block.havoc(dst);
         break;
@@ -453,6 +456,7 @@ void constraints::exec_offsets(ebpf_inst inst, basic_block_t& block)
         block.sub(dst, dst, imm);
         break;
     case EBPF_OP_SUB64_REG:
+        // TODO: meet of this and "value - value"
         block.sub(dst, dst, src);
         break;
     case EBPF_OP_MUL64_IMM:
@@ -483,12 +487,14 @@ void constraints::exec_offsets(ebpf_inst inst, basic_block_t& block)
     case EBPF_OP_ARSH64_IMM:
     case EBPF_OP_ARSH64_REG:
     case EBPF_OP_LDDW:
+        block.havoc(dst);
+        break;
     case EBPF_OP_CALL:
         for (int i=1; i<=5; i++) {
             block.havoc(regs[i].offset);
         }
         if (inst.imm == 0x1) {
-            block.assign(dst, 0);
+            block.assign(regs[0].offset, 0);
         } else {
             block.havoc(regs[0].offset);
         }
