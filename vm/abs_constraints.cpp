@@ -429,6 +429,8 @@ void constraints::exec_offsets(ebpf_inst inst, basic_block_t& block)
     case EBPF_OP_XOR_IMM:
     case EBPF_OP_XOR_REG:
     case EBPF_OP_MOV_IMM: // Meaningless for offset
+        block.havoc(dst);
+        break;
     case EBPF_OP_MOV_REG:
         block.assign(dst, src);
         // wrap32(block, dst); TODO: verify that this is harmless
