@@ -19,6 +19,8 @@
 
 #include <vector>
 #include <string>
+#include <functional>
+#include <algorithm>
 
 #include <boost/optional.hpp>
 
@@ -67,7 +69,11 @@ static void analyze(cfg_t& cfg)
     analyzer.run(label(0), assumptions);
 
     crab::outs() << "Invariants:\n";
-    for (auto &block : cfg) {
+    std::vector<std::reference_wrapper<basic_block_t>> blocks(cfg.begin(), cfg.end());
+    std::sort(blocks.begin(), blocks.end(), [](basic_block_t& a, basic_block_t& b){
+        return a.label() < b.label();
+    });
+    for (basic_block_t& block : blocks) {
         auto inv = analyzer[block.label()];
         crab::outs() << "\n" << inv << "\n";
         block.write(crab::outs());

@@ -1,0 +1,8 @@
+-- asm
+stxw [r10-8], r1
+ldxw r2, [r10-8]
+jne r1, r2, +1
+stxw [r2+8], r1
+exit
+-- result
+0x0

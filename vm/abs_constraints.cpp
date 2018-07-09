@@ -142,7 +142,9 @@ void constraints::jump(ebpf_inst inst, basic_block_t& block, bool taken)
     block.assume(cst);
 
     lin_cst_t offset_cst = jmp_to_cst_offsets(opcode, inst.imm, regs[inst.dst].offset, regs[inst.src].offset);
-    block.assume(offset_cst);
+    if (!offset_cst.is_tautology()) {
+        block.assume(offset_cst);
+    }
 }
 
 static void wrap32(basic_block_t& block, var_t& dst)
