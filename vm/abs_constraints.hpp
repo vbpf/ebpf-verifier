@@ -31,10 +31,31 @@ class constraints final
         { }
     };
 
+    struct array_dom_t {
+        var_t values;
+        var_t offsets;
+        // TODO: region
+        array_dom_t(variable_factory_t& vfac, std::string name) :
+            values{vfac[std::string(name + "_vals")], crab::ARR_INT_TYPE, 64}, 
+            offsets{vfac[std::string(name + "_offsets")], crab::ARR_INT_TYPE, 64}
+        { }
+        template<typename T>
+        void load(basic_block_t& block, dom_t& target, T& offset, int width) {
+            block.array_load(target.value, values, offset, width);
+            block.array_load(target.offset, offsets, offset, width);
+        }
+        template<typename T>
+        void store(basic_block_t& block, T& offset, dom_t& target, int width) {
+            block.array_store(values, offset, target.offset, width);
+            block.array_store(offsets, offset, target.value, width);
+        }
+    };
+
+
     variable_factory_t vfac;	
     std::vector<dom_t> regs;
-    var_t stack{vfac["stack"], crab::ARR_INT_TYPE, 64};
-    var_t ctx{vfac["ctx"], crab::ARR_INT_TYPE, 64};
+    array_dom_t stack{vfac, "stack"};
+    array_dom_t ctx{vfac, "ctx"};
 
     void exec_offsets(ebpf_inst inst, basic_block_t& block);
     void exec_values(ebpf_inst inst, basic_block_t& block);

@@ -104,6 +104,6 @@ void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts)
             pc = *fall_target - 1;
         }
     }
-    cfg.simplify();
+    //cfg.simplify();
 }
 

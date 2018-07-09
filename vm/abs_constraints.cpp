@@ -160,8 +160,8 @@ static bool is_load(uint8_t opcode)
 
 void constraints::exec(ebpf_inst inst, basic_block_t& block)
 {
-    exec_offsets(inst, block);
     exec_values(inst, block);
+    exec_offsets(inst, block);
 }
 
 void constraints::exec_values(ebpf_inst inst, basic_block_t& block)
@@ -513,18 +513,18 @@ void constraints::exec_offsets(ebpf_inst inst, basic_block_t& block)
                 assert(offset >= width);
                 assert(offset <= STACK_SIZE);
                 if (is_load(inst.opcode)) {
-                    block.array_load(target, stack, offset, width);
+                    stack.load(block, regs[inst.dst], offset, width);
                 } else {
-                    block.array_store(stack, offset, target, width);
+                    stack.store(block, offset, regs[inst.src], width);
                 }
             } else if (r == 1) {
                 auto addr = memreg + inst.offset;
                 block.assertion(addr >= 0);
                 block.assertion(addr <= 4096 - width);
                 if (is_load(inst.opcode)) {
-                    block.array_load(target, ctx, addr, width);
+                    ctx.load(block, regs[inst.dst], addr, width);
                 } else {
-                    block.array_store(ctx, addr, target, width);
+                    ctx.store(block, addr, regs[inst.src], width);
                 }
             } else if (is_load(inst.opcode)) {
                 block.havoc(target);

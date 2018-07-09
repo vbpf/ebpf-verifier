@@ -28,7 +28,8 @@ def check_datafile(filename):
 
     memfile = None
 
-    cmd = [VM]
+    cmd = [# 'valgrind', '--track-origins=yes', '--leak-check=full',
+            VM]
     if 'mem' in data:
         memfile = tempfile.NamedTemporaryFile()
         memfile.write(data['mem'])
@@ -72,5 +73,5 @@ def test_datafiles():
     # Nose test generator
     # Creates a testcase for each datafile
     for filename in testdata.list_files():
-        if True or filename.endswith('stack.data'):
+        if filename.endswith('new.data'):
             yield check_datafile, filename
