@@ -13,7 +13,7 @@
 # limitations under the License.
 
 CFLAGS := -Wall -Werror -Iinc -O2 -g3
-CXXFLAGS := -Wall -Werror -Iinc -I../../crab/build/run/ldd/include/ldd/ -I../../crab/build/run/apron/include/ -O0 -g3 -std=c++17 -Wno-unused-local-typedefs 
+CXXFLAGS := -Wall -Werror -Wfatal-errors -Iinc -I../../crab/build/run/ldd/include/ldd/ -I../../crab/build/run/apron/include/ -O0 -g3 -std=c++17 -Wno-unused-local-typedefs 
 
 LDLIBS := -lCrab -lm -lstdc++ -lgmp 
 

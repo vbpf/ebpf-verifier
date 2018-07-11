@@ -378,17 +378,20 @@ void constraints::exec_values(ebpf_inst inst, basic_block_t& block)
         for (int i=1; i<=5; i++)
             block.havoc(regs[i].value);
         block.havoc(regs[0].value);
+        if (inst.imm == 0x1) {
+            block.assume(regs[0].value != 0);
+        }
         break;
     default:
         // jumps - no op
         int width = access_width(inst.opcode);
         if (width > 0) {
             // loads and stores are handles by offsets
-            auto [memreg, target] = is_load(inst.opcode) ? tuple{src, dst} : tuple{dst, src};
+            auto& memreg = is_load(inst.opcode) ? src : dst;
             block.assertion(memreg != 0);
-            if (is_load(inst.opcode)) {
-                block.havoc(target);
-            }
+            //if (is_load(inst.opcode)) {
+            //    block.havoc(target);
+            //}
         }
         break;
     }  
@@ -518,6 +521,7 @@ void constraints::exec_offsets(ebpf_inst inst, basic_block_t& block)
                     stack.store(block, offset, regs[inst.src], width);
                 }
             } else if (r == 1) {
+            block.havoc(regs[inst.dst].value);
                 auto addr = memreg + inst.offset;
                 block.assertion(addr >= 0);
                 block.assertion(addr <= 4096 - width);
@@ -528,6 +532,7 @@ void constraints::exec_offsets(ebpf_inst inst, basic_block_t& block)
                 }
             } else if (is_load(inst.opcode)) {
                 block.havoc(target);
+                block.havoc(regs[inst.dst].value);
             }
         }
         break;

@@ -14,6 +14,7 @@ mod r1, r2
 xor r1, r2
 mov r1, r2
 arsh r1, r2
+exit
 -- raw 
 0x0000000200000107
 0xffffffff00000907

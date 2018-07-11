@@ -20,6 +20,7 @@ le64 r1
 be16 r1
 be32 r1
 be64 r1
+exit
 -- raw
 0x0000000200000104
 0xffffffff00000904

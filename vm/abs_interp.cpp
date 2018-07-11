@@ -21,8 +21,10 @@
 #include <string>
 #include <functional>
 #include <algorithm>
+#include <sstream>
 
 #include <boost/optional.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <crab/checkers/base_property.hpp>
 #include <crab/checkers/div_zero.hpp>
@@ -59,20 +61,25 @@ using analyzer_t = intra_fwd_analyzer<cfg_ref_t, dom_t>;
 using checker_t = intra_checker<analyzer_t>;
 using prop_checker_ptr = checker_t::prop_checker_ptr;
 
-static void analyze(cfg_t& cfg)
+static int first_num(basic_block_t& b)
+{
+    return boost::lexical_cast<int>(b.label().substr(0, b.label().find_first_of('-')));
+}
+
+static int analyze(cfg_t& cfg)
 {
     liveness<cfg_ref_t> live(cfg);
     live.exec();
-    auto inv = dom_t::top();
-    analyzer_t analyzer(cfg, inv, &live, 1, 2, 20);
+    analyzer_t analyzer(cfg, dom_t::top(), &live, 1, 2, 20);
     typename analyzer_t::assumption_map_t assumptions;
     analyzer.run(label(0), assumptions);
 
-    crab::outs() << "Invariants:\n";
     std::vector<std::reference_wrapper<basic_block_t>> blocks(cfg.begin(), cfg.end());
     std::sort(blocks.begin(), blocks.end(), [](basic_block_t& a, basic_block_t& b){
-        return a.label() < b.label();
+        return first_num(a) < first_num(b);
     });
+    
+    crab::outs() << "Invariants:\n";
     for (basic_block_t& block : blocks) {
         auto inv = analyzer[block.label()];
         crab::outs() << "\n" << inv << "\n";
@@ -87,7 +94,8 @@ static void analyze(cfg_t& cfg)
         , div_zero
     });
     checker.run();
-    checker.show(crab::outs());
+    auto checks = checker.get_all_checks();
+    return checks.get_total_warning() + checks.get_total_error();
     //auto &wto = analyzer.get_wto();
     //crab::outs () << "Abstract trace: " << wto << "\n";
 }
@@ -96,6 +104,12 @@ bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errm
 {
     cfg_t cfg(label(0), ARR);
     build_cfg(cfg, {insts, insts + num_insts});
-    analyze(cfg);
-    return false;
+    int nwarn = analyze(cfg);
+
+    if (nwarn > 0) {
+        *errmsg = (char*)calloc(sizeof("Assertion violation"), 1);
+        strcpy(*errmsg, "Assertion violation");
+        return false;
+    }
+    return true;
 }

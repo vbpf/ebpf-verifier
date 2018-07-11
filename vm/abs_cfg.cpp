@@ -25,7 +25,6 @@
 #include "abs_common.hpp"
 #include "abs_constraints.hpp"
 #include "abs_cfg.hpp"
-#include "abs_state.h"
 
 using boost::optional;
 using std::to_string;

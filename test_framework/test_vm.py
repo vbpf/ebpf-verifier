@@ -16,8 +16,8 @@ def check_datafile(filename):
     data = testdata.read(filename)
     if 'asm' not in data and 'raw' not in data:
         raise SkipTest("no asm or raw section in datafile")
-    if 'result' not in data and 'error' not in data and 'error pattern' not in data:
-        raise SkipTest("no result or error section in datafile")
+    #if 'result' not in data and 'error' not in data and 'error pattern' not in data:
+    #    raise SkipTest("no result or error section in datafile")
     if not os.path.exists(VM):
         raise SkipTest("VM not found")
 
@@ -73,5 +73,5 @@ def test_datafiles():
     # Nose test generator
     # Creates a testcase for each datafile
     for filename in testdata.list_files():
-        if filename.endswith('new.data'):
+        if True or filename.endswith('new.data'):
             yield check_datafile, filename
