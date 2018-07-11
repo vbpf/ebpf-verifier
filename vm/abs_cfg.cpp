@@ -65,7 +65,7 @@ static auto build_jump(cfg_t& cfg, pc_t pc, pc_t target) -> basic_block_t&
 
 static void link(cfg_t& cfg, pc_t pc, pc_t target)
 {
-    cfg.get_node(label(pc)) >> cfg.insert(label(target));
+    cfg.get_node(label(pc)+"-exit") >> cfg.insert(label(target));
 }
 
 void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts)
@@ -75,7 +75,7 @@ void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts)
     for (pc_t pc = 0; pc < insts.size(); pc++) {
         auto inst = insts[pc];
 
-        regs.exec(inst, cfg.insert(label(pc)));
+        regs.exec(inst, cfg.insert(label(pc)), cfg.insert(label(pc)+"-exit"));
 
         if (inst.opcode == EBPF_OP_EXIT) {
             cfg.set_exit(label(pc));

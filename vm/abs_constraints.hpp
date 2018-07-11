@@ -57,13 +57,12 @@ class constraints final
     array_dom_t stack{vfac, "stack"};
     array_dom_t ctx{vfac, "ctx"};
 
-    void exec_offsets(ebpf_inst inst, basic_block_t& block);
     void exec_values(ebpf_inst inst, basic_block_t& block);
     //void jump_offsets(ebpf_inst inst, basic_block_t& block, bool taken);
 public:
     constraints(basic_block_t& entry);
 
     void jump(ebpf_inst inst, basic_block_t& block, bool taken);
-    void exec(ebpf_inst inst, basic_block_t& block);
+    void exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit);
 };
 #endif

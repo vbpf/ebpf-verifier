@@ -158,228 +158,264 @@ static bool is_load(uint8_t opcode)
         || ((opcode & EBPF_CLS_MASK) == EBPF_CLS_LDX);
 }
 
-void constraints::exec(ebpf_inst inst, basic_block_t& block)
+void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit)
 {
-    exec_values(inst, block);
-    exec_offsets(inst, block);
-}
-
-void constraints::exec_values(ebpf_inst inst, basic_block_t& block)
-{
+    block >> exit;
     var_t& dst = regs[inst.dst].value;
+    var_t& odst = regs[inst.dst].offset;
     var_t& src = regs[inst.src].value;
+    var_t& osrc = regs[inst.src].offset;
     int imm = inst.imm;
 
     switch (inst.opcode) {
     case EBPF_OP_ADD_IMM:
         block.add(dst, dst, imm);
         wrap32(block, dst);
+        block.add(odst, odst, imm);
         break;
     case EBPF_OP_ADD_REG:
         block.add(dst, dst, src);
         wrap32(block, dst);
+        block.add(odst, odst, src);
         break;
     case EBPF_OP_SUB_IMM:
         block.sub(dst, dst, imm);
         wrap32(block, dst);
+        block.sub(odst, odst, imm);
         break;
     case EBPF_OP_SUB_REG:
         block.sub(dst, dst, src);
         wrap32(block, dst);
+        // TODO: meet of this and "value - value"
+        block.sub(odst, odst, src);
         break;
     case EBPF_OP_MUL_IMM:
         block.mul(dst, dst, imm);
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_MUL_REG:
         block.mul(dst, dst, src);
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_DIV_IMM:
         block.div(dst, dst, src); // TODO: u32(dst) / u32(imm);
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_DIV_REG:
         block.div(dst, dst, src); // TODO: u32(dst) / u32(src);
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_OR_IMM:
         block.bitwise_or(dst, dst, imm);
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_OR_REG:
         block.bitwise_or(dst, dst, src);
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_AND_IMM:
         block.bitwise_and(dst, dst, imm);
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_AND_REG:
         block.bitwise_and(dst, dst, src);
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_LSH_IMM:
         block.shl(dst, dst, imm);
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_LSH_REG:
         block.shl(dst, dst, src);
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_RSH_IMM:
         block.lshr(dst, dst, imm); // TODO u32(dst) >> imm;
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_RSH_REG:
         block.lshr(dst, dst, src); // TODO u32(dst) >> src;
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_NEG:
         block.mul(dst, dst, -1); // ???
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_MOD_IMM:
         block.rem(dst, dst, imm); // FIX: dst = u32(dst) % u32(imm);
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_MOD_REG:
         block.rem(dst, dst, src); // FIX: dst = u32(dst) % u32(src);
+        block.havoc(odst);
         break;
     case EBPF_OP_XOR_IMM:
         block.bitwise_xor(dst, dst, imm);
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_XOR_REG:
         block.bitwise_xor(dst, dst, src);
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_MOV_IMM:
         block.assign(dst, imm);
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_MOV_REG:
         block.assign(dst, src);
         wrap32(block, dst);
+        block.assign(odst, osrc);
         break;
     case EBPF_OP_ARSH_IMM:
         block.ashr(dst, dst, imm); // FIX: (int32_t)dst >> imm;
         wrap32(block, dst);
+        block.havoc(odst);
         break;
     case EBPF_OP_ARSH_REG:
         block.ashr(dst, dst, src); // FIX = (int32_t)dst >> u32(src);
         wrap32(block, dst);
+        block.havoc(odst);
         break;
 
     case EBPF_OP_LE:
-        // TODO: implement
-        block.havoc(dst);
-        /*
-        if (imm == 16) {
-            dst = htole16(dst);
-        } else if (imm == 32) {
-            dst = htole32(dst);
-        } else if (imm == 64) {
-            dst = htole64(dst);
-        }*/
-        break;
     case EBPF_OP_BE:
-        // TODO: implement
         block.havoc(dst);
-        /*
-        if (imm == 16) {
-            dst = htobe16(dst);
-        } else if (imm == 32) {
-            dst = htobe32(dst);
-        } else if (imm == 64) {
-            dst = htobe64(dst);
-        }*/
+        block.havoc(odst);
         break;
 
     case EBPF_OP_ADD64_IMM:
         block.add(dst, dst, imm);
+        block.add(odst, odst, imm);
         break;
     case EBPF_OP_ADD64_REG:
         block.add(dst, dst, src);
+        block.add(odst, odst, src);
         break;
     case EBPF_OP_SUB64_IMM:
         block.sub(dst, dst, imm);
+        block.sub(odst, odst, imm);
         break;
     case EBPF_OP_SUB64_REG:
-        block.sub(dst, dst, src);
+        block.sub(odst, odst, osrc);
+        block.sub(odst, odst, src);
         break;
     case EBPF_OP_MUL64_IMM:
         block.mul(dst, dst, imm);
+        block.havoc(odst);
         break;
     case EBPF_OP_MUL64_REG:
         block.mul(dst, dst, src);
+        block.havoc(odst);
         break;
     case EBPF_OP_DIV64_IMM:
         block.div(dst, dst, imm);
+        block.havoc(odst);
         break;
     case EBPF_OP_DIV64_REG:
         block.div(dst, dst, src);
+        block.havoc(odst);
         break;
     case EBPF_OP_OR64_IMM:
         block.bitwise_or(dst, dst, imm);
+        block.havoc(odst);
         break;
     case EBPF_OP_OR64_REG:
         block.bitwise_or(dst, dst, src);
+        block.havoc(odst);
         break;
     case EBPF_OP_AND64_IMM:
         block.bitwise_and(dst, dst, imm);
+        block.havoc(odst);
         break;
     case EBPF_OP_AND64_REG:
         block.bitwise_and(dst, dst, src);
+        block.havoc(odst);
         break;
     case EBPF_OP_LSH64_IMM:
         block.lshr(dst, dst, imm);
+        block.havoc(odst);
         break;
     case EBPF_OP_LSH64_REG:
         block.lshr(dst, dst, src);
+        block.havoc(odst);
         break;
     case EBPF_OP_RSH64_IMM:
         block.ashr(dst, dst, imm);
+        block.havoc(odst);
         break;
     case EBPF_OP_RSH64_REG:
         block.ashr(dst, dst, src);
+        block.havoc(odst);
         break;
     case EBPF_OP_NEG64:
         block.mul(dst, dst, -1); // ???
+        block.havoc(odst);
         break;
     case EBPF_OP_MOD64_IMM:
         block.rem(dst, dst, imm);
+        block.havoc(odst);
         break;
     case EBPF_OP_MOD64_REG:
         block.rem(dst, dst, src);
+        block.havoc(odst);
         break;
     case EBPF_OP_XOR64_IMM:
         block.bitwise_xor(dst, dst, imm);
+        block.havoc(odst);
         break;
     case EBPF_OP_XOR64_REG:
         block.bitwise_xor(dst, dst, src);
+        block.havoc(odst);
         break;
     case EBPF_OP_MOV64_IMM:
         block.assign(dst, imm);
+        block.havoc(odst);
         break;
     case EBPF_OP_MOV64_REG:
         block.assign(dst, src);
+        block.assign(odst, osrc);
         break;
     case EBPF_OP_ARSH64_IMM:
         block.ashr(dst, dst, imm); // = (int64_t)dst >> imm;
+        block.havoc(odst);
         break;
     case EBPF_OP_ARSH64_REG:
         block.ashr(dst, dst, src); // = (int64_t)dst >> src;
+        block.havoc(odst);
         break;
     case EBPF_OP_LDDW:
         block.assign(dst, (uint32_t)inst.imm | ((uint64_t)imm << 32));
+        block.havoc(odst);
         break;
     case EBPF_OP_CALL:
-        for (int i=1; i<=5; i++)
+        for (int i=1; i<=5; i++) {
             block.havoc(regs[i].value);
-        block.havoc(regs[0].value);
+            block.havoc(regs[i].offset);
+        }
         if (inst.imm == 0x1) {
+            block.assign(regs[0].offset, 0);
+            block.havoc(regs[0].value);
             block.assume(regs[0].value != 0);
+        } else {
+            block.havoc(regs[0].offset);
+            block.havoc(regs[0].value);
         }
         break;
     default:
@@ -387,128 +423,9 @@ void constraints::exec_values(ebpf_inst inst, basic_block_t& block)
         int width = access_width(inst.opcode);
         if (width > 0) {
             // loads and stores are handles by offsets
-            auto& memreg = is_load(inst.opcode) ? src : dst;
-            block.assertion(memreg != 0);
-            //if (is_load(inst.opcode)) {
-            //    block.havoc(target);
-            //}
-        }
-        break;
-    }  
-}
-
-void constraints::exec_offsets(ebpf_inst inst, basic_block_t& block)
-{
-    var_t& dst = regs[inst.dst].offset;
-    var_t& src = regs[inst.src].offset;
-    int imm = inst.imm;
-
-    switch (inst.opcode) {
-    case EBPF_OP_ADD_IMM:
-        block.add(dst, dst, imm);
-        break;
-    case EBPF_OP_ADD_REG:
-        block.add(dst, dst, src);
-        break;
-    case EBPF_OP_SUB_IMM:
-        block.sub(dst, dst, imm);
-        break;
-    case EBPF_OP_SUB_REG:
-        // TODO: meet of this and "value - value"
-        block.sub(dst, dst, src);
-        break;
-    case EBPF_OP_MUL_IMM:
-    case EBPF_OP_MUL_REG:
-    case EBPF_OP_DIV_IMM:
-    case EBPF_OP_DIV_REG:
-    case EBPF_OP_OR_IMM:
-    case EBPF_OP_OR_REG:
-    case EBPF_OP_AND_IMM:
-    case EBPF_OP_AND_REG:
-    case EBPF_OP_LSH_IMM:
-    case EBPF_OP_LSH_REG:
-    case EBPF_OP_RSH_IMM:
-    case EBPF_OP_RSH_REG:
-    case EBPF_OP_NEG:
-    case EBPF_OP_MOD_IMM:
-    case EBPF_OP_MOD_REG:
-    case EBPF_OP_XOR_IMM:
-    case EBPF_OP_XOR_REG:
-        block.havoc(dst);
-        break;
-    case EBPF_OP_MOV_IMM: // Meaningless for offset
-        block.havoc(dst);
-        break;
-    case EBPF_OP_MOV_REG:
-        block.assign(dst, src);
-        // wrap32(block, dst); TODO: verify that this is harmless
-        break;
-    case EBPF_OP_ARSH_IMM:
-    case EBPF_OP_ARSH_REG:
-
-    case EBPF_OP_LE:
-    case EBPF_OP_BE:
-        block.havoc(dst);
-        break;
-
-    case EBPF_OP_ADD64_IMM:
-        block.add(dst, dst, imm);
-        break;
-    case EBPF_OP_ADD64_REG:
-        block.add(dst, dst, src);
-        break;
-    case EBPF_OP_SUB64_IMM:
-        block.sub(dst, dst, imm);
-        break;
-    case EBPF_OP_SUB64_REG:
-        // TODO: meet of this and "value - value"
-        block.sub(dst, dst, src);
-        break;
-    case EBPF_OP_MUL64_IMM:
-    case EBPF_OP_MUL64_REG:
-    case EBPF_OP_DIV64_IMM:
-    case EBPF_OP_DIV64_REG:
-    case EBPF_OP_OR64_IMM:
-    case EBPF_OP_OR64_REG:
-    case EBPF_OP_AND64_IMM:
-    case EBPF_OP_AND64_REG:
-    case EBPF_OP_LSH64_IMM:
-    case EBPF_OP_LSH64_REG:
-    case EBPF_OP_RSH64_IMM:
-    case EBPF_OP_RSH64_REG:
-    case EBPF_OP_NEG64:
-    case EBPF_OP_MOD64_IMM:
-    case EBPF_OP_MOD64_REG:
-    case EBPF_OP_XOR64_IMM:
-    case EBPF_OP_XOR64_REG:
-        block.havoc(dst);
-        break;
-    case EBPF_OP_MOV64_IMM: // Meaningless for offsets
-        block.havoc(dst);
-        break;
-    case EBPF_OP_MOV64_REG:
-        block.assign(dst, src);
-        break;
-    case EBPF_OP_ARSH64_IMM:
-    case EBPF_OP_ARSH64_REG:
-    case EBPF_OP_LDDW:
-        block.havoc(dst);
-        break;
-    case EBPF_OP_CALL:
-        for (int i=1; i<=5; i++) {
-            block.havoc(regs[i].offset);
-        }
-        if (inst.imm == 0x1) {
-            block.assign(regs[0].offset, 0);
-        } else {
-            block.havoc(regs[0].offset);
-        }
-        break;
-    default:
-        // jumps - no op
-        int width = access_width(inst.opcode);
-        if (width > 0) {
-            auto [memreg, target] = is_load(inst.opcode) ? tuple{src, dst} : tuple{dst, src};
+            auto& vmemreg = is_load(inst.opcode) ? src : dst;
+            block.assertion(vmemreg != 0);
+            auto [memreg, target] = is_load(inst.opcode) ? tuple{osrc, odst} : tuple{odst, osrc};
             uint8_t r = is_load(inst.opcode) ? inst.src : inst.dst;
             if (r == 10) {
                 auto offset = -inst.offset;
@@ -521,7 +438,7 @@ void constraints::exec_offsets(ebpf_inst inst, basic_block_t& block)
                     stack.store(block, offset, regs[inst.src], width);
                 }
             } else if (r == 1) {
-            block.havoc(regs[inst.dst].value);
+                block.havoc(dst);
                 auto addr = memreg + inst.offset;
                 block.assertion(addr >= 0);
                 block.assertion(addr <= 4096 - width);
@@ -532,7 +449,7 @@ void constraints::exec_offsets(ebpf_inst inst, basic_block_t& block)
                 }
             } else if (is_load(inst.opcode)) {
                 block.havoc(target);
-                block.havoc(regs[inst.dst].value);
+                block.havoc(dst);
             }
         }
         break;
