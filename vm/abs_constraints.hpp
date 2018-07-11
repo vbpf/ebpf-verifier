@@ -24,30 +24,34 @@ class constraints final
     struct dom_t {
         var_t value;
         var_t offset;
-        // TODO: region
+        var_t region;
         dom_t(variable_factory_t& vfac, int i) :
             value{vfac[std::string("r") + std::to_string(i)], crab::INT_TYPE, 64}, 
-            offset{vfac[std::string("off") + std::to_string(i)], crab::INT_TYPE, 64}
+            offset{vfac[std::string("off") + std::to_string(i)], crab::INT_TYPE, 64},
+            region{vfac[std::string("t") + std::to_string(i)], crab::INT_TYPE, 8}
         { }
     };
 
     struct array_dom_t {
         var_t values;
         var_t offsets;
-        // TODO: region
+        var_t regions;
         array_dom_t(variable_factory_t& vfac, std::string name) :
             values{vfac[std::string(name + "_vals")], crab::ARR_INT_TYPE, 64}, 
-            offsets{vfac[std::string(name + "_offsets")], crab::ARR_INT_TYPE, 64}
+            offsets{vfac[std::string(name + "_offsets")], crab::ARR_INT_TYPE, 64},
+            regions{vfac[std::string(name + "_regions")], crab::ARR_INT_TYPE, 8}
         { }
         template<typename T>
         void load(basic_block_t& block, dom_t& target, T& offset, int width) {
             block.array_load(target.value, values, offset, width);
             block.array_load(target.offset, offsets, offset, width);
+            block.array_load(target.region, regions, offset, width);
         }
         template<typename T>
         void store(basic_block_t& block, T& offset, dom_t& target, int width) {
             block.array_store(values, offset, target.value, width);
             block.array_store(offsets, offset, target.offset, width);
+            block.array_store(regions, offset, target.region, width);
         }
     };
 
@@ -57,6 +61,8 @@ class constraints final
     array_dom_t stack{vfac, "stack"};
     array_dom_t ctx{vfac, "ctx"};
     var_t pc{vfac[std::string("pc")], crab::INT_TYPE, 16};
+
+    static void no_pointer(basic_block_t& block, constraints::dom_t& v);
 public:
     constraints(basic_block_t& entry);
 
