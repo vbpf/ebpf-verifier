@@ -56,13 +56,11 @@ class constraints final
     std::vector<dom_t> regs;
     array_dom_t stack{vfac, "stack"};
     array_dom_t ctx{vfac, "ctx"};
-
-    void exec_values(ebpf_inst inst, basic_block_t& block);
-    //void jump_offsets(ebpf_inst inst, basic_block_t& block, bool taken);
+    var_t pc{vfac[std::string("pc")], crab::INT_TYPE, 16};
 public:
     constraints(basic_block_t& entry);
 
     void jump(ebpf_inst inst, basic_block_t& block, bool taken);
-    void exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit);
+    void exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc);
 };
 #endif

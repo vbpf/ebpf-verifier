@@ -158,8 +158,11 @@ static bool is_load(uint8_t opcode)
         || ((opcode & EBPF_CLS_MASK) == EBPF_CLS_LDX);
 }
 
-void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit)
+void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int _pc)
 {
+    crab::cfg::debug_info di{"", _pc, 0};
+    exit.assign(pc, _pc+1);
+    block.assign(pc, pc);
     block >> exit;
     var_t& dst = regs[inst.dst].value;
     var_t& odst = regs[inst.dst].offset;
@@ -424,7 +427,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         if (width > 0) {
             // loads and stores are handles by offsets
             auto& vmemreg = is_load(inst.opcode) ? src : dst;
-            block.assertion(vmemreg != 0);
+            block.assertion(vmemreg != 0, di);
             auto [memreg, target] = is_load(inst.opcode) ? tuple{osrc, odst} : tuple{odst, osrc};
             uint8_t r = is_load(inst.opcode) ? inst.src : inst.dst;
             if (r == 10) {
@@ -440,8 +443,8 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
             } else if (r == 1) {
                 block.havoc(dst);
                 auto addr = memreg + inst.offset;
-                block.assertion(addr >= 0);
-                block.assertion(addr <= 4096 - width);
+                block.assertion(addr >= 0, di);
+                block.assertion(addr <= 4096 - width, di);
                 if (is_load(inst.opcode)) {
                     ctx.load(block, regs[inst.dst], addr, width);
                 } else {
