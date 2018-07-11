@@ -46,8 +46,8 @@ class constraints final
         }
         template<typename T>
         void store(basic_block_t& block, T& offset, dom_t& target, int width) {
-            block.array_store(values, offset, target.offset, width);
-            block.array_store(offsets, offset, target.value, width);
+            block.array_store(values, offset, target.value, width);
+            block.array_store(offsets, offset, target.offset, width);
         }
     };
 
