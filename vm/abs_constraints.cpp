@@ -173,6 +173,17 @@ void constraints::no_pointer(basic_block_t& block, constraints::dom_t& v)
     block.assign(v.region, T_NUM);
 }
 
+struct desc {
+    int size;
+    int data;
+    int end;
+    constexpr desc(int _size, int _data, int _end) : size(_size), data(_data), end(_end) { }
+};
+static constexpr desc sk_buff = { 24*4, 15*4, 16*4};
+static constexpr desc xdp_md = { 5*4, 0, 1*4};
+static constexpr desc sk_msg_md = { 11*4, 0, 1*4};
+static constexpr desc ctx_desc = sk_buff;
+
 void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg)
 {
     crab::cfg::debug_info di{"", _pc, 0};
@@ -491,35 +502,35 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
                     auto addr = regs[mem].offset + inst.offset;
                     mid.assume(regs[mem].region == T_CTX);
                     mid.assertion(addr >= 0, di);
-                    mid.assertion(addr <= 4096 - width, di);
+                    mid.assertion(addr <= ctx_desc.size - width, di);
                     if (is_load(inst.opcode)) {
-                        constexpr int DATA_START_OFFSET = 0x4c;
-                        constexpr int DATA_END_OFFSET = 0x50;
-                        {
+                        if (ctx_desc.data >= 0) {
                             auto& start = cfg.insert(label(_pc)+"-assume_data_start");
                             mid >> start;
                             start >> exit;
-                            start.assume(addr == DATA_START_OFFSET);
+                            start.assume(addr == ctx_desc.data);
                             start.assign(regs[inst.dst].region, T_DATA);
                             start.assign(regs[inst.dst].offset, 0);
                             start.assume(regs[inst.dst].value != 0);
                             start.assume(regs[inst.dst].offset <= data_end);
                         }
-                        {
+                        if (ctx_desc.data >= 0) {
                             auto& end = cfg.insert(label(_pc)+"-assume_data_end");
                             mid >> end;
                             end >> exit;
-                            end.assume(addr == DATA_END_OFFSET);
+                            end.assume(addr == ctx_desc.end);
                             end.assign(regs[inst.dst].region, T_DATA);
-                            end.assume(regs[inst.dst].value >= DATA_END_OFFSET);
+                            end.assume(regs[inst.dst].value >= ctx_desc.end);
                             end.assign(regs[inst.dst].offset, data_end);
                         }
                         {
                             auto& normal = cfg.insert(label(_pc)+"-assume_not_data");
                             mid >> normal;
                             normal >> exit;
-                            normal.assume(addr != DATA_START_OFFSET);
-                            normal.assume(addr != DATA_END_OFFSET);
+                            if (ctx_desc.data >= 0) {
+                                normal.assume(addr != ctx_desc.data);
+                                normal.assume(addr != ctx_desc.end);
+                            }
                             ctx.load(normal, regs[inst.dst], addr, width);
                         }
                     } else {
@@ -527,7 +538,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
                         mid >> exit;
                     }
                 }
-                {
+                if (ctx_desc.data >= 0) {
                     auto& mid = cfg.insert(label(_pc)+"-assume_data");
                     block >> mid;
                     mid >> exit;

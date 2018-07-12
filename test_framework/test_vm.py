@@ -73,5 +73,5 @@ def test_datafiles():
     # Nose test generator
     # Creates a testcase for each datafile
     for filename in testdata.list_files():
-        if 'sockex' in filename: # .endswith('new.data'):
+        if True or 'sockex' in filename: # .endswith('new.data'):
             yield check_datafile, filename
