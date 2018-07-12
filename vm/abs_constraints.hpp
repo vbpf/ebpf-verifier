@@ -8,6 +8,7 @@
 #include "ebpf.h"
 
 #include "abs_common.hpp"
+#include "abs_cfg.hpp"
 
 using crab::cfg_impl::variable_factory_t;
 using ikos::z_number;
@@ -60,6 +61,7 @@ class constraints final
     std::vector<dom_t> regs;
     array_dom_t stack{vfac, "stack"};
     array_dom_t ctx{vfac, "ctx"};
+    array_dom_t data{vfac, "data"};
     var_t pc{vfac[std::string("pc")], crab::INT_TYPE, 16};
 
     static void no_pointer(basic_block_t& block, constraints::dom_t& v);
@@ -67,6 +69,6 @@ public:
     constraints(basic_block_t& entry);
 
     void jump(ebpf_inst inst, basic_block_t& block, bool taken);
-    void exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc);
+    void exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg);
 };
 #endif

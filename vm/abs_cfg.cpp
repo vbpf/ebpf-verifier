@@ -75,7 +75,7 @@ void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts)
     for (pc_t pc = 0; pc < insts.size(); pc++) {
         auto inst = insts[pc];
 
-        regs.exec(inst, cfg.insert(label(pc)), cfg.insert(label(pc)+"-exit"), pc);
+        regs.exec(inst, cfg.insert(label(pc)), cfg.insert(label(pc)+"-exit"), pc, cfg);
 
         if (inst.opcode == EBPF_OP_EXIT) {
             cfg.set_exit(label(pc));
