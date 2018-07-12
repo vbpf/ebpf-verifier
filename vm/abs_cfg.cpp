@@ -58,7 +58,7 @@ static auto get_fall(struct ebpf_inst inst, pc_t pc) -> optional<pc_t>
 static auto build_jump(cfg_t& cfg, pc_t pc, pc_t target) -> basic_block_t&
 {
     basic_block_t& assumption = cfg.insert(label(pc, target));
-    cfg.get_node(label(pc)) >> assumption;
+    cfg.get_node(label(pc)+"-exit") >> assumption;
     assumption >> cfg.insert(label(target));
     return assumption;
 }

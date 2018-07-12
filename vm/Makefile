@@ -13,9 +13,13 @@
 # limitations under the License.
 
 CFLAGS := -Wall -Werror -Iinc -O2 -g3
-CXXFLAGS := -Wall -Werror -Wfatal-errors -Iinc -I../../crab/build/run/ldd/include/ldd/ -I../../crab/build/run/apron/include/ -O0 -g3 -std=c++17 -Wno-unused-local-typedefs 
+CXXFLAGS := -Wall -Werror -Wfatal-errors -Iinc \
+    -I../../crab/build/run/ldd/include/ldd/ \
+    -I../../crab/build/run/apron/include/ \
+    -L../../crab/build/run/ldd/lib/ \
+    -O0 -g3 -std=c++17 -Wno-unused-local-typedefs 
 
-LDLIBS := -lCrab -lm -lstdc++ -lgmp 
+LDLIBS := -lCrab -lm -lstdc++ -lgmp -lapron
 
 ifeq ($(COVERAGE),1)
 CFLAGS += -fprofile-arcs -ftest-coverage
@@ -32,9 +36,9 @@ all: libubpf.a test
 ubpf_jit_x86_64.o: ubpf_jit_x86_64.c ubpf_jit_x86_64.h
 
 libubpf.a: abs_interp.o abs_cfg.o abs_constraints.o ubpf_vm.o ubpf_jit_x86_64.o ubpf_loader.o
-	ar rc $@ $^
+	ar rc $@ $^ 
 
-test: test.o libubpf.a
-
+test: test.o libubpf.a 
+	cc   test.o libubpf.a ../../crab/build/run/ldd/lib/*.a -lCrab -lm -lstdc++ -lgmp -lapron -o test 
 clean:
 	rm -f test libubpf.a *.o

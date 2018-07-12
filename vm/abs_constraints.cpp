@@ -488,15 +488,43 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
                 {
                     auto& mid = cfg.insert(label(_pc)+"-assume_ctx");
                     block >> mid;
-                    mid >> exit;
                     auto addr = regs[mem].offset + inst.offset;
                     mid.assume(regs[mem].region == T_CTX);
                     mid.assertion(addr >= 0, di);
                     mid.assertion(addr <= 4096 - width, di);
                     if (is_load(inst.opcode)) {
-                        ctx.load(mid, regs[inst.dst], addr, width);
+                        constexpr int DATA_START_OFFSET = 0x4c;
+                        constexpr int DATA_END_OFFSET = 0x50;
+                        {
+                            auto& start = cfg.insert(label(_pc)+"-assume_data_start");
+                            mid >> start;
+                            start >> exit;
+                            start.assume(addr == DATA_START_OFFSET);
+                            start.assign(regs[inst.dst].region, T_DATA);
+                            start.assign(regs[inst.dst].offset, 0);
+                            start.assume(regs[inst.dst].value != 0);
+                            start.assume(regs[inst.dst].offset <= data_end);
+                        }
+                        {
+                            auto& end = cfg.insert(label(_pc)+"-assume_data_end");
+                            mid >> end;
+                            end >> exit;
+                            end.assume(addr == DATA_END_OFFSET);
+                            end.assign(regs[inst.dst].region, T_DATA);
+                            end.assume(regs[inst.dst].value >= DATA_END_OFFSET);
+                            end.assign(regs[inst.dst].offset, data_end);
+                        }
+                        {
+                            auto& normal = cfg.insert(label(_pc)+"-assume_not_data");
+                            mid >> normal;
+                            normal >> exit;
+                            normal.assume(addr != DATA_START_OFFSET);
+                            normal.assume(addr != DATA_END_OFFSET);
+                            ctx.load(normal, regs[inst.dst], addr, width);
+                        }
                     } else {
                         ctx.store(mid, addr, regs[inst.src], width);
+                        mid >> exit;
                     }
                 }
                 {
@@ -506,7 +534,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
                     auto addr = regs[mem].offset + inst.offset;
                     mid.assume(regs[mem].region == T_DATA);
                     mid.assertion(addr >= 0, di);
-                    mid.assertion(addr <= 0xDEADBEEF - width, di);
+                    mid.assertion(addr <= data_end - width, di);
                     if (is_load(inst.opcode)) {
                         data.load(mid, regs[inst.dst], addr, width);
                     } else {

@@ -63,6 +63,7 @@ class constraints final
     array_dom_t ctx{vfac, "ctx"};
     array_dom_t data{vfac, "data"};
     var_t pc{vfac[std::string("pc")], crab::INT_TYPE, 16};
+    var_t data_end{vfac[std::string("data_end")], crab::INT_TYPE, 64};
 
     static void no_pointer(basic_block_t& block, constraints::dom_t& v);
 public:
