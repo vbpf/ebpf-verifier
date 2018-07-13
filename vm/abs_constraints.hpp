@@ -66,6 +66,7 @@ class constraints final
     var_t meta_size{vfac[std::string("meta_size")], crab::INT_TYPE, 64};
     var_t total_size{vfac[std::string("data_size")], crab::INT_TYPE, 64};
 
+    bool exec_mem_access(basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg, ebpf_inst inst);
     static void no_pointer(basic_block_t& block, constraints::dom_t& v);
 public:
     constraints(basic_block_t& entry);

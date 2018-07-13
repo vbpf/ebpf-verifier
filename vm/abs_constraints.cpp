@@ -217,10 +217,119 @@ void constraints::no_pointer(basic_block_t& block, constraints::dom_t& v)
     block.assign(v.region, T_NUM);
 }
 
+static basic_block_t& insert_midnode(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, std::string subname)
+{
+    auto& mid = cfg.insert(pre.label() + ":" + subname);
+    pre >> mid;
+    mid >> post;
+    return mid;
+}
+
+template<typename T>
+static void load_datapointer(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, constraints::dom_t& target, 
+    std::string subname, lin_cst_t cst, T lower_bound)
+{
+    auto& mid = insert_midnode(cfg, pre, post, "assume_ctx." + subname);
+    mid.assume(cst);
+
+    mid.assign(target.region, T_DATA);
+    mid.havoc(target.value);
+    mid.assume(target.value > 0);
+    mid.assign(target.offset, lower_bound);
+}
+
+bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg, ebpf_inst inst)
+{
+    crab::cfg::debug_info di{"", _pc, 0};
+    // loads and stores are handles by offsets
+    uint8_t mem = is_load(inst.opcode) ? inst.src : inst.dst;
+    //uint8_t target = is_load(inst.opcode) ? inst.dst : inst.src;
+
+    int width = access_width(inst.opcode);
+
+    block.assertion(regs[mem].value != 0, di);
+    block.assertion(regs[mem].region != T_NUM, di);
+
+    if (mem == 10) {
+        auto offset = -inst.offset;
+        // not dynamic
+        assert(offset >= width);
+        assert(offset <= STACK_SIZE);
+        if (is_load(inst.opcode)) {
+            stack_arr.load(block, regs[inst.dst], offset, width);
+        } else {
+            stack_arr.store(block, offset, regs[inst.src], width);
+        }
+        return false;
+    } else {
+        {
+            auto& mid = insert_midnode(cfg, block, exit, "assume_stack");
+            auto addr = regs[mem].offset - inst.offset;
+            mid.assume(regs[mem].region == T_STACK);
+            mid.assertion(addr >= width, di);
+            mid.assertion(addr <= STACK_SIZE - width, di);
+            if (is_load(inst.opcode)) {
+                stack_arr.load(mid, regs[inst.dst], addr, width);
+            } else {
+                stack_arr.store(mid, addr, regs[inst.src], width);
+            }
+        }
+        {
+            auto& mid = cfg.insert(label(_pc, "assume_ctx"));
+            block >> mid;
+            auto addr = regs[mem].offset + inst.offset;
+            mid.assume(regs[mem].region == T_CTX);
+            mid.assertion(addr >= 0, di);
+            mid.assertion(addr <= ctx_desc.size - width, di);
+            if (is_load(inst.opcode)) {
+                auto target = regs[inst.dst];
+                if (ctx_desc.data >= 0) {
+                    load_datapointer(cfg, mid, exit, target, "data_start", addr == ctx_desc.data, meta_size);
+                    load_datapointer(cfg, mid, exit, target, "data_end", addr == ctx_desc.end, total_size);
+                }
+                if (ctx_desc.meta >= 0) {
+                    load_datapointer(cfg, mid, exit, target, "meta", addr == ctx_desc.meta, 0);
+                }
+                auto& normal = insert_midnode(cfg, mid, exit, "assume_ctx_not_special");
+                if (ctx_desc.data >= 0) {
+                    normal.assume(addr != ctx_desc.data);
+                    normal.assume(addr != ctx_desc.end);
+                }
+                if (ctx_desc.meta >= 0) {
+                    normal.assume(addr != ctx_desc.meta);
+                }
+                ctx_arr.load(normal, regs[inst.dst], addr, width);
+            } else {
+                ctx_arr.store(mid, addr, regs[inst.src], width);
+                mid >> exit;
+            }
+        }
+        if (ctx_desc.data >= 0) {
+            auto& mid = insert_midnode(cfg, block, exit, "assume_data");
+            auto addr = regs[mem].offset + inst.offset;
+            mid.assume(regs[mem].region == T_DATA);
+            mid.assertion(addr >= 0, di);
+            mid.assertion(addr <= total_size - width, di);
+            if (is_load(inst.opcode)) {
+                data_arr.load(mid, regs[inst.dst], addr, width);
+            } else {
+                data_arr.store(mid, addr, regs[inst.src], width);
+            }
+        }
+        {
+            auto& mid = insert_midnode(cfg, block, exit, "assume_map");
+            auto addr = regs[mem].offset - inst.offset;
+            mid.assume(regs[mem].region == T_MAP);
+            mid.assertion(addr >= width, di);
+            constexpr int MAP_SIZE = 8;
+            mid.assertion(addr <= MAP_SIZE - width, di);
+        }
+        return true;
+    }
+}
 
 void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg)
 {
-    crab::cfg::debug_info di{"", _pc, 0};
 //    exit.assign(pc, _pc+1);
 //    block.assign(pc, pc);
 
@@ -519,135 +628,10 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         }
         break;
     default:
-        int width = access_width(inst.opcode);
-        if (width <= 0) {
-            std::cout << "bad instruction " << (int)inst.opcode << " at "<< _pc << "\n";
+        if (is_access(inst.opcode)) {
+            exit_linked = exec_mem_access(block, exit, _pc, cfg, inst);
         } else {
-            // loads and stores are handles by offsets
-            uint8_t mem = is_load(inst.opcode) ? inst.src : inst.dst;
-            //uint8_t target = is_load(inst.opcode) ? inst.dst : inst.src;
-
-            block.assertion(regs[mem].value != 0, di);
-            block.assertion(regs[mem].region != T_NUM, di);
-
-            if (mem == 10) {
-                auto offset = -inst.offset;
-                // not dynamic
-                assert(offset >= width);
-                assert(offset <= STACK_SIZE);
-                if (is_load(inst.opcode)) {
-                    stack_arr.load(block, regs[inst.dst], offset, width);
-                } else {
-                    stack_arr.store(block, offset, regs[inst.src], width);
-                }
-            } else {
-                {
-                    auto& mid = cfg.insert(label(_pc)+"-assume_stack");
-                    block >> mid;
-                    mid >> exit;
-                    auto addr = regs[mem].offset - inst.offset;
-                    mid.assume(regs[mem].region == T_STACK);
-                    mid.assertion(addr >= width, di);
-                    mid.assertion(addr <= STACK_SIZE - width, di);
-                    if (is_load(inst.opcode)) {
-                        stack_arr.load(mid, regs[inst.dst], addr, width);
-                    } else {
-                        stack_arr.store(mid, addr, regs[inst.src], width);
-                    }
-                }
-                {
-                    auto& mid = cfg.insert(label(_pc)+"-assume_ctx");
-                    block >> mid;
-                    auto addr = regs[mem].offset + inst.offset;
-                    mid.assume(regs[mem].region == T_CTX);
-                    mid.assertion(addr >= 0, di);
-                    mid.assertion(addr <= ctx_desc.size - width, di);
-                    if (is_load(inst.opcode)) {
-                        if (ctx_desc.data >= 0) {
-                            auto& start = cfg.insert(label(_pc)+"-assume_ctx.data");
-                            mid >> start;
-                            start >> exit;
-                            start.assume(addr == ctx_desc.data);
-
-                            auto target = regs[inst.dst];
-                            start.assign(target.region, T_DATA);
-                            start.havoc(target.value);
-                            start.assume(target.value > 0);
-                            start.assign(target.offset, meta_size);
-                        }
-                        if (ctx_desc.data >= 0) {
-                            auto& end = cfg.insert(label(_pc)+"-assume_ctx.data_end");
-                            mid >> end;
-                            end >> exit;
-                            end.assume(addr == ctx_desc.end);
-
-                            auto target = regs[inst.dst];
-                            end.assign(target.region, T_DATA);
-                            end.havoc(target.value);
-                            end.assume(target.value > 0);
-                            end.assign(target.offset, total_size);
-                        }
-                        if (ctx_desc.meta >= 0) {
-                            auto& meta = cfg.insert(label(_pc)+"-assume_ctx.meta");
-                            mid >> meta;
-                            meta >> exit;
-                            meta.assume(addr == ctx_desc.meta);
-
-                            auto target = regs[inst.dst];
-                            meta.assign(target.region, T_DATA);
-                            meta.havoc(target.value);
-                            meta.assume(target.value > 0);
-                            meta.assign(target.offset, 0);
-                        }
-                        {
-                            auto& normal = cfg.insert(label(_pc)+"-assume_not_data");
-                            mid >> normal;
-                            normal >> exit;
-                            if (ctx_desc.data >= 0) {
-                                normal.assume(addr != ctx_desc.data);
-                                normal.assume(addr != ctx_desc.end);
-                            }
-                            if (ctx_desc.meta >= 0) {
-                                normal.assume(addr != ctx_desc.meta);
-                            }
-                            ctx_arr.load(normal, regs[inst.dst], addr, width);
-                        }
-                    } else {
-                        ctx_arr.store(mid, addr, regs[inst.src], width);
-                        mid >> exit;
-                    }
-                }
-                if (ctx_desc.data >= 0) {
-                    auto& mid = cfg.insert(label(_pc)+"-assume_data");
-                    block >> mid;
-                    mid >> exit;
-                    auto addr = regs[mem].offset + inst.offset;
-                    mid.assume(regs[mem].region == T_DATA);
-                    mid.assertion(addr >= 0, di);
-                    mid.assertion(addr <= total_size - width, di);
-                    if (is_load(inst.opcode)) {
-                        data_arr.load(mid, regs[inst.dst], addr, width);
-                    } else {
-                        data_arr.store(mid, addr, regs[inst.src], width);
-                    }
-                }
-                {
-                    auto& mid = cfg.insert(label(_pc)+"-assume_map");
-                    block >> mid;
-                    mid >> exit;
-                    auto addr = regs[mem].offset - inst.offset;
-                    mid.assume(regs[mem].region == T_MAP);
-                    mid.assertion(addr >= width, di);
-                    constexpr int MAP_SIZE = 8;
-                    mid.assertion(addr <= MAP_SIZE - width, di);
-                }
-                exit_linked = true;
-            }
-            /* else if (is_load(inst.opcode)) {
-                block.havoc(regs[target].value);
-                block.havoc(regs[target].offset);
-                block.assign(regs[target].region, T_NUM);
-            } */
+            std::cout << "bad instruction " << (int)inst.opcode << " at "<< _pc << "\n";
         }
         break;
     }

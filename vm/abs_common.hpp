@@ -1,7 +1,5 @@
-#ifndef ABS_COMMON_HPP
-#define ABS_COMMON_HPP
+#pragma once
 
-#include <crab/config.h>
 #include <crab/common/types.hpp>
 #include <crab/common/debug.hpp>
 #include <crab/cfg/cfg.hpp>
@@ -32,4 +30,3 @@ using crab::cfg_impl::basic_block_label_t;
 /// CFG over integers
 using cfg_t         = crab::cfg::Cfg<basic_block_label_t, varname_t, ikos::z_number>;
 using basic_block_t = cfg_t::basic_block_t;
-#endif

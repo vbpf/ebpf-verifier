@@ -2,17 +2,40 @@
 #define ABS_CFG_CPP
 
 #include <vector>
+#include <string>
+
+#include <boost/lexical_cast.hpp>
 
 #include "abs_common.hpp"
 
-inline auto label(uint16_t pc)
+inline auto label(int pc)
 {
     return std::to_string(pc);
 }
 
-inline auto label(uint16_t pc, uint16_t target)
+inline auto label(int pc, std::string target)
 {
-    return std::to_string(pc) + "-" + std::to_string(target);
+    return label(pc) + ":" + target;
+}
+
+inline auto label(int pc, int target)
+{
+    return label(pc, std::to_string(target));
+}
+
+inline auto exit_label(int pc)
+{
+    return label(pc, "exit");
+}
+
+inline std::string entry_label()
+{
+    return label(-1, "entry");
+}
+
+inline int first_num(const std::string& s)
+{
+    return boost::lexical_cast<int>(s.substr(0, s.find_first_of(':')));
 }
 
 void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts);

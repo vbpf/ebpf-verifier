@@ -58,27 +58,31 @@ static auto get_fall(struct ebpf_inst inst, pc_t pc) -> optional<pc_t>
 static auto build_jump(cfg_t& cfg, pc_t pc, pc_t target) -> basic_block_t&
 {
     basic_block_t& assumption = cfg.insert(label(pc, target));
-    cfg.get_node(label(pc)+"-exit") >> assumption;
+    cfg.get_node(exit_label(pc)) >> assumption;
     assumption >> cfg.insert(label(target));
     return assumption;
 }
 
 static void link(cfg_t& cfg, pc_t pc, pc_t target)
 {
-    cfg.get_node(label(pc)+"-exit") >> cfg.insert(label(target));
+    cfg.get_node(exit_label(pc)) >> cfg.insert(label(target));
 }
 
 void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts)
 {
-    constraints regs(cfg.get_node(label(0)));
+    auto& entry = cfg.get_node(entry_label());
+    constraints regs(entry);
+
+    entry >> cfg.insert(label(0));
 
     for (pc_t pc = 0; pc < insts.size(); pc++) {
         auto inst = insts[pc];
 
-        regs.exec(inst, cfg.insert(label(pc)), cfg.insert(label(pc)+"-exit"), pc, cfg);
+        regs.exec(inst, cfg.insert(label(pc)), cfg.insert(exit_label(pc)), pc, cfg);
 
         if (inst.opcode == EBPF_OP_EXIT) {
-            cfg.set_exit(label(pc)+"-exit");
+            cfg.set_exit(exit_label(pc));
+            continue;
         }
 
         optional<pc_t> jump_target = get_jump(insts[pc], pc);

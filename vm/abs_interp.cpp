@@ -24,7 +24,6 @@
 #include <sstream>
 
 #include <boost/optional.hpp>
-#include <boost/lexical_cast.hpp>
 
 #include <crab/checkers/base_property.hpp>
 #include <crab/checkers/div_zero.hpp>
@@ -40,6 +39,7 @@
 
 
 #include "ebpf.h"
+#include "ubpf_int.h"
 
 #include "crab_lang.hpp"
 #include "crab_dom.hpp"
@@ -61,11 +61,6 @@ using analyzer_t = intra_fwd_analyzer<cfg_ref_t, dom_t>;
 using checker_t = intra_checker<analyzer_t>;
 using prop_checker_ptr = checker_t::prop_checker_ptr;
 
-static int first_num(basic_block_t& b)
-{
-    return boost::lexical_cast<int>(b.label().substr(0, b.label().find_first_of('-')));
-}
-
 static int analyze(cfg_t& cfg)
 {
     liveness<cfg_ref_t> live(cfg);
@@ -75,8 +70,8 @@ static int analyze(cfg_t& cfg)
     analyzer.run(label(0), assumptions);
 
     std::vector<std::reference_wrapper<basic_block_t>> blocks(cfg.begin(), cfg.end());
-    std::sort(blocks.begin(), blocks.end(), [](basic_block_t& a, basic_block_t& b){
-        return first_num(a) < first_num(b);
+    std::sort(blocks.begin(), blocks.end(), [](const basic_block_t& a, const basic_block_t& b){
+        return first_num(a.label()) < first_num(b.label());
     });
     
     crab::outs() << "Invariants:\n";
@@ -102,13 +97,12 @@ static int analyze(cfg_t& cfg)
 
 bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
 {
-    cfg_t cfg(label(0), ARR);
+    cfg_t cfg(entry_label(), ARR);
     build_cfg(cfg, {insts, insts + num_insts});
     int nwarn = analyze(cfg);
 
     if (nwarn > 0) {
-        *errmsg = (char*)calloc(sizeof("Assertion violation"), 1);
-        strcpy(*errmsg, "Assertion violation");
+        *errmsg = ubpf_error("Assertion violation");
         return false;
     }
     return true;
