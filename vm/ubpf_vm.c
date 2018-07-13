@@ -740,6 +740,7 @@ validate(const struct ubpf_vm *vm, const struct ebpf_inst *insts, uint32_t num_i
             break;
 
         case EBPF_OP_CALL:
+            /*
             if (inst.imm < 0 || inst.imm >= MAX_EXT_FUNCS) {
                 *errmsg = ubpf_error("invalid call immediate at PC %d", i);
                 return false;
@@ -748,6 +749,7 @@ validate(const struct ubpf_vm *vm, const struct ebpf_inst *insts, uint32_t num_i
                 *errmsg = ubpf_error("call to nonexistent function %u at PC %d", inst.imm, i);
                 return false;
             }
+            */
             break;
 
         case EBPF_OP_EXIT:
