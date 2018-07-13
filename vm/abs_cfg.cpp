@@ -78,7 +78,7 @@ void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts)
         regs.exec(inst, cfg.insert(label(pc)), cfg.insert(label(pc)+"-exit"), pc, cfg);
 
         if (inst.opcode == EBPF_OP_EXIT) {
-            cfg.set_exit(label(pc));
+            cfg.set_exit(label(pc)+"-exit");
         }
 
         optional<pc_t> jump_target = get_jump(insts[pc], pc);
@@ -103,6 +103,7 @@ void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts)
             pc = *fall_target - 1;
         }
     }
+    crab::outs() << cfg << "\n";
     cfg.simplify();
 }
 
