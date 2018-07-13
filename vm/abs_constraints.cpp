@@ -30,19 +30,25 @@ static constexpr desc xdp_md = { 5*4, 0, 1*4, 2*4};
 static constexpr desc sk_msg_md = { 11*4, 0, 1*4, -1};
 static constexpr desc ctx_desc = xdp_md;
 
-constraints::constraints(basic_block_t& entry)
+constraints::constraints()
 {
     for (int i=0; i < 16; i++) {
         regs.emplace_back(vfac, i);
     }
+}
+
+void constraints::setup_entry(basic_block_t& entry)
+{
     entry.havoc(regs[10].value);
     entry.assume(regs[10].value > 0);
     entry.assign(regs[10].offset, 0);
     entry.assign(regs[10].region, T_STACK);
+
     entry.havoc(regs[1].value);
     entry.assume(regs[1].value > 0);
     entry.assign(regs[1].offset, 0);
     entry.assign(regs[1].region, T_CTX);
+    
     entry.assume(total_size >= 0);
     if (ctx_desc.meta < 0) {
         entry.assign(meta_size, 0);

@@ -1,5 +1,4 @@
-#ifndef ABS_CST_REGS_CPP
-#define ABS_CST_REGS_CPP
+#pragma once
 
 #include <vector>
 #include <string>
@@ -64,14 +63,14 @@ class constraints final
     array_dom_t data_arr{vfac, "data"};
     var_t pc{vfac[std::string("pc")], crab::INT_TYPE, 16};
     var_t meta_size{vfac[std::string("meta_size")], crab::INT_TYPE, 64};
-    var_t total_size{vfac[std::string("data_size")], crab::INT_TYPE, 64};
+    var_t total_size{vfac[std::string("total_data_size")], crab::INT_TYPE, 64};
 
     bool exec_mem_access(basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg, ebpf_inst inst);
     static void no_pointer(basic_block_t& block, constraints::dom_t& v);
 public:
-    constraints(basic_block_t& entry);
+    constraints();
+    void setup_entry(basic_block_t& entry);
 
     void jump(ebpf_inst inst, basic_block_t& block, bool taken);
     void exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg);
 };
-#endif

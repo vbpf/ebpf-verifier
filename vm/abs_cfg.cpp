@@ -70,11 +70,12 @@ static void link(cfg_t& cfg, pc_t pc, pc_t target)
 
 void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts)
 {
-    auto& entry = cfg.get_node(entry_label());
-    constraints regs(entry);
-
-    entry >> cfg.insert(label(0));
-
+    constraints regs;
+    {
+        auto& entry = cfg.insert(entry_label());
+        regs.setup_entry(entry);
+        entry >> cfg.insert(label(0));
+    }
     for (pc_t pc = 0; pc < insts.size(); pc++) {
         auto inst = insts[pc];
 

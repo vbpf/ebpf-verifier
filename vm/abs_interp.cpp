@@ -39,7 +39,6 @@
 
 
 #include "ebpf.h"
-#include "ubpf_int.h"
 
 #include "crab_lang.hpp"
 #include "crab_dom.hpp"
@@ -67,11 +66,12 @@ static int analyze(cfg_t& cfg)
     live.exec();
     analyzer_t analyzer(cfg, dom_t::top(), &live, 1, 2, 20);
     typename analyzer_t::assumption_map_t assumptions;
-    analyzer.run(label(0), assumptions);
+    analyzer.run(entry_label(), assumptions);
 
     std::vector<std::reference_wrapper<basic_block_t>> blocks(cfg.begin(), cfg.end());
     std::sort(blocks.begin(), blocks.end(), [](const basic_block_t& a, const basic_block_t& b){
-        return first_num(a.label()) < first_num(b.label());
+        if (first_num(a.label()) < first_num(b.label())) return true;
+        return a.label() < b.label();
     });
     
     crab::outs() << "Invariants:\n";
@@ -93,6 +93,10 @@ static int analyze(cfg_t& cfg)
     return checks.get_total_warning() + checks.get_total_error();
     //auto &wto = analyzer.get_wto();
     //crab::outs () << "Abstract trace: " << wto << "\n";
+}
+
+extern "C" {
+    char* ubpf_error(const char *fmt, ...);
 }
 
 bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
