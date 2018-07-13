@@ -59,10 +59,11 @@ class constraints final
 
     variable_factory_t vfac;	
     std::vector<dom_t> regs;
-    array_dom_t stack{vfac, "stack"};
-    array_dom_t ctx{vfac, "ctx"};
-    array_dom_t data{vfac, "data"};
+    array_dom_t stack_arr{vfac, "stack"};
+    array_dom_t ctx_arr{vfac, "ctx"};
+    array_dom_t data_arr{vfac, "data"};
     var_t pc{vfac[std::string("pc")], crab::INT_TYPE, 16};
+    var_t data{vfac[std::string("data")], crab::INT_TYPE, 64};
     var_t data_end{vfac[std::string("data_end")], crab::INT_TYPE, 64};
 
     static void no_pointer(basic_block_t& block, constraints::dom_t& v);

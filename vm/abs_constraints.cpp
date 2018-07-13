@@ -194,12 +194,13 @@ struct desc {
     int size;
     int data;
     int end;
-    constexpr desc(int _size, int _data, int _end) : size(_size), data(_data), end(_end) { }
+    int meta; // data to meta is like end to data. i.e. meta <= data <= end
+    constexpr desc(int _size, int _data, int _end, int _meta) : size(_size), data(_data), end(_end), meta(_meta) { }
 };
-static constexpr desc sk_buff = { 24*4, 15*4, 16*4};
-static constexpr desc xdp_md = { 5*4, 0, 1*4};
-static constexpr desc sk_msg_md = { 11*4, 0, 1*4};
-static constexpr desc ctx_desc = sk_buff;
+static constexpr desc sk_buff = { 24*4, 15*4, 16*4, 23*4};
+static constexpr desc xdp_md = { 5*4, 0, 1*4, 2*4};
+static constexpr desc sk_msg_md = { 11*4, 0, 1*4, -1};
+static constexpr desc ctx_desc = xdp_md;
 
 void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg)
 {
@@ -519,9 +520,9 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
                 assert(offset >= width);
                 assert(offset <= STACK_SIZE);
                 if (is_load(inst.opcode)) {
-                    stack.load(block, regs[inst.dst], offset, width);
+                    stack_arr.load(block, regs[inst.dst], offset, width);
                 } else {
-                    stack.store(block, offset, regs[inst.src], width);
+                    stack_arr.store(block, offset, regs[inst.src], width);
                 }
             } else {
                 {
@@ -533,9 +534,9 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
                     mid.assertion(addr >= width, di);
                     mid.assertion(addr <= STACK_SIZE - width, di);
                     if (is_load(inst.opcode)) {
-                        stack.load(mid, regs[inst.dst], addr, width);
+                        stack_arr.load(mid, regs[inst.dst], addr, width);
                     } else {
-                        stack.store(mid, addr, regs[inst.src], width);
+                        stack_arr.store(mid, addr, regs[inst.src], width);
                     }
                 }
                 {
@@ -552,9 +553,9 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
                             start >> exit;
                             start.assume(addr == ctx_desc.data);
                             start.assign(regs[inst.dst].region, T_DATA);
-                            start.assign(regs[inst.dst].offset, 0);
-                            start.assume(regs[inst.dst].value != 0);
+                            start.assume(regs[inst.dst].value > ctx_desc.data);
                             start.assume(regs[inst.dst].offset <= data_end);
+                            start.assign(regs[inst.dst].offset, data);
                         }
                         if (ctx_desc.data >= 0) {
                             auto& end = cfg.insert(label(_pc)+"-assume_data_end");
@@ -562,8 +563,17 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
                             end >> exit;
                             end.assume(addr == ctx_desc.end);
                             end.assign(regs[inst.dst].region, T_DATA);
-                            end.assume(regs[inst.dst].value >= ctx_desc.end);
+                            end.assume(regs[inst.dst].value > ctx_desc.end);
                             end.assign(regs[inst.dst].offset, data_end);
+                        }
+                        if (ctx_desc.meta >= 0) {
+                            auto& meta = cfg.insert(label(_pc)+"-assume_meta");
+                            mid >> meta;
+                            meta >> exit;
+                            meta.assume(addr == ctx_desc.meta);
+                            meta.assign(regs[inst.dst].region, T_DATA);
+                            meta.assume(regs[inst.dst].value > ctx_desc.meta);
+                            meta.assume(regs[inst.dst].offset <= data);
                         }
                         {
                             auto& normal = cfg.insert(label(_pc)+"-assume_not_data");
@@ -573,10 +583,13 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
                                 normal.assume(addr != ctx_desc.data);
                                 normal.assume(addr != ctx_desc.end);
                             }
-                            ctx.load(normal, regs[inst.dst], addr, width);
+                            if (ctx_desc.meta >= 0) {
+                                normal.assume(addr != ctx_desc.meta);
+                            }
+                            ctx_arr.load(normal, regs[inst.dst], addr, width);
                         }
                     } else {
-                        ctx.store(mid, addr, regs[inst.src], width);
+                        ctx_arr.store(mid, addr, regs[inst.src], width);
                         mid >> exit;
                     }
                 }
@@ -589,9 +602,9 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
                     mid.assertion(addr >= 0, di);
                     mid.assertion(addr <= data_end - width, di);
                     if (is_load(inst.opcode)) {
-                        data.load(mid, regs[inst.dst], addr, width);
+                        data_arr.load(mid, regs[inst.dst], addr, width);
                     } else {
-                        data.store(mid, addr, regs[inst.src], width);
+                        data_arr.store(mid, addr, regs[inst.src], width);
                     }
                 }
                 {
