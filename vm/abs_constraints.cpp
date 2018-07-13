@@ -48,7 +48,7 @@ void constraints::setup_entry(basic_block_t& entry)
     entry.assume(regs[1].value > 0);
     entry.assign(regs[1].offset, 0);
     entry.assign(regs[1].region, T_CTX);
-    
+
     entry.assume(total_size >= 0);
     if (ctx_desc.meta < 0) {
         entry.assign(meta_size, 0);
@@ -235,7 +235,7 @@ template<typename T>
 static void load_datapointer(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, constraints::dom_t& target, 
     std::string subname, lin_cst_t cst, T lower_bound)
 {
-    auto& mid = insert_midnode(cfg, pre, post, "assume_ctx." + subname);
+    auto& mid = insert_midnode(cfg, pre, post, subname);
     mid.assume(cst);
 
     mid.assign(target.region, T_DATA);

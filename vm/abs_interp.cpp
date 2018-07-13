@@ -71,6 +71,7 @@ static int analyze(cfg_t& cfg)
     std::vector<std::reference_wrapper<basic_block_t>> blocks(cfg.begin(), cfg.end());
     std::sort(blocks.begin(), blocks.end(), [](const basic_block_t& a, const basic_block_t& b){
         if (first_num(a.label()) < first_num(b.label())) return true;
+        if (first_num(a.label()) > first_num(b.label())) return false;
         return a.label() < b.label();
     });
     
