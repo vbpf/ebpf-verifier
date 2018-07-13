@@ -1,37 +1,37 @@
 --asm
 mov r6, r1
 mov r7, 0xe
-# ldabsh 0xc
+mov r7, r7 # ldabsh 0xc
 jne r0, 0x88a8, +0x2
 mov r7, 0x12
-# ldabsh 0x10
+mov r7, r7 # ldabsh 0x10
 jne r0, 0x8100, +0x4
 mov r8, r7
 add r8, 0x2
-# ldindh r8, 0x0
+mov r7, r7 # ldindh r8, 0x0
 add r7, 0x4
 jeq r0, 0x800, +0x2
 jeq r0, 0x86dd, +0x1e
 ja +0xa7
 mov r8, r7
 add r8, 0x6
-# ldindh r8, 0x0
+mov r7, r7 # ldindh r8, 0x0
 mov r9, 0x0
 and r0, 0x3fff
 jne r0, 0x0, +0x7
 mov r8, r7
 add r8, 0x9
-# ldindb r8, 0x0
+mov r7, r7 # ldindb r8, 0x0
 mov r9, r0
 mov r8, 0x2f
 mov r0, 0x0
 jeq r9, 0x2f, +0x4
 mov r8, r7
 add r8, 0x10
-# ldindw r8, 0x0
+mov r7, r7 # ldindw r8, 0x0
 mov r8, r9
 mov r9, r0
-# ldindb r7, 0x0
+mov r7, r7 # ldindb r7, 0x0
 jne r0, 0x45, +0x3
 add r7, 0x14
 jeq r8, 0x4, +0x56
@@ -44,23 +44,23 @@ jeq r8, 0x4, +0x50
 ja +0x1d
 mov r8, r7
 add r8, 0x6
-# ldindb r8, 0x0
+mov r7, r7 # ldindb r8, 0x0
 mov r8, r0
 mov r9, r7
 add r9, 0x24
-# ldindw r9, 0x0
+mov r7, r7 # ldindw r9, 0x0
 stxdw [r10+0xffe0], r0
 mov r9, r7
 add r9, 0x20
-# ldindw r9, 0x0
+mov r7, r7 # ldindw r9, 0x0
 stxdw [r10+0xffd8], r0
 mov r9, r7
 add r9, 0x18
-# ldindw r9, 0x0
+mov r7, r7 # ldindw r9, 0x0
 stxdw [r10+0xffd0], r0
 mov r9, r7
 add r7, 0x1c
-# ldindw r7, 0x0
+mov r7, r7 # ldindw r7, 0x0
 mov r7, r9
 mov r9, r0
 add r7, 0x28
@@ -75,10 +75,10 @@ jeq r8, 0x29, +0x40
 jne r8, 0x2f, +0x53
 mov r8, r7
 add r7, 0x2
-# ldindh r7, 0x0
+mov r7, r7 # ldindh r7, 0x0
 mov r7, r8
 mov r8, r0
-# ldindh r7, 0x0
+mov r7, r7 # ldindh r7, 0x0
 mov r1, r0
 and r1, 0x740
 jne r1, 0x0, +0x4a
@@ -101,7 +101,7 @@ jne r8, 0x8100, +0x7
 mov r7, r3
 add r7, 0x2
 mov r8, r3
-# ldindh r7, 0x0
+mov r7, r7 # ldindh r7, 0x0
 mov r3, r8
 mov r8, r0
 add r3, 0x4
@@ -110,46 +110,46 @@ jne r8, 0x800, +0x49
 mov r7, r3
 add r7, 0x6
 mov r8, r3
-# ldindh r7, 0x0
+mov r7, r7 # ldindh r7, 0x0
 and r0, 0x3fff
 jne r0, 0x0, +0x4
 mov r7, r8
 add r7, 0x9
-# ldindb r7, 0x0
+mov r7, r7 # ldindb r7, 0x0
 jeq r0, 0x2f, +0x27
 add r8, 0x10
-# ldindw r8, 0x0
+mov r7, r7 # ldindw r8, 0x0
 mov r9, r0
 ja +0x23
 mov r8, r7
 add r7, 0x6
-# ldindh r7, 0x0
+mov r7, r7 # ldindh r7, 0x0
 mov r7, r8
 and r0, 0x3fff
 jne r0, 0x0, +0x5
 mov r8, r7
 add r7, 0x9
-# ldindb r7, 0x0
+mov r7, r7 # ldindb r7, 0x0
 mov r7, r8
 jeq r0, 0x2f, +0x18
 add r7, 0x10
-# ldindw r7, 0x0
+mov r7, r7 # ldindw r7, 0x0
 mov r9, r0
 ja +0x14
 mov r9, r7
 add r7, 0x24
-# ldindw r7, 0x0
+mov r7, r7 # ldindw r7, 0x0
 stxdw [r10+0xffe0], r0
 mov r7, r9
 add r7, 0x20
-# ldindw r7, 0x0
+mov r7, r7 # ldindw r7, 0x0
 stxdw [r10+0xffd8], r0
 mov r7, r9
 add r7, 0x18
-# ldindw r7, 0x0
+mov r7, r7 # ldindw r7, 0x0
 mov r8, r0
 add r9, 0x1c
-# ldindw r9, 0x0
+mov r7, r7 # ldindw r9, 0x0
 mov r9, r0
 xor r9, r8
 ldxdw r1, [r10+0xffd8]
@@ -163,9 +163,9 @@ lddw r1, 0x0
 call 0x1
 jeq r0, 0x0, +0x5
 mov r1, 0x1
-# stxxadddw [r0+0x0], r1
+mov r7, r7 # stxxadddw [r0+0x0], r1
 ldxw r1, [r6+0x0]
-# stxxadddw [r0+0x8], r1
+mov r7, r7 # stxxadddw [r0+0x8], r1
 ja +0xc
 mov r1, 0x1
 stxdw [r10+0xffe8], r1
@@ -183,19 +183,29 @@ exit
 mov r7, r3
 add r7, 0x24
 mov r9, r3
-# ldindw r7, 0x0
+mov r7, r7 # ldindw r7, 0x0
 stxdw [r10+0xffe0], r0
 mov r7, r9
 add r7, 0x20
-# ldindw r7, 0x0
+mov r7, r7 # ldindw r7, 0x0
 mov r7, r0
 mov r8, r9
 add r8, 0x18
-# ldindw r8, 0x0
+mov r7, r7 # ldindw r8, 0x0
 mov r8, r0
 add r9, 0x1c
-# ldindw r9, 0x0
+mov r7, r7 # ldindw r9, 0x0
 mov r9, r0
 xor r9, r8
 xor r9, r7
-ja +0xffd1
+jeq r0, r0, +0xffd1
+exit
+-- mem
+fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff

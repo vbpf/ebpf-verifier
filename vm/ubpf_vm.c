@@ -567,10 +567,15 @@ validate(const struct ubpf_vm *vm, const struct ebpf_inst *insts, uint32_t num_i
         return false;
     }
 
-    if (num_insts == 0 || insts[num_insts-1].opcode != EBPF_OP_EXIT) {
-        *errmsg = ubpf_error("no exit at end of instructions");
+    if (num_insts == 0) {
+        *errmsg = ubpf_error("Zero length programs are not allowed");
         return false;
     }
+
+    //if (insts[num_insts-1].opcode != EBPF_OP_EXIT) {
+    //    *errmsg = ubpf_error("no exit at end of instructions");
+    //    return false;
+    //}
 
     int i;
     for (i = 0; i < num_insts; i++) {
@@ -640,8 +645,41 @@ validate(const struct ubpf_vm *vm, const struct ebpf_inst *insts, uint32_t num_i
         case EBPF_OP_LDXH:
         case EBPF_OP_LDXB:
         case EBPF_OP_LDXDW:
+        case EBPF_OP_LDABSW:
+        case EBPF_OP_LDABSH:
+        case EBPF_OP_LDABSB:
+        case EBPF_OP_LDABSDW:
+        case EBPF_OP_LDXABSW:
+        case EBPF_OP_LDXABSH:
+        case EBPF_OP_LDXABSB:
+        case EBPF_OP_LDXABSDW:
+        case EBPF_OP_LDINDW:
+        case EBPF_OP_LDINDH:
+        case EBPF_OP_LDINDB:
+        case EBPF_OP_LDINDDW:
+        case EBPF_OP_LDXINDW:
+        case EBPF_OP_LDXINDH:
+        case EBPF_OP_LDXINDB:
+        case EBPF_OP_LDXINDDW:
             break;
 
+        case EBPF_OP_STABSW:
+        case EBPF_OP_STABSH:
+        case EBPF_OP_STABSB:
+        case EBPF_OP_STABSDW:
+        case EBPF_OP_STXABSW:
+        case EBPF_OP_STXABSH:
+        case EBPF_OP_STXABSB:
+        case EBPF_OP_STXABSDW:
+        case EBPF_OP_STINDW:
+        case EBPF_OP_STINDH:
+        case EBPF_OP_STINDB:
+        case EBPF_OP_STINDDW:
+        case EBPF_OP_STXINDW:
+        case EBPF_OP_STXINDH:
+        case EBPF_OP_STXINDB:
+        case EBPF_OP_STXINDDW:
+ 
         case EBPF_OP_STW:
         case EBPF_OP_STH:
         case EBPF_OP_STB:
@@ -650,6 +688,9 @@ validate(const struct ubpf_vm *vm, const struct ebpf_inst *insts, uint32_t num_i
         case EBPF_OP_STXH:
         case EBPF_OP_STXB:
         case EBPF_OP_STXDW:
+
+        case EBPF_STXADDW:     
+        case EBPF_STXADDDW:     
             store = true;
             break;
 
@@ -723,7 +764,8 @@ validate(const struct ubpf_vm *vm, const struct ebpf_inst *insts, uint32_t num_i
             break;
 
         default:
-            *errmsg = ubpf_error("unknown opcode 0x%02x at PC %d", inst.opcode, i);
+            *errmsg = ubpf_error("unknown opcode 0x%02x at PC %d (!= 0x%02x, 0x%02x)", inst.opcode, i,
+                                 EBPF_OP_ARSH_IMM, EBPF_OP_ARSH_REG);
             return false;
         }
 

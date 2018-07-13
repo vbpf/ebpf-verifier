@@ -123,18 +123,18 @@ ubpf_load_elf(struct ubpf_vm *vm, const void *elf, size_t elf_size, char **errms
         sections[i].data = data;
         sections[i].size = shdr->sh_size;
     }
-
     /* Find first text section */
     int text_shndx = 0;
     for (i = 0; i < ehdr->e_shnum; i++) {
         const Elf64_Shdr *shdr = sections[i].shdr;
-        if (shdr->sh_type == SHT_PROGBITS &&
+        //printf("%d, %lu, %lx\n", shdr->sh_type, shdr->sh_flags, sections[i].size);
+        if (sections[i].size > 0 && shdr->sh_type == SHT_PROGBITS &&
                 shdr->sh_flags == (SHF_ALLOC|SHF_EXECINSTR)) {
             text_shndx = i;
+            //printf("%d\n", text_shndx);
             break;
         }
     }
-
     if (!text_shndx) {
         *errmsg = ubpf_error("text section not found");
         goto error;
@@ -182,7 +182,7 @@ ubpf_load_elf(struct ubpf_vm *vm, const void *elf, size_t elf_size, char **errms
         for (j = 0; j < rel->size/sizeof(Elf64_Rel); j++) {
             const Elf64_Rel *r = &rs[j];
 
-            if (ELF64_R_TYPE(r->r_info) != 2) {
+            if (ELF64_R_TYPE(r->r_info) != 1 /*10*/) {
                 *errmsg = ubpf_error("bad relocation type %u", ELF64_R_TYPE(r->r_info));
                 goto error;
             }
@@ -210,7 +210,7 @@ ubpf_load_elf(struct ubpf_vm *vm, const void *elf, size_t elf_size, char **errms
             unsigned int imm = ubpf_lookup_registered_function(vm, sym_name);
             if (imm == -1) {
                 *errmsg = ubpf_error("function '%s' not found", sym_name);
-                goto error;
+                //goto error;
             }
 
             *(uint32_t *)(text_copy + r->r_offset + 4) = imm;

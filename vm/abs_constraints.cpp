@@ -1,4 +1,4 @@
-
+#include <iostream>
 #include <vector>
 #include <string>
 
@@ -30,22 +30,44 @@ constraints::constraints(basic_block_t& entry)
     entry.assign(regs[1].region, T_CTX);
 }
 
+static bool is_load(uint8_t opcode)
+{
+    switch (opcode & EBPF_CLS_MASK) {
+    case EBPF_CLS_LD:
+    case EBPF_CLS_LDX:
+        return true;
+    default:
+        return false;
+    }
+}
+
+static bool is_store(uint8_t opcode)
+{
+    switch (opcode & EBPF_CLS_MASK) {
+    case EBPF_CLS_ST:
+    case EBPF_CLS_STX:
+        return true;
+    default:
+        return false;
+    }
+}
+
+static bool is_access(uint8_t opcode)
+{
+    return is_load(opcode) || is_store(opcode);
+}
+
+
 static int access_width(uint8_t opcode)
 {
-    switch (opcode) {
-    case EBPF_OP_LDXB:
-    case EBPF_OP_STB:
-    case EBPF_OP_STXB: return 1;
-    case EBPF_OP_LDXH:
-    case EBPF_OP_STH:
-    case EBPF_OP_STXH: return 2;
-    case EBPF_OP_LDXW:
-    case EBPF_OP_STW:
-    case EBPF_OP_STXW: return 4;
-    case EBPF_OP_LDXDW:
-    case EBPF_OP_STDW:
-    case EBPF_OP_STXDW: return 8;
-    default: return -1;
+    if (!is_access(opcode))
+        return -1;
+    switch (opcode & EBPF_SIZE_MASK) {
+    case EBPF_SIZE_B: return 1;
+    case EBPF_SIZE_H: return 2;
+    case EBPF_SIZE_W: return 4;
+    case EBPF_SIZE_DW: return 8;
+    default: assert(false);
     }
 }
 
@@ -161,11 +183,6 @@ static void wrap32(basic_block_t& block, var_t& vdst)
     block.bitwise_and(vdst, vdst, UINT32_MAX);
 }
 
-static bool is_load(uint8_t opcode)
-{
-    return ((opcode & EBPF_CLS_MASK) == EBPF_CLS_LD)
-        || ((opcode & EBPF_CLS_MASK) == EBPF_CLS_LDX);
-}
 
 void constraints::no_pointer(basic_block_t& block, constraints::dom_t& v)
 {
@@ -443,6 +460,30 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         block.assign(vdst, (uint32_t)inst.imm | ((uint64_t)imm << 32));
         no_pointer(block, dst);
         break;
+    case EBPF_OP_JEQ_IMM:
+    case EBPF_OP_JEQ_REG:
+    case EBPF_OP_JGE_IMM:
+    case EBPF_OP_JGE_REG:
+    case EBPF_OP_JSGE_IMM:
+    case EBPF_OP_JSGE_REG:
+    case EBPF_OP_JLE_IMM:
+    case EBPF_OP_JLE_REG:
+    case EBPF_OP_JSLE_IMM:
+    case EBPF_OP_JSLE_REG:
+    case EBPF_OP_JNE_IMM:
+    case EBPF_OP_JNE_REG:
+    case EBPF_OP_JGT_IMM:
+    case EBPF_OP_JGT_REG:
+    case EBPF_OP_JSGT_IMM:
+    case EBPF_OP_JSGT_REG:
+    case EBPF_OP_JLT_IMM:
+    case EBPF_OP_JLT_REG:
+    case EBPF_OP_JSLT_IMM:
+    case EBPF_OP_JSLT_REG:
+    case EBPF_OP_JA:
+    case EBPF_OP_EXIT:
+        break;
+
     case EBPF_OP_CALL:
         for (int i=1; i<=5; i++) {
             block.havoc(regs[i].value);
@@ -461,15 +502,16 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         }
         break;
     default:
-        // jumps - no op
         int width = access_width(inst.opcode);
-        if (width > 0) {
+        if (width <= 0) {
+            std::cout << "bad instruction " << (int)inst.opcode << " at "<< _pc << "\n";
+        } else {
             // loads and stores are handles by offsets
             uint8_t mem = is_load(inst.opcode) ? inst.src : inst.dst;
             //uint8_t target = is_load(inst.opcode) ? inst.dst : inst.src;
 
             block.assertion(regs[mem].value != 0, di);
-            block.assertion(regs[mem].region != T_NUM);
+            block.assertion(regs[mem].region != T_NUM, di);
 
             if (mem == 10) {
                 auto offset = -inst.offset;

@@ -48,21 +48,26 @@ int main(int argc, char **argv)
         { .name = "help", .val = 'h', },
         { .name = "mem", .val = 'm', .has_arg=1 },
         { .name = "jit", .val = 'j' },
+        { .name = "execute", .val = 'e' },
         { .name = "register-offset", .val = 'r', .has_arg=1 },
         { }
     };
 
     const char *mem_filename = NULL;
     bool jit = false;
+    bool execute = false;
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hm:jr:", longopts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hm:jer:", longopts, NULL)) != -1) {
         switch (opt) {
         case 'm':
             mem_filename = optarg;
             break;
         case 'j':
             jit = true;
+            break;
+        case 'e':
+            execute = true;
             break;
         case 'r':
             ubpf_set_register_offset(atoi(optarg));
@@ -138,7 +143,7 @@ int main(int argc, char **argv)
             return 1;
         }
         ret = fn(mem, mem_len);
-    } else {
+    } else if (execute) {
         ret = ubpf_exec(vm, mem, mem_len);
     }
 
