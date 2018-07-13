@@ -35,17 +35,20 @@ constraints::constraints(basic_block_t& entry)
     for (int i=0; i < 16; i++) {
         regs.emplace_back(vfac, i);
     }
-    entry.assume(regs[10].value != 0);
+    entry.havoc(regs[10].value);
+    entry.assume(regs[10].value > 0);
     entry.assign(regs[10].offset, 0);
     entry.assign(regs[10].region, T_STACK);
-    entry.assume(regs[1].value != 0);
+    entry.havoc(regs[1].value);
+    entry.assume(regs[1].value > 0);
     entry.assign(regs[1].offset, 0);
     entry.assign(regs[1].region, T_CTX);
-    entry.assume(data_size >= 0);
+    entry.assume(total_size >= 0);
     if (ctx_desc.meta < 0) {
         entry.assign(meta_size, 0);
     } else {
         entry.assume(meta_size >= 0);
+        entry.assume(total_size >= meta_size);
     }
 }
 
@@ -227,7 +230,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
     var_t& odst = regs[inst.dst].offset;
     var_t& rdst = regs[inst.dst].region;
 
-    var_t& src = regs[inst.src].value;
+    var_t& vsrc = regs[inst.src].value;
     var_t& osrc = regs[inst.src].offset;
     var_t& rsrc = regs[inst.src].region;
 
@@ -242,9 +245,9 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         block.add(odst, odst, imm);
         break;
     case EBPF_OP_ADD_REG:
-        block.add(vdst, vdst, src);
+        block.add(vdst, vdst, vsrc);
         wrap32(block, vdst);
-        block.add(odst, odst, src);
+        block.add(odst, odst, vsrc);
         break;
     case EBPF_OP_SUB_IMM:
         block.sub(vdst, vdst, imm);
@@ -252,10 +255,10 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         block.sub(odst, odst, imm);
         break;
     case EBPF_OP_SUB_REG:
-        block.sub(vdst, vdst, src);
+        block.sub(vdst, vdst, vsrc);
         wrap32(block, vdst);
         // TODO: meet of this and "odst - odst" if same region
-        block.sub(odst, odst, src);
+        block.sub(odst, odst, vsrc);
         break;
     case EBPF_OP_MUL_IMM:
         block.mul(vdst, vdst, imm);
@@ -263,17 +266,17 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_MUL_REG:
-        block.mul(vdst, vdst, src);
+        block.mul(vdst, vdst, vsrc);
         wrap32(block, vdst);
         no_pointer(block, dst);
         break;
     case EBPF_OP_DIV_IMM:
-        block.div(vdst, vdst, src); // TODO: u32(vdst) / u32(imm);
+        block.div(vdst, vdst, vsrc); // TODO: u32(vdst) / u32(imm);
         wrap32(block, vdst);
         no_pointer(block, dst);
         break;
     case EBPF_OP_DIV_REG:
-        block.div(vdst, vdst, src); // TODO: u32(vdst) / u32(src);
+        block.div(vdst, vdst, vsrc); // TODO: u32(vdst) / u32(src);
         wrap32(block, vdst);
         no_pointer(block, dst);
         break;
@@ -283,7 +286,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_OR_REG:
-        block.bitwise_or(vdst, vdst, src);
+        block.bitwise_or(vdst, vdst, vsrc);
         wrap32(block, vdst);
         no_pointer(block, dst);
         break;
@@ -293,7 +296,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_AND_REG:
-        block.bitwise_and(vdst, vdst, src);
+        block.bitwise_and(vdst, vdst, vsrc);
         wrap32(block, vdst);
         no_pointer(block, dst);
         break;
@@ -303,7 +306,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_LSH_REG:
-        block.shl(vdst, vdst, src);
+        block.shl(vdst, vdst, vsrc);
         wrap32(block, vdst);
         no_pointer(block, dst);
         break;
@@ -313,7 +316,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_RSH_REG:
-        block.lshr(vdst, vdst, src); // TODO u32(vdst) >> src;
+        block.lshr(vdst, vdst, vsrc); // TODO u32(vdst) >> src;
         wrap32(block, vdst);
         no_pointer(block, dst);
         break;
@@ -328,7 +331,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_MOD_REG:
-        block.rem(vdst, vdst, src); // FIX: vdst = u32(vdst) % u32(src);
+        block.rem(vdst, vdst, vsrc); // FIX: vdst = u32(vdst) % u32(src);
         no_pointer(block, dst);
         break;
     case EBPF_OP_XOR_IMM:
@@ -337,7 +340,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_XOR_REG:
-        block.bitwise_xor(vdst, vdst, src);
+        block.bitwise_xor(vdst, vdst, vsrc);
         wrap32(block, vdst);
         no_pointer(block, dst);
         break;
@@ -347,7 +350,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_MOV_REG:
-        block.assign(vdst, src);
+        block.assign(vdst, vsrc);
         wrap32(block, vdst);
         block.assign(odst, osrc);
         block.assign(rdst, rsrc);
@@ -358,7 +361,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_ARSH_REG:
-        block.ashr(vdst, vdst, src); // FIX = (int32_t)dst >> u32(src);
+        block.ashr(vdst, vdst, vsrc); // FIX = (int32_t)dst >> u32(src);
         wrap32(block, vdst);
         no_pointer(block, dst);
         break;
@@ -374,8 +377,8 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         block.add(odst, odst, imm);
         break;
     case EBPF_OP_ADD64_REG:
-        block.add(vdst, vdst, src);
-        block.add(odst, odst, src);
+        block.add(vdst, vdst, vsrc);
+        block.add(odst, odst, vsrc); //XXX note vsrc
         break;
     case EBPF_OP_SUB64_IMM:
         block.sub(vdst, vdst, imm);
@@ -383,14 +386,14 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         break;
     case EBPF_OP_SUB64_REG:
         block.sub(odst, odst, osrc);
-        block.sub(odst, odst, src);
+        block.sub(odst, odst, vsrc); // XXX note vsrc
         break;
     case EBPF_OP_MUL64_IMM:
         block.mul(vdst, vdst, imm);
         no_pointer(block, dst);
         break;
     case EBPF_OP_MUL64_REG:
-        block.mul(vdst, vdst, src);
+        block.mul(vdst, vdst, vsrc);
         no_pointer(block, dst);
         break;
     case EBPF_OP_DIV64_IMM:
@@ -398,7 +401,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_DIV64_REG:
-        block.div(vdst, vdst, src);
+        block.div(vdst, vdst, vsrc);
         no_pointer(block, dst);
         break;
     case EBPF_OP_OR64_IMM:
@@ -406,7 +409,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_OR64_REG:
-        block.bitwise_or(vdst, vdst, src);
+        block.bitwise_or(vdst, vdst, vsrc);
         no_pointer(block, dst);
         break;
     case EBPF_OP_AND64_IMM:
@@ -414,7 +417,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_AND64_REG:
-        block.bitwise_and(vdst, vdst, src);
+        block.bitwise_and(vdst, vdst, vsrc);
         no_pointer(block, dst);
         break;
     case EBPF_OP_LSH64_IMM:
@@ -422,7 +425,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_LSH64_REG:
-        block.lshr(vdst, vdst, src);
+        block.lshr(vdst, vdst, vsrc);
         no_pointer(block, dst);
         break;
     case EBPF_OP_RSH64_IMM:
@@ -430,7 +433,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_RSH64_REG:
-        block.ashr(vdst, vdst, src);
+        block.ashr(vdst, vdst, vsrc);
         no_pointer(block, dst);
         break;
     case EBPF_OP_NEG64:
@@ -442,7 +445,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_MOD64_REG:
-        block.rem(vdst, vdst, src);
+        block.rem(vdst, vdst, vsrc);
         no_pointer(block, dst);
         break;
     case EBPF_OP_XOR64_IMM:
@@ -450,7 +453,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_XOR64_REG:
-        block.bitwise_xor(vdst, vdst, src);
+        block.bitwise_xor(vdst, vdst, vsrc);
         no_pointer(block, dst);
         break;
     case EBPF_OP_MOV64_IMM:
@@ -458,7 +461,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_MOV64_REG:
-        block.assign(vdst, src);
+        block.assign(vdst, vsrc);
         block.assign(odst, osrc);
         block.assign(rdst, rsrc);
         break;
@@ -467,7 +470,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_ARSH64_REG:
-        block.ashr(vdst, vdst, src); // = (int64_t)dst >> src;
+        block.ashr(vdst, vdst, vsrc); // = (int64_t)dst >> src;
         no_pointer(block, dst);
         break;
     case EBPF_OP_LDDW:
@@ -561,7 +564,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
                     mid.assertion(addr <= ctx_desc.size - width, di);
                     if (is_load(inst.opcode)) {
                         if (ctx_desc.data >= 0) {
-                            auto& start = cfg.insert(label(_pc)+"-assume_data_start");
+                            auto& start = cfg.insert(label(_pc)+"-assume_ctx.data");
                             mid >> start;
                             start >> exit;
                             start.assume(addr == ctx_desc.data);
@@ -573,7 +576,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
                             start.assign(target.offset, meta_size);
                         }
                         if (ctx_desc.data >= 0) {
-                            auto& end = cfg.insert(label(_pc)+"-assume_data_end");
+                            auto& end = cfg.insert(label(_pc)+"-assume_ctx.data_end");
                             mid >> end;
                             end >> exit;
                             end.assume(addr == ctx_desc.end);
@@ -582,16 +585,17 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
                             end.assign(target.region, T_DATA);
                             end.havoc(target.value);
                             end.assume(target.value > 0);
-                            end.assign(target.offset, meta_size + data_size);
+                            end.assign(target.offset, total_size);
                         }
                         if (ctx_desc.meta >= 0) {
-                            auto& meta = cfg.insert(label(_pc)+"-assume_meta");
+                            auto& meta = cfg.insert(label(_pc)+"-assume_ctx.meta");
                             mid >> meta;
                             meta >> exit;
                             meta.assume(addr == ctx_desc.meta);
 
                             auto target = regs[inst.dst];
                             meta.assign(target.region, T_DATA);
+                            meta.havoc(target.value);
                             meta.assume(target.value > 0);
                             meta.assign(target.offset, 0);
                         }
@@ -620,7 +624,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
                     auto addr = regs[mem].offset + inst.offset;
                     mid.assume(regs[mem].region == T_DATA);
                     mid.assertion(addr >= 0, di);
-                    mid.assertion(addr <= meta_size + data_size - width, di);
+                    mid.assertion(addr <= total_size - width, di);
                     if (is_load(inst.opcode)) {
                         data_arr.load(mid, regs[inst.dst], addr, width);
                     } else {

@@ -64,7 +64,7 @@ class constraints final
     array_dom_t data_arr{vfac, "data"};
     var_t pc{vfac[std::string("pc")], crab::INT_TYPE, 16};
     var_t meta_size{vfac[std::string("meta_size")], crab::INT_TYPE, 64};
-    var_t data_size{vfac[std::string("data_size")], crab::INT_TYPE, 64};
+    var_t total_size{vfac[std::string("data_size")], crab::INT_TYPE, 64};
 
     static void no_pointer(basic_block_t& block, constraints::dom_t& v);
 public:

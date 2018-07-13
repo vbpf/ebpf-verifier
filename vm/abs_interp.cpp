@@ -56,7 +56,7 @@ using namespace crab::domains;
 using namespace crab::domain_impl;
 using cfg_ref_t = cfg_ref<cfg_t>;
 
-using dom_t = z_oct_apron_domain_t;
+using dom_t = z_sdbm_domain_t; //z_opt_oct_apron_domain_t;
 using analyzer_t = intra_fwd_analyzer<cfg_ref_t, dom_t>;
 using checker_t = intra_checker<analyzer_t>;
 using prop_checker_ptr = checker_t::prop_checker_ptr;
