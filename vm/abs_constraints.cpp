@@ -17,6 +17,19 @@ enum region_t {
     T_MAP,
 };
 
+struct desc {
+    int size;
+    int data;
+    int end;
+    int meta; // data to meta is like end to data. i.e. meta <= data <= end
+    constexpr desc(int _size, int _data, int _end, int _meta) : size(_size), data(_data), end(_end), meta(_meta) { }
+};
+
+static constexpr desc sk_buff = { 24*4, 15*4, 16*4, 23*4};
+static constexpr desc xdp_md = { 5*4, 0, 1*4, 2*4};
+static constexpr desc sk_msg_md = { 11*4, 0, 1*4, -1};
+static constexpr desc ctx_desc = xdp_md;
+
 constraints::constraints(basic_block_t& entry)
 {
     for (int i=0; i < 16; i++) {
@@ -28,6 +41,12 @@ constraints::constraints(basic_block_t& entry)
     entry.assume(regs[1].value != 0);
     entry.assign(regs[1].offset, 0);
     entry.assign(regs[1].region, T_CTX);
+    entry.assume(data_size >= 0);
+    if (ctx_desc.meta < 0) {
+        entry.assign(meta_size, 0);
+    } else {
+        entry.assume(meta_size >= 0);
+    }
 }
 
 static bool is_load(uint8_t opcode)
@@ -71,11 +90,16 @@ static int access_width(uint8_t opcode)
     }
 }
 
+static auto eq(var_t& a, var_t& b)
+{
+    return lin_cst_t(a - b, lin_cst_t::EQUALITY);
+}
+
 static lin_cst_t jmp_to_cst_offsets(uint8_t opcode, int imm, var_t& odst, var_t& osrc)
 {
     switch (opcode) {
     case EBPF_OP_JEQ_REG:
-        return lin_cst_t(odst - osrc, lin_cst_t::EQUALITY);
+        return eq(odst, osrc);
 
     case EBPF_OP_JGE_REG:  return odst >= osrc; // FIX unsigned
     case EBPF_OP_JSGE_REG: return odst >= osrc;
@@ -190,23 +214,12 @@ void constraints::no_pointer(basic_block_t& block, constraints::dom_t& v)
     block.assign(v.region, T_NUM);
 }
 
-struct desc {
-    int size;
-    int data;
-    int end;
-    int meta; // data to meta is like end to data. i.e. meta <= data <= end
-    constexpr desc(int _size, int _data, int _end, int _meta) : size(_size), data(_data), end(_end), meta(_meta) { }
-};
-static constexpr desc sk_buff = { 24*4, 15*4, 16*4, 23*4};
-static constexpr desc xdp_md = { 5*4, 0, 1*4, 2*4};
-static constexpr desc sk_msg_md = { 11*4, 0, 1*4, -1};
-static constexpr desc ctx_desc = xdp_md;
 
 void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg)
 {
     crab::cfg::debug_info di{"", _pc, 0};
-    exit.assign(pc, _pc+1);
-    block.assign(pc, pc);
+//    exit.assign(pc, _pc+1);
+//    block.assign(pc, pc);
 
     auto& dst = regs[inst.dst];
 
@@ -552,28 +565,35 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
                             mid >> start;
                             start >> exit;
                             start.assume(addr == ctx_desc.data);
-                            start.assign(regs[inst.dst].region, T_DATA);
-                            start.assume(regs[inst.dst].value > ctx_desc.data);
-                            start.assume(regs[inst.dst].offset <= data_end);
-                            start.assign(regs[inst.dst].offset, data);
+
+                            auto target = regs[inst.dst];
+                            start.assign(target.region, T_DATA);
+                            start.havoc(target.value);
+                            start.assume(target.value > 0);
+                            start.assign(target.offset, meta_size);
                         }
                         if (ctx_desc.data >= 0) {
                             auto& end = cfg.insert(label(_pc)+"-assume_data_end");
                             mid >> end;
                             end >> exit;
                             end.assume(addr == ctx_desc.end);
-                            end.assign(regs[inst.dst].region, T_DATA);
-                            end.assume(regs[inst.dst].value > ctx_desc.end);
-                            end.assign(regs[inst.dst].offset, data_end);
+
+                            auto target = regs[inst.dst];
+                            end.assign(target.region, T_DATA);
+                            end.havoc(target.value);
+                            end.assume(target.value > 0);
+                            end.assign(target.offset, meta_size + data_size);
                         }
                         if (ctx_desc.meta >= 0) {
                             auto& meta = cfg.insert(label(_pc)+"-assume_meta");
                             mid >> meta;
                             meta >> exit;
                             meta.assume(addr == ctx_desc.meta);
-                            meta.assign(regs[inst.dst].region, T_DATA);
-                            meta.assume(regs[inst.dst].value > ctx_desc.meta);
-                            meta.assume(regs[inst.dst].offset <= data);
+
+                            auto target = regs[inst.dst];
+                            meta.assign(target.region, T_DATA);
+                            meta.assume(target.value > 0);
+                            meta.assign(target.offset, 0);
                         }
                         {
                             auto& normal = cfg.insert(label(_pc)+"-assume_not_data");
@@ -600,7 +620,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
                     auto addr = regs[mem].offset + inst.offset;
                     mid.assume(regs[mem].region == T_DATA);
                     mid.assertion(addr >= 0, di);
-                    mid.assertion(addr <= data_end - width, di);
+                    mid.assertion(addr <= meta_size + data_size - width, di);
                     if (is_load(inst.opcode)) {
                         data_arr.load(mid, regs[inst.dst], addr, width);
                     } else {

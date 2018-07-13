@@ -19,7 +19,9 @@ CXXFLAGS := -Wall -Werror -Wfatal-errors -Iinc \
     -L../../crab/build/run/ldd/lib/ \
     -O0 -g3 -std=c++17 -Wno-unused-local-typedefs 
 
-LDLIBS := -lCrab -lm -lstdc++ -lgmp -lapron
+# LDLIBS := -lCrab -lm -lstdc++ -lgmp -lapron -lcudd -lldd -loctD -loptoct -lpolkaMPQ -lutil -lst -lepd -lmtr
+l := /usr/local/lib/lib
+LDLIBS := $lCrab.so $loctD.a $loptoct.a $lapron.a $lcudd.a $lldd.a $lpolkaMPQ.a $lutil.a $lst.a $lepd.a $lmtr.a $ltvpi.a -lmpfr -lgmp -lm -lstdc++ 
 
 ifeq ($(COVERAGE),1)
 CFLAGS += -fprofile-arcs -ftest-coverage
@@ -39,6 +41,6 @@ libubpf.a: abs_interp.o abs_cfg.o abs_constraints.o ubpf_vm.o ubpf_jit_x86_64.o 
 	ar rc $@ $^ 
 
 test: test.o libubpf.a 
-	cc   test.o libubpf.a ../../crab/build/run/ldd/lib/*.a -lCrab -lm -lstdc++ -lgmp -lapron -o test 
+
 clean:
 	rm -f test libubpf.a *.o
