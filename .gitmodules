@@ -1,0 +1,3 @@
+[submodule "crab"]
+	path = crab
+	url = https://github.com/seahorn/crab.git
