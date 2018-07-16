@@ -34,23 +34,23 @@ static void *readfile(const char *path, size_t maxlen, size_t *len);
 
 static void usage(const char *name)
 {
-    fprintf(stderr, "usage: %s [-h] DOMAIN BINARY\n", name);
-    fprintf(stderr, "\nVerifies the eBPF code in BINARY using DOMAIN and prints the result to stdout.\n");
-    fprintf(stderr,
+    fprintf(stdout, "usage: %s [-h] DOMAIN BINARY\n", name);
+    fprintf(stdout, "\nVerifies the eBPF code in BINARY using DOMAIN and prints the result to stdout.\n");
+    fprintf(stdout,
         "Available domains:\n"
-        "\tinterval: simple interval (z_interval_domain_t)\n"
-        "\tric: numerical congruence (z_ric_domain_t)\n"
-        "\tdbm: sparse dbm (z_dbm_domain_t)\n"
-        "\tsdbm:  split dbm\n"
-        "\tboxes: boxes (z_boxes_domain_t)\n"
-        "\tdisj_interval: disjoint intervals (z_dis_interval_domain_t)\n"
-        "\tbox_apron: boxes x apron (z_box_apron_domain_t)\n"
-        "\topt_oct_apron: optional octagon x apron (z_opt_oct_apron_domain_t)\n"
-        "\tpk_apron: (z_pk_apron_domain_t)\n"
-        "\tterm: term (z_term_domain_t)\n"
-        "\tterm_dbm: (z_term_domain_t)\n"
-        "\tterm_disj_interval: term x disjoint intervals (z_term_dis_int_t)\n"
-        "\tnum: term x disjoint interval x sparse dbm (z_num_domain_t)\n");
+        "\tinterval - simple interval (z_interval_domain_t)\n"
+        "\tric - numerical congruence (z_ric_domain_t)\n"
+        "\tdbm - sparse dbm (z_dbm_domain_t)\n"
+        "\tsdbm - split dbm\n"
+        "\tboxes - boxes (z_boxes_domain_t)\n"
+        "\tdisj_interval - disjoint intervals (z_dis_interval_domain_t)\n"
+        "\tbox_apron - boxes x apron (z_box_apron_domain_t)\n"
+        "\topt_oct_apron - optional octagon x apron (z_opt_oct_apron_domain_t)\n"
+        "\tpk_apron - (z_pk_apron_domain_t)\n"
+        "\tterm - term (z_term_domain_t)\n"
+        "\tterm_dbm - (z_term_domain_t)\n"
+        "\tterm_disj_interval - term x disjoint intervals (z_term_dis_int_t)\n"
+        "\tnum - term x disjoint interval x sparse dbm (z_num_domain_t)\n");
 }
 
 int main(int argc, char **argv)
