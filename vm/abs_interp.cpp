@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 #include <inttypes.h>
 #include <assert.h>
 
@@ -21,30 +22,19 @@
 #include <string>
 #include <functional>
 #include <algorithm>
-#include <sstream>
-
-#include <boost/optional.hpp>
 
 #include <crab/checkers/base_property.hpp>
 #include <crab/checkers/div_zero.hpp>
 #include <crab/checkers/assertion.hpp>
 #include <crab/checkers/checker.hpp>
 #include <crab/analysis/dataflow/assumptions.hpp>
-#include <crab/domains/wrapped_interval_domain.hpp>
-#include <crab/domains/array_sparse_graph.hpp>
-#include <crab/domains/dis_intervals.hpp>
-#include <crab/domains/wrapped_interval_domain.hpp>
-#include <crab/domains/sparse_dbm.hpp>
-#include <crab/domains/split_dbm.hpp>
 
-
-#include "ebpf.h"
-
-#include "crab_lang.hpp"
 #include "crab_dom.hpp"
 
+#include "ebpf.h"
+#include "ubpf_int.h"
+
 #include "abs_common.hpp"
-//#include "abs_constraints.hpp"
 #include "abs_interp.h"
 #include "abs_cfg.hpp"
 
@@ -55,18 +45,26 @@ using namespace crab::domains;
 using namespace crab::domain_impl;
 using cfg_ref_t = cfg_ref<cfg_t>;
 
-#ifdef DOM
-using dom_t = DOM;
-#else
-using dom_t = z_dis_interval_domain_t;
+extern template class dis_interval_domain<ikos::z_number, varname_t >;
+extern template class interval_domain<ikos::z_number,varname_t>;
+extern template class numerical_congruence_domain<z_interval_domain_t>;
+extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_interval_domain_t> >;
+extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_sdbm_domain_t> >;
+extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_dis_interval_domain_t> >;
+extern template class reduced_numerical_domain_product2<z_term_dis_int_t,z_sdbm_domain_t>;
+
+#ifndef DOM
+#define DOM z_dis_interval_domain_t
 #endif
 
-using analyzer_t = intra_fwd_analyzer<cfg_ref_t, dom_t>;
-using checker_t = intra_checker<analyzer_t>;
-using prop_checker_ptr = checker_t::prop_checker_ptr;
-
+template<typename dom_t>
 static int analyze(cfg_t& cfg)
 {
+
+    using analyzer_t = intra_fwd_analyzer<cfg_ref_t, dom_t>;
+    using checker_t = intra_checker<analyzer_t>;
+    using prop_checker_ptr = typename checker_t::prop_checker_ptr;
+
     liveness<cfg_ref_t> live(cfg);
     live.exec();
     analyzer_t analyzer(cfg, dom_t::top(), &live, 1, 2, 20);
@@ -101,15 +99,29 @@ static int analyze(cfg_t& cfg)
     //crab::outs () << "Abstract trace: " << wto << "\n";
 }
 
-extern "C" {
-    char* ubpf_error(const char *fmt, ...);
+static int analyze(std::string domain_name, cfg_t& cfg)
+{
+    if (domain_name == "interval")           return analyze<z_interval_domain_t>(cfg);
+    if (domain_name == "ric")                return analyze<z_ric_domain_t>(cfg);
+    if (domain_name == "dbm")                return analyze<z_dbm_domain_t>(cfg);
+    if (domain_name == "sdbm")               return analyze<z_sdbm_domain_t>(cfg);
+    if (domain_name == "boxes")              return analyze<z_boxes_domain_t>(cfg);
+    if (domain_name == "disj_interval")      return analyze<z_dis_interval_domain_t>(cfg);
+    if (domain_name == "box_apron")          return analyze<z_box_apron_domain_t>(cfg);
+    if (domain_name == "opt_oct_apron")      return analyze<z_opt_oct_apron_domain_t>(cfg);
+    if (domain_name == "pk_apron")           return analyze<z_pk_apron_domain_t>(cfg);
+    if (domain_name == "term")               return analyze<z_term_domain_t>(cfg);
+    if (domain_name == "term_dbm")           return analyze<z_term_dbm_t>(cfg);
+    if (domain_name == "term_disj_interval") return analyze<z_term_dis_int_t>(cfg);
+    if (domain_name == "num")                return analyze<z_num_domain_t>(cfg);
+    assert(false);
 }
 
-bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, char** errmsg)
+bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, const char* domain_name, char** errmsg)
 {
     cfg_t cfg(entry_label(), ARR);
     build_cfg(cfg, {insts, insts + num_insts});
-    int nwarn = analyze(cfg);
+    int nwarn = analyze(domain_name, cfg);
 
     if (nwarn > 0) {
         *errmsg = ubpf_error("Assertion violation");

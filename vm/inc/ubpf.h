@@ -20,25 +20,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-struct ubpf_vm;
-typedef uint64_t (*ubpf_jit_fn)(void *mem, size_t mem_len);
-
-struct ubpf_vm *ubpf_create(void);
-void ubpf_destroy(struct ubpf_vm *vm);
-
-/*
- * Register an external function
- *
- * The immediate field of a CALL instruction is an index into an array of
- * functions registered by the user. This API associates a function with
- * an index.
- *
- * 'name' should be a string with a lifetime longer than the VM.
- *
- * Returns 0 on success, -1 on error.
- */
-int ubpf_register(struct ubpf_vm *vm, unsigned int idx, const char *name, void *fn);
-
 /*
  * Load code into a VM
  *
@@ -51,7 +32,7 @@ int ubpf_register(struct ubpf_vm *vm, unsigned int idx, const char *name, void *
  * Returns 0 on success, -1 on error. In case of error a pointer to the error
  * message will be stored in 'errmsg' and should be freed by the caller.
  */
-int ubpf_load(struct ubpf_vm *vm, const void *code, uint32_t code_len, char **errmsg);
+int ubpf_load(const void *code, uint32_t code_len, char **errmsg);
 
 /*
  * Load code from an ELF file
@@ -69,10 +50,6 @@ int ubpf_load(struct ubpf_vm *vm, const void *code, uint32_t code_len, char **er
  * Returns 0 on success, -1 on error. In case of error a pointer to the error
  * message will be stored in 'errmsg' and should be freed by the caller.
  */
-int ubpf_load_elf(struct ubpf_vm *vm, const void *elf, size_t elf_len, char **errmsg);
-
-uint64_t ubpf_exec(const struct ubpf_vm *vm, void *mem, size_t mem_len);
-
-ubpf_jit_fn ubpf_compile(struct ubpf_vm *vm, char **errmsg);
+int ubpf_load_elf(const void *elf, size_t elf_len, void** raw_text, char **errmsg);
 
 #endif

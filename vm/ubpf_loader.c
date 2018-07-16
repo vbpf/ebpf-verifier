@@ -51,11 +51,10 @@ bounds_check(struct bounds *bounds, uint64_t offset, uint64_t size)
 }
 
 int
-ubpf_load_elf(struct ubpf_vm *vm, const void *elf, size_t elf_size, char **errmsg)
+ubpf_load_elf(const void *elf, size_t elf_size, void** text_copy, char **errmsg)
 {
+    *text_copy = NULL;
     struct bounds b = { .base=elf, .size=elf_size };
-    void *text_copy = NULL;
-    int i;
 
     const Elf64_Ehdr *ehdr = bounds_check(&b, 0, sizeof(*ehdr));
     if (!ehdr) {
@@ -106,7 +105,7 @@ ubpf_load_elf(struct ubpf_vm *vm, const void *elf, size_t elf_size, char **errms
 
     /* Parse section headers into an array */
     struct section sections[MAX_SECTIONS];
-    for (i = 0; i < ehdr->e_shnum; i++) {
+    for (int i = 0; i < ehdr->e_shnum; i++) {
         const Elf64_Shdr *shdr = bounds_check(&b, ehdr->e_shoff + i*ehdr->e_shentsize, sizeof(*shdr));
         if (!shdr) {
             *errmsg = ubpf_error("bad section header offset or size");
@@ -125,7 +124,7 @@ ubpf_load_elf(struct ubpf_vm *vm, const void *elf, size_t elf_size, char **errms
     }
     /* Find first text section */
     int text_shndx = 0;
-    for (i = 0; i < ehdr->e_shnum; i++) {
+    for (int i = 0; i < ehdr->e_shnum; i++) {
         const Elf64_Shdr *shdr = sections[i].shdr;
         //printf("%d, %lu, %lx\n", shdr->sh_type, shdr->sh_flags, sections[i].size);
         if (sections[i].size > 0 && shdr->sh_type == SHT_PROGBITS &&
@@ -143,15 +142,15 @@ ubpf_load_elf(struct ubpf_vm *vm, const void *elf, size_t elf_size, char **errms
     struct section *text = &sections[text_shndx];
 
     /* May need to modify text for relocations, so make a copy */
-    text_copy = malloc(text->size);
-    if (!text_copy) {
+    *text_copy = malloc(text->size);
+    if (!*text_copy) {
         *errmsg = ubpf_error("failed to allocate memory");
         goto error;
     }
-    memcpy(text_copy, text->data, text->size);
+    memcpy(*text_copy, text->data, text->size);
 
     /* Process each relocation section */
-    for (i = 0; i < ehdr->e_shnum; i++) {
+    for (int i = 0; i < ehdr->e_shnum; i++) {
         struct section *rel = &sections[i];
         if (rel->shdr->sh_type != SHT_REL) {
             continue;
@@ -176,10 +175,9 @@ ubpf_load_elf(struct ubpf_vm *vm, const void *elf, size_t elf_size, char **errms
         }
 
         struct section *strtab = &sections[symtab->shdr->sh_link];
-        const char *strings = strtab->data;
+        //const char *strings = strtab->data;
 
-        int j;
-        for (j = 0; j < rel->size/sizeof(Elf64_Rel); j++) {
+        for (int j = 0; j < rel->size/sizeof(Elf64_Rel); j++) {
             const Elf64_Rel *r = &rs[j];
 
             if (ELF64_R_TYPE(r->r_info) != 1 /*10*/) {
@@ -200,28 +198,26 @@ ubpf_load_elf(struct ubpf_vm *vm, const void *elf, size_t elf_size, char **errms
                 goto error;
             }
 
-            const char *sym_name = strings + sym->st_name;
+            //const char *sym_name = strings + sym->st_name;
 
             if (r->r_offset + 8 > text->size) {
                 *errmsg = ubpf_error("bad relocation offset");
                 goto error;
             }
-
-            unsigned int imm = ubpf_lookup_registered_function(vm, sym_name);
+            /* TODO:
+            unsigned int imm = ubpf_lookup_registered_function(sym_name);
             if (imm == -1) {
                 *errmsg = ubpf_error("function '%s' not found", sym_name);
                 //goto error;
             }
 
-            *(uint32_t *)(text_copy + r->r_offset + 4) = imm;
+            *(uint32_t *)((*text_copy) + r->r_offset + 4) = imm;
+            */
         }
     }
 
-    int rv = ubpf_load(vm, text_copy, sections[text_shndx].size, errmsg);
-    free(text_copy);
-    return rv;
-
+    return sections[text_shndx].size;
 error:
-    free(text_copy);
+    free(*text_copy);
     return -1;
 }

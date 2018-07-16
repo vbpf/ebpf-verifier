@@ -27,51 +27,44 @@
 #include <elf.h>
 #include <math.h>
 #include "ubpf.h"
+#include "ubpf_int.h"
+#include "abs_interp.h"
 
-void ubpf_set_register_offset(int x);
 static void *readfile(const char *path, size_t maxlen, size_t *len);
-static void register_functions(struct ubpf_vm *vm);
 
 static void usage(const char *name)
 {
-    fprintf(stderr, "usage: %s [-h] [-j|--jit] [-m|--mem PATH] BINARY\n", name);
-    fprintf(stderr, "\nExecutes the eBPF code in BINARY and prints the result to stdout.\n");
-    fprintf(stderr, "If --mem is given then the specified file will be read and a pointer\nto its data passed in r1.\n");
-    fprintf(stderr, "If --jit is given then the JIT compiler will be used.\n");
-    fprintf(stderr, "\nOther options:\n");
-    fprintf(stderr, "  -r, --register-offset NUM: Change the mapping from eBPF to x86 registers\n");
+    fprintf(stderr, "usage: %s [-h] DOMAIN BINARY\n", name);
+    fprintf(stderr, "\nVerifies the eBPF code in BINARY using DOMAIN and prints the result to stdout.\n");
+    fprintf(stderr,
+        "Available domains:\n"
+        "\tinterval: simple interval (z_interval_domain_t)\n"
+        "\tric: numerical congruence (z_ric_domain_t)\n"
+        "\tdbm: sparse dbm (z_dbm_domain_t)\n"
+        "\tsdbm:  split dbm\n"
+        "\tboxes: boxes (z_boxes_domain_t)\n"
+        "\tdisj_interval: disjoint intervals (z_dis_interval_domain_t)\n"
+        "\tbox_apron: boxes x apron (z_box_apron_domain_t)\n"
+        "\topt_oct_apron: optional octagon x apron (z_opt_oct_apron_domain_t)\n"
+        "\tpk_apron: (z_pk_apron_domain_t)\n"
+        "\tterm: term (z_term_domain_t)\n"
+        "\tterm_dbm: (z_term_domain_t)\n"
+        "\tterm_disj_interval: term x disjoint intervals (z_term_dis_int_t)\n"
+        "\tnum: term x disjoint interval x sparse dbm (z_num_domain_t)\n");
 }
 
 int main(int argc, char **argv)
 {
     struct option longopts[] = {
         { .name = "help", .val = 'h', },
-        { .name = "mem", .val = 'm', .has_arg=1 },
-        { .name = "jit", .val = 'j' },
-        { .name = "execute", .val = 'e' },
-        { .name = "register-offset", .val = 'r', .has_arg=1 },
         { }
     };
 
     const char *mem_filename = NULL;
-    bool jit = false;
-    bool execute = false;
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hm:jer:", longopts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "h::", longopts, NULL)) != -1) {
         switch (opt) {
-        case 'm':
-            mem_filename = optarg;
-            break;
-        case 'j':
-            jit = true;
-            break;
-        case 'e':
-            execute = true;
-            break;
-        case 'r':
-            ubpf_set_register_offset(atoi(optarg));
-            break;
         case 'h':
             usage(argv[0]);
             return 0;
@@ -81,11 +74,11 @@ int main(int argc, char **argv)
         }
     }
 
-    if (argc != optind + 1) {
+    if (argc != optind + 2) {
         usage(argv[0]);
         return 1;
     }
-
+    const char *domain_name = argv[optind++];
     const char *code_filename = argv[optind];
     size_t code_len;
     void *code = readfile(code_filename, 1024*1024, &code_len);
@@ -102,14 +95,6 @@ int main(int argc, char **argv)
         }
     }
 
-    struct ubpf_vm *vm = ubpf_create();
-    if (!vm) {
-        fprintf(stderr, "Failed to create VM\n");
-        return 1;
-    }
-
-    register_functions(vm);
-
     /* 
      * The ELF magic corresponds to an RSH instruction with an offset,
      * which is invalid.
@@ -117,41 +102,34 @@ int main(int argc, char **argv)
     bool elf = code_len >= SELFMAG && !memcmp(code, ELFMAG, SELFMAG);
 
     char *errmsg;
-    int rv;
     if (elf) {
-	rv = ubpf_load_elf(vm, code, code_len, &errmsg);
-    } else {
-	rv = ubpf_load(vm, code, code_len, &errmsg);
-    }
-
-    free(code);
-
-    if (rv < 0) {
-        fprintf(stderr, "Failed to load code: %s\n", errmsg);
-        free(errmsg);
-        ubpf_destroy(vm);
-        return 1;
-    }
-
-    uint64_t ret;
-
-    if (jit) {
-        ubpf_jit_fn fn = ubpf_compile(vm, &errmsg);
-        if (fn == NULL) {
-            fprintf(stderr, "Failed to compile: %s\n", errmsg);
+        void* out_code;
+	    int len = ubpf_load_elf(code, code_len, &out_code, &errmsg);
+        free(code);
+        if (len <= 0) {
+            fprintf(stderr, "Failed to load code: %s\n", errmsg);
             free(errmsg);
             return 1;
         }
-        ret = fn(mem, mem_len);
-    } else if (execute) {
-        ret = ubpf_exec(vm, mem, mem_len);
+        code = out_code;
+        code_len = len;
     }
-
-    printf("0x%"PRIx64"\n", ret);
-
-    ubpf_destroy(vm);
-
-    return 0;
+    
+    int rv = 1;
+    uint32_t num_insts = code_len / 8;
+    if (code_len % 8 != 0) {
+        fprintf(stderr, "code_len must be a multiple of 8");
+    } else if (!validate_simple(code, num_insts, &errmsg)) {
+        fprintf(stderr, "Failed to load code: %s\n", errmsg);
+        free(errmsg);
+    } else if (!abs_validate(code, num_insts, domain_name, &errmsg)) {
+        fprintf(stderr, "Failed to load code: %s\n", errmsg);
+        free(errmsg);
+    } else {
+        rv = 0;
+    }
+    free(code);
+    return rv;
 }
 
 static void *readfile(const char *path, size_t maxlen, size_t *len)
@@ -195,54 +173,4 @@ static void *readfile(const char *path, size_t maxlen, size_t *len)
         *len = offset;
     }
     return data;
-}
-
-static uint64_t
-gather_bytes(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint8_t e)
-{
-    return ((uint64_t)a << 32) |
-        ((uint32_t)b << 24) |
-        ((uint32_t)c << 16) |
-        ((uint16_t)d << 8) |
-        e;
-}
-
-static void
-trash_registers(void)
-{
-    /* Overwrite all caller-save registers */
-    asm(
-        "mov $0xf0, %rax;"
-        "mov $0xf1, %rcx;"
-        "mov $0xf2, %rdx;"
-        "mov $0xf3, %rsi;"
-        "mov $0xf4, %rdi;"
-        "mov $0xf5, %r8;"
-        "mov $0xf6, %r9;"
-        "mov $0xf7, %r10;"
-        "mov $0xf8, %r11;"
-    );
-}
-
-static uint32_t
-sqrti(uint32_t x)
-{
-    return sqrt(x);
-}
-
-static uint32_t
-id(uint32_t x)
-{
-    return x;
-}
-
-static void
-register_functions(struct ubpf_vm *vm)
-{
-    ubpf_register(vm, 0, "gather_bytes", gather_bytes);
-    ubpf_register(vm, 1, "memfrob", memfrob);
-    ubpf_register(vm, 2, "trash_registers", trash_registers);
-    ubpf_register(vm, 3, "sqrti", sqrti);
-    ubpf_register(vm, 4, "strcmp_ext", strcmp);
-    ubpf_register(vm, 0x33, "unknown", id);
 }
