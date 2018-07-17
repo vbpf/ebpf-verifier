@@ -34,6 +34,7 @@ CXXFLAGS := -Wall -Werror -Wfatal-errors -Iinc \
     -I../crab/build/run/ldd/include/ldd/ \
     -I../crab/build/apron-prefix/src/apron/optoctagons/ \
     -I../crab/build/run/apron/include/ \
+    -I../crab/install/include/ \
     -L../crab/build/run/ldd/lib/ \
     -O0 -g3 -std=c++17 -Wno-unused-local-typedefs 
 
