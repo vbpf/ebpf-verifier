@@ -47,6 +47,14 @@ CXXFLAGS := -Wall -Werror -Wfatal-errors -Iinc \
 
 all: libubpf.a test
 
+crab_install:
+    mkdir -p $(CRABDIR)/build
+    cd $(CRABDIR)/build
+    cmake -DCMAKE_INSTALL_PREFIX=../install/ -DUSE_LDD=ON -DUSE_APRON=ON ../
+    cmake --build . --target ldd && cmake ../
+    cmake --build . --target apron && cmake ../
+    cmake --build . --target install
+
 libubpf.a: ubpf_loader.o ubpf_validator.o abs_interp.o abs_cfg.o abs_constraints.o crab_domains.o
 	ar rc $@ $^ 
 

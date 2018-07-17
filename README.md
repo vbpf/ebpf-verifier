@@ -1,13 +1,10 @@
-# uBPF
+# uBPF-verifier
 
-Userspace eBPF VM
-
-[![Build Status](https://travis-ci.org/iovisor/ubpf.svg?branch=master)](https://travis-ci.org/iovisor/ubpf)
-[![Coverage Status](https://coveralls.io/repos/iovisor/ubpf/badge.svg?branch=master&service=github)](https://coveralls.io/github/iovisor/ubpf?branch=master)
+A new eBPF verifier
 
 ## About
 
-This project aims to create an Apache-licensed library for executing eBPF programs. The primary implementation of eBPF lives in the Linux kernel, but due to its GPL license it can't be used in many projects.
+This project is a fork of the uBPF project, but focuses only on the verifier.
 
 [Linux documentation for the eBPF instruction set](https://www.kernel.org/doc/Documentation/networking/filter.txt)
 
@@ -18,8 +15,29 @@ and JIT compiler for x86-64.
 
 ## Building
 
-Run `make -C vm` to build the VM. This produces a static library `libubpf.a`
-and a simple executable used by the testsuite.
+From vanilla Ubuntu:
+```bash
+sudo apt install build-essential 
+sudo apt install git cmake
+sudo apt install libgmp libmpfr-dev 
+sudo apt install libboost1.65-all-dev 
+
+mkdir ~/workspace
+cd workspace/
+git clone --recurse-submodules https://github.com/elazarg/ubpf.git
+cd ubpf/
+git checkout --recurse-submodules add-instructions
+git submodule update
+cd vm
+make crab_install
+```
+
+Then from the `vm` folder
+```bash
+make
+source completion.sh
+./test -h
+```
 
 ## Compiling C to eBPF
 
