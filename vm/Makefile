@@ -31,9 +31,9 @@ endif
 
 CXXFLAGS := -Wall -Werror -Wfatal-errors -Iinc \
     -DBSD -DHAVE_IEEE_754 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 \
-    -I../../crab/build/run/ldd/include/ldd/ \
-    -I../../crab/build/run/apron/include/ \
-    -L../../crab/build/run/ldd/lib/ \
+    -I../crab/build/run/ldd/include/ldd/ \
+    -I../crab/build/run/apron/include/ \
+    -L../crab/build/run/ldd/lib/ \
     -O0 -g3 -std=c++17 -Wno-unused-local-typedefs 
 
 all: libubpf.a test
