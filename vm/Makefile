@@ -14,51 +14,65 @@
 
 CFLAGS := -Wall -Werror -Iinc -O2 -g3
 
+PROJECTDIR := $(CURDIR)
+
 CRABDIR := ../crab
-LDD := $(CRABDIR)/build/run/ldd/lib
-APRON := $(CRABDIR)/build/run/apron/lib
+INSTALL := $(CRABDIR)/install
+LDD := $(CRABDIR)/build/run/ldd
+APRON := $(CRABDIR)/build/run/apron
+LINUX := ../linux
+
+# Lookup path for libCrab.so
+LDFLAGS := -Wl,-rpath=$(INSTALL)/lib/
 
 LDLIBS := \
-    $(CRABDIR)/install/lib/libCrab.so \
-    $(LDD)/libldd.a \
-    $(LDD)/libtvpi.a \
-    $(LDD)/libcudd.a \
-    $(LDD)/libst.a \
-    $(LDD)/libutil.a \
-    $(LDD)/libmtr.a \
-    $(LDD)/libepd.a \
-    $(APRON)/libpolkaMPQ.a \
-    $(APRON)/liboctD.a \
-    $(APRON)/liboptoct.a \
-    $(APRON)/liblinkedlistapi.a \
-    $(APRON)/libapron.a \
-    $(APRON)/libboxMPQ.a \
-    $(APRON)/libitvMPQ.a \
+    $(INSTALL)/lib/libCrab.so \
+    $(LDD)/lib/libldd.a \
+    $(LDD)/lib/libtvpi.a \
+    $(LDD)/lib/libcudd.a \
+    $(LDD)/lib/libst.a \
+    $(LDD)/lib/libutil.a \
+    $(LDD)/lib/libmtr.a \
+    $(LDD)/lib/libepd.a \
+    $(APRON)/lib/libpolkaMPQ.a \
+    $(APRON)/lib/liboctD.a \
+    $(APRON)/lib/liboptoct.a \
+    $(APRON)/lib/liblinkedlistapi.a \
+    $(APRON)/lib/libapron.a \
+    $(APRON)/lib/libboxMPQ.a \
+    $(APRON)/lib/libitvMPQ.a \
     -lmpfr -lgmpxx -lgmp -lm -lstdc++ 
 
 CXXFLAGS := -Wall -Werror -Wfatal-errors -Iinc \
     -DBSD -DHAVE_IEEE_754 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 \
-    -I$(CRABDIR)/install/include/ \
-    -I$(CRABDIR)/build/run/ldd/include/ldd/ \
-    -I$(CRABDIR)/build/run/apron/include/ \
+    -I$(INSTALL)/include/ \
+    -I$(LDD)/include/ldd/ \
+    -I$(APRON)/include/ \
     -I$(CRABDIR)/build/apron-prefix/src/apron/optoctagons/ \
-    -L$(CRABDIR)/build/run/ldd/lib/ \
+    -L$(LDD)/lib/ \
     -O0 -g3 -std=c++17 -Wno-unused-local-typedefs 
 
 all: libubpf.a test
 
-crab_install:
-    mkdir -p $(CRABDIR)/build
-    cd $(CRABDIR)/build
-    cmake -DCMAKE_INSTALL_PREFIX=../install/ -DUSE_LDD=ON -DUSE_APRON=ON ../
-    cmake --build . --target ldd && cmake ../
-    cmake --build . --target apron && cmake ../
-    cmake --build . --target install
-
 libubpf.a: ubpf_loader.o ubpf_validator.o abs_interp.o abs_cfg.o abs_constraints.o crab_domains.o
 	ar rc $@ $^ 
 
-test: test.o libubpf.a 
+test: test.o libubpf.a
 
 clean:
 	rm -f test libubpf.a *.o
+
+crab_install:
+	mkdir -p $(CRABDIR)/build
+	cd $(CRABDIR)/build \
+	    && cmake -DCMAKE_INSTALL_PREFIX=../install/ -DUSE_LDD=ON -DUSE_APRON=ON ../ \
+	    && cmake --build . --target ldd && cmake ../ \
+	    && cmake --build . --target apron && cmake ../ \
+	    && cmake --build . --target install
+
+linux_samples:
+	git clone --depth 1 https://github.com/torvalds/linux.git $(LINUX)
+	cd $(LINUX); git apply $(PROJECTDIR)/linux.patch
+	make -C $(LINUX) headers_install
+	make -C $(LINUX) oldconfig < /dev/null
+	make -C $(LINUX) samples/bpf/

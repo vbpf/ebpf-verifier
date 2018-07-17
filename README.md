@@ -17,26 +17,31 @@ and JIT compiler for x86-64.
 
 From vanilla Ubuntu:
 ```bash
-sudo apt install build-essential 
-sudo apt install git cmake
-sudo apt install libgmp libmpfr-dev 
-sudo apt install libboost1.65-all-dev 
+sudo apt install build-essential git cmake libboost1.65-all-dev libgmp-dev libmpfr-dev python-pip
+pip install parcon nose pyelftools
 
-mkdir ~/workspace
-cd workspace/
 git clone --recurse-submodules https://github.com/elazarg/ubpf.git
-cd ubpf/
-git checkout --recurse-submodules add-instructions
-git submodule update
-cd vm
+cd ubpf/vm
 make crab_install
 ```
 
 Then from the `vm` folder
 ```bash
 make
-source completion.sh
 ./test -h
+```
+
+To play with Linux samples:
+```bash
+sudo apt install bison flex libssl-dev clang llvm libelf-dev
+make linux_samples
+sudo updatedb && source completion.sh
+```
+
+and then, for example
+
+```bash
+./test num ../linux/samples/bpf/xdp2skb_meta_kern.o
 ```
 
 ## Compiling C to eBPF
