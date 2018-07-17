@@ -14,28 +14,35 @@
 
 CFLAGS := -Wall -Werror -Iinc -O2 -g3
 
-l := /usr/local/lib/lib
-LDLIBS := $lCrab.so $lldd.a $ltvpi.a $lcudd.a $lst.a $lutil.a $lmtr.a $lepd.a $lpolkaMPQ.a \
-    $loctD.a $loptoct.a $llinkedlistapi.a $lapron.a $lboxMPQ.a $litvMPQ.a \
+CRABDIR := ../crab
+LDD := $(CRABDIR)/build/run/ldd/lib
+APRON := $(CRABDIR)/build/run/apron/lib
+
+LDLIBS := \
+    $(CRABDIR)/install/lib/libCrab.so \
+    $(LDD)/libldd.a \
+    $(LDD)/libtvpi.a \
+    $(LDD)/libcudd.a \
+    $(LDD)/libst.a \
+    $(LDD)/libutil.a \
+    $(LDD)/libmtr.a \
+    $(LDD)/libepd.a \
+    $(APRON)/libpolkaMPQ.a \
+    $(APRON)/liboctD.a \
+    $(APRON)/liboptoct.a \
+    $(APRON)/liblinkedlistapi.a \
+    $(APRON)/libapron.a \
+    $(APRON)/libboxMPQ.a \
+    $(APRON)/libitvMPQ.a \
     -lmpfr -lgmpxx -lgmp -lm -lstdc++ 
-
-ifeq ($(COVERAGE),1)
-CFLAGS += -fprofile-arcs -ftest-coverage
-LDFLAGS += -fprofile-arcs
-endif
-
-ifeq ($(ASAN),1)
-CFLAGS += -fsanitize=address
-LDFLAGS += -fsanitize=address
-endif
 
 CXXFLAGS := -Wall -Werror -Wfatal-errors -Iinc \
     -DBSD -DHAVE_IEEE_754 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 \
-    -I../crab/build/run/ldd/include/ldd/ \
-    -I../crab/build/apron-prefix/src/apron/optoctagons/ \
-    -I../crab/build/run/apron/include/ \
-    -I../crab/install/include/ \
-    -L../crab/build/run/ldd/lib/ \
+    -I$(CRABDIR)/install/include/ \
+    -I$(CRABDIR)/build/run/ldd/include/ldd/ \
+    -I$(CRABDIR)/build/run/apron/include/ \
+    -I$(CRABDIR)/build/apron-prefix/src/apron/optoctagons/ \
+    -L$(CRABDIR)/build/run/ldd/lib/ \
     -O0 -g3 -std=c++17 -Wno-unused-local-typedefs 
 
 all: libubpf.a test
