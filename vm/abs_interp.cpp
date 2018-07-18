@@ -127,14 +127,17 @@ static checks_db analyze(cfg_t& cfg, printer_t& printer)
 }
 
 // DOMAINS
-
-extern template class dis_interval_domain<ikos::z_number, varname_t >;
+namespace ikos {
 extern template class interval_domain<ikos::z_number,varname_t>;
+}
+namespace crab::domains {
+extern template class dis_interval_domain<ikos::z_number, varname_t >;
 extern template class numerical_congruence_domain<z_interval_domain_t>;
 extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_interval_domain_t> >;
 extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_sdbm_domain_t> >;
 extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_dis_interval_domain_t> >;
 extern template class reduced_numerical_domain_product2<z_term_dis_int_t,z_sdbm_domain_t>;
+}
 
 struct domain_desc {
     std::function<checks_db(cfg_t&, printer_t&)> analyze;
