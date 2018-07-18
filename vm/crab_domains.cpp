@@ -4,13 +4,18 @@ using namespace crab::domain_impl;
 using namespace crab::cfg_impl;
 using namespace crab::domains;
 
-template class interval_domain<ikos::z_number,varname_t>;
+namespace ikos {
+template class interval_domain<z_number,varname_t>;
+}
+
+namespace crab::domains {
 template class numerical_congruence_domain<z_interval_domain_t>;
 template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_interval_domain_t> >;
 template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_sdbm_domain_t> >;
 template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_dis_interval_domain_t> >;
 template class reduced_numerical_domain_product2<z_term_dis_int_t,z_sdbm_domain_t>;
 template class dis_interval_domain<ikos::z_number, varname_t >;
+}
 
 /*
 template class boxes_domain_<ikos::z_number,varname_t, -1, 3000UL>;

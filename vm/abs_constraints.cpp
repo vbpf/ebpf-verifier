@@ -22,7 +22,6 @@ struct desc {
     int data;
     int end;
     int meta; // data to meta is like end to data. i.e. meta <= data <= end
-    constexpr desc(int _size, int _data, int _end, int _meta) : size(_size), data(_data), end(_end), meta(_meta) { }
 };
 
 static constexpr desc sk_buff = { 24*4, 15*4, 16*4, 23*4};
