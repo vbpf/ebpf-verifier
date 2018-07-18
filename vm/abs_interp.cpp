@@ -21,7 +21,6 @@
 #include <vector>
 #include <string>
 #include <functional>
-#include <algorithm>
 #include <map>
 
 #include <boost/signals2.hpp>
@@ -41,57 +40,58 @@
 #include "abs_interp.h"
 #include "abs_cfg.hpp"
 
-using printer_t = boost::signals2::signal<void(const std::string&)>;
+using std::string;
+using std::vector;
+using std::map;
+
+using printer_t = boost::signals2::signal<void(const string&)>;
 
 using namespace crab::cfg;
 using namespace crab::checker;
 using namespace crab::analyzer;
 using namespace crab::domains;
 using namespace crab::domain_impl;
-using cfg_ref_t = cfg_ref<cfg_t>;
 
-extern template class dis_interval_domain<ikos::z_number, varname_t >;
-extern template class interval_domain<ikos::z_number,varname_t>;
-extern template class numerical_congruence_domain<z_interval_domain_t>;
-extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_interval_domain_t> >;
-extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_sdbm_domain_t> >;
-extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_dis_interval_domain_t> >;
-extern template class reduced_numerical_domain_product2<z_term_dis_int_t,z_sdbm_domain_t>;
+static checks_db analyze(string domain_name, cfg_t& cfg, printer_t& printer);
 
-// TODO: return vector of labels
-auto sorted_blocks(cfg_t& cfg)
+bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, const char* domain_name, char** errmsg)
 {
-    std::vector<std::reference_wrapper<basic_block_t>> blocks(cfg.begin(), cfg.end());
-    std::sort(blocks.begin(), blocks.end(), [](const basic_block_t& a, const basic_block_t& b){
-        if (first_num(a.label()) < first_num(b.label())) return true;
-        if (first_num(a.label()) > first_num(b.label())) return false;
-        return a.label() < b.label();
+    cfg_t cfg(entry_label(), ARR);
+    build_cfg(cfg, {insts, insts + num_insts});
+
+    printer_t printer;
+    printer.connect([&cfg](const string label){
+        cfg.get_node(label).write(crab::outs());
     });
-    return blocks;
-}
 
-template<typename dom_t>
-static checks_db analyze(cfg_t& cfg, printer_t& printer)
-{
-    liveness<cfg_ref_t> live(cfg);
-    live.exec();
-
-    using analyzer_t = intra_fwd_analyzer<cfg_ref_t, dom_t>;
-    analyzer_t analyzer(cfg, dom_t::top(), &live);
-    analyzer.run();
-
-    {
-        std::map<std::string, dom_t> pre;
-        for (const auto& block : cfg)
-            pre.emplace(block.label(), analyzer[block.label()]);
-
-        printer.connect([pre](const std::string& label) {
-            auto inv = pre.at(label);
-            crab::outs() << "\n" << inv << "\n";
-        });
+    checks_db checks = analyze(domain_name, cfg, printer);
+    int nwarn = checks.get_total_warning() + checks.get_total_error();
+    
+    for (string label : sorted_labels(cfg)) {
+        printer(label);
     }
 
-    const int verbose = 2;
+    if (nwarn > 0) {
+        checks.write(crab::outs());
+        *errmsg = ubpf_error("Assertion violation");
+        return false;
+    }
+    return true;
+}
+
+template<typename analyzer_t>
+auto extract_map(analyzer_t& analyzer)
+{
+    map<string, typename analyzer_t::abs_dom_t> res;
+    for (const auto& block : analyzer.get_cfg())
+        res.emplace(block.label(), analyzer[block.label()]);
+    return res;
+}
+
+template<typename analyzer_t>
+static checks_db check(analyzer_t& analyzer)
+{
+    constexpr int verbose = 2;
     using checker_t = intra_checker<analyzer_t>;
     using prop_checker_ptr = typename checker_t::prop_checker_ptr;
     checker_t checker(analyzer, {
@@ -107,26 +107,55 @@ static checks_db dont_analyze(cfg_t& cfg, printer_t& printer)
     return {};
 }
 
+template<typename dom_t>
+static checks_db analyze(cfg_t& cfg, printer_t& printer)
+{
+    using analyzer_t = intra_fwd_analyzer<cfg_ref<cfg_t>, dom_t>;
+    
+    liveness<typename analyzer_t::cfg_t> live(cfg);
+    live.exec();
+
+    analyzer_t analyzer(cfg, dom_t::top(), &live);
+    analyzer.run();
+
+    printer.connect([pre=extract_map(analyzer)](const string& label) {
+        dom_t inv = pre.at(label);
+        crab::outs() << "\n" << inv << "\n";
+    });
+
+    return check(analyzer);
+}
+
+// DOMAINS
+
+extern template class dis_interval_domain<ikos::z_number, varname_t >;
+extern template class interval_domain<ikos::z_number,varname_t>;
+extern template class numerical_congruence_domain<z_interval_domain_t>;
+extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_interval_domain_t> >;
+extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_sdbm_domain_t> >;
+extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_dis_interval_domain_t> >;
+extern template class reduced_numerical_domain_product2<z_term_dis_int_t,z_sdbm_domain_t>;
+
 struct domain_desc {
-    std::string description;
     std::function<checks_db(cfg_t&, printer_t&)> analyze;
+    string description;
 };
 
-static const std::map<std::string, domain_desc> domains{
-    { "interval"          , { "simple interval (z_interval_domain_t)", analyze<z_interval_domain_t> } },
-    { "ric"               , { "numerical congruence (z_ric_domain_t)", analyze<z_ric_domain_t> } },
-    { "dbm"               , { "sparse dbm (z_dbm_domain_t)", analyze<z_dbm_domain_t> } },
-    { "sdbm"              , { "split dbm (z_sdbm_domain_t)", analyze<z_sdbm_domain_t> } },
-    { "boxes"             , { "boxes (z_boxes_domain_t)", analyze<z_boxes_domain_t> } },
-    { "disj_interval"     , { "disjoint intervals (z_dis_interval_domain_t)", analyze<z_dis_interval_domain_t> } },
-    { "box_apron"         , { "boxes x apron (z_box_apron_domain_t)", analyze<z_box_apron_domain_t> } },
-    { "opt_oct_apron"     , { "optional octagon x apron (z_opt_oct_apron_domain_t)", analyze<z_opt_oct_apron_domain_t> } },
-    { "pk_apron"          , { "(z_pk_apron_domain_t)", analyze<z_pk_apron_domain_t> } },
-    { "term"              , { "(z_term_domain_t)", analyze<z_term_domain_t> } },
-    { "term_dbm"          , { "(z_term_dbm_t)", analyze<z_term_dbm_t> } },
-    { "term_disj_interval", { "term x disjoint intervals (z_term_dis_int_t)", analyze<z_term_dis_int_t> } },
-    { "num"               , { "term x disjoint interval x sparse dbm (z_num_domain_t)", analyze<z_num_domain_t> } },
-    { "none"              , { "build CFG only, don't perform analysis", dont_analyze } },
+const map<string, domain_desc> domains{
+    { "interval"          , { analyze<z_interval_domain_t>, "simple interval (z_interval_domain_t)" } },
+    { "ric"               , { analyze<z_ric_domain_t>, "numerical congruence (z_ric_domain_t)" } },
+    { "dbm"               , { analyze<z_dbm_domain_t>, "sparse dbm (z_dbm_domain_t)" } },
+    { "sdbm"              , { analyze<z_sdbm_domain_t>, "split dbm (z_sdbm_domain_t)" } },
+    { "boxes"             , { analyze<z_boxes_domain_t>, "boxes (z_boxes_domain_t)" } },
+    { "disj_interval"     , { analyze<z_dis_interval_domain_t>, "disjoint intervals (z_dis_interval_domain_t)" } },
+    { "box_apron"         , { analyze<z_box_apron_domain_t>, "boxes x apron (z_box_apron_domain_t)" } },
+    { "opt_oct_apron"     , { analyze<z_opt_oct_apron_domain_t>, "optional octagon x apron (z_opt_oct_apron_domain_t)" } },
+    { "pk_apron"          , { analyze<z_pk_apron_domain_t>, "(z_pk_apron_domain_t)" } },
+    { "term"              , { analyze<z_term_domain_t>, "(z_term_domain_t)" } },
+    { "term_dbm"          , { analyze<z_term_dbm_t>, "(z_term_dbm_t)" } },
+    { "term_disj_interval", { analyze<z_term_dis_int_t>, "term x disjoint intervals (z_term_dis_int_t)" } },
+    { "num"               , { analyze<z_num_domain_t>, "term x disjoint interval x sparse dbm (z_num_domain_t)" } },
+    { "none"              , { dont_analyze, "build CFG only, don't perform analysis" } },
 };
 
 void print_domains()
@@ -140,27 +169,6 @@ bool is_valid_domain(const char* domain_name)
     return domains.count(domain_name) > 0;
 }
 
-bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, const char* domain_name, char** errmsg)
-{
-    cfg_t cfg(entry_label(), ARR);
-    build_cfg(cfg, {insts, insts + num_insts});
-
-    printer_t printer;
-    printer.connect([&cfg](const std::string label){
-        cfg.get_node(label).write(crab::outs());
-    });
-
-    checks_db checks = domains.at(domain_name).analyze(cfg, printer);
-    int nwarn = checks.get_total_warning() + checks.get_total_error();
-    
-    for (basic_block_t& block : sorted_blocks(cfg)) {
-        printer(block.label());
-    }
-
-    if (nwarn > 0) {
-        checks.write(crab::outs());
-        *errmsg = ubpf_error("Assertion violation");
-        return false;
-    }
-    return true;
+static checks_db analyze(string domain_name, cfg_t& cfg, printer_t& printer) {
+    return domains.at(domain_name).analyze(cfg, printer);
 }

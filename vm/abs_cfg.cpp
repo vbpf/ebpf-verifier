@@ -19,6 +19,7 @@
 
 #include <vector>
 #include <string>
+#include <algorithm>
 
 #include <boost/optional.hpp>
 
@@ -28,6 +29,9 @@
 
 using boost::optional;
 using std::to_string;
+using std::string;
+using std::vector;
+
 
 using pc_t = uint16_t;
 
@@ -111,3 +115,16 @@ void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts)
     //cfg.simplify();
 }
 
+vector<string> sorted_labels(cfg_t& cfg)
+{
+    vector<string> labels;
+    for (const auto& block : cfg)
+        labels.push_back(block.label());
+
+    std::sort(labels.begin(), labels.end(), [](string a, string b){
+        if (first_num(a) < first_num(b)) return true;
+        if (first_num(a) > first_num(b)) return false;
+        return a < b;
+    });
+    return labels;
+}
