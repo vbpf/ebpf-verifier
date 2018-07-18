@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <elf.h>
 #include <math.h>
+#include <sysexits.h>
 #include "ubpf.h"
 #include "ubpf_int.h"
 #include "abs_interp.h"
@@ -36,21 +37,8 @@ static void usage(const char *name)
 {
     fprintf(stdout, "usage: %s [-h] DOMAIN BINARY\n", name);
     fprintf(stdout, "\nVerifies the eBPF code in BINARY using DOMAIN and prints the result to stdout.\n");
-    fprintf(stdout,
-        "Available domains:\n"
-        "\tinterval - simple interval (z_interval_domain_t)\n"
-        "\tric - numerical congruence (z_ric_domain_t)\n"
-        "\tdbm - sparse dbm (z_dbm_domain_t)\n"
-        "\tsdbm - split dbm\n"
-        "\tboxes - boxes (z_boxes_domain_t)\n"
-        "\tdisj_interval - disjoint intervals (z_dis_interval_domain_t)\n"
-        "\tbox_apron - boxes x apron (z_box_apron_domain_t)\n"
-        "\topt_oct_apron - optional octagon x apron (z_opt_oct_apron_domain_t)\n"
-        "\tpk_apron - (z_pk_apron_domain_t)\n"
-        "\tterm - term (z_term_domain_t)\n"
-        "\tterm_dbm - (z_term_domain_t)\n"
-        "\tterm_disj_interval - term x disjoint intervals (z_term_dis_int_t)\n"
-        "\tnum - term x disjoint interval x sparse dbm (z_num_domain_t)\n");
+    fprintf(stdout, "Available domains:\n");
+    print_domains();
 }
 
 int main(int argc, char **argv)
@@ -70,20 +58,27 @@ int main(int argc, char **argv)
             return 0;
         default:
             usage(argv[0]);
-            return 1;
+            return EX_USAGE;
         }
     }
 
     if (argc != optind + 2) {
         usage(argv[0]);
-        return 1;
+        return EX_USAGE;
     }
     const char *domain_name = argv[optind++];
     const char *code_filename = argv[optind];
+
+    if (!is_valid_domain(domain_name)) {
+        fprintf(stderr, "Argument '%s' is not a valid domain\n", domain_name);
+        return EX_USAGE;
+    }
+
+
     size_t code_len;
     void *code = readfile(code_filename, 1024*1024, &code_len);
     if (code == NULL) {
-        return 1;
+        return EX_DATAERR;
     }
 
     size_t mem_len = 0;
@@ -91,7 +86,7 @@ int main(int argc, char **argv)
     if (mem_filename != NULL) {
         mem = readfile(mem_filename, 1024*1024, &mem_len);
         if (mem == NULL) {
-            return 1;
+            return EX_DATAERR;
         }
     }
 
@@ -107,9 +102,9 @@ int main(int argc, char **argv)
 	    int len = ubpf_load_elf(code, code_len, &out_code, &errmsg);
         free(code);
         if (len <= 0) {
-            fprintf(stderr, "Failed to load code: %s\n", errmsg);
+            fprintf(stderr, "Bad elf format: %s\n", errmsg);
             free(errmsg);
-            return 1;
+            return EX_DATAERR;
         }
         code = out_code;
         code_len = len;
@@ -119,11 +114,12 @@ int main(int argc, char **argv)
     uint32_t num_insts = code_len / 8;
     if (code_len % 8 != 0) {
         fprintf(stderr, "code_len must be a multiple of 8");
+        rv = EX_DATAERR;
     } else if (!validate_simple(code, num_insts, &errmsg)) {
-        fprintf(stderr, "Failed to load code: %s\n", errmsg);
+        fprintf(stderr, "Trivial verification failure: %s\n", errmsg);
         free(errmsg);
     } else if (!abs_validate(code, num_insts, domain_name, &errmsg)) {
-        fprintf(stderr, "Failed to load code: %s\n", errmsg);
+        fprintf(stderr, "Verification failed: %s\n", errmsg);
         free(errmsg);
     } else {
         rv = 0;

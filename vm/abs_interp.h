@@ -11,6 +11,9 @@ extern "C" {
 */
 bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, const char* analyzer_name, char** errmsg);
 
+void print_domains();
+bool is_valid_domain(const char* domain_name);
+
 #ifdef __cplusplus
 }
 #endif

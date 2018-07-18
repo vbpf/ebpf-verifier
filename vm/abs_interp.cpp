@@ -22,6 +22,7 @@
 #include <string>
 #include <functional>
 #include <algorithm>
+#include <map>
 
 #include <crab/checkers/base_property.hpp>
 #include <crab/checkers/div_zero.hpp>
@@ -99,22 +100,41 @@ static int analyze(cfg_t& cfg)
     //crab::outs () << "Abstract trace: " << wto << "\n";
 }
 
+struct domain_desc {
+    std::string description;
+    std::function<int(cfg_t&)> analyze;
+};
+
+static const std::map<std::string, domain_desc> domains{
+    { "interval"          , { "simple interval (z_interval_domain_t)", analyze<z_interval_domain_t> } },
+    { "ric"               , { "numerical congruence (z_ric_domain_t)", analyze<z_ric_domain_t> } },
+    { "dbm"               , { "sparse dbm (z_dbm_domain_t)", analyze<z_dbm_domain_t> } },
+    { "sdbm"              , { "split dbm (z_sdbm_domain_t)", analyze<z_sdbm_domain_t> } },
+    { "boxes"             , { "boxes (z_boxes_domain_t)", analyze<z_boxes_domain_t> } },
+    { "disj_interval"     , { "disjoint intervals (z_dis_interval_domain_t)", analyze<z_dis_interval_domain_t> } },
+    { "box_apron"         , { "boxes x apron (z_box_apron_domain_t)", analyze<z_box_apron_domain_t> } },
+    { "opt_oct_apron"     , { "optional octagon x apron (z_opt_oct_apron_domain_t)", analyze<z_opt_oct_apron_domain_t> } },
+    { "pk_apron"          , { "(z_pk_apron_domain_t)", analyze<z_pk_apron_domain_t> } },
+    { "term"              , { "(z_term_domain_t)", analyze<z_term_domain_t> } },
+    { "term_dbm"          , { "(z_term_dbm_t)", analyze<z_term_dbm_t> } },
+    { "term_disj_interval", { "term x disjoint intervals (z_term_dis_int_t)", analyze<z_term_dis_int_t> } },
+    { "num"               , { "term x disjoint interval x sparse dbm (z_num_domain_t)", analyze<z_num_domain_t> } },
+};
+
 static int analyze(std::string domain_name, cfg_t& cfg)
 {
-    if (domain_name == "interval")           return analyze<z_interval_domain_t>(cfg);
-    if (domain_name == "ric")                return analyze<z_ric_domain_t>(cfg);
-    if (domain_name == "dbm")                return analyze<z_dbm_domain_t>(cfg);
-    if (domain_name == "sdbm")               return analyze<z_sdbm_domain_t>(cfg);
-    if (domain_name == "boxes")              return analyze<z_boxes_domain_t>(cfg);
-    if (domain_name == "disj_interval")      return analyze<z_dis_interval_domain_t>(cfg);
-    if (domain_name == "box_apron")          return analyze<z_box_apron_domain_t>(cfg);
-    if (domain_name == "opt_oct_apron")      return analyze<z_opt_oct_apron_domain_t>(cfg);
-    if (domain_name == "pk_apron")           return analyze<z_pk_apron_domain_t>(cfg);
-    if (domain_name == "term")               return analyze<z_term_domain_t>(cfg);
-    if (domain_name == "term_dbm")           return analyze<z_term_dbm_t>(cfg);
-    if (domain_name == "term_disj_interval") return analyze<z_term_dis_int_t>(cfg);
-    if (domain_name == "num")                return analyze<z_num_domain_t>(cfg);
-    assert(false);
+    return domains.at(domain_name).analyze(cfg);
+}
+
+void print_domains()
+{
+    for (auto const [name, desc] : domains)
+        printf("\t%s - %s\n", name.c_str(), desc.description.c_str());
+}
+
+bool is_valid_domain(const char* domain_name)
+{
+    return domains.count(domain_name) > 0;
 }
 
 bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, const char* domain_name, char** errmsg)
