@@ -216,7 +216,7 @@ static void wrap32(basic_block_t& block, var_t& vdst)
 }
 
 
-void constraints::no_pointer(basic_block_t& block, constraints::dom_t& v)
+void constraints::no_pointer(basic_block_t& block, dom_t& v)
 {
     block.havoc(v.offset);
     block.assign(v.region, T_NUM);
@@ -230,8 +230,8 @@ static basic_block_t& insert_midnode(cfg_t& cfg, basic_block_t& pre, basic_block
     return mid;
 }
 
-template<typename T>
-static void load_datapointer(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, constraints::dom_t& target, 
+template<typename Dom, typename T>
+void load_datapointer(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, Dom& target, 
     std::string subname, lin_cst_t cst, T lower_bound)
 {
     auto& mid = insert_midnode(cfg, pre, post, subname);

@@ -20,7 +20,6 @@ constexpr int STACK_SIZE=512;
 // hand-crafted mix of absolute values and offsets 
 class constraints final
 {
-
     struct dom_t {
         var_t value;
         var_t offset;
