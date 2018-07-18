@@ -24,7 +24,7 @@
 #include "ubpf_int.h"
 #include <elf.h>
 
-#define MAX_SECTIONS 32
+#define MAX_SECTIONS 128
 
 #ifndef EM_BPF
 #define EM_BPF 247
