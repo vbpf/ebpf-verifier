@@ -113,13 +113,13 @@ int main(int argc, char **argv)
     int rv = 1;
     uint32_t num_insts = code_len / 8;
     if (code_len % 8 != 0) {
-        fprintf(stderr, "code_len must be a multiple of 8");
+        fprintf(stderr, "code_len must be a multiple of 8\n");
         rv = EX_DATAERR;
     } else if (!validate_simple(code, num_insts, &errmsg)) {
-        fprintf(stderr, "Trivial verification failure: %s\n", errmsg);
+        fprintf(stdout, "Trivial verification failure: %s\n", errmsg);
         free(errmsg);
     } else if (!abs_validate(code, num_insts, domain_name, &errmsg)) {
-        fprintf(stderr, "Verification failed: %s\n", errmsg);
+        fprintf(stdout, "Verification failed: %s\n", errmsg);
         free(errmsg);
     } else {
         rv = 0;

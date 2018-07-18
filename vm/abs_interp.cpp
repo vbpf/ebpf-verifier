@@ -24,6 +24,8 @@
 #include <algorithm>
 #include <map>
 
+#include <boost/signals2.hpp>
+
 #include <crab/checkers/base_property.hpp>
 #include <crab/checkers/div_zero.hpp>
 #include <crab/checkers/assertion.hpp>
@@ -38,6 +40,8 @@
 #include "abs_common.hpp"
 #include "abs_interp.h"
 #include "abs_cfg.hpp"
+
+using printer_t = boost::signals2::signal<void(const std::string&)>;
 
 using namespace crab::cfg;
 using namespace crab::checker;
@@ -54,55 +58,58 @@ extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_sdbm
 extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_dis_interval_domain_t> >;
 extern template class reduced_numerical_domain_product2<z_term_dis_int_t,z_sdbm_domain_t>;
 
-#ifndef DOM
-#define DOM z_dis_interval_domain_t
-#endif
-
-template<typename dom_t>
-static int analyze(cfg_t& cfg)
+// TODO: return vector of labels
+auto sorted_blocks(cfg_t& cfg)
 {
-
-    using analyzer_t = intra_fwd_analyzer<cfg_ref_t, dom_t>;
-    using checker_t = intra_checker<analyzer_t>;
-    using prop_checker_ptr = typename checker_t::prop_checker_ptr;
-
-    liveness<cfg_ref_t> live(cfg);
-    live.exec();
-    analyzer_t analyzer(cfg, dom_t::top(), &live, 1, 2, 20);
-    typename analyzer_t::assumption_map_t assumptions;
-    analyzer.run(entry_label(), assumptions);
-
     std::vector<std::reference_wrapper<basic_block_t>> blocks(cfg.begin(), cfg.end());
     std::sort(blocks.begin(), blocks.end(), [](const basic_block_t& a, const basic_block_t& b){
         if (first_num(a.label()) < first_num(b.label())) return true;
         if (first_num(a.label()) > first_num(b.label())) return false;
         return a.label() < b.label();
     });
-    
-    crab::outs() << "Invariants:\n";
-    for (basic_block_t& block : blocks) {
-        auto inv = analyzer[block.label()];
-        crab::outs() << "\n" << inv << "\n";
-        block.write(crab::outs());
+    return blocks;
+}
+
+template<typename dom_t>
+static checks_db analyze(cfg_t& cfg, printer_t& printer)
+{
+    liveness<cfg_ref_t> live(cfg);
+    live.exec();
+
+    using analyzer_t = intra_fwd_analyzer<cfg_ref_t, dom_t>;
+    analyzer_t analyzer(cfg, dom_t::top(), &live);
+    analyzer.run();
+
+    {
+        std::map<std::string, dom_t> pre;
+        for (const auto& block : cfg)
+            pre.emplace(block.label(), analyzer[block.label()]);
+
+        printer.connect([pre](const std::string& label) {
+            auto inv = pre.at(label);
+            crab::outs() << "\n" << inv << "\n";
+        });
     }
 
     const int verbose = 2;
-    prop_checker_ptr assertions(new assert_property_checker<analyzer_t>(verbose));
-    prop_checker_ptr div_zero(new div_zero_property_checker<analyzer_t>(verbose));
+    using checker_t = intra_checker<analyzer_t>;
+    using prop_checker_ptr = typename checker_t::prop_checker_ptr;
     checker_t checker(analyzer, {
-        assertions
-        , div_zero
+        prop_checker_ptr(new assert_property_checker<analyzer_t>(verbose)),
+        prop_checker_ptr(new div_zero_property_checker<analyzer_t>(verbose))
     });
     checker.run();
-    auto checks = checker.get_all_checks();
-    return checks.get_total_warning() + checks.get_total_error();
-    //auto &wto = analyzer.get_wto();
-    //crab::outs () << "Abstract trace: " << wto << "\n";
+    return checker.get_all_checks();
+}
+
+static checks_db dont_analyze(cfg_t& cfg, printer_t& printer)
+{
+    return {};
 }
 
 struct domain_desc {
     std::string description;
-    std::function<int(cfg_t&)> analyze;
+    std::function<checks_db(cfg_t&, printer_t&)> analyze;
 };
 
 static const std::map<std::string, domain_desc> domains{
@@ -119,12 +126,8 @@ static const std::map<std::string, domain_desc> domains{
     { "term_dbm"          , { "(z_term_dbm_t)", analyze<z_term_dbm_t> } },
     { "term_disj_interval", { "term x disjoint intervals (z_term_dis_int_t)", analyze<z_term_dis_int_t> } },
     { "num"               , { "term x disjoint interval x sparse dbm (z_num_domain_t)", analyze<z_num_domain_t> } },
+    { "none"              , { "build CFG only, don't perform analysis", dont_analyze } },
 };
-
-static int analyze(std::string domain_name, cfg_t& cfg)
-{
-    return domains.at(domain_name).analyze(cfg);
-}
 
 void print_domains()
 {
@@ -141,9 +144,21 @@ bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, const char*
 {
     cfg_t cfg(entry_label(), ARR);
     build_cfg(cfg, {insts, insts + num_insts});
-    int nwarn = analyze(domain_name, cfg);
+
+    printer_t printer;
+    printer.connect([&cfg](const std::string label){
+        cfg.get_node(label).write(crab::outs());
+    });
+
+    checks_db checks = domains.at(domain_name).analyze(cfg, printer);
+    int nwarn = checks.get_total_warning() + checks.get_total_error();
+    
+    for (basic_block_t& block : sorted_blocks(cfg)) {
+        printer(block.label());
+    }
 
     if (nwarn > 0) {
+        checks.write(crab::outs());
         *errmsg = ubpf_error("Assertion violation");
         return false;
     }
