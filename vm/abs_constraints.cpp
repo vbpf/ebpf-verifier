@@ -292,9 +292,6 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
 
     int width = access_width(inst.opcode);
 
-    block.assertion(regs[mem].value != 0, di);
-    block.assertion(regs[mem].region != T_NUM, di);
-
     if (mem == 10) {
         auto offset = -inst.offset;
         // not dynamic
@@ -307,9 +304,12 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
         }
         return false;
     } else {
+        block.assertion(regs[mem].value != 0, di);
+        block.assertion(regs[mem].region != T_NUM, di);
+
         {
             auto& mid = insert_midnode(cfg, block, exit, "assume_stack");
-            auto addr = regs[mem].offset - inst.offset;
+            auto addr = regs[mem].offset - inst.offset; // XXX: - ?
             mid.assume(regs[mem].region == T_STACK);
             mid.assertion(addr >= width, di);
             mid.assertion(addr <= STACK_SIZE, di);
@@ -363,7 +363,7 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
         }
         {
             auto& mid = insert_midnode(cfg, block, exit, "assume_map");
-            auto addr = regs[mem].offset - inst.offset;
+            auto addr = regs[mem].offset + inst.offset;
             mid.assume(regs[mem].region == T_MAP);
             mid.assertion(addr >= 0, di);
             constexpr int MAP_SIZE = 256;
