@@ -44,20 +44,20 @@ LDLIBS := \
     -lmpfr -lgmpxx -lgmp -lm -lstdc++ 
 
 CXXFLAGS := -Wall -Werror -Wfatal-errors -Iinc \
-    -Wno-unused-local-typedefs -Wno-inconsistent-missing-override -Wno-unused-const-variable \
+    -Wno-unused-local-typedefs -Wno-inconsistent-missing-override -Wno-unused-const-variable -Wno-uninitialized\
     -DBSD -DHAVE_IEEE_754 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 \
     -I$(INSTALL)/include/ \
     -I$(LDD)/include/ldd/ \
     -I$(APRON)/include/ \
     -I$(CRABDIR)/build/apron-prefix/src/apron/optoctagons/ \
-    -O0 -g3 -std=c++17
+    -O2 -g3 -std=c++17
 
 all: libubpf.a test
 
-libubpf.a: ubpf_loader.o ubpf_validator.o abs_interp.o abs_cfg.o abs_constraints.o crab_domains.o
+libubpf.a: ubpf_validator.o abs_interp.o abs_cfg.o abs_constraints.o crab_domains.o
 	ar rc $@ $^ 
 
-test: test.o libubpf.a
+test: test.o ubpf_loader.o libubpf.a
 
 clean:
 	rm -f test libubpf.a *.o

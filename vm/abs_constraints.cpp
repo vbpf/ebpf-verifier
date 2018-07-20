@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <map>
 
 #include "ebpf.h"
 
@@ -17,19 +18,58 @@ enum region_t {
     T_MAP,
 };
 
-struct desc {
-    int size;
-    int data;
-    int end;
-    int meta; // data to meta is like end to data. i.e. meta <= data <= end
+// rough estimates:
+static constexpr int cgroup_dev_regions = 3 * 4;
+static constexpr int kprobe_regions = 1 * 4;
+static constexpr int tracepoint_regions = 1 * 4;
+static constexpr int perf_event_regions = 3 * 4;
+static constexpr int socket_filter_regions = 24 * 4;
+static constexpr int sched_regions = 24 * 4;
+static constexpr int xdp_regions = 5 * 4;
+static constexpr int lwt_regions = 24 * 4;
+static constexpr int cgroup_sock_regions = 12 * 4;
+static constexpr int sock_ops_regions =  12 * 4;
+static constexpr int sk_skb_regions = 24 * 4;
+
+static constexpr ptype_descr sk_buff = { sk_skb_regions, 15*4, 16*4, 23*4};
+static constexpr ptype_descr xdp_md = { xdp_regions, 0, 1*4, 2*4};
+static constexpr ptype_descr sk_msg_md = { 11*4, 0, 1*4, -1};
+
+static constexpr ptype_descr unspec_descr = { 0 };
+static constexpr ptype_descr cgroup_dev_descr = {cgroup_dev_regions};
+static constexpr ptype_descr kprobe_descr = {kprobe_regions};
+static constexpr ptype_descr tracepoint_descr = {tracepoint_regions};
+static constexpr ptype_descr perf_event_descr = {perf_event_regions};
+static constexpr ptype_descr socket_filter_descr = sk_buff;
+static constexpr ptype_descr sched_descr = sk_buff;
+static constexpr ptype_descr xdp_descr = xdp_md;
+static constexpr ptype_descr lwt_xmit_descr = sk_buff;
+static constexpr ptype_descr lwt_inout_descr = sk_buff;
+static constexpr ptype_descr cgroup_sock_descr = {cgroup_sock_regions};
+static constexpr ptype_descr sock_ops_descr = {sock_ops_regions};
+static constexpr ptype_descr sk_skb_descr = sk_buff;
+
+const std::map<ebpf_prog_type, ptype_descr> descriptors {
+	{EBPF_PROG_TYPE_UNSPEC, unspec_descr},
+	{EBPF_PROG_TYPE_CGROUP_DEVICE, cgroup_dev_descr},
+	{EBPF_PROG_TYPE_KPROBE, kprobe_descr},
+	{EBPF_PROG_TYPE_TRACEPOINT, tracepoint_descr},
+	{EBPF_PROG_TYPE_PERF_EVENT, perf_event_descr},
+	{EBPF_PROG_TYPE_SOCKET_FILTER, socket_filter_descr},
+	{EBPF_PROG_TYPE_CGROUP_SKB, socket_filter_descr},
+	{EBPF_PROG_TYPE_SCHED_ACT, sched_descr},
+	{EBPF_PROG_TYPE_SCHED_CLS, sched_descr},
+	{EBPF_PROG_TYPE_XDP, xdp_descr},
+	{EBPF_PROG_TYPE_LWT_XMIT, lwt_xmit_descr},
+	{EBPF_PROG_TYPE_LWT_IN,  lwt_inout_descr},
+	{EBPF_PROG_TYPE_LWT_OUT, lwt_inout_descr},
+	{EBPF_PROG_TYPE_CGROUP_SOCK, cgroup_sock_descr},
+	{EBPF_PROG_TYPE_SOCK_OPS, sock_ops_descr},
+	{EBPF_PROG_TYPE_SK_SKB, sk_skb_descr},
+    {EBPF_PROG_TYPE_SK_MSG, sk_msg_md},
 };
 
-static constexpr desc sk_buff = { 24*4, 15*4, 16*4, 23*4};
-static constexpr desc xdp_md = { 5*4, 0, 1*4, 2*4};
-static constexpr desc sk_msg_md = { 11*4, 0, 1*4, -1};
-static constexpr desc ctx_desc = xdp_md;
-
-constraints::constraints()
+constraints::constraints(ebpf_prog_type prog_type) : ctx_desc{descriptors.at(prog_type)}
 {
     for (int i=0; i < 16; i++) {
         regs.emplace_back(vfac, i);
@@ -245,7 +285,7 @@ void load_datapointer(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, Dom& 
 
 bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg, ebpf_inst inst)
 {
-    crab::cfg::debug_info di{"", _pc, 0};
+    crab::cfg::debug_info di{"pc", _pc, 0};
     // loads and stores are handles by offsets
     uint8_t mem = is_load(inst.opcode) ? inst.src : inst.dst;
     //uint8_t target = is_load(inst.opcode) ? inst.dst : inst.src;
@@ -272,7 +312,7 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
             auto addr = regs[mem].offset - inst.offset;
             mid.assume(regs[mem].region == T_STACK);
             mid.assertion(addr >= width, di);
-            mid.assertion(addr <= STACK_SIZE - width, di);
+            mid.assertion(addr <= STACK_SIZE, di);
             if (is_load(inst.opcode)) {
                 stack_arr.load(mid, regs[inst.dst], addr, width);
             } else {
@@ -325,8 +365,8 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
             auto& mid = insert_midnode(cfg, block, exit, "assume_map");
             auto addr = regs[mem].offset - inst.offset;
             mid.assume(regs[mem].region == T_MAP);
-            mid.assertion(addr >= width, di);
-            constexpr int MAP_SIZE = 8;
+            mid.assertion(addr >= 0, di);
+            constexpr int MAP_SIZE = 256;
             mid.assertion(addr <= MAP_SIZE - width, di);
         }
         return true;
@@ -625,7 +665,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
             block.assign(regs[0].offset, 0);
             block.assign(regs[0].region, T_MAP);
             block.havoc(regs[0].value);
-            block.assume(regs[0].value != 0);
+            //block.assume(regs[0].value != 0);
         } else {
             block.havoc(regs[0].offset);
             block.havoc(regs[0].value);

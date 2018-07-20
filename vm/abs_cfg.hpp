@@ -25,6 +25,6 @@ inline int first_num(const std::string& s)
 
 std::vector<std::string> sorted_labels(cfg_t& cfg);
 
-void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts);
+void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts, ebpf_prog_type prog_type);
 
 #endif

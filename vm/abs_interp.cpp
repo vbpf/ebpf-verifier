@@ -54,10 +54,11 @@ using namespace crab::domain_impl;
 
 static checks_db analyze(string domain_name, cfg_t& cfg, printer_t& printer);
 
-bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts, const char* domain_name, char** errmsg)
+bool abs_validate(const struct ebpf_inst *insts, uint32_t num_insts,
+                  const char* domain_name, ebpf_prog_type prog_type, char** errmsg)
 {
     cfg_t cfg(entry_label(), ARR);
-    build_cfg(cfg, {insts, insts + num_insts});
+    build_cfg(cfg, {insts, insts + num_insts}, prog_type);
 
     printer_t printer;
     printer.connect([&cfg](const string label){

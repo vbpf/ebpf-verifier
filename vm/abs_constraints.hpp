@@ -17,6 +17,13 @@ using lin_cst_t = ikos::linear_constraint<z_number, varname_t>;
 
 constexpr int STACK_SIZE=512;
 
+struct ptype_descr {
+    int size;
+    int data = -1;
+    int end = -1;
+    int meta = -1; // data to meta is like end to data. i.e. meta <= data <= end
+};
+
 // hand-crafted mix of absolute values and offsets 
 class constraints final
 {
@@ -54,8 +61,8 @@ class constraints final
         }
     };
 
-
-    variable_factory_t vfac;	
+    ptype_descr ctx_desc;
+    variable_factory_t vfac;
     std::vector<dom_t> regs;
     array_dom_t stack_arr{vfac, "stack"};
     array_dom_t ctx_arr{vfac, "ctx"};
@@ -67,7 +74,7 @@ class constraints final
     bool exec_mem_access(basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg, ebpf_inst inst);
     static void no_pointer(basic_block_t& block, constraints::dom_t& v);
 public:
-    constraints();
+    constraints(ebpf_prog_type prog_type);
     void setup_entry(basic_block_t& entry);
 
     void jump(ebpf_inst inst, basic_block_t& block, bool taken);

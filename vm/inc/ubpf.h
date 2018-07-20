@@ -50,6 +50,8 @@ int ubpf_load(const void *code, uint32_t code_len, char **errmsg);
  * Returns 0 on success, -1 on error. In case of error a pointer to the error
  * message will be stored in 'errmsg' and should be freed by the caller.
  */
-int ubpf_load_elf(const void *elf, size_t elf_len, void** raw_text, char **errmsg);
+int
+ubpf_load_elf(const void *elf, size_t elf_size, void** text_copy,
+              int* prog_type, char **errmsg);
 
 #endif

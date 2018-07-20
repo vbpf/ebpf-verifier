@@ -50,9 +50,51 @@ bounds_check(struct bounds *bounds, uint64_t offset, uint64_t size)
     return bounds->base + offset;
 }
 
-int
-ubpf_load_elf(const void *elf, size_t elf_size, void** text_copy, char **errmsg)
+enum ebpf_prog_type
+section_name_to_prog_type(const char* section)
 {
+    // Heuristically assume the type based on section names
+    if (strncmp(section, "socket", 6)       == 0) return EBPF_PROG_TYPE_SOCKET_FILTER;
+	if (strncmp(section, "kprobe/", 7)      == 0) return EBPF_PROG_TYPE_KPROBE;
+    if (strncmp(section, "kretprobe/", 10)  == 0) return EBPF_PROG_TYPE_KPROBE;
+	if (strncmp(section, "tracepoint/", 11) == 0) return EBPF_PROG_TYPE_TRACEPOINT;
+	if (strncmp(section, "xdp", 3)          == 0) return EBPF_PROG_TYPE_XDP;
+	if (strncmp(section, "perf_event", 10)  == 0) return EBPF_PROG_TYPE_PERF_EVENT;
+	if (strncmp(section, "cgroup/skb", 10)  == 0) return EBPF_PROG_TYPE_CGROUP_SKB;
+	if (strncmp(section, "cgroup/sock", 11) == 0) return EBPF_PROG_TYPE_CGROUP_SOCK;
+	if (strncmp(section, "sockops", 7)      == 0) return EBPF_PROG_TYPE_SOCK_OPS;
+	if (strncmp(section, "sk_skb", 6)       == 0) return EBPF_PROG_TYPE_SK_SKB;
+	return EBPF_PROG_TYPE_UNSPEC;
+}
+
+static inline Elf64_Shdr *
+elf_sheader(const Elf64_Ehdr *hdr) {
+	return (Elf64_Shdr *)((char*)hdr + hdr->e_shoff);
+}
+ 
+static inline Elf64_Shdr *
+elf_section(const Elf64_Ehdr *hdr, int idx) {
+	return &elf_sheader(hdr)[idx];
+}
+
+static inline char *
+elf_str_table(const Elf64_Ehdr *hdr) {
+	if(hdr->e_shstrndx == SHN_UNDEF) return NULL;
+	return (char *)hdr + elf_section(hdr, hdr->e_shstrndx)->sh_offset;
+}
+ 
+static inline char *
+elf_lookup_string(const Elf64_Ehdr *hdr, int offset) {
+	char *strtab = elf_str_table(hdr);
+	if(strtab == NULL) return NULL;
+	return strtab + offset;
+}
+
+int
+ubpf_load_elf(const void *elf, size_t elf_size, void** text_copy,
+              int* prog_type, char **errmsg)
+{
+
     *text_copy = NULL;
     struct bounds b = { .base=elf, .size=elf_size };
 
@@ -126,11 +168,9 @@ ubpf_load_elf(const void *elf, size_t elf_size, void** text_copy, char **errmsg)
     int text_shndx = 0;
     for (int i = 0; i < ehdr->e_shnum; i++) {
         const Elf64_Shdr *shdr = sections[i].shdr;
-        //printf("%d, %lu, %lx\n", shdr->sh_type, shdr->sh_flags, sections[i].size);
         if (sections[i].size > 0 && shdr->sh_type == SHT_PROGBITS &&
                 shdr->sh_flags == (SHF_ALLOC|SHF_EXECINSTR)) {
             text_shndx = i;
-            //printf("%d\n", text_shndx);
             break;
         }
     }
@@ -140,7 +180,9 @@ ubpf_load_elf(const void *elf, size_t elf_size, void** text_copy, char **errmsg)
     }
 
     struct section *text = &sections[text_shndx];
-
+    const char* name = elf_lookup_string(ehdr, text->shdr->sh_name);
+    *prog_type = section_name_to_prog_type(name);
+    printf("section name: %s\nprog type: %d\n", name, *prog_type);
     /* May need to modify text for relocations, so make a copy */
     *text_copy = malloc(text->size);
     if (!*text_copy) {
@@ -148,73 +190,6 @@ ubpf_load_elf(const void *elf, size_t elf_size, void** text_copy, char **errmsg)
         goto error;
     }
     memcpy(*text_copy, text->data, text->size);
-
-    /* Process each relocation section */
-    for (int i = 0; i < ehdr->e_shnum; i++) {
-        struct section *rel = &sections[i];
-        if (rel->shdr->sh_type != SHT_REL) {
-            continue;
-        } else if (rel->shdr->sh_info != text_shndx) {
-            continue;
-        }
-
-        const Elf64_Rel *rs = rel->data;
-
-        if (rel->shdr->sh_link >= ehdr->e_shnum) {
-            *errmsg = ubpf_error("bad symbol table section index");
-            goto error;
-        }
-
-        struct section *symtab = &sections[rel->shdr->sh_link];
-        const Elf64_Sym *syms = symtab->data;
-        uint32_t num_syms = symtab->size/sizeof(syms[0]);
-
-        if (symtab->shdr->sh_link >= ehdr->e_shnum) {
-            *errmsg = ubpf_error("bad string table section index");
-            goto error;
-        }
-
-        struct section *strtab = &sections[symtab->shdr->sh_link];
-        //const char *strings = strtab->data;
-
-        for (int j = 0; j < rel->size/sizeof(Elf64_Rel); j++) {
-            const Elf64_Rel *r = &rs[j];
-
-            if (ELF64_R_TYPE(r->r_info) != 1 /*10*/) {
-                *errmsg = ubpf_error("bad relocation type %u", ELF64_R_TYPE(r->r_info));
-                goto error;
-            }
-
-            uint32_t sym_idx = ELF64_R_SYM(r->r_info);
-            if (sym_idx >= num_syms) {
-                *errmsg = ubpf_error("bad symbol index");
-                goto error;
-            }
-
-            const Elf64_Sym *sym = &syms[sym_idx];
-
-            if (sym->st_name >= strtab->size) {
-                *errmsg = ubpf_error("bad symbol name");
-                goto error;
-            }
-
-            //const char *sym_name = strings + sym->st_name;
-
-            if (r->r_offset + 8 > text->size) {
-                *errmsg = ubpf_error("bad relocation offset");
-                goto error;
-            }
-            /* TODO:
-            unsigned int imm = ubpf_lookup_registered_function(sym_name);
-            if (imm == -1) {
-                *errmsg = ubpf_error("function '%s' not found", sym_name);
-                //goto error;
-            }
-
-            *(uint32_t *)((*text_copy) + r->r_offset + 4) = imm;
-            */
-        }
-    }
 
     return sections[text_shndx].size;
 error:

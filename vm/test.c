@@ -45,16 +45,20 @@ int main(int argc, char **argv)
 {
     struct option longopts[] = {
         { .name = "help", .val = 'h', },
+        { .name = "type", .val = 't', },
         { }
     };
 
     const char *mem_filename = NULL;
-
+    enum ebpf_prog_type prog_type;
     int opt;
     while ((opt = getopt_long(argc, argv, "h::", longopts, NULL)) != -1) {
         switch (opt) {
         case 'h':
             usage(argv[0]);
+            return 0;
+        case 't':
+            prog_type = atoi(argv[optind]);
             return 0;
         default:
             usage(argv[0]);
@@ -99,7 +103,7 @@ int main(int argc, char **argv)
     char *errmsg;
     if (elf) {
         void* out_code;
-	    int len = ubpf_load_elf(code, code_len, &out_code, &errmsg);
+	    int len = ubpf_load_elf(code, code_len, &out_code, (int*)&prog_type, &errmsg);
         free(code);
         if (len <= 0) {
             fprintf(stderr, "Bad elf format: %s\n", errmsg);
@@ -118,7 +122,7 @@ int main(int argc, char **argv)
     } else if (!validate_simple(code, num_insts, &errmsg)) {
         fprintf(stdout, "Trivial verification failure: %s\n", errmsg);
         free(errmsg);
-    } else if (!abs_validate(code, num_insts, domain_name, &errmsg)) {
+    } else if (!abs_validate(code, num_insts, domain_name, prog_type, &errmsg)) {
         fprintf(stdout, "Verification failed: %s\n", errmsg);
         free(errmsg);
     } else {
