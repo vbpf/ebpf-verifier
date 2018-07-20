@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-CFLAGS := -Wall -Werror -Iinc -O2 -g3 # -flto
+CFLAGS := -Wall -Werror -Iinc -O2 -g3 -flto
 
 PROJECTDIR := $(CURDIR)
 
@@ -34,23 +34,14 @@ LDLIBS := \
     $(LDD)/lib/libutil.a \
     $(LDD)/lib/libmtr.a \
     $(LDD)/lib/libepd.a \
-    $(APRON)/lib/libpolkaMPQ.a \
-    $(APRON)/lib/liboctD.a \
-    $(APRON)/lib/liboptoct.a \
-    $(APRON)/lib/liblinkedlistapi.a \
-    $(APRON)/lib/libapron.a \
-    $(APRON)/lib/libboxMPQ.a \
-    $(APRON)/lib/libitvMPQ.a \
     -lmpfr -lgmpxx -lgmp -lm -lstdc++ 
-
+    
 CXXFLAGS := -Wall -Werror -Wfatal-errors -Iinc \
     -Wno-unused-local-typedefs -Wno-inconsistent-missing-override -Wno-unused-const-variable -Wno-uninitialized\
     -DBSD -DHAVE_IEEE_754 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 \
     -I$(INSTALL)/include/ \
     -I$(LDD)/include/ldd/ \
-    -I$(APRON)/include/ \
-    -I$(CRABDIR)/build/apron-prefix/src/apron/optoctagons/ \
-    -O0 -g3 -std=c++17 # -flto
+    -O2 -g3 -std=c++17 -flto
 
 all: libubpf.a test
 
@@ -65,9 +56,8 @@ clean:
 crab_install:
 	mkdir -p $(CRABDIR)/build
 	cd $(CRABDIR)/build \
-	    && cmake -DCMAKE_INSTALL_PREFIX=../install/ -DUSE_LDD=ON -DUSE_APRON=ON ../ \
+	    && cmake -DCMAKE_INSTALL_PREFIX=../install/ -DUSE_LDD=ON ../ \
 	    && cmake --build . --target ldd && cmake ../ \
-	    && cmake --build . --target apron && cmake ../ \
 	    && cmake --build . --target install
 
 linux_samples:

@@ -16,7 +16,7 @@
 #include <crab/domains/sparse_dbm.hpp>                      
 #include <crab/domains/split_dbm.hpp>
 #include <crab/domains/boxes.hpp>                      
-#include <crab/domains/apron_domains.hpp>                      
+// #include <crab/domains/apron_domains.hpp>                      
 #include <crab/domains/term_equiv.hpp>
 #include <crab/domains/array_sparse_graph.hpp>                      
 #include <crab/domains/array_smashing.hpp>
@@ -73,10 +73,10 @@ namespace crab {
     using z_sdbm_domain_t = SplitDBM<ikos::z_number,varname_t,SDBM_impl::DefaultParams<ikos::z_number, SDBM_impl::GraphRep::adapt_ss>>;
     using z_boxes_domain_t = boxes_domain<ikos::z_number,varname_t>;
     using z_dis_interval_domain_t = dis_interval_domain<ikos::z_number, varname_t >;
-    using z_box_apron_domain_t = apron_domain<ikos::z_number,varname_t,apron_domain_id_t::APRON_INT>;
-    using z_oct_apron_domain_t = apron_domain<ikos::z_number,varname_t,apron_domain_id_t::APRON_OCT>;
-    using z_opt_oct_apron_domain_t = apron_domain<ikos::z_number,varname_t,apron_domain_id_t::APRON_OPT_OCT>;
-    using z_pk_apron_domain_t = apron_domain<ikos::z_number,varname_t,apron_domain_id_t::APRON_PK>;
+    // using z_box_apron_domain_t = apron_domain<ikos::z_number,varname_t,apron_domain_id_t::APRON_INT>;
+    // using z_oct_apron_domain_t = apron_domain<ikos::z_number,varname_t,apron_domain_id_t::APRON_OCT>;
+    // using z_opt_oct_apron_domain_t = apron_domain<ikos::z_number,varname_t,apron_domain_id_t::APRON_OPT_OCT>;
+    // using z_pk_apron_domain_t = apron_domain<ikos::z_number,varname_t,apron_domain_id_t::APRON_PK>;
     using z_term_domain_t = term_domain<term::TDomInfo<ikos::z_number,varname_t,z_interval_domain_t> >;
     using z_term_dbm_t = term_domain<term::TDomInfo<ikos::z_number,varname_t,z_sdbm_domain_t> >;
     using z_term_dis_int_t = term_domain<term::TDomInfo<ikos::z_number,varname_t,z_dis_interval_domain_t> >;

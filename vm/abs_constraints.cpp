@@ -331,7 +331,7 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
             stack_arr.store(block, offset, regs[inst.src], width);
         }
         return false;
-    } else if ((inst.opcode & 0xF0) == 0x30) { // TODO NAME
+    } else if ((inst.opcode & 0xE0) == 0x20) { // TODO NAME
         //if (is_load(inst.opcode)) { ??
         auto target = regs[inst.dst];
         ctx_arr.load(block, target, inst.offset, width);
