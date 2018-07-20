@@ -49,17 +49,16 @@ int main(int argc, char **argv)
         { }
     };
 
-    const char *mem_filename = NULL;
-    enum ebpf_prog_type prog_type;
+    enum ebpf_prog_type prog_type = EBPF_PROG_TYPE_UNSPEC;
     int opt;
-    while ((opt = getopt_long(argc, argv, "h::", longopts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "ht::", longopts, NULL)) != -1) {
         switch (opt) {
         case 'h':
             usage(argv[0]);
             return 0;
         case 't':
             prog_type = atoi(argv[optind]);
-            return 0;
+            break;
         default:
             usage(argv[0]);
             return EX_USAGE;
@@ -85,23 +84,14 @@ int main(int argc, char **argv)
         return EX_DATAERR;
     }
 
-    size_t mem_len = 0;
-    void *mem = NULL;
-    if (mem_filename != NULL) {
-        mem = readfile(mem_filename, 1024*1024, &mem_len);
-        if (mem == NULL) {
-            return EX_DATAERR;
-        }
-    }
-
     /* 
      * The ELF magic corresponds to an RSH instruction with an offset,
      * which is invalid.
      */
     bool elf = code_len >= SELFMAG && !memcmp(code, ELFMAG, SELFMAG);
 
-    char *errmsg;
     if (elf) {
+        char *errmsg;
         void* out_code;
 	    int len = ubpf_load_elf(code, code_len, &out_code, (int*)&prog_type, &errmsg);
         free(code);
@@ -114,6 +104,7 @@ int main(int argc, char **argv)
         code_len = len;
     }
     
+    char *errmsg;
     int rv = 1;
     uint32_t num_insts = code_len / 8;
     if (code_len % 8 != 0) {
