@@ -283,6 +283,34 @@ void load_datapointer(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, Dom& 
     mid.assign(target.offset, lower_bound);
 }
 
+void constraints::exec_ctx_access(ikos::linear_expression<ikos::z_number, varname_t> addr,
+        basic_block_t& mid, basic_block_t& exit, unsigned int _pc, cfg_t& cfg, ebpf_inst inst)
+{
+    int width = access_width(inst.opcode);
+    if (is_load(inst.opcode)) {
+        auto target = regs[inst.dst];
+        if (ctx_desc.data >= 0) {
+            load_datapointer(cfg, mid, exit, target, "data_start", addr == ctx_desc.data, meta_size);
+            load_datapointer(cfg, mid, exit, target, "data_end", addr == ctx_desc.end, total_size);
+        }
+        if (ctx_desc.meta >= 0) {
+            load_datapointer(cfg, mid, exit, target, "meta", addr == ctx_desc.meta, 0);
+        }
+        auto& normal = insert_midnode(cfg, mid, exit, "assume_ctx_not_special");
+        if (ctx_desc.data >= 0) {
+            normal.assume(addr != ctx_desc.data);
+            normal.assume(addr != ctx_desc.end);
+        }
+        if (ctx_desc.meta >= 0) {
+            normal.assume(addr != ctx_desc.meta);
+        }
+        ctx_arr.load(normal, regs[inst.dst], addr, width);
+    } else {
+        ctx_arr.store(mid, addr, regs[inst.src], width);
+        mid >> exit;
+    }
+}
+
 bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg, ebpf_inst inst)
 {
     crab::cfg::debug_info di{"pc", _pc, 0};
@@ -302,6 +330,27 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
         } else {
             stack_arr.store(block, offset, regs[inst.src], width);
         }
+        return false;
+    } else if ((inst.opcode & 0xF0) == 0x30) { // TODO NAME
+        //if (is_load(inst.opcode)) { ??
+        auto target = regs[inst.dst];
+        ctx_arr.load(block, target, inst.offset, width);
+        if (inst.offset == ctx_desc.data) {
+            if (ctx_desc.meta > 0)
+                block.assign(target.offset, meta_size);
+            else 
+                block.assign(target.offset, 0);
+        } else if (inst.offset == ctx_desc.end) {
+            block.assign(target.offset, total_size);
+        } else if (inst.offset == ctx_desc.meta) {
+            block.assign(target.offset, 0);
+        } else {
+            return false;
+        }
+        block.havoc(target.value);
+        block.assertion(target.value != 0);
+        block.assign(target.region, T_DATA);
+        //} else { ctx_arr.store(block, inst.offset, regs[inst.src], width); }
         return false;
     } else {
         block.assertion(regs[mem].value != 0, di);
@@ -324,30 +373,9 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
             block >> mid;
             auto addr = regs[mem].offset + inst.offset;
             mid.assume(regs[mem].region == T_CTX);
-            mid.assertion(addr >= 0, di);
-            mid.assertion(addr <= ctx_desc.size - width, di);
-            if (is_load(inst.opcode)) {
-                auto target = regs[inst.dst];
-                if (ctx_desc.data >= 0) {
-                    load_datapointer(cfg, mid, exit, target, "data_start", addr == ctx_desc.data, meta_size);
-                    load_datapointer(cfg, mid, exit, target, "data_end", addr == ctx_desc.end, total_size);
-                }
-                if (ctx_desc.meta >= 0) {
-                    load_datapointer(cfg, mid, exit, target, "meta", addr == ctx_desc.meta, 0);
-                }
-                auto& normal = insert_midnode(cfg, mid, exit, "assume_ctx_not_special");
-                if (ctx_desc.data >= 0) {
-                    normal.assume(addr != ctx_desc.data);
-                    normal.assume(addr != ctx_desc.end);
-                }
-                if (ctx_desc.meta >= 0) {
-                    normal.assume(addr != ctx_desc.meta);
-                }
-                ctx_arr.load(normal, regs[inst.dst], addr, width);
-            } else {
-                ctx_arr.store(mid, addr, regs[inst.src], width);
-                mid >> exit;
-            }
+            mid.assertion(addr >= 0, {"pc", _pc, 0});
+            mid.assertion(addr <= ctx_desc.size - width, {"pc", _pc, 0});
+            exec_ctx_access(addr, mid, exit, _pc, cfg, inst);
         }
         if (ctx_desc.data >= 0) {
             auto& mid = insert_midnode(cfg, block, exit, "assume_data");

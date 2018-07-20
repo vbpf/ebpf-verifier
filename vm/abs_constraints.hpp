@@ -72,6 +72,8 @@ class constraints final
     var_t total_size{vfac[std::string("total_data_size")], crab::INT_TYPE, 64};
 
     bool exec_mem_access(basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg, ebpf_inst inst);
+    void exec_ctx_access(ikos::linear_expression<ikos::z_number, varname_t> addr,
+        basic_block_t& mpf_ui_div, basic_block_t& exit, unsigned int _pc, cfg_t& cfg, ebpf_inst inst);
     static void no_pointer(basic_block_t& block, constraints::dom_t& v);
 public:
     constraints(ebpf_prog_type prog_type);

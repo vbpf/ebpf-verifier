@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-CFLAGS := -Wall -Werror -Iinc -O2 -g3
+CFLAGS := -Wall -Werror -Iinc -O2 -g3 # -flto
 
 PROJECTDIR := $(CURDIR)
 
@@ -50,7 +50,7 @@ CXXFLAGS := -Wall -Werror -Wfatal-errors -Iinc \
     -I$(LDD)/include/ldd/ \
     -I$(APRON)/include/ \
     -I$(CRABDIR)/build/apron-prefix/src/apron/optoctagons/ \
-    -O2 -g3 -std=c++17
+    -O0 -g3 -std=c++17 # -flto
 
 all: libubpf.a test
 
