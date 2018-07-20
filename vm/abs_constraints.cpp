@@ -19,16 +19,19 @@ enum region_t {
 };
 
 // rough estimates:
+static constexpr int perf_max_trace_size = 2048;
+static constexpr int ptregs_size = (3 + 63 + 8 + 2) * 8;
+
 static constexpr int cgroup_dev_regions = 3 * 4;
-static constexpr int kprobe_regions = 1 * 4;
-static constexpr int tracepoint_regions = 1 * 4;
-static constexpr int perf_event_regions = 3 * 4;
+static constexpr int kprobe_regions = ptregs_size;
+static constexpr int tracepoint_regions = perf_max_trace_size;
+static constexpr int perf_event_regions = 3 * 8 + ptregs_size;
 static constexpr int socket_filter_regions = 24 * 4;
 static constexpr int sched_regions = 24 * 4;
 static constexpr int xdp_regions = 5 * 4;
 static constexpr int lwt_regions = 24 * 4;
 static constexpr int cgroup_sock_regions = 12 * 4;
-static constexpr int sock_ops_regions =  12 * 4;
+static constexpr int sock_ops_regions =  42 * 4 + 2 * 8;
 static constexpr int sk_skb_regions = 24 * 4;
 
 static constexpr ptype_descr sk_buff = { sk_skb_regions, 15*4, 16*4, 23*4};

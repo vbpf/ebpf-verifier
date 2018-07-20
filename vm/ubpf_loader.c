@@ -64,6 +64,8 @@ section_name_to_prog_type(const char* section)
 	if (strncmp(section, "cgroup/sock", 11) == 0) return EBPF_PROG_TYPE_CGROUP_SOCK;
 	if (strncmp(section, "sockops", 7)      == 0) return EBPF_PROG_TYPE_SOCK_OPS;
 	if (strncmp(section, "sk_skb", 6)       == 0) return EBPF_PROG_TYPE_SK_SKB;
+	if (strncmp(section, "len_hist", 8)     == 0) return EBPF_PROG_TYPE_SK_SKB;
+	if (strncmp(section, "filter", 6)       == 0) return EBPF_PROG_TYPE_SK_SKB;
 	return EBPF_PROG_TYPE_UNSPEC;
 }
 
