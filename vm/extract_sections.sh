@@ -21,6 +21,11 @@ function progtype()
 		len_hist*)   echo 14;;
 		filter*)     echo 14;;
 		sk_msg*)     echo 14;;
+		l2_*)    	 echo 14;;
+		tc_*)    	 echo 14;;
+		drop_*)      echo 14;;
+		*redirect_*) echo 14;;
+		classifier)	 echo 14;;
 	esac
 }
 
@@ -29,5 +34,7 @@ for name in ${sections[@]}
 do
 	echo $OBJ_$name
 	type=$(progtype $name)
-	objcopy -I elf64-little --dump-section "$name=${OUTDIR}/$(basename ${OBJ%_kern.o})-${name}-$type.bin" $OBJ
+	sfname=${name//\//-}
+	echo $sfname
+	objcopy -I elf64-little --dump-section "$name=${OUTDIR}/$(basename ${OBJ%_kern.o})-${sfname}-$type.bin" $OBJ
 done
