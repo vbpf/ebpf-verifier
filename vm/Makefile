@@ -48,7 +48,7 @@ all: libubpf.a test
 libubpf.a: ubpf_validator.o abs_interp.o abs_cfg.o abs_constraints.o crab_domains.o
 	ar rc $@ $^ 
 
-test: test.o ubpf_loader.o libubpf.a
+test: test.o libubpf.a
 
 clean:
 	rm -f test libubpf.a *.o

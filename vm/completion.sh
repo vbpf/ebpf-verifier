@@ -8,7 +8,7 @@ function f() {
         2)
             if [[ -z "$2"  ]]
             then
-                COMPREPLY=($(realpath --relative-to . $(locate -l1 -r 'linux/samples/bpf$'))/*_kern.o)
+                COMPREPLY=(ls bins/)
             else
                 COMPREPLY=($2*_kern.o)
             fi

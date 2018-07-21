@@ -24,7 +24,6 @@
 #include <string.h>
 #include <getopt.h>
 #include <errno.h>
-#include <elf.h>
 #include <math.h>
 #include <sysexits.h>
 #include "ubpf.h"
@@ -45,7 +44,7 @@ int main(int argc, char **argv)
 {
     struct option longopts[] = {
         { .name = "help", .val = 'h', },
-        { .name = "type", .val = 't', },
+        { .name = "type", .val = 't', .has_arg=1 },
         { }
     };
 
@@ -57,7 +56,7 @@ int main(int argc, char **argv)
             usage(argv[0]);
             return 0;
         case 't':
-            prog_type = atoi(argv[optind]);
+            prog_type = atoi(optarg);
             break;
         default:
             usage(argv[0]);
@@ -84,26 +83,6 @@ int main(int argc, char **argv)
         return EX_DATAERR;
     }
 
-    /* 
-     * The ELF magic corresponds to an RSH instruction with an offset,
-     * which is invalid.
-     */
-    bool elf = code_len >= SELFMAG && !memcmp(code, ELFMAG, SELFMAG);
-
-    if (elf) {
-        char *errmsg;
-        void* out_code;
-	    int len = ubpf_load_elf(code, code_len, &out_code, (int*)&prog_type, &errmsg);
-        free(code);
-        if (len <= 0) {
-            fprintf(stderr, "Bad elf format: %s\n", errmsg);
-            free(errmsg);
-            return EX_DATAERR;
-        }
-        code = out_code;
-        code_len = len;
-    }
-    
     char *errmsg;
     int rv = 1;
     uint32_t num_insts = code_len / 8;

@@ -36,5 +36,5 @@ do
 	type=$(progtype $name)
 	sfname=${name//\//-}
 	echo $sfname
-	objcopy -I elf64-little --dump-section "$name=${OUTDIR}/$(basename ${OBJ%_kern.o})-${sfname}-$type.bin" $OBJ
+	objcopy -I elf64-little --dump-section "$name=${OUTDIR}/$(basename ${OBJ%_kern.o})-${sfname}.$type" $OBJ
 done

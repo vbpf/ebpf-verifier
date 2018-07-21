@@ -57,6 +57,7 @@ const std::map<ebpf_prog_type, ptype_descr> descriptors {
 	{EBPF_PROG_TYPE_CGROUP_DEVICE, cgroup_dev_descr},
 	{EBPF_PROG_TYPE_KPROBE, kprobe_descr},
 	{EBPF_PROG_TYPE_TRACEPOINT, tracepoint_descr},
+    {EBPF_PROG_TYPE_RAW_TRACEPOINT, tracepoint_descr},
 	{EBPF_PROG_TYPE_PERF_EVENT, perf_event_descr},
 	{EBPF_PROG_TYPE_SOCKET_FILTER, socket_filter_descr},
 	{EBPF_PROG_TYPE_CGROUP_SKB, socket_filter_descr},
