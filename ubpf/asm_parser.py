@@ -32,11 +32,19 @@ mem_sizes = ['w', 'h', 'b', 'dw']
 mem_store_reg_ops = ['stx' + s for s in mem_sizes]
 mem_store_imm_ops = ['st' + s for s in mem_sizes]
 mem_load_ops = ['ldx' + s for s in mem_sizes]
+mem_load_abs_ops = ['ldabs' + s for s in mem_sizes]
+mem_loadx_abs_ops = ['ldxabs' + s for s in mem_sizes]
+mem_load_ind_ops = ['ldind' + s for s in mem_sizes]
+mem_loadx_ind_ops = ['ldxind' + s for s in mem_sizes]
 
 mem_instruction = \
     (keywords(mem_store_reg_ops) + memref + "," + reg) | \
     (keywords(mem_store_imm_ops) + memref + "," + imm) | \
     (keywords(mem_load_ops) + reg + "," + memref) | \
+    (keywords(mem_load_abs_ops) + reg + "," + memref) | \
+    (keywords(mem_loadx_abs_ops) + reg + "," + memref) | \
+    (keywords(mem_load_ind_ops) + reg + "," + memref) | \
+    (keywords(mem_loadx_ind_ops) + reg + "," + memref) | \
     (keywords(["lddw"]) + reg + "," + imm)
 
 jmp_cmp_ops = ['jeq', 'jgt', 'jge', 'jlt', 'jle', 'jset', 'jne', 'jsgt', 'jsge', 'jslt', 'jsle']

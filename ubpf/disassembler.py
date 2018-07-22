@@ -143,8 +143,18 @@ def disassemble_one(data, offset):
         elif code == 0x00:
             # Second instruction of lddw
             return None
+        elif cls == BPF_CLASS_LD:
+            if mode == 3 or mode == 0 or mode == 2:
+                return "%s %s, %s" % (class_name + mode_name + size_name, R(dst_reg), M(R(src_reg), off))
+            if mode == 1:
+                return "%s %s" % (class_name + mode_name + size_name, I(imm))
+            assert False, mode_name
         elif cls == BPF_CLASS_LDX:
-            return "%s %s, %s" % (class_name + size_name, R(dst_reg), M(R(src_reg), off))
+            if mode == 0 or mode == 3 or mode == 2:
+                return "%s %s, %s" % (class_name + size_name, R(dst_reg), M(R(src_reg), off))
+            if mode == 1:
+                return "%s %s" % (class_name + mode_name + size_name, I(imm))
+            assert False, mode_name
         elif cls == BPF_CLASS_ST:
             return "%s %s, %s" % (class_name + size_name, M(R(dst_reg), off), I(imm))
         elif cls == BPF_CLASS_STX:
