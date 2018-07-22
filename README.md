@@ -15,11 +15,14 @@ and JIT compiler for x86-64.
 
 ## Building
 
-From vanilla Ubuntu:
+Dependencies from vanilla Ubuntu:
 ```bash
 sudo apt install build-essential git cmake libboost1.65-all-dev libgmp-dev libmpfr-dev python-pip
 pip install parcon nose pyelftools
+```
 
+Fetch and install crab:
+```
 git clone --recurse-submodules https://github.com/elazarg/ubpf.git
 cd ubpf/vm
 make crab_install

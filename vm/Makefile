@@ -39,11 +39,12 @@ LDLIBS := \
     $(LDD)/lib/libepd.a \
     -lmpfr -lgmpxx -lgmp -lm -lstdc++ 
     
-CXXFLAGS := -Wall -Werror -Wfatal-errors -Iinc \
+CXXFLAGS := -Wall -Werror -Wfatal-errors \
     -Wno-unused-local-typedefs -Wno-inconsistent-missing-override -Wno-unused-const-variable -Wno-uninitialized\
     -DBSD -DHAVE_IEEE_754 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 \
-    -I$(INSTALL)/include/ \
-    -I$(LDD)/include/ldd/ \
+    -I inc \
+    -I $(INSTALL)/include/ \
+    -I $(LDD)/include/ldd/ \
     -O0 -g3 -std=c++17 -flto
 
 all: libubpf.a test
