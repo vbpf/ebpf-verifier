@@ -17,96 +17,76 @@
 
 #include <inttypes.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
-#include <getopt.h>
 #include <errno.h>
 #include <math.h>
 #include <sysexits.h>
+
+#include <iostream>
+#include <iterator>
+#include <fstream>
+#include <vector>
+#include <algorithm> // for std::copy
+
 #include "ubpf.h"
 #include "ubpf_int.h"
 #include "abs_interp.h"
 
-static char *readfile(const char *path, size_t maxlen, size_t *len);
+//static char *readfile(const char *path, size_t maxlen, size_t *len);
 
 static void usage(const char *name)
 {
     fprintf(stdout, "usage: %s [-h] [-t TYPE] DOMAIN BINARY\n", name);
-    fprintf(stdout, "\nVerifies the eBPF code in BINARY using DOMAIN assuming program type TYPE\n");
-    fprintf(stdout, "Available domains:\n");
+    fprintf(stdout, "\nterifies the eBPF code in BINARY using DOMAIN assuming program type TYPE\n");
+    fprintf(stdout, "tvailable domains:\n");
     print_domains();
 }
 
 int main(int argc, char **argv)
 {
-    struct option longopts[] = {
-        { },
-        { },
-        { }
-    };
-    longopts[0].name = "help";
-    longopts[0].val = 'h';
-
-    longopts[1].name = "type";
-    longopts[1].val = 't';
-    longopts[1].has_arg = 1;
-
-    enum ebpf_prog_type prog_type = EBPF_PROG_TYPE_UNSPEC;
-    int opt;
-    while ((opt = getopt_long(argc, argv, "ht::", longopts, NULL)) != -1) {
-        switch (opt) {
-        case 'h':
-            usage(argv[0]);
-            return 0;
-        case 't':
-            prog_type = (ebpf_prog_type)atoi(optarg);
-            break;
-        default:
-            usage(argv[0]);
-            return EX_USAGE;
-        }
-    }
-
-    if (argc != optind + 2) {
+    if (argc < 4) {
         usage(argv[0]);
         return EX_USAGE;
     }
-    const char *domain_name = argv[optind++];
-    const char *code_filename = argv[optind];
+
+    ebpf_prog_type prog_type = (ebpf_prog_type)atoi(argv[1]);
+    const char *domain_name = argv[2];
+    const char *code_filename = argv[3];
 
     if (!is_valid_domain(domain_name)) {
-        fprintf(stderr, "Argument '%s' is not a valid domain\n", domain_name);
+        fprintf(stderr, "argument '%s' is not a valid domain\n", domain_name);
+        fprintf(stdout, "tvailable domains:\n");
+        print_domains();
         return EX_USAGE;
     }
 
-
-    size_t code_len;
-    ebpf_inst* code = (ebpf_inst*)readfile(code_filename, 1024*1024, &code_len);
-    if (code == NULL) {
-        return EX_DATAERR;
+    std::ifstream is(code_filename, std::ifstream::ate | std::ifstream::binary);
+    size_t code_len = is.tellg(); 
+    if (code_len % 8 != 0) {
+        fprintf(stderr, "file size must be a multiple of 8\n");
+        exit(EX_DATAERR);
     }
+    uint32_t num_insts = code_len / 8;
+    is.seekg(0);
+    std::vector<ebpf_inst> code(num_insts);
+    is.read((char*)code.data(), code_len);
 
     char *errmsg;
     int rv = 1;
-    uint32_t num_insts = code_len / 8;
-    if (code_len % 8 != 0) {
-        fprintf(stderr, "code_len must be a multiple of 8\n");
-        rv = EX_DATAERR;
-    } else if (!validate_simple(code, num_insts, &errmsg)) {
-        fprintf(stdout, "Trivial verification failure: %s\n", errmsg);
+    if (!validate_simple(code.data(), num_insts, &errmsg)) {
+        fprintf(stdout, "trivial verification failure: %s\n", errmsg);
         free(errmsg);
-    } else if (!abs_validate(code, num_insts, domain_name, prog_type, &errmsg)) {
-        fprintf(stdout, "Verification failed: %s\n", errmsg);
+    } else if (!abs_validate(code.data(), num_insts, domain_name, prog_type, &errmsg)) {
+        fprintf(stdout, "verification failed: %s\n", errmsg);
         free(errmsg);
     } else {
         rv = 0;
     }
-    free(code);
     return rv;
 }
-
+/*
 static char *readfile(const char *path, size_t maxlen, size_t *len)
 {
     FILE *file;
@@ -118,7 +98,7 @@ static char *readfile(const char *path, size_t maxlen, size_t *len)
 
     if (file == NULL) {
         fprintf(stderr, "Failed to open %s: %s\n", path, strerror(errno));
-        return NULL;
+        exit(EX_DATAERR);
     }
 
     char *data = (char*)calloc(maxlen, 1);
@@ -130,17 +110,13 @@ static char *readfile(const char *path, size_t maxlen, size_t *len)
 
     if (ferror(file)) {
         fprintf(stderr, "Failed to read %s: %s\n", path, strerror(errno));
-        fclose(file);
-        free(data);
-        return NULL;
+        exit(EX_DATAERR);
     }
 
     if (!feof(file)) {
         fprintf(stderr, "Failed to read %s because it is too large (max %u bytes)\n",
                 path, (unsigned)maxlen);
-        fclose(file);
-        free(data);
-        return NULL;
+        exit(EX_DATAERR);
     }
 
     fclose(file);
@@ -149,3 +125,4 @@ static char *readfile(const char *path, size_t maxlen, size_t *len)
     }
     return data;
 }
+*/
