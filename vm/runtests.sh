@@ -8,6 +8,8 @@ then
 	for f in "${files[@]}"; do echo -n ",$f"; done
 fi
 
+mkdir -p ../logs
+
 for dom in "$@"
 do
 	echo -n "$dom"
