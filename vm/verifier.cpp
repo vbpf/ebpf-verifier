@@ -33,9 +33,7 @@
 
 #include "crab_dom.hpp"
 
-#include "ebpf.h"
-#include "ubpf_int.h"
-
+#include "instructions.hpp"
 #include "common.hpp"
 #include "cfg.hpp"
 #include "verifier.hpp"
@@ -71,7 +69,7 @@ bool abs_validate(vector<struct ebpf_inst> insts,
     for (string label : sorted_labels(cfg)) {
         printer(label);
     }
-    
+
     if (nwarn > 0) {
         checks.write(crab::outs());
         return false;

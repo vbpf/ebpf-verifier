@@ -31,17 +31,10 @@ make
 ./test -h
 ```
 
-To play with Linux samples:
-```bash
-sudo apt install bison flex libssl-dev clang llvm libelf-dev
-make linux_samples
-sudo updatedb && source completion.sh
-```
-
 and then, for example
 
 ```bash
-./test num ../linux/samples/bpf/xdp2skb_meta_kern.o
+./test term bins/tc_l2_redirect-drop_non_tun_vip.14 14
 ```
 
 ## Compiling C to eBPF
@@ -50,8 +43,7 @@ You'll need [Clang 3.7](http://llvm.org/releases/download.html#3.7.0).
 
     clang-3.7 -O2 -target bpf -c prog.c -o prog.o
 
-You can then pass the contents of `prog.o` to `ubpf_load_elf`, or to the stdin of
-the `vm/test` binary.
+You can then use extract_sections.sh to extract the bpf sections of the object files.
 
 ## Contributing
 

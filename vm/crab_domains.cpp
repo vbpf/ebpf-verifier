@@ -26,19 +26,3 @@ template class apron_domain_<ikos::z_number,varname_t,apron_domain_id_t::APRON_O
 template class apron_domain_<ikos::z_number,varname_t,apron_domain_id_t::APRON_OPT_OCT>;
 template class apron_domain_<ikos::z_number,varname_t,apron_domain_id_t::APRON_PK>;
 */
-/*
-z_interval_domain_t z_interval_domain;
-z_ric_domain_t z_ric_domain;
-z_dbm_domain_t z_dbm_domain;
-z_sdbm_domain_t z_sdbm_domain;
-z_boxes_domain_t z_boxes_domain;
-z_dis_interval_domain_t z_dis_interval_domain;
-z_box_apron_domain_t z_box_apron_domain;
-z_oct_apron_domain_t z_oct_apron_domain;
-z_opt_oct_apron_domain_t z_opt_oct_apron_domain;
-z_pk_apron_domain_t z_pk_apron_domain;
-z_term_domain_t z_term_domain;
-z_term_dbm_t z_term_dbm;
-z_term_dis_int_t z_term_dis_int;
-z_num_domain_t z_num_domain;
-*/

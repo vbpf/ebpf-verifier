@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef EBPF_H
-#define EBPF_H
+#pragma once
 
 #include <stdint.h>
 
@@ -218,4 +217,79 @@ struct ebpf_inst {
 #define EBPF_OP_JSLE_IMM (EBPF_CLS_JMP|EBPF_SRC_IMM|0xd0)
 #define EBPF_OP_JSLE_REG (EBPF_CLS_JMP|EBPF_SRC_REG|0xd0)
 
-#endif
+
+inline bool is_load(uint8_t opcode)
+{
+    switch (opcode & EBPF_CLS_MASK) {
+    case EBPF_CLS_LD:
+    case EBPF_CLS_LDX:
+        return true;
+    default:
+        return false;
+    }
+}
+
+inline bool is_store(uint8_t opcode)
+{
+    switch (opcode & EBPF_CLS_MASK) {
+    case EBPF_CLS_ST:
+    case EBPF_CLS_STX:
+        return true;
+    default:
+        return false;
+    }
+}
+
+inline bool is_access(uint8_t opcode)
+{
+    return is_load(opcode) || is_store(opcode);
+}
+
+
+inline int access_width(uint8_t opcode)
+{
+    if (!is_access(opcode))
+        return -1;
+    switch (opcode & EBPF_SIZE_MASK) {
+    case EBPF_SIZE_B: return 1;
+    case EBPF_SIZE_H: return 2;
+    case EBPF_SIZE_W: return 4;
+    case EBPF_SIZE_DW: return 8;
+    }
+	return -1;
+}
+
+
+inline uint8_t reverse(uint8_t opcode)
+{
+    switch (opcode) {
+    case EBPF_OP_JEQ_IMM:  return EBPF_OP_JNE_IMM;
+    case EBPF_OP_JEQ_REG:  return EBPF_OP_JNE_REG;
+
+    case EBPF_OP_JGE_IMM:  return EBPF_OP_JLT_IMM;
+    case EBPF_OP_JGE_REG:  return EBPF_OP_JLT_REG;
+
+    case EBPF_OP_JSGE_IMM: return EBPF_OP_JSLT_IMM;
+    case EBPF_OP_JSGE_REG: return EBPF_OP_JSLT_REG;
+    
+    case EBPF_OP_JLE_IMM:  return EBPF_OP_JGT_IMM;
+    case EBPF_OP_JLE_REG:  return EBPF_OP_JGT_REG;
+
+    case EBPF_OP_JSLE_IMM: return EBPF_OP_JSGT_IMM;
+    case EBPF_OP_JSLE_REG: return EBPF_OP_JSGT_REG;
+
+    case EBPF_OP_JNE_IMM:  return EBPF_OP_JEQ_IMM;
+    case EBPF_OP_JNE_REG:  return EBPF_OP_JEQ_REG;
+    
+    case EBPF_OP_JGT_IMM:  return EBPF_OP_JLE_IMM;
+    case EBPF_OP_JGT_REG:  return EBPF_OP_JLE_REG;
+    case EBPF_OP_JSGT_IMM: return EBPF_OP_JSLE_IMM;
+    case EBPF_OP_JSGT_REG: return EBPF_OP_JSLE_REG;
+
+    case EBPF_OP_JLT_IMM:  return EBPF_OP_JGE_IMM;
+    case EBPF_OP_JLT_REG:  return EBPF_OP_JGE_REG;
+    case EBPF_OP_JSLT_IMM: return EBPF_OP_JSGE_IMM;
+    case EBPF_OP_JSLT_REG: return EBPF_OP_JSGE_REG;
+	default: return opcode;
+    }
+}

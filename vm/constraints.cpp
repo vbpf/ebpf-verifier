@@ -3,10 +3,8 @@
 #include <string>
 #include <map>
 
-#include "ebpf.h"
-
+#include "instructions.hpp"
 #include "common.hpp"
-
 #include "constraints.hpp"
 
 using std::tuple;
@@ -101,47 +99,6 @@ void constraints::setup_entry(basic_block_t& entry)
     }
 }
 
-static bool is_load(uint8_t opcode)
-{
-    switch (opcode & EBPF_CLS_MASK) {
-    case EBPF_CLS_LD:
-    case EBPF_CLS_LDX:
-        return true;
-    default:
-        return false;
-    }
-}
-
-static bool is_store(uint8_t opcode)
-{
-    switch (opcode & EBPF_CLS_MASK) {
-    case EBPF_CLS_ST:
-    case EBPF_CLS_STX:
-        return true;
-    default:
-        return false;
-    }
-}
-
-static bool is_access(uint8_t opcode)
-{
-    return is_load(opcode) || is_store(opcode);
-}
-
-
-static int access_width(uint8_t opcode)
-{
-    if (!is_access(opcode))
-        return -1;
-    switch (opcode & EBPF_SIZE_MASK) {
-    case EBPF_SIZE_B: return 1;
-    case EBPF_SIZE_H: return 2;
-    case EBPF_SIZE_W: return 4;
-    case EBPF_SIZE_DW: return 8;
-    default: assert(false);
-    }
-}
-
 static auto eq(var_t& a, var_t& b)
 {
     return lin_cst_t(a - b, lin_cst_t::EQUALITY);
@@ -204,40 +161,6 @@ static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& vdst, var_t& vsrc)
     case EBPF_OP_JSLT_IMM: return vdst < imm;
     case EBPF_OP_JSLT_REG: return vsrc > vdst;
     }
-    assert(false);
-}
-
-static uint8_t reverse(uint8_t opcode)
-{
-    switch (opcode) {
-    case EBPF_OP_JEQ_IMM:  return EBPF_OP_JNE_IMM;
-    case EBPF_OP_JEQ_REG:  return EBPF_OP_JNE_REG;
-
-    case EBPF_OP_JGE_IMM:  return EBPF_OP_JLT_IMM;
-    case EBPF_OP_JGE_REG:  return EBPF_OP_JLT_REG;
-
-    case EBPF_OP_JSGE_IMM: return EBPF_OP_JSLT_IMM;
-    case EBPF_OP_JSGE_REG: return EBPF_OP_JSLT_REG;
-    
-    case EBPF_OP_JLE_IMM:  return EBPF_OP_JGT_IMM;
-    case EBPF_OP_JLE_REG:  return EBPF_OP_JGT_REG;
-
-    case EBPF_OP_JSLE_IMM: return EBPF_OP_JSGT_IMM;
-    case EBPF_OP_JSLE_REG: return EBPF_OP_JSGT_REG;
-
-    case EBPF_OP_JNE_IMM:  return EBPF_OP_JEQ_IMM;
-    case EBPF_OP_JNE_REG:  return EBPF_OP_JEQ_REG;
-    
-    case EBPF_OP_JGT_IMM:  return EBPF_OP_JLE_IMM;
-    case EBPF_OP_JGT_REG:  return EBPF_OP_JLE_REG;
-    case EBPF_OP_JSGT_IMM: return EBPF_OP_JSLE_IMM;
-    case EBPF_OP_JSGT_REG: return EBPF_OP_JSLE_REG;
-
-    case EBPF_OP_JLT_IMM:  return EBPF_OP_JGE_IMM;
-    case EBPF_OP_JLT_REG:  return EBPF_OP_JGE_REG;
-    case EBPF_OP_JSLT_IMM: return EBPF_OP_JSGE_IMM;
-    case EBPF_OP_JSLT_REG: return EBPF_OP_JSGE_REG;
-    } 
     assert(false);
 }
 
@@ -318,10 +241,8 @@ void constraints::exec_ctx_access(ikos::linear_expression<ikos::z_number, varnam
 bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg, ebpf_inst inst)
 {
     crab::cfg::debug_info di{"pc", _pc, 0};
-    // loads and stores are handles by offsets
-    uint8_t mem = is_load(inst.opcode) ? inst.src : inst.dst;
-    //uint8_t target = is_load(inst.opcode) ? inst.dst : inst.src;
 
+    uint8_t mem = is_load(inst.opcode) ? inst.src : inst.dst;
     int width = access_width(inst.opcode);
 
     if (mem == 10) {
@@ -336,7 +257,7 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
         }
         return false;
     } else if ((inst.opcode & 0xE0) == 0x20) { // TODO NAME
-        //if (is_load(inst.opcode)) { ??
+        // load only
         auto target = regs[inst.dst];
         ctx_arr.load(block, target, inst.offset, width);
         if (inst.offset == ctx_desc.data) {
@@ -354,7 +275,6 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
         block.havoc(target.value);
         block.assertion(target.value != 0);
         block.assign(target.region, T_DATA);
-        //} else { ctx_arr.store(block, inst.offset, regs[inst.src], width); }
         return false;
     } else {
         block.assertion(regs[mem].value != 0, di);
@@ -694,7 +614,6 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
             block.assign(regs[0].offset, 0);
             block.assign(regs[0].region, T_MAP);
             block.havoc(regs[0].value);
-            //block.assume(regs[0].value != 0);
         } else {
             block.havoc(regs[0].offset);
             block.havoc(regs[0].value);

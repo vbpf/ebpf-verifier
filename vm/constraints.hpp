@@ -2,10 +2,8 @@
 
 #include <vector>
 #include <string>
-#include <memory>
 
-#include "ebpf.h"
-
+#include "instructions.hpp"
 #include "common.hpp"
 #include "cfg.hpp"
 
