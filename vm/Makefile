@@ -12,21 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-CFLAGS := -Wall -Werror -Iinc -O2 -g3 -flto
-
-PROJECTDIR := $(CURDIR)
+PROJECTDIR := $(CURDIR)../
 
 CRABDIR := ../crab
 INSTALL := $(CRABDIR)/install
 LDD := $(CRABDIR)/build/run/ldd
-APRON := $(CRABDIR)/build/run/apron
 LINUX := ../../linux
 
 # Lookup path for libCrab.so
-LDFLAGS := -Wl,-rpath=$(INSTALL)/lib/
+LDFLAGS := -Wl,-rpath,$(INSTALL)/lib/
+UNAME := $(shell uname)
+ifeq ($(UNAME),Darwin)
+    LIBCRAB = $(INSTALL)/lib/libCrab.dylib
+else
+    LIBCRAB = $(INSTALL)/lib/libCrab.so
+endif
 
 LDLIBS := \
-    $(INSTALL)/lib/libCrab.so \
+    $(LIBCRAB) \
     $(LDD)/lib/libldd.a \
     $(LDD)/lib/libtvpi.a \
     $(LDD)/lib/libcudd.a \
@@ -41,7 +44,7 @@ CXXFLAGS := -Wall -Werror -Wfatal-errors -Iinc \
     -DBSD -DHAVE_IEEE_754 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 \
     -I$(INSTALL)/include/ \
     -I$(LDD)/include/ldd/ \
-    -O2 -g3 -std=c++17 -flto
+    -O0 -g3 -std=c++17 -flto
 
 all: libubpf.a test
 
@@ -51,7 +54,7 @@ libubpf.a: ubpf_validator.o verifier.o cfg.o constraints.o crab_domains.o
 test: test.o libubpf.a
 
 clean:
-	rm -f test libubpf.a *.o
+	rm -f test *.a *.o
 
 crab_install:
 	mkdir -p $(CRABDIR)/build
