@@ -20,7 +20,7 @@ CRABDIR := ../crab
 INSTALL := $(CRABDIR)/install
 LDD := $(CRABDIR)/build/run/ldd
 APRON := $(CRABDIR)/build/run/apron
-LINUX := ../linux
+LINUX := ../../linux
 
 # Lookup path for libCrab.so
 LDFLAGS := -Wl,-rpath=$(INSTALL)/lib/
@@ -45,7 +45,7 @@ CXXFLAGS := -Wall -Werror -Wfatal-errors -Iinc \
 
 all: libubpf.a test
 
-libubpf.a: ubpf_validator.o abs_interp.o abs_cfg.o abs_constraints.o crab_domains.o
+libubpf.a: ubpf_validator.o verifier.o cfg.o constraints.o crab_domains.o
 	ar rc $@ $^ 
 
 test: test.o libubpf.a

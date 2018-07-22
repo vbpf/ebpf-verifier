@@ -6,8 +6,8 @@
 
 #include "ebpf.h"
 
-#include "abs_common.hpp"
-#include "abs_cfg.hpp"
+#include "common.hpp"
+#include "cfg.hpp"
 
 using crab::cfg_impl::variable_factory_t;
 using ikos::z_number;

@@ -23,9 +23,9 @@
 
 #include <boost/optional.hpp>
 
-#include "abs_common.hpp"
-#include "abs_constraints.hpp"
-#include "abs_cfg.hpp"
+#include "common.hpp"
+#include "constraints.hpp"
+#include "cfg.hpp"
 
 using boost::optional;
 using std::to_string;

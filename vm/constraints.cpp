@@ -5,9 +5,9 @@
 
 #include "ebpf.h"
 
-#include "abs_common.hpp"
+#include "common.hpp"
 
-#include "abs_constraints.hpp"
+#include "constraints.hpp"
 
 using std::tuple;
 enum region_t {
