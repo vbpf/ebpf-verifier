@@ -407,9 +407,6 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
 
 void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg)
 {
-//    exit.assign(pc, _pc+1);
-//    block.assign(pc, pc);
-
     auto& dst = regs[inst.dst];
 
     var_t& vdst = regs[inst.dst].value;
@@ -517,7 +514,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         no_pointer(block, dst);
         break;
     case EBPF_OP_MOD_REG:
-        block.rem(vdst, vdst, vsrc); // FIX: vdst = u32(vdst) % u32(src);
+        block.rem(vdst, vdst, vsrc); // FIX: vdst = u32(vdst) % u32(vsrc);
         no_pointer(block, dst);
         break;
     case EBPF_OP_XOR_IMM:

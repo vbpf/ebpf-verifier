@@ -65,12 +65,12 @@ bool abs_validate(vector<struct ebpf_inst> insts,
         cfg.get_node(label).write(crab::outs());
     });
 
+    checks_db checks = analyze(domain_name, cfg, printer);
+    int nwarn = checks.get_total_warning() + checks.get_total_error();
+    
     for (string label : sorted_labels(cfg)) {
         printer(label);
     }
-
-    checks_db checks = analyze(domain_name, cfg, printer);
-    int nwarn = checks.get_total_warning() + checks.get_total_error();
     
     if (nwarn > 0) {
         checks.write(crab::outs());
