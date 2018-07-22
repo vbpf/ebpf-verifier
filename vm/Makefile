@@ -41,7 +41,7 @@ CXXFLAGS := -Wall -Werror -Wfatal-errors -Iinc \
     -DBSD -DHAVE_IEEE_754 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 \
     -I$(INSTALL)/include/ \
     -I$(LDD)/include/ldd/ \
-    -O0 -g3 -std=c++17 -flto
+    -O2 -g3 -std=c++17 -flto
 
 all: libubpf.a test
 

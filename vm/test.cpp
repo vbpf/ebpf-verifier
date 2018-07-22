@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-#define _GNU_SOURCE
 #include <inttypes.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -30,12 +29,12 @@
 #include "ubpf_int.h"
 #include "abs_interp.h"
 
-static void *readfile(const char *path, size_t maxlen, size_t *len);
+static char *readfile(const char *path, size_t maxlen, size_t *len);
 
 static void usage(const char *name)
 {
-    fprintf(stdout, "usage: %s [-h] DOMAIN BINARY\n", name);
-    fprintf(stdout, "\nVerifies the eBPF code in BINARY using DOMAIN and prints the result to stdout.\n");
+    fprintf(stdout, "usage: %s [-h] [-t TYPE] DOMAIN BINARY\n", name);
+    fprintf(stdout, "\nVerifies the eBPF code in BINARY using DOMAIN assuming program type TYPE\n");
     fprintf(stdout, "Available domains:\n");
     print_domains();
 }
@@ -43,10 +42,16 @@ static void usage(const char *name)
 int main(int argc, char **argv)
 {
     struct option longopts[] = {
-        { .name = "help", .val = 'h', },
-        { .name = "type", .val = 't', .has_arg=1 },
+        { },
+        { },
         { }
     };
+    longopts[0].name = "help";
+    longopts[0].val = 'h';
+
+    longopts[1].name = "type";
+    longopts[1].val = 't';
+    longopts[1].has_arg = 1;
 
     enum ebpf_prog_type prog_type = EBPF_PROG_TYPE_UNSPEC;
     int opt;
@@ -56,7 +61,7 @@ int main(int argc, char **argv)
             usage(argv[0]);
             return 0;
         case 't':
-            prog_type = atoi(optarg);
+            prog_type = (ebpf_prog_type)atoi(optarg);
             break;
         default:
             usage(argv[0]);
@@ -78,7 +83,7 @@ int main(int argc, char **argv)
 
 
     size_t code_len;
-    void *code = readfile(code_filename, 1024*1024, &code_len);
+    ebpf_inst* code = (ebpf_inst*)readfile(code_filename, 1024*1024, &code_len);
     if (code == NULL) {
         return EX_DATAERR;
     }
@@ -102,7 +107,7 @@ int main(int argc, char **argv)
     return rv;
 }
 
-static void *readfile(const char *path, size_t maxlen, size_t *len)
+static char *readfile(const char *path, size_t maxlen, size_t *len)
 {
     FILE *file;
     if (!strcmp(path, "-")) {
@@ -116,7 +121,7 @@ static void *readfile(const char *path, size_t maxlen, size_t *len)
         return NULL;
     }
 
-    void *data = calloc(maxlen, 1);
+    char *data = (char*)calloc(maxlen, 1);
     size_t offset = 0;
     size_t rv;
     while ((rv = fread(data+offset, 1, maxlen-offset, file)) > 0) {

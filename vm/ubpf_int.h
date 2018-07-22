@@ -25,11 +25,14 @@
 
 struct ebpf_inst;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 bool validate_simple(const struct ebpf_inst *insts, uint32_t num_insts, char **errmsg);
 
-#ifdef __cplusplus
-extern "C"
-#endif
 char *ubpf_error(const char *fmt, ...);
+#ifdef __cplusplus
+}
+#endif
 
 #endif
