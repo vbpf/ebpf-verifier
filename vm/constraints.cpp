@@ -30,9 +30,9 @@ static constexpr int xdp_regions = 5 * 4;
 static constexpr int lwt_regions = 24 * 4;
 static constexpr int cgroup_sock_regions = 12 * 4;
 static constexpr int sock_ops_regions =  42 * 4 + 2 * 8;
-static constexpr int sk_skb_regions = 24 * 4;
+static constexpr int sk_skb_regions = 36 * 4;
 
-static constexpr ptype_descr sk_buff = { sk_skb_regions, 15*4, 16*4, 23*4};
+static constexpr ptype_descr sk_buff = { sk_skb_regions, 19*4, 20*4, 35*4};
 static constexpr ptype_descr xdp_md = { xdp_regions, 0, 1*4, 2*4};
 static constexpr ptype_descr sk_msg_md = { 11*4, 0, 1*4, -1};
 
@@ -256,7 +256,7 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
             stack_arr.store(block, offset, regs[inst.src], width);
         }
         return false;
-    } else if ((inst.opcode & 0xE0) == 0x20) { // TODO NAME
+    } else if ((inst.opcode & 0xE0) == 0x20 || (inst.opcode & 0xE0) == 0x40) { // TODO NAME: LDABS, LDIND
         // load only
         auto target = regs[inst.dst];
         ctx_arr.load(block, target, inst.offset, width);
