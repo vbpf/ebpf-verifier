@@ -53,7 +53,7 @@ using namespace crab::analyzer;
 using namespace crab::domains;
 using namespace crab::domain_impl;
 
-static checks_db analyze(string domain_name, cfg_t& cfg, printer_t& printer);
+static checks_db analyze(string domain_name, cfg_t& cfg, printer_t& pre_printer, printer_t& post_printer);
 
 bool abs_validate(vector<struct ebpf_inst> insts,
                   string domain_name, enum ebpf_prog_type prog_type)
@@ -61,16 +61,16 @@ bool abs_validate(vector<struct ebpf_inst> insts,
     cfg_t cfg(entry_label(), ARR);
     build_cfg(cfg, insts, prog_type);
 
-    printer_t printer;
-    printer.connect([&cfg](const string label){
-        cfg.get_node(label).write(crab::outs());
-    });
-
-    checks_db checks = analyze(domain_name, cfg, printer);
+    printer_t pre_printer;
+    printer_t post_printer;
+    
+    checks_db checks = analyze(domain_name, cfg, pre_printer, post_printer);
     int nwarn = checks.get_total_warning() + checks.get_total_error();
     
     for (string label : sorted_labels(cfg)) {
-        printer(label);
+        pre_printer(label);
+        cfg.get_node(label).write(crab::outs());
+        post_printer(label);
     }
 
     if (nwarn > 0) {
@@ -81,11 +81,20 @@ bool abs_validate(vector<struct ebpf_inst> insts,
 }
 
 template<typename analyzer_t>
-auto extract_map(analyzer_t& analyzer)
+auto extract_pre(analyzer_t& analyzer)
 {
     map<string, typename analyzer_t::abs_dom_t> res;
     for (const auto& block : analyzer.get_cfg())
-        res.emplace(block.label(), analyzer[block.label()]);
+        res.emplace(block.label(), analyzer.get_pre(block.label()));
+    return res;
+}
+
+template<typename analyzer_t>
+auto extract_post(analyzer_t& analyzer)
+{
+    map<string, typename analyzer_t::abs_dom_t> res;
+    for (const auto& block : analyzer.get_cfg())
+        res.emplace(block.label(), analyzer.get_post(block.label()));
     return res;
 }
 
@@ -103,13 +112,13 @@ static checks_db check(analyzer_t& analyzer)
     return checker.get_all_checks();
 }
 
-static checks_db dont_analyze(cfg_t& cfg, printer_t& printer)
+static checks_db dont_analyze(cfg_t& cfg, printer_t& printer, printer_t& post_printer)
 {
     return {};
 }
 
 template<typename dom_t>
-static checks_db analyze(cfg_t& cfg, printer_t& printer)
+static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_printer)
 {
     using analyzer_t = intra_fwd_analyzer<cfg_ref<cfg_t>, dom_t>;
     
@@ -119,11 +128,14 @@ static checks_db analyze(cfg_t& cfg, printer_t& printer)
     analyzer_t analyzer(cfg, dom_t::top(), &live);
     analyzer.run();
 
-    printer.connect([pre=extract_map(analyzer)](const string& label) {
+    pre_printer.connect([pre=extract_pre(analyzer)](const string& label) {
         dom_t inv = pre.at(label);
         crab::outs() << "\n" << inv << "\n";
     });
-
+    post_printer.connect([post=extract_post(analyzer)](const string& label) {
+        dom_t inv = post.at(label);
+        crab::outs() << "\n" << inv << "\n";
+    });
     return check(analyzer);
 }
 
@@ -141,7 +153,7 @@ extern template class reduced_numerical_domain_product2<z_term_dis_int_t,z_sdbm_
 }
 
 struct domain_desc {
-    std::function<checks_db(cfg_t&, printer_t&)> analyze;
+    std::function<checks_db(cfg_t&, printer_t&, printer_t&)> analyze;
     string description;
 };
 
@@ -171,12 +183,12 @@ map<string, string> domain_descriptions()
     return res;
 }
 
-static checks_db analyze(string domain_name, cfg_t& cfg, printer_t& printer)
+static checks_db analyze(string domain_name, cfg_t& cfg, printer_t& pre_printer, printer_t& post_printer)
 {
     using namespace std;
     clock_t begin = clock();
 
-    checks_db res = domains.at(domain_name).analyze(cfg, printer);
+    checks_db res = domains.at(domain_name).analyze(cfg, pre_printer, post_printer);
 
     clock_t end = clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;

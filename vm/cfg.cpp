@@ -112,7 +112,7 @@ void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts, ebpf_prog_type prog_typ
             pc = *fall_target - 1;
         }
     }
-    cfg.simplify();
+    //cfg.simplify();
 }
 
 vector<string> sorted_labels(cfg_t& cfg)

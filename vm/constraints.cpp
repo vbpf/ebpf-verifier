@@ -8,13 +8,6 @@
 #include "constraints.hpp"
 
 using std::tuple;
-enum region_t {
-    T_NUM,
-    T_STACK,
-    T_CTX,
-    T_DATA,
-    T_MAP,
-};
 
 // rough estimates:
 static constexpr int perf_max_trace_size = 2048;
@@ -80,15 +73,17 @@ constraints::constraints(ebpf_prog_type prog_type) : ctx_desc{descriptors.at(pro
 
 void constraints::setup_entry(basic_block_t& entry)
 {
-    //entry.havoc(regs[10].value);
     entry.assume(1 <= regs[10].value);
-    entry.assign(regs[10].offset, 0);
+    entry.assign(regs[10].offset, 0); // XXX: Maybe start with T_STACK
     entry.assign(regs[10].region, T_STACK);
 
-    //entry.havoc(regs[1].value);
     entry.assume(1 <= regs[1].value);
     entry.assign(regs[1].offset, 0);
     entry.assign(regs[1].region, T_CTX);
+
+    for (int i : {0, 2, 3, 4, 5, 6, 7, 8, 9}) {
+        entry.assign(regs[i].region, T_UNINIT);
+    }
 
     entry.assume(0 <= total_size);
     if (ctx_desc.meta < 0) {
@@ -213,6 +208,7 @@ void load_datapointer(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, Dom& 
 void constraints::exec_ctx_access(ikos::linear_expression<ikos::z_number, varname_t> addr,
         basic_block_t& mid, basic_block_t& exit, unsigned int _pc, cfg_t& cfg, ebpf_inst inst)
 {
+    crab::cfg::debug_info di{"pc", _pc, 0};
     int width = access_width(inst.opcode);
     if (is_load(inst.opcode)) {
         auto target = regs[inst.dst];
@@ -233,7 +229,7 @@ void constraints::exec_ctx_access(ikos::linear_expression<ikos::z_number, varnam
         }
         ctx_arr.load(normal, regs[inst.dst], addr, width);
     } else {
-        ctx_arr.store(mid, addr, regs[inst.src], width);
+        ctx_arr.store(mid, addr, regs[inst.src], width, di);
         mid >> exit;
     }
 }
@@ -253,7 +249,7 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
         if (is_load(inst.opcode)) {
             stack_arr.load(block, regs[inst.dst], offset, width);
         } else {
-            stack_arr.store(block, offset, regs[inst.src], width);
+            stack_arr.store(block, offset, regs[inst.src], width, di);
         }
         return false;
     } else if ((inst.opcode & 0xE0) == 0x20 || (inst.opcode & 0xE0) == 0x40) { // TODO NAME: LDABS, LDIND
@@ -273,7 +269,7 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
             return false;
         }
         block.havoc(target.value);
-        block.assertion(target.value != 0);
+        block.assertion(target.value != 0, di);
         block.assign(target.region, T_DATA);
         return false;
     } else {
@@ -289,7 +285,7 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
             if (is_load(inst.opcode)) {
                 stack_arr.load(mid, regs[inst.dst], addr, width);
             } else {
-                stack_arr.store(mid, addr, regs[inst.src], width);
+                stack_arr.store(mid, addr, regs[inst.src], width, di);
             }
         }
         {
@@ -297,8 +293,8 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
             block >> mid;
             auto addr = regs[mem].offset + inst.offset;
             mid.assume(regs[mem].region == T_CTX);
-            mid.assertion(addr >= 0, {"pc", _pc, 0});
-            mid.assertion(addr <= ctx_desc.size - width, {"pc", _pc, 0});
+            mid.assertion(addr >= 0, di);
+            mid.assertion(addr <= ctx_desc.size - width, di);
             exec_ctx_access(addr, mid, exit, _pc, cfg, inst);
         }
         if (ctx_desc.data >= 0) {
@@ -310,7 +306,7 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
             if (is_load(inst.opcode)) {
                 data_arr.load(mid, regs[inst.dst], addr, width);
             } else {
-                data_arr.store(mid, addr, regs[inst.src], width);
+                data_arr.store(mid, addr, regs[inst.src], width, di);
             }
         }
         {
@@ -320,6 +316,11 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
             mid.assertion(addr >= 0, di);
             constexpr int MAP_SIZE = 256;
             mid.assertion(addr <= MAP_SIZE - width, di);
+            if (is_load(inst.opcode)) {
+                data_arr.load(mid, regs[inst.dst], addr, width);
+            } else {
+                data_arr.store(mid, addr, regs[inst.src], width, di);
+            }
         }
         return true;
     }
@@ -327,6 +328,7 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
 
 void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg)
 {
+    crab::cfg::debug_info di{"pc", _pc, 0};
     auto& dst = regs[inst.dst];
 
     var_t& vdst = regs[inst.dst].value;
@@ -340,7 +342,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
     int imm = inst.imm;
 
     bool exit_linked = false;
-
+    // TODO: add assertion for all operators that the arguments are initialized
     switch (inst.opcode) {
     case EBPF_OP_ADD_IMM:
         block.add(vdst, vdst, imm);
@@ -580,46 +582,54 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         block.assign(vdst, (uint32_t)inst.imm | ((uint64_t)imm << 32));
         no_pointer(block, dst);
         break;
-    case EBPF_OP_JEQ_IMM:
-    case EBPF_OP_JEQ_REG:
-    case EBPF_OP_JGE_IMM:
-    case EBPF_OP_JGE_REG:
-    case EBPF_OP_JSGE_IMM:
-    case EBPF_OP_JSGE_REG:
-    case EBPF_OP_JLE_IMM:
-    case EBPF_OP_JLE_REG:
-    case EBPF_OP_JSLE_IMM:
     case EBPF_OP_JSLE_REG:
-    case EBPF_OP_JNE_IMM:
+    case EBPF_OP_JEQ_REG:
+    case EBPF_OP_JGE_REG:
+    case EBPF_OP_JSGE_REG:
+    case EBPF_OP_JLE_REG:
     case EBPF_OP_JNE_REG:
-    case EBPF_OP_JGT_IMM:
     case EBPF_OP_JGT_REG:
-    case EBPF_OP_JSGT_IMM:
     case EBPF_OP_JSGT_REG:
-    case EBPF_OP_JLT_IMM:
     case EBPF_OP_JLT_REG:
-    case EBPF_OP_JSLT_IMM:
     case EBPF_OP_JSLT_REG:
+        assert_init(block, regs[inst.src], di);
+        // fallthrough
+    case EBPF_OP_JEQ_IMM:
+    case EBPF_OP_JGE_IMM:
+    case EBPF_OP_JSGE_IMM:
+    case EBPF_OP_JLE_IMM:
+    case EBPF_OP_JSLE_IMM:
+    case EBPF_OP_JNE_IMM:
+    case EBPF_OP_JGT_IMM:
+    case EBPF_OP_JSGT_IMM:
+    case EBPF_OP_JLT_IMM:
+    case EBPF_OP_JSLT_IMM:
+        assert_init(block, regs[inst.dst], di);
+        break;
     case EBPF_OP_JA:
+        break;
+
     case EBPF_OP_EXIT:
+        block.assertion(regs[0].region == T_NUM, di);
         break;
 
     case EBPF_OP_CALL:
         for (int i=1; i<=5; i++) {
             block.havoc(regs[i].value);
-            block.havoc(regs[i].region);
             block.havoc(regs[i].offset);
+            block.assign(regs[0].region, T_UNINIT);
         }
         if (inst.imm == 0x1) {
+            block.havoc(regs[0].value);
             block.assign(regs[0].offset, 0);
             block.assign(regs[0].region, T_MAP);
-            block.havoc(regs[0].value);
         } else {
-            block.havoc(regs[0].offset);
             block.havoc(regs[0].value);
-            block.havoc(regs[0].region);
+            block.havoc(regs[0].offset);
+            block.assign(regs[0].region, T_NUM);
         }
         break;
+
     default:
         if (is_access(inst.opcode)) {
             exit_linked = exec_mem_access(block, exit, _pc, cfg, inst);
