@@ -246,10 +246,10 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
     int width = access_width(inst.opcode);
 
     if (mem == 10) {
-        auto offset = -inst.offset;
+        auto offset = inst.offset;
         // not dynamic
-        assert(offset >= width);
-        assert(offset <= STACK_SIZE);
+        assert(offset <= -width);
+        assert(offset >= -STACK_SIZE);
         if (is_load(inst.opcode)) {
             stack_arr.load(block, regs[inst.dst], offset, width);
         } else {
@@ -284,8 +284,8 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
             auto& mid = insert_midnode(cfg, block, exit, "assume_stack");
             auto addr = regs[mem].offset - inst.offset; // XXX: - ?
             mid.assume(regs[mem].region == T_STACK);
-            mid.assertion(addr >= width, di);
-            mid.assertion(addr <= STACK_SIZE, di);
+            mid.assertion(addr <= -width, di);
+            mid.assertion(addr >= -STACK_SIZE, di);
             if (is_load(inst.opcode)) {
                 stack_arr.load(mid, regs[inst.dst], addr, width);
             } else {

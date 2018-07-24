@@ -22,6 +22,8 @@
 #include <string>
 #include <functional>
 #include <map>
+#include <ctime>
+#include <iostream>
 
 #include <boost/signals2.hpp>
 
@@ -37,6 +39,7 @@
 #include "common.hpp"
 #include "cfg.hpp"
 #include "verifier.hpp"
+
 
 using std::string;
 using std::vector;
@@ -156,6 +159,7 @@ const map<string, domain_desc> domains{
     { "term_dbm"          , { analyze<z_term_dbm_t>, "(z_term_dbm_t)" } },
     { "term_disj_interval", { analyze<z_term_dis_int_t>, "term x disjoint intervals (z_term_dis_int_t)" } },
     { "num"               , { analyze<z_num_domain_t>, "term x disjoint interval x sparse dbm (z_num_domain_t)" } },
+    { "wrapped"           , { analyze<z_wrapped_interval_domain_t>, "wrapped interval domain (z_wrapped_interval_domain_t)" } },
     { "none"              , { dont_analyze, "build CFG only, don't perform analysis" } },
 };
 
@@ -167,6 +171,15 @@ map<string, string> domain_descriptions()
     return res;
 }
 
-static checks_db analyze(string domain_name, cfg_t& cfg, printer_t& printer) {
-    return domains.at(domain_name).analyze(cfg, printer);
+static checks_db analyze(string domain_name, cfg_t& cfg, printer_t& printer)
+{
+    using namespace std;
+    clock_t begin = clock();
+
+    checks_db res = domains.at(domain_name).analyze(cfg, printer);
+
+    clock_t end = clock();
+    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    cout << "seconds:" << elapsed_secs << "\n";
+    return res;
 }

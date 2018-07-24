@@ -97,6 +97,6 @@ namespace crab {
     typedef array_smashing<z_num_null_domain_t> z_as_num_null_t;
     typedef array_smashing<z_bool_num_domain_t> z_as_bool_num_t;
     // machine arithmetic domains
-    typedef wrapped_interval_domain<ikos::z_number, varname_t> z_wrapped_interval_domain_t;
+    using z_wrapped_interval_domain_t = wrapped_interval_domain<ikos::z_number, varname_t>;
   } 
 }
