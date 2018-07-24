@@ -9,11 +9,15 @@ then
 fi
 
 mkdir -p ../logs
-
 for dom in "$@"
 do
-	echo -n "$dom"
-	for f in "${files[@]}";
+	echo -n ",$dom"
+done
+echo
+for f in "${files[@]}";
+do
+	echo -n "$f"
+	for dom in "$@"
 	do
 		base=$(basename $f)
 		err=../logs/${base}.err
