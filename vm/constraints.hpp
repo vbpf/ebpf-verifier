@@ -99,6 +99,8 @@ class constraints final
     void exec_ctx_access(ikos::linear_expression<ikos::z_number, varname_t> addr,
         basic_block_t& mpf_ui_div, basic_block_t& exit, unsigned int _pc, cfg_t& cfg, ebpf_inst inst);
     static void no_pointer(basic_block_t& block, constraints::dom_t& v);
+    void exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg);
+    void exec_call(basic_block_t& block, int32_t imm);
 public:
     constraints(ebpf_prog_type prog_type);
     void setup_entry(basic_block_t& entry);

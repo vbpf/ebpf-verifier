@@ -205,6 +205,59 @@ void load_datapointer(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, Dom& 
     mid.assign(target.offset, lower_bound);
 }
 
+void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg)
+{
+    crab::cfg::debug_info di{"pc", _pc, 0};
+
+    bool exit_linked = false;
+
+    if (is_alu(inst.opcode)) {
+        exec_alu(inst, block, exit, _pc, cfg);
+    } else if (inst.opcode == EBPF_OP_LDDW) {
+        block.assign(regs[inst.dst].value, (uint32_t)inst.imm | ((uint64_t)inst.imm << 32));
+        no_pointer(block, regs[inst.dst]);
+    } else if (is_access(inst.opcode)) {
+        exit_linked = exec_mem_access(block, exit, _pc, cfg, inst);
+    } else if (inst.opcode == EBPF_OP_EXIT) {
+        //assert_init(block, regs[inst.dst], di);
+        block.assertion(regs[inst.dst].region == T_NUM, di);
+    } else if (inst.opcode == EBPF_OP_CALL) {
+        exec_call(block, inst.imm);
+    } else if (is_jump(inst.opcode)) {
+        // cfg-related action is handled in build_cfg() and constraints::jump()
+        if (inst.opcode != EBPF_OP_JA) {
+            if (inst.opcode & EBPF_SRC_REG) {
+                assert_init(block, regs[inst.src], di);
+            }
+            assert_init(block, regs[inst.dst], di);
+        }
+    } else {
+        std::cout << "bad instruction " << (int)inst.opcode << " at "<< _pc << "\n";
+        assert(false);
+    }
+    if (!exit_linked) {
+        block >> exit;
+    }
+}
+
+void constraints::exec_call(basic_block_t& block, int32_t imm)
+{
+    for (int i=1; i<=5; i++) {
+        block.havoc(regs[i].value);
+        block.havoc(regs[i].offset);
+        block.assign(regs[i].region, T_UNINIT);
+    }
+    if (imm == 0x1) {
+        block.havoc(regs[0].value);
+        block.assign(regs[0].offset, 0);
+        block.assign(regs[0].region, T_MAP);
+    } else {
+        block.havoc(regs[0].value);
+        block.havoc(regs[0].offset);
+        block.assign(regs[0].region, T_NUM);
+    }
+}
+
 void constraints::exec_ctx_access(ikos::linear_expression<ikos::z_number, varname_t> addr,
         basic_block_t& mid, basic_block_t& exit, unsigned int _pc, cfg_t& cfg, ebpf_inst inst)
 {
@@ -326,22 +379,22 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
     }
 }
 
-void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg)
+void constraints::exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg)
 {
     crab::cfg::debug_info di{"pc", _pc, 0};
     auto& dst = regs[inst.dst];
+    auto& src = regs[inst.src];
 
-    var_t& vdst = regs[inst.dst].value;
-    var_t& odst = regs[inst.dst].offset;
-    var_t& rdst = regs[inst.dst].region;
+    var_t& vdst = dst.value;
+    var_t& odst = dst.offset;
+    var_t& rdst = dst.region;
 
-    var_t& vsrc = regs[inst.src].value;
-    var_t& osrc = regs[inst.src].offset;
-    var_t& rsrc = regs[inst.src].region;
+    var_t& vsrc = src.value;
+    var_t& osrc = src.offset;
+    var_t& rsrc = src.region;
 
     int imm = inst.imm;
 
-    bool exit_linked = false;
     // TODO: add assertion for all operators that the arguments are initialized
     switch (inst.opcode) {
     case EBPF_OP_ADD_IMM:
@@ -483,7 +536,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         break;
     case EBPF_OP_ADD64_REG:
         block.add(vdst, vdst, vsrc);
-        block.add(odst, odst, vsrc); //XXX note vsrc
+        block.add(odst, odst, vsrc); // XXX note vsrc
         break;
     case EBPF_OP_SUB64_IMM:
         block.sub(vdst, vdst, imm);
@@ -578,68 +631,8 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
         block.ashr(vdst, vdst, vsrc); // = (int64_t)dst >> src;
         no_pointer(block, dst);
         break;
-    case EBPF_OP_LDDW:
-        block.assign(vdst, (uint32_t)inst.imm | ((uint64_t)imm << 32));
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_JSLE_REG:
-    case EBPF_OP_JEQ_REG:
-    case EBPF_OP_JGE_REG:
-    case EBPF_OP_JSGE_REG:
-    case EBPF_OP_JLE_REG:
-    case EBPF_OP_JNE_REG:
-    case EBPF_OP_JGT_REG:
-    case EBPF_OP_JSGT_REG:
-    case EBPF_OP_JLT_REG:
-    case EBPF_OP_JSLT_REG:
-        assert_init(block, regs[inst.src], di);
-        // fallthrough
-    case EBPF_OP_JEQ_IMM:
-    case EBPF_OP_JGE_IMM:
-    case EBPF_OP_JSGE_IMM:
-    case EBPF_OP_JLE_IMM:
-    case EBPF_OP_JSLE_IMM:
-    case EBPF_OP_JNE_IMM:
-    case EBPF_OP_JGT_IMM:
-    case EBPF_OP_JSGT_IMM:
-    case EBPF_OP_JLT_IMM:
-    case EBPF_OP_JSLT_IMM:
-        assert_init(block, regs[inst.dst], di);
-        break;
-    case EBPF_OP_JA:
-        break;
-
-    case EBPF_OP_EXIT:
-        block.assertion(regs[0].region == T_NUM, di);
-        break;
-
-    case EBPF_OP_CALL:
-        for (int i=1; i<=5; i++) {
-            block.havoc(regs[i].value);
-            block.havoc(regs[i].offset);
-            block.assign(regs[0].region, T_UNINIT);
-        }
-        if (inst.imm == 0x1) {
-            block.havoc(regs[0].value);
-            block.assign(regs[0].offset, 0);
-            block.assign(regs[0].region, T_MAP);
-        } else {
-            block.havoc(regs[0].value);
-            block.havoc(regs[0].offset);
-            block.assign(regs[0].region, T_NUM);
-        }
-        break;
-
     default:
-        if (is_access(inst.opcode)) {
-            exit_linked = exec_mem_access(block, exit, _pc, cfg, inst);
-        } else {
-            std::cout << "bad instruction " << (int)inst.opcode << " at "<< _pc << "\n";
-        }
+        assert(false);
         break;
-    }
-
-    if (!exit_linked) {
-        block >> exit;
     }
 }

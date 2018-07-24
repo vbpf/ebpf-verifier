@@ -217,6 +217,12 @@ struct ebpf_inst {
 #define EBPF_OP_JSLE_IMM (EBPF_CLS_JMP|EBPF_SRC_IMM|0xd0)
 #define EBPF_OP_JSLE_REG (EBPF_CLS_JMP|EBPF_SRC_REG|0xd0)
 
+inline bool is_jump(uint8_t opcode)
+{
+    return (opcode & EBPF_CLS_MASK) == EBPF_CLS_JMP
+            && opcode != EBPF_OP_CALL
+            && opcode != EBPF_OP_EXIT;
+}
 
 inline bool is_load(uint8_t opcode)
 {
@@ -245,6 +251,11 @@ inline bool is_access(uint8_t opcode)
     return is_load(opcode) || is_store(opcode);
 }
 
+inline bool is_alu(uint8_t opcode)
+{
+    return (opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU
+        || (opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64;
+}
 
 inline int access_width(uint8_t opcode)
 {
