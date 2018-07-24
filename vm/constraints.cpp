@@ -381,6 +381,9 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
 
 void constraints::exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg)
 {
+    assert((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU
+         ||(inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64);
+
     crab::cfg::debug_info di{"pc", _pc, 0};
     auto& dst = regs[inst.dst];
     auto& src = regs[inst.src];
@@ -397,199 +400,88 @@ void constraints::exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& 
 
     // TODO: add assertion for all operators that the arguments are initialized
     switch (inst.opcode) {
-    case EBPF_OP_ADD_IMM:
-        block.add(vdst, vdst, imm);
-        wrap32(block, vdst);
-        block.add(odst, odst, imm);
-        break;
-    case EBPF_OP_ADD_REG:
-        block.add(vdst, vdst, vsrc);
-        wrap32(block, vdst);
-        block.add(odst, odst, vsrc);
-        break;
-    case EBPF_OP_SUB_IMM:
-        block.sub(vdst, vdst, imm);
-        wrap32(block, vdst);
-        block.sub(odst, odst, imm);
-        break;
-    case EBPF_OP_SUB_REG:
-        block.sub(vdst, vdst, vsrc);
-        wrap32(block, vdst);
-        // TODO: meet of this and "odst - odst" if same region
-        block.sub(odst, odst, vsrc);
-        break;
-    case EBPF_OP_MUL_IMM:
-        block.mul(vdst, vdst, imm);
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_MUL_REG:
-        block.mul(vdst, vdst, vsrc);
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_DIV_IMM:
-        block.div(vdst, vdst, vsrc); // TODO: u32(vdst) / u32(imm);
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_DIV_REG:
-        block.div(vdst, vdst, vsrc); // TODO: u32(vdst) / u32(src);
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_OR_IMM:
-        block.bitwise_or(vdst, vdst, imm);
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_OR_REG:
-        block.bitwise_or(vdst, vdst, vsrc);
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_AND_IMM:
-        block.bitwise_and(vdst, vdst, imm);
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_AND_REG:
-        block.bitwise_and(vdst, vdst, vsrc);
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_LSH_IMM:
-        block.shl(vdst, vdst, imm);
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_LSH_REG:
-        block.shl(vdst, vdst, vsrc);
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_RSH_IMM:
-        block.lshr(vdst, vdst, imm); // TODO u32(vdst) >> imm;
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_RSH_REG:
-        block.lshr(vdst, vdst, vsrc); // TODO u32(vdst) >> src;
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_NEG:
-        block.mul(vdst, vdst, -1); // ???
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_MOD_IMM:
-        block.rem(vdst, vdst, imm); // FIX: vdst = u32(vdst) % u32(imm);
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_MOD_REG:
-        block.rem(vdst, vdst, vsrc); // FIX: vdst = u32(vdst) % u32(vsrc);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_XOR_IMM:
-        block.bitwise_xor(vdst, vdst, imm);
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_XOR_REG:
-        block.bitwise_xor(vdst, vdst, vsrc);
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_MOV_IMM:
-        block.assign(vdst, imm);
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_MOV_REG:
-        block.assign(vdst, vsrc);
-        wrap32(block, vdst);
-        block.assign(odst, osrc);
-        block.assign(rdst, rsrc);
-        break;
-    case EBPF_OP_ARSH_IMM:
-        block.ashr(vdst, vdst, imm); // FIX: (int32_t)dst >> imm;
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_ARSH_REG:
-        block.ashr(vdst, vdst, vsrc); // FIX = (int32_t)dst >> u32(src);
-        wrap32(block, vdst);
-        no_pointer(block, dst);
-        break;
-
     case EBPF_OP_LE:
     case EBPF_OP_BE:
         block.havoc(vdst);
         no_pointer(block, dst);
         break;
 
+    case EBPF_OP_ADD_IMM:
     case EBPF_OP_ADD64_IMM:
         block.add(vdst, vdst, imm);
         block.add(odst, odst, imm);
         break;
+    case EBPF_OP_ADD_REG:
     case EBPF_OP_ADD64_REG:
         block.add(vdst, vdst, vsrc);
         block.add(odst, odst, vsrc); // XXX note vsrc
         break;
+    case EBPF_OP_SUB_IMM:
     case EBPF_OP_SUB64_IMM:
         block.sub(vdst, vdst, imm);
         block.sub(odst, odst, imm);
         break;
+    case EBPF_OP_SUB_REG:
     case EBPF_OP_SUB64_REG:
         block.sub(odst, odst, osrc);
         block.sub(odst, odst, vsrc); // XXX note vsrc
         break;
+    case EBPF_OP_MUL_IMM:
     case EBPF_OP_MUL64_IMM:
         block.mul(vdst, vdst, imm);
         no_pointer(block, dst);
         break;
+    case EBPF_OP_MUL_REG:
     case EBPF_OP_MUL64_REG:
         block.mul(vdst, vdst, vsrc);
         no_pointer(block, dst);
         break;
+    case EBPF_OP_DIV_IMM:
     case EBPF_OP_DIV64_IMM:
         block.div(vdst, vdst, imm);
         no_pointer(block, dst);
         break;
+    case EBPF_OP_DIV_REG:
     case EBPF_OP_DIV64_REG:
         block.div(vdst, vdst, vsrc);
         no_pointer(block, dst);
         break;
+    case EBPF_OP_OR_IMM:
     case EBPF_OP_OR64_IMM:
         block.bitwise_or(vdst, vdst, imm);
         no_pointer(block, dst);
         break;
+    case EBPF_OP_OR_REG:
     case EBPF_OP_OR64_REG:
         block.bitwise_or(vdst, vdst, vsrc);
         no_pointer(block, dst);
         break;
+    case EBPF_OP_AND_IMM:
     case EBPF_OP_AND64_IMM:
         block.bitwise_and(vdst, vdst, imm);
         no_pointer(block, dst);
         break;
+    case EBPF_OP_AND_REG:
     case EBPF_OP_AND64_REG:
         block.bitwise_and(vdst, vdst, vsrc);
         no_pointer(block, dst);
         break;
+    case EBPF_OP_LSH_IMM:
     case EBPF_OP_LSH64_IMM:
         block.lshr(vdst, vdst, imm);
         no_pointer(block, dst);
         break;
+    case EBPF_OP_LSH_REG:
     case EBPF_OP_LSH64_REG:
         block.lshr(vdst, vdst, vsrc);
         no_pointer(block, dst);
         break;
+    case EBPF_OP_RSH_IMM:
     case EBPF_OP_RSH64_IMM:
         block.ashr(vdst, vdst, imm);
         no_pointer(block, dst);
         break;
+    case EBPF_OP_RSH_REG:
     case EBPF_OP_RSH64_REG:
         block.ashr(vdst, vdst, vsrc);
         no_pointer(block, dst);
@@ -598,35 +490,43 @@ void constraints::exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& 
         block.mul(vdst, vdst, -1); // ???
         no_pointer(block, dst);
         break;
+    case EBPF_OP_MOD_IMM:
     case EBPF_OP_MOD64_IMM:
         block.rem(vdst, vdst, imm);
         no_pointer(block, dst);
         break;
+    case EBPF_OP_MOD_REG:
     case EBPF_OP_MOD64_REG:
         block.rem(vdst, vdst, vsrc);
         no_pointer(block, dst);
         break;
+    case EBPF_OP_XOR_IMM:
     case EBPF_OP_XOR64_IMM:
         block.bitwise_xor(vdst, vdst, imm);
         no_pointer(block, dst);
         break;
+    case EBPF_OP_XOR_REG:
     case EBPF_OP_XOR64_REG:
         block.bitwise_xor(vdst, vdst, vsrc);
         no_pointer(block, dst);
         break;
+    case EBPF_OP_MOV_IMM:
     case EBPF_OP_MOV64_IMM:
         block.assign(vdst, imm);
         no_pointer(block, dst);
         break;
+    case EBPF_OP_MOV_REG:
     case EBPF_OP_MOV64_REG:
         block.assign(vdst, vsrc);
         block.assign(odst, osrc);
         block.assign(rdst, rsrc);
         break;
+    case EBPF_OP_ARSH_IMM:
     case EBPF_OP_ARSH64_IMM:
         block.ashr(vdst, vdst, imm); // = (int64_t)dst >> imm;
         no_pointer(block, dst);
         break;
+    case EBPF_OP_ARSH_REG:
     case EBPF_OP_ARSH64_REG:
         block.ashr(vdst, vdst, vsrc); // = (int64_t)dst >> src;
         no_pointer(block, dst);
@@ -635,4 +535,6 @@ void constraints::exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& 
         assert(false);
         break;
     }
+    if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU)
+        wrap32(block, vdst);
 }
