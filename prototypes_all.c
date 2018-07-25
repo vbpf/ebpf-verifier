@@ -626,3 +626,71 @@ static const struct bpf_func_proto rc_keydown_proto = {
 	.arg3_type = ARG_ANYTHING,
 	.arg4_type = ARG_ANYTHING,
 };
+const struct bpf_func_proto bpf_map_lookup_elem_proto = {
+	.func		= bpf_map_lookup_elem,
+	.gpl_only	= false,
+	.pkt_access	= true,
+	.ret_type	= RET_PTR_TO_MAP_VALUE_OR_NULL,
+	.arg1_type	= ARG_CONST_MAP_PTR,
+	.arg2_type	= ARG_PTR_TO_MAP_KEY,
+};
+const struct bpf_func_proto bpf_map_update_elem_proto = {
+	.func		= bpf_map_update_elem,
+	.gpl_only	= false,
+	.pkt_access	= true,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_CONST_MAP_PTR,
+	.arg2_type	= ARG_PTR_TO_MAP_KEY,
+	.arg3_type	= ARG_PTR_TO_MAP_VALUE,
+	.arg4_type	= ARG_ANYTHING,
+};
+const struct bpf_func_proto bpf_map_delete_elem_proto = {
+	.func		= bpf_map_delete_elem,
+	.gpl_only	= false,
+	.pkt_access	= true,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_CONST_MAP_PTR,
+	.arg2_type	= ARG_PTR_TO_MAP_KEY,
+};
+const struct bpf_func_proto bpf_get_prandom_u32_proto = {
+	.func		= bpf_user_rnd_u32,
+	.gpl_only	= false,
+	.ret_type	= RET_INTEGER,
+};
+const struct bpf_func_proto bpf_get_smp_processor_id_proto = {
+	.func		= bpf_get_smp_processor_id,
+	.gpl_only	= false,
+	.ret_type	= RET_INTEGER,
+};
+const struct bpf_func_proto bpf_get_numa_node_id_proto = {
+	.func		= bpf_get_numa_node_id,
+	.gpl_only	= false,
+	.ret_type	= RET_INTEGER,
+};
+const struct bpf_func_proto bpf_ktime_get_ns_proto = {
+	.func		= bpf_ktime_get_ns,
+	.gpl_only	= true,
+	.ret_type	= RET_INTEGER,
+};
+const struct bpf_func_proto bpf_get_current_pid_tgid_proto = {
+	.func		= bpf_get_current_pid_tgid,
+	.gpl_only	= false,
+	.ret_type	= RET_INTEGER,
+};
+const struct bpf_func_proto bpf_get_current_uid_gid_proto = {
+	.func		= bpf_get_current_uid_gid,
+	.gpl_only	= false,
+	.ret_type	= RET_INTEGER,
+};
+const struct bpf_func_proto bpf_get_current_comm_proto = {
+	.func		= bpf_get_current_comm,
+	.gpl_only	= false,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_PTR_TO_UNINIT_MEM,
+	.arg2_type	= ARG_CONST_SIZE,
+};
+const struct bpf_func_proto bpf_get_current_cgroup_id_proto = {
+	.func		= bpf_get_current_cgroup_id,
+	.gpl_only	= false,
+	.ret_type	= RET_INTEGER,
+};
