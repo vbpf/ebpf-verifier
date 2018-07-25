@@ -65,7 +65,7 @@ class constraints final
             regions{vfac[std::string(name + "_regions")], crab::ARR_INT_TYPE, 8}
         { }
         template<typename T>
-        void load(basic_block_t& block, dom_t& target, T& offset, int width) {
+        void load(basic_block_t& block, dom_t& target, const T& offset, int width) {
             block.array_load(target.value, values, offset, width);
             block.array_load(target.offset, offsets, offset, width);
             block.array_load(target.region, regions, offset, width);

@@ -99,62 +99,62 @@ static auto eq(var_t& a, var_t& b)
     return lin_cst_t(a - b, lin_cst_t::EQUALITY);
 }
 
-static lin_cst_t jmp_to_cst_offsets(uint8_t opcode, int imm, var_t& odst, var_t& osrc)
+static lin_cst_t jmp_to_cst_offsets(uint8_t opcode, int imm, var_t& dst_offset, var_t& src_offset)
 {
     switch (opcode) {
     case EBPF_OP_JEQ_REG:
-        return eq(odst, osrc);
+        return eq(dst_offset, src_offset);
 
-    case EBPF_OP_JGE_REG:  return odst >= osrc; // FIX unsigned
-    case EBPF_OP_JSGE_REG: return odst >= osrc;
-    case EBPF_OP_JLE_REG:  return odst <= osrc; // FIX unsigned
-    case EBPF_OP_JSLE_REG: return odst <= osrc;
+    case EBPF_OP_JGE_REG:  return dst_offset >= src_offset; // FIX unsigned
+    case EBPF_OP_JSGE_REG: return dst_offset >= src_offset;
+    case EBPF_OP_JLE_REG:  return dst_offset <= src_offset; // FIX unsigned
+    case EBPF_OP_JSLE_REG: return dst_offset <= src_offset;
     case EBPF_OP_JNE_REG:
-        return lin_cst_t(odst - osrc, lin_cst_t::DISEQUATION);
+        return lin_cst_t(dst_offset - src_offset, lin_cst_t::DISEQUATION);
     
-    case EBPF_OP_JGT_REG:  return odst > osrc; // FIX unsigned
-    case EBPF_OP_JSGT_REG: return odst > osrc;
+    case EBPF_OP_JGT_REG:  return dst_offset > src_offset; // FIX unsigned
+    case EBPF_OP_JSGT_REG: return dst_offset > src_offset;
 
     // Note: reverse the test as a workaround strange lookup:
-    case EBPF_OP_JLT_REG:  return osrc > odst; // FIX unsigned
-    case EBPF_OP_JSLT_REG: return osrc > odst;
+    case EBPF_OP_JLT_REG:  return src_offset > dst_offset; // FIX unsigned
+    case EBPF_OP_JSLT_REG: return src_offset > dst_offset;
     }
-    return odst - odst == 0;
+    return dst_offset - dst_offset == 0;
 }
 
 
-static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& vdst, var_t& vsrc)
+static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& dst_value, var_t& src_value)
 {
     switch (opcode) {
-    case EBPF_OP_JEQ_IMM:  return vdst == imm;
+    case EBPF_OP_JEQ_IMM:  return dst_value == imm;
     case EBPF_OP_JEQ_REG:
-        return lin_cst_t(vdst - vsrc, lin_cst_t::EQUALITY);
+        return eq(dst_value, src_value);
 
-    case EBPF_OP_JGE_IMM:  return vdst >= imm; // FIX unsigned
-    case EBPF_OP_JGE_REG:  return vdst >= vsrc; // FIX unsigned
+    case EBPF_OP_JGE_IMM:  return dst_value >= imm; // FIX unsigned
+    case EBPF_OP_JGE_REG:  return dst_value >= src_value; // FIX unsigned
 
-    case EBPF_OP_JSGE_IMM: return vdst >= imm;
-    case EBPF_OP_JSGE_REG: return vdst >= vsrc;
+    case EBPF_OP_JSGE_IMM: return dst_value >= imm;
+    case EBPF_OP_JSGE_REG: return dst_value >= src_value;
     
-    case EBPF_OP_JLE_IMM:  return vdst <= imm; // FIX unsigned
-    case EBPF_OP_JLE_REG:  return vdst <= vsrc; // FIX unsigned
-    case EBPF_OP_JSLE_IMM: return vdst <= imm;
-    case EBPF_OP_JSLE_REG: return vdst <= vsrc;
+    case EBPF_OP_JLE_IMM:  return dst_value <= imm; // FIX unsigned
+    case EBPF_OP_JLE_REG:  return dst_value <= src_value; // FIX unsigned
+    case EBPF_OP_JSLE_IMM: return dst_value <= imm;
+    case EBPF_OP_JSLE_REG: return dst_value <= src_value;
 
-    case EBPF_OP_JNE_IMM:  return vdst != imm;
+    case EBPF_OP_JNE_IMM:  return dst_value != imm;
     case EBPF_OP_JNE_REG:
-        return lin_cst_t(vdst - vsrc, lin_cst_t::DISEQUATION);
+        return lin_cst_t(dst_value - src_value, lin_cst_t::DISEQUATION);
     
-    case EBPF_OP_JGT_IMM:  return vdst > imm; // FIX unsigned
-    case EBPF_OP_JGT_REG:  return vdst > vsrc; // FIX unsigned
-    case EBPF_OP_JSGT_IMM: return vdst > imm;
-    case EBPF_OP_JSGT_REG: return vdst > vsrc;
+    case EBPF_OP_JGT_IMM:  return dst_value > imm; // FIX unsigned
+    case EBPF_OP_JGT_REG:  return dst_value > src_value; // FIX unsigned
+    case EBPF_OP_JSGT_IMM: return dst_value > imm;
+    case EBPF_OP_JSGT_REG: return dst_value > src_value;
 
-    case EBPF_OP_JLT_IMM:  return vdst < imm; // FIX unsigned
+    case EBPF_OP_JLT_IMM:  return dst_value < imm; // FIX unsigned
     // Note: reverse the test as a workaround strange lookup:
-    case EBPF_OP_JLT_REG:  return vsrc > vdst; // FIX unsigned
-    case EBPF_OP_JSLT_IMM: return vdst < imm;
-    case EBPF_OP_JSLT_REG: return vsrc > vdst;
+    case EBPF_OP_JLT_REG:  return src_value > dst_value; // FIX unsigned
+    case EBPF_OP_JSLT_IMM: return dst_value < imm;
+    case EBPF_OP_JSLT_REG: return src_value > dst_value;
     }
     assert(false);
 }
@@ -172,9 +172,9 @@ void constraints::jump(ebpf_inst inst, basic_block_t& block, bool taken)
     }
 }
 
-static void wrap32(basic_block_t& block, var_t& vdst)
+static void wrap32(basic_block_t& block, var_t& dst_value)
 {
-    block.bitwise_and(vdst, vdst, UINT32_MAX);
+    block.bitwise_and(dst_value, dst_value, UINT32_MAX);
 }
 
 
@@ -331,7 +331,7 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
 
         {
             auto& mid = insert_midnode(cfg, block, exit, "assume_stack");
-            auto addr = regs[mem].offset - inst.offset; // XXX: - ?
+            auto addr = regs[mem].offset - inst.offset;
             mid.assume(regs[mem].region == T_STACK);
             mid.assertion(addr <= -width, di);
             mid.assertion(addr >= -STACK_SIZE, di);
@@ -388,147 +388,143 @@ void constraints::exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& 
     auto& dst = regs[inst.dst];
     auto& src = regs[inst.src];
 
-    var_t& vdst = dst.value;
-    var_t& odst = dst.offset;
-    var_t& rdst = dst.region;
-
-    var_t& vsrc = src.value;
-    var_t& osrc = src.offset;
-    var_t& rsrc = src.region;
-
     int imm = inst.imm;
 
     // TODO: add assertion for all operators that the arguments are initialized
+    /*if (inst.opcode & EBPF_SRC_REG) {
+        assert_init(block, regs[inst.src], di);
+    }
+    assert_init(block, regs[inst.dst], di);*/
     switch (inst.opcode) {
     case EBPF_OP_LE:
     case EBPF_OP_BE:
-        block.havoc(vdst);
+        block.havoc(dst.value);
         no_pointer(block, dst);
         break;
 
     case EBPF_OP_ADD_IMM:
     case EBPF_OP_ADD64_IMM:
-        block.add(vdst, vdst, imm);
-        block.add(odst, odst, imm);
+        block.add(dst.value, dst.value, imm);
+        block.add(dst.offset, dst.offset, imm);
         break;
     case EBPF_OP_ADD_REG:
     case EBPF_OP_ADD64_REG:
-        block.add(vdst, vdst, vsrc);
-        block.add(odst, odst, vsrc); // XXX note vsrc
+        block.add(dst.value, dst.value, src.value);
+        block.add(dst.offset, dst.offset, src.value); // XXX note src.value
         break;
     case EBPF_OP_SUB_IMM:
     case EBPF_OP_SUB64_IMM:
-        block.sub(vdst, vdst, imm);
-        block.sub(odst, odst, imm);
+        block.sub(dst.value, dst.value, imm);
+        block.sub(dst.offset, dst.offset, imm);
         break;
     case EBPF_OP_SUB_REG:
     case EBPF_OP_SUB64_REG:
-        block.sub(odst, odst, osrc);
-        block.sub(odst, odst, vsrc); // XXX note vsrc
+        block.sub(dst.offset, dst.offset, src.offset);
+        block.sub(dst.offset, dst.offset, src.value); // XXX note src.value
         break;
     case EBPF_OP_MUL_IMM:
     case EBPF_OP_MUL64_IMM:
-        block.mul(vdst, vdst, imm);
+        block.mul(dst.value, dst.value, imm);
         no_pointer(block, dst);
         break;
     case EBPF_OP_MUL_REG:
     case EBPF_OP_MUL64_REG:
-        block.mul(vdst, vdst, vsrc);
+        block.mul(dst.value, dst.value, src.value);
         no_pointer(block, dst);
         break;
     case EBPF_OP_DIV_IMM:
     case EBPF_OP_DIV64_IMM:
-        block.div(vdst, vdst, imm);
+        block.div(dst.value, dst.value, imm);
         no_pointer(block, dst);
         break;
     case EBPF_OP_DIV_REG:
     case EBPF_OP_DIV64_REG:
-        block.div(vdst, vdst, vsrc);
+        block.div(dst.value, dst.value, src.value);
         no_pointer(block, dst);
         break;
     case EBPF_OP_OR_IMM:
     case EBPF_OP_OR64_IMM:
-        block.bitwise_or(vdst, vdst, imm);
+        block.bitwise_or(dst.value, dst.value, imm);
         no_pointer(block, dst);
         break;
     case EBPF_OP_OR_REG:
     case EBPF_OP_OR64_REG:
-        block.bitwise_or(vdst, vdst, vsrc);
+        block.bitwise_or(dst.value, dst.value, src.value);
         no_pointer(block, dst);
         break;
     case EBPF_OP_AND_IMM:
     case EBPF_OP_AND64_IMM:
-        block.bitwise_and(vdst, vdst, imm);
+        block.bitwise_and(dst.value, dst.value, imm);
         no_pointer(block, dst);
         break;
     case EBPF_OP_AND_REG:
     case EBPF_OP_AND64_REG:
-        block.bitwise_and(vdst, vdst, vsrc);
+        block.bitwise_and(dst.value, dst.value, src.value);
         no_pointer(block, dst);
         break;
     case EBPF_OP_LSH_IMM:
     case EBPF_OP_LSH64_IMM:
-        block.lshr(vdst, vdst, imm);
+        block.lshr(dst.value, dst.value, imm);
         no_pointer(block, dst);
         break;
     case EBPF_OP_LSH_REG:
     case EBPF_OP_LSH64_REG:
-        block.lshr(vdst, vdst, vsrc);
+        block.lshr(dst.value, dst.value, src.value);
         no_pointer(block, dst);
         break;
     case EBPF_OP_RSH_IMM:
     case EBPF_OP_RSH64_IMM:
-        block.ashr(vdst, vdst, imm);
+        block.ashr(dst.value, dst.value, imm);
         no_pointer(block, dst);
         break;
     case EBPF_OP_RSH_REG:
     case EBPF_OP_RSH64_REG:
-        block.ashr(vdst, vdst, vsrc);
+        block.ashr(dst.value, dst.value, src.value);
         no_pointer(block, dst);
         break;
     case EBPF_OP_NEG64:
-        block.mul(vdst, vdst, -1); // ???
+        block.mul(dst.value, dst.value, -1); // ???
         no_pointer(block, dst);
         break;
     case EBPF_OP_MOD_IMM:
     case EBPF_OP_MOD64_IMM:
-        block.rem(vdst, vdst, imm);
+        block.rem(dst.value, dst.value, imm);
         no_pointer(block, dst);
         break;
     case EBPF_OP_MOD_REG:
     case EBPF_OP_MOD64_REG:
-        block.rem(vdst, vdst, vsrc);
+        block.rem(dst.value, dst.value, src.value);
         no_pointer(block, dst);
         break;
     case EBPF_OP_XOR_IMM:
     case EBPF_OP_XOR64_IMM:
-        block.bitwise_xor(vdst, vdst, imm);
+        block.bitwise_xor(dst.value, dst.value, imm);
         no_pointer(block, dst);
         break;
     case EBPF_OP_XOR_REG:
     case EBPF_OP_XOR64_REG:
-        block.bitwise_xor(vdst, vdst, vsrc);
+        block.bitwise_xor(dst.value, dst.value, src.value);
         no_pointer(block, dst);
         break;
     case EBPF_OP_MOV_IMM:
     case EBPF_OP_MOV64_IMM:
-        block.assign(vdst, imm);
+        block.assign(dst.value, imm);
         no_pointer(block, dst);
         break;
     case EBPF_OP_MOV_REG:
     case EBPF_OP_MOV64_REG:
-        block.assign(vdst, vsrc);
-        block.assign(odst, osrc);
-        block.assign(rdst, rsrc);
+        block.assign(dst.value, src.value);
+        block.assign(dst.offset, src.offset);
+        block.assign(dst.region, src.region);
         break;
     case EBPF_OP_ARSH_IMM:
     case EBPF_OP_ARSH64_IMM:
-        block.ashr(vdst, vdst, imm); // = (int64_t)dst >> imm;
+        block.ashr(dst.value, dst.value, imm); // = (int64_t)dst >> imm;
         no_pointer(block, dst);
         break;
     case EBPF_OP_ARSH_REG:
     case EBPF_OP_ARSH64_REG:
-        block.ashr(vdst, vdst, vsrc); // = (int64_t)dst >> src;
+        block.ashr(dst.value, dst.value, src.value); // = (int64_t)dst >> src;
         no_pointer(block, dst);
         break;
     default:
@@ -536,5 +532,5 @@ void constraints::exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& 
         break;
     }
     if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU)
-        wrap32(block, vdst);
+        wrap32(block, dst.value);
 }
