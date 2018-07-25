@@ -22,7 +22,7 @@ do
 		base=$(basename $f)
 		err=../logs/${base}.err
 		log=../logs/${base}.log
-		CMD="./test $dom bins/$base ${base##*.}"
+		CMD="./test $dom ../samples/linux/$base ${base##*.}"
 		echo $CMD > ${err}
 		echo $CMD > ${log}
 		$CMD >> ${log} 2>> ${err}
