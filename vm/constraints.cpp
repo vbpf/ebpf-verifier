@@ -247,7 +247,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
 
 void constraints::exec_call(basic_block_t& block, int32_t imm, crab::cfg::debug_info di)
 {
-    assert(imm < sizeof(prototypes) / sizeof(prototypes[0]));
+    assert(imm < (int)(sizeof(prototypes) / sizeof(prototypes[0])));
     assert(imm > 0);
     auto proto = *prototypes[imm];
     int i = 0;
