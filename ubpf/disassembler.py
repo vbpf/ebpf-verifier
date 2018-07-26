@@ -1,5 +1,5 @@
 import struct
-import StringIO
+from io import StringIO
 
 Inst = struct.Struct("BBHI")
 
@@ -255,8 +255,9 @@ functions = [
 	'get_current_cgroup_id',
 ]
 
+
 def disassemble(data):
-    output = StringIO.StringIO()
+    output = StringIO()
     offset = 0
     pc = 0
     while offset < len(data):

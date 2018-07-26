@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 eBPF disassembler
 
@@ -19,10 +19,10 @@ import ubpf.disassembler
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('input', type=argparse.FileType('r'), default='-')
+    parser.add_argument('input', type=argparse.FileType('rb'), default='-')
     parser.add_argument('output', type=argparse.FileType('w'), nargs='?', default='-')
     args = parser.parse_args()
-
+    
     args.output.write(ubpf.disassembler.disassemble(args.input.read()))
 
 if __name__ == "__main__":
