@@ -164,12 +164,15 @@ def disassemble_one(data, offset):
     else:
         return "unknown instruction %#x" % code
 
+
 def disassemble(data):
     output = StringIO.StringIO()
     offset = 0
+    pc = 0
     while offset < len(data):
         s = disassemble_one(data, offset)
         if s:
-            output.write(s + "\n")
+            output.write("%4d: %s\n" % (pc, s))
+        pc += 1
         offset += 8
     return output.getvalue()
