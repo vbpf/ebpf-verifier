@@ -20,6 +20,7 @@
 #include <crab/domains/term_equiv.hpp>
 #include <crab/domains/array_sparse_graph.hpp>                      
 #include <crab/domains/array_smashing.hpp>
+#include <crab/domains/array_expansion.hpp>
 #include <crab/domains/nullity.hpp>
 #include <crab/domains/flat_boolean_domain.hpp>                      
 #include <crab/domains/combined_domains.hpp>                      
@@ -96,6 +97,7 @@ namespace crab {
     typedef array_smashing<z_sdbm_domain_t> z_as_sdbm_t;
     typedef array_smashing<z_num_null_domain_t> z_as_num_null_t;
     typedef array_smashing<z_bool_num_domain_t> z_as_bool_num_t;
+    typedef array_expansion_domain<z_term_domain_t> z_ae_term_int_t;
     // machine arithmetic domains
     using z_wrapped_interval_domain_t = wrapped_interval_domain<ikos::z_number, varname_t>;
   } 

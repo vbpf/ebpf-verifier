@@ -105,8 +105,9 @@ static checks_db check(analyzer_t& analyzer)
     using checker_t = intra_checker<analyzer_t>;
     using prop_checker_ptr = typename checker_t::prop_checker_ptr;
     checker_t checker(analyzer, {
-        prop_checker_ptr(new assert_property_checker<analyzer_t>(verbose)),
-        prop_checker_ptr(new div_zero_property_checker<analyzer_t>(verbose))
+        prop_checker_ptr(new assert_property_checker<analyzer_t>(verbose))
+        //,
+        //prop_checker_ptr(new div_zero_property_checker<analyzer_t>(verbose))
     });
     checker.run();
     return checker.get_all_checks();
@@ -117,9 +118,10 @@ static checks_db dont_analyze(cfg_t& cfg, printer_t& printer, printer_t& post_pr
     return {};
 }
 
-template<typename dom_t>
+template<typename num_dom_t>
 static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_printer)
 {
+    using dom_t = array_expansion_domain<num_dom_t>;
     using analyzer_t = intra_fwd_analyzer<cfg_ref<cfg_t>, dom_t>;
     
     liveness<typename analyzer_t::cfg_t> live(cfg);
