@@ -49,7 +49,7 @@ CXXFLAGS := -Wall -Werror -Wfatal-errors \
 
 all: libubpf.a test
 
-libubpf.a: ubpf_validator.o verifier.o cfg.o constraints.o crab_domains.o
+libubpf.a: ubpf_validator.o verifier.o cfg.o constraints.o crab_domains.o prototypes.o
 	ar rc $@ $^ 
 
 test: test.o libubpf.a

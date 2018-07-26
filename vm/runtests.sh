@@ -1,6 +1,6 @@
 #!/bin/bash
-
-files=($(ls -S bins/))
+dir=../samples/linux
+files=($(ls -S ${dir}))
 
 if [[ "$1" == "header" ]]
 then
@@ -22,7 +22,7 @@ do
 		base=$(basename $f)
 		err=../logs/${base}.err
 		log=../logs/${base}.log
-		CMD="./test $dom bins/$base ${base##*.}"
+		CMD="./test $dom ${dir}/$base ${base##*.}"
 		echo $CMD > ${err}
 		echo $CMD > ${log}
 		$CMD >> ${log} 2>> ${err}

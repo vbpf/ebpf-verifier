@@ -25,8 +25,8 @@ struct ptype_descr {
 enum region_t {
     T_UNINIT,
     T_NUM,
-    T_STACK,
     T_CTX,
+    T_STACK,
     T_DATA,
     T_MAP,
 };
@@ -100,7 +100,7 @@ class constraints final
         basic_block_t& mpf_ui_div, basic_block_t& exit, unsigned int _pc, cfg_t& cfg, ebpf_inst inst);
     static void no_pointer(basic_block_t& block, constraints::dom_t& v);
     void exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg);
-    void exec_call(basic_block_t& block, int32_t imm);
+    void exec_call(basic_block_t& block, int32_t imm, crab::cfg::debug_info di);
 public:
     constraints(ebpf_prog_type prog_type);
     void setup_entry(basic_block_t& entry);
