@@ -86,12 +86,11 @@ class constraints final
     };
 
     ptype_descr ctx_desc;
-    variable_factory_t vfac;
+    variable_factory_t& vfac;
     std::vector<dom_t> regs;
     array_dom_t stack_arr{vfac, "stack"};
     array_dom_t ctx_arr{vfac, "ctx"};
     array_dom_t data_arr{vfac, "data"};
-    var_t pc{vfac[std::string("pc")], crab::INT_TYPE, 16};
     var_t meta_size{vfac[std::string("meta_size")], crab::INT_TYPE, 64};
     var_t total_size{vfac[std::string("total_data_size")], crab::INT_TYPE, 64};
 
@@ -102,7 +101,7 @@ class constraints final
     void exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg);
     void exec_call(basic_block_t& block, int32_t imm, crab::cfg::debug_info di);
 public:
-    constraints(ebpf_prog_type prog_type);
+    constraints(ebpf_prog_type prog_type, variable_factory_t& vfac);
     void setup_entry(basic_block_t& entry);
 
     void jump(ebpf_inst inst, basic_block_t& block, bool taken);

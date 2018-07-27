@@ -5,7 +5,6 @@
 #include <string>
 
 #include <boost/lexical_cast.hpp>
-
 #include "common.hpp"
 
 inline auto label(int pc) { return std::to_string(pc); }
@@ -25,6 +24,6 @@ inline int first_num(const std::string& s)
 
 std::vector<std::string> sorted_labels(cfg_t& cfg);
 
-void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts, ebpf_prog_type prog_type);
+void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> insts, ebpf_prog_type prog_type);
 
 #endif

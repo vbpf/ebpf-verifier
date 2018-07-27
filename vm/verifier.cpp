@@ -58,8 +58,9 @@ static checks_db analyze(string domain_name, cfg_t& cfg, printer_t& pre_printer,
 bool abs_validate(vector<struct ebpf_inst> insts,
                   string domain_name, enum ebpf_prog_type prog_type)
 {
+    variable_factory_t vfac;
     cfg_t cfg(entry_label(), ARR);
-    build_cfg(cfg, insts, prog_type);
+    build_cfg(cfg, vfac, insts, prog_type);
 
     printer_t pre_printer;
     printer_t post_printer;

@@ -69,7 +69,8 @@ const std::map<ebpf_prog_type, ptype_descr> descriptors {
 };
 
 
-constraints::constraints(ebpf_prog_type prog_type) : ctx_desc{descriptors.at(prog_type)}
+constraints::constraints(ebpf_prog_type prog_type, variable_factory_t& vfac)
+    : ctx_desc{descriptors.at(prog_type)}, vfac{vfac}
 {
     for (int i=0; i < 16; i++) {
         regs.emplace_back(vfac, i);

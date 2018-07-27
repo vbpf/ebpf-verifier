@@ -26,6 +26,7 @@ namespace crab {
 
 using crab::cfg_impl::varname_t;
 using crab::cfg_impl::basic_block_label_t;
+using crab::cfg_impl::variable_factory_t;
 
 /// CFG over integers
 using cfg_t         = crab::cfg::Cfg<basic_block_label_t, varname_t, ikos::z_number>;
