@@ -136,7 +136,11 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
         dom_t inv = post.at(label);
         crab::outs() << "\n" << inv << "\n";
     });
-    return check(analyzer);
+    dom_t last_pre = analyzer.get_pre(cfg.exit());
+    auto c = check(analyzer);
+    if (last_pre.is_bottom())
+        c.add(_ERR, {"unreachable exit", (unsigned int)first_num(cfg.exit()), 0});
+    return c;
 }
 
 // DOMAINS
