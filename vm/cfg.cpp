@@ -26,6 +26,7 @@
 #include "common.hpp"
 #include "constraints.hpp"
 #include "cfg.hpp"
+#include "multiblock.hpp"
 
 using boost::optional;
 using std::to_string;
@@ -82,9 +83,12 @@ void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts, ebpf_prog_type prog_typ
     }
     for (pc_t pc = 0; pc < insts.size(); pc++) {
         auto inst = insts[pc];
-
-        regs.exec(inst, cfg.insert(label(pc)), cfg.insert(exit_label(pc)), pc, cfg);
-
+        cfg.insert(label(pc));
+        cfg.insert(exit_label(pc));
+        {
+            multiblock_t mblock{cfg, label(pc), exit_label(pc)};
+            regs.exec(inst, mblock);
+        }
         if (inst.opcode == EBPF_OP_EXIT) {
             cfg.set_exit(exit_label(pc));
             continue;

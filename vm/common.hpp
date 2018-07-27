@@ -30,3 +30,6 @@ using crab::cfg_impl::basic_block_label_t;
 /// CFG over integers
 using cfg_t         = crab::cfg::Cfg<basic_block_label_t, varname_t, ikos::z_number>;
 using basic_block_t = cfg_t::basic_block_t;
+using var_t     = ikos::variable<ikos::z_number, varname_t>;
+using lin_cst_t = ikos::linear_constraint<ikos::z_number, varname_t>;
+using lin_exp_t = ikos::linear_expression<ikos::z_number, varname_t>;
