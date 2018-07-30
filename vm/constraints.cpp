@@ -211,24 +211,25 @@ void load_datapointer(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, Dom& 
     mid.assign(target.offset, lower_bound);
 }
 
-void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg)
+void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
 {
-    crab::cfg::debug_info di{"pc", _pc, 0};
+    crab::cfg::debug_info di{"pc", pc, 0};
 
     bool exit_linked = false;
 
     if (is_alu(inst.opcode)) {
-        exec_alu(inst, block, exit, _pc, cfg);
+        exec_alu(inst, block, exit, pc, cfg);
     } else if (inst.opcode == EBPF_OP_LDDW) {
         block.assign(regs[inst.dst].value, (uint32_t)inst.imm | ((uint64_t)inst.imm << 32));
         no_pointer(block, regs[inst.dst]);
     } else if (is_access(inst.opcode)) {
-        exit_linked = exec_mem_access(block, exit, _pc, cfg, inst);
+        exit_linked = exec_mem_access(inst, block, exit, pc, cfg);
     } else if (inst.opcode == EBPF_OP_EXIT) {
         // assert_init(block, regs[inst.dst], di);
         block.assertion(regs[inst.dst].region == T_NUM, di);
     } else if (inst.opcode == EBPF_OP_CALL) {
-        exec_call(block, inst.imm, di);
+        exec_call(inst, block, exit, pc, cfg);
+        exit_linked = true;
     } else if (is_jump(inst.opcode)) {
         // cfg-related action is handled in build_cfg() and constraints::jump()
         if (inst.opcode != EBPF_OP_JA) {
@@ -238,7 +239,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
             assert_init(block, regs[inst.dst], di);
         }
     } else {
-        std::cout << "bad instruction " << (int)inst.opcode << " at " << _pc << "},n";
+        std::cout << "bad instruction " << (int)inst.opcode << " at " << pc << "},n";
         assert(false);
     }
     if (!exit_linked) {
@@ -246,74 +247,89 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
     }
 }
 
-void constraints::exec_call(basic_block_t& block, int32_t imm, crab::cfg::debug_info di)
+void constraints::exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
 {
+    crab::cfg::debug_info di{"pc", pc, 0};
+    auto imm = inst.imm;
     assert(imm < (int)(sizeof(prototypes) / sizeof(prototypes[0])));
     assert(imm > 0);
     auto proto = *prototypes[imm];
     int i = 0;
+    std::vector<basic_block_label_t> prevs{block.label()};
     for (bpf_arg_type t : {proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}) {
         auto& arg = regs[++i];
         if (t == ARG_DONTCARE)
             break;
+        basic_block_t& current = cfg.insert(block.label() + ":arg" + std::to_string(i));
+        for (auto prev : prevs)
+            cfg.get_node(prev) >> current;
+        auto assert_pointer_or_null = [&](lin_cst_t cst) {
+            basic_block_t& pointer = cfg.insert(current.label() + ":pointer");
+            current >> pointer;
+            pointer.assume(cst);
+            basic_block_t& null = cfg.insert(current.label() + ":null");
+            current >> null;
+            null.assume(arg.region == T_NUM);
+            null.assertion(arg.value == 0, di);
+            prevs = {pointer.label(), null.label()};
+        };
+        prevs = {current.label()};
         switch (t) {
         case ARG_DONTCARE:
             assert(false);
             break;
         case ARG_ANYTHING:
             // avoid pointer leakage:
-            block.assertion(arg.region == T_NUM, di);
+            current.assertion(arg.region == T_NUM, di);
             break;
         case ARG_CONST_SIZE:
-            block.assertion(arg.value != 0, di);
+            current.assertion(arg.value != 0, di);
             break;
         case ARG_CONST_SIZE_OR_ZERO:
-            block.assertion(arg.region == T_NUM, di);
+            current.assertion(arg.region == T_NUM, di);
             break;
         case ARG_CONST_MAP_PTR:
-            // Should be the following, but null is T_NUM (so it requires branching):
-            // block.assertion(arg.region == T_MAP, di);
+            assert_pointer_or_null(arg.region == T_MAP);
             break;
         case ARG_PTR_TO_CTX:
-            // Should be the following, but null is T_NUM (so it requires branching):
-            // block.assertion(arg.region == T_CTX, di);
+            assert_pointer_or_null(arg.region == T_CTX);
             break;
         case ARG_PTR_TO_MAP_KEY:
-            block.assertion(arg.value != 0, di);
-            block.assertion(arg.region == T_STACK, di);
+            current.assertion(arg.value != 0, di);
+            current.assertion(arg.region == T_STACK, di);
             break;
         case ARG_PTR_TO_MAP_VALUE:
-            block.assertion(arg.value != 0, di);
-            block.assertion(arg.region == T_STACK, di);
+            current.assertion(arg.value != 0, di);
+            current.assertion(arg.region == T_STACK, di);
             break;
         case ARG_PTR_TO_MEM:
-            block.assertion(arg.value != 0, di);
-            block.assertion(arg.region >= T_STACK, di);
+            current.assertion(arg.value != 0, di);
+            current.assertion(arg.region >= T_STACK, di);
             break;
         case ARG_PTR_TO_MEM_OR_NULL:
-            // Should be the following, but null is T_NUM (so it requires branching):
-            // block.assertion(arg.region >= T_STACK, di);
+            assert_pointer_or_null(arg.region >= T_STACK);
             break;
         case ARG_PTR_TO_UNINIT_MEM:
-            block.assertion(arg.region == T_STACK, di);
+            current.assertion(arg.region == T_STACK, di);
             break;
         }
     }
-
+    for (auto prev : prevs)
+        cfg.get_node(prev) >> exit;
     for (int i=1; i<=5; i++) {
-        block.havoc(regs[i].value);
-        block.havoc(regs[i].offset);
-        block.assign(regs[i].region, T_UNINIT);
+        exit.havoc(regs[i].value);
+        exit.havoc(regs[i].offset);
+        exit.assign(regs[i].region, T_UNINIT);
     }
     switch (proto.ret_type) {
     case RET_PTR_TO_MAP_VALUE_OR_NULL:
-        block.assign(regs[0].region, T_MAP);
-        block.havoc(regs[0].value);
-        block.assign(regs[0].offset, 0);
+        exit.assign(regs[0].region, T_MAP);
+        exit.havoc(regs[0].value);
+        exit.assign(regs[0].offset, 0);
         break;
     case RET_INTEGER:
-        block.havoc(regs[0].value);
-        block.assign(regs[0].region, T_NUM);
+        exit.havoc(regs[0].value);
+        exit.assign(regs[0].region, T_NUM);
         break;
     case RET_VOID:
         // no havoc r0?
@@ -321,10 +337,9 @@ void constraints::exec_call(basic_block_t& block, int32_t imm, crab::cfg::debug_
     }
 }
 
-void constraints::exec_ctx_access(ikos::linear_expression<ikos::z_number, varname_t> addr,
-        basic_block_t& mid, basic_block_t& exit, unsigned int _pc, cfg_t& cfg, ebpf_inst inst)
+void constraints::exec_ctx_access(ebpf_inst inst, lin_exp_t addr, basic_block_t& mid, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
 {
-    crab::cfg::debug_info di{"pc", _pc, 0};
+    crab::cfg::debug_info di{"pc", pc, 0};
     int width = access_width(inst.opcode);
     if (is_load(inst.opcode)) {
         auto target = regs[inst.dst];
@@ -351,9 +366,9 @@ void constraints::exec_ctx_access(ikos::linear_expression<ikos::z_number, varnam
     }
 }
 
-bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg, ebpf_inst inst)
+bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
 {
-    crab::cfg::debug_info di{"pc", _pc, 0};
+    crab::cfg::debug_info di{"pc", pc, 0};
 
     uint8_t mem = is_load(inst.opcode) ? inst.src : inst.dst;
     int width = access_width(inst.opcode);
@@ -407,13 +422,13 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
             }
         }
         {
-            auto& mid = cfg.insert(label(_pc, "assume_ctx"));
+            auto& mid = cfg.insert(label(pc, "assume_ctx"));
             block >> mid;
             auto addr = regs[mem].offset + inst.offset;
             mid.assume(regs[mem].region == T_CTX);
             mid.assertion(addr >= 0, di);
             mid.assertion(addr <= ctx_desc.size - width, di);
-            exec_ctx_access(addr, mid, exit, _pc, cfg, inst);
+            exec_ctx_access(inst, addr, mid, exit, pc, cfg);
         }
         if (ctx_desc.data >= 0) {
             auto& mid = insert_midnode(cfg, block, exit, "assume_data");
@@ -446,12 +461,12 @@ bool constraints::exec_mem_access(basic_block_t& block, basic_block_t& exit, uns
     }
 }
 
-void constraints::exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int _pc, cfg_t& cfg)
+void constraints::exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
 {
     assert((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU
          ||(inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64);
 
-    crab::cfg::debug_info di{"pc", _pc, 0};
+    crab::cfg::debug_info di{"pc", pc, 0};
     auto& dst = regs[inst.dst];
     auto& src = regs[inst.src];
 
