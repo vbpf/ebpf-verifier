@@ -67,8 +67,8 @@ class constraints final
         template<typename T>
         void load(basic_block_t& block, dom_t& target, const T& offset, int width) {
             block.array_load(target.value, values, offset, width);
-            block.array_load(target.offset, offsets, offset, width);
             block.array_load(target.region, regions, offset, width);
+            block.array_load(target.offset, offsets, offset, width);
             // TODO: remove when we have a memory domain ...
             block.havoc(target.value);
             block.havoc(target.offset);
@@ -80,8 +80,8 @@ class constraints final
         void store(basic_block_t& block, T& offset, dom_t& target, int width, crab::cfg::debug_info di) {
             assert_init(block, target, di);
             block.array_store(values, offset, target.value, width);
-            block.array_store(offsets, offset, target.offset, width);
             block.array_store(regions, offset, target.region, width);
+            block.array_store(offsets, offset, target.offset, width);
         }
     };
 
