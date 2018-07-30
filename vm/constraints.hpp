@@ -69,6 +69,8 @@ class constraints final
             block.array_load(target.value, values, offset, width);
             block.array_load(target.region, regions, offset, width);
             block.array_load(target.offset, offsets, offset, width);
+        }
+        void havoc(basic_block_t& block, dom_t& target) {
             // TODO: remove when we have a memory domain ...
             block.havoc(target.value);
             block.havoc(target.offset);
@@ -91,6 +93,7 @@ class constraints final
     array_dom_t stack_arr{vfac, "stack"};
     array_dom_t ctx_arr{vfac, "ctx"};
     array_dom_t data_arr{vfac, "data"};
+    array_dom_t map_arr{vfac, "map"};
     var_t meta_size{vfac[std::string("meta_size")], crab::INT_TYPE, 64};
     var_t total_size{vfac[std::string("total_data_size")], crab::INT_TYPE, 64};
 

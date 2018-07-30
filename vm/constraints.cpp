@@ -359,6 +359,7 @@ void constraints::exec_ctx_access(ebpf_inst inst, lin_exp_t addr, basic_block_t&
             normal.assume(addr != ctx_desc.meta);
         }
         ctx_arr.load(normal, regs[inst.dst], addr, width);
+        ctx_arr.havoc(normal, regs[inst.dst]);
         normal.assign(regs[inst.dst].region, T_NUM);
     } else {
         ctx_arr.store(mid, addr, regs[inst.src], width, di);
@@ -388,6 +389,7 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
         // load only
         auto target = regs[inst.dst];
         ctx_arr.load(block, target, inst.offset, width);
+        ctx_arr.havoc(block, target);
         if (inst.offset == ctx_desc.data) {
             if (ctx_desc.meta > 0)
                 block.assign(target.offset, meta_size);
@@ -438,6 +440,7 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
             mid.assertion(addr <= total_size - width, di);
             if (is_load(inst.opcode)) {
                 data_arr.load(mid, regs[inst.dst], addr, width);
+                data_arr.havoc(mid, regs[inst.dst]);
                 mid.assign(regs[inst.dst].region, T_NUM);
             } else {
                 data_arr.store(mid, addr, regs[inst.src], width, di);
@@ -451,10 +454,11 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
             constexpr int MAP_SIZE = 256;
             mid.assertion(addr <= MAP_SIZE - width, di);
             if (is_load(inst.opcode)) {
-                data_arr.load(mid, regs[inst.dst], addr, width);
+                map_arr.load(mid, regs[inst.dst], addr, width);
+                map_arr.havoc(mid, regs[inst.dst]);
                 mid.assign(regs[inst.dst].region, T_NUM);
             } else {
-                data_arr.store(mid, addr, regs[inst.src], width, di);
+                map_arr.store(mid, addr, regs[inst.src], width, di);
             }
         }
         return true;
