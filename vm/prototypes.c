@@ -819,7 +819,7 @@ const struct bpf_func_proto* prototypes[81] = {
 	FN(set_hash),
 	FN(setsockopt),
 	FN(skb_adjust_room),
-	FN(sk_redirect_map),// without sk_ originally
+	FN(redirect),// redirect_map originally
 	FN(sk_redirect_map),
 	FN(sock_map_update),
 	FN(xdp_adjust_meta),
