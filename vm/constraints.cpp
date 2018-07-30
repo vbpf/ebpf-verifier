@@ -375,10 +375,10 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
     int width = access_width(inst.opcode);
 
     if (mem == 10) {
-        auto offset = inst.offset;
+        int offset = (-inst.offset) - width;
         // not dynamic
-        assert(offset <= -width);
-        assert(offset >= -STACK_SIZE);
+        assert(offset >= 0);
+        assert(offset <= STACK_SIZE - width);
         if (is_load(inst.opcode)) {
             stack_arr.load(block, regs[inst.dst], offset, width);
         } else {
@@ -413,10 +413,10 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
 
         {
             auto& mid = insert_midnode(cfg, block, exit, "assume_stack");
-            auto addr = regs[mem].offset - inst.offset;
+            lin_exp_t addr = (-inst.offset) - width - regs[mem].offset; // negate access
             mid.assume(regs[mem].region == T_STACK);
-            mid.assertion(addr <= -width, di);
-            mid.assertion(addr >= -STACK_SIZE, di);
+            mid.assertion(addr >= 0, di);
+            mid.assertion(addr <= STACK_SIZE - width, di);
             if (is_load(inst.opcode)) {
                 stack_arr.load(mid, regs[inst.dst], addr, width);
             } else {
@@ -426,7 +426,7 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
         {
             auto& mid = cfg.insert(label(pc, "assume_ctx"));
             block >> mid;
-            auto addr = regs[mem].offset + inst.offset;
+            lin_exp_t addr = regs[mem].offset + inst.offset;
             mid.assume(regs[mem].region == T_CTX);
             mid.assertion(addr >= 0, di);
             mid.assertion(addr <= ctx_desc.size - width, di);
@@ -434,7 +434,7 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
         }
         if (ctx_desc.data >= 0) {
             auto& mid = insert_midnode(cfg, block, exit, "assume_data");
-            auto addr = regs[mem].offset + inst.offset;
+            lin_exp_t addr = regs[mem].offset + inst.offset;
             mid.assume(regs[mem].region == T_DATA);
             mid.assertion(addr >= 0, di);
             mid.assertion(addr <= total_size - width, di);
@@ -448,7 +448,7 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
         }
         {
             auto& mid = insert_midnode(cfg, block, exit, "assume_map");
-            auto addr = regs[mem].offset + inst.offset;
+            lin_exp_t addr = regs[mem].offset + inst.offset;
             mid.assume(regs[mem].region == T_MAP);
             mid.assertion(addr >= 0, di);
             constexpr int MAP_SIZE = 256;
