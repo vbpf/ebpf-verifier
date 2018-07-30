@@ -69,7 +69,8 @@ const std::map<ebpf_prog_type, ptype_descr> descriptors {
 };
 
 
-constraints::constraints(ebpf_prog_type prog_type) : ctx_desc{descriptors.at(prog_type)}
+constraints::constraints(ebpf_prog_type prog_type, variable_factory_t& vfac)
+    : ctx_desc{descriptors.at(prog_type)}, vfac{vfac}
 {
     for (int i=0; i < 16; i++) {
         regs.emplace_back(vfac, i);
@@ -247,7 +248,7 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
 
 void constraints::exec_call(basic_block_t& block, int32_t imm, crab::cfg::debug_info di)
 {
-    assert(imm < sizeof(prototypes) / sizeof(prototypes[0]));
+    assert(imm < (int)(sizeof(prototypes) / sizeof(prototypes[0])));
     assert(imm > 0);
     auto proto = *prototypes[imm];
     int i = 0;

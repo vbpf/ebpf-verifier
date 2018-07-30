@@ -72,9 +72,9 @@ static void link(cfg_t& cfg, pc_t pc, pc_t target)
     cfg.get_node(exit_label(pc)) >> cfg.insert(label(target));
 }
 
-void build_cfg(cfg_t& cfg, std::vector<ebpf_inst> insts, ebpf_prog_type prog_type)
+void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> insts, ebpf_prog_type prog_type)
 {
-    constraints regs{prog_type};
+    constraints regs{prog_type, vfac};
     {
         auto& entry = cfg.insert(entry_label());
         regs.setup_entry(entry);

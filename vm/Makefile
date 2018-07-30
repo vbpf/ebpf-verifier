@@ -45,7 +45,7 @@ CXXFLAGS := -Wall -Werror -Wfatal-errors \
     -I inc \
     -I $(INSTALL)/include/ \
     -I $(LDD)/include/ldd/ \
-    -O3 -g3 -std=c++17 -flto
+    -O0 -g3 -std=c++17
 
 all: libubpf.a test
 
