@@ -2,6 +2,8 @@
 #include <fstream>
 #include <vector>
 
+#include <crab/common/debug.hpp>
+
 #include "verifier.hpp"
 
 static vector<ebpf_inst> readfile(string path);
@@ -45,6 +47,17 @@ int main(int argc, char **argv)
         std::cerr << "argument " << argv[1] << " is not a valid domain\n";
         return usage(argv[0]);
     }
+
+    #if 1
+    // Crab options
+    // TODO: make them user options --log="array-expansion" --log="term" --verbose=2
+    crab::CrabEnableLog("array-expansion");
+    crab::CrabEnableLog("term");
+    crab::CrabEnableLog("zones-split");
+    crab::CrabEnableLog("combined-domain");    
+    crab::CrabEnableVerbosity(2);
+    #endif 
+    
     return run(argv[1], argv[2], (ebpf_prog_type)atoi(argv[3]));
 }
 

@@ -38,21 +38,27 @@ LDLIBS := \
     $(LDD)/lib/libmtr.a \
     $(LDD)/lib/libepd.a \
     -lmpfr -lgmpxx -lgmp -lm -lstdc++ 
-    
+
 CXXFLAGS := -Wall -Werror -Wfatal-errors \
-    -Wno-unused-local-typedefs -Wno-inconsistent-missing-override -Wno-unused-const-variable -Wno-uninitialized\
+    -Wno-unused-local-typedefs -Wno-inconsistent-missing-override -Wno-unused-const-variable -Wno-uninitialized -Wno-deprecated 	\
     -DBSD -DHAVE_IEEE_754 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 \
     -I inc \
     -I $(INSTALL)/include/ \
     -I $(LDD)/include/ldd/ \
     -O0 -g3 -std=c++17
 
-all: libubpf.a test
+all: test
 
-libubpf.a: ubpf_validator.o verifier.o cfg.o constraints.o crab_domains.o prototypes.o
-	ar rc $@ $^ 
+SOURCES = $(wildcard *.cpp)
+C_SOURCES += $(wildcard *.c)
 
-test: test.o libubpf.a
+OBJECTS = $(patsubst %.cpp,%.o,${SOURCES})
+OBJECTS += $(patsubst %.c,%.o,${C_SOURCES})
+
+%.o:  $(CXX) ${CXXFLAGS} $< -c -o $@
+
+test: ${OBJECTS}
+	$(CXX) ${CXXFLAGS} ${LDFLAGS} ${OBJECTS} ${LDLIBS} -o test 
 
 clean:
 	rm -f test *.a *.o
