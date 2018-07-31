@@ -24,3 +24,9 @@ map<string, string> domain_descriptions();
 struct ebpf_inst;
 
 bool validate_simple(vector<ebpf_inst> instructions, string& errmsg);
+
+struct global_options
+{
+    static bool simplify;
+    static bool stats;
+};

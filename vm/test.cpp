@@ -11,7 +11,7 @@ static vector<ebpf_inst> readfile(string path);
 
 static int usage(const char *name)
 {
-    std::cerr << "usage: " << name << " DOMAIN BINARY TYPE\n";
+    std::cerr << "usage: " << name << " [--log=CRABLOG] [--verbose=N] [--stats] [--simplify] DOMAIN BINARY TYPE\n";
     std::cerr << "\nverifies the eBPF code in BINARY using DOMAIN assuming program type TYPE\n";
     std::cerr << "available domains:\n";
     map<string, string> domains = domain_descriptions();
@@ -40,25 +40,34 @@ int run(string domain_name, string code_filename, ebpf_prog_type prog_type)
 
 int main(int argc, char **argv)
 {
-    if (argc < 4)
+    vector<string> args{argv+1, argv + argc};
+    vector<string> posargs;
+    for (string arg : args) {
+        if (arg.find("--log=") == 0) {
+            crab::CrabEnableLog(arg.substr(5));
+        } else if (arg.find("--verbose=") == 0) {
+            if (arg[0] == '"') arg=arg.substr(1, arg.size()-1);
+            crab::CrabEnableVerbosity(std::stoi(arg.substr(10)));
+        } else if (arg == "--help" || arg == "-h") {
+            usage(argv[0]);
+        } else if (arg == "--stats" || arg == "--stat") {
+            global_options::stats = true;
+        } else if (arg == "--simplify") {
+            global_options::simplify = true;
+        } else {
+            posargs.push_back(arg);
+        }
+    }
+    if (posargs.size() != 3)
         return usage(argv[0]);
 
-    if (domain_descriptions().count(argv[1]) == 0) {
-        std::cerr << "argument " << argv[1] << " is not a valid domain\n";
+    string domain = posargs[0];
+    if (domain_descriptions().count(domain) == 0) {
+        std::cerr << "argument " << domain << " is not a valid domain\n";
         return usage(argv[0]);
     }
 
-    #if 1
-    // Crab options
-    // TODO: make them user options --log="array-expansion" --log="term" --verbose=2
-    crab::CrabEnableLog("array-expansion");
-    crab::CrabEnableLog("term");
-    crab::CrabEnableLog("zones-split");
-    crab::CrabEnableLog("combined-domain");    
-    crab::CrabEnableVerbosity(2);
-    #endif 
-    
-    return run(argv[1], argv[2], (ebpf_prog_type)atoi(argv[3]));
+    return run(posargs[0], posargs[1], (ebpf_prog_type)std::stoi(posargs[2]));
 }
 
 

@@ -187,6 +187,9 @@ const map<string, domain_desc> domains{
     { "none"              , { dont_analyze, "build CFG only, don't perform analysis" } },
 };
 
+bool global_options::stats;
+bool global_options::simplify;
+
 map<string, string> domain_descriptions()
 {
     map<string, string> res;
@@ -205,8 +208,10 @@ static checks_db analyze(string domain_name, cfg_t& cfg, printer_t& pre_printer,
     clock_t end = clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
     cout << "seconds:" << elapsed_secs << "\n";
-    crab::CrabStats::Print(crab::outs());
-    crab::CrabStats::reset();
+    if (global_options::stats) {
+        crab::CrabStats::Print(crab::outs());
+        crab::CrabStats::reset();
+    }
 
     return res;
 }

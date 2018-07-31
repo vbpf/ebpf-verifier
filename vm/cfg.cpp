@@ -26,6 +26,7 @@
 #include "common.hpp"
 #include "constraints.hpp"
 #include "cfg.hpp"
+#include "verifier.hpp"
 
 using boost::optional;
 using std::to_string;
@@ -112,7 +113,8 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> inst
             pc = *fall_target - 1;
         }
     }
-    //cfg.simplify();
+    if (global_options::simplify)
+        cfg.simplify();
 }
 
 vector<string> sorted_labels(cfg_t& cfg)
