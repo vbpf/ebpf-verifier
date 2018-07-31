@@ -373,7 +373,7 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
 
     uint8_t mem = is_load(inst.opcode) ? inst.src : inst.dst;
     int width = access_width(inst.opcode);
-
+    assert(width == 1 || width == 2 || width == 4 || width == 8);
     if (mem == 10) {
         int offset = (-inst.offset) - width;
         // not dynamic
