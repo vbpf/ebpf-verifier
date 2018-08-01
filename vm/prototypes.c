@@ -73,11 +73,11 @@ static const struct bpf_func_proto bpf_get_current_task_proto = {
 	.ret_type	= RET_INTEGER,
 };
 static const struct bpf_func_proto bpf_current_task_under_cgroup_proto = {
-	//.func           = bpf_current_task_under_cgroup,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
-	.arg1_type      = ARG_CONST_MAP_PTR,
-	.arg2_type      = ARG_ANYTHING,
+	//.func       = bpf_current_task_under_cgroup,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
+	.arg1_type  = ARG_CONST_MAP_PTR,
+	.arg2_type  = ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_probe_read_str_proto = {
 	//.func		= bpf_probe_read_str,
@@ -115,12 +115,12 @@ static const struct bpf_func_proto bpf_get_stack_proto_tp = {
 	.arg4_type	= ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_perf_prog_read_value_proto = {
-         //.func           = bpf_perf_prog_read_value,
-         //.gpl_only       = true,
-         .ret_type       = RET_INTEGER,
-         .arg1_type      = ARG_PTR_TO_CTX,
-         .arg2_type      = ARG_PTR_TO_UNINIT_MEM,
-         .arg3_type      = ARG_CONST_SIZE,
+	//.func       = bpf_perf_prog_read_value,
+	//.gpl_only   = true,
+	.ret_type   = RET_INTEGER,
+	.arg1_type  = ARG_PTR_TO_CTX,
+	.arg2_type  = ARG_PTR_TO_UNINIT_MEM,
+	.arg3_type  = ARG_CONST_SIZE,
 };
 static const struct bpf_func_proto bpf_perf_event_output_proto_raw_tp = {
 	//.func		= bpf_perf_event_output_raw_tp,
@@ -361,69 +361,69 @@ static const struct bpf_func_proto bpf_csum_update_proto = {
 	.arg2_type	= ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_clone_redirect_proto = {
-	//.func           = bpf_clone_redirect,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
-	.arg1_type      = ARG_PTR_TO_CTX,
-	.arg2_type      = ARG_ANYTHING,
-	.arg3_type      = ARG_ANYTHING,
+	//.func       = bpf_clone_redirect,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
+	.arg1_type  = ARG_PTR_TO_CTX,
+	.arg2_type  = ARG_ANYTHING,
+	.arg3_type  = ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_redirect_proto = {
-	//.func           = bpf_redirect,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
-	.arg1_type      = ARG_ANYTHING,
-	.arg2_type      = ARG_ANYTHING,
+	//.func       = bpf_redirect,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
+	.arg1_type  = ARG_ANYTHING,
+	.arg2_type  = ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_sk_redirect_hash_proto = {
-	//.func           = bpf_sk_redirect_hash,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
+	//.func       = bpf_sk_redirect_hash,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
 	.arg1_type	= ARG_PTR_TO_CTX,
-	.arg2_type      = ARG_CONST_MAP_PTR,
-	.arg3_type      = ARG_PTR_TO_MAP_KEY,
-	.arg4_type      = ARG_ANYTHING,
+	.arg2_type  = ARG_CONST_MAP_PTR,
+	.arg3_type  = ARG_PTR_TO_MAP_KEY,
+	.arg4_type  = ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_sk_redirect_map_proto = {
-	//.func           = bpf_sk_redirect_map,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
+	//.func       = bpf_sk_redirect_map,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
 	.arg1_type	= ARG_PTR_TO_CTX,
-	.arg2_type      = ARG_CONST_MAP_PTR,
-	.arg3_type      = ARG_ANYTHING,
-	.arg4_type      = ARG_ANYTHING,
+	.arg2_type  = ARG_CONST_MAP_PTR,
+	.arg3_type  = ARG_ANYTHING,
+	.arg4_type  = ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_msg_redirect_hash_proto = {
-	//.func           = bpf_msg_redirect_hash,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
+	//.func       = bpf_msg_redirect_hash,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
 	.arg1_type	= ARG_PTR_TO_CTX,
-	.arg2_type      = ARG_CONST_MAP_PTR,
-	.arg3_type      = ARG_PTR_TO_MAP_KEY,
-	.arg4_type      = ARG_ANYTHING,
+	.arg2_type  = ARG_CONST_MAP_PTR,
+	.arg3_type  = ARG_PTR_TO_MAP_KEY,
+	.arg4_type  = ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_msg_redirect_map_proto = {
-	//.func           = bpf_msg_redirect_map,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
+	//.func       = bpf_msg_redirect_map,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
 	.arg1_type	= ARG_PTR_TO_CTX,
-	.arg2_type      = ARG_CONST_MAP_PTR,
-	.arg3_type      = ARG_ANYTHING,
-	.arg4_type      = ARG_ANYTHING,
+	.arg2_type  = ARG_CONST_MAP_PTR,
+	.arg3_type  = ARG_ANYTHING,
+	.arg4_type  = ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_msg_apply_bytes_proto = {
-	//.func           = bpf_msg_apply_bytes,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
+	//.func       = bpf_msg_apply_bytes,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
 	.arg1_type	= ARG_PTR_TO_CTX,
-	.arg2_type      = ARG_ANYTHING,
+	.arg2_type  = ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_msg_cork_bytes_proto = {
-	//.func           = bpf_msg_cork_bytes,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
+	//.func       = bpf_msg_cork_bytes,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
 	.arg1_type	= ARG_PTR_TO_CTX,
-	.arg2_type      = ARG_ANYTHING,
+	.arg2_type  = ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_msg_pull_data_proto = {
 	//.func		= bpf_msg_pull_data,
@@ -435,16 +435,16 @@ static const struct bpf_func_proto bpf_msg_pull_data_proto = {
 	.arg4_type	= ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_get_cgroup_classid_proto = {
-	//.func           = bpf_get_cgroup_classid,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
-	.arg1_type      = ARG_PTR_TO_CTX,
+	//.func       = bpf_get_cgroup_classid,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
+	.arg1_type  = ARG_PTR_TO_CTX,
 };
 static const struct bpf_func_proto bpf_get_route_realm_proto = {
-	//.func           = bpf_get_route_realm,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
-	.arg1_type      = ARG_PTR_TO_CTX,
+	//.func       = bpf_get_route_realm,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
+	.arg1_type  = ARG_PTR_TO_CTX,
 };
 static const struct bpf_func_proto bpf_get_hash_recalc_proto = {
 	//.func		= bpf_get_hash_recalc,
@@ -466,18 +466,18 @@ static const struct bpf_func_proto bpf_set_hash_proto = {
 	.arg2_type	= ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_skb_vlan_push_proto = {
-	//.func           = bpf_skb_vlan_push,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
-	.arg1_type      = ARG_PTR_TO_CTX,
-	.arg2_type      = ARG_ANYTHING,
-	.arg3_type      = ARG_ANYTHING,
+	//.func       = bpf_skb_vlan_push,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
+	.arg1_type  = ARG_PTR_TO_CTX,
+	.arg2_type  = ARG_ANYTHING,
+	.arg3_type  = ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_skb_vlan_pop_proto = {
-	//.func           = bpf_skb_vlan_pop,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
-	.arg1_type      = ARG_PTR_TO_CTX,
+	//.func       = bpf_skb_vlan_pop,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
+	.arg1_type  = ARG_PTR_TO_CTX,
 };
 static const struct bpf_func_proto bpf_skb_change_proto_proto = {
 	//.func		= bpf_skb_change_proto,
@@ -557,19 +557,19 @@ static const struct bpf_func_proto bpf_xdp_adjust_meta_proto = {
 	.arg2_type	= ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_xdp_redirect_proto = {
-	//.func           = bpf_xdp_redirect,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
-	.arg1_type      = ARG_ANYTHING,
-	.arg2_type      = ARG_ANYTHING,
+	//.func       = bpf_xdp_redirect,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
+	.arg1_type  = ARG_ANYTHING,
+	.arg2_type  = ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_xdp_redirect_map_proto = {
-	//.func           = bpf_xdp_redirect_map,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
-	.arg1_type      = ARG_CONST_MAP_PTR,
-	.arg2_type      = ARG_ANYTHING,
-	.arg3_type      = ARG_ANYTHING,
+	//.func       = bpf_xdp_redirect_map,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
+	.arg1_type  = ARG_CONST_MAP_PTR,
+	.arg2_type  = ARG_ANYTHING,
+	.arg3_type  = ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_skb_event_output_proto = {
 	//.func		= bpf_skb_event_output,
@@ -624,10 +624,10 @@ static const struct bpf_func_proto bpf_skb_under_cgroup_proto = {
 	.arg3_type	= ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_skb_cgroup_id_proto = {
-	//.func           = bpf_skb_cgroup_id,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
-	.arg1_type      = ARG_PTR_TO_CTX,
+	//.func       = bpf_skb_cgroup_id,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
+	.arg1_type  = ARG_PTR_TO_CTX,
 };
 static const struct bpf_func_proto bpf_xdp_event_output_proto = {
 	//.func		= bpf_xdp_event_output,
@@ -640,16 +640,16 @@ static const struct bpf_func_proto bpf_xdp_event_output_proto = {
 	.arg5_type	= ARG_CONST_SIZE_OR_ZERO,
 };
 static const struct bpf_func_proto bpf_get_socket_cookie_proto = {
-	//.func           = bpf_get_socket_cookie,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
-	.arg1_type      = ARG_PTR_TO_CTX,
+	//.func       = bpf_get_socket_cookie,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
+	.arg1_type  = ARG_PTR_TO_CTX,
 };
 static const struct bpf_func_proto bpf_get_socket_uid_proto = {
-	//.func           = bpf_get_socket_uid,
-	//.gpl_only       = false,
-	.ret_type       = RET_INTEGER,
-	.arg1_type      = ARG_PTR_TO_CTX,
+	//.func       = bpf_get_socket_uid,
+	//.gpl_only   = false,
+	.ret_type   = RET_INTEGER,
+	.arg1_type  = ARG_PTR_TO_CTX,
 };
 static const struct bpf_func_proto bpf_setsockopt_proto = {
 	//.func		= bpf_setsockopt,
@@ -700,18 +700,18 @@ static const struct bpf_func_proto bpf_xdp_fib_lookup_proto = {
 	//.func		= bpf_xdp_fib_lookup,
 	//.gpl_only	= true,
 	.ret_type	= RET_INTEGER,
-	.arg1_type      = ARG_PTR_TO_CTX,
-	.arg2_type      = ARG_PTR_TO_MEM,
-	.arg3_type      = ARG_CONST_SIZE,
+	.arg1_type  = ARG_PTR_TO_CTX,
+	.arg2_type  = ARG_PTR_TO_MEM,
+	.arg3_type  = ARG_CONST_SIZE,
 	.arg4_type	= ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_skb_fib_lookup_proto = {
 	//.func		= bpf_skb_fib_lookup,
 	//.gpl_only	= true,
 	.ret_type	= RET_INTEGER,
-	.arg1_type      = ARG_PTR_TO_CTX,
-	.arg2_type      = ARG_PTR_TO_MEM,
-	.arg3_type      = ARG_CONST_SIZE,
+	.arg1_type  = ARG_PTR_TO_CTX,
+	.arg2_type  = ARG_PTR_TO_MEM,
+	.arg3_type  = ARG_CONST_SIZE,
 	.arg4_type	= ARG_ANYTHING,
 };
 static const struct bpf_func_proto bpf_lwt_push_encap_proto = {
@@ -752,17 +752,17 @@ static const struct bpf_func_proto bpf_lwt_seg6_adjust_srh_proto = {
 static const struct bpf_func_proto bpf_rc_repeat_proto = { //without bpf_ originally
 	//.func	   = bpf_rc_repeat,
 	//.gpl_only  = true, /* rc_repeat is EXPORT_SYMBOL_GPL */
-	.ret_type  = RET_INTEGER,
-	.arg1_type = ARG_PTR_TO_CTX,
+	.ret_type   = RET_INTEGER,
+	.arg1_type  = ARG_PTR_TO_CTX,
 };
 static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ originally
 	//.func	   = bpf_rc_keydown,
 	//.gpl_only  = true, /* rc_keydown is EXPORT_SYMBOL_GPL */
-	.ret_type  = RET_INTEGER,
-	.arg1_type = ARG_PTR_TO_CTX,
-	.arg2_type = ARG_ANYTHING,
-	.arg3_type = ARG_ANYTHING,
-	.arg4_type = ARG_ANYTHING,
+	.ret_type   = RET_INTEGER,
+	.arg1_type  = ARG_PTR_TO_CTX,
+	.arg2_type  = ARG_ANYTHING,
+	.arg3_type  = ARG_ANYTHING,
+	.arg4_type  = ARG_ANYTHING,
 };
 
 #define FN(x) &bpf_ ## x ## _proto
