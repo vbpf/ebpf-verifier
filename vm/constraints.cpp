@@ -250,10 +250,9 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
 void constraints::exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
 {
     crab::cfg::debug_info di{"pc", pc, 0};
-    auto imm = inst.imm;
-    assert(imm < (int)(sizeof(prototypes) / sizeof(prototypes[0])));
-    assert(imm > 0);
-    auto proto = *prototypes[imm];
+    assert(inst.imm < (int)(sizeof(prototypes) / sizeof(prototypes[0])));
+    assert(inst.imm > 0);
+    auto proto = *prototypes[inst.imm];
     int i = 0;
     std::vector<basic_block_label_t> prevs{block.label()};
     std::array<bpf_arg_type, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
@@ -350,7 +349,7 @@ void constraints::exec_ctx_access(ebpf_inst inst, lin_exp_t addr, basic_block_t&
     crab::cfg::debug_info di{"pc", pc, 0};
     int width = access_width(inst.opcode);
     if (is_load(inst.opcode)) {
-        auto target = regs[inst.dst];
+        dom_t target = regs[inst.dst];
         if (ctx_desc.data >= 0) {
             load_datapointer(cfg, mid, exit, target, "data_start", addr == ctx_desc.data, meta_size);
             load_datapointer(cfg, mid, exit, target, "data_end", addr == ctx_desc.end, total_size);
@@ -358,7 +357,7 @@ void constraints::exec_ctx_access(ebpf_inst inst, lin_exp_t addr, basic_block_t&
         if (ctx_desc.meta >= 0) {
             load_datapointer(cfg, mid, exit, target, "meta", addr == ctx_desc.meta, 0);
         }
-        auto& normal = insert_midnode(cfg, mid, exit, "assume_ctx_not_special");
+        basic_block_t& normal = insert_midnode(cfg, mid, exit, "assume_ctx_not_special");
         if (ctx_desc.data >= 0) {
             normal.assume(addr != ctx_desc.data);
             normal.assume(addr != ctx_desc.end);
