@@ -49,7 +49,7 @@ int main(int argc, char **argv)
             if (arg[0] == '"') arg=arg.substr(1, arg.size()-1);
             crab::CrabEnableVerbosity(std::stoi(arg.substr(10)));
         } else if (arg == "--help" || arg == "-h") {
-	    return usage(argv[0]);
+            return usage(argv[0]);
         } else if (arg == "--stats" || arg == "--stat") {
             global_options::stats = true;
         } else if (arg == "--simplify") {

@@ -339,7 +339,7 @@ void constraints::exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t&
         exit.assign(regs[0].region, T_NUM);
         break;
     case RET_VOID:
-        // no havoc r0?
+        exit.assign(regs[0].region, T_UNINIT);
         break;
     }
 }
@@ -511,7 +511,9 @@ void constraints::exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& 
         break;
     case EBPF_OP_SUB_REG:
     case EBPF_OP_SUB64_REG:
-        block.sub(dst.offset, dst.offset, src.offset);
+        // FIX: unsafe. check for same-pointer substraction
+        // i.e.: either same region, or one is T_NUM
+        block.sub(dst.value, dst.offset, src.offset);
         block.sub(dst.offset, dst.offset, src.value); // XXX note src.value
         break;
     case EBPF_OP_MUL_IMM:
