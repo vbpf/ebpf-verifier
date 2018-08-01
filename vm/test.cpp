@@ -44,12 +44,12 @@ int main(int argc, char **argv)
     vector<string> posargs;
     for (string arg : args) {
         if (arg.find("--log=") == 0) {
-            crab::CrabEnableLog(arg.substr(5));
+            crab::CrabEnableLog(arg.substr(6));
         } else if (arg.find("--verbose=") == 0) {
             if (arg[0] == '"') arg=arg.substr(1, arg.size()-1);
             crab::CrabEnableVerbosity(std::stoi(arg.substr(10)));
         } else if (arg == "--help" || arg == "-h") {
-            usage(argv[0]);
+	    return usage(argv[0]);
         } else if (arg == "--stats" || arg == "--stat") {
             global_options::stats = true;
         } else if (arg == "--simplify") {
