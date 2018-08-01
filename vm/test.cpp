@@ -75,6 +75,10 @@ static vector<ebpf_inst> readfile(string path)
 {
     using std::ifstream;
     ifstream is(path, ifstream::ate | ifstream::binary);
+    if (is.fail()) {
+        std::cerr << "file " << path << " does not exist\n";
+        exit(65);      
+    }
     size_t code_len = is.tellg();
     if (code_len % sizeof(ebpf_inst) != 0) {
         std::cerr << "file size must be a multiple of " << sizeof(ebpf_inst) << "\n";
