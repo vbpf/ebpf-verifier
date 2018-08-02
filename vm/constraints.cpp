@@ -190,27 +190,6 @@ void constraints::no_pointer(basic_block_t& block, dom_t& v)
     block.assign(v.region, T_NUM);
 }
 
-static basic_block_t& insert_midnode(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, std::string subname)
-{
-    auto& mid = cfg.insert(pre.label() + ":" + subname);
-    pre >> mid;
-    mid >> post;
-    return mid;
-}
-
-template<typename Dom, typename T>
-void load_datapointer(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, Dom& target, 
-    std::string subname, lin_cst_t cst, T lower_bound)
-{
-    auto& mid = insert_midnode(cfg, pre, post, subname);
-    mid.assume(cst);
-
-    mid.assign(target.region, T_DATA);
-    mid.havoc(target.value);
-    mid.assume(1 <= target.value);
-    mid.assign(target.offset, lower_bound);
-}
-
 void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
 {
     crab::cfg::debug_info di{"pc", pc, 0};
@@ -295,11 +274,11 @@ void constraints::exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t&
             assert_pointer_or_null(arg.region == T_CTX);
             break;
         case ARG_PTR_TO_MAP_KEY:
-            //current.assertion(arg.value != 0, di);
+            current.assertion(arg.value != 0, di);
             current.assertion(arg.region == T_STACK, di);
             break;
         case ARG_PTR_TO_MAP_VALUE:
-            //current.assertion(arg.value != 0, di);
+            current.assertion(arg.value != 0, di);
             current.assertion(arg.region == T_STACK, di);
             break;
         case ARG_PTR_TO_MEM:
@@ -315,23 +294,23 @@ void constraints::exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t&
             // assert that next argument is within bounds
             current.assertion(arg.region == T_STACK, di);
             current.assertion(arg.offset <= 0, di);
-            current.assertion(arg.offset + regs[i].value >= -STACK_SIZE, di);
+            current.assertion(arg.offset + regs[i+1].value >= -STACK_SIZE, di);
             // initalize memory
-            //current.array_store(stack_arr.regions, -arg.offset - regs[i].value, T_NUM, regs[i].value);
+            current.array_store(stack_arr.regions, 0 - arg.offset - regs[i+1].value, T_NUM, regs[i+1].value);
             break;
         }
     }
     for (auto prev : prevs)
         cfg.get_node(prev) >> exit;
     for (int i=1; i<=5; i++) {
-        //exit.havoc(regs[i].value);
-        //exit.havoc(regs[i].offset);
+        exit.havoc(regs[i].value);
+        exit.havoc(regs[i].offset);
         exit.assign(regs[i].region, T_UNINIT);
     }
     switch (proto.ret_type) {
     case RET_PTR_TO_MAP_VALUE_OR_NULL:
         exit.assign(regs[0].region, T_MAP);
-        //exit.havoc(regs[0].value);
+        exit.havoc(regs[0].value);
         exit.assign(regs[0].offset, 0);
         break;
     case RET_INTEGER:
@@ -342,6 +321,27 @@ void constraints::exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t&
         exit.assign(regs[0].region, T_UNINIT);
         break;
     }
+}
+
+static basic_block_t& insert_midnode(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, std::string subname)
+{
+    auto& mid = cfg.insert(pre.label() + ":" + subname);
+    pre >> mid;
+    mid >> post;
+    return mid;
+}
+
+template<typename Dom, typename T>
+void load_datapointer(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, Dom& target, 
+    std::string subname, lin_cst_t cst, T lower_bound)
+{
+    auto& mid = insert_midnode(cfg, pre, post, subname);
+    mid.assume(cst);
+
+    mid.assign(target.region, T_DATA);
+    mid.havoc(target.value);
+    mid.assume(4098 <= target.value);
+    mid.assign(target.offset, lower_bound);
 }
 
 void constraints::exec_ctx_access(ebpf_inst inst, lin_exp_t addr, basic_block_t& mid, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
@@ -447,7 +447,7 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
             mid.assertion(addr <= total_size - width, di);
             if (is_load(inst.opcode)) {
                 data_arr.load(mid, regs[inst.dst], addr, width);
-                //data_arr.havoc(mid, regs[inst.dst]);
+                // redundant when we'll have array_assume()
                 mid.assign(regs[inst.dst].region, T_NUM);
             } else {
                 data_arr.store(mid, addr, regs[inst.src], width, di);
@@ -461,8 +461,9 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
             constexpr int MAP_SIZE = 256;
             mid.assertion(addr <= MAP_SIZE - width, di);
             if (is_load(inst.opcode)) {
-                mid.assign(regs[inst.dst].region, T_NUM);
                 mid.havoc(regs[inst.dst].value);
+                // redundant when we'll have array_assume()
+                mid.assign(regs[inst.dst].region, T_NUM);
             } else {
                 mid.assertion(regs[inst.src].region == T_NUM, di);
             }
