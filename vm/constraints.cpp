@@ -295,8 +295,8 @@ void constraints::exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t&
             current.assertion(arg.region == T_STACK, di);
             current.assertion(arg.offset <= 0, di);
             current.assertion(arg.offset + regs[i+1].value >= -STACK_SIZE, di);
-            // initalize memory
-            current.array_store(stack_arr.regions, 0 - arg.offset - regs[i+1].value, T_NUM, regs[i+1].value);
+            // initalize memory - does not work currently since the cell is can be too large
+            // current.array_store(stack_arr.regions, 0 - arg.offset - regs[i+1].value, T_NUM, regs[i+1].value);
             break;
         }
     }
@@ -388,7 +388,9 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
         assert(offset <= STACK_SIZE - width);
         if (is_load(inst.opcode)) {
             stack_arr.load(block, regs[inst.dst], offset, width);
+            block.assume(regs[inst.dst].region >= 1);
         } else {
+            assert_init(block, regs[inst.dst], di);
             stack_arr.store(block, offset, regs[inst.src], width, di);
         }
         return false;
@@ -426,7 +428,10 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
             mid.assertion(addr <= STACK_SIZE - width, di);
             if (is_load(inst.opcode)) {
                 stack_arr.load(mid, regs[inst.dst], addr, width);
+                // assume stack is initialized
+                mid.assume(regs[inst.dst].region >= 1);
             } else {
+                assert_init(block, regs[inst.dst], di);
                 stack_arr.store(mid, addr, regs[inst.src], width, di);
             }
         }
