@@ -231,16 +231,16 @@ void constraints::exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t&
     crab::cfg::debug_info di{"pc", pc, 0};
     assert(inst.imm < (int)(sizeof(prototypes) / sizeof(prototypes[0])));
     assert(inst.imm > 0);
-    auto proto = *prototypes[inst.imm];
+    bpf_func_proto proto = *prototypes[inst.imm];
     int i = 0;
     std::vector<basic_block_label_t> prevs{block.label()};
     std::array<bpf_arg_type, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
     for (bpf_arg_type t : args) {
-        auto& arg = regs[++i];
+        dom_t& arg = regs[++i];
         if (t == ARG_DONTCARE)
             break;
         basic_block_t& current = cfg.insert(block.label() + ":arg" + std::to_string(i));
-        for (auto prev : prevs)
+        for (basic_block_label_t prev : prevs)
             cfg.get_node(prev) >> current;
         auto assert_pointer_or_null = [&](lin_cst_t cst) {
             basic_block_t& pointer = cfg.insert(current.label() + ":pointer");
@@ -296,11 +296,14 @@ void constraints::exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t&
             current.assertion(arg.offset <= 0, di);
             current.assertion(arg.offset + regs[i+1].value >= -STACK_SIZE, di);
             // initalize memory - does not work currently since the cell is can be too large
-            // current.array_store(stack_arr.regions, 0 - arg.offset - regs[i+1].value, T_NUM, regs[i+1].value);
+            // so the real intention is "havoc"
+            exit.array_store(stack_arr.regions, 0 - arg.offset - regs[i+1].value, 0, regs[i+1].value);
+            exit.array_store(stack_arr.values, 0 - arg.offset - regs[i+1].value, 0, regs[i+1].value);
+            exit.array_store(stack_arr.offsets, 0 - arg.offset - regs[i+1].value, 0, regs[i+1].value);
             break;
         }
     }
-    for (auto prev : prevs)
+    for (basic_block_label_t prev : prevs)
         cfg.get_node(prev) >> exit;
     for (int i=1; i<=5; i++) {
         exit.havoc(regs[i].value);
@@ -325,7 +328,7 @@ void constraints::exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t&
 
 static basic_block_t& insert_midnode(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, std::string subname)
 {
-    auto& mid = cfg.insert(pre.label() + ":" + subname);
+    basic_block_t& mid = cfg.insert(pre.label() + ":" + subname);
     pre >> mid;
     mid >> post;
     return mid;
@@ -335,7 +338,7 @@ template<typename Dom, typename T>
 void load_datapointer(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, Dom& target, 
     std::string subname, lin_cst_t cst, T lower_bound)
 {
-    auto& mid = insert_midnode(cfg, pre, post, subname);
+    basic_block_t& mid = insert_midnode(cfg, pre, post, subname);
     mid.assume(cst);
 
     mid.assign(target.region, T_DATA);
@@ -396,7 +399,7 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
         return false;
     } else if ((inst.opcode & 0xE0) == 0x20 || (inst.opcode & 0xE0) == 0x40) { // TODO NAME: LDABS, LDIND
         // load only
-        auto target = regs[inst.dst];
+        dom_t target = regs[inst.dst];
         ctx_arr.load(block, target, inst.offset, width);
         //ctx_arr.havoc(block, target);
         if (inst.offset == ctx_desc.data) {
@@ -421,7 +424,7 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
         block.assertion(regs[mem].region != T_NUM, di);
 
         {
-            auto& mid = insert_midnode(cfg, block, exit, "assume_stack");
+            basic_block_t& mid = insert_midnode(cfg, block, exit, "assume_stack");
             lin_exp_t addr = (-inst.offset) - width - regs[mem].offset; // negate access
             mid.assume(regs[mem].region == T_STACK);
             mid.assertion(addr >= 0, di);
@@ -436,7 +439,7 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
             }
         }
         {
-            auto& mid = cfg.insert(label(pc, "assume_ctx"));
+            basic_block_t& mid = cfg.insert(label(pc, "assume_ctx"));
             block >> mid;
             lin_exp_t addr = regs[mem].offset + inst.offset;
             mid.assume(regs[mem].region == T_CTX);
@@ -445,7 +448,7 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
             exec_ctx_access(inst, addr, mid, exit, pc, cfg);
         }
         if (ctx_desc.data >= 0) {
-            auto& mid = insert_midnode(cfg, block, exit, "assume_data");
+            basic_block_t& mid = insert_midnode(cfg, block, exit, "assume_data");
             lin_exp_t addr = regs[mem].offset + inst.offset;
             mid.assume(regs[mem].region == T_DATA);
             mid.assertion(addr >= 0, di);
@@ -459,7 +462,7 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
             }
         }
         {
-            auto& mid = insert_midnode(cfg, block, exit, "assume_map");
+            basic_block_t& mid = insert_midnode(cfg, block, exit, "assume_map");
             lin_exp_t addr = regs[mem].offset + inst.offset;
             mid.assume(regs[mem].region == T_MAP);
             mid.assertion(addr >= 0, di);
