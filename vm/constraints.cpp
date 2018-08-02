@@ -72,13 +72,15 @@ const std::map<ebpf_prog_type, ptype_descr> descriptors {
 constraints::constraints(ebpf_prog_type prog_type, variable_factory_t& vfac)
     : ctx_desc{descriptors.at(prog_type)}, vfac{vfac}
 {
-    for (int i=0; i < 16; i++) {
+    for (int i=0; i < 11; i++) {
         regs.emplace_back(vfac, i);
     }
 }
 
 void constraints::setup_entry(basic_block_t& entry)
 {
+    entry.havoc(top);
+
     entry.assume(STACK_SIZE <= regs[10].value);
     entry.assign(regs[10].offset, 0); // XXX: Maybe start with T_STACK
     entry.assign(regs[10].region, T_STACK);
@@ -297,9 +299,9 @@ void constraints::exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t&
             current.assertion(arg.offset + regs[i+1].value >= -STACK_SIZE, di);
             // initalize memory - does not work currently since the cell is can be too large
             // so the real intention is "havoc"
-            exit.array_store(stack_arr.regions, 0 - arg.offset - regs[i+1].value, 0, regs[i+1].value);
-            exit.array_store(stack_arr.values, 0 - arg.offset - regs[i+1].value, 0, regs[i+1].value);
-            exit.array_store(stack_arr.offsets, 0 - arg.offset - regs[i+1].value, 0, regs[i+1].value);
+            exit.array_store(stack_arr.regions, 0 - arg.offset - regs[i+1].value, T_NUM, regs[i+1].value);
+            exit.array_store(stack_arr.values, 0 - arg.offset - regs[i+1].value, top, regs[i+1].value);
+            exit.array_store(stack_arr.offsets, 0 - arg.offset - regs[i+1].value, top, regs[i+1].value);
             break;
         }
     }
