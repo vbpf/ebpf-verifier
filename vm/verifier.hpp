@@ -15,10 +15,6 @@ bool abs_validate(vector<struct ebpf_inst> insts,
 
 map<string, string> domain_descriptions();
 
-#define STACK_SIZE 128
-
-struct ebpf_inst;
-
 bool validate_simple(vector<ebpf_inst> instructions, string& errmsg);
 
 struct global_options_t

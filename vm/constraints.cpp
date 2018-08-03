@@ -13,6 +13,8 @@ using std::string;
 using std::vector;
 using std::map;
 
+#define STACK_SIZE 128
+
 // rough estimates:
 static constexpr int perf_max_trace_size = 2048;
 static constexpr int ptregs_size = (3 + 63 + 8 + 2) * 8;
