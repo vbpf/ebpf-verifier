@@ -11,8 +11,9 @@ static vector<ebpf_inst> readfile(string path);
 
 static int usage(const char *name)
 {
-    std::cerr << "usage: " << name << " [--log=CRABLOG] [--verbose=N] [--stats] [--simplify] DOMAIN BINARY TYPE\n";
+    std::cerr << "usage: " << name << " [FLAGS] DOMAIN BINARY TYPE\n";
     std::cerr << "\nverifies the eBPF code in BINARY using DOMAIN assuming program type TYPE\n";
+    std::cerr << "flags: --log=CRABLOG --verbose=N --stats --simplify --no-reachability\n";
     std::cerr << "available domains:\n";
     map<string, string> domains = domain_descriptions();
     for (auto const [name, desc] : domains)
@@ -51,9 +52,11 @@ int main(int argc, char **argv)
         } else if (arg == "--help" || arg == "-h") {
             return usage(argv[0]);
         } else if (arg == "--stats" || arg == "--stat") {
-            global_options::stats = true;
+            global_options.stats = true;
         } else if (arg == "--simplify") {
-            global_options::simplify = true;
+            global_options.simplify = true;
+        } else if (arg == "--no-reachability") {
+            global_options.check_reachability = false;
         } else {
             posargs.push_back(arg);
         }

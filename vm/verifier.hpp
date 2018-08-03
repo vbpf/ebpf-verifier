@@ -25,8 +25,11 @@ struct ebpf_inst;
 
 bool validate_simple(vector<ebpf_inst> instructions, string& errmsg);
 
-struct global_options
+struct global_options_t
 {
-    static bool simplify;
-    static bool stats;
+    bool simplify;
+    bool stats;
+    bool check_reachability;
 };
+
+extern global_options_t global_options;

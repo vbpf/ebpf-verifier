@@ -151,7 +151,9 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
         crab::outs() << "\n" << inv << "\n";
     });
     checks_db c = check(analyzer);
-    check_reachability<dom_t>(cfg, analyzer, c);
+    if (global_options.check_reachability) {
+        check_reachability<dom_t>(cfg, analyzer, c);
+    }
     return c;
 }
 
@@ -197,8 +199,11 @@ const map<string, domain_desc> domains{
     { "none"              , { dont_analyze, "build CFG only, don't perform analysis" } },
 };
 
-bool global_options::stats;
-bool global_options::simplify;
+global_options_t global_options {
+    .stats = false,
+    .simplify = false,
+    .check_reachability = true
+};
 
 map<string, string> domain_descriptions()
 {
@@ -218,7 +223,7 @@ static checks_db analyze(string domain_name, cfg_t& cfg, printer_t& pre_printer,
     clock_t end = clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
     cout << "seconds:" << elapsed_secs << "\n";
-    if (global_options::stats) {
+    if (global_options.stats) {
         crab::CrabStats::Print(crab::outs());
         crab::CrabStats::reset();
     }
