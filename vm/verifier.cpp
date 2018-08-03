@@ -119,6 +119,18 @@ static checks_db dont_analyze(cfg_t& cfg, printer_t& printer, printer_t& post_pr
     return {};
 }
 
+template<typename dom_t, typename analyzer_t>
+void check_reachability(cfg_t& cfg, analyzer_t& analyzer, checks_db& c)
+{
+    for (auto& b : cfg) {
+        dom_t post = analyzer.get_post(b.label());
+        if (post.is_bottom()) {
+            if (b.label().find(':') == string::npos)
+                c.add(_ERR, {"unreachable", (unsigned int)first_num(b.label()), 0});
+        }
+    }
+}
+
 template<typename dom_t>
 static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_printer)
 {
@@ -138,10 +150,8 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
         dom_t inv = post.at(label);
         crab::outs() << "\n" << inv << "\n";
     });
-    dom_t last_pre = analyzer.get_pre(cfg.exit());
-    auto c = check(analyzer);
-    if (last_pre.is_bottom())
-        c.add(_ERR, {"unreachable exit", (unsigned int)first_num(cfg.exit()), 0});
+    checks_db c = check(analyzer);
+    check_reachability<dom_t>(cfg, analyzer, c);
     return c;
 }
 
