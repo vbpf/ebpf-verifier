@@ -402,16 +402,17 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
     } else if ((inst.opcode & 0xE0) == 0x20) { // TODO NAME: LDABS
         // load only
         dom_t target = regs[inst.dst];
-        ctx_arr.load(block, target, inst.offset, width);
+        auto addr = inst.imm;
+        ctx_arr.load(block, target, addr, width);
         //ctx_arr.havoc(block, target);
-        if (inst.offset == ctx_desc.data) {
+        if (addr == ctx_desc.data) {
             if (ctx_desc.meta > 0)
                 block.assign(target.offset, meta_size);
             else 
                 block.assign(target.offset, 0);
-        } else if (inst.offset == ctx_desc.end) {
+        } else if (addr == ctx_desc.end) {
             block.assign(target.offset, total_size);
-        } else if (inst.offset == ctx_desc.meta) {
+        } else if (addr == ctx_desc.meta) {
             block.assign(target.offset, 0);
         } else {
             block.assign(target.region, T_NUM);
@@ -423,7 +424,7 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
         return false;
     } else if ((inst.opcode & 0xE0) == 0x40) { // TODO NAME: LDIND
         // load only
-        lin_exp_t addr = regs[mem].offset; //+ inst.offset;
+        lin_exp_t addr = regs[mem].value; //+ inst.offset;
         block.assertion(regs[mem].region == T_NUM);
         block.assertion(addr >= 0, di);
         block.assertion(addr <= ctx_desc.size - width, di);
