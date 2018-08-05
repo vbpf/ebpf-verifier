@@ -43,7 +43,7 @@ namespace crab {
 
 
     /// To define CFG over integers
-    typedef cfg::Cfg<basic_block_label_t, varname_t, ikos::z_number> z_cfg_t;
+    typedef cfg::cfg<basic_block_label_t, varname_t, ikos::z_number> z_cfg_t;
     typedef cfg::cfg_ref<z_cfg_t> z_cfg_ref_t;
     typedef cfg::cfg_rev<z_cfg_ref_t> z_cfg_rev_t;
     typedef z_cfg_t::basic_block_t z_basic_block_t;
