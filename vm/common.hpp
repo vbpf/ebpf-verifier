@@ -29,6 +29,6 @@ using crab::cfg_impl::basic_block_label_t;
 using crab::cfg_impl::variable_factory_t;
 
 /// CFG over integers
-using cfg_t         = crab::cfg::Cfg<basic_block_label_t, varname_t, ikos::z_number>;
+using cfg_t         = crab::cfg::cfg<basic_block_label_t, varname_t, ikos::z_number>;
 using basic_block_t = cfg_t::basic_block_t;
 using lin_exp_t = ikos::linear_expression<ikos::z_number, varname_t>;
