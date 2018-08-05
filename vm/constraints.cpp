@@ -399,7 +399,7 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
             stack_arr.store(block, offset, regs[inst.src], width, di);
         }
         return false;
-    } else if ((inst.opcode & 0xE0) == 0x20 || (inst.opcode & 0xE0) == 0x40) { // TODO NAME: LDABS, LDIND
+    } else if ((inst.opcode & 0xE0) == 0x20) { // TODO NAME: LDABS
         // load only
         dom_t target = regs[inst.dst];
         ctx_arr.load(block, target, inst.offset, width);
@@ -421,6 +421,14 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
         block.assertion(target.value != 0, di);
         block.assign(target.region, T_DATA);
         return false;
+    } else if ((inst.opcode & 0xE0) == 0x40) { // TODO NAME: LDIND
+        // load only
+        lin_exp_t addr = regs[mem].offset; //+ inst.offset;
+        block.assertion(regs[mem].region == T_NUM);
+        block.assertion(addr >= 0, di);
+        block.assertion(addr <= ctx_desc.size - width, di);
+        exec_ctx_access(inst, addr, block, exit, pc, cfg);
+        return true;
     } else {
         block.assertion(regs[mem].value != 0, di);
         block.assertion(regs[mem].region != T_NUM, di);
