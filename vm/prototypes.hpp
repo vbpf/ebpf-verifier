@@ -37,18 +37,12 @@ enum bpf_arg_type {
 
 struct bpf_func_proto {
 	bool pkt_access;
-	enum bpf_return_type ret_type;
-	enum bpf_arg_type arg1_type;
-	enum bpf_arg_type arg2_type;
-	enum bpf_arg_type arg3_type;
-	enum bpf_arg_type arg4_type;
-	enum bpf_arg_type arg5_type;
+	bpf_return_type ret_type;
+	bpf_arg_type arg1_type;
+	bpf_arg_type arg2_type;
+	bpf_arg_type arg3_type;
+	bpf_arg_type arg4_type;
+	bpf_arg_type arg5_type;
 };
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-extern const struct bpf_func_proto* prototypes[81];
-#ifdef __cplusplus
-}
-#endif
+bpf_func_proto get_prototype(unsigned int n);

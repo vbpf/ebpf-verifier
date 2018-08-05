@@ -1,5 +1,5 @@
 #include <stdbool.h>
-#include "prototypes.h"
+#include "prototypes.hpp"
 
 static const struct bpf_func_proto bpf_unspec_proto = {
 };
@@ -765,9 +765,9 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ origi
 	.arg4_type  = ARG_ANYTHING,
 };
 
-#define FN(x) &bpf_ ## x ## _proto
+#define FN(x) bpf_ ## x ## _proto
 
-const struct bpf_func_proto* prototypes[81] = {
+const struct bpf_func_proto prototypes[81] = {
 	FN(unspec),
 	FN(map_lookup_elem),
 	FN(map_update_elem),
@@ -850,3 +850,10 @@ const struct bpf_func_proto* prototypes[81] = {
 	FN(skb_cgroup_id),
 	FN(get_current_cgroup_id),
 };
+
+bpf_func_proto get_prototype(unsigned int n)
+{
+	if (n >= sizeof(prototypes)/sizeof(prototypes[0]))
+		return bpf_unspec_proto;
+	return prototypes[n];
+}

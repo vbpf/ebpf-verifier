@@ -15,7 +15,6 @@ template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_sdbm_domain
 template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_dis_interval_domain_t> >;
 template class reduced_numerical_domain_product2<z_term_dis_int_t,z_sdbm_domain_t>;
 template class dis_interval_domain<ikos::z_number, varname_t >;
-}
 
 /*
 template class boxes_domain_<ikos::z_number,varname_t, -1, 3000UL>;
@@ -26,3 +25,4 @@ template class apron_domain_<ikos::z_number,varname_t,apron_domain_id_t::APRON_O
 template class apron_domain_<ikos::z_number,varname_t,apron_domain_id_t::APRON_OPT_OCT>;
 template class apron_domain_<ikos::z_number,varname_t,apron_domain_id_t::APRON_PK>;
 */
+}
