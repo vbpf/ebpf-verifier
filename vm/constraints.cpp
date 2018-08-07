@@ -597,7 +597,7 @@ void constraints::exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& 
         no_pointer(block, dst);
         break;
     case EBPF_OP_NEG64:
-        block.mul(dst.value, dst.value, -1); // ???
+        block.assign(dst.value, 0-dst.value);
         no_pointer(block, dst);
         break;
     case EBPF_OP_MOD_IMM:
