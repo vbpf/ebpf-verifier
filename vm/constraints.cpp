@@ -321,6 +321,7 @@ void constraints::exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t&
     case RET_PTR_TO_MAP_VALUE_OR_NULL:
         exit.assign(regs[0].region, T_MAP);
         exit.havoc(regs[0].value);
+        exit.assume(0 <= regs[0].value);
         exit.assign(regs[0].offset, 0);
         break;
     case RET_INTEGER:
