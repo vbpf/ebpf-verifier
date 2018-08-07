@@ -230,6 +230,15 @@ void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit
     }
 }
 
+void constraints::scratch_regs(basic_block_t& block)
+{
+    for (int i=1; i<=5; i++) {
+        block.havoc(regs[i].value);
+        block.havoc(regs[i].offset);
+        block.assign(regs[i].region, T_UNINIT);
+    }
+}
+
 void constraints::exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
 {
     crab::cfg::debug_info di{"pc", pc, 0};
@@ -307,11 +316,7 @@ void constraints::exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t&
     }
     for (basic_block_label_t prev : prevs)
         cfg.get_node(prev) >> exit;
-    for (int i=1; i<=5; i++) {
-        exit.havoc(regs[i].value);
-        exit.havoc(regs[i].offset);
-        exit.assign(regs[i].region, T_UNINIT);
-    }
+    scratch_regs(exit);
     switch (proto.ret_type) {
     case RET_PTR_TO_MAP_VALUE_OR_NULL:
         exit.assign(regs[0].region, T_MAP);
@@ -353,6 +358,8 @@ void constraints::exec_ctx_access(ebpf_inst inst, lin_exp_t addr, basic_block_t&
 {
     crab::cfg::debug_info di{"pc", pc, 0};
     int width = access_width(inst.opcode);
+    mid.assertion(addr >= 0, di);
+    mid.assertion(addr <= ctx_desc.size - width, di);
     if (is_load(inst.opcode)) {
         dom_t target = regs[inst.dst];
         if (ctx_desc.data >= 0) {
@@ -371,7 +378,6 @@ void constraints::exec_ctx_access(ebpf_inst inst, lin_exp_t addr, basic_block_t&
             normal.assume(addr != ctx_desc.meta);
         }
         ctx_arr.load(normal, regs[inst.dst], addr, width);
-        //ctx_arr.havoc(normal, regs[inst.dst]);
         normal.assign(regs[inst.dst].region, T_NUM);
     } else {
         ctx_arr.store(mid, addr, regs[inst.src], width, di);
@@ -399,37 +405,34 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
             stack_arr.store(block, offset, regs[inst.src], width, di);
         }
         return false;
-    } else if ((inst.opcode & 0xE0) == 0x20) { // TODO NAME: LDABS
-        // load only
-        dom_t target = regs[inst.dst];
-        auto addr = inst.imm;
-        ctx_arr.load(block, target, addr, width);
-        //ctx_arr.havoc(block, target);
-        if (addr == ctx_desc.data) {
-            if (ctx_desc.meta > 0)
-                block.assign(target.offset, meta_size);
-            else 
-                block.assign(target.offset, 0);
-        } else if (addr == ctx_desc.end) {
-            block.assign(target.offset, total_size);
-        } else if (addr == ctx_desc.meta) {
-            block.assign(target.offset, 0);
-        } else {
-            block.assign(target.region, T_NUM);
-            return false;
-        }
-        //block.havoc(target.value);
-        block.assertion(target.value != 0, di);
-        block.assign(target.region, T_DATA);
+    } else if ((inst.opcode & 0xE0) == 0x20 || (inst.opcode & 0xE0) == 0x40) { // TODO NAME: LDABS, LDIND
+        /* From the linux verifier code:
+        verify safety of LD_ABS|LD_IND instructions:
+        * - they can only appear in the programs where ctx == skb
+        * - since they are wrappers of function calls, they scratch R1-R5 registers,
+        *   preserve R6-R9, and store return value into R0
+        *
+        * Implicit input:
+        *   ctx == skb == R6 == CTX
+        *
+        * Explicit input:
+        *   SRC == any register
+        *   IMM == 32-bit immediate
+        *
+        * Output:
+        *   R0 - 8/16/32-bit skb data converted to cpu endianness
+        */
+        block.assertion(regs[6].region == T_CTX);
+        // TODO: There seems no offset checking at the kernel. Why?
+        if ((inst.opcode & 0xE0) == 0x20)
+            /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
+            data_arr.load(block, regs[0], inst.imm, width);
+        else
+            /* Indirect packet access, R0 = *(uint *) (skb->data + src_reg + imm32) */
+            data_arr.load(block, regs[0], regs[inst.src].value + inst.imm, width);
+        block.assign(regs[0].region, T_NUM);
+        scratch_regs(block);
         return false;
-    } else if ((inst.opcode & 0xE0) == 0x40) { // TODO NAME: LDIND
-        // load only
-        lin_exp_t addr = regs[mem].value; //+ inst.offset;
-        block.assertion(regs[mem].region == T_NUM);
-        block.assertion(addr >= 0, di);
-        block.assertion(addr <= ctx_desc.size - width, di);
-        exec_ctx_access(inst, addr, block, exit, pc, cfg);
-        return true;
     } else {
         block.assertion(regs[mem].value != 0, di);
         block.assertion(regs[mem].region != T_NUM, di);
@@ -452,11 +455,8 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
         {
             basic_block_t& mid = cfg.insert(label(pc, "assume_ctx"));
             block >> mid;
-            lin_exp_t addr = regs[mem].offset + inst.offset;
             mid.assume(regs[mem].region == T_CTX);
-            mid.assertion(addr >= 0, di);
-            mid.assertion(addr <= ctx_desc.size - width, di);
-            exec_ctx_access(inst, addr, mid, exit, pc, cfg);
+            exec_ctx_access(inst, regs[mem].offset + inst.offset, mid, exit, pc, cfg);
         }
         if (ctx_desc.data >= 0) {
             basic_block_t& mid = insert_midnode(cfg, block, exit, "assume_data");
@@ -481,7 +481,6 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
             mid.assertion(addr <= MAP_SIZE - width, di);
             if (is_load(inst.opcode)) {
                 mid.havoc(regs[inst.dst].value);
-                // redundant when we'll have array_assume()
                 mid.assign(regs[inst.dst].region, T_NUM);
             } else {
                 mid.assertion(regs[inst.src].region == T_NUM, di);

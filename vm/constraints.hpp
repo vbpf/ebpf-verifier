@@ -97,6 +97,7 @@ class constraints final
     var_t total_size{vfac[std::string("total_data_size")], crab::INT_TYPE, 64};
     var_t top{vfac[std::string("*")], crab::INT_TYPE, 64};
 
+    void scratch_regs(basic_block_t& block);
     static void no_pointer(basic_block_t& block, constraints::dom_t& v);
     bool exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg);
     void exec_ctx_access(ebpf_inst inst, lin_exp_t addr,
