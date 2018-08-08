@@ -295,16 +295,14 @@ void constraints::exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t&
         case ARG_PTR_TO_MEM:
             current.assertion(arg.value != 0, di);
             current.assertion(arg.region >= T_STACK, di);
-            // assert memory is initialized; size is next argument
             break;
         case ARG_PTR_TO_MEM_OR_NULL:
             assert_pointer_or_null(arg.region >= T_STACK);
-            // assert memory is initialized id not null; size is next argument
             break;
         case ARG_PTR_TO_UNINIT_MEM:
-            // assert that next argument is within bounds
             current.assertion(arg.region == T_STACK, di);
             current.assertion(arg.offset <= 0, di);
+            // assert that next argument is within bounds
             current.assertion(arg.offset + regs[i+1].value >= -STACK_SIZE, di);
             // initalize memory - does not work currently since the cell is can be too large
             // so the real intention is "havoc"
