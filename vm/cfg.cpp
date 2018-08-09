@@ -27,7 +27,6 @@
 #include "constraints.hpp"
 #include "cfg.hpp"
 #include "verifier.hpp"
-#include "type_descriptors.hpp"
 
 using boost::optional;
 using std::to_string;
@@ -85,7 +84,7 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> inst
     for (pc_t pc = 0; pc < insts.size(); pc++) {
         auto inst = insts[pc];
 
-        machine.exec(inst, cfg.insert(label(pc)), cfg.insert(exit_label(pc)), pc, cfg);
+        machine.exec(inst, cfg.insert(label(pc)), cfg.insert(exit_label(pc)), cfg);
 
         if (inst.opcode == EBPF_OP_EXIT) {
             cfg.set_exit(exit_label(pc));

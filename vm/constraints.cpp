@@ -42,7 +42,7 @@ struct dom_t {
     { }
 };
 
-static void assert_init(basic_block_t& block, dom_t& target, crab::cfg::debug_info di)
+static void assert_init(basic_block_t& block, dom_t& target, debug_info di)
 {
     block.assertion(target.region >= T_NUM, di);
 }
@@ -92,9 +92,9 @@ class instruction_builder_t final
 {
 public:
     void exec();
-    instruction_builder_t(machine_t& machine, ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg) :
-        machine(machine), inst(inst), block(block), exit(exit), pc(pc), cfg(cfg),
-        di{"pc", pc, 0}, mem(is_load(inst.opcode) ? inst.src : inst.dst), width(access_width(inst.opcode))
+    instruction_builder_t(machine_t& machine, ebpf_inst inst, basic_block_t& block, basic_block_t& exit, cfg_t& cfg) :
+        machine(machine), inst(inst), block(block), exit(exit), cfg(cfg),
+        di{"pc", (unsigned int)first_num(block.label()), 0}, mem(is_load(inst.opcode) ? inst.src : inst.dst), width(access_width(inst.opcode))
         {
         }
 private:
@@ -102,7 +102,6 @@ private:
     ebpf_inst inst;
     basic_block_t& block;
     basic_block_t& exit;
-    unsigned int pc;
     cfg_t& cfg;
 
     // derived fields
@@ -144,7 +143,7 @@ void abs_machine_t::setup_entry(basic_block_t& entry)
     entry.havoc(machine.top);
 
     entry.assume(STACK_SIZE <= machine.regs[10].value);
-    entry.assign(machine.regs[10].offset, 0); // XXX: Maybe start with T_STACK
+    entry.assign(machine.regs[10].offset, 0); // XXX: Maybe start with STACK_SIZE
     entry.assign(machine.regs[10].region, T_STACK);
 
     entry.assume(1 <= machine.regs[1].value);
@@ -255,9 +254,9 @@ void instruction_builder_t::no_pointer(basic_block_t& block, dom_t& v)
     block.assign(v.region, T_NUM);
 }
 
-void abs_machine_t::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
+void abs_machine_t::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, cfg_t& cfg)
 {
-    instruction_builder_t(*impl, inst, block, exit, pc, cfg).exec();
+    instruction_builder_t(*impl, inst, block, exit, cfg).exec();
 }
 
 void instruction_builder_t::exec()
@@ -286,7 +285,7 @@ void instruction_builder_t::exec()
             assert_init(block, machine.regs[inst.dst], di);
         }
     } else {
-        std::cout << "bad instruction " << (int)inst.opcode << " at " << pc << "},n";
+        std::cout << "bad instruction " << (int)inst.opcode << " at " << first_num(block.label()) << "},n";
         assert(false);
     }
     if (!exit_linked) {
@@ -570,6 +569,7 @@ void instruction_builder_t::exec_alu()
     int imm = inst.imm;
 
     // TODO: add assertion for all operators that the arguments are initialized
+    // TODO: or, just do dst_initialized = dst_initialized & src_initialized
     /*if (inst.opcode & EBPF_SRC_REG) {
         assert_init(block, machine.regs[inst.src], di);
     }
