@@ -27,6 +27,7 @@
 #include "constraints.hpp"
 #include "cfg.hpp"
 #include "verifier.hpp"
+#include "type_descriptors.hpp"
 
 using boost::optional;
 using std::to_string;
@@ -75,16 +76,16 @@ static void link(cfg_t& cfg, pc_t pc, pc_t target)
 
 void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> insts, ebpf_prog_type prog_type)
 {
-    constraints regs{prog_type, vfac};
+    abs_machine_t machine(prog_type, vfac);
     {
         auto& entry = cfg.insert(entry_label());
-        regs.setup_entry(entry);
+        machine.setup_entry(entry);
         entry >> cfg.insert(label(0));
     }
     for (pc_t pc = 0; pc < insts.size(); pc++) {
         auto inst = insts[pc];
 
-        regs.exec(inst, cfg.insert(label(pc)), cfg.insert(exit_label(pc)), pc, cfg);
+        machine.exec(inst, cfg.insert(label(pc)), cfg.insert(exit_label(pc)), pc, cfg);
 
         if (inst.opcode == EBPF_OP_EXIT) {
             cfg.set_exit(exit_label(pc));
@@ -96,7 +97,7 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> inst
         if (jump_target) {
             if (inst.opcode != EBPF_OP_JA)  {
                 auto& assumption = build_jump(cfg, pc, *jump_target);
-                regs.jump(inst, assumption, true);
+                machine.jump(inst, assumption, true);
             } else {
                 link(cfg, pc, *jump_target);
             }
@@ -105,7 +106,7 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> inst
         if (fall_target) {
             if (jump_target) {
                 auto& assumption = build_jump(cfg, pc, *fall_target);
-                regs.jump(inst, assumption, false);
+                machine.jump(inst, assumption, false);
             } else {
                 link(cfg, pc, *fall_target);
             }

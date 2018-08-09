@@ -5,6 +5,7 @@
 #include <string>
 
 #include <boost/lexical_cast.hpp>
+#include "type_descriptors.hpp"
 #include "common.hpp"
 
 inline auto label(int pc) { return std::to_string(pc); }

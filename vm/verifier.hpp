@@ -5,13 +5,14 @@
 #include <map>
 
 #include "instructions.hpp"
+#include "type_descriptors.hpp"
 
 using std::string;
 using std::map;
 using std::vector;
 
 bool abs_validate(vector<struct ebpf_inst> insts,
-                  string domain_name, enum ebpf_prog_type prog_type);
+                  string domain_name, ebpf_prog_type prog_type);
 
 map<string, string> domain_descriptions();
 
