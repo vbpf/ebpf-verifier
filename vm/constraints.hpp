@@ -9,6 +9,7 @@
 
 using crab::cfg_impl::variable_factory_t;
 using ikos::z_number;
+using debug_info = crab::cfg::debug_info;
 
 using var_t     = ikos::variable<z_number, varname_t>;
 using lin_cst_t = ikos::linear_constraint<z_number, varname_t>;
@@ -45,11 +46,6 @@ class constraints final
         { }
     };
 
-    static void assume_init(basic_block_t& block, dom_t& target)
-    {
-        block.assume(target.region >= T_NUM);
-    }
-
     static void assert_init(basic_block_t& block, dom_t& target, crab::cfg::debug_info di)
     {
         block.assertion(target.region >= T_NUM, di);
@@ -70,16 +66,9 @@ class constraints final
             block.array_load(target.region, regions, offset, width);
             block.array_load(target.offset, offsets, offset, width);
         }
-        void havoc(basic_block_t& block, dom_t& target) {
-            // TODO: remove when we have a memory domain ...
-            block.havoc(target.value);
-            block.havoc(target.offset);
-            block.havoc(target.region);
-            // ... however for maps this should be kept:
-            assume_init(block, target);
-        }
+        
         template<typename T>
-        void store(basic_block_t& block, T& offset, dom_t& target, int width, crab::cfg::debug_info di) {
+        void store(basic_block_t& block, T& offset, dom_t& target, int width, debug_info di) {
             assert_init(block, target, di);
             block.array_store(values, offset, target.value, width);
             block.array_store(regions, offset, target.region, width);
@@ -99,9 +88,13 @@ class constraints final
 
     void scratch_regs(basic_block_t& block);
     static void no_pointer(basic_block_t& block, constraints::dom_t& v);
+
     bool exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg);
-    void exec_ctx_access(ebpf_inst inst, lin_exp_t addr,
-        basic_block_t& mpf_ui_div, basic_block_t& exit, unsigned int pc, cfg_t& cfg);
+    void exec_stack_access(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg);
+    void exec_ctx_access(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg);
+    void exec_map_access(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg);
+    void exec_data_access(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg);
+
     void exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg);
     void exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg);
 public:

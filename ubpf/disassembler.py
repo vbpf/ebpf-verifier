@@ -81,15 +81,15 @@ def I(imm):
 
 def M(base, off):
     if off != 0:
-        return "[%s%s]" % (base, O(off))
+        return "[%s%+d]" % (base, O(off))
     else:
         return "[%s]" % base
 
 def O(off):
-    if off <= 32767:
-        return "+" + str(off)
-    else:
-        return "-" + str(65536-off)
+    return off if off <= 32767 else off-65536
+
+def jump_target(off, offset):
+    return O(off) + (offset / 8) + 1
 
 def disassemble_one(data, offset):
     code, regs, off, imm = Inst.unpack_from(data, offset)
@@ -125,11 +125,11 @@ def disassemble_one(data, offset):
         elif opcode_name == "call":
             return "%s %s" % (opcode_name, I(imm))
         elif opcode_name == "ja":
-            return "%s %s" % (opcode_name, O(off))
+            return "%s %s" % (opcode_name, jump_target(off, offset))
         elif source == 0:
-            return "%s %s, %s, %s" % (opcode_name, R(dst_reg), I(imm), O(off))
+            return "%s %s, %s, %s" % (opcode_name, R(dst_reg), I(imm), jump_target(off, offset))
         else:
-            return "%s %s, %s, %s" % (opcode_name, R(dst_reg), R(src_reg), O(off))
+            return "%s %s, %s, %s" % (opcode_name, R(dst_reg), R(src_reg), jump_target(off, offset))
     elif cls == BPF_CLASS_LD or cls == BPF_CLASS_LDX or cls == BPF_CLASS_ST or cls == BPF_CLASS_STX:
         size = (code >> 3) & 3
         mode = (code >> 5) & 7

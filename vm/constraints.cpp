@@ -353,10 +353,76 @@ void load_datapointer(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, Dom& 
     mid.assign(target.offset, lower_bound);
 }
 
-void constraints::exec_ctx_access(ebpf_inst inst, lin_exp_t addr, basic_block_t& mid, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
+void constraints::exec_stack_access(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
 {
     crab::cfg::debug_info di{"pc", pc, 0};
+    uint8_t mem = is_load(inst.opcode) ? inst.src : inst.dst;
     int width = access_width(inst.opcode);
+    basic_block_t& mid = insert_midnode(cfg, block, exit, "assume_stack");
+    lin_exp_t addr = (-inst.offset) - width - regs[mem].offset; // negate access
+    
+    mid.assume(regs[mem].region == T_STACK);
+    mid.assertion(addr >= 0, di);
+    mid.assertion(addr <= STACK_SIZE - width, di);
+    if (is_load(inst.opcode)) {
+        stack_arr.load(mid, regs[inst.dst], addr, width);
+        // assume stack is initialized
+        mid.assume(regs[inst.dst].region >= 1);
+    } else {
+        assert_init(block, regs[inst.dst], di);
+        stack_arr.store(mid, addr, regs[inst.src], width, di);
+    }
+}
+
+void constraints::exec_map_access(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
+{
+    crab::cfg::debug_info di{"pc", pc, 0};
+    uint8_t mem = is_load(inst.opcode) ? inst.src : inst.dst;
+    int width = access_width(inst.opcode);
+    basic_block_t& mid = insert_midnode(cfg, block, exit, "assume_map");
+    lin_exp_t addr = regs[mem].offset + inst.offset;
+
+    mid.assume(regs[mem].region == T_MAP);
+    mid.assertion(addr >= 0, di);
+    constexpr int MAP_SIZE = 256;
+    mid.assertion(addr <= MAP_SIZE - width, di);
+    if (is_load(inst.opcode)) {
+        mid.havoc(regs[inst.dst].value);
+        mid.assign(regs[inst.dst].region, T_NUM);
+    } else {
+        mid.assertion(regs[inst.src].region == T_NUM, di);
+    }
+}
+
+void constraints::exec_data_access(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
+{
+    crab::cfg::debug_info di{"pc", pc, 0};
+    uint8_t mem = is_load(inst.opcode) ? inst.src : inst.dst;
+    int width = access_width(inst.opcode);
+    basic_block_t& mid = insert_midnode(cfg, block, exit, "assume_data");
+    lin_exp_t addr = regs[mem].offset + inst.offset;
+
+    mid.assume(regs[mem].region == T_DATA);
+    mid.assertion(addr >= 0, di);
+    mid.assertion(addr <= total_size - width, di);
+    if (is_load(inst.opcode)) {
+        data_arr.load(mid, regs[inst.dst], addr, width);
+        // redundant when we'll have array_assume()
+        mid.assign(regs[inst.dst].region, T_NUM);
+    } else {
+        data_arr.store(mid, addr, regs[inst.src], width, di);
+    }
+}
+
+void constraints::exec_ctx_access(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
+{
+    crab::cfg::debug_info di{"pc", pc, 0};
+    uint8_t mem = is_load(inst.opcode) ? inst.src : inst.dst;
+    int width = access_width(inst.opcode);
+    basic_block_t& mid = cfg.insert(block.label() + ":assume_ctx");
+    block >> mid;
+    mid.assume(regs[mem].region == T_CTX);
+    lin_exp_t addr = regs[mem].offset + inst.offset;
     mid.assertion(addr >= 0, di);
     mid.assertion(addr <= ctx_desc.size - width, di);
     if (is_load(inst.opcode)) {
@@ -383,6 +449,7 @@ void constraints::exec_ctx_access(ebpf_inst inst, lin_exp_t addr, basic_block_t&
         mid >> exit;
     }
 }
+
 
 bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
 {
@@ -436,54 +503,11 @@ bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_bl
         block.assertion(regs[mem].value != 0, di);
         block.assertion(regs[mem].region != T_NUM, di);
 
-        {
-            basic_block_t& mid = insert_midnode(cfg, block, exit, "assume_stack");
-            lin_exp_t addr = (-inst.offset) - width - regs[mem].offset; // negate access
-            mid.assume(regs[mem].region == T_STACK);
-            mid.assertion(addr >= 0, di);
-            mid.assertion(addr <= STACK_SIZE - width, di);
-            if (is_load(inst.opcode)) {
-                stack_arr.load(mid, regs[inst.dst], addr, width);
-                // assume stack is initialized
-                mid.assume(regs[inst.dst].region >= 1);
-            } else {
-                assert_init(block, regs[inst.dst], di);
-                stack_arr.store(mid, addr, regs[inst.src], width, di);
-            }
-        }
-        {
-            basic_block_t& mid = cfg.insert(label(pc, "assume_ctx"));
-            block >> mid;
-            mid.assume(regs[mem].region == T_CTX);
-            exec_ctx_access(inst, regs[mem].offset + inst.offset, mid, exit, pc, cfg);
-        }
+        exec_stack_access(inst, block, exit, pc, cfg);
+        exec_ctx_access(inst, block, exit, pc, cfg);
+        exec_map_access(inst, block, exit, pc, cfg);
         if (ctx_desc.data >= 0) {
-            basic_block_t& mid = insert_midnode(cfg, block, exit, "assume_data");
-            lin_exp_t addr = regs[mem].offset + inst.offset;
-            mid.assume(regs[mem].region == T_DATA);
-            mid.assertion(addr >= 0, di);
-            mid.assertion(addr <= total_size - width, di);
-            if (is_load(inst.opcode)) {
-                data_arr.load(mid, regs[inst.dst], addr, width);
-                // redundant when we'll have array_assume()
-                mid.assign(regs[inst.dst].region, T_NUM);
-            } else {
-                data_arr.store(mid, addr, regs[inst.src], width, di);
-            }
-        }
-        {
-            basic_block_t& mid = insert_midnode(cfg, block, exit, "assume_map");
-            lin_exp_t addr = regs[mem].offset + inst.offset;
-            mid.assume(regs[mem].region == T_MAP);
-            mid.assertion(addr >= 0, di);
-            constexpr int MAP_SIZE = 256;
-            mid.assertion(addr <= MAP_SIZE - width, di);
-            if (is_load(inst.opcode)) {
-                mid.havoc(regs[inst.dst].value);
-                mid.assign(regs[inst.dst].region, T_NUM);
-            } else {
-                mid.assertion(regs[inst.src].region == T_NUM, di);
-            }
+            exec_data_access(inst, block, exit, pc, cfg);
         }
         return true;
     }
