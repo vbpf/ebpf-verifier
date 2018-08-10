@@ -40,18 +40,21 @@ struct dom_t {
         offset{vfac[std::string("off") + std::to_string(i)], crab::INT_TYPE, 64},
         region{vfac[std::string("t") + std::to_string(i)], crab::INT_TYPE, 8}
     { }
+    dom_t(var_t value, var_t offset, var_t region) : value(value), offset(offset), region(region) { };
 };
 
-static void assert_init(basic_block_t& block, dom_t& target, debug_info di)
+static void assert_init(basic_block_t& block, const dom_t& target, debug_info di)
 {
     block.assertion(target.region >= T_NUM, di);
 }
 
 struct array_dom_t {
+    variable_factory_t& vfac;
     var_t values;
     var_t offsets;
     var_t regions;
     array_dom_t(variable_factory_t& vfac, std::string name) :
+        vfac(vfac),
         values{vfac[std::string(name + "_vals")], crab::ARR_INT_TYPE, 64}, 
         offsets{vfac[std::string(name + "_offsets")], crab::ARR_INT_TYPE, 64},
         regions{vfac[std::string(name + "_regions")], crab::ARR_INT_TYPE, 8}
@@ -63,11 +66,17 @@ struct array_dom_t {
         block.array_load(target.offset, offsets, offset, width);
     }
     
-    template<typename T>
-    void store(basic_block_t& block, T& offset, dom_t& target, int width, debug_info di) {
+    template<typename T, typename W>
+    void store(basic_block_t& block, const T& offset, const dom_t& target, W width, debug_info di) {
         assert_init(block, target, di);
+
+        var_t lb{vfac["lb"], crab::INT_TYPE, 64};
+        var_t ub{vfac["ub"], crab::INT_TYPE, 64};
+        block.assign(lb, offset);
+        block.assign(ub, offset + width);
+        block.array_init(regions, 1, lb, ub, target.region);
+
         block.array_store(values, offset, target.value, width);
-        block.array_store(regions, offset, target.region, width);
         block.array_store(offsets, offset, target.offset, width);
     }
 };
@@ -84,6 +93,7 @@ struct machine_t final
     var_t meta_size{vfac[std::string("meta_size")], crab::INT_TYPE, 64};
     var_t total_size{vfac[std::string("total_data_size")], crab::INT_TYPE, 64};
     var_t top{vfac[std::string("*")], crab::INT_TYPE, 64};
+    var_t num{vfac[std::to_string(T_NUM)], crab::INT_TYPE, 8};
 
     machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac);
 };
@@ -141,6 +151,7 @@ void abs_machine_t::setup_entry(basic_block_t& entry)
 {
     auto& machine = *impl;
     entry.havoc(machine.top);
+    entry.assign(machine.num, T_NUM);
 
     entry.assume(STACK_SIZE <= machine.regs[10].value);
     entry.assign(machine.regs[10].offset, 0); // XXX: Maybe start with STACK_SIZE
@@ -330,8 +341,9 @@ void instruction_builder_t::exec_call()
             var_t ub{machine.vfac["ub"], crab::INT_TYPE, 64};
             exit.assign(lb, 0 - arg.offset - machine.regs[i+1].value);
             exit.assign(ub, 0 - arg.offset);
-            exit.array_init(machine.stack_arr.values, 1, lb, ub, machine.top);
-            exit.array_init(machine.stack_arr.regions, 1, lb, ub, T_NUM);
+            machine.stack_arr.store(exit, 0 - arg.offset - machine.regs[i+1].value,
+                                    { machine.top, machine.top, machine.num },
+                                    machine.regs[i+1].value, di);
         };
         prevs = {current.label()};
         switch (t) {
@@ -435,8 +447,13 @@ void instruction_builder_t::exec_stack_access()
     mid.assertion(addr <= STACK_SIZE - width, di);
     if (is_load(inst.opcode)) {
         machine.stack_arr.load(mid, machine.regs[inst.dst], addr, width);
-        // assume stack is initialized
+        mid.array_load(machine.regs[inst.dst].region, machine.stack_arr.regions, addr, 1);
         mid.assume(machine.regs[inst.dst].region >= 1);
+        var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 8};
+        for (int idx=1; idx < width; idx++) {
+            mid.array_load(tmp, machine.stack_arr.regions, addr+idx, 1);
+            mid.assertion(eq(tmp, machine.regs[inst.dst].region), di);
+        }
     } else {
         assert_init(block, machine.regs[inst.dst], di);
         machine.stack_arr.store(mid, addr, machine.regs[inst.src], width, di);
@@ -520,9 +537,9 @@ bool instruction_builder_t::exec_mem_access()
         assert(offset <= STACK_SIZE - width);
         if (is_load(inst.opcode)) {
             machine.stack_arr.load(block, machine.regs[inst.dst], offset, width);
-            var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 8};
             block.array_load(machine.regs[inst.dst].region, machine.stack_arr.regions, offset+0, 1);
             block.assume(machine.regs[inst.dst].region >= 1);
+            var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 8};
             for (int idx=1; idx < width; idx++) {
                 block.array_load(tmp, machine.stack_arr.regions, offset+idx, 1);
                 block.assertion(eq(tmp, machine.regs[inst.dst].region), di);
