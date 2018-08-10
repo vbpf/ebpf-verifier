@@ -325,6 +325,14 @@ void instruction_builder_t::exec_call()
             null.assertion(arg.value == 0, di);
             prevs = {pointer.label(), null.label()};
         };
+        auto init_stack = [&]() {
+            var_t lb{machine.vfac["lb"], crab::INT_TYPE, 64};
+            var_t ub{machine.vfac["ub"], crab::INT_TYPE, 64};
+            exit.assign(lb, 0 - arg.offset - machine.regs[i+1].value);
+            exit.assign(ub, 0 - arg.offset);
+            exit.array_init(machine.stack_arr.values, 1, lb, ub, machine.top);
+            exit.array_init(machine.stack_arr.regions, 1, lb, ub, T_NUM);
+        };
         prevs = {current.label()};
         switch (t) {
         case ARG_DONTCARE:
@@ -335,10 +343,12 @@ void instruction_builder_t::exec_call()
             current.assertion(arg.region == T_NUM, di);
             break;
         case ARG_CONST_SIZE:
-            current.assertion(arg.value != 0, di);
+            current.assertion(arg.region == T_NUM, di);
+            current.assertion(arg.value > 0, di);
             break;
         case ARG_CONST_SIZE_OR_ZERO:
             current.assertion(arg.region == T_NUM, di);
+            current.assertion(arg.value >= 0, di);
             break;
         case ARG_CONST_MAP_PTR:
             assert_pointer_or_null(arg.region == T_MAP);
@@ -347,30 +357,30 @@ void instruction_builder_t::exec_call()
             assert_pointer_or_null(arg.region == T_CTX);
             break;
         case ARG_PTR_TO_MAP_KEY:
-            current.assertion(arg.value != 0, di);
+            current.assertion(arg.value > 0, di);
             current.assertion(arg.region == T_STACK, di);
             break;
         case ARG_PTR_TO_MAP_VALUE:
-            current.assertion(arg.value != 0, di);
+            current.assertion(arg.value > 0, di);
             current.assertion(arg.region == T_STACK, di);
+            current.assertion(arg.offset < 0, di);
             break;
-        case ARG_PTR_TO_MEM:
-            current.assertion(arg.value != 0, di);
-            current.assertion(arg.region >= T_STACK, di);
+        case ARG_PTR_TO_MEM: {
+                current.assertion(arg.value > 0, di);
+                current.assertion(arg.region >= T_STACK, di);
+                init_stack();
+            }
             break;
         case ARG_PTR_TO_MEM_OR_NULL:
             assert_pointer_or_null(arg.region >= T_STACK);
             break;
-        case ARG_PTR_TO_UNINIT_MEM:
-            current.assertion(arg.region == T_STACK, di);
-            current.assertion(arg.offset <= 0, di);
-            // assert that next argument is within bounds
-            current.assertion(arg.offset + machine.regs[i+1].value >= -STACK_SIZE, di);
-            // initalize memory - does not work currently since the cell is can be too large
-            // so the real intention is "havoc"
-            exit.array_store(machine.stack_arr.regions, 0 - arg.offset - machine.regs[i+1].value, T_NUM, machine.regs[i+1].value);
-            exit.array_store(machine.stack_arr.values, 0 - arg.offset - machine.regs[i+1].value, machine.top, machine.regs[i+1].value);
-            exit.array_store(machine.stack_arr.offsets, 0 - arg.offset - machine.regs[i+1].value, machine.top, machine.regs[i+1].value);
+        case ARG_PTR_TO_UNINIT_MEM: {
+                current.assertion(arg.region == T_STACK, di);
+                current.assertion(arg.offset <= 0, di);
+                // assert that next argument is within bounds
+                current.assertion(arg.offset + machine.regs[i+1].value >= -STACK_SIZE, di);
+                init_stack();
+            }
             break;
         }
     }
@@ -460,7 +470,6 @@ void instruction_builder_t::exec_data_access()
     mid.assertion(addr <= machine.total_size - width, di);
     if (is_load(inst.opcode)) {
         machine.data_arr.load(mid, machine.regs[inst.dst], addr, width);
-        // redundant when we'll have array_assume()
         mid.assign(machine.regs[inst.dst].region, T_NUM);
     } else {
         machine.data_arr.store(mid, addr, machine.regs[inst.src], width, di);
@@ -511,7 +520,13 @@ bool instruction_builder_t::exec_mem_access()
         assert(offset <= STACK_SIZE - width);
         if (is_load(inst.opcode)) {
             machine.stack_arr.load(block, machine.regs[inst.dst], offset, width);
+            var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 8};
+            block.array_load(machine.regs[inst.dst].region, machine.stack_arr.regions, offset+0, 1);
             block.assume(machine.regs[inst.dst].region >= 1);
+            for (int idx=1; idx < width; idx++) {
+                block.array_load(tmp, machine.stack_arr.regions, offset+idx, 1);
+                block.assertion(eq(tmp, machine.regs[inst.dst].region), di);
+            }
         } else {
             assert_init(block, machine.regs[inst.dst], di);
             machine.stack_arr.store(block, offset, machine.regs[inst.src], width, di);
