@@ -20,8 +20,6 @@ using debug_info = crab::cfg::debug_info;
 using var_t     = ikos::variable<z_number, varname_t>;
 using lin_cst_t = ikos::linear_constraint<z_number, varname_t>;
 
-constexpr int STACK_SIZE=512;
-
 enum region_t {
     T_UNINIT,
     T_NUM,
@@ -741,6 +739,7 @@ void instruction_builder_t::exec_alu()
         no_pointer(block, dst);
         break;
     default:
+        printf("%d\n", inst.opcode);
         assert(false);
         break;
     }

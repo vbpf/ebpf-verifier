@@ -278,3 +278,5 @@ inline uint8_t reverse(uint8_t opcode)
 	default: return opcode;
     }
 }
+
+constexpr int STACK_SIZE=512;

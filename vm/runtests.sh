@@ -35,7 +35,7 @@ do
 		1_accept_*) echo -n ",0"  ;;
 		0_reject_*) echo -n ",0"  ;;
 		1_reject_*) echo -n ",1"  ;;
-		*) echo -n ",$?XX" ;;
+		*) echo -n ",(Error: $?)" ;;
 		esac
 	done
 	echo
