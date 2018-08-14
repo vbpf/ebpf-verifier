@@ -370,7 +370,7 @@ void instruction_builder_t::exec_call()
             break;
         case ARG_PTR_TO_MAP_KEY:
             current.assertion(arg.value > 0, di);
-            current.assertion(arg.region == T_STACK, di);
+            current.assertion(arg.region >= T_STACK, di);
             break;
         case ARG_PTR_TO_MAP_VALUE:
             current.assertion(arg.value > 0, di);
