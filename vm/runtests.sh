@@ -1,6 +1,10 @@
 #!/bin/bash
-dir=../samples/linux
+
+test -d $1 || (echo "first argument should be a directory"; exit 1)
+
+dir=$1
 files=($(ls -S ${dir}))
+shift
 
 if [[ "$1" == "header" ]]
 then
@@ -26,10 +30,12 @@ do
 		echo $CMD > ${err}
 		echo $CMD > ${log}
 		$CMD >> ${log} 2>> ${err}
-		case "$?" in
-		0) echo -n ",1"  ;;
-		1) echo -n ",0"  ;;
-		*) echo -n ",$?" ;;
+		case "$?_${base}" in
+		0_accept_*) echo -n ",1"  ;;
+		1_accept_*) echo -n ",0"  ;;
+		0_reject_*) echo -n ",0"  ;;
+		1_reject_*) echo -n ",1"  ;;
+		*) echo -n ",$?XX" ;;
 		esac
 	done
 	echo
