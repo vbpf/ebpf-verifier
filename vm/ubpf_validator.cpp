@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <assert.h>
 
+#include "prototypes.hpp"
 #include "verifier.hpp"
 
 bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
@@ -207,6 +208,11 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
             break;
 
         case EBPF_OP_CALL:
+            if (!is_valid_prototype(inst.imm)){
+                errmsg = string("Invalid function id ") + std::to_string(inst.imm) + " at " + std::to_string(pc);
+                return false;
+            }
+
             break;
 
         case EBPF_OP_EXIT:

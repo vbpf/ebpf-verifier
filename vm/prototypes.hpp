@@ -46,3 +46,4 @@ struct bpf_func_proto {
 };
 
 bpf_func_proto get_prototype(unsigned int n);
+bool is_valid_prototype(unsigned int n);

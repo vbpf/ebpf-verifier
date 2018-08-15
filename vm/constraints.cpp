@@ -177,25 +177,32 @@ static auto eq(var_t& a, var_t& b)
     return lin_cst_t(a - b, lin_cst_t::EQUALITY);
 }
 
-static lin_cst_t jmp_to_cst_offsets(uint8_t opcode, int imm, var_t& dst_offset, var_t& src_offset)
+static auto neq(var_t& a, var_t& b)
+{
+    return lin_cst_t(a - b, lin_cst_t::DISEQUATION);
+}
+
+static lin_cst_t jmp_to_cst_offsets(uint8_t opcode, var_t& dst_offset, var_t& src_offset)
 {
     switch (opcode) {
-    case EBPF_OP_JEQ_REG:
-        return eq(dst_offset, src_offset);
+    case EBPF_OP_JEQ_REG:  return eq(dst_offset, src_offset);
+    case EBPF_OP_JNE_REG:  return neq(dst_offset, src_offset);
 
+    // don't leak
+    case EBPF_OP_JEQ_IMM:  assert(false); break;
+    case EBPF_OP_JNE_IMM:  assert(false); break;
+    
     case EBPF_OP_JGE_REG:  return dst_offset >= src_offset; // FIX unsigned
     case EBPF_OP_JSGE_REG: return dst_offset >= src_offset;
     case EBPF_OP_JLE_REG:  return dst_offset <= src_offset; // FIX unsigned
     case EBPF_OP_JSLE_REG: return dst_offset <= src_offset;
-    case EBPF_OP_JNE_REG:
-        return lin_cst_t(dst_offset - src_offset, lin_cst_t::DISEQUATION);
     
-    case EBPF_OP_JGT_REG:  return dst_offset > src_offset; // FIX unsigned
-    case EBPF_OP_JSGT_REG: return dst_offset > src_offset;
+    case EBPF_OP_JGT_REG:  return dst_offset >= src_offset + 1; // FIX unsigned
+    case EBPF_OP_JSGT_REG: return dst_offset >= src_offset + 1;
 
     // Note: reverse the test as a workaround strange lookup:
-    case EBPF_OP_JLT_REG:  return src_offset > dst_offset; // FIX unsigned
-    case EBPF_OP_JSLT_REG: return src_offset > dst_offset;
+    case EBPF_OP_JLT_REG:  return src_offset >= dst_offset + 1; // FIX unsigned
+    case EBPF_OP_JSLT_REG: return src_offset >= dst_offset + 1;
     }
     return dst_offset - dst_offset == 0;
 }
@@ -205,9 +212,11 @@ static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& dst_value, var_t& sr
 {
     switch (opcode) {
     case EBPF_OP_JEQ_IMM:  return dst_value == imm;
-    case EBPF_OP_JEQ_REG:
-        return eq(dst_value, src_value);
+    case EBPF_OP_JEQ_REG:  return eq(dst_value, src_value);
 
+    case EBPF_OP_JNE_IMM:  return dst_value != imm;
+    case EBPF_OP_JNE_REG:  return neq(dst_value, src_value);
+    
     case EBPF_OP_JGE_IMM:  return dst_value >= imm; // FIX unsigned
     case EBPF_OP_JGE_REG:  return dst_value >= src_value; // FIX unsigned
 
@@ -219,20 +228,16 @@ static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& dst_value, var_t& sr
     case EBPF_OP_JSLE_IMM: return dst_value <= imm;
     case EBPF_OP_JSLE_REG: return dst_value <= src_value;
 
-    case EBPF_OP_JNE_IMM:  return dst_value != imm;
-    case EBPF_OP_JNE_REG:
-        return lin_cst_t(dst_value - src_value, lin_cst_t::DISEQUATION);
-    
-    case EBPF_OP_JGT_IMM:  return dst_value > imm; // FIX unsigned
-    case EBPF_OP_JGT_REG:  return dst_value > src_value; // FIX unsigned
-    case EBPF_OP_JSGT_IMM: return dst_value > imm;
-    case EBPF_OP_JSGT_REG: return dst_value > src_value;
+    case EBPF_OP_JGT_IMM:  return dst_value >= imm + 1; // FIX unsigned
+    case EBPF_OP_JGT_REG:  return dst_value >= src_value + 1; // FIX unsigned
+    case EBPF_OP_JSGT_IMM: return dst_value >= imm + 1;
+    case EBPF_OP_JSGT_REG: return dst_value >= src_value + 1;
 
-    case EBPF_OP_JLT_IMM:  return dst_value < imm; // FIX unsigned
+    case EBPF_OP_JLT_IMM:  return dst_value <= imm - 1; // FIX unsigned
     // Note: reverse the test as a workaround strange lookup:
-    case EBPF_OP_JLT_REG:  return src_value > dst_value; // FIX unsigned
-    case EBPF_OP_JSLT_IMM: return dst_value < imm;
-    case EBPF_OP_JSLT_REG: return src_value > dst_value;
+    case EBPF_OP_JLT_REG:  return src_value >= dst_value + 1; // FIX unsigned
+    case EBPF_OP_JSLT_IMM: return dst_value <= imm - 1;
+    case EBPF_OP_JSLT_REG: return src_value >= dst_value + 1;
     }
     assert(false);
 }
@@ -242,12 +247,17 @@ void abs_machine_t::jump(ebpf_inst inst, basic_block_t& block, bool taken)
 {
     auto& machine = *impl;
     uint8_t opcode = taken ? inst.opcode : reverse(inst.opcode);
-    lin_cst_t cst = jmp_to_cst(opcode, inst.imm, machine.regs[inst.dst].value, machine.regs[inst.src].value);
+    auto& dst = machine.regs[inst.dst];
+    auto& src = machine.regs[inst.src];
+    lin_cst_t cst = jmp_to_cst(opcode, inst.imm, dst.value, src.value);
     block.assume(cst);
 
-    lin_cst_t offset_cst = jmp_to_cst_offsets(opcode, inst.imm, machine.regs[inst.dst].offset, machine.regs[inst.src].offset);
-    if (!offset_cst.is_tautology()) {
-        block.assume(offset_cst);
+    if (opcode & EBPF_SRC_REG) {
+        block.assertion(eq(dst.region, src.region), debug_info{"pc", 0, (unsigned int)first_num(block.label())});
+        lin_cst_t offset_cst = jmp_to_cst_offsets(opcode, dst.offset, src.offset);
+        if (!offset_cst.is_tautology()) {
+            block.assume(offset_cst);
+        }
     }
 }
 
@@ -378,6 +388,7 @@ void instruction_builder_t::exec_call()
         case ARG_PTR_TO_MEM: {
                 current.assertion(arg.value > 0, di);
                 current.assertion(arg.region >= T_STACK, di);
+                // FIX: should be init_mem, not init_stack
                 init_stack();
             }
             break;
@@ -519,6 +530,10 @@ void instruction_builder_t::exec_ctx_access()
         machine.ctx_arr.load(normal, machine.regs[inst.dst], addr, width);
         normal.assign(machine.regs[inst.dst].region, T_NUM);
     } else {
+        mid.assertion(addr != machine.ctx_desc.data, di);
+        mid.assertion(addr != machine.ctx_desc.end, di);
+        mid.assertion(addr != machine.ctx_desc.meta, di);
+        mid.assertion(machine.regs[inst.src].region == T_NUM, di);
         machine.ctx_arr.store(mid, addr, machine.regs[inst.src], width, di);
         mid >> exit;
     }
@@ -619,6 +634,9 @@ void instruction_builder_t::exec_alu()
     case EBPF_OP_ADD_REG:
     case EBPF_OP_ADD64_REG:
         block.add(dst.value, dst.value, src.value);
+        // FIX: handle "offset := value + offset" 
+        // and region := (pointer + value || value + pointer) ? pointer : number
+        // How do we do meet? Should we assume something?
         block.add(dst.offset, dst.offset, src.value); // XXX note src.value
         break;
     case EBPF_OP_SUB_IMM:
@@ -650,6 +668,7 @@ void instruction_builder_t::exec_alu()
         break;
     case EBPF_OP_DIV_REG:
     case EBPF_OP_DIV64_REG:
+        block.assertion(src.value != 0, di);
         block.div(dst.value, dst.value, src.value);
         no_pointer(block, dst);
         break;
@@ -660,6 +679,7 @@ void instruction_builder_t::exec_alu()
         break;
     case EBPF_OP_OR_REG:
     case EBPF_OP_OR64_REG:
+        block.assertion(src.value != 0, di);
         block.bitwise_or(dst.value, dst.value, src.value);
         no_pointer(block, dst);
         break;
@@ -704,6 +724,7 @@ void instruction_builder_t::exec_alu()
         break;
     case EBPF_OP_MOD_REG:
     case EBPF_OP_MOD64_REG:
+        block.assertion(src.value != 0, di);
         block.rem(dst.value, dst.value, src.value);
         no_pointer(block, dst);
         break;

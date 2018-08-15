@@ -857,3 +857,8 @@ bpf_func_proto get_prototype(unsigned int n)
 		return bpf_unspec_proto;
 	return prototypes[n];
 }
+
+bool is_valid_prototype(unsigned int n)
+{
+	return n < sizeof(prototypes)/sizeof(prototypes[0]) && n > 0;
+}
