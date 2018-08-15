@@ -286,8 +286,35 @@ void instruction_builder_t::exec()
     } else if (inst.opcode == EBPF_OP_LDDW_IMM) {
         block.assign(machine.regs[inst.dst].value, (uint32_t)inst.imm | ((uint64_t)next_inst.imm << 32));
         no_pointer(block, machine.regs[inst.dst]);
+    } else if ((inst.opcode & 0xE0) == 0x20 || (inst.opcode & 0xE0) == 0x40) { // TODO NAME: LDABS, LDIND
+        /* From the linux verifier code:
+        verify safety of LD_ABS|LD_IND instructions:
+        * - they can only appear in the programs where ctx == skb
+        * - since they are wrappers of function calls, they scratch R1-R5 registers,
+        *   preserve R6-R9, and store return value into R0
+        *
+        * Implicit input:
+        *   ctx == skb == R6 == CTX
+        *
+        * Explicit input:
+        *   SRC == any register
+        *   IMM == 32-bit immediate
+        *
+        * Output:
+        *   R0 - 8/16/32-bit skb data converted to cpu endianness
+        */
+        block.assertion(machine.regs[6].region == T_CTX);
+        // TODO: There seems no offset checking at the kernel. Why?
+        if ((inst.opcode & 0xE0) == 0x20)
+            /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
+            machine.data_arr.load(block, machine.regs[0], inst.imm, width);
+        else
+            /* Indirect packet access, R0 = *(uint *) (skb->data + src_reg + imm32) */
+            machine.data_arr.load(block, machine.regs[0], machine.regs[inst.src].value + inst.imm, width);
+        block.assign(machine.regs[0].region, T_NUM);
+        scratch_regs(block);
     } else if (is_access(inst.opcode)) {
-        exit_linked = exec_mem_access();
+        exit_linked = exec_mem_access(block, !(inst.opcode & EBPF_MODE_MEM));
     } else if (inst.opcode == EBPF_OP_EXIT) {
         // assert_init(block, machine.regs[inst.dst], di);
         block.assertion(machine.regs[inst.dst].region == T_NUM, di);
@@ -345,15 +372,6 @@ void instruction_builder_t::exec_call()
             null.assertion(arg.value == 0, di);
             prevs = {pointer.label(), null.label()};
         };
-        auto init_stack = [&]() {
-            var_t lb{machine.vfac["lb"], crab::INT_TYPE, 64};
-            var_t ub{machine.vfac["ub"], crab::INT_TYPE, 64};
-            exit.assign(lb, 0 - arg.offset - machine.regs[i+1].value);
-            exit.assign(ub, 0 - arg.offset);
-            machine.stack_arr.store(exit, 0 - arg.offset - machine.regs[i+1].value,
-                                    { machine.top, machine.top, machine.num },
-                                    machine.regs[i+1].value, di);
-        };
         prevs = {current.label()};
         switch (t) {
         case ARG_DONTCARE:
@@ -389,19 +407,18 @@ void instruction_builder_t::exec_call()
         case ARG_PTR_TO_MEM: {
                 current.assertion(arg.value > 0, di);
                 current.assertion(arg.region >= T_STACK, di);
-                // FIX: should be init_mem, not init_stack
-                init_stack();
+                store(current, exit, arg.region, arg.offset, /*size=*/machine.regs[i+1].value,
+                      /*value=*/{ machine.top, machine.top, machine.num });
             }
             break;
         case ARG_PTR_TO_MEM_OR_NULL:
             assert_pointer_or_null(arg.region >= T_STACK);
             break;
         case ARG_PTR_TO_UNINIT_MEM: {
-                current.assertion(arg.region == T_STACK, di);
+                current.assertion(arg.region >= T_STACK, di);
                 current.assertion(arg.offset <= 0, di);
-                // assert that next argument is within bounds
-                current.assertion(arg.offset + machine.regs[i+1].value >= -STACK_SIZE, di);
-                init_stack();
+                store(current, exit, arg.region, arg.offset, /*size=*/machine.regs[i+1].value,
+                      /*value=*/{ machine.top, machine.top, machine.num });
             }
             break;
         }
@@ -540,28 +557,25 @@ void instruction_builder_t::exec_ctx_access()
     }
 }
 
-
-bool instruction_builder_t::exec_mem_access()
+static bool exec_mem_access(basic_block_t& block, bool is_load, bool is_immediate, uint8_t mem, uint8_t target, int offset, int width, debug_info di, machine_t& machine)
 {
-    assert(width == 1 || width == 2 || width == 4 || width == 8);
     if (mem == 10) {
-        int offset = (-inst.offset) - width;
+        int offset = (-offset) - width;
         // not dynamic
         assert(offset >= 0);
         assert(offset <= STACK_SIZE - width);
-        if (is_load(inst.opcode)) {
-            machine.stack_arr.load(block, machine.regs[inst.dst], offset, width);
-            block.array_load(machine.regs[inst.dst].region, machine.stack_arr.regions, offset+0, 1);
-            block.assume(machine.regs[inst.dst].region >= 1);
+        if (is_load) {
+            machine.stack_arr.load(block, machine.regs[target], offset, width);
+            block.array_load(machine.regs[target].region, machine.stack_arr.regions, offset+0, 1);
+            block.assume(machine.regs[target].region >= 1);
             var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 8};
             for (int idx=1; idx < width; idx++) {
                 block.array_load(tmp, machine.stack_arr.regions, offset+idx, 1);
-                block.assertion(eq(tmp, machine.regs[inst.dst].region), di);
+                block.assertion(eq(tmp, machine.regs[target].region), di);
             }
         } else {
-            assert_init(block, machine.regs[inst.dst], di);
-            if (inst.opcode & EBPF_MODE_MEM) {
-                //assert_init(exit, machine.regs[inst.src].value, di);
+            assert_init(block, machine.regs[target], di);
+            if (!is_immediate) {
                 machine.stack_arr.store(block, offset, machine.regs[inst.src], width, di);
             } else {
                 uint64_t value = (uint32_t)inst.imm | ((uint64_t)next_inst.imm << 32);
@@ -573,34 +587,6 @@ bool instruction_builder_t::exec_mem_access()
                 block.array_store(machine.stack_arr.values, offset, value, width);
             }
         }
-        return false;
-    } else if ((inst.opcode & 0xE0) == 0x20 || (inst.opcode & 0xE0) == 0x40) { // TODO NAME: LDABS, LDIND
-        /* From the linux verifier code:
-        verify safety of LD_ABS|LD_IND instructions:
-        * - they can only appear in the programs where ctx == skb
-        * - since they are wrappers of function calls, they scratch R1-R5 registers,
-        *   preserve R6-R9, and store return value into R0
-        *
-        * Implicit input:
-        *   ctx == skb == R6 == CTX
-        *
-        * Explicit input:
-        *   SRC == any register
-        *   IMM == 32-bit immediate
-        *
-        * Output:
-        *   R0 - 8/16/32-bit skb data converted to cpu endianness
-        */
-        block.assertion(machine.regs[6].region == T_CTX);
-        // TODO: There seems no offset checking at the kernel. Why?
-        if ((inst.opcode & 0xE0) == 0x20)
-            /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
-            machine.data_arr.load(block, machine.regs[0], inst.imm, width);
-        else
-            /* Indirect packet access, R0 = *(uint *) (skb->data + src_reg + imm32) */
-            machine.data_arr.load(block, machine.regs[0], machine.regs[inst.src].value + inst.imm, width);
-        block.assign(machine.regs[0].region, T_NUM);
-        scratch_regs(block);
         return false;
     } else {
         block.assertion(machine.regs[mem].value != 0, di);
