@@ -98,14 +98,15 @@ class instruction_builder_t final
 {
 public:
     void exec();
-    instruction_builder_t(machine_t& machine, ebpf_inst inst, basic_block_t& block, basic_block_t& exit, cfg_t& cfg) :
-        machine(machine), inst(inst), block(block), exit(exit), cfg(cfg),
+    instruction_builder_t(machine_t& machine, ebpf_inst inst, ebpf_inst next_inst, basic_block_t& block, basic_block_t& exit, cfg_t& cfg) :
+        machine(machine), inst(inst), next_inst(next_inst), block(block), exit(exit), cfg(cfg),
         di{"pc", (unsigned int)first_num(block.label()), 0}, mem(is_load(inst.opcode) ? inst.src : inst.dst), width(access_width(inst.opcode))
         {
         }
 private:
     machine_t& machine;
     ebpf_inst inst;
+    ebpf_inst next_inst; // for LDDW, STDW
     basic_block_t& block;
     basic_block_t& exit;
     cfg_t& cfg;
@@ -271,9 +272,9 @@ void instruction_builder_t::no_pointer(basic_block_t& block, dom_t& v)
     block.assign(v.region, T_NUM);
 }
 
-void abs_machine_t::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, cfg_t& cfg)
+void abs_machine_t::exec(ebpf_inst inst, ebpf_inst next_inst, basic_block_t& block, basic_block_t& exit, cfg_t& cfg)
 {
-    instruction_builder_t(*impl, inst, block, exit, cfg).exec();
+    instruction_builder_t(*impl, inst, next_inst, block, exit, cfg).exec();
 }
 
 void instruction_builder_t::exec()
@@ -283,7 +284,7 @@ void instruction_builder_t::exec()
     if (is_alu(inst.opcode)) {
         exec_alu();
     } else if (inst.opcode == EBPF_OP_LDDW_IMM) {
-        block.assign(machine.regs[inst.dst].value, (uint32_t)inst.imm | ((uint64_t)inst.imm << 32));
+        block.assign(machine.regs[inst.dst].value, (uint32_t)inst.imm | ((uint64_t)next_inst.imm << 32));
         no_pointer(block, machine.regs[inst.dst]);
     } else if (is_access(inst.opcode)) {
         exit_linked = exec_mem_access();
@@ -563,7 +564,7 @@ bool instruction_builder_t::exec_mem_access()
                 //assert_init(exit, machine.regs[inst.src].value, di);
                 machine.stack_arr.store(block, offset, machine.regs[inst.src], width, di);
             } else {
-                uint64_t value = (uint32_t)inst.imm | ((uint64_t)inst.imm << 32);
+                uint64_t value = (uint32_t)inst.imm | ((uint64_t)next_inst.imm << 32);
                 var_t lb{machine.vfac["lb"], crab::INT_TYPE, 64};
                 var_t ub{machine.vfac["ub"], crab::INT_TYPE, 64};
                 block.assign(lb, offset);
