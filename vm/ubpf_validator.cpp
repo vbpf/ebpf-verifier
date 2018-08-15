@@ -164,7 +164,7 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
  
             break;
 
-        case EBPF_OP_LDDW:
+        case EBPF_OP_LDDW_IMM:
             if (pc + 1 >= insts.size() || insts[pc+1].opcode != 0) {
                 errmsg = string("incomplete lddw at PC ") + std::to_string(pc);
                 return false;

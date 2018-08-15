@@ -66,8 +66,6 @@ struct array_dom_t {
     
     template<typename T, typename W>
     void store(basic_block_t& block, const T& offset, const dom_t& target, W width, debug_info di) {
-        assert_init(block, target, di);
-
         var_t lb{vfac["lb"], crab::INT_TYPE, 64};
         var_t ub{vfac["ub"], crab::INT_TYPE, 64};
         block.assign(lb, offset);
@@ -284,7 +282,7 @@ void instruction_builder_t::exec()
 
     if (is_alu(inst.opcode)) {
         exec_alu();
-    } else if (inst.opcode == EBPF_OP_LDDW) {
+    } else if (inst.opcode == EBPF_OP_LDDW_IMM) {
         block.assign(machine.regs[inst.dst].value, (uint32_t)inst.imm | ((uint64_t)inst.imm << 32));
         no_pointer(block, machine.regs[inst.dst]);
     } else if (is_access(inst.opcode)) {
@@ -327,8 +325,10 @@ void instruction_builder_t::exec_call()
     int i = 0;
     std::vector<basic_block_label_t> prevs{block.label()};
     std::array<bpf_arg_type, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
+    std::cout << "call " << inst.imm << "\n";
     for (bpf_arg_type t : args) {
         dom_t& arg = machine.regs[++i];
+        std::cout << "arg " << i << " : " << t << "\n";
         if (t == ARG_DONTCARE)
             break;
         basic_block_t& current = cfg.insert(block.label() + ":arg" + std::to_string(i));
@@ -559,7 +559,18 @@ bool instruction_builder_t::exec_mem_access()
             }
         } else {
             assert_init(block, machine.regs[inst.dst], di);
-            machine.stack_arr.store(block, offset, machine.regs[inst.src], width, di);
+            if (inst.opcode & EBPF_MODE_MEM) {
+                //assert_init(exit, machine.regs[inst.src].value, di);
+                machine.stack_arr.store(block, offset, machine.regs[inst.src], width, di);
+            } else {
+                uint64_t value = (uint32_t)inst.imm | ((uint64_t)inst.imm << 32);
+                var_t lb{machine.vfac["lb"], crab::INT_TYPE, 64};
+                var_t ub{machine.vfac["ub"], crab::INT_TYPE, 64};
+                block.assign(lb, offset);
+                block.assign(ub, offset + width);
+                block.array_init(machine.stack_arr.regions, 1, lb, ub, T_NUM);
+                block.array_store(machine.stack_arr.values, offset, value, width);
+            }
         }
         return false;
     } else if ((inst.opcode & 0xE0) == 0x20 || (inst.opcode & 0xE0) == 0x40) { // TODO NAME: LDABS, LDIND

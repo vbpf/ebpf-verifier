@@ -52,7 +52,7 @@ static auto get_fall(struct ebpf_inst inst, pc_t pc) -> optional<pc_t>
         /* eBPF has one 16-byte instruction: BPF_LD | BPF_DW | BPF_IMM which consists
         of two consecutive 'struct ebpf_inst' 8-byte blocks and interpreted as single
         instruction that loads 64-bit immediate value into a dst_reg. */
-        if (inst.opcode == EBPF_OP_LDDW) {
+        if (inst.opcode == EBPF_OP_LDDW_IMM) {
             pc++;
         }
         return pc + 1;
