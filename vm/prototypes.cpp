@@ -835,7 +835,7 @@ const struct bpf_func_proto prototypes[81] = {
 	FN(bind),
 	FN(xdp_adjust_tail),
 	FN(skb_get_xfrm_state),
-	FN(get_stack),
+	FN(get_stack), // 67
 	FN(skb_load_bytes_relative),
 	FN(xdp_fib_lookup), // without xdp_ originally
 	FN(sock_hash_update),
