@@ -99,8 +99,8 @@ class instruction_builder_t final
 public:
     vector<basic_block_label_t> exec();
     instruction_builder_t(machine_t& machine, ebpf_inst inst, ebpf_inst next_inst, basic_block_t& block, cfg_t& cfg) :
-        machine(machine), inst(inst), next_inst(next_inst), block(block), cfg(cfg),
-        di{"pc", (unsigned int)first_num(block.label()), 0}, mem(is_load(inst.opcode) ? inst.src : inst.dst), width(access_width(inst.opcode))
+        machine(machine), inst(inst), next_inst(next_inst), block(block), cfg(cfg), pc((unsigned int)first_num(block.label())),
+        di{"pc", pc, 0}, mem(is_load(inst.opcode) ? inst.src : inst.dst), width(access_width(inst.opcode))
         {
         }
 private:
@@ -111,6 +111,7 @@ private:
     cfg_t& cfg;
 
     // derived fields
+    uint16_t pc;
     debug_info di;
     uint8_t mem = is_load(inst.opcode) ? inst.src : inst.dst;
     int width = access_width(inst.opcode);
@@ -426,6 +427,7 @@ static void exec_direct_stack_store(basic_block_t& block, dom_t target, int _off
 static void exec_direct_stack_store_immediate(basic_block_t& block, int _offset, int width, debug_info di, machine_t& machine,
                                               uint64_t immediate)
 {
+    std::cout << "_offset: " << _offset << " width " << width << "\n";
     int offset = (-_offset) - width;
     assert(offset >= 0);
     assert(offset + width <= STACK_SIZE);
@@ -469,6 +471,20 @@ vector<basic_block_label_t> instruction_builder_t::exec()
         block.assign(machine.regs[inst.dst].value, immediate(inst, next_inst));
         no_pointer(block, machine.regs[inst.dst]);
         return { block.label() };
+    } else if (inst.opcode == EBPF_OP_EXIT) {
+        // assert_init(block, machine.regs[inst.dst], di);
+        block.assertion(machine.regs[inst.dst].region == T_NUM, di);
+        return { block.label() };
+    } else if (inst.opcode == EBPF_OP_CALL) {
+        return exec_call();
+    } else if (is_jump(inst.opcode)) {
+        // cfg-related action is handled in build_cfg() and instruction_builder_t::jump()
+        if (inst.opcode != EBPF_OP_JA) {
+            if (inst.opcode & EBPF_SRC_REG) {
+                assert_init(block, machine.regs[inst.src], di);
+            }
+            assert_init(block, machine.regs[inst.dst], di);
+        }
     } else if ((inst.opcode & 0xE0) == 0x20 || (inst.opcode & 0xE0) == 0x40) { // TODO NAME: LDABS, LDIND
         /* From the linux verifier code:
         verify safety of LD_ABS|LD_IND instructions:
@@ -498,16 +514,19 @@ vector<basic_block_label_t> instruction_builder_t::exec()
         scratch_regs(block);
         return { block.label() };
     } else if (is_access(inst.opcode)) {
-        if ((inst.opcode & EBPF_ALU_OP_MASK) == EBPF_MODE_IMM) {
+        if (inst.opcode == 0x7a && inst.src == 10) {
+            std::cout << "pc " << pc << " inst.opcode " << (int)inst.opcode << "\n";
             exec_direct_stack_store_immediate(block, inst.offset, width, di, machine, immediate(inst, next_inst));
             return { block.label() };
-        } 
+        } else if ((inst.opcode & EBPF_CLS_ALU) == EBPF_MODE_IMM ) {
+            std::cout << "???\n";
+        }
 
         dom_t mem = is_load(inst.opcode) ? machine.regs.at(inst.src) : machine.regs.at(inst.dst);
         dom_t target = is_load(inst.opcode) ? machine.regs.at(inst.dst) : machine.regs.at(inst.src);
         var_t width{machine.vfac["width"], crab::INT_TYPE, 64};
         block.assign(width, access_width(inst.opcode));
-        if ( inst.src == 10) {
+        if (inst.src == 10) {
             if (is_load(inst.opcode)) {
                 exec_direct_stack_load(block, target, inst.offset, width, di, machine);
             } else {
@@ -516,20 +535,6 @@ vector<basic_block_label_t> instruction_builder_t::exec()
             return { block.label() };
         } else {
             return exec_mem_access_indirect(block, is_load(inst.opcode), mem, target, inst.offset, width, di, cfg, machine);
-        }
-    } else if (inst.opcode == EBPF_OP_EXIT) {
-        // assert_init(block, machine.regs[inst.dst], di);
-        block.assertion(machine.regs[inst.dst].region == T_NUM, di);
-        return { block.label() };
-    } else if (inst.opcode == EBPF_OP_CALL) {
-        return exec_call();
-    } else if (is_jump(inst.opcode)) {
-        // cfg-related action is handled in build_cfg() and instruction_builder_t::jump()
-        if (inst.opcode != EBPF_OP_JA) {
-            if (inst.opcode & EBPF_SRC_REG) {
-                assert_init(block, machine.regs[inst.src], di);
-            }
-            assert_init(block, machine.regs[inst.dst], di);
         }
     } else {
         std::cout << "bad instruction " << (int)inst.opcode << " at " << first_num(block.label()) << "},n";
