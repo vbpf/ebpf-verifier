@@ -25,6 +25,21 @@ inline int first_num(const std::string& s)
 
 std::vector<std::string> sorted_labels(cfg_t& cfg);
 
+
+inline basic_block_t& add_common_child(cfg_t& cfg, basic_block_t& block, std::vector<basic_block_label_t> labels, std::string suffix)
+{
+    basic_block_t& child = cfg.insert(block.label() + ":" + suffix);
+    for (auto label : labels)
+        cfg.get_node(label) >> child;
+    return child;
+}
+
+inline basic_block_t& add_child(cfg_t& cfg, basic_block_t& block, std::string suffix)
+{
+    return add_common_child(cfg, block, {block.label()}, suffix);
+}
+
+
 void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> insts, ebpf_prog_type prog_type);
 
 #endif

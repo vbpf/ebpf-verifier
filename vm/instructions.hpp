@@ -50,7 +50,9 @@ struct ebpf_inst {
 #define EBPF_SIZE_MASK 0x18 
 
 /* Other memory modes are not yet supported */
-#define EBPF_MODE_IMM 0x00
+// TODO: was 0x00. verify this is correct
+#define EBPF_MODE_IMM 0x70
+
 #define EBPF_MODE_ABS 0x20 // new
 #define	EBPF_MODE_IND 0x40 // new
 #define EBPF_MODE_MEM 0x60
