@@ -242,8 +242,7 @@ void abs_machine_t::jump(ebpf_inst inst, basic_block_t& block, bool taken)
     uint8_t opcode = taken ? inst.opcode : reverse(inst.opcode);
     auto& dst = machine.regs[inst.dst];
     auto& src = machine.regs[inst.src];
-    lin_cst_t cst = jmp_to_cst(opcode, inst.imm, dst.value, src.value);
-    block.assume(cst);
+    block.assume(jmp_to_cst(opcode, inst.imm, dst.value, src.value));
 
     if (opcode & EBPF_SRC_REG) {
         block.assertion(eq(dst.region, src.region), debug_info{"pc", 0, (unsigned int)first_num(block.label())});
@@ -365,7 +364,7 @@ static vector<basic_block_label_t> exec_ctx_access(basic_block_t& block, bool is
             b.assign(target.region, T_DATA);
             b.havoc(target.value);
             b.assume(4098 <= target.value);
-            b.assign(target.offset, machine.total_size);
+            b.assign(target.offset, offset);
             ret.push_back(b.label());
         };
 

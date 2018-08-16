@@ -102,7 +102,7 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
         case EBPF_OP_LDXB:
         case EBPF_OP_LDXDW:
             if (inst.src > 10 || inst.dst > 10) {
-                errmsg = string("invalid destination register at PC ") + std::to_string(pc);
+                errmsg = string("invalid registers (") + std::to_string(inst.src) + ", " + std::to_string(inst.dst) + ") at PC " + std::to_string(pc);
                 return false;
             }
             if (inst.src == 10 && (inst.offset + access_width(inst.opcode) > 0 || inst.offset < -STACK_SIZE)) {
@@ -110,29 +110,31 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
                 return false;
             }
             break;
+
         case EBPF_OP_LDABSW:
         case EBPF_OP_LDABSH:
         case EBPF_OP_LDABSB:
-        case EBPF_OP_LDABSDW:
+        
         case EBPF_OP_LDXABSW:
         case EBPF_OP_LDXABSH:
         case EBPF_OP_LDXABSB:
         case EBPF_OP_LDXABSDW:
+
         case EBPF_OP_LDINDW:
         case EBPF_OP_LDINDH:
         case EBPF_OP_LDINDB:
         case EBPF_OP_LDINDDW:
+
         case EBPF_OP_LDXINDW:
         case EBPF_OP_LDXINDH:
         case EBPF_OP_LDXINDB:
         case EBPF_OP_LDXINDDW:
 
             if (inst.src > 10 || inst.dst > 10) {
-                errmsg = string("invalid destination register at PC ") + std::to_string(pc);
+                errmsg = string("invalid registers (") + std::to_string(inst.src) + ", " + std::to_string(inst.dst) + ") at PC " + std::to_string(pc);
                 return false;
             }
             break;
-
         case EBPF_OP_STW:
         case EBPF_OP_STH:
         case EBPF_OP_STB:
@@ -142,13 +144,19 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
         case EBPF_OP_STXB:
         case EBPF_OP_STXDW:
             if (inst.src > 10 || inst.dst > 10) {
-                errmsg = string("invalid destination register at PC ") + std::to_string(pc);
+                errmsg = string("invalid registers (") + std::to_string(inst.src) + ", " + std::to_string(inst.dst) + ") at PC " + std::to_string(pc);
                 return false;
             }
             if (inst.src == 10 && (inst.offset + access_width(inst.opcode) > 0 || inst.offset < -STACK_SIZE)) {
                 errmsg = string("Stack access out of bounds at ") + std::to_string(pc);
                 return false;
             }
+            break;
+
+        case EBPF_OP_LDABSDW:
+        case EBPF_OP_STABSDW:
+                errmsg = "invalid opcode EBPF_OP_STABSDW";
+                return false;
 
         case EBPF_STXADDW:     
         case EBPF_STXADDDW:
@@ -156,7 +164,6 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
         case EBPF_OP_STABSW:
         case EBPF_OP_STABSH:
         case EBPF_OP_STABSB:
-        case EBPF_OP_STABSDW:
         case EBPF_OP_STXABSW:
         case EBPF_OP_STXABSH:
         case EBPF_OP_STXABSB:
@@ -169,8 +176,8 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
         case EBPF_OP_STXINDH:
         case EBPF_OP_STXINDB:
         case EBPF_OP_STXINDDW:
-            if (inst.src > 10 || inst.dst >= 10) {
-                errmsg = string("invalid destination register at PC ") + std::to_string(pc);
+            if (inst.src > 10 || inst.dst > 10) {
+                errmsg = string("invalid registers (") + std::to_string(inst.src) + ", " + std::to_string(inst.dst) + ") at PC " + std::to_string(pc);
                 return false;
             }
             break;
@@ -241,5 +248,5 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
         }
     }
 
-    return true;
+    return exit_count == 1;
 }
