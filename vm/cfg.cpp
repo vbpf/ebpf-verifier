@@ -60,9 +60,11 @@ static auto get_fall(struct ebpf_inst inst, pc_t pc) -> optional<pc_t>
     return boost::none;
 }
 
-static auto build_jump(cfg_t& cfg, pc_t pc, pc_t target) -> basic_block_t&
+static auto build_jump(cfg_t& cfg, pc_t pc, pc_t target, bool taken) -> basic_block_t&
 {
-    basic_block_t& assumption = cfg.insert(label(pc, target));
+    // distinguish taken and non-taken, in case we jump to the fallthrough
+    // (yes, it happens).
+    basic_block_t& assumption = cfg.insert(label(pc, target) + ":" + (taken ? "taken" : "not-taken"));
     cfg.get_node(exit_label(pc)) >> assumption;
     return assumption;
 }
@@ -98,7 +100,7 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> inst
         optional<pc_t> fall_target = get_fall(insts[pc], pc);
         if (jump_target) {
             if (inst.opcode != EBPF_OP_JA)  {
-                auto& assumption = build_jump(cfg, pc, *jump_target);
+                auto& assumption = build_jump(cfg, pc, *jump_target, true);
                 basic_block_label_t out = machine.jump(inst, assumption, true, cfg);
                 cfg.get_node(out) >> cfg.insert(label(*jump_target));
             } else {
@@ -108,7 +110,7 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> inst
         
         if (fall_target) {
             if (jump_target) {
-                auto& assumption = build_jump(cfg, pc, *fall_target);
+                auto& assumption = build_jump(cfg, pc, *fall_target, false);
                 basic_block_label_t out = machine.jump(inst, assumption, false, cfg);
                 cfg.get_node(out) >> cfg.insert(label(*fall_target));
             } else {
