@@ -236,20 +236,43 @@ static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& dst_value, var_t& sr
 }
 
 
-void abs_machine_t::jump(ebpf_inst inst, basic_block_t& block, bool taken)
+basic_block_label_t abs_machine_t::jump(ebpf_inst inst, basic_block_t& block, bool taken, cfg_t& cfg)
 {
     auto& machine = *impl;
     uint8_t opcode = taken ? inst.opcode : reverse(inst.opcode);
     auto& dst = machine.regs[inst.dst];
     auto& src = machine.regs[inst.src];
-    block.assume(jmp_to_cst(opcode, inst.imm, dst.value, src.value));
+    lin_cst_t cst = jmp_to_cst(opcode, inst.imm, dst.value, src.value);
 
     if (opcode & EBPF_SRC_REG) {
-        block.assertion(eq(dst.region, src.region), debug_info{"pc", 0, (unsigned int)first_num(block.label())});
+        debug_info di{"pc", 0, (unsigned int)first_num(block.label())};
+
+        basic_block_t& same = add_child(cfg, block, "same_type");
+        same.assume(cst);
+        same.assume(jmp_to_cst(opcode, inst.imm, dst.value, src.value));
+        same.assume(eq(dst.region, src.region));
+
+        basic_block_t& null_src = add_child(cfg, block, "null_src");
+        null_src.assume(src.region == T_NUM);
+        null_src.assume(dst.region >= T_STACK);
+        null_src.assertion(src.value == 0, di);
+
+        basic_block_t& null_dst = add_child(cfg, block, "null_dst");
+        null_dst.assume(dst.region == T_NUM);
+        null_dst.assume(src.region >= T_STACK);
+        null_dst.assertion(dst.value == 0, di);
+
+        auto prevs = {same.label(), null_src.label(), null_dst.label()};
+        basic_block_t& offset_check = add_common_child(cfg, block, prevs, "offsets_check");
+
         lin_cst_t offset_cst = jmp_to_cst_offsets(opcode, dst.offset, src.offset);
         if (!offset_cst.is_tautology()) {
-            block.assume(offset_cst);
+            offset_check.assume(offset_cst);
         }
+        return offset_check.label();
+    } else {
+        block.assume(cst);
+        return block.label();
     }
 }
 
@@ -322,6 +345,7 @@ static vector<basic_block_label_t> exec_map_access(basic_block_t& block, bool is
     if (is_load) {
         mid.havoc(target.value);
         mid.assign(target.region, T_NUM);
+        mid.havoc(target.offset);
     } else {
         mid.assertion(target.region == T_NUM, di);
     }
@@ -710,7 +734,6 @@ vector<basic_block_label_t> instruction_builder_t::exec_alu()
         break;
     case EBPF_OP_OR_REG:
     case EBPF_OP_OR64_REG:
-        block.assertion(src.value != 0, di);
         block.bitwise_or(dst.value, dst.value, src.value);
         no_pointer(block, dst);
         break;

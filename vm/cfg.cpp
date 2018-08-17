@@ -64,7 +64,6 @@ static auto build_jump(cfg_t& cfg, pc_t pc, pc_t target) -> basic_block_t&
 {
     basic_block_t& assumption = cfg.insert(label(pc, target));
     cfg.get_node(exit_label(pc)) >> assumption;
-    assumption >> cfg.insert(label(target));
     return assumption;
 }
 
@@ -100,7 +99,8 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> inst
         if (jump_target) {
             if (inst.opcode != EBPF_OP_JA)  {
                 auto& assumption = build_jump(cfg, pc, *jump_target);
-                machine.jump(inst, assumption, true);
+                basic_block_label_t out = machine.jump(inst, assumption, true, cfg);
+                cfg.get_node(out) >> cfg.insert(label(*jump_target));
             } else {
                 link(cfg, pc, *jump_target);
             }
@@ -109,7 +109,8 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> inst
         if (fall_target) {
             if (jump_target) {
                 auto& assumption = build_jump(cfg, pc, *fall_target);
-                machine.jump(inst, assumption, false);
+                basic_block_label_t out = machine.jump(inst, assumption, false, cfg);
+                cfg.get_node(out) >> cfg.insert(label(*fall_target));
             } else {
                 link(cfg, pc, *fall_target);
             }
