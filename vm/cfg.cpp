@@ -20,6 +20,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <unordered_set>
 
 #include <boost/optional.hpp>
 
@@ -74,6 +75,29 @@ static void link(cfg_t& cfg, pc_t pc, pc_t target)
     cfg.get_node(exit_label(pc)) >> cfg.insert(label(target));
 }
 
+bool check_raw_reachability(std::vector<ebpf_inst> insts)
+{
+    std::unordered_set<pc_t> unreachables;
+    for (pc_t i=1; i < insts.size(); i++)
+        unreachables.insert(i);
+
+    for (pc_t pc = 0; pc < insts.size()-1; pc++) {
+        ebpf_inst inst = insts[pc];
+        optional<pc_t> jump_target = get_jump(insts[pc], pc);
+        optional<pc_t> fall_target = get_fall(insts[pc], pc);
+        if (jump_target) {
+            unreachables.erase(*jump_target);
+        }
+        
+        if (fall_target) {
+            unreachables.erase(*fall_target);
+            if (inst.opcode == EBPF_OP_LDDW_IMM)
+                unreachables.erase(++pc);
+        }
+    }
+    return unreachables.size() == 0;
+}
+
 void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> insts, ebpf_prog_type prog_type)
 {
     abs_machine_t machine(prog_type, vfac);
@@ -84,7 +108,7 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> inst
     }
     insts.emplace_back();
     for (pc_t pc = 0; pc < insts.size()-1; pc++) {
-        auto inst = insts[pc];
+        ebpf_inst inst = insts[pc];
 
         vector<basic_block_label_t> outs = machine.exec(inst, insts[pc + 1], cfg.insert(label(pc)), cfg);
         basic_block_t& exit = cfg.insert(exit_label(pc));

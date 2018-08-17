@@ -120,7 +120,7 @@ static checks_db dont_analyze(cfg_t& cfg, printer_t& printer, printer_t& post_pr
 }
 
 template<typename dom_t, typename analyzer_t>
-void check_reachability(cfg_t& cfg, analyzer_t& analyzer, checks_db& c)
+void check_semantic_reachability(cfg_t& cfg, analyzer_t& analyzer, checks_db& c)
 {
     for (auto& b : cfg) {
         dom_t post = analyzer.get_post(b.label());
@@ -151,8 +151,8 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
         crab::outs() << "\n" << inv << "\n";
     });
     checks_db c = check(analyzer);
-    if (global_options.check_reachability) {
-        check_reachability<dom_t>(cfg, analyzer, c);
+    if (global_options.check_semantic_reachability) {
+        check_semantic_reachability<dom_t>(cfg, analyzer, c);
     }
     return c;
 }
@@ -212,7 +212,8 @@ const map<string, domain_desc> domains{
 global_options_t global_options {
     .stats = false,
     .simplify = false,
-    .check_reachability = true
+    .check_raw_reachability = true,
+    .check_semantic_reachability = false
 };
 
 map<string, string> domain_descriptions()

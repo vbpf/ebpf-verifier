@@ -54,8 +54,10 @@ int main(int argc, char **argv)
             global_options.stats = true;
         } else if (arg == "--simplify") {
             global_options.simplify = true;
-        } else if (arg == "--no-reachability") {
-            global_options.check_reachability = false;
+        } else if (arg == "--semantic-reachability") {
+            global_options.check_semantic_reachability = true;
+        } else if (arg == "--no-raw-reachability") {
+            global_options.check_raw_reachability = false;
         } else {
             posargs.push_back(arg);
         }

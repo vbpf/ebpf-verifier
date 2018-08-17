@@ -165,6 +165,11 @@ void abs_machine_t::setup_entry(basic_block_t& entry)
     }
 }
 
+static lin_cst_t is_pointer(dom_t v)
+{
+    return v.region >= T_CTX;
+}
+
 static auto eq(var_t& a, var_t& b)
 {
     return lin_cst_t(a - b, lin_cst_t::EQUALITY);
@@ -254,12 +259,12 @@ basic_block_label_t abs_machine_t::jump(ebpf_inst inst, basic_block_t& block, bo
 
         basic_block_t& null_src = add_child(cfg, block, "null_src");
         null_src.assume(src.region == T_NUM);
-        null_src.assume(dst.region >= T_STACK);
+        null_src.assume(is_pointer(dst));
         null_src.assertion(src.value == 0, di);
 
         basic_block_t& null_dst = add_child(cfg, block, "null_dst");
         null_dst.assume(dst.region == T_NUM);
-        null_dst.assume(src.region >= T_STACK);
+        null_dst.assume(is_pointer(src));
         null_dst.assertion(dst.value == 0, di);
 
         auto prevs = {same.label(), null_src.label(), null_dst.label()};
@@ -272,6 +277,10 @@ basic_block_label_t abs_machine_t::jump(ebpf_inst inst, basic_block_t& block, bo
         return offset_check.label();
     } else {
         block.assume(cst);
+        if (inst.imm != 0) {
+            // only null can be compared to pointers without leaking secrets
+            block.assertion(dst.region == T_NUM);
+        }
         return block.label();
     }
 }
@@ -610,7 +619,7 @@ vector<basic_block_label_t> instruction_builder_t::exec_call()
             break;
         case ARG_PTR_TO_MAP_KEY:
             current.assertion(arg.value > 0, di);
-            current.assertion(arg.region >= T_STACK, di);
+            current.assertion(is_pointer(arg), di);
             break;
         case ARG_PTR_TO_MAP_VALUE:
             current.assertion(arg.value > 0, di);
@@ -619,17 +628,17 @@ vector<basic_block_label_t> instruction_builder_t::exec_call()
             break;
         case ARG_PTR_TO_MEM: {
                 current.assertion(arg.value > 0, di);
-                current.assertion(arg.region >= T_STACK, di);
+                current.assertion(is_pointer(arg), di);
                 var_t width = machine.regs[i+1].value;
                 exec_mem_access_indirect(current, true, arg, { machine.top, machine.top, machine.top }, 0, width, di, cfg, machine);
                 exec_mem_access_indirect(current, false, arg, { machine.top, machine.top, machine.num }, 0, width, di, cfg, machine);
             }
             break;
         case ARG_PTR_TO_MEM_OR_NULL:
-            assert_pointer_or_null(arg.region >= T_STACK);
+            assert_pointer_or_null(is_pointer(arg));
             break;
         case ARG_PTR_TO_UNINIT_MEM: {
-                current.assertion(arg.region >= T_STACK, di);
+                current.assertion(is_pointer(arg), di);
                 current.assertion(arg.offset <= 0, di);
                 var_t width = machine.regs[i+1].value;
                 exec_mem_access_indirect(current, true, arg, { machine.top, machine.top, machine.top }, 0, width, di, cfg, machine);
@@ -668,6 +677,8 @@ vector<basic_block_label_t> instruction_builder_t::exec_alu()
 
     int imm = inst.imm;
 
+    vector<basic_block_label_t> res{block.label()};
+
     // TODO: add assertion for all operators that the arguments are initialized
     // TODO: or, just do dst_initialized = dst_initialized & src_initialized
     /*if (inst.opcode & EBPF_SRC_REG) {
@@ -700,11 +711,27 @@ vector<basic_block_label_t> instruction_builder_t::exec_alu()
         block.sub(dst.offset, dst.offset, imm);
         break;
     case EBPF_OP_SUB_REG:
-    case EBPF_OP_SUB64_REG:
-        // FIX: unsafe. check for same-pointer substraction
-        // i.e.: either same region, or one is T_NUM
-        block.sub(dst.value, dst.offset, src.offset);
-        block.sub(dst.offset, dst.offset, src.value); // XXX note src.value
+    case EBPF_OP_SUB64_REG: {
+            basic_block_t& same = add_child(cfg, block, "ptr_src");
+            same.assume(is_pointer(src));
+            same.assertion(is_pointer(dst));
+            same.assume(eq(dst.region, src.region));
+            same.sub(dst.value, dst.offset, src.offset);
+            same.assign(dst.region, T_NUM);
+
+            basic_block_t& num_src = add_child(cfg, block, "num_src");
+            num_src.assume(src.region == T_NUM);
+            {
+                basic_block_t& ptr_dst = add_child(cfg, num_src, "ptr_dst");
+                ptr_dst.assume(is_pointer(dst));
+                ptr_dst.sub(dst.offset, dst.offset, src.value);
+
+                basic_block_t& both_num = add_child(cfg, num_src, "both_num");    
+                both_num.assume(dst.region == T_NUM);
+                both_num.sub(dst.value, dst.value, src.value);
+                res = {same.label(), ptr_dst.label(), both_num.label()};
+            }
+        }
         break;
     case EBPF_OP_MUL_IMM:
     case EBPF_OP_MUL64_IMM:
@@ -818,8 +845,9 @@ vector<basic_block_label_t> instruction_builder_t::exec_alu()
         assert(false);
         break;
     }
-    if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU)
-        wrap32(block, dst.value);
-
-    return { block.label() };
+    for (auto b : res) {
+        if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU)
+            wrap32(cfg.get_node(b), dst.value);
+    }
+    return res;
 }

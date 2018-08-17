@@ -18,11 +18,13 @@ map<string, string> domain_descriptions();
 
 bool validate_simple(vector<ebpf_inst> instructions, string& errmsg);
 
+// defaults are in verifier.cpp
 struct global_options_t
 {
     bool simplify;
     bool stats;
-    bool check_reachability;
+    bool check_raw_reachability;
+    bool check_semantic_reachability;
 };
 
 extern global_options_t global_options;

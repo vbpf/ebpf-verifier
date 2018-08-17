@@ -7,6 +7,7 @@
 
 #include "prototypes.hpp"
 #include "verifier.hpp"
+#include "cfg.hpp"
 
 bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
 {
@@ -14,6 +15,7 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
         errmsg = "Zero length programs are not allowed";
         return false;
     }
+
     int exit_count = 0;
     for (uint32_t pc = 0; pc < insts.size(); pc++) {
         ebpf_inst inst = insts[pc];
@@ -235,10 +237,10 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
 
         case EBPF_OP_EXIT:
             exit_count++;
-            if (exit_count > 1) {
+            /*if (exit_count > 1) {
                 errmsg = "subprograms are not supported yet";
                 return false;
-            }
+            }*/
             break;
 
         default: {
@@ -248,5 +250,12 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
         }
     }
 
-    return exit_count == 1;
+    if (global_options.check_raw_reachability) {
+        if (!check_raw_reachability(insts)) {
+            errmsg = "No support for forests yet";
+            return false;
+        }
+    }
+
+    return exit_count >= 1;
 }
