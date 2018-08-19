@@ -98,7 +98,6 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
 				return false;
 			}
             break;
-
         case EBPF_OP_LDXW:
         case EBPF_OP_LDXH:
         case EBPF_OP_LDXB:
@@ -145,11 +144,11 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
         case EBPF_OP_STXH:
         case EBPF_OP_STXB:
         case EBPF_OP_STXDW:
-            if (inst.src > 10 || inst.dst > 10) {
+            if (inst.dst > 10) {
                 errmsg = string("invalid registers (") + std::to_string(inst.src) + ", " + std::to_string(inst.dst) + ") at PC " + std::to_string(pc);
                 return false;
             }
-            if (inst.src == 10 && (inst.offset + access_width(inst.opcode) > 0 || inst.offset < -STACK_SIZE)) {
+            if (inst.dst == 10 && (inst.offset + access_width(inst.opcode) > 0 || inst.offset < -STACK_SIZE)) {
                 errmsg = string("Stack access out of bounds at ") + std::to_string(pc);
                 return false;
             }

@@ -210,8 +210,8 @@ const map<string, domain_desc> domains{
 };
 
 global_options_t global_options {
-    .stats = false,
     .simplify = false,
+    .stats = false,
     .check_raw_reachability = true,
     .check_semantic_reachability = false
 };

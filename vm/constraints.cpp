@@ -248,9 +248,9 @@ basic_block_label_t abs_machine_t::jump(ebpf_inst inst, basic_block_t& block, bo
     auto& dst = machine.regs[inst.dst];
     auto& src = machine.regs[inst.src];
     lin_cst_t cst = jmp_to_cst(opcode, inst.imm, dst.value, src.value);
+    debug_info di{"pc", (unsigned int)first_num(block.label()), 0}; 
 
     if (opcode & EBPF_SRC_REG) {
-        debug_info di{"pc", 0, (unsigned int)first_num(block.label())};
 
         basic_block_t& same = add_child(cfg, block, "same_type");
         same.assume(cst);
@@ -279,7 +279,7 @@ basic_block_label_t abs_machine_t::jump(ebpf_inst inst, basic_block_t& block, bo
         block.assume(cst);
         if (inst.imm != 0) {
             // only null can be compared to pointers without leaking secrets
-            block.assertion(dst.region == T_NUM);
+            block.assertion(dst.region == T_NUM, di);
         }
         return block.label();
     }
@@ -459,7 +459,6 @@ static void exec_direct_stack_store(basic_block_t& block, dom_t target, int _off
 static void exec_direct_stack_store_immediate(basic_block_t& block, int _offset, int width, debug_info di, machine_t& machine,
                                               uint64_t immediate)
 {
-    std::cout << "_offset: " << _offset << " width " << width << "\n";
     int offset = (-_offset) - width;
     assert(offset >= 0);
     assert(offset + width <= STACK_SIZE);
@@ -534,7 +533,7 @@ vector<basic_block_label_t> instruction_builder_t::exec()
         * Output:
         *   R0 - 8/16/32-bit skb data converted to cpu endianness
         */
-        block.assertion(machine.regs[6].region == T_CTX);
+        block.assertion(machine.regs[6].region == T_CTX, di);
         // TODO: There seems no offset checking at the kernel. Why?
         if ((inst.opcode & 0xE0) == 0x20)
             /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
@@ -546,27 +545,32 @@ vector<basic_block_label_t> instruction_builder_t::exec()
         scratch_regs(block);
         return { block.label() };
     } else if (is_access(inst.opcode)) {
-        if (inst.opcode == 0x7a && inst.src == 10) {
-            std::cout << "pc " << pc << " inst.opcode " << (int)inst.opcode << "\n";
-            exec_direct_stack_store_immediate(block, inst.offset, width, di, machine, immediate(inst, next_inst));
-            return { block.label() };
-        } else if ((inst.opcode & EBPF_CLS_ALU) == EBPF_MODE_IMM ) {
-            std::cout << "???\n";
-        }
-
         dom_t mem = is_load(inst.opcode) ? machine.regs.at(inst.src) : machine.regs.at(inst.dst);
         dom_t target = is_load(inst.opcode) ? machine.regs.at(inst.dst) : machine.regs.at(inst.src);
-        var_t width{machine.vfac["width"], crab::INT_TYPE, 64};
-        block.assign(width, access_width(inst.opcode));
-        if (inst.src == 10) {
-            if (is_load(inst.opcode)) {
-                exec_direct_stack_load(block, target, inst.offset, width, di, machine);
+        var_t dyn_width{machine.vfac["width"], crab::INT_TYPE, 64};
+        block.assign(dyn_width, access_width(inst.opcode));
+
+        if ((inst.opcode & EBPF_MODE_MASK) == EBPF_MODE_IMM) {
+            if (inst.dst == 10) {
+                exec_direct_stack_store_immediate(block, inst.offset, width, di, machine, immediate(inst, next_inst));
+                return { block.label() };
             } else {
-                exec_direct_stack_store(block, target, inst.offset, width, di, machine);
+                var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
+                block.assign(tmp, immediate(inst, next_inst));
+                return exec_mem_access_indirect(block, is_load(inst.opcode), mem, {tmp, machine.top, machine.num}, inst.offset, dyn_width, di, cfg, machine);
+            } 
+        } 
+
+        bool mem_is_fp = (is_load(inst.opcode) ? inst.src : inst.dst) == 10;
+        if (mem_is_fp) {
+            if (is_load(inst.opcode)) {
+                exec_direct_stack_load(block, target, inst.offset, dyn_width, di, machine);
+            } else {
+                exec_direct_stack_store(block, target, inst.offset, dyn_width, di, machine);
             }
             return { block.label() };
         } else {
-            return exec_mem_access_indirect(block, is_load(inst.opcode), mem, target, inst.offset, width, di, cfg, machine);
+            return exec_mem_access_indirect(block, is_load(inst.opcode), mem, target, inst.offset, dyn_width, di, cfg, machine);
         }
     } else {
         std::cout << "bad instruction " << (int)inst.opcode << " at " << first_num(block.label()) << "},n";
@@ -714,7 +718,7 @@ vector<basic_block_label_t> instruction_builder_t::exec_alu()
     case EBPF_OP_SUB64_REG: {
             basic_block_t& same = add_child(cfg, block, "ptr_src");
             same.assume(is_pointer(src));
-            same.assertion(is_pointer(dst));
+            same.assertion(is_pointer(dst), di);
             same.assume(eq(dst.region, src.region));
             same.sub(dst.value, dst.offset, src.offset);
             same.assign(dst.region, T_NUM);
