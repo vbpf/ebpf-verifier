@@ -204,6 +204,10 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
                 errmsg = string("incomplete lddw at PC ") + std::to_string(pc);
                 return false;
             }
+            if (inst.src > 1 || inst.dst > 10 || inst.offset != 0) {
+                errmsg = string("LDDS uses reserved fields at PC ") + std::to_string(pc);
+                return false;
+            }
             {
                 ebpf_inst next = insts[pc+1];
                 if (next.opcode != 0 || next.dst != 0 || next.src != 0 || next.offset != 0) {
