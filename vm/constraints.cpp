@@ -41,9 +41,9 @@ struct dom_t {
     dom_t(var_t value, var_t offset, var_t region) : value(value), offset(offset), region(region) { };
 };
 
-static void assert_init(basic_block_t& block, const dom_t& target, debug_info di)
+static void assert_init(basic_block_t& block, const dom_t& data_reg, debug_info di)
 {
-    block.assertion(target.region >= T_NUM, di);
+    block.assertion(data_reg.region >= T_NUM, di);
 }
 
 struct array_dom_t {
@@ -58,22 +58,22 @@ struct array_dom_t {
         regions{vfac[std::string(name + "_regions")], crab::ARR_INT_TYPE, 8}
     { }
     template<typename T, typename W>
-    void load(basic_block_t& block, dom_t& target, const T& offset, W width) {
-        block.array_load(target.value, values, offset, width);
-        block.array_load(target.region, regions, offset, width);
-        block.array_load(target.offset, offsets, offset, width);
+    void load(basic_block_t& block, dom_t& data_reg, const T& offset, W width) {
+        block.array_load(data_reg.value, values, offset, width);
+        block.array_load(data_reg.region, regions, offset, width);
+        block.array_load(data_reg.offset, offsets, offset, width);
     }
     
     template<typename T, typename W>
-    void store(basic_block_t& block, const T& offset, const dom_t& target, W width, debug_info di) {
+    void store(basic_block_t& block, const T& offset, const dom_t& data_reg, W width, debug_info di) {
         var_t lb{vfac["lb"], crab::INT_TYPE, 64};
         var_t ub{vfac["ub"], crab::INT_TYPE, 64};
         block.assign(lb, offset);
         block.assign(ub, offset + width);
-        block.array_init(regions, 1, lb, ub, target.region);
+        block.array_init(regions, 1, lb, ub, data_reg.region);
 
-        block.array_store(values, offset, target.value, width);
-        block.array_store(offsets, offset, target.offset, width);
+        block.array_store(values, offset, data_reg.value, width);
+        block.array_store(offsets, offset, data_reg.offset, width);
     }
 };
 
@@ -100,7 +100,7 @@ public:
     vector<basic_block_label_t> exec();
     instruction_builder_t(machine_t& machine, ebpf_inst inst, ebpf_inst next_inst, basic_block_t& block, cfg_t& cfg) :
         machine(machine), inst(inst), next_inst(next_inst), block(block), cfg(cfg), pc((unsigned int)first_num(block.label())),
-        di{"pc", pc, 0}, mem(is_load(inst.opcode) ? inst.src : inst.dst), width(access_width(inst.opcode))
+        di{"pc", pc, 0}, mem_reg(is_load(inst.opcode) ? inst.src : inst.dst), width(access_width(inst.opcode))
         {
         }
 private:
@@ -113,7 +113,7 @@ private:
     // derived fields
     uint16_t pc;
     debug_info di;
-    uint8_t mem = is_load(inst.opcode) ? inst.src : inst.dst;
+    uint8_t mem_reg = is_load(inst.opcode) ? inst.src : inst.dst;
     int width = access_width(inst.opcode);
 
     void scratch_regs(basic_block_t& block);
@@ -316,75 +316,75 @@ void instruction_builder_t::scratch_regs(basic_block_t& block)
     }
 }
 
-static vector<basic_block_label_t> exec_stack_access(basic_block_t& block, bool is_load, dom_t mem, dom_t target, int offset, var_t width, debug_info di, cfg_t& cfg,
+static vector<basic_block_label_t> exec_stack_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, var_t width, debug_info di, cfg_t& cfg,
                                                       machine_t& machine)
 {
     basic_block_t& mid = add_child(cfg, block, "assume_stack");
-    lin_exp_t addr = (-offset) - width - mem.offset; // negate access
+    lin_exp_t addr = (-offset) - width - mem_reg.offset; // negate access
     
-    mid.assume(mem.region == T_STACK);
+    mid.assume(mem_reg.region == T_STACK);
     mid.assertion(addr >= 0, di);
     mid.assertion(addr <= STACK_SIZE - width, di);
     if (is_load) {
-        machine.stack_arr.load(mid, target, addr, width);
-        mid.array_load(target.region, machine.stack_arr.regions, addr, 1);
-        mid.assume(target.region >= 1);
+        machine.stack_arr.load(mid, data_reg, addr, width);
+        mid.array_load(data_reg.region, machine.stack_arr.regions, addr, 1);
+        mid.assume(data_reg.region >= 1);
         /* FIX: requires loop
         var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 8};
         for (int idx=1; idx < width; idx++) {
             mid.array_load(tmp, machine.stack_arr.regions, addr+idx, 1);
-            mid.assertion(eq(tmp, target.region), di);
+            mid.assertion(eq(tmp, data_reg.region), di);
         }*/
     } else {
-        assert_init(mid, target, di);
-        machine.stack_arr.store(mid, addr, target, width, di);
+        assert_init(mid, data_reg, di);
+        machine.stack_arr.store(mid, addr, data_reg, width, di);
     }
     return { mid.label() };
 }
 
-static vector<basic_block_label_t> exec_map_access(basic_block_t& block, bool is_load, dom_t mem, dom_t target, int offset, var_t width, debug_info di, cfg_t& cfg)
+static vector<basic_block_label_t> exec_map_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, var_t width, debug_info di, cfg_t& cfg)
 {
     basic_block_t& mid = add_child(cfg, block, "assume_map");
-    lin_exp_t addr = mem.offset + offset;
+    lin_exp_t addr = mem_reg.offset + offset;
 
-    mid.assume(mem.region == T_MAP);
+    mid.assume(mem_reg.region == T_MAP);
     mid.assertion(addr >= 0, di);
     constexpr int MAP_SIZE = 256;
     mid.assertion(addr <= MAP_SIZE - width, di);
     if (is_load) {
-        mid.havoc(target.value);
-        mid.assign(target.region, T_NUM);
-        mid.havoc(target.offset);
+        mid.havoc(data_reg.value);
+        mid.assign(data_reg.region, T_NUM);
+        mid.havoc(data_reg.offset);
     } else {
-        mid.assertion(target.region == T_NUM, di);
+        mid.assertion(data_reg.region == T_NUM, di);
     }
     return { mid.label() };
 }
 
-static vector<basic_block_label_t> exec_data_access(basic_block_t& block, bool is_load, dom_t mem, dom_t target, int offset, var_t width, debug_info di, cfg_t& cfg,
+static vector<basic_block_label_t> exec_data_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, var_t width, debug_info di, cfg_t& cfg,
                                             machine_t& machine)
 {
     basic_block_t& mid = add_child(cfg, block, "assume_data");
-    lin_exp_t addr = mem.offset + offset;
+    lin_exp_t addr = mem_reg.offset + offset;
 
-    mid.assume(mem.region == T_DATA);
+    mid.assume(mem_reg.region == T_DATA);
     mid.assertion(addr >= 0, di);
     mid.assertion(addr <= machine.total_size - width, di);
     if (is_load) {
-        machine.data_arr.load(mid, target, addr, width);
-        mid.assign(target.region, T_NUM);
+        machine.data_arr.load(mid, data_reg, addr, width);
+        mid.assign(data_reg.region, T_NUM);
     } else {
-        machine.data_arr.store(mid, addr, target, width, di);
+        machine.data_arr.store(mid, addr, data_reg, width, di);
     }
     return { mid.label() };
 }
 
-static vector<basic_block_label_t> exec_ctx_access(basic_block_t& block, bool is_load, dom_t mem, dom_t target, int offset, var_t width, debug_info di, cfg_t& cfg,
+static vector<basic_block_label_t> exec_ctx_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, var_t width, debug_info di, cfg_t& cfg,
                                             machine_t& machine)
 {
     basic_block_t& mid = add_child(cfg, block, "assume_ctx");
-    mid.assume(mem.region == T_CTX);
-    lin_exp_t addr = mem.offset + offset;
+    mid.assume(mem_reg.region == T_CTX);
+    lin_exp_t addr = mem_reg.offset + offset;
     mid.assertion(addr >= 0, di);
     mid.assertion(addr <= machine.ctx_desc.size - width, di);
 
@@ -394,10 +394,10 @@ static vector<basic_block_label_t> exec_ctx_access(basic_block_t& block, bool is
         auto load_datap = [&](string suffix, int start, auto offset) {
             basic_block_t& b = add_child(cfg, mid, suffix);
             b.assume(addr == start);
-            b.assign(target.region, T_DATA);
-            b.havoc(target.value);
-            b.assume(4098 <= target.value);
-            b.assign(target.offset, offset);
+            b.assign(data_reg.region, T_DATA);
+            b.havoc(data_reg.value);
+            b.assume(4098 <= data_reg.value);
+            b.assign(data_reg.offset, offset);
             ret.push_back(b.label());
         };
 
@@ -417,43 +417,43 @@ static vector<basic_block_label_t> exec_ctx_access(basic_block_t& block, bool is
         if (desc.meta >= 0) {
             normal.assume(addr != desc.meta);
         }
-        machine.ctx_arr.load(normal, target, addr, width);
-        normal.assign(target.region, T_NUM);
+        machine.ctx_arr.load(normal, data_reg, addr, width);
+        normal.assign(data_reg.region, T_NUM);
         ret.push_back(normal.label());
     } else {
         mid.assertion(addr != desc.data, di);
         mid.assertion(addr != desc.end, di);
         mid.assertion(addr != desc.meta, di);
-        mid.assertion(target.region == T_NUM, di);
-        machine.ctx_arr.store(mid, addr, target, width, di);
+        mid.assertion(data_reg.region == T_NUM, di);
+        machine.ctx_arr.store(mid, addr, data_reg, width, di);
         ret.push_back(mid.label());
     }
     return ret;
 }
 
-static void exec_direct_stack_load(basic_block_t& block, dom_t target, int _offset, var_t width, debug_info di, machine_t& machine)
+static void exec_direct_stack_load(basic_block_t& block, dom_t data_reg, int _offset, var_t width, debug_info di, machine_t& machine)
 {
     lin_exp_t offset = (-_offset) - width;
     block.assertion(offset >= 0, di);
     block.assertion(offset + width <= STACK_SIZE, di);
-    machine.stack_arr.load(block, target, offset, width);
-    block.array_load(target.region, machine.stack_arr.regions, offset+0, 1);
-    block.assume(target.region >= 1);
+    machine.stack_arr.load(block, data_reg, offset, width);
+    block.array_load(data_reg.region, machine.stack_arr.regions, offset+0, 1);
+    block.assume(data_reg.region >= 1);
     /* FIX: requires loop
     var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 8};
     for (int idx=1; idx < width; idx++) {
         block.array_load(tmp, machine.stack_arr.regions, offset+idx, 1);
-        block.assertion(eq(tmp, target.region), di);
+        block.assertion(eq(tmp, data_reg.region), di);
     }*/
 }
 
-static void exec_direct_stack_store(basic_block_t& block, dom_t target, int _offset, var_t width, debug_info di, machine_t& machine)
+static void exec_direct_stack_store(basic_block_t& block, dom_t data_reg, int _offset, var_t width, debug_info di, machine_t& machine)
 {
     lin_exp_t offset = (-_offset) - width;
     block.assertion(offset >= 0, di);
     block.assertion(offset + width <= STACK_SIZE, di);
-    assert_init(block, target, di);
-    machine.stack_arr.store(block, offset, target, width, di);
+    assert_init(block, data_reg, di);
+    machine.stack_arr.store(block, offset, data_reg, width, di);
 }
 
 static void exec_direct_stack_store_immediate(basic_block_t& block, int _offset, int width, debug_info di, machine_t& machine,
@@ -479,17 +479,23 @@ static void move_into(vector<T>& dst, vector<T>&& src)
     );
 }
 
-static vector<basic_block_label_t> exec_mem_access_indirect(basic_block_t& block, bool is_load, dom_t mem, dom_t target, int offset, var_t width, debug_info di, cfg_t& cfg, machine_t& machine)
+static vector<basic_block_label_t> exec_mem_access_indirect(basic_block_t& block, bool is_load, bool is_st, dom_t mem_reg, dom_t data_reg, int offset, var_t width, debug_info di, cfg_t& cfg, machine_t& machine)
 {
-    block.assertion(mem.value != 0, di);
-    block.assertion(mem.region != T_NUM, di);
+    block.assertion(mem_reg.value != 0, di);
+    block.assertion(mem_reg.region != T_NUM, di);
     vector<basic_block_label_t> outs;
     
-    move_into(outs, exec_stack_access(block, is_load, mem, target, offset, width, di, cfg, machine));
-    move_into(outs, exec_ctx_access(block, is_load, mem, target, offset, width, di, cfg, machine));
-    move_into(outs, exec_map_access(block, is_load, mem, target, offset, width, di, cfg));
+    move_into(outs, exec_stack_access(block, is_load, mem_reg, data_reg, offset, width, di, cfg, machine));
+    if (is_load || !is_st) {
+        move_into(outs, exec_ctx_access(block, is_load, mem_reg, data_reg, offset, width, di, cfg, machine));
+    } else {
+        // "BPF_ST stores into R1 context is not allowed"
+        // (This seems somewhat arbitrary)
+        block.assertion(mem_reg.region != T_CTX, di);
+    }
+    move_into(outs, exec_map_access(block, is_load, mem_reg, data_reg, offset, width, di, cfg));
     if (machine.ctx_desc.data >= 0) {
-        move_into(outs, exec_data_access(block, is_load, mem, target, offset, width, di, cfg, machine));
+        move_into(outs, exec_data_access(block, is_load, mem_reg, data_reg, offset, width, di, cfg, machine));
     }
     return outs;
 }
@@ -516,7 +522,47 @@ vector<basic_block_label_t> instruction_builder_t::exec()
             }
             assert_init(block, machine.regs[inst.dst], di);
         }
-    } else if ((inst.opcode & 0xE0) == 0x20 || (inst.opcode & 0xE0) == 0x40) { // TODO NAME: LDABS, LDIND
+        return {block.label()};
+    } else if (is_access(inst.opcode)) {
+        dom_t mem_reg =  machine.regs.at(is_load(inst.opcode) ? inst.src : inst.dst);
+        dom_t data_reg = machine.regs.at(is_load(inst.opcode) ? inst.dst : inst.src);
+        var_t dyn_width{machine.vfac["width"], crab::INT_TYPE, 64};
+        block.assign(dyn_width, access_width(inst.opcode));
+        bool mem_is_fp = (is_load(inst.opcode) ? inst.src : inst.dst) == 10;
+        uint8_t opcode_width_w = inst.opcode & (~EBPF_SIZE_DW);
+        switch (opcode_width_w) {
+        case EBPF_OP_STW:
+            // mem[offset] = immediate
+            std::cout << pc << " " << (int)inst.opcode << "\n";
+            if (inst.dst == 10) {
+                exec_direct_stack_store_immediate(block, inst.offset, width, di, machine, immediate(inst, next_inst));
+                return { block.label() };
+            } else {
+                var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
+                block.assign(tmp, immediate(inst, next_inst));
+                return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, machine.num}, inst.offset, dyn_width, di, cfg, machine);
+            } 
+            break;
+
+        case EBPF_OP_LDXW:
+            // data = mem[offset]
+            if (mem_is_fp) {
+                exec_direct_stack_load(block, data_reg, inst.offset, dyn_width, di, machine);
+                return { block.label() };
+            } else {
+                return exec_mem_access_indirect(block, true, false, mem_reg, data_reg, inst.offset, dyn_width, di, cfg, machine);
+            }
+
+        case EBPF_OP_STXW:
+            // mem[offset] = data
+            if (mem_is_fp) {
+                exec_direct_stack_store(block, data_reg, inst.offset, dyn_width, di, machine);
+                return { block.label() };
+            } else {
+                return exec_mem_access_indirect(block, false, false, mem_reg, data_reg, inst.offset, dyn_width, di, cfg, machine);
+            }
+            break;
+
         /* From the linux verifier code:
         verify safety of LD_ABS|LD_IND instructions:
         * - they can only appear in the programs where ctx == skb
@@ -533,50 +579,46 @@ vector<basic_block_label_t> instruction_builder_t::exec()
         * Output:
         *   R0 - 8/16/32-bit skb data converted to cpu endianness
         */
-        block.assertion(machine.regs[6].region == T_CTX, di);
-        // TODO: There seems no offset checking at the kernel. Why?
-        if ((inst.opcode & 0xE0) == 0x20)
+        case EBPF_OP_LDABSW:
+        case EBPF_OP_LDXABSW:
             /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
+            block.assertion(machine.regs[6].region == T_CTX, di);
             machine.data_arr.load(block, machine.regs[0], inst.imm, width);
-        else
-            /* Indirect packet access, R0 = *(uint *) (skb->data + src_reg + imm32) */
-            machine.data_arr.load(block, machine.regs[0], machine.regs[inst.src].value + inst.imm, width);
-        block.assign(machine.regs[0].region, T_NUM);
-        scratch_regs(block);
-        return { block.label() };
-    } else if (is_access(inst.opcode)) {
-        dom_t mem = is_load(inst.opcode) ? machine.regs.at(inst.src) : machine.regs.at(inst.dst);
-        dom_t target = is_load(inst.opcode) ? machine.regs.at(inst.dst) : machine.regs.at(inst.src);
-        var_t dyn_width{machine.vfac["width"], crab::INT_TYPE, 64};
-        block.assign(dyn_width, access_width(inst.opcode));
-
-        if ((inst.opcode & EBPF_MODE_MASK) == EBPF_MODE_IMM) {
-            if (inst.dst == 10) {
-                exec_direct_stack_store_immediate(block, inst.offset, width, di, machine, immediate(inst, next_inst));
-                return { block.label() };
-            } else {
-                var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
-                block.assign(tmp, immediate(inst, next_inst));
-                return exec_mem_access_indirect(block, is_load(inst.opcode), mem, {tmp, machine.top, machine.num}, inst.offset, dyn_width, di, cfg, machine);
-            } 
-        } 
-
-        bool mem_is_fp = (is_load(inst.opcode) ? inst.src : inst.dst) == 10;
-        if (mem_is_fp) {
-            if (is_load(inst.opcode)) {
-                exec_direct_stack_load(block, target, inst.offset, dyn_width, di, machine);
-            } else {
-                exec_direct_stack_store(block, target, inst.offset, dyn_width, di, machine);
-            }
+            block.assign(machine.regs[0].region, T_NUM);
+            scratch_regs(block);
             return { block.label() };
-        } else {
-            return exec_mem_access_indirect(block, is_load(inst.opcode), mem, target, inst.offset, dyn_width, di, cfg, machine);
+
+        case EBPF_OP_LDINDW:
+        case EBPF_OP_LDXINDW:
+            /* Indirect packet access, R0 = *(uint *) (skb->data + src_reg + imm32) */
+            block.assertion(machine.regs[6].region == T_CTX, di);
+            machine.data_arr.load(block, machine.regs[0], machine.regs[inst.src].value + inst.imm, width);
+            block.assign(machine.regs[0].region, T_NUM);
+            scratch_regs(block);
+            return { block.label() };
+
+        case EBPF_OP_STABSW:
+        case EBPF_OP_STXABSW:
+
+        case EBPF_OP_STINDW:
+        case EBPF_OP_STXINDW:
+            assert(false);
+            return { block.label() };
+
+        case EBPF_STXADDW:
+        case EBPF_STXADDDW:
+            std::cout << "TODO: XADD\n";
+            return { block.label() };
+            
+        default: 
+            std::cout << "bad mem instruction " << (int)inst.opcode << " at " << (int)first_num(block.label()) << "\n";
+            assert(false);
+            return {};
         }
     } else {
-        std::cout << "bad instruction " << (int)inst.opcode << " at " << first_num(block.label()) << "},n";
+        std::cout << "bad instruction " << (int)inst.opcode << " at " << (int)first_num(block.label()) << "\n";
         assert(false);
     }
-    return { block.label() };
 }
 
 vector<basic_block_label_t> instruction_builder_t::exec_call()
@@ -634,8 +676,8 @@ vector<basic_block_label_t> instruction_builder_t::exec_call()
                 current.assertion(arg.value > 0, di);
                 current.assertion(is_pointer(arg), di);
                 var_t width = machine.regs[i+1].value;
-                exec_mem_access_indirect(current, true, arg, { machine.top, machine.top, machine.top }, 0, width, di, cfg, machine);
-                exec_mem_access_indirect(current, false, arg, { machine.top, machine.top, machine.num }, 0, width, di, cfg, machine);
+                exec_mem_access_indirect(current, true, true, arg, { machine.top, machine.top, machine.top }, 0, width, di, cfg, machine);
+                exec_mem_access_indirect(current, false, true, arg, { machine.top, machine.top, machine.num }, 0, width, di, cfg, machine);
             }
             break;
         case ARG_PTR_TO_MEM_OR_NULL:
@@ -645,8 +687,8 @@ vector<basic_block_label_t> instruction_builder_t::exec_call()
                 current.assertion(is_pointer(arg), di);
                 current.assertion(arg.offset <= 0, di);
                 var_t width = machine.regs[i+1].value;
-                exec_mem_access_indirect(current, true, arg, { machine.top, machine.top, machine.top }, 0, width, di, cfg, machine);
-                exec_mem_access_indirect(current, false, arg, { machine.top, machine.top, machine.num }, 0, width, di, cfg, machine);
+                exec_mem_access_indirect(current, true, true, arg, { machine.top, machine.top, machine.top }, 0, width, di, cfg, machine);
+                exec_mem_access_indirect(current, false, true, arg, { machine.top, machine.top, machine.num }, 0, width, di, cfg, machine);
             }
             break;
         }
@@ -703,11 +745,30 @@ vector<basic_block_label_t> instruction_builder_t::exec_alu()
         break;
     case EBPF_OP_ADD_REG:
     case EBPF_OP_ADD64_REG:
-        block.add(dst.value, dst.value, src.value);
-        // FIX: handle "offset := value + offset" 
-        // and region := (pointer + value || value + pointer) ? pointer : number
-        // How do we do meet? Should we assume something?
-        block.add(dst.offset, dst.offset, src.value); // XXX note src.value
+        {
+            block.add(dst.value, dst.value, src.value);
+            
+            basic_block_t& ptr_dst = add_child(cfg, block, "ptr_dst");
+            ptr_dst.assume(is_pointer(dst));
+            ptr_dst.assertion(src.region == T_NUM , di);
+            ptr_dst.add(dst.offset, dst.offset, src.value);
+
+            basic_block_t& ptr_src = add_child(cfg, block, "ptr_src");
+            ptr_src.assume(is_pointer(src));
+            ptr_src.assertion(dst.region == T_NUM , di);
+            ptr_src.add(dst.offset, dst.value, src.offset);
+            ptr_src.assign(dst.region, src.region);
+            ptr_src.assign(dst.value, machine.top);
+            ptr_src.assume(4098 <= dst.value);
+            
+            basic_block_t& both_num = add_child(cfg, block, "both_num");
+            both_num.assume(dst.region == T_NUM);
+            both_num.assume(src.region == T_NUM);
+            both_num.add(dst.value, dst.value, src.value);
+
+            res = {ptr_dst.label(), ptr_dst.label(), both_num.label()};
+            return res;
+        }
         break;
     case EBPF_OP_SUB_IMM:
     case EBPF_OP_SUB64_IMM:

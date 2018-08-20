@@ -50,7 +50,7 @@ struct ptype_descr {
 
 constexpr ptype_descr sk_buff = { sk_skb_regions, 19*4, 20*4, 35*4};
 constexpr ptype_descr xdp_md = { xdp_regions, 0, 1*4, 2*4};
-constexpr ptype_descr sk_msg_md = { 11*4, 0, 1*8, -1}; // TODO: verify
+constexpr ptype_descr sk_msg_md = { 17*4, 0, 1*8, -1}; // TODO: verify
 constexpr ptype_descr unspec_descr = { 0 };
 constexpr ptype_descr cgroup_dev_descr = {cgroup_dev_regions};
 constexpr ptype_descr kprobe_descr = {kprobe_regions};

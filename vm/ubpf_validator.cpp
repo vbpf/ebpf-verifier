@@ -20,6 +20,12 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
     for (uint32_t pc = 0; pc < insts.size(); pc++) {
         ebpf_inst inst = insts[pc];
 
+        if (is_alu(inst.opcode)) {
+            if (inst.dst == 10) {
+                errmsg = string("Invalid target r10 at PC ") + std::to_string(pc);
+                return false;
+            }
+        }
         switch (inst.opcode) {
 
         case EBPF_OP_LE:
@@ -49,7 +55,6 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
         case EBPF_OP_NEG:
         case EBPF_OP_XOR_IMM:
         case EBPF_OP_MOV_IMM:
-        case EBPF_OP_ARSH_IMM:
 
         case EBPF_OP_ADD64_IMM:
         case EBPF_OP_SUB64_IMM:
@@ -68,6 +73,12 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
 			}
             break;
 
+        case EBPF_OP_ARSH_REG:
+        case EBPF_OP_ARSH_IMM:
+            // why?
+            errmsg = "arsh32 is not allowed";
+            return false;
+            break;
         case EBPF_OP_DIV_REG:
         case EBPF_OP_ADD_REG:
         case EBPF_OP_SUB_REG:
@@ -79,7 +90,6 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
         case EBPF_OP_MOD_REG:
         case EBPF_OP_XOR_REG:
         case EBPF_OP_MOV_REG:
-        case EBPF_OP_ARSH_REG:
 
         case EBPF_OP_ADD64_REG:
         case EBPF_OP_SUB64_REG:
@@ -102,7 +112,7 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
         case EBPF_OP_LDXH:
         case EBPF_OP_LDXB:
         case EBPF_OP_LDXDW:
-            if (inst.src > 10 || inst.dst > 10) {
+            if (inst.src > 10 || inst.dst >= 10) {
                 errmsg = string("invalid registers (") + std::to_string(inst.src) + ", " + std::to_string(inst.dst) + ") at PC " + std::to_string(pc);
                 return false;
             }
@@ -124,14 +134,13 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
         case EBPF_OP_LDINDW:
         case EBPF_OP_LDINDH:
         case EBPF_OP_LDINDB:
-        case EBPF_OP_LDINDDW:
 
         case EBPF_OP_LDXINDW:
         case EBPF_OP_LDXINDH:
         case EBPF_OP_LDXINDB:
         case EBPF_OP_LDXINDDW:
 
-            if (inst.src > 10 || inst.dst > 10) {
+            if (inst.src > 10 || inst.dst >= 10) {
                 errmsg = string("invalid registers (") + std::to_string(inst.src) + ", " + std::to_string(inst.dst) + ") at PC " + std::to_string(pc);
                 return false;
             }
@@ -144,7 +153,7 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
         case EBPF_OP_STXH:
         case EBPF_OP_STXB:
         case EBPF_OP_STXDW:
-            if (inst.dst > 10) {
+            if (inst.src > 10 || inst.dst > 10) {
                 errmsg = string("invalid registers (") + std::to_string(inst.src) + ", " + std::to_string(inst.dst) + ") at PC " + std::to_string(pc);
                 return false;
             }
@@ -154,10 +163,17 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
             }
             break;
 
+        case EBPF_OP_LDINDDW:
+            errmsg = "invalid opcode EBPF_OP_LDINDDW";
+            return false;
+
         case EBPF_OP_LDABSDW:
+            errmsg = "invalid opcode EBPF_OP_LDABSDW";
+            return false;
+
         case EBPF_OP_STABSDW:
-                errmsg = "invalid opcode EBPF_OP_STABSDW";
-                return false;
+            errmsg = "invalid opcode EBPF_OP_STABSDW";
+            return false;
 
         case EBPF_STXADDW:     
         case EBPF_STXADDDW:
@@ -184,10 +200,18 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
             break;
 
         case EBPF_OP_LDDW_IMM:
-            if (pc + 1 >= insts.size() || insts[pc+1].opcode != 0) {
+            if (pc + 1 >= insts.size()) {
                 errmsg = string("incomplete lddw at PC ") + std::to_string(pc);
                 return false;
             }
+            {
+                ebpf_inst next = insts[pc+1];
+                if (next.opcode != 0 || next.dst != 0 || next.src != 0 || next.offset != 0) {
+                    errmsg = string("invalid lddw at PC ") + std::to_string(pc);
+                    return false;
+                }
+            }
+
             pc++; /* Skip next instruction */
             break;
 

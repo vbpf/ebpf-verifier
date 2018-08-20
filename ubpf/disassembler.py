@@ -158,6 +158,8 @@ def disassemble_one(data, offset):
         elif cls == BPF_CLASS_ST:
             return "%s %s, %s" % (class_name + size_name, M(R(dst_reg), off), I(imm))
         elif cls == BPF_CLASS_STX:
+            if mode_name == 'xadd':
+                return "%s %s, %s" % (class_name + mode_name + size_name, M(R(dst_reg), off), R(src_reg))
             return "%s %s, %s" % (class_name + size_name, M(R(dst_reg), off), R(src_reg))
         else:
             return "unknown mem instruction %#x" % code
