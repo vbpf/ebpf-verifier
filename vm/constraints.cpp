@@ -604,6 +604,7 @@ vector<basic_block_label_t> instruction_builder_t::exec()
     } else if (inst.opcode == EBPF_OP_LDDW_IMM) {
         if (inst.src == 1) {
             // magic number, meaning we're a per-process file descriptor
+            // defining the map.
             // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
             // This is what ARG_CONST_MAP_PTR looks for
 
