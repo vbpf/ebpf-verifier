@@ -512,7 +512,7 @@ vector<basic_block_label_t> instruction_builder_t::exec_mem()
     switch (opcode_width_w) {
     case EBPF_OP_STW:
         // mem[offset] = immediate
-        std::cout << pc << " " << (int)inst.opcode << "\n";
+        std::cout << "EBPF_OP_STW" << pc << " " << (int)inst.opcode << "\n";
         if (inst.dst == 10) {
             exec_direct_stack_store_immediate(block, inst.offset, width, di, machine, immediate(inst, next_inst));
             return { block.label() };
@@ -525,6 +525,7 @@ vector<basic_block_label_t> instruction_builder_t::exec_mem()
 
     case EBPF_OP_LDXW:
         // data = mem[offset]
+        std::cout << "EBPF_OP_LDXW" << pc << " " << (int)inst.opcode << "\n";
         if (mem_is_fp) {
             exec_direct_stack_load(block, data_reg, inst.offset, dyn_width, di, machine);
             return { block.label() };
@@ -601,9 +602,20 @@ vector<basic_block_label_t> instruction_builder_t::exec()
     if (is_alu(inst.opcode)) {
         return exec_alu();
     } else if (inst.opcode == EBPF_OP_LDDW_IMM) {
-        block.assign(machine.regs[inst.dst].value, immediate(inst, next_inst));
-        no_pointer(block, machine.regs[inst.dst]);
-        return { block.label() };
+        if (inst.src == 1) {
+            // magic number, meaning we're a per-process file descriptor
+            // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
+            // This is what ARG_CONST_MAP_PTR looks for
+
+            // This is probably the wrong thing to do. should we add an FD type?
+            block.assign(machine.regs[inst.dst].region, T_MAP);
+            block.assign(machine.regs[inst.dst].offset, 0);
+            return { block.label() };
+        } else {
+            block.assign(machine.regs[inst.dst].value, immediate(inst, next_inst));
+            no_pointer(block, machine.regs[inst.dst]);
+            return { block.label() };
+        }
     } else if (inst.opcode == EBPF_OP_EXIT) {
         // assert_init(block, machine.regs[inst.dst], di);
         block.assertion(machine.regs[inst.dst].region == T_NUM, di);
