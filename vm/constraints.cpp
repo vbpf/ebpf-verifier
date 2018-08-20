@@ -119,6 +119,7 @@ private:
     void scratch_regs(basic_block_t& block);
     static void no_pointer(basic_block_t& block, dom_t& v);
 
+    vector<basic_block_label_t> exec_mem();
     vector<basic_block_label_t> exec_alu();
     vector<basic_block_label_t> exec_call();
 };
@@ -500,6 +501,101 @@ static vector<basic_block_label_t> exec_mem_access_indirect(basic_block_t& block
     return outs;
 }
 
+vector<basic_block_label_t> instruction_builder_t::exec_mem()
+{
+    dom_t mem_reg =  machine.regs.at(is_load(inst.opcode) ? inst.src : inst.dst);
+    dom_t data_reg = machine.regs.at(is_load(inst.opcode) ? inst.dst : inst.src);
+    var_t dyn_width{machine.vfac["width"], crab::INT_TYPE, 64};
+    block.assign(dyn_width, access_width(inst.opcode));
+    bool mem_is_fp = (is_load(inst.opcode) ? inst.src : inst.dst) == 10;
+    uint8_t opcode_width_w = inst.opcode & (~EBPF_SIZE_DW);
+    switch (opcode_width_w) {
+    case EBPF_OP_STW:
+        // mem[offset] = immediate
+        std::cout << pc << " " << (int)inst.opcode << "\n";
+        if (inst.dst == 10) {
+            exec_direct_stack_store_immediate(block, inst.offset, width, di, machine, immediate(inst, next_inst));
+            return { block.label() };
+        } else {
+            var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
+            block.assign(tmp, immediate(inst, next_inst));
+            return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, machine.num}, inst.offset, dyn_width, di, cfg, machine);
+        } 
+        break;
+
+    case EBPF_OP_LDXW:
+        // data = mem[offset]
+        if (mem_is_fp) {
+            exec_direct_stack_load(block, data_reg, inst.offset, dyn_width, di, machine);
+            return { block.label() };
+        } else {
+            return exec_mem_access_indirect(block, true, false, mem_reg, data_reg, inst.offset, dyn_width, di, cfg, machine);
+        }
+
+    case EBPF_OP_STXW:
+        // mem[offset] = data
+        if (mem_is_fp) {
+            exec_direct_stack_store(block, data_reg, inst.offset, dyn_width, di, machine);
+            return { block.label() };
+        } else {
+            return exec_mem_access_indirect(block, false, false, mem_reg, data_reg, inst.offset, dyn_width, di, cfg, machine);
+        }
+        break;
+
+    /* From the linux verifier code:
+    verify safety of LD_ABS|LD_IND instructions:
+    * - they can only appear in the programs where ctx == skb
+    * - since they are wrappers of function calls, they scratch R1-R5 registers,
+    *   preserve R6-R9, and store return value into R0
+    *
+    * Implicit input:
+    *   ctx == skb == R6 == CTX
+    *
+    * Explicit input:
+    *   SRC == any register
+    *   IMM == 32-bit immediate
+    *
+    * Output:
+    *   R0 - 8/16/32-bit skb data converted to cpu endianness
+    */
+    case EBPF_OP_LDABSW:
+    case EBPF_OP_LDXABSW:
+        /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
+        block.assertion(machine.regs[6].region == T_CTX, di);
+        machine.data_arr.load(block, machine.regs[0], inst.imm, width);
+        block.assign(machine.regs[0].region, T_NUM);
+        scratch_regs(block);
+        return { block.label() };
+
+    case EBPF_OP_LDINDW:
+    case EBPF_OP_LDXINDW:
+        /* Indirect packet access, R0 = *(uint *) (skb->data + src_reg + imm32) */
+        block.assertion(machine.regs[6].region == T_CTX, di);
+        machine.data_arr.load(block, machine.regs[0], machine.regs[inst.src].value + inst.imm, width);
+        block.assign(machine.regs[0].region, T_NUM);
+        scratch_regs(block);
+        return { block.label() };
+
+    case EBPF_OP_STABSW:
+    case EBPF_OP_STXABSW:
+
+    case EBPF_OP_STINDW:
+    case EBPF_OP_STXINDW:
+        assert(false);
+        return { block.label() };
+
+    case EBPF_STXADDW:
+    case EBPF_STXADDDW:
+        std::cout << "TODO: XADD\n";
+        return { block.label() };
+        
+    default: 
+        std::cout << "bad mem instruction " << (int)inst.opcode << " at " << (int)first_num(block.label()) << "\n";
+        assert(false);
+        return {};
+    }
+}
+
 vector<basic_block_label_t> instruction_builder_t::exec()
 {
     if (is_alu(inst.opcode)) {
@@ -524,97 +620,7 @@ vector<basic_block_label_t> instruction_builder_t::exec()
         }
         return {block.label()};
     } else if (is_access(inst.opcode)) {
-        dom_t mem_reg =  machine.regs.at(is_load(inst.opcode) ? inst.src : inst.dst);
-        dom_t data_reg = machine.regs.at(is_load(inst.opcode) ? inst.dst : inst.src);
-        var_t dyn_width{machine.vfac["width"], crab::INT_TYPE, 64};
-        block.assign(dyn_width, access_width(inst.opcode));
-        bool mem_is_fp = (is_load(inst.opcode) ? inst.src : inst.dst) == 10;
-        uint8_t opcode_width_w = inst.opcode & (~EBPF_SIZE_DW);
-        switch (opcode_width_w) {
-        case EBPF_OP_STW:
-            // mem[offset] = immediate
-            std::cout << pc << " " << (int)inst.opcode << "\n";
-            if (inst.dst == 10) {
-                exec_direct_stack_store_immediate(block, inst.offset, width, di, machine, immediate(inst, next_inst));
-                return { block.label() };
-            } else {
-                var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
-                block.assign(tmp, immediate(inst, next_inst));
-                return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, machine.num}, inst.offset, dyn_width, di, cfg, machine);
-            } 
-            break;
-
-        case EBPF_OP_LDXW:
-            // data = mem[offset]
-            if (mem_is_fp) {
-                exec_direct_stack_load(block, data_reg, inst.offset, dyn_width, di, machine);
-                return { block.label() };
-            } else {
-                return exec_mem_access_indirect(block, true, false, mem_reg, data_reg, inst.offset, dyn_width, di, cfg, machine);
-            }
-
-        case EBPF_OP_STXW:
-            // mem[offset] = data
-            if (mem_is_fp) {
-                exec_direct_stack_store(block, data_reg, inst.offset, dyn_width, di, machine);
-                return { block.label() };
-            } else {
-                return exec_mem_access_indirect(block, false, false, mem_reg, data_reg, inst.offset, dyn_width, di, cfg, machine);
-            }
-            break;
-
-        /* From the linux verifier code:
-        verify safety of LD_ABS|LD_IND instructions:
-        * - they can only appear in the programs where ctx == skb
-        * - since they are wrappers of function calls, they scratch R1-R5 registers,
-        *   preserve R6-R9, and store return value into R0
-        *
-        * Implicit input:
-        *   ctx == skb == R6 == CTX
-        *
-        * Explicit input:
-        *   SRC == any register
-        *   IMM == 32-bit immediate
-        *
-        * Output:
-        *   R0 - 8/16/32-bit skb data converted to cpu endianness
-        */
-        case EBPF_OP_LDABSW:
-        case EBPF_OP_LDXABSW:
-            /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
-            block.assertion(machine.regs[6].region == T_CTX, di);
-            machine.data_arr.load(block, machine.regs[0], inst.imm, width);
-            block.assign(machine.regs[0].region, T_NUM);
-            scratch_regs(block);
-            return { block.label() };
-
-        case EBPF_OP_LDINDW:
-        case EBPF_OP_LDXINDW:
-            /* Indirect packet access, R0 = *(uint *) (skb->data + src_reg + imm32) */
-            block.assertion(machine.regs[6].region == T_CTX, di);
-            machine.data_arr.load(block, machine.regs[0], machine.regs[inst.src].value + inst.imm, width);
-            block.assign(machine.regs[0].region, T_NUM);
-            scratch_regs(block);
-            return { block.label() };
-
-        case EBPF_OP_STABSW:
-        case EBPF_OP_STXABSW:
-
-        case EBPF_OP_STINDW:
-        case EBPF_OP_STXINDW:
-            assert(false);
-            return { block.label() };
-
-        case EBPF_STXADDW:
-        case EBPF_STXADDDW:
-            std::cout << "TODO: XADD\n";
-            return { block.label() };
-            
-        default: 
-            std::cout << "bad mem instruction " << (int)inst.opcode << " at " << (int)first_num(block.label()) << "\n";
-            assert(false);
-            return {};
-        }
+        return exec_mem();
     } else {
         std::cout << "bad instruction " << (int)inst.opcode << " at " << (int)first_num(block.label()) << "\n";
         assert(false);
