@@ -819,10 +819,23 @@ vector<basic_block_label_t> instruction_builder_t::exec_alu()
         block.div(dst.value, dst.value, imm);
         no_pointer(block, dst);
         break;
-    case EBPF_OP_DIV_REG:
     case EBPF_OP_DIV64_REG:
         block.assertion(src.value != 0, di);
+    case EBPF_OP_DIV_REG:
+        // For some reason, DIV32 is not checked for zerodiv
         block.div(dst.value, dst.value, src.value);
+        no_pointer(block, dst);
+        break;
+    case EBPF_OP_MOD_IMM:
+    case EBPF_OP_MOD64_IMM:
+        block.rem(dst.value, dst.value, imm);
+        no_pointer(block, dst);
+        break;
+    case EBPF_OP_MOD64_REG:
+        block.assertion(src.value != 0, di);
+    case EBPF_OP_MOD_REG:
+        // See DIV32 comment
+        block.rem(dst.value, dst.value, src.value);
         no_pointer(block, dst);
         break;
     case EBPF_OP_OR_IMM:
@@ -867,17 +880,6 @@ vector<basic_block_label_t> instruction_builder_t::exec_alu()
         break;
     case EBPF_OP_NEG64:
         block.assign(dst.value, 0-dst.value);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_MOD_IMM:
-    case EBPF_OP_MOD64_IMM:
-        block.rem(dst.value, dst.value, imm);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_MOD_REG:
-    case EBPF_OP_MOD64_REG:
-        block.assertion(src.value != 0, di);
-        block.rem(dst.value, dst.value, src.value);
         no_pointer(block, dst);
         break;
     case EBPF_OP_XOR_IMM:
