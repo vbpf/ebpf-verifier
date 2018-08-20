@@ -3,6 +3,38 @@
 
 static const struct bpf_func_proto bpf_unspec_proto = {
 };
+
+/* int bpf_tail_call(void *ctx, struct bpf_map *prog_array_map, u32 index)
+ * 	Description
+ * 		This special helper is used to trigger a "tail call", or in
+ * 		other words, to jump into another eBPF program. The same stack
+ * 		frame is used (but values on stack and in registers for the
+ * 		caller are not accessible to the callee). This mechanism allows
+ * 		for program chaining, either for raising the maximum number of
+ * 		available eBPF instructions, or to execute given programs in
+ * 		conditional blocks. For security reasons, there is an upper
+ * 		limit to the number of successive tail calls that can be
+ * 		performed.
+ *
+ * 		Upon call of this helper, the program attempts to jump into a
+ * 		program referenced at index *index* in *prog_array_map*, a
+ * 		special map of type **BPF_MAP_TYPE_PROG_ARRAY**, and passes
+ * 		*ctx*, a pointer to the context.
+ *
+ * 		If the call succeeds, the kernel immediately runs the first
+ * 		instruction of the new program. This is not a function call,
+ * 		and it never returns to the previous program. If the call
+ * 		fails, then the helper has no effect, and the caller continues
+ * 		to run its subsequent instructions. A call can fail if the
+ * 		destination program for the jump does not exist (i.e. *index*
+ * 		is superior to the number of entries in *prog_array_map*), or
+ * 		if the maximum number of tail calls has been reached for this
+ * 		chain of programs. This limit is defined in the kernel by the
+ * 		macro **MAX_TAIL_CALL_CNT** (not accessible to user space),
+ * 		which is currently set to 32.
+ * 	Return
+ * 		Negative error in case of failure. No return in case of success
+ */
 const struct bpf_func_proto bpf_tail_call_proto = {
 	//.func		= NULL,
 	//.gpl_only	= false,
@@ -11,6 +43,7 @@ const struct bpf_func_proto bpf_tail_call_proto = {
 	.arg2_type	= ARG_CONST_MAP_PTR,
 	.arg3_type	= ARG_ANYTHING,
 };
+
 static const struct bpf_func_proto bpf_override_return_proto = {
 	//.func		= bpf_override_return,
 	//.gpl_only	= true,
@@ -18,6 +51,15 @@ static const struct bpf_func_proto bpf_override_return_proto = {
 	.arg1_type	= ARG_PTR_TO_CTX,
 	.arg2_type	= ARG_ANYTHING,
 };
+
+/*
+ * int bpf_probe_read(void *dst, u32 size, const void *src)
+ * 	Description
+ * 		For tracing programs, safely attempt to read *size* bytes from
+ * 		address *src* and store the data in *dst*.
+ * 	Return
+ * 		0 on success, or a negative error in case of failure.
+ */
 static const struct bpf_func_proto bpf_probe_read_proto = {
 	//.func		= bpf_probe_read,
 	//.gpl_only	= true,
@@ -26,6 +68,29 @@ static const struct bpf_func_proto bpf_probe_read_proto = {
 	.arg2_type	= ARG_CONST_SIZE_OR_ZERO,
 	.arg3_type	= ARG_ANYTHING,
 };
+
+/*
+ * int bpf_probe_read_str(void *dst, int size, const void *unsafe_ptr)
+ *     Copy a NUL terminated string from unsafe address. In case the string
+ *     length is smaller than size, the target is not padded with further NUL
+ *     bytes. In case the string length is larger than size, just count-1
+ *     bytes are copied and the last byte is set to NUL.
+ *     @dst: destination address
+ *     @size: maximum number of bytes to copy, including the trailing NUL
+ *     @unsafe_ptr: unsafe address
+ *     Return:
+ *       > 0 length of the string including the trailing NUL on success
+ *       < 0 error
+ */
+static const struct bpf_func_proto bpf_probe_read_str_proto = {
+	//.func		= bpf_probe_read_str,
+	//.gpl_only	= true,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_PTR_TO_UNINIT_MEM,
+	.arg2_type	= ARG_CONST_SIZE_OR_ZERO,
+	.arg3_type	= ARG_ANYTHING,
+};
+
 static const struct bpf_func_proto bpf_probe_write_user_proto = {
 	//.func		= bpf_probe_write_user,
 	//.gpl_only	= true,
@@ -34,6 +99,11 @@ static const struct bpf_func_proto bpf_probe_write_user_proto = {
 	.arg2_type	= ARG_PTR_TO_MEM,
 	.arg3_type	= ARG_CONST_SIZE,
 };
+
+/*
+ * int bpf_trace_printk(const char *fmt, int fmt_size, ...)
+ *     Return: length of buffer written or negative error
+ */
 static const struct bpf_func_proto bpf_trace_printk_proto = {
 	//.func		= bpf_trace_printk,
 	//.gpl_only	= true,
@@ -48,6 +118,16 @@ static const struct bpf_func_proto bpf_perf_event_read_proto = {
 	.arg1_type	= ARG_CONST_MAP_PTR,
 	.arg2_type	= ARG_ANYTHING,
 };
+
+/*
+ * int bpf_perf_event_read_value(map, flags, buf, buf_size)
+ *     read perf event counter value and perf event enabled/running time
+ *     @map: pointer to perf_event_array map
+ *     @flags: index of event in the map or bitmask flags
+ *     @buf: buf to fill
+ *     @buf_size: size of the buf
+ *     Return: 0 on success or negative error code
+ */
 static const struct bpf_func_proto bpf_perf_event_read_value_proto = {
 	//.func		= bpf_perf_event_read_value,
 	//.gpl_only	= true,
@@ -57,6 +137,53 @@ static const struct bpf_func_proto bpf_perf_event_read_value_proto = {
 	.arg3_type	= ARG_PTR_TO_UNINIT_MEM,
 	.arg4_type	= ARG_CONST_SIZE,
 };
+
+/*
+ * int bpf_perf_event_output(struct pt_reg *ctx, struct bpf_map *map, u64 flags, void *data, u64 size)
+ * 	Description
+ * 		Write raw *data* blob into a special BPF perf event held by
+ * 		*map* of type **BPF_MAP_TYPE_PERF_EVENT_ARRAY**. This perf
+ * 		event must have the following attributes: **PERF_SAMPLE_RAW**
+ * 		as **sample_type**, **PERF_TYPE_SOFTWARE** as **type**, and
+ * 		**PERF_COUNT_SW_BPF_OUTPUT** as **config**.
+ *
+ * 		The *flags* are used to indicate the index in *map* for which
+ * 		the value must be put, masked with **BPF_F_INDEX_MASK**.
+ * 		Alternatively, *flags* can be set to **BPF_F_CURRENT_CPU**
+ * 		to indicate that the index of the current CPU core should be
+ * 		used.
+ *
+ * 		The value to write, of *size*, is passed through eBPF stack and
+ * 		pointed by *data*.
+ *
+ * 		The context of the program *ctx* needs also be passed to the
+ * 		helper.
+ *
+ * 		On user space, a program willing to read the values needs to
+ * 		call **perf_event_open**\ () on the perf event (either for
+ * 		one or for all CPUs) and to store the file descriptor into the
+ * 		*map*. This must be done before the eBPF program can send data
+ * 		into it. An example is available in file
+ * 		*samples/bpf/trace_output_user.c* in the Linux kernel source
+ * 		tree (the eBPF program counterpart is in
+ * 		*samples/bpf/trace_output_kern.c*).
+ *
+ * 		**bpf_perf_event_output**\ () achieves better performance
+ * 		than **bpf_trace_printk**\ () for sharing data with user
+ * 		space, and is much better suitable for streaming data from eBPF
+ * 		programs.
+ *
+ * 		Note that this helper is not restricted to tracing use cases
+ * 		and can be used with programs attached to TC or XDP as well,
+ * 		where it allows for passing data to user space listeners. Data
+ * 		can be:
+ *
+ * 		* Only custom structs,
+ * 		* Only the packet payload, or
+ * 		* A combination of both.
+ * 	Return
+ * 		0 on success, or a negative error in case of failure.
+ */
 static const struct bpf_func_proto bpf_perf_event_output_proto = {
 	//.func		= bpf_perf_event_output,
 	//.gpl_only	= true,
@@ -67,11 +194,28 @@ static const struct bpf_func_proto bpf_perf_event_output_proto = {
 	.arg4_type	= ARG_PTR_TO_MEM,
 	.arg5_type	= ARG_CONST_SIZE_OR_ZERO,
 };
+
+/*
+ * u64 bpf_get_current_task(void)
+ *     Returns current task_struct
+ *     Return: current
+ */
 static const struct bpf_func_proto bpf_get_current_task_proto = {
 	//.func		= bpf_get_current_task,
 	//.gpl_only	= true,
 	.ret_type	= RET_INTEGER,
 };
+
+/*
+ * int bpf_current_task_under_cgroup(map, index)
+ *     Check cgroup2 membership of current task
+ *     @map: pointer to bpf_map in BPF_MAP_TYPE_CGROUP_ARRAY type
+ *     @index: index of the cgroup in the bpf_map
+ *     Return:
+ *       == 0 current failed the cgroup2 descendant test
+ *       == 1 current succeeded the cgroup2 descendant test
+ *        < 0 error
+ */
 static const struct bpf_func_proto bpf_current_task_under_cgroup_proto = {
 	//.func       = bpf_current_task_under_cgroup,
 	//.gpl_only   = false,
@@ -79,14 +223,7 @@ static const struct bpf_func_proto bpf_current_task_under_cgroup_proto = {
 	.arg1_type  = ARG_CONST_MAP_PTR,
 	.arg2_type  = ARG_ANYTHING,
 };
-static const struct bpf_func_proto bpf_probe_read_str_proto = {
-	//.func		= bpf_probe_read_str,
-	//.gpl_only	= true,
-	.ret_type	= RET_INTEGER,
-	.arg1_type	= ARG_PTR_TO_UNINIT_MEM,
-	.arg2_type	= ARG_CONST_SIZE_OR_ZERO,
-	.arg3_type	= ARG_ANYTHING,
-};
+
 static const struct bpf_func_proto bpf_perf_event_output_proto_tp = {
 	//.func		= bpf_perf_event_output_tp,
 	//.gpl_only	= true,
@@ -97,6 +234,7 @@ static const struct bpf_func_proto bpf_perf_event_output_proto_tp = {
 	.arg4_type	= ARG_PTR_TO_MEM,
 	.arg5_type	= ARG_CONST_SIZE_OR_ZERO,
 };
+
 static const struct bpf_func_proto bpf_get_stackid_proto_tp = {
 	//.func		= bpf_get_stackid_tp,
 	//.gpl_only	= true,
@@ -105,6 +243,8 @@ static const struct bpf_func_proto bpf_get_stackid_proto_tp = {
 	.arg2_type	= ARG_CONST_MAP_PTR,
 	.arg3_type	= ARG_ANYTHING,
 };
+
+// see bpf_get_stack_proto
 static const struct bpf_func_proto bpf_get_stack_proto_tp = {
 	//.func		= bpf_get_stack_tp,
 	//.gpl_only	= true,
@@ -114,6 +254,19 @@ static const struct bpf_func_proto bpf_get_stack_proto_tp = {
 	.arg3_type	= ARG_CONST_SIZE_OR_ZERO,
 	.arg4_type	= ARG_ANYTHING,
 };
+
+/*
+ * int bpf_perf_prog_read_value(struct bpf_perf_event_data *ctx, struct bpf_perf_event_value *buf, u32 buf_size)
+ * 	Description
+ * 		For en eBPF program attached to a perf event, retrieve the
+ * 		value of the event counter associated to *ctx* and store it in
+ * 		the structure pointed by *buf* and of size *buf_size*. Enabled
+ * 		and running times are also stored in the structure (see
+ * 		description of helper **bpf_perf_event_read_value**\ () for
+ * 		more details).
+ * 	Return
+ * 		0 on success, or a negative error in case of failure.
+ */
 static const struct bpf_func_proto bpf_perf_prog_read_value_proto = {
 	//.func       = bpf_perf_prog_read_value,
 	//.gpl_only   = true,
@@ -122,6 +275,7 @@ static const struct bpf_func_proto bpf_perf_prog_read_value_proto = {
 	.arg2_type  = ARG_PTR_TO_UNINIT_MEM,
 	.arg3_type  = ARG_CONST_SIZE,
 };
+
 static const struct bpf_func_proto bpf_perf_event_output_proto_raw_tp = {
 	//.func		= bpf_perf_event_output_raw_tp,
 	//.gpl_only	= true,
@@ -152,6 +306,10 @@ static const struct bpf_func_proto bpf_get_stack_proto_raw_tp = {
 
 /* Always built-in helper functions. */
 
+/*
+ * void *bpf_map_lookup_elem(&map, &key)
+ *     Return: Map value or NULL
+ */
 static const struct bpf_func_proto bpf_map_lookup_elem_proto = {
 	//.func		= bpf_map_lookup_elem,
 	//.gpl_only	= false,
@@ -160,6 +318,11 @@ static const struct bpf_func_proto bpf_map_lookup_elem_proto = {
 	.arg1_type	= ARG_CONST_MAP_PTR,
 	.arg2_type	= ARG_PTR_TO_MAP_KEY,
 };
+
+/* 
+ * int bpf_map_update_elem(&map, &key, &value, flags)
+ *     Return: 0 on success or negative error
+ */
 static const struct bpf_func_proto bpf_map_update_elem_proto = {
 	//.func		= bpf_map_update_elem,
 	//.gpl_only	= false,
@@ -170,6 +333,11 @@ static const struct bpf_func_proto bpf_map_update_elem_proto = {
 	.arg3_type	= ARG_PTR_TO_MAP_VALUE,
 	.arg4_type	= ARG_ANYTHING,
 };
+
+/*
+ * int bpf_map_delete_elem(&map, &key)
+ *     Return: 0 on success or negative error
+ */
 static const struct bpf_func_proto bpf_map_delete_elem_proto = {
 	//.func		= bpf_map_delete_elem,
 	//.gpl_only	= false,
@@ -178,36 +346,63 @@ static const struct bpf_func_proto bpf_map_delete_elem_proto = {
 	.arg1_type	= ARG_CONST_MAP_PTR,
 	.arg2_type	= ARG_PTR_TO_MAP_KEY,
 };
+
+/*
+ * u32 bpf_prandom_u32(void)
+ *     Return: random value
+ */
 static const struct bpf_func_proto bpf_get_prandom_u32_proto = {
 	//.func		= bpf_user_rnd_u32,
 	//.gpl_only	= false,
 	.ret_type	= RET_INTEGER,
 };
+
 static const struct bpf_func_proto bpf_get_smp_processor_id_proto = {
 	//.func		= bpf_get_smp_processor_id,
 	//.gpl_only	= false,
 	.ret_type	= RET_INTEGER,
 };
+
 static const struct bpf_func_proto bpf_get_numa_node_id_proto = {
 	//.func		= bpf_get_numa_node_id,
 	//.gpl_only	= false,
 	.ret_type	= RET_INTEGER,
 };
+
+/*
+ * u64 bpf_ktime_get_ns(void)
+ *     Return: current ktime
+ */
 static const struct bpf_func_proto bpf_ktime_get_ns_proto = {
 	//.func		= bpf_ktime_get_ns,
 	//.gpl_only	= true,
 	.ret_type	= RET_INTEGER,
 };
+
 static const struct bpf_func_proto bpf_get_current_pid_tgid_proto = {
 	//.func		= bpf_get_current_pid_tgid,
 	//.gpl_only	= false,
 	.ret_type	= RET_INTEGER,
 };
+
 static const struct bpf_func_proto bpf_get_current_uid_gid_proto = {
 	//.func		= bpf_get_current_uid_gid,
 	//.gpl_only	= false,
 	.ret_type	= RET_INTEGER,
 };
+
+/*
+ * int bpf_get_current_comm(char *buf, u32 size_of_buf)
+ * 	Description
+ * 		Copy the **comm** attribute of the current task into *buf* of
+ * 		*size_of_buf*. The **comm** attribute contains the name of
+ * 		the executable (excluding the path) for the current task. The
+ * 		*size_of_buf* must be strictly positive. On success, the
+ * 		helper makes sure that the *buf* is NUL-terminated. On failure,
+ * 		it is filled with zeroes.
+ * 	Return
+ * 		0 on success, or a negative error in case of failure.
+ */
 static const struct bpf_func_proto bpf_get_current_comm_proto = {
 	//.func		= bpf_get_current_comm,
 	//.gpl_only	= false,
@@ -215,11 +410,33 @@ static const struct bpf_func_proto bpf_get_current_comm_proto = {
 	.arg1_type	= ARG_PTR_TO_UNINIT_MEM,
 	.arg2_type	= ARG_CONST_SIZE,
 };
+
 static const struct bpf_func_proto bpf_get_current_cgroup_id_proto = {
 	//.func		= bpf_get_current_cgroup_id,
 	//.gpl_only	= false,
 	.ret_type	= RET_INTEGER,
 };
+
+/*
+ * int bpf_sock_map_update(struct bpf_sock_ops *skops, struct bpf_map *map, void *key, u64 flags)
+ * 	Description
+ * 		Add an entry to, or update a *map* referencing sockets. The
+ * 		*skops* is used as a new value for the entry associated to
+ * 		*key*. *flags* is one of:
+ *
+ * 		**BPF_NOEXIST**
+ * 			The entry for *key* must not exist in the map.
+ * 		**BPF_EXIST**
+ * 			The entry for *key* must already exist in the map.
+ * 		**BPF_ANY**
+ * 			No condition on the existence of the entry for *key*.
+ *
+ * 		If the *map* has eBPF programs (parser and verdict), those will
+ * 		be inherited by the socket being added. If the socket is
+ * 		already attached to eBPF programs, this results in an error.
+ * 	Return
+ * 		0 on success, or a negative error in case of failure.
+ */
 static const struct bpf_func_proto bpf_sock_map_update_proto = {
 	//.func		= bpf_sock_map_update,
 	//.gpl_only	= false,
@@ -230,6 +447,7 @@ static const struct bpf_func_proto bpf_sock_map_update_proto = {
 	.arg3_type	= ARG_PTR_TO_MAP_KEY,
 	.arg4_type	= ARG_ANYTHING,
 };
+
 static const struct bpf_func_proto bpf_sock_hash_update_proto = {
 	//.func		= bpf_sock_hash_update,
 	//.gpl_only	= false,
@@ -240,6 +458,20 @@ static const struct bpf_func_proto bpf_sock_hash_update_proto = {
 	.arg3_type	= ARG_PTR_TO_MAP_KEY,
 	.arg4_type	= ARG_ANYTHING,
 };
+
+/*
+ * int bpf_get_stackid(ctx, map, flags)
+ *     walk user or kernel stack and return id
+ *     @ctx: struct pt_regs*
+ *     @map: pointer to stack_trace map
+ *     @flags: bits 0-7 - numer of stack frames to skip
+ *             bit 8 - collect user stack instead of kernel
+ *             bit 9 - compare stacks by hash only
+ *             bit 10 - if two different stacks hash into the same stackid
+ *                      discard old
+ *             other bits - reserved
+ *     Return: >= 0 stackid on success or negative error
+ */
 static const struct bpf_func_proto bpf_get_stackid_proto = {
 	//.func		= bpf_get_stackid,
 	//.gpl_only	= true,
@@ -248,6 +480,41 @@ static const struct bpf_func_proto bpf_get_stackid_proto = {
 	.arg2_type	= ARG_CONST_MAP_PTR,
 	.arg3_type	= ARG_ANYTHING,
 };
+
+/*
+ * int bpf_get_stack(struct pt_regs *regs, void *buf, u32 size, u64 flags)
+ * 	Description
+ * 		Return a user or a kernel stack in bpf program provided buffer.
+ * 		To achieve this, the helper needs *ctx*, which is a pointer
+ * 		to the context on which the tracing program is executed.
+ * 		To store the stacktrace, the bpf program provides *buf* with
+ * 		a nonnegative *size*.
+ *
+ * 		The last argument, *flags*, holds the number of stack frames to
+ * 		skip (from 0 to 255), masked with
+ * 		**BPF_F_SKIP_FIELD_MASK**. The next bits can be used to set
+ * 		the following flags:
+ *
+ * 		**BPF_F_USER_STACK**
+ * 			Collect a user space stack instead of a kernel stack.
+ * 		**BPF_F_USER_BUILD_ID**
+ * 			Collect buildid+offset instead of ips for user stack,
+ * 			only valid if **BPF_F_USER_STACK** is also specified.
+ *
+ * 		**bpf_get_stack**\ () can collect up to
+ * 		**PERF_MAX_STACK_DEPTH** both kernel and user frames, subject
+ * 		to sufficient large buffer size. Note that
+ * 		this limit can be controlled with the **sysctl** program, and
+ * 		that it should be manually increased in order to profile long
+ * 		user stacks (such as stacks for Java programs). To do so, use:
+ *
+ * 		::
+ *
+ * 			# sysctl kernel.perf_event_max_stack=<new value>
+ * 	Return
+ * 		A non-negative value equal to or less than *size* on success,
+ * 		or a negative error in case of failure.
+ */
 static const struct bpf_func_proto bpf_get_stack_proto = {
 	//.func		= bpf_get_stack,
 	//.gpl_only	= true,
@@ -257,11 +524,28 @@ static const struct bpf_func_proto bpf_get_stack_proto = {
 	.arg3_type	= ARG_CONST_SIZE_OR_ZERO,
 	.arg4_type	= ARG_ANYTHING,
 };
+
+/*
+ * u32 bpf_raw_smp_processor_id(void)
+ *     Return: SMP processor ID
+ */
 static const struct bpf_func_proto bpf_get_raw_smp_processor_id_proto = {
 	//.func		= bpf_get_raw_cpu_id,
 	//.gpl_only	= false,
 	.ret_type	= RET_INTEGER,
 };
+
+/*
+ * int bpf_skb_store_bytes(skb, offset, from, len, flags)
+ *     store bytes into packet
+ *     @skb: pointer to skb
+ *     @offset: offset within packet from skb->mac_header
+ *     @from: pointer where to copy bytes from
+ *     @len: number of bytes to store into packet
+ *     @flags: bit 0 - if true, recompute skb->csum
+ *             other bits - reserved
+ *     Return: 0 on success or negative error
+ */
 static const struct bpf_func_proto bpf_skb_store_bytes_proto = {
 	//.func		= bpf_skb_store_bytes,
 	//.gpl_only	= false,
@@ -272,6 +556,25 @@ static const struct bpf_func_proto bpf_skb_store_bytes_proto = {
 	.arg4_type	= ARG_CONST_SIZE,
 	.arg5_type	= ARG_ANYTHING,
 };
+
+/*
+ * int bpf_skb_load_bytes(const struct sk_buff *skb, u32 offset, void *to, u32 len)
+ * 	Description
+ * 		This helper was provided as an easy way to load data from a
+ * 		packet. It can be used to load *len* bytes from *offset* from
+ * 		the packet associated to *skb*, into the buffer pointed by
+ * 		*to*.
+ *
+ * 		Since Linux 4.7, usage of this helper has mostly been replaced
+ * 		by "direct packet access", enabling packet data to be
+ * 		manipulated with *skb*\ **->data** and *skb*\ **->data_end**
+ * 		pointing respectively to the first byte of packet data and to
+ * 		the byte after the last byte of packet data. However, it
+ * 		remains useful if one wishes to read large quantities of data
+ * 		at once from a packet into the eBPF stack.
+ * 	Return
+ * 		0 on success, or a negative error in case of failure.
+ */
 static const struct bpf_func_proto bpf_skb_load_bytes_proto = {
 	//.func		= bpf_skb_load_bytes,
 	//.gpl_only	= false,
@@ -281,6 +584,30 @@ static const struct bpf_func_proto bpf_skb_load_bytes_proto = {
 	.arg3_type	= ARG_PTR_TO_UNINIT_MEM,
 	.arg4_type	= ARG_CONST_SIZE,
 };
+
+/*
+ * int skb_load_bytes_relative(const struct sk_buff *skb, u32 offset, void *to, u32 len, u32 start_header)
+ * 	Description
+ * 		This helper is similar to **bpf_skb_load_bytes**\ () in that
+ * 		it provides an easy way to load *len* bytes from *offset*
+ * 		from the packet associated to *skb*, into the buffer pointed
+ * 		by *to*. The difference to **bpf_skb_load_bytes**\ () is that
+ * 		a fifth argument *start_header* exists in order to select a
+ * 		base offset to start from. *start_header* can be one of:
+ *
+ * 		**BPF_HDR_START_MAC**
+ * 			Base offset to load data from is *skb*'s mac header.
+ * 		**BPF_HDR_START_NET**
+ * 			Base offset to load data from is *skb*'s network header.
+ *
+ * 		In general, "direct packet access" is the preferred method to
+ * 		access packet data, however, this helper is in particular useful
+ * 		in socket filters where *skb*\ **->data** does not always point
+ * 		to the start of the mac header and where "direct packet access"
+ * 		is not available.
+ * 	Return
+ * 		0 on success, or a negative error in case of failure.
+ */
 static const struct bpf_func_proto bpf_skb_load_bytes_relative_proto = {
 	//.func		= bpf_skb_load_bytes_relative,
 	//.gpl_only	= false,
@@ -291,6 +618,7 @@ static const struct bpf_func_proto bpf_skb_load_bytes_relative_proto = {
 	.arg4_type	= ARG_CONST_SIZE,
 	.arg5_type	= ARG_ANYTHING,
 };
+
 static const struct bpf_func_proto bpf_skb_pull_data_proto = {
 	//.func		= bpf_skb_pull_data,
 	//.gpl_only	= false,
@@ -298,6 +626,7 @@ static const struct bpf_func_proto bpf_skb_pull_data_proto = {
 	.arg1_type	= ARG_PTR_TO_CTX,
 	.arg2_type	= ARG_ANYTHING,
 };
+
 static const struct bpf_func_proto sk_skb_pull_data_proto = {
 	//.func		= sk_skb_pull_data,
 	//.gpl_only	= false,
@@ -305,6 +634,18 @@ static const struct bpf_func_proto sk_skb_pull_data_proto = {
 	.arg1_type	= ARG_PTR_TO_CTX,
 	.arg2_type	= ARG_ANYTHING,
 };
+
+/*
+ * int bpf_l3_csum_replace(skb, offset, from, to, flags)
+ *     recompute IP checksum
+ *     @skb: pointer to skb
+ *     @offset: offset within packet where IP checksum is located
+ *     @from: old value of header field
+ *     @to: new value of header field
+ *     @flags: bits 0-3 - size of header field
+ *             other bits - reserved
+ *     Return: 0 on success or negative error
+ */
 static const struct bpf_func_proto bpf_l3_csum_replace_proto = {
 	//.func		= bpf_l3_csum_replace,
 	//.gpl_only	= false,
@@ -315,6 +656,19 @@ static const struct bpf_func_proto bpf_l3_csum_replace_proto = {
 	.arg4_type	= ARG_ANYTHING,
 	.arg5_type	= ARG_ANYTHING,
 };
+
+/*
+ * int bpf_l4_csum_replace(skb, offset, from, to, flags)
+ *     recompute TCP/UDP checksum
+ *     @skb: pointer to skb
+ *     @offset: offset within packet where TCP/UDP checksum is located
+ *     @from: old value of header field
+ *     @to: new value of header field
+ *     @flags: bits 0-3 - size of header field
+ *             bit 4 - is pseudo header
+ *             other bits - reserved
+ *     Return: 0 on success or negative error
+ */
 static const struct bpf_func_proto bpf_l4_csum_replace_proto = {
 	//.func		= bpf_l4_csum_replace,
 	//.gpl_only	= false,
@@ -325,6 +679,17 @@ static const struct bpf_func_proto bpf_l4_csum_replace_proto = {
 	.arg4_type	= ARG_ANYTHING,
 	.arg5_type	= ARG_ANYTHING,
 };
+
+/*
+ * s64 bpf_csum_diff(from, from_size, to, to_size, seed)
+ *     calculate csum diff
+ *     @from: raw from buffer
+ *     @from_size: length of from buffer
+ *     @to: raw to buffer
+ *     @to_size: length of to buffer
+ *     @seed: optional seed
+ *     Return: csum result or negative error code
+ */
 static const struct bpf_func_proto bpf_csum_diff_proto = {
 	//.func		= bpf_csum_diff,
 	//.gpl_only	= false,
@@ -336,6 +701,7 @@ static const struct bpf_func_proto bpf_csum_diff_proto = {
 	.arg4_type	= ARG_CONST_SIZE_OR_ZERO,
 	.arg5_type	= ARG_ANYTHING,
 };
+
 static const struct bpf_func_proto bpf_csum_update_proto = {
 	//.func		= bpf_csum_update,
 	//.gpl_only	= false,
@@ -343,6 +709,7 @@ static const struct bpf_func_proto bpf_csum_update_proto = {
 	.arg1_type	= ARG_PTR_TO_CTX,
 	.arg2_type	= ARG_ANYTHING,
 };
+
 static const struct bpf_func_proto bpf_clone_redirect_proto = {
 	//.func       = bpf_clone_redirect,
 	//.gpl_only   = false,
@@ -462,6 +829,18 @@ static const struct bpf_func_proto bpf_skb_vlan_pop_proto = {
 	.ret_type   = RET_INTEGER,
 	.arg1_type  = ARG_PTR_TO_CTX,
 };
+
+/*
+ * int bpf_skb_change_proto(skb, proto, flags)
+ *     Change protocol of the skb. Currently supported is v4 -> v6,
+ *     v6 -> v4 transitions. The helper will also resize the skb. eBPF
+ *     program is expected to fill the new headers via skb_store_bytes
+ *     and lX_csum_replace.
+ *     @skb: pointer to skb
+ *     @proto: new skb->protocol type
+ *     @flags: reserved
+ *     Return: 0 on success or negative error
+ */
 static const struct bpf_func_proto bpf_skb_change_proto_proto = {
 	//.func		= bpf_skb_change_proto,
 	//.gpl_only	= false,
@@ -470,6 +849,14 @@ static const struct bpf_func_proto bpf_skb_change_proto_proto = {
 	.arg2_type	= ARG_ANYTHING,
 	.arg3_type	= ARG_ANYTHING,
 };
+
+/*
+ * int bpf_skb_change_type(skb, type)
+ *     Change packet type of skb.
+ *     @skb: pointer to skb
+ *     @type: new skb->pkt_type type
+ *     Return: 0 on success or negative error
+ */
 static const struct bpf_func_proto bpf_skb_change_type_proto = {
 	//.func		= bpf_skb_change_type,
 	//.gpl_only	= false,
@@ -477,6 +864,16 @@ static const struct bpf_func_proto bpf_skb_change_type_proto = {
 	.arg1_type	= ARG_PTR_TO_CTX,
 	.arg2_type	= ARG_ANYTHING,
 };
+
+/*
+ * int bpf_skb_adjust_room(skb, len_diff, mode, flags)
+ *     Grow or shrink room in sk_buff.
+ *     @skb: pointer to skb
+ *     @len_diff: (signed) amount of room to grow/shrink
+ *     @mode: operation mode (enum bpf_adj_room_mode)
+ *     @flags: reserved for future use
+ *     Return: 0 on success or negative error code
+ */
 static const struct bpf_func_proto bpf_skb_adjust_room_proto = {
 	//.func		= bpf_skb_adjust_room,
 	//.gpl_only	= false,
@@ -486,6 +883,16 @@ static const struct bpf_func_proto bpf_skb_adjust_room_proto = {
 	.arg3_type	= ARG_ANYTHING,
 	.arg4_type	= ARG_ANYTHING,
 };
+
+/*
+ * int bpf_skb_change_tail(skb, len, flags)
+ *     The helper will resize the skb to the given new size, to be used f.e.
+ *     with control messages.
+ *     @skb: pointer to skb
+ *     @len: new skb length
+ *     @flags: reserved
+ *     Return: 0 on success or negative error
+ */
 static const struct bpf_func_proto bpf_skb_change_tail_proto = {
 	//.func		= bpf_skb_change_tail,
 	//.gpl_only	= false,
@@ -494,6 +901,7 @@ static const struct bpf_func_proto bpf_skb_change_tail_proto = {
 	.arg2_type	= ARG_ANYTHING,
 	.arg3_type	= ARG_ANYTHING,
 };
+
 static const struct bpf_func_proto sk_skb_change_tail_proto = {
 	//.func		= sk_skb_change_tail,
 	//.gpl_only	= false,
@@ -502,6 +910,28 @@ static const struct bpf_func_proto sk_skb_change_tail_proto = {
 	.arg2_type	= ARG_ANYTHING,
 	.arg3_type	= ARG_ANYTHING,
 };
+
+/* int bpf_skb_change_head(struct sk_buff *skb, u32 len, u64 flags)
+ * 	Description
+ * 		Grows headroom of packet associated to *skb* and adjusts the
+ * 		offset of the MAC header accordingly, adding *len* bytes of
+ * 		space. It automatically extends and reallocates memory as
+ * 		required.
+ *
+ * 		This helper can be used on a layer 3 *skb* to push a MAC header
+ * 		for redirection into a layer 2 device.
+ *
+ * 		All values for *flags* are reserved for future usage, and must
+ * 		be left at zero.
+ *
+ * 		A call to this helper is susceptible to change the underlaying
+ * 		packet buffer. Therefore, at load time, all checks on pointers
+ * 		previously done by the verifier are invalidated and must be
+ * 		performed again, if the helper is used in combination with
+ * 		direct packet access.
+ * 	Return
+ * 		0 on success, or a negative error in case of failure.
+ */
 static const struct bpf_func_proto bpf_skb_change_head_proto = {
 	//.func		= bpf_skb_change_head,
 	//.gpl_only	= false,
@@ -510,6 +940,7 @@ static const struct bpf_func_proto bpf_skb_change_head_proto = {
 	.arg2_type	= ARG_ANYTHING,
 	.arg3_type	= ARG_ANYTHING,
 };
+
 static const struct bpf_func_proto sk_skb_change_head_proto = {
 	//.func		= sk_skb_change_head,
 	//.gpl_only	= false,
@@ -518,6 +949,7 @@ static const struct bpf_func_proto sk_skb_change_head_proto = {
 	.arg2_type	= ARG_ANYTHING,
 	.arg3_type	= ARG_ANYTHING,
 };
+
 static const struct bpf_func_proto bpf_xdp_adjust_head_proto = {
 	//.func		= bpf_xdp_adjust_head,
 	//.gpl_only	= false,
@@ -525,6 +957,7 @@ static const struct bpf_func_proto bpf_xdp_adjust_head_proto = {
 	.arg1_type	= ARG_PTR_TO_CTX,
 	.arg2_type	= ARG_ANYTHING,
 };
+
 static const struct bpf_func_proto bpf_xdp_adjust_tail_proto = {
 	//.func		= bpf_xdp_adjust_tail,
 	//.gpl_only	= false,
@@ -532,6 +965,7 @@ static const struct bpf_func_proto bpf_xdp_adjust_tail_proto = {
 	.arg1_type	= ARG_PTR_TO_CTX,
 	.arg2_type	= ARG_ANYTHING,
 };
+
 static const struct bpf_func_proto bpf_xdp_adjust_meta_proto = {
 	//.func		= bpf_xdp_adjust_meta,
 	//.gpl_only	= false,
@@ -539,6 +973,7 @@ static const struct bpf_func_proto bpf_xdp_adjust_meta_proto = {
 	.arg1_type	= ARG_PTR_TO_CTX,
 	.arg2_type	= ARG_ANYTHING,
 };
+
 static const struct bpf_func_proto bpf_xdp_redirect_proto = {
 	//.func       = bpf_xdp_redirect,
 	//.gpl_only   = false,
@@ -546,6 +981,7 @@ static const struct bpf_func_proto bpf_xdp_redirect_proto = {
 	.arg1_type  = ARG_ANYTHING,
 	.arg2_type  = ARG_ANYTHING,
 };
+
 static const struct bpf_func_proto bpf_xdp_redirect_map_proto = {
 	//.func       = bpf_xdp_redirect_map,
 	//.gpl_only   = false,
@@ -554,6 +990,7 @@ static const struct bpf_func_proto bpf_xdp_redirect_map_proto = {
 	.arg2_type  = ARG_ANYTHING,
 	.arg3_type  = ARG_ANYTHING,
 };
+
 static const struct bpf_func_proto bpf_skb_event_output_proto = {
 	//.func		= bpf_skb_event_output,
 	//.gpl_only	= true,
@@ -564,6 +1001,16 @@ static const struct bpf_func_proto bpf_skb_event_output_proto = {
 	.arg4_type	= ARG_PTR_TO_MEM,
 	.arg5_type	= ARG_CONST_SIZE_OR_ZERO,
 };
+
+/*
+ * int bpf_skb_get_tunnel_key(skb, key, size, flags)
+ *     retrieve or populate tunnel metadata
+ *     @skb: pointer to skb
+ *     @key: pointer to 'struct bpf_tunnel_key'
+ *     @size: size of 'struct bpf_tunnel_key'
+ *     @flags: room for future extensions
+ *     Return: 0 on success or negative error
+ */
 static const struct bpf_func_proto bpf_skb_get_tunnel_key_proto = {
 	//.func		= bpf_skb_get_tunnel_key,
 	//.gpl_only	= false,
@@ -573,6 +1020,15 @@ static const struct bpf_func_proto bpf_skb_get_tunnel_key_proto = {
 	.arg3_type	= ARG_CONST_SIZE,
 	.arg4_type	= ARG_ANYTHING,
 };
+
+/*
+ * int bpf_skb_get_tunnel_opt(skb, opt, size)
+ *     retrieve tunnel options metadata
+ *     @skb: pointer to skb
+ *     @opt: pointer to raw tunnel option data
+ *     @size: size of @opt
+ *     Return: option size
+ */
 static const struct bpf_func_proto bpf_skb_get_tunnel_opt_proto = {
 	//.func		= bpf_skb_get_tunnel_opt,
 	//.gpl_only	= false,
@@ -581,6 +1037,16 @@ static const struct bpf_func_proto bpf_skb_get_tunnel_opt_proto = {
 	.arg2_type	= ARG_PTR_TO_UNINIT_MEM,
 	.arg3_type	= ARG_CONST_SIZE,
 };
+
+/*
+ * int bpf_skb_set_tunnel_key(skb, key, size, flags)
+ *     retrieve or populate tunnel metadata
+ *     @skb: pointer to skb
+ *     @key: pointer to 'struct bpf_tunnel_key'
+ *     @size: size of 'struct bpf_tunnel_key'
+ *     @flags: room for future extensions
+ *     Return: 0 on success or negative error
+ */
 static const struct bpf_func_proto bpf_skb_set_tunnel_key_proto = {
 	//.func		= bpf_skb_set_tunnel_key,
 	//.gpl_only	= false,
@@ -590,6 +1056,15 @@ static const struct bpf_func_proto bpf_skb_set_tunnel_key_proto = {
 	.arg3_type	= ARG_CONST_SIZE,
 	.arg4_type	= ARG_ANYTHING,
 };
+
+/*
+ * int bpf_skb_set_tunnel_opt(skb, opt, size)
+ *     populate tunnel options metadata
+ *     @skb: pointer to skb
+ *     @opt: pointer to raw tunnel option data
+ *     @size: size of @opt
+ *     Return: 0 on success or negative error
+ */
 static const struct bpf_func_proto bpf_skb_set_tunnel_opt_proto = {
 	//.func		= bpf_skb_set_tunnel_opt,
 	//.gpl_only	= false,
@@ -598,6 +1073,18 @@ static const struct bpf_func_proto bpf_skb_set_tunnel_opt_proto = {
 	.arg2_type	= ARG_PTR_TO_MEM,
 	.arg3_type	= ARG_CONST_SIZE,
 };
+
+/*
+ * int bpf_skb_under_cgroup(skb, map, index)
+ *     Check cgroup2 membership of skb
+ *     @skb: pointer to skb
+ *     @map: pointer to bpf_map in BPF_MAP_TYPE_CGROUP_ARRAY type
+ *     @index: index of the cgroup in the bpf_map
+ *     Return:
+ *       == 0 skb failed the cgroup2 descendant test
+ *       == 1 skb succeeded the cgroup2 descendant test
+ *        < 0 error
+ */
 static const struct bpf_func_proto bpf_skb_under_cgroup_proto = {
 	//.func		= bpf_skb_under_cgroup,
 	//.gpl_only	= false,
@@ -606,12 +1093,14 @@ static const struct bpf_func_proto bpf_skb_under_cgroup_proto = {
 	.arg2_type	= ARG_CONST_MAP_PTR,
 	.arg3_type	= ARG_ANYTHING,
 };
+
 static const struct bpf_func_proto bpf_skb_cgroup_id_proto = {
 	//.func       = bpf_skb_cgroup_id,
 	//.gpl_only   = false,
 	.ret_type   = RET_INTEGER,
 	.arg1_type  = ARG_PTR_TO_CTX,
 };
+
 static const struct bpf_func_proto bpf_xdp_event_output_proto = {
 	//.func		= bpf_xdp_event_output,
 	//.gpl_only	= true,
@@ -644,6 +1133,18 @@ static const struct bpf_func_proto bpf_setsockopt_proto = {
 	.arg4_type	= ARG_PTR_TO_MEM,
 	.arg5_type	= ARG_CONST_SIZE,
 };
+
+/*
+ * int bpf_getsockopt(bpf_socket, level, optname, optval, optlen)
+ *     Calls getsockopt. Not all opts are available.
+ *     Supported levels: IPPROTO_TCP
+ *     @bpf_socket: pointer to bpf_socket
+ *     @level: IPPROTO_TCP
+ *     @optname: option name
+ *     @optval: pointer to option value
+ *     @optlen: length of optval in bytes
+ *     Return: 0 or negative error
+ */
 static const struct bpf_func_proto bpf_getsockopt_proto = {
 	//.func		= bpf_getsockopt,
 	//.gpl_only	= false,
@@ -654,6 +1155,7 @@ static const struct bpf_func_proto bpf_getsockopt_proto = {
 	.arg4_type	= ARG_PTR_TO_UNINIT_MEM,
 	.arg5_type	= ARG_CONST_SIZE,
 };
+
 static const struct bpf_func_proto bpf_sock_ops_cb_flags_set_proto = {
 	//.func		= bpf_sock_ops_cb_flags_set,
 	//.gpl_only	= false,
@@ -669,6 +1171,24 @@ static const struct bpf_func_proto bpf_bind_proto = {
 	.arg2_type	= ARG_PTR_TO_MEM,
 	.arg3_type	= ARG_CONST_SIZE,
 };
+
+/*
+ * int bpf_skb_get_xfrm_state(struct sk_buff *skb, u32 index, struct bpf_xfrm_state *xfrm_state, u32 size, u64 flags)
+ * 	Description
+ * 		Retrieve the XFRM state (IP transform framework, see also
+ * 		**ip-xfrm(8)**) at *index* in XFRM "security path" for *skb*.
+ *
+ * 		The retrieved value is stored in the **struct bpf_xfrm_state**
+ * 		pointed by *xfrm_state* and of length *size*.
+ *
+ * 		All values for *flags* are reserved for future usage, and must
+ * 		be left at zero.
+ *
+ * 		This helper is available only if the kernel was compiled with
+ * 		**CONFIG_XFRM** configuration option.
+ * 	Return
+ * 		0 on success, or a negative error in case of failure.
+ */
 static const struct bpf_func_proto bpf_skb_get_xfrm_state_proto = {
 	//.func		= bpf_skb_get_xfrm_state,
 	//.gpl_only	= false,
@@ -679,6 +1199,7 @@ static const struct bpf_func_proto bpf_skb_get_xfrm_state_proto = {
 	.arg4_type	= ARG_CONST_SIZE,
 	.arg5_type	= ARG_ANYTHING,
 };
+
 static const struct bpf_func_proto bpf_xdp_fib_lookup_proto = {
 	//.func		= bpf_xdp_fib_lookup,
 	//.gpl_only	= true,
@@ -760,6 +1281,7 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ origi
  *     Return: 0 on success or negative error
  *
  * int bpf_probe_read(void *dst, int size, void *src)
+ *     read arbitrary kernel memory
  *     Return: 0 on success or negative error
  *
  * u64 bpf_ktime_get_ns(void)
@@ -773,16 +1295,6 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ origi
  *
  * u32 bpf_raw_smp_processor_id(void)
  *     Return: SMP processor ID
- *
- * int bpf_skb_store_bytes(skb, offset, from, len, flags)
- *     store bytes into packet
- *     @skb: pointer to skb
- *     @offset: offset within packet from skb->mac_header
- *     @from: pointer where to copy bytes from
- *     @len: number of bytes to store into packet
- *     @flags: bit 0 - if true, recompute skb->csum
- *             other bits - reserved
- *     Return: 0 on success or negative error
  *
  * int bpf_l3_csum_replace(skb, offset, from, to, flags)
  *     recompute IP checksum
@@ -811,7 +1323,7 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ origi
  *     @prog_array_map: pointer to map which type is BPF_MAP_TYPE_PROG_ARRAY
  *     @index: 32-bit index inside array that selects specific program to run
  *     Return: 0 on success or negative error
- *
+ *//*
  * int bpf_clone_redirect(skb, ifindex, flags)
  *     redirect to another netdev
  *     @skb: pointer to skb
@@ -819,28 +1331,28 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ origi
  *     @flags: bit 0 - if set, redirect to ingress instead of egress
  *             other bits - reserved
  *     Return: 0 on success or negative error
- *
+ *//*
  * u64 bpf_get_current_pid_tgid(void)
  *     Return: current->tgid << 32 | current->pid
- *
+ *//*
  * u64 bpf_get_current_uid_gid(void)
  *     Return: current_gid << 32 | current_uid
- *
+ *//*
  * int bpf_get_current_comm(char *buf, int size_of_buf)
  *     stores current->comm into buf
  *     Return: 0 on success or negative error
- *
+ *//*
  * u32 bpf_get_cgroup_classid(skb)
  *     retrieve a proc's classid
  *     @skb: pointer to skb
  *     Return: classid if != 0
- *
+ *//*
  * int bpf_skb_vlan_push(skb, vlan_proto, vlan_tci)
  *     Return: 0 on success or negative error
- *
+ *//*
  * int bpf_skb_vlan_pop(skb)
  *     Return: 0 on success or negative error
- *
+ *//*
  * int bpf_skb_get_tunnel_key(skb, key, size, flags)
  * int bpf_skb_set_tunnel_key(skb, key, size, flags)
  *     retrieve or populate tunnel metadata
@@ -849,13 +1361,13 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ origi
  *     @size: size of 'struct bpf_tunnel_key'
  *     @flags: room for future extensions
  *     Return: 0 on success or negative error
- *
+ *//*
  * u64 bpf_perf_event_read(map, flags)
  *     read perf event counter value
  *     @map: pointer to perf_event_array map
  *     @flags: index of event in the map or bitmask flags
  *     Return: value of perf event counter read or error code
- *
+ *//*
  * int bpf_redirect(ifindex, flags)
  *     redirect to another netdev
  *     @ifindex: ifindex of the net device
@@ -867,18 +1379,19 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ origi
  *	    all bits - reserved
  *     Return: cls_bpf: TC_ACT_REDIRECT on success or TC_ACT_SHOT on error
  *	       xdp_bfp: XDP_REDIRECT on success or XDP_ABORT on error
+ *//*
  * int bpf_redirect_map(map, key, flags)
  *     redirect to endpoint in map
  *     @map: pointer to dev map
  *     @key: index in map to lookup
  *     @flags: --
  *     Return: XDP_REDIRECT on success or XDP_ABORT on error
- *
+ *//*
  * u32 bpf_get_route_realm(skb)
  *     retrieve a dst's tclassid
  *     @skb: pointer to skb
  *     Return: realm if != 0
- *
+ *//*
  * int bpf_perf_event_output(ctx, map, flags, data, size)
  *     output perf raw sample
  *     @ctx: struct pt_regs*
@@ -887,7 +1400,7 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ origi
  *     @data: data on stack to be output as raw data
  *     @size: size of data
  *     Return: 0 on success or negative error
- *
+ *//*
  * int bpf_get_stackid(ctx, map, flags)
  *     walk user or kernel stack and return id
  *     @ctx: struct pt_regs*
@@ -899,7 +1412,7 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ origi
  *                      discard old
  *             other bits - reserved
  *     Return: >= 0 stackid on success or negative error
- *
+ *//*
  * s64 bpf_csum_diff(from, from_size, to, to_size, seed)
  *     calculate csum diff
  *     @from: raw from buffer
@@ -908,21 +1421,21 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ origi
  *     @to_size: length of to buffer
  *     @seed: optional seed
  *     Return: csum result or negative error code
- *
+ *//*
  * int bpf_skb_get_tunnel_opt(skb, opt, size)
  *     retrieve tunnel options metadata
  *     @skb: pointer to skb
  *     @opt: pointer to raw tunnel option data
  *     @size: size of @opt
  *     Return: option size
- *
+ *//*
  * int bpf_skb_set_tunnel_opt(skb, opt, size)
  *     populate tunnel options metadata
  *     @skb: pointer to skb
  *     @opt: pointer to raw tunnel option data
  *     @size: size of @opt
  *     Return: 0 on success or negative error
- *
+ *//*
  * int bpf_skb_change_proto(skb, proto, flags)
  *     Change protocol of the skb. Currently supported is v4 -> v6,
  *     v6 -> v4 transitions. The helper will also resize the skb. eBPF
@@ -932,13 +1445,13 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ origi
  *     @proto: new skb->protocol type
  *     @flags: reserved
  *     Return: 0 on success or negative error
- *
+ *//*
  * int bpf_skb_change_type(skb, type)
  *     Change packet type of skb.
  *     @skb: pointer to skb
  *     @type: new skb->pkt_type type
  *     Return: 0 on success or negative error
- *
+ *//*
  * int bpf_skb_under_cgroup(skb, map, index)
  *     Check cgroup2 membership of skb
  *     @skb: pointer to skb
@@ -948,23 +1461,23 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ origi
  *       == 0 skb failed the cgroup2 descendant test
  *       == 1 skb succeeded the cgroup2 descendant test
  *        < 0 error
- *
+ *//*
  * u32 bpf_get_hash_recalc(skb)
  *     Retrieve and possibly recalculate skb->hash.
  *     @skb: pointer to skb
  *     Return: hash
- *
+ *//*
  * u64 bpf_get_current_task(void)
  *     Returns current task_struct
  *     Return: current
- *
+ *//*
  * int bpf_probe_write_user(void *dst, void *src, int len)
  *     safely attempt to write to a location
  *     @dst: destination address in userspace
  *     @src: source address on stack
  *     @len: number of bytes to copy
  *     Return: 0 on success or negative error
- *
+ *//*
  * int bpf_current_task_under_cgroup(map, index)
  *     Check cgroup2 membership of current task
  *     @map: pointer to bpf_map in BPF_MAP_TYPE_CGROUP_ARRAY type
@@ -1126,6 +1639,52 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ origi
 
 #define FN(x) bpf_ ## x ## _proto
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// keep this on a round line
 const struct bpf_func_proto prototypes[81] = {
 	FN(unspec),
 	FN(map_lookup_elem),
