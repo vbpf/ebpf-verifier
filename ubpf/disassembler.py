@@ -139,6 +139,8 @@ def disassemble_one(data, offset):
         if code == 0x18: # lddw
             _, _, _, imm2 = Inst.unpack_from(data, offset+8)
             imm = (imm2 << 32) | imm
+            if src_reg == 1:
+                return "ldmapfd %s, %s" % (R(dst_reg), I(imm))
             return "%s %s, %s" % (class_name + size_name, R(dst_reg), I(imm))
         elif code == 0x00:
             # Second instruction of lddw

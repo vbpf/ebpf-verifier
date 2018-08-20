@@ -608,6 +608,7 @@ vector<basic_block_label_t> instruction_builder_t::exec()
             // This is what ARG_CONST_MAP_PTR looks for
 
             // This is probably the wrong thing to do. should we add an FD type?
+            // Here we (probably) need the map structure
             block.assign(machine.regs[inst.dst].region, T_MAP);
             block.assign(machine.regs[inst.dst].offset, 0);
             return { block.label() };
@@ -784,7 +785,7 @@ vector<basic_block_label_t> instruction_builder_t::exec_alu()
             both_num.assume(src.region == T_NUM);
             both_num.add(dst.value, dst.value, src.value);
 
-            res = {ptr_dst.label(), ptr_dst.label(), both_num.label()};
+            res = {ptr_src.label(), ptr_dst.label(), both_num.label()};
             return res;
         }
         break;
@@ -832,9 +833,8 @@ vector<basic_block_label_t> instruction_builder_t::exec_alu()
         no_pointer(block, dst);
         break;
     case EBPF_OP_DIV64_REG:
-        block.assertion(src.value != 0, di);
     case EBPF_OP_DIV_REG:
-        // For some reason, DIV32 is not checked for zerodiv
+        // For some reason, DIV is not checked for zerodiv
         block.div(dst.value, dst.value, src.value);
         no_pointer(block, dst);
         break;
@@ -844,9 +844,8 @@ vector<basic_block_label_t> instruction_builder_t::exec_alu()
         no_pointer(block, dst);
         break;
     case EBPF_OP_MOD64_REG:
-        block.assertion(src.value != 0, di);
     case EBPF_OP_MOD_REG:
-        // See DIV32 comment
+        // See DIV comment
         block.rem(dst.value, dst.value, src.value);
         no_pointer(block, dst);
         break;
