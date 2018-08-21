@@ -1684,6 +1684,17 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ origi
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 // keep this on a round line
 const struct bpf_func_proto prototypes[81] = {
 	FN(unspec),

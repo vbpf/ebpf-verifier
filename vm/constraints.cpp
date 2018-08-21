@@ -512,7 +512,6 @@ vector<basic_block_label_t> instruction_builder_t::exec_mem()
     switch (opcode_width_w) {
     case EBPF_OP_STW:
         // mem[offset] = immediate
-        std::cout << "EBPF_OP_STW" << pc << " " << (int)inst.opcode << "\n";
         if (inst.dst == 10) {
             exec_direct_stack_store_immediate(block, inst.offset, width, di, machine, immediate(inst, next_inst));
             return { block.label() };
@@ -525,7 +524,6 @@ vector<basic_block_label_t> instruction_builder_t::exec_mem()
 
     case EBPF_OP_LDXW:
         // data = mem[offset]
-        std::cout << "EBPF_OP_LDXW" << pc << " " << (int)inst.opcode << "\n";
         if (mem_is_fp) {
             exec_direct_stack_load(block, data_reg, inst.offset, dyn_width, di, machine);
             return { block.label() };

@@ -79,6 +79,9 @@ def R(reg):
 def I(imm):
     return "%#x" % imm
 
+def S(imm):
+    return repr(''.join(chr((imm >> i) & 0xff) for i in range(0, 4*(len(I(imm))-2), 8)))
+
 def M(base, off):
     if off != 0:
         return "[%s%+d]" % (base, O(off))
@@ -123,7 +126,7 @@ def disassemble_one(data, offset):
         if opcode_name == "exit":
             return opcode_name
         elif opcode_name == "call":
-            return "%s %s" % (opcode_name, I(imm))
+            return "%s %s [%s]" % (opcode_name, I(imm), functions[imm])
         elif opcode_name == "ja":
             return "%s %s" % (opcode_name, jump_target(off, offset))
         elif source == 0:
@@ -141,7 +144,7 @@ def disassemble_one(data, offset):
             imm = (imm2 << 32) | imm
             if src_reg == 1:
                 return "ldmapfd %s, %s" % (R(dst_reg), I(imm))
-            return "%s %s, %s" % (class_name + size_name, R(dst_reg), I(imm))
+            return "%s %s, %s [%s]" % (class_name + size_name, R(dst_reg), I(imm), S(imm))
         elif code == 0x00:
             # Second instruction of lddw
             return None
@@ -168,6 +171,89 @@ def disassemble_one(data, offset):
     else:
         return "unknown instruction %#x" % code
 
+functions = [
+	'unspec',
+	'map_lookup_elem',
+	'map_update_elem',
+	'map_delete_elem',
+	'probe_read',
+	'ktime_get_ns',
+	'trace_printk',
+	'get_prandom_u32',
+	'get_smp_processor_id',
+	'skb_store_bytes',
+	'l3_csum_replace',
+	'l4_csum_replace',
+	'tail_call',
+	'clone_redirect',
+	'get_current_pid_tgid',
+	'get_current_uid_gid',
+	'get_current_comm',
+	'get_cgroup_classid',
+	'skb_vlan_push',
+	'skb_vlan_pop',
+	'skb_get_tunnel_key',
+	'skb_set_tunnel_key',
+	'perf_event_read',
+	'redirect',
+	'get_route_realm',
+	'perf_event_output',
+	'skb_load_bytes',
+	'get_stackid',
+	'csum_diff',
+	'skb_get_tunnel_opt',
+	'skb_set_tunnel_opt',
+	'skb_change_proto',
+	'skb_change_type',
+	'skb_under_cgroup',
+	'get_hash_recalc',
+	'get_current_task',
+	'probe_write_user',
+	'current_task_under_cgroup',
+	'skb_change_tail',
+	'skb_pull_data',
+	'csum_update',
+	'set_hash_invalid',
+	'get_numa_node_id',
+	'skb_change_head',
+	'xdp_adjust_head',
+	'probe_read_str',
+	'get_socket_cookie',
+	'get_socket_uid',
+	'set_hash',
+	'setsockopt',
+	'skb_adjust_room',
+	'redirect',
+	'sk_redirect_map',
+	'sock_map_update',
+	'xdp_adjust_meta',
+	'perf_event_read_value',
+	'perf_prog_read_value',
+	'getsockopt',
+	'override_return',
+	'sock_ops_cb_flags_set',
+	'msg_redirect_map',
+	'msg_apply_bytes',
+	'msg_cork_bytes',
+	'msg_pull_data',
+	'bind',
+	'xdp_adjust_tail',
+	'skb_get_xfrm_state',
+	'get_stack',
+	'skb_load_bytes_relative',
+	'xdp_fib_lookup',
+	'sock_hash_update',
+	'msg_redirect_hash',
+	'sk_redirect_hash',
+	'lwt_push_encap',
+	'lwt_seg6_store_bytes',
+	'lwt_seg6_adjust_srh',
+	'lwt_seg6_action',
+	'rc_repeat',
+	'rc_keydown',
+	'skb_cgroup_id',
+	'get_current_cgroup_id',
+]
 
 def disassemble(data):
     output = StringIO.StringIO()
