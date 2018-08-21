@@ -157,19 +157,6 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
     return c;
 }
 
-// DOMAINS
-namespace ikos {
-extern template class interval_domain<ikos::z_number,varname_t>;
-}
-namespace crab::domains {
-extern template class dis_interval_domain<ikos::z_number, varname_t >;
-extern template class numerical_congruence_domain<z_interval_domain_t>;
-extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_interval_domain_t> >;
-extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_sdbm_domain_t> >;
-extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_dis_interval_domain_t> >;
-extern template class reduced_numerical_domain_product2<z_term_dis_int_t,z_sdbm_domain_t>;
-}
-
 struct domain_desc {
     std::function<checks_db(cfg_t&, printer_t&, printer_t&)> analyze;
     string description;
@@ -187,6 +174,7 @@ const map<string, domain_desc> domains{
     { "boxes"             , { analyze<z_boxes_domain_t>, "boxes (z_boxes_domain_t)" } },
     { "boxes-arr"         , { analyze<array_expansion_domain<z_boxes_domain_t>>, "mem: boxes (z_boxes_domain_t)" } },
     { "disj_interval"     , { analyze<z_dis_interval_domain_t>, "disjoint intervals (z_dis_interval_domain_t)" } },
+#ifdef APRON
     { "disj_interval-arr" , { analyze<array_expansion_domain<z_dis_interval_domain_t>>, "mem: disjoint intervals (z_dis_interval_domain_t)" } },
     { "box_apron"         , { analyze<z_box_apron_domain_t>, "boxes x apron (z_box_apron_domain_t)" } },
     { "box_apron-arr"     , { analyze<array_expansion_domain<z_box_apron_domain_t>>, "mem: boxes x apron (z_box_apron_domain_t)" } },
@@ -194,6 +182,7 @@ const map<string, domain_desc> domains{
     { "opt_oct_apron-arr" , { analyze<array_expansion_domain<z_opt_oct_apron_domain_t>>, "mem: optional octagon x apron (z_opt_oct_apron_domain_t)" } },
     { "pk_apron"          , { analyze<z_pk_apron_domain_t>, "(z_pk_apron_domain_t)" } },
     { "pk_apron-arr"      , { analyze<array_expansion_domain<z_pk_apron_domain_t>>, "mem: (z_pk_apron_domain_t)" } },
+#endif
     { "term"              , { analyze<z_term_domain_t>, "(z_term_domain_t)" } },
     { "term-arr"          , { analyze<array_expansion_domain<z_term_domain_t>>, "mem: (z_term_domain_t)" } },
     { "term_dbm"          , { analyze<z_term_dbm_t>, "(z_term_dbm_t)" } },
