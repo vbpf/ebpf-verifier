@@ -80,7 +80,10 @@ def I(imm):
     return "%#x" % imm
 
 def S(imm):
-    return repr(''.join(chr((imm >> i) & 0xff) for i in range(0, 4*(len(I(imm))-2), 8)))
+    s = repr(''.join(chr((imm >> i) & 0xff) for i in range(0, 4*(len(I(imm))-2), 8)))
+    if all(ord(c) < 128 for c in s):
+        return '[ %s ]' % s
+    return ''
 
 def M(base, off):
     if off != 0:
@@ -144,7 +147,7 @@ def disassemble_one(data, offset):
             imm = (imm2 << 32) | imm
             if src_reg == 1:
                 return "ldmapfd %s, %s" % (R(dst_reg), I(imm))
-            return "%s %s, %s [%s]" % (class_name + size_name, R(dst_reg), I(imm), S(imm))
+            return "%s %s, %s %s" % (class_name + size_name, R(dst_reg), I(imm), S(imm))
         elif code == 0x00:
             # Second instruction of lddw
             return None
