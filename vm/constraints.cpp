@@ -53,9 +53,9 @@ struct array_dom_t {
     var_t regions;
     array_dom_t(variable_factory_t& vfac, std::string name) :
         vfac(vfac),
-        values{vfac[std::string(name + "_vals")], crab::ARR_INT_TYPE, 64}, 
-        offsets{vfac[std::string(name + "_offsets")], crab::ARR_INT_TYPE, 64},
-        regions{vfac[std::string(name + "_regions")], crab::ARR_INT_TYPE, 8}
+        values{vfac[std::string(name + "_r")], crab::ARR_INT_TYPE, 64}, 
+        offsets{vfac[std::string(name + "_off")], crab::ARR_INT_TYPE, 64},
+        regions{vfac[std::string(name + "_t")], crab::ARR_INT_TYPE, 8}
     { }
     template<typename T, typename W>
     void load(basic_block_t& block, dom_t& data_reg, const T& offset, W width) {
@@ -83,9 +83,9 @@ struct machine_t final
     ptype_descr ctx_desc;
     variable_factory_t& vfac;
     std::vector<dom_t> regs;
-    array_dom_t stack_arr{vfac, "stack"};
-    array_dom_t ctx_arr{vfac, "ctx"};
-    array_dom_t data_arr{vfac, "data"};
+    array_dom_t stack_arr{vfac, "S"};
+    array_dom_t ctx_arr{vfac, "C"};
+    array_dom_t data_arr{vfac, "D"};
     var_t meta_size{vfac[std::string("meta_size")], crab::INT_TYPE, 64};
     var_t total_size{vfac[std::string("total_data_size")], crab::INT_TYPE, 64};
     var_t top{vfac[std::string("*")], crab::INT_TYPE, 64};
