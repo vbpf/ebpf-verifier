@@ -1,5 +1,6 @@
 import struct
 from io import StringIO
+import string
 
 Inst = struct.Struct("BBHI")
 
@@ -80,9 +81,11 @@ def I(imm):
     return "%#x" % imm
 
 def S(imm):
-    s = repr(''.join(chr((imm >> i) & 0xff) for i in range(0, 4*(len(I(imm))-2), 8)))
+    s = ''.join(chr((imm >> i) & 0xff) for i in range(0, 4*(len(I(imm))-2), 8))
+    if set(s) - set(string.printable):
+        return ''
     if all(ord(c) < 128 for c in s):
-        return '[ %s ]' % s
+        return '[ %s ]' % repr(s)
     return ''
 
 def M(base, off):
