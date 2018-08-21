@@ -242,7 +242,7 @@ static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& dst_value, var_t& sr
 }
 
 
-basic_block_label_t abs_machine_t::jump(ebpf_inst inst, basic_block_t& block, bool taken, cfg_t& cfg)
+basic_block_label_t abs_machine_t::jump(ebpf_inst inst, bool taken, basic_block_t& block, cfg_t& cfg)
 {
     auto& machine = *impl;
     uint8_t opcode = taken ? inst.opcode : reverse(inst.opcode);
