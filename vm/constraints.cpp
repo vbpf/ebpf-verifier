@@ -389,9 +389,18 @@ static vector<basic_block_label_t> exec_ctx_access(basic_block_t& block, bool is
     mid.assertion(addr >= 0, di);
     mid.assertion(addr <= machine.ctx_desc.size - width, di);
 
-    auto desc = machine.ctx_desc;
-    vector<basic_block_label_t> ret;
+    ptype_descr desc = machine.ctx_desc;
+    auto assume_normal = [&](basic_block_t& b) {
+        if (desc.data >= 0) {
+            b.assume(addr != desc.data);
+            b.assume(addr != desc.end);
+            if (desc.meta >= 0) {
+                b.assume(addr != desc.meta);
+            }
+        }
+    };
     if (is_load) {
+        vector<basic_block_label_t> ret;
         auto load_datap = [&](string suffix, int start, auto offset) {
             basic_block_t& b = add_child(cfg, mid, suffix);
             b.assume(addr == start);
@@ -401,7 +410,6 @@ static vector<basic_block_label_t> exec_ctx_access(basic_block_t& block, bool is
             b.assign(data_reg.offset, offset);
             ret.push_back(b.label());
         };
-
         if (desc.data >= 0) {
             load_datap("data_start", desc.data, machine.meta_size);
             load_datap("data_end", desc.end, machine.total_size);
@@ -411,25 +419,17 @@ static vector<basic_block_label_t> exec_ctx_access(basic_block_t& block, bool is
         }
 
         basic_block_t& normal = add_child(cfg, mid, "assume_ctx_not_special");
-        if (desc.data >= 0) {
-            normal.assume(addr != desc.data);
-            normal.assume(addr != desc.end);
-        }
-        if (desc.meta >= 0) {
-            normal.assume(addr != desc.meta);
-        }
+        assume_normal(normal);
         machine.ctx_arr.load(normal, data_reg, addr, width);
         normal.assign(data_reg.region, T_NUM);
         ret.push_back(normal.label());
+        return ret;
     } else {
-        mid.assertion(addr != desc.data, di);
-        mid.assertion(addr != desc.end, di);
-        mid.assertion(addr != desc.meta, di);
+        assume_normal(mid);
         mid.assertion(data_reg.region == T_NUM, di);
         machine.ctx_arr.store(mid, addr, data_reg, width, di);
-        ret.push_back(mid.label());
+        return { mid.label() };
     }
-    return ret;
 }
 
 static void exec_direct_stack_load(basic_block_t& block, dom_t data_reg, int _offset, var_t width, debug_info di, machine_t& machine)
