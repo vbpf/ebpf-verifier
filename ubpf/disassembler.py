@@ -98,7 +98,7 @@ def O(off):
     return off if off <= 32767 else off-65536
 
 def jump_target(off, offset):
-    return O(off) + (offset / 8) + 1
+    return O(off) + (offset // 8) + 1
 
 def disassemble_one(data, offset):
     code, regs, off, imm = Inst.unpack_from(data, offset)
