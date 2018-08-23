@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <map>
+#include <type_traits>
 
 #include "instructions.hpp"
 #include "common.hpp"
@@ -12,7 +12,6 @@
 using std::tuple;
 using std::string;
 using std::vector;
-using std::map;
 
 using ikos::z_number;
 using debug_info = crab::cfg::debug_info;
@@ -135,14 +134,26 @@ private:
     vector<basic_block_label_t> exec_alu();
     vector<basic_block_label_t> exec_call();
 
-    vector<basic_block_label_t> exec_stack_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, var_t width);
-    vector<basic_block_label_t> exec_map_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, var_t width);
-    vector<basic_block_label_t> exec_data_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, var_t width);
-    vector<basic_block_label_t> exec_ctx_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, var_t width);
-    vector<basic_block_label_t> exec_direct_stack_load(basic_block_t& block, dom_t data_reg, int _offset, var_t width);
-    vector<basic_block_label_t> exec_direct_stack_store(basic_block_t& block, dom_t data_reg, int _offset, var_t width);
+    template<typename W>
+    vector<basic_block_label_t> exec_stack_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width);
+
+    template<typename W>
+    vector<basic_block_label_t> exec_map_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width);
+
+    template<typename W>
+    vector<basic_block_label_t> exec_data_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width);
+
+    template<typename W>
+    vector<basic_block_label_t> exec_ctx_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width);
+
+    vector<basic_block_label_t> exec_direct_stack_load(basic_block_t& block, dom_t data_reg, int _offset, int width);
+
+    vector<basic_block_label_t> exec_direct_stack_store(basic_block_t& block, dom_t data_reg, int _offset, int width);
+    
     vector<basic_block_label_t> exec_direct_stack_store_immediate(basic_block_t& block, int _offset, int width, uint64_t immediate);
-    vector<basic_block_label_t> exec_mem_access_indirect(basic_block_t& block, bool is_load, bool is_st, dom_t mem_reg, dom_t data_reg, int offset, var_t width);
+
+    template<typename W>
+    vector<basic_block_label_t> exec_mem_access_indirect(basic_block_t& block, bool is_load, bool is_st, dom_t mem_reg, dom_t data_reg, int offset, W width);
 };
 
 abs_machine_t::abs_machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac)
@@ -338,7 +349,8 @@ void instruction_builder_t::scratch_regs(basic_block_t& block)
     }
 }
 
-vector<basic_block_label_t> instruction_builder_t::exec_stack_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, var_t width)
+template<typename W>
+vector<basic_block_label_t> instruction_builder_t::exec_stack_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
 {
     basic_block_t& mid = add_child(cfg, block, "assume_stack");
     lin_exp_t addr = (-offset) - width - mem_reg.offset; // negate access
@@ -363,7 +375,8 @@ vector<basic_block_label_t> instruction_builder_t::exec_stack_access(basic_block
     }
 }
 
-vector<basic_block_label_t> instruction_builder_t::exec_map_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, var_t width)
+template<typename W>
+vector<basic_block_label_t> instruction_builder_t::exec_map_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
 {
     basic_block_t& mid = add_child(cfg, block, "assume_map");
     lin_exp_t addr = mem_reg.offset + offset;
@@ -382,7 +395,8 @@ vector<basic_block_label_t> instruction_builder_t::exec_map_access(basic_block_t
     return { mid.label() };
 }
 
-vector<basic_block_label_t> instruction_builder_t::exec_data_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, var_t width)
+template<typename W>
+vector<basic_block_label_t> instruction_builder_t::exec_data_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
 {
     basic_block_t& mid = add_child(cfg, block, "assume_data");
     lin_exp_t addr = mem_reg.offset + offset;
@@ -401,7 +415,8 @@ vector<basic_block_label_t> instruction_builder_t::exec_data_access(basic_block_
     }
 }
 
-vector<basic_block_label_t> instruction_builder_t::exec_ctx_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, var_t width)
+template<typename W>
+vector<basic_block_label_t> instruction_builder_t::exec_ctx_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
 {
     basic_block_t& mid = add_child(cfg, block, "assume_ctx");
     mid.assume(mem_reg.region == T_CTX);
@@ -453,14 +468,29 @@ vector<basic_block_label_t> instruction_builder_t::exec_ctx_access(basic_block_t
     }
 }
 
-vector<basic_block_label_t> instruction_builder_t::exec_direct_stack_load(basic_block_t& block, dom_t data_reg, int _offset, var_t width)
+static inline void assert_in_stack(basic_block_t& block, int offset, int width, debug_info di) {
+    // NOP - should be done in the validator
+}
+/* Here for the unlikely case the width is dynamic
+static void assert_in_stack(basic_block_t& block, int offset, var_t width, debug_info di) {
+    auto start = (-offset) - width;
+    block.assertion(start >= 0, di);
+    block.assertion(start + width <= STACK_SIZE, di);
+}
+*/
+
+template<typename W>
+auto get_start(int offset, W width) {
+    return (-offset) - width;
+}
+
+vector<basic_block_label_t> instruction_builder_t::exec_direct_stack_load(basic_block_t& block, dom_t data_reg, int offset, int width)
 {
-    lin_exp_t offset = (-_offset) - width;
-    block.assertion(offset >= 0, di);
-    block.assertion(offset + width <= STACK_SIZE, di);
-    auto labels = machine.stack_arr.load(block, data_reg, offset, width, cfg);
+    assert_in_stack(block, offset, width, di);
+    auto start = get_start(offset, width);
+    auto labels = machine.stack_arr.load(block, data_reg, start, width, cfg);
     for (auto label : labels) {
-        cfg.get_node(label).array_load(data_reg.region, machine.stack_arr.regions, offset+0, 1);
+        cfg.get_node(label).array_load(data_reg.region, machine.stack_arr.regions, start, 1);
         cfg.get_node(label).assume(data_reg.region >= 1);
     }
     return labels;
@@ -472,26 +502,23 @@ vector<basic_block_label_t> instruction_builder_t::exec_direct_stack_load(basic_
     }*/
 }
 
-vector<basic_block_label_t> instruction_builder_t::exec_direct_stack_store(basic_block_t& block, dom_t data_reg, int _offset, var_t width)
+vector<basic_block_label_t> instruction_builder_t::exec_direct_stack_store(basic_block_t& block, dom_t data_reg, int offset, int width)
 {
-    lin_exp_t offset = (-_offset) - width;
-    block.assertion(offset >= 0, di);
-    block.assertion(offset + width <= STACK_SIZE, di);
+    assert_in_stack(block, offset, width, di);
     assert_init(block, data_reg, di);
-    return machine.stack_arr.store(block, offset, data_reg, width, di, cfg);
+    return machine.stack_arr.store(block, (-offset) - width, data_reg, width, di, cfg);
 }
 
-vector<basic_block_label_t> instruction_builder_t::exec_direct_stack_store_immediate(basic_block_t& block, int _offset, int width, uint64_t immediate)
+vector<basic_block_label_t> instruction_builder_t::exec_direct_stack_store_immediate(basic_block_t& block, int offset, int width, uint64_t immediate)
 {
-    int offset = (-_offset) - width;
-    assert(offset >= 0);
-    assert(offset + width <= STACK_SIZE);
+    assert_in_stack(block, offset, width, di);
+    auto start = get_start(offset, width);
     var_t lb{machine.vfac["lb"], crab::INT_TYPE, 64};
     var_t ub{machine.vfac["ub"], crab::INT_TYPE, 64};
-    block.assign(lb, offset);
-    block.assign(ub, offset + width);
+    block.assign(lb, start);
+    block.assign(ub, start + width);
     block.array_init(machine.stack_arr.regions, 1, lb, ub, T_NUM);
-    block.array_store(machine.stack_arr.values, offset, immediate, width);
+    block.array_store(machine.stack_arr.values, start, immediate, width);
     return { block.label() };
 }
 
@@ -504,14 +531,15 @@ static void move_into(vector<T>& dst, vector<T>&& src)
     );
 }
 
-vector<basic_block_label_t> instruction_builder_t::exec_mem_access_indirect(basic_block_t& block, bool is_load, bool is_st, dom_t mem_reg, dom_t data_reg, int offset, var_t width)
+template<typename W>
+vector<basic_block_label_t> instruction_builder_t::exec_mem_access_indirect(basic_block_t& block, bool is_load, bool is_ST, dom_t mem_reg, dom_t data_reg, int offset, W width)
 {
     block.assertion(mem_reg.value != 0, di);
     block.assertion(mem_reg.region != T_NUM, di);
     vector<basic_block_label_t> outs;
     
     move_into(outs, exec_stack_access(block, is_load, mem_reg, data_reg, offset, width));
-    if (is_load || !is_st) {
+    if (is_load || !is_ST) {
         move_into(outs, exec_ctx_access(block, is_load, mem_reg, data_reg, offset, width));
     } else {
         // "BPF_ST stores into R1 context is not allowed"
@@ -529,8 +557,6 @@ vector<basic_block_label_t> instruction_builder_t::exec_mem()
 {
     dom_t mem_reg =  machine.regs.at(is_load(inst.opcode) ? inst.src : inst.dst);
     dom_t data_reg = machine.regs.at(is_load(inst.opcode) ? inst.dst : inst.src);
-    var_t dyn_width{machine.vfac["width"], crab::INT_TYPE, 64};
-    block.assign(dyn_width, access_width(inst.opcode));
     bool mem_is_fp = (is_load(inst.opcode) ? inst.src : inst.dst) == 10;
     uint8_t opcode_width_w = inst.opcode & (~EBPF_SIZE_DW);
     switch (opcode_width_w) {
@@ -541,24 +567,24 @@ vector<basic_block_label_t> instruction_builder_t::exec_mem()
         } else {
             var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
             block.assign(tmp, immediate(inst, next_inst));
-            return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, machine.num}, inst.offset, dyn_width);
+            return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, machine.num}, inst.offset, width);
         } 
         break;
 
     case EBPF_OP_LDXW:
         // data = mem[offset]
         if (mem_is_fp) {
-            return exec_direct_stack_load(block, data_reg, inst.offset, dyn_width);
+            return exec_direct_stack_load(block, data_reg, inst.offset, width);
         } else {
-            return exec_mem_access_indirect(block, true, false, mem_reg, data_reg, inst.offset, dyn_width);
+            return exec_mem_access_indirect(block, true, false, mem_reg, data_reg, inst.offset, width);
         }
 
     case EBPF_OP_STXW:
         // mem[offset] = data
         if (mem_is_fp) {
-            return exec_direct_stack_store(block, data_reg, inst.offset, dyn_width);
+            return exec_direct_stack_store(block, data_reg, inst.offset, width);
         } else {
-            return exec_mem_access_indirect(block, false, false, mem_reg, data_reg, inst.offset, dyn_width);
+            return exec_mem_access_indirect(block, false, false, mem_reg, data_reg, inst.offset, width);
         }
         break;
 
@@ -715,7 +741,7 @@ vector<basic_block_label_t> instruction_builder_t::exec_call()
                 current.assertion(arg.value > 0, di);
                 current.assertion(is_pointer(arg), di);
                 var_t width = machine.regs[i+1].value;
-                prevs = exec_mem_access_indirect(current, true, true, arg, { machine.top, machine.top, machine.top }, 0, width);
+                prevs = exec_mem_access_indirect(current, true, false, arg, { machine.top, machine.top, machine.top }, 0, width);
             }
             break;
         case ARG_PTR_TO_MEM_OR_NULL:
@@ -725,7 +751,7 @@ vector<basic_block_label_t> instruction_builder_t::exec_call()
                 current.assertion(is_pointer(arg), di);
                 current.assertion(arg.offset <= 0, di);
                 var_t width = machine.regs[i+1].value;
-                prevs = exec_mem_access_indirect(current, false, true, arg, { machine.top, machine.top, machine.num }, 0, width);
+                prevs = exec_mem_access_indirect(current, false, false, arg, { machine.top, machine.top, machine.num }, 0, width);
             }
             break;
         }
