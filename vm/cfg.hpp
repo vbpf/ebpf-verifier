@@ -23,6 +23,11 @@ inline int first_num(const std::string& s)
     return boost::lexical_cast<int>(s.substr(0, s.find_first_of(':')));
 }
 
+inline int first_num(const basic_block_t& block)
+{
+    return first_num(block.label());
+}
+
 std::vector<std::string> sorted_labels(cfg_t& cfg);
 
 

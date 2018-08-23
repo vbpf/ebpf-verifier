@@ -110,10 +110,10 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> inst
     for (pc_t pc = 0; pc < insts.size()-1; pc++) {
         ebpf_inst inst = insts[pc];
 
-        vector<basic_block_label_t> outs = machine.exec(inst, insts[pc + 1], cfg.insert(label(pc)), cfg);
+        vector<basic_block_t*> outs = machine.exec(inst, insts[pc + 1], cfg.insert(label(pc)), cfg);
         basic_block_t& exit = cfg.insert(exit_label(pc));
-        for (basic_block_label_t label : outs)
-            cfg.get_node(label) >> exit;
+        for (basic_block_t* b : outs)
+            (*b) >> exit;
 
         if (inst.opcode == EBPF_OP_EXIT) {
             cfg.set_exit(exit_label(pc));
@@ -125,8 +125,8 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> inst
         if (jump_target) {
             if (inst.opcode != EBPF_OP_JA)  {
                 auto& assumption = build_jump(cfg, pc, *jump_target, true);
-                basic_block_label_t out = machine.jump(inst, true, assumption, cfg);
-                cfg.get_node(out) >> cfg.insert(label(*jump_target));
+                basic_block_t& out = machine.jump(inst, true, assumption, cfg);
+                out >> cfg.insert(label(*jump_target));
             } else {
                 link(cfg, pc, *jump_target);
             }
@@ -135,8 +135,8 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> inst
         if (fall_target) {
             if (jump_target) {
                 auto& assumption = build_jump(cfg, pc, *fall_target, false);
-                basic_block_label_t out = machine.jump(inst, false, assumption, cfg);
-                cfg.get_node(out) >> cfg.insert(label(*fall_target));
+                basic_block_t& out = machine.jump(inst, false, assumption, cfg);
+                out >> cfg.insert(label(*fall_target));
             } else {
                 link(cfg, pc, *fall_target);
             }
