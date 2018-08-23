@@ -17,7 +17,6 @@ PROJECTDIR := $(CURDIR)../
 CRABDIR := ../crab
 INSTALL := $(CRABDIR)/install
 LDD := $(CRABDIR)/build/run/ldd
-APRON := $(CRABDIR)/build/run/apron
 LINUX := ../../linux
 
 # Lookup path for libCrab.so
@@ -38,13 +37,6 @@ LDLIBS := \
     $(LDD)/lib/libutil.a \
     $(LDD)/lib/libmtr.a \
     $(LDD)/lib/libepd.a \
-    $(APRON)/lib/libpolkaMPQ.a \
-    $(APRON)/lib/liboctD.a \
-    $(APRON)/lib/liboptoct.a \
-    $(APRON)/lib/liblinkedlistapi.a \
-    $(APRON)/lib/libapron.a \
-    $(APRON)/lib/libboxMPQ.a \
-    $(APRON)/lib/libitvMPQ.a \
     -lmpfr -lgmpxx -lgmp -lm -lstdc++ 
 
 CXXFLAGS := -Wall -Werror -Wfatal-errors \
@@ -54,7 +46,6 @@ CXXFLAGS := -Wall -Werror -Wfatal-errors \
     -I $(INSTALL)/include/ \
     -I $(LDD)/include/ldd/ \
     -I $(APRON)/include/ \
-    -I $(CRABDIR)/build/apron-prefix/src/apron/optoctagons/ \
     -O0 -g3 -std=c++17
 
 all: test
@@ -76,9 +67,8 @@ clean:
 crab_install:
 	mkdir -p $(CRABDIR)/build
 	cd $(CRABDIR)/build \
-	    && cmake -DCMAKE_INSTALL_PREFIX=../install/ -DUSE_LDD=ON -DUSE_APRON=ON ../ \
+	    && cmake -DCMAKE_INSTALL_PREFIX=../install/ -DUSE_LDD=ON ../ \
 	    && cmake --build . --target ldd && cmake ../ \
-	    && cmake --build . --target apron && cmake ../ \
 	    && cmake --build . --target install
 
 linux_samples:
