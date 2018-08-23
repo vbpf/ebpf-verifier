@@ -58,6 +58,8 @@ int main(int argc, char **argv)
             global_options.check_semantic_reachability = true;
         } else if (arg == "--no-raw-reachability") {
             global_options.check_raw_reachability = false;
+        } else if (arg == "--no-print-invariants") {
+            global_options.print_invariants = false;
         } else {
             posargs.push_back(arg);
         }

@@ -67,11 +67,12 @@ bool abs_validate(vector<struct ebpf_inst> insts,
     
     checks_db checks = analyze(domain_name, cfg, pre_printer, post_printer);
     int nwarn = checks.get_total_warning() + checks.get_total_error();
-    
-    for (string label : sorted_labels(cfg)) {
-        pre_printer(label);
-        cfg.get_node(label).write(crab::outs());
-        post_printer(label);
+    if (global_options.print_invariants) {
+        for (string label : sorted_labels(cfg)) {
+            pre_printer(label);
+            cfg.get_node(label).write(crab::outs());
+            post_printer(label);
+        }
     }
 
     if (nwarn > 0) {
@@ -202,7 +203,8 @@ global_options_t global_options {
     .simplify = false,
     .stats = false,
     .check_raw_reachability = true,
-    .check_semantic_reachability = false
+    .check_semantic_reachability = false,
+    .print_invariants = true
 };
 
 map<string, string> domain_descriptions()
