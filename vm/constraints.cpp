@@ -793,7 +793,10 @@ vector<basic_block_t*> instruction_builder_t::exec_call()
             b->assign(machine.regs[0].region, T_NUM);
             break;
         case RET_VOID:
-            b->assign(machine.regs[0].region, T_UNINIT);
+            // return from tail call - meaning the call has failed; return negative
+            b->assign(machine.regs[0].region, T_NUM);
+            b->havoc(machine.regs[0].value);
+            b->assertion(machine.regs[0].value < 0);
             break;
         }
     }
