@@ -46,7 +46,7 @@ CXXFLAGS := -Wall -Werror -Wfatal-errors \
     -I $(INSTALL)/include/ \
     -I $(LDD)/include/ldd/ \
     -I $(APRON)/include/ \
-    -O0 -g3 -std=c++17
+    -O2 -g3 -std=c++17
 
 all: test
 
@@ -63,6 +63,9 @@ test: ${OBJECTS}
 
 clean:
 	rm -f test *.a *.o
+
+crab_clean:
+	rm -rf $(CRABDIR)/build $(CRABDIR)/install
 
 crab_install:
 	mkdir -p $(CRABDIR)/build
