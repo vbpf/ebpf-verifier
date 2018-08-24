@@ -78,7 +78,7 @@ def R(reg):
     return "r" + str(reg)
 
 def I(imm):
-    return "%#x" % imm
+    return "%#x" % (imm if imm <= 0x7fffffff else (imm-0x100000000))
 
 def S(imm):
     s = ''.join(chr((imm >> i) & 0xff) for i in range(0, 4*(len(I(imm))-2), 8))
