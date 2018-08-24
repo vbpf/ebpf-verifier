@@ -326,8 +326,8 @@ static void wrap32(basic_block_t& block, var_t& dst_value)
 
 void instruction_builder_t::no_pointer(basic_block_t& block, dom_t& v)
 {
-    block.havoc(v.offset);
     block.assign(v.region, T_NUM);
+    block.havoc(v.offset);
 }
 
 vector<basic_block_t*> abs_machine_t::exec(ebpf_inst inst, ebpf_inst next_inst, basic_block_t& block, cfg_t& cfg)
@@ -406,8 +406,10 @@ vector<basic_block_t*> instruction_builder_t::exec_data_access(basic_block_t& bl
     mid.assertion(addr <= machine.total_size - width, di);
     if (is_load) {
         auto blocks = machine.data_arr.load(mid, data_reg, addr, width, cfg);
-        for (auto b : blocks)
+        for (auto b : blocks) {
             b->assign(data_reg.region, T_NUM);
+            b->havoc(data_reg.offset);
+        }
         return blocks;
     } else {
         mid.assertion(data_reg.region == T_NUM);
@@ -458,6 +460,7 @@ vector<basic_block_t*> instruction_builder_t::exec_ctx_access(basic_block_t& blo
         auto blocks = machine.ctx_arr.load(normal, data_reg, addr, width, cfg);
         for (auto b : blocks) {
             b->assign(data_reg.region, T_NUM);
+            b->havoc(data_reg.offset);
             ret.push_back(b);
         }
         return ret;
@@ -518,6 +521,10 @@ vector<basic_block_t*> instruction_builder_t::exec_direct_stack_store_immediate(
     block.assign(lb, start);
     block.assign(ub, start + width);
     block.array_init(machine.stack_arr.regions, 1, lb, ub, T_NUM);
+
+    block.havoc(machine.top);
+    block.array_init(machine.stack_arr.offsets, 1, lb, ub, machine.top);
+
     block.array_store(machine.stack_arr.values, start, immediate, width);
     return { &block };
 }
@@ -610,6 +617,7 @@ vector<basic_block_t*> instruction_builder_t::exec_mem()
         block.assertion(machine.regs[6].region == T_CTX, di);
         machine.data_arr.load(block, machine.regs[0], inst.imm, width, cfg);
         block.assign(machine.regs[0].region, T_NUM);
+        block.havoc(machine.regs[0].offset);
         scratch_regs(block);
         return { &block };
 
@@ -619,6 +627,7 @@ vector<basic_block_t*> instruction_builder_t::exec_mem()
         block.assertion(machine.regs[6].region == T_CTX, di);
         machine.data_arr.load(block, machine.regs[0], machine.regs[inst.src].value + inst.imm, width, cfg);
         block.assign(machine.regs[0].region, T_NUM);
+        block.havoc(machine.regs[0].offset);
         scratch_regs(block);
         return { &block };
 
@@ -779,24 +788,27 @@ vector<basic_block_t*> instruction_builder_t::exec_call()
         }
     }
 
+    dom_t r0 = machine.regs[0];
     for (auto b: blocks) {
         scratch_regs(*b);
         switch (proto.ret_type) {
         case RET_PTR_TO_MAP_VALUE_OR_NULL:
-            b->assign(machine.regs[0].region, T_MAP);
-            b->havoc(machine.regs[0].value);
-            b->assume(0 <= machine.regs[0].value);
-            b->assign(machine.regs[0].offset, 0);
+            b->assign(r0.region, T_MAP);
+            b->havoc(r0.value);
+            b->assume(0 <= r0.value);
+            b->assign(r0.offset, 0);
             break;
         case RET_INTEGER:
-            b->havoc(machine.regs[0].value);
-            b->assign(machine.regs[0].region, T_NUM);
+            b->havoc(r0.value);
+            b->assign(r0.region, T_NUM);
+            b->havoc(r0.offset);
             break;
         case RET_VOID:
             // return from tail call - meaning the call has failed; return negative
-            b->assign(machine.regs[0].region, T_NUM);
-            b->havoc(machine.regs[0].value);
-            b->assertion(machine.regs[0].value < 0);
+            b->havoc(r0.value);
+            b->assign(r0.region, T_NUM);
+            b->havoc(r0.offset);
+            b->assume(r0.value < 0);
             break;
         }
     }
@@ -872,6 +884,7 @@ vector<basic_block_t*> instruction_builder_t::exec_alu()
             same.assume(eq(dst.region, src.region));
             same.sub(dst.value, dst.offset, src.offset);
             same.assign(dst.region, T_NUM);
+            same.havoc(dst.offset);
 
             basic_block_t& num_src = add_child(cfg, block, "num_src");
             num_src.assume(src.region == T_NUM);
