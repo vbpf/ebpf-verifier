@@ -175,8 +175,8 @@ const map<string, domain_desc> domains{
     { "boxes"             , { analyze<z_boxes_domain_t>, "boxes (z_boxes_domain_t)" } },
     { "boxes-arr"         , { analyze<array_expansion_domain<z_boxes_domain_t>>, "mem: boxes (z_boxes_domain_t)" } },
     { "disj_interval"     , { analyze<z_dis_interval_domain_t>, "disjoint intervals (z_dis_interval_domain_t)" } },
-#ifdef APRON
     { "disj_interval-arr" , { analyze<array_expansion_domain<z_dis_interval_domain_t>>, "mem: disjoint intervals (z_dis_interval_domain_t)" } },
+#ifdef APRON
     { "box_apron"         , { analyze<z_box_apron_domain_t>, "boxes x apron (z_box_apron_domain_t)" } },
     { "box_apron-arr"     , { analyze<array_expansion_domain<z_box_apron_domain_t>>, "mem: boxes x apron (z_box_apron_domain_t)" } },
     { "opt_oct_apron"     , { analyze<z_opt_oct_apron_domain_t>, "optional octagon x apron (z_opt_oct_apron_domain_t)" } },
