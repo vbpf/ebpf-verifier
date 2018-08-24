@@ -166,7 +166,7 @@ abs_machine_t::~abs_machine_t() = default;
 machine_t::machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac)
     : ctx_desc{get_descriptor(prog_type)}, vfac{vfac}
 {
-    for (int i=0; i < 11; i++) {
+    for (int i=0; i < 12; i++) {
         this->regs.emplace_back(vfac, i);
     }
 }
@@ -330,9 +330,44 @@ void instruction_builder_t::no_pointer(basic_block_t& block, dom_t v)
     block.havoc(v.offset);
 }
 
+template <typename T>
+static void move_into(vector<T>& dst, vector<T>&& src)
+{
+    dst.insert(dst.end(),
+        std::make_move_iterator(src.begin()),
+        std::make_move_iterator(src.end())
+    );
+}
+
 vector<basic_block_t*> abs_machine_t::exec(ebpf_inst inst, ebpf_inst next_inst, basic_block_t& block, cfg_t& cfg)
 {
-    return instruction_builder_t(*impl, inst, next_inst, block, cfg).exec();
+    switch (inst.opcode) {
+    case EBPF_STXADDDW:
+    case EBPF_STXADDW: {
+        ebpf_inst load_inst = inst;
+        load_inst.dst = 11;
+        load_inst.opcode = EBPF_OP_LDXW | (inst.opcode & EBPF_SIZE_MASK);
+        vector<basic_block_t*> loaded = instruction_builder_t(*impl, load_inst, {}, block, cfg).exec();
+
+        ebpf_inst add_inst = inst;
+        add_inst.dst = 11;
+        add_inst.opcode = EBPF_OP_ADD_REG;
+        vector<basic_block_t*> added;
+        for (auto b: loaded) {
+            move_into(added, instruction_builder_t(*impl, add_inst, {}, *b, cfg).exec());
+        }
+
+        ebpf_inst store_inst = inst;
+        store_inst.src = 11;
+        store_inst.opcode = EBPF_OP_STXW | (inst.opcode & EBPF_SIZE_MASK);
+        vector<basic_block_t*> stored;
+        for (auto b: added) {
+            move_into(stored, instruction_builder_t(*impl, store_inst, {}, *b, cfg).exec());
+        }
+        return stored;
+    }
+    }
+    return instruction_builder_t(*impl, inst, next_inst, block, cfg).exec(); 
 }
 
 uint64_t immediate(ebpf_inst inst, ebpf_inst next_inst)
@@ -529,14 +564,6 @@ vector<basic_block_t*> instruction_builder_t::exec_direct_stack_store_immediate(
     return { &block };
 }
 
-template <typename T>
-static void move_into(vector<T>& dst, vector<T>&& src)
-{
-    dst.insert(dst.end(),
-        std::make_move_iterator(src.begin()),
-        std::make_move_iterator(src.end())
-    );
-}
 
 template<typename W>
 vector<basic_block_t*> instruction_builder_t::exec_mem_access_indirect(basic_block_t& block, bool is_load, bool is_ST, dom_t mem_reg, dom_t data_reg, int offset, W width)
