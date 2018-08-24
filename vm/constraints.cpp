@@ -40,7 +40,7 @@ struct dom_t {
     dom_t(var_t value, var_t offset, var_t region) : value(value), offset(offset), region(region) { };
 };
 
-static void assert_init(basic_block_t& block, const dom_t& data_reg, debug_info di)
+static void assert_init(basic_block_t& block, const dom_t data_reg, debug_info di)
 {
     block.assertion(data_reg.region >= T_NUM, di);
 }
@@ -57,7 +57,7 @@ struct array_dom_t {
         regions{vfac[std::string(name + "_t")], crab::ARR_INT_TYPE, 8}
     { }
     template<typename T, typename W>
-    vector<basic_block_t*> load(basic_block_t& block, dom_t& data_reg, const T& offset, W width, cfg_t& cfg) {
+    vector<basic_block_t*> load(basic_block_t& block, dom_t data_reg, const T& offset, W width, cfg_t& cfg) {
         block.array_load(data_reg.value, values, offset, width);
         block.array_load(data_reg.region, regions, offset, width);
         block.array_load(data_reg.offset, offsets, offset, width);
@@ -65,7 +65,7 @@ struct array_dom_t {
     }
     
     template<typename T, typename W>
-    vector<basic_block_t*> store(basic_block_t& block, const T& offset, const dom_t& data_reg, W width, debug_info di, cfg_t& cfg) {
+    vector<basic_block_t*> store(basic_block_t& block, const T& offset, const dom_t data_reg, W width, debug_info di, cfg_t& cfg) {
         var_t lb{vfac["lb"], crab::INT_TYPE, 64};
         var_t ub{vfac["ub"], crab::INT_TYPE, 64};
         block.assign(lb, offset);
@@ -128,7 +128,7 @@ private:
     int width = access_width(inst.opcode);
 
     void scratch_regs(basic_block_t& block);
-    static void no_pointer(basic_block_t& block, dom_t& v);
+    static void no_pointer(basic_block_t& block, dom_t v);
 
     vector<basic_block_t*> exec_mem();
     vector<basic_block_t*> exec_alu();
@@ -324,7 +324,7 @@ static void wrap32(basic_block_t& block, var_t& dst_value)
 }
 
 
-void instruction_builder_t::no_pointer(basic_block_t& block, dom_t& v)
+void instruction_builder_t::no_pointer(basic_block_t& block, dom_t v)
 {
     block.assign(v.region, T_NUM);
     block.havoc(v.offset);
@@ -702,7 +702,7 @@ vector<basic_block_t*> instruction_builder_t::exec_call()
     vector<basic_block_t*> blocks{&block};
     std::array<bpf_arg_type, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
     for (bpf_arg_type t : args) {
-        dom_t& arg = machine.regs[++i];
+        dom_t arg = machine.regs[++i];
         if (t == ARG_DONTCARE)
             break;
         auto assert_pointer_or_null = [&](lin_cst_t cst) {
