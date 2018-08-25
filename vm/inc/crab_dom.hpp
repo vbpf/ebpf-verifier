@@ -81,7 +81,7 @@ namespace crab {
     using z_term_domain_t = term_domain<term::TDomInfo<ikos::z_number,varname_t,z_interval_domain_t> >;
     using z_term_dbm_t = term_domain<term::TDomInfo<ikos::z_number,varname_t,z_sdbm_domain_t> >;
     using z_term_dis_int_t = term_domain<term::TDomInfo<ikos::z_number,varname_t,z_dis_interval_domain_t> >;
-    using z_num_domain_t = reduced_numerical_domain_product2<z_term_dis_int_t,z_sdbm_domain_t>;
+    using z_num_domain_t = reduced_numerical_domain_product2<z_term_dis_int_t,z_sdbm_domain_t,reduced_product_impl::term_dbm_params>;
     using z_num_boxes_domain_t = reduced_numerical_domain_product2<z_boxes_domain_t,z_sdbm_domain_t>;
 
     // Pointer domains over integers
