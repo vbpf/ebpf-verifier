@@ -1,105 +1,206 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <map>
+#include <type_traits>
 
 #include "instructions.hpp"
 #include "common.hpp"
 #include "constraints.hpp"
-#include "prototypes.h"
+#include "prototypes.hpp"
+#include "type_descriptors.hpp"
 
 using std::tuple;
 using std::string;
 using std::vector;
-using std::map;
 
-// rough estimates:
-static constexpr int perf_max_trace_size = 2048;
-static constexpr int ptregs_size = (3 + 63 + 8 + 2) * 8;
+using ikos::z_number;
+using debug_info = crab::cfg::debug_info;
 
-static constexpr int cgroup_dev_regions = 3 * 4;
-static constexpr int kprobe_regions = ptregs_size;
-static constexpr int tracepoint_regions = perf_max_trace_size;
-static constexpr int perf_event_regions = 3 * 8 + ptregs_size;
-static constexpr int socket_filter_regions = 24 * 4;
-static constexpr int sched_regions = 24 * 4;
-static constexpr int xdp_regions = 5 * 4;
-static constexpr int lwt_regions = 24 * 4;
-static constexpr int cgroup_sock_regions = 12 * 4;
-static constexpr int sock_ops_regions =  42 * 4 + 2 * 8;
-static constexpr int sk_skb_regions = 36 * 4;
+using var_t     = ikos::variable<z_number, varname_t>;
+using lin_cst_t = ikos::linear_constraint<z_number, varname_t>;
 
-static constexpr ptype_descr sk_buff = { sk_skb_regions, 19*4, 20*4, 35*4};
-static constexpr ptype_descr xdp_md = { xdp_regions, 0, 1*4, 2*4};
-static constexpr ptype_descr sk_msg_md = { 11*4, 0, 1*4, -1};
+enum region_t {
+    T_UNINIT,
+    T_NUM,
+    T_CTX,
+    T_STACK,
+    T_DATA,
+    T_MAP,
+};
 
-static constexpr ptype_descr unspec_descr = { 0 };
-static constexpr ptype_descr cgroup_dev_descr = {cgroup_dev_regions};
-static constexpr ptype_descr kprobe_descr = {kprobe_regions};
-static constexpr ptype_descr tracepoint_descr = {tracepoint_regions};
-static constexpr ptype_descr perf_event_descr = {perf_event_regions};
-static constexpr ptype_descr socket_filter_descr = sk_buff;
-static constexpr ptype_descr sched_descr = sk_buff;
-static constexpr ptype_descr xdp_descr = xdp_md;
-static constexpr ptype_descr lwt_xmit_descr = sk_buff;
-static constexpr ptype_descr lwt_inout_descr = sk_buff;
-static constexpr ptype_descr cgroup_sock_descr = {cgroup_sock_regions};
-static constexpr ptype_descr sock_ops_descr = {sock_ops_regions};
-static constexpr ptype_descr sk_skb_descr = sk_buff;
+struct dom_t {
+    var_t value;
+    var_t offset;
+    var_t region;
+    dom_t(variable_factory_t& vfac, int i) :
+        value{vfac[std::string("r") + std::to_string(i)], crab::INT_TYPE, 64}, 
+        offset{vfac[std::string("off") + std::to_string(i)], crab::INT_TYPE, 64},
+        region{vfac[std::string("t") + std::to_string(i)], crab::INT_TYPE, 8}
+    { }
+    dom_t(var_t value, var_t offset, var_t region) : value(value), offset(offset), region(region) { };
+};
 
-const std::map<ebpf_prog_type, ptype_descr> descriptors {
-	{EBPF_PROG_TYPE_UNSPEC, unspec_descr},
-	{EBPF_PROG_TYPE_CGROUP_DEVICE, cgroup_dev_descr},
-	{EBPF_PROG_TYPE_KPROBE, kprobe_descr},
-	{EBPF_PROG_TYPE_TRACEPOINT, tracepoint_descr},
-    {EBPF_PROG_TYPE_RAW_TRACEPOINT, tracepoint_descr},
-	{EBPF_PROG_TYPE_PERF_EVENT, perf_event_descr},
-	{EBPF_PROG_TYPE_SOCKET_FILTER, socket_filter_descr},
-	{EBPF_PROG_TYPE_CGROUP_SKB, socket_filter_descr},
-	{EBPF_PROG_TYPE_SCHED_ACT, sched_descr},
-	{EBPF_PROG_TYPE_SCHED_CLS, sched_descr},
-	{EBPF_PROG_TYPE_XDP, xdp_descr},
-	{EBPF_PROG_TYPE_LWT_XMIT, lwt_xmit_descr},
-	{EBPF_PROG_TYPE_LWT_IN,  lwt_inout_descr},
-	{EBPF_PROG_TYPE_LWT_OUT, lwt_inout_descr},
-	{EBPF_PROG_TYPE_CGROUP_SOCK, cgroup_sock_descr},
-	{EBPF_PROG_TYPE_SOCK_OPS, sock_ops_descr},
-	{EBPF_PROG_TYPE_SK_SKB, sk_skb_descr},
-    {EBPF_PROG_TYPE_SK_MSG, sk_msg_md},
+static void assert_init(basic_block_t& block, const dom_t data_reg, debug_info di)
+{
+    block.assertion(data_reg.region >= T_NUM, di);
+}
+
+struct array_dom_t {
+    variable_factory_t& vfac;
+    var_t values;
+    var_t offsets;
+    var_t regions;
+    array_dom_t(variable_factory_t& vfac, std::string name) :
+        vfac(vfac),
+        values{vfac[std::string(name + "_r")], crab::ARR_INT_TYPE, 64}, 
+        offsets{vfac[std::string(name + "_off")], crab::ARR_INT_TYPE, 64},
+        regions{vfac[std::string(name + "_t")], crab::ARR_INT_TYPE, 8}
+    { }
+    template<typename T, typename W>
+    vector<basic_block_t*> load(basic_block_t& block, dom_t data_reg, const T& offset, W width, cfg_t& cfg) {
+        block.array_load(data_reg.value, values, offset, width);
+        block.array_load(data_reg.region, regions, offset, width);
+        block.array_load(data_reg.offset, offsets, offset, width);
+        return { &block };
+    }
+    
+    template<typename T, typename W>
+    vector<basic_block_t*> store(basic_block_t& block, const T& offset, const dom_t data_reg, W width, debug_info di, cfg_t& cfg) {
+        var_t lb{vfac["lb"], crab::INT_TYPE, 64};
+        var_t ub{vfac["ub"], crab::INT_TYPE, 64};
+        block.assign(lb, offset);
+        block.assign(ub, offset + width);
+        block.array_init(regions, 1, lb, ub, data_reg.region);
+
+        block.array_store(values, offset, data_reg.value, width);
+
+        basic_block_t& pointer_only = add_child(cfg, block, "pointer_only");
+        pointer_only.assume(data_reg.region > T_NUM);
+        pointer_only.array_store(offsets, offset, data_reg.offset, width);
+
+
+        basic_block_t& num_only = add_child(cfg, block, "num_only");
+        num_only.assume(data_reg.region == T_NUM);
+        num_only.array_store(offsets, offset, data_reg.offset, width);
+        num_only.havoc(data_reg.offset); // so that relational domains won't think it's worth keeping track of
+
+        return {&num_only, &pointer_only};
+    }
 };
 
 
-constraints::constraints(ebpf_prog_type prog_type, variable_factory_t& vfac)
-    : ctx_desc{descriptors.at(prog_type)}, vfac{vfac}
+struct machine_t final
 {
-    for (int i=0; i < 11; i++) {
-        regs.emplace_back(vfac, i);
+    ptype_descr ctx_desc;
+    variable_factory_t& vfac;
+    std::vector<dom_t> regs;
+    array_dom_t stack_arr{vfac, "S"};
+    array_dom_t ctx_arr{vfac, "C"};
+    array_dom_t data_arr{vfac, "D"};
+    var_t meta_size{vfac[std::string("meta_size")], crab::INT_TYPE, 64};
+    var_t total_size{vfac[std::string("total_data_size")], crab::INT_TYPE, 64};
+    var_t top{vfac[std::string("*")], crab::INT_TYPE, 64};
+    var_t num{vfac[std::to_string(T_NUM)], crab::INT_TYPE, 8};
+
+    machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac);
+};
+
+class instruction_builder_t final
+{
+public:
+    vector<basic_block_t*> exec();
+    instruction_builder_t(machine_t& machine, ebpf_inst inst, ebpf_inst next_inst, basic_block_t& block, cfg_t& cfg) :
+        machine(machine), inst(inst), next_inst(next_inst), block(block), cfg(cfg), pc(first_num(block)),
+        di{"pc", (unsigned int)pc, 0}, mem_reg(is_load(inst.opcode) ? inst.src : inst.dst), width(access_width(inst.opcode))
+        {
+        }
+private:
+    machine_t& machine;
+    ebpf_inst inst;
+    ebpf_inst next_inst; // for LDDW, STDW
+    basic_block_t& block;
+    cfg_t& cfg;
+
+    // derived fields
+    int pc;
+    debug_info di;
+    uint8_t mem_reg = is_load(inst.opcode) ? inst.src : inst.dst;
+    int width = access_width(inst.opcode);
+
+    void scratch_regs(basic_block_t& block);
+    static void no_pointer(basic_block_t& block, dom_t v);
+
+    vector<basic_block_t*> exec_mem();
+    vector<basic_block_t*> exec_alu();
+    vector<basic_block_t*> exec_call();
+
+    template<typename W>
+    vector<basic_block_t*> exec_stack_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width);
+
+    template<typename W>
+    vector<basic_block_t*> exec_map_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width);
+
+    template<typename W>
+    vector<basic_block_t*> exec_data_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width);
+
+    template<typename W>
+    vector<basic_block_t*> exec_ctx_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width);
+
+    vector<basic_block_t*> exec_direct_stack_load(basic_block_t& block, dom_t data_reg, int _offset, int width);
+
+    vector<basic_block_t*> exec_direct_stack_store(basic_block_t& block, dom_t data_reg, int _offset, int width);
+    
+    vector<basic_block_t*> exec_direct_stack_store_immediate(basic_block_t& block, int _offset, int width, uint64_t immediate);
+
+    template<typename W>
+    vector<basic_block_t*> exec_mem_access_indirect(basic_block_t& block, bool is_load, bool is_st, dom_t mem_reg, dom_t data_reg, int offset, W width);
+};
+
+abs_machine_t::abs_machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac)
+: impl{new machine_t{prog_type, vfac}}
+{
+}
+
+abs_machine_t::~abs_machine_t() = default;
+
+machine_t::machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac)
+    : ctx_desc{get_descriptor(prog_type)}, vfac{vfac}
+{
+    for (int i=0; i < 12; i++) {
+        this->regs.emplace_back(vfac, i);
     }
 }
 
-void constraints::setup_entry(basic_block_t& entry)
+void abs_machine_t::setup_entry(basic_block_t& entry)
 {
-    entry.havoc(top);
+    auto& machine = *impl;
+    entry.havoc(machine.top);
+    entry.assign(machine.num, T_NUM);
 
-    entry.assume(STACK_SIZE <= regs[10].value);
-    entry.assign(regs[10].offset, 0); // XXX: Maybe start with T_STACK
-    entry.assign(regs[10].region, T_STACK);
+    entry.assume(STACK_SIZE <= machine.regs[10].value);
+    entry.assign(machine.regs[10].offset, 0); // XXX: Maybe start with STACK_SIZE
+    entry.assign(machine.regs[10].region, T_STACK);
 
-    entry.assume(1 <= regs[1].value);
-    entry.assign(regs[1].offset, 0);
-    entry.assign(regs[1].region, T_CTX);
+    entry.assume(1 <= machine.regs[1].value);
+    entry.assign(machine.regs[1].offset, 0);
+    entry.assign(machine.regs[1].region, T_CTX);
 
     for (int i : {0, 2, 3, 4, 5, 6, 7, 8, 9}) {
-        entry.assign(regs[i].region, T_UNINIT);
+        entry.assign(machine.regs[i].region, T_UNINIT);
     }
 
-    entry.assume(0 <= total_size);
-    if (ctx_desc.meta < 0) {
-        entry.assign(meta_size, 0);
+    entry.assume(0 <= machine.total_size);
+    if (machine.ctx_desc.meta < 0) {
+        entry.assign(machine.meta_size, 0);
     } else {
-        entry.assume(0 <= meta_size);
-        entry.assume(meta_size <= total_size);
+        entry.assume(0 <= machine.meta_size);
+        entry.assume(machine.meta_size <= machine.total_size);
     }
+}
+
+static lin_cst_t is_pointer(dom_t v)
+{
+    return v.region >= T_CTX;
 }
 
 static auto eq(var_t& a, var_t& b)
@@ -107,25 +208,32 @@ static auto eq(var_t& a, var_t& b)
     return lin_cst_t(a - b, lin_cst_t::EQUALITY);
 }
 
-static lin_cst_t jmp_to_cst_offsets(uint8_t opcode, int imm, var_t& dst_offset, var_t& src_offset)
+static auto neq(var_t& a, var_t& b)
+{
+    return lin_cst_t(a - b, lin_cst_t::DISEQUATION);
+}
+
+static lin_cst_t jmp_to_cst_offsets(uint8_t opcode, var_t& dst_offset, var_t& src_offset)
 {
     switch (opcode) {
-    case EBPF_OP_JEQ_REG:
-        return eq(dst_offset, src_offset);
+    case EBPF_OP_JEQ_REG:  return eq(dst_offset, src_offset);
+    case EBPF_OP_JNE_REG:  return neq(dst_offset, src_offset);
 
+    // don't leak
+    case EBPF_OP_JEQ_IMM:  assert(false); break;
+    case EBPF_OP_JNE_IMM:  assert(false); break;
+    
     case EBPF_OP_JGE_REG:  return dst_offset >= src_offset; // FIX unsigned
     case EBPF_OP_JSGE_REG: return dst_offset >= src_offset;
     case EBPF_OP_JLE_REG:  return dst_offset <= src_offset; // FIX unsigned
     case EBPF_OP_JSLE_REG: return dst_offset <= src_offset;
-    case EBPF_OP_JNE_REG:
-        return lin_cst_t(dst_offset - src_offset, lin_cst_t::DISEQUATION);
     
-    case EBPF_OP_JGT_REG:  return dst_offset > src_offset; // FIX unsigned
-    case EBPF_OP_JSGT_REG: return dst_offset > src_offset;
+    case EBPF_OP_JGT_REG:  return dst_offset >= src_offset + 1; // FIX unsigned
+    case EBPF_OP_JSGT_REG: return dst_offset >= src_offset + 1;
 
     // Note: reverse the test as a workaround strange lookup:
-    case EBPF_OP_JLT_REG:  return src_offset > dst_offset; // FIX unsigned
-    case EBPF_OP_JSLT_REG: return src_offset > dst_offset;
+    case EBPF_OP_JLT_REG:  return src_offset >= dst_offset + 1; // FIX unsigned
+    case EBPF_OP_JSLT_REG: return src_offset >= dst_offset + 1;
     }
     return dst_offset - dst_offset == 0;
 }
@@ -135,9 +243,11 @@ static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& dst_value, var_t& sr
 {
     switch (opcode) {
     case EBPF_OP_JEQ_IMM:  return dst_value == imm;
-    case EBPF_OP_JEQ_REG:
-        return eq(dst_value, src_value);
+    case EBPF_OP_JEQ_REG:  return eq(dst_value, src_value);
 
+    case EBPF_OP_JNE_IMM:  return dst_value != imm;
+    case EBPF_OP_JNE_REG:  return neq(dst_value, src_value);
+    
     case EBPF_OP_JGE_IMM:  return dst_value >= imm; // FIX unsigned
     case EBPF_OP_JGE_REG:  return dst_value >= src_value; // FIX unsigned
 
@@ -149,34 +259,62 @@ static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& dst_value, var_t& sr
     case EBPF_OP_JSLE_IMM: return dst_value <= imm;
     case EBPF_OP_JSLE_REG: return dst_value <= src_value;
 
-    case EBPF_OP_JNE_IMM:  return dst_value != imm;
-    case EBPF_OP_JNE_REG:
-        return lin_cst_t(dst_value - src_value, lin_cst_t::DISEQUATION);
-    
-    case EBPF_OP_JGT_IMM:  return dst_value > imm; // FIX unsigned
-    case EBPF_OP_JGT_REG:  return dst_value > src_value; // FIX unsigned
-    case EBPF_OP_JSGT_IMM: return dst_value > imm;
-    case EBPF_OP_JSGT_REG: return dst_value > src_value;
+    case EBPF_OP_JGT_IMM:  return dst_value >= imm + 1; // FIX unsigned
+    case EBPF_OP_JGT_REG:  return dst_value >= src_value + 1; // FIX unsigned
+    case EBPF_OP_JSGT_IMM: return dst_value >= imm + 1;
+    case EBPF_OP_JSGT_REG: return dst_value >= src_value + 1;
 
-    case EBPF_OP_JLT_IMM:  return dst_value < imm; // FIX unsigned
+    case EBPF_OP_JLT_IMM:  return dst_value <= imm - 1; // FIX unsigned
     // Note: reverse the test as a workaround strange lookup:
-    case EBPF_OP_JLT_REG:  return src_value > dst_value; // FIX unsigned
-    case EBPF_OP_JSLT_IMM: return dst_value < imm;
-    case EBPF_OP_JSLT_REG: return src_value > dst_value;
+    case EBPF_OP_JLT_REG:  return src_value >= dst_value + 1; // FIX unsigned
+    case EBPF_OP_JSLT_IMM: return dst_value <= imm - 1;
+    case EBPF_OP_JSLT_REG: return src_value >= dst_value + 1;
     }
     assert(false);
 }
 
 
-void constraints::jump(ebpf_inst inst, basic_block_t& block, bool taken)
+basic_block_t& abs_machine_t::jump(ebpf_inst inst, bool taken, basic_block_t& block, cfg_t& cfg)
 {
+    auto& machine = *impl;
     uint8_t opcode = taken ? inst.opcode : reverse(inst.opcode);
-    lin_cst_t cst = jmp_to_cst(opcode, inst.imm, regs[inst.dst].value, regs[inst.src].value);
-    block.assume(cst);
+    auto& dst = machine.regs[inst.dst];
+    auto& src = machine.regs[inst.src];
+    lin_cst_t cst = jmp_to_cst(opcode, inst.imm, dst.value, src.value);
+    debug_info di{"pc", (unsigned int)first_num(block), 0}; 
 
-    lin_cst_t offset_cst = jmp_to_cst_offsets(opcode, inst.imm, regs[inst.dst].offset, regs[inst.src].offset);
-    if (!offset_cst.is_tautology()) {
-        block.assume(offset_cst);
+    if (opcode & EBPF_SRC_REG) {
+
+        basic_block_t& same = add_child(cfg, block, "same_type");
+        same.assume(cst);
+        same.assume(jmp_to_cst(opcode, inst.imm, dst.value, src.value));
+        same.assume(eq(dst.region, src.region));
+
+        basic_block_t& null_src = add_child(cfg, block, "null_src");
+        null_src.assume(src.region == T_NUM);
+        null_src.assume(is_pointer(dst));
+        null_src.assertion(src.value == 0, di);
+
+        basic_block_t& null_dst = add_child(cfg, block, "null_dst");
+        null_dst.assume(dst.region == T_NUM);
+        null_dst.assume(is_pointer(src));
+        null_dst.assertion(dst.value == 0, di);
+
+        auto prevs = {same.label(), null_src.label(), null_dst.label()};
+        basic_block_t& offset_check = add_common_child(cfg, block, prevs, "offsets_check");
+
+        lin_cst_t offset_cst = jmp_to_cst_offsets(opcode, dst.offset, src.offset);
+        if (!offset_cst.is_tautology()) {
+            offset_check.assume(offset_cst);
+        }
+        return offset_check;
+    } else {
+        block.assume(cst);
+        if (inst.imm != 0) {
+            // only null can be compared to pointers without leaking secrets
+            block.assertion(dst.region == T_NUM, di);
+        }
+        return block;
     }
 }
 
@@ -186,88 +324,449 @@ static void wrap32(basic_block_t& block, var_t& dst_value)
 }
 
 
-void constraints::no_pointer(basic_block_t& block, dom_t& v)
+void instruction_builder_t::no_pointer(basic_block_t& block, dom_t v)
 {
-    block.havoc(v.offset);
     block.assign(v.region, T_NUM);
+    block.havoc(v.offset);
 }
 
-void constraints::exec(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
+template <typename T>
+static void move_into(vector<T>& dst, vector<T>&& src)
 {
-    crab::cfg::debug_info di{"pc", pc, 0};
+    dst.insert(dst.end(),
+        std::make_move_iterator(src.begin()),
+        std::make_move_iterator(src.end())
+    );
+}
 
-    bool exit_linked = false;
+vector<basic_block_t*> abs_machine_t::exec(ebpf_inst inst, ebpf_inst next_inst, basic_block_t& block, cfg_t& cfg)
+{
+    switch (inst.opcode) {
+    case EBPF_STXADDDW:
+    case EBPF_STXADDW: {
+        ebpf_inst load_inst = inst;
+        load_inst.dst = 11;
+        load_inst.opcode = EBPF_OP_LDXW | (inst.opcode & EBPF_SIZE_MASK);
+        vector<basic_block_t*> loaded = instruction_builder_t(*impl, load_inst, {}, block, cfg).exec();
 
+        ebpf_inst add_inst = inst;
+        add_inst.dst = 11;
+        add_inst.opcode = EBPF_OP_ADD_REG;
+        vector<basic_block_t*> added;
+        for (auto b: loaded) {
+            move_into(added, instruction_builder_t(*impl, add_inst, {}, *b, cfg).exec());
+        }
+
+        ebpf_inst store_inst = inst;
+        store_inst.src = 11;
+        store_inst.opcode = EBPF_OP_STXW | (inst.opcode & EBPF_SIZE_MASK);
+        vector<basic_block_t*> stored;
+        for (auto b: added) {
+            move_into(stored, instruction_builder_t(*impl, store_inst, {}, *b, cfg).exec());
+        }
+        return stored;
+    }
+    }
+    return instruction_builder_t(*impl, inst, next_inst, block, cfg).exec(); 
+}
+
+uint64_t immediate(ebpf_inst inst, ebpf_inst next_inst)
+{
+    return (uint32_t)inst.imm | ((uint64_t)next_inst.imm << 32);
+}
+
+void instruction_builder_t::scratch_regs(basic_block_t& block)
+{
+    for (int i=1; i<=5; i++) {
+        block.havoc(machine.regs[i].value);
+        block.havoc(machine.regs[i].offset);
+        block.assign(machine.regs[i].region, T_UNINIT);
+    }
+}
+
+template<typename W>
+vector<basic_block_t*> instruction_builder_t::exec_stack_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
+{
+    basic_block_t& mid = add_child(cfg, block, "assume_stack");
+    lin_exp_t addr = (-offset) - width - mem_reg.offset; // negate access
+    
+    mid.assume(mem_reg.region == T_STACK);
+    mid.assertion(addr >= 0, di);
+    mid.assertion(addr <= STACK_SIZE - width, di);
+    if (is_load) {
+        machine.stack_arr.load(mid, data_reg, addr, width, cfg);
+        mid.array_load(data_reg.region, machine.stack_arr.regions, addr, 1);
+        mid.assume(data_reg.region >= 1);
+        /* FIX: requires loop
+        var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 8};
+        for (int idx=1; idx < width; idx++) {
+            mid.array_load(tmp, machine.stack_arr.regions, addr+idx, 1);
+            mid.assertion(eq(tmp, data_reg.region), di);
+        }*/
+        return { &mid };
+    } else {
+        assert_init(mid, data_reg, di);
+        return machine.stack_arr.store(mid, addr, data_reg, width, di, cfg);
+    }
+}
+
+template<typename W>
+vector<basic_block_t*> instruction_builder_t::exec_map_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
+{
+    basic_block_t& mid = add_child(cfg, block, "assume_map");
+    lin_exp_t addr = mem_reg.offset + offset;
+
+    mid.assume(mem_reg.region == T_MAP);
+    mid.assertion(addr >= 0, di);
+    constexpr int MAP_SIZE = 256;
+    mid.assertion(addr <= MAP_SIZE - width, di);
+    if (is_load) {
+        mid.havoc(data_reg.value);
+        mid.assign(data_reg.region, T_NUM);
+        mid.havoc(data_reg.offset);
+    } else {
+        mid.assertion(data_reg.region == T_NUM, di);
+    }
+    return { &mid };
+}
+
+template<typename W>
+vector<basic_block_t*> instruction_builder_t::exec_data_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
+{
+    basic_block_t& mid = add_child(cfg, block, "assume_data");
+    lin_exp_t addr = mem_reg.offset + offset;
+
+    mid.assume(mem_reg.region == T_DATA);
+    mid.assertion(addr >= 0, di);
+    mid.assertion(addr <= machine.total_size - width, di);
+    if (is_load) {
+        auto blocks = machine.data_arr.load(mid, data_reg, addr, width, cfg);
+        for (auto b : blocks) {
+            b->assign(data_reg.region, T_NUM);
+            b->havoc(data_reg.offset);
+        }
+        return blocks;
+    } else {
+        mid.assertion(data_reg.region == T_NUM);
+        return machine.data_arr.store(mid, addr, data_reg, width, di, cfg);
+    }
+}
+
+template<typename W>
+vector<basic_block_t*> instruction_builder_t::exec_ctx_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
+{
+    basic_block_t& mid = add_child(cfg, block, "assume_ctx");
+    mid.assume(mem_reg.region == T_CTX);
+    lin_exp_t addr = mem_reg.offset + offset;
+    mid.assertion(addr >= 0, di);
+    mid.assertion(addr <= machine.ctx_desc.size - width, di);
+
+    ptype_descr desc = machine.ctx_desc;
+    auto assume_normal = [&](basic_block_t& b) {
+        if (desc.data >= 0) {
+            b.assume(addr != desc.data);
+            b.assume(addr != desc.end);
+            if (desc.meta >= 0) {
+                b.assume(addr != desc.meta);
+            }
+        }
+    };
+    if (is_load) {
+        vector<basic_block_t*> ret;
+        auto load_datap = [&](string suffix, int start, auto offset) {
+            basic_block_t& b = add_child(cfg, mid, suffix);
+            b.assume(addr == start);
+            b.assign(data_reg.region, T_DATA);
+            b.havoc(data_reg.value);
+            b.assume(4098 <= data_reg.value);
+            b.assign(data_reg.offset, offset);
+            ret.push_back(&b);
+        };
+        if (desc.data >= 0) {
+            load_datap("data_start", desc.data, machine.meta_size);
+            load_datap("data_end", desc.end, machine.total_size);
+            if (desc.meta >= 0) {
+                load_datap("meta", desc.meta, 0);
+            }
+        }
+
+        basic_block_t& normal = add_child(cfg, mid, "assume_ctx_not_special");
+        assume_normal(normal);
+        auto blocks = machine.ctx_arr.load(normal, data_reg, addr, width, cfg);
+        for (auto b : blocks) {
+            b->assign(data_reg.region, T_NUM);
+            b->havoc(data_reg.offset);
+            ret.push_back(b);
+        }
+        return ret;
+    } else {
+        assume_normal(mid);
+        mid.assertion(data_reg.region == T_NUM, di);
+        return machine.ctx_arr.store(mid, addr, data_reg, width, di, cfg);
+    }
+}
+
+static inline void assert_in_stack(basic_block_t& block, int offset, int width, debug_info di) {
+    // NOP - should be done in the validator
+}
+/* Here for the unlikely case the width is dynamic
+static void assert_in_stack(basic_block_t& block, int offset, var_t width, debug_info di) {
+    auto start = (-offset) - width;
+    block.assertion(start >= 0, di);
+    block.assertion(start + width <= STACK_SIZE, di);
+}
+*/
+
+template<typename W>
+auto get_start(int offset, W width) {
+    return (-offset) - width;
+}
+
+vector<basic_block_t*> instruction_builder_t::exec_direct_stack_load(basic_block_t& block, dom_t data_reg, int offset, int width)
+{
+    assert_in_stack(block, offset, width, di);
+    auto start = get_start(offset, width);
+    auto blocks = machine.stack_arr.load(block, data_reg, start, width, cfg);
+    for (auto b : blocks) {
+        b->array_load(data_reg.region, machine.stack_arr.regions, start, 1);
+        b->assume(data_reg.region >= 1);
+    }
+    return blocks;
+    /* FIX: requires loop
+    var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 8};
+    for (int idx=1; idx < width; idx++) {
+        block.array_load(tmp, machine.stack_arr.regions, offset+idx, 1);
+        block.assertion(eq(tmp, data_reg.region), di);
+    }*/
+}
+
+vector<basic_block_t*> instruction_builder_t::exec_direct_stack_store(basic_block_t& block, dom_t data_reg, int offset, int width)
+{
+    assert_in_stack(block, offset, width, di);
+    assert_init(block, data_reg, di);
+    return machine.stack_arr.store(block, (-offset) - width, data_reg, width, di, cfg);
+}
+
+vector<basic_block_t*> instruction_builder_t::exec_direct_stack_store_immediate(basic_block_t& block, int offset, int width, uint64_t immediate)
+{
+    assert_in_stack(block, offset, width, di);
+    auto start = get_start(offset, width);
+    var_t lb{machine.vfac["lb"], crab::INT_TYPE, 64};
+    var_t ub{machine.vfac["ub"], crab::INT_TYPE, 64};
+    block.assign(lb, start);
+    block.assign(ub, start + width);
+    block.array_init(machine.stack_arr.regions, 1, lb, ub, T_NUM);
+
+    block.havoc(machine.top);
+    block.array_init(machine.stack_arr.offsets, 1, lb, ub, machine.top);
+
+    block.array_store(machine.stack_arr.values, start, immediate, width);
+    return { &block };
+}
+
+
+template<typename W>
+vector<basic_block_t*> instruction_builder_t::exec_mem_access_indirect(basic_block_t& block, bool is_load, bool is_ST, dom_t mem_reg, dom_t data_reg, int offset, W width)
+{
+    block.assertion(mem_reg.value != 0, di);
+    block.assertion(mem_reg.region != T_NUM, di);
+    vector<basic_block_t*> outs;
+    
+    move_into(outs, exec_stack_access(block, is_load, mem_reg, data_reg, offset, width));
+    if (is_load || !is_ST) {
+        move_into(outs, exec_ctx_access(block, is_load, mem_reg, data_reg, offset, width));
+    } else {
+        // "BPF_ST stores into R1 context is not allowed"
+        // (This seems somewhat arbitrary)
+        block.assertion(mem_reg.region != T_CTX, di);
+    }
+    move_into(outs, exec_map_access(block, is_load, mem_reg, data_reg, offset, width));
+    if (machine.ctx_desc.data >= 0) {
+        move_into(outs, exec_data_access(block, is_load, mem_reg, data_reg, offset, width));
+    }
+    return outs;
+}
+
+vector<basic_block_t*> instruction_builder_t::exec_mem()
+{
+    dom_t mem_reg =  machine.regs.at(is_load(inst.opcode) ? inst.src : inst.dst);
+    dom_t data_reg = machine.regs.at(is_load(inst.opcode) ? inst.dst : inst.src);
+    bool mem_is_fp = (is_load(inst.opcode) ? inst.src : inst.dst) == 10;
+    uint8_t opcode_width_w = inst.opcode & (~EBPF_SIZE_DW);
+    switch (opcode_width_w) {
+    case EBPF_OP_STW:
+        // mem[offset] = immediate
+        if (inst.dst == 10) {
+            return exec_direct_stack_store_immediate(block, inst.offset, width, immediate(inst, next_inst));
+        } else {
+            var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
+            block.assign(tmp, immediate(inst, next_inst));
+            return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, machine.num}, inst.offset, width);
+        } 
+        break;
+
+    case EBPF_OP_LDXW:
+        // data = mem[offset]
+        if (mem_is_fp) {
+            return exec_direct_stack_load(block, data_reg, inst.offset, width);
+        } else {
+            return exec_mem_access_indirect(block, true, false, mem_reg, data_reg, inst.offset, width);
+        }
+
+    case EBPF_OP_STXW:
+        // mem[offset] = data
+        if (mem_is_fp) {
+            return exec_direct_stack_store(block, data_reg, inst.offset, width);
+        } else {
+            return exec_mem_access_indirect(block, false, false, mem_reg, data_reg, inst.offset, width);
+        }
+        break;
+
+    /* From the linux verifier code:
+    verify safety of LD_ABS|LD_IND instructions:
+    * - they can only appear in the programs where ctx == skb
+    * - since they are wrappers of function calls, they scratch R1-R5 registers,
+    *   preserve R6-R9, and store return value into R0
+    *
+    * Implicit input:
+    *   ctx == skb == R6 == CTX
+    *
+    * Explicit input:
+    *   SRC == any register
+    *   IMM == 32-bit immediate
+    *
+    * Output:
+    *   R0 - 8/16/32-bit skb data converted to cpu endianness
+    */
+    case EBPF_OP_LDABSW:
+    case EBPF_OP_LDXABSW:
+        /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
+        block.assertion(machine.regs[6].region == T_CTX, di);
+        machine.data_arr.load(block, machine.regs[0], inst.imm, width, cfg);
+        block.assign(machine.regs[0].region, T_NUM);
+        block.havoc(machine.regs[0].offset);
+        scratch_regs(block);
+        return { &block };
+
+    case EBPF_OP_LDINDW:
+    case EBPF_OP_LDXINDW:
+        /* Indirect packet access, R0 = *(uint *) (skb->data + src_reg + imm32) */
+        block.assertion(machine.regs[6].region == T_CTX, di);
+        machine.data_arr.load(block, machine.regs[0], machine.regs[inst.src].value + inst.imm, width, cfg);
+        block.assign(machine.regs[0].region, T_NUM);
+        block.havoc(machine.regs[0].offset);
+        scratch_regs(block);
+        return { &block };
+
+    case EBPF_OP_STABSW:
+    case EBPF_OP_STXABSW:
+
+    case EBPF_OP_STINDW:
+    case EBPF_OP_STXINDW:
+        assert(false);
+        return { &block };
+
+    case EBPF_STXADDW:
+    case EBPF_STXADDDW:
+        std::cout << "TODO: XADD\n";
+        return { &block };
+        
+    default: 
+        std::cout << "bad mem instruction " << (int)inst.opcode << " at " << first_num(block) << "\n";
+        assert(false);
+        return {};
+    }
+}
+
+vector<basic_block_t*> instruction_builder_t::exec()
+{
     if (is_alu(inst.opcode)) {
-        exec_alu(inst, block, exit, pc, cfg);
-    } else if (inst.opcode == EBPF_OP_LDDW) {
-        block.assign(regs[inst.dst].value, (uint32_t)inst.imm | ((uint64_t)inst.imm << 32));
-        no_pointer(block, regs[inst.dst]);
-    } else if (is_access(inst.opcode)) {
-        exit_linked = exec_mem_access(inst, block, exit, pc, cfg);
+        return exec_alu();
+    } else if (inst.opcode == EBPF_OP_LDDW_IMM) {
+        if (inst.src == 1) {
+            // magic number, meaning we're a per-process file descriptor
+            // defining the map.
+            // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
+            // This is what ARG_CONST_MAP_PTR looks for
+
+            // This is probably the wrong thing to do. should we add an FD type?
+            // Here we (probably) need the map structure
+            block.assign(machine.regs[inst.dst].region, T_MAP);
+            block.assign(machine.regs[inst.dst].offset, 0);
+            return { &block };
+        } else {
+            block.assign(machine.regs[inst.dst].value, immediate(inst, next_inst));
+            no_pointer(block, machine.regs[inst.dst]);
+            return { &block };
+        }
     } else if (inst.opcode == EBPF_OP_EXIT) {
-        // assert_init(block, regs[inst.dst], di);
-        block.assertion(regs[inst.dst].region == T_NUM, di);
+        // assert_init(block, machine.regs[inst.dst], di);
+        block.assertion(machine.regs[inst.dst].region == T_NUM, di);
+        return { &block };
     } else if (inst.opcode == EBPF_OP_CALL) {
-        exec_call(inst, block, exit, pc, cfg);
-        exit_linked = true;
+        return exec_call();
     } else if (is_jump(inst.opcode)) {
-        // cfg-related action is handled in build_cfg() and constraints::jump()
+        // cfg-related action is handled in build_cfg() and instruction_builder_t::jump()
         if (inst.opcode != EBPF_OP_JA) {
             if (inst.opcode & EBPF_SRC_REG) {
-                assert_init(block, regs[inst.src], di);
+                assert_init(block, machine.regs[inst.src], di);
             }
-            assert_init(block, regs[inst.dst], di);
+            assert_init(block, machine.regs[inst.dst], di);
         }
+        return { &block };
+    } else if (is_access(inst.opcode)) {
+        return exec_mem();
     } else {
-        std::cout << "bad instruction " << (int)inst.opcode << " at " << pc << "},n";
+        std::cout << "bad instruction " << (int)inst.opcode << " at " << first_num(block) << "\n";
         assert(false);
-    }
-    if (!exit_linked) {
-        block >> exit;
     }
 }
 
-void constraints::exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
+vector<basic_block_t*> instruction_builder_t::exec_call()
 {
-    crab::cfg::debug_info di{"pc", pc, 0};
-    assert(inst.imm < (int)(sizeof(prototypes) / sizeof(prototypes[0])));
-    assert(inst.imm > 0);
-    bpf_func_proto proto = *prototypes[inst.imm];
+    bpf_func_proto proto = get_prototype(inst.imm);
     int i = 0;
-    std::vector<basic_block_label_t> prevs{block.label()};
+    vector<basic_block_t*> blocks{&block};
     std::array<bpf_arg_type, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
     for (bpf_arg_type t : args) {
-        dom_t& arg = regs[++i];
+        dom_t arg = machine.regs[++i];
         if (t == ARG_DONTCARE)
             break;
-        basic_block_t& current = cfg.insert(block.label() + ":arg" + std::to_string(i));
-        for (basic_block_label_t prev : prevs)
-            cfg.get_node(prev) >> current;
         auto assert_pointer_or_null = [&](lin_cst_t cst) {
-            basic_block_t& pointer = cfg.insert(current.label() + ":pointer");
-            current >> pointer;
-            pointer.assume(cst);
-            basic_block_t& null = cfg.insert(current.label() + ":null");
-            current >> null;
-            null.assume(arg.region == T_NUM);
-            null.assertion(arg.value == 0, di);
-            prevs = {pointer.label(), null.label()};
+            vector<basic_block_t*> next;
+            for (auto b : blocks) {
+                basic_block_t& pointer = add_child(cfg, *b, "pointer");
+                pointer.assume(cst);
+                next.push_back(&pointer);
+
+                basic_block_t& null = add_child(cfg, *b, "null");
+                null.assume(arg.region == T_NUM);
+                null.assertion(arg.value == 0, di);
+                next.push_back(&null);
+            }
+            blocks = std::move(next);
         };
-        prevs = {current.label()};
         switch (t) {
         case ARG_DONTCARE:
             assert(false);
             break;
         case ARG_ANYTHING:
             // avoid pointer leakage:
-            current.assertion(arg.region == T_NUM, di);
+            for (basic_block_t* b : blocks) {
+                b->assertion(arg.region == T_NUM, di);
+            }
             break;
         case ARG_CONST_SIZE:
-            current.assertion(arg.value != 0, di);
+            for (basic_block_t* b : blocks) {
+                b->assertion(arg.region == T_NUM, di);
+                b->assertion(arg.value > 0, di);
+            }
             break;
         case ARG_CONST_SIZE_OR_ZERO:
-            current.assertion(arg.region == T_NUM, di);
+            for (basic_block_t* b : blocks) {
+                b->assertion(arg.region == T_NUM, di);
+                b->assertion(arg.value >= 0, di);
+            }
             break;
         case ARG_CONST_MAP_PTR:
             assert_pointer_or_null(arg.region == T_MAP);
@@ -275,229 +774,91 @@ void constraints::exec_call(ebpf_inst inst, basic_block_t& block, basic_block_t&
         case ARG_PTR_TO_CTX:
             assert_pointer_or_null(arg.region == T_CTX);
             break;
+        case ARG_PTR_TO_MEM_OR_NULL:
+            assert_pointer_or_null(is_pointer(arg));
+            break;
         case ARG_PTR_TO_MAP_KEY:
-            current.assertion(arg.value != 0, di);
-            current.assertion(arg.region == T_STACK, di);
+            for (basic_block_t* b : blocks) {
+                b->assertion(arg.value > 0, di);
+                b->assertion(is_pointer(arg), di);
+            }
             break;
         case ARG_PTR_TO_MAP_VALUE:
-            current.assertion(arg.value != 0, di);
-            current.assertion(arg.region == T_STACK, di);
-            break;
-        case ARG_PTR_TO_MEM:
-            current.assertion(arg.value != 0, di);
-            current.assertion(arg.region >= T_STACK, di);
-            // assert memory is initialized; size is next argument
-            break;
-        case ARG_PTR_TO_MEM_OR_NULL:
-            assert_pointer_or_null(arg.region >= T_STACK);
-            // assert memory is initialized id not null; size is next argument
-            break;
-        case ARG_PTR_TO_UNINIT_MEM:
-            // assert that next argument is within bounds
-            current.assertion(arg.region == T_STACK, di);
-            current.assertion(arg.offset <= 0, di);
-            current.assertion(arg.offset + regs[i+1].value >= -STACK_SIZE, di);
-            // initalize memory - does not work currently since the cell is can be too large
-            // so the real intention is "havoc"
-            exit.array_store(stack_arr.regions, 0 - arg.offset - regs[i+1].value, T_NUM, regs[i+1].value);
-            exit.array_store(stack_arr.values, 0 - arg.offset - regs[i+1].value, top, regs[i+1].value);
-            exit.array_store(stack_arr.offsets, 0 - arg.offset - regs[i+1].value, top, regs[i+1].value);
-            break;
-        }
-    }
-    for (basic_block_label_t prev : prevs)
-        cfg.get_node(prev) >> exit;
-    for (int i=1; i<=5; i++) {
-        exit.havoc(regs[i].value);
-        exit.havoc(regs[i].offset);
-        exit.assign(regs[i].region, T_UNINIT);
-    }
-    switch (proto.ret_type) {
-    case RET_PTR_TO_MAP_VALUE_OR_NULL:
-        exit.assign(regs[0].region, T_MAP);
-        exit.havoc(regs[0].value);
-        exit.assign(regs[0].offset, 0);
-        break;
-    case RET_INTEGER:
-        exit.havoc(regs[0].value);
-        exit.assign(regs[0].region, T_NUM);
-        break;
-    case RET_VOID:
-        exit.assign(regs[0].region, T_UNINIT);
-        break;
-    }
-}
-
-static basic_block_t& insert_midnode(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, std::string subname)
-{
-    basic_block_t& mid = cfg.insert(pre.label() + ":" + subname);
-    pre >> mid;
-    mid >> post;
-    return mid;
-}
-
-template<typename Dom, typename T>
-void load_datapointer(cfg_t& cfg, basic_block_t& pre, basic_block_t& post, Dom& target, 
-    std::string subname, lin_cst_t cst, T lower_bound)
-{
-    basic_block_t& mid = insert_midnode(cfg, pre, post, subname);
-    mid.assume(cst);
-
-    mid.assign(target.region, T_DATA);
-    mid.havoc(target.value);
-    mid.assume(4098 <= target.value);
-    mid.assign(target.offset, lower_bound);
-}
-
-void constraints::exec_ctx_access(ebpf_inst inst, lin_exp_t addr, basic_block_t& mid, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
-{
-    crab::cfg::debug_info di{"pc", pc, 0};
-    int width = access_width(inst.opcode);
-    if (is_load(inst.opcode)) {
-        dom_t target = regs[inst.dst];
-        if (ctx_desc.data >= 0) {
-            load_datapointer(cfg, mid, exit, target, "data_start", addr == ctx_desc.data, meta_size);
-            load_datapointer(cfg, mid, exit, target, "data_end", addr == ctx_desc.end, total_size);
-        }
-        if (ctx_desc.meta >= 0) {
-            load_datapointer(cfg, mid, exit, target, "meta", addr == ctx_desc.meta, 0);
-        }
-        basic_block_t& normal = insert_midnode(cfg, mid, exit, "assume_ctx_not_special");
-        if (ctx_desc.data >= 0) {
-            normal.assume(addr != ctx_desc.data);
-            normal.assume(addr != ctx_desc.end);
-        }
-        if (ctx_desc.meta >= 0) {
-            normal.assume(addr != ctx_desc.meta);
-        }
-        ctx_arr.load(normal, regs[inst.dst], addr, width);
-        //ctx_arr.havoc(normal, regs[inst.dst]);
-        normal.assign(regs[inst.dst].region, T_NUM);
-    } else {
-        ctx_arr.store(mid, addr, regs[inst.src], width, di);
-        mid >> exit;
-    }
-}
-
-bool constraints::exec_mem_access(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
-{
-    crab::cfg::debug_info di{"pc", pc, 0};
-
-    uint8_t mem = is_load(inst.opcode) ? inst.src : inst.dst;
-    int width = access_width(inst.opcode);
-    assert(width == 1 || width == 2 || width == 4 || width == 8);
-    if (mem == 10) {
-        int offset = (-inst.offset) - width;
-        // not dynamic
-        assert(offset >= 0);
-        assert(offset <= STACK_SIZE - width);
-        if (is_load(inst.opcode)) {
-            stack_arr.load(block, regs[inst.dst], offset, width);
-            block.assume(regs[inst.dst].region >= 1);
-        } else {
-            assert_init(block, regs[inst.dst], di);
-            stack_arr.store(block, offset, regs[inst.src], width, di);
-        }
-        return false;
-    } else if ((inst.opcode & 0xE0) == 0x20 || (inst.opcode & 0xE0) == 0x40) { // TODO NAME: LDABS, LDIND
-        // load only
-        dom_t target = regs[inst.dst];
-        ctx_arr.load(block, target, inst.offset, width);
-        //ctx_arr.havoc(block, target);
-        if (inst.offset == ctx_desc.data) {
-            if (ctx_desc.meta > 0)
-                block.assign(target.offset, meta_size);
-            else 
-                block.assign(target.offset, 0);
-        } else if (inst.offset == ctx_desc.end) {
-            block.assign(target.offset, total_size);
-        } else if (inst.offset == ctx_desc.meta) {
-            block.assign(target.offset, 0);
-        } else {
-            block.assign(target.region, T_NUM);
-            return false;
-        }
-        //block.havoc(target.value);
-        block.assertion(target.value != 0, di);
-        block.assign(target.region, T_DATA);
-        return false;
-    } else {
-        block.assertion(regs[mem].value != 0, di);
-        block.assertion(regs[mem].region != T_NUM, di);
-
-        {
-            basic_block_t& mid = insert_midnode(cfg, block, exit, "assume_stack");
-            lin_exp_t addr = (-inst.offset) - width - regs[mem].offset; // negate access
-            mid.assume(regs[mem].region == T_STACK);
-            mid.assertion(addr >= 0, di);
-            mid.assertion(addr <= STACK_SIZE - width, di);
-            if (is_load(inst.opcode)) {
-                stack_arr.load(mid, regs[inst.dst], addr, width);
-                // assume stack is initialized
-                mid.assume(regs[inst.dst].region >= 1);
-            } else {
-                assert_init(block, regs[inst.dst], di);
-                stack_arr.store(mid, addr, regs[inst.src], width, di);
+            for (basic_block_t* b : blocks) {
+                b->assertion(arg.value > 0, di);
+                b->assertion(arg.region == T_STACK, di);
+                b->assertion(arg.offset < 0, di);
             }
-        }
-        {
-            basic_block_t& mid = cfg.insert(label(pc, "assume_ctx"));
-            block >> mid;
-            lin_exp_t addr = regs[mem].offset + inst.offset;
-            mid.assume(regs[mem].region == T_CTX);
-            mid.assertion(addr >= 0, di);
-            mid.assertion(addr <= ctx_desc.size - width, di);
-            exec_ctx_access(inst, addr, mid, exit, pc, cfg);
-        }
-        if (ctx_desc.data >= 0) {
-            basic_block_t& mid = insert_midnode(cfg, block, exit, "assume_data");
-            lin_exp_t addr = regs[mem].offset + inst.offset;
-            mid.assume(regs[mem].region == T_DATA);
-            mid.assertion(addr >= 0, di);
-            mid.assertion(addr <= total_size - width, di);
-            if (is_load(inst.opcode)) {
-                data_arr.load(mid, regs[inst.dst], addr, width);
-                // redundant when we'll have array_assume()
-                mid.assign(regs[inst.dst].region, T_NUM);
-            } else {
-                data_arr.store(mid, addr, regs[inst.src], width, di);
+            break;
+        case ARG_PTR_TO_MEM: {
+                vector<basic_block_t*> next;
+                for (basic_block_t* b : blocks) {
+                    b->assertion(arg.value > 0, di);
+                    b->assertion(is_pointer(arg), di);
+                    var_t width = machine.regs[i+1].value;
+                    move_into(next, exec_mem_access_indirect(*b, true, false, arg, { machine.top, machine.top, machine.top }, 0, width));
+                }
+                blocks = std::move(next);
             }
-        }
-        {
-            basic_block_t& mid = insert_midnode(cfg, block, exit, "assume_map");
-            lin_exp_t addr = regs[mem].offset + inst.offset;
-            mid.assume(regs[mem].region == T_MAP);
-            mid.assertion(addr >= 0, di);
-            constexpr int MAP_SIZE = 256;
-            mid.assertion(addr <= MAP_SIZE - width, di);
-            if (is_load(inst.opcode)) {
-                mid.havoc(regs[inst.dst].value);
-                // redundant when we'll have array_assume()
-                mid.assign(regs[inst.dst].region, T_NUM);
-            } else {
-                mid.assertion(regs[inst.src].region == T_NUM, di);
+            break;
+        case ARG_PTR_TO_UNINIT_MEM: {
+                vector<basic_block_t*> next;
+                for (basic_block_t* b : blocks) {
+                    b->assertion(is_pointer(arg), di);
+                    b->assertion(arg.offset <= 0, di);
+                    var_t width = machine.regs[i+1].value;
+                    move_into(next, exec_mem_access_indirect(*b, false, false, arg, { machine.top, machine.top, machine.num }, 0, width));
+                }
+                blocks = std::move(next);
             }
+            break;
         }
-        return true;
     }
+
+    dom_t r0 = machine.regs[0];
+    for (auto b: blocks) {
+        scratch_regs(*b);
+        switch (proto.ret_type) {
+        case RET_PTR_TO_MAP_VALUE_OR_NULL:
+            b->assign(r0.region, T_MAP);
+            b->havoc(r0.value);
+            b->assume(0 <= r0.value);
+            b->assign(r0.offset, 0);
+            break;
+        case RET_INTEGER:
+            b->havoc(r0.value);
+            b->assign(r0.region, T_NUM);
+            b->havoc(r0.offset);
+            break;
+        case RET_VOID:
+            // return from tail call - meaning the call has failed; return negative
+            b->havoc(r0.value);
+            b->assign(r0.region, T_NUM);
+            b->havoc(r0.offset);
+            b->assume(r0.value < 0);
+            break;
+        }
+    }
+    return blocks;
 }
 
-void constraints::exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& exit, unsigned int pc, cfg_t& cfg)
+vector<basic_block_t*> instruction_builder_t::exec_alu()
 {
     assert((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU
          ||(inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64);
-
-    crab::cfg::debug_info di{"pc", pc, 0};
-    auto& dst = regs[inst.dst];
-    auto& src = regs[inst.src];
+    auto& dst = machine.regs[inst.dst];
+    auto& src = machine.regs[inst.src];
 
     int imm = inst.imm;
 
+    vector<basic_block_t*> res{ &block };
+
     // TODO: add assertion for all operators that the arguments are initialized
+    // TODO: or, just do dst_initialized = dst_initialized & src_initialized
     /*if (inst.opcode & EBPF_SRC_REG) {
-        assert_init(block, regs[inst.src], di);
+        assert_init(block, machine.regs[inst.src], di);
     }
-    assert_init(block, regs[inst.dst], di);*/
+    assert_init(block, machine.regs[inst.dst], di);*/
     switch (inst.opcode) {
     case EBPF_OP_LE:
     case EBPF_OP_BE:
@@ -512,8 +873,30 @@ void constraints::exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& 
         break;
     case EBPF_OP_ADD_REG:
     case EBPF_OP_ADD64_REG:
-        block.add(dst.value, dst.value, src.value);
-        block.add(dst.offset, dst.offset, src.value); // XXX note src.value
+        {
+            block.add(dst.value, dst.value, src.value);
+            
+            basic_block_t& ptr_dst = add_child(cfg, block, "ptr_dst");
+            ptr_dst.assume(is_pointer(dst));
+            ptr_dst.assertion(src.region == T_NUM , di);
+            ptr_dst.add(dst.offset, dst.offset, src.value);
+
+            basic_block_t& ptr_src = add_child(cfg, block, "ptr_src");
+            ptr_src.assume(is_pointer(src));
+            ptr_src.assertion(dst.region == T_NUM , di);
+            ptr_src.add(dst.offset, dst.value, src.offset);
+            ptr_src.assign(dst.region, src.region);
+            ptr_src.assign(dst.value, machine.top);
+            ptr_src.assume(4098 <= dst.value);
+            
+            basic_block_t& both_num = add_child(cfg, block, "both_num");
+            both_num.assume(dst.region == T_NUM);
+            both_num.assume(src.region == T_NUM);
+            both_num.add(dst.value, dst.value, src.value);
+
+            res = {&ptr_src, &ptr_dst, &both_num};
+            return res;
+        }
         break;
     case EBPF_OP_SUB_IMM:
     case EBPF_OP_SUB64_IMM:
@@ -521,11 +904,28 @@ void constraints::exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& 
         block.sub(dst.offset, dst.offset, imm);
         break;
     case EBPF_OP_SUB_REG:
-    case EBPF_OP_SUB64_REG:
-        // FIX: unsafe. check for same-pointer substraction
-        // i.e.: either same region, or one is T_NUM
-        block.sub(dst.value, dst.offset, src.offset);
-        block.sub(dst.offset, dst.offset, src.value); // XXX note src.value
+    case EBPF_OP_SUB64_REG: {
+            basic_block_t& same = add_child(cfg, block, "ptr_src");
+            same.assume(is_pointer(src));
+            same.assertion(is_pointer(dst), di);
+            same.assume(eq(dst.region, src.region));
+            same.sub(dst.value, dst.offset, src.offset);
+            same.assign(dst.region, T_NUM);
+            same.havoc(dst.offset);
+
+            basic_block_t& num_src = add_child(cfg, block, "num_src");
+            num_src.assume(src.region == T_NUM);
+            {
+                basic_block_t& ptr_dst = add_child(cfg, num_src, "ptr_dst");
+                ptr_dst.assume(is_pointer(dst));
+                ptr_dst.sub(dst.offset, dst.offset, src.value);
+
+                basic_block_t& both_num = add_child(cfg, num_src, "both_num");    
+                both_num.assume(dst.region == T_NUM);
+                both_num.sub(dst.value, dst.value, src.value);
+                res = {&same, &ptr_dst, &both_num};
+            }
+        }
         break;
     case EBPF_OP_MUL_IMM:
     case EBPF_OP_MUL64_IMM:
@@ -542,9 +942,21 @@ void constraints::exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& 
         block.div(dst.value, dst.value, imm);
         no_pointer(block, dst);
         break;
-    case EBPF_OP_DIV_REG:
     case EBPF_OP_DIV64_REG:
+    case EBPF_OP_DIV_REG:
+        // For some reason, DIV is not checked for zerodiv
         block.div(dst.value, dst.value, src.value);
+        no_pointer(block, dst);
+        break;
+    case EBPF_OP_MOD_IMM:
+    case EBPF_OP_MOD64_IMM:
+        block.rem(dst.value, dst.value, imm);
+        no_pointer(block, dst);
+        break;
+    case EBPF_OP_MOD64_REG:
+    case EBPF_OP_MOD_REG:
+        // See DIV comment
+        block.rem(dst.value, dst.value, src.value);
         no_pointer(block, dst);
         break;
     case EBPF_OP_OR_IMM:
@@ -588,17 +1000,7 @@ void constraints::exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& 
         no_pointer(block, dst);
         break;
     case EBPF_OP_NEG64:
-        block.mul(dst.value, dst.value, -1); // ???
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_MOD_IMM:
-    case EBPF_OP_MOD64_IMM:
-        block.rem(dst.value, dst.value, imm);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_MOD_REG:
-    case EBPF_OP_MOD64_REG:
-        block.rem(dst.value, dst.value, src.value);
+        block.assign(dst.value, 0-dst.value);
         no_pointer(block, dst);
         break;
     case EBPF_OP_XOR_IMM:
@@ -633,9 +1035,13 @@ void constraints::exec_alu(ebpf_inst inst, basic_block_t& block, basic_block_t& 
         no_pointer(block, dst);
         break;
     default:
+        printf("%d\n", inst.opcode);
         assert(false);
         break;
     }
-    if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU)
-        wrap32(block, dst.value);
+    for (auto b : res) {
+        if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU)
+            wrap32(*b, dst.value);
+    }
+    return res;
 }

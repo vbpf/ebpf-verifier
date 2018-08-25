@@ -20,6 +20,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <unordered_set>
 
 #include <boost/optional.hpp>
 
@@ -52,7 +53,7 @@ static auto get_fall(struct ebpf_inst inst, pc_t pc) -> optional<pc_t>
         /* eBPF has one 16-byte instruction: BPF_LD | BPF_DW | BPF_IMM which consists
         of two consecutive 'struct ebpf_inst' 8-byte blocks and interpreted as single
         instruction that loads 64-bit immediate value into a dst_reg. */
-        if (inst.opcode == EBPF_OP_LDDW) {
+        if (inst.opcode == EBPF_OP_LDDW_IMM) {
             pc++;
         }
         return pc + 1;
@@ -60,11 +61,12 @@ static auto get_fall(struct ebpf_inst inst, pc_t pc) -> optional<pc_t>
     return boost::none;
 }
 
-static auto build_jump(cfg_t& cfg, pc_t pc, pc_t target) -> basic_block_t&
+static auto build_jump(cfg_t& cfg, pc_t pc, pc_t target, bool taken) -> basic_block_t&
 {
-    basic_block_t& assumption = cfg.insert(label(pc, target));
+    // distinguish taken and non-taken, in case we jump to the fallthrough
+    // (yes, it happens).
+    basic_block_t& assumption = cfg.insert(label(pc, target) + ":" + (taken ? "taken" : "not-taken"));
     cfg.get_node(exit_label(pc)) >> assumption;
-    assumption >> cfg.insert(label(target));
     return assumption;
 }
 
@@ -73,18 +75,45 @@ static void link(cfg_t& cfg, pc_t pc, pc_t target)
     cfg.get_node(exit_label(pc)) >> cfg.insert(label(target));
 }
 
+bool check_raw_reachability(std::vector<ebpf_inst> insts)
+{
+    std::unordered_set<pc_t> unreachables;
+    for (pc_t i=1; i < insts.size(); i++)
+        unreachables.insert(i);
+
+    for (pc_t pc = 0; pc < insts.size()-1; pc++) {
+        ebpf_inst inst = insts[pc];
+        optional<pc_t> jump_target = get_jump(insts[pc], pc);
+        optional<pc_t> fall_target = get_fall(insts[pc], pc);
+        if (jump_target) {
+            unreachables.erase(*jump_target);
+        }
+        
+        if (fall_target) {
+            unreachables.erase(*fall_target);
+            if (inst.opcode == EBPF_OP_LDDW_IMM)
+                unreachables.erase(++pc);
+        }
+    }
+    return unreachables.size() == 0;
+}
+
 void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> insts, ebpf_prog_type prog_type)
 {
-    constraints regs{prog_type, vfac};
+    abs_machine_t machine(prog_type, vfac);
     {
         auto& entry = cfg.insert(entry_label());
-        regs.setup_entry(entry);
+        machine.setup_entry(entry);
         entry >> cfg.insert(label(0));
     }
-    for (pc_t pc = 0; pc < insts.size(); pc++) {
-        auto inst = insts[pc];
+    insts.emplace_back();
+    for (pc_t pc = 0; pc < insts.size()-1; pc++) {
+        ebpf_inst inst = insts[pc];
 
-        regs.exec(inst, cfg.insert(label(pc)), cfg.insert(exit_label(pc)), pc, cfg);
+        vector<basic_block_t*> outs = machine.exec(inst, insts[pc + 1], cfg.insert(label(pc)), cfg);
+        basic_block_t& exit = cfg.insert(exit_label(pc));
+        for (basic_block_t* b : outs)
+            (*b) >> exit;
 
         if (inst.opcode == EBPF_OP_EXIT) {
             cfg.set_exit(exit_label(pc));
@@ -95,8 +124,9 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> inst
         optional<pc_t> fall_target = get_fall(insts[pc], pc);
         if (jump_target) {
             if (inst.opcode != EBPF_OP_JA)  {
-                auto& assumption = build_jump(cfg, pc, *jump_target);
-                regs.jump(inst, assumption, true);
+                auto& assumption = build_jump(cfg, pc, *jump_target, true);
+                basic_block_t& out = machine.jump(inst, true, assumption, cfg);
+                out >> cfg.insert(label(*jump_target));
             } else {
                 link(cfg, pc, *jump_target);
             }
@@ -104,8 +134,9 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> inst
         
         if (fall_target) {
             if (jump_target) {
-                auto& assumption = build_jump(cfg, pc, *fall_target);
-                regs.jump(inst, assumption, false);
+                auto& assumption = build_jump(cfg, pc, *fall_target, false);
+                basic_block_t& out = machine.jump(inst, false, assumption, cfg);
+                out >> cfg.insert(label(*fall_target));
             } else {
                 link(cfg, pc, *fall_target);
             }

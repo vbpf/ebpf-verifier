@@ -15,8 +15,7 @@ static int usage(const char *name)
     std::cerr << "\nverifies the eBPF code in BINARY using DOMAIN assuming program type TYPE\n";
     std::cerr << "flags: --log=CRABLOG --verbose=N --stats --simplify --no-reachability\n";
     std::cerr << "available domains:\n";
-    map<string, string> domains = domain_descriptions();
-    for (auto const [name, desc] : domains)
+    for (auto const [name, desc] : domain_descriptions())
         std::cerr << "\t" << name << " - " << desc << "\n";
     return 64;
 }
@@ -55,8 +54,12 @@ int main(int argc, char **argv)
             global_options.stats = true;
         } else if (arg == "--simplify") {
             global_options.simplify = true;
-        } else if (arg == "--no-reachability") {
-            global_options.check_reachability = false;
+        } else if (arg == "--semantic-reachability") {
+            global_options.check_semantic_reachability = true;
+        } else if (arg == "--no-raw-reachability") {
+            global_options.check_raw_reachability = false;
+        } else if (arg == "--no-print-invariants") {
+            global_options.print_invariants = false;
         } else {
             posargs.push_back(arg);
         }

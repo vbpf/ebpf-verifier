@@ -67,11 +67,12 @@ bool abs_validate(vector<struct ebpf_inst> insts,
     
     checks_db checks = analyze(domain_name, cfg, pre_printer, post_printer);
     int nwarn = checks.get_total_warning() + checks.get_total_error();
-    
-    for (string label : sorted_labels(cfg)) {
-        pre_printer(label);
-        cfg.get_node(label).write(crab::outs());
-        post_printer(label);
+    if (global_options.print_invariants) {
+        for (string label : sorted_labels(cfg)) {
+            pre_printer(label);
+            cfg.get_node(label).write(crab::outs());
+            post_printer(label);
+        }
     }
 
     if (nwarn > 0) {
@@ -120,7 +121,7 @@ static checks_db dont_analyze(cfg_t& cfg, printer_t& printer, printer_t& post_pr
 }
 
 template<typename dom_t, typename analyzer_t>
-void check_reachability(cfg_t& cfg, analyzer_t& analyzer, checks_db& c)
+void check_semantic_reachability(cfg_t& cfg, analyzer_t& analyzer, checks_db& c)
 {
     for (auto& b : cfg) {
         dom_t post = analyzer.get_post(b.label());
@@ -151,23 +152,10 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
         crab::outs() << "\n" << inv << "\n";
     });
     checks_db c = check(analyzer);
-    if (global_options.check_reachability) {
-        check_reachability<dom_t>(cfg, analyzer, c);
+    if (global_options.check_semantic_reachability) {
+        check_semantic_reachability<dom_t>(cfg, analyzer, c);
     }
     return c;
-}
-
-// DOMAINS
-namespace ikos {
-extern template class interval_domain<ikos::z_number,varname_t>;
-}
-namespace crab::domains {
-extern template class dis_interval_domain<ikos::z_number, varname_t >;
-extern template class numerical_congruence_domain<z_interval_domain_t>;
-extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_interval_domain_t> >;
-extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_sdbm_domain_t> >;
-extern template class term_domain<term::TDomInfo<ikos::z_number,varname_t,z_dis_interval_domain_t> >;
-extern template class reduced_numerical_domain_product2<z_term_dis_int_t,z_sdbm_domain_t>;
 }
 
 struct domain_desc {
@@ -178,15 +166,24 @@ struct domain_desc {
 const map<string, domain_desc> domains{
     { "interval"          , { analyze<z_interval_domain_t>, "simple interval (z_interval_domain_t)" } },
     { "interval-arr"      , { analyze<array_expansion_domain<z_interval_domain_t>>, "mem: simple interval (z_interval_domain_t)" } },
-    //{ "ric"               , { analyze<z_ric_domain_t>, "numerical congruence (z_ric_domain_t)" } },
-    //{ "dbm"               , { analyze<z_dbm_domain_t>, "sparse dbm (z_dbm_domain_t)" } },
-    //{ "sdbm"              , { analyze<z_sdbm_domain_t>, "split dbm (z_sdbm_domain_t)" } },
-    //{ "boxes"             , { analyze<z_boxes_domain_t>, "boxes (z_boxes_domain_t)" } },
+    { "ric"               , { analyze<z_ric_domain_t>, "numerical congruence (z_ric_domain_t)" } },
+    { "ric-arr"           , { analyze<array_expansion_domain<z_ric_domain_t>>, "mem: numerical congruence (z_ric_domain_t)" } },
+    { "dbm"               , { analyze<z_dbm_domain_t>, "sparse dbm (z_dbm_domain_t)" } },
+    { "dbm-arr"           , { analyze<array_expansion_domain<z_dbm_domain_t>>, "mem: sparse dbm (z_dbm_domain_t)" } },
+    { "sdbm"              , { analyze<z_sdbm_domain_t>, "split dbm (z_sdbm_domain_t)" } },
+    { "sdbm-arr"          , { analyze<array_expansion_domain<z_sdbm_domain_t>>, "mem: split dbm (z_sdbm_domain_t)" } },
+    { "boxes"             , { analyze<z_boxes_domain_t>, "boxes (z_boxes_domain_t)" } },
+    { "boxes-arr"         , { analyze<array_expansion_domain<z_boxes_domain_t>>, "mem: boxes (z_boxes_domain_t)" } },
     { "disj_interval"     , { analyze<z_dis_interval_domain_t>, "disjoint intervals (z_dis_interval_domain_t)" } },
     { "disj_interval-arr" , { analyze<array_expansion_domain<z_dis_interval_domain_t>>, "mem: disjoint intervals (z_dis_interval_domain_t)" } },
-    // { "box_apron"         , { analyze<z_box_apron_domain_t>, "boxes x apron (z_box_apron_domain_t)" } },
-    // { "opt_oct_apron"     , { analyze<z_opt_oct_apron_domain_t>, "optional octagon x apron (z_opt_oct_apron_domain_t)" } },
-    // { "pk_apron"          , { analyze<z_pk_apron_domain_t>, "(z_pk_apron_domain_t)" } },
+#ifdef APRON
+    { "box_apron"         , { analyze<z_box_apron_domain_t>, "boxes x apron (z_box_apron_domain_t)" } },
+    { "box_apron-arr"     , { analyze<array_expansion_domain<z_box_apron_domain_t>>, "mem: boxes x apron (z_box_apron_domain_t)" } },
+    { "opt_oct_apron"     , { analyze<z_opt_oct_apron_domain_t>, "optional octagon x apron (z_opt_oct_apron_domain_t)" } },
+    { "opt_oct_apron-arr" , { analyze<array_expansion_domain<z_opt_oct_apron_domain_t>>, "mem: optional octagon x apron (z_opt_oct_apron_domain_t)" } },
+    { "pk_apron"          , { analyze<z_pk_apron_domain_t>, "(z_pk_apron_domain_t)" } },
+    { "pk_apron-arr"      , { analyze<array_expansion_domain<z_pk_apron_domain_t>>, "mem: (z_pk_apron_domain_t)" } },
+#endif
     { "term"              , { analyze<z_term_domain_t>, "(z_term_domain_t)" } },
     { "term-arr"          , { analyze<array_expansion_domain<z_term_domain_t>>, "mem: (z_term_domain_t)" } },
     { "term_dbm"          , { analyze<z_term_dbm_t>, "(z_term_dbm_t)" } },
@@ -194,15 +191,20 @@ const map<string, domain_desc> domains{
     { "term_disj_interval", { analyze<z_term_dis_int_t>, "term x disjoint intervals (z_term_dis_int_t)" } },
     { "term_disj_interval-arr", { analyze<array_expansion_domain<z_term_dis_int_t>>, "mem: term x disjoint intervals (z_term_dis_int_t)" } },
     { "num"               , { analyze<z_num_domain_t>, "term x disjoint interval x sparse dbm (z_num_domain_t)" } },
-    { "num-arr"               , { analyze<array_expansion_domain<z_num_domain_t>>, "mem: term x disjoint interval x sparse dbm (z_num_domain_t)" } },
-    // { "wrapped"           , { analyze<z_wrapped_interval_domain_t>, "wrapped interval domain (z_wrapped_interval_domain_t)" } },
+    { "num-arr"           , { analyze<array_expansion_domain<z_num_domain_t>>, "mem: term x disjoint interval x sparse dbm (z_num_domain_t)" } },
+    { "num_boxes"         , { analyze<z_num_boxes_domain_t>, "term x boxes x sparse dbm (z_num_domain_t)" } },
+    { "num_boxes-arr"     , { analyze<array_expansion_domain<z_num_boxes_domain_t>>, "mem: term x boxes x sparse dbm" } },
+    { "wrapped"           , { analyze<z_wrapped_interval_domain_t>, "wrapped interval domain (z_wrapped_interval_domain_t)" } },
+    { "wrapped-arr"       , { analyze<array_expansion_domain<z_wrapped_interval_domain_t>>, "mem: wrapped interval domain (z_wrapped_interval_domain_t)" } },
     { "none"              , { dont_analyze, "build CFG only, don't perform analysis" } },
 };
 
 global_options_t global_options {
-    .stats = false,
     .simplify = false,
-    .check_reachability = true
+    .stats = false,
+    .check_raw_reachability = true,
+    .check_semantic_reachability = false,
+    .print_invariants = true
 };
 
 map<string, string> domain_descriptions()

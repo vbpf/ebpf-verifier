@@ -40,12 +40,13 @@ LDLIBS := \
     -lmpfr -lgmpxx -lgmp -lm -lstdc++ 
 
 CXXFLAGS := -Wall -Werror -Wfatal-errors \
-    -Wno-unused-local-typedefs -Wno-inconsistent-missing-override -Wno-unused-const-variable -Wno-uninitialized -Wno-deprecated 	\
+    -Wno-unused-local-typedefs -Wno-inconsistent-missing-override -Wno-unused-const-variable -Wno-uninitialized -Wno-deprecated \
     -DBSD -DHAVE_IEEE_754 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 \
     -I inc \
     -I $(INSTALL)/include/ \
     -I $(LDD)/include/ldd/ \
-    -O0 -g3 -std=c++17
+    -I $(APRON)/include/ \
+    -O2 -g3 -std=c++17
 
 all: test
 
@@ -62,6 +63,9 @@ test: ${OBJECTS}
 
 clean:
 	rm -f test *.a *.o
+
+crab_clean:
+	rm -rf $(CRABDIR)/build $(CRABDIR)/install
 
 crab_install:
 	mkdir -p $(CRABDIR)/build
