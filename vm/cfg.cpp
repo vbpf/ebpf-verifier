@@ -21,9 +21,9 @@
 #include <string>
 #include <algorithm>
 #include <unordered_set>
+#include <iostream>
 
 #include <boost/optional.hpp>
-
 #include "common.hpp"
 #include "constraints.hpp"
 #include "cfg.hpp"
@@ -98,7 +98,32 @@ bool check_raw_reachability(std::vector<ebpf_inst> insts)
     return unreachables.size() == 0;
 }
 
-void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> insts, ebpf_prog_type prog_type)
+void print_stats(vector<ebpf_inst> insts) {
+    int count = 0;
+    int stores = 0;
+    int loads = 0;
+    int jumps = 0;
+    for (pc_t pc = 0; pc < insts.size()-1; pc++) {
+        count++;
+        if (is_load(insts[pc].opcode))
+            loads++;
+        if (is_store(insts[pc].opcode))
+            stores++;
+        optional<pc_t> fall_target = get_fall(insts[pc], pc);
+        optional<pc_t> jump_target = get_jump(insts[pc], pc);
+        if (jump_target)
+            jumps++;
+        if (fall_target) 
+            pc = *fall_target - 1;
+    }
+    std::cout << "instructions:" << count << "\n";
+    std::cout << "loads:" << loads << "\n";
+    std::cout << "stores:" << stores << "\n";
+    std::cout << "jumps:" << jumps << "\n";
+}
+
+
+void build_cfg(cfg_t& cfg, variable_factory_t& vfac, vector<ebpf_inst> insts, ebpf_prog_type prog_type)
 {
     abs_machine_t machine(prog_type, vfac);
     {

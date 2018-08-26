@@ -8,9 +8,12 @@
 #include "type_descriptors.hpp"
 #include "common.hpp"
 
+using std::vector;
+using std::string;
+
 inline auto label(int pc) { return std::to_string(pc); }
 
-inline auto label(int pc, std::string target){  return label(pc) + ":" + target; }
+inline auto label(int pc, string target){  return label(pc) + ":" + target; }
 
 inline auto label(int pc, int target) { return label(pc, std::to_string(target)); }
 
@@ -28,7 +31,7 @@ inline int first_num(const basic_block_t& block)
     return first_num(block.label());
 }
 
-std::vector<std::string> sorted_labels(cfg_t& cfg);
+vector<string> sorted_labels(cfg_t& cfg);
 
 
 inline basic_block_t& add_common_child(cfg_t& cfg, basic_block_t& block, std::vector<basic_block_label_t> labels, std::string suffix)
@@ -47,5 +50,7 @@ inline basic_block_t& add_child(cfg_t& cfg, basic_block_t& block, std::string su
 bool check_raw_reachability(std::vector<ebpf_inst> insts);
 
 void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> insts, ebpf_prog_type prog_type);
+
+void print_stats(vector<ebpf_inst> insts);
 
 #endif
