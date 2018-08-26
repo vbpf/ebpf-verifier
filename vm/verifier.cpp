@@ -157,14 +157,17 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
     analyzer_t analyzer(cfg, dom_t::top(), &live);
     analyzer.run();
 
-    pre_printer.connect([pre=extract_pre(analyzer)](const string& label) {
-        dom_t inv = pre.at(label);
-        crab::outs() << "\n" << inv << "\n";
-    });
-    post_printer.connect([post=extract_post(analyzer)](const string& label) {
-        dom_t inv = post.at(label);
-        crab::outs() << "\n" << inv << "\n";
-    });
+    if (global_options.print_invariants) {
+        pre_printer.connect([pre=extract_pre(analyzer)](const string& label) {
+            dom_t inv = pre.at(label);
+            crab::outs() << "\n" << inv << "\n";
+        });
+        post_printer.connect([post=extract_post(analyzer)](const string& label) {
+            dom_t inv = post.at(label);
+            crab::outs() << "\n" << inv << "\n";
+        });
+    }
+    
     checks_db c = check(analyzer);
     if (global_options.check_semantic_reachability) {
         check_semantic_reachability<dom_t>(cfg, analyzer, c);
