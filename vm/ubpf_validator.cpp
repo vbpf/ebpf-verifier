@@ -284,5 +284,7 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
         }
     }
 
-    return exit_count >= 1;
+    if (exit_count >= 1) return true;
+    errmsg = "no exit instruction";
+    return false;
 }
