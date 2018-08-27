@@ -152,7 +152,9 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
     using analyzer_t = intra_fwd_analyzer<cfg_ref<cfg_t>, dom_t>;
     
     liveness<typename analyzer_t::cfg_t> live(cfg);
-    live.exec();
+    if (global_options.liveness) {
+        live.exec();
+    }
 
     analyzer_t analyzer(cfg, dom_t::top(), &live);
     analyzer.run();
@@ -167,7 +169,7 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
             crab::outs() << "\n" << inv << "\n";
         });
     }
-    
+
     checks_db c = check(analyzer);
     if (global_options.check_semantic_reachability) {
         check_semantic_reachability<dom_t>(cfg, analyzer, c);
@@ -221,7 +223,8 @@ global_options_t global_options {
     .stats = false,
     .check_raw_reachability = true,
     .check_semantic_reachability = false,
-    .print_invariants = true
+    .print_invariants = true,
+    .liveness = true
 };
 
 map<string, string> domain_descriptions()

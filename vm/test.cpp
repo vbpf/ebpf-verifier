@@ -60,6 +60,8 @@ int main(int argc, char **argv)
             global_options.check_raw_reachability = false;
         } else if (arg == "--no-print-invariants") {
             global_options.print_invariants = false;
+        } else if (arg == "--no-liveness") {
+            global_options.liveness = false;
         } else {
             posargs.push_back(arg);
         }
