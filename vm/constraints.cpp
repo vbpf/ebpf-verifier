@@ -239,36 +239,36 @@ static lin_cst_t jmp_to_cst_offsets(uint8_t opcode, var_t& dst_offset, var_t& sr
 }
 
 
-static lin_cst_t jmp_to_cst(uint8_t opcode, int imm, var_t& dst_value, var_t& src_value)
+static vector<lin_cst_t> jmp_to_cst(uint8_t opcode, int imm, var_t& dst_value, var_t& src_value)
 {
     switch (opcode) {
-    case EBPF_OP_JEQ_IMM:  return dst_value == imm;
-    case EBPF_OP_JEQ_REG:  return eq(dst_value, src_value);
+    case EBPF_OP_JEQ_IMM:  return {dst_value == imm};
+    case EBPF_OP_JEQ_REG:  return {eq(dst_value, src_value)};
 
-    case EBPF_OP_JNE_IMM:  return dst_value != imm;
-    case EBPF_OP_JNE_REG:  return neq(dst_value, src_value);
+    case EBPF_OP_JNE_IMM:  return {dst_value != imm};
+    case EBPF_OP_JNE_REG:  return {neq(dst_value, src_value)};
     
-    case EBPF_OP_JGE_IMM:  return dst_value >= imm; // FIX unsigned
-    case EBPF_OP_JGE_REG:  return dst_value >= src_value; // FIX unsigned
+    case EBPF_OP_JGE_IMM:  return {dst_value >= (unsigned)imm}; // FIX unsigned
+    case EBPF_OP_JGE_REG:  return {dst_value >= src_value}; // FIX unsigned
 
-    case EBPF_OP_JSGE_IMM: return dst_value >= imm;
-    case EBPF_OP_JSGE_REG: return dst_value >= src_value;
+    case EBPF_OP_JSGE_IMM: return {dst_value >= imm};
+    case EBPF_OP_JSGE_REG: return {dst_value >= src_value};
     
-    case EBPF_OP_JLE_IMM:  return dst_value <= imm; // FIX unsigned
-    case EBPF_OP_JLE_REG:  return dst_value <= src_value; // FIX unsigned
-    case EBPF_OP_JSLE_IMM: return dst_value <= imm;
-    case EBPF_OP_JSLE_REG: return dst_value <= src_value;
+    case EBPF_OP_JLE_IMM:  return {dst_value <= imm, 0 <= dst_value}; // FIX unsigned
+    case EBPF_OP_JLE_REG:  return {dst_value <= src_value, 0 <= dst_value}; // FIX unsigned
+    case EBPF_OP_JSLE_IMM: return {dst_value <= imm};
+    case EBPF_OP_JSLE_REG: return {dst_value <= src_value};
 
-    case EBPF_OP_JGT_IMM:  return dst_value >= imm + 1; // FIX unsigned
-    case EBPF_OP_JGT_REG:  return dst_value >= src_value + 1; // FIX unsigned
-    case EBPF_OP_JSGT_IMM: return dst_value >= imm + 1;
-    case EBPF_OP_JSGT_REG: return dst_value >= src_value + 1;
+    case EBPF_OP_JGT_IMM:  return {dst_value >= (unsigned)imm + 1}; // FIX unsigned
+    case EBPF_OP_JGT_REG:  return {dst_value >= src_value + 1}; // FIX unsigned
+    case EBPF_OP_JSGT_IMM: return {dst_value >= imm + 1};
+    case EBPF_OP_JSGT_REG: return {dst_value >= src_value + 1};
 
-    case EBPF_OP_JLT_IMM:  return dst_value <= imm - 1; // FIX unsigned
+    case EBPF_OP_JLT_IMM:  return {dst_value <= (unsigned)imm - 1}; // FIX unsigned
     // Note: reverse the test as a workaround strange lookup:
-    case EBPF_OP_JLT_REG:  return src_value >= dst_value + 1; // FIX unsigned
-    case EBPF_OP_JSLT_IMM: return dst_value <= imm - 1;
-    case EBPF_OP_JSLT_REG: return src_value >= dst_value + 1;
+    case EBPF_OP_JLT_REG:  return {src_value >= dst_value + 1}; // FIX unsigned
+    case EBPF_OP_JSLT_IMM: return {dst_value <= imm - 1};
+    case EBPF_OP_JSLT_REG: return {src_value >= dst_value + 1};
     }
     assert(false);
 }
@@ -280,14 +280,16 @@ basic_block_t& abs_machine_t::jump(ebpf_inst inst, bool taken, basic_block_t& bl
     uint8_t opcode = taken ? inst.opcode : reverse(inst.opcode);
     auto& dst = machine.regs[inst.dst];
     auto& src = machine.regs[inst.src];
-    lin_cst_t cst = jmp_to_cst(opcode, inst.imm, dst.value, src.value);
+    vector<lin_cst_t> csts = jmp_to_cst(opcode, inst.imm, dst.value, src.value);
     debug_info di{"pc", (unsigned int)first_num(block), 0}; 
 
     if (opcode & EBPF_SRC_REG) {
 
         basic_block_t& same = add_child(cfg, block, "same_type");
-        same.assume(cst);
-        same.assume(jmp_to_cst(opcode, inst.imm, dst.value, src.value));
+        for (auto c : csts)
+            same.assume(c);
+        for (auto c : jmp_to_cst(opcode, inst.imm, dst.value, src.value))
+            same.assume(c);
         same.assume(eq(dst.region, src.region));
 
         basic_block_t& null_src = add_child(cfg, block, "null_src");
@@ -309,7 +311,8 @@ basic_block_t& abs_machine_t::jump(ebpf_inst inst, bool taken, basic_block_t& bl
         }
         return offset_check;
     } else {
-        block.assume(cst);
+        for (auto c : csts)
+            block.assume(c);
         if (inst.imm != 0) {
             // only null can be compared to pointers without leaking secrets
             block.assertion(dst.region == T_NUM, di);
@@ -346,6 +349,7 @@ vector<basic_block_t*> abs_machine_t::exec(ebpf_inst inst, ebpf_inst next_inst, 
     case EBPF_STXADDW: {
         ebpf_inst load_inst = inst;
         load_inst.dst = 11;
+        load_inst.src = inst.dst;
         load_inst.opcode = EBPF_OP_LDXW | (inst.opcode & EBPF_SIZE_MASK);
         vector<basic_block_t*> loaded = instruction_builder_t(*impl, load_inst, {}, block, cfg).exec();
 
@@ -418,7 +422,7 @@ vector<basic_block_t*> instruction_builder_t::exec_map_access(basic_block_t& blo
 
     mid.assume(mem_reg.region == T_MAP);
     mid.assertion(addr >= 0, di);
-    constexpr int MAP_SIZE = 256;
+    constexpr int MAP_SIZE = 8192;
     mid.assertion(addr <= MAP_SIZE - width, di);
     if (is_load) {
         mid.havoc(data_reg.value);
@@ -601,6 +605,7 @@ vector<basic_block_t*> instruction_builder_t::exec_mem()
         } else {
             var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
             block.assign(tmp, immediate(inst, next_inst));
+            block.havoc(machine.top);
             return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, machine.num}, inst.offset, width);
         } 
         break;
@@ -796,7 +801,9 @@ vector<basic_block_t*> instruction_builder_t::exec_call()
                     b->assertion(arg.value > 0, di);
                     b->assertion(is_pointer(arg), di);
                     var_t width = machine.regs[i+1].value;
+                    block.havoc(machine.top);
                     move_into(next, exec_mem_access_indirect(*b, true, false, arg, { machine.top, machine.top, machine.top }, 0, width));
+                    block.havoc(machine.top);
                 }
                 blocks = std::move(next);
             }
@@ -807,7 +814,9 @@ vector<basic_block_t*> instruction_builder_t::exec_call()
                     b->assertion(is_pointer(arg), di);
                     b->assertion(arg.offset <= 0, di);
                     var_t width = machine.regs[i+1].value;
+                    block.havoc(machine.top);    
                     move_into(next, exec_mem_access_indirect(*b, false, false, arg, { machine.top, machine.top, machine.num }, 0, width));
+                    block.havoc(machine.top);
                 }
                 blocks = std::move(next);
             }
@@ -886,6 +895,7 @@ vector<basic_block_t*> instruction_builder_t::exec_alu()
             ptr_src.assertion(dst.region == T_NUM , di);
             ptr_src.add(dst.offset, dst.value, src.offset);
             ptr_src.assign(dst.region, src.region);
+            ptr_src.havoc(machine.top);
             ptr_src.assign(dst.value, machine.top);
             ptr_src.assume(4098 <= dst.value);
             
