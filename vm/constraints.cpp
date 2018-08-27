@@ -72,17 +72,18 @@ struct array_dom_t {
         block.assign(ub, offset + width);
         block.array_init(regions, 1, lb, ub, data_reg.region);
 
-        block.array_store(values, offset, data_reg.value, width);
-
         basic_block_t& pointer_only = add_child(cfg, block, "pointer_only");
         pointer_only.assume(data_reg.region > T_NUM);
         pointer_only.array_store(offsets, offset, data_reg.offset, width);
-
+        pointer_only.array_store(values, offset, data_reg.value, width);
 
         basic_block_t& num_only = add_child(cfg, block, "num_only");
         num_only.assume(data_reg.region == T_NUM);
+        block.array_store(values, offset, data_reg.value, width);
+        // kill the cell
         num_only.array_store(offsets, offset, data_reg.offset, width);
-        num_only.havoc(data_reg.offset); // so that relational domains won't think it's worth keeping track of
+        // so that relational domains won't think it's worth keeping track of
+        num_only.havoc(data_reg.offset); 
 
         return {&num_only, &pointer_only};
     }
