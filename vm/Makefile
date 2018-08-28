@@ -45,7 +45,6 @@ CXXFLAGS := -Wall -Werror -Wfatal-errors \
     -I inc \
     -I $(INSTALL)/include/ \
     -I $(LDD)/include/ldd/ \
-    -I $(APRON)/include/ \
     -O2 -g3 -std=c++17
 
 all: test
