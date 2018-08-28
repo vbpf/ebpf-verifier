@@ -26,6 +26,7 @@ struct global_options_t
     bool check_raw_reachability;
     bool check_semantic_reachability;
     bool print_invariants;
+    bool liveness;
 };
 
 extern global_options_t global_options;

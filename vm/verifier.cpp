@@ -65,7 +65,18 @@ bool abs_validate(vector<struct ebpf_inst> insts,
     printer_t pre_printer;
     printer_t post_printer;
     
+    using namespace std;
+    clock_t begin = clock();
+
     checks_db checks = analyze(domain_name, cfg, pre_printer, post_printer);
+
+    clock_t end = clock();
+    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    if (global_options.stats) {
+        crab::CrabStats::Print(crab::outs());
+        crab::CrabStats::reset();
+    }
+
     int nwarn = checks.get_total_warning() + checks.get_total_error();
     if (global_options.print_invariants) {
         for (string label : sorted_labels(cfg)) {
@@ -74,6 +85,9 @@ bool abs_validate(vector<struct ebpf_inst> insts,
             post_printer(label);
         }
     }
+
+    cout << "seconds:" << elapsed_secs << "\n";
+    print_stats(insts);
 
     if (nwarn > 0) {
         checks.write(crab::outs());
@@ -138,19 +152,24 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
     using analyzer_t = intra_fwd_analyzer<cfg_ref<cfg_t>, dom_t>;
     
     liveness<typename analyzer_t::cfg_t> live(cfg);
-    live.exec();
+    if (global_options.liveness) {
+        live.exec();
+    }
 
     analyzer_t analyzer(cfg, dom_t::top(), &live);
     analyzer.run();
 
-    pre_printer.connect([pre=extract_pre(analyzer)](const string& label) {
-        dom_t inv = pre.at(label);
-        crab::outs() << "\n" << inv << "\n";
-    });
-    post_printer.connect([post=extract_post(analyzer)](const string& label) {
-        dom_t inv = post.at(label);
-        crab::outs() << "\n" << inv << "\n";
-    });
+    if (global_options.print_invariants) {
+        pre_printer.connect([pre=extract_pre(analyzer)](const string& label) {
+            dom_t inv = pre.at(label);
+            crab::outs() << "\n" << inv << "\n";
+        });
+        post_printer.connect([post=extract_post(analyzer)](const string& label) {
+            dom_t inv = post.at(label);
+            crab::outs() << "\n" << inv << "\n";
+        });
+    }
+
     checks_db c = check(analyzer);
     if (global_options.check_semantic_reachability) {
         check_semantic_reachability<dom_t>(cfg, analyzer, c);
@@ -204,7 +223,8 @@ global_options_t global_options {
     .stats = false,
     .check_raw_reachability = true,
     .check_semantic_reachability = false,
-    .print_invariants = true
+    .print_invariants = true,
+    .liveness = true
 };
 
 map<string, string> domain_descriptions()
@@ -217,18 +237,6 @@ map<string, string> domain_descriptions()
 
 static checks_db analyze(string domain_name, cfg_t& cfg, printer_t& pre_printer, printer_t& post_printer)
 {
-    using namespace std;
-    clock_t begin = clock();
-
     checks_db res = domains.at(domain_name).analyze(cfg, pre_printer, post_printer);
-
-    clock_t end = clock();
-    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-    cout << "seconds:" << elapsed_secs << "\n";
-    if (global_options.stats) {
-        crab::CrabStats::Print(crab::outs());
-        crab::CrabStats::reset();
-    }
-
     return res;
 }
