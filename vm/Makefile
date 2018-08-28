@@ -17,6 +17,7 @@ PROJECTDIR := $(CURDIR)../
 CRABDIR := ../crab
 INSTALL := $(CRABDIR)/install
 LDD := $(CRABDIR)/build/run/ldd
+APRON := $(CRABDIR)/build/run/apron
 LINUX := ../../linux
 
 # Lookup path for libCrab.so
