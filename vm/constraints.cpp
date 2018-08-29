@@ -99,7 +99,7 @@ struct machine_t final
     array_dom_t ctx_arr{vfac, "C"};
     array_dom_t data_arr{vfac, "D"};
     var_t meta_size{vfac[std::string("meta_size")], crab::INT_TYPE, 64};
-    var_t total_size{vfac[std::string("total_data_size")], crab::INT_TYPE, 64};
+    var_t data_size{vfac[std::string("data_size")], crab::INT_TYPE, 64};
     var_t top{vfac[std::string("*")], crab::INT_TYPE, 64};
     var_t num{vfac[std::to_string(T_NUM)], crab::INT_TYPE, 8};
 
@@ -190,12 +190,11 @@ void abs_machine_t::setup_entry(basic_block_t& entry)
         entry.assign(machine.regs[i].region, T_UNINIT);
     }
 
-    entry.assume(0 <= machine.total_size);
-    if (machine.ctx_desc.meta < 0) {
-        entry.assign(machine.meta_size, 0);
+    entry.assume(0 <= machine.data_size);
+    if (machine.ctx_desc.meta >= 0) {
+        entry.assume(machine.meta_size <= 0);
     } else {
-        entry.assume(0 <= machine.meta_size);
-        entry.assume(machine.meta_size <= machine.total_size);
+        entry.assign(machine.meta_size, 0);
     }
 }
 
@@ -439,8 +438,8 @@ vector<basic_block_t*> instruction_builder_t::exec_data_access(basic_block_t& bl
     lin_exp_t addr = mem_reg.offset + offset;
 
     mid.assume(mem_reg.region == T_DATA);
-    mid.assertion(addr >= 0, di);
-    mid.assertion(addr <= machine.total_size - width, di);
+    mid.assertion(machine.meta_size <= addr, di);
+    mid.assertion(addr <= machine.data_size - width, di);
     if (is_load) {
         auto blocks = machine.data_arr.load(mid, data_reg, addr, width, cfg);
         for (auto b : blocks) {
@@ -485,10 +484,10 @@ vector<basic_block_t*> instruction_builder_t::exec_ctx_access(basic_block_t& blo
             ret.push_back(&b);
         };
         if (desc.data >= 0) {
-            load_datap("data_start", desc.data, machine.meta_size);
-            load_datap("data_end", desc.end, machine.total_size);
+            load_datap("data_start", desc.data, 0);
+            load_datap("data_end", desc.end, machine.data_size);
             if (desc.meta >= 0) {
-                load_datap("meta", desc.meta, 0);
+                load_datap("meta", desc.meta, machine.meta_size);
             }
         }
 
