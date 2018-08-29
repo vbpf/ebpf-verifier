@@ -698,7 +698,13 @@ vector<basic_block_t*> instruction_builder_t::exec()
             block.assign(machine.regs[inst.dst].offset, 0);
             return { &block };
         } else {
-            block.assign(machine.regs[inst.dst].value, immediate(inst, next_inst));
+            auto imm = immediate(inst, next_inst);
+            if ((imm >> 32) == 0) {
+                block.assign(machine.regs[inst.dst].value, imm);
+            } else {
+                // workaround for overflow issue in sdbm implementation
+                block.havoc(machine.regs[inst.dst].value);
+            }
             no_pointer(block, machine.regs[inst.dst]);
             return { &block };
         }
