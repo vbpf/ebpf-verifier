@@ -283,12 +283,11 @@ basic_block_t& abs_machine_t::jump(ebpf_inst inst, bool taken, basic_block_t& bl
     auto& src = machine.regs[inst.src];
     vector<lin_cst_t> csts = jmp_to_cst(opcode, inst.imm, dst.value, src.value);
     debug_info di{"pc", (unsigned int)first_num(block), 0}; 
-
+    for (auto c : csts)
+        block.assume(c);
     if (opcode & EBPF_SRC_REG) {
 
         basic_block_t& same = add_child(cfg, block, "same_type");
-        for (auto c : csts)
-            same.assume(c);
         for (auto c : jmp_to_cst(opcode, inst.imm, dst.value, src.value))
             same.assume(c);
         same.assume(eq(dst.region, src.region));
@@ -312,8 +311,6 @@ basic_block_t& abs_machine_t::jump(ebpf_inst inst, bool taken, basic_block_t& bl
         }
         return offset_check;
     } else {
-        for (auto c : csts)
-            block.assume(c);
         if (inst.imm != 0) {
             // only null can be compared to pointers without leaking secrets
             block.assertion(dst.region == T_NUM, di);
