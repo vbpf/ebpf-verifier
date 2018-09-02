@@ -13,7 +13,9 @@ static int usage(const char *name)
 {
     std::cerr << "usage: " << name << " [FLAGS] DOMAIN BINARY TYPE\n";
     std::cerr << "\nverifies the eBPF code in BINARY using DOMAIN assuming program type TYPE\n";
-    std::cerr << "flags: --log=CRABLOG --verbose=N --stats --simplify --no-reachability\n";
+    std::cerr << "flags: "
+                 "--log=CRABLOG --verbose=N "
+                 "--stats --simplify --no-liveness --no-raw-reachability --semantic-reachability\n";
     std::cerr << "available domains:\n";
     for (auto const [name, desc] : domain_descriptions())
         std::cerr << "\t" << name << " - " << desc << "\n";
