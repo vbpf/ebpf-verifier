@@ -3,7 +3,7 @@
 test -d $1 || (echo "first argument should be a directory"; exit 1)
 
 dir=$1
-files=($(ls -S ${dir}))
+files=($(find ${dir} -name 'accept_*' | grep -v self))
 shift
 
 if [[ "$1" == "header" ]]
@@ -20,13 +20,13 @@ done
 echo
 for f in "${files[@]}";
 do
-	echo -n "$f"
+	echo -n "$(basename $(dirname $f)),$(basename $f)"
 	base=$(basename $f)
-	s=$(./test --no-print-invariants none ${dir}/$base ${base##*.} 2>> /dev/null | grep -E "instructions|loads|stores|jumps" | cut -f2 -d: | paste -s -d"," -)
+	s=$(./test --no-print-invariants none $f ${base##*.} 2>> /dev/null | grep -E "instructions|loads|stores|jumps|joins" | cut -f2 -d: | paste -s -d"," -)
 	echo -n ",$s"
 	for dom in "$@"
 	do
-		s=$(./test --simplify --no-print-invariants $dom ${dir}/$base ${base##*.} 2>> /dev/null | grep seconds | cut -f2 -d:)
+		s=$(./test --simplify --no-print-invariants $dom $f ${base##*.} 2>> /dev/null | grep seconds | cut -f2 -d:)
 		echo -n ",$s"
 	done
 	echo
