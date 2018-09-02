@@ -103,6 +103,7 @@ void print_stats(vector<ebpf_inst> insts) {
     int stores = 0;
     int loads = 0;
     int jumps = 0;
+    vector<int> reaching(insts.size());
     for (pc_t pc = 0; pc < insts.size()-1; pc++) {
         count++;
         if (is_load(insts[pc].opcode))
@@ -111,15 +112,24 @@ void print_stats(vector<ebpf_inst> insts) {
             stores++;
         optional<pc_t> fall_target = get_fall(insts[pc], pc);
         optional<pc_t> jump_target = get_jump(insts[pc], pc);
-        if (jump_target)
+        if (jump_target) {
+            reaching[*jump_target]++;
             jumps++;
-        if (fall_target) 
+        }
+        if (fall_target) {
+            reaching[*fall_target]++;
             pc = *fall_target - 1;
+        }
     }
+    int joins = 0;
+    for (int n : reaching)
+        if (n > 1) joins++;
+
     std::cout << "instructions:" << count << "\n";
     std::cout << "loads:" << loads << "\n";
     std::cout << "stores:" << stores << "\n";
     std::cout << "jumps:" << jumps << "\n";
+    std::cout << "joins:" << joins << "\n";
 }
 
 
