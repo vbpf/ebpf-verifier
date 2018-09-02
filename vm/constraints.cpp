@@ -92,6 +92,7 @@ struct array_dom_t {
 
 struct machine_t final
 {
+    ebpf_prog_type prog_type;
     ptype_descr ctx_desc;
     variable_factory_t& vfac;
     std::vector<dom_t> regs;
@@ -110,6 +111,7 @@ class instruction_builder_t final
 {
 public:
     vector<basic_block_t*> exec();
+    basic_block_t& jump(bool taken);
     instruction_builder_t(machine_t& machine, ebpf_inst inst, ebpf_inst next_inst, basic_block_t& block, cfg_t& cfg) :
         machine(machine), inst(inst), next_inst(next_inst), block(block), cfg(cfg), pc(first_num(block)),
         di{"pc", (unsigned int)pc, 0}, mem_reg(is_load(inst.opcode) ? inst.src : inst.dst), width(access_width(inst.opcode))
@@ -155,6 +157,10 @@ private:
 
     template<typename W>
     vector<basic_block_t*> exec_mem_access_indirect(basic_block_t& block, bool is_load, bool is_st, dom_t mem_reg, dom_t data_reg, int offset, W width);
+
+    bool is_priviledged() {
+        return machine.prog_type == 2;
+    }
 };
 
 abs_machine_t::abs_machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac)
@@ -165,7 +171,7 @@ abs_machine_t::abs_machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac)
 abs_machine_t::~abs_machine_t() = default;
 
 machine_t::machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac)
-    : ctx_desc{get_descriptor(prog_type)}, vfac{vfac}
+    : prog_type(prog_type), ctx_desc{get_descriptor(prog_type)}, vfac{vfac}
 {
     for (int i=0; i < 12; i++) {
         this->regs.emplace_back(vfac, i);
@@ -274,9 +280,8 @@ static vector<lin_cst_t> jmp_to_cst(uint8_t opcode, int imm, var_t& dst_value, v
 }
 
 
-basic_block_t& abs_machine_t::jump(ebpf_inst inst, bool taken, basic_block_t& block, cfg_t& cfg)
+basic_block_t& instruction_builder_t::jump(bool taken)
 {
-    auto& machine = *impl;
     uint8_t opcode = taken ? inst.opcode : reverse(inst.opcode);
     auto& dst = machine.regs[inst.dst];
     auto& src = machine.regs[inst.src];
@@ -310,7 +315,7 @@ basic_block_t& abs_machine_t::jump(ebpf_inst inst, bool taken, basic_block_t& bl
         }
         return offset_check;
     } else {
-        if (inst.imm != 0) {
+        if (!is_priviledged() && inst.imm != 0) {
             // only null can be compared to pointers without leaking secrets
             block.assertion(dst.region == T_NUM, di);
         }
@@ -337,6 +342,10 @@ static void move_into(vector<T>& dst, vector<T>&& src)
         std::make_move_iterator(src.begin()),
         std::make_move_iterator(src.end())
     );
+}
+
+basic_block_t& abs_machine_t::jump(ebpf_inst inst, bool taken, basic_block_t& block, cfg_t& cfg) {
+    return instruction_builder_t(*impl, inst, {}, block, cfg).jump(taken);
 }
 
 vector<basic_block_t*> abs_machine_t::exec(ebpf_inst inst, ebpf_inst next_inst, basic_block_t& block, cfg_t& cfg)
@@ -760,8 +769,10 @@ vector<basic_block_t*> instruction_builder_t::exec_call()
             break;
         case ARG_ANYTHING:
             // avoid pointer leakage:
-            for (basic_block_t* b : blocks) {
-                b->assertion(arg.region == T_NUM, di);
+            if (!is_priviledged()) {
+                for (basic_block_t* b : blocks) {
+                    b->assertion(arg.region == T_NUM, di);
+                }
             }
             break;
         case ARG_CONST_SIZE:
@@ -819,7 +830,7 @@ vector<basic_block_t*> instruction_builder_t::exec_call()
                     b->assertion(is_pointer(arg), di);
                     b->assertion(arg.offset <= 0, di);
                     var_t width = machine.regs[i+1].value;
-                    b->havoc(machine.top);    
+                    b->havoc(machine.top);
                     move_into(next, exec_mem_access_indirect(*b, false, false, arg, { machine.top, machine.top, machine.num }, 0, width));
                 }
                 for (auto b: next) {
