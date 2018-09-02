@@ -122,8 +122,6 @@ static checks_db check(analyzer_t& analyzer)
     using prop_checker_ptr = typename checker_t::prop_checker_ptr;
     checker_t checker(analyzer, {
         prop_checker_ptr(new assert_property_checker<analyzer_t>(verbose))
-        //,
-        //prop_checker_ptr(new div_zero_property_checker<analyzer_t>(verbose))
     });
     checker.run();
     return checker.get_all_checks();
