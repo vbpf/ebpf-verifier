@@ -804,9 +804,11 @@ vector<basic_block_t*> instruction_builder_t::exec_call()
                     b->assertion(arg.value > 0, di);
                     b->assertion(is_pointer(arg), di);
                     var_t width = machine.regs[i+1].value;
-                    block.havoc(machine.top);
+                    b->havoc(machine.top);
                     move_into(next, exec_mem_access_indirect(*b, true, false, arg, { machine.top, machine.top, machine.top }, 0, width));
-                    block.havoc(machine.top);
+                }
+                for (auto b: next) {
+                    b->havoc(machine.top);
                 }
                 blocks = std::move(next);
             }
@@ -817,9 +819,11 @@ vector<basic_block_t*> instruction_builder_t::exec_call()
                     b->assertion(is_pointer(arg), di);
                     b->assertion(arg.offset <= 0, di);
                     var_t width = machine.regs[i+1].value;
-                    block.havoc(machine.top);    
+                    b->havoc(machine.top);    
                     move_into(next, exec_mem_access_indirect(*b, false, false, arg, { machine.top, machine.top, machine.num }, 0, width));
-                    block.havoc(machine.top);
+                }
+                for (auto b: next) {
+                    b->havoc(machine.top);
                 }
                 blocks = std::move(next);
             }
