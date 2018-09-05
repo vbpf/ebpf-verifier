@@ -26,6 +26,10 @@ function progtype()
 		drop_*)      echo 14;;
 		*redirect_*) echo 14;;
 		classifier)	 echo 14;;
+		*) case "$OBJ" in
+			*xdp*) echo 6;;
+			*) echo 14;;
+		   esac
 	esac
 }
 
@@ -35,6 +39,5 @@ do
 	echo $OBJ_$name
 	type=$(progtype $name)
 	sfname=${name//\//-}
-	echo $sfname
-	objcopy -I elf64-little --dump-section "$name=${OUTDIR}/$(basename ${OBJ%_kern.o})-${sfname}.$type" $OBJ
+	objcopy -I elf64-little --dump-section "$name=${OUTDIR}/accept_$(basename ${OBJ%_kern.o})-${sfname}.$type" $OBJ
 done

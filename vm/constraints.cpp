@@ -1071,5 +1071,6 @@ vector<basic_block_t*> instruction_builder_t::exec_alu()
         if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU)
             wrap32(*b, dst.value);
     }
+
     return res;
 }
