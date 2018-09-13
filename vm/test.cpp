@@ -2,6 +2,8 @@
 #include <fstream>
 #include <vector>
 
+#include <boost/lexical_cast.hpp>
+
 #include <crab/common/debug.hpp>
 
 #include "verifier.hpp"
@@ -11,8 +13,13 @@ static vector<ebpf_inst> readfile(string path);
 
 static int usage(const char *name)
 {
-    std::cerr << "usage: " << name << " [FLAGS] DOMAIN BINARY TYPE\n";
-    std::cerr << "\nverifies the eBPF code in BINARY using DOMAIN assuming program type TYPE\n";
+    std::cerr << "usage: " << name << " [FLAGS] BINARY [TYPE] [DOMAIN]\n";
+    std::cerr << "\n";
+    std::cerr << "verifies the eBPF code in BINARY using DOMAIN assuming program type TYPE\n";
+    std::cerr << "\n";
+    std::cerr << "DOMAIN is defaulted to sdbm-arr\n";
+    std::cerr << "TYPE may be extracted from BINARY suffix\n";
+    std::cerr << "\n";
     std::cerr << "flags: "
                  "--log=CRABLOG --verbose=N "
                  "--stats --simplify --no-liveness --no-raw-reachability --semantic-reachability\n";
@@ -68,16 +75,19 @@ int main(int argc, char **argv)
             posargs.push_back(arg);
         }
     }
-    if (posargs.size() != 3)
+    if (posargs.size() > 3 || posargs.size() == 0)
         return usage(argv[0]);
 
-    string domain = posargs[0];
+    string fname = posargs.at(0);
+
+    string domain = posargs.size() > 2 ? posargs.at(2) : "sdbm-arr";
     if (domain_descriptions().count(domain) == 0) {
         std::cerr << "argument " << domain << " is not a valid domain\n";
         return usage(argv[0]);
     }
 
-    return run(posargs[0], posargs[1], (ebpf_prog_type)std::stoi(posargs[2]));
+    int prog_type = posargs.size() > 1 ? std::stoi(posargs.at(1)) : boost::lexical_cast<int>(fname.substr(fname.find_last_of('.') + 1));
+    return run(domain, fname, (ebpf_prog_type)prog_type);
 }
 
 

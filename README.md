@@ -37,7 +37,7 @@ make
 and then, for example
 
 ```bash
-./test term bins/tc_l2_redirect-drop_non_tun_vip.14 14
+./test ../samples/linux/accept_tc_l2_redirect-drop_non_tun_vip.14 14 sdbm-arr
 ```
 
 ## Compiling C to eBPF

@@ -26,7 +26,7 @@ do
 		base=$(basename $f)
 		err=../logs/${base}.err
 		log=../logs/${base}.log
-		CMD="./test --simplify --no-print-invariants $dom ${dir}/$base ${base##*.}"
+		CMD="./test --simplify --no-print-invariants ${dir}/$base ${base##*.} $dom"
 		echo $CMD > ${err}
 		echo $CMD > ${log}
 		$CMD >> ${log} 2>> ${err}
