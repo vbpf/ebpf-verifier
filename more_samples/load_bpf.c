@@ -11,12 +11,16 @@ int main(int argc, char **argv)
 		printf("usage: %s kern/filename.o\n", argv[0]);
 		return 1;
 	}
-	char* filename = argv[1];
-	printf("loading %s\n", filename);
-	if (load_bpf_file(filename)) {
-		printf("not loaded; err=%d\n", errno);
-		return 1;
+	int res = 0;
+	for (int i=1; i < argc; i++) {
+		char* filename = argv[i];
+		printf("loading %s\n", filename);
+		if (load_bpf_file(filename)) {
+			printf("not loaded; err=%d\n", errno);
+			res = 1;
+		} else {
+			printf("loaded\n");
+		}
 	}
-	printf("loaded\n");
-	return 0;
+	return res;
 }

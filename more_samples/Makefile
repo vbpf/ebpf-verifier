@@ -27,11 +27,11 @@ all: load_bpf kern
 
 kern: $(SRCS:.c=.o)
 
-kern/%.o:
+kern/%.o: $(@.o=.c)
 	clang ${INCLUDES} -nostdinc ${D} ${W} -O2 -emit-llvm -c $(@:.o=.c) -o - | llc -march=bpf -filetype=obj -o $@
 
-load_bpf:
-	gcc bpf_load.o libbpf.a load_bpf.c -lelf -o load_bpf
+load_bpf: load_bpf.c
+	gcc bpf_load.o libbpf.a $@.c -lelf -o $@
 
 clean:
 	rm -f load_bpf kern/*.o
