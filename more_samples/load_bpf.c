@@ -8,7 +8,7 @@ int load_bpf_file(char* filename);
 int main(int argc, char **argv)
 {
 	if (argc <= 1) {
-		printf("usage: %s filename_kern.o\n", argv[0]);
+		printf("usage: %s kern/filename.o\n", argv[0]);
 		return 1;
 	}
 	char* filename = argv[1];
