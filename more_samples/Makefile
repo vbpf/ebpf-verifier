@@ -27,8 +27,9 @@ all: load_bpf kern
 
 kern: $(SRCS:.c=.o)
 
-kern/%.o: $(@.o=.c)
+kern/%.o: $(@:.o=.c)
 	clang ${INCLUDES} -nostdinc ${D} ${W} -O2 -emit-llvm -c $(@:.o=.c) -o - | llc -march=bpf -filetype=obj -o $@
+	llvm-objdump -S -no-show-raw-insn $@ > $(@:.o=.asm)
 
 load_bpf: load_bpf.c
 	gcc bpf_load.o libbpf.a $@.c -lelf -o $@
