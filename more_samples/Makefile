@@ -12,13 +12,13 @@ W=-Wno-unused-value \
 
 L=/home/elazarg/workspace/linux
 
-INCLUDES=-I$L/arch/x86/include \
-	 -I$L/arch/x86/include/generated  \
-	 -I$L/include \
-	 -I$L/arch/x86/include/uapi \
-	 -I$L/arch/x86/include/generated/uapi \
+INCLUDES=-I$L/include \
 	 -I$L/include/uapi \
 	 -I$L/include/generated/uapi \
+	 -I$L/arch/x86/include \
+	 -I$L/arch/x86/include/generated  \
+	 -I$L/arch/x86/include/uapi \
+	 -I$L/arch/x86/include/generated/uapi \
 	 -include $L/include/linux/kconfig.h  \
 	 -I$L/samples/bpf \
 	 -I$L/tools/testing/selftests/bpf/
