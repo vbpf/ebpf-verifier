@@ -1,5 +1,6 @@
 #pragma once
 #define __u32 unsigned int
+#define u32 __u32
 
 struct __sk_buff {
 	__u32 len;

@@ -1,5 +1,6 @@
 
 SRCS = $(wildcard kern/*.c)
+BUGS = $(wildcard bugs/*.c)
 
 D=-D__TARGET_ARCH_x86 -D__KERNEL__ -D__BPF_TRACING__
 
@@ -28,11 +29,19 @@ all: load_bpf kern
 kern: $(SRCS:.c=.o)
 
 kern/%.o: $(@:.o=.c)
-	clang ${INCLUDES} -nostdinc ${D} ${W} -O2 -emit-llvm -c $(@:.o=.c) -o - | llc -march=bpf -filetype=obj -o $@
+	clang ${INCLUDES} -nostdinc ${D} ${W} -O1 -emit-llvm -c $(@:.o=.c) -o - | llc -march=bpf -filetype=obj -o $@
+	llvm-objdump -S -no-show-raw-insn $@ > $(@:.o=.asm)
+
+bugs: $(BUGS:.c=.o)
+
+bugs/%.o: $(@:.o=.c)
+	clang ${INCLUDES} -nostdinc ${D} ${W} -O2 -emit-llvm -c $(@:.o=.c) -o $(@:.o=.bc) 
+	llvm-dis $(@:.o=.bc)
+	llc -march=bpf -filetype=obj $(@:.o=.bc) -o $@
 	llvm-objdump -S -no-show-raw-insn $@ > $(@:.o=.asm)
 
 load_bpf: load_bpf.c
 	gcc bpf_load.o libbpf.a $@.c -lelf -o $@
 
 clean:
-	rm -f load_bpf kern/*.o
+	rm -f load_bpf {kern,bugs}/*.{o,bc,asm,ll}

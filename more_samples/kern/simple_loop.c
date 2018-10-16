@@ -1,5 +1,4 @@
-#include <uapi/linux/bpf.h>
-#include "bpf_helpers.h"
+#include "skb.h"
 
 SEC("sk_skb/loop")
 int prog(struct __sk_buff *skb)
