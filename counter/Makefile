@@ -29,8 +29,9 @@ all: load_bpf kern
 kern: $(SRCS:.c=.o)
 
 kern/%.o: $(@:.o=.c)
-	clang ${INCLUDES} -nostdinc ${D} ${W} -O1 -emit-llvm -c $(@:.o=.c) -o - | llc -march=bpf -filetype=obj -o $@
+	clang ${INCLUDES} ${D} ${W} -O2 -emit-llvm -c $(@:.o=.c) -o - | llc -march=bpf -filetype=obj -o $@
 	llvm-objdump -S -no-show-raw-insn $@ > $(@:.o=.asm)
+	../extract_sections.sh $@ ../samples/counter/
 
 bugs: $(BUGS:.c=.o)
 
@@ -44,4 +45,7 @@ load_bpf: load_bpf.c
 	gcc bpf_load.o libbpf.a $@.c -lelf -o $@
 
 clean:
-	rm -f load_bpf {kern,bugs}/*.{o,bc,asm,ll}
+	rm -f load_bpf
+	cd kern; rm -f *.o *.bc *.asm *.ll
+	cd bugs; rm -f *.o *.bc *.asm *.ll
+
