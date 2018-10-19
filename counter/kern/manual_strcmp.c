@@ -2,7 +2,7 @@
 #include "bpf_helpers.h"
 
 
-#define VALUE_SIZE 5
+#define VALUE_SIZE 513
 
 struct bpf_map_def SEC("maps") m1 = {
 	.type = BPF_MAP_TYPE_ARRAY,
@@ -29,7 +29,7 @@ int manual_strcmp(struct __sk_buff *skb)
 	value2 = bpf_map_lookup_elem(&m2, &key2);
 	if (!value1 || !value2) return 1;
 	int res = 1;
-#pragma clang loop unroll_count(5)
+#pragma clang loop unroll_count(513)
 	for (int i = 0; i < VALUE_SIZE; i++) {
 		if (value1[i] != value2[i]) {
 			res = 0;
