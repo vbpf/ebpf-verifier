@@ -3,15 +3,15 @@ kern/manual_strcmp.o:	file format ELF64-BPF
 
 Disassembly of section sk_skb/manual-strcmp:
 manual_strcmp:
-       0:	r1 = 0
-       1:	*(u32 *)(r10 - 4) = r1
-       2:	r2 = r10
-       3:	r2 += -4
-       4:	r1 = 0 ll
-       6:	call 1
-       7:	r6 = r0
-       8:	r7 = 1
-       9:	*(u32 *)(r10 - 8) = r7
+       0:	r7 = 1
+       1:	*(u32 *)(r10 - 4) = r7
+       2:	r1 = 2
+       3:	*(u32 *)(r10 - 8) = r1
+       4:	r2 = r10
+       5:	r2 += -4
+       6:	r1 = 0 ll
+       8:	call 1
+       9:	r6 = r0
       10:	r2 = r10
       11:	r2 += -8
       12:	r1 = 0 ll

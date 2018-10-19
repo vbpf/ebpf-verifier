@@ -29,16 +29,19 @@ all: load_bpf kern
 kern: $(SRCS:.c=.o)
 
 kern/%.o: $(@:.o=.c)
-	clang ${INCLUDES} ${D} ${W} -O2 -emit-llvm -c $(@:.o=.c) -o - | llc -march=bpf -filetype=obj -o $@
+	clang ${INCLUDES} ${D} ${W} -O2 -emit-llvm -c $(@:.o=.c) -o $(@:.o=.bc) 
+	llvm-dis $(@:.o=.bc)
+	llc -march=bpf -filetype=obj -o $@ $(@:.o=.bc)
 	llvm-objdump -S -no-show-raw-insn $@ > $(@:.o=.asm)
-	../extract_sections.sh $@ ../samples/counter/
+	cp $@ /tmp/$@
+	../extract_sections.sh /tmp/$@ ../samples/counter/
 
 bugs: $(BUGS:.c=.o)
 
 bugs/%.o: $(@:.o=.c)
-	clang ${INCLUDES} -nostdinc ${D} ${W} -O2 -emit-llvm -c $(@:.o=.c) -o $(@:.o=.bc) 
+	clang ${INCLUDES} ${D} ${W} -O2 -emit-llvm -c $(@:.o=.c) -o $(@:.o=.bc) 
 	llvm-dis $(@:.o=.bc)
-	llc -march=bpf -filetype=obj $(@:.o=.bc) -o $@
+	llc -march=bpf -filetype=obj -o $@ $(@:.o=.bc)
 	llvm-objdump -S -no-show-raw-insn $@ > $(@:.o=.asm)
 
 load_bpf: load_bpf.c

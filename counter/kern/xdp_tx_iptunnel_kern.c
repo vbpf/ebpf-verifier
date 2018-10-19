@@ -112,8 +112,8 @@ static __always_inline int handle_ipv4(struct xdp_md *xdp)
 	if (bpf_xdp_adjust_head(xdp, 0 - (int)sizeof(struct iphdr)))
 		return XDP_DROP;
 
-	//data = (void *)(long)xdp->data;
-	//data_end = (void *)(long)xdp->data_end;
+	data = (void *)(long)xdp->data;
+	data_end = (void *)(long)xdp->data_end;
 
 	new_eth = data;
 	iph = data + sizeof(*new_eth);
