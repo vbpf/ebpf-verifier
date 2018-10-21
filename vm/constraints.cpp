@@ -457,7 +457,7 @@ vector<basic_block_t*> instruction_builder_t::exec_data_access(basic_block_t& bl
         }
         return blocks;
     } else {
-        mid.assertion(data_reg.region == T_NUM);
+        mid.assertion(data_reg.region == T_NUM, di);
         return machine.data_arr.store(mid, addr, data_reg, width, di, cfg);
     }
 }
