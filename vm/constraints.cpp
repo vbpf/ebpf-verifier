@@ -540,14 +540,16 @@ vector<basic_block_t*> instruction_builder_t::exec_direct_stack_load(basic_block
     for (auto b : blocks) {
         b->array_load(data_reg.region, machine.stack_arr.regions, start, 1);
         b->assume(data_reg.region >= 1);
+
+        /* FIX
+        var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 8};
+        for (int idx=1; idx < width; idx++) {
+            b->array_load(tmp, machine.stack_arr.regions, offset+idx, 1);
+            b->assertion(eq(tmp, data_reg.region), di);
+        }
+        */
     }
     return blocks;
-    /* FIX: requires loop
-    var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 8};
-    for (int idx=1; idx < width; idx++) {
-        block.array_load(tmp, machine.stack_arr.regions, offset+idx, 1);
-        block.assertion(eq(tmp, data_reg.region), di);
-    }*/
 }
 
 vector<basic_block_t*> instruction_builder_t::exec_direct_stack_store(basic_block_t& block, dom_t data_reg, int offset, int width)

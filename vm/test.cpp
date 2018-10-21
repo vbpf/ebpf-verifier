@@ -32,7 +32,7 @@ static int usage(const char *name)
 
 int run(string domain_name, string code_filename, ebpf_prog_type prog_type)
 {
-    std::vector<ebpf_inst> code = readfile(code_filename);
+    vector<ebpf_inst> code = readfile(code_filename);
 
     string errmsg;
     if (!validate_simple(code, errmsg)) {
