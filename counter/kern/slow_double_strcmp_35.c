@@ -1,20 +1,17 @@
 #include <uapi/linux/bpf.h>
 #include "bpf_helpers.h"
 
-
-#define VALUE_SIZE 50
-
 struct bpf_map_def SEC("maps") m1 = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(u32),
-	.value_size = VALUE_SIZE,
+	.value_size = 35,
 	.max_entries = 1,
 };
 
 struct bpf_map_def SEC("maps") m2 = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(u32),
-	.value_size = VALUE_SIZE,
+	.value_size = 35,
 	.max_entries = 1,
 };
 
@@ -30,8 +27,8 @@ int manual_strcmp(struct __sk_buff *skb)
 	if (!value1 || !value2) return 1;
 	int res = 1;
 	int i = 0;
-#pragma clang loop unroll_count(50)
-	for (; i < VALUE_SIZE; i++) {
+#pragma clang loop unroll_count(35)
+	for (; i < 35; i++) {
 		if (value1[i] != value2[i]) {
 			res = 0;
 			break;
@@ -40,8 +37,8 @@ int manual_strcmp(struct __sk_buff *skb)
 			break;
 	}
 	int j = 0;
-#pragma clang loop unroll_count(50)
-	for (; j < VALUE_SIZE; j++) {
+#pragma clang loop unroll_count(35)
+	for (; j < 35; j++) {
 		if (value1[j] != value2[j]) {
 			res = 0;
 			break;
