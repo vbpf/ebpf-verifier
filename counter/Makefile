@@ -1,6 +1,7 @@
 
 SRCS = $(wildcard kern/*.c)
 BUGS = $(wildcard bugs/*.c)
+OBJS = $(SRCS:.c=.o)
 
 D=-D__TARGET_ARCH_x86 -D__KERNEL__ -D__BPF_TRACING__
 
@@ -26,9 +27,9 @@ INCLUDES=-I$L/include \
 
 all: load_bpf kern
 
-kern: $(SRCS:.c=.o)
+kern: $(OBJS)
 
-kern/%.o: $(@:.o=.c)
+kern/%.o: kern/%.c
 	clang ${INCLUDES} ${D} ${W} -O2 -emit-llvm -c $(@:.o=.c) -o $(@:.o=.bc) 
 	llvm-dis $(@:.o=.bc)
 	llc -march=bpf -filetype=obj -o $@ $(@:.o=.bc)
