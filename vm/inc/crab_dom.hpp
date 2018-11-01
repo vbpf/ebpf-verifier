@@ -76,7 +76,6 @@ namespace crab {
     using z_dis_interval_domain_t = dis_interval_domain<ikos::z_number, varname_t >;
     using z_box_apron_domain_t = apron_domain<ikos::z_number,varname_t,apron_domain_id_t::APRON_INT>;
     using z_oct_apron_domain_t = apron_domain<ikos::z_number,varname_t,apron_domain_id_t::APRON_OCT>;
-    using z_opt_oct_apron_domain_t = apron_domain<ikos::z_number,varname_t,apron_domain_id_t::APRON_OPT_OCT>;
     using z_pk_apron_domain_t = apron_domain<ikos::z_number,varname_t,apron_domain_id_t::APRON_PK>;
     using z_term_domain_t = term_domain<term::TDomInfo<ikos::z_number,varname_t,z_interval_domain_t> >;
     using z_term_dbm_t = term_domain<term::TDomInfo<ikos::z_number,varname_t,z_sdbm_domain_t> >;
