@@ -201,6 +201,13 @@ const map<string, domain_desc> domains{
     { "pk_apron"          , { analyze<z_pk_apron_domain_t>, "(z_pk_apron_domain_t)" } },
     { "pk_apron-arr"      , { analyze<array_expansion_domain<z_pk_apron_domain_t>>, "mem: (z_pk_apron_domain_t)" } },
 #endif
+    { "zones_elina"       , { analyze<z_zones_elina_domain_t>, "zones elina (z_zones_elina_domain_t)" } },
+    { "zones_elina-arr"   , { analyze<array_expansion_domain<z_zones_elina_domain_t>>, "mem: zones elina (z_zones_elina_domain_t)" } },
+    { "oct_elina"         , { analyze<z_oct_elina_domain_t>, "octagon elina (z_oct_elina_domain_t)" } },
+    { "oct_elina-arr"     , { analyze<array_expansion_domain<z_oct_elina_domain_t>>, "mem: octagon elina (z_oct_elina_domain_t)" } },
+    { "pk_elina"          , { analyze<z_pk_elina_domain_t>, "(z_pk_elina_domain_t)" } },
+    { "pk_elina-arr"      , { analyze<array_expansion_domain<z_pk_elina_domain_t>>, "mem: (z_pk_elina_domain_t)" } },
+
     { "term"              , { analyze<z_term_domain_t>, "(z_term_domain_t)" } },
     { "term-arr"          , { analyze<array_expansion_domain<z_term_domain_t>>, "mem: (z_term_domain_t)" } },
     { "term_dbm"          , { analyze<z_term_dbm_t>, "(z_term_dbm_t)" } },
