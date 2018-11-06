@@ -54,6 +54,11 @@ int main(int argc, char **argv)
     for (string arg : args) {
         if (arg.find("--log=") == 0) {
             crab::CrabEnableLog(arg.substr(6));
+        } else if (arg == "-q" || arg == "--disable-warnings") {
+            crab::CrabEnableWarningMsg(false);
+        } else if (arg == "-q") {
+            crab::CrabEnableWarningMsg(false);
+            global_options.print_invariants = false;
         } else if (arg.find("--verbose=") == 0) {
             if (arg[0] == '"') arg=arg.substr(1, arg.size()-1);
             crab::CrabEnableVerbosity(std::stoi(arg.substr(10)));
