@@ -2,12 +2,12 @@ PROJECTDIR := $(CURDIR)../
 
 CRABDIR := ../crab
 INSTALL := $(CRABDIR)/install/crab
-LDD := $(CRABDIR)/build/run/ldd
+LDD := $(CRABDIR)/install/ldd
 ELINA := $(CRABDIR)/install/elina
 LINUX := ../../linux
 
 # Lookup path for libCrab.so
-LDFLAGS := -Wl,-rpath,$(INSTALL)/lib/ -Wl,rpath,$(ELINA)/lib/
+LDFLAGS := -Wl,-rpath,$(INSTALL)/lib/ # -Wl,-rpath,$(ELINA)/lib/
 UNAME := $(shell uname)
 ifeq ($(UNAME),Darwin)
     LIBCRAB = $(INSTALL)/lib/libCrab.dylib
@@ -28,12 +28,12 @@ LDLIBS := \
     $(LDD)/lib/libutil.a \
     $(LDD)/lib/libmtr.a \
     $(LDD)/lib/libepd.a \
+    $(LDD)/lib/libldd.a \
     -lmpfr -lgmpxx -lgmp -lm -lstdc++ 
 
 CXXFLAGS := -Wall -Werror -Wfatal-errors \
     -Wno-unused-local-typedefs -Wno-unused-function -Wno-inconsistent-missing-override -Wno-unused-const-variable -Wno-uninitialized -Wno-deprecated \
     -DBSD -DHAVE_IEEE_754 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 \
-    -L $(ELINA)/lib \
     -I inc \
     -I $(INSTALL)/include/ \
     -I $(LDD)/include/ldd/ \
