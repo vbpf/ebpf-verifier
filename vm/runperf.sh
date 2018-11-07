@@ -22,11 +22,11 @@ for f in "${files[@]}";
 do
 	echo -n "$(basename $(dirname $f)),$(basename $f)"
 	base=$(basename $f)
-	s=$(./test --no-print-invariants $f ${base##*.} none 2>> /dev/null | grep -E "instructions|loads|stores|jumps|joins" | cut -f2 -d: | paste -s -d"," -)
+	s=$(./test -q $f ${base##*.} none 2>/dev/null | grep -E "instructions|loads|stores|jumps|joins" | cut -f2 -d: | paste -s -d"," -)
 	echo -n ",$s"
 	for dom in "$@"
 	do
-		s=$(./test --simplify --no-print-invariants $f ${base##*.} $dom 2>> /dev/null | grep seconds | cut -f2 -d:)
+		s=$(./test --simplify  -q $f ${base##*.} $dom | grep seconds | cut -f2 -d:)
 		echo -n ",$s"
 	done
 	echo
