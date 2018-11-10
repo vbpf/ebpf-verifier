@@ -24,12 +24,12 @@ for f in "${files[@]}";
 do
 	echo -n "$f"
 	base=$(basename $f)
-	s=$(./test --no-print-invariants none ${dir}/$base ${base##*.} 2>> /dev/null | grep -E "instructions|loads|stores|jumps|joins" | cut -f2 -d: | paste -s -d"," -)
+	s=$(./test -q none ${dir}/$base ${base##*.} 2>> /dev/null | grep -E "instructions|loads|stores|jumps|joins" | cut -f2 -d: | paste -s -d"," -)
 	echo -n ",$s"
-	baseline=$(get_mem ./test --simplify none ${dir}/$base ${base##*.})
+	baseline=$(get_mem ./test --simplify -q none ${dir}/$base ${base##*.})
 	for dom in "$@"
 	do
-		s=$(get_mem ./test --simplify $dom ${dir}/$base ${base##*.})
+		s=$(get_mem ./test --simplify -q $dom ${dir}/$base ${base##*.})
 		echo -n ",$(( (s - baseline) / 1000 ))"
 	done
 	echo

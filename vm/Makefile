@@ -39,7 +39,7 @@ CXXFLAGS := -Wall -Werror -Wfatal-errors \
     -I $(LDD)/include/ldd/ \
     -I $(LDD)/include/ldd/include/ \
     -I $(ELINA)/include/ \
-    -O0 -g3 -std=c++17
+    -O2 -g3 -std=c++17
 
 all: test
 
@@ -55,7 +55,7 @@ test: ${OBJECTS}
 	$(CXX) ${CXXFLAGS} ${LDFLAGS} ${OBJECTS} ${LDLIBS} -o test 
 
 clean:
-	rm -f test *.a *.o
+	rm -f test *.o
 
 crab_clean:
 	rm -rf $(CRABDIR)/build $(CRABDIR)/install

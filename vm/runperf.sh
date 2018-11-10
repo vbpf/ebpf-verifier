@@ -3,7 +3,7 @@
 test -d $1 || (echo "first argument should be a directory"; exit 1)
 
 dir=$1
-files=($(find ${dir} -name 'accept_*' | grep -v self))
+files=($(find ${dir} -name 'accept_*'  -exec ls -Sd {} + | grep -v self))
 shift
 
 if [[ "$1" == "header" ]]
@@ -26,7 +26,7 @@ do
 	echo -n ",$s"
 	for dom in "$@"
 	do
-		s=$(./test --simplify  -q $f ${base##*.} $dom | grep seconds | cut -f2 -d:)
+		s=$(./test --simplify --no-print-invariants -q $f ${base##*.} $dom | grep seconds | cut -f2 -d:)
 		echo -n ",$s"
 	done
 	echo
