@@ -1,4 +1,4 @@
-PROJECTDIR := $(CURDIR)../
+PROJECTDIR := $(shell realpath $(CURDIR))../
 
 CRABDIR := ../crab
 INSTALL := $(CRABDIR)/install/crab
@@ -7,7 +7,7 @@ ELINA := $(CRABDIR)/install/elina
 LINUX := ../../linux
 
 # Lookup path for libCrab.so
-LDFLAGS := -Wl,-rpath,$(INSTALL)/lib/ # -Wl,-rpath,$(ELINA)/lib/
+LDFLAGS := -Wl,--disable-new-dtags -Wl,-rpath,$(INSTALL)/lib/ -Wl,-rpath,$(ELINA)/lib/
 UNAME := $(shell uname)
 ifeq ($(UNAME),Darwin)
     LIBCRAB = $(INSTALL)/lib/libCrab.dylib
@@ -22,6 +22,7 @@ LDLIBS := \
     $(ELINA)/lib/liboptoct.so \
     $(ELINA)/lib/liboptpoly.so \
     $(ELINA)/lib/liboptzones.so \
+    $(ELINA)/lib/libpartitions.so \
     $(LDD)/lib/libtvpi.a \
     $(LDD)/lib/libcudd.a \
     $(LDD)/lib/libst.a \
