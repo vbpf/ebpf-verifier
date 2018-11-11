@@ -7,12 +7,13 @@ ELINA := $(CRABDIR)/install/elina
 LINUX := ../../linux
 
 # Lookup path for libCrab.so
-LDFLAGS := -Wl,--disable-new-dtags -Wl,-rpath,$(INSTALL)/lib/ -Wl,-rpath,$(ELINA)/lib/
+LDFLAGS := -Wl,-rpath,$(INSTALL)/lib/ -Wl,-rpath,$(ELINA)/lib/
 UNAME := $(shell uname)
 ifeq ($(UNAME),Darwin)
     LIBCRAB = $(INSTALL)/lib/libCrab.dylib
 else
     LIBCRAB = $(INSTALL)/lib/libCrab.so
+    LDFLAGS += -Wl,--disable-new-dtags 
 endif
 
 LDLIBS := \
