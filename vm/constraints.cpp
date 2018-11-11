@@ -416,7 +416,9 @@ vector<basic_block_t*> instruction_builder_t::exec_stack_access(basic_block_t& b
         return { &mid };
     } else {
         assert_init(mid, data_reg, di);
-        return machine.stack_arr.store(mid, addr, data_reg, width, di, cfg);
+        auto res = machine.stack_arr.store(mid, addr, data_reg, width, di, cfg);
+        mid.havoc(machine.top);
+        return res;
     }
 }
 
