@@ -5,7 +5,7 @@ int prog(struct __sk_buff *skb)
 {
 	char *data = (char *)(long)skb->data;
 	char *data_end = (char *)(long)skb->data_end;
-	long k = data_end - data;
+	volatile long k = data_end - data;
 	while (--k >= 0)
 		data[k] = (char)k;
 	return 0;
