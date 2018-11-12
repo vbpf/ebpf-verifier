@@ -37,7 +37,7 @@ kern/%.ll: kern/%.bc
 kern/%.o: kern/%.bc kern/%.ll
 	llc -march=bpf -filetype=obj $< -o $@
 	cp $@ /tmp/$@
-	./extract_sections.sh /tmp/$@ ../samples/counter/
+	./extract_sections.sh /tmp/$@ samples/
 
 kern/%.asm: kern/%.o
 	llvm-objdump -S -no-show-raw-insn $< > $@
