@@ -29,64 +29,78 @@ define i32 @memcpy_maps(%struct.__sk_buff* nocapture readonly) #0 section "sk_sk
   %11 = icmp ne i8* %5, null
   %12 = icmp ne i8* %7, null
   %13 = and i1 %11, %12
-  br i1 %13, label %14, label %48
+  br i1 %13, label %14, label %60
 
 ; <label>:14:                                     ; preds = %1
   %15 = icmp eq i32 %9, 0
-  br i1 %15, label %48, label %16
+  br i1 %15, label %60, label %16
 
 ; <label>:16:                                     ; preds = %14
-  %17 = and i64 %10, 1
-  %18 = icmp eq i32 %9, 1
-  br i1 %18, label %40, label %19
+  %17 = add nsw i64 %10, -1
+  %18 = and i64 %10, 3
+  %19 = icmp ult i64 %17, 3
+  br i1 %19, label %46, label %20
 
-; <label>:19:                                     ; preds = %16
-  %20 = sub nsw i64 %10, %17
-  br label %21
+; <label>:20:                                     ; preds = %16
+  %21 = sub nsw i64 %10, %18
+  br label %22
 
-; <label>:21:                                     ; preds = %21, %19
-  %22 = phi i64 [ 0, %19 ], [ %35, %21 ]
-  %23 = phi i64 [ %20, %19 ], [ %36, %21 ]
-  %24 = urem i64 %22, 4098
-  %25 = getelementptr inbounds i8, i8* %7, i64 %24
-  %26 = load i8, i8* %25, align 1, !tbaa !8
-  %27 = add nuw nsw i64 %24, 1
-  %28 = getelementptr inbounds i8, i8* %5, i64 %27
-  store i8 %26, i8* %28, align 1, !tbaa !8
-  %29 = or i64 %22, 1
-  %30 = urem i64 %29, 4098
-  %31 = getelementptr inbounds i8, i8* %7, i64 %30
-  %32 = load i8, i8* %31, align 1, !tbaa !8
-  %33 = add nuw nsw i64 %30, 1
-  %34 = getelementptr inbounds i8, i8* %5, i64 %33
-  store i8 %32, i8* %34, align 1, !tbaa !8
-  %35 = add nuw nsw i64 %22, 2
-  %36 = add i64 %23, -2
-  %37 = icmp eq i64 %36, 0
-  br i1 %37, label %38, label %21
+; <label>:22:                                     ; preds = %22, %20
+  %23 = phi i64 [ 0, %20 ], [ %43, %22 ]
+  %24 = phi i64 [ %21, %20 ], [ %44, %22 ]
+  %25 = and i64 %23, 4088
+  %26 = getelementptr inbounds i8, i8* %7, i64 %25
+  %27 = load i8, i8* %26, align 1, !tbaa !8
+  %28 = getelementptr inbounds i8, i8* %5, i64 %25
+  store i8 %27, i8* %28, align 1, !tbaa !8
+  %29 = and i64 %23, 4088
+  %30 = getelementptr inbounds i8, i8* %7, i64 %29
+  %31 = load i8, i8* %30, align 1, !tbaa !8
+  %32 = getelementptr inbounds i8, i8* %5, i64 %29
+  store i8 %31, i8* %32, align 1, !tbaa !8
+  %33 = and i64 %23, 4088
+  %34 = or i64 %33, 2
+  %35 = getelementptr inbounds i8, i8* %7, i64 %34
+  %36 = load i8, i8* %35, align 1, !tbaa !8
+  %37 = getelementptr inbounds i8, i8* %5, i64 %34
+  store i8 %36, i8* %37, align 1, !tbaa !8
+  %38 = and i64 %23, 4088
+  %39 = or i64 %38, 2
+  %40 = getelementptr inbounds i8, i8* %7, i64 %39
+  %41 = load i8, i8* %40, align 1, !tbaa !8
+  %42 = getelementptr inbounds i8, i8* %5, i64 %39
+  store i8 %41, i8* %42, align 1, !tbaa !8
+  %43 = add nuw nsw i64 %23, 4
+  %44 = add i64 %24, -4
+  %45 = icmp eq i64 %44, 0
+  br i1 %45, label %46, label %22
 
-; <label>:38:                                     ; preds = %21
-  %39 = urem i64 %35, 4098
-  br label %40
+; <label>:46:                                     ; preds = %22, %16
+  %47 = phi i64 [ 0, %16 ], [ %43, %22 ]
+  %48 = icmp eq i64 %18, 0
+  br i1 %48, label %60, label %49
 
-; <label>:40:                                     ; preds = %38, %16
-  %41 = phi i64 [ 0, %16 ], [ %39, %38 ]
-  %42 = icmp eq i64 %17, 0
-  br i1 %42, label %48, label %43
+; <label>:49:                                     ; preds = %46
+  br label %50
 
-; <label>:43:                                     ; preds = %40
-  %44 = getelementptr inbounds i8, i8* %7, i64 %41
-  %45 = load i8, i8* %44, align 1, !tbaa !8
-  %46 = add nuw nsw i64 %41, 1
-  %47 = getelementptr inbounds i8, i8* %5, i64 %46
-  store i8 %45, i8* %47, align 1, !tbaa !8
-  br label %48
+; <label>:50:                                     ; preds = %50, %49
+  %51 = phi i64 [ %57, %50 ], [ %47, %49 ]
+  %52 = phi i64 [ %58, %50 ], [ %18, %49 ]
+  %53 = and i64 %51, 4090
+  %54 = getelementptr inbounds i8, i8* %7, i64 %53
+  %55 = load i8, i8* %54, align 1, !tbaa !8
+  %56 = getelementptr inbounds i8, i8* %5, i64 %53
+  store i8 %55, i8* %56, align 1, !tbaa !8
+  %57 = add nuw nsw i64 %51, 1
+  %58 = add i64 %52, -1
+  %59 = icmp eq i64 %58, 0
+  br i1 %59, label %60, label %50, !llvm.loop !9
 
-; <label>:48:                                     ; preds = %43, %40, %14, %1
-  %49 = phi i32 [ 1, %1 ], [ 0, %14 ], [ 0, %40 ], [ 0, %43 ]
+; <label>:60:                                     ; preds = %46, %50, %14, %1
+  %61 = phi i32 [ 1, %1 ], [ 0, %14 ], [ 0, %50 ], [ 0, %46 ]
   call void @llvm.lifetime.end.p0i8(i64 4, i8* nonnull %6) #2
   call void @llvm.lifetime.end.p0i8(i64 4, i8* nonnull %4) #2
-  ret i32 %49
+  ret i32 %61
 }
 
 ; Function Attrs: argmemonly nounwind
@@ -111,3 +125,5 @@ attributes #2 = { nounwind }
 !6 = !{!7, !3, i64 0}
 !7 = !{!"__sk_buff", !3, i64 0, !3, i64 4, !3, i64 8, !3, i64 12, !3, i64 16, !3, i64 20, !3, i64 24, !3, i64 28, !3, i64 32, !3, i64 36, !3, i64 40, !3, i64 44, !4, i64 48, !3, i64 68, !3, i64 72, !3, i64 76, !3, i64 80, !3, i64 84, !3, i64 88, !3, i64 92, !3, i64 96, !4, i64 100, !4, i64 116, !3, i64 132, !3, i64 136, !3, i64 140}
 !8 = !{!4, !4, i64 0}
+!9 = distinct !{!9, !10}
+!10 = !{!"llvm.loop.unroll.disable"}
