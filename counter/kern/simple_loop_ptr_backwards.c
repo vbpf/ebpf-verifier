@@ -3,13 +3,11 @@
 SEC("sk_skb/loop-ptr")
 int prog(struct __sk_buff *skb)
 {
-	volatile long *data = (void *)(long)skb->data;
+	char *data = (void *)(long)skb->data;
 	long *data_end = (void *)(long)skb->data_end;
 
-	while (data < data_end) {
-		*data = 15;
-		data++;
-	}
+	while (--data_end >= data)
+		*data_end = 15;
 	return 0;
 }
 

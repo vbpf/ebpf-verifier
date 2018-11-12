@@ -14,26 +14,67 @@ define i32 @prog(%struct.__sk_buff* nocapture readonly) #0 section "sk_skb/loop-
   %2 = getelementptr inbounds %struct.__sk_buff, %struct.__sk_buff* %0, i64 0, i32 15
   %3 = load i32, i32* %2, align 4, !tbaa !2
   %4 = zext i32 %3 to i64
-  %5 = getelementptr inbounds %struct.__sk_buff, %struct.__sk_buff* %0, i64 0, i32 16
-  %6 = load i32, i32* %5, align 4, !tbaa !7
-  %7 = zext i32 %6 to i64
-  %8 = inttoptr i64 %7 to i64*
-  %9 = getelementptr inbounds i64, i64* %8, i64 -1
-  %10 = inttoptr i64 %4 to i64*
-  %11 = icmp ult i64* %9, %10
-  br i1 %11, label %17, label %12
+  %5 = inttoptr i64 %4 to i64*
+  %6 = getelementptr inbounds %struct.__sk_buff, %struct.__sk_buff* %0, i64 0, i32 16
+  %7 = load i32, i32* %6, align 4, !tbaa !7
+  %8 = zext i32 %7 to i64
+  %9 = inttoptr i64 %8 to i64*
+  %10 = icmp ult i64* %5, %9
+  br i1 %10, label %11, label %42
 
-; <label>:12:                                     ; preds = %1
-  br label %13
+; <label>:11:                                     ; preds = %1
+  %12 = inttoptr i64 %8 to i8*
+  %13 = xor i64 %4, -1
+  %14 = getelementptr i8, i8* %12, i64 %13
+  %15 = ptrtoint i8* %14 to i64
+  %16 = lshr i64 %15, 3
+  %17 = add nuw nsw i64 %16, 1
+  %18 = and i64 %17, 7
+  %19 = icmp eq i64 %18, 0
+  br i1 %19, label %27, label %20
 
-; <label>:13:                                     ; preds = %12, %13
-  %14 = phi i64* [ %15, %13 ], [ %9, %12 ]
-  store i64 15, i64* %14, align 8, !tbaa !8
-  %15 = getelementptr inbounds i64, i64* %14, i64 -1
-  %16 = icmp ult i64* %15, %10
-  br i1 %16, label %17, label %13
+; <label>:20:                                     ; preds = %11
+  br label %21
 
-; <label>:17:                                     ; preds = %13, %1
+; <label>:21:                                     ; preds = %21, %20
+  %22 = phi i64* [ %24, %21 ], [ %5, %20 ]
+  %23 = phi i64 [ %25, %21 ], [ %18, %20 ]
+  store volatile i64 15, i64* %22, align 8, !tbaa !8
+  %24 = getelementptr inbounds i64, i64* %22, i64 1
+  %25 = add i64 %23, -1
+  %26 = icmp eq i64 %25, 0
+  br i1 %26, label %27, label %21, !llvm.loop !10
+
+; <label>:27:                                     ; preds = %21, %11
+  %28 = phi i64* [ %5, %11 ], [ %24, %21 ]
+  %29 = icmp ult i8* %14, inttoptr (i64 56 to i8*)
+  br i1 %29, label %42, label %30
+
+; <label>:30:                                     ; preds = %27
+  br label %31
+
+; <label>:31:                                     ; preds = %31, %30
+  %32 = phi i64* [ %28, %30 ], [ %40, %31 ]
+  store volatile i64 15, i64* %32, align 8, !tbaa !8
+  %33 = getelementptr inbounds i64, i64* %32, i64 1
+  store volatile i64 15, i64* %33, align 8, !tbaa !8
+  %34 = getelementptr inbounds i64, i64* %32, i64 2
+  store volatile i64 15, i64* %34, align 8, !tbaa !8
+  %35 = getelementptr inbounds i64, i64* %32, i64 3
+  store volatile i64 15, i64* %35, align 8, !tbaa !8
+  %36 = getelementptr inbounds i64, i64* %32, i64 4
+  store volatile i64 15, i64* %36, align 8, !tbaa !8
+  %37 = getelementptr inbounds i64, i64* %32, i64 5
+  store volatile i64 15, i64* %37, align 8, !tbaa !8
+  %38 = getelementptr inbounds i64, i64* %32, i64 6
+  store volatile i64 15, i64* %38, align 8, !tbaa !8
+  %39 = getelementptr inbounds i64, i64* %32, i64 7
+  store volatile i64 15, i64* %39, align 8, !tbaa !8
+  %40 = getelementptr inbounds i64, i64* %32, i64 8
+  %41 = icmp ult i64* %40, %9
+  br i1 %41, label %31, label %42
+
+; <label>:42:                                     ; preds = %27, %31, %1
   ret i32 0
 }
 
@@ -52,3 +93,5 @@ attributes #0 = { norecurse nounwind uwtable "correctly-rounded-divide-sqrt-fp-m
 !7 = !{!3, !4, i64 80}
 !8 = !{!9, !9, i64 0}
 !9 = !{!"long", !5, i64 0}
+!10 = distinct !{!10, !11}
+!11 = !{!"llvm.loop.unroll.disable"}
