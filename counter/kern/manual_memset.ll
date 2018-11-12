@@ -14,26 +14,20 @@ define i32 @manual_memset(%struct.__sk_buff* nocapture readonly) #0 section "sk_
   %2 = getelementptr inbounds %struct.__sk_buff, %struct.__sk_buff* %0, i64 0, i32 16
   %3 = load i32, i32* %2, align 4, !tbaa !2
   %4 = zext i32 %3 to i64
-  %5 = inttoptr i64 %4 to i8*
+  %5 = inttoptr i64 %4 to i64*
   %6 = getelementptr inbounds %struct.__sk_buff, %struct.__sk_buff* %0, i64 0, i32 15
   %7 = load i32, i32* %6, align 4, !tbaa !7
   %8 = zext i32 %7 to i64
-  %9 = inttoptr i64 %8 to i8*
-  %10 = getelementptr inbounds i8, i8* %5, i64 -1
-  %11 = icmp ult i8* %10, %9
-  br i1 %11, label %17, label %12
+  %9 = inttoptr i64 %8 to i64*
+  %10 = getelementptr inbounds i64, i64* %5, i64 -1
+  %11 = icmp ult i64* %10, %9
+  br i1 %11, label %13, label %12
 
 ; <label>:12:                                     ; preds = %1
+  store i64 4294967295, i64* %10, align 8, !tbaa !8
   br label %13
 
-; <label>:13:                                     ; preds = %12, %13
-  %14 = phi i8* [ %15, %13 ], [ %10, %12 ]
-  store i8 15, i8* %14, align 1, !tbaa !8
-  %15 = getelementptr inbounds i8, i8* %14, i64 -1
-  %16 = icmp ult i8* %15, %9
-  br i1 %16, label %17, label %13
-
-; <label>:17:                                     ; preds = %13, %1
+; <label>:13:                                     ; preds = %1, %12
   ret i32 0
 }
 
@@ -50,4 +44,5 @@ attributes #0 = { norecurse nounwind uwtable "correctly-rounded-divide-sqrt-fp-m
 !5 = !{!"omnipotent char", !6, i64 0}
 !6 = !{!"Simple C/C++ TBAA"}
 !7 = !{!3, !4, i64 76}
-!8 = !{!5, !5, i64 0}
+!8 = !{!9, !9, i64 0}
+!9 = !{!"long", !5, i64 0}
