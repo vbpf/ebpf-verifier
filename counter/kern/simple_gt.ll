@@ -10,7 +10,7 @@ target triple = "x86_64-pc-linux-gnu"
 @llvm.used = appending global [3 x i8*] [i8* getelementptr inbounds ([4 x i8], [4 x i8]* @_license, i32 0, i32 0), i8* bitcast (i32* @_version to i8*), i8* bitcast (i32 (%struct.__sk_buff*)* @prog_simple_eq_linux to i8*)], section "llvm.metadata"
 
 ; Function Attrs: norecurse nounwind uwtable
-define i32 @prog_simple_eq_linux(%struct.__sk_buff* nocapture readonly) #0 section "sk_skb/simple-eq-linux" {
+define i32 @prog_simple_eq_linux(%struct.__sk_buff* nocapture readonly) #0 section "sk_skb/simple-gt" {
   %2 = getelementptr inbounds %struct.__sk_buff, %struct.__sk_buff* %0, i64 0, i32 15
   %3 = load i32, i32* %2, align 4, !tbaa !2
   %4 = zext i32 %3 to i64

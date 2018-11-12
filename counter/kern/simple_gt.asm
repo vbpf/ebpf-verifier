@@ -1,7 +1,7 @@
 
 kern/simple_gt.o:	file format ELF64-BPF
 
-Disassembly of section sk_skb/simple-eq-linux:
+Disassembly of section sk_skb/simple-gt:
 prog_simple_eq_linux:
        0:	r0 = 1
        1:	r2 = *(u32 *)(r1 + 76)

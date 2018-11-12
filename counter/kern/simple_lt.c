@@ -4,10 +4,10 @@
 SEC("sk_skb/simple-lt")
 int prog_simple_lt(struct __sk_buff *skb)
 {
-	char *data = (void *)(long)skb->data;
-	char *data_end = (void *)(long)skb->data_end;
-	long k = data_end - data;
-	if (k < 1) return 1;
+	long *data = (void *)(long)skb->data;
+	long *data_end = (void *)(long)skb->data_end;
+	unsigned long k = data_end - data;
+	if (k <= 48) return 1;
 	*data = 1;
 	return 1;
 }
