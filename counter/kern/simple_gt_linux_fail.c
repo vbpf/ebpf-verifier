@@ -6,7 +6,7 @@ int prog_simple_eq_linux(struct __sk_buff *skb)
 {
 	int *data = (int *)(long)skb->data;
 	int *data_end = (int *)(long)skb->data_end;
-	if (data+2 >= data_end) return 1;
+	if (data+1 >= data_end) return 1;
 	data[0] = 0xF;
 	return 0;
 }

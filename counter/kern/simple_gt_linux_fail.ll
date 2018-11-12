@@ -1,5 +1,5 @@
-; ModuleID = 'kern/simple_gt_linux.bc'
-source_filename = "kern/simple_gt_linux.c"
+; ModuleID = 'kern/simple_gt_linux_fail.bc'
+source_filename = "kern/simple_gt_linux_fail.c"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
@@ -19,7 +19,7 @@ define i32 @prog_simple_eq_linux(%struct.__sk_buff* nocapture readonly) #0 secti
   %7 = load i32, i32* %6, align 4, !tbaa !7
   %8 = zext i32 %7 to i64
   %9 = inttoptr i64 %8 to i32*
-  %10 = getelementptr inbounds i32, i32* %5, i64 2
+  %10 = getelementptr inbounds i32, i32* %5, i64 1
   %11 = icmp ult i32* %10, %9
   br i1 %11, label %12, label %13
 
