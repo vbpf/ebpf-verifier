@@ -1,6 +1,6 @@
 PROJECTDIR := $(shell realpath $(CURDIR))../
 
-CRABDIR := ../crab
+CRABDIR := $(CURDIR)/../crab
 INSTALL := $(CRABDIR)/install/crab
 LDD := $(CRABDIR)/install/ldd
 ELINA := $(CRABDIR)/install/elina
