@@ -19,10 +19,11 @@ int memcpy_maps(struct __sk_buff *skb)
 	char* value2 = bpf_map_lookup_elem(&m, &key2);
 	u64 len = skb->len;
 	if (!value1 || !value2) return 1;
+	volatile long k = 1;
 
 	// "math between map_value pointer and register with unbounded min value is not allowed"
 	for (u64 i = 0; i < len; i += 1) {
-		long k = i & (VALUE_SIZE - 8);
+		long k = i % (VALUE_SIZE - 8);
 		value1[k] = value2[k];
 	}
 	return 0;

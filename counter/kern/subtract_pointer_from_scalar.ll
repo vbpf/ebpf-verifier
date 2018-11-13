@@ -1,5 +1,5 @@
-; ModuleID = 'kern/simple_lt.bc'
-source_filename = "kern/simple_lt.c"
+; ModuleID = 'kern/subtract_pointer_from_scalar.bc'
+source_filename = "kern/subtract_pointer_from_scalar.c"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 
@@ -17,9 +17,9 @@ define i32 @prog_simple_lt(%struct.__sk_buff* nocapture readonly) #0 section "sk
   %5 = getelementptr inbounds %struct.__sk_buff, %struct.__sk_buff* %0, i64 0, i32 16
   %6 = load i32, i32* %5, align 4, !tbaa !7
   %7 = zext i32 %6 to i64
-  %8 = sub nsw i64 %7, %4
-  %9 = ashr exact i64 %8, 3
-  %10 = icmp ult i64 %9, 49
+  %8 = sub nuw nsw i64 -392, %4
+  %9 = add nsw i64 %8, %7
+  %10 = icmp ugt i64 %9, 1200
   br i1 %10, label %13, label %11
 
 ; <label>:11:                                     ; preds = %1

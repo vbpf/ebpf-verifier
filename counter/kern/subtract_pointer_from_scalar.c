@@ -6,8 +6,8 @@ int prog_simple_lt(struct __sk_buff *skb)
 {
 	long *data = (void *)(long)skb->data;
 	long *data_end = (void *)(long)skb->data_end;
-	unsigned long k = data_end - data;
-	if (k <= 48) return 1;
+	long k = data_end - data;
+	if (k <= 48 || k >= 200) return 1;
 	*data = 1;
 	return 1;
 }

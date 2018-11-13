@@ -2,10 +2,13 @@
 
 SEC("sk_skb/manual-memset")
 int manual_memset(struct __sk_buff *skb) {
-    long* p = (void*)(long)skb->data_end;
+    long* data_end = (void*)(long)skb->data_end;
     long* data = (void*)(long)skb->data;
-    if (--p >= data) {
-        *p = 0xFFFFFFFF;
+    // volatile increment to avoid peeling/unrolling
+    volatile long k = 1;
+    while (data + 8 <= data_end) {
+        *data = 0xFFFFFFFF;
+        data += k;
     }
     return 0;
 }
