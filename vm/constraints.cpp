@@ -1003,12 +1003,12 @@ vector<basic_block_t*> instruction_builder_t::exec_alu()
         break;
     case EBPF_OP_AND_IMM:
     case EBPF_OP_AND64_IMM:
+        // FIX: what to do with ptr&-8 as in counter/simple_loop_unrolled?
         block.bitwise_and(dst.value, dst.value, imm);
         if ((int32_t)imm > 0) {
             block.assume(dst.value <= imm);
             block.assume(0 <= dst.value);
         }
-        block.bitwise_and(dst.value, dst.value, imm);
         no_pointer(block, dst);
         break;
     case EBPF_OP_AND_REG:
