@@ -102,7 +102,7 @@ struct machine_t final
     var_t meta_size{vfac[std::string("meta_size")], crab::INT_TYPE, 64};
     var_t data_size{vfac[std::string("data_size")], crab::INT_TYPE, 64};
     var_t top{vfac[std::string("*")], crab::INT_TYPE, 64};
-    var_t num{vfac[std::to_string(T_NUM)], crab::INT_TYPE, 8};
+    var_t num{vfac[std::string("T_NUM")], crab::INT_TYPE, 8};
 
     machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac);
 };
