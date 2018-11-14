@@ -59,6 +59,8 @@ int main(int argc, char **argv)
         } else if (arg == "-q") {
             crab::CrabEnableWarningMsg(false);
             global_options.print_invariants = false;
+        } else if (arg == "--sanity") {
+            crab::CrabEnableSanityChecks(true);
         } else if (arg.find("--verbose=") == 0) {
             if (arg[0] == '"') arg=arg.substr(1, arg.size()-1);
             crab::CrabEnableVerbosity(std::stoi(arg.substr(10)));
