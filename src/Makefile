@@ -44,7 +44,7 @@ CXXFLAGS := -Wall -Werror -Wfatal-errors \
     -I $(ELINA)/include/ \
     -O2 -g3 -std=c++17
 
-all: ../check
+all: ../bin/check
 
 SOURCES = $(wildcard *.cpp)
 C_SOURCES += $(wildcard *.c)
@@ -54,11 +54,11 @@ OBJECTS += $(patsubst %.c,%.o,${C_SOURCES})
 
 %.o:  $(CXX) ${CXXFLAGS} $< -c -o $@
 
-../check: ${OBJECTS}
-	$(CXX) ${CXXFLAGS} ${LDFLAGS} ${OBJECTS} ${LDLIBS} -o ../check 
+../bin/check: ${OBJECTS}
+	$(CXX) ${CXXFLAGS} ${LDFLAGS} ${OBJECTS} ${LDLIBS} -o $@
 
 clean:
-	rm -f ../check *.o
+	rm -f ../bin/check *.o
 
 crab_clean:
 	rm -rf $(CRABDIR)/build $(CRABDIR)/install
