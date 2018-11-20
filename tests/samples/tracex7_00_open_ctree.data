@@ -1,8 +1,0 @@
--- asm
-mov r2, 0xfffffff4
-call 0x3a
-mov r0, 0x0
-exit
--- error
-Failed to load code: call to nonexistent function 58 at PC 1
-
