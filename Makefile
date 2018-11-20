@@ -1,10 +1,4 @@
-PROJECTDIR := $(abspath $(CURDIR))
 
-CRABDIR := crab
-INSTALL := $(abspath ${CRABDIR})/install/crab
-LDD := $(CRABDIR)/install/ldd
-ELINA := $(CRABDIR)/install/elina
-LINUX := $(abspath ../linux)
 
 BUILDDIR := build
 BINDIR := bin
@@ -12,6 +6,13 @@ SRCDIR := src
 
 SOURCES := $(wildcard ${SRCDIR}/*.cpp)
 OBJECTS := $(SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
+
+CRABDIR := crab
+LDD := $(CRABDIR)/install/ldd
+ELINA := $(CRABDIR)/install/elina
+INSTALL := $(abspath ${CRABDIR})/install/crab
+
+LINUX := $(abspath ../linux)
 
 # Lookup path for libCrab.so
 LDFLAGS := -Wl,-rpath,$(INSTALL)/lib/ -Wl,-rpath,$(INSTALL)/lib/
@@ -23,14 +24,17 @@ else
     LDFLAGS += -Wl,--disable-new-dtags 
 endif
 
-LDLIBS := \
-    $(LIBCRAB) \
+LDLIBS := $(LIBCRAB)
+
+LDLIBS += \
     $(ELINA)/lib/libelinalinearize.so \
     $(ELINA)/lib/libelinaux.so \
     $(ELINA)/lib/liboptoct.so \
     $(ELINA)/lib/liboptpoly.so \
     $(ELINA)/lib/liboptzones.so \
-    $(ELINA)/lib/libpartitions.so \
+    $(ELINA)/lib/libpartitions.so
+
+LDLIBS += \
     $(LDD)/lib/libtvpi.a \
     $(LDD)/lib/libcudd.a \
     $(LDD)/lib/libst.a \
@@ -38,7 +42,8 @@ LDLIBS := \
     $(LDD)/lib/libmtr.a \
     $(LDD)/lib/libepd.a \
     $(LDD)/lib/libldd.a \
-    -lmpfr -lgmpxx -lgmp -lm -lstdc++ 
+
+LDLIBS += -lmpfr -lgmpxx -lgmp -lm -lstdc++ 
 
 CXXFLAGS := -Wall -Werror -Wfatal-errors \
     -Wno-unused-local-typedefs -Wno-unused-function -Wno-inconsistent-missing-override \
@@ -48,7 +53,7 @@ CXXFLAGS := -Wall -Werror -Wfatal-errors \
     -I $(LDD)/include/ldd/ \
     -I $(LDD)/include/ldd/include/ \
     -I $(ELINA)/include/ \
-    -O0 -g3 -std=c++17
+    -O2 -g3 -std=c++17
 
 all: $(BINDIR)/check
 
@@ -58,7 +63,7 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.cpp
 	@$(CXX) ${CXXFLAGS} $< -c -o $@
 
 $(BINDIR)/check: ${OBJECTS}
-	@printf "$@ <- $^\n"
+	@printf "$@ <- ${BUILDDIR}/*.o\n"
 	@$(CXX) ${CXXFLAGS} ${LDFLAGS} ${OBJECTS} ${LDLIBS} -o $@
 
 clean:
@@ -77,7 +82,7 @@ crab_install:
 
 linux_samples:
 	git clone --depth 1 https://github.com/torvalds/linux.git $(LINUX)
-	cd $(LINUX); git apply $(PROJECTDIR)/counter/linux.patch
+	cd $(LINUX); git apply counter/linux.patch
 	make -C $(LINUX) headers_install
 	make -C $(LINUX) oldconfig < /dev/null
 	make -C $(LINUX) samples/bpf/
