@@ -19,4 +19,4 @@ function f() {
     esac
 }
 
-complete -F f ./test
+complete -F f ./check
