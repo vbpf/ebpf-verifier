@@ -2,4 +2,4 @@
 *.o
 counter/samples/*
 **/#*
-check
+bin/check
