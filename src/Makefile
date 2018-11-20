@@ -1,10 +1,14 @@
-PROJECTDIR := $(shell realpath $(CURDIR))../
+PROJECTDIR := $(abspath $(CURDIR)../)
 
-CRABDIR := $(CURDIR)/../crab
+CRABDIR := $(abspath $(CURDIR)/../crab)
 INSTALL := $(CRABDIR)/install/crab
 LDD := $(CRABDIR)/install/ldd
 ELINA := $(CRABDIR)/install/elina
-LINUX := ../../linux
+LINUX := $(abspath ../../linux)
+
+BUILDDIR := ../build
+BINDIR := ../bin
+SRCDIR := .
 
 # Lookup path for libCrab.so
 LDFLAGS := -Wl,-rpath,$(INSTALL)/lib/ -Wl,-rpath,$(ELINA)/lib/
@@ -37,28 +41,26 @@ CXXFLAGS := -Wall -Werror -Wfatal-errors \
     -Wno-unused-local-typedefs -Wno-unused-function -Wno-inconsistent-missing-override \
     -Wno-unused-const-variable -Wno-uninitialized -Wno-deprecated \
     -DBSD -DHAVE_IEEE_754 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 \
-    -I inc \
     -I $(INSTALL)/include/ \
     -I $(LDD)/include/ldd/ \
     -I $(LDD)/include/ldd/include/ \
     -I $(ELINA)/include/ \
     -O2 -g3 -std=c++17
 
-all: ../bin/check
+all: $(BINDIR)/check
 
-SOURCES = $(wildcard *.cpp)
-C_SOURCES += $(wildcard *.c)
+SOURCES := $(wildcard ${SRCDIR}/*.cpp)
+OBJECTS := $(SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
 
-OBJECTS = $(patsubst %.cpp,%.o,${SOURCES})
-OBJECTS += $(patsubst %.c,%.o,${C_SOURCES})
+$(BUILDDIR)/%.o: $(SRCDIR)/%.cpp
+	@mkdir -p $(BUILDDIR)
+	$(CXX) ${CXXFLAGS} $< -c -o $@
 
-%.o:  $(CXX) ${CXXFLAGS} $< -c -o $@
-
-../bin/check: ${OBJECTS}
+$(BINDIR)/check: ${OBJECTS}
 	$(CXX) ${CXXFLAGS} ${LDFLAGS} ${OBJECTS} ${LDLIBS} -o $@
 
 clean:
-	rm -f ../bin/check *.o
+	rm -f $(BINDIR)/check $(BUILDDIR)/*.o
 
 crab_clean:
 	rm -rf $(CRABDIR)/build $(CRABDIR)/install
@@ -77,3 +79,6 @@ linux_samples:
 	make -C $(LINUX) headers_install
 	make -C $(LINUX) oldconfig < /dev/null
 	make -C $(LINUX) samples/bpf/
+
+print-% :
+	@echo $* = $($*)
