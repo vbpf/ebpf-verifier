@@ -1,17 +1,20 @@
-PROJECTDIR := $(abspath $(CURDIR)../)
+PROJECTDIR := $(abspath $(CURDIR))
 
-CRABDIR := $(abspath $(CURDIR)/../crab)
-INSTALL := $(CRABDIR)/install/crab
+CRABDIR := crab
+INSTALL := $(abspath ${CRABDIR})/install/crab
 LDD := $(CRABDIR)/install/ldd
 ELINA := $(CRABDIR)/install/elina
-LINUX := $(abspath ../../linux)
+LINUX := $(abspath ../linux)
 
-BUILDDIR := ../build
-BINDIR := ../bin
-SRCDIR := .
+BUILDDIR := build
+BINDIR := bin
+SRCDIR := src
+
+SOURCES := $(wildcard ${SRCDIR}/*.cpp)
+OBJECTS := $(SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
 
 # Lookup path for libCrab.so
-LDFLAGS := -Wl,-rpath,$(INSTALL)/lib/ -Wl,-rpath,$(ELINA)/lib/
+LDFLAGS := -Wl,-rpath,$(INSTALL)/lib/ -Wl,-rpath,$(INSTALL)/lib/
 UNAME := $(shell uname)
 ifeq ($(UNAME),Darwin)
     LIBCRAB = $(INSTALL)/lib/libCrab.dylib
@@ -45,19 +48,18 @@ CXXFLAGS := -Wall -Werror -Wfatal-errors \
     -I $(LDD)/include/ldd/ \
     -I $(LDD)/include/ldd/include/ \
     -I $(ELINA)/include/ \
-    -O2 -g3 -std=c++17
+    -O0 -g3 -std=c++17
 
 all: $(BINDIR)/check
 
-SOURCES := $(wildcard ${SRCDIR}/*.cpp)
-OBJECTS := $(SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
-
 $(BUILDDIR)/%.o: $(SRCDIR)/%.cpp
 	@mkdir -p $(BUILDDIR)
-	$(CXX) ${CXXFLAGS} $< -c -o $@
+	@printf "$@ <- $^\n"
+	@$(CXX) ${CXXFLAGS} $< -c -o $@
 
 $(BINDIR)/check: ${OBJECTS}
-	$(CXX) ${CXXFLAGS} ${LDFLAGS} ${OBJECTS} ${LDLIBS} -o $@
+	@printf "$@ <- $^\n"
+	@$(CXX) ${CXXFLAGS} ${LDFLAGS} ${OBJECTS} ${LDLIBS} -o $@
 
 clean:
 	rm -f $(BINDIR)/check $(BUILDDIR)/*.o
