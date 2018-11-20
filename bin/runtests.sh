@@ -20,7 +20,7 @@ then
 	for f in "${files[@]}"; do echo -n ",$f"; done
 fi
 
-mkdir -p ../logs
+mkdir -p logs
 for dom in "$@"
 do
 	echo -n ",$dom"
@@ -32,9 +32,9 @@ do
 	for dom in "$@"
 	do
 		base=$(basename $f)
-		err=../logs/${base}.err
-		log=../logs/${base}.log
-		CMD="with_timeout 10m ./test --simplify -q ${dir}/$base ${base##*.} $dom"
+		err=logs/${base}.err
+		log=logs/${base}.log
+		CMD="with_timeout 10m bin/check --simplify -q ${dir}/$base ${base##*.} $dom"
 		echo $CMD > ${err}
 		echo $CMD > ${log}
 		$CMD >> ${log} 2>> ${err}
