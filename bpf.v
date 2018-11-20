@@ -1,18 +1,11 @@
 Require Import PeanoNat.
 
+Section Syntax.
+
 Definition reg_index := nat.
 Definition double_word := nat.
 Definition offset_type := nat.
 Definition byte := nat.
-
-Inductive kind := r_ctx | r_stack | r_data | r_map .
-Scheme Equality for kind.
-
-Inductive value :=
-  | uninitialized
-  | number (n: double_word)
-  | pointer (k: kind) (base: double_word) (offset: nat)
-.
 
 Inductive reg_or_imm :=
   | reg (n: nat)
@@ -56,8 +49,47 @@ Inductive instruction :=
   | bpf_exit
 .
 
+End Syntax.
+
+Section InsSemantics.
+
+Definition kind := nat.
+
+Definition kind_beq := Nat.eqb.
+(* Scheme Equality for kind. *)
+
+Inductive value :=
+  | uninitialized
+  | number (n: double_word)
+  | pointer (k: kind) (offset: nat)
+.
+
+
+Definition value_sub (a b : value) :=
+  match (a, b) with
+  | (uninitialized, _) => None
+  | (_, uninitialized) => None
+  | (number n1, number n2) => Some (number (n1 - n2))
+  | (number _, _) => None
+  | (pointer k offset, number n) => Some (pointer k (offset - n))
+  | (pointer k1 offset1, pointer k2 offset2) =>
+      if kind_beq k1 k2 then Some (pointer k1 (offset1 - offset2))
+      else None
+  end.
+
+Definition value_add (a b : value) :=
+  match (a, b) with
+  | (uninitialized, _) => None
+  | (_, uninitialized) => None
+  | (number n1, number n2) => Some (number (n1 + n2))
+  | (number n, pointer k offset) => Some (pointer k (n + offset))
+  | (pointer k offset, number n) => Some (pointer k (offset + n))
+  | (pointer _ _, pointer _ _) => None
+  end.
+
+
 Record env := {
-  prog: list instruction;
+  prog: list (list instruction);
   prog_type: nat;
   maps: nat -> bool
 }.
@@ -92,6 +124,7 @@ Axiom store : nat -> store_type -> width -> value -> mem -> mem.
 Axiom offset_of : value -> nat.
 Axiom kind_of : value -> kind.
 
+(* A realtion beacause reads from maps are not deterministic *)
 Definition step (inst: instruction) (s s': state) : Prop :=
   match inst with
   | bpf_alu op dst src wide => False
@@ -138,3 +171,5 @@ Inductive leak_classes :=
 Inductive defense_classes :=
   | write_uninit_to_stack | read_misaligned_ptr | unable_to_find_recursion
 .
+
+End InsSemantics.
