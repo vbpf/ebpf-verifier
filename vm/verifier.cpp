@@ -181,8 +181,8 @@ struct domain_desc {
 };
 
 const map<string, domain_desc> domains{
-    // { "interval"          , { analyze<z_interval_domain_t>, "simple interval (z_interval_domain_t)" } },
-    // { "interval-arr"      , { analyze<array_expansion_domain<z_interval_domain_t>>, "mem: simple interval (z_interval_domain_t)" } },
+    { "interval"          , { analyze<z_interval_domain_t>, "simple interval (z_interval_domain_t)" } },
+    { "interval-arr"      , { analyze<array_expansion_domain<z_interval_domain_t>>, "mem: simple interval (z_interval_domain_t)" } },
     // { "ric"               , { analyze<z_ric_domain_t>, "numerical congruence (z_ric_domain_t)" } },
     // { "ric-arr"           , { analyze<array_expansion_domain<z_ric_domain_t>>, "mem: numerical congruence (z_ric_domain_t)" } },
     // { "dbm"               , { analyze<z_dbm_domain_t>, "sparse dbm (z_dbm_domain_t)" } },
@@ -191,8 +191,8 @@ const map<string, domain_desc> domains{
     { "sdbm-arr"          , { analyze<array_expansion_domain<z_sdbm_domain_t>>, "mem: split dbm (z_sdbm_domain_t)" } },
     // { "boxes"             , { analyze<z_boxes_domain_t>, "boxes (z_boxes_domain_t)" } },
     // { "boxes-arr"         , { analyze<array_expansion_domain<z_boxes_domain_t>>, "mem: boxes (z_boxes_domain_t)" } },
-    // { "disj_interval"     , { analyze<z_dis_interval_domain_t>, "disjoint intervals (z_dis_interval_domain_t)" } },
-    // { "disj_interval-arr" , { analyze<array_expansion_domain<z_dis_interval_domain_t>>, "mem: disjoint intervals (z_dis_interval_domain_t)" } },
+    { "disj_interval"     , { analyze<z_dis_interval_domain_t>, "disjoint intervals (z_dis_interval_domain_t)" } },
+    { "disj_interval-arr" , { analyze<array_expansion_domain<z_dis_interval_domain_t>>, "mem: disjoint intervals (z_dis_interval_domain_t)" } },
 
     { "zones_elina"       , { analyze<z_zones_elina_domain_t>, "zones elina (z_zones_elina_domain_t)" } },
     { "zones_elina-arr"   , { analyze<array_expansion_domain<z_zones_elina_domain_t>>, "mem: zones elina (z_zones_elina_domain_t)" } },
