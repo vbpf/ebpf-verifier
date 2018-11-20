@@ -1,9 +1,0 @@
--- asm
-ldxw r1, [r1+0x28]
-add r1, 0x1
-mov r2, 0x1
-call 0x17
-exit
--- error
-Failed to load code: call to nonexistent function 23 at PC 3
-
