@@ -14,7 +14,8 @@
         "cfenv": "cpp",
         "hashtable": "cpp",
         "unordered_map": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "vector": "cpp"
     },
     "python.pythonPath": "/usr/local/bin/python3"
 }
