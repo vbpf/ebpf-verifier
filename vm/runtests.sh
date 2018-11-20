@@ -2,6 +2,14 @@
 
 test -d $1 || (echo "first argument should be a directory"; exit 1)
 
+with_timeout() {
+    if hash gtimeout 2>/dev/null; then
+        gtimeout "$@"
+    else
+        timeout "$@"
+    fi
+}
+
 dir=$1
 files=($(ls -S ${dir}))
 shift
@@ -26,7 +34,7 @@ do
 		base=$(basename $f)
 		err=../logs/${base}.err
 		log=../logs/${base}.log
-		CMD="./test --simplify -q ${dir}/$base ${base##*.} $dom"
+		CMD="with_timeout 10m ./test --simplify -q ${dir}/$base ${base##*.} $dom"
 		echo $CMD > ${err}
 		echo $CMD > ${log}
 		$CMD >> ${log} 2>> ${err}

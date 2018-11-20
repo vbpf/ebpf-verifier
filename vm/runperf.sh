@@ -2,6 +2,14 @@
 
 test -d $1 || (echo "first argument should be a directory"; exit 1)
 
+with_timeout() {
+    if hash gtimeout 2>/dev/null; then
+        gtimeout "$@"
+    else
+        timeout "$@"
+    fi
+}
+
 dir=$1
 files=($(find ${dir} -name 'accept_*'  -exec ls -Sd {} + | grep -v self))
 shift
@@ -26,7 +34,7 @@ do
 	echo -n ",$s"
 	for dom in "$@"
 	do
-		s=$(./test --simplify --no-print-invariants -q $f ${base##*.} $dom | grep seconds | cut -f2 -d:)
+		s=$(with_timeout 5m ./test --simplify -q $f ${base##*.} $dom 2>/dev/null | grep seconds | cut -f2 -d:)
 		echo -n ",$s"
 	done
 	echo
