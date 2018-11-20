@@ -9,20 +9,18 @@ Dependencies from vanilla Ubuntu:
 sudo apt install build-essential git cmake libboost1.65-all-dev libgmp-dev libmpfr-dev
 ```
 
-Clone:
+Clone and make:
 ```
 git clone --recurse-submodules https://github.com/elazarg/ubpf.git
-make -C ubpf/src crab_install
+make crab_install
+make
+bin/check -h
 ```
 
-Then from the `vm` folder
-```bash
-make -C ubpf/src
-./check -h
-```
+## Running
 
-and then, for example
+For example
 
 ```bash
-./check samples/linux/accept_tc_l2_redirect-drop_non_tun_vip.14 14 sdbm-arr
+bin/check samples/linux/accept_tc_l2_redirect-drop_non_tun_vip.14 14 sdbm-arr
 ```
