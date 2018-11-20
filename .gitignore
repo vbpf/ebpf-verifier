@@ -3,3 +3,4 @@
 counter/samples/*
 **/#*
 bin/check
+.vscode/*
