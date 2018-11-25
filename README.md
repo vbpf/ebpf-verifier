@@ -11,7 +11,7 @@ sudo apt install build-essential git cmake libboost1.65-all-dev libgmp-dev libmp
 
 Clone and make:
 ```
-git clone --recurse-submodules https://github.com/elazarg/ubpf.git
+git clone --recurse-submodules https://github.com/elazarg/ebpf-verifier.git
 make crab_install
 make
 bin/check -h
