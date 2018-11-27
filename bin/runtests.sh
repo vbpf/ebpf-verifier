@@ -11,7 +11,7 @@ with_timeout() {
 }
 
 dir=$1
-files=($(ls -S ${dir}))
+files=($(find ${dir} -name 'accept_*'  -exec ls -Sd {} + | grep -v self))
 shift
 
 if [[ "$1" == "header" ]]
@@ -28,13 +28,13 @@ done
 echo
 for f in "${files[@]}";
 do
-	echo -n "$f"
+	echo -n "$(basename $(dirname $f)),$(basename $f)"
 	for dom in "$@"
 	do
 		base=$(basename $f)
 		err=logs/${base}.err
 		log=logs/${base}.log
-		CMD="with_timeout 10m bin/check --simplify -q ${dir}/$base ${base##*.} $dom"
+		CMD="with_timeout 10m bin/check --simplify -q $f ${base##*.} $dom"
 		echo $CMD > ${err}
 		echo $CMD > ${log}
 		$CMD >> ${log} 2>> ${err}
