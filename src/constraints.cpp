@@ -873,6 +873,13 @@ vector<basic_block_t*> instruction_builder_t::exec_call()
     return blocks;
 }
 
+void assert_no_overflow(basic_block_t& b, var_t v, debug_info di) {
+    // p1 = data_start; p1 += huge_positive; p1 <= p2 does not imply p1 >= data_start
+    // We assume that pointers are 32 bit so slight overflow is still sound
+    b.assertion(v <= 1 << 30 , di);
+    b.assertion(v >= -4098 , di);
+}
+
 vector<basic_block_t*> instruction_builder_t::exec_alu()
 {
     assert((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU
@@ -911,11 +918,13 @@ vector<basic_block_t*> instruction_builder_t::exec_alu()
             ptr_dst.assume(is_pointer(dst));
             ptr_dst.assertion(src.region == T_NUM , di);
             ptr_dst.add(dst.offset, dst.offset, src.value);
+            assert_no_overflow(ptr_dst, dst.offset, di);
 
             basic_block_t& ptr_src = add_child(cfg, block, "ptr_src");
             ptr_src.assume(is_pointer(src));
             ptr_src.assertion(dst.region == T_NUM , di);
             ptr_src.add(dst.offset, dst.value, src.offset);
+            assert_no_overflow(ptr_src, dst.offset, di);
             ptr_src.assign(dst.region, src.region);
             ptr_src.havoc(machine.top);
             ptr_src.assign(dst.value, machine.top);
@@ -951,6 +960,7 @@ vector<basic_block_t*> instruction_builder_t::exec_alu()
                 basic_block_t& ptr_dst = add_child(cfg, num_src, "ptr_dst");
                 ptr_dst.assume(is_pointer(dst));
                 ptr_dst.sub(dst.offset, dst.offset, src.value);
+                assert_no_overflow(ptr_dst, dst.offset, di);
 
                 basic_block_t& both_num = add_child(cfg, num_src, "both_num");    
                 both_num.assume(dst.region == T_NUM);
