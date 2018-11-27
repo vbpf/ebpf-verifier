@@ -30,11 +30,11 @@ for f in "${files[@]}";
 do
 	echo -n "$(basename $(dirname $f)),$(basename $f)"
 	base=$(basename $f)
-	s=$(./test -q $f ${base##*.} none 2>/dev/null | grep -E "instructions|loads|stores|jumps|joins" | cut -f2 -d: | paste -s -d"," -)
+	s=$(bin/check -q $f ${base##*.} none 2>/dev/null | grep -E "instructions|loads|stores|jumps|joins" | cut -f2 -d: | paste -s -d"," -)
 	echo -n ",$s"
 	for dom in "$@"
 	do
-		s=$(with_timeout 5m ./test --simplify -q $f ${base##*.} $dom 2>/dev/null | grep seconds | cut -f2 -d:)
+		s=$(with_timeout 10m bin/check --simplify -q $f ${base##*.} $dom 2>/dev/null | grep seconds | cut -f2 -d:)
 		echo -n ",$s"
 	done
 	echo
