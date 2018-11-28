@@ -135,7 +135,6 @@ private:
     void scratch_regs(basic_block_t& block);
     static void no_pointer(basic_block_t& block, dom_t v);
 
-    vector<basic_block_t*> exec_mem();
     vector<basic_block_t*> exec_call();
 
     template<typename W>
@@ -613,98 +612,6 @@ vector<basic_block_t*> instruction_builder_t::exec_mem_access_indirect(basic_blo
     return outs;
 }
 
-vector<basic_block_t*> instruction_builder_t::exec_mem()
-{
-    dom_t mem_reg =  machine.regs.at(is_load(inst.opcode) ? inst.src : inst.dst);
-    dom_t data_reg = machine.regs.at(is_load(inst.opcode) ? inst.dst : inst.src);
-    bool mem_is_fp = (is_load(inst.opcode) ? inst.src : inst.dst) == 10;
-    uint8_t opcode_width_w = inst.opcode & (~EBPF_SIZE_DW);
-    switch (opcode_width_w) {
-    case EBPF_OP_STW:
-        // mem[offset] = immediate
-        if (inst.dst == 10) {
-            return exec_direct_stack_store_immediate(block, inst.offset, width, immediate(inst, next_inst));
-        } else {
-            var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
-            block.assign(tmp, immediate(inst, next_inst));
-            block.havoc(machine.top);
-            return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, machine.num}, inst.offset, width);
-        } 
-        break;
-
-    case EBPF_OP_LDXW:
-        // data = mem[offset]
-        if (mem_is_fp) {
-            return exec_direct_stack_load(block, data_reg, inst.offset, width);
-        } else {
-            return exec_mem_access_indirect(block, true, false, mem_reg, data_reg, inst.offset, width);
-        }
-
-    case EBPF_OP_STXW:
-        // mem[offset] = data
-        if (mem_is_fp) {
-            return exec_direct_stack_store(block, data_reg, inst.offset, width);
-        } else {
-            return exec_mem_access_indirect(block, false, false, mem_reg, data_reg, inst.offset, width);
-        }
-        break;
-
-    /* From the linux verifier code:
-    verify safety of LD_ABS|LD_IND instructions:
-    * - they can only appear in the programs where ctx == skb
-    * - since they are wrappers of function calls, they scratch R1-R5 registers,
-    *   preserve R6-R9, and store return value into R0
-    *
-    * Implicit input:
-    *   ctx == skb == R6 == CTX
-    *
-    * Explicit input:
-    *   SRC == any register
-    *   IMM == 32-bit immediate
-    *
-    * Output:
-    *   R0 - 8/16/32-bit skb data converted to cpu endianness
-    */
-    case EBPF_OP_LDABSW:
-    case EBPF_OP_LDXABSW:
-        /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
-        block.assertion(machine.regs[6].region == T_CTX, di);
-        machine.data_arr.load(block, machine.regs[0], inst.imm, width, cfg);
-        block.assign(machine.regs[0].region, T_NUM);
-        block.havoc(machine.regs[0].offset);
-        scratch_regs(block);
-        return { &block };
-
-    case EBPF_OP_LDINDW:
-    case EBPF_OP_LDXINDW:
-        /* Indirect packet access, R0 = *(uint *) (skb->data + src_reg + imm32) */
-        block.assertion(machine.regs[6].region == T_CTX, di);
-        machine.data_arr.load(block, machine.regs[0], machine.regs[inst.src].value + inst.imm, width, cfg);
-        block.assign(machine.regs[0].region, T_NUM);
-        block.havoc(machine.regs[0].offset);
-        scratch_regs(block);
-        return { &block };
-
-    case EBPF_OP_STABSW:
-    case EBPF_OP_STXABSW:
-
-    case EBPF_OP_STINDW:
-    case EBPF_OP_STXINDW:
-        assert(false);
-        return { &block };
-
-    case EBPF_STXADDW:
-    case EBPF_STXADDDW:
-        std::cout << "TODO: XADD\n";
-        return { &block };
-        
-    default: 
-        std::cout << "bad mem instruction " << (int)inst.opcode << " at " << first_num(block) << "\n";
-        assert(false);
-        return {};
-    }
-}
-
 void assert_no_overflow(basic_block_t& b, var_t v, debug_info di) {
     // p1 = data_start; p1 += huge_positive; p1 <= p2 does not imply p1 >= data_start
     // We assume that pointers are 32 bit so slight overflow is still sound
@@ -971,15 +878,87 @@ vector<basic_block_t*> instruction_builder_t::exec()
         }
 
         vector<basic_block_t*> operator()(Packet const& b) {
-            return self.exec_mem();
+            auto& machine = self.machine;
+            auto& inst = self.inst;
+            auto& block = self.block;
+            auto& width = self.width;
+            auto& di = self.di;
+            auto& cfg = self.cfg;
+                    
+            /* From the linux verifier code:
+            verify safety of LD_ABS|LD_IND instructions:
+            * - they can only appear in the programs where ctx == skb
+            * - since they are wrappers of function calls, they scratch R1-R5 registers,
+            *   preserve R6-R9, and store return value into R0
+            *
+            * Implicit input:
+            *   ctx == skb == R6 == CTX
+            *
+            * Explicit input:
+            *   SRC == any register
+            *   IMM == 32-bit immediate
+            *
+            * Output:
+            *   R0 - 8/16/32-bit skb data converted to cpu endianness
+            */
+            block.assertion(machine.regs[6].region == T_CTX, di);
+            if (b.regoffset) {
+                /* Indirect packet access, R0 = *(uint *) (skb->data + src_reg + imm32) */
+                machine.data_arr.load(block, machine.regs[0], machine.regs[inst.src].value + inst.imm, width, cfg);
+            } else {
+                /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
+                machine.data_arr.load(block, machine.regs[0], inst.imm, width, cfg);
+            }
+            block.assign(machine.regs[0].region, T_NUM);
+            block.havoc(machine.regs[0].offset);
+            self.scratch_regs(block);
+            return { &block };
         }
 
         vector<basic_block_t*> operator()(Mem const& b) {
-            return self.exec_mem();
+            auto& machine = self.machine;
+            auto& inst = self.inst;
+            dom_t mem_reg =  machine.regs.at(is_load(inst.opcode) ? inst.src : inst.dst);
+            dom_t data_reg = machine.regs.at(is_load(inst.opcode) ? inst.dst : inst.src);
+            bool mem_is_fp = (is_load(inst.opcode) ? inst.src : inst.dst) == 10;
+            auto& block = self.block;
+            auto& width = self.width;
+            switch (b.op) {
+            case Mem::Op::ST:
+                if (b.offset.index() == 0) {
+                    // mem[offset] = immediate
+                    auto& next_inst = self.next_inst;
+                    if (inst.dst == 10) {
+                        return self.exec_direct_stack_store_immediate(block, inst.offset, width, immediate(inst, next_inst));
+                    } else {
+                        // FIX: STW stores long long immediate
+                        var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
+                        block.assign(tmp, immediate(inst, next_inst));
+                        block.havoc(machine.top);
+                        return self.exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, machine.num}, inst.offset, width);
+                    } 
+                } else {
+                    // mem[offset] = data
+                    if (mem_is_fp) {
+                        return self.exec_direct_stack_store(block, data_reg, inst.offset, width);
+                    } else {
+                        return self.exec_mem_access_indirect(block, false, false, mem_reg, data_reg, inst.offset, width);
+                    }
+                }
+                break;
+
+            case Mem::Op::LD:
+                // data = mem[offset]
+                if (mem_is_fp) {
+                    return self.exec_direct_stack_load(block, data_reg, inst.offset, width);
+                } else {
+                    return self.exec_mem_access_indirect(block, true, false, mem_reg, data_reg, inst.offset, width);
+                }
+            }
         }
 
         vector<basic_block_t*> operator()(LockAdd const& b) {
-            return self.exec_mem();
+            assert(false);
         }
     };
     auto ins = toasm(pc, inst, immediate(inst, next_inst));
