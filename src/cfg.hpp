@@ -6,6 +6,7 @@
 
 #include <boost/lexical_cast.hpp>
 #include "type_descriptors.hpp"
+#include "instructions.hpp"
 #include "common.hpp"
 
 using std::vector;
