@@ -117,6 +117,7 @@ struct IndexedInstruction {
 IndexedInstruction toasm(uint16_t pc, ebpf_inst inst, int32_t next_imm);
 std::ostream& operator<< (std::ostream& os, IndexedInstruction const& v);
 
+// Helpers:
 
 struct InstructionVisitorPrototype {
     void operator()(Undefined const& a);
@@ -130,3 +131,6 @@ struct InstructionVisitorPrototype {
     void operator()(Mem const& b);
     void operator()(LockAdd const& b);
 };
+
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;

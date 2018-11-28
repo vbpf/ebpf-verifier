@@ -105,6 +105,9 @@ struct machine_t final
     var_t top{vfac[std::string("*")], crab::INT_TYPE, 64};
     var_t num{vfac[std::string("T_NUM")], crab::INT_TYPE, 8};
 
+    dom_t& reg(Value v) {
+        return regs[static_cast<int>(std::get<Reg>(v))];
+    }
     machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac);
 };
 
@@ -259,6 +262,7 @@ static lin_cst_t jmp_to_cst_offsets_reg(Jmp::Op op, var_t& dst_offset, var_t& sr
             return dst_offset - dst_offset == 0;
     }
 }
+
 static vector<lin_cst_t> jmp_to_cst_imm(Jmp::Op op, var_t& dst_value, int imm)
 {
     switch (op) {
@@ -276,6 +280,7 @@ static vector<lin_cst_t> jmp_to_cst_imm(Jmp::Op op, var_t& dst_value, int imm)
     }
     assert(false);
 }
+
 static vector<lin_cst_t> jmp_to_cst_reg(Jmp::Op op, var_t& dst_value, var_t& src_value)
 {
     switch (op) {
@@ -298,12 +303,12 @@ static vector<lin_cst_t> jmp_to_cst_reg(Jmp::Op op, var_t& dst_value, var_t& src
 
 basic_block_t& instruction_builder_t::jump(bool taken)
 {
-    Jmp jmp = get<Jmp>(ins);
-    auto& dst = machine.regs[(int)jmp.left];
+    Jmp jmp = std::get<Jmp>(ins);
+    auto& dst = machine.reg(jmp.left);
     Jmp::Op op = taken ? jmp.op : reverse(jmp.op);
     debug_info di{"pc", (unsigned int)first_num(block), 0}; 
     if (std::holds_alternative<Reg>(jmp.right)) {
-        auto& src = machine.regs[(int)get<Reg>(jmp.right)];
+        auto& src = machine.reg(jmp.right);
         basic_block_t& same = add_child(cfg, block, "same_type");
         for (auto c : jmp_to_cst_reg(op, dst.value, src.value))
             same.assume(c);
@@ -328,7 +333,7 @@ basic_block_t& instruction_builder_t::jump(bool taken)
         }
         return offset_check;
     } else {
-        int imm = (int)get<Imm>(jmp.right).v;
+        int imm = static_cast<int>(std::get<Imm>(jmp.right).v);
         vector<lin_cst_t> csts = jmp_to_cst_imm(op, dst.value, imm);
         for (auto c : csts)
             block.assume(c);
@@ -361,7 +366,7 @@ static void move_into(vector<T>& dst, vector<T>&& src)
     );
 }
 
-basic_block_t& abs_machine_t::jump(Instruction ins, bool taken, basic_block_t& block, cfg_t& cfg) {
+basic_block_t& abs_machine_t::jump(Jmp ins, bool taken, basic_block_t& block, cfg_t& cfg) {
     return instruction_builder_t(*impl, ins, block, cfg).jump(taken);
 }
 
@@ -718,7 +723,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
             break;
         } 
     } else {
-        auto& src = machine.regs[static_cast<int>(std::get<Reg>(bin.v))];
+        auto& src = machine.reg(bin.v);
         switch (bin.op) {
         case Bin::Op::ADD: {
                 block.add(dst.value, dst.value, src.value);
@@ -984,7 +989,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Goto const& b) {
 vector<basic_block_t*> instruction_builder_t::operator()(Jmp const& b) {
     // cfg-related action is handled in build_cfg() and instruction_builder_t::jump()
     if (std::holds_alternative<Reg>(b.right)) {
-        assert_init(block, machine.regs[static_cast<int>(get<Reg>(b.right))], di);
+        assert_init(block, machine.reg(b.right), di);
     }
     assert_init(block, machine.regs[static_cast<int>(b.left)], di);
     return { &block };
@@ -1028,7 +1033,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Mem const& b) {
     dom_t data_reg = machine.regs.at(b.valreg);
     bool mem_is_fp = (int)b.basereg == 10;
     int width = (int)b.width;
-    auto offset = get<Offset>(b.offset);
+    auto offset = std::get<Offset>(b.offset);
     switch (b.op) {
     case Mem::Op::ST:
         if (false) {
