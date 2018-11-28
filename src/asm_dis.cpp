@@ -86,13 +86,14 @@ static Jmp::Op getJmpOp(uint8_t opcode) {
     return {};
 }
 
-static Instruction toasm(ebpf_inst inst, std::optional<int32_t> next_imm) {
+static Instruction toasm(ebpf_inst inst, int32_t next_imm) {
     if (inst.opcode == EBPF_OP_LDDW_IMM) {
+        uint64_t imm = (uint64_t(next_imm) << 32 | (uint32_t)inst.imm);
         return Bin{
             .op = Bin::Op::MOV,
             .is64 = true,
             .dst = Reg{ inst.dst },
-            .v = Imm{ inst.imm, *next_imm  },
+            .v = Imm{ imm },
         };
     }
     switch (inst.opcode & EBPF_CLS_MASK) {
@@ -156,6 +157,6 @@ static Instruction toasm(ebpf_inst inst, std::optional<int32_t> next_imm) {
     return {};
 }
 
-IndexedInstruction toasm(uint16_t pc, ebpf_inst inst, std::optional<int32_t> next_imm) {
+IndexedInstruction toasm(uint16_t pc, ebpf_inst inst, int32_t next_imm) {
     return {pc, toasm(inst, next_imm)};
 }

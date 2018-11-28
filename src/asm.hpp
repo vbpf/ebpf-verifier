@@ -7,14 +7,9 @@
 #include "instructions.hpp"
 
 struct Imm {
-    int32_t current;
-    std::optional<int32_t> next;
-    uint64_t u64() {
-        return uint64_t(*next) << 32 | current;
-    }
-    uint32_t i32() {
-        return current;
-    }
+    uint64_t v;
+    Imm(int32_t v) : v{(uint32_t)v} { }
+    Imm(uint64_t v) : v{v} { }
 };
 
 enum Offset : int16_t {};
@@ -119,5 +114,5 @@ struct IndexedInstruction {
 };
 
 
-IndexedInstruction toasm(uint16_t pc, ebpf_inst inst, std::optional<int32_t> next_imm);
+IndexedInstruction toasm(uint16_t pc, ebpf_inst inst, int32_t next_imm);
 std::ostream& operator<< (std::ostream& os, IndexedInstruction const& v);
