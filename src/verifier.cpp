@@ -164,8 +164,8 @@ struct domain_desc {
 };
 
 const map<string, domain_desc> domains{
-#ifdef FULL
     { "interval"          , { analyze<z_interval_domain_t>, "simple interval (z_interval_domain_t)" } },
+#ifdef FULL
     { "interval-arr"      , { analyze<array_expansion_domain<z_interval_domain_t>>, "mem: simple interval (z_interval_domain_t)" } },
     { "disj_interval"     , { analyze<z_dis_interval_domain_t>, "disjoint intervals (z_dis_interval_domain_t)" } },
     { "disj_interval-arr" , { analyze<array_expansion_domain<z_dis_interval_domain_t>>, "mem: disjoint intervals (z_dis_interval_domain_t)" } },
