@@ -6,17 +6,6 @@
 
 #include "disasm.hpp"
 
-static Mem::Mode getMemMode(uint8_t opcode) {
-    switch (opcode & EBPF_MODE_MASK) {
-        case EBPF_MODE_ABS: return Mem::Mode::ABS;
-        case EBPF_MODE_IND: return Mem::Mode::IND;
-        case EBPF_MODE_MEM: return Mem::Mode::MEM;
-        case EBPF_MODE_LEN: return Mem::Mode::LEN;
-        case EBPF_MODE_MSH: return Mem::Mode::MSH;
-    }
-    return {};
-}
-
 static Mem::Op getMemOp(uint8_t opcode) {
     switch (opcode & EBPF_CLS_MASK) {
         case EBPF_CLS_ST : return Mem::Op::ST;
@@ -27,12 +16,12 @@ static Mem::Op getMemOp(uint8_t opcode) {
     return {};
 }
 
-static Mem::Width getMemWidth(uint8_t opcode) {
+static Width getMemWidth(uint8_t opcode) {
     switch (opcode & EBPF_SIZE_MASK) {
-        case EBPF_SIZE_B : return Mem::Width::B;
-        case EBPF_SIZE_H : return Mem::Width::H;
-        case EBPF_SIZE_W : return Mem::Width::W;
-        case EBPF_SIZE_DW: return Mem::Width::DW;
+        case EBPF_SIZE_B : return Width::B;
+        case EBPF_SIZE_H : return Width::H;
+        case EBPF_SIZE_W : return Width::W;
+        case EBPF_SIZE_DW: return Width::DW;
     }
 	return {};
 }
@@ -99,20 +88,44 @@ static Jmp::Op getJmpOp(uint8_t opcode) {
     return {};
 }
 
-Instruction toasm(ebpf_inst inst) {
+static Instruction toasm(ebpf_inst inst, int32_t next_imm) {
+    if (inst.opcode == EBPF_OP_LDDW_IMM) {
+        return Bin{
+            .op = Bin::Op::MOV,
+            .is64 = true,
+            .dst = Reg{ inst.dst },
+            .target = Imm{ next_imm  },
+        };
+    }
     switch (inst.opcode & EBPF_CLS_MASK) {
         case EBPF_CLS_LD: case EBPF_CLS_LDX:
         case EBPF_CLS_ST: case EBPF_CLS_STX: {
-            auto op = getMemOp(inst.opcode);
-            bool isLoad = op == Mem::Op::LD;
-            return Mem{ 
-                .op = op,
-                .mode = getMemMode(inst.opcode),
-                .width = getMemWidth(inst.opcode),
-                .valreg = isLoad ? inst.dst : inst.src,
-                .basereg = isLoad ? inst.src : inst.dst,
-                .offset = (inst.opcode & 1) ? (Target)Imm{inst.offset} : Reg{inst.offset},
-            };
+            auto width = getMemWidth(inst.opcode);
+            auto mode = inst.opcode & EBPF_MODE_MASK;
+            switch (mode) {
+                case EBPF_MODE_MEM: {
+                    auto op = getMemOp(inst.opcode);
+                    bool isLoad = op == Mem::Op::LD;
+                    return Mem{ 
+                        .op = op,
+                        .width = width,
+                        .valreg = Reg{isLoad ? inst.dst : inst.src},
+                        .basereg = Reg{isLoad ? inst.src : inst.dst},
+                        .offset = (inst.opcode & 1) ? (Target)Imm{inst.offset} : Reg{inst.imm},
+                    };
+                }
+                case EBPF_MODE_ABS: return Packet{width, inst.imm, {} };
+                case EBPF_MODE_IND: return Packet{width, inst.imm, Reg{inst.src} };
+                case EBPF_MODE_LEN: return {};
+                case EBPF_MODE_MSH: return {};
+                case EBPF_XADD: return LockAdd {
+                    .width = width,
+                    .valreg = Reg{inst.src},
+                    .basereg = Reg{inst.dst},
+                    .offset = Imm{inst.offset},
+                };
+            }
+            return Undefined{inst.opcode};
         }
         case EBPF_CLS_ALU:
         case EBPF_CLS_ALU64: 
@@ -125,7 +138,7 @@ Instruction toasm(ebpf_inst inst) {
                 return Bin{ 
                     .op = getBinOp(inst.opcode), 
                     .is64 = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64,
-                    .dst = inst.dst,
+                    .dst = Reg{ inst.dst },
                     .target = getBinTarget(inst),
                 };
             }
@@ -136,8 +149,8 @@ Instruction toasm(ebpf_inst inst) {
             else if (inst.opcode == EBPF_OP_EXIT) return Exit{};
             else return Jmp{
                 .op = getJmpOp(inst.opcode),
-                .leftreg = inst.dst,
-                .rightreg = inst.src,
+                .left = Reg{inst.dst},
+                .right = (inst.opcode & EBPF_SRC_REG) ? (Target)Reg{inst.src} : Imm{inst.offset},
                 .offset = inst.offset,
             };
         case EBPF_CLS_UNUSED: return Undefined{};
@@ -145,6 +158,9 @@ Instruction toasm(ebpf_inst inst) {
     return {};
 }
 
+IndexedInstruction toasm(uint16_t pc, ebpf_inst inst, int32_t next_imm) {
+    return {pc, toasm(inst, next_imm)};
+}
 
 static std::string op(Bin::Op op) {
     switch (op) {
@@ -179,12 +195,12 @@ static std::string op(Jmp::Op op) {
     }
 }
 
-static const char* size(Mem::Width w) {
+static const char* size(Width w) {
     switch (w) {
-        case Mem::Width::B : return "u8";
-        case Mem::Width::H : return "u16";
-        case Mem::Width::W : return "u32";
-        case Mem::Width::DW: return "u64";
+        case Width::B : return "u8";
+        case Width::H : return "u16";
+        case Width::W : return "u32";
+        case Width::DW: return "u64";
     }
 }
 
@@ -194,7 +210,7 @@ struct InstructionVisitor {
     InstructionVisitor(std::ostream& os) : os_{os} {}
 
     void operator()(Undefined const& a) {
-        os_ << "Undefined";
+        os_ << "Undefined{" << a.opcode << "}";
     }
 
     void operator()(Bin const& b) {
@@ -209,8 +225,8 @@ struct InstructionVisitor {
             case Un::Op::BE: os_ << "be()"; break;
             case Un::Op::LE: os_ << "le()"; break;
             case Un::Op::NEG:
-            os_ << "r" << b.dst << " = -r" << b.dst;
-            break;
+                os_ << "r" << b.dst << " = -r" << b.dst;
+                break;
         }
     }
 
@@ -228,32 +244,45 @@ struct InstructionVisitor {
 
     void operator()(Jmp const& b) {
         os_ << "if "
-            << "r" << b.leftreg
-            << " " << op(b.op) << " "
-            << "r" << b.rightreg
-            << " goto +" << b.offset;
+            << "r" << b.left
+            << " " << op(b.op) << " ";
+        std::visit(*this, b.right);
+        os_ << " goto +" << b.offset;
+    }
+
+    void operator()(Packet const& b) {
+        /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
+        /* Indirect packet access, R0 = *(uint *) (skb->data + src_reg + imm32) */
+        const char* s = size(b.width);
+        os_ << "r0 = ";
+        os_ << "*(" << s << " *)skb[";
+        if (b.regoffset)
+            os_ << "r" << *b.regoffset;
+        if (b.offset != 0) {
+            if (b.regoffset) os_ << " + ";
+            os_ << b.offset;
+        }
+        os_ << "]";
     }
 
     void operator()(Mem const& b) {
-        if (b.mode != Mem::Mode::MEM) {
-            os_ << "Other Mem";
-            return;
-        }
-
         const char* s = size(b.width);
         if (b.op == Mem::Op::LD) {
             os_ << "r" << b.valreg << " = ";
-
-            os_ << "*(" << s << "*)(r" << b.basereg << " + ";
-            std::visit(*this, b.offset);
-            os_ << ")";
-        } else {
-            os_ << "*(" << s << "*)(r" << b.basereg << " + ";
-            std::visit(*this, b.offset);
-            os_ << ")";
-
+        }
+        os_ << "*(" << s << "*)(r" << b.basereg << " + ";
+        std::visit(*this, b.offset);
+        os_ << ")";
+        if (b.op == Mem::Op::ST) {
             os_ << " = " "r" << b.valreg;
         }
+    }
+
+    void operator()(LockAdd const& b) {
+        const char* s = size(b.width);
+        os_ << "lock ";
+        os_ << "*(" << s << "*)(r" << b.basereg << " + " << b.offset << ")";
+        os_ << " += r" << b.valreg;
     }
 
     void operator()(Imm imm) {
@@ -264,8 +293,13 @@ struct InstructionVisitor {
     }
 };
 
-std::ostream& operator<< (std::ostream& os, Instruction const& v) {
+static std::ostream& operator<< (std::ostream& os, Instruction const& v) {
     std::visit(InstructionVisitor{os}, v);
     os << ";";
+    return os;
+}
+
+std::ostream& operator<< (std::ostream& os, IndexedInstruction const& v) {
+    os << v.pc << " : " << v.ins;
     return os;
 }

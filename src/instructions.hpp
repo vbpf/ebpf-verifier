@@ -37,7 +37,7 @@ struct ebpf_inst {
 
 /* Other memory modes are not yet supported */
 // TODO: was 0x00. verify this is correct
-#define EBPF_MODE_MASK 0xf0 // ??
+#define EBPF_MODE_MASK 0xe0 // ??
 
 #define EBPF_MODE_ABS 0x20 // new
 #define	EBPF_MODE_IND 0x40 // new
