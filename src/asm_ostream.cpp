@@ -114,7 +114,7 @@ struct InstructionVisitor {
         if (b.op == Mem::Op::LD) {
             os_ << "r" << b.valreg << " = ";
         }
-        os_ << "*(" << s << "*)(r" << b.basereg << " + ";
+        os_ << "*(" << s << " *)(r" << b.basereg << " + ";
         std::visit(*this, b.offset);
         os_ << ")";
         if (b.op == Mem::Op::ST) {
@@ -125,7 +125,7 @@ struct InstructionVisitor {
     void operator()(LockAdd const& b) {
         const char* s = size(b.width);
         os_ << "lock ";
-        os_ << "*(" << s << "*)(r" << b.basereg << " + " << b.offset << ")";
+        os_ << "*(" << s << " *)(r" << b.basereg << " + " << b.offset << ")";
         os_ << " += r" << b.valreg;
     }
 
