@@ -6,8 +6,7 @@
 #include <algorithm>
 #include <unordered_set>
 #include <iostream>
-
-#include <boost/optional.hpp>
+#include <optional>
 
 #include "instructions.hpp"
 #include "common.hpp"
@@ -16,7 +15,7 @@
 #include "verifier.hpp"
 #include "asm.hpp"
 
-using boost::optional;
+using std::optional;
 using std::to_string;
 using std::string;
 using std::vector;
@@ -24,14 +23,15 @@ using std::vector;
 
 using pc_t = uint16_t;
 
-static auto get_jump(struct ebpf_inst inst, pc_t pc) -> optional<pc_t>
+static auto get_jump(Instruction ins, pc_t pc) -> optional<pc_t>
 {
-    if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_JMP
-            && inst.opcode != EBPF_OP_CALL
-            && inst.opcode != EBPF_OP_EXIT) {
-        return pc + 1 + inst.offset;
+    if (std::holds_alternative<Goto>(ins)) {
+        return pc + 1 + std::get<Goto>(ins).offset;
     }
-    return boost::none;
+    if (std::holds_alternative<Jmp>(ins)) {
+        return pc + 1 + std::get<Jmp>(ins).offset;
+    }
+    return {};
 }
 
 static auto get_fall(struct ebpf_inst inst, pc_t pc) -> optional<pc_t>
@@ -45,7 +45,7 @@ static auto get_fall(struct ebpf_inst inst, pc_t pc) -> optional<pc_t>
         }
         return pc + 1;
     }
-    return boost::none;
+    return {};
 }
 
 static auto build_jump(cfg_t& cfg, pc_t pc, pc_t target, bool taken) -> basic_block_t&
@@ -70,7 +70,8 @@ bool check_raw_reachability(std::vector<ebpf_inst> insts)
 
     for (pc_t pc = 0; pc < insts.size()-1; pc++) {
         ebpf_inst inst = insts[pc];
-        optional<pc_t> jump_target = get_jump(insts[pc], pc);
+        Instruction ins = toasm(pc, insts[pc], insts[pc + 1].imm).ins;
+        optional<pc_t> jump_target = get_jump(ins, pc);
         optional<pc_t> fall_target = get_fall(insts[pc], pc);
         if (jump_target) {
             unreachables.erase(*jump_target);
@@ -92,13 +93,14 @@ void print_stats(vector<ebpf_inst> insts) {
     int jumps = 0;
     vector<int> reaching(insts.size());
     for (pc_t pc = 0; pc < insts.size()-1; pc++) {
+        Instruction ins = toasm(pc, insts[pc], insts[pc + 1].imm).ins;
         count++;
         if (is_load(insts[pc].opcode))
             loads++;
         if (is_store(insts[pc].opcode))
             stores++;
+        optional<pc_t> jump_target = get_jump(ins, pc);
         optional<pc_t> fall_target = get_fall(insts[pc], pc);
-        optional<pc_t> jump_target = get_jump(insts[pc], pc);
         if (jump_target) {
             reaching[*jump_target]++;
             jumps++;
@@ -137,17 +139,17 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, vector<ebpf_inst> insts, eb
         for (basic_block_t* b : outs)
             (*b) >> exit;
 
-        if (inst.opcode == EBPF_OP_EXIT) {
+        if (std::holds_alternative<Exit>(ins)) {
             cfg.set_exit(exit_label(pc));
             continue;
         }
 
-        optional<pc_t> jump_target = get_jump(insts[pc], pc);
+        optional<pc_t> jump_target = get_jump(ins, pc);
         optional<pc_t> fall_target = get_fall(insts[pc], pc);
         if (jump_target) {
-            if (inst.opcode != EBPF_OP_JA)  {
+            if (std::holds_alternative<Jmp>(ins))  {
                 auto& assumption = build_jump(cfg, pc, *jump_target, true);
-                basic_block_t& out = machine.jump(ins, true, assumption, cfg);
+                basic_block_t& out = machine.jump(std::get<Jmp>(ins), true, assumption, cfg);
                 out >> cfg.insert(label(*jump_target));
             } else {
                 link(cfg, pc, *jump_target);
@@ -157,7 +159,7 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, vector<ebpf_inst> insts, eb
         if (fall_target) {
             if (jump_target) {
                 auto& assumption = build_jump(cfg, pc, *fall_target, false);
-                basic_block_t& out = machine.jump(ins, false, assumption, cfg);
+                basic_block_t& out = machine.jump(std::get<Jmp>(ins), false, assumption, cfg);
                 out >> cfg.insert(label(*fall_target));
             } else {
                 link(cfg, pc, *fall_target);

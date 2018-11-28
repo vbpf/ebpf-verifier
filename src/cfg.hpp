@@ -1,5 +1,4 @@
-#ifndef ABS_CFG_CPP
-#define ABS_CFG_CPP
+#pragma once
 
 #include <vector>
 #include <string>
@@ -53,5 +52,3 @@ bool check_raw_reachability(std::vector<ebpf_inst> insts);
 void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> insts, ebpf_prog_type prog_type);
 
 void print_stats(vector<ebpf_inst> insts);
-
-#endif
