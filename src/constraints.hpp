@@ -17,6 +17,7 @@ class abs_machine_t
 public:
     abs_machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac);
     void setup_entry(basic_block_t& entry);
+    vector<basic_block_t*> expand_lockadd(LockAdd lock, basic_block_t& block, cfg_t& cfg);
     basic_block_t& jump(Jmp ins, bool taken, basic_block_t& block, cfg_t& cfg);
     std::vector<basic_block_t*> exec(Instruction ins, basic_block_t& block, cfg_t& cfg);
     ~abs_machine_t();
