@@ -706,54 +706,103 @@ vector<basic_block_t*> instruction_builder_t::exec_mem()
     }
 }
 
+
 vector<basic_block_t*> instruction_builder_t::exec()
 {
-    if (is_alu(inst.opcode)) {
-        return exec_alu();
-    } else if (inst.opcode == EBPF_OP_LDDW_IMM) {
-        if (inst.src == 1) {
-            // magic number, meaning we're a per-process file descriptor
-            // defining the map.
-            // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
-            // This is what ARG_CONST_MAP_PTR looks for
+    struct ExecInstructionVisitor {
+        instruction_builder_t& self;
+        ExecInstructionVisitor(instruction_builder_t& self) : self(self) { }
 
-            // This is probably the wrong thing to do. should we add an FD type?
-            // Here we (probably) need the map structure
-            block.assign(machine.regs[inst.dst].region, T_MAP);
-            block.assign(machine.regs[inst.dst].offset, 0);
-            return { &block };
-        } else {
-            auto imm = immediate(inst, next_inst);
-            if ((imm >> 32) == 0) {
-                block.assign(machine.regs[inst.dst].value, imm);
-            } else {
-                // workaround for overflow issue in sdbm implementation
-                block.havoc(machine.regs[inst.dst].value);
+        vector<basic_block_t*> operator()(Undefined const& a) {
+            std::cout << "bad instruction " << (int)self.inst.opcode << " at " << first_num(self.block) << "\n";
+            assert(false);
+        }
+
+        vector<basic_block_t*> operator()(Bin const& b) {
+            auto inst = self.inst;
+            auto& block = self.block;
+            auto& machine = self.machine;
+            if (inst.opcode == EBPF_OP_LDDW_IMM) {
+                if (inst.src == 1) {
+                    // magic number, meaning we're a per-process file descriptor
+                    // defining the map.
+                    // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
+                    // This is what ARG_CONST_MAP_PTR looks for
+
+                    // This is probably the wrong thing to do. should we add an FD type?
+                    // Here we (probably) need the map structure
+                    block.assign(machine.regs[inst.dst].region, T_MAP);
+                    block.assign(machine.regs[inst.dst].offset, 0);
+                    return { &block };
+                } else {
+                    auto imm = immediate(inst, self.next_inst);
+                    if ((imm >> 32) == 0) {
+                        block.assign(machine.regs[inst.dst].value, imm);
+                    } else {
+                        // workaround for overflow issue in sdbm implementation
+                        block.havoc(machine.regs[inst.dst].value);
+                    }
+                    no_pointer(block, machine.regs[inst.dst]);
+                    return { &block };
+                }
             }
-            no_pointer(block, machine.regs[inst.dst]);
+            return self.exec_alu();
+        }
+
+        vector<basic_block_t*> operator()(Un const& b) {
+            auto& dst = self.machine.regs[b.dst];
+            auto& block = self.block;
+
+            switch (b.op) {
+            case Un::Op::LE:
+            case Un::Op::BE:
+                block.havoc(dst.value);
+                break;
+            case Un::Op::NEG:
+                block.assign(dst.value, 0-dst.value);
+                break;
+            }
+            no_pointer(block, dst);
             return { &block };
         }
-    } else if (inst.opcode == EBPF_OP_EXIT) {
-        // assert_init(block, machine.regs[inst.dst], di);
-        block.assertion(machine.regs[inst.dst].region == T_NUM, di);
-        return { &block };
-    } else if (inst.opcode == EBPF_OP_CALL) {
-        return exec_call();
-    } else if (is_jump(inst.opcode)) {
-        // cfg-related action is handled in build_cfg() and instruction_builder_t::jump()
-        if (inst.opcode != EBPF_OP_JA) {
-            if (inst.opcode & EBPF_SRC_REG) {
-                assert_init(block, machine.regs[inst.src], di);
-            }
-            assert_init(block, machine.regs[inst.dst], di);
+
+        vector<basic_block_t*> operator()(Call const& b) {
+            return self.exec_call();
         }
-        return { &block };
-    } else if (is_access(inst.opcode)) {
-        return exec_mem();
-    } else {
-        std::cout << "bad instruction " << (int)inst.opcode << " at " << first_num(block) << "\n";
-        assert(false);
-    }
+
+        vector<basic_block_t*> operator()(Exit const& b) {
+            // assert_init(block, machine.regs[inst.dst], di);
+            self.block.assertion(self.machine.regs[self.inst.dst].region == T_NUM, self.di);
+            return { &self.block };
+        }
+
+        vector<basic_block_t*> operator()(Goto const& b) {
+            return { &self.block };
+        }
+
+        vector<basic_block_t*> operator()(Jmp const& b) {
+            // cfg-related action is handled in build_cfg() and instruction_builder_t::jump()
+            if (self.inst.opcode & EBPF_SRC_REG) {
+                assert_init(self.block, self.machine.regs[self.inst.src], self.di);
+            }
+            assert_init(self.block, self.machine.regs[self.inst.dst], self.di);
+            return { &self.block };
+        }
+
+        vector<basic_block_t*> operator()(Packet const& b) {
+            return self.exec_mem();
+        }
+
+        vector<basic_block_t*> operator()(Mem const& b) {
+            return self.exec_mem();
+        }
+
+        vector<basic_block_t*> operator()(LockAdd const& b) {
+            return self.exec_mem();
+        }
+    };
+    auto ins = toasm(pc, inst, immediate(inst, next_inst));
+    return std::visit(ExecInstructionVisitor{*this}, ins.ins);
 }
 
 vector<basic_block_t*> instruction_builder_t::exec_call()
@@ -911,12 +960,6 @@ vector<basic_block_t*> instruction_builder_t::exec_alu()
     }
     assert_init(block, machine.regs[inst.dst], di);*/
     switch (inst.opcode) {
-    case EBPF_OP_LE:
-    case EBPF_OP_BE:
-        block.havoc(dst.value);
-        no_pointer(block, dst);
-        break;
-
     case EBPF_OP_ADD_IMM:
     case EBPF_OP_ADD64_IMM:
         block.add(dst.value, dst.value, imm);
@@ -1057,10 +1100,6 @@ vector<basic_block_t*> instruction_builder_t::exec_alu()
     case EBPF_OP_RSH_REG:
     case EBPF_OP_RSH64_REG:
         block.ashr(dst.value, dst.value, src.value);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_NEG64:
-        block.assign(dst.value, 0-dst.value);
         no_pointer(block, dst);
         break;
     case EBPF_OP_XOR_IMM:
