@@ -241,39 +241,4 @@ inline int access_width(uint8_t opcode)
 	return -1;
 }
 
-
-inline uint8_t reverse(uint8_t opcode)
-{
-    switch (opcode) {
-    case EBPF_OP_JEQ_IMM:  return EBPF_OP_JNE_IMM;
-    case EBPF_OP_JEQ_REG:  return EBPF_OP_JNE_REG;
-
-    case EBPF_OP_JGE_IMM:  return EBPF_OP_JLT_IMM;
-    case EBPF_OP_JGE_REG:  return EBPF_OP_JLT_REG;
-
-    case EBPF_OP_JSGE_IMM: return EBPF_OP_JSLT_IMM;
-    case EBPF_OP_JSGE_REG: return EBPF_OP_JSLT_REG;
-    
-    case EBPF_OP_JLE_IMM:  return EBPF_OP_JGT_IMM;
-    case EBPF_OP_JLE_REG:  return EBPF_OP_JGT_REG;
-
-    case EBPF_OP_JSLE_IMM: return EBPF_OP_JSGT_IMM;
-    case EBPF_OP_JSLE_REG: return EBPF_OP_JSGT_REG;
-
-    case EBPF_OP_JNE_IMM:  return EBPF_OP_JEQ_IMM;
-    case EBPF_OP_JNE_REG:  return EBPF_OP_JEQ_REG;
-    
-    case EBPF_OP_JGT_IMM:  return EBPF_OP_JLE_IMM;
-    case EBPF_OP_JGT_REG:  return EBPF_OP_JLE_REG;
-    case EBPF_OP_JSGT_IMM: return EBPF_OP_JSLE_IMM;
-    case EBPF_OP_JSGT_REG: return EBPF_OP_JSLE_REG;
-
-    case EBPF_OP_JLT_IMM:  return EBPF_OP_JGE_IMM;
-    case EBPF_OP_JLT_REG:  return EBPF_OP_JGE_REG;
-    case EBPF_OP_JSLT_IMM: return EBPF_OP_JSGE_IMM;
-    case EBPF_OP_JSLT_REG: return EBPF_OP_JSGE_REG;
-	default: return opcode;
-    }
-}
-
 constexpr int STACK_SIZE=512;
