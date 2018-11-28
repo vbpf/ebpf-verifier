@@ -4,12 +4,13 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include <assert.h>
+#include <optional>
 
 #include "prototypes.hpp"
 #include "verifier.hpp"
 #include "cfg.hpp"
 
-#include "disasm.hpp"
+#include "asm.hpp"
 
 bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
 {
@@ -20,7 +21,7 @@ bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
     int exit_count = 0;
     for (uint32_t pc = 0; pc < insts.size(); pc++) {
         ebpf_inst inst = insts[pc];
-        std::cout << toasm(pc, inst, pc < insts.size() - 1 ? insts[pc+1].imm : 0) << "\n";
+        std::cout << toasm(pc, inst, pc < insts.size() - 1 ? (std::optional<int32_t>)insts[pc+1].imm : std::nullopt) << "\n";
 
         if (is_alu(inst.opcode)) {
             if (inst.dst == 10) {
