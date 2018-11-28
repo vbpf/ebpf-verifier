@@ -9,6 +9,8 @@
 #include "prototypes.hpp"
 #include "type_descriptors.hpp"
 
+#include "asm.hpp"
+
 using std::tuple;
 using std::string;
 using std::vector;
@@ -244,37 +246,55 @@ static lin_cst_t jmp_to_cst_offsets(uint8_t opcode, var_t& dst_offset, var_t& sr
     return dst_offset - dst_offset == 0;
 }
 
-
-static vector<lin_cst_t> jmp_to_cst(uint8_t opcode, int imm, var_t& dst_value, var_t& src_value)
+Jmp::Op reverse(Jmp::Op op)
 {
-    switch (opcode) {
-    case EBPF_OP_JEQ_IMM:  return {dst_value == imm};
-    case EBPF_OP_JEQ_REG:  return {eq(dst_value, src_value)};
+    switch (op) {
+    case Jmp::Op::EQ : return Jmp::Op::NE;
+    case Jmp::Op::GE : return Jmp::Op::LT;
+    case Jmp::Op::SGE: return Jmp::Op::SLT;
+    case Jmp::Op::LE : return Jmp::Op::GT;
+    case Jmp::Op::SLE: return Jmp::Op::SGT;
+    case Jmp::Op::NE : return Jmp::Op::EQ;
+    case Jmp::Op::GT : return Jmp::Op::LE;
+    case Jmp::Op::SGT: return Jmp::Op::SLE;
+    case Jmp::Op::LT : return Jmp::Op::GE;
+    case Jmp::Op::SLT: return Jmp::Op::SGE;
+    case Jmp::Op::SET: throw std::exception();
+    }
+}
 
-    case EBPF_OP_JNE_IMM:  return {dst_value != imm};
-    case EBPF_OP_JNE_REG:  return {neq(dst_value, src_value)};
-    
-    case EBPF_OP_JGE_IMM:  return {dst_value >= (unsigned)imm}; // FIX unsigned
-    case EBPF_OP_JGE_REG:  return {dst_value >= src_value}; // FIX unsigned
-
-    case EBPF_OP_JSGE_IMM: return {dst_value >= imm};
-    case EBPF_OP_JSGE_REG: return {dst_value >= src_value};
-    
-    case EBPF_OP_JLE_IMM:  return {dst_value <= imm, 0 <= dst_value}; // FIX unsigned
-    case EBPF_OP_JLE_REG:  return {dst_value <= src_value, 0 <= dst_value}; // FIX unsigned
-    case EBPF_OP_JSLE_IMM: return {dst_value <= imm};
-    case EBPF_OP_JSLE_REG: return {dst_value <= src_value};
-
-    case EBPF_OP_JGT_IMM:  return {dst_value >= (unsigned)imm + 1}; // FIX unsigned
-    case EBPF_OP_JGT_REG:  return {dst_value >= src_value + 1}; // FIX unsigned
-    case EBPF_OP_JSGT_IMM: return {dst_value >= imm + 1};
-    case EBPF_OP_JSGT_REG: return {dst_value >= src_value + 1};
-
-    case EBPF_OP_JLT_IMM:  return {dst_value <= (unsigned)imm - 1}; // FIX unsigned
-    // Note: reverse the test as a workaround strange lookup:
-    case EBPF_OP_JLT_REG:  return {src_value >= dst_value + 1}; // FIX unsigned
-    case EBPF_OP_JSLT_IMM: return {dst_value <= imm - 1};
-    case EBPF_OP_JSLT_REG: return {src_value >= dst_value + 1};
+static vector<lin_cst_t> jmp_to_cst(Jmp::Op op, Jmp jmp, int imm, var_t& dst_value, var_t& src_value)
+{
+    bool is_imm = jmp.right.index() == 0;
+    if (is_imm) {
+        switch (op) {
+        case Jmp::Op::EQ : return {dst_value == imm};
+        case Jmp::Op::NE : return {dst_value != imm};
+        case Jmp::Op::GE : return {dst_value >= (unsigned)imm}; // FIX unsigned
+        case Jmp::Op::SGE: return {dst_value >= imm};
+        case Jmp::Op::LE : return {dst_value <= imm, 0 <= dst_value}; // FIX unsigned
+        case Jmp::Op::SLE: return {dst_value <= imm};
+        case Jmp::Op::GT : return {dst_value >= (unsigned)imm + 1}; // FIX unsigned
+        case Jmp::Op::SGT: return {dst_value >= imm + 1};
+        case Jmp::Op::LT : return {dst_value <= (unsigned)imm - 1}; // FIX unsigned
+        case Jmp::Op::SLT: return {dst_value <= imm - 1};
+        case Jmp::Op::SET: throw std::exception();
+        }
+    } else {
+        switch (op) {
+        case Jmp::Op::EQ : return {eq(dst_value, src_value)};
+        case Jmp::Op::NE : return {neq(dst_value, src_value)};
+        case Jmp::Op::GE : return {dst_value >= src_value}; // FIX unsigned
+        case Jmp::Op::SGE: return {dst_value >= src_value};
+        case Jmp::Op::LE : return {dst_value <= src_value, 0 <= dst_value}; // FIX unsigned
+        case Jmp::Op::SLE: return {dst_value <= src_value};
+        case Jmp::Op::GT : return {dst_value >= src_value + 1}; // FIX unsigned
+        case Jmp::Op::SGT: return {dst_value >= src_value + 1};
+        // Note: reverse the test as a workaround strange lookup:
+        case Jmp::Op::LT : return {src_value >= dst_value + 1}; // FIX unsigned
+        case Jmp::Op::SLT: return {src_value >= dst_value + 1};
+        case Jmp::Op::SET: throw std::exception();
+        }
     }
     assert(false);
 }
@@ -285,14 +305,16 @@ basic_block_t& instruction_builder_t::jump(bool taken)
     uint8_t opcode = taken ? inst.opcode : reverse(inst.opcode);
     auto& dst = machine.regs[inst.dst];
     auto& src = machine.regs[inst.src];
-    vector<lin_cst_t> csts = jmp_to_cst(opcode, inst.imm, dst.value, src.value);
+    Jmp ins = std::get<Jmp>(toasm(pc, inst, 0).ins);
+    Jmp::Op op = taken ? ins.op : reverse(ins.op);
+    vector<lin_cst_t> csts = jmp_to_cst(op, ins, inst.imm, dst.value, src.value);
     debug_info di{"pc", (unsigned int)first_num(block), 0}; 
     for (auto c : csts)
         block.assume(c);
     if (opcode & EBPF_SRC_REG) {
 
         basic_block_t& same = add_child(cfg, block, "same_type");
-        for (auto c : jmp_to_cst(opcode, inst.imm, dst.value, src.value))
+        for (auto c : jmp_to_cst(op, ins, inst.imm, dst.value, src.value))
             same.assume(c);
         same.assume(eq(dst.region, src.region));
 
@@ -309,7 +331,7 @@ basic_block_t& instruction_builder_t::jump(bool taken)
         auto prevs = {same.label(), null_src.label(), null_dst.label()};
         basic_block_t& offset_check = add_common_child(cfg, block, prevs, "offsets_check");
 
-        lin_cst_t offset_cst = jmp_to_cst_offsets(opcode, dst.offset, src.offset);
+        lin_cst_t offset_cst = jmp_to_cst_offsets(inst.opcode, dst.offset, src.offset);
         if (!offset_cst.is_tautology()) {
             offset_check.assume(offset_cst);
         }
