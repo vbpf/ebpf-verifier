@@ -925,7 +925,9 @@ vector<basic_block_t*> instruction_builder_t::exec()
             auto& width = self.width;
             switch (b.op) {
             case Mem::Op::ST:
-                if (b.offset.index() == 0) {
+                if (false) {
+                    // FIX: Where are the examples?
+
                     // mem[offset] = immediate
                     auto& next_inst = self.next_inst;
                     if (inst.dst == 10) {
