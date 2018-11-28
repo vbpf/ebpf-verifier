@@ -53,7 +53,7 @@ static Bin::Op getBinOp(uint8_t opcode) {
     return Bin::Op::ARSH;
 }
 
-static Target getBinTarget(ebpf_inst inst) {
+static Value getBinValue(ebpf_inst inst) {
     if (inst.opcode & EBPF_SRC_REG)
         return Reg{inst.src};
     else
@@ -86,13 +86,13 @@ static Jmp::Op getJmpOp(uint8_t opcode) {
     return {};
 }
 
-static Instruction toasm(ebpf_inst inst, int32_t next_imm) {
+static Instruction toasm(ebpf_inst inst, std::optional<int32_t> next_imm) {
     if (inst.opcode == EBPF_OP_LDDW_IMM) {
         return Bin{
             .op = Bin::Op::MOV,
             .is64 = true,
             .dst = Reg{ inst.dst },
-            .target = Imm{ next_imm  },
+            .v = Imm{ inst.imm, *next_imm  },
         };
     }
     switch (inst.opcode & EBPF_CLS_MASK) {
@@ -109,7 +109,7 @@ static Instruction toasm(ebpf_inst inst, int32_t next_imm) {
                         .width = width,
                         .valreg = Reg{isLoad ? inst.dst : inst.src},
                         .basereg = Reg{isLoad ? inst.src : inst.dst},
-                        .offset = (inst.opcode & 1) ? (Target)Imm{inst.offset} : Reg{inst.imm},
+                        .offset = (inst.opcode & 1) ? (Target)Offset{inst.offset} : Reg{inst.imm},
                     };
                 }
                 case EBPF_MODE_ABS: return Packet{width, inst.imm, {} };
@@ -120,7 +120,7 @@ static Instruction toasm(ebpf_inst inst, int32_t next_imm) {
                     .width = width,
                     .valreg = Reg{inst.src},
                     .basereg = Reg{inst.dst},
-                    .offset = Imm{inst.offset},
+                    .offset = inst.offset,
                 };
             }
             return Undefined{inst.opcode};
@@ -137,7 +137,7 @@ static Instruction toasm(ebpf_inst inst, int32_t next_imm) {
                     .op = getBinOp(inst.opcode), 
                     .is64 = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64,
                     .dst = Reg{ inst.dst },
-                    .target = getBinTarget(inst),
+                    .v = getBinValue(inst),
                 };
             }
 
@@ -148,7 +148,7 @@ static Instruction toasm(ebpf_inst inst, int32_t next_imm) {
             else return Jmp{
                 .op = getJmpOp(inst.opcode),
                 .left = Reg{inst.dst},
-                .right = (inst.opcode & EBPF_SRC_REG) ? (Target)Reg{inst.src} : Imm{inst.offset},
+                .right = (inst.opcode & EBPF_SRC_REG) ? (Value)Reg{inst.src} : Imm{inst.imm},
                 .offset = inst.offset,
             };
         case EBPF_CLS_UNUSED: return Undefined{};
@@ -156,6 +156,6 @@ static Instruction toasm(ebpf_inst inst, int32_t next_imm) {
     return {};
 }
 
-IndexedInstruction toasm(uint16_t pc, ebpf_inst inst, int32_t next_imm) {
+IndexedInstruction toasm(uint16_t pc, ebpf_inst inst, std::optional<int32_t> next_imm) {
     return {pc, toasm(inst, next_imm)};
 }

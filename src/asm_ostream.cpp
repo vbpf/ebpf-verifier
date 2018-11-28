@@ -58,10 +58,19 @@ struct InstructionVisitor {
     }
 
     void operator()(Bin const& b) {
-        os_ << "r" << b.dst << " " << op(b.op) << "= ";
-        std::visit(*this, b.target);
-        if (!b.is64)
-            os_ << " & 0xFFFFFFFF";
+        if (b.op == Bin::Op::MOV && b.v.index() == 0) {
+            Imm imm = std::get<Imm>(b.v);
+            os_ << "r" << b.dst << " " << "= " ;
+            if (imm.next && *imm.next)
+                os_ << imm.u64() << " ll";
+            else
+                os_ << imm.i32();
+        } else {
+            os_ << "r" << b.dst << " " << op(b.op) << "= ";
+            std::visit(*this, b.v);
+            if (!b.is64)
+                os_ << " & 0xFFFFFFFF";
+        }
     }
 
     void operator()(Un const& b) {
@@ -75,7 +84,7 @@ struct InstructionVisitor {
     }
 
     void operator()(Call const& b) {
-        os_ << "call " << b.func << "()";
+        os_ << "call " << b.func;
     }
 
     void operator()(Exit const& b) {
@@ -130,7 +139,11 @@ struct InstructionVisitor {
     }
 
     void operator()(Imm imm) {
-        os_ << imm;
+        // not intended to print imddw
+        os_ << imm.i32();
+    }
+    void operator()(Offset off) {
+        os_ << static_cast<int16_t>(off);
     }
     void operator()(Reg reg) {
         os_ << "r" << reg;
@@ -139,11 +152,11 @@ struct InstructionVisitor {
 
 static std::ostream& operator<< (std::ostream& os, Instruction const& v) {
     std::visit(InstructionVisitor{os}, v);
-    os << ";";
+    os << "";
     return os;
 }
 
 std::ostream& operator<< (std::ostream& os, IndexedInstruction const& v) {
-    os << v.pc << " : " << v.ins;
+    os << "    " << v.pc << " :        " << v.ins;
     return os;
 }

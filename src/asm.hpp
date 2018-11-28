@@ -6,9 +6,22 @@
 
 #include "instructions.hpp"
 
-enum Imm : int32_t {};
+struct Imm {
+    int32_t current;
+    std::optional<int32_t> next;
+    uint64_t u64() {
+        return uint64_t(*next) << 32 | current;
+    }
+    uint32_t i32() {
+        return current;
+    }
+};
+
+enum Offset : int16_t {};
 enum Reg : int {};
-using Target = std::variant<Imm, Reg>;
+
+using Value = std::variant<Imm, Reg>;
+using Target = std::variant<Offset, Reg>;
 
 struct Bin {
     enum class Op {
@@ -20,7 +33,7 @@ struct Bin {
     Op op;
     bool is64;
     Reg dst;
-    Target target;
+    Value v;
 };
 
 struct Un {
@@ -41,7 +54,7 @@ struct Jmp {
 
     Op op;
     Reg left;
-    Target right;
+    Value right;
     int offset;
 };
 
@@ -82,7 +95,7 @@ struct LockAdd {
     Width width;
     Reg valreg;
     Reg basereg;
-    Imm offset;
+    int16_t offset;
 };
 
 struct Undefined { int opcode; };
@@ -106,5 +119,5 @@ struct IndexedInstruction {
 };
 
 
-IndexedInstruction toasm(uint16_t pc, ebpf_inst inst, int32_t next_imm);
+IndexedInstruction toasm(uint16_t pc, ebpf_inst inst, std::optional<int32_t> next_imm);
 std::ostream& operator<< (std::ostream& os, IndexedInstruction const& v);
