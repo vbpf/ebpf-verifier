@@ -58,19 +58,10 @@ struct InstructionVisitor {
     }
 
     void operator()(Bin const& b) {
-        if (b.op == Bin::Op::MOV && b.v.index() == 0) {
-            Imm imm = std::get<Imm>(b.v);
-            os_ << "r" << b.dst << " " << "= " ;
-            if (imm.next && *imm.next)
-                os_ << imm.u64() << " ll";
-            else
-                os_ << imm.i32();
-        } else {
-            os_ << "r" << b.dst << " " << op(b.op) << "= ";
-            std::visit(*this, b.v);
-            if (!b.is64)
-                os_ << " & 0xFFFFFFFF";
-        }
+        os_ << "r" << b.dst << " " << op(b.op) << "= ";
+        std::visit(*this, b.v);
+        if (!b.is64)
+            os_ << " & 0xFFFFFFFF";
     }
 
     void operator()(Un const& b) {
@@ -139,8 +130,10 @@ struct InstructionVisitor {
     }
 
     void operator()(Imm imm) {
-        // not intended to print imddw
-        os_ << imm.i32();
+        if (imm.v >= 0xFFFFFFFFLL)
+            os_ << imm.v << " ll";
+        else
+            os_ << (int32_t)imm.v;
     }
     void operator()(Offset off) {
         os_ << static_cast<int16_t>(off);
