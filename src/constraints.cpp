@@ -136,7 +136,6 @@ private:
     static void no_pointer(basic_block_t& block, dom_t v);
 
     vector<basic_block_t*> exec_mem();
-    vector<basic_block_t*> exec_alu();
     vector<basic_block_t*> exec_call();
 
     template<typename W>
@@ -706,6 +705,13 @@ vector<basic_block_t*> instruction_builder_t::exec_mem()
     }
 }
 
+void assert_no_overflow(basic_block_t& b, var_t v, debug_info di) {
+    // p1 = data_start; p1 += huge_positive; p1 <= p2 does not imply p1 >= data_start
+    // We assume that pointers are 32 bit so slight overflow is still sound
+    b.assertion(v <= 1 << 30 , di);
+    b.assertion(v >= -4098 , di);
+}
+
 
 vector<basic_block_t*> instruction_builder_t::exec()
 {
@@ -718,7 +724,7 @@ vector<basic_block_t*> instruction_builder_t::exec()
             assert(false);
         }
 
-        vector<basic_block_t*> operator()(Bin const& b) {
+        vector<basic_block_t*> operator()(Bin const& bin) {
             auto inst = self.inst;
             auto& block = self.block;
             auto& machine = self.machine;
@@ -731,22 +737,197 @@ vector<basic_block_t*> instruction_builder_t::exec()
 
                     // This is probably the wrong thing to do. should we add an FD type?
                     // Here we (probably) need the map structure
-                    block.assign(machine.regs[inst.dst].region, T_MAP);
-                    block.assign(machine.regs[inst.dst].offset, 0);
+                    block.assign(machine.regs[bin.dst].region, T_MAP);
+                    block.assign(machine.regs[bin.dst].offset, 0);
                     return { &block };
                 } else {
                     auto imm = immediate(inst, self.next_inst);
                     if ((imm >> 32) == 0) {
-                        block.assign(machine.regs[inst.dst].value, imm);
+                        block.assign(machine.regs[bin.dst].value, imm);
                     } else {
                         // workaround for overflow issue in sdbm implementation
-                        block.havoc(machine.regs[inst.dst].value);
+                        block.havoc(machine.regs[bin.dst].value);
                     }
-                    no_pointer(block, machine.regs[inst.dst]);
+                    no_pointer(block, machine.regs[bin.dst]);
                     return { &block };
                 }
             }
-            return self.exec_alu();
+                    
+            auto& dst = self.machine.regs[bin.dst];
+
+            vector<basic_block_t*> res{ &block };
+
+            // TODO: add assertion for all operators that the arguments are initialized
+            // TODO: or, just do dst_initialized = dst_initialized & src_initialized
+            /*if (inst.opcode & EBPF_SRC_REG) {
+                assert_init(block, machine.regs[inst.src], di);
+            }
+            assert_init(block, machine.regs[inst.dst], di);*/
+            if (bin.v.index() == 0) {
+                int imm = inst.imm;
+                switch (bin.op) {
+                case Bin::Op::MOV:
+                    block.assign(dst.value, imm);
+                    no_pointer(block, dst);
+                    break;
+                case Bin::Op::ADD:
+                    block.add(dst.value, dst.value, imm);
+                    block.add(dst.offset, dst.offset, imm);
+                    break;
+                case Bin::Op::SUB:
+                    block.sub(dst.value, dst.value, imm);
+                    block.sub(dst.offset, dst.offset, imm);
+                    break;
+                case Bin::Op::MUL:
+                    block.mul(dst.value, dst.value, imm);
+                    no_pointer(block, dst);
+                    break;
+                case Bin::Op::DIV:
+                    block.div(dst.value, dst.value, imm);
+                    no_pointer(block, dst);
+                    break;
+                case Bin::Op::MOD:
+                    block.rem(dst.value, dst.value, imm);
+                    no_pointer(block, dst);
+                    break;
+                case Bin::Op::OR:
+                    block.bitwise_or(dst.value, dst.value, imm);
+                    no_pointer(block, dst);
+                    break;
+                case Bin::Op::AND:
+                    // FIX: what to do with ptr&-8 as in counter/simple_loop_unrolled?
+                    block.bitwise_and(dst.value, dst.value, imm);
+                    if ((int32_t)imm > 0) {
+                        block.assume(dst.value <= imm);
+                        block.assume(0 <= dst.value);
+                    }
+                    no_pointer(block, dst);
+                    break;
+                case Bin::Op::RSH:
+                    block.ashr(dst.value, dst.value, imm);
+                    no_pointer(block, dst);
+                    break;
+                case Bin::Op::LSH:
+                    block.lshr(dst.value, dst.value, imm);
+                    no_pointer(block, dst);
+                    break;
+                case Bin::Op::XOR:
+                    block.bitwise_xor(dst.value, dst.value, imm);
+                    no_pointer(block, dst);
+                    break;
+                case Bin::Op::ARSH:
+                    block.ashr(dst.value, dst.value, imm); // = (int64_t)dst >> imm;
+                    no_pointer(block, dst);
+                    break;
+                } 
+            } else {
+                auto& src = self.machine.regs[(int)std::get<Reg>(bin.v)];
+                auto& cfg = self.cfg;
+                auto& di = self.di;
+                switch (bin.op) {
+                case Bin::Op::ADD: {
+                        block.add(dst.value, dst.value, src.value);
+                        
+                        basic_block_t& ptr_dst = add_child(cfg, block, "ptr_dst");
+                        ptr_dst.assume(is_pointer(dst));
+                        ptr_dst.assertion(src.region == T_NUM , di);
+                        ptr_dst.add(dst.offset, dst.offset, src.value);
+                        assert_no_overflow(ptr_dst, dst.offset, di);
+
+                        basic_block_t& ptr_src = add_child(cfg, block, "ptr_src");
+                        ptr_src.assume(is_pointer(src));
+                        ptr_src.assertion(dst.region == T_NUM , di);
+                        ptr_src.add(dst.offset, dst.value, src.offset);
+                        assert_no_overflow(ptr_src, dst.offset, di);
+                        ptr_src.assign(dst.region, src.region);
+                        ptr_src.havoc(machine.top);
+                        ptr_src.assign(dst.value, machine.top);
+                        ptr_src.assume(4098 <= dst.value);
+                        
+                        basic_block_t& both_num = add_child(cfg, block, "both_num");
+                        both_num.assume(dst.region == T_NUM);
+                        both_num.assume(src.region == T_NUM);
+                        both_num.add(dst.value, dst.value, src.value);
+
+                        res = {&ptr_src, &ptr_dst, &both_num};
+                        return res;
+                    }
+                    break;
+                case Bin::Op::SUB: {
+                        basic_block_t& same = add_child(cfg, block, "ptr_src");
+                        same.assume(is_pointer(src));
+                        same.assertion(is_pointer(dst), di);
+                        same.assume(eq(dst.region, src.region));
+                        same.sub(dst.value, dst.offset, src.offset);
+                        same.assign(dst.region, T_NUM);
+                        same.havoc(dst.offset);
+
+                        basic_block_t& num_src = add_child(cfg, block, "num_src");
+                        num_src.assume(src.region == T_NUM);
+                        {
+                            basic_block_t& ptr_dst = add_child(cfg, num_src, "ptr_dst");
+                            ptr_dst.assume(is_pointer(dst));
+                            ptr_dst.sub(dst.offset, dst.offset, src.value);
+                            assert_no_overflow(ptr_dst, dst.offset, di);
+
+                            basic_block_t& both_num = add_child(cfg, num_src, "both_num");    
+                            both_num.assume(dst.region == T_NUM);
+                            both_num.sub(dst.value, dst.value, src.value);
+                            res = {&same, &ptr_dst, &both_num};
+                        }
+                    }
+                    break;
+                case Bin::Op::MUL:
+                    block.mul(dst.value, dst.value, src.value);
+                    no_pointer(block, dst);
+                    break;
+                case Bin::Op::DIV:
+                    // For some reason, DIV is not checked for zerodiv
+                    block.div(dst.value, dst.value, src.value);
+                    no_pointer(block, dst);
+                    break;
+                case Bin::Op::MOD:
+                    // See DIV comment
+                    block.rem(dst.value, dst.value, src.value);
+                    no_pointer(block, dst);
+                    break;
+                case Bin::Op::OR:
+                    block.bitwise_or(dst.value, dst.value, src.value);
+                    no_pointer(block, dst);
+                    break;
+                case Bin::Op::AND:
+                    block.bitwise_and(dst.value, dst.value, src.value);
+                    no_pointer(block, dst);
+                    break;
+                case Bin::Op::LSH:
+                    block.lshr(dst.value, dst.value, src.value);
+                    no_pointer(block, dst);
+                    break;
+                case Bin::Op::RSH:
+                    block.ashr(dst.value, dst.value, src.value);
+                    no_pointer(block, dst);
+                    break;
+                case Bin::Op::XOR:
+                    block.bitwise_xor(dst.value, dst.value, src.value);
+                    no_pointer(block, dst);
+                    break;
+                case Bin::Op::MOV:
+                    block.assign(dst.value, src.value);
+                    block.assign(dst.offset, src.offset);
+                    block.assign(dst.region, src.region);
+                    break;
+                case Bin::Op::ARSH:
+                    block.ashr(dst.value, dst.value, src.value); // = (int64_t)dst >> src;
+                    no_pointer(block, dst);
+                    break;
+                }
+            }
+            for (auto b : res) {
+                if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU)
+                    wrap32(*b, dst.value);
+            }
+
+            return res;
         }
 
         vector<basic_block_t*> operator()(Un const& b) {
@@ -933,215 +1114,4 @@ vector<basic_block_t*> instruction_builder_t::exec_call()
         }
     }
     return blocks;
-}
-
-void assert_no_overflow(basic_block_t& b, var_t v, debug_info di) {
-    // p1 = data_start; p1 += huge_positive; p1 <= p2 does not imply p1 >= data_start
-    // We assume that pointers are 32 bit so slight overflow is still sound
-    b.assertion(v <= 1 << 30 , di);
-    b.assertion(v >= -4098 , di);
-}
-
-vector<basic_block_t*> instruction_builder_t::exec_alu()
-{
-    assert((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU
-         ||(inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64);
-    auto& dst = machine.regs[inst.dst];
-    auto& src = machine.regs[inst.src];
-
-    int imm = inst.imm;
-
-    vector<basic_block_t*> res{ &block };
-
-    // TODO: add assertion for all operators that the arguments are initialized
-    // TODO: or, just do dst_initialized = dst_initialized & src_initialized
-    /*if (inst.opcode & EBPF_SRC_REG) {
-        assert_init(block, machine.regs[inst.src], di);
-    }
-    assert_init(block, machine.regs[inst.dst], di);*/
-    switch (inst.opcode) {
-    case EBPF_OP_ADD_IMM:
-    case EBPF_OP_ADD64_IMM:
-        block.add(dst.value, dst.value, imm);
-        block.add(dst.offset, dst.offset, imm);
-        break;
-    case EBPF_OP_ADD_REG:
-    case EBPF_OP_ADD64_REG:
-        {
-            block.add(dst.value, dst.value, src.value);
-            
-            basic_block_t& ptr_dst = add_child(cfg, block, "ptr_dst");
-            ptr_dst.assume(is_pointer(dst));
-            ptr_dst.assertion(src.region == T_NUM , di);
-            ptr_dst.add(dst.offset, dst.offset, src.value);
-            assert_no_overflow(ptr_dst, dst.offset, di);
-
-            basic_block_t& ptr_src = add_child(cfg, block, "ptr_src");
-            ptr_src.assume(is_pointer(src));
-            ptr_src.assertion(dst.region == T_NUM , di);
-            ptr_src.add(dst.offset, dst.value, src.offset);
-            assert_no_overflow(ptr_src, dst.offset, di);
-            ptr_src.assign(dst.region, src.region);
-            ptr_src.havoc(machine.top);
-            ptr_src.assign(dst.value, machine.top);
-            ptr_src.assume(4098 <= dst.value);
-            
-            basic_block_t& both_num = add_child(cfg, block, "both_num");
-            both_num.assume(dst.region == T_NUM);
-            both_num.assume(src.region == T_NUM);
-            both_num.add(dst.value, dst.value, src.value);
-
-            res = {&ptr_src, &ptr_dst, &both_num};
-            return res;
-        }
-        break;
-    case EBPF_OP_SUB_IMM:
-    case EBPF_OP_SUB64_IMM:
-        block.sub(dst.value, dst.value, imm);
-        block.sub(dst.offset, dst.offset, imm);
-        break;
-    case EBPF_OP_SUB_REG:
-    case EBPF_OP_SUB64_REG: {
-            basic_block_t& same = add_child(cfg, block, "ptr_src");
-            same.assume(is_pointer(src));
-            same.assertion(is_pointer(dst), di);
-            same.assume(eq(dst.region, src.region));
-            same.sub(dst.value, dst.offset, src.offset);
-            same.assign(dst.region, T_NUM);
-            same.havoc(dst.offset);
-
-            basic_block_t& num_src = add_child(cfg, block, "num_src");
-            num_src.assume(src.region == T_NUM);
-            {
-                basic_block_t& ptr_dst = add_child(cfg, num_src, "ptr_dst");
-                ptr_dst.assume(is_pointer(dst));
-                ptr_dst.sub(dst.offset, dst.offset, src.value);
-                assert_no_overflow(ptr_dst, dst.offset, di);
-
-                basic_block_t& both_num = add_child(cfg, num_src, "both_num");    
-                both_num.assume(dst.region == T_NUM);
-                both_num.sub(dst.value, dst.value, src.value);
-                res = {&same, &ptr_dst, &both_num};
-            }
-        }
-        break;
-    case EBPF_OP_MUL_IMM:
-    case EBPF_OP_MUL64_IMM:
-        block.mul(dst.value, dst.value, imm);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_MUL_REG:
-    case EBPF_OP_MUL64_REG:
-        block.mul(dst.value, dst.value, src.value);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_DIV_IMM:
-    case EBPF_OP_DIV64_IMM:
-        block.div(dst.value, dst.value, imm);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_DIV64_REG:
-    case EBPF_OP_DIV_REG:
-        // For some reason, DIV is not checked for zerodiv
-        block.div(dst.value, dst.value, src.value);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_MOD_IMM:
-    case EBPF_OP_MOD64_IMM:
-        block.rem(dst.value, dst.value, imm);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_MOD64_REG:
-    case EBPF_OP_MOD_REG:
-        // See DIV comment
-        block.rem(dst.value, dst.value, src.value);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_OR_IMM:
-    case EBPF_OP_OR64_IMM:
-        block.bitwise_or(dst.value, dst.value, imm);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_OR_REG:
-    case EBPF_OP_OR64_REG:
-        block.bitwise_or(dst.value, dst.value, src.value);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_AND_IMM:
-    case EBPF_OP_AND64_IMM:
-        // FIX: what to do with ptr&-8 as in counter/simple_loop_unrolled?
-        block.bitwise_and(dst.value, dst.value, imm);
-        if ((int32_t)imm > 0) {
-            block.assume(dst.value <= imm);
-            block.assume(0 <= dst.value);
-        }
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_AND_REG:
-    case EBPF_OP_AND64_REG:
-        block.bitwise_and(dst.value, dst.value, src.value);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_LSH_IMM:
-    case EBPF_OP_LSH64_IMM:
-        block.lshr(dst.value, dst.value, imm);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_LSH_REG:
-    case EBPF_OP_LSH64_REG:
-        block.lshr(dst.value, dst.value, src.value);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_RSH_IMM:
-    case EBPF_OP_RSH64_IMM:
-        block.ashr(dst.value, dst.value, imm);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_RSH_REG:
-    case EBPF_OP_RSH64_REG:
-        block.ashr(dst.value, dst.value, src.value);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_XOR_IMM:
-    case EBPF_OP_XOR64_IMM:
-        block.bitwise_xor(dst.value, dst.value, imm);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_XOR_REG:
-    case EBPF_OP_XOR64_REG:
-        block.bitwise_xor(dst.value, dst.value, src.value);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_MOV_IMM:
-    case EBPF_OP_MOV64_IMM:
-        block.assign(dst.value, imm);
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_MOV_REG:
-    case EBPF_OP_MOV64_REG:
-        block.assign(dst.value, src.value);
-        block.assign(dst.offset, src.offset);
-        block.assign(dst.region, src.region);
-        break;
-    case EBPF_OP_ARSH_IMM:
-    case EBPF_OP_ARSH64_IMM:
-        block.ashr(dst.value, dst.value, imm); // = (int64_t)dst >> imm;
-        no_pointer(block, dst);
-        break;
-    case EBPF_OP_ARSH_REG:
-    case EBPF_OP_ARSH64_REG:
-        block.ashr(dst.value, dst.value, src.value); // = (int64_t)dst >> src;
-        no_pointer(block, dst);
-        break;
-    default:
-        printf("%d\n", inst.opcode);
-        assert(false);
-        break;
-    }
-    for (auto b : res) {
-        if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU)
-            wrap32(*b, dst.value);
-    }
-
-    return res;
 }
