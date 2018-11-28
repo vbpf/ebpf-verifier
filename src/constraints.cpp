@@ -116,7 +116,7 @@ public:
     basic_block_t& jump(bool taken);
     instruction_builder_t(machine_t& machine, ebpf_inst inst, ebpf_inst next_inst, basic_block_t& block, cfg_t& cfg) :
         machine(machine), inst(inst), next_inst(next_inst), block(block), cfg(cfg), pc(first_num(block)),
-        di{"pc", (unsigned int)pc, 0}, mem_reg(is_load(inst.opcode) ? inst.src : inst.dst), width(access_width(inst.opcode))
+        di{"pc", (unsigned int)pc, 0}
         {
         }
 private:
@@ -129,8 +129,6 @@ private:
     // derived fields
     int pc;
     debug_info di;
-    uint8_t mem_reg = is_load(inst.opcode) ? inst.src : inst.dst;
-    int width = access_width(inst.opcode);
 
     void scratch_regs(basic_block_t& block);
     static void no_pointer(basic_block_t& block, dom_t v);
@@ -1007,7 +1005,7 @@ vector<basic_block_t*> instruction_builder_t::exec()
         vector<basic_block_t*> operator()(Packet const& b) {
             auto& machine = self.machine;
             auto& block = self.block;
-            auto& width = self.width;
+            int width = (int)b.width;
             auto& di = self.di;
             auto& cfg = self.cfg;
                     
@@ -1048,7 +1046,7 @@ vector<basic_block_t*> instruction_builder_t::exec()
             dom_t data_reg = machine.regs.at(b.valreg);
             bool mem_is_fp = (int)b.basereg == 10;
             auto& block = self.block;
-            auto& width = self.width;
+            int width = (int)b.width;
             auto offset = get<Offset>(b.offset);
             switch (b.op) {
             case Mem::Op::ST:
