@@ -8,10 +8,13 @@
 #include <iostream>
 
 #include <boost/optional.hpp>
+
+#include "instructions.hpp"
 #include "common.hpp"
 #include "constraints.hpp"
 #include "cfg.hpp"
 #include "verifier.hpp"
+#include "asm.hpp"
 
 using boost::optional;
 using std::to_string;
@@ -128,8 +131,8 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, vector<ebpf_inst> insts, eb
     insts.emplace_back();
     for (pc_t pc = 0; pc < insts.size()-1; pc++) {
         ebpf_inst inst = insts[pc];
-
-        vector<basic_block_t*> outs = machine.exec(inst, insts[pc + 1], cfg.insert(label(pc)), cfg);
+        Instruction ins = toasm(pc, inst, insts[pc + 1].imm).ins;
+        vector<basic_block_t*> outs = machine.exec(ins, cfg.insert(label(pc)), cfg);
         basic_block_t& exit = cfg.insert(exit_label(pc));
         for (basic_block_t* b : outs)
             (*b) >> exit;
@@ -144,7 +147,7 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, vector<ebpf_inst> insts, eb
         if (jump_target) {
             if (inst.opcode != EBPF_OP_JA)  {
                 auto& assumption = build_jump(cfg, pc, *jump_target, true);
-                basic_block_t& out = machine.jump(inst, true, assumption, cfg);
+                basic_block_t& out = machine.jump(ins, true, assumption, cfg);
                 out >> cfg.insert(label(*jump_target));
             } else {
                 link(cfg, pc, *jump_target);
@@ -154,7 +157,7 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, vector<ebpf_inst> insts, eb
         if (fall_target) {
             if (jump_target) {
                 auto& assumption = build_jump(cfg, pc, *fall_target, false);
-                basic_block_t& out = machine.jump(inst, false, assumption, cfg);
+                basic_block_t& out = machine.jump(ins, false, assumption, cfg);
                 out >> cfg.insert(label(*fall_target));
             } else {
                 link(cfg, pc, *fall_target);

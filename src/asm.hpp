@@ -116,3 +116,17 @@ struct IndexedInstruction {
 
 IndexedInstruction toasm(uint16_t pc, ebpf_inst inst, int32_t next_imm);
 std::ostream& operator<< (std::ostream& os, IndexedInstruction const& v);
+
+
+struct InstructionVisitorPrototype {
+    void operator()(Undefined const& a);
+    void operator()(Bin const& b);
+    void operator()(Un const& b);
+    void operator()(Call const& b);
+    void operator()(Exit const& b);
+    void operator()(Goto const& b);
+    void operator()(Jmp const& b);
+    void operator()(Packet const& b);
+    void operator()(Mem const& b);
+    void operator()(LockAdd const& b);
+};
