@@ -1,5 +1,7 @@
 #include <variant>
 
+#include <iostream>
+
 #include "instructions.hpp"
 
 #include "disasm.hpp"
@@ -46,28 +48,29 @@ static bool getMemX(uint8_t opcode) {
 }
 
 static Bin::Op getBinOp(uint8_t opcode) {
-    switch (opcode | EBPF_SRC_REG) {
-        case EBPF_OP_ADD_REG : return Bin::Op::ADD;
-        case EBPF_OP_SUB_REG : return Bin::Op::SUB;
-        case EBPF_OP_MUL_REG : return Bin::Op::MUL;
-        case EBPF_OP_DIV_REG : return Bin::Op::DIV;
-        case EBPF_OP_OR_REG  : return Bin::Op::OR;
-        case EBPF_OP_AND_REG : return Bin::Op::AND;
-        case EBPF_OP_LSH_REG : return Bin::Op::LSH;
-        case EBPF_OP_RSH_REG : return Bin::Op::RSH;
-        case EBPF_OP_MOD_REG : return Bin::Op::MOD;
-        case EBPF_OP_XOR_REG : return Bin::Op::XOR;
-        case EBPF_OP_MOV_REG : return Bin::Op::MOV;
-        case EBPF_OP_ARSH_REG: return Bin::Op::ARSH;
+    switch ((opcode >> 4) & 0xF) {
+        case 0x0 : return Bin::Op::ADD;
+        case 0x1 : return Bin::Op::SUB;
+        case 0x2 : return Bin::Op::MUL;
+        case 0x3 : return Bin::Op::DIV;
+        case 0x4 : return Bin::Op::OR;
+        case 0x5 : return Bin::Op::AND;
+        case 0x6 : return Bin::Op::LSH;
+        case 0x7 : return Bin::Op::RSH;
+
+        case 0x9 : return Bin::Op::MOD;
+        case 0xa : return Bin::Op::XOR;
+        case 0xb : return Bin::Op::MOV;
+        case 0xc: return Bin::Op::ARSH;
     }
-    return {};
+    return Bin::Op::ARSH;
 }
 
-static std::variant<Bin::Imm, Bin::Reg> getBinTarget(ebpf_inst inst) {
+static Target getBinTarget(ebpf_inst inst) {
     if (inst.opcode & EBPF_SRC_REG)
-        return Bin::Reg{inst.src};
+        return Reg{inst.src};
     else
-        return Bin::Imm{inst.imm};
+        return Imm{inst.imm};
 }
 
 static Un::Op getUnOp(uint8_t opcode) {
@@ -96,7 +99,7 @@ static Jmp::Op getJmpOp(uint8_t opcode) {
     return {};
 }
 
-InsCls toasm(ebpf_inst inst) {
+Instruction toasm(ebpf_inst inst) {
     switch (inst.opcode & EBPF_CLS_MASK) {
         case EBPF_CLS_LD: case EBPF_CLS_LDX:
         case EBPF_CLS_ST: case EBPF_CLS_STX: {
@@ -104,18 +107,20 @@ InsCls toasm(ebpf_inst inst) {
             bool isLoad = op == Mem::Op::LD;
             return Mem{ 
                 .op = op,
-                .x = getMemX(inst.opcode),
                 .mode = getMemMode(inst.opcode),
                 .width = getMemWidth(inst.opcode),
                 .valreg = isLoad ? inst.dst : inst.src,
                 .basereg = isLoad ? inst.src : inst.dst,
-                .offset = inst.offset,
+                .offset = (inst.opcode & 1) ? (Target)Imm{inst.offset} : Reg{inst.offset},
             };
         }
         case EBPF_CLS_ALU:
         case EBPF_CLS_ALU64: 
             if (inst.opcode == EBPF_OP_NEG || inst.opcode == EBPF_OP_BE || inst.opcode == EBPF_OP_LE) {
-                return Un{ .op = getUnOp(inst.opcode) };
+                return Un{ 
+                    .op = getUnOp(inst.opcode),
+                    .dst=inst.dst 
+                };
             } else {
                 return Bin{ 
                     .op = getBinOp(inst.opcode), 
@@ -133,9 +138,134 @@ InsCls toasm(ebpf_inst inst) {
                 .op = getJmpOp(inst.opcode),
                 .leftreg = inst.dst,
                 .rightreg = inst.src,
-                .offset = inst.imm,
+                .offset = inst.offset,
             };
         case EBPF_CLS_UNUSED: return Undefined{};
     }
     return {};
+}
+
+
+static std::string op(Bin::Op op) {
+    switch (op) {
+        case Bin::Op::MOV : return "";
+        case Bin::Op::ADD : return "+";
+        case Bin::Op::SUB : return "-";
+        case Bin::Op::MUL : return "*";
+        case Bin::Op::DIV : return "/";
+        case Bin::Op::MOD : return "%";
+        case Bin::Op::OR  : return "|";
+        case Bin::Op::AND : return "&";
+        case Bin::Op::LSH : return "<<";
+        case Bin::Op::RSH : return ">>";
+        case Bin::Op::ARSH: return ">>>";
+        case Bin::Op::XOR : return "^";
+    }
+}
+
+static std::string op(Jmp::Op op) {
+    switch (op) {
+        case Jmp::Op::EQ : return "==";
+        case Jmp::Op::NE : return "!=";
+        case Jmp::Op::SET: return "&==";
+        case Jmp::Op::LT : return "<";
+        case Jmp::Op::LE : return "<=";
+        case Jmp::Op::GT : return ">";
+        case Jmp::Op::GE : return ">=";
+        case Jmp::Op::SLT: return "s<";
+        case Jmp::Op::SLE: return "s<=";
+        case Jmp::Op::SGT: return "s>";
+        case Jmp::Op::SGE: return "s>=";
+    }
+}
+
+static const char* size(Mem::Width w) {
+    switch (w) {
+        case Mem::Width::B : return "u8";
+        case Mem::Width::H : return "u16";
+        case Mem::Width::W : return "u32";
+        case Mem::Width::DW: return "u64";
+    }
+}
+
+struct InstructionVisitor {
+    std::ostream& os_;
+
+    InstructionVisitor(std::ostream& os) : os_{os} {}
+
+    void operator()(Undefined const& a) {
+        os_ << "Undefined";
+    }
+
+    void operator()(Bin const& b) {
+        os_ << "r" << b.dst << " " << op(b.op) << "= ";
+        std::visit(*this, b.target);
+        if (!b.is64)
+            os_ << " & 0xFFFFFFFF";
+    }
+
+    void operator()(Un const& b) {
+        switch (b.op) {
+            case Un::Op::BE: os_ << "be()"; break;
+            case Un::Op::LE: os_ << "le()"; break;
+            case Un::Op::NEG:
+            os_ << "r" << b.dst << " = -r" << b.dst;
+            break;
+        }
+    }
+
+    void operator()(Call const& b) {
+        os_ << "call " << b.func << "()";
+    }
+
+    void operator()(Exit const& b) {
+        os_ << "return r0";
+    }
+
+    void operator()(Goto const& b) {
+        os_ << "goto +" << b.offset;
+    }
+
+    void operator()(Jmp const& b) {
+        os_ << "if "
+            << "r" << b.leftreg
+            << " " << op(b.op) << " "
+            << "r" << b.rightreg
+            << " goto +" << b.offset;
+    }
+
+    void operator()(Mem const& b) {
+        if (b.mode != Mem::Mode::MEM) {
+            os_ << "Other Mem";
+            return;
+        }
+
+        const char* s = size(b.width);
+        if (b.op == Mem::Op::LD) {
+            os_ << "r" << b.valreg << " = ";
+
+            os_ << "*(" << s << "*)(r" << b.basereg << " + ";
+            std::visit(*this, b.offset);
+            os_ << ")";
+        } else {
+            os_ << "*(" << s << "*)(r" << b.basereg << " + ";
+            std::visit(*this, b.offset);
+            os_ << ")";
+
+            os_ << " = " "r" << b.valreg;
+        }
+    }
+
+    void operator()(Imm imm) {
+        os_ << imm;
+    }
+    void operator()(Reg reg) {
+        os_ << "r" << reg;
+    }
+};
+
+std::ostream& operator<< (std::ostream& os, Instruction const& v) {
+    std::visit(InstructionVisitor{os}, v);
+    os << ";";
+    return os;
 }
