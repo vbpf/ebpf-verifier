@@ -9,16 +9,18 @@
 #include "verifier.hpp"
 #include "cfg.hpp"
 
+#include "disasm.hpp"
+
 bool validate_simple(vector<ebpf_inst> insts, string& errmsg)
 {
     if (insts.size() == 0) {
         errmsg = "Zero length programs are not allowed";
         return false;
     }
-
     int exit_count = 0;
     for (uint32_t pc = 0; pc < insts.size(); pc++) {
         ebpf_inst inst = insts[pc];
+        std::cout << toasm(pc, inst, pc < insts.size() - 1 ? insts[pc+1].imm : 0) << "\n";
 
         if (is_alu(inst.opcode)) {
             if (inst.dst == 10) {

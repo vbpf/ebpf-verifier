@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <variant>
+#include <optional>
 
 #include "instructions.hpp"
 
@@ -18,7 +19,7 @@ struct Bin {
 
     Op op;
     bool is64;
-    int dst;
+    Reg dst;
     Target target;
 };
 
@@ -39,8 +40,8 @@ struct Jmp {
     };
 
     Op op;
-    int leftreg;
-    int rightreg;
+    Reg left;
+    Target right;
     int offset;
 };
 
@@ -55,29 +56,36 @@ struct Call {
 struct Exit {
 };
 
+enum class Width {
+    B=1, H=2, W=4, DW=8
+};
+
 struct Mem {
     enum class Op {
         ST, LD,
     };
-    
-    enum class Mode {
-        MEM, ABS, IND, LEN, MSH
-    };
-
-    enum class Width {
-        B=1, H=2, W=4, DW=8
-    };
 
     Op op;
-    bool x;
-    Mode mode;
     Width width;
-    int valreg;
-    int basereg;
+    Reg valreg;
+    Reg basereg;
     Target offset;
 };
 
-struct Undefined {};
+struct Packet {
+    Width width;
+    int offset;
+    std::optional<Reg> regoffset;
+};
+
+struct LockAdd {
+    Width width;
+    Reg valreg;
+    Reg basereg;
+    Imm offset;
+};
+
+struct Undefined { int opcode; };
 
 using Instruction = std::variant<
     Undefined,
@@ -87,8 +95,16 @@ using Instruction = std::variant<
     Exit,
     Goto,
     Jmp,
-    Mem
+    Mem,
+    Packet,
+    LockAdd
 >;
 
-Instruction toasm(ebpf_inst inst);
-std::ostream& operator<< (std::ostream& os, Instruction const& v);
+struct IndexedInstruction {
+    uint16_t pc;
+    Instruction ins;
+};
+
+
+IndexedInstruction toasm(uint16_t pc, ebpf_inst inst, int32_t next_imm);
+std::ostream& operator<< (std::ostream& os, IndexedInstruction const& v);
