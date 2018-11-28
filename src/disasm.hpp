@@ -1,24 +1,25 @@
 #pragma once
 
+#include <iostream>
 #include <variant>
 
 #include "instructions.hpp"
 
+enum Imm : int32_t {};
+enum Reg : int {};
+using Target = std::variant<Imm, Reg>;
+
 struct Bin {
     enum class Op {
+        MOV,
         ADD, SUB, MUL, DIV, MOD,
         OR, AND, LSH, RSH, ARSH, XOR, 
-        MOV,
     };
-
-
-    enum Imm : int32_t {};
-    enum Reg : int {};
 
     Op op;
     bool is64;
     int dst;
-    std::variant<Imm, Reg> target;
+    Target target;
 };
 
 struct Un {
@@ -27,6 +28,7 @@ struct Un {
     };
 
     Op op;
+    int dst;
 };
 
 struct Jmp {
@@ -56,25 +58,37 @@ struct Exit {
 struct Mem {
     enum class Op {
         ST, LD,
-    } op;
+    };
     
-    bool x;
-
     enum class Mode {
         MEM, ABS, IND, LEN, MSH
-    } mode;
+    };
 
     enum class Width {
         B=1, H=2, W=4, DW=8
-    } width;
+    };
 
+    Op op;
+    bool x;
+    Mode mode;
+    Width width;
     int valreg;
     int basereg;
-    int offset;
+    Target offset;
 };
 
 struct Undefined {};
 
-using InsCls = std::variant<Undefined, Bin, Un, Call, Exit, Goto, Jmp, Mem>;
+using Instruction = std::variant<
+    Undefined,
+    Bin,
+    Un,
+    Call,
+    Exit,
+    Goto,
+    Jmp,
+    Mem
+>;
 
-InsCls toasm(ebpf_inst inst);
+Instruction toasm(ebpf_inst inst);
+std::ostream& operator<< (std::ostream& os, Instruction const& v);
