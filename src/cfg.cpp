@@ -34,18 +34,19 @@ static auto get_jump(Instruction ins, pc_t pc) -> optional<pc_t>
     return {};
 }
 
-static auto get_fall(struct ebpf_inst inst, pc_t pc) -> optional<pc_t>
+static auto get_fall(Instruction ins, pc_t pc) -> optional<pc_t>
 {
-    if (inst.opcode != EBPF_OP_JA && inst.opcode != EBPF_OP_EXIT) {
-        /* eBPF has one 16-byte instruction: BPF_LD | BPF_DW | BPF_IMM which consists
-        of two consecutive 'struct ebpf_inst' 8-byte blocks and interpreted as single
-        instruction that loads 64-bit immediate value into a dst_reg. */
-        if (inst.opcode == EBPF_OP_LDDW_IMM) {
-            pc++;
-        }
-        return pc + 1;
+    if (std::holds_alternative<Bin>(ins)
+        && std::get<Bin>(ins).lddw) {
+        return pc + 2;
     }
-    return {};
+    if (std::holds_alternative<Exit>(ins)) {
+        return {};
+    }
+    if (std::holds_alternative<Goto>(ins)) {
+        return {};
+    }
+    return pc + 1;
 }
 
 static auto build_jump(cfg_t& cfg, pc_t pc, pc_t target, bool taken) -> basic_block_t&
@@ -69,17 +70,16 @@ bool check_raw_reachability(std::vector<ebpf_inst> insts)
         unreachables.insert(i);
 
     for (pc_t pc = 0; pc < insts.size()-1; pc++) {
-        ebpf_inst inst = insts[pc];
         Instruction ins = toasm(pc, insts[pc], insts[pc + 1].imm).ins;
         optional<pc_t> jump_target = get_jump(ins, pc);
-        optional<pc_t> fall_target = get_fall(insts[pc], pc);
+        optional<pc_t> fall_target = get_fall(ins, pc);
         if (jump_target) {
             unreachables.erase(*jump_target);
         }
         
         if (fall_target) {
             unreachables.erase(*fall_target);
-            if (inst.opcode == EBPF_OP_LDDW_IMM)
+            if (*fall_target == pc + 2)
                 unreachables.erase(++pc);
         }
     }
@@ -100,7 +100,7 @@ void print_stats(vector<ebpf_inst> insts) {
         if (is_store(insts[pc].opcode))
             stores++;
         optional<pc_t> jump_target = get_jump(ins, pc);
-        optional<pc_t> fall_target = get_fall(insts[pc], pc);
+        optional<pc_t> fall_target = get_fall(ins, pc);
         if (jump_target) {
             reaching[*jump_target]++;
             jumps++;
@@ -132,8 +132,7 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, vector<ebpf_inst> insts, eb
     }
     insts.emplace_back();
     for (pc_t pc = 0; pc < insts.size()-1; pc++) {
-        ebpf_inst inst = insts[pc];
-        Instruction ins = toasm(pc, inst, insts[pc + 1].imm).ins;
+        Instruction ins = toasm(pc, insts[pc], insts[pc + 1].imm).ins;
         vector<basic_block_t*> outs = machine.exec(ins, cfg.insert(label(pc)), cfg);
         basic_block_t& exit = cfg.insert(exit_label(pc));
         for (basic_block_t* b : outs)
@@ -145,7 +144,7 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, vector<ebpf_inst> insts, eb
         }
 
         optional<pc_t> jump_target = get_jump(ins, pc);
-        optional<pc_t> fall_target = get_fall(insts[pc], pc);
+        optional<pc_t> fall_target = get_fall(ins, pc);
         if (jump_target) {
             if (std::holds_alternative<Jmp>(ins))  {
                 auto& assumption = build_jump(cfg, pc, *jump_target, true);
