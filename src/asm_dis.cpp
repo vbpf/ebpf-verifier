@@ -97,19 +97,22 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
     auto mode = inst.opcode & EBPF_MODE_MASK;
     switch (mode) {
         case EBPF_MODE_MEM: {
+            assert((inst.opcode & EBPF_CLS_MASK) != EBPF_CLS_LD);
             bool isLoad = getMemIsLoad(inst.opcode);
+            bool isImm = !(inst.opcode & 1);
             return Mem{ 
-                .isLoad = isLoad,
                 .width = width,
-                .valreg = Reg{isLoad ? inst.dst : inst.src},
                 .basereg = Reg{isLoad ? inst.src : inst.dst},
-                .offset = (inst.opcode & 1) ? (Target)Offset{inst.offset} : Reg{inst.imm},
+                .offset = inst.offset,
+                .value = isLoad ? (Mem::Value)Mem::Load{inst.dst}
+                       : (isImm ? (Mem::Value)Mem::StoreImm{inst.imm}
+                                : (Mem::Value)Mem::StoreReg{inst.src}),
             };
         }
         case EBPF_MODE_ABS: return Packet{width, inst.imm, {} };
         case EBPF_MODE_IND: return Packet{width, inst.imm, Reg{inst.src} };
-        case EBPF_MODE_LEN: return {};
-        case EBPF_MODE_MSH: return {};
+        case EBPF_MODE_LEN: assert(false);
+        case EBPF_MODE_MSH: assert(false);
         case EBPF_XADD: return LockAdd {
             .width = width,
             .valreg = Reg{inst.src},
@@ -117,7 +120,7 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
             .offset = inst.offset,
         };
     }
-    return Undefined{inst.opcode};
+    assert(false);
 }
 
 static auto makeAluOp(ebpf_inst inst) -> Instruction {
@@ -149,8 +152,10 @@ static auto toasm(ebpf_inst inst, int32_t next_imm) -> Instruction {
         };
     }
     switch (inst.opcode & EBPF_CLS_MASK) {
-        case EBPF_CLS_LD: case EBPF_CLS_LDX:
-        case EBPF_CLS_ST: case EBPF_CLS_STX:
+        case EBPF_CLS_LD:
+        case EBPF_CLS_LDX:
+        case EBPF_CLS_ST:
+        case EBPF_CLS_STX:
             return makeMemOp(inst);
 
         case EBPF_CLS_ALU:

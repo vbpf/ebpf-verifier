@@ -11,7 +11,7 @@ with_timeout() {
 }
 
 dir=$1
-files=($(find ${dir} -name 'accept_*'  -exec ls -Sd {} + | grep -v self))
+files=($(find ${dir} -name 'accept_*'  -exec ls -Sd {} + ))
 shift
 
 if [[ "$1" == "header" ]]
