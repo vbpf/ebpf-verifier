@@ -373,7 +373,7 @@ basic_block_t& abs_machine_t::jump(Jmp ins, bool taken, basic_block_t& block, cf
 vector<basic_block_t*> abs_machine_t::expand_lockadd(LockAdd lock, basic_block_t& block, cfg_t& cfg)
 {
     Mem load_ins{
-        .op = Mem::Op::LD,
+        .isLoad = true,
         .width = lock.width,
         .valreg = Reg{11},
         .basereg = lock.basereg,
@@ -393,7 +393,7 @@ vector<basic_block_t*> abs_machine_t::expand_lockadd(LockAdd lock, basic_block_t
     }
 
     Mem store_ins{
-        .op = Mem::Op::ST,
+        .isLoad = false,
         .width = lock.width,
         .valreg = Reg{11},
         .basereg = lock.basereg,
@@ -1049,8 +1049,14 @@ vector<basic_block_t*> instruction_builder_t::operator()(Mem const& b) {
     bool mem_is_fp = (int)b.basereg == 10;
     int width = (int)b.width;
     auto offset = std::get<Offset>(b.offset);
-    switch (b.op) {
-    case Mem::Op::ST:
+    if (b.isLoad) {
+        // data = mem[offset]
+        if (mem_is_fp) {
+            return exec_direct_stack_load(block, data_reg, offset, width);
+        } else {
+            return exec_mem_access_indirect(block, true, false, mem_reg, data_reg, offset, width);
+        }
+    } else {
         if (false) {
             // FIX: Where are the examples?
             // mem[offset] = immediate
@@ -1072,15 +1078,6 @@ vector<basic_block_t*> instruction_builder_t::operator()(Mem const& b) {
             } else {
                 return exec_mem_access_indirect(block, false, false, mem_reg, data_reg, offset, width);
             }
-        }
-        break;
-
-    case Mem::Op::LD:
-        // data = mem[offset]
-        if (mem_is_fp) {
-            return exec_direct_stack_load(block, data_reg, offset, width);
-        } else {
-            return exec_mem_access_indirect(block, true, false, mem_reg, data_reg, offset, width);
         }
     }
 }

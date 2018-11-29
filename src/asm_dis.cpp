@@ -13,12 +13,12 @@
 #include "cfg.hpp"
 #include "instructions.hpp"
 
-static auto getMemOp(uint8_t opcode) -> Mem::Op {
+static auto getMemIsLoad(uint8_t opcode) -> bool {
     switch (opcode & EBPF_CLS_MASK) {
-        case EBPF_CLS_ST : return Mem::Op::ST;
-        case EBPF_CLS_STX: return Mem::Op::ST;
-        case EBPF_CLS_LD : return Mem::Op::LD;
-        case EBPF_CLS_LDX: return Mem::Op::LD;
+        case EBPF_CLS_ST : return false;
+        case EBPF_CLS_STX: return false;
+        case EBPF_CLS_LD : return true;
+        case EBPF_CLS_LDX: return true;
     }
     return {};
 }
@@ -80,17 +80,21 @@ static auto getUnOp(uint8_t opcode) -> Un::Op {
 
 static auto getJmpOp(uint8_t opcode) -> Jmp::Op {
     switch (opcode | EBPF_SRC_REG) {
+        
         case EBPF_OP_JEQ_REG : return Jmp::Op::EQ;
         case EBPF_OP_JGT_REG : return Jmp::Op::GT;
         case EBPF_OP_JGE_REG : return Jmp::Op::GE;
-        case EBPF_OP_JNE_REG : return Jmp::Op::NE;
         case EBPF_OP_JSET_REG: return Jmp::Op::SET;
+        case EBPF_OP_JNE_REG : return Jmp::Op::NE;
         case EBPF_OP_JSGT_REG: return Jmp::Op::SGT;
         case EBPF_OP_JSGE_REG: return Jmp::Op::SGE;
+
+
         case EBPF_OP_JLT_REG : return Jmp::Op::LT;
         case EBPF_OP_JLE_REG : return Jmp::Op::LE;
         case EBPF_OP_JSLT_REG: return Jmp::Op::SLT;
         case EBPF_OP_JSLE_REG: return Jmp::Op::SLE;
+
     }
     return {};
 }
@@ -100,10 +104,9 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
     auto mode = inst.opcode & EBPF_MODE_MASK;
     switch (mode) {
         case EBPF_MODE_MEM: {
-            auto op = getMemOp(inst.opcode);
-            bool isLoad = op == Mem::Op::LD;
+            bool isLoad = getMemIsLoad(inst.opcode);
             return Mem{ 
-                .op = op,
+                .isLoad = isLoad,
                 .width = width,
                 .valreg = Reg{isLoad ? inst.dst : inst.src},
                 .basereg = Reg{isLoad ? inst.src : inst.dst},

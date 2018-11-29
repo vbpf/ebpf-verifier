@@ -98,9 +98,9 @@ void print_stats(Program& prog) {
         count++;
         if (std::holds_alternative<Mem>(ins)) {
             auto mem = std::get<Mem>(ins);
-            if (mem.op == Mem::Op::LD)
+            if (mem.isLoad)
                 loads++;
-            if (mem.op == Mem::Op::LD)
+            else
                 stores++;
         }
         optional<pc_t> jump_target = get_jump(ins, pc);

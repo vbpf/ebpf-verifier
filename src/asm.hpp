@@ -70,11 +70,7 @@ enum class Width {
 };
 
 struct Mem {
-    enum class Op {
-        ST, LD,
-    };
-
-    Op op;
+    bool isLoad;
     Width width;
     Reg valreg;
     Reg basereg;
