@@ -373,11 +373,10 @@ basic_block_t& abs_machine_t::jump(Jmp ins, bool taken, basic_block_t& block, cf
 vector<basic_block_t*> abs_machine_t::expand_lockadd(LockAdd lock, basic_block_t& block, cfg_t& cfg)
 {
     Mem load_ins{
-        .isLoad = true,
         .width = lock.width,
-        .valreg = Reg{11},
         .basereg = lock.basereg,
-        .offset = Offset{0}
+        .offset = 0,
+        .value = Mem::Load{11},
     };
     vector<basic_block_t*> loaded = instruction_builder_t(*impl, load_ins, block, cfg).exec();
 
@@ -393,11 +392,10 @@ vector<basic_block_t*> abs_machine_t::expand_lockadd(LockAdd lock, basic_block_t
     }
 
     Mem store_ins{
-        .isLoad = false,
         .width = lock.width,
-        .valreg = Reg{11},
         .basereg = lock.basereg,
-        .offset = Offset{0}
+        .offset = 0,
+        .value = Mem::StoreReg{11},
     };
     vector<basic_block_t*> stored;
     for (auto b: added) {
@@ -1045,41 +1043,41 @@ vector<basic_block_t*> instruction_builder_t::operator()(Packet const& b) {
 
 vector<basic_block_t*> instruction_builder_t::operator()(Mem const& b) {
     dom_t mem_reg =  machine.regs.at(b.basereg);
-    dom_t data_reg = machine.regs.at(b.valreg);
     bool mem_is_fp = (int)b.basereg == 10;
     int width = (int)b.width;
-    auto offset = std::get<Offset>(b.offset);
-    if (b.isLoad) {
-        // data = mem[offset]
-        if (mem_is_fp) {
-            return exec_direct_stack_load(block, data_reg, offset, width);
-        } else {
-            return exec_mem_access_indirect(block, true, false, mem_reg, data_reg, offset, width);
-        }
-    } else {
-        if (false) {
-            // FIX: Where are the examples?
-            // mem[offset] = immediate
-            /*
-            auto& next_inst = next_inst;
+    int offset = (int)b.offset;
+    return std::visit(overloaded{
+        [&](Mem::Load reg) {
+            // data = mem[offset]
+            dom_t data_reg = machine.reg((Reg)reg);
             if (mem_is_fp) {
-                return exec_direct_stack_store_immediate(block, offset, width, immediate(inst, next_inst));
+                return exec_direct_stack_load(block, data_reg, offset, width);
             } else {
-                // FIX: STW stores long long immediate
-                var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
-                block.assign(tmp, immediate(inst, next_inst));
-                block.havoc(machine.top);
-                return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, machine.num}, offset, width);
-            } */
-        } else {
+                return exec_mem_access_indirect(block, true, false, mem_reg, data_reg, offset, width);
+            }
+        },
+        [&](Mem::StoreReg reg) {
             // mem[offset] = data
+            dom_t data_reg = machine.reg((Reg)reg);
             if (mem_is_fp) {
                 return exec_direct_stack_store(block, data_reg, offset, width);
             } else {
                 return exec_mem_access_indirect(block, false, false, mem_reg, data_reg, offset, width);
             }
+        },
+        [&](Mem::StoreImm imm)  {
+            // mem[offset] = immediate  
+            if (mem_is_fp) {
+                return exec_direct_stack_store_immediate(block, offset, width, imm);
+            } else {
+                // FIX: STW stores long long immediate
+                var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
+                block.assign(tmp, imm);
+                block.havoc(machine.top);
+                return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, machine.num}, offset, width);
+            } 
         }
-    }
+    }, b.value);
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(LockAdd const& b) {

@@ -70,11 +70,19 @@ enum class Width {
 };
 
 struct Mem {
-    bool isLoad;
+    enum Load : int {};
+    enum StoreReg : int {};
+    enum StoreImm : int {};
+    using Value = std::variant<Load, StoreReg, StoreImm>;
+
     Width width;
-    Reg valreg;
     Reg basereg;
-    Target offset;
+    int offset;
+    Value value;
+
+    bool isLoad() const {
+        return std::holds_alternative<Load>(value);
+    };
 };
 
 struct Packet {
