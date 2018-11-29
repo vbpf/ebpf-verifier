@@ -5,8 +5,8 @@
 
 #include <boost/lexical_cast.hpp>
 #include "type_descriptors.hpp"
-#include "instructions.hpp"
 #include "common.hpp"
+#include "asm.hpp"
 
 using std::vector;
 using std::string;
@@ -47,8 +47,8 @@ inline basic_block_t& add_child(cfg_t& cfg, basic_block_t& block, std::string su
     return add_common_child(cfg, block, {block.label()}, suffix);
 }
 
-bool check_raw_reachability(std::vector<ebpf_inst> insts);
+bool check_raw_reachability(Program& prog);
 
-void build_cfg(cfg_t& cfg, variable_factory_t& vfac, std::vector<ebpf_inst> insts, ebpf_prog_type prog_type);
+void build_cfg(cfg_t& cfg, variable_factory_t& vfac, Program& prog, ebpf_prog_type prog_type);
 
-void print_stats(vector<ebpf_inst> insts);
+void print_stats(Program& prog);

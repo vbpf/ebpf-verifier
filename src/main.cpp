@@ -7,9 +7,21 @@
 #include <crab/common/debug.hpp>
 
 #include "verifier.hpp"
+#include "asm.hpp"
 
-static vector<ebpf_inst> readfile(string path);
 
+static auto readfile(string path)
+{
+    using std::ifstream;
+    ifstream is(path, ifstream::ate | ifstream::binary);
+    if (is.fail()) {
+        std::cerr << "file " << path << " does not exist\n";
+        exit(65);
+    }
+    size_t nbytes = is.tellg();
+    is.seekg(0);
+    return parse(is, nbytes);
+}
 
 static int usage(const char *name)
 {
@@ -32,18 +44,19 @@ static int usage(const char *name)
 
 int run(string domain_name, string code_filename, ebpf_prog_type prog_type)
 {
-    vector<ebpf_inst> code = readfile(code_filename);
-
-    string errmsg;
-    if (!validate_simple(code, errmsg)) {
-        std::cout << "trivial verification failure: " << errmsg << "\n";
-        return 1;
-    }
-    if (!abs_validate(code, domain_name, prog_type)) {
-        std::cout << "verification failed\n";
-        return 1;
-    }
-    return 0;
+    return std::visit(overloaded {
+        [domain_name, prog_type](Program code) { 
+            if (!abs_validate(code, domain_name, prog_type)) {
+                std::cout << "verification failed\n";
+                return 1;
+            }
+            return 0;
+        },
+        [](string errmsg) { 
+            std::cout << "trivial verification failure: " << errmsg << "\n";
+            return 1;
+        }
+    }, readfile(code_filename));
 }
 
 
@@ -93,26 +106,9 @@ int main(int argc, char **argv)
         return usage(argv[0]);
     }
 
-    int prog_type = posargs.size() > 1 ? std::stoi(posargs.at(1)) : boost::lexical_cast<int>(fname.substr(fname.find_last_of('.') + 1));
+    int prog_type = posargs.size() > 1 
+        ? std::stoi(posargs.at(1))
+        : boost::lexical_cast<int>(fname.substr(fname.find_last_of('.') + 1));
+
     return run(domain, fname, (ebpf_prog_type)prog_type);
-}
-
-
-static vector<ebpf_inst> readfile(string path)
-{
-    using std::ifstream;
-    ifstream is(path, ifstream::ate | ifstream::binary);
-    if (is.fail()) {
-        std::cerr << "file " << path << " does not exist\n";
-        exit(65);      
-    }
-    size_t code_len = is.tellg();
-    if (code_len % sizeof(ebpf_inst) != 0) {
-        std::cerr << "file size must be a multiple of " << sizeof(ebpf_inst) << "\n";
-        exit(65);
-    }
-    vector<ebpf_inst> code(code_len / sizeof(ebpf_inst));
-    is.seekg(0);
-    is.read((char*)code.data(), code_len);
-    return code;
 }

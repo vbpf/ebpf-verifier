@@ -4,19 +4,16 @@
 #include <vector>
 #include <map>
 
-#include "instructions.hpp"
 #include "type_descriptors.hpp"
+#include "asm.hpp"
 
 using std::string;
 using std::map;
 using std::vector;
 
-bool abs_validate(vector<struct ebpf_inst> insts,
-                  string domain_name, ebpf_prog_type prog_type);
+bool abs_validate(Program& prog, string domain_name, ebpf_prog_type prog_type);
 
 map<string, string> domain_descriptions();
-
-bool validate_simple(vector<ebpf_inst> instructions, string& errmsg);
 
 // defaults are in verifier.cpp
 struct global_options_t

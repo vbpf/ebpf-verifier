@@ -2,8 +2,6 @@
 
 #include <iostream>
 
-#include "instructions.hpp"
-
 #include "asm.hpp"
 
 static std::string op(Bin::Op op) {
@@ -152,4 +150,10 @@ static std::ostream& operator<< (std::ostream& os, Instruction const& v) {
 std::ostream& operator<< (std::ostream& os, IndexedInstruction const& v) {
     os << "    " << v.pc << " :        " << v.ins;
     return os;
+}
+
+void print(Program& prog) {
+    for (auto p : prog.code) {
+        std::cout << p << "\n";
+    }
 }
