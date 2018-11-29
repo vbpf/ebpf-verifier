@@ -18,10 +18,10 @@
 
 #include "crab_dom.hpp"
 
-#include "instructions.hpp"
 #include "common.hpp"
 #include "cfg.hpp"
 #include "verifier.hpp"
+#include "asm.hpp"
 
 
 using std::string;
@@ -38,12 +38,11 @@ using namespace crab::domain_impl;
 
 static checks_db analyze(string domain_name, cfg_t& cfg, printer_t& pre_printer, printer_t& post_printer);
 
-bool abs_validate(vector<struct ebpf_inst> insts,
-                  string domain_name, enum ebpf_prog_type prog_type)
+bool abs_validate(Program& prog, string domain_name, ebpf_prog_type prog_type)
 {
     variable_factory_t vfac;
     cfg_t cfg(entry_label(), ARR);
-    build_cfg(cfg, vfac, insts, prog_type);
+    build_cfg(cfg, vfac, prog, prog_type);
 
     printer_t pre_printer;
     printer_t post_printer;
@@ -70,7 +69,7 @@ bool abs_validate(vector<struct ebpf_inst> insts,
     }
 
     cout << "seconds:" << elapsed_secs << "\n";
-    print_stats(insts);
+    print_stats(prog);
 
     if (nwarn > 0) {
         checks.write(crab::outs());

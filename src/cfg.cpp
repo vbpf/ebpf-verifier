@@ -8,7 +8,6 @@
 #include <iostream>
 #include <optional>
 
-#include "instructions.hpp"
 #include "common.hpp"
 #include "constraints.hpp"
 #include "cfg.hpp"
@@ -63,14 +62,15 @@ static void link(cfg_t& cfg, pc_t pc, pc_t target)
     cfg.get_node(exit_label(pc)) >> cfg.insert(label(target));
 }
 
-bool check_raw_reachability(std::vector<ebpf_inst> insts)
+bool check_raw_reachability(Program& prog)
 {
+    auto& insts = prog.code;
     std::unordered_set<pc_t> unreachables;
     for (pc_t i=1; i < insts.size(); i++)
         unreachables.insert(i);
 
-    for (pc_t pc = 0; pc < insts.size()-1; pc++) {
-        Instruction ins = toasm(pc, insts[pc], insts[pc + 1].imm).ins;
+    for (pc_t pc = 0; pc < insts.size(); pc++) {
+        Instruction ins = insts[pc];
         optional<pc_t> jump_target = get_jump(ins, pc);
         optional<pc_t> fall_target = get_fall(ins, pc);
         if (jump_target) {
@@ -86,19 +86,23 @@ bool check_raw_reachability(std::vector<ebpf_inst> insts)
     return unreachables.size() == 0;
 }
 
-void print_stats(vector<ebpf_inst> insts) {
+void print_stats(Program& prog) {
+    auto& insts = prog.code;
     int count = 0;
     int stores = 0;
     int loads = 0;
     int jumps = 0;
     vector<int> reaching(insts.size());
-    for (pc_t pc = 0; pc < insts.size()-1; pc++) {
-        Instruction ins = toasm(pc, insts[pc], insts[pc + 1].imm).ins;
+    for (pc_t pc = 0; pc < insts.size(); pc++) {
+        Instruction ins = insts[pc];
         count++;
-        if (is_load(insts[pc].opcode))
-            loads++;
-        if (is_store(insts[pc].opcode))
-            stores++;
+        if (std::holds_alternative<Mem>(ins)) {
+            auto mem = std::get<Mem>(ins);
+            if (mem.op == Mem::Op::LD)
+                loads++;
+            if (mem.op == Mem::Op::LD)
+                stores++;
+        }
         optional<pc_t> jump_target = get_jump(ins, pc);
         optional<pc_t> fall_target = get_fall(ins, pc);
         if (jump_target) {
@@ -122,7 +126,7 @@ void print_stats(vector<ebpf_inst> insts) {
 }
 
 
-void build_cfg(cfg_t& cfg, variable_factory_t& vfac, vector<ebpf_inst> insts, ebpf_prog_type prog_type)
+void build_cfg(cfg_t& cfg, variable_factory_t& vfac, Program& prog, ebpf_prog_type prog_type)
 {
     abs_machine_t machine(prog_type, vfac);
     {
@@ -130,9 +134,9 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, vector<ebpf_inst> insts, eb
         machine.setup_entry(entry);
         entry >> cfg.insert(label(0));
     }
-    insts.emplace_back();
-    for (pc_t pc = 0; pc < insts.size()-1; pc++) {
-        Instruction ins = toasm(pc, insts[pc], insts[pc + 1].imm).ins;
+    auto& insts = prog.code;
+    for (pc_t pc = 0; pc < insts.size(); pc++) {
+        Instruction ins = insts[pc];
         vector<basic_block_t*> outs = machine.exec(ins, cfg.insert(label(pc)), cfg);
         basic_block_t& exit = cfg.insert(exit_label(pc));
         for (basic_block_t* b : outs)

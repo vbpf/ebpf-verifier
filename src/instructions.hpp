@@ -240,5 +240,3 @@ inline int access_width(uint8_t opcode)
     }
 	return -1;
 }
-
-constexpr int STACK_SIZE=512;

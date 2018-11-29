@@ -3,8 +3,8 @@
 #include <iostream>
 #include <variant>
 #include <optional>
-
-#include "instructions.hpp"
+#include <vector>
+#include <string>
 
 struct Imm {
     uint64_t v;
@@ -115,8 +115,16 @@ struct IndexedInstruction {
 };
 
 
-IndexedInstruction toasm(uint16_t pc, ebpf_inst inst, int32_t next_imm);
+struct Program {
+    std::vector<Instruction> code;
+};
+
+constexpr int STACK_SIZE=512;
+
+std::variant<Program, std::string> parse(std::istream& is, size_t nbytes);
+
 std::ostream& operator<<(std::ostream& os, IndexedInstruction const& v);
+void print(Program& prog);
 
 // Helpers:
 
