@@ -72,22 +72,22 @@ static auto getBinValue(ebpf_inst inst) -> Value {
 }
 
 static auto getJmpOp(uint8_t opcode) -> Jmp::Op {
-    switch (opcode | EBPF_SRC_REG) {
-
-        case EBPF_OP_JEQ_REG : return Jmp::Op::EQ;
-        case EBPF_OP_JGT_REG : return Jmp::Op::GT;
-        case EBPF_OP_JGE_REG : return Jmp::Op::GE;
-        case EBPF_OP_JSET_REG: return Jmp::Op::SET;
-        case EBPF_OP_JNE_REG : return Jmp::Op::NE;
-        case EBPF_OP_JSGT_REG: return Jmp::Op::SGT;
-        case EBPF_OP_JSGE_REG: return Jmp::Op::SGE;
-
-
-        case EBPF_OP_JLT_REG : return Jmp::Op::LT;
-        case EBPF_OP_JLE_REG : return Jmp::Op::LE;
-        case EBPF_OP_JSLT_REG: return Jmp::Op::SLT;
-        case EBPF_OP_JSLE_REG: return Jmp::Op::SLE;
-
+    switch ((opcode >> 4) & 0xF) {
+        case 0x0 : return Jmp::Op::EQ;
+        case 0x1 : return Jmp::Op::EQ;
+        case 0x2 : return Jmp::Op::GT;
+        case 0x3 : return Jmp::Op::GE;
+        case 0x4 : return Jmp::Op::SET;
+        case 0x5 : return Jmp::Op::NE;
+        case 0x6 : return Jmp::Op::SGT;
+        case 0x7 : return Jmp::Op::SGE;
+        case 0x8 : assert(false); 
+        case 0x9 : assert(false); 
+        case 0xa : return Jmp::Op::LT;
+        case 0xb : return Jmp::Op::LE;
+        case 0xc : return Jmp::Op::SLT;
+        case 0xd : return Jmp::Op::SLE;
+        case 0xe : assert(false);
     }
     assert(false);
 }
