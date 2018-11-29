@@ -23,6 +23,7 @@ static auto readfile(string path)
     return parse(is, nbytes);
 }
 
+
 static int usage(const char *name)
 {
     std::cerr << "usage: " << name << " [FLAGS] BINARY [TYPE] [DOMAIN]\n";
