@@ -109,13 +109,13 @@ struct InstructionVisitor {
 
     void operator()(Mem const& b) {
         const char* s = size(b.width);
-        if (b.op == Mem::Op::LD) {
+        if (b.isLoad) {
             os_ << "r" << b.valreg << " = ";
         }
         os_ << "*(" << s << " *)(r" << b.basereg << " + ";
         std::visit(*this, b.offset);
         os_ << ")";
-        if (b.op == Mem::Op::ST) {
+        if (!b.isLoad) {
             os_ << " = " "r" << b.valreg;
         }
     }
