@@ -29,6 +29,7 @@ struct Bin {
     bool is64;
     Reg dst;
     Value v;
+    bool lddw;
 };
 
 struct Un {
@@ -115,7 +116,7 @@ struct IndexedInstruction {
 
 
 IndexedInstruction toasm(uint16_t pc, ebpf_inst inst, int32_t next_imm);
-std::ostream& operator<< (std::ostream& os, IndexedInstruction const& v);
+std::ostream& operator<<(std::ostream& os, IndexedInstruction const& v);
 
 // Helpers:
 

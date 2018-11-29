@@ -139,6 +139,7 @@ static auto toasm(ebpf_inst inst, int32_t next_imm) -> Instruction {
             .is64 = true,
             .dst = Reg{ inst.dst },
             .v = Imm{ imm },
+            .lddw = true,
         };
     }
     switch (inst.opcode & EBPF_CLS_MASK) {
