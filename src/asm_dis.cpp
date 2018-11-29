@@ -20,7 +20,7 @@ static auto getMemIsLoad(uint8_t opcode) -> bool {
         case EBPF_CLS_LD : return true;
         case EBPF_CLS_LDX: return true;
     }
-    return {};
+    assert(false);
 }
 
 static auto getMemWidth(uint8_t opcode) -> Width {
@@ -30,7 +30,7 @@ static auto getMemWidth(uint8_t opcode) -> Width {
         case EBPF_SIZE_W : return Width::W;
         case EBPF_SIZE_DW: return Width::DW;
     }
-	return {};
+	assert(false);
 }
 
 static auto getMemX(uint8_t opcode) -> bool {
@@ -40,10 +40,10 @@ static auto getMemX(uint8_t opcode) -> bool {
         case EBPF_CLS_LDX: return true;
         case EBPF_CLS_STX: return true;
     }
-    return {};
+    assert(false);
 }
 
-static auto getBinOp(uint8_t opcode) -> Bin::Op {
+static auto getAluOp(uint8_t opcode) -> std::variant<Bin::Op, Un::Op> {
     switch ((opcode >> 4) & 0xF) {
         case 0x0 : return Bin::Op::ADD;
         case 0x1 : return Bin::Op::SUB;
@@ -53,13 +53,15 @@ static auto getBinOp(uint8_t opcode) -> Bin::Op {
         case 0x5 : return Bin::Op::AND;
         case 0x6 : return Bin::Op::LSH;
         case 0x7 : return Bin::Op::RSH;
-
+        case 0x8 : return Un::Op::NEG;
         case 0x9 : return Bin::Op::MOD;
         case 0xa : return Bin::Op::XOR;
         case 0xb : return Bin::Op::MOV;
-        case 0xc: return Bin::Op::ARSH;
+        case 0xc : return Bin::Op::ARSH;
+        case 0xd : return Un::Op::LE;
+        case 0xe : assert(false);
     }
-    return {};
+    assert(false);
 }
 
 static auto getBinValue(ebpf_inst inst) -> Value {
@@ -69,18 +71,9 @@ static auto getBinValue(ebpf_inst inst) -> Value {
         return Imm{inst.imm};
 }
 
-static auto getUnOp(uint8_t opcode) -> Un::Op {
-    switch (opcode) {
-        case EBPF_OP_NEG: return Un::Op::NEG;
-        case EBPF_OP_LE : return Un::Op::LE;
-        case EBPF_OP_BE : return Un::Op::BE;
-    }
-    return {};
-}
-
 static auto getJmpOp(uint8_t opcode) -> Jmp::Op {
     switch (opcode | EBPF_SRC_REG) {
-        
+
         case EBPF_OP_JEQ_REG : return Jmp::Op::EQ;
         case EBPF_OP_JGT_REG : return Jmp::Op::GT;
         case EBPF_OP_JGE_REG : return Jmp::Op::GE;
@@ -96,7 +89,7 @@ static auto getJmpOp(uint8_t opcode) -> Jmp::Op {
         case EBPF_OP_JSLE_REG: return Jmp::Op::SLE;
 
     }
-    return {};
+    assert(false);
 }
 
 static auto makeMemOp(ebpf_inst inst) -> Instruction {
@@ -128,14 +121,15 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
 }
 
 static auto makeAluOp(ebpf_inst inst) -> Instruction {
-    if (inst.opcode == EBPF_OP_NEG || inst.opcode == EBPF_OP_BE || inst.opcode == EBPF_OP_LE) {
+    auto op = getAluOp(inst.opcode);
+    if (std::holds_alternative<Un::Op>(op)) {
         return Un{ 
-            .op = getUnOp(inst.opcode),
-            .dst=inst.dst 
+            .op = std::get<Un::Op>(op),
+            .dst= inst.dst 
         };
     } else {
         return Bin{ 
-            .op = getBinOp(inst.opcode), 
+            .op = std::get<Bin::Op>(op),
             .is64 = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64,
             .dst = Reg{ inst.dst },
             .v = getBinValue(inst),
@@ -175,7 +169,7 @@ static auto toasm(ebpf_inst inst, int32_t next_imm) -> Instruction {
             };
         case EBPF_CLS_UNUSED: return Undefined{};
     }
-    return {};
+    assert(false);
 }
 
 auto toasm(uint16_t pc, ebpf_inst inst, int32_t next_imm) -> IndexedInstruction {
