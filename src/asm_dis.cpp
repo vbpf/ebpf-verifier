@@ -142,6 +142,20 @@ static auto makeAluOp(ebpf_inst inst) -> Instruction {
 
 static auto toasm(ebpf_inst inst, int32_t next_imm) -> Instruction {
     if (inst.opcode == EBPF_OP_LDDW_IMM) {
+        /*
+            if (inst.src == 1) {
+                // magic number, meaning we're a per-process file descriptor
+                // defining the map.
+                // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
+                // This is what ARG_CONST_MAP_PTR looks for
+
+                // This is probably the wrong thing to do. should we add an FD type?
+                // Here we (probably) need the map structure
+                block.assign(machine.regs[bin.dst].region, T_MAP);
+                block.assign(machine.regs[bin.dst].offset, 0);
+                return { &block };
+            }
+        */
         uint64_t imm = (uint64_t(next_imm) << 32 | (uint32_t)inst.imm);
         return Bin{
             .op = Bin::Op::MOV,

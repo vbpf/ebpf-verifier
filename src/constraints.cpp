@@ -642,31 +642,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Undefined const& a) {
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
-    /*
-    if (inst.opcode == EBPF_OP_LDDW_IMM) {
-        if (inst.src == 1) {
-            // magic number, meaning we're a per-process file descriptor
-            // defining the map.
-            // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
-            // This is what ARG_CONST_MAP_PTR looks for
-
-            // This is probably the wrong thing to do. should we add an FD type?
-            // Here we (probably) need the map structure
-            block.assign(machine.regs[bin.dst].region, T_MAP);
-            block.assign(machine.regs[bin.dst].offset, 0);
-            return { &block };
-        } else {
-            auto imm = immediate(inst, next_inst);
-            if ((imm >> 32) == 0) {
-                block.assign(machine.regs[bin.dst].value, imm);
-            } else {
-                // workaround for overflow issue in sdbm implementation
-                block.havoc(machine.regs[bin.dst].value);
-            }
-            no_pointer(block, machine.regs[bin.dst]);
-            return { &block };
-        }
-    }*/
+    
             
     auto& dst = machine.regs[bin.dst];
 
