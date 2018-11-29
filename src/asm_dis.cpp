@@ -13,12 +13,20 @@
 #include "cfg.hpp"
 #include "instructions.hpp"
 
+struct InvalidInstruction : std::invalid_argument {
+    InvalidInstruction(const char* what) : std::invalid_argument{what} { }
+};
+
+struct UnsupportedInstruction : std::invalid_argument {
+    UnsupportedInstruction(const char* what) : std::invalid_argument{what} { }
+};
+
 static auto getMemIsLoad(uint8_t opcode) -> bool {
     switch (opcode & EBPF_CLS_MASK) {
-        case EBPF_CLS_ST : return false;
-        case EBPF_CLS_STX: return false;
         case EBPF_CLS_LD : return true;
         case EBPF_CLS_LDX: return true;
+        case EBPF_CLS_ST : return false;
+        case EBPF_CLS_STX: return false;
     }
     assert(false);
 }
@@ -59,7 +67,7 @@ static auto getAluOp(uint8_t opcode) -> std::variant<Bin::Op, Un::Op> {
         case 0xb : return Bin::Op::MOV;
         case 0xc : return Bin::Op::ARSH;
         case 0xd : return Un::Op::LE;
-        case 0xe : assert(false);
+        case 0xe : throw InvalidInstruction{"Invalid ALU op 0xe"};
     }
     assert(false);
 }
@@ -73,7 +81,7 @@ static auto getBinValue(ebpf_inst inst) -> Value {
 
 static auto getJmpOp(uint8_t opcode) -> Jmp::Op {
     switch ((opcode >> 4) & 0xF) {
-        case 0x0 : return Jmp::Op::EQ;
+        case 0x0 : assert(false); // goto
         case 0x1 : return Jmp::Op::EQ;
         case 0x2 : return Jmp::Op::GT;
         case 0x3 : return Jmp::Op::GE;
@@ -81,25 +89,28 @@ static auto getJmpOp(uint8_t opcode) -> Jmp::Op {
         case 0x5 : return Jmp::Op::NE;
         case 0x6 : return Jmp::Op::SGT;
         case 0x7 : return Jmp::Op::SGE;
-        case 0x8 : assert(false); 
-        case 0x9 : assert(false); 
+        case 0x8 : assert(false); // call
+        case 0x9 : assert(false); // exit
         case 0xa : return Jmp::Op::LT;
         case 0xb : return Jmp::Op::LE;
         case 0xc : return Jmp::Op::SLT;
         case 0xd : return Jmp::Op::SLE;
-        case 0xe : assert(false);
+        case 0xe : throw InvalidInstruction{"Invalid JMP op 0xe"};
     }
     assert(false);
 }
 
 static auto makeMemOp(ebpf_inst inst) -> Instruction {
-    auto width = getMemWidth(inst.opcode);
-    auto mode = inst.opcode & EBPF_MODE_MASK;
+    Width width = getMemWidth(inst.opcode);
+    int mode = inst.opcode & EBPF_MODE_MASK;
+    bool isLD = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD;
     switch (mode) {
         case EBPF_MODE_MEM: {
-            assert((inst.opcode & EBPF_CLS_MASK) != EBPF_CLS_LD);
+            if (isLD)
+                 throw InvalidInstruction{"Unsupported memory mode: plain LD"};
             bool isLoad = getMemIsLoad(inst.opcode);
             bool isImm = !(inst.opcode & 1);
+            assert(!(isLoad && isImm));
             return Mem{ 
                 .width = width,
                 .basereg = Reg{isLoad ? inst.src : inst.dst},
@@ -109,10 +120,19 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
                                 : (Mem::Value)Mem::StoreReg{inst.src}),
             };
         }
-        case EBPF_MODE_ABS: return Packet{width, inst.imm, {} };
-        case EBPF_MODE_IND: return Packet{width, inst.imm, Reg{inst.src} };
-        case EBPF_MODE_LEN: assert(false);
-        case EBPF_MODE_MSH: assert(false);
+
+        case EBPF_MODE_ABS: 
+            if (!isLD) throw InvalidInstruction{"Unsupported memory mode: ABS but not LD"};
+            return Packet{width, inst.imm, {} };
+
+        case EBPF_MODE_IND:
+            if (!isLD) throw InvalidInstruction{"Unsupported memory mode: IND but not LD"};
+            return Packet{width, inst.imm, Reg{inst.src} };
+
+        case EBPF_MODE_LEN: throw UnsupportedInstruction{"Unsupported memory mode: LEN"};
+
+        case EBPF_MODE_MSH: throw UnsupportedInstruction{"Unsupported memory mode: MSH"};
+
         case EBPF_XADD: return LockAdd {
             .width = width,
             .valreg = Reg{inst.src},
@@ -124,20 +144,17 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
 }
 
 static auto makeAluOp(ebpf_inst inst) -> Instruction {
-    auto op = getAluOp(inst.opcode);
-    if (std::holds_alternative<Un::Op>(op)) {
-        return Un{ 
-            .op = std::get<Un::Op>(op),
-            .dst= inst.dst 
-        };
-    } else {
-        return Bin{ 
-            .op = std::get<Bin::Op>(op),
-            .is64 = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64,
-            .dst = Reg{ inst.dst },
-            .v = getBinValue(inst),
-        };
-    }
+    return std::visit(overloaded{
+        [&](Un::Op op) -> Instruction { return Un{ .op = op, .dst = inst.dst }; },
+        [&](Bin::Op op) -> Instruction {
+            return Bin{ 
+                .op = op,
+                .is64 = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64,
+                .dst = Reg{ inst.dst },
+                .v = getBinValue(inst),
+            };
+        }
+    }, getAluOp(inst.opcode));
 }
 
 static auto toasm(ebpf_inst inst, int32_t next_imm) -> Instruction {
@@ -176,17 +193,19 @@ static auto toasm(ebpf_inst inst, int32_t next_imm) -> Instruction {
         case EBPF_CLS_ALU64: 
             return makeAluOp(inst);
 
-        case EBPF_CLS_JMP: 
-            if (inst.opcode == EBPF_OP_JA) return Goto{ inst.offset };
-            else if (inst.opcode == EBPF_OP_CALL) return Call{ inst.imm };
-            else if (inst.opcode == EBPF_OP_EXIT) return Exit{};
-            else return Jmp{
-                .op = getJmpOp(inst.opcode),
-                .left = Reg{inst.dst},
-                .right = (inst.opcode & EBPF_SRC_REG) ? (Value)Reg{inst.src} : Imm{inst.imm},
-                .offset = inst.offset,
-            };
-        case EBPF_CLS_UNUSED: return Undefined{};
+        case EBPF_CLS_JMP:
+            switch (inst.opcode) {
+                case EBPF_OP_JA  : return Goto{ inst.offset };
+                case EBPF_OP_CALL: return Call{ inst.imm };
+                case EBPF_OP_EXIT: return Exit{};
+                default: return Jmp{
+                    .op = getJmpOp(inst.opcode),
+                    .left = Reg{inst.dst},
+                    .right = (inst.opcode & EBPF_SRC_REG) ? (Value)Reg{inst.src} : Imm{inst.imm},
+                    .offset = inst.offset,
+                };
+            }
+        case EBPF_CLS_UNUSED: throw InvalidInstruction{"Invalid class 0x6"};
     }
     assert(false);
 }
