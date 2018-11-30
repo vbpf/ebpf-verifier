@@ -824,8 +824,9 @@ vector<basic_block_t*> instruction_builder_t::operator()(Un const& b) {
     auto& dst = machine.regs[b.dst];
 
     switch (b.op) {
-    case Un::Op::LE:
-    case Un::Op::BE:
+    case Un::Op::LE16:
+    case Un::Op::LE32:
+    case Un::Op::LE64:
         block.havoc(dst.value);
         break;
     case Un::Op::NEG:
