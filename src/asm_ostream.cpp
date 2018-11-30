@@ -155,7 +155,9 @@ std::ostream& operator<< (std::ostream& os, IndexedInstruction const& v) {
 }
 
 void print(Program& prog) {
-    for (auto p : prog.code) {
-        std::cout << p << "\n";
+    int pc = 0;
+    for (auto ins : prog.code) {
+        pc++;
+        std::cout << "    " << pc << " :        " << ins << "\n";
     }
 }
