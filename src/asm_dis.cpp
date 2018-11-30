@@ -2,53 +2,9 @@
 #include <vector>
 #include <string>
 
+#include "linux_ebpf.hpp"
 #include "asm.hpp"
 #include "prototypes.hpp"
-
-/* eBPF definitions */
-
-struct ebpf_inst {
-    uint8_t opcode;
-    uint8_t dst : 4;
-    uint8_t src : 4;
-    int16_t offset;
-    int32_t imm;
-};
-
-#define EBPF_ALU_OP_MASK 0xf0
-
-#define EBPF_CLS_MASK 0x07
-
-#define EBPF_CLS_LD 0x00
-#define EBPF_CLS_LDX 0x01
-#define EBPF_CLS_ST 0x02
-#define EBPF_CLS_STX 0x03
-#define EBPF_CLS_ALU 0x04
-#define EBPF_CLS_JMP 0x05
-#define EBPF_CLS_UNUSED 0x06
-#define EBPF_CLS_ALU64 0x07
-
-#define EBPF_SRC_IMM 0x00
-#define EBPF_SRC_REG 0x08
-
-#define EBPF_SIZE_W 0x00
-#define EBPF_SIZE_H 0x08
-#define EBPF_SIZE_B 0x10
-#define EBPF_SIZE_DW 0x18
-
-#define EBPF_SIZE_MASK 0x18 
-
-#define EBPF_MODE_MASK 0xe0
-
-#define EBPF_XADD 0xc0
-
-#define EBPF_OP_LDDW_IMM      (EBPF_CLS_LD |EBPF_SRC_IMM|EBPF_SIZE_DW) // Special
-
-#define EBPF_OP_JA       (EBPF_CLS_JMP|0x00)
-#define EBPF_OP_CALL     (EBPF_CLS_JMP|0x80)
-#define EBPF_OP_EXIT     (EBPF_CLS_JMP|0x90)
-
-/* End EBPF definitions */
 
 using std::vector;
 using std::string;
@@ -185,17 +141,17 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
     bool isLD = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD;
     switch ((inst.opcode & EBPF_MODE_MASK) >> 5) {
         case 0: assert(false);
-        case 1: // EBPF_MODE_ABS: 
+        case EBPF_ABS:
             if (!isLD) throw UnsupportedMemoryMode{"ABS but not LD"};
             if (width == Width::DW) note("invalid opcode LDABSDW");
             return Packet{width, inst.imm, {} };
 
-        case 2: // EBPF_MODE_IND:
+        case EBPF_IND: // EBPF_MODE_IND:
             if (!isLD) throw UnsupportedMemoryMode{"IND but not LD"};
             if (width == Width::DW) note("invalid opcode LDINDDW");
             return Packet{width, inst.imm, Reg{inst.src} };
 
-        case 3: // EBPF_MODE_MEM 
+        case EBPF_MEM: // EBPF_MODE_MEM 
         {
             if (isLD) throw UnsupportedMemoryMode{"plain LD"};
             bool isLoad = getMemIsLoad(inst.opcode);
@@ -217,20 +173,20 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
             };
         }
 
-        case 4: //EBPF_MODE_LEN:
+        case EBPF_LEN:
             throw UnsupportedMemoryMode{"LEN"};
 
-        case 5: //EBPF_MODE_MSH:
+        case EBPF_MSH:
             throw UnsupportedMemoryMode{"MSH"};
 
-        case 6: //EBPF_XADD:
+        case EBPF_XADD:
             return LockAdd {
                 .width = width,
                 .valreg = Reg{inst.src},
                 .basereg = Reg{inst.dst},
                 .offset = inst.offset,
             };
-        case 7: throw UnsupportedMemoryMode{"Memory mode 7"};
+        case EBPF_MEM_UNUSED: throw UnsupportedMemoryMode{"Memory mode 7"};
     }
     assert(false);
 }
@@ -275,13 +231,11 @@ static auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& 
     ebpf_inst next = insts[pc+1];
     if (next.opcode != 0 || next.dst != 0 || next.src != 0 || next.offset != 0) 
         note("invalid LDDW");
-
-    uint64_t imm = (((uint64_t)next_imm) << 32) | (uint32_t)inst.imm;
     return Bin{
         .op = Bin::Op::MOV,
         .is64 = true,
         .dst = Reg{ inst.dst },
-        .v = Imm{ imm },
+        .v = Imm{ merge(inst.imm, next_imm) },
         .lddw = true,
     };
 }
