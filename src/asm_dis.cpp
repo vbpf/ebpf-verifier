@@ -1,17 +1,57 @@
-
-#include <stdarg.h>
-#include <stdio.h>
-#include <inttypes.h>
 #include <assert.h>
-
-#include <memory>
-#include <variant>
 
 #include "asm.hpp"
 #include "prototypes.hpp"
-#include "verifier.hpp"
+
+// needed for raw_reachability
 #include "cfg.hpp"
-#include "instructions.hpp"
+// needed for global_options - for raw reachability
+#include "verifier.hpp"
+
+/* eBPF definitions */
+
+struct ebpf_inst {
+    uint8_t opcode;
+    uint8_t dst : 4;
+    uint8_t src : 4;
+    int16_t offset;
+    int32_t imm;
+};
+
+#define EBPF_ALU_OP_MASK 0xf0
+
+#define EBPF_CLS_MASK 0x07
+
+#define EBPF_CLS_LD 0x00
+#define EBPF_CLS_LDX 0x01
+#define EBPF_CLS_ST 0x02
+#define EBPF_CLS_STX 0x03
+#define EBPF_CLS_ALU 0x04
+#define EBPF_CLS_JMP 0x05
+#define EBPF_CLS_UNUSED 0x06
+#define EBPF_CLS_ALU64 0x07
+
+#define EBPF_SRC_IMM 0x00
+#define EBPF_SRC_REG 0x08
+
+#define EBPF_SIZE_W 0x00
+#define EBPF_SIZE_H 0x08
+#define EBPF_SIZE_B 0x10
+#define EBPF_SIZE_DW 0x18
+
+#define EBPF_SIZE_MASK 0x18 
+
+#define EBPF_MODE_MASK 0xe0
+
+#define EBPF_XADD 0xc0
+
+#define EBPF_OP_LDDW_IMM      (EBPF_CLS_LD |EBPF_SRC_IMM|EBPF_SIZE_DW) // Special
+
+#define EBPF_OP_JA       (EBPF_CLS_JMP|0x00)
+#define EBPF_OP_CALL     (EBPF_CLS_JMP|0x80)
+#define EBPF_OP_EXIT     (EBPF_CLS_JMP|0x90)
+
+/* End EBPF definitions */
 
 struct InvalidInstruction : std::invalid_argument {
     InvalidInstruction(const char* what) : std::invalid_argument{what} { }
@@ -127,31 +167,43 @@ static auto getJmpOp(uint8_t opcode) -> Jmp::Op {
     assert(false);
 }
 
+static int access_width(uint8_t opcode)
+{
+    switch (opcode & EBPF_SIZE_MASK) {
+        case EBPF_SIZE_B: return 1;
+        case EBPF_SIZE_H: return 2;
+        case EBPF_SIZE_W: return 4;
+        case EBPF_SIZE_DW: return 8;
+    }
+	assert(false);
+}
+
 static auto makeMemOp(ebpf_inst inst) -> Instruction {
     if (inst.dst > 10 || inst.src > 10) note("Bad register");
 
     Width width = getMemWidth(inst.opcode);
-    int mode = (inst.opcode & EBPF_MODE_MASK) >> 5;
     bool isLD = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD;
-    switch (mode) {
+    switch ((inst.opcode & EBPF_MODE_MASK) >> 5) {
         case 0: assert(false);
         case 1: // EBPF_MODE_ABS: 
             if (!isLD) throw UnsupportedMemoryMode{"ABS but not LD"};
             if (width == Width::DW) note("invalid opcode LDABSDW");
             return Packet{width, inst.imm, {} };
 
-        case 2: //EBPF_MODE_IND:
+        case 2: // EBPF_MODE_IND:
             if (!isLD) throw UnsupportedMemoryMode{"IND but not LD"};
             if (width == Width::DW) note("invalid opcode LDINDDW");
             return Packet{width, inst.imm, Reg{inst.src} };
 
-        case 3: {
+        case 3: // EBPF_MODE_MEM 
+        {
             if (isLD) throw UnsupportedMemoryMode{"plain LD"};
             bool isLoad = getMemIsLoad(inst.opcode);
             if (isLoad && inst.dst == 10) note("Cannot modify r10");
             bool isImm = !(inst.opcode & 1);
             assert(!(isLoad && isImm));
             int basereg = isLoad ? inst.src : inst.dst;
+
             if (basereg == 10 && (inst.offset + access_width(inst.opcode) > 0 || inst.offset < -STACK_SIZE)) {
                 note("Stack access out of bounds");
             }
@@ -303,6 +355,7 @@ Program parse(vector<ebpf_inst> insts)
     }
     if (exit_count == 0) note("no exit instruction");
 
+    // TODO: move to verification phase
     if (global_options.check_raw_reachability) {
         if (!check_raw_reachability(res)) {
             note("No support for forests yet");
