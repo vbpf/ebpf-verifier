@@ -125,9 +125,16 @@ void print_stats(const Program& prog) {
     std::cout << "joins:" << joins << "\n";
 }
 
-
 void build_cfg(cfg_t& cfg, variable_factory_t& vfac, const Program& prog, ebpf_prog_type prog_type)
 {
+
+    // TODO: move to where it should be
+    if (global_options.check_raw_reachability) {
+        if (!check_raw_reachability(prog)) {
+            std::cerr << "No support for forests yet\n";
+        }
+    }
+
     abs_machine_t machine(prog_type, vfac);
     {
         auto& entry = cfg.insert(entry_label());

@@ -1,12 +1,9 @@
 #include <assert.h>
+#include <vector>
+#include <string>
 
 #include "asm.hpp"
 #include "prototypes.hpp"
-
-// needed for raw_reachability
-#include "cfg.hpp"
-// needed for global_options - for raw reachability
-#include "verifier.hpp"
 
 /* eBPF definitions */
 
@@ -52,6 +49,9 @@ struct ebpf_inst {
 #define EBPF_OP_EXIT     (EBPF_CLS_JMP|0x90)
 
 /* End EBPF definitions */
+
+using std::vector;
+using std::string;
 
 struct InvalidInstruction : std::invalid_argument {
     InvalidInstruction(const char* what) : std::invalid_argument{what} { }
@@ -354,13 +354,6 @@ Program parse(vector<ebpf_inst> insts)
         }       
     }
     if (exit_count == 0) note("no exit instruction");
-
-    // TODO: move to verification phase
-    if (global_options.check_raw_reachability) {
-        if (!check_raw_reachability(res)) {
-            note("No support for forests yet");
-        }
-    }
     return res;
 }
 

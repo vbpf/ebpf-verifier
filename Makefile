@@ -6,6 +6,7 @@ SRCDIR := src
 
 SOURCES := $(wildcard ${SRCDIR}/*.cpp)
 OBJECTS := $(SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
+OBJECTS := $(filter-out ${BUILDDIR}/disassemble.o,$(OBJECTS))
 
 CRABDIR := crab
 LDD := $(CRABDIR)/install/ldd
@@ -45,29 +46,40 @@ LDLIBS += \
 
 LDLIBS += -lmpfr -lgmpxx -lgmp -lm -lstdc++ 
 
-CXXFLAGS := -Wall -Werror -Wfatal-errors \
+CXXFLAGS := -Wall -Werror -Wfatal-errors -O0 -g3 -std=c++17
+
+CRABFLAGS := \
     -Wno-unused-local-typedefs -Wno-unused-function -Wno-inconsistent-missing-override \
     -Wno-unused-const-variable -Wno-uninitialized -Wno-deprecated \
     -DBSD -DHAVE_IEEE_754 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 \
     -I $(INSTALL)/include/ \
     -I $(LDD)/include/ldd/ \
     -I $(LDD)/include/ldd/include/ \
-    -I $(ELINA)/include/ \
-    -O2 -g3 -std=c++17
+    -I $(ELINA)/include/
 
-all: $(BINDIR)/check
+all: $(BINDIR)/check $(BINDIR)/disassemble
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.cpp
 	@mkdir -p $(BUILDDIR)
 	@printf "$@ <- $^\n"
-	@$(CXX) ${CXXFLAGS} $< -c -o $@
+	@$(CXX) ${CXXFLAGS} ${CRABFLAGS} $< -c -o $@
 
 $(BINDIR)/check: ${OBJECTS}
 	@printf "$@ <- ${BUILDDIR}/*.o\n"
-	@$(CXX) ${CXXFLAGS} ${LDFLAGS} ${OBJECTS} ${LDLIBS} -o $@
+	@$(CXX) ${CXXFLAGS}  ${CRABFLAGS} ${LDFLAGS} ${OBJECTS} ${LDLIBS} -o $@
+
+DISASM_OBJECTS := \
+    ${BUILDDIR}/disassemble.o \
+    ${BUILDDIR}/asm_dis.o \
+    ${BUILDDIR}/asm_ostream.o \
+    ${BUILDDIR}/prototypes.o
+
+$(BINDIR)/disassemble: ${DISASM_OBJECTS} 
+	@printf "$@ <- $<\n"
+	$(CXX) ${CXXFLAGS} ${DISASM_OBJECTS} -o $@
 
 clean:
-	rm -f $(BINDIR)/check $(BUILDDIR)/*.o
+	rm -f $(BINDIR)/check $(BINDIR)/disassemble $(BUILDDIR)/*.o
 
 crab_clean:
 	rm -rf $(CRABDIR)/build $(CRABDIR)/install
