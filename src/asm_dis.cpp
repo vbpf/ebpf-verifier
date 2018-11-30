@@ -82,9 +82,14 @@ static auto getAluOp(ebpf_inst inst) -> std::variant<Bin::Op, Un::Op> {
                 note("arsh32 is not allowed");
             return Bin::Op::ARSH;
         case 0xd :
-            // todo: add class LE, then fail here
-            if (inst.imm != 16 && inst.imm != 32 && inst.imm != 64) note("invalid endian immediate");
-            return Un::Op::LE;
+            switch (inst.imm) {
+                case 16: return Un::Op::LE16;
+                case 32: return Un::Op::LE32;
+                case 64: return Un::Op::LE64;
+                default:
+                    note("invalid endian immediate; falling back to 64");
+                    return Un::Op::LE64;
+            }
         case 0xe : throw InvalidInstruction{"Invalid ALU op 0xe"};
     }
     assert(false);

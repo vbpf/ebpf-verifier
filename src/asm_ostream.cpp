@@ -64,8 +64,9 @@ struct InstructionVisitor {
 
     void operator()(Un const& b) {
         switch (b.op) {
-            case Un::Op::BE: os_ << "be()"; break;
-            case Un::Op::LE: os_ << "le()"; break;
+            case Un::Op::LE16: os_ << "le16()"; break;
+            case Un::Op::LE32: os_ << "le32()"; break;
+            case Un::Op::LE64: os_ << "le64()"; break;
             case Un::Op::NEG:
                 os_ << "r" << b.dst << " = -r" << b.dst;
                 break;

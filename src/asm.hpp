@@ -34,7 +34,7 @@ struct Bin {
 
 struct Un {
     enum class Op {
-        LE, BE, NEG,
+        LE16, LE32, LE64, NEG,
     };
 
     Op op;
