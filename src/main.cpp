@@ -46,8 +46,9 @@ static int usage(const char *name)
 int run(string domain_name, string code_filename, ebpf_prog_type prog_type)
 {
     return std::visit(overloaded {
-        [domain_name, prog_type](Program code) { 
-            if (!abs_validate(code, domain_name, prog_type)) {
+        [domain_name, prog_type](Program prog) {
+            print(prog);
+            if (!abs_validate(prog, domain_name, prog_type)) {
                 std::cout << "verification failed\n";
                 return 1;
             }

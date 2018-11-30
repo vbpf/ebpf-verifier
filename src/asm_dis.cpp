@@ -21,6 +21,18 @@ struct UnsupportedInstruction : std::invalid_argument {
     UnsupportedInstruction(const char* what) : std::invalid_argument{what} { }
 };
 
+struct UnsupportedMemoryMode : std::invalid_argument {
+    UnsupportedMemoryMode(const char* what) : std::invalid_argument{what} { }
+};
+
+static std::vector<std::vector<std::string>> notes;
+void note(std::string what) {
+    notes.back().emplace_back(what);
+}
+void note_next_pc() {
+    notes.emplace_back();
+}
+
 static auto getMemIsLoad(uint8_t opcode) -> bool {
     switch (opcode & EBPF_CLS_MASK) {
         case EBPF_CLS_LD : return true;
@@ -51,8 +63,8 @@ static auto getMemX(uint8_t opcode) -> bool {
     assert(false);
 }
 
-static auto getAluOp(uint8_t opcode) -> std::variant<Bin::Op, Un::Op> {
-    switch ((opcode >> 4) & 0xF) {
+static auto getAluOp(ebpf_inst inst) -> std::variant<Bin::Op, Un::Op> {
+    switch ((inst.opcode >> 4) & 0xF) {
         case 0x0 : return Bin::Op::ADD;
         case 0x1 : return Bin::Op::SUB;
         case 0x2 : return Bin::Op::MUL;
@@ -65,18 +77,28 @@ static auto getAluOp(uint8_t opcode) -> std::variant<Bin::Op, Un::Op> {
         case 0x9 : return Bin::Op::MOD;
         case 0xa : return Bin::Op::XOR;
         case 0xb : return Bin::Op::MOV;
-        case 0xc : return Bin::Op::ARSH;
-        case 0xd : return Un::Op::LE;
+        case 0xc :
+            if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU)
+                note("arsh32 is not allowed");
+            return Bin::Op::ARSH;
+        case 0xd :
+            // todo: add class LE, then fail here
+            if (inst.imm != 16 && inst.imm != 32 && inst.imm != 64) note("invalid endian immediate");
+            return Un::Op::LE;
         case 0xe : throw InvalidInstruction{"Invalid ALU op 0xe"};
     }
     assert(false);
 }
 
 static auto getBinValue(ebpf_inst inst) -> Value {
-    if (inst.opcode & EBPF_SRC_REG)
+    if (inst.offset != 0) note("nonzero offset for register alu op");
+    if (inst.opcode & EBPF_SRC_REG) {
+        if (inst.imm != 0) note("nonzero imm for register alu op");
         return Reg{inst.src};
-    else
+    } else {
+        if (inst.src != 0) note("nonzero src for register alu op");
         return Imm{inst.imm};
+    }
 }
 
 static auto getJmpOp(uint8_t opcode) -> Jmp::Op {
@@ -101,19 +123,36 @@ static auto getJmpOp(uint8_t opcode) -> Jmp::Op {
 }
 
 static auto makeMemOp(ebpf_inst inst) -> Instruction {
+    if (inst.dst > 10 || inst.src > 10) note("Bad register");
+
     Width width = getMemWidth(inst.opcode);
-    int mode = inst.opcode & EBPF_MODE_MASK;
+    int mode = (inst.opcode & EBPF_MODE_MASK) >> 5;
     bool isLD = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD;
     switch (mode) {
-        case EBPF_MODE_MEM: {
-            if (isLD)
-                 throw InvalidInstruction{"Unsupported memory mode: plain LD"};
+        case 0: assert(false);
+        case 1: // EBPF_MODE_ABS: 
+            if (!isLD) throw UnsupportedMemoryMode{"ABS but not LD"};
+            if (width == Width::DW) note("invalid opcode LDABSDW");
+            return Packet{width, inst.imm, {} };
+
+        case 2: //EBPF_MODE_IND:
+            if (!isLD) throw UnsupportedMemoryMode{"IND but not LD"};
+            if (width == Width::DW) note("invalid opcode LDINDDW");
+            return Packet{width, inst.imm, Reg{inst.src} };
+
+        case 3: {
+            if (isLD) throw UnsupportedMemoryMode{"plain LD"};
             bool isLoad = getMemIsLoad(inst.opcode);
+            if (isLoad && inst.dst == 10) note("Cannot modify r10");
             bool isImm = !(inst.opcode & 1);
             assert(!(isLoad && isImm));
+            int basereg = isLoad ? inst.src : inst.dst;
+            if (basereg == 10 && (inst.offset + access_width(inst.opcode) > 0 || inst.offset < -STACK_SIZE)) {
+                note("Stack access out of bounds");
+            }
             return Mem{ 
                 .width = width,
-                .basereg = Reg{isLoad ? inst.src : inst.dst},
+                .basereg = Reg{basereg},
                 .offset = inst.offset,
                 .value = isLoad ? (Mem::Value)Mem::Load{inst.dst}
                        : (isImm ? (Mem::Value)Mem::StoreImm{inst.imm}
@@ -121,371 +160,150 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
             };
         }
 
-        case EBPF_MODE_ABS: 
-            if (!isLD) throw InvalidInstruction{"Unsupported memory mode: ABS but not LD"};
-            return Packet{width, inst.imm, {} };
+        case 4: //EBPF_MODE_LEN:
+            throw UnsupportedMemoryMode{"LEN"};
 
-        case EBPF_MODE_IND:
-            if (!isLD) throw InvalidInstruction{"Unsupported memory mode: IND but not LD"};
-            return Packet{width, inst.imm, Reg{inst.src} };
+        case 5: //EBPF_MODE_MSH:
+            throw UnsupportedMemoryMode{"MSH"};
 
-        case EBPF_MODE_LEN: throw UnsupportedInstruction{"Unsupported memory mode: LEN"};
-
-        case EBPF_MODE_MSH: throw UnsupportedInstruction{"Unsupported memory mode: MSH"};
-
-        case EBPF_XADD: return LockAdd {
-            .width = width,
-            .valreg = Reg{inst.src},
-            .basereg = Reg{inst.dst},
-            .offset = inst.offset,
-        };
+        case 6: //EBPF_XADD:
+            return LockAdd {
+                .width = width,
+                .valreg = Reg{inst.src},
+                .basereg = Reg{inst.dst},
+                .offset = inst.offset,
+            };
+        case 7: throw UnsupportedMemoryMode{"Memory mode 7"};
     }
     assert(false);
 }
 
 static auto makeAluOp(ebpf_inst inst) -> Instruction {
+    if (inst.dst == 10) note("Invalid target r10");
     return std::visit(overloaded{
         [&](Un::Op op) -> Instruction { return Un{ .op = op, .dst = inst.dst }; },
         [&](Bin::Op op) -> Instruction {
-            return Bin{ 
+            Bin res{ 
                 .op = op,
                 .is64 = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64,
                 .dst = Reg{ inst.dst },
                 .v = getBinValue(inst),
             };
+            if (op == Bin::Op::DIV || op == Bin::Op::MOD)
+                if (std::holds_alternative<Imm>(res.v) && std::get<Imm>(res.v).v == 0)
+                    note("division by zero");
+            return res;
         }
-    }, getAluOp(inst.opcode));
+    }, getAluOp(inst));
 }
 
-static auto toasm(ebpf_inst inst, int32_t next_imm) -> Instruction {
-    if (inst.opcode == EBPF_OP_LDDW_IMM) {
-        /*
-            if (inst.src == 1) {
-                // magic number, meaning we're a per-process file descriptor
-                // defining the map.
-                // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
-                // This is what ARG_CONST_MAP_PTR looks for
+static auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& insts, uint32_t pc) -> Bin {
+    /*
+    if (inst.src == 1) {
+        // magic number, meaning we're a per-process file descriptor
+        // defining the map.
+        // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
+        // This is what ARG_CONST_MAP_PTR looks for
 
-                // This is probably the wrong thing to do. should we add an FD type?
-                // Here we (probably) need the map structure
-                block.assign(machine.regs[bin.dst].region, T_MAP);
-                block.assign(machine.regs[bin.dst].offset, 0);
-                return { &block };
-            }
-        */
-        uint64_t imm = (uint64_t(next_imm) << 32 | (uint32_t)inst.imm);
-        return Bin{
-            .op = Bin::Op::MOV,
-            .is64 = true,
-            .dst = Reg{ inst.dst },
-            .v = Imm{ imm },
-            .lddw = true,
-        };
+        // This is probably the wrong thing to do. should we add an FD type?
+        // Here we (probably) need the map structure
+        block.assign(machine.regs[bin.dst].region, T_MAP);
+        block.assign(machine.regs[bin.dst].offset, 0);
+        return { &block };
     }
-    switch (inst.opcode & EBPF_CLS_MASK) {
-        case EBPF_CLS_LD:
-        case EBPF_CLS_LDX:
-        case EBPF_CLS_ST:
-        case EBPF_CLS_STX:
-            return makeMemOp(inst);
+    */
+    if (pc + 1 >= insts.size()) note("incomplete LDDW");
+    if (inst.src > 1 || inst.dst > 10 || inst.offset != 0)
+        note("LDDW uses reserved fields");
+    ebpf_inst next = insts[pc+1];
+    if (next.opcode != 0 || next.dst != 0 || next.src != 0 || next.offset != 0) 
+        note("invalid LDDW");
 
-        case EBPF_CLS_ALU:
-        case EBPF_CLS_ALU64: 
-            return makeAluOp(inst);
+    uint64_t imm = (((uint64_t)next_imm) << 32) | (uint32_t)inst.imm;
+    return Bin{
+        .op = Bin::Op::MOV,
+        .is64 = true,
+        .dst = Reg{ inst.dst },
+        .v = Imm{ imm },
+        .lddw = true,
+    };
+}
 
-        case EBPF_CLS_JMP:
-            switch (inst.opcode) {
-                case EBPF_OP_JA  : return Goto{ inst.offset };
-                case EBPF_OP_CALL: return Call{ inst.imm };
-                case EBPF_OP_EXIT: return Exit{};
-                default: return Jmp{
-                    .op = getJmpOp(inst.opcode),
-                    .left = Reg{inst.dst},
-                    .right = (inst.opcode & EBPF_SRC_REG) ? (Value)Reg{inst.src} : Imm{inst.imm},
-                    .offset = inst.offset,
-                };
-            }
-        case EBPF_CLS_UNUSED: throw InvalidInstruction{"Invalid class 0x6"};
+static auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, uint32_t pc) -> Instruction {
+    switch (inst.opcode) {
+        case EBPF_OP_JA  : return Goto{ inst.offset };
+        case EBPF_OP_CALL:
+            if (!is_valid_prototype(inst.imm)) note("invalid function id ");
+            return Call{ inst.imm };
+        case EBPF_OP_EXIT: return Exit{};
+        default: {
+            uint32_t new_pc = pc + 1 + inst.offset;
+            if (new_pc >= insts.size()) note("jump out of bounds");
+            if (insts[new_pc].opcode == 0) note("jump to middle of lddw");
+
+            if (inst.opcode == EBPF_OP_JA) return Goto{ inst.offset };
+            return Jmp{
+                .op = getJmpOp(inst.opcode),
+                .left = Reg{inst.dst},
+                .right = (inst.opcode & EBPF_SRC_REG) ? (Value)Reg{inst.src} : Imm{inst.imm},
+                .offset = inst.offset,
+            };
+        }
     }
-    assert(false);
 }
 
-auto toasm(uint16_t pc, ebpf_inst inst, int32_t next_imm) -> IndexedInstruction {
-    return {pc, toasm(inst, next_imm)};
-}
-
-bool parse(vector<ebpf_inst> insts, vector<Instruction>& prog, string& errmsg)
+Program parse(vector<ebpf_inst> insts)
 {
-    if (insts.size() == 0) {
-        errmsg = "Zero length programs are not allowed";
-        return false;
-    }
+    Program res;
+    vector<Instruction>& prog = res.code;
     int exit_count = 0;
+    if (insts.size() == 0) {
+        note("Zero length programs are not allowed");
+        return res;
+    }
     for (uint32_t pc = 0; pc < insts.size(); pc++) {
         ebpf_inst inst = insts[pc];
-        uint32_t next_imm = pc < insts.size() - 1 ? insts[pc+1].imm : 0;
-        prog.push_back(toasm(pc, inst, next_imm).ins);
-
-        if (is_alu(inst.opcode)) {
-            if (inst.dst == 10) {
-                errmsg = string("Invalid target r10 at PC ") + std::to_string(pc);
-                return false;
-            }
-        }
-        switch (inst.opcode) {
-
-        case EBPF_OP_LE:
-        case EBPF_OP_BE:
-            if (inst.imm != 16 && inst.imm != 32 && inst.imm != 64) {
-                errmsg = string("invalid endian immediate at PC ") + std::to_string(pc);
-                return false;
-            }
-            break;
-
-        case EBPF_OP_DIV_IMM:
-        case EBPF_OP_MOD_IMM:
-        case EBPF_OP_DIV64_IMM:
-        case EBPF_OP_MOD64_IMM:
-            if (inst.imm == 0) {
-                errmsg = string("division by zero at PC ") + std::to_string(pc);
-                return false;
-            }
-            // fallthrough            
-        case EBPF_OP_ADD_IMM:
-        case EBPF_OP_SUB_IMM:
-        case EBPF_OP_MUL_IMM:
-        case EBPF_OP_OR_IMM:
-        case EBPF_OP_AND_IMM:
-        case EBPF_OP_LSH_IMM:
-        case EBPF_OP_RSH_IMM:
-        case EBPF_OP_NEG:
-        case EBPF_OP_XOR_IMM:
-        case EBPF_OP_MOV_IMM:
-
-        case EBPF_OP_ADD64_IMM:
-        case EBPF_OP_SUB64_IMM:
-        case EBPF_OP_MUL64_IMM:
-        case EBPF_OP_OR64_IMM:
-        case EBPF_OP_AND64_IMM:
-        case EBPF_OP_LSH64_IMM:
-        case EBPF_OP_RSH64_IMM:
-        case EBPF_OP_NEG64:
-        case EBPF_OP_XOR64_IMM:
-        case EBPF_OP_MOV64_IMM:
-        case EBPF_OP_ARSH64_IMM:
-            if (inst.src != 0 || inst.offset != 0) {
-				errmsg = "nonzero src/offset for register alu op";
-				return false;
-			}
-            break;
-
-        case EBPF_OP_ARSH_REG:
-        case EBPF_OP_ARSH_IMM:
-            // why?
-            errmsg = "arsh32 is not allowed";
-            return false;
-            break;
-        case EBPF_OP_DIV_REG:
-        case EBPF_OP_ADD_REG:
-        case EBPF_OP_SUB_REG:
-        case EBPF_OP_MUL_REG:
-        case EBPF_OP_OR_REG:
-        case EBPF_OP_AND_REG:
-        case EBPF_OP_LSH_REG:
-        case EBPF_OP_RSH_REG:
-        case EBPF_OP_MOD_REG:
-        case EBPF_OP_XOR_REG:
-        case EBPF_OP_MOV_REG:
-
-        case EBPF_OP_ADD64_REG:
-        case EBPF_OP_SUB64_REG:
-        case EBPF_OP_MUL64_REG:
-        case EBPF_OP_DIV64_REG:
-        case EBPF_OP_OR64_REG:
-        case EBPF_OP_AND64_REG:
-        case EBPF_OP_LSH64_REG:
-        case EBPF_OP_RSH64_REG:
-        case EBPF_OP_MOD64_REG:
-        case EBPF_OP_XOR64_REG:
-        case EBPF_OP_MOV64_REG:
-        case EBPF_OP_ARSH64_REG:
-            if (inst.imm != 0 || inst.offset != 0) {
-				errmsg = "nonzero imm/offset for register alu op";
-				return false;
-			}
-            break;
-        case EBPF_OP_LDXW:
-        case EBPF_OP_LDXH:
-        case EBPF_OP_LDXB:
-        case EBPF_OP_LDXDW:
-            if (inst.src > 10 || inst.dst >= 10) {
-                errmsg = string("invalid registers (") + std::to_string(inst.src) + ", " + std::to_string(inst.dst) + ") at PC " + std::to_string(pc);
-                return false;
-            }
-            if (inst.src == 10 && (inst.offset + access_width(inst.opcode) > 0 || inst.offset < -STACK_SIZE)) {
-                errmsg = string("Stack access out of bounds at ") + std::to_string(pc);
-                return false;
-            }
-            break;
-
-        case EBPF_OP_LDABSW:
-        case EBPF_OP_LDABSH:
-        case EBPF_OP_LDABSB:
-        
-        case EBPF_OP_LDXABSW:
-        case EBPF_OP_LDXABSH:
-        case EBPF_OP_LDXABSB:
-        case EBPF_OP_LDXABSDW:
-
-        case EBPF_OP_LDINDW:
-        case EBPF_OP_LDINDH:
-        case EBPF_OP_LDINDB:
-
-        case EBPF_OP_LDXINDW:
-        case EBPF_OP_LDXINDH:
-        case EBPF_OP_LDXINDB:
-        case EBPF_OP_LDXINDDW:
-
-            if (inst.src > 10 || inst.dst >= 10) {
-                errmsg = string("invalid registers (") + std::to_string(inst.src) + ", " + std::to_string(inst.dst) + ") at PC " + std::to_string(pc);
-                return false;
-            }
-            break;
-        case EBPF_OP_STW:
-        case EBPF_OP_STH:
-        case EBPF_OP_STB:
-        case EBPF_OP_STDW:
-        case EBPF_OP_STXW:
-        case EBPF_OP_STXH:
-        case EBPF_OP_STXB:
-        case EBPF_OP_STXDW:
-            if (inst.src > 10 || inst.dst > 10) {
-                errmsg = string("invalid registers (") + std::to_string(inst.src) + ", " + std::to_string(inst.dst) + ") at PC " + std::to_string(pc);
-                return false;
-            }
-            if (inst.dst == 10 && (inst.offset + access_width(inst.opcode) > 0 || inst.offset < -STACK_SIZE)) {
-                errmsg = string("Stack access out of bounds at ") + std::to_string(pc);
-                return false;
-            }
-            break;
-
-        case EBPF_OP_LDINDDW:
-            errmsg = "invalid opcode EBPF_OP_LDINDDW";
-            return false;
-
-        case EBPF_OP_LDABSDW:
-            errmsg = "invalid opcode EBPF_OP_LDABSDW";
-            return false;
-
-        case EBPF_OP_STABSDW:
-            errmsg = "invalid opcode EBPF_OP_STABSDW";
-            return false;
-
-        case EBPF_STXADDW:     
-        case EBPF_STXADDDW:
-
-        case EBPF_OP_STABSW:
-        case EBPF_OP_STABSH:
-        case EBPF_OP_STABSB:
-        case EBPF_OP_STXABSW:
-        case EBPF_OP_STXABSH:
-        case EBPF_OP_STXABSB:
-        case EBPF_OP_STXABSDW:
-        case EBPF_OP_STINDW:
-        case EBPF_OP_STINDH:
-        case EBPF_OP_STINDB:
-        case EBPF_OP_STINDDW:
-        case EBPF_OP_STXINDW:
-        case EBPF_OP_STXINDH:
-        case EBPF_OP_STXINDB:
-        case EBPF_OP_STXINDDW:
-            if (inst.src > 10 || inst.dst > 10) {
-                errmsg = string("invalid registers (") + std::to_string(inst.src) + ", " + std::to_string(inst.dst) + ") at PC " + std::to_string(pc);
-                return false;
-            }
-            break;
-
-        case EBPF_OP_LDDW_IMM:
-            if (pc + 1 >= insts.size()) {
-                errmsg = string("incomplete lddw at PC ") + std::to_string(pc);
-                return false;
-            }
-            if (inst.src > 1 || inst.dst > 10 || inst.offset != 0) {
-                errmsg = string("LDDS uses reserved fields at PC ") + std::to_string(pc);
-                return false;
-            }
-            {
-                ebpf_inst next = insts[pc+1];
-                if (next.opcode != 0 || next.dst != 0 || next.src != 0 || next.offset != 0) {
-                    errmsg = string("invalid lddw at PC ") + std::to_string(pc);
-                    return false;
+        note_next_pc();
+        switch (inst.opcode & EBPF_CLS_MASK) {
+            case EBPF_CLS_LD:
+                if (inst.opcode == EBPF_OP_LDDW_IMM) {
+                    uint32_t next_imm = pc < insts.size() - 1 ? insts[pc+1].imm : 0;
+                    prog.push_back(makeLddw(inst, next_imm, insts, pc));
+                    prog.push_back(Undefined{0});
+                    pc++;
+                    note_next_pc();
+                    break;
                 }
-            }
-            prog.push_back(Undefined{0});
-            pc++; /* Skip next instruction */
-            break;
+                //fallthrough
+            case EBPF_CLS_LDX:
+            case EBPF_CLS_ST: case EBPF_CLS_STX:
+                prog.push_back(makeMemOp(inst));
+                break;
 
-        case EBPF_OP_JA:
-        case EBPF_OP_JEQ_REG:
-        case EBPF_OP_JEQ_IMM:
-        case EBPF_OP_JGT_REG:
-        case EBPF_OP_JGT_IMM:
-        case EBPF_OP_JGE_REG:
-        case EBPF_OP_JGE_IMM:
-        case EBPF_OP_JLT_REG:
-        case EBPF_OP_JLT_IMM:
-        case EBPF_OP_JLE_REG:
-        case EBPF_OP_JLE_IMM:
-        case EBPF_OP_JSET_REG:
-        case EBPF_OP_JSET_IMM:
-        case EBPF_OP_JNE_REG:
-        case EBPF_OP_JNE_IMM:
-        case EBPF_OP_JSGT_IMM:
-        case EBPF_OP_JSGT_REG:
-        case EBPF_OP_JSGE_IMM:
-        case EBPF_OP_JSGE_REG:
-        case EBPF_OP_JSLT_IMM:
-        case EBPF_OP_JSLT_REG:
-        case EBPF_OP_JSLE_IMM:
-        case EBPF_OP_JSLE_REG:
-            {
-                uint32_t new_pc = pc + 1 + inst.offset;
-                if (new_pc >= insts.size()) {
-                    errmsg = string("jump out of bounds at PC ") + std::to_string(pc);
-                    return false;
-                } else if (insts[new_pc].opcode == 0) {
-                    errmsg = string("jump to middle of lddw at PC ") + std::to_string(pc);
-                    return false;
-                }
-            }
-            break;
+            case EBPF_CLS_ALU: case EBPF_CLS_ALU64: 
+                prog.push_back(makeAluOp(inst));
+                break;
 
-        case EBPF_OP_CALL:
-            if (!is_valid_prototype(inst.imm)){
-                errmsg = string("invalid function id ") + std::to_string(inst.imm) + " at " + std::to_string(pc);
-                return false;
+            case EBPF_CLS_JMP: {
+                auto ins = makeJmp(inst, insts, pc);
+                if (std::holds_alternative<Exit>(ins))
+                    exit_count++;
+                prog.push_back(ins);
+                break;
             }
 
-            break;
+            case EBPF_CLS_UNUSED:
+                throw InvalidInstruction{"Invalid class 0x6"};
+        }       
+    }
+    if (exit_count == 0) note("no exit instruction");
 
-        case EBPF_OP_EXIT:
-            exit_count++;
-            /*if (exit_count > 1) {
-                errmsg = "subprograms are not supported yet";
-                return false;
-            }*/
-            break;
-
-        default: {
-            errmsg = string("invalid instruction ") + std::to_string(inst.opcode) + " at " + std::to_string(pc);
-            return false;
-        }
+    if (global_options.check_raw_reachability) {
+        if (!check_raw_reachability(res)) {
+            note("No support for forests yet");
         }
     }
-
-    if (exit_count >= 1) return true;
-    errmsg = "no exit instruction";
-    return false;
+    return res;
 }
 
 std::variant<Program, string> parse(std::istream& is, size_t nbytes) {
@@ -494,17 +312,17 @@ std::variant<Program, string> parse(std::istream& is, size_t nbytes) {
     }
     vector<ebpf_inst> binary_code(nbytes / sizeof(ebpf_inst));
     is.read((char*)binary_code.data(), nbytes);
-    string errmsg;
-    vector<Instruction> insts;
-    if (parse(binary_code, insts, errmsg)) {
-        Program prog{ insts };
-        print(prog);
-        if (global_options.check_raw_reachability) {
-            if (!check_raw_reachability(prog)) {
-                return "No support for forests yet";
+    try {
+        auto res = parse(binary_code);
+        int pc = 0;
+        for (auto notelist : notes) {
+            pc++;
+            for (auto s : notelist) {
+                std::cout << "Note (" << pc << "): " << s << "\n";
             }
         }
-        return prog;
+        return res;
+    } catch (InvalidInstruction& arg) {
+        return arg.what();
     }
-    return errmsg;
 }

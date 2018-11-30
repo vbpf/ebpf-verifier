@@ -62,7 +62,7 @@ static void link(cfg_t& cfg, pc_t pc, pc_t target)
     cfg.get_node(exit_label(pc)) >> cfg.insert(label(target));
 }
 
-bool check_raw_reachability(Program& prog)
+bool check_raw_reachability(const Program& prog)
 {
     auto& insts = prog.code;
     std::unordered_set<pc_t> unreachables;
@@ -86,7 +86,7 @@ bool check_raw_reachability(Program& prog)
     return unreachables.size() == 0;
 }
 
-void print_stats(Program& prog) {
+void print_stats(const Program& prog) {
     auto& insts = prog.code;
     int count = 0;
     int stores = 0;
@@ -98,7 +98,7 @@ void print_stats(Program& prog) {
         count++;
         if (std::holds_alternative<Mem>(ins)) {
             auto mem = std::get<Mem>(ins);
-            if (mem.isLoad)
+            if (mem.isLoad())
                 loads++;
             else
                 stores++;
@@ -126,7 +126,7 @@ void print_stats(Program& prog) {
 }
 
 
-void build_cfg(cfg_t& cfg, variable_factory_t& vfac, Program& prog, ebpf_prog_type prog_type)
+void build_cfg(cfg_t& cfg, variable_factory_t& vfac, const Program& prog, ebpf_prog_type prog_type)
 {
     abs_machine_t machine(prog_type, vfac);
     {
