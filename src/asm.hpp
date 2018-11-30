@@ -127,6 +127,7 @@ constexpr int STACK_SIZE=512;
 
 std::variant<Program, std::string> parse(std::istream& is, size_t nbytes);
 
+std::ostream& operator<<(std::ostream& os, Instruction const& v);
 std::ostream& operator<<(std::ostream& os, IndexedInstruction const& v);
 void print(Program& prog);
 

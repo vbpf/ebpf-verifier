@@ -9,6 +9,12 @@
 using std::vector;
 using std::string;
 
+// implemented in asm_marshal
+vector<ebpf_inst> marshal(Instruction ins);
+
+vector<ebpf_inst> marshal(vector<Instruction> insts);
+
+
 struct InvalidInstruction : std::invalid_argument {
     InvalidInstruction(const char* what) : std::invalid_argument{what} { }
 };
@@ -144,14 +150,22 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
         case EBPF_ABS:
             if (!isLD) throw UnsupportedMemoryMode{"ABS but not LD"};
             if (width == Width::DW) note("invalid opcode LDABSDW");
-            return Packet{width, inst.imm, {} };
+            return Packet{
+                .width = width,
+                .offset = inst.imm,
+                .regoffset = {}
+            };
 
-        case EBPF_IND: // EBPF_MODE_IND:
+        case EBPF_IND:
             if (!isLD) throw UnsupportedMemoryMode{"IND but not LD"};
             if (width == Width::DW) note("invalid opcode LDINDDW");
-            return Packet{width, inst.imm, Reg{inst.src} };
+            return Packet{
+                .width = width,
+                .offset = inst.imm,
+                .regoffset = Reg{inst.src}
+            };
 
-        case EBPF_MEM: // EBPF_MODE_MEM 
+        case EBPF_MEM:
         {
             if (isLD) throw UnsupportedMemoryMode{"plain LD"};
             bool isLoad = getMemIsLoad(inst.opcode);
@@ -263,6 +277,12 @@ static auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, uint32_t pc)
     }
 }
 
+template <typename T> 
+void compare(string field, T actual, T expected) {
+    if (actual != expected)
+        std::cerr << field << ": (actual) " << std::hex << (int)actual << " != " << (int)expected << " (expected)\n";
+}
+
 Program parse(vector<ebpf_inst> insts)
 {
     Program res;
@@ -272,40 +292,53 @@ Program parse(vector<ebpf_inst> insts)
         note("Zero length programs are not allowed");
         return res;
     }
-    for (uint32_t pc = 0; pc < insts.size(); pc++) {
+    for (uint32_t pc = 0; pc < insts.size();) {
         ebpf_inst inst = insts[pc];
-        note_next_pc();
+        vector<Instruction> new_ins;
         switch (inst.opcode & EBPF_CLS_MASK) {
             case EBPF_CLS_LD:
                 if (inst.opcode == EBPF_OP_LDDW_IMM) {
                     uint32_t next_imm = pc < insts.size() - 1 ? insts[pc+1].imm : 0;
-                    prog.push_back(makeLddw(inst, next_imm, insts, pc));
-                    prog.push_back(Undefined{0});
-                    pc++;
-                    note_next_pc();
+                    new_ins = {makeLddw(inst, next_imm, insts, pc),
+                               Undefined{0}};
                     break;
                 }
                 //fallthrough
             case EBPF_CLS_LDX:
             case EBPF_CLS_ST: case EBPF_CLS_STX:
-                prog.push_back(makeMemOp(inst));
+                new_ins = {makeMemOp(inst)};
                 break;
 
             case EBPF_CLS_ALU: case EBPF_CLS_ALU64: 
-                prog.push_back(makeAluOp(inst));
+                new_ins = {makeAluOp(inst)};
                 break;
 
             case EBPF_CLS_JMP: {
-                auto ins = makeJmp(inst, insts, pc);
-                if (std::holds_alternative<Exit>(ins))
+                new_ins = {makeJmp(inst, insts, pc)};
+                if (std::holds_alternative<Exit>(new_ins[0]))
                     exit_count++;
-                prog.push_back(ins);
                 break;
             }
 
             case EBPF_CLS_UNUSED:
                 throw InvalidInstruction{"Invalid class 0x6"};
-        }       
+        }
+        vector<ebpf_inst> marshalled = marshal(new_ins[0]);
+        ebpf_inst actual = marshalled[0];
+        if (memcmp(&actual, &inst, sizeof(inst))) {
+            std::cerr << "new: " << new_ins[0] << "\n";
+            compare("opcode", actual.opcode, inst.opcode);
+            compare("dst", actual.dst, inst.dst);
+            compare("src", actual.src, inst.src);
+            compare("offset", actual.offset, inst.offset);
+            compare("imm", actual.imm, inst.imm);
+            std::cerr << "\n";
+        }
+        for (auto ins : new_ins) {
+            prog.push_back(ins);
+            pc++;
+            note_next_pc();
+        }
     }
     if (exit_count == 0) note("no exit instruction");
     return res;

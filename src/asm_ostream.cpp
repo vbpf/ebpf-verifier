@@ -144,7 +144,7 @@ struct InstructionVisitor {
     }
 };
 
-static std::ostream& operator<< (std::ostream& os, Instruction const& v) {
+std::ostream& operator<< (std::ostream& os, Instruction const& v) {
     std::visit(InstructionVisitor{os}, v);
     os << "";
     return os;
