@@ -92,8 +92,14 @@ static auto getAluOp(ebpf_inst inst) -> std::variant<Bin::Op, Un::Op> {
         case 0xd :
             switch (inst.imm) {
                 case 16: return Un::Op::LE16;
-                case 32: return Un::Op::LE32;
-                case 64: return Un::Op::LE64;
+                case 32: 
+                    if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64)
+                        throw InvalidInstruction("invalid endian immediate 32 for 64 bit instruction");
+                    return Un::Op::LE32;
+                case 64: 
+                    if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU)
+                        throw InvalidInstruction("invalid endian immediate 64 for 32 bit instruction");
+                    return Un::Op::LE64;
                 default:
                     note("invalid endian immediate; falling back to 64");
                     return Un::Op::LE64;
@@ -292,9 +298,9 @@ Program parse(vector<ebpf_inst> insts)
     vector<Instruction>& prog = res.code;
     int exit_count = 0;
     if (insts.size() == 0) {
-        note("Zero length programs are not allowed");
-        return res;
+        throw std::invalid_argument("Zero length programs are not allowed");
     }
+    note_next_pc();
     for (uint32_t pc = 0; pc < insts.size();) {
         ebpf_inst inst = insts[pc];
         vector<Instruction> new_ins;
@@ -349,7 +355,7 @@ Program parse(vector<ebpf_inst> insts)
 
 std::variant<Program, string> parse(std::istream& is, size_t nbytes) {
     if (nbytes % sizeof(ebpf_inst) != 0) {
-        return std::string("file size must be a multiple of ") + std::to_string(sizeof(ebpf_inst));
+        note(string("file size must be a multiple of ") + std::to_string(sizeof(ebpf_inst)));
     }
     vector<ebpf_inst> binary_code(nbytes / sizeof(ebpf_inst));
     is.read((char*)binary_code.data(), nbytes);
@@ -364,6 +370,7 @@ std::variant<Program, string> parse(std::istream& is, size_t nbytes) {
         }
         return res;
     } catch (InvalidInstruction& arg) {
+        std::cerr << arg.what() << "\n";
         return arg.what();
     }
 }
