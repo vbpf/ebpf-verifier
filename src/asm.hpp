@@ -46,7 +46,7 @@ struct LoadMapFd {
     int mapfd;
 };
 
-struct Jmp {
+struct Condition {
     enum class Op { 
         EQ, NE, SET,
         LT, LE, GT, GE,
@@ -56,10 +56,10 @@ struct Jmp {
     Op op;
     Reg left;
     Value right;
-    int offset;
 };
 
-struct Goto {
+struct Jmp {
+    std::optional<Condition> cond;
     int offset;
 };
 
@@ -112,7 +112,6 @@ using Instruction = std::variant<
     LoadMapFd,
     Call,
     Exit,
-    Goto,
     Jmp,
     Mem,
     Packet,
@@ -146,7 +145,6 @@ struct InstructionVisitorPrototype {
     void operator()(Un const& b);
     void operator()(Call const& b);
     void operator()(Exit const& b);
-    void operator()(Goto const& b);
     void operator()(Jmp const& b);
     void operator()(Packet const& b);
     void operator()(Mem const& b);

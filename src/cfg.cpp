@@ -24,9 +24,6 @@ using pc_t = uint16_t;
 
 static auto get_jump(Instruction ins, pc_t pc) -> optional<pc_t>
 {
-    if (std::holds_alternative<Goto>(ins)) {
-        return pc + 1 + std::get<Goto>(ins).offset;
-    }
     if (std::holds_alternative<Jmp>(ins)) {
         return pc + 1 + std::get<Jmp>(ins).offset;
     }
@@ -42,8 +39,9 @@ static auto get_fall(Instruction ins, pc_t pc) -> optional<pc_t>
     if (std::holds_alternative<Exit>(ins)) {
         return {};
     }
-    if (std::holds_alternative<Goto>(ins)) {
-        return {};
+    if (std::holds_alternative<Jmp>(ins)) {
+        if (!std::get<Jmp>(ins).cond)
+            return {};
     }
     return pc + 1;
 }

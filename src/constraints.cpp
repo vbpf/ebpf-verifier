@@ -161,7 +161,6 @@ private:
     vector<basic_block_t*> operator()(Un const& b);
     vector<basic_block_t*> operator()(Call const& b);
     vector<basic_block_t*> operator()(Exit const& b);
-    vector<basic_block_t*> operator()(Goto const& b);
     vector<basic_block_t*> operator()(Jmp const& b);
     vector<basic_block_t*> operator()(Packet const& b);
     vector<basic_block_t*> operator()(Mem const& b);
@@ -228,75 +227,75 @@ static auto neq(var_t& a, var_t& b)
     return lin_cst_t(a - b, lin_cst_t::DISEQUATION);
 }
 
-Jmp::Op reverse(Jmp::Op op)
+Condition::Op reverse(Condition::Op op)
 {
     switch (op) {
-    case Jmp::Op::EQ : return Jmp::Op::NE;
-    case Jmp::Op::GE : return Jmp::Op::LT;
-    case Jmp::Op::SGE: return Jmp::Op::SLT;
-    case Jmp::Op::LE : return Jmp::Op::GT;
-    case Jmp::Op::SLE: return Jmp::Op::SGT;
-    case Jmp::Op::NE : return Jmp::Op::EQ;
-    case Jmp::Op::GT : return Jmp::Op::LE;
-    case Jmp::Op::SGT: return Jmp::Op::SLE;
-    case Jmp::Op::LT : return Jmp::Op::GE;
-    case Jmp::Op::SLT: return Jmp::Op::SGE;
-    case Jmp::Op::SET: throw std::exception();
+    case Condition::Op::EQ : return Condition::Op::NE;
+    case Condition::Op::GE : return Condition::Op::LT;
+    case Condition::Op::SGE: return Condition::Op::SLT;
+    case Condition::Op::LE : return Condition::Op::GT;
+    case Condition::Op::SLE: return Condition::Op::SGT;
+    case Condition::Op::NE : return Condition::Op::EQ;
+    case Condition::Op::GT : return Condition::Op::LE;
+    case Condition::Op::SGT: return Condition::Op::SLE;
+    case Condition::Op::LT : return Condition::Op::GE;
+    case Condition::Op::SLT: return Condition::Op::SGE;
+    case Condition::Op::SET: throw std::exception();
     }
 }
 
-static lin_cst_t jmp_to_cst_offsets_reg(Jmp::Op op, var_t& dst_offset, var_t& src_offset)
+static lin_cst_t jmp_to_cst_offsets_reg(Condition::Op op, var_t& dst_offset, var_t& src_offset)
 {
     switch (op) {
-        case Jmp::Op::EQ : return eq(dst_offset, src_offset);
-        case Jmp::Op::NE : return neq(dst_offset, src_offset);
-        case Jmp::Op::GE : return dst_offset >= src_offset; // FIX unsigned
-        case Jmp::Op::SGE: return dst_offset >= src_offset;
-        case Jmp::Op::LE : return dst_offset <= src_offset; // FIX unsigned
-        case Jmp::Op::SLE: return dst_offset <= src_offset;
-        case Jmp::Op::GT : return dst_offset >= src_offset + 1; // FIX unsigned
-        case Jmp::Op::SGT: return dst_offset >= src_offset + 1;
-        case Jmp::Op::SLT: return src_offset >= dst_offset + 1;
+        case Condition::Op::EQ : return eq(dst_offset, src_offset);
+        case Condition::Op::NE : return neq(dst_offset, src_offset);
+        case Condition::Op::GE : return dst_offset >= src_offset; // FIX unsigned
+        case Condition::Op::SGE: return dst_offset >= src_offset;
+        case Condition::Op::LE : return dst_offset <= src_offset; // FIX unsigned
+        case Condition::Op::SLE: return dst_offset <= src_offset;
+        case Condition::Op::GT : return dst_offset >= src_offset + 1; // FIX unsigned
+        case Condition::Op::SGT: return dst_offset >= src_offset + 1;
+        case Condition::Op::SLT: return src_offset >= dst_offset + 1;
         // Note: reverse the test as a workaround strange lookup:
-        case Jmp::Op::LT : return src_offset >= dst_offset + 1; // FIX unsigned
+        case Condition::Op::LT : return src_offset >= dst_offset + 1; // FIX unsigned
         default:
             return dst_offset - dst_offset == 0;
     }
 }
 
-static vector<lin_cst_t> jmp_to_cst_imm(Jmp::Op op, var_t& dst_value, int imm)
+static vector<lin_cst_t> jmp_to_cst_imm(Condition::Op op, var_t& dst_value, int imm)
 {
     switch (op) {
-        case Jmp::Op::EQ : return {dst_value == imm};
-        case Jmp::Op::NE : return {dst_value != imm};
-        case Jmp::Op::GE : return {dst_value >= (unsigned)imm}; // FIX unsigned
-        case Jmp::Op::SGE: return {dst_value >= imm};
-        case Jmp::Op::LE : return {dst_value <= imm, 0 <= dst_value}; // FIX unsigned
-        case Jmp::Op::SLE: return {dst_value <= imm};
-        case Jmp::Op::GT : return {dst_value >= (unsigned)imm + 1}; // FIX unsigned
-        case Jmp::Op::SGT: return {dst_value >= imm + 1};
-        case Jmp::Op::LT : return {dst_value <= (unsigned)imm - 1}; // FIX unsigned
-        case Jmp::Op::SLT: return {dst_value <= imm - 1};
-        case Jmp::Op::SET: throw std::exception();
+        case Condition::Op::EQ : return {dst_value == imm};
+        case Condition::Op::NE : return {dst_value != imm};
+        case Condition::Op::GE : return {dst_value >= (unsigned)imm}; // FIX unsigned
+        case Condition::Op::SGE: return {dst_value >= imm};
+        case Condition::Op::LE : return {dst_value <= imm, 0 <= dst_value}; // FIX unsigned
+        case Condition::Op::SLE: return {dst_value <= imm};
+        case Condition::Op::GT : return {dst_value >= (unsigned)imm + 1}; // FIX unsigned
+        case Condition::Op::SGT: return {dst_value >= imm + 1};
+        case Condition::Op::LT : return {dst_value <= (unsigned)imm - 1}; // FIX unsigned
+        case Condition::Op::SLT: return {dst_value <= imm - 1};
+        case Condition::Op::SET: throw std::exception();
     }
     assert(false);
 }
 
-static vector<lin_cst_t> jmp_to_cst_reg(Jmp::Op op, var_t& dst_value, var_t& src_value)
+static vector<lin_cst_t> jmp_to_cst_reg(Condition::Op op, var_t& dst_value, var_t& src_value)
 {
     switch (op) {
-        case Jmp::Op::EQ : return {eq(dst_value, src_value)};
-        case Jmp::Op::NE : return {neq(dst_value, src_value)};
-        case Jmp::Op::GE : return {dst_value >= src_value}; // FIX unsigned
-        case Jmp::Op::SGE: return {dst_value >= src_value};
-        case Jmp::Op::LE : return {dst_value <= src_value, 0 <= dst_value}; // FIX unsigned
-        case Jmp::Op::SLE: return {dst_value <= src_value};
-        case Jmp::Op::GT : return {dst_value >= src_value + 1}; // FIX unsigned
-        case Jmp::Op::SGT: return {dst_value >= src_value + 1};
+        case Condition::Op::EQ : return {eq(dst_value, src_value)};
+        case Condition::Op::NE : return {neq(dst_value, src_value)};
+        case Condition::Op::GE : return {dst_value >= src_value}; // FIX unsigned
+        case Condition::Op::SGE: return {dst_value >= src_value};
+        case Condition::Op::LE : return {dst_value <= src_value, 0 <= dst_value}; // FIX unsigned
+        case Condition::Op::SLE: return {dst_value <= src_value};
+        case Condition::Op::GT : return {dst_value >= src_value + 1}; // FIX unsigned
+        case Condition::Op::SGT: return {dst_value >= src_value + 1};
         // Note: reverse the test as a workaround strange lookup:
-        case Jmp::Op::LT : return {src_value >= dst_value + 1}; // FIX unsigned
-        case Jmp::Op::SLT: return {src_value >= dst_value + 1};
-        case Jmp::Op::SET: throw std::exception();
+        case Condition::Op::LT : return {src_value >= dst_value + 1}; // FIX unsigned
+        case Condition::Op::SLT: return {src_value >= dst_value + 1};
+        case Condition::Op::SET: throw std::exception();
     }
     assert(false);
 }
@@ -305,13 +304,15 @@ static vector<lin_cst_t> jmp_to_cst_reg(Jmp::Op op, var_t& dst_value, var_t& src
 basic_block_t& instruction_builder_t::jump(bool taken)
 {
     Jmp jmp = std::get<Jmp>(ins);
-    auto& dst = machine.reg(jmp.left);
-    Jmp::Op op = taken ? jmp.op : reverse(jmp.op);
+    assert(jmp.cond);
+    Condition cond = *jmp.cond;
+    auto& dst = machine.reg(cond.left);
+    Condition::Op op = taken ? cond.op : reverse(cond.op);
     debug_info di{"pc", (unsigned int)first_num(block), 0}; 
-    if (std::holds_alternative<Reg>(jmp.right)) {
-        auto& src = machine.reg(jmp.right);
+    if (std::holds_alternative<Reg>(cond.right)) {
+        auto& src = machine.reg(cond.right);
         basic_block_t& same = add_child(cfg, block, "same_type");
-        for (auto c : jmp_to_cst_reg(op, dst.value, src.value))
+        for (auto c : jmp_to_cst_reg(cond.op, dst.value, src.value))
             same.assume(c);
         same.assume(eq(dst.region, src.region));
 
@@ -334,7 +335,7 @@ basic_block_t& instruction_builder_t::jump(bool taken)
         }
         return offset_check;
     } else {
-        int imm = static_cast<int>(std::get<Imm>(jmp.right).v);
+        int imm = static_cast<int>(std::get<Imm>(cond.right).v);
         vector<lin_cst_t> csts = jmp_to_cst_imm(op, dst.value, imm);
         for (auto c : csts)
             block.assume(c);
@@ -984,16 +985,14 @@ vector<basic_block_t*> instruction_builder_t::operator()(Exit const& b) {
     return { &block };
 }
 
-vector<basic_block_t*> instruction_builder_t::operator()(Goto const& b) {
-    return { &block };
-}
-
 vector<basic_block_t*> instruction_builder_t::operator()(Jmp const& b) {
     // cfg-related action is handled in build_cfg() and instruction_builder_t::jump()
-    if (std::holds_alternative<Reg>(b.right)) {
-        assert_init(block, machine.reg(b.right), di);
+    if (b.cond) {
+        if (std::holds_alternative<Reg>(b.cond->right)) {
+            assert_init(block, machine.reg(b.cond->right), di);
+        }
+        assert_init(block, machine.regs[static_cast<int>(b.cond->left)], di);
     }
-    assert_init(block, machine.regs[static_cast<int>(b.left)], di);
     return { &block };
 }
 

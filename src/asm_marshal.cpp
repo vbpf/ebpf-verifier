@@ -8,19 +8,19 @@
 
 using std::vector;
 
-static uint8_t op(Jmp::Op op)  {
+static uint8_t op(Condition::Op op)  {
     switch (op) {
-        case Jmp::Op::EQ : return 0x1;
-        case Jmp::Op::GT : return 0x2;
-        case Jmp::Op::GE : return 0x3;
-        case Jmp::Op::SET: return 0x4;
-        case Jmp::Op::NE : return 0x5;
-        case Jmp::Op::SGT: return 0x6;
-        case Jmp::Op::SGE: return 0x7;
-        case Jmp::Op::LT : return 0xa;
-        case Jmp::Op::LE : return 0xb;
-        case Jmp::Op::SLT: return 0xc;
-        case Jmp::Op::SLE: return 0xd;
+        case Condition::Op::EQ : return 0x1;
+        case Condition::Op::GT : return 0x2;
+        case Condition::Op::GE : return 0x3;
+        case Condition::Op::SET: return 0x4;
+        case Condition::Op::NE : return 0x5;
+        case Condition::Op::SGT: return 0x6;
+        case Condition::Op::SGE: return 0x7;
+        case Condition::Op::LT : return 0xa;
+        case Condition::Op::LE : return 0xb;
+        case Condition::Op::SLT: return 0xc;
+        case Condition::Op::SLE: return 0xd;
     }
 }
 
@@ -148,32 +148,32 @@ public:
         };
     }
 
-    vector<ebpf_inst> operator()(Goto const& b) {
-        return { 
-            ebpf_inst{
-                .opcode = EBPF_OP_JA,
-                .dst = 0,
-                .src = 0,
-                .offset = static_cast<int16_t>(b.offset),
-                .imm = 0
-            }
-        };
-    }
-
     vector<ebpf_inst> operator()(Jmp const& b) {
-        ebpf_inst res{
-            .opcode = static_cast<uint8_t>(EBPF_CLS_JMP | (op(b.op) << 4)),
-            .dst = static_cast<uint8_t>(b.left),
-            .offset = static_cast<int16_t>(b.offset),
-        };
-        visit(overloaded{
-            [&](Reg right) { 
-                res.opcode |= EBPF_SRC_REG;
-                res.src = static_cast<uint8_t>(right);
-            },
-            [&](Imm right) { res.imm = right.v; }
-        }, b.right);
-        return { res };
+        if (b.cond) {
+            ebpf_inst res{
+                .opcode = static_cast<uint8_t>(EBPF_CLS_JMP | (op(b.cond->op) << 4)),
+                .dst = static_cast<uint8_t>(b.cond->left),
+                .offset = static_cast<int16_t>(b.offset),
+            };
+            visit(overloaded{
+                [&](Reg right) { 
+                    res.opcode |= EBPF_SRC_REG;
+                    res.src = static_cast<uint8_t>(right);
+                },
+                [&](Imm right) { res.imm = right.v; }
+            }, b.cond->right);
+            return { res };
+        } else {
+            return { 
+                ebpf_inst{
+                    .opcode = EBPF_OP_JA,
+                    .dst = 0,
+                    .src = 0,
+                    .offset = static_cast<int16_t>(b.offset),
+                    .imm = 0
+                }
+            };
+        }
     }
 
     vector<ebpf_inst> operator()(Mem const& b) {

@@ -21,19 +21,19 @@ static std::string op(Bin::Op op) {
     }
 }
 
-static std::string op(Jmp::Op op) {
+static std::string op(Condition::Op op) {
     switch (op) {
-        case Jmp::Op::EQ : return "==";
-        case Jmp::Op::NE : return "!=";
-        case Jmp::Op::SET: return "&==";
-        case Jmp::Op::LT : return "<";
-        case Jmp::Op::LE : return "<=";
-        case Jmp::Op::GT : return ">";
-        case Jmp::Op::GE : return ">=";
-        case Jmp::Op::SLT: return "s<";
-        case Jmp::Op::SLE: return "s<=";
-        case Jmp::Op::SGT: return "s>";
-        case Jmp::Op::SGE: return "s>=";
+        case Condition::Op::EQ : return "==";
+        case Condition::Op::NE : return "!=";
+        case Condition::Op::SET: return "&==";
+        case Condition::Op::LT : return "<";
+        case Condition::Op::LE : return "<=";
+        case Condition::Op::GT : return ">";
+        case Condition::Op::GE : return ">=";
+        case Condition::Op::SLT: return "s<";
+        case Condition::Op::SLE: return "s<=";
+        case Condition::Op::SGT: return "s>";
+        case Condition::Op::SGE: return "s>=";
     }
 }
 
@@ -85,16 +85,15 @@ struct InstructionVisitor {
         os_ << "return r0";
     }
 
-    void operator()(Goto const& b) {
-        os_ << "goto +" << b.offset;
-    }
-
     void operator()(Jmp const& b) {
-        os_ << "if "
-            << "r" << b.left
-            << " " << op(b.op) << " ";
-        std::visit(*this, b.right);
-        os_ << " goto +" << b.offset;
+        if (b.cond) {
+            os_ << "if "
+                << "r" << b.cond->left
+                << " " << op(b.cond->op) << " ";
+            std::visit(*this, b.cond->right);
+            os_ << " ";
+        }
+        os_ << "goto +" << b.offset;
     }
 
     void operator()(Packet const& b) {

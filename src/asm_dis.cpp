@@ -120,22 +120,22 @@ static auto getBinValue(ebpf_inst inst) -> Value {
     }
 }
 
-static auto getJmpOp(uint8_t opcode) -> Jmp::Op {
+static auto getJmpOp(uint8_t opcode) -> Condition::Op {
     switch ((opcode >> 4) & 0xF) {
         case 0x0 : assert(false); // goto
-        case 0x1 : return Jmp::Op::EQ;
-        case 0x2 : return Jmp::Op::GT;
-        case 0x3 : return Jmp::Op::GE;
-        case 0x4 : return Jmp::Op::SET;
-        case 0x5 : return Jmp::Op::NE;
-        case 0x6 : return Jmp::Op::SGT;
-        case 0x7 : return Jmp::Op::SGE;
+        case 0x1 : return Condition::Op::EQ;
+        case 0x2 : return Condition::Op::GT;
+        case 0x3 : return Condition::Op::GE;
+        case 0x4 : return Condition::Op::SET;
+        case 0x5 : return Condition::Op::NE;
+        case 0x6 : return Condition::Op::SGT;
+        case 0x7 : return Condition::Op::SGE;
         case 0x8 : assert(false); // call
         case 0x9 : assert(false); // exit
-        case 0xa : return Jmp::Op::LT;
-        case 0xb : return Jmp::Op::LE;
-        case 0xc : return Jmp::Op::SLT;
-        case 0xd : return Jmp::Op::SLE;
+        case 0xa : return Condition::Op::LT;
+        case 0xb : return Condition::Op::LE;
+        case 0xc : return Condition::Op::SLT;
+        case 0xd : return Condition::Op::SLE;
         case 0xe : throw InvalidInstruction{"Invalid JMP op 0xe"};
     }
     assert(false);
@@ -244,13 +244,8 @@ static auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& 
         note("LDDW uses reserved fields");
 
     if (inst.src == 1) {
-        // magic number, meaning we're a per-process file descriptor
-        // defining the map.
+        // magic number, meaning we're a per-process file descriptor defining the map.
         // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
-        // This is what ARG_CONST_MAP_PTR looks for
-
-        // This is probably the wrong thing to do. should we add an FD type?
-        // Here we (probably) need the map structure
         return LoadMapFd{
             .dst = Reg{inst.dst},
             .mapfd = inst.imm
@@ -271,7 +266,7 @@ static auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& 
 
 static auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, uint32_t pc) -> Instruction {
     switch (inst.opcode) {
-        case EBPF_OP_JA  : return Goto{ inst.offset };
+        case EBPF_OP_JA  : return Jmp{ .cond = {}, .offset = inst.offset };
         case EBPF_OP_CALL:
             if (!is_valid_prototype(inst.imm)) note("invalid function id ");
             return Call{ inst.imm };
@@ -281,11 +276,12 @@ static auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, uint32_t pc)
             if (new_pc >= insts.size()) note("jump out of bounds");
             if (insts[new_pc].opcode == 0) note("jump to middle of lddw");
 
-            if (inst.opcode == EBPF_OP_JA) return Goto{ inst.offset };
             return Jmp{
-                .op = getJmpOp(inst.opcode),
-                .left = Reg{inst.dst},
-                .right = (inst.opcode & EBPF_SRC_REG) ? (Value)Reg{inst.src} : Imm{inst.imm},
+                .cond = Condition {
+                    .op = getJmpOp(inst.opcode),
+                    .left = Reg{inst.dst},
+                    .right = (inst.opcode & EBPF_SRC_REG) ? (Value)Reg{inst.src} : Imm{inst.imm},
+                },
                 .offset = inst.offset,
             };
         }
