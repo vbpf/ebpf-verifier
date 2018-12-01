@@ -156,6 +156,7 @@ private:
     vector<basic_block_t*> exec_mem_access_indirect(basic_block_t& block, bool is_load, bool is_st, dom_t mem_reg, dom_t data_reg, int offset, W width);
 
     vector<basic_block_t*> operator()(Undefined const& a);
+    vector<basic_block_t*> operator()(LoadMapFd const& ld);
     vector<basic_block_t*> operator()(Bin const& b);
     vector<basic_block_t*> operator()(Un const& b);
     vector<basic_block_t*> operator()(Call const& b);
@@ -639,6 +640,17 @@ void assert_no_overflow(basic_block_t& b, var_t v, debug_info di) {
 vector<basic_block_t*> instruction_builder_t::operator()(Undefined const& a) {
     std::cout << "bad instruction " << a.opcode << " at " << first_num(block) << "\n";
     assert(false);
+}
+
+vector<basic_block_t*> instruction_builder_t::operator()(LoadMapFd const& ld) {
+    // we're a per-process file descriptor defining the map.
+    // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
+    // This is what ARG_CONST_MAP_PTR looks for
+    // This is probably the wrong thing to do. should we add an FD type?
+    // Here we (probably) need the map structure
+    block.assign(machine.regs[ld.dst].region, T_MAP);
+    block.assign(machine.regs[ld.dst].offset, 0);
+    return { &block };
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {

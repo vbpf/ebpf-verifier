@@ -14,6 +14,12 @@ vector<ebpf_inst> marshal(Instruction ins);
 
 vector<ebpf_inst> marshal(vector<Instruction> insts);
 
+template <typename T> 
+void compare(string field, T actual, T expected) {
+    if (actual != expected)
+        std::cerr << field << ": (actual) " << std::hex << (int)actual << " != " << (int)expected << " (expected)\n";
+}
+
 
 struct InvalidInstruction : std::invalid_argument {
     InvalidInstruction(const char* what) : std::invalid_argument{what} { }
@@ -146,7 +152,9 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
     Width width = getMemWidth(inst.opcode);
     bool isLD = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD;
     switch ((inst.opcode & EBPF_MODE_MASK) >> 5) {
-        case 0: assert(false);
+        case 0:
+            compare("fail:", inst.opcode, (uint8_t)0x11);
+            assert(false);
         case EBPF_ABS:
             if (!isLD) throw UnsupportedMemoryMode{"ABS but not LD"};
             if (width == Width::DW) note("invalid opcode LDABSDW");
@@ -224,8 +232,11 @@ static auto makeAluOp(ebpf_inst inst) -> Instruction {
     }, getAluOp(inst));
 }
 
-static auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& insts, uint32_t pc) -> Bin {
-    /*
+static auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& insts, uint32_t pc) -> Instruction {
+    if (pc + 1 >= insts.size()) note("incomplete LDDW");
+    if (inst.src > 1 || inst.dst > 10 || inst.offset != 0)
+        note("LDDW uses reserved fields");
+
     if (inst.src == 1) {
         // magic number, meaning we're a per-process file descriptor
         // defining the map.
@@ -234,14 +245,12 @@ static auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& 
 
         // This is probably the wrong thing to do. should we add an FD type?
         // Here we (probably) need the map structure
-        block.assign(machine.regs[bin.dst].region, T_MAP);
-        block.assign(machine.regs[bin.dst].offset, 0);
-        return { &block };
+        return LoadMapFd{
+            .dst = Reg{inst.dst},
+            .mapfd = inst.imm
+         };
     }
-    */
-    if (pc + 1 >= insts.size()) note("incomplete LDDW");
-    if (inst.src > 1 || inst.dst > 10 || inst.offset != 0)
-        note("LDDW uses reserved fields");
+
     ebpf_inst next = insts[pc+1];
     if (next.opcode != 0 || next.dst != 0 || next.src != 0 || next.offset != 0) 
         note("invalid LDDW");
@@ -275,12 +284,6 @@ static auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, uint32_t pc)
             };
         }
     }
-}
-
-template <typename T> 
-void compare(string field, T actual, T expected) {
-    if (actual != expected)
-        std::cerr << field << ": (actual) " << std::hex << (int)actual << " != " << (int)expected << " (expected)\n";
 }
 
 Program parse(vector<ebpf_inst> insts)

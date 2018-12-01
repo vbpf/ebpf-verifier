@@ -61,37 +61,55 @@ static uint8_t access_width(Width w)
 }
 
 struct MarshalVisitor {
+private:
+    vector<ebpf_inst> makeLddw(Reg dst, bool isFd, int32_t imm, int32_t next_imm) {
+        return {
+            ebpf_inst {
+                .opcode = static_cast<uint8_t>(EBPF_CLS_LD | access_width(Width::DW)),
+                .src = static_cast<uint8_t>(isFd ? 1 : 0),
+                .dst = static_cast<uint8_t>(dst),
+                .offset = 0,
+                .imm = imm
+            }, 
+            ebpf_inst{ .imm = next_imm }
+        };
+    }
+
+public:
     vector<ebpf_inst> operator()(Undefined const& a) {
         assert(false);
     }
 
+    vector<ebpf_inst> operator()(LoadMapFd const& b) {
+        return makeLddw(b.dst, true, b.mapfd, 0);
+    }
+
     vector<ebpf_inst> operator()(Bin const& b) {
-        vector<ebpf_inst> res { {
+        if (b.lddw) {
+            auto [imm, next_imm] = split(std::get<Imm>(b.v).v);
+            return makeLddw(b.dst, false, imm, next_imm);
+        }
+
+        ebpf_inst res{
             .opcode = static_cast<uint8_t>((b.is64 ? EBPF_CLS_ALU64 :EBPF_CLS_ALU) | (op(b.op) << 4)),
             .dst = static_cast<uint8_t>(b.dst),
             .src = 0,
             .offset = 0,
             .imm = 0
-        } };
-        if (b.lddw) {
-            res[0].opcode = static_cast<uint8_t>(EBPF_CLS_LD | access_width(Width::DW));
-            auto [imm, next_imm] = split(std::get<Imm>(b.v).v);
-            res[0].imm = imm;
-            res.push_back(ebpf_inst{ .imm = next_imm });
-            return res;
-        }
+        };
         std::visit(overloaded{
             [&](Reg right) { 
-                res[0].opcode |= EBPF_SRC_REG;
-                res[0].src = static_cast<uint8_t>(right); },
-            [&](Imm right) { res[0].imm = right.v; }
+                res.opcode |= EBPF_SRC_REG;
+                res.src = static_cast<uint8_t>(right); },
+            [&](Imm right) { res.imm = right.v; }
         }, b.v);
-        return res;
+        return { res };
     }
 
     vector<ebpf_inst> operator()(Un const& b) {
         if (b.op == Un::Op::NEG) {
             return { ebpf_inst{
+                // FIX: should be EBPF_CLS_ALU / EBPF_CLS_ALU64
                 .opcode = static_cast<uint8_t>(EBPF_CLS_ALU | 0x3 | (0x8 << 4)),
                 .dst = static_cast<uint8_t>(b.dst),
                 .imm = imm(b.op),

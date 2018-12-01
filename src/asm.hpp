@@ -41,6 +41,11 @@ struct Un {
     int dst;
 };
 
+struct LoadMapFd {
+    Reg dst;
+    int mapfd;
+};
+
 struct Jmp {
     enum class Op { 
         EQ, NE, SET,
@@ -104,6 +109,7 @@ using Instruction = std::variant<
     Undefined,
     Bin,
     Un,
+    LoadMapFd,
     Call,
     Exit,
     Goto,
@@ -135,6 +141,7 @@ void print(Program& prog);
 
 struct InstructionVisitorPrototype {
     void operator()(Undefined const& a);
+    void operator()(LoadMapFd const& b);
     void operator()(Bin const& b);
     void operator()(Un const& b);
     void operator()(Call const& b);
