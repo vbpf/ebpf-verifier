@@ -146,7 +146,7 @@ struct InstructionVisitor {
     }
 };
 
-void print(std::ostream& os, Instruction const& v, uint16_t pc) {
+void print(std::ostream& os, Instruction const& v, pc_t pc) {
     std::visit(InstructionVisitor{os, label_to_offset(pc)}, v);
 }
 
@@ -156,7 +156,7 @@ std::ostream& operator<< (std::ostream& os, IndexedInstruction const& v) {
 }
 
 void print(Program& prog) {
-    uint16_t pc = 0;
+    pc_t pc = 0;
     for (auto ins : prog.code) {
         pc++;
         std::cout << "    " << pc << " :        " << IndexedInstruction{pc, ins} << "\n";

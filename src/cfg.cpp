@@ -19,9 +19,6 @@ using std::to_string;
 using std::string;
 using std::vector;
 
-
-using pc_t = uint16_t;
-
 static auto get_jump(Instruction ins, pc_t pc) -> optional<pc_t>
 {
     if (std::holds_alternative<Jmp>(ins)) {

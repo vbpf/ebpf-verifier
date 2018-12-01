@@ -8,6 +8,8 @@
 
 #include <boost/lexical_cast.hpp>
 
+using Label = std::string;
+
 struct Imm {
     uint64_t v;
     Imm(int32_t v) : v{(uint32_t)v} { }
@@ -118,8 +120,10 @@ using Instruction = std::variant<
     LockAdd
 >;
 
+using pc_t = uint16_t;
+
 struct IndexedInstruction {
-    uint16_t pc;
+    pc_t pc;
     Instruction ins;
 };
 
@@ -136,12 +140,22 @@ std::ostream& operator<<(std::ostream& os, IndexedInstruction const& v);
 void print(Program& prog);
 
 
-inline std::function<auto(std::string)->int16_t> label_to_offset(uint16_t pc){
+inline std::function<auto(std::string)->int16_t> label_to_offset(pc_t pc){
     return [=](std::string label) {
         return boost::lexical_cast<int16_t>(label) - pc - 1;
     };
 }
 
+
+struct BasicBlock {
+    std::vector<Instruction> insts;
+    std::vector<Label> nextlist;
+    std::vector<Label> prevlist;
+};
+
+using Cfg = std::unordered_map<Label, BasicBlock>;
+
+Cfg build_cfg(const Program& prog);
 
 // Helpers:
 

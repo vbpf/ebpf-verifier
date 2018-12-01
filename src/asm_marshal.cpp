@@ -233,13 +233,13 @@ public:
     }
 };
 
-vector<ebpf_inst> marshal(Instruction ins, uint16_t pc) {
+vector<ebpf_inst> marshal(Instruction ins, pc_t pc) {
     return std::visit(MarshalVisitor{label_to_offset(pc)}, ins);
 }
 
 vector<ebpf_inst> marshal(vector<Instruction> insts) {
     vector<ebpf_inst> res;
-    uint16_t pc = 0;
+    pc_t pc = 0;
     for (auto ins : insts) {
         for (auto e: marshal(ins, pc)) {
             pc++;
