@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <vector>
 #include <string>
+#include <cstring> // memcmp
 
 #include "linux_ebpf.hpp"
 #include "asm.hpp"
@@ -330,7 +331,7 @@ Program parse(vector<ebpf_inst> insts)
         }
         vector<ebpf_inst> marshalled = marshal(new_ins[0]);
         ebpf_inst actual = marshalled[0];
-        if (memcmp(&actual, &inst, sizeof(inst))) {
+        if (std::memcmp(&actual, &inst, sizeof(inst))) {
             std::cerr << "new: " << new_ins[0] << "\n";
             compare("opcode", actual.opcode, inst.opcode);
             compare("dst", actual.dst, inst.dst);
