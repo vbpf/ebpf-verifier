@@ -6,17 +6,17 @@
 #include <vector>
 #include <string>
 
+#include <boost/lexical_cast.hpp>
+
 struct Imm {
     uint64_t v;
     Imm(int32_t v) : v{(uint32_t)v} { }
     Imm(uint64_t v) : v{v} { }
 };
 
-enum Offset : int16_t {};
 enum Reg : int {};
 
 using Value = std::variant<Imm, Reg>;
-using Target = std::variant<Offset, Reg>;
 
 struct Bin {
     enum class Op {
@@ -60,7 +60,7 @@ struct Condition {
 
 struct Jmp {
     std::optional<Condition> cond;
-    int offset;
+    std::string target;
 };
 
 struct Call {
@@ -132,9 +132,16 @@ constexpr int STACK_SIZE=512;
 
 std::variant<Program, std::string> parse(std::istream& is, size_t nbytes);
 
-std::ostream& operator<<(std::ostream& os, Instruction const& v);
 std::ostream& operator<<(std::ostream& os, IndexedInstruction const& v);
 void print(Program& prog);
+
+
+inline std::function<auto(std::string)->int16_t> label_to_offset(uint16_t pc){
+    return [=](std::string label) {
+        return boost::lexical_cast<int16_t>(label) - pc - 1;
+    };
+}
+
 
 // Helpers:
 

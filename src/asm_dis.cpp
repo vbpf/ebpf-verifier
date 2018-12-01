@@ -11,7 +11,7 @@ using std::vector;
 using std::string;
 
 // implemented in asm_marshal
-vector<ebpf_inst> marshal(Instruction ins);
+vector<ebpf_inst> marshal(Instruction ins, uint16_t pc);
 
 vector<ebpf_inst> marshal(vector<Instruction> insts);
 
@@ -239,8 +239,8 @@ static auto makeAluOp(ebpf_inst inst) -> Instruction {
     }, getAluOp(inst));
 }
 
-static auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& insts, uint32_t pc) -> Instruction {
-    if (pc + 1 >= insts.size()) note("incomplete LDDW");
+static auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& insts, uint16_t pc) -> Instruction {
+    if (pc >= insts.size() - 1) note("incomplete LDDW");
     if (inst.src > 1 || inst.dst > 10 || inst.offset != 0)
         note("LDDW uses reserved fields");
 
@@ -265,25 +265,25 @@ static auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& 
     };
 }
 
-static auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, uint32_t pc) -> Instruction {
+static auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, uint16_t pc) -> Instruction {
     switch (inst.opcode) {
-        case EBPF_OP_JA  : return Jmp{ .cond = {}, .offset = inst.offset };
         case EBPF_OP_CALL:
             if (!is_valid_prototype(inst.imm)) note("invalid function id ");
             return Call{ inst.imm };
         case EBPF_OP_EXIT: return Exit{};
         default: {
-            uint32_t new_pc = pc + 1 + inst.offset;
+            uint16_t new_pc = pc + 1 + inst.offset;
             if (new_pc >= insts.size()) note("jump out of bounds");
             if (insts[new_pc].opcode == 0) note("jump to middle of lddw");
 
-            return Jmp{
-                .cond = Condition {
-                    .op = getJmpOp(inst.opcode),
-                    .left = Reg{inst.dst},
-                    .right = (inst.opcode & EBPF_SRC_REG) ? (Value)Reg{inst.src} : Imm{inst.imm},
-                },
-                .offset = inst.offset,
+            auto cond = inst.opcode == EBPF_OP_JA ? std::optional<Condition>{} : Condition{
+                .op = getJmpOp(inst.opcode),
+                .left = Reg{inst.dst},
+                .right = (inst.opcode & EBPF_SRC_REG) ? (Value)Reg{inst.src} : Imm{inst.imm},
+            };
+            return Jmp {
+                .cond = cond,
+                .target = std::to_string(new_pc),
             };
         }
     }
@@ -298,7 +298,7 @@ Program parse(vector<ebpf_inst> insts)
         throw std::invalid_argument("Zero length programs are not allowed");
     }
     note_next_pc();
-    for (uint32_t pc = 0; pc < insts.size();) {
+    for (uint16_t pc = 0; pc < insts.size();) {
         ebpf_inst inst = insts[pc];
         vector<Instruction> new_ins;
         switch (inst.opcode & EBPF_CLS_MASK) {
@@ -329,10 +329,10 @@ Program parse(vector<ebpf_inst> insts)
             case EBPF_CLS_UNUSED:
                 throw InvalidInstruction{"Invalid class 0x6"};
         }
-        vector<ebpf_inst> marshalled = marshal(new_ins[0]);
+        vector<ebpf_inst> marshalled = marshal(new_ins[0], pc);
         ebpf_inst actual = marshalled[0];
         if (std::memcmp(&actual, &inst, sizeof(inst))) {
-            std::cerr << "new: " << new_ins[0] << "\n";
+            std::cerr << "new: " << IndexedInstruction{pc, new_ins[0]} << "\n";
             compare("opcode", actual.opcode, inst.opcode);
             compare("dst", actual.dst, inst.dst);
             compare("src", actual.src, inst.src);
