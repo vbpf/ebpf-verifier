@@ -303,9 +303,7 @@ static vector<lin_cst_t> jmp_to_cst_reg(Condition::Op op, var_t& dst_value, var_
 
 basic_block_t& instruction_builder_t::jump(bool taken)
 {
-    Jmp jmp = std::get<Jmp>(ins);
-    assert(jmp.cond);
-    Condition cond = *jmp.cond;
+    Condition cond = *std::get<Jmp>(ins).cond;
     auto& dst = machine.reg(cond.left);
     Condition::Op op = taken ? cond.op : reverse(cond.op);
     debug_info di{"pc", (unsigned int)first_num(block), 0}; 
@@ -368,8 +366,8 @@ static void move_into(vector<T>& dst, vector<T>&& src)
     );
 }
 
-basic_block_t& abs_machine_t::jump(Jmp ins, bool taken, basic_block_t& block, cfg_t& cfg) {
-    return instruction_builder_t(*impl, ins, block, cfg).jump(taken);
+basic_block_t& abs_machine_t::jump(Jmp jmp, bool taken, basic_block_t& block, cfg_t& cfg) {
+    return instruction_builder_t(*impl, jmp, block, cfg).jump(taken);
 }
 
 vector<basic_block_t*> abs_machine_t::expand_lockadd(LockAdd lock, basic_block_t& block, cfg_t& cfg)

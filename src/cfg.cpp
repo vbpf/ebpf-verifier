@@ -155,9 +155,10 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, const Program& prog, ebpf_p
         optional<pc_t> jump_target = get_jump(ins, pc);
         optional<pc_t> fall_target = get_fall(ins, pc);
         if (jump_target) {
-            if (std::holds_alternative<Jmp>(ins))  {
+            auto jmp = std::get<Jmp>(ins);
+            if (jmp.cond)  {
                 auto& assumption = build_jump(cfg, pc, *jump_target, true);
-                basic_block_t& out = machine.jump(std::get<Jmp>(ins), true, assumption, cfg);
+                basic_block_t& out = machine.jump(jmp, true, assumption, cfg);
                 out >> cfg.insert(label(*jump_target));
             } else {
                 link(cfg, pc, *jump_target);
