@@ -41,6 +41,11 @@ struct Un {
     int dst;
 };
 
+struct LoadMapFd {
+    Reg dst;
+    int mapfd;
+};
+
 struct Jmp {
     enum class Op { 
         EQ, NE, SET,
@@ -104,6 +109,7 @@ using Instruction = std::variant<
     Undefined,
     Bin,
     Un,
+    LoadMapFd,
     Call,
     Exit,
     Goto,
@@ -127,6 +133,7 @@ constexpr int STACK_SIZE=512;
 
 std::variant<Program, std::string> parse(std::istream& is, size_t nbytes);
 
+std::ostream& operator<<(std::ostream& os, Instruction const& v);
 std::ostream& operator<<(std::ostream& os, IndexedInstruction const& v);
 void print(Program& prog);
 
@@ -134,6 +141,7 @@ void print(Program& prog);
 
 struct InstructionVisitorPrototype {
     void operator()(Undefined const& a);
+    void operator()(LoadMapFd const& b);
     void operator()(Bin const& b);
     void operator()(Un const& b);
     void operator()(Call const& b);

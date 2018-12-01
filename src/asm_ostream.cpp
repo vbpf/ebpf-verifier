@@ -55,6 +55,10 @@ struct InstructionVisitor {
         os_ << "Undefined{" << a.opcode << "}";
     }
 
+    void operator()(LoadMapFd const& b) {
+        os_ << "r" << b.dst << " = fd " << b.mapfd;
+    }
+
     void operator()(Bin const& b) {
         os_ << "r" << b.dst << " " << op(b.op) << "= ";
         std::visit(*this, b.v);
@@ -144,7 +148,7 @@ struct InstructionVisitor {
     }
 };
 
-static std::ostream& operator<< (std::ostream& os, Instruction const& v) {
+std::ostream& operator<< (std::ostream& os, Instruction const& v) {
     std::visit(InstructionVisitor{os}, v);
     os << "";
     return os;

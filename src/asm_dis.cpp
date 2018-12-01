@@ -2,56 +2,24 @@
 #include <vector>
 #include <string>
 
+#include "linux_ebpf.hpp"
 #include "asm.hpp"
 #include "prototypes.hpp"
 
-/* eBPF definitions */
-
-struct ebpf_inst {
-    uint8_t opcode;
-    uint8_t dst : 4;
-    uint8_t src : 4;
-    int16_t offset;
-    int32_t imm;
-};
-
-#define EBPF_ALU_OP_MASK 0xf0
-
-#define EBPF_CLS_MASK 0x07
-
-#define EBPF_CLS_LD 0x00
-#define EBPF_CLS_LDX 0x01
-#define EBPF_CLS_ST 0x02
-#define EBPF_CLS_STX 0x03
-#define EBPF_CLS_ALU 0x04
-#define EBPF_CLS_JMP 0x05
-#define EBPF_CLS_UNUSED 0x06
-#define EBPF_CLS_ALU64 0x07
-
-#define EBPF_SRC_IMM 0x00
-#define EBPF_SRC_REG 0x08
-
-#define EBPF_SIZE_W 0x00
-#define EBPF_SIZE_H 0x08
-#define EBPF_SIZE_B 0x10
-#define EBPF_SIZE_DW 0x18
-
-#define EBPF_SIZE_MASK 0x18 
-
-#define EBPF_MODE_MASK 0xe0
-
-#define EBPF_XADD 0xc0
-
-#define EBPF_OP_LDDW_IMM      (EBPF_CLS_LD |EBPF_SRC_IMM|EBPF_SIZE_DW) // Special
-
-#define EBPF_OP_JA       (EBPF_CLS_JMP|0x00)
-#define EBPF_OP_CALL     (EBPF_CLS_JMP|0x80)
-#define EBPF_OP_EXIT     (EBPF_CLS_JMP|0x90)
-
-/* End EBPF definitions */
-
 using std::vector;
 using std::string;
+
+// implemented in asm_marshal
+vector<ebpf_inst> marshal(Instruction ins);
+
+vector<ebpf_inst> marshal(vector<Instruction> insts);
+
+template <typename T> 
+void compare(string field, T actual, T expected) {
+    if (actual != expected)
+        std::cerr << field << ": (actual) " << std::hex << (int)actual << " != " << (int)expected << " (expected)\n";
+}
+
 
 struct InvalidInstruction : std::invalid_argument {
     InvalidInstruction(const char* what) : std::invalid_argument{what} { }
@@ -124,8 +92,14 @@ static auto getAluOp(ebpf_inst inst) -> std::variant<Bin::Op, Un::Op> {
         case 0xd :
             switch (inst.imm) {
                 case 16: return Un::Op::LE16;
-                case 32: return Un::Op::LE32;
-                case 64: return Un::Op::LE64;
+                case 32: 
+                    if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64)
+                        throw InvalidInstruction("invalid endian immediate 32 for 64 bit instruction");
+                    return Un::Op::LE32;
+                case 64: 
+                    if ((inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU)
+                        throw InvalidInstruction("invalid endian immediate 64 for 32 bit instruction");
+                    return Un::Op::LE64;
                 default:
                     note("invalid endian immediate; falling back to 64");
                     return Un::Op::LE64;
@@ -184,18 +158,28 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
     Width width = getMemWidth(inst.opcode);
     bool isLD = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD;
     switch ((inst.opcode & EBPF_MODE_MASK) >> 5) {
-        case 0: assert(false);
-        case 1: // EBPF_MODE_ABS: 
+        case 0:
+            compare("fail:", inst.opcode, (uint8_t)0x11);
+            assert(false);
+        case EBPF_ABS:
             if (!isLD) throw UnsupportedMemoryMode{"ABS but not LD"};
             if (width == Width::DW) note("invalid opcode LDABSDW");
-            return Packet{width, inst.imm, {} };
+            return Packet{
+                .width = width,
+                .offset = inst.imm,
+                .regoffset = {}
+            };
 
-        case 2: // EBPF_MODE_IND:
+        case EBPF_IND:
             if (!isLD) throw UnsupportedMemoryMode{"IND but not LD"};
             if (width == Width::DW) note("invalid opcode LDINDDW");
-            return Packet{width, inst.imm, Reg{inst.src} };
+            return Packet{
+                .width = width,
+                .offset = inst.imm,
+                .regoffset = Reg{inst.src}
+            };
 
-        case 3: // EBPF_MODE_MEM 
+        case EBPF_MEM:
         {
             if (isLD) throw UnsupportedMemoryMode{"plain LD"};
             bool isLoad = getMemIsLoad(inst.opcode);
@@ -217,20 +201,20 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
             };
         }
 
-        case 4: //EBPF_MODE_LEN:
+        case EBPF_LEN:
             throw UnsupportedMemoryMode{"LEN"};
 
-        case 5: //EBPF_MODE_MSH:
+        case EBPF_MSH:
             throw UnsupportedMemoryMode{"MSH"};
 
-        case 6: //EBPF_XADD:
+        case EBPF_XADD:
             return LockAdd {
                 .width = width,
                 .valreg = Reg{inst.src},
                 .basereg = Reg{inst.dst},
                 .offset = inst.offset,
             };
-        case 7: throw UnsupportedMemoryMode{"Memory mode 7"};
+        case EBPF_MEM_UNUSED: throw UnsupportedMemoryMode{"Memory mode 7"};
     }
     assert(false);
 }
@@ -254,8 +238,11 @@ static auto makeAluOp(ebpf_inst inst) -> Instruction {
     }, getAluOp(inst));
 }
 
-static auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& insts, uint32_t pc) -> Bin {
-    /*
+static auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& insts, uint32_t pc) -> Instruction {
+    if (pc + 1 >= insts.size()) note("incomplete LDDW");
+    if (inst.src > 1 || inst.dst > 10 || inst.offset != 0)
+        note("LDDW uses reserved fields");
+
     if (inst.src == 1) {
         // magic number, meaning we're a per-process file descriptor
         // defining the map.
@@ -264,24 +251,20 @@ static auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& 
 
         // This is probably the wrong thing to do. should we add an FD type?
         // Here we (probably) need the map structure
-        block.assign(machine.regs[bin.dst].region, T_MAP);
-        block.assign(machine.regs[bin.dst].offset, 0);
-        return { &block };
+        return LoadMapFd{
+            .dst = Reg{inst.dst},
+            .mapfd = inst.imm
+         };
     }
-    */
-    if (pc + 1 >= insts.size()) note("incomplete LDDW");
-    if (inst.src > 1 || inst.dst > 10 || inst.offset != 0)
-        note("LDDW uses reserved fields");
+
     ebpf_inst next = insts[pc+1];
     if (next.opcode != 0 || next.dst != 0 || next.src != 0 || next.offset != 0) 
         note("invalid LDDW");
-
-    uint64_t imm = (((uint64_t)next_imm) << 32) | (uint32_t)inst.imm;
     return Bin{
         .op = Bin::Op::MOV,
         .is64 = true,
         .dst = Reg{ inst.dst },
-        .v = Imm{ imm },
+        .v = Imm{ merge(inst.imm, next_imm) },
         .lddw = true,
     };
 }
@@ -315,43 +298,56 @@ Program parse(vector<ebpf_inst> insts)
     vector<Instruction>& prog = res.code;
     int exit_count = 0;
     if (insts.size() == 0) {
-        note("Zero length programs are not allowed");
-        return res;
+        throw std::invalid_argument("Zero length programs are not allowed");
     }
-    for (uint32_t pc = 0; pc < insts.size(); pc++) {
+    note_next_pc();
+    for (uint32_t pc = 0; pc < insts.size();) {
         ebpf_inst inst = insts[pc];
-        note_next_pc();
+        vector<Instruction> new_ins;
         switch (inst.opcode & EBPF_CLS_MASK) {
             case EBPF_CLS_LD:
                 if (inst.opcode == EBPF_OP_LDDW_IMM) {
                     uint32_t next_imm = pc < insts.size() - 1 ? insts[pc+1].imm : 0;
-                    prog.push_back(makeLddw(inst, next_imm, insts, pc));
-                    prog.push_back(Undefined{0});
-                    pc++;
-                    note_next_pc();
+                    new_ins = {makeLddw(inst, next_imm, insts, pc),
+                               Undefined{0}};
                     break;
                 }
                 //fallthrough
             case EBPF_CLS_LDX:
             case EBPF_CLS_ST: case EBPF_CLS_STX:
-                prog.push_back(makeMemOp(inst));
+                new_ins = {makeMemOp(inst)};
                 break;
 
             case EBPF_CLS_ALU: case EBPF_CLS_ALU64: 
-                prog.push_back(makeAluOp(inst));
+                new_ins = {makeAluOp(inst)};
                 break;
 
             case EBPF_CLS_JMP: {
-                auto ins = makeJmp(inst, insts, pc);
-                if (std::holds_alternative<Exit>(ins))
+                new_ins = {makeJmp(inst, insts, pc)};
+                if (std::holds_alternative<Exit>(new_ins[0]))
                     exit_count++;
-                prog.push_back(ins);
                 break;
             }
 
             case EBPF_CLS_UNUSED:
                 throw InvalidInstruction{"Invalid class 0x6"};
-        }       
+        }
+        vector<ebpf_inst> marshalled = marshal(new_ins[0]);
+        ebpf_inst actual = marshalled[0];
+        if (memcmp(&actual, &inst, sizeof(inst))) {
+            std::cerr << "new: " << new_ins[0] << "\n";
+            compare("opcode", actual.opcode, inst.opcode);
+            compare("dst", actual.dst, inst.dst);
+            compare("src", actual.src, inst.src);
+            compare("offset", actual.offset, inst.offset);
+            compare("imm", actual.imm, inst.imm);
+            std::cerr << "\n";
+        }
+        for (auto ins : new_ins) {
+            prog.push_back(ins);
+            pc++;
+            note_next_pc();
+        }
     }
     if (exit_count == 0) note("no exit instruction");
     return res;
@@ -359,7 +355,7 @@ Program parse(vector<ebpf_inst> insts)
 
 std::variant<Program, string> parse(std::istream& is, size_t nbytes) {
     if (nbytes % sizeof(ebpf_inst) != 0) {
-        return std::string("file size must be a multiple of ") + std::to_string(sizeof(ebpf_inst));
+        note(string("file size must be a multiple of ") + std::to_string(sizeof(ebpf_inst)));
     }
     vector<ebpf_inst> binary_code(nbytes / sizeof(ebpf_inst));
     is.read((char*)binary_code.data(), nbytes);
@@ -374,6 +370,7 @@ std::variant<Program, string> parse(std::istream& is, size_t nbytes) {
         }
         return res;
     } catch (InvalidInstruction& arg) {
+        std::cerr << arg.what() << "\n";
         return arg.what();
     }
 }
