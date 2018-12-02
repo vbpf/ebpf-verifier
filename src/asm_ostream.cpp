@@ -5,7 +5,12 @@
 
 #include "asm.hpp"
 
-static std::string op(Bin::Op op) {
+using std::string;
+using std::vector;
+using std::optional;
+
+
+static string op(Bin::Op op) {
     switch (op) {
         case Bin::Op::MOV : return "";
         case Bin::Op::ADD : return "+";
@@ -22,7 +27,7 @@ static std::string op(Bin::Op op) {
     }
 }
 
-static std::string op(Condition::Op op) {
+static string op(Condition::Op op) {
     switch (op) {
         case Condition::Op::EQ : return "==";
         case Condition::Op::NE : return "!=";
@@ -50,7 +55,7 @@ static const char* size(Width w) {
 
 struct InstructionPrinterVisitor {
     std::ostream& os_;
-    std::function<auto(Label)->std::string> label_to_target = [](Label l) { return l; };
+    std::function<auto(Label)->string> label_to_target = [](Label l) { return l; };
 
     void operator()(Undefined const& a) {
         os_ << "Undefined{" << a.opcode << "}";
@@ -153,12 +158,12 @@ struct InstructionPrinterVisitor {
     }
 };
 
-static int first_num(const std::string& s)
+static int first_num(const string& s)
 {
     return boost::lexical_cast<int>(s.substr(0, s.find_first_of(':')));
 }
 
-static int last_num(const std::string& s)
+static int last_num(const string& s)
 {
     return boost::lexical_cast<int>(s.substr(s.find_first_of(':')+1));
 }
@@ -166,12 +171,12 @@ static int last_num(const std::string& s)
 static bool cmp_labels(Label a, Label b) {
     if (first_num(a) < first_num(b)) return true;
     if (first_num(a) > first_num(b)) return false;
-    return a > b;
+    return a < b;
 }
 
-static std::vector<Label> sorted_labels(const Cfg& cfg)
+static vector<Label> sorted_labels(const Cfg& cfg)
 {
-    std::vector<Label> labels;
+    vector<Label> labels;
     for (auto const& [label, bb] : cfg)
         labels.push_back(label);
 
@@ -179,10 +184,10 @@ static std::vector<Label> sorted_labels(const Cfg& cfg)
     return labels;
 }
 
-static std::vector<std::tuple<Label, std::optional<Label>>> slide(const std::vector<Label>& labels)
+static vector<std::tuple<Label, optional<Label>>> slide(const vector<Label>& labels)
 {
     if (labels.size() == 0) return {};
-    std::vector<std::tuple<Label, std::optional<Label>>> label_pairs;
+    vector<std::tuple<Label, optional<Label>>> label_pairs;
     Label prev = labels.at(0);
     bool first = true;
     for (auto label : labels) {
@@ -216,7 +221,7 @@ void print(const Cfg& cfg, bool nondet) {
             std::visit(InstructionPrinterVisitor{std::cout}, ins);
             std::cout << "\n";
         }
-        if (nondet && bb.nextlist.size() > 0 && (!next || bb.nextlist != std::vector<Label>{*next})) {
+        if (nondet && bb.nextlist.size() > 0 && (!next || bb.nextlist != vector<Label>{*next})) {
             if (bb.insts.size() > 0)
                 std::cout << std::setw(14) << "";
             std::cout << "goto ";

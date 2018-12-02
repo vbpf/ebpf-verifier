@@ -128,12 +128,6 @@ using Instruction = std::variant<
 
 using pc_t = uint16_t;
 
-struct IndexedInstruction {
-    pc_t pc;
-    Instruction ins;
-};
-
-
 struct Program {
     std::vector<Instruction> code;
 };
