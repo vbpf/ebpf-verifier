@@ -1,6 +1,8 @@
 #include <variant>
 #include <iostream>
 #include <vector>
+#include <assert.h>
+
 
 #include "linux_ebpf.hpp"
 
@@ -76,6 +78,9 @@ private:
     }
 
 public:
+
+    std::function<auto(std::string)->int16_t> label_to_offset;
+
     vector<ebpf_inst> operator()(Undefined const& a) {
         assert(false);
     }
@@ -153,7 +158,7 @@ public:
             ebpf_inst res{
                 .opcode = static_cast<uint8_t>(EBPF_CLS_JMP | (op(b.cond->op) << 4)),
                 .dst = static_cast<uint8_t>(b.cond->left),
-                .offset = static_cast<int16_t>(b.offset),
+                .offset = label_to_offset(b.target),
             };
             visit(overloaded{
                 [&](Reg right) { 
@@ -169,7 +174,7 @@ public:
                     .opcode = EBPF_OP_JA,
                     .dst = 0,
                     .src = 0,
-                    .offset = static_cast<int16_t>(b.offset),
+                    .offset = label_to_offset(b.target),
                     .imm = 0
                 }
             };
@@ -228,15 +233,18 @@ public:
     }
 };
 
-vector<ebpf_inst> marshal(Instruction ins) {
-    return std::visit(MarshalVisitor{}, ins);
+vector<ebpf_inst> marshal(Instruction ins, pc_t pc) {
+    return std::visit(MarshalVisitor{label_to_offset(pc)}, ins);
 }
 
 vector<ebpf_inst> marshal(vector<Instruction> insts) {
     vector<ebpf_inst> res;
+    pc_t pc = 0;
     for (auto ins : insts) {
-        for (auto e: marshal(ins))
+        for (auto e: marshal(ins, pc)) {
+            pc++;
             res.push_back(e);
+        }
     }
     return res;
 }

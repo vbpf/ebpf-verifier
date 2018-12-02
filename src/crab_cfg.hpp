@@ -47,8 +47,4 @@ inline basic_block_t& add_child(cfg_t& cfg, basic_block_t& block, std::string su
     return add_common_child(cfg, block, {block.label()}, suffix);
 }
 
-bool check_raw_reachability(const Program& prog);
-
 void build_cfg(cfg_t& cfg, variable_factory_t& vfac, const Program& prog, ebpf_prog_type prog_type);
-
-void print_stats(const Program& prog);

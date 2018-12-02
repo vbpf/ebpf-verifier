@@ -5,6 +5,11 @@
 #include <optional>
 #include <vector>
 #include <string>
+#include <unordered_map>
+
+#include <boost/lexical_cast.hpp>
+
+using Label = std::string;
 
 struct Imm {
     uint64_t v;
@@ -12,11 +17,9 @@ struct Imm {
     Imm(uint64_t v) : v{v} { }
 };
 
-enum Offset : int16_t {};
 enum Reg : int {};
 
 using Value = std::variant<Imm, Reg>;
-using Target = std::variant<Offset, Reg>;
 
 struct Bin {
     enum class Op {
@@ -60,7 +63,7 @@ struct Condition {
 
 struct Jmp {
     std::optional<Condition> cond;
-    int offset;
+    std::string target;
 };
 
 struct Call {
@@ -118,8 +121,10 @@ using Instruction = std::variant<
     LockAdd
 >;
 
+using pc_t = uint16_t;
+
 struct IndexedInstruction {
-    uint16_t pc;
+    pc_t pc;
     Instruction ins;
 };
 
@@ -132,9 +137,31 @@ constexpr int STACK_SIZE=512;
 
 std::variant<Program, std::string> parse(std::istream& is, size_t nbytes);
 
-std::ostream& operator<<(std::ostream& os, Instruction const& v);
 std::ostream& operator<<(std::ostream& os, IndexedInstruction const& v);
-void print(Program& prog);
+void print(const Program& prog);
+
+
+inline pc_t label_to_pc(Label label) {
+    return boost::lexical_cast<int16_t>(label);
+}
+
+inline std::function<auto(std::string)->int16_t> label_to_offset(pc_t pc){
+    return [=](std::string label) {
+        return label_to_pc(label) - pc - 1;
+    };
+}
+
+struct BasicBlock {
+    std::vector<Instruction> insts;
+    std::vector<Label> nextlist;
+    std::vector<Label> prevlist;
+};
+
+using Cfg = std::unordered_map<Label, BasicBlock>;
+
+Cfg build_cfg(const Program& prog);
+
+void print_stats(const Program& prog);
 
 // Helpers:
 

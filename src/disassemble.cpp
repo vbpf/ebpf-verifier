@@ -25,7 +25,10 @@ int main(int argc, char **argv)
         return 65;
     }
     return std::visit(overloaded {
-        [](Program prog) { print(prog); return 0; },
+        [](Program prog) { print(prog); 
+            std::cout << "\n";
+            build_cfg(prog);
+            return 0; },
         [](string errmsg) { 
             std::cout << "Bad file: " << errmsg << "\n";
             return 1;

@@ -48,8 +48,7 @@ static const char* size(Width w) {
 
 struct InstructionVisitor {
     std::ostream& os_;
-
-    InstructionVisitor(std::ostream& os) : os_{os} {}
+    std::function<auto(std::string)->int16_t> label_to_offset;
 
     void operator()(Undefined const& a) {
         os_ << "Undefined{" << a.opcode << "}";
@@ -93,7 +92,10 @@ struct InstructionVisitor {
             std::visit(*this, b.cond->right);
             os_ << " ";
         }
-        os_ << "goto +" << b.offset;
+        os_ << "goto ";
+        auto target = label_to_offset(b.target);
+        if (target > 0) os_ << "+";
+        os_ << target;
     }
 
     void operator()(Packet const& b) {
@@ -139,29 +141,24 @@ struct InstructionVisitor {
         else
             os_ << (int32_t)imm.v;
     }
-    void operator()(Offset off) {
-        os_ << static_cast<int16_t>(off);
-    }
     void operator()(Reg reg) {
         os_ << "r" << reg;
     }
 };
 
-std::ostream& operator<< (std::ostream& os, Instruction const& v) {
-    std::visit(InstructionVisitor{os}, v);
-    os << "";
-    return os;
+void print(std::ostream& os, Instruction const& v, pc_t pc) {
+    std::visit(InstructionVisitor{os, label_to_offset(pc)}, v);
 }
 
 std::ostream& operator<< (std::ostream& os, IndexedInstruction const& v) {
-    os << "    " << v.pc << " :        " << v.ins;
+    print(os, v.ins, v.pc);
     return os;
 }
 
-void print(Program& prog) {
-    int pc = 0;
+void print(const Program& prog) {
+    pc_t pc = 0;
     for (auto ins : prog.code) {
+        std::cout << "    " << pc << " :        " << IndexedInstruction{pc, ins} << "\n";
         pc++;
-        std::cout << "    " << pc << " :        " << ins << "\n";
     }
 }

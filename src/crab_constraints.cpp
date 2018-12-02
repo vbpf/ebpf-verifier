@@ -4,7 +4,7 @@
 #include <type_traits>
 
 #include "common.hpp"
-#include "constraints.hpp"
+#include "crab_constraints.hpp"
 #include "prototypes.hpp"
 #include "type_descriptors.hpp"
 
