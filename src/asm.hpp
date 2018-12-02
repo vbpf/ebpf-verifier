@@ -138,7 +138,7 @@ std::variant<Program, std::string> parse(std::istream& is, size_t nbytes);
 
 
 inline pc_t label_to_pc(Label label) {
-    return boost::lexical_cast<int16_t>(label);
+    return boost::lexical_cast<pc_t>(label);
 }
 
 inline std::function<auto(Label)->int16_t> label_to_offset(pc_t pc) {
@@ -180,6 +180,7 @@ struct InstructionVisitorPrototype {
     void operator()(Call const& b);
     void operator()(Exit const& b);
     void operator()(Jmp const& b);
+    void operator()(Assume const& b);
     void operator()(Packet const& b);
     void operator()(Mem const& b);
     void operator()(LockAdd const& b);
