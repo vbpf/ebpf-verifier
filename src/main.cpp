@@ -35,7 +35,7 @@ static int usage(const char *name)
     std::cerr << "\n";
     std::cerr << "flags: "
                  "--log=CRABLOG --verbose=N "
-                 "--stats --simplify --no-liveness --no-raw-reachability --semantic-reachability\n";
+                 "--stats --simplify --no-liveness --semantic-reachability\n";
     std::cerr << "available domains:\n";
     for (auto const [name, desc] : domain_descriptions())
         std::cerr << "\t" << name << " - " << desc << "\n";
@@ -87,8 +87,6 @@ int main(int argc, char **argv)
             global_options.simplify = true;
         } else if (arg == "--semantic-reachability") {
             global_options.check_semantic_reachability = true;
-        } else if (arg == "--no-raw-reachability") {
-            global_options.check_raw_reachability = false;
         } else if (arg == "--no-print-invariants") {
             global_options.print_invariants = false;
         } else if (arg == "--no-liveness") {

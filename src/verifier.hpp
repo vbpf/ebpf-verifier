@@ -20,7 +20,6 @@ struct global_options_t
 {
     bool simplify;
     bool stats;
-    bool check_raw_reachability;
     bool check_semantic_reachability;
     bool print_invariants;
     bool liveness;

@@ -19,7 +19,7 @@
 #include "crab_dom.hpp"
 
 #include "common.hpp"
-#include "cfg.hpp"
+#include "crab_cfg.hpp"
 #include "verifier.hpp"
 #include "asm.hpp"
 
@@ -205,7 +205,6 @@ const map<string, domain_desc> domains{
 global_options_t global_options {
     .simplify = false,
     .stats = false,
-    .check_raw_reachability = true,
     .check_semantic_reachability = false,
     .print_invariants = true,
     .liveness = true
