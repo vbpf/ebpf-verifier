@@ -16,6 +16,7 @@ static uint8_t op(Condition::Op op)  {
         case Condition::Op::GT : return 0x2;
         case Condition::Op::GE : return 0x3;
         case Condition::Op::SET: return 0x4;
+        case Condition::Op::NSET: assert(false);
         case Condition::Op::NE : return 0x5;
         case Condition::Op::SGT: return 0x6;
         case Condition::Op::SGE: return 0x7;
@@ -151,6 +152,10 @@ public:
                 .imm = 0
             }
         };
+    }
+
+    vector<ebpf_inst> operator()(Assume const& b) {
+        throw std::invalid_argument("Cannot marshal assumptions");
     }
 
     vector<ebpf_inst> operator()(Jmp const& b) {

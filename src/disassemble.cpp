@@ -20,14 +20,24 @@ static auto readfile(string path)
 
 int main(int argc, char **argv)
 {
-    if (argc != 2) {
+    if (argc > 3 || argc < 2) {
         std::cerr << "Usage: " << argv[0] << " file\n";
         return 65;
     }
+    string mode = argc < 3 ? "raw" : argv[2];
     return std::visit(overloaded {
-        [](Program prog) { print(prog); 
+        [=](Program prog) {
+            if (mode == "raw") {
+                print(prog);
+            } else {
+                Cfg cfg = build_cfg(prog);
+                if (mode == "cfg") {
+                    print(cfg, false);
+                } else if (mode == "nondet") {
+                    print(to_nondet(cfg), true);
+                }
+            }
             std::cout << "\n";
-            build_cfg(prog);
             return 0; },
         [](string errmsg) { 
             std::cout << "Bad file: " << errmsg << "\n";

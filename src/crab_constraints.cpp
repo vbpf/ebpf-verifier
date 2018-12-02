@@ -161,6 +161,7 @@ private:
     vector<basic_block_t*> operator()(Un const& b);
     vector<basic_block_t*> operator()(Call const& b);
     vector<basic_block_t*> operator()(Exit const& b);
+    vector<basic_block_t*> operator()(Assume const& b) { assert(false); }
     vector<basic_block_t*> operator()(Jmp const& b);
     vector<basic_block_t*> operator()(Packet const& b);
     vector<basic_block_t*> operator()(Mem const& b);
@@ -241,6 +242,7 @@ Condition::Op reverse(Condition::Op op)
     case Condition::Op::LT : return Condition::Op::GE;
     case Condition::Op::SLT: return Condition::Op::SGE;
     case Condition::Op::SET: throw std::exception();
+    case Condition::Op::NSET: assert(false);
     }
 }
 
@@ -277,6 +279,7 @@ static vector<lin_cst_t> jmp_to_cst_imm(Condition::Op op, var_t& dst_value, int 
         case Condition::Op::LT : return {dst_value <= (unsigned)imm - 1}; // FIX unsigned
         case Condition::Op::SLT: return {dst_value <= imm - 1};
         case Condition::Op::SET: throw std::exception();
+        case Condition::Op::NSET: assert(false);
     }
     assert(false);
 }
@@ -296,6 +299,7 @@ static vector<lin_cst_t> jmp_to_cst_reg(Condition::Op op, var_t& dst_value, var_
         case Condition::Op::LT : return {src_value >= dst_value + 1}; // FIX unsigned
         case Condition::Op::SLT: return {src_value >= dst_value + 1};
         case Condition::Op::SET: throw std::exception();
+        case Condition::Op::NSET: assert(false);
     }
     assert(false);
 }

@@ -1,6 +1,7 @@
 #include <variant>
 
 #include <iostream>
+#include <iomanip>
 
 #include "asm.hpp"
 
@@ -26,6 +27,7 @@ static std::string op(Condition::Op op) {
         case Condition::Op::EQ : return "==";
         case Condition::Op::NE : return "!=";
         case Condition::Op::SET: return "&==";
+        case Condition::Op::NSET: return "&!="; // not in ebpf
         case Condition::Op::LT : return "<";
         case Condition::Op::LE : return "<=";
         case Condition::Op::GT : return ">";
@@ -46,9 +48,9 @@ static const char* size(Width w) {
     }
 }
 
-struct InstructionVisitor {
+struct InstructionPrinterVisitor {
     std::ostream& os_;
-    std::function<auto(std::string)->int16_t> label_to_offset;
+    std::function<auto(Label)->std::string> label_to_target = [](Label l) { return l; };
 
     void operator()(Undefined const& a) {
         os_ << "Undefined{" << a.opcode << "}";
@@ -92,10 +94,15 @@ struct InstructionVisitor {
             std::visit(*this, b.cond->right);
             os_ << " ";
         }
-        os_ << "goto ";
-        auto target = label_to_offset(b.target);
-        if (target > 0) os_ << "+";
-        os_ << target;
+        os_ << "goto " << label_to_target(b.target);
+    }
+
+    void operator()(Assume const& b) {
+        os_ << "assume "
+            << "r" << b.cond.left
+            << " " << op(b.cond.op) << " ";
+        std::visit(*this, b.cond.right);
+        os_ << " ";
     }
 
     void operator()(Packet const& b) {
@@ -146,19 +153,76 @@ struct InstructionVisitor {
     }
 };
 
-void print(std::ostream& os, Instruction const& v, pc_t pc) {
-    std::visit(InstructionVisitor{os, label_to_offset(pc)}, v);
+static int first_num(const std::string& s)
+{
+    return boost::lexical_cast<int>(s.substr(0, s.find_first_of(':')));
 }
 
-std::ostream& operator<< (std::ostream& os, IndexedInstruction const& v) {
-    print(os, v.ins, v.pc);
-    return os;
+static int last_num(const std::string& s)
+{
+    return boost::lexical_cast<int>(s.substr(s.find_first_of(':')+1));
+}
+
+static bool cmp_labels(Label a, Label b) {
+    if (first_num(a) < first_num(b)) return true;
+    if (first_num(a) > first_num(b)) return false;
+    return a > b;
+}
+
+static std::vector<Label> sorted_labels(const Cfg& cfg)
+{
+    std::vector<Label> labels;
+    for (auto const& [label, bb] : cfg)
+        labels.push_back(label);
+
+    std::sort(labels.begin(), labels.end(), cmp_labels);
+    return labels;
+}
+
+static std::vector<std::tuple<Label, std::optional<Label>>> slide(const std::vector<Label>& labels)
+{
+    if (labels.size() == 0) return {};
+    std::vector<std::tuple<Label, std::optional<Label>>> label_pairs;
+    Label prev = labels.at(0);
+    bool first = true;
+    for (auto label : labels) {
+        if (first) { first = false; continue; }
+        label_pairs.push_back({prev, label});
+        prev = label;
+    }
+    label_pairs.push_back({prev, {}});
+    return label_pairs;
+}
+
+void print(std::ostream& os, Instruction const& ins, pc_t pc) {
+    std::visit(InstructionPrinterVisitor{os, label_to_offset_string(pc)}, ins);
 }
 
 void print(const Program& prog) {
     pc_t pc = 0;
     for (auto ins : prog.code) {
-        std::cout << "    " << pc << " :        " << IndexedInstruction{pc, ins} << "\n";
+        std::cout << std::setw(8) << pc << " : ";
+        print(std::cout, ins, pc);
+        std::cout << "\n";
         pc++;
+    }
+}
+
+void print(const Cfg& cfg, bool nondet) {
+    for (auto [label, next] : slide(sorted_labels(cfg))) {
+        std::cout << std::setw(11) << label << " : ";
+        const auto& bb = cfg.at(label);
+        for (auto ins : bb.insts) {
+            std::visit(InstructionPrinterVisitor{std::cout}, ins);
+            std::cout << "\n";
+        }
+        if (nondet && bb.nextlist.size() > 0 && (!next || bb.nextlist != std::vector<Label>{*next})) {
+            if (bb.insts.size() > 0)
+                std::cout << std::setw(14) << "";
+            std::cout << "goto ";
+            for (Label label : bb.nextlist)
+                std::cout << label << ", ";
+            std::cout << "\n";
+        }
     }
 }
