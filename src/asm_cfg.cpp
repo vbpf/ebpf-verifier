@@ -67,6 +67,81 @@ Cfg build_cfg(const Program& prog)
     return cfg;
 }
 
+static Condition::Op reverse(Condition::Op op)
+{
+    switch (op) {
+    case Condition::Op::EQ : return Condition::Op::NE;
+    case Condition::Op::NE : return Condition::Op::EQ;
+
+    case Condition::Op::GE : return Condition::Op::LT;
+    case Condition::Op::LT : return Condition::Op::GE;
+    
+    case Condition::Op::SGE: return Condition::Op::SLT;
+    case Condition::Op::SLT: return Condition::Op::SGE;
+
+    case Condition::Op::LE : return Condition::Op::GT;
+    case Condition::Op::GT : return Condition::Op::LE;
+
+    case Condition::Op::SLE: return Condition::Op::SGT;
+    case Condition::Op::SGT: return Condition::Op::SLE;
+
+    case Condition::Op::SET: return Condition::Op::NSET;
+    case Condition::Op::NSET: return Condition::Op::SET;
+    }
+}
+
+static Condition reverse(Condition cond)
+{
+    return {
+        .op=reverse(cond.op),
+        .left=cond.left,
+        .right=cond.right
+    };
+}
+
+static vector<Label> unique(const vector<Label>& v) {
+    vector<Label> res;
+    std::unique_copy(v.begin(), v.end(), std::back_inserter(res));
+    return res;
+}
+
+Cfg toAssumptions(Cfg simple_cfg) {
+    Cfg res;
+    for (auto const& [this_label, bb] : simple_cfg) {
+        BasicBlock& newbb = res[this_label];
+
+        for (auto ins : bb.insts)
+            if (!std::holds_alternative<Jmp>(ins))
+                newbb.insts.push_back(ins);
+
+        for (Label prev_label : bb.prevlist) {
+            newbb.prevlist.push_back(
+                unique(simple_cfg[prev_label].nextlist).size() > 1
+                ? prev_label + ":" + this_label
+                : prev_label
+            );
+        }
+        // note the special case where we jump to fallthrough
+        newbb.nextlist = unique(bb.nextlist);
+        if (newbb.nextlist.size() == 2) {
+            Label mid_label = this_label + ":";
+            Condition cond = *std::get<Jmp>(bb.insts.back()).cond;
+            vector<std::tuple<Label, Condition>> jumps{
+                {bb.nextlist[0], reverse(cond)},
+                {bb.nextlist[1], cond}
+            };
+            for (auto const& [next_label, cond] : jumps) {
+                res[mid_label + next_label] = BasicBlock{
+                    {Assume{cond}},
+                    {this_label},
+                    {next_label}
+                };
+            }
+        }
+    }
+    return res;
+}
+
 void print_stats(const Program& prog) {
     Cfg cfg = build_cfg(prog);
     auto& insts = prog.code;

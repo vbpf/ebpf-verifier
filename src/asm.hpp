@@ -51,7 +51,7 @@ struct LoadMapFd {
 
 struct Condition {
     enum class Op { 
-        EQ, NE, SET,
+        EQ, NE, SET, NSET, // NSET does not exist in ebpf
         LT, LE, GT, GE,
         SLT, SLE, SGT, SGE,
     };
@@ -64,6 +64,10 @@ struct Condition {
 struct Jmp {
     std::optional<Condition> cond;
     std::string target;
+};
+
+struct Assume {
+    Condition cond;
 };
 
 struct Call {
@@ -118,7 +122,8 @@ using Instruction = std::variant<
     Jmp,
     Mem,
     Packet,
-    LockAdd
+    LockAdd,
+    Assume
 >;
 
 using pc_t = uint16_t;

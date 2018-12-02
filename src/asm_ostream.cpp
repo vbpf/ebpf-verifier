@@ -26,6 +26,7 @@ static std::string op(Condition::Op op) {
         case Condition::Op::EQ : return "==";
         case Condition::Op::NE : return "!=";
         case Condition::Op::SET: return "&==";
+        case Condition::Op::NSET: return "&!="; // not in ebpf
         case Condition::Op::LT : return "<";
         case Condition::Op::LE : return "<=";
         case Condition::Op::GT : return ">";
@@ -96,6 +97,14 @@ struct InstructionVisitor {
         auto target = label_to_offset(b.target);
         if (target > 0) os_ << "+";
         os_ << target;
+    }
+
+    void operator()(Assume const& b) {
+        os_ << "assume "
+            << "r" << b.cond.left
+            << " " << op(b.cond.op) << " ";
+        std::visit(*this, b.cond.right);
+        os_ << " ";
     }
 
     void operator()(Packet const& b) {
