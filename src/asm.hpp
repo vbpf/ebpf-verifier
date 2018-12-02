@@ -142,17 +142,21 @@ constexpr int STACK_SIZE=512;
 
 std::variant<Program, std::string> parse(std::istream& is, size_t nbytes);
 
-std::ostream& operator<<(std::ostream& os, IndexedInstruction const& v);
-void print(const Program& prog);
-
 
 inline pc_t label_to_pc(Label label) {
     return boost::lexical_cast<int16_t>(label);
 }
 
-inline std::function<auto(std::string)->int16_t> label_to_offset(pc_t pc){
-    return [=](std::string label) {
+inline std::function<auto(Label)->int16_t> label_to_offset(pc_t pc) {
+    return [=](Label label) {
         return label_to_pc(label) - pc - 1;
+    };
+}
+
+inline std::function<auto(Label)->std::string> label_to_offset_string(pc_t pc) {
+    return [=](Label label) {
+        int16_t target = label_to_offset(pc)(label);
+        return std::string(target > 0 ? "+" : "") + std::to_string(target);
     };
 }
 
@@ -165,6 +169,10 @@ struct BasicBlock {
 using Cfg = std::unordered_map<Label, BasicBlock>;
 
 Cfg build_cfg(const Program& prog);
+Cfg to_nondet(const Cfg& simple_cfg);
+
+void print(const Program& prog);
+void print(const Cfg& cfg, bool nondet);
 
 void print_stats(const Program& prog);
 

@@ -105,7 +105,7 @@ static vector<Label> unique(const vector<Label>& v) {
     return res;
 }
 
-Cfg toAssumptions(Cfg simple_cfg) {
+Cfg to_nondet(const Cfg& simple_cfg) {
     Cfg res;
     for (auto const& [this_label, bb] : simple_cfg) {
         BasicBlock& newbb = res[this_label];
@@ -116,27 +116,30 @@ Cfg toAssumptions(Cfg simple_cfg) {
 
         for (Label prev_label : bb.prevlist) {
             newbb.prevlist.push_back(
-                unique(simple_cfg[prev_label].nextlist).size() > 1
+                unique(simple_cfg.at(prev_label).nextlist).size() > 1
                 ? prev_label + ":" + this_label
                 : prev_label
             );
         }
         // note the special case where we jump to fallthrough
-        newbb.nextlist = unique(bb.nextlist);
-        if (newbb.nextlist.size() == 2) {
+        auto nextlist = unique(bb.nextlist);
+        if (nextlist.size() == 2) {
             Label mid_label = this_label + ":";
             Condition cond = *std::get<Jmp>(bb.insts.back()).cond;
             vector<std::tuple<Label, Condition>> jumps{
                 {bb.nextlist[0], reverse(cond)},
-                {bb.nextlist[1], cond}
+                {bb.nextlist[1], cond},
             };
             for (auto const& [next_label, cond] : jumps) {
+                newbb.nextlist.push_back(mid_label + next_label);
                 res[mid_label + next_label] = BasicBlock{
                     {Assume{cond}},
-                    {this_label},
-                    {next_label}
+                    {next_label},
+                    {this_label}
                 };
             }
+        } else {
+            newbb.nextlist = nextlist;
         }
     }
     return res;

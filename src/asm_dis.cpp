@@ -332,7 +332,9 @@ Program parse(vector<ebpf_inst> insts)
         vector<ebpf_inst> marshalled = marshal(new_ins[0], pc);
         ebpf_inst actual = marshalled[0];
         if (std::memcmp(&actual, &inst, sizeof(inst))) {
-            std::cerr << "new: " << IndexedInstruction{pc, new_ins[0]} << "\n";
+            //std::cerr << "new: ";
+            //print(pc, new_ins[0]);
+            //std::cerr << "\n";
             compare("opcode", actual.opcode, inst.opcode);
             compare("dst", actual.dst, inst.dst);
             compare("src", actual.src, inst.src);
