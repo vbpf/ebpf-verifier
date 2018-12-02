@@ -22,7 +22,7 @@ using std::vector;
 static auto get_jump(Instruction ins, pc_t pc) -> optional<pc_t>
 {
     if (std::holds_alternative<Jmp>(ins)) {
-        return boost::lexical_cast<int>(std::get<Jmp>(ins).target);
+        return label_to_pc(std::get<Jmp>(ins).target);
     }
     return {};
 }
@@ -43,18 +43,18 @@ static auto get_fall(Instruction ins, pc_t pc) -> optional<pc_t>
     return pc + 1;
 }
 
-static auto build_jump(cfg_t& cfg, pc_t pc, pc_t target, bool taken) -> basic_block_t&
+static auto build_jump(cfg_t& cfg, pc_t pc, Label target, bool taken) -> basic_block_t&
 {
     // distinguish taken and non-taken, in case we jump to the fallthrough
     // (yes, it happens).
-    basic_block_t& assumption = cfg.insert(label(pc, target) + ":" + (taken ? "taken" : "not-taken"));
+    basic_block_t& assumption = cfg.insert(label(pc) + ":" + target + ":" + (taken ? "taken" : "not-taken"));
     cfg.get_node(exit_label(pc)) >> assumption;
     return assumption;
 }
 
-static void link(cfg_t& cfg, pc_t pc, pc_t target)
+static void link(cfg_t& cfg, pc_t pc, Label target)
 {
-    cfg.get_node(exit_label(pc)) >> cfg.insert(label(target));
+    cfg.get_node(exit_label(pc)) >> cfg.insert(target);
 }
 
 bool check_raw_reachability(const Program& prog)
@@ -122,56 +122,39 @@ void print_stats(const Program& prog) {
 
 void build_cfg(cfg_t& cfg, variable_factory_t& vfac, const Program& prog, ebpf_prog_type prog_type)
 {
-
-    // TODO: move to where it should be
-    if (global_options.check_raw_reachability) {
-        if (!check_raw_reachability(prog)) {
-            std::cerr << "No support for forests yet\n";
-        }
-    }
-
     abs_machine_t machine(prog_type, vfac);
     {
         auto& entry = cfg.insert(entry_label());
         machine.setup_entry(entry);
         entry >> cfg.insert(label(0));
     }
-    auto& insts = prog.code;
-    for (pc_t pc = 0; pc < insts.size(); pc++) {
-        Instruction ins = insts[pc];
-        vector<basic_block_t*> outs = machine.exec(ins, cfg.insert(label(pc)), cfg);
-        basic_block_t& exit = cfg.insert(exit_label(pc));
-        for (basic_block_t* b : outs)
-            (*b) >> exit;
-
-        if (std::holds_alternative<Exit>(ins)) {
-            cfg.set_exit(exit_label(pc));
-            continue;
+    Cfg simple_cfg = build_cfg(prog);
+    for (auto const& [this_label, bb] : simple_cfg) {
+        pc_t pc = label_to_pc(this_label);
+        for (auto ins : bb.insts) {
+            basic_block_t& exit = cfg.insert(exit_label(pc));
+            vector<basic_block_t*> outs = machine.exec(ins, cfg.insert(this_label), cfg);
+            for (basic_block_t* b : outs)
+                (*b) >> exit;
         }
+        switch (bb.nextlist.size()) {
+            case 0:
+                cfg.set_exit(exit_label(pc));
+                continue;
+            case 1:
+                link(cfg, pc, bb.nextlist[0]);
+                break;
+            case 2: {
+                auto jmp = std::get<Jmp>(bb.insts.back());
 
-        optional<pc_t> jump_target = get_jump(ins, pc);
-        optional<pc_t> fall_target = get_fall(ins, pc);
-        if (jump_target) {
-            auto jmp = std::get<Jmp>(ins);
-            if (jmp.cond)  {
-                auto& assumption = build_jump(cfg, pc, *jump_target, true);
-                basic_block_t& out = machine.jump(jmp, true, assumption, cfg);
-                out >> cfg.insert(label(*jump_target));
-            } else {
-                link(cfg, pc, *jump_target);
+                machine.jump(jmp, true, build_jump(cfg, pc, bb.nextlist[1], true),
+                    cfg) >> cfg.insert(bb.nextlist[1]);
+
+                machine.jump(jmp, false, build_jump(cfg, pc, bb.nextlist[0], false),
+                    cfg) >> cfg.insert(bb.nextlist[0]);
+                break;
             }
-        }
-        
-        if (fall_target) {
-            if (jump_target) {
-                auto& assumption = build_jump(cfg, pc, *fall_target, false);
-                basic_block_t& out = machine.jump(std::get<Jmp>(ins), false, assumption, cfg);
-                out >> cfg.insert(label(*fall_target));
-            } else {
-                link(cfg, pc, *fall_target);
-            }
-            // skip imm of lddw
-            pc = *fall_target - 1;
+            default: assert(false);
         }
     }
     if (global_options.simplify) {

@@ -155,10 +155,10 @@ std::ostream& operator<< (std::ostream& os, IndexedInstruction const& v) {
     return os;
 }
 
-void print(Program& prog) {
+void print(const Program& prog) {
     pc_t pc = 0;
     for (auto ins : prog.code) {
-        pc++;
         std::cout << "    " << pc << " :        " << IndexedInstruction{pc, ins} << "\n";
+        pc++;
     }
 }

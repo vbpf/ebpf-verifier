@@ -5,6 +5,7 @@
 #include <optional>
 #include <vector>
 #include <string>
+#include <unordered_map>
 
 #include <boost/lexical_cast.hpp>
 
@@ -137,15 +138,18 @@ constexpr int STACK_SIZE=512;
 std::variant<Program, std::string> parse(std::istream& is, size_t nbytes);
 
 std::ostream& operator<<(std::ostream& os, IndexedInstruction const& v);
-void print(Program& prog);
+void print(const Program& prog);
 
+
+inline pc_t label_to_pc(Label label) {
+    return boost::lexical_cast<int16_t>(label);
+}
 
 inline std::function<auto(std::string)->int16_t> label_to_offset(pc_t pc){
     return [=](std::string label) {
-        return boost::lexical_cast<int16_t>(label) - pc - 1;
+        return label_to_pc(label) - pc - 1;
     };
 }
-
 
 struct BasicBlock {
     std::vector<Instruction> insts;

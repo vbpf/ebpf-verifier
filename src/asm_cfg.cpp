@@ -56,12 +56,20 @@ Cfg build_cfg(const Program& prog)
     for (pc_t pc = 0; pc < prog.code.size(); pc++) {
         Instruction ins = prog.code[pc];
         Label label = std::to_string(pc);
-
+        if (std::holds_alternative<Undefined>(ins))
+            continue;
         // create if not exists
         cfg[label].insts = {ins};
 
-        link(cfg, label, get_jump(ins, pc));
         link(cfg, label, get_fall(ins, pc));
+        link(cfg, label, get_jump(ins, pc));
+    }
+    for (auto const& [this_label, bb] : cfg) {
+        print(Program{bb.insts});
+        std::cout << "   ->      ";
+        for (auto s : bb.nextlist)
+            std::cout << s << ", ";
+        std::cout << "\n";
     }
     return cfg;
 }
