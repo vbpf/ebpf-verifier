@@ -307,45 +307,8 @@ static void move_into(vector<T>& dst, vector<T>&& src)
     );
 }
 
-vector<basic_block_t*> abs_machine_t::expand_lockadd(LockAdd lock, basic_block_t& block, cfg_t& cfg)
-{
-    Mem load_ins{
-        .width = lock.width,
-        .basereg = lock.basereg,
-        .offset = 0,
-        .value = Mem::Load{11},
-    };
-    vector<basic_block_t*> loaded = instruction_builder_t(*impl, load_ins, block, cfg).exec();
-
-    Bin add_ins{
-        .op = Bin::Op::ADD,
-        .is64 = false,
-        .dst = Reg{11},
-        .v = lock.offset,
-    };
-    vector<basic_block_t*> added;
-    for (auto b: loaded) {
-        move_into(added, instruction_builder_t(*impl, add_ins, *b, cfg).exec());
-    }
-
-    Mem store_ins{
-        .width = lock.width,
-        .basereg = lock.basereg,
-        .offset = 0,
-        .value = Mem::StoreReg{11},
-    };
-    vector<basic_block_t*> stored;
-    for (auto b: added) {
-        move_into(stored, instruction_builder_t(*impl, store_ins, *b, cfg).exec());
-    }
-    return stored;
-}
-
 vector<basic_block_t*> abs_machine_t::exec(Instruction ins, basic_block_t& block, cfg_t& cfg)
 {
-    if (std::holds_alternative<LockAdd>(ins)) {
-        return expand_lockadd(get<LockAdd>(ins), block, cfg);
-    }
     return instruction_builder_t(*impl, ins, block, cfg).exec(); 
 }
 

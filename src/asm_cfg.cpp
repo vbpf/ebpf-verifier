@@ -50,6 +50,30 @@ static void link(Cfg& cfg, Label from, optional<Label> to) {
     }
 }
 
+static vector<Instruction> expand_lockadd(LockAdd lock)
+{
+    return {
+        Mem{
+            .width = lock.width,
+            .basereg = lock.basereg,
+            .offset = 0,
+            .value = Mem::Load{11},
+        },
+        Bin{
+            .op = Bin::Op::ADD,
+            .is64 = false,
+            .dst = Reg{11},
+            .v = lock.offset,
+        },
+        Mem{
+            .width = lock.width,
+            .basereg = lock.basereg,
+            .offset = 0,
+            .value = Mem::StoreReg{11},
+        }
+    };
+}
+
 Cfg build_cfg(const Program& prog)
 {
     Cfg cfg;
@@ -58,9 +82,11 @@ Cfg build_cfg(const Program& prog)
         Label label = std::to_string(pc);
         if (std::holds_alternative<Undefined>(ins))
             continue;
-        // create if not exists
-        cfg[label].insts = {ins};
-
+        // create cfg[label] if not exists
+        if (std::holds_alternative<LockAdd>(ins))
+            cfg[label].insts = expand_lockadd(std::get<LockAdd>(ins));
+        else
+            cfg[label].insts = {ins};
         link(cfg, label, get_fall(ins, pc));
         link(cfg, label, get_jump(ins, pc));
     }
