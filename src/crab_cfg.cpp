@@ -29,19 +29,19 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, const Program& prog, ebpf_p
     }
     Cfg simple_cfg = to_nondet(build_cfg(prog));
     for (auto const& [this_label, bb] : simple_cfg) {
-        pc_t pc = label_to_pc(this_label);
-        std::string outlabel = exit_label(pc);
+        basic_block_t& this_block = cfg.insert(this_label);
+        std::cout << "!: " << this_label << " -- " << bb.insts.size() << "\n";
+        basic_block_t& exit = bb.insts.size() == 0 ? this_block : cfg.insert(exit_label(this_label));
         for (auto ins : bb.insts) {
-            basic_block_t& exit = cfg.insert(outlabel);
-            vector<basic_block_t*> outs = machine.exec(ins, cfg.insert(this_label), cfg);
+            vector<basic_block_t*> outs = machine.exec(ins, this_block, cfg);
             for (basic_block_t* b : outs)
                 (*b) >> exit;
         }
         if (bb.nextlist.size() == 0) {
-            cfg.set_exit(outlabel);
+            cfg.set_exit(exit.label());
         } else {
             for (auto label : bb.nextlist)
-                cfg.get_node(outlabel) >> cfg.insert(label);
+                exit >> cfg.insert(label);
         }
     }
     if (global_options.simplify) {

@@ -925,10 +925,9 @@ vector<basic_block_t*> instruction_builder_t::operator()(Assume const& b) {
     if (std::holds_alternative<Reg>(cond.right)) {
         assert_init(block, machine.reg(cond.right), di);
     }
-    assert_init(block, machine.regs[static_cast<int>(cond.left)], di);
+    assert_init(block, machine.reg(cond.left), di);
 
     auto& dst = machine.reg(cond.left);
-    debug_info di{"pc", (unsigned int)first_num(block), 0}; 
     if (std::holds_alternative<Reg>(cond.right)) {
         auto& src = machine.reg(cond.right);
         basic_block_t& same = add_child(cfg, block, "same_type");
