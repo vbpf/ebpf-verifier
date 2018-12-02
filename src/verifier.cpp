@@ -19,7 +19,7 @@
 #include "crab_dom.hpp"
 
 #include "common.hpp"
-#include "crab_cfg.hpp"
+#include "crab_constraints.hpp"
 #include "verifier.hpp"
 #include "asm.hpp"
 
@@ -37,6 +37,20 @@ using namespace crab::domains;
 using namespace crab::domain_impl;
 
 static checks_db analyze(string domain_name, cfg_t& cfg, printer_t& pre_printer, printer_t& post_printer);
+
+vector<string> sorted_labels(cfg_t& cfg)
+{
+    vector<string> labels;
+    for (const auto& block : cfg)
+        labels.push_back(block.label());
+
+    std::sort(labels.begin(), labels.end(), [](string a, string b){
+        if (first_num(a) < first_num(b)) return true;
+        if (first_num(a) > first_num(b)) return false;
+        return a < b;
+    });
+    return labels;
+}
 
 bool abs_validate(Program& prog, string domain_name, ebpf_prog_type prog_type)
 {

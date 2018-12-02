@@ -1,18 +1,50 @@
+#include <memory>
 #include <iostream>
 #include <vector>
 #include <string>
 #include <type_traits>
+#include <algorithm>
+#include <iostream>
+#include <optional>
 
+#include <inttypes.h>
+#include <assert.h>
+
+#include <boost/lexical_cast.hpp>
+#include "type_descriptors.hpp"
 #include "common.hpp"
 #include "crab_constraints.hpp"
+#include "verifier.hpp"
+#include "common.hpp"
 #include "prototypes.hpp"
-#include "type_descriptors.hpp"
 
 #include "asm.hpp"
 
 using std::tuple;
 using std::string;
 using std::vector;
+using std::optional;
+using std::to_string;
+
+using crab::cfg_impl::variable_factory_t;
+
+static int first_num(const basic_block_t& block)
+{
+    return first_num(block.label());
+}
+
+static basic_block_t& add_common_child(cfg_t& cfg, basic_block_t& block, std::vector<basic_block_label_t> labels, std::string suffix)
+{
+    basic_block_t& child = cfg.insert(block.label() + ":" + suffix);
+    for (auto label : labels)
+        cfg.get_node(label) >> child;
+    return child;
+}
+
+static basic_block_t& add_child(cfg_t& cfg, basic_block_t& block, std::string suffix)
+{
+    return add_common_child(cfg, block, {block.label()}, suffix);
+}
 
 using ikos::z_number;
 using debug_info = crab::cfg::debug_info;
@@ -29,6 +61,7 @@ enum region_t {
     T_MAP,
 };
 
+
 struct dom_t {
     var_t value;
     var_t offset;
@@ -40,11 +73,6 @@ struct dom_t {
     { }
     dom_t(var_t value, var_t offset, var_t region) : value(value), offset(offset), region(region) { };
 };
-
-static void assert_init(basic_block_t& block, const dom_t data_reg, debug_info di)
-{
-    block.assertion(data_reg.region >= T_NUM, di);
-}
 
 struct array_dom_t {
     variable_factory_t& vfac;
@@ -90,7 +118,6 @@ struct array_dom_t {
     }
 };
 
-
 struct machine_t final
 {
     ebpf_prog_type prog_type;
@@ -108,6 +135,9 @@ struct machine_t final
     dom_t& reg(Value v) {
         return regs[static_cast<int>(std::get<Reg>(v))];
     }
+
+    void setup_entry(basic_block_t& entry);
+
     machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac);
 };
 
@@ -171,12 +201,40 @@ private:
     }
 };
 
-abs_machine_t::abs_machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac)
-: impl{new machine_t{prog_type, vfac}}
+void build_cfg(cfg_t& cfg, variable_factory_t& vfac, const Program& prog, ebpf_prog_type prog_type)
 {
+    machine_t machine(prog_type, vfac);
+    {
+        auto& entry = cfg.insert(entry_label());
+        machine.setup_entry(entry);
+        entry >> cfg.insert(label(0));
+    }
+    Cfg simple_cfg = to_nondet(build_cfg(prog));
+    for (auto const& [this_label, bb] : simple_cfg) {
+        basic_block_t& this_block = cfg.insert(this_label);
+        basic_block_t& exit = bb.insts.size() == 0 ? this_block : cfg.insert(exit_label(this_label));
+        for (auto ins : bb.insts) {
+            vector<basic_block_t*> outs = instruction_builder_t(machine, ins, this_block, cfg).exec();
+            for (basic_block_t* b : outs)
+                (*b) >> exit;
+        }
+        if (bb.nextlist.size() == 0) {
+            cfg.set_exit(exit.label());
+        } else {
+            for (auto label : bb.nextlist)
+                exit >> cfg.insert(label);
+        }
+    }
+    if (global_options.simplify) {
+        cfg.simplify();
+    }
 }
 
-abs_machine_t::~abs_machine_t() = default;
+
+static void assert_init(basic_block_t& block, const dom_t data_reg, debug_info di)
+{
+    block.assertion(data_reg.region >= T_NUM, di);
+}
 
 machine_t::machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac)
     : prog_type(prog_type), ctx_desc{get_descriptor(prog_type)}, vfac{vfac}
@@ -186,9 +244,9 @@ machine_t::machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac)
     }
 }
 
-void abs_machine_t::setup_entry(basic_block_t& entry)
+void machine_t::setup_entry(basic_block_t& entry)
 {
-    auto& machine = *impl;
+    auto& machine = *this;
     entry.havoc(machine.top);
     entry.assign(machine.num, T_NUM);
 
@@ -305,11 +363,6 @@ static void move_into(vector<T>& dst, vector<T>&& src)
         std::make_move_iterator(src.begin()),
         std::make_move_iterator(src.end())
     );
-}
-
-vector<basic_block_t*> abs_machine_t::exec(Instruction ins, basic_block_t& block, cfg_t& cfg)
-{
-    return instruction_builder_t(*impl, ins, block, cfg).exec(); 
 }
 
 void instruction_builder_t::scratch_regs(basic_block_t& block)
