@@ -1,8 +1,5 @@
-#include <memory>
-#include <iostream>
 #include <vector>
 #include <string>
-#include <type_traits>
 #include <algorithm>
 #include <iostream>
 #include <optional>
@@ -10,12 +7,10 @@
 #include <inttypes.h>
 #include <assert.h>
 
-#include <boost/lexical_cast.hpp>
 #include "type_descriptors.hpp"
 #include "common.hpp"
 #include "crab_constraints.hpp"
 #include "verifier.hpp"
-#include "common.hpp"
 #include "prototypes.hpp"
 
 #include "asm.hpp"
@@ -590,7 +585,6 @@ void assert_no_overflow(basic_block_t& b, var_t v, debug_info di) {
 
 
 vector<basic_block_t*> instruction_builder_t::operator()(Undefined const& a) {
-    std::cout << "bad instruction " << a.opcode << " at " << first_num(block) << "\n";
     assert(false);
 }
 
