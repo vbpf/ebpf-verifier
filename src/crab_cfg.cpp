@@ -30,7 +30,6 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, const Program& prog, ebpf_p
     Cfg simple_cfg = to_nondet(build_cfg(prog));
     for (auto const& [this_label, bb] : simple_cfg) {
         basic_block_t& this_block = cfg.insert(this_label);
-        std::cout << "!: " << this_label << " -- " << bb.insts.size() << "\n";
         basic_block_t& exit = bb.insts.size() == 0 ? this_block : cfg.insert(exit_label(this_label));
         for (auto ins : bb.insts) {
             vector<basic_block_t*> outs = machine.exec(ins, this_block, cfg);
