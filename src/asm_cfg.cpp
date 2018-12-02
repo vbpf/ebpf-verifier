@@ -27,8 +27,8 @@ static auto get_jump(Instruction ins, pc_t pc) -> optional<Label>
 
 static auto get_fall(Instruction ins, pc_t pc) -> optional<Label>
 {
-    if (std::holds_alternative<Bin>(ins)
-        && std::get<Bin>(ins).lddw)
+    if ((std::holds_alternative<Bin>(ins) && std::get<Bin>(ins).lddw)
+        || std::holds_alternative<LoadMapFd>(ins))
         return std::to_string(pc + 2);
 
     if (std::holds_alternative<Exit>(ins))
@@ -80,6 +80,7 @@ Cfg build_cfg(const Program& prog)
     for (pc_t pc = 0; pc < prog.code.size(); pc++) {
         Instruction ins = prog.code[pc];
         Label label = std::to_string(pc);
+
         if (std::holds_alternative<Undefined>(ins))
             continue;
         // create cfg[label] if not exists
@@ -87,6 +88,7 @@ Cfg build_cfg(const Program& prog)
             cfg[label].insts = expand_lockadd(std::get<LockAdd>(ins));
         else
             cfg[label].insts = {ins};
+
         link(cfg, label, get_fall(ins, pc));
         link(cfg, label, get_jump(ins, pc));
     }
