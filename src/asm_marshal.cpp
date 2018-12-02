@@ -69,8 +69,8 @@ private:
         return {
             ebpf_inst {
                 .opcode = static_cast<uint8_t>(EBPF_CLS_LD | access_width(Width::DW)),
-                .src = static_cast<uint8_t>(isFd ? 1 : 0),
                 .dst = static_cast<uint8_t>(dst),
+                .src = static_cast<uint8_t>(isFd ? 1 : 0),
                 .offset = 0,
                 .imm = imm
             }, 

@@ -19,20 +19,6 @@ using std::to_string;
 using std::string;
 using std::vector;
 
-static auto build_jump(cfg_t& cfg, pc_t pc, Label target, bool taken) -> basic_block_t&
-{
-    // distinguish taken and non-taken, in case we jump to the fallthrough
-    // (yes, it happens).
-    basic_block_t& assumption = cfg.insert(label(pc) + ":" + target + ":" + (taken ? "taken" : "not-taken"));
-    cfg.get_node(exit_label(pc)) >> assumption;
-    return assumption;
-}
-
-static void link(cfg_t& cfg, pc_t pc, Label target)
-{
-    cfg.get_node(exit_label(pc)) >> cfg.insert(target);
-}
-
 void build_cfg(cfg_t& cfg, variable_factory_t& vfac, const Program& prog, ebpf_prog_type prog_type)
 {
     abs_machine_t machine(prog_type, vfac);
@@ -41,33 +27,21 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, const Program& prog, ebpf_p
         machine.setup_entry(entry);
         entry >> cfg.insert(label(0));
     }
-    Cfg simple_cfg = build_cfg(prog);
+    Cfg simple_cfg = to_nondet(build_cfg(prog));
     for (auto const& [this_label, bb] : simple_cfg) {
-        pc_t pc = label_to_pc(this_label);
+        basic_block_t& this_block = cfg.insert(this_label);
+        std::cout << "!: " << this_label << " -- " << bb.insts.size() << "\n";
+        basic_block_t& exit = bb.insts.size() == 0 ? this_block : cfg.insert(exit_label(this_label));
         for (auto ins : bb.insts) {
-            basic_block_t& exit = cfg.insert(exit_label(pc));
-            vector<basic_block_t*> outs = machine.exec(ins, cfg.insert(this_label), cfg);
+            vector<basic_block_t*> outs = machine.exec(ins, this_block, cfg);
             for (basic_block_t* b : outs)
                 (*b) >> exit;
         }
-        switch (bb.nextlist.size()) {
-            case 0:
-                cfg.set_exit(exit_label(pc));
-                continue;
-            case 1:
-                link(cfg, pc, bb.nextlist[0]);
-                break;
-            case 2: {
-                auto jmp = std::get<Jmp>(bb.insts.back());
-
-                machine.jump(jmp, true, build_jump(cfg, pc, bb.nextlist[1], true),
-                    cfg) >> cfg.insert(bb.nextlist[1]);
-
-                machine.jump(jmp, false, build_jump(cfg, pc, bb.nextlist[0], false),
-                    cfg) >> cfg.insert(bb.nextlist[0]);
-                break;
-            }
-            default: assert(false);
+        if (bb.nextlist.size() == 0) {
+            cfg.set_exit(exit.label());
+        } else {
+            for (auto label : bb.nextlist)
+                exit >> cfg.insert(label);
         }
     }
     if (global_options.simplify) {

@@ -17,7 +17,7 @@ inline auto label(int pc, string target){  return label(pc) + ":" + target; }
 
 inline auto label(int pc, int target) { return label(pc, std::to_string(target)); }
 
-inline auto exit_label(int pc) { return label(pc, "exit"); }
+inline auto exit_label(Label label) { return label + ":exit"; }
 
 inline auto entry_label() { return label(-1, "entry"); }
 

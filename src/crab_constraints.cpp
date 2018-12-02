@@ -115,7 +115,6 @@ class instruction_builder_t final
 {
 public:
     vector<basic_block_t*> exec();
-    basic_block_t& jump(bool taken);
     instruction_builder_t(machine_t& machine, Instruction ins, basic_block_t& block, cfg_t& cfg) :
         machine(machine), ins(ins), block(block), cfg(cfg), pc(first_num(block)),
         di{"pc", (unsigned int)pc, 0}
@@ -161,8 +160,8 @@ private:
     vector<basic_block_t*> operator()(Un const& b);
     vector<basic_block_t*> operator()(Call const& b);
     vector<basic_block_t*> operator()(Exit const& b);
-    vector<basic_block_t*> operator()(Assume const& b) { assert(false); }
-    vector<basic_block_t*> operator()(Jmp const& b);
+    vector<basic_block_t*> operator()(Assume const& b);
+    vector<basic_block_t*> operator()(Jmp const& b) { assert(false); }
     vector<basic_block_t*> operator()(Packet const& b);
     vector<basic_block_t*> operator()(Mem const& b);
     vector<basic_block_t*> operator()(LockAdd const& b);
@@ -228,24 +227,6 @@ static auto neq(var_t& a, var_t& b)
     return lin_cst_t(a - b, lin_cst_t::DISEQUATION);
 }
 
-Condition::Op reverse(Condition::Op op)
-{
-    switch (op) {
-    case Condition::Op::EQ : return Condition::Op::NE;
-    case Condition::Op::GE : return Condition::Op::LT;
-    case Condition::Op::SGE: return Condition::Op::SLT;
-    case Condition::Op::LE : return Condition::Op::GT;
-    case Condition::Op::SLE: return Condition::Op::SGT;
-    case Condition::Op::NE : return Condition::Op::EQ;
-    case Condition::Op::GT : return Condition::Op::LE;
-    case Condition::Op::SGT: return Condition::Op::SLE;
-    case Condition::Op::LT : return Condition::Op::GE;
-    case Condition::Op::SLT: return Condition::Op::SGE;
-    case Condition::Op::SET: throw std::exception();
-    case Condition::Op::NSET: assert(false);
-    }
-}
-
 static lin_cst_t jmp_to_cst_offsets_reg(Condition::Op op, var_t& dst_offset, var_t& src_offset)
 {
     switch (op) {
@@ -305,50 +286,6 @@ static vector<lin_cst_t> jmp_to_cst_reg(Condition::Op op, var_t& dst_value, var_
 }
 
 
-basic_block_t& instruction_builder_t::jump(bool taken)
-{
-    Condition cond = *std::get<Jmp>(ins).cond;
-    auto& dst = machine.reg(cond.left);
-    Condition::Op op = taken ? cond.op : reverse(cond.op);
-    debug_info di{"pc", (unsigned int)first_num(block), 0}; 
-    if (std::holds_alternative<Reg>(cond.right)) {
-        auto& src = machine.reg(cond.right);
-        basic_block_t& same = add_child(cfg, block, "same_type");
-        for (auto c : jmp_to_cst_reg(cond.op, dst.value, src.value))
-            same.assume(c);
-        same.assume(eq(dst.region, src.region));
-
-        basic_block_t& null_src = add_child(cfg, block, "null_src");
-        null_src.assume(src.region == T_NUM);
-        null_src.assume(is_pointer(dst));
-        null_src.assertion(src.value == 0, di);
-
-        basic_block_t& null_dst = add_child(cfg, block, "null_dst");
-        null_dst.assume(dst.region == T_NUM);
-        null_dst.assume(is_pointer(src));
-        null_dst.assertion(dst.value == 0, di);
-
-        auto prevs = {same.label(), null_src.label(), null_dst.label()};
-        basic_block_t& offset_check = add_common_child(cfg, block, prevs, "offsets_check");
-
-        lin_cst_t offset_cst = jmp_to_cst_offsets_reg(op, dst.offset, src.offset);
-        if (!offset_cst.is_tautology()) {
-            offset_check.assume(offset_cst);
-        }
-        return offset_check;
-    } else {
-        int imm = static_cast<int>(std::get<Imm>(cond.right).v);
-        vector<lin_cst_t> csts = jmp_to_cst_imm(op, dst.value, imm);
-        for (auto c : csts)
-            block.assume(c);
-        if (!is_priviledged() && imm != 0) {
-            // only null can be compared to pointers without leaking secrets
-            block.assertion(dst.region == T_NUM, di);
-        }
-        return block;
-    }
-}
-
 static void wrap32(basic_block_t& block, var_t& dst_value)
 {
     block.bitwise_and(dst_value, dst_value, UINT32_MAX);
@@ -368,10 +305,6 @@ static void move_into(vector<T>& dst, vector<T>&& src)
         std::make_move_iterator(src.begin()),
         std::make_move_iterator(src.end())
     );
-}
-
-basic_block_t& abs_machine_t::jump(Jmp jmp, bool taken, basic_block_t& block, cfg_t& cfg) {
-    return instruction_builder_t(*impl, jmp, block, cfg).jump(taken);
 }
 
 vector<basic_block_t*> abs_machine_t::expand_lockadd(LockAdd lock, basic_block_t& block, cfg_t& cfg)
@@ -987,15 +920,50 @@ vector<basic_block_t*> instruction_builder_t::operator()(Exit const& b) {
     return { &block };
 }
 
-vector<basic_block_t*> instruction_builder_t::operator()(Jmp const& b) {
-    // cfg-related action is handled in build_cfg() and instruction_builder_t::jump()
-    if (b.cond) {
-        if (std::holds_alternative<Reg>(b.cond->right)) {
-            assert_init(block, machine.reg(b.cond->right), di);
-        }
-        assert_init(block, machine.regs[static_cast<int>(b.cond->left)], di);
+vector<basic_block_t*> instruction_builder_t::operator()(Assume const& b) {
+    Condition cond = b.cond;
+    if (std::holds_alternative<Reg>(cond.right)) {
+        assert_init(block, machine.reg(cond.right), di);
     }
-    return { &block };
+    assert_init(block, machine.reg(cond.left), di);
+
+    auto& dst = machine.reg(cond.left);
+    if (std::holds_alternative<Reg>(cond.right)) {
+        auto& src = machine.reg(cond.right);
+        basic_block_t& same = add_child(cfg, block, "same_type");
+        for (auto c : jmp_to_cst_reg(cond.op, dst.value, src.value))
+            same.assume(c);
+        same.assume(eq(dst.region, src.region));
+
+        basic_block_t& null_src = add_child(cfg, block, "null_src");
+        null_src.assume(src.region == T_NUM);
+        null_src.assume(is_pointer(dst));
+        null_src.assertion(src.value == 0, di);
+
+        basic_block_t& null_dst = add_child(cfg, block, "null_dst");
+        null_dst.assume(dst.region == T_NUM);
+        null_dst.assume(is_pointer(src));
+        null_dst.assertion(dst.value == 0, di);
+
+        auto prevs = {same.label(), null_src.label(), null_dst.label()};
+        basic_block_t& offset_check = add_common_child(cfg, block, prevs, "offsets_check");
+
+        lin_cst_t offset_cst = jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset);
+        if (!offset_cst.is_tautology()) {
+            offset_check.assume(offset_cst);
+        }
+        return { &offset_check };
+    } else {
+        int imm = static_cast<int>(std::get<Imm>(cond.right).v);
+        vector<lin_cst_t> csts = jmp_to_cst_imm(cond.op, dst.value, imm);
+        for (auto c : csts)
+            block.assume(c);
+        if (!is_priviledged() && imm != 0) {
+            // only null can be compared to pointers without leaking secrets
+            block.assertion(dst.region == T_NUM, di);
+        }
+        return { &block };
+    }
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(Packet const& b) {
