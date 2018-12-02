@@ -161,6 +161,8 @@ using Cfg = std::unordered_map<Label, BasicBlock>;
 
 Cfg build_cfg(const Program& prog);
 
+void print_stats(const Program& prog);
+
 // Helpers:
 
 struct InstructionVisitorPrototype {

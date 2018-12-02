@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "common.hpp"
-#include "cfg.hpp"
+#include "crab_cfg.hpp"
 
 #include "asm.hpp"
 

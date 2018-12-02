@@ -64,12 +64,36 @@ Cfg build_cfg(const Program& prog)
         link(cfg, label, get_fall(ins, pc));
         link(cfg, label, get_jump(ins, pc));
     }
-    for (auto const& [this_label, bb] : cfg) {
-        print(Program{bb.insts});
-        std::cout << "   ->      ";
-        for (auto s : bb.nextlist)
-            std::cout << s << ", ";
-        std::cout << "\n";
-    }
     return cfg;
+}
+
+void print_stats(const Program& prog) {
+    Cfg cfg = build_cfg(prog);
+    auto& insts = prog.code;
+    int count = 0;
+    int stores = 0;
+    int loads = 0;
+    int jumps = 0;
+    int joins = 0;
+    vector<int> reaching(insts.size());
+    for (auto const& [this_label, bb] : cfg) {
+        Instruction ins = bb.insts[0];
+        count++;
+        if (std::holds_alternative<Mem>(ins)) {
+            auto mem = std::get<Mem>(ins);
+            if (mem.isLoad())
+                loads++;
+            else
+                stores++;
+        }
+        if (bb.prevlist.size() > 1)
+            joins++;
+        if (bb.nextlist.size() > 1)
+            jumps++;
+    }
+    std::cout << "instructions:" << count << "\n";
+    std::cout << "loads:" << loads << "\n";
+    std::cout << "stores:" << stores << "\n";
+    std::cout << "jumps:" << jumps << "\n";
+    std::cout << "joins:" << joins << "\n";
 }
