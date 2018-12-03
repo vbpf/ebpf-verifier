@@ -1,5 +1,5 @@
 # PREVAIL 
-## a Polynomially-Runtime EBPF Verfier using an Abstract Interpretation Layer
+## a Polynomial-Runtime EBPF Verfier using an Abstract Interpretation Layer
 
 A new eBPF verifier.
 
