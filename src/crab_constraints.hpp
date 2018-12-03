@@ -1,22 +1,19 @@
 #pragma once
-
-#include <memory>
+#include <boost/lexical_cast.hpp>
 
 #include "common.hpp"
-#include "crab_cfg.hpp"
-
 #include "asm.hpp"
+#include "type_descriptors.hpp"
 
-using crab::cfg_impl::variable_factory_t;
+static auto label(int pc) { return std::to_string(pc); }
+static auto label(int pc, Label target){  return label(pc) + ":" + target; }
+static auto label(int pc, int target) { return label(pc, std::to_string(target)); }
+static auto exit_label(Label label) { return label + ":exit"; }
+inline auto entry_label() { return label(-1, "entry"); }
 
-struct machine_t;
-
-class abs_machine_t
+inline int first_num(const Label& s)
 {
-    std::unique_ptr<machine_t> impl;
-public:
-    abs_machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac);
-    void setup_entry(basic_block_t& entry);
-    std::vector<basic_block_t*> exec(Instruction ins, basic_block_t& block, cfg_t& cfg);
-    ~abs_machine_t();
-};
+    return boost::lexical_cast<int>(s.substr(0, s.find_first_of(':')));
+}
+
+void build_cfg(cfg_t& cfg, variable_factory_t& vfac, const Program& prog, ebpf_prog_type prog_type);
