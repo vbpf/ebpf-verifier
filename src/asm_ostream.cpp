@@ -91,7 +91,7 @@ struct InstructionPrinterVisitor {
     }
 
     void operator()(Exit const& b) {
-        os_ << "return r0";
+        os_ << "exit";
     }
 
     void operator()(Jmp const& b) {
@@ -133,7 +133,9 @@ struct InstructionPrinterVisitor {
         if (b.isLoad()) {
             os_ << "r" << (int)std::get<Mem::Load>(b.value) << " = ";
         }
-        os_ << "*(" << s << " *)(r" << b.basereg << " + " << b.offset << ")";
+        string sign = b.offset < 0 ? " - " : " + ";
+        int offset = std::abs(b.offset); // what about INT_MIN? 
+        os_ << "*(" << s << " *)(r" << b.basereg << sign << offset << ")";
         if (!b.isLoad()) {
             os_ << " = ";
             if (std::holds_alternative<Mem::StoreImm>(b.value))

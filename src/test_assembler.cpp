@@ -3,13 +3,24 @@
 
 #include <map>
 #include <regex>
+#include <algorithm>
 #include <boost/lexical_cast.hpp>
 
-#define REG R"_(r(\d|10))_"
+using std::regex;
+using std::regex_match;
+
+#define REG R"_(r(\d+)\s*)_"
 #define IMM R"_(([-+]?\d+))_"
-//#define REG_OR_IMM R"_((r(\d+)|(\d+)))_"
-#define ASSIGN R"_(\s*(\S*)=\s*)_"
-#define DW R"_(\s*(ll|)\s*)_"
+#define OPASSIGN R"_(\s*(\S*)=\s*)_"
+#define ASSIGN R"_(\s*=\s*)_"
+#define LONGLONG R"_(\s*(ll|)\s*)_"
+
+#define PLUSMINUS R"_((\s*[+-])\s*)_"
+#define LPAREN R"_(\s*\(\s*)_"
+#define RPAREN R"_(\s*\)\s*)_"
+#define PAREN(x) LPAREN x RPAREN
+#define STAR R"_(\s*\*\s*)_"
+#define DEREF STAR PAREN("u(\\d+)" STAR) PAREN(REG PLUSMINUS IMM)
 
 const std::map<std::string, Bin::Op> str_to_binop =
 {
@@ -27,22 +38,35 @@ const std::map<std::string, Bin::Op> str_to_binop =
     {"^"  , Bin::Op::XOR },
 };
 
+const std::map<std::string, Width> str_to_width =
+{
+    {"8" , Width::B },
+    {"16", Width::H },
+    {"32", Width::W },
+    {"64", Width::DW },
+};
+
 Reg reg(std::string s) {
     return Reg{boost::lexical_cast<int>(s)};
 }
+
 Imm imm(std::string s) {
+    //s.erase(std::remove_if(s.begin(), s.end(), isspace));
     return Imm{boost::lexical_cast<int>(s)};
 }
 
 Instruction assemble(std::string text) {
     std::smatch m;
-    if (std::regex_match(text, m, std::regex(R"_(call\s(\d+))_"))) {
+    if (regex_match(text, m, regex("exit"))) {
+        return Exit{};
+    }
+    if (regex_match(text, m, regex(R"_(call\s(\d+))_"))) {
         int func = boost::lexical_cast<int>(m[1]);
         return Call {
             .func = func
         };
     }
-    if (std::regex_match(text, m, std::regex(REG ASSIGN REG))) {
+    if (regex_match(text, m, regex(REG OPASSIGN REG))) {
         return Bin {
             .op = str_to_binop.at(m[2]),
             .is64 = true,
@@ -51,13 +75,23 @@ Instruction assemble(std::string text) {
             .lddw = false
         };
     }
-    if (std::regex_match(text, m, std::regex(REG ASSIGN IMM DW))) {
+    if (regex_match(text, m, regex(REG OPASSIGN IMM LONGLONG))) {
         return Bin {
             .op = str_to_binop.at(m[2]),
             .is64 = true,
             .dst = reg(m[1]),
             .v = imm(m[3]),
             .lddw = !m[4].str().empty()
+        };
+    }
+    if (regex_match(text, m, regex(REG ASSIGN DEREF))) {
+        //std::cout << m[0] << " , " << m[1] << " , " << m[2] << " , " << m[3] << " , " << m[4] << "\n";
+        int offset = boost::lexical_cast<int>(m[5]);
+        return Mem {
+            .width = str_to_width.at(m[2]),
+            .basereg = reg(m[3]),
+            .offset =  (m[4].str() == "-" ? -offset : +offset),
+            .value = (Mem::Load)boost::lexical_cast<int>(m[1]),
         };
     }
     return Undefined{ 0 };
@@ -123,11 +157,23 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
     }
 
     SECTION( "Exit" ) {
-        
+        assemble_disasm("exit");
     }
     
     SECTION( "Mem" ) {
+        SECTION( "Load" ) {
+            assemble_disasm("r0 = *(u8 *)(r2 + 1)");
+            assemble_disasm("r1 = *(u16 *)(r0 + 12)");
+            assemble_disasm("r5 = *(u32 *)(r10 + 31)");
+            assemble_disasm("r9 = *(u64 *)(r1 + 43)");
 
+            assemble_disasm("r1 = *(u8 *)(r2 - 1)");
+            assemble_disasm("r3 = *(u16 *)(r0 - 12)");
+            assemble_disasm("r4 = *(u32 *)(r10 - 31)");
+            assemble_disasm("r8 = *(u64 *)(r1 - 43)");
+
+            REQUIRE_THROWS(assemble("r8 = *(u15 *)(r1 - 43)"));
+        }
     }
 
     SECTION( "Packet" ) {
