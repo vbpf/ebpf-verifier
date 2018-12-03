@@ -85,6 +85,7 @@ Instruction assemble(std::string text) {
         };
     }
     if (regex_match(text, m, regex(REG ASSIGN DEREF))) {
+        // TODO: remove redundancy: Load / StoreReg / StoreImm
         int offset = boost::lexical_cast<int>(m[5]);
         return Mem {
             .width = str_to_width.at(m[2]),
@@ -94,13 +95,22 @@ Instruction assemble(std::string text) {
         };
     }
     if (regex_match(text, m, regex(DEREF ASSIGN REG))) {
-        //std::cout << m[0] << " , " << m[1] << " , " << m[2] << " , " << m[3] << " , " << m[4] << "\n";
         int offset = boost::lexical_cast<int>(m[4]);
         return Mem {
             .width = str_to_width.at(m[1]),
             .basereg = reg(m[2]),
             .offset =  (m[3].str() == "-" ? -offset : +offset),
             .value = (Mem::StoreReg)boost::lexical_cast<int>(m[5]),
+        };
+    }
+    if (regex_match(text, m, regex(DEREF ASSIGN IMM))) {
+        //std::cout << m[0] << " , " << m[1] << " , " << m[2] << " , " << m[3] << " , " << m[4] << "\n";
+        int offset = boost::lexical_cast<int>(m[4]);
+        return Mem {
+            .width = str_to_width.at(m[1]),
+            .basereg = reg(m[2]),
+            .offset =  (m[3].str() == "-" ? -offset : +offset),
+            .value = (Mem::StoreImm)boost::lexical_cast<int>(m[5]),
         };
     }
     return Undefined{ 0 };
@@ -194,6 +204,18 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
             assemble_disasm("*(u64 *)(r1 - 43) = r8");
 
             REQUIRE_THROWS(assemble("*(u15 *)(r1 - 43) = r8"));
+        }
+        SECTION( "Store Imm" ) {
+            assemble_disasm("*(u8 *)(r2 + 1) = 0");
+            assemble_disasm("*(u16 *)(r0 + 12) = 1");
+            assemble_disasm("*(u32 *)(r10 + 31) = 5");
+            assemble_disasm("*(u64 *)(r1 + 43) = 9");
+            assemble_disasm("*(u8 *)(r2 - 1) = 1");
+            assemble_disasm("*(u16 *)(r0 - 12) = 3");
+            assemble_disasm("*(u32 *)(r10 - 31) = 4");
+            assemble_disasm("*(u64 *)(r1 - 43) = 8");
+
+            REQUIRE_THROWS(assemble("*(u15 *)(r1 - 43) = 8"));
         }
     }
 
