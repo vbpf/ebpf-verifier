@@ -67,7 +67,10 @@ struct InstructionPrinterVisitor {
 
     void operator()(Bin const& b) {
         os_ << "r" << b.dst << " " << op(b.op) << "= ";
-        std::visit(*this, b.v);
+        if (b.lddw)
+            os_ << std::get<Imm>(b.v).v << " ll";
+        else
+           std::visit(*this, b.v);
         if (!b.is64)
             os_ << " & 0xFFFFFFFF";
     }
