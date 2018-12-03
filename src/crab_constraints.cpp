@@ -41,11 +41,10 @@ static basic_block_t& add_child(cfg_t& cfg, basic_block_t& block, std::string su
     return add_common_child(cfg, block, {block.label()}, suffix);
 }
 
-using ikos::z_number;
-using debug_info = crab::cfg::debug_info;
+using crab::cfg::debug_info;
 
-using var_t     = ikos::variable<z_number, varname_t>;
-using lin_cst_t = ikos::linear_constraint<z_number, varname_t>;
+using var_t     = ikos::variable<ikos::z_number, varname_t>;
+using lin_cst_t = ikos::linear_constraint<ikos::z_number, varname_t>;
 
 enum region_t {
     T_UNINIT,
@@ -265,20 +264,11 @@ void machine_t::setup_entry(basic_block_t& entry)
     }
 }
 
-static lin_cst_t is_pointer(dom_t v)
-{
-    return v.region >= T_CTX;
-}
+static lin_cst_t is_pointer(dom_t v) { return v.region >= T_CTX; }
 
-static auto eq(var_t& a, var_t& b)
-{
-    return lin_cst_t(a - b, lin_cst_t::EQUALITY);
-}
+static lin_cst_t eq(var_t& a, var_t& b)  { return {a - b, lin_cst_t::EQUALITY}; }
 
-static auto neq(var_t& a, var_t& b)
-{
-    return lin_cst_t(a - b, lin_cst_t::DISEQUATION);
-}
+static lin_cst_t neq(var_t& a, var_t& b) { return {a - b, lin_cst_t::DISEQUATION}; };
 
 static lin_cst_t jmp_to_cst_offsets_reg(Condition::Op op, var_t& dst_offset, var_t& src_offset)
 {
@@ -504,15 +494,14 @@ static void assert_in_stack(basic_block_t& block, int offset, var_t width, debug
 }
 */
 
-template<typename W>
-auto get_start(int offset, W width) {
+int get_start(int offset, int width) {
     return (-offset) - width;
 }
 
 vector<basic_block_t*> instruction_builder_t::exec_direct_stack_load(basic_block_t& block, dom_t data_reg, int offset, int width)
 {
     assert_in_stack(block, offset, width, di);
-    auto start = get_start(offset, width);
+    int start = get_start(offset, width);
     auto blocks = machine.stack_arr.load(block, data_reg, start, width, cfg);
     for (auto b : blocks) {
         b->array_load(data_reg.region, machine.stack_arr.regions, start, 1);
@@ -539,7 +528,7 @@ vector<basic_block_t*> instruction_builder_t::exec_direct_stack_store(basic_bloc
 vector<basic_block_t*> instruction_builder_t::exec_direct_stack_store_immediate(basic_block_t& block, int offset, int width, uint64_t immediate)
 {
     assert_in_stack(block, offset, width, di);
-    auto start = get_start(offset, width);
+    int start = get_start(offset, width);
     var_t lb{machine.vfac["lb"], crab::INT_TYPE, 64};
     var_t ub{machine.vfac["ub"], crab::INT_TYPE, 64};
     block.assign(lb, start);
@@ -599,11 +588,8 @@ vector<basic_block_t*> instruction_builder_t::operator()(LoadMapFd const& ld) {
     return { &block };
 }
 
-vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
-    
-            
-    auto& dst = machine.regs[bin.dst];
-
+vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {    
+    dom_t& dst = machine.regs[bin.dst];
     vector<basic_block_t*> res{ &block };
 
     // TODO: add assertion for all operators that the arguments are initialized
@@ -670,7 +656,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
             break;
         } 
     } else {
-        auto& src = machine.reg(bin.v);
+        dom_t& src = machine.reg(bin.v);
         switch (bin.op) {
         case Bin::Op::ADD: {
                 block.add(dst.value, dst.value, src.value);
@@ -779,7 +765,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(Un const& b) {
-    auto& dst = machine.regs[b.dst];
+    dom_t& dst = machine.regs[b.dst];
 
     switch (b.op) {
     case Un::Op::LE16:
@@ -937,9 +923,9 @@ vector<basic_block_t*> instruction_builder_t::operator()(Assume const& b) {
     }
     assert_init(block, machine.reg(cond.left), di);
 
-    auto& dst = machine.reg(cond.left);
+    dom_t& dst = machine.reg(cond.left);
     if (std::holds_alternative<Reg>(cond.right)) {
-        auto& src = machine.reg(cond.right);
+        dom_t& src = machine.reg(cond.right);
         basic_block_t& same = add_child(cfg, block, "same_type");
         for (auto c : jmp_to_cst_reg(cond.op, dst.value, src.value))
             same.assume(c);
@@ -966,7 +952,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Assume const& b) {
     } else {
         int imm = static_cast<int>(std::get<Imm>(cond.right).v);
         vector<lin_cst_t> csts = jmp_to_cst_imm(cond.op, dst.value, imm);
-        for (auto c : csts)
+        for (lin_cst_t c : csts)
             block.assume(c);
         if (!is_priviledged() && imm != 0) {
             // only null can be compared to pointers without leaking secrets
