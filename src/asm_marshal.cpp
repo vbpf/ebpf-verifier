@@ -92,6 +92,7 @@ public:
 
     vector<ebpf_inst> operator()(Bin const& b) {
         if (b.lddw) {
+            assert(std::holds_alternative<Imm>(b.v));
             auto [imm, next_imm] = split(std::get<Imm>(b.v).v);
             return makeLddw(b.dst, false, imm, next_imm);
         }
@@ -122,8 +123,9 @@ public:
             } };
         } else {
             // must be LE
+            uint8_t cls = static_cast<uint8_t>(b.op == Un::Op::LE64 ? EBPF_CLS_ALU64 : EBPF_CLS_ALU);
             return { ebpf_inst{
-                .opcode = static_cast<uint8_t>(EBPF_CLS_ALU | 0x8 | (0xd << 4) ),
+                .opcode = static_cast<uint8_t>(cls | 0x8 | (0xd << 4) ),
                 .dst = static_cast<uint8_t>(b.dst),
                 .imm = imm(b.op),
             } };

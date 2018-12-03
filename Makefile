@@ -7,6 +7,12 @@ SRCDIR := src
 SOURCES := $(wildcard ${SRCDIR}/*.cpp)
 OBJECTS := $(SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
 OBJECTS := $(filter-out ${BUILDDIR}/disassemble.o,$(OBJECTS))
+OBJECTS := $(filter-out ${BUILDDIR}/main.o,$(OBJECTS))
+OBJECTS := $(filter-out ${BUILDDIR}/test.o,$(OBJECTS))
+OBJECTS := $(filter-out ${BUILDDIR}/test_marshal.o,$(OBJECTS))
+
+TEST_SOURCES := $(wildcard ${SRCDIR}/test*.cpp)
+TEST_OBJECTS := $(TEST_SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
 
 CRABDIR := crab
 LDD := $(CRABDIR)/install/ldd
@@ -57,28 +63,31 @@ CRABFLAGS := \
     -I $(LDD)/include/ldd/include/ \
     -I $(ELINA)/include/
 
-all: $(BINDIR)/check $(BINDIR)/disassemble
+all: $(BINDIR)/check $(BINDIR)/disassemble $(BINDIR)/test
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.cpp
 	@mkdir -p $(BUILDDIR)
 	@printf "$@ <- $^\n"
-	@$(CXX) ${CXXFLAGS} ${CRABFLAGS} $< -c -o $@
+	@$(CXX) ${CXXFLAGS} ${CRABFLAGS} $^ -c -o $@
 
-$(BINDIR)/check: ${OBJECTS}
-	@printf "$@ <- ${BUILDDIR}/*.o\n"
-	@$(CXX) ${CXXFLAGS}  ${CRABFLAGS} ${LDFLAGS} ${OBJECTS} ${LDLIBS} -o $@
+$(BINDIR)/test: ${BUILDDIR}/test.o ${TEST_OBJECTS} ${OBJECTS}
+	@printf "$@ <- $^\n"
+	@$(CXX) ${CXXFLAGS}  ${CRABFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
+
+$(BINDIR)/check: ${BUILDDIR}/main.o ${OBJECTS}
+	@printf "$@ <- $^\n"
+	@$(CXX) ${CXXFLAGS}  ${CRABFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
 
 DISASM_OBJECTS := \
-    ${BUILDDIR}/disassemble.o \
     ${BUILDDIR}/asm_dis.o \
     ${BUILDDIR}/asm_ostream.o \
     ${BUILDDIR}/asm_marshal.o \
     ${BUILDDIR}/asm_cfg.o \
     ${BUILDDIR}/prototypes.o
 
-$(BINDIR)/disassemble: ${DISASM_OBJECTS} 
-	@printf "$@ <- $<\n"
-	$(CXX) ${CXXFLAGS} ${DISASM_OBJECTS} -o $@
+$(BINDIR)/disassemble: ${BUILDDIR}/disassemble.o ${DISASM_OBJECTS}
+	@printf "$@ <- $^\n"
+	@$(CXX) ${CXXFLAGS} $^ -o $@
 
 clean:
 	rm -f $(BINDIR)/check $(BINDIR)/disassemble $(BUILDDIR)/*.o
