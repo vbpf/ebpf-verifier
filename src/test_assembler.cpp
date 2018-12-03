@@ -85,13 +85,22 @@ Instruction assemble(std::string text) {
         };
     }
     if (regex_match(text, m, regex(REG ASSIGN DEREF))) {
-        //std::cout << m[0] << " , " << m[1] << " , " << m[2] << " , " << m[3] << " , " << m[4] << "\n";
         int offset = boost::lexical_cast<int>(m[5]);
         return Mem {
             .width = str_to_width.at(m[2]),
             .basereg = reg(m[3]),
             .offset =  (m[4].str() == "-" ? -offset : +offset),
             .value = (Mem::Load)boost::lexical_cast<int>(m[1]),
+        };
+    }
+    if (regex_match(text, m, regex(DEREF ASSIGN REG))) {
+        //std::cout << m[0] << " , " << m[1] << " , " << m[2] << " , " << m[3] << " , " << m[4] << "\n";
+        int offset = boost::lexical_cast<int>(m[4]);
+        return Mem {
+            .width = str_to_width.at(m[1]),
+            .basereg = reg(m[2]),
+            .offset =  (m[3].str() == "-" ? -offset : +offset),
+            .value = (Mem::StoreReg)boost::lexical_cast<int>(m[5]),
         };
     }
     return Undefined{ 0 };
@@ -173,6 +182,18 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
             assemble_disasm("r8 = *(u64 *)(r1 - 43)");
 
             REQUIRE_THROWS(assemble("r8 = *(u15 *)(r1 - 43)"));
+        }
+        SECTION( "Store Reg" ) {
+            assemble_disasm("*(u8 *)(r2 + 1) = r0");
+            assemble_disasm("*(u16 *)(r0 + 12) = r1");
+            assemble_disasm("*(u32 *)(r10 + 31) = r5");
+            assemble_disasm("*(u64 *)(r1 + 43) = r9");
+            assemble_disasm("*(u8 *)(r2 - 1) = r1");
+            assemble_disasm("*(u16 *)(r0 - 12) = r3");
+            assemble_disasm("*(u32 *)(r10 - 31) = r4");
+            assemble_disasm("*(u64 *)(r1 - 43) = r8");
+
+            REQUIRE_THROWS(assemble("*(u15 *)(r1 - 43) = r8"));
         }
     }
 
