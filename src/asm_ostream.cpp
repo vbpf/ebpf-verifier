@@ -203,6 +203,12 @@ void print(std::ostream& os, Instruction const& ins, pc_t pc) {
     std::visit(InstructionPrinterVisitor{os, label_to_offset_string(pc)}, ins);
 }
 
+string to_string(Instruction const& ins) {
+    std::stringstream str;
+    print(str, ins, 0);
+    return str.str();
+}
+
 void print(const Program& prog) {
     pc_t pc = 0;
     for (auto ins : prog.code) {

@@ -3,6 +3,7 @@
 counter/samples/*
 **/#*
 bin/check
+bin/test
 bin/disassemble
 .vscode/*
 logs/*

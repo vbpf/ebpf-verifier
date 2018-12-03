@@ -10,11 +10,6 @@
 using std::vector;
 using std::string;
 
-// implemented in asm_marshal
-vector<ebpf_inst> marshal(Instruction ins, pc_t pc);
-
-vector<ebpf_inst> marshal(vector<Instruction> insts);
-
 template <typename T> 
 void compare(string field, T actual, T expected) {
     if (actual != expected)
@@ -289,10 +284,9 @@ static auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, pc_t pc) -> 
     }
 }
 
-Program parse(vector<ebpf_inst> insts)
+vector<Instruction> parse(vector<ebpf_inst> insts)
 {
-    Program res;
-    vector<Instruction>& prog = res.code;
+    vector<Instruction> prog;
     int exit_count = 0;
     if (insts.size() == 0) {
         throw std::invalid_argument("Zero length programs are not allowed");
@@ -349,7 +343,7 @@ Program parse(vector<ebpf_inst> insts)
         }
     }
     if (exit_count == 0) note("no exit instruction");
-    return res;
+    return prog;
 }
 
 std::variant<Program, string> parse(std::istream& is, size_t nbytes) {
@@ -367,7 +361,7 @@ std::variant<Program, string> parse(std::istream& is, size_t nbytes) {
                 std::cout << "Note (" << pc << "): " << s << "\n";
             }
         }
-        return res;
+        return Program { res };
     } catch (InvalidInstruction& arg) {
         std::cerr << arg.what() << "\n";
         return arg.what();

@@ -9,6 +9,8 @@
 
 #include <boost/lexical_cast.hpp>
 
+#include "linux_ebpf.hpp"
+
 using Label = std::string;
 
 struct Imm {
@@ -135,6 +137,10 @@ struct Program {
 constexpr int STACK_SIZE=512;
 
 std::variant<Program, std::string> parse(std::istream& is, size_t nbytes);
+std::vector<Instruction> parse(std::vector<ebpf_inst> insts);
+
+std::vector<ebpf_inst> marshal(Instruction ins, pc_t pc);
+std::vector<ebpf_inst> marshal(std::vector<Instruction> insts);
 
 
 inline pc_t label_to_pc(Label label) {
@@ -167,6 +173,8 @@ Cfg to_nondet(const Cfg& simple_cfg);
 
 void print(const Program& prog);
 void print(const Cfg& cfg, bool nondet);
+
+std::string to_string(Instruction const& ins);
 
 void print_stats(const Program& prog);
 
