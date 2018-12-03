@@ -53,23 +53,29 @@ static void link(Cfg& cfg, Label from, optional<Label> to) {
 static vector<Instruction> expand_lockadd(LockAdd lock)
 {
     return {
-        Mem{
-            .width = lock.width,
-            .basereg = lock.basereg,
-            .offset = 0,
-            .value = Mem::Load{11},
+        Mem {
+            Deref {
+                .width = lock.access.width,
+                .basereg = lock.access.basereg,
+                .offset = 0,
+            },
+            .value = Reg{11},
+            ._is_load = true,
         },
-        Bin{
+        Bin {
             .op = Bin::Op::ADD,
             .is64 = false,
             .dst = Reg{11},
-            .v = lock.offset,
+            .v = lock.access.offset,
         },
-        Mem{
-            .width = lock.width,
-            .basereg = lock.basereg,
-            .offset = 0,
-            .value = Mem::StoreReg{11},
+        Mem {
+            Deref {
+                .width = lock.access.width,
+                .basereg = lock.access.basereg,
+                .offset = 0,
+            },
+            .value = Reg{11},
+            ._is_load = false,
         }
     };
 }

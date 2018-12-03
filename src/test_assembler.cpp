@@ -9,8 +9,11 @@
 using std::regex;
 using std::regex_match;
 
-#define REG R"_(r(\d+)\s*)_"
+#define REG R"_((r\d+)\s*)_"
 #define IMM R"_(([-+]?\d+))_"
+#define REG_OR_IMM R"_(([r+-]?\d+)\s*)_"
+
+#define FUNC IMM
 #define OPASSIGN R"_(\s*(\S*)=\s*)_"
 #define ASSIGN R"_(\s*=\s*)_"
 #define LONGLONG R"_(\s*(ll|)\s*)_"
@@ -21,6 +24,9 @@ using std::regex_match;
 #define PAREN(x) LPAREN x RPAREN
 #define STAR R"_(\s*\*\s*)_"
 #define DEREF STAR PAREN("u(\\d+)" STAR) PAREN(REG PLUSMINUS IMM)
+
+#define CMPOP R"_(\s*(&?[=!]=|s?[<>]=?)\s*)_"
+#define LABEL R"_(\s*<(\w[a-zA-Z_0-9]*)>\s*)_"
 
 const std::map<std::string, Bin::Op> str_to_binop =
 {
@@ -38,6 +44,22 @@ const std::map<std::string, Bin::Op> str_to_binop =
     {"^"  , Bin::Op::XOR },
 };
 
+const std::map<std::string, Condition::Op> str_to_cmpop =
+{
+    {"==" , Condition::Op::EQ  },
+    {"!=" , Condition::Op::NE  },
+    {"&==", Condition::Op::SET },
+    {"&!=", Condition::Op::NSET},
+    {"<"  , Condition::Op::LT  },
+    {"<=" , Condition::Op::LE  },
+    {">"  , Condition::Op::GT  },
+    {">=" , Condition::Op::GE  },
+    {"s<" , Condition::Op::SLT },
+    {"s<=", Condition::Op::SLE },
+    {"s>" , Condition::Op::SGT },
+    {"s>=", Condition::Op::SGE },
+};
+
 const std::map<std::string, Width> str_to_width =
 {
     {"8" , Width::B },
@@ -47,7 +69,8 @@ const std::map<std::string, Width> str_to_width =
 };
 
 Reg reg(std::string s) {
-    return Reg{boost::lexical_cast<int>(s)};
+    assert(s.at(0) == 'r');
+    return Reg{boost::lexical_cast<int>(s.substr(1))};
 }
 
 Imm imm(std::string s) {
@@ -55,12 +78,20 @@ Imm imm(std::string s) {
     return Imm{boost::lexical_cast<int>(s)};
 }
 
+Value reg_or_imm(std::string s) {
+    if(s.at(0) == 'r')
+        return reg(s);
+    else
+        return imm(s);
+}
+
+
 Instruction assemble(std::string text) {
     std::smatch m;
     if (regex_match(text, m, regex("exit"))) {
         return Exit{};
     }
-    if (regex_match(text, m, regex(R"_(call\s(\d+))_"))) {
+    if (regex_match(text, m, regex("call " FUNC))) {
         int func = boost::lexical_cast<int>(m[1]);
         return Call {
             .func = func
@@ -88,31 +119,39 @@ Instruction assemble(std::string text) {
         // TODO: remove redundancy: Load / StoreReg / StoreImm
         int offset = boost::lexical_cast<int>(m[5]);
         return Mem {
-            .width = str_to_width.at(m[2]),
-            .basereg = reg(m[3]),
-            .offset =  (m[4].str() == "-" ? -offset : +offset),
-            .value = (Mem::Load)boost::lexical_cast<int>(m[1]),
+            Deref{
+                .width = str_to_width.at(m[2]),
+                .basereg = reg(m[3]),
+                .offset = (m[4].str() == "-" ? -offset : +offset),
+            },
+            .value = reg(m[1]),
+            ._is_load = true,
         };
     }
-    if (regex_match(text, m, regex(DEREF ASSIGN REG))) {
+    if (regex_match(text, m, regex(DEREF ASSIGN REG_OR_IMM))) {
         int offset = boost::lexical_cast<int>(m[4]);
         return Mem {
-            .width = str_to_width.at(m[1]),
-            .basereg = reg(m[2]),
-            .offset =  (m[3].str() == "-" ? -offset : +offset),
-            .value = (Mem::StoreReg)boost::lexical_cast<int>(m[5]),
+            Deref{
+                .width = str_to_width.at(m[1]),
+                .basereg = reg(m[2]),
+                .offset =  (m[3].str() == "-" ? -offset : +offset),
+            },
+            .value = reg_or_imm(m[5]),
+            ._is_load = false,
         };
     }
-    if (regex_match(text, m, regex(DEREF ASSIGN IMM))) {
-        //std::cout << m[0] << " , " << m[1] << " , " << m[2] << " , " << m[3] << " , " << m[4] << "\n";
-        int offset = boost::lexical_cast<int>(m[4]);
-        return Mem {
-            .width = str_to_width.at(m[1]),
-            .basereg = reg(m[2]),
-            .offset =  (m[3].str() == "-" ? -offset : +offset),
-            .value = (Mem::StoreImm)boost::lexical_cast<int>(m[5]),
+    if (regex_match(text, m, regex("if " REG CMPOP REG_OR_IMM " goto " IMM LABEL))) {
+        // We ignore second IMM
+        return Jmp {
+            .cond = Condition{
+                .op = str_to_cmpop.at(m[2]),
+                .left = reg(m[1]),
+                .right = reg_or_imm(m[3]),
+            },
+            .target = m[5]
         };
     }
+        //std::cout << m[1] << "," << m[2] << "," << m[3] << "," << m[4] << "," << m[5] << "\n";
     return Undefined{ 0 };
 }
 
@@ -121,7 +160,7 @@ Instruction assemble(std::string text) {
 
 TEST_CASE( "assembler", "[assemble][disasm]" ) {
     SECTION( "Bin" ) {
-        SECTION( "Reg" ) {
+        SECTION( "rX op= rY" ) {
             assemble_disasm("r1 = r0");
             assemble_disasm("r0 = r1");
             assemble_disasm("r5 = r6");
@@ -133,7 +172,7 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
             assemble_disasm("r4 >>>= r5");
             REQUIRE_THROWS(assemble("r3 //= r2"));
         }
-        SECTION( "Imm" ) {
+        SECTION( "rX op= Y" ) {
             assemble_disasm("r1 = 2");
             assemble_disasm("r0 = -3");
             assemble_disasm("r5 = 6");
@@ -146,7 +185,7 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
 
             REQUIRE_THROWS(assemble("r5 //= 4"));
         }
-        SECTION( "Imm ll" ) {
+        SECTION( "rX op= Y ll" ) {
             assemble_disasm("r8 = 1 ll");
             assemble_disasm("r10 = 2 ll");
             assemble_disasm("r3 = 10 ll");
@@ -162,10 +201,6 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
     }
 
     SECTION( "Un" ) {
-        
-    }
-
-    SECTION( "Jmp" ) {
         
     }
 
@@ -225,5 +260,37 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
 
     SECTION( "LockAdd" ) {
         
+    }
+}
+
+std::string labeler(Label l) {
+    const std::map<std::string, std::string> labelmap = {
+        {"LBB0_44", "+21 <LBB0_44>" },
+        {"LBB0_14", "-303 <LBB0_14>" },
+        {"LBB0_31", "+0 <LBB0_31>" },
+    };
+    return labelmap.at(l);
+}
+
+#define jmp_assemble_disasm(text) do { REQUIRE(to_string(assemble(text), labeler) == text); } while(0)
+
+TEST_CASE( "Jmp assembler", "[assemble][disasm]" ) {
+    SECTION( "register cmp imm" ) {
+        jmp_assemble_disasm("if r1 == 54 goto +21 <LBB0_44>");
+        jmp_assemble_disasm("if r0 != 13 goto +21 <LBB0_44>");
+        jmp_assemble_disasm("if r1 == 0 goto +21 <LBB0_44>");
+        jmp_assemble_disasm("if r3 < 3 goto -303 <LBB0_14>");
+        jmp_assemble_disasm("if r3 <= 3 goto +0 <LBB0_31>");
+
+        REQUIRE_THROWS(assemble("r3 &!= 10 ll"));
+    }
+    SECTION( "register cmp register" ) {
+        jmp_assemble_disasm("if r2 > r3 goto -303 <LBB0_14>");
+        jmp_assemble_disasm("if r2 >= r3 goto -303 <LBB0_14>");
+        jmp_assemble_disasm("if r4 s> r1 goto -303 <LBB0_14>");
+        jmp_assemble_disasm("if r2 s>= r3 goto -303 <LBB0_14>");
+        jmp_assemble_disasm("if r3 s< r2 goto -303 <LBB0_14>");
+        jmp_assemble_disasm("if r1 s<= r4 goto -303 <LBB0_14>");
+        jmp_assemble_disasm("if r1 &== r4 goto -303 <LBB0_14>");
     }
 }

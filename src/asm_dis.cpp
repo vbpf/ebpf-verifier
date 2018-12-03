@@ -187,13 +187,14 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
             if (basereg == 10 && (inst.offset + access_width(inst.opcode) > 0 || inst.offset < -STACK_SIZE)) {
                 note("Stack access out of bounds");
             }
-            return Mem{ 
-                .width = width,
-                .basereg = Reg{basereg},
-                .offset = inst.offset,
-                .value = isLoad ? (Mem::Value)Mem::Load{inst.dst}
-                       : (isImm ? (Mem::Value)Mem::StoreImm{inst.imm}
-                                : (Mem::Value)Mem::StoreReg{inst.src}),
+            return Mem {
+                Deref {
+                    .width = width,
+                    .basereg = Reg{basereg},
+                    .offset = inst.offset,
+                },
+                .value = isImm ? Imm{inst.imm} : Reg{inst.dst},
+                ._is_load = isLoad,
             };
         }
 
@@ -205,10 +206,12 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
 
         case EBPF_XADD:
             return LockAdd {
-                .width = width,
+                Deref{
+                    .width = width,
+                    .basereg = Reg{inst.dst},
+                    .offset = inst.offset,
+                },
                 .valreg = Reg{inst.src},
-                .basereg = Reg{inst.dst},
-                .offset = inst.offset,
             };
         case EBPF_MEM_UNUSED: throw UnsupportedMemoryMode{"Memory mode 7"};
     }

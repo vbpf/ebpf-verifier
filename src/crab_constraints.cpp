@@ -996,31 +996,31 @@ vector<basic_block_t*> instruction_builder_t::operator()(Packet const& b) {
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(Mem const& b) {
-    dom_t mem_reg =  machine.regs.at(b.basereg);
-    bool mem_is_fp = (int)b.basereg == 10;
-    int width = (int)b.width;
-    int offset = (int)b.offset;
-    return std::visit(overloaded{
-        [&](Mem::Load reg) {
-            // data = mem[offset]
-            dom_t data_reg = machine.reg((Reg)reg);
-            if (mem_is_fp) {
-                return exec_direct_stack_load(block, data_reg, offset, width);
-            } else {
-                return exec_mem_access_indirect(block, true, false, mem_reg, data_reg, offset, width);
-            }
-        },
-        [&](Mem::StoreReg reg) {
+    dom_t mem_reg =  machine.regs.at(b.access.basereg);
+    bool mem_is_fp = (int)b.access.basereg == 10;
+    int width = (int)b.access.width;
+    int offset = (int)b.access.offset;
+    if (b.isLoad()) {
+        // data = mem[offset]
+        assert(std::holds_alternative<Reg>(b.value));
+        dom_t data_reg = machine.reg(std::get<Reg>(b.value));
+        if (mem_is_fp) {
+            return exec_direct_stack_load(block, data_reg, offset, width);
+        } else {
+            return exec_mem_access_indirect(block, true, false, mem_reg, data_reg, offset, width);
+        }
+    } else {
+        if (std::holds_alternative<Reg>(b.value)) {
             // mem[offset] = data
-            dom_t data_reg = machine.reg((Reg)reg);
+            dom_t data_reg = machine.reg(std::get<Reg>(b.value));
             if (mem_is_fp) {
                 return exec_direct_stack_store(block, data_reg, offset, width);
             } else {
                 return exec_mem_access_indirect(block, false, false, mem_reg, data_reg, offset, width);
             }
-        },
-        [&](Mem::StoreImm imm)  {
+        } else {
             // mem[offset] = immediate  
+            auto imm = std::get<Imm>(b.value).v;
             if (mem_is_fp) {
                 return exec_direct_stack_store_immediate(block, offset, width, imm);
             } else {
@@ -1031,7 +1031,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Mem const& b) {
                 return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, machine.num}, offset, width);
             } 
         }
-    }, b.value);
+    }
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(LockAdd const& b) {
