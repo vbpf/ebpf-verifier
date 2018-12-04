@@ -69,7 +69,7 @@ private:
         return {
             ebpf_inst {
                 .opcode = static_cast<uint8_t>(EBPF_CLS_LD | access_width(Width::DW)),
-                .dst = static_cast<uint8_t>(dst),
+                .dst = dst.v,
                 .src = static_cast<uint8_t>(isFd ? 1 : 0),
                 .offset = 0,
                 .imm = imm
@@ -99,7 +99,7 @@ public:
 
         ebpf_inst res{
             .opcode = static_cast<uint8_t>((b.is64 ? EBPF_CLS_ALU64 :EBPF_CLS_ALU) | (op(b.op) << 4)),
-            .dst = static_cast<uint8_t>(b.dst),
+            .dst = b.dst.v,
             .src = 0,
             .offset = 0,
             .imm = 0
@@ -107,7 +107,7 @@ public:
         std::visit(overloaded{
             [&](Reg right) { 
                 res.opcode |= EBPF_SRC_REG;
-                res.src = static_cast<uint8_t>(right); },
+                res.src = right.v; },
             [&](Imm right) { res.imm = right.v; }
         }, b.v);
         return { res };
@@ -118,7 +118,7 @@ public:
             return { ebpf_inst{
                 // FIX: should be EBPF_CLS_ALU / EBPF_CLS_ALU64
                 .opcode = static_cast<uint8_t>(EBPF_CLS_ALU | 0x3 | (0x8 << 4)),
-                .dst = static_cast<uint8_t>(b.dst),
+                .dst = b.dst.v,
                 .imm = imm(b.op),
             } };
         } else {
@@ -126,7 +126,7 @@ public:
             uint8_t cls = static_cast<uint8_t>(b.op == Un::Op::LE64 ? EBPF_CLS_ALU64 : EBPF_CLS_ALU);
             return { ebpf_inst{
                 .opcode = static_cast<uint8_t>(cls | 0x8 | (0xd << 4) ),
-                .dst = static_cast<uint8_t>(b.dst),
+                .dst = b.dst.v,
                 .imm = imm(b.op),
             } };
         }
@@ -164,13 +164,13 @@ public:
         if (b.cond) {
             ebpf_inst res{
                 .opcode = static_cast<uint8_t>(EBPF_CLS_JMP | (op(b.cond->op) << 4)),
-                .dst = static_cast<uint8_t>(b.cond->left),
+                .dst = b.cond->left.v,
                 .offset = label_to_offset(b.target),
             };
             visit(overloaded{
                 [&](Reg right) { 
                     res.opcode |= EBPF_SRC_REG;
-                    res.src = static_cast<uint8_t>(right);
+                    res.src = right.v;
                 },
                 [&](Imm right) { res.imm = right.v; }
             }, b.cond->right);
@@ -189,27 +189,28 @@ public:
     }
 
     vector<ebpf_inst> operator()(Mem const& b) {
+        Deref access = b.access;
         ebpf_inst res{
-            .opcode = static_cast<uint8_t>((EBPF_MEM << 5) | access_width(b.width)),
-            .offset = static_cast<int16_t>(b.offset),
+            .opcode = static_cast<uint8_t>((EBPF_MEM << 5) | access_width(access.width)),
+            .offset = static_cast<int16_t>(access.offset),
         };
-        visit(overloaded{
-            [&](Mem::Load reg) {
-                res.opcode |= EBPF_CLS_LD | 0x1;
-                res.dst = static_cast<uint8_t>(reg);
-                res.src = static_cast<uint8_t>(b.basereg);
-            },
-            [&](Mem::StoreReg reg) {
-                res.opcode |= EBPF_CLS_ST | 0x1;
-                res.dst = static_cast<uint8_t>(b.basereg);
-                res.src = static_cast<uint8_t>(reg);
-            },
-            [&](Mem::StoreImm imm) {
-                res.opcode |= EBPF_CLS_ST | 0x0;
-                res.dst = static_cast<uint8_t>(b.basereg),
-                res.imm = imm;
+        if (b.isLoad()) {
+            if (!std::holds_alternative<Reg>(b.value))
+                throw std::runtime_error(std::string("LD IMM: ") + to_string(b));
+            res.opcode |= EBPF_CLS_LD | 0x1;
+            res.dst = static_cast<uint8_t>(std::get<Reg>(b.value).v);
+            res.src = static_cast<uint8_t>(access.basereg.v);
+        } else {
+            res.opcode |= EBPF_CLS_ST;
+            res.dst = access.basereg.v;
+            if (std::holds_alternative<Reg>(b.value)) {
+                res.opcode |= 0x1;
+                res.src = std::get<Reg>(b.value).v;
+            } else {
+                res.opcode |= 0x0;
+                res.imm = std::get<Imm>(b.value).v;
             }
-        }, b.value);
+        }
         return { res };
     }
 
@@ -220,7 +221,7 @@ public:
         };
         if (b.regoffset) {
             res.opcode |= (EBPF_IND << 5);
-            res.src = static_cast<uint8_t>(*b.regoffset);
+            res.src = b.regoffset->v;
         } else {
             res.opcode |= (EBPF_ABS << 5);
         }
@@ -230,10 +231,10 @@ public:
     vector<ebpf_inst> operator()(LockAdd const& b) {
         return { 
             ebpf_inst{
-                .opcode = static_cast<uint8_t>(EBPF_CLS_ST | 0x1 | (EBPF_XADD << 5) | access_width(b.width)),
-                .dst = static_cast<uint8_t>(b.basereg),
-                .src = static_cast<uint8_t>(b.valreg),
-                .offset = static_cast<int16_t>(b.offset),
+                .opcode = static_cast<uint8_t>(EBPF_CLS_ST | 0x1 | (EBPF_XADD << 5) | access_width(b.access.width)),
+                .dst = b.access.basereg.v,
+                .src = b.valreg.v,
+                .offset = static_cast<int16_t>(b.access.offset),
                 .imm = 0
             }
         };

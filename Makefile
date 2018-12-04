@@ -10,6 +10,7 @@ OBJECTS := $(filter-out ${BUILDDIR}/disassemble.o,$(OBJECTS))
 OBJECTS := $(filter-out ${BUILDDIR}/main.o,$(OBJECTS))
 OBJECTS := $(filter-out ${BUILDDIR}/test.o,$(OBJECTS))
 OBJECTS := $(filter-out ${BUILDDIR}/test_marshal.o,$(OBJECTS))
+OBJECTS := $(filter-out ${BUILDDIR}/test_assembler.o,$(OBJECTS))
 
 TEST_SOURCES := $(wildcard ${SRCDIR}/test*.cpp)
 TEST_OBJECTS := $(TEST_SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)

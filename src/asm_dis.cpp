@@ -101,6 +101,7 @@ static auto getAluOp(ebpf_inst inst) -> std::variant<Bin::Op, Un::Op> {
                     return Un::Op::LE64;
             }
         case 0xe : throw InvalidInstruction{"Invalid ALU op 0xe"};
+        case 0xf : throw InvalidInstruction{"Invalid ALU op 0xf"};
     }
     assert(false);
 }
@@ -155,8 +156,8 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
     bool isLD = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD;
     switch ((inst.opcode & EBPF_MODE_MASK) >> 5) {
         case 0:
-            compare("fail:", inst.opcode, (uint8_t)0x11);
-            assert(false);
+            note("Bad instruction");
+            return Undefined{(int)inst.opcode};
         case EBPF_ABS:
             if (!isLD) throw UnsupportedMemoryMode{"ABS but not LD"};
             if (width == Width::DW) note("invalid opcode LDABSDW");
@@ -181,20 +182,25 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
             bool isLoad = getMemIsLoad(inst.opcode);
             if (isLoad && inst.dst == 10) note("Cannot modify r10");
             bool isImm = !(inst.opcode & 1);
+            
             assert(!(isLoad && isImm));
-            int basereg = isLoad ? inst.src : inst.dst;
+            uint8_t basereg = isLoad ? inst.src : inst.dst;
 
             if (basereg == 10 && (inst.offset + access_width(inst.opcode) > 0 || inst.offset < -STACK_SIZE)) {
                 note("Stack access out of bounds");
             }
-            return Mem{ 
-                .width = width,
-                .basereg = Reg{basereg},
-                .offset = inst.offset,
-                .value = isLoad ? (Mem::Value)Mem::Load{inst.dst}
-                       : (isImm ? (Mem::Value)Mem::StoreImm{inst.imm}
-                                : (Mem::Value)Mem::StoreReg{inst.src}),
+            auto res = Mem {
+                Deref {
+                    .width = width,
+                    .basereg = Reg{basereg},
+                    .offset = inst.offset,
+                },
+                .value = isLoad ? (Value)Reg{inst.dst}
+                       : (isImm ? (Value)Imm{inst.imm}
+                                : (Value)Reg{inst.src}),
+                ._is_load = isLoad,
             };
+            return res;
         }
 
         case EBPF_LEN:
@@ -205,10 +211,12 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
 
         case EBPF_XADD:
             return LockAdd {
-                .width = width,
+                Deref{
+                    .width = width,
+                    .basereg = Reg{inst.dst},
+                    .offset = inst.offset,
+                },
                 .valreg = Reg{inst.src},
-                .basereg = Reg{inst.dst},
-                .offset = inst.offset,
             };
         case EBPF_MEM_UNUSED: throw UnsupportedMemoryMode{"Memory mode 7"};
     }
@@ -218,7 +226,7 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
 static auto makeAluOp(ebpf_inst inst) -> Instruction {
     if (inst.dst == 10) note("Invalid target r10");
     return std::visit(overloaded{
-        [&](Un::Op op) -> Instruction { return Un{ .op = op, .dst = inst.dst }; },
+        [&](Un::Op op) -> Instruction { return Un{ .op = op, .dst = Reg{inst.dst} }; },
         [&](Bin::Op op) -> Instruction {
             Bin res{ 
                 .op = op,
@@ -261,15 +269,15 @@ static auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& 
 }
 
 static auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, pc_t pc) -> Instruction {
-    switch (inst.opcode) {
-        case EBPF_OP_CALL:
+    switch ((inst.opcode >> 4) & 0xF) {
+        case 0x8:
             if (!is_valid_prototype(inst.imm)) note("invalid function id ");
             return Call{ inst.imm };
-        case EBPF_OP_EXIT: return Exit{};
+        case 0x9: return Exit{};
         default: {
             pc_t new_pc = pc + 1 + inst.offset;
             if (new_pc >= insts.size()) note("jump out of bounds");
-            if (insts[new_pc].opcode == 0) note("jump to middle of lddw");
+            else if (insts[new_pc].opcode == 0) note("jump to middle of lddw");
 
             auto cond = inst.opcode == EBPF_OP_JA ? std::optional<Condition>{} : Condition{
                 .op = getJmpOp(inst.opcode),
@@ -323,12 +331,11 @@ vector<Instruction> parse(vector<ebpf_inst> insts)
             case EBPF_CLS_UNUSED:
                 throw InvalidInstruction{"Invalid class 0x6"};
         }
+        /*
         vector<ebpf_inst> marshalled = marshal(new_ins[0], pc);
         ebpf_inst actual = marshalled[0];
         if (std::memcmp(&actual, &inst, sizeof(inst))) {
-            //std::cerr << "new: ";
-            //print(pc, new_ins[0]);
-            //std::cerr << "\n";
+            std::cerr << "new: " << new_ins[0] << "\n";
             compare("opcode", actual.opcode, inst.opcode);
             compare("dst", actual.dst, inst.dst);
             compare("src", actual.src, inst.src);
@@ -336,6 +343,7 @@ vector<Instruction> parse(vector<ebpf_inst> insts)
             compare("imm", actual.imm, inst.imm);
             std::cerr << "\n";
         }
+        */
         for (auto ins : new_ins) {
             prog.push_back(ins);
             pc++;

@@ -1,12 +1,20 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "asm.hpp"
 using std::string;
 
 static auto readfile(string path)
 {
+    struct stat path_stat;
+    stat(path.c_str(), &path_stat);
+    if (!S_ISREG(path_stat.st_mode)) {
+        std::cerr << "Cannot read from a directory: " << path << "\n";
+        exit(65);
+    }
     using std::ifstream;
     ifstream is(path, ifstream::ate | ifstream::binary);
     if (is.fail()) {

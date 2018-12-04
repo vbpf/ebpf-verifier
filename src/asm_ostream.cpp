@@ -32,7 +32,7 @@ static string op(Condition::Op op) {
         case Condition::Op::EQ : return "==";
         case Condition::Op::NE : return "!=";
         case Condition::Op::SET: return "&==";
-        case Condition::Op::NSET: return "&!="; // not in ebpf
+        case Condition::Op::NSET:return "&!="; // not in ebpf
         case Condition::Op::LT : return "<";
         case Condition::Op::LE : return "<=";
         case Condition::Op::GT : return ">";
@@ -55,19 +55,22 @@ static const char* size(Width w) {
 
 struct InstructionPrinterVisitor {
     std::ostream& os_;
-    std::function<auto(Label)->string> label_to_target = [](Label l) { return l; };
+    LabelTranslator labeler = [](Label l) { return l; };
 
     void operator()(Undefined const& a) {
         os_ << "Undefined{" << a.opcode << "}";
     }
 
     void operator()(LoadMapFd const& b) {
-        os_ << "r" << b.dst << " = fd " << b.mapfd;
+        os_ << b.dst << " = fd " << b.mapfd;
     }
 
     void operator()(Bin const& b) {
-        os_ << "r" << b.dst << " " << op(b.op) << "= ";
-        std::visit(*this, b.v);
+        os_ << b.dst << " " << op(b.op) << "= ";
+        if (b.lddw)
+            os_ << std::get<Imm>(b.v).v << " ll";
+        else
+           std::visit(*this, b.v);
         if (!b.is64)
             os_ << " & 0xFFFFFFFF";
     }
@@ -78,7 +81,7 @@ struct InstructionPrinterVisitor {
             case Un::Op::LE32: os_ << "le32()"; break;
             case Un::Op::LE64: os_ << "le64()"; break;
             case Un::Op::NEG:
-                os_ << "r" << b.dst << " = -r" << b.dst;
+                os_ << b.dst << " = -" << b.dst;
                 break;
         }
     }
@@ -88,23 +91,23 @@ struct InstructionPrinterVisitor {
     }
 
     void operator()(Exit const& b) {
-        os_ << "return r0";
+        os_ << "exit";
     }
 
     void operator()(Jmp const& b) {
         if (b.cond) {
             os_ << "if "
-                << "r" << b.cond->left
+                << b.cond->left
                 << " " << op(b.cond->op) << " ";
             std::visit(*this, b.cond->right);
             os_ << " ";
         }
-        os_ << "goto " << label_to_target(b.target);
+        os_ << "goto " << labeler(b.target);
     }
 
     void operator()(Assume const& b) {
         os_ << "assume "
-            << "r" << b.cond.left
+            << b.cond.left
             << " " << op(b.cond.op) << " ";
         std::visit(*this, b.cond.right);
         os_ << " ";
@@ -117,7 +120,7 @@ struct InstructionPrinterVisitor {
         os_ << "r0 = ";
         os_ << "*(" << s << " *)skb[";
         if (b.regoffset)
-            os_ << "r" << *b.regoffset;
+            os_ << *b.regoffset;
         if (b.offset != 0) {
             if (b.regoffset) os_ << " + ";
             os_ << b.offset;
@@ -125,36 +128,39 @@ struct InstructionPrinterVisitor {
         os_ << "]";
     }
 
+    void print(Deref const& access) {
+        string sign = access.offset < 0 ? " - " : " + ";
+        int offset = std::abs(access.offset); // what about INT_MIN? 
+        os_ << "*(" << size(access.width) << " *)";
+        os_ << "(" << access.basereg << sign << offset << ")";
+    }
+
     void operator()(Mem const& b) {
-        const char* s = size(b.width);
         if (b.isLoad()) {
-            os_ << "r" << (int)std::get<Mem::Load>(b.value) << " = ";
+            std::visit(*this, b.value);
+            os_ << " = ";
         }
-        os_ << "*(" << s << " *)(r" << b.basereg << " + " << b.offset << ")";
+        print(b.access);
         if (!b.isLoad()) {
             os_ << " = ";
-            if (std::holds_alternative<Mem::StoreImm>(b.value))
-                os_ << std::get<Mem::StoreImm>(b.value);
-            else 
-                os_ << "r" << std::get<Mem::StoreReg>(b.value);
+            std::visit(*this, b.value);
         }
     }
 
     void operator()(LockAdd const& b) {
-        const char* s = size(b.width);
         os_ << "lock ";
-        os_ << "*(" << s << " *)(r" << b.basereg << " + " << b.offset << ")";
-        os_ << " += r" << b.valreg;
+        print(b.access);
+        os_ << " += " << b.valreg;
     }
 
     void operator()(Imm imm) {
         if (imm.v >= 0xFFFFFFFFLL)
             os_ << imm.v << " ll";
         else
-            os_ << (int32_t)imm.v;
+            os_ << imm.v;
     }
     void operator()(Reg reg) {
-        os_ << "r" << reg;
+        os_ << reg;
     }
 };
 
@@ -203,10 +209,19 @@ void print(std::ostream& os, Instruction const& ins, pc_t pc) {
     std::visit(InstructionPrinterVisitor{os, label_to_offset_string(pc)}, ins);
 }
 
-string to_string(Instruction const& ins) {
+string to_string(Instruction const& ins, LabelTranslator labeler) {
     std::stringstream str;
-    print(str, ins, 0);
+    std::visit(InstructionPrinterVisitor{str, labeler}, ins);
     return str.str();
+}
+
+std::ostream& operator<<(std::ostream& os, Instruction const& ins) {
+    std::visit(InstructionPrinterVisitor{os, [](Label l){ return string("<") + l + ">";}}, ins);
+    return os;
+}
+
+string to_string(Instruction const& ins) {
+    return to_string(ins, [](Label l){ return string("<") + l + ">";});
 }
 
 void print(const Program& prog) {

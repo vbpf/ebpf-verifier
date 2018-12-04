@@ -2,8 +2,7 @@
 #include "asm.hpp"
 #include <cstring>
 
-template<typename T>
-static void compare_marshal_unmarshal(const T& ins, bool double_cmd = false) {
+static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = false) {
     std::vector<Instruction> parsed = parse(marshal(ins, 0));
     if (double_cmd) {
         REQUIRE(parsed.size() == 2);
@@ -13,12 +12,12 @@ static void compare_marshal_unmarshal(const T& ins, bool double_cmd = false) {
         REQUIRE(parsed.size() == 1);
     }
     Instruction single = parsed.back();
-    REQUIRE(std::holds_alternative<T>(single));
-    T ins2 = std::get<T>(single);
-    REQUIRE(to_string(ins2) == to_string(ins));
+    REQUIRE(single == ins);
 }
 
-TEST_CASE( "disasm marshal", "[disasm][marshal]" ) {
+static const auto ws = {Width::B, Width::H, Width::W, Width::DW};
+
+TEST_CASE( "disasm_marshal", "[disasm][marshal]" ) {
     SECTION( "Bin" ) {
         auto ops = {
             Bin::Op::MOV,
@@ -106,16 +105,8 @@ TEST_CASE( "disasm marshal", "[disasm][marshal]" ) {
         compare_marshal_unmarshal(Exit{});
     }
     
-    SECTION( "Mem" ) {
-        for (Width w : {Width::B, Width::H, Width::W, Width::DW}) {
-            compare_marshal_unmarshal(Mem{.width = w, .basereg = Reg{1}, .offset = 7, .value = Mem::Load{ 2 } });
-            compare_marshal_unmarshal(Mem{.width = w, .basereg = Reg{1}, .offset = 7, .value = Mem::StoreImm{ 5 } });
-            compare_marshal_unmarshal(Mem{.width = w, .basereg = Reg{1}, .offset = 7, .value = Mem::StoreReg{ 2 } });
-        }
-    }
-
     SECTION( "Packet" ) {
-        for (Width w : {Width::B, Width::H, Width::W, Width::DW}) {
+        for (Width w : ws) {
             compare_marshal_unmarshal(Packet{.width = w, .offset = 7, .regoffset = {}});
             compare_marshal_unmarshal(Packet{.width = w, .offset = 7, .regoffset = Reg{ 2 }});
         }
@@ -123,7 +114,82 @@ TEST_CASE( "disasm marshal", "[disasm][marshal]" ) {
 
     SECTION( "LockAdd" ) {
         for (Width w : {Width::B, Width::H, Width::W, Width::DW}) {
-            compare_marshal_unmarshal(LockAdd {.width = w, .valreg = Reg{ 1 }, .basereg = Reg{ 2 }, .offset = 17});
+            Deref access{ .width = w, .basereg = Reg{2}, .offset = 17 };
+            compare_marshal_unmarshal(LockAdd{access, .valreg = Reg{ 1 }});
         }
     }
+}
+
+
+static uint8_t access_width(Width w)
+{
+    switch (w) {
+        case Width::B : return EBPF_SIZE_B;
+        case Width::H : return EBPF_SIZE_H;
+        case Width::W : return EBPF_SIZE_W;
+        case Width::DW: return EBPF_SIZE_DW;
+    }
+}
+
+TEST_CASE( "marshal", "[disasm][marshal]" ) {
+    SECTION( "Load" ) {
+        Deref access{ .width = Width::B, .basereg = Reg{4}, .offset = 6 };
+        Mem m{access, .value = Reg{ 3 }, ._is_load=true };
+        auto ins = marshal(m, 0).at(0);
+        ebpf_inst expect{
+            .opcode = (uint8_t)(EBPF_CLS_LD | (EBPF_MEM << 5) | access_width(Width::B) | 0x1),
+            .dst = 3, .src = 4, .offset = 6, .imm = 0,
+        };
+        REQUIRE(ins.dst == expect.dst);
+        REQUIRE(ins.src == expect.src);
+        REQUIRE(ins.offset == expect.offset);
+        REQUIRE(ins.imm == expect.imm);
+        REQUIRE(ins.opcode == expect.opcode);
+    }
+    SECTION( "Load Imm" ) {
+        Deref access{ .width = Width::B, .basereg = Reg{4}, .offset = 6 };
+        REQUIRE_THROWS(marshal(Mem {access, .value = Imm{ 3 }, ._is_load=true }, 0));
+    }
+    SECTION( "Store" ) {
+        Deref access{ .width = Width::B, .basereg = Reg{4}, .offset = 6 };
+        auto ins = marshal(Mem {access, .value = Reg{ 3 }, ._is_load=false }, 0).at(0);
+        REQUIRE(ins.src == 3);
+        REQUIRE(ins.dst == 4);
+        REQUIRE(ins.offset == 6);
+        REQUIRE(ins.imm == 0);
+        REQUIRE(ins.opcode == (uint8_t)(EBPF_CLS_ST | (EBPF_MEM << 5) | access_width(Width::B) | 0x1));
+    }
+    SECTION( "StoreImm" ) {
+        Deref access{ .width = Width::B, .basereg = Reg{4}, .offset = 6 };
+        auto ins = marshal(Mem {access, .value = Imm{ 3 }, ._is_load=false }, 0).at(0);
+        REQUIRE(ins.src == 0);
+        REQUIRE(ins.dst == 4);
+        REQUIRE(ins.offset == 6);
+        REQUIRE(ins.imm == 3);
+        REQUIRE(ins.opcode == (uint8_t)(EBPF_CLS_ST | (EBPF_MEM << 5) | access_width(Width::B) | 0x0));
+    }
+}
+
+TEST_CASE( "disasm_marshal_Mem", "[disasm][marshal]" ) {
+    SECTION( "Load" ) {
+        for (Width w : ws) {
+            Deref access{ .basereg = Reg{4}, .offset = 6 };
+            access.width = w;
+            compare_marshal_unmarshal(Mem {access, .value = Reg{ 3 }, ._is_load=true });
+        }
+    }
+    SECTION( "Store Register" ) {
+        for (Width w : ws) {
+            Deref access{ .basereg = Reg{9}, .offset = 8 };
+            access.width = w;
+            compare_marshal_unmarshal(Mem {access, .value = Reg{ 4 }, ._is_load=false });
+        }
+    }
+    SECTION( "Store Immediate" ) {
+        for (Width w : ws) {
+            Deref access{ .basereg = Reg{10}, .offset = 2 };
+            access.width = w;
+            compare_marshal_unmarshal(Mem {access, .value = Imm{ 5 }, ._is_load=false });
+        }
+    }   
 }

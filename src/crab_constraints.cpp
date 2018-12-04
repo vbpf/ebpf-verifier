@@ -127,7 +127,7 @@ struct machine_t final
     var_t num{vfac[std::string("T_NUM")], crab::INT_TYPE, 8};
 
     dom_t& reg(Value v) {
-        return regs[static_cast<int>(std::get<Reg>(v))];
+        return regs[std::get<Reg>(v).v];
     }
 
     void setup_entry(basic_block_t& entry);
@@ -583,13 +583,13 @@ vector<basic_block_t*> instruction_builder_t::operator()(LoadMapFd const& ld) {
     // This is what ARG_CONST_MAP_PTR looks for
     // This is probably the wrong thing to do. should we add an FD type?
     // Here we (probably) need the map structure
-    block.assign(machine.regs[ld.dst].region, T_MAP);
-    block.assign(machine.regs[ld.dst].offset, 0);
+    block.assign(machine.reg(ld.dst).region, T_MAP);
+    block.assign(machine.reg(ld.dst).offset, 0);
     return { &block };
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {    
-    dom_t& dst = machine.regs[bin.dst];
+    dom_t& dst = machine.reg(bin.dst);
     vector<basic_block_t*> res{ &block };
 
     // TODO: add assertion for all operators that the arguments are initialized
@@ -765,7 +765,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(Un const& b) {
-    dom_t& dst = machine.regs[b.dst];
+    dom_t& dst = machine.reg(b.dst);
 
     switch (b.op) {
     case Un::Op::LE16:
@@ -984,7 +984,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Packet const& b) {
     block.assertion(machine.regs[6].region == T_CTX, di);
     if (b.regoffset) {
         /* Indirect packet access, R0 = *(uint *) (skb->data + src_reg + imm32) */
-        machine.data_arr.load(block, machine.regs[0], machine.regs[*b.regoffset].value + b.offset, width, cfg);
+        machine.data_arr.load(block, machine.regs[0], machine.reg(*b.regoffset).value + b.offset, width, cfg);
     } else {
         /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
         machine.data_arr.load(block, machine.regs[0], b.offset, width, cfg);
@@ -996,31 +996,31 @@ vector<basic_block_t*> instruction_builder_t::operator()(Packet const& b) {
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(Mem const& b) {
-    dom_t mem_reg =  machine.regs.at(b.basereg);
-    bool mem_is_fp = (int)b.basereg == 10;
-    int width = (int)b.width;
-    int offset = (int)b.offset;
-    return std::visit(overloaded{
-        [&](Mem::Load reg) {
-            // data = mem[offset]
-            dom_t data_reg = machine.reg((Reg)reg);
-            if (mem_is_fp) {
-                return exec_direct_stack_load(block, data_reg, offset, width);
-            } else {
-                return exec_mem_access_indirect(block, true, false, mem_reg, data_reg, offset, width);
-            }
-        },
-        [&](Mem::StoreReg reg) {
+    dom_t mem_reg =  machine.reg(b.access.basereg);
+    bool mem_is_fp = b.access.basereg.v == 10;
+    int width = (int)b.access.width;
+    int offset = (int)b.access.offset;
+    if (b.isLoad()) {
+        // data = mem[offset]
+        assert(std::holds_alternative<Reg>(b.value));
+        dom_t data_reg = machine.reg(std::get<Reg>(b.value));
+        if (mem_is_fp) {
+            return exec_direct_stack_load(block, data_reg, offset, width);
+        } else {
+            return exec_mem_access_indirect(block, true, false, mem_reg, data_reg, offset, width);
+        }
+    } else {
+        if (std::holds_alternative<Reg>(b.value)) {
             // mem[offset] = data
-            dom_t data_reg = machine.reg((Reg)reg);
+            dom_t data_reg = machine.reg(std::get<Reg>(b.value));
             if (mem_is_fp) {
                 return exec_direct_stack_store(block, data_reg, offset, width);
             } else {
                 return exec_mem_access_indirect(block, false, false, mem_reg, data_reg, offset, width);
             }
-        },
-        [&](Mem::StoreImm imm)  {
+        } else {
             // mem[offset] = immediate  
+            auto imm = std::get<Imm>(b.value).v;
             if (mem_is_fp) {
                 return exec_direct_stack_store_immediate(block, offset, width, imm);
             } else {
@@ -1031,7 +1031,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Mem const& b) {
                 return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, machine.num}, offset, width);
             } 
         }
-    }, b.value);
+    }
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(LockAdd const& b) {
