@@ -28,6 +28,8 @@ using std::regex_match;
 
 #define CMPOP R"_(\s*(&?[=!]=|s?[<>]=?)\s*)_"
 #define LABEL R"_(\s*<(\w[a-zA-Z_0-9]*)>\s*)_"
+#define WRAPPED_LABEL  "(\\s*<" LABEL ">\\s*"
+
 
 const std::map<std::string, Bin::Op> str_to_binop =
 {
@@ -320,8 +322,36 @@ TEST_CASE( "Jmp assembler", "[assemble][disasm]" ) {
 }
 
 
-Cfg assemble_program(std::string text) {
-    return {};
+Cfg assemble_program(std::istream is) {
+    std::string line;
+    int lineno = 0;
+    Label label;
+    Cfg cfg;
+    while (std::getline(is, line)) {
+        lineno++;
+        std::smatch m;
+        if (regex_match(line, m, regex(LABEL ":"))) {
+            label = m[0];
+            if (!cfg[label].insts.empty())
+                throw std::invalid_argument("duplicate labels");
+            continue;
+        }
+        if (regex_search(line, m, regex("\\s*(\d+:)?\s*"))) {
+            line = m.suffix();
+        }
+        Instruction ins = assemble(line);
+        if (std::holds_alternative<Undefined>(ins))
+            continue;
+
+        cfg[label].insts.push_back(ins);
+        // basic blocks can start without a label, if there's a jump
+        if (std::holds_alternative<Jmp>(ins)) {
+        }
+        if (std::holds_alternative<Exit>(ins)) {
+        }
+    
+    }
+    return cfg;
 }
 
 std::unordered_set<Label> get_labels(Cfg const& cfg) {
