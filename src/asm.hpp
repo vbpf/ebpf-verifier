@@ -171,6 +171,9 @@ struct BasicBlock {
 using Cfg = std::unordered_map<Label, BasicBlock>;
 
 Cfg build_cfg(const Program& prog);
+Cfg build_cfg(const std::vector<Instruction>& insts,
+              const std::vector<Label>& pc_to_label); 
+             
 Cfg to_nondet(const Cfg& simple_cfg);
 
 void print(const Program& prog);

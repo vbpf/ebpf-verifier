@@ -4,6 +4,7 @@
 #include <map>
 #include <unordered_set>
 #include <regex>
+#include <tuple>
 #include <algorithm>
 #include <boost/lexical_cast.hpp>
 
@@ -27,8 +28,8 @@ using std::regex_match;
 #define DEREF STAR PAREN("u(\\d+)" STAR)
 
 #define CMPOP R"_(\s*(&?[=!]=|s?[<>]=?)\s*)_"
-#define LABEL R"_(\s*<(\w[a-zA-Z_0-9]*)>\s*)_"
-#define WRAPPED_LABEL  "(\\s*<" LABEL ">\\s*"
+#define LABEL R"_((\w[a-zA-Z_0-9]*))_"
+#define WRAPPED_LABEL  "\\s*<" LABEL ">\\s*"
 
 
 const std::map<std::string, Bin::Op> str_to_binop =
@@ -161,7 +162,7 @@ Instruction assemble(std::string text) {
             return Packet { .width = width, .offset = (int)imm(m[2]).v, .regoffset = reg(m[1]) };
         return Undefined{ 0 };
     }
-    if (regex_match(text, m, regex("if " REG CMPOP REG_OR_IMM " goto " IMM LABEL))) {
+    if (regex_match(text, m, regex("if " REG CMPOP REG_OR_IMM " goto " IMM WRAPPED_LABEL))) {
         // We ignore second IMM
         return Jmp {
             .cond = Condition{
@@ -322,36 +323,41 @@ TEST_CASE( "Jmp assembler", "[assemble][disasm]" ) {
 }
 
 
-Cfg assemble_program(std::istream is) {
+std::vector<std::tuple<Label, Instruction>> assemble_program(std::istream& is) {
     std::string line;
     int lineno = 0;
-    Label label;
-    Cfg cfg;
+    std::vector<Label> pc_to_label;
+    std::vector<std::tuple<Label, Instruction>> labeled_insts;
+    std::unordered_set<Label> seen_labels;
+    std::optional<std::string> next_label;
     while (std::getline(is, line)) {
         lineno++;
         std::smatch m;
-        if (regex_match(line, m, regex(LABEL ":"))) {
-            label = m[0];
-            if (!cfg[label].insts.empty())
+        if (regex_search(line, m, regex("^" LABEL ":"))) {
+            next_label = m[1];
+            if (seen_labels.count(m[1]) != 0)
                 throw std::invalid_argument("duplicate labels");
-            continue;
-        }
-        if (regex_search(line, m, regex("\\s*(\d+:)?\s*"))) {
             line = m.suffix();
         }
+        if (regex_search(line, m, regex("^\\s*(\\d+:)?\\s*"))) {
+            line = m.suffix();
+        }
+        if (line.empty())
+            continue;
         Instruction ins = assemble(line);
         if (std::holds_alternative<Undefined>(ins))
             continue;
 
-        cfg[label].insts.push_back(ins);
-        // basic blocks can start without a label, if there's a jump
-        if (std::holds_alternative<Jmp>(ins)) {
+        if (!next_label)
+            next_label = std::to_string(labeled_insts.size());
+        labeled_insts.emplace_back(*next_label, ins);
+        next_label = {};
+        // Mimic unmarshalled code, to prepare for build_cfg
+        if (std::holds_alternative<Bin>(ins) && std::get<Bin>(ins).lddw) {
+            labeled_insts.emplace_back(std::to_string(labeled_insts.size()), Undefined{0});
         }
-        if (std::holds_alternative<Exit>(ins)) {
-        }
-    
     }
-    return cfg;
+    return labeled_insts;
 }
 
 std::unordered_set<Label> get_labels(Cfg const& cfg) {
@@ -361,7 +367,33 @@ std::unordered_set<Label> get_labels(Cfg const& cfg) {
     return labels;
 }
 
-TEST_CASE( "Basic_full_assembler", "[assemble][full-assemble]") {
+std::ostream& operator<<(std::ostream& os, std::tuple<Label, Instruction> const& labeled_ins) {
+    auto [label, ins] = labeled_ins;
+    return os << "(" << label << ", " << ins << ")";
+}
+
+TEST_CASE( "Full assembler minimal", "[assemble][full-assemble]") {
+    std::string code = R"code(
+sockex1_kern.o:	file format ELF64-BPF
+
+Disassembly of section socket1:
+bpf_prog1:
+       0:	r0 = 1
+       1:	exit
+    )code";
+
+    std::vector<std::tuple<Label, Instruction>> expected{
+        {"bpf_prog1", assemble("r0 = 1")},
+        {"1",         assemble("exit")},
+    };
+
+    std::istringstream is(code);
+    auto labeled_insts = assemble_program(is);
+
+    REQUIRE(labeled_insts == expected);
+}
+
+TEST_CASE( "Full assembler jump", "[assemble][full-assemble]") {
     std::string code = R"code(
 sockex1_kern.o:	file format ELF64-BPF
 
@@ -374,14 +406,16 @@ bpf_prog1:
 LBB0_1:
        3:	exit
     )code";
-    std::vector<Instruction> expected = {
-        Bin{ .op = Bin::Op::MOV, .is64 = true, .dst = Reg{0}, .v = Imm{1}, .lddw=false},
-        Jmp{ .cond = Condition{ .op = Condition::Op::NE, .left = Reg{0}, .right = Imm{4} }, .target="LBB0_1" },
-        Bin{ .op = Bin::Op::MOV, .is64 = true, .dst = Reg{0}, .v = Imm{2}, .lddw=false},
-        Exit{}
+
+    std::vector<std::tuple<Label, Instruction>> expected = {
+       {"bpf_prog1", assemble("r0 = 1")},
+       {"1",         assemble("if r0 != 4 goto +1 <LBB0_1>")},
+       {"2",         assemble("r0 = 2")},
+       {"LBB0_1",    assemble("exit")},
     };
-    Cfg prog = assemble_program(code);
-    auto labels = get_labels(prog);
-    std::unordered_set<Label> expected_labels{"bpf_prog1", "LBB0_1"};
-    REQUIRE(labels == expected_labels);
+
+    std::istringstream is(code);
+    auto labeled_insts = assemble_program(is);
+
+    REQUIRE(labeled_insts == expected);
 }

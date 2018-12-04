@@ -17,16 +17,15 @@ using std::to_string;
 using std::string;
 using std::vector;
 
-static auto get_jump(Instruction ins, pc_t pc) -> optional<Label>
-{
+
+static optional<Label> get_jump(Instruction ins) {
     if (std::holds_alternative<Jmp>(ins)) {
         return std::get<Jmp>(ins).target;
     }
     return {};
 }
 
-static auto get_fall(Instruction ins, pc_t pc) -> optional<Label>
-{
+static optional<Label> get_fall(Instruction ins, pc_t pc) {
     if ((std::holds_alternative<Bin>(ins) && std::get<Bin>(ins).lddw)
         || std::holds_alternative<LoadMapFd>(ins))
         return std::to_string(pc + 2);
@@ -80,29 +79,32 @@ static vector<Instruction> expand_lockadd(LockAdd lock)
     };
 }
 
-Cfg build_cfg(const Program& prog)
-{
+Cfg build_cfg(const std::vector<Instruction>& insts, const std::vector<Label>& pc_to_label) {
     Cfg cfg;
-    for (pc_t pc = 0; pc < prog.code.size(); pc++) {
-        Instruction ins = prog.code[pc];
-        Label label = std::to_string(pc);
+    for (pc_t pc = 0; pc < insts.size(); pc++) {
+        Instruction ins = insts[pc];
 
         if (std::holds_alternative<Undefined>(ins))
             continue;
+
+        Label label = pc_to_label.at(pc);
         // create cfg[label] if not exists
-        if (std::holds_alternative<LockAdd>(ins))
-            cfg[label].insts = expand_lockadd(std::get<LockAdd>(ins));
-        else
-            cfg[label].insts = {ins};
+        cfg[label].insts = {ins};
 
         link(cfg, label, get_fall(ins, pc));
-        link(cfg, label, get_jump(ins, pc));
+        link(cfg, label, get_jump(ins));
     }
     return cfg;
 }
 
-static Condition::Op reverse(Condition::Op op)
-{
+Cfg build_cfg(const Program& prog) {
+    std::vector<Label> pc_to_label(prog.code.size());
+    for (pc_t pc = 0; pc < prog.code.size(); pc++)
+        pc_to_label.push_back(std::to_string(pc));
+    return build_cfg(prog.code, pc_to_label);
+}
+
+static Condition::Op reverse(Condition::Op op) {
     switch (op) {
     case Condition::Op::EQ : return Condition::Op::NE;
     case Condition::Op::NE : return Condition::Op::EQ;
@@ -124,8 +126,7 @@ static Condition::Op reverse(Condition::Op op)
     }
 }
 
-static Condition reverse(Condition cond)
-{
+static Condition reverse(Condition cond) {
     return {
         .op=reverse(cond.op),
         .left=cond.left,
@@ -144,9 +145,12 @@ Cfg to_nondet(const Cfg& simple_cfg) {
     for (auto const& [this_label, bb] : simple_cfg) {
         BasicBlock& newbb = res[this_label];
 
-        for (auto ins : bb.insts)
+        for (auto ins : bb.insts) {
+            if (std::holds_alternative<LockAdd>(ins))
+                expand_lockadd(std::get<LockAdd>(ins));
             if (!std::holds_alternative<Jmp>(ins))
                 newbb.insts.push_back(ins);
+        }
 
         for (Label prev_label : bb.prevlist) {
             newbb.prevlist.push_back(
