@@ -23,7 +23,7 @@ using std::regex_match;
 #define RPAREN R"_(\s*\)\s*)_"
 #define PAREN(x) LPAREN x RPAREN
 #define STAR R"_(\s*\*\s*)_"
-#define DEREF STAR PAREN("u(\\d+)" STAR) PAREN(REG PLUSMINUS IMM)
+#define DEREF STAR PAREN("u(\\d+)" STAR)
 
 #define CMPOP R"_(\s*(&?[=!]=|s?[<>]=?)\s*)_"
 #define LABEL R"_(\s*<(\w[a-zA-Z_0-9]*)>\s*)_"
@@ -124,7 +124,7 @@ Instruction assemble(std::string text) {
             .lddw = !m[4].str().empty()
         };
     }
-    if (regex_match(text, m, regex(REG ASSIGN DEREF))) {
+    if (regex_match(text, m, regex(REG ASSIGN DEREF PAREN(REG PLUSMINUS IMM)))) {
         // TODO: remove redundancy: Load / StoreReg / StoreImm
         return Mem {
             .access = deref(m[2], m[3], m[4], m[5]),
@@ -132,17 +132,24 @@ Instruction assemble(std::string text) {
             ._is_load = true,
         };
     }
-    if (regex_match(text, m, regex(DEREF ASSIGN REG_OR_IMM))) {
+    if (regex_match(text, m, regex(DEREF PAREN(REG PLUSMINUS IMM) ASSIGN REG_OR_IMM))) {
         return Mem {
             .access = deref(m[1], m[2], m[3], m[4]),
             .value = reg_or_imm(m[5]),
             ._is_load = false,
         };
     }
-    if (regex_match(text, m, regex("lock " DEREF " [+]= " REG))) {
+    if (regex_match(text, m, regex("lock " DEREF PAREN(REG PLUSMINUS IMM) " [+]= " REG))) {
         return LockAdd {
             .access = deref(m[1], m[2], m[3], m[4]),
             .valreg = reg(m[5])
+        };
+    }
+    if (regex_match(text, m, regex("r0 = " DEREF "skb\\[" REG_OR_IMM "\\]"))) {
+        return Packet {
+            .width = str_to_width.at(m[1]),
+            .offset = 0, // FIX: reg_or_imm(m[2]),
+            .regoffset = {}, // find syntax
         };
     }
     if (regex_match(text, m, regex("if " REG CMPOP REG_OR_IMM " goto " IMM LABEL))) {
@@ -260,7 +267,8 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
     }
 
     SECTION( "Packet" ) {
-        
+        assemble_disasm("r0 = *(u32 *)skb[r7]");
+        assemble_disasm("r0 = *(u16 *)skb[53]");
     }
 
     SECTION( "LockAdd" ) {
