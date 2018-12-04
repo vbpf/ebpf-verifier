@@ -86,6 +86,14 @@ Value reg_or_imm(std::string s) {
         return imm(s);
 }
 
+static Deref deref(std::string width, std::string basereg, std::string sign, std::string _offset) {
+    int offset = boost::lexical_cast<int>(_offset);
+    return Deref{
+        .width = str_to_width.at(width),
+        .basereg = reg(basereg),
+        .offset = (sign == "-" ? -offset : +offset),
+    };
+}
 
 Instruction assemble(std::string text) {
     std::smatch m;
@@ -118,27 +126,23 @@ Instruction assemble(std::string text) {
     }
     if (regex_match(text, m, regex(REG ASSIGN DEREF))) {
         // TODO: remove redundancy: Load / StoreReg / StoreImm
-        int offset = boost::lexical_cast<int>(m[5]);
         return Mem {
-            Deref{
-                .width = str_to_width.at(m[2]),
-                .basereg = reg(m[3]),
-                .offset = (m[4].str() == "-" ? -offset : +offset),
-            },
+            .access = deref(m[2], m[3], m[4], m[5]),
             .value = reg(m[1]),
             ._is_load = true,
         };
     }
     if (regex_match(text, m, regex(DEREF ASSIGN REG_OR_IMM))) {
-        int offset = boost::lexical_cast<int>(m[4]);
         return Mem {
-            Deref{
-                .width = str_to_width.at(m[1]),
-                .basereg = reg(m[2]),
-                .offset =  (m[3].str() == "-" ? -offset : +offset),
-            },
+            .access = deref(m[1], m[2], m[3], m[4]),
             .value = reg_or_imm(m[5]),
             ._is_load = false,
+        };
+    }
+    if (regex_match(text, m, regex("lock " DEREF " [+]= " REG))) {
+        return LockAdd {
+            .access = deref(m[1], m[2], m[3], m[4]),
+            .valreg = reg(m[5])
         };
     }
     if (regex_match(text, m, regex("if " REG CMPOP REG_OR_IMM " goto " IMM LABEL))) {
@@ -260,7 +264,10 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
     }
 
     SECTION( "LockAdd" ) {
-        
+        assemble_disasm("lock *(u8 *)(r0 + 0) += r1");
+        assemble_disasm("lock *(u16 *)(r1 + 33) += r3");
+        assemble_disasm("lock *(u32 *)(r10 - 2) += r10");
+        assemble_disasm("lock *(u64 *)(r10 - 100) += r3");
     }
 }
 

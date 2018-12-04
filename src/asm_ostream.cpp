@@ -148,9 +148,8 @@ struct InstructionPrinterVisitor {
     }
 
     void operator()(LockAdd const& b) {
-        const char* s = size(b.access.width);
         os_ << "lock ";
-        os_ << "*(" << s << " *)(" << b.access.basereg << " + " << b.access.offset << ")";
+        print(b.access);
         os_ << " += " << b.valreg;
     }
 
