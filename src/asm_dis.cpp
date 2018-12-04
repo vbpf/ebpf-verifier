@@ -199,7 +199,6 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
                                 : (Value)Reg{inst.src}),
                 ._is_load = isLoad,
             };
-            std::cout << "res.value is Imm ? " << std::holds_alternative<Imm>(res.value) << "\n";
             return res;
         }
 
@@ -277,7 +276,7 @@ static auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, pc_t pc) -> 
         default: {
             pc_t new_pc = pc + 1 + inst.offset;
             if (new_pc >= insts.size()) note("jump out of bounds");
-            if (insts[new_pc].opcode == 0) note("jump to middle of lddw");
+            else if (insts[new_pc].opcode == 0) note("jump to middle of lddw");
 
             auto cond = inst.opcode == EBPF_OP_JA ? std::optional<Condition>{} : Condition{
                 .op = getJmpOp(inst.opcode),

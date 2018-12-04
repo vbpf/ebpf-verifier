@@ -14,13 +14,13 @@
 using Label = std::string;
 
 struct Imm {
-    uint64_t v;
+    uint64_t v{};
     Imm(int32_t v) : v{(uint32_t)v} { }
     Imm(uint64_t v) : v{v} { }
 };
 
 struct Reg {
-    uint8_t v;
+    uint8_t v{};
 };
 
 using Value = std::variant<Imm, Reg>;
@@ -33,10 +33,10 @@ struct Bin {
     };
 
     Op op;
-    bool is64;
+    bool is64{};
     Reg dst;
     Value v;
-    bool lddw;
+    bool lddw{};
 };
 
 struct Un {
@@ -50,7 +50,7 @@ struct Un {
 
 struct LoadMapFd {
     Reg dst;
-    int mapfd;
+    int mapfd{};
 };
 
 struct Condition {
@@ -75,7 +75,7 @@ struct Assume {
 };
 
 struct Call {
-    int32_t func;
+    int32_t func{};
 };
 
 struct Exit {
@@ -88,13 +88,13 @@ enum class Width {
 struct Deref {
     Width width;
     Reg basereg;
-    int offset;
+    int offset{};
 };
 
 struct Mem {
     Deref access;
     Value value;
-    bool _is_load;
+    bool _is_load{};
 
     bool isLoad() const {
         return _is_load; // std::holds_alternative<Load>(value);
@@ -103,7 +103,7 @@ struct Mem {
 
 struct Packet {
     Width width;
-    int offset;
+    int offset{};
     std::optional<Reg> regoffset;
 };
 
@@ -199,7 +199,7 @@ struct InstructionVisitorPrototype {
 };
 
 inline std::ostream& operator<<(std::ostream& os, Imm const& a) { return os << a.v; }
-inline std::ostream& operator<<(std::ostream& os, Reg const& a) { return os << "r" << a.v; }
+inline std::ostream& operator<<(std::ostream& os, Reg const& a) { return os << "r" << (int)a.v; }
 inline std::ostream& operator<<(std::ostream& os, Value const& a) { 
     if (std::holds_alternative<Imm>(a))
         return os << std::get<Imm>(a);

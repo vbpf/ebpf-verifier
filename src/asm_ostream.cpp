@@ -62,11 +62,11 @@ struct InstructionPrinterVisitor {
     }
 
     void operator()(LoadMapFd const& b) {
-        os_ << "r" << b.dst << " = fd " << b.mapfd;
+        os_ << b.dst << " = fd " << b.mapfd;
     }
 
     void operator()(Bin const& b) {
-        os_ << "r" << b.dst << " " << op(b.op) << "= ";
+        os_ << b.dst << " " << op(b.op) << "= ";
         if (b.lddw)
             os_ << std::get<Imm>(b.v).v << " ll";
         else
@@ -81,7 +81,7 @@ struct InstructionPrinterVisitor {
             case Un::Op::LE32: os_ << "le32()"; break;
             case Un::Op::LE64: os_ << "le64()"; break;
             case Un::Op::NEG:
-                os_ << "r" << b.dst << " = -r" << b.dst;
+                os_ << b.dst << " = -" << b.dst;
                 break;
         }
     }
@@ -97,7 +97,7 @@ struct InstructionPrinterVisitor {
     void operator()(Jmp const& b) {
         if (b.cond) {
             os_ << "if "
-                << "r" << b.cond->left
+                << b.cond->left
                 << " " << op(b.cond->op) << " ";
             std::visit(*this, b.cond->right);
             os_ << " ";
@@ -107,7 +107,7 @@ struct InstructionPrinterVisitor {
 
     void operator()(Assume const& b) {
         os_ << "assume "
-            << "r" << b.cond.left
+            << b.cond.left
             << " " << op(b.cond.op) << " ";
         std::visit(*this, b.cond.right);
         os_ << " ";
@@ -120,7 +120,7 @@ struct InstructionPrinterVisitor {
         os_ << "r0 = ";
         os_ << "*(" << s << " *)skb[";
         if (b.regoffset)
-            os_ << "r" << *b.regoffset;
+            os_ << *b.regoffset;
         if (b.offset != 0) {
             if (b.regoffset) os_ << " + ";
             os_ << b.offset;
@@ -132,7 +132,7 @@ struct InstructionPrinterVisitor {
         string sign = access.offset < 0 ? " - " : " + ";
         int offset = std::abs(access.offset); // what about INT_MIN? 
         os_ << "*(" << size(access.width) << " *)";
-        os_ << "(r" << access.basereg << sign << offset << ")";
+        os_ << "(" << access.basereg << sign << offset << ")";
     }
 
     void operator()(Mem const& b) {
@@ -150,18 +150,18 @@ struct InstructionPrinterVisitor {
     void operator()(LockAdd const& b) {
         const char* s = size(b.access.width);
         os_ << "lock ";
-        os_ << "*(" << s << " *)(r" << b.access.basereg << " + " << b.access.offset << ")";
-        os_ << " += r" << b.valreg;
+        os_ << "*(" << s << " *)(" << b.access.basereg << " + " << b.access.offset << ")";
+        os_ << " += " << b.valreg;
     }
 
     void operator()(Imm imm) {
         if (imm.v >= 0xFFFFFFFFLL)
             os_ << imm.v << " ll";
         else
-            os_ << (int32_t)imm.v;
+            os_ << imm.v;
     }
     void operator()(Reg reg) {
-        os_ << "r" << reg;
+        os_ << reg;
     }
 };
 
