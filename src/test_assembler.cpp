@@ -2,6 +2,7 @@
 #include "asm.hpp"
 
 #include <map>
+#include <unordered_set>
 #include <regex>
 #include <algorithm>
 #include <boost/lexical_cast.hpp>
@@ -316,4 +317,41 @@ TEST_CASE( "Jmp assembler", "[assemble][disasm]" ) {
         jmp_assemble_disasm("if r1 s<= r4 goto -303 <LBB0_14>");
         jmp_assemble_disasm("if r1 &== r4 goto -303 <LBB0_14>");
     }
+}
+
+
+Cfg assemble_program(std::string text) {
+    return {};
+}
+
+std::unordered_set<Label> get_labels(Cfg const& cfg) {
+    std::unordered_set<Label> labels(cfg.size());
+    for (auto const& [key, _] : cfg)
+        labels.insert(key);
+    return labels;
+}
+
+TEST_CASE( "Basic_full_assembler", "[assemble][full-assemble]") {
+    std::string code = R"code(
+sockex1_kern.o:	file format ELF64-BPF
+
+Disassembly of section socket1:
+bpf_prog1:
+       0:	r0 = 1
+       1:	if r0 != 4 goto +1 <LBB0_1>
+       2:	r0 = 2
+
+LBB0_1:
+       3:	exit
+    )code";
+    std::vector<Instruction> expected = {
+        Bin{ .op = Bin::Op::MOV, .is64 = true, .dst = Reg{0}, .v = Imm{1}, .lddw=false},
+        Jmp{ .cond = Condition{ .op = Condition::Op::NE, .left = Reg{0}, .right = Imm{4} }, .target="LBB0_1" },
+        Bin{ .op = Bin::Op::MOV, .is64 = true, .dst = Reg{0}, .v = Imm{2}, .lddw=false},
+        Exit{}
+    };
+    Cfg prog = assemble_program(code);
+    auto labels = get_labels(prog);
+    std::unordered_set<Label> expected_labels{"bpf_prog1", "LBB0_1"};
+    REQUIRE(labels == expected_labels);
 }
