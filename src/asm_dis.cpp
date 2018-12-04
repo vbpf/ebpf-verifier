@@ -181,21 +181,26 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
             bool isLoad = getMemIsLoad(inst.opcode);
             if (isLoad && inst.dst == 10) note("Cannot modify r10");
             bool isImm = !(inst.opcode & 1);
+            
             assert(!(isLoad && isImm));
-            int basereg = isLoad ? inst.src : inst.dst;
+            uint8_t basereg = isLoad ? inst.src : inst.dst;
 
             if (basereg == 10 && (inst.offset + access_width(inst.opcode) > 0 || inst.offset < -STACK_SIZE)) {
                 note("Stack access out of bounds");
             }
-            return Mem {
+            auto res = Mem {
                 Deref {
                     .width = width,
                     .basereg = Reg{basereg},
                     .offset = inst.offset,
                 },
-                .value = isImm ? Imm{inst.imm} : Reg{inst.dst},
+                .value = isLoad ? (Value)Reg{inst.dst}
+                       : (isImm ? (Value)Imm{inst.imm}
+                                : (Value)Reg{inst.src}),
                 ._is_load = isLoad,
             };
+            std::cout << "res.value is Imm ? " << std::holds_alternative<Imm>(res.value) << "\n";
+            return res;
         }
 
         case EBPF_LEN:
@@ -221,7 +226,7 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
 static auto makeAluOp(ebpf_inst inst) -> Instruction {
     if (inst.dst == 10) note("Invalid target r10");
     return std::visit(overloaded{
-        [&](Un::Op op) -> Instruction { return Un{ .op = op, .dst = inst.dst }; },
+        [&](Un::Op op) -> Instruction { return Un{ .op = op, .dst = Reg{inst.dst} }; },
         [&](Bin::Op op) -> Instruction {
             Bin res{ 
                 .op = op,
@@ -326,12 +331,11 @@ vector<Instruction> parse(vector<ebpf_inst> insts)
             case EBPF_CLS_UNUSED:
                 throw InvalidInstruction{"Invalid class 0x6"};
         }
+        /*
         vector<ebpf_inst> marshalled = marshal(new_ins[0], pc);
         ebpf_inst actual = marshalled[0];
         if (std::memcmp(&actual, &inst, sizeof(inst))) {
-            //std::cerr << "new: ";
-            //print(pc, new_ins[0]);
-            //std::cerr << "\n";
+            std::cerr << "new: " << new_ins[0] << "\n";
             compare("opcode", actual.opcode, inst.opcode);
             compare("dst", actual.dst, inst.dst);
             compare("src", actual.src, inst.src);
@@ -339,6 +343,7 @@ vector<Instruction> parse(vector<ebpf_inst> insts)
             compare("imm", actual.imm, inst.imm);
             std::cerr << "\n";
         }
+        */
         for (auto ins : new_ins) {
             prog.push_back(ins);
             pc++;

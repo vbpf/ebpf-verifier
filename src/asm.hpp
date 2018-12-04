@@ -19,7 +19,9 @@ struct Imm {
     Imm(uint64_t v) : v{v} { }
 };
 
-enum Reg : int {};
+struct Reg {
+    uint8_t v;
+};
 
 using Value = std::variant<Imm, Reg>;
 
@@ -43,7 +45,7 @@ struct Un {
     };
 
     Op op;
-    int dst;
+    Reg dst;
 };
 
 struct LoadMapFd {
@@ -196,6 +198,14 @@ struct InstructionVisitorPrototype {
     void operator()(LockAdd const& a);
 };
 
+inline std::ostream& operator<<(std::ostream& os, Imm const& a) { return os << a.v; }
+inline std::ostream& operator<<(std::ostream& os, Reg const& a) { return os << "r" << a.v; }
+inline std::ostream& operator<<(std::ostream& os, Value const& a) { 
+    if (std::holds_alternative<Imm>(a))
+        return os << std::get<Imm>(a);
+    return os << std::get<Reg>(a);
+}
+
 inline std::ostream& operator<<(std::ostream& os, Undefined const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, LoadMapFd const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, Bin const& a) { return os << (Instruction)a; }
@@ -209,6 +219,9 @@ inline std::ostream& operator<<(std::ostream& os, Mem const& a) { return os << (
 inline std::ostream& operator<<(std::ostream& os, LockAdd const& a) { return os << (Instruction)a; }
 
 inline bool operator==(Imm const& a, Imm const& b) {
+    return a.v == b.v;
+}
+inline bool operator==(Reg const& a, Reg const& b) {
     return a.v == b.v;
 }
 inline bool operator==(Deref const& a, Deref const& b) {

@@ -127,7 +127,7 @@ struct machine_t final
     var_t num{vfac[std::string("T_NUM")], crab::INT_TYPE, 8};
 
     dom_t& reg(Value v) {
-        return regs[static_cast<int>(std::get<Reg>(v))];
+        return regs[std::get<Reg>(v).v];
     }
 
     void setup_entry(basic_block_t& entry);
@@ -583,13 +583,13 @@ vector<basic_block_t*> instruction_builder_t::operator()(LoadMapFd const& ld) {
     // This is what ARG_CONST_MAP_PTR looks for
     // This is probably the wrong thing to do. should we add an FD type?
     // Here we (probably) need the map structure
-    block.assign(machine.regs[ld.dst].region, T_MAP);
-    block.assign(machine.regs[ld.dst].offset, 0);
+    block.assign(machine.reg(ld.dst).region, T_MAP);
+    block.assign(machine.reg(ld.dst).offset, 0);
     return { &block };
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {    
-    dom_t& dst = machine.regs[bin.dst];
+    dom_t& dst = machine.reg(bin.dst);
     vector<basic_block_t*> res{ &block };
 
     // TODO: add assertion for all operators that the arguments are initialized
@@ -765,7 +765,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(Un const& b) {
-    dom_t& dst = machine.regs[b.dst];
+    dom_t& dst = machine.reg(b.dst);
 
     switch (b.op) {
     case Un::Op::LE16:
@@ -984,7 +984,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Packet const& b) {
     block.assertion(machine.regs[6].region == T_CTX, di);
     if (b.regoffset) {
         /* Indirect packet access, R0 = *(uint *) (skb->data + src_reg + imm32) */
-        machine.data_arr.load(block, machine.regs[0], machine.regs[*b.regoffset].value + b.offset, width, cfg);
+        machine.data_arr.load(block, machine.regs[0], machine.reg(*b.regoffset).value + b.offset, width, cfg);
     } else {
         /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
         machine.data_arr.load(block, machine.regs[0], b.offset, width, cfg);
@@ -996,8 +996,8 @@ vector<basic_block_t*> instruction_builder_t::operator()(Packet const& b) {
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(Mem const& b) {
-    dom_t mem_reg =  machine.regs.at(b.access.basereg);
-    bool mem_is_fp = (int)b.access.basereg == 10;
+    dom_t mem_reg =  machine.reg(b.access.basereg);
+    bool mem_is_fp = b.access.basereg.v == 10;
     int width = (int)b.access.width;
     int offset = (int)b.access.offset;
     if (b.isLoad()) {
