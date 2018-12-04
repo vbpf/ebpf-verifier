@@ -15,8 +15,8 @@ using Label = std::string;
 
 struct Imm {
     uint64_t v{};
-    Imm(int32_t v) : v{(uint32_t)v} { }
-    Imm(uint64_t v) : v{v} { }
+    explicit Imm(int32_t v) : v{(uint32_t)v} { }
+    explicit Imm(uint64_t v) : v{v} { }
 };
 
 struct Reg {

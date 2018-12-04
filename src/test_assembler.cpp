@@ -145,12 +145,18 @@ Instruction assemble(std::string text) {
             .valreg = reg(m[5])
         };
     }
-    if (regex_match(text, m, regex("r0 = " DEREF "skb\\[" REG_OR_IMM "\\]"))) {
-        return Packet {
-            .width = str_to_width.at(m[1]),
-            .offset = 0, // FIX: reg_or_imm(m[2]),
-            .regoffset = {}, // find syntax
-        };
+    if (regex_match(text, m, regex("r0 = " DEREF "skb\\[(.*)\\]"))) {
+        auto width = str_to_width.at(m[1]);
+        std::string access = m[2].str();
+        if (regex_match(access, m, regex(REG)))
+            return Packet { .width = width, .offset = 0, .regoffset = reg(m[1]) };
+        if (regex_match(access, m, regex(IMM)))
+            return Packet { .width = width, .offset = (int)imm(m[1]).v, .regoffset = {} };
+        if (regex_match(access, m, regex(REG PLUSMINUS REG)))
+            return Packet { .width = width, .offset = 0/* ? */, .regoffset = reg(m[2]) };
+        if (regex_match(access, m, regex(REG PLUSMINUS IMM)))
+            return Packet { .width = width, .offset = (int)imm(m[2]).v, .regoffset = reg(m[1]) };
+        return Undefined{ 0 };
     }
     if (regex_match(text, m, regex("if " REG CMPOP REG_OR_IMM " goto " IMM LABEL))) {
         // We ignore second IMM
@@ -163,7 +169,6 @@ Instruction assemble(std::string text) {
             .target = m[5]
         };
     }
-        //std::cout << m[1] << "," << m[2] << "," << m[3] << "," << m[4] << "," << m[5] << "\n";
     return Undefined{ 0 };
 }
 
@@ -269,6 +274,8 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
     SECTION( "Packet" ) {
         assemble_disasm("r0 = *(u32 *)skb[r7]");
         assemble_disasm("r0 = *(u16 *)skb[53]");
+
+        // TODO: add examples for r1 + 5, r2 + r3 - or disallow in disassembler
     }
 
     SECTION( "LockAdd" ) {

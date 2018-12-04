@@ -66,7 +66,7 @@ static vector<Instruction> expand_lockadd(LockAdd lock)
             .op = Bin::Op::ADD,
             .is64 = false,
             .dst = Reg{11},
-            .v = lock.access.offset,
+            .v = Imm(lock.access.offset),
         },
         Mem {
             Deref {
