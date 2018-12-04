@@ -101,6 +101,7 @@ static auto getAluOp(ebpf_inst inst) -> std::variant<Bin::Op, Un::Op> {
                     return Un::Op::LE64;
             }
         case 0xe : throw InvalidInstruction{"Invalid ALU op 0xe"};
+        case 0xf : throw InvalidInstruction{"Invalid ALU op 0xf"};
     }
     assert(false);
 }
@@ -155,8 +156,8 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
     bool isLD = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD;
     switch ((inst.opcode & EBPF_MODE_MASK) >> 5) {
         case 0:
-            compare("fail:", inst.opcode, (uint8_t)0x11);
-            assert(false);
+            note("Bad instruction");
+            return Undefined{(int)inst.opcode};
         case EBPF_ABS:
             if (!isLD) throw UnsupportedMemoryMode{"ABS but not LD"};
             if (width == Width::DW) note("invalid opcode LDABSDW");
@@ -268,11 +269,11 @@ static auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& 
 }
 
 static auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, pc_t pc) -> Instruction {
-    switch (inst.opcode) {
-        case EBPF_OP_CALL:
+    switch ((inst.opcode >> 4) & 0xF) {
+        case 0x8:
             if (!is_valid_prototype(inst.imm)) note("invalid function id ");
             return Call{ inst.imm };
-        case EBPF_OP_EXIT: return Exit{};
+        case 0x9: return Exit{};
         default: {
             pc_t new_pc = pc + 1 + inst.offset;
             if (new_pc >= insts.size()) note("jump out of bounds");
