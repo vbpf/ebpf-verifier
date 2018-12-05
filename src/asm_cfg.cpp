@@ -181,14 +181,15 @@ void print_stats(const Cfg& cfg) {
     int jumps = 0;
     int joins = 0;
     for (auto const& [this_label, bb] : cfg) {
-        Instruction ins = bb.insts[0];
-        count++;
-        if (std::holds_alternative<Mem>(ins)) {
-            auto mem = std::get<Mem>(ins);
-            if (mem.isLoad())
-                loads++;
-            else
-                stores++;
+        for (Instruction ins : bb.insts) {
+            count++;
+            if (std::holds_alternative<Mem>(ins)) {
+                auto mem = std::get<Mem>(ins);
+                if (mem.isLoad())
+                    loads++;
+                else
+                    stores++;
+            }
         }
         if (bb.prevlist.size() > 1)
             joins++;
