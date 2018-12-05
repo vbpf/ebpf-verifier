@@ -2,7 +2,8 @@
 #include <boost/lexical_cast.hpp>
 
 #include "common.hpp"
-#include "asm.hpp"
+#include "asm_syntax.hpp"
+#include "asm_cfg.hpp"
 #include "type_descriptors.hpp"
 
 static auto label(int pc) { return std::to_string(pc); }

@@ -13,7 +13,8 @@
 #include "verifier.hpp"
 #include "prototypes.hpp"
 
-#include "asm.hpp"
+#include "asm_syntax.hpp"
+#include "asm_cfg.hpp"
 
 using std::tuple;
 using std::string;
