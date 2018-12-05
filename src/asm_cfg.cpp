@@ -136,6 +136,7 @@ Cfg to_nondet(const Cfg& simple_cfg) {
     Cfg res;
     for (auto const& this_label : simple_cfg.keys()) {
         BasicBlock const& bb = simple_cfg.at(this_label);
+        res.encountered(this_label);
         BasicBlock& newbb = res[this_label];
 
         for (auto ins : bb.insts) {
@@ -162,8 +163,10 @@ Cfg to_nondet(const Cfg& simple_cfg) {
                 {bb.nextlist[1], cond},
             };
             for (auto const& [next_label, cond] : jumps) {
-                newbb.nextlist.push_back(mid_label + next_label);
-                res[mid_label + next_label] = BasicBlock{
+                Label l = mid_label + next_label;
+                newbb.nextlist.push_back(l);
+                res.encountered(l);
+                res[l] = BasicBlock{
                     {Assume{cond}},
                     {next_label},
                     {this_label}
