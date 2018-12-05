@@ -1,9 +1,10 @@
 #include "catch.hpp"
 
+#include <cstring>
+
 #include "asm_marshal.hpp"
 #include "asm_unmarshal.hpp"
 #include "asm_ostream.hpp"
-#include <cstring>
 
 static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = false) {
     InstructionSeq parsed = unmarshal(marshal(ins, 0));

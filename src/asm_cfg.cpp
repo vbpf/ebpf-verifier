@@ -107,26 +107,18 @@ static vector<Instruction> expand_lockadd(LockAdd lock)
 {
     return {
         Mem {
-            Deref {
-                .width = lock.access.width,
-                .basereg = lock.access.basereg,
-                .offset = 0,
-            },
+            .access = lock.access,
             .value = Reg{11},
             ._is_load = true,
         },
         Bin {
             .op = Bin::Op::ADD,
-            .is64 = false,
+            .is64 = true,
             .dst = Reg{11},
-            .v = Imm(lock.access.offset),
+            .v = lock.valreg,
         },
         Mem {
-            Deref {
-                .width = lock.access.width,
-                .basereg = lock.access.basereg,
-                .offset = 0,
-            },
+            .access = lock.access,
             .value = Reg{11},
             ._is_load = false,
         }
@@ -141,10 +133,13 @@ Cfg Cfg::to_nondet() {
         BasicBlock& newbb = res[this_label];
 
         for (auto ins : bb.insts) {
-            if (std::holds_alternative<LockAdd>(ins))
-                expand_lockadd(std::get<LockAdd>(ins));
-            if (!std::holds_alternative<Jmp>(ins))
+            if (std::holds_alternative<LockAdd>(ins)) {
+                for (auto ins : expand_lockadd(std::get<LockAdd>(ins))) {
+                    newbb.insts.push_back(ins);
+                }
+            } else if (!std::holds_alternative<Jmp>(ins)) {
                 newbb.insts.push_back(ins);
+            }
         }
 
         for (Label prev_label : bb.prevlist) {
