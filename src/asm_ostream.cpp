@@ -164,7 +164,7 @@ struct InstructionPrinterVisitor {
         os_ << reg;
     }
 };
-
+/*
 static int first_num(const string& s)
 {
     try {
@@ -188,7 +188,6 @@ static bool cmp_labels(Label a, Label b) {
     if (first_num(a) > first_num(b)) return false;
     return a < b;
 }
-
 static vector<Label> sorted_labels(const Cfg& cfg)
 {
     vector<Label> labels;
@@ -198,6 +197,15 @@ static vector<Label> sorted_labels(const Cfg& cfg)
     std::sort(labels.begin(), labels.end(), cmp_labels);
     return labels;
 }
+
+static vector<Label> labels_of(const Cfg& cfg)
+{
+    vector<Label> labels;
+    for (auto const& label : cfg.keys())
+        labels.push_back(label);
+    return labels;
+}
+*/
 
 static vector<std::tuple<Label, optional<Label>>> slide(const vector<Label>& labels)
 {
@@ -277,7 +285,7 @@ void print(const InstructionSeq& insts) {
 }
 
 void print(const Cfg& cfg, bool nondet) {
-    for (auto [label, next] : slide(sorted_labels(cfg))) {
+    for (auto [label, next] : slide(cfg.keys())) {
         std::cout << std::setw(11) << label << " : ";
         const auto& bb = cfg.at(label);
         for (auto ins : bb.insts) {

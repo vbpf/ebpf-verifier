@@ -203,7 +203,8 @@ void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg,
         machine.setup_entry(entry);
         entry >> cfg.insert(label(0));
     }
-    for (auto const& [this_label, bb] : simple_cfg) {
+    for (auto const& this_label : simple_cfg.keys()) {
+        auto const& bb = simple_cfg.at(this_label);
         basic_block_t& this_block = cfg.insert(this_label);
         basic_block_t& exit = bb.insts.size() == 0 ? this_block : cfg.insert(exit_label(this_label));
         for (auto ins : bb.insts) {

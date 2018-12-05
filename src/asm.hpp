@@ -174,7 +174,15 @@ struct BasicBlock {
     std::vector<Label> prevlist;
 };
 
-using Cfg = std::unordered_map<Label, BasicBlock>;
+class Cfg {
+    std::unordered_map<Label, BasicBlock> graph;
+    std::vector<Label> ordered_labels;
+public:
+    void encountered(Label l) { ordered_labels.push_back(l); }
+    BasicBlock& operator[](Label l) { return graph[l]; }
+    BasicBlock const& at(Label l) const { return graph.at(l); }
+    std::vector<Label> const& keys() const { return ordered_labels; }
+};
 
 Cfg build_cfg(const InstructionSeq& labeled_insts);
              

@@ -50,6 +50,7 @@ Cfg build_cfg(const InstructionSeq& insts) {
             continue;
 
         // create cfg[label] if not exists
+        cfg.encountered(label);
         cfg[label].insts = {inst};
         if (falling_from) {
             link(cfg, *falling_from, label);
@@ -133,7 +134,8 @@ static vector<Instruction> expand_lockadd(LockAdd lock)
 
 Cfg to_nondet(const Cfg& simple_cfg) {
     Cfg res;
-    for (auto const& [this_label, bb] : simple_cfg) {
+    for (auto const& this_label : simple_cfg.keys()) {
+        BasicBlock const& bb = simple_cfg.at(this_label);
         BasicBlock& newbb = res[this_label];
 
         for (auto ins : bb.insts) {
@@ -180,7 +182,8 @@ void print_stats(const Cfg& cfg) {
     int loads = 0;
     int jumps = 0;
     int joins = 0;
-    for (auto const& [this_label, bb] : cfg) {
+    for (Label const& this_label : cfg.keys()) {
+        BasicBlock const& bb = cfg.at(this_label);
         for (Instruction ins : bb.insts) {
             count++;
             if (std::holds_alternative<Mem>(ins)) {
