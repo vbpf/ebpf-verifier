@@ -155,57 +155,12 @@ struct InstructionPrinterVisitor {
     }
 
     void operator()(Imm imm) {
-        //if (imm.v >= 0xFFFFFFFFLL)
-        //    os_ << imm.v << " ll";
-        //else
         os_ << (int32_t)imm.v;
     }
     void operator()(Reg reg) {
         os_ << reg;
     }
 };
-/*
-static int first_num(const string& s)
-{
-    try {
-        return boost::lexical_cast<int>(s.substr(0, s.find_first_of(':')));
-    } catch(const boost::bad_lexical_cast &) {
-        throw std::invalid_argument("No number after ':'");
-    }
-}
-
-static int last_num(const string& s)
-{
-    try {
-        return boost::lexical_cast<int>(s.substr(s.find_first_of(':')+1));
-    } catch(const boost::bad_lexical_cast &) {
-        throw std::invalid_argument("No number after ':'");
-    }
-}
-
-static bool cmp_labels(Label a, Label b) {
-    if (first_num(a) < first_num(b)) return true;
-    if (first_num(a) > first_num(b)) return false;
-    return a < b;
-}
-static vector<Label> sorted_labels(const Cfg& cfg)
-{
-    vector<Label> labels;
-    for (auto const& [label, bb] : cfg)
-        labels.push_back(label);
-
-    std::sort(labels.begin(), labels.end(), cmp_labels);
-    return labels;
-}
-
-static vector<Label> labels_of(const Cfg& cfg)
-{
-    vector<Label> labels;
-    for (auto const& label : cfg.keys())
-        labels.push_back(label);
-    return labels;
-}
-*/
 
 static vector<std::tuple<Label, optional<Label>>> slide(const vector<Label>& labels)
 {

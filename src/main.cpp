@@ -10,20 +10,6 @@
 #include "asm.hpp"
 
 
-static auto readfile(string path)
-{
-    using std::ifstream;
-    ifstream is(path, ifstream::ate | ifstream::binary);
-    if (is.fail()) {
-        std::cerr << "file " << path << " does not exist\n";
-        exit(65);
-    }
-    size_t nbytes = is.tellg();
-    is.seekg(0);
-    return unmarshal(is, nbytes);
-}
-
-
 static int usage(const char *name)
 {
     std::cerr << "usage: " << name << " [FLAGS] BINARY [TYPE] [DOMAIN]\n";
@@ -45,6 +31,8 @@ static int usage(const char *name)
 
 int run(string domain_name, string code_filename, ebpf_prog_type prog_type)
 {
+    auto [is, nbytes] = open_binary_file(code_filename);
+    auto prog = unmarshal(is, nbytes);
     return std::visit(overloaded {
         [domain_name, prog_type](auto prog) {
             print(prog);
@@ -61,7 +49,7 @@ int run(string domain_name, string code_filename, ebpf_prog_type prog_type)
             std::cout << "trivial verification failure: " << errmsg << "\n";
             return 1;
         }
-    }, readfile(code_filename));
+    }, prog);
 }
 
 

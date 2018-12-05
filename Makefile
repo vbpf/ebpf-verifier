@@ -86,6 +86,7 @@ DISASM_OBJECTS := \
     ${BUILDDIR}/asm_marshal.o \
     ${BUILDDIR}/asm_cfg.o \
     ${BUILDDIR}/asm_parse.o \
+    ${BUILDDIR}/asm_files.o \
     ${BUILDDIR}/prototypes.o
 
 $(BINDIR)/disassemble: ${BUILDDIR}/disassemble.o ${DISASM_OBJECTS}

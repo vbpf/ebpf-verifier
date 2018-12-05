@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <fstream>
 #include <variant>
 #include <optional>
 #include <vector>
@@ -139,11 +140,16 @@ using InstructionSeq = std::vector<LabeledInstruction>;
 std::variant<InstructionSeq, std::string> unmarshal(std::istream& is, size_t nbytes);
 std::vector<LabeledInstruction> unmarshal(std::vector<ebpf_inst> const& insts);
 
+std::tuple<std::ifstream, size_t> open_binary_file(std::string path);
+
 std::vector<ebpf_inst> marshal(Instruction ins, pc_t pc);
 std::vector<ebpf_inst> marshal(std::vector<Instruction> insts);
 
+
 Instruction parse_instruction(std::string text);
 std::vector<std::tuple<Label, Instruction>> parse_program(std::istream& is);
+
+std::ifstream open_asm_file(std::string path);
 
 inline pc_t label_to_pc(Label label) {
     try {
