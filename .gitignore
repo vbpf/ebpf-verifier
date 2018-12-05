@@ -5,5 +5,6 @@ counter/samples/*
 bin/check
 bin/test
 bin/disassemble
+bin/assemble
 .vscode/*
 logs/*

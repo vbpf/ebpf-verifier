@@ -81,7 +81,7 @@ $(BINDIR)/check: ${BUILDDIR}/main.o ${OBJECTS}
 	@$(CXX) ${CXXFLAGS}  ${CRABFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
 
 DISASM_OBJECTS := \
-    ${BUILDDIR}/asm_dis.o \
+    ${BUILDDIR}/asm_unmarshal.o \
     ${BUILDDIR}/asm_ostream.o \
     ${BUILDDIR}/asm_marshal.o \
     ${BUILDDIR}/asm_cfg.o \
