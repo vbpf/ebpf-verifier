@@ -11,17 +11,16 @@
 #include <boost/signals2.hpp>
 
 #include <crab/checkers/base_property.hpp>
-#include <crab/checkers/div_zero.hpp>
 #include <crab/checkers/assertion.hpp>
 #include <crab/checkers/checker.hpp>
 #include <crab/analysis/dataflow/assumptions.hpp>
 
-#include "crab_dom.hpp"
-
-#include "common.hpp"
-#include "crab_constraints.hpp"
-#include "verifier.hpp"
 #include "asm_cfg.hpp"
+
+#include "crab_domains.hpp"
+#include "crab_common.hpp"
+#include "crab_constraints.hpp"
+#include "crab_verifier.hpp"
 
 
 using std::string;

@@ -1,10 +1,12 @@
 #pragma once
 #include <boost/lexical_cast.hpp>
 
-#include "common.hpp"
+#include "spec_type_descriptors.hpp"
+
 #include "asm_syntax.hpp"
 #include "asm_cfg.hpp"
-#include "type_descriptors.hpp"
+
+#include "crab_common.hpp"
 
 static auto label(int pc) { return std::to_string(pc); }
 static auto label(int pc, Label target){  return label(pc) + ":" + target; }

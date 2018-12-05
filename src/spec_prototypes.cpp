@@ -1,5 +1,5 @@
 #include <stdbool.h>
-#include "prototypes.hpp"
+#include "spec_prototypes.hpp"
 
 static const struct bpf_func_proto bpf_unspec_proto = {
 };

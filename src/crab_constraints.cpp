@@ -7,11 +7,12 @@
 #include <inttypes.h>
 #include <assert.h>
 
-#include "type_descriptors.hpp"
-#include "common.hpp"
+#include "spec_type_descriptors.hpp"
+#include "spec_prototypes.hpp"
+
+#include "crab_common.hpp"
 #include "crab_constraints.hpp"
-#include "verifier.hpp"
-#include "prototypes.hpp"
+#include "crab_verifier.hpp"
 
 #include "asm_syntax.hpp"
 #include "asm_cfg.hpp"

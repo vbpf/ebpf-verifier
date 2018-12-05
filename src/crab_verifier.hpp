@@ -4,16 +4,13 @@
 #include <vector>
 #include <map>
 
-#include "type_descriptors.hpp"
+#include "spec_type_descriptors.hpp"
+
 #include "asm_cfg.hpp"
 
-using std::string;
-using std::map;
-using std::vector;
+bool abs_validate(Cfg const& simple_cfg, std::string domain_name, ebpf_prog_type prog_type);
 
-bool abs_validate(Cfg const& simple_cfg, string domain_name, ebpf_prog_type prog_type);
-
-map<string, string> domain_descriptions();
+std::map<std::string, std::string> domain_descriptions();
 
 // defaults are in verifier.cpp
 struct global_options_t

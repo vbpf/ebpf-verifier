@@ -90,7 +90,7 @@ DISASM_OBJECTS := \
     ${BUILDDIR}/asm_cfg.o \
     ${BUILDDIR}/asm_parse.o \
     ${BUILDDIR}/asm_files.o \
-    ${BUILDDIR}/prototypes.o
+    ${BUILDDIR}/spec_prototypes.o
 
 $(BINDIR)/disassemble: ${BUILDDIR}/disassemble.o ${DISASM_OBJECTS}
 	@printf "$@ <- $^\n"

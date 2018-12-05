@@ -4,9 +4,11 @@
 #include <iostream>
 #include <cstring> // memcmp
 
-#include "asm_unmarshal.hpp"
 #include "linux_ebpf.hpp"
-#include "prototypes.hpp"
+
+#include "spec_prototypes.hpp"
+
+#include "asm_unmarshal.hpp"
 
 using std::vector;
 using std::string;

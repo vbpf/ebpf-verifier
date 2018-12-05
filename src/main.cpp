@@ -6,8 +6,11 @@
 
 #include <crab/common/debug.hpp>
 
-#include "verifier.hpp"
+#include "crab_verifier.hpp"
 #include "asm.hpp"
+
+using std::string;
+using std::vector;
 
 
 static int usage(const char *name)
