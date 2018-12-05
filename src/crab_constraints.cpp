@@ -207,18 +207,25 @@ void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg,
     }
     for (auto const& this_label : simple_cfg.keys()) {
         auto const& bb = simple_cfg.at(this_label);
-        basic_block_t& this_block = cfg.insert(this_label);
-        basic_block_t& exit = bb.insts.size() == 0 ? this_block : cfg.insert(exit_label(this_label));
-        for (auto ins : bb.insts) {
-            vector<basic_block_t*> outs = instruction_builder_t(machine, ins, this_block, cfg).exec();
-            for (basic_block_t* b : outs)
-                (*b) >> exit;
+        basic_block_t* exit = &cfg.insert(this_label);
+        if (bb.insts.size() > 0) {
+            int iteration = 0;
+            string label = this_label;
+            for (auto ins : bb.insts) {
+                basic_block_t& this_block = cfg.insert(label);
+                exit = &cfg.insert(exit_label(this_block.label()));
+                vector<basic_block_t*> outs = instruction_builder_t(machine, ins, this_block, cfg).exec();
+                for (basic_block_t* b : outs)
+                    (*b) >> *exit;
+                iteration++;
+                label = this_label + ":" + to_string(iteration);
+            }
         }
         if (bb.nextlist.size() == 0) {
-            cfg.set_exit(exit.label());
+            cfg.set_exit(exit->label());
         } else {
             for (auto label : bb.nextlist)
-                exit >> cfg.insert(label);
+                *exit >> cfg.insert(label);
         }
     }
     if (global_options.simplify) {
