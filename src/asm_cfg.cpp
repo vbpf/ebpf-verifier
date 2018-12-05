@@ -155,8 +155,8 @@ Cfg Cfg::to_nondet() {
             Label mid_label = this_label + ":";
             Condition cond = *std::get<Jmp>(bb.insts.back()).cond;
             vector<std::tuple<Label, Condition>> jumps{
-                {bb.nextlist[0], reverse(cond)},
-                {bb.nextlist[1], cond},
+                {bb.nextlist[0], cond},
+                {bb.nextlist[1], reverse(cond)},
             };
             for (auto const& [next_label, cond] : jumps) {
                 Label l = mid_label + next_label;
