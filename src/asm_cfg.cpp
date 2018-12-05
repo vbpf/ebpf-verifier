@@ -37,13 +37,13 @@ static bool has_fall(Instruction ins) {
     return true;
 }
 
-static void link(Cfg& cfg, Label from, Label to) {
-    cfg[from].nextlist.push_back(to);
-    cfg[to].prevlist.push_back(from);
-}
 
-Cfg build_cfg(const InstructionSeq& insts) {
+Cfg Cfg::make(const InstructionSeq& insts) {
     Cfg cfg;
+    const auto link = [&](Label from, Label to) {
+        cfg[from].nextlist.push_back(to);
+        cfg[to].prevlist.push_back(from);
+    };
     std::optional<Label> falling_from = {};
     for (const auto& [label, inst] : insts) {
 
@@ -54,14 +54,14 @@ Cfg build_cfg(const InstructionSeq& insts) {
         cfg.encountered(label);
         cfg[label].insts = {inst};
         if (falling_from) {
-            link(cfg, *falling_from, label);
+            link(*falling_from, label);
             falling_from = {};
         }
         if (has_fall(inst))
             falling_from = label;
         auto jump_target = get_jump(inst);
         if (jump_target)
-            link(cfg, label, *jump_target);
+            link(label, *jump_target);
     }
     if (falling_from) throw std::invalid_argument{"fallthrough in last instruction"};
     return cfg;
@@ -133,10 +133,10 @@ static vector<Instruction> expand_lockadd(LockAdd lock)
     };
 }
 
-Cfg to_nondet(const Cfg& simple_cfg) {
+Cfg Cfg::to_nondet() {
     Cfg res;
-    for (auto const& this_label : simple_cfg.keys()) {
-        BasicBlock const& bb = simple_cfg.at(this_label);
+    for (auto const& this_label : this->keys()) {
+        BasicBlock const& bb = this->at(this_label);
         res.encountered(this_label);
         BasicBlock& newbb = res[this_label];
 
@@ -149,7 +149,7 @@ Cfg to_nondet(const Cfg& simple_cfg) {
 
         for (Label prev_label : bb.prevlist) {
             newbb.prevlist.push_back(
-                unique(simple_cfg.at(prev_label).nextlist).size() > 1
+                unique(this->at(prev_label).nextlist).size() > 1
                 ? prev_label + ":" + this_label
                 : prev_label
             );

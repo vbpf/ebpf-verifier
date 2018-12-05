@@ -14,13 +14,16 @@ struct BasicBlock {
 class Cfg {
     std::unordered_map<Label, BasicBlock> graph;
     std::vector<Label> ordered_labels;
-public:
+
     void encountered(Label l) { ordered_labels.push_back(l); }
     BasicBlock& operator[](Label l) { return graph[l]; }
+    Cfg() { }
+public:
     BasicBlock const& at(Label l) const { return graph.at(l); }
-    std::vector<Label> const& keys() const { return ordered_labels; }
-};
 
-Cfg build_cfg(const InstructionSeq& labeled_insts);
-             
-Cfg to_nondet(const Cfg& simple_cfg);
+    std::vector<Label> const& keys() const { return ordered_labels; }
+
+    static Cfg make(const InstructionSeq& labeled_insts);
+                
+    Cfg to_nondet();
+};

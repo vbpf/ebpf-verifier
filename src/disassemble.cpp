@@ -42,11 +42,11 @@ int main(int argc, char **argv)
             if (mode == "raw") {
                 print(prog);
             } else {
-                Cfg cfg = build_cfg(prog);
+                Cfg cfg = Cfg::make(prog);
                 if (mode == "cfg") {
                     print(cfg, false);
                 } else if (mode == "nondet") {
-                    print(to_nondet(cfg), true);
+                    print(cfg.to_nondet(), true);
                 }
             }
             std::cout << "\n";
