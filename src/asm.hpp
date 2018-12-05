@@ -4,6 +4,7 @@
 #include <variant>
 #include <optional>
 #include <vector>
+#include <tuple>
 #include <string>
 #include <unordered_map>
 
@@ -20,7 +21,7 @@ struct Imm {
 };
 
 struct Reg {
-    uint8_t v{};
+    uint8_t v;
 };
 
 using Value = std::variant<Imm, Reg>;
@@ -130,14 +131,13 @@ using Instruction = std::variant<
 
 using pc_t = uint16_t;
 
-struct Program {
-    std::vector<Instruction> code;
-};
-
 constexpr int STACK_SIZE=512;
 
-std::variant<Program, std::string> parse(std::istream& is, size_t nbytes);
-std::vector<Instruction> parse(std::vector<ebpf_inst> insts);
+using LabeledInstruction = std::tuple<Label, Instruction>;
+using InstructionSeq = std::vector<LabeledInstruction>;
+
+std::variant<InstructionSeq, std::string> unmarshal(std::istream& is, size_t nbytes);
+std::vector<LabeledInstruction> unmarshal(std::vector<ebpf_inst> const& insts);
 
 std::vector<ebpf_inst> marshal(Instruction ins, pc_t pc);
 std::vector<ebpf_inst> marshal(std::vector<Instruction> insts);
@@ -170,20 +170,18 @@ struct BasicBlock {
 
 using Cfg = std::unordered_map<Label, BasicBlock>;
 
-Cfg build_cfg(const Program& prog);
-Cfg build_cfg(const std::vector<Instruction>& insts,
-              const std::vector<Label>& pc_to_label); 
+Cfg build_cfg(const InstructionSeq& labeled_insts);
              
 Cfg to_nondet(const Cfg& simple_cfg);
 
-void print(const Program& prog);
+void print(const InstructionSeq& prog);
 void print(const Cfg& cfg, bool nondet);
 
 std::ostream& operator<<(std::ostream& os, Instruction const& ins);
 std::string to_string(Instruction const& ins);
 std::string to_string(Instruction const& ins, LabelTranslator labeler);
 
-void print_stats(const Program& prog);
+void print_stats(const Cfg& prog);
 
 // Helpers:
 

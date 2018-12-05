@@ -3,15 +3,9 @@
 #include <cstring>
 
 static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = false) {
-    std::vector<Instruction> parsed = parse(marshal(ins, 0));
-    if (double_cmd) {
-        REQUIRE(parsed.size() == 2);
-        REQUIRE(std::holds_alternative<Undefined>(parsed.back()));
-        parsed.pop_back();
-    } else {
-        REQUIRE(parsed.size() == 1);
-    }
-    Instruction single = parsed.back();
+    InstructionSeq parsed = unmarshal(marshal(ins, 0));
+    REQUIRE(parsed.size() == 1);
+    auto [_, single] = parsed.back();
     REQUIRE(single == ins);
 }
 
@@ -173,21 +167,27 @@ TEST_CASE( "marshal", "[disasm][marshal]" ) {
 TEST_CASE( "disasm_marshal_Mem", "[disasm][marshal]" ) {
     SECTION( "Load" ) {
         for (Width w : ws) {
-            Deref access{ .basereg = Reg{4}, .offset = 6 };
+            Deref access;
+            access.basereg = Reg{ 4 };
+            access.offset = 6;
             access.width = w;
             compare_marshal_unmarshal(Mem {access, .value = Reg{ 3 }, ._is_load=true });
         }
     }
     SECTION( "Store Register" ) {
         for (Width w : ws) {
-            Deref access{ .basereg = Reg{9}, .offset = 8 };
+            Deref access;
+            access.basereg = Reg{ 9 };
+            access.offset = 8;
             access.width = w;
             compare_marshal_unmarshal(Mem {access, .value = Reg{ 4 }, ._is_load=false });
         }
     }
     SECTION( "Store Immediate" ) {
         for (Width w : ws) {
-            Deref access{ .basereg = Reg{10}, .offset = 2 };
+            Deref access;
+            access.basereg = Reg{ 10 };
+            access.offset = 2;
             access.width = w;
             compare_marshal_unmarshal(Mem {access, .value = Imm{ 5 }, ._is_load=false });
         }

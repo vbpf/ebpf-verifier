@@ -25,83 +25,44 @@ static optional<Label> get_jump(Instruction ins) {
     return {};
 }
 
-static optional<Label> get_fall(Instruction ins, pc_t pc) {
-    if ((std::holds_alternative<Bin>(ins) && std::get<Bin>(ins).lddw)
-        || std::holds_alternative<LoadMapFd>(ins))
-        return std::to_string(pc + 2);
-
+static bool has_fall(Instruction ins) {
     if (std::holds_alternative<Exit>(ins))
-        return {};
-    if (std::holds_alternative<Undefined>(ins))
-        return {};
+        return false;
 
     if (std::holds_alternative<Jmp>(ins)
         && !std::get<Jmp>(ins).cond)
-            return {};
+            return false;
 
-    return std::to_string(pc + 1);
+    return true;
 }
 
-static void link(Cfg& cfg, Label from, optional<Label> to) {
-    if (to) {
-        cfg[from].nextlist.push_back(*to);
-        cfg[*to].prevlist.push_back(from);
-    }
+static void link(Cfg& cfg, Label from, Label to) {
+    cfg[from].nextlist.push_back(to);
+    cfg[to].prevlist.push_back(from);
 }
 
-static vector<Instruction> expand_lockadd(LockAdd lock)
-{
-    return {
-        Mem {
-            Deref {
-                .width = lock.access.width,
-                .basereg = lock.access.basereg,
-                .offset = 0,
-            },
-            .value = Reg{11},
-            ._is_load = true,
-        },
-        Bin {
-            .op = Bin::Op::ADD,
-            .is64 = false,
-            .dst = Reg{11},
-            .v = Imm(lock.access.offset),
-        },
-        Mem {
-            Deref {
-                .width = lock.access.width,
-                .basereg = lock.access.basereg,
-                .offset = 0,
-            },
-            .value = Reg{11},
-            ._is_load = false,
-        }
-    };
-}
-
-Cfg build_cfg(const std::vector<Instruction>& insts, const std::vector<Label>& pc_to_label) {
+Cfg build_cfg(const InstructionSeq& insts) {
     Cfg cfg;
-    for (pc_t pc = 0; pc < insts.size(); pc++) {
-        Instruction ins = insts[pc];
+    std::optional<Label> falling_from = {};
+    for (const auto& [label, inst] : insts) {
 
-        if (std::holds_alternative<Undefined>(ins))
+        if (std::holds_alternative<Undefined>(inst))
             continue;
 
-        Label label = pc_to_label.at(pc);
         // create cfg[label] if not exists
-        cfg[label].insts = {ins};
-
-        link(cfg, label, get_fall(ins, pc));
-        link(cfg, label, get_jump(ins));
+        cfg[label].insts = {inst};
+        if (falling_from) {
+            link(cfg, *falling_from, label);
+            falling_from = {};
+        }
+        if (has_fall(inst))
+            falling_from = label;
+        auto jump_target = get_jump(inst);
+        if (jump_target)
+            link(cfg, label, *jump_target);
     }
+    if (falling_from) throw std::invalid_argument{"fallthrough in last instruction"};
     return cfg;
-}
-
-Cfg build_cfg(const Program& prog) {
-    std::vector<Label> pc_to_label(prog.code.size());
-    for (pc_t pc = 0; pc < prog.code.size(); pc++)
-        pc_to_label.push_back(std::to_string(pc));
-    return build_cfg(prog.code, pc_to_label);
 }
 
 static Condition::Op reverse(Condition::Op op) {
@@ -138,6 +99,36 @@ static vector<Label> unique(const vector<Label>& v) {
     vector<Label> res;
     std::unique_copy(v.begin(), v.end(), std::back_inserter(res));
     return res;
+}
+
+static vector<Instruction> expand_lockadd(LockAdd lock)
+{
+    return {
+        Mem {
+            Deref {
+                .width = lock.access.width,
+                .basereg = lock.access.basereg,
+                .offset = 0,
+            },
+            .value = Reg{11},
+            ._is_load = true,
+        },
+        Bin {
+            .op = Bin::Op::ADD,
+            .is64 = false,
+            .dst = Reg{11},
+            .v = Imm(lock.access.offset),
+        },
+        Mem {
+            Deref {
+                .width = lock.access.width,
+                .basereg = lock.access.basereg,
+                .offset = 0,
+            },
+            .value = Reg{11},
+            ._is_load = false,
+        }
+    };
 }
 
 Cfg to_nondet(const Cfg& simple_cfg) {
@@ -183,15 +174,12 @@ Cfg to_nondet(const Cfg& simple_cfg) {
     return res;
 }
 
-void print_stats(const Program& prog) {
-    Cfg cfg = build_cfg(prog);
-    auto& insts = prog.code;
+void print_stats(const Cfg& cfg) {
     int count = 0;
     int stores = 0;
     int loads = 0;
     int jumps = 0;
     int joins = 0;
-    vector<int> reaching(insts.size());
     for (auto const& [this_label, bb] : cfg) {
         Instruction ins = bb.insts[0];
         count++;

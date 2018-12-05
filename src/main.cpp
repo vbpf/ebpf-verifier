@@ -20,7 +20,7 @@ static auto readfile(string path)
     }
     size_t nbytes = is.tellg();
     is.seekg(0);
-    return parse(is, nbytes);
+    return unmarshal(is, nbytes);
 }
 
 
@@ -46,9 +46,12 @@ static int usage(const char *name)
 int run(string domain_name, string code_filename, ebpf_prog_type prog_type)
 {
     return std::visit(overloaded {
-        [domain_name, prog_type](Program prog) {
+        [domain_name, prog_type](auto prog) {
             print(prog);
-            if (!abs_validate(prog, domain_name, prog_type)) {
+            Cfg nondet_cfg = to_nondet(build_cfg(prog));
+            bool res = abs_validate(nondet_cfg, domain_name, prog_type);
+            print_stats(nondet_cfg);
+            if (!res) {
                 std::cout << "verification failed\n";
                 return 1;
             }

@@ -205,8 +205,11 @@ static vector<std::tuple<Label, optional<Label>>> slide(const vector<Label>& lab
     return label_pairs;
 }
 
-void print(std::ostream& os, Instruction const& ins, pc_t pc) {
-    std::visit(InstructionPrinterVisitor{os, label_to_offset_string(pc)}, ins);
+void print(std::ostream& os, LabeledInstruction labeled_inst, pc_t pc) {
+    auto [label, ins] = labeled_inst;
+    if (std::holds_alternative<Jmp>(ins))
+        std::get<Jmp>(ins).target = label_to_offset_string(pc)(std::get<Jmp>(ins).target);
+    std::visit(InstructionPrinterVisitor{os}, ins);
 }
 
 string to_string(Instruction const& ins, LabelTranslator labeler) {
@@ -224,11 +227,11 @@ string to_string(Instruction const& ins) {
     return to_string(ins, [](Label l){ return string("<") + l + ">";});
 }
 
-void print(const Program& prog) {
+void print(const InstructionSeq& insts) {
     pc_t pc = 0;
-    for (auto ins : prog.code) {
+    for (auto inst : insts) {
         std::cout << std::setw(8) << pc << " : ";
-        print(std::cout, ins, pc);
+        print(std::cout, inst, pc);
         std::cout << "\n";
         pc++;
     }

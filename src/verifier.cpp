@@ -52,11 +52,11 @@ vector<string> sorted_labels(cfg_t& cfg)
     return labels;
 }
 
-bool abs_validate(Program& prog, string domain_name, ebpf_prog_type prog_type)
+bool abs_validate(Cfg const& simple_cfg, string domain_name, ebpf_prog_type prog_type)
 {
     variable_factory_t vfac;
     cfg_t cfg(entry_label(), ARR);
-    build_cfg(cfg, vfac, prog, prog_type);
+    build_crab_cfg(cfg, vfac, simple_cfg, prog_type);
 
     printer_t pre_printer;
     printer_t post_printer;
@@ -83,7 +83,6 @@ bool abs_validate(Program& prog, string domain_name, ebpf_prog_type prog_type)
     }
 
     cout << "seconds:" << elapsed_secs << "\n";
-    print_stats(prog);
 
     if (nwarn > 0) {
         checks.write(crab::outs());
