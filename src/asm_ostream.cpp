@@ -99,10 +99,7 @@ struct InstructionPrinterVisitor {
 
     void operator()(Jmp const& b) {
         if (b.cond) {
-            os_ << "if "
-                << b.cond->left
-                << " " << op(b.cond->op) << " ";
-            std::visit(*this, b.cond->right);
+            print(*b.cond);
             os_ << " ";
         }
         os_ << "goto " << labeler(b.target);
@@ -130,6 +127,11 @@ struct InstructionPrinterVisitor {
         os_ << "(" << access.basereg << sign << offset << ")";
     }
 
+    void print(Condition const& cond) {
+        os_ << cond.left << " " << op(cond.op) << " ";
+        std::visit(*this, cond.right);
+    }
+
     void operator()(Mem const& b) {
         if (b.isLoad()) {
             std::visit(*this, b.value);
@@ -149,11 +151,8 @@ struct InstructionPrinterVisitor {
     }
 
     void operator()(Assume const& b) {
-        os_ << "assume "
-            << b.cond.left
-            << " " << op(b.cond.op) << " ";
-        std::visit(*this, b.cond.right);
-        os_ << " ";
+        os_ << "assume ";
+        print(b.cond);
     }
 
     void operator()(Assert const& b) {
