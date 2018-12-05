@@ -47,6 +47,20 @@ inline std::ostream& operator<<(std::ostream& os, Value const& a) {
     return os << std::get<Reg>(a);
 }
 
+inline std::ostream& operator<<(std::ostream& os, Type const& a) {
+    switch (a) {
+        case Type::SECRET: os << "SECRET"; break;
+        case Type::NUM: os << "NUM"; break;
+        case Type::STACK: os << "CTX"; break;
+        case Type::CTX: os << "CTX"; break;
+        case Type::PACKET: os << "PACKET"; break;
+        case Type::MAP: os << "SECRET"; break;
+        case Type::PTR: os << "PTR"; break;
+        case Type::NONSECRET: os << "NONSECRET"; break;
+    }
+    return os;
+}
+
 inline std::ostream& operator<<(std::ostream& os, Undefined const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, LoadMapFd const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, Bin const& a) { return os << (Instruction)a; }
@@ -54,7 +68,8 @@ inline std::ostream& operator<<(std::ostream& os, Un const& a) { return os << (I
 inline std::ostream& operator<<(std::ostream& os, Call const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, Exit const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, Jmp const& a) { return os << (Instruction)a; }
-inline std::ostream& operator<<(std::ostream& os, Assume const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, Packet const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, Mem const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, LockAdd const& a) { return os << (Instruction)a; }
+inline std::ostream& operator<<(std::ostream& os, Assume const& a) { return os << (Instruction)a; }
+inline std::ostream& operator<<(std::ostream& os, Assert const& a) { return os << (Instruction)a; }

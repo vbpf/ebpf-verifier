@@ -125,6 +125,37 @@ static vector<Instruction> expand_lockadd(LockAdd lock)
     };
 }
 
+vector<Assert> extract_assertions(Instruction ins) {
+    return std::visit(overloaded{
+        [](auto ins) -> vector<Assert> { return {}; },
+        [](Mem ins) -> vector<Assert> { return {Assert{ins.access}}; },
+        [](Bin ins) -> vector<Assert> { 
+            switch (ins.op) {
+                case Bin::Op::MOV: return { };
+                case Bin::Op::ADD:
+                    if (std::holds_alternative<Reg>(ins.v))
+                        return {                    
+                            Assert{Assert::CanAdd{.x = ins.dst, .y = std::get<Reg>(ins.v)}}
+                        };
+                case Bin::Op::SUB:
+                    if (std::holds_alternative<Reg>(ins.v))
+                        return {
+                            Assert{Assert::Typeof{ .reg = std::get<Reg>(ins.v), .type = Type::NUM }}
+                        };
+                    return {};
+                default: {
+                    vector<Assert> res{
+                        Assert{Assert::Typeof{ .reg = ins.dst, .type = Type::NUM }}
+                    };
+                    if (std::holds_alternative<Reg>(ins.v))
+                        res.push_back(Assert{Assert::Typeof{ .reg = std::get<Reg>(ins.v), .type = Type::NUM }});
+                    return res;
+                }
+            }
+        },
+    }, ins);
+}
+
 Cfg Cfg::to_nondet() {
     Cfg res;
     for (auto const& this_label : this->keys()) {
@@ -133,6 +164,9 @@ Cfg Cfg::to_nondet() {
         BasicBlock& newbb = res[this_label];
 
         for (auto ins : bb.insts) {
+
+            for (auto assertion : extract_assertions(ins))
+                newbb.insts.push_back(assertion);
             if (std::holds_alternative<LockAdd>(ins)) {
                 for (auto ins : expand_lockadd(std::get<LockAdd>(ins))) {
                     newbb.insts.push_back(ins);

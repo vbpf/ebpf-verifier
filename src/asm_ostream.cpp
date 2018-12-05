@@ -108,14 +108,6 @@ struct InstructionPrinterVisitor {
         os_ << "goto " << labeler(b.target);
     }
 
-    void operator()(Assume const& b) {
-        os_ << "assume "
-            << b.cond.left
-            << " " << op(b.cond.op) << " ";
-        std::visit(*this, b.cond.right);
-        os_ << " ";
-    }
-
     void operator()(Packet const& b) {
         /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
         /* Indirect packet access, R0 = *(uint *) (skb->data + src_reg + imm32) */
@@ -154,6 +146,23 @@ struct InstructionPrinterVisitor {
         os_ << "lock ";
         print(b.access);
         os_ << " += " << b.valreg;
+    }
+
+    void operator()(Assume const& b) {
+        os_ << "assume "
+            << b.cond.left
+            << " " << op(b.cond.op) << " ";
+        std::visit(*this, b.cond.right);
+        os_ << " ";
+    }
+
+    void operator()(Assert const& b) {
+        os_ << "assert ";
+        std::visit(overloaded{
+            [&](Assert::CanAdd a) { os_ << a.x << " + " << a.y; },
+            [&](Deref a) { print(a); },
+            [&](Assert::Typeof a) { os_ << a.reg << " : " << a.type ; },
+        }, b.assertion);
     }
 
     void operator()(Imm imm) {
@@ -243,15 +252,15 @@ void print(const InstructionSeq& insts) {
 
 void print(const Cfg& cfg, bool nondet) {
     for (auto [label, next] : slide(cfg.keys())) {
-        std::cout << std::setw(11) << label << " : ";
+        std::cout << std::setw(8) << label << ":\t";
+        bool first = true;
         const auto& bb = cfg.at(label);
         for (auto ins : bb.insts) {
+            first = false;
             std::visit(InstructionPrinterVisitor{std::cout}, ins);
-            std::cout << "\n";
+            std::cout << "\n" << std::setw(17);
         }
         if (nondet && bb.nextlist.size() > 0 && (!next || bb.nextlist != vector<Label>{*next})) {
-            if (bb.insts.size() > 0)
-                std::cout << std::setw(14) << "";
             std::cout << "goto ";
             for (Label label : bb.nextlist)
                 std::cout << label << ", ";

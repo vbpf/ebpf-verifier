@@ -186,11 +186,12 @@ private:
     vector<basic_block_t*> operator()(Un const& b);
     vector<basic_block_t*> operator()(Call const& b);
     vector<basic_block_t*> operator()(Exit const& b);
-    vector<basic_block_t*> operator()(Assume const& b);
     vector<basic_block_t*> operator()(Jmp const& b) { assert(false); }
     vector<basic_block_t*> operator()(LockAdd const& b) { assert(false); }
     vector<basic_block_t*> operator()(Packet const& b);
     vector<basic_block_t*> operator()(Mem const& b);
+    vector<basic_block_t*> operator()(Assume const& b);
+    vector<basic_block_t*> operator()(Assert const& b) { return {}; };
 
     bool is_priviledged() {
         return machine.prog_type == 2;
