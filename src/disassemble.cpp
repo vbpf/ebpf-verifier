@@ -7,25 +7,6 @@
 #include "asm.hpp"
 using std::string;
 
-static auto readfile(string path)
-{
-    struct stat path_stat;
-    stat(path.c_str(), &path_stat);
-    if (!S_ISREG(path_stat.st_mode)) {
-        std::cerr << "Cannot read from a directory: " << path << "\n";
-        exit(65);
-    }
-    using std::ifstream;
-    ifstream is(path, ifstream::ate | ifstream::binary);
-    if (is.fail()) {
-        std::cerr << "file " << path << " does not exist\n";
-        exit(65);
-    }
-    size_t nbytes = is.tellg();
-    is.seekg(0);
-    return unmarshal(is, nbytes);
-}
-
 int main(int argc, char **argv)
 {
     if (argc > 3 || argc < 2) {
@@ -33,6 +14,8 @@ int main(int argc, char **argv)
         return 65;
     }
     string mode = argc < 3 ? "raw" : argv[2];
+    auto [is, nbytes] = open_binary_file(argv[1]);
+    auto prog = unmarshal(is, nbytes);
     return std::visit(overloaded {
         [](string errmsg) {
             std::cout << "Bad file: " << errmsg << "\n";
@@ -52,5 +35,5 @@ int main(int argc, char **argv)
             std::cout << "\n";
             return 0;
         },
-    }, readfile(argv[1]));
+    }, prog);
 }
