@@ -419,3 +419,31 @@ LBB0_1:
 
     REQUIRE(labeled_insts == expected);
 }
+
+TEST_CASE( "Full assembler jump after ll", "[assemble][full-assemble]") {
+    std::string code = R"code(
+sockex1_kern.o:	file format ELF64-BPF
+
+Disassembly of section socket1:
+bpf_prog1:
+       0:	r0 = 1
+       1:	if r0 != 4 goto +1 <LBB0_1>
+       2:	r0 = 2 ll
+
+LBB0_1:
+       4:	exit
+    )code";
+
+    std::vector<std::tuple<Label, Instruction>> expected = {
+       {"bpf_prog1", assemble("r0 = 1")},
+       {"1",         assemble("if r0 != 4 goto +1 <LBB0_1>")},
+       {"2",         assemble("r0 = 2 ll")},
+       {"3",         Undefined{0}},
+       {"LBB0_1",    assemble("exit")},
+    };
+
+    std::istringstream is(code);
+    auto labeled_insts = assemble_program(is);
+
+    REQUIRE(labeled_insts == expected);
+}
