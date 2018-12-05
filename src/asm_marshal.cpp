@@ -6,7 +6,8 @@
 
 #include "linux_ebpf.hpp"
 
-#include "asm.hpp"
+#include "asm_marshal.hpp"
+#include "asm_ostream.hpp"
 
 using std::vector;
 

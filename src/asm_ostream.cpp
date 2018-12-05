@@ -4,7 +4,9 @@
 #include <iomanip>
 #include <unordered_map>
 
-#include "asm.hpp"
+#include "asm_syntax.hpp"
+#include "asm_ostream.hpp"
+#include "asm_cfg.hpp"
 
 using std::string;
 using std::vector;

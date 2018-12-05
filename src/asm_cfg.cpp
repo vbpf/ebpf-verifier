@@ -10,7 +10,8 @@
 #include <optional>
 #include <iostream>
 
-#include "asm.hpp"
+#include "asm_cfg.hpp"
+#include "asm_ostream.hpp"
 
 using std::optional;
 using std::to_string;
