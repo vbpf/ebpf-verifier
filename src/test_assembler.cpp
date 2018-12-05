@@ -1,5 +1,7 @@
 #include "catch.hpp"
-#include "asm.hpp"
+
+#include "asm_ostream.hpp"
+#include "asm_parse.hpp"
 
 #include <map>
 

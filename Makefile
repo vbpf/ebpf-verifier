@@ -6,6 +6,7 @@ SRCDIR := src
 
 SOURCES := $(wildcard ${SRCDIR}/*.cpp)
 OBJECTS := $(SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
+DEPENDS := $(OBJECTS:%.o=%.d)
 OBJECTS := $(filter-out ${BUILDDIR}/disassemble.o,$(OBJECTS))
 OBJECTS := $(filter-out ${BUILDDIR}/assemble.o,$(OBJECTS))
 OBJECTS := $(filter-out ${BUILDDIR}/main.o,$(OBJECTS))
@@ -67,18 +68,20 @@ CRABFLAGS := \
 
 all: $(BINDIR)/check $(BINDIR)/disassemble $(BINDIR)/assemble $(BINDIR)/test
 
+-include $(DEPENDS)
+
 $(BUILDDIR)/%.o: $(SRCDIR)/%.cpp
 	@mkdir -p $(BUILDDIR)
-	@printf "$@ <- $^\n"
-	@$(CXX) ${CXXFLAGS} ${CRABFLAGS} $^ -c -o $@
+	@printf "$@ <- $<\n"
+	@$(CXX) ${CXXFLAGS} ${CRABFLAGS} $< -MMD -c -o $@ # important: use $< and not $^
 
 $(BINDIR)/test: ${BUILDDIR}/test.o ${TEST_OBJECTS} ${OBJECTS}
 	@printf "$@ <- $^\n"
-	@$(CXX) ${CXXFLAGS}  ${CRABFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
+	@$(CXX) ${CXXFLAGS} ${CRABFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
 
 $(BINDIR)/check: ${BUILDDIR}/main.o ${OBJECTS}
 	@printf "$@ <- $^\n"
-	@$(CXX) ${CXXFLAGS}  ${CRABFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
+	@$(CXX) ${CXXFLAGS} ${CRABFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
 
 DISASM_OBJECTS := \
     ${BUILDDIR}/asm_unmarshal.o \
@@ -98,7 +101,7 @@ $(BINDIR)/assemble: ${BUILDDIR}/assemble.o ${DISASM_OBJECTS}
 	@$(CXX) ${CXXFLAGS} $^ -o $@
 
 clean:
-	rm -f $(BINDIR)/check $(BINDIR)/disassemble $(BUILDDIR)/*.o
+	rm -f $(BINDIR)/check $(BINDIR)/disassemble $(BUILDDIR)/*.o $(BUILDDIR)/*.d
 
 crab_clean:
 	rm -rf $(CRABDIR)/build $(CRABDIR)/install
