@@ -16,4 +16,4 @@ inline int first_num(const Label& s)
     return boost::lexical_cast<int>(s.substr(0, s.find_first_of(':')));
 }
 
-void build_cfg(cfg_t& cfg, variable_factory_t& vfac, const Program& prog, ebpf_prog_type prog_type);
+void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg, ebpf_prog_type prog_type);

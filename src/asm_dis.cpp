@@ -29,8 +29,8 @@ struct UnsupportedMemoryMode : std::invalid_argument {
     UnsupportedMemoryMode(const char* what) : std::invalid_argument{what} { }
 };
 
-static std::vector<std::vector<std::string>> notes;
-void note(std::string what) {
+static vector<vector<string>> notes;
+void note(string what) {
     notes.back().emplace_back(what);
 }
 void note_next_pc() {
@@ -292,9 +292,9 @@ static auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, pc_t pc) -> 
     }
 }
 
-vector<Instruction> parse(vector<ebpf_inst> insts)
+vector<LabeledInstruction> unmarshal(vector<ebpf_inst> const& insts)
 {
-    vector<Instruction> prog;
+    vector<LabeledInstruction> prog;
     int exit_count = 0;
     if (insts.size() == 0) {
         throw std::invalid_argument("Zero length programs are not allowed");
@@ -302,28 +302,29 @@ vector<Instruction> parse(vector<ebpf_inst> insts)
     note_next_pc();
     for (pc_t pc = 0; pc < insts.size();) {
         ebpf_inst inst = insts[pc];
-        vector<Instruction> new_ins;
+        Instruction new_ins;
+        bool lddw = false;
         switch (inst.opcode & EBPF_CLS_MASK) {
             case EBPF_CLS_LD:
                 if (inst.opcode == EBPF_OP_LDDW_IMM) {
                     uint32_t next_imm = pc < insts.size() - 1 ? insts[pc+1].imm : 0;
-                    new_ins = {makeLddw(inst, next_imm, insts, pc),
-                               Undefined{0}};
+                    new_ins = makeLddw(inst, next_imm, insts, pc);
+                    lddw = true;
                     break;
                 }
                 //fallthrough
             case EBPF_CLS_LDX:
             case EBPF_CLS_ST: case EBPF_CLS_STX:
-                new_ins = {makeMemOp(inst)};
+                new_ins = makeMemOp(inst);
                 break;
 
             case EBPF_CLS_ALU: case EBPF_CLS_ALU64: 
-                new_ins = {makeAluOp(inst)};
+                new_ins = makeAluOp(inst);
                 break;
 
             case EBPF_CLS_JMP: {
-                new_ins = {makeJmp(inst, insts, pc)};
-                if (std::holds_alternative<Exit>(new_ins[0]))
+                new_ins = makeJmp(inst, insts, pc);
+                if (std::holds_alternative<Exit>(new_ins))
                     exit_count++;
                 break;
             }
@@ -344,8 +345,10 @@ vector<Instruction> parse(vector<ebpf_inst> insts)
             std::cerr << "\n";
         }
         */
-        for (auto ins : new_ins) {
-            prog.push_back(ins);
+        prog.emplace_back(std::to_string(pc), new_ins);
+        pc++;
+        note_next_pc();
+        if (lddw) { 
             pc++;
             note_next_pc();
         }
@@ -354,14 +357,14 @@ vector<Instruction> parse(vector<ebpf_inst> insts)
     return prog;
 }
 
-std::variant<Program, string> parse(std::istream& is, size_t nbytes) {
+std::variant<vector<LabeledInstruction>, string> unmarshal(std::istream& is, size_t nbytes) {
     if (nbytes % sizeof(ebpf_inst) != 0) {
         note(string("file size must be a multiple of ") + std::to_string(sizeof(ebpf_inst)));
     }
-    vector<ebpf_inst> binary_code(nbytes / sizeof(ebpf_inst));
-    is.read((char*)binary_code.data(), nbytes);
+    vector<ebpf_inst> ebpf_insts(nbytes / sizeof(ebpf_inst));
+    is.read((char*)ebpf_insts.data(), nbytes);
     try {
-        auto res = parse(binary_code);
+        auto res = unmarshal(ebpf_insts);
         int pc = 0;
         for (auto notelist : notes) {
             pc++;
@@ -369,7 +372,7 @@ std::variant<Program, string> parse(std::istream& is, size_t nbytes) {
                 std::cout << "Note (" << pc << "): " << s << "\n";
             }
         }
-        return Program { res };
+        return res;
     } catch (InvalidInstruction& arg) {
         std::cerr << arg.what() << "\n";
         return arg.what();

@@ -23,7 +23,7 @@ static auto readfile(string path)
     }
     size_t nbytes = is.tellg();
     is.seekg(0);
-    return parse(is, nbytes);
+    return unmarshal(is, nbytes);
 }
 
 int main(int argc, char **argv)
@@ -34,7 +34,11 @@ int main(int argc, char **argv)
     }
     string mode = argc < 3 ? "raw" : argv[2];
     return std::visit(overloaded {
-        [=](Program prog) {
+        [](string errmsg) {
+            std::cout << "Bad file: " << errmsg << "\n";
+            return 1;
+        },
+        [=](auto prog) {
             if (mode == "raw") {
                 print(prog);
             } else {
@@ -46,10 +50,7 @@ int main(int argc, char **argv)
                 }
             }
             std::cout << "\n";
-            return 0; },
-        [](string errmsg) { 
-            std::cout << "Bad file: " << errmsg << "\n";
-            return 1;
-        }
+            return 0;
+        },
     }, readfile(argv[1]));
 }

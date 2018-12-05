@@ -1,9 +1,11 @@
 #pragma once
 
 #include <iostream>
+#include <fstream>
 #include <variant>
 #include <optional>
 #include <vector>
+#include <tuple>
 #include <string>
 #include <unordered_map>
 
@@ -20,7 +22,7 @@ struct Imm {
 };
 
 struct Reg {
-    uint8_t v{};
+    uint8_t v;
 };
 
 using Value = std::variant<Imm, Reg>;
@@ -130,21 +132,31 @@ using Instruction = std::variant<
 
 using pc_t = uint16_t;
 
-struct Program {
-    std::vector<Instruction> code;
-};
-
 constexpr int STACK_SIZE=512;
 
-std::variant<Program, std::string> parse(std::istream& is, size_t nbytes);
-std::vector<Instruction> parse(std::vector<ebpf_inst> insts);
+using LabeledInstruction = std::tuple<Label, Instruction>;
+using InstructionSeq = std::vector<LabeledInstruction>;
+
+std::variant<InstructionSeq, std::string> unmarshal(std::istream& is, size_t nbytes);
+std::vector<LabeledInstruction> unmarshal(std::vector<ebpf_inst> const& insts);
+
+std::tuple<std::ifstream, size_t> open_binary_file(std::string path);
 
 std::vector<ebpf_inst> marshal(Instruction ins, pc_t pc);
 std::vector<ebpf_inst> marshal(std::vector<Instruction> insts);
 
 
+Instruction parse_instruction(std::string text);
+std::vector<std::tuple<Label, Instruction>> parse_program(std::istream& is);
+
+std::ifstream open_asm_file(std::string path);
+
 inline pc_t label_to_pc(Label label) {
-    return boost::lexical_cast<pc_t>(label);
+    try {
+        return boost::lexical_cast<pc_t>(label);
+    } catch(const boost::bad_lexical_cast &) {
+        throw std::invalid_argument(std::string("Cannot convert ") + label + " to pc_t");
+    }
 }
 
 using LabelTranslator = std::function<std::string(Label)>;
@@ -168,19 +180,28 @@ struct BasicBlock {
     std::vector<Label> prevlist;
 };
 
-using Cfg = std::unordered_map<Label, BasicBlock>;
+class Cfg {
+    std::unordered_map<Label, BasicBlock> graph;
+    std::vector<Label> ordered_labels;
+public:
+    void encountered(Label l) { ordered_labels.push_back(l); }
+    BasicBlock& operator[](Label l) { return graph[l]; }
+    BasicBlock const& at(Label l) const { return graph.at(l); }
+    std::vector<Label> const& keys() const { return ordered_labels; }
+};
 
-Cfg build_cfg(const Program& prog);
+Cfg build_cfg(const InstructionSeq& labeled_insts);
+             
 Cfg to_nondet(const Cfg& simple_cfg);
 
-void print(const Program& prog);
+void print(const InstructionSeq& prog);
 void print(const Cfg& cfg, bool nondet);
 
 std::ostream& operator<<(std::ostream& os, Instruction const& ins);
 std::string to_string(Instruction const& ins);
 std::string to_string(Instruction const& ins, LabelTranslator labeler);
 
-void print_stats(const Program& prog);
+void print_stats(const Cfg& prog);
 
 // Helpers:
 

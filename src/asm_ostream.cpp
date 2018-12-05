@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <unordered_map>
 
 #include "asm.hpp"
 
@@ -154,41 +155,12 @@ struct InstructionPrinterVisitor {
     }
 
     void operator()(Imm imm) {
-        if (imm.v >= 0xFFFFFFFFLL)
-            os_ << imm.v << " ll";
-        else
-            os_ << imm.v;
+        os_ << (int32_t)imm.v;
     }
     void operator()(Reg reg) {
         os_ << reg;
     }
 };
-
-static int first_num(const string& s)
-{
-    return boost::lexical_cast<int>(s.substr(0, s.find_first_of(':')));
-}
-
-static int last_num(const string& s)
-{
-    return boost::lexical_cast<int>(s.substr(s.find_first_of(':')+1));
-}
-
-static bool cmp_labels(Label a, Label b) {
-    if (first_num(a) < first_num(b)) return true;
-    if (first_num(a) > first_num(b)) return false;
-    return a < b;
-}
-
-static vector<Label> sorted_labels(const Cfg& cfg)
-{
-    vector<Label> labels;
-    for (auto const& [label, bb] : cfg)
-        labels.push_back(label);
-
-    std::sort(labels.begin(), labels.end(), cmp_labels);
-    return labels;
-}
 
 static vector<std::tuple<Label, optional<Label>>> slide(const vector<Label>& labels)
 {
@@ -203,10 +175,6 @@ static vector<std::tuple<Label, optional<Label>>> slide(const vector<Label>& lab
     }
     label_pairs.push_back({prev, {}});
     return label_pairs;
-}
-
-void print(std::ostream& os, Instruction const& ins, pc_t pc) {
-    std::visit(InstructionPrinterVisitor{os, label_to_offset_string(pc)}, ins);
 }
 
 string to_string(Instruction const& ins, LabelTranslator labeler) {
@@ -224,18 +192,55 @@ string to_string(Instruction const& ins) {
     return to_string(ins, [](Label l){ return string("<") + l + ">";});
 }
 
-void print(const Program& prog) {
+int size(Instruction inst) {
+    if (std::holds_alternative<Bin>(inst)) {
+        if (std::get<Bin>(inst).lddw)
+            return 2;
+    }
+    if (std::holds_alternative<LoadMapFd>(inst)) {
+        return 2;
+    }
+    return 1;
+}
+
+auto get_labels(const InstructionSeq& insts) {
     pc_t pc = 0;
-    for (auto ins : prog.code) {
-        std::cout << std::setw(8) << pc << " : ";
-        print(std::cout, ins, pc);
+    std::unordered_map<string, pc_t> pc_of_label;
+    for (auto [label, inst] : insts) {
+        pc_of_label[label] = pc;
+        pc += size(inst);
+    }
+    return pc_of_label;
+}
+
+void print(const InstructionSeq& insts) {
+    auto pc_of_label = get_labels(insts);
+    pc_t pc = 0;
+    InstructionPrinterVisitor visitor{std::cout};
+    for (LabeledInstruction labeled_inst : insts) {
+        auto [label, ins] = labeled_inst;
+        if (!std::all_of(label.begin(), label.end(), isdigit)) {
+            std::cout << "\n";
+            std::cout << label << ":\n";
+        }
+        std::cout << std::setw(8) << pc << ":\t";
+        if (std::holds_alternative<Jmp>(ins)) {
+            auto jmp = std::get<Jmp>(ins);
+            pc_t target_pc = pc_of_label.at(jmp.target);
+            string sign = (target_pc > pc) ? "+" : "";
+            string offset = std::to_string(target_pc - pc - 1);
+            jmp.target = sign + offset + " <" + jmp.target + ">";
+            visitor(jmp);
+        } else {
+            std::visit(visitor, ins);
+        }
         std::cout << "\n";
-        pc++;
+        pc += size(ins);
     }
 }
 
 void print(const Cfg& cfg, bool nondet) {
-    for (auto [label, next] : slide(sorted_labels(cfg))) {
+    for (auto [label, next] : slide(cfg.keys())) {
         std::cout << std::setw(11) << label << " : ";
         const auto& bb = cfg.at(label);
         for (auto ins : bb.insts) {

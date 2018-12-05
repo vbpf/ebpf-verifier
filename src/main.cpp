@@ -10,20 +10,6 @@
 #include "asm.hpp"
 
 
-static auto readfile(string path)
-{
-    using std::ifstream;
-    ifstream is(path, ifstream::ate | ifstream::binary);
-    if (is.fail()) {
-        std::cerr << "file " << path << " does not exist\n";
-        exit(65);
-    }
-    size_t nbytes = is.tellg();
-    is.seekg(0);
-    return parse(is, nbytes);
-}
-
-
 static int usage(const char *name)
 {
     std::cerr << "usage: " << name << " [FLAGS] BINARY [TYPE] [DOMAIN]\n";
@@ -45,10 +31,15 @@ static int usage(const char *name)
 
 int run(string domain_name, string code_filename, ebpf_prog_type prog_type)
 {
+    auto [is, nbytes] = open_binary_file(code_filename);
+    auto prog = unmarshal(is, nbytes);
     return std::visit(overloaded {
-        [domain_name, prog_type](Program prog) {
+        [domain_name, prog_type](auto prog) {
             print(prog);
-            if (!abs_validate(prog, domain_name, prog_type)) {
+            Cfg nondet_cfg = to_nondet(build_cfg(prog));
+            bool res = abs_validate(nondet_cfg, domain_name, prog_type);
+            print_stats(nondet_cfg);
+            if (!res) {
                 std::cout << "verification failed\n";
                 return 1;
             }
@@ -58,7 +49,7 @@ int run(string domain_name, string code_filename, ebpf_prog_type prog_type)
             std::cout << "trivial verification failure: " << errmsg << "\n";
             return 1;
         }
-    }, readfile(code_filename));
+    }, prog);
 }
 
 

@@ -195,7 +195,7 @@ private:
     }
 };
 
-void build_cfg(cfg_t& cfg, variable_factory_t& vfac, const Program& prog, ebpf_prog_type prog_type)
+void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg, ebpf_prog_type prog_type)
 {
     machine_t machine(prog_type, vfac);
     {
@@ -203,8 +203,8 @@ void build_cfg(cfg_t& cfg, variable_factory_t& vfac, const Program& prog, ebpf_p
         machine.setup_entry(entry);
         entry >> cfg.insert(label(0));
     }
-    Cfg simple_cfg = to_nondet(build_cfg(prog));
-    for (auto const& [this_label, bb] : simple_cfg) {
+    for (auto const& this_label : simple_cfg.keys()) {
+        auto const& bb = simple_cfg.at(this_label);
         basic_block_t& this_block = cfg.insert(this_label);
         basic_block_t& exit = bb.insts.size() == 0 ? this_block : cfg.insert(exit_label(this_label));
         for (auto ins : bb.insts) {

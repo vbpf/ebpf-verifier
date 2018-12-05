@@ -7,6 +7,7 @@ SRCDIR := src
 SOURCES := $(wildcard ${SRCDIR}/*.cpp)
 OBJECTS := $(SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
 OBJECTS := $(filter-out ${BUILDDIR}/disassemble.o,$(OBJECTS))
+OBJECTS := $(filter-out ${BUILDDIR}/assemble.o,$(OBJECTS))
 OBJECTS := $(filter-out ${BUILDDIR}/main.o,$(OBJECTS))
 OBJECTS := $(filter-out ${BUILDDIR}/test.o,$(OBJECTS))
 OBJECTS := $(filter-out ${BUILDDIR}/test_marshal.o,$(OBJECTS))
@@ -64,7 +65,7 @@ CRABFLAGS := \
     -I $(LDD)/include/ldd/include/ \
     -I $(ELINA)/include/
 
-all: $(BINDIR)/check $(BINDIR)/disassemble $(BINDIR)/test
+all: $(BINDIR)/check $(BINDIR)/disassemble $(BINDIR)/assemble $(BINDIR)/test
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.cpp
 	@mkdir -p $(BUILDDIR)
@@ -84,9 +85,15 @@ DISASM_OBJECTS := \
     ${BUILDDIR}/asm_ostream.o \
     ${BUILDDIR}/asm_marshal.o \
     ${BUILDDIR}/asm_cfg.o \
+    ${BUILDDIR}/asm_parse.o \
+    ${BUILDDIR}/asm_files.o \
     ${BUILDDIR}/prototypes.o
 
 $(BINDIR)/disassemble: ${BUILDDIR}/disassemble.o ${DISASM_OBJECTS}
+	@printf "$@ <- $^\n"
+	@$(CXX) ${CXXFLAGS} $^ -o $@
+
+$(BINDIR)/assemble: ${BUILDDIR}/assemble.o ${DISASM_OBJECTS}
 	@printf "$@ <- $^\n"
 	@$(CXX) ${CXXFLAGS} $^ -o $@
 

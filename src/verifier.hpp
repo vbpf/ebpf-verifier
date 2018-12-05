@@ -11,7 +11,7 @@ using std::string;
 using std::map;
 using std::vector;
 
-bool abs_validate(Program& prog, string domain_name, ebpf_prog_type prog_type);
+bool abs_validate(Cfg const& simple_cfg, string domain_name, ebpf_prog_type prog_type);
 
 map<string, string> domain_descriptions();
 
