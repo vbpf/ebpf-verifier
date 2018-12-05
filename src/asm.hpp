@@ -142,9 +142,15 @@ std::vector<LabeledInstruction> unmarshal(std::vector<ebpf_inst> const& insts);
 std::vector<ebpf_inst> marshal(Instruction ins, pc_t pc);
 std::vector<ebpf_inst> marshal(std::vector<Instruction> insts);
 
+Instruction parse_instruction(std::string text);
+std::vector<std::tuple<Label, Instruction>> parse_program(std::istream& is);
 
 inline pc_t label_to_pc(Label label) {
-    return boost::lexical_cast<pc_t>(label);
+    try {
+        return boost::lexical_cast<pc_t>(label);
+    } catch(const boost::bad_lexical_cast &) {
+        throw std::invalid_argument(std::string("Cannot convert ") + label + " to pc_t");
+    }
 }
 
 using LabelTranslator = std::function<std::string(Label)>;
