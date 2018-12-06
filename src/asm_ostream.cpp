@@ -79,14 +79,14 @@ struct InstructionPrinterVisitor {
     }
 
     void operator()(Un const& b) {
+        os_ << b.dst << " = ";
         switch (b.op) {
-            case Un::Op::LE16: os_ << "le16()"; break;
-            case Un::Op::LE32: os_ << "le32()"; break;
-            case Un::Op::LE64: os_ << "le64()"; break;
-            case Un::Op::NEG:
-                os_ << b.dst << " = -" << b.dst;
-                break;
+            case Un::Op::LE16: os_ << "be16 "; break;
+            case Un::Op::LE32: os_ << "be32 "; break;
+            case Un::Op::LE64: os_ << "be64 "; break;
+            case Un::Op::NEG:  os_ << "-";  break;
         }
+        os_ << b.dst;
     }
 
     void operator()(Call const& b) {
