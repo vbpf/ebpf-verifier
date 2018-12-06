@@ -11,6 +11,7 @@
 using std::string;
 using std::vector;
 using std::optional;
+using std::cout;
 
 
 static string op(Bin::Op op) {
@@ -224,14 +225,14 @@ auto get_labels(const InstructionSeq& insts) {
 void print(const InstructionSeq& insts) {
     auto pc_of_label = get_labels(insts);
     pc_t pc = 0;
-    InstructionPrinterVisitor visitor{std::cout};
+    InstructionPrinterVisitor visitor{cout};
     for (LabeledInstruction labeled_inst : insts) {
         auto [label, ins] = labeled_inst;
         if (!std::all_of(label.begin(), label.end(), isdigit)) {
-            std::cout << "\n";
-            std::cout << label << ":\n";
+            cout << "\n";
+            cout << label << ":\n";
         }
-        std::cout << std::setw(8) << pc << ":\t";
+        cout << std::setw(8) << pc << ":\t";
         if (std::holds_alternative<Jmp>(ins)) {
             auto jmp = std::get<Jmp>(ins);
             pc_t target_pc = pc_of_label.at(jmp.target);
@@ -242,26 +243,46 @@ void print(const InstructionSeq& insts) {
         } else {
             std::visit(visitor, ins);
         }
-        std::cout << "\n";
+        cout << "\n";
         pc += size(ins);
     }
 }
 
 void print(const Cfg& cfg, bool nondet) {
     for (auto [label, next] : slide(cfg.keys())) {
-        std::cout << std::setw(8) << label << ":\t";
+        cout << std::setw(8) << label << ":\t";
         bool first = true;
         const auto& bb = cfg.at(label);
         for (auto ins : bb.insts) {
             first = false;
-            std::visit(InstructionPrinterVisitor{std::cout}, ins);
-            std::cout << "\n" << std::setw(17);
+            std::visit(InstructionPrinterVisitor{cout}, ins);
+            cout << "\n" << std::setw(17);
         }
         if (nondet && bb.nextlist.size() > 0 && (!next || bb.nextlist != vector<Label>{*next})) {
-            std::cout << "goto ";
+            cout << "goto ";
             for (Label label : bb.nextlist)
-                std::cout << label << ", ";
-            std::cout << "\n";
+                cout << label << ", ";
+            cout << "\n";
         }
     }
+}
+
+
+void print_dot(const Cfg& cfg) {
+    cout << "digraph program {\n";
+    cout << "    node [shape = rectangle];\n";
+    for (auto label : cfg.keys()) {
+        cout << "    \"" << label << "\"[label=\"";
+
+        const auto& bb = cfg.at(label);
+        for (auto ins : bb.insts) {
+            cout << ins << "\\l";
+        }
+
+        cout << "\"];\n";
+        for (Label next : bb.nextlist)
+            cout << "    \"" << label << "\" -> \"" << next << "\";\n";
+        cout << "\n";
+    }
+    cout << "}\n";
 }
