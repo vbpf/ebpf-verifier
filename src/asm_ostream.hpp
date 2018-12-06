@@ -51,15 +51,20 @@ inline std::ostream& operator<<(std::ostream& os, Type const& a) {
     switch (a) {
         case Type::SECRET: os << "SECRET"; break;
         case Type::NUM: os << "NUM"; break;
-        case Type::STACK: os << "CTX"; break;
+        case Type::STACK: os << "STACK"; break;
         case Type::CTX: os << "CTX"; break;
         case Type::PACKET: os << "PACKET"; break;
-        case Type::MAP: os << "SECRET"; break;
+        case Type::MAP: os << "MAP"; break;
         case Type::PTR: os << "PTR"; break;
         case Type::NONSECRET: os << "NONSECRET"; break;
     }
     return os;
 }
+
+inline std::ostream& operator<<(std::ostream& os, Assert::Typeof const& a) {
+    return os << a.reg << " : " << a.type;
+}
+
 
 inline std::ostream& operator<<(std::ostream& os, Undefined const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, LoadMapFd const& a) { return os << (Instruction)a; }

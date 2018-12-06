@@ -155,13 +155,11 @@ struct InstructionPrinterVisitor {
         print(b.cond);
     }
 
-    void operator()(Assert const& b) {
+    void operator()(Assert const& a) {
         os_ << "assert ";
-        std::visit(overloaded{
-            [&](Assert::CanAdd a) { os_ << a.x << " + " << a.y; },
-            [&](Deref a) { print(a); },
-            [&](Assert::Typeof a) { os_ << a.reg << " : " << a.type ; },
-        }, b.assertion);
+        for (auto h : a.holds) { os_ << h << " && "; }
+        for (auto [x, y] : a.implies_type) { os_ << x << " -> " << y << " && "; }
+        for (auto [t, r, o, w, v] : a.implies) { os_ << t << " -> 0 <= " << r << " + " << o << ".." << o + w << " <= " << v << " && "; }
     }
 
     void operator()(Imm imm) {

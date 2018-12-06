@@ -116,15 +116,13 @@ struct Assume {
 enum class Type { SECRET, NUM, CTX, STACK, PACKET, MAP, PTR, NONSECRET };
 
 struct Assert {
-    struct CanAdd {
-        Reg x;
-        Reg y;
-    };
     struct Typeof {
         Reg reg;
         Type type;
     };
-    std::variant<CanAdd, Deref, Typeof> assertion;
+    std::vector<Typeof> holds;
+    std::vector<std::tuple<Typeof, Typeof>> implies_type;
+    std::vector<std::tuple<Typeof,/*->*/ Reg,/*+*/ int, /*width*/int, /*<=*/ Value>> implies;
 };
 
 using Instruction = std::variant<
@@ -182,9 +180,6 @@ inline bool operator==(Condition const& a, Condition const& b) {
 inline bool operator==(Assert::Typeof const& a, Assert::Typeof const& b) {
     return a.reg == b.reg && a.type == b.type;
 }
-inline bool operator==(Assert::CanAdd const& a, Assert::CanAdd const& b) {
-    return a.x == b.x && a.y == b.y;
-}
 
 inline bool operator==(Undefined const& a, Undefined const& b){ 
     return a.opcode == b.opcode;
@@ -220,7 +215,7 @@ inline bool operator==(Assume const& a, Assume const& b){
     return a.cond == b.cond;
 }
 inline bool operator==(Assert const& a, Assert const& b){ 
-    return a.assertion == b.assertion;
+    return a.holds == b.holds && a.implies_type == b.implies_type && a.implies == b.implies;
 }
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
