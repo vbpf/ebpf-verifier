@@ -21,6 +21,11 @@ int main(int argc, char **argv)
     if (mode == "quiet") {
         return 0;
     }
+    if (mode == "-o") {
+        auto out = marshal(prog);
+        write_binary_file(subcommand, (char*)out.data(), out.size() * sizeof(out[0]));
+        return 0;
+    } 
     if (mode == "raw") {
         print(prog);
     } else {
