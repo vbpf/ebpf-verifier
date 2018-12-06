@@ -261,3 +261,41 @@ vector<ebpf_inst> marshal(vector<Instruction> insts) {
     }
     return res;
 }
+
+static int size(Instruction inst) {
+    if (std::holds_alternative<Bin>(inst)) {
+        if (std::get<Bin>(inst).lddw)
+            return 2;
+    }
+    if (std::holds_alternative<LoadMapFd>(inst)) {
+        return 2;
+    }
+    return 1;
+}
+
+static auto get_labels(const InstructionSeq& insts) {
+    pc_t pc = 0;
+    std::unordered_map<std::string, pc_t> pc_of_label;
+    for (auto [label, inst] : insts) {
+        pc_of_label[label] = pc;
+        pc += size(inst);
+    }
+    return pc_of_label;
+}
+
+vector<ebpf_inst> marshal(InstructionSeq insts) {
+    vector<ebpf_inst> res;
+    auto pc_of_label = get_labels(insts);
+    pc_t pc = 0;
+    for (auto [label, ins] : insts) {
+        if (std::holds_alternative<Jmp>(ins)) {
+            Jmp& jmp = std::get<Jmp>(ins);
+            jmp.target = std::to_string(pc_of_label.at(jmp.target));
+        }
+        for (auto e: marshal(ins, pc)) {
+            pc++;
+            res.push_back(e);
+        }
+    }
+    return res;
+}
