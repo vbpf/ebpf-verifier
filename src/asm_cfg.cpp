@@ -125,63 +125,6 @@ static vector<Instruction> expand_lockadd(LockAdd lock)
     };
 }
 
-static int access_width(Width w)
-{
-    switch (w) {
-        case Width::B: return 1;
-        case Width::H: return 2;
-        case Width::W: return 4;
-        case Width::DW: return 8;
-    }
-	assert(false);
-}
-
-Assert extract_assertions(Instruction ins) {
-    return std::visit(overloaded{
-        [](auto ins) -> Assert { return {}; },
-        [](Mem ins) -> Assert { 
-            Assert res;
-            Reg reg = ins.access.basereg;
-            int width = access_width(ins.access.width);
-            int offset = ins.access.offset;
-            if (reg.v != 10) {
-                res.holds.push_back({reg, Type::PTR});
-                res.implies.emplace_back(Assert::Typeof{reg, Type::MAP   }, reg, offset, width, (Value)Imm{4098});
-                res.implies.emplace_back(Assert::Typeof{reg, Type::PACKET}, reg, offset, width, (Value)Reg{15});
-            }
-            res.implies.emplace_back(Assert::Typeof{reg, Type::STACK }, reg, offset, width, (Value)Imm{256});
-            return res;
-        },
-        [](Bin ins) -> Assert { 
-            switch (ins.op) {
-                case Bin::Op::MOV: return { };
-                case Bin::Op::ADD: {
-                    Assert res; 
-                    if (std::holds_alternative<Reg>(ins.v)) {
-                        Reg reg = std::get<Reg>(ins.v);
-                        res.implies_type.emplace_back(Assert::Typeof{ins.dst, Type::PTR}, Assert::Typeof{reg, Type::NUM});
-                        res.implies_type.emplace_back(Assert::Typeof{reg, Type::NUM}, Assert::Typeof{ins.dst, Type::PTR});
-                    }
-                    return res;
-                }
-                case Bin::Op::SUB:{
-                    Assert res; 
-                    if (std::holds_alternative<Reg>(ins.v)) {
-                        Reg reg = std::get<Reg>(ins.v);
-                        res.holds.push_back({reg, Type::NUM});
-                    }
-                    return res;
-                }
-                default: {
-                    Assert res;
-                    res.holds.push_back({ins.dst, Type::NUM});
-                    return res;
-                }
-            }
-        },
-    }, ins);
-}
-
 Cfg Cfg::to_nondet() {
     Cfg res;
     for (auto const& this_label : this->keys()) {
@@ -190,9 +133,6 @@ Cfg Cfg::to_nondet() {
         BasicBlock& newbb = res[this_label];
 
         for (auto ins : bb.insts) {
-            auto assertion = extract_assertions(ins);
-            if (assertion.holds.size() > 0 || assertion.implies_type.size() > 0 || assertion.implies.size() > 0)
-                newbb.insts.push_back(assertion);
             if (std::holds_alternative<LockAdd>(ins)) {
                 for (auto ins : expand_lockadd(std::get<LockAdd>(ins))) {
                     newbb.insts.push_back(ins);

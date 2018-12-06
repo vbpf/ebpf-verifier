@@ -5,15 +5,18 @@
 #include <unistd.h>
 
 #include "asm.hpp"
+#include "spec_assertions.hpp"
+
 using std::string;
 
 int main(int argc, char **argv)
 {
-    if (argc > 3 || argc < 2) {
+    if (argc > 4 || argc < 2) {
         std::cerr << "Usage: " << argv[0] << " file\n";
         return 65;
     }
     string mode = argc < 3 ? "raw" : argv[2];
+    string subcommand = argc < 4 ? "" : argv[3];
     auto [is, nbytes] = open_binary_file(argv[1]);
     auto prog = unmarshal(is, nbytes);
     return std::visit(overloaded {
@@ -26,11 +29,13 @@ int main(int argc, char **argv)
                 print(prog);
             } else {
                 Cfg cfg = Cfg::make(prog);
-                if (mode == "cfg") {
-                    print(cfg, false);
-                } else if (mode == "nondet") {
-                    print(cfg.to_nondet(), true);
+                if (mode == "nondet") {
+                    cfg = cfg.to_nondet();
                 }
+                if (subcommand == "explicit") {
+                    explicate_assertions(cfg);
+                }
+                print(cfg, mode == "nondet");
             }
             std::cout << "\n";
             return 0;
