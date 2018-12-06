@@ -99,21 +99,10 @@ struct InstructionPrinterVisitor {
 
     void operator()(Jmp const& b) {
         if (b.cond) {
-            os_ << "if "
-                << b.cond->left
-                << " " << op(b.cond->op) << " ";
-            std::visit(*this, b.cond->right);
+            print(*b.cond);
             os_ << " ";
         }
         os_ << "goto " << labeler(b.target);
-    }
-
-    void operator()(Assume const& b) {
-        os_ << "assume "
-            << b.cond.left
-            << " " << op(b.cond.op) << " ";
-        std::visit(*this, b.cond.right);
-        os_ << " ";
     }
 
     void operator()(Packet const& b) {
@@ -138,6 +127,11 @@ struct InstructionPrinterVisitor {
         os_ << "(" << access.basereg << sign << offset << ")";
     }
 
+    void print(Condition const& cond) {
+        os_ << cond.left << " " << op(cond.op) << " ";
+        std::visit(*this, cond.right);
+    }
+
     void operator()(Mem const& b) {
         if (b.isLoad()) {
             std::visit(*this, b.value);
@@ -154,6 +148,18 @@ struct InstructionPrinterVisitor {
         os_ << "lock ";
         print(b.access);
         os_ << " += " << b.valreg;
+    }
+
+    void operator()(Assume const& b) {
+        os_ << "assume ";
+        print(b.cond);
+    }
+
+    void operator()(Assert const& a) {
+        os_ << "assert ";
+        for (auto h : a.holds) { os_ << h << " && "; }
+        for (auto [x, y] : a.implies_type) { os_ << x << " -> " << y << " && "; }
+        for (auto [t, r, o, w, v] : a.implies) { os_ << t << " -> 0 <= " << r << " + " << o << ".." << o + w << " <= " << v << " && "; }
     }
 
     void operator()(Imm imm) {
@@ -243,15 +249,15 @@ void print(const InstructionSeq& insts) {
 
 void print(const Cfg& cfg, bool nondet) {
     for (auto [label, next] : slide(cfg.keys())) {
-        std::cout << std::setw(11) << label << " : ";
+        std::cout << std::setw(8) << label << ":\t";
+        bool first = true;
         const auto& bb = cfg.at(label);
         for (auto ins : bb.insts) {
+            first = false;
             std::visit(InstructionPrinterVisitor{std::cout}, ins);
-            std::cout << "\n";
+            std::cout << "\n" << std::setw(17);
         }
         if (nondet && bb.nextlist.size() > 0 && (!next || bb.nextlist != vector<Label>{*next})) {
-            if (bb.insts.size() > 0)
-                std::cout << std::setw(14) << "";
             std::cout << "goto ";
             for (Label label : bb.nextlist)
                 std::cout << label << ", ";

@@ -16,9 +16,9 @@ class Cfg {
     std::vector<Label> ordered_labels;
 
     void encountered(Label l) { ordered_labels.push_back(l); }
-    BasicBlock& operator[](Label l) { return graph[l]; }
     Cfg() { }
 public:
+    BasicBlock& operator[](Label l) { return graph[l]; }
     BasicBlock const& at(Label l) const { return graph.at(l); }
 
     std::vector<Label> const& keys() const { return ordered_labels; }

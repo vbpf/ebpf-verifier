@@ -68,10 +68,6 @@ struct Jmp {
     Label target;
 };
 
-struct Assume {
-    Condition cond;
-};
-
 struct Call {
     int32_t func{};
 };
@@ -112,6 +108,23 @@ struct LockAdd {
 
 struct Undefined { int opcode; };
 
+
+struct Assume {
+    Condition cond;
+};
+
+enum class Type { SECRET, NUM, CTX, STACK, PACKET, MAP, PTR, NONSECRET };
+
+struct Assert {
+    struct Typeof {
+        Reg reg;
+        Type type;
+    };
+    std::vector<Typeof> holds;
+    std::vector<std::tuple<Typeof, Typeof>> implies_type;
+    std::vector<std::tuple<Typeof,/*->*/ Reg,/*+*/ int, /*width*/int, /*<=*/ Value>> implies;
+};
+
 using Instruction = std::variant<
     Undefined,
     Bin,
@@ -123,7 +136,8 @@ using Instruction = std::variant<
     Mem,
     Packet,
     LockAdd,
-    Assume
+    Assume, 
+    Assert
 >;
 
 using LabeledInstruction = std::tuple<Label, Instruction>;
@@ -163,6 +177,10 @@ inline bool operator==(Deref const& a, Deref const& b) {
 inline bool operator==(Condition const& a, Condition const& b) {
     return a.left == b.left && a.op == b.op && a.right == b.right;
 }
+inline bool operator==(Assert::Typeof const& a, Assert::Typeof const& b) {
+    return a.reg == b.reg && a.type == b.type;
+}
+
 inline bool operator==(Undefined const& a, Undefined const& b){ 
     return a.opcode == b.opcode;
 }
@@ -184,9 +202,6 @@ inline bool operator==(Exit const& a, Exit const& b){
 inline bool operator==(Jmp const& a, Jmp const& b){ 
     return a.cond == b.cond && a.target == b.target;
 }
-inline bool operator==(Assume const& a, Assume const& b){ 
-    return a.cond == b.cond;
-}
 inline bool operator==(Packet const& a, Packet const& b){ 
     return a.offset == b.offset && a.regoffset == b.regoffset && a.width == b.width;
 }
@@ -195,6 +210,12 @@ inline bool operator==(Mem const& a, Mem const& b){
 }
 inline bool operator==(LockAdd const& a, LockAdd const& b){ 
     return a.access == b.access && a.valreg == b.valreg;
+}
+inline bool operator==(Assume const& a, Assume const& b){ 
+    return a.cond == b.cond;
+}
+inline bool operator==(Assert const& a, Assert const& b){ 
+    return a.holds == b.holds && a.implies_type == b.implies_type && a.implies == b.implies;
 }
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
