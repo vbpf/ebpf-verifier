@@ -26,4 +26,5 @@ public:
     static Cfg make(const InstructionSeq& labeled_insts);
                 
     Cfg to_nondet();
+    void simplify();
 };

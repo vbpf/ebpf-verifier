@@ -103,8 +103,7 @@ static vector<Label> unique(const vector<Label>& v) {
     return res;
 }
 
-static vector<Instruction> expand_lockadd(LockAdd lock)
-{
+static vector<Instruction> expand_lockadd(LockAdd lock) {
     return {
         Mem {
             .access = lock.access,
@@ -123,6 +122,37 @@ static vector<Instruction> expand_lockadd(LockAdd lock)
             ._is_load = false,
         }
     };
+}
+
+void Cfg::simplify() {
+    std::unordered_set<Label> worklist(keys().begin(), keys().end());
+    std::unordered_set<Label> to_remove;
+    while (!worklist.empty()) {
+        Label label = *worklist.begin();
+        worklist.erase(label);
+        BasicBlock& bb = graph[label];
+        while (bb.nextlist.size() == 1) {
+            // Fix: doesnt handle loops
+            Label next_label = bb.nextlist.back();
+            BasicBlock& next_bb = graph[next_label];
+            if (&next_bb == &bb || next_bb.prevlist.size() != 1) {
+                break;
+            }
+            bb.nextlist = std::move(next_bb.nextlist);
+            for (Instruction inst : next_bb.insts) {
+                bb.insts.push_back(inst);
+            }
+            worklist.erase(next_label);
+            to_remove.insert(next_label);
+        }
+    }
+    ordered_labels.erase(
+        std::remove_if(
+            ordered_labels.begin(), ordered_labels.end(),
+            [&](auto& x) { return to_remove.count(x); }
+        ),
+        ordered_labels.end()
+    );
 }
 
 Cfg Cfg::to_nondet() {

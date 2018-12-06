@@ -35,6 +35,9 @@ int main(int argc, char **argv)
                 if (flags.count("explicit")) {
                     explicate_assertions(cfg);
                 }
+                if (flags.count("simplify")) {
+                    cfg.simplify();
+                }
                 if (flags.count("dot"))
                     print_dot(cfg);
                 else 
