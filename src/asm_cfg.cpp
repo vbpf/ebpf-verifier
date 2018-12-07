@@ -132,7 +132,6 @@ void Cfg::simplify() {
         worklist.erase(label);
         BasicBlock& bb = graph[label];
         while (bb.nextlist.size() == 1) {
-            // Fix: doesnt handle loops
             Label next_label = bb.nextlist.back();
             BasicBlock& next_bb = graph[next_label];
             if (&next_bb == &bb || next_bb.prevlist.size() != 1) {

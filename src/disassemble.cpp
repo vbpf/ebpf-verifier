@@ -12,8 +12,8 @@ using std::string;
 
 int main(int argc, char **argv)
 {
-    if (argc > 5 || argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " file\n";
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " file [option...]\n";
         return 65;
     }
     auto [is, nbytes] = open_binary_file(argv[1]);
