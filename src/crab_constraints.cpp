@@ -590,7 +590,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Undefined const& a) {
 vector<basic_block_t*> instruction_builder_t::operator()(LoadMapFd const& ld) {
     // we're a per-process file descriptor defining the map.
     // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
-    // This is what ARG_CONST_MAP_PTR looks for
+    // This is what Arg::CONST_MAP_PTR looks for
     // This is probably the wrong thing to do. should we add an FD type?
     // Here we (probably) need the map structure
     block.assign(machine.reg(ld.dst).region, T_MAP);
@@ -795,10 +795,10 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& b) {
     bpf_func_proto proto = get_prototype(b.func);
     int i = 0;
     vector<basic_block_t*> blocks{&block};
-    std::array<bpf_arg_type, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
-    for (bpf_arg_type t : args) {
+    std::array<Arg, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
+    for (Arg t : args) {
         dom_t arg = machine.regs[++i];
-        if (t == ARG_DONTCARE)
+        if (t == Arg::DONTCARE)
             break;
         auto assert_pointer_or_null = [&](lin_cst_t cst) {
             vector<basic_block_t*> next;
@@ -815,10 +815,10 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& b) {
             blocks = std::move(next);
         };
         switch (t) {
-        case ARG_DONTCARE:
+        case Arg::DONTCARE:
             assert(false);
             break;
-        case ARG_ANYTHING:
+        case Arg::ANYTHING:
             // avoid pointer leakage:
             if (!is_priviledged()) {
                 for (basic_block_t* b : blocks) {
@@ -826,41 +826,41 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& b) {
                 }
             }
             break;
-        case ARG_CONST_SIZE:
+        case Arg::CONST_SIZE:
             for (basic_block_t* b : blocks) {
                 b->assertion(arg.region == T_NUM, di);
                 b->assertion(arg.value > 0, di);
             }
             break;
-        case ARG_CONST_SIZE_OR_ZERO:
+        case Arg::CONST_SIZE_OR_ZERO:
             for (basic_block_t* b : blocks) {
                 b->assertion(arg.region == T_NUM, di);
                 b->assertion(arg.value >= 0, di);
             }
             break;
-        case ARG_CONST_MAP_PTR:
+        case Arg::CONST_MAP_PTR:
             assert_pointer_or_null(arg.region == T_MAP);
             break;
-        case ARG_PTR_TO_CTX:
+        case Arg::PTR_TO_CTX:
             assert_pointer_or_null(arg.region == T_CTX);
             break;
-        case ARG_PTR_TO_MEM_OR_NULL:
+        case Arg::PTR_TO_MEM_OR_NULL:
             assert_pointer_or_null(is_pointer(arg));
             break;
-        case ARG_PTR_TO_MAP_KEY:
+        case Arg::PTR_TO_MAP_KEY:
             for (basic_block_t* b : blocks) {
                 b->assertion(arg.value > 0, di);
                 b->assertion(is_pointer(arg), di);
             }
             break;
-        case ARG_PTR_TO_MAP_VALUE:
+        case Arg::PTR_TO_MAP_VALUE:
             for (basic_block_t* b : blocks) {
                 b->assertion(arg.value > 0, di);
                 b->assertion(arg.region == T_STACK, di);
                 b->assertion(arg.offset < 0, di);
             }
             break;
-        case ARG_PTR_TO_MEM: {
+        case Arg::PTR_TO_MEM: {
                 vector<basic_block_t*> next;
                 for (basic_block_t* b : blocks) {
                     b->assertion(arg.value > 0, di);
@@ -875,7 +875,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& b) {
                 blocks = std::move(next);
             }
             break;
-        case ARG_PTR_TO_UNINIT_MEM: {
+        case Arg::PTR_TO_UNINIT_MEM: {
                 vector<basic_block_t*> next;
                 for (basic_block_t* b : blocks) {
                     b->assertion(is_pointer(arg), di);
@@ -897,18 +897,18 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& b) {
     for (auto b: blocks) {
         scratch_regs(*b);
         switch (proto.ret_type) {
-        case RET_PTR_TO_MAP_VALUE_OR_NULL:
+        case Ret::PTR_TO_MAP_VALUE_OR_NULL:
             b->assign(r0.region, T_MAP);
             b->havoc(r0.value);
             b->assume(0 <= r0.value);
             b->assign(r0.offset, 0);
             break;
-        case RET_INTEGER:
+        case Ret::INTEGER:
             b->havoc(r0.value);
             b->assign(r0.region, T_NUM);
             b->havoc(r0.offset);
             break;
-        case RET_VOID:
+        case Ret::VOID:
             // return from tail call - meaning the call has failed; return negative
             b->havoc(r0.value);
             b->assign(r0.region, T_NUM);
