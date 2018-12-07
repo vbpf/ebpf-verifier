@@ -12,45 +12,48 @@
 using std::vector;
 
 static uint8_t op(Condition::Op op)  {
+    using Op = Condition::Op;
     switch (op) {
-        case Condition::Op::EQ : return 0x1;
-        case Condition::Op::GT : return 0x2;
-        case Condition::Op::GE : return 0x3;
-        case Condition::Op::SET: return 0x4;
-        case Condition::Op::NSET: assert(false);
-        case Condition::Op::NE : return 0x5;
-        case Condition::Op::SGT: return 0x6;
-        case Condition::Op::SGE: return 0x7;
-        case Condition::Op::LT : return 0xa;
-        case Condition::Op::LE : return 0xb;
-        case Condition::Op::SLT: return 0xc;
-        case Condition::Op::SLE: return 0xd;
+        case Op::EQ : return 0x1;
+        case Op::GT : return 0x2;
+        case Op::GE : return 0x3;
+        case Op::SET: return 0x4;
+        case Op::NSET: assert(false);
+        case Op::NE : return 0x5;
+        case Op::SGT: return 0x6;
+        case Op::SGE: return 0x7;
+        case Op::LT : return 0xa;
+        case Op::LE : return 0xb;
+        case Op::SLT: return 0xc;
+        case Op::SLE: return 0xd;
     }
 }
 
 static uint8_t op(Bin::Op op) {
+    using Op = Bin::Op;
     switch (op) {
-        case Bin::Op::ADD : return 0x0;
-        case Bin::Op::SUB : return 0x1;
-        case Bin::Op::MUL : return 0x2;
-        case Bin::Op::DIV : return 0x3;
-        case Bin::Op::OR  : return 0x4;
-        case Bin::Op::AND : return 0x5;
-        case Bin::Op::LSH : return 0x6;
-        case Bin::Op::RSH : return 0x7;
-        case Bin::Op::MOD : return 0x9;
-        case Bin::Op::XOR : return 0xa;
-        case Bin::Op::MOV : return 0xb;
-        case Bin::Op::ARSH: return 0xc;
+        case Op::ADD : return 0x0;
+        case Op::SUB : return 0x1;
+        case Op::MUL : return 0x2;
+        case Op::DIV : return 0x3;
+        case Op::OR  : return 0x4;
+        case Op::AND : return 0x5;
+        case Op::LSH : return 0x6;
+        case Op::RSH : return 0x7;
+        case Op::MOD : return 0x9;
+        case Op::XOR : return 0xa;
+        case Op::MOV : return 0xb;
+        case Op::ARSH: return 0xc;
     }
 }
 
 static uint8_t imm(Un::Op op) {
+    using Op = Un::Op;
     switch (op) {
-        case Un::Op::NEG  : return 0;
-        case Un::Op::LE16 : return 16;
-        case Un::Op::LE32 : return 32;
-        case Un::Op::LE64 : return 64;
+        case Op::NEG  : return 0;
+        case Op::LE16 : return 16;
+        case Op::LE32 : return 32;
+        case Op::LE64 : return 64;
     }
 }
 

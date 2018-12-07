@@ -121,21 +121,22 @@ static auto getBinValue(ebpf_inst inst) -> Value {
 }
 
 static auto getJmpOp(uint8_t opcode) -> Condition::Op {
+    using Op = Condition::Op;
     switch ((opcode >> 4) & 0xF) {
         case 0x0 : assert(false); // goto
-        case 0x1 : return Condition::Op::EQ;
-        case 0x2 : return Condition::Op::GT;
-        case 0x3 : return Condition::Op::GE;
-        case 0x4 : return Condition::Op::SET;
-        case 0x5 : return Condition::Op::NE;
-        case 0x6 : return Condition::Op::SGT;
-        case 0x7 : return Condition::Op::SGE;
+        case 0x1 : return Op::EQ;
+        case 0x2 : return Op::GT;
+        case 0x3 : return Op::GE;
+        case 0x4 : return Op::SET;
+        case 0x5 : return Op::NE;
+        case 0x6 : return Op::SGT;
+        case 0x7 : return Op::SGE;
         case 0x8 : assert(false); // call
         case 0x9 : assert(false); // exit
-        case 0xa : return Condition::Op::LT;
-        case 0xb : return Condition::Op::LE;
-        case 0xc : return Condition::Op::SLT;
-        case 0xd : return Condition::Op::SLE;
+        case 0xa : return Op::LT;
+        case 0xb : return Op::LE;
+        case 0xc : return Op::SLT;
+        case 0xd : return Op::SLE;
         case 0xe : throw InvalidInstruction{"Invalid JMP op 0xe"};
     }
     assert(false);

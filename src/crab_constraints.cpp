@@ -282,18 +282,19 @@ static lin_cst_t neq(var_t& a, var_t& b) { return {a - b, lin_cst_t::DISEQUATION
 
 static lin_cst_t jmp_to_cst_offsets_reg(Condition::Op op, var_t& dst_offset, var_t& src_offset)
 {
+    using Op = Condition::Op;
     switch (op) {
-        case Condition::Op::EQ : return eq(dst_offset, src_offset);
-        case Condition::Op::NE : return neq(dst_offset, src_offset);
-        case Condition::Op::GE : return dst_offset >= src_offset; // FIX unsigned
-        case Condition::Op::SGE: return dst_offset >= src_offset;
-        case Condition::Op::LE : return dst_offset <= src_offset; // FIX unsigned
-        case Condition::Op::SLE: return dst_offset <= src_offset;
-        case Condition::Op::GT : return dst_offset >= src_offset + 1; // FIX unsigned
-        case Condition::Op::SGT: return dst_offset >= src_offset + 1;
-        case Condition::Op::SLT: return src_offset >= dst_offset + 1;
+        case Op::EQ : return eq(dst_offset, src_offset);
+        case Op::NE : return neq(dst_offset, src_offset);
+        case Op::GE : return dst_offset >= src_offset; // FIX unsigned
+        case Op::SGE: return dst_offset >= src_offset;
+        case Op::LE : return dst_offset <= src_offset; // FIX unsigned
+        case Op::SLE: return dst_offset <= src_offset;
+        case Op::GT : return dst_offset >= src_offset + 1; // FIX unsigned
+        case Op::SGT: return dst_offset >= src_offset + 1;
+        case Op::SLT: return src_offset >= dst_offset + 1;
         // Note: reverse the test as a workaround strange lookup:
-        case Condition::Op::LT : return src_offset >= dst_offset + 1; // FIX unsigned
+        case Op::LT : return src_offset >= dst_offset + 1; // FIX unsigned
         default:
             return dst_offset - dst_offset == 0;
     }
@@ -301,39 +302,41 @@ static lin_cst_t jmp_to_cst_offsets_reg(Condition::Op op, var_t& dst_offset, var
 
 static vector<lin_cst_t> jmp_to_cst_imm(Condition::Op op, var_t& dst_value, int imm)
 {
+    using Op = Condition::Op;
     switch (op) {
-        case Condition::Op::EQ : return {dst_value == imm};
-        case Condition::Op::NE : return {dst_value != imm};
-        case Condition::Op::GE : return {dst_value >= (unsigned)imm}; // FIX unsigned
-        case Condition::Op::SGE: return {dst_value >= imm};
-        case Condition::Op::LE : return {dst_value <= imm, 0 <= dst_value}; // FIX unsigned
-        case Condition::Op::SLE: return {dst_value <= imm};
-        case Condition::Op::GT : return {dst_value >= (unsigned)imm + 1}; // FIX unsigned
-        case Condition::Op::SGT: return {dst_value >= imm + 1};
-        case Condition::Op::LT : return {dst_value <= (unsigned)imm - 1}; // FIX unsigned
-        case Condition::Op::SLT: return {dst_value <= imm - 1};
-        case Condition::Op::SET: throw std::exception();
-        case Condition::Op::NSET: assert(false);
+        case Op::EQ : return {dst_value == imm};
+        case Op::NE : return {dst_value != imm};
+        case Op::GE : return {dst_value >= (unsigned)imm}; // FIX unsigned
+        case Op::SGE: return {dst_value >= imm};
+        case Op::LE : return {dst_value <= imm, 0 <= dst_value}; // FIX unsigned
+        case Op::SLE: return {dst_value <= imm};
+        case Op::GT : return {dst_value >= (unsigned)imm + 1}; // FIX unsigned
+        case Op::SGT: return {dst_value >= imm + 1};
+        case Op::LT : return {dst_value <= (unsigned)imm - 1}; // FIX unsigned
+        case Op::SLT: return {dst_value <= imm - 1};
+        case Op::SET: throw std::exception();
+        case Op::NSET: assert(false);
     }
     assert(false);
 }
 
 static vector<lin_cst_t> jmp_to_cst_reg(Condition::Op op, var_t& dst_value, var_t& src_value)
 {
+    using Op = Condition::Op;
     switch (op) {
-        case Condition::Op::EQ : return {eq(dst_value, src_value)};
-        case Condition::Op::NE : return {neq(dst_value, src_value)};
-        case Condition::Op::GE : return {dst_value >= src_value}; // FIX unsigned
-        case Condition::Op::SGE: return {dst_value >= src_value};
-        case Condition::Op::LE : return {dst_value <= src_value, 0 <= dst_value}; // FIX unsigned
-        case Condition::Op::SLE: return {dst_value <= src_value};
-        case Condition::Op::GT : return {dst_value >= src_value + 1}; // FIX unsigned
-        case Condition::Op::SGT: return {dst_value >= src_value + 1};
+        case Op::EQ : return {eq(dst_value, src_value)};
+        case Op::NE : return {neq(dst_value, src_value)};
+        case Op::GE : return {dst_value >= src_value}; // FIX unsigned
+        case Op::SGE: return {dst_value >= src_value};
+        case Op::LE : return {dst_value <= src_value, 0 <= dst_value}; // FIX unsigned
+        case Op::SLE: return {dst_value <= src_value};
+        case Op::GT : return {dst_value >= src_value + 1}; // FIX unsigned
+        case Op::SGT: return {dst_value >= src_value + 1};
         // Note: reverse the test as a workaround strange lookup:
-        case Condition::Op::LT : return {src_value >= dst_value + 1}; // FIX unsigned
-        case Condition::Op::SLT: return {src_value >= dst_value + 1};
-        case Condition::Op::SET: throw std::exception();
-        case Condition::Op::NSET: assert(false);
+        case Op::LT : return {src_value >= dst_value + 1}; // FIX unsigned
+        case Op::SLT: return {src_value >= dst_value + 1};
+        case Op::SET: throw std::exception();
+        case Op::NSET: assert(false);
     }
     assert(false);
 }

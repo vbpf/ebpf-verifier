@@ -15,36 +15,38 @@ using std::cout;
 
 
 static string op(Bin::Op op) {
+    using Op = Bin::Op;
     switch (op) {
-        case Bin::Op::MOV : return "";
-        case Bin::Op::ADD : return "+";
-        case Bin::Op::SUB : return "-";
-        case Bin::Op::MUL : return "*";
-        case Bin::Op::DIV : return "/";
-        case Bin::Op::MOD : return "%";
-        case Bin::Op::OR  : return "|";
-        case Bin::Op::AND : return "&";
-        case Bin::Op::LSH : return "<<";
-        case Bin::Op::RSH : return ">>";
-        case Bin::Op::ARSH: return ">>>";
-        case Bin::Op::XOR : return "^";
+        case Op::MOV : return "";
+        case Op::ADD : return "+";
+        case Op::SUB : return "-";
+        case Op::MUL : return "*";
+        case Op::DIV : return "/";
+        case Op::MOD : return "%";
+        case Op::OR  : return "|";
+        case Op::AND : return "&";
+        case Op::LSH : return "<<";
+        case Op::RSH : return ">>";
+        case Op::ARSH: return ">>>";
+        case Op::XOR : return "^";
     }
 }
 
 static string op(Condition::Op op) {
+    using Op = Condition::Op;
     switch (op) {
-        case Condition::Op::EQ : return "==";
-        case Condition::Op::NE : return "!=";
-        case Condition::Op::SET: return "&==";
-        case Condition::Op::NSET:return "&!="; // not in ebpf
-        case Condition::Op::LT : return "<";
-        case Condition::Op::LE : return "<=";
-        case Condition::Op::GT : return ">";
-        case Condition::Op::GE : return ">=";
-        case Condition::Op::SLT: return "s<";
-        case Condition::Op::SLE: return "s<=";
-        case Condition::Op::SGT: return "s>";
-        case Condition::Op::SGE: return "s>=";
+        case Op::EQ : return "==";
+        case Op::NE : return "!=";
+        case Op::SET: return "&==";
+        case Op::NSET:return "&!="; // not in ebpf
+        case Op::LT : return "<";
+        case Op::LE : return "<=";
+        case Op::GT : return ">";
+        case Op::GE : return ">=";
+        case Op::SLT: return "s<";
+        case Op::SLE: return "s<=";
+        case Op::SGT: return "s>";
+        case Op::SGE: return "s>=";
     }
 }
 
@@ -100,6 +102,7 @@ struct InstructionPrinterVisitor {
 
     void operator()(Jmp const& b) {
         if (b.cond) {
+            os_ << "if ";
             print(*b.cond);
             os_ << " ";
         }
