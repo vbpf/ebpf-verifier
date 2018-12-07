@@ -235,6 +235,8 @@ void print(const InstructionSeq& insts) {
         cout << std::setw(8) << pc << ":\t";
         if (std::holds_alternative<Jmp>(ins)) {
             auto jmp = std::get<Jmp>(ins);
+            if (pc_of_label.count(jmp.target) == 0)
+                throw std::runtime_error(string("Cannot find label ") + jmp.target);
             pc_t target_pc = pc_of_label.at(jmp.target);
             string sign = (target_pc > pc) ? "+" : "";
             string offset = std::to_string(target_pc - pc - 1);
