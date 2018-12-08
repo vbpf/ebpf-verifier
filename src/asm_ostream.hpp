@@ -56,7 +56,8 @@ inline std::ostream& operator<<(std::ostream& os, Type const& a) {
         case Type::STACK: os << "STACK"; break;
         case Type::CTX: os << "CTX"; break;
         case Type::PACKET: os << "PACKET"; break;
-        case Type::MAP: os << "MAP"; break;
+        case Type::MAP_VALUE: os << "MAP"; break;
+        case Type::MAP_STRUCT: os << "MAP_STRUCT"; break;
         case Type::PTR: os << "PTR"; break;
         case Type::NONSECRET: os << "NONSECRET"; break;
     }

@@ -39,9 +39,10 @@ Assert operator!(Assert::TypeConstraint tc) {
 Value end(Type t) {
     switch (t) {
         case Type::CTX: return Imm{256};
-        case Type::MAP: return Imm{4098};
+        case Type::MAP_VALUE: return Imm{4098};
         case Type::PACKET: return Reg{13};
         case Type::STACK: return Imm{0};
+        case Type::MAP_STRUCT: assert(false);
         case Type::NUM: assert(false);
         case Type::PTR: assert(false);
         case Type::SECRET: assert(false);
@@ -52,9 +53,10 @@ Value end(Type t) {
 Value start(Type t) {
     switch (t) {
         case Type::CTX: return Imm{0};
-        case Type::MAP: return Imm{0};
+        case Type::MAP_VALUE: return Imm{0};
         case Type::PACKET: return Imm{0};
         case Type::STACK: return Imm{-256};
+        case Type::MAP_STRUCT: assert(false);
         case Type::NUM: assert(false);
         case Type::PTR: assert(false);
         case Type::SECRET: assert(false);
@@ -73,9 +75,17 @@ void checkAccess(vector<Assert>& assumptions, Type t, Reg reg, int offset, Value
     );
 }
 
+static bool is_priviledged() {
+    return false;
+}
+
 struct AssertionExtractor {
     template <typename T>
     vector<Assert> operator()(T ins) { return {}; }
+
+    vector<Assert> operator()(Exit const& e) {
+        return { Assert(Assert::TypeConstraint{Reg{0}, Type::NUM}) };
+    }
 
     vector<Assert> operator()(Call const& call) {
         using T = Assert::TypeConstraint;
@@ -95,23 +105,23 @@ struct AssertionExtractor {
                 break;
             case Arg::ANYTHING:
                 // avoid pointer leakage:
-                // if (!is_priviledged()) {
-                //res.push_back({reg, Type::NUM});
+                if (!is_priviledged())
+                    res.emplace_back(T{reg, Type::NUM});
                 break;
             case Arg::CONST_SIZE:
-                // TODO: reg is constant
+                // TODO: reg is constant (or maybe it's not important)
                 res.emplace_back(T{reg, Type::NUM});
                 res.push_back(T{reg, Type::NUM}.implies({Op::GT, reg, 0, Imm{0}, Imm{0}}));
                 checkAccess(res, Type::STACK, Reg{(uint8_t)(i-1)}, 0, reg);
                 break;
             case Arg::CONST_SIZE_OR_ZERO:
-                // TODO: reg is constant
+                // TODO: reg is constant (or maybe it's not important)
                 res.emplace_back(T{reg, Type::NUM});
                 res.push_back(T{reg, Type::NUM}.implies({Op::GE, reg, 0, Imm{0}, Imm{0}}));
                 checkAccess(res, Type::STACK, Reg{(uint8_t)(i-1)}, 0, reg);
                 break;
             case Arg::CONST_MAP_PTR:
-                // TODO
+                res.emplace_back(T{reg, Type::MAP_STRUCT});
                 break;
             case Arg::PTR_TO_CTX:
                 res.emplace_back(T{reg, Type::CTX});
@@ -124,20 +134,19 @@ struct AssertionExtractor {
                 break;
             case Arg::PTR_TO_MAP_VALUE:
                 res.emplace_back(T{reg, Type::STACK});
-                // TODO: add assertion about next (size)
+                break;
+            case Arg::PTR_TO_MEM:
+                /* LINUX: pointer to valid memory (stack, packet, map value) */
+                res.push_back(!T{reg, Type::CTX});
+                res.emplace_back(T{reg, Type::PTR});
                 break;
             case Arg::PTR_TO_MEM_OR_NULL:
                 res.push_back(T{reg, Type::NUM}.implies({Op::EQ, reg, 0, Imm{0}, Imm{0}}));
                 res.emplace_back(!T{reg, Type::SECRET});
-                // TODO: MEM means some specific regions. which?
-                break;
-            case Arg::PTR_TO_MEM:
-                // TODO: assert memory is initialized?
-                res.emplace_back(T{reg, Type::PTR});
+                res.push_back(!T{reg, Type::CTX});
                 break;
             case Arg::PTR_TO_UNINIT_MEM:
                 res.push_back(T{reg, Type::PTR}.impliesType({reg, Type::PTR}));
-                // TODO: add assertion about next (size)
                 break;
             }
         }
@@ -153,12 +162,21 @@ struct AssertionExtractor {
         int offset = ins.access.offset;
         if (reg.v != 10) {
             res.emplace_back(T{reg, Type::PTR});
-            for (auto t : {Type::MAP, Type::CTX, Type::PACKET}) {
+            for (auto t : {Type::MAP_VALUE, Type::CTX, Type::PACKET}) {
                 checkAccess(res, t, reg, offset, width);
+                if (!is_priviledged() && !ins.isLoad() && std::holds_alternative<Reg>(ins.value)) {
+                    res.push_back(
+                        T{reg, t}.impliesType({std::get<Reg>(ins.value), Type::NUM})
+                    );
+                }
             }
         }
         checkAccess(res, Type::STACK, reg, offset, width);
         return res;
+    };
+
+    vector<Assert> operator()(LockAdd ins) {
+        return (*this)(Mem{.access = ins.access, .value = ins.valreg, ._is_load = false});
     };
 
     vector<Assert> operator()(Bin ins) {

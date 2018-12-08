@@ -113,7 +113,7 @@ struct Assume {
     Condition cond;
 };
 
-enum class Type { SECRET, NUM, CTX, STACK, PACKET, MAP, PTR, NONSECRET };
+enum class Type { SECRET, NUM, MAP_STRUCT, CTX, STACK, PACKET, MAP_VALUE, PTR, NONSECRET };
 
 struct Assert {
     struct False { };

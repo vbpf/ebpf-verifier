@@ -162,7 +162,7 @@ Cfg Cfg::to_nondet() {
         BasicBlock& newbb = res[this_label];
 
         for (auto ins : bb.insts) {
-            if (std::holds_alternative<LockAdd>(ins)) {
+            if (false && std::holds_alternative<LockAdd>(ins)) {
                 for (auto ins : expand_lockadd(std::get<LockAdd>(ins))) {
                     newbb.insts.push_back(ins);
                 }
