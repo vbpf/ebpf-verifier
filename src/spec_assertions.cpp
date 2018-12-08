@@ -32,14 +32,57 @@ static int access_width(Width w)
 	assert(false);
 }
 
+Assert operator!(Assert::TypeConstraint tc) {
+    return {tc, Assert::False{}};
+}
+
+Value end(Type t) {
+    switch (t) {
+        case Type::CTX: return Imm{256};
+        case Type::MAP: return Imm{4098};
+        case Type::PACKET: return Reg{13};
+        case Type::STACK: return Imm{0};
+        case Type::NUM: assert(false);
+        case Type::PTR: assert(false);
+        case Type::SECRET: assert(false);
+        case Type::NONSECRET: assert(false);
+    }
+}
+
+Value start(Type t) {
+    switch (t) {
+        case Type::CTX: return Imm{0};
+        case Type::MAP: return Imm{0};
+        case Type::PACKET: return Imm{0};
+        case Type::STACK: return Imm{-256};
+        case Type::NUM: assert(false);
+        case Type::PTR: assert(false);
+        case Type::SECRET: assert(false);
+        case Type::NONSECRET: assert(false);
+    }
+}
+
+void checkAccess(vector<Assert>& assumptions, Type t, Reg reg, int offset, Value width) {
+    using T = Assert::TypeConstraint;
+    using Op = Condition::Op;
+    assumptions.emplace_back(
+        T{reg, t}.implies({Op::LE, reg, offset, width, end(t)})
+    );
+    assumptions.emplace_back(
+        T{reg, t}.implies({Op::GE, reg, offset, Imm{0}, start(t)})
+    );
+}
+
 struct AssertionExtractor {
     template <typename T>
-    Assert operator()(T ins) { return {}; }
+    vector<Assert> operator()(T ins) { return {}; }
 
-    Assert operator()(Call const& call) {
-        using Typeof = Assert::Typeof;
+    vector<Assert> operator()(Call const& call) {
+        using T = Assert::TypeConstraint;
+        using L = Assert::LinearConstraint;
+        using Op = Condition::Op;
         bpf_func_proto proto = get_prototype(call.func);
-        Assert res;
+        vector<Assert> res;
         uint8_t i = 0;
         std::array<Arg, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
         for (Arg t : args) {
@@ -53,52 +96,47 @@ struct AssertionExtractor {
             case Arg::ANYTHING:
                 // avoid pointer leakage:
                 // if (!is_priviledged()) {
-                res.holds.push_back({reg, Type::NUM});
+                //res.push_back({reg, Type::NUM});
                 break;
             case Arg::CONST_SIZE:
-                res.holds.push_back({reg, Type::NUM});
-                res.implies.emplace_back(Typeof{reg, Type::NUM}, 
-                                        reg, 0, 0, (Value)Imm{0}); // FIX: is <=, should be >=
                 // TODO: reg is constant
+                res.emplace_back(T{reg, Type::NUM});
+                res.push_back(T{reg, Type::NUM}.implies({Op::GT, reg, 0, Imm{0}, Imm{0}}));
+                checkAccess(res, Type::STACK, Reg{(uint8_t)(i-1)}, 0, reg);
                 break;
             case Arg::CONST_SIZE_OR_ZERO:
-                res.holds.push_back({reg, Type::NUM});
-                res.implies.emplace_back(Typeof{reg, Type::NUM}, 
-                                        reg, 0, 0, (Value)Imm{0}); // FIX: is <=, should be >=
                 // TODO: reg is constant
+                res.emplace_back(T{reg, Type::NUM});
+                res.push_back(T{reg, Type::NUM}.implies({Op::GE, reg, 0, Imm{0}, Imm{0}}));
+                checkAccess(res, Type::STACK, Reg{(uint8_t)(i-1)}, 0, reg);
                 break;
             case Arg::CONST_MAP_PTR:
-                res.implies.emplace_back(Typeof{reg, Type::NUM}, 
-                                        reg, 0, 0, (Value)Imm{0}); // FIX: should be == 0
+                // TODO
                 break;
             case Arg::PTR_TO_CTX:
-                res.holds.push_back({reg, Type::CTX});
+                res.emplace_back(T{reg, Type::CTX});
                 // TODO: the kernel has some other conditions here - 
                 // maybe offset == 0
                 break;
             case Arg::PTR_TO_MAP_KEY:
                 // what other conditions?
-                res.holds.emplace_back(Typeof{reg, Type::PTR});
+                res.emplace_back(T{reg, Type::PTR});
                 break;
             case Arg::PTR_TO_MAP_VALUE:
-                res.holds.emplace_back(Typeof{reg, Type::STACK});
+                res.emplace_back(T{reg, Type::STACK});
                 // TODO: add assertion about next (size)
                 break;
             case Arg::PTR_TO_MEM_OR_NULL:
-                res.implies.emplace_back(Typeof{reg, Type::NUM}, 
-                                        reg, 0, 0, (Value)Imm{1});
-                // PTR -> true
-                res.implies_type.emplace_back(Typeof{reg, Type::PTR}, Typeof{reg, Type::PTR});
+                res.push_back(T{reg, Type::NUM}.implies({Op::EQ, reg, 0, Imm{0}, Imm{0}}));
+                res.emplace_back(!T{reg, Type::SECRET});
                 // TODO: MEM means some specific regions. which?
-                // TODO: add assertion about next (size)
                 break;
             case Arg::PTR_TO_MEM:
                 // TODO: assert memory is initialized?
-                res.holds.emplace_back(Typeof{reg, Type::PTR});
-                // TODO: add assertion about next (size)
+                res.emplace_back(T{reg, Type::PTR});
                 break;
             case Arg::PTR_TO_UNINIT_MEM:
-                res.implies_type.emplace_back(Typeof{reg, Type::PTR}, Typeof{reg, Type::PTR});
+                res.push_back(T{reg, Type::PTR}.impliesType({reg, Type::PTR}));
                 // TODO: add assertion about next (size)
                 break;
             }
@@ -106,57 +144,47 @@ struct AssertionExtractor {
         return res;
     }
 
-    Assert operator()(Mem ins) { 
-        using Typeof = Assert::Typeof;
-        Assert res;
+    vector<Assert> operator()(Mem ins) { 
+        using T = Assert::TypeConstraint;
+        using Op = Condition::Op;
+        vector<Assert> res;
         Reg reg = ins.access.basereg;
-        int width = access_width(ins.access.width);
+        Imm width = Imm{access_width(ins.access.width)};
         int offset = ins.access.offset;
         if (reg.v != 10) {
-            res.holds.push_back({reg, Type::PTR});
-            res.implies.emplace_back(Typeof{reg, Type::MAP   }, reg, offset, width, (Value)Imm{4098});
-            res.implies.emplace_back(Typeof{reg, Type::PACKET}, reg, offset, width, (Value)Reg{15});
+            res.emplace_back(T{reg, Type::PTR});
+            for (auto t : {Type::MAP, Type::CTX, Type::PACKET}) {
+                checkAccess(res, t, reg, offset, width);
+            }
         }
-        res.implies.emplace_back(Typeof{reg, Type::STACK }, reg, offset, width, (Value)Imm{256});
+        checkAccess(res, Type::STACK, reg, offset, width);
         return res;
     };
 
-    Assert operator()(Bin ins) {
-        using Typeof = Assert::Typeof;
-        Assert res;
+    vector<Assert> operator()(Bin ins) {
+        using T = Assert::TypeConstraint;
         switch (ins.op) {
-            case Bin::Op::MOV: return { };
-            case Bin::Op::ADD: {
-                Assert res; 
+            case Bin::Op::MOV:
+                return {};
+            case Bin::Op::ADD:
                 if (std::holds_alternative<Reg>(ins.v)) {
                     Reg reg = std::get<Reg>(ins.v);
-                    res.implies_type.emplace_back(Typeof{ins.dst, Type::PTR}, Typeof{reg, Type::NUM});
-                    res.implies_type.emplace_back(Typeof{reg, Type::NUM}, Typeof{ins.dst, Type::PTR});
+                    return {
+                        T{ins.dst, Type::PTR}.impliesType({reg, Type::NUM}),
+                        T{ins.dst, Type::NUM}.impliesType({reg, Type::PTR})
+                    };
                 }
-                return res;
-            }
-            case Bin::Op::SUB:{
-                Assert res; 
+                return {};
+            case Bin::Op::SUB:
                 if (std::holds_alternative<Reg>(ins.v)) {
-                    Reg reg = std::get<Reg>(ins.v);
-                    res.holds.push_back({reg, Type::NUM});
+                    return {!T{std::get<Reg>(ins.v), Type::PTR}};
                 }
-                return res;
-            }
-            default: {
-                Assert res;
-                res.holds.push_back({ins.dst, Type::NUM});
-                return res;
-            }
+                return {};
+            default:
+                return {!T{ins.dst, Type::PTR}};
         }
     }
 };
-
-static bool is_empty(Assert const& a) {
-    return a.holds.empty()
-        && a.implies_type.empty()
-        && a.implies.empty();
-}
 
 void explicate_assertions(Cfg& cfg) {
     for (auto const& this_label : cfg.keys()) {
@@ -164,9 +192,8 @@ void explicate_assertions(Cfg& cfg) {
         vector<Instruction> insts;
 
         for (auto ins : old_insts) {
-            auto assertion = std::visit(AssertionExtractor{}, ins);
-            if (!is_empty(assertion))
-                insts.push_back(assertion);
+            for (auto a : std::visit(AssertionExtractor{}, ins))
+                insts.push_back(a);
             insts.push_back(ins);
         }
 

@@ -63,6 +63,12 @@ struct InstructionPrinterVisitor {
     std::ostream& os_;
     LabelTranslator labeler = [](Label l) { return l; };
 
+
+    template <typename T>
+    void visit(const T& item) {
+        std::visit(*this, item);
+    }
+
     void operator()(Undefined const& a) {
         os_ << "Undefined{" << a.opcode << "}";
     }
@@ -76,7 +82,7 @@ struct InstructionPrinterVisitor {
         if (b.lddw)
             os_ << std::get<Imm>(b.v).v << " ll";
         else
-           std::visit(*this, b.v);
+           visit(b.v);
         if (!b.is64)
             os_ << " & 0xFFFFFFFF";
     }
@@ -133,18 +139,18 @@ struct InstructionPrinterVisitor {
 
     void print(Condition const& cond) {
         os_ << cond.left << " " << op(cond.op) << " ";
-        std::visit(*this, cond.right);
+        visit(cond.right);
     }
 
     void operator()(Mem const& b) {
         if (b.isLoad()) {
-            std::visit(*this, b.value);
+            visit(b.value);
             os_ << " = ";
         }
         print(b.access);
         if (!b.isLoad()) {
             os_ << " = ";
-            std::visit(*this, b.value);
+            visit(b.value);
         }
     }
 
@@ -158,12 +164,49 @@ struct InstructionPrinterVisitor {
         os_ << "assume ";
         print(b.cond);
     }
+    
+    void operator()(Assert::LinearConstraint const& a) {
+        os_ << a.reg;
+        string sign = a.offset < 0 ? " - " : " + ";
+        int offset = std::abs(a.offset); // what about INT_MIN? 
+        if (offset != 0)
+            os_ << sign << offset;
+        if (std::holds_alternative<Imm>(a.width)) {
+            int imm = (int)std::get<Imm>(a.width).v;
+            string sign = imm < 0 ? " - " : " + ";
+            imm = std::abs(imm); // what about INT_MIN? 
+            if (imm != 0)
+                os_ << sign << imm;
+        } else {
+            os_ << " + ";
+            visit(a.width);
+        }
+        os_ << op(a.op);
+        visit(a.v);
+    }
+
+    void operator()(Assert::TypeConstraint const& a) {
+        os_ << a.reg << " : " << a.type;
+    }
+    void operator()(Assert::False const& a) {
+        os_ << "False";
+    }
+    void operator()(Assert::True const& a) {
+        os_ << "True";
+    }
 
     void operator()(Assert const& a) {
         os_ << "assert ";
-        for (auto h : a.holds) { os_ << h << " && "; }
-        for (auto [x, y] : a.implies_type) { os_ << x << " -> " << y << " && "; }
-        for (auto [t, r, o, w, v] : a.implies) { os_ << t << " -> 0 <= " << r << " + " << o << ".." << o + w << " <= " << v << " && "; }
+        if (std::holds_alternative<Assert::False>(a.then)) {
+            os_ << "!";
+            visit(a.given);
+            return;
+        }
+        if (!std::holds_alternative<Assert::True>(a.given)) {
+            visit(a.given);
+            os_ << " -> ";
+        }
+        visit(a.then);
     }
 
     void operator()(Imm imm) {

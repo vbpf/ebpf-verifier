@@ -116,13 +116,34 @@ struct Assume {
 enum class Type { SECRET, NUM, CTX, STACK, PACKET, MAP, PTR, NONSECRET };
 
 struct Assert {
-    struct Typeof {
+    struct False { };
+    struct True { };
+
+    struct LinearConstraint {
+        Condition::Op op;
+        Reg reg;
+        int offset;
+        Value width;
+        Value v;
+    };
+
+    struct TypeConstraint {
         Reg reg;
         Type type;
+        Assert implies(LinearConstraint cst) {
+            return {*this, cst};
+        }
+        Assert impliesType(TypeConstraint cst) {
+            return {*this, cst};
+        }
     };
-    std::vector<Typeof> holds;
-    std::vector<std::tuple<Typeof, Typeof>> implies_type;
-    std::vector<std::tuple<Typeof,/*->*/ Reg,/*+*/ int, /*width*/int, /*<=*/ Value>> implies;
+
+    using Conclusion = std::variant<TypeConstraint, LinearConstraint, False>;
+    using Given = std::variant<TypeConstraint, True>;
+    Given given;
+    Conclusion then;
+    Assert(Given given, Conclusion then) : given{given}, then{then} { }
+    Assert(Conclusion then) : given{True{}}, then{then} { }
 };
 
 using Instruction = std::variant<
@@ -171,16 +192,24 @@ inline bool operator==(Imm const& a, Imm const& b) {
 inline bool operator==(Reg const& a, Reg const& b) {
     return a.v == b.v;
 }
+inline bool operator==(Assert::True const& a, Assert::True const& b) {
+    return true;
+}
+inline bool operator==(Assert::False const& a, Assert::False const& b) {
+    return true;
+}
 inline bool operator==(Deref const& a, Deref const& b) {
     return a.basereg == b.basereg && a.offset == b.offset && a.width == b.width;
 }
 inline bool operator==(Condition const& a, Condition const& b) {
     return a.left == b.left && a.op == b.op && a.right == b.right;
 }
-inline bool operator==(Assert::Typeof const& a, Assert::Typeof const& b) {
+inline bool operator==(Assert::TypeConstraint const& a, Assert::TypeConstraint const& b) {
     return a.reg == b.reg && a.type == b.type;
 }
-
+inline bool operator==(Assert::LinearConstraint const& a, Assert::LinearConstraint const& b) {
+    return a.op == b.op && a.reg == b.reg && a.offset == b.offset && a.width == b.width && a.v == b.v;
+}
 inline bool operator==(Undefined const& a, Undefined const& b){ 
     return a.opcode == b.opcode;
 }
@@ -215,7 +244,7 @@ inline bool operator==(Assume const& a, Assume const& b){
     return a.cond == b.cond;
 }
 inline bool operator==(Assert const& a, Assert const& b){ 
-    return a.holds == b.holds && a.implies_type == b.implies_type && a.implies == b.implies;
+    return a.given == b.given && a.then == b.then;
 }
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };

@@ -63,10 +63,9 @@ inline std::ostream& operator<<(std::ostream& os, Type const& a) {
     return os;
 }
 
-inline std::ostream& operator<<(std::ostream& os, Assert::Typeof const& a) {
+inline std::ostream& operator<<(std::ostream& os, Assert::TypeConstraint const& a) {
     return os << a.reg << " : " << a.type;
 }
-
 
 inline std::ostream& operator<<(std::ostream& os, Undefined const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, LoadMapFd const& a) { return os << (Instruction)a; }
