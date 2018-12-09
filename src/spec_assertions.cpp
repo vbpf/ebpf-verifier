@@ -212,14 +212,9 @@ struct AssertionExtractor {
                 return {};
             case Bin::Op::SUB:
                 if (std::holds_alternative<Reg>(ins.v)) {
-                    Reg src = std::get<Reg>(ins.v);
-                    vector<Assert> res{
-                        T{ins.dst, Type::NUM}.impliesType({src, Type::NUM})
-                    };
-                    for (auto t : {Type::MAP_VALUE, Type::CTX, Type::PACKET}) {
-                        res.push_back(
-                            T{ins.dst, t}.impliesType({src, t})
-                        );
+                    vector<Assert> res;
+                    for (auto t : {Type::NUM, Type::MAP_VALUE, Type::CTX, Type::PACKET}) {
+                        res.push_back(T{ins.dst, t}.impliesType({std::get<Reg>(ins.v), t}));
                     }
                     return res;
                 }
