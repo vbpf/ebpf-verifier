@@ -21,13 +21,13 @@ using std::string;
 using std::vector;
 
 
-static int access_width(Width w)
+static Imm access_width(Width w)
 {
     switch (w) {
-        case Width::B: return 1;
-        case Width::H: return 2;
-        case Width::W: return 4;
-        case Width::DW: return 8;
+        case Width::B: return Imm{1};
+        case Width::H: return Imm{2};
+        case Width::W: return Imm{4};
+        case Width::DW: return Imm{8};
     }
 	assert(false);
 }
@@ -93,6 +93,7 @@ struct AssertionExtractor {
         using Op = Condition::Op;
         bpf_func_proto proto = get_prototype(call.func);
         vector<Assert> res;
+        std::optional<vector<Type>> previous_types;
         uint8_t i = 0;
         std::array<Arg, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
         for (Arg t : args) {
@@ -107,46 +108,59 @@ struct AssertionExtractor {
                 // avoid pointer leakage:
                 if (!is_priviledged())
                     res.emplace_back(T{reg, Type::NUM});
+                previous_types = {};
                 break;
             case Arg::CONST_SIZE:
                 // TODO: reg is constant (or maybe it's not important)
                 res.emplace_back(T{reg, Type::NUM});
                 res.push_back(T{reg, Type::NUM}.implies({Op::GT, reg, 0, Imm{0}, Imm{0}}));
-                checkAccess(res, Type::STACK, Reg{(uint8_t)(i-1)}, 0, reg);
+                for (auto t : *previous_types)
+                    checkAccess(res, t, Reg{(uint8_t)(i-1)}, 0, reg);
+                previous_types = {};
                 break;
             case Arg::CONST_SIZE_OR_ZERO:
                 // TODO: reg is constant (or maybe it's not important)
                 res.emplace_back(T{reg, Type::NUM});
                 res.push_back(T{reg, Type::NUM}.implies({Op::GE, reg, 0, Imm{0}, Imm{0}}));
-                checkAccess(res, Type::STACK, Reg{(uint8_t)(i-1)}, 0, reg);
+                for (auto t : *previous_types)
+                    checkAccess(res, t, Reg{(uint8_t)(i-1)}, 0, reg);
+                previous_types = {};
                 break;
             case Arg::CONST_MAP_PTR:
                 res.emplace_back(T{reg, Type::MAP_STRUCT});
+                previous_types = {};
                 break;
             case Arg::PTR_TO_CTX:
                 res.emplace_back(T{reg, Type::CTX});
                 // TODO: the kernel has some other conditions here - 
                 // maybe offset == 0
+                previous_types = {Type::CTX};
                 break;
             case Arg::PTR_TO_MAP_KEY:
                 // what other conditions?
-                res.emplace_back(T{reg, Type::PTR});
+                res.emplace_back(T{reg, Type::STACK});
+                previous_types = {Type::STACK};
                 break;
             case Arg::PTR_TO_MAP_VALUE:
-                res.emplace_back(T{reg, Type::STACK});
+                res.emplace_back(T{reg, Type::MAP_VALUE});
+                previous_types = {Type::MAP_VALUE};
                 break;
             case Arg::PTR_TO_MEM:
                 /* LINUX: pointer to valid memory (stack, packet, map value) */
                 res.push_back(!T{reg, Type::CTX});
                 res.emplace_back(T{reg, Type::PTR});
+                previous_types = {Type::STACK, Type::PACKET, Type::MAP_VALUE};
                 break;
             case Arg::PTR_TO_MEM_OR_NULL:
                 res.push_back(T{reg, Type::NUM}.implies({Op::EQ, reg, 0, Imm{0}, Imm{0}}));
                 res.emplace_back(!T{reg, Type::SECRET});
                 res.push_back(!T{reg, Type::CTX});
+                // NUM should not be in previous_types
+                previous_types = {Type::STACK, Type::PACKET, Type::MAP_VALUE};
                 break;
             case Arg::PTR_TO_UNINIT_MEM:
-                res.push_back(T{reg, Type::PTR}.impliesType({reg, Type::PTR}));
+                res.emplace_back(T{reg, Type::PTR});
+                previous_types = {Type::STACK, Type::PACKET, Type::MAP_VALUE};
                 break;
             }
         }
@@ -158,7 +172,7 @@ struct AssertionExtractor {
         using Op = Condition::Op;
         vector<Assert> res;
         Reg reg = ins.access.basereg;
-        Imm width = Imm{access_width(ins.access.width)};
+        Imm width = access_width(ins.access.width);
         int offset = ins.access.offset;
         if (reg.v != 10) {
             res.emplace_back(T{reg, Type::PTR});
@@ -176,7 +190,10 @@ struct AssertionExtractor {
     };
 
     vector<Assert> operator()(LockAdd ins) {
-        return (*this)(Mem{.access = ins.access, .value = ins.valreg, ._is_load = false});
+        vector<Assert> res;
+        res.emplace_back(Assert::TypeConstraint{ins.access.basereg, Type::MAP_VALUE});
+        checkAccess(res, Type::MAP_VALUE, ins.access.basereg, ins.access.offset, access_width(ins.access.width));
+        return res;
     };
 
     vector<Assert> operator()(Bin ins) {

@@ -212,7 +212,7 @@ void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg,
         if (bb.insts.size() > 0) {
             int iteration = 0;
             string label = this_label;
-            for (auto ins : bb.insts) {
+            for (auto ins : expand_locks(bb.insts)) {
                 basic_block_t& this_block = cfg.insert(label);
                 exit = &cfg.insert(exit_label(this_block.label()));
                 vector<basic_block_t*> outs = instruction_builder_t(machine, ins, this_block, cfg).exec();

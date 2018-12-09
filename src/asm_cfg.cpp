@@ -124,6 +124,20 @@ static vector<Instruction> expand_lockadd(LockAdd lock) {
     };
 }
 
+vector<Instruction> expand_locks(vector<Instruction> const& insts) {
+    vector<Instruction> res;
+    for (Instruction ins : insts) {
+        if (std::holds_alternative<LockAdd>(ins)) {
+            for (auto ins : expand_lockadd(std::get<LockAdd>(ins))) {
+                res.push_back(ins);
+            }
+        } else {
+            res.push_back(ins);
+        }
+    }
+    return res;
+}
+
 void Cfg::simplify() {
     std::unordered_set<Label> worklist(keys().begin(), keys().end());
     std::unordered_set<Label> to_remove;
@@ -162,11 +176,7 @@ Cfg Cfg::to_nondet() {
         BasicBlock& newbb = res[this_label];
 
         for (auto ins : bb.insts) {
-            if (false && std::holds_alternative<LockAdd>(ins)) {
-                for (auto ins : expand_lockadd(std::get<LockAdd>(ins))) {
-                    newbb.insts.push_back(ins);
-                }
-            } else if (!std::holds_alternative<Jmp>(ins)) {
+            if (!std::holds_alternative<Jmp>(ins)) {
                 newbb.insts.push_back(ins);
             }
         }

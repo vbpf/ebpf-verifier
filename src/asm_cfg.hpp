@@ -28,3 +28,5 @@ public:
     Cfg to_nondet();
     void simplify();
 };
+
+std::vector<Instruction> expand_locks(std::vector<Instruction> const& insts);
