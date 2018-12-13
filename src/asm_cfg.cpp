@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <unordered_set>
 #include <unordered_map>
+#include <list>
 #include <iostream>
 #include <optional>
 #include <iostream>
@@ -19,6 +20,7 @@ using std::string;
 using std::vector;
 template<typename T>
 using set = std::unordered_set<T>;
+using std::list;
 
 static optional<Label> get_jump(Instruction ins) {
     if (std::holds_alternative<Jmp>(ins)) {
@@ -222,13 +224,14 @@ Cfg Cfg::to_nondet() {
 
 
 void Cfg::worklist(std::function<bool(BasicBlock&)> recompute) {
-    set<Label> worklist{ordered_labels.begin(), ordered_labels.end()};
-    while (!worklist.empty()) {
-        Label l = pop(worklist);
-        BasicBlock& bb = graph[l];
+    list<Label> w{ordered_labels.begin(), ordered_labels.end()};
+    while (!w.empty()) {
+        BasicBlock& bb = graph[*w.begin()];
+        w.pop_front();
         if (recompute(bb)) {
             for (Label next_label : bb.nextlist)
-                worklist.insert(next_label);
+                w.push_back(next_label);
+            w.erase(std::unique(w.begin(), w.end()));
         }
     }
 }
