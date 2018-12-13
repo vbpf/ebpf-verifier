@@ -9,10 +9,8 @@ OBJECTS := $(SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
 DEPENDS := $(OBJECTS:%.o=%.d)
 OBJECTS := $(filter-out ${BUILDDIR}/disassemble.o,$(OBJECTS))
 OBJECTS := $(filter-out ${BUILDDIR}/assemble.o,$(OBJECTS))
-OBJECTS := $(filter-out ${BUILDDIR}/main.o,$(OBJECTS))
-OBJECTS := $(filter-out ${BUILDDIR}/test.o,$(OBJECTS))
-OBJECTS := $(filter-out ${BUILDDIR}/test_marshal.o,$(OBJECTS))
-OBJECTS := $(filter-out ${BUILDDIR}/test_assembler.o,$(OBJECTS))
+OBJECTS := $(filter-out ${BUILDDIR}/check.o,$(OBJECTS))
+OBJECTS := $(filter-out $(wildcard ${BUILDDIR}/test*.o),$(OBJECTS))
 
 TEST_SOURCES := $(wildcard ${SRCDIR}/test*.cpp)
 TEST_OBJECTS := $(TEST_SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
@@ -79,7 +77,7 @@ $(BINDIR)/test: ${BUILDDIR}/test.o ${TEST_OBJECTS} ${OBJECTS}
 	@printf "$@ <- $^\n"
 	@$(CXX) ${CXXFLAGS} ${CRABFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
 
-$(BINDIR)/check: ${BUILDDIR}/main.o ${OBJECTS}
+$(BINDIR)/check: ${BUILDDIR}/check.o ${OBJECTS}
 	@printf "$@ <- $^\n"
 	@$(CXX) ${CXXFLAGS} ${CRABFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
 
