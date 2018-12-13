@@ -224,7 +224,7 @@ Cfg Cfg::to_nondet() {
 
 
 void Cfg::worklist(std::function<bool(BasicBlock&)> recompute) {
-    list<Label> w{ordered_labels.begin(), ordered_labels.end()};
+    list<Label> w{*ordered_labels.begin()};
     while (!w.empty()) {
         BasicBlock& bb = graph[*w.begin()];
         w.pop_front();
