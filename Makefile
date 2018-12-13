@@ -5,15 +5,16 @@ BINDIR := bin
 SRCDIR := src
 
 SOURCES := $(wildcard ${SRCDIR}/*.cpp)
-OBJECTS := $(SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
-DEPENDS := $(OBJECTS:%.o=%.d)
-OBJECTS := $(filter-out ${BUILDDIR}/disassemble.o,$(OBJECTS))
-OBJECTS := $(filter-out ${BUILDDIR}/assemble.o,$(OBJECTS))
-OBJECTS := $(filter-out ${BUILDDIR}/check.o,$(OBJECTS))
-OBJECTS := $(filter-out $(wildcard ${BUILDDIR}/test*.o),$(OBJECTS))
+ALL_OBJECTS := $(SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
+DEPENDS := $(ALL_OBJECTS:%.o=%.d)
 
 TEST_SOURCES := $(wildcard ${SRCDIR}/test*.cpp)
 TEST_OBJECTS := $(TEST_SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
+
+MAIN_SOURCES := $(wildcard ${SRCDIR}/main_*.cpp)
+MAIN_OBJECTS := $(MAIN_SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
+
+OBJECTS := $(filter-out $(MAIN_OBJECTS) $(TEST_OBJECTS),$(ALL_OBJECTS))
 
 CRABDIR := crab
 LDD := $(CRABDIR)/install/ldd
@@ -77,7 +78,7 @@ $(BINDIR)/test: ${BUILDDIR}/test.o ${TEST_OBJECTS} ${OBJECTS}
 	@printf "$@ <- $^\n"
 	@$(CXX) ${CXXFLAGS} ${CRABFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
 
-$(BINDIR)/check: ${BUILDDIR}/check.o ${OBJECTS}
+$(BINDIR)/check: ${BUILDDIR}/main_check.o ${OBJECTS}
 	@printf "$@ <- $^\n"
 	@$(CXX) ${CXXFLAGS} ${CRABFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
 
@@ -91,11 +92,11 @@ DISASM_OBJECTS := \
     ${BUILDDIR}/spec_assertions.o \
     ${BUILDDIR}/spec_prototypes.o
 
-$(BINDIR)/disassemble: ${BUILDDIR}/disassemble.o ${DISASM_OBJECTS}
+$(BINDIR)/disassemble: ${BUILDDIR}/main_disassemble.o ${DISASM_OBJECTS}
 	@printf "$@ <- $^\n"
 	@$(CXX) ${CXXFLAGS} $^ -o $@
 
-$(BINDIR)/assemble: ${BUILDDIR}/assemble.o ${DISASM_OBJECTS}
+$(BINDIR)/assemble: ${BUILDDIR}/main_assemble.o ${DISASM_OBJECTS}
 	@printf "$@ <- $^\n"
 	@$(CXX) ${CXXFLAGS} $^ -o $@
 
