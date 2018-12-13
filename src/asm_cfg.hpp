@@ -27,6 +27,7 @@ public:
                 
     Cfg to_nondet();
     void simplify();
+    void worklist(std::function<bool(BasicBlock&)> recompute);
 };
 
 std::vector<Instruction> expand_locks(std::vector<Instruction> const& insts);

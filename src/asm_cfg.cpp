@@ -17,7 +17,8 @@ using std::optional;
 using std::to_string;
 using std::string;
 using std::vector;
-
+template<typename T>
+using set = std::unordered_set<T>;
 
 static optional<Label> get_jump(Instruction ins) {
     if (std::holds_alternative<Jmp>(ins)) {
@@ -138,13 +139,18 @@ vector<Instruction> expand_locks(vector<Instruction> const& insts) {
     return res;
 }
 
+
+static Label pop(set<Label>& s) {
+    Label l = *s.begin();
+    s.erase(l);
+    return l;
+}
+
 void Cfg::simplify() {
-    std::unordered_set<Label> worklist(keys().begin(), keys().end());
-    std::unordered_set<Label> to_remove;
+    set<Label> worklist(keys().begin(), keys().end());
+    set<Label> to_remove;
     while (!worklist.empty()) {
-        Label label = *worklist.begin();
-        worklist.erase(label);
-        BasicBlock& bb = graph[label];
+        BasicBlock& bb = graph[pop(worklist)];
         while (bb.nextlist.size() == 1) {
             Label next_label = bb.nextlist.back();
             BasicBlock& next_bb = graph[next_label];
@@ -213,6 +219,20 @@ Cfg Cfg::to_nondet() {
     }
     return res;
 }
+
+
+void Cfg::worklist(std::function<bool(BasicBlock&)> recompute) {
+    set<Label> worklist{ordered_labels.begin(), ordered_labels.end()};
+    while (!worklist.empty()) {
+        Label l = pop(worklist);
+        BasicBlock& bb = graph[l];
+        if (recompute(bb)) {
+            for (Label next_label : bb.nextlist)
+                worklist.insert(next_label);
+        }
+    }
+}
+
 
 void print_stats(const Cfg& cfg) {
     int count = 0;
