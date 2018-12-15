@@ -50,13 +50,8 @@ static string op(Condition::Op op) {
     }
 }
 
-static const char* size(Width w) {
-    switch (w) {
-        case Width::B : return "u8";
-        case Width::H : return "u16";
-        case Width::W : return "u32";
-        case Width::DW: return "u64";
-    }
+static string size(int w) {
+    return string("u") + std::to_string(w * 8);
 }
 
 struct InstructionPrinterVisitor {
@@ -118,7 +113,7 @@ struct InstructionPrinterVisitor {
     void operator()(Packet const& b) {
         /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
         /* Indirect packet access, R0 = *(uint *) (skb->data + src_reg + imm32) */
-        const char* s = size(b.width);
+        string s = size(b.width);
         os_ << "r0 = ";
         os_ << "*(" << s << " *)skb[";
         if (b.regoffset)

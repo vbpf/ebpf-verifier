@@ -55,3 +55,25 @@ inline uint64_t merge(int32_t imm, int32_t next_imm) {
 inline std::tuple<int32_t, int32_t> split(uint64_t v) {
     return {(uint32_t)v, (uint32_t)(v >> 32) };
 }
+
+inline int opcode_to_width(uint8_t opcode)
+{
+    switch (opcode & EBPF_SIZE_MASK) {
+        case EBPF_SIZE_B: return 1;
+        case EBPF_SIZE_H: return 2;
+        case EBPF_SIZE_W: return 4;
+        case EBPF_SIZE_DW: return 8;
+    }
+	assert(false);
+}
+
+inline uint8_t width_to_opcode(int width)
+{
+    switch (width) {
+        case 1: return EBPF_SIZE_B;
+        case 2: return EBPF_SIZE_H;
+        case 4: return EBPF_SIZE_W;
+        case 8: return EBPF_SIZE_DW;
+    }
+	assert(false);
+}

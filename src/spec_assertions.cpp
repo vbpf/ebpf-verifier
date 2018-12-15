@@ -20,18 +20,6 @@ using std::to_string;
 using std::string;
 using std::vector;
 
-
-static Imm access_width(Width w)
-{
-    switch (w) {
-        case Width::B: return Imm{1};
-        case Width::H: return Imm{2};
-        case Width::W: return Imm{4};
-        case Width::DW: return Imm{8};
-    }
-	assert(false);
-}
-
 Assert operator!(Assert::TypeConstraint tc) {
     return {tc, Assert::False{}};
 }
@@ -172,7 +160,7 @@ struct AssertionExtractor {
         using Op = Condition::Op;
         vector<Assert> res;
         Reg reg = ins.access.basereg;
-        Imm width = access_width(ins.access.width);
+        Imm width{ins.access.width};
         int offset = ins.access.offset;
         if (reg.v != 10) {
             res.emplace_back(T{reg, Type::PTR});
@@ -192,7 +180,7 @@ struct AssertionExtractor {
     vector<Assert> operator()(LockAdd ins) {
         vector<Assert> res;
         res.emplace_back(Assert::TypeConstraint{ins.access.basereg, Type::MAP_VALUE});
-        checkAccess(res, Type::MAP_VALUE, ins.access.basereg, ins.access.offset, access_width(ins.access.width));
+        checkAccess(res, Type::MAP_VALUE, ins.access.basereg, ins.access.offset, Imm{ins.access.width});
         return res;
     };
 

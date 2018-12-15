@@ -63,12 +63,12 @@ const std::map<std::string, Condition::Op> str_to_cmpop =
     {"s>=", Condition::Op::SGE },
 };
 
-const std::map<std::string, Width> str_to_width =
+const std::map<std::string, int> str_to_width =
 {
-    {"8" , Width::B },
-    {"16", Width::H },
-    {"32", Width::W },
-    {"64", Width::DW },
+    {"8" , 1 },
+    {"16", 2 },
+    {"32", 4 },
+    {"64", 8 },
 };
 
 Reg reg(std::string s) {

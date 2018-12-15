@@ -75,12 +75,8 @@ struct Call {
 struct Exit {
 };
 
-enum class Width {
-    B=1, H=2, W=4, DW=8
-};
-
 struct Deref {
-    Width width;
+    int width{};
     Reg basereg;
     int offset{};
 };
@@ -96,7 +92,7 @@ struct Mem {
 };
 
 struct Packet {
-    Width width;
+    int width{};
     int offset{};
     std::optional<Reg> regoffset;
 };

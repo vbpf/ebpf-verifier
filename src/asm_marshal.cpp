@@ -57,22 +57,12 @@ static uint8_t imm(Un::Op op) {
     }
 }
 
-static uint8_t access_width(Width w)
-{
-    switch (w) {
-        case Width::B : return EBPF_SIZE_B;
-        case Width::H : return EBPF_SIZE_H;
-        case Width::W : return EBPF_SIZE_W;
-        case Width::DW: return EBPF_SIZE_DW;
-    }
-}
-
 struct MarshalVisitor {
 private:
     vector<ebpf_inst> makeLddw(Reg dst, bool isFd, int32_t imm, int32_t next_imm) {
         return {
             ebpf_inst {
-                .opcode = static_cast<uint8_t>(EBPF_CLS_LD | access_width(Width::DW)),
+                .opcode = static_cast<uint8_t>(EBPF_CLS_LD | width_to_opcode(8)),
                 .dst = dst.v,
                 .src = static_cast<uint8_t>(isFd ? 1 : 0),
                 .offset = 0,
@@ -199,7 +189,7 @@ public:
     vector<ebpf_inst> operator()(Mem const& b) {
         Deref access = b.access;
         ebpf_inst res{
-            .opcode = static_cast<uint8_t>((EBPF_MEM << 5) | access_width(access.width)),
+            .opcode = static_cast<uint8_t>((EBPF_MEM << 5) | width_to_opcode(access.width)),
             .offset = static_cast<int16_t>(access.offset),
         };
         if (b.isLoad()) {
@@ -224,7 +214,7 @@ public:
 
     vector<ebpf_inst> operator()(Packet const& b) {
         ebpf_inst res{
-            .opcode = static_cast<uint8_t>(EBPF_CLS_LD | access_width(b.width)),
+            .opcode = static_cast<uint8_t>(EBPF_CLS_LD | width_to_opcode(b.width)),
             .imm = static_cast<int32_t>(b.offset),
         };
         if (b.regoffset) {
@@ -239,7 +229,7 @@ public:
     vector<ebpf_inst> operator()(LockAdd const& b) {
         return { 
             ebpf_inst{
-                .opcode = static_cast<uint8_t>(EBPF_CLS_ST | 0x1 | (EBPF_XADD << 5) | access_width(b.access.width)),
+                .opcode = static_cast<uint8_t>(EBPF_CLS_ST | 0x1 | (EBPF_XADD << 5) | width_to_opcode(b.access.width)),
                 .dst = b.access.basereg.v,
                 .src = b.valreg.v,
                 .offset = static_cast<int16_t>(b.access.offset),

@@ -13,7 +13,7 @@ static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = 
     REQUIRE(single == ins);
 }
 
-static const auto ws = {Width::B, Width::H, Width::W, Width::DW};
+static const auto ws = {1, 2, 4, 8};
 
 TEST_CASE( "disasm_marshal", "[disasm][marshal]" ) {
     SECTION( "Bin" ) {
@@ -104,14 +104,14 @@ TEST_CASE( "disasm_marshal", "[disasm][marshal]" ) {
     }
     
     SECTION( "Packet" ) {
-        for (Width w : ws) {
+        for (int w : ws) {
             compare_marshal_unmarshal(Packet{.width = w, .offset = 7, .regoffset = {}});
             compare_marshal_unmarshal(Packet{.width = w, .offset = 7, .regoffset = Reg{ 2 }});
         }
     }
 
     SECTION( "LockAdd" ) {
-        for (Width w : {Width::B, Width::H, Width::W, Width::DW}) {
+        for (int w : ws) {
             Deref access{ .width = w, .basereg = Reg{2}, .offset = 17 };
             compare_marshal_unmarshal(LockAdd{access, .valreg = Reg{ 1 }});
         }
@@ -119,23 +119,13 @@ TEST_CASE( "disasm_marshal", "[disasm][marshal]" ) {
 }
 
 
-static uint8_t access_width(Width w)
-{
-    switch (w) {
-        case Width::B : return EBPF_SIZE_B;
-        case Width::H : return EBPF_SIZE_H;
-        case Width::W : return EBPF_SIZE_W;
-        case Width::DW: return EBPF_SIZE_DW;
-    }
-}
-
 TEST_CASE( "marshal", "[disasm][marshal]" ) {
     SECTION( "Load" ) {
-        Deref access{ .width = Width::B, .basereg = Reg{4}, .offset = 6 };
+        Deref access{ .width = 1, .basereg = Reg{4}, .offset = 6 };
         Mem m{access, .value = Reg{ 3 }, ._is_load=true };
         auto ins = marshal(m, 0).at(0);
         ebpf_inst expect{
-            .opcode = (uint8_t)(EBPF_CLS_LD | (EBPF_MEM << 5) | access_width(Width::B) | 0x1),
+            .opcode = (uint8_t)(EBPF_CLS_LD | (EBPF_MEM << 5) | width_to_opcode(1) | 0x1),
             .dst = 3, .src = 4, .offset = 6, .imm = 0,
         };
         REQUIRE(ins.dst == expect.dst);
@@ -145,32 +135,32 @@ TEST_CASE( "marshal", "[disasm][marshal]" ) {
         REQUIRE(ins.opcode == expect.opcode);
     }
     SECTION( "Load Imm" ) {
-        Deref access{ .width = Width::B, .basereg = Reg{4}, .offset = 6 };
+        Deref access{ .width = 1, .basereg = Reg{4}, .offset = 6 };
         REQUIRE_THROWS(marshal(Mem {access, .value = Imm{ 3 }, ._is_load=true }, 0));
     }
     SECTION( "Store" ) {
-        Deref access{ .width = Width::B, .basereg = Reg{4}, .offset = 6 };
+        Deref access{ .width = 1, .basereg = Reg{4}, .offset = 6 };
         auto ins = marshal(Mem {access, .value = Reg{ 3 }, ._is_load=false }, 0).at(0);
         REQUIRE(ins.src == 3);
         REQUIRE(ins.dst == 4);
         REQUIRE(ins.offset == 6);
         REQUIRE(ins.imm == 0);
-        REQUIRE(ins.opcode == (uint8_t)(EBPF_CLS_ST | (EBPF_MEM << 5) | access_width(Width::B) | 0x1));
+        REQUIRE(ins.opcode == (uint8_t)(EBPF_CLS_ST | (EBPF_MEM << 5) | width_to_opcode(1) | 0x1));
     }
     SECTION( "StoreImm" ) {
-        Deref access{ .width = Width::B, .basereg = Reg{4}, .offset = 6 };
+        Deref access{ .width = 1, .basereg = Reg{4}, .offset = 6 };
         auto ins = marshal(Mem {access, .value = Imm{ 3 }, ._is_load=false }, 0).at(0);
         REQUIRE(ins.src == 0);
         REQUIRE(ins.dst == 4);
         REQUIRE(ins.offset == 6);
         REQUIRE(ins.imm == 3);
-        REQUIRE(ins.opcode == (uint8_t)(EBPF_CLS_ST | (EBPF_MEM << 5) | access_width(Width::B) | 0x0));
+        REQUIRE(ins.opcode == (uint8_t)(EBPF_CLS_ST | (EBPF_MEM << 5) | width_to_opcode(1) | 0x0));
     }
 }
 
 TEST_CASE( "disasm_marshal_Mem", "[disasm][marshal]" ) {
     SECTION( "Load" ) {
-        for (Width w : ws) {
+        for (int w : ws) {
             Deref access;
             access.basereg = Reg{ 4 };
             access.offset = 6;
@@ -179,7 +169,7 @@ TEST_CASE( "disasm_marshal_Mem", "[disasm][marshal]" ) {
         }
     }
     SECTION( "Store Register" ) {
-        for (Width w : ws) {
+        for (int w : ws) {
             Deref access;
             access.basereg = Reg{ 9 };
             access.offset = 8;
@@ -188,7 +178,7 @@ TEST_CASE( "disasm_marshal_Mem", "[disasm][marshal]" ) {
         }
     }
     SECTION( "Store Immediate" ) {
-        for (Width w : ws) {
+        for (int w : ws) {
             Deref access;
             access.basereg = Reg{ 10 };
             access.offset = 2;

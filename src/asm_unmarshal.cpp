@@ -50,12 +50,12 @@ static auto getMemIsLoad(uint8_t opcode) -> bool {
     assert(false);
 }
 
-static auto getMemWidth(uint8_t opcode) -> Width {
+static auto getMemWidth(uint8_t opcode) -> int {
     switch (opcode & EBPF_SIZE_MASK) {
-        case EBPF_SIZE_B : return Width::B;
-        case EBPF_SIZE_H : return Width::H;
-        case EBPF_SIZE_W : return Width::W;
-        case EBPF_SIZE_DW: return Width::DW;
+        case EBPF_SIZE_B : return 1;
+        case EBPF_SIZE_H : return 2;
+        case EBPF_SIZE_W : return 4;
+        case EBPF_SIZE_DW: return 8;
     }
 	assert(false);
 }
@@ -142,21 +142,10 @@ static auto getJmpOp(uint8_t opcode) -> Condition::Op {
     assert(false);
 }
 
-static int access_width(uint8_t opcode)
-{
-    switch (opcode & EBPF_SIZE_MASK) {
-        case EBPF_SIZE_B: return 1;
-        case EBPF_SIZE_H: return 2;
-        case EBPF_SIZE_W: return 4;
-        case EBPF_SIZE_DW: return 8;
-    }
-	assert(false);
-}
-
 static auto makeMemOp(ebpf_inst inst) -> Instruction {
     if (inst.dst > 10 || inst.src > 10) note("Bad register");
 
-    Width width = getMemWidth(inst.opcode);
+    int width = getMemWidth(inst.opcode);
     bool isLD = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_LD;
     switch ((inst.opcode & EBPF_MODE_MASK) >> 5) {
         case 0:
@@ -164,7 +153,7 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
             return Undefined{(int)inst.opcode};
         case EBPF_ABS:
             if (!isLD) throw UnsupportedMemoryMode{"ABS but not LD"};
-            if (width == Width::DW) note("invalid opcode LDABSDW");
+            if (width == 8) note("invalid opcode LDABSDW");
             return Packet{
                 .width = width,
                 .offset = inst.imm,
@@ -173,7 +162,7 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
 
         case EBPF_IND:
             if (!isLD) throw UnsupportedMemoryMode{"IND but not LD"};
-            if (width == Width::DW) note("invalid opcode LDINDDW");
+            if (width == 8) note("invalid opcode LDINDDW");
             return Packet{
                 .width = width,
                 .offset = inst.imm,
@@ -190,7 +179,7 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
             assert(!(isLoad && isImm));
             uint8_t basereg = isLoad ? inst.src : inst.dst;
 
-            if (basereg == 10 && (inst.offset + access_width(inst.opcode) > 0 || inst.offset < -STACK_SIZE)) {
+            if (basereg == 10 && (inst.offset + opcode_to_width(inst.opcode) > 0 || inst.offset < -STACK_SIZE)) {
                 note("Stack access out of bounds");
             }
             auto res = Mem {
