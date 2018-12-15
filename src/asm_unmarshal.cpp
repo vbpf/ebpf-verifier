@@ -191,7 +191,7 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
                 .value = isLoad ? (Value)Reg{inst.dst}
                        : (isImm ? (Value)Imm{(uint32_t)inst.imm}
                                 : (Value)Reg{inst.src}),
-                ._is_load = isLoad,
+                .is_load = isLoad,
             };
             return res;
         }

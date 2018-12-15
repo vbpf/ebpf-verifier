@@ -92,7 +92,7 @@ public:
         }
 
         ebpf_inst res{
-            .opcode = static_cast<uint8_t>((b.is64 ? EBPF_CLS_ALU64 :EBPF_CLS_ALU) | (op(b.op) << 4)),
+            .opcode = static_cast<uint8_t>((b.is64 ? EBPF_CLS_ALU64 : EBPF_CLS_ALU) | (op(b.op) << 4)),
             .dst = b.dst.v,
             .src = 0,
             .offset = 0,
@@ -192,7 +192,7 @@ public:
             .opcode = static_cast<uint8_t>((EBPF_MEM << 5) | width_to_opcode(access.width)),
             .offset = static_cast<int16_t>(access.offset),
         };
-        if (b.isLoad()) {
+        if (b.is_load) {
             if (!std::holds_alternative<Reg>(b.value))
                 throw std::runtime_error(std::string("LD IMM: ") + to_string(b));
             res.opcode |= EBPF_CLS_LD | 0x1;

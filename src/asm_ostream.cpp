@@ -138,12 +138,12 @@ struct InstructionPrinterVisitor {
     }
 
     void operator()(Mem const& b) {
-        if (b.isLoad()) {
+        if (b.is_load) {
             visit(b.value);
             os_ << " = ";
         }
         print(b.access);
-        if (!b.isLoad()) {
+        if (!b.is_load) {
             os_ << " = ";
             visit(b.value);
         }

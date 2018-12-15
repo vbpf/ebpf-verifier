@@ -166,7 +166,7 @@ struct AssertionExtractor {
             res.emplace_back(T{reg, Type::PTR});
             for (auto t : {Type::MAP_VALUE, Type::CTX, Type::PACKET}) {
                 checkAccess(res, t, reg, offset, width);
-                if (!is_priviledged() && !ins.isLoad() && std::holds_alternative<Reg>(ins.value)) {
+                if (!is_priviledged() && !ins.is_load && std::holds_alternative<Reg>(ins.value)) {
                     res.push_back(
                         T{reg, t}.impliesType({std::get<Reg>(ins.value), Type::NUM})
                     );

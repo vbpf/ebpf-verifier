@@ -111,7 +111,7 @@ static vector<Instruction> expand_lockadd(LockAdd lock) {
         Mem {
             .access = lock.access,
             .value = Reg{11},
-            ._is_load = true,
+            .is_load = true,
         },
         Bin {
             .op = Bin::Op::ADD,
@@ -122,7 +122,7 @@ static vector<Instruction> expand_lockadd(LockAdd lock) {
         Mem {
             .access = lock.access,
             .value = Reg{11},
-            ._is_load = false,
+            .is_load = false,
         }
     };
 }
@@ -249,7 +249,7 @@ void print_stats(const Cfg& cfg) {
             count++;
             if (std::holds_alternative<Mem>(ins)) {
                 auto mem = std::get<Mem>(ins);
-                if (mem.isLoad())
+                if (mem.is_load)
                     loads++;
                 else
                     stores++;

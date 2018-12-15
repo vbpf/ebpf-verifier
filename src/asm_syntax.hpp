@@ -7,8 +7,6 @@
 
 #include <boost/lexical_cast.hpp>
 
-#include "linux_ebpf.hpp" // ?
-
 using Label = std::string;
 
 struct Imm {
@@ -82,11 +80,7 @@ struct Deref {
 struct Mem {
     Deref access;
     Value value;
-    bool _is_load{};
-
-    bool isLoad() const {
-        return _is_load;
-    };
+    bool is_load{};
 };
 
 struct Packet {
@@ -100,8 +94,9 @@ struct LockAdd {
     Reg valreg;
 };
 
-struct Undefined { int opcode; };
-
+struct Undefined {
+    int opcode;
+};
 
 struct Assume {
     Condition cond;
@@ -229,7 +224,7 @@ inline bool operator==(Packet const& a, Packet const& b){
     return a.offset == b.offset && a.regoffset == b.regoffset && a.width == b.width;
 }
 inline bool operator==(Mem const& a, Mem const& b){ 
-    return a.access == b.access && a.value == b.value && a._is_load == b._is_load;
+    return a.access == b.access && a.value == b.value && a.is_load == b.is_load;
 }
 inline bool operator==(LockAdd const& a, LockAdd const& b){ 
     return a.access == b.access && a.valreg == b.valreg;

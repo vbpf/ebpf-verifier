@@ -1013,7 +1013,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Mem const& b) {
     bool mem_is_fp = b.access.basereg.v == 10;
     int width = (int)b.access.width;
     int offset = (int)b.access.offset;
-    if (b.isLoad()) {
+    if (b.is_load) {
         // data = mem[offset]
         assert(std::holds_alternative<Reg>(b.value));
         dom_t data_reg = machine.reg(std::get<Reg>(b.value));

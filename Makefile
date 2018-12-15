@@ -54,7 +54,7 @@ LDLIBS += \
 
 LDLIBS += -lmpfr -lgmpxx -lgmp -lm -lstdc++ 
 
-CXXFLAGS := -Wall -Wfatal-errors -O0 -g3 -std=c++17 #  -Werror does not work well in Linux
+CXXFLAGS := -Wall -Wfatal-errors -O0 -g3 -std=c++2a #  -Werror does not work well in Linux
 
 CRABFLAGS := \
     -Wno-unused-local-typedefs -Wno-unused-function -Wno-inconsistent-missing-override \

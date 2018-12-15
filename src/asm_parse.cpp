@@ -134,14 +134,14 @@ Instruction parse_instruction(std::string text) {
         return Mem {
             .access = deref(m[2], m[3], m[4], m[5]),
             .value = reg(m[1]),
-            ._is_load = true,
+            .is_load = true,
         };
     }
     if (regex_match(text, m, regex(DEREF PAREN(REG PLUSMINUS IMM) ASSIGN REG_OR_IMM))) {
         return Mem {
             .access = deref(m[1], m[2], m[3], m[4]),
             .value = reg_or_imm(m[5]),
-            ._is_load = false,
+            .is_load = false,
         };
     }
     if (regex_match(text, m, regex("lock " DEREF PAREN(REG PLUSMINUS IMM) " [+]= " REG))) {
