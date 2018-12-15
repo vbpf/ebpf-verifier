@@ -116,7 +116,7 @@ static auto getBinValue(ebpf_inst inst) -> Value {
         return Reg{inst.src};
     } else {
         if (inst.src != 0) note("nonzero src for register alu op");
-        return Imm{inst.imm};
+        return Imm{(uint32_t)inst.imm};
     }
 }
 
@@ -189,7 +189,7 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
                     .offset = inst.offset,
                 },
                 .value = isLoad ? (Value)Reg{inst.dst}
-                       : (isImm ? (Value)Imm{inst.imm}
+                       : (isImm ? (Value)Imm{(uint32_t)inst.imm}
                                 : (Value)Reg{inst.src}),
                 ._is_load = isLoad,
             };
@@ -275,7 +275,7 @@ static auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, pc_t pc) -> 
             auto cond = inst.opcode == EBPF_OP_JA ? std::optional<Condition>{} : Condition{
                 .op = getJmpOp(inst.opcode),
                 .left = Reg{inst.dst},
-                .right = (inst.opcode & EBPF_SRC_REG) ? (Value)Reg{inst.src} : Imm{inst.imm},
+                .right = (inst.opcode & EBPF_SRC_REG) ? (Value)Reg{inst.src} : Imm{(uint32_t)inst.imm},
             };
             return Jmp {
                 .cond = cond,

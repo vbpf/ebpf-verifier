@@ -13,8 +13,6 @@ using Label = std::string;
 
 struct Imm {
     uint64_t v{};
-    explicit Imm(int32_t v) : v{(uint32_t)v} { }
-    explicit Imm(uint64_t v) : v{v} { }
 };
 
 struct Reg {

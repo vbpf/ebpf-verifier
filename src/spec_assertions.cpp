@@ -43,7 +43,7 @@ Value start(Type t) {
         case Type::CTX: return Imm{0};
         case Type::MAP_VALUE: return Imm{0};
         case Type::PACKET: return Imm{0};
-        case Type::STACK: return Imm{-256};
+        case Type::STACK: return Imm{static_cast<uint32_t>(-256)};
         case Type::MAP_STRUCT: assert(false);
         case Type::NUM: assert(false);
         case Type::PTR: assert(false);
@@ -160,7 +160,7 @@ struct AssertionExtractor {
         using Op = Condition::Op;
         vector<Assert> res;
         Reg reg = ins.access.basereg;
-        Imm width{ins.access.width};
+        Imm width{static_cast<uint32_t>(ins.access.width)};
         int offset = ins.access.offset;
         if (reg.v != 10) {
             res.emplace_back(T{reg, Type::PTR});
@@ -180,7 +180,7 @@ struct AssertionExtractor {
     vector<Assert> operator()(LockAdd ins) {
         vector<Assert> res;
         res.emplace_back(Assert::TypeConstraint{ins.access.basereg, Type::MAP_VALUE});
-        checkAccess(res, Type::MAP_VALUE, ins.access.basereg, ins.access.offset, Imm{ins.access.width});
+        checkAccess(res, Type::MAP_VALUE, ins.access.basereg, ins.access.offset, Imm{static_cast<uint32_t>(ins.access.width)});
         return res;
     };
 
