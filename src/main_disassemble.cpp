@@ -30,7 +30,7 @@ int main(int argc, char **argv)
             } else {
                 Cfg cfg = Cfg::make(prog);
                 if (flags.count("nondet")) {
-                    cfg = cfg.to_nondet();
+                    cfg = cfg.to_nondet(flags.count("expand_locks"));
                 }
                 if (flags.count("explicit")) {
                     explicate_assertions(cfg);

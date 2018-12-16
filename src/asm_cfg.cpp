@@ -127,7 +127,7 @@ static vector<Instruction> expand_lockadd(LockAdd lock) {
     };
 }
 
-vector<Instruction> expand_locks(vector<Instruction> const& insts) {
+static vector<Instruction> do_expand_locks(vector<Instruction> const& insts) {
     vector<Instruction> res;
     for (Instruction ins : insts) {
         if (std::holds_alternative<LockAdd>(ins)) {
@@ -176,14 +176,14 @@ void Cfg::simplify() {
     );
 }
 
-Cfg Cfg::to_nondet() {
+Cfg Cfg::to_nondet(bool expand_locks) {
     Cfg res;
     for (auto const& this_label : this->keys()) {
         BasicBlock const& bb = this->at(this_label);
         res.encountered(this_label);
         BasicBlock& newbb = res[this_label];
 
-        for (auto ins : bb.insts) {
+        for (auto ins : expand_locks ? do_expand_locks(bb.insts) : bb.insts) {
             if (!std::holds_alternative<Jmp>(ins)) {
                 newbb.insts.push_back(ins);
             }

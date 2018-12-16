@@ -31,7 +31,7 @@ int main(int argc, char **argv)
     } else {
         Cfg cfg = Cfg::make(prog);
         if (mode == "nondet") {
-            cfg = cfg.to_nondet();
+            cfg = cfg.to_nondet(false);
         }
         if (subcommand == "explicit") {
             explicate_assertions(cfg);

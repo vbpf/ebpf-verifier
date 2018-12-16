@@ -212,13 +212,17 @@ void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg,
         if (bb.insts.size() > 0) {
             int iteration = 0;
             string label = this_label;
-            for (auto ins : expand_locks(bb.insts)) {
+            for (auto ins : bb.insts) {
                 basic_block_t& this_block = cfg.insert(label);
+                if (iteration > 0) {
+                    (*exit) >> this_block;
+                }
                 exit = &cfg.insert(exit_label(this_block.label()));
                 vector<basic_block_t*> outs = instruction_builder_t(machine, ins, this_block, cfg).exec();
                 for (basic_block_t* b : outs)
                     (*b) >> *exit;
                 iteration++;
+                
                 label = this_label + ":" + to_string(iteration);
             }
         }
@@ -653,6 +657,8 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
             break;
         case Bin::Op::RSH:
             block.ashr(dst.value, dst.value, imm);
+            block.assume(dst.value <= (1 << (64-imm)));
+            block.assume(dst.value >= 0);
             no_pointer(block, dst);
             break;
         case Bin::Op::LSH:
@@ -665,6 +671,8 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
             break;
         case Bin::Op::ARSH:
             block.ashr(dst.value, dst.value, imm); // = (int64_t)dst >> imm;
+            block.assume(dst.value <= (1 << (64-imm)));
+            block.assume(dst.value >= -(1 << (64-imm)));
             no_pointer(block, dst);
             break;
         } 
@@ -672,18 +680,18 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
         dom_t& src = machine.reg(bin.v);
         switch (bin.op) {
         case Bin::Op::ADD: {
-                block.add(dst.value, dst.value, src.value);
-                
                 basic_block_t& ptr_dst = add_child(cfg, block, "ptr_dst");
                 ptr_dst.assume(is_pointer(dst));
                 ptr_dst.assertion(src.region == T_NUM , di);
                 ptr_dst.add(dst.offset, dst.offset, src.value);
+                ptr_dst.add(dst.value, dst.value, src.value);
                 assert_no_overflow(ptr_dst, dst.offset, di);
 
                 basic_block_t& ptr_src = add_child(cfg, block, "ptr_src");
                 ptr_src.assume(is_pointer(src));
                 ptr_src.assertion(dst.region == T_NUM , di);
                 ptr_src.add(dst.offset, dst.value, src.offset);
+                ptr_src.add(dst.value, dst.value, src.value);
                 assert_no_overflow(ptr_src, dst.offset, di);
                 ptr_src.assign(dst.region, src.region);
                 ptr_src.havoc(machine.top);

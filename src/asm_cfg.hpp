@@ -25,9 +25,7 @@ public:
 
     static Cfg make(const InstructionSeq& labeled_insts);
                 
-    Cfg to_nondet();
+    Cfg to_nondet(bool expand_locks);
     void simplify();
     void worklist(std::function<bool(BasicBlock&)> recompute);
 };
-
-std::vector<Instruction> expand_locks(std::vector<Instruction> const& insts);

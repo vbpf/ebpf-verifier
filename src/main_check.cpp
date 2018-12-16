@@ -39,7 +39,7 @@ int run(string domain_name, string code_filename, ebpf_prog_type prog_type)
     return std::visit(overloaded {
         [domain_name, prog_type](auto prog) {
             print(prog);
-            Cfg nondet_cfg = Cfg::make(prog).to_nondet();
+            Cfg nondet_cfg = Cfg::make(prog).to_nondet(true);
             bool res = abs_validate(nondet_cfg, domain_name, prog_type);
             print_stats(nondet_cfg);
             if (!res) {
