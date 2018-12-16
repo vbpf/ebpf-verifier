@@ -34,7 +34,7 @@ do
 		base=$(basename $f)
 		err=logs/${base}.err
 		log=logs/${base}.log
-		CMD="with_timeout 10m bin/check --simplify -q $f ${base##*.} $dom"
+		CMD="with_timeout 10m bin/check --simplify -q $f type${base##*.} $dom map0"
 		echo $CMD > ${err}
 		echo $CMD > ${log}
 		$CMD >> ${log} 2>> ${err}

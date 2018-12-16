@@ -31,15 +31,15 @@ static int usage(const char *name)
 }
 
 
-int run(string domain_name, string code_filename, ebpf_prog_type prog_type)
+int run(string domain_name, string code_filename, ebpf_prog_type prog_type, std::vector<int> map_sizes)
 {
     auto [is, nbytes] = open_binary_file(code_filename);
     auto prog = unmarshal(is, nbytes);
     return std::visit(overloaded {
-        [domain_name, prog_type](auto prog) {
+        [domain_name, prog_type, map_sizes](auto prog) {
             print(prog);
             Cfg nondet_cfg = Cfg::make(prog).to_nondet(true);
-            bool res = abs_validate(nondet_cfg, domain_name, prog_type);
+            bool res = abs_validate(nondet_cfg, domain_name, prog_type, map_sizes);
             print_stats(nondet_cfg);
             if (!res) {
                 std::cout << "verification failed\n";
@@ -59,8 +59,16 @@ int main(int argc, char **argv)
 {
     vector<string> args{argv+1, argv + argc};
     vector<string> posargs;
+    std::vector<int> map_sizes;
+    int prog_type = -1;
     for (string arg : args) {
-        if (arg.find("--log=") == 0) {
+        if (arg.find("type") == 0) {
+            // type1 or type4
+            prog_type = std::stoi(arg.substr(4));
+        } if (arg.find("map") == 0) {
+            // map64 map4096 [...]
+            map_sizes.push_back(std::stoi(arg.substr(3)));
+        } else if (arg.find("--log=") == 0) {
             crab::CrabEnableLog(arg.substr(6));
         } else if (arg == "--disable-warnings") {
             crab::CrabEnableWarningMsg(false);
@@ -99,9 +107,9 @@ int main(int argc, char **argv)
         return usage(argv[0]);
     }
 
-    int prog_type = posargs.size() > 1 
-        ? std::stoi(posargs.at(1))
-        : boost::lexical_cast<int>(fname.substr(fname.find_last_of('.') + 1));
+    if (prog_type < 0) {
+        prog_type = boost::lexical_cast<int>(fname.substr(fname.find_last_of('.') + 1));
+    }
 
-    return run(domain, fname, (ebpf_prog_type)prog_type);
+    return run(domain, fname, (ebpf_prog_type)prog_type, map_sizes);
 }

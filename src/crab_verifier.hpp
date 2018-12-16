@@ -8,7 +8,7 @@
 
 #include "asm_cfg.hpp"
 
-bool abs_validate(Cfg const& simple_cfg, std::string domain_name, ebpf_prog_type prog_type);
+bool abs_validate(Cfg const& simple_cfg, std::string domain_name, ebpf_prog_type prog_type, std::vector<int> map_sizes);
 
 std::map<std::string, std::string> domain_descriptions();
 
