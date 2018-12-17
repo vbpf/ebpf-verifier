@@ -12,7 +12,6 @@
 using std::string;
 using std::vector;
 
-
 static int usage(const char *name)
 {
     std::cerr << "usage: " << name << " [FLAGS] BINARY [TYPE] [DOMAIN]\n";

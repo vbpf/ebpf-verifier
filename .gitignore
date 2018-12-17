@@ -7,5 +7,6 @@ bin/check
 bin/test
 bin/disassemble
 bin/assemble
+bin/elf
 .vscode/*
 logs/*
