@@ -184,7 +184,7 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
                 note("Stack access out of bounds");
             }
             auto res = Mem {
-                Deref {
+                .access = Deref {
                     .width = width,
                     .basereg = Reg{basereg},
                     .offset = inst.offset,
