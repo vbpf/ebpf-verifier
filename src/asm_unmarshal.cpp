@@ -8,6 +8,7 @@
 
 #include "spec_prototypes.hpp"
 
+#include "asm_syntax.hpp"
 #include "asm_unmarshal.hpp"
 
 using std::vector;
@@ -359,14 +360,9 @@ vector<LabeledInstruction> unmarshal(vector<ebpf_inst> const& insts)
     return prog;
 }
 
-std::variant<vector<LabeledInstruction>, string> unmarshal(std::istream& is, size_t nbytes) {
-    if (nbytes % sizeof(ebpf_inst) != 0) {
-        note(string("file size must be a multiple of ") + std::to_string(sizeof(ebpf_inst)));
-    }
-    vector<ebpf_inst> ebpf_insts(nbytes / sizeof(ebpf_inst));
-    is.read((char*)ebpf_insts.data(), nbytes);
+std::variant<InstructionSeq, std::string> unmarshal(raw_program raw_prog) {
     try {
-        auto res = unmarshal(ebpf_insts);
+        auto res = unmarshal(raw_prog.prog);
         int pc = 0;
         for (auto notelist : notes) {
             pc++;

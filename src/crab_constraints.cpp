@@ -116,7 +116,6 @@ struct array_dom_t {
 
 struct machine_t final
 {
-    ebpf_prog_type prog_type;
     ptype_descr ctx_desc;
     variable_factory_t& vfac;
     std::vector<dom_t> regs;
@@ -126,7 +125,7 @@ struct machine_t final
     var_t top{vfac[std::string("*")], crab::INT_TYPE, 64};
     var_t num{vfac[std::string("T_NUM")], crab::INT_TYPE, 64};
 
-    std::vector<int> map_sizes;
+    program_info info;
 
     dom_t& reg(Value v) {
         return regs[std::get<Reg>(v).v];
@@ -134,7 +133,7 @@ struct machine_t final
 
     void setup_entry(basic_block_t& entry);
 
-    machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac, std::vector<int> map_sizes);
+    machine_t(variable_factory_t& vfac, program_info info);
 };
 
 class instruction_builder_t final
@@ -194,13 +193,13 @@ private:
     vector<basic_block_t*> operator()(Assert const& b) { return {}; };
 
     bool is_priviledged() {
-        return machine.prog_type == 2;
+        return machine.info.program_type == 2;
     }
 };
 
-void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg, ebpf_prog_type prog_type, std::vector<int> map_sizes)
+void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg, program_info info)
 {
-    machine_t machine(prog_type, vfac, map_sizes);
+    machine_t machine(vfac, info);
     {
         auto& entry = cfg.insert(entry_label());
         machine.setup_entry(entry);
@@ -249,8 +248,8 @@ static void assert_init(basic_block_t& block, const dom_t data_reg, debug_info d
     block.assertion(is_init(data_reg), di);
 }
 
-machine_t::machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac, std::vector<int> map_sizes)
-    : prog_type(prog_type), ctx_desc{get_descriptor(prog_type)}, vfac{vfac}, map_sizes{map_sizes}
+machine_t::machine_t(variable_factory_t& vfac, program_info info)
+    : ctx_desc{get_descriptor((ebpf_prog_type)info.program_type)}, vfac{vfac}, info{info}
 {
     for (int i=0; i < 12; i++) {
         regs.emplace_back(vfac, i);
@@ -412,7 +411,7 @@ vector<basic_block_t*> instruction_builder_t::exec_map_access(basic_block_t& blo
 {
     vector<basic_block_t*> res;
     int map_index = 0;
-    for (int map_size : machine.map_sizes) {
+    for (int map_size : machine.info.map_sizes) {
         basic_block_t& mid = add_child(cfg, block, "assume_map" + std::to_string(map_index));
         lin_exp_t addr = mem_reg.offset + offset;
 
@@ -601,6 +600,9 @@ vector<basic_block_t*> instruction_builder_t::operator()(LoadMapFd const& ld) {
     // This is what Arg::CONST_MAP_PTR looks for
     // This is probably the wrong thing to do. should we add an FD type?
     // Here we (probably) need the map structure
+    if (ld.mapfd >= machine.info.map_sizes.size()) {
+        block.assertion(neq(machine.num, machine.num), di);
+    }
     block.assign(machine.reg(ld.dst).region, ld.mapfd);
     block.assign(machine.reg(ld.dst).offset, 0);
     return { &block };
@@ -854,6 +856,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& b) {
         case Arg::CONST_MAP_PTR:
             assert_pointer_or_null(is_map(arg));
             for (basic_block_t* b : blocks) {
+                b->assertion(arg.value < machine.info.map_sizes.size(), di);
                 b->assign(map_type, arg.value);
             }
             break;

@@ -31,15 +31,14 @@ static int usage(const char *name)
 }
 
 
-int run(string domain_name, string code_filename, ebpf_prog_type prog_type, std::vector<int> map_sizes)
+int run(string domain_name, raw_program raw_prog, program_info info)
 {
-    auto [is, nbytes] = open_binary_file(code_filename);
-    auto prog = unmarshal(is, nbytes);
+    auto prog = unmarshal(raw_prog);
     return std::visit(overloaded {
-        [domain_name, prog_type, map_sizes](auto prog) {
+        [domain_name, info](auto prog) {
             print(prog);
             Cfg nondet_cfg = Cfg::make(prog).to_nondet(true);
-            bool res = abs_validate(nondet_cfg, domain_name, prog_type, map_sizes);
+            bool res = abs_validate(nondet_cfg, domain_name, info);
             print_stats(nondet_cfg);
             if (!res) {
                 std::cout << "verification failed\n";
@@ -54,20 +53,32 @@ int run(string domain_name, string code_filename, ebpf_prog_type prog_type, std:
     }, prog);
 }
 
-
 int main(int argc, char **argv)
 {
     vector<string> args{argv+1, argv + argc};
     vector<string> posargs;
-    std::vector<int> map_sizes;
-    int prog_type = -1;
+    program_info info;
+    bool is_raw = true;
+    string path;
+    string domain = "sdbm-arr";
     for (string arg : args) {
-        if (arg.find("type") == 0) {
+        if (arg.find("type=") == 0) {
             // type1 or type4
-            prog_type = std::stoi(arg.substr(4));
-        } if (arg.find("map") == 0) {
+            info.program_type = std::stoi(arg.substr(5));
+        } else if (arg.find("map") == 0) {
             // map64 map4096 [...]
-            map_sizes.push_back(std::stoi(arg.substr(3)));
+            info.map_sizes.push_back(std::stoi(arg.substr(3)));
+        } else if (arg.find("domain=") == 0) {
+            domain = arg.substr(7);
+        } else if (arg.find("elf=") == 0) {
+            is_raw = false;
+            path = arg.substr(4);
+        } else if (arg.find("raw=") == 0) {
+            is_raw = true;
+            path = arg.substr(4);
+            if (info.program_type == 0) {
+                info.program_type = boost::lexical_cast<int>(path.substr(path.find_last_of('.') + 1));
+            }
         } else if (arg.find("--log=") == 0) {
             crab::CrabEnableLog(arg.substr(6));
         } else if (arg == "--disable-warnings") {
@@ -96,20 +107,17 @@ int main(int argc, char **argv)
             posargs.push_back(arg);
         }
     }
-    if (posargs.size() > 3 || posargs.size() == 0)
+    if (posargs.size() >= 1 || path.empty())
         return usage(argv[0]);
 
-    string fname = posargs.at(0);
-
-    string domain = posargs.size() > 2 ? posargs.at(2) : "sdbm-arr";
     if (domain_descriptions().count(domain) == 0) {
         std::cerr << "argument " << domain << " is not a valid domain\n";
         return usage(argv[0]);
     }
-
-    if (prog_type < 0) {
-        prog_type = boost::lexical_cast<int>(fname.substr(fname.find_last_of('.') + 1));
+    auto progs = is_raw ? read_raw(path, info) : read_elf(path);
+    int res = 0;
+    for (auto raw_prog : progs) {
+        res += run(domain, raw_prog, info);
     }
-
-    return run(domain, fname, (ebpf_prog_type)prog_type, map_sizes);
+    return res;
 }

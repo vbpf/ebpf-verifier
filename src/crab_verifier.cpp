@@ -51,11 +51,11 @@ vector<string> sorted_labels(cfg_t& cfg)
     return labels;
 }
 
-bool abs_validate(Cfg const& simple_cfg, string domain_name, ebpf_prog_type prog_type, std::vector<int> map_sizes)
+bool abs_validate(Cfg const& simple_cfg, string domain_name, program_info info)
 {
     variable_factory_t vfac;
     cfg_t cfg(entry_label(), ARR);
-    build_crab_cfg(cfg, vfac, simple_cfg, prog_type, map_sizes);
+    build_crab_cfg(cfg, vfac, simple_cfg, info);
 
     printer_t pre_printer;
     printer_t post_printer;

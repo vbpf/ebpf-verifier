@@ -7,6 +7,8 @@
 
 #include <boost/lexical_cast.hpp>
 
+#include "linux_ebpf.hpp"
+
 using Label = std::string;
 
 struct Imm {
@@ -157,7 +159,17 @@ using pc_t = uint16_t;
 
 constexpr int STACK_SIZE=512;
 
+struct program_info {
+    int program_type = 0;
+    std::vector<unsigned int> map_sizes;
+};
 
+struct raw_program {
+    std::string filename;
+    std::string section;
+    std::vector<ebpf_inst> prog;
+    program_info info;
+};
 
 // Helpers:
 

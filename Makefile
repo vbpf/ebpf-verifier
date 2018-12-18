@@ -65,7 +65,7 @@ CRABFLAGS := \
     -I $(LDD)/include/ldd/include/ \
     -I $(ELINA)/include/
 
-all: $(BINDIR)/check $(BINDIR)/disassemble $(BINDIR)/assemble $(BINDIR)/test $(BINDIR)/elf
+all: $(BINDIR)/check $(BINDIR)/disassemble $(BINDIR)/assemble $(BINDIR)/test
 
 -include $(DEPENDS)
 
@@ -99,10 +99,6 @@ $(BINDIR)/disassemble: ${BUILDDIR}/main_disassemble.o ${DISASM_OBJECTS}
 $(BINDIR)/assemble: ${BUILDDIR}/main_assemble.o ${DISASM_OBJECTS}
 	@printf "$@ <- $^\n"
 	@$(CXX) ${CXXFLAGS} $^ -o $@
-
-$(BINDIR)/elf: ${BUILDDIR}/main_elf.o ${DISASM_OBJECTS}
-	@printf "$@ <- $^\n"
-	@$(CXX) ${CXXFLAGS}$^ -o $@
 
 clean:
 	rm -f $(BINDIR)/check $(BINDIR)/disassemble $(BINDIR)/assemble $(BINDIR)/elf $(BUILDDIR)/*.o $(BUILDDIR)/*.d
