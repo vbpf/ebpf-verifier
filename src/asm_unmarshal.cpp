@@ -346,8 +346,6 @@ vector<LabeledInstruction> unmarshal(vector<ebpf_inst> const& insts)
             std::cerr << "\n";
         }
         */
-        if (pc == insts.size() - 1 && fallthrough)
-            note("fallthrough in last instruction");
         prog.emplace_back(std::to_string(pc), new_ins);
         pc++;
         note_next_pc();
@@ -356,7 +354,6 @@ vector<LabeledInstruction> unmarshal(vector<ebpf_inst> const& insts)
             note_next_pc();
         }
     }
-    if (exit_count == 0) note("no exit instruction");
     return prog;
 }
 
