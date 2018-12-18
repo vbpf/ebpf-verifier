@@ -132,7 +132,7 @@ vector<raw_program> read_elf(std::string path)
             ELFIO::Elf_Word symbol;
             ELFIO::Elf_Word type;
             ELFIO::Elf_Sxword addend;
-            for (int i=0; i < reloc.get_entries_num(); i++) {
+            for (unsigned int i=0; i < reloc.get_entries_num(); i++) {
                 if (reloc.get_entry(i, offset, symbol, type, addend)) {
                     auto& inst = prog.prog[offset / sizeof(ebpf_inst)];
                     inst.src = 1;
