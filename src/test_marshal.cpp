@@ -122,7 +122,7 @@ TEST_CASE( "disasm_marshal", "[disasm][marshal]" ) {
 TEST_CASE( "marshal", "[disasm][marshal]" ) {
     SECTION( "Load" ) {
         Deref access{ .width = 1, .basereg = Reg{4}, .offset = 6 };
-        Mem m{access, .value = Reg{ 3 }, .is_load=true };
+        Mem m{.access = access, .value = Reg{ 3 }, .is_load=true };
         auto ins = marshal(m, 0).at(0);
         ebpf_inst expect{
             .opcode = (uint8_t)(EBPF_CLS_LD | (EBPF_MEM << 5) | width_to_opcode(1) | 0x1),
@@ -136,11 +136,11 @@ TEST_CASE( "marshal", "[disasm][marshal]" ) {
     }
     SECTION( "Load Imm" ) {
         Deref access{ .width = 1, .basereg = Reg{4}, .offset = 6 };
-        REQUIRE_THROWS(marshal(Mem {access, .value = Imm{ 3 }, .is_load=true }, 0));
+        REQUIRE_THROWS(marshal(Mem {.access = access, .value = Imm{ 3 }, .is_load=true }, 0));
     }
     SECTION( "Store" ) {
         Deref access{ .width = 1, .basereg = Reg{4}, .offset = 6 };
-        auto ins = marshal(Mem {access, .value = Reg{ 3 }, .is_load=false }, 0).at(0);
+        auto ins = marshal(Mem {.access = access, .value = Reg{ 3 }, .is_load=false }, 0).at(0);
         REQUIRE(ins.src == 3);
         REQUIRE(ins.dst == 4);
         REQUIRE(ins.offset == 6);
@@ -149,7 +149,7 @@ TEST_CASE( "marshal", "[disasm][marshal]" ) {
     }
     SECTION( "StoreImm" ) {
         Deref access{ .width = 1, .basereg = Reg{4}, .offset = 6 };
-        auto ins = marshal(Mem {access, .value = Imm{ 3 }, .is_load=false }, 0).at(0);
+        auto ins = marshal(Mem {.access = access, .value = Imm{ 3 }, .is_load=false }, 0).at(0);
         REQUIRE(ins.src == 0);
         REQUIRE(ins.dst == 4);
         REQUIRE(ins.offset == 6);
@@ -165,7 +165,7 @@ TEST_CASE( "disasm_marshal_Mem", "[disasm][marshal]" ) {
             access.basereg = Reg{ 4 };
             access.offset = 6;
             access.width = w;
-            compare_marshal_unmarshal(Mem {access, .value = Reg{ 3 }, .is_load=true });
+            compare_marshal_unmarshal(Mem {.access = access, .value = Reg{ 3 }, .is_load=true });
         }
     }
     SECTION( "Store Register" ) {
@@ -174,7 +174,7 @@ TEST_CASE( "disasm_marshal_Mem", "[disasm][marshal]" ) {
             access.basereg = Reg{ 9 };
             access.offset = 8;
             access.width = w;
-            compare_marshal_unmarshal(Mem {access, .value = Reg{ 4 }, .is_load=false });
+            compare_marshal_unmarshal(Mem {.access = access, .value = Reg{ 4 }, .is_load=false });
         }
     }
     SECTION( "Store Immediate" ) {
@@ -183,7 +183,7 @@ TEST_CASE( "disasm_marshal_Mem", "[disasm][marshal]" ) {
             access.basereg = Reg{ 10 };
             access.offset = 2;
             access.width = w;
-            compare_marshal_unmarshal(Mem {access, .value = Imm{ 5 }, .is_load=false });
+            compare_marshal_unmarshal(Mem {.access = access, .value = Imm{ 5 }, .is_load=false });
         }
     }   
 }
