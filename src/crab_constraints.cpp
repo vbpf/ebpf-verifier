@@ -603,8 +603,10 @@ vector<basic_block_t*> instruction_builder_t::operator()(LoadMapFd const& ld) {
     if (ld.mapfd >= machine.info.map_sizes.size()) {
         block.assertion(neq(machine.num, machine.num), di);
     }
-    block.assign(machine.reg(ld.dst).region, ld.mapfd);
-    block.assign(machine.reg(ld.dst).offset, 0);
+    auto reg = machine.reg(ld.dst);
+    block.assign(reg.region, T_NUM);
+    block.assign(reg.value, ld.mapfd);
+    block.havoc(reg.offset);
     return { &block };
 }
 

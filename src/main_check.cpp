@@ -131,7 +131,6 @@ int main(int argc, char **argv)
             std::cout << "\n";
         } else {
             res += run(domain, raw_prog);
-            std::cout << "type: " << (int)raw_prog.info.program_type << "\n";
         }
     }
     return res;
