@@ -205,7 +205,7 @@ static auto makeMemOp(ebpf_inst inst) -> Instruction {
 
         case EBPF_XADD:
             return LockAdd {
-                Deref{
+                .access = Deref{
                     .width = width,
                     .basereg = Reg{inst.dst},
                     .offset = inst.offset,
