@@ -82,8 +82,11 @@ struct bpf_map_data {
 };
 
 template<typename T>
-static vector<T> vector_of(const char* p, size_t size) {
-    return {(T*)p, (T*)(p + size)};
+static vector<T> vector_of(ELFIO::section* sec) {
+    auto data = sec->get_data();
+    auto size = sec->get_size();
+    assert(size % sizeof(T) == 0);
+    return {(T*)data, (T*)(data + size)};
 }
 
 vector<raw_program> read_elf(std::string path)
@@ -96,22 +99,19 @@ vector<raw_program> read_elf(std::string path)
     
     // TODO: relocation
     program_info info;
-    const auto& maps = *reader.sections["maps"];
-    for (auto s : vector_of<bpf_load_map_def>(maps.get_data(), maps.get_size()))
+    for (auto s : vector_of<bpf_load_map_def>(reader.sections["maps"]))
         info.map_sizes.push_back(s.value_size);
 
     vector<raw_program> res;
     for (const auto section : reader.sections)
     {
         const string name = section->get_name();
-        auto size = section->get_size();
-        if (size == 0)
-            continue;
         if (name == "license" || name == "version" || name == "maps" || name.find(".") == 0)
             continue;
         info.program_type = section_to_progtype(name);
-        raw_program prog{path, name, vector_of<ebpf_inst>(section->get_data(), size), info};
-        res.push_back(prog);
+        raw_program prog{path, name, vector_of<ebpf_inst>(section), info};
+        if (!prog.prog.empty())
+            res.push_back(prog);
     }
     return res;
 }
