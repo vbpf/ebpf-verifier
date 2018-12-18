@@ -296,10 +296,8 @@ void print(const InstructionSeq& insts) {
 void print(const Cfg& cfg, bool nondet) {
     for (auto [label, next] : slide(cfg.keys())) {
         cout << std::setw(8) << label << ":\t";
-        bool first = true;
         const auto& bb = cfg.at(label);
         for (auto ins : bb.insts) {
-            first = false;
             std::visit(InstructionPrinterVisitor{cout}, ins);
             cout << "\n" << std::setw(17);
         }

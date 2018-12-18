@@ -113,7 +113,7 @@ TEST_CASE( "disasm_marshal", "[disasm][marshal]" ) {
     SECTION( "LockAdd" ) {
         for (int w : ws) {
             Deref access{ .width = w, .basereg = Reg{2}, .offset = 17 };
-            compare_marshal_unmarshal(LockAdd{access, .valreg = Reg{ 1 }});
+            compare_marshal_unmarshal(LockAdd{.access = access, .valreg = Reg{ 1 }});
         }
     }
 }
