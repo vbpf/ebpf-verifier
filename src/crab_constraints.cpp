@@ -121,8 +121,6 @@ struct machine_t final
     variable_factory_t& vfac;
     std::vector<dom_t> regs;
     array_dom_t stack_arr{vfac, "S"};
-    array_dom_t ctx_arr{vfac, "C"};
-    array_dom_t data_arr{vfac, "D"};
     var_t meta_size{vfac[std::string("meta_size")], crab::INT_TYPE, 64};
     var_t data_size{vfac[std::string("data_size")], crab::INT_TYPE, 64};
     var_t top{vfac[std::string("*")], crab::INT_TYPE, 64};
@@ -434,16 +432,11 @@ vector<basic_block_t*> instruction_builder_t::exec_data_access(basic_block_t& bl
     mid.assertion(machine.meta_size <= addr, di);
     mid.assertion(addr <= machine.data_size - width, di);
     if (is_load) {
-        auto blocks = machine.data_arr.load(mid, data_reg, addr, width, cfg);
-        for (auto b : blocks) {
-            b->assign(data_reg.region, T_NUM);
-            b->havoc(data_reg.offset);
-        }
-        return blocks;
-    } else {
-        mid.assertion(data_reg.region == T_NUM, di);
-        return machine.data_arr.store(mid, addr, data_reg, width, di, cfg);
+        mid.havoc(data_reg.offset);
+        mid.havoc(data_reg.value);
+        mid.assign(data_reg.region, T_NUM);
     }
+    return { &mid };
 }
 
 template<typename W>
@@ -486,17 +479,15 @@ vector<basic_block_t*> instruction_builder_t::exec_ctx_access(basic_block_t& blo
 
         basic_block_t& normal = add_child(cfg, mid, "assume_ctx_not_special");
         assume_normal(normal);
-        auto blocks = machine.ctx_arr.load(normal, data_reg, addr, width, cfg);
-        for (auto b : blocks) {
-            b->assign(data_reg.region, T_NUM);
-            b->havoc(data_reg.offset);
-            ret.push_back(b);
-        }
+        normal.assign(data_reg.region, T_NUM);
+        normal.havoc(data_reg.offset);
+        normal.havoc(data_reg.value);
+        ret.push_back(&normal);
         return ret;
     } else {
         assume_normal(mid);
         mid.assertion(data_reg.region == T_NUM, di);
-        return machine.ctx_arr.store(mid, addr, data_reg, width, di, cfg);
+        return { &mid };
     }
 }
 
@@ -984,8 +975,6 @@ vector<basic_block_t*> instruction_builder_t::operator()(Assume const& b) {
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(Packet const& b) {
-    int width = (int)b.width;
-            
     /* From the linux verifier code:
     verify safety of LD_ABS|LD_IND instructions:
     * - they can only appear in the programs where ctx == skb
@@ -1003,15 +992,9 @@ vector<basic_block_t*> instruction_builder_t::operator()(Packet const& b) {
     *   R0 - 8/16/32-bit skb data converted to cpu endianness
     */
     block.assertion(machine.regs[6].region == T_CTX, di);
-    if (b.regoffset) {
-        /* Indirect packet access, R0 = *(uint *) (skb->data + src_reg + imm32) */
-        machine.data_arr.load(block, machine.regs[0], machine.reg(*b.regoffset).value + b.offset, width, cfg);
-    } else {
-        /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
-        machine.data_arr.load(block, machine.regs[0], b.offset, width, cfg);
-    }
     block.assign(machine.regs[0].region, T_NUM);
     block.havoc(machine.regs[0].offset);
+    block.havoc(machine.regs[0].value);
     scratch_regs(block);
     return { &block };
 }
