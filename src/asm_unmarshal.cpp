@@ -298,6 +298,7 @@ vector<LabeledInstruction> unmarshal(vector<ebpf_inst> const& insts)
         ebpf_inst inst = insts[pc];
         Instruction new_ins;
         bool lddw = false;
+        bool fallthrough = true;
         switch (inst.opcode & EBPF_CLS_MASK) {
             case EBPF_CLS_LD:
                 if (inst.opcode == EBPF_OP_LDDW_IMM) {
@@ -319,10 +320,12 @@ vector<LabeledInstruction> unmarshal(vector<ebpf_inst> const& insts)
             case EBPF_CLS_JMP: {
                 new_ins = makeJmp(inst, insts, pc);
                 if (std::holds_alternative<Exit>(new_ins)) {
+                    fallthrough = false;
                     exit_count++;
                 }
                 if (std::holds_alternative<Jmp>(new_ins)) {
-                    // nothing
+                    if (!std::get<Jmp>(new_ins).cond)
+                        fallthrough = false;
                 }
                 break;
             }
@@ -343,6 +346,8 @@ vector<LabeledInstruction> unmarshal(vector<ebpf_inst> const& insts)
             std::cerr << "\n";
         }
         */
+        if (pc == insts.size() - 1 && fallthrough)
+            note("fallthrough in last instruction");
         prog.emplace_back(std::to_string(pc), new_ins);
         pc++;
         note_next_pc();
@@ -351,6 +356,7 @@ vector<LabeledInstruction> unmarshal(vector<ebpf_inst> const& insts)
             note_next_pc();
         }
     }
+    if (exit_count == 0) note("no exit instruction");
     return prog;
 }
 
