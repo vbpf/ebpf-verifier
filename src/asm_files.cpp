@@ -97,21 +97,51 @@ vector<raw_program> read_elf(std::string path)
         exit(2);
     }
     
-    // TODO: relocation
     program_info info;
     for (auto s : vector_of<bpf_load_map_def>(reader.sections["maps"]))
         info.map_sizes.push_back(s.value_size);
+
+    ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
+    auto read_reloc_value = [&symbols](int symbol) -> int {
+        string symbol_name;
+        ELFIO::Elf64_Addr value;
+        ELFIO::Elf_Xword size;
+        unsigned char bind;
+        unsigned char type;
+        ELFIO::Elf_Half section_index;
+        unsigned char other;
+        symbols.get_symbol(symbol, symbol_name, value, size, bind, type, section_index, other);
+        return value / sizeof(bpf_load_map_def);
+    };
 
     vector<raw_program> res;
     for (const auto section : reader.sections)
     {
         const string name = section->get_name();
-        if (name == "license" || name == "version" || name == "maps" || name.find(".") == 0)
+        
+
+        if (name == "license" || name == "version" || name == "maps")
             continue;
+        if (name.find(".") == 0) {
+            continue;
+        }
         info.program_type = section_to_progtype(name);
         raw_program prog{path, name, vector_of<ebpf_inst>(section), info};
-        if (!prog.prog.empty())
+        if (!prog.prog.empty()) {
+            ELFIO::const_relocation_section_accessor reloc{reader, reader.sections[string(".rel") + name]};
+            ELFIO::Elf64_Addr offset;
+            ELFIO::Elf_Word symbol;
+            ELFIO::Elf_Word type;
+            ELFIO::Elf_Sxword addend;
+            for (int i=0; i < reloc.get_entries_num(); i++) {
+                if (reloc.get_entry(i, offset, symbol, type, addend)) {
+                    auto& inst = prog.prog[offset / sizeof(ebpf_inst)];
+                    inst.src = 1;
+                    inst.imm = read_reloc_value(symbol);
+                }
+            }
             res.push_back(prog);
+        }
     }
     return res;
 }
