@@ -39,7 +39,7 @@ void run(string domain_name, raw_program raw_prog)
             //print(prog);
             Cfg nondet_cfg = Cfg::make(prog).to_nondet(true);
             const auto [res, seconds] = abs_validate(nondet_cfg, domain_name, raw_prog.info);
-            std::cout << raw_prog.filename << "," << raw_prog.section << "," << res << "," << seconds;
+            std::cout << res << "," << raw_prog.filename << ":" << raw_prog.section << "," << seconds;
             print_stats(nondet_cfg);
         },
         [](string errmsg) { 
@@ -57,6 +57,7 @@ int main(int argc, char **argv)
     bool is_raw = true;
     string path;
     string domain = "sdbm-arr";
+    string desired_section;
     bool info_only = false;
     for (string arg : args) {
         if (arg.find("type=") == 0) {
@@ -68,8 +69,14 @@ int main(int argc, char **argv)
         } else if (arg.find("domain=") == 0) {
             domain = arg.substr(7);
         } else if (arg.find("elf=") == 0) {
+            arg = arg.substr(4);
             is_raw = false;
-            path = arg.substr(4);
+            if (arg.find(":") != string::npos) {
+                path = arg.substr(0, arg.find(":"));
+                desired_section = arg.substr(arg.find(":") + 1);
+            } else {
+                path = arg;
+            }
         } else if (arg.find("raw=") == 0) {
             is_raw = true;
             path = arg.substr(4);
@@ -117,7 +124,7 @@ int main(int argc, char **argv)
         std::cerr << "argument " << domain << " is not a valid domain\n";
         return usage(argv[0]);
     }
-    auto progs = is_raw ? read_raw(path, info) : read_elf(path);
+    auto progs = is_raw ? read_raw(path, info) : read_elf(path, desired_section);
     for (auto raw_prog : progs) {
         if (info_only) {
             std::cout << "section: " << raw_prog.section;

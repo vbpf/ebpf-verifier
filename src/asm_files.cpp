@@ -90,7 +90,7 @@ static vector<T> vector_of(ELFIO::section* sec) {
     return {(T*)data, (T*)(data + size)};
 }
 
-vector<raw_program> read_elf(std::string path)
+vector<raw_program> read_elf(std::string path, std::string desired_section)
 {
     ELFIO::elfio reader;
     if (!reader.load(path)) {
@@ -116,9 +116,12 @@ vector<raw_program> read_elf(std::string path)
     };
 
     vector<raw_program> res;
+    
     for (const auto section : reader.sections)
     {
         const string name = section->get_name();
+        if (!desired_section.empty() && name != desired_section)
+            continue;
         if (name == "license" || name == "version" || name == "maps")
             continue;
         if (name.find(".") == 0) {
@@ -144,6 +147,9 @@ vector<raw_program> read_elf(std::string path)
             }
             res.push_back(prog);
         }
+    }
+    if (res.empty()) {
+        std::cerr << "Could not find relevant section!\n"; 
     }
     return res;
 }
