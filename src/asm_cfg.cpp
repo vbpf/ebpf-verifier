@@ -260,9 +260,5 @@ void print_stats(const Cfg& cfg) {
         if (bb.nextlist.size() > 1)
             jumps++;
     }
-    std::cout << "instructions:" << count << "\n";
-    std::cout << "loads:" << loads << "\n";
-    std::cout << "stores:" << stores << "\n";
-    std::cout << "jumps:" << jumps << "\n";
-    std::cout << "joins:" << joins << "\n";
+    std::cout << count << "," << loads << "," << stores << "," << jumps << "," << joins << "\n";
 }

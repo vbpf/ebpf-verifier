@@ -118,8 +118,6 @@ vector<raw_program> read_elf(std::string path)
     for (const auto section : reader.sections)
     {
         const string name = section->get_name();
-        
-
         if (name == "license" || name == "version" || name == "maps")
             continue;
         if (name.find(".") == 0) {

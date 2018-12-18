@@ -31,24 +31,19 @@ static int usage(const char *name)
 }
 
 
-int run(string domain_name, raw_program raw_prog)
+void run(string domain_name, raw_program raw_prog)
 {
     auto prog = unmarshal(raw_prog);
-    return std::visit(overloaded {
+    std::visit(overloaded {
         [domain_name, raw_prog](auto prog) {
             //print(prog);
             Cfg nondet_cfg = Cfg::make(prog).to_nondet(true);
-            bool res = abs_validate(nondet_cfg, domain_name, raw_prog.info);
+            const auto [res, seconds] = abs_validate(nondet_cfg, domain_name, raw_prog.info);
+            std::cout << raw_prog.filename << "," << raw_prog.section << "," << res << "," << seconds;
             print_stats(nondet_cfg);
-            if (!res) {
-                std::cout << "verification failed\n";
-                return 1;
-            }
-            return 0;
         },
         [](string errmsg) { 
             std::cout << "trivial verification failure: " << errmsg << "\n";
-            return 1;
         }
     }, prog);
 }
@@ -88,6 +83,10 @@ int main(int argc, char **argv)
         } else if (arg == "-q") {
             crab::CrabEnableWarningMsg(false);
             global_options.print_invariants = false;
+        } else if (arg == "-qq") {
+            crab::CrabEnableWarningMsg(false);
+            global_options.print_invariants = false;
+            global_options.print_failures = false;
         } else if (arg == "--sanity") {
             crab::CrabEnableSanityChecks(true);
         } else if (arg.find("--verbose=") == 0) {
@@ -119,7 +118,6 @@ int main(int argc, char **argv)
         return usage(argv[0]);
     }
     auto progs = is_raw ? read_raw(path, info) : read_elf(path);
-    int res = 0;
     for (auto raw_prog : progs) {
         if (info_only) {
             std::cout << "section: " << raw_prog.section;
@@ -130,8 +128,8 @@ int main(int argc, char **argv)
             }
             std::cout << "\n";
         } else {
-            res += run(domain, raw_prog);
+            run(domain, raw_prog);
         }
     }
-    return res;
+    return 0;
 }
