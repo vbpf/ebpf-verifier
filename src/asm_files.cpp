@@ -2,11 +2,10 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <unordered_set>
-#include <tuple>
 #include <sys/stat.h>
 
 #include "asm_files.hpp"
+#include "spec_type_descriptors.hpp"
 
 #include "asm_unmarshal.hpp"
 #include "asm_ostream.hpp"
@@ -62,8 +61,6 @@ std::ifstream open_asm_file(std::string path)
     return is;
 }
 
-using namespace ELFIO;
-
 #define MAX_MAPS 32
 #define MAX_PROGS 32
 
@@ -84,17 +81,6 @@ struct bpf_map_data {
 	struct bpf_load_map_def def;
 };
 
-static const std::unordered_set<string> predefined{
-    ".strtab",
-    ".text",
-    ".rodata",
-    "license",
-    "version",
-    ".eh_frame",
-    ".rel",
-    ".symtab",
-};
-
 template<typename T>
 static vector<T> vector_of(const char* p, size_t size) {
     return {(T*)p, (T*)(p + size)};
@@ -102,32 +88,30 @@ static vector<T> vector_of(const char* p, size_t size) {
 
 vector<raw_program> read_elf(std::string path)
 {
-    elfio reader;
+    ELFIO::elfio reader;
     if (!reader.load(path)) {
         std::cerr << "Can't find or process ELF file " << path << "\n";
         exit(2);
     }
     
-    Elf_Half sec_num = reader.sections.size();
-
     // TODO: relocation
-    vector<raw_program> res;
     program_info info;
-    for (int i = 0; i < sec_num; ++i)
+    const auto& maps = *reader.sections["maps"];
+    for (auto s : vector_of<bpf_load_map_def>(maps.get_data(), maps.get_size()))
+        info.map_sizes.push_back(s.value_size);
+
+    vector<raw_program> res;
+    for (const auto section : reader.sections)
     {
-        const section& sec = *reader.sections[i];
-        const string name = sec.get_name();
-        const auto size = sec.get_size();
-        const char* p = sec.get_data();
-        if (name == "maps") {
-            for (auto s : vector_of<bpf_load_map_def>(p, size))
-                info.map_sizes.push_back(s.value_size);
+        const string name = section->get_name();
+        auto size = section->get_size();
+        if (size == 0)
             continue;
-        }
-        if (size == 0 || predefined.count(name) || name.find(".") == 0)
+        if (name == "license" || name == "version" || name == "maps" || name.find(".") == 0)
             continue;
-        // TODO: program types by name
-        res.push_back(raw_program{path, "", vector_of<ebpf_inst>(p, size), info});
+        info.program_type = section_to_progtype(name);
+        raw_program prog{path, name, vector_of<ebpf_inst>(section->get_data(), size), info};
+        res.push_back(prog);
     }
     return res;
 }

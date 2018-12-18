@@ -5,6 +5,7 @@
 #include <string>
 
 #include "asm_syntax.hpp"
+#include "spec_type_descriptors.hpp"
 
 std::vector<raw_program> read_raw(std::string path, program_info info);
 std::vector<raw_program> read_elf(std::string path);

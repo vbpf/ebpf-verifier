@@ -193,7 +193,7 @@ private:
     vector<basic_block_t*> operator()(Assert const& b) { return {}; };
 
     bool is_priviledged() {
-        return machine.info.program_type == 2;
+        return machine.info.program_type == BpfProgType::KPROBE;
     }
 };
 
@@ -249,7 +249,7 @@ static void assert_init(basic_block_t& block, const dom_t data_reg, debug_info d
 }
 
 machine_t::machine_t(variable_factory_t& vfac, program_info info)
-    : ctx_desc{get_descriptor((ebpf_prog_type)info.program_type)}, vfac{vfac}, info{info}
+    : ctx_desc{get_descriptor(info.program_type)}, vfac{vfac}, info{info}
 {
     for (int i=0; i < 12; i++) {
         regs.emplace_back(vfac, i);
@@ -854,10 +854,11 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& b) {
             }
             break;
         case Arg::CONST_MAP_PTR:
-            assert_pointer_or_null(is_map(arg));
+            //assert_pointer_or_null(is_map(arg));
             for (basic_block_t* b : blocks) {
-                b->assertion(arg.value < machine.info.map_sizes.size(), di);
+                b->assertion(arg.region == T_NUM, di);
                 b->assign(map_type, arg.value);
+                b->assertion(map_type < machine.info.map_sizes.size(), di);
             }
             break;
         case Arg::PTR_TO_CTX:

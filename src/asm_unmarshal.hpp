@@ -6,7 +6,7 @@
 #include <vector>
 #include <string>
 
-#include "linux_ebpf.hpp"
 #include "asm_syntax.hpp"
+#include "spec_type_descriptors.hpp"
 
 std::variant<InstructionSeq, std::string> unmarshal(raw_program raw_prog);

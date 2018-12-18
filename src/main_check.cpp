@@ -31,14 +31,14 @@ static int usage(const char *name)
 }
 
 
-int run(string domain_name, raw_program raw_prog, program_info info)
+int run(string domain_name, raw_program raw_prog)
 {
     auto prog = unmarshal(raw_prog);
     return std::visit(overloaded {
-        [domain_name, info](auto prog) {
+        [domain_name, raw_prog](auto prog) {
             print(prog);
             Cfg nondet_cfg = Cfg::make(prog).to_nondet(true);
-            bool res = abs_validate(nondet_cfg, domain_name, info);
+            bool res = abs_validate(nondet_cfg, domain_name, raw_prog.info);
             print_stats(nondet_cfg);
             if (!res) {
                 std::cout << "verification failed\n";
@@ -58,13 +58,15 @@ int main(int argc, char **argv)
     vector<string> args{argv+1, argv + argc};
     vector<string> posargs;
     program_info info;
+    info.program_type = BpfProgType::UNSPEC;
     bool is_raw = true;
     string path;
     string domain = "sdbm-arr";
+    bool info_only = false;
     for (string arg : args) {
         if (arg.find("type=") == 0) {
             // type1 or type4
-            info.program_type = std::stoi(arg.substr(5));
+            info.program_type = (BpfProgType)std::stoi(arg.substr(5));
         } else if (arg.find("map") == 0) {
             // map64 map4096 [...]
             info.map_sizes.push_back(std::stoi(arg.substr(3)));
@@ -76,8 +78,8 @@ int main(int argc, char **argv)
         } else if (arg.find("raw=") == 0) {
             is_raw = true;
             path = arg.substr(4);
-            if (info.program_type == 0) {
-                info.program_type = boost::lexical_cast<int>(path.substr(path.find_last_of('.') + 1));
+            if (info.program_type == BpfProgType::UNSPEC) {
+                info.program_type = (BpfProgType)boost::lexical_cast<int>(path.substr(path.find_last_of('.') + 1));
             }
         } else if (arg.find("--log=") == 0) {
             crab::CrabEnableLog(arg.substr(6));
@@ -103,6 +105,8 @@ int main(int argc, char **argv)
             global_options.print_invariants = false;
         } else if (arg == "--no-liveness") {
             global_options.liveness = false;
+        } else if (arg == "--info") {
+            info_only = true;
         } else {
             posargs.push_back(arg);
         }
@@ -117,7 +121,18 @@ int main(int argc, char **argv)
     auto progs = is_raw ? read_raw(path, info) : read_elf(path);
     int res = 0;
     for (auto raw_prog : progs) {
-        res += run(domain, raw_prog, info);
+        if (info_only) {
+            std::cout << "section: " << raw_prog.section;
+            std::cout << "  type: " << (int)raw_prog.info.program_type;
+            std::cout << "  sizes: ";
+            for (auto s : raw_prog.info.map_sizes) {
+                std::cout << s << "; ";
+            }
+            std::cout << "\n";
+        } else {
+            res += run(domain, raw_prog);
+            std::cout << "type: " << (int)raw_prog.info.program_type << "\n";
+        }
     }
     return res;
 }
