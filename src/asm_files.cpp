@@ -83,6 +83,7 @@ struct bpf_map_data {
 
 template<typename T>
 static vector<T> vector_of(ELFIO::section* sec) {
+    if (!sec) return {};
     auto data = sec->get_data();
     auto size = sec->get_size();
     assert(size % sizeof(T) == 0);
