@@ -36,7 +36,7 @@ int run(string domain_name, raw_program raw_prog)
     auto prog = unmarshal(raw_prog);
     return std::visit(overloaded {
         [domain_name, raw_prog](auto prog) {
-            print(prog);
+            //print(prog);
             Cfg nondet_cfg = Cfg::make(prog).to_nondet(true);
             bool res = abs_validate(nondet_cfg, domain_name, raw_prog.info);
             print_stats(nondet_cfg);
