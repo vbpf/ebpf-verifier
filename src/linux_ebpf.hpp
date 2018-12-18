@@ -1,5 +1,6 @@
 #pragma once
 #include <inttypes.h>
+#include <assert.h>
 #include <tuple>
 
 struct ebpf_inst {

@@ -36,6 +36,8 @@ Value end(Type t) {
         case Type::SECRET: assert(false);
         case Type::NONSECRET: assert(false);
     }
+    assert(false);
+    return {};
 }
 
 Value start(Type t) {
@@ -50,6 +52,8 @@ Value start(Type t) {
         case Type::SECRET: assert(false);
         case Type::NONSECRET: assert(false);
     }
+    assert(false);
+    return {};
 }
 
 void checkAccess(vector<Assert>& assumptions, Type t, Reg reg, int offset, Value width) {
