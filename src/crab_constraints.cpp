@@ -65,7 +65,7 @@ struct dom_t {
     dom_t(variable_factory_t& vfac, int i) :
         value{vfac[std::string("r") + std::to_string(i)], crab::INT_TYPE, 64}, 
         offset{vfac[std::string("off") + std::to_string(i)], crab::INT_TYPE, 64},
-        region{vfac[std::string("t") + std::to_string(i)], crab::INT_TYPE, 64}
+        region{vfac[std::string("t") + std::to_string(i)], crab::INT_TYPE, 8}
     { }
     dom_t(var_t value, var_t offset, var_t region) : value(value), offset(offset), region(region) { };
 };
@@ -79,12 +79,12 @@ struct array_dom_t {
         vfac(vfac),
         values{vfac[std::string(name + "_r")], crab::ARR_INT_TYPE, 64}, 
         offsets{vfac[std::string(name + "_off")], crab::ARR_INT_TYPE, 64},
-        regions{vfac[std::string(name + "_t")], crab::ARR_INT_TYPE, 64}
+        regions{vfac[std::string(name + "_t")], crab::ARR_INT_TYPE, 8}
     { }
     template<typename T, typename W>
     vector<basic_block_t*> load(basic_block_t& block, dom_t data_reg, const T& offset, W width, cfg_t& cfg) {
         block.array_load(data_reg.value, values, offset, width);
-        block.array_load(data_reg.region, regions, offset, width);
+        block.array_load(data_reg.region, regions, offset, 1);
         block.array_load(data_reg.offset, offsets, offset, width);
         return { &block };
     }
@@ -389,7 +389,6 @@ vector<basic_block_t*> instruction_builder_t::exec_stack_access(basic_block_t& b
     mid.assertion(addr <= STACK_SIZE - width, di);
     if (is_load) {
         machine.stack_arr.load(mid, data_reg, addr, width, cfg);
-        mid.array_load(data_reg.region, machine.stack_arr.regions, addr, 1);
         mid.assume(is_init(data_reg));
         /* FIX: requires loop
         var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
@@ -521,7 +520,6 @@ vector<basic_block_t*> instruction_builder_t::exec_direct_stack_load(basic_block
     int start = get_start(offset, width);
     auto blocks = machine.stack_arr.load(block, data_reg, start, width, cfg);
     for (auto b : blocks) {
-        b->array_load(data_reg.region, machine.stack_arr.regions, start, 1);
         b->assume(is_init(data_reg));
 
         /* FIX
@@ -604,8 +602,8 @@ vector<basic_block_t*> instruction_builder_t::operator()(LoadMapFd const& ld) {
         block.assertion(neq(machine.num, machine.num), di);
     }
     auto reg = machine.reg(ld.dst);
-    block.assign(reg.region, T_NUM);
-    block.assign(reg.value, ld.mapfd);
+    block.assign(reg.region, ld.mapfd);
+    block.havoc(reg.value);
     block.havoc(reg.offset);
     return { &block };
 }
@@ -812,7 +810,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& b) {
     int i = 0;
     vector<basic_block_t*> blocks{&block};
     std::array<Arg, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
-    var_t map_type{machine.vfac["map_type"], crab::INT_TYPE, 64};
+    var_t map_type{machine.vfac["map_type"], crab::INT_TYPE, 8};
     for (Arg t : args) {
         dom_t arg = machine.regs[++i];
         if (t == Arg::DONTCARE)
@@ -858,9 +856,9 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& b) {
         case Arg::CONST_MAP_PTR:
             //assert_pointer_or_null(is_map(arg));
             for (basic_block_t* b : blocks) {
-                b->assertion(arg.region == T_NUM, di);
-                b->assign(map_type, arg.value);
+                b->assign(map_type, arg.region);
                 b->assertion(map_type < machine.info.map_sizes.size(), di);
+                b->assertion(map_type >= 0, di);
             }
             break;
         case Arg::PTR_TO_CTX:
