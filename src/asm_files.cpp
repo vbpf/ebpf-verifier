@@ -129,24 +129,24 @@ vector<raw_program> read_elf(std::string path, std::string desired_section)
         }
         info.program_type = section_to_progtype(name);
         raw_program prog{path, name, vector_of<ebpf_inst>(section), info};
-        if (!prog.prog.empty()) {
-            auto prelocs = reader.sections[string(".rel") + name];
-            if (prelocs) {
-                ELFIO::const_relocation_section_accessor reloc{reader, prelocs};
-                ELFIO::Elf64_Addr offset;
-                ELFIO::Elf_Word symbol;
-                ELFIO::Elf_Word type;
-                ELFIO::Elf_Sxword addend;
-                for (unsigned int i=0; i < reloc.get_entries_num(); i++) {
-                    if (reloc.get_entry(i, offset, symbol, type, addend)) {
-                        auto& inst = prog.prog[offset / sizeof(ebpf_inst)];
-                        inst.src = 1;
-                        inst.imm = read_reloc_value(symbol);
-                    }
+        if (prog.prog.empty())
+            continue;
+        auto prelocs = reader.sections[string(".rel") + name];
+        if (prelocs) {
+            ELFIO::const_relocation_section_accessor reloc{reader, prelocs};
+            ELFIO::Elf64_Addr offset;
+            ELFIO::Elf_Word symbol;
+            ELFIO::Elf_Word type;
+            ELFIO::Elf_Sxword addend;
+            for (unsigned int i=0; i < reloc.get_entries_num(); i++) {
+                if (reloc.get_entry(i, offset, symbol, type, addend)) {
+                    auto& inst = prog.prog[offset / sizeof(ebpf_inst)];
+                    inst.src = 1;
+                    inst.imm = read_reloc_value(symbol);
                 }
             }
-            res.push_back(prog);
         }
+        res.push_back(prog);
     }
     if (res.empty()) {
         std::cerr << "Could not find relevant section!\n"; 
