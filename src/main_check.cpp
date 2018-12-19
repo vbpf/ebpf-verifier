@@ -36,7 +36,7 @@ void run(string domain_name, raw_program raw_prog)
     auto prog = unmarshal(raw_prog);
     std::visit(overloaded {
         [domain_name, raw_prog](auto prog) {
-            print(prog);
+            //print(prog); // disassemble
             Cfg nondet_cfg = Cfg::make(prog).to_nondet(true);
             const auto [res, seconds] = abs_validate(nondet_cfg, domain_name, raw_prog.info);
             std::cout << res << "," << raw_prog.filename << ":" << raw_prog.section << "," << seconds;
