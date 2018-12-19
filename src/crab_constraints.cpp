@@ -104,7 +104,7 @@ struct array_dom_t {
 
         basic_block_t& num_only = add_child(cfg, block, "num_only");
         num_only.assume(data_reg.region == T_NUM);
-        block.array_store(values, offset, data_reg.value, width);
+        num_only.array_store(values, offset, data_reg.value, width);
         // kill the cell
         num_only.array_store(offsets, offset, data_reg.offset, width);
         // so that relational domains won't think it's worth keeping track of
