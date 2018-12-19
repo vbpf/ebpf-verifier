@@ -30,24 +30,6 @@ static int usage(const char *name)
     return 64;
 }
 
-
-void run(string domain_name, raw_program raw_prog)
-{
-    auto prog = unmarshal(raw_prog);
-    std::visit(overloaded {
-        [domain_name, raw_prog](auto prog) {
-            //print(prog); // disassemble
-            Cfg nondet_cfg = Cfg::make(prog).to_nondet(true);
-            const auto [res, seconds] = abs_validate(nondet_cfg, domain_name, raw_prog.info);
-            std::cout << res << "," << raw_prog.filename << ":" << raw_prog.section << "," << seconds;
-            print_stats(nondet_cfg);
-        },
-        [](string errmsg) { 
-            std::cout << "trivial verification failure: " << errmsg << "\n";
-        }
-    }, prog);
-}
-
 int main(int argc, char **argv)
 {
     vector<string> args{argv+1, argv + argc};
@@ -59,6 +41,7 @@ int main(int argc, char **argv)
     string domain = "sdbm-arr";
     string desired_section;
     bool info_only = false;
+    bool print_asm = false;
     for (string arg : args) {
         if (arg.find("type=") == 0) {
             // type1 or type4
@@ -87,6 +70,8 @@ int main(int argc, char **argv)
             crab::CrabEnableLog(arg.substr(6));
         } else if (arg == "--disable-warnings") {
             crab::CrabEnableWarningMsg(false);
+        } else if (arg == "--asm") {
+            print_asm = true;
         } else if (arg == "-q") {
             crab::CrabEnableWarningMsg(false);
             global_options.print_invariants = false;
@@ -135,7 +120,22 @@ int main(int argc, char **argv)
             }
             std::cout << "\n";
         } else {
-            run(domain, raw_prog);
+            auto prog_or_error = unmarshal(raw_prog);
+            std::visit(overloaded {
+                [domain, raw_prog, print_asm](auto prog) {
+                    if (print_asm) {
+                        print(prog);
+                    }
+                    Cfg nondet_cfg = Cfg::make(prog).to_nondet(true);
+                    const auto [res, seconds] = abs_validate(nondet_cfg, domain, raw_prog.info);
+                    std::cout << res << "," << seconds << ",";
+                    std::cout << raw_prog.filename << ":" << raw_prog.section;
+                    print_stats(nondet_cfg);
+                },
+                [](string errmsg) { 
+                    std::cout << "trivial verification failure: " << errmsg << "\n";
+                }
+            }, prog_or_error);
         }
     }
     return 0;

@@ -26,9 +26,7 @@ enum class BpfProgType : int {
     RAW_TRACEPOINT,
     CGROUP_SOCK_ADDR,
     LWT_SEG6LOCAL,
-    LIRC_MODE2,
-
-    MAX
+    LIRC_MODE2
 };
 
 constexpr int STACK_SIZE=512;
@@ -89,24 +87,30 @@ inline ptype_descr get_descriptor(BpfProgType t)
     switch (t) {
 	case BpfProgType::UNSPEC: return unspec_descr;
 	case BpfProgType::CGROUP_DEVICE: return cgroup_dev_descr;
+	case BpfProgType::CGROUP_SOCK: return cgroup_sock_descr;
+    case BpfProgType::CGROUP_SOCK_ADDR: return cgroup_sock_descr;
+	case BpfProgType::CGROUP_SKB: return socket_filter_descr
+    ;
 	case BpfProgType::KPROBE: return kprobe_descr;
 	case BpfProgType::TRACEPOINT: return tracepoint_descr;
     case BpfProgType::RAW_TRACEPOINT: return tracepoint_descr;
 	case BpfProgType::PERF_EVENT: return perf_event_descr;
 	case BpfProgType::SOCKET_FILTER: return socket_filter_descr;
-	case BpfProgType::CGROUP_SKB: return socket_filter_descr;
+	case BpfProgType::SOCK_OPS: return sock_ops_descr;
 	case BpfProgType::SCHED_ACT: return sched_descr;
 	case BpfProgType::SCHED_CLS: return sched_descr;
 	case BpfProgType::XDP: return xdp_descr;
 	case BpfProgType::LWT_XMIT: return lwt_xmit_descr;
 	case BpfProgType::LWT_IN: return  lwt_inout_descr;
 	case BpfProgType::LWT_OUT: return lwt_inout_descr;
-	case BpfProgType::CGROUP_SOCK: return cgroup_sock_descr;
-	case BpfProgType::SOCK_OPS: return sock_ops_descr;
 	case BpfProgType::SK_SKB: return sk_skb_descr;
     case BpfProgType::SK_MSG: return sk_msg_md;
-    default: throw "";
+
+    case BpfProgType::LWT_SEG6LOCAL: return lwt_xmit_descr;
+    case BpfProgType::LIRC_MODE2: return sk_msg_md;
     }
+    assert(false);
+    return {};
 }
 
 inline BpfProgType section_to_progtype(std::string section) {
@@ -118,8 +122,17 @@ inline BpfProgType section_to_progtype(std::string section) {
         { "raw_tracepoint/", BpfProgType::RAW_TRACEPOINT },
         { "xdp", BpfProgType::XDP },
         { "perf_section", BpfProgType::PERF_EVENT },
+        { "perf_event", BpfProgType::PERF_EVENT },
+        { "classifier", BpfProgType::SCHED_CLS },
+        { "action", BpfProgType::SCHED_ACT },
         { "cgroup/skb", BpfProgType::CGROUP_SKB },
         { "cgroup/sock", BpfProgType::CGROUP_SOCK },
+        { "cgroup/dev", BpfProgType::CGROUP_DEVICE },
+        { "lwt_in", BpfProgType::LWT_IN },
+        { "lwt_out", BpfProgType::LWT_OUT },
+        { "lwt_xmit", BpfProgType::LWT_XMIT },
+        { "lwt_seg6local", BpfProgType::LWT_SEG6LOCAL },
+        { "lirc_mode2", BpfProgType::LIRC_MODE2 },
         { "sockops", BpfProgType::SOCK_OPS },
         { "sk_skb", BpfProgType::SK_SKB },
         { "sk_msg", BpfProgType::SK_MSG },
