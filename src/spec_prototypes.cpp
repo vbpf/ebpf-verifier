@@ -1386,7 +1386,16 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ origi
  *     @key: index in map to lookup
  *     @flags: --
  *     Return: XDP_REDIRECT on success or XDP_ABORT on error
- *//*
+ */
+// ELAZAR: home brewed
+static const struct bpf_func_proto bpf_redirect_map_proto = {
+	.ret_type	= Ret::INTEGER,
+	.arg1_type	= Arg::CONST_MAP_PTR,
+	.arg2_type	= Arg::ANYTHING,
+	.arg3_type	= Arg::ANYTHING,
+};
+
+/*
  * u32 bpf_get_route_realm(skb)
  *     retrieve a dst's tclassid
  *     @skb: pointer to skb
@@ -1686,15 +1695,6 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ origi
 
 
 
-
-
-
-
-
-
-
-
-
 // keep this on a round line
 const struct bpf_func_proto prototypes[81] = {
 	FN(unspec),
@@ -1748,7 +1748,7 @@ const struct bpf_func_proto prototypes[81] = {
 	FN(set_hash),
 	FN(setsockopt),
 	FN(skb_adjust_room),
-	FN(redirect),// redirect_map originally
+	FN(redirect_map),
 	FN(sk_redirect_map),
 	FN(sock_map_update),
 	FN(xdp_adjust_meta),

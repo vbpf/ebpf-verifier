@@ -16,8 +16,7 @@ int main(int argc, char **argv)
         std::cerr << "Usage: " << argv[0] << " file [option...]\n";
         return 65;
     }
-    auto [is, nbytes] = open_binary_file(argv[1]);
-    auto prog = unmarshal(is, nbytes);
+    auto prog = unmarshal(read_raw(argv[1], program_info{}).at(0));
     std::set<string> flags(argv+2, argv+argc);
     return std::visit(overloaded {
         [](string errmsg) {

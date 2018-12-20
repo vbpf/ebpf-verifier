@@ -30,43 +30,58 @@ static int usage(const char *name)
     return 64;
 }
 
-
-int run(string domain_name, string code_filename, ebpf_prog_type prog_type)
-{
-    auto [is, nbytes] = open_binary_file(code_filename);
-    auto prog = unmarshal(is, nbytes);
-    return std::visit(overloaded {
-        [domain_name, prog_type](auto prog) {
-            print(prog);
-            Cfg nondet_cfg = Cfg::make(prog).to_nondet(true);
-            bool res = abs_validate(nondet_cfg, domain_name, prog_type);
-            print_stats(nondet_cfg);
-            if (!res) {
-                std::cout << "verification failed\n";
-                return 1;
-            }
-            return 0;
-        },
-        [](string errmsg) { 
-            std::cout << "trivial verification failure: " << errmsg << "\n";
-            return 1;
-        }
-    }, prog);
-}
-
-
 int main(int argc, char **argv)
 {
     vector<string> args{argv+1, argv + argc};
     vector<string> posargs;
+    program_info info;
+    info.program_type = BpfProgType::UNSPEC;
+    bool is_raw = true;
+    string path;
+    string domain = "sdbm-arr";
+    string desired_section;
+    bool info_only = false;
+    bool print_asm = false;
+    bool dot = false;
     for (string arg : args) {
-        if (arg.find("--log=") == 0) {
+        if (arg.find("type=") == 0) {
+            // type1 or type4
+            info.program_type = (BpfProgType)std::stoi(arg.substr(5));
+        } else if (arg.find("map") == 0) {
+            // map64 map4096 [...]
+            info.map_sizes.push_back(std::stoi(arg.substr(3)));
+        } else if (arg.find("domain=") == 0) {
+            domain = arg.substr(7);
+        } else if (arg.find("elf=") == 0) {
+            arg = arg.substr(4);
+            is_raw = false;
+            if (arg.find(":") != string::npos) {
+                path = arg.substr(0, arg.find(":"));
+                desired_section = arg.substr(arg.find(":") + 1);
+            } else {
+                path = arg;
+            }
+        } else if (arg.find("raw=") == 0) {
+            is_raw = true;
+            path = arg.substr(4);
+            if (info.program_type == BpfProgType::UNSPEC) {
+                info.program_type = (BpfProgType)boost::lexical_cast<int>(path.substr(path.find_last_of('.') + 1));
+            }
+        } else if (arg.find("--log=") == 0) {
             crab::CrabEnableLog(arg.substr(6));
         } else if (arg == "--disable-warnings") {
             crab::CrabEnableWarningMsg(false);
+        } else if (arg == "--asm") {
+            print_asm = true;
+        } else if (arg == "--dot") {
+            dot = true;
         } else if (arg == "-q") {
             crab::CrabEnableWarningMsg(false);
             global_options.print_invariants = false;
+        } else if (arg == "-qq") {
+            crab::CrabEnableWarningMsg(false);
+            global_options.print_invariants = false;
+            global_options.print_failures = false;
         } else if (arg == "--sanity") {
             crab::CrabEnableSanityChecks(true);
         } else if (arg.find("--verbose=") == 0) {
@@ -84,24 +99,54 @@ int main(int argc, char **argv)
             global_options.print_invariants = false;
         } else if (arg == "--no-liveness") {
             global_options.liveness = false;
+        } else if (arg == "--info") {
+            info_only = true;
         } else {
             posargs.push_back(arg);
         }
     }
-    if (posargs.size() > 3 || posargs.size() == 0)
+    if (posargs.size() >= 1 || path.empty())
         return usage(argv[0]);
 
-    string fname = posargs.at(0);
-
-    string domain = posargs.size() > 2 ? posargs.at(2) : "sdbm-arr";
     if (domain_descriptions().count(domain) == 0) {
         std::cerr << "argument " << domain << " is not a valid domain\n";
         return usage(argv[0]);
     }
-
-    int prog_type = posargs.size() > 1 
-        ? std::stoi(posargs.at(1))
-        : boost::lexical_cast<int>(fname.substr(fname.find_last_of('.') + 1));
-
-    return run(domain, fname, (ebpf_prog_type)prog_type);
+    auto progs = is_raw ? read_raw(path, info) : read_elf(path, desired_section);
+    for (auto raw_prog : progs) {
+        if (info_only) {
+            std::cout << "section: " << raw_prog.section;
+            std::cout << "  type: " << (int)raw_prog.info.program_type;
+            std::cout << "  sizes: ";
+            for (auto s : raw_prog.info.map_sizes) {
+                std::cout << s << "; ";
+            }
+            std::cout << "\n";
+        } else {
+            auto prog_or_error = unmarshal(raw_prog);
+            std::visit(overloaded {
+                [domain, raw_prog, print_asm, dot](auto prog) {
+                    if (print_asm) {
+                        print(prog);
+                    }
+                    Cfg cfg = Cfg::make(prog);
+                    if (global_options.simplify) {
+                        cfg.simplify();
+                    }
+                    if (dot) {
+                        print_dot(cfg);
+                    }
+                    Cfg nondet_cfg = cfg.to_nondet(true);
+                    const auto [res, seconds] = abs_validate(nondet_cfg, domain, raw_prog.info);
+                    std::cout << res << "," << seconds << ",";
+                    std::cout << raw_prog.filename << ":" << raw_prog.section;
+                    print_stats(nondet_cfg);
+                },
+                [](string errmsg) { 
+                    std::cout << "trivial verification failure: " << errmsg << "\n";
+                }
+            }, prog_or_error);
+        }
+    }
+    return 0;
 }

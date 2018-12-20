@@ -3,12 +3,13 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <tuple>
 
 #include "spec_type_descriptors.hpp"
 
 #include "asm_cfg.hpp"
 
-bool abs_validate(Cfg const& simple_cfg, std::string domain_name, ebpf_prog_type prog_type);
+std::tuple<bool, double> abs_validate(Cfg const& simple_cfg, std::string domain_name, program_info info);
 
 std::map<std::string, std::string> domain_descriptions();
 
@@ -19,6 +20,7 @@ struct global_options_t
     bool stats;
     bool check_semantic_reachability;
     bool print_invariants;
+    bool print_failures;
     bool liveness;
 };
 

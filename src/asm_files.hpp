@@ -4,7 +4,11 @@
 #include <tuple>
 #include <string>
 
-std::tuple<std::ifstream, size_t> open_binary_file(std::string path);
+#include "asm_syntax.hpp"
+#include "spec_type_descriptors.hpp"
+
+std::vector<raw_program> read_raw(std::string path, program_info info);
+std::vector<raw_program> read_elf(std::string path, std::string section);
 
 void write_binary_file(std::string path, const char* data, size_t size);
 

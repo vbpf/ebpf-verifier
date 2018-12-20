@@ -27,6 +27,8 @@ static uint8_t op(Condition::Op op)  {
         case Op::SLT: return 0xc;
         case Op::SLE: return 0xd;
     }
+    assert(false);
+    return {};
 }
 
 static uint8_t op(Bin::Op op) {
@@ -45,6 +47,8 @@ static uint8_t op(Bin::Op op) {
         case Op::MOV : return 0xb;
         case Op::ARSH: return 0xc;
     }
+    assert(false);
+    return {};
 }
 
 static uint8_t imm(Un::Op op) {
@@ -55,6 +59,8 @@ static uint8_t imm(Un::Op op) {
         case Op::LE32 : return 32;
         case Op::LE64 : return 64;
     }
+    assert(false);
+    return {};
 }
 
 struct MarshalVisitor {

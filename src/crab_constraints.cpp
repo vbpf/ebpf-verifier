@@ -49,12 +49,12 @@ using var_t     = ikos::variable<ikos::z_number, varname_t>;
 using lin_cst_t = ikos::linear_constraint<ikos::z_number, varname_t>;
 
 enum region_t {
-    T_UNINIT,
-    T_NUM,
-    T_CTX,
-    T_STACK,
-    T_DATA,
-    T_MAP,
+    T_UNINIT = -5,
+    T_NUM = -4,
+    T_CTX = -3,
+    T_STACK = -2,
+    T_DATA = -1,
+    T_MAP = 0,
 };
 
 
@@ -84,7 +84,7 @@ struct array_dom_t {
     template<typename T, typename W>
     vector<basic_block_t*> load(basic_block_t& block, dom_t data_reg, const T& offset, W width, cfg_t& cfg) {
         block.array_load(data_reg.value, values, offset, width);
-        block.array_load(data_reg.region, regions, offset, width);
+        block.array_load(data_reg.region, regions, offset, 1);
         block.array_load(data_reg.offset, offsets, offset, width);
         return { &block };
     }
@@ -116,7 +116,6 @@ struct array_dom_t {
 
 struct machine_t final
 {
-    ebpf_prog_type prog_type;
     ptype_descr ctx_desc;
     variable_factory_t& vfac;
     std::vector<dom_t> regs;
@@ -124,7 +123,9 @@ struct machine_t final
     var_t meta_size{vfac[std::string("meta_size")], crab::INT_TYPE, 64};
     var_t data_size{vfac[std::string("data_size")], crab::INT_TYPE, 64};
     var_t top{vfac[std::string("*")], crab::INT_TYPE, 64};
-    var_t num{vfac[std::string("T_NUM")], crab::INT_TYPE, 8};
+    var_t num{vfac[std::string("T_NUM")], crab::INT_TYPE, 64};
+
+    program_info info;
 
     dom_t& reg(Value v) {
         return regs[std::get<Reg>(v).v];
@@ -132,7 +133,7 @@ struct machine_t final
 
     void setup_entry(basic_block_t& entry);
 
-    machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac);
+    machine_t(variable_factory_t& vfac, program_info info);
 };
 
 class instruction_builder_t final
@@ -192,13 +193,13 @@ private:
     vector<basic_block_t*> operator()(Assert const& b) { return {}; };
 
     bool is_priviledged() {
-        return machine.prog_type == 2;
+        return machine.info.program_type == BpfProgType::KPROBE;
     }
 };
 
-void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg, ebpf_prog_type prog_type)
+void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg, program_info info)
 {
-    machine_t machine(prog_type, vfac);
+    machine_t machine(vfac, info);
     {
         auto& entry = cfg.insert(entry_label());
         machine.setup_entry(entry);
@@ -237,13 +238,18 @@ void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg,
 }
 
 
+static lin_cst_t is_pointer(dom_t v) { return v.region >= T_CTX; }
+static lin_cst_t is_init(dom_t v)    { return v.region >= T_NUM; }
+static lin_cst_t is_map(dom_t v)     { return v.region >= T_MAP; }
+
+
 static void assert_init(basic_block_t& block, const dom_t data_reg, debug_info di)
 {
-    block.assertion(data_reg.region >= T_NUM, di);
+    block.assertion(is_init(data_reg), di);
 }
 
-machine_t::machine_t(ebpf_prog_type prog_type, variable_factory_t& vfac)
-    : prog_type(prog_type), ctx_desc{get_descriptor(prog_type)}, vfac{vfac}
+machine_t::machine_t(variable_factory_t& vfac, program_info info)
+    : ctx_desc{get_descriptor(info.program_type)}, vfac{vfac}, info{info}
 {
     for (int i=0; i < 12; i++) {
         regs.emplace_back(vfac, i);
@@ -275,8 +281,6 @@ void machine_t::setup_entry(basic_block_t& entry)
         entry.assign(machine.meta_size, 0);
     }
 }
-
-static lin_cst_t is_pointer(dom_t v) { return v.region >= T_CTX; }
 
 static lin_cst_t eq(var_t& a, var_t& b)  { return {a - b, lin_cst_t::EQUALITY}; }
 
@@ -385,10 +389,9 @@ vector<basic_block_t*> instruction_builder_t::exec_stack_access(basic_block_t& b
     mid.assertion(addr <= STACK_SIZE - width, di);
     if (is_load) {
         machine.stack_arr.load(mid, data_reg, addr, width, cfg);
-        mid.array_load(data_reg.region, machine.stack_arr.regions, addr, 1);
-        mid.assume(data_reg.region >= 1);
+        mid.assume(is_init(data_reg));
         /* FIX: requires loop
-        var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 8};
+        var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
         for (int idx=1; idx < width; idx++) {
             mid.array_load(tmp, machine.stack_arr.regions, addr+idx, 1);
             mid.assertion(eq(tmp, data_reg.region), di);
@@ -405,21 +408,26 @@ vector<basic_block_t*> instruction_builder_t::exec_stack_access(basic_block_t& b
 template<typename W>
 vector<basic_block_t*> instruction_builder_t::exec_map_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
 {
-    basic_block_t& mid = add_child(cfg, block, "assume_map");
-    lin_exp_t addr = mem_reg.offset + offset;
+    vector<basic_block_t*> res;
+    int map_index = 0;
+    for (int map_size : machine.info.map_sizes) {
+        basic_block_t& mid = add_child(cfg, block, "assume_map" + std::to_string(map_index));
+        lin_exp_t addr = mem_reg.offset + offset;
 
-    mid.assume(mem_reg.region == T_MAP);
-    mid.assertion(addr >= 0, di);
-    constexpr int MAP_SIZE = 8192;
-    mid.assertion(addr <= MAP_SIZE - width, di);
-    if (is_load) {
-        mid.havoc(data_reg.value);
-        mid.assign(data_reg.region, T_NUM);
-        mid.havoc(data_reg.offset);
-    } else {
-        mid.assertion(data_reg.region == T_NUM, di);
+        mid.assume(mem_reg.region == map_index); //is_map(mem_reg));
+        mid.assertion(addr >= 0, di);
+        mid.assertion(addr <= map_size - width, di);
+        if (is_load) {
+            mid.havoc(data_reg.value);
+            mid.assign(data_reg.region, T_NUM);
+            mid.havoc(data_reg.offset);
+        } else {
+            mid.assertion(data_reg.region == T_NUM, di);
+        }
+        res.push_back(&mid);
+        map_index++;
     }
-    return { &mid };
+    return res;
 }
 
 template<typename W>
@@ -512,11 +520,10 @@ vector<basic_block_t*> instruction_builder_t::exec_direct_stack_load(basic_block
     int start = get_start(offset, width);
     auto blocks = machine.stack_arr.load(block, data_reg, start, width, cfg);
     for (auto b : blocks) {
-        b->array_load(data_reg.region, machine.stack_arr.regions, start, 1);
-        b->assume(data_reg.region >= 1);
+        b->assume(is_init(data_reg));
 
         /* FIX
-        var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 8};
+        var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
         for (int idx=1; idx < width; idx++) {
             b->array_load(tmp, machine.stack_arr.regions, offset+idx, 1);
             b->assertion(eq(tmp, data_reg.region), di);
@@ -591,8 +598,13 @@ vector<basic_block_t*> instruction_builder_t::operator()(LoadMapFd const& ld) {
     // This is what Arg::CONST_MAP_PTR looks for
     // This is probably the wrong thing to do. should we add an FD type?
     // Here we (probably) need the map structure
-    block.assign(machine.reg(ld.dst).region, T_MAP);
-    block.assign(machine.reg(ld.dst).offset, 0);
+    if (ld.mapfd >= machine.info.map_sizes.size()) {
+        block.assertion(neq(machine.num, machine.num), di);
+    }
+    auto reg = machine.reg(ld.dst);
+    block.assign(reg.region, ld.mapfd);
+    block.havoc(reg.value);
+    block.havoc(reg.offset);
     return { &block };
 }
 
@@ -798,6 +810,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& b) {
     int i = 0;
     vector<basic_block_t*> blocks{&block};
     std::array<Arg, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
+    var_t map_type{machine.vfac["map_type"], crab::INT_TYPE, 8};
     for (Arg t : args) {
         dom_t arg = machine.regs[++i];
         if (t == Arg::DONTCARE)
@@ -841,7 +854,12 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& b) {
             }
             break;
         case Arg::CONST_MAP_PTR:
-            assert_pointer_or_null(arg.region == T_MAP);
+            //assert_pointer_or_null(is_map(arg));
+            for (basic_block_t* b : blocks) {
+                b->assign(map_type, arg.region);
+                b->assertion(map_type < machine.info.map_sizes.size(), di);
+                b->assertion(map_type >= 0, di);
+            }
             break;
         case Arg::PTR_TO_CTX:
             assert_pointer_or_null(arg.region == T_CTX);
@@ -900,7 +918,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& b) {
         scratch_regs(*b);
         switch (proto.ret_type) {
         case Ret::PTR_TO_MAP_VALUE_OR_NULL:
-            b->assign(r0.region, T_MAP);
+            b->assign(r0.region, map_type);
             b->havoc(r0.value);
             b->assume(0 <= r0.value);
             b->assign(r0.offset, 0);

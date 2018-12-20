@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <functional>
+#include <tuple>
 #include <map>
 #include <ctime>
 #include <iostream>
@@ -51,11 +52,11 @@ vector<string> sorted_labels(cfg_t& cfg)
     return labels;
 }
 
-bool abs_validate(Cfg const& simple_cfg, string domain_name, ebpf_prog_type prog_type)
+std::tuple<bool, double> abs_validate(Cfg const& simple_cfg, string domain_name, program_info info)
 {
     variable_factory_t vfac;
     cfg_t cfg(entry_label(), ARR);
-    build_crab_cfg(cfg, vfac, simple_cfg, prog_type);
+    build_crab_cfg(cfg, vfac, simple_cfg, info);
 
     printer_t pre_printer;
     printer_t post_printer;
@@ -81,13 +82,13 @@ bool abs_validate(Cfg const& simple_cfg, string domain_name, ebpf_prog_type prog
         }
     }
 
-    cout << "seconds:" << elapsed_secs << "\n";
-
     if (nwarn > 0) {
-        checks.write(crab::outs());
-        return false;
+        if (global_options.print_failures) {
+            checks.write(crab::outs());
+        }
+        return {false, elapsed_secs};
     }
-    return true;
+    return {true, elapsed_secs};
 }
 
 template<typename analyzer_t>
@@ -219,6 +220,7 @@ global_options_t global_options {
     .stats = false,
     .check_semantic_reachability = false,
     .print_invariants = true,
+    .print_failures = true,
     .liveness = true
 };
 

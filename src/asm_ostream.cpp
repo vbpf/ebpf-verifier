@@ -30,6 +30,8 @@ static string op(Bin::Op op) {
         case Op::ARSH: return ">>>";
         case Op::XOR : return "^";
     }
+    assert(false);
+    return {};
 }
 
 static string op(Condition::Op op) {
@@ -48,6 +50,8 @@ static string op(Condition::Op op) {
         case Op::SGT: return "s>";
         case Op::SGE: return "s>=";
     }
+    assert(false);
+    return {};
 }
 
 static string size(int w) {
@@ -217,9 +221,7 @@ static vector<std::tuple<Label, optional<Label>>> slide(const vector<Label>& lab
     if (labels.size() == 0) return {};
     vector<std::tuple<Label, optional<Label>>> label_pairs;
     Label prev = labels.at(0);
-    bool first = true;
     for (auto label : labels) {
-        if (first) { first = false; continue; }
         label_pairs.push_back({prev, label});
         prev = label;
     }
@@ -294,10 +296,8 @@ void print(const InstructionSeq& insts) {
 void print(const Cfg& cfg, bool nondet) {
     for (auto [label, next] : slide(cfg.keys())) {
         cout << std::setw(8) << label << ":\t";
-        bool first = true;
         const auto& bb = cfg.at(label);
         for (auto ins : bb.insts) {
-            first = false;
             std::visit(InstructionPrinterVisitor{cout}, ins);
             cout << "\n" << std::setw(17);
         }

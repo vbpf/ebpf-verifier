@@ -155,10 +155,6 @@ using InstructionSeq = std::vector<LabeledInstruction>;
 
 using pc_t = uint16_t;
 
-constexpr int STACK_SIZE=512;
-
-
-
 // Helpers:
 
 struct InstructionVisitorPrototype {

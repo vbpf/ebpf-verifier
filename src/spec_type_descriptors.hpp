@@ -1,29 +1,46 @@
 #pragma once
+#include <unordered_map>
+#include <string>
+#include <vector>
 
-enum ebpf_prog_type {
-    EBPF_PROG_TYPE_UNSPEC,
-	EBPF_PROG_TYPE_SOCKET_FILTER,
-	EBPF_PROG_TYPE_KPROBE,
-	EBPF_PROG_TYPE_SCHED_CLS,
-	EBPF_PROG_TYPE_SCHED_ACT,
-	EBPF_PROG_TYPE_TRACEPOINT,
-	EBPF_PROG_TYPE_XDP,
-	EBPF_PROG_TYPE_PERF_EVENT,
-	EBPF_PROG_TYPE_CGROUP_SKB,
-	EBPF_PROG_TYPE_CGROUP_SOCK,
-	EBPF_PROG_TYPE_LWT_IN,
-	EBPF_PROG_TYPE_LWT_OUT,
-	EBPF_PROG_TYPE_LWT_XMIT,
-	EBPF_PROG_TYPE_SOCK_OPS,
-	EBPF_PROG_TYPE_SK_SKB,
-	EBPF_PROG_TYPE_CGROUP_DEVICE,
-	EBPF_PROG_TYPE_SK_MSG,
-	EBPF_PROG_TYPE_RAW_TRACEPOINT,
-	EBPF_PROG_TYPE_CGROUP_SOCK_ADDR,
-	EBPF_PROG_TYPE_LWT_SEG6LOCAL,
-	EBPF_PROG_TYPE_LIRC_MODE2,
-    
-    EBPF_PROG_TYPE_MAX
+#include "linux_ebpf.hpp"
+
+enum class BpfProgType : int {
+    UNSPEC,
+    SOCKET_FILTER,
+    KPROBE,
+    SCHED_CLS,
+    SCHED_ACT,
+    TRACEPOINT,
+    XDP,
+    PERF_EVENT,
+    CGROUP_SKB,
+    CGROUP_SOCK,
+    LWT_IN,
+    LWT_OUT,
+    LWT_XMIT,
+    SOCK_OPS,
+    SK_SKB,
+    CGROUP_DEVICE,
+    SK_MSG,
+    RAW_TRACEPOINT,
+    CGROUP_SOCK_ADDR,
+    LWT_SEG6LOCAL,
+    LIRC_MODE2
+};
+
+constexpr int STACK_SIZE=512;
+
+struct program_info {
+    BpfProgType program_type;
+    std::vector<unsigned int> map_sizes;
+};
+
+struct raw_program {
+    std::string filename;
+    std::string section;
+    std::vector<ebpf_inst> prog;
+    program_info info;
 };
 
 // rough estimates:
@@ -65,27 +82,64 @@ constexpr ptype_descr cgroup_sock_descr = {cgroup_sock_regions};
 constexpr ptype_descr sock_ops_descr = {sock_ops_regions};
 constexpr ptype_descr sk_skb_descr = sk_buff;
 
-inline ptype_descr get_descriptor(ebpf_prog_type t)
+inline ptype_descr get_descriptor(BpfProgType t)
 {
     switch (t) {
-	case EBPF_PROG_TYPE_UNSPEC: return unspec_descr;
-	case EBPF_PROG_TYPE_CGROUP_DEVICE: return cgroup_dev_descr;
-	case EBPF_PROG_TYPE_KPROBE: return kprobe_descr;
-	case EBPF_PROG_TYPE_TRACEPOINT: return tracepoint_descr;
-    case EBPF_PROG_TYPE_RAW_TRACEPOINT: return tracepoint_descr;
-	case EBPF_PROG_TYPE_PERF_EVENT: return perf_event_descr;
-	case EBPF_PROG_TYPE_SOCKET_FILTER: return socket_filter_descr;
-	case EBPF_PROG_TYPE_CGROUP_SKB: return socket_filter_descr;
-	case EBPF_PROG_TYPE_SCHED_ACT: return sched_descr;
-	case EBPF_PROG_TYPE_SCHED_CLS: return sched_descr;
-	case EBPF_PROG_TYPE_XDP: return xdp_descr;
-	case EBPF_PROG_TYPE_LWT_XMIT: return lwt_xmit_descr;
-	case EBPF_PROG_TYPE_LWT_IN: return  lwt_inout_descr;
-	case EBPF_PROG_TYPE_LWT_OUT: return lwt_inout_descr;
-	case EBPF_PROG_TYPE_CGROUP_SOCK: return cgroup_sock_descr;
-	case EBPF_PROG_TYPE_SOCK_OPS: return sock_ops_descr;
-	case EBPF_PROG_TYPE_SK_SKB: return sk_skb_descr;
-    case EBPF_PROG_TYPE_SK_MSG: return sk_msg_md;
-    default: throw "";
+	case BpfProgType::UNSPEC: return unspec_descr;
+	case BpfProgType::CGROUP_DEVICE: return cgroup_dev_descr;
+	case BpfProgType::CGROUP_SOCK: return cgroup_sock_descr;
+    case BpfProgType::CGROUP_SOCK_ADDR: return cgroup_sock_descr;
+	case BpfProgType::CGROUP_SKB: return socket_filter_descr
+    ;
+	case BpfProgType::KPROBE: return kprobe_descr;
+	case BpfProgType::TRACEPOINT: return tracepoint_descr;
+    case BpfProgType::RAW_TRACEPOINT: return tracepoint_descr;
+	case BpfProgType::PERF_EVENT: return perf_event_descr;
+	case BpfProgType::SOCKET_FILTER: return socket_filter_descr;
+	case BpfProgType::SOCK_OPS: return sock_ops_descr;
+	case BpfProgType::SCHED_ACT: return sched_descr;
+	case BpfProgType::SCHED_CLS: return sched_descr;
+	case BpfProgType::XDP: return xdp_descr;
+	case BpfProgType::LWT_XMIT: return lwt_xmit_descr;
+	case BpfProgType::LWT_IN: return  lwt_inout_descr;
+	case BpfProgType::LWT_OUT: return lwt_inout_descr;
+	case BpfProgType::SK_SKB: return sk_skb_descr;
+    case BpfProgType::SK_MSG: return sk_msg_md;
+
+    case BpfProgType::LWT_SEG6LOCAL: return lwt_xmit_descr;
+    case BpfProgType::LIRC_MODE2: return sk_msg_md;
     }
+    assert(false);
+    return {};
+}
+
+inline BpfProgType section_to_progtype(std::string section) {
+	static const std::unordered_map<std::string, BpfProgType> prefixes{
+        { "socket", BpfProgType::SOCKET_FILTER },
+        { "kprobe/", BpfProgType::KPROBE },
+        { "kretprobe/", BpfProgType::KPROBE },
+        { "tracepoint/", BpfProgType::TRACEPOINT },
+        { "raw_tracepoint/", BpfProgType::RAW_TRACEPOINT },
+        { "xdp", BpfProgType::XDP },
+        { "perf_section", BpfProgType::PERF_EVENT },
+        { "perf_event", BpfProgType::PERF_EVENT },
+        { "classifier", BpfProgType::SCHED_CLS },
+        { "action", BpfProgType::SCHED_ACT },
+        { "cgroup/skb", BpfProgType::CGROUP_SKB },
+        { "cgroup/sock", BpfProgType::CGROUP_SOCK },
+        { "cgroup/dev", BpfProgType::CGROUP_DEVICE },
+        { "lwt_in", BpfProgType::LWT_IN },
+        { "lwt_out", BpfProgType::LWT_OUT },
+        { "lwt_xmit", BpfProgType::LWT_XMIT },
+        { "lwt_seg6local", BpfProgType::LWT_SEG6LOCAL },
+        { "lirc_mode2", BpfProgType::LIRC_MODE2 },
+        { "sockops", BpfProgType::SOCK_OPS },
+        { "sk_skb", BpfProgType::SK_SKB },
+        { "sk_msg", BpfProgType::SK_MSG },
+    };
+	for (const auto [prefix, t] : prefixes) {
+		if (section.find(prefix) == 0)
+			return t;
+	}
+	return BpfProgType::SK_SKB;
 }
