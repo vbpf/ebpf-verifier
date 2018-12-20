@@ -142,6 +142,7 @@ void check_semantic_reachability(cfg_t& cfg, analyzer_t& analyzer, checks_db& c)
 template<typename dom_t>
 static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_printer)
 {
+    dom_t::clear_global_state();
     using analyzer_t = intra_fwd_analyzer<cfg_ref<cfg_t>, dom_t>;
     
     liveness<typename analyzer_t::cfg_t> live(cfg);
@@ -150,6 +151,7 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
     }
 
     analyzer_t analyzer(cfg, dom_t::top(), &live);
+    
     analyzer.run();
 
     if (global_options.print_invariants) {
@@ -176,7 +178,7 @@ struct domain_desc {
 };
 
 const map<string, domain_desc> domains{
-    { "interval"          , { analyze<z_interval_domain_t>, "simple interval (z_interval_domain_t)" } },
+    //{ "interval"          , { analyze<z_interval_domain_t>, "simple interval (z_interval_domain_t)" } },
 #ifdef FULL
     { "interval-arr"      , { analyze<array_expansion_domain<z_interval_domain_t>>, "mem: simple interval (z_interval_domain_t)" } },
     { "disj_interval"     , { analyze<z_dis_interval_domain_t>, "disjoint intervals (z_dis_interval_domain_t)" } },

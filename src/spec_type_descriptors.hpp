@@ -89,8 +89,7 @@ inline ptype_descr get_descriptor(BpfProgType t)
 	case BpfProgType::CGROUP_DEVICE: return cgroup_dev_descr;
 	case BpfProgType::CGROUP_SOCK: return cgroup_sock_descr;
     case BpfProgType::CGROUP_SOCK_ADDR: return cgroup_sock_descr;
-	case BpfProgType::CGROUP_SKB: return socket_filter_descr
-    ;
+	case BpfProgType::CGROUP_SKB: return socket_filter_descr;
 	case BpfProgType::KPROBE: return kprobe_descr;
 	case BpfProgType::TRACEPOINT: return tracepoint_descr;
     case BpfProgType::RAW_TRACEPOINT: return tracepoint_descr;

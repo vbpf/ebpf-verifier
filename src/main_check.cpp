@@ -139,7 +139,7 @@ int main(int argc, char **argv)
                     Cfg nondet_cfg = cfg.to_nondet(true);
                     const auto [res, seconds] = abs_validate(nondet_cfg, domain, raw_prog.info);
                     std::cout << res << "," << seconds << ",";
-                    std::cout << raw_prog.filename << ":" << raw_prog.section;
+                    std::cout << raw_prog.filename << ":" << raw_prog.section << ",";
                     print_stats(nondet_cfg);
                 },
                 [](string errmsg) { 
