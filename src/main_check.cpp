@@ -42,6 +42,7 @@ int main(int argc, char **argv)
     string desired_section;
     bool info_only = false;
     bool print_asm = false;
+    bool dot = false;
     for (string arg : args) {
         if (arg.find("type=") == 0) {
             // type1 or type4
@@ -72,6 +73,8 @@ int main(int argc, char **argv)
             crab::CrabEnableWarningMsg(false);
         } else if (arg == "--asm") {
             print_asm = true;
+        } else if (arg == "--dot") {
+            dot = true;
         } else if (arg == "-q") {
             crab::CrabEnableWarningMsg(false);
             global_options.print_invariants = false;
@@ -122,11 +125,18 @@ int main(int argc, char **argv)
         } else {
             auto prog_or_error = unmarshal(raw_prog);
             std::visit(overloaded {
-                [domain, raw_prog, print_asm](auto prog) {
+                [domain, raw_prog, print_asm, dot](auto prog) {
                     if (print_asm) {
                         print(prog);
                     }
-                    Cfg nondet_cfg = Cfg::make(prog).to_nondet(true);
+                    Cfg cfg = Cfg::make(prog);
+                    if (global_options.simplify) {
+                        cfg.simplify();
+                    }
+                    if (dot) {
+                        print_dot(cfg);
+                    }
+                    Cfg nondet_cfg = cfg.to_nondet(true);
                     const auto [res, seconds] = abs_validate(nondet_cfg, domain, raw_prog.info);
                     std::cout << res << "," << seconds << ",";
                     std::cout << raw_prog.filename << ":" << raw_prog.section;
