@@ -43,6 +43,7 @@ int main(int argc, char **argv)
     bool info_only = false;
     bool print_asm = false;
     bool dot = false;
+    bool list_only = false;
     for (string arg : args) {
         if (arg.find("type=") == 0) {
             // type1 or type4
@@ -67,6 +68,8 @@ int main(int argc, char **argv)
             if (info.program_type == BpfProgType::UNSPEC) {
                 info.program_type = (BpfProgType)boost::lexical_cast<int>(path.substr(path.find_last_of('.') + 1));
             }
+        } else if (arg.find("-l") == 0) {
+            list_only = true;
         } else if (arg.find("--log=") == 0) {
             crab::CrabEnableLog(arg.substr(6));
         } else if (arg == "--disable-warnings") {
@@ -114,6 +117,10 @@ int main(int argc, char **argv)
     }
     auto progs = is_raw ? read_raw(path, info) : read_elf(path, desired_section);
     for (auto raw_prog : progs) {
+        if (list_only) {
+            std::cout << raw_prog.filename << ":" << raw_prog.section << "\n";
+            continue;
+        }
         if (info_only) {
             std::cout << "section: " << raw_prog.section;
             std::cout << "  type: " << (int)raw_prog.info.program_type;
