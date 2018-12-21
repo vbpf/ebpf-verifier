@@ -7,6 +7,7 @@
 #include "asm_syntax.hpp"
 #include "asm_ostream.hpp"
 #include "asm_cfg.hpp"
+#include "spec_assertions.hpp"
 
 using std::string;
 using std::vector;
@@ -14,44 +15,44 @@ using std::optional;
 using std::cout;
 
 
-static string op(Bin::Op op) {
+std::ostream& operator<<(std::ostream& os, Bin::Op op) {
     using Op = Bin::Op;
     switch (op) {
-        case Op::MOV : return "";
-        case Op::ADD : return "+";
-        case Op::SUB : return "-";
-        case Op::MUL : return "*";
-        case Op::DIV : return "/";
-        case Op::MOD : return "%";
-        case Op::OR  : return "|";
-        case Op::AND : return "&";
-        case Op::LSH : return "<<";
-        case Op::RSH : return ">>";
-        case Op::ARSH: return ">>>";
-        case Op::XOR : return "^";
+        case Op::MOV : return os;
+        case Op::ADD : return os << "+";
+        case Op::SUB : return os << "-";
+        case Op::MUL : return os << "*";
+        case Op::DIV : return os << "/";
+        case Op::MOD : return os << "%";
+        case Op::OR  : return os << "|";
+        case Op::AND : return os << "&";
+        case Op::LSH : return os << "<<";
+        case Op::RSH : return os << ">>";
+        case Op::ARSH: return os << ">>>";
+        case Op::XOR : return os << "^";
     }
     assert(false);
-    return {};
+    return os;
 }
 
-static string op(Condition::Op op) {
+std::ostream& operator<<(std::ostream& os, Condition::Op op) {
     using Op = Condition::Op;
     switch (op) {
-        case Op::EQ : return "==";
-        case Op::NE : return "!=";
-        case Op::SET: return "&==";
-        case Op::NSET:return "&!="; // not in ebpf
-        case Op::LT : return "<";
-        case Op::LE : return "<=";
-        case Op::GT : return ">";
-        case Op::GE : return ">=";
-        case Op::SLT: return "s<";
-        case Op::SLE: return "s<=";
-        case Op::SGT: return "s>";
-        case Op::SGE: return "s>=";
+        case Op::EQ : return os << "==";
+        case Op::NE : return os << "!=";
+        case Op::SET: return os << "&==";
+        case Op::NSET:return os << "&!="; // not in ebpf
+        case Op::LT : return os << "<";
+        case Op::LE : return os << "<=";
+        case Op::GT : return os << ">";
+        case Op::GE : return os << ">=";
+        case Op::SLT: return os << "s<";
+        case Op::SLE: return os << "s<=";
+        case Op::SGT: return os << "s>";
+        case Op::SGE: return os << "s>=";
     }
     assert(false);
-    return {};
+    return os;
 }
 
 static string size(int w) {
@@ -61,7 +62,6 @@ static string size(int w) {
 struct InstructionPrinterVisitor {
     std::ostream& os_;
     LabelTranslator labeler = [](Label l) { return l; };
-
 
     template <typename T>
     void visit(const T& item) {
@@ -77,11 +77,9 @@ struct InstructionPrinterVisitor {
     }
 
     void operator()(Bin const& b) {
-        os_ << b.dst << " " << op(b.op) << "= ";
+        os_ << b.dst << " " << b.op << "= " << b.v; 
         if (b.lddw)
-            os_ << std::get<Imm>(b.v).v << " ll";
-        else
-           visit(b.v);
+            os_ << " ll";
         if (!b.is64)
             os_ << " & 0xFFFFFFFF";
     }
@@ -137,19 +135,16 @@ struct InstructionPrinterVisitor {
     }
 
     void print(Condition const& cond) {
-        os_ << cond.left << " " << op(cond.op) << " ";
-        visit(cond.right);
+        os_ << cond.left << " " << cond.op << " " << cond.right;
     }
 
     void operator()(Mem const& b) {
         if (b.is_load) {
-            visit(b.value);
-            os_ << " = ";
+            os_ << b.value << " = ";
         }
         print(b.access);
         if (!b.is_load) {
-            os_ << " = ";
-            visit(b.value);
+            os_ << " = " << b.value;
         }
     }
 
@@ -164,65 +159,19 @@ struct InstructionPrinterVisitor {
         print(b.cond);
     }
     
-    void operator()(Assert::LinearConstraint const& a) {
-        os_ << a.reg;
-        string sign = a.offset < 0 ? " - " : " + ";
-        int offset = std::abs(a.offset); // what about INT_MIN? 
-        if (offset != 0)
-            os_ << sign << offset;
-        if (std::holds_alternative<Imm>(a.width)) {
-            int imm = (int)std::get<Imm>(a.width).v;
-            string sign = imm < 0 ? " - " : " + ";
-            imm = std::abs(imm); // what about INT_MIN? 
-            if (imm != 0)
-                os_ << sign << imm;
-        } else {
-            os_ << " + ";
-            visit(a.width);
-        }
-        os_ << op(a.op);
-        visit(a.v);
-    }
-
-    void operator()(Assert::TypeConstraint const& a) {
-        os_ << a.reg << " : " << a.type;
-    }
-    void operator()(Assert::False const& a) {
-        os_ << "False";
-    }
-    void operator()(Assert::True const& a) {
-        os_ << "True";
-    }
-
     void operator()(Assert const& a) {
-        os_ << "assert ";
-        if (std::holds_alternative<Assert::False>(a.then)) {
-            os_ << "!";
-            visit(a.given);
-            return;
-        }
-        if (!std::holds_alternative<Assert::True>(a.given)) {
-            visit(a.given);
-            os_ << " -> ";
-        }
-        visit(a.then);
-    }
-
-    void operator()(Imm imm) {
-        os_ << (int32_t)imm.v;
-    }
-    void operator()(Reg reg) {
-        os_ << reg;
+        os_ << "assert " << *a.p;
     }
 };
+
 
 static vector<std::tuple<Label, optional<Label>>> slide(const vector<Label>& labels)
 {
     if (labels.size() == 0) return {};
     vector<std::tuple<Label, optional<Label>>> label_pairs;
-    Label prev = labels.at(0);
+    Label prev;
     for (auto label : labels) {
-        label_pairs.push_back({prev, label});
+        if (!prev.empty()) label_pairs.push_back({prev, label});
         prev = label;
     }
     label_pairs.push_back({prev, {}});
@@ -239,6 +188,75 @@ std::ostream& operator<<(std::ostream& os, Instruction const& ins) {
     std::visit(InstructionPrinterVisitor{os, [](Label l){ return string("<") + l + ">";}}, ins);
     return os;
 }
+
+
+std::ostream& operator<<(std::ostream& os, Assertion::LinearConstraint const& a) {
+    os << a.reg;
+    string sign = a.offset < 0 ? " - " : " + ";
+    int offset = std::abs(a.offset); // what about INT_MIN? 
+    if (offset != 0)
+        os << sign << offset;
+    if (std::holds_alternative<Imm>(a.width)) {
+        int imm = (int)std::get<Imm>(a.width).v;
+        string sign = imm < 0 ? " - " : " + ";
+        imm = std::abs(imm); // what about INT_MIN? 
+        if (imm != 0)
+            os << sign << imm;
+    } else {
+        os << " + " << a.width;
+    }
+    os << " " << a.op << " " << a.v;
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, Assertion::False const& a) {
+    return os << "False";
+}
+
+std::ostream& operator<<(std::ostream& os, Assertion::True const& a) {
+    return os << "True";
+}
+
+std::ostream& operator<<(std::ostream& os, Assertion::Given const& given) {
+    if (std::holds_alternative<Assertion::True>(given)) return os << "True";
+    return os << std::get<Assertion::TypeConstraint>(given);
+}
+
+std::ostream& operator<<(std::ostream& os, Types ts) {
+    os << "|";
+    for (size_t i=0; i < ts.size() - 5; i++) {
+        if (ts[i]) {
+            os << "M" << i << "|";
+        }
+    }
+    if (ts[ts.size()+T_NUM]) os << "N" << "|"; 
+    if (ts[ts.size()+T_MAP_STRUCT]) os << "FD" << "|";
+    if (ts[ts.size()+T_CTX]) os << "C" << "|" ; 
+    if (ts[ts.size()+T_DATA]) os  << "P" << "|" ; 
+    if (ts[ts.size()+T_STACK]) os << "S" << "|";
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, Assertion::TypeConstraint const& tc) {
+    return os << tc.reg << " : " << tc.types;
+}
+
+std::ostream& operator<<(std::ostream& os, Assertion::Conclusion const& then) {
+    if (std::holds_alternative<Assertion::TypeConstraint>(then)) return os << std::get<Assertion::TypeConstraint>(then);
+    if (std::holds_alternative<Assertion::LinearConstraint>(then)) return os << std::get<Assertion::LinearConstraint>(then);
+    return os << "False";
+}
+
+std::ostream& operator<<(std::ostream& os, Assertion const& a) {
+    if (std::holds_alternative<Assertion::False>(a.then)) {
+        return os << "!" << a.given;
+    }
+    if (!std::holds_alternative<Assertion::True>(a.given)) {
+        os << std::get<Assertion::TypeConstraint>(a.given) << " -> ";
+    }
+    return os << a.then;
+}
+
 
 string to_string(Instruction const& ins) {
     return to_string(ins, [](Label l){ return string("<") + l + ">";});
@@ -295,13 +313,18 @@ void print(const InstructionSeq& insts) {
 
 void print(const Cfg& cfg, bool nondet) {
     for (auto [label, next] : slide(cfg.keys())) {
-        cout << std::setw(8) << label << ":\t";
+        cout << std::setw(10) << label << ":\t";
         const auto& bb = cfg.at(label);
+        bool first = true;
         for (auto ins : bb.insts) {
+            if (!first) cout << std::setw(10) << " \t";
+            first = false;
             std::visit(InstructionPrinterVisitor{cout}, ins);
-            cout << "\n" << std::setw(17);
+            cout << "\n";
         }
         if (nondet && bb.nextlist.size() > 0 && (!next || bb.nextlist != vector<Label>{*next})) {
+            if (!first) cout << std::setw(10) << " \t";
+            first = false;
             cout << "goto ";
             for (Label label : bb.nextlist)
                 cout << label << ", ";

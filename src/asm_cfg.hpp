@@ -27,5 +27,4 @@ public:
                 
     Cfg to_nondet(bool expand_locks);
     void simplify();
-    void worklist(std::function<bool(BasicBlock&)> recompute);
 };

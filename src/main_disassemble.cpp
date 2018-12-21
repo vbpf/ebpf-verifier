@@ -16,7 +16,16 @@ int main(int argc, char **argv)
         std::cerr << "Usage: " << argv[0] << " file [option...]\n";
         return 65;
     }
-    auto prog = unmarshal(read_raw(argv[1], program_info{}).at(0));
+    std::vector<std::vector<std::string>> notes;
+    auto prog = unmarshal(read_raw(argv[1], program_info{}).at(0), notes);
+
+    int pc = 0;
+    for (auto notelist : notes) {
+        pc++;
+        for (auto s : notelist) {
+            std::cerr << "Note (" << pc << "): " << s << "\n";
+        }
+    }
     std::set<string> flags(argv+2, argv+argc);
     return std::visit(overloaded {
         [](string errmsg) {
@@ -24,7 +33,7 @@ int main(int argc, char **argv)
             return 1;
         },
         [&](auto prog) {
-            if (flags.count("raw")) {
+            if (flags.empty()) {
                 print(prog);
             } else {
                 Cfg cfg = Cfg::make(prog);
@@ -32,7 +41,7 @@ int main(int argc, char **argv)
                     cfg = cfg.to_nondet(flags.count("expand_locks"));
                 }
                 if (flags.count("explicit")) {
-                    explicate_assertions(cfg);
+                    explicate_assertions(cfg, {32}); // FIX: this is an example
                 }
                 if (flags.count("simplify")) {
                     cfg.simplify();

@@ -43,7 +43,7 @@ static bool has_fall(Instruction ins) {
 
 Cfg Cfg::make(const InstructionSeq& insts) {
     Cfg cfg;
-    const auto link = [&](Label from, Label to) {
+    const auto link = [&cfg](Label from, Label to) {
         cfg[from].nextlist.push_back(to);
         cfg[to].prevlist.push_back(from);
     };
@@ -221,21 +221,6 @@ Cfg Cfg::to_nondet(bool expand_locks) {
     }
     return res;
 }
-
-
-void Cfg::worklist(std::function<bool(BasicBlock&)> recompute) {
-    list<Label> w{*ordered_labels.begin()};
-    while (!w.empty()) {
-        BasicBlock& bb = graph[*w.begin()];
-        w.pop_front();
-        if (recompute(bb)) {
-            for (Label next_label : bb.nextlist)
-                w.push_back(next_label);
-            w.erase(std::unique(w.begin(), w.end()));
-        }
-    }
-}
-
 
 void print_stats(const Cfg& cfg) {
     int count = 0;

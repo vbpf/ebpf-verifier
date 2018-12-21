@@ -34,7 +34,7 @@ int main(int argc, char **argv)
             cfg = cfg.to_nondet(false);
         }
         if (subcommand == "explicit") {
-            explicate_assertions(cfg);
+            explicate_assertions(cfg, {32}); // FIX: this is an example
         }
         print(cfg, mode == "nondet");
     }
