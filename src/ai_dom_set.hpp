@@ -22,6 +22,7 @@ struct FdSetDom {
         fds.set(mapfd);
     }
 
+    bool is_bot() const { return fds.none(); }
     void havoc() { fds.set(); };
     void to_bot() { fds.reset(); };
 
@@ -53,7 +54,7 @@ public:
 
     NumDomSet(const Top& _) : top{true} { }
 
-    bool is_bot() { return elems.empty(); }
+    bool is_bot() const { return elems.empty(); }
     void to_bot() { elems.clear(); top = false; }
     void havoc() { elems.clear(); top = true; }
 
@@ -100,7 +101,7 @@ public:
     void exec(bool add, const NumDomSet& o);
     NumDomSet operator-(const OffsetDomSet& o) const;
 
-    bool is_bot() { return elems.empty(); }
+    bool is_bot() const { return elems.empty(); }
     void to_bot() { elems.clear(); top = false; }
     void havoc() { elems.clear(); top = true; }
 

@@ -217,10 +217,6 @@ std::ostream& operator<<(std::ostream& os, Assertion::True const& a) {
     return os << "True";
 }
 
-std::ostream& operator<<(std::ostream& os, Assertion::Given const& given) {
-    if (std::holds_alternative<Assertion::True>(given)) return os << "True";
-    return os << std::get<Assertion::TypeConstraint>(given);
-}
 
 std::ostream& operator<<(std::ostream& os, Types ts) {
     os << "|";
@@ -241,6 +237,11 @@ std::ostream& operator<<(std::ostream& os, Assertion::TypeConstraint const& tc) 
     return os << tc.reg << " : " << tc.types;
 }
 
+std::ostream& operator<<(std::ostream& os, Assertion::Given const& given) {
+    if (std::holds_alternative<Assertion::True>(given)) return os << "True";
+    return os << std::get<Assertion::TypeConstraint>(given);
+}
+
 std::ostream& operator<<(std::ostream& os, Assertion::Conclusion const& then) {
     if (std::holds_alternative<Assertion::TypeConstraint>(then)) return os << std::get<Assertion::TypeConstraint>(then);
     if (std::holds_alternative<Assertion::LinearConstraint>(then)) return os << std::get<Assertion::LinearConstraint>(then);
@@ -248,10 +249,7 @@ std::ostream& operator<<(std::ostream& os, Assertion::Conclusion const& then) {
 }
 
 std::ostream& operator<<(std::ostream& os, Assertion const& a) {
-    if (std::holds_alternative<Assertion::False>(a.then)) {
-        return os << "!" << a.given;
-    }
-    if (!std::holds_alternative<Assertion::True>(a.given)) {
+    if (std::holds_alternative<Assertion::TypeConstraint>(a.given)) {
         os << std::get<Assertion::TypeConstraint>(a.given) << " -> ";
     }
     return os << a.then;

@@ -17,32 +17,33 @@ using Types = boost::dynamic_bitset<>;
 
 struct TypeSet {
     const size_t nonmaps = 5;
-    size_t nmaps;
+    const size_t nmaps;
     TypeSet(size_t nmaps) : nmaps{nmaps} { }
-    size_t size() { return nmaps + nonmaps; };
+    size_t size() const { return nmaps + nonmaps; };
 
-    Types single(int n) {
-        Types res = all();
+    Types single(int n) const {
+        Types res{size()};
         if (n < 0)
             return res.set(size()+n);
         else 
             return res.set(n);
     }
 
-    Types map_types() {
-        Types types = all();
+    Types map_types() const {
+        Types res{size()};
+        res.set();
         for (size_t i=0; i < nonmaps; i++)
-            types.reset(nmaps + i);
-        return types;
+            res.reset(nmaps + i);
+        return res;
     }
 
-    Types all() { return Types{size()}.set(); }
-    Types num() { return single(T_NUM); }
-    Types map_struct() { return single(T_MAP_STRUCT); }
-    Types ctx() { return single(T_CTX); }
-    Types packet() { return single(T_DATA); }
-    Types stack() { return single(T_STACK); }
-    Types ptr() { return (num() | map_struct()).flip(); }
+    Types all() const { return Types{size()}.set(); }
+    Types num() const { return single(T_NUM); }
+    Types map_struct() const { return single(T_MAP_STRUCT); }
+    Types ctx() const { return single(T_CTX); }
+    Types packet() const { return single(T_DATA); }
+    Types stack() const { return single(T_STACK); }
+    Types ptr() const { return (num() | map_struct()).flip(); }
 };
 
  

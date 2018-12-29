@@ -40,6 +40,11 @@ struct RegsDomain {
     std::array<std::optional<RCP_domain>, 11> regs;
     RegsDomain(size_t nmaps) : nmaps{nmaps} { }
 
+    void init() {
+        regs[1] = RCP_domain{nmaps}.with_ctx(0);
+        regs[10] = RCP_domain{nmaps}.with_stack(STACK_SIZE);
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const RegsDomain& d) {
         os << "<<";
         for (const auto& r : d.regs) {
@@ -177,11 +182,13 @@ struct RegsDomain {
 struct Analyzer {
     std::unordered_map<Label, RegsDomain> pre;
     std::unordered_map<Label, RegsDomain> post;
+
     Analyzer(const Cfg& cfg, size_t nmaps)  {
         for (auto l : cfg.keys()) {
             pre.emplace(l, nmaps);
             post.emplace(l, nmaps);
         }
+        pre.at(cfg.keys().front()).init();
     }
 
     bool operator()(Label l, BasicBlock& bb) {
@@ -205,15 +212,15 @@ struct Analyzer {
 };
 
 void worklist(Cfg& cfg, std::function<bool(Label, BasicBlock&)> recompute) {
-    std::list<Label> w{*cfg.keys().begin()};
+    std::list<Label> w{cfg.keys().front()};
     while (!w.empty()) {
-        Label label = *w.begin();
+        Label label = w.front();
         w.pop_front();
         BasicBlock& bb = cfg[label];
         if (recompute(label, bb)) {
             for (Label next_label : bb.nextlist)
                 w.push_back(next_label);
-            w.erase(std::unique(w.begin(), w.end()));
+            w.erase(std::unique(w.begin(), w.end()), w.end());
         }
     }
 }
@@ -237,7 +244,7 @@ Assertion operator!(Assertion::TypeConstraint tc) {
 class AssertionExtractor {
     std::vector<size_t> map_sizes;
     bool is_priviledged = true;
-    TypeSet types;
+    const TypeSet types;
 
     const Types num = types.num();
     const Types ctx = types.ctx();
@@ -402,7 +409,7 @@ public:
                 }
                 return {};
             default:
-                return {!T{ins.dst, types.ptr()}};
+                return { {T{ins.dst, types.ptr()}, Assertion::False{}} };
         }
     }
 };
