@@ -402,9 +402,11 @@ public:
             case Bin::Op::SUB:
                 if (std::holds_alternative<Reg>(ins.v)) {
                     vector<Assertion> res;
-                    for (auto t : {num, maps, ctx, packet}) {
+                    res.push_back({T{ins.dst, types.map_struct()}, Assertion::False{}});
+                    for (auto t : {maps, ctx, packet}) {
                         res.push_back(T{ins.dst, t}.impliesType({std::get<Reg>(ins.v), t}));
                     }
+                    res.push_back({T{std::get<Reg>(ins.v), types.map_struct()}, Assertion::False{}});
                     return res;
                 }
                 return {};
