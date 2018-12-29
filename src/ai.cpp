@@ -40,6 +40,17 @@ struct RegsDomain {
     std::array<std::optional<RCP_domain>, 11> regs;
     RegsDomain(size_t nmaps) : nmaps{nmaps} { }
 
+    friend std::ostream& operator<<(std::ostream& os, const RegsDomain& d) {
+        os << "<<";
+        for (const auto& r : d.regs) {
+            if (r) os << *r;
+            else os << "*";
+            os << ", ";
+        }
+        os << ">>";
+        return os;
+    }
+
     std::optional<RCP_domain>& reg(Value v) {
         return regs.at(std::get<Reg>(v).v);
     }
@@ -166,6 +177,12 @@ struct RegsDomain {
 struct Analyzer {
     std::unordered_map<Label, RegsDomain> pre;
     std::unordered_map<Label, RegsDomain> post;
+    Analyzer(const Cfg& cfg, size_t nmaps)  {
+        for (auto l : cfg.keys()) {
+            pre.emplace(l, nmaps);
+            post.emplace(l, nmaps);
+        }
+    }
 
     bool operator()(Label l, BasicBlock& bb) {
         RegsDomain dom = pre.at(l);
@@ -187,16 +204,29 @@ struct Analyzer {
     }
 };
 
-void worklist(Cfg& cfg, std::function<bool(BasicBlock&)> recompute) {
+void worklist(Cfg& cfg, std::function<bool(Label, BasicBlock&)> recompute) {
     std::list<Label> w{*cfg.keys().begin()};
     while (!w.empty()) {
-        BasicBlock& bb = cfg[*w.begin()];
+        Label label = *w.begin();
         w.pop_front();
-        if (recompute(bb)) {
+        BasicBlock& bb = cfg[label];
+        if (recompute(label, bb)) {
             for (Label next_label : bb.nextlist)
                 w.push_back(next_label);
             w.erase(std::unique(w.begin(), w.end()));
         }
+    }
+}
+
+void analyze_rcp(Cfg& cfg, size_t nmaps) {
+    Analyzer analyzer{cfg, nmaps};
+    worklist(cfg, analyzer);
+    for (auto l : cfg.keys()) {
+        std::cout << analyzer.pre.at(l) << "\n";
+        for (auto ins : cfg.at(l).insts)
+            std::cout << to_string(ins) << "\n";
+        std::cout << analyzer.post.at(l) << "\n";
+        std::cout << "\n";
     }
 }
 
