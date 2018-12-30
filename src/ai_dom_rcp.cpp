@@ -10,9 +10,9 @@ void RCP_domain::operator+=(const RCP_domain& rhs) {
     for (size_t t=0; t < maps.size(); t++) {
         maps[t] = num + rhs.maps[t] | maps[t] + rhs.num;
     }
-    ctx = num + rhs.ctx | ctx + rhs.num;
-    stack = num + rhs.stack | stack + rhs.num;
-    packet = num + rhs.packet | packet + rhs.num;
+    ctx = (num + rhs.ctx) | (ctx + rhs.num);
+    stack = (num + rhs.stack) | (stack + rhs.num);
+    packet = (num + rhs.packet) | (packet + rhs.num);
 
     num.exec(Bin::Op::ADD, rhs.num);
     // assert !fd and !o.fd
@@ -49,7 +49,7 @@ void RCP_domain::assume(RCP_domain& left, Condition::Op op, const RCP_domain& ri
 
 RCP_domain RCP_domain::maps_from_fds() const {
     auto res = *this;
-    for (int i=0; i < fd.fds.size(); i++)
+    for (size_t i=0; i < fd.fds.size(); i++)
         if (fd.fds[i]) {
             res.maps[i] = 0;
         }

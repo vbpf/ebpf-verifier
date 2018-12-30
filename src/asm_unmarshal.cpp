@@ -248,7 +248,7 @@ struct Unmarshaller {
             // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
             return LoadMapFd{
                 .dst = Reg{inst.dst},
-                .mapfd = inst.imm
+                .mapfd = static_cast<size_t>(inst.imm)
             };
         }
 

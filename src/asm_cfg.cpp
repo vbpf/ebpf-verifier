@@ -90,6 +90,8 @@ static Condition::Op reverse(Condition::Op op) {
     case Condition::Op::SET: return Condition::Op::NSET;
     case Condition::Op::NSET: return Condition::Op::SET;
     }
+    assert(false);
+    return {};
 }
 
 static Condition reverse(Condition cond) {

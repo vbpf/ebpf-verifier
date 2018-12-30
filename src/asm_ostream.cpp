@@ -189,13 +189,28 @@ std::ostream& operator<<(std::ostream& os, Instruction const& ins) {
     return os;
 }
 
+std::ostream& operator<<(std::ostream& os, Types ts) {
+    os << "|";
+    for (size_t i=0; i < ts.size() - 5; i++) {
+        if (ts[i]) {
+            os << "M" << i << "|";
+        }
+    }
+    if (ts[ts.size()+T_NUM]) os << "N" << "|"; 
+    if (ts[ts.size()+T_MAP_STRUCT]) os << "FD" << "|";
+    if (ts[ts.size()+T_CTX]) os << "C" << "|" ; 
+    if (ts[ts.size()+T_DATA]) os  << "P" << "|" ; 
+    if (ts[ts.size()+T_STACK]) os << "S" << "|";
+    return os;
+}
+
 std::ostream& operator<<(std::ostream& os, TypeConstraint::RT const& a) {
     return os << a.reg << " : " << a.types;
 }
 
 std::ostream& operator<<(std::ostream& os, LinearConstraint const& a) {
     if (!a.when_types.all()) {
-        os << TypeConstraint::RT{a.reg, a.when_types} << " ";
+        os << TypeConstraint::RT{a.reg, a.when_types} << " -> ";
     }
     os << a.reg;
     string sign = a.offset < 0 ? " - " : " + ";
@@ -212,21 +227,6 @@ std::ostream& operator<<(std::ostream& os, LinearConstraint const& a) {
         os << " + " << a.width;
     }
     os << " " << a.op << " " << a.v;
-    return os;
-}
-
-std::ostream& operator<<(std::ostream& os, Types ts) {
-    os << "|";
-    for (size_t i=0; i < ts.size() - 5; i++) {
-        if (ts[i]) {
-            os << "M" << i << "|";
-        }
-    }
-    if (ts[ts.size()+T_NUM]) os << "N" << "|"; 
-    if (ts[ts.size()+T_MAP_STRUCT]) os << "FD" << "|";
-    if (ts[ts.size()+T_CTX]) os << "C" << "|" ; 
-    if (ts[ts.size()+T_DATA]) os  << "P" << "|" ; 
-    if (ts[ts.size()+T_STACK]) os << "S" << "|";
     return os;
 }
 
