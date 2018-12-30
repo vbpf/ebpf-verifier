@@ -8,7 +8,7 @@
 
 void RCP_domain::operator+=(const RCP_domain& rhs) {
     for (size_t t=0; t < maps.size(); t++) {
-        maps[t] = num + rhs.maps[t] | maps[t] + rhs.num;
+        maps[t] = (num + rhs.maps[t]) | (maps[t] + rhs.num);
     }
     ctx = (num + rhs.ctx) | (ctx + rhs.num);
     stack = (num + rhs.stack) | (stack + rhs.num);
