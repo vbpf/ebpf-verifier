@@ -127,7 +127,12 @@ struct RegsDomain {
         return;
     }
 
-    void operator()(Assume const& a) { }
+    void operator()(Assume const& a) {
+        assert(reg(a.cond.left));
+        assert(eval(a.cond.right));
+        RCP_domain::assume(*reg(a.cond.left), a.cond.op, *eval(a.cond.right));
+    }
+
     void operator()(Assert const& a) { 
         using TC = Assertion::TypeConstraint;
         using LC = Assertion::LinearConstraint;
@@ -170,9 +175,11 @@ struct RegsDomain {
                 regs[0] = RCP_domain{nmaps}.with_num(TOP);
                 break;
             case Ret::PTR_TO_MAP_VALUE_OR_NULL:
-                regs[0] = regs[1]->maps_from_fds();
+                regs[0] = regs[1]->maps_from_fds().with_num(0);
                 break;
         }
+        for (int i=1; i < 6; i++)
+            regs[i] = {};
     }
 
     void operator()(Packet const& a) { }
