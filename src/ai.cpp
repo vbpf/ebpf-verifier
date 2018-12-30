@@ -37,9 +37,9 @@ bool operator==(const Assert& a, const Assert& b) { return *a.p == *b.p; }
 
 struct RegsDomain {
     size_t nmaps;
-    std::array<std::optional<RCP_domain>, 11> regs;
+    std::array<std::optional<RCP_domain>, 16> regs;
     RegsDomain(size_t nmaps) : nmaps{nmaps} {
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < 16; i++)
             regs[i] = RCP_domain{nmaps};
         regs[10] = RCP_domain{nmaps}.with_stack(STACK_SIZE);
     }
