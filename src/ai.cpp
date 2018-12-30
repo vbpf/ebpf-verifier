@@ -149,34 +149,7 @@ struct RegsDomain {
             }
         }
     }
-    /*
-    bool satisfied(Assert const& a) { 
-        using TC = TypeConstraint;
-        using LC = LinearConstraint;
-        // treat as assume
-        if (a.p->given) {
-            TC given = *a.p->given;
-            if (!reg(given.reg))
-                return;
-            auto& left = *reg(given.reg);
-            if (std::holds_alternative<TC>(a.p->then)) {
-                TC then = std::get<TC>(a.p->then);
-                RCP_domain::satisfied(left, given.types, *reg(then.reg), then.types);
-            } else {
-                auto then = std::get<LC>(a.p->then);
-                RCP_domain::satisfied(left, then.op, *eval(then.v) - *eval(then.width) - eval(then.offset), given.types);
-            }
-        } else {
-            if (std::holds_alternative<LC>(a.p->then)) {
-                auto then = std::get<LC>(a.p->then);
-                RCP_domain::satisfied(*reg(then.reg), eval(then.offset), then.op, *eval(then.v) - *eval(then.width));
-            } else {
-                auto then = std::get<TC>(a.p->then);
-                RCP_domain::satisfied(*reg(then.reg), then.types);
-            }
-        }
-    }
-    */
+    
     void operator()(Exit const& a) { }
 
     void operator()(Jmp const& a) { }

@@ -239,9 +239,10 @@ std::ostream& operator<<(std::ostream& os, TypeConstraint const& tc) {
 
 std::ostream& operator<<(std::ostream& os, Assertion const& a) {
     if (std::holds_alternative<TypeConstraint>(a.cst)) {
-        os << std::get<TypeConstraint>(a.cst);
+        return os << std::get<TypeConstraint>(a.cst);
+    } else {
+        return os << std::get<LinearConstraint>(a.cst);
     }
-    return os << std::get<LinearConstraint>(a.cst);
 }
 
 
