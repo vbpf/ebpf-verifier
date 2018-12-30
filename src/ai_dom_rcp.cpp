@@ -39,7 +39,7 @@ void RCP_domain::assume(const RCP_domain& r1, Types t1, const RCP_domain& r2, Ty
 }
 
 void RCP_domain::assume(RCP_domain& reg, Types t) {
-    reg.pointwise_if(t, [](auto& a){ a.to_bot(); });
+    reg.pointwise_if(t.flip(), [](auto& a){ a.to_bot(); });
 }
 
 void RCP_domain::assume(RCP_domain& left, Condition::Op op, const RCP_domain& right, Types where_types) {

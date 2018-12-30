@@ -240,9 +240,13 @@ void analyze_rcp(Cfg& cfg, size_t nmaps) {
 
     for (auto l : cfg.keys()) {
         std::cout << l << "\n";
-        std::cout << analyzer.pre.at(l) << "\n";
-        for (auto ins : cfg.at(l).insts)
+        auto dom = analyzer.pre.at(l);
+        std::cout << dom << "\n";
+        for (auto ins : cfg.at(l).insts) {
             std::cout << to_string(ins) << "\n";
+            dom.visit(ins);
+            //std::cout << ": " << dom << "\n";
+        }
         std::cout << analyzer.post.at(l) << "\n";
         std::cout << "\n";
     }
@@ -413,16 +417,16 @@ public:
             case Bin::Op::SUB:
                 if (std::holds_alternative<Reg>(ins.v)) {
                     vector<Assertion> res;
-                    res.push_back({T{ins.dst, types.map_struct()}, Assertion::False{}});
+                    res.push_back( { T{ins.dst, types.map_struct().flip()} });
                     for (auto t : {maps, ctx, packet}) {
                         res.push_back(T{ins.dst, t}.impliesType({std::get<Reg>(ins.v), t}));
                     }
-                    res.push_back({T{std::get<Reg>(ins.v), types.map_struct()}, Assertion::False{}});
+                    res.push_back( { T{std::get<Reg>(ins.v), types.map_struct().flip()} });
                     return res;
                 }
                 return {};
             default:
-                return { {T{ins.dst, types.ptr()}, Assertion::False{}} };
+                return { { T{ins.dst, num} } };
         }
     }
 };

@@ -43,13 +43,13 @@ int main(int argc, char **argv)
                 }
                 if (flags.count("explicit")) {
                     explicate_assertions(cfg, {32}); // FIX: this is an example
-                    if (flags.count("rcp")) {
-                        analyze_rcp(cfg, 1); // FIX: same
-                        std::cout << "DONE!\n";
-                    }
                 }
                 if (flags.count("simplify")) {
                     cfg.simplify();
+                }
+                if (flags.count("rcp")) {
+                    analyze_rcp(cfg, 1); // FIX: same
+                    std::cout << "DONE!\n";
                 }
                 if (flags.count("dot"))
                     print_dot(cfg);
