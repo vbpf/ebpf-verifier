@@ -176,7 +176,7 @@ void Cfg::simplify() {
     );
 }
 
-Cfg Cfg::to_nondet(bool expand_locks) {
+Cfg Cfg::to_nondet(bool expand_locks) const {
     Cfg res;
     for (auto const& this_label : this->keys()) {
         BasicBlock const& bb = this->at(this_label);

@@ -38,11 +38,17 @@ bool operator==(const Assert& a, const Assert& b) { return *a.p == *b.p; }
 struct RegsDomain {
     size_t nmaps;
     std::array<std::optional<RCP_domain>, 11> regs;
-    RegsDomain(size_t nmaps) : nmaps{nmaps} { }
+    RegsDomain(size_t nmaps) : nmaps{nmaps} {
+        for (int i = 0; i < 10; i++)
+            regs[i] = RCP_domain{nmaps};
+        regs[10] = RCP_domain{nmaps}.with_stack(STACK_SIZE);
+    }
 
     void init() {
+        regs[0] = {};
         regs[1] = RCP_domain{nmaps}.with_ctx(0);
-        regs[10] = RCP_domain{nmaps}.with_stack(STACK_SIZE);
+        for (int i = 2; i < 10; i++)
+            regs[i] = {};
     }
 
     friend std::ostream& operator<<(std::ostream& os, const RegsDomain& d) {
@@ -103,12 +109,16 @@ struct RegsDomain {
     void operator()(Un const& a) { };
     void operator()(Bin const& a) { 
         using Op = Bin::Op;
+        RCP_domain rhs = std::holds_alternative<Reg>(a.v) ? *reg(a.v) : RCP_domain{nmaps}.with_num(std::get<Imm>(a.v).v);
+        if (a.op == Op::MOV) {
+            regs[a.dst.v] = rhs;
+            return;
+        }
         if (!reg(a.dst)) return;
         if (std::holds_alternative<Reg>(a.v) && !reg(a.v)) reg(a.dst) = {};
         RCP_domain& lhs = *reg(a.dst);
-        RCP_domain rhs = std::holds_alternative<Reg>(a.v) ? *reg(a.v) : RCP_domain{nmaps}.with_num(std::get<Imm>(a.v).v);
         switch (a.op) {
-            case Op::MOV: lhs = rhs; return;
+            case Op::MOV: assert(false); return;
             case Op::ADD: lhs += rhs; return;
             case Op::SUB: lhs -= rhs; return;
             default: lhs.exec(a.op, rhs); return;
@@ -191,33 +201,32 @@ struct Analyzer {
         pre.at(cfg.keys().front()).init();
     }
 
-    bool operator()(Label l, BasicBlock& bb) {
+    bool recompute(Label l, BasicBlock& bb) {
         RegsDomain dom = pre.at(l);
         for (Instruction& ins : bb.insts) {
             dom.visit(ins);
         }
         bool res = post.at(l) != dom;
-        post.emplace(l, dom);
+        post.insert_or_assign(l, dom);
         return res;
     }
 
-    bool join(const std::vector<Label>& prevs, Label& into) {
+    void join(const std::vector<Label>& prevs, Label into) {
         RegsDomain new_pre = pre.at(into);
         for (Label l : prevs)
             new_pre |= post.at(l);
-        bool res = new_pre != pre.at(into);
-        pre.emplace(into, new_pre);
-        return res;
+        pre.insert_or_assign(into, new_pre);
     }
 };
 
-void worklist(Cfg& cfg, std::function<bool(Label, BasicBlock&)> recompute) {
+void worklist(Cfg& cfg, Analyzer& analyzer) {
     std::list<Label> w{cfg.keys().front()};
     while (!w.empty()) {
         Label label = w.front();
         w.pop_front();
         BasicBlock& bb = cfg[label];
-        if (recompute(label, bb)) {
+        analyzer.join(bb.prevlist, label);
+        if (analyzer.recompute(label, bb)) {
             for (Label next_label : bb.nextlist)
                 w.push_back(next_label);
             w.erase(std::unique(w.begin(), w.end()), w.end());
@@ -228,7 +237,9 @@ void worklist(Cfg& cfg, std::function<bool(Label, BasicBlock&)> recompute) {
 void analyze_rcp(Cfg& cfg, size_t nmaps) {
     Analyzer analyzer{cfg, nmaps};
     worklist(cfg, analyzer);
+
     for (auto l : cfg.keys()) {
+        std::cout << l << "\n";
         std::cout << analyzer.pre.at(l) << "\n";
         for (auto ins : cfg.at(l).insts)
             std::cout << to_string(ins) << "\n";
