@@ -102,7 +102,7 @@ struct Assume {
     Condition cond;
 };
 
-class Assertion;
+struct Assertion;
 using AssertionPtr = std::unique_ptr<Assertion>;
 AssertionPtr clone(const AssertionPtr&);
 std::ostream& operator<<(std::ostream& os, Assertion const& a);

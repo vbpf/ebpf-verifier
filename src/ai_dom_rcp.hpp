@@ -116,16 +116,6 @@ public:
     static void assume(RCP_domain& left, Condition::Op op, const RCP_domain& right) {
         assume(left, op, right, left.all());
     }
-    static void assume(RCP_domain& reg, const RCP_domain& left_offset, Condition::Op op, const RCP_domain& right,
-                       Types where_types) {
-        assume(reg, op, right - left_offset, where_types);
-    }
-    static void assume(RCP_domain& reg, const RCP_domain& left_offset, Condition::Op op, const RCP_domain& right) {
-        assume(reg, left_offset, op, right, reg.all());
-    }
-    static void assume_not(RCP_domain& reg, Types t) {
-        assume(reg, t.flip());
-    }
 
 
     friend std::ostream& operator<<(std::ostream& os, const RCP_domain& a) {

@@ -189,8 +189,14 @@ std::ostream& operator<<(std::ostream& os, Instruction const& ins) {
     return os;
 }
 
+std::ostream& operator<<(std::ostream& os, TypeConstraint::RT const& a) {
+    return os << a.reg << " : " << a.types;
+}
 
-std::ostream& operator<<(std::ostream& os, Assertion::LinearConstraint const& a) {
+std::ostream& operator<<(std::ostream& os, LinearConstraint const& a) {
+    if (!a.when_types.all()) {
+        os << TypeConstraint::RT{a.reg, a.when_types} << " ";
+    }
     os << a.reg;
     string sign = a.offset < 0 ? " - " : " + ";
     int offset = std::abs(a.offset); // what about INT_MIN? 
@@ -209,15 +215,6 @@ std::ostream& operator<<(std::ostream& os, Assertion::LinearConstraint const& a)
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, Assertion::False const& a) {
-    return os << "False";
-}
-
-std::ostream& operator<<(std::ostream& os, Assertion::True const& a) {
-    return os << "True";
-}
-
-
 std::ostream& operator<<(std::ostream& os, Types ts) {
     os << "|";
     for (size_t i=0; i < ts.size() - 5; i++) {
@@ -233,26 +230,18 @@ std::ostream& operator<<(std::ostream& os, Types ts) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, Assertion::TypeConstraint const& tc) {
-    return os << tc.reg << " : " << tc.types;
-}
-
-std::ostream& operator<<(std::ostream& os, Assertion::Given const& given) {
-    if (std::holds_alternative<Assertion::True>(given)) return os << "True";
-    return os << std::get<Assertion::TypeConstraint>(given);
-}
-
-std::ostream& operator<<(std::ostream& os, Assertion::Conclusion const& then) {
-    if (std::holds_alternative<Assertion::TypeConstraint>(then)) return os << std::get<Assertion::TypeConstraint>(then);
-    if (std::holds_alternative<Assertion::LinearConstraint>(then)) return os << std::get<Assertion::LinearConstraint>(then);
-    return os << "False";
+std::ostream& operator<<(std::ostream& os, TypeConstraint const& tc) {
+    if (tc.given) {
+        os << *tc.given << " -> ";
+    }
+    return os << tc.then;
 }
 
 std::ostream& operator<<(std::ostream& os, Assertion const& a) {
-    if (std::holds_alternative<Assertion::TypeConstraint>(a.given)) {
-        os << std::get<Assertion::TypeConstraint>(a.given) << " -> ";
+    if (std::holds_alternative<TypeConstraint>(a.cst)) {
+        os << std::get<TypeConstraint>(a.cst);
     }
-    return os << a.then;
+    return os << std::get<LinearConstraint>(a.cst);
 }
 
 

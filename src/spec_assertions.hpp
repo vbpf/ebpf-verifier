@@ -49,36 +49,31 @@ struct TypeSet {
  
 void explicate_assertions(Cfg& cfg, std::vector<size_t> maps_sizes);
 
-class Assertion {
-public:
-    struct False { };
-    struct True { };
+struct LinearConstraint {
+    Condition::Op op;
+    Reg reg;
+    int offset{};
+    Value width;
+    Value v;
+    Types when_types;
+};
 
-    struct LinearConstraint {
-        Condition::Op op;
-        Reg reg;
-        int offset;
-        Value width;
-        Value v;
-    };
-    struct TypeConstraint {
+
+struct TypeConstraint {
+    struct RT {
         Reg reg;
         Types types;
-        Assertion implies(LinearConstraint cst) {
-            return {*this, cst};
-        }
-        Assertion impliesType(TypeConstraint cst) {
-            return {*this, cst};
-        }
     };
-    using Conclusion = std::variant<TypeConstraint, LinearConstraint, False>;
-    using Given = std::variant<TypeConstraint, True>;
-
-    Given given;
-    Conclusion then;
-    Assertion(Given given, Conclusion then) : given{given}, then{then} { }
-    Assertion(Conclusion then) : given{True{}}, then{then} { }
+    RT then;
+    std::optional<RT> given;
 };
+
+struct Assertion {
+    std::variant<LinearConstraint, TypeConstraint> cst;
+};
+
+#define DECLARE_EQ6(T, f1, f2, f3, f4, f5, f6) \
+    inline bool operator==(T const& a, T const& b){ return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4 && a.f5 == b.f5 && a.f6 == b.f6; }
 #define DECLARE_EQ5(T, f1, f2, f3, f4, f5) \
     inline bool operator==(T const& a, T const& b){ return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4 && a.f5 == b.f5; }
 #define DECLARE_EQ4(T, f1, f2, f3, f4) \
@@ -92,9 +87,7 @@ public:
 #define DECLARE_EQ0(T) \
     inline bool operator==(T const& a, T const& b){ return true; }
 
-DECLARE_EQ0(Assertion::True)
-DECLARE_EQ0(Assertion::False)
-DECLARE_EQ2(Assertion::TypeConstraint, reg, types)
-DECLARE_EQ5(Assertion::LinearConstraint, op, reg, offset, width, v)
-DECLARE_EQ2(Assertion, given, then)
-
+DECLARE_EQ2(TypeConstraint::RT, reg, types)
+DECLARE_EQ2(TypeConstraint, given, then)
+DECLARE_EQ6(LinearConstraint, op, reg, offset, width, v, when_types)
+DECLARE_EQ1(Assertion, cst)
