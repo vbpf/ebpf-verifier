@@ -30,10 +30,10 @@ using std::vector;
 
 // implement here, where Assertion is complete
 Assert::~Assert() = default;
-Assert::Assert(const Assert& a) : p{std::make_unique<Assertion>(*a.p)} { }
+Assert::Assert(const Assert& a) : p{std::make_unique<Assertion>(*a.p)}, satisfied{a.satisfied} { }
 Assert::Assert(AssertionPtr&& p) : p{std::move(p)} { }
-void Assert::operator=(const Assert& a) { *p = *a.p; }
-bool operator==(const Assert& a, const Assert& b) { return *a.p == *b.p; }
+void Assert::operator=(const Assert& a) { *p = *a.p; satisfied = a.satisfied; }
+bool operator==(const Assert& a, const Assert& b) { return *a.p == *b.p && a.satisfied == b.satisfied; }
 
 struct RegsDomain {
     size_t nmaps;
@@ -210,9 +210,9 @@ struct Analyzer {
         pre.at(cfg.keys().front()).init();
     }
 
-    bool recompute(Label l, BasicBlock& bb) {
+    bool recompute(Label l, const BasicBlock& bb) {
         RegsDomain dom = pre.at(l);
-        for (Instruction& ins : bb.insts) {
+        for (const Instruction& ins : bb.insts) {
             dom.visit(ins);
         }
         bool res = post.at(l) != dom;
@@ -228,12 +228,12 @@ struct Analyzer {
     }
 };
 
-void worklist(Cfg& cfg, Analyzer& analyzer) {
+void worklist(const Cfg& cfg, Analyzer& analyzer) {
     std::list<Label> w{cfg.keys().front()};
     while (!w.empty()) {
         Label label = w.front();
         w.pop_front();
-        BasicBlock& bb = cfg[label];
+        const BasicBlock& bb = cfg.at(label);
         analyzer.join(bb.prevlist, label);
         if (analyzer.recompute(label, bb)) {
             for (Label next_label : bb.nextlist)
@@ -248,19 +248,18 @@ void analyze_rcp(Cfg& cfg, size_t nmaps) {
     worklist(cfg, analyzer);
 
     for (auto l : cfg.keys()) {
-        std::cout << l << "\n";
         auto dom = analyzer.pre.at(l);
-        std::cout << dom << "\n";
-        for (auto ins : cfg.at(l).insts) {
-            std::cout << to_string(ins);
-            if (std::holds_alternative<Assert>(ins) && dom.satisfied(std::get<Assert>(ins)))
-                std::cout << " V ";
-            std::cout << "\n";
+        //std::cout << dom << "\n";
+        for (Instruction& ins : cfg[l].insts) {
+            if (std::holds_alternative<Assert>(ins)) {
+                Assert& a = std::get<Assert>(ins);
+                if (!a.satisfied) {
+                    a.satisfied = dom.satisfied(a);
+                }
+            }
             dom.visit(ins);
-            //std::cout << ": " << dom << "\n";
         }
-        std::cout << analyzer.post.at(l) << "\n";
-        std::cout << "\n";
+        //std::cout << analyzer.post.at(l) << "\n";
     }
 }
 

@@ -49,7 +49,6 @@ int main(int argc, char **argv)
                 }
                 if (flags.count("rcp")) {
                     analyze_rcp(cfg, 1); // FIX: same
-                    std::cout << "DONE!\n";
                 }
                 if (flags.count("dot"))
                     print_dot(cfg);

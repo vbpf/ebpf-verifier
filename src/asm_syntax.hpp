@@ -109,6 +109,7 @@ std::ostream& operator<<(std::ostream& os, Assertion const& a);
 
 struct Assert {
     AssertionPtr p;
+    bool satisfied = false;
     Assert(const Assert& a);
     void operator=(const Assert& a);
     Assert(AssertionPtr&& p);
