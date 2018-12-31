@@ -102,7 +102,11 @@ public:
     RCP_domain with_fd(int fd) const { auto res = *this; res.fd.assign(fd); return res; }
     RCP_domain maps_from_fds() const;
     
-    void set_mapfd(int mapfd) { fd.assign(mapfd); }
+    void set_mapfd(int mapfd) {
+        assert(mapfd >= 0);
+        assert(mapfd < fd.fds.size());
+        fd.assign(mapfd);
+    }
 
     bool operator==(const RCP_domain& o) const { return maps == o.maps && ctx == o.ctx && stack == o.stack && packet == o.packet && num == o.num && fd == o.fd; }
     bool operator!=(const RCP_domain& o) const { return !((*this) == o); }

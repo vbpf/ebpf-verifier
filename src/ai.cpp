@@ -109,9 +109,17 @@ struct RegsDomain {
     void operator()(Un const& a) { };
     void operator()(Bin const& a) { 
         using Op = Bin::Op;
-        RCP_domain rhs = std::holds_alternative<Reg>(a.v) ? *reg(a.v) : RCP_domain{nmaps}.with_num(std::get<Imm>(a.v).v);
+        RCP_domain rhs = std::holds_alternative<Reg>(a.v)
+                       ? (reg(a.v) ? *reg(a.v) : RCP_domain{nmaps})
+                       : RCP_domain{nmaps}.with_num(std::get<Imm>(a.v).v);
         if (a.op == Op::MOV) {
             regs[a.dst.v] = rhs;
+            return;
+        }
+        if ((std::holds_alternative<Reg>(a.v) && !reg(a.v)) || !reg(a.dst)) {
+            // No need to propagate uninitialized values - just mark as bot
+            // TODO: what about assertion failures?
+            regs[a.dst.v] = RCP_domain{nmaps};
             return;
         }
         if (!reg(a.dst)) return;
