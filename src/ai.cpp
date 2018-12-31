@@ -145,14 +145,17 @@ struct RegsDomain {
         // treat as assume
         if (std::holds_alternative<LinearConstraint>(a.p->cst)) {
             auto lc = std::get<LinearConstraint>(a.p->cst);
-            const auto& right = *eval(lc.v) - *eval(lc.width) - eval(lc.offset);
+            assert(reg(lc.reg)->valid_types(lc.when_types));
+            const RCP_domain right = *eval(lc.v) - *eval(lc.width) - eval(lc.offset);
             RCP_domain::assume(*reg(lc.reg), lc.op, right, lc.when_types);
         } else {
             auto tc = std::get<TypeConstraint>(a.p->cst);
             if (tc.given) {
                 if (!reg(tc.given->reg)) return;
+                assert(reg(tc.then.reg)->valid_types(tc.then.types));
                 RCP_domain::assume(*reg(tc.then.reg), tc.then.types, *reg(tc.given->reg), tc.given->types);
             } else {
+                assert(reg(tc.then.reg)->valid_types(tc.then.types));
                 RCP_domain::assume(*reg(tc.then.reg), tc.then.types);
             }
         }
@@ -162,11 +165,11 @@ struct RegsDomain {
         // treat as assume
         if (std::holds_alternative<LinearConstraint>(a.p->cst)) {
             auto lc = std::get<LinearConstraint>(a.p->cst);
-            const auto& right = *eval(lc.v) - *eval(lc.width) - eval(lc.offset);
+            const RCP_domain right = *eval(lc.v) - *eval(lc.width) - eval(lc.offset);
             return RCP_domain::satisfied(*reg(lc.reg), lc.op, right, lc.when_types);
         }
         auto tc = std::get<TypeConstraint>(a.p->cst);
-        const auto& left = *reg(tc.then.reg);
+        const RCP_domain left = *reg(tc.then.reg);
         if (tc.given) {
             if (!reg(tc.given->reg)) return false;
             return RCP_domain::satisfied(left, tc.then.types, *reg(tc.given->reg), tc.given->types);
@@ -271,10 +274,6 @@ void analyze_rcp(Cfg& cfg, size_t nmaps) {
     }
 }
 
-auto type_of(Reg r, Types t) {
-    return Assertion{TypeConstraint{{r, t}}};
-};
-
 class AssertionExtractor {
     std::vector<size_t> map_sizes;
     bool is_priviledged = false;
@@ -285,16 +284,23 @@ class AssertionExtractor {
     const Types stack = types.stack();
     const Types packet = types.packet();
     const Types maps = types.map_types();
+    const Types fd = types.map_struct();
     const Types mem = stack | packet | maps;
-    const Types nonfd = mem | num;
+    const Types ptr = mem | ctx;
+    const Types nonfd = ptr | num;
     
+    auto type_of(Reg r, const Types t) {
+        assert(t.size() == map_sizes.size() + 5);
+        return Assertion{TypeConstraint{{r, t}}};
+    };
+
     void checkAccess(vector<Assertion>& assumptions, Types t, Reg reg, int offset, Value width) {
         using Op = Condition::Op;
         assumptions.push_back(
             Assertion{LinearConstraint{Op::GE, reg, offset, Imm{0}, Imm{0}, t}}
         );
         for (size_t i=0; i < t.size(); i++) {
-            if (!(bool)t[i]) continue;
+            if (!t[i]) continue;
             Types s = types.single(i);
             if (s == num) continue;
             Value end = Imm{256}; // context size
@@ -314,7 +320,7 @@ public:
     vector<Assertion> operator()(T ins) { return {}; }
 
     vector<Assertion> operator()(Exit const& e) {
-        return { type_of(Reg{0}, types.num()) };
+        return { type_of(Reg{0}, num) };
     }
 
     vector<Assertion> operator()(Call const& call) {
@@ -340,7 +346,7 @@ public:
                 previous_types.reset();
                 break;
             case Arg::CONST_MAP_PTR:
-                res.push_back(type_of(reg, types.map_struct()));
+                res.push_back(type_of(reg, fd));
                 previous_types.reset();
                 break;
             case Arg::CONST_SIZE:
@@ -410,8 +416,8 @@ public:
         if (reg.v == 10) {
             checkAccess(res, stack, reg, offset, width);
         } else {
-            res.emplace_back(type_of(reg, types.ptr()));
-            checkAccess(res, types.ptr(), reg, offset, width);
+            res.emplace_back(type_of(reg, ptr));
+            checkAccess(res, ptr, reg, offset, width);
             if (!is_priviledged && !ins.is_load && std::holds_alternative<Reg>(ins.value)) {
                 for (auto t : {maps , ctx , packet}) {
                     res.push_back(
@@ -433,7 +439,7 @@ public:
     void same_type(vector<Assertion>& res, Types ts, Reg r1, Reg r2) {
         for (size_t i=0; i < ts.size(); i++) {
             if (ts[i]) {
-                Types t = ts.reset().set(i);
+                Types t = types.single(i);
                 res.push_back( Assertion{TypeConstraint{{r1, t}, {r2, t}} });
             }
         }
@@ -447,17 +453,17 @@ public:
                 if (std::holds_alternative<Reg>(ins.v)) {
                     Reg reg = std::get<Reg>(ins.v);
                     return {
-                        Assertion{ TypeConstraint{{reg, num}, {ins.dst, types.ptr()}} },
-                        Assertion{ TypeConstraint{{ins.dst, num}, {reg, types.ptr()}} }
+                        Assertion{ TypeConstraint{{reg, num}, {ins.dst, ptr}} },
+                        Assertion{ TypeConstraint{{ins.dst, num}, {reg, ptr}} }
                     };
                 }
                 return {};
             case Bin::Op::SUB:
                 if (std::holds_alternative<Reg>(ins.v)) {
                     vector<Assertion> res;
-                    res.push_back(type_of(ins.dst, types.map_struct().flip()));
+                    res.push_back(type_of(ins.dst, nonfd));
                     same_type(res, maps | ctx | packet, std::get<Reg>(ins.v), ins.dst);
-                    res.push_back(type_of(std::get<Reg>(ins.v), types.map_struct().flip()));
+                    res.push_back(type_of(std::get<Reg>(ins.v), nonfd));
                     return res;
                 }
                 return {};

@@ -95,7 +95,7 @@ struct LockAdd {
 };
 
 struct Undefined {
-    int opcode;
+    int opcode{};
 };
 
 struct Assume {

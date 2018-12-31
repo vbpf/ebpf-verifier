@@ -33,7 +33,7 @@ class RCP_domain {
 
     template <typename P>
     bool pointwise_all(Types t, const P& p) const {
-        assert(t.size() == maps.size() + 5);
+        assert(valid_types(t));
         for (size_t i=0; i < maps.size(); i++) {
             if (t[i] && !p(maps[i])) return false;
         }
@@ -47,7 +47,7 @@ class RCP_domain {
 
     template <typename P>
     bool pointwise_all_pairs(Types t, const RCP_domain& o, const P& p) const {
-        assert(t.size() == maps.size() + 5);
+        assert(valid_types(t));
         for (size_t i=0; i < maps.size(); i++) {
             if (t[i] && !p(maps[i], o.maps[i])) return false;
         }
@@ -60,13 +60,14 @@ class RCP_domain {
     }
 
     bool is_of_type(Types t) const {
+        assert(valid_types(t));
         // not-not-of-type
         return pointwise_all(t.flip(), [](const auto& a) { return a.is_bot(); });
     }
 
     template <typename F>
     void pointwise_if(Types t, const RCP_domain& o, const F& f) {
-        assert(t.size() == maps.size() + 5);
+        assert(valid_types(t));
         for (size_t i=0; i < maps.size(); i++) {
             if (t[i])
                 f(maps[i], o.maps[i]);
@@ -80,7 +81,7 @@ class RCP_domain {
 
     template <typename F>
     void pointwise_if(Types t, const F& f) {
-        assert(t.size() == maps.size() + 5);
+        assert(valid_types(t));
         for (size_t i=0; i < maps.size(); i++) {
             if (t[i])
                 f(maps[i]);
@@ -135,7 +136,7 @@ public:
 
     void operator+=(const RCP_domain& rhs);
 
-    RCP_domain operator+(int n) {
+    RCP_domain operator+(int n) const {
         return *this + RCP_domain(maps.size()).with_num(n);
     }
     
@@ -157,6 +158,11 @@ public:
     static bool satisfied(const RCP_domain& then_reg, Types then_type, const RCP_domain& where_reg, Types where_type);
     static bool satisfied(const RCP_domain& r, Types t);
     static bool satisfied(const RCP_domain& left, Condition::Op op, const RCP_domain& right, Types where_types);
+
+    bool valid_types(Types t) const {
+        std::cout << t.size() << " != " << maps.size() + 5 << "\n";
+        return t.size() == maps.size() + 5;
+    }
 
     friend std::ostream& operator<<(std::ostream& os, const RCP_domain& a) {
         os << "[";
