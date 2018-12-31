@@ -149,7 +149,6 @@ struct RegsDomain {
             }
         }
     }
-
 /*
     bool satisfied(Assert const& a) { 
         // treat as assume
@@ -168,7 +167,6 @@ struct RegsDomain {
         }
     }
 */
-
     void operator()(Exit const& a) { }
 
     void operator()(Jmp const& a) { }
@@ -378,9 +376,6 @@ public:
     }
 
     vector<Assertion> operator()(Assume ins) { 
-        using RT = TypeConstraint::RT;
-        using Op = Condition::Op;
-        
         vector<Assertion> res;
         if (is_priviledged) {
             res.push_back(type_of(ins.cond.left, nonfd));
@@ -401,7 +396,6 @@ public:
 
     vector<Assertion> operator()(Mem ins) { 
         using RT = TypeConstraint::RT;
-        using Op = Condition::Op;
         vector<Assertion> res;
         Reg reg = ins.access.basereg;
         Imm width{static_cast<uint32_t>(ins.access.width)};

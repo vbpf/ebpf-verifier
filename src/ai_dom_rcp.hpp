@@ -58,7 +58,20 @@ class RCP_domain {
         if (t[t.size() + T_NUM]) f(num);
         if (t[t.size() + T_MAP_STRUCT]) f(fd);
     }
-    
+
+    bool is_of_type(Types t) const {
+        for (size_t i=0; i < maps.size(); i++) {
+            if (t[i])
+                if (!maps[i].is_bot()) return true;
+        }
+        if (t[t.size() + T_CTX]) if (!ctx.is_bot()) return true;
+        if (t[t.size() + T_STACK]) if (!stack.is_bot()) return true;
+        if (t[t.size() + T_DATA]) if (!packet.is_bot()) return true;
+        if (t[t.size() + T_NUM]) if (!num.is_bot()) return true;
+        if (t[t.size() + T_MAP_STRUCT]) if (!fd.is_bot()) return true;
+        return false;
+    }
+
 public:
     RCP_domain with_map(size_t n, const OffsetDomSet& map) const { auto res = *this; res.maps[n] = map; return res; }
     RCP_domain with_maps(const OffsetDomSet& map) const { auto res = *this; for (auto& m : res.maps) m = map; return res; }
@@ -108,8 +121,8 @@ public:
         num.exec(op, o.num);
     }
 
-    static void assume(const RCP_domain& reg, Types t1, const RCP_domain& r2, Types t2);
-    static void assume(RCP_domain& reg, Types t);
+    static void assume(RCP_domain& then_reg, Types then_type, const RCP_domain& where_reg, Types where_type);
+    static void assume(RCP_domain& r, Types t);
     static void assume(RCP_domain& left, Condition::Op op, const RCP_domain& right,
                        Types where_types);
 
@@ -117,6 +130,9 @@ public:
         assume(left, op, right, TypeSet{left.maps.size()}.map_struct().flip());
     }
 
+    static void satisfied(const RCP_domain& then_reg, Types then_type, const RCP_domain& where_reg, Types where_type);
+    static void satisfied(const RCP_domain& r, Types t);
+    static void satisfied(const RCP_domain& left, Condition::Op op, const RCP_domain& right, Types where_types);
 
     friend std::ostream& operator<<(std::ostream& os, const RCP_domain& a) {
         os << "[";

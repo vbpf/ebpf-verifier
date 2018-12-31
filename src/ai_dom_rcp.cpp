@@ -34,8 +34,9 @@ void RCP_domain::operator-=(const RCP_domain& rhs) {
     // assert !fd and !o.fd
 }
 
-void RCP_domain::assume(const RCP_domain& r1, Types t1, const RCP_domain& r2, Types t2) {
-
+void RCP_domain::assume(RCP_domain& then_reg, Types then_type, const RCP_domain& where_reg, Types where_type) {
+    if (where_reg.is_of_type(where_type))
+        assume(then_reg, then_type);
 }
 
 void RCP_domain::assume(RCP_domain& reg, Types t) {
