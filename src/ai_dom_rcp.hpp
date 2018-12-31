@@ -160,7 +160,6 @@ public:
     static bool satisfied(const RCP_domain& left, Condition::Op op, const RCP_domain& right, Types where_types);
 
     bool valid_types(Types t) const {
-        std::cout << t.size() << " != " << maps.size() + 5 << "\n";
         return t.size() == maps.size() + 5;
     }
 
