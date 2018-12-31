@@ -33,7 +33,7 @@ constexpr int STACK_SIZE=512;
 
 struct program_info {
     BpfProgType program_type;
-    std::vector<unsigned int> map_sizes;
+    std::vector<size_t> map_sizes;
 };
 
 struct raw_program {

@@ -166,13 +166,13 @@ public:
     friend std::ostream& operator<<(std::ostream& os, const RCP_domain& a) {
         os << "[";
         for (size_t t=0; t < a.maps.size(); t++) {
-            if (!a.maps[t].is_bot()) os << "M" << t << " -> " << a.maps[t] << "; ";
+            if (!a.maps[t].is_bot()) os << "MAP" << t << "->" << a.maps[t] << "; ";
         }
-        if (!a.ctx.is_bot()) os << "C -> " << a.ctx << "; ";
-        if (!a.packet.is_bot()) os << "P -> " << a.packet << "; ";
-        if (!a.stack.is_bot()) os << "S -> " << a.stack << "; ";
-        if (!a.num.is_bot()) os << "N -> " << a.num << "; ";
-        if (!a.fd.is_bot()) os << "F -> " << a.fd << "";
+        if (!a.ctx.is_bot()) os << "CTX->" << a.ctx << "; ";
+        if (!a.packet.is_bot()) os << "PKT->" << a.packet << "; ";
+        if (!a.stack.is_bot()) os << "STK->" << a.stack << "; ";
+        if (!a.num.is_bot()) os << "NUM->" << a.num << "; ";
+        if (!a.fd.is_bot()) os << "FD->" << a.fd << "";
         os << "]";
         return os;
     }

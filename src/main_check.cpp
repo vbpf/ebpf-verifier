@@ -8,6 +8,8 @@
 
 #include "crab_verifier.hpp"
 #include "asm.hpp"
+#include "spec_assertions.hpp"
+#include "ai.hpp"
 
 using std::string;
 using std::vector;
@@ -44,6 +46,11 @@ int main(int argc, char **argv)
     bool print_asm = false;
     bool dot = false;
     bool list_only = false;
+    bool nondet = false;
+    bool expand_locks = false;
+    bool explicit_assertions = false;
+    bool rcp = false;
+    bool crab = false;
     for (string arg : args) {
         if (arg.find("type=") == 0) {
             // type1 or type4
@@ -104,11 +111,25 @@ int main(int argc, char **argv)
             global_options.liveness = false;
         } else if (arg == "--info") {
             info_only = true;
+        } else if (arg == "nondet") {
+            nondet = true;
+        } else if (arg == "expand_locks") {
+            expand_locks = true;
+        } else if (arg == "explicit") {
+            explicit_assertions = true;
+        } else if (arg == "rcp") {
+            nondet = true;
+            explicit_assertions = true;
+            rcp = true;
+        } else if (arg == "dot") {
+            dot = true;
+        } else if (arg == "crab") {
+            crab = true;
         } else {
             posargs.push_back(arg);
         }
     }
-    if (posargs.size() >= 1 || path.empty())
+    if (path.empty())
         return usage(argv[0]);
 
     if (domain_descriptions().count(domain) == 0) {
@@ -131,28 +152,38 @@ int main(int argc, char **argv)
             std::cout << "\n";
         } else {
             auto prog_or_error = unmarshal(raw_prog);
-            std::visit(overloaded {
-                [domain, raw_prog, print_asm, dot](auto prog) {
-                    if (print_asm) {
-                        print(prog);
-                    }
-                    Cfg cfg = Cfg::make(prog);
-                    if (global_options.simplify) {
-                        cfg.simplify();
-                    }
-                    if (dot) {
-                        print_dot(cfg);
-                    }
-                    Cfg nondet_cfg = cfg.to_nondet(true);
-                    const auto [res, seconds] = abs_validate(nondet_cfg, domain, raw_prog.info);
+            if (std::holds_alternative<string>(prog_or_error)) {
+                std::cout << "trivial verification failure: " << std::get<string>(prog_or_error) << "\n";
+                return 1;
+            }
+            auto& prog = std::get<InstructionSeq>(prog_or_error);
+            if (print_asm) {
+                print(prog);
+            } else {
+                Cfg cfg = Cfg::make(prog);
+                if (nondet) {
+                    cfg = cfg.to_nondet(expand_locks);
+                }
+                if (explicit_assertions) {
+                    explicate_assertions(cfg, raw_prog.info.map_sizes);
+                }
+                if (global_options.simplify) {
+                    cfg.simplify();
+                }
+                if (rcp) {
+                    analyze_rcp(cfg, raw_prog.info.map_sizes.size());
+                }
+                if (dot)
+                    print_dot(cfg);
+                else 
+                    print(cfg, nondet);
+                if (crab) {
+                    const auto [res, seconds] = abs_validate(cfg, domain, raw_prog.info);
                     std::cout << res << "," << seconds << ",";
                     std::cout << raw_prog.filename << ":" << raw_prog.section << ",";
-                    print_stats(nondet_cfg);
-                },
-                [](string errmsg) { 
-                    std::cout << "trivial verification failure: " << errmsg << "\n";
+                    print_stats(cfg);
                 }
-            }, prog_or_error);
+            }
         }
     }
     return 0;

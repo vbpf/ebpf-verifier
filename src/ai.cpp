@@ -54,6 +54,7 @@ struct RegsDomain {
     friend std::ostream& operator<<(std::ostream& os, const RegsDomain& d) {
         os << "<<";
         for (size_t i = 0; i < 10; i++) {
+            os << "r"<< i << ": ";
             if (d.regs[i]) os << *d.regs[i];
             else os << "*";
             os << ", ";
@@ -263,7 +264,7 @@ void analyze_rcp(Cfg& cfg, size_t nmaps) {
 
     for (auto l : cfg.keys()) {
         auto dom = analyzer.pre.at(l);
-        //std::cout << dom << "\n";
+        std::cout << l << "\t:\t" << dom << "\n";
         for (Instruction& ins : cfg[l].insts) {
             if (std::holds_alternative<Assert>(ins)) {
                 Assert& a = std::get<Assert>(ins);
@@ -272,8 +273,11 @@ void analyze_rcp(Cfg& cfg, size_t nmaps) {
                 }
             }
             dom.visit(ins);
+            std::cout << "\n\t\t\t" << ins << "\n\n";
+            std::cout << "\t\t" << dom << "\n";
         }
-        //std::cout << analyzer.post.at(l) << "\n";
+        std::cout << "\t\t" << analyzer.post.at(l) << "\n";
+        std::cout << "\n";
     }
 }
 

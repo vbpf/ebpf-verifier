@@ -95,7 +95,7 @@ public:
         if (a.top) return os << "T";
         os << "{";
         for (auto e : a.elems)
-            os << e << ",";
+            os << (int64_t)e << ",";
         os << "}";
         return os;
     }
