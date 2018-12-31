@@ -289,7 +289,6 @@ class AssertionExtractor {
     const Types nonfd = mem | num;
     
     void checkAccess(vector<Assertion>& assumptions, Types t, Reg reg, int offset, Value width) {
-        using TC = TypeConstraint;
         using Op = Condition::Op;
         assumptions.push_back(
             Assertion{LinearConstraint{Op::GE, reg, offset, Imm{0}, Imm{0}, t}}
@@ -404,7 +403,6 @@ public:
     }
 
     vector<Assertion> operator()(Mem ins) { 
-        using RT = TypeConstraint::RT;
         vector<Assertion> res;
         Reg reg = ins.access.basereg;
         Imm width{static_cast<uint32_t>(ins.access.width)};
@@ -417,7 +415,7 @@ public:
             if (!is_priviledged && !ins.is_load && std::holds_alternative<Reg>(ins.value)) {
                 for (auto t : {maps , ctx , packet}) {
                     res.push_back(
-                        Assertion{ TypeConstraint{RT{std::get<Reg>(ins.value), num}, RT{reg, t}} }
+                        Assertion{ TypeConstraint{{std::get<Reg>(ins.value), num}, {reg, t}} }
                     );
                 }
             }
@@ -433,18 +431,15 @@ public:
     };
 
     void same_type(vector<Assertion>& res, Types ts, Reg r1, Reg r2) {
-        using RT = TypeConstraint::RT;
         for (size_t i=0; i < ts.size(); i++) {
             if (ts[i]) {
                 Types t = ts.reset().set(i);
-                res.push_back( Assertion{TypeConstraint{RT{r1, t}, RT{r2, t}} });
+                res.push_back( Assertion{TypeConstraint{{r1, t}, {r2, t}} });
             }
         }
     }
 
     vector<Assertion> operator()(Bin ins) {
-        using TC = TypeConstraint;
-        using RT = TypeConstraint::RT;
         switch (ins.op) {
             case Bin::Op::MOV:
                 return {};
@@ -452,8 +447,8 @@ public:
                 if (std::holds_alternative<Reg>(ins.v)) {
                     Reg reg = std::get<Reg>(ins.v);
                     return {
-                        Assertion{ TC{RT{reg, num}, RT{ins.dst, types.ptr()}} },
-                        Assertion{ TC{RT{ins.dst, num}, RT{reg, types.ptr()}} }
+                        Assertion{ TypeConstraint{{reg, num}, {ins.dst, types.ptr()}} },
+                        Assertion{ TypeConstraint{{ins.dst, num}, {reg, types.ptr()}} }
                     };
                 }
                 return {};

@@ -66,6 +66,8 @@ struct TypeConstraint {
     };
     RT then;
     std::optional<RT> given;
+    TypeConstraint(RT then) : then{then}  { }
+    TypeConstraint(RT then, RT given) : then{then}, given{given} { }
 };
 
 struct Assertion {
