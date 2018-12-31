@@ -48,6 +48,23 @@ void RCP_domain::assume(RCP_domain& left, Condition::Op op, const RCP_domain& ri
         [op](auto& a, const auto& b){ a.assume(op, b); });
 }
 
+bool RCP_domain::satisfied(const RCP_domain& then_reg, Types then_type, const RCP_domain& where_reg, Types where_type) {
+    return !where_reg.is_of_type(where_type) || where_reg.is_of_type(then_type);
+}
+
+bool RCP_domain::satisfied(const RCP_domain& r, Types t) {
+    return r.is_of_type(t);
+}
+
+bool RCP_domain::satisfied(const RCP_domain& left, Condition::Op op, const RCP_domain& right, Types where_types) {
+    if (!left.is_of_type(where_types)) return true;
+    // for simplicity, assume unpriviledged: cannot compare different types
+    // so only satisfied it's the same single type in both arguments
+    if (where_types.count() != 1 || ! right.is_of_type(where_types)) return false;
+    return left.pointwise_all_pairs(where_types, right,
+                [op](const auto& a, const auto& b) { return a.satisfied(op, b); });
+}
+
 RCP_domain RCP_domain::maps_from_fds() const {
     auto res = *this;
     for (size_t i=0; i < fd.fds.size(); i++)

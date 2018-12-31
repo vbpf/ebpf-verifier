@@ -36,7 +36,18 @@ struct FdSetDom {
     }
 
     void assume(Condition::Op op, const This& b) { 
+        if (op == Condition::Op::EQ) {
+            (*this) &= b;
+        } else if (op == Condition::Op::NE) {
+            (*this) &= FdSetDom{fds.flip()};
+        }
+    }
 
+    bool satisfied(Condition::Op op, const This& right) const {
+        // inexact
+        auto d = *this;
+        d.assume(op, right);
+        return d == *this;
     }
 };
 
@@ -46,8 +57,8 @@ class NumDomSet {
     bool top{};
     std::vector<uint64_t> elems;
 
-    static NumDomSet make_top() { NumDomSet res; res.havoc(); return res; }
-    static NumDomSet from_elems(std::vector<uint64_t>&& elems);
+    static This make_top() { This res; res.havoc(); return res; }
+    static This from_elems(std::vector<uint64_t>&& elems);
 public:
     template <typename ...Args>
     NumDomSet(Args... elems) : elems{static_cast<uint64_t>(elems)...} { }
@@ -58,23 +69,29 @@ public:
     void to_bot() { elems.clear(); top = false; }
     void havoc() { elems.clear(); top = true; }
 
-    void operator|=(const NumDomSet& o);
-    void operator&=(const NumDomSet& o);
+    void operator|=(const This& o);
+    void operator&=(const This& o);
 
     void exec(const Bin::Op op, const NumDomSet& o);
     
-    void operator+=(const NumDomSet& o) { exec(Bin::Op::ADD, o); }
-    void operator-=(const NumDomSet& o) { exec(Bin::Op::SUB, o); }
+    void operator+=(const This& o) { exec(Bin::Op::ADD, o); }
+    void operator-=(const This& o) { exec(Bin::Op::SUB, o); }
 
-    bool operator==(const NumDomSet& b) const {
+    bool operator==(const This& b) const {
         return top == b.top && elems == b.elems;
     }
 
-    void assume(Condition::Op op, const This& right);
+    void assume(Condition::Op op, const NumDomSet& right);
+    bool satisfied(Condition::Op op, const NumDomSet& right) const {
+        // inexact
+        auto d = *this;
+        d.assume(op, right);
+        return d == *this;
+    }
 
     friend class OffsetDomSet;
 
-    friend std::ostream& operator<<(std::ostream& os, const NumDomSet& a) {
+    friend std::ostream& operator<<(std::ostream& os, const This& a) {
         if (a.top) return os << "T";
         os << "{";
         for (auto e : a.elems)
@@ -95,11 +112,11 @@ public:
 
     OffsetDomSet(const Top& _) : top{true} { }
 
-    void operator|=(const OffsetDomSet& o);
-    void operator&=(const OffsetDomSet& o);
+    void operator|=(const This& o);
+    void operator&=(const This& o);
 
     void exec(bool add, const NumDomSet& o);
-    NumDomSet operator-(const OffsetDomSet& o) const;
+    NumDomSet operator-(const This& o) const;
 
     bool is_bot() const { return elems.empty(); }
     void to_bot() { elems.clear(); top = false; }
@@ -108,14 +125,20 @@ public:
     void operator+=(const NumDomSet& o) { exec(true, o); }
     void operator-=(const NumDomSet& o) { exec(false, o); }
 
-    friend OffsetDomSet operator+(const OffsetDomSet& a, const NumDomSet& b) { OffsetDomSet res = a; res += b; return res; }
-    friend OffsetDomSet operator+(const NumDomSet& a, const OffsetDomSet& b) { return b + a; }
+    friend This operator+(const This& a, const NumDomSet& b) { This res = a; res += b; return res; }
+    friend This operator+(const NumDomSet& a, const This& b) { return b + a; }
 
-    void assume(Condition::Op op, const This& right);
+    void assume(Condition::Op op, const OffsetDomSet& right);
+    bool satisfied(Condition::Op op, const OffsetDomSet& right) const {
+        // inexact
+        auto d = *this;
+        d.assume(op, right);
+        return d == *this;
+    }
 
-    bool operator==(const OffsetDomSet& b) const { return top == b.top && elems == b.elems; }
+    bool operator==(const This& b) const { return top == b.top && elems == b.elems; }
 
-    friend std::ostream& operator<<(std::ostream& os, const OffsetDomSet& a) {
+    friend std::ostream& operator<<(std::ostream& os, const This& a) {
         if (a.top) return os << "T";
         os << "{";
         for (auto e : a.elems)

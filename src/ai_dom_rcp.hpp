@@ -31,6 +31,39 @@ class RCP_domain {
         pointwise_if(all(), f);
     }
 
+    template <typename P>
+    bool pointwise_all(Types t, const P& p) const {
+        assert(t.size() == maps.size() + 5);
+        for (size_t i=0; i < maps.size(); i++) {
+            if (t[i] && !p(maps[i])) return false;
+        }
+        if (t[t.size() + T_CTX]) if (!p(ctx)) return false;
+        if (t[t.size() + T_STACK]) if (!p(stack)) return false;
+        if (t[t.size() + T_DATA]) if (!p(packet)) return false;
+        if (t[t.size() + T_NUM]) if (!p(num)) return false;
+        if (t[t.size() + T_MAP_STRUCT]) if (!p(fd)) return false;
+        return true;
+    }
+
+    template <typename P>
+    bool pointwise_all_pairs(Types t, const RCP_domain& o, const P& p) const {
+        assert(t.size() == maps.size() + 5);
+        for (size_t i=0; i < maps.size(); i++) {
+            if (t[i] && !p(maps[i], o.maps[i])) return false;
+        }
+        if (t[t.size() + T_CTX]) if (!p(ctx, o.ctx)) return false;
+        if (t[t.size() + T_STACK]) if (!p(stack, o.stack)) return false;
+        if (t[t.size() + T_DATA]) if (!p(packet, o.packet)) return false;
+        if (t[t.size() + T_NUM]) if (!p(num, o.num)) return false;
+        if (t[t.size() + T_MAP_STRUCT]) if (!p(fd, o.fd)) return false;
+        return true;
+    }
+
+    bool is_of_type(Types t) const {
+        // not-not-of-type
+        return pointwise_all(t.flip(), [](const auto& a) { return a.is_bot(); });
+    }
+
     template <typename F>
     void pointwise_if(Types t, const RCP_domain& o, const F& f) {
         assert(t.size() == maps.size() + 5);
@@ -53,23 +86,10 @@ class RCP_domain {
                 f(maps[i]);
         }
         if (t[t.size() + T_CTX]) f(ctx);
-        if (t[t.size() + T_STACK])f(stack);
+        if (t[t.size() + T_STACK]) f(stack);
         if (t[t.size() + T_DATA]) f(packet);
         if (t[t.size() + T_NUM]) f(num);
         if (t[t.size() + T_MAP_STRUCT]) f(fd);
-    }
-
-    bool is_of_type(Types t) const {
-        for (size_t i=0; i < maps.size(); i++) {
-            if (t[i])
-                if (!maps[i].is_bot()) return true;
-        }
-        if (t[t.size() + T_CTX]) if (!ctx.is_bot()) return true;
-        if (t[t.size() + T_STACK]) if (!stack.is_bot()) return true;
-        if (t[t.size() + T_DATA]) if (!packet.is_bot()) return true;
-        if (t[t.size() + T_NUM]) if (!num.is_bot()) return true;
-        if (t[t.size() + T_MAP_STRUCT]) if (!fd.is_bot()) return true;
-        return false;
     }
 
 public:
@@ -130,9 +150,9 @@ public:
         assume(left, op, right, TypeSet{left.maps.size()}.map_struct().flip());
     }
 
-    static void satisfied(const RCP_domain& then_reg, Types then_type, const RCP_domain& where_reg, Types where_type);
-    static void satisfied(const RCP_domain& r, Types t);
-    static void satisfied(const RCP_domain& left, Condition::Op op, const RCP_domain& right, Types where_types);
+    static bool satisfied(const RCP_domain& then_reg, Types then_type, const RCP_domain& where_reg, Types where_type);
+    static bool satisfied(const RCP_domain& r, Types t);
+    static bool satisfied(const RCP_domain& left, Condition::Op op, const RCP_domain& right, Types where_types);
 
     friend std::ostream& operator<<(std::ostream& os, const RCP_domain& a) {
         os << "[";

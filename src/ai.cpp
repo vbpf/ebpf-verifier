@@ -149,24 +149,23 @@ struct RegsDomain {
             }
         }
     }
-/*
+
     bool satisfied(Assert const& a) { 
         // treat as assume
         if (std::holds_alternative<LinearConstraint>(a.p->cst)) {
             auto lc = std::get<LinearConstraint>(a.p->cst);
             const auto& right = *eval(lc.v) - *eval(lc.width) - eval(lc.offset);
-            RCP_domain::satisfied(*reg(lc.reg), lc.op, right, lc.when_types);
-        } else {
-            auto tc = std::get<TypeConstraint>(a.p->cst);
-            if (tc.given) {
-                if (!reg(tc.given->reg)) return;
-                RCP_domain::satisfied(*reg(tc.then.reg), tc.then.types, *reg(tc.given->reg), tc.given->types);
-            } else {
-                RCP_domain::satisfied(*reg(tc.then.reg), tc.then.types);
-            }
+            return RCP_domain::satisfied(*reg(lc.reg), lc.op, right, lc.when_types);
         }
+        auto tc = std::get<TypeConstraint>(a.p->cst);
+        const auto& left = *reg(tc.then.reg);
+        if (tc.given) {
+            if (!reg(tc.given->reg)) return false;
+            return RCP_domain::satisfied(left, tc.then.types, *reg(tc.given->reg), tc.given->types);
+        }
+        return RCP_domain::satisfied(left, tc.then.types);
     }
-*/
+
     void operator()(Exit const& a) { }
 
     void operator()(Jmp const& a) { }
@@ -253,7 +252,10 @@ void analyze_rcp(Cfg& cfg, size_t nmaps) {
         auto dom = analyzer.pre.at(l);
         std::cout << dom << "\n";
         for (auto ins : cfg.at(l).insts) {
-            std::cout << to_string(ins) << "\n";
+            std::cout << to_string(ins);
+            if (std::holds_alternative<Assert>(ins) && dom.satisfied(std::get<Assert>(ins)))
+                std::cout << " V ";
+            std::cout << "\n";
             dom.visit(ins);
             //std::cout << ": " << dom << "\n";
         }
