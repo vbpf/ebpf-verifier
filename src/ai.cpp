@@ -145,17 +145,18 @@ struct RegsDomain {
         // treat as assume
         if (std::holds_alternative<LinearConstraint>(a.p->cst)) {
             auto lc = std::get<LinearConstraint>(a.p->cst);
-            assert(reg(lc.reg)->valid_types(lc.when_types));
             const RCP_domain right = *eval(lc.v) - *eval(lc.width) - eval(lc.offset);
             RCP_domain::assume(*reg(lc.reg), lc.op, right, lc.when_types);
         } else {
             auto tc = std::get<TypeConstraint>(a.p->cst);
+            if (!reg(tc.then.reg)) {
+                reg(tc.then.reg) = RCP_domain{nmaps};
+                return;
+            }
             if (tc.given) {
                 if (!reg(tc.given->reg)) return;
-                assert(reg(tc.then.reg)->valid_types(tc.then.types));
                 RCP_domain::assume(*reg(tc.then.reg), tc.then.types, *reg(tc.given->reg), tc.given->types);
             } else {
-                assert(reg(tc.then.reg)->valid_types(tc.then.types));
                 RCP_domain::assume(*reg(tc.then.reg), tc.then.types);
             }
         }
