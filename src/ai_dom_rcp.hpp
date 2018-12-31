@@ -114,7 +114,7 @@ public:
                        Types where_types);
 
     static void assume(RCP_domain& left, Condition::Op op, const RCP_domain& right) {
-        assume(left, op, right, left.all());
+        assume(left, op, right, TypeSet{left.maps.size()}.map_struct().flip());
     }
 
 

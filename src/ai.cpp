@@ -149,7 +149,26 @@ struct RegsDomain {
             }
         }
     }
-    
+
+/*
+    bool satisfied(Assert const& a) { 
+        // treat as assume
+        if (std::holds_alternative<LinearConstraint>(a.p->cst)) {
+            auto lc = std::get<LinearConstraint>(a.p->cst);
+            const auto& right = *eval(lc.v) - *eval(lc.width) - eval(lc.offset);
+            RCP_domain::satisfied(*reg(lc.reg), lc.op, right, lc.when_types);
+        } else {
+            auto tc = std::get<TypeConstraint>(a.p->cst);
+            if (tc.given) {
+                if (!reg(tc.given->reg)) return;
+                RCP_domain::satisfied(*reg(tc.then.reg), tc.then.types, *reg(tc.given->reg), tc.given->types);
+            } else {
+                RCP_domain::satisfied(*reg(tc.then.reg), tc.then.types);
+            }
+        }
+    }
+*/
+
     void operator()(Exit const& a) { }
 
     void operator()(Jmp const& a) { }
@@ -251,7 +270,7 @@ auto type_of(Reg r, Types t) {
 
 class AssertionExtractor {
     std::vector<size_t> map_sizes;
-    bool is_priviledged = true;
+    bool is_priviledged = false;
     const TypeSet types;
 
     const Types num = types.num();
@@ -260,13 +279,13 @@ class AssertionExtractor {
     const Types packet = types.packet();
     const Types maps = types.map_types();
     const Types mem = stack | packet | maps;
+    const Types nonfd = mem | num;
     
     void checkAccess(vector<Assertion>& assumptions, Types t, Reg reg, int offset, Value width) {
         using TC = TypeConstraint;
-        using LC = LinearConstraint;
         using Op = Condition::Op;
         assumptions.push_back(
-            Assertion{LC{Op::GE, reg, offset, Imm{0}, Imm{0}, t}}
+            Assertion{LinearConstraint{Op::GE, reg, offset, Imm{0}, Imm{0}, t}}
         );
         for (size_t i=0; i < t.size(); i++) {
             if (!(bool)t[i]) continue;
@@ -278,7 +297,7 @@ class AssertionExtractor {
             else if (s == stack) end = Imm{STACK_SIZE};
 
             assumptions.push_back(
-                Assertion{LC{Op::LE, reg, offset, width, end, s}}
+                Assertion{LinearConstraint{Op::LE, reg, offset, width, end, s}}
             );
         }
     }
@@ -293,7 +312,6 @@ public:
     }
 
     vector<Assertion> operator()(Call const& call) {
-        using LC = LinearConstraint;
         using Op = Condition::Op;
 
         bpf_func_proto proto = get_prototype(call.func);
@@ -315,28 +333,29 @@ public:
                     res.push_back(type_of(reg, num));
                 previous_types.reset();
                 break;
-            case Arg::CONST_SIZE:
-                // TODO: reg is constant (or maybe it's not important)
-                res.push_back(type_of(reg, num));
-                res.push_back(Assertion{LC{Op::GT, reg, 0, Imm{0}, Imm{0}, num}});
-                checkAccess(res, previous_types, Reg{(uint8_t)(i-1)}, 0, reg);
-                previous_types.reset();
-                break;
-            case Arg::CONST_SIZE_OR_ZERO:
-                // TODO: reg is constant (or maybe it's not important)
-                res.push_back(type_of(reg, num));
-                res.push_back(Assertion{LC{Op::GE, reg, 0, Imm{0}, Imm{0}, num}});
-                checkAccess(res, previous_types, Reg{(uint8_t)(i-1)}, 0, reg);
-                previous_types.reset();
-                break;
             case Arg::CONST_MAP_PTR:
                 res.push_back(type_of(reg, types.map_struct()));
                 previous_types.reset();
                 break;
-            case Arg::PTR_TO_CTX:
-                res.push_back(type_of(reg, previous_types = ctx));
-                // TODO: the kernel has some other conditions here - 
-                // maybe offset == 0
+            case Arg::CONST_SIZE:
+            case Arg::CONST_SIZE_OR_ZERO: {
+                // TODO: reg is constant (or maybe it's not important)
+                Op op = t == Arg::CONST_SIZE_OR_ZERO ? Op::GE : Op::GT;
+                res.push_back(type_of(reg, num));
+                res.push_back(Assertion{LinearConstraint{op, reg, 0, Imm{0}, Imm{0}, num}});
+                checkAccess(res, previous_types, Reg{(uint8_t)(i-1)}, 0, reg);
+                previous_types.reset();
+                break;
+            }
+            case Arg::PTR_TO_MEM_OR_NULL:
+                res.push_back(type_of(reg, mem | num));
+                res.push_back(Assertion{LinearConstraint{Op::EQ, reg, 0, Imm{0}, Imm{0}, num} });
+                // NUM should not be in previous_types
+                previous_types = mem;
+                break;
+            case Arg::PTR_TO_MEM:
+                /* LINUX: pointer to valid memory (stack, packet, map value) */
+                res.push_back(type_of(reg, previous_types = mem));
                 break;
             case Arg::PTR_TO_MAP_KEY:
                 // what other conditions?
@@ -345,19 +364,36 @@ public:
             case Arg::PTR_TO_MAP_VALUE:
                 res.push_back(type_of(reg, previous_types = maps));
                 break;
-            case Arg::PTR_TO_MEM:
-                /* LINUX: pointer to valid memory (stack, packet, map value) */
-                res.push_back(type_of(reg, previous_types = mem));
-                break;
-            case Arg::PTR_TO_MEM_OR_NULL:
-                res.push_back(type_of(reg, mem | num));
-                res.push_back(Assertion{LC{Op::EQ, reg, 0, Imm{0}, Imm{0}, num} });
-                // NUM should not be in previous_types
-                previous_types = mem;
-                break;
             case Arg::PTR_TO_UNINIT_MEM:
                 res.push_back(type_of(reg, previous_types = mem));
                 break;
+            case Arg::PTR_TO_CTX:
+                res.push_back(type_of(reg, previous_types = ctx));
+                // TODO: the kernel has some other conditions here - 
+                // maybe offset == 0
+                break;
+            }
+        }
+        return res;
+    }
+
+    vector<Assertion> operator()(Assume ins) { 
+        using RT = TypeConstraint::RT;
+        using Op = Condition::Op;
+        
+        vector<Assertion> res;
+        if (is_priviledged) {
+            res.push_back(type_of(ins.cond.left, nonfd));
+        } else {
+            if (std::holds_alternative<Imm>(ins.cond.right)) {
+                if (std::get<Imm>(ins.cond.right).v != 0) {
+                    res.push_back(type_of(ins.cond.left, num));
+                } else {
+                    res.push_back(type_of(ins.cond.left, nonfd));
+                }
+            } else {
+                res.push_back(type_of(ins.cond.left, nonfd));
+                same_type(res, nonfd, ins.cond.left, std::get<Reg>(ins.cond.right));
             }
         }
         return res;
@@ -393,6 +429,16 @@ public:
         return res;
     };
 
+    void same_type(vector<Assertion>& res, Types ts, Reg r1, Reg r2) {
+        using RT = TypeConstraint::RT;
+        for (size_t i=0; i < ts.size(); i++) {
+            if (ts[i]) {
+                Types t = ts.reset().set(i);
+                res.push_back( Assertion{TypeConstraint{RT{r1, t}, RT{r2, t}} });
+            }
+        }
+    }
+
     vector<Assertion> operator()(Bin ins) {
         using TC = TypeConstraint;
         using RT = TypeConstraint::RT;
@@ -412,9 +458,7 @@ public:
                 if (std::holds_alternative<Reg>(ins.v)) {
                     vector<Assertion> res;
                     res.push_back(type_of(ins.dst, types.map_struct().flip()));
-                    for (auto t : {maps, ctx, packet}) {
-                        res.push_back( Assertion{ TC{RT{std::get<Reg>(ins.v), t}, RT{ins.dst, t}} });
-                    }
+                    same_type(res, maps | ctx | packet, std::get<Reg>(ins.v), ins.dst);
                     res.push_back(type_of(std::get<Reg>(ins.v), types.map_struct().flip()));
                     return res;
                 }
