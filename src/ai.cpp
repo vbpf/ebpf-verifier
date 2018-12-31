@@ -166,10 +166,12 @@ struct RegsDomain {
         // treat as assume
         if (std::holds_alternative<LinearConstraint>(a.p->cst)) {
             auto lc = std::get<LinearConstraint>(a.p->cst);
+            if (!reg(lc.reg)) return false;
             const RCP_domain right = *eval(lc.v) - *eval(lc.width) - eval(lc.offset);
             return RCP_domain::satisfied(*reg(lc.reg), lc.op, right, lc.when_types);
         }
         auto tc = std::get<TypeConstraint>(a.p->cst);
+        if (!reg(tc.then.reg)) return false;
         const RCP_domain left = *reg(tc.then.reg);
         if (tc.given) {
             if (!reg(tc.given->reg)) return false;
