@@ -75,6 +75,7 @@ struct RegsDomain {
             else os << "*";
             os << ", ";
         }
+        os << "r13: " << *d.regs[DATA_END_REG.v];
         os << ">>";
         return os;
     }
@@ -188,15 +189,10 @@ struct RegsDomain {
     bool satisfied(Assert const& a) { 
         if (std::holds_alternative<LinearConstraint>(a.p->cst)) {
             auto lc = std::get<LinearConstraint>(a.p->cst);
-            assert(reg(lc.reg));
-            assert(eval(lc.width));
-            assert(eval(lc.v));
-            assert((lc.when_types & types.num()).none()
-                || (lc.when_types & types.ptr()).none());
             const RCP_domain right = reg(lc.reg)->zero() + (*eval(lc.v) - *eval(lc.width) - eval(lc.offset));
-            //if (right.is_bot()) return false;
-            if (reg(lc.reg)->is_bot()) return false;
-            return RCP_domain::satisfied(*reg(lc.reg), lc.op, right, lc.when_types);;
+            assert(!right.is_bot()); // should be ignored really
+            assert(!reg(lc.reg)->is_bot()); // should be ignored really
+            return RCP_domain::satisfied(*reg(lc.reg), lc.op, right, lc.when_types);
         }
         auto tc = std::get<TypeConstraint>(a.p->cst);
         if (!reg(tc.then.reg)) return false;
@@ -227,7 +223,9 @@ struct RegsDomain {
             regs[i] = {};
     }
 
-    void operator()(Packet const& a) { }
+    void operator()(Packet const& a) { 
+        regs[0] = BOT.with_num(TOP);
+    }
 
     void operator()(Mem const& a) {
         if (!a.is_load) return;
