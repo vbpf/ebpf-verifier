@@ -160,8 +160,8 @@ struct InstructionPrinterVisitor {
     }
     
     void operator()(Assert const& a) {
-        os_ << "assert " << *a.p;
-        if (a.satisfied) os_ << " V";
+        if (!a.satisfied) os_ << "assert " << *a.p;
+        //if (a.satisfied) os_ << " V";
     }
 };
 

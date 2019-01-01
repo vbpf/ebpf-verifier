@@ -272,7 +272,7 @@ void analyze_rcp(Cfg& cfg, size_t nmaps) {
 
     for (auto l : cfg.keys()) {
         auto dom = analyzer.pre.at(l);
-        std::cout << l << "\t:\t" << dom << "\n";
+        //std::cout << l << "\t:\t" << dom << "\n";
         for (Instruction& ins : cfg[l].insts) {
             if (std::holds_alternative<Assert>(ins)) {
                 Assert& a = std::get<Assert>(ins);
@@ -281,11 +281,11 @@ void analyze_rcp(Cfg& cfg, size_t nmaps) {
                 }
             }
             dom.visit(ins);
-            std::cout << "\n\t\t\t" << ins << "\n\n";
-            std::cout << "\t\t" << dom << "\n";
+            //std::cout << "\n\t\t\t" << ins << "\n\n";
+            //std::cout << "\t\t" << dom << "\n";
         }
-        std::cout << "\t\t" << analyzer.post.at(l) << "\n";
-        std::cout << "\n";
+        //std::cout << "\t\t" << analyzer.post.at(l) << "\n";
+        //std::cout << "\n";
     }
 }
 
