@@ -69,7 +69,8 @@ bool RCP_domain::satisfied(const RCP_domain& left, Condition::Op op, const RCP_d
     if (!left.is_of_type(where_types)) return true;
     // for simplicity, assume unpriviledged: cannot compare different types
     // so only satisfied it's the same single type in both arguments
-    if (where_types.count() != 1 || ! right.is_of_type(where_types)) return false;
+    // if (where_types.count() != 1) { std::cout << "More than 1: " << where_types << "\n"; return false; }
+    if (!right.is_of_type(where_types)) return false;
     return left.pointwise_all_pairs(where_types, right,
                 [op](const auto& a, const auto& b) { return a.satisfied(op, b); });
 }

@@ -151,7 +151,7 @@ struct RegsDomain {
             assert(eval(lc.v));
             assert((lc.when_types & TypeSet{nmaps}.num()).none()
                 || (lc.when_types & TypeSet{nmaps}.ptr()).none());
-            const RCP_domain right = reg(lc.reg)->zero() + *eval(lc.v) - *eval(lc.width) - eval(lc.offset);
+            const RCP_domain right = reg(lc.reg)->zero() + (*eval(lc.v) - *eval(lc.width) - eval(lc.offset));
             RCP_domain::assume(*reg(lc.reg), lc.op, right, lc.when_types);
         } else {
             auto tc = std::get<TypeConstraint>(a.p->cst);
@@ -176,8 +176,8 @@ struct RegsDomain {
             assert(eval(lc.v));
             assert((lc.when_types & TypeSet{nmaps}.num()).none()
                 || (lc.when_types & TypeSet{nmaps}.ptr()).none());
-            const RCP_domain right = reg(lc.reg)->zero() + *eval(lc.v) - *eval(lc.width) - eval(lc.offset);
-            return RCP_domain::satisfied(*reg(lc.reg), lc.op, right, lc.when_types);
+            const RCP_domain right = reg(lc.reg)->zero() + (*eval(lc.v) - *eval(lc.width) - eval(lc.offset));
+            return RCP_domain::satisfied(*reg(lc.reg), lc.op, right, lc.when_types);;
         }
         auto tc = std::get<TypeConstraint>(a.p->cst);
         if (!reg(tc.then.reg)) return false;

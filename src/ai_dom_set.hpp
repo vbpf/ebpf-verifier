@@ -152,13 +152,13 @@ public:
 };
 
 template <typename T>
-static T operator&(const T& a, const T& b) { T res = a; res &= b; return res; }
+inline T operator&(const T& a, const T& b) { T res = a; res &= b; return res; }
 
 template <typename T>
-static T operator|(const T& a, const T& b) { T res = a; res |= b; return res; }
+inline T operator|(const T& a, const T& b) { T res = a; res |= b; return res; }
 
 template <typename T>
-static T operator+(const T& a, const T& b) { T res = a; res += b; return res; }
+inline T operator+(const T& a, const T& b) { T res = a; res += b; return res; }
 
 template <typename T1, typename T2>
-static T1 operator-(const T1& a, const T2& b) { T1 res = a; res -= b; return res; }
+inline T1 operator-(const T1& a, const T2& b) { T1 res = a; res -= b; return res; }
