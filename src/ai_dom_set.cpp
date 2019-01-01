@@ -10,14 +10,16 @@
 
 using Set = std::vector<uint64_t>;
 
-static Set set_union(const Set& a, const Set& b) {
-    Set res;
+template <typename T>
+static std::vector<T> set_union(const std::vector<T>& a, const std::vector<T>& b) {
+    std::vector<T> res;
     std::set_union(a.begin(), a.end(), b.begin(), b.end(), std::back_inserter(res));
     return res;
 }
 
-static Set set_intersection(const Set& a, const Set& b) {
-    Set res;
+template <typename T>
+static std::vector<T> set_intersection(const std::vector<T>& a, const std::vector<T>& b) {
+    std::vector<T> res;
     std::set_intersection(a.begin(), a.end(), b.begin(), b.end(), std::back_inserter(res));
     return res;
 }
@@ -102,10 +104,10 @@ void OffsetDomSet::exec(bool add, const NumDomSet& o) {
         havoc();
         return;
     }
-    std::set<uint64_t> res;
+    std::set<int64_t> res;
     for (auto k : elems) {
         for (auto n : o.elems) {
-            uint64_t x = add ? k + n : k - n;
+            int64_t x = add ? k + n : k - n;
             if (x > (1 << 30)) {
                 havoc();
                 return;
@@ -115,7 +117,7 @@ void OffsetDomSet::exec(bool add, const NumDomSet& o) {
     }
 
     elems.clear();
-    for (uint64_t e : res)
+    for (int64_t e : res)
         elems.push_back(e);
 }
 
@@ -123,7 +125,7 @@ NumDomSet OffsetDomSet::operator-(const OffsetDomSet& o) const {
     if (top || o.top) {
         return NumDomSet::make_top();
     }
-    std::set<uint64_t> res;
+    std::set<int64_t> res;
     for (auto k : elems) {
         for (auto n : o.elems) {
             res.insert(k - n);
@@ -134,7 +136,7 @@ NumDomSet OffsetDomSet::operator-(const OffsetDomSet& o) const {
     }
     
     NumDomSet out;
-    for (uint64_t e : res)
+    for (int64_t e : res)
         out.elems.push_back(e);
     return out;
 }
@@ -222,30 +224,61 @@ void NumDomSet::assume(Condition::Op op, const NumDomSet& right) {
     }
 }
 
-void OffsetDomSet::assume(Condition::Op op, const OffsetDomSet& diff) {
+void OffsetDomSet::assume(Condition::Op op, const OffsetDomSet& right) {
     using Op = Condition::Op;
     switch (op) {
         case Op::EQ :
-            (*this) &= diff;
+            (*this) &= right;
             return;
         case Op::NE : {
-            std::vector<uint64_t> old;
+            std::vector<int64_t> old;
             std::swap(old, elems);
             std::set_difference(
                 old.begin(), old.end(),
-                diff.elems.begin(), diff.elems.end(),
+                right.elems.begin(), right.elems.end(),
                 std::back_inserter(elems));
             return;
         }
-        case Op::GT : break;
-        case Op::GE : break;
-        case Op::SET: break;
-        case Op::NSET:break;
-        case Op::SGT: break;
-        case Op::SGE: break;
-        case Op::LT : break;
-        case Op::LE : break;
-        case Op::SLT: break;
-        case Op::SLE: break;
+        case Op::SET: return;
+        case Op::NSET:return;
+        default: break;
+    }
+    std::vector<int64_t> old;
+    std::swap(old, elems);
+    if (right.elems.empty()) return;
+    switch (op) {
+        case Op::GT : {
+            auto m = *std::min_element(right.elems.begin(), right.elems.end());
+            for (auto e : old)
+                if (e > m) elems.push_back(e);
+            break;
+        }
+        case Op::GE : {
+            auto m = *std::min_element(right.elems.begin(), right.elems.end());
+            for (auto e : old)
+                if (e >= m) elems.push_back(e);
+            break;
+        }
+        case Op::LT : {
+            auto m = *std::max_element(right.elems.begin(), right.elems.end());
+            for (auto e : old)
+                if (e < m) elems.push_back(e);
+            break;
+        }
+        case Op::LE : {
+            auto m = *std::max_element(right.elems.begin(), right.elems.end());
+            for (auto e : old)
+                if (e <= m) elems.push_back(e);
+            break;
+        }
+        case Op::EQ :  assert(false); break;
+        case Op::NE :  assert(false); break;
+        case Op::SET:  assert(false); break;
+        case Op::NSET: assert(false); break;
+
+        case Op::SGT: assert(false); break;
+        case Op::SGE: assert(false); break;
+        case Op::SLT: assert(false); break;
+        case Op::SLE: assert(false); break;
     }
 }

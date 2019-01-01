@@ -25,6 +25,7 @@ struct FdSetDom {
     bool is_bot() const { return fds.none(); }
     void havoc() { fds.set(); };
     void to_bot() { fds.reset(); };
+    bool is_top() const { return fds.all(); }
 
     void operator|=(const FdSetDom& o) { fds |= o.fds; }
     void operator&=(const FdSetDom& o) { fds &= o.fds; }
@@ -63,11 +64,12 @@ public:
     template <typename ...Args>
     NumDomSet(Args... elems) : elems{static_cast<uint64_t>(elems)...} { }
 
-    NumDomSet(const Top& _) : top{true} { }
+    NumDomSet(const Top& _) { havoc(); }
 
-    bool is_bot() const { return elems.empty(); }
+    bool is_bot() const { return !top && elems.empty(); }
     void to_bot() { elems.clear(); top = false; }
     void havoc() { elems.clear(); top = true; }
+    bool is_top() const { return top; }
 
     void operator|=(const This& o);
     void operator&=(const This& o);
@@ -105,12 +107,12 @@ class OffsetDomSet {
     using This = OffsetDomSet;
     // Naive set implementation
     bool top{};
-    std::vector<uint64_t> elems;
+    std::vector<int64_t> elems;
 public:
     template <typename ...Args>
-    OffsetDomSet(Args... elems) : elems{static_cast<uint64_t>(elems)...} { }
+    OffsetDomSet(Args... elems) : elems{static_cast<int64_t>(elems)...} { }
 
-    OffsetDomSet(const Top& _) : top{true} { }
+    OffsetDomSet(const Top& _) { havoc(); }
 
     void operator|=(const This& o);
     void operator&=(const This& o);
@@ -118,9 +120,10 @@ public:
     void exec(bool add, const NumDomSet& o);
     NumDomSet operator-(const This& o) const;
 
-    bool is_bot() const { return elems.empty(); }
+    bool is_bot() const { return !top && elems.empty(); }
     void to_bot() { elems.clear(); top = false; }
     void havoc() { elems.clear(); top = true; }
+    bool is_top() const { return top; }
 
     void operator+=(const NumDomSet& o) { exec(true, o); }
     void operator-=(const NumDomSet& o) { exec(false, o); }

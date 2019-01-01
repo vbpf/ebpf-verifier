@@ -17,7 +17,7 @@ class RCP_domain {
     NumDom num;
     FdSetDom fd;
 
-    Types all() {
+    Types all() const {
         return TypeSet{maps.size()}.all();
     }
 
@@ -134,6 +134,10 @@ public:
         pointwise([](auto& a) { a.to_bot(); });
     }
 
+    bool is_top() const {
+        return pointwise_all(all(), [](const auto& f) { return f.is_top(); });
+    }
+
     void operator+=(const RCP_domain& rhs);
 
     RCP_domain operator+(int n) const {
@@ -163,7 +167,14 @@ public:
         return t.size() == maps.size() + 5;
     }
 
+    RCP_domain zero() const {
+        RCP_domain res = *this;
+        res.pointwise([](auto& f){ if (!f.is_bot()) f = {0}; });
+        return res;
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const RCP_domain& a) {
+        if (a.is_top()) return os << "T";
         os << "[";
         for (size_t t=0; t < a.maps.size(); t++) {
             if (!a.maps[t].is_bot()) os << "MAP" << t << "->" << a.maps[t] << "; ";

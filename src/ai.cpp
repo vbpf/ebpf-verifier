@@ -146,7 +146,12 @@ struct RegsDomain {
         // treat as assume
         if (std::holds_alternative<LinearConstraint>(a.p->cst)) {
             auto lc = std::get<LinearConstraint>(a.p->cst);
-            const RCP_domain right = *eval(lc.v) - *eval(lc.width) - eval(lc.offset);
+            assert(reg(lc.reg));
+            assert(eval(lc.width));
+            assert(eval(lc.v));
+            assert((lc.when_types & TypeSet{nmaps}.num()).none()
+                || (lc.when_types & TypeSet{nmaps}.ptr()).none());
+            const RCP_domain right = reg(lc.reg)->zero() + *eval(lc.v) - *eval(lc.width) - eval(lc.offset);
             RCP_domain::assume(*reg(lc.reg), lc.op, right, lc.when_types);
         } else {
             auto tc = std::get<TypeConstraint>(a.p->cst);
@@ -164,11 +169,14 @@ struct RegsDomain {
     }
 
     bool satisfied(Assert const& a) { 
-        // treat as assume
         if (std::holds_alternative<LinearConstraint>(a.p->cst)) {
             auto lc = std::get<LinearConstraint>(a.p->cst);
-            if (!reg(lc.reg)) return false;
-            const RCP_domain right = *eval(lc.v) - *eval(lc.width) - eval(lc.offset);
+            assert(reg(lc.reg));
+            assert(eval(lc.width));
+            assert(eval(lc.v));
+            assert((lc.when_types & TypeSet{nmaps}.num()).none()
+                || (lc.when_types & TypeSet{nmaps}.ptr()).none());
+            const RCP_domain right = reg(lc.reg)->zero() + *eval(lc.v) - *eval(lc.width) - eval(lc.offset);
             return RCP_domain::satisfied(*reg(lc.reg), lc.op, right, lc.when_types);
         }
         auto tc = std::get<TypeConstraint>(a.p->cst);
