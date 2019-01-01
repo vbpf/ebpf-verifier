@@ -134,6 +134,9 @@ public:
         pointwise([](auto& a) { a.to_bot(); });
     }
 
+    bool is_bot() const {
+        return pointwise_all(all(), [](const auto& f) { return f.is_bot(); });
+    }
     bool is_top() const {
         return pointwise_all(all(), [](const auto& f) { return f.is_top(); });
     }

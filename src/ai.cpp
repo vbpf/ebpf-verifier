@@ -51,6 +51,14 @@ struct RegsDomain {
             regs[i] = {};
     }
 
+    bool is_bot() {
+        for (size_t i=0; i < 10; i++) {
+            if (regs[i] && regs[i]->is_bot())
+                return true;
+        }
+        return false;
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const RegsDomain& d) {
         os << "<<";
         for (size_t i = 0; i < 10; i++) {
@@ -177,11 +185,14 @@ struct RegsDomain {
             assert((lc.when_types & TypeSet{nmaps}.num()).none()
                 || (lc.when_types & TypeSet{nmaps}.ptr()).none());
             const RCP_domain right = reg(lc.reg)->zero() + (*eval(lc.v) - *eval(lc.width) - eval(lc.offset));
+            //if (right.is_bot()) return false;
+            if (reg(lc.reg)->is_bot()) return false;
             return RCP_domain::satisfied(*reg(lc.reg), lc.op, right, lc.when_types);;
         }
         auto tc = std::get<TypeConstraint>(a.p->cst);
         if (!reg(tc.then.reg)) return false;
         const RCP_domain left = *reg(tc.then.reg);
+        //if (left.is_bot()) return false;
         if (tc.given) {
             if (!reg(tc.given->reg)) return false;
             return RCP_domain::satisfied(left, tc.then.types, *reg(tc.given->reg), tc.given->types);
@@ -276,7 +287,7 @@ void analyze_rcp(Cfg& cfg, size_t nmaps) {
         for (Instruction& ins : cfg[l].insts) {
             if (std::holds_alternative<Assert>(ins)) {
                 Assert& a = std::get<Assert>(ins);
-                if (!a.satisfied) {
+                if (!a.satisfied && !dom.is_bot()) {
                     a.satisfied = dom.satisfied(a);
                 }
             }
