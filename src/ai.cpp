@@ -244,7 +244,7 @@ struct Analyzer {
         pre.at(cfg.keys().front()).init();
     }
 
-    bool recompute(Label l, const BasicBlock& bb) {
+    bool recompute(Label l, const BasicBlock& bb) {        
         RegsDomain dom = pre.at(l);
         for (const Instruction& ins : bb.insts) {
             dom.visit(ins);
@@ -256,8 +256,9 @@ struct Analyzer {
 
     void join(const std::vector<Label>& prevs, Label into) {
         RegsDomain new_pre = pre.at(into);
-        for (Label l : prevs)
+        for (Label l : prevs) {
             new_pre |= post.at(l);
+        }
         pre.insert_or_assign(into, new_pre);
     }
 };

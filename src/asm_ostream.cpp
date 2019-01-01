@@ -331,6 +331,7 @@ void print_dot(const Cfg& cfg) {
 
         const auto& bb = cfg.at(label);
         for (auto ins : bb.insts) {
+            if (std::holds_alternative<Assert>(ins) && std::get<Assert>(ins).satisfied) continue;
             cout << ins << "\\l";
         }
 

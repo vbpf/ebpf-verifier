@@ -152,9 +152,9 @@ static Label pop(set<Label>& s) {
 
 void Cfg::simplify() {
     set<Label> worklist(keys().begin(), keys().end());
-    set<Label> to_remove;
     while (!worklist.empty()) {
-        BasicBlock& bb = graph[pop(worklist)];
+        Label label = pop(worklist);
+        BasicBlock& bb = graph[label];
         while (bb.nextlist.size() == 1) {
             Label next_label = bb.nextlist.back();
             BasicBlock& next_bb = graph[next_label];
@@ -166,13 +166,20 @@ void Cfg::simplify() {
                 bb.insts.push_back(inst);
             }
             worklist.erase(next_label);
-            to_remove.insert(next_label);
+            graph.erase(next_label);
+
+            // reconnect
+            for (auto l : bb.nextlist) {
+                for (auto& p : graph[l].prevlist)
+                    if (p == next_label)
+                        p = label;
+            }
         }
     }
     ordered_labels.erase(
         std::remove_if(
             ordered_labels.begin(), ordered_labels.end(),
-            [&](auto& x) { return to_remove.count(x); }
+            [&](auto& x) { return !graph.count(x); }
         ),
         ordered_labels.end()
     );
