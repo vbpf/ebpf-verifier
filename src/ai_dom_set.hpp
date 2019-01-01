@@ -125,6 +125,7 @@ public:
     void havoc() { elems.clear(); top = true; }
     bool is_top() const { return top; }
     bool is_single() const { return !top && elems.size() == 1; }
+    bool contains(int64_t e) const { return top || std::count(elems.begin(), elems.end(), e) > 0; }
 
     void operator+=(const NumDomSet& o) { exec(true, o); }
     void operator-=(const NumDomSet& o) { exec(false, o); }

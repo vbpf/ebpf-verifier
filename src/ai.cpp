@@ -52,8 +52,11 @@ struct RegsDomain {
         for (auto& r : regs) r = {};
         regs[1] = BOT.with_ctx(0);
         regs[10] = BOT.with_stack(STACK_SIZE);
-        regs[13] = BOT.with_packet(TOP);
-        regs[14] = BOT.with_packet(TOP);
+
+        // initialized to num to be consistent with other bound checks that assume num
+        // (therefore region->zero is added before checking assertion)
+        regs[13] = BOT.with_num(TOP);
+        regs[14] = BOT.with_num(TOP);
     }
 
     bool is_bot() {
@@ -235,12 +238,13 @@ struct RegsDomain {
         if (!as_ctx.is_bot()) {
             if (as_ctx.is_single()) {
                 auto d = info.descriptor;
-                if (d.data > -1 && !(as_ctx & OffsetDomSet{d.data}).is_bot())
-                    r |= BOT.with_packet(0);
-                else if (d.end > -1 && !(as_ctx & OffsetDomSet{d.end}).is_bot())
-                    r |= *reg(DATA_END_REG);
-                else if (d.meta > -1 && !(as_ctx & OffsetDomSet{d.meta}).is_bot())
-                    r |= *reg(META_REG);
+                auto data_start = BOT.with_packet(0);
+                if (d.data > -1 && as_ctx.contains(d.data))
+                    r |= data_start;
+                else if (d.end > -1 && as_ctx.contains(d.end))
+                    r |= data_start + *reg(DATA_END_REG);
+                else if (d.meta > -1 && as_ctx.contains(d.meta))
+                    r |= data_start + *reg(META_REG);
                 else 
                     r |= BOT.with_num(TOP);
             } else {
@@ -332,7 +336,7 @@ void analyze_rcp(Cfg& cfg, program_info info) {
 }
 
 class AssertionExtractor {
-    std::vector<size_t> map_sizes;
+    program_info info;
     bool is_priviledged = false;
     const TypeSet types;
 
@@ -347,7 +351,7 @@ class AssertionExtractor {
     const Types nonfd = ptr | num;
     
     auto type_of(Reg r, const Types t) {
-        assert(t.size() == map_sizes.size() + 5);
+        assert(t.size() == info.map_sizes.size() + 5);
         return Assertion{TypeConstraint{{r, t}}};
     };
 
@@ -360,18 +364,19 @@ class AssertionExtractor {
             if (!t[i]) continue;
             Types s = types.single(i);
             if (s == num) continue;
-            Value end = Imm{256}; // context size
-            if ((s & maps).any()) end = Imm{map_sizes.at(i)};
+            Value end;
+            if ((s & maps).any()) end = Imm{info.map_sizes.at(i)};
             else if (s == packet) end = DATA_END_REG;
             else if (s == stack) end = Imm{STACK_SIZE};
-
+            else if (s == ctx) end = Imm{static_cast<uint64_t>(info.descriptor.size)};
+            else assert(false);
             assumptions.push_back(
                 Assertion{LinearConstraint{Op::LE, reg, offset, width, end, s}}
             );
         }
     }
 public:
-    AssertionExtractor(std::vector<size_t> map_sizes) : map_sizes{map_sizes}, types{map_sizes.size()} { }
+    AssertionExtractor(program_info info) : info{info}, types{info.map_sizes.size()} { }
 
     template <typename T>
     vector<Assertion> operator()(T ins) { return {}; }
@@ -530,13 +535,13 @@ public:
     }
 };
 
-void explicate_assertions(Cfg& cfg, std::vector<size_t> maps_sizes) {
+void explicate_assertions(Cfg& cfg, program_info info) {
     for (auto const& this_label : cfg.keys()) {
         vector<Instruction>& old_insts = cfg[this_label].insts;
         vector<Instruction> insts;
 
         for (auto ins : old_insts) {
-            for (auto a : std::visit(AssertionExtractor{maps_sizes}, ins))
+            for (auto a : std::visit(AssertionExtractor{info}, ins))
                 insts.emplace_back(std::make_unique<Assertion>(a));
             insts.push_back(ins);
         }

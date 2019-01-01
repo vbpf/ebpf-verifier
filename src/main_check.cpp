@@ -165,7 +165,7 @@ int main(int argc, char **argv)
                     cfg = cfg.to_nondet(expand_locks);
                 }
                 if (explicit_assertions) {
-                    explicate_assertions(cfg, raw_prog.info.map_sizes);
+                    explicate_assertions(cfg, raw_prog.info);
                 }
                 if (global_options.simplify) {
                     cfg.simplify();
@@ -183,6 +183,13 @@ int main(int argc, char **argv)
                     std::cout << raw_prog.filename << ":" << raw_prog.section << ",";
                     print_stats(cfg);
                 }
+
+                std::cout << "section:" << raw_prog.section << "\n";
+                std::cout << "type: " << (int)raw_prog.info.program_type << "\n";
+                std::cout << "data: " << raw_prog.info.descriptor.data << "\n";
+                std::cout << "end: " << raw_prog.info.descriptor.end << "\n";
+                std::cout << "meta: " << raw_prog.info.descriptor.meta << "\n";
+                std::cout << "size: " << raw_prog.info.descriptor.size << "\n";
             }
         }
     }

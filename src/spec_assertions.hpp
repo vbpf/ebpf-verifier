@@ -1,7 +1,9 @@
 #pragma once
 
-#include "asm_cfg.hpp"
 #include <boost/dynamic_bitset.hpp>
+
+#include "asm_cfg.hpp"
+#include "spec_type_descriptors.hpp"
 
 enum {
     T_UNINIT = -6,
@@ -47,7 +49,7 @@ struct TypeSet {
 };
 
  
-void explicate_assertions(Cfg& cfg, std::vector<size_t> maps_sizes);
+void explicate_assertions(Cfg& cfg, program_info info);
 
 struct LinearConstraint {
     Condition::Op op;

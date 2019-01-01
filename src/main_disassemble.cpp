@@ -41,15 +41,15 @@ int main(int argc, char **argv)
                 if (flags.count("nondet")) {
                     cfg = cfg.to_nondet(flags.count("expand_locks"));
                 }
-                if (flags.count("explicit")) {
-                    explicate_assertions(cfg, {32}); // FIX: this is an example
-                }
+                // if (flags.count("explicit")) {
+                //     explicate_assertions(cfg, program_info{32}); // FIX: this is an example
+                // }
                 if (flags.count("simplify")) {
                     cfg.simplify();
                 }
-                if (flags.count("rcp")) {
-                   // analyze_rcp(cfg, 1); // FIX: same
-                }
+                // if (flags.count("rcp")) {
+                //    // analyze_rcp(cfg, 1); // FIX: same
+                // }
                 if (flags.count("dot"))
                     print_dot(cfg);
                 else 
