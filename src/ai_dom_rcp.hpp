@@ -94,11 +94,11 @@ class RCP_domain {
     }
 
 public:
-    RCP_domain with_map(size_t n, const OffsetDomSet& map) const { auto res = *this; res.maps[n] = map; return res; }
-    RCP_domain with_maps(const OffsetDomSet& map) const { auto res = *this; for (auto& m : res.maps) m = map; return res; }
-    RCP_domain with_ctx(const OffsetDomSet& ctx) const { auto res = *this; res.ctx = ctx; return res; }
-    RCP_domain with_stack(const OffsetDomSet& stack) const { auto res = *this; res.stack = stack; return res; }
-    RCP_domain with_packet(const OffsetDomSet& packet) const { auto res = *this; res.packet = packet; return res; }
+    RCP_domain with_map(size_t n, const OffsetDom& map) const { auto res = *this; res.maps[n] = map; return res; }
+    RCP_domain with_maps(const OffsetDom& map) const { auto res = *this; for (auto& m : res.maps) m = map; return res; }
+    RCP_domain with_ctx(const OffsetDom& ctx) const { auto res = *this; res.ctx = ctx; return res; }
+    RCP_domain with_stack(const OffsetDom& stack) const { auto res = *this; res.stack = stack; return res; }
+    RCP_domain with_packet(const OffsetDom& packet) const { auto res = *this; res.packet = packet; return res; }
     RCP_domain with_num(const NumDom& num) const { auto res = *this; res.num = num; return res; }
     RCP_domain with_fd(int fd) const { auto res = *this; res.fd.assign(fd); return res; }
     RCP_domain maps_from_fds() const;
@@ -107,6 +107,10 @@ public:
         assert(mapfd >= 0);
         assert(mapfd < fd.fds.size());
         fd.assign(mapfd);
+    }
+
+    OffsetDom get_ctx() {
+        return ctx;
     }
 
     bool operator==(const RCP_domain& o) const { return maps == o.maps && ctx == o.ctx && stack == o.stack && packet == o.packet && num == o.num && fd == o.fd; }

@@ -35,20 +35,25 @@ Assert::Assert(AssertionPtr&& p) : p{std::move(p)} { }
 void Assert::operator=(const Assert& a) { *p = *a.p; satisfied = a.satisfied; }
 bool operator==(const Assert& a, const Assert& b) { return *a.p == *b.p && a.satisfied == b.satisfied; }
 
+constexpr Reg DATA_END_REG = Reg{13};
+constexpr Reg META_REG = Reg{14};
+
 struct RegsDomain {
-    size_t nmaps;
     std::array<std::optional<RCP_domain>, 16> regs;
-    RegsDomain(size_t nmaps) : nmaps{nmaps} {
-        for (int i = 0; i < 16; i++)
-            regs[i] = RCP_domain{nmaps};
-        regs[10] = RCP_domain{nmaps}.with_stack(STACK_SIZE);
+    program_info info;
+    RCP_domain BOT;
+    TypeSet types;
+
+    RegsDomain(program_info info) : info{info}, BOT{info.map_sizes.size()}, types{info.map_sizes.size()} {
+        for (auto& r : regs) r = BOT;
     }
 
     void init() {
-        regs[0] = {};
-        regs[1] = RCP_domain{nmaps}.with_ctx(0);
-        for (int i = 2; i < 10; i++)
-            regs[i] = {};
+        for (auto& r : regs) r = {};
+        regs[1] = BOT.with_ctx(0);
+        regs[10] = BOT.with_stack(STACK_SIZE);
+        regs[13] = BOT.with_packet(TOP);
+        regs[14] = BOT.with_packet(TOP);
     }
 
     bool is_bot() {
@@ -76,7 +81,7 @@ struct RegsDomain {
     }
 
     RCP_domain eval(uint64_t v) {
-        return RCP_domain{nmaps}.with_num(v);
+        return BOT.with_num(v);
     }
 
     std::optional<RCP_domain> eval(Value v) {
@@ -110,17 +115,15 @@ struct RegsDomain {
     void operator()(Undefined const& a) { assert(false); }
 
     void operator()(LoadMapFd const& a) {
-        RCP_domain res{nmaps};
-        res.set_mapfd(a.mapfd);
-        regs[a.dst.v] = res;
+        regs[a.dst.v] = BOT.with_fd(a.mapfd);
     }
 
     void operator()(Un const& a) { };
     void operator()(Bin const& a) { 
         using Op = Bin::Op;
         RCP_domain rhs = std::holds_alternative<Reg>(a.v)
-                       ? (reg(a.v) ? *reg(a.v) : RCP_domain{nmaps})
-                       : RCP_domain{nmaps}.with_num(std::get<Imm>(a.v).v);
+                       ? (reg(a.v) ? *reg(a.v) : BOT)
+                       : BOT.with_num(std::get<Imm>(a.v).v);
         if (a.op == Op::MOV) {
             regs[a.dst.v] = rhs;
             return;
@@ -128,7 +131,7 @@ struct RegsDomain {
         if ((std::holds_alternative<Reg>(a.v) && !reg(a.v)) || !reg(a.dst)) {
             // No need to propagate uninitialized values - just mark as bot
             // TODO: what about assertion failures?
-            regs[a.dst.v] = RCP_domain{nmaps};
+            regs[a.dst.v] = BOT;
             return;
         }
         if (!reg(a.dst)) return;
@@ -146,8 +149,11 @@ struct RegsDomain {
 
     void operator()(Assume const& a) {
         assert(reg(a.cond.left));
-        assert(eval(a.cond.right));
-        RCP_domain::assume(*reg(a.cond.left), a.cond.op, *eval(a.cond.right));
+        if (eval(a.cond.right))
+            RCP_domain::assume(*reg(a.cond.left), a.cond.op, *eval(a.cond.right));
+        else {
+            std::cerr << a << " failed; " << a.cond.right << " is secret\n";
+        }
     }
 
     void operator()(Assert const& a) { 
@@ -157,14 +163,14 @@ struct RegsDomain {
             assert(reg(lc.reg));
             assert(eval(lc.width));
             assert(eval(lc.v));
-            assert((lc.when_types & TypeSet{nmaps}.num()).none()
-                || (lc.when_types & TypeSet{nmaps}.ptr()).none());
+            assert((lc.when_types & types.num()).none()
+                || (lc.when_types & types.ptr()).none());
             const RCP_domain right = reg(lc.reg)->zero() + (*eval(lc.v) - *eval(lc.width) - eval(lc.offset));
             RCP_domain::assume(*reg(lc.reg), lc.op, right, lc.when_types);
         } else {
             auto tc = std::get<TypeConstraint>(a.p->cst);
             if (!reg(tc.then.reg)) {
-                reg(tc.then.reg) = RCP_domain{nmaps};
+                reg(tc.then.reg) = BOT;
                 return;
             }
             if (tc.given) {
@@ -182,8 +188,8 @@ struct RegsDomain {
             assert(reg(lc.reg));
             assert(eval(lc.width));
             assert(eval(lc.v));
-            assert((lc.when_types & TypeSet{nmaps}.num()).none()
-                || (lc.when_types & TypeSet{nmaps}.ptr()).none());
+            assert((lc.when_types & types.num()).none()
+                || (lc.when_types & types.ptr()).none());
             const RCP_domain right = reg(lc.reg)->zero() + (*eval(lc.v) - *eval(lc.width) - eval(lc.offset));
             //if (right.is_bot()) return false;
             if (reg(lc.reg)->is_bot()) return false;
@@ -208,7 +214,7 @@ struct RegsDomain {
         switch (get_prototype(call.func).ret_type) {
             case Ret::VOID: // actually noreturn - meaning < 0 when returns
             case Ret::INTEGER:
-                regs[0] = RCP_domain{nmaps}.with_num(TOP);
+                regs[0] = BOT.with_num(TOP);
                 break;
             case Ret::PTR_TO_MAP_VALUE_OR_NULL:
                 regs[0] = regs[1]->maps_from_fds().with_num(0);
@@ -222,7 +228,31 @@ struct RegsDomain {
 
     void operator()(Mem const& a) {
         if (!a.is_load) return;
-        regs[std::get<Reg>(a.value).v] = RCP_domain{nmaps, TOP};
+        if (!reg(a.access.basereg)) return;
+        auto r = BOT;
+        auto addr = *reg(a.access.basereg) + eval(a.access.offset);
+        OffsetDomSet as_ctx = addr.get_ctx();
+        if (!as_ctx.is_bot()) {
+            if (as_ctx.is_single()) {
+                auto d = info.descriptor;
+                if (d.data > -1 && !(as_ctx & OffsetDomSet{d.data}).is_bot())
+                    r |= BOT.with_packet(0);
+                else if (d.end > -1 && !(as_ctx & OffsetDomSet{d.end}).is_bot())
+                    r |= *reg(DATA_END_REG);
+                else if (d.meta > -1 && !(as_ctx & OffsetDomSet{d.meta}).is_bot())
+                    r |= *reg(META_REG);
+                else 
+                    r |= BOT.with_num(TOP);
+            } else {
+                r.havoc(); // TODO: disallow, or at least don't havoc fd
+            }
+        }
+        if (!(addr & BOT.with_packet(TOP)).is_bot()
+         || !(addr & BOT.with_maps(TOP)).is_bot())
+            r |= BOT.with_num(TOP);
+        if (!(addr & BOT.with_stack(TOP)).is_bot())
+            r.havoc();
+        reg(a.value) = r;
     }
 
     void operator()(LockAdd const& a) { }
@@ -236,10 +266,10 @@ struct Analyzer {
     std::unordered_map<Label, RegsDomain> pre;
     std::unordered_map<Label, RegsDomain> post;
 
-    Analyzer(const Cfg& cfg, size_t nmaps)  {
+    Analyzer(const Cfg& cfg, program_info info)  {
         for (auto l : cfg.keys()) {
-            pre.emplace(l, nmaps);
-            post.emplace(l, nmaps);
+            pre.emplace(l, info);
+            post.emplace(l, info);
         }
         pre.at(cfg.keys().front()).init();
     }
@@ -278,8 +308,8 @@ void worklist(const Cfg& cfg, Analyzer& analyzer) {
     }
 }
 
-void analyze_rcp(Cfg& cfg, size_t nmaps) {
-    Analyzer analyzer{cfg, nmaps};
+void analyze_rcp(Cfg& cfg, program_info info) {
+    Analyzer analyzer{cfg, info};
     worklist(cfg, analyzer);
 
     for (auto l : cfg.keys()) {
@@ -321,7 +351,7 @@ class AssertionExtractor {
         return Assertion{TypeConstraint{{r, t}}};
     };
 
-    void checkAccess(vector<Assertion>& assumptions, Types t, Reg reg, int offset, Value width) {
+    void check_access(vector<Assertion>& assumptions, Types t, Reg reg, int offset, Value width) {
         using Op = Condition::Op;
         assumptions.push_back(
             Assertion{LinearConstraint{Op::GE, reg, offset, Imm{0}, Imm{0}, t}}
@@ -332,7 +362,7 @@ class AssertionExtractor {
             if (s == num) continue;
             Value end = Imm{256}; // context size
             if ((s & maps).any()) end = Imm{map_sizes.at(i)};
-            else if (s == packet) end = Reg{13};
+            else if (s == packet) end = DATA_END_REG;
             else if (s == stack) end = Imm{STACK_SIZE};
 
             assumptions.push_back(
@@ -382,7 +412,7 @@ public:
                 Op op = t == Arg::CONST_SIZE_OR_ZERO ? Op::GE : Op::GT;
                 res.push_back(type_of(reg, num));
                 res.push_back(Assertion{LinearConstraint{op, reg, 0, Imm{0}, Imm{0}, num}});
-                checkAccess(res, previous_types, Reg{(uint8_t)(i-1)}, 0, reg);
+                check_access(res, previous_types, Reg{(uint8_t)(i-1)}, 0, reg);
                 previous_types.reset();
                 break;
             }
@@ -441,10 +471,10 @@ public:
         Imm width{static_cast<uint32_t>(ins.access.width)};
         int offset = ins.access.offset;
         if (reg.v == 10) {
-            checkAccess(res, stack, reg, offset, width);
+            check_access(res, stack, reg, offset, width);
         } else {
             res.emplace_back(type_of(reg, ptr));
-            checkAccess(res, ptr, reg, offset, width);
+            check_access(res, ptr, reg, offset, width);
             if (!is_priviledged && !ins.is_load && std::holds_alternative<Reg>(ins.value)) {
                 for (auto t : {maps , ctx , packet}) {
                     res.push_back(
@@ -459,7 +489,7 @@ public:
     vector<Assertion> operator()(LockAdd ins) {
         vector<Assertion> res;
         res.push_back(type_of(ins.access.basereg, maps));
-        checkAccess(res, maps, ins.access.basereg, ins.access.offset, Imm{static_cast<uint32_t>(ins.access.width)});
+        check_access(res, maps, ins.access.basereg, ins.access.offset, Imm{static_cast<uint32_t>(ins.access.width)});
         return res;
     };
 

@@ -48,7 +48,7 @@ int main(int argc, char **argv)
                     cfg.simplify();
                 }
                 if (flags.count("rcp")) {
-                    analyze_rcp(cfg, 1); // FIX: same
+                   // analyze_rcp(cfg, 1); // FIX: same
                 }
                 if (flags.count("dot"))
                     print_dot(cfg);

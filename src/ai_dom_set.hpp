@@ -124,6 +124,7 @@ public:
     void to_bot() { elems.clear(); top = false; }
     void havoc() { elems.clear(); top = true; }
     bool is_top() const { return top; }
+    bool is_single() const { return !top && elems.size() == 1; }
 
     void operator+=(const NumDomSet& o) { exec(true, o); }
     void operator-=(const NumDomSet& o) { exec(false, o); }

@@ -31,17 +31,6 @@ enum class BpfProgType : int {
 
 constexpr int STACK_SIZE=512;
 
-struct program_info {
-    BpfProgType program_type;
-    std::vector<size_t> map_sizes;
-};
-
-struct raw_program {
-    std::string filename;
-    std::string section;
-    std::vector<ebpf_inst> prog;
-    program_info info;
-};
 
 // rough estimates:
 constexpr int perf_max_trace_size = 2048;
@@ -59,10 +48,23 @@ constexpr int sock_ops_regions =  42 * 4 + 2 * 8;
 constexpr int sk_skb_regions = 36 * 4;
 
 struct ptype_descr {
-    int size;
+    int size{};
     int data = -1;
     int end = -1;
     int meta = -1; // data to meta is like end to data. i.e. meta <= data <= end
+};
+
+struct program_info {
+    BpfProgType program_type;
+    std::vector<size_t> map_sizes;
+    ptype_descr descriptor;
+};
+
+struct raw_program {
+    std::string filename;
+    std::string section;
+    std::vector<ebpf_inst> prog;
+    program_info info;
 };
 
 constexpr ptype_descr sk_buff = { sk_skb_regions, 19*4, 20*4, 35*4};

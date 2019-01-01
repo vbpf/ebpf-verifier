@@ -160,8 +160,8 @@ struct InstructionPrinterVisitor {
     }
     
     void operator()(Assert const& a) {
-        if (!a.satisfied) os_ << "assert " << *a.p;
-        //if (a.satisfied) os_ << " V";
+        os_ << "assert " << *a.p;
+        if (a.satisfied) os_ << " V";
     }
 };
 
@@ -272,12 +272,17 @@ auto get_labels(const InstructionSeq& insts) {
     return pc_of_label;
 }
 
+static bool is_satisfied(Instruction ins) {
+    return std::holds_alternative<Assert>(ins) && std::get<Assert>(ins).satisfied;
+}
+
 void print(const InstructionSeq& insts) {
     auto pc_of_label = get_labels(insts);
     pc_t pc = 0;
     InstructionPrinterVisitor visitor{cout};
     for (LabeledInstruction labeled_inst : insts) {
         auto [label, ins] = labeled_inst;
+        if (is_satisfied(ins)) continue;
         if (!std::all_of(label.begin(), label.end(), isdigit)) {
             cout << "\n";
             cout << label << ":\n";
@@ -306,6 +311,7 @@ void print(const Cfg& cfg, bool nondet) {
         const auto& bb = cfg.at(label);
         bool first = true;
         for (auto ins : bb.insts) {
+            if (is_satisfied(ins)) continue;
             if (!first) cout << std::setw(10) << " \t";
             first = false;
             std::visit(InstructionPrinterVisitor{cout}, ins);
@@ -331,7 +337,7 @@ void print_dot(const Cfg& cfg) {
 
         const auto& bb = cfg.at(label);
         for (auto ins : bb.insts) {
-            if (std::holds_alternative<Assert>(ins) && std::get<Assert>(ins).satisfied) continue;
+            if (is_satisfied(ins)) continue;
             cout << ins << "\\l";
         }
 

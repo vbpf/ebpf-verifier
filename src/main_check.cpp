@@ -171,7 +171,7 @@ int main(int argc, char **argv)
                     cfg.simplify();
                 }
                 if (rcp) {
-                    analyze_rcp(cfg, raw_prog.info.map_sizes.size());
+                    analyze_rcp(cfg, raw_prog.info);
                 }
                 if (dot)
                     print_dot(cfg);

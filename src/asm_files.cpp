@@ -128,6 +128,7 @@ vector<raw_program> read_elf(std::string path, std::string desired_section)
             continue;
         }
         info.program_type = section_to_progtype(name);
+        info.descriptor = get_descriptor(info.program_type);
         raw_program prog{path, name, vector_of<ebpf_inst>(section), info};
         if (prog.prog.empty())
             continue;
