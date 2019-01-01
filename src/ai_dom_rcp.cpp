@@ -21,6 +21,11 @@ void RCP_domain::operator+=(const RCP_domain& rhs) {
 }
 
 void RCP_domain::operator-=(const RCP_domain& rhs) {
+    if (this == &rhs) {
+        to_bot();
+        num = NumDom(0);
+        return;
+    }
     num.exec(Bin::Op::SUB, rhs.num);
     for (size_t t=0; t < rhs.maps.size(); t++) {
         num |= maps[t] - rhs.maps[t];
@@ -33,6 +38,8 @@ void RCP_domain::operator-=(const RCP_domain& rhs) {
         maps[t] -= rhs.num;
     }
     packet -= rhs.num;
+    stack -= rhs.num;
+    ctx -= rhs.num;
     // assert !fd and !o.fd
 }
 

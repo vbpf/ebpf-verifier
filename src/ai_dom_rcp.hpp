@@ -101,6 +101,7 @@ public:
     RCP_domain with_packet(const OffsetDom& packet) const { auto res = *this; res.packet = packet; return res; }
     RCP_domain with_num(const NumDom& num) const { auto res = *this; res.num = num; return res; }
     RCP_domain with_fd(int fd) const { auto res = *this; res.fd.assign(fd); return res; }
+    RCP_domain with_fd(Top t) const { auto res = *this; res.fd.havoc(); return res; }
     RCP_domain maps_from_fds() const;
     
     void set_mapfd(int mapfd) {
@@ -182,6 +183,7 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, const RCP_domain& a) {
         if (a.is_top()) return os << "T";
+        if (a.with_fd(TOP).is_top()) return os << "NON-FD";
         os << "[";
         for (size_t t=0; t < a.maps.size(); t++) {
             if (!a.maps[t].is_bot()) os << "MAP" << t << "->" << a.maps[t] << "; ";

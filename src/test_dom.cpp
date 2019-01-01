@@ -47,11 +47,15 @@ TEST_CASE( "numerical_set_domain", "[dom][domain]" ) {
     REQUIRE((D(1) | D(2)) == D(1, 2));
     REQUIRE((D(2) | D(1)) == D(1, 2));
 
+    REQUIRE(((D(1, 2)) & (D(2, 3))) == D(2));
+
     SECTION("add") {
         REQUIRE(D(1) + D(2) == D(3));
         REQUIRE(D(1, 2) + D(3) == D(4, 5));
         REQUIRE(D(1) + D(2, 3) == D(3, 4));
         REQUIRE(D(1, 2) + D(2, 3) == D(3, 4, 5));
+        REQUIRE(D() + D(2) == D());
+        REQUIRE(D(2) + D() == D());
     }
 
     SECTION("sub") {
@@ -59,9 +63,10 @@ TEST_CASE( "numerical_set_domain", "[dom][domain]" ) {
         REQUIRE(D(4, 3) - 3 == D(0, 1));
         REQUIRE(D(3) - D(2, 3) == D(0, 1));
         REQUIRE(D(4, 3) - D(2, 3) == D(0, 1, 2));
+        REQUIRE(D() - D(2) == D());
+        REQUIRE(D(2) - D() == D());
     }
 
-    REQUIRE(((D(1, 2)) & (D(2, 3))) == D(2));
 }
 
 TEST_CASE( "offset_set_domain", "[dom][domain]" ) {
@@ -85,6 +90,10 @@ TEST_CASE( "offset_set_domain", "[dom][domain]" ) {
 
         REQUIRE((D(1, 2) & D(2, 3)) == D(2));
         REQUIRE((D(2, 3) & D(1, 2)) == D(2));
+
+        auto r1 = D(14);
+        r1.assume(Condition::Op::LE, D(TOP));
+        REQUIRE(r1 == D(14));
     }
 
     SECTION("add num") {
@@ -92,6 +101,10 @@ TEST_CASE( "offset_set_domain", "[dom][domain]" ) {
         REQUIRE(D(1, 2) + 3 == D(4, 5));
         REQUIRE(D(1) + NumDomSet(2, 3) == D(3, 4));
         REQUIRE(D(1, 2) + NumDomSet(2, 3) == D(3, 4, 5));
+        REQUIRE(D() + NumDomSet(2) == D());
+        REQUIRE(D(2) + NumDomSet() == D());
+        REQUIRE(D() + NumDomSet(TOP) == D());
+        REQUIRE(D(TOP) + NumDomSet() == D());
     }
 
     SECTION("sub num") {
@@ -99,10 +112,18 @@ TEST_CASE( "offset_set_domain", "[dom][domain]" ) {
         REQUIRE(D(4, 3) - 3 == D(0, 1));
         REQUIRE(D(3) - NumDomSet(2, 3) == D(0, 1));
         REQUIRE(D(4, 3) - NumDomSet(2, 3) == D(0, 1, 2));
+        REQUIRE(D() - NumDomSet(2) == D());
+        REQUIRE(D() - NumDomSet(TOP) == D());
+        REQUIRE(D(TOP) - NumDomSet() == D());
+        REQUIRE(D(TOP) - NumDomSet(TOP) == D(TOP));
     }
 
     SECTION("sub offset") {
         REQUIRE(D(4, 5) - D(3, 2) == NumDomSet(1, 2, 3));
+        REQUIRE(D() - D(2) == NumDomSet());
+        REQUIRE(D(2) - D() == NumDomSet());
+        REQUIRE(D() - D(TOP) == NumDomSet());
+        REQUIRE(D(TOP) - D() == NumDomSet());
     }
 }
 
@@ -140,5 +161,20 @@ TEST_CASE( "rcp_domain", "[dom][domain]" ) {
             D::assume(fds, Condition::Op::NE, zero);
             REQUIRE(fds == D{NMAPS}.with_map(1, 0));
         }
+    }
+
+    SECTION("other") {
+        auto r1 = D{NMAPS}.with_packet(14);
+        auto r9 = D{NMAPS}.with_packet(TOP);
+        D::assume(r1, Condition::Op::LE, r9);
+        REQUIRE(r1 == D{NMAPS}.with_packet(14));
+    }
+
+    const auto num_top = D{NMAPS}.with_num(TOP);
+    const auto stack_top = D{NMAPS}.with_stack(TOP);
+    SECTION("TOP - TOP") {
+        REQUIRE(num_top - num_top == num_top);
+        REQUIRE(stack_top - num_top == stack_top);
+        REQUIRE(stack_top - stack_top == num_top);
     }
 }

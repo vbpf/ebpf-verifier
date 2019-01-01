@@ -45,6 +45,10 @@ void NumDomSet::operator&=(const NumDomSet& o) {
 
 void NumDomSet::exec(const Bin::Op op, const NumDomSet& o) {
     using Op = Bin::Op;
+    if (is_bot() || o.is_bot()) {
+        to_bot();
+        return;
+    }
     if (top || o.top) {
         havoc();
         return;
@@ -100,6 +104,10 @@ void OffsetDomSet::operator&=(const OffsetDomSet& o) {
 }
 
 void OffsetDomSet::exec(bool add, const NumDomSet& o) {
+    if (is_bot() || o.is_bot()) {
+        to_bot();
+        return;
+    }
     if (top || o.top) {
         havoc();
         return;
@@ -122,6 +130,9 @@ void OffsetDomSet::exec(bool add, const NumDomSet& o) {
 }
 
 NumDomSet OffsetDomSet::operator-(const OffsetDomSet& o) const {
+    if (is_bot() || o.is_bot()) {
+        return {};
+    }
     if (top || o.top) {
         return NumDomSet::make_top();
     }
@@ -142,6 +153,7 @@ NumDomSet OffsetDomSet::operator-(const OffsetDomSet& o) const {
 }
 
 void NumDomSet::assume(Condition::Op op, const NumDomSet& right) {
+    if (right.is_top()) return;
     using Op = Condition::Op;
     switch (op) {
         case Op::EQ :
@@ -225,6 +237,7 @@ void NumDomSet::assume(Condition::Op op, const NumDomSet& right) {
 }
 
 void OffsetDomSet::assume(Condition::Op op, const OffsetDomSet& right) {
+    if (right.is_top()) return;
     using Op = Condition::Op;
     switch (op) {
         case Op::EQ :
