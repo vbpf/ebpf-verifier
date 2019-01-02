@@ -30,9 +30,13 @@ inline LabelTranslator label_to_offset_string(pc_t pc) {
     };
 }
 
+void print(const InstructionSeq& prog, std::ostream& out);
 void print(const InstructionSeq& prog);
+
+void print(const Cfg& cfg, bool nondet, std::ostream& out);
 void print(const Cfg& cfg, bool nondet);
 
+void print_dot(const Cfg& cfg, std::ostream& out);
 void print_dot(const Cfg& cfg);
 
 void print_stats(const Cfg& prog);
@@ -41,31 +45,15 @@ std::ostream& operator<<(std::ostream& os, Instruction const& ins);
 std::string to_string(Instruction const& ins);
 std::string to_string(Instruction const& ins, LabelTranslator labeler);
 
-inline std::ostream& operator<<(std::ostream& os, Imm const& a) { return os << a.v; }
+std::ostream& operator<<(std::ostream& os, Bin::Op op);
+std::ostream& operator<<(std::ostream& os, Condition::Op op);
+
+inline std::ostream& operator<<(std::ostream& os, Imm imm) { return os << (int32_t)imm.v; }
 inline std::ostream& operator<<(std::ostream& os, Reg const& a) { return os << "r" << (int)a.v; }
 inline std::ostream& operator<<(std::ostream& os, Value const& a) { 
     if (std::holds_alternative<Imm>(a))
         return os << std::get<Imm>(a);
     return os << std::get<Reg>(a);
-}
-
-inline std::ostream& operator<<(std::ostream& os, Type const& a) {
-    switch (a) {
-        case Type::SECRET: os << "SECRET"; break;
-        case Type::NUM: os << "NUM"; break;
-        case Type::STACK: os << "STACK"; break;
-        case Type::CTX: os << "CTX"; break;
-        case Type::PACKET: os << "PACKET"; break;
-        case Type::MAP_VALUE: os << "MAP"; break;
-        case Type::MAP_STRUCT: os << "MAP_STRUCT"; break;
-        case Type::PTR: os << "PTR"; break;
-        case Type::NONSECRET: os << "NONSECRET"; break;
-    }
-    return os;
-}
-
-inline std::ostream& operator<<(std::ostream& os, Assert::TypeConstraint const& a) {
-    return os << a.reg << " : " << a.type;
 }
 
 inline std::ostream& operator<<(std::ostream& os, Undefined const& a) { return os << (Instruction)a; }

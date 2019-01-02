@@ -89,7 +89,9 @@ DISASM_OBJECTS := \
     ${BUILDDIR}/asm_cfg.o \
     ${BUILDDIR}/asm_parse.o \
     ${BUILDDIR}/asm_files.o \
-    ${BUILDDIR}/spec_assertions.o \
+    ${BUILDDIR}/ai.o \
+    ${BUILDDIR}/ai_dom_rcp.o \
+    ${BUILDDIR}/ai_dom_set.o \
     ${BUILDDIR}/spec_prototypes.o
 
 $(BINDIR)/disassemble: ${BUILDDIR}/main_disassemble.o ${DISASM_OBJECTS}

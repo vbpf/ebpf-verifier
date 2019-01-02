@@ -31,17 +31,6 @@ enum class BpfProgType : int {
 
 constexpr int STACK_SIZE=512;
 
-struct program_info {
-    BpfProgType program_type;
-    std::vector<unsigned int> map_sizes;
-};
-
-struct raw_program {
-    std::string filename;
-    std::string section;
-    std::vector<ebpf_inst> prog;
-    program_info info;
-};
 
 // rough estimates:
 constexpr int perf_max_trace_size = 2048;
@@ -59,10 +48,23 @@ constexpr int sock_ops_regions =  42 * 4 + 2 * 8;
 constexpr int sk_skb_regions = 36 * 4;
 
 struct ptype_descr {
-    int size;
+    int size{};
     int data = -1;
     int end = -1;
     int meta = -1; // data to meta is like end to data. i.e. meta <= data <= end
+};
+
+struct program_info {
+    BpfProgType program_type;
+    std::vector<size_t> map_sizes;
+    ptype_descr descriptor;
+};
+
+struct raw_program {
+    std::string filename;
+    std::string section;
+    std::vector<ebpf_inst> prog;
+    program_info info;
 };
 
 constexpr ptype_descr sk_buff = { sk_skb_regions, 19*4, 20*4, 35*4};
@@ -112,7 +114,13 @@ inline ptype_descr get_descriptor(BpfProgType t)
     return {};
 }
 
-inline BpfProgType section_to_progtype(std::string section) {
+inline BpfProgType section_to_progtype(std::string section, std::string path) {
+    // linux only deduces from section, but cilium and cilium_test have this information
+    // in the filename:
+    // * cilium/bpf_xdp.o:from-netdev is XDP
+    // * bpf_cilium_test/bpf_lb-DLB_L3.o:from-netdev is SK_SKB
+    if (path.find("xdp") != std::string::npos
+     && path.find("cilium") != std::string::npos) return BpfProgType::XDP;
 	static const std::unordered_map<std::string, BpfProgType> prefixes{
         { "socket", BpfProgType::SOCKET_FILTER },
         { "kprobe/", BpfProgType::KPROBE },

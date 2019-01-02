@@ -17,7 +17,10 @@ class Cfg {
 
     void encountered(Label l) { ordered_labels.push_back(l); }
     Cfg() { }
+    Cfg(const Cfg& _) = delete;
 public:
+    Cfg(Cfg&& _) = default;
+    Cfg& operator=(Cfg&& _) = default;
     BasicBlock& operator[](Label l) { return graph[l]; }
     BasicBlock const& at(Label l) const { return graph.at(l); }
 
@@ -25,7 +28,6 @@ public:
 
     static Cfg make(const InstructionSeq& labeled_insts);
                 
-    Cfg to_nondet(bool expand_locks);
+    Cfg to_nondet(bool expand_locks) const;
     void simplify();
-    void worklist(std::function<bool(BasicBlock&)> recompute);
 };

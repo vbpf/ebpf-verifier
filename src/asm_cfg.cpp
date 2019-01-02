@@ -43,7 +43,7 @@ static bool has_fall(Instruction ins) {
 
 Cfg Cfg::make(const InstructionSeq& insts) {
     Cfg cfg;
-    const auto link = [&](Label from, Label to) {
+    const auto link = [&cfg](Label from, Label to) {
         cfg[from].nextlist.push_back(to);
         cfg[to].prevlist.push_back(from);
     };
@@ -90,6 +90,8 @@ static Condition::Op reverse(Condition::Op op) {
     case Condition::Op::SET: return Condition::Op::NSET;
     case Condition::Op::NSET: return Condition::Op::SET;
     }
+    assert(false);
+    return {};
 }
 
 static Condition reverse(Condition cond) {
@@ -150,9 +152,9 @@ static Label pop(set<Label>& s) {
 
 void Cfg::simplify() {
     set<Label> worklist(keys().begin(), keys().end());
-    set<Label> to_remove;
     while (!worklist.empty()) {
-        BasicBlock& bb = graph[pop(worklist)];
+        Label label = pop(worklist);
+        BasicBlock& bb = graph[label];
         while (bb.nextlist.size() == 1) {
             Label next_label = bb.nextlist.back();
             BasicBlock& next_bb = graph[next_label];
@@ -164,19 +166,26 @@ void Cfg::simplify() {
                 bb.insts.push_back(inst);
             }
             worklist.erase(next_label);
-            to_remove.insert(next_label);
+            graph.erase(next_label);
+
+            // reconnect
+            for (auto l : bb.nextlist) {
+                for (auto& p : graph[l].prevlist)
+                    if (p == next_label)
+                        p = label;
+            }
         }
     }
     ordered_labels.erase(
         std::remove_if(
             ordered_labels.begin(), ordered_labels.end(),
-            [&](auto& x) { return to_remove.count(x); }
+            [&](auto& x) { return !graph.count(x); }
         ),
         ordered_labels.end()
     );
 }
 
-Cfg Cfg::to_nondet(bool expand_locks) {
+Cfg Cfg::to_nondet(bool expand_locks) const {
     Cfg res;
     for (auto const& this_label : this->keys()) {
         BasicBlock const& bb = this->at(this_label);
@@ -221,21 +230,6 @@ Cfg Cfg::to_nondet(bool expand_locks) {
     }
     return res;
 }
-
-
-void Cfg::worklist(std::function<bool(BasicBlock&)> recompute) {
-    list<Label> w{*ordered_labels.begin()};
-    while (!w.empty()) {
-        BasicBlock& bb = graph[*w.begin()];
-        w.pop_front();
-        if (recompute(bb)) {
-            for (Label next_label : bb.nextlist)
-                w.push_back(next_label);
-            w.erase(std::unique(w.begin(), w.end()));
-        }
-    }
-}
-
 
 void print_stats(const Cfg& cfg) {
     int count = 0;

@@ -33,9 +33,9 @@ int main(int argc, char **argv)
         if (mode == "nondet") {
             cfg = cfg.to_nondet(false);
         }
-        if (subcommand == "explicit") {
-            explicate_assertions(cfg);
-        }
+        // if (subcommand == "explicit") {
+        //     explicate_assertions(cfg, {32}); // FIX: this is an example
+        // }
         print(cfg, mode == "nondet");
     }
     std::cout << "\n";
