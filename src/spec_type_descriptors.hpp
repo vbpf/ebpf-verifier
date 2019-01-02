@@ -114,7 +114,13 @@ inline ptype_descr get_descriptor(BpfProgType t)
     return {};
 }
 
-inline BpfProgType section_to_progtype(std::string section) {
+inline BpfProgType section_to_progtype(std::string section, std::string path) {
+    // linux only deduces from section, but cilium and cilium_test have this information
+    // in the filename:
+    // * cilium/bpf_xdp.o:from-netdev is XDP
+    // * bpf_cilium_test/bpf_lb-DLB_L3.o:from-netdev is SK_SKB
+    if (path.find("xdp") != std::string::npos
+     && path.find("cilium") != std::string::npos) return BpfProgType::XDP;
 	static const std::unordered_map<std::string, BpfProgType> prefixes{
         { "socket", BpfProgType::SOCKET_FILTER },
         { "kprobe/", BpfProgType::KPROBE },

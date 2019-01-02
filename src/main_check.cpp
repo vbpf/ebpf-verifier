@@ -42,6 +42,7 @@ int main(int argc, char **argv)
     string path;
     string domain = "sdbm-arr";
     string desired_section;
+    string outdir = "output";
     bool info_only = false;
     bool print_asm = false;
     bool dot = false;
@@ -97,6 +98,8 @@ int main(int argc, char **argv)
         } else if (arg.find("--verbose=") == 0) {
             if (arg[0] == '"') arg=arg.substr(1, arg.size()-1);
             crab::CrabEnableVerbosity(std::stoi(arg.substr(10)));
+        } else if (arg.find("--out=") == 0) {
+            outdir = arg.substr(6);
         } else if (arg == "--help" || arg == "-h") {
             return usage(argv[0]);
         } else if (arg == "--stats" || arg == "--stat") {
@@ -138,7 +141,7 @@ int main(int argc, char **argv)
     }
     auto progs = is_raw ? read_raw(path, info) : read_elf(path, desired_section);
     for (auto raw_prog : progs) {
-        std::cout << raw_prog.filename << ":" << raw_prog.section << "\n";
+        std::cerr << raw_prog.filename << ":" << raw_prog.section << "\n";
         if (list_only) {
             continue;
         }
@@ -150,6 +153,9 @@ int main(int argc, char **argv)
             }
             std::cout << "\n";
         } else {
+            string basename = raw_prog.filename.substr(raw_prog.filename.find_last_of('/') + 1);
+            string outsubdir = outdir + "/" + basename + "/" + raw_prog.section + "/";
+            system((string() + "mkdir -p " + outsubdir).c_str());
             auto prog_or_error = unmarshal(raw_prog);
             if (std::holds_alternative<string>(prog_or_error)) {
                 std::cout << "trivial verification failure: " << std::get<string>(prog_or_error) << "\n";
@@ -157,25 +163,42 @@ int main(int argc, char **argv)
             }
             auto& prog = std::get<InstructionSeq>(prog_or_error);
             if (print_asm) {
-                print(prog);
+                std::ofstream out{outsubdir + "raw.txt"};
+                print(prog, out);
             } else {
                 Cfg cfg = Cfg::make(prog);
                 if (nondet) {
                     cfg = cfg.to_nondet(expand_locks);
+                    {
+                        std::ofstream out{outsubdir + "nondet.dot"};
+                        print_dot(cfg, out);
+                    }
                 }
                 if (explicit_assertions) {
                     explicate_assertions(cfg, raw_prog.info);
+                    {
+                        std::ofstream out{outsubdir + "explicit.dot"};
+                        print_dot(cfg, out);
+                    }
                 }
                 if (global_options.simplify) {
                     cfg.simplify();
+                    {
+                        std::ofstream out{outsubdir + "simplified.dot"};
+                        print_dot(cfg, out);
+                    }
                 }
                 if (rcp) {
                     analyze_rcp(cfg, raw_prog.info);
                 }
-                if (dot)
-                    print_dot(cfg);
-                else 
-                    print(cfg, nondet);
+                {
+                    std::ofstream out{outsubdir + "rcp.dot"};
+                    print_dot(cfg, out);
+                }
+                {
+                    std::ofstream out{outsubdir + "rcp.txt"};
+                    print(cfg, nondet,  out);
+                }
                 if (crab) {
                     const auto [res, seconds] = abs_validate(cfg, domain, raw_prog.info);
                     std::cout << res << "," << seconds << ",";
@@ -183,12 +206,12 @@ int main(int argc, char **argv)
                     print_stats(cfg);
                 }
 
-                // std::cout << "section:" << raw_prog.section << "\n";
-                // std::cout << "type: " << (int)raw_prog.info.program_type << "\n";
-                // std::cout << "data: " << raw_prog.info.descriptor.data << "\n";
-                // std::cout << "end: " << raw_prog.info.descriptor.end << "\n";
-                // std::cout << "meta: " << raw_prog.info.descriptor.meta << "\n";
-                // std::cout << "size: " << raw_prog.info.descriptor.size << "\n";
+                std::cout << "section:" << raw_prog.section << "\n";
+                std::cout << "type: " << (int)raw_prog.info.program_type << "\n";
+                std::cout << "data: " << raw_prog.info.descriptor.data << "\n";
+                std::cout << "end: " << raw_prog.info.descriptor.end << "\n";
+                std::cout << "meta: " << raw_prog.info.descriptor.meta << "\n";
+                std::cout << "size: " << raw_prog.info.descriptor.size << "\n";
             }
         }
     }

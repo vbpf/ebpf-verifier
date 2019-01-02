@@ -12,7 +12,6 @@
 using std::string;
 using std::vector;
 using std::optional;
-using std::cout;
 
 
 std::ostream& operator<<(std::ostream& os, Bin::Op op) {
@@ -276,18 +275,18 @@ static bool is_satisfied(Instruction ins) {
     return std::holds_alternative<Assert>(ins) && std::get<Assert>(ins).satisfied;
 }
 
-void print(const InstructionSeq& insts) {
+void print(const InstructionSeq& insts, std::ostream& out) {
     auto pc_of_label = get_labels(insts);
     pc_t pc = 0;
-    InstructionPrinterVisitor visitor{cout};
+    InstructionPrinterVisitor visitor{out};
     for (LabeledInstruction labeled_inst : insts) {
         auto [label, ins] = labeled_inst;
         if (is_satisfied(ins)) continue;
         if (!std::all_of(label.begin(), label.end(), isdigit)) {
-            cout << "\n";
-            cout << label << ":\n";
+            out << "\n";
+            out << label << ":\n";
         }
-        cout << std::setw(8) << pc << ":\t";
+        out << std::setw(8) << pc << ":\t";
         if (std::holds_alternative<Jmp>(ins)) {
             auto jmp = std::get<Jmp>(ins);
             if (pc_of_label.count(jmp.target) == 0)
@@ -300,51 +299,60 @@ void print(const InstructionSeq& insts) {
         } else {
             std::visit(visitor, ins);
         }
-        cout << "\n";
+        out << "\n";
         pc += size(ins);
     }
 }
+void print(const InstructionSeq& insts) {
+    print(insts, std::cout);
+}
 
-void print(const Cfg& cfg, bool nondet) {
+void print(const Cfg& cfg, bool nondet, std::ostream& out) {
     for (auto [label, next] : slide(cfg.keys())) {
-        cout << std::setw(10) << label << ":\t";
+        out << std::setw(10) << label << ":\t";
         const auto& bb = cfg.at(label);
         bool first = true;
         for (auto ins : bb.insts) {
             if (is_satisfied(ins)) continue;
-            if (!first) cout << std::setw(10) << " \t";
+            if (!first) out << std::setw(10) << " \t";
             first = false;
-            std::visit(InstructionPrinterVisitor{cout}, ins);
-            cout << "\n";
+            std::visit(InstructionPrinterVisitor{out}, ins);
+            out << "\n";
         }
         if (nondet && bb.nextlist.size() > 0 && (!next || bb.nextlist != vector<Label>{*next})) {
-            if (!first) cout << std::setw(10) << " \t";
+            if (!first) out << std::setw(10) << " \t";
             first = false;
-            cout << "goto ";
+            out << "goto ";
             for (Label label : bb.nextlist)
-                cout << label << ", ";
-            cout << "\n";
+                out << label << ", ";
+            out << "\n";
         }
     }
 }
+void print(const Cfg& cfg, bool nondet) {
+    print(cfg, nondet, std::cout);
+}
 
 
-void print_dot(const Cfg& cfg) {
-    cout << "digraph program {\n";
-    cout << "    node [shape = rectangle];\n";
+void print_dot(const Cfg& cfg, std::ostream& out) {
+    out << "digraph program {\n";
+    out << "    node [shape = rectangle];\n";
     for (auto label : cfg.keys()) {
-        cout << "    \"" << label << "\"[label=\"";
+        out << "    \"" << label << "\"[label=\"";
 
         const auto& bb = cfg.at(label);
         for (auto ins : bb.insts) {
             if (is_satisfied(ins)) continue;
-            cout << ins << "\\l";
+            out << ins << "\\l";
         }
 
-        cout << "\"];\n";
+        out << "\"];\n";
         for (Label next : bb.nextlist)
-            cout << "    \"" << label << "\" -> \"" << next << "\";\n";
-        cout << "\n";
+            out << "    \"" << label << "\" -> \"" << next << "\";\n";
+        out << "\n";
     }
-    cout << "}\n";
+    out << "}\n";
+}
+void print_dot(const Cfg& cfg) {
+    print_dot(cfg, std::cout);
 }

@@ -30,9 +30,13 @@ inline LabelTranslator label_to_offset_string(pc_t pc) {
     };
 }
 
+void print(const InstructionSeq& prog, std::ostream& out);
 void print(const InstructionSeq& prog);
+
+void print(const Cfg& cfg, bool nondet, std::ostream& out);
 void print(const Cfg& cfg, bool nondet);
 
+void print_dot(const Cfg& cfg, std::ostream& out);
 void print_dot(const Cfg& cfg);
 
 void print_stats(const Cfg& prog);
