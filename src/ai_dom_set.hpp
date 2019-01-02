@@ -111,8 +111,8 @@ class OffsetDomSet {
     using This = OffsetDomSet;
     // Naive set implementation
     bool top{};
-    std::vector<int64_t> elems;
 public:
+    std::vector<int64_t> elems;
     template <typename ...Args>
     OffsetDomSet(Args... elems) : elems{static_cast<int64_t>(elems)...} { }
 

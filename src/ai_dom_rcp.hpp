@@ -110,8 +110,12 @@ public:
         fd.assign(mapfd);
     }
 
+    // idea: pass responsibilities to these memory domain instead of extraction
     OffsetDom get_ctx() {
         return ctx;
+    }
+    OffsetDom get_stack() {
+        return stack;
     }
 
     bool operator==(const RCP_domain& o) const { return maps == o.maps && ctx == o.ctx && stack == o.stack && packet == o.packet && num == o.num && fd == o.fd; }
