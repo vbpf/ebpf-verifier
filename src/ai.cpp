@@ -40,6 +40,7 @@ constexpr Reg META_REG = Reg{14};
 
 struct RegsDomain {
     std::array<std::optional<RCP_domain>, 16> regs;
+    //int min_packet_size{0};
     program_info info;
     RCP_domain BOT;
     TypeSet types;
@@ -315,20 +316,25 @@ void analyze_rcp(Cfg& cfg, program_info info) {
 
     for (auto l : cfg.keys()) {
         auto dom = analyzer.pre.at(l);
-        // std::cout << l << "\t:\t" << dom << "\n";
         for (Instruction& ins : cfg[l].insts) {
+            bool unsatisfied_assertion = false;
             if (std::holds_alternative<Assert>(ins)) {
                 Assert& a = std::get<Assert>(ins);
-                if (!a.satisfied && !dom.is_bot()) {
+                if (!a.satisfied) { // && !dom.is_bot()
                     a.satisfied = dom.satisfied(a);
+                    unsatisfied_assertion = !a.satisfied;
+                    if (unsatisfied_assertion) {
+                        std::cout << l << ":\n";
+                        std::cout << dom << "\n";
+                        std::cout << "\n" << ins << "\n";
+                    }
                 }
             }
             dom.visit(ins);
-            // std::cout << "\n\t\t\t" << ins << "\n\n";
-            // std::cout << "\t\t" << dom << "\n";
+            if (unsatisfied_assertion) {
+                std::cout << dom << "\n";
+            }
         }
-        // std::cout << "\t\t" << analyzer.post.at(l) << "\n";
-        // std::cout << "\n";
     }
 }
 
@@ -430,10 +436,10 @@ public:
                 break;
             case Arg::PTR_TO_MAP_KEY:
                 // what other conditions?
-                res.push_back(type_of(reg, previous_types = stack));
+                res.push_back(type_of(reg, previous_types = stack | packet)); // looks like packet is valid
                 break;
             case Arg::PTR_TO_MAP_VALUE:
-                res.push_back(type_of(reg, previous_types = maps));
+                res.push_back(type_of(reg, previous_types = stack | packet)); // strangely, looks like it means stack or packet
                 break;
             case Arg::PTR_TO_UNINIT_MEM:
                 res.push_back(type_of(reg, previous_types = mem));
