@@ -111,11 +111,14 @@ public:
     }
 
     // idea: pass responsibilities to these memory domain instead of extraction
-    OffsetDom get_ctx() {
+    OffsetDom get_ctx() const {
         return ctx;
     }
-    OffsetDom get_stack() {
+    OffsetDom get_stack() const {
         return stack;
+    }
+    NumDom get_num() const {
+        return num;
     }
 
     bool operator==(const RCP_domain& o) const { return maps == o.maps && ctx == o.ctx && stack == o.stack && packet == o.packet && num == o.num && fd == o.fd; }

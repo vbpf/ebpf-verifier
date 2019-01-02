@@ -41,13 +41,13 @@ constexpr Reg META_REG = Reg{14};
 struct MemDom {
     struct Pair {
         RCP_domain dom;
-        int width;
+        uint64_t width{};
         bool operator==(const Pair& o) const { return dom == o.dom && width == o.width; }
     };
     bool bot = true;
     std::map<int, Pair> arr;
     
-    void load(const OffsetDomSet& offset, int width, RCP_domain& outval) const {
+    void load(const OffsetDomSet& offset, uint64_t width, RCP_domain& outval) const {
         if (offset.is_top()) {
             outval.havoc();
             return;
@@ -55,26 +55,45 @@ struct MemDom {
         assert(!offset.elems.empty());
         outval.to_bot();
         for (int64_t k : offset.elems) {
+            for (auto [k1, v] : arr) {
+                if ((k1 <= k && k1 + v.width >  k + width)
+                 || (k1 <  k && k1 + v.width >= k + width)) {
+                    if (v.dom.with_num({}).is_bot()) {
+                        outval = outval.with_num(TOP);
+                    } else {
+                        outval.havoc();
+                    }
+                    goto next_iteration;
+                }
+            }
             if (arr.count(k)) {
+                const auto& dom = arr.at(k).dom;
                 if (arr.at(k).width == width) {
-                    outval |= arr.at(k).dom;
+                    outval |= dom;
                 } else {
-                    outval.havoc();
+                    // partial read of num havocs only num
+                    if (dom.with_num({}).is_bot())
+                        outval = outval.with_num(TOP);
+                    else
+                        outval.havoc();
                     return;
                 }
             } else {
                 outval.havoc();
                 return;
             }
+        next_iteration:
+            ;
         }
     }
 
-    void store(const OffsetDomSet& offset, int width, const RCP_domain& value) {
+    void store(const OffsetDomSet& offset, const NumDomSet& ws, const RCP_domain& value) {
         bot = false;
-        if (offset.is_top()) {
+        if (offset.is_top() || !ws.is_single()) {
             arr.clear();
             return;
         }
+        uint64_t width = ws.elems.front();
         assert(!offset.elems.empty());
         for (int64_t k : offset.elems) {
             std::vector<int64_t> to_remove;
@@ -92,8 +111,8 @@ struct MemDom {
                     arr.erase(k);
                 }
             } // otherwise it's already top
-            for (int i=1; i<width; i++) {
-                arr.erase(k + i);
+            for (uint64_t i=1; i<width; i++) {
+                arr.erase(k + (int)i);
             }
         }
 
@@ -104,6 +123,8 @@ struct MemDom {
 
     void operator|=(const MemDom& o) {
         //std::cerr << *this << " | " << o;
+        if (o.bot)
+            return;
         if (bot) {
             *this = o;
         } else {
@@ -146,6 +167,7 @@ struct RegsDomain {
     }
 
     void init() {
+        stack_arr.bot = false;
         for (auto& r : regs) r = {};
         regs[1] = BOT.with_ctx(0);
         regs[10] = BOT.with_stack(STACK_SIZE);
@@ -310,7 +332,35 @@ struct RegsDomain {
     void operator()(Jmp const& a) { }
 
     void operator()(Call const& call) {
-        switch (get_prototype(call.func).ret_type) {
+        bpf_func_proto proto = get_prototype(call.func);
+        uint8_t i = 0;
+        std::array<Arg, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
+        for (Arg t : args) {
+            ++i;
+            if (t == Arg::DONTCARE)
+                break;
+            assert(reg(Reg{i}));
+            RCP_domain arg = *reg(Reg{i});
+            switch (t) {
+            case Arg::DONTCARE: assert(false); break;
+            case Arg::ANYTHING: break;
+            case Arg::CONST_MAP_PTR: break;
+            case Arg::CONST_SIZE:
+            case Arg::CONST_SIZE_OR_ZERO: break;
+            case Arg::PTR_TO_MAP_KEY: break;
+            case Arg::PTR_TO_MAP_VALUE: break;
+            case Arg::PTR_TO_MEM_OR_NULL: break;
+            case Arg::PTR_TO_MEM: break;
+            case Arg::PTR_TO_UNINIT_MEM: {
+                assert(reg(Reg{(uint8_t)(i+1)}));
+                store(arg, reg(Reg{(uint8_t)(i+1)})->get_num(), BOT.with_num(TOP));
+                break;
+            }
+            case Arg::PTR_TO_CTX:
+                break;
+            }
+        }
+        switch (proto.ret_type) {
             case Ret::VOID: // actually noreturn - meaning < 0 when returns
             case Ret::INTEGER:
                 regs[0] = BOT.with_num(TOP);
@@ -327,43 +377,63 @@ struct RegsDomain {
         regs[0] = BOT.with_num(TOP);
     }
 
-    void operator()(Mem const& a) {
-        if (!reg(a.access.basereg)) return;
-        auto addr = *reg(a.access.basereg) + eval(a.access.offset);
+    void store(const RCP_domain& addr, const NumDomSet& width, const RCP_domain& value) {
         OffsetDomSet as_stack = addr.get_stack();
-        if (!a.is_load) {
-            if (!as_stack.is_bot()) {
-                assert(eval(a.value)); // should be a check, not assert
-                stack_arr.store(as_stack, a.access.width, *eval(a.value));
-            }
-            return;
-        }
-        RCP_domain r = BOT;
         if (!as_stack.is_bot()) {
-            stack_arr.load(as_stack, a.access.width, r);
-            assert(!r.is_bot());
+            // make weak updates extremely weak
+            if (addr.with_stack({}).is_bot())
+                stack_arr.store(as_stack, width, value);
+            else
+                stack_arr.store(TOP, width, value);
         }
-        OffsetDomSet as_ctx = addr.get_ctx();
-        if (!as_ctx.is_bot()) {
-            if (as_ctx.is_single()) {
-                auto d = info.descriptor;
-                auto data_start = BOT.with_packet(0);
-                if (d.data > -1 && as_ctx.contains(d.data))
-                    r |= data_start;
-                else if (d.end > -1 && as_ctx.contains(d.end))
-                    r |= data_start + *reg(DATA_END_REG);
-                else if (d.meta > -1 && as_ctx.contains(d.meta))
-                    r |= data_start + *reg(META_REG);
-                else 
-                    r |= BOT.with_num(TOP);
-            } else {
-                r.havoc(); // TODO: disallow, or at least don't havoc fd
-            }
+    }
+
+    RCP_domain stack_load(const OffsetDomSet& as_stack, int width) {
+        if (as_stack.is_bot()) return BOT;
+        RCP_domain r = BOT;
+        stack_arr.load(as_stack, width, r);
+        return r;
+    }
+
+    RCP_domain ctx_load(const OffsetDomSet& as_ctx, int width) {
+        if (as_ctx.is_bot()) return BOT;
+        RCP_domain r = BOT;
+        if (as_ctx.is_single()) {
+            auto d = info.descriptor;
+            auto data_start = BOT.with_packet(0);
+            if (d.data > -1 && as_ctx.contains(d.data))
+                r |= data_start;
+            else if (d.end > -1 && as_ctx.contains(d.end))
+                r |= data_start + *reg(DATA_END_REG);
+            else if (d.meta > -1 && as_ctx.contains(d.meta))
+                r |= data_start + *reg(META_REG);
+            else 
+                r |= BOT.with_num(TOP);
+        } else {
+            r.havoc(); // TODO: disallow, or at least don't havoc fd
         }
+        return r;
+    }
+
+    RCP_domain other_load(const RCP_domain& addr) {
         if (!(addr & BOT.with_packet(TOP)).is_bot()
          || !(addr & BOT.with_maps(TOP)).is_bot())
-            r |= BOT.with_num(TOP);
-        reg(a.value) = r;
+            return BOT.with_num(TOP);
+        return BOT;
+    }
+
+    RCP_domain load(const RCP_domain& addr, int width) {
+        return stack_load(addr.get_stack(), width)
+             | ctx_load(addr.get_ctx(), width)
+             | other_load(addr);
+    }
+
+    void operator()(Mem const& a) {
+        const auto& addr = *reg(a.access.basereg) + eval(a.access.offset);
+        if (a.is_load) 
+            reg(a.value) = load(addr, a.access.width);
+        else 
+            store(addr, a.access.width, *eval(a.value));
     }
 
     void operator()(LockAdd const& a) { }
@@ -432,17 +502,17 @@ void analyze_rcp(Cfg& cfg, program_info info) {
                 if (!a.satisfied) { // && !dom.is_bot()
                     a.satisfied = dom.satisfied(a);
                     unsatisfied_assertion = !a.satisfied;
-                    if (unsatisfied_assertion) {
-                        std::cout << l << ":\n";
-                        std::cout << dom << "\n";
-                        std::cout << ins << "\n";
-                    }
                 }
             }
+            //if (true || std::holds_alternative<Call>(ins)) {
+            //    std::cout << l << ":\n";
+            //    std::cout << dom << "\n";
+            //    std::cout << ins << "\n";
+            //}
             dom.visit(ins);
-            if (unsatisfied_assertion) {
-                std::cout << dom << "\n\n";
-            }
+            //if (true || std::holds_alternative<Call>(ins)) {
+            //    std::cout << dom << "\n\n";
+            //}
         }
     }
 }
@@ -500,9 +570,9 @@ public:
     vector<Assertion> operator()(Call const& call) {
         using Op = Condition::Op;
 
-        bpf_func_proto proto = get_prototype(call.func);
         vector<Assertion> res;
         Types previous_types;
+        bpf_func_proto proto = get_prototype(call.func);
         uint8_t i = 0;
         std::array<Arg, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
         for (Arg t : args) {

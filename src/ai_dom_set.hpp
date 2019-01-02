@@ -58,11 +58,11 @@ class NumDomSet {
     using This = NumDomSet;
     // Naive set implementation
     bool top{};
-    std::vector<uint64_t> elems;
 
     static This make_top() { This res; res.havoc(); return res; }
     static This from_elems(std::vector<uint64_t>&& elems);
 public:
+    std::vector<uint64_t> elems;
     template <typename ...Args>
     NumDomSet(Args... elems) : elems{static_cast<uint64_t>(elems)...} { }
 
@@ -72,6 +72,7 @@ public:
     void to_bot() { elems.clear(); top = false; }
     void havoc() { elems.clear(); top = true; }
     bool is_top() const { return top; }
+    bool is_single() const { return !top && elems.size() == 1; }
 
     void operator|=(const This& o);
     void operator&=(const This& o);
