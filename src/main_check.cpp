@@ -138,12 +138,11 @@ int main(int argc, char **argv)
     }
     auto progs = is_raw ? read_raw(path, info) : read_elf(path, desired_section);
     for (auto raw_prog : progs) {
+        std::cout << raw_prog.filename << ":" << raw_prog.section << "\n";
         if (list_only) {
-            std::cout << raw_prog.filename << ":" << raw_prog.section << "\n";
             continue;
         }
         if (info_only) {
-            std::cout << "section: " << raw_prog.section;
             std::cout << "  type: " << (int)raw_prog.info.program_type;
             std::cout << "  sizes: ";
             for (auto s : raw_prog.info.map_sizes) {
@@ -184,12 +183,12 @@ int main(int argc, char **argv)
                     print_stats(cfg);
                 }
 
-                std::cout << "section:" << raw_prog.section << "\n";
-                std::cout << "type: " << (int)raw_prog.info.program_type << "\n";
-                std::cout << "data: " << raw_prog.info.descriptor.data << "\n";
-                std::cout << "end: " << raw_prog.info.descriptor.end << "\n";
-                std::cout << "meta: " << raw_prog.info.descriptor.meta << "\n";
-                std::cout << "size: " << raw_prog.info.descriptor.size << "\n";
+                // std::cout << "section:" << raw_prog.section << "\n";
+                // std::cout << "type: " << (int)raw_prog.info.program_type << "\n";
+                // std::cout << "data: " << raw_prog.info.descriptor.data << "\n";
+                // std::cout << "end: " << raw_prog.info.descriptor.end << "\n";
+                // std::cout << "meta: " << raw_prog.info.descriptor.meta << "\n";
+                // std::cout << "size: " << raw_prog.info.descriptor.size << "\n";
             }
         }
     }
