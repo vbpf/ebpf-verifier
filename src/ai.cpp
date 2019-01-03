@@ -149,6 +149,7 @@ struct MemDom {
     void operator&=(const MemDom& o) {
         // TODO
     }
+    bool is_bot() { return bot; }
 
     bool operator==(const MemDom& o) const { return arr == o.arr; }
 
@@ -163,30 +164,38 @@ struct MemDom {
     }
 };
 
-struct Machine {
-    std::array<std::optional<RCP_domain>, 16> regs;
-    MemDom stack_arr;
-    program_info info;
-    RCP_domain BOT;
-    TypeSet types;
+struct RegsDom {
+    using ValDom = RCP_domain;
+    std::array<std::optional<ValDom>, 16> regs;
 
-    Machine(program_info info) : info{info}, BOT{info.map_sizes.size()}, types{info.map_sizes.size()} {
-        for (auto& r : regs) r = BOT;
+    RegsDom(size_t nmaps) {
+        for (auto& r : regs) r = {nmaps};
     }
 
-    void init() {
-        stack_arr.bot = false;
+    friend std::ostream& operator<<(std::ostream& os, const RegsDom& d) {
+        os << "<<";
+        for (size_t i = 0; i < 10; i++) {
+            os << "r"<< i << ": ";
+            if (d.regs.at(i)) os << *d.regs[i];
+            else os << "*";
+            os << ", ";
+        }
+        os << ">>";
+        return os;
+    }
+
+    void init(const ValDom& ctx, const ValDom& stack_end, const ValDom& top_num) {
         for (auto& r : regs) r = {};
-        regs[1] = BOT.with_ctx(0);
-        regs[10] = BOT.with_stack(STACK_SIZE);
+        regs[1] = ctx;
+        regs[10] = stack_end;
 
         // initialized to num to be consistent with other bound checks that assume num
         // (therefore region->zero is added before checking assertion)
-        regs[13] = BOT.with_num(TOP);
-        regs[14] = BOT.with_num(TOP);
+        regs[13] = top_num;
+        regs[14] = top_num;
     }
 
-    bool is_bot() {
+    bool is_bot() const {
         for (size_t i=0; i < 10; i++) {
             if (regs[i] && regs[i]->is_bot())
                 return true;
@@ -194,51 +203,88 @@ struct Machine {
         return false;
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const Machine& d) {
-        os << "<<";
-        for (size_t i = 0; i < 10; i++) {
-            os << "r"<< i << ": ";
-            if (d.regs[i]) os << *d.regs[i];
-            else os << "*";
-            os << ", ";
-        }
-        os << ">> ";
-        os << d.stack_arr;
-        return os;
-    }
-
-    std::optional<RCP_domain>& reg(Reg r) {
-        return regs.at(r.v);
-    }
-
-    RCP_domain eval(uint64_t v) {
-        return BOT.with_num(v);
-    }
-
-    std::optional<RCP_domain> eval(Value v) {
-        if (std::holds_alternative<Imm>(v)) {
-            return eval(std::get<Imm>(v).v);
-        } else {
-            return reg(std::get<Reg>(v));
-        }
-    }
-
-    void operator|=(const Machine& o) {
+    void operator|=(const RegsDom& o) {
         for (size_t i=0; i < regs.size(); i++) {
             if (!regs[i] || !o.regs[i])
                 regs[i] = {};
             else
                 *regs[i] |= *o.regs[i];
         }
-        stack_arr |= o.stack_arr;
     }
 
-    void operator&=(const Machine& o) {
+    void operator&=(const RegsDom& o) {
         for (size_t i=0; i < regs.size(); i++)
             if (!regs[i] || !o.regs[i])
                 regs[i] = {};
             else
                 *regs[i] &= *o.regs[i];
+    }
+
+    void scratch_regs() {
+        for (int i=1; i < 6; i++)
+            regs[i] = {};
+    }
+
+    void assign(Reg r, const ValDom& v) {
+        regs[r.v] = v;
+    }
+
+    ValDom& at(Reg r) {
+        if (!regs[r.v]) throw std::runtime_error{std::string("Uninitialized register r") + std::to_string(r.v)};
+        return *regs[r.v];
+    }
+
+    void to_uninit(Reg r) {
+        regs[r.v] = {};
+    }
+
+    bool operator==(const RegsDom& o) const { return regs == o.regs; }
+};
+
+struct Machine {
+    RegsDom regs;
+    MemDom stack_arr;
+
+    program_info info;
+    RCP_domain BOT;
+    TypeSet types;
+
+    Machine(program_info info) : regs{info.map_sizes.size()}, info{info}, BOT{info.map_sizes.size()}, types{info.map_sizes.size()} {
+    }
+
+    void init() {
+        regs.init(BOT.with_ctx(0), BOT.with_stack(STACK_SIZE), BOT.with_num(TOP));
+        stack_arr.bot = false;
+    }
+
+    bool is_bot() {
+        return regs.is_bot()
+            || stack_arr.is_bot();
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const Machine& d) {
+        return os << d.regs << " " << d.stack_arr;
+    }
+
+    RCP_domain eval(uint64_t v) {
+        return BOT.with_num(v);
+    }
+
+    RCP_domain eval(Value v) {
+        if (std::holds_alternative<Imm>(v)) {
+            return eval(std::get<Imm>(v).v);
+        } else {
+            return regs.at(std::get<Reg>(v));
+        }
+    }
+
+    void operator|=(const Machine& o) {
+        regs |= o.regs;
+        stack_arr |= o.stack_arr;
+    }
+
+    void operator&=(const Machine& o) {
+        regs &= o.regs;
         stack_arr &= o.stack_arr;
     }
 
@@ -248,57 +294,39 @@ struct Machine {
     void operator()(Undefined const& a) { assert(false); }
 
     void operator()(LoadMapFd const& a) {
-        regs[a.dst.v] = BOT.with_fd(a.mapfd);
+        regs.assign(a.dst, BOT.with_fd(a.mapfd));
     }
 
     void operator()(Un const& a) { };
     void operator()(Bin const& a) { 
-        if ((!reg(a.dst) && a.op != Bin::Op::MOV) || !eval(a.v)) {
-            regs[a.dst.v] = {};
-            assert(false); // debugging purposes - does not appear in our current benchmarks
-            return;
-        }
         switch (a.op) {
-            case Bin::Op::MOV:  reg(a.dst)  = *eval(a.v); return;
-            case Bin::Op::ADD: *reg(a.dst) += *eval(a.v); return;
-            case Bin::Op::SUB: *reg(a.dst) -= *eval(a.v); return;
-            default: reg(a.dst)->exec(a.op, *eval(a.v)); return;
+            case Bin::Op::MOV: regs.assign(a.dst, eval(a.v)); return;
+            case Bin::Op::ADD: regs.at(a.dst) += eval(a.v); return;
+            case Bin::Op::SUB: regs.at(a.dst) -= eval(a.v); return;
+            default: regs.at(a.dst).exec(a.op, eval(a.v)); return;
         }
         assert(false);
         return;
     }
 
     void operator()(Assume const& a) {
-        assert(reg(a.cond.left));
-        if (eval(a.cond.right))
-            RCP_domain::assume(*reg(a.cond.left), a.cond.op, *eval(a.cond.right));
-        else {
-            std::cerr << a << " failed; " << a.cond.right << " is secret\n";
-        }
+        RCP_domain::assume(regs.at(a.cond.left), a.cond.op, eval(a.cond.right));
     }
 
     void operator()(Assert const& a) { 
         // treat as assume
         if (std::holds_alternative<LinearConstraint>(a.p->cst)) {
             auto lc = std::get<LinearConstraint>(a.p->cst);
-            assert(reg(lc.reg));
-            assert(eval(lc.width));
-            assert(eval(lc.v));
             assert((lc.when_types & types.num()).none()
                 || (lc.when_types & types.ptr()).none());
-            const RCP_domain right = reg(lc.reg)->zero() + (*eval(lc.v) - *eval(lc.width) - eval(lc.offset));
-            RCP_domain::assume(*reg(lc.reg), lc.op, right, lc.when_types);
+            const RCP_domain right = regs.at(lc.reg).zero() + (eval(lc.v) - eval(lc.width) - eval(lc.offset));
+            RCP_domain::assume(regs.at(lc.reg), lc.op, right, lc.when_types);
         } else {
             auto tc = std::get<TypeConstraint>(a.p->cst);
-            if (!reg(tc.then.reg)) {
-                reg(tc.then.reg) = BOT;
-                return;
-            }
             if (tc.given) {
-                if (!reg(tc.given->reg)) return;
-                RCP_domain::assume(*reg(tc.then.reg), tc.then.types, *reg(tc.given->reg), tc.given->types);
+                RCP_domain::assume(regs.at(tc.then.reg), tc.then.types, regs.at(tc.given->reg), tc.given->types);
             } else {
-                RCP_domain::assume(*reg(tc.then.reg), tc.then.types);
+                RCP_domain::assume(regs.at(tc.then.reg), tc.then.types);
             }
         }
     }
@@ -306,19 +334,14 @@ struct Machine {
     bool satisfied(Assert const& a) { 
         if (std::holds_alternative<LinearConstraint>(a.p->cst)) {
             auto lc = std::get<LinearConstraint>(a.p->cst);
-            const RCP_domain right = reg(lc.reg)->zero() + (*eval(lc.v) - *eval(lc.width) - eval(lc.offset));
-            // should be ignored really:
-                assert(!reg(lc.reg)->is_bot());
-                assert(!right.is_bot());
-            return RCP_domain::satisfied(*reg(lc.reg), lc.op, right, lc.when_types);
+            const RCP_domain right = regs.at(lc.reg).zero() + (eval(lc.v) - eval(lc.width) - eval(lc.offset));
+            return RCP_domain::satisfied(regs.at(lc.reg), lc.op, right, lc.when_types);
         }
         auto tc = std::get<TypeConstraint>(a.p->cst);
-        if (!reg(tc.then.reg)) return false;
-        const RCP_domain left = *reg(tc.then.reg);
+        const RCP_domain left = regs.at(tc.then.reg);
         //if (left.is_bot()) return false;
         if (tc.given) {
-            if (!reg(tc.given->reg)) return false;
-            return RCP_domain::satisfied(left, tc.then.types, *reg(tc.given->reg), tc.given->types);
+            return RCP_domain::satisfied(left, tc.then.types, regs.at(tc.given->reg), tc.given->types);
         }
         return RCP_domain::satisfied(left, tc.then.types);
     }
@@ -335,8 +358,6 @@ struct Machine {
             ++i;
             if (t == Arg::DONTCARE)
                 break;
-            assert(reg(Reg{i}));
-            RCP_domain arg = *reg(Reg{i});
             switch (t) {
             case Arg::DONTCARE: assert(false); break;
             case Arg::ANYTHING: break;
@@ -348,8 +369,7 @@ struct Machine {
             case Arg::PTR_TO_MEM_OR_NULL: break;
             case Arg::PTR_TO_MEM: break;
             case Arg::PTR_TO_UNINIT_MEM: {
-                assert(reg(Reg{(uint8_t)(i+1)}));
-                store(arg, reg(Reg{(uint8_t)(i+1)})->get_num(), BOT.with_num(TOP));
+                store(regs.at(Reg{i}), regs.at(Reg{(uint8_t)(i+1)}).get_num(), BOT.with_num(TOP));
                 break;
             }
             case Arg::PTR_TO_CTX:
@@ -359,18 +379,19 @@ struct Machine {
         switch (proto.ret_type) {
             case Ret::VOID: // actually noreturn - meaning < 0 when returns
             case Ret::INTEGER:
-                regs[0] = BOT.with_num(TOP);
+                regs.assign(Reg{0}, BOT.with_num(TOP));
                 break;
             case Ret::PTR_TO_MAP_VALUE_OR_NULL:
-                regs[0] = regs[1]->maps_from_fds().with_num(0);
+                regs.assign(Reg{0}, regs.regs.at(1)->maps_from_fds().with_num(0));
                 break;
         }
-        for (int i=1; i < 6; i++)
-            regs[i] = {};
+        regs.scratch_regs();
     }
 
-    void operator()(Packet const& a) { 
-        regs[0] = BOT.with_num(TOP);
+    void operator()(Packet const& a) {
+        // Different syntax for a function call
+        regs.assign(Reg{0}, BOT.with_num(TOP));
+        regs.scratch_regs();
     }
 
     void store(const RCP_domain& addr, const NumDomSet& width, const RCP_domain& value) {
@@ -400,9 +421,9 @@ struct Machine {
             if (d.data > -1 && as_ctx.contains(d.data))
                 r |= data_start;
             else if (d.end > -1 && as_ctx.contains(d.end))
-                r |= data_start + *reg(DATA_END_REG);
+                r |= data_start + regs.at(DATA_END_REG);
             else if (d.meta > -1 && as_ctx.contains(d.meta))
-                r |= data_start + *reg(META_REG);
+                r |= data_start + regs.at(META_REG);
             else 
                 r |= BOT.with_num(TOP);
         } else {
@@ -425,11 +446,11 @@ struct Machine {
     }
 
     void operator()(Mem const& a) {
-        const auto& addr = *reg(a.access.basereg) + eval(a.access.offset);
+        const auto& addr = regs.at(a.access.basereg) + eval(a.access.offset);
         if (a.is_load) {
-            reg(std::get<Reg>(a.value)) = load(addr, a.access.width);
+            regs.assign(std::get<Reg>(a.value), load(addr, a.access.width));
         } else {
-            store(addr, a.access.width, *eval(a.value));
+            store(addr, a.access.width, eval(a.value));
         }
     }
 
@@ -564,8 +585,6 @@ public:
     }
 
     vector<Assertion> operator()(Call const& call) {
-        using Op = Condition::Op;
-
         vector<Assertion> res;
         Types previous_types;
         bpf_func_proto proto = get_prototype(call.func);
@@ -592,7 +611,7 @@ public:
             case Arg::CONST_SIZE:
             case Arg::CONST_SIZE_OR_ZERO: {
                 // TODO: reg is constant (or maybe it's not important)
-                Op op = t == Arg::CONST_SIZE_OR_ZERO ? Op::GE : Op::GT;
+                auto op = t == Arg::CONST_SIZE_OR_ZERO ? Condition::Op::GE : Condition::Op::GT;
                 res.push_back(type_of(reg, num));
                 res.push_back(Assertion{LinearConstraint{op, reg, 0, Imm{0}, Imm{0}, num}});
                 check_access(res, previous_types, Reg{(uint8_t)(i-1)}, 0, reg);
@@ -601,7 +620,7 @@ public:
             }
             case Arg::PTR_TO_MEM_OR_NULL:
                 res.push_back(type_of(reg, mem | num));
-                res.push_back(Assertion{LinearConstraint{Op::EQ, reg, 0, Imm{0}, Imm{0}, num} });
+                res.push_back(Assertion{LinearConstraint{Condition::Op::EQ, reg, 0, Imm{0}, Imm{0}, num} });
                 // NUM should not be in previous_types
                 previous_types = mem;
                 break;
