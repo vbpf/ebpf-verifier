@@ -312,12 +312,16 @@ void print(const Cfg& cfg, bool nondet, std::ostream& out) {
         out << std::setw(10) << label << ":\t";
         const auto& bb = cfg.at(label);
         bool first = true;
+        int i = 0;
         for (auto ins : bb.insts) {
             if (is_satisfied(ins)) continue;
             if (!first) out << std::setw(10) << " \t";
             first = false;
+            if (!bb.pres.empty()) out << std::setw(10) << " \t" << "                             " << bb.pres.at(i) << "\n";
             std::visit(InstructionPrinterVisitor{out}, ins);
             out << "\n";
+            if (!bb.posts.empty()) out << std::setw(10) << " \t" << "                             " << bb.posts.at(i) << "\n";
+            ++i;
         }
         if (nondet && bb.nextlist.size() > 0 && (!next || bb.nextlist != vector<Label>{*next})) {
             if (!first) out << std::setw(10) << " \t";

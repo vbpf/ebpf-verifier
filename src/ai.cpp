@@ -5,13 +5,13 @@
 #include <list>
 #include <string>
 #include <algorithm>
-#include <unordered_set>
+#include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <iostream>
 #include <optional>
 #include <bitset>
 #include <functional>
-#include <unordered_map>
 
 #include "asm_syntax.hpp"
 #include "asm_cfg.hpp"
@@ -38,9 +38,134 @@ bool operator==(const Assert& a, const Assert& b) { return *a.p == *b.p && a.sat
 constexpr Reg DATA_END_REG = Reg{13};
 constexpr Reg META_REG = Reg{14};
 
+struct MemDom {
+    struct Pair {
+        RCP_domain dom;
+        uint64_t width{};
+        bool operator==(const Pair& o) const { return dom == o.dom && width == o.width; }
+    };
+    bool bot = true;
+    std::map<int, Pair> arr;
+    
+    void load(const OffsetDomSet& offset, uint64_t width, RCP_domain& outval) const {
+        if (offset.is_top()) {
+            outval.havoc();
+            return;
+        }
+        assert(!offset.elems.empty());
+        outval.to_bot();
+        for (int64_t k : offset.elems) {
+            for (auto [k1, v] : arr) {
+                if ((k1 <= k && k1 + v.width >  k + width)
+                 || (k1 <  k && k1 + v.width >= k + width)) {
+                    if (v.dom.must_be_num()) {
+                        outval = outval.with_num(TOP);
+                    } else {
+                        outval.havoc();
+                    }
+                    goto next_iteration;
+                }
+            }
+            if (arr.count(k)) {
+                const auto& dom = arr.at(k).dom;
+                if (arr.at(k).width == width) {
+                    outval |= dom;
+                } else {
+                    // partial read of num havocs only num
+                    if (dom.must_be_num())
+                        outval = outval.with_num(TOP);
+                    else
+                        outval.havoc();
+                    return;
+                }
+            } else {
+                outval.havoc();
+                return;
+            }
+        next_iteration:
+            ;
+        }
+    }
+
+    void store(const OffsetDomSet& offset, const NumDomSet& ws, const RCP_domain& value) {
+        bot = false;
+        if (offset.is_top() || !ws.is_single()) {
+            arr.clear();
+            return;
+        }
+        uint64_t width = ws.elems.front();
+        assert(!offset.elems.empty());
+        for (int64_t k : offset.elems) {
+            std::vector<int64_t> to_remove;
+            for (auto& [k1, v1] : arr) {
+                if (k1 >= k) break;
+                if (k1 + v1.width > k) {
+                    if (v1.dom.must_be_num()) {
+                        // part of num is valid num
+                        v1.width = k - k1;
+                        v1.dom = v1.dom.with_num(TOP);
+                    } else {
+                        to_remove.push_back(k1);
+                    }
+                }
+            }
+            for (auto k1 : to_remove) arr.erase(k1);
+            if (arr.count(k)) {
+                if (arr.at(k).width == width) {
+                    arr.at(k).dom |= value;
+                    if (arr.at(k).dom.is_top())
+                        arr.erase(k);
+                } else {
+                    arr.erase(k);
+                }
+            } // otherwise it's already top
+            for (uint64_t i=1; i<width; i++) {
+                arr.erase(k + (int)i);
+            }
+        }
+
+        if (offset.is_single()) {
+            arr.insert_or_assign(offset.elems.front(), Pair{value, width});
+        }
+    };
+
+    void operator|=(const MemDom& o) {
+        //std::cerr << *this << " | " << o;
+        if (o.bot)
+            return;
+        if (bot) {
+            *this = o;
+        } else {
+            for (auto& [k, p] : o.arr) {
+                if (arr.count(k) == 1 && arr.at(k).width == p.width) {
+                    arr.at(k).dom |= p.dom;
+                } else {
+                    arr.erase(k);
+                }
+            }
+        }
+        //std::cerr << " = " << *this << "\n";
+    }
+    void operator&=(const MemDom& o) {
+        // TODO
+    }
+
+    bool operator==(const MemDom& o) const { return arr == o.arr; }
+
+    friend std::ostream& operator<<(std::ostream& os, const MemDom& d) {
+        if (d.bot) return os << "{BOT}";
+        os << "{";
+        for (auto [k, v] : d.arr) {
+            os << k - STACK_SIZE << ":" << v.width << "->" << v.dom << ", ";
+        }
+        os << "}";
+        return os;
+    }
+};
+
 struct RegsDomain {
     std::array<std::optional<RCP_domain>, 16> regs;
-    //int min_packet_size{0};
+    MemDom stack_arr;
     program_info info;
     RCP_domain BOT;
     TypeSet types;
@@ -50,6 +175,7 @@ struct RegsDomain {
     }
 
     void init() {
+        stack_arr.bot = false;
         for (auto& r : regs) r = {};
         regs[1] = BOT.with_ctx(0);
         regs[10] = BOT.with_stack(STACK_SIZE);
@@ -76,7 +202,8 @@ struct RegsDomain {
             else os << "*";
             os << ", ";
         }
-        os << ">>";
+        os << ">> ";
+        os << d.stack_arr;
         return os;
     }
 
@@ -103,6 +230,7 @@ struct RegsDomain {
             else
                 *regs[i] |= *o.regs[i];
         }
+        stack_arr |= o.stack_arr;
     }
 
     void operator&=(const RegsDomain& o) {
@@ -111,10 +239,11 @@ struct RegsDomain {
                 regs[i] = {};
             else
                 *regs[i] &= *o.regs[i];
+        stack_arr &= o.stack_arr;
     }
 
-    bool operator==(RegsDomain o) const { return regs == o.regs; }
-    bool operator!=(RegsDomain o) const { return regs != o.regs; }
+    bool operator==(RegsDomain o) const { return regs == o.regs && stack_arr == o.stack_arr; }
+    bool operator!=(RegsDomain o) const { return !(*this == o); }
 
     void operator()(Undefined const& a) { assert(false); }
 
@@ -190,8 +319,9 @@ struct RegsDomain {
         if (std::holds_alternative<LinearConstraint>(a.p->cst)) {
             auto lc = std::get<LinearConstraint>(a.p->cst);
             const RCP_domain right = reg(lc.reg)->zero() + (*eval(lc.v) - *eval(lc.width) - eval(lc.offset));
-            assert(!right.is_bot()); // should be ignored really
-            assert(!reg(lc.reg)->is_bot()); // should be ignored really
+            // should be ignored really:
+                assert(!reg(lc.reg)->is_bot());
+                assert(!right.is_bot());
             return RCP_domain::satisfied(*reg(lc.reg), lc.op, right, lc.when_types);
         }
         auto tc = std::get<TypeConstraint>(a.p->cst);
@@ -210,7 +340,35 @@ struct RegsDomain {
     void operator()(Jmp const& a) { }
 
     void operator()(Call const& call) {
-        switch (get_prototype(call.func).ret_type) {
+        bpf_func_proto proto = get_prototype(call.func);
+        uint8_t i = 0;
+        std::array<Arg, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
+        for (Arg t : args) {
+            ++i;
+            if (t == Arg::DONTCARE)
+                break;
+            assert(reg(Reg{i}));
+            RCP_domain arg = *reg(Reg{i});
+            switch (t) {
+            case Arg::DONTCARE: assert(false); break;
+            case Arg::ANYTHING: break;
+            case Arg::CONST_MAP_PTR: break;
+            case Arg::CONST_SIZE:
+            case Arg::CONST_SIZE_OR_ZERO: break;
+            case Arg::PTR_TO_MAP_KEY: break;
+            case Arg::PTR_TO_MAP_VALUE: break;
+            case Arg::PTR_TO_MEM_OR_NULL: break;
+            case Arg::PTR_TO_MEM: break;
+            case Arg::PTR_TO_UNINIT_MEM: {
+                assert(reg(Reg{(uint8_t)(i+1)}));
+                store(arg, reg(Reg{(uint8_t)(i+1)})->get_num(), BOT.with_num(TOP));
+                break;
+            }
+            case Arg::PTR_TO_CTX:
+                break;
+            }
+        }
+        switch (proto.ret_type) {
             case Ret::VOID: // actually noreturn - meaning < 0 when returns
             case Ret::INTEGER:
                 regs[0] = BOT.with_num(TOP);
@@ -227,34 +385,63 @@ struct RegsDomain {
         regs[0] = BOT.with_num(TOP);
     }
 
-    void operator()(Mem const& a) {
-        if (!a.is_load) return;
-        if (!reg(a.access.basereg)) return;
-        auto r = BOT;
-        auto addr = *reg(a.access.basereg) + eval(a.access.offset);
-        OffsetDomSet as_ctx = addr.get_ctx();
-        if (!as_ctx.is_bot()) {
-            if (as_ctx.is_single()) {
-                auto d = info.descriptor;
-                auto data_start = BOT.with_packet(0);
-                if (d.data > -1 && as_ctx.contains(d.data))
-                    r |= data_start;
-                else if (d.end > -1 && as_ctx.contains(d.end))
-                    r |= data_start + *reg(DATA_END_REG);
-                else if (d.meta > -1 && as_ctx.contains(d.meta))
-                    r |= data_start + *reg(META_REG);
-                else 
-                    r |= BOT.with_num(TOP);
-            } else {
-                r.havoc(); // TODO: disallow, or at least don't havoc fd
-            }
+    void store(const RCP_domain& addr, const NumDomSet& width, const RCP_domain& value) {
+        OffsetDomSet as_stack = addr.get_stack();
+        if (!as_stack.is_bot()) {
+            // make weak updates extremely weak
+            if (addr.with_stack({}).is_bot())
+                stack_arr.store(as_stack, width, value);
+            else
+                stack_arr.store(TOP, width, value);
         }
-        if (!(addr & BOT.with_packet(TOP)).is_bot()
-         || !(addr & BOT.with_maps(TOP)).is_bot())
-            r |= BOT.with_num(TOP);
-        if (!(addr & BOT.with_stack(TOP)).is_bot())
-            r.havoc();
-        reg(a.value) = r;
+    }
+
+    RCP_domain load_stack(const OffsetDomSet& as_stack, int width) {
+        if (as_stack.is_bot()) return BOT;
+        RCP_domain r = BOT;
+        stack_arr.load(as_stack, width, r);
+        return r;
+    }
+
+    RCP_domain load_ctx(const OffsetDomSet& as_ctx, int width) {
+        if (as_ctx.is_bot()) return BOT;
+        RCP_domain r = BOT;
+        if (as_ctx.is_single()) {
+            auto d = info.descriptor;
+            auto data_start = BOT.with_packet(0);
+            if (d.data > -1 && as_ctx.contains(d.data))
+                r |= data_start;
+            else if (d.end > -1 && as_ctx.contains(d.end))
+                r |= data_start + *reg(DATA_END_REG);
+            else if (d.meta > -1 && as_ctx.contains(d.meta))
+                r |= data_start + *reg(META_REG);
+            else 
+                r |= BOT.with_num(TOP);
+        } else {
+            r.havoc(); // TODO: disallow, or at least don't havoc fd
+        }
+        return r;
+    }
+
+    RCP_domain load_other(const RCP_domain& addr) {
+        if (addr.maybe_packet()
+         || addr.maybe_map())
+            return BOT.with_num(TOP);
+        return BOT;
+    }
+
+    RCP_domain load(const RCP_domain& addr, int width) {
+        return load_stack(addr.get_stack(), width)
+             | load_ctx(addr.get_ctx(), width)
+             | load_other(addr);
+    }
+
+    void operator()(Mem const& a) {
+        const auto& addr = *reg(a.access.basereg) + eval(a.access.offset);
+        if (a.is_load) 
+            reg(a.value) = load(addr, a.access.width);
+        else 
+            store(addr, a.access.width, *eval(a.value));
     }
 
     void operator()(LockAdd const& a) { }
@@ -323,18 +510,17 @@ void analyze_rcp(Cfg& cfg, program_info info) {
                 if (!a.satisfied) { // && !dom.is_bot()
                     a.satisfied = dom.satisfied(a);
                     unsatisfied_assertion = !a.satisfied;
-                    if (unsatisfied_assertion) {
-                        std::cout << l << ":\n";
-                        std::cout << dom << "\n";
-                        std::cout << "\n" << ins << "\n";
-                    }
                 }
             }
+            // std::cerr << l << "\n";
+            // std::cerr << dom << "\n";
+            // std::cerr << ins << "\n";
             dom.visit(ins);
-            if (unsatisfied_assertion) {
-                std::cout << dom << "\n";
-            }
+            // std::cerr << dom << "\n";
         }
+        // for (auto n : cfg[l].nextlist)
+        //     std::cerr << n << ",";
+        // std::cerr << "\n";
     }
 }
 
@@ -391,9 +577,9 @@ public:
     vector<Assertion> operator()(Call const& call) {
         using Op = Condition::Op;
 
-        bpf_func_proto proto = get_prototype(call.func);
         vector<Assertion> res;
         Types previous_types;
+        bpf_func_proto proto = get_prototype(call.func);
         uint8_t i = 0;
         std::array<Arg, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
         for (Arg t : args) {

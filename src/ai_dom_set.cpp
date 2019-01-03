@@ -115,7 +115,7 @@ void OffsetDomSet::exec(bool add, const NumDomSet& o) {
     std::set<int64_t> res;
     for (auto k : elems) {
         for (auto n : o.elems) {
-            int64_t x = add ? k + n : k - n;
+            int64_t x = add ? k + (int)n : k - (int)n;
             if (x > (1 << 30)) {
                 havoc();
                 return;
