@@ -512,17 +512,15 @@ void analyze_rcp(Cfg& cfg, program_info info) {
                     unsatisfied_assertion = !a.satisfied;
                 }
             }
-            //cfg[l].pres.push_back(dom.to_string());
-            std::cerr << l << "\n";
-            std::cerr << dom << "\n";
-            std::cerr << ins << "\n";
+            // std::cerr << l << "\n";
+            // std::cerr << dom << "\n";
+            // std::cerr << ins << "\n";
             dom.visit(ins);
-            std::cerr << dom << "\n";
-            //cfg[l].posts.push_back(dom.to_string());
+            // std::cerr << dom << "\n";
         }
-        for (auto n : cfg[l].nextlist)
-            std::cerr << n << ",";
-        std::cerr << "\n";
+        // for (auto n : cfg[l].nextlist)
+        //     std::cerr << n << ",";
+        // std::cerr << "\n";
     }
 }
 
