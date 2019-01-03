@@ -207,8 +207,8 @@ struct RegsDomain {
         return os;
     }
 
-    std::optional<RCP_domain>& reg(Value v) {
-        return regs.at(std::get<Reg>(v).v);
+    std::optional<RCP_domain>& reg(Reg r) {
+        return regs.at(r.v);
     }
 
     RCP_domain eval(uint64_t v) {
@@ -219,7 +219,7 @@ struct RegsDomain {
         if (std::holds_alternative<Imm>(v)) {
             return eval(std::get<Imm>(v).v);
         } else {
-            return reg(v);
+            return reg(std::get<Reg>(v));
         }
     }
 
@@ -253,28 +253,16 @@ struct RegsDomain {
 
     void operator()(Un const& a) { };
     void operator()(Bin const& a) { 
-        using Op = Bin::Op;
-        RCP_domain rhs = std::holds_alternative<Reg>(a.v)
-                       ? (reg(a.v) ? *reg(a.v) : BOT)
-                       : BOT.with_num(std::get<Imm>(a.v).v);
-        if (a.op == Op::MOV) {
-            regs[a.dst.v] = rhs;
+        if ((!reg(a.dst) && a.op != Bin::Op::MOV) || !eval(a.v)) {
+            regs[a.dst.v] = {};
+            assert(false); // debugging purposes - does not appear in our current benchmarks
             return;
         }
-        if ((std::holds_alternative<Reg>(a.v) && !reg(a.v)) || !reg(a.dst)) {
-            // No need to propagate uninitialized values - just mark as bot
-            // TODO: what about assertion failures?
-            regs[a.dst.v] = BOT;
-            return;
-        }
-        if (!reg(a.dst)) return;
-        if (std::holds_alternative<Reg>(a.v) && !reg(a.v)) reg(a.dst) = {};
-        RCP_domain& lhs = *reg(a.dst);
         switch (a.op) {
-            case Op::MOV: assert(false); return;
-            case Op::ADD: lhs += rhs; return;
-            case Op::SUB: lhs -= rhs; return;
-            default: lhs.exec(a.op, rhs); return;
+            case Bin::Op::MOV:  reg(a.dst)  = *eval(a.v); return;
+            case Bin::Op::ADD: *reg(a.dst) += *eval(a.v); return;
+            case Bin::Op::SUB: *reg(a.dst) -= *eval(a.v); return;
+            default: reg(a.dst)->exec(a.op, *eval(a.v)); return;
         }
         assert(false);
         return;
@@ -438,10 +426,11 @@ struct RegsDomain {
 
     void operator()(Mem const& a) {
         const auto& addr = *reg(a.access.basereg) + eval(a.access.offset);
-        if (a.is_load) 
-            reg(a.value) = load(addr, a.access.width);
-        else 
+        if (a.is_load) {
+            reg(std::get<Reg>(a.value)) = load(addr, a.access.width);
+        } else {
             store(addr, a.access.width, *eval(a.value));
+        }
     }
 
     void operator()(LockAdd const& a) { }
