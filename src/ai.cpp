@@ -313,37 +313,44 @@ struct Machine {
         RCP_domain::assume(regs.at(a.cond.left), a.cond.op, eval(a.cond.right));
     }
 
-    void operator()(Assert const& a) { 
+    void operator()(Assert const& a) {
         // treat as assume
-        if (std::holds_alternative<LinearConstraint>(a.p->cst)) {
-            auto lc = std::get<LinearConstraint>(a.p->cst);
-            assert((lc.when_types & types.num()).none()
-                || (lc.when_types & types.ptr()).none());
-            const RCP_domain right = regs.at(lc.reg).zero() + (eval(lc.v) - eval(lc.width) - eval(lc.offset));
-            RCP_domain::assume(regs.at(lc.reg), lc.op, right, lc.when_types);
-        } else {
-            auto tc = std::get<TypeConstraint>(a.p->cst);
-            if (tc.given) {
-                RCP_domain::assume(regs.at(tc.then.reg), tc.then.types, regs.at(tc.given->reg), tc.given->types);
-            } else {
-                RCP_domain::assume(regs.at(tc.then.reg), tc.then.types);
+        std::visit(overloaded{
+            [this](const LinearConstraint& lc) {
+                assert((lc.when_types & types.num()).none()
+                    || (lc.when_types & types.ptr()).none());
+                const RCP_domain right = regs.at(lc.reg).zero() + (eval(lc.v) - eval(lc.width) - eval(lc.offset));
+                RCP_domain::assume(regs.at(lc.reg), lc.op, right, lc.when_types);
+            },
+            [this](const TypeConstraint& tc) {
+                auto& r = regs.at(tc.then.reg);
+                auto t = tc.then.types;
+                if (tc.given) {
+                    RCP_domain::assume(r, t, regs.at(tc.given->reg), tc.given->types);
+                } else {
+                    RCP_domain::assume(r, t);
+                }
             }
-        }
+        }, a.p->cst);
     }
 
     bool satisfied(Assert const& a) { 
-        if (std::holds_alternative<LinearConstraint>(a.p->cst)) {
-            auto lc = std::get<LinearConstraint>(a.p->cst);
-            const RCP_domain right = regs.at(lc.reg).zero() + (eval(lc.v) - eval(lc.width) - eval(lc.offset));
-            return RCP_domain::satisfied(regs.at(lc.reg), lc.op, right, lc.when_types);
-        }
-        auto tc = std::get<TypeConstraint>(a.p->cst);
-        const RCP_domain left = regs.at(tc.then.reg);
-        //if (left.is_bot()) return false;
-        if (tc.given) {
-            return RCP_domain::satisfied(left, tc.then.types, regs.at(tc.given->reg), tc.given->types);
-        }
-        return RCP_domain::satisfied(left, tc.then.types);
+        return std::visit(overloaded{
+            [this](const LinearConstraint& lc) {
+                const RCP_domain right = regs.at(lc.reg).zero() + (eval(lc.v) - eval(lc.width) - eval(lc.offset));
+                return RCP_domain::satisfied(regs.at(lc.reg), lc.op, right, lc.when_types);
+            },
+            [this](const TypeConstraint& tc) {
+                const RCP_domain left = regs.at(tc.then.reg);
+                auto t = tc.then.types;
+                //if (left.is_bot()) return false;
+                if (tc.given) {
+                    return RCP_domain::satisfied(left, t, regs.at(tc.given->reg), tc.given->types);
+                } else {
+                    return RCP_domain::satisfied(left, t);
+                }
+            }
+        }, a.p->cst);
     }
 
     void operator()(Exit const& a) { }
