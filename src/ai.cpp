@@ -550,7 +550,7 @@ class AssertionExtractor {
     const Types nonfd = ptr | num;
     
     auto type_of(Reg r, const Types t) {
-        assert(t.size() == info.map_sizes.size() + 5);
+        assert(t.size() == info.map_sizes.size() + TypeSet::nonmaps);
         return Assertion{TypeConstraint{{r, t}}};
     };
 

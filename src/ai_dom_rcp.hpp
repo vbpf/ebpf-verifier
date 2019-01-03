@@ -130,7 +130,11 @@ public:
         return with_num({}).is_bot();
     }
 
-    bool operator==(const RCP_domain& o) const { return maps == o.maps && ctx == o.ctx && stack == o.stack && packet == o.packet && num == o.num && fd == o.fd; }
+   bool operator==(const RCP_domain& o) const {
+        return pointwise_all_pairs(all(), o,
+            [](const auto& a, const auto& b){ return a == b; }); 
+    }
+
     bool operator!=(const RCP_domain& o) const { return !((*this) == o); }
 
     RCP_domain(size_t nmaps) : maps(nmaps), fd{nmaps} {
@@ -188,7 +192,7 @@ public:
     static bool satisfied(const RCP_domain& left, Condition::Op op, const RCP_domain& right, Types where_types);
 
     bool valid_types(Types t) const {
-        return t.size() == maps.size() + 5;
+        return t.size() == maps.size() + TypeSet::nonmaps;
     }
 
     RCP_domain zero() const {
