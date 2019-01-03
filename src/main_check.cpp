@@ -169,17 +169,17 @@ int main(int argc, char **argv)
                 print(prog, out);
             } else {
                 Cfg cfg = Cfg::make(prog);
-                if (nondet) {
-                    cfg = cfg.to_nondet(expand_locks);
-                    {
-                        std::ofstream out{outsubdir + "nondet.dot"};
-                        print_dot(cfg, out);
-                    }
-                }
                 if (explicit_assertions) {
                     explicate_assertions(cfg, raw_prog.info);
                     {
                         std::ofstream out{outsubdir + "explicit.dot"};
+                        print_dot(cfg, out);
+                    }
+                }
+                if (nondet) {
+                    cfg = cfg.to_nondet(expand_locks);
+                    {
+                        std::ofstream out{outsubdir + "nondet.dot"};
                         print_dot(cfg, out);
                     }
                 }

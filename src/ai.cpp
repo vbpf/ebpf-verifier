@@ -424,13 +424,13 @@ struct Machine {
         RCP_domain r = BOT;
         if (as_ctx.is_single()) {
             auto d = info.descriptor;
-            auto data_start = BOT.with_packet(0);
+            auto data_start = BOT.with_packet(3);
             if (d.data > -1 && as_ctx.contains(d.data))
                 r |= data_start;
             else if (d.end > -1 && as_ctx.contains(d.end))
                 r |= data_start + regs.at(DATA_END_REG);
             else if (d.meta > -1 && as_ctx.contains(d.meta))
-                r |= data_start + regs.at(META_REG);
+                r |= data_start + BOT.with_packet(0);
             else 
                 r |= BOT.with_num(TOP);
         } else {
@@ -655,23 +655,32 @@ public:
         return res;
     }
 
-    vector<Assertion> operator()(Assume ins) { 
+    vector<Assertion> explicate(Condition cond) { 
         vector<Assertion> res;
         if (is_priviledged) {
-            res.push_back(type_of(ins.cond.left, nonfd));
+            res.push_back(type_of(cond.left, nonfd));
         } else {
-            if (std::holds_alternative<Imm>(ins.cond.right)) {
-                if (std::get<Imm>(ins.cond.right).v != 0) {
-                    res.push_back(type_of(ins.cond.left, num));
+            if (std::holds_alternative<Imm>(cond.right)) {
+                if (std::get<Imm>(cond.right).v != 0) {
+                    res.push_back(type_of(cond.left, num));
                 } else {
-                    res.push_back(type_of(ins.cond.left, nonfd));
+                    res.push_back(type_of(cond.left, nonfd));
                 }
             } else {
-                res.push_back(type_of(ins.cond.left, nonfd));
-                same_type(res, nonfd, ins.cond.left, std::get<Reg>(ins.cond.right));
+                res.push_back(type_of(cond.left, nonfd));
+                same_type(res, nonfd, cond.left, std::get<Reg>(cond.right));
             }
         }
         return res;
+    }
+
+    vector<Assertion> operator()(Assume ins) { 
+        return explicate(ins.cond);
+    }
+
+    vector<Assertion> operator()(Jmp ins) { 
+        if (!ins.cond) return {};
+        return explicate(*ins.cond);
     }
 
     vector<Assertion> operator()(Mem ins) { 
