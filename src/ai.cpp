@@ -163,14 +163,14 @@ struct MemDom {
     }
 };
 
-struct RegsDomain {
+struct Machine {
     std::array<std::optional<RCP_domain>, 16> regs;
     MemDom stack_arr;
     program_info info;
     RCP_domain BOT;
     TypeSet types;
 
-    RegsDomain(program_info info) : info{info}, BOT{info.map_sizes.size()}, types{info.map_sizes.size()} {
+    Machine(program_info info) : info{info}, BOT{info.map_sizes.size()}, types{info.map_sizes.size()} {
         for (auto& r : regs) r = BOT;
     }
 
@@ -194,7 +194,7 @@ struct RegsDomain {
         return false;
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const RegsDomain& d) {
+    friend std::ostream& operator<<(std::ostream& os, const Machine& d) {
         os << "<<";
         for (size_t i = 0; i < 10; i++) {
             os << "r"<< i << ": ";
@@ -223,7 +223,7 @@ struct RegsDomain {
         }
     }
 
-    void operator|=(const RegsDomain& o) {
+    void operator|=(const Machine& o) {
         for (size_t i=0; i < regs.size(); i++) {
             if (!regs[i] || !o.regs[i])
                 regs[i] = {};
@@ -233,7 +233,7 @@ struct RegsDomain {
         stack_arr |= o.stack_arr;
     }
 
-    void operator&=(const RegsDomain& o) {
+    void operator&=(const Machine& o) {
         for (size_t i=0; i < regs.size(); i++)
             if (!regs[i] || !o.regs[i])
                 regs[i] = {};
@@ -242,8 +242,8 @@ struct RegsDomain {
         stack_arr &= o.stack_arr;
     }
 
-    bool operator==(RegsDomain o) const { return regs == o.regs && stack_arr == o.stack_arr; }
-    bool operator!=(RegsDomain o) const { return !(*this == o); }
+    bool operator==(Machine o) const { return regs == o.regs && stack_arr == o.stack_arr; }
+    bool operator!=(Machine o) const { return !(*this == o); }
 
     void operator()(Undefined const& a) { assert(false); }
 
@@ -441,8 +441,8 @@ struct RegsDomain {
 };
 
 struct Analyzer {
-    std::unordered_map<Label, RegsDomain> pre;
-    std::unordered_map<Label, RegsDomain> post;
+    std::unordered_map<Label, Machine> pre;
+    std::unordered_map<Label, Machine> post;
 
     Analyzer(const Cfg& cfg, program_info info)  {
         for (auto l : cfg.keys()) {
@@ -453,7 +453,7 @@ struct Analyzer {
     }
 
     bool recompute(Label l, const BasicBlock& bb) {        
-        RegsDomain dom = pre.at(l);
+        Machine dom = pre.at(l);
         for (const Instruction& ins : bb.insts) {
             dom.visit(ins);
         }
@@ -463,7 +463,7 @@ struct Analyzer {
     }
 
     void join(const std::vector<Label>& prevs, Label into) {
-        RegsDomain new_pre = pre.at(into);
+        Machine new_pre = pre.at(into);
         for (Label l : prevs) {
             new_pre |= post.at(l);
         }
