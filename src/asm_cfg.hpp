@@ -9,6 +9,8 @@ struct BasicBlock {
     std::vector<Instruction> insts;
     std::vector<Label> nextlist;
     std::vector<Label> prevlist;
+    std::vector<std::string> pres;
+    std::vector<std::string> posts;
 };
 
 class Cfg {

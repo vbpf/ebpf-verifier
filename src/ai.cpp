@@ -58,7 +58,7 @@ struct MemDom {
             for (auto [k1, v] : arr) {
                 if ((k1 <= k && k1 + v.width >  k + width)
                  || (k1 <  k && k1 + v.width >= k + width)) {
-                    if (v.dom.with_num({}).is_bot()) {
+                    if (v.dom.must_be_num()) {
                         outval = outval.with_num(TOP);
                     } else {
                         outval.havoc();
@@ -72,7 +72,7 @@ struct MemDom {
                     outval |= dom;
                 } else {
                     // partial read of num havocs only num
-                    if (dom.with_num({}).is_bot())
+                    if (dom.must_be_num())
                         outval = outval.with_num(TOP);
                     else
                         outval.havoc();
@@ -97,9 +97,17 @@ struct MemDom {
         assert(!offset.elems.empty());
         for (int64_t k : offset.elems) {
             std::vector<int64_t> to_remove;
-            for (auto& [k1, v] : arr) {
-                if (k1 > k) break;
-                if (k1 + v.width > k) to_remove.push_back(k1);
+            for (auto& [k1, v1] : arr) {
+                if (k1 >= k) break;
+                if (k1 + v1.width > k) {
+                    if (v1.dom.must_be_num()) {
+                        // part of num is valid num
+                        v1.width = k - k1;
+                        v1.dom = v1.dom.with_num(TOP);
+                    } else {
+                        to_remove.push_back(k1);
+                    }
+                }
             }
             for (auto k1 : to_remove) arr.erase(k1);
             if (arr.count(k)) {
@@ -194,8 +202,8 @@ struct RegsDomain {
             else os << "*";
             os << ", ";
         }
-        os << ">>";
-        os << "\n" << d.stack_arr;
+        os << ">> ";
+        os << d.stack_arr;
         return os;
     }
 
@@ -388,14 +396,14 @@ struct RegsDomain {
         }
     }
 
-    RCP_domain stack_load(const OffsetDomSet& as_stack, int width) {
+    RCP_domain load_stack(const OffsetDomSet& as_stack, int width) {
         if (as_stack.is_bot()) return BOT;
         RCP_domain r = BOT;
         stack_arr.load(as_stack, width, r);
         return r;
     }
 
-    RCP_domain ctx_load(const OffsetDomSet& as_ctx, int width) {
+    RCP_domain load_ctx(const OffsetDomSet& as_ctx, int width) {
         if (as_ctx.is_bot()) return BOT;
         RCP_domain r = BOT;
         if (as_ctx.is_single()) {
@@ -415,17 +423,17 @@ struct RegsDomain {
         return r;
     }
 
-    RCP_domain other_load(const RCP_domain& addr) {
-        if (!(addr & BOT.with_packet(TOP)).is_bot()
-         || !(addr & BOT.with_maps(TOP)).is_bot())
+    RCP_domain load_other(const RCP_domain& addr) {
+        if (addr.maybe_packet()
+         || addr.maybe_map())
             return BOT.with_num(TOP);
         return BOT;
     }
 
     RCP_domain load(const RCP_domain& addr, int width) {
-        return stack_load(addr.get_stack(), width)
-             | ctx_load(addr.get_ctx(), width)
-             | other_load(addr);
+        return load_stack(addr.get_stack(), width)
+             | load_ctx(addr.get_ctx(), width)
+             | load_other(addr);
     }
 
     void operator()(Mem const& a) {
@@ -504,16 +512,17 @@ void analyze_rcp(Cfg& cfg, program_info info) {
                     unsatisfied_assertion = !a.satisfied;
                 }
             }
-            //if (true || std::holds_alternative<Call>(ins)) {
-            //    std::cout << l << ":\n";
-            //    std::cout << dom << "\n";
-            //    std::cout << ins << "\n";
-            //}
+            //cfg[l].pres.push_back(dom.to_string());
+            std::cerr << l << "\n";
+            std::cerr << dom << "\n";
+            std::cerr << ins << "\n";
             dom.visit(ins);
-            //if (true || std::holds_alternative<Call>(ins)) {
-            //    std::cout << dom << "\n\n";
-            //}
+            std::cerr << dom << "\n";
+            //cfg[l].posts.push_back(dom.to_string());
         }
+        for (auto n : cfg[l].nextlist)
+            std::cerr << n << ",";
+        std::cerr << "\n";
     }
 }
 

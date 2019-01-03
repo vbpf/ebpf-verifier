@@ -117,8 +117,17 @@ public:
     OffsetDom get_stack() const {
         return stack;
     }
+    bool maybe_packet() const {
+        return !packet.is_bot();
+    }
+    bool maybe_map() const {
+        return std::any_of(maps.cbegin(), maps.cend(), [](const auto& m) { return !m.is_bot(); });
+    }
     NumDom get_num() const {
         return num;
+    }
+    bool must_be_num() const {
+        return with_num({}).is_bot();
     }
 
     bool operator==(const RCP_domain& o) const { return maps == o.maps && ctx == o.ctx && stack == o.stack && packet == o.packet && num == o.num && fd == o.fd; }
