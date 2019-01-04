@@ -224,7 +224,7 @@ struct Unmarshaller {
         return std::visit(overloaded{
             [&](Un::Op op) -> Instruction { return Un{ .op = op, .dst = Reg{inst.dst} }; },
             [&](Bin::Op op) -> Instruction {
-                Bin res{ 
+                Bin res{
                     .op = op,
                     .is64 = (inst.opcode & EBPF_CLS_MASK) == EBPF_CLS_ALU64,
                     .dst = Reg{ inst.dst },
@@ -264,11 +264,54 @@ struct Unmarshaller {
         };
     }
 
+    auto makeCall(int32_t imm) {
+        bpf_func_proto proto = get_prototype(imm);
+        Call res;
+        res.func = imm;
+        res.pkt_access = proto.pkt_access;
+        uint8_t i = 0;
+        std::array<Arg, 6> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type, Arg::DONTCARE}};
+        for (Arg t : args) {
+            Reg reg{++i};
+            Reg next{(uint8_t)(i+1)};
+            bool can_be_zero = (args[i+1] == Arg::CONST_SIZE_OR_ZERO);
+            if (t == Arg::DONTCARE)
+                break;
+            switch (t) {
+            case Arg::DONTCARE:
+                assert(false);
+                break;
+            case Arg::ANYTHING: res.singles.push_back({ArgSingle::Kind::ANYTHING, reg}); break;
+            case Arg::CONST_MAP_PTR: res.singles.push_back({ArgSingle::Kind::CONST_MAP_PTR, reg}); break;
+            case Arg::PTR_TO_MAP_KEY:
+                res.singles.push_back({ArgSingle::Kind::PTR_TO_MAP_KEY, reg});
+                break;
+            case Arg::PTR_TO_MAP_VALUE:
+                res.singles.push_back({ArgSingle::Kind::PTR_TO_MAP_VALUE, reg});
+                break;
+            case Arg::PTR_TO_CTX:
+                res.singles.push_back({ArgSingle::Kind::PTR_TO_CTX, reg});
+                break;
+            case Arg::CONST_SIZE: continue;
+            case Arg::CONST_SIZE_OR_ZERO: continue;
+            case Arg::PTR_TO_MEM_OR_NULL:
+                res.pairs.push_back({ArgPair::Kind::PTR_TO_MEM_OR_NULL, reg, next, can_be_zero});
+                break;
+            case Arg::PTR_TO_MEM:
+                res.pairs.push_back({ArgPair::Kind::PTR_TO_MEM, reg, next, can_be_zero});
+                break;
+            case Arg::PTR_TO_UNINIT_MEM:
+                res.pairs.push_back({ArgPair::Kind::PTR_TO_UNINIT_MEM, reg, next, can_be_zero});
+                break;
+            }
+        }
+        return res;
+    }
     auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, pc_t pc) -> Instruction {
         switch ((inst.opcode >> 4) & 0xF) {
             case 0x8:
                 if (!is_valid_prototype(inst.imm)) note("invalid function id ");
-                return Call{ inst.imm };
+                return makeCall(inst.imm);
             case 0x9: return Exit{};
             default: {
                 pc_t new_pc = pc + 1 + inst.offset;

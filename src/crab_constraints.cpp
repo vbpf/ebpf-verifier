@@ -805,55 +805,34 @@ vector<basic_block_t*> instruction_builder_t::operator()(Un const& b) {
     return { &block };
 }
 
-vector<basic_block_t*> instruction_builder_t::operator()(Call const& b) {
-    bpf_func_proto proto = get_prototype(b.func);
-    int i = 0;
+vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
     vector<basic_block_t*> blocks{&block};
-    std::array<Arg, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
     var_t map_type{machine.vfac["map_type"], crab::INT_TYPE, 8};
-    for (Arg t : args) {
-        dom_t arg = machine.regs[++i];
-        if (t == Arg::DONTCARE)
-            break;
-        auto assert_pointer_or_null = [&](lin_cst_t cst) {
-            vector<basic_block_t*> next;
-            for (auto b : blocks) {
-                basic_block_t& pointer = add_child(cfg, *b, "pointer");
-                pointer.assume(cst);
-                next.push_back(&pointer);
+    auto assert_pointer_or_null = [&](dom_t arg, lin_cst_t cst) {
+        vector<basic_block_t*> next;
+        for (auto b : blocks) {
+            basic_block_t& pointer = add_child(cfg, *b, "pointer");
+            pointer.assume(cst);
+            next.push_back(&pointer);
 
-                basic_block_t& null = add_child(cfg, *b, "null");
-                null.assume(arg.region == T_NUM);
-                null.assertion(arg.value == 0, di);
-                next.push_back(&null);
-            }
-            blocks = std::move(next);
-        };
-        switch (t) {
-        case Arg::DONTCARE:
-            assert(false);
-            break;
-        case Arg::ANYTHING:
+            basic_block_t& null = add_child(cfg, *b, "null");
+            null.assume(arg.region == T_NUM);
+            null.assertion(arg.value == 0, di);
+            next.push_back(&null);
+        }
+        blocks = std::move(next);
+    };
+    for (ArgSingle param : call.singles) {
+        dom_t arg = machine.regs[param.reg.v];
+        switch (param.kind) {
+        case ArgSingle::Kind::ANYTHING:
             // avoid pointer leakage:
             if (!is_priviledged()) {
                 for (basic_block_t* b : blocks) {
                     b->assertion(arg.region == T_NUM, di);
                 }
             }
-            break;
-        case Arg::CONST_SIZE:
-            for (basic_block_t* b : blocks) {
-                b->assertion(arg.region == T_NUM, di);
-                b->assertion(arg.value > 0, di);
-            }
-            break;
-        case Arg::CONST_SIZE_OR_ZERO:
-            for (basic_block_t* b : blocks) {
-                b->assertion(arg.region == T_NUM, di);
-                b->assertion(arg.value >= 0, di);
-            }
-            break;
-        case Arg::CONST_MAP_PTR:
+        case ArgSingle::Kind::CONST_MAP_PTR:
             //assert_pointer_or_null(is_map(arg));
             for (basic_block_t* b : blocks) {
                 b->assign(map_type, arg.region);
@@ -861,80 +840,85 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& b) {
                 b->assertion(map_type >= 0, di);
             }
             break;
-        case Arg::PTR_TO_CTX:
-            assert_pointer_or_null(arg.region == T_CTX);
-            break;
-        case Arg::PTR_TO_MEM_OR_NULL:
-            assert_pointer_or_null(is_pointer(arg));
-            break;
-        case Arg::PTR_TO_MAP_KEY:
+        case ArgSingle::Kind::PTR_TO_MAP_KEY:
             for (basic_block_t* b : blocks) {
                 b->assertion(arg.value > 0, di);
                 b->assertion(is_pointer(arg), di);
             }
             break;
-        case Arg::PTR_TO_MAP_VALUE:
+        case ArgSingle::Kind::PTR_TO_MAP_VALUE:
             for (basic_block_t* b : blocks) {
                 b->assertion(arg.value > 0, di);
                 b->assertion(arg.region == T_STACK, di);
                 b->assertion(arg.offset < 0, di);
             }
             break;
-        case Arg::PTR_TO_MEM: {
-                vector<basic_block_t*> next;
-                for (basic_block_t* b : blocks) {
-                    b->assertion(arg.value > 0, di);
-                    b->assertion(is_pointer(arg), di);
-                    var_t width = machine.regs[i+1].value;
-                    b->havoc(machine.top);
-                    move_into(next, exec_mem_access_indirect(*b, true, false, arg, { machine.top, machine.top, machine.top }, 0, width));
-                }
-                for (auto b: next) {
-                    b->havoc(machine.top);
-                }
-                blocks = std::move(next);
-            }
-            break;
-        case Arg::PTR_TO_UNINIT_MEM: {
-                vector<basic_block_t*> next;
-                for (basic_block_t* b : blocks) {
-                    b->assertion(is_pointer(arg), di);
-                    b->assertion(arg.offset <= 0, di);
-                    var_t width = machine.regs[i+1].value;
-                    b->havoc(machine.top);
-                    move_into(next, exec_mem_access_indirect(*b, false, false, arg, { machine.top, machine.top, machine.num }, 0, width));
-                }
-                for (auto b: next) {
-                    b->havoc(machine.top);
-                }
-                blocks = std::move(next);
-            }
+        case ArgSingle::Kind::PTR_TO_CTX: 
+            assert_pointer_or_null(arg, arg.region == T_CTX);
             break;
         }
     }
-
+    for (ArgPair param : call.pairs) {
+        dom_t arg = machine.regs[param.mem.v];
+        dom_t sizereg = machine.regs[param.size.v];
+        for (basic_block_t* b : blocks) {
+            b->assertion(sizereg.region == T_NUM, di);
+            if (param.can_be_zero) {
+                b->assertion(sizereg.value >= 0, di);
+            } else {
+                b->assertion(sizereg.value > 0, di);
+            }
+        }
+        switch (param.kind) {
+            case ArgPair::Kind::PTR_TO_MEM_OR_NULL:
+                assert_pointer_or_null(arg, is_pointer(arg));
+                // TODO: mem access when not null
+                break;
+            case ArgPair::Kind::PTR_TO_MEM:  {
+                    vector<basic_block_t*> next;
+                    for (basic_block_t* b : blocks) {
+                        b->assertion(arg.value > 0, di);
+                        b->assertion(is_pointer(arg), di);
+                        var_t width = machine.regs[param.size.v].value;
+                        b->havoc(machine.top);
+                        move_into(next, exec_mem_access_indirect(*b, true, false, arg, { machine.top, machine.top, machine.top }, 0, width));
+                    }
+                    for (auto b: next) {
+                        b->havoc(machine.top);
+                    }
+                    blocks = std::move(next);
+                }
+                break;
+            case ArgPair::Kind::PTR_TO_UNINIT_MEM: {
+                    vector<basic_block_t*> next;
+                    for (basic_block_t* b : blocks) {
+                        b->assertion(is_pointer(arg), di);
+                        b->assertion(arg.offset <= 0, di);
+                        var_t width = sizereg.value;
+                        b->havoc(machine.top);
+                        move_into(next, exec_mem_access_indirect(*b, false, false, arg, { machine.top, machine.top, machine.num }, 0, width));
+                    }
+                    for (auto b: next) {
+                        b->havoc(machine.top);
+                    }
+                    blocks = std::move(next);
+                }
+                break;
+        }
+    }
     dom_t r0 = machine.regs[0];
     for (auto b: blocks) {
         scratch_regs(*b);
-        switch (proto.ret_type) {
-        case Ret::PTR_TO_MAP_VALUE_OR_NULL:
+        if (call.returns_map) {
             b->assign(r0.region, map_type);
             b->havoc(r0.value);
             b->assume(0 <= r0.value);
             b->assign(r0.offset, 0);
-            break;
-        case Ret::INTEGER:
+        } else {
             b->havoc(r0.value);
             b->assign(r0.region, T_NUM);
             b->havoc(r0.offset);
-            break;
-        case Ret::VOID:
-            // return from tail call - meaning the call has failed; return negative
-            b->havoc(r0.value);
-            b->assign(r0.region, T_NUM);
-            b->havoc(r0.offset);
-            b->assume(r0.value < 0);
-            break;
+            // b->assume(r0.value < 0); for VOID
         }
     }
     return blocks;

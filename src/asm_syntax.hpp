@@ -64,8 +64,36 @@ struct Jmp {
     Label target;
 };
 
+
+struct ArgSingle {
+    // see comments in spec_prototypes.hpp
+	enum class Kind {
+		CONST_MAP_PTR,
+		PTR_TO_MAP_KEY,
+		PTR_TO_MAP_VALUE,
+		PTR_TO_CTX,
+		ANYTHING,
+	} kind;
+	Reg reg;
+};
+
+struct ArgPair {
+	enum class Kind {
+		PTR_TO_MEM,
+		PTR_TO_MEM_OR_NULL,
+		PTR_TO_UNINIT_MEM,
+	} kind;
+	Reg mem;
+	Reg size;
+	bool can_be_zero;
+};
+
 struct Call {
     int32_t func{};
+	bool pkt_access{};
+	bool returns_map{};
+	std::vector<ArgSingle> singles;
+	std::vector<ArgPair> pairs;
 };
 
 struct Exit {

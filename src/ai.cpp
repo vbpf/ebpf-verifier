@@ -38,6 +38,41 @@ bool operator==(const Assert& a, const Assert& b) { return *a.p == *b.p && a.sat
 constexpr Reg DATA_END_REG = Reg{13};
 constexpr Reg META_REG = Reg{14};
 
+struct MinSizeDom {
+    int64_t size = 0xFFFFFFF;
+
+    void operator|=(const MinSizeDom& o) {
+        size = std::min(size, o.size);
+    }
+    void operator&=(const MinSizeDom& o) {
+        size = std::max(size, o.size);
+    }
+
+    void to_bot() {
+        *this = MinSizeDom{};
+    }
+
+    void havoc() {
+        size = 0;
+    }
+
+    void assume_larger_than(const OffsetDomSet& ub) {
+        if (ub.is_bot()) return;
+        int64_t m = *std::min_element(ub.elems.begin(), ub.elems.end());
+        size = std::max(size, m);
+    }
+
+    bool in_bounds(const OffsetDomSet& ub) {
+        if (ub.is_bot()) return true;
+        int64_t m = *std::max_element(ub.elems.begin(), ub.elems.end());
+        return size >= m;
+    }
+
+    bool operator==(const MinSizeDom& o) const {
+        return size == o.size;
+    }
+};
+
 struct MemDom {
     struct Pair {
         RCP_domain dom;
@@ -244,6 +279,7 @@ struct RegsDom {
 struct Machine {
     RegsDom regs;
     MemDom stack_arr;
+    MinSizeDom data_end;
 
     program_info info;
     RCP_domain BOT;
@@ -281,14 +317,16 @@ struct Machine {
     void operator|=(const Machine& o) {
         regs |= o.regs;
         stack_arr |= o.stack_arr;
+        data_end |= o.data_end;
     }
 
     void operator&=(const Machine& o) {
         regs &= o.regs;
         stack_arr &= o.stack_arr;
+        data_end &= o.data_end;
     }
 
-    bool operator==(Machine o) const { return regs == o.regs && stack_arr == o.stack_arr; }
+    bool operator==(Machine o) const { return regs == o.regs && stack_arr == o.stack_arr && data_end == o.data_end; }
     bool operator!=(Machine o) const { return !(*this == o); }
 
     void operator()(Undefined const& a) { assert(false); }
@@ -358,39 +396,29 @@ struct Machine {
     void operator()(Jmp const& a) { }
 
     void operator()(Call const& call) {
-        bpf_func_proto proto = get_prototype(call.func);
-        uint8_t i = 0;
-        std::array<Arg, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
-        for (Arg t : args) {
-            ++i;
-            if (t == Arg::DONTCARE)
-                break;
-            switch (t) {
-            case Arg::DONTCARE: assert(false); break;
-            case Arg::ANYTHING: break;
-            case Arg::CONST_MAP_PTR: break;
-            case Arg::CONST_SIZE:
-            case Arg::CONST_SIZE_OR_ZERO: break;
-            case Arg::PTR_TO_MAP_KEY: break;
-            case Arg::PTR_TO_MAP_VALUE: break;
-            case Arg::PTR_TO_MEM_OR_NULL: break;
-            case Arg::PTR_TO_MEM: break;
-            case Arg::PTR_TO_UNINIT_MEM: {
-                store(regs.at(Reg{i}), regs.at(Reg{(uint8_t)(i+1)}).get_num(), BOT.with_num(TOP));
-                break;
-            }
-            case Arg::PTR_TO_CTX:
-                break;
+        for (ArgSingle arg : call.singles) {
+            switch (arg.kind) {
+            case ArgSingle::Kind::ANYTHING: break;
+            case ArgSingle::Kind::CONST_MAP_PTR: break;
+            case ArgSingle::Kind::PTR_TO_MAP_KEY: break;
+            case ArgSingle::Kind::PTR_TO_MAP_VALUE: break;
+            case ArgSingle::Kind::PTR_TO_CTX: break;
             }
         }
-        switch (proto.ret_type) {
-            case Ret::VOID: // actually noreturn - meaning < 0 when returns
-            case Ret::INTEGER:
-                regs.assign(Reg{0}, BOT.with_num(TOP));
-                break;
-            case Ret::PTR_TO_MAP_VALUE_OR_NULL:
-                regs.assign(Reg{0}, regs.regs.at(1)->maps_from_fds().with_num(0));
-                break;
+        for (ArgPair arg : call.pairs) {
+            switch (arg.kind) {
+                case ArgPair::Kind::PTR_TO_MEM_OR_NULL: break;
+                case ArgPair::Kind::PTR_TO_MEM: break;
+                case ArgPair::Kind::PTR_TO_UNINIT_MEM: {
+                    store(regs.at(arg.mem), regs.at(arg.size).get_num(), BOT.with_num(TOP));
+                    break;
+                }
+            }
+        }
+        if (call.returns_map) {
+            regs.assign(Reg{0}, regs.regs.at(1)->maps_from_fds().with_num(0));
+        } else {
+            regs.assign(Reg{0}, BOT.with_num(TOP));
         }
         regs.scratch_regs();
     }
@@ -570,6 +598,7 @@ class AssertionExtractor {
             if (!t[i]) continue;
             Types s = types.single(i);
             if (s == num) continue;
+
             Value end;
             if ((s & maps).any()) end = Imm{info.map_sizes.at(i)};
             else if (s == packet) end = DATA_END_REG;
