@@ -342,7 +342,7 @@ void print_dot(const Cfg& cfg, std::ostream& out) {
     out << "digraph program {\n";
     out << "    node [shape = rectangle];\n";
     for (auto label : cfg.keys()) {
-        out << "    \"" << label << "\"[label=\"";
+        out << "    \"" << label << "\"[xlabel=\"" << label << "\",label=\"";
 
         const auto& bb = cfg.at(label);
         for (auto ins : bb.insts) {

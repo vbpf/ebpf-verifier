@@ -520,23 +520,34 @@ struct Analyzer {
 
     void join(const std::vector<Label>& prevs, Label into) {
         Machine new_pre = pre.at(into);
+        // std::cerr << "\n";
+        // std::cerr << into << ":\n";
+        // std::cerr << new_pre << "\n";
         for (Label l : prevs) {
             new_pre |= post.at(l);
+            // std::cerr << new_pre << "\n";
         }
+        // std::cerr << "\n\n";
         pre.insert_or_assign(into, new_pre);
     }
 };
 
 void worklist(const Cfg& cfg, Analyzer& analyzer) {
+    // Only works with DAGs
     std::list<Label> w{cfg.keys().front()};
+    std::unordered_map<Label, int> count;
+    for (auto l : cfg.keys()) count[l] = 0;
     while (!w.empty()) {
         Label label = w.front();
         w.pop_front();
         const BasicBlock& bb = cfg.at(label);
         analyzer.join(bb.prevlist, label);
         if (analyzer.recompute(label, bb)) {
-            for (Label next_label : bb.nextlist)
-                w.push_back(next_label);
+            for (Label next_label : bb.nextlist) {
+                count[next_label]++;
+                if (count[next_label] >= cfg.at(next_label).prevlist.size())
+                    w.push_back(next_label);
+            }
             w.erase(std::unique(w.begin(), w.end()), w.end());
         }
     }
