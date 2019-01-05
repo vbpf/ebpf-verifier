@@ -68,7 +68,7 @@ struct Jmp {
 struct ArgSingle {
     // see comments in spec_prototypes.hpp
 	enum class Kind {
-		CONST_MAP_PTR,
+		MAP_FD,
 		PTR_TO_MAP_KEY,
 		PTR_TO_MAP_VALUE,
 		PTR_TO_CTX,

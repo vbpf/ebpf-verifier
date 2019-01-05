@@ -58,7 +58,7 @@ int main(int argc, char **argv)
             info.program_type = (BpfProgType)std::stoi(arg.substr(5));
         } else if (arg.find("map") == 0) {
             // map64 map4096 [...]
-            info.map_sizes.push_back(std::stoi(arg.substr(3)));
+            info.map_defs.emplace_back(map_def{.value_size=static_cast<unsigned int>(std::stoi(arg.substr(3)))});
         } else if (arg.find("domain=") == 0) {
             domain = arg.substr(7);
         } else if (arg.find("elf=") == 0) {
@@ -150,8 +150,8 @@ int main(int argc, char **argv)
         if (info_only) {
             std::cout << "  type: " << (int)raw_prog.info.program_type;
             std::cout << "  sizes: ";
-            for (auto s : raw_prog.info.map_sizes) {
-                std::cout << s << "; ";
+            for (auto s : raw_prog.info.map_defs) {
+                std::cout << s.value_size << "; ";
             }
             std::cout << "\n";
         } else {

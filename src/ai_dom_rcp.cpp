@@ -84,13 +84,3 @@ bool RCP_domain::satisfied(const RCP_domain& left, Condition::Op op, const RCP_d
     return left.pointwise_all_pairs(where_types, right,
                 [op](const auto& a, const auto& b) { return a.satisfied(op, b); });
 }
-
-RCP_domain RCP_domain::maps_from_fds() const {
-    auto res = *this;
-    for (size_t i=0; i < fd.fds.size(); i++)
-        if (fd.fds[i]) {
-            res.maps[i] = 0;
-        }
-    res.fd.to_bot();
-    return res;
-}

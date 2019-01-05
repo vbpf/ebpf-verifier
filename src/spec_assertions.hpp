@@ -19,7 +19,7 @@ using Types = boost::dynamic_bitset<>;
 
 struct TypeSet {
     size_t nmaps;
-    static constexpr size_t nonmaps = 5;
+    static constexpr size_t nonmaps = 5; // including T_MAP itself, which is the null fd
     TypeSet(size_t nmaps) : nmaps{nmaps} { }
     size_t size() const { return nmaps + nonmaps; };
 

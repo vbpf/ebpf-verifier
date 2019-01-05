@@ -17,7 +17,7 @@ std::ostream& operator<<(std::ostream& os, ArgSingle::Kind kind) {
     switch (kind) {
         case ArgSingle::Kind::ANYTHING: return os << "";
         case ArgSingle::Kind::PTR_TO_CTX: return os << "CTX";
-        case ArgSingle::Kind::CONST_MAP_PTR: return os << "FD";
+        case ArgSingle::Kind::MAP_FD: return os << "FD";
         case ArgSingle::Kind::PTR_TO_MAP_KEY: return os << "K";
         case ArgSingle::Kind::PTR_TO_MAP_VALUE: return os << "V";
     }
@@ -37,7 +37,7 @@ std::ostream& operator<<(std::ostream& os, ArgPair::Kind kind) {
 
 std::ostream& operator<<(std::ostream& os, ArgSingle arg) {
     os << arg.reg;
-    if (arg != ArgSingle::Kind::ANYTHING) os << ":" << arg.kind;
+    if (arg.kind != ArgSingle::Kind::ANYTHING) os << ":" << arg.kind;
     return os;
 }
 

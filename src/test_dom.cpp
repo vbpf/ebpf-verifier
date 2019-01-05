@@ -161,6 +161,7 @@ TEST_CASE( "rcp_domain", "[dom][domain]" ) {
     
 
     SECTION("map fds") {
+        /*
         auto fds = D{NMAPS}.with_num(0).with_fd(1).maps_from_fds();
 
         REQUIRE(fds == D{NMAPS}.with_num(0).with_map(1, 0));
@@ -174,6 +175,7 @@ TEST_CASE( "rcp_domain", "[dom][domain]" ) {
             D::assume(fds, Condition::Op::NE, zero);
             REQUIRE(fds == D{NMAPS}.with_map(1, 0));
         }
+        */
     }
 
     SECTION("other") {

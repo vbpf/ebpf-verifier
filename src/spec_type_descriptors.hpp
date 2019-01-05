@@ -29,6 +29,34 @@ enum class BpfProgType : int {
     LIRC_MODE2
 };
 
+// Order is important
+enum class MapType : unsigned int {
+	UNSPEC,
+	HASH,
+	ARRAY,
+	PROG_ARRAY,
+	PERF_EVENT_ARRAY,
+	PERCPU_HASH,
+	PERCPU_ARRAY,
+	STACK_TRACE,
+	CGROUP_ARRAY,
+	LRU_HASH,
+	LRU_PERCPU_HASH,
+	LPM_TRIE,
+	ARRAY_OF_MAPS,
+	HASH_OF_MAPS,
+	DEVMAP,
+	SOCKMAP,
+	CPUMAP,
+	XSKMAP,
+	SOCKHASH,
+	CGROUP_STORAGE,
+	REUSEPORT_SOCKARRAY,
+	PERCPU_CGROUP_STORAGE,
+	QUEUE,
+	STACK,
+};
+
 constexpr int STACK_SIZE=512;
 
 
@@ -54,9 +82,16 @@ struct ptype_descr {
     int meta = -1; // data to meta is like end to data. i.e. meta <= data <= end
 };
 
+struct map_def {
+    MapType type;
+	unsigned int key_size;
+	unsigned int value_size;
+	unsigned int inner_map_fd;
+};
+
 struct program_info {
     BpfProgType program_type;
-    std::vector<size_t> map_sizes;
+    std::vector<map_def> map_defs;
     ptype_descr descriptor;
 };
 

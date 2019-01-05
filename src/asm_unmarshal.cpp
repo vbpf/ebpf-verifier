@@ -284,7 +284,7 @@ struct Unmarshaller {
                 assert(false);
                 break;
             case Arg::ANYTHING: res.singles.push_back({ArgSingle::Kind::ANYTHING, reg}); break;
-            case Arg::CONST_MAP_PTR: res.singles.push_back({ArgSingle::Kind::CONST_MAP_PTR, reg}); break;
+            case Arg::CONST_MAP_PTR : res.singles.push_back({ArgSingle::Kind::MAP_FD, reg}); break;
             case Arg::PTR_TO_MAP_KEY:
                 res.singles.push_back({ArgSingle::Kind::PTR_TO_MAP_KEY, reg});
                 break;

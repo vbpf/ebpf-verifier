@@ -284,7 +284,7 @@ struct Machine {
     RCP_domain BOT;
     TypeSet types;
 
-    Machine(program_info info) : regs{info.map_sizes.size()}, info{info}, BOT{info.map_sizes.size()}, types{info.map_sizes.size()} {
+    Machine(program_info info) : regs{info.map_defs.size()}, info{info}, BOT{info.map_defs.size()}, types{info.map_defs.size()} {
     }
 
     void init() {
@@ -398,7 +398,7 @@ struct Machine {
         for (ArgSingle arg : call.singles) {
             switch (arg.kind) {
             case ArgSingle::Kind::ANYTHING: break;
-            case ArgSingle::Kind::CONST_MAP_PTR: break;
+            case ArgSingle::Kind::MAP_FD: break;
             case ArgSingle::Kind::PTR_TO_MAP_KEY: break;
             case ArgSingle::Kind::PTR_TO_MAP_VALUE: break;
             case ArgSingle::Kind::PTR_TO_CTX: break;
@@ -415,7 +415,20 @@ struct Machine {
             }
         }
         if (call.returns_map) {
-            regs.assign(Reg{0}, regs.regs.at(1)->maps_from_fds().with_num(0));
+            auto fds = regs.at(Reg{1}).get_fd();
+            RCP_domain res = BOT;
+            for (size_t i=0; i < fds.fds.size(); i++) {
+                if (fds.fds[i]) {
+                    auto def = info.map_defs.at(i);
+                    if (def.type == MapType::ARRAY_OF_MAPS
+                        || def.type == MapType::HASH_OF_MAPS) {
+                        res = res.with_fd(def.inner_map_fd);
+                    } else {
+                        res = res.with_map(i, 0);
+                    }
+                }
+            }
+            regs.assign(Reg{0}, res.with_num(0));
         } else {
             regs.assign(Reg{0}, BOT.with_num(TOP));
         }
@@ -595,7 +608,7 @@ class AssertionExtractor {
     const Types nonfd = ptr | num;
     
     auto type_of(Reg r, const Types t) {
-        assert(t.size() == info.map_sizes.size() + TypeSet::nonmaps);
+        assert(t.size() == types.all().size());
         return Assertion{TypeConstraint{{r, t}}};
     };
 
@@ -610,7 +623,7 @@ class AssertionExtractor {
             if (s == num) continue;
 
             Value end;
-            if ((s & maps).any()) end = Imm{info.map_sizes.at(i)};
+            if (i < info.map_defs.size()) end = Imm{info.map_defs.at(i).value_size};
             else if (s == packet) end = DATA_END_REG;
             else if (s == stack) end = Imm{STACK_SIZE};
             else if (s == ctx) end = Imm{static_cast<uint64_t>(info.descriptor.size)};
@@ -621,7 +634,7 @@ class AssertionExtractor {
         }
     }
 public:
-    AssertionExtractor(program_info info) : info{info}, types{info.map_sizes.size()} { }
+    AssertionExtractor(program_info info) : info{info}, types{info.map_defs.size()} { }
 
     template <typename T>
     vector<Assertion> operator()(T ins) { return {}; }
@@ -639,7 +652,7 @@ public:
                 if (!is_priviledged)
                     res.push_back(type_of(arg.reg, num));
                 break;
-            case ArgSingle::Kind::CONST_MAP_PTR:
+            case ArgSingle::Kind::MAP_FD:
                 res.push_back(type_of(arg.reg, fd));
                 break;
             case ArgSingle::Kind::PTR_TO_MAP_KEY: 
@@ -685,20 +698,19 @@ public:
     }
 
     vector<Assertion> explicate(Condition cond) { 
+        if (is_priviledged) return {};
         vector<Assertion> res;
-        if (is_priviledged) {
-            res.push_back(type_of(cond.left, nonfd));
-        } else {
-            if (std::holds_alternative<Imm>(cond.right)) {
-                if (std::get<Imm>(cond.right).v != 0) {
-                    res.push_back(type_of(cond.left, num));
-                } else {
-                    res.push_back(type_of(cond.left, nonfd));
-                }
+        if (std::holds_alternative<Imm>(cond.right)) {
+            if (std::get<Imm>(cond.right).v != 0) {
+                res.push_back(type_of(cond.left, num));
             } else {
-                res.push_back(type_of(cond.left, nonfd));
-                same_type(res, nonfd, cond.left, std::get<Reg>(cond.right));
+                // OK - fd is just another pointer
+                // Everything can be compared to 0
             }
+        } else if (cond.op != Condition::Op::EQ
+                && cond.op != Condition::Op::NE) {
+            res.push_back(type_of(cond.left, nonfd));
+            same_type(res, nonfd, cond.left, std::get<Reg>(cond.right));
         }
         return res;
     }

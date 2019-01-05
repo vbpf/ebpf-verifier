@@ -99,8 +99,15 @@ vector<raw_program> read_elf(std::string path, std::string desired_section)
     }
     
     program_info info;
-    for (auto s : vector_of<bpf_load_map_def>(reader.sections["maps"]))
-        info.map_sizes.push_back(s.value_size);
+    //info.map_defs.emplace_back();
+    for (auto s : vector_of<bpf_load_map_def>(reader.sections["maps"])) {
+        info.map_defs.emplace_back(map_def{
+            .type=MapType{s.type},
+            .key_size=s.key_size,
+            .value_size=s.value_size,
+            .inner_map_fd=s.inner_map_idx
+        });
+    }
 
     ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
     auto read_reloc_value = [&symbols](int symbol) -> int {

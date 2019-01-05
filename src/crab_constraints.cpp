@@ -410,13 +410,13 @@ vector<basic_block_t*> instruction_builder_t::exec_map_access(basic_block_t& blo
 {
     vector<basic_block_t*> res;
     int map_index = 0;
-    for (int map_size : machine.info.map_sizes) {
+    for (map_def def : machine.info.map_defs) {
         basic_block_t& mid = add_child(cfg, block, "assume_map" + std::to_string(map_index));
         lin_exp_t addr = mem_reg.offset + offset;
 
         mid.assume(mem_reg.region == map_index); //is_map(mem_reg));
         mid.assertion(addr >= 0, di);
-        mid.assertion(addr <= map_size - width, di);
+        mid.assertion(addr <= def.value_size - width, di);
         if (is_load) {
             mid.havoc(data_reg.value);
             mid.assign(data_reg.region, T_NUM);
@@ -595,10 +595,10 @@ vector<basic_block_t*> instruction_builder_t::operator()(Undefined const& a) {
 vector<basic_block_t*> instruction_builder_t::operator()(LoadMapFd const& ld) {
     // we're a per-process file descriptor defining the map.
     // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
-    // This is what Arg::CONST_MAP_PTR looks for
+    // This is what Arg::MAP_FD looks for
     // This is probably the wrong thing to do. should we add an FD type?
     // Here we (probably) need the map structure
-    if (ld.mapfd >= machine.info.map_sizes.size()) {
+    if (ld.mapfd >= machine.info.map_defs.size()) {
         block.assertion(neq(machine.num, machine.num), di);
     }
     auto reg = machine.reg(ld.dst);
@@ -832,11 +832,11 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
                     b->assertion(arg.region == T_NUM, di);
                 }
             }
-        case ArgSingle::Kind::CONST_MAP_PTR:
+        case ArgSingle::Kind::MAP_FD:
             //assert_pointer_or_null(is_map(arg));
             for (basic_block_t* b : blocks) {
                 b->assign(map_type, arg.region);
-                b->assertion(map_type < machine.info.map_sizes.size(), di);
+                b->assertion(map_type < machine.info.map_defs.size(), di);
                 b->assertion(map_type >= 0, di);
             }
             break;

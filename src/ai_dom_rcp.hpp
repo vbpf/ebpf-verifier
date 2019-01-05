@@ -102,7 +102,7 @@ public:
     RCP_domain with_num(const NumDom& num) const { auto res = *this; res.num = num; return res; }
     RCP_domain with_fd(int fd) const { auto res = *this; res.fd.assign(fd); return res; }
     RCP_domain with_fd(Top t) const { auto res = *this; res.fd.havoc(); return res; }
-    RCP_domain maps_from_fds() const;
+    FdSetDom get_fd() { return fd; };
     
     void set_mapfd(int mapfd) {
         assert(mapfd >= 0);
