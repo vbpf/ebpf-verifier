@@ -36,7 +36,9 @@ std::ostream& operator<<(std::ostream& os, ArgPair::Kind kind) {
 }
 
 std::ostream& operator<<(std::ostream& os, ArgSingle arg) {
-    return os << arg.reg << ":" << arg.kind;
+    os << arg.reg;
+    if (arg != ArgSingle::Kind::ANYTHING) os << ":" << arg.kind;
+    return os;
 }
 
 std::ostream& operator<<(std::ostream& os, ArgPair arg) {

@@ -133,6 +133,7 @@ vector<raw_program> read_elf(std::string path, std::string desired_section)
         if (prog.prog.empty())
             continue;
         auto prelocs = reader.sections[string(".rel") + name];
+        if (!prelocs) prelocs = reader.sections[string(".rela") + name];
         if (prelocs) {
             ELFIO::const_relocation_section_accessor reloc{reader, prelocs};
             ELFIO::Elf64_Addr offset;
