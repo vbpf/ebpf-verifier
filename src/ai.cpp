@@ -17,7 +17,6 @@
 #include "asm_cfg.hpp"
 #include "asm_ostream.hpp"
 #include "spec_assertions.hpp"
-#include "spec_prototypes.hpp"
 #include "spec_type_descriptors.hpp"
 #include "ai.hpp"
 #include "ai_dom_set.hpp"
@@ -590,7 +589,7 @@ class AssertionExtractor {
     const Types stack = types.stack();
     const Types packet = types.packet();
     const Types maps = types.map_types();
-    const Types fd = types.map_struct();
+    const Types fd = types.fd();
     const Types mem = stack | packet | maps;
     const Types ptr = mem | ctx;
     const Types nonfd = ptr | num;
@@ -633,64 +632,54 @@ public:
 
     vector<Assertion> operator()(Call const& call) {
         vector<Assertion> res;
-        Types previous_types;
-        bpf_func_proto proto = get_prototype(call.func);
-        uint8_t i = 0;
-        std::array<Arg, 5> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type}};
-        for (Arg t : args) {
-            Reg reg{++i};
-            if (t == Arg::DONTCARE)
-                break;
-            switch (t) {
-            case Arg::DONTCARE:
-                assert(false);
-                break;
-            case Arg::ANYTHING:
+        for (ArgSingle arg : call.singles) {
+            switch (arg.kind) {
+            case ArgSingle::Kind::ANYTHING: 
                 // avoid pointer leakage:
                 if (!is_priviledged)
-                    res.push_back(type_of(reg, num));
-                previous_types.reset();
+                    res.push_back(type_of(arg.reg, num));
                 break;
-            case Arg::CONST_MAP_PTR:
-                res.push_back(type_of(reg, fd));
-                previous_types.reset();
+            case ArgSingle::Kind::CONST_MAP_PTR:
+                res.push_back(type_of(arg.reg, fd));
                 break;
-            case Arg::CONST_SIZE:
-            case Arg::CONST_SIZE_OR_ZERO: {
-                // TODO: reg is constant (or maybe it's not important)
-                auto op = t == Arg::CONST_SIZE_OR_ZERO ? Condition::Op::GE : Condition::Op::GT;
-                res.push_back(type_of(reg, num));
-                res.push_back(Assertion{LinearConstraint{op, reg, 0, Imm{0}, Imm{0}, num}});
-                check_access(res, previous_types, Reg{(uint8_t)(i-1)}, 0, reg);
-                previous_types.reset();
-                break;
-            }
-            case Arg::PTR_TO_MEM_OR_NULL:
-                res.push_back(type_of(reg, mem | num));
-                res.push_back(Assertion{LinearConstraint{Condition::Op::EQ, reg, 0, Imm{0}, Imm{0}, num} });
-                // NUM should not be in previous_types
-                previous_types = mem;
-                break;
-            case Arg::PTR_TO_MEM:
-                /* LINUX: pointer to valid memory (stack, packet, map value) */
-                res.push_back(type_of(reg, previous_types = mem));
-                break;
-            case Arg::PTR_TO_MAP_KEY:
+            case ArgSingle::Kind::PTR_TO_MAP_KEY: 
                 // what other conditions?
-                res.push_back(type_of(reg, previous_types = stack | packet)); // looks like packet is valid
+                // looks like packet is valid
+                // TODO: maybe arg.packet_access?
+                res.push_back(type_of(arg.reg, stack | packet));
                 break;
-            case Arg::PTR_TO_MAP_VALUE:
-                res.push_back(type_of(reg, previous_types = stack | packet)); // strangely, looks like it means stack or packet
+            case ArgSingle::Kind::PTR_TO_MAP_VALUE:
+                res.push_back(type_of(arg.reg, stack | packet)); // strangely, looks like it means stack or packet
                 break;
-            case Arg::PTR_TO_UNINIT_MEM:
-                res.push_back(type_of(reg, previous_types = mem));
-                break;
-            case Arg::PTR_TO_CTX:
-                res.push_back(type_of(reg, previous_types = ctx));
+            case ArgSingle::Kind::PTR_TO_CTX: 
+                res.push_back(type_of(arg.reg, ctx));
                 // TODO: the kernel has some other conditions here - 
                 // maybe offset == 0
                 break;
             }
+        }
+        for (ArgPair arg : call.pairs) {
+            Types arg_types;
+            switch (arg.kind) {
+                case ArgPair::Kind::PTR_TO_MEM_OR_NULL:
+                    res.push_back(type_of(arg.mem, mem | num));
+                    res.push_back(Assertion{LinearConstraint{Condition::Op::EQ, arg.mem, 0, Imm{0}, Imm{0}, num} });
+                    break;
+                case ArgPair::Kind::PTR_TO_MEM: 
+                    /* LINUX: pointer to valid memory (stack, packet, map value) */
+                    res.push_back(type_of(arg.mem, mem));
+                    break;
+                case ArgPair::Kind::PTR_TO_UNINIT_MEM:
+                    // memory may be uninitialized, i.e. write only
+                    res.push_back(type_of(arg.mem, mem));
+                    break;
+            }
+            // TODO: reg is constant (or maybe it's not important)
+            auto op = arg.can_be_zero ? Condition::Op::GE : Condition::Op::GT;
+            res.push_back(type_of(arg.size, num));
+            res.push_back(Assertion{LinearConstraint{op, arg.size, 0, Imm{0}, Imm{0}, num}});
+            check_access(res, mem, arg.mem, 0, arg.size);
+            break;
         }
         return res;
     }

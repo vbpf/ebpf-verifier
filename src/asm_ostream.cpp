@@ -204,7 +204,7 @@ std::ostream& operator<<(std::ostream& os, Types ts) {
             }
         }
     if (ts[ts.size()+T_NUM]) os << "N" << "|"; 
-    if (ts[ts.size()+T_MAP_STRUCT]) os << "FD" << "|";
+    if (ts[ts.size()+T_FD]) os << "FD" << "|";
     if (ts[ts.size()+T_CTX]) os << "C" << "|" ; 
     if (ts[ts.size()+T_DATA]) os  << "P" << "|" ; 
     if (ts[ts.size()+T_STACK]) os << "S" << "|";

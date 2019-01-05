@@ -11,7 +11,7 @@ enum {
     T_STACK = -4,
     T_DATA = -3,
     T_NUM = -2,
-    T_MAP_STRUCT = -1,
+    T_FD = -1,
     T_MAP = 0,
 };
 
@@ -19,7 +19,7 @@ using Types = boost::dynamic_bitset<>;
 
 struct TypeSet {
     size_t nmaps;
-    static constexpr size_t nonmaps = 6;
+    static constexpr size_t nonmaps = 5;
     TypeSet(size_t nmaps) : nmaps{nmaps} { }
     size_t size() const { return nmaps + nonmaps; };
 
@@ -41,11 +41,11 @@ struct TypeSet {
 
     Types all() const { return Types{size()}.set(); }
     Types num() const { return single(T_NUM); }
-    Types map_struct() const { return single(T_MAP_STRUCT); }
+    Types fd() const { return single(T_FD); }
     Types ctx() const { return single(T_CTX); }
     Types packet() const { return single(T_DATA); }
     Types stack() const { return single(T_STACK); }
-    Types ptr() const { return (num() | map_struct()).flip(); }
+    Types ptr() const { return (num() | fd()).flip(); }
 };
 
  

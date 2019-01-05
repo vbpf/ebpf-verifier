@@ -41,7 +41,7 @@ class RCP_domain {
         if (t[t.size() + T_STACK]) if (!p(stack)) return false;
         if (t[t.size() + T_DATA]) if (!p(packet)) return false;
         if (t[t.size() + T_NUM]) if (!p(num)) return false;
-        if (t[t.size() + T_MAP_STRUCT]) if (!p(fd)) return false;
+        if (t[t.size() + T_FD]) if (!p(fd)) return false;
         return true;
     }
 
@@ -55,7 +55,7 @@ class RCP_domain {
         if (t[t.size() + T_STACK]) if (!p(stack, o.stack)) return false;
         if (t[t.size() + T_DATA]) if (!p(packet, o.packet)) return false;
         if (t[t.size() + T_NUM]) if (!p(num, o.num)) return false;
-        if (t[t.size() + T_MAP_STRUCT]) if (!p(fd, o.fd)) return false;
+        if (t[t.size() + T_FD]) if (!p(fd, o.fd)) return false;
         return true;
     }
 
@@ -76,7 +76,7 @@ class RCP_domain {
         if (t[t.size() + T_STACK]) f(stack, o.stack);
         if (t[t.size() + T_DATA]) f(packet, o.packet);
         if (t[t.size() + T_NUM]) f(num, o.num);
-        if (t[t.size() + T_MAP_STRUCT]) f(fd, o.fd);
+        if (t[t.size() + T_FD]) f(fd, o.fd);
     }
 
     template <typename F>
@@ -90,7 +90,7 @@ class RCP_domain {
         if (t[t.size() + T_STACK]) f(stack);
         if (t[t.size() + T_DATA]) f(packet);
         if (t[t.size() + T_NUM]) f(num);
-        if (t[t.size() + T_MAP_STRUCT]) f(fd);
+        if (t[t.size() + T_FD]) f(fd);
     }
 
 public:
@@ -184,7 +184,7 @@ public:
                        Types where_types);
 
     static void assume(RCP_domain& left, Condition::Op op, const RCP_domain& right) {
-        assume(left, op, right, TypeSet{left.maps.size()}.map_struct().flip());
+        assume(left, op, right, TypeSet{left.maps.size()}.fd().flip());
     }
 
     static bool satisfied(const RCP_domain& then_reg, Types then_type, const RCP_domain& where_reg, Types where_type);
