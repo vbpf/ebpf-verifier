@@ -268,6 +268,7 @@ struct Unmarshaller {
         bpf_func_proto proto = get_prototype(imm);
         Call res;
         res.func = imm;
+        res.name = proto.name;
         res.pkt_access = proto.pkt_access;
         res.returns_map = proto.ret_type == Ret::PTR_TO_MAP_VALUE_OR_NULL;
         uint8_t i = 0;

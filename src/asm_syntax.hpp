@@ -90,6 +90,7 @@ struct ArgPair {
 
 struct Call {
     int32_t func{};
+    std::string name;
 	bool pkt_access{};
 	bool returns_map{};
 	std::vector<ArgSingle> singles;

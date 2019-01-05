@@ -13,6 +13,38 @@ using std::string;
 using std::vector;
 using std::optional;
 
+std::ostream& operator<<(std::ostream& os, ArgSingle::Kind kind) {
+    switch (kind) {
+        case ArgSingle::Kind::ANYTHING: return os << "";
+        case ArgSingle::Kind::PTR_TO_CTX: return os << "CTX";
+        case ArgSingle::Kind::CONST_MAP_PTR: return os << "FD";
+        case ArgSingle::Kind::PTR_TO_MAP_KEY: return os << "K";
+        case ArgSingle::Kind::PTR_TO_MAP_VALUE: return os << "V";
+    }
+    assert(false);
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, ArgPair::Kind kind) {
+    switch (kind) {
+        case ArgPair::Kind::PTR_TO_MEM : return os << "MEM";
+        case ArgPair::Kind::PTR_TO_MEM_OR_NULL: return os << "MEM?";
+        case ArgPair::Kind::PTR_TO_UNINIT_MEM: return os << "OUT";
+    }
+    assert(false);
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, ArgSingle arg) {
+    return os << arg.reg << ":" << arg.kind;
+}
+
+std::ostream& operator<<(std::ostream& os, ArgPair arg) {
+    os << arg.mem << ":" << arg.kind << "[" << arg.size;
+    if (arg.can_be_zero ) os << "?";
+    os << "]";
+    return os;
+}
 
 std::ostream& operator<<(std::ostream& os, Bin::Op op) {
     using Op = Bin::Op;
@@ -94,8 +126,20 @@ struct InstructionPrinterVisitor {
         os_ << b.dst;
     }
 
-    void operator()(Call const& b) {
-        os_ << "call " << b.func;
+    void operator()(Call const& call) {
+        os_ << "r0 = " << call.name << ":" << call.func << "(";
+        bool first = true;
+        for (auto single : call.singles) {
+            if (!first) os_ << ", ";
+            first = false;
+            os_ << single;
+        }
+        for (auto pair : call.pairs) {
+            if (!first) os_ << ", ";
+            first = false;
+            os_ << pair;
+        }
+        os_ << ")";
     }
 
     void operator()(Exit const& b) {

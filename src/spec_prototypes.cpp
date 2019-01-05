@@ -2,6 +2,7 @@
 #include "spec_prototypes.hpp"
 
 static const struct bpf_func_proto bpf_unspec_proto = {
+    .name = "unspec",
 };
 
 /* int bpf_tail_call(void *ctx, struct bpf_map *prog_array_map, u32 index)
@@ -36,6 +37,7 @@ static const struct bpf_func_proto bpf_unspec_proto = {
  * 		Negative error in case of failure. No return in case of success
  */
 const struct bpf_func_proto bpf_tail_call_proto = {
+    .name = "tail_call",
 	//.func		= NULL,
 	//.gpl_only	= false,
 	.ret_type	= Ret::VOID,
@@ -45,6 +47,7 @@ const struct bpf_func_proto bpf_tail_call_proto = {
 };
 
 static const struct bpf_func_proto bpf_override_return_proto = {
+    .name = "override_return",
 	//.func		= bpf_override_return,
 	//.gpl_only	= true,
 	.ret_type	= Ret::INTEGER,
@@ -61,6 +64,7 @@ static const struct bpf_func_proto bpf_override_return_proto = {
  * 		0 on success, or a negative error in case of failure.
  */
 static const struct bpf_func_proto bpf_probe_read_proto = {
+    .name = "probe_read",
 	//.func		= bpf_probe_read,
 	//.gpl_only	= true,
 	.ret_type	= Ret::INTEGER,
@@ -83,6 +87,7 @@ static const struct bpf_func_proto bpf_probe_read_proto = {
  *       < 0 error
  */
 static const struct bpf_func_proto bpf_probe_read_str_proto = {
+    .name = "probe_read_str",
 	//.func		= bpf_probe_read_str,
 	//.gpl_only	= true,
 	.ret_type	= Ret::INTEGER,
@@ -92,6 +97,7 @@ static const struct bpf_func_proto bpf_probe_read_str_proto = {
 };
 
 static const struct bpf_func_proto bpf_probe_write_user_proto = {
+    .name = "probe_write_user",
 	//.func		= bpf_probe_write_user,
 	//.gpl_only	= true,
 	.ret_type	= Ret::INTEGER,
@@ -105,6 +111,7 @@ static const struct bpf_func_proto bpf_probe_write_user_proto = {
  *     Return: length of buffer written or negative error
  */
 static const struct bpf_func_proto bpf_trace_printk_proto = {
+    .name = "trace_printk",
 	//.func		= bpf_trace_printk,
 	//.gpl_only	= true,
 	.ret_type	= Ret::INTEGER,
@@ -112,6 +119,7 @@ static const struct bpf_func_proto bpf_trace_printk_proto = {
 	.arg2_type	= Arg::CONST_SIZE,
 };
 static const struct bpf_func_proto bpf_perf_event_read_proto = {
+    .name = "perf_event_read",
 	//.func		= bpf_perf_event_read,
 	//.gpl_only	= true,
 	.ret_type	= Ret::INTEGER,
@@ -129,6 +137,7 @@ static const struct bpf_func_proto bpf_perf_event_read_proto = {
  *     Return: 0 on success or negative error code
  */
 static const struct bpf_func_proto bpf_perf_event_read_value_proto = {
+    .name = "perf_event_read_value",
 	//.func		= bpf_perf_event_read_value,
 	//.gpl_only	= true,
 	.ret_type	= Ret::INTEGER,
@@ -185,6 +194,7 @@ static const struct bpf_func_proto bpf_perf_event_read_value_proto = {
  * 		0 on success, or a negative error in case of failure.
  */
 static const struct bpf_func_proto bpf_perf_event_output_proto = {
+    .name = "perf_event_output",
 	//.func		= bpf_perf_event_output,
 	//.gpl_only	= true,
 	.ret_type	= Ret::INTEGER,
@@ -201,6 +211,7 @@ static const struct bpf_func_proto bpf_perf_event_output_proto = {
  *     Return: current
  */
 static const struct bpf_func_proto bpf_get_current_task_proto = {
+    .name = "get_current_task",
 	//.func		= bpf_get_current_task,
 	//.gpl_only	= true,
 	.ret_type	= Ret::INTEGER,
@@ -217,6 +228,7 @@ static const struct bpf_func_proto bpf_get_current_task_proto = {
  *        < 0 error
  */
 static const struct bpf_func_proto bpf_current_task_under_cgroup_proto = {
+    .name = "current_task_under_cgroup",
 	//.func       = bpf_current_task_under_cgroup,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
@@ -268,6 +280,7 @@ static const struct bpf_func_proto bpf_get_stack_proto_tp = {
  * 		0 on success, or a negative error in case of failure.
  */
 static const struct bpf_func_proto bpf_perf_prog_read_value_proto = {
+    .name = "perf_prog_read_value",
 	//.func       = bpf_perf_prog_read_value,
 	//.gpl_only   = true,
 	.ret_type   = Ret::INTEGER,
@@ -311,6 +324,7 @@ static const struct bpf_func_proto bpf_get_stack_proto_raw_tp = {
  *     Return: Map value or NULL
  */
 static const struct bpf_func_proto bpf_map_lookup_elem_proto = {
+    .name = "map_lookup_elem",
 	//.func		= bpf_map_lookup_elem,
 	//.gpl_only	= false,
 	.pkt_access	= true,
@@ -324,6 +338,7 @@ static const struct bpf_func_proto bpf_map_lookup_elem_proto = {
  *     Return: 0 on success or negative error
  */
 static const struct bpf_func_proto bpf_map_update_elem_proto = {
+    .name = "map_update_elem",
 	//.func		= bpf_map_update_elem,
 	//.gpl_only	= false,
 	.pkt_access	= true,
@@ -339,6 +354,7 @@ static const struct bpf_func_proto bpf_map_update_elem_proto = {
  *     Return: 0 on success or negative error
  */
 static const struct bpf_func_proto bpf_map_delete_elem_proto = {
+    .name = "map_delete_elem",
 	//.func		= bpf_map_delete_elem,
 	//.gpl_only	= false,
 	.pkt_access	= true,
@@ -352,18 +368,21 @@ static const struct bpf_func_proto bpf_map_delete_elem_proto = {
  *     Return: random value
  */
 static const struct bpf_func_proto bpf_get_prandom_u32_proto = {
+    .name = "get_prandom_u32",
 	//.func		= bpf_user_rnd_u32,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
 };
 
 static const struct bpf_func_proto bpf_get_smp_processor_id_proto = {
+    .name = "get_smp_processor_id",
 	//.func		= bpf_get_smp_processor_id,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
 };
 
 static const struct bpf_func_proto bpf_get_numa_node_id_proto = {
+    .name = "get_numa_node_id",
 	//.func		= bpf_get_numa_node_id,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -374,18 +393,21 @@ static const struct bpf_func_proto bpf_get_numa_node_id_proto = {
  *     Return: current ktime
  */
 static const struct bpf_func_proto bpf_ktime_get_ns_proto = {
+    .name = "ktime_get_ns",
 	//.func		= bpf_ktime_get_ns,
 	//.gpl_only	= true,
 	.ret_type	= Ret::INTEGER,
 };
 
 static const struct bpf_func_proto bpf_get_current_pid_tgid_proto = {
+    .name = "get_current_pid_tgid",
 	//.func		= bpf_get_current_pid_tgid,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
 };
 
 static const struct bpf_func_proto bpf_get_current_uid_gid_proto = {
+    .name = "get_current_uid_gid",
 	//.func		= bpf_get_current_uid_gid,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -404,6 +426,7 @@ static const struct bpf_func_proto bpf_get_current_uid_gid_proto = {
  * 		0 on success, or a negative error in case of failure.
  */
 static const struct bpf_func_proto bpf_get_current_comm_proto = {
+    .name = "get_current_comm",
 	//.func		= bpf_get_current_comm,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -412,6 +435,7 @@ static const struct bpf_func_proto bpf_get_current_comm_proto = {
 };
 
 static const struct bpf_func_proto bpf_get_current_cgroup_id_proto = {
+    .name = "get_current_cgroup_id",
 	//.func		= bpf_get_current_cgroup_id,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -438,6 +462,7 @@ static const struct bpf_func_proto bpf_get_current_cgroup_id_proto = {
  * 		0 on success, or a negative error in case of failure.
  */
 static const struct bpf_func_proto bpf_sock_map_update_proto = {
+    .name = "sock_map_update",
 	//.func		= bpf_sock_map_update,
 	//.gpl_only	= false,
 	.pkt_access	= true,
@@ -449,6 +474,7 @@ static const struct bpf_func_proto bpf_sock_map_update_proto = {
 };
 
 static const struct bpf_func_proto bpf_sock_hash_update_proto = {
+    .name = "sock_hash_update",
 	//.func		= bpf_sock_hash_update,
 	//.gpl_only	= false,
 	.pkt_access	= true,
@@ -473,6 +499,7 @@ static const struct bpf_func_proto bpf_sock_hash_update_proto = {
  *     Return: >= 0 stackid on success or negative error
  */
 static const struct bpf_func_proto bpf_get_stackid_proto = {
+    .name = "get_stackid",
 	//.func		= bpf_get_stackid,
 	//.gpl_only	= true,
 	.ret_type	= Ret::INTEGER,
@@ -516,6 +543,7 @@ static const struct bpf_func_proto bpf_get_stackid_proto = {
  * 		or a negative error in case of failure.
  */
 static const struct bpf_func_proto bpf_get_stack_proto = {
+    .name = "get_stack",
 	//.func		= bpf_get_stack,
 	//.gpl_only	= true,
 	.ret_type	= Ret::INTEGER,
@@ -530,6 +558,7 @@ static const struct bpf_func_proto bpf_get_stack_proto = {
  *     Return: SMP processor ID
  */
 static const struct bpf_func_proto bpf_get_raw_smp_processor_id_proto = {
+    .name = "get_raw_smp_processor_id",
 	//.func		= bpf_get_raw_cpu_id,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -547,6 +576,7 @@ static const struct bpf_func_proto bpf_get_raw_smp_processor_id_proto = {
  *     Return: 0 on success or negative error
  */
 static const struct bpf_func_proto bpf_skb_store_bytes_proto = {
+    .name = "skb_store_bytes",
 	//.func		= bpf_skb_store_bytes,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -576,6 +606,7 @@ static const struct bpf_func_proto bpf_skb_store_bytes_proto = {
  * 		0 on success, or a negative error in case of failure.
  */
 static const struct bpf_func_proto bpf_skb_load_bytes_proto = {
+    .name = "skb_load_bytes",
 	//.func		= bpf_skb_load_bytes,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -609,6 +640,7 @@ static const struct bpf_func_proto bpf_skb_load_bytes_proto = {
  * 		0 on success, or a negative error in case of failure.
  */
 static const struct bpf_func_proto bpf_skb_load_bytes_relative_proto = {
+    .name = "skb_load_bytes_relative",
 	//.func		= bpf_skb_load_bytes_relative,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -620,6 +652,7 @@ static const struct bpf_func_proto bpf_skb_load_bytes_relative_proto = {
 };
 
 static const struct bpf_func_proto bpf_skb_pull_data_proto = {
+    .name = "skb_pull_data",
 	//.func		= bpf_skb_pull_data,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -647,6 +680,7 @@ static const struct bpf_func_proto sk_skb_pull_data_proto = {
  *     Return: 0 on success or negative error
  */
 static const struct bpf_func_proto bpf_l3_csum_replace_proto = {
+    .name = "l3_csum_replace",
 	//.func		= bpf_l3_csum_replace,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -670,6 +704,7 @@ static const struct bpf_func_proto bpf_l3_csum_replace_proto = {
  *     Return: 0 on success or negative error
  */
 static const struct bpf_func_proto bpf_l4_csum_replace_proto = {
+    .name = "l4_csum_replace",
 	//.func		= bpf_l4_csum_replace,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -691,6 +726,7 @@ static const struct bpf_func_proto bpf_l4_csum_replace_proto = {
  *     Return: csum result or negative error code
  */
 static const struct bpf_func_proto bpf_csum_diff_proto = {
+    .name = "csum_diff",
 	//.func		= bpf_csum_diff,
 	//.gpl_only	= false,
 	.pkt_access	= true,
@@ -703,6 +739,7 @@ static const struct bpf_func_proto bpf_csum_diff_proto = {
 };
 
 static const struct bpf_func_proto bpf_csum_update_proto = {
+    .name = "csum_update",
 	//.func		= bpf_csum_update,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -711,6 +748,7 @@ static const struct bpf_func_proto bpf_csum_update_proto = {
 };
 
 static const struct bpf_func_proto bpf_clone_redirect_proto = {
+    .name = "clone_redirect",
 	//.func       = bpf_clone_redirect,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
@@ -719,6 +757,7 @@ static const struct bpf_func_proto bpf_clone_redirect_proto = {
 	.arg3_type  = Arg::ANYTHING,
 };
 static const struct bpf_func_proto bpf_redirect_proto = {
+    .name = "redirect",
 	//.func       = bpf_redirect,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
@@ -726,6 +765,7 @@ static const struct bpf_func_proto bpf_redirect_proto = {
 	.arg2_type  = Arg::ANYTHING,
 };
 static const struct bpf_func_proto bpf_sk_redirect_hash_proto = {
+    .name = "sk_redirect_hash",
 	//.func       = bpf_sk_redirect_hash,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
@@ -735,6 +775,7 @@ static const struct bpf_func_proto bpf_sk_redirect_hash_proto = {
 	.arg4_type  = Arg::ANYTHING,
 };
 static const struct bpf_func_proto bpf_sk_redirect_map_proto = {
+    .name = "sk_redirect_map",
 	//.func       = bpf_sk_redirect_map,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
@@ -744,6 +785,7 @@ static const struct bpf_func_proto bpf_sk_redirect_map_proto = {
 	.arg4_type  = Arg::ANYTHING,
 };
 static const struct bpf_func_proto bpf_msg_redirect_hash_proto = {
+    .name = "msg_redirect_hash",
 	//.func       = bpf_msg_redirect_hash,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
@@ -753,6 +795,7 @@ static const struct bpf_func_proto bpf_msg_redirect_hash_proto = {
 	.arg4_type  = Arg::ANYTHING,
 };
 static const struct bpf_func_proto bpf_msg_redirect_map_proto = {
+    .name = "msg_redirect_map",
 	//.func       = bpf_msg_redirect_map,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
@@ -762,6 +805,7 @@ static const struct bpf_func_proto bpf_msg_redirect_map_proto = {
 	.arg4_type  = Arg::ANYTHING,
 };
 static const struct bpf_func_proto bpf_msg_apply_bytes_proto = {
+    .name = "msg_apply_bytes",
 	//.func       = bpf_msg_apply_bytes,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
@@ -769,6 +813,7 @@ static const struct bpf_func_proto bpf_msg_apply_bytes_proto = {
 	.arg2_type  = Arg::ANYTHING,
 };
 static const struct bpf_func_proto bpf_msg_cork_bytes_proto = {
+    .name = "msg_cork_bytes",
 	//.func       = bpf_msg_cork_bytes,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
@@ -776,6 +821,7 @@ static const struct bpf_func_proto bpf_msg_cork_bytes_proto = {
 	.arg2_type  = Arg::ANYTHING,
 };
 static const struct bpf_func_proto bpf_msg_pull_data_proto = {
+    .name = "msg_pull_data",
 	//.func		= bpf_msg_pull_data,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -785,30 +831,35 @@ static const struct bpf_func_proto bpf_msg_pull_data_proto = {
 	.arg4_type	= Arg::ANYTHING,
 };
 static const struct bpf_func_proto bpf_get_cgroup_classid_proto = {
+    .name = "get_cgroup_classid",
 	//.func       = bpf_get_cgroup_classid,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
 	.arg1_type  = Arg::PTR_TO_CTX,
 };
 static const struct bpf_func_proto bpf_get_route_realm_proto = {
+    .name = "get_route_realm",
 	//.func       = bpf_get_route_realm,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
 	.arg1_type  = Arg::PTR_TO_CTX,
 };
 static const struct bpf_func_proto bpf_get_hash_recalc_proto = {
+    .name = "get_hash_recalc",
 	//.func		= bpf_get_hash_recalc,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
 	.arg1_type	= Arg::PTR_TO_CTX,
 };
 static const struct bpf_func_proto bpf_set_hash_invalid_proto = {
+    .name = "set_hash_invalid",
 	//.func		= bpf_set_hash_invalid,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
 	.arg1_type	= Arg::PTR_TO_CTX,
 };
 static const struct bpf_func_proto bpf_set_hash_proto = {
+    .name = "set_hash",
 	//.func		= bpf_set_hash,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -816,6 +867,7 @@ static const struct bpf_func_proto bpf_set_hash_proto = {
 	.arg2_type	= Arg::ANYTHING,
 };
 static const struct bpf_func_proto bpf_skb_vlan_push_proto = {
+    .name = "skb_vlan_push",
 	//.func       = bpf_skb_vlan_push,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
@@ -824,6 +876,7 @@ static const struct bpf_func_proto bpf_skb_vlan_push_proto = {
 	.arg3_type  = Arg::ANYTHING,
 };
 static const struct bpf_func_proto bpf_skb_vlan_pop_proto = {
+    .name = "skb_vlan_pop",
 	//.func       = bpf_skb_vlan_pop,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
@@ -842,6 +895,7 @@ static const struct bpf_func_proto bpf_skb_vlan_pop_proto = {
  *     Return: 0 on success or negative error
  */
 static const struct bpf_func_proto bpf_skb_change_proto_proto = {
+    .name = "skb_change_proto",
 	//.func		= bpf_skb_change_proto,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -858,6 +912,7 @@ static const struct bpf_func_proto bpf_skb_change_proto_proto = {
  *     Return: 0 on success or negative error
  */
 static const struct bpf_func_proto bpf_skb_change_type_proto = {
+    .name = "skb_change_type",
 	//.func		= bpf_skb_change_type,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -875,6 +930,7 @@ static const struct bpf_func_proto bpf_skb_change_type_proto = {
  *     Return: 0 on success or negative error code
  */
 static const struct bpf_func_proto bpf_skb_adjust_room_proto = {
+    .name = "skb_adjust_room",
 	//.func		= bpf_skb_adjust_room,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -894,6 +950,7 @@ static const struct bpf_func_proto bpf_skb_adjust_room_proto = {
  *     Return: 0 on success or negative error
  */
 static const struct bpf_func_proto bpf_skb_change_tail_proto = {
+    .name = "skb_change_tail",
 	//.func		= bpf_skb_change_tail,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -933,6 +990,7 @@ static const struct bpf_func_proto sk_skb_change_tail_proto = {
  * 		0 on success, or a negative error in case of failure.
  */
 static const struct bpf_func_proto bpf_skb_change_head_proto = {
+    .name = "skb_change_head",
 	//.func		= bpf_skb_change_head,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -951,6 +1009,7 @@ static const struct bpf_func_proto sk_skb_change_head_proto = {
 };
 
 static const struct bpf_func_proto bpf_xdp_adjust_head_proto = {
+    .name = "xdp_adjust_head",
 	//.func		= bpf_xdp_adjust_head,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -959,6 +1018,7 @@ static const struct bpf_func_proto bpf_xdp_adjust_head_proto = {
 };
 
 static const struct bpf_func_proto bpf_xdp_adjust_tail_proto = {
+    .name = "xdp_adjust_tail",
 	//.func		= bpf_xdp_adjust_tail,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -967,6 +1027,7 @@ static const struct bpf_func_proto bpf_xdp_adjust_tail_proto = {
 };
 
 static const struct bpf_func_proto bpf_xdp_adjust_meta_proto = {
+    .name = "xdp_adjust_meta",
 	//.func		= bpf_xdp_adjust_meta,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -975,6 +1036,7 @@ static const struct bpf_func_proto bpf_xdp_adjust_meta_proto = {
 };
 
 static const struct bpf_func_proto bpf_xdp_redirect_proto = {
+    .name = "xdp_redirect",
 	//.func       = bpf_xdp_redirect,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
@@ -983,6 +1045,7 @@ static const struct bpf_func_proto bpf_xdp_redirect_proto = {
 };
 
 static const struct bpf_func_proto bpf_xdp_redirect_map_proto = {
+    .name = "xdp_redirect_map",
 	//.func       = bpf_xdp_redirect_map,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
@@ -992,6 +1055,7 @@ static const struct bpf_func_proto bpf_xdp_redirect_map_proto = {
 };
 
 static const struct bpf_func_proto bpf_skb_event_output_proto = {
+    .name = "skb_event_output",
 	//.func		= bpf_skb_event_output,
 	//.gpl_only	= true,
 	.ret_type	= Ret::INTEGER,
@@ -1012,6 +1076,7 @@ static const struct bpf_func_proto bpf_skb_event_output_proto = {
  *     Return: 0 on success or negative error
  */
 static const struct bpf_func_proto bpf_skb_get_tunnel_key_proto = {
+    .name = "skb_get_tunnel_key",
 	//.func		= bpf_skb_get_tunnel_key,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -1030,6 +1095,7 @@ static const struct bpf_func_proto bpf_skb_get_tunnel_key_proto = {
  *     Return: option size
  */
 static const struct bpf_func_proto bpf_skb_get_tunnel_opt_proto = {
+    .name = "skb_get_tunnel_opt",
 	//.func		= bpf_skb_get_tunnel_opt,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -1048,6 +1114,7 @@ static const struct bpf_func_proto bpf_skb_get_tunnel_opt_proto = {
  *     Return: 0 on success or negative error
  */
 static const struct bpf_func_proto bpf_skb_set_tunnel_key_proto = {
+    .name = "skb_set_tunnel_key",
 	//.func		= bpf_skb_set_tunnel_key,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -1066,6 +1133,7 @@ static const struct bpf_func_proto bpf_skb_set_tunnel_key_proto = {
  *     Return: 0 on success or negative error
  */
 static const struct bpf_func_proto bpf_skb_set_tunnel_opt_proto = {
+    .name = "skb_set_tunnel_opt",
 	//.func		= bpf_skb_set_tunnel_opt,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -1086,6 +1154,7 @@ static const struct bpf_func_proto bpf_skb_set_tunnel_opt_proto = {
  *        < 0 error
  */
 static const struct bpf_func_proto bpf_skb_under_cgroup_proto = {
+    .name = "skb_under_cgroup",
 	//.func		= bpf_skb_under_cgroup,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -1095,6 +1164,7 @@ static const struct bpf_func_proto bpf_skb_under_cgroup_proto = {
 };
 
 static const struct bpf_func_proto bpf_skb_cgroup_id_proto = {
+    .name = "skb_cgroup_id",
 	//.func       = bpf_skb_cgroup_id,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
@@ -1102,6 +1172,7 @@ static const struct bpf_func_proto bpf_skb_cgroup_id_proto = {
 };
 
 static const struct bpf_func_proto bpf_xdp_event_output_proto = {
+    .name = "xdp_event_output",
 	//.func		= bpf_xdp_event_output,
 	//.gpl_only	= true,
 	.ret_type	= Ret::INTEGER,
@@ -1112,18 +1183,21 @@ static const struct bpf_func_proto bpf_xdp_event_output_proto = {
 	.arg5_type	= Arg::CONST_SIZE_OR_ZERO,
 };
 static const struct bpf_func_proto bpf_get_socket_cookie_proto = {
+    .name = "get_socket_cookie",
 	//.func       = bpf_get_socket_cookie,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
 	.arg1_type  = Arg::PTR_TO_CTX,
 };
 static const struct bpf_func_proto bpf_get_socket_uid_proto = {
+    .name = "get_socket_uid",
 	//.func       = bpf_get_socket_uid,
 	//.gpl_only   = false,
 	.ret_type   = Ret::INTEGER,
 	.arg1_type  = Arg::PTR_TO_CTX,
 };
 static const struct bpf_func_proto bpf_setsockopt_proto = {
+    .name = "setsockopt",
 	//.func		= bpf_setsockopt,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -1146,6 +1220,7 @@ static const struct bpf_func_proto bpf_setsockopt_proto = {
  *     Return: 0 or negative error
  */
 static const struct bpf_func_proto bpf_getsockopt_proto = {
+    .name = "getsockopt",
 	//.func		= bpf_getsockopt,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -1157,6 +1232,7 @@ static const struct bpf_func_proto bpf_getsockopt_proto = {
 };
 
 static const struct bpf_func_proto bpf_sock_ops_cb_flags_set_proto = {
+    .name = "sock_ops_cb_flags_set",
 	//.func		= bpf_sock_ops_cb_flags_set,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -1164,6 +1240,7 @@ static const struct bpf_func_proto bpf_sock_ops_cb_flags_set_proto = {
 	.arg2_type	= Arg::ANYTHING,
 };
 static const struct bpf_func_proto bpf_bind_proto = {
+    .name = "bind",
 	//.func		= bpf_bind,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -1190,6 +1267,7 @@ static const struct bpf_func_proto bpf_bind_proto = {
  * 		0 on success, or a negative error in case of failure.
  */
 static const struct bpf_func_proto bpf_skb_get_xfrm_state_proto = {
+    .name = "skb_get_xfrm_state",
 	//.func		= bpf_skb_get_xfrm_state,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -1201,6 +1279,7 @@ static const struct bpf_func_proto bpf_skb_get_xfrm_state_proto = {
 };
 
 static const struct bpf_func_proto bpf_xdp_fib_lookup_proto = {
+    .name = "xdp_fib_lookup",
 	//.func		= bpf_xdp_fib_lookup,
 	//.gpl_only	= true,
 	.ret_type	= Ret::INTEGER,
@@ -1210,6 +1289,7 @@ static const struct bpf_func_proto bpf_xdp_fib_lookup_proto = {
 	.arg4_type	= Arg::ANYTHING,
 };
 static const struct bpf_func_proto bpf_skb_fib_lookup_proto = {
+    .name = "skb_fib_lookup",
 	//.func		= bpf_skb_fib_lookup,
 	//.gpl_only	= true,
 	.ret_type	= Ret::INTEGER,
@@ -1219,6 +1299,7 @@ static const struct bpf_func_proto bpf_skb_fib_lookup_proto = {
 	.arg4_type	= Arg::ANYTHING,
 };
 static const struct bpf_func_proto bpf_lwt_push_encap_proto = {
+    .name = "lwt_push_encap",
 	//.func		= bpf_lwt_push_encap,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -1228,6 +1309,7 @@ static const struct bpf_func_proto bpf_lwt_push_encap_proto = {
 	.arg4_type	= Arg::CONST_SIZE
 };
 static const struct bpf_func_proto bpf_lwt_seg6_store_bytes_proto = {
+    .name = "lwt_seg6_store_bytes",
 	//.func		= bpf_lwt_seg6_store_bytes,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -1237,6 +1319,7 @@ static const struct bpf_func_proto bpf_lwt_seg6_store_bytes_proto = {
 	.arg4_type	= Arg::CONST_SIZE
 };
 static const struct bpf_func_proto bpf_lwt_seg6_action_proto = {
+    .name = "lwt_seg6_action",
 	//.func		= bpf_lwt_seg6_action,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -1246,6 +1329,7 @@ static const struct bpf_func_proto bpf_lwt_seg6_action_proto = {
 	.arg4_type	= Arg::CONST_SIZE
 };
 static const struct bpf_func_proto bpf_lwt_seg6_adjust_srh_proto = {
+    .name = "lwt_seg6_adjust_srh",
 	//.func		= bpf_lwt_seg6_adjust_srh,
 	//.gpl_only	= false,
 	.ret_type	= Ret::INTEGER,
@@ -1253,13 +1337,15 @@ static const struct bpf_func_proto bpf_lwt_seg6_adjust_srh_proto = {
 	.arg2_type	= Arg::ANYTHING,
 	.arg3_type	= Arg::ANYTHING,
 };
-static const struct bpf_func_proto bpf_rc_repeat_proto = { //without bpf_ originally
+static const struct bpf_func_proto bpf_rc_repeat_proto = {
+    .name = "rc_repeat", //without bpf_ originally
 	//.func	   = bpf_rc_repeat,
 	//.gpl_only  = true, /* rc_repeat is EXPORT_SYMBOL_GPL */
 	.ret_type   = Ret::INTEGER,
 	.arg1_type  = Arg::PTR_TO_CTX,
 };
-static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ originally
+static const struct bpf_func_proto bpf_rc_keydown_proto = {
+    .name = "rc_keydown", //without bpf_ originally
 	//.func	   = bpf_rc_keydown,
 	//.gpl_only  = true, /* rc_keydown is EXPORT_SYMBOL_GPL */
 	.ret_type   = Ret::INTEGER,
@@ -1389,6 +1475,7 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = { //without bpf_ origi
  */
 // ELAZAR: home brewed
 static const struct bpf_func_proto bpf_redirect_map_proto = {
+    .name = "redirect_map",
 	.ret_type	= Ret::INTEGER,
 	.arg1_type	= Arg::CONST_MAP_PTR,
 	.arg2_type	= Arg::ANYTHING,
@@ -1647,6 +1734,19 @@ static const struct bpf_func_proto bpf_redirect_map_proto = {
  */
 
 #define FN(x) bpf_ ## x ## _proto
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
