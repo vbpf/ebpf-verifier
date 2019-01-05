@@ -191,11 +191,18 @@ std::ostream& operator<<(std::ostream& os, Instruction const& ins) {
 
 std::ostream& operator<<(std::ostream& os, Types ts) {
     os << "|";
-    for (size_t i=0; i < ts.size() - 5; i++) {
-        if (ts[i]) {
-            os << "M" << i << "|";
-        }
+    bool all_maps = true;
+    for (size_t i=0; i < ts.size() - TypeSet::nonmaps; i++) {
+        if (!ts[i]) all_maps = false;
     }
+    if (all_maps)
+        os << "MAP|";
+    else
+        for (size_t i=0; i < ts.size() - TypeSet::nonmaps; i++) {
+            if (ts[i]) {
+                os << "M" << i << "|";
+            }
+        }
     if (ts[ts.size()+T_NUM]) os << "N" << "|"; 
     if (ts[ts.size()+T_MAP_STRUCT]) os << "FD" << "|";
     if (ts[ts.size()+T_CTX]) os << "C" << "|" ; 
