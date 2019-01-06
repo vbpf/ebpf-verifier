@@ -84,16 +84,14 @@ struct MemDom {
         std::vector<Item> to_remove;
         std::vector<Item> pieces;
         for (const Item& item : items) {
-            if (item.end() < new_item.offset) continue;
+            if (item.end() <= new_item.offset) continue;
             if (item.offset >= new_item.end()) continue;
+
+            to_remove.push_back(item);
+
             bool in_left = item.offset >= new_item.offset;
             bool in_right = item.end() <= new_item.end();
             RCP_domain content = item.dom.must_be_num() ? numtop() : RCP_domain(TOP);
-            if (in_left && in_right) {
-                // Remove entirely, but there may be more
-                to_remove.push_back(item);
-                continue;
-            }
             if (!in_left) {
                 pieces.push_back(Item{
                     .offset = item.offset,
@@ -109,7 +107,6 @@ struct MemDom {
                 });
             }
         }
-        assert(!pieces.empty());
         assert(pieces.size() <= 2);
         for (auto p : to_remove) items.erase(p);
         for (auto p : pieces) items.insert(p);
