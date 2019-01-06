@@ -178,11 +178,16 @@ TEST_CASE( "mem_dom_two_writes", "[dom][domain][mem]" ) {
         REQUIRE(mem.load({5}, 6) == T);
         REQUIRE(mem.load({6}, 5) == T);
     }
-    /*
+    
     SECTION("SecondLowerLarger") {
         D mem;
         mem.store({4}, 4, n1);
         mem.store({2}, 4, n2);
+
+        D expected;
+        expected.store({2}, 4, n2);
+        expected.store({6}, 2, NT);
+        REQUIRE(mem == expected);
 
         REQUIRE(mem.load({2}, 4) == n2);
 
@@ -207,7 +212,7 @@ TEST_CASE( "mem_dom_two_writes", "[dom][domain][mem]" ) {
         REQUIRE(mem.load({5}, 4) == T);
         REQUIRE(mem.load({6}, 3) == T);
         REQUIRE(mem.load({10}, 4) == T);
-    }*/
+    }
 
     SECTION("SecondHidesLarger") {
         D mem;
@@ -215,6 +220,10 @@ TEST_CASE( "mem_dom_two_writes", "[dom][domain][mem]" ) {
         mem.store({3}, 6, n2);
 
         REQUIRE(mem.load({3}, 6) == n2);
+        
+        D expected;
+        expected.store({3}, 6, n2);
+        REQUIRE(mem == expected);
 
         for (uint64_t i=1; i < 6; i++)
             REQUIRE(mem.load({3}, i) == NT);

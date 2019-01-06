@@ -1,6 +1,6 @@
 #pragma once
 
-#include <map>
+#include <set>
 
 #include "ai_dom_rcp.hpp"
 
@@ -31,7 +31,7 @@ struct MemDom {
         bool operator<(const Item& o) const { return offset < o.offset; } // TODO: reverse order // TODO: make overlapping equivalent
     };
     bool bot = true;
-    std::vector<Item> items;
+    std::set<Item> items;
 
     MemDom() { }
     MemDom(const Top& _) { havoc(); }
@@ -50,8 +50,7 @@ struct MemDom {
         uint64_t total_width = 0;
         uint64_t max_end = 0;
         bool all_must_be_num = true;
-        for (int i = items.size()-1; i>=0; --i) {
-            auto item = items[i];
+        for (const Item& item : items) {
             if (!item.overlapping(offset, width)) continue;
 
             if (item.offset == offset && item.width == width) {
@@ -82,61 +81,39 @@ struct MemDom {
             .width = width,
             .dom = value
         };
-        for (int i = 0; i < items.size(); ++i) {
-            auto& item = items[i];
-            if (item.offset == offset) {
-                if (item.width == width) {
-                    item = new_item;
-                    return;
-                } else if (item.width < width) {
-                    item = new_item;
-                    // deal with next items, might be overridden
-                    return;
-                } else {
-                    item.width -= width;
-                    item.offset += width;
-                }
-            } else if (item.offset >= new_item.end()) {
-                // not found
-                break;
-            } else if (item.offset > offset) {
-                // __--
-                item = Item{
-                    .offset = new_item.end(),
-                    .width = item.offset - new_item.end(),
-                    .dom = TOP
-                };
-                if (item.dom.must_be_num())
-                    item.dom = numtop();
-                break;
-            } else if (item.end() > new_item.end()) {
-                // -__-
-                RCP_domain content{TOP};
-                if (item.dom.must_be_num())
-                    item.dom = numtop();
-                item = Item{
+        std::vector<Item> to_remove;
+        std::vector<Item> pieces;
+        for (const Item& item : items) {
+            if (item.end() < new_item.offset) continue;
+            if (item.offset >= new_item.end()) continue;
+            bool in_left = item.offset >= new_item.offset;
+            bool in_right = item.end() <= new_item.end();
+            RCP_domain content = item.dom.must_be_num() ? numtop() : RCP_domain(TOP);
+            if (in_left && in_right) {
+                // Remove entirely, but there may be more
+                to_remove.push_back(item);
+                continue;
+            }
+            if (!in_left) {
+                pieces.push_back(Item{
                     .offset = item.offset,
-                    .width = item.offset - new_item.end(),
+                    .width = new_item.offset - item.offset,
                     .dom = content
-                };
-                items.push_back(Item{
+                });
+            }
+            if (!in_right) {
+                pieces.push_back(Item{
                     .offset = new_item.end(),
                     .width = item.end() - new_item.end(),
                     .dom = content
                 });
-            } else if (item.offset > new_item.end()) {
-                // --__
-                item = Item{
-                    .offset = item.offset,
-                    .width = item.offset - new_item.end(),
-                    .dom = TOP
-                };
-                if (item.dom.must_be_num())
-                    item.dom = numtop();
             }
         }
-        items.push_back(new_item);
-        std::sort(items.begin(), items.end());
+        assert(!pieces.empty());
+        assert(pieces.size() <= 2);
+        for (auto p : to_remove) items.erase(p);
+        for (auto p : pieces) items.insert(p);
+        items.insert(new_item);
     }
 
     void operator|=(const MemDom& o) {
