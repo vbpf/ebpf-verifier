@@ -680,10 +680,11 @@ public:
                 // OK - fd is just another pointer
                 // Everything can be compared to 0
             }
-        } else if (cond.op != Condition::Op::EQ
-                && cond.op != Condition::Op::NE) {
-            res.push_back(type_of(cond.left, TypeSet::nonfd));
-            same_type(res, TypeSet::nonfd, cond.left, std::get<Reg>(cond.right));
+        } else {
+            if (cond.op != Condition::Op::EQ && cond.op != Condition::Op::NE) {
+                res.push_back(type_of(cond.left, TypeSet::nonfd));
+            }
+            same_type(res, TypeSet::all, cond.left, std::get<Reg>(cond.right));
         }
         return res;
     }
