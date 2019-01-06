@@ -45,7 +45,7 @@ struct FdSetDom {
     }
 
     bool satisfied(Condition::Op op, const This& right) const {
-        if (is_top() || right.is_bot()) return true;
+        if (is_bot() || right.is_bot()) return true;
         if (is_top() || right.is_top()) return false;
         // inexact
         auto d = *this;
@@ -88,7 +88,7 @@ public:
 
     void assume(Condition::Op op, const NumDomSet& right);
     bool satisfied(Condition::Op op, const NumDomSet& right) const {
-        if (is_top() || right.is_bot()) return true;
+        if (is_bot() || right.is_bot()) return true;
         if (is_top() || right.is_top()) return false;
         // inexact
         auto d = *this;
@@ -140,7 +140,7 @@ public:
 
     void assume(Condition::Op op, const OffsetDomSet& right);
     bool satisfied(Condition::Op op, const OffsetDomSet& right) const {
-        if (is_top() || right.is_bot()) return true;
+        if (is_bot() || right.is_bot()) return true;
         if (is_top() || right.is_top()) return false;
         auto d = *this;
         d.assume(op, right);

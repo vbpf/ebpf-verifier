@@ -264,6 +264,29 @@ struct Unmarshaller {
         };
     }
 
+    ArgSingle::Kind toArgSingleKind(Arg t) {
+        switch (t) {
+            case Arg::ANYTHING: return ArgSingle::Kind::ANYTHING;
+            case Arg::CONST_MAP_PTR : return ArgSingle::Kind::MAP_FD;
+            case Arg::PTR_TO_MAP_KEY: return ArgSingle::Kind::PTR_TO_MAP_KEY;
+            case Arg::PTR_TO_MAP_VALUE: return ArgSingle::Kind::PTR_TO_MAP_VALUE;
+            case Arg::PTR_TO_CTX: return ArgSingle::Kind::PTR_TO_CTX;
+            default: break;
+        }
+        assert(false);
+        return {};
+    }
+    ArgPair::Kind toArgPairKind(Arg t) {
+        switch (t) {
+            case Arg::PTR_TO_MEM_OR_NULL: return ArgPair::Kind::PTR_TO_MEM_OR_NULL;
+            case Arg::PTR_TO_MEM: return ArgPair::Kind::PTR_TO_MEM;
+            case Arg::PTR_TO_UNINIT_MEM: return ArgPair::Kind::PTR_TO_UNINIT_MEM;
+            default: break;
+        }
+        assert(false);
+        return {};
+    }
+
     auto makeCall(int32_t imm) {
         bpf_func_proto proto = get_prototype(imm);
         Call res;
@@ -271,39 +294,26 @@ struct Unmarshaller {
         res.name = proto.name;
         res.pkt_access = proto.pkt_access;
         res.returns_map = proto.ret_type == Ret::PTR_TO_MAP_VALUE_OR_NULL;
-        uint8_t i = 0;
-        std::array<Arg, 6> args = {{proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type, Arg::DONTCARE}};
-        for (Arg t : args) {
-            Reg reg{++i};
-            Reg next{(uint8_t)(i+1)};
-            bool can_be_zero = (args[i+1] == Arg::CONST_SIZE_OR_ZERO);
-            if (t == Arg::DONTCARE)
-                break;
-            switch (t) {
+        std::array<Arg, 7> args = {{Arg::DONTCARE, proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type, proto.arg5_type, Arg::DONTCARE}};
+        for (int i = 1; i < args.size() - 1; i++) {
+            switch (args[i]) {
             case Arg::DONTCARE:
-                assert(false);
-                break;
-            case Arg::ANYTHING: res.singles.push_back({ArgSingle::Kind::ANYTHING, reg}); break;
-            case Arg::CONST_MAP_PTR : res.singles.push_back({ArgSingle::Kind::MAP_FD, reg}); break;
+                return res;
+            case Arg::ANYTHING:
+            case Arg::CONST_MAP_PTR:
             case Arg::PTR_TO_MAP_KEY:
-                res.singles.push_back({ArgSingle::Kind::PTR_TO_MAP_KEY, reg});
-                break;
             case Arg::PTR_TO_MAP_VALUE:
-                res.singles.push_back({ArgSingle::Kind::PTR_TO_MAP_VALUE, reg});
-                break;
             case Arg::PTR_TO_CTX:
-                res.singles.push_back({ArgSingle::Kind::PTR_TO_CTX, reg});
+                res.singles.push_back({toArgSingleKind(args[i]), Reg{(uint8_t)i}});
                 break;
-            case Arg::CONST_SIZE: continue;
-            case Arg::CONST_SIZE_OR_ZERO: continue;
+            case Arg::CONST_SIZE: assert(false); continue;
+            case Arg::CONST_SIZE_OR_ZERO: assert(false); continue;
             case Arg::PTR_TO_MEM_OR_NULL:
-                res.pairs.push_back({ArgPair::Kind::PTR_TO_MEM_OR_NULL, reg, next, can_be_zero});
-                break;
             case Arg::PTR_TO_MEM:
-                res.pairs.push_back({ArgPair::Kind::PTR_TO_MEM, reg, next, can_be_zero});
-                break;
             case Arg::PTR_TO_UNINIT_MEM:
-                res.pairs.push_back({ArgPair::Kind::PTR_TO_UNINIT_MEM, reg, next, can_be_zero});
+                bool can_be_zero = (args[i+1] == Arg::CONST_SIZE_OR_ZERO);
+                res.pairs.push_back({toArgPairKind(args[i]), Reg{(uint8_t)i}, Reg{(uint8_t)(i+1)}, can_be_zero});
+                i++;
                 break;
             }
         }

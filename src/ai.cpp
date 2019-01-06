@@ -78,9 +78,21 @@ struct MemDom {
         uint64_t width{};
         bool operator==(const Pair& o) const { return dom == o.dom && width == o.width; }
     };
+    using Stackbits = std::bitset<STACK_SIZE>;
     bool bot = true;
     std::map<int, Pair> arr;
+    Stackbits numtops;
     
+    bool is_numtop(RCP_domain v) const {
+        return v.with_num({}).is_bot() && v.get_num().is_top();
+    } 
+
+    Stackbits get_bitset(int offset, uint64_t width) const {
+        Stackbits res;
+        for (int i=0; i < width; i++) res.set(offset + i);
+        return res;
+    }
+
     void load(const OffsetDomSet& offset, uint64_t width, RCP_domain& outval) const {
         if (offset.is_top()) {
             outval.havoc();
@@ -89,6 +101,15 @@ struct MemDom {
         assert(!offset.elems.empty());
         outval.to_bot();
         for (int64_t k : offset.elems) {
+            auto bits = get_bitset(k, width);
+            auto land = bits & numtops;
+            if (land.any()) {
+                outval.get_num().havoc();
+            }
+            if (land == bits) {
+                continue;
+            }
+
             for (auto [k1, v] : arr) {
                 if ((k1 <= k && k1 + v.width >  k + width)
                  || (k1 <  k && k1 + v.width >= k + width)) {
@@ -127,23 +148,36 @@ struct MemDom {
             arr.clear();
             return;
         }
-        uint64_t width = ws.elems.front();
         assert(!offset.elems.empty());
+        uint64_t width = ws.elems.front();
         for (int64_t k : offset.elems) {
             std::vector<int64_t> to_remove;
+            std::map<int, Pair> to_add;
             for (auto& [k1, v1] : arr) {
-                if (k1 >= k) break;
-                if (k1 + v1.width > k) {
+                if (k1 < k && k1 + v1.width >= k) {
                     if (v1.dom.must_be_num()) {
-                        // part of num is valid num
-                        v1.width = k - k1;
-                        v1.dom = v1.dom.with_num(TOP);
+                        if (is_numtop(v1.dom) && is_numtop(value)) {
+                            v1.width = std::max(v1.width, (k - k1) + width);
+                            goto next_round;
+                        } else {
+                            // part of num is valid num
+                            if (k1 + v1.width > k + width) {
+                                auto next_width = (uint64_t)((k1 + v1.width) - (k + width));
+                                auto next_key = k + width;
+                                RCP_domain bot = value;
+                                bot.to_bot();
+                                to_add.emplace(next_key, Pair{bot.with_num(TOP), next_width});
+                            }
+                            v1.width = k - k1;
+                            v1.dom = v1.dom.with_num(TOP);
+                        }
                     } else {
                         to_remove.push_back(k1);
                     }
                 }
             }
             for (auto k1 : to_remove) arr.erase(k1);
+            to_remove.clear();
             if (arr.count(k)) {
                 if (arr.at(k).width == width) {
                     arr.at(k).dom |= value;
@@ -156,11 +190,24 @@ struct MemDom {
             for (uint64_t i=1; i<width; i++) {
                 arr.erase(k + (int)i);
             }
+            for (auto [k1, v1] : to_add) arr.emplace(k1 ,v1);
+    next_round:
+            ;
         }
-
-        if (offset.is_single()) {
+        if (offset.is_single() && !is_numtop(value)) {
             arr.insert_or_assign(offset.elems.front(), Pair{value, width});
         }
+        // std::vector<int64_t> to_remove;
+        // for (auto& [k, v] : arr) {
+        //     auto next = k + v.width;
+        //     if (std::find(to_remove.begin(), to_remove.end(), k) == to_remove.end()) continue;
+        //     if (!arr.count(next)) continue;
+        //     if (is_numtop(v.dom) && is_numtop(arr.at(next).dom)) {
+        //         v.width += arr.at(next).width;
+        //         to_remove.push_back(next);
+        //     }
+        // }
+        // for (auto k1 : to_remove) arr.erase(k1);
     };
 
     void operator|=(const MemDom& o) {
@@ -169,20 +216,31 @@ struct MemDom {
             return;
         if (bot) {
             *this = o;
-        } else {
-            for (auto& [k, p] : o.arr) {
-                if (arr.count(k) == 1 && arr.at(k).width == p.width) {
-                    arr.at(k).dom |= p.dom;
-                } else {
-                    arr.erase(k);
-                }
-            }
+            return;
         }
+        std::vector<int64_t> to_remove;
+        for (auto& [k, p] : o.arr) {
+            if (arr.count(k) == 1) {
+                auto v = arr.at(k);
+                if (v.width == p.width) {
+                    v.dom |= p.dom;
+                    continue;
+                }
+                if (v.dom.must_be_num() && p.dom.must_be_num()) {
+                    v.dom.get_num().havoc();
+                    continue;
+                }
+            } 
+            to_remove.push_back(k);
+        }
+        for (auto k1 : to_remove) arr.erase(k1);
         //std::cerr << " = " << *this << "\n";
     }
+
     void operator&=(const MemDom& o) {
         // TODO
     }
+
     bool is_bot() { return bot; }
 
     bool operator==(const MemDom& o) const { return arr == o.arr; }
@@ -405,11 +463,17 @@ struct Machine {
             }
         }
         for (ArgPair arg : call.pairs) {
+            RCP_domain val = BOT.with_num(TOP);
             switch (arg.kind) {
-                case ArgPair::Kind::PTR_TO_MEM_OR_NULL: break;
-                case ArgPair::Kind::PTR_TO_MEM: break;
+                case ArgPair::Kind::PTR_TO_MEM_OR_NULL:
+                    if (regs.at(arg.mem).must_be_num()) break;
+                    if (!regs.at(arg.mem).get_num().is_bot())
+                        val.havoc();
+                    // fallthrough
+                case ArgPair::Kind::PTR_TO_MEM:
+                    // fallthrough
                 case ArgPair::Kind::PTR_TO_UNINIT_MEM: {
-                    store(regs.at(arg.mem), regs.at(arg.size).get_num(), BOT.with_num(TOP));
+                    store(regs.at(arg.mem), regs.at(arg.size).get_num(), val);
                     break;
                 }
             }
@@ -580,15 +644,15 @@ void analyze_rcp(Cfg& cfg, program_info info) {
                     unsatisfied_assertion = !a.satisfied;
                 }
             }
-            // std::cerr << l << "\n";
-            // std::cerr << dom << "\n";
-            // std::cerr << ins << "\n";
+            std::cerr << l << "\n";
+            std::cerr << dom << "\n";
+            std::cerr << ins << "\n";
             dom.visit(ins);
-            // std::cerr << dom << "\n";
+            std::cerr << dom << "\n";
         }
-        // for (auto n : cfg[l].nextlist)
-        //     std::cerr << n << ",";
-        // std::cerr << "\n";
+        for (auto n : cfg[l].nextlist)
+            std::cerr << n << ",";
+        std::cerr << "\n";
     }
 }
 
