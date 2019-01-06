@@ -58,6 +58,9 @@ enum class MapType : unsigned int {
 };
 
 constexpr int STACK_SIZE=512;
+constexpr int NMAPS=64;
+constexpr int NONMAPS=5;
+constexpr int ALL_TYPES=NMAPS + NONMAPS;
 
 
 // rough estimates:

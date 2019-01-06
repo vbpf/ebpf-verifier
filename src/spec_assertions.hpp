@@ -15,37 +15,27 @@ enum {
     T_MAP = 0,
 };
 
-using Types = boost::dynamic_bitset<>;
+using Types = std::bitset<NMAPS + NONMAPS>;
 
-struct TypeSet {
-    size_t nmaps;
-    static constexpr size_t nonmaps = 5; // including T_MAP itself, which is the null fd
-    TypeSet(size_t nmaps) : nmaps{nmaps} { }
-    size_t size() const { return nmaps + nonmaps; };
-
-    Types single(int n) const {
-        Types res{size()};
+namespace TypeSet {
+    static Types single(int n) {
+        Types res;
         if (n < 0)
-            return res.set(size()+n);
+            return res.set(res.size()+n);
         else 
             return res.set(n);
     }
 
-    Types map_types() const {
-        Types res{size()};
-        res.set();
-        for (size_t i=0; i < nonmaps; i++)
-            res.reset(nmaps + i);
-        return res;
-    }
-
-    Types all() const { return Types{size()}.set(); }
-    Types num() const { return single(T_NUM); }
-    Types fd() const { return single(T_FD); }
-    Types ctx() const { return single(T_CTX); }
-    Types packet() const { return single(T_DATA); }
-    Types stack() const { return single(T_STACK); }
-    Types ptr() const { return (num() | fd()).flip(); }
+    const Types all = Types{}.set();
+    const Types num = single(T_NUM);
+    const Types fd = single(T_FD);
+    const Types ctx = single(T_CTX); 
+    const Types packet = single(T_DATA); 
+    const Types stack = single(T_STACK);
+    const Types maps =  (num | fd | ctx | packet | stack).flip();
+    const Types mem = maps | packet | stack;
+    const Types ptr = mem | ctx;
+    const Types nonfd = ptr | num;
 };
 
  

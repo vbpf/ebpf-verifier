@@ -2,20 +2,21 @@
 
 #include <vector>
 
-#include <boost/dynamic_bitset.hpp>
+#include <bitset>
 
 #include "asm_syntax.hpp"
+#include "spec_type_descriptors.hpp"
 
 constexpr class Top { } TOP;
 
 struct FdSetDom {
     using This = FdSetDom;
 
-    boost::dynamic_bitset<> fds;
+    std::bitset<NMAPS> fds;
     
-    FdSetDom(size_t nmaps) : fds{nmaps} { }
-    FdSetDom(size_t nmaps, const Top& _) : fds{nmaps} { havoc(); }
-    FdSetDom(const boost::dynamic_bitset<>& fds) : fds{fds} { }
+    FdSetDom() { }
+    FdSetDom(const Top& _) { havoc(); }
+    FdSetDom(const std::bitset<NMAPS>& fds) : fds{fds} { }
 
     void assign(int mapfd) {
         fds.reset();
@@ -40,7 +41,7 @@ struct FdSetDom {
         if (op == Condition::Op::EQ) {
             (*this) &= b;
         } else if (op == Condition::Op::NE) {
-            (*this) &= FdSetDom{fds.flip()};
+            (*this) &= FdSetDom{~b.fds};
         }
     }
 

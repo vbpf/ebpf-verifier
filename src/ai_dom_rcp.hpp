@@ -1,39 +1,36 @@
 #pragma once
 
 #include <vector>
+#include <array>
 
 #include "ai_dom_set.hpp"
 
 #include "spec_assertions.hpp"
+#include "spec_type_descriptors.hpp"
 
 class RCP_domain {
     using NumDom = NumDomSet;
     using OffsetDom = OffsetDomSet;
 
-    std::vector<OffsetDom> maps;
+    std::array<OffsetDom, NMAPS> maps;
     OffsetDom ctx;
     OffsetDom stack;
     OffsetDom packet;
     NumDom num;
     FdSetDom fd;
 
-    Types all() const {
-        return TypeSet{maps.size()}.all();
-    }
-
     template <typename F>
     void pointwise(const RCP_domain& o, const F& f) {
-        pointwise_if(all(), o, f);
+        pointwise_if(TypeSet::all, o, f);
     }
 
     template <typename F>
     void pointwise(const F& f) {
-        pointwise_if(all(), f);
+        pointwise_if(TypeSet::all, f);
     }
 
     template <typename P>
     bool pointwise_all(Types t, const P& p) const {
-        assert(valid_types(t));
         for (size_t i=0; i < maps.size(); i++) {
             if (t[i] && !p(maps[i])) return false;
         }
@@ -47,7 +44,6 @@ class RCP_domain {
 
     template <typename P>
     bool pointwise_all_pairs(Types t, const RCP_domain& o, const P& p) const {
-        assert(valid_types(t));
         for (size_t i=0; i < maps.size(); i++) {
             if (t[i] && !p(maps[i], o.maps[i])) return false;
         }
@@ -60,14 +56,12 @@ class RCP_domain {
     }
 
     bool is_of_type(Types t) const {
-        assert(valid_types(t));
         // not-not-of-type
-        return pointwise_all(t.flip(), [](const auto& a) { return a.is_bot(); });
+        return pointwise_all(~t, [](const auto& a) { return a.is_bot(); });
     }
 
     template <typename F>
     void pointwise_if(Types t, const RCP_domain& o, const F& f) {
-        assert(valid_types(t));
         for (size_t i=0; i < maps.size(); i++) {
             if (t[i])
                 f(maps[i], o.maps[i]);
@@ -81,7 +75,6 @@ class RCP_domain {
 
     template <typename F>
     void pointwise_if(Types t, const F& f) {
-        assert(valid_types(t));
         for (size_t i=0; i < maps.size(); i++) {
             if (t[i])
                 f(maps[i]);
@@ -110,6 +103,22 @@ public:
         fd.assign(mapfd);
     }
 
+    RCP_domain map_lookup_elem(const std::vector<map_def> map_defs) const {
+        RCP_domain res;
+        for (size_t i=0; i < map_defs.size(); i++) {
+            if (fd.fds[i]) {
+                auto def = map_defs.at(i);
+                if (def.type == MapType::ARRAY_OF_MAPS
+                    || def.type == MapType::HASH_OF_MAPS) {
+                    res = res.with_fd(def.inner_map_fd);
+                } else {
+                    res = res.with_map(i, 0);
+                }
+            }
+        }
+        return res.with_num(0);
+    }
+
     // idea: pass responsibilities to these memory domain instead of extraction
     OffsetDom get_ctx() const {
         return ctx;
@@ -131,16 +140,17 @@ public:
     }
 
    bool operator==(const RCP_domain& o) const {
-        return pointwise_all_pairs(all(), o,
+        return pointwise_all_pairs(TypeSet::all, o,
             [](const auto& a, const auto& b){ return a == b; }); 
     }
 
     bool operator!=(const RCP_domain& o) const { return !((*this) == o); }
 
-    RCP_domain(size_t nmaps) : maps(nmaps), fd{nmaps} {
+    RCP_domain() {
         // starts as bot
     }
-    RCP_domain(size_t nmaps, const Top& _) : maps(nmaps, TOP), ctx{TOP}, stack{TOP}, packet{TOP}, num{TOP}, fd{nmaps, TOP}  {
+    RCP_domain(const Top& _) : ctx{TOP}, stack{TOP}, packet{TOP}, num{TOP}, fd{TOP}  {
+        for (auto& v : maps) v.havoc();
     }
 
     void operator|=(const RCP_domain& o) {
@@ -160,16 +170,16 @@ public:
     }
 
     bool is_bot() const {
-        return pointwise_all(all(), [](const auto& f) { return f.is_bot(); });
+        return pointwise_all(TypeSet::all, [](const auto& f) { return f.is_bot(); });
     }
     bool is_top() const {
-        return pointwise_all(all(), [](const auto& f) { return f.is_top(); });
+        return pointwise_all(TypeSet::all, [](const auto& f) { return f.is_top(); });
     }
 
     void operator+=(const RCP_domain& rhs);
 
     RCP_domain operator+(int n) const {
-        return *this + RCP_domain(maps.size()).with_num(n);
+        return *this + RCP_domain{}.with_num(n);
     }
     
     void operator-=(const RCP_domain& rhs);
@@ -184,16 +194,15 @@ public:
                        Types where_types);
 
     static void assume(RCP_domain& left, Condition::Op op, const RCP_domain& right) {
-        assume(left, op, right, TypeSet{left.maps.size()}.fd().flip());
+        if (op == Condition::Op::EQ || op == Condition::Op::NE)
+            assume(left, op, right, TypeSet::all);
+        else
+            assume(left, op, right, TypeSet::nonfd);
     }
 
     static bool satisfied(const RCP_domain& then_reg, Types then_type, const RCP_domain& where_reg, Types where_type);
     static bool satisfied(const RCP_domain& r, Types t);
     static bool satisfied(const RCP_domain& left, Condition::Op op, const RCP_domain& right, Types where_types);
-
-    bool valid_types(Types t) const {
-        return t.size() == maps.size() + TypeSet::nonmaps;
-    }
 
     RCP_domain zero() const {
         RCP_domain res = *this;
