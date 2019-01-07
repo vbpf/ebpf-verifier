@@ -92,19 +92,12 @@ struct MemDom {
             bool in_left = item.offset >= new_item.offset;
             bool in_right = item.end() <= new_item.end();
             RCP_domain content = item.dom.must_be_num() ? numtop() : RCP_domain(TOP);
+            // If content is TOP, we can remove, unless we want to track initialization
             if (!in_left) {
-                pieces.push_back(Item{
-                    .offset = item.offset,
-                    .width = new_item.offset - item.offset,
-                    .dom = content
-                });
+                pieces.push_back(Item{.offset = item.offset, .width = new_item.offset - item.offset, .dom = content });
             }
             if (!in_right) {
-                pieces.push_back(Item{
-                    .offset = new_item.end(),
-                    .width = item.end() - new_item.end(),
-                    .dom = content
-                });
+                pieces.push_back(Item{.offset = new_item.end(), .width = item.end() - new_item.end(), .dom = content });
             }
         }
         assert(pieces.size() <= 2);
