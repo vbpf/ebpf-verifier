@@ -99,16 +99,63 @@ struct MemDom {
         cells.insert(new_cell);
     }
 
-    void operator|=(const MemDom& o) {
-        //std::cerr << *this << " | " << o;
-        if (o.bot)
+    void operator|=(const MemDom& b) {
+        auto& a = *this;
+        if (b.bot)
             return;
         if (bot) {
-            *this = o;
-        } else {
+            *this = b;
             return;
         }
-        //std::cerr << " = " << *this << "\n";
+        std::set<Cell> merged;
+        auto it_a = a.cells.cbegin();
+        auto it_b = b.cells.cbegin();
+        while (it_a != a.cells.cend() && it_b != b.cells.cend()) {
+            auto& cell_a = *it_a;
+            auto& cell_b = *it_b;
+            if (cell_a.end() <= cell_b.offset) { merged.insert(cell_a); ++it_a; continue; }
+            if (cell_b.end() <= cell_a.offset) { merged.insert(cell_b); ++it_b; continue; }
+
+            if (cell_a.offset == cell_b.offset) {
+                // TODO
+                continue;
+            }
+            auto& lower  = cell_a.offset < cell_b.offset ? cell_a : cell_b;
+            auto& higher = cell_a.offset < cell_b.offset ? cell_b : cell_a;
+
+            uint64_t left_start = lower.offset;
+            uint64_t left_end = higher.offset;
+            uint64_t left_width = left_end - left_start;
+            if (left_width > 0) {
+                Cell left_part{
+                    .offset = left_start,
+                    .width = left_width,
+                    .dom = {}
+                };
+            }
+            uint64_t mid_start = higher.offset;
+            uint64_t mid_end = std::min(lower.end(), higher.end());
+            uint64_t mid_width = mid_end - mid_start;
+            if (mid_width > 0) {
+                Cell middle_part{
+                    .offset = mid_start,
+                    .width = mid_width,
+                    .dom = {}
+                };
+            }
+            uint64_t right_start = mid_end;
+            uint64_t right_end = std::max(higher.end(), lower.end());
+            uint64_t right_width = right_end - mid_end;
+            if (right_width > 0) {
+                Cell right_part{
+                    .offset = right_start,
+                    .width = right_width,
+                    .dom = {}
+                };
+            }
+        }
+        merged.insert(it_b, b.cells.end());
+        merged.insert(it_a, a.cells.end());
     }
 
     void operator&=(const MemDom& o) {
