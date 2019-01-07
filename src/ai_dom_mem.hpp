@@ -17,7 +17,7 @@ struct MemDomInterface {
 };
 
 struct MemDom {
-    struct Item {
+    struct Cell {
         uint64_t offset;
         uint64_t width{};
         RCP_domain dom;
@@ -27,11 +27,11 @@ struct MemDom {
             return (offset <= other_offset && offset + width > other_offset)
                 || (other_offset <= offset && other_offset + other_width > offset);
         }
-        bool operator==(const Item& o) const { return offset == o.offset && dom == o.dom && width == o.width; }
-        bool operator<(const Item& o) const { return offset < o.offset; } // TODO: reverse order // TODO: make overlapping equivalent
+        bool operator==(const Cell& o) const { return offset == o.offset && dom == o.dom && width == o.width; }
+        bool operator<(const Cell& o) const { return offset < o.offset; } // TODO: reverse order // TODO: make overlapping equivalent
     };
     bool bot = true;
-    std::set<Item> items;
+    std::set<Cell> cells;
 
     MemDom() { }
     MemDom(const Top& _) { havoc(); }
@@ -50,16 +50,16 @@ struct MemDom {
         uint64_t total_width = 0;
         uint64_t max_end = 0;
         bool all_must_be_num = true;
-        for (const Item& item : items) {
-            if (!item.overlapping(offset, width)) continue;
+        for (const Cell& cell : cells) {
+            if (!cell.overlapping(offset, width)) continue;
 
-            if (item.offset == offset && item.width == width) {
-                return item.dom;
+            if (cell.offset == offset && cell.width == width) {
+                return cell.dom;
             }
-            min_offset = std::min(item.offset, min_offset);
-            total_width += item.width;
-            max_end = std::max(item.end(), max_end);
-            if (!item.dom.must_be_num())
+            min_offset = std::min(cell.offset, min_offset);
+            total_width += cell.width;
+            max_end = std::max(cell.end(), max_end);
+            if (!cell.dom.must_be_num())
                 all_must_be_num = false;
         }
         if (total_width == 0) return {TOP};
@@ -75,35 +75,28 @@ struct MemDom {
             havoc();
             return;
         }
-        uint64_t offset = offset_dom.elems.front();
-        Item new_item{
-            .offset = offset,
-            .width = width,
-            .dom = value
-        };
-        std::vector<Item> to_remove;
-        std::vector<Item> pieces;
-        for (const Item& item : items) {
-            if (item.end() <= new_item.offset) continue;
-            if (item.offset >= new_item.end()) continue;
+        Cell new_cell{ .offset = offset_dom.elems.front(), .width = width, .dom = value };
+        std::vector<Cell> to_remove;
+        std::vector<Cell> pieces;
+        for (const Cell& cell : cells) {
+            if (cell.end() <= new_cell.offset) continue;
+            if (cell.offset >= new_cell.end()) continue;
 
-            to_remove.push_back(item);
+            to_remove.push_back(cell);
 
-            bool in_left = item.offset >= new_item.offset;
-            bool in_right = item.end() <= new_item.end();
-            RCP_domain content = item.dom.must_be_num() ? numtop() : RCP_domain(TOP);
+            RCP_domain content = cell.dom.must_be_num() ? numtop() : RCP_domain(TOP);
             // If content is TOP, we can remove, unless we want to track initialization
-            if (!in_left) {
-                pieces.push_back(Item{.offset = item.offset, .width = new_item.offset - item.offset, .dom = content });
+            if (cell.offset < new_cell.offset) {
+                pieces.push_back(Cell{.offset = cell.offset, .width = new_cell.offset - cell.offset, .dom = content });
             }
-            if (!in_right) {
-                pieces.push_back(Item{.offset = new_item.end(), .width = item.end() - new_item.end(), .dom = content });
+            if (cell.end() > new_cell.end()) {
+                pieces.push_back(Cell{.offset = new_cell.end(), .width = cell.end() - new_cell.end(), .dom = content });
             }
         }
         assert(pieces.size() <= 2);
-        for (auto p : to_remove) items.erase(p);
-        for (auto p : pieces) items.insert(p);
-        items.insert(new_item);
+        for (auto p : to_remove) cells.erase(p);
+        for (auto p : pieces) cells.insert(p);
+        cells.insert(new_cell);
     }
 
     void operator|=(const MemDom& o) {
@@ -124,18 +117,18 @@ struct MemDom {
     }
 
     bool is_bot() const { return bot; }
-    bool is_top() const { return !bot && items.empty(); }
+    bool is_top() const { return !bot && cells.empty(); }
 
-    void havoc() { items.clear(); bot = false; }
-    void to_bot() { items.clear(); bot = true; }
+    void havoc() { cells.clear(); bot = false; }
+    void to_bot() { cells.clear(); bot = true; }
 
-    bool operator==(const MemDom& o) const { return bot == o.bot && items == o.items; }
+    bool operator==(const MemDom& o) const { return bot == o.bot && cells == o.cells; }
 
     friend std::ostream& operator<<(std::ostream& os, const MemDom& d) {
         if (d.bot) return os << "{BOT}";
         os << "{";
-        for (auto item : d.items) {
-            os << item.offset << ":" << (int64_t)item.width << "->" << item.dom << ", ";
+        for (auto cell : d.cells) {
+            os << cell.offset << ":" << (int64_t)cell.width << "->" << cell.dom << ", ";
         }
         os << "}";
         return os;
