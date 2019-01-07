@@ -1,3 +1,6 @@
 [submodule "external/crab"]
 	path = external/crab
 	url = https://github.com/seahorn/crab.git
+[submodule "ebpf-samples"]
+	path = ebpf-samples
+	url = https://github.com/elazarg/ebpf-samples.git
