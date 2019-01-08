@@ -1,38 +1,31 @@
 #pragma once
 
 #include <set>
+#include <vector>
 
 #include "ai_dom_rcp.hpp"
 
-struct MemDomInterface {
-    using This = MemDomInterface;
-    virtual void load(const OffsetDomSet& offset, uint64_t width, RCP_domain& outval) const = 0;
-    virtual void store(const OffsetDomSet& offset, const NumDomSet& ws, const RCP_domain& value) = 0;
-
-    virtual bool is_bot() = 0;
-
-    virtual void operator|=(const This& o) = 0;
-
-    virtual bool operator==(const This& o) const ;
-};
+using std::min;
+using std::max;
+using std::minmax;
 
 struct MemDom {
     struct Cell {
-        uint64_t offset;
-        uint64_t width{};
+        int64_t offset;
+        int64_t width{};
         RCP_domain dom;
         // end is 1 after the last
-        uint64_t end() const { return offset + width; }
-        bool overlapping(uint64_t other_offset, uint64_t other_width) const {
+        int64_t end() const { return offset + width; }
+        bool overlapping(int64_t other_offset, int64_t other_width) const {
             return (offset <= other_offset && offset + width > other_offset)
                 || (other_offset <= offset && other_offset + other_width > offset);
         }
 
-        static Cell from_range(uint64_t start, uint64_t end, const RCP_domain& dom) {
-            return {start, std::min(uint64_t(0), end - start), dom};
+        static Cell from_range(int64_t start, int64_t end, const RCP_domain& dom) {
+            return {start, max(int64_t(0), end - start), dom};
         }
 
-        std::tuple<Cell, Cell> split(uint64_t upper_start) const {
+        std::tuple<Cell, Cell> split(int64_t upper_start) const {
             assert(upper_start >= offset);
             assert(upper_start <= end());
             RCP_domain partial_dom = dom.must_be_num() ? numtop() : RCP_domain(TOP);
@@ -40,11 +33,24 @@ struct MemDom {
                     Cell::from_range(upper_start, end(), offset >= upper_start ? dom : partial_dom)};
         }
 
+        static std::tuple<Cell, Cell, Cell, Cell> split(const Cell& a, const Cell& b) {
+            auto [lower_start, higher_start] = minmax(a, b, [](auto& a, auto& b) {
+                                                                    return a.offset < a.offset; });
+            auto [lower_end, higher_end] = minmax(a, b, [](auto& a, auto& b) {
+                                                              return a.end() < b.end(); });
+            auto [left, mid1] = lower_start.split(higher_start.offset);
+            auto [mid2, right] = higher_end.split(lower_end.end());
+            if (&lower_start == &higher_end)
+                return {left, mid1, higher_start, right};
+            else
+                return {left, mid1, mid2, right};
+        }
+
         bool operator==(const Cell& o) const { return offset == o.offset && dom == o.dom && width == o.width; }
         bool operator<(const Cell& o) const { return offset < o.offset; } // TODO: reverse order // TODO: make overlapping equivalent
     };
     bool bot = true;
-    std::set<Cell> cells;
+    std::vector<Cell> cells;
 
     MemDom() { }
     MemDom(const Top& _) { havoc(); }
@@ -53,15 +59,16 @@ struct MemDom {
         return RCP_domain{}.with_num(TOP);
     }
 
-    RCP_domain load(const OffsetDomSet& offset_dom, uint64_t width) const {
+    RCP_domain load(const OffsetDomSet& offset_dom, uint64_t _width) const {
+        int64_t width = static_cast<int64_t>(_width);
         if (!offset_dom.is_single()) {
             return {TOP};
         }
-        uint64_t offset = offset_dom.elems.front();
+        int64_t offset = offset_dom.elems.front();
 
-        uint64_t min_offset = 0xFFFFFF;
-        uint64_t total_width = 0;
-        uint64_t max_end = 0;
+        int64_t min_offset = 0xFFFFFF;
+        int64_t total_width = 0;
+        int64_t max_end = 0;
         bool all_must_be_num = true;
         for (const Cell& cell : cells) {
             if (!cell.overlapping(offset, width)) continue;
@@ -69,9 +76,9 @@ struct MemDom {
             if (cell.offset == offset && cell.width == width) {
                 return cell.dom;
             }
-            min_offset = std::min(cell.offset, min_offset);
+            min_offset = min(cell.offset, min_offset);
             total_width += cell.width;
-            max_end = std::max(cell.end(), max_end);
+            max_end = max(cell.end(), max_end);
             if (!cell.dom.must_be_num())
                 all_must_be_num = false;
         }
@@ -82,7 +89,8 @@ struct MemDom {
         return numtop();
     }
 
-    void store(const OffsetDomSet& offset_dom, uint64_t width, const RCP_domain& value) {
+    void store(const OffsetDomSet& offset_dom, uint64_t _width, const RCP_domain& value) {
+        int64_t width = static_cast<int64_t>(_width);
         bot = false;
         if (!offset_dom.is_single()) {
             havoc();
@@ -107,80 +115,69 @@ struct MemDom {
             }
         }
         assert(pieces.size() <= 2);
-        for (auto p : to_remove) cells.erase(p);
-        for (auto p : pieces) cells.insert(p);
-        cells.insert(new_cell);
+        for (auto p : to_remove) cells.erase(std::remove(cells.begin(), cells.end(), p), cells.end());
+        for (auto p : pieces) cells.push_back(p);
+        cells.push_back(new_cell);
+        std::sort(cells.begin(), cells.end());
     }
 
     void operator|=(const MemDom& b) {
-        auto& a = *this;
-        if (b.bot)
-            return;
         if (bot) {
             *this = b;
             return;
         }
-        std::set<Cell> merged;
-        auto it_a = a.cells.cbegin();
-        auto it_b = b.cells.cbegin();
-        while (it_a != a.cells.cend() && it_b != b.cells.cend()) {
-            if (it_a->end() <= it_b->offset) { merged.insert(*it_a); ++it_a; continue; }
-            if (it_b->end() <= it_a->offset) { merged.insert(*it_b); ++it_b; continue; }
+        if (b.bot)
+            return;
+        if (is_top()) {
+            return;
+        }
+        if (b.is_top()) {
+            havoc();
+            return;
+        }
+        std::copy(b.cells.begin(), b.cells.end(), std::back_inserter(cells));
+        std::sort(cells.begin(), cells.end());
+        // There's at least on cell
+        std::vector<Cell> new_cells;
+        std::vector<Cell> to_remove;
+        auto last = cells.end();
+        for (auto it = cells.begin(); std::next(it) != cells.end(); ++it) {
+            Cell& current = *it;
+            Cell& after = *std::next(it);
 
-            if (it_a->offset == it_b->offset && it_a->width == it_b->width) {
-                merged.insert(Cell{it_a->offset, it_a->width, it_a->dom | it_b->dom});
-                ++it_a;
-                ++it_b;
+            if (current.end() <= after.offset) {
                 continue;
             }
-            const auto& [lower_starting, higher_starting] = std::minmax(it_a, it_b, [](const auto& it_a, const auto& it_b) {
-                                                                                    return it_a->offset < it_b->offset; });
-            auto& higher_ending = std::max(it_a, it_b, [](const auto& it_a, const auto& it_b) {
-                                                        return it_a->end() < it_b->end(); });
-            
-            auto [left, mid] = lower_starting->split(std::min(it_a->offset, it_b->offset));
-            auto [mid1, right] = higher_ending->split(std::min(it_a->end(), it_b->end()));
 
-            mid.dom |= lower_starting == higher_ending ? higher_starting->dom : mid1.dom;
-            if (left.width > 0) merged.insert(left);
-            merged.insert(mid);
+            if (current.offset == after.offset && after.width == after.width) {
+                after.dom |= current.dom;
+                to_remove.push_back(current);
+                // skip one
+                ++it;
+                continue;
+            }
+
+            if ((current.dom == numtop() && after.dom == numtop())
+                    || (current.dom.is_top() && after.dom.is_top())) {
+                after.offset = min(current.offset, after.offset);
+                after.width = max(current.end(), after.end()) - current.offset;
+                to_remove.push_back(current);
+                continue;
+            }
+
+            auto [left, mid1, mid2, right] = Cell::split(current, after);
+            mid1.dom |= mid2.dom;
+
+            new_cells.push_back(std::move(left));
+            current = std::move(mid1);
             // right should stay for next iteration
-            *higher_ending = right;
+            // TODO: add test for this
+            after = std::move(right);
         }
-        merged.insert(it_b, b.cells.end());
-        merged.insert(it_a, a.cells.end());
+        cells.erase(last, cells.end());
+        std::move(new_cells.begin(), new_cells.end(), std::back_inserter(cells));
+        std::sort(cells.begin(), cells.end());
     }
-
-            // uint64_t left_start = lower.offset;
-            // uint64_t left_end = higher.offset;
-            // uint64_t left_width = left_end - left_start;
-            // RCP_domain left_content = lower.dom.must_be_num() ? numtop() : RCP_domain(TOP);
-            // if (left_width > 0) {
-            //     Cell left_part{
-            //         .offset = left_start,
-            //         .width = left_width,
-            //         .dom = left_content
-            //     };
-            // }
-            // uint64_t right_start = higher.offset;
-            // uint64_t right_end = std::max(higher.end(), lower.end());
-            // uint64_t right_width = right_end - right_start;
-            // RCP_domain right_content = higher.dom.must_be_num() ? numtop() : RCP_domain(TOP);
-            // if (right_width > 0) {
-            //     Cell right_part{
-            //         .offset = right_start,
-            //         .width = right_width,
-            //         .dom = right_content
-            //     };
-            // }
-            // uint64_t mid_start = higher.offset;
-            // uint64_t mid_end = std::min(lower.end(), higher.end());
-            // uint64_t mid_width = mid_end - mid_start;
-            // Cell middle_part{
-            //     .offset = mid_start,
-            //     .width = mid_width,
-            //     .dom = left_content | right_content
-            // };
 
     void operator&=(const MemDom& o) {
         if (is_bot() || o.is_bot()) { to_bot(); return; }
