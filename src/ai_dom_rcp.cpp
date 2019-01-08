@@ -45,19 +45,15 @@ void RCP_domain::operator-=(const RCP_domain& rhs) {
 }
 
 void RCP_domain::assume(RCP_domain& then_reg, Types then_types, const RCP_domain& where_reg, Types where_types) {
-    assert(then_reg.valid_types(then_types));
-    assert(then_reg.valid_types(where_types));
     if (where_reg.is_of_type(where_types))
         assume(then_reg, then_types);
 }
 
 void RCP_domain::assume(RCP_domain& reg, Types t) {
-    assert(reg.valid_types(t));
     reg.pointwise_if(t.flip(), [](auto& a){ a.to_bot(); });
 }
 
 void RCP_domain::assume(RCP_domain& left, Condition::Op op, const RCP_domain& right, Types where_types) {
-    assert(left.valid_types(where_types));
     left.pointwise_if(where_types, right,
         [op](auto& a, const auto& b){
             a.assume(op, b);
@@ -65,13 +61,10 @@ void RCP_domain::assume(RCP_domain& left, Condition::Op op, const RCP_domain& ri
 }
 
 bool RCP_domain::satisfied(const RCP_domain& then_reg, Types then_types, const RCP_domain& where_reg, Types where_types) {
-    assert(then_reg.valid_types(then_types));
-    assert(then_reg.valid_types(where_types));
     return !where_reg.is_of_type(where_types) || then_reg.is_of_type(then_types);
 }
 
 bool RCP_domain::satisfied(const RCP_domain& r, Types t) {
-    assert(r.valid_types(t));
     return r.is_of_type(t);
 }
 

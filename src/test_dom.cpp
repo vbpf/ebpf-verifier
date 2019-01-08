@@ -10,10 +10,9 @@ TEST_CASE( "fd_set_domain", "[dom][domain][fd]" ) {
     REQUIRE(D{3} == D{3});
     REQUIRE(!(D{4} == D{3}));
 
-    auto top = [](){ return D{3, TOP}; };
-    auto bot = [](){ return D{3}; };
+    auto top = [](){ return D{TOP}; };
+    auto bot = [](){ return D{}; };
 
-    REQUIRE(D{3} == bot());
     REQUIRE_FALSE(bot() == top());
 
     REQUIRE((top() & bot()) == bot());
@@ -142,14 +141,13 @@ TEST_CASE( "offset_set_domain", "[dom][domain]" ) {
 
 TEST_CASE( "rcp_domain", "[dom][domain]" ) {
     using D = RCP_domain;
-    constexpr size_t NMAPS = 3;
 
-    auto top = [](){ return D{NMAPS, TOP}; };
-    auto bot = [](){ return D{NMAPS}; };
-    const auto zero = D{NMAPS}.with_num(0);
+    auto top = [](){ return D{TOP}; };
+    auto bot = [](){ return D{}; };
+    const auto zero = D{}.with_num(0);
 
     SECTION("simple") {
-        REQUIRE(D{NMAPS} == bot());
+        REQUIRE(D{} == bot());
         REQUIRE_FALSE(bot() == top());
 
         REQUIRE((top() & bot()) == bot());
@@ -161,37 +159,36 @@ TEST_CASE( "rcp_domain", "[dom][domain]" ) {
     
 
     SECTION("map fds") {
-        /*
-        auto fds = D{NMAPS}.with_num(0).with_fd(1).maps_from_fds();
+        auto fds = D{}.with_num(0).with_fd(1);
+        auto maps_or_null = fds.map_lookup_elem({map_def{}, map_def{ .type=MapType::HASH }});
 
-        REQUIRE(fds == D{NMAPS}.with_num(0).with_map(1, 0));
+        REQUIRE(maps_or_null == D{}.with_num(0).with_map(1, 0));
 
         SECTION("eq 0") {
-            D::assume(fds, Condition::Op::EQ, zero);
-            REQUIRE(fds == D{NMAPS}.with_num(0));
+            D::assume(maps_or_null, Condition::Op::EQ, zero);
+            REQUIRE(maps_or_null == D{}.with_num(0));
         }
 
         SECTION("neq 0") {
-            D::assume(fds, Condition::Op::NE, zero);
-            REQUIRE(fds == D{NMAPS}.with_map(1, 0));
+            D::assume(maps_or_null, Condition::Op::NE, zero);
+            REQUIRE(maps_or_null == D{}.with_map(1, 0));
         }
-        */
     }
 
     SECTION("other") {
-        auto r1 = D{NMAPS}.with_packet(14);
-        auto r9 = D{NMAPS}.with_packet(TOP);
+        auto r1 = D{}.with_packet(14);
+        auto r9 = D{}.with_packet(TOP);
         D::assume(r1, Condition::Op::LE, r9);
-        REQUIRE(r1 == D{NMAPS}.with_packet(14));
+        REQUIRE(r1 == D{}.with_packet(14));
     }
 
     SECTION("1 op 1") {
-        const auto num_top = D{NMAPS}.with_num(TOP);
-        const auto stack_top = D{NMAPS}.with_stack(TOP);
-        const auto packet_top = D{NMAPS}.with_packet(TOP);
-        const auto four = D{NMAPS}.with_num(4);
-        const auto data = D{NMAPS}.with_packet(0);
-        const auto packet_four = D{NMAPS}.with_packet(4);
+        const auto num_top = D{}.with_num(TOP);
+        const auto stack_top = D{}.with_stack(TOP);
+        const auto packet_top = D{}.with_packet(TOP);
+        const auto four = D{}.with_num(4);
+        const auto data = D{}.with_packet(0);
+        const auto packet_four = D{}.with_packet(4);
 
         REQUIRE(num_top - num_top == num_top);
         REQUIRE(num_top + num_top == num_top);

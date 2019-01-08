@@ -238,13 +238,13 @@ std::ostream& operator<<(std::ostream& os, Instruction const& ins) {
 std::ostream& operator<<(std::ostream& os, Types ts) {
     os << "|";
     bool all_maps = true;
-    for (size_t i=0; i < ts.size() - TypeSet::nonmaps; i++) {
+    for (size_t i=0; i < NMAPS; i++) {
         if (!ts[i]) all_maps = false;
     }
     if (all_maps)
         os << "MAP|";
     else
-        for (size_t i=0; i < ts.size() - TypeSet::nonmaps; i++) {
+        for (size_t i=0; i < NMAPS; i++) {
             if (ts[i]) {
                 os << "M" << i << "|";
             }
@@ -413,3 +413,12 @@ void print_dot(const Cfg& cfg, std::ostream& out) {
 void print_dot(const Cfg& cfg) {
     print_dot(cfg, std::cout);
 }
+
+global_options_t global_options {
+    .simplify = false,
+    .stats = false,
+    .check_semantic_reachability = false,
+    .print_invariants = true,
+    .print_failures = true,
+    .liveness = true
+};

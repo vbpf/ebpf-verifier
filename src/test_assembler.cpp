@@ -58,9 +58,6 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
     }
 
     SECTION( "Call" ) {
-        assemble_disasm("call 0");
-        assemble_disasm("call 1");
-        assemble_disasm("call 100");
     }
 
     SECTION( "Exit" ) {

@@ -21,6 +21,7 @@
 #include "ai.hpp"
 #include "ai_dom_set.hpp"
 #include "ai_dom_rcp.hpp"
+#include "ai_dom_mem.hpp"
 
 using std::optional;
 using std::to_string;
@@ -37,184 +38,12 @@ bool operator==(const Assert& a, const Assert& b) { return *a.p == *b.p && a.sat
 constexpr Reg DATA_END_REG = Reg{13};
 constexpr Reg META_REG = Reg{14};
 
-struct MinSizeDom {
-    int64_t size = 0xFFFFFFF;
-
-    void operator|=(const MinSizeDom& o) {
-        size = std::min(size, o.size);
-    }
-    void operator&=(const MinSizeDom& o) {
-        size = std::max(size, o.size);
-    }
-
-    void to_bot() {
-        *this = MinSizeDom{};
-    }
-
-    void havoc() {
-        size = 0;
-    }
-
-    void assume_larger_than(const OffsetDomSet& ub) {
-        if (ub.is_bot()) return;
-        int64_t m = *std::min_element(ub.elems.begin(), ub.elems.end());
-        size = std::max(size, m);
-    }
-
-    bool in_bounds(const OffsetDomSet& ub) {
-        if (ub.is_bot()) return true;
-        int64_t m = *std::max_element(ub.elems.begin(), ub.elems.end());
-        return size >= m;
-    }
-
-    bool operator==(const MinSizeDom& o) const {
-        return size == o.size;
-    }
-};
-
-struct MemDom {
-    struct Pair {
-        RCP_domain dom;
-        uint64_t width{};
-        bool operator==(const Pair& o) const { return dom == o.dom && width == o.width; }
-    };
-    bool bot = true;
-    std::map<int, Pair> arr;
-    
-    void load(const OffsetDomSet& offset, uint64_t width, RCP_domain& outval) const {
-        if (offset.is_top()) {
-            outval.havoc();
-            return;
-        }
-        assert(!offset.elems.empty());
-        outval.to_bot();
-        for (int64_t k : offset.elems) {
-            for (auto [k1, v] : arr) {
-                if ((k1 <= k && k1 + v.width >  k + width)
-                 || (k1 <  k && k1 + v.width >= k + width)) {
-                    if (v.dom.must_be_num()) {
-                        outval = outval.with_num(TOP);
-                    } else {
-                        outval.havoc();
-                    }
-                    goto next_iteration;
-                }
-            }
-            if (arr.count(k)) {
-                const auto& dom = arr.at(k).dom;
-                if (arr.at(k).width == width) {
-                    outval |= dom;
-                } else {
-                    // partial read of num havocs only num
-                    if (dom.must_be_num())
-                        outval = outval.with_num(TOP);
-                    else
-                        outval.havoc();
-                    return;
-                }
-            } else {
-                outval.havoc();
-                return;
-            }
-        next_iteration:
-            ;
-        }
-    }
-
-    void store(const OffsetDomSet& offset, const NumDomSet& ws, const RCP_domain& value) {
-        bot = false;
-        if (offset.is_top() || !ws.is_single()) {
-            arr.clear();
-            return;
-        }
-        uint64_t width = ws.elems.front();
-        assert(!offset.elems.empty());
-        std::map<int, Pair> to_add;
-        for (int64_t k : offset.elems) {
-            std::vector<int64_t> to_remove;
-            for (auto& [k1, v1] : arr) {
-                if (k1 >= k) break;
-                if (k1 + v1.width > k) {
-                    if (v1.dom.must_be_num()) {
-                        // part of num is valid num
-                        if (value.must_be_num()) {
-                            v1.width = std::max(v1.width, (k + width) - k1);
-                        } else {
-                            v1.width = k - k1;
-                        }
-                        auto bot = v1.dom;
-                        bot.to_bot();
-                        v1.dom = bot.with_num(TOP);
-                        if (k1 + v1.width > k + width) {
-                            to_add.emplace((k + width), Pair{bot.with_num(TOP), (k1 + v1.width) - (k + width) });
-                        }
-                    } else {
-                        to_remove.push_back(k1);
-                    }
-                }
-            }
-            for (auto k1 : to_remove) arr.erase(k1);
-            if (arr.count(k)) {
-                if (arr.at(k).width == width) {
-                    arr.at(k).dom |= value;
-                    if (arr.at(k).dom.is_top())
-                        arr.erase(k);
-                } else {
-                    arr.erase(k);
-                }
-            } // otherwise it's already top
-            for (uint64_t i=1; i<width; i++) {
-                arr.erase(k + (int)i);
-            }
-            for (auto [k, v] : to_add) arr.emplace(k, v);
-        }
-
-        if (offset.is_single()) {
-            arr.insert_or_assign(offset.elems.front(), Pair{value, width});
-        }
-    }
-
-    void operator|=(const MemDom& o) {
-        //std::cerr << *this << " | " << o;
-        if (o.bot)
-            return;
-        if (bot) {
-            *this = o;
-        } else {
-            for (auto& [k, p] : o.arr) {
-                if (arr.count(k) == 1 && arr.at(k).width == p.width) {
-                    arr.at(k).dom |= p.dom;
-                } else {
-                    arr.erase(k);
-                }
-            }
-        }
-        //std::cerr << " = " << *this << "\n";
-    }
-    void operator&=(const MemDom& o) {
-        // TODO
-    }
-    bool is_bot() { return bot; }
-
-    bool operator==(const MemDom& o) const { return arr == o.arr; }
-
-    friend std::ostream& operator<<(std::ostream& os, const MemDom& d) {
-        if (d.bot) return os << "{BOT}";
-        os << "{";
-        for (auto [k, v] : d.arr) {
-            os << k - STACK_SIZE << ":" << v.width << "->" << v.dom << ", ";
-        }
-        os << "}";
-        return os;
-    }
-};
-
 struct RegsDom {
     using ValDom = RCP_domain;
     std::array<std::optional<ValDom>, 16> regs;
 
-    RegsDom(size_t nmaps) {
-        for (auto& r : regs) r = {nmaps};
+    RegsDom() {
+        for (auto& r : regs) r = ValDom{};
     }
 
     friend std::ostream& operator<<(std::ostream& os, const RegsDom& d) {
@@ -289,17 +118,17 @@ struct RegsDom {
 struct Machine {
     RegsDom regs;
     MemDom stack_arr;
-    MinSizeDom data_end;
 
     program_info info;
     RCP_domain BOT;
-    TypeSet types;
 
-    Machine(program_info info) : regs{info.map_defs.size()}, info{info}, BOT{info.map_defs.size()}, types{info.map_defs.size()} {
+    Machine(program_info info) : info{info} {
     }
 
+    static inline const RCP_domain numtop = RCP_domain{}.with_num(TOP);
+
     void init() {
-        regs.init(BOT.with_ctx(0), BOT.with_stack(STACK_SIZE), BOT.with_num(TOP));
+        regs.init(BOT.with_ctx(0), BOT.with_stack(STACK_SIZE), numtop);
         stack_arr.bot = false;
     }
 
@@ -327,16 +156,14 @@ struct Machine {
     void operator|=(const Machine& o) {
         regs |= o.regs;
         stack_arr |= o.stack_arr;
-        data_end |= o.data_end;
     }
 
     void operator&=(const Machine& o) {
         regs &= o.regs;
         stack_arr &= o.stack_arr;
-        data_end &= o.data_end;
     }
 
-    bool operator==(Machine o) const { return regs == o.regs && stack_arr == o.stack_arr && data_end == o.data_end; }
+    bool operator==(Machine o) const { return regs == o.regs && stack_arr == o.stack_arr; }
     bool operator!=(Machine o) const { return !(*this == o); }
 
     void operator()(Undefined const& a) { assert(false); }
@@ -365,8 +192,8 @@ struct Machine {
         // treat as assume
         std::visit(overloaded{
             [this](const LinearConstraint& lc) {
-                assert((lc.when_types & types.num()).none()
-                    || (lc.when_types & types.ptr()).none());
+                assert((lc.when_types & TypeSet::num).none()
+                    || (lc.when_types & TypeSet::ptr).none());
                 const RCP_domain right = regs.at(lc.reg).zero() + (eval(lc.v) - eval(lc.width) - eval(lc.offset));
                 RCP_domain::assume(regs.at(lc.reg), lc.op, right, lc.when_types);
             },
@@ -416,7 +243,7 @@ struct Machine {
             }
         }
         for (ArgPair arg : call.pairs) {
-            RCP_domain val = BOT.with_num(TOP);
+            RCP_domain val = numtop;
             switch (arg.kind) {
                 case ArgPair::Kind::PTR_TO_MEM_OR_NULL:
                     if (regs.at(arg.mem).must_be_num()) break;
@@ -432,29 +259,16 @@ struct Machine {
             }
         }
         if (call.returns_map) {
-            auto fds = regs.at(Reg{1}).get_fd();
-            RCP_domain res = BOT;
-            for (size_t i=0; i < fds.fds.size(); i++) {
-                if (fds.fds[i]) {
-                    auto def = info.map_defs.at(i);
-                    if (def.type == MapType::ARRAY_OF_MAPS
-                        || def.type == MapType::HASH_OF_MAPS) {
-                        res = res.with_fd(def.inner_map_fd);
-                    } else {
-                        res = res.with_map(i, 0);
-                    }
-                }
-            }
-            regs.assign(Reg{0}, res.with_num(0));
+            regs.assign(Reg{0}, regs.at(Reg{1}).map_lookup_elem(info.map_defs));
         } else {
-            regs.assign(Reg{0}, BOT.with_num(TOP));
+            regs.assign(Reg{0}, numtop);
         }
         regs.scratch_regs();
     }
 
     void operator()(Packet const& a) {
         // Different syntax for a function call
-        regs.assign(Reg{0}, BOT.with_num(TOP));
+        regs.assign(Reg{0}, numtop);
         regs.scratch_regs();
     }
 
@@ -462,23 +276,32 @@ struct Machine {
         OffsetDomSet as_stack = addr.get_stack();
         if (!as_stack.is_bot()) {
             // make weak updates extremely weak
-            if (addr.with_stack({}).is_bot())
-                stack_arr.store(as_stack, width, value);
-            else
-                stack_arr.store(TOP, width, value);
+            if (addr.with_stack({}).is_bot()) {
+                if (!width.is_single()) {
+                    stack_arr.store_dynamic(as_stack, width, value);
+                } else {
+                    stack_arr.store(as_stack, width.elems.front(), value);
+                }
+            } else {
+                if (!width.is_single()) {
+                    stack_arr.store_dynamic(TOP, width, value);
+                } else {
+                    stack_arr.store(TOP, width.elems.front(), value);
+                }
+            }
         }
     }
 
     RCP_domain load_stack(const OffsetDomSet& as_stack, int width) {
-        if (as_stack.is_bot()) return BOT;
-        RCP_domain r = BOT;
-        stack_arr.load(as_stack, width, r);
+        RCP_domain r;
+        if (!as_stack.is_bot())
+            r |= stack_arr.load(as_stack, width);
         return r;
     }
 
     RCP_domain load_ctx(const OffsetDomSet& as_ctx, int width) {
-        if (as_ctx.is_bot()) return BOT;
-        RCP_domain r = BOT;
+        if (as_ctx.is_bot()) return {};
+        RCP_domain r;
         if (as_ctx.is_single()) {
             auto d = info.descriptor;
             auto data_start = BOT.with_packet(3);
@@ -489,7 +312,7 @@ struct Machine {
             else if (d.meta > -1 && as_ctx.contains(d.meta))
                 r |= data_start + BOT.with_packet(0);
             else 
-                r |= BOT.with_num(TOP);
+                r |= numtop;
         } else {
             r.havoc(); // TODO: disallow, or at least don't havoc fd
         }
@@ -499,8 +322,8 @@ struct Machine {
     RCP_domain load_other(const RCP_domain& addr) {
         if (addr.maybe_packet()
          || addr.maybe_map())
-            return BOT.with_num(TOP);
-        return BOT;
+            return numtop;
+        return {};
     }
 
     RCP_domain load(const RCP_domain& addr, int width) {
@@ -540,7 +363,14 @@ struct Analyzer {
     bool recompute(Label l, const BasicBlock& bb) {        
         Machine dom = pre.at(l);
         for (const Instruction& ins : bb.insts) {
-            dom.visit(ins);
+            // try {
+                dom.visit(ins);
+            // } catch (const std::runtime_error& ex) {
+            //     std::cerr << l << "\n";
+            //     std::cerr << ins << "\n";
+            //     std::cerr << dom << "\n";
+            //     throw;
+            // }
         }
         bool res = post.at(l) != dom;
         post.insert_or_assign(l, dom);
@@ -597,35 +427,31 @@ void analyze_rcp(Cfg& cfg, program_info info) {
                     unsatisfied_assertion = !a.satisfied;
                 }
             }
-            // std::cerr << l << "\n";
-            // std::cerr << dom << "\n";
-            // std::cerr << ins << "\n";
+            if (global_options.print_invariants) {
+                std::cerr << l << "\n";
+                std::cerr << dom << "\n";
+                std::cerr << ins << "\n";
+            }
             dom.visit(ins);
-            // std::cerr << dom << "\n";
+            if (global_options.print_invariants) {
+                std::cerr << dom << "\n";
+            }
         }
-        // for (auto n : cfg[l].nextlist)
-        //     std::cerr << n << ",";
-        // std::cerr << "\n";
+        if (global_options.print_invariants) {
+            for (auto n : cfg[l].nextlist)
+                std::cerr << n << ",";
+            std::cerr << "\n";
+        }
     }
 }
 
 class AssertionExtractor {
     program_info info;
+    std::vector<size_t> type_indices;
     bool is_priviledged = false;
-    const TypeSet types;
-
-    const Types num = types.num();
-    const Types ctx = types.ctx();
-    const Types stack = types.stack();
-    const Types packet = types.packet();
-    const Types maps = types.map_types();
-    const Types fd = types.fd();
-    const Types mem = stack | packet | maps;
-    const Types ptr = mem | ctx;
-    const Types nonfd = ptr | num;
     
     auto type_of(Reg r, const Types t) {
-        assert(t.size() == types.all().size());
+        assert(t.size() == TypeSet::all.size());
         return Assertion{TypeConstraint{{r, t}}};
     };
 
@@ -634,16 +460,18 @@ class AssertionExtractor {
         assumptions.push_back(
             Assertion{LinearConstraint{Op::GE, reg, offset, Imm{0}, Imm{0}, t}}
         );
-        for (size_t i=0; i < t.size(); i++) {
+        for (size_t i : type_indices) {
             if (!t[i]) continue;
-            Types s = types.single(i);
-            if (s == num) continue;
+            Types s = TypeSet::single(i);
+            if (s == TypeSet::num) continue;
 
             Value end;
             if (i < info.map_defs.size()) end = Imm{info.map_defs.at(i).value_size};
-            else if (s == packet) end = DATA_END_REG;
-            else if (s == stack) end = Imm{STACK_SIZE};
-            else if (s == ctx) end = Imm{static_cast<uint64_t>(info.descriptor.size)};
+            else if (s == TypeSet::packet) end = DATA_END_REG;
+            else if (s == TypeSet::stack) end = Imm{STACK_SIZE};
+            else if (s == TypeSet::ctx) end = Imm{static_cast<uint64_t>(info.descriptor.size)};
+            else if (s == TypeSet::num) assert(false);
+            else if (s == TypeSet::fd) assert(false);
             else assert(false);
             assumptions.push_back(
                 Assertion{LinearConstraint{Op::LE, reg, offset, width, end, s}}
@@ -651,13 +479,22 @@ class AssertionExtractor {
         }
     }
 public:
-    AssertionExtractor(program_info info) : info{info}, types{info.map_defs.size()} { }
+    AssertionExtractor(program_info info) : info{info} {
+        for (size_t i=0; i < info.map_defs.size(); i++) {
+            type_indices.push_back(i);
+        }
+        type_indices.push_back(ALL_TYPES + T_CTX);
+        type_indices.push_back(ALL_TYPES + T_STACK);
+        type_indices.push_back(ALL_TYPES + T_DATA);
+        type_indices.push_back(ALL_TYPES + T_NUM);
+        type_indices.push_back(ALL_TYPES + T_FD);
+    }
 
     template <typename T>
     vector<Assertion> operator()(T ins) { return {}; }
 
     vector<Assertion> operator()(Exit const& e) {
-        return { type_of(Reg{0}, num) };
+        return { type_of(Reg{0}, TypeSet::num) };
     }
 
     vector<Assertion> operator()(Call const& call) {
@@ -667,48 +504,47 @@ public:
             case ArgSingle::Kind::ANYTHING: 
                 // avoid pointer leakage:
                 if (!is_priviledged)
-                    res.push_back(type_of(arg.reg, num));
+                    res.push_back(type_of(arg.reg, TypeSet::num));
                 break;
             case ArgSingle::Kind::MAP_FD:
-                res.push_back(type_of(arg.reg, fd));
+                res.push_back(type_of(arg.reg, TypeSet::fd));
                 break;
             case ArgSingle::Kind::PTR_TO_MAP_KEY: 
                 // what other conditions?
                 // looks like packet is valid
                 // TODO: maybe arg.packet_access?
-                res.push_back(type_of(arg.reg, stack | packet));
+                res.push_back(type_of(arg.reg, TypeSet::stack | TypeSet::packet));
                 break;
             case ArgSingle::Kind::PTR_TO_MAP_VALUE:
-                res.push_back(type_of(arg.reg, stack | packet)); // strangely, looks like it means stack or packet
+                res.push_back(type_of(arg.reg, TypeSet::stack | TypeSet::packet)); // strangely, looks like it means stack or packet
                 break;
             case ArgSingle::Kind::PTR_TO_CTX: 
-                res.push_back(type_of(arg.reg, ctx));
+                res.push_back(type_of(arg.reg, TypeSet::ctx));
                 // TODO: the kernel has some other conditions here - 
                 // maybe offset == 0
                 break;
             }
         }
         for (ArgPair arg : call.pairs) {
-            Types arg_types;
             switch (arg.kind) {
                 case ArgPair::Kind::PTR_TO_MEM_OR_NULL:
-                    res.push_back(type_of(arg.mem, mem | num));
-                    res.push_back(Assertion{LinearConstraint{Condition::Op::EQ, arg.mem, 0, Imm{0}, Imm{0}, num} });
+                    res.push_back(type_of(arg.mem, TypeSet::mem | TypeSet::num));
+                    res.push_back(Assertion{LinearConstraint{Condition::Op::EQ, arg.mem, 0, Imm{0}, Imm{0}, TypeSet::num} });
                     break;
                 case ArgPair::Kind::PTR_TO_MEM: 
                     /* LINUX: pointer to valid memory (stack, packet, map value) */
-                    res.push_back(type_of(arg.mem, mem));
+                    res.push_back(type_of(arg.mem, TypeSet::mem));
                     break;
                 case ArgPair::Kind::PTR_TO_UNINIT_MEM:
                     // memory may be uninitialized, i.e. write only
-                    res.push_back(type_of(arg.mem, mem));
+                    res.push_back(type_of(arg.mem, TypeSet::mem));
                     break;
             }
             // TODO: reg is constant (or maybe it's not important)
             auto op = arg.can_be_zero ? Condition::Op::GE : Condition::Op::GT;
-            res.push_back(type_of(arg.size, num));
-            res.push_back(Assertion{LinearConstraint{op, arg.size, 0, Imm{0}, Imm{0}, num}});
-            check_access(res, mem, arg.mem, 0, arg.size);
+            res.push_back(type_of(arg.size, TypeSet::num));
+            res.push_back(Assertion{LinearConstraint{op, arg.size, 0, Imm{0}, Imm{0}, TypeSet::num}});
+            check_access(res, TypeSet::mem, arg.mem, 0, arg.size);
             break;
         }
         return res;
@@ -719,15 +555,16 @@ public:
         vector<Assertion> res;
         if (std::holds_alternative<Imm>(cond.right)) {
             if (std::get<Imm>(cond.right).v != 0) {
-                res.push_back(type_of(cond.left, num));
+                res.push_back(type_of(cond.left, TypeSet::num));
             } else {
                 // OK - fd is just another pointer
                 // Everything can be compared to 0
             }
-        } else if (cond.op != Condition::Op::EQ
-                && cond.op != Condition::Op::NE) {
-            res.push_back(type_of(cond.left, nonfd));
-            same_type(res, nonfd, cond.left, std::get<Reg>(cond.right));
+        } else {
+            if (cond.op != Condition::Op::EQ && cond.op != Condition::Op::NE) {
+                res.push_back(type_of(cond.left, TypeSet::nonfd));
+            }
+            same_type(res, TypeSet::all, cond.left, std::get<Reg>(cond.right));
         }
         return res;
     }
@@ -747,14 +584,14 @@ public:
         Imm width{static_cast<uint32_t>(ins.access.width)};
         int offset = ins.access.offset;
         if (reg.v == 10) {
-            check_access(res, stack, reg, offset, width);
+            check_access(res, TypeSet::stack, reg, offset, width);
         } else {
-            res.emplace_back(type_of(reg, ptr));
-            check_access(res, ptr, reg, offset, width);
+            res.emplace_back(type_of(reg, TypeSet::ptr));
+            check_access(res, TypeSet::ptr, reg, offset, width);
             if (!is_priviledged && !ins.is_load && std::holds_alternative<Reg>(ins.value)) {
-                for (auto t : {maps , ctx , packet}) {
+                for (auto t : {TypeSet::maps, TypeSet::ctx, TypeSet::packet}) {
                     res.push_back(
-                        Assertion{ TypeConstraint{{std::get<Reg>(ins.value), num}, {reg, t}} }
+                        Assertion{ TypeConstraint{{std::get<Reg>(ins.value), TypeSet::num}, {reg, t}} }
                     );
                 }
             }
@@ -764,15 +601,15 @@ public:
 
     vector<Assertion> operator()(LockAdd ins) {
         vector<Assertion> res;
-        res.push_back(type_of(ins.access.basereg, maps));
-        check_access(res, maps, ins.access.basereg, ins.access.offset, Imm{static_cast<uint32_t>(ins.access.width)});
+        res.push_back(type_of(ins.access.basereg, TypeSet::maps));
+        check_access(res, TypeSet::maps, ins.access.basereg, ins.access.offset, Imm{static_cast<uint32_t>(ins.access.width)});
         return res;
     };
 
     void same_type(vector<Assertion>& res, Types ts, Reg r1, Reg r2) {
-        for (size_t i=0; i < ts.size(); i++) {
+        for (size_t i : type_indices) {
             if (ts[i]) {
-                Types t = types.single(i);
+                Types t = TypeSet::single(i);
                 res.push_back( Assertion{TypeConstraint{{r1, t}, {r2, t}} });
             }
         }
@@ -786,22 +623,22 @@ public:
                 if (std::holds_alternative<Reg>(ins.v)) {
                     Reg reg = std::get<Reg>(ins.v);
                     return {
-                        Assertion{ TypeConstraint{{reg, num}, {ins.dst, ptr}} },
-                        Assertion{ TypeConstraint{{ins.dst, num}, {reg, ptr}} }
+                        Assertion{ TypeConstraint{{reg, TypeSet::num}, {ins.dst, TypeSet::ptr}} },
+                        Assertion{ TypeConstraint{{ins.dst, TypeSet::num}, {reg, TypeSet::ptr}} }
                     };
                 }
                 return {};
             case Bin::Op::SUB:
                 if (std::holds_alternative<Reg>(ins.v)) {
                     vector<Assertion> res;
-                    res.push_back(type_of(ins.dst, nonfd));
-                    same_type(res, maps | ctx | packet, std::get<Reg>(ins.v), ins.dst);
-                    res.push_back(type_of(std::get<Reg>(ins.v), nonfd));
+                    res.push_back(type_of(ins.dst, TypeSet::nonfd));
+                    same_type(res, TypeSet::maps | TypeSet::ctx | TypeSet::packet, std::get<Reg>(ins.v), ins.dst);
+                    res.push_back(type_of(std::get<Reg>(ins.v), TypeSet::nonfd));
                     return res;
                 }
                 return {};
             default:
-                return { type_of(ins.dst, num) };
+                return { type_of(ins.dst, TypeSet::num) };
         }
     }
 };

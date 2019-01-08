@@ -217,15 +217,6 @@ const map<string, domain_desc> domains{
     { "none"              , { dont_analyze, "build CFG only, don't perform analysis" } },
 };
 
-global_options_t global_options {
-    .simplify = false,
-    .stats = false,
-    .check_semantic_reachability = false,
-    .print_invariants = true,
-    .print_failures = true,
-    .liveness = true
-};
-
 map<string, string> domain_descriptions()
 {
     map<string, string> res;
