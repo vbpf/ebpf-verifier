@@ -43,9 +43,11 @@ struct MemDom {
                                                               return a.end() < b.end(); });
             auto [left, mid1] = lower_start.split(higher_start.offset);
             if (&lower_start == &higher_end) {
+                assert(higher_start.end() >= mid1.offset);
                 auto [mid2, right] = mid1.split(higher_start.end());
                 return {left, mid2, higher_start, right};
             } else {
+                assert(lower_end.end() >= higher_end.offset);
                 auto [mid2, right] = higher_end.split(lower_end.end());
                 return {left, mid1, mid2, right};
             }
@@ -138,7 +140,7 @@ struct MemDom {
         // There's at least one cell
         std::vector<Cell> new_cells;
         int to_remove = 0;
-        for (auto it = cells.begin(); std::next(it) != cells.end(); ++it) {
+        for (auto it = cells.begin(); std::next(it) < cells.end(); ++it) {
             Cell& current = *it;
             Cell& after = *std::next(it);
 
