@@ -6,6 +6,8 @@
 
 #include <crab/common/debug.hpp>
 
+#include <boost/container_hash/hash.hpp>
+
 #include "crab_verifier.hpp"
 #include "asm.hpp"
 #include "spec_assertions.hpp"
@@ -142,7 +144,7 @@ int main(int argc, char **argv)
         return usage(argv[0]);
     }
     auto progs = is_raw ? read_raw(path, info) : read_elf(path, desired_section);
-    for (auto raw_prog : progs) {
+    for (raw_program raw_prog : progs) {
         std::cerr << raw_prog.filename << ":" << raw_prog.section << "\n";
         if (list_only) {
             continue;
@@ -205,6 +207,7 @@ int main(int argc, char **argv)
                     const auto [res, seconds] = abs_validate(cfg, domain, raw_prog.info);
                     std::cout << res << "," << seconds << ",";
                     std::cout << raw_prog.filename << ":" << raw_prog.section << ",";
+                    std::cout << std::hex << boost::hash_range((char*)raw_prog.prog.data(), (char*)raw_prog.prog.data()+(raw_prog.prog.size() * sizeof(ebpf_inst))) << std::dec << ",";
                     print_stats(cfg);
                 }
 
