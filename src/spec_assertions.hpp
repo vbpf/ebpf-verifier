@@ -1,6 +1,6 @@
 #pragma once
 
-#include <boost/dynamic_bitset.hpp>
+#include <bitset>
 
 #include "asm_cfg.hpp"
 #include "spec_type_descriptors.hpp"

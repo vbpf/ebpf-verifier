@@ -21,6 +21,7 @@
 #include "ai.hpp"
 #include "ai_dom_set.hpp"
 #include "ai_dom_rcp.hpp"
+#include "ai_dom_mem.hpp"
 
 using std::optional;
 using std::to_string;
@@ -36,143 +37,6 @@ bool operator==(const Assert& a, const Assert& b) { return *a.p == *b.p && a.sat
 
 constexpr Reg DATA_END_REG = Reg{13};
 constexpr Reg META_REG = Reg{14};
-
-struct MemDom {
-    struct Pair {
-        RCP_domain dom;
-        uint64_t width{};
-        bool operator==(const Pair& o) const { return dom == o.dom && width == o.width; }
-    };
-    bool bot = true;
-    std::map<int, Pair> arr;
-    
-    void load(const OffsetDomSet& offset, uint64_t width, RCP_domain& outval) const {
-        if (offset.is_top()) {
-            outval.havoc();
-            return;
-        }
-        assert(!offset.elems.empty());
-        outval.to_bot();
-        for (int64_t k : offset.elems) {
-            for (auto [k1, v] : arr) {
-                if ((k1 <= k && k1 + v.width >  k + width)
-                 || (k1 <  k && k1 + v.width >= k + width)) {
-                    if (v.dom.must_be_num()) {
-                        outval = outval.with_num(TOP);
-                    } else {
-                        outval.havoc();
-                    }
-                    goto next_iteration;
-                }
-            }
-            if (arr.count(k)) {
-                const auto& dom = arr.at(k).dom;
-                if (arr.at(k).width == width) {
-                    outval |= dom;
-                } else {
-                    // partial read of num havocs only num
-                    if (dom.must_be_num())
-                        outval = outval.with_num(TOP);
-                    else
-                        outval.havoc();
-                    return;
-                }
-            } else {
-                outval.havoc();
-                return;
-            }
-        next_iteration:
-            ;
-        }
-    }
-
-    void store(const OffsetDomSet& offset, const NumDomSet& ws, const RCP_domain& value) {
-        bot = false;
-        if (offset.is_top() || !ws.is_single()) {
-            arr.clear();
-            return;
-        }
-        uint64_t width = ws.elems.front();
-        assert(!offset.elems.empty());
-        std::map<int, Pair> to_add;
-        for (int64_t k : offset.elems) {
-            std::vector<int64_t> to_remove;
-            for (auto& [k1, v1] : arr) {
-                if (k1 >= k) break;
-                if (k1 + v1.width > k) {
-                    if (v1.dom.must_be_num()) {
-                        // part of num is valid num
-                        if (value.must_be_num()) {
-                            v1.width = std::max(v1.width, (k + width) - k1);
-                        } else {
-                            v1.width = k - k1;
-                        }
-                        auto bot = v1.dom;
-                        bot.to_bot();
-                        v1.dom = bot.with_num(TOP);
-                        if (k1 + v1.width > k + width) {
-                            to_add.emplace((k + width), Pair{bot.with_num(TOP), (k1 + v1.width) - (k + width) });
-                        }
-                    } else {
-                        to_remove.push_back(k1);
-                    }
-                }
-            }
-            for (auto k1 : to_remove) arr.erase(k1);
-            if (arr.count(k)) {
-                if (arr.at(k).width == width) {
-                    arr.at(k).dom |= value;
-                    if (arr.at(k).dom.is_top())
-                        arr.erase(k);
-                } else {
-                    arr.erase(k);
-                }
-            } // otherwise it's already top
-            for (uint64_t i=1; i<width; i++) {
-                arr.erase(k + (int)i);
-            }
-            for (auto [k, v] : to_add) arr.emplace(k, v);
-        }
-
-        if (offset.is_single()) {
-            arr.insert_or_assign(offset.elems.front(), Pair{value, width});
-        }
-    }
-
-    void operator|=(const MemDom& o) {
-        //std::cerr << *this << " | " << o;
-        if (o.bot)
-            return;
-        if (bot) {
-            *this = o;
-        } else {
-            for (auto& [k, p] : o.arr) {
-                if (arr.count(k) == 1 && arr.at(k).width == p.width) {
-                    arr.at(k).dom |= p.dom;
-                } else {
-                    arr.erase(k);
-                }
-            }
-        }
-        //std::cerr << " = " << *this << "\n";
-    }
-    void operator&=(const MemDom& o) {
-        // TODO
-    }
-    bool is_bot() { return bot; }
-
-    bool operator==(const MemDom& o) const { return arr == o.arr; }
-
-    friend std::ostream& operator<<(std::ostream& os, const MemDom& d) {
-        if (d.bot) return os << "{BOT}";
-        os << "{";
-        for (auto [k, v] : d.arr) {
-            os << k - STACK_SIZE << ":" << v.width << "->" << v.dom << ", ";
-        }
-        os << "}";
-        return os;
-    }
-};
 
 struct RegsDom {
     using ValDom = RCP_domain;
@@ -412,17 +276,26 @@ struct Machine {
         OffsetDomSet as_stack = addr.get_stack();
         if (!as_stack.is_bot()) {
             // make weak updates extremely weak
-            if (addr.with_stack({}).is_bot())
-                stack_arr.store(as_stack, width, value);
-            else
-                stack_arr.store(TOP, width, value);
+            if (addr.with_stack({}).is_bot()) {
+                if (!width.is_single()) {
+                    stack_arr.store_dynamic(as_stack, width, value);
+                } else {
+                    stack_arr.store(as_stack, width.elems.front(), value);
+                }
+            } else {
+                if (!width.is_single()) {
+                    stack_arr.store_dynamic(TOP, width, value);
+                } else {
+                    stack_arr.store(TOP, width.elems.front(), value);
+                }
+            }
         }
     }
 
     RCP_domain load_stack(const OffsetDomSet& as_stack, int width) {
         RCP_domain r;
         if (!as_stack.is_bot())
-            stack_arr.load(as_stack, width, r);
+            r |= stack_arr.load(as_stack, width);
         return r;
     }
 
@@ -490,7 +363,14 @@ struct Analyzer {
     bool recompute(Label l, const BasicBlock& bb) {        
         Machine dom = pre.at(l);
         for (const Instruction& ins : bb.insts) {
-            dom.visit(ins);
+            // try {
+                dom.visit(ins);
+            // } catch (const std::runtime_error& ex) {
+            //     std::cerr << l << "\n";
+            //     std::cerr << ins << "\n";
+            //     std::cerr << dom << "\n";
+            //     throw;
+            // }
         }
         bool res = post.at(l) != dom;
         post.insert_or_assign(l, dom);
