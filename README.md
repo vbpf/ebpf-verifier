@@ -19,26 +19,14 @@ bin/check -h
 ```
 
 ## Running
-Disassembler:
-```bash
-bin/disassemble samples/linux/accept_tc_l2_redirect-drop_non_tun_vip.14
-```
-
-Verifier:
 
 ```bash
-bin/check samples/linux/accept_tc_l2_redirect-drop_non_tun_vip.14 14 sdbm-arr
+bin/check elf=ebpf-samples/linux/cpustat_kern.o crab
 ```
 
 ## Testing
 
 ```bash
 bin/test
-```
-
-## Benchmark
-
-```bash
-bin/benchmark.sh samples sdbm-arr
 ```
 
