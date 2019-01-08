@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <unordered_map>
+#include <initializer_list>
 
 #include "ai_dom_set.hpp"
 #include "ai_dom_rcp.hpp"
@@ -14,7 +15,14 @@ using D = MemDom;
 auto top = []() -> D { return D{TOP}; };
 auto bot = []() -> D { return D{}; };
 
-TEST_CASE( "mem_dom_bot_top", "[dom][domain][mem]" ) {
+MemDom mem(std::initializer_list<MemDom::Cell> lst) {
+    MemDom m;
+    for (auto c : lst) 
+        m.store(c.offset, c.width, c.dom);
+    return m;
+}
+
+TEST_CASE( "mem_dom_join", "[dom][domain][mem]" ) {
     REQUIRE(D{} == bot());
     REQUIRE_FALSE(bot() == top());
 
@@ -23,6 +31,44 @@ TEST_CASE( "mem_dom_bot_top", "[dom][domain][mem]" ) {
 
     REQUIRE((top() | bot()) == top());
     REQUIRE((bot() | top()) == top());
+
+    SECTION("WithTop") {
+        D mem;
+        const RCP_domain n = RCP_domain{}.with_num(5);
+        mem.store({0}, 4, n);
+        REQUIRE((mem | top()) == top());
+    }
+    SECTION("WithSelf") {
+        D mem;
+        const RCP_domain n = RCP_domain{}.with_num(5);
+        mem.store({0}, 4, n);
+        REQUIRE((mem | mem) == mem);
+    }
+    SECTION("Nonoverlap") {
+        const RCP_domain n1 = RCP_domain{}.with_num(5);
+        const RCP_domain n2 = RCP_domain{}.with_num(9);
+        const RCP_domain n3 = RCP_domain{}.with_num(3);
+
+        D::Cell c1{0, 4, n1};
+        D::Cell c2{4, 4, n2};
+        D::Cell c3{8, 4, n3};
+        D mem1 = mem({c1});
+        D mem2 = mem({c2});
+        D mem3 = mem({c3});
+
+
+        D expected12 = mem({c1, c2});
+        REQUIRE((mem1 | mem2) == expected12);
+        REQUIRE((mem2 | mem1) == expected12);
+
+        D expected13 = mem({c1, c3});
+        REQUIRE((mem1 | mem3) == expected13);
+        REQUIRE((mem3 | mem1) == expected13);
+
+        D expected23 = mem({c2, c3});
+        REQUIRE((mem2 | mem3) == expected23);
+        REQUIRE((mem3 | mem2) == expected23);
+    }
 }
 
 TEST_CASE( "mem_dom_no_writes", "[dom][domain][mem]" ) {
@@ -244,7 +290,7 @@ TEST_CASE( "mem_dom_two_writes", "[dom][domain][mem]" ) {
         REQUIRE(mem.load({0}, 9) == T);
         REQUIRE(mem.load({10}, 4) == T);
     }
-    /*
+
     SECTION("SecondContained") {
         D mem;
         mem.store({4}, 4, n1);
@@ -253,11 +299,14 @@ TEST_CASE( "mem_dom_two_writes", "[dom][domain][mem]" ) {
         REQUIRE(mem.load({5}, 2) == n2);
 
         REQUIRE(mem.load({4}, 4) == NT);
+        REQUIRE(mem.load({4}, 3) == NT);
         REQUIRE(mem.load({4}, 2) == NT);
+        REQUIRE(mem.load({4}, 1) == NT);
+        REQUIRE(mem.load({5}, 3) == NT);
         REQUIRE(mem.load({5}, 1) == NT);
-        REQUIRE(mem.load({2}, 6) == NT);
-        REQUIRE(mem.load({3}, 2) == NT);
-        REQUIRE(mem.load({3}, 5) == NT);
+        REQUIRE(mem.load({6}, 2) == NT);
+        REQUIRE(mem.load({6}, 1) == NT);
+        REQUIRE(mem.load({7}, 1) == NT);
         
         REQUIRE(mem.load({1}, 3) == T);
         REQUIRE(mem.load({0}, 4) == T);
@@ -268,7 +317,6 @@ TEST_CASE( "mem_dom_two_writes", "[dom][domain][mem]" ) {
         REQUIRE(mem.load({6}, 3) == T);
         REQUIRE(mem.load({10}, 4) == T);
     }
-*/
 
     SECTION("Permutations") {
         D mem;

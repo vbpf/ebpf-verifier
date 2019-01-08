@@ -2,6 +2,7 @@
 
 #include <set>
 #include <vector>
+#include <limits>
 
 #include "ai_dom_rcp.hpp"
 
@@ -122,6 +123,7 @@ struct MemDom {
     }
 
     void operator|=(const MemDom& b) {
+        if (this == &b) return;
         if (bot) {
             *this = b;
             return;
@@ -137,10 +139,9 @@ struct MemDom {
         }
         std::copy(b.cells.begin(), b.cells.end(), std::back_inserter(cells));
         std::sort(cells.begin(), cells.end());
-        // There's at least on cell
+        // There's at least one cell
         std::vector<Cell> new_cells;
-        std::vector<Cell> to_remove;
-        auto last = cells.end();
+        int to_remove = 0;
         for (auto it = cells.begin(); std::next(it) != cells.end(); ++it) {
             Cell& current = *it;
             Cell& after = *std::next(it);
@@ -151,9 +152,8 @@ struct MemDom {
 
             if (current.offset == after.offset && after.width == after.width) {
                 after.dom |= current.dom;
-                to_remove.push_back(current);
-                // skip one
-                ++it;
+                current.offset = std::numeric_limits<int64_t>().max();
+                to_remove++;
                 continue;
             }
 
@@ -161,25 +161,27 @@ struct MemDom {
                     || (current.dom.is_top() && after.dom.is_top())) {
                 after.offset = min(current.offset, after.offset);
                 after.width = max(current.end(), after.end()) - current.offset;
-                to_remove.push_back(current);
+                current.offset = std::numeric_limits<int64_t>().max();
+                to_remove++;
                 continue;
             }
 
             auto [left, mid1, mid2, right] = Cell::split(current, after);
             mid1.dom |= mid2.dom;
 
-            new_cells.push_back(std::move(left));
-            current = std::move(mid1);
+            new_cells.push_back(left);
+            current = mid1;
             // right should stay for next iteration
             // TODO: add test for this
-            after = std::move(right);
+            after = right;
         }
-        cells.erase(last, cells.end());
         std::move(new_cells.begin(), new_cells.end(), std::back_inserter(cells));
         std::sort(cells.begin(), cells.end());
+        cells.resize(cells.size() - to_remove);
     }
 
     void operator&=(const MemDom& o) {
+        if (this == &o) return;
         if (is_bot() || o.is_bot()) { to_bot(); return; }
         if (is_top()) { *this = o; return; }
     }
