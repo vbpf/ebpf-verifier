@@ -116,15 +116,7 @@ void MemDom::operator|=(const MemDom& b) {
             remove(current);
             continue;
         }
-
-        if (current.offset == after.offset && current.width == after.width) {
-            after.dom |= current.dom;
-            remove(current);
-            // skip after so we won't remove it
-            ++it;
-            continue;
-        }
-
+        
         auto [_, mid1, mid2, right] = Cell::split(current, after);
         mid1.dom |= mid2.dom;
 
