@@ -832,6 +832,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
                     b->assertion(arg.region == T_NUM, di);
                 }
             }
+            break;
         case ArgSingle::Kind::MAP_FD:
             //assert_pointer_or_null(is_map(arg));
             for (basic_block_t* b : blocks) {
@@ -854,7 +855,11 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
             }
             break;
         case ArgSingle::Kind::PTR_TO_CTX: 
-            assert_pointer_or_null(arg, arg.region == T_CTX);
+            for (basic_block_t* b : blocks) {
+                b->assertion(arg.value > 0, di);
+                b->assertion(arg.region == T_CTX, di);
+                b->assertion(arg.offset >= 0, di);
+            }
             break;
         }
     }
