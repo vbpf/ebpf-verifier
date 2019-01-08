@@ -97,22 +97,20 @@ struct MemDom {
     }
 
     void store_dynamic(const OffsetDomSet& offset_dom, const NumDomSet& _width, const RCP_domain& value) {
-        if (_width.is_bot()) return;
-        if (_width.is_single()) {
+        if (_width.is_bot() || offset_dom.is_bot()) return;
+        if (_width.is_single() && offset_dom.is_single()) {
             store(offset_dom, _width.elems.front(), value);
             return;
         }
-        if (!offset_dom.is_single()) {
-            havoc();
-            return;
-        }
         RCP_domain content = value.must_be_num() ? numtop() : RCP_domain(TOP);
-        int64_t offset = offset_dom.elems.front();
-        uint64_t min_width = _width.is_top() ? 0 : *std::min_element(_width.elems.begin(), _width.elems.end());
-        uint64_t max_width = _width.is_top() ? STACK_SIZE - offset : *std::max_element(_width.elems.begin(), _width.elems.end());
-        store({offset}, min_width, content);
+        int64_t min_offset = offset_dom.is_top() ? 0          : *std::min_element(offset_dom.elems.begin(), offset_dom.elems.end());
+        int64_t max_offset = offset_dom.is_top() ? STACK_SIZE : *std::max_element(offset_dom.elems.begin(), offset_dom.elems.end());
+        uint64_t min_width = _width.is_top() ? 0                       : *std::min_element(_width.elems.begin(), _width.elems.end());
+        uint64_t max_width = _width.is_top() ? STACK_SIZE - min_offset : *std::max_element(_width.elems.begin(), _width.elems.end());
+        if (min_width > 0 && max_offset < STACK_SIZE)
+            store({max_offset}, min_width, content);
         MemDom tmp = *this;
-        tmp.store({offset}, max_width, content);
+        tmp.store({min_offset}, max_width, content);
         (*this) |= tmp;
     }
 
