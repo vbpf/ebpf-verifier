@@ -61,24 +61,21 @@ TEST_CASE( "mem_dom_join", "[dom][domain][mem]" ) {
         D mem2 = mem(c2);
         D mem3 = mem(c3);
 
-        D expected12 = mem(c1, c2);
-        REQUIRE((mem1 | mem2) == expected12);
-        REQUIRE((mem2 | mem1) == expected12);
+        REQUIRE((mem1 | mem2) == top());
+        REQUIRE((mem2 | mem1) == top());
 
-        D expected13 = mem(c1, c3);
-        REQUIRE((mem1 | mem3) == expected13);
-        REQUIRE((mem3 | mem1) == expected13);
+        REQUIRE((mem1 | mem3) == top());
+        REQUIRE((mem3 | mem1) == top());
 
-        D expected23 = mem(c2, c3);
-        REQUIRE((mem2 | mem3) == expected23);
-        REQUIRE((mem3 | mem2) == expected23);
+        REQUIRE((mem2 | mem3) == top());
+        REQUIRE((mem3 | mem2) == top());
     }
 
     SECTION("xx__") {
         D m1 = mem({{4, 4, n1}});
         D m2 = mem({{4, 2, n2}});
 
-        D expected = mem({{4, 2, NT}, {6, 2, NT}});
+        D expected = mem({{4, 2, NT}});
         REQUIRE((m1 | m2) == expected);
         REQUIRE((m2 | m1) == expected);
     }
@@ -86,7 +83,7 @@ TEST_CASE( "mem_dom_join", "[dom][domain][mem]" ) {
         D m1 = mem({{4, 4, n1}});
         D m2 = mem({{6, 2, n2}});
 
-        D expected = mem({{4, 2, NT}, {6, 2, NT}});
+        D expected = mem({{6, 2, NT}});
         REQUIRE((m1 | m2) == expected);
         REQUIRE((m2 | m1) == expected);
     }
@@ -95,7 +92,7 @@ TEST_CASE( "mem_dom_join", "[dom][domain][mem]" ) {
         D m1 = mem({{4, 4, n1}});
         D m2 = mem({{6, 4, n2}});
 
-        D expected = mem({{4, 2, NT}, {6, 2, NT}, {8, 2, NT}});
+        D expected = mem({{6, 2, NT}});
         REQUIRE((m1 | m2) == expected);
         REQUIRE((m2 | m1) == expected);
     }    
@@ -103,7 +100,7 @@ TEST_CASE( "mem_dom_join", "[dom][domain][mem]" ) {
     SECTION("-xx-") {
         D m1 = mem({{4, 4, n1}});
         D m2 = mem({{3, 6, n2}});
-        D expected = mem({{3, 1, NT}, {4, 4, NT}, {8, 1, NT}});
+        D expected = mem({{4, 4, NT}});
 
         REQUIRE((m1 | m2) == expected);
         REQUIRE((m2 | m1) == expected);
@@ -112,7 +109,7 @@ TEST_CASE( "mem_dom_join", "[dom][domain][mem]" ) {
     SECTION("with gap") {
         D m1 = mem({{4, 1, n1}, {6, 2, n1}});
         D m2 = mem({{3, 6, n2}});
-        D expected = mem({{3, 1, NT}, {4, 1, NT}, {5, 1, NT}, {6, 2, NT}, {8, 1, NT}});
+        D expected = mem({{4, 1, NT}, {6, 2, NT} });
 
         REQUIRE((m1 | m2) == expected);
         REQUIRE((m2 | m1) == expected);

@@ -3,7 +3,7 @@
 #include <iostream> 
 #include <set>
 
-#include <boost/dynamic_bitset.hpp>
+#include <bitset>
 
 #include "asm_syntax.hpp"
 #include "ai_dom_set.hpp"

@@ -92,6 +92,7 @@ DISASM_OBJECTS := \
     ${BUILDDIR}/ai.o \
     ${BUILDDIR}/ai_dom_rcp.o \
     ${BUILDDIR}/ai_dom_set.o \
+    ${BUILDDIR}/ai_dom_mem.o \
     ${BUILDDIR}/spec_prototypes.o
 
 $(BINDIR)/disassemble: ${BUILDDIR}/main_disassemble.o ${DISASM_OBJECTS}
