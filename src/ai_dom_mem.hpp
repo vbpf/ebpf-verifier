@@ -30,8 +30,10 @@ struct MemDom {
             assert(upper_start >= offset);
             assert(upper_start <= end());
             RCP_domain partial_dom = dom.must_be_num() ? numtop() : RCP_domain(TOP);
-            return {Cell::from_range(offset, upper_start, upper_start >= end() ? dom : partial_dom),
-                    Cell::from_range(upper_start, end(), offset >= upper_start ? dom : partial_dom)};
+            Cell lower = Cell::from_range(offset, upper_start, upper_start >= end() ? dom : partial_dom);
+            Cell upper = Cell::from_range(upper_start, end(), offset >= upper_start ? dom : partial_dom);
+            assert(lower.width + upper.width == width);
+            return {lower, upper};
         }
 
         static std::tuple<Cell, Cell, Cell, Cell> split(const Cell& a, const Cell& b) {
@@ -40,11 +42,13 @@ struct MemDom {
             auto [lower_end, higher_end] = minmax(a, b, [](auto& a, auto& b) {
                                                               return a.end() < b.end(); });
             auto [left, mid1] = lower_start.split(higher_start.offset);
-            auto [mid2, right] = higher_end.split(lower_end.end());
-            if (&lower_start == &higher_end)
-                return {left, mid1, higher_start, right};
-            else
+            if (&lower_start == &higher_end) {
+                auto [mid2, right] = mid1.split(higher_start.end());
+                return {left, mid2, higher_start, right};
+            } else {
+                auto [mid2, right] = higher_end.split(lower_end.end());
                 return {left, mid1, mid2, right};
+            }
         }
 
         bool operator==(const Cell& o) const { return offset == o.offset && dom == o.dom && width == o.width; }
@@ -124,19 +128,11 @@ struct MemDom {
 
     void operator|=(const MemDom& b) {
         if (this == &b) return;
-        if (bot) {
-            *this = b;
-            return;
-        }
-        if (b.bot)
-            return;
-        if (is_top()) {
-            return;
-        }
-        if (b.is_top()) {
-            havoc();
-            return;
-        }
+        if (bot) { *this = b; return; }
+        if (b.bot) return;
+        if (is_top()) { return; }
+        if (b.is_top()) { havoc(); return; }
+        
         std::copy(b.cells.begin(), b.cells.end(), std::back_inserter(cells));
         std::sort(cells.begin(), cells.end());
         // There's at least one cell
@@ -152,15 +148,6 @@ struct MemDom {
 
             if (current.offset == after.offset && after.width == after.width) {
                 after.dom |= current.dom;
-                current.offset = std::numeric_limits<int64_t>().max();
-                to_remove++;
-                continue;
-            }
-
-            if ((current.dom == numtop() && after.dom == numtop())
-                    || (current.dom.is_top() && after.dom.is_top())) {
-                after.offset = min(current.offset, after.offset);
-                after.width = max(current.end(), after.end()) - current.offset;
                 current.offset = std::numeric_limits<int64_t>().max();
                 to_remove++;
                 continue;
