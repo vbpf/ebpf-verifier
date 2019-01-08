@@ -148,9 +148,10 @@ struct MemDom {
                 continue;
             }
 
-            if (current.offset == after.offset && after.width == after.width) {
+            if (current.offset == after.offset && current.width == after.width) {
                 after.dom |= current.dom;
                 current.offset = std::numeric_limits<int64_t>().max();
+                current.width = 0;
                 to_remove++;
                 continue;
             }
@@ -158,8 +159,16 @@ struct MemDom {
             auto [left, mid1, mid2, right] = Cell::split(current, after);
             mid1.dom |= mid2.dom;
 
-            new_cells.push_back(left);
             current = mid1;
+            
+            if (left.width > 0) new_cells.push_back(left);
+
+            if (right.width == 0) {
+                right.offset = std::numeric_limits<int64_t>().max();
+                to_remove++;
+                continue;
+            }
+
             // right should stay for next iteration
             // TODO: add test for this
             after = right;

@@ -74,6 +74,23 @@ TEST_CASE( "mem_dom_join", "[dom][domain][mem]" ) {
         REQUIRE((mem3 | mem2) == expected23);
     }
 
+    SECTION("xx__") {
+        D m1 = mem({{4, 4, n1}});
+        D m2 = mem({{4, 2, n2}});
+
+        D expected = mem({{4, 2, NT}, {6, 2, NT}});
+        REQUIRE((m1 | m2) == expected);
+        REQUIRE((m2 | m1) == expected);
+    }
+    SECTION("xx__") {
+        D m1 = mem({{4, 4, n1}});
+        D m2 = mem({{6, 2, n2}});
+
+        D expected = mem({{4, 2, NT}, {6, 2, NT}});
+        REQUIRE((m1 | m2) == expected);
+        REQUIRE((m2 | m1) == expected);
+    }
+
     SECTION("--xx__") {
         D m1 = mem({{4, 4, n1}});
         D m2 = mem({{6, 4, n2}});
