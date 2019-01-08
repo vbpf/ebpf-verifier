@@ -90,6 +90,16 @@ static vector<T> vector_of(ELFIO::section* sec) {
     return {(T*)data, (T*)(data + size)};
 }
 
+std::vector<int> sort_maps_by_size(std::vector<map_def>& map_defs) {
+    // after sorting, the map that was previously at index i will be at index res[i]
+    std::sort(map_defs.begin(), map_defs.end(), [](auto a, auto b) { return a.value_size < b.value_size; });
+    std::vector<int> res(map_defs.size());
+    for (int i=0; i<map_defs.size(); i++) {
+        res[map_defs[i].original_fd] = i;
+    }
+    return res;
+}
+
 vector<raw_program> read_elf(std::string path, std::string desired_section)
 {
     ELFIO::elfio reader;
@@ -99,15 +109,17 @@ vector<raw_program> read_elf(std::string path, std::string desired_section)
     }
     
     program_info info;
-    //info.map_defs.emplace_back();
+    int i = 0;
     for (auto s : vector_of<bpf_load_map_def>(reader.sections["maps"])) {
         info.map_defs.emplace_back(map_def{
+            .original_fd=i++,
             .type=MapType{s.type},
             .key_size=s.key_size,
             .value_size=s.value_size,
             .inner_map_fd=s.inner_map_idx
         });
     }
+    std::vector<int> updated_fds = sort_maps_by_size(info.map_defs);
 
     ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
     auto read_reloc_value = [&symbols](int symbol) -> int {
@@ -150,8 +162,8 @@ vector<raw_program> read_elf(std::string path, std::string desired_section)
             for (unsigned int i=0; i < reloc.get_entries_num(); i++) {
                 if (reloc.get_entry(i, offset, symbol, type, addend)) {
                     auto& inst = prog.prog[offset / sizeof(ebpf_inst)];
-                    inst.src = 1;
-                    inst.imm = read_reloc_value(symbol);
+                    inst.src = 1; // magic number for LoadFd
+                    inst.imm = updated_fds.at(read_reloc_value(symbol));
                 }
             }
         }

@@ -915,6 +915,8 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
     for (auto b: blocks) {
         scratch_regs(*b);
         if (call.returns_map) {
+            //if (machine.info.map_defs.at(map_type).type == MapType::ARRAY_OF_MAPS
+            // || machine.info.map_defs.at(map_type).type == MapType::HASH_OF_MAPS) { }
             b->assign(r0.region, map_type);
             b->havoc(r0.value);
             b->assume(0 <= r0.value);

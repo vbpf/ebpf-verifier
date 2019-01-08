@@ -86,6 +86,7 @@ struct ptype_descr {
 };
 
 struct map_def {
+    int original_fd;
     MapType type;
 	unsigned int key_size;
 	unsigned int value_size;
