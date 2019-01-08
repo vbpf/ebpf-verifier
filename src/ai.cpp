@@ -253,8 +253,7 @@ struct Machine {
                 case ArgPair::Kind::PTR_TO_MEM:
                     // fallthrough
                 case ArgPair::Kind::PTR_TO_UNINIT_MEM: {
-                    if (!regs.at(arg.size).get_num().is_single()) throw std::runtime_error{"non constant width"};
-                    store(regs.at(arg.mem), regs.at(arg.size).get_num().elems.front(), val);
+                    store(regs.at(arg.mem), regs.at(arg.size).get_num(), val);
                     break;
                 }
             }
@@ -273,14 +272,23 @@ struct Machine {
         regs.scratch_regs();
     }
 
-    void store(const RCP_domain& addr, uint64_t width, const RCP_domain& value) {
+    void store(const RCP_domain& addr, const NumDomSet& width, const RCP_domain& value) {
         OffsetDomSet as_stack = addr.get_stack();
         if (!as_stack.is_bot()) {
             // make weak updates extremely weak
-            if (addr.with_stack({}).is_bot())
-                stack_arr.store(as_stack, width, value);
-            else
-                stack_arr.store(TOP, width, value);
+            if (addr.with_stack({}).is_bot()) {
+                if (!width.is_single()) {
+                    stack_arr.store_dynamic(as_stack, width, value);
+                } else {
+                    stack_arr.store(as_stack, width.elems.front(), value);
+                }
+            } else {
+                if (!width.is_single()) {
+                    stack_arr.store_dynamic(TOP, width, value);
+                } else {
+                    stack_arr.store(TOP, width.elems.front(), value);
+                }
+            }
         }
     }
 
@@ -355,7 +363,14 @@ struct Analyzer {
     bool recompute(Label l, const BasicBlock& bb) {        
         Machine dom = pre.at(l);
         for (const Instruction& ins : bb.insts) {
-            dom.visit(ins);
+            // try {
+                dom.visit(ins);
+            // } catch (const std::runtime_error& ex) {
+            //     std::cerr << l << "\n";
+            //     std::cerr << ins << "\n";
+            //     std::cerr << dom << "\n";
+            //     throw;
+            // }
         }
         bool res = post.at(l) != dom;
         post.insert_or_assign(l, dom);
