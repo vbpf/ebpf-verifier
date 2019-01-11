@@ -16,7 +16,7 @@ RCP_domain MemDom::load(const OffsetDomSet& offset_dom, uint64_t _width) const {
     }
     int64_t offset = offset_dom.elems.front();
 
-    int64_t min_offset = 0xFFFFFF;
+    int64_t min_offset = std::numeric_limits<int64_t>().max();
     int64_t total_width = 0;
     int64_t max_end = 0;
     bool all_must_be_num = true;
