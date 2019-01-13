@@ -145,7 +145,7 @@ int main(int argc, char **argv)
     }
     auto progs = is_raw ? read_raw(path, info) : read_elf(path, desired_section);
     for (raw_program raw_prog : progs) {
-        std::cerr << raw_prog.filename << ":" << raw_prog.section << "\n";
+        //std::cerr << raw_prog.filename << ":" << raw_prog.section << "\n";
         if (list_only) {
             continue;
         }

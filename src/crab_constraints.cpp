@@ -714,7 +714,8 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
                 basic_block_t& same = add_child(cfg, block, "ptr_src");
                 same.assume(is_pointer(src));
                 same.assertion(is_pointer(dst), di);
-                same.assume(eq(dst.region, src.region));
+                same.assertion(dst.region < T_MAP, di); // since map values of the same type can point to different maps
+                same.assertion(eq(dst.region, src.region), di);
                 same.sub(dst.value, dst.offset, src.offset);
                 same.assign(dst.region, T_NUM);
                 same.havoc(dst.offset);
