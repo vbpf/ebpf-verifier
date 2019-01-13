@@ -631,9 +631,11 @@ public:
             case Bin::Op::SUB:
                 if (std::holds_alternative<Reg>(ins.v)) {
                     vector<Assertion> res;
-                    res.push_back(type_of(ins.dst, TypeSet::nonfd));
-                    same_type(res, TypeSet::maps | TypeSet::ctx | TypeSet::packet, std::get<Reg>(ins.v), ins.dst);
-                    res.push_back(type_of(std::get<Reg>(ins.v), TypeSet::nonfd));
+                    // disallow map-map since same type does not mean same offset
+                    // Todo: map identities
+                    auto ptr_or_num = TypeSet::nonfd & ~TypeSet::maps;
+                    res.push_back(type_of(ins.dst, ptr_or_num ));
+                    same_type(res, ptr_or_num, std::get<Reg>(ins.v), ins.dst);
                     return res;
                 }
                 return {};
