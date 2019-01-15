@@ -75,12 +75,14 @@ struct array_dom_t {
     var_t values;
     var_t offsets;
     var_t regions;
+    
     array_dom_t(variable_factory_t& vfac, std::string name) :
         vfac(vfac),
         values{vfac[std::string(name + "_r")], crab::ARR_INT_TYPE, 64}, 
         offsets{vfac[std::string(name + "_off")], crab::ARR_INT_TYPE, 64},
         regions{vfac[std::string(name + "_t")], crab::ARR_INT_TYPE, 8}
     { }
+
     template<typename T, typename W>
     vector<basic_block_t*> load(basic_block_t& block, dom_t data_reg, const T& offset, W width, cfg_t& cfg) {
         block.array_load(data_reg.value, values, offset, width);
@@ -88,14 +90,21 @@ struct array_dom_t {
         block.array_load(data_reg.offset, offsets, offset, width);
         return { &block };
     }
-    
-    template<typename T, typename W>
-    vector<basic_block_t*> store(basic_block_t& block, const T& offset, const dom_t data_reg, W width, debug_info di, cfg_t& cfg) {
-        var_t lb{vfac["lb"], crab::INT_TYPE, 64};
+
+    void mark_region(basic_block_t& block, lin_exp_t offset, const var_t v, var_t width) {
         var_t ub{vfac["ub"], crab::INT_TYPE, 64};
-        block.assign(lb, offset);
         block.assign(ub, offset + width);
-        block.array_init(regions, 1, lb, ub, data_reg.region);
+        block.array_init(regions, 1, offset, offset + width, v);
+    }
+
+    void mark_region(basic_block_t& block, lin_exp_t offset, const var_t v, int width) {
+        for (int i=0; i < width; i++)
+            block.array_store(regions, offset + i, v, 1);
+    }
+
+    template <typename W> // W = var_t or int
+    vector<basic_block_t*> store(basic_block_t& block, lin_exp_t offset, const dom_t data_reg, W width, debug_info di, cfg_t& cfg) {
+        mark_region(block, offset, data_reg.region, width);
 
         basic_block_t& pointer_only = add_child(cfg, block, "pointer_only");
         pointer_only.assume(data_reg.region > T_NUM);
@@ -544,14 +553,11 @@ vector<basic_block_t*> instruction_builder_t::exec_direct_stack_store_immediate(
 {
     assert_in_stack(block, offset, width, di);
     int start = get_start(offset, width);
-    var_t lb{machine.vfac["lb"], crab::INT_TYPE, 64};
-    var_t ub{machine.vfac["ub"], crab::INT_TYPE, 64};
-    block.assign(lb, start);
-    block.assign(ub, start + width);
-    block.array_init(machine.stack_arr.regions, 1, lb, ub, T_NUM);
-
     block.havoc(machine.top);
-    block.array_init(machine.stack_arr.offsets, 1, lb, ub, machine.top);
+    for (int i=start; i<=start+width; i++) {
+        block.array_store(machine.stack_arr.regions, i, T_NUM, 1);
+        block.array_store(machine.stack_arr.offsets, i, machine.top, 1);
+    }
 
     block.array_store(machine.stack_arr.values, start, immediate, width);
     return { &block };
