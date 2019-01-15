@@ -92,9 +92,11 @@ struct array_dom_t {
     }
 
     void mark_region(basic_block_t& block, lin_exp_t offset, const var_t v, var_t width) {
+        var_t lb{vfac["lb"], crab::INT_TYPE, 64};
         var_t ub{vfac["ub"], crab::INT_TYPE, 64};
+        block.assign(lb, offset);
         block.assign(ub, offset + width);
-        block.array_init(regions, 1, offset, offset + width, v);
+        block.array_init(regions, 1, lb, ub, v);
     }
 
     void mark_region(basic_block_t& block, lin_exp_t offset, const var_t v, int width) {
