@@ -404,7 +404,7 @@ void worklist(const Cfg& cfg, Analyzer& analyzer) {
         if (analyzer.recompute(label, bb)) {
             for (Label next_label : bb.nextlist) {
                 count[next_label]++;
-                if (count[next_label] >= cfg.at(next_label).prevlist.size())
+                if (count[next_label] >= (int)cfg.at(next_label).prevlist.size())
                     w.push_back(next_label);
             }
             w.erase(std::unique(w.begin(), w.end()), w.end());
@@ -419,12 +419,12 @@ void analyze_rcp(Cfg& cfg, program_info info) {
     for (auto l : cfg.keys()) {
         auto dom = analyzer.pre.at(l);
         for (Instruction& ins : cfg[l].insts) {
-            bool unsatisfied_assertion = false;
+            //bool unsatisfied_assertion = false;
             if (std::holds_alternative<Assert>(ins)) {
                 Assert& a = std::get<Assert>(ins);
                 if (!a.satisfied) { // && !dom.is_bot()
                     a.satisfied = dom.satisfied(a);
-                    unsatisfied_assertion = !a.satisfied;
+                    //unsatisfied_assertion = !a.satisfied;
                 }
             }
             if (global_options.print_invariants) {

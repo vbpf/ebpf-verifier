@@ -47,7 +47,6 @@ int main(int argc, char **argv)
     string outdir = "output";
     bool info_only = false;
     bool print_asm = false;
-    bool dot = false;
     bool list_only = false;
     bool nondet = false;
     bool expand_locks = false;
@@ -86,8 +85,6 @@ int main(int argc, char **argv)
             crab::CrabEnableWarningMsg(false);
         } else if (arg == "--asm") {
             print_asm = true;
-        } else if (arg == "--dot") {
-            dot = true;
         } else if (arg == "-q") {
             crab::CrabEnableWarningMsg(false);
             global_options.print_invariants = false;
@@ -126,8 +123,6 @@ int main(int argc, char **argv)
             nondet = true;
             explicit_assertions = true;
             rcp = true;
-        } else if (arg == "dot") {
-            dot = true;
         } else if (arg == "crab") {
             nondet = true;
             expand_locks = true;
@@ -159,7 +154,7 @@ int main(int argc, char **argv)
         } else {
             string basename = raw_prog.filename.substr(raw_prog.filename.find_last_of('/') + 1);
             string outsubdir = outdir + "/" + basename + "/" + raw_prog.section + "/";
-            system((string() + "mkdir -p " + outsubdir).c_str());
+            (void)system((string() + "mkdir -p " + outsubdir).c_str());
             auto prog_or_error = unmarshal(raw_prog);
             if (std::holds_alternative<string>(prog_or_error)) {
                 std::cout << "trivial verification failure: " << std::get<string>(prog_or_error) << "\n";
@@ -173,21 +168,21 @@ int main(int argc, char **argv)
                 Cfg cfg = Cfg::make(prog);
                 if (explicit_assertions) {
                     explicate_assertions(cfg, raw_prog.info);
-                    {
+                    if (global_options.print_invariants) {
                         std::ofstream out{outsubdir + "explicit.dot"};
                         print_dot(cfg, out);
                     }
                 }
                 if (nondet) {
                     cfg = cfg.to_nondet(expand_locks);
-                    {
+                    if (global_options.print_invariants) {
                         std::ofstream out{outsubdir + "nondet.dot"};
                         print_dot(cfg, out);
                     }
                 }
                 if (global_options.simplify) {
                     cfg.simplify();
-                    {
+                    if (global_options.print_invariants) {
                         std::ofstream out{outsubdir + "simplified.dot"};
                         print_dot(cfg, out);
                     }
@@ -195,11 +190,11 @@ int main(int argc, char **argv)
                 if (rcp) {
                     analyze_rcp(cfg, raw_prog.info);
                 }
-                {
+                if (global_options.print_invariants) {
                     std::ofstream out{outsubdir + "rcp.dot"};
                     print_dot(cfg, out);
                 }
-                {
+                if (global_options.print_invariants) {
                     std::ofstream out{outsubdir + "rcp.txt"};
                     print(cfg, nondet,  out);
                 }

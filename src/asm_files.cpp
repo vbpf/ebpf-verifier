@@ -94,7 +94,7 @@ std::vector<int> sort_maps_by_size(std::vector<map_def>& map_defs) {
     // after sorting, the map that was previously at index i will be at index res[i]
     std::sort(map_defs.begin(), map_defs.end(), [](auto a, auto b) { return a.value_size < b.value_size; });
     std::vector<int> res(map_defs.size());
-    for (int i=0; i<map_defs.size(); i++) {
+    for (size_t i=0; i<map_defs.size(); i++) {
         res[map_defs[i].original_fd] = i;
     }
     return res;

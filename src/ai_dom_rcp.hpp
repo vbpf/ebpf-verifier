@@ -99,7 +99,7 @@ public:
     
     void set_mapfd(int mapfd) {
         assert(mapfd >= 0);
-        assert(mapfd < fd.fds.size());
+        assert(mapfd < (int)fd.fds.size());
         fd.assign(mapfd);
     }
 
