@@ -162,8 +162,7 @@ int main(int argc, char **argv)
             }
             auto& prog = std::get<InstructionSeq>(prog_or_error);
             if (print_asm) {
-                std::ofstream out{outsubdir + "raw.txt"};
-                print(prog, out);
+                print(prog, std::cout);
             } else {
                 Cfg cfg = Cfg::make(prog);
                 if (explicit_assertions) {
