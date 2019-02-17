@@ -42,8 +42,6 @@ void print_dot(const Cfg& cfg, std::ostream& out);
 void print_dot(const Cfg& cfg, std::string outfile);
 void print_dot(const Cfg& cfg);
 
-void print_stats(const Cfg& prog);
-
 std::ostream& operator<<(std::ostream& os, Instruction const& ins);
 std::string to_string(Instruction const& ins);
 std::string to_string(Instruction const& ins, LabelTranslator labeler);

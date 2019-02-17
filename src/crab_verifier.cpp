@@ -69,10 +69,6 @@ std::tuple<bool, double> abs_validate(Cfg const& simple_cfg, string domain_name,
 
     clock_t end = clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-    if (global_options.stats) {
-        crab::CrabStats::Print(crab::outs());
-        crab::CrabStats::reset();
-    }
 
     int nwarn = checks.get_total_warning() + checks.get_total_error();
     if (global_options.print_invariants) {

@@ -230,29 +230,3 @@ Cfg Cfg::to_nondet(bool expand_locks) const {
     }
     return res;
 }
-
-void print_stats(const Cfg& cfg) {
-    int count = 0;
-    int stores = 0;
-    int loads = 0;
-    int jumps = 0;
-    int joins = 0;
-    for (Label const& this_label : cfg.keys()) {
-        BasicBlock const& bb = cfg.at(this_label);
-        for (Instruction ins : bb.insts) {
-            count++;
-            if (std::holds_alternative<Mem>(ins)) {
-                auto mem = std::get<Mem>(ins);
-                if (mem.is_load)
-                    loads++;
-                else
-                    stores++;
-            }
-        }
-        if (bb.prevlist.size() > 1)
-            joins++;
-        if (bb.nextlist.size() > 1)
-            jumps++;
-    }
-    std::cout << count << "," << loads << "," << stores << "," << jumps << "," << joins << "\n";
-}
