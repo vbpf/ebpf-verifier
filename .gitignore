@@ -3,7 +3,7 @@
 *.d
 counter/samples/*
 **/#*
-./check
+check
 ./unit-test
 .vscode/*
 logs/*
