@@ -16,6 +16,7 @@
 #include <crab/checkers/checker.hpp>
 #include <crab/analysis/dataflow/assumptions.hpp>
 
+#include "config.hpp"
 #include "asm_cfg.hpp"
 
 #include "crab_domains.hpp"

@@ -24,7 +24,8 @@ INSTALL := $(abspath ${CRABDIR})/install/crab
 LINUX := $(abspath ../linux)
 
 # Lookup path for libCrab.so
-LDFLAGS := -Wl,-rpath,$(INSTALL)/lib/ -Wl,-rpath,$(INSTALL)/lib/
+LDFLAGS := -Wl,-rpath,$(INSTALL)/lib/ \
+           -Wl,-rpath,$(INSTALL)/../elina/lib/
 UNAME := $(shell uname)
 ifeq ($(UNAME),Darwin)
     LIBCRAB = $(INSTALL)/lib/libCrab.dylib
@@ -83,6 +84,7 @@ $(BINDIR)/check: ${BUILDDIR}/main_check.o ${OBJECTS}
 	@$(CXX) ${CXXFLAGS} ${CRABFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
 
 DISASM_OBJECTS := \
+    ${BUILDDIR}/config.o \
     ${BUILDDIR}/asm_unmarshal.o \
     ${BUILDDIR}/asm_ostream.o \
     ${BUILDDIR}/asm_marshal.o \
