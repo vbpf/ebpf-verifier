@@ -411,8 +411,6 @@ void print(const Cfg& cfg, bool nondet) {
 }
 
 void print_dot(const Cfg& cfg, std::ostream& out) {
-    if (!global_options.print_invariants)
-        return;
     out << "digraph program {\n";
     out << "    node [shape = rectangle];\n";
     for (auto label : cfg.keys()) {
