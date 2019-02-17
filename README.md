@@ -16,5 +16,5 @@ git clone --recurse-submodules https://github.com/elazarg/ebpf-verifier.git
 make crab_install
 make
 
-bin/check ebpf-samples/linux/cpustat_kern.o
+./check ebpf-samples/linux/cpustat_kern.o
 ```

@@ -6,7 +6,13 @@ dir=$1
 files=($(find ${dir} -name 'accept_*' | grep -v self))
 shift
 
-function get_mem() { /usr/bin/time -l $@ --no-print-invariants 2>&1 | grep maximum | python3 -c 'print(input().split()[0])'; }
+function runmem() { 
+	/usr/bin/time -l bin/check elf=$1 --simplify $2 -qq 2>&1 | grep maximum | python3 -c 'print(input().split()[0])';
+}
+
+function memdiff() {
+	echo -n $(( ( $(runmem $1 crab) - $(runmem $1 none)) ) / 1000 ));
+}
 
 if [[ "$1" == "header" ]]
 then
