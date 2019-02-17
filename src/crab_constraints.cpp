@@ -7,6 +7,7 @@
 #include <inttypes.h>
 #include <assert.h>
 
+#include "config.hpp"
 #include "spec_type_descriptors.hpp"
 #include "spec_prototypes.hpp"
 

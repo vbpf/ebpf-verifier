@@ -13,6 +13,7 @@
 #include <bitset>
 #include <functional>
 
+#include "config.hpp"
 #include "asm_syntax.hpp"
 #include "asm_cfg.hpp"
 #include "asm_ostream.hpp"

@@ -3,7 +3,7 @@
 
 A new eBPF verifier.
 
-## Building
+## Getting Started
 
 Dependencies from vanilla Ubuntu:
 ```bash

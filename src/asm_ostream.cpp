@@ -1,9 +1,11 @@
 #include <variant>
 
 #include <iostream>
+#include <fstream>
 #include <iomanip>
 #include <unordered_map>
 
+#include "config.hpp"
 #include "asm_syntax.hpp"
 #include "asm_ostream.hpp"
 #include "asm_cfg.hpp"
@@ -356,11 +358,19 @@ void print(const InstructionSeq& insts, std::ostream& out) {
         pc += size(ins);
     }
 }
+
+void print(const InstructionSeq& insts, std::string outfile) {
+    std::ofstream out{outfile};
+    print(insts, out);
+}
+
 void print(const InstructionSeq& insts) {
     print(insts, std::cout);
 }
 
 void print(const Cfg& cfg, bool nondet, std::ostream& out) {
+    if (!global_options.print_invariants)
+        return;
     for (auto [label, next] : slide(cfg.keys())) {
         out << std::setw(10) << label << ":\t";
         const auto& bb = cfg.at(label);
@@ -370,10 +380,14 @@ void print(const Cfg& cfg, bool nondet, std::ostream& out) {
             if (is_satisfied(ins)) continue;
             if (!first) out << std::setw(10) << " \t";
             first = false;
-            if (!bb.pres.empty()) out << std::setw(10) << " \t" << "                             " << bb.pres.at(i) << "\n";
+            if (!bb.pres.empty())
+                out << std::setw(10) << " \t" 
+                    << "                             " << bb.pres.at(i) << "\n";
             std::visit(InstructionPrinterVisitor{out}, ins);
             out << "\n";
-            if (!bb.posts.empty()) out << std::setw(10) << " \t" << "                             " << bb.posts.at(i) << "\n";
+            if (!bb.posts.empty())
+                out << std::setw(10) << " \t"
+                    << "                             " << bb.posts.at(i) << "\n";
             ++i;
         }
         if (nondet && bb.nextlist.size() > 0 && (!next || bb.nextlist != vector<Label>{*next})) {
@@ -386,12 +400,19 @@ void print(const Cfg& cfg, bool nondet, std::ostream& out) {
         }
     }
 }
+
+void print(const Cfg& cfg, bool nondet, std::string outfile) {
+    std::ofstream out{outfile};
+    print(cfg, nondet, out);
+}
+
 void print(const Cfg& cfg, bool nondet) {
     print(cfg, nondet, std::cout);
 }
 
-
 void print_dot(const Cfg& cfg, std::ostream& out) {
+    if (!global_options.print_invariants)
+        return;
     out << "digraph program {\n";
     out << "    node [shape = rectangle];\n";
     for (auto label : cfg.keys()) {
@@ -410,15 +431,12 @@ void print_dot(const Cfg& cfg, std::ostream& out) {
     }
     out << "}\n";
 }
+
+void print_dot(const Cfg& cfg, std::string outfile) {
+    std::ofstream out{outfile};
+    print_dot(cfg, out);
+}
+
 void print_dot(const Cfg& cfg) {
     print_dot(cfg, std::cout);
 }
-
-global_options_t global_options {
-    .simplify = false,
-    .stats = false,
-    .check_semantic_reachability = false,
-    .print_invariants = true,
-    .print_failures = true,
-    .liveness = true
-};

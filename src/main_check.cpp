@@ -8,6 +8,7 @@
 
 #include <boost/container_hash/hash.hpp>
 
+#include "config.hpp"
 #include "crab_verifier.hpp"
 #include "asm.hpp"
 #include "spec_assertions.hpp"
@@ -133,6 +134,16 @@ cmdline_args parse_args(const vector<string> args) {
     return res;
 }
 
+static void mkdir(string dir) {
+    (void)system((string() + "mkdir -p " + dir).c_str());
+}
+
+static size_t hash(const raw_program& raw_prog) {
+    char* start = (char*)raw_prog.prog.data();
+    char* end = start + (raw_prog.prog.size() * sizeof(ebpf_inst));
+    return boost::hash_range(start, end);
+}
+
 int main(int argc, char **argv)
 {
     auto args = parse_args({argv+1, argv + argc});
@@ -155,7 +166,7 @@ int main(int argc, char **argv)
         } else {
             string basename = raw_prog.filename.substr(raw_prog.filename.find_last_of('/') + 1);
             string outsubdir = args.outdir + "/" + basename + "/" + raw_prog.section + "/";
-            (void)system((string() + "mkdir -p " + outsubdir).c_str());
+            mkdir(outsubdir);
             auto prog_or_error = unmarshal(raw_prog);
             if (std::holds_alternative<string>(prog_or_error)) {
                 std::cout << "trivial verification failure: " << std::get<string>(prog_or_error) << "\n";
@@ -168,41 +179,26 @@ int main(int argc, char **argv)
                 Cfg cfg = Cfg::make(prog);
                 if (args.explicit_assertions) {
                     explicate_assertions(cfg, raw_prog.info);
-                    if (global_options.print_invariants) {
-                        std::ofstream out{outsubdir + "explicit.dot"};
-                        print_dot(cfg, out);
-                    }
+                    print_dot(cfg, outsubdir + "explicit.dot");
                 }
                 if (args.nondet) {
                     cfg = cfg.to_nondet(args.expand_locks);
-                    if (global_options.print_invariants) {
-                        std::ofstream out{outsubdir + "nondet.dot"};
-                        print_dot(cfg, out);
-                    }
+                    print_dot(cfg, outsubdir + "nondet.dot");
                 }
                 if (global_options.simplify) {
                     cfg.simplify();
-                    if (global_options.print_invariants) {
-                        std::ofstream out{outsubdir + "simplified.dot"};
-                        print_dot(cfg, out);
-                    }
+                    print_dot(cfg, outsubdir + "simplified.dot");
                 }
                 if (args.rcp) {
                     analyze_rcp(cfg, raw_prog.info);
-                }
-                if (global_options.print_invariants) {
-                    std::ofstream out{outsubdir + "rcp.dot"};
-                    print_dot(cfg, out);
-                }
-                if (global_options.print_invariants) {
-                    std::ofstream out{outsubdir + "rcp.txt"};
-                    print(cfg, args.nondet,  out);
+                    print_dot(cfg, outsubdir + "rcp.dot");
+                    print(cfg, args.nondet, outsubdir + "rcp.txt");
                 }
                 if (args.crab) {
                     const auto [res, seconds] = abs_validate(cfg, args.domain, raw_prog.info);
                     std::cout << res << "," << seconds << ",";
                     std::cout << raw_prog.filename << ":" << raw_prog.section << ",";
-                    std::cout << std::hex << boost::hash_range((char*)raw_prog.prog.data(), (char*)raw_prog.prog.data()+(raw_prog.prog.size() * sizeof(ebpf_inst))) << std::dec << ",";
+                    std::cout << std::hex << hash(raw_prog) << std::dec << ",";
                     print_stats(cfg);
                 }
 
