@@ -21,12 +21,5 @@ bin/check -h
 ## Running
 
 ```bash
-bin/check elf=ebpf-samples/linux/cpustat_kern.o crab
+bin/check ebpf-samples/linux/cpustat_kern.o
 ```
-
-## Testing
-
-```bash
-bin/test
-```
-
