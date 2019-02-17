@@ -1,5 +1,5 @@
 # PREVAIL 
-## a Polynomial-Runtime EBPF Verfier using an Abstract Interpretation Layer
+## a Polynomial-Runtime EBPF Verifier using an Abstract Interpretation Layer
 
 A new eBPF verifier.
 
@@ -7,19 +7,14 @@ A new eBPF verifier.
 
 Dependencies from vanilla Ubuntu:
 ```bash
-sudo apt install build-essential git cmake libboost1.65-all-dev libgmp-dev libmpfr-dev
+sudo apt install build-essential git cmake libboost-dev libgmp-dev libmpfr-dev
 ```
 
-Clone and make:
+Clone, make and run:
 ```
 git clone --recurse-submodules https://github.com/elazarg/ebpf-verifier.git
 make crab_install
 make
-bin/check -h
-```
 
-## Running
-
-```bash
 bin/check ebpf-samples/linux/cpustat_kern.o
 ```
