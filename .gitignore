@@ -3,10 +3,7 @@
 *.d
 counter/samples/*
 **/#*
-bin/check
-bin/test
-bin/disassemble
-bin/assemble
-bin/elf
+./check
+./unit-test
 .vscode/*
 logs/*

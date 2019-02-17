@@ -1,7 +1,7 @@
 
 
 BUILDDIR := build
-BINDIR := bin
+BINDIR := .
 SRCDIR := src
 
 SOURCES := $(wildcard ${SRCDIR}/*.cpp)
@@ -55,7 +55,7 @@ LDLIBS += \
 
 LDLIBS += -lmpfr -lgmpxx -lgmp -lm -lstdc++ 
 
-CXXFLAGS := -Wall -Wfatal-errors -O2 -g3 -std=c++2a -I external #  -Werror does not work well in Linux
+CXXFLAGS := -Wall -Wfatal-errors -O2 -g0 -std=c++2a -I external #  -Werror does not work well in Linux
 
 CRABFLAGS := \
     -Wno-unused-local-typedefs -Wno-unused-function -Wno-inconsistent-missing-override \
@@ -66,7 +66,7 @@ CRABFLAGS := \
     -I $(LDD)/include/ldd/include/ \
     -I $(ELINA)/include/
 
-all: $(BINDIR)/check $(BINDIR)/disassemble $(BINDIR)/assemble $(BINDIR)/test
+all: $(BINDIR)/check  # $(BINDIR)/unit-test
 
 -include $(DEPENDS)
 
@@ -75,7 +75,7 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.cpp
 	@printf "$@ <- $<\n"
 	@$(CXX) ${CXXFLAGS} ${CRABFLAGS} $< -MMD -c -o $@ # important: use $< and not $^
 
-$(BINDIR)/test: ${BUILDDIR}/test.o ${TEST_OBJECTS} ${OBJECTS}
+$(BINDIR)/unit-test: ${BUILDDIR}/test.o ${TEST_OBJECTS} ${OBJECTS}
 	@printf "$@ <- $^\n"
 	@$(CXX) ${CXXFLAGS} ${CRABFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
 
@@ -83,30 +83,8 @@ $(BINDIR)/check: ${BUILDDIR}/main_check.o ${OBJECTS}
 	@printf "$@ <- $^\n"
 	@$(CXX) ${CXXFLAGS} ${CRABFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
 
-DISASM_OBJECTS := \
-    ${BUILDDIR}/config.o \
-    ${BUILDDIR}/asm_unmarshal.o \
-    ${BUILDDIR}/asm_ostream.o \
-    ${BUILDDIR}/asm_marshal.o \
-    ${BUILDDIR}/asm_cfg.o \
-    ${BUILDDIR}/asm_parse.o \
-    ${BUILDDIR}/asm_files.o \
-    ${BUILDDIR}/ai.o \
-    ${BUILDDIR}/ai_dom_rcp.o \
-    ${BUILDDIR}/ai_dom_set.o \
-    ${BUILDDIR}/ai_dom_mem.o \
-    ${BUILDDIR}/spec_prototypes.o
-
-$(BINDIR)/disassemble: ${BUILDDIR}/main_disassemble.o ${DISASM_OBJECTS}
-	@printf "$@ <- $^\n"
-	@$(CXX) ${CXXFLAGS} $^ -o $@
-
-$(BINDIR)/assemble: ${BUILDDIR}/main_assemble.o ${DISASM_OBJECTS}
-	@printf "$@ <- $^\n"
-	@$(CXX) ${CXXFLAGS} $^ -o $@
-
 clean:
-	rm -f $(BINDIR)/check $(BINDIR)/disassemble $(BINDIR)/assemble $(BINDIR)/elf $(BUILDDIR)/*.o $(BUILDDIR)/*.d
+	rm -f $(BINDIR)/check $(BINDIR)/unit-test $(BUILDDIR)/*.o $(BUILDDIR)/*.d
 
 crab_clean:
 	rm -rf $(CRABDIR)/build $(CRABDIR)/install
