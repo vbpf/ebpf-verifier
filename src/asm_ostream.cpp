@@ -403,6 +403,7 @@ void print(const Cfg& cfg, bool nondet, std::ostream& out) {
 
 void print(const Cfg& cfg, bool nondet, std::string outfile) {
     std::ofstream out{outfile};
+    if (out.fail()) throw std::runtime_error(std::string("Could not open file ") + outfile);
     print(cfg, nondet, out);
 }
 
@@ -432,6 +433,7 @@ void print_dot(const Cfg& cfg, std::ostream& out) {
 
 void print_dot(const Cfg& cfg, std::string outfile) {
     std::ofstream out{outfile};
+    if (out.fail()) throw std::runtime_error(std::string("Could not open file ") + outfile);
     print_dot(cfg, out);
 }
 
