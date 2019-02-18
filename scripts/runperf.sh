@@ -3,15 +3,11 @@
 test -d $1 || (echo "first argument should be a directory"; exit 1)
 
 with_timeout() {
-    if hash gtimeout 2>/dev/null; then
-        gtimeout "$@"
-    else
-        timeout "$@"
-    fi
+    if hash gtimeout 2>/dev/null; then gtimeout "$@"; else timeout "$@"; fi
 }
 
 dir=$1
-files=($(find ${dir} -name 'accept_*'  -exec ls -Sd {} + ))
+files=($(find ${dir} -name '*.o'  -exec ls -Sd {} + ))
 shift
 
 if [[ "$1" == "header" ]]
@@ -20,23 +16,24 @@ then
 	for f in "${files[@]}"; do echo -n ",$f"; done
 fi
 
-mkdir -p ../logs
 for dom in "$@"
 do
 	echo -n ",$dom"
 done
 echo
-for f in "${files[@]}";
+
+for f in "${files[@]}"
 do
-	echo -n "$(basename $(dirname $f)),$(basename $f)"
-	base=$(basename $f)
-	s=$(bin/check -q $f ${base##*.} none 2>/dev/null | grep -E "instructions|loads|stores|jumps|joins" | cut -f2 -d: | paste -s -d"," -)
-	echo -n ",$s"
-	for dom in "$@"
+	sections=($(./check $f -l))
+	for s in "${sections[@]}"
 	do
-		s=$(with_timeout 10m bin/check --simplify -q $f ${base##*.} $dom 2>/dev/null | grep seconds | cut -f2 -d:)
-		echo -n ",$s"
+		echo -n $(./check $f $s --domain=stats)
+		for dom in "$@"
+		do
+			k=$(with_timeout 10m ./check $f $s --domain=$dom)
+			echo -n ",$k"
+		done
+		echo
 	done
-	echo
 done
 
