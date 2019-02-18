@@ -24,7 +24,7 @@ do
 		echo -n $(./check $f $s --domain=stats)
 		for dom in "$@"
 		do
-			rkm=$(with_timeout 10m ./check $f $s --domain=$dom)
+			rkm=$(with_timeout 10m ./check $f $s --domain=$dom 2>errors.log)
 			echo -n ",$rkm"
 		done
 		echo
