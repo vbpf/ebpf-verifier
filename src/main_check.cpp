@@ -28,18 +28,11 @@ int main(int argc, char **argv)
 
     CLI::App app{"a new eBPF verifier"};
 
-    app.add_flag("-v", global_options.print_invariants, "print invariants");
-    
-    std::string asmfile;
-    app.add_option("--asm", asmfile, "print disassembly")->type_name("FILE");
-    std::string dotfile;
-    app.add_option("--dot", dotfile, "export cfg to dot file")->type_name("FILE");
+    std::string filename;
+    app.add_option("path", filename, "elf file to analyze")->required()->check(CLI::ExistingFile)->type_name("FILE");
 
-    std::string path;
-    app.add_option("path", path,
-                   "elf FILE and SECTION to analyze")
-                   ->required()
-                   ->type_name("FILE:SECTION");
+    std::string desired_section;
+    app.add_option("section", desired_section,"section to analyze")->type_name("SECTION");
 
     std::string domain="sdbm-arr";
     std::set<string> doms;
@@ -47,39 +40,38 @@ int main(int argc, char **argv)
         doms.insert(name);
     app.add_set("-d,--dom,--domain", domain, doms, "abstract domain")->type_name("DOMAIN");
 
+    app.add_flag("-v", global_options.print_invariants, "print invariants");
+    
+    std::string asmfile;
+    app.add_option("--asm", asmfile, "print disassembly")->type_name("FILE");
+    std::string dotfile;
+    app.add_option("--dot", dotfile, "export cfg to dot file")->type_name("FILE");
+
     CLI11_PARSE(app, argc, argv);
 
-    if (path.find(":") == string::npos) {
-        auto progs = read_elf(path, "");
-        std::cerr << "please specify a section in the format FILE:SECTION\n";
+    auto raw_progs = read_elf(filename, desired_section);
+    if (raw_progs.size() != 1) {
+        std::cerr << "please specify a section\n";
         std::cerr << "available sections:\n";
-        for (raw_program raw_prog : progs) {
-            std::cout << raw_prog.filename << ":" << raw_prog.section << "\n";
+        for (raw_program raw_prog : raw_progs) {
+            std::cout << "  " << raw_prog.section << "\t(" << raw_prog.prog.size() << " bytes)\n";
         }
-        return 1;
+        return 64;
     }
-
-    string desired_section = path.substr(path.find(":") + 1);
-    path = path.substr(0, path.find(":"));
-
-    auto raw_prog = read_elf(path, desired_section).back();
-    string basename = raw_prog.filename.substr(raw_prog.filename.find_last_of('/') + 1);
+    auto raw_prog = raw_progs.back();
     auto prog_or_error = unmarshal(raw_prog);
     if (std::holds_alternative<string>(prog_or_error)) {
         std::cout << "trivial verification failure: " << std::get<string>(prog_or_error) << "\n";
         return 1;
     }
     auto& prog = std::get<InstructionSeq>(prog_or_error);
-    if (!asmfile.empty()) {
-        print(prog, asmfile);
-        return 0;
-    }
     Cfg cfg = Cfg::make(prog).to_nondet(true);
     cfg.simplify();
-    if (!dotfile.empty())
-        print_dot(cfg, dotfile);
     const auto [res, seconds] = abs_validate(cfg, domain, raw_prog.info);
     auto stats = cfg.collect_stats();
+    
+    if (!dotfile.empty()) print_dot(cfg, dotfile);
+    if (!asmfile.empty()) print(prog, asmfile);
 
     std::cout << res << "," << seconds << ",";
     std::cout << raw_prog.filename << ":" << raw_prog.section << ",";
