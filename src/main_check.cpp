@@ -74,7 +74,7 @@ int main(int argc, char **argv)
     auto& prog = std::get<InstructionSeq>(prog_or_error);
     Cfg cfg = Cfg::make(prog);
     if (domain == "stats") {
-        std::cout << raw_prog.filename << "," << raw_prog.section << ",";
+        //std::cout << raw_prog.filename << "," << raw_prog.section << ",";
         std::cout << std::hex << hash(raw_prog) << std::dec << ",";
         auto stats = cfg.collect_stats();
         std::cout << stats.count << "," << stats.loads << "," << stats.stores << "," << stats.jumps << "," << stats.joins << "\n";
