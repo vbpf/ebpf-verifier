@@ -8,11 +8,6 @@ with_timeout() {
     if hash gtimeout 2>/dev/null; then gtimeout "$@"; else timeout "$@"; fi
 }
 
-function readmem() { 
-	k=$(grep maximum $1 | python3 -c 'print(input().split()[0])');
-	echo $((k / 1000))
-}
-
 files=($(find ${dir} -name '*.o'  -exec ls -Sd {} + ))
 
 echo -n "suite,project,file,section,hash,instructions,loads,stores,jumps,joins"
@@ -29,12 +24,8 @@ do
 		echo -n $(./check $f $s --domain=stats)
 		for dom in "$@"
 		do
-			tmp=$(mktemp /tmp/mem.XXXXXX)
-
-			k=$(with_timeout 10m /usr/bin/time -l ./check $f $s --domain=$dom 2>$tmp)
-			m=$(readmem $tmp); rm "$tmp"
-			echo -n ",$k,$m"
-
+			rkm=$(with_timeout 10m ./check $f $s --domain=$dom)
+			echo -n ",$rkm"
 		done
 		echo
 	done
