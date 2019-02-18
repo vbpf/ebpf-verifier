@@ -26,28 +26,29 @@ int main(int argc, char **argv)
 {
     crab::CrabEnableWarningMsg(false);
 
-    CLI::App app{"a new eBPF verifier"};
+    CLI::App app{"A new eBPF verifier"};
 
     std::string filename;
-    app.add_option("path", filename, "elf file to analyze")->required()->check(CLI::ExistingFile)->type_name("FILE");
+    app.add_option("path", filename, "Elf file to analyze")->required()->check(CLI::ExistingFile)->type_name("FILE");
 
     std::string desired_section;
-    auto section_opt = app.add_option("section", desired_section,"section to analyze")->type_name("SECTION");
+    //auto section_opt = 
+    app.add_option("section", desired_section, "Section to analyze")->type_name("SECTION");
     bool list=false;
-    app.add_flag("-l", list, "list sections")->excludes(section_opt);
+    app.add_flag("-l", list, "List sections"); //->excludes(section_opt);
 
     std::string domain="sdbm-arr";
     std::set<string> doms{"stats"};
     for (auto const [name, desc] : domain_descriptions())
         doms.insert(name);
-    app.add_set("-d,--dom,--domain", domain, doms, "abstract domain")->type_name("DOMAIN");
+    app.add_set("-d,--dom,--domain", domain, doms, "Abstract domain")->type_name("DOMAIN");
 
-    app.add_flag("-v", global_options.print_invariants, "print invariants");
+    app.add_flag("-v", global_options.print_invariants, "Print invariants");
     
     std::string asmfile;
-    app.add_option("--asm", asmfile, "print disassembly")->type_name("FILE");
+    app.add_option("--asm", asmfile, "Print disassembly to FILE")->type_name("FILE");
     std::string dotfile;
-    app.add_option("--dot", dotfile, "export cfg to dot file")->type_name("FILE");
+    app.add_option("--dot", dotfile, "Export cfg to dot FILE")->type_name("FILE");
 
     CLI11_PARSE(app, argc, argv);
 
