@@ -19,7 +19,7 @@ make
 
 Example:
 ```
-./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=sdbm-arr
+./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=zoneCrab
 ```
 
 Usage:
