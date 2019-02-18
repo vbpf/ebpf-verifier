@@ -174,43 +174,44 @@ struct domain_desc {
     string description;
 };
 
+#define FULL_DOMAINS 1
 const map<string, domain_desc> domains{
-    //{ "interval"          , { analyze<z_interval_domain_t>, "simple interval (z_interval_domain_t)" } },
-#ifdef FULL
-    { "interval-arr"      , { analyze<array_expansion_domain<z_interval_domain_t>>, "mem: simple interval (z_interval_domain_t)" } },
-    { "disj_interval"     , { analyze<z_dis_interval_domain_t>, "disjoint intervals (z_dis_interval_domain_t)" } },
-    { "disj_interval-arr" , { analyze<array_expansion_domain<z_dis_interval_domain_t>>, "mem: disjoint intervals (z_dis_interval_domain_t)" } },
-
-    { "zones_elina"       , { analyze<z_zones_elina_domain_t>, "zones elina (z_zones_elina_domain_t)" } },
-    { "zones_elina-arr"   , { analyze<array_expansion_domain<z_zones_elina_domain_t>>, "mem: zones elina (z_zones_elina_domain_t)" } },
-    { "oct_elina"         , { analyze<z_oct_elina_domain_t>, "octagon elina (z_oct_elina_domain_t)" } },
-    { "oct_elina-arr"     , { analyze<array_expansion_domain<z_oct_elina_domain_t>>, "mem: octagon elina (z_oct_elina_domain_t)" } },
-    { "pk_elina"          , { analyze<z_pk_elina_domain_t>, "(z_pk_elina_domain_t)" } },
-    { "pk_elina-arr"      , { analyze<array_expansion_domain<z_pk_elina_domain_t>>, "mem: (z_pk_elina_domain_t)" } },
+    { "zoneCrab" , { analyze<array_expansion_domain<z_sdbm_domain_t>>, "zone (crab. split dbm)" } },
+#ifdef FULL_DOMAINS
+    { "interval" , { analyze<array_expansion_domain<z_interval_domain_t>>   , "interval" } },
+    { "zoneElina", { analyze<array_expansion_domain<z_zones_elina_domain_t>>, "zone (elina)" } },
+    { "octElina" , { analyze<array_expansion_domain<z_oct_elina_domain_t>>  , "octagon (elina)" } },
+    { "polyElina", { analyze<array_expansion_domain<z_pk_elina_domain_t>>   , "polyhedra (elina)" } },
 #endif
-    // { "ric"               , { analyze<z_ric_domain_t>, "numerical congruence (z_ric_domain_t)" } },
-    // { "ric-arr"           , { analyze<array_expansion_domain<z_ric_domain_t>>, "mem: numerical congruence (z_ric_domain_t)" } },
-    // { "dbm"               , { analyze<z_dbm_domain_t>, "sparse dbm (z_dbm_domain_t)" } },
-    // { "dbm-arr"           , { analyze<array_expansion_domain<z_dbm_domain_t>>, "mem: sparse dbm (z_dbm_domain_t)" } },
-#ifdef FULL
-    { "sdbm"              , { analyze<z_sdbm_domain_t>, "split dbm (z_sdbm_domain_t)" } },
+#ifdef OTHER_DOMAINS
+    { "disjInterval"      , { analyze<array_expansion_domain<z_dis_interval_domain_t>>, "mem: disjoint intervals (z_dis_interval_domain_t)" } },
+    { "ric"               , { analyze<array_expansion_domain<z_ric_domain_t>>, "mem: numerical congruence (z_ric_domain_t)" } },
+    { "dbm"               , { analyze<array_expansion_domain<z_dbm_domain_t>>, "mem: sparse dbm (z_dbm_domain_t)" } },
+    { "boxes"             , { analyze<array_expansion_domain<z_boxes_domain_t>>, "mem: boxes (z_boxes_domain_t)" } },
+    { "term"              , { analyze<array_expansion_domain<z_term_domain_t>>, "mem: (z_term_domain_t)" } },
+    { "term_dbm"          , { analyze<array_expansion_domain<z_term_dbm_t>>, "mem: (z_term_dbm_t)" } },
+    { "term_disj_interval", { analyze<array_expansion_domain<z_term_dis_int_t>>, "mem: term x disjoint intervals (z_term_dis_int_t)" } },
+    { "num"               , { analyze<array_expansion_domain<z_num_domain_t>>, "mem: term x disjoint interval x sparse dbm (z_num_domain_t)" } },
+    { "num_boxes"         , { analyze<array_expansion_domain<z_num_boxes_domain_t>>, "mem: term x boxes x sparse dbm" } },
+    { "wrapped"           , { analyze<array_expansion_domain<z_wrapped_interval_domain_t>>, "mem: wrapped interval domain (z_wrapped_interval_domain_t)" } },
 #endif
-    { "sdbm-arr"          , { analyze<array_expansion_domain<z_sdbm_domain_t>>, "mem: split dbm (z_sdbm_domain_t)" } },
-    // { "boxes"             , { analyze<z_boxes_domain_t>, "boxes (z_boxes_domain_t)" } },
-    // { "boxes-arr"         , { analyze<array_expansion_domain<z_boxes_domain_t>>, "mem: boxes (z_boxes_domain_t)" } },
-
-    // { "term"              , { analyze<z_term_domain_t>, "(z_term_domain_t)" } },
-    // { "term-arr"          , { analyze<array_expansion_domain<z_term_domain_t>>, "mem: (z_term_domain_t)" } },
-    // { "term_dbm"          , { analyze<z_term_dbm_t>, "(z_term_dbm_t)" } },
-    // { "term_dbm-arr"      , { analyze<array_expansion_domain<z_term_dbm_t>>, "mem: (z_term_dbm_t)" } },
-    // { "term_disj_interval", { analyze<z_term_dis_int_t>, "term x disjoint intervals (z_term_dis_int_t)" } },
-    // { "term_disj_interval-arr", { analyze<array_expansion_domain<z_term_dis_int_t>>, "mem: term x disjoint intervals (z_term_dis_int_t)" } },
-    // { "num"               , { analyze<z_num_domain_t>, "term x disjoint interval x sparse dbm (z_num_domain_t)" } },
-    // { "num-arr"           , { analyze<array_expansion_domain<z_num_domain_t>>, "mem: term x disjoint interval x sparse dbm (z_num_domain_t)" } },
-    // { "num_boxes"         , { analyze<z_num_boxes_domain_t>, "term x boxes x sparse dbm (z_num_domain_t)" } },
-    // { "num_boxes-arr"     , { analyze<array_expansion_domain<z_num_boxes_domain_t>>, "mem: term x boxes x sparse dbm" } },
-    // { "wrapped"           , { analyze<z_wrapped_interval_domain_t>, "wrapped interval domain (z_wrapped_interval_domain_t)" } },
-    // { "wrapped-arr"       , { analyze<array_expansion_domain<z_wrapped_interval_domain_t>>, "mem: wrapped interval domain (z_wrapped_interval_domain_t)" } },
+#ifdef NOMEM_DOMAINS
+    { "ric-nomem"               , { analyze<z_ric_domain_t>, "numerical congruence (z_ric_domain_t)" } },
+    { "dbm-nomem"               , { analyze<z_dbm_domain_t>, "sparse dbm (z_dbm_domain_t)" } },
+    { "boxes-nomem"             , { analyze<z_boxes_domain_t>, "boxes (z_boxes_domain_t)" } },
+    { "term-nomem"              , { analyze<z_term_domain_t>, "(z_term_domain_t)" } },
+    { "term_dbm-nomem"          ,
+    { "interval-nomem"          , { analyze<z_interval_domain_t>, "simple interval (z_interval_domain_t)" } },
+    { "disjInterval-nomem"      , { analyze<z_dis_interval_domain_t>, "disjoint intervals (z_dis_interval_domain_t)" } },
+    { "zoneElina-nomem"         , { analyze<z_zones_elina_domain_t>, "zones elina (z_zones_elina_domain_t)" } },
+    { "octElina-nomem"          , { analyze<z_oct_elina_domain_t>, "octagon elina (z_oct_elina_domain_t)" } },
+    { "polyElina-nomem"         , { analyze<z_pk_elina_domain_t>, "(z_pk_elina_domain_t)" } },
+    { "zoneCrab-nomem"          , { analyze<z_sdbm_domain_t>, "split dbm (z_sdbm_domain_t)" } },
+    { "term_disj_interval-nomem", { analyze<z_term_dis_int_t>, "term x disjoint intervals (z_term_dis_int_t)" } },
+    { "num-nomem"               , { analyze<z_num_domain_t>, "term x disjoint interval x sparse dbm (z_num_domain_t)" } },
+    { "num_boxes-nomem"         , { analyze<z_num_boxes_domain_t>, "term x boxes x sparse dbm (z_num_domain_t)" } },
+    { "wrapped-nomem"           , { analyze<z_wrapped_interval_domain_t>, "wrapped interval domain (z_wrapped_interval_domain_t)" } },
+#endif
     { "none"              , { dont_analyze, "build CFG only, don't perform analysis" } },
 };
 
