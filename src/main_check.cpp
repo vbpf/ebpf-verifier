@@ -38,7 +38,7 @@ int main(int argc, char **argv)
     bool list=false;
     app.add_flag("-l", list, "List sections"); //->excludes(section_opt);
 
-    std::string domain="sdbm-arr";
+    std::string domain="zoneCrab";
     std::set<string> doms{"stats"};
     for (auto const [name, desc] : domain_descriptions())
         doms.insert(name);
