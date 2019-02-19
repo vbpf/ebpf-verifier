@@ -11,7 +11,7 @@ inline long resident_set_size_kb()
 {
    std::string _;
    unsigned long __;
-   long rss;
+   long rss=0;
    {
         std::ifstream stat_stream("/proc/self/stat",std::ios_base::in);
         stat_stream >> _ >> _ >> _ >> _ >> _ >> _ >> _

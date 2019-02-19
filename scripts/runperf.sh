@@ -11,7 +11,7 @@ with_timeout() {
 files=($(find ${dir} -name '*.o'  -exec ls -Sd {} + ))
 
 echo -n "suite,project,file,section,hash,instructions,loads,stores,jumps,joins"
-for dom in "$@"; do echo -n ",$dom?,$dom-sec,$dom-kb"; done
+for dom in "$@"; do echo -n ",$dom?,$dom_sec,$dom_kb"; done
 echo
 
 for f in "${files[@]}"
