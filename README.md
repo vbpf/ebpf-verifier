@@ -12,7 +12,8 @@ sudo apt install build-essential git cmake libboost-dev libgmp-dev libmpfr-dev
 
 Clone, make and run:
 ```
-git clone --recurse-submodules https://github.com/elazarg/ebpf-verifier.git
+git clone --recurse-submodules https://github.com/elazarg/ebpf-verifier.git -b submission
+cd ebpf-verifier
 make crab_install
 make
 ```
