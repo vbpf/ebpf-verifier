@@ -11,7 +11,7 @@ with_timeout() {
 files=($(find ${dir} -name '*.o'  -exec ls -Sd {} + ))
 
 echo -n "suite,project,file,section,hash,instructions,loads,stores,jumps,joins"
-for dom in "$@"; do echo -n ",$dom?,$dom_sec,$dom_kb"; done
+for dom in "$@"; do echo -n ",${dom}?,${dom}_sec,${dom}_kb"; done
 echo
 
 for f in "${files[@]}"
@@ -25,9 +25,8 @@ do
 		for dom in "$@"
 		do
 			rkm=$(with_timeout 10m ./check $f $s --domain=$dom 2>errors.log)
-			echo -n ",$rkm"
+			echo -n ",${rkm:=0,-1,-1}"
 		done
 		echo
 	done
 done
-
