@@ -8,7 +8,7 @@ A new eBPF verifier.
 Dependencies from vanilla Ubuntu:
 ```bash
 sudo apt install build-essential git cmake libboost-dev libgmp-dev libmpfr-devsudo apt install python3-pip
-sudo apt install python3-pip
+sudo apt install python3-pip python3-tk
 pip3 install matplotlib
 ```
 
