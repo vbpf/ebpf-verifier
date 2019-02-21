@@ -1,3 +1,6 @@
+/**
+ * Main backend. Translating eBPF CFG to CFG of constraints in Crab.
+ **/
 #include <vector>
 #include <string>
 #include <algorithm>

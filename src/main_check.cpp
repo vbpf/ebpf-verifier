@@ -33,10 +33,10 @@ int main(int argc, char **argv)
     app.add_option("path", filename, "Elf file to analyze")->required()->check(CLI::ExistingFile)->type_name("FILE");
 
     std::string desired_section;
-    //auto section_opt = 
+
     app.add_option("section", desired_section, "Section to analyze")->type_name("SECTION");
     bool list=false;
-    app.add_flag("-l", list, "List sections"); //->excludes(section_opt);
+    app.add_flag("-l", list, "List sections");
 
     std::string domain="zoneCrab";
     std::set<string> doms{"stats"};
@@ -52,6 +52,8 @@ int main(int argc, char **argv)
     app.add_option("--dot", dotfile, "Export cfg to dot FILE")->type_name("FILE");
 
     CLI11_PARSE(app, argc, argv);
+
+    global_options.print_failures = global_options.print_invariants;
 
     auto raw_progs = read_elf(filename, desired_section);
     if (list || raw_progs.size() != 1) {
@@ -75,7 +77,6 @@ int main(int argc, char **argv)
     auto& prog = std::get<InstructionSeq>(prog_or_error);
     Cfg cfg = Cfg::make(prog);
     if (domain == "stats") {
-        //std::cout << raw_prog.filename << "," << raw_prog.section << ",";
         std::cout << std::hex << hash(raw_prog) << std::dec << ",";
         auto stats = cfg.collect_stats();
         std::cout << stats.count << "," << stats.loads << "," << stats.stores << "," << stats.jumps << "," << stats.joins << "\n";
