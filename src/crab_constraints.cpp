@@ -304,12 +304,12 @@ static lin_cst_t jmp_to_cst_offsets_reg(Condition::Op op, var_t& dst_offset, var
     switch (op) {
         case Op::EQ : return eq(dst_offset, src_offset);
         case Op::NE : return neq(dst_offset, src_offset);
-        case Op::GE : return dst_offset >= src_offset; // FIX unsigned
-        case Op::SGE: return dst_offset >= src_offset;
-        case Op::LE : return dst_offset <= src_offset; // FIX unsigned
-        case Op::SLE: return dst_offset <= src_offset;
-        case Op::GT : return dst_offset >= src_offset + 1; // FIX unsigned
-        case Op::SGT: return dst_offset >= src_offset + 1;
+        case Op::GE : return dst_offset >= src_offset;
+        case Op::SGE: return dst_offset >= src_offset; // pointer comparison is unsigned
+        case Op::LE : return dst_offset <= src_offset;
+        case Op::SLE: return dst_offset <= src_offset; // pointer comparison is unsigned
+        case Op::GT : return dst_offset >= src_offset + 1; 
+        case Op::SGT: return dst_offset >= src_offset + 1; // pointer comparison is unsigned
         case Op::SLT: return src_offset >= dst_offset + 1;
         // Note: reverse the test as a workaround strange lookup:
         case Op::LT : return src_offset >= dst_offset + 1; // FIX unsigned
