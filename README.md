@@ -72,12 +72,18 @@ Options:
 
 A standard alternative to the --asm flag is `llvm-objdump -S FILE`.
 
+The cfg can be viewed using `dot` and the standard PDF viewer:
+```
+ebpf-verifier$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=zoneCrab --dot cfg.dot
+ebpf-verifier$ dot -Tpdf cfg.dot > cfg.pdf
+```
+
 ## Step-by-Step Instructions
 
 To get the results for described in Figures 10 and 11, run the following:
 ```
-$ scripts/runperf.sh ebpf-samples interval zoneCrab zoneElina octElina polyElina | tee results.csv
-$ python3 scripts/makeplot.py
+ebpf-verifier$ scripts/runperf.sh ebpf-samples interval zoneCrab zoneElina octElina polyElina | tee results.csv
+ebpf-verifier$ python3 scripts/makeplot.py
 ```
 The first argument to the script, `ebpf-samples`, is the root directory in which
 to search for elf files. You can pass any subdirectory or file, e.g.
@@ -87,8 +93,8 @@ The rest of the positional arguments are the numerical domains to use. Any
 subset of the above list is valid. So in order to compare the two different
 implementations of the `zone` domain, one can run
 ```
-$ scripts/runperf.sh ebpf-samples/linux zoneCrab zoneElina
-$ python3 scripts/makeplot.py
+ebpf-verifier$ scripts/runperf.sh ebpf-samples/linux zoneCrab zoneElina
+ebpf-verifier$ python3 scripts/makeplot.py
 ```
 
 While the paper states that the performance is quadratic, the results are
@@ -103,5 +109,3 @@ and skewing the graph. To avoid this, the failing cases should be omitted.
 4GB RAM should be enough for `zoneCrab`, our domain of choice, but other domains
 may require much more than that. To reproduce the results as will be published
 in the final version, it is recommended to use bare-metal Linux machine. 
-
-
