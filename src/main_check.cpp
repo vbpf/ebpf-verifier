@@ -90,6 +90,6 @@ int main(int argc, char **argv)
     if (!asmfile.empty()) print(prog, asmfile);
 
     const auto [res, seconds] = abs_validate(cfg, domain, raw_prog.info);
-    std::cout << res << "," << seconds << "," << resident_set_size_kb();
+    std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
     return 0;
 }
