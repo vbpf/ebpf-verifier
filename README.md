@@ -3,11 +3,13 @@
 
 A new eBPF verifier.
 
+The project resides on https://github.com/vbpf/ebpf-verifier/tree/submission
+
 The artifact contains two independent sub-artifacts: a verification tool, and a
 set of real-world eBPF programs used for development and evaluation of the tool.
-The source for the tool is in the `src` directory. The benchmarks are in elf
-files in the directory `ebpf-samples`. Each object file contains one or more
-programs, in different sections of the elf file.
+The source for the tool is in the `src` directory. The benchmarks are in ELF
+files in the directory `ebpf-samples`. Each ELF file contains one or more
+programs, in different sections of the file.
 
 ## Getting Started
 Evaluation can be done either on an Ubuntu machine, or the supplied VM.
@@ -22,7 +24,7 @@ pip3 install matplotlib   # for plotting the graphs
 
 Clone, make and run:
 ```
-git clone --recurse-submodules https://github.com/elazarg/ebpf-verifier.git -b submission
+git clone --recurse-submodules https://github.com/vbpf/ebpf-verifier.git -b submission
 cd ebpf-verifier
 make crab_install
 make
@@ -41,8 +43,13 @@ The terminal is already configured to start from the right path, `~/ebpf-verifie
 
 Example:
 ```
-./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=zoneCrab
+ebpf-verifier$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=zoneCrab
+1,0.062802,21792
 ```
+The output is three comma-separated values:
+* 1 or 0, for "pass" and "fail" respectively
+* The runtime of the fixpoint algorithm (in seconds)
+* The peak memory consumption, in kb, as reflected by the resident-set size (rss)
 
 Usage:
 ```
@@ -62,6 +69,8 @@ Options:
   --asm FILE                  Print disassembly to FILE
   --dot FILE                  Export cfg to dot FILE
 ```
+
+A standard alternative to the --asm flag is `llvm-objdump -S FILE`.
 
 ## Step-by-Step Instructions
 
