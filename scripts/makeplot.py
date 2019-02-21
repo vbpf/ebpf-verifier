@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+# Usage: python3 makeplot.py results.csv [loads|stores|instructions|...]
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
@@ -7,6 +8,8 @@ data = np.genfromtxt(sys.argv[1], delimiter=',', names=True)
 
 n = 0
 fig = plt.figure()
+key = 'stores' if len(sys.argv) < 2 else sys.argv[2]
+
 
 def plot(title, field, units, suffix):
     global n
@@ -30,8 +33,8 @@ def plot(title, field, units, suffix):
                         linestyle = 'None')
     sp.legend()
 
-plot("Sec vs stores", 'stores', 'Time (Sec)', '_sec')
+plot("Sec vs stores", key, 'Time (Sec)', '_sec')
 
-plot("Memory vs stores", 'stores', 'Memory (KB)', '_kb')
+plot("Memory vs stores", key, 'Memory (KB)', '_kb')
 
 plt.show()
