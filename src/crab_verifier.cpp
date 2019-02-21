@@ -1,3 +1,7 @@
+/**
+ *  This module is about selecting the numerical and memory domains, initiating
+ *  the verification process and returning the results.
+ **/
 #include <inttypes.h>
 #include <assert.h>
 
