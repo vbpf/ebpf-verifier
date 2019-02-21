@@ -1,8 +1,7 @@
 MAKEFLAGS += --no-builtin-rules
 
-SRCS = $(wildcard kern/*.c)
-BUGS = $(wildcard bugs/*.c)
-OBJS = $(SRCS:.c=.o)
+SRCS = $(wildcard src/*.c)
+OBJS = $(SRCS:src/%.c=objects/%.o)
 
 D=-D__TARGET_ARCH_x86 -D__KERNEL__ -D__BPF_TRACING__
 
@@ -26,42 +25,17 @@ INCLUDES=-I$L/include \
 	 -I$L/tools/testing/selftests/bpf/ \
 	 -include $L/include/linux/kconfig.h
 
-all: load_bpf kern
+all: load_bpf $(OBJS)
 
-kern/%.bc: kern/%.c
-	clang ${INCLUDES} ${D} ${W} -O2 -emit-llvm -c $< -o $@ 
-
-kern/%.ll: kern/%.bc
-	llvm-dis $<
-
-kern/%.o: kern/%.bc kern/%.ll
-	llc -march=bpf -filetype=obj $< -o $@
-	cp $@ /tmp/$@
-	./extract_sections.sh /tmp/$@ samples/
-
-kern/%.asm: kern/%.o
-	llvm-objdump -S -no-show-raw-insn $< > $@
-
-kern: $(SRCS:.c=.asm)
-
-bugs: $(BUGS:.c=.o)
-
-bugs/%.o: bugs/%.c
-	clang ${INCLUDES} ${D} ${W} -O2 -emit-llvm -c $(@:.o=.c) -o $(@:.o=.bc) 
-	llvm-dis $(@:.o=.bc)
-	llc -march=bpf -filetype=obj -o $@ $(@:.o=.bc)
-	llvm-objdump -S -no-show-raw-insn $@ > $(@:.o=.asm)
+objects/%.o: src/%.c
+	@mkdir -p objects
+	clang ${INCLUDES} ${D} ${W} -O2 -emit-llvm -c $< -o - | llc -march=bpf -filetype=obj -o $@ 
 
 load_bpf: load_bpf.c
 	gcc bpf_load.o libbpf.a $@.c -lelf -o $@
 
 clean:
-	rm -f load_bpf
-	cd kern && rm -f *.o *.bc *.asm *.ll
-	cd bugs && rm -f *.o *.bc *.asm *.ll
-
-# don't try to compile c files on your own
-.SUFFIXES:
+	rm -f load_bpf objects/*.o
 
 # don't remove intermediate files
 .SECONDARY:

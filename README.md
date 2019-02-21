@@ -109,3 +109,14 @@ and skewing the graph. To avoid this, the failing cases should be omitted.
 4GB RAM should be enough for `zoneCrab`, our domain of choice, but other domains
 may require much more than that. To reproduce the results as will be published
 in the final version, it is recommended to use bare-metal Linux machine. 
+
+## Testing the Linux verifier
+
+The file `load_bpf` is a simple tool that loads the contents of an elf file to the system. It must be ran using `sudo` (the password for the VM is `prevail`):
+```
+sudo ./load_bpf ebpf-samples/linux/cpustat_kern.o 
+ebpf-samples/linux/cpustat_kern.o
+	tracepoint/power/cpu_idle,stat,114,0.000176,
+	tracepoint/power/cpu_frequency,stat,81,0.000101,
+	loaded
+```
