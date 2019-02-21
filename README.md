@@ -114,7 +114,7 @@ in the final version, it is recommended to use bare-metal Linux machine.
 
 The file `load_bpf` is a simple tool that loads the contents of an elf file to the system. It must be ran using `sudo` (the password for the VM is `prevail`):
 ```
-sudo ./load_bpf ebpf-samples/linux/cpustat_kern.o 
+sudo counter/load_bpf ebpf-samples/linux/cpustat_kern.o 
 ebpf-samples/linux/cpustat_kern.o
 	tracepoint/power/cpu_idle,stat,114,0.000176,
 	tracepoint/power/cpu_frequency,stat,81,0.000101,
@@ -127,4 +127,14 @@ The folder `counter/` contains other examples used to demonstrate the usefulness
 ```
 ebpf-verifier$ make -C counter
 ebpf-verifier$ scripts/runperf.sh counter/objects zoneCrab
+```
+
+Two examples of real-world false positive are taken from the Linux samples suite.
+The file `xdp_tx_iptunnel_kern.o` is valid and passes both the Linux tool and ours.
+However, in the original source code there are redundant loads from memory to a varaible holding the same value. These were added happen due to untracked register spilling that led to false positive. Two fixes are compiled into `xdp_tx_iptunnel_1_kern.o` and `xdp_tx_iptunnel_2_kern.o`. Both pass our verifier (without any special effort) but fail the existing one:
+```
+$ ./check counter/objects/xdp_tx_iptunnel_2_kern.o
+1,0.314213,86740
+$ counter/load_bpf counter/objects/xdp_tx_iptunnel_2_kern.o
+<... long trace reporting an alleged failure>
 ```
