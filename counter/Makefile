@@ -12,9 +12,10 @@ W=-Wno-unused-value \
   -Wno-address-of-packed-member \
   -Wno-unknown-warning-option
 
-L=/home/elazarg/workspace/linux
+L=/usr/src/linux-headers-$(shell uname -r)
 
-INCLUDES=-I$L/include \
+INCLUDES=-Iinclude \
+	 -I$L/include \
 	 -I$L/include/uapi \
 	 -I$L/include/generated/uapi \
 	 -I$L/arch/x86/include \
@@ -22,7 +23,7 @@ INCLUDES=-I$L/include \
 	 -I$L/arch/x86/include/uapi \
 	 -I$L/arch/x86/include/generated/uapi \
 	 -I$L/samples/bpf \
-	 -I$L/tools/testing/selftests/bpf/ \
+	 -I$L/tools/testing/selftests/bpf \
 	 -include $L/include/linux/kconfig.h
 
 all: load_bpf $(OBJS)
@@ -36,6 +37,3 @@ load_bpf: load_bpf.c
 
 clean:
 	rm -f load_bpf objects/*.o
-
-# don't remove intermediate files
-.SECONDARY:

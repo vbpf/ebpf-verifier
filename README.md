@@ -120,3 +120,11 @@ ebpf-samples/linux/cpustat_kern.o
 	tracepoint/power/cpu_frequency,stat,81,0.000101,
 	loaded
 ```
+
+## Counter and Artificial examples
+
+The folder `counter/` contains other examples used to demonstrate the usefulness of our tools, compared to the existing verifier. To compile the examples, run 
+```
+ebpf-verifier$ make -C counter
+ebpf-verifier$ scripts/runperf.sh counter/objects zoneCrab
+```

@@ -1,5 +1,4 @@
 
-
 BUILDDIR := build
 BINDIR := .
 SRCDIR := src
@@ -16,16 +15,15 @@ MAIN_OBJECTS := $(MAIN_SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
 
 OBJECTS := $(filter-out $(MAIN_OBJECTS) $(TEST_OBJECTS),$(ALL_OBJECTS))
 
-CRABDIR := external/crab
-LDD := $(CRABDIR)/install/ldd
-ELINA := $(CRABDIR)/install/elina
-INSTALL := $(abspath ${CRABDIR})/install/crab
+CRABDIR := $(abspath external/crab)
+LDD := ${CRABDIR}/install/ldd
+ELINA := ${CRABDIR}/install/elina
+INSTALL := ${CRABDIR}/install/crab
 
 LINUX := $(abspath ../linux)
-
 # Lookup path for libCrab.so
-LDFLAGS := -Wl,-rpath,$(INSTALL)/lib/ \
-           -Wl,-rpath,$(INSTALL)/../elina/lib/
+LDFLAGS := -Wl,-rpath,${INSTALL}/lib/ \
+           -Wl,-rpath,${INSTALL}/../elina/lib/
 UNAME := $(shell uname)
 ifeq ($(UNAME),Darwin)
     LIBCRAB = $(INSTALL)/lib/libCrab.dylib
