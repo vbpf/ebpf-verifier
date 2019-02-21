@@ -3,6 +3,12 @@
 
 A new eBPF verifier.
 
+The artifact contains two independent sub-artifacts: a verification tool, and a
+set of real-world eBPF programs used for development and evaluation of the tool.
+The source for the tool is in the `src` directory. The benchmarks are in elf
+files in the directory `ebpf-samples`. Each object file contains one or more
+programs, in different sections of the elf file.
+
 ## Getting Started
 Evaluation can be done either on an Ubuntu machine, or the supplied VM.
 (the tool can also run on a Mac, but the memory measurements will always return 0).
@@ -64,6 +70,18 @@ To get the results for described in Figures 10 and 11, run the following:
 $ scripts/runperf.sh ebpf-samples interval zoneCrab zoneElina octElina polyElina | tee results.csv
 $ python3 scripts/makeplot.py
 ```
+The first argument to the script, `ebpf-samples`, is the root directory in which
+to search for elf files. You can pass any subdirectory or file, e.g.
+`ebpd-samples/linux`.
+
+The rest of the positional arguments are the numerical domains to use. Any
+subset of the above list is valid. So in order to compare the two different
+implementations of the `zone` domain, one can run
+```
+$ scripts/runperf.sh ebpf-samples/linux zoneCrab zoneElina
+$ python3 scripts/makeplot.py
+```
+
 While the paper states that the performance is quadratic, the results are
 expected to be nearly linear for all the domains - except probably the domain
 `octElina` which does not show consistent performance characteristics.
