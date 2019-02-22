@@ -83,23 +83,44 @@ ebpf-verifier$ dot -Tpdf cfg.dot > cfg.pdf
 To get the results for described in Figures 10 and 11, run the following:
 ```
 ebpf-verifier$ scripts/runperf.sh ebpf-samples interval zoneCrab zoneElina octElina polyElina | tee results.csv
-ebpf-verifier$ python3 scripts/makeplot.py
 ```
 The first argument to the script, `ebpf-samples`, is the root directory in which
 to search for elf files. You can pass any subdirectory or file, e.g.
 `ebpd-samples/linux`.
 
-The rest of the positional arguments are the numerical domains to use. Any
-subset of the above list is valid. So in order to compare the two different
+The rest of the positional arguments are the numerical domains to use.
+
+The output is a large `csv` file. The first line is a header:
+```
+suite,project,file,section,hash,instructions,loads,stores,jumps,joins,interval?,interval_sec,interval_kb,zoneCrab?,zoneCrab_sec,zoneCrab_kb,zoneElina?,zoneElina_sec,zoneElina_kb,octElina?,octElina_sec,octElina_kb,polyElina?,polyElina_sec,polyElina_kb
+ebpf-samples,cilium,bpf_lxc.o,2/1,69a5e4fc57ca1c94,41,6,10,1,1,1,0.047696,8484,1,0.057409,21796,1,0.0948671,19192,1,0.100129,24196,1,0.12144,18732
+```
+* _suite_ in our case will be "ebpf-samples"
+* _project_ is one of the directories in the suite. We currently have `bpf_cilium_test`, `cilium` `linux`, `ovs`,  `prototype-kernel` and  `suricata`
+* _file_ is the elf file containing the programs. The compiled version of a C file
+* _section_ is the elf section containing the program checked
+* _hash_ is a unique hash of the eBPF code. There are duplicate programs in the benchmark (since we use files from projects "as-is"). To count the real number of programs these duplicates should be removed
+* _instructions_, _loads_, _stores_, _jumps_ and _joins_ show the number of these features
+* For each domain DOM, there are 3 consecutive columns:
+** "DOM?" is 0 for rejected program, 1 for accepted program
+** "DOM_sec" is the number of seconds that the fixpoint operation took
+** "DOM_kb" is the peak memory resident set size consumed by the analysis, and is an estimate for the amount of additional memory needed by the analysis  
+
+Note that in the full benchmark, exactly 2 programs should be rejected by `zoneCrab`, our domain of choice. Other domain reject different number of programs.
+
+Any subset of the available domains is valid. So in order to compare the two different
 implementations of the `zone` domain, one can run
 ```
-ebpf-verifier$ scripts/runperf.sh ebpf-samples/linux zoneCrab zoneElina
-ebpf-verifier$ python3 scripts/makeplot.py
+ebpf-verifier$ scripts/runperf.sh ebpf-samples/linux zoneCrab zoneElina | results.csv
+ebpf-verifier$ python3 scripts/makeplot.py results.csv stores
 ```
+The script `ebpf-verifier$ python3 scripts/makeplot.py` takes a csv file in the format described above, and the key to plot against (usually instructions or stores) and plots two graphs: on showing runtime as a function of the number of stores, and the other is the memory consumption as a function of the number of stores.
 
-While the paper states that the performance is quadratic, the results are
+While the paper states that the runtime is quadratic, the results are
 expected to be nearly linear for all the domains - except probably the domain
-`octElina` which does not show consistent performance characteristics.
+`octElina` which does not show consistent runtime characteristics.
+
+Note that the number of programs is slightly different from the numbers presented in Section 7.1 (benchmarks). The precise numbers depend on how one count duplicate programs (as can be found using the hash column in the resulting csv file), the addition of a new repository (prototype-kernel) and removal of variation on existing repository (ovs-noprint). Also, we did not count programs smaller than certain size.
 
 ### Caveat
 When performed on a VM without sufficient memory, some analyses of some domains
@@ -140,13 +161,18 @@ $ counter/load_bpf counter/objects/xdp_tx_iptunnel_2_kern.o
 ```
 
 ### Double-strncmp experiment
-This experiment demonstrates exponential blowup in the Linux verifier, versus linear runtime in our tool.
+This experiment demonstrates exponential blowup in the Linux verifier, versus linear runtime in our tool. A simplified version of the code is described in Example 3.4, Figure 1 and Figure 12.
 ```
 ebpf-verifier$ scripts/experiment.sh | tee blowup.csv
 ebpf-verifier$ python3 scripts/makeplot.py blowup.csv iterations
 ```
-Unfortunately, the VM generates unrelated error, so the blowup does not reproduce in the VM.
+Unfortunately, the Linux system on the VM generates unrelated error (about maps), so the blowup presented in Figure 12 does not reproduce in the VM.
 
+### Programs with loops
+There are several simple programs with loops in the folder `counter/src`, called `simple_loop_*.c` and `manual_memset*.c`. The safet (but not termination) of these programs can be verifier as usual:
+```
+
+```
 
 ### Important components:
 
