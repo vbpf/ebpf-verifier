@@ -139,6 +139,15 @@ $ counter/load_bpf counter/objects/xdp_tx_iptunnel_2_kern.o
 <... long trace reporting an alleged failure>
 ```
 
+### Double-strncmp experiment
+This experiment demonstrates exponential blowup in the Linux verifier, versus linear runtime in our tool.
+```
+ebpf-verifier$ scripts/experiment.sh | tee blowup.csv
+ebpf-verifier$ python3 scripts/makeplot.py blowup.csv iterations
+```
+Unfortunately, the VM generates unrelated error, so the blowup does not reproduce in the VM.
+
+
 ### Important components:
 
 The analyzer code is divided to two main parts: front end, parsing eBPF binaries into CFG, and backend, translating the eBPF CFG into crab-specific CFG of constraints.
