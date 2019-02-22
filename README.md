@@ -102,9 +102,9 @@ ebpf-samples,cilium,bpf_lxc.o,2/1,69a5e4fc57ca1c94,41,6,10,1,1,1,0.047696,8484,1
 * _hash_ is a unique hash of the eBPF code. There are duplicate programs in the benchmark (since we use files from projects "as-is"). To count the real number of programs these duplicates should be removed
 * _instructions_, _loads_, _stores_, _jumps_ and _joins_ show the number of these features
 * For each domain DOM, there are 3 consecutive columns:
-** "DOM?" is 0 for rejected program, 1 for accepted program
-** "DOM_sec" is the number of seconds that the fixpoint operation took
-** "DOM_kb" is the peak memory resident set size consumed by the analysis, and is an estimate for the amount of additional memory needed by the analysis  
+    * "DOM?" is 0 for rejected program, 1 for accepted program
+    * "DOM_sec" is the number of seconds that the fixpoint operation took
+    * "DOM_kb" is the peak memory resident set size consumed by the analysis, and is an estimate for the amount of additional memory needed by the analysis  
 
 Note that in the full benchmark, exactly 2 programs should be rejected by `zoneCrab`, our domain of choice. Other domain reject different number of programs.
 
@@ -169,9 +169,18 @@ ebpf-verifier$ python3 scripts/makeplot.py blowup.csv iterations
 Unfortunately, the Linux system on the VM generates unrelated error (about maps), so the blowup presented in Figure 12 does not reproduce in the VM.
 
 ### Programs with loops
-There are several simple programs with loops in the folder `counter/src`, called `simple_loop_*.c` and `manual_memset*.c`. The safet (but not termination) of these programs can be verifier as usual:
+There are several simple programs with loops in the folder `counter/src`, called `simple_loop_*.c` and `manual_memset*.c`. The current verifier rejects them immediately:
+```
+sudo ./load_bpf counter/objects/simple_loop_ptr_backwards.o 
+counter/objects/simple_loop_ptr_backwards.o
+	sk_skb/loop-ptr,bpf_load_program(prog_cnt=0) err=22
+back-edge from insn 7 to 5
 ```
 
+Using our tool, the safety (but not termination) of these programs can be verified as usual:
+```
+$ ./check counter/objects/simple_loop_ptr_backwards.o
+1,0.018346,7900
 ```
 
 ### Important components:
