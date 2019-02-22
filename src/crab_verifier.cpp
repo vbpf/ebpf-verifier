@@ -113,7 +113,7 @@ auto extract_post(analyzer_t& analyzer)
 template<typename analyzer_t>
 static checks_db check(analyzer_t& analyzer)
 {
-    constexpr int verbose = 0;
+    int verbose = global_options.print_failures ? 2 : 0;
     using checker_t = intra_checker<analyzer_t>;
     using prop_checker_ptr = typename checker_t::prop_checker_ptr;
     checker_t checker(analyzer, {
