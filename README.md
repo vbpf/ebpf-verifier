@@ -177,11 +177,12 @@ counter/objects/simple_loop_ptr_backwards.o
 back-edge from insn 7 to 5
 ```
 
-Using our tool, the safety (but not termination) of these programs can be verified as usual:
+Using our tool, the safety (but not termination) of some loop-based programs can be verified:
 ```
 $ ./check counter/objects/simple_loop_ptr_backwards.o
 1,0.018346,7900
 ```
+(not all the programs in the folder are verified)
 
 ### Important components:
 
