@@ -3,4 +3,4 @@
 	url = https://github.com/seahorn/crab.git
 [submodule "ebpf-samples"]
 	path = ebpf-samples
-	url = https://github.com/elazarg/ebpf-samples.git
+	url = https://github.com/vbpf/ebpf-samples.git
