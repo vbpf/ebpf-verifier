@@ -4,11 +4,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 
+if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help'):
+    print('Usage: {} FILE.csv [key] [showTrendline]')
+    print('For example:')
+    print('    {} results.csv iterations False')
+    sys.exit(64)
+
 data = np.genfromtxt(sys.argv[1], delimiter=',', names=True)
 
 n = 0
 fig = plt.figure()
-key = 'stores' if len(sys.argv) < 2 else sys.argv[2]
+key = 'stores' if len(sys.argv) < 3 else sys.argv[2]
+trendline = True if len(sys.argv) < 4 else (sys.argv[3] == "True")
 
 
 def plot(title, field, units, suffix):
@@ -24,17 +31,17 @@ def plot(title, field, units, suffix):
         if not label.endswith(suffix): continue
         deg = 1
         arr = data[label]
-        trendline = np.poly1d(np.polyfit(field, arr, deg))(space)
         color = next(plt.gca()._get_lines.prop_cycler)['color']
-        sp.plot(space, trendline, color=color)
+        if trendline:
+            sp.plot(space, np.poly1d(np.polyfit(field, arr, deg))(space), color=color)
         sp.plot(field, arr, color=color, label=label,
                         marker='.',
                         markerfacecolor='None',
                         linestyle = 'None')
     sp.legend()
 
-plot("Sec vs stores", key, 'Time (Sec)', '_sec')
+plot("Sec vs " + key, key, 'Time (Sec)', '_sec')
 
-plot("Memory vs stores", key, 'Memory (KB)', '_kb')
+plot("Memory vs " + key, key, 'Memory (KB)', '_kb')
 
 plt.show()

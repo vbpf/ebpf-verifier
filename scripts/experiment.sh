@@ -9,15 +9,18 @@
 
 cd counter
 TEMPLATE=templates/double_strcmp.fmt
-echo -n "iterations,hash,instructions,loads,stores,jumps,joins,"
-echo zoneCrab?,zoneCrab_sec,zoneCrab_kb
+echo -n iterations,hash,instructions,loads,stores,jumps,joins,
+echo -n zoneCrab?,zoneCrab_sec,zoneCrab_kb,
+echo -n linux?,linux_sec,linux_kb
+echo
 for i in $(seq 1 68)
 do
 	BASE=$(basename $TEMPLATE)
 	sed "s/VALUE_SIZE/$i/g" < $TEMPLATE > src/$BASE_$i.c
 	make objects/$BASE_$i.o > /dev/null
 	echo -n $i,$(../check objects/$BASE_$i.o --domain=stats),
-	echo -n $(../check objects/$BASE_$i.o --domain=zoneCrab)
+	echo -n $(../check objects/$BASE_$i.o --domain=zoneCrab),
+	echo -n $(sudo ./load_bpf objects/$BASE_$i.o)
 	rm -f objects/$BASE_$i.o src/$BASE_$i.c
 	echo
 done
