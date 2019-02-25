@@ -161,12 +161,11 @@ $ counter/load_bpf counter/objects/xdp_tx_iptunnel_2_kern.o
 ```
 
 ### Double-strncmp experiment
-This experiment demonstrates exponential blowup in the Linux verifier, versus linear runtime in our tool. A simplified version of the code is described in Example 3.4, Figure 1 and Figure 12.
+This experiment demonstrates exponential blowup in the Linux verifier, versus linear runtime in our tool. A simplified version of the code is described in Example 3.4, Figure 1 and Figure 12. Be sure to run with `sudo`, since Linux requires special permissions for this.
 ```
-ebpf-verifier$ scripts/experiment.sh | tee blowup.csv
-ebpf-verifier$ python3 scripts/makeplot.py blowup.csv iterations
+ebpf-verifier$ sudo scripts/experiment.sh | tee blowup.csv
+ebpf-verifier$ python3 scripts/makeplot.py blowup.csv iterations False
 ```
-Unfortunately, the Linux system on the VM generates unrelated error (about maps), so the blowup presented in Figure 12 does not reproduce in the VM.
 
 ### Programs with loops
 There are several simple programs with loops in the folder `counter/src`, called `simple_loop_*.c` and `manual_memset*.c`. The current verifier rejects them immediately:
