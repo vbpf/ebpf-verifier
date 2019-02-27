@@ -4,8 +4,8 @@
 #include <vector>
 #include <string>
 #include <algorithm>
-#include <unordered_set>
-#include <unordered_map>
+#include <map>
+#include <set>
 #include <list>
 #include <iostream>
 #include <optional>
@@ -18,8 +18,7 @@ using std::optional;
 using std::to_string;
 using std::string;
 using std::vector;
-template<typename T>
-using set = std::unordered_set<T>;
+using std::set;
 using std::list;
 
 static optional<Label> get_jump(Instruction ins) {
@@ -227,6 +226,63 @@ Cfg Cfg::to_nondet(bool expand_locks) const {
         } else {
             newbb.nextlist = nextlist;
         }
+    }
+    return res;
+}
+
+
+static std::string instype(Instruction ins) {
+    if (std::holds_alternative<Call>(ins)) {
+        auto call = std::get<Call>(ins);
+        if (call.returns_map) {
+            return "call_1";
+        }
+        if (call.pairs.empty()) {
+            if (std::all_of(call.singles.begin(), call.singles.end(), [](ArgSingle kr) { return kr.kind == ArgSingle::Kind::ANYTHING; })) {
+                return "call_nomem";
+            }
+        }
+        return "call_mem";
+    } else if (std::holds_alternative<Mem>(ins)) {
+        return std::get<Mem>(ins).is_load ? "loads" : "stores";
+    } else if (std::holds_alternative<LockAdd>(ins)) {
+        return "stores";
+    } else if (std::holds_alternative<Packet>(ins)) {
+        return "loads";
+    } else {
+        return "other";
+    }
+}
+
+std::vector<std::string> Cfg::stats_headers() {
+    return {
+        "basic_blocks",
+        "other",
+        "joins",
+        "jumps",
+        "loads",
+        "stores",
+        "call_1",
+        "call_mem",
+        "call_nomem"
+    };
+}
+
+std::map<std::string, int> Cfg::collect_stats() const {
+    std::map<std::string, int> res;
+    for (auto h : stats_headers()) {
+        res[h] = 0;
+    }
+    res["basic_blocks"] = graph.size();
+    for (Label const& this_label : keys()) {
+        BasicBlock const& bb = at(this_label);
+        res["instructions"] += bb.insts.size();
+        for (Instruction ins : bb.insts)
+            res[instype(ins)]++;
+        if (bb.prevlist.size() > 1)
+            res["joins"]++;
+        if (bb.nextlist.size() > 1)
+            res["jumps"]++;
     }
     return res;
 }

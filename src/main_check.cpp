@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     CLI::App app{"A new eBPF verifier"};
 
     std::string filename;
-    app.add_option("path", filename, "Elf file to analyze")->required()->check(CLI::ExistingFile)->type_name("FILE");
+    app.add_option("path", filename, "Elf file to analyze")->required()->type_name("FILE");
 
     std::string desired_section;
 
@@ -39,7 +39,7 @@ int main(int argc, char **argv)
     app.add_flag("-l", list, "List sections");
 
     std::string domain="zoneCrab";
-    std::set<string> doms{"stats"};
+    std::set<string> doms{"stats", "linux"};
     for (auto const [name, desc] : domain_descriptions())
         doms.insert(name);
     app.add_set("-d,--dom,--domain", domain, doms, "Abstract domain")->type_name("DOMAIN");
@@ -52,7 +52,19 @@ int main(int argc, char **argv)
     app.add_option("--dot", dotfile, "Export cfg to dot FILE")->type_name("FILE");
 
     CLI11_PARSE(app, argc, argv);
-
+    if (filename == "@headers") {
+        if (domain == "stats") {
+            std::cout << "hash";
+            for (string h : Cfg::stats_headers()) {
+                std::cout << "," << h;
+            }
+        } else {
+            std::cout << domain << "?,";
+            std::cout << domain << "_sec,";
+            std::cout << domain << "_kb";
+        } 
+        return 0;
+    } 
     global_options.print_failures = global_options.print_invariants;
 
     auto raw_progs = read_elf(filename, desired_section);
@@ -75,21 +87,27 @@ int main(int argc, char **argv)
     }
 
     auto& prog = std::get<InstructionSeq>(prog_or_error);
-    Cfg cfg = Cfg::make(prog);
-    if (domain == "stats") {
-        std::cout << std::hex << hash(raw_prog) << std::dec << ",";
-        auto stats = cfg.collect_stats();
-        std::cout << stats.count << "," << stats.loads << "," << stats.stores << "," << stats.jumps << "," << stats.joins << "\n";
-        return 0;
-    }
-
-    cfg = cfg.to_nondet(true);
-    cfg.simplify();
-    
-    if (!dotfile.empty()) print_dot(cfg, dotfile);
     if (!asmfile.empty()) print(prog, asmfile);
 
-    const auto [res, seconds] = abs_validate(cfg, domain, raw_prog.info);
-    std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
+    Cfg cfg = Cfg::make(prog);
+    cfg = cfg.to_nondet(true);
+    cfg.simplify();
+    if (!dotfile.empty()) print_dot(cfg, dotfile);
+
+    if (domain == "stats") {
+        std::cout << std::hex << hash(raw_prog) << std::dec;
+        auto stats = cfg.collect_stats();
+        for (string h : Cfg::stats_headers()) {
+            std::cout  << "," << stats.at(h);
+        }
+        std::cout << "\n";
+    } else {
+        if (domain == "linux") {
+            std::cerr << "linux is not yet implemented as a first-class domain";
+            return 64;
+        }
+        const auto [res, seconds] = abs_validate(cfg, domain, raw_prog.info);
+        std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
+    }
     return 0;
 }

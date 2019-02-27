@@ -10,8 +10,12 @@ with_timeout() {
 
 files=($(find ${dir} -name '*.o'  -exec ls -Sd {} + ))
 
-echo -n "suite,project,file,section,hash,instructions,loads,stores,jumps,joins"
-for dom in "$@"; do echo -n ",${dom}?,${dom}_sec,${dom}_kb"; done
+echo -n suite,project,file,section,
+echo -n $(./check @headers --domain=stats)
+for dom in "$@"
+do
+	echo -n ,$(./check @headers --domain=${dom})
+done
 echo
 
 for f in "${files[@]}"

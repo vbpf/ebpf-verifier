@@ -9,9 +9,10 @@
 
 cd counter
 TEMPLATE=templates/double_strcmp.fmt
-echo -n iterations,hash,instructions,loads,stores,jumps,joins,
-echo -n zoneCrab?,zoneCrab_sec,zoneCrab_kb,
-echo -n linux?,linux_sec,linux_kb
+echo -n iterations,
+echo -n $(../check @headers --domain=stats),
+echo -n $(../check @headers --domain=zoneCrab),
+echo -n $(../check @headers --domain=linux)
 echo
 for i in $(seq 1 68)
 do
