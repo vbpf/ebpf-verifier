@@ -1,10 +1,12 @@
 #include <uapi/linux/bpf.h>
 #include "bpf_helpers.h"
 
+typedef u32 valtype;
+
 struct bpf_map_def SEC("maps") m = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(u32),
-	.value_size = VALUE_SIZE,
+	.value_size = sizeof(valtype)*VALUE_SIZE,
 	.max_entries = 2,
 };
 
@@ -13,21 +15,20 @@ int diff_eq(struct __sk_buff *skb)
 {
 	u32 key1 = 1;
 	u32 key2 = 2;
-	char* value1 = bpf_map_lookup_elem(&m, &key1);
-	char* value2 = bpf_map_lookup_elem(&m, &key2);
+	valtype* value1 = bpf_map_lookup_elem(&m, &key1);
+	valtype* value2 = bpf_map_lookup_elem(&m, &key1);
 	if (!value1 || !value2) return 1;
 	long eq = 0;
 	long diff = 0;
-	int i = 0;
 #pragma clang loop unroll_count(VALUE_SIZE)
-	for (; i < VALUE_SIZE; i++) {
+	for (int i=0; i < VALUE_SIZE; i++) {
 		if (value1[i] != value2[i]) {
-			eq += i;
-		} else {
 			diff += i;
+		} else {
+			eq += i;
 		}
 	}
-	return diff * eq >= 525;
+	return diff == eq;
 }
 
 char _license[] SEC("license") = "GPL";
