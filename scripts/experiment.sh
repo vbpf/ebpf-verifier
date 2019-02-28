@@ -8,7 +8,8 @@
 #    python3 scripts/makeplot.py double_strncmp.csv iterations
 
 cd counter
-TEMPLATE=templates/double_strcmp.fmt
+# scripts/experiment.sh templates/tree.fmt
+TEMPLATE=$1
 echo -n iterations,
 echo -n $(../check @headers --domain=stats),
 echo -n $(../check @headers --domain=zoneCrab),
