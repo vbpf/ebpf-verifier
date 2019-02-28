@@ -14,8 +14,63 @@
 #include "spec_assertions.hpp"
 #include "ai.hpp"
 
+#include <linux/bpf.h>
+
+bpf_prog_type to_linuxtype(BpfProgType t)
+{
+    switch (t) {
+    case BpfProgType::UNSPEC: return BPF_PROG_TYPE_UNSPEC; 
+    case BpfProgType::SOCKET_FILTER: return BPF_PROG_TYPE_SOCKET_FILTER; 
+    case BpfProgType::KPROBE: return BPF_PROG_TYPE_KPROBE; 
+    case BpfProgType::SCHED_CLS: return BPF_PROG_TYPE_SCHED_CLS; 
+    case BpfProgType::SCHED_ACT: return BPF_PROG_TYPE_SCHED_ACT; 
+    case BpfProgType::TRACEPOINT: return BPF_PROG_TYPE_TRACEPOINT; 
+    case BpfProgType::XDP: return BPF_PROG_TYPE_XDP; 
+    case BpfProgType::PERF_EVENT: return BPF_PROG_TYPE_PERF_EVENT; 
+    case BpfProgType::CGROUP_SKB: return BPF_PROG_TYPE_CGROUP_SKB; 
+    case BpfProgType::CGROUP_SOCK: return BPF_PROG_TYPE_CGROUP_SOCK; 
+    case BpfProgType::LWT_IN: return BPF_PROG_TYPE_LWT_IN; 
+    case BpfProgType::LWT_OUT: return BPF_PROG_TYPE_LWT_OUT; 
+    case BpfProgType::LWT_XMIT: return BPF_PROG_TYPE_LWT_XMIT; 
+    case BpfProgType::SOCK_OPS: return BPF_PROG_TYPE_SOCK_OPS; 
+    case BpfProgType::SK_SKB: return BPF_PROG_TYPE_SK_SKB; 
+    case BpfProgType::CGROUP_DEVICE: return BPF_PROG_TYPE_CGROUP_DEVICE; 
+    //case BpfProgType::SK_MSG: return BPF_PROG_TYPE_SK_MSG; 
+    //case BpfProgType::RAW_TRACEPOINT: return BPF_PROG_TYPE_RAW_TRACEPOINT; 
+    //case BpfProgType::CGROUP_SOCK_ADDR: return BPF_PROG_TYPE_CGROUP_SOCK_ADDR; 
+    //case BpfProgType::LWT_SEG6LOCAL: return BPF_PROG_TYPE_LWT_SEG6LOCAL; 
+    //case BpfProgType::LIRC_MODE2: return BPF_PROG_TYPE_LIRC_MODE2; 
+    }
+    return BPF_PROG_TYPE_UNSPEC;
+};
+
+int bpf_verify_program(bpf_prog_type type, std::vector<ebpf_inst>& raw_prog)
+{
+    int log_level = 0;
+	union bpf_attr attr;
+
+	bzero(&attr, sizeof(attr));
+	attr.prog_type = (__u32)type;
+	attr.insn_cnt = (__u32)raw_prog.size();
+	attr.insns = (__u64)raw_prog.data();
+	attr.license = (__u64)"GPL";
+	attr.log_buf = (__u64)malloc(1024);
+	attr.log_size = 1024;
+	attr.log_level = 3;
+	((char*)attr.log_buf)[0] = 0;
+	attr.kern_version = 0x041800;
+	attr.prog_flags = 0;
+
+	int res = syscall(321, BPF_PROG_LOAD, &attr, sizeof(attr));
+    std::cout << (char*)attr.log_buf << "\n";
+    return res;
+}
+
+
 using std::string;
 using std::vector;
+
+
 
 static size_t hash(const raw_program& raw_prog) {
     char* start = (char*)raw_prog.prog.data();
@@ -79,7 +134,13 @@ int main(int argc, char **argv)
         std::cout << "\n";
         return 64;
     }
-    auto raw_prog = raw_progs.back();
+    raw_program raw_prog = raw_progs.back();
+    if (domain == "linux") {
+        int res = bpf_verify_program(to_linuxtype(raw_prog.info.program_type), raw_prog.prog);
+        std::cout << (res != -1) << "," << 0 << "," << 0 << "\n";
+        return 0;
+    } 
+
     auto prog_or_error = unmarshal(raw_prog);
     if (std::holds_alternative<string>(prog_or_error)) {
         std::cout << "trivial verification failure: " << std::get<string>(prog_or_error) << "\n";
@@ -102,10 +163,6 @@ int main(int argc, char **argv)
         }
         std::cout << "\n";
     } else {
-        if (domain == "linux") {
-            std::cerr << "linux is not yet implemented as a first-class domain";
-            return 64;
-        }
         const auto [res, seconds] = abs_validate(cfg, domain, raw_prog.info);
         std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
     }
