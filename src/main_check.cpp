@@ -44,6 +44,61 @@ bpf_prog_type to_linuxtype(BpfProgType t)
     return BPF_PROG_TYPE_UNSPEC;
 };
 
+static int create_map(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries)
+{
+	union bpf_attr attr;
+	memset(&attr, '\0', sizeof(attr));
+	attr.map_type = map_type;
+	attr.key_size = key_size;
+	attr.value_size = value_size;
+	attr.max_entries = max_entries;
+	attr.map_flags = map_type == BPF_MAP_TYPE_HASH ? BPF_F_NO_PREALLOC : 0;
+	int fd = syscall(321, BPF_MAP_CREATE, &attr, sizeof(attr));
+	if (fd < 0) {
+		cout << "Failed to create map, " << strerror(errno) << "\n";
+        exit(2);
+    }
+	return fd;
+}
+
+static void load_maps(struct bpf_map_data *maps, int nr_maps,
+                     fixup_map_cb fixup_map)
+{
+    for (int i = 0; i < nr_maps; i++) {
+        if (fixup_map) {
+            fixup_map(&maps[i], i);
+            /* Allow userspace to assign map FD prior to creation */
+            if (maps[i].fd != -1) {
+                map_fd[i] = maps[i].fd;
+                continue;
+            }
+        }
+
+        if (maps[i].def.type == BPF_MAP_TYPE_ARRAY_OF_MAPS ||
+            maps[i].def.type == BPF_MAP_TYPE_HASH_OF_MAPS) {
+            map_fd[i] = bpf_create_map_in_map_node(maps[i].def.type,
+                                            maps[i].name,
+                                            maps[i].def.key_size,
+                                            map_fd[maps[i].def.inner_map_idx],
+                                            maps[i].def.max_entries,
+                                            maps[i].def.map_flags,
+                                            -1);
+        } else {
+            map_fd[i] = bpf_create_map_node(maps[i].def.type,
+                                            maps[i].name,
+                                            maps[i].def.key_size,
+                                            maps[i].def.value_size,
+                                            maps[i].def.max_entries,
+                                            maps[i].def.map_flags,
+                                            -1);
+        }
+        assert(map_fd[i] >= 0);
+        maps[i].fd = map_fd[i];
+        if (maps[i].def.type == BPF_MAP_TYPE_PROG_ARRAY)
+            prog_array_fd = map_fd[i];
+    }
+}
+
 int bpf_verify_program(bpf_prog_type type, std::vector<ebpf_inst>& raw_prog)
 {
     int log_level = 0;
