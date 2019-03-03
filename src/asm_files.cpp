@@ -100,7 +100,9 @@ std::vector<int> sort_maps_by_size(std::vector<map_def>& map_defs) {
     return res;
 }
 
-vector<raw_program> read_elf(std::string path, std::string desired_section)
+using MapFd = auto (uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries) -> int;
+
+vector<raw_program> read_elf(std::string path, std::string desired_section, MapFd* fd_alloc)
 {
     ELFIO::elfio reader;
     if (!reader.load(path)) {
@@ -109,17 +111,20 @@ vector<raw_program> read_elf(std::string path, std::string desired_section)
     }
     
     program_info info;
-    int i = 0;
-    for (auto s : vector_of<bpf_load_map_def>(reader.sections["maps"])) {
+    auto mapdefs = vector_of<bpf_load_map_def>(reader.sections["maps"]);
+    for (auto s : mapdefs) {
         info.map_defs.emplace_back(map_def{
-            .original_fd=i++,
+            .original_fd=fd_alloc(s.type, s.key_size, s.value_size, s.max_entries),
             .type=MapType{s.type},
             .key_size=s.key_size,
             .value_size=s.value_size,
-            .inner_map_fd=s.inner_map_idx
         });
     }
-    std::vector<int> updated_fds = sort_maps_by_size(info.map_defs);
+    for (int i=0; i < mapdefs.size(); i++) {
+        int inner = mapdefs[i].inner_map_idx;
+        info.map_defs[i].inner_map_fd = info.map_defs[inner].original_fd;
+    }
+    //std::vector<int> updated_fds = sort_maps_by_size(info.map_defs);
 
     ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
     auto read_reloc_value = [&symbols](int symbol) -> int {
@@ -163,7 +168,8 @@ vector<raw_program> read_elf(std::string path, std::string desired_section)
                 if (reloc.get_entry(i, offset, symbol, type, addend)) {
                     auto& inst = prog.prog[offset / sizeof(ebpf_inst)];
                     inst.src = 1; // magic number for LoadFd
-                    inst.imm = updated_fds.at(read_reloc_value(symbol));
+                    inst.imm = info.map_defs[read_reloc_value(symbol)].original_fd;
+                    //inst.imm = updated_fds.at(read_reloc_value(symbol));
                 }
             }
         }
