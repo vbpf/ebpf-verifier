@@ -40,87 +40,67 @@ bpf_prog_type to_linuxtype(BpfProgType t)
     //case BpfProgType::CGROUP_SOCK_ADDR: return BPF_PROG_TYPE_CGROUP_SOCK_ADDR; 
     //case BpfProgType::LWT_SEG6LOCAL: return BPF_PROG_TYPE_LWT_SEG6LOCAL; 
     //case BpfProgType::LIRC_MODE2: return BPF_PROG_TYPE_LIRC_MODE2; 
+    default: return BPF_PROG_TYPE_SOCKET_FILTER;
     }
     return BPF_PROG_TYPE_UNSPEC;
 };
 
-static int create_map(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries)
-{
-	union bpf_attr attr;
-	memset(&attr, '\0', sizeof(attr));
-	attr.map_type = map_type;
-	attr.key_size = key_size;
-	attr.value_size = value_size;
-	attr.max_entries = max_entries;
-	attr.map_flags = map_type == BPF_MAP_TYPE_HASH ? BPF_F_NO_PREALLOC : 0;
-	int fd = syscall(321, BPF_MAP_CREATE, &attr, sizeof(attr));
-	if (fd < 0) {
-		cout << "Failed to create map, " << strerror(errno) << "\n";
-        exit(2);
-    }
-	return fd;
+int do_bpf(bpf_cmd cmd, union bpf_attr attr) {
+    return syscall(321, cmd, &attr, sizeof(attr));
 }
 
-static void load_maps(struct bpf_map_data *maps, int nr_maps,
-                     fixup_map_cb fixup_map)
-{
-    for (int i = 0; i < nr_maps; i++) {
-        if (fixup_map) {
-            fixup_map(&maps[i], i);
-            /* Allow userspace to assign map FD prior to creation */
-            if (maps[i].fd != -1) {
-                map_fd[i] = maps[i].fd;
-                continue;
-            }
-        }
 
-        if (maps[i].def.type == BPF_MAP_TYPE_ARRAY_OF_MAPS ||
-            maps[i].def.type == BPF_MAP_TYPE_HASH_OF_MAPS) {
-            map_fd[i] = bpf_create_map_in_map_node(maps[i].def.type,
-                                            maps[i].name,
-                                            maps[i].def.key_size,
-                                            map_fd[maps[i].def.inner_map_idx],
-                                            maps[i].def.max_entries,
-                                            maps[i].def.map_flags,
-                                            -1);
-        } else {
-            map_fd[i] = bpf_create_map_node(maps[i].def.type,
-                                            maps[i].name,
-                                            maps[i].def.key_size,
-                                            maps[i].def.value_size,
-                                            maps[i].def.max_entries,
-                                            maps[i].def.map_flags,
-                                            -1);
-        }
-        assert(map_fd[i] >= 0);
-        maps[i].fd = map_fd[i];
-        if (maps[i].def.type == BPF_MAP_TYPE_PROG_ARRAY)
-            prog_array_fd = map_fd[i];
+static int create_map(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries)
+{
+    static int i = -1;
+    i++;
+    union bpf_attr attr;
+    memset(&attr, '\0', sizeof(attr));
+    attr.map_type = map_type;
+    attr.key_size = key_size;
+    attr.value_size = value_size;
+    attr.max_entries = max_entries;
+    attr.map_flags = map_type == BPF_MAP_TYPE_HASH ? BPF_F_NO_PREALLOC : 0;
+    int fd = do_bpf(BPF_MAP_CREATE, attr);
+    if (fd < 0) {
+        std::cout << "Failed to create map, " << strerror(errno) << "\n";
+        exit(2);
     }
+    return fd;
 }
 
 int bpf_verify_program(bpf_prog_type type, std::vector<ebpf_inst>& raw_prog)
 {
-    int log_level = 0;
-	union bpf_attr attr;
+    std::vector<char> buf(100000);
+    union bpf_attr attr;
 
-	bzero(&attr, sizeof(attr));
-	attr.prog_type = (__u32)type;
-	attr.insn_cnt = (__u32)raw_prog.size();
-	attr.insns = (__u64)raw_prog.data();
-	attr.license = (__u64)"GPL";
-	attr.log_buf = (__u64)malloc(1024);
-	attr.log_size = 1024;
-	attr.log_level = 3;
-	((char*)attr.log_buf)[0] = 0;
-	attr.kern_version = 0x041800;
-	attr.prog_flags = 0;
+    bzero(&attr, sizeof(attr));
+    attr.prog_type = (__u32)type;
+    attr.insn_cnt = (__u32)raw_prog.size();
+    attr.insns = (__u64)raw_prog.data();
+    attr.license = (__u64)"GPL";
+    attr.log_buf = (__u64)buf.data();
+    attr.log_size = buf.size();
+    attr.log_level = 3;
+    ((char*)attr.log_buf)[0] = 0;
+    attr.kern_version = 0x041800;
+    attr.prog_flags = 0;
 
-	int res = syscall(321, BPF_PROG_LOAD, &attr, sizeof(attr));
-    std::cout << (char*)attr.log_buf << "\n";
-    return res;
+    int res = do_bpf(BPF_PROG_LOAD, attr);
+    if (res < 0) {
+        std::cerr << "Failed to verify program: " << strerror(errno) << " (" << errno << ")\n";
+        std::cerr << "LOG: " << buf.data();
+        return 1;
+    }
+    return 0;
 }
 
+static int allocate_fds(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries)
+{
+    static int i = -1;
+    i++;
+    return i;
+}
 
 using std::string;
 using std::vector;
@@ -177,7 +157,7 @@ int main(int argc, char **argv)
     } 
     global_options.print_failures = global_options.print_invariants;
 
-    auto raw_progs = read_elf(filename, desired_section);
+    auto raw_progs = read_elf(filename, desired_section, domain == "linux" ? create_map : allocate_fds);
     if (list || raw_progs.size() != 1) {
         if (!list) {
             std::cout << "please specify a section\n";
@@ -189,11 +169,11 @@ int main(int argc, char **argv)
         std::cout << "\n";
         return 64;
     }
+    int res;
     raw_program raw_prog = raw_progs.back();
     if (domain == "linux") {
-        int res = bpf_verify_program(to_linuxtype(raw_prog.info.program_type), raw_prog.prog);
+        bpf_verify_program(to_linuxtype(raw_prog.info.program_type), raw_prog.prog);
         std::cout << (res != -1) << "," << 0 << "," << 0 << "\n";
-        return 0;
     } 
 
     auto prog_or_error = unmarshal(raw_prog);
@@ -209,6 +189,10 @@ int main(int argc, char **argv)
     cfg = cfg.to_nondet(true);
     cfg.simplify();
     if (!dotfile.empty()) print_dot(cfg, dotfile);
+
+    if (domain == "linux") {
+        return res;
+    }
 
     if (domain == "stats") {
         std::cout << std::hex << hash(raw_prog) << std::dec;
