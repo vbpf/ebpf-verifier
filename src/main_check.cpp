@@ -117,6 +117,15 @@ using std::string;
 using std::vector;
 
 
+static std::vector<Instruction> blowup{
+    (Instruction)Bin{Bin::Op::MOV, false, Reg{0}, (Value)Imm{1}, false},
+    (Instruction)Bin{Bin::Op::MOV, false, Reg{1}, (Value)Imm{2}, false},
+    (Instruction)Jmp{Condition{Condition::Op::GT, Reg{1}, (Value)Reg{2}}, "2"}},
+    (Instruction)Bin{Bin::Op::ADD, false, Reg{1}, (Value)Reg{0}, false},
+    (Instruction)Jmp{{}, "1"},
+    (Instruction)Bin{Bin::Op::ADD, false, Reg{0}, (Value)Reg{1}, false},
+    (Instruction)Exit{}
+};
 
 static size_t hash(const raw_program& raw_prog) {
     char* start = (char*)raw_prog.prog.data();
@@ -168,6 +177,13 @@ int main(int argc, char **argv)
     } 
     global_options.print_failures = global_options.print_invariants;
 
+    if (filename == "blowup") {
+        print(blowup);
+        res = bpf_verify_program(to_linuxtype(raw_prog.info.program_type), blowup);
+        std::cout << res << "," << 0 << "," << 0 << "\n";
+        return res;
+    }
+
     auto raw_progs = read_elf(filename, desired_section, domain == "linux" ? create_map : allocate_fds);
     if (list || raw_progs.size() != 1) {
         if (!list) {
@@ -218,3 +234,4 @@ int main(int argc, char **argv)
     }
     return 0;
 }
+
