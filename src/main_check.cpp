@@ -45,7 +45,7 @@ bpf_prog_type to_linuxtype(BpfProgType t)
     return BPF_PROG_TYPE_UNSPEC;
 };
 
-int do_bpf(bpf_cmd cmd, union bpf_attr attr) {
+int do_bpf(bpf_cmd cmd, union bpf_attr& attr) {
     return syscall(321, cmd, &attr, sizeof(attr));
 }
 
@@ -59,11 +59,19 @@ static int create_map(uint32_t map_type, uint32_t key_size, uint32_t value_size,
     attr.map_type = map_type;
     attr.key_size = key_size;
     attr.value_size = value_size;
-    attr.max_entries = max_entries;
+    attr.max_entries = 20;
     attr.map_flags = map_type == BPF_MAP_TYPE_HASH ? BPF_F_NO_PREALLOC : 0;
     int fd = do_bpf(BPF_MAP_CREATE, attr);
     if (fd < 0) {
-        std::cout << "Failed to create map, " << strerror(errno) << "\n";
+        if (global_options.print_failures) {
+            std::cerr << "Failed to create map, " << strerror(errno) << "\n";
+            std::cerr << "Map: \n"
+                      << " map_type = "   << attr.map_type << "\n"
+                      << " key_size = "   << attr.key_size << "\n"
+                      << " value_size = " << attr.value_size << "\n"
+                      << " max_entries = "<< attr.max_entries << "\n"
+                      << " map_flags = "  << attr.map_flags << "\n";
+        }
         exit(2);
     }
     return fd;
@@ -72,9 +80,11 @@ static int create_map(uint32_t map_type, uint32_t key_size, uint32_t value_size,
 int bpf_verify_program(bpf_prog_type type, std::vector<ebpf_inst>& raw_prog)
 {
     std::vector<char> buf(100000);
-    union bpf_attr attr;
+    buf[0] = 0;
+    memset(buf.data(), '\0', buf.size());
 
-    bzero(&attr, sizeof(attr));
+    union bpf_attr attr;
+    memset(&attr, '\0', sizeof(attr));
     attr.prog_type = (__u32)type;
     attr.insn_cnt = (__u32)raw_prog.size();
     attr.insns = (__u64)raw_prog.data();
@@ -82,17 +92,18 @@ int bpf_verify_program(bpf_prog_type type, std::vector<ebpf_inst>& raw_prog)
     attr.log_buf = (__u64)buf.data();
     attr.log_size = buf.size();
     attr.log_level = 3;
-    ((char*)attr.log_buf)[0] = 0;
     attr.kern_version = 0x041800;
     attr.prog_flags = 0;
 
     int res = do_bpf(BPF_PROG_LOAD, attr);
     if (res < 0) {
-        std::cerr << "Failed to verify program: " << strerror(errno) << " (" << errno << ")\n";
-        std::cerr << "LOG: " << buf.data();
-        return 1;
+        if (global_options.print_failures) {
+            std::cerr << "Failed to verify program: " << strerror(errno) << " (" << errno << ")\n";
+            std::cerr << "LOG: " << (char*)attr.log_buf;
+        }
+        return 0;
     }
-    return 0;
+    return 1;
 }
 
 static int allocate_fds(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries)
@@ -172,8 +183,8 @@ int main(int argc, char **argv)
     int res;
     raw_program raw_prog = raw_progs.back();
     if (domain == "linux") {
-        bpf_verify_program(to_linuxtype(raw_prog.info.program_type), raw_prog.prog);
-        std::cout << (res != -1) << "," << 0 << "," << 0 << "\n";
+        res = bpf_verify_program(to_linuxtype(raw_prog.info.program_type), raw_prog.prog);
+        std::cout << res << "," << 0 << "," << 0 << "\n";
     } 
 
     auto prog_or_error = unmarshal(raw_prog);
