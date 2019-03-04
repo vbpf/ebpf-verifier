@@ -100,8 +100,6 @@ std::vector<int> sort_maps_by_size(std::vector<map_def>& map_defs) {
     return res;
 }
 
-using MapFd = auto (uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries) -> int;
-
 vector<raw_program> read_elf(std::string path, std::string desired_section, MapFd* fd_alloc)
 {
     ELFIO::elfio reader;
