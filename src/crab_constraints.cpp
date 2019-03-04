@@ -887,9 +887,30 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
             }
         }
         switch (param.kind) {
-            case ArgPair::Kind::PTR_TO_MEM_OR_NULL:
-                assert_pointer_or_null(arg, is_pointer(arg));
-                // TODO: mem access when not null
+            case ArgPair::Kind::PTR_TO_MEM_OR_NULL: {
+                    assert_pointer_or_null(arg, is_pointer(arg));
+                    vector<basic_block_t*> next;
+                    for (basic_block_t* b : blocks) {
+                        {
+                            basic_block_t& null = add_child(cfg, *b, "MON_null");
+                            null.assume(arg.region == T_NUM);
+                            null.assertion(arg.value == 0, di);
+                            next.push_back(&null);
+                        }
+                        {
+                            basic_block_t& ptr = add_child(cfg, *b, "MON_ptr");
+                            ptr.assume(is_pointer(arg));
+                            ptr.assertion(arg.value > 0, di);
+                            var_t width = machine.regs[param.size.v].value;
+                            ptr.havoc(machine.top);
+                            move_into(next, exec_mem_access_indirect(ptr, true, false, arg, { machine.top, machine.top, machine.top }, 0, width));
+                        }
+                    }
+                    for (auto b: next) {
+                        b->havoc(machine.top);
+                    }
+                    blocks = std::move(next);
+                }
                 break;
             case ArgPair::Kind::PTR_TO_MEM:  {
                     vector<basic_block_t*> next;
