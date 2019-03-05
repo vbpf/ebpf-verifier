@@ -137,7 +137,9 @@ struct machine_t final
     array_dom_t stack_arr{vfac, "S"};
     var_t meta_size{vfac[std::string("meta_size")], crab::INT_TYPE, 64};
     var_t data_size{vfac[std::string("data_size")], crab::INT_TYPE, 64};
+
     var_t top{vfac[std::string("*")], crab::INT_TYPE, 64};
+    var_t maxint64{vfac[std::string("INT64_MAX")], crab::INT_TYPE, 64};
     var_t num{vfac[std::string("T_NUM")], crab::INT_TYPE, 64};
 
     program_info info;
@@ -275,6 +277,7 @@ void machine_t::setup_entry(basic_block_t& entry)
 {
     auto& machine = *this;
     entry.havoc(machine.top);
+    entry.assign(machine.maxint64, INT64_MAX);
     entry.assign(machine.num, T_NUM);
 
     entry.assume(STACK_SIZE <= machine.regs[10].value);
@@ -362,6 +365,35 @@ static vector<lin_cst_t> jmp_to_cst_reg(Condition::Op op, var_t& dst_value, var_
     assert(false);
 }
 
+static bool is_unsigned_cmp(Condition::Op op)
+{
+    using Op = Condition::Op;
+    switch (op) {
+        case Op::GE : 
+        case Op::LE :
+        case Op::GT : 
+        case Op::LT :
+            return true;
+        default:
+            return false;
+    }
+    assert(false);
+}
+
+static bool is_signed_cmp(Condition::Op op)
+{
+    using Op = Condition::Op;
+    switch (op) {
+        case Op::SGE : 
+        case Op::SLE :
+        case Op::SGT : 
+        case Op::SLT :
+            return true;
+        default:
+            return false;
+    }
+    assert(false);
+}
 
 static void wrap32(basic_block_t& block, var_t& dst_value)
 {
@@ -981,10 +1013,16 @@ vector<basic_block_t*> instruction_builder_t::operator()(Assume const& b) {
     if (std::holds_alternative<Reg>(cond.right)) {
         dom_t& src = machine.reg(cond.right);
         basic_block_t& same = add_child(cfg, block, "same_type");
-        for (auto c : jmp_to_cst_reg(cond.op, dst.value, src.value))
-            same.assume(c);
-        same.assume(eq(dst.region, src.region));
-
+        if (is_unsigned_cmp(cond.op)) {
+            // same.assertion(machine.maxint64 > dst.value, di);
+            // same.assertion(machine.maxint64 > src.value, di);
+            // same.assertion(dst.value >= 0, di);
+            // same.assertion(src.value >= 0, di);
+        } else {
+            for (auto c : jmp_to_cst_reg(cond.op, dst.value, src.value))
+                same.assume(c);
+            same.assume(eq(dst.region, src.region));
+        }
         basic_block_t& null_src = add_child(cfg, block, "null_src");
         null_src.assume(src.region == T_NUM);
         null_src.assume(is_pointer(dst));
