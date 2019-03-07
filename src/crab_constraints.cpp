@@ -656,12 +656,12 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
     dom_t& dst = machine.reg(bin.dst);
     vector<basic_block_t*> res{ &block };
 
-    // TODO: add assertion for all operators that the arguments are initialized
-    // TODO: or, just do dst_initialized = dst_initialized & src_initialized
-    /*if (inst.opcode & EBPF_SRC_REG) {
-        assert_init(block, machine.regs[inst.src], di);
+    if (std::holds_alternative<Reg>(bin.v)) {
+        assert_init(block, machine.reg(bin.v), di);
     }
-    assert_init(block, machine.regs[inst.dst], di);*/
+    if (bin.op != Bin::Op::MOV) {
+        assert_init(block, dst, di);
+    }
     if (std::holds_alternative<Imm>(bin.v)) {
         int imm = static_cast<int>(get<Imm>(bin.v).v);
         switch (bin.op) {
@@ -834,7 +834,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
 
 vector<basic_block_t*> instruction_builder_t::operator()(Un const& b) {
     dom_t& dst = machine.reg(b.dst);
-
+    assert_init(block, dst, di);
     switch (b.op) {
     case Un::Op::LE16:
     case Un::Op::LE32:
