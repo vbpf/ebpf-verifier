@@ -14,6 +14,8 @@
 #include "spec_assertions.hpp"
 #include "ai.hpp"
 
+#if __linux__
+ 
 #include <linux/bpf.h>
 
 bpf_prog_type to_linuxtype(BpfProgType t)
@@ -105,6 +107,7 @@ int bpf_verify_program(bpf_prog_type type, std::vector<ebpf_inst>& raw_prog)
     }
     return 1;
 }
+#endif
 
 static int allocate_fds(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries)
 {
@@ -116,16 +119,6 @@ static int allocate_fds(uint32_t map_type, uint32_t key_size, uint32_t value_siz
 using std::string;
 using std::vector;
 
-
-static std::vector<Instruction> blowup{
-    (Instruction)Bin{Bin::Op::MOV, false, Reg{0}, (Value)Imm{1}, false},
-    (Instruction)Bin{Bin::Op::MOV, false, Reg{1}, (Value)Imm{2}, false},
-    (Instruction)Jmp{Condition{Condition::Op::GT, Reg{1}, (Value)Reg{2}}, "2"}},
-    (Instruction)Bin{Bin::Op::ADD, false, Reg{1}, (Value)Reg{0}, false},
-    (Instruction)Jmp{{}, "1"},
-    (Instruction)Bin{Bin::Op::ADD, false, Reg{0}, (Value)Reg{1}, false},
-    (Instruction)Exit{}
-};
 
 static size_t hash(const raw_program& raw_prog) {
     char* start = (char*)raw_prog.prog.data();
@@ -149,7 +142,7 @@ int main(int argc, char **argv)
     app.add_flag("-l", list, "List sections");
 
     std::string domain="zoneCrab";
-    std::set<string> doms{"stats", "linux"};
+    std::set<string> doms{"stats", "linux", "rcp"};
     for (auto const [name, desc] : domain_descriptions())
         doms.insert(name);
     app.add_set("-d,--dom,--domain", domain, doms, "Abstract domain")->type_name("DOMAIN");
@@ -177,14 +170,27 @@ int main(int argc, char **argv)
     } 
     global_options.print_failures = global_options.print_invariants;
 
+#if __linux__
     if (filename == "blowup") {
+        std::vector<Instruction> blowup{
+            (Instruction)Bin{Bin::Op::MOV, false, Reg{0}, (Value)Imm{1}, false},
+            (Instruction)Bin{Bin::Op::MOV, false, Reg{1}, (Value)Imm{2}, false},
+            (Instruction)Jmp{Condition{Condition::Op::GT, Reg{1}, (Value)Reg{2}}, "2"}},
+            (Instruction)Bin{Bin::Op::ADD, false, Reg{1}, (Value)Reg{0}, false},
+            (Instruction)Jmp{{}, "1"},
+            (Instruction)Bin{Bin::Op::ADD, false, Reg{0}, (Value)Reg{1}, false},
+            (Instruction)Exit{}
+        };
         print(blowup);
         res = bpf_verify_program(to_linuxtype(raw_prog.info.program_type), blowup);
         std::cout << res << "," << 0 << "," << 0 << "\n";
         return res;
     }
-
     auto raw_progs = read_elf(filename, desired_section, domain == "linux" ? create_map : allocate_fds);
+#else
+    auto raw_progs = read_elf(filename, desired_section, allocate_fds);
+#endif
+
     if (list || raw_progs.size() != 1) {
         if (!list) {
             std::cout << "please specify a section\n";
@@ -198,10 +204,12 @@ int main(int argc, char **argv)
     }
     int res;
     raw_program raw_prog = raw_progs.back();
+#if __linux__
     if (domain == "linux") {
         res = bpf_verify_program(to_linuxtype(raw_prog.info.program_type), raw_prog.prog);
         std::cout << res << "," << 0 << "," << 0 << "\n";
     } 
+#endif
 
     auto prog_or_error = unmarshal(raw_prog);
     if (std::holds_alternative<string>(prog_or_error)) {
@@ -228,6 +236,8 @@ int main(int argc, char **argv)
             std::cout  << "," << stats.at(h);
         }
         std::cout << "\n";
+    } else if (domain == "rcp") {
+        analyze_rcp(cfg, raw_prog.info);
     } else {
         const auto [res, seconds] = abs_validate(cfg, domain, raw_prog.info);
         std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";

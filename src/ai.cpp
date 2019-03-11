@@ -274,6 +274,7 @@ struct Machine {
     }
 
     void store(const RCP_domain& addr, const NumDomSet& width, const RCP_domain& value) {
+        if (addr.get_types().count() > 1) std::cerr << "store: " << addr << "\n";
         OffsetDomSet as_stack = addr.get_stack();
         if (!as_stack.is_bot()) {
             // make weak updates extremely weak
@@ -328,6 +329,7 @@ struct Machine {
     }
 
     RCP_domain load(const RCP_domain& addr, int width) {
+        if (addr.get_types().count() > 1) std::cerr << "load: " << addr << "\n";
         return load_stack(addr.get_stack(), width)
              | load_ctx(addr.get_ctx(), width)
              | load_other(addr);

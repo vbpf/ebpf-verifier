@@ -97,6 +97,19 @@ public:
     RCP_domain with_fd(Top t) const { auto res = *this; res.fd.havoc(); return res; }
     FdSetDom get_fd() { return fd; };
     
+    Types get_types() const {
+        Types res;
+        for (size_t i=0; i < maps.size(); i++) {
+            if (!maps[i].is_bot()) res |= TypeSet::single(i);
+        }
+        if (!ctx.is_bot()) res |= TypeSet::ctx;
+        if (!stack.is_bot()) res |= TypeSet::stack;
+        if (!packet.is_bot()) res |= TypeSet::packet;
+        if (!num.is_bot()) res |= TypeSet::num;
+        if (!fd.is_bot()) res |= TypeSet::fd;
+        return res;
+    }
+
     void set_mapfd(int mapfd) {
         assert(mapfd >= 0);
         assert(mapfd < (int)fd.fds.size());
