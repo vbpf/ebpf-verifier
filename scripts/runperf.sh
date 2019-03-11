@@ -18,6 +18,7 @@ do
 done
 echo
 
+rm -f errors.log
 for f in "${files[@]}"
 do
 	sections=($(./check $f -l))
@@ -28,7 +29,9 @@ do
 		echo -n $(./check $f $s --domain=stats)
 		for dom in "$@"
 		do
-			rkm=$(with_timeout 10m ./check $f $s --domain=$dom 2>errors.log)
+			echo >> errors.log
+			echo "with_timeout 10m ./check $f $s --domain=$dom" >> errors.log
+			rkm=$(with_timeout 10m ./check $f $s --domain=$dom 2>>errors.log)
 			echo -n ",${rkm:=0,-1,-1}"
 		done
 		echo
