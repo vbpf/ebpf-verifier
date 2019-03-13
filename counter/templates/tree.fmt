@@ -7,14 +7,13 @@ struct bpf_map_def SEC("maps") m = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(u32),
 	.value_size = sizeof(valtype)*VALUE_SIZE,
-	.max_entries = 2,
+	.max_entries = 1,
 };
 
 SEC("sk_skb/diff_eq")
 int diff_eq(struct __sk_buff *skb)
 {
 	u32 key1 = 1;
-	u32 key2 = 2;
 	valtype* value1 = bpf_map_lookup_elem(&m, &key1);
 	valtype* value2 = bpf_map_lookup_elem(&m, &key1);
 	if (!value1 || !value2) return 1;

@@ -119,7 +119,7 @@ int main(int argc, char **argv)
             ? bpf_verify_program(raw_prog.info.program_type, raw_prog.prog)
             : abs_validate(cfg, domain, raw_prog.info);
         std::cout << res << "," << seconds << "," << 0 << "\n";
-        return res;
+        return !res;
     }
     return 0;
 }
