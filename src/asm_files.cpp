@@ -151,9 +151,9 @@ vector<raw_program> read_elf(std::string path, std::string desired_section, MapF
         }
         info.program_type = section_to_progtype(name, path);
         info.descriptor = get_descriptor(info.program_type);
-        raw_program prog{path, name, vector_of<ebpf_inst>(section), info};
-        if (prog.prog.empty())
+        if (section->get_size() == 0)
             continue;
+        raw_program prog{path, name, vector_of<ebpf_inst>(section), info};
         auto prelocs = reader.sections[string(".rel") + name];
         if (!prelocs) prelocs = reader.sections[string(".rela") + name];
         if (prelocs) {
