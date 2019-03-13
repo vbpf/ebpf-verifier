@@ -118,7 +118,7 @@ vector<raw_program> read_elf(std::string path, std::string desired_section, MapF
             .value_size=s.value_size,
         });
     }
-    for (int i=0; i < mapdefs.size(); i++) {
+    for (size_t i=0; i < mapdefs.size(); i++) {
         int inner = mapdefs[i].inner_map_idx;
         info.map_defs[i].inner_map_fd = info.map_defs[inner].original_fd;
     }

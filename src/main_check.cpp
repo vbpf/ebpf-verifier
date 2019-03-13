@@ -79,7 +79,7 @@ static int create_map(uint32_t map_type, uint32_t key_size, uint32_t value_size,
     return fd;
 }
 
-int bpf_verify_program(bpf_prog_type type, std::vector<ebpf_inst>& raw_prog)
+int bpf_verify_program(bpf_prog_type type, const std::vector<ebpf_inst>& raw_prog)
 {
     std::vector<char> buf(100000);
     buf[0] = 0;
@@ -172,17 +172,17 @@ int main(int argc, char **argv)
 
 #if __linux__
     if (filename == "blowup") {
-        std::vector<Instruction> blowup{
-            (Instruction)Bin{Bin::Op::MOV, false, Reg{0}, (Value)Imm{1}, false},
-            (Instruction)Bin{Bin::Op::MOV, false, Reg{1}, (Value)Imm{2}, false},
-            (Instruction)Jmp{Condition{Condition::Op::GT, Reg{1}, (Value)Reg{2}}, "2"}},
-            (Instruction)Bin{Bin::Op::ADD, false, Reg{1}, (Value)Reg{0}, false},
-            (Instruction)Jmp{{}, "1"},
-            (Instruction)Bin{Bin::Op::ADD, false, Reg{0}, (Value)Reg{1}, false},
-            (Instruction)Exit{}
-        };
+        std::vector<LabeledInstruction> blowup;
+        blowup.emplace_back("0", Bin{Bin::Op::MOV, true, Reg{0}, (Value)Imm{1}, false});
+        blowup.emplace_back("1", Bin{Bin::Op::MOV, true, Reg{1}, (Value)Imm{2}, false});
+        blowup.emplace_back("2", Jmp{Condition{Condition::Op::GT, Reg{0}, (Value)Reg{1}}, "5"});
+        blowup.emplace_back("3", Bin{Bin::Op::ADD, true, Reg{1}, (Value)Reg{0}, false});
+        blowup.emplace_back("4", Jmp{{}, "6"});
+        blowup.emplace_back("5", Bin{Bin::Op::ADD, true, Reg{0}, (Value)Reg{1}, false});
+        blowup.emplace_back("6", Exit{});
         print(blowup);
-        res = bpf_verify_program(to_linuxtype(raw_prog.info.program_type), blowup);
+        auto raw_blowup = marshal(blowup);
+        int res = bpf_verify_program(BPF_PROG_TYPE_SOCKET_FILTER, raw_blowup);
         std::cout << res << "," << 0 << "," << 0 << "\n";
         return res;
     }
