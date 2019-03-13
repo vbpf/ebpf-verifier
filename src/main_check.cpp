@@ -174,13 +174,22 @@ int main(int argc, char **argv)
 #if __linux__
     if (filename == "blowup") {
         std::vector<LabeledInstruction> blowup;
-        blowup.emplace_back("0", Bin{Bin::Op::MOV, true, Reg{0}, (Value)Imm{1}, false});
+        //blowup.emplace_back("0", Bin{Bin::Op::MOV, true, Reg{0}, (Value)Imm{1}, false});
+        blowup.emplace_back("0", Call{5, "get_ns"});
         blowup.emplace_back("1", Bin{Bin::Op::MOV, true, Reg{1}, (Value)Imm{2}, false});
-        blowup.emplace_back("2", Jmp{Condition{Condition::Op::GT, Reg{0}, (Value)Reg{1}}, "5"});
-        blowup.emplace_back("3", Bin{Bin::Op::ADD, true, Reg{1}, (Value)Reg{0}, false});
-        blowup.emplace_back("4", Jmp{{}, "6"});
-        blowup.emplace_back("5", Bin{Bin::Op::ADD, true, Reg{0}, (Value)Reg{1}, false});
-        blowup.emplace_back("6", Exit{});
+        using std::to_string;
+        int i = 2;
+        while (i < 37) {
+            blowup.emplace_back(to_string(i), Jmp{Condition{Condition::Op::GT, Reg{0}, (Value)Reg{1}}, to_string(i+3)});
+            i++;
+            blowup.emplace_back(to_string(i), Bin{Bin::Op::SUB, true, Reg{1}, (Value)Reg{0}, false});
+            i++;
+            blowup.emplace_back(to_string(i), Jmp{{}, to_string(i+2)});
+            i++;
+            blowup.emplace_back(to_string(i), Bin{Bin::Op::SUB, true, Reg{0}, (Value)Reg{1}, false});
+            i++;
+        }
+        blowup.emplace_back(to_string(i), Exit{});
         print(blowup);
         auto raw_blowup = marshal(blowup);
         std::clock_t begin = std::clock();
