@@ -107,10 +107,9 @@ static int allocate_fds(uint32_t map_type, uint32_t key_size, uint32_t value_siz
     return i;
 }
 
-vector<raw_program> create_blowup()
+vector<raw_program> create_blowup(size_t size)
 {
     std::vector<LabeledInstruction> blowup;
-    size_t size = 58;
     auto exitreg = Reg{0};
     auto ctx = Reg{1};
     auto start = Reg{2};
@@ -125,14 +124,12 @@ vector<raw_program> create_blowup()
     blowup.emplace_back(to_string(i++), Mem{Deref{4, ctx, 20*4}, end, true});
     blowup.emplace_back(to_string(i++), Bin{Bin::Op::MOV, true, tmp, (Value)start, false});
     blowup.emplace_back(to_string(i++), Bin{Bin::Op::ADD, true, tmp, (Value)Imm{size}, false});
-    blowup.emplace_back(to_string(i), Jmp{Condition{Condition::Op::LE, tmp, (Value)end}, to_string(i+4)}); i++;
+    blowup.emplace_back(to_string(i), Jmp{Condition{Condition::Op::LE, tmp, (Value)end}, to_string(i+2)}); i++;
     int out = i;
-    blowup.emplace_back(to_string(i), Jmp{Condition{Condition::Op::NE, counter, (Value)Imm{size / 2}}, to_string(i+2)}); i++;
-    blowup.emplace_back(to_string(i++), Bin{Bin::Op::MOV, true, exitreg, (Value)Imm{0}, false});
     blowup.emplace_back(to_string(i++), Exit{});
     for (size_t n = 0; n < size; n++) {
         blowup.emplace_back(to_string(i++), Mem{Deref{1, start, n}, tmp, true});
-        blowup.emplace_back(to_string(i), Jmp{Condition{Condition::Op::GT, tmp, (Value)Imm{1}}, to_string(i+2)}); i++;
+        blowup.emplace_back(to_string(i), Jmp{Condition{Condition::Op::NE, tmp, (Value)Imm{0}}, to_string(i+2)}); i++;
         blowup.emplace_back(to_string(i++), Bin{Bin::Op::ADD, true, counter, (Value)Imm{n}, false});
     }
     blowup.emplace_back(to_string(i), Jmp{{}, to_string(out)});
