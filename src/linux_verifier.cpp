@@ -1,11 +1,11 @@
 
+#if __linux__
 
 #include <iostream>
 
 #include "asm_syntax.hpp"
 #include "config.hpp"
 
-#if __linux__
 
 #include "spec_type_descriptors.hpp"
 
@@ -75,7 +75,7 @@ int create_map(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32
 
 std::tuple<bool, double> bpf_verify_program(BpfProgType type, const std::vector<ebpf_inst>& raw_prog)
 {
-    std::vector<char> buf(100000);
+    std::vector<char> buf(global_options.print_failures ? 500000 : 10);
     buf[0] = 0;
     memset(buf.data(), '\0', buf.size());
 
@@ -85,9 +85,11 @@ std::tuple<bool, double> bpf_verify_program(BpfProgType type, const std::vector<
     attr.insn_cnt = (__u32)raw_prog.size();
     attr.insns = (__u64)raw_prog.data();
     attr.license = (__u64)"GPL";
-    attr.log_buf = (__u64)buf.data();
-    attr.log_size = buf.size();
-    attr.log_level = 3;
+    if (global_options.print_failures) {
+        attr.log_buf = (__u64)buf.data();
+        attr.log_size = buf.size();
+        attr.log_level = 3;
+    }
     attr.kern_version = 0x041800;
     attr.prog_flags = 0;
 

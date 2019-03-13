@@ -115,7 +115,7 @@ vector<raw_program> create_blowup()
     blowup.emplace_back("1", Bin{Bin::Op::MOV, true, Reg{1}, (Value)Imm{2}, false});
     using std::to_string;
     int i = 2;
-    while (i < 37) {
+    while (i < 142) {
         blowup.emplace_back(to_string(i), Jmp{Condition{Condition::Op::GT, Reg{0}, (Value)Reg{1}}, to_string(i+3)});
         i++;
         blowup.emplace_back(to_string(i), Bin{Bin::Op::SUB, true, Reg{1}, (Value)Reg{0}, false});
