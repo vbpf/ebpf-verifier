@@ -110,25 +110,35 @@ static int allocate_fds(uint32_t map_type, uint32_t key_size, uint32_t value_siz
 vector<raw_program> create_blowup()
 {
     std::vector<LabeledInstruction> blowup;
-    //blowup.emplace_back("0", Bin{Bin::Op::MOV, true, Reg{0}, (Value)Imm{1}, false});
-    blowup.emplace_back("0", Call{5, "get_ns"});
-    blowup.emplace_back("1", Bin{Bin::Op::MOV, true, Reg{1}, (Value)Imm{2}, false});
+    size_t size = 58;
+    auto exitreg = Reg{0};
+    auto ctx = Reg{1};
+    auto start = Reg{2};
+    auto end = Reg{3};
+    auto tmp = Reg{4};
+    auto counter = Reg{5};
+    int i = 0;
     using std::to_string;
-    int i = 2;
-    while (i < 142) {
-        blowup.emplace_back(to_string(i), Jmp{Condition{Condition::Op::GT, Reg{0}, (Value)Reg{1}}, to_string(i+3)});
-        i++;
-        blowup.emplace_back(to_string(i), Bin{Bin::Op::SUB, true, Reg{1}, (Value)Reg{0}, false});
-        i++;
-        blowup.emplace_back(to_string(i), Jmp{{}, to_string(i+2)});
-        i++;
-        blowup.emplace_back(to_string(i), Bin{Bin::Op::SUB, true, Reg{0}, (Value)Reg{1}, false});
-        i++;
+    blowup.emplace_back(to_string(i++), Bin{Bin::Op::MOV, true, exitreg, (Value)Imm{1}, false});
+    blowup.emplace_back(to_string(i++), Bin{Bin::Op::MOV, true, counter, (Value)Imm{0}, false});
+    blowup.emplace_back(to_string(i++), Mem{Deref{4, ctx, 19*4}, start, true});
+    blowup.emplace_back(to_string(i++), Mem{Deref{4, ctx, 20*4}, end, true});
+    blowup.emplace_back(to_string(i++), Bin{Bin::Op::MOV, true, tmp, (Value)start, false});
+    blowup.emplace_back(to_string(i++), Bin{Bin::Op::ADD, true, tmp, (Value)Imm{size}, false});
+    blowup.emplace_back(to_string(i), Jmp{Condition{Condition::Op::LE, tmp, (Value)end}, to_string(i+4)}); i++;
+    int out = i;
+    blowup.emplace_back(to_string(i), Jmp{Condition{Condition::Op::NE, counter, (Value)Imm{size / 2}}, to_string(i+2)}); i++;
+    blowup.emplace_back(to_string(i++), Bin{Bin::Op::MOV, true, exitreg, (Value)Imm{0}, false});
+    blowup.emplace_back(to_string(i++), Exit{});
+    for (size_t n = 0; n < size; n++) {
+        blowup.emplace_back(to_string(i++), Mem{Deref{1, start, n}, tmp, true});
+        blowup.emplace_back(to_string(i), Jmp{Condition{Condition::Op::GT, tmp, (Value)Imm{1}}, to_string(i+2)}); i++;
+        blowup.emplace_back(to_string(i++), Bin{Bin::Op::ADD, true, counter, (Value)Imm{n}, false});
     }
-    blowup.emplace_back(to_string(i), Exit{});
+    blowup.emplace_back(to_string(i), Jmp{{}, to_string(out)});
     raw_program res;
     res.prog = marshal(blowup);
-    res.info.program_type = BpfProgType::SOCKET_FILTER;
+    res.info.program_type = BpfProgType::SK_SKB;
     return {res};
 }
 
