@@ -8,6 +8,7 @@
 #include "spec_type_descriptors.hpp"
 
 #include "asm_unmarshal.hpp"
+#include "asm_marshal.hpp"
 #include "asm_ostream.hpp"
 #include "elfio/elfio.hpp"
 
@@ -100,8 +101,42 @@ std::vector<int> sort_maps_by_size(std::vector<map_def>& map_defs) {
     return res;
 }
 
+static int allocate_fds(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries) {
+    static int i = -1;
+    i++;
+    return i;
+}
+
+vector<raw_program> create_blowup()
+{
+    std::vector<LabeledInstruction> blowup;
+    //blowup.emplace_back("0", Bin{Bin::Op::MOV, true, Reg{0}, (Value)Imm{1}, false});
+    blowup.emplace_back("0", Call{5, "get_ns"});
+    blowup.emplace_back("1", Bin{Bin::Op::MOV, true, Reg{1}, (Value)Imm{2}, false});
+    using std::to_string;
+    int i = 2;
+    while (i < 37) {
+        blowup.emplace_back(to_string(i), Jmp{Condition{Condition::Op::GT, Reg{0}, (Value)Reg{1}}, to_string(i+3)});
+        i++;
+        blowup.emplace_back(to_string(i), Bin{Bin::Op::SUB, true, Reg{1}, (Value)Reg{0}, false});
+        i++;
+        blowup.emplace_back(to_string(i), Jmp{{}, to_string(i+2)});
+        i++;
+        blowup.emplace_back(to_string(i), Bin{Bin::Op::SUB, true, Reg{0}, (Value)Reg{1}, false});
+        i++;
+    }
+    blowup.emplace_back(to_string(i), Exit{});
+    raw_program res;
+    res.prog = marshal(blowup);
+    res.info.program_type = BpfProgType::SOCKET_FILTER;
+    return {res};
+}
+
 vector<raw_program> read_elf(std::string path, std::string desired_section, MapFd* fd_alloc)
 {
+    if (fd_alloc == nullptr) {
+        fd_alloc = allocate_fds;
+    }
     ELFIO::elfio reader;
     if (!reader.load(path)) {
         std::cerr << "Can't find or process ELF file " << path << "\n";
