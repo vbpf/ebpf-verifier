@@ -16,6 +16,7 @@
 
 #if __linux__
  
+#include <ctime>
 #include <linux/bpf.h>
 
 bpf_prog_type to_linuxtype(BpfProgType t)
@@ -182,8 +183,11 @@ int main(int argc, char **argv)
         blowup.emplace_back("6", Exit{});
         print(blowup);
         auto raw_blowup = marshal(blowup);
+        std::clock_t begin = std::clock();
         int res = bpf_verify_program(BPF_PROG_TYPE_SOCKET_FILTER, raw_blowup);
-        std::cout << res << "," << 0 << "," << 0 << "\n";
+        std::clock_t end = std::clock();
+        double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+        std::cout << res << "," << elapsed_secs << "," << 0 << "\n";
         return res;
     }
     auto raw_progs = read_elf(filename, desired_section, domain == "linux" ? create_map : allocate_fds);
