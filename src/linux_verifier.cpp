@@ -75,7 +75,7 @@ int create_map(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32
 
 std::tuple<bool, double> bpf_verify_program(BpfProgType type, const std::vector<ebpf_inst>& raw_prog)
 {
-    std::vector<char> buf(global_options.print_failures ? 500000 : 10);
+    std::vector<char> buf(global_options.print_failures ? 1000000 : 10);
     buf[0] = 0;
     memset(buf.data(), '\0', buf.size());
 
