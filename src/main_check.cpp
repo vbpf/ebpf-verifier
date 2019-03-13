@@ -54,6 +54,9 @@ int main(int argc, char **argv)
     std::string dotfile;
     app.add_option("--dot", dotfile, "Export cfg to dot FILE")->type_name("FILE");
 
+    size_t size{};
+    app.add_option("--size", size, "size of blowup");
+
     CLI11_PARSE(app, argc, argv);
     if (filename == "@headers") {
         if (domain == "stats") {
@@ -72,7 +75,7 @@ int main(int argc, char **argv)
 
     auto raw_progs = filename != "blowup"
         ? read_elf(filename, desired_section, domain == "linux" ? create_map : nullptr)
-        : create_blowup();
+        : create_blowup(size);
 
     if (list || raw_progs.size() != 1) {
         if (!list) {
