@@ -75,7 +75,7 @@ int main(int argc, char **argv)
 
     auto raw_progs = filename != "blowup"
         ? read_elf(filename, desired_section, domain == "linux" ? create_map : nullptr)
-        : create_blowup(size);
+        : create_blowup(size, domain == "linux" ? create_map : nullptr);
 
     if (list || raw_progs.size() != 1) {
         if (!list) {
