@@ -549,13 +549,6 @@ vector<basic_block_t*> instruction_builder_t::exec_ctx_access(basic_block_t& blo
 static inline void assert_in_stack(basic_block_t& block, int offset, int width, debug_info di) {
     // NOP - should be done in the validator
 }
-/* Here for the unlikely case the width is dynamic
-static void assert_in_stack(basic_block_t& block, int offset, var_t width, debug_info di) {
-    auto start = (-offset) - width;
-    block.assertion(start >= 0, di);
-    block.assertion(start + width <= STACK_SIZE, di);
-}
-*/
 
 int get_start(int offset, int width) {
     return (-offset) - width;
@@ -637,11 +630,6 @@ vector<basic_block_t*> instruction_builder_t::operator()(Undefined const& a) {
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(LoadMapFd const& ld) {
-    // we're a per-process file descriptor defining the map.
-    // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
-    // This is what Arg::MAP_FD looks for
-    // This is probably the wrong thing to do. should we add an FD type?
-    // Here we (probably) need the map structure
     if (ld.mapfd >= machine.info.map_defs.size()) {
         block.assertion(neq(machine.num, machine.num), di);
     }
@@ -924,18 +912,33 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
                     vector<basic_block_t*> next;
                     for (basic_block_t* b : blocks) {
                         {
-                            basic_block_t& null = add_child(cfg, *b, "MON_null");
+                            basic_block_t& null = add_child(cfg, *b, "null");
                             null.assume(arg.region == T_NUM);
                             null.assertion(arg.value == 0, di);
                             next.push_back(&null);
                         }
                         {
-                            basic_block_t& ptr = add_child(cfg, *b, "MON_ptr");
+                            basic_block_t& ptr = add_child(cfg, *b, "ptr");
                             ptr.assume(is_pointer(arg));
                             ptr.assertion(arg.value > 0, di);
                             var_t width = machine.regs[param.size.v].value;
                             ptr.havoc(machine.top);
-                            move_into(next, exec_mem_access_indirect(ptr, true, false, arg, { machine.top, machine.top, machine.top }, 0, width));
+                            {
+                                basic_block_t& mid = add_child(cfg, ptr, "assume_stack");
+                                mid.assume(arg.region == T_STACK);
+                                mid.assertion(arg.offset + width <= 0, di);
+                                mid.assertion(arg.offset <= STACK_SIZE, di);
+                                next.push_back(&mid);
+                            }
+                            // TODO: this check is important, but _extremely_ costly (15x!) for absolutely no reason
+                            //move_into(next, exec_map_access(ptr, true, arg, { machine.top, machine.top, machine.top }, 0, width));
+                            if (machine.ctx_desc.data >= 0) {
+                                basic_block_t& mid = add_child(cfg, ptr, "assume_data");
+                                mid.assume(arg.region == T_DATA);
+                                mid.assertion(machine.meta_size <= arg.offset, di);
+                                mid.assertion(arg.offset <= machine.data_size - width, di);
+                                next.push_back(&mid);
+                            }
                         }
                     }
                     for (auto b: next) {
@@ -951,7 +954,23 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
                         b->assertion(is_pointer(arg), di);
                         var_t width = machine.regs[param.size.v].value;
                         b->havoc(machine.top);
-                        move_into(next, exec_mem_access_indirect(*b, true, false, arg, { machine.top, machine.top, machine.top }, 0, width));
+                        basic_block_t& ptr = *b;
+                        {
+                            basic_block_t& mid = add_child(cfg, ptr, "assume_stack");
+                            mid.assume(arg.region == T_STACK);
+                            mid.assertion(arg.offset + width <= 0, di);
+                            mid.assertion(arg.offset <= STACK_SIZE, di);
+                            next.push_back(&mid);
+                        }
+                        // TODO: this check is important, but _extremely_ costly for absolutely no reason
+                        //move_into(next, exec_map_access(ptr, true, arg, { machine.top, machine.top, machine.top }, 0, width));
+                        if (machine.ctx_desc.data >= 0) {
+                            basic_block_t& mid = add_child(cfg, ptr, "assume_data");
+                            mid.assume(arg.region == T_DATA);
+                            mid.assertion(machine.meta_size <= arg.offset, di);
+                            mid.assertion(arg.offset <= machine.data_size - width, di);
+                            next.push_back(&mid);
+                        }    
                     }
                     for (auto b: next) {
                         b->havoc(machine.top);
@@ -966,7 +985,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
                         b->assertion(arg.offset <= 0, di);
                         var_t width = sizereg.value;
                         b->havoc(machine.top);
-                        move_into(next, exec_mem_access_indirect(*b, false, false, arg, { machine.top, machine.top, machine.num }, 0, width));
+                        move_into(next, exec_mem_access_indirect(*b, false, true, arg, { machine.top, machine.top, machine.num }, 0, width));
                     }
                     for (auto b: next) {
                         b->havoc(machine.top);
