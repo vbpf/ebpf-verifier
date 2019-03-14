@@ -17,17 +17,17 @@ int diff_eq(struct __sk_buff *skb)
 	valtype* value1 = bpf_map_lookup_elem(&m, &key1);
 	valtype* value2 = bpf_map_lookup_elem(&m, &key1);
 	if (!value1 || !value2) return 1;
-	long eq = 0;
-	long diff = 0;
+	unsigned eq = 0;
+	unsigned diff = 0;
 #pragma clang loop unroll_count(VALUE_SIZE)
 	for (int i=0; i < VALUE_SIZE; i++) {
 		if (value1[i] != value2[i]) {
-			diff += 1;
+			diff++;
 		} else {
-			eq += 1;
+			eq++;
 		}
 	}
-	return diff == eq;
+	return eq > diff;
 }
 
 char _license[] SEC("license") = "GPL";
