@@ -19,7 +19,7 @@ echo -n $(../check @headers --domain=stats),
 echo -n $(../check @headers --domain=zoneCrab),
 echo -n $(../check @headers --domain=linux)
 echo
-for i in $(seq 5 70)
+for i in $(seq 1 70)
 do
 	BASE=$(basename $TEMPLATE)
 	sed "s/VALUE_SIZE/$i/g" < $TEMPLATE > src/$BASE_$i.c
