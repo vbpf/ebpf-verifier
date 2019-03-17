@@ -85,7 +85,7 @@ struct array_dom_t {
         vfac(vfac),
         values{vfac[std::string(name + "_r")], crab::ARR_INT_TYPE, 64}, 
         offsets{vfac[std::string(name + "_off")], crab::ARR_INT_TYPE, 64},
-        regions{vfac[std::string(name + "_t")], crab::ARR_INT_TYPE, 8}
+        regions{vfac[std::string(name + "_t")], crab::ARR_INT_TYPE, 64}
     { }
 
     template<typename T, typename W>
@@ -456,26 +456,20 @@ vector<basic_block_t*> instruction_builder_t::exec_stack_access(basic_block_t& b
 template<typename W>
 vector<basic_block_t*> instruction_builder_t::exec_map_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
 {
-    vector<basic_block_t*> res;
-    int map_index = 0;
-    for (map_def def : machine.info.map_defs) {
-        basic_block_t& mid = add_child(cfg, block, "assume_map" + std::to_string(map_index));
-        lin_exp_t addr = mem_reg.offset + offset;
+    basic_block_t& mid = add_child(cfg, block, "assume_map");
+    lin_exp_t addr = mem_reg.offset + offset;
 
-        mid.assume(mem_reg.region == map_index); //is_map(mem_reg));
-        mid.assertion(addr >= 0, di);
-        mid.assertion(addr <= def.value_size - width, di);
-        if (is_load) {
-            mid.havoc(data_reg.value);
-            mid.assign(data_reg.region, T_NUM);
-            mid.havoc(data_reg.offset);
-        } else {
-            mid.assertion(data_reg.region == T_NUM, di);
-        }
-        res.push_back(&mid);
-        map_index++;
+    mid.assume(mem_reg.region > T_SHARED);
+    mid.assertion(addr >= 0, di);
+    mid.assertion(addr <= mem_reg.region - width, di);
+    if (is_load) {
+        mid.havoc(data_reg.value);
+        mid.assign(data_reg.region, T_NUM);
+        mid.havoc(data_reg.offset);
+    } else {
+        mid.assertion(data_reg.region == T_NUM, di);
     }
-    return res;
+    return {&mid};
 }
 
 template<typename W>
@@ -631,12 +625,9 @@ vector<basic_block_t*> instruction_builder_t::operator()(Undefined const& a) {
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(LoadMapFd const& ld) {
-    // if (ld.mapfd >= machine.info.map_defs.size()) {
-    //     block.assertion(neq(machine.num, machine.num), di);
-    // }
     auto reg = machine.reg(ld.dst);
-    block.assign(reg.region, ld.mapfd);
-    block.havoc(reg.value);
+    block.assign(reg.region, T_MAP);
+    block.assign(reg.value, ld.mapfd);
     block.havoc(reg.offset);
     return { &block };
 }
@@ -840,7 +831,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Un const& b) {
 
 vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
     vector<basic_block_t*> blocks{&block};
-    var_t map_type{machine.vfac["map_type"], crab::INT_TYPE, 8};
+    var_t map_value_size{machine.vfac["map_value_size"], crab::INT_TYPE, 64};
     auto assert_pointer_or_null = [&](dom_t arg, lin_cst_t cst) {
         vector<basic_block_t*> next;
         for (auto b : blocks) {
@@ -869,9 +860,8 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
         case ArgSingle::Kind::MAP_FD:
             //assert_pointer_or_null(is_map(arg));
             for (basic_block_t* b : blocks) {
-                b->assign(map_type, arg.region);
-                b->assertion(map_type < machine.info.map_defs.size(), di);
-                b->assertion(map_type >= 0, di);
+                b->assertion(arg.region == T_MAP, di);
+                b->lshr(map_value_size, arg.value, 12);
             }
             break;
         case ArgSingle::Kind::PTR_TO_MAP_KEY:
@@ -1002,7 +992,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
         if (call.returns_map) {
             //if (machine.info.map_defs.at(map_type).type == MapType::ARRAY_OF_MAPS
             // || machine.info.map_defs.at(map_type).type == MapType::HASH_OF_MAPS) { }
-            b->assign(r0.region, map_type);
+            b->assign(r0.region, map_value_size);
             b->havoc(r0.value);
             b->assume(0 <= r0.value);
             b->assign(r0.offset, 0);
