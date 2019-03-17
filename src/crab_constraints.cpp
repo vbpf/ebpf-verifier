@@ -109,9 +109,25 @@ struct array_dom_t {
             block.array_store(regions, offset + i, v, 1);
     }
 
+    void havoc_num_region(basic_block_t& block, lin_exp_t offset, var_t width) {
+        var_t lb{vfac["lb"], crab::INT_TYPE, 64};
+        var_t ub{vfac["ub"], crab::INT_TYPE, 64};
+        block.assign(lb, offset);
+        block.assign(ub, offset + width);
+
+        block.array_store_range(regions, lb, ub, T_NUM, 1);
+
+        var_t scratch{vfac["scratch"], crab::INT_TYPE, 64};
+        block.havoc(scratch);
+        block.array_store(values, lb, scratch, width);
+        block.havoc(scratch);
+        block.array_store(offsets, lb, scratch, width);
+    }
+
     template <typename W> // W = var_t or int
     vector<basic_block_t*> store(basic_block_t& block, lin_exp_t offset, const dom_t data_reg, W width, debug_info di, cfg_t& cfg) {
         mark_region(block, offset, data_reg.region, width);
+        // FIX: store map
 
         basic_block_t& pointer_only = add_child(cfg, block, "pointer_only");
         pointer_only.assume(data_reg.region > T_NUM);
@@ -180,7 +196,7 @@ private:
     vector<basic_block_t*> exec_stack_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width);
 
     template<typename W>
-    vector<basic_block_t*> exec_map_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width);
+    vector<basic_block_t*> exec_shared_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width);
 
     template<typename W>
     vector<basic_block_t*> exec_data_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width);
@@ -454,9 +470,9 @@ vector<basic_block_t*> instruction_builder_t::exec_stack_access(basic_block_t& b
 }
 
 template<typename W>
-vector<basic_block_t*> instruction_builder_t::exec_map_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
+vector<basic_block_t*> instruction_builder_t::exec_shared_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
 {
-    basic_block_t& mid = add_child(cfg, block, "assume_map");
+    basic_block_t& mid = add_child(cfg, block, "assume_shared");
     lin_exp_t addr = mem_reg.offset + offset;
 
     mid.assume(mem_reg.region > T_SHARED);
@@ -605,7 +621,7 @@ vector<basic_block_t*> instruction_builder_t::exec_mem_access_indirect(basic_blo
         // (This seems somewhat arbitrary)
         block.assertion(mem_reg.region != T_CTX, di);
     }
-    move_into(outs, exec_map_access(block, is_load, mem_reg, data_reg, offset, width));
+    move_into(outs, exec_shared_access(block, is_load, mem_reg, data_reg, offset, width));
     if (machine.ctx_desc.data >= 0) {
         move_into(outs, exec_data_access(block, is_load, mem_reg, data_reg, offset, width));
     }
@@ -833,20 +849,6 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
     vector<basic_block_t*> blocks{&block};
     var_t map_value_size{machine.vfac["map_value_size"], crab::INT_TYPE, 64};
     var_t map_key_size{machine.vfac["map_key_size"], crab::INT_TYPE, 64};
-    auto assert_pointer_or_null = [&](dom_t arg, lin_cst_t cst) {
-        vector<basic_block_t*> next;
-        for (auto b : blocks) {
-            basic_block_t& pointer = add_child(cfg, *b, "pointer");
-            pointer.assume(cst);
-            next.push_back(&pointer);
-
-            basic_block_t& null = add_child(cfg, *b, "null");
-            null.assume(arg.region == T_NUM);
-            null.assertion(arg.value == 0, di);
-            next.push_back(&null);
-        }
-        blocks = std::move(next);
-    };
     for (ArgSingle param : call.singles) {
         dom_t arg = machine.regs[param.reg.v];
         switch (param.kind) {
@@ -903,48 +905,51 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
                 b->assertion(sizereg.value > 0, di);
             }
         }
+        auto assert_mem = [&](basic_block_t& ptr, vector<basic_block_t*>& next, bool may_write, bool may_read) {
+            ptr.assertion(is_pointer(arg), di);
+            ptr.assertion(arg.value > 0, di);
+            
+            var_t width = sizereg.value;
+            {
+                basic_block_t& mid = add_child(cfg, ptr, "assume_stack");
+                mid.assume(arg.region == T_STACK);
+                mid.assertion(arg.offset + width <= 0, di);
+                mid.assertion(arg.offset <= STACK_SIZE, di);
+                if (may_write) {
+                    machine.stack_arr.havoc_num_region(mid, - (width + arg.offset), width);
+                }
+                if (may_read) {
+                    // TODO: check initialization
+                }
+                next.push_back(&mid);
+            }
+            {
+                basic_block_t& mid = add_child(cfg, ptr, "assume_shared");
+                mid.assume(arg.region > T_SHARED);
+                mid.assertion(arg.offset >= 0, di);
+                mid.assertion(arg.offset <= arg.region - width, di);
+                next.push_back(&mid);
+            }
+            if (machine.ctx_desc.data >= 0) {
+                basic_block_t& mid = add_child(cfg, ptr, "assume_data");
+                mid.assume(arg.region == T_DATA);
+                mid.assertion(machine.meta_size <= arg.offset, di);
+                mid.assertion(arg.offset <= machine.data_size - width, di);
+                next.push_back(&mid);
+            }
+        };
         switch (param.kind) {
             case ArgPair::Kind::PTR_TO_MEM_OR_NULL: {
-                    assert_pointer_or_null(arg, is_pointer(arg));
                     vector<basic_block_t*> next;
                     for (basic_block_t* b : blocks) {
-                        {
-                            basic_block_t& null = add_child(cfg, *b, "null");
-                            null.assume(arg.region == T_NUM);
-                            null.assertion(arg.value == 0, di);
-                            next.push_back(&null);
-                        }
-                        {
-                            basic_block_t& ptr = add_child(cfg, *b, "ptr");
-                            ptr.assume(is_pointer(arg));
-                            ptr.assertion(arg.value > 0, di);
-                            var_t width = machine.regs[param.size.v].value;
-                            ptr.havoc(machine.top);
-                            {
-                                basic_block_t& mid = add_child(cfg, ptr, "assume_stack");
-                                mid.assume(arg.region == T_STACK);
-                                mid.assertion(arg.offset + width <= 0, di);
-                                mid.assertion(arg.offset <= STACK_SIZE, di);
-                                next.push_back(&mid);
-                            }
-                            {
-                                basic_block_t& mid = add_child(cfg, ptr, "assume_map");
-                                mid.assume(arg.region > T_SHARED);
-                                mid.assertion(arg.offset >= 0, di);
-                                mid.assertion(arg.offset <= arg.region - width, di);
-                                next.push_back(&mid);
-                            }
-                            if (machine.ctx_desc.data >= 0) {
-                                basic_block_t& mid = add_child(cfg, ptr, "assume_data");
-                                mid.assume(arg.region == T_DATA);
-                                mid.assertion(machine.meta_size <= arg.offset, di);
-                                mid.assertion(arg.offset <= machine.data_size - width, di);
-                                next.push_back(&mid);
-                            }
-                        }
-                    }
-                    for (auto b: next) {
-                        b->havoc(machine.top);
+                        basic_block_t& null = add_child(cfg, *b, "null");
+                        null.assume(arg.region == T_NUM);
+                        null.assertion(arg.value == 0, di);
+                        next.push_back(&null);
+                            
+                        basic_block_t& ptr = add_child(cfg, *b, "ptr");
+                        ptr.assume(arg.region != T_NUM);
+                        assert_mem(ptr, next, false, true);
                     }
                     blocks = std::move(next);
                 }
@@ -952,35 +957,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
             case ArgPair::Kind::PTR_TO_MEM:  {
                     vector<basic_block_t*> next;
                     for (basic_block_t* b : blocks) {
-                        b->assertion(arg.value > 0, di);
-                        b->assertion(is_pointer(arg), di);
-                        var_t width = machine.regs[param.size.v].value;
-                        b->havoc(machine.top);
-                        basic_block_t& ptr = *b;
-                        {
-                            basic_block_t& mid = add_child(cfg, ptr, "assume_stack");
-                            mid.assume(arg.region == T_STACK);
-                            mid.assertion(arg.offset + width <= 0, di);
-                            mid.assertion(arg.offset <= STACK_SIZE, di);
-                            next.push_back(&mid);
-                        }
-                        {
-                            basic_block_t& mid = add_child(cfg, ptr, "assume_map");
-                            mid.assume(arg.region > T_SHARED);
-                            mid.assertion(arg.offset >= 0, di);
-                            mid.assertion(arg.offset <= arg.region - width, di);
-                            next.push_back(&mid);
-                        }
-                        if (machine.ctx_desc.data >= 0) {
-                            basic_block_t& mid = add_child(cfg, ptr, "assume_data");
-                            mid.assume(arg.region == T_DATA);
-                            mid.assertion(machine.meta_size <= arg.offset, di);
-                            mid.assertion(arg.offset <= machine.data_size - width, di);
-                            next.push_back(&mid);
-                        }    
-                    }
-                    for (auto b: next) {
-                        b->havoc(machine.top);
+                        assert_mem(*b, next, false, true);
                     }
                     blocks = std::move(next);
                 }
@@ -988,14 +965,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
             case ArgPair::Kind::PTR_TO_UNINIT_MEM: {
                     vector<basic_block_t*> next;
                     for (basic_block_t* b : blocks) {
-                        b->assertion(is_pointer(arg), di);
-                        b->assertion(arg.offset <= 0, di);
-                        var_t width = sizereg.value;
-                        b->havoc(machine.top);
-                        move_into(next, exec_mem_access_indirect(*b, false, true, arg, { machine.top, machine.top, machine.num }, 0, width));
-                    }
-                    for (auto b: next) {
-                        b->havoc(machine.top);
+                        assert_mem(*b, next, true, false);
                     }
                     blocks = std::move(next);
                 }
