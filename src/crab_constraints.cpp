@@ -250,14 +250,14 @@ void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg,
                 *exit >> cfg.insert(label);
         }
     }
-    if (false && global_options.simplify) {
+    if (global_options.simplify) {
         cfg.simplify();
     }
 }
 
 
 static lin_cst_t is_pointer(dom_t v) { return v.region >= T_CTX; }
-static lin_cst_t is_init(dom_t v)    { return v.region >= T_NUM; }
+static lin_cst_t is_init(dom_t v)    { return v.region >= T_MAP; }
 static lin_cst_t is_map(dom_t v)     { return v.region >= T_SHARED; }
 
 
