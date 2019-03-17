@@ -102,7 +102,9 @@ int main(int argc, char **argv)
 
     Cfg cfg = Cfg::make(prog);
     cfg = cfg.to_nondet(true);
-    //cfg.simplify();
+    if (global_options.simplify) {
+        cfg.simplify();
+    }
     if (!dotfile.empty()) print_dot(cfg, dotfile);
 
     if (domain == "stats") {
