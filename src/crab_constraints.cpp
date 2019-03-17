@@ -210,7 +210,7 @@ private:
     vector<basic_block_t*> operator()(Assume const& b);
     vector<basic_block_t*> operator()(Assert const& b) { return {}; };
 
-    bool is_priviledged() {
+    bool is_privileged() {
         return machine.info.program_type == BpfProgType::KPROBE;
     }
 };
@@ -852,7 +852,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
         switch (param.kind) {
         case ArgSingle::Kind::ANYTHING:
             // avoid pointer leakage:
-            if (!is_priviledged()) {
+            if (!is_privileged()) {
                 for (basic_block_t* b : blocks) {
                     b->assertion(arg.region == T_NUM, di);
                 }
@@ -1092,7 +1092,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Assume const& b) {
         vector<lin_cst_t> csts = jmp_to_cst_imm(cond.op, dst.value, imm);
         for (lin_cst_t c : csts)
             block.assume(c);
-        if (!is_priviledged() && imm != 0) {
+        if (!is_privileged() && imm != 0) {
             // only null can be compared to pointers without leaking secrets
             block.assertion(dst.region == T_NUM, di);
         }
