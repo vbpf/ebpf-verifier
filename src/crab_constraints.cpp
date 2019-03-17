@@ -921,8 +921,13 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
                                 mid.assertion(arg.offset <= STACK_SIZE, di);
                                 next.push_back(&mid);
                             }
-                            // TODO: this check is important, but _extremely_ costly (15x!) for absolutely no reason
-                            //move_into(next, exec_map_access(ptr, true, arg, { machine.top, machine.top, machine.top }, 0, width));
+                            {
+                                basic_block_t& mid = add_child(cfg, ptr, "assume_map");
+                                mid.assume(arg.region > T_SHARED);
+                                mid.assertion(arg.offset >= 0, di);
+                                mid.assertion(arg.offset <= arg.region - width, di);
+                                next.push_back(&mid);
+                            }
                             if (machine.ctx_desc.data >= 0) {
                                 basic_block_t& mid = add_child(cfg, ptr, "assume_data");
                                 mid.assume(arg.region == T_DATA);
@@ -953,8 +958,13 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
                             mid.assertion(arg.offset <= STACK_SIZE, di);
                             next.push_back(&mid);
                         }
-                        // TODO: this check is important, but _extremely_ costly for absolutely no reason
-                        //move_into(next, exec_map_access(ptr, true, arg, { machine.top, machine.top, machine.top }, 0, width));
+                        {
+                            basic_block_t& mid = add_child(cfg, ptr, "assume_map");
+                            mid.assume(arg.region > T_SHARED);
+                            mid.assertion(arg.offset >= 0, di);
+                            mid.assertion(arg.offset <= arg.region - width, di);
+                            next.push_back(&mid);
+                        }
                         if (machine.ctx_desc.data >= 0) {
                             basic_block_t& mid = add_child(cfg, ptr, "assume_data");
                             mid.assume(arg.region == T_DATA);
