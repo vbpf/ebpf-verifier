@@ -100,11 +100,17 @@ std::vector<int> sort_maps_by_size(std::vector<map_def>& map_defs) {
     }
     return res;
 }
-
+/*
 static int allocate_fds(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries) {
     static int i = -1;
     i++;
     return i;
+}
+*/
+static int allocate_fds(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries) {
+    static int i = -1;
+    i++;
+    return (value_size << 14) + (key_size << 6) + i;
 }
 
 vector<raw_program> create_blowup(size_t size, MapFd* fd_alloc)
@@ -196,7 +202,6 @@ vector<raw_program> read_elf(std::string path, std::string desired_section, MapF
         int inner = mapdefs[i].inner_map_idx;
         info.map_defs[i].inner_map_fd = info.map_defs[inner].original_fd;
     }
-    //std::vector<int> updated_fds = sort_maps_by_size(info.map_defs);
 
     ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
     auto read_reloc_value = [&symbols](int symbol) -> int {
@@ -230,6 +235,13 @@ vector<raw_program> read_elf(std::string path, std::string desired_section, MapF
         raw_program prog{path, name, vector_of<ebpf_inst>(section), info};
         auto prelocs = reader.sections[string(".rel") + name];
         if (!prelocs) prelocs = reader.sections[string(".rela") + name];
+
+        // // std::vector<int> updated_fds = sort_maps_by_size(info.map_defs);
+        // for (auto n : updated_fds) {
+        //     std::cout << "old=" << info.map_defs[n].original_fd << ", "
+        //               << "new=" << n << ", "
+        //               << "size=" << info.map_defs[n].value_size << "\n";
+        // }
         if (prelocs) {
             ELFIO::const_relocation_section_accessor reloc{reader, prelocs};
             ELFIO::Elf64_Addr offset;
@@ -240,8 +252,12 @@ vector<raw_program> read_elf(std::string path, std::string desired_section, MapF
                 if (reloc.get_entry(i, offset, symbol, type, addend)) {
                     auto& inst = prog.prog[offset / sizeof(ebpf_inst)];
                     inst.src = 1; // magic number for LoadFd
-                    inst.imm = info.map_defs[read_reloc_value(symbol)].original_fd;
-                    //inst.imm = updated_fds.at(read_reloc_value(symbol));
+                    // if (fd_alloc == allocate_fds) {
+                    //     std::cout << read_reloc_value(symbol) << "=" << info.map_defs[updated_fds.at(read_reloc_value(symbol))].value_size << "\n";
+                    //     inst.imm = updated_fds.at(read_reloc_value(symbol));
+                    // } else {
+                        inst.imm = info.map_defs[read_reloc_value(symbol)].original_fd;
+                    // }
                 }
             }
         }

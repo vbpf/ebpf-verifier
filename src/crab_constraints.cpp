@@ -53,12 +53,13 @@ using var_t     = ikos::variable<ikos::z_number, varname_t>;
 using lin_cst_t = ikos::linear_constraint<ikos::z_number, varname_t>;
 
 enum region_t {
-    T_UNINIT = -5,
+    T_UNINIT = -6,
+    T_MAP = -5,
     T_NUM = -4,
     T_CTX = -3,
     T_STACK = -2,
     T_DATA = -1,
-    T_MAP = 0,
+    T_SHARED = 0,
 };
 
 
@@ -69,7 +70,7 @@ struct dom_t {
     dom_t(variable_factory_t& vfac, int i) :
         value{vfac[std::string("r") + std::to_string(i)], crab::INT_TYPE, 64}, 
         offset{vfac[std::string("off") + std::to_string(i)], crab::INT_TYPE, 64},
-        region{vfac[std::string("t") + std::to_string(i)], crab::INT_TYPE, 8}
+        region{vfac[std::string("t") + std::to_string(i)], crab::INT_TYPE, 64}
     { }
     dom_t(var_t value, var_t offset, var_t region) : value(value), offset(offset), region(region) { };
 };
@@ -249,7 +250,7 @@ void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg,
                 *exit >> cfg.insert(label);
         }
     }
-    if (global_options.simplify) {
+    if (false && global_options.simplify) {
         cfg.simplify();
     }
 }
@@ -257,7 +258,7 @@ void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg,
 
 static lin_cst_t is_pointer(dom_t v) { return v.region >= T_CTX; }
 static lin_cst_t is_init(dom_t v)    { return v.region >= T_NUM; }
-static lin_cst_t is_map(dom_t v)     { return v.region >= T_MAP; }
+static lin_cst_t is_map(dom_t v)     { return v.region >= T_SHARED; }
 
 
 static void assert_init(basic_block_t& block, const dom_t data_reg, debug_info di)
@@ -630,9 +631,9 @@ vector<basic_block_t*> instruction_builder_t::operator()(Undefined const& a) {
 }
 
 vector<basic_block_t*> instruction_builder_t::operator()(LoadMapFd const& ld) {
-    if (ld.mapfd >= machine.info.map_defs.size()) {
-        block.assertion(neq(machine.num, machine.num), di);
-    }
+    // if (ld.mapfd >= machine.info.map_defs.size()) {
+    //     block.assertion(neq(machine.num, machine.num), di);
+    // }
     auto reg = machine.reg(ld.dst);
     block.assign(reg.region, ld.mapfd);
     block.havoc(reg.value);
@@ -745,7 +746,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
         case Bin::Op::SUB: {
                 basic_block_t& same = add_child(cfg, block, "ptr_src");
                 same.assume(is_pointer(src));
-                same.assertion(dst.region < T_MAP, di); // since map values of the same type can point to different maps
+                same.assertion(dst.region < T_SHARED, di); // since map values of the same type can point to different maps
                 same.assertion(eq(dst.region, src.region), di);
                 same.sub(dst.value, dst.offset, src.offset);
                 same.assign(dst.region, T_NUM);
@@ -1030,36 +1031,56 @@ vector<basic_block_t*> instruction_builder_t::operator()(Assume const& b) {
 
     dom_t& dst = machine.reg(cond.left);
     if (std::holds_alternative<Reg>(cond.right)) {
+        vector<basic_block_t*> res;
+
         dom_t& src = machine.reg(cond.right);
-        basic_block_t& same = add_child(cfg, block, "same_type");
         if (is_unsigned_cmp(cond.op)) {
             // same.assertion(machine.maxint64 > dst.value, di);
             // same.assertion(machine.maxint64 > src.value, di);
             // same.assertion(dst.value >= 0, di);
             // same.assertion(src.value >= 0, di);
-        } else {
-            for (auto c : jmp_to_cst_reg(cond.op, dst.value, src.value))
-                same.assume(c);
+            //return { &block };
+        }
+        {
+            basic_block_t& same = add_child(cfg, block, "same_type");
             same.assume(eq(dst.region, src.region));
+            {
+                basic_block_t& numbers = add_child(cfg, same, "numbers");
+                numbers.assume(dst.region == T_NUM);
+                for (auto c : jmp_to_cst_reg(cond.op, dst.value, src.value))
+                    numbers.assume(c);
+                res.push_back(&numbers);
+            }
+            {
+                basic_block_t& pointers = add_child(cfg, same, "pointers");
+                pointers.assume(is_pointer(dst));
+                pointers.assertion(dst.region < T_SHARED, di);
+                lin_cst_t offset_cst = jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset);
+                if (!offset_cst.is_tautology()) {
+                    pointers.assume(offset_cst);
+                }
+                res.push_back(&pointers);
+            }
         }
-        basic_block_t& null_src = add_child(cfg, block, "null_src");
-        null_src.assume(src.region == T_NUM);
-        null_src.assume(is_pointer(dst));
-        null_src.assertion(src.value == 0, di);
-
-        basic_block_t& null_dst = add_child(cfg, block, "null_dst");
-        null_dst.assume(dst.region == T_NUM);
-        null_dst.assume(is_pointer(src));
-        null_dst.assertion(dst.value == 0, di);
-
-        auto prevs = {same.label(), null_src.label(), null_dst.label()};
-        basic_block_t& offset_check = add_common_child(cfg, block, prevs, "offsets_check");
-
-        lin_cst_t offset_cst = jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset);
-        if (!offset_cst.is_tautology()) {
-            offset_check.assume(offset_cst);
+        {
+            basic_block_t& different = add_child(cfg, block, "different_type");
+            different.assume(neq(dst.region, src.region));
+            {
+                basic_block_t& null_src = add_child(cfg, different, "null_src");
+                null_src.assume(is_pointer(dst));
+                null_src.assertion(src.region == T_NUM);
+                null_src.assertion(src.value == 0, di);
+                res.push_back(&null_src);
+            }
+            {
+                basic_block_t& null_dst = add_child(cfg, different, "null_dst");
+                null_dst.assume(is_pointer(src));
+                null_dst.assertion(dst.region == T_NUM);
+                null_dst.assertion(dst.value == 0, di);
+                res.push_back(&null_dst);
+            }
         }
-        return { &offset_check };
+        return res;
     } else {
         int imm = static_cast<int>(std::get<Imm>(cond.right).v);
         vector<lin_cst_t> csts = jmp_to_cst_imm(cond.op, dst.value, imm);
