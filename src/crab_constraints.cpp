@@ -832,6 +832,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Un const& b) {
 vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
     vector<basic_block_t*> blocks{&block};
     var_t map_value_size{machine.vfac["map_value_size"], crab::INT_TYPE, 64};
+    var_t map_key_size{machine.vfac["map_key_size"], crab::INT_TYPE, 64};
     auto assert_pointer_or_null = [&](dom_t arg, lin_cst_t cst) {
         vector<basic_block_t*> next;
         for (auto b : blocks) {
@@ -858,29 +859,34 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
             }
             break;
         case ArgSingle::Kind::MAP_FD:
-            //assert_pointer_or_null(is_map(arg));
             for (basic_block_t* b : blocks) {
                 b->assertion(arg.region == T_MAP, di);
-                b->lshr(map_value_size, arg.value, 12);
+                b->lshr(map_value_size, arg.value, 14);
+                b->rem(map_key_size, arg.value, 1 << 14);
+                b->lshr(map_key_size, map_key_size, 6);
             }
             break;
         case ArgSingle::Kind::PTR_TO_MAP_KEY:
             for (basic_block_t* b : blocks) {
                 b->assertion(arg.value > 0, di);
-                b->assertion(is_pointer(arg), di);
+                b->assertion(arg.region == T_STACK, di);
+                b->assertion(arg.offset + map_key_size <= 0, di);
+                b->assertion(arg.offset <= STACK_SIZE, di);
             }
             break;
         case ArgSingle::Kind::PTR_TO_MAP_VALUE:
             for (basic_block_t* b : blocks) {
                 b->assertion(arg.value > 0, di);
                 b->assertion(arg.region == T_STACK, di);
-                b->assertion(arg.offset < 0, di);
+                b->assertion(arg.offset + map_value_size <= 0, di);
+                b->assertion(arg.offset <= STACK_SIZE, di);
             }
             break;
         case ArgSingle::Kind::PTR_TO_CTX: 
             for (basic_block_t* b : blocks) {
                 b->assertion(arg.value > 0, di);
                 b->assertion(arg.region == T_CTX, di);
+                // FIX: should be == 0
                 b->assertion(arg.offset >= 0, di);
             }
             break;
