@@ -108,9 +108,9 @@ static int allocate_fds(uint32_t map_type, uint32_t key_size, uint32_t value_siz
 }
 */
 static int allocate_fds(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries) {
-    static int i = -1;
-    i++;
-    return (value_size << 14) + (key_size << 6) + i;
+    // static int i = -1;
+    // i++;
+    return (value_size << 14) + (key_size << 6);// + i;
 }
 
 vector<raw_program> create_blowup(size_t size, MapFd* fd_alloc)

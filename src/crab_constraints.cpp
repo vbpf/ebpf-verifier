@@ -54,14 +54,13 @@ using lin_cst_t = ikos::linear_constraint<ikos::z_number, varname_t>;
 
 enum region_t {
     T_UNINIT = -6,
-    T_MAP = -5,
-    T_NUM = -4,
+    T_NUM = -5,
+    T_MAP = -4,
     T_CTX = -3,
     T_STACK = -2,
     T_DATA = -1,
     T_SHARED = 0,
 };
-
 
 struct dom_t {
     var_t value;
@@ -74,6 +73,12 @@ struct dom_t {
     { }
     dom_t(var_t value, var_t offset, var_t region) : value(value), offset(offset), region(region) { };
 };
+
+static lin_cst_t is_pointer(dom_t v)   { return v.region >= T_CTX; }
+static lin_cst_t is_init(dom_t v)      { return v.region > T_UNINIT; }
+static lin_cst_t is_singleton(dom_t v) { return v.region < T_SHARED; }
+static lin_cst_t is_shared(dom_t v)    { return v.region > T_SHARED; }
+static lin_cst_t is_not_num(dom_t v)   { return v.region > T_NUM; }
 
 struct array_dom_t {
     variable_factory_t& vfac;
@@ -127,10 +132,9 @@ struct array_dom_t {
     template <typename W> // W = var_t or int
     vector<basic_block_t*> store(basic_block_t& block, lin_exp_t offset, const dom_t data_reg, W width, debug_info di, cfg_t& cfg) {
         mark_region(block, offset, data_reg.region, width);
-        // FIX: store map
 
-        basic_block_t& pointer_only = add_child(cfg, block, "pointer_only");
-        pointer_only.assume(data_reg.region > T_NUM);
+        basic_block_t& pointer_only = add_child(cfg, block, "non_num");
+        pointer_only.assume(is_not_num(data_reg));
         pointer_only.array_store(offsets, offset, data_reg.offset, width);
         pointer_only.array_store(values, offset, data_reg.value, width);
 
@@ -270,12 +274,6 @@ void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg,
         cfg.simplify();
     }
 }
-
-
-static lin_cst_t is_pointer(dom_t v) { return v.region >= T_CTX; }
-static lin_cst_t is_init(dom_t v)    { return v.region >= T_MAP; }
-static lin_cst_t is_map(dom_t v)     { return v.region >= T_SHARED; }
-
 
 static void assert_init(basic_block_t& block, const dom_t data_reg, debug_info di)
 {
@@ -475,7 +473,7 @@ vector<basic_block_t*> instruction_builder_t::exec_shared_access(basic_block_t& 
     basic_block_t& mid = add_child(cfg, block, "assume_shared");
     lin_exp_t addr = mem_reg.offset + offset;
 
-    mid.assume(mem_reg.region > T_SHARED);
+    mid.assume(is_shared(mem_reg));
     mid.assertion(addr >= 0, di);
     mid.assertion(addr <= mem_reg.region - width, di);
     if (is_load) {
@@ -610,7 +608,7 @@ template<typename W>
 vector<basic_block_t*> instruction_builder_t::exec_mem_access_indirect(basic_block_t& block, bool is_load, bool is_ST, dom_t mem_reg, dom_t data_reg, int offset, W width)
 {
     block.assertion(mem_reg.value != 0, di);
-    block.assertion(mem_reg.region != T_NUM, di);
+    block.assertion(is_not_num(mem_reg), di);
     vector<basic_block_t*> outs;
     
     move_into(outs, exec_stack_access(block, is_load, mem_reg, data_reg, offset, width));
@@ -753,7 +751,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
         case Bin::Op::SUB: {
                 basic_block_t& same = add_child(cfg, block, "ptr_src");
                 same.assume(is_pointer(src));
-                same.assertion(dst.region < T_SHARED, di); // since map values of the same type can point to different maps
+                same.assertion(is_singleton(src), di); // since map values of the same type can point to different maps
                 same.assertion(eq(dst.region, src.region), di);
                 same.sub(dst.value, dst.offset, src.offset);
                 same.assign(dst.region, T_NUM);
@@ -925,7 +923,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
             }
             {
                 basic_block_t& mid = add_child(cfg, ptr, "assume_shared");
-                mid.assume(arg.region > T_SHARED);
+                mid.assume(is_shared(arg));
                 mid.assertion(arg.offset >= 0, di);
                 mid.assertion(arg.offset <= arg.region - width, di);
                 next.push_back(&mid);
@@ -948,7 +946,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
                         next.push_back(&null);
                             
                         basic_block_t& ptr = add_child(cfg, *b, "ptr");
-                        ptr.assume(arg.region != T_NUM);
+                        ptr.assume(is_not_num(arg));
                         assert_mem(ptr, next, false, true);
                     }
                     blocks = std::move(next);
@@ -1010,27 +1008,22 @@ vector<basic_block_t*> instruction_builder_t::operator()(Assume const& b) {
         vector<basic_block_t*> res;
 
         dom_t& src = machine.reg(cond.right);
-        if (is_unsigned_cmp(cond.op)) {
-            // same.assertion(machine.maxint64 > dst.value, di);
-            // same.assertion(machine.maxint64 > src.value, di);
-            // same.assertion(dst.value >= 0, di);
-            // same.assertion(src.value >= 0, di);
-            //return { &block };
-        }
         {
             basic_block_t& same = add_child(cfg, block, "same_type");
             same.assume(eq(dst.region, src.region));
             {
                 basic_block_t& numbers = add_child(cfg, same, "numbers");
                 numbers.assume(dst.region == T_NUM);
-                for (auto c : jmp_to_cst_reg(cond.op, dst.value, src.value))
-                    numbers.assume(c);
+                if (!is_unsigned_cmp(cond.op)) {
+                    for (auto c : jmp_to_cst_reg(cond.op, dst.value, src.value))
+                        numbers.assume(c);
+                }
                 res.push_back(&numbers);
             }
             {
                 basic_block_t& pointers = add_child(cfg, same, "pointers");
                 pointers.assume(is_pointer(dst));
-                pointers.assertion(dst.region < T_SHARED, di);
+                pointers.assertion(is_singleton(dst), di);
                 lin_cst_t offset_cst = jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset);
                 if (!offset_cst.is_tautology()) {
                     pointers.assume(offset_cst);
