@@ -177,6 +177,45 @@ vector<raw_program> create_blowup(size_t size, MapFd* fd_alloc)
     return {res};
 }
 
+static BpfProgType section_to_progtype(std::string section, std::string path) {
+    // linux only deduces from section, but cilium and cilium_test have this information
+    // in the filename:
+    // * cilium/bpf_xdp.o:from-netdev is XDP
+    // * bpf_cilium_test/bpf_lb-DLB_L3.o:from-netdev is SK_SKB
+    if (path.find("cilium") != std::string::npos) {
+        if (path.find("xdp") != std::string::npos) return BpfProgType::XDP;
+        if (path.find("lxc") != std::string::npos) return BpfProgType::SCHED_CLS;
+    }
+	static const std::unordered_map<std::string, BpfProgType> prefixes{
+        { "socket", BpfProgType::SOCKET_FILTER },
+        { "kprobe/", BpfProgType::KPROBE },
+        { "kretprobe/", BpfProgType::KPROBE },
+        { "tracepoint/", BpfProgType::TRACEPOINT },
+        { "raw_tracepoint/", BpfProgType::RAW_TRACEPOINT },
+        { "xdp", BpfProgType::XDP },
+        { "perf_section", BpfProgType::PERF_EVENT },
+        { "perf_event", BpfProgType::PERF_EVENT },
+        { "classifier", BpfProgType::SCHED_CLS },
+        { "action", BpfProgType::SCHED_ACT },
+        { "cgroup/skb", BpfProgType::CGROUP_SKB },
+        { "cgroup/sock", BpfProgType::CGROUP_SOCK },
+        { "cgroup/dev", BpfProgType::CGROUP_DEVICE },
+        { "lwt_in", BpfProgType::LWT_IN },
+        { "lwt_out", BpfProgType::LWT_OUT },
+        { "lwt_xmit", BpfProgType::LWT_XMIT },
+        { "lwt_seg6local", BpfProgType::LWT_SEG6LOCAL },
+        { "lirc_mode2", BpfProgType::LIRC_MODE2 },
+        { "sockops", BpfProgType::SOCK_OPS },
+        { "sk_skb", BpfProgType::SK_SKB },
+        { "sk_msg", BpfProgType::SK_MSG },
+    };
+	for (const auto [prefix, t] : prefixes) {
+		if (section.find(prefix) == 0)
+			return t;
+	}
+	return BpfProgType::SOCKET_FILTER;
+}
+
 vector<raw_program> read_elf(std::string path, std::string desired_section, MapFd* fd_alloc)
 {
     if (fd_alloc == nullptr) {

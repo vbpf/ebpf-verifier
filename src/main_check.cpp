@@ -120,7 +120,7 @@ int main(int argc, char **argv)
         const auto [res, seconds] = (domain == "linux")
             ? bpf_verify_program(raw_prog.info.program_type, raw_prog.prog)
             : abs_validate(cfg, domain, raw_prog.info);
-        std::cout << res << "," << seconds << "," << 0 << "\n";
+        std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
         return !res;
     }
     return 0;
