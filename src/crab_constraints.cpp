@@ -293,6 +293,7 @@ void machine_t::setup_entry(basic_block_t& entry)
     }
 
     entry.assume(0 <= machine.data_size);
+    entry.assume(machine.data_size <= 1 << 30);
     if (machine.ctx_desc.meta >= 0) {
         entry.assume(machine.meta_size <= 0);
     } else {
