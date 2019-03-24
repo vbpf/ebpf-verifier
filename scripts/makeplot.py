@@ -7,7 +7,7 @@ import sys
 if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help'):
     print('Usage: {} FILE.csv [key] [showTrendline]')
     print('For example:')
-    print('    {} results.csv iterations False')
+    print('    python3 {} results.csv iterations False'.format(sys.argv[0]))
     sys.exit(64)
 
 data = np.genfromtxt(sys.argv[1], delimiter=',', names=True)

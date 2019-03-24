@@ -101,6 +101,9 @@ int main(int argc, char **argv)
     if (!asmfile.empty()) print(prog, asmfile);
 
     Cfg cfg = Cfg::make(prog);
+
+    auto stats = cfg.collect_stats();
+    
     cfg = cfg.to_nondet(true);
     if (global_options.simplify) {
         cfg.simplify();
@@ -109,7 +112,6 @@ int main(int argc, char **argv)
 
     if (domain == "stats") {
         std::cout << std::hex << hash(raw_prog) << std::dec;
-        auto stats = cfg.collect_stats();
         for (string h : Cfg::stats_headers()) {
             std::cout  << "," << stats.at(h);
         }
