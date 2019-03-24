@@ -61,6 +61,7 @@ int main(int argc, char **argv)
     if (filename == "@headers") {
         if (domain == "stats") {
             std::cout << "hash";
+            std::cout << ",instructions";
             for (string h : Cfg::stats_headers()) {
                 std::cout << "," << h;
             }
@@ -100,18 +101,18 @@ int main(int argc, char **argv)
     auto& prog = std::get<InstructionSeq>(prog_or_error);
     if (!asmfile.empty()) print(prog, asmfile);
 
-    Cfg cfg = Cfg::make(prog);
+    int instruction_count = prog.size();
 
-    auto stats = cfg.collect_stats();
-    
+    Cfg cfg = Cfg::make(prog);
     cfg = cfg.to_nondet(true);
     if (global_options.simplify) {
         cfg.simplify();
     }
+    auto stats = cfg.collect_stats();
     if (!dotfile.empty()) print_dot(cfg, dotfile);
 
     if (domain == "stats") {
-        std::cout << std::hex << hash(raw_prog) << std::dec;
+        std::cout << std::hex << hash(raw_prog) << std::dec << "," << instruction_count;
         for (string h : Cfg::stats_headers()) {
             std::cout  << "," << stats.at(h);
         }
