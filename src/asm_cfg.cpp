@@ -256,6 +256,7 @@ static std::string instype(Instruction ins) {
 
 std::vector<std::string> Cfg::stats_headers() {
     return {
+        "instructions",
         "basic_blocks",
         "other",
         "joins",
