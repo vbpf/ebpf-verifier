@@ -41,6 +41,7 @@ def get_hist(key, uniq):
         if uniq and line[h] in seen: continue
         seen.add(line[h])
         counter[line[p]] += int(line[n])
+    print(counter)
     return counter
 
 plot_bar_from_counter(get_hist(key = key, uniq=uniq))
