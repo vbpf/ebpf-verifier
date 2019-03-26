@@ -21,6 +21,14 @@ struct CfgStats {
     int joins = 0;
 };
 
+/** An eBPF Control Flow Graph.
+ *
+ * (not to be confused with Crab's internal cfg_t)
+ *
+ * A graph of basic blocs with labels ordered similarly to the original program
+ * (up to unconditional branches).
+ *
+ */
 class Cfg {
     std::unordered_map<Label, BasicBlock> graph;
     std::vector<Label> ordered_labels;
@@ -36,9 +44,18 @@ public:
 
     std::vector<Label> const& keys() const { return ordered_labels; }
 
+    /** Create a graph from a sequence of instructions.
+     * 
+     * The graph is not simplified yet.
+     */
     static Cfg make(const InstructionSeq& labeled_insts);
                 
+    /** Create a CFG with jumps replaced by assumptions in the target location.
+     */
     Cfg to_nondet(bool expand_locks) const;
+
+    /** Replace chains in the graph with a single basic block.
+     */
     void simplify();
 
     CfgStats collect_stats() const {

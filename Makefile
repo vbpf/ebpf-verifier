@@ -102,5 +102,8 @@ linux_samples:
 	make -C $(LINUX) oldconfig < /dev/null
 	make -C $(LINUX) samples/bpf/
 
+html: ${SRCDIR}/*.*pp
+	doxygen
+
 print-% :
 	@echo $* = $($*)

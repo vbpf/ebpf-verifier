@@ -25,6 +25,8 @@ static size_t hash(const raw_program& raw_prog) {
 
 int main(int argc, char **argv)
 {
+    // Parse command line arguments:
+    
     crab::CrabEnableWarningMsg(false);
 
     CLI::App app{"A new eBPF verifier"};
