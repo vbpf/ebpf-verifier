@@ -19,4 +19,6 @@ inline int first_num(const Label& s)
     return boost::lexical_cast<int>(s.substr(0, s.find_first_of(':')));
 }
 
+/** Translate an eBPF Cfg to to Crab's cfg_t.
+ */
 void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg, program_info info);

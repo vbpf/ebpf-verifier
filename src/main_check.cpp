@@ -28,6 +28,8 @@ static size_t hash(const raw_program& raw_prog) {
 
 int main(int argc, char **argv)
 {
+    // Parse command line arguments:
+    
     crab::CrabEnableWarningMsg(false);
 
     CLI::App app{"A new eBPF verifier"};
@@ -58,6 +60,9 @@ int main(int argc, char **argv)
     app.add_option("--size", size, "size of blowup");
 
     CLI11_PARSE(app, argc, argv);
+
+    // Main program
+
     if (filename == "@headers") {
         if (domain == "stats") {
             std::cout << "hash";

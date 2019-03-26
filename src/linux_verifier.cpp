@@ -45,11 +45,12 @@ static int do_bpf(bpf_cmd cmd, union bpf_attr& attr) {
     return syscall(321, cmd, &attr, sizeof(attr));
 }
 
-
+/** Try to allocate a Linux map.
+ * 
+ *  This function requires admin privileges.
+ */
 int create_map(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries)
 {
-    static int i = -1;
-    i++;
     union bpf_attr attr;
     memset(&attr, '\0', sizeof(attr));
     attr.map_type = map_type;
@@ -72,6 +73,11 @@ int create_map(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32
     }
     return fd;
 }
+
+/** Run the built-in Linux verifier on a raw eBPF program.
+ * 
+ *  \return A pair (passed, elapsec_secs)
+ */
 
 std::tuple<bool, double> bpf_verify_program(BpfProgType type, const std::vector<ebpf_inst>& raw_prog)
 {
