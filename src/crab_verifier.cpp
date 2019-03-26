@@ -43,7 +43,7 @@ using namespace crab::domain_impl;
 
 static checks_db analyze(string domain_name, cfg_t& cfg, printer_t& pre_printer, printer_t& post_printer);
 
-vector<string> sorted_labels(cfg_t& cfg)
+static vector<string> sorted_labels(cfg_t& cfg)
 {
     vector<string> labels;
     for (const auto& block : cfg)
@@ -93,7 +93,7 @@ std::tuple<bool, double> abs_validate(Cfg const& simple_cfg, string domain_name,
 }
 
 template<typename analyzer_t>
-auto extract_pre(analyzer_t& analyzer)
+static auto extract_pre(analyzer_t& analyzer)
 {
     map<string, typename analyzer_t::abs_dom_t> res;
     for (const auto& block : analyzer.get_cfg())
@@ -102,7 +102,7 @@ auto extract_pre(analyzer_t& analyzer)
 }
 
 template<typename analyzer_t>
-auto extract_post(analyzer_t& analyzer)
+static auto extract_post(analyzer_t& analyzer)
 {
     map<string, typename analyzer_t::abs_dom_t> res;
     for (const auto& block : analyzer.get_cfg())

@@ -2,7 +2,7 @@
 #include "bpf_helpers.h"
 
 
-#define VALUE_SIZE 513
+#define VALUE_SIZE 512
 
 struct bpf_map_def SEC("maps") m1 = {
 	.type = BPF_MAP_TYPE_ARRAY,

@@ -52,6 +52,12 @@ using crab::cfg::debug_info;
 using var_t     = ikos::variable<ikos::z_number, varname_t>;
 using lin_cst_t = ikos::linear_constraint<ikos::z_number, varname_t>;
 
+/** Encoding of memory regions and types.
+ *
+ * The exact numbers are of importance, since convex domains (intervals, zone,
+ * polyhedra...) will only track intervals of these values. We should have a way
+ * of saying `is_pointer`, `is_shared` etc. See below.
+ */
 enum region_t {
     T_UNINIT = -6,
     T_NUM = -5,
@@ -80,6 +86,10 @@ static lin_cst_t is_singleton(dom_t v) { return v.region < T_SHARED; }
 static lin_cst_t is_shared(dom_t v)    { return v.region > T_SHARED; }
 static lin_cst_t is_not_num(dom_t v)   { return v.region > T_NUM; }
 
+/** An array of triple (region, value, offset).
+ * 
+ * Enables coordinated load/store/havoc operations.
+ */
 struct array_dom_t {
     variable_factory_t& vfac;
     var_t values;
@@ -223,18 +233,29 @@ private:
     vector<basic_block_t*> operator()(Un const& b);
     vector<basic_block_t*> operator()(Call const& b);
     vector<basic_block_t*> operator()(Exit const& b);
-    vector<basic_block_t*> operator()(Jmp const& b) { assert(false); }
-    vector<basic_block_t*> operator()(LockAdd const& b) { assert(false); }
     vector<basic_block_t*> operator()(Packet const& b);
     vector<basic_block_t*> operator()(Mem const& b);
     vector<basic_block_t*> operator()(Assume const& b);
+    
+    /** Never happens - Jmps are translated to Assume */
+    vector<basic_block_t*> operator()(Jmp const& b) { assert(false); }
+    /** Never happens - LockAdd is expanded to load-add-store */
+    vector<basic_block_t*> operator()(LockAdd const& b) { assert(false); }
+
+    /** Unimplemented */
     vector<basic_block_t*> operator()(Assert const& b) { return {}; };
 
+    /** Decide if the program is privileged, and allowed to leak pointers */
     bool is_privileged() {
         return machine.info.program_type == BpfProgType::KPROBE;
     }
 };
 
+/** Main loop generating the Crab cfg from eBPF Cfg.
+ *
+ * Each instruction is translated to a tree of Crab instructions, which are then
+ * joined together.
+ */
 void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg, program_info info)
 {
     machine_t machine(vfac, info);
@@ -288,6 +309,15 @@ machine_t::machine_t(variable_factory_t& vfac, program_info info)
     }
 }
 
+/** Generate initial state:
+ * 
+ * 1. r10 points to the stack
+ * 2. r1 points to the context
+ * 3. data_start points to the packet
+ * 4. data_end points to the and unknown but bounded location above data_start
+ * 5. meta_start points to just-before data_start
+ * 6. Other registers are scratched
+ */
 void machine_t::setup_entry(basic_block_t& entry)
 {
     auto& machine = *this;
@@ -320,6 +350,8 @@ static lin_cst_t eq(var_t& a, var_t& b)  { return {a - b, lin_cst_t::EQUALITY}; 
 
 static lin_cst_t neq(var_t& a, var_t& b) { return {a - b, lin_cst_t::DISEQUATION}; };
 
+/** Linear constraint for a pointer comparison.
+ */
 static lin_cst_t jmp_to_cst_offsets_reg(Condition::Op op, var_t& dst_offset, var_t& src_offset)
 {
     using Op = Condition::Op;
@@ -340,6 +372,8 @@ static lin_cst_t jmp_to_cst_offsets_reg(Condition::Op op, var_t& dst_offset, var
     }
 }
 
+/** Linear constraints for a comparison with a constant.
+ */
 static vector<lin_cst_t> jmp_to_cst_imm(Condition::Op op, var_t& dst_value, int imm)
 {
     using Op = Condition::Op;
@@ -360,6 +394,8 @@ static vector<lin_cst_t> jmp_to_cst_imm(Condition::Op op, var_t& dst_value, int 
     assert(false);
 }
 
+/** Linear constraint for a numerical comparison between registers.
+ */
 static vector<lin_cst_t> jmp_to_cst_reg(Condition::Op op, var_t& dst_value, var_t& src_value)
 {
     using Op = Condition::Op;
@@ -432,6 +468,10 @@ static void move_into(vector<T>& dst, vector<T>&& src)
     );
 }
 
+/** Set caller-saved registers r1-r5 as uninitialized.
+ * 
+ * This happens after a function call and a safe packet access.
+ */
 void instruction_builder_t::scratch_regs(basic_block_t& block)
 {
     for (int i=1; i<=5; i++) {
@@ -441,6 +481,11 @@ void instruction_builder_t::scratch_regs(basic_block_t& block)
     }
 }
 
+/** Translate a memory access to a location that might be the stack (but do not explicitly use r10).
+ * 
+ * Note that addresses in the stack are reversed.
+ * TODO: replace it with accesses relative to STACK_SIZE.
+ */
 template<typename W>
 vector<basic_block_t*> instruction_builder_t::exec_stack_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
 {
@@ -468,6 +513,18 @@ vector<basic_block_t*> instruction_builder_t::exec_stack_access(basic_block_t& b
     }
 }
 
+
+/** Translate a memory access to a shared location (MAP_VALUE)
+ *
+ * We do not and cannot track the content of this access; we do not even know
+ * what region is this precisely. What we know is that the size of this region
+ * is encoded in the type, so we can check that
+ * 
+ *     `0 <= addr <= mem_reg.region - width`.
+ *
+ * Shared regions are externally visible, so nonprivileged programs are not
+ * allowed to leak pointers there.
+ */
 template<typename W>
 vector<basic_block_t*> instruction_builder_t::exec_shared_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
 {
@@ -487,6 +544,11 @@ vector<basic_block_t*> instruction_builder_t::exec_shared_access(basic_block_t& 
     return {&mid};
 }
 
+/** Translate a packet memory access
+ *
+ * We do not track packet contents. We just verify that only numbers are written
+ * there, so as not to leak information.
+ */
 template<typename W>
 vector<basic_block_t*> instruction_builder_t::exec_data_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
 {
@@ -504,6 +566,16 @@ vector<basic_block_t*> instruction_builder_t::exec_data_access(basic_block_t& bl
     return { &mid };
 }
 
+/** Translate memory access to the context.
+ * 
+ * We do not track the context using the memory domain (though it would be simple).
+ * Instead, we nondeterministically branch on the three important cases:
+ * 
+ * 1. read data_start
+ * 2. read data_end
+ * 3. read meta_start
+ * 4. access some other location
+ */
 template<typename W>
 vector<basic_block_t*> instruction_builder_t::exec_ctx_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
 {
@@ -564,6 +636,8 @@ int get_start(int offset, int width) {
     return (-offset) - width;
 }
 
+/** Translate a direct load of a of data_reg, with r10 as base address (known to be a store to the stack).
+ */
 vector<basic_block_t*> instruction_builder_t::exec_direct_stack_load(basic_block_t& block, dom_t data_reg, int offset, int width)
 {
     assert_in_stack(block, offset, width, di);
@@ -583,6 +657,8 @@ vector<basic_block_t*> instruction_builder_t::exec_direct_stack_load(basic_block
     return blocks;
 }
 
+/** Translate a direct store of a of data_reg, with r10 as base address (known to be a store to the stack).
+ */
 vector<basic_block_t*> instruction_builder_t::exec_direct_stack_store(basic_block_t& block, dom_t data_reg, int offset, int width)
 {
     assert_in_stack(block, offset, width, di);
@@ -590,6 +666,8 @@ vector<basic_block_t*> instruction_builder_t::exec_direct_stack_store(basic_bloc
     return machine.stack_arr.store(block, (-offset) - width, data_reg, width, di, cfg);
 }
 
+/** Translate a direct store of a number, with r10 as base address (known to be a store to the stack).
+ */
 vector<basic_block_t*> instruction_builder_t::exec_direct_stack_store_immediate(basic_block_t& block, int offset, int width, uint64_t immediate)
 {
     assert_in_stack(block, offset, width, di);
@@ -605,6 +683,14 @@ vector<basic_block_t*> instruction_builder_t::exec_direct_stack_store_immediate(
 }
 
 
+/** Translate indirect store/load operation
+ *
+ *  For example: *(u64*)(r1 + 5) = r3
+ *
+ *  Since at code-gen time we do not know what is the target region, we generate
+ *  a non-deterministic branch with `assume mem_reg.type == region` on each
+ *  outgoing node.
+ */
 template<typename W>
 vector<basic_block_t*> instruction_builder_t::exec_mem_access_indirect(basic_block_t& block, bool is_load, bool is_ST, dom_t mem_reg, dom_t data_reg, int offset, W width)
 {
@@ -634,11 +720,16 @@ void assert_no_overflow(basic_block_t& b, var_t v, debug_info di) {
     b.assertion(v >= -4098 , di);
 }
 
-
+/** Should never occur */
 vector<basic_block_t*> instruction_builder_t::operator()(Undefined const& a) {
     assert(false);
 }
 
+/** Translate operation of the form `r2 = fd 0x5436`.
+ * 
+ * This instruction is one of the two possible sources of map descriptors.
+ * (The other one, `call 1` on a map-in-map, is not supported yet)
+ */
 vector<basic_block_t*> instruction_builder_t::operator()(LoadMapFd const& ld) {
     auto reg = machine.reg(ld.dst);
     block.assign(reg.region, T_MAP);
@@ -647,6 +738,15 @@ vector<basic_block_t*> instruction_builder_t::operator()(LoadMapFd const& ld) {
     return { &block };
 }
 
+/** Translate eBPF binary instructions to Crab.
+ * 
+ * Binary instructions may be either of one of the two form:
+ * 
+ * 1. dst op= src
+ * 2. dst op= K
+ * 
+ * `src` must be initialized, and, Except in plain assignment, `dst
+ */
 vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {    
     dom_t& dst = machine.reg(bin.dst);
     vector<basic_block_t*> res{ &block };
@@ -658,6 +758,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
         assert_init(block, dst, di);
     }
     if (std::holds_alternative<Imm>(bin.v)) {
+        // dst += K
         int imm = static_cast<int>(get<Imm>(bin.v).v);
         switch (bin.op) {
         case Bin::Op::MOV:
@@ -719,6 +820,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
             break;
         } 
     } else {
+        // dst op= src
         dom_t& src = machine.reg(bin.v);
         switch (bin.op) {
         case Bin::Op::ADD: {
@@ -827,6 +929,8 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
     return res;
 }
 
+/** Translate unary operations: either a negation, or an endianness swapping.
+ */ 
 vector<basic_block_t*> instruction_builder_t::operator()(Un const& b) {
     dom_t& dst = machine.reg(b.dst);
     assert_init(block, dst, di);
@@ -844,6 +948,12 @@ vector<basic_block_t*> instruction_builder_t::operator()(Un const& b) {
     return { &block };
 }
 
+/** Generate assertions and commands that overapproximate eBPF function call.
+ * 
+ * Function calls has two different kinds of arguments: single and (mem, size) pair.
+ * Except `call 1`, functions always return a number to register r0.
+ * Registers r1-r5 are scratched. 
+*/
 vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
     vector<basic_block_t*> blocks{&block};
     var_t map_value_size{machine.vfac["map_value_size"], crab::INT_TYPE, 64};
@@ -975,28 +1085,34 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
     for (auto b: blocks) {
         scratch_regs(*b);
         if (call.returns_map) {
-            //if (machine.info.map_defs.at(map_type).type == MapType::ARRAY_OF_MAPS
-            // || machine.info.map_defs.at(map_type).type == MapType::HASH_OF_MAPS) { }
+            // no support for map-in-map yet:
+            //   if (machine.info.map_defs.at(map_type).type == MapType::ARRAY_OF_MAPS
+            //    || machine.info.map_defs.at(map_type).type == MapType::HASH_OF_MAPS) { }
             b->assign(r0.region, map_value_size);
             b->havoc(r0.value);
+            // This is the only way to get a null pointer - note the `<=`:
             b->assume(0 <= r0.value);
             b->assign(r0.offset, 0);
         } else {
             b->havoc(r0.value);
             b->assign(r0.region, T_NUM);
             b->havoc(r0.offset);
-            // b->assume(r0.value < 0); for VOID
+            // b->assume(r0.value < 0); for VOID, which is actually "no return if succeed".
         }
     }
     return blocks;
 }
 
+/** Translate `Exit` to an assertion that r0 holds a number.
+ */ 
 vector<basic_block_t*> instruction_builder_t::operator()(Exit const& b) {
     // assert_init(block, machine.regs[0], di);
     block.assertion(machine.regs[0].region == T_NUM, di);
     return { &block };
 }
 
+/** Generate Crab assertions and assumptions for a single eBPF `assume` command (extracted from a Jmp).
+ */ 
 vector<basic_block_t*> instruction_builder_t::operator()(Assume const& b) {
     Condition cond = b.cond;
     if (std::holds_alternative<Reg>(cond.right)) {
@@ -1064,9 +1180,17 @@ vector<basic_block_t*> instruction_builder_t::operator()(Assume const& b) {
     }
 }
 
+/** A special instruction for _checked_ read from packets.
+ * 
+ * No bound checking happens at verification time.
+ * r6 must hold a pointer to the context.
+ * r0 holds some the value read from the packet.
+ * 
+ * Since this instruction is actually a function call, callee-saved registers are scratched.
+ */
 vector<basic_block_t*> instruction_builder_t::operator()(Packet const& b) {
     /* From the linux verifier code:
-    verify safety of LD_ABS|LD_IND instructions:
+    * verify safety of LD_ABS|LD_IND instructions:
     * - they can only appear in the programs where ctx == skb
     * - since they are wrappers of function calls, they scratch R1-R5 registers,
     *   preserve R6-R9, and store return value into R0
@@ -1089,6 +1213,8 @@ vector<basic_block_t*> instruction_builder_t::operator()(Packet const& b) {
     return { &block };
 }
 
+/** Generate constraints and instructions for memory accesses.
+ */ 
 vector<basic_block_t*> instruction_builder_t::operator()(Mem const& b) {
     dom_t mem_reg =  machine.reg(b.access.basereg);
     bool mem_is_fp = b.access.basereg.v == 10;
@@ -1128,6 +1254,11 @@ vector<basic_block_t*> instruction_builder_t::operator()(Mem const& b) {
     }
 }
 
+/** Generate Crab insturctions for for eBPF instruction `ins`.
+ * 
+ *  Each eBPF instruction is translated to a tree of of eBPF instructions,
+ *  whose leaves are returned from this function (and each of the visitor functions).
+ */ 
 vector<basic_block_t*> instruction_builder_t::exec()
 {
     return std::visit([this](auto const& a) { return (*this)(a); }, ins);

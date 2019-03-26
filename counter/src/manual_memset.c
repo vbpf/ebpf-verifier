@@ -4,7 +4,7 @@ SEC("sk_skb/manual-memset")
 int manual_memset(struct __sk_buff *skb) {
     long* p = (void*)(long)skb->data_end;
     long* data = (void*)(long)skb->data;
-    if (--p >= data) {
+    while (--p >= data) {
         *p = 0xFFFFFFFF;
     }
     return 0;
