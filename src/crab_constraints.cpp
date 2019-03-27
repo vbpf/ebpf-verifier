@@ -227,6 +227,7 @@ private:
     template<typename W>
     vector<basic_block_t*> exec_mem_access_indirect(basic_block_t& block, bool is_load, bool is_st, dom_t mem_reg, dom_t data_reg, int offset, W width);
 
+    vector<basic_block_t*> operator()(LockAdd const& b);
     vector<basic_block_t*> operator()(Undefined const& a);
     vector<basic_block_t*> operator()(LoadMapFd const& ld);
     vector<basic_block_t*> operator()(Bin const& b);
@@ -239,8 +240,6 @@ private:
     
     /** Never happens - Jmps are translated to Assume */
     vector<basic_block_t*> operator()(Jmp const& b) { assert(false); }
-    /** Never happens - LockAdd is expanded to load-add-store */
-    vector<basic_block_t*> operator()(LockAdd const& b) { assert(false); }
 
     /** Unimplemented */
     vector<basic_block_t*> operator()(Assert const& b) { return {}; };
@@ -735,6 +734,16 @@ vector<basic_block_t*> instruction_builder_t::operator()(LoadMapFd const& ld) {
     block.assign(reg.region, T_MAP);
     block.assign(reg.value, ld.mapfd);
     block.havoc(reg.offset);
+    return { &block };
+}
+
+/** load-increment-store, from shared regions only. */
+vector<basic_block_t*> instruction_builder_t::operator()(LockAdd const& b) { 
+    block.assertion(is_shared(machine.reg(b.access.basereg)), di);
+    block.assertion(machine.reg(b.valreg).region == T_NUM, di);
+    auto addr = machine.reg(b.access.basereg).offset + b.access.offset;
+    block.assertion(addr >= 0, di);
+    block.assertion(addr <= machine.reg(b.access.basereg).region - b.access.width, di);
     return { &block };
 }
 

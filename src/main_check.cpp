@@ -109,7 +109,7 @@ int main(int argc, char **argv)
     int instruction_count = prog.size();
 
     Cfg cfg = Cfg::make(prog);
-    cfg = cfg.to_nondet(true);
+    cfg = cfg.to_nondet(false);
     if (global_options.simplify) {
         cfg.simplify();
     }
