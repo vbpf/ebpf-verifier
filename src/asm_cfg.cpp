@@ -244,11 +244,19 @@ static std::string instype(Instruction ins) {
         }
         return "call_mem";
     } else if (std::holds_alternative<Mem>(ins)) {
-        return std::get<Mem>(ins).is_load ? "loads" : "stores";
+        return std::get<Mem>(ins).is_load ? "load" : "store";
     } else if (std::holds_alternative<LockAdd>(ins)) {
-        return "stores";
+        return "load_store";
     } else if (std::holds_alternative<Packet>(ins)) {
-        return "loads";
+        return "packet_access";
+    } else if (std::holds_alternative<Bin>(ins)) {
+        return "arith";
+    } else if (std::holds_alternative<Un>(ins)) {
+        return "arith";
+    } else if (std::holds_alternative<LoadMapFd>(ins)) {
+        return "arith";
+    } else if (std::holds_alternative<Assume>(ins)) {
+        return "assume";
     } else {
         return "other";
     }
@@ -258,11 +266,14 @@ std::vector<std::string> Cfg::stats_headers() {
     return {
         //"instructions",
         "basic_blocks",
-        "other",
         "joins",
-        "jumps",
-        "loads",
-        "stores",
+        "other",
+        "jump",
+        "arith",
+        "load",
+        "store",
+        "load_store",
+        "packet_access",
         "call_1",
         "call_mem",
         "call_nomem"
