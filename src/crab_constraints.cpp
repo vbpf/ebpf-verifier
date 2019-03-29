@@ -142,30 +142,29 @@ struct array_dom_t {
     vector<basic_block_t*> store(basic_block_t& block, lin_exp_t offset, const dom_t data_reg, int width, debug_info di, cfg_t& cfg) {
         mark_region(block, offset, data_reg.region, width);
 
-        vector<basic_block_t*> res;
-        if (width != 8) {
-            block.assertion(data_reg.region == T_NUM);
-        } else {
+        if (width == 8) {
             basic_block_t& pointer_only = add_child(cfg, block, "non_num");
             pointer_only.assume(is_not_num(data_reg));
             pointer_only.array_store(offsets, offset, data_reg.offset, width);
             pointer_only.array_store(values, offset, data_reg.value, width);
-            res.push_back(&pointer_only);
-        }
 
-        basic_block_t& num_only = add_child(cfg, block, "num_only");
-        if (width == 8) {
+            basic_block_t& num_only = add_child(cfg, block, "num_only");
             num_only.assume(data_reg.region == T_NUM);
-            // otherwise, asserted above
+            num_only.array_store(values, offset, data_reg.value, width);
+            // kill the cell
+            num_only.array_store(offsets, offset, data_reg.offset, width);
+            // so that relational domains won't think it's worth keeping track of
+            num_only.havoc(data_reg.offset); 
+            return {&num_only, &pointer_only};
+        } else {
+            block.assertion(data_reg.region == T_NUM, di);
+            var_t scratch{vfac["scratch"], crab::INT_TYPE, width};
+            block.havoc(scratch);
+            block.array_store(values, offset, scratch, width);
+            block.havoc(scratch);
+            block.array_store(offsets, offset, scratch, width);
+            return {&block};
         }
-        num_only.array_store(values, offset, data_reg.value, width);
-        // kill the cell
-        num_only.array_store(offsets, offset, data_reg.offset, width);
-        // so that relational domains won't think it's worth keeping track of
-        num_only.havoc(data_reg.offset); 
-        res.push_back(&num_only);
-
-        return res;
     }
 };
 
