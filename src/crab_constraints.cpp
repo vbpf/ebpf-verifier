@@ -158,7 +158,7 @@ struct array_dom_t {
             return {&num_only, &pointer_only};
         } else {
             block.assertion(data_reg.region == T_NUM, di);
-            var_t scratch{vfac["scratch"], crab::INT_TYPE, width};
+            var_t scratch{vfac["scratch"], crab::INT_TYPE, (unsigned int)width};
             block.havoc(scratch);
             block.array_store(values, offset, scratch, width);
             block.havoc(scratch);
