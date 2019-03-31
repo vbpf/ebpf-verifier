@@ -3,7 +3,7 @@
 
 A new eBPF verifier.
 
-The project resides on https://github.com/vbpf/ebpf-verifier/tree/submission
+The project resides on https://github.com/vbpf/ebpf-verifier/tree/assert-bits
 
 The artifact contains two independent sub-artifacts: a verification tool, and a
 set of real-world eBPF programs used for development and evaluation of the tool.
@@ -17,14 +17,14 @@ Evaluation can be done either on an Ubuntu machine, or the supplied VM.
 
 ### Dependencies from vanilla Ubuntu
 ```bash
-sudo apt install build-essential git cmake libboost-dev libgmp-dev libmpfr-dev
+sudo apt install build-essential git cmake libboost-dev libgmp-dev libmpfr-dev g++-8
 sudo apt install python3-pip python3-tk
 pip3 install matplotlib   # for plotting the graphs
 ```
 
 Clone, make and run:
 ```
-git clone --recurse-submodules https://github.com/vbpf/ebpf-verifier.git -b submission
+git clone --recurse-submodules https://github.com/vbpf/ebpf-verifier.git -b assert-bits
 cd ebpf-verifier
 make crab_install
 make

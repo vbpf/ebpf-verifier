@@ -139,24 +139,32 @@ struct array_dom_t {
         block.array_store(offsets, lb, scratch, width);
     }
 
-    template <typename W> // W = var_t or int
-    vector<basic_block_t*> store(basic_block_t& block, lin_exp_t offset, const dom_t data_reg, W width, debug_info di, cfg_t& cfg) {
+    vector<basic_block_t*> store(basic_block_t& block, lin_exp_t offset, const dom_t data_reg, int width, debug_info di, cfg_t& cfg) {
         mark_region(block, offset, data_reg.region, width);
 
-        basic_block_t& pointer_only = add_child(cfg, block, "non_num");
-        pointer_only.assume(is_not_num(data_reg));
-        pointer_only.array_store(offsets, offset, data_reg.offset, width);
-        pointer_only.array_store(values, offset, data_reg.value, width);
+        if (width == 8) {
+            basic_block_t& pointer_only = add_child(cfg, block, "non_num");
+            pointer_only.assume(is_not_num(data_reg));
+            pointer_only.array_store(offsets, offset, data_reg.offset, width);
+            pointer_only.array_store(values, offset, data_reg.value, width);
 
-        basic_block_t& num_only = add_child(cfg, block, "num_only");
-        num_only.assume(data_reg.region == T_NUM);
-        num_only.array_store(values, offset, data_reg.value, width);
-        // kill the cell
-        num_only.array_store(offsets, offset, data_reg.offset, width);
-        // so that relational domains won't think it's worth keeping track of
-        num_only.havoc(data_reg.offset); 
-
-        return {&num_only, &pointer_only};
+            basic_block_t& num_only = add_child(cfg, block, "num_only");
+            num_only.assume(data_reg.region == T_NUM);
+            num_only.array_store(values, offset, data_reg.value, width);
+            // kill the cell
+            num_only.array_store(offsets, offset, data_reg.offset, width);
+            // so that relational domains won't think it's worth keeping track of
+            num_only.havoc(data_reg.offset); 
+            return {&num_only, &pointer_only};
+        } else {
+            block.assertion(data_reg.region == T_NUM, di);
+            var_t scratch{vfac["scratch"], crab::INT_TYPE, (unsigned int)width};
+            block.havoc(scratch);
+            block.array_store(values, offset, scratch, width);
+            block.havoc(scratch);
+            block.array_store(offsets, offset, scratch, width);
+            return {&block};
+        }
     }
 };
 
