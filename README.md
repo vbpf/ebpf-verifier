@@ -4,8 +4,6 @@
 A new eBPF verifier.
 
 ## Getting Started
-Evaluation can be done either on an Ubuntu machine, or the supplied VM.
-(the tool can also run on a Mac, but the memory measurements will always return 0).
 
 ### Dependencies from vanilla Ubuntu
 ```bash
