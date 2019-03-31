@@ -15,7 +15,7 @@ pip3 install matplotlib   # for plotting the graphs
 ### Installation
 Clone, make and run:
 ```
-git clone --recurse-submodules https://github.com/vbpf/ebpf-verifier.git -b assert-bits
+git clone --recurse-submodules https://github.com/vbpf/ebpf-verifier.git
 cd ebpf-verifier
 make crab_install
 make
