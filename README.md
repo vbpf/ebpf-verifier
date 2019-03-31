@@ -141,7 +141,8 @@ ebpf-verifier$ sudo ./check counter/objects/xdp_tx_iptunnel_2_kern.o --domain=li
 ```
 
 ### Double-strncmp experiment
-This experiment demonstrates exponential blowup in the Linux verifier, versus linear runtime in our tool. A simplified version of the code is described in Example 3.4, Figure 1 and Figure 12. Be sure to run with `sudo`, since Linux requires special permissions for this.
+This experiment quadratic blowup in the Linux verifier, versus linear runtime in our tool.
+Be sure to run with `sudo`, since Linux requires special permissions for this.
 ```
 ebpf-verifier$ sudo scripts/experiment.sh | tee blowup.csv
 ebpf-verifier$ python3 scripts/makeplot.py blowup.csv iterations False
