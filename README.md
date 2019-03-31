@@ -3,14 +3,6 @@
 
 A new eBPF verifier.
 
-The project resides on https://github.com/vbpf/ebpf-verifier/tree/assert-bits
-
-The artifact contains two independent sub-artifacts: a verification tool, and a
-set of real-world eBPF programs used for development and evaluation of the tool.
-The source for the tool is in the `src` directory. The benchmarks are in ELF
-files in the directory `ebpf-samples`. Each ELF file contains one or more
-programs, in different sections of the file.
-
 ## Getting Started
 Evaluation can be done either on an Ubuntu machine, or the supplied VM.
 (the tool can also run on a Mac, but the memory measurements will always return 0).
