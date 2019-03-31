@@ -22,6 +22,7 @@ sudo apt install python3-pip python3-tk
 pip3 install matplotlib   # for plotting the graphs
 ```
 
+### Installation
 Clone, make and run:
 ```
 git clone --recurse-submodules https://github.com/vbpf/ebpf-verifier.git -b assert-bits
@@ -29,15 +30,6 @@ cd ebpf-verifier
 make crab_install
 make
 ```
-
-### VM
-The VM supplied requires VMware Player:
-https://www.vmware.com/il/products/workstation-player/workstation-player-evaluation.html
-
-The user is `prevail`, password is also `prevail`.
-
-The VM memory should be adjusted to the maximum available for the host.
-The terminal is already configured to start from the right path, `~/ebpf-verifier`.
 
 ### 
 
@@ -133,13 +125,9 @@ in the final version, it is recommended to use bare-metal Linux machine.
 
 ## Testing the Linux verifier
 
-The file `load_bpf` is a simple tool that loads the contents of an elf file to the system. It must be ran using `sudo` (the password for the VM is `prevail`):
+To run the Linux verifier, you must use `sudo`:
 ```
-sudo counter/load_bpf ebpf-samples/linux/cpustat_kern.o 
-ebpf-samples/linux/cpustat_kern.o
-	tracepoint/power/cpu_idle,stat,114,0.000176,
-	tracepoint/power/cpu_frequency,stat,81,0.000101,
-	loaded
+ebpf-verifier$ sudo ./check ebpf-samples/linux/cpustat_kern.o --domain=linux
 ```
 
 ## Counter and Artificial examples
@@ -154,9 +142,9 @@ Two examples of real-world false positive are taken from the Linux samples suite
 The file `xdp_tx_iptunnel_kern.o` is valid and passes both the Linux tool and ours.
 However, in the original source code there are redundant loads from memory to a varaible holding the same value. These were added happen due to untracked register spilling that led to false positive. Two fixes are compiled into `xdp_tx_iptunnel_1_kern.o` and `xdp_tx_iptunnel_2_kern.o`. Both pass our verifier (without any special effort) but fail the existing one:
 ```
-$ ./check counter/objects/xdp_tx_iptunnel_2_kern.o
+ebpf-verifier$ ./check counter/objects/xdp_tx_iptunnel_2_kern.o
 1,0.314213,86740
-$ counter/load_bpf counter/objects/xdp_tx_iptunnel_2_kern.o
+ebpf-verifier$ sudo ./check counter/objects/xdp_tx_iptunnel_2_kern.o --domain=linux -v
 <... long trace reporting an alleged failure>
 ```
 
@@ -168,9 +156,9 @@ ebpf-verifier$ python3 scripts/makeplot.py blowup.csv iterations False
 ```
 
 ### Programs with loops
-There are several simple programs with loops in the folder `counter/src`, called `simple_loop_*.c` and `manual_memset*.c`. The current verifier rejects them immediately:
+There are several simple programs with loops in the folder `counter/src`, called `simple_loop_*.c` and `manual_memset*.c`. The Linux verifier rejects them immediately:
 ```
-sudo ./load_bpf counter/objects/simple_loop_ptr_backwards.o 
+ebpf-verifier$ sudo ./check counter/objects/simple_loop_ptr_backwards.o --domain=linux -v
 counter/objects/simple_loop_ptr_backwards.o
 	sk_skb/loop-ptr,bpf_load_program(prog_cnt=0) err=22
 back-edge from insn 7 to 5
@@ -178,7 +166,7 @@ back-edge from insn 7 to 5
 
 Using our tool, the safety (but not termination) of some loop-based programs can be verified:
 ```
-$ ./check counter/objects/simple_loop_ptr_backwards.o
+ebpf-verifier$ ./check counter/objects/simple_loop_ptr_backwards.o
 1,0.018346,7900
 ```
 (not all the programs in the folder are verified)
