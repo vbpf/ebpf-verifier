@@ -250,11 +250,13 @@ static std::string instype(Instruction ins) {
     } else if (std::holds_alternative<Packet>(ins)) {
         return "packet_access";
     } else if (std::holds_alternative<Bin>(ins)) {
+        if (std::get<Bin>(ins).op == Bin::Op::MOV)
+            return "assign";
         return "arith";
     } else if (std::holds_alternative<Un>(ins)) {
         return "arith";
     } else if (std::holds_alternative<LoadMapFd>(ins)) {
-        return "arith";
+        return "assign";
     } else if (std::holds_alternative<Assume>(ins)) {
         return "assume";
     } else {
@@ -269,6 +271,7 @@ std::vector<std::string> Cfg::stats_headers() {
         "joins",
         "other",
         "jump",
+        "assign",
         "arith",
         "load",
         "store",
