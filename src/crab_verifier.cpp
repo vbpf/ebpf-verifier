@@ -180,7 +180,7 @@ struct domain_desc {
 
 #define FULL_DOMAINS 1
 const map<string, domain_desc> domains{
-    { "zoneCrab" , { analyze<array_expansion_domain<z_sdbm_domain_t>>, "zone (crab. split dbm)" } },
+    { "zoneCrab" , { analyze<array_expansion_domain<z_sdbm_domain_t>>, "zone (crab. split dbm, safe)" } },
 #ifdef FULL_DOMAINS
     { "interval" , { analyze<array_expansion_domain<z_interval_domain_t>>   , "interval" } },
     { "zoneElina", { analyze<array_expansion_domain<z_zones_elina_domain_t>>, "zone (elina)" } },

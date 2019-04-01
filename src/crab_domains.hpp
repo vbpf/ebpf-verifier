@@ -71,8 +71,10 @@ namespace crab {
     // Numerical domains over integers
     using z_interval_domain_t = interval_domain<ikos::z_number,varname_t>;
     using z_ric_domain_t = numerical_congruence_domain<z_interval_domain_t>;
-    using z_dbm_domain_t = SparseDBM<ikos::z_number,varname_t,SpDBM_impl::DefaultParams<ikos::z_number,SpDBM_impl::GraphRep::adapt_ss>>;
-    using z_sdbm_domain_t = SplitDBM<ikos::z_number,varname_t,SDBM_impl::DefaultParams<ikos::z_number, SDBM_impl::GraphRep::adapt_ss>>;
+    using SafeInt = DBM_impl::SafeInt64DefaultParams<ikos::z_number, DBM_impl::GraphRep::adapt_ss>;
+    using z_dbm_domain_t = SparseDBM<ikos::z_number,varname_t,SafeInt>;
+    using z_sdbm_domain_t = SplitDBM<ikos::z_number,varname_t,SafeInt>;
+
     using z_boxes_domain_t = boxes_domain<ikos::z_number,varname_t>;
     using z_dis_interval_domain_t = dis_interval_domain<ikos::z_number, varname_t >;
     using z_box_apron_domain_t = apron_domain<ikos::z_number,varname_t,apron_domain_id_t::APRON_INT>;
