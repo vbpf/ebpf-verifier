@@ -29,6 +29,10 @@ using std::to_string;
 
 using crab::cfg_impl::variable_factory_t;
 
+constexpr int PTR_MAX = 1 << 24;
+constexpr int MY_INT_MAX = 1<<30;
+constexpr int MY_INT_MIN = -(1 << 30);
+
 static int first_num(const basic_block_t& block)
 {
     return first_num(block.label());
@@ -179,6 +183,7 @@ struct machine_t final
 
     var_t top{vfac[std::string("*")], crab::INT_TYPE, 64};
     var_t maxint64{vfac[std::string("INT64_MAX")], crab::INT_TYPE, 64};
+    var_t minint64{vfac[std::string("INT64_MIN")], crab::INT_TYPE, 64};
     var_t num{vfac[std::string("T_NUM")], crab::INT_TYPE, 64};
 
     program_info info;
@@ -327,9 +332,10 @@ machine_t::machine_t(variable_factory_t& vfac, program_info info)
  */
 void machine_t::setup_entry(basic_block_t& entry)
 {
-    auto& machine = *this;
+    machine_t& machine = *this;
     entry.havoc(machine.top);
-    entry.assign(machine.maxint64, INT64_MAX);
+    entry.assign(machine.maxint64, 1000000);
+    entry.assign(machine.minint64, -1000000);
     entry.assign(machine.num, T_NUM);
 
     entry.assume(STACK_SIZE <= machine.regs[10].value);
@@ -337,6 +343,7 @@ void machine_t::setup_entry(basic_block_t& entry)
     entry.assign(machine.regs[10].region, T_STACK);
 
     entry.assume(1 <= machine.regs[1].value);
+    entry.assume(machine.regs[1].value <= PTR_MAX);
     entry.assign(machine.regs[1].offset, 0);
     entry.assign(machine.regs[1].region, T_CTX);
 
@@ -610,6 +617,7 @@ vector<basic_block_t*> instruction_builder_t::exec_ctx_access(basic_block_t& blo
             b.assign(data_reg.region, T_DATA);
             b.havoc(data_reg.value);
             b.assume(4098 <= data_reg.value);
+            b.assume(data_reg.value <= PTR_MAX);
             b.assign(data_reg.offset, offset);
             ret.push_back(&b);
         };
@@ -722,8 +730,7 @@ vector<basic_block_t*> instruction_builder_t::exec_mem_access_indirect(basic_blo
 
 void assert_no_overflow(basic_block_t& b, var_t v, debug_info di) {
     // p1 = data_start; p1 += huge_positive; p1 <= p2 does not imply p1 >= data_start
-    // We assume that pointers are 32 bit so slight overflow is still sound
-    b.assertion(v <= 1 << 30 , di);
+    b.assertion(v <= 1 << 16 , di);
     b.assertion(v >= -4098 , di);
 }
 
@@ -774,6 +781,20 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
     if (bin.op != Bin::Op::MOV) {
         assert_init(block, dst, di);
     }
+
+    auto underflow = [&](basic_block_t& b) {
+        basic_block_t& c = add_child(cfg, b, "underflow");
+        c.assume(MY_INT_MIN > dst.value);
+        c.havoc(dst.value);
+        return &c;
+    };
+    auto overflow = [&](basic_block_t& b) {
+        basic_block_t& c = add_child(cfg, b, "overflow");
+        c.assume(dst.value > MY_INT_MAX);
+        c.havoc(dst.value);
+        return &c;
+    };
+
     if (std::holds_alternative<Imm>(bin.v)) {
         // dst += K
         int imm = static_cast<int>(get<Imm>(bin.v).v);
@@ -783,17 +804,28 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
             no_pointer(block, dst);
             break;
         case Bin::Op::ADD:
+            if (imm == 0) return { &block };
             block.add(dst.value, dst.value, imm);
             block.add(dst.offset, dst.offset, imm);
-            break;
+            if (imm > 0) {
+                return {&block, overflow(block)};
+            } else {
+                return {&block, underflow(block)};
+            }
         case Bin::Op::SUB:
+            if (imm == 0) return { &block };
             block.sub(dst.value, dst.value, imm);
             block.sub(dst.offset, dst.offset, imm);
+            if (imm < 0) {
+                return {&block, overflow(block)};
+            } else {
+                return {&block, underflow(block)};
+            }
             break;
         case Bin::Op::MUL:
             block.mul(dst.value, dst.value, imm);
             no_pointer(block, dst);
-            break;
+            return {&block, overflow(block), underflow(block)};
         case Bin::Op::DIV:
             block.div(dst.value, dst.value, imm);
             no_pointer(block, dst);
@@ -824,7 +856,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
         case Bin::Op::LSH:
             block.lshr(dst.value, dst.value, imm);
             no_pointer(block, dst);
-            break;
+            return {&block }; //, overflow(block), underflow(block)};
         case Bin::Op::XOR:
             block.bitwise_xor(dst.value, dst.value, imm);
             no_pointer(block, dst);
@@ -864,8 +896,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
                 both_num.assume(src.region == T_NUM);
                 both_num.add(dst.value, dst.value, src.value);
 
-                res = {&ptr_src, &ptr_dst, &both_num};
-                return res;
+                return {&ptr_src, &ptr_dst, &both_num, overflow(both_num), underflow(both_num)};
             }
             break;
         case Bin::Op::SUB: {
@@ -885,17 +916,19 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
                     ptr_dst.sub(dst.offset, dst.offset, src.value);
                     assert_no_overflow(ptr_dst, dst.offset, di);
 
-                    basic_block_t& both_num = add_child(cfg, num_src, "both_num");    
+                    basic_block_t& both_num = add_child(cfg, num_src, "both_num");
                     both_num.assume(dst.region == T_NUM);
                     both_num.sub(dst.value, dst.value, src.value);
-                    res = {&same, &ptr_dst, &both_num};
+                    
+                    return {&same, &ptr_dst, &both_num, overflow(both_num), underflow(both_num)};
                 }
             }
             break;
-        case Bin::Op::MUL:
-            block.mul(dst.value, dst.value, src.value);
-            no_pointer(block, dst);
-            break;
+        case Bin::Op::MUL: {
+                block.mul(dst.value, dst.value, src.value);
+                no_pointer(block, dst);
+                return {&block, overflow(block), underflow(block)};
+            }
         case Bin::Op::DIV:
             // For some reason, DIV is not checked for zerodiv
             block.div(dst.value, dst.value, src.value);
@@ -1109,6 +1142,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
             b->havoc(r0.value);
             // This is the only way to get a null pointer - note the `<=`:
             b->assume(0 <= r0.value);
+            b->assume(r0.value <= PTR_MAX);
             b->assign(r0.offset, 0);
         } else {
             b->havoc(r0.value);
