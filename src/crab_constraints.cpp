@@ -182,8 +182,6 @@ struct machine_t final
     var_t data_size{vfac[std::string("data_size")], crab::INT_TYPE, 64};
 
     var_t top{vfac[std::string("*")], crab::INT_TYPE, 64};
-    var_t maxint64{vfac[std::string("INT64_MAX")], crab::INT_TYPE, 64};
-    var_t minint64{vfac[std::string("INT64_MIN")], crab::INT_TYPE, 64};
     var_t num{vfac[std::string("T_NUM")], crab::INT_TYPE, 64};
 
     program_info info;
@@ -334,8 +332,6 @@ void machine_t::setup_entry(basic_block_t& entry)
 {
     machine_t& machine = *this;
     entry.havoc(machine.top);
-    entry.assign(machine.maxint64, 1000000);
-    entry.assign(machine.minint64, -1000000);
     entry.assign(machine.num, T_NUM);
 
     entry.assume(STACK_SIZE <= machine.regs[10].value);
