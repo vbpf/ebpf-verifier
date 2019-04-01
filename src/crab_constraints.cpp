@@ -825,10 +825,20 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
         case Bin::Op::DIV:
             block.div(dst.value, dst.value, imm);
             no_pointer(block, dst);
+            if (imm == -1) {
+                return {&block, overflow(block)};
+            } else {
+                return {&block};
+            }
             break;
         case Bin::Op::MOD:
             block.rem(dst.value, dst.value, imm);
             no_pointer(block, dst);
+            if (imm == -1) {
+                return {&block, overflow(block)};
+            } else {
+                return {&block};
+            }
             break;
         case Bin::Op::OR:
             block.bitwise_or(dst.value, dst.value, imm);
@@ -928,12 +938,14 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
             // For some reason, DIV is not checked for zerodiv
             block.div(dst.value, dst.value, src.value);
             no_pointer(block, dst);
-            break;
+            // overflow if INT_MIN / -1
+            return {&block, overflow(block)};
         case Bin::Op::MOD:
             // See DIV comment
             block.rem(dst.value, dst.value, src.value);
             no_pointer(block, dst);
-            break;
+            // overflow if INT_MIN % -1
+            return {&block, overflow(block)};
         case Bin::Op::OR:
             block.bitwise_or(dst.value, dst.value, src.value);
             no_pointer(block, dst);
@@ -984,12 +996,15 @@ vector<basic_block_t*> instruction_builder_t::operator()(Un const& b) {
     case Un::Op::LE32:
     case Un::Op::LE64:
         block.havoc(dst.value);
+        no_pointer(block, dst);
         break;
     case Un::Op::NEG:
         block.assign(dst.value, 0-dst.value);
-        break;
+        basic_block_t& overflow = add_child(cfg, block, "overflow");
+        overflow.assume(dst.value > MY_INT_MAX);
+        overflow.havoc(dst.value);
+        return { &block, &overflow };
     }
-    no_pointer(block, dst);
     return { &block };
 }
 
