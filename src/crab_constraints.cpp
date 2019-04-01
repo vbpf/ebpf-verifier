@@ -852,7 +852,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
         case Bin::Op::LSH:
             block.lshr(dst.value, dst.value, imm);
             no_pointer(block, dst);
-            return {&block }; //, overflow(block), underflow(block)};
+            return {&block, overflow(block), underflow(block)};
         case Bin::Op::XOR:
             block.bitwise_xor(dst.value, dst.value, imm);
             no_pointer(block, dst);
@@ -920,11 +920,10 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
                 }
             }
             break;
-        case Bin::Op::MUL: {
-                block.mul(dst.value, dst.value, src.value);
-                no_pointer(block, dst);
-                return {&block, overflow(block), underflow(block)};
-            }
+        case Bin::Op::MUL:
+            block.mul(dst.value, dst.value, src.value);
+            no_pointer(block, dst);
+            return {&block, overflow(block), underflow(block)};
         case Bin::Op::DIV:
             // For some reason, DIV is not checked for zerodiv
             block.div(dst.value, dst.value, src.value);
@@ -946,7 +945,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
         case Bin::Op::LSH:
             block.lshr(dst.value, dst.value, src.value);
             no_pointer(block, dst);
-            break;
+            return {&block, overflow(block), underflow(block)};
         case Bin::Op::RSH:
             block.ashr(dst.value, dst.value, src.value);
             no_pointer(block, dst);
