@@ -282,6 +282,8 @@ std::vector<std::string> Cfg::stats_headers() {
         "call_nomem",
         "adjust_head",
         "map_in_map",
+        "arith64",
+        "arith32",
     };
 }
 
@@ -304,6 +306,10 @@ std::map<std::string, int> Cfg::collect_stats() const {
                 auto call = std::get<Call>(ins);
                 if (call.func == 43 || call.func == 44)
                     res["adjust_head"] = 1;
+            }
+            if (std::holds_alternative<Bin>(ins)) {
+                auto bin = std::get<Bin>(ins);
+                res[bin.is64 ? "arith64" : "arith32"]++;
             }
             res[instype(ins)]++;
         }
