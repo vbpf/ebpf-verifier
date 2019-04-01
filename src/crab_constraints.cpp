@@ -29,9 +29,10 @@ using std::to_string;
 
 using crab::cfg_impl::variable_factory_t;
 
-constexpr int PTR_MAX = 1 << 24;
-constexpr int MY_INT_MAX = 1<<30;
-constexpr int MY_INT_MIN = -(1 << 30);
+constexpr int MAX_PACKET_OFF = 0xffff;
+constexpr int64_t MY_INT_MIN = INT_MIN;
+constexpr int64_t MY_INT_MAX = INT_MAX;
+constexpr int64_t PTR_MAX = MY_INT_MAX - MAX_PACKET_OFF;
 
 static int first_num(const basic_block_t& block)
 {
@@ -726,7 +727,7 @@ vector<basic_block_t*> instruction_builder_t::exec_mem_access_indirect(basic_blo
 
 void assert_no_overflow(basic_block_t& b, var_t v, debug_info di) {
     // p1 = data_start; p1 += huge_positive; p1 <= p2 does not imply p1 >= data_start
-    b.assertion(v <= 1 << 16 , di);
+    b.assertion(v <= MAX_PACKET_OFF , di);
     b.assertion(v >= -4098 , di);
 }
 
