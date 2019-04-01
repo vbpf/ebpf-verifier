@@ -279,7 +279,9 @@ std::vector<std::string> Cfg::stats_headers() {
         "packet_access",
         "call_1",
         "call_mem",
-        "call_nomem"
+        "call_nomem",
+        "adjust_head",
+        "map_in_map",
     };
 }
 
@@ -292,8 +294,19 @@ std::map<std::string, int> Cfg::collect_stats() const {
     for (Label const& this_label : keys()) {
         BasicBlock const& bb = at(this_label);
         res["instructions"] += bb.insts.size();
-        for (Instruction ins : bb.insts)
+        for (Instruction ins : bb.insts) {
+            if (std::holds_alternative<LoadMapFd>(ins)) {
+                if (std::get<LoadMapFd>(ins).mapfd == -1) {
+                    res["map_in_map"] = 1;
+                }
+            }
+            if (std::holds_alternative<Call>(ins)) {
+                auto call = std::get<Call>(ins);
+                if (call.func == 43 || call.func == 44)
+                    res["adjust_head"] = 1;
+            }
             res[instype(ins)]++;
+        }
         if (bb.prevlist.size() > 1)
             res["joins"]++;
         if (bb.nextlist.size() > 1)

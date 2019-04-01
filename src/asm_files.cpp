@@ -110,6 +110,9 @@ static int allocate_fds(uint32_t map_type, uint32_t key_size, uint32_t value_siz
 static int allocate_fds(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries) {
     // static int i = -1;
     // i++;
+    if (map_type == 12 || map_type == 13) {
+        return -1;
+    }
     return (value_size << 14) + (key_size << 6);// + i;
 }
 
