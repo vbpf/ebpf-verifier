@@ -21,6 +21,16 @@ make crab_install
 make
 ```
 
+### Running with Docker
+Build and run:
+```bash
+docker build -t verifier .
+docker run -it verifier ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=zoneCrab
+1,0.062802,21792
+# To run the Linux verifier you'll need a privileged container:
+docker run --privileged -it verifier ebpf-samples/linux/cpustat_kern.o --domain=linux
+```
+
 ### 
 
 Example:
