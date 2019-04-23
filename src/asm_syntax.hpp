@@ -44,7 +44,7 @@ struct Un {
 
 struct LoadMapFd {
     Reg dst;
-    size_t mapfd{};
+    int mapfd{};
 };
 
 struct Condition {

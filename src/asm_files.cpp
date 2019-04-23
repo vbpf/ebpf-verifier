@@ -141,7 +141,7 @@ vector<raw_program> create_blowup(size_t size, MapFd* fd_alloc)
     
     blowup.emplace_back(to_string(i++), Bin{Bin::Op::MOV, true, Reg{7}, (Value)Imm{1}, false});
 
-    blowup.emplace_back(to_string(i++), LoadMapFd{Reg{1}, (size_t)fd});
+    blowup.emplace_back(to_string(i++), LoadMapFd{Reg{1}, fd});
     blowup.emplace_back(to_string(i++), Mem{Deref{4, Reg{10}, -4}, Reg{7}, false});
     blowup.emplace_back(to_string(i++), Bin{Bin::Op::MOV, true, Reg{2}, (Value)Reg{10}, false});
     blowup.emplace_back(to_string(i++), Bin{Bin::Op::ADD, true, Reg{2}, (Value)Imm{(unsigned)-4}, false});
@@ -149,7 +149,7 @@ vector<raw_program> create_blowup(size_t size, MapFd* fd_alloc)
     blowup.emplace_back(to_string(i), Jmp{Condition{Condition::Op::EQ, Reg{0}, (Value)Imm{0}}, to_string(out_err)}); i++;
     blowup.emplace_back(to_string(i++), Bin{Bin::Op::MOV, true, Reg{6}, (Value)Reg{0}, false});
 
-    blowup.emplace_back(to_string(i++), LoadMapFd{Reg{1}, (size_t)fd});
+    blowup.emplace_back(to_string(i++), LoadMapFd{Reg{1}, fd});
     blowup.emplace_back(to_string(i++), Mem{Deref{4, Reg{10}, -4}, Reg{7}, false});
     blowup.emplace_back(to_string(i++), Bin{Bin::Op::MOV, true, Reg{2}, (Value)Reg{10}, false});
     blowup.emplace_back(to_string(i++), Bin{Bin::Op::ADD, true, Reg{2}, (Value)Imm{(unsigned)-4}, false});
