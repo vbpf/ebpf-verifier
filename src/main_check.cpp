@@ -3,7 +3,7 @@
 
 #include <crab/common/debug.hpp>
 
-#include <boost/container_hash/hash.hpp>
+#include <boost/functional/hash.hpp>
 
 #include "CLI11.hpp"
 
