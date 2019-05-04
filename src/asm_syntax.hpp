@@ -14,7 +14,7 @@ struct Imm {
 };
 
 struct Reg {
-    uint8_t v;
+    uint8_t v{};
 };
 
 using Value = std::variant<Imm, Reg>;
@@ -44,7 +44,7 @@ struct Un {
 
 struct LoadMapFd {
     Reg dst;
-    size_t mapfd{};
+    int mapfd{};
 };
 
 struct Condition {
