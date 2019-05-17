@@ -74,7 +74,7 @@ ebpf-verifier$ dot -Tpdf cfg.dot > cfg.pdf
 
 To get the results for described in Figures 10 and 11, run the following:
 ```
-ebpf-verifier$ scripts/runperf.sh ebpf-samples interval zoneCrab zoneElina octElina polyElina | tee results.csv
+ebpf-verifier$ scripts/runperf.sh ebpf-samples stats interval zoneCrab zoneElina octElina polyElina | tee results.csv
 ```
 The first argument to the script, `ebpf-samples`, is the root directory in which
 to search for elf files. You can pass any subdirectory or file, e.g.
@@ -103,7 +103,7 @@ Note that in the full benchmark, exactly 2 programs should be rejected by `zoneC
 Any subset of the available domains is valid. So in order to compare the two different
 implementations of the `zone` domain, one can run
 ```
-ebpf-verifier$ scripts/runperf.sh ebpf-samples/linux zoneCrab zoneElina | results.csv
+ebpf-verifier$ scripts/runperf.sh ebpf-samples/linux stats zoneCrab zoneElina | results.csv
 ebpf-verifier$ python3 scripts/makeplot.py results.csv stores
 ```
 The script `ebpf-verifier$ python3 scripts/makeplot.py` takes a csv file in the format described above, and the key to plot against (usually instructions or stores) and plots two graphs: on showing runtime as a function of the number of stores, and the other is the memory consumption as a function of the number of stores.
@@ -135,7 +135,7 @@ ebpf-verifier$ sudo ./check ebpf-samples/linux/cpustat_kern.o --domain=linux
 The folder `counter/` contains other examples used to demonstrate the usefulness of our tools, compared to the existing verifier. To compile the examples, run 
 ```
 ebpf-verifier$ make -C counter
-ebpf-verifier$ scripts/runperf.sh counter/objects zoneCrab
+ebpf-verifier$ scripts/runperf.sh counter/objects stats zoneCrab
 ```
 
 Two examples of real-world false positive are taken from the Linux samples suite.

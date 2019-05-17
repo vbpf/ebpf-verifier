@@ -25,8 +25,7 @@ do
 	for s in "${sections[@]}"
 	do
 		echo -n $f | tr / ,
-		echo -n ,$s,
-		echo -n $(./check $f $s --domain=stats)
+		echo -n ,$s
 		for dom in "$@"
 		do
 			echo >> errors.log
