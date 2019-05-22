@@ -49,8 +49,11 @@ int main(int argc, char **argv)
         doms.insert(name);
     app.add_set("-d,--dom,--domain", domain, doms, "Abstract domain")->type_name("DOMAIN");
 
-    app.add_flag("-v", global_options.print_invariants, "Print invariants");
-    
+    bool verbose = false;
+    app.add_flag("-i", global_options.print_invariants, "Print invariants");
+    app.add_flag("-f", global_options.print_failures, "Print verifier's failure logs");
+    app.add_flag("-v", verbose, "Print both invariants and failures");
+
     std::string asmfile;
     app.add_option("--asm", asmfile, "Print disassembly to FILE")->type_name("FILE");
     std::string dotfile;
@@ -60,6 +63,8 @@ int main(int argc, char **argv)
     app.add_option("--size", size, "size of blowup");
 
     CLI11_PARSE(app, argc, argv);
+    if (verbose)
+        global_options.print_invariants = global_options.print_failures = true;
 
     // Main program
 
@@ -76,8 +81,7 @@ int main(int argc, char **argv)
             std::cout << domain << "_kb";
         } 
         return 0;
-    } 
-    global_options.print_failures = global_options.print_invariants;
+    }
 
     auto raw_progs = filename != "blowup"
         ? read_elf(filename, desired_section, domain == "linux" ? create_map : nullptr)
