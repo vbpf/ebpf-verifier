@@ -72,7 +72,7 @@ ebpf-verifier$ dot -Tpdf cfg.dot > cfg.pdf
 
 ## Step-by-Step Instructions
 
-To get the results for described in Figures 10 and 11, run the following:
+To get the results for described in Figures 9 and 10, run the following:
 ```
 ebpf-verifier$ scripts/runperf.sh ebpf-samples interval zoneCrab zoneElina octElina polyElina | tee results.csv
 ```
