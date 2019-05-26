@@ -57,7 +57,9 @@ Options:
   -h,--help                   Print this help message and exit
   -l                          List sections
   -d,--dom,--domain DOMAIN    Abstract domain
-  -v                          Print invariants
+  -i                          Print invariants
+  -f                          Print verifier's failure logs
+  -v                          Print both invariants and failures
   --asm FILE                  Print disassembly to FILE
   --dot FILE                  Export cfg to dot FILE
 ```
