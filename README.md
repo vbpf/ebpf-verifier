@@ -182,3 +182,28 @@ The front end (files named `asm_*`) is potentially reusable by any other analyze
 
 The backend is mostly confined into `src/crab_verifier.cpp` and `src/crab_constraints.cpp`. The latter does the translation of eBPF instructions to the language handled by crab.
 
+### Apron
+
+The experiments in the paper do not include the APRON library. The tool supports
+two domains: `octApron` and `polyApron`. However, they are mutually exclusive
+with elina. In order to run the tool with these domains, Crab should be
+reinstalled, and the variable `MOD` should be set:
+
+```
+ebpf-verifier$ make crab_clean clean
+ebpf-verifier$ make MOD=APRON crab_install
+ebpf-verifier$ make
+ebpf-verifier (apron)$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=polyApron
+1,1.37877,0
+ebpf-verifier (apron)$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=octApron
+1,0.200318,0
+ebpf-verifier (apron)$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=octElina
+Could not convert: --dom = octElina
+Run with --help for more information.
+```
+To recompile with Elina support, reinstall crab without `MOD` (or with `MOD=ELINA`):
+```
+ebpf-verifier$ make crab_clean clean
+ebpf-verifier$ make MOD=APRON crab_install
+ebpf-verifier$ make
+```
