@@ -193,11 +193,11 @@ reinstalled, and the variable `MOD` should be set:
 ebpf-verifier$ make crab_clean clean
 ebpf-verifier$ make MOD=APRON crab_install
 ebpf-verifier$ make
-ebpf-verifier (apron)$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=polyApron
+ebpf-verifier$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=polyApron
 1,1.37877,0
-ebpf-verifier (apron)$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=octApron
+ebpf-verifier$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=octApron
 1,0.200318,0
-ebpf-verifier (apron)$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=octElina
+ebpf-verifier$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=octElina
 Could not convert: --dom = octElina
 Run with --help for more information.
 ```
