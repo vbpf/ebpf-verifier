@@ -68,15 +68,15 @@ A standard alternative to the --asm flag is `llvm-objdump -S FILE`.
 
 The cfg can be viewed using `dot` and the standard PDF viewer:
 ```
-ebpf-verifier$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=zoneCrab --dot cfg.dot
-ebpf-verifier$ dot -Tpdf cfg.dot > cfg.pdf
+./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=zoneCrab --dot cfg.dot
+dot -Tpdf cfg.dot > cfg.pdf
 ```
 
 ## Step-by-Step Instructions
 
 To get the results for described in Figures 9 and 10, run the following:
 ```
-ebpf-verifier$ scripts/runperf.sh ebpf-samples stats interval zoneCrab zoneElina octElina polyElina | tee results.csv
+scripts/runperf.sh ebpf-samples stats interval zoneCrab zoneElina octElina polyElina | tee results.csv
 ```
 The first argument to the script, `ebpf-samples`, is the root directory in which
 to search for elf files. You can pass any subdirectory or file, e.g.
@@ -105,10 +105,10 @@ Note that in the full benchmark, exactly 2 programs should be rejected by `zoneC
 Any subset of the available domains is valid. So in order to compare the two different
 implementations of the `zone` domain, one can run
 ```
-ebpf-verifier$ scripts/runperf.sh ebpf-samples/linux stats zoneCrab zoneElina | results.csv
-ebpf-verifier$ python3 scripts/makeplot.py results.csv stores
+scripts/runperf.sh ebpf-samples/linux stats zoneCrab zoneElina | results.csv
+python3 scripts/makeplot.py results.csv stores
 ```
-The script `ebpf-verifier$ python3 scripts/makeplot.py` takes a csv file in the format described above, and the key to plot against (usually instructions or stores) and plots two graphs: on showing runtime as a function of the number of stores, and the other is the memory consumption as a function of the number of stores.
+The script `scripts/makeplot.py` takes a csv file in the format described above, and the key to plot against (usually instructions or stores) and plots two graphs: on showing runtime as a function of the number of stores, and the other is the memory consumption as a function of the number of stores.
 
 While the paper states that the runtime is quadratic, the results are
 expected to be nearly linear for all the domains - except probably the domain
@@ -129,24 +129,24 @@ in the final version, it is recommended to use bare-metal Linux machine.
 
 To run the Linux verifier, you must use `sudo`:
 ```
-ebpf-verifier$ sudo ./check ebpf-samples/linux/cpustat_kern.o --domain=linux
+sudo ./check ebpf-samples/linux/cpustat_kern.o --domain=linux
 ```
 
 ## Counter and Artificial examples
 
 The folder `counter/` contains other examples used to demonstrate the usefulness of our tools, compared to the existing verifier. To compile the examples, run 
 ```
-ebpf-verifier$ make -C counter
-ebpf-verifier$ scripts/runperf.sh counter/objects stats zoneCrab
+make -C counter
+scripts/runperf.sh counter/objects stats zoneCrab
 ```
 
 Two examples of real-world false positive are taken from the Linux samples suite.
 The file `xdp_tx_iptunnel_kern.o` is valid and passes both the Linux tool and ours.
 However, in the original source code there are redundant loads from memory to a varaible holding the same value. These were added happen due to untracked register spilling that led to false positive. Two fixes are compiled into `xdp_tx_iptunnel_1_kern.o` and `xdp_tx_iptunnel_2_kern.o`. Both pass our verifier (without any special effort) but fail the existing one:
 ```
-ebpf-verifier$ ./check counter/objects/xdp_tx_iptunnel_2_kern.o
+$ ./check counter/objects/xdp_tx_iptunnel_2_kern.o
 1,0.314213,86740
-ebpf-verifier$ sudo ./check counter/objects/xdp_tx_iptunnel_2_kern.o --domain=linux -v
+$ sudo ./check counter/objects/xdp_tx_iptunnel_2_kern.o --domain=linux -v
 <... long trace reporting an alleged failure>
 ```
 
@@ -154,14 +154,14 @@ ebpf-verifier$ sudo ./check counter/objects/xdp_tx_iptunnel_2_kern.o --domain=li
 This experiment quadratic blowup in the Linux verifier, versus linear runtime in our tool.
 Be sure to run with `sudo`, since Linux requires special permissions for this.
 ```
-ebpf-verifier$ sudo scripts/experiment.sh | tee blowup.csv
-ebpf-verifier$ python3 scripts/makeplot.py blowup.csv iterations False
+sudo scripts/experiment.sh | tee blowup.csv
+python3 scripts/makeplot.py blowup.csv iterations False
 ```
 
 ### Programs with loops
 There are several simple programs with loops in the folder `counter/src`, called `simple_loop_*.c` and `manual_memset*.c`. The Linux verifier rejects them immediately:
 ```
-ebpf-verifier$ sudo ./check counter/objects/simple_loop_ptr_backwards.o --domain=linux -v
+$ sudo ./check counter/objects/simple_loop_ptr_backwards.o --domain=linux -v
 counter/objects/simple_loop_ptr_backwards.o
 	sk_skb/loop-ptr,bpf_load_program(prog_cnt=0) err=22
 back-edge from insn 7 to 5
@@ -169,7 +169,7 @@ back-edge from insn 7 to 5
 
 Using our tool, the safety (but not termination) of some loop-based programs can be verified:
 ```
-ebpf-verifier$ ./check counter/objects/simple_loop_ptr_backwards.o
+$ ./check counter/objects/simple_loop_ptr_backwards.o
 1,0.018346,7900
 ```
 (not all the programs in the folder are verified)
@@ -190,20 +190,21 @@ with elina. In order to run the tool with these domains, Crab should be
 reinstalled, and the variable `MOD` should be set:
 
 ```
-ebpf-verifier$ make crab_clean clean
-ebpf-verifier$ make MOD=APRON crab_install
-ebpf-verifier$ make
-ebpf-verifier$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=polyApron
+make crab_clean clean
+make MOD=APRON crab_install
+make
+
+$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=polyApron
 1,1.37877,0
-ebpf-verifier$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=octApron
+$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=octApron
 1,0.200318,0
-ebpf-verifier$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=octElina
+$ ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --domain=octElina
 Could not convert: --dom = octElina
 Run with --help for more information.
 ```
 To recompile with Elina support, reinstall crab without `MOD` (or with `MOD=ELINA`):
 ```
-ebpf-verifier$ make crab_clean clean
-ebpf-verifier$ make MOD=APRON crab_install
-ebpf-verifier$ make
+make crab_clean clean
+make MOD=APRON crab_install
+make
 ```
