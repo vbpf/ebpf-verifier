@@ -415,9 +415,52 @@ void worklist(const Cfg& cfg, Analyzer& analyzer) {
     }
 }
 
+static Label pop(std::list<Label> wl) {
+    Label u = wl.front();
+    wl.pop_front();
+    return u;
+}
+
+static auto initialized_invs(const Cfg& cfg, program_info info) -> std::unordered_map<Label, Machine> {
+    std::unordered_map<Label, Machine> df;
+    for (auto l : cfg.keys()) {
+        df.emplace(l, info);
+    }
+    df.at(cfg.keys().front()).init();
+    return df;
+}
+
+static Machine transfer(const BasicBlock& bb, Machine m) {
+    for (const Instruction& ins : bb.insts) {
+        m.visit(ins);
+    }
+    return m;
+}
+
+static auto chaotic(const Cfg& cfg, Analyzer& analyzer, program_info info) -> std::unordered_map<Label, Machine> {
+    std::list<Label> wl{cfg.keys().front()};
+    auto df = initialized_invs(cfg, info);
+    while (!wl.empty()) {
+        Label u = pop(wl);
+        const BasicBlock& bb = cfg.at(u);
+        for (auto v : bb.nextlist) {
+            auto new_as = transfer(bb, df.at(u)) | df.at(v);
+            if (analyzer.recompute(u, bb)) {
+                for (Label next_label : bb.nextlist) {
+                    wl.push_back(next_label);
+                    wl.sort([](auto a, auto b) { return b < a; });
+                }
+                wl.erase(std::unique(wl.begin(), wl.end()), wl.end());
+            }
+        }
+    }
+    return df;
+}
+
+
 void analyze_rcp(Cfg& cfg, program_info info) {
     Analyzer analyzer{cfg, info};
-    worklist(cfg, analyzer);
+    chaotic(cfg, analyzer, info);
 
     for (auto l : cfg.keys()) {
         auto dom = analyzer.pre.at(l);
