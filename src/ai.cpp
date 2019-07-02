@@ -415,7 +415,7 @@ void worklist(const Cfg& cfg, Analyzer& analyzer) {
     }
 }
 
-static Label pop(std::list<Label> wl) {
+static Label pop(std::list<Label>& wl) {
     Label u = wl.front();
     wl.pop_front();
     return u;
@@ -437,19 +437,19 @@ static Machine transfer(const BasicBlock& bb, Machine m) {
     return m;
 }
 
-static auto chaotic(const Cfg& cfg, Analyzer& analyzer, program_info info) -> std::unordered_map<Label, Machine> {
+static auto chaotic(const Cfg& cfg, program_info info) -> std::unordered_map<Label, Machine> {
     std::list<Label> wl{cfg.keys().front()};
     auto df = initialized_invs(cfg, info);
     while (!wl.empty()) {
         Label u = pop(wl);
         const BasicBlock& bb = cfg.at(u);
         for (auto v : bb.nextlist) {
-            auto new_as = transfer(bb, df.at(u)) | df.at(v);
-            if (analyzer.recompute(u, bb)) {
-                for (Label next_label : bb.nextlist) {
-                    wl.push_back(next_label);
-                    wl.sort([](auto a, auto b) { return b < a; });
-                }
+            auto old_as = df.at(v);
+            auto new_as = transfer(bb, df.at(u)) | old_as;
+            if (new_as != old_as) {
+                df.insert_or_assign(v, new_as);
+                wl.push_back(v);
+                wl.sort([](auto a, auto b) { return b < a; });
                 wl.erase(std::unique(wl.begin(), wl.end()), wl.end());
             }
         }
@@ -459,11 +459,10 @@ static auto chaotic(const Cfg& cfg, Analyzer& analyzer, program_info info) -> st
 
 
 void analyze_rcp(Cfg& cfg, program_info info) {
-    Analyzer analyzer{cfg, info};
-    chaotic(cfg, analyzer, info);
+    auto df = chaotic(cfg, info);
 
     for (auto l : cfg.keys()) {
-        auto dom = analyzer.pre.at(l);
+        auto dom = df.at(l);
         for (Instruction& ins : cfg[l].insts) {
             //bool unsatisfied_assertion = false;
             if (std::holds_alternative<Assert>(ins)) {
@@ -504,7 +503,7 @@ class AssertionExtractor {
     void check_access(vector<Assertion>& assumptions, Types t, Reg reg, int offset, Value width) {
         using Op = Condition::Op;
         assumptions.push_back(
-            Assertion{LinearConstraint{Op::GE, reg, offset, Imm{0}, Imm{0}, t}}
+            Assertion{LinearConstraint{Op::GE, reg, offset, (Value)Imm{0}, Imm{0}, t}}
         );
         for (size_t i : type_indices) {
             if (!t[i]) continue;

@@ -83,9 +83,12 @@ int main(int argc, char **argv)
         return 0;
     }
 
+    auto create_map = domain == "linux" ? create_map_linux 
+                    : domain == "rcp"   ? create_map_rcp
+                    : create_map_crab;
     auto raw_progs = filename != "blowup"
-        ? read_elf(filename, desired_section, domain == "linux" ? create_map : nullptr)
-        : create_blowup(size, domain == "linux" ? create_map : nullptr);
+        ? read_elf(filename, desired_section, create_map)
+        : create_blowup(size, create_map);
 
     if (list || raw_progs.size() != 1) {
         if (!list) {

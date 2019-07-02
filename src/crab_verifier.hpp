@@ -20,3 +20,5 @@ std::tuple<bool, double> abs_validate(Cfg const& simple_cfg, std::string domain_
  * 
  */
 std::map<std::string, std::string> domain_descriptions();
+
+int create_map_crab(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries);

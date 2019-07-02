@@ -49,7 +49,7 @@ static int do_bpf(bpf_cmd cmd, union bpf_attr& attr) {
  * 
  *  This function requires admin privileges.
  */
-int create_map(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries)
+int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries)
 {
     union bpf_attr attr;
     memset(&attr, '\0', sizeof(attr));
