@@ -351,76 +351,54 @@ struct Machine {
     }
 };
 
-struct Analyzer {
-    std::unordered_map<Label, Machine> pre;
-    std::unordered_map<Label, Machine> post;
-
-    Analyzer(const Cfg& cfg, program_info info)  {
-        for (auto l : cfg.keys()) {
-            pre.emplace(l, info);
-            post.emplace(l, info);
-        }
-        pre.at(cfg.keys().front()).init();
-    }
-
-    bool recompute(Label l, const BasicBlock& bb) {        
-        Machine dom = pre.at(l);
-        for (const Instruction& ins : bb.insts) {
-            // try {
-                dom.visit(ins);
-            // } catch (const std::runtime_error& ex) {
-            //     std::cerr << l << "\n";
-            //     std::cerr << ins << "\n";
-            //     std::cerr << dom << "\n";
-            //     throw;
-            // }
-        }
-        bool res = post.at(l) != dom;
-        post.insert_or_assign(l, dom);
-        return res;
-    }
-
-    void join(const std::vector<Label>& prevs, Label into) {
-        Machine new_pre = pre.at(into);
-        // std::cerr << "\n";
-        // std::cerr << into << ":\n";
-        // std::cerr << new_pre << "\n";
-        for (Label l : prevs) {
-            new_pre |= post.at(l);
-            // std::cerr << new_pre << "\n";
-        }
-        // std::cerr << "\n\n";
-        pre.insert_or_assign(into, new_pre);
-    }
-};
-
-void worklist(const Cfg& cfg, Analyzer& analyzer) {
-    // Only works with DAGs
-    std::list<Label> w{cfg.keys().front()};
-    std::unordered_map<Label, int> count;
-    for (auto l : cfg.keys()) count[l] = 0;
-    while (!w.empty()) {
-        Label label = w.front();
-        w.pop_front();
-        const BasicBlock& bb = cfg.at(label);
-        analyzer.join(bb.prevlist, label);
-        if (analyzer.recompute(label, bb)) {
-            for (Label next_label : bb.nextlist) {
-                count[next_label]++;
-                if (count[next_label] >= (int)cfg.at(next_label).prevlist.size())
-                    w.push_back(next_label);
-            }
-            w.erase(std::unique(w.begin(), w.end()), w.end());
-        }
-    }
+static Label pop(std::list<Label>& wl) {
+    Label u = wl.front();
+    wl.pop_front();
+    return u;
 }
 
+static auto initialized_invs(const Cfg& cfg, program_info info) -> std::unordered_map<Label, Machine> {
+    std::unordered_map<Label, Machine> df;
+    for (auto l : cfg.keys()) {
+        df.emplace(l, info);
+    }
+    df.at(cfg.keys().front()).init();
+    return df;
+}
+
+static Machine transfer(const BasicBlock& bb, Machine m) {
+    for (const Instruction& ins : bb.insts) {
+        m.visit(ins);
+    }
+    return m;
+}
+
+static auto chaotic(const Cfg& cfg, program_info info) -> std::unordered_map<Label, Machine> {
+    std::list<Label> wl{cfg.keys().front()};
+    auto df = initialized_invs(cfg, info);
+    while (!wl.empty()) {
+        Label u = pop(wl);
+        const BasicBlock& bb = cfg.at(u);
+        for (auto v : bb.nextlist) {
+            auto old_as = df.at(v);
+            auto new_as = transfer(bb, df.at(u)) | old_as;
+            if (new_as != old_as) {
+                df.insert_or_assign(v, new_as);
+                wl.push_back(v);
+                wl.sort([](auto a, auto b) { return b < a; });
+                wl.erase(std::unique(wl.begin(), wl.end()), wl.end());
+            }
+        }
+    }
+    return df;
+}
+
+
 void analyze_rcp(Cfg& cfg, program_info info) {
-    Analyzer analyzer{cfg, info};
-    worklist(cfg, analyzer);
+    auto df = chaotic(cfg, info);
 
     for (auto l : cfg.keys()) {
-        auto dom = analyzer.pre.at(l);
+        auto dom = df.at(l);
         for (Instruction& ins : cfg[l].insts) {
             //bool unsatisfied_assertion = false;
             if (std::holds_alternative<Assert>(ins)) {
@@ -461,7 +439,7 @@ class AssertionExtractor {
     void check_access(vector<Assertion>& assumptions, Types t, Reg reg, int offset, Value width) {
         using Op = Condition::Op;
         assumptions.push_back(
-            Assertion{LinearConstraint{Op::GE, reg, offset, Imm{0}, Imm{0}, t}}
+            Assertion{LinearConstraint{Op::GE, reg, offset, (Value)Imm{0}, Imm{0}, t}}
         );
         for (size_t i : type_indices) {
             if (!t[i]) continue;

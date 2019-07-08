@@ -100,16 +100,14 @@ std::vector<int> sort_maps_by_size(std::vector<map_def>& map_defs) {
     }
     return res;
 }
-/*
-static int allocate_fds(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries) {
+
+int create_map_rcp(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries) {
     static int i = -1;
     i++;
     return i;
 }
-*/
-static int allocate_fds(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries) {
-    // static int i = -1;
-    // i++;
+
+int create_map_crab(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries) {
     if (map_type == 12 || map_type == 13) {
         return -1;
     }
@@ -118,9 +116,7 @@ static int allocate_fds(uint32_t map_type, uint32_t key_size, uint32_t value_siz
 
 vector<raw_program> create_blowup(size_t size, MapFd* fd_alloc)
 {
-    if (fd_alloc == nullptr) {
-        fd_alloc = allocate_fds;
-    }
+    assert(fd_alloc != nullptr);
     std::vector<LabeledInstruction> blowup;
     size_t value_size=size*4;
     int i = 0;
@@ -221,9 +217,7 @@ static BpfProgType section_to_progtype(std::string section, std::string path) {
 
 vector<raw_program> read_elf(std::string path, std::string desired_section, MapFd* fd_alloc)
 {
-    if (fd_alloc == nullptr) {
-        fd_alloc = allocate_fds;
-    }
+    assert(fd_alloc != nullptr);
     ELFIO::elfio reader;
     if (!reader.load(path)) {
         std::cerr << "Can't find or process ELF file " << path << "\n";
