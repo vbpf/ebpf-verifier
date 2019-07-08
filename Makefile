@@ -16,7 +16,7 @@ MAIN_OBJECTS := $(MAIN_SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
 OBJECTS := $(filter-out $(MAIN_OBJECTS) $(TEST_OBJECTS),$(ALL_OBJECTS))
 
 CRABDIR := $(abspath external/crab)
-LDD := ${CRABDIR}/install/ldd
+# LDD := ${CRABDIR}/install/ldd
 INSTALL := ${CRABDIR}/install/crab
 
 # to use APRON, pass MOD=APRON in make invocation
@@ -66,27 +66,27 @@ else
         $(MODINSTALL)/lib/libitvMPQ.a
 endif
 
-LDLIBS += \
-    $(LDD)/lib/libtvpi.a \
-    $(LDD)/lib/libcudd.a \
-    $(LDD)/lib/libst.a \
-    $(LDD)/lib/libutil.a \
-    $(LDD)/lib/libmtr.a \
-    $(LDD)/lib/libepd.a \
-    $(LDD)/lib/libldd.a \
+# LDLIBS += \
+#     $(LDD)/lib/libtvpi.a \
+#     $(LDD)/lib/libcudd.a \
+#     $(LDD)/lib/libst.a \
+#     $(LDD)/lib/libutil.a \
+#     $(LDD)/lib/libmtr.a \
+#     $(LDD)/lib/libepd.a \
+#     $(LDD)/lib/libldd.a \
 
 LDLIBS += -lmpfr -lgmpxx -lgmp -lm -lstdc++ 
 
-CXXFLAGS := -Wall -Wfatal-errors -O0 -g3 -std=c++17 -I external -D$(MOD)_DOMAINS #  -Werror does not work well in Linux
+CXXFLAGS := -Wall -Wfatal-errors -O2 -g3 -std=c++17 -I external -D$(MOD)_DOMAINS #  -Werror does not work well in Linux
 
 CRABFLAGS := \
     -Wno-unused-local-typedefs -Wno-unused-function -Wno-inconsistent-missing-override \
     -Wno-unused-const-variable -Wno-uninitialized -Wno-deprecated \
     -DBSD -DHAVE_IEEE_754 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 \
     -I $(INSTALL)/include/ \
-    -I $(LDD)/include/ldd/ \
-    -I $(LDD)/include/ldd/include/ \
     -I $(MODINSTALL)/include/
+    # -I $(LDD)/include/ldd/ \
+    # -I $(LDD)/include/ldd/include/ \
 
 all: $(BINDIR)/check  # $(BINDIR)/unit-test
 
@@ -114,10 +114,10 @@ crab_clean:
 crab_install:
 	mkdir -p $(CRABDIR)/build
 	cd $(CRABDIR)/build \
-	    && cmake -DCMAKE_INSTALL_PREFIX=../install/ -DUSE_LDD=ON -DUSE_$(MOD)=ON ../ \
-	    && cmake --build . --target ldd && cmake ../ \
+	    && cmake -DCMAKE_INSTALL_PREFIX=../install/ -DUSE_$(MOD)=ON ../ \
 	    && cmake --build . --target $(mod) && cmake ../ \
 	    && cmake --build . --target install
+	    # cmake --build . --target ldd && cmake ../ #  -DUSE_LDD=ON
 
 linux_samples:
 	git clone --depth 1 https://github.com/torvalds/linux.git $(LINUX)
