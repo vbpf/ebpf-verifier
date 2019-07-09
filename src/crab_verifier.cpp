@@ -181,48 +181,7 @@ struct domain_desc {
 // ELINA_DOMAINS / APRON_DOMAINS are defined in compiler invocation
 const map<string, domain_desc> domains{
     { "zoneCrab" , { analyze<array_expansion_domain<z_sdbm_domain_t>>, "zone (crab. split dbm, safe)" } },
-    { "interval" , { analyze<array_expansion_domain<z_interval_domain_t>>   , "interval" } },
-#ifdef ELINA_DOMAINS
-    { "zoneElina", { analyze<array_expansion_domain<z_zones_elina_domain_t>>, "zone (elina)" } },
-    { "octElina" , { analyze<array_expansion_domain<z_oct_elina_domain_t>>  , "octagon (elina)" } },
-    { "polyElina", { analyze<array_expansion_domain<z_pk_elina_domain_t>>   , "polyhedra (elina)" } },
-#endif
-#ifdef APRON_DOMAINS
-    // no zoneApron
-    { "octApron",  { analyze<array_expansion_domain<z_oct_apron_domain_t>> , "octagon (apron)"} },
-    { "polyApron", { analyze<array_expansion_domain<z_pk_apron_domain_t >> , "polyhedra (elina)"} },
-#endif
-#ifdef OTHER_DOMAINS
-    { "disjInterval"      , { analyze<array_expansion_domain<z_dis_interval_domain_t>>, "mem: disjoint intervals (z_dis_interval_domain_t)" } },
-    { "ric"               , { analyze<array_expansion_domain<z_ric_domain_t>>, "mem: numerical congruence (z_ric_domain_t)" } },
-    { "dbm"               , { analyze<array_expansion_domain<z_dbm_domain_t>>, "mem: sparse dbm (z_dbm_domain_t)" } },
-    { "boxes"             , { analyze<array_expansion_domain<z_boxes_domain_t>>, "mem: boxes (z_boxes_domain_t)" } },
-    { "boxesApron"        , { analyze<array_expansion_domain<z_box_apron_domain_t>> , "mem: boxes (apron)"} },
-    { "term"              , { analyze<array_expansion_domain<z_term_domain_t>>, "mem: (z_term_domain_t)" } },
-    { "term_dbm"          , { analyze<array_expansion_domain<z_term_dbm_t>>, "mem: (z_term_dbm_t)" } },
-    { "term_disj_interval", { analyze<array_expansion_domain<z_term_dis_int_t>>, "mem: term x disjoint intervals (z_term_dis_int_t)" } },
-    { "num"               , { analyze<array_expansion_domain<z_num_domain_t>>, "mem: term x disjoint interval x sparse dbm (z_num_domain_t)" } },
-    { "num_boxes"         , { analyze<array_expansion_domain<z_num_boxes_domain_t>>, "mem: term x boxes x sparse dbm" } },
-    { "wrapped"           , { analyze<array_expansion_domain<z_wrapped_interval_domain_t>>, "mem: wrapped interval domain (z_wrapped_interval_domain_t)" } },
-#endif
-#ifdef NOMEM_DOMAINS
-    { "ric-nomem"               , { analyze<z_ric_domain_t>, "numerical congruence (z_ric_domain_t)" } },
-    { "dbm-nomem"               , { analyze<z_dbm_domain_t>, "sparse dbm (z_dbm_domain_t)" } },
-    { "boxes-nomem"             , { analyze<z_boxes_domain_t>, "boxes (z_boxes_domain_t)" } },
-    { "term-nomem"              , { analyze<z_term_domain_t>, "(z_term_domain_t)" } },
-    { "term_dbm-nomem"          ,
-    { "interval-nomem"          , { analyze<z_interval_domain_t>, "simple interval (z_interval_domain_t)" } },
-    { "disjInterval-nomem"      , { analyze<z_dis_interval_domain_t>, "disjoint intervals (z_dis_interval_domain_t)" } },
-    { "zoneElina-nomem"         , { analyze<z_zones_elina_domain_t>, "zones elina (z_zones_elina_domain_t)" } },
-    { "octElina-nomem"          , { analyze<z_oct_elina_domain_t>, "octagon elina (z_oct_elina_domain_t)" } },
-    { "polyElina-nomem"         , { analyze<z_pk_elina_domain_t>, "(z_pk_elina_domain_t)" } },
-    { "zoneCrab-nomem"          , { analyze<z_sdbm_domain_t>, "split dbm (z_sdbm_domain_t)" } },
-    { "term_disj_interval-nomem", { analyze<z_term_dis_int_t>, "term x disjoint intervals (z_term_dis_int_t)" } },
-    { "num-nomem"               , { analyze<z_num_domain_t>, "term x disjoint interval x sparse dbm (z_num_domain_t)" } },
-    { "num_boxes-nomem"         , { analyze<z_num_boxes_domain_t>, "term x boxes x sparse dbm (z_num_domain_t)" } },
-    { "wrapped-nomem"           , { analyze<z_wrapped_interval_domain_t>, "wrapped interval domain (z_wrapped_interval_domain_t)" } },
-#endif
-    { "none"              , { dont_analyze, "build CFG only, don't perform analysis" } },
+    { "none"     , { dont_analyze, "build CFG only, don't perform analysis" } },
 };
 
 map<string, string> domain_descriptions()
