@@ -47,7 +47,7 @@
 #include <boost/functional/hash.hpp>
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/optional.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -68,7 +68,7 @@ class linear_expression {
 
   private:
     typedef boost::container::flat_map<variable_t, Number> map_t;
-    typedef boost::shared_ptr<map_t> map_ptr;
+    typedef std::shared_ptr<map_t> map_ptr;
     typedef typename map_t::value_type pair_t;
 
     map_ptr _map;

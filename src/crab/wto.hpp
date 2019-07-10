@@ -47,7 +47,7 @@
 
 #include <boost/container/slist.hpp>
 #include <boost/iterator/indirect_iterator.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/unordered_map.hpp>
 #include <set>
 #include <vector>
@@ -87,7 +87,7 @@ class wto_nesting {
 
   private:
     typedef std::vector<typename boost::graph_traits<G>::vertex_descriptor> node_list_t;
-    typedef boost::shared_ptr<node_list_t> node_list_ptr;
+    typedef std::shared_ptr<node_list_t> node_list_ptr;
 
     node_list_ptr _nodes;
 
@@ -96,7 +96,7 @@ class wto_nesting {
     typedef typename node_list_t::const_iterator const_iterator;
 
   private:
-    wto_nesting(node_list_ptr l) : _nodes(boost::make_shared<node_list_t>(*l)) {}
+    wto_nesting(node_list_ptr l) : _nodes(std::make_shared<node_list_t>(*l)) {}
 
     int compare(wto_nesting_t &other) const {
         const_iterator this_it = this->begin(), other_it = other.begin();
@@ -118,10 +118,10 @@ class wto_nesting {
     }
 
   public:
-    wto_nesting() : _nodes(boost::make_shared<node_list_t>()) {}
+    wto_nesting() : _nodes(std::make_shared<node_list_t>()) {}
 
     void operator+=(typename boost::graph_traits<G>::vertex_descriptor n) {
-        this->_nodes = boost::make_shared<node_list_t>(*(this->_nodes));
+        this->_nodes = std::make_shared<node_list_t>(*(this->_nodes));
         this->_nodes->push_back(n);
     }
 
@@ -228,9 +228,9 @@ class wto_cycle : public wto_component<G> {
     typedef wto_component<G> wto_component_t;
 
   private:
-    typedef boost::shared_ptr<wto_component_t> wto_component_ptr;
+    typedef std::shared_ptr<wto_component_t> wto_component_ptr;
     typedef boost::container::slist<wto_component_ptr> wto_component_list_t;
-    typedef boost::shared_ptr<wto_component_list_t> wto_component_list_ptr;
+    typedef std::shared_ptr<wto_component_list_t> wto_component_list_ptr;
 
     typename boost::graph_traits<G>::vertex_descriptor _head;
     wto_component_list_ptr _wto_components;
@@ -304,18 +304,18 @@ class wto {
     typedef wto<G> wto_t;
 
   private:
-    typedef boost::shared_ptr<wto_component_t> wto_component_ptr;
-    typedef boost::shared_ptr<wto_vertex_t> wto_vertex_ptr;
-    typedef boost::shared_ptr<wto_cycle_t> wto_cycle_ptr;
+    typedef std::shared_ptr<wto_component_t> wto_component_ptr;
+    typedef std::shared_ptr<wto_vertex_t> wto_vertex_ptr;
+    typedef std::shared_ptr<wto_cycle_t> wto_cycle_ptr;
     typedef boost::container::slist<wto_component_ptr> wto_component_list_t;
-    typedef boost::shared_ptr<wto_component_list_t> wto_component_list_ptr;
+    typedef std::shared_ptr<wto_component_list_t> wto_component_list_ptr;
     typedef bound<z_number> dfn_t;
     typedef boost::unordered_map<typename boost::graph_traits<G>::vertex_descriptor, dfn_t> dfn_table_t;
-    typedef boost::shared_ptr<dfn_table_t> dfn_table_ptr;
+    typedef std::shared_ptr<dfn_table_t> dfn_table_ptr;
     typedef std::vector<typename boost::graph_traits<G>::vertex_descriptor> stack_t;
-    typedef boost::shared_ptr<stack_t> stack_ptr;
+    typedef std::shared_ptr<stack_t> stack_ptr;
     typedef boost::unordered_map<typename boost::graph_traits<G>::vertex_descriptor, wto_nesting_t> nesting_table_t;
-    typedef boost::shared_ptr<nesting_table_t> nesting_table_ptr;
+    typedef std::shared_ptr<nesting_table_t> nesting_table_ptr;
 
     wto_component_list_ptr _wto_components;
     dfn_table_ptr _dfn_table;
@@ -382,7 +382,7 @@ class wto {
     void push(typename boost::graph_traits<G>::vertex_descriptor n) { this->_stack->push_back(n); }
 
     wto_cycle_ptr component(G g, typename boost::graph_traits<G>::vertex_descriptor vertex) {
-        auto partition = boost::make_shared<wto_component_list_t>();
+        auto partition = std::make_shared<wto_component_list_t>();
         std::pair<typename boost::graph_traits<G>::out_edge_iterator,
                   typename boost::graph_traits<G>::out_edge_iterator>
             succ_edges = out_edges(vertex, g);
@@ -478,11 +478,11 @@ class wto {
                     CRAB_LOG("wto-nonrec", crab::outs()
                                                << "\tWTO: adding component starting from " << visiting_node << "\n";);
                     partition->push_front(
-                        boost::static_pointer_cast<wto_component_t, wto_cycle_t>(component(g, visiting_node)));
+                        component(g, visiting_node));
                 } else {
                     CRAB_LOG("wto-nonrec", crab::outs() << "\tWTO: adding vertex " << visiting_node << "\n";);
-                    partition->push_front(boost::static_pointer_cast<wto_component_t, wto_vertex_t>(
-                        wto_vertex_ptr(new wto_vertex_t(visiting_node))));
+                    partition->push_front(
+                        wto_vertex_ptr(new wto_vertex_t(visiting_node)));
                 }
                 CRAB_LOG("wto-nonrec", crab::outs() << "WTO: END building partition\n";);
             }
@@ -549,8 +549,8 @@ class wto {
     typedef boost::indirect_iterator<typename wto_component_list_t::const_iterator> const_iterator;
 
     wto(G g)
-        : _wto_components(boost::make_shared<wto_component_list_t>()), _dfn_table(boost::make_shared<dfn_table_t>()),
-          _num(0), _stack(boost::make_shared<stack_t>()), _nesting_table(boost::make_shared<nesting_table_t>()) {
+        : _wto_components(std::make_shared<wto_component_list_t>()), _dfn_table(std::make_shared<dfn_table_t>()),
+          _num(0), _stack(std::make_shared<stack_t>()), _nesting_table(std::make_shared<nesting_table_t>()) {
         crab::ScopedCrabStats __st__("Fixpo.WTO");
 
         this->visit(g, entry(g), this->_wto_components);
@@ -561,10 +561,10 @@ class wto {
 
     // deep copy
     wto(const wto_t &other)
-        : _wto_components(boost::make_shared<wto_component_list_t>(*other._wto_components)),
-          _dfn_table(other._dfn_table ? boost::make_shared<dfn_table_t>(*other._dfn_table) : nullptr), _num(other._num),
-          _stack(other._stack ? boost::make_shared<stack_t>(*other._stack) : nullptr),
-          _nesting_table(boost::make_shared<nesting_table_t>(*other._nesting_table)) {}
+        : _wto_components(std::make_shared<wto_component_list_t>(*other._wto_components)),
+          _dfn_table(other._dfn_table ? std::make_shared<dfn_table_t>(*other._dfn_table) : nullptr), _num(other._num),
+          _stack(other._stack ? std::make_shared<stack_t>(*other._stack) : nullptr),
+          _nesting_table(std::make_shared<nesting_table_t>(*other._nesting_table)) {}
 
     wto(const wto_t &&other)
         : _wto_components(boost::move(other._wto_components)), _dfn_table(boost::move(other._dfn_table)),

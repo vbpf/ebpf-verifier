@@ -8,7 +8,7 @@
 #include "crab/var_factory.hpp"
 
 #include "boost/range/algorithm/set_algorithm.hpp"
-#include "boost/shared_ptr.hpp"
+#include <memory>
 
 namespace crab {
 
@@ -216,7 +216,7 @@ class intra_fwd_analyzer_wrapper {
 
   private:
     abs_dom_t m_init;
-    boost::shared_ptr<abs_tr_t> m_abs_tr;
+    std::shared_ptr<abs_tr_t> m_abs_tr;
     fwd_analyzer_t m_analyzer;
 
   public:
@@ -224,7 +224,7 @@ class intra_fwd_analyzer_wrapper {
                                // fixpoint parameters
                                unsigned int widening_delay = 1, unsigned int descending_iters = UINT_MAX,
                                size_t jump_set_size = 0)
-        : m_init(AbsDomain::top()), m_abs_tr(boost::make_shared<abs_tr_t>(&m_init)),
+        : m_init(AbsDomain::top()), m_abs_tr(std::make_shared<abs_tr_t>(&m_init)),
           m_analyzer(cfg, nullptr, &*m_abs_tr, nullptr, widening_delay, descending_iters, jump_set_size) {}
 
     intra_fwd_analyzer_wrapper(CFG cfg, AbsDomain init,
@@ -235,7 +235,7 @@ class intra_fwd_analyzer_wrapper {
                                // fixpoint parameters
                                unsigned int widening_delay = 1, unsigned int descending_iters = UINT_MAX,
                                size_t jump_set_size = 0)
-        : m_init(init), m_abs_tr(boost::make_shared<abs_tr_t>(&m_init)),
+        : m_init(init), m_abs_tr(std::make_shared<abs_tr_t>(&m_init)),
           m_analyzer(cfg, wto, &*m_abs_tr, live, widening_delay, descending_iters, jump_set_size) {}
 
     void run() { m_analyzer.run_forward(); }
@@ -272,7 +272,7 @@ class intra_fwd_analyzer_wrapper {
 
     CFG get_cfg() { return m_analyzer.get_cfg(); }
 
-    boost::shared_ptr<abs_tr_t> get_abs_transformer(abs_dom_t *inv) {
+    std::shared_ptr<abs_tr_t> get_abs_transformer(abs_dom_t *inv) {
         m_abs_tr->set(inv);
         return m_abs_tr;
     }

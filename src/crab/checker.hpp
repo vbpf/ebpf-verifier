@@ -27,7 +27,7 @@ class checker {
     checker<Analyzer> &operator=(const checker<Analyzer> &other); // non-copyable
 
   public:
-    typedef boost::shared_ptr<property_checker<Analyzer>> prop_checker_ptr;
+    typedef std::shared_ptr<property_checker<Analyzer>> prop_checker_ptr;
     typedef std::vector<prop_checker_ptr> prop_checker_vector;
 
   protected:
@@ -91,12 +91,12 @@ class intra_checker : public checker<Analyzer> {
                 if (checker->is_interesting(bb)) {
                     crab::ScopedCrabStats __st__("Checker." + checker->get_property_name());
                     abs_dom_t inv = m_analyzer[bb.label()];
-                    boost::shared_ptr<abs_tr_t> abs_tr = m_analyzer.get_abs_transformer(&inv);
+                    std::shared_ptr<abs_tr_t> abs_tr = m_analyzer.get_abs_transformer(&inv);
                     // propagate forward the invariants from the block entry
                     // while checking the property
-                    checker->set(&*abs_tr, safe_assertions);
+                    checker->set(abs_tr.get(), safe_assertions);
                     for (auto &stmt : bb) {
-                        stmt.accept(&*checker);
+                        stmt.accept(checker.get());
                     }
                 }
             }
