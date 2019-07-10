@@ -27,8 +27,8 @@ class checker {
     checker<Analyzer> &operator=(const checker<Analyzer> &other); // non-copyable
 
   public:
-    typedef std::shared_ptr<property_checker<Analyzer>> prop_checker_ptr;
-    typedef std::vector<prop_checker_ptr> prop_checker_vector;
+    using prop_checker_ptr = std::shared_ptr<property_checker<Analyzer>>;
+    using prop_checker_vector = std::vector<prop_checker_ptr>;
 
   protected:
     prop_checker_vector m_checkers;
@@ -59,15 +59,15 @@ class checker {
 template <typename Analyzer>
 class intra_checker : public checker<Analyzer> {
   public:
-    typedef checker<Analyzer> base_checker_t;
+    using base_checker_t = checker<Analyzer>;
     using typename base_checker_t::prop_checker_ptr;
     using typename base_checker_t::prop_checker_vector;
 
   private:
-    typedef typename Analyzer::cfg_t cfg_t;
-    typedef typename cfg_t::statement_t statement_t;
-    typedef typename Analyzer::abs_dom_t abs_dom_t;
-    typedef typename Analyzer::abs_tr_t abs_tr_t;
+    using cfg_t = typename Analyzer::cfg_t;
+    using statement_t = typename cfg_t::statement_t;
+    using abs_dom_t = typename Analyzer::abs_dom_t;
+    using abs_tr_t = typename Analyzer::abs_tr_t;
 
     Analyzer &m_analyzer;
 

@@ -34,7 +34,7 @@ inline std::string get_str(std::string e) {
 // id's that always increases.
 template <class T>
 class variable_factory : public boost::noncopyable {
-    typedef variable_factory<T> variable_factory_t;
+    using variable_factory_t = variable_factory<T>;
 
   public:
     class indexed_string {
@@ -46,7 +46,7 @@ class variable_factory : public boost::noncopyable {
         // overflow. However, this change is a bit involving since we
         // need to change the algorithm api's in patricia_trees.hpp because
         // they assume ikos::index_t.
-        typedef ikos::index_t index_t;
+        using index_t = ikos::index_t;
 
       private:
         boost::optional<T> _s;
@@ -113,11 +113,11 @@ class variable_factory : public boost::noncopyable {
     };
 
   public:
-    typedef typename indexed_string::index_t index_t;
+    using index_t = typename indexed_string::index_t;
 
   private:
-    typedef boost::unordered_map<T, indexed_string> t_map_t;
-    typedef boost::unordered_map<index_t, indexed_string> shadow_map_t;
+    using t_map_t = boost::unordered_map<T, indexed_string>;
+    using shadow_map_t = boost::unordered_map<index_t, indexed_string>;
 
     index_t _next_id;
     t_map_t _map;
@@ -134,9 +134,9 @@ class variable_factory : public boost::noncopyable {
     }
 
   public:
-    typedef indexed_string varname_t;
-    typedef boost::iterator_range<typename std::vector<indexed_string>::iterator> var_range;
-    typedef boost::iterator_range<typename std::vector<indexed_string>::const_iterator> const_var_range;
+    using varname_t = indexed_string;
+    using var_range = boost::iterator_range<typename std::vector<indexed_string>::iterator>;
+    using const_var_range = boost::iterator_range<typename std::vector<indexed_string>::const_iterator>;
 
   public:
     variable_factory() : _next_id(1) {}
@@ -186,12 +186,12 @@ class variable_factory : public boost::noncopyable {
 
 //! Specialized factory for strings
 class str_variable_factory : public variable_factory<std::string> {
-    typedef variable_factory<std::string> variable_factory_t;
+    using variable_factory_t = variable_factory<std::string>;
 
   public:
-    typedef variable_factory_t::varname_t varname_t;
-    typedef variable_factory_t::const_var_range const_var_range;
-    typedef variable_factory_t::index_t index_t;
+    using varname_t = variable_factory_t::varname_t;
+    using const_var_range = variable_factory_t::const_var_range;
+    using index_t = variable_factory_t::index_t;
 
     str_variable_factory() : variable_factory_t() {}
 };
@@ -199,7 +199,7 @@ class str_variable_factory : public variable_factory<std::string> {
 //! Specialized factory for integers
 class int_variable_factory : public boost::noncopyable {
   public:
-    typedef int varname_t;
+    using varname_t = int;
 
     int_variable_factory() {}
 
@@ -225,7 +225,7 @@ class str_var_alloc_col {
     static const char **col_prefix;
 
   public:
-    typedef str_variable_factory::varname_t varname_t;
+    using varname_t = str_variable_factory::varname_t;
     static str_variable_factory vfac;
 
     str_var_alloc_col() : colour(0), next_id(0) {}
@@ -256,7 +256,7 @@ class str_var_alloc_col {
 
 class int_var_alloc_col {
   public:
-    typedef int varname_t;
+    using varname_t = int;
     static int_variable_factory vfac;
 
     int_var_alloc_col() : colour(0), next_id(0) {}

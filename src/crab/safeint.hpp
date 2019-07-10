@@ -17,7 +17,7 @@ class safe_i64 {
     // TODO/FIXME: the current code compiles assuming the type __int128
     // exists. Both clang and gcc supports __int128 if the targeted
     // architecture is x86/64, but it wont' work with 32 bits.
-    typedef __int128 wideint_t;
+    using wideint_t = __int128;
 
     inline int64_t get_max() const;
     inline int64_t get_min() const;

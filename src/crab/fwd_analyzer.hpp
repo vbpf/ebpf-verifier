@@ -25,26 +25,26 @@ namespace analyzer {
 template <typename CFG, typename AbsTr>
 class fwd_analyzer : private ikos::interleaved_fwd_fixpoint_iterator<CFG, typename AbsTr::abs_dom_t> {
   public:
-    typedef CFG cfg_t;
-    typedef typename CFG::basic_block_label_t basic_block_label_t;
-    typedef typename CFG::varname_t varname_t;
-    typedef typename CFG::variable_t variable_t;
-    typedef typename AbsTr::abs_dom_t abs_dom_t;
-    typedef AbsTr abs_tr_t;
+    using cfg_t = CFG;
+    using basic_block_label_t = typename CFG::basic_block_label_t;
+    using varname_t = typename CFG::varname_t;
+    using variable_t = typename CFG::variable_t;
+    using abs_dom_t = typename AbsTr::abs_dom_t;
+    using abs_tr_t = AbsTr;
 
   private:
-    typedef ikos::interleaved_fwd_fixpoint_iterator<CFG, abs_dom_t> fixpo_iterator_t;
+    using fixpo_iterator_t = ikos::interleaved_fwd_fixpoint_iterator<CFG, abs_dom_t>;
 
   public:
-    typedef typename fixpo_iterator_t::invariant_table_t invariant_map_t;
-    typedef typename fixpo_iterator_t::assumption_map_t assumption_map_t;
-    typedef liveness<CFG> liveness_t;
-    typedef typename fixpo_iterator_t::wto_t wto_t;
-    typedef typename fixpo_iterator_t::iterator iterator;
-    typedef typename fixpo_iterator_t::const_iterator const_iterator;
+    using invariant_map_t = typename fixpo_iterator_t::invariant_table_t;
+    using assumption_map_t = typename fixpo_iterator_t::assumption_map_t;
+    using liveness_t = liveness<CFG>;
+    using wto_t = typename fixpo_iterator_t::wto_t;
+    using iterator = typename fixpo_iterator_t::iterator;
+    using const_iterator = typename fixpo_iterator_t::const_iterator;
 
   private:
-    typedef typename liveness_t::set_t live_set_t;
+    using live_set_t = typename liveness_t::set_t;
 
     abs_tr_t *m_abs_tr; // the abstract transformer
     const liveness_t *m_live;
@@ -197,22 +197,22 @@ class fwd_analyzer : private ikos::interleaved_fwd_fixpoint_iterator<CFG, typena
  **/
 template <typename CFG, typename AbsDomain, typename AbsTr>
 class intra_fwd_analyzer_wrapper {
-    typedef fwd_analyzer<CFG, AbsTr> fwd_analyzer_t;
+    using fwd_analyzer_t = fwd_analyzer<CFG, AbsTr>;
 
   public:
-    typedef AbsDomain abs_dom_t;
-    typedef liveness<CFG> liveness_t;
-    typedef CFG cfg_t;
-    typedef typename CFG::basic_block_label_t basic_block_label_t;
-    typedef typename CFG::varname_t varname_t;
-    typedef typename CFG::number_t number_t;
-    typedef typename CFG::statement_t stmt_t;
-    typedef typename fwd_analyzer_t::abs_tr_t abs_tr_t;
-    typedef typename fwd_analyzer_t::wto_t wto_t;
-    typedef typename fwd_analyzer_t::assumption_map_t assumption_map_t;
-    typedef typename fwd_analyzer_t::invariant_map_t invariant_map_t;
-    typedef typename fwd_analyzer_t::iterator iterator;
-    typedef typename fwd_analyzer_t::const_iterator const_iterator;
+    using abs_dom_t = AbsDomain;
+    using liveness_t = liveness<CFG>;
+    using cfg_t = CFG;
+    using basic_block_label_t = typename CFG::basic_block_label_t;
+    using varname_t = typename CFG::varname_t;
+    using number_t = typename CFG::number_t;
+    using stmt_t = typename CFG::statement_t;
+    using abs_tr_t = typename fwd_analyzer_t::abs_tr_t;
+    using wto_t = typename fwd_analyzer_t::wto_t;
+    using assumption_map_t = typename fwd_analyzer_t::assumption_map_t;
+    using invariant_map_t = typename fwd_analyzer_t::invariant_map_t;
+    using iterator = typename fwd_analyzer_t::iterator;
+    using const_iterator = typename fwd_analyzer_t::const_iterator;
 
   private:
     abs_dom_t m_init;

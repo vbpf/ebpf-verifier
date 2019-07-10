@@ -25,7 +25,7 @@ class thresholds {
 
   private:
     /// XXX: internal representation of a threshold
-    typedef ikos::bound<Number> bound_t;
+    using bound_t = ikos::bound<Number>;
 
     std::vector<bound_t> m_thresholds;
     unsigned int m_size;
@@ -140,11 +140,11 @@ template <typename CFG>
 class wto_thresholds : public ikos::wto_component_visitor<CFG> {
 
   public:
-    typedef typename CFG::basic_block_label_t basic_block_label_t;
-    typedef ikos::wto_vertex<CFG> wto_vertex_t;
-    typedef ikos::wto_cycle<CFG> wto_cycle_t;
-    typedef crab::iterators::thresholds<typename CFG::number_t> thresholds_t;
-    typedef boost::unordered_map<basic_block_label_t, thresholds_t> thresholds_map_t;
+    using basic_block_label_t = typename CFG::basic_block_label_t;
+    using wto_vertex_t = ikos::wto_vertex<CFG>;
+    using wto_cycle_t = ikos::wto_cycle<CFG>;
+    using thresholds_t = crab::iterators::thresholds<typename CFG::number_t>;
+    using thresholds_map_t = boost::unordered_map<basic_block_label_t, thresholds_t>;
 
   private:
     // the cfg
@@ -156,17 +156,17 @@ class wto_thresholds : public ikos::wto_component_visitor<CFG> {
     // the top of the stack is the current wto head
     std::vector<basic_block_label_t> m_stack;
 
-    typedef typename CFG::basic_block_t basic_block_t;
-    typedef typename CFG::number_t number_t;
-    typedef typename CFG::varname_t varname_t;
-    typedef typename CFG::variable_t variable_t;
-    typedef ikos::linear_expression<number_t, varname_t> linear_expression_t;
-    typedef ikos::linear_constraint<number_t, varname_t> linear_constraint_t;
-    typedef ikos::bound<number_t> bound_t;
+    using basic_block_t = typename CFG::basic_block_t;
+    using number_t = typename CFG::number_t;
+    using varname_t = typename CFG::varname_t;
+    using variable_t = typename CFG::variable_t;
+    using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
+    using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
+    using bound_t = ikos::bound<number_t>;
 
-    typedef crab::cfg::assume_stmt<number_t, varname_t> assume_t;
-    // typedef crab::cfg::select_stmt<number_t,varname_t> select_t;
-    // typedef crab::cfg::assignment<number_t,varname_t>  assign_t;
+    using assume_t = crab::cfg::assume_stmt<number_t, varname_t>;
+    // using select_t = crab::cfg::select_stmt<number_t,varname_t>;
+    // using assign_t = crab::cfg::assignment<number_t,varname_t> ;
 
     void extract_bounds(const linear_expression_t &e, bool is_strict, std::vector<number_t> &lb_bounds,
                         std::vector<number_t> &ub_bounds) const {

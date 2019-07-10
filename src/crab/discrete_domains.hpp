@@ -52,11 +52,11 @@ template <typename Element>
 class discrete_domain {
 
   private:
-    typedef patricia_tree_set<Element> ptset_t;
+    using ptset_t = patricia_tree_set<Element>;
 
   public:
-    typedef discrete_domain<Element> discrete_domain_t;
-    typedef typename ptset_t::iterator iterator;
+    using discrete_domain_t = discrete_domain<Element>;
+    using iterator = typename ptset_t::iterator;
 
   private:
     bool _is_top;

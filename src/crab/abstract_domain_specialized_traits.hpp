@@ -12,9 +12,9 @@ namespace domains {
 template <typename Domain>
 class constraint_simp_domain_traits {
   public:
-    typedef typename Domain::number_t number_t;
-    typedef typename Domain::linear_constraint_t linear_constraint_t;
-    typedef typename Domain::linear_constraint_system_t linear_constraint_system_t;
+    using number_t = typename Domain::number_t;
+    using linear_constraint_t = typename Domain::linear_constraint_t;
+    using linear_constraint_system_t = typename Domain::linear_constraint_system_t;
 
     // Convert an equality into two inequalities. This is not
     // possible for machine arithmetic domains.
@@ -32,10 +32,10 @@ class constraint_simp_domain_traits {
 template <typename Domain>
 class checker_domain_traits {
   public:
-    typedef typename Domain::varname_t varname_t;
-    typedef typename Domain::number_t number_t;
-    typedef typename Domain::linear_constraint_t linear_constraint_t;
-    typedef typename Domain::linear_constraint_system_t linear_constraint_system_t;
+    using varname_t = typename Domain::varname_t;
+    using number_t = typename Domain::number_t;
+    using linear_constraint_t = typename Domain::linear_constraint_t;
+    using linear_constraint_system_t = typename Domain::linear_constraint_system_t;
 
   private:
     struct entailment {
@@ -115,9 +115,9 @@ class checker_domain_traits {
 template <typename Domain>
 class reduced_domain_traits {
   public:
-    typedef typename Domain::variable_t variable_t;
-    typedef typename Domain::linear_constraint_t linear_constraint_t;
-    typedef typename Domain::linear_constraint_system_t linear_constraint_system_t;
+    using variable_t = typename Domain::variable_t;
+    using linear_constraint_t = typename Domain::linear_constraint_t;
+    using linear_constraint_system_t = typename Domain::linear_constraint_system_t;
 
     // extract linear constraints from dom involving x and store in
     // ctsts
@@ -150,8 +150,8 @@ class array_sgraph_domain_traits {
 template <typename Domain>
 class array_sgraph_domain_helper_traits {
   public:
-    typedef typename Domain::linear_constraint_t linear_constraint_t;
-    typedef typename Domain::variable_vector_t variable_vector_t;
+    using linear_constraint_t = typename Domain::linear_constraint_t;
+    using variable_vector_t = typename Domain::variable_vector_t;
 
     // FIXME: this does similar thing to
     // checker_domain_traits<Domain>::entail

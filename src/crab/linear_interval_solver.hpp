@@ -82,18 +82,18 @@ template <typename Number, typename VariableName, typename IntervalCollection>
 class linear_interval_solver {
 
   public:
-    typedef typename IntervalCollection::value_type Interval;
-    typedef variable<Number, VariableName> variable_t;
-    typedef linear_expression<Number, VariableName> linear_expression_t;
-    typedef linear_constraint<Number, VariableName> linear_constraint_t;
-    typedef linear_constraint_system<Number, VariableName> linear_constraint_system_t;
-    typedef typename variable_t::bitwidth_t bitwidth_t;
+    using Interval = typename IntervalCollection::value_type;
+    using variable_t = variable<Number, VariableName>;
+    using linear_expression_t = linear_expression<Number, VariableName>;
+    using linear_constraint_t = linear_constraint<Number, VariableName>;
+    using linear_constraint_system_t = linear_constraint_system<Number, VariableName>;
+    using bitwidth_t = typename variable_t::bitwidth_t;
 
   private:
-    typedef std::vector<linear_constraint_t> cst_table_t;
-    typedef std::set<unsigned int> uint_set_t;
-    typedef std::map<variable_t, uint_set_t> trigger_table_t;
-    typedef typename linear_constraint_t::variable_set_t variable_set_t;
+    using cst_table_t = std::vector<linear_constraint_t>;
+    using uint_set_t = std::set<unsigned int>;
+    using trigger_table_t = std::map<variable_t, uint_set_t>;
+    using variable_set_t = typename linear_constraint_t::variable_set_t;
 
     std::size_t m_max_cycles;
     std::size_t m_max_op;

@@ -48,11 +48,11 @@ class num_range {
 template <class G>
 class GraphPerm {
   public:
-    typedef typename G::vert_id vert_id;
-    typedef typename G::Wt Wt;
-    typedef typename G::pred_range g_pred_range;
-    typedef typename G::succ_range g_succ_range;
-    typedef typename G::mut_val_ref_t mut_val_ref_t;
+    using vert_id = typename G::vert_id;
+    using Wt = typename G::Wt;
+    using g_pred_range = typename G::pred_range;
+    using g_succ_range = typename G::succ_range;
+    using mut_val_ref_t = typename G::mut_val_ref_t;
 
     GraphPerm(std::vector<vert_id> &_perm, G &_g) : g(_g), perm(_perm), inv(_g.size(), -1) {
         for (unsigned int vi = 0; vi < perm.size(); vi++) {
@@ -91,8 +91,8 @@ class GraphPerm {
     // Number of allocated vertices
     int size(void) const { return perm.size(); }
 
-    typedef num_range<vert_id> vert_range;
-    typedef typename num_range<vert_id>::value_ref vert_iterator;
+    using vert_range = num_range<vert_id>;
+    using vert_iterator = typename num_range<vert_id>::value_ref;
     vert_range verts(void) const { return vert_range(perm.size()); }
 
     // GKG: Should probably modify this to handle cases where
@@ -123,7 +123,7 @@ class GraphPerm {
     template <class ItG>
     class e_adj_iterator {
       public:
-        typedef typename ItG::edge_ref edge_ref;
+        using edge_ref = typename ItG::edge_ref;
 
         e_adj_iterator(std::vector<vert_id> &_inv, const ItG &_v) : inv(_inv), v(_v) {}
 
@@ -148,11 +148,11 @@ class GraphPerm {
     template <class RG, class It>
     class adj_list {
       public:
-        typedef typename RG::iterator ItG;
-        typedef adj_list<RG, It> adj_list_t;
-        //      typedef adj_iterator<ItG> adj_iter_t;
+        using ItG = typename RG::iterator;
+        using adj_list_t = adj_list<RG, It>;
+        //      using adj_iter_t = adj_iterator<ItG>;
 
-        typedef It iterator;
+        using iterator = It;
 
         adj_list(std::vector<vert_id> &_perm, std::vector<vert_id> &_inv, const RG &_adj)
             : perm(_perm), inv(_inv), adj(_adj) {}
@@ -184,11 +184,11 @@ class GraphPerm {
         boost::optional<RG> adj;
     };
 
-    typedef adj_list<typename G::pred_range, adj_iterator<typename G::pred_range::iterator>> pred_range;
-    typedef adj_list<typename G::succ_range, adj_iterator<typename G::succ_range::iterator>> succ_range;
+    using pred_range = adj_list<typename G::pred_range, adj_iterator<typename G::pred_range::iterator>>;
+    using succ_range = adj_list<typename G::succ_range, adj_iterator<typename G::succ_range::iterator>>;
 
-    typedef adj_list<typename G::e_pred_range, e_adj_iterator<typename G::e_pred_range::iterator>> e_pred_range;
-    typedef adj_list<typename G::e_succ_range, e_adj_iterator<typename G::e_succ_range::iterator>> e_succ_range;
+    using e_pred_range = adj_list<typename G::e_pred_range, e_adj_iterator<typename G::e_pred_range::iterator>>;
+    using e_succ_range = adj_list<typename G::e_succ_range, e_adj_iterator<typename G::e_succ_range::iterator>>;
 
     succ_range succs(vert_id v) {
         if (perm[v] == (-1))
@@ -225,16 +225,16 @@ class GraphPerm {
 template <class G>
 class SubGraph {
   public:
-    typedef typename G::vert_id vert_id;
-    typedef typename G::Wt Wt;
+    using vert_id = typename G::vert_id;
+    using Wt = typename G::Wt;
 
-    typedef typename G::pred_range g_pred_range;
-    typedef typename G::succ_range g_succ_range;
+    using g_pred_range = typename G::pred_range;
+    using g_succ_range = typename G::succ_range;
 
-    typedef typename G::e_pred_range g_e_pred_range;
-    typedef typename G::e_succ_range g_e_succ_range;
+    using g_e_pred_range = typename G::e_pred_range;
+    using g_e_succ_range = typename G::e_succ_range;
 
-    typedef typename G::mut_val_ref_t mut_val_ref_t;
+    using mut_val_ref_t = typename G::mut_val_ref_t;
 
     SubGraph(G &_g, vert_id _v_ex) : g(_g), v_ex(_v_ex) {}
 
@@ -325,7 +325,7 @@ class SubGraph {
     template <class It>
     class e_adj_iterator {
       public:
-        typedef typename It::edge_ref edge_ref;
+        using edge_ref = typename It::edge_ref;
 
         e_adj_iterator(const It &_iG, vert_id _v_ex) : iG(_iG), v_ex(_v_ex) {}
         edge_ref operator*(void)const { return *iG; }
@@ -346,8 +346,8 @@ class SubGraph {
     template <class R, class It>
     class adj_list {
       public:
-        typedef typename R::iterator g_iter;
-        typedef It iterator;
+        using g_iter = typename R::iterator;
+        using iterator = It;
 
         adj_list(const R &_rG, vert_id _v_ex) : rG(_rG), v_ex(_v_ex) {}
         iterator begin() const { return iterator(rG.begin(), v_ex); }
@@ -357,11 +357,11 @@ class SubGraph {
         R rG;
         vert_id v_ex;
     };
-    typedef adj_list<g_pred_range, adj_iterator<typename g_pred_range::iterator>> pred_range;
-    typedef adj_list<g_succ_range, adj_iterator<typename g_succ_range::iterator>> succ_range;
+    using pred_range = adj_list<g_pred_range, adj_iterator<typename g_pred_range::iterator>>;
+    using succ_range = adj_list<g_succ_range, adj_iterator<typename g_succ_range::iterator>>;
 
-    typedef adj_list<g_e_pred_range, e_adj_iterator<typename g_e_pred_range::iterator>> e_pred_range;
-    typedef adj_list<g_e_succ_range, e_adj_iterator<typename g_e_succ_range::iterator>> e_succ_range;
+    using e_pred_range = adj_list<g_e_pred_range, e_adj_iterator<typename g_e_pred_range::iterator>>;
+    using e_succ_range = adj_list<g_e_succ_range, e_adj_iterator<typename g_e_succ_range::iterator>>;
 
     succ_range succs(vert_id v) {
         //      assert(v != v_ex);
@@ -384,10 +384,10 @@ class SubGraph {
 template <class G>
 class GraphRev {
   public:
-    typedef typename G::vert_id vert_id;
-    typedef typename G::Wt Wt;
-    // typedef typename G::adj_list g_adj_list;
-    typedef typename G::mut_val_ref_t mut_val_ref_t;
+    using vert_id = typename G::vert_id;
+    using Wt = typename G::Wt;
+    // using g_adj_list = typename G::adj_list;
+    using mut_val_ref_t = typename G::mut_val_ref_t;
 
     GraphRev(G &_g) : g(_g) {}
 
@@ -405,12 +405,12 @@ class GraphRev {
     // Number of allocated vertices
     int size(void) const { return g.size(); }
 
-    //    typedef typename G::adj_list adj_list;
-    typedef typename G::succ_range pred_range;
-    typedef typename G::pred_range succ_range;
+    //    using adj_list = typename G::adj_list;
+    using pred_range = typename G::succ_range;
+    using succ_range = typename G::pred_range;
 
-    typedef typename G::e_succ_range e_pred_range;
-    typedef typename G::e_pred_range e_succ_range;
+    using e_pred_range = typename G::e_succ_range;
+    using e_succ_range = typename G::e_pred_range;
 
     typename G::vert_range verts(void) const { return g.verts(); }
 
@@ -435,19 +435,19 @@ class DistComp {
 template <class Gr>
 class GraphOps {
   public:
-    typedef typename Gr::Wt Wt;
+    using Wt = typename Gr::Wt;
     // The following code assumes vert_id is an integer.
-    //    typedef SparseWtGraph<Wt> graph_t;
-    typedef Gr graph_t;
-    typedef typename graph_t::vert_id vert_id;
-    typedef typename graph_t::mut_val_ref_t mut_val_ref_t;
+    //    using graph_t = SparseWtGraph<Wt>;
+    using graph_t = Gr;
+    using vert_id = typename graph_t::vert_id;
+    using mut_val_ref_t = typename graph_t::mut_val_ref_t;
 
-    typedef std::vector<std::pair<std::pair<vert_id, vert_id>, Wt>> edge_vector;
+    using edge_vector = std::vector<std::pair<std::pair<vert_id, vert_id>, Wt>>;
 
-    typedef DistComp<std::vector<Wt>> WtComp;
-    typedef Heap<WtComp> WtHeap;
+    using WtComp = DistComp<std::vector<Wt>>;
+    using WtHeap = Heap<WtComp>;
 
-    typedef std::pair<std::pair<vert_id, vert_id>, Wt> edge_ref;
+    using edge_ref = std::pair<std::pair<vert_id, vert_id>, Wt>;
 
     //===========================================
     // Enums used to mark vertices/edges during algorithms

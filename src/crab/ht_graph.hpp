@@ -15,14 +15,14 @@ class HtGraph : public ikos::writeable {
     enum { table_init_sz = 17 };
 
   public:
-    typedef Weight Wt;
-    typedef HtGraph<Wt> graph_t;
+    using Wt = Weight;
+    using graph_t = HtGraph<Wt>;
 
-    typedef unsigned int vert_id;
+    using vert_id = unsigned int;
 
-    typedef std::unordered_set<vert_id> pred_t;
-    typedef std::unordered_map<vert_id, Wt> succ_t;
-    typedef typename succ_t::value_type succ_elt_t;
+    using pred_t = std::unordered_set<vert_id>;
+    using succ_t = std::unordered_map<vert_id, Wt>;
+    using succ_elt_t = typename succ_t::value_type;
 
     HtGraph() : edge_count(0), _succs(), _preds(), is_free(), free_id() {}
 
@@ -166,7 +166,7 @@ class HtGraph : public ikos::writeable {
         Wt *w;
     };
 
-    typedef mut_val_ref_t mut_val_ref_t;
+    using mut_val_ref_t = mut_val_ref_t;
 
     bool lookup(vert_id x, vert_id y, mut_val_ref_t *w) {
         if (!succs(x).mem(y))
@@ -274,8 +274,8 @@ class HtGraph : public ikos::writeable {
 
     class pred_iterator {
       public:
-        typedef typename pred_t::iterator ItP;
-        typedef pred_iterator iter_t;
+        using ItP = typename pred_t::iterator;
+        using iter_t = pred_iterator;
 
         pred_iterator(const ItP &_it) : it(_it) {}
         pred_iterator(void) : it() {}
@@ -292,8 +292,8 @@ class HtGraph : public ikos::writeable {
 
     class succ_iterator {
       public:
-        typedef typename succ_t::iterator ItS;
-        typedef succ_iterator iter_t;
+        using ItS = typename succ_t::iterator;
+        using iter_t = succ_iterator;
         succ_iterator(const ItS &_it) : it(_it) {}
         succ_iterator(void) : it() {}
         // XXX: to make sure that we always return the same address
@@ -318,7 +318,7 @@ class HtGraph : public ikos::writeable {
 
     class pred_range {
       public:
-        typedef pred_iterator iterator;
+        using iterator = pred_iterator;
 
         pred_range(pred_t &_p) : p(_p) {}
         iterator begin(void) const { return iterator(p.begin()); }
@@ -336,7 +336,7 @@ class HtGraph : public ikos::writeable {
 
     class succ_range {
       public:
-        typedef succ_iterator iterator;
+        using iterator = succ_iterator;
 
         succ_range(succ_t &_p) : p(_p) {}
         iterator begin(void) const { return iterator(p.begin()); }
@@ -370,7 +370,7 @@ class HtGraph : public ikos::writeable {
 
     class fwd_edge_iterator {
       public:
-        typedef edge_ref_t edge_ref;
+        using edge_ref = edge_ref_t;
         fwd_edge_iterator(void) : g(nullptr) {}
         fwd_edge_iterator(graph_t &_g, vert_id _s, succ_iterator _it) : g(&_g), s(_s), it(_it) {}
         // XXX: to make sure that we always return the same address
@@ -397,7 +397,7 @@ class HtGraph : public ikos::writeable {
 
     class fwd_edge_range {
       public:
-        typedef fwd_edge_iterator iterator;
+        using iterator = fwd_edge_iterator;
         fwd_edge_range(graph_t &_g, vert_id _s) : g(_g), s(_s) {}
 
         fwd_edge_iterator begin(void) const { return fwd_edge_iterator(g, s, g.succs(s).begin()); }
@@ -408,7 +408,7 @@ class HtGraph : public ikos::writeable {
 
     class rev_edge_iterator {
       public:
-        typedef edge_ref_t edge_ref;
+        using edge_ref = edge_ref_t;
         rev_edge_iterator(void) : g(nullptr) {}
         rev_edge_iterator(graph_t &_g, vert_id _d, pred_iterator _it) : g(&_g), d(_d), it(_it) {}
 
@@ -426,7 +426,7 @@ class HtGraph : public ikos::writeable {
 
     class rev_edge_range {
       public:
-        typedef rev_edge_iterator iterator;
+        using iterator = rev_edge_iterator;
         rev_edge_range(graph_t &_g, vert_id _d) : g(_g), d(_d) {}
 
         rev_edge_iterator begin(void) const { return rev_edge_iterator(g, d, g.preds(d).begin()); }
@@ -435,8 +435,8 @@ class HtGraph : public ikos::writeable {
         vert_id d;
     };
 
-    typedef fwd_edge_range e_succ_range;
-    typedef rev_edge_range e_pred_range;
+    using e_succ_range = fwd_edge_range;
+    using e_pred_range = rev_edge_range;
 
     succ_range succs(vert_id v) { return succ_range(_succs[v]); }
 

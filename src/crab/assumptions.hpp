@@ -27,8 +27,8 @@ template <class CFG>
 class assumption {
 
   public:
-    typedef flat_killgen_domain<typename CFG::variable_t> var_dom_t;
-    typedef typename CFG::basic_block_t::statement_t statement_t;
+    using var_dom_t = flat_killgen_domain<typename CFG::variable_t>;
+    using statement_t = typename CFG::basic_block_t::statement_t;
 
   protected:
     // unique id
@@ -66,11 +66,11 @@ template <class CFG>
 class overflow_assumption : public assumption<CFG> {
 
   public:
-    typedef assumption<CFG> base_type;
-    typedef overflow_assumption<CFG> this_type;
+    using base_type = assumption<CFG>;
+    using this_type = overflow_assumption<CFG>;
 
-    typedef typename base_type::var_dom_t var_dom_t;
-    typedef typename base_type::statement_t statement_t;
+    using var_dom_t = typename base_type::var_dom_t;
+    using statement_t = typename base_type::statement_t;
 
   private:
     var_dom_t _get_vars(const statement_t *s) const {
@@ -125,17 +125,17 @@ class assumption_analysis {
     };
 
   public:
-    typedef typename CFG::statement_t statement_t;
-    typedef crab::cfg::assert_stmt<typename CFG::number_t, typename CFG::varname_t> assert_t;
-    typedef assumption<CFG> assumption_t;
-    typedef std::shared_ptr<assumption_t> assumption_ptr;
-    typedef std::vector<assumption_ptr> vector_assumption_ptr;
+    using statement_t = typename CFG::statement_t;
+    using assert_t = crab::cfg::assert_stmt<typename CFG::number_t, typename CFG::varname_t>;
+    using assumption_t = assumption<CFG>;
+    using assumption_ptr = std::shared_ptr<assumption_t>;
+    using vector_assumption_ptr = std::vector<assumption_ptr>;
 
   protected:
     // map an assert statement to its unjustified assumptions
-    typedef boost::unordered_map<const assert_t *, vector_assumption_ptr> assumption_map_t;
+    using assumption_map_t = boost::unordered_map<const assert_t *, vector_assumption_ptr>;
     // map an arbitrary statement to the assumptions originated in that statement
-    typedef boost::unordered_map<const statement_t *, vector_assumption_ptr> assumption_origin_map_t;
+    using assumption_origin_map_t = boost::unordered_map<const statement_t *, vector_assumption_ptr>;
 
     /** the cfg **/
     CFG m_cfg;
@@ -279,14 +279,14 @@ inline crab_os &operator<<(crab::crab_os &o, const assumption_analysis<CFG> &aa)
 template <class CFG>
 class assumption_naive_analysis : public assumption_analysis<CFG> {
 
-    typedef assumption_analysis<CFG> assumption_analysis_t;
+    using assumption_analysis_t = assumption_analysis<CFG>;
     using typename assumption_analysis_t::assert_t;
     using typename assumption_analysis_t::assumption_ptr;
     using typename assumption_analysis_t::statement_t;
     using typename assumption_analysis_t::vector_assumption_ptr;
-    typedef typename CFG::basic_block_label_t bb_label_t;
-    typedef boost::unordered_set<bb_label_t> label_set_t;
-    typedef typename CFG::basic_block_t bb_t;
+    using bb_label_t = typename CFG::basic_block_label_t;
+    using label_set_t = boost::unordered_set<bb_label_t>;
+    using bb_t = typename CFG::basic_block_t;
 
     void backward_reachable(bb_label_t r, const assert_t *a, label_set_t &visited) {
         auto ret = visited.insert(r);
@@ -331,13 +331,13 @@ class assumption_naive_analysis : public assumption_analysis<CFG> {
 template <class CFG>
 class assumption_dataflow_analysis : public assumption_analysis<CFG> {
 
-    typedef assumption_analysis<CFG> assumption_analysis_t;
+    using assumption_analysis_t = assumption_analysis<CFG>;
     using typename assumption_analysis_t::assumption_ptr;
     using typename assumption_analysis_t::statement_t;
-    typedef crab::analyzer::assertion_crawler<CFG> assertion_crawler_t;
-    typedef typename assertion_crawler_t::separate_domain_t separate_domain_t;
+    using assertion_crawler_t = crab::analyzer::assertion_crawler<CFG>;
+    using separate_domain_t = typename assertion_crawler_t::separate_domain_t;
     using typename assumption_analysis_t::vector_assumption_ptr;
-    typedef std::map<statement_t *, separate_domain_t> pp_inv_map_t;
+    using pp_inv_map_t = std::map<statement_t *, separate_domain_t>;
 
   public:
     assumption_dataflow_analysis(CFG cfg) : assumption_analysis_t(cfg) {}
