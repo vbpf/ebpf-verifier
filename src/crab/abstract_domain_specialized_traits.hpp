@@ -36,7 +36,6 @@ class checker_domain_traits {
     typedef typename Domain::number_t number_t;
     typedef typename Domain::linear_constraint_t linear_constraint_t;
     typedef typename Domain::linear_constraint_system_t linear_constraint_system_t;
-    typedef typename Domain::disjunctive_linear_constraint_system_t disjunctive_linear_constraint_system_t;
 
   private:
     struct entailment {
@@ -50,65 +49,14 @@ class checker_domain_traits {
         }
     };
 
-    // Return true if (c1 or c2 or ... cn) entails (d1 and d2 and .. dn)
-    static bool __entail(const disjunctive_linear_constraint_system_t &lhs, const linear_constraint_system_t &rhs) {
-        // -- trivial cases first
-        if (rhs.is_false()) {
-            return false;
-        } else if (rhs.is_true()) {
-            return true;
-        } else if (lhs.is_false()) {
-            return true;
-        } else if (lhs.is_true()) {
-            return false;
-        }
-
-        // -- return true if for all ci :: ci entails (d1 and d2 and .. dn)
-        return std::all_of(lhs.begin(), lhs.end(), [&rhs](const linear_constraint_system_t &csts) {
-            Domain lhs;
-            lhs += csts;
-            return std::all_of(rhs.begin(), rhs.end(), [&lhs](const linear_constraint_t &c) { return entail(lhs, c); });
-        });
-    }
-
   public:
     /*
        Public API
 
-       static bool entail(Domain&, const disjunctive_linear_constraint_system_t&);
-       static bool entail(const disjunctive_linear_constraint_system_t&, Domain&);
        static bool entail(Domain&, const linear_constraint_t&);
 
        static bool intersect(Domain&, const linear_constraint_t&);
      */
-
-    // Return true if lhs entails (c1 or c2 or ... cn)
-    static bool entail(Domain &lhs, const disjunctive_linear_constraint_system_t &rhs) {
-        // -- trivial cases first
-        if (rhs.is_false()) {
-            return false;
-        } else if (rhs.is_true()) {
-            return true;
-        } else if (lhs.is_bottom()) {
-            return true;
-        } else if (lhs.is_top()) {
-            return false;
-        }
-        // -- return true if exists ci such that lhs entails ci
-        for (linear_constraint_system_t csts : rhs) {
-            if (std::all_of(csts.begin(), csts.end(),
-                            [&lhs](const linear_constraint_t &c) { return entail(lhs, c); })) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // Return true if (c1 or c2 or ... cn) entails rhs
-    static bool entail(const disjunctive_linear_constraint_system_t &lhs, Domain &rhs) {
-        auto csts = rhs.to_linear_constraint_system();
-        return __entail(lhs, csts);
-    }
 
     // Return true if lhs entails rhs.
     static bool entail(Domain &lhs, const linear_constraint_t &rhs) {

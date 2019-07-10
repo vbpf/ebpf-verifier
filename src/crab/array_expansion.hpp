@@ -649,7 +649,6 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
     typedef abstract_domain<array_expansion_domain_t> abstract_domain_t;
 
   public:
-    using typename abstract_domain_t::disjunctive_linear_constraint_system_t;
     using typename abstract_domain_t::linear_constraint_system_t;
     using typename abstract_domain_t::linear_constraint_t;
     using typename abstract_domain_t::linear_expression_t;
@@ -1284,10 +1283,6 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
         return _inv.to_linear_constraint_system();
     }
 
-    disjunctive_linear_constraint_system_t to_disjunctive_linear_constraint_system() {
-        return _inv.to_disjunctive_linear_constraint_system();
-    }
-
     NumDomain get_content_domain() const { return _inv; }
 
     NumDomain &get_content_domain() { return _inv; }
@@ -1321,17 +1316,6 @@ class checker_domain_traits<array_expansion_domain<BaseDom>> {
   public:
     typedef array_expansion_domain<BaseDom> this_type;
     typedef typename this_type::linear_constraint_t linear_constraint_t;
-    typedef typename this_type::disjunctive_linear_constraint_system_t disjunctive_linear_constraint_system_t;
-
-    static bool entail(this_type &lhs, const disjunctive_linear_constraint_system_t &rhs) {
-        BaseDom &lhs_dom = lhs.get_content_domain();
-        return checker_domain_traits<BaseDom>::entail(lhs_dom, rhs);
-    }
-
-    static bool entail(const disjunctive_linear_constraint_system_t &lhs, this_type &rhs) {
-        BaseDom &rhs_dom = rhs.get_content_domain();
-        return checker_domain_traits<BaseDom>::entail(lhs, rhs_dom);
-    }
 
     static bool entail(this_type &lhs, const linear_constraint_t &rhs) {
         BaseDom &lhs_dom = lhs.get_content_domain();
