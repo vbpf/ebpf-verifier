@@ -15,10 +15,10 @@
 
 #include <boost/signals2.hpp>
 
-#include <crab/checkers/base_property.hpp>
-#include <crab/checkers/assertion.hpp>
-#include <crab/checkers/checker.hpp>
-#include <crab/analysis/dataflow/assumptions.hpp>
+#include "crab/base_property.hpp"
+#include "crab/assertion.hpp"
+#include "crab/checker.hpp"
+#include "crab/assumptions.hpp"
 
 #include "config.hpp"
 #include "asm_cfg.hpp"

@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 
-#include <crab/common/debug.hpp>
+#include "crab/debug.hpp"
 
 #include <boost/functional/hash.hpp>
 

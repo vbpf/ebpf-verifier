@@ -1,7 +1,7 @@
 #pragma once
                   
-#include <crab/domains/split_dbm.hpp>
-#include <crab/domains/array_expansion.hpp>
+#include "crab/split_dbm.hpp"
+#include "crab/array_expansion.hpp"
 
 namespace crab {
 
