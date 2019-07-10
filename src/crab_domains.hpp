@@ -34,7 +34,6 @@ namespace crab {
     using namespace crab::cfg_impl;
     using namespace crab::domains; 
 
-    typedef pointer_constraint<ikos::variable<z_number, varname_t> > z_ptr_cst_t;
     typedef linear_constraint_system<ikos::z_number, varname_t> z_lin_cst_sys_t;
     typedef interval<ikos::z_number> z_interval_t;
     
