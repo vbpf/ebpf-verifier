@@ -8,7 +8,6 @@
 #pragma once
 
 #include "crab/bignums.hpp"
-#include "crab/linear_interval_solver.hpp"
 #include "crab/stats.hpp"
 #include "crab/types.hpp"
 #include <boost/optional.hpp>
@@ -849,6 +848,16 @@ inline crab::crab_os &operator<<(crab::crab_os &o, const interval<Number> &i) {
 }
 
 namespace linear_interval_solver_impl {
+
+// gamma(i) \ gamma(j)
+template <typename Interval>
+inline Interval trim_interval(Interval i, Interval j);
+
+template <typename Interval>
+Interval lower_half_line(Interval i, bool is_signed);
+
+template <typename Interval>
+Interval upper_half_line(Interval i, bool is_signed);
 
 typedef interval<z_number> z_interval;
 typedef interval<q_number> q_interval;
