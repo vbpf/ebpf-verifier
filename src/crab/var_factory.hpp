@@ -249,7 +249,7 @@ class str_var_alloc_col {
         return vfac[v];
     }
 
-  protected:
+  private:
     int colour;
     int next_id;
 };
@@ -280,7 +280,7 @@ class int_var_alloc_col {
         return 3 * id + colour;
     }
 
-  protected:
+  private:
     int colour;
     int next_id;
 };

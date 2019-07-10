@@ -38,7 +38,7 @@ namespace crab {
     using z_interval_t = interval<ikos::z_number>;
     
     // Numerical domains over integers
-    using SafeInt = DBM_impl::SafeInt64DefaultParams<ikos::z_number, DBM_impl::GraphRep::adapt_ss>;
+    using SafeInt = DBM_impl::SafeInt64DefaultParams;
     using z_sdbm_domain_t = SplitDBM<ikos::z_number,varname_t,SafeInt>;
   } 
 }

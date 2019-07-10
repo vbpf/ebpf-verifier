@@ -63,7 +63,6 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
     using bound_t = bound<number_t>;
     using Wt = typename Params::Wt;
     using graph_t = typename Params::graph_t;
-    using ntow = DBM_impl::NtoW<number_t, Wt>;
     using vert_id = typename graph_t::vert_id;
     using vert_map_t = boost::container::flat_map<variable_t, vert_id>;
     using vmap_elt_t = typename vert_map_t::value_type;
@@ -184,13 +183,13 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
 
     // Evaluate an expression under the chosen potentials
     Wt eval_expression(linear_expression_t e, bool overflow) {
-        Wt v(ntow::convert(e.constant(), overflow));
+        Wt v(DBM_impl::convert_NtoW(e.constant(), overflow));
         if (overflow) {
             return Wt(0);
         }
 
         for (auto p : e) {
-            Wt coef = ntow::convert(p.first, overflow);
+            Wt coef = DBM_impl::convert_NtoW(p.first, overflow);
             if (overflow) {
                 return Wt(0);
             }
@@ -242,13 +241,13 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
         std::vector<std::pair<variable_t, Wt>> terms;
         bool overflow;
 
-        Wt residual(ntow::convert(exp.constant(), overflow));
+        Wt residual(DBM_impl::convert_NtoW(exp.constant(), overflow));
         if (overflow) {
             return;
         }
 
         for (auto p : exp) {
-            Wt coeff(ntow::convert(p.first, overflow));
+            Wt coeff(DBM_impl::convert_NtoW(p.first, overflow));
             if (overflow) {
                 continue;
             }
@@ -261,7 +260,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                 if (y_val.is_infinite()) {
                     return;
                 }
-                residual += ntow::convert(*(y_val.number()), overflow) * coeff;
+                residual += DBM_impl::convert_NtoW(*(y_val.number()), overflow) * coeff;
                 if (overflow) {
                     continue;
                 }
@@ -275,7 +274,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                     }
                     unbounded_var = y;
                 } else {
-                    Wt ymax(ntow::convert(*(y_val.number()), overflow));
+                    Wt ymax(DBM_impl::convert_NtoW(*(y_val.number()), overflow));
                     if (overflow) {
                         continue;
                     }
@@ -321,13 +320,13 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
         boost::optional<variable_t> unbounded_ubvar;
         bool underflow, overflow;
 
-        Wt exp_ub = -(ntow::convert(exp.constant(), overflow));
+        Wt exp_ub = -(DBM_impl::convert_NtoW(exp.constant(), overflow));
         if (overflow) {
             return;
         }
 
         // temporary hack
-        ntow::convert(exp.constant() - 1, underflow);
+        DBM_impl::convert_NtoW(exp.constant() - 1, underflow);
         if (underflow) {
             // We don't like MIN either because the code will compute
             // minus MIN and it will silently overflow.
@@ -336,7 +335,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
 
         std::vector<std::pair<std::pair<Wt, variable_t>, Wt>> pos_terms, neg_terms;
         for (auto p : exp) {
-            Wt coeff(ntow::convert(p.first, overflow));
+            Wt coeff(DBM_impl::convert_NtoW(p.first, overflow));
             if (overflow) {
                 continue;
             }
@@ -350,7 +349,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                     unbounded_lbvar = y;
                     unbounded_lbcoeff = coeff;
                 } else {
-                    Wt ymin(ntow::convert(*(y_lb.number()), overflow));
+                    Wt ymin(DBM_impl::convert_NtoW(*(y_lb.number()), overflow));
                     if (overflow) {
                         continue;
                     }
@@ -367,7 +366,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                     unbounded_ubvar = y;
                     unbounded_ubcoeff = -coeff;
                 } else {
-                    Wt ymax(ntow::convert(*(y_ub.number()), overflow));
+                    Wt ymax(DBM_impl::convert_NtoW(*(y_ub.number()), overflow));
                     if (overflow) {
                         continue;
                     }
@@ -444,20 +443,6 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                 return false;
             }
             check_potential(g, potential, __LINE__);
-            // Compute other updated bounds
-            if (Params::close_bounds_inline) {
-                for (auto e : g.e_preds(v)) {
-                    if (e.vert == 0)
-                        continue;
-                    g.update_edge(e.vert, e.val - p.second, 0, min_op);
-
-                    if (!repair_potential(e.vert, 0)) {
-                        set_to_bottom();
-                        return false;
-                    }
-                    check_potential(g, potential, __LINE__);
-                }
-            }
         }
         for (auto p : ubs) {
             CRAB_LOG("zones-split", crab::outs() << p.first << "<=" << p.second << "\n");
@@ -471,19 +456,6 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                 return false;
             }
             check_potential(g, potential, __LINE__);
-
-            if (Params::close_bounds_inline) {
-                for (auto e : g.e_succs(v)) {
-                    if (e.vert == 0)
-                        continue;
-                    g.update_edge(0, e.val + p.second, e.vert, min_op);
-                    if (!repair_potential(0, e.vert)) {
-                        set_to_bottom();
-                        return false;
-                    }
-                    check_potential(g, potential, __LINE__);
-                }
-            }
         }
 
         for (auto diff : csts) {
@@ -504,11 +476,9 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
         // Collect bounds
         // GKG: Now done in close_over_edge
 
-        if (!Params::close_bounds_inline) {
-            edge_vector delta;
-            GrOps::close_after_assign(g, potential, 0, delta);
-            GrOps::apply_delta(g, delta);
-        }
+        edge_vector delta;
+        GrOps::close_after_assign(g, potential, 0, delta);
+        GrOps::apply_delta(g, delta);
 
         check_potential(g, potential, __LINE__);
         // CRAB_WARN("SplitDBM::add_linear_leq not yet implemented.");
@@ -528,7 +498,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
             Wt_min min_op;
             if (new_i.lb().is_finite()) {
                 // strenghten lb
-                Wt lb_val = ntow::convert(-(*(new_i.lb().number())), overflow);
+                Wt lb_val = DBM_impl::convert_NtoW(-(*(new_i.lb().number())), overflow);
                 if (overflow) {
                     return;
                 }
@@ -555,7 +525,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
             }
             if (new_i.ub().is_finite()) {
                 // strengthen ub
-                Wt ub_val = ntow::convert(*(new_i.ub().number()), overflow);
+                Wt ub_val = DBM_impl::convert_NtoW(*(new_i.ub().number()), overflow);
                 if (overflow) {
                     return;
                 }
@@ -667,13 +637,6 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
 
         typename graph_t::mut_val_ref_t w;
 
-        if (Params::close_bounds_inline) {
-            if (g.lookup(0, ii, &w))
-                g.update_edge(0, w.get() + c, jj, min_op);
-            if (g.lookup(jj, 0, &w))
-                g.update_edge(ii, w.get() + c, 0, min_op);
-        }
-
         // There may be a cheaper way to do this.
         // GKG: Now implemented.
         std::vector<std::pair<vert_id, Wt>> src_dec;
@@ -693,37 +656,6 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                     g_excl.add_edge(se, wt_sij, jj);
                 }
                 src_dec.push_back(std::make_pair(se, edge.val));
-                if (Params::close_bounds_inline) {
-                    if (g.lookup(0, se, &w))
-                        g.update_edge(0, w.get() + wt_sij, jj, min_op);
-                    if (g.lookup(jj, 0, &w))
-                        g.update_edge(se, w.get() + wt_sij, 0, min_op);
-                }
-
-                /*
-                for(auto edge : g_excl.e_succs(jj))
-                {
-                  vert_id de = edge.vert;
-                  if(se != de)
-                  {
-                    Wt wt_sijd = wt_sij + edge.val;
-                    if(g_excl.lookup(se, de, &w))
-                    {
-                      if((*w) <= wt_sijd)
-                        continue;
-                      (*w) = wt_sijd;
-                    } else {
-                      g_excl.add_edge(se, wt_sijd, de);
-                    }
-                    if (Params::close_bounds_inline) {
-                      if(g.lookup(0, se, &w))
-                        g.update_edge(0, (*w) + wt_sijd, de, min_op);
-                      if(g.lookup(de, 0, &w))
-                        g.update_edge(se, (*w) + wt_sijd, 0, min_op);
-                    }
-                  }
-                }
-                */
             }
         }
 
@@ -740,12 +672,6 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                     g_excl.add_edge(ii, wt_ijd, de);
                 }
                 dest_dec.push_back(std::make_pair(de, edge.val));
-                if (Params::close_bounds_inline) {
-                    if (g.lookup(0, ii, &w))
-                        g.update_edge(0, w.get() + wt_ijd, de, min_op);
-                    if (g.lookup(de, 0, &w))
-                        g.update_edge(ii, w.get() + wt_ijd, 0, min_op);
-                }
             }
         }
 
@@ -761,12 +687,6 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                     w = wt_sijd;
                 } else {
                     g.add_edge(se, wt_sijd, de);
-                }
-                if (Params::close_bounds_inline) {
-                    if (g.lookup(0, se, &w))
-                        g.update_edge(0, w.get() + wt_sijd, de, min_op);
-                    if (g.lookup(de, 0, &w))
-                        g.update_edge(se, w.get() + wt_sijd, 0, min_op);
                 }
             }
         }
@@ -1348,27 +1268,15 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                 SubGraph<graph_t> meet_g_excl(meet_g, 0);
                 // GrOps::close_after_meet(meet_g_excl, meet_pi, gx, gy, delta);
 
-                if (Params::chrome_dijkstra)
-                    GrOps::close_after_meet(meet_g_excl, meet_pi, gx, gy, delta);
-                else
-                    GrOps::close_johnson(meet_g_excl, meet_pi, delta);
+                GrOps::close_after_meet(meet_g_excl, meet_pi, gx, gy, delta);
 
                 GrOps::apply_delta(meet_g, delta);
 
-                // Recover updated LBs and UBs.
-                if (Params::close_bounds_inline) {
-                    Wt_min min_op;
-                    for (auto e : delta) {
-                        if (meet_g.elem(0, e.first.first))
-                            meet_g.update_edge(0, meet_g.edge_val(0, e.first.first) + e.second, e.first.second, min_op);
-                        if (meet_g.elem(e.first.second, 0))
-                            meet_g.update_edge(e.first.first, meet_g.edge_val(e.first.second, 0) + e.second, 0, min_op);
-                    }
-                } else {
-                    delta.clear();
-                    GrOps::close_after_assign(meet_g, meet_pi, 0, delta);
-                    GrOps::apply_delta(meet_g, delta);
-                }
+                // Recover updated LBs and UBs.<
+            
+                delta.clear();
+                GrOps::close_after_assign(meet_g, meet_pi, 0, delta);
+                GrOps::apply_delta(meet_g, delta);
             }
             check_potential(meet_g, meet_pi, __LINE__);
             DBM_t res(std::move(meet_verts), std::move(meet_rev), std::move(meet_g), std::move(meet_pi), vert_set_t());
@@ -1418,10 +1326,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
         // GrOps::close_after_widen(g, potential, vert_set_wrap_t(unstable), delta);
         // GKG: Check
         SubGraph<graph_t> g_excl(g, 0);
-        if (Params::widen_restabilize)
-            GrOps::close_after_widen(g_excl, potential, vert_set_wrap_t(unstable), delta);
-        else
-            GrOps::close_johnson(g_excl, potential, delta);
+        GrOps::close_after_widen(g_excl, potential, vert_set_wrap_t(unstable), delta);
         // Retrive variable bounds
         GrOps::close_after_assign(g, potential, 0, delta);
 
@@ -1469,7 +1374,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
         boost::optional<Wt> lb_w, ub_w;
         bool overflow;
         if (x_int.lb().is_finite()) {
-            lb_w = ntow::convert(-(*(x_int.lb().number())), overflow);
+            lb_w = DBM_impl::convert_NtoW(-(*(x_int.lb().number())), overflow);
             if (overflow) {
                 operator-=(x);
                 CRAB_LOG("zones-split", crab::outs() << "---" << x << ":=" << e << "\n" << *this << "\n");
@@ -1477,7 +1382,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
             }
         }
         if (x_int.ub().is_finite()) {
-            ub_w = ntow::convert(*(x_int.ub().number()), overflow);
+            ub_w = DBM_impl::convert_NtoW(*(x_int.ub().number()), overflow);
             if (overflow) {
                 operator-=(x);
                 CRAB_LOG("zones-split", crab::outs() << "---" << x << ":=" << e << "\n" << *this << "\n");
@@ -1487,20 +1392,14 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
 
         bool is_rhs_constant = false;
         // If it's a constant, just assign the interval.
-        if (!Params::close_bounds_inline) {
-            // JN: it seems that we can only do this if
-            // close_bounds_inline is disabled. Otherwise, the meet
-            // operator misses some non-redundant edges. Need to
-            // investigate more this.
-            if (boost::optional<number_t> x_n = x_int.singleton()) {
-                set(x, *x_n);
-                is_rhs_constant = true;
-            }
-        } else {
-            if (e.is_constant()) {
-                set(x, e.constant());
-                is_rhs_constant = true;
-            }
+
+        // JN: it seems that we can only do this if
+        // close_bounds_inline is disabled. Otherwise, the meet
+        // operator misses some non-redundant edges. Need to
+        // investigate more this.
+        if (boost::optional<number_t> x_n = x_int.singleton()) {
+            set(x, *x_n);
+            is_rhs_constant = true;
         }
 
         if (!is_rhs_constant) {
@@ -1508,96 +1407,49 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
             // Construct difference constraints from the assignment
             diffcsts_of_assign(x, e, diffs_lb, diffs_ub);
             if (diffs_lb.size() > 0 || diffs_ub.size() > 0) {
-                if (Params::special_assign) {
-                    bool overflow;
-                    Wt e_val = eval_expression(e, overflow);
-                    if (overflow) {
-                        operator-=(x);
-                        return;
-                    }
-                    // Allocate a new vertex for x
-                    vert_id v = g.new_vertex();
-                    assert(v <= rev_map.size());
-                    if (v == rev_map.size()) {
-                        rev_map.push_back(x);
-                        potential.push_back(potential[0] + e_val);
-                    } else {
-                        potential[v] = potential[0] + e_val;
-                        rev_map[v] = x;
-                    }
-
-                    edge_vector delta;
-                    for (auto diff : diffs_lb) {
-                        delta.push_back({{v, get_vert(diff.first)}, -diff.second});
-                    }
-
-                    for (auto diff : diffs_ub) {
-                        delta.push_back({{get_vert(diff.first), v}, diff.second});
-                    }
-
-                    // apply_delta should be safe here, as x has no edges in G.
-                    GrOps::apply_delta(g, delta);
-                    delta.clear();
-                    SubGraph<graph_t> g_excl(g, 0);
-                    GrOps::close_after_assign(g_excl, potential, v, delta);
-                    GrOps::apply_delta(g, delta);
-
-                    Wt_min min_op;
-                    if (lb_w) {
-                        g.update_edge(v, *lb_w, 0, min_op);
-                    }
-                    if (ub_w) {
-                        g.update_edge(0, *ub_w, v, min_op);
-                    }
-                    // Clear the old x vertex
+                bool overflow;
+                Wt e_val = eval_expression(e, overflow);
+                if (overflow) {
                     operator-=(x);
-                    vert_map.insert(vmap_elt_t(x, v));
-                } else {
-                    // Assignment as a sequence of edge additions.
-                    vert_id v = g.new_vertex();
-                    assert(v <= rev_map.size());
-                    if (v == rev_map.size()) {
-                        rev_map.push_back(x);
-                        potential.push_back(Wt(0));
-                    } else {
-                        potential[v] = Wt(0);
-                        rev_map[v] = x;
-                    }
-                    Wt_min min_op;
-                    edge_vector cst_edges;
-
-                    for (auto diff : diffs_lb) {
-                        cst_edges.push_back({{v, get_vert(diff.first)}, -diff.second});
-                    }
-
-                    for (auto diff : diffs_ub) {
-                        cst_edges.push_back({{get_vert(diff.first), v}, diff.second});
-                    }
-
-                    for (auto diff : cst_edges) {
-                        vert_id src = diff.first.first;
-                        vert_id dest = diff.first.second;
-                        g.update_edge(src, diff.second, dest, min_op);
-                        if (!repair_potential(src, dest)) {
-                            assert(0 && "Unreachable");
-                            set_to_bottom();
-                        }
-                        check_potential(g, potential, __LINE__);
-                        close_over_edge(src, dest);
-                        check_potential(g, potential, __LINE__);
-                    }
-
-                    if (lb_w) {
-                        g.update_edge(v, *lb_w, 0, min_op);
-                    }
-                    if (ub_w) {
-                        g.update_edge(0, *ub_w, v, min_op);
-                    }
-
-                    // Clear the old x vertex
-                    operator-=(x);
-                    vert_map.insert(vmap_elt_t(x, v));
+                    return;
                 }
+                // Allocate a new vertex for x
+                vert_id v = g.new_vertex();
+                assert(v <= rev_map.size());
+                if (v == rev_map.size()) {
+                    rev_map.push_back(x);
+                    potential.push_back(potential[0] + e_val);
+                } else {
+                    potential[v] = potential[0] + e_val;
+                    rev_map[v] = x;
+                }
+
+                edge_vector delta;
+                for (auto diff : diffs_lb) {
+                    delta.push_back({{v, get_vert(diff.first)}, -diff.second});
+                }
+
+                for (auto diff : diffs_ub) {
+                    delta.push_back({{get_vert(diff.first), v}, diff.second});
+                }
+
+                // apply_delta should be safe here, as x has no edges in G.
+                GrOps::apply_delta(g, delta);
+                delta.clear();
+                SubGraph<graph_t> g_excl(g, 0);
+                GrOps::close_after_assign(g_excl, potential, v, delta);
+                GrOps::apply_delta(g, delta);
+
+                Wt_min min_op;
+                if (lb_w) {
+                    g.update_edge(v, *lb_w, 0, min_op);
+                }
+                if (ub_w) {
+                    g.update_edge(0, *ub_w, v, min_op);
+                }
+                // Clear the old x vertex
+                operator-=(x);
+                vert_map.insert(vmap_elt_t(x, v));
             } else {
                 set(x, x_int);
             }
@@ -1814,7 +1666,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
         vert_id v = get_vert(x);
         bool overflow;
         if (intv.ub().is_finite()) {
-            Wt ub = ntow::convert(*(intv.ub().number()), overflow);
+            Wt ub = DBM_impl::convert_NtoW(*(intv.ub().number()), overflow);
             if (overflow) {
                 return;
             }
@@ -1822,7 +1674,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
             g.set_edge(0, ub, v);
         }
         if (intv.lb().is_finite()) {
-            Wt lb = ntow::convert(*(intv.lb().number()), overflow);
+            Wt lb = DBM_impl::convert_NtoW(*(intv.lb().number()), overflow);
             if (overflow) {
                 return;
             }
