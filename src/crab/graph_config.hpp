@@ -4,7 +4,6 @@
 
 #include "crab/adapt_sgraph.hpp"
 #include "crab/bignums.hpp"
-#include "crab/pt_graph.hpp"
 #include "crab/safeint.hpp"
 #include "crab/sparse_graph.hpp"
 
