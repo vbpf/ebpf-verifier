@@ -40,14 +40,14 @@
 
 #pragma once
 
-#include "crab/types.hpp"
 #include "crab/patricia_trees.hpp"
+#include "crab/types.hpp"
 
 namespace ikos {
-  
-  template <typename Key, typename Value>
-  class separate_domain {
-    
+
+template <typename Key, typename Value>
+class separate_domain {
+
   private:
     typedef patricia_tree<Key, Value> patricia_tree_t;
     typedef typename patricia_tree_t::unary_op_t unary_op_t;
@@ -63,332 +63,298 @@ namespace ikos {
   private:
     bool _is_bottom;
     patricia_tree_t _tree;
-    
-  public: 
-    
-    class join_op: public binary_op_t {
-      std::pair<bool, boost::optional<Value>> apply(Value x, Value y) {
-        Value z = x.operator|(y);
-        if (z.is_top()) {
-          return {false, boost::optional<Value>()};
-        } else {
-          return {false, boost::optional<Value>(z)};
-        }
-      };
-      
-      bool default_is_absorbing() {
-	return true;
-      }
+
+  public:
+    class join_op : public binary_op_t {
+        std::pair<bool, boost::optional<Value>> apply(Value x, Value y) {
+            Value z = x.operator|(y);
+            if (z.is_top()) {
+                return {false, boost::optional<Value>()};
+            } else {
+                return {false, boost::optional<Value>(z)};
+            }
+        };
+
+        bool default_is_absorbing() { return true; }
     }; // class join_op
 
-    class widening_op: public binary_op_t {
-      std::pair<bool, boost::optional<Value>> apply(Value x, Value y) {
-        Value z = x.operator||(y);
-        if (z.is_top()) {
-          return {false, boost::optional<Value>()};
-        } else {
-          return {false, boost::optional<Value>(z)};
-        }
-      };
-      
-      bool default_is_absorbing() {
-        return true;
-      }
-      
+    class widening_op : public binary_op_t {
+        std::pair<bool, boost::optional<Value>> apply(Value x, Value y) {
+            Value z = x.operator||(y);
+            if (z.is_top()) {
+                return {false, boost::optional<Value>()};
+            } else {
+                return {false, boost::optional<Value>(z)};
+            }
+        };
+
+        bool default_is_absorbing() { return true; }
+
     }; // class widening_op
 
-
     template <typename Thresholds>
-    class widening_thresholds_op: public binary_op_t {
-      const Thresholds& m_ts;
+    class widening_thresholds_op : public binary_op_t {
+        const Thresholds &m_ts;
 
-     public:
-      widening_thresholds_op (const Thresholds& ts): m_ts (ts) { }
-      
-      std::pair<bool, boost::optional<Value>> apply(Value x, Value y) {
-        Value z = x.widening_thresholds(y, m_ts);
-        if (z.is_top()) {
-          return {false, boost::optional<Value>()};
-        } else {
-          return {false, boost::optional<Value>(z)};
-        }
-      };
-      
-      bool default_is_absorbing() {
-        return true;
-      }
-      
+      public:
+        widening_thresholds_op(const Thresholds &ts) : m_ts(ts) {}
+
+        std::pair<bool, boost::optional<Value>> apply(Value x, Value y) {
+            Value z = x.widening_thresholds(y, m_ts);
+            if (z.is_top()) {
+                return {false, boost::optional<Value>()};
+            } else {
+                return {false, boost::optional<Value>(z)};
+            }
+        };
+
+        bool default_is_absorbing() { return true; }
+
     }; // class widening_thresholds_op
-    
-    class meet_op: public binary_op_t {
-      std::pair<bool, boost::optional<Value>> apply(Value x, Value y) {
-        Value z = x.operator&(y);
-        if (z.is_bottom()) {
-          return {true, boost::optional<Value>()};
-        } else {
-          return {false, boost::optional<Value>(z)};
-        }
-      };
-      
-      bool default_is_absorbing() {
-        return false;
-      }
-      
+
+    class meet_op : public binary_op_t {
+        std::pair<bool, boost::optional<Value>> apply(Value x, Value y) {
+            Value z = x.operator&(y);
+            if (z.is_bottom()) {
+                return {true, boost::optional<Value>()};
+            } else {
+                return {false, boost::optional<Value>(z)};
+            }
+        };
+
+        bool default_is_absorbing() { return false; }
+
     }; // class meet_op
-    
-    class narrowing_op: public binary_op_t {
-      std::pair<bool, boost::optional<Value>> apply(Value x, Value y) {
-        Value z = x.operator&&(y);
-        if (z.is_bottom()) {
-          return {true, boost::optional<Value>()};
-        } else {
-          return {false, boost::optional<Value>(z)};
-        }
-      };
-      
-      bool default_is_absorbing() {
-        return false;
-      }
-      
+
+    class narrowing_op : public binary_op_t {
+        std::pair<bool, boost::optional<Value>> apply(Value x, Value y) {
+            Value z = x.operator&&(y);
+            if (z.is_bottom()) {
+                return {true, boost::optional<Value>()};
+            } else {
+                return {false, boost::optional<Value>(z)};
+            }
+        };
+
+        bool default_is_absorbing() { return false; }
+
     }; // class narrowing_op
-    
-    class domain_po: public partial_order_t {
-      bool leq(Value x, Value y) {
-        return x.operator<=(y);
-      }
-      
-      bool default_is_top() {
-        return true;
-      }
-      
+
+    class domain_po : public partial_order_t {
+        bool leq(Value x, Value y) { return x.operator<=(y); }
+
+        bool default_is_top() { return true; }
+
     }; // class domain_po
-    
-   public:
-    static separate_domain_t top() {
-      return separate_domain_t();
-    }
-    
-    static separate_domain_t bottom() {
-      return separate_domain_t(false);
-    }
-    
-   private:
-    static patricia_tree_t apply_operation(binary_op_t& o, 
-					   patricia_tree_t t1, 
-					   patricia_tree_t t2,
-					   bool& is_bottom) {
-      is_bottom = t1.merge_with(t2, o);
-      return t1;
-    }
-    
-    separate_domain(patricia_tree_t t): _is_bottom(false), _tree(t) { }
-    
-    separate_domain(bool b): _is_bottom(!b) { }
-    
+
   public:
-    separate_domain(): _is_bottom(false) { }
+    static separate_domain_t top() { return separate_domain_t(); }
 
-    separate_domain(const separate_domain_t& e): 
-        _is_bottom(e._is_bottom), _tree(e._tree) { }
+    static separate_domain_t bottom() { return separate_domain_t(false); }
 
-    separate_domain(const separate_domain_t&& e):
-      _is_bottom(e._is_bottom), _tree(std::move(e._tree)) { }
-    
-    separate_domain_t& operator=(separate_domain_t e) {
-      this->_is_bottom = e._is_bottom;
-      this->_tree = e._tree;
-      return *this;
+  private:
+    static patricia_tree_t apply_operation(binary_op_t &o, patricia_tree_t t1, patricia_tree_t t2, bool &is_bottom) {
+        is_bottom = t1.merge_with(t2, o);
+        return t1;
+    }
+
+    separate_domain(patricia_tree_t t) : _is_bottom(false), _tree(t) {}
+
+    separate_domain(bool b) : _is_bottom(!b) {}
+
+  public:
+    separate_domain() : _is_bottom(false) {}
+
+    separate_domain(const separate_domain_t &e) : _is_bottom(e._is_bottom), _tree(e._tree) {}
+
+    separate_domain(const separate_domain_t &&e) : _is_bottom(e._is_bottom), _tree(std::move(e._tree)) {}
+
+    separate_domain_t &operator=(separate_domain_t e) {
+        this->_is_bottom = e._is_bottom;
+        this->_tree = e._tree;
+        return *this;
     }
 
     iterator begin() const {
-      if (this->is_bottom()) {
-        CRAB_ERROR("Separate domain: trying to invoke iterator on bottom");
-      } else {
-        return this->_tree.begin();
-      }
+        if (this->is_bottom()) {
+            CRAB_ERROR("Separate domain: trying to invoke iterator on bottom");
+        } else {
+            return this->_tree.begin();
+        }
     }
-    
+
     iterator end() const {
-      if (this->is_bottom()) {
-        CRAB_ERROR("Separate domain: trying to invoke iterator on bottom");
-      } else {
-        return this->_tree.end();
-      }
+        if (this->is_bottom()) {
+            CRAB_ERROR("Separate domain: trying to invoke iterator on bottom");
+        } else {
+            return this->_tree.end();
+        }
     }
-    
-    bool is_bottom() const {
-      return this->_is_bottom;
-    }
-    
-    bool is_top() const {
-      return (!this->is_bottom() && this->_tree.size() == 0);
-    }
-    
+
+    bool is_bottom() const { return this->_is_bottom; }
+
+    bool is_top() const { return (!this->is_bottom() && this->_tree.size() == 0); }
+
     bool operator<=(separate_domain_t e) {
-      if (this->is_bottom()) {
-        return true;
-      } else if (e.is_bottom()) {
-        return false;
-      } else {
-        domain_po po;
-        return this->_tree.leq(e._tree, po);
-      }
+        if (this->is_bottom()) {
+            return true;
+        } else if (e.is_bottom()) {
+            return false;
+        } else {
+            domain_po po;
+            return this->_tree.leq(e._tree, po);
+        }
     }
-    
-    bool operator==(separate_domain_t e) {
-      return (this->operator<=(e) && e.operator<=(*this));
-    }
-    
+
+    bool operator==(separate_domain_t e) { return (this->operator<=(e) && e.operator<=(*this)); }
+
     // Join
     separate_domain_t operator|(separate_domain_t e) {
-      if (this->is_bottom()) {
-        return e;
-      } else if(e.is_bottom()) {
-        return *this;
-      } else {
-        join_op o;
-	bool is_bottom;
-	patricia_tree_t res = apply_operation(o, this->_tree, e._tree, is_bottom);
-        return separate_domain_t(std::move(res));
-      }
+        if (this->is_bottom()) {
+            return e;
+        } else if (e.is_bottom()) {
+            return *this;
+        } else {
+            join_op o;
+            bool is_bottom;
+            patricia_tree_t res = apply_operation(o, this->_tree, e._tree, is_bottom);
+            return separate_domain_t(std::move(res));
+        }
     }
-    
+
     // Meet
     separate_domain_t operator&(separate_domain_t e) {
-      if (this->is_bottom() || e.is_bottom()) {
-        return this->bottom();
-      } else {
-	meet_op o;
-	bool is_bottom;	
-	patricia_tree_t res = apply_operation(o, this->_tree, e._tree, is_bottom);
-	if (is_bottom) {
-	  return this->bottom();
-	} else {
-	  return separate_domain_t(std::move(res));
-	}
-      }
+        if (this->is_bottom() || e.is_bottom()) {
+            return this->bottom();
+        } else {
+            meet_op o;
+            bool is_bottom;
+            patricia_tree_t res = apply_operation(o, this->_tree, e._tree, is_bottom);
+            if (is_bottom) {
+                return this->bottom();
+            } else {
+                return separate_domain_t(std::move(res));
+            }
+        }
     }
 
     // Widening
     separate_domain_t operator||(separate_domain_t e) {
-      if (this->is_bottom()) {
-        return e;
-      } else if(e.is_bottom()) {
-        return *this;
-      } else {
-        widening_op o;
-	bool is_bottom;	
-	patricia_tree_t res = apply_operation(o, this->_tree, e._tree, is_bottom);
-	return separate_domain_t(std::move(res));
-      }
+        if (this->is_bottom()) {
+            return e;
+        } else if (e.is_bottom()) {
+            return *this;
+        } else {
+            widening_op o;
+            bool is_bottom;
+            patricia_tree_t res = apply_operation(o, this->_tree, e._tree, is_bottom);
+            return separate_domain_t(std::move(res));
+        }
     }
 
     // Widening with thresholds
-    template<typename Thresholds>
-    separate_domain_t widening_thresholds(separate_domain_t e, const Thresholds& ts) {
-      if (this->is_bottom()) {
-        return e;
-      } else if(e.is_bottom()) {
-        return *this;
-      } else {
-        widening_thresholds_op<Thresholds> o(ts);
-	bool is_bottom;
-	patricia_tree_t res = apply_operation(o, this->_tree, e._tree, is_bottom);
-        return separate_domain_t(std::move(res));
-      }
+    template <typename Thresholds>
+    separate_domain_t widening_thresholds(separate_domain_t e, const Thresholds &ts) {
+        if (this->is_bottom()) {
+            return e;
+        } else if (e.is_bottom()) {
+            return *this;
+        } else {
+            widening_thresholds_op<Thresholds> o(ts);
+            bool is_bottom;
+            patricia_tree_t res = apply_operation(o, this->_tree, e._tree, is_bottom);
+            return separate_domain_t(std::move(res));
+        }
     }
-    
+
     // Narrowing
     separate_domain_t operator&&(separate_domain_t e) {
-      if (this->is_bottom() || e.is_bottom()) {
-        return separate_domain_t(false);
-      } else {
-	narrowing_op o;
-	bool is_bottom;
-	patricia_tree_t res = apply_operation(o, this->_tree, e._tree, is_bottom);
-	if (is_bottom) {
-	  return this->bottom();
-	} else {
-	  return separate_domain_t(std::move(res));
-	}
-      }
+        if (this->is_bottom() || e.is_bottom()) {
+            return separate_domain_t(false);
+        } else {
+            narrowing_op o;
+            bool is_bottom;
+            patricia_tree_t res = apply_operation(o, this->_tree, e._tree, is_bottom);
+            if (is_bottom) {
+                return this->bottom();
+            } else {
+                return separate_domain_t(std::move(res));
+            }
+        }
     }
-    
+
     void set(Key k, Value v) {
-      if (!this->is_bottom()) {
-        if (v.is_bottom()) {
-          this->_is_bottom = true;
-          this->_tree = patricia_tree_t();
-        } else if (v.is_top()) {
-          this->_tree.remove(k);
-        } else {
-          this->_tree.insert(k, v);
+        if (!this->is_bottom()) {
+            if (v.is_bottom()) {
+                this->_is_bottom = true;
+                this->_tree = patricia_tree_t();
+            } else if (v.is_top()) {
+                this->_tree.remove(k);
+            } else {
+                this->_tree.insert(k, v);
+            }
         }
-      }
     }
-    
+
     void set_to_bottom() {
-      this->_is_bottom = true;
-      this->_tree = patricia_tree_t();
+        this->_is_bottom = true;
+        this->_tree = patricia_tree_t();
     }
 
-    separate_domain_t& operator-=(Key k) {
-      if (!this->is_bottom()) {
-        this->_tree.remove(k);
-      }
-      return *this;
+    separate_domain_t &operator-=(Key k) {
+        if (!this->is_bottom()) {
+            this->_tree.remove(k);
+        }
+        return *this;
     }
-    
+
     Value operator[](Key k) const {
-      if (this->is_bottom()) {
-        return Value::bottom();
-      } else {
-        boost::optional<Value> v = this->_tree.lookup(k);
-        if (v) {
-          return *v;
+        if (this->is_bottom()) {
+            return Value::bottom();
         } else {
-          return Value::top();
+            boost::optional<Value> v = this->_tree.lookup(k);
+            if (v) {
+                return *v;
+            } else {
+                return Value::top();
+            }
         }
-      }
     }
 
-    
     std::size_t size() const {
-      if (is_bottom()) {
-	return 0;
-      } else if (is_top()) {
-	CRAB_ERROR("separate_domains::size() is undefined if top");
-      } else {
-	return this->_tree.size();
-      }
-    }
-    
-    void write(crab::crab_os& o) const {
-      if (this->is_bottom()) {
-        o << "_|_";
-      } else {
-        o << "{";
-        for (typename patricia_tree_t::iterator it = this->_tree.begin(); 
-             it != this->_tree.end(); ) {
-          Key k = it->first;
-          k.write(o);
-          o << " -> ";
-          Value v = it->second;
-          v.write(o);
-          ++it;
-          if (it != this->_tree.end()) {
-            o << "; ";
-	  }
+        if (is_bottom()) {
+            return 0;
+        } else if (is_top()) {
+            CRAB_ERROR("separate_domains::size() is undefined if top");
+        } else {
+            return this->_tree.size();
         }
-        o << "}";
-      }
     }
-    
-    friend crab::crab_os& operator<<(crab::crab_os&o, const separate_domain<Key,Value>& d) {
-      d.write(o);
-      return o;
-    }
-  }; // class separate_domain
-  
-} // namespace ikos
 
+    void write(crab::crab_os &o) const {
+        if (this->is_bottom()) {
+            o << "_|_";
+        } else {
+            o << "{";
+            for (typename patricia_tree_t::iterator it = this->_tree.begin(); it != this->_tree.end();) {
+                Key k = it->first;
+                k.write(o);
+                o << " -> ";
+                Value v = it->second;
+                v.write(o);
+                ++it;
+                if (it != this->_tree.end()) {
+                    o << "; ";
+                }
+            }
+            o << "}";
+        }
+    }
+
+    friend crab::crab_os &operator<<(crab::crab_os &o, const separate_domain<Key, Value> &d) {
+        d.write(o);
+        return o;
+    }
+}; // class separate_domain
+
+} // namespace ikos
