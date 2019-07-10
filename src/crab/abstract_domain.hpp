@@ -41,7 +41,6 @@ class abstract_domain : public ikos::writeable {
     typedef ikos::linear_expression<number_t, varname_t> linear_expression_t;
     typedef ikos::linear_constraint<number_t, varname_t> linear_constraint_t;
     typedef ikos::linear_constraint_system<number_t, varname_t> linear_constraint_system_t;
-    typedef ikos::disjunctive_linear_constraint_system<number_t, varname_t> disjunctive_linear_constraint_system_t;
     typedef ikos::variable<number_t, varname_t> variable_t;
     typedef std::vector<variable_t> variable_vector_t;
 
@@ -158,10 +157,6 @@ class abstract_domain : public ikos::writeable {
 
     // Convert the abstract state into a conjunction of linear constraints
     virtual linear_constraint_system_t to_linear_constraint_system() = 0;
-
-    // Convert the abstract state into a disjunction of conjunction
-    // of linear constraints.
-    virtual disjunctive_linear_constraint_system_t to_disjunctive_linear_constraint_system() = 0;
 
     // Rename in the abstract state the variables "from" with those from "to".
     virtual void rename(const variable_vector_t &from, const variable_vector_t &to) {

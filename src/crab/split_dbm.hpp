@@ -48,7 +48,6 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
     typedef abstract_domain<DBM_t> abstract_domain_t;
 
   public:
-    using typename abstract_domain_t::disjunctive_linear_constraint_system_t;
     using typename abstract_domain_t::linear_constraint_system_t;
     using typename abstract_domain_t::linear_constraint_t;
     using typename abstract_domain_t::linear_expression_t;
@@ -2288,17 +2287,6 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
             }
         }
         return csts;
-    }
-
-    disjunctive_linear_constraint_system_t to_disjunctive_linear_constraint_system() {
-        auto lin_csts = to_linear_constraint_system();
-        if (lin_csts.is_false()) {
-            return disjunctive_linear_constraint_system_t(true /*is_false*/);
-        } else if (lin_csts.is_true()) {
-            return disjunctive_linear_constraint_system_t(false /*is_false*/);
-        } else {
-            return disjunctive_linear_constraint_system_t(lin_csts);
-        }
     }
 
     // return number of vertices and edges
