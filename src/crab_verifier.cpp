@@ -18,7 +18,6 @@
 #include "crab/base_property.hpp"
 #include "crab/assertion.hpp"
 #include "crab/checker.hpp"
-#include "crab/assumptions.hpp"
 
 #include "config.hpp"
 #include "asm_cfg.hpp"
