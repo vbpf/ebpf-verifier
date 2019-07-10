@@ -71,8 +71,6 @@ namespace ikos {
 // 8 bytes. But for Windows on Intel 64, the size is 4 bytes.
 
 class z_number {
-    friend class q_number;
-
   private:
     mpz_class _n;
 
@@ -166,92 +164,11 @@ class z_number {
 
 }; // class z_number
 
-class q_number {
-
-  private:
-    mpq_class _n;
-
-  public:
-    q_number();
-
-    q_number(mpq_class n);
-
-    q_number(std::string s);
-
-    q_number(double n);
-
-    q_number(z_number n);
-
-    q_number(z_number n, z_number d);
-
-    explicit operator mpq_class() const;
-
-    std::string get_str() const;
-
-    std::size_t hash() const;
-
-    q_number operator+(q_number x) const;
-
-    q_number operator*(q_number x) const;
-
-    q_number operator-(q_number x) const;
-
-    q_number operator-() const;
-
-    q_number operator/(q_number x) const;
-
-    q_number &operator+=(q_number x);
-
-    q_number &operator*=(q_number x);
-
-    q_number &operator-=(q_number x);
-
-    q_number &operator/=(q_number x);
-
-    q_number &operator--();
-
-    q_number &operator++();
-
-    q_number operator--(int);
-
-    q_number operator++(int);
-
-    bool operator==(q_number x) const;
-
-    bool operator!=(q_number x) const;
-
-    bool operator<(q_number x) const;
-
-    bool operator<=(q_number x) const;
-
-    bool operator>(q_number x) const;
-
-    bool operator>=(q_number x) const;
-
-    z_number numerator() const;
-
-    z_number denominator() const;
-
-    z_number round_to_upper() const;
-
-    z_number round_to_lower() const;
-
-    void write(crab::crab_os &o) const;
-
-}; // class q_number
-
 inline crab::crab_os &operator<<(crab::crab_os &o, const z_number &z) {
     z.write(o);
     return o;
 }
 
-inline crab::crab_os &operator<<(crab::crab_os &o, const q_number &q) {
-    q.write(o);
-    return o;
-}
-
 inline std::size_t hash_value(const z_number &z) { return z.hash(); }
-
-inline std::size_t hash_value(const q_number &q) { return q.hash(); }
 
 } // namespace ikos

@@ -213,32 +213,6 @@ inline crab::crab_os &operator<<(crab::crab_os &o, const bound<Number> &b) {
 }
 
 typedef bound<z_number> z_bound;
-typedef bound<q_number> q_bound;
-
-namespace bounds_impl {
-// Conversion between z_bound and q_bound
-// template<class B1, class B2>
-// inline void convert_bounds(B1 b1, B2& b2);
-
-inline void convert_bounds(z_bound b1, z_bound &b2) { std::swap(b1, b2); }
-inline void convert_bounds(q_bound b1, q_bound &b2) { std::swap(b1, b2); }
-inline void convert_bounds(z_bound b1, q_bound &b2) {
-    if (b1.is_plus_infinity())
-        b2 = q_bound::plus_infinity();
-    else if (b1.is_minus_infinity())
-        b2 = q_bound::minus_infinity();
-    else
-        b2 = q_bound(q_number(*b1.number()));
-}
-inline void convert_bounds(q_bound b1, z_bound &b2) {
-    if (b1.is_plus_infinity())
-        b2 = z_bound::plus_infinity();
-    else if (b1.is_minus_infinity())
-        b2 = z_bound::minus_infinity();
-    else
-        b2 = z_bound((*(b1.number())).round_to_lower());
-}
-} // namespace bounds_impl
 
 template <typename Number>
 class interval {
@@ -521,33 +495,6 @@ class interval {
     }
 
 }; //  class interval
-
-template <>
-inline interval<q_number> interval<q_number>::operator/(interval<q_number> x) const {
-    if (is_bottom() || x.is_bottom()) {
-        return bottom();
-    } else {
-        boost::optional<q_number> d = x.singleton();
-        if (d && *d == 0) {
-            // [_, _] / 0 = _|_
-            return bottom();
-        } else if (x[0]) {
-            boost::optional<q_number> n = singleton();
-            if (n && *n == 0) {
-                // 0 / [_, _] = 0
-                return interval_t(q_number(0));
-            } else {
-                return top();
-            }
-        } else {
-            bound_t ll = _lb / x._lb;
-            bound_t lu = _lb / x._ub;
-            bound_t ul = _ub / x._lb;
-            bound_t uu = _ub / x._ub;
-            return interval_t(bound_t::min(ll, lu, ul, uu), bound_t::max(ll, lu, ul, uu));
-        }
-    }
-}
 
 template <>
 inline interval<z_number> interval<z_number>::operator/(interval<z_number> x) const {
@@ -860,7 +807,6 @@ template <typename Interval>
 Interval upper_half_line(Interval i, bool is_signed);
 
 typedef interval<z_number> z_interval;
-typedef interval<q_number> q_interval;
 
 template <>
 inline z_interval trim_interval(z_interval i, z_interval j) {
@@ -876,18 +822,7 @@ inline z_interval trim_interval(z_interval i, z_interval j) {
 }
 
 template <>
-inline q_interval trim_interval(q_interval i, q_interval /* j */) {
-    // No refinement possible for disequations over rational numbers
-    return i;
-}
-
-template <>
 inline z_interval lower_half_line(z_interval i, bool /*is_signed*/) {
-    return i.lower_half_line();
-}
-
-template <>
-inline q_interval lower_half_line(q_interval i, bool /*is_signed*/) {
     return i.lower_half_line();
 }
 
@@ -896,10 +831,6 @@ inline z_interval upper_half_line(z_interval i, bool /*is_signed*/) {
     return i.upper_half_line();
 }
 
-template <>
-inline q_interval upper_half_line(q_interval i, bool /*is_signed*/) {
-    return i.upper_half_line();
-}
 } // namespace linear_interval_solver_impl
 
 } // namespace ikos

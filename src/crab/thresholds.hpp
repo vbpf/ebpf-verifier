@@ -30,28 +30,10 @@ class thresholds {
     std::vector<bound_t> m_thresholds;
     unsigned int m_size;
 
-    template <class B1, class B2>
-    static B2 convert_bounds_impl(B1 b1) {
-        B2 b2(0); // some initial value it doesn't matter which one
-        ikos::bounds_impl::convert_bounds(b1, b2);
-        return b2;
-    }
-
   public:
     thresholds(int size = UINT_MAX) : m_size(size) {
         m_thresholds.push_back(bound_t::minus_infinity());
         m_thresholds.push_back(0);
-// useful thresholds for wrapped domains
-#if 0
-	 m_thresholds.push_back(bound_t("-2147483648"));
-	 m_thresholds.push_back(bound_t("-32768"));
-	 m_thresholds.push_back(bound_t("-128"));
-	 m_thresholds.push_back(bound_t("127"));
-	 m_thresholds.push_back(bound_t("255"));
-	 m_thresholds.push_back(bound_t("32767"));
-	 m_thresholds.push_back(bound_t("65535"));
-	 m_thresholds.push_back(bound_t("2147483647"));
-#endif
         m_thresholds.push_back(bound_t::plus_infinity());
     }
 
@@ -60,7 +42,7 @@ class thresholds {
     template <typename N>
     void add(ikos::bound<N> v1) {
         if (m_thresholds.size() < m_size) {
-            bound_t v = convert_bounds_impl<ikos::bound<N>, bound_t>(v1);
+            bound_t v = (v1);
             if (std::find(m_thresholds.begin(), m_thresholds.end(), v) == m_thresholds.end()) {
                 auto ub = std::upper_bound(m_thresholds.begin(), m_thresholds.end(), v);
 
@@ -90,27 +72,27 @@ class thresholds {
     ikos::bound<N> get_next(ikos::bound<N> v1) const {
         if (v1.is_plus_infinity())
             return v1;
-        bound_t v = convert_bounds_impl<ikos::bound<N>, bound_t>(v1);
+        bound_t v = (v1);
         bound_t t = m_thresholds[m_thresholds.size() - 1];
         auto ub = std::upper_bound(m_thresholds.begin(), m_thresholds.end(), v);
         if (ub != m_thresholds.end())
             t = *ub;
-        return convert_bounds_impl<bound_t, ikos::bound<N>>(t);
+        return (t);
     }
 
     template <typename N>
     ikos::bound<N> get_prev(ikos::bound<N> v1) const {
         if (v1.is_minus_infinity())
             return v1;
-        bound_t v = convert_bounds_impl<ikos::bound<N>, bound_t>(v1);
+        bound_t v = (v1);
         auto lb = std::lower_bound(m_thresholds.begin(), m_thresholds.end(), v);
         if (lb != m_thresholds.end()) {
             --lb;
             if (lb != m_thresholds.end()) {
-                return convert_bounds_impl<bound_t, ikos::bound<N>>(*lb);
+                return (*lb);
             }
         }
-        return convert_bounds_impl<bound_t, ikos::bound<N>>(m_thresholds[0]);
+        return (m_thresholds[0]);
     }
 
     void write(crab_os &o) const {
