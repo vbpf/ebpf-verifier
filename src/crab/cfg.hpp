@@ -2323,8 +2323,7 @@ class type_checker {
                 check_same_type(lhs, *v2, "second operand cannot have different type from lhs", s);
                 check_same_bitwidth(lhs, *v2, "second operand cannot have different bitwidth from lhs", s);
             } else {
-                // TODO: we can still check that we use z_number
-                // (q_number) of INT_TYPE
+                // TODO: we can still check that we use z_number of INT_TYPE
             }
         }
 
