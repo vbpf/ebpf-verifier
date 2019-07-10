@@ -83,8 +83,9 @@ CRABFLAGS := \
     -Wno-unused-local-typedefs -Wno-unused-function -Wno-inconsistent-missing-override \
     -Wno-unused-const-variable -Wno-uninitialized -Wno-deprecated \
     -DBSD -DHAVE_IEEE_754 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 \
-    -I $(INSTALL)/include/ \
-    -I $(MODINSTALL)/include/
+    -I $(MODINSTALL)/include/ \
+    -I $(SRCDIR)
+    # -I $(INSTALL)/include/ \
     # -I $(LDD)/include/ldd/ \
     # -I $(LDD)/include/ldd/include/ \
 
