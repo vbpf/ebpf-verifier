@@ -15,7 +15,7 @@ class wrapint {
     // bitwidth cannot be greater than 64 so even a char can represent
     // all possible bitwidths. However, using uint64_t avoids uintended
     // cast to smaller types that lead to unintended overflows.
-    typedef uint64_t bitwidth_t;
+    using bitwidth_t = uint64_t;
 
   private:
     uint64_t _n;       // 0 <= _n <= 2^_width - 1

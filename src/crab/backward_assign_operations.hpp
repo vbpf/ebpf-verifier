@@ -20,11 +20,11 @@ namespace domains {
 template <class AbsDom>
 class BackwardAssignOps {
   public:
-    typedef typename AbsDom::number_t number_t;
-    typedef typename AbsDom::varname_t varname_t;
-    typedef typename AbsDom::variable_t variable_t;
-    typedef typename AbsDom::linear_constraint_t linear_constraint_t;
-    typedef typename AbsDom::linear_expression_t linear_expression_t;
+    using number_t = typename AbsDom::number_t;
+    using varname_t = typename AbsDom::varname_t;
+    using variable_t = typename AbsDom::variable_t;
+    using linear_constraint_t = typename AbsDom::linear_constraint_t;
+    using linear_expression_t = typename AbsDom::linear_expression_t;
 
     /*
      * Backward x := e

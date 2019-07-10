@@ -13,23 +13,23 @@ namespace boost {
   template<class G>
   struct graph_traits<crab::analyzer::graph_algo::scc_graph<G>>  {
 
-    typedef crab::analyzer::graph_algo::scc_graph<G> sccg_t;
+    using sccg_t = crab::analyzer::graph_algo::scc_graph<G>;
 
-    typedef typename sccg_t::node_t vertex_descriptor;
-    typedef typename sccg_t::edge_t edge_descriptor;
-    typedef typename sccg_t::node_iterator vertex_iterator;
-    typedef typename sccg_t::pred_iterator in_edge_iterator;
-    typedef typename sccg_t::succ_iterator out_edge_iterator;
+    using vertex_descriptor = typename sccg_t::node_t;
+    using edge_descriptor = typename sccg_t::edge_t;
+    using vertex_iterator = typename sccg_t::node_iterator;
+    using in_edge_iterator = typename sccg_t::pred_iterator;
+    using out_edge_iterator = typename sccg_t::succ_iterator;
 
-    typedef disallow_parallel_edge_tag edge_parallel_category;
-    typedef bidirectional_tag directed_category;
+    using edge_parallel_category = disallow_parallel_edge_tag;
+    using directed_category = bidirectional_tag;
     struct  this_graph_tag : virtual bidirectional_graph_tag,
                              virtual vertex_list_graph_tag {};
-    typedef this_graph_tag traversal_category;
+    using traversal_category = this_graph_tag;
 
-    typedef size_t vertices_size_type;
-    typedef size_t edges_size_type;
-    typedef size_t degree_size_type;
+    using vertices_size_type = size_t;
+    using edges_size_type = size_t;
+    using degree_size_type = size_t;
 
     static vertex_descriptor null_vertex() {
       vertex_descriptor n;

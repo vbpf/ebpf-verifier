@@ -49,16 +49,16 @@ template <typename Key, typename Value>
 class separate_domain {
 
   private:
-    typedef patricia_tree<Key, Value> patricia_tree_t;
-    typedef typename patricia_tree_t::unary_op_t unary_op_t;
-    typedef typename patricia_tree_t::binary_op_t binary_op_t;
-    typedef typename patricia_tree_t::partial_order_t partial_order_t;
+    using patricia_tree_t = patricia_tree<Key, Value>;
+    using unary_op_t = typename patricia_tree_t::unary_op_t;
+    using binary_op_t = typename patricia_tree_t::binary_op_t;
+    using partial_order_t = typename patricia_tree_t::partial_order_t;
 
   public:
-    typedef separate_domain<Key, Value> separate_domain_t;
-    typedef typename patricia_tree_t::iterator iterator;
-    typedef Key key_type;
-    typedef Value value_type;
+    using separate_domain_t = separate_domain<Key, Value>;
+    using iterator = typename patricia_tree_t::iterator;
+    using key_type = Key;
+    using value_type = Value;
 
   private:
     bool _is_bottom;

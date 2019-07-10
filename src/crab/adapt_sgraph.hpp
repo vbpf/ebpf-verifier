@@ -16,8 +16,8 @@ class AdaptSMap {
     enum { sparse_threshold = 8 };
 
   public:
-    typedef uint16_t key_t;
-    typedef Val val_t;
+    using key_t = uint16_t;
+    using val_t = Val;
     class elt_t {
       public:
         elt_t(key_t _k, const val_t &_v) : key(_k), val(_v) {}
@@ -135,7 +135,7 @@ class AdaptSMap {
 
     class key_range_t {
       public:
-        typedef key_iter_t iterator;
+        using iterator = key_iter_t;
 
         key_range_t(elt_t *_e, size_t _sz) : e(_e), sz(_sz) {}
         size_t size(void) const { return sz; }
@@ -149,7 +149,7 @@ class AdaptSMap {
 
     class elt_range_t {
       public:
-        typedef elt_iter_t iterator;
+        using iterator = elt_iter_t;
 
         elt_range_t(elt_t *_e, size_t _sz) : e(_e), sz(_sz) {}
         elt_range_t(const elt_range_t &o) : e(o.e), sz(o.sz) {}
@@ -280,11 +280,11 @@ class AdaptSMap {
 
 template <class Weight>
 class AdaptGraph : public ikos::writeable {
-    typedef AdaptSMap<size_t> smap_t;
+    using smap_t = AdaptSMap<size_t>;
 
   public:
-    typedef unsigned int vert_id;
-    typedef Weight Wt;
+    using vert_id = unsigned int;
+    using Wt = Weight;
 
     AdaptGraph(void) : edge_count(0) {}
 
@@ -372,7 +372,7 @@ class AdaptGraph : public ikos::writeable {
 
     class edge_iter {
       public:
-        typedef edge_ref_t edge_ref;
+        using edge_ref = edge_ref_t;
         edge_iter(const smap_t::elt_iter_t &_it, vec<Wt> &_ws) : it(_it), ws(&_ws) {}
         edge_iter(const edge_iter &o) : it(o.it), ws(o.ws) {}
         edge_iter(void) : ws(nullptr) {}
@@ -398,13 +398,13 @@ class AdaptGraph : public ikos::writeable {
         vec<Wt> *ws;
     };
 
-    typedef typename smap_t::key_range_t adj_range_t;
-    typedef typename adj_range_t::iterator adj_iterator_t;
+    using adj_range_t = typename smap_t::key_range_t;
+    using adj_iterator_t = typename adj_range_t::iterator;
 
     class edge_range_t {
       public:
-        typedef typename smap_t::elt_range_t elt_range_t;
-        typedef edge_iter iterator;
+        using elt_range_t = typename smap_t::elt_range_t;
+        using iterator = edge_iter;
         edge_range_t(const edge_range_t &o) : r(o.r), ws(o.ws) {}
         edge_range_t(const elt_range_t &_r, vec<Wt> &_ws) : r(_r), ws(_ws) {}
 
@@ -416,23 +416,23 @@ class AdaptGraph : public ikos::writeable {
         vec<Wt> &ws;
     };
 
-    typedef edge_iter fwd_edge_iter;
-    typedef edge_iter rev_edge_iter;
+    using fwd_edge_iter = edge_iter;
+    using rev_edge_iter = edge_iter;
 
-    typedef adj_range_t pred_range;
-    typedef adj_range_t succ_range;
+    using pred_range = adj_range_t;
+    using succ_range = adj_range_t;
 
     adj_range_t succs(vert_id v) { return _succs[v].keys(); }
     adj_range_t preds(vert_id v) { return _preds[v].keys(); }
 
-    typedef edge_range_t fwd_edge_range;
-    typedef edge_range_t rev_edge_range;
+    using fwd_edge_range = edge_range_t;
+    using rev_edge_range = edge_range_t;
 
     edge_range_t e_succs(vert_id v) { return edge_range_t(_succs[v].elts(), _ws); }
     edge_range_t e_preds(vert_id v) { return edge_range_t(_preds[v].elts(), _ws); }
 
-    typedef edge_range_t e_pred_range;
-    typedef edge_range_t e_succ_range;
+    using e_pred_range = edge_range_t;
+    using e_succ_range = edge_range_t;
 
     // Management
     bool is_empty(void) const { return edge_count == 0; }
@@ -528,7 +528,7 @@ class AdaptGraph : public ikos::writeable {
         Wt *w;
     };
 
-    typedef mut_val_ref_t mut_val_ref_t;
+    using mut_val_ref_t = mut_val_ref_t;
 
     bool lookup(vert_id s, vert_id d, mut_val_ref_t *w) {
         size_t idx;

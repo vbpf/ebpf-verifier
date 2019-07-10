@@ -27,13 +27,13 @@ class liveness_analysis_operations
     : public crab::iterators::killgen_operations_api<CFG, varset_domain<typename CFG::variable_t>> {
 
   public:
-    typedef varset_domain<typename CFG::variable_t> varset_domain_t;
-    typedef typename CFG::basic_block_label_t basic_block_label_t;
+    using varset_domain_t = varset_domain<typename CFG::variable_t>;
+    using basic_block_label_t = typename CFG::basic_block_label_t;
 
   private:
-    typedef crab::iterators::killgen_operations_api<CFG, varset_domain_t> parent_type;
-    typedef std::pair<varset_domain_t, varset_domain_t> binding_t;
-    typedef boost::unordered_map<basic_block_label_t, binding_t> liveness_map_t;
+    using parent_type = crab::iterators::killgen_operations_api<CFG, varset_domain_t>;
+    using binding_t = std::pair<varset_domain_t, varset_domain_t>;
+    using liveness_map_t = boost::unordered_map<basic_block_label_t, binding_t>;
 
     liveness_map_t m_liveness_map;
 
@@ -88,14 +88,14 @@ template <typename CFG>
 class liveness_analysis : boost::noncopyable,
                           public crab::iterators::killgen_fixpoint_iterator<CFG, liveness_analysis_operations<CFG>> {
 
-    typedef liveness_analysis_operations<CFG> liveness_analysis_operations_t;
-    typedef crab::iterators::killgen_fixpoint_iterator<CFG, liveness_analysis_operations_t> killgen_fixpoint_iterator_t;
+    using liveness_analysis_operations_t = liveness_analysis_operations<CFG>;
+    using killgen_fixpoint_iterator_t = crab::iterators::killgen_fixpoint_iterator<CFG, liveness_analysis_operations_t>;
 
   public:
-    typedef typename CFG::basic_block_label_t basic_block_label_t;
-    typedef typename CFG::statement_t statement_t;
-    typedef typename CFG::varname_t varname_t;
-    typedef typename liveness_analysis_operations_t::varset_domain_t varset_domain_t;
+    using basic_block_label_t = typename CFG::basic_block_label_t;
+    using statement_t = typename CFG::statement_t;
+    using varname_t = typename CFG::varname_t;
+    using varset_domain_t = typename liveness_analysis_operations_t::varset_domain_t;
 
   private:
     // output of the analysis: map basic blocks to set of live
@@ -143,15 +143,15 @@ inline crab_os &operator<<(crab_os &o, const liveness_analysis<CFG> &l) {
 template <typename CFG>
 class liveness : boost::noncopyable {
   public:
-    typedef typename CFG::basic_block_label_t basic_block_label_t;
-    typedef typename CFG::basic_block_t basic_block_t;
-    typedef typename CFG::statement_t statement_t;
-    typedef typename CFG::varname_t varname_t;
-    typedef typename CFG::variable_t variable_t;
-    typedef varset_domain<variable_t> varset_domain_t;
+    using basic_block_label_t = typename CFG::basic_block_label_t;
+    using basic_block_t = typename CFG::basic_block_t;
+    using statement_t = typename CFG::statement_t;
+    using varname_t = typename CFG::varname_t;
+    using variable_t = typename CFG::variable_t;
+    using varset_domain_t = varset_domain<variable_t>;
 
   private:
-    typedef liveness_analysis<CFG> liveness_analysis_t;
+    using liveness_analysis_t = liveness_analysis<CFG>;
 
     // the cfg
     CFG m_cfg;
@@ -168,7 +168,7 @@ class liveness : boost::noncopyable {
   public:
     // for backward compatibility
     // XXX: maybe unused already
-    typedef varset_domain_t set_t;
+    using set_t = varset_domain_t;
 
     liveness(CFG cfg) : m_cfg(cfg), m_max_live(0), m_total_live(0), m_total_blocks(0) {}
 

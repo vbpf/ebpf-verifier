@@ -18,7 +18,7 @@ namespace ikos {
 template <typename Number>
 class bound {
   public:
-    typedef bound<Number> bound_t;
+    using bound_t = bound<Number>;
 
   private:
     bool _is_infinite;
@@ -245,8 +245,8 @@ template <typename Number>
 class interval {
 
   public:
-    typedef bound<Number> bound_t;
-    typedef interval<Number> interval_t;
+    using bound_t = bound<Number>;
+    using interval_t = interval<Number>;
 
   private:
     bound_t _lb;
@@ -570,7 +570,7 @@ inline interval<z_number> interval<z_number>::operator/(interval<z_number> x) co
             }
         }
         // Divisor is not a singleton
-        typedef interval<z_number> z_interval;
+        using z_interval = interval<z_number>;
         if (x[0]) {
             z_interval l(x._lb, z_bound(-1));
             z_interval u(z_bound(1), x._ub);

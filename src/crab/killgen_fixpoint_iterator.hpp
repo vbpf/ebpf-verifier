@@ -20,8 +20,8 @@ template <class CFG, class Dom>
 class killgen_operations_api {
 
   public:
-    typedef typename CFG::basic_block_label_t basic_block_label_t;
-    typedef Dom killgen_domain_t;
+    using basic_block_label_t = typename CFG::basic_block_label_t;
+    using killgen_domain_t = Dom;
 
   protected:
     CFG m_cfg;
@@ -55,11 +55,11 @@ template <class CFG, class AnalysisOps>
 class killgen_fixpoint_iterator {
 
   public:
-    typedef typename CFG::basic_block_label_t basic_block_label_t;
-    typedef typename AnalysisOps::killgen_domain_t killgen_domain_t;
-    typedef boost::unordered_map<basic_block_label_t, killgen_domain_t> inv_map_t;
-    typedef typename inv_map_t::iterator iterator;
-    typedef typename inv_map_t::const_iterator const_iterator;
+    using basic_block_label_t = typename CFG::basic_block_label_t;
+    using killgen_domain_t = typename AnalysisOps::killgen_domain_t;
+    using inv_map_t = boost::unordered_map<basic_block_label_t, killgen_domain_t>;
+    using iterator = typename inv_map_t::iterator;
+    using const_iterator = typename inv_map_t::const_iterator;
 
   protected:
     CFG m_cfg;

@@ -83,8 +83,8 @@ template <typename Variable>
 class cell {
   private:
     friend class offset_map<Variable>;
-    typedef cell<Variable> cell_t;
-    typedef ikos::interval<typename Variable::number_t> interval_t;
+    using cell_t = cell<Variable>;
+    using interval_t = ikos::interval<typename Variable::number_t>;
 
     offset_t _offset;
     unsigned _size;
@@ -156,8 +156,8 @@ class cell {
     template <typename Dom>
     bool symbolic_overlap(const typename Dom::linear_expression_t &symb_lb,
                           const typename Dom::linear_expression_t &symb_ub, const Dom &dom) const {
-        typedef typename Dom::linear_expression_t linear_expression_t;
-        typedef typename Dom::number_t number_t;
+        using linear_expression_t = typename Dom::linear_expression_t;
+        using number_t = typename Dom::number_t;
 
         interval_t x = to_interval();
         assert(x.lb().is_finite());
@@ -233,15 +233,15 @@ inline bool set_inclusion(Set &s1, Set &s2) {
 template <typename Variable>
 class offset_map {
   public:
-    typedef cell<Variable> cell_t;
+    using cell_t = cell<Variable>;
 
   private:
     template <typename Dom>
     friend class array_expansion_domain;
 
-    typedef offset_map<Variable> offset_map_t;
-    typedef std::set<cell_t> cell_set_t;
-    typedef crab::variable_type type_t;
+    using offset_map_t = offset_map<Variable>;
+    using cell_set_t = std::set<cell_t>;
+    using type_t = crab::variable_type;
 
     /*
       The keys in the patricia tree are processing in big-endian
@@ -251,9 +251,9 @@ class offset_map {
       patterns, negative offsets can be used but they are treated
       as large unsigned numbers.
     */
-    typedef patricia_tree<offset_t, cell_set_t> patricia_tree_t;
-    typedef typename patricia_tree_t::binary_op_t binary_op_t;
-    typedef typename patricia_tree_t::partial_order_t partial_order_t;
+    using patricia_tree_t = patricia_tree<offset_t, cell_set_t>;
+    using binary_op_t = typename patricia_tree_t::binary_op_t;
+    using partial_order_t = typename patricia_tree_t::partial_order_t;
 
     patricia_tree_t _map;
 
@@ -641,12 +641,12 @@ template <typename NumDomain>
 class array_expansion_domain final : public abstract_domain<array_expansion_domain<NumDomain>> {
 
   public:
-    typedef typename NumDomain::number_t number_t;
-    typedef typename NumDomain::varname_t varname_t;
+    using number_t = typename NumDomain::number_t;
+    using varname_t = typename NumDomain::varname_t;
 
   private:
-    typedef array_expansion_domain<NumDomain> array_expansion_domain_t;
-    typedef abstract_domain<array_expansion_domain_t> abstract_domain_t;
+    using array_expansion_domain_t = array_expansion_domain<NumDomain>;
+    using abstract_domain_t = abstract_domain<array_expansion_domain_t>;
 
   public:
     using typename abstract_domain_t::linear_constraint_system_t;
@@ -654,15 +654,15 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
     using typename abstract_domain_t::linear_expression_t;
     using typename abstract_domain_t::variable_t;
     using typename abstract_domain_t::variable_vector_t;
-    typedef NumDomain content_domain_t;
-    typedef interval<number_t> interval_t;
+    using content_domain_t = NumDomain;
+    using interval_t = interval<number_t>;
 
   private:
-    typedef bound<number_t> bound_t;
-    typedef crab::variable_type type_t;
-    typedef offset_map<variable_t> offset_map_t;
-    typedef cell<variable_t> cell_t;
-    typedef boost::unordered_map<variable_t, offset_map_t> array_map_t;
+    using bound_t = bound<number_t>;
+    using type_t = crab::variable_type;
+    using offset_map_t = offset_map<variable_t>;
+    using cell_t = cell<variable_t>;
+    using array_map_t = boost::unordered_map<variable_t, offset_map_t>;
 
     // scalar domain
     NumDomain _inv;
@@ -1307,15 +1307,15 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
 
 template <typename BaseDomain>
 struct abstract_domain_traits<array_expansion_domain<BaseDomain>> {
-    typedef typename BaseDomain::number_t number_t;
-    typedef typename BaseDomain::varname_t varname_t;
+    using number_t = typename BaseDomain::number_t;
+    using varname_t = typename BaseDomain::varname_t;
 };
 
 template <typename BaseDom>
 class checker_domain_traits<array_expansion_domain<BaseDom>> {
   public:
-    typedef array_expansion_domain<BaseDom> this_type;
-    typedef typename this_type::linear_constraint_t linear_constraint_t;
+    using this_type = array_expansion_domain<BaseDom>;
+    using linear_constraint_t = typename this_type::linear_constraint_t;
 
     static bool entail(this_type &lhs, const linear_constraint_t &rhs) {
         BaseDom &lhs_dom = lhs.get_content_domain();

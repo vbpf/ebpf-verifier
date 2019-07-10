@@ -24,7 +24,7 @@ template <typename G>
 class scc_graph {
 
   public:
-    typedef typename G::node_t node_t;
+    using node_t = typename G::node_t;
 
   private:
     /// --- begin internal representation of the scc_graph
@@ -36,17 +36,17 @@ class scc_graph {
                                   boost::vecS, boost::bidirectionalS,
                                   boost::property<boost::vertex_color_t, boost::default_color_type, vertex_t>>
         scc_graph_t;
-    typedef std::shared_ptr<scc_graph_t> scc_graph_ptr;
-    typedef typename boost::graph_traits<scc_graph_t>::vertex_descriptor vertex_descriptor_t;
-    typedef typename boost::graph_traits<scc_graph_t>::edge_descriptor edge_descriptor_t;
-    typedef typename boost::graph_traits<scc_graph_t>::vertex_iterator vertex_iterator;
-    typedef typename boost::graph_traits<scc_graph_t>::out_edge_iterator out_edge_iterator;
-    typedef typename boost::graph_traits<scc_graph_t>::in_edge_iterator in_edge_iterator;
+    using scc_graph_ptr = std::shared_ptr<scc_graph_t>;
+    using vertex_descriptor_t = typename boost::graph_traits<scc_graph_t>::vertex_descriptor;
+    using edge_descriptor_t = typename boost::graph_traits<scc_graph_t>::edge_descriptor;
+    using vertex_iterator = typename boost::graph_traits<scc_graph_t>::vertex_iterator;
+    using out_edge_iterator = typename boost::graph_traits<scc_graph_t>::out_edge_iterator;
+    using in_edge_iterator = typename boost::graph_traits<scc_graph_t>::in_edge_iterator;
     /// --- end internal representation of the scc_graph
 
-    typedef boost::unordered_map<node_t, std::size_t> component_map_t;
-    typedef boost::unordered_map<std::size_t, vertex_descriptor_t> comp_to_vertex_map_t;
-    typedef boost::unordered_map<std::size_t, std::vector<node_t>> comp_members_map_t;
+    using component_map_t = boost::unordered_map<node_t, std::size_t>;
+    using comp_to_vertex_map_t = boost::unordered_map<std::size_t, vertex_descriptor_t>;
+    using comp_members_map_t = boost::unordered_map<std::size_t, std::vector<node_t>>;
 
     // Wrapper for edges
     // XXX: BGL complains if we use std::pair<edge_t,edge_t>
@@ -76,7 +76,7 @@ class scc_graph {
     comp_members_map_t m_comp_members_map;
 
   public:
-    typedef Edge<node_t> edge_t;
+    using edge_t = Edge<node_t>;
 
   private:
     struct MkNode : public std::unary_function<vertex_descriptor_t, node_t> {
@@ -119,7 +119,7 @@ class scc_graph {
 
     template <typename OrderVis>
     std::vector<node_t> sort() const {
-        typedef boost::unordered_map<node_t, boost::default_color_type> color_map_t;
+        using color_map_t = boost::unordered_map<node_t, boost::default_color_type>;
         color_map_t color;
         for (auto v : boost::make_iterator_range(vertices(m_g))) {
             color[v] = boost::default_color_type();
@@ -163,20 +163,20 @@ class scc_graph {
     }
 
   public:
-    typedef boost::transform_iterator<MkNode, vertex_iterator> node_iterator;
-    typedef boost::transform_iterator<MkEdge, in_edge_iterator> pred_iterator;
-    typedef boost::transform_iterator<MkEdge, out_edge_iterator> succ_iterator;
+    using node_iterator = boost::transform_iterator<MkNode, vertex_iterator>;
+    using pred_iterator = boost::transform_iterator<MkEdge, in_edge_iterator>;
+    using succ_iterator = boost::transform_iterator<MkEdge, out_edge_iterator>;
 
     scc_graph(G g, bool order = false /*default post-order*/)
         : m_g(g), m_same_scc_order(order), m_sccg(std::make_shared<scc_graph_t>()) {
 
         CRAB_LOG("sccg", crab::outs() << g << "\n");
 
-        typedef boost::unordered_map<node_t, node_t> root_map_t;
-        typedef boost::unordered_map<node_t, boost::default_color_type> color_map_t;
-        typedef boost::associative_property_map<component_map_t> property_component_map_t;
-        typedef boost::associative_property_map<root_map_t> property_root_map_t;
-        typedef boost::associative_property_map<color_map_t> property_color_map_t;
+        using root_map_t = boost::unordered_map<node_t, node_t>;
+        using color_map_t = boost::unordered_map<node_t, boost::default_color_type>;
+        using property_component_map_t = boost::associative_property_map<component_map_t>;
+        using property_root_map_t = boost::associative_property_map<root_map_t>;
+        using property_color_map_t = boost::associative_property_map<color_map_t>;
 
         component_map_t discover_time;
         root_map_t _root_map;

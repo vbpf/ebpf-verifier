@@ -19,12 +19,12 @@ template <class Element>
 class flat_killgen_domain {
 
   private:
-    typedef flat_killgen_domain<Element> flat_killgen_domain_t;
-    typedef ikos::discrete_domain<Element> discrete_domain_t;
+    using flat_killgen_domain_t = flat_killgen_domain<Element>;
+    using discrete_domain_t = ikos::discrete_domain<Element>;
 
   public:
-    typedef typename discrete_domain_t::iterator iterator;
-    typedef Element element_t;
+    using iterator = typename discrete_domain_t::iterator;
+    using element_t = Element;
 
   private:
     discrete_domain_t _inv;
@@ -127,16 +127,16 @@ template <typename Key, typename Value>
 class separate_killgen_domain {
 
   private:
-    typedef ikos::patricia_tree<Key, Value> patricia_tree_t;
-    typedef typename patricia_tree_t::unary_op_t unary_op_t;
-    typedef typename patricia_tree_t::binary_op_t binary_op_t;
-    typedef typename patricia_tree_t::partial_order_t partial_order_t;
+    using patricia_tree_t = ikos::patricia_tree<Key, Value>;
+    using unary_op_t = typename patricia_tree_t::unary_op_t;
+    using binary_op_t = typename patricia_tree_t::binary_op_t;
+    using partial_order_t = typename patricia_tree_t::partial_order_t;
 
   public:
-    typedef separate_killgen_domain<Key, Value> separate_killgen_domain_t;
-    typedef typename patricia_tree_t::iterator iterator;
-    typedef Key key_type;
-    typedef Value value_type;
+    using separate_killgen_domain_t = separate_killgen_domain<Key, Value>;
+    using iterator = typename patricia_tree_t::iterator;
+    using key_type = Key;
+    using value_type = Value;
 
   private:
     bool _is_top;

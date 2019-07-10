@@ -42,9 +42,9 @@ using namespace crab::cfg;
 template <typename CFG>
 struct assert_wrapper {
 
-    typedef typename statement_visitor<typename CFG::number_t, typename CFG::varname_t>::assert_t assert_t;
-    typedef typename CFG::basic_block_label_t basic_block_label_t;
-    typedef assert_wrapper<CFG> this_type;
+    using assert_t = typename statement_visitor<typename CFG::number_t, typename CFG::varname_t>::assert_t;
+    using basic_block_label_t = typename CFG::basic_block_label_t;
+    using this_type = assert_wrapper<CFG>;
 
     // unique identifier for the assert statement needed for being
     // used as key
@@ -55,8 +55,8 @@ struct assert_wrapper {
     assert_t *a;
 
     /// pointers to some global datastructures
-    typedef boost::unordered_map<assert_t *, this_type> assert_map_t;
-    typedef boost::unordered_map<basic_block_label_t, std::vector<basic_block_label_t>> cdg_t;
+    using assert_map_t = boost::unordered_map<assert_t *, this_type>;
+    using cdg_t = boost::unordered_map<basic_block_label_t, std::vector<basic_block_label_t>>;
     // map assertions to their wrappers
     assert_map_t *assert_map_ptr;
     // control-dependency graph
@@ -91,47 +91,47 @@ class assertion_crawler_operations
     friend class assertion_crawler<CFG>;
 
   public:
-    typedef assert_wrapper<CFG> assert_wrapper_t;
-    typedef flat_killgen_domain<typename CFG::variable_t> var_dom_t;
+    using assert_wrapper_t = assert_wrapper<CFG>;
+    using var_dom_t = flat_killgen_domain<typename CFG::variable_t>;
     // -- key type: map an assertion to a set of variables
-    typedef separate_killgen_domain<assert_wrapper_t, var_dom_t> separate_domain_t;
+    using separate_domain_t = separate_killgen_domain<assert_wrapper_t, var_dom_t>;
 
   private:
-    typedef killgen_operations_api<CFG, separate_domain_t> killgen_operations_api_t;
-    typedef typename CFG::basic_block_label_t basic_block_label_t;
-    typedef typename CFG::basic_block_t basic_block_t;
-    typedef typename CFG::varname_t V;
-    typedef typename CFG::number_t N;
+    using killgen_operations_api_t = killgen_operations_api<CFG, separate_domain_t>;
+    using basic_block_label_t = typename CFG::basic_block_label_t;
+    using basic_block_t = typename CFG::basic_block_t;
+    using V = typename CFG::varname_t;
+    using N = typename CFG::number_t;
 
     // map each stmt assertion to a unique identifier
-    typedef typename assert_wrapper_t::assert_t assert_t;
-    typedef boost::unordered_map<assert_t *, assert_wrapper_t> assert_map_t;
+    using assert_t = typename assert_wrapper_t::assert_t;
+    using assert_map_t = boost::unordered_map<assert_t *, assert_wrapper_t>;
 
     // control-dependency graph
     // map a CFG block to the set of blocks which control-dependent on it.
-    typedef boost::unordered_map<basic_block_label_t, std::vector<basic_block_label_t>> cdg_t;
+    using cdg_t = boost::unordered_map<basic_block_label_t, std::vector<basic_block_label_t>>;
 
     // set of uses and definitions of an instruction
-    typedef crab::cfg::live<N, V> live_t;
+    using live_t = crab::cfg::live<N, V>;
 
     class transfer_function : public statement_visitor<N, V> {
 
-        typedef typename statement_visitor<N, V>::bin_op_t bin_op_t;
-        typedef typename statement_visitor<N, V>::assign_t assign_t;
-        typedef typename statement_visitor<N, V>::assume_t assume_t;
-        typedef typename statement_visitor<N, V>::select_t select_t;
-        typedef typename statement_visitor<N, V>::assert_t assert_t;
-        typedef typename statement_visitor<N, V>::int_cast_t int_cast_t;
-        typedef typename statement_visitor<N, V>::havoc_t havoc_t;
-        typedef typename statement_visitor<N, V>::unreach_t unreach_t;
-        typedef typename CFG::variable_t variable_t;
+        using bin_op_t = typename statement_visitor<N, V>::bin_op_t;
+        using assign_t = typename statement_visitor<N, V>::assign_t;
+        using assume_t = typename statement_visitor<N, V>::assume_t;
+        using select_t = typename statement_visitor<N, V>::select_t;
+        using assert_t = typename statement_visitor<N, V>::assert_t;
+        using int_cast_t = typename statement_visitor<N, V>::int_cast_t;
+        using havoc_t = typename statement_visitor<N, V>::havoc_t;
+        using unreach_t = typename statement_visitor<N, V>::unreach_t;
+        using variable_t = typename CFG::variable_t;
 
         // Helper that applies function F to each pair's value of the
         // separate domain_t.
         template <typename F>
         struct apply_separate : public std::unary_function<separate_domain_t, separate_domain_t> {
-            typedef apply_separate<F> this_type;
-            typedef std::binary_function<assert_wrapper_t, var_dom_t, std::pair<var_dom_t, bool>> function_type;
+            using this_type = apply_separate<F>;
+            using function_type = std::binary_function<assert_wrapper_t, var_dom_t, std::pair<var_dom_t, bool>>;
             static_assert(std::is_base_of<function_type, F>::value, "Function must be subclass of type F");
             F f;
 
@@ -274,9 +274,9 @@ class assertion_crawler_operations
             }
         };
 
-        typedef apply_separate<add_data_deps> apply_add_data_t;
-        typedef apply_separate<add_control_deps> apply_add_control_t;
-        typedef apply_separate<remove_deps> apply_remove_t;
+        using apply_add_data_t = apply_separate<add_data_deps>;
+        using apply_add_control_t = apply_separate<add_control_deps>;
+        using apply_remove_t = apply_separate<remove_deps>;
 
         // dataflow solution: map blocks to pairs of assertion id and
         //                    set of variables.
@@ -428,15 +428,15 @@ class assertion_crawler : public boost::noncopyable,
                           public crab::iterators::killgen_fixpoint_iterator<CFG, assertion_crawler_operations<CFG>> {
 
   public:
-    typedef typename CFG::basic_block_label_t basic_block_label_t;
-    typedef typename CFG::varname_t varname_t;
+    using basic_block_label_t = typename CFG::basic_block_label_t;
+    using varname_t = typename CFG::varname_t;
 
   private:
-    typedef crab::iterators::killgen_fixpoint_iterator<CFG, assertion_crawler_operations<CFG>> fixpo_t;
+    using fixpo_t = crab::iterators::killgen_fixpoint_iterator<CFG, assertion_crawler_operations<CFG>>;
 
   public:
     // map assertions to a set of variables
-    typedef typename assertion_crawler_operations<CFG>::separate_domain_t separate_domain_t;
+    using separate_domain_t = typename assertion_crawler_operations<CFG>::separate_domain_t;
 
   private:
     boost::unordered_map<basic_block_label_t, separate_domain_t> m_map;

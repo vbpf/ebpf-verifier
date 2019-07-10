@@ -15,12 +15,12 @@ namespace checker {
 template <typename Analyzer>
 class assert_property_checker : public property_checker<Analyzer> {
 
-    typedef typename Analyzer::varname_t varname_t;
-    typedef typename Analyzer::number_t number_t;
+    using varname_t = typename Analyzer::varname_t;
+    using number_t = typename Analyzer::number_t;
 
-    typedef ikos::interval<number_t> interval_t;
-    typedef typename Analyzer::abs_dom_t abs_dom_t;
-    typedef property_checker<Analyzer> base_checker_t;
+    using interval_t = ikos::interval<number_t>;
+    using abs_dom_t = typename Analyzer::abs_dom_t;
+    using base_checker_t = property_checker<Analyzer>;
 
     using typename base_checker_t::assert_t;
     using typename base_checker_t::assign_t;

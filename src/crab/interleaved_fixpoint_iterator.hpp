@@ -75,22 +75,22 @@ namespace ikos {
 
   public:
 
-    typedef typename CFG::basic_block_label_t basic_block_label_t;
-    typedef wto<CFG> wto_t;
-    typedef boost::unordered_map<basic_block_label_t,AbstractValue> assumption_map_t;
-    typedef boost::unordered_map<basic_block_label_t,AbstractValue> invariant_table_t;
+    using basic_block_label_t = typename CFG::basic_block_label_t;
+    using wto_t = wto<CFG>;
+    using assumption_map_t = boost::unordered_map<basic_block_label_t,AbstractValue>;
+    using invariant_table_t = boost::unordered_map<basic_block_label_t,AbstractValue>;
 
   private:
 
-    typedef interleaved_fwd_fixpoint_iterator_impl::wto_iterator<CFG,AbstractValue> wto_iterator_t;
-    typedef interleaved_fwd_fixpoint_iterator_impl::wto_processor<CFG,AbstractValue> wto_processor_t;
-    typedef crab::iterators::thresholds<typename CFG::number_t> thresholds_t;
-    typedef crab::iterators::wto_thresholds<CFG> wto_thresholds_t;
+    using wto_iterator_t = interleaved_fwd_fixpoint_iterator_impl::wto_iterator<CFG,AbstractValue>;
+    using wto_processor_t = interleaved_fwd_fixpoint_iterator_impl::wto_processor<CFG,AbstractValue>;
+    using thresholds_t = crab::iterators::thresholds<typename CFG::number_t>;
+    using wto_thresholds_t = crab::iterators::wto_thresholds<CFG>;
 
   protected:
 
-    typedef typename invariant_table_t::iterator iterator;
-    typedef typename invariant_table_t::const_iterator const_iterator;
+    using iterator = typename invariant_table_t::iterator;
+    using const_iterator = typename invariant_table_t::const_iterator;
 
     CFG _cfg;
     wto_t _wto;
@@ -309,13 +309,13 @@ namespace ikos {
     class wto_iterator: public wto_component_visitor<CFG> {
 
     public:
-      typedef interleaved_fwd_fixpoint_iterator<CFG, AbstractValue> interleaved_iterator_t;
-      typedef wto_vertex<CFG> wto_vertex_t;
-      typedef wto_cycle<CFG> wto_cycle_t;
-      typedef wto<CFG> wto_t;
-      typedef typename CFG::basic_block_label_t basic_block_label_t;
-      typedef typename wto_t::wto_nesting_t wto_nesting_t;
-      typedef typename interleaved_iterator_t::assumption_map_t assumption_map_t;
+      using interleaved_iterator_t = interleaved_fwd_fixpoint_iterator<CFG, AbstractValue>;
+      using wto_vertex_t = wto_vertex<CFG>;
+      using wto_cycle_t = wto_cycle<CFG>;
+      using wto_t = wto<CFG>;
+      using basic_block_label_t = typename CFG::basic_block_label_t;
+      using wto_nesting_t = typename wto_t::wto_nesting_t;
+      using assumption_map_t = typename interleaved_iterator_t::assumption_map_t;
 
     private:
       interleaved_iterator_t *_iterator;
@@ -582,10 +582,10 @@ namespace ikos {
     class wto_processor: public wto_component_visitor<CFG> {
 
     public:
-      typedef interleaved_fwd_fixpoint_iterator<CFG, AbstractValue> interleaved_iterator_t;
-      typedef wto_vertex<CFG> wto_vertex_t;
-      typedef wto_cycle<CFG> wto_cycle_t;
-      typedef typename CFG::basic_block_label_t basic_block_label_t;
+      using interleaved_iterator_t = interleaved_fwd_fixpoint_iterator<CFG, AbstractValue>;
+      using wto_vertex_t = wto_vertex<CFG>;
+      using wto_cycle_t = wto_cycle<CFG>;
+      using basic_block_label_t = typename CFG::basic_block_label_t;
 
     private:
       interleaved_iterator_t *_iterator;

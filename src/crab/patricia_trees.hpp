@@ -128,13 +128,13 @@ inline bool match_prefix(index_t k, index_t p, index_t m) { return mask(k, m) ==
 template <typename Key, typename Value>
 class tree {
   public:
-    typedef tree<Key, Value> tree_t;
-    typedef std::shared_ptr<tree_t> tree_ptr;
-    typedef tree_ptr ptr;
-    typedef unary_op<Value> unary_op_t;
-    typedef binary_op<Value> binary_op_t;
-    typedef key_binary_op<Key, Value> key_binary_op_t;
-    typedef partial_order<Value> partial_order_t;
+    using tree_t = tree<Key, Value>;
+    using tree_ptr = std::shared_ptr<tree_t>;
+    using ptr = tree_ptr;
+    using unary_op_t = unary_op<Value>;
+    using binary_op_t = binary_op<Value>;
+    using key_binary_op_t = key_binary_op<Key, Value>;
+    using partial_order_t = partial_order<Value>;
     struct binding_t {
         const Key &first;
         const Value &second;
@@ -173,8 +173,8 @@ class tree {
         friend class boost::iterator_core_access;
 
       private:
-        typedef std::pair<tree_ptr, int> branching_t;
-        typedef std::vector<branching_t> branching_stack_t;
+        using branching_t = std::pair<tree_ptr, int>;
+        using branching_stack_t = std::vector<branching_t>;
 
       private:
         tree_ptr _current;
@@ -264,9 +264,9 @@ class tree {
 template <typename Key, typename Value>
 class node : public tree<Key, Value> {
   private:
-    typedef typename tree<Key, Value>::ptr tree_ptr;
-    typedef typename tree<Key, Value>::binding_t binding_t;
-    typedef node<Key, Value> node_t;
+    using tree_ptr = typename tree<Key, Value>::ptr;
+    using binding_t = typename tree<Key, Value>::binding_t;
+    using node_t = node<Key, Value>;
 
   private:
     std::size_t _size;
@@ -327,9 +327,9 @@ class node : public tree<Key, Value> {
 template <typename Key, typename Value>
 class leaf : public tree<Key, Value> {
   private:
-    typedef typename tree<Key, Value>::ptr tree_ptr;
-    typedef typename tree<Key, Value>::binding_t binding_t;
-    typedef leaf<Key, Value> leaf_t;
+    using tree_ptr = typename tree<Key, Value>::ptr;
+    using binding_t = typename tree<Key, Value>::binding_t;
+    using leaf_t = leaf<Key, Value>;
 
   private:
     Key _key;
@@ -371,7 +371,7 @@ template <typename Key, typename Value>
 typename tree<Key, Value>::ptr tree<Key, Value>::make_node(index_t prefix, index_t branching_bit,
                                                            typename tree<Key, Value>::ptr left_branch,
                                                            typename tree<Key, Value>::ptr right_branch) {
-    typedef typename tree<Key, Value>::ptr tree_ptr;
+    using tree_ptr = typename tree<Key, Value>::ptr;
     tree_ptr n;
     if (left_branch) {
         if (right_branch) {
@@ -391,14 +391,14 @@ typename tree<Key, Value>::ptr tree<Key, Value>::make_node(index_t prefix, index
 
 template <typename Key, typename Value>
 typename tree<Key, Value>::ptr tree<Key, Value>::make_leaf(const Key &key, const Value &value) {
-    typedef typename tree<Key, Value>::ptr tree_ptr;
+    using tree_ptr = typename tree<Key, Value>::ptr;
     return tree_ptr(new leaf<Key, Value>(key, value));
 }
 
 template <typename Key, typename Value>
 typename tree<Key, Value>::ptr tree<Key, Value>::join(typename tree<Key, Value>::ptr t0,
                                                       typename tree<Key, Value>::ptr t1) {
-    typedef typename tree<Key, Value>::ptr tree_ptr;
+    using tree_ptr = typename tree<Key, Value>::ptr;
     index_t p0 = t0->prefix();
     index_t p1 = t1->prefix();
     index_t m = compute_branching_bit(p0, t0->branching_bit(), p1, t1->branching_bit());
@@ -416,7 +416,7 @@ template <typename Key, typename Value>
 std::pair<bool, typename tree<Key, Value>::ptr> tree<Key, Value>::insert(typename tree<Key, Value>::ptr t,
                                                                          const Key &key_, const Value &value_,
                                                                          binary_op_t &op, bool combine_left_to_right) {
-    typedef typename tree<Key, Value>::ptr tree_ptr;
+    using tree_ptr = typename tree<Key, Value>::ptr;
     tree_ptr nil;
     std::pair<bool, tree_ptr> res, res_lb, res_rb;
     std::pair<bool, boost::optional<Value>> new_value;
@@ -511,7 +511,7 @@ template <typename Key, typename Value>
 typename tree<Key, Value>::ptr tree<Key, Value>::insert(typename tree<Key, Value>::ptr t, const Key &key_,
                                                         const Value &value_, key_binary_op_t &op,
                                                         bool combine_left_to_right) {
-    typedef typename tree<Key, Value>::ptr tree_ptr;
+    using tree_ptr = typename tree<Key, Value>::ptr;
     tree_ptr nil;
     if (t) {
         if (t->is_node()) {
@@ -591,7 +591,7 @@ typename tree<Key, Value>::ptr tree<Key, Value>::insert(typename tree<Key, Value
 
 template <typename Key, typename Value>
 typename tree<Key, Value>::ptr tree<Key, Value>::transform(typename tree<Key, Value>::ptr t, unary_op_t &op) {
-    typedef typename tree<Key, Value>::ptr tree_ptr;
+    using tree_ptr = typename tree<Key, Value>::ptr;
     tree_ptr nil;
     if (t) {
         if (t->is_node()) {
@@ -636,7 +636,7 @@ typename tree<Key, Value>::ptr tree<Key, Value>::transform(typename tree<Key, Va
 
 template <typename Key, typename Value>
 typename tree<Key, Value>::ptr tree<Key, Value>::remove(typename tree<Key, Value>::ptr t, const Key &key_) {
-    typedef typename tree<Key, Value>::ptr tree_ptr;
+    using tree_ptr = typename tree<Key, Value>::ptr;
     tree_ptr nil;
     index_t id = key_.index();
     if (t) {
@@ -688,7 +688,7 @@ template <typename Key, typename Value>
 std::pair<bool, typename tree<Key, Value>::ptr> tree<Key, Value>::merge(typename tree<Key, Value>::ptr s,
                                                                         typename tree<Key, Value>::ptr t,
                                                                         binary_op_t &op, bool combine_left_to_right) {
-    typedef typename tree<Key, Value>::ptr tree_ptr;
+    using tree_ptr = typename tree<Key, Value>::ptr;
     tree_ptr nil;
     std::pair<bool, tree_ptr> res, res_lb, res_rb;
     std::pair<bool, boost::optional<Value>> new_value;
@@ -848,7 +848,7 @@ template <typename Key, typename Value>
 typename tree<Key, Value>::ptr tree<Key, Value>::key_merge(typename tree<Key, Value>::ptr s,
                                                            typename tree<Key, Value>::ptr t, key_binary_op_t &op,
                                                            bool combine_left_to_right) {
-    typedef typename tree<Key, Value>::ptr tree_ptr;
+    using tree_ptr = typename tree<Key, Value>::ptr;
     tree_ptr nil;
     if (s) {
         if (t) {
@@ -1069,16 +1069,16 @@ bool tree<Key, Value>::compare(typename tree<Key, Value>::ptr s, typename tree<K
 template <typename Key, typename Value>
 class patricia_tree {
   private:
-    typedef patricia_trees_impl::tree<Key, Value> tree_t;
-    typedef typename tree_t::ptr tree_ptr;
+    using tree_t = patricia_trees_impl::tree<Key, Value>;
+    using tree_ptr = typename tree_t::ptr;
 
   public:
-    typedef patricia_tree<Key, Value> patricia_tree_t;
-    typedef typename tree_t::unary_op_t unary_op_t;
-    typedef typename tree_t::binary_op_t binary_op_t;
-    typedef typename tree_t::key_binary_op_t key_binary_op_t;
-    typedef typename tree_t::partial_order_t partial_order_t;
-    typedef typename tree_t::binding_t binding_t;
+    using patricia_tree_t = patricia_tree<Key, Value>;
+    using unary_op_t = typename tree_t::unary_op_t;
+    using binary_op_t = typename tree_t::binary_op_t;
+    using key_binary_op_t = typename tree_t::key_binary_op_t;
+    using partial_order_t = typename tree_t::partial_order_t;
+    using binding_t = typename tree_t::binding_t;
 
   private:
     tree_ptr _tree;
@@ -1182,13 +1182,13 @@ class patricia_tree {
 template <typename Element>
 class patricia_tree_set {
   private:
-    typedef patricia_tree<Element, bool> patricia_tree_t;
+    using patricia_tree_t = patricia_tree<Element, bool>;
 
   public:
-    typedef patricia_tree_set<Element> patricia_tree_set_t;
-    typedef typename patricia_tree_t::unary_op_t unary_op_t;
-    typedef typename patricia_tree_t::binary_op_t binary_op_t;
-    typedef typename patricia_tree_t::partial_order_t partial_order_t;
+    using patricia_tree_set_t = patricia_tree_set<Element>;
+    using unary_op_t = typename patricia_tree_t::unary_op_t;
+    using binary_op_t = typename patricia_tree_t::binary_op_t;
+    using partial_order_t = typename patricia_tree_t::partial_order_t;
 
   private:
     patricia_tree_t _tree;

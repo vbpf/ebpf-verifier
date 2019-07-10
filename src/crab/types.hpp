@@ -148,12 +148,12 @@ class variable {
     // deduce the kind of Number from constraints like x < y.
 
   public:
-    typedef variable<Number, VariableName> variable_t;
-    typedef typename VariableName::index_t index_t;
-    typedef unsigned bitwidth_t;
-    typedef crab::variable_type type_t;
-    typedef Number number_t;
-    typedef VariableName varname_t;
+    using variable_t = variable<Number, VariableName>;
+    using index_t = typename VariableName::index_t;
+    using bitwidth_t = unsigned;
+    using type_t = crab::variable_type;
+    using number_t = Number;
+    using varname_t = VariableName;
 
   private:
     VariableName _n;
@@ -223,13 +223,13 @@ class variable {
 template <typename Number, typename VariableName>
 class variable_ref {
   public:
-    typedef variable<Number, VariableName> variable_t;
-    typedef typename variable_t::index_t index_t;
-    typedef typename variable_t::bitwidth_t bitwidth_t;
-    typedef typename variable_t::type_t type_t;
-    typedef variable_ref<Number, VariableName> variable_ref_t;
-    typedef Number number_t;
-    typedef VariableName varname_t;
+    using variable_t = variable<Number, VariableName>;
+    using index_t = typename variable_t::index_t;
+    using bitwidth_t = typename variable_t::bitwidth_t;
+    using type_t = typename variable_t::type_t;
+    using variable_ref_t = variable_ref<Number, VariableName>;
+    using number_t = Number;
+    using varname_t = VariableName;
 
   private:
     std::shared_ptr<variable_t> m_v{};

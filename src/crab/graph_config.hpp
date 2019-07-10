@@ -50,7 +50,7 @@ class DefaultParams {
     enum { special_assign = 1 };
     enum { close_bounds_inline = 0 };
 
-    typedef long Wt;
+    using Wt = long;
 
     typedef typename std::conditional<
         (Graph == ss), SparseWtGraph<Wt>,
@@ -70,7 +70,7 @@ class BigNumDefaultParams {
     enum { close_bounds_inline = 0 };
 
     // Use Number as graph weights
-    typedef Number Wt;
+    using Wt = Number;
 
     typedef typename std::conditional<
         (Graph == ss), SparseWtGraph<Wt>,
@@ -87,7 +87,7 @@ class SafeInt64DefaultParams {
     enum { special_assign = 1 };
     enum { close_bounds_inline = 0 };
 
-    typedef safe_i64 Wt;
+    using Wt = safe_i64;
 
     typedef typename std::conditional<
         (Graph == ss), SparseWtGraph<Wt>,
@@ -104,7 +104,7 @@ class SimpleParams {
     enum { special_assign = 0 };
     enum { close_bounds_inline = 1 };
 
-    typedef long Wt;
+    using Wt = long;
 
     typedef typename std::conditional<
         (Graph == ss), SparseWtGraph<Wt>,

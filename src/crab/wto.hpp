@@ -83,17 +83,17 @@ class wto_nesting {
     friend class wto_cycle<G>;
 
   public:
-    typedef wto_nesting<G> wto_nesting_t;
+    using wto_nesting_t = wto_nesting<G>;
 
   private:
-    typedef std::vector<typename boost::graph_traits<G>::vertex_descriptor> node_list_t;
-    typedef std::shared_ptr<node_list_t> node_list_ptr;
+    using node_list_t = std::vector<typename boost::graph_traits<G>::vertex_descriptor>;
+    using node_list_ptr = std::shared_ptr<node_list_t>;
 
     node_list_ptr _nodes;
 
   public:
-    typedef typename node_list_t::iterator iterator;
-    typedef typename node_list_t::const_iterator const_iterator;
+    using iterator = typename node_list_t::iterator;
+    using const_iterator = typename node_list_t::const_iterator;
 
   private:
     wto_nesting(node_list_ptr l) : _nodes(std::make_shared<node_list_t>(*l)) {}
@@ -184,7 +184,7 @@ template <typename G>
 class wto_component {
 
   public:
-    typedef wto_nesting<G> wto_nesting_t;
+    using wto_nesting_t = wto_nesting<G>;
 
     virtual void accept(wto_component_visitor<G> *) = 0;
 
@@ -225,12 +225,12 @@ class wto_cycle : public wto_component<G> {
     friend class wto<G>;
 
   public:
-    typedef wto_component<G> wto_component_t;
+    using wto_component_t = wto_component<G>;
 
   private:
-    typedef std::shared_ptr<wto_component_t> wto_component_ptr;
-    typedef boost::container::slist<wto_component_ptr> wto_component_list_t;
-    typedef std::shared_ptr<wto_component_list_t> wto_component_list_ptr;
+    using wto_component_ptr = std::shared_ptr<wto_component_t>;
+    using wto_component_list_t = boost::container::slist<wto_component_ptr>;
+    using wto_component_list_ptr = std::shared_ptr<wto_component_list_t>;
 
     typename boost::graph_traits<G>::vertex_descriptor _head;
     wto_component_list_ptr _wto_components;
@@ -241,8 +241,8 @@ class wto_cycle : public wto_component<G> {
         : _head(head), _wto_components(wto_components), _num_fixpo(0) {}
 
   public:
-    typedef boost::indirect_iterator<typename wto_component_list_t::iterator> iterator;
-    typedef boost::indirect_iterator<typename wto_component_list_t::const_iterator> const_iterator;
+    using iterator = boost::indirect_iterator<typename wto_component_list_t::iterator>;
+    using const_iterator = boost::indirect_iterator<typename wto_component_list_t::const_iterator>;
 
     typename boost::graph_traits<G>::vertex_descriptor head() { return this->_head; }
 
@@ -284,8 +284,8 @@ template <typename G>
 class wto_component_visitor {
 
   public:
-    typedef wto_vertex<G> wto_vertex_t;
-    typedef wto_cycle<G> wto_cycle_t;
+    using wto_vertex_t = wto_vertex<G>;
+    using wto_cycle_t = wto_cycle<G>;
 
     virtual void visit(wto_vertex_t &) = 0;
     virtual void visit(wto_cycle_t &) = 0;
@@ -297,25 +297,25 @@ template <typename G>
 class wto {
 
   public:
-    typedef wto_nesting<G> wto_nesting_t;
-    typedef wto_component<G> wto_component_t;
-    typedef wto_vertex<G> wto_vertex_t;
-    typedef wto_cycle<G> wto_cycle_t;
-    typedef wto<G> wto_t;
+    using wto_nesting_t = wto_nesting<G>;
+    using wto_component_t = wto_component<G>;
+    using wto_vertex_t = wto_vertex<G>;
+    using wto_cycle_t = wto_cycle<G>;
+    using wto_t = wto<G>;
 
   private:
-    typedef std::shared_ptr<wto_component_t> wto_component_ptr;
-    typedef std::shared_ptr<wto_vertex_t> wto_vertex_ptr;
-    typedef std::shared_ptr<wto_cycle_t> wto_cycle_ptr;
-    typedef boost::container::slist<wto_component_ptr> wto_component_list_t;
-    typedef std::shared_ptr<wto_component_list_t> wto_component_list_ptr;
-    typedef bound<z_number> dfn_t;
-    typedef boost::unordered_map<typename boost::graph_traits<G>::vertex_descriptor, dfn_t> dfn_table_t;
-    typedef std::shared_ptr<dfn_table_t> dfn_table_ptr;
-    typedef std::vector<typename boost::graph_traits<G>::vertex_descriptor> stack_t;
-    typedef std::shared_ptr<stack_t> stack_ptr;
-    typedef boost::unordered_map<typename boost::graph_traits<G>::vertex_descriptor, wto_nesting_t> nesting_table_t;
-    typedef std::shared_ptr<nesting_table_t> nesting_table_ptr;
+    using wto_component_ptr = std::shared_ptr<wto_component_t>;
+    using wto_vertex_ptr = std::shared_ptr<wto_vertex_t>;
+    using wto_cycle_ptr = std::shared_ptr<wto_cycle_t>;
+    using wto_component_list_t = boost::container::slist<wto_component_ptr>;
+    using wto_component_list_ptr = std::shared_ptr<wto_component_list_t>;
+    using dfn_t = bound<z_number>;
+    using dfn_table_t = boost::unordered_map<typename boost::graph_traits<G>::vertex_descriptor, dfn_t>;
+    using dfn_table_ptr = std::shared_ptr<dfn_table_t>;
+    using stack_t = std::vector<typename boost::graph_traits<G>::vertex_descriptor>;
+    using stack_ptr = std::shared_ptr<stack_t>;
+    using nesting_table_t = boost::unordered_map<typename boost::graph_traits<G>::vertex_descriptor, wto_nesting_t>;
+    using nesting_table_ptr = std::shared_ptr<nesting_table_t>;
 
     wto_component_list_ptr _wto_components;
     dfn_table_ptr _dfn_table;
@@ -326,8 +326,8 @@ class wto {
     class nesting_builder : public wto_component_visitor<G> {
 
       public:
-        typedef wto_vertex<G> wto_vertex_t;
-        typedef wto_cycle<G> wto_cycle_t;
+        using wto_vertex_t = wto_vertex<G>;
+        using wto_cycle_t = wto_cycle<G>;
 
       private:
         wto_nesting_t _nesting;
@@ -398,7 +398,7 @@ class wto {
 
 #ifndef RECURSIVE_WTO
     struct visit_stack_elem {
-        typedef typename boost::graph_traits<G>::out_edge_iterator succ_iterator;
+        using succ_iterator = typename boost::graph_traits<G>::out_edge_iterator;
         typename boost::graph_traits<G>::vertex_descriptor _node;
         succ_iterator _it; // begin iterator for node's successors
         succ_iterator _et; // end iterator for node's successors
@@ -545,8 +545,8 @@ class wto {
     }
 
   public:
-    typedef boost::indirect_iterator<typename wto_component_list_t::iterator> iterator;
-    typedef boost::indirect_iterator<typename wto_component_list_t::const_iterator> const_iterator;
+    using iterator = boost::indirect_iterator<typename wto_component_list_t::iterator>;
+    using const_iterator = boost::indirect_iterator<typename wto_component_list_t::const_iterator>;
 
     wto(G g)
         : _wto_components(std::make_shared<wto_component_list_t>()), _dfn_table(std::make_shared<dfn_table_t>()),

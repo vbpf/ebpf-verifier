@@ -59,17 +59,17 @@ template <typename Number, typename VariableName>
 class linear_expression {
 
   public:
-    typedef Number number_t;
-    typedef VariableName varname_t;
-    typedef variable<Number, VariableName> variable_t;
-    typedef linear_expression<Number, VariableName> linear_expression_t;
-    typedef std::pair<Number, variable_t> component_t;
-    typedef patricia_tree_set<variable_t> variable_set_t;
+    using number_t = Number;
+    using varname_t = VariableName;
+    using variable_t = variable<Number, VariableName>;
+    using linear_expression_t = linear_expression<Number, VariableName>;
+    using component_t = std::pair<Number, variable_t>;
+    using variable_set_t = patricia_tree_set<variable_t>;
 
   private:
-    typedef boost::container::flat_map<variable_t, Number> map_t;
-    typedef std::shared_ptr<map_t> map_ptr;
-    typedef typename map_t::value_type pair_t;
+    using map_t = boost::container::flat_map<variable_t, Number>;
+    using map_ptr = std::shared_ptr<map_t>;
+    using pair_t = typename map_t::value_type;
 
     map_ptr _map;
     Number _cst;
@@ -100,8 +100,8 @@ class linear_expression {
     };
 
   public:
-    typedef boost::transform_iterator<tr_value_ty, typename map_t::iterator> iterator;
-    typedef boost::transform_iterator<tr_value_ty, typename map_t::const_iterator> const_iterator;
+    using iterator = boost::transform_iterator<tr_value_ty, typename map_t::iterator>;
+    using const_iterator = boost::transform_iterator<tr_value_ty, typename map_t::const_iterator>;
 
     linear_expression() : _map(map_ptr(new map_t)), _cst(0) {}
 
@@ -471,15 +471,15 @@ template <typename Number, typename VariableName>
 class linear_constraint {
 
   public:
-    typedef Number number_t;
-    typedef VariableName varname_t;
-    typedef linear_constraint<Number, VariableName> linear_constraint_t;
-    typedef variable<Number, VariableName> variable_t;
-    typedef linear_expression<Number, VariableName> linear_expression_t;
-    typedef patricia_tree_set<variable_t> variable_set_t;
-    typedef enum { EQUALITY, DISEQUATION, INEQUALITY, STRICT_INEQUALITY } kind_t;
-    typedef typename linear_expression_t::iterator iterator;
-    typedef typename linear_expression_t::const_iterator const_iterator;
+    using number_t = Number;
+    using varname_t = VariableName;
+    using linear_constraint_t = linear_constraint<Number, VariableName>;
+    using variable_t = variable<Number, VariableName>;
+    using linear_expression_t = linear_expression<Number, VariableName>;
+    using variable_set_t = patricia_tree_set<variable_t>;
+    using kind_t = enum { EQUALITY, DISEQUATION, INEQUALITY, STRICT_INEQUALITY };
+    using iterator = typename linear_expression_t::iterator;
+    using const_iterator = typename linear_expression_t::const_iterator;
 
   private:
     kind_t _kind;
@@ -678,8 +678,8 @@ namespace linear_constraint_impl {
 
 template <typename Number, typename VariableName>
 linear_constraint<Number, VariableName> negate_inequality(const linear_constraint<Number, VariableName> &c) {
-    typedef linear_expression<Number, VariableName> linear_expression_t;
-    typedef linear_constraint<Number, VariableName> linear_constraint_t;
+    using linear_expression_t = linear_expression<Number, VariableName>;
+    using linear_constraint_t = linear_constraint<Number, VariableName>;
     assert(c.is_inequality());
     // default implementation: negate(e <= 0) = e > 0
     linear_expression_t e(-c.expression());
@@ -689,8 +689,8 @@ linear_constraint<Number, VariableName> negate_inequality(const linear_constrain
 // Specialized version for z_number
 template <typename VariableName>
 linear_constraint<z_number, VariableName> negate_inequality(const linear_constraint<z_number, VariableName> &c) {
-    typedef linear_expression<z_number, VariableName> linear_expression_t;
-    typedef linear_constraint<z_number, VariableName> linear_constraint_t;
+    using linear_expression_t = linear_expression<z_number, VariableName>;
+    using linear_constraint_t = linear_constraint<z_number, VariableName>;
     assert(c.is_inequality());
     // negate(e <= 0) = e >= 1
     linear_expression_t e(-(c.expression() - 1));
@@ -700,7 +700,7 @@ linear_constraint<z_number, VariableName> negate_inequality(const linear_constra
 template <typename Number, typename VariableName>
 linear_constraint<Number, VariableName>
 strict_to_non_strict_inequality(const linear_constraint<Number, VariableName> &c) {
-    typedef linear_constraint<Number, VariableName> linear_constraint_t;
+    using linear_constraint_t = linear_constraint<Number, VariableName>;
     assert(c.is_strict_inequality());
     // Default implementation: do nothing
     // Given constraint e < 0 we could return two linear constraints: e <= 0 and e != 0.
@@ -712,8 +712,8 @@ strict_to_non_strict_inequality(const linear_constraint<Number, VariableName> &c
 template <typename VariableName>
 linear_constraint<z_number, VariableName>
 strict_to_non_strict_inequality(const linear_constraint<z_number, VariableName> &c) {
-    typedef linear_expression<z_number, VariableName> linear_expression_t;
-    typedef linear_constraint<z_number, VariableName> linear_constraint_t;
+    using linear_expression_t = linear_expression<z_number, VariableName>;
+    using linear_constraint_t = linear_constraint<z_number, VariableName>;
     assert(c.is_strict_inequality());
     // e < 0 --> e <= -1
     linear_expression_t e(c.expression() + 1);
@@ -723,8 +723,8 @@ strict_to_non_strict_inequality(const linear_constraint<z_number, VariableName> 
 
 template <typename Number, typename VariableName>
 linear_constraint<Number, VariableName> linear_constraint<Number, VariableName>::negate() const {
-    typedef linear_constraint<Number, VariableName> linear_constraint_t;
-    typedef linear_expression<Number, VariableName> linear_expression_t;
+    using linear_constraint_t = linear_constraint<Number, VariableName>;
+    using linear_expression_t = linear_expression<Number, VariableName>;
 
     if (is_tautology()) {
         return get_false();
@@ -1144,20 +1144,20 @@ template <typename Number, typename VariableName>
 class linear_constraint_system {
 
   public:
-    typedef Number number_t;
-    typedef VariableName varname_t;
-    typedef linear_expression<Number, VariableName> linear_expression_t;
-    typedef linear_constraint<Number, VariableName> linear_constraint_t;
-    typedef linear_constraint_system<Number, VariableName> linear_constraint_system_t;
-    typedef variable<Number, VariableName> variable_t;
-    typedef patricia_tree_set<variable_t> variable_set_t;
+    using number_t = Number;
+    using varname_t = VariableName;
+    using linear_expression_t = linear_expression<Number, VariableName>;
+    using linear_constraint_t = linear_constraint<Number, VariableName>;
+    using linear_constraint_system_t = linear_constraint_system<Number, VariableName>;
+    using variable_t = variable<Number, VariableName>;
+    using variable_set_t = patricia_tree_set<variable_t>;
 
   private:
-    typedef std::vector<linear_constraint_t> cst_collection_t;
+    using cst_collection_t = std::vector<linear_constraint_t>;
 
   public:
-    typedef typename cst_collection_t::iterator iterator;
-    typedef typename cst_collection_t::const_iterator const_iterator;
+    using iterator = typename cst_collection_t::iterator;
+    using const_iterator = typename cst_collection_t::const_iterator;
 
   private:
     cst_collection_t _csts;

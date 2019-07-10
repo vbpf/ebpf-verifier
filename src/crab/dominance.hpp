@@ -53,11 +53,11 @@ void dominator_tree(G g, typename G::node_t entry, Map &idom) {
 #if BOOST_VERSION / 100 % 100 < 62
     return;
 #else
-    typedef typename G::node_t node_t;
-    typedef typename boost::graph_traits<G>::vertices_size_type vertices_size_type_t;
-    typedef boost::associative_property_map<std::map<node_t, int>> index_map_t;
-    typedef boost::iterator_property_map<typename std::vector<vertices_size_type_t>::iterator, index_map_t> time_map_t;
-    typedef boost::iterator_property_map<typename std::vector<node_t>::iterator, index_map_t> pred_map_t;
+    using node_t = typename G::node_t;
+    using vertices_size_type_t = typename boost::graph_traits<G>::vertices_size_type;
+    using index_map_t = boost::associative_property_map<std::map<node_t, int>>;
+    using time_map_t = boost::iterator_property_map<typename std::vector<vertices_size_type_t>::iterator, index_map_t>;
+    using pred_map_t = boost::iterator_property_map<typename std::vector<node_t>::iterator, index_map_t>;
 
     // build a map that maps graph vertices to indexes
     std::map<node_t, int> imap;
@@ -104,7 +104,7 @@ void dominance(G g, typename G::node_t entry, VectorMap &df) {
         return;
     }
 
-    typedef typename G::node_t node_t;
+    using node_t = typename G::node_t;
     // map node to its idom node
     boost::unordered_map<node_t, node_t> idom;
     crab::CrabStats::resume("Dominator Tree");
