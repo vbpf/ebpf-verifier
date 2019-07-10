@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include <map>
 #include <string>
@@ -6,15 +6,15 @@
 #include "crab/types.hpp"
 
 namespace crab {
-  
-  class Stopwatch {
+
+class Stopwatch {
     long started;
     long finished;
     long timeElapsed;
 
     long systemTime() const;
+
   public:
-    
     Stopwatch();
     void start();
     void stop();
@@ -22,21 +22,20 @@ namespace crab {
     long getTimeElapsed() const;
     void Print(crab_os &out) const;
     double toSeconds();
-  };
+};
 
-
-  inline crab_os &operator<<(crab_os &OS, const Stopwatch &sw) {
+inline crab_os &operator<<(crab_os &OS, const Stopwatch &sw) {
     sw.Print(OS);
     return OS;
-  }
+}
 
+class CrabStats {
+    static std::map<std::string, unsigned> counters;
+    static std::map<std::string, Stopwatch> sw;
 
-  class CrabStats {
-    static std::map<std::string,unsigned> counters;
-    static std::map<std::string,Stopwatch> sw;
   public:
     static void reset();
-    
+
     /* counters */
     static unsigned get(const std::string &n);
     static unsigned uset(const std::string &n, unsigned v);
@@ -51,15 +50,13 @@ namespace crab {
     /** Outputs all statistics to std output */
     static void Print(crab_os &OS);
     static void PrintBrunch(crab_os &OS);
-  };
-  
-  class ScopedCrabStats {
+};
+
+class ScopedCrabStats {
     std::string m_name;
+
   public:
     ScopedCrabStats(const std::string &name, bool reset = false);
     ~ScopedCrabStats();
-  };  
-}
-
-
-
+};
+} // namespace crab

@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include "crab/dominance.hpp"
 
@@ -10,37 +10,37 @@
 
  */
 namespace crab {
-  namespace analyzer {
-   namespace graph_algo {
+namespace analyzer {
+namespace graph_algo {
 
-     // OUT: cdeps is a map from nodes to a set of nodes that
-     // control-dependent on it.
-     template <typename G, typename VectorMap>
-     void control_dep_graph (G g, VectorMap &cdg) {
-       VectorMap pdf;
-       crab::analyzer::graph_algo::post_dominance (g, pdf);
-       
-       for (auto &kv: pdf) {
-	 for (auto v: kv.second) {
-	   auto &cdeps = cdg[v];
-	   if (std::find(cdeps.begin (), cdeps.end (), kv.first) == cdeps.end ()) {
-	     cdeps.push_back (kv.first);
-	   }
-	 }
-       }
-       
-       CRAB_LOG("cdg",
-		crab::outs () << "Control-dependence graph \n";
-		for (auto &kv: cdg) {
-		  crab::outs () << "{";
-		  for (auto v: kv.second) {
-		    crab::outs () << crab::cfg_impl::get_label_str(v) << ";";
-		  }
-		  crab::outs () << "} " << " control-dependent on ";
-		  crab::outs () << crab::cfg_impl::get_label_str(kv.first) << "\n";
-		});
-     }
-     
-   } // end namespace
-  } // end namespace
-} // end namespace
+// OUT: cdeps is a map from nodes to a set of nodes that
+// control-dependent on it.
+template <typename G, typename VectorMap>
+void control_dep_graph(G g, VectorMap &cdg) {
+    VectorMap pdf;
+    crab::analyzer::graph_algo::post_dominance(g, pdf);
+
+    for (auto &kv : pdf) {
+        for (auto v : kv.second) {
+            auto &cdeps = cdg[v];
+            if (std::find(cdeps.begin(), cdeps.end(), kv.first) == cdeps.end()) {
+                cdeps.push_back(kv.first);
+            }
+        }
+    }
+
+    CRAB_LOG("cdg", crab::outs() << "Control-dependence graph \n"; for (auto &kv
+                                                                        : cdg) {
+        crab::outs() << "{";
+        for (auto v : kv.second) {
+            crab::outs() << crab::cfg_impl::get_label_str(v) << ";";
+        }
+        crab::outs() << "} "
+                     << " control-dependent on ";
+        crab::outs() << crab::cfg_impl::get_label_str(kv.first) << "\n";
+    });
+}
+
+} // namespace graph_algo
+} // namespace analyzer
+} // namespace crab

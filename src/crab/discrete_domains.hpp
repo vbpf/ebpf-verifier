@@ -40,17 +40,17 @@
 
 #pragma once
 
-#include "crab/types.hpp"
 #include "crab/patricia_trees.hpp"
 #include "crab/separate_domains.hpp"
+#include "crab/types.hpp"
 
 #include <boost/range.hpp>
 
 namespace ikos {
 
-  template<typename Element>
-  class discrete_domain {
-    
+template <typename Element>
+class discrete_domain {
+
   private:
     typedef patricia_tree_set<Element> ptset_t;
 
@@ -63,181 +63,159 @@ namespace ikos {
     ptset_t _set;
 
   private:
-    discrete_domain(bool is_top): _is_top(is_top) { }
+    discrete_domain(bool is_top) : _is_top(is_top) {}
 
-    discrete_domain(ptset_t set): _is_top(false), _set(set) { }
-
-  public:
-    static discrete_domain_t bottom() {
-      return discrete_domain_t(false);
-    }
-    
-    static discrete_domain_t top() {
-      return discrete_domain_t(true);
-    }
+    discrete_domain(ptset_t set) : _is_top(false), _set(set) {}
 
   public:
-    discrete_domain(): _is_top(true) { }
-    
-    discrete_domain(const discrete_domain_t& other): 
-      _is_top(other._is_top), _set(other._set) { }
+    static discrete_domain_t bottom() { return discrete_domain_t(false); }
 
-    discrete_domain(Element s): _is_top(false), _set(s) { }
+    static discrete_domain_t top() { return discrete_domain_t(true); }
 
-    template<typename Iterator>
-    discrete_domain(Iterator eIt, Iterator eEt)
-        : _is_top(false) {
-      for (auto e: boost::make_iterator_range (eIt, eEt)) {
-        this->_set += e;
-      }
+  public:
+    discrete_domain() : _is_top(true) {}
+
+    discrete_domain(const discrete_domain_t &other) : _is_top(other._is_top), _set(other._set) {}
+
+    discrete_domain(Element s) : _is_top(false), _set(s) {}
+
+    template <typename Iterator>
+    discrete_domain(Iterator eIt, Iterator eEt) : _is_top(false) {
+        for (auto e : boost::make_iterator_range(eIt, eEt)) {
+            this->_set += e;
+        }
     }
 
-    bool is_top() {
-      return this->_is_top;
-    }
-    
-    bool is_bottom() {
-      return (!this->_is_top && this->_set.empty());
-    }
+    bool is_top() { return this->_is_top; }
 
-    bool operator<=(discrete_domain_t other) {
-      return other._is_top || (!this->_is_top && this->_set <= other._set);
-    }
+    bool is_bottom() { return (!this->_is_top && this->_set.empty()); }
 
-    bool operator==(discrete_domain_t other) {
-      return (this->_is_top && other._is_top) || (this->_set == other._set);
-    }
+    bool operator<=(discrete_domain_t other) { return other._is_top || (!this->_is_top && this->_set <= other._set); }
 
-    void operator|=(discrete_domain_t other) {
-      *this = *this | other;
-    }
+    bool operator==(discrete_domain_t other) { return (this->_is_top && other._is_top) || (this->_set == other._set); }
+
+    void operator|=(discrete_domain_t other) { *this = *this | other; }
 
     discrete_domain_t operator|(discrete_domain_t other) {
-      if (this->_is_top || other._is_top) {
-        return discrete_domain_t(true);
-      } else {
-        return discrete_domain_t(this->_set | other._set);
-      }
-    }
-    
-    discrete_domain_t operator&(discrete_domain_t other) {
-      if (this->is_bottom() || other.is_bottom()) {
-        return discrete_domain_t(false);
-      } else if (this->_is_top) {
-        return other;
-      } else if (other._is_top) {
-        return *this;
-      } else {
-        return discrete_domain_t(this->_set & other._set);
-      }
-    }
-    
-    discrete_domain_t operator||(discrete_domain_t other) {
-      return this->operator|(other);
-    }
-    
-    discrete_domain_t operator&&(discrete_domain_t other) {
-      return this->operator&(other);
-    }
-    
-    discrete_domain_t& operator+=(Element s) {
-      if (!this->_is_top) {
-        this->_set += s;
-      }
-      return *this;
-    }
-    
-    template<typename Range>
-    discrete_domain_t& operator+=(Range es) {
-      if (!this->_is_top)
-        for (auto e: es)
-          this->_set += e;
-      return *this;
-    }
-    
-    discrete_domain_t operator+(Element s) {
-      discrete_domain_t r(*this);
-      r.operator+=(s);
-      return r;
-    }
-    
-    template<typename Range>
-    discrete_domain_t operator+(Range es) {
-      discrete_domain_t r(*this);
-      r.operator+=(es);
-      return r;
+        if (this->_is_top || other._is_top) {
+            return discrete_domain_t(true);
+        } else {
+            return discrete_domain_t(this->_set | other._set);
+        }
     }
 
-    discrete_domain_t& operator-=(Element s) {
-      if (!this->_is_top) {
-        this->_set -= s;
-      }
-      return *this;
+    discrete_domain_t operator&(discrete_domain_t other) {
+        if (this->is_bottom() || other.is_bottom()) {
+            return discrete_domain_t(false);
+        } else if (this->_is_top) {
+            return other;
+        } else if (other._is_top) {
+            return *this;
+        } else {
+            return discrete_domain_t(this->_set & other._set);
+        }
     }
-    
-    template<typename Range>
-    discrete_domain_t& operator-=(Range es) {
-      if (!this->_is_top)
-        for (auto e: es)
-          this->_set -= e;
-      return *this;
+
+    discrete_domain_t operator||(discrete_domain_t other) { return this->operator|(other); }
+
+    discrete_domain_t operator&&(discrete_domain_t other) { return this->operator&(other); }
+
+    discrete_domain_t &operator+=(Element s) {
+        if (!this->_is_top) {
+            this->_set += s;
+        }
+        return *this;
+    }
+
+    template <typename Range>
+    discrete_domain_t &operator+=(Range es) {
+        if (!this->_is_top)
+            for (auto e : es)
+                this->_set += e;
+        return *this;
+    }
+
+    discrete_domain_t operator+(Element s) {
+        discrete_domain_t r(*this);
+        r.operator+=(s);
+        return r;
+    }
+
+    template <typename Range>
+    discrete_domain_t operator+(Range es) {
+        discrete_domain_t r(*this);
+        r.operator+=(es);
+        return r;
+    }
+
+    discrete_domain_t &operator-=(Element s) {
+        if (!this->_is_top) {
+            this->_set -= s;
+        }
+        return *this;
+    }
+
+    template <typename Range>
+    discrete_domain_t &operator-=(Range es) {
+        if (!this->_is_top)
+            for (auto e : es)
+                this->_set -= e;
+        return *this;
     }
 
     discrete_domain_t operator-(Element s) {
-      discrete_domain_t r(*this);
-      r.operator-=(s);
-      return r;
+        discrete_domain_t r(*this);
+        r.operator-=(s);
+        return r;
     }
-    
-    template<typename Range>
-    discrete_domain_t operator-(Range es) {
-      discrete_domain_t r(*this);
-      r.operator-=(es);
-      return r;
-    }
-    
-    std::size_t size() {
-      if (this->_is_top) {
-        CRAB_ERROR("Size for discrete domain TOP is undefined");
-      } else {
-        return this->_set.size();
-      }
-    }
-    
-    iterator begin() {
-      if (this->_is_top) {
-        CRAB_ERROR("Iterator for discrete domain TOP is undefined");
-      } else {
-        return this->_set.begin();
-      }
-    }
-    
-    iterator end() {
-      if (this->_is_top) {
-        CRAB_ERROR("Iterator for discrete domain TOP is undefined");
-      } else {
-        return this->_set.end();
-      }
-    }
-    
-    void write(crab::crab_os& o) const {
-      if (this->_is_top) {
-	o << "{...}";
-      } else if (this->_set.empty()) {
-	o << "_|_";
-      } else {
-	o << this->_set;
-      }
-    }
-    
-  }; // class discrete_domain
 
-  template<typename Elem>
-  inline crab::crab_os& operator<<(crab::crab_os&o, const discrete_domain<Elem> &d){
+    template <typename Range>
+    discrete_domain_t operator-(Range es) {
+        discrete_domain_t r(*this);
+        r.operator-=(es);
+        return r;
+    }
+
+    std::size_t size() {
+        if (this->_is_top) {
+            CRAB_ERROR("Size for discrete domain TOP is undefined");
+        } else {
+            return this->_set.size();
+        }
+    }
+
+    iterator begin() {
+        if (this->_is_top) {
+            CRAB_ERROR("Iterator for discrete domain TOP is undefined");
+        } else {
+            return this->_set.begin();
+        }
+    }
+
+    iterator end() {
+        if (this->_is_top) {
+            CRAB_ERROR("Iterator for discrete domain TOP is undefined");
+        } else {
+            return this->_set.end();
+        }
+    }
+
+    void write(crab::crab_os &o) const {
+        if (this->_is_top) {
+            o << "{...}";
+        } else if (this->_set.empty()) {
+            o << "_|_";
+        } else {
+            o << this->_set;
+        }
+    }
+
+}; // class discrete_domain
+
+template <typename Elem>
+inline crab::crab_os &operator<<(crab::crab_os &o, const discrete_domain<Elem> &d) {
     d.write(o);
     return o;
-  }
+}
 
 } // namespace ikos
-
-

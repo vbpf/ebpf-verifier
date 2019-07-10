@@ -4,9 +4,9 @@
  * Library (http://gmplib.org).
  *
  * Author: Arnaud J. Venet (arnaud.j.venet@nasa.gov)
- * 
+ *
  * Contributors: Jorge A. Navas (jorge.navas@sri.com)
- * 
+ *
  * Notices:
  *
  * Copyright (c) 2011-2014 United States Government as represented by the
@@ -41,7 +41,7 @@
  *
  ******************************************************************************/
 
-#pragma once 
+#pragma once
 
 #include "crab/os.hpp"
 
@@ -63,7 +63,7 @@ namespace ikos {
 // because GMP cannot convert directly from/to int64_t or
 // uint64_t. For that, we need to use mpz_export and mpz_import but
 // they are significantly more expensive.
-// 
+//
 // Note that the actual size of **long** integer varies depending on
 // the architecture and OS (see e.g.,
 // https://en.cppreference.com/w/cpp/language/types). For instance,
@@ -71,194 +71,187 @@ namespace ikos {
 // 8 bytes. But for Windows on Intel 64, the size is 4 bytes.
 
 class z_number {
-  friend class q_number;
+    friend class q_number;
 
-private:
-  mpz_class _n;
+  private:
+    mpz_class _n;
 
-public:
+  public:
+    z_number(mpz_class n);
 
-  z_number(mpz_class n);
+    // The mpz_class constructor can take any standard C++ type except
+    // long long.
+    static z_number from_ulong(unsigned long n);
 
-  // The mpz_class constructor can take any standard C++ type except
-  // long long.
-  static z_number from_ulong(unsigned long n);
+    // The mpz_class constructor can take any standard C++ type except
+    // long long.
+    static z_number from_slong(signed long n);
 
-  // The mpz_class constructor can take any standard C++ type except
-  // long long.
-  static z_number from_slong(signed long n);
-  
-  // overloaded typecast operators
-  explicit operator long() const;
+    // overloaded typecast operators
+    explicit operator long() const;
 
-  explicit operator int() const;
+    explicit operator int() const;
 
-  explicit operator mpz_class() const;
+    explicit operator mpz_class() const;
 
-  z_number();
-  
-  z_number(std::string s);
+    z_number();
 
-  z_number(signed long long int n);
+    z_number(std::string s);
 
-  std::string get_str () const;
+    z_number(signed long long int n);
 
-  std::size_t hash() const;
-  
-  bool fits_sint() const;
+    std::string get_str() const;
 
-  bool fits_slong() const;
+    std::size_t hash() const;
 
-  z_number operator+(z_number x) const; 
+    bool fits_sint() const;
 
-  z_number operator*(z_number x) const;
+    bool fits_slong() const;
 
-  z_number operator-(z_number x) const; 
+    z_number operator+(z_number x) const;
 
-  z_number operator-() const;
+    z_number operator*(z_number x) const;
 
-  z_number operator/(z_number x) const;
+    z_number operator-(z_number x) const;
 
-  z_number operator%(z_number x) const;
+    z_number operator-() const;
 
-  z_number& operator+=(z_number x);
+    z_number operator/(z_number x) const;
 
-  z_number& operator*=(z_number x);
+    z_number operator%(z_number x) const;
 
-  z_number& operator-=(z_number x);
+    z_number &operator+=(z_number x);
 
-  z_number& operator/=(z_number x);
+    z_number &operator*=(z_number x);
 
-  z_number& operator%=(z_number x);
+    z_number &operator-=(z_number x);
 
-  z_number& operator--();
+    z_number &operator/=(z_number x);
 
-  z_number& operator++();
+    z_number &operator%=(z_number x);
 
-  z_number operator++(int);
+    z_number &operator--();
 
-  z_number operator--(int);
+    z_number &operator++();
 
-  bool operator==(z_number x) const;
+    z_number operator++(int);
 
-  bool operator!=(z_number x) const;
+    z_number operator--(int);
 
-  bool operator<(z_number x) const;
+    bool operator==(z_number x) const;
 
-  bool operator<=(z_number x) const;
+    bool operator!=(z_number x) const;
 
-  bool operator>(z_number x) const;
+    bool operator<(z_number x) const;
 
-  bool operator>=(z_number x) const;
+    bool operator<=(z_number x) const;
 
-  z_number operator&(z_number x) const;
+    bool operator>(z_number x) const;
 
-  z_number operator|(z_number x) const;
+    bool operator>=(z_number x) const;
 
-  z_number operator^(z_number x) const;
+    z_number operator&(z_number x) const;
 
-  z_number operator<<(z_number x) const;
+    z_number operator|(z_number x) const;
 
-  z_number operator>>(z_number x) const;
+    z_number operator^(z_number x) const;
 
-  z_number fill_ones() const;
+    z_number operator<<(z_number x) const;
 
-  void write(crab::crab_os& o) const;
+    z_number operator>>(z_number x) const;
+
+    z_number fill_ones() const;
+
+    void write(crab::crab_os &o) const;
 
 }; // class z_number
 
 class q_number {
-  
-private:
-  mpq_class _n;
 
-public:
-  
-  q_number();
+  private:
+    mpq_class _n;
 
-  q_number(mpq_class n);
-  
-  q_number(std::string s);
+  public:
+    q_number();
 
-  q_number(double n);
-  
-  q_number(z_number n);
+    q_number(mpq_class n);
 
-  q_number(z_number n, z_number d);
+    q_number(std::string s);
 
-  explicit operator mpq_class() const;
+    q_number(double n);
 
-  std::string get_str () const;
+    q_number(z_number n);
 
-  std::size_t hash() const;
-  
-  q_number operator+(q_number x) const;
+    q_number(z_number n, z_number d);
 
-  q_number operator*(q_number x) const;
+    explicit operator mpq_class() const;
 
-  q_number operator-(q_number x) const;
+    std::string get_str() const;
 
-  q_number operator-() const;
+    std::size_t hash() const;
 
-  q_number operator/(q_number x) const;
+    q_number operator+(q_number x) const;
 
-  q_number& operator+=(q_number x);
+    q_number operator*(q_number x) const;
 
-  q_number& operator*=(q_number x);
+    q_number operator-(q_number x) const;
 
-  q_number& operator-=(q_number x);
+    q_number operator-() const;
 
-  q_number& operator/=(q_number x);
+    q_number operator/(q_number x) const;
 
-  q_number& operator--();
+    q_number &operator+=(q_number x);
 
-  q_number& operator++();
+    q_number &operator*=(q_number x);
 
-  q_number operator--(int);
+    q_number &operator-=(q_number x);
 
-  q_number operator++(int);
+    q_number &operator/=(q_number x);
 
-  bool operator==(q_number x) const;
+    q_number &operator--();
 
-  bool operator!=(q_number x) const;
+    q_number &operator++();
 
-  bool operator<(q_number x) const; 
+    q_number operator--(int);
 
-  bool operator<=(q_number x) const;
+    q_number operator++(int);
 
-  bool operator>(q_number x) const;
+    bool operator==(q_number x) const;
 
-  bool operator>=(q_number x) const;
+    bool operator!=(q_number x) const;
 
-  z_number numerator() const;
+    bool operator<(q_number x) const;
 
-  z_number denominator() const;
+    bool operator<=(q_number x) const;
 
-  z_number round_to_upper() const;
+    bool operator>(q_number x) const;
 
-  z_number round_to_lower() const;
+    bool operator>=(q_number x) const;
 
-  void write(crab::crab_os& o) const;
+    z_number numerator() const;
+
+    z_number denominator() const;
+
+    z_number round_to_upper() const;
+
+    z_number round_to_lower() const;
+
+    void write(crab::crab_os &o) const;
 
 }; // class q_number
 
-inline crab::crab_os& operator<<(crab::crab_os& o, const z_number& z) {
-  z.write(o);
-  return o;
+inline crab::crab_os &operator<<(crab::crab_os &o, const z_number &z) {
+    z.write(o);
+    return o;
 }
 
-inline crab::crab_os& operator<<(crab::crab_os& o, const q_number& q) {
-  q.write(o);
-  return o;
+inline crab::crab_os &operator<<(crab::crab_os &o, const q_number &q) {
+    q.write(o);
+    return o;
 }
 
-inline std::size_t hash_value(const z_number& z) {
-  return z.hash();
-}
+inline std::size_t hash_value(const z_number &z) { return z.hash(); }
 
-inline std::size_t hash_value(const q_number& q) {
-  return q.hash();
-}
+inline std::size_t hash_value(const q_number &q) { return q.hash(); }
 
-} //end namespace
-
+} // namespace ikos
