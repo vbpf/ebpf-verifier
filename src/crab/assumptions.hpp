@@ -12,7 +12,7 @@
 #include "crab/types.hpp"
 
 #include <boost/range/iterator_range.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
 
@@ -128,7 +128,7 @@ class assumption_analysis {
     typedef typename CFG::statement_t statement_t;
     typedef crab::cfg::assert_stmt<typename CFG::number_t, typename CFG::varname_t> assert_t;
     typedef assumption<CFG> assumption_t;
-    typedef boost::shared_ptr<assumption_t> assumption_ptr;
+    typedef std::shared_ptr<assumption_t> assumption_ptr;
     typedef std::vector<assumption_ptr> vector_assumption_ptr;
 
   protected:
@@ -174,7 +174,7 @@ class assumption_analysis {
 
     // create a new overflow assumption
     assumption_ptr new_assumption(const statement_t *s) {
-        assumption_ptr assume = boost::make_shared<overflow_assumption<CFG>>(m_id++, s);
+        assumption_ptr assume = std::make_shared<overflow_assumption<CFG>>(m_id++, s);
         auto it = m_origin_map.find(s);
         if (it != m_origin_map.end()) {
             it->second.push_back(assume);

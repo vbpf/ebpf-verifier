@@ -5,7 +5,7 @@
 
 #include <boost/make_shared.hpp>
 #include <boost/optional.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <iosfwd>
 
 /* Basic type definitions */
@@ -232,12 +232,12 @@ class variable_ref {
     typedef VariableName varname_t;
 
   private:
-    boost::shared_ptr<variable_t> m_v;
+    std::shared_ptr<variable_t> m_v{};
 
   public:
-    variable_ref() : m_v(nullptr) {}
+    variable_ref() {}
 
-    variable_ref(variable_t v) : m_v(boost::make_shared<variable_t>(v)) {}
+    variable_ref(variable_t v) : m_v(std::make_shared<variable_t>(v)) {}
 
     bool is_null() const { return !m_v; }
 

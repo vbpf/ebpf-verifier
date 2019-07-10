@@ -6,7 +6,7 @@
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/range/iterator_range.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/unordered_map.hpp>
 
 #include "crab/debug.hpp"
@@ -36,7 +36,7 @@ class scc_graph {
                                   boost::vecS, boost::bidirectionalS,
                                   boost::property<boost::vertex_color_t, boost::default_color_type, vertex_t>>
         scc_graph_t;
-    typedef boost::shared_ptr<scc_graph_t> scc_graph_ptr;
+    typedef std::shared_ptr<scc_graph_t> scc_graph_ptr;
     typedef typename boost::graph_traits<scc_graph_t>::vertex_descriptor vertex_descriptor_t;
     typedef typename boost::graph_traits<scc_graph_t>::edge_descriptor edge_descriptor_t;
     typedef typename boost::graph_traits<scc_graph_t>::vertex_iterator vertex_iterator;
@@ -168,7 +168,7 @@ class scc_graph {
     typedef boost::transform_iterator<MkEdge, out_edge_iterator> succ_iterator;
 
     scc_graph(G g, bool order = false /*default post-order*/)
-        : m_g(g), m_same_scc_order(order), m_sccg(boost::make_shared<scc_graph_t>()) {
+        : m_g(g), m_same_scc_order(order), m_sccg(std::make_shared<scc_graph_t>()) {
 
         CRAB_LOG("sccg", crab::outs() << g << "\n");
 
