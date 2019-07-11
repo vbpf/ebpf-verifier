@@ -37,7 +37,7 @@ void Assert::operator=(const Assert& a) { *p = *a.p; satisfied = a.satisfied; }
 bool operator==(const Assert& a, const Assert& b) { return *a.p == *b.p && a.satisfied == b.satisfied; }
 
 constexpr Reg DATA_END_REG = Reg{13};
-constexpr Reg META_REG = Reg{14};
+//constexpr Reg META_REG = Reg{14};
 
 struct RegsDom {
     using ValDom = RCP_domain;
@@ -174,7 +174,7 @@ struct Machine {
     }
 
     void operator()(Un const& a) { };
-    void operator()(Bin const& a) { 
+    void operator()(Bin const& a) {
         switch (a.op) {
             case Bin::Op::MOV: regs.assign(a.dst, eval(a.v)); return;
             case Bin::Op::ADD: regs.at(a.dst) += eval(a.v); return;
@@ -210,7 +210,7 @@ struct Machine {
         }, a.p->cst);
     }
 
-    bool satisfied(Assert const& a) { 
+    bool satisfied(Assert const& a) {
         return std::visit(overloaded{
             [this](const LinearConstraint& lc) {
                 const RCP_domain right = regs.at(lc.reg).zero() + (eval(lc.v) - eval(lc.width) - eval(lc.offset));
@@ -313,7 +313,7 @@ struct Machine {
                 r |= data_start + regs.at(DATA_END_REG);
             else if (d.meta > -1 && as_ctx.contains(d.meta))
                 r |= data_start + BOT.with_packet(0);
-            else 
+            else
                 r |= numtop;
         } else {
             r.havoc(); // TODO: disallow, or at least don't havoc fd
@@ -430,7 +430,7 @@ class AssertionExtractor {
     program_info info;
     std::vector<size_t> type_indices;
     bool is_priviledged = false;
-    
+
     auto type_of(Reg r, const Types t) {
         assert(t.size() == TypeSet::all.size());
         return Assertion{TypeConstraint{{r, t}}};
@@ -482,7 +482,7 @@ public:
         vector<Assertion> res;
         for (ArgSingle arg : call.singles) {
             switch (arg.kind) {
-            case ArgSingle::Kind::ANYTHING: 
+            case ArgSingle::Kind::ANYTHING:
                 // avoid pointer leakage:
                 if (!is_priviledged)
                     res.push_back(type_of(arg.reg, TypeSet::num));
@@ -490,7 +490,7 @@ public:
             case ArgSingle::Kind::MAP_FD:
                 res.push_back(type_of(arg.reg, TypeSet::fd));
                 break;
-            case ArgSingle::Kind::PTR_TO_MAP_KEY: 
+            case ArgSingle::Kind::PTR_TO_MAP_KEY:
                 // what other conditions?
                 // looks like packet is valid
                 // TODO: maybe arg.packet_access?
@@ -499,9 +499,9 @@ public:
             case ArgSingle::Kind::PTR_TO_MAP_VALUE:
                 res.push_back(type_of(arg.reg, TypeSet::stack | TypeSet::packet)); // strangely, looks like it means stack or packet
                 break;
-            case ArgSingle::Kind::PTR_TO_CTX: 
+            case ArgSingle::Kind::PTR_TO_CTX:
                 res.push_back(type_of(arg.reg, TypeSet::ctx));
-                // TODO: the kernel has some other conditions here - 
+                // TODO: the kernel has some other conditions here -
                 // maybe offset == 0
                 break;
             }
@@ -512,7 +512,7 @@ public:
                     res.push_back(type_of(arg.mem, TypeSet::mem | TypeSet::num));
                     res.push_back(Assertion{LinearConstraint{Condition::Op::EQ, arg.mem, 0, Imm{0}, Imm{0}, TypeSet::num} });
                     break;
-                case ArgPair::Kind::PTR_TO_MEM: 
+                case ArgPair::Kind::PTR_TO_MEM:
                     /* LINUX: pointer to valid memory (stack, packet, map value) */
                     res.push_back(type_of(arg.mem, TypeSet::mem));
                     break;
@@ -531,7 +531,7 @@ public:
         return res;
     }
 
-    vector<Assertion> explicate(Condition cond) { 
+    vector<Assertion> explicate(Condition cond) {
         if (is_priviledged) return {};
         vector<Assertion> res;
         if (std::holds_alternative<Imm>(cond.right)) {
@@ -550,16 +550,16 @@ public:
         return res;
     }
 
-    vector<Assertion> operator()(Assume ins) { 
+    vector<Assertion> operator()(Assume ins) {
         return explicate(ins.cond);
     }
 
-    vector<Assertion> operator()(Jmp ins) { 
+    vector<Assertion> operator()(Jmp ins) {
         if (!ins.cond) return {};
         return explicate(*ins.cond);
     }
 
-    vector<Assertion> operator()(Mem ins) { 
+    vector<Assertion> operator()(Mem ins) {
         vector<Assertion> res;
         Reg reg = ins.access.basereg;
         Imm width{static_cast<uint32_t>(ins.access.width)};
