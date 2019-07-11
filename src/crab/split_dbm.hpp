@@ -1273,7 +1273,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                 GrOps::apply_delta(meet_g, delta);
 
                 // Recover updated LBs and UBs.<
-            
+
                 delta.clear();
                 GrOps::close_after_assign(meet_g, meet_pi, 0, delta);
                 GrOps::apply_delta(meet_g, delta);
@@ -2168,17 +2168,6 @@ class reduced_domain_traits<SplitDBM<Number, VariableName, SplitDBMParams>> {
                         bool only_equalities) {
         dom.extract(x, csts, only_equalities);
     }
-};
-
-template <typename Number, typename VariableName, typename SplitDBMParams>
-struct array_sgraph_domain_helper_traits<SplitDBM<Number, VariableName, SplitDBMParams>> {
-    using sdbm_domain_t = SplitDBM<Number, VariableName, SplitDBMParams>;
-    using linear_constraint_t = typename sdbm_domain_t::linear_constraint_t;
-    using variable_t = ikos::variable<Number, VariableName>;
-
-    static bool is_unsat(sdbm_domain_t &inv, linear_constraint_t cst) { return inv.is_unsat(cst); }
-
-    static void active_variables(sdbm_domain_t &inv, std::vector<variable_t> &out) { inv.active_variables(out); }
 };
 
 } // namespace domains
