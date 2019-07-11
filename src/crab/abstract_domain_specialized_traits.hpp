@@ -135,17 +135,6 @@ class reduced_domain_traits {
     }
 };
 
-// Experimental (TO BE REMOVED):
-//
-// Special operations needed by array_sparse_graph domain's
-// clients.
-template <typename Domain>
-class array_sgraph_domain_traits {
-  public:
-    template <class CFG>
-    static void do_initialization(CFG cfg) {}
-};
-
 // Operations needed by the array_sparse_graph domain.
 template <typename Domain>
 class array_sgraph_domain_helper_traits {

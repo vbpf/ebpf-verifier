@@ -21,7 +21,8 @@ namespace analyzer {
  * operations are modeled.
  **/
 template <typename CFG, typename AbsDomain>
-class fwd_analyzer : private ikos::interleaved_fwd_fixpoint_iterator<CFG, typename intra_abs_transformer<AbsDomain>::abs_dom_t> {
+class fwd_analyzer
+    : private ikos::interleaved_fwd_fixpoint_iterator<CFG, typename intra_abs_transformer<AbsDomain>::abs_dom_t> {
   public:
     using cfg_t = CFG;
     using basic_block_label_t = typename CFG::basic_block_label_t;
@@ -49,10 +50,10 @@ class fwd_analyzer : private ikos::interleaved_fwd_fixpoint_iterator<CFG, typena
     //! Given a basic block and the invariant at the entry it produces
     //! the invariant at the exit of the block.
     void analyze(basic_block_label_t node, abs_dom_t &inv) {
-        auto& b = this->get_cfg().get_node(node);
+        auto &b = this->get_cfg().get_node(node);
         // XXX: set takes a reference to inv so no copies here
         m_abs_tr->set(&inv);
-        for (auto& s : b) {
+        for (auto &s : b) {
             s.accept(m_abs_tr.get());
         }
     }
@@ -62,21 +63,16 @@ class fwd_analyzer : private ikos::interleaved_fwd_fixpoint_iterator<CFG, typena
 
   public:
     fwd_analyzer(CFG cfg)
-        : fixpo_iterator_t(cfg, nullptr, 1, UINT_MAX, 0, false /*disable processor*/),
-          m_init(AbsDomain::top()), 
+        : fixpo_iterator_t(cfg, nullptr, 1, UINT_MAX, 0, false /*disable processor*/), m_init(AbsDomain::top()),
           m_abs_tr(std::make_shared<abs_tr_t>(&m_init)) {
-                crab::CrabStats::resume("CFG type checking");
+        crab::CrabStats::resume("CFG type checking");
         crab::cfg::type_checker<CFG> tc(this->_cfg);
         tc.run();
         crab::CrabStats::stop("CFG type checking");
-            }
+    }
 
     //! Trigger the fixpoint computation
     void run_forward() {
-        // ugly hook to initialize some global state. This needs to be
-        // fixed properly.
-        domains::array_sgraph_domain_traits<abs_dom_t>::do_initialization(this->get_cfg());
-
         // XXX: inv was created before the static data is initialized
         //      so it won't contain that data.
         this->run(*m_abs_tr->get());
