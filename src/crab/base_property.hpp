@@ -176,85 +176,19 @@ class property_checker
         m_error_checks.push_back(s);
     }
 
-    virtual void check(assert_t &s) {
-        if (!this->m_abs_tr)
-            return;
-        s.accept(&*this->m_abs_tr); // propagate m_inv to the next stmt
-    }
-
-    virtual void check(bin_op_t &s) {
-        if (!this->m_abs_tr)
-            return;
-        s.accept(&*this->m_abs_tr); // propagate m_inv to the next stmt
-    }
-
-    virtual void check(assign_t &s) {
-        if (!this->m_abs_tr)
-            return;
-        s.accept(&*this->m_abs_tr); // propagate m_inv to the next stmt
-    }
-
-    virtual void check(assume_t &s) {
-        if (!this->m_abs_tr)
-            return;
-        s.accept(&*this->m_abs_tr); // propagate m_inv to the next stmt
-    }
-
-    virtual void check(select_t &s) {
-        if (!this->m_abs_tr)
-            return;
-        s.accept(&*this->m_abs_tr); // propagate m_inv to the next stmt
-    }
-
-    virtual void check(int_cast_t &s) {
-        if (!this->m_abs_tr)
-            return;
-        s.accept(&*this->m_abs_tr); // propagate m_inv to the next stmt
-    }
-
-    virtual void check(havoc_t &s) {
-        if (!this->m_abs_tr)
-            return;
-        s.accept(&*this->m_abs_tr); // propagate m_inv to the next stmt
-    }
-
-    virtual void check(unreach_t &s) {
-        if (!this->m_abs_tr)
-            return;
-        s.accept(&*this->m_abs_tr); // propagate m_inv to the next stmt
-    }
-
-    virtual void check(arr_init_t &s) {
-        if (!this->m_abs_tr)
-            return;
-        s.accept(&*this->m_abs_tr); // propagate m_inv to the next stmt
-    }
-
-    virtual void check(arr_store_t &s) {
-        if (!this->m_abs_tr)
-            return;
-        s.accept(&*this->m_abs_tr); // propagate m_inv to the next stmt
-    }
-
-    virtual void check(arr_load_t &s) {
-        if (!this->m_abs_tr)
-            return;
-        s.accept(&*this->m_abs_tr); // propagate m_inv to the next stmt
-    }
-
   public:
     /* Visitor API */
-    void visit(bin_op_t &s) { check(s); }
-    void visit(assign_t &s) { check(s); }
-    void visit(assume_t &s) { check(s); }
-    void visit(select_t &s) { check(s); }
-    void visit(assert_t &s) { check(s); }
-    void visit(int_cast_t &s) { check(s); }
-    void visit(havoc_t &s) { check(s); }
-    void visit(unreach_t &s) { check(s); }
-    void visit(arr_init_t &s) { check(s); }
-    void visit(arr_store_t &s) { check(s); }
-    void visit(arr_load_t &s) { check(s); }
+    void visit(bin_op_t &s) { if (this->m_abs_tr) s.accept(&*this->m_abs_tr); }
+    void visit(assign_t &s) { if (this->m_abs_tr) s.accept(&*this->m_abs_tr); }
+    void visit(assume_t &s) { if (this->m_abs_tr) s.accept(&*this->m_abs_tr); }
+    void visit(select_t &s) { if (this->m_abs_tr) s.accept(&*this->m_abs_tr); }
+    void visit(assert_t &s) { if (this->m_abs_tr) s.accept(&*this->m_abs_tr); }
+    void visit(int_cast_t &s) { if (this->m_abs_tr) s.accept(&*this->m_abs_tr); }
+    void visit(havoc_t &s) { if (this->m_abs_tr) s.accept(&*this->m_abs_tr); }
+    void visit(unreach_t &s) { if (this->m_abs_tr) s.accept(&*this->m_abs_tr); }
+    void visit(arr_init_t &s) { if (this->m_abs_tr) s.accept(&*this->m_abs_tr); }
+    void visit(arr_store_t &s) { if (this->m_abs_tr) s.accept(&*this->m_abs_tr); }
+    void visit(arr_load_t &s) { if (this->m_abs_tr) s.accept(&*this->m_abs_tr); }
 
     property_checker(int verbose) : m_abs_tr(nullptr), m_verbose(verbose) {}
 
