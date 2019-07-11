@@ -67,13 +67,8 @@ static checks_db check(analyzer_t& analyzer)
 static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_printer)
 {
     dom_t::clear_global_state();
-    
-    crab::analyzer::liveness<typename analyzer_t::cfg_t> live(cfg);
-    if (global_options.liveness) {
-        live.exec();
-    }
 
-    analyzer_t analyzer(cfg, dom_t::top(), &live);
+    analyzer_t analyzer(cfg, dom_t::top());
     
     analyzer.run();
 

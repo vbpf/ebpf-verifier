@@ -4,7 +4,6 @@
 #include "crab/abstract_domain_specialized_traits.hpp"
 #include "crab/cfg.hpp"
 #include "crab/interleaved_fixpoint_iterator.hpp"
-#include "crab/liveness.hpp"
 #include "crab/var_factory.hpp"
 
 #include "boost/range/algorithm/set_algorithm.hpp"
@@ -38,32 +37,12 @@ class fwd_analyzer : private ikos::interleaved_fwd_fixpoint_iterator<CFG, typena
   public:
     using invariant_map_t = typename fixpo_iterator_t::invariant_table_t;
     using assumption_map_t = typename fixpo_iterator_t::assumption_map_t;
-    using liveness_t = liveness<CFG>;
     using wto_t = typename fixpo_iterator_t::wto_t;
     using iterator = typename fixpo_iterator_t::iterator;
     using const_iterator = typename fixpo_iterator_t::const_iterator;
 
   private:
-    using live_set_t = typename liveness_t::set_t;
-
     abs_tr_t *m_abs_tr; // the abstract transformer
-    const liveness_t *m_live;
-    live_set_t m_formals;
-
-    void prune_dead_variables(abs_dom_t &inv, basic_block_label_t node) {
-        if (!m_live)
-            return;
-
-        crab::ScopedCrabStats __st__("Pruning dead variables");
-
-        if (inv.is_bottom() || inv.is_top())
-            return;
-        auto dead = m_live->dead_exit(node);
-
-        dead -= m_formals;
-        std::vector<variable_t> dead_vec(dead.begin(), dead.end());
-        inv.forget(dead_vec);
-    }
 
     //! Given a basic block and the invariant at the entry it produces
     //! the invariant at the exit of the block.
@@ -74,7 +53,6 @@ class fwd_analyzer : private ikos::interleaved_fwd_fixpoint_iterator<CFG, typena
         for (auto &s : b) {
             s.accept(m_abs_tr);
         }
-        prune_dead_variables(inv, node);
     }
 
     void process_pre(basic_block_label_t node, abs_dom_t inv) {}
@@ -82,30 +60,17 @@ class fwd_analyzer : private ikos::interleaved_fwd_fixpoint_iterator<CFG, typena
 
   public:
     fwd_analyzer(CFG cfg, const wto_t *wto, abs_tr_t *abs_tr,
-                 // live can be nullptr if no live info is available
-                 const liveness_t *live,
                  // fixpoint parameters
                  unsigned int widening_delay, unsigned int descending_iters, size_t jump_set_size)
 
         : fixpo_iterator_t(cfg, wto, widening_delay, descending_iters, jump_set_size, false /*disable processor*/),
-          m_abs_tr(abs_tr), m_live(live) {
+          m_abs_tr(abs_tr) {
         CRAB_VERBOSE_IF(1, get_msg_stream() << "Type checking CFG ... ";);
         crab::CrabStats::resume("CFG type checking");
         crab::cfg::type_checker<CFG> tc(this->_cfg);
         tc.run();
         crab::CrabStats::stop("CFG type checking");
         CRAB_VERBOSE_IF(1, get_msg_stream() << "OK\n";);
-
-        if (live) {
-            // --- collect input and output parameters
-            if (this->get_cfg().has_func_decl()) {
-                auto fdecl = this->get_cfg().get_func_decl();
-                for (unsigned i = 0; i < fdecl.get_num_inputs(); i++)
-                    m_formals += fdecl.get_input_name(i);
-                for (unsigned i = 0; i < fdecl.get_num_outputs(); i++)
-                    m_formals += fdecl.get_output_name(i);
-            }
-        }
     }
 
     //! Trigger the fixpoint computation
@@ -201,7 +166,6 @@ class intra_fwd_analyzer_wrapper {
 
   public:
     using abs_dom_t = AbsDomain;
-    using liveness_t = liveness<CFG>;
     using cfg_t = CFG;
     using basic_block_label_t = typename CFG::basic_block_label_t;
     using varname_t = typename CFG::varname_t;
@@ -228,15 +192,13 @@ class intra_fwd_analyzer_wrapper {
           m_analyzer(cfg, nullptr, &*m_abs_tr, nullptr, widening_delay, descending_iters, jump_set_size) {}
 
     intra_fwd_analyzer_wrapper(CFG cfg, AbsDomain init,
-                               // live variables
-                               const liveness_t *live = nullptr,
                                // avoid precompute wto if already available
                                const wto_t *wto = nullptr,
                                // fixpoint parameters
                                unsigned int widening_delay = 1, unsigned int descending_iters = UINT_MAX,
                                size_t jump_set_size = 0)
         : m_init(init), m_abs_tr(std::make_shared<abs_tr_t>(&m_init)),
-          m_analyzer(cfg, wto, &*m_abs_tr, live, widening_delay, descending_iters, jump_set_size) {}
+          m_analyzer(cfg, wto, &*m_abs_tr, widening_delay, descending_iters, jump_set_size) {}
 
     void run() { m_analyzer.run_forward(); }
 
