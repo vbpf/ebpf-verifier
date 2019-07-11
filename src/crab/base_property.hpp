@@ -164,43 +164,16 @@ class property_checker
     void add_safe(std::string msg, const statement_t *s) {
         m_db.add(_SAFE);
         m_safe_checks.push_back(s);
-
-        if (m_verbose >= 3) {
-            crab::outs() << " --- SAFE --------------------\n";
-            if (s->get_debug_info().has_debug()) {
-                crab::outs() << s->get_debug_info() << "\n";
-            }
-            crab::outs() << msg << "\n";
-            crab::outs() << " -----------------------------\n";
-        }
     }
 
     void add_warning(std::string msg, const statement_t *s) {
         m_db.add(_WARN, s->get_debug_info());
         m_warning_checks.push_back(s);
-
-        if (m_verbose >= 2) {
-            crab::outs() << " --- WARNING -----------------\n";
-            if (s->get_debug_info().has_debug()) {
-                crab::outs() << s->get_debug_info() << "\n";
-            }
-            crab::outs() << msg << "\n";
-            crab::outs() << " -----------------------------\n";
-        }
     }
 
     void add_error(std::string msg, const statement_t *s) {
         m_db.add(_ERR, s->get_debug_info());
         m_error_checks.push_back(s);
-
-        if (m_verbose >= 1) {
-            crab::outs() << " --- ERROR -------------------\n";
-            if (s->get_debug_info().has_debug()) {
-                crab::outs() << s->get_debug_info() << "\n";
-            }
-            crab::outs() << msg << "\n";
-            crab::outs() << " -----------------------------\n";
-        }
     }
 
     virtual void check(assert_t &s) {
