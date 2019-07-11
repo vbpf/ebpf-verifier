@@ -19,7 +19,7 @@ LINUX := $(abspath ../linux)
 
 LDLIBS += -lgmp
 
-CXXFLAGS := -Wall -Wfatal-errors -O2 -g0 -std=c++17 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 -I $(SRCDIR) -I external #  -Werror does not work well in Linux
+CXXFLAGS := -Wall -Wfatal-errors -O0 -g3 -std=c++17 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 -I $(SRCDIR) -I external #  -Werror does not work well in Linux
 
 all: $(BINDIR)/check  # $(BINDIR)/unit-test
 
