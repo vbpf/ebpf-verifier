@@ -34,21 +34,15 @@ class intra_checker {
     void run() {
         cfg_t cfg = m_analyzer.get_cfg();
 
-        // In some cases, the analyzer might know that an assertion is
-        // safe but it cannot be proven by propagating only
-        // invariants. This is possible if the analyzer is based on a
-        // forward/backward refinement loop.
-        std::set<const statement_t *> safe_assertions;
-        m_analyzer.get_safe_assertions(safe_assertions);
-
         for (auto &bb : cfg) {
             for (auto checker : this->m_checkers) {
                 if (checker->is_interesting(bb)) {
                     abs_dom_t inv = m_analyzer[bb.label()];
+                    // Note: this has side effect:
                     std::shared_ptr<abs_tr_t> abs_tr = m_analyzer.get_abs_transformer(&inv);
                     // propagate forward the invariants from the block entry
                     // while checking the property
-                    checker->set(abs_tr.get(), safe_assertions);
+                    checker->set(abs_tr.get(), {});
                     for (auto &stmt : bb) {
                         stmt.accept(checker.get());
                     }

@@ -144,8 +144,6 @@ class fwd_analyzer : private ikos::interleaved_fwd_fixpoint_iterator<CFG, typena
         m_abs_tr->set(inv);
         return m_abs_tr;
     }
-
-    void get_safe_assertions(std::set<const stmt_t *> &out) const {}
 };
 
 } // namespace analyzer
