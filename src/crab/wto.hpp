@@ -57,10 +57,6 @@
 #include "crab/stats.hpp"
 #include "crab/types.hpp"
 
-// Define RECURSIVE_WTO to use older, recursive version.  It is
-// retained for a while for performance comparison purposes.
-// #define RECURSIVE_WTO
-
 namespace ikos {
 
 template <typename G>
@@ -396,7 +392,6 @@ class wto {
         return wto_cycle_ptr(new wto_cycle_t(vertex, partition));
     }
 
-#ifndef RECURSIVE_WTO
     struct visit_stack_elem {
         using succ_iterator = typename boost::graph_traits<G>::out_edge_iterator;
         typename boost::graph_traits<G>::vertex_descriptor _node;
@@ -488,54 +483,6 @@ class wto {
             }
         } // end while (!visit_stack.empty())
     }
-
-#else
-    dfn_t visit(G g, typename boost::graph_traits<G>::vertex_descriptor vertex, wto_component_list_ptr partition) {
-        dfn_t head = 0, min = 0;
-        bool loop;
-        typename boost::graph_traits<G>::vertex_descriptor element;
-
-        this->push(vertex);
-        this->_num += 1;
-        head = this->_num;
-        this->set_dfn(vertex, head);
-        loop = false;
-
-        std::pair<typename boost::graph_traits<G>::out_edge_iterator,
-                  typename boost::graph_traits<G>::out_edge_iterator>
-            succ_edges = out_edges(vertex, g);
-        for (typename boost::graph_traits<G>::out_edge_iterator it = succ_edges.first, et = succ_edges.second; it != et;
-             ++it) {
-            typename boost::graph_traits<G>::vertex_descriptor succ = target(*it, g);
-            dfn_t succ_dfn = this->get_dfn(succ);
-            if (succ_dfn == 0) {
-                min = this->visit(g, succ, partition);
-            } else {
-                min = succ_dfn;
-            }
-            if (min <= head) {
-                head = min;
-                loop = true;
-            }
-        }
-        if (head == this->get_dfn(vertex)) {
-            this->set_dfn(vertex, dfn_t::plus_infinity());
-            element = this->pop();
-            if (loop) {
-                while (!(element == vertex)) {
-                    this->set_dfn(element, 0);
-                    element = this->pop();
-                }
-                partition->push_front(
-                    boost::static_pointer_cast<wto_component_t, wto_cycle_t>(this->component(g, vertex)));
-            } else {
-                partition->push_front(boost::static_pointer_cast<wto_component_t, wto_vertex_t>(
-                    wto_vertex_ptr(new wto_vertex_t(vertex))));
-            }
-        }
-        return head;
-    }
-#endif
 
     void build_nesting() {
         nesting_builder builder(this->_nesting_table);
