@@ -8,7 +8,7 @@
 namespace ikos {
 // Enumeration type for basic arithmetic operations
 // Do not modify the order.
-typedef enum {
+enum operation_t {
   OP_ADDITION,
   OP_SUBTRACTION,
   OP_MULTIPLICATION,
@@ -16,7 +16,7 @@ typedef enum {
   OP_UDIV,
   OP_SREM,
   OP_UREM
-} operation_t;
+};
 
 inline crab::crab_os &operator<<(crab::crab_os &o, operation_t op) {
     switch (op) {
@@ -46,7 +46,7 @@ inline crab::crab_os &operator<<(crab::crab_os &o, operation_t op) {
 }
 
 // Enumeration type for bitwise operations
-typedef enum { OP_AND, OP_OR, OP_XOR, OP_SHL, OP_LSHR, OP_ASHR } bitwise_operation_t;
+enum bitwise_operation_t { OP_AND, OP_OR, OP_XOR, OP_SHL, OP_LSHR, OP_ASHR };
 
 inline crab::crab_os &operator<<(crab::crab_os &o, bitwise_operation_t op) {
     switch (op) {
@@ -77,7 +77,7 @@ namespace crab {
 namespace domains {
 
 // Enumeration type for cast operations
-typedef enum { OP_TRUNC, OP_SEXT, OP_ZEXT } int_conv_operation_t;
+enum int_conv_operation_t { OP_TRUNC, OP_SEXT, OP_ZEXT };
 
 inline crab::crab_os &operator<<(crab::crab_os &o, int_conv_operation_t op) {
     switch (op) {

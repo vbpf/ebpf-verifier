@@ -1407,7 +1407,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
             // Construct difference constraints from the assignment
             diffcsts_of_assign(x, e, diffs_lb, diffs_ub);
             if (diffs_lb.size() > 0 || diffs_ub.size() > 0) {
-                bool overflow;
+                bool overflow{};
                 Wt e_val = eval_expression(e, overflow);
                 if (overflow) {
                     operator-=(x);

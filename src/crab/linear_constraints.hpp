@@ -700,7 +700,6 @@ linear_constraint<z_number, VariableName> negate_inequality(const linear_constra
 template <typename Number, typename VariableName>
 linear_constraint<Number, VariableName>
 strict_to_non_strict_inequality(const linear_constraint<Number, VariableName> &c) {
-    using linear_constraint_t = linear_constraint<Number, VariableName>;
     assert(c.is_strict_inequality());
     // Default implementation: do nothing
     // Given constraint e < 0 we could return two linear constraints: e <= 0 and e != 0.

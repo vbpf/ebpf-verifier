@@ -29,7 +29,7 @@ inline crab_os &operator<<(crab_os &o, variable_type t) {
     return o;
 }
 
-typedef enum {
+enum binary_operation_t {
     BINOP_ADD,
     BINOP_SUB,
     BINOP_MUL,
@@ -44,9 +44,9 @@ typedef enum {
     BINOP_LSHR,
     BINOP_ASHR,
     BINOP_FUNCTION
-} binary_operation_t;
+};
 
-typedef enum { CAST_TRUNC, CAST_SEXT, CAST_ZEXT } cast_operation_t;
+enum cast_operation_t { CAST_TRUNC, CAST_SEXT, CAST_ZEXT };
 
 inline crab::crab_os &operator<<(crab::crab_os &o, binary_operation_t op) {
     switch (op) {
@@ -125,7 +125,7 @@ inline boost::optional<T> conv_op(cast_operation_t op);
 
 namespace ikos {
 // Numerical type for indexed objects
-typedef uint64_t index_t;
+using index_t = uint64_t;
 
 // Interface for writeable objects
 class writeable {

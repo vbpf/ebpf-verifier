@@ -131,7 +131,7 @@ class AdaptSMap {
 
         elt_t *e;
     };
-    typedef elt_t *elt_iter_t;
+    using elt_iter_t = elt_t*;
 
     class key_range_t {
       public:
@@ -502,7 +502,7 @@ class AdaptGraph : public ikos::writeable {
     bool elem(vert_id s, vert_id d) { return _succs[s].elem(d); }
 
     Wt &edge_val(vert_id s, vert_id d) {
-        size_t idx;
+        size_t idx{};
         _succs[s].lookup(d, &idx);
         return _ws[idx];
     }

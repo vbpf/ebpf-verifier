@@ -212,7 +212,7 @@ inline crab::crab_os &operator<<(crab::crab_os &o, const bound<Number> &b) {
     return o;
 }
 
-typedef bound<z_number> z_bound;
+using z_bound = bound<z_number>;
 
 template <typename Number>
 class interval {
@@ -806,7 +806,7 @@ Interval lower_half_line(Interval i, bool is_signed);
 template <typename Interval>
 Interval upper_half_line(Interval i, bool is_signed);
 
-typedef interval<z_number> z_interval;
+using z_interval = interval<z_number>;
 
 template <>
 inline z_interval trim_interval(z_interval i, z_interval j) {

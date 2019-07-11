@@ -14,7 +14,7 @@
 namespace crab {
 
 namespace checker {
-typedef enum { _SAFE, _ERR, _WARN, _UNREACH } check_kind_t;
+enum check_kind_t { _SAFE, _ERR, _WARN, _UNREACH };
 
 // Toy database to store invariants. We may want to replace it with
 // a permanent external database.

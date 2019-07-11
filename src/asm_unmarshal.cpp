@@ -53,15 +53,15 @@ static auto getMemWidth(uint8_t opcode) -> int {
     assert(false);
 }
 
-static auto getMemX(uint8_t opcode) -> bool {
-    switch (opcode & EBPF_CLS_MASK) {
-        case EBPF_CLS_LD : return false; 
-        case EBPF_CLS_ST : return false;
-        case EBPF_CLS_LDX: return true;
-        case EBPF_CLS_STX: return true;
-    }
-    assert(false);
-}
+// static auto getMemX(uint8_t opcode) -> bool {
+//     switch (opcode & EBPF_CLS_MASK) {
+//         case EBPF_CLS_LD : return false; 
+//         case EBPF_CLS_ST : return false;
+//         case EBPF_CLS_LDX: return true;
+//         case EBPF_CLS_STX: return true;
+//     }
+//     assert(false);
+// }
 
 struct Unmarshaller {
     vector<vector<string>>& notes;

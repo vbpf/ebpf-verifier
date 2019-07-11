@@ -242,7 +242,7 @@ vector<raw_program> read_elf(std::string path, std::string desired_section, MapF
     ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
     auto read_reloc_value = [&symbols](int symbol) -> int {
         string symbol_name;
-        ELFIO::Elf64_Addr value;
+        ELFIO::Elf64_Addr value{};
         ELFIO::Elf_Xword size;
         unsigned char bind;
         unsigned char type;
@@ -281,7 +281,7 @@ vector<raw_program> read_elf(std::string path, std::string desired_section, MapF
         if (prelocs) {
             ELFIO::const_relocation_section_accessor reloc{reader, prelocs};
             ELFIO::Elf64_Addr offset;
-            ELFIO::Elf_Word symbol;
+            ELFIO::Elf_Word symbol{};
             ELFIO::Elf_Word type;
             ELFIO::Elf_Sxword addend;
             for (unsigned int i=0; i < reloc.get_entries_num(); i++) {
