@@ -17,7 +17,11 @@
 
 #include "crab/base_property.hpp"
 #include "crab/assertion.hpp"
-#include "crab/checker.hpp"
+
+#include "crab/fwd_analyzer.hpp"
+#include "crab/stats.hpp"
+#include "crab/types.hpp"
+
 
 #include "config.hpp"
 #include "asm_cfg.hpp"
