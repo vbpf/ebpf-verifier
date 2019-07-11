@@ -8,26 +8,6 @@ namespace crab {
 
 namespace domains {
 
-// Perform constraint simplifications depending on the abstract domain
-template <typename Domain>
-class constraint_simp_domain_traits {
-  public:
-    using number_t = typename Domain::number_t;
-    using linear_constraint_t = typename Domain::linear_constraint_t;
-    using linear_constraint_system_t = typename Domain::linear_constraint_system_t;
-
-    // Convert an equality into two inequalities. This is not
-    // possible for machine arithmetic domains.
-    static void lower_equality(linear_constraint_t cst, linear_constraint_system_t &csts) {
-        if (cst.is_equality()) {
-            csts += linear_constraint_t(cst.expression(), linear_constraint_t::INEQUALITY);
-            csts += linear_constraint_t(cst.expression() * number_t(-1), linear_constraint_t::INEQUALITY);
-        } else {
-            csts += cst;
-        }
-    }
-};
-
 // Special operations needed by the checker
 template <typename Domain>
 class checker_domain_traits {
@@ -77,7 +57,8 @@ class checker_domain_traits {
             // try to convert the equality into inequalities so when it's
             // negated we do not have disequalities.
             linear_constraint_system_t inequalities;
-            constraint_simp_domain_traits<Domain>::lower_equality(rhs, inequalities);
+            inequalities += linear_constraint_t(rhs.expression(), linear_constraint_t::INEQUALITY);
+            inequalities += linear_constraint_t(rhs.expression() * number_t(-1), linear_constraint_t::INEQUALITY);
             res = std::all_of(inequalities.begin(), inequalities.end(), op);
         } else {
             res = op(rhs);
