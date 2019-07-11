@@ -44,9 +44,7 @@ int main(int argc, char **argv)
     app.add_flag("-l", list, "List sections");
 
     std::string domain="zoneCrab";
-    std::set<string> doms{"stats", "linux", "rcp"};
-    for (auto const [name, desc] : domain_descriptions())
-        doms.insert(name);
+    std::set<string> doms{"stats", "linux", "rcp", "zoneCrab"};
     app.add_set("-d,--dom,--domain", domain, doms, "Abstract domain")->type_name("DOMAIN");
 
     bool verbose = false;
@@ -134,7 +132,7 @@ int main(int argc, char **argv)
     } else {
         const auto [res, seconds] = (domain == "linux")
             ? bpf_verify_program(raw_prog.info.program_type, raw_prog.prog)
-            : abs_validate(cfg, domain, raw_prog.info);
+            : abs_validate(cfg, raw_prog.info);
         std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
         return !res;
     }
