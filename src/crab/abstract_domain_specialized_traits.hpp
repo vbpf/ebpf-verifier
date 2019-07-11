@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "crab/debug.hpp"
+
 namespace crab {
 
 namespace domains {

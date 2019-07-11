@@ -15,7 +15,6 @@
 
 #include <boost/signals2.hpp>
 
-#include "crab/base_property.hpp"
 #include "crab/assertion.hpp"
 
 #include "crab/fwd_analyzer.hpp"
@@ -59,9 +58,8 @@ static auto extract_post(analyzer_t& analyzer)
 
 static checks_db check(analyzer_t& analyzer)
 {
-    int verbose = global_options.print_failures ? 2 : 0;
     using checker_t = crab::checker::assert_property_checker<analyzer_t>;
-    checker_t checker(verbose);
+    checker_t checker;
 
     for (auto &bb : analyzer.get_cfg()) {
         if (checker.is_interesting(bb)) {
