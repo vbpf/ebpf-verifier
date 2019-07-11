@@ -76,8 +76,7 @@ struct graph_traits<crab::cfg::cfg<BasicBlockLabel, VariableName, Number>> {
     // iterator of pairs of basic_block_label_t's
     using in_edge_iterator = transform_iterator<crab::cfg::graph::mk_in_edge<graph_t>, typename graph_t::pred_iterator>;
     // iterator of pairs of basic_block_label_t's
-    typedef transform_iterator<crab::cfg::graph::mk_out_edge<graph_t>, typename graph_t::succ_iterator>
-        out_edge_iterator;
+    using out_edge_iterator = transform_iterator<crab::cfg::graph::mk_out_edge<graph_t>, typename graph_t::succ_iterator>;
 }; // end class graph_traits
 
 // cfg_ref
@@ -111,10 +110,8 @@ struct graph_traits<crab::cfg::cfg_ref<CFG>> {
     }
 
     using vertex_iterator = typename graph_t::label_iterator;
-    typedef boost::transform_iterator<crab::cfg::graph::mk_in_edge<graph_t>, typename graph_t::pred_iterator>
-        in_edge_iterator;
-    typedef boost::transform_iterator<crab::cfg::graph::mk_out_edge<graph_t>, typename graph_t::succ_iterator>
-        out_edge_iterator;
+    using in_edge_iterator = boost::transform_iterator<crab::cfg::graph::mk_in_edge<graph_t>, typename graph_t::pred_iterator>;
+    using out_edge_iterator = boost::transform_iterator<crab::cfg::graph::mk_out_edge<graph_t>, typename graph_t::succ_iterator>;
 }; // end class graph_traits
 
 // cfg_rev
@@ -148,10 +145,8 @@ struct graph_traits<crab::cfg::cfg_rev<CFG>> {
     }
 
     using vertex_iterator = typename graph_t::label_iterator;
-    typedef boost::transform_iterator<crab::cfg::graph::mk_in_edge<graph_t>, typename graph_t::pred_iterator>
-        in_edge_iterator;
-    typedef boost::transform_iterator<crab::cfg::graph::mk_out_edge<graph_t>, typename graph_t::succ_iterator>
-        out_edge_iterator;
+    using in_edge_iterator = boost::transform_iterator<crab::cfg::graph::mk_in_edge<graph_t>, typename graph_t::pred_iterator>;
+    using out_edge_iterator = boost::transform_iterator<crab::cfg::graph::mk_out_edge<graph_t>, typename graph_t::succ_iterator>;
 }; // end class graph_traits
 } // namespace boost
 

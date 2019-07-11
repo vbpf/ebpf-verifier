@@ -32,10 +32,9 @@ class scc_graph {
         std::size_t m_comp;
         node_t m_repr;
     };
-    typedef boost::adjacency_list<boost::setS, // disallow parallel edges
+    using scc_graph_t = boost::adjacency_list<boost::setS, // disallow parallel edges
                                   boost::vecS, boost::bidirectionalS,
-                                  boost::property<boost::vertex_color_t, boost::default_color_type, vertex_t>>
-        scc_graph_t;
+                                  boost::property<boost::vertex_color_t, boost::default_color_type, vertex_t>>;
     using scc_graph_ptr = std::shared_ptr<scc_graph_t>;
     using vertex_descriptor_t = typename boost::graph_traits<scc_graph_t>::vertex_descriptor;
     using edge_descriptor_t = typename boost::graph_traits<scc_graph_t>::edge_descriptor;

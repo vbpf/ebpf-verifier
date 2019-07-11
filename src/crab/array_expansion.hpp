@@ -157,7 +157,6 @@ class cell {
     bool symbolic_overlap(const typename Dom::linear_expression_t &symb_lb,
                           const typename Dom::linear_expression_t &symb_ub, const Dom &dom) const {
         using linear_expression_t = typename Dom::linear_expression_t;
-        using number_t = typename Dom::number_t;
 
         interval_t x = to_interval();
         assert(x.lb().is_finite());

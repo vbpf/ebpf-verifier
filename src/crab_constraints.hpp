@@ -8,10 +8,10 @@
 
 #include "crab_common.hpp"
 
-static auto label(int pc) { return std::to_string(pc); }
-static auto label(int pc, Label target){  return label(pc) + ":" + target; }
-static auto label(int pc, int target) { return label(pc, std::to_string(target)); }
-static auto exit_label(Label label) { return label + ":exit"; }
+inline auto label(int pc) { return std::to_string(pc); }
+inline auto label(int pc, Label target){  return label(pc) + ":" + target; }
+inline auto label(int pc, int target) { return label(pc, std::to_string(target)); }
+inline auto exit_label(Label label) { return label + ":exit"; }
 inline auto entry_label() { return label(-1, "entry"); }
 
 inline int first_num(const Label& s)

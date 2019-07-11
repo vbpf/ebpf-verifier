@@ -443,20 +443,20 @@ static bool is_unsigned_cmp(Condition::Op op)
     assert(false);
 }
 
-static bool is_signed_cmp(Condition::Op op)
-{
-    using Op = Condition::Op;
-    switch (op) {
-        case Op::SGE : 
-        case Op::SLE :
-        case Op::SGT : 
-        case Op::SLT :
-            return true;
-        default:
-            return false;
-    }
-    assert(false);
-}
+// static bool is_signed_cmp(Condition::Op op)
+// {
+//     using Op = Condition::Op;
+//     switch (op) {
+//         case Op::SGE : 
+//         case Op::SLE :
+//         case Op::SGT : 
+//         case Op::SLT :
+//             return true;
+//         default:
+//             return false;
+//     }
+//     assert(false);
+// }
 
 static void wrap32(basic_block_t& block, var_t& dst_value)
 {
