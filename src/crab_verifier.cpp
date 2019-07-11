@@ -56,12 +56,23 @@ static auto extract_post(analyzer_t& analyzer)
 static checks_db check(analyzer_t& analyzer)
 {
     int verbose = global_options.print_failures ? 2 : 0;
-    using checker_t = crab::checker::intra_checker<analyzer_t>;
-    checker_t checker(analyzer, {
-        checker_t::prop_checker_ptr(new crab::checker::assert_property_checker<analyzer_t>(verbose))
-    });
-    checker.run();
-    return checker.get_all_checks();
+    using checker_t = crab::checker::assert_property_checker<analyzer_t>;
+    checker_t checker(verbose);
+
+    for (auto &bb : analyzer.get_cfg()) {
+        if (checker.is_interesting(bb)) {
+            auto inv = analyzer[bb.label()];
+            // Note: this has side effect:
+            std::shared_ptr<checker_t::abs_tr_t> abs_tr = analyzer.get_abs_transformer(&inv);
+            // propagate forward the invariants from the block entry
+            // while checking the property
+            checker.set(abs_tr.get(), {});
+            for (auto &stmt : bb) {
+                stmt.accept(&checker);
+            }
+        }
+    }
+    return checker.get_db();
 }
 
 static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_printer)
@@ -69,7 +80,7 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
     dom_t::clear_global_state();
 
     analyzer_t analyzer(cfg);
-    
+
     analyzer.run_forward();
 
     if (global_options.print_invariants) {
@@ -109,7 +120,7 @@ std::tuple<bool, double> abs_validate(Cfg const& simple_cfg, program_info info)
 
     printer_t pre_printer;
     printer_t post_printer;
-    
+
     using namespace std;
     clock_t begin = clock();
 
