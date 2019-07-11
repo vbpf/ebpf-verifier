@@ -136,8 +136,10 @@ class fwd_analyzer
         this->_post.clear();
     }
 
-    std::shared_ptr<abs_tr_t> get_abs_transformer(abs_dom_t *inv) {
+    void set_abs_transformer(abs_dom_t *inv) {
         m_abs_tr->set(inv);
+    }
+    std::shared_ptr<abs_tr_t> get_abs_transformer() {
         return m_abs_tr;
     }
 };

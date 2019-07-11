@@ -67,7 +67,8 @@ static checks_db check(analyzer_t& analyzer)
         if (checker.is_interesting(bb)) {
             auto inv = analyzer[bb.label()];
             // Note: this has side effect:
-            std::shared_ptr<checker_t::abs_tr_t> abs_tr = analyzer.get_abs_transformer(&inv);
+            analyzer.set_abs_transformer(&inv);
+            std::shared_ptr<checker_t::abs_tr_t> abs_tr = analyzer.get_abs_transformer();
             // propagate forward the invariants from the block entry
             // while checking the property
             checker.set(abs_tr.get(), {});
