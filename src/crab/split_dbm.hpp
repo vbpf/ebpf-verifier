@@ -2157,19 +2157,6 @@ struct abstract_domain_traits<SplitDBM<Number, VariableName, SplitDBMParams>> {
     using varname_t = VariableName;
 };
 
-template <typename Number, typename VariableName, typename SplitDBMParams>
-class reduced_domain_traits<SplitDBM<Number, VariableName, SplitDBMParams>> {
-  public:
-    using sdbm_domain_t = SplitDBM<Number, VariableName, SplitDBMParams>;
-    using variable_t = typename sdbm_domain_t::variable_t;
-    using linear_constraint_system_t = typename sdbm_domain_t::linear_constraint_system_t;
-
-    static void extract(sdbm_domain_t &dom, const variable_t &x, linear_constraint_system_t &csts,
-                        bool only_equalities) {
-        dom.extract(x, csts, only_equalities);
-    }
-};
-
 } // namespace domains
 } // namespace crab
 

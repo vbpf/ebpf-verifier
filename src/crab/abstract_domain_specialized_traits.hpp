@@ -111,29 +111,5 @@ class checker_domain_traits {
     }
 };
 
-// Special operations for applying reduction between domains.
-template <typename Domain>
-class reduced_domain_traits {
-  public:
-    using variable_t = typename Domain::variable_t;
-    using linear_constraint_t = typename Domain::linear_constraint_t;
-    using linear_constraint_system_t = typename Domain::linear_constraint_system_t;
-
-    // extract linear constraints from dom involving x and store in
-    // ctsts
-    static void extract(Domain &dom, const variable_t &x, linear_constraint_system_t &csts, bool only_equalities) {
-        auto all_csts = dom.to_linear_constraint_system();
-        for (auto cst : all_csts) {
-            if (only_equalities && (!cst.is_equality())) {
-                continue;
-            }
-            auto vars = cst.variables();
-            if (vars[x]) {
-                csts += cst;
-            }
-        }
-    }
-};
-
 } // end namespace domains
 } // end namespace crab
