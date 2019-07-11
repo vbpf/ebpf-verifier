@@ -135,25 +135,5 @@ class reduced_domain_traits {
     }
 };
 
-// Operations needed by the array_sparse_graph domain.
-template <typename Domain>
-class array_sgraph_domain_helper_traits {
-  public:
-    using linear_constraint_t = typename Domain::linear_constraint_t;
-    using variable_vector_t = typename Domain::variable_vector_t;
-
-    // FIXME: this does similar thing to
-    // checker_domain_traits<Domain>::entail
-    static bool is_unsat(Domain &inv, linear_constraint_t cst) {
-        Domain copy(inv);
-        copy += cst;
-        return copy.is_bottom();
-    }
-
-    static void active_variables(Domain &inv, variable_vector_t &out) {
-        CRAB_ERROR("operation active_variables not implemented");
-    }
-};
-
 } // end namespace domains
 } // end namespace crab
