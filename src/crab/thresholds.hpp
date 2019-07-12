@@ -122,7 +122,6 @@ template <typename CFG>
 class wto_thresholds : public ikos::wto_component_visitor<CFG> {
 
   public:
-    using basic_block_label_t = typename CFG::basic_block_label_t;
     using wto_vertex_t = ikos::wto_vertex<CFG>;
     using wto_cycle_t = ikos::wto_cycle<CFG>;
     using thresholds_t = crab::iterators::thresholds<typename CFG::number_t>;

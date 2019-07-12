@@ -722,23 +722,22 @@ class cfg;
 
 template <class BasicBlockLabel, class VariableName, class Number>
 class basic_block : public boost::noncopyable {
-    friend class cfg<BasicBlockLabel, VariableName, Number>;
+    friend class cfg<basic_block_label_t, VariableName, Number>;
 
   public:
     using number_t = Number;
     using varname_t = VariableName;
-    using basic_block_label_t = BasicBlockLabel;
 
     // helper types to build statements
     using variable_t = ikos::variable<Number, VariableName>;
     using lin_exp_t = ikos::linear_expression<Number, VariableName>;
     using lin_cst_t = ikos::linear_constraint<Number, VariableName>;
     using statement_t = statement<Number, VariableName>;
-    using basic_block_t = basic_block<BasicBlockLabel, VariableName, Number>;
+    using basic_block_t = basic_block<basic_block_label_t, VariableName, Number>;
     using interval_t = ikos::interval<Number>;
 
   private:
-    using bb_id_set_t = std::vector<BasicBlockLabel>;
+    using bb_id_set_t = std::vector<basic_block_label_t>;
     using stmt_list_t = std::vector<statement_t *>;
 
   public:
@@ -772,7 +771,7 @@ class basic_block : public boost::noncopyable {
     using arr_assign_t = array_assign_stmt<Number, VariableName>;
 
   private:
-    BasicBlockLabel m_bb_id;
+    basic_block_label_t m_bb_id;
     stmt_list_t m_stmts;
     bb_id_set_t m_prev, m_next;
     tracked_precision m_track_prec;
@@ -785,22 +784,22 @@ class basic_block : public boost::noncopyable {
     // set of used/def variables
     live_domain_t m_live;
 
-    void insert_adjacent(bb_id_set_t &c, BasicBlockLabel e) {
+    void insert_adjacent(bb_id_set_t &c, basic_block_label_t e) {
         if (std::find(c.begin(), c.end(), e) == c.end()) {
             c.push_back(e);
         }
     }
 
-    void remove_adjacent(bb_id_set_t &c, BasicBlockLabel e) {
+    void remove_adjacent(bb_id_set_t &c, basic_block_label_t e) {
         if (std::find(c.begin(), c.end(), e) != c.end()) {
             c.erase(std::remove(c.begin(), c.end(), e), c.end());
         }
     }
 
-    basic_block(BasicBlockLabel bb_id, tracked_precision track_prec)
+    basic_block(basic_block_label_t bb_id, tracked_precision track_prec)
         : m_bb_id(bb_id), m_track_prec(track_prec), m_insert_point_at_front(false), m_live(live_domain_t::bottom()) {}
 
-    static basic_block_t *create(BasicBlockLabel bb_id, tracked_precision prec) {
+    static basic_block_t *create(basic_block_label_t bb_id, tracked_precision prec) {
         return new basic_block_t(bb_id, prec);
     }
 
@@ -854,7 +853,7 @@ class basic_block : public boost::noncopyable {
         return b;
     }
 
-    BasicBlockLabel label() const { return m_bb_id; }
+    basic_block_label_t label() const { return m_bb_id; }
 
     std::string name() const { return cfg_impl::get_label_str(m_bb_id); }
 
@@ -1104,7 +1103,6 @@ class basic_block_rev {
     using number_t = typename BasicBlock::number_t;
     using varname_t = typename BasicBlock::varname_t;
     using variable_t = typename BasicBlock::variable_t;
-    using basic_block_label_t = typename BasicBlock::basic_block_label_t;
 
     using basic_block_rev_t = basic_block_rev<BasicBlock>;
 
@@ -1201,8 +1199,8 @@ struct statement_visitor {
     virtual void visit(arr_load_t &){};
     virtual void visit(arr_assign_t &){};
 
-    template <typename BasicBlockLabel>
-    void visit(basic_block<BasicBlockLabel, VariableName, Number> &b) {
+    template <typename basic_block_label_t>
+    void visit(basic_block<basic_block_label_t, VariableName, Number> &b) {
         for (auto &s : b) {
             s.accept(this);
         }
@@ -1386,12 +1384,11 @@ template <class BasicBlockLabel, class VariableName, class Number>
 class cfg : public boost::noncopyable {
   public:
     using number_t = Number;
-    using basic_block_label_t = BasicBlockLabel;
     using node_t = basic_block_label_t; // for Bgl graphs
     using varname_t = VariableName;
     using variable_t = ikos::variable<number_t, varname_t>;
     using fdecl_t = function_decl<number_t, varname_t>;
-    using basic_block_t = basic_block<BasicBlockLabel, VariableName, number_t>;
+    using basic_block_t = basic_block<basic_block_label_t, VariableName, number_t>;
     using statement_t = statement<number_t, VariableName>;
 
     using succ_iterator = typename basic_block_t::succ_iterator;
@@ -1405,8 +1402,8 @@ class cfg : public boost::noncopyable {
     using const_pred_range = boost::iterator_range<const_pred_iterator>;
 
   private:
-    using cfg_t = cfg<BasicBlockLabel, VariableName, Number>;
-    using basic_block_map_t = boost::unordered_map<BasicBlockLabel, basic_block_t *>;
+    using cfg_t = cfg<basic_block_label_t, VariableName, Number>;
+    using basic_block_map_t = boost::unordered_map<basic_block_label_t, basic_block_t *>;
     using binding_t = typename basic_block_map_t::value_type;
     using live_domain_t = typename basic_block_t::live_domain_t;
 
@@ -1415,9 +1412,9 @@ class cfg : public boost::noncopyable {
         basic_block_t &operator()(const binding_t &p) const { return *(p.second); }
     };
 
-    struct get_label : public std::unary_function<binding_t, BasicBlockLabel> {
+    struct get_label : public std::unary_function<binding_t, basic_block_label_t> {
         get_label() {}
-        BasicBlockLabel operator()(const binding_t &p) const { return p.second->label(); }
+        basic_block_label_t operator()(const binding_t &p) const { return p.second->label(); }
     };
 
   public:
@@ -1430,15 +1427,15 @@ class cfg : public boost::noncopyable {
     using const_var_iterator = typename std::vector<varname_t>::const_iterator;
 
   private:
-    BasicBlockLabel m_entry;
-    boost::optional<BasicBlockLabel> m_exit;
+    basic_block_label_t m_entry;
+    boost::optional<basic_block_label_t> m_exit;
     basic_block_map_t m_blocks;
     tracked_precision m_track_prec;
     fdecl_t m_func_decl;
 
-    using visited_t = boost::unordered_set<BasicBlockLabel>;
+    using visited_t = boost::unordered_set<basic_block_label_t>;
     template <typename T>
-    void dfs_rec(BasicBlockLabel curId, visited_t &visited, T f) const {
+    void dfs_rec(basic_block_label_t curId, visited_t &visited, T f) const {
         if (!visited.insert(curId).second)
             return;
 
@@ -1465,17 +1462,17 @@ class cfg : public boost::noncopyable {
     // --- needed by crab::cg::call_graph<CFG>::cg_node
     cfg() {}
 
-    cfg(BasicBlockLabel entry, tracked_precision track_prec = NUM)
+    cfg(basic_block_label_t entry, tracked_precision track_prec = NUM)
         : m_entry(entry), m_exit(boost::none), m_track_prec(track_prec) {
         m_blocks.insert(binding_t(m_entry, basic_block_t::create(m_entry, m_track_prec)));
     }
 
-    cfg(BasicBlockLabel entry, BasicBlockLabel exit, tracked_precision track_prec = NUM)
+    cfg(basic_block_label_t entry, basic_block_label_t exit, tracked_precision track_prec = NUM)
         : m_entry(entry), m_exit(exit), m_track_prec(track_prec) {
         m_blocks.insert(binding_t(m_entry, basic_block_t::create(m_entry, m_track_prec)));
     }
 
-    cfg(BasicBlockLabel entry, BasicBlockLabel exit, fdecl_t func_decl, tracked_precision track_prec = NUM)
+    cfg(basic_block_label_t entry, basic_block_label_t exit, fdecl_t func_decl, tracked_precision track_prec = NUM)
         : m_entry(entry), m_exit(exit), m_track_prec(track_prec), m_func_decl(func_decl) {
         m_blocks.insert(binding_t(m_entry, basic_block_t::create(m_entry, m_track_prec)));
     }
@@ -1512,7 +1509,7 @@ class cfg : public boost::noncopyable {
 
     bool has_exit() const { return (bool)m_exit; }
 
-    BasicBlockLabel exit() const {
+    basic_block_label_t exit() const {
         if (has_exit())
             return *m_exit;
         CRAB_ERROR("cfg does not have an exit block");
@@ -1520,7 +1517,7 @@ class cfg : public boost::noncopyable {
 
     //! set method to mark the exit block after the cfg has been
     //! created.
-    void set_exit(BasicBlockLabel exit) { m_exit = exit; }
+    void set_exit(basic_block_label_t exit) { m_exit = exit; }
 
     //! set method to add the function declaration after the cfg has
     //! been created.
@@ -1528,29 +1525,29 @@ class cfg : public boost::noncopyable {
 
     // --- Begin ikos fixpoint API
 
-    BasicBlockLabel entry() const { return m_entry; }
+    basic_block_label_t entry() const { return m_entry; }
 
-    const_succ_range next_nodes(BasicBlockLabel bb_id) const {
+    const_succ_range next_nodes(basic_block_label_t bb_id) const {
         const basic_block_t &b = get_node(bb_id);
         return boost::make_iterator_range(b.next_blocks());
     }
 
-    const_pred_range prev_nodes(BasicBlockLabel bb_id) const {
+    const_pred_range prev_nodes(basic_block_label_t bb_id) const {
         const basic_block_t &b = get_node(bb_id);
         return boost::make_iterator_range(b.prev_blocks());
     }
 
-    succ_range next_nodes(BasicBlockLabel bb_id) {
+    succ_range next_nodes(basic_block_label_t bb_id) {
         basic_block_t &b = get_node(bb_id);
         return boost::make_iterator_range(b.next_blocks());
     }
 
-    pred_range prev_nodes(BasicBlockLabel bb_id) {
+    pred_range prev_nodes(basic_block_label_t bb_id) {
         basic_block_t &b = get_node(bb_id);
         return boost::make_iterator_range(b.prev_blocks());
     }
 
-    basic_block_t &get_node(BasicBlockLabel bb_id) {
+    basic_block_t &get_node(basic_block_label_t bb_id) {
         auto it = m_blocks.find(bb_id);
         if (it == m_blocks.end()) {
             CRAB_ERROR("Basic block ", bb_id, " not found in the CFG: ", __LINE__);
@@ -1559,7 +1556,7 @@ class cfg : public boost::noncopyable {
         return *(it->second);
     }
 
-    const basic_block_t &get_node(BasicBlockLabel bb_id) const {
+    const basic_block_t &get_node(basic_block_label_t bb_id) const {
         auto it = m_blocks.find(bb_id);
         if (it == m_blocks.end()) {
             CRAB_ERROR("Basic block ", bb_id, " not found in the CFG: ", __LINE__);
@@ -1570,7 +1567,7 @@ class cfg : public boost::noncopyable {
 
     // --- End ikos fixpoint API
 
-    basic_block_t &insert(BasicBlockLabel bb_id) {
+    basic_block_t &insert(basic_block_label_t bb_id) {
         auto it = m_blocks.find(bb_id);
         if (it != m_blocks.end())
             return *(it->second);
@@ -1580,7 +1577,7 @@ class cfg : public boost::noncopyable {
         return *block;
     }
 
-    void remove(BasicBlockLabel bb_id) {
+    void remove(basic_block_label_t bb_id) {
         if (bb_id == m_entry) {
             CRAB_ERROR("Cannot remove entry block");
         }
@@ -1640,10 +1637,10 @@ class cfg : public boost::noncopyable {
 
     const_iterator end() const { return boost::make_transform_iterator(m_blocks.end(), get_ref()); }
 
-    //! return a begin iterator of BasicBlockLabel's
+    //! return a begin iterator of basic_block_label_t's
     label_iterator label_begin() { return boost::make_transform_iterator(m_blocks.begin(), get_label()); }
 
-    //! return an end iterator of BasicBlockLabel's
+    //! return an end iterator of basic_block_label_t's
     label_iterator label_end() { return boost::make_transform_iterator(m_blocks.end(), get_label()); }
 
     const_label_iterator label_begin() const { return boost::make_transform_iterator(m_blocks.begin(), get_label()); }
@@ -1691,29 +1688,29 @@ class cfg : public boost::noncopyable {
     ////
 
     // Helpers
-    bool has_one_child(BasicBlockLabel b) const {
+    bool has_one_child(basic_block_label_t b) const {
         auto rng = next_nodes(b);
         return (std::distance(rng.begin(), rng.end()) == 1);
     }
 
-    bool has_one_parent(BasicBlockLabel b) const {
+    bool has_one_parent(basic_block_label_t b) const {
         auto rng = prev_nodes(b);
         return (std::distance(rng.begin(), rng.end()) == 1);
     }
 
-    basic_block_t &get_child(BasicBlockLabel b) {
+    basic_block_t &get_child(basic_block_label_t b) {
         assert(has_one_child(b));
         auto rng = next_nodes(b);
         return get_node(*(rng.begin()));
     }
 
-    basic_block_t &get_parent(BasicBlockLabel b) {
+    basic_block_t &get_parent(basic_block_label_t b) {
         assert(has_one_parent(b));
         auto rng = prev_nodes(b);
         return get_node(*(rng.begin()));
     }
 
-    void merge_blocks_rec(BasicBlockLabel curId, visited_t &visited) {
+    void merge_blocks_rec(basic_block_label_t curId, visited_t &visited) {
         if (!visited.insert(curId).second)
             return;
 
@@ -1749,7 +1746,7 @@ class cfg : public boost::noncopyable {
 
     // mark reachable blocks from curId
     template <class AnyCfg>
-    void mark_alive_blocks(BasicBlockLabel curId, AnyCfg &cfg, visited_t &visited) {
+    void mark_alive_blocks(basic_block_label_t curId, AnyCfg &cfg, visited_t &visited) {
         if (visited.count(curId) > 0)
             return;
         visited.insert(curId);
@@ -1802,7 +1799,6 @@ template <class CFG>
 class cfg_ref {
   public:
     // CFG's typedefs
-    using basic_block_label_t = typename CFG::basic_block_label_t;
     using node_t = typename CFG::node_t;
     using varname_t = typename CFG::varname_t;
     using number_t = typename CFG::number_t;
@@ -1974,7 +1970,6 @@ class cfg_ref {
 template <class CFGRef> // CFGRef must be copyable!
 class cfg_rev {
   public:
-    using basic_block_label_t = typename CFGRef::basic_block_label_t;
     using basic_block_t = basic_block_rev<typename CFGRef::basic_block_t>;
     using node_t = basic_block_label_t; // for Bgl graphs
     using varname_t = typename CFGRef::varname_t;

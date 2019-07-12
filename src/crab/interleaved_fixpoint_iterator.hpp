@@ -72,7 +72,6 @@ class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<CFG, Abstract
     friend class interleaved_fwd_fixpoint_iterator_impl::wto_iterator<CFG, AbstractValue>;
 
   public:
-    using basic_block_label_t = typename CFG::basic_block_label_t;
     using wto_t = wto<CFG>;
     using assumption_map_t = boost::unordered_map<basic_block_label_t, AbstractValue>;
     using invariant_table_t = boost::unordered_map<basic_block_label_t, AbstractValue>;
@@ -272,7 +271,6 @@ class wto_iterator : public wto_component_visitor<CFG> {
     using wto_vertex_t = wto_vertex<CFG>;
     using wto_cycle_t = wto_cycle<CFG>;
     using wto_t = wto<CFG>;
-    using basic_block_label_t = typename CFG::basic_block_label_t;
     using wto_nesting_t = typename wto_t::wto_nesting_t;
     using assumption_map_t = typename interleaved_iterator_t::assumption_map_t;
 
@@ -523,7 +521,6 @@ class wto_processor : public wto_component_visitor<CFG> {
     using interleaved_iterator_t = interleaved_fwd_fixpoint_iterator<CFG, AbstractValue>;
     using wto_vertex_t = wto_vertex<CFG>;
     using wto_cycle_t = wto_cycle<CFG>;
-    using basic_block_label_t = typename CFG::basic_block_label_t;
 
   private:
     interleaved_iterator_t *_iterator;
