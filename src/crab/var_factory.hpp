@@ -32,13 +32,12 @@ inline std::string get_str(std::string e) {
 //
 // The factory uses a counter of type index_t to generate variable
 // id's that always increases.
-template <class T>
-class variable_factory : public boost::noncopyable {
-    using variable_factory_t = variable_factory<T>;
+class variable_factory {
+    using T = std::string;
+    using variable_factory_t = variable_factory;
 
   public:
     class indexed_string {
-        template <typename Any>
         friend class variable_factory;
 
       public:
@@ -138,7 +137,8 @@ class variable_factory : public boost::noncopyable {
     using var_range = boost::iterator_range<typename std::vector<indexed_string>::iterator>;
     using const_var_range = boost::iterator_range<typename std::vector<indexed_string>::const_iterator>;
 
-  public:
+    variable_factory(const variable_factory&) = delete;
+
     variable_factory() : _next_id(1) {}
 
     variable_factory(index_t start_id) : _next_id(start_id) {}
@@ -184,27 +184,7 @@ class variable_factory : public boost::noncopyable {
     }
 };
 
-//! Specialized factory for strings
-class str_variable_factory : public variable_factory<std::string> {
-    using variable_factory_t = variable_factory<std::string>;
-
-  public:
-    using varname_t = variable_factory_t::varname_t;
-    using const_var_range = variable_factory_t::const_var_range;
-    using index_t = variable_factory_t::index_t;
-
-    str_variable_factory() : variable_factory_t() {}
-};
-
-//! Specialized factory for integers
-class int_variable_factory : public boost::noncopyable {
-  public:
-    using varname_t = int;
-
-    int_variable_factory() {}
-
-    varname_t operator[](int v) { return v; }
-};
+using str_variable_factory = variable_factory;
 
 inline int fresh_colour(int col_x, int col_y) {
     switch (col_x) {
@@ -218,72 +198,6 @@ inline int fresh_colour(int col_x, int col_y) {
         CRAB_ERROR("Unreachable");
     }
 }
-
-//! Three-coloured variable allocation. So the number of variables
-//  is bounded by 3|Tbl|, rather than always increasing.
-class str_var_alloc_col {
-    static const char **col_prefix;
-
-  public:
-    using varname_t = str_variable_factory::varname_t;
-    static str_variable_factory vfac;
-
-    str_var_alloc_col() : colour(0), next_id(0) {}
-
-    str_var_alloc_col(const str_var_alloc_col &o) : colour(o.colour), next_id(o.next_id) {}
-
-    str_var_alloc_col(const str_var_alloc_col &x, const str_var_alloc_col &y)
-        : colour(fresh_colour(x.colour, y.colour)), next_id(0) {
-        assert(colour != x.colour);
-        assert(colour != y.colour);
-    }
-
-    str_var_alloc_col &operator=(const str_var_alloc_col &x) {
-        colour = x.colour;
-        next_id = x.next_id;
-        return *this;
-    }
-
-    str_variable_factory::varname_t next() {
-        std::string v = col_prefix[colour] + std::to_string(next_id++);
-        return vfac[v];
-    }
-
-  private:
-    int colour;
-    int next_id;
-};
-
-class int_var_alloc_col {
-  public:
-    using varname_t = int;
-    static int_variable_factory vfac;
-
-    int_var_alloc_col() : colour(0), next_id(0) {}
-
-    int_var_alloc_col(const int_var_alloc_col &o) : colour(o.colour), next_id(o.next_id) {}
-
-    int_var_alloc_col(const int_var_alloc_col &x, const int_var_alloc_col &y)
-        : colour(fresh_colour(x.colour, y.colour)), next_id(0) {
-        assert(colour != x.colour);
-        assert(colour != y.colour);
-    }
-
-    int_var_alloc_col &operator=(const int_var_alloc_col &x) {
-        colour = x.colour;
-        next_id = x.next_id;
-        return *this;
-    }
-
-    int_variable_factory::varname_t next() {
-        int id = next_id++;
-        return 3 * id + colour;
-    }
-
-  private:
-    int colour;
-    int next_id;
-};
 
 } // end namespace var_factory_impl
 } // end namespace cfg
