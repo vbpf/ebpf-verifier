@@ -16,15 +16,10 @@
 namespace crab {
 namespace cfg {
 namespace var_factory_impl {
-namespace indexed_string_impl {
-template <typename T>
-inline std::string get_str(T e);
 
-template <>
 inline std::string get_str(std::string e) {
     return e;
 }
-} // namespace indexed_string_impl
 
 // This variable factory creates a new variable associated to an
 // element of type T. It can also create variables that are not
@@ -79,7 +74,7 @@ class variable_factory {
 
         std::string str() const {
             if (_s) {
-                return indexed_string_impl::get_str<T>(*_s);
+                return get_str(*_s);
             } else {
                 if (_name != "") {
                     return _name;
