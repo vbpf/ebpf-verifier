@@ -186,19 +186,6 @@ class variable_factory {
 
 using str_variable_factory = variable_factory;
 
-inline int fresh_colour(int col_x, int col_y) {
-    switch (col_x) {
-    case 0:
-        return col_y == 1 ? 2 : 1;
-    case 1:
-        return col_y == 0 ? 2 : 0;
-    case 2:
-        return col_y == 0 ? 1 : 0;
-    default:
-        CRAB_ERROR("Unreachable");
-    }
-}
-
 } // end namespace var_factory_impl
 } // end namespace cfg
 } // end namespace crab
