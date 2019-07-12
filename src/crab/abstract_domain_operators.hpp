@@ -100,7 +100,7 @@ inline crab::crab_os &operator<<(crab::crab_os &o, int_conv_operation_t op) {
  * Convert CFG operations into abstract domain operations
  **/
 template <>
-inline boost::optional<ikos::operation_t> conv_op(binary_operation_t op) {
+inline std::optional<ikos::operation_t> conv_op(binary_operation_t op) {
     switch (op) {
     case BINOP_ADD:
         return ikos::OP_ADDITION;
@@ -117,12 +117,12 @@ inline boost::optional<ikos::operation_t> conv_op(binary_operation_t op) {
     case BINOP_UREM:
         return ikos::OP_UREM;
     default:
-        return boost::optional<ikos::operation_t>();
+        return std::optional<ikos::operation_t>();
     }
 }
 
 template <>
-inline boost::optional<ikos::bitwise_operation_t> conv_op(binary_operation_t op) {
+inline std::optional<ikos::bitwise_operation_t> conv_op(binary_operation_t op) {
     switch (op) {
     case BINOP_AND:
         return ikos::OP_AND;
@@ -137,12 +137,12 @@ inline boost::optional<ikos::bitwise_operation_t> conv_op(binary_operation_t op)
     case BINOP_ASHR:
         return ikos::OP_ASHR;
     default:
-        return boost::optional<ikos::bitwise_operation_t>();
+        return std::optional<ikos::bitwise_operation_t>();
     }
 }
 
 template <>
-inline boost::optional<domains::int_conv_operation_t> conv_op(cast_operation_t op) {
+inline std::optional<domains::int_conv_operation_t> conv_op(cast_operation_t op) {
     switch (op) {
     case CAST_TRUNC:
         return domains::OP_TRUNC;
@@ -151,7 +151,7 @@ inline boost::optional<domains::int_conv_operation_t> conv_op(cast_operation_t o
     case CAST_ZEXT:
         return domains::OP_ZEXT;
     default:
-        return boost::optional<domains::int_conv_operation_t>();
+        return std::optional<domains::int_conv_operation_t>();
     }
 }
 

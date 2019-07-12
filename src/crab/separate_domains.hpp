@@ -66,12 +66,12 @@ class separate_domain {
 
   public:
     class join_op : public binary_op_t {
-        std::pair<bool, boost::optional<Value>> apply(Value x, Value y) {
+        std::pair<bool, std::optional<Value>> apply(Value x, Value y) {
             Value z = x.operator|(y);
             if (z.is_top()) {
-                return {false, boost::optional<Value>()};
+                return {false, std::optional<Value>()};
             } else {
-                return {false, boost::optional<Value>(z)};
+                return {false, std::optional<Value>(z)};
             }
         };
 
@@ -79,12 +79,12 @@ class separate_domain {
     }; // class join_op
 
     class widening_op : public binary_op_t {
-        std::pair<bool, boost::optional<Value>> apply(Value x, Value y) {
+        std::pair<bool, std::optional<Value>> apply(Value x, Value y) {
             Value z = x.operator||(y);
             if (z.is_top()) {
-                return {false, boost::optional<Value>()};
+                return {false, std::optional<Value>()};
             } else {
-                return {false, boost::optional<Value>(z)};
+                return {false, std::optional<Value>(z)};
             }
         };
 
@@ -99,12 +99,12 @@ class separate_domain {
       public:
         widening_thresholds_op(const Thresholds &ts) : m_ts(ts) {}
 
-        std::pair<bool, boost::optional<Value>> apply(Value x, Value y) {
+        std::pair<bool, std::optional<Value>> apply(Value x, Value y) {
             Value z = x.widening_thresholds(y, m_ts);
             if (z.is_top()) {
-                return {false, boost::optional<Value>()};
+                return {false, std::optional<Value>()};
             } else {
-                return {false, boost::optional<Value>(z)};
+                return {false, std::optional<Value>(z)};
             }
         };
 
@@ -113,12 +113,12 @@ class separate_domain {
     }; // class widening_thresholds_op
 
     class meet_op : public binary_op_t {
-        std::pair<bool, boost::optional<Value>> apply(Value x, Value y) {
+        std::pair<bool, std::optional<Value>> apply(Value x, Value y) {
             Value z = x.operator&(y);
             if (z.is_bottom()) {
-                return {true, boost::optional<Value>()};
+                return {true, std::optional<Value>()};
             } else {
-                return {false, boost::optional<Value>(z)};
+                return {false, std::optional<Value>(z)};
             }
         };
 
@@ -127,12 +127,12 @@ class separate_domain {
     }; // class meet_op
 
     class narrowing_op : public binary_op_t {
-        std::pair<bool, boost::optional<Value>> apply(Value x, Value y) {
+        std::pair<bool, std::optional<Value>> apply(Value x, Value y) {
             Value z = x.operator&&(y);
             if (z.is_bottom()) {
-                return {true, boost::optional<Value>()};
+                return {true, std::optional<Value>()};
             } else {
-                return {false, boost::optional<Value>(z)};
+                return {false, std::optional<Value>(z)};
             }
         };
 
@@ -312,7 +312,7 @@ class separate_domain {
         if (this->is_bottom()) {
             return Value::bottom();
         } else {
-            boost::optional<Value> v = this->_tree.lookup(k);
+            std::optional<Value> v = this->_tree.lookup(k);
             if (v) {
                 return *v;
             } else {

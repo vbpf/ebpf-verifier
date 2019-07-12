@@ -1456,7 +1456,7 @@ class cfg {
 
   private:
     basic_block_label_t m_entry;
-    boost::optional<basic_block_label_t> m_exit;
+    std::optional<basic_block_label_t> m_exit;
     basic_block_map_t m_blocks;
     tracked_precision m_track_prec;
     fdecl_t m_func_decl;
@@ -1491,7 +1491,7 @@ class cfg {
     cfg() {}
 
     cfg(basic_block_label_t entry, tracked_precision track_prec = NUM)
-        : m_entry(entry), m_exit(boost::none), m_track_prec(track_prec) {
+        : m_entry(entry), m_exit(std::nullopt), m_track_prec(track_prec) {
         m_blocks.insert(binding_t(m_entry, basic_block_t::create(m_entry, m_track_prec)));
     }
 
@@ -1850,7 +1850,7 @@ class cfg_ref {
     using const_var_iterator = typename CFG::const_var_iterator;
 
   private:
-    boost::optional<std::reference_wrapper<CFG>> _ref;
+    std::optional<std::reference_wrapper<CFG>> _ref;
 
   public:
     // --- hook needed by crab::cg::CallGraph<CFG>::CgNode
@@ -2334,13 +2334,13 @@ class type_checker {
             check_num(lhs, "lhs must be integer or real", s);
             check_bitwidth_if_int(lhs, "lhs must be have bitwidth > 1", s);
 
-            if (boost::optional<variable_t> v1 = op1.get_variable()) {
+            if (std::optional<variable_t> v1 = op1.get_variable()) {
                 check_same_type(lhs, *v1, "first operand cannot have different type from lhs", s);
                 check_same_bitwidth(lhs, *v1, "first operand cannot have different bitwidth from lhs", s);
             } else {
                 CRAB_ERROR("(type checking) first binary operand must be a variable in ", s);
             }
-            if (boost::optional<variable_t> v2 = op2.get_variable()) {
+            if (std::optional<variable_t> v2 = op2.get_variable()) {
                 check_same_type(lhs, *v2, "second operand cannot have different type from lhs", s);
                 check_same_bitwidth(lhs, *v2, "second operand cannot have different bitwidth from lhs", s);
             } else {
@@ -2463,7 +2463,7 @@ class type_checker {
             check_num_or_var(lb, "array lower bound must be number or variable", s);
             check_num_or_var(ub, "array upper bound must be number or variable", s);
             check_num_or_var(v, "array value must be number or variable", s);
-            if (boost::optional<variable_t> vv = v.get_variable()) {
+            if (std::optional<variable_t> vv = v.get_variable()) {
                 check_array_and_scalar_type(a, *vv, s);
             }
         }
@@ -2485,7 +2485,7 @@ class type_checker {
             check_array(a, s);
             check_num_or_var(e_sz, "element size must be number or variable", s);
             check_num_or_var(v, "array value must be number or variable", s);
-            if (boost::optional<variable_t> vv = v.get_variable()) {
+            if (std::optional<variable_t> vv = v.get_variable()) {
                 check_array_and_scalar_type(a, *vv, s);
             }
         }

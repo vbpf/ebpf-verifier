@@ -29,7 +29,7 @@
 #include "crab/types.hpp"
 
 #include <boost/container/flat_map.hpp>
-#include <boost/optional.hpp>
+#include <optional>
 #include <boost/unordered_set.hpp>
 
 //#define CHECK_POTENTIAL
@@ -65,7 +65,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
     using vert_id = typename graph_t::vert_id;
     using vert_map_t = boost::container::flat_map<variable_t, vert_id>;
     using vmap_elt_t = typename vert_map_t::value_type;
-    using rev_map_t = std::vector<boost::optional<variable_t>>;
+    using rev_map_t = std::vector<std::optional<variable_t>>;
     using GrOps = GraphOps<graph_t>;
     using GrPerm = GraphPerm<graph_t>;
     using edge_vector = typename GrOps::edge_vector;
@@ -236,7 +236,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                                the difference constraint v - k <= k */
                             std::vector<std::pair<variable_t, Wt>> &diff_csts) {
 
-        boost::optional<variable_t> unbounded_var;
+        std::optional<variable_t> unbounded_var;
         std::vector<std::pair<variable_t, Wt>> terms;
         bool overflow;
 
@@ -315,8 +315,8 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
 
         Wt unbounded_lbcoeff;
         Wt unbounded_ubcoeff;
-        boost::optional<variable_t> unbounded_lbvar;
-        boost::optional<variable_t> unbounded_ubvar;
+        std::optional<variable_t> unbounded_lbvar;
+        std::optional<variable_t> unbounded_ubvar;
         bool underflow, overflow;
 
         Wt exp_ub = -(DBM_impl::convert_NtoW(exp.constant(), overflow));
@@ -614,7 +614,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                                       r.elem(0, v) ? number_t(r.edge_val(0, v)) : bound_t::plus_infinity());
         return x_out;
         /*
-        boost::optional< interval_t > v = r.lookup(x);
+        std::optional< interval_t > v = r.lookup(x);
         if(v)
           return *v;
         else
@@ -744,7 +744,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
     SplitDBM_(bool is_bottom = false) : _is_bottom(is_bottom) {
         g.growTo(1); // Allocate the zero vector
         potential.push_back(Wt(0));
-        rev_map.push_back(boost::none);
+        rev_map.push_back(std::nullopt);
     }
 
     // FIXME: Rewrite to avoid copying if o is _|_
@@ -966,7 +966,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
             pot_ry.push_back(0);
             perm_x.push_back(0);
             perm_y.push_back(0);
-            out_revmap.push_back(boost::none);
+            out_revmap.push_back(std::nullopt);
 
             for (auto p : vert_map) {
                 auto it = o.vert_map.find(p.first);
@@ -1102,7 +1102,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                     join_g.forget(v);
                     if (out_revmap[v]) {
                         out_vmap.erase(*(out_revmap[v]));
-                        out_revmap[v] = boost::none;
+                        out_revmap[v] = std::nullopt;
                     }
                 }
             }
@@ -1144,7 +1144,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
             widen_pot.push_back(Wt(0));
             perm_x.push_back(0);
             perm_y.push_back(0);
-            out_revmap.push_back(boost::none);
+            out_revmap.push_back(std::nullopt);
             for (auto p : vert_map) {
                 auto it = o.vert_map.find(p.first);
                 // Variable exists in both
@@ -1216,7 +1216,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
             perm_x.push_back(0);
             perm_y.push_back(0);
             meet_pi.push_back(Wt(0));
-            meet_rev.push_back(boost::none);
+            meet_rev.push_back(std::nullopt);
             for (auto p : vert_map) {
                 vert_id vv = perm_x.size();
                 meet_verts.insert(vmap_elt_t(p.first, vv));
@@ -1349,7 +1349,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
             CRAB_LOG("zones-split", crab::outs() << "Before forget " << it->second << ": " << g << "\n");
             g.forget(it->second);
             CRAB_LOG("zones-split", crab::outs() << "After: " << g << "\n");
-            rev_map[it->second] = boost::none;
+            rev_map[it->second] = std::nullopt;
             vert_map.erase(v);
         }
     }
@@ -1370,7 +1370,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
 
         interval_t x_int = eval_interval(e);
 
-        boost::optional<Wt> lb_w, ub_w;
+        std::optional<Wt> lb_w, ub_w;
         bool overflow;
         if (x_int.lb().is_finite()) {
             lb_w = DBM_impl::convert_NtoW(-(*(x_int.lb().number())), overflow);
@@ -1396,7 +1396,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
         // close_bounds_inline is disabled. Otherwise, the meet
         // operator misses some non-redundant edges. Need to
         // investigate more this.
-        if (boost::optional<number_t> x_n = x_int.singleton()) {
+        if (std::optional<number_t> x_n = x_int.singleton()) {
             set(x, *x_n);
             is_rhs_constant = true;
         }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "crab/Heap.h"
-#include <boost/optional.hpp>
+#include <optional>
 //============================
 // A set of utility algorithms for manipulating graphs.
 
@@ -181,7 +181,7 @@ class GraphPerm {
       protected:
         std::vector<vert_id> &perm;
         std::vector<vert_id> &inv;
-        boost::optional<RG> adj;
+        std::optional<RG> adj;
     };
 
     using pred_range = adj_list<typename G::pred_range, adj_iterator<typename G::pred_range::iterator>>;

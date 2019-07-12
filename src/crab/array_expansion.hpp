@@ -33,7 +33,7 @@
 
 #include "boost/range/algorithm/set_algorithm.hpp"
 #include <algorithm>
-#include <boost/optional.hpp>
+#include <optional>
 #include <set>
 #include <vector>
 
@@ -88,13 +88,13 @@ class cell {
 
     offset_t _offset;
     unsigned _size;
-    boost::optional<Variable> _scalar;
+    std::optional<Variable> _scalar;
 
     // Only offset_map<Variable> can create cells
-    cell() : _offset(0), _size(0), _scalar(boost::optional<Variable>()) {}
+    cell() : _offset(0), _size(0), _scalar(std::optional<Variable>()) {}
     cell(offset_t offset, Variable scalar) : _offset(offset), _size(scalar.get_bitwidth()), _scalar(scalar) {}
 
-    cell(offset_t offset, unsigned size) : _offset(offset), _size(size), _scalar(boost::optional<Variable>()) {}
+    cell(offset_t offset, unsigned size) : _offset(offset), _size(size), _scalar(std::optional<Variable>()) {}
 
     static interval_t to_interval(const offset_t o, unsigned size) {
         interval_t i(o.index(), o.index() + size - 1);
@@ -274,7 +274,7 @@ class offset_map {
     class join_op : public binary_op_t {
         // apply is called when two bindings (one each from a
         // different map) have the same key(i.e., offset).
-        std::pair<bool, boost::optional<cell_set_t>> apply(cell_set_t x, cell_set_t y) {
+        std::pair<bool, std::optional<cell_set_t>> apply(cell_set_t x, cell_set_t y) {
             return {false, cell_set_impl::set_union(x, y)};
         }
         // if one map does not have a key in the other map we add it.
@@ -282,7 +282,7 @@ class offset_map {
     };
 
     class meet_op : public binary_op_t {
-        std::pair<bool, boost::optional<cell_set_t>> apply(cell_set_t x, cell_set_t y) {
+        std::pair<bool, std::optional<cell_set_t>> apply(cell_set_t x, cell_set_t y) {
             return {false, cell_set_impl::set_intersection(x, y)};
         }
         // if one map does not have a key in the other map we ignore
@@ -299,7 +299,7 @@ class offset_map {
     offset_map(patricia_tree_t m) : _map(m) {}
 
     void remove_cell(const cell_t &c) {
-        if (boost::optional<cell_set_t> cells = _map.lookup(c.get_offset())) {
+        if (std::optional<cell_set_t> cells = _map.lookup(c.get_offset())) {
             if ((*cells).erase(c) > 0) {
                 _map.remove(c.get_offset());
                 if (!(*cells).empty()) {
@@ -314,7 +314,7 @@ class offset_map {
         if (sanity_check && !c.has_scalar()) {
             CRAB_ERROR("array expansion cannot insert a cell without scalar variable");
         }
-        if (boost::optional<cell_set_t> cells = _map.lookup(c.get_offset())) {
+        if (std::optional<cell_set_t> cells = _map.lookup(c.get_offset())) {
             if ((*cells).insert(c).second) {
                 // a bit of a waste ...
                 _map.remove(c.get_offset());
@@ -328,7 +328,7 @@ class offset_map {
     }
 
     cell_t get_cell(offset_t o, unsigned size) const {
-        if (boost::optional<cell_set_t> cells = _map.lookup(o)) {
+        if (std::optional<cell_set_t> cells = _map.lookup(o)) {
             cell_t tmp(o, size);
             auto it = (*cells).find(tmp);
             if (it != (*cells).end()) {
@@ -979,11 +979,11 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
             return;
 
         interval_t ii = to_interval(i);
-        if (boost::optional<number_t> n = ii.singleton()) {
+        if (std::optional<number_t> n = ii.singleton()) {
             offset_map_t &offset_map = lookup_array_map(a);
             offset_t o((long)*n);
             interval_t i_elem_size = to_interval(elem_size);
-            if (boost::optional<number_t> n_bytes = i_elem_size.singleton()) {
+            if (std::optional<number_t> n_bytes = i_elem_size.singleton()) {
                 unsigned size = (long)*n_bytes;
                 std::vector<cell_t> cells;
                 offset_map.get_overlap_cells(o, size, cells);
@@ -1029,7 +1029,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
             return;
 
         interval_t i_elem_size = to_interval(elem_size);
-        boost::optional<number_t> n_bytes = i_elem_size.singleton();
+        std::optional<number_t> n_bytes = i_elem_size.singleton();
         if (!n_bytes) {
             CRAB_ERROR("array expansion domain expects constant array element sizes");
         }
@@ -1037,7 +1037,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
         unsigned size = (long)(*n_bytes);
         offset_map_t &offset_map = lookup_array_map(a);
         interval_t ii = to_interval(i);
-        if (boost::optional<number_t> n = ii.singleton()) {
+        if (std::optional<number_t> n = ii.singleton()) {
             // -- Constant index: kill overlapping cells + perform strong update
             std::vector<cell_t> cells;
             offset_t o((long)*n);
@@ -1159,11 +1159,11 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
 
         // XXX: we use the forward invariant to extract the array index
         interval_t ii = to_interval(i, invariant.get_content_domain());
-        if (boost::optional<number_t> n = ii.singleton()) {
+        if (std::optional<number_t> n = ii.singleton()) {
             offset_map_t &offset_map = lookup_array_map(a);
             offset_t o((long)*n);
             interval_t i_elem_size = to_interval(elem_size, invariant.get_content_domain());
-            if (boost::optional<number_t> n_bytes = i_elem_size.singleton()) {
+            if (std::optional<number_t> n_bytes = i_elem_size.singleton()) {
                 unsigned size = (long)*n_bytes;
                 cell_t c = offset_map.mk_cell(a, o, size);
                 assert(c.has_scalar());
@@ -1195,7 +1195,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
 
         // XXX: we use the forward invariant to extract the array index
         interval_t i_elem_size = to_interval(elem_size, invariant.get_content_domain());
-        boost::optional<number_t> n_bytes = i_elem_size.singleton();
+        std::optional<number_t> n_bytes = i_elem_size.singleton();
         if (!n_bytes) {
             CRAB_ERROR("array expansion domain expects constant array element sizes");
         }
@@ -1204,7 +1204,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
         offset_map_t &offset_map = lookup_array_map(a);
         // XXX: we use the forward invariant to extract the array index
         interval_t ii = to_interval(i, invariant.get_content_domain());
-        if (boost::optional<number_t> n = ii.singleton()) {
+        if (std::optional<number_t> n = ii.singleton()) {
             // -- Constant index and the store updated one single cell:
             // -- backward assign in the base domain.
             offset_t o((long)*n);

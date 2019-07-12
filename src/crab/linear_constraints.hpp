@@ -47,7 +47,7 @@
 #include <boost/container/flat_map.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/iterator/transform_iterator.hpp>
-#include <boost/optional.hpp>
+#include <optional>
 #include <memory>
 
 #include <unordered_map>
@@ -278,17 +278,17 @@ class linear_expression {
         return true;
     }
 
-    boost::optional<variable_t> get_variable() const {
+    std::optional<variable_t> get_variable() const {
         if (this->is_constant())
-            return boost::optional<variable_t>();
+            return std::optional<variable_t>();
         else {
             if ((this->constant() == 0) && (this->size() == 1)) {
                 const_iterator it = this->begin();
                 Number coeff = it->first;
                 if (coeff == 1)
-                    return boost::optional<variable_t>(it->second);
+                    return std::optional<variable_t>(it->second);
             }
-            return boost::optional<variable_t>();
+            return std::optional<variable_t>();
         }
     }
 
