@@ -21,4 +21,4 @@ inline int first_num(const Label& s)
 
 /** Translate an eBPF Cfg to to Crab's cfg_t.
  */
-void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg, program_info info);
+void build_crab_cfg(cfg_t& cfg, variable_factory& vfac, Cfg const& simple_cfg, program_info info);

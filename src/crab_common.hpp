@@ -13,8 +13,7 @@ namespace crab {
 
     /// BEGIN MUST BE DEFINED BY CRAB CLIENT
     // A variable factory based on strings
-    using variable_factory_t = cfg::var_factory_impl::str_variable_factory;
-    using varname_t = typename variable_factory_t::varname_t;
+    using varname_t = typename cfg::variable_factory::varname_t;
     //template<> inline std::string get_label_str(std::string e) { return e; }
     /// END MUST BE DEFINED BY CRAB CLIENT
 
@@ -22,7 +21,7 @@ namespace crab {
 }
 
 using crab::cfg_impl::varname_t;
-using crab::cfg_impl::variable_factory_t;
+using crab::cfg::variable_factory;
 
 /// CFG over integers
 using cfg_t         = crab::cfg::cfg<basic_block_label_t, varname_t, ikos::z_number>;
