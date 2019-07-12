@@ -7,9 +7,11 @@
 #include "crab/var_factory.hpp"
 
 using crab::varname_t;
+using crab::number_t;
+
 using crab::cfg::variable_factory;
 
 /// CFG over integers
-using cfg_t         = crab::cfg::cfg<basic_block_label_t, varname_t, ikos::z_number>;
+using cfg_t         = crab::cfg::cfg<basic_block_label_t, varname_t, number_t>;
 using basic_block_t = cfg_t::basic_block_t;
-using lin_exp_t = ikos::linear_expression<ikos::z_number, varname_t>;
+using lin_exp_t = ikos::linear_expression<number_t, varname_t>;

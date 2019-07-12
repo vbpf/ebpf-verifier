@@ -28,7 +28,7 @@ class fwd_analyzer
     using variable_t = typename CFG::variable_t;
     using abs_tr_t = intra_abs_transformer<AbsDomain>;
     using abs_dom_t = typename abs_tr_t::abs_dom_t;
-    using number_t = typename CFG::number_t;
+
     using stmt_t = typename CFG::statement_t;
 
   private:

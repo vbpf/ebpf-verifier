@@ -84,7 +84,7 @@ class cell {
   private:
     friend class offset_map<Variable>;
     using cell_t = cell<Variable>;
-    using interval_t = ikos::interval<typename Variable::number_t>;
+    using interval_t = ikos::interval<number_t>;
 
     offset_t _offset;
     unsigned _size;
@@ -640,7 +640,7 @@ template <typename NumDomain>
 class array_expansion_domain final : public abstract_domain<array_expansion_domain<NumDomain>> {
 
   public:
-    using number_t = typename NumDomain::number_t;
+
 
   private:
     using array_expansion_domain_t = array_expansion_domain<NumDomain>;
@@ -1305,7 +1305,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
 
 template <typename BaseDomain>
 struct abstract_domain_traits<array_expansion_domain<BaseDomain>> {
-    using number_t = typename BaseDomain::number_t;
+
 };
 
 template <typename BaseDom>

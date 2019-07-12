@@ -49,9 +49,9 @@ namespace analyzer {
  * API abstract transformer
  **/
 template <typename Number, typename VariableName>
-class abs_transformer_api : public crab::cfg::statement_visitor<Number, VariableName> {
+class abs_transformer_api : public crab::cfg::statement_visitor {
   public:
-    using number_t = Number;
+
 
     using var_t = ikos::variable<number_t, VariableName>;
     using lin_exp_t = ikos::linear_expression<number_t, VariableName>;
@@ -109,11 +109,11 @@ class abs_transformer_api : public crab::cfg::statement_visitor<Number, Variable
  * calls are ignored in a sound manner (by havoc'ing all outputs).
  **/
 template <class AbsD>
-class intra_abs_transformer : public abs_transformer_api<typename AbsD::number_t, varname_t> {
+class intra_abs_transformer : public abs_transformer_api<number_t, varname_t> {
 
   public:
     using abs_dom_t = AbsD;
-    using number_t = typename abs_dom_t::number_t;
+
     using variable_t = typename abs_dom_t::variable_t;
 
   public:
@@ -387,7 +387,7 @@ class inter_transformer_helpers {
   public:
     using linear_expression_t = typename AbsDom::linear_expression_t;
     using variable_t = typename AbsDom::variable_t;
-    using number_t = typename AbsDom::number_t;
+
 
     static void unify(AbsDom &inv, variable_t lhs, variable_t rhs) {
         assert(lhs.get_type() == rhs.get_type());
@@ -413,10 +413,10 @@ class inter_transformer_helpers {
  **/
 template <class AbsD, class InvT>
 class intra_necessary_preconditions_abs_transformer
-    : public abs_transformer_api<typename AbsD::number_t, varname_t> {
+    : public abs_transformer_api<number_t, varname_t> {
   public:
     using abs_dom_t = AbsD;
-    using number_t = typename abs_dom_t::number_t;
+
     using variable_t = typename abs_dom_t::variable_t;
     using statement_t = crab::cfg::statement<number_t, varname_t>;
     using abs_transform_api_t = abs_transformer_api<number_t, varname_t>;

@@ -168,8 +168,82 @@ inline crab_os &operator<<(crab_os &o, const debug_info &l) {
     return o;
 }
 
-template <typename Number, typename VariableName>
-struct statement_visitor;
+template <class BasicBlockLabel, class VariableName, class Number>
+class basic_block;
+template <class BasicBlock>
+class basic_block_rev;
+
+template<typename N, typename V>
+class binary_op;
+template <typename N, typename V>
+class assignment;
+template <typename N, typename V>
+class assume_stmt;
+template <typename N, typename V>
+class select_stmt;
+template <typename N, typename V>
+class assert_stmt;
+template <typename N, typename V>
+class int_cast_stmt;
+template <typename N, typename V>
+class unreachable_stmt;
+template <typename N, typename V>
+class havoc_stmt;
+template <typename N, typename V>
+class array_init_stmt;
+template <typename N, typename V>
+class array_store_stmt;
+template <typename N, typename V>
+class array_load_stmt;
+template <typename N, typename V>
+class array_assign_stmt;
+
+struct statement_visitor {
+    using Number = number_t;
+    using VariableName = varname_t;
+
+    using bin_op_t = binary_op<number_t, varname_t>;
+    using assign_t = assignment<number_t, varname_t>;
+    using assume_t = assume_stmt<number_t, varname_t>;
+    using select_t = select_stmt<number_t, varname_t>;
+    using assert_t = assert_stmt<number_t, varname_t>;
+    using int_cast_t = int_cast_stmt<number_t, varname_t>;
+    using havoc_t = havoc_stmt<number_t, varname_t>;
+    using unreach_t = unreachable_stmt<number_t, varname_t>;
+    using arr_init_t = array_init_stmt<number_t, varname_t>;
+    using arr_store_t = array_store_stmt<number_t, varname_t>;
+    using arr_load_t = array_load_stmt<number_t, varname_t>;
+    using arr_assign_t = array_assign_stmt<number_t, varname_t>;
+
+    virtual void visit(bin_op_t &){};
+    virtual void visit(assign_t &){};
+    virtual void visit(assume_t &){};
+    virtual void visit(select_t &){};
+    virtual void visit(assert_t &){};
+    virtual void visit(int_cast_t &){};
+    virtual void visit(unreach_t &){};
+    virtual void visit(havoc_t &){};
+    virtual void visit(arr_init_t &){};
+    virtual void visit(arr_store_t &){};
+    virtual void visit(arr_load_t &){};
+    virtual void visit(arr_assign_t &){};
+
+    template <typename basic_block_label_t>
+    void visit(basic_block<basic_block_label_t, varname_t, number_t> &b) {
+        for (auto &s : b) {
+            s.accept(this);
+        }
+    }
+
+    template <typename BasicBlock>
+    void visit(basic_block_rev<BasicBlock> &b) {
+        for (auto &s : b) {
+            s.accept(this);
+        }
+    }
+
+    virtual ~statement_visitor() {}
+};
 
 template <class Number, class VariableName>
 class statement {
@@ -202,7 +276,7 @@ class statement {
 
     const debug_info &get_debug_info() const { return m_dbg_info; }
 
-    virtual void accept(statement_visitor<Number, VariableName> *) = 0;
+    virtual void accept(statement_visitor *) = 0;
 
     virtual void write(crab_os &o) const = 0;
 
@@ -250,7 +324,7 @@ class binary_op : public statement<Number, VariableName> {
 
     linear_expression_t right() const { return m_op2; }
 
-    virtual void accept(statement_visitor<Number, VariableName> *v) { v->visit(*this); }
+    virtual void accept(statement_visitor *v) { v->visit(*this); }
 
     virtual statement_t *clone() const { return new this_type(m_lhs, m_op, m_op1, m_op2, this->m_dbg_info); }
 
@@ -282,7 +356,7 @@ class assignment : public statement<Number, VariableName> {
 
     linear_expression_t rhs() const { return m_rhs; }
 
-    virtual void accept(statement_visitor<Number, VariableName> *v) { v->visit(*this); }
+    virtual void accept(statement_visitor *v) { v->visit(*this); }
 
     virtual statement_t *clone() const { return new this_type(m_lhs, m_rhs); }
 
@@ -312,7 +386,7 @@ class assume_stmt : public statement<Number, VariableName> {
 
     linear_constraint_t constraint() const { return m_cst; }
 
-    virtual void accept(statement_visitor<Number, VariableName> *v) { v->visit(*this); }
+    virtual void accept(statement_visitor *v) { v->visit(*this); }
 
     virtual statement_t *clone() const { return new this_type(m_cst); }
 
@@ -333,7 +407,7 @@ class unreachable_stmt : public statement<Number, VariableName> {
 
     unreachable_stmt() : statement_t(UNREACH) {}
 
-    virtual void accept(statement_visitor<Number, VariableName> *v) { v->visit(*this); }
+    virtual void accept(statement_visitor *v) { v->visit(*this); }
 
     virtual statement_t *clone() const { return new this_type(); }
 
@@ -352,7 +426,7 @@ class havoc_stmt : public statement<Number, VariableName> {
 
     variable_t variable() const { return m_lhs; }
 
-    virtual void accept(statement_visitor<Number, VariableName> *v) { v->visit(*this); }
+    virtual void accept(statement_visitor *v) { v->visit(*this); }
 
     virtual statement_t *clone() const { return new this_type(m_lhs); }
 
@@ -399,7 +473,7 @@ class select_stmt : public statement<Number, VariableName> {
 
     linear_expression_t right() const { return m_e2; }
 
-    virtual void accept(statement_visitor<Number, VariableName> *v) { v->visit(*this); }
+    virtual void accept(statement_visitor *v) { v->visit(*this); }
 
     virtual statement_t *clone() const { return new this_type(m_lhs, m_cond, m_e1, m_e2); }
 
@@ -432,7 +506,7 @@ class assert_stmt : public statement<Number, VariableName> {
 
     linear_constraint_t constraint() const { return m_cst; }
 
-    virtual void accept(statement_visitor<Number, VariableName> *v) { v->visit(*this); }
+    virtual void accept(statement_visitor *v) { v->visit(*this); }
 
     virtual statement_t *clone() const { return new this_type(m_cst, this->m_dbg_info); }
 
@@ -468,7 +542,7 @@ class int_cast_stmt : public statement<Number, VariableName> {
     variable_t dst() const { return m_dst; }
     bitwidth_t dst_width() const { return m_dst.get_bitwidth(); }
 
-    virtual void accept(statement_visitor<Number, VariableName> *v) { v->visit(*this); }
+    virtual void accept(statement_visitor *v) { v->visit(*this); }
 
     virtual statement_t *clone() const { return new this_type(m_op, m_src, m_dst, this->m_dbg_info); }
 
@@ -548,7 +622,7 @@ class array_init_stmt : public statement<Number, VariableName> {
 
     linear_expression_t val() const { return m_val; }
 
-    virtual void accept(statement_visitor<Number, VariableName> *v) { v->visit(*this); }
+    virtual void accept(statement_visitor *v) { v->visit(*this); }
 
     virtual statement_t *clone() const { return new this_type(m_arr, m_elem_size, m_lb, m_ub, m_val); }
 
@@ -610,7 +684,7 @@ class array_store_stmt : public statement<Number, VariableName> {
 
     bool is_singleton() const { return m_is_singleton; }
 
-    virtual void accept(statement_visitor<Number, VariableName> *v) { v->visit(*this); }
+    virtual void accept(statement_visitor *v) { v->visit(*this); }
 
     virtual statement_t *clone() const {
         return new this_type(m_arr, m_elem_size, m_lb, m_ub, m_value, m_is_singleton);
@@ -669,7 +743,7 @@ class array_load_stmt : public statement<Number, VariableName> {
 
     linear_expression_t elem_size() const { return m_elem_size; }
 
-    virtual void accept(statement_visitor<Number, VariableName> *v) { v->visit(*this); }
+    virtual void accept(statement_visitor *v) { v->visit(*this); }
 
     virtual statement_t *clone() const { return new this_type(m_lhs, m_array, m_elem_size, m_index); }
 
@@ -706,7 +780,7 @@ class array_assign_stmt : public statement<Number, VariableName> {
 
     type_t array_type() const { return m_lhs.get_type(); }
 
-    virtual void accept(statement_visitor<Number, VariableName> *v) { v->visit(*this); }
+    virtual void accept(statement_visitor *v) { v->visit(*this); }
 
     virtual statement_t *clone() const { return new this_type(m_lhs, m_rhs); }
 
@@ -725,7 +799,7 @@ class basic_block : public boost::noncopyable {
     friend class cfg<basic_block_label_t, VariableName, Number>;
 
   public:
-    using number_t = Number;
+
 
     // helper types to build statements
     using variable_t = ikos::variable<Number, VariableName>;
@@ -879,7 +953,7 @@ class basic_block : public boost::noncopyable {
         }
     }
 
-    void accept(statement_visitor<Number, VariableName> *v) { v->visit(*this); }
+    void accept(statement_visitor *v) { v->visit(*this); }
 
     std::pair<succ_iterator, succ_iterator> next_blocks() { return std::make_pair(m_next.begin(), m_next.end()); }
 
@@ -1099,7 +1173,7 @@ class basic_block : public boost::noncopyable {
 template <class BasicBlock>
 class basic_block_rev {
   public:
-    using number_t = typename BasicBlock::number_t;
+
     using variable_t = typename BasicBlock::variable_t;
 
     using basic_block_rev_t = basic_block_rev<BasicBlock>;
@@ -1133,7 +1207,7 @@ class basic_block_rev {
 
     std::size_t size() const { return std::distance(begin(), end()); }
 
-    void accept(statement_visitor<number_t, varname_t> *v) { v->visit(*this); }
+    void accept(statement_visitor *v) { v->visit(*this); }
 
     live_domain_t &live() { return _bb.live(); }
 
@@ -1168,51 +1242,6 @@ class basic_block_rev {
     }
 };
 
-template <class Number, class VariableName>
-struct statement_visitor {
-
-    using bin_op_t = binary_op<Number, VariableName>;
-    using assign_t = assignment<Number, VariableName>;
-    using assume_t = assume_stmt<Number, VariableName>;
-    using select_t = select_stmt<Number, VariableName>;
-    using assert_t = assert_stmt<Number, VariableName>;
-    using int_cast_t = int_cast_stmt<Number, VariableName>;
-    using havoc_t = havoc_stmt<Number, VariableName>;
-    using unreach_t = unreachable_stmt<Number, VariableName>;
-    using arr_init_t = array_init_stmt<Number, VariableName>;
-    using arr_store_t = array_store_stmt<Number, VariableName>;
-    using arr_load_t = array_load_stmt<Number, VariableName>;
-    using arr_assign_t = array_assign_stmt<Number, VariableName>;
-
-    virtual void visit(bin_op_t &){};
-    virtual void visit(assign_t &){};
-    virtual void visit(assume_t &){};
-    virtual void visit(select_t &){};
-    virtual void visit(assert_t &){};
-    virtual void visit(int_cast_t &){};
-    virtual void visit(unreach_t &){};
-    virtual void visit(havoc_t &){};
-    virtual void visit(arr_init_t &){};
-    virtual void visit(arr_store_t &){};
-    virtual void visit(arr_load_t &){};
-    virtual void visit(arr_assign_t &){};
-
-    template <typename basic_block_label_t>
-    void visit(basic_block<basic_block_label_t, VariableName, Number> &b) {
-        for (auto &s : b) {
-            s.accept(this);
-        }
-    }
-
-    template <typename BasicBlock>
-    void visit(basic_block_rev<BasicBlock> &b) {
-        for (auto &s : b) {
-            s.accept(this);
-        }
-    }
-
-    virtual ~statement_visitor() {}
-};
 
 template <class Number, class VariableName>
 class function_decl {
@@ -1381,7 +1410,7 @@ class cfg_ref;
 template <class BasicBlockLabel, class VariableName, class Number>
 class cfg : public boost::noncopyable {
   public:
-    using number_t = Number;
+
     using node_t = basic_block_label_t; // for Bgl graphs
     using variable_t = ikos::variable<number_t, varname_t>;
     using fdecl_t = function_decl<number_t, varname_t>;
@@ -1797,7 +1826,7 @@ class cfg_ref {
   public:
     // CFG's typedefs
     using node_t = typename CFG::node_t;
-    using number_t = typename CFG::number_t;
+
     using variable_t = typename CFG::variable_t;
     using fdecl_t = typename CFG::fdecl_t;
     using basic_block_t = typename CFG::basic_block_t;
@@ -1968,7 +1997,7 @@ class cfg_rev {
   public:
     using basic_block_t = basic_block_rev<typename CFGRef::basic_block_t>;
     using node_t = basic_block_label_t; // for Bgl graphs
-    using number_t = typename CFGRef::number_t;
+
     using variable_t = typename CFGRef::variable_t;
     using fdecl_t = typename CFGRef::fdecl_t;
     using statement_t = typename CFGRef::statement_t;
@@ -2186,23 +2215,23 @@ class type_checker {
 
   private:
     using V = varname_t;
-    using N = typename CFG::number_t;
+    using N = number_t;
 
     CFG m_cfg;
 
-    struct type_checker_visitor : public statement_visitor<N, V> {
-        using bin_op_t = typename statement_visitor<N, V>::bin_op_t;
-        using assign_t = typename statement_visitor<N, V>::assign_t;
-        using assume_t = typename statement_visitor<N, V>::assume_t;
-        using assert_t = typename statement_visitor<N, V>::assert_t;
-        using int_cast_t = typename statement_visitor<N, V>::int_cast_t;
-        using select_t = typename statement_visitor<N, V>::select_t;
-        using havoc_t = typename statement_visitor<N, V>::havoc_t;
-        using unreach_t = typename statement_visitor<N, V>::unreach_t;
-        using arr_init_t = typename statement_visitor<N, V>::arr_init_t;
-        using arr_store_t = typename statement_visitor<N, V>::arr_store_t;
-        using arr_load_t = typename statement_visitor<N, V>::arr_load_t;
-        using arr_assign_t = typename statement_visitor<N, V>::arr_assign_t;
+    struct type_checker_visitor : public statement_visitor {
+        using bin_op_t = typename statement_visitor::bin_op_t;
+        using assign_t = typename statement_visitor::assign_t;
+        using assume_t = typename statement_visitor::assume_t;
+        using assert_t = typename statement_visitor::assert_t;
+        using int_cast_t = typename statement_visitor::int_cast_t;
+        using select_t = typename statement_visitor::select_t;
+        using havoc_t = typename statement_visitor::havoc_t;
+        using unreach_t = typename statement_visitor::unreach_t;
+        using arr_init_t = typename statement_visitor::arr_init_t;
+        using arr_store_t = typename statement_visitor::arr_store_t;
+        using arr_load_t = typename statement_visitor::arr_load_t;
+        using arr_assign_t = typename statement_visitor::arr_assign_t;
         using statement_t = typename CFG::statement_t;
 
         using lin_exp_t = ikos::linear_expression<N, V>;

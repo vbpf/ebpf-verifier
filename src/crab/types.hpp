@@ -15,6 +15,8 @@ namespace crab {
 
 enum variable_type { INT_TYPE, ARR_INT_TYPE, UNK_TYPE };
 
+using number_t = ikos::z_number;
+
 inline crab_os &operator<<(crab_os &o, variable_type t) {
     switch (t) {
     case INT_TYPE:
@@ -153,7 +155,6 @@ class variable {
     using index_t = typename VariableName::index_t;
     using bitwidth_t = unsigned;
     using type_t = crab::variable_type;
-    using number_t = Number;
 
   private:
     VariableName _n;
@@ -228,7 +229,6 @@ class variable_ref {
     using bitwidth_t = typename variable_t::bitwidth_t;
     using type_t = typename variable_t::type_t;
     using variable_ref_t = variable_ref<Number, VariableName>;
-    using number_t = Number;
 
   private:
     std::shared_ptr<variable_t> m_v{};

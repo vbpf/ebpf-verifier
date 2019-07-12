@@ -28,13 +28,13 @@ struct abstract_domain_traits;
  *
  * template<typename Number, typename VariableName>
  * struct abstract_domain_traits<my_new_domain<Number,VariableName>> {
- *   using number_t = Number;
+ *
  * };
  **/
 template <class Dom>
 class abstract_domain : public ikos::writeable {
   public:
-    using number_t = typename abstract_domain_traits<Dom>::number_t;
+
 
     using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
     using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
