@@ -124,7 +124,7 @@ class wto_thresholds : public ikos::wto_component_visitor<CFG> {
   public:
     using wto_vertex_t = ikos::wto_vertex<CFG>;
     using wto_cycle_t = ikos::wto_cycle<CFG>;
-    using thresholds_t = crab::iterators::thresholds<typename CFG::number_t>;
+    using thresholds_t = crab::iterators::thresholds<number_t>;
     using thresholds_map_t = boost::unordered_map<basic_block_label_t, thresholds_t>;
 
   private:
@@ -138,7 +138,7 @@ class wto_thresholds : public ikos::wto_component_visitor<CFG> {
     std::vector<basic_block_label_t> m_stack;
 
     using basic_block_t = typename CFG::basic_block_t;
-    using number_t = typename CFG::number_t;
+
     using variable_t = typename CFG::variable_t;
     using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
     using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
