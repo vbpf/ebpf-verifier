@@ -177,5 +177,9 @@ class variable_factory {
     }
 };
 
+
 } // end namespace cfg
+
+using varname_t = cfg::variable_factory::indexed_string;
+
 } // end namespace crab

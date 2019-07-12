@@ -153,7 +153,6 @@ class variable {
     using bitwidth_t = unsigned;
     using type_t = crab::variable_type;
     using number_t = Number;
-    using varname_t = VariableName;
 
   private:
     VariableName _n;
@@ -229,7 +228,6 @@ class variable_ref {
     using type_t = typename variable_t::type_t;
     using variable_ref_t = variable_ref<Number, VariableName>;
     using number_t = Number;
-    using varname_t = VariableName;
 
   private:
     std::shared_ptr<variable_t> m_v{};
