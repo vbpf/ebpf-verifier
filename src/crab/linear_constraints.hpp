@@ -43,6 +43,7 @@
 
 #include "crab/patricia_trees.hpp"
 #include "crab/types.hpp"
+#include "crab/var_factory.hpp"
 #include <boost/container/flat_map.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/iterator/transform_iterator.hpp>
@@ -60,7 +61,6 @@ class linear_expression {
 
   public:
     using number_t = Number;
-    using varname_t = VariableName;
     using variable_t = variable<Number, VariableName>;
     using linear_expression_t = linear_expression<Number, VariableName>;
     using component_t = std::pair<Number, variable_t>;
@@ -472,7 +472,6 @@ class linear_constraint {
 
   public:
     using number_t = Number;
-    using varname_t = VariableName;
     using linear_constraint_t = linear_constraint<Number, VariableName>;
     using variable_t = variable<Number, VariableName>;
     using linear_expression_t = linear_expression<Number, VariableName>;
@@ -1144,7 +1143,6 @@ class linear_constraint_system {
 
   public:
     using number_t = Number;
-    using varname_t = VariableName;
     using linear_expression_t = linear_expression<Number, VariableName>;
     using linear_constraint_t = linear_constraint<Number, VariableName>;
     using linear_constraint_system_t = linear_constraint_system<Number, VariableName>;
@@ -1197,8 +1195,8 @@ class linear_constraint_system {
        Replace pairs e<=0 and -e<=0 with e==0
     **/
     linear_constraint_system_t normalize() const {
-        linear_expression_unordered_set<number_t, varname_t> expr_set;
-        linear_expression_unordered_map<number_t, varname_t, unsigned> index_map;
+        linear_expression_unordered_set<number_t, crab::varname_t> expr_set;
+        linear_expression_unordered_map<number_t, crab::varname_t, unsigned> index_map;
         std::vector<bool> toremove(_csts.size(), false); // indexes to be removed
         linear_constraint_system_t out;
 

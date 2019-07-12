@@ -120,9 +120,8 @@ class checks_db {
 
 template <typename Analyzer>
 class assert_property_checker
-    : public crab::cfg::statement_visitor<typename Analyzer::number_t, typename Analyzer::varname_t> {
+    : public crab::cfg::statement_visitor<typename Analyzer::number_t, varname_t> {
   public:
-    using varname_t = typename Analyzer::varname_t;
     using number_t = typename Analyzer::number_t;
 
     using interval_t = ikos::interval<number_t>;

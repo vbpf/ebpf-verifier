@@ -726,7 +726,6 @@ class basic_block : public boost::noncopyable {
 
   public:
     using number_t = Number;
-    using varname_t = VariableName;
 
     // helper types to build statements
     using variable_t = ikos::variable<Number, VariableName>;
@@ -1101,7 +1100,6 @@ template <class BasicBlock>
 class basic_block_rev {
   public:
     using number_t = typename BasicBlock::number_t;
-    using varname_t = typename BasicBlock::varname_t;
     using variable_t = typename BasicBlock::variable_t;
 
     using basic_block_rev_t = basic_block_rev<BasicBlock>;
@@ -1385,7 +1383,6 @@ class cfg : public boost::noncopyable {
   public:
     using number_t = Number;
     using node_t = basic_block_label_t; // for Bgl graphs
-    using varname_t = VariableName;
     using variable_t = ikos::variable<number_t, varname_t>;
     using fdecl_t = function_decl<number_t, varname_t>;
     using basic_block_t = basic_block<basic_block_label_t, VariableName, number_t>;
@@ -1800,7 +1797,6 @@ class cfg_ref {
   public:
     // CFG's typedefs
     using node_t = typename CFG::node_t;
-    using varname_t = typename CFG::varname_t;
     using number_t = typename CFG::number_t;
     using variable_t = typename CFG::variable_t;
     using fdecl_t = typename CFG::fdecl_t;
@@ -1972,7 +1968,6 @@ class cfg_rev {
   public:
     using basic_block_t = basic_block_rev<typename CFGRef::basic_block_t>;
     using node_t = basic_block_label_t; // for Bgl graphs
-    using varname_t = typename CFGRef::varname_t;
     using number_t = typename CFGRef::number_t;
     using variable_t = typename CFGRef::variable_t;
     using fdecl_t = typename CFGRef::fdecl_t;
@@ -2190,7 +2185,7 @@ class type_checker {
     }
 
   private:
-    using V = typename CFG::varname_t;
+    using V = varname_t;
     using N = typename CFG::number_t;
 
     CFG m_cfg;

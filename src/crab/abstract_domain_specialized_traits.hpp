@@ -14,7 +14,6 @@ namespace domains {
 template <typename Domain>
 class checker_domain_traits {
   public:
-    using varname_t = typename Domain::varname_t;
     using number_t = typename Domain::number_t;
     using linear_constraint_t = typename Domain::linear_constraint_t;
     using linear_constraint_system_t = typename Domain::linear_constraint_system_t;

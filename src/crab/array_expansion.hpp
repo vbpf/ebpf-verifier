@@ -641,7 +641,6 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
 
   public:
     using number_t = typename NumDomain::number_t;
-    using varname_t = typename NumDomain::varname_t;
 
   private:
     using array_expansion_domain_t = array_expansion_domain<NumDomain>;
@@ -1307,7 +1306,6 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
 template <typename BaseDomain>
 struct abstract_domain_traits<array_expansion_domain<BaseDomain>> {
     using number_t = typename BaseDomain::number_t;
-    using varname_t = typename BaseDomain::varname_t;
 };
 
 template <typename BaseDom>

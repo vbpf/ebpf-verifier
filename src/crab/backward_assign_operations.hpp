@@ -20,7 +20,6 @@ template <class AbsDom>
 class BackwardAssignOps {
   public:
     using number_t = typename AbsDom::number_t;
-    using varname_t = typename AbsDom::varname_t;
     using variable_t = typename AbsDom::variable_t;
     using linear_constraint_t = typename AbsDom::linear_constraint_t;
     using linear_expression_t = typename AbsDom::linear_expression_t;

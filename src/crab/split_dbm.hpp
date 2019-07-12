@@ -54,7 +54,6 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
     using typename abstract_domain_t::variable_t;
     using typename abstract_domain_t::variable_vector_t;
     using number_t = Number;
-    using varname_t = VariableName;
 
     using constraint_kind_t = typename linear_constraint_t::kind_t;
     using interval_t = interval<number_t>;

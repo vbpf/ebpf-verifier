@@ -139,7 +139,6 @@ class wto_thresholds : public ikos::wto_component_visitor<CFG> {
 
     using basic_block_t = typename CFG::basic_block_t;
     using number_t = typename CFG::number_t;
-    using varname_t = typename CFG::varname_t;
     using variable_t = typename CFG::variable_t;
     using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
     using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;

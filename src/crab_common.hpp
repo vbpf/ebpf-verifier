@@ -6,21 +6,7 @@
 #include "crab/cfg_bgl.hpp"
 #include "crab/var_factory.hpp"
 
-
-namespace crab {
-
-  namespace cfg_impl {
-
-    /// BEGIN MUST BE DEFINED BY CRAB CLIENT
-    // A variable factory based on strings
-    using varname_t = typename cfg::variable_factory::varname_t;
-    //template<> inline std::string get_label_str(std::string e) { return e; }
-    /// END MUST BE DEFINED BY CRAB CLIENT
-
-  }
-}
-
-using crab::cfg_impl::varname_t;
+using crab::varname_t;
 using crab::cfg::variable_factory;
 
 /// CFG over integers
