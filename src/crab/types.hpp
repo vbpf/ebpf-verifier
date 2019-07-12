@@ -2,6 +2,7 @@
 
 #include "crab/debug.hpp"
 #include "crab/os.hpp"
+#include "crab/bignums.hpp"
 
 #include <boost/make_shared.hpp>
 #include <boost/optional.hpp>

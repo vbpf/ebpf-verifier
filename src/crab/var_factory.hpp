@@ -6,19 +6,14 @@
 
 #include "crab/types.hpp"
 
-#include <boost/noncopyable.hpp>
 #include <boost/optional.hpp>
 #include <boost/range/iterator_range.hpp>
-#include <boost/unordered_map.hpp>
+#include <unordered_map>
 
 #include <limits>
 
 namespace crab {
 namespace cfg {
-
-inline std::string get_str(std::string e) {
-    return e;
-}
 
 // This variable factory creates a new variable associated to an
 // element of type T. It can also create variables that are not
@@ -70,18 +65,7 @@ class variable_factory {
 
         index_t index() const { return this->_id; }
 
-        std::string str() const {
-            if (_s) {
-                return get_str(*_s);
-            } else {
-                if (_name != "") {
-                    return _name;
-                } else {
-                    // unlikely prefix
-                    return "@V_" + std::to_string(_id);
-                }
-            }
-        }
+        std::string str() const;
 
         boost::optional<T> get() const { return _s ? *_s : boost::optional<T>(); }
 
@@ -108,22 +92,15 @@ class variable_factory {
     using index_t = typename indexed_string::index_t;
 
   private:
-    using t_map_t = boost::unordered_map<T, indexed_string>;
-    using shadow_map_t = boost::unordered_map<index_t, indexed_string>;
+    using t_map_t = std::unordered_map<T, indexed_string>;
+    using shadow_map_t = std::unordered_map<index_t, indexed_string>;
 
     index_t _next_id;
     t_map_t _map;
     shadow_map_t _shadow_map;
     std::vector<indexed_string> _shadow_vars;
 
-    index_t get_and_increment_id(void) {
-        if (_next_id == std::numeric_limits<index_t>::max()) {
-            CRAB_ERROR("Reached limit of ", std::numeric_limits<index_t>::max(), " variables");
-        }
-        index_t res = _next_id;
-        ++_next_id;
-        return res;
-    }
+    index_t get_and_increment_id();
 
   public:
     using varname_t = indexed_string;
@@ -141,40 +118,15 @@ class variable_factory {
     // hook for generating indexed_string's without being
     // associated with a particular T (w/o caching).
     // XXX: do not use it unless strictly necessary.
-    virtual indexed_string get() {
-        indexed_string is(get_and_increment_id(), this);
-        _shadow_vars.push_back(is);
-        return is;
-    }
+    virtual indexed_string get();
 
     // generate a shadow indexed_string's associated to some key
-    virtual indexed_string get(index_t key, std::string name = "") {
-        auto it = _shadow_map.find(key);
-        if (it == _shadow_map.end()) {
-            indexed_string is(get_and_increment_id(), this, name);
-            _shadow_map.insert(typename shadow_map_t::value_type(key, is));
-            _shadow_vars.push_back(is);
-            return is;
-        } else {
-            return it->second;
-        }
-    }
+    virtual indexed_string get(index_t key, std::string name = "");
 
-    virtual indexed_string operator[](T s) {
-        auto it = _map.find(s);
-        if (it == _map.end()) {
-            indexed_string is(s, get_and_increment_id(), this);
-            _map.insert(typename t_map_t::value_type(s, is));
-            return is;
-        } else {
-            return it->second;
-        }
-    }
+    virtual indexed_string operator[](T s);
 
     // return all the shadow variables created by the factory.
-    virtual const_var_range get_shadow_vars() const {
-        return boost::make_iterator_range(_shadow_vars.begin(), _shadow_vars.end());
-    }
+    virtual const_var_range get_shadow_vars() const;
 };
 
 
