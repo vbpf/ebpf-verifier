@@ -9,7 +9,6 @@
  **/
 
 #include "crab/abstract_domain_operators.hpp"
-#include "crab/config.h"
 #include "crab/debug.hpp"
 #include "crab/stats.hpp"
 #include "crab/types.hpp"
