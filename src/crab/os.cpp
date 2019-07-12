@@ -1,11 +1,10 @@
 #include "crab/os.hpp"
 
-#include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
+#include <memory>
 #include <iostream>
 #include <sstream>
 
-namespace crab 
+namespace crab
 {
   crab_os& outs () { return *crab_os::cout();}
   crab_os& errs () { return *crab_os::cerr();}
@@ -15,17 +14,17 @@ namespace crab {
 
   /// crab_os adaptor
 
-  boost::shared_ptr<crab_os> crab_os::m_cout = nullptr;
+  std::shared_ptr<crab_os> crab_os::m_cout = nullptr;
 
-  boost::shared_ptr<crab_os> crab_os::m_cerr = nullptr;
+  std::shared_ptr<crab_os> crab_os::m_cerr = nullptr;
 
-  boost::shared_ptr<crab_os> crab_os::cout() {
-    if (!m_cout) m_cout = boost::make_shared<crab_os>(&std::cout);
+  std::shared_ptr<crab_os> crab_os::cout() {
+    if (!m_cout) m_cout = std::make_shared<crab_os>(&std::cout);
     return m_cout;
   }
 
-  boost::shared_ptr<crab_os> crab_os::cerr() {
-    if (!m_cerr) m_cerr = boost::make_shared<crab_os>(&std::cerr);
+  std::shared_ptr<crab_os> crab_os::cerr() {
+    if (!m_cerr) m_cerr = std::make_shared<crab_os>(&std::cerr);
     return m_cerr;
   }
 
@@ -34,7 +33,7 @@ namespace crab {
   crab_os::crab_os(): m_os(nullptr) {}
 
   crab_os::~crab_os() { }
-  
+
   crab_os& crab_os::operator<<(char C) {
     *m_os << C; m_os->flush ();
     return *this;
@@ -129,7 +128,7 @@ namespace crab {
     return *(static_cast<crab_os*>(this));
   }
 
-  crab_os& crab_string_os::operator<<(const std::string& Str){  
+  crab_os& crab_string_os::operator<<(const std::string& Str){
     *m_string_os << Str;
     return *(static_cast<crab_os*>(this));
   }
@@ -147,7 +146,7 @@ namespace crab {
   crab_os& crab_string_os::operator<<(unsigned long long N){
     *m_string_os << N;
     return *(static_cast<crab_os*>(this));
-  }  
+  }
 
   crab_os& crab_string_os::operator<<(long long N){
     *m_string_os << N;
