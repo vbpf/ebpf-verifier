@@ -42,7 +42,6 @@
 
 #include <boost/iterator/indirect_iterator.hpp>
 #include <boost/iterator/transform_iterator.hpp>
-#include <boost/noncopyable.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
@@ -795,7 +794,9 @@ template <class BasicBlockLabel, class VariableName, class Number>
 class cfg;
 
 template <class BasicBlockLabel, class VariableName, class Number>
-class basic_block : public boost::noncopyable {
+class basic_block {
+    basic_block(const basic_block<basic_block_label_t, VariableName, Number>&) = delete;
+
     friend class cfg<basic_block_label_t, VariableName, Number>;
 
   public:
@@ -1408,7 +1409,8 @@ template <class Any>
 class cfg_ref;
 
 template <class BasicBlockLabel, class VariableName, class Number>
-class cfg : public boost::noncopyable {
+class cfg {
+    cfg(const cfg<basic_block_label_t, varname_t, number_t>&) = delete;
   public:
 
     using node_t = basic_block_label_t; // for Bgl graphs
