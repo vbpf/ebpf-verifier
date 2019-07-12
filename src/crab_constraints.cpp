@@ -27,7 +27,7 @@ using std::vector;
 using std::optional;
 using std::to_string;
 
-using crab::cfg_impl::variable_factory_t;
+using crab::cfg::variable_factory;
 
 constexpr int MAX_PACKET_OFF = 0xffff;
 constexpr int64_t MY_INT_MIN = INT_MIN;
@@ -77,8 +77,8 @@ struct dom_t {
     var_t value;
     var_t offset;
     var_t region;
-    dom_t(variable_factory_t& vfac, int i) :
-        value{vfac[std::string("r") + std::to_string(i)], crab::INT_TYPE, 64}, 
+    dom_t(variable_factory& vfac, int i) :
+        value{vfac[std::string("r") + std::to_string(i)], crab::INT_TYPE, 64},
         offset{vfac[std::string("off") + std::to_string(i)], crab::INT_TYPE, 64},
         region{vfac[std::string("t") + std::to_string(i)], crab::INT_TYPE, 64}
     { }
@@ -92,18 +92,18 @@ static lin_cst_t is_shared(dom_t v)    { return v.region > T_SHARED; }
 static lin_cst_t is_not_num(dom_t v)   { return v.region > T_NUM; }
 
 /** An array of triple (region, value, offset).
- * 
+ *
  * Enables coordinated load/store/havoc operations.
  */
 struct array_dom_t {
-    variable_factory_t& vfac;
+    variable_factory& vfac;
     var_t values;
     var_t offsets;
     var_t regions;
-    
-    array_dom_t(variable_factory_t& vfac, std::string name) :
+
+    array_dom_t(variable_factory& vfac, std::string name) :
         vfac(vfac),
-        values{vfac[std::string(name + "_r")], crab::ARR_INT_TYPE, 64}, 
+        values{vfac[std::string(name + "_r")], crab::ARR_INT_TYPE, 64},
         offsets{vfac[std::string(name + "_off")], crab::ARR_INT_TYPE, 64},
         regions{vfac[std::string(name + "_t")], crab::ARR_INT_TYPE, 64}
     { }
@@ -159,7 +159,7 @@ struct array_dom_t {
             // kill the cell
             num_only.array_store(offsets, offset, data_reg.offset, width);
             // so that relational domains won't think it's worth keeping track of
-            num_only.havoc(data_reg.offset); 
+            num_only.havoc(data_reg.offset);
             return {&num_only, &pointer_only};
         } else {
             block.assertion(data_reg.region == T_NUM, di);
@@ -176,7 +176,7 @@ struct array_dom_t {
 struct machine_t final
 {
     ptype_descr ctx_desc;
-    variable_factory_t& vfac;
+    variable_factory& vfac;
     std::vector<dom_t> regs;
     array_dom_t stack_arr{vfac, "S"};
     var_t meta_size{vfac[std::string("meta_size")], crab::INT_TYPE, 64};
@@ -193,7 +193,7 @@ struct machine_t final
 
     void setup_entry(basic_block_t& entry);
 
-    machine_t(variable_factory_t& vfac, program_info info);
+    machine_t(variable_factory& vfac, program_info info);
 };
 
 class instruction_builder_t final
@@ -233,7 +233,7 @@ private:
     vector<basic_block_t*> exec_direct_stack_load(basic_block_t& block, dom_t data_reg, int _offset, int width);
 
     vector<basic_block_t*> exec_direct_stack_store(basic_block_t& block, dom_t data_reg, int _offset, int width);
-    
+
     vector<basic_block_t*> exec_direct_stack_store_immediate(basic_block_t& block, int _offset, int width, uint64_t immediate);
 
     template<typename W>
@@ -249,7 +249,7 @@ private:
     vector<basic_block_t*> operator()(Packet const& b);
     vector<basic_block_t*> operator()(Mem const& b);
     vector<basic_block_t*> operator()(Assume const& b);
-    
+
     /** Never happens - Jmps are translated to Assume */
     vector<basic_block_t*> operator()(Jmp const& b) { assert(false); }
 
@@ -267,7 +267,7 @@ private:
  * Each instruction is translated to a tree of Crab instructions, which are then
  * joined together.
  */
-void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg, program_info info)
+void build_crab_cfg(cfg_t& cfg, variable_factory& vfac, Cfg const& simple_cfg, program_info info)
 {
     machine_t machine(vfac, info);
     {
@@ -291,7 +291,7 @@ void build_crab_cfg(cfg_t& cfg, variable_factory_t& vfac, Cfg const& simple_cfg,
                 for (basic_block_t* b : outs)
                     (*b) >> *exit;
                 iteration++;
-                
+
                 label = this_label + ":" + to_string(iteration);
             }
         }
@@ -312,7 +312,7 @@ static void assert_init(basic_block_t& block, const dom_t data_reg, debug_info d
     block.assertion(is_init(data_reg), di);
 }
 
-machine_t::machine_t(variable_factory_t& vfac, program_info info)
+machine_t::machine_t(variable_factory& vfac, program_info info)
     : ctx_desc{get_descriptor(info.program_type)}, vfac{vfac}, info{info}
 {
     for (int i=0; i < 12; i++) {
@@ -321,7 +321,7 @@ machine_t::machine_t(variable_factory_t& vfac, program_info info)
 }
 
 /** Generate initial state:
- * 
+ *
  * 1. r10 points to the stack
  * 2. r1 points to the context
  * 3. data_start points to the packet
@@ -373,7 +373,7 @@ static lin_cst_t jmp_to_cst_offsets_reg(Condition::Op op, var_t& dst_offset, var
         case Op::SGE: return dst_offset >= src_offset; // pointer comparison is unsigned
         case Op::LE : return dst_offset <= src_offset;
         case Op::SLE: return dst_offset <= src_offset; // pointer comparison is unsigned
-        case Op::GT : return dst_offset >= src_offset + 1; 
+        case Op::GT : return dst_offset >= src_offset + 1;
         case Op::SGT: return dst_offset >= src_offset + 1; // pointer comparison is unsigned
         case Op::SLT: return src_offset >= dst_offset + 1;
         // Note: reverse the test as a workaround strange lookup:
@@ -432,9 +432,9 @@ static bool is_unsigned_cmp(Condition::Op op)
 {
     using Op = Condition::Op;
     switch (op) {
-        case Op::GE : 
+        case Op::GE :
         case Op::LE :
-        case Op::GT : 
+        case Op::GT :
         case Op::LT :
             return true;
         default:
@@ -447,9 +447,9 @@ static bool is_unsigned_cmp(Condition::Op op)
 // {
 //     using Op = Condition::Op;
 //     switch (op) {
-//         case Op::SGE : 
+//         case Op::SGE :
 //         case Op::SLE :
-//         case Op::SGT : 
+//         case Op::SGT :
 //         case Op::SLT :
 //             return true;
 //         default:
@@ -480,7 +480,7 @@ static void move_into(vector<T>& dst, vector<T>&& src)
 }
 
 /** Set caller-saved registers r1-r5 as uninitialized.
- * 
+ *
  * This happens after a function call and a safe packet access.
  */
 void instruction_builder_t::scratch_regs(basic_block_t& block)
@@ -493,7 +493,7 @@ void instruction_builder_t::scratch_regs(basic_block_t& block)
 }
 
 /** Translate a memory access to a location that might be the stack (but do not explicitly use r10).
- * 
+ *
  * Note that addresses in the stack are reversed.
  * TODO: replace it with accesses relative to STACK_SIZE.
  */
@@ -502,7 +502,7 @@ vector<basic_block_t*> instruction_builder_t::exec_stack_access(basic_block_t& b
 {
     basic_block_t& mid = add_child(cfg, block, "assume_stack");
     lin_exp_t addr = (-offset) - width - mem_reg.offset; // negate access
-    
+
     mid.assume(mem_reg.region == T_STACK);
     mid.assertion(addr >= 0, di);
     mid.assertion(addr <= STACK_SIZE - width, di);
@@ -530,7 +530,7 @@ vector<basic_block_t*> instruction_builder_t::exec_stack_access(basic_block_t& b
  * We do not and cannot track the content of this access; we do not even know
  * what region is this precisely. What we know is that the size of this region
  * is encoded in the type, so we can check that
- * 
+ *
  *     `0 <= addr <= mem_reg.region - width`.
  *
  * Shared regions are externally visible, so nonprivileged programs are not
@@ -578,10 +578,10 @@ vector<basic_block_t*> instruction_builder_t::exec_data_access(basic_block_t& bl
 }
 
 /** Translate memory access to the context.
- * 
+ *
  * We do not track the context using the memory domain (though it would be simple).
  * Instead, we nondeterministically branch on the three important cases:
- * 
+ *
  * 1. read data_start
  * 2. read data_end
  * 3. read meta_start
@@ -709,7 +709,7 @@ vector<basic_block_t*> instruction_builder_t::exec_mem_access_indirect(basic_blo
     block.assertion(mem_reg.value != 0, di);
     block.assertion(is_not_num(mem_reg), di);
     vector<basic_block_t*> outs;
-    
+
     move_into(outs, exec_stack_access(block, is_load, mem_reg, data_reg, offset, width));
     if (is_load || !is_ST) {
         move_into(outs, exec_ctx_access(block, is_load, mem_reg, data_reg, offset, width));
@@ -737,7 +737,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Undefined const& a) {
 }
 
 /** Translate operation of the form `r2 = fd 0x5436`.
- * 
+ *
  * This instruction is one of the two possible sources of map descriptors.
  * (The other one, `call 1` on a map-in-map, is not supported yet)
  */
@@ -750,7 +750,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(LoadMapFd const& ld) {
 }
 
 /** load-increment-store, from shared regions only. */
-vector<basic_block_t*> instruction_builder_t::operator()(LockAdd const& b) { 
+vector<basic_block_t*> instruction_builder_t::operator()(LockAdd const& b) {
     block.assertion(is_shared(machine.reg(b.access.basereg)), di);
     block.assertion(machine.reg(b.valreg).region == T_NUM, di);
     auto addr = machine.reg(b.access.basereg).offset + b.access.offset;
@@ -760,15 +760,15 @@ vector<basic_block_t*> instruction_builder_t::operator()(LockAdd const& b) {
 }
 
 /** Translate eBPF binary instructions to Crab.
- * 
+ *
  * Binary instructions may be either of one of the two form:
- * 
+ *
  * 1. dst op= src
  * 2. dst op= K
- * 
+ *
  * `src` must be initialized, and, Except in plain assignment, `dst
  */
-vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {    
+vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
     dom_t& dst = machine.reg(bin.dst);
     vector<basic_block_t*> res{ &block };
 
@@ -874,7 +874,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
             block.assume(dst.value >= -(1 << (64-imm)));
             no_pointer(block, dst);
             break;
-        } 
+        }
     } else {
         // dst op= src
         dom_t& src = machine.reg(bin.v);
@@ -897,7 +897,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
                 ptr_src.havoc(machine.top);
                 ptr_src.assign(dst.value, machine.top);
                 ptr_src.assume(4098 <= dst.value);
-                
+
                 basic_block_t& both_num = add_child(cfg, block, "both_num");
                 both_num.assume(dst.region == T_NUM);
                 both_num.assume(src.region == T_NUM);
@@ -926,7 +926,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
                     basic_block_t& both_num = add_child(cfg, num_src, "both_num");
                     both_num.assume(dst.region == T_NUM);
                     both_num.sub(dst.value, dst.value, src.value);
-                    
+
                     return {&same, &ptr_dst, &both_num, overflow(both_num), underflow(both_num)};
                 }
             }
@@ -988,7 +988,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Bin const& bin) {
 }
 
 /** Translate unary operations: either a negation, or an endianness swapping.
- */ 
+ */
 vector<basic_block_t*> instruction_builder_t::operator()(Un const& b) {
     dom_t& dst = machine.reg(b.dst);
     assert_init(block, dst, di);
@@ -1010,10 +1010,10 @@ vector<basic_block_t*> instruction_builder_t::operator()(Un const& b) {
 }
 
 /** Generate assertions and commands that overapproximate eBPF function call.
- * 
+ *
  * Function calls has two different kinds of arguments: single and (mem, size) pair.
  * Except `call 1`, functions always return a number to register r0.
- * Registers r1-r5 are scratched. 
+ * Registers r1-r5 are scratched.
 */
 vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
     vector<basic_block_t*> blocks{&block};
@@ -1054,7 +1054,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
                 b->assertion(arg.offset <= STACK_SIZE, di);
             }
             break;
-        case ArgSingle::Kind::PTR_TO_CTX: 
+        case ArgSingle::Kind::PTR_TO_CTX:
             for (basic_block_t* b : blocks) {
                 b->assertion(arg.value > 0, di);
                 b->assertion(arg.region == T_CTX, di);
@@ -1078,7 +1078,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
         auto assert_mem = [&](basic_block_t& ptr, vector<basic_block_t*>& next, bool may_write, bool may_read) {
             ptr.assertion(is_pointer(arg), di);
             ptr.assertion(arg.value > 0, di);
-            
+
             var_t width = sizereg.value;
             {
                 basic_block_t& mid = add_child(cfg, ptr, "assume_stack");
@@ -1116,7 +1116,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
                         null.assume(arg.region == T_NUM);
                         null.assertion(arg.value == 0, di);
                         next.push_back(&null);
-                            
+
                         basic_block_t& ptr = add_child(cfg, *b, "ptr");
                         ptr.assume(is_not_num(arg));
                         assert_mem(ptr, next, false, true);
@@ -1166,7 +1166,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
 }
 
 /** Translate `Exit` to an assertion that r0 holds a number.
- */ 
+ */
 vector<basic_block_t*> instruction_builder_t::operator()(Exit const& b) {
     // assert_init(block, machine.regs[0], di);
     block.assertion(machine.regs[0].region == T_NUM, di);
@@ -1174,7 +1174,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Exit const& b) {
 }
 
 /** Generate Crab assertions and assumptions for a single eBPF `assume` command (extracted from a Jmp).
- */ 
+ */
 vector<basic_block_t*> instruction_builder_t::operator()(Assume const& b) {
     Condition cond = b.cond;
     if (std::holds_alternative<Reg>(cond.right)) {
@@ -1243,11 +1243,11 @@ vector<basic_block_t*> instruction_builder_t::operator()(Assume const& b) {
 }
 
 /** A special instruction for _checked_ read from packets.
- * 
+ *
  * No bound checking happens at verification time.
  * r6 must hold a pointer to the context.
  * r0 holds some the value read from the packet.
- * 
+ *
  * Since this instruction is actually a function call, callee-saved registers are scratched.
  */
 vector<basic_block_t*> instruction_builder_t::operator()(Packet const& b) {
@@ -1276,7 +1276,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Packet const& b) {
 }
 
 /** Generate constraints and instructions for memory accesses.
- */ 
+ */
 vector<basic_block_t*> instruction_builder_t::operator()(Mem const& b) {
     dom_t mem_reg =  machine.reg(b.access.basereg);
     bool mem_is_fp = b.access.basereg.v == 10;
@@ -1301,7 +1301,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Mem const& b) {
                 return exec_mem_access_indirect(block, false, false, mem_reg, data_reg, offset, width);
             }
         } else {
-            // mem[offset] = immediate  
+            // mem[offset] = immediate
             auto imm = std::get<Imm>(b.value).v;
             if (mem_is_fp) {
                 return exec_direct_stack_store_immediate(block, offset, width, imm);
@@ -1311,16 +1311,16 @@ vector<basic_block_t*> instruction_builder_t::operator()(Mem const& b) {
                 block.assign(tmp, imm);
                 block.havoc(machine.top);
                 return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, machine.num}, offset, width);
-            } 
+            }
         }
     }
 }
 
 /** Generate Crab insturctions for for eBPF instruction `ins`.
- * 
+ *
  *  Each eBPF instruction is translated to a tree of of eBPF instructions,
  *  whose leaves are returned from this function (and each of the visitor functions).
- */ 
+ */
 vector<basic_block_t*> instruction_builder_t::exec()
 {
     return std::visit([this](auto const& a) { return (*this)(a); }, ins);

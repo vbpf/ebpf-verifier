@@ -15,7 +15,6 @@
 
 namespace crab {
 namespace cfg {
-namespace var_factory_impl {
 
 inline std::string get_str(std::string e) {
     return e;
@@ -29,7 +28,6 @@ inline std::string get_str(std::string e) {
 // id's that always increases.
 class variable_factory {
     using T = std::string;
-    using variable_factory_t = variable_factory;
 
   public:
     class indexed_string {
@@ -179,8 +177,5 @@ class variable_factory {
     }
 };
 
-using str_variable_factory = variable_factory;
-
-} // end namespace var_factory_impl
 } // end namespace cfg
 } // end namespace crab
