@@ -1,22 +1,21 @@
 #pragma once
 
-#include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <iosfwd>
 
 namespace crab {
 
 // An adaptor for std::ostream that avoids polluting all crab header
 // files with iostream stuff
-class crab_os : boost::noncopyable {
-
+class crab_os {
+    crab_os(const crab_os&) = delete;
   private:
-    static boost::shared_ptr<crab_os> m_cout;
-    static boost::shared_ptr<crab_os> m_cerr;
+    static std::shared_ptr<crab_os> m_cout;
+    static std::shared_ptr<crab_os> m_cerr;
 
   public:
-    static boost::shared_ptr<crab_os> cout();
-    static boost::shared_ptr<crab_os> cerr();
+    static std::shared_ptr<crab_os> cout();
+    static std::shared_ptr<crab_os> cerr();
 
   private:
     std::ostream *m_os;
