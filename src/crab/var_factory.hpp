@@ -6,8 +6,7 @@
 
 #include "crab/types.hpp"
 
-#include <boost/optional.hpp>
-#include <boost/range/iterator_range.hpp>
+#include <optional>
 #include <unordered_map>
 
 #include <limits>
@@ -36,7 +35,7 @@ class variable_factory {
         using index_t = ikos::index_t;
 
       private:
-        boost::optional<T> _s;
+        std::optional<T> _s;
         index_t _id;
         std::string _name; // optional string name associated with _id
         variable_factory *_vfac;
@@ -67,7 +66,7 @@ class variable_factory {
 
         std::string str() const;
 
-        boost::optional<T> get() const { return _s ? *_s : boost::optional<T>(); }
+        std::optional<T> get() const { return _s ? *_s : std::optional<T>(); }
 
         variable_factory &get_var_factory() { return *_vfac; }
 
@@ -83,7 +82,7 @@ class variable_factory {
         }
 
         friend size_t hash_value(indexed_string s) {
-            boost::hash<index_t> hasher;
+            std::hash<index_t> hasher;
             return hasher(s.index());
         }
     };
@@ -104,8 +103,6 @@ class variable_factory {
 
   public:
     using varname_t = indexed_string;
-    using var_range = boost::iterator_range<typename std::vector<indexed_string>::iterator>;
-    using const_var_range = boost::iterator_range<typename std::vector<indexed_string>::const_iterator>;
 
     variable_factory(const variable_factory&) = delete;
 
@@ -124,9 +121,6 @@ class variable_factory {
     virtual indexed_string get(index_t key, std::string name = "");
 
     virtual indexed_string operator[](T s);
-
-    // return all the shadow variables created by the factory.
-    virtual const_var_range get_shadow_vars() const;
 };
 
 
