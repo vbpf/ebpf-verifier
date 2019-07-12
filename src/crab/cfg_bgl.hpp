@@ -83,7 +83,7 @@ struct graph_traits<crab::cfg::cfg<BasicBlockLabel, VariableName, Number>> {
 template <class CFG>
 struct graph_traits<crab::cfg::cfg_ref<CFG>> {
     using graph_t = crab::cfg::cfg_ref<CFG>;
-    using vertex_descriptor = typename graph_t::basic_block_label_t;
+    using vertex_descriptor = basic_block_label_t;
     using edge_descriptor = std::pair<vertex_descriptor, vertex_descriptor>;
     using const_edge_descriptor = std::pair<const vertex_descriptor, const vertex_descriptor>;
 
@@ -118,7 +118,7 @@ struct graph_traits<crab::cfg::cfg_ref<CFG>> {
 template <class CFG>
 struct graph_traits<crab::cfg::cfg_rev<CFG>> {
     using graph_t = crab::cfg::cfg_rev<CFG>;
-    using vertex_descriptor = typename graph_t::basic_block_label_t;
+    using vertex_descriptor = basic_block_label_t;
     using edge_descriptor = std::pair<vertex_descriptor, vertex_descriptor>;
     using const_edge_descriptor = std::pair<const vertex_descriptor, const vertex_descriptor>;
 

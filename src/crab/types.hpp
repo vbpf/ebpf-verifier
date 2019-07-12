@@ -343,3 +343,5 @@ namespace domains {
 using namespace ikos;
 }
 } // namespace crab
+
+using basic_block_label_t = std::string;

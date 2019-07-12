@@ -1,5 +1,5 @@
 #pragma once
-                  
+
 #include "crab/split_dbm.hpp"
 #include "crab/array_expansion.hpp"
 
@@ -12,11 +12,8 @@ namespace crab {
     using variable_factory_t = cfg::var_factory_impl::str_variable_factory;
     using varname_t = typename variable_factory_t::varname_t;
 
-    // CFG basic block labels
-    using basic_block_label_t = std::string;
-    template<> inline std::string get_label_str(std::string e) 
-    { return e; }
-    /// END MUST BE DEFINED BY CRAB CLIENT    
+    template<> inline std::string get_label_str(std::string e)  { return e; }
+    /// END MUST BE DEFINED BY CRAB CLIENT
 
 
     /// To define CFG over integers
@@ -30,15 +27,15 @@ namespace crab {
   }
 
   namespace domain_impl {
-    
+
     using namespace crab::cfg_impl;
-    using namespace crab::domains; 
+    using namespace crab::domains;
 
     using z_lin_cst_sys_t = linear_constraint_system<ikos::z_number, varname_t>;
     using z_interval_t = interval<ikos::z_number>;
-    
+
     // Numerical domains over integers
     using SafeInt = DBM_impl::SafeInt64DefaultParams;
     using z_sdbm_domain_t = SplitDBM<ikos::z_number,varname_t,SafeInt>;
-  } 
+  }
 }
