@@ -10,7 +10,7 @@
 #include "crab/bignums.hpp"
 #include "crab/stats.hpp"
 #include "crab/types.hpp"
-#include <boost/optional.hpp>
+#include <optional>
 
 namespace ikos {
 
@@ -186,11 +186,11 @@ class bound {
         }
     }
 
-    boost::optional<Number> number() const {
+    std::optional<Number> number() const {
         if (is_infinite()) {
-            return boost::optional<Number>();
+            return std::optional<Number>();
         } else {
-            return boost::optional<Number>(_n);
+            return std::optional<Number>(_n);
         }
     }
 
@@ -400,11 +400,11 @@ class interval {
 
     interval_t &operator/=(interval_t x) { return operator=(operator/(x)); }
 
-    boost::optional<Number> singleton() const {
+    std::optional<Number> singleton() const {
         if (!is_bottom() && _lb == _ub) {
             return _lb.number();
         } else {
-            return boost::optional<Number>();
+            return std::optional<Number>();
         }
     }
 
@@ -504,7 +504,7 @@ inline interval<z_number> interval<z_number>::operator/(interval<z_number> x) co
         // Divisor is a singleton:
         //   the linear interval solver can perform many divisions where
         //   the divisor is a singleton interval. We optimize for this case.
-        if (boost::optional<z_number> n = x.singleton()) {
+        if (std::optional<z_number> n = x.singleton()) {
             z_number c = *n;
             if (c == 1) {
                 return *this;
@@ -615,8 +615,8 @@ inline interval<z_number> interval<z_number>::And(interval<z_number> x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
-        boost::optional<z_number> left_op = singleton();
-        boost::optional<z_number> right_op = x.singleton();
+        std::optional<z_number> left_op = singleton();
+        std::optional<z_number> right_op = x.singleton();
 
         if (left_op && right_op) {
             return interval_t((*left_op) & (*right_op));
@@ -633,14 +633,14 @@ inline interval<z_number> interval<z_number>::Or(interval<z_number> x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
-        boost::optional<z_number> left_op = singleton();
-        boost::optional<z_number> right_op = x.singleton();
+        std::optional<z_number> left_op = singleton();
+        std::optional<z_number> right_op = x.singleton();
 
         if (left_op && right_op) {
             return interval_t((*left_op) | (*right_op));
         } else if (lb() >= 0 && x.lb() >= 0) {
-            boost::optional<z_number> left_ub = ub().number();
-            boost::optional<z_number> right_ub = x.ub().number();
+            std::optional<z_number> left_ub = ub().number();
+            std::optional<z_number> right_ub = x.ub().number();
 
             if (left_ub && right_ub) {
                 z_number m = (*left_ub > *right_ub ? *left_ub : *right_ub);
@@ -659,8 +659,8 @@ inline interval<z_number> interval<z_number>::Xor(interval<z_number> x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
-        boost::optional<z_number> left_op = singleton();
-        boost::optional<z_number> right_op = x.singleton();
+        std::optional<z_number> left_op = singleton();
+        std::optional<z_number> right_op = x.singleton();
 
         if (left_op && right_op) {
             return interval_t((*left_op) ^ (*right_op));
@@ -675,7 +675,7 @@ inline interval<z_number> interval<z_number>::Shl(interval<z_number> x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
-        if (boost::optional<z_number> shift = x.singleton()) {
+        if (std::optional<z_number> shift = x.singleton()) {
             z_number k = *shift;
             if (k < 0) {
                 // CRAB_ERROR("lshr shift operand cannot be negative");
@@ -701,7 +701,7 @@ inline interval<z_number> interval<z_number>::AShr(interval<z_number> x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
-        if (boost::optional<z_number> shift = x.singleton()) {
+        if (std::optional<z_number> shift = x.singleton()) {
             z_number k = *shift;
             if (k < 0) {
                 // CRAB_ERROR("ashr shift operand cannot be negative");
@@ -727,7 +727,7 @@ inline interval<z_number> interval<z_number>::LShr(interval<z_number> x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
-        if (boost::optional<z_number> shift = x.singleton()) {
+        if (std::optional<z_number> shift = x.singleton()) {
             z_number k = *shift;
             if (k < 0) {
                 // CRAB_ERROR("lshr shift operand cannot be negative");
@@ -810,7 +810,7 @@ using z_interval = interval<z_number>;
 
 template <>
 inline z_interval trim_interval(z_interval i, z_interval j) {
-    if (boost::optional<z_number> c = j.singleton()) {
+    if (std::optional<z_number> c = j.singleton()) {
         if (i.lb() == *c) {
             return z_interval(*c + 1, i.ub());
         } else if (i.ub() == *c) {

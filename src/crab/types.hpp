@@ -5,7 +5,7 @@
 #include "crab/bignums.hpp"
 
 #include <boost/make_shared.hpp>
-#include <boost/optional.hpp>
+#include <optional>
 #include <memory>
 #include <iosfwd>
 
@@ -119,10 +119,10 @@ inline crab::crab_os &operator<<(crab::crab_os &o, cast_operation_t op) {
 }
 
 template <typename T>
-inline boost::optional<T> conv_op(binary_operation_t op);
+inline std::optional<T> conv_op(binary_operation_t op);
 
 template <typename T>
-inline boost::optional<T> conv_op(cast_operation_t op);
+inline std::optional<T> conv_op(cast_operation_t op);
 
 } // end namespace crab
 

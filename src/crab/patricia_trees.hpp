@@ -44,7 +44,7 @@
 
 #include <algorithm>
 #include <boost/iterator/iterator_facade.hpp>
-#include <boost/optional.hpp>
+#include <optional>
 #include <memory>
 #include <vector>
 
@@ -68,7 +68,7 @@ class partial_order {
 template <typename Value>
 class unary_op {
   public:
-    virtual boost::optional<Value> apply(Value) = 0;
+    virtual std::optional<Value> apply(Value) = 0;
 
     virtual ~unary_op() {}
 
@@ -80,7 +80,7 @@ class binary_op {
     // if first element of the pair is true then bottom and ignore second element
     // else if second element of the pair is empty then top
     // else the value stored in the second element of the pair.
-    virtual std::pair<bool, boost::optional<Value>> apply(Value,
+    virtual std::pair<bool, std::optional<Value>> apply(Value,
                                                           Value) = 0; // The operation is idempotent: apply(x, x) = x
 
     virtual bool default_is_absorbing() = 0; // True if the default value is
@@ -93,7 +93,7 @@ class binary_op {
 template <typename Key, typename Value>
 class key_binary_op {
   public:
-    virtual boost::optional<Value> apply(Key, Value, Value) = 0; // The operation is idempotent: apply(x, x) = x
+    virtual std::optional<Value> apply(Key, Value, Value) = 0; // The operation is idempotent: apply(x, x) = x
 
     virtual bool default_is_absorbing() = 0; // True if the default value is
                                              // absorbing (false if it is neutral)
@@ -161,7 +161,7 @@ class tree {
     virtual tree_ptr right_branch() const = 0;
     virtual index_t prefix() const = 0;
     virtual index_t branching_bit() const = 0;
-    virtual boost::optional<Value> lookup(const Key &) const = 0;
+    virtual std::optional<Value> lookup(const Key &) const = 0;
 
   public:
     bool is_node() const { return !is_leaf(); }
@@ -306,18 +306,18 @@ class node : public tree<Key, Value> {
 
     tree_ptr right_branch() const { return this->_right_branch; }
 
-    boost::optional<Value> lookup(const Key &key) const {
+    std::optional<Value> lookup(const Key &key) const {
         if (key.index() <= this->_prefix) {
             if (this->_left_branch) {
                 return this->_left_branch->lookup(key);
             } else {
-                return boost::optional<Value>();
+                return std::optional<Value>();
             }
         } else {
             if (this->_right_branch) {
                 return this->_right_branch->lookup(key);
             } else {
-                return boost::optional<Value>();
+                return std::optional<Value>();
             }
         }
     }
@@ -357,11 +357,11 @@ class leaf : public tree<Key, Value> {
 
     tree_ptr right_branch() const { CRAB_ERROR("Patricia tree: trying to call right_branch() on a leaf"); }
 
-    boost::optional<Value> lookup(const Key &key_) const {
+    std::optional<Value> lookup(const Key &key_) const {
         if (this->_key.index() == key_.index()) {
-            return boost::optional<Value>(this->_value);
+            return std::optional<Value>(this->_value);
         } else {
-            return boost::optional<Value>();
+            return std::optional<Value>();
         }
     }
 
@@ -419,7 +419,7 @@ std::pair<bool, typename tree<Key, Value>::ptr> tree<Key, Value>::insert(typenam
     using tree_ptr = typename tree<Key, Value>::ptr;
     tree_ptr nil;
     std::pair<bool, tree_ptr> res, res_lb, res_rb;
-    std::pair<bool, boost::optional<Value>> new_value;
+    std::pair<bool, std::optional<Value>> new_value;
     std::pair<bool, tree_ptr> bottom = {true, nil};
     if (t) {
         if (t->is_node()) {
@@ -561,7 +561,7 @@ typename tree<Key, Value>::ptr tree<Key, Value>::insert(typename tree<Key, Value
             const Key &key = b.first;
             const Value &value = b.second;
             if (key.index() == key_.index()) {
-                boost::optional<Value> new_value =
+                std::optional<Value> new_value =
                     combine_left_to_right ? op.apply(key, value, value_) : op.apply(key, value_, value);
                 if (new_value) {
                     if (*new_value == value) {
@@ -618,7 +618,7 @@ typename tree<Key, Value>::ptr tree<Key, Value>::transform(typename tree<Key, Va
         } else {
             binding_t b = t->binding();
             const Value &value = b.second;
-            boost::optional<Value> new_value = op.apply(value);
+            std::optional<Value> new_value = op.apply(value);
             if (new_value) {
                 if (*new_value == value) {
                     return t;
@@ -691,7 +691,7 @@ std::pair<bool, typename tree<Key, Value>::ptr> tree<Key, Value>::merge(typename
     using tree_ptr = typename tree<Key, Value>::ptr;
     tree_ptr nil;
     std::pair<bool, tree_ptr> res, res_lb, res_rb;
-    std::pair<bool, boost::optional<Value>> new_value;
+    std::pair<bool, std::optional<Value>> new_value;
     std::pair<bool, tree_ptr> bottom = {true, nil};
     if (s) {
         if (t) {
@@ -700,7 +700,7 @@ std::pair<bool, typename tree<Key, Value>::ptr> tree<Key, Value>::merge(typename
             } else if (s->is_leaf()) {
                 binding_t b = s->binding();
                 if (op.default_is_absorbing()) {
-                    boost::optional<Value> value = t->lookup(b.first);
+                    std::optional<Value> value = t->lookup(b.first);
                     if (value) {
                         new_value = combine_left_to_right ? op.apply(b.second, *value) : op.apply(*value, b.second);
                         if (new_value.first) {
@@ -725,7 +725,7 @@ std::pair<bool, typename tree<Key, Value>::ptr> tree<Key, Value>::merge(typename
             } else if (t->is_leaf()) {
                 binding_t b = t->binding();
                 if (op.default_is_absorbing()) {
-                    boost::optional<Value> value = s->lookup(b.first);
+                    std::optional<Value> value = s->lookup(b.first);
                     if (value) {
                         new_value = combine_left_to_right ? op.apply(*value, b.second) : op.apply(b.second, *value);
                         if (new_value.first) {
@@ -857,9 +857,9 @@ typename tree<Key, Value>::ptr tree<Key, Value>::key_merge(typename tree<Key, Va
             } else if (s->is_leaf()) {
                 binding_t b = s->binding();
                 if (op.default_is_absorbing()) {
-                    boost::optional<Value> value = t->lookup(b.first);
+                    std::optional<Value> value = t->lookup(b.first);
                     if (value) {
-                        boost::optional<Value> new_value = combine_left_to_right ? op.apply(b.first, b.second, *value)
+                        std::optional<Value> new_value = combine_left_to_right ? op.apply(b.first, b.second, *value)
                                                                                  : op.apply(b.first, *value, b.second);
                         if (new_value) {
                             if (*new_value == b.second) {
@@ -879,9 +879,9 @@ typename tree<Key, Value>::ptr tree<Key, Value>::key_merge(typename tree<Key, Va
             } else if (t->is_leaf()) {
                 binding_t b = t->binding();
                 if (op.default_is_absorbing()) {
-                    boost::optional<Value> value = s->lookup(b.first);
+                    std::optional<Value> value = s->lookup(b.first);
                     if (value) {
-                        boost::optional<Value> new_value = combine_left_to_right ? op.apply(b.first, *value, b.second)
+                        std::optional<Value> new_value = combine_left_to_right ? op.apply(b.first, *value, b.second)
                                                                                  : op.apply(b.first, b.second, *value);
                         if (new_value) {
                             if (*new_value == b.second) {
@@ -981,7 +981,7 @@ bool tree<Key, Value>::compare(typename tree<Key, Value>::ptr s, typename tree<K
                     binding_t b = s->binding();
                     const Key &key = b.first;
                     const Value &value = b.second;
-                    boost::optional<Value> value_ = t->lookup(key);
+                    std::optional<Value> value_ = t->lookup(key);
                     if (value_) {
                         Value left = compare_left_to_right ? value : *value_;
                         Value right = compare_left_to_right ? *value_ : value;
@@ -1108,8 +1108,8 @@ class patricia_tree {
     }; // class iterator
 
     class insert_op : public binary_op_t {
-        std::pair<bool, boost::optional<Value>> apply(Value /* old_value */, Value new_value) {
-            return {false, boost::optional<Value>(new_value)};
+        std::pair<bool, std::optional<Value>> apply(Value /* old_value */, Value new_value) {
+            return {false, std::optional<Value>(new_value)};
         }
         bool default_is_absorbing() { return false; }
     }; // class insert_op
@@ -1136,11 +1136,11 @@ class patricia_tree {
 
     iterator end() const { return iterator(); }
 
-    boost::optional<Value> lookup(const Key &key) const {
+    std::optional<Value> lookup(const Key &key) const {
         if (this->_tree) {
             return this->_tree->lookup(key);
         } else {
-            return boost::optional<Value>();
+            return std::optional<Value>();
         }
     }
 
@@ -1219,8 +1219,8 @@ class patricia_tree_set {
 
   private:
     class union_op : public binary_op_t {
-        std::pair<bool, boost::optional<bool>> apply(bool /* x */, bool /* y */) {
-            return {false, boost::optional<bool>(true)};
+        std::pair<bool, std::optional<bool>> apply(bool /* x */, bool /* y */) {
+            return {false, std::optional<bool>(true)};
         };
 
         bool default_is_absorbing() { return false; }
@@ -1228,8 +1228,8 @@ class patricia_tree_set {
     }; // class union_op
 
     class intersection_op : public binary_op_t {
-        std::pair<bool, boost::optional<bool>> apply(bool /* x */, bool /* y */) {
-            return {false, boost::optional<bool>(true)};
+        std::pair<bool, std::optional<bool>> apply(bool /* x */, bool /* y */) {
+            return {false, std::optional<bool>(true)};
         };
 
         bool default_is_absorbing() { return true; }
@@ -1278,7 +1278,7 @@ class patricia_tree_set {
     iterator end() const { return iterator(); }
 
     bool operator[](const Element &x) const {
-        boost::optional<bool> r = this->_tree.lookup(x);
+        std::optional<bool> r = this->_tree.lookup(x);
         if (!r)
             return false;
         else
