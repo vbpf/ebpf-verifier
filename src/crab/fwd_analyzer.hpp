@@ -20,17 +20,17 @@ namespace analyzer {
  * defines the abstract transfer functions as well as which
  * operations are modeled.
  **/
-template <typename CFG, typename AbsDomain>
+template <typename AbsDomain>
 class fwd_analyzer
-    : private ikos::interleaved_fwd_fixpoint_iterator<CFG, typename intra_abs_transformer<AbsDomain>::abs_dom_t> {
+    : private ikos::interleaved_fwd_fixpoint_iterator<cfg_ref<cfg_t>, typename intra_abs_transformer<AbsDomain>::abs_dom_t> {
   public:
-    using cfg_t = CFG;
-    using variable_t = typename CFG::variable_t;
+    using cfg_t = cfg_ref<cfg_t>;
+    using variable_t = typename cfg_t::variable_t;
     using abs_tr_t = intra_abs_transformer<AbsDomain>;
     using abs_dom_t = typename abs_tr_t::abs_dom_t;
 
   private:
-    using fixpo_iterator_t = ikos::interleaved_fwd_fixpoint_iterator<CFG, abs_dom_t>;
+    using fixpo_iterator_t = ikos::interleaved_fwd_fixpoint_iterator<cfg_t, abs_dom_t>;
 
   public:
     using invariant_map_t = typename fixpo_iterator_t::invariant_table_t;
@@ -58,7 +58,7 @@ class fwd_analyzer
     void process_post(basic_block_label_t node, abs_dom_t inv) {}
 
   public:
-    fwd_analyzer(CFG cfg)
+    fwd_analyzer(cfg_t cfg)
         : fixpo_iterator_t(cfg, nullptr, 1, UINT_MAX, 0, false /*disable processor*/), m_init(AbsDomain::top()),
           m_abs_tr(std::make_shared<abs_tr_t>(&m_init)) {
         type_check(this->_cfg);
@@ -71,7 +71,7 @@ class fwd_analyzer
         this->run(*m_abs_tr->get());
     }
 
-    CFG get_cfg() const { return this->_cfg; }
+    cfg_t get_cfg() const { return this->_cfg; }
 
     const invariant_map_t &get_pre_invariants() const { return this->_pre; }
 
