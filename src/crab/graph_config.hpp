@@ -9,7 +9,6 @@
 
 namespace crab {
 namespace domains {
-namespace DBM_impl {
 
 /** DBM weights (Wt) can be represented using one of the following
  * types:
@@ -45,6 +44,5 @@ inline safe_i64 convert_NtoW(const ikos::z_number &n, bool &overflow) {
     return safe_i64(n);
 }
 
-} // namespace DBM_impl
 } // namespace domains
 } // namespace crab
