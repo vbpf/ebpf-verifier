@@ -1,7 +1,6 @@
 /*******************************************************************************
  *
- * A simple class for representing intervals and performing interval
- * arithmetic.
+ * A simple class for representing intervals and performing interval arithmetic.
  *
  ******************************************************************************/
 
@@ -14,19 +13,15 @@
 
 namespace ikos {
 
-template <typename Number>
-class bound {
-  public:
-    using bound_t = bound<Number>;
-
+class bound_t {
   private:
     bool _is_infinite;
-    Number _n;
+    number_t _n;
 
   private:
-    bound();
+    bound_t();
 
-    bound(bool is_infinite, Number n) : _is_infinite(is_infinite), _n(n) {
+    bound_t(bool is_infinite, number_t n) : _is_infinite(is_infinite), _n(n) {
         if (is_infinite) {
             if (n > 0)
                 _n = 1;
@@ -53,9 +48,9 @@ class bound {
     static bound_t minus_infinity() { return bound_t(true, -1); }
 
   public:
-    bound(int n) : _is_infinite(false), _n(n) {}
+    bound_t(int n) : _is_infinite(false), _n(n) {}
 
-    bound(std::string s) : _n(1) {
+    bound_t(std::string s) : _n(1) {
         if (s == "+oo") {
             _is_infinite = true;
         } else if (s == "-oo") {
@@ -63,13 +58,13 @@ class bound {
             _n = -1;
         } else {
             _is_infinite = false;
-            _n = Number(s);
+            _n = number_t(s);
         }
     }
 
-    bound(Number n) : _is_infinite(false), _n(n) {}
+    bound_t(number_t n) : _is_infinite(false), _n(n) {}
 
-    bound(const bound_t &o) : _is_infinite(o._is_infinite), _n(o._n) {}
+    bound_t(const bound_t &o) : _is_infinite(o._is_infinite), _n(o._n) {}
 
     bound_t &operator=(const bound_t &o) {
         if (this != &o) {
@@ -186,11 +181,11 @@ class bound {
         }
     }
 
-    std::optional<Number> number() const {
+    std::optional<number_t> number() const {
         if (is_infinite()) {
-            return std::optional<Number>();
+            return std::optional<number_t>();
         } else {
-            return std::optional<Number>(_n);
+            return std::optional<number_t>(_n);
         }
     }
 
@@ -206,21 +201,14 @@ class bound {
 
 }; // class bound
 
-template <typename Number>
-inline crab::crab_os &operator<<(crab::crab_os &o, const bound<Number> &b) {
+inline crab::crab_os &operator<<(crab::crab_os &o, const bound_t &b) {
     b.write(o);
     return o;
 }
 
-using z_bound = bound<z_number>;
-using bound_t = z_bound;
+using z_bound = bound_t;
 
-template <typename Number>
-class interval {
-
-  public:
-    using interval_t = interval<Number>;
-
+class interval_t {
   private:
     bound_t _lb;
     bound_t _ub;
@@ -231,39 +219,39 @@ class interval {
     static interval_t bottom() { return interval_t(); }
 
   private:
-    interval() : _lb(0), _ub(-1) {}
+    interval_t() : _lb(0), _ub(-1) {}
 
-    static Number abs(Number x) { return x < 0 ? -x : x; }
+    static number_t abs(number_t x) { return x < 0 ? -x : x; }
 
-    static Number max(Number x, Number y) { return x.operator<=(y) ? y : x; }
+    static number_t max(number_t x, number_t y) { return x.operator<=(y) ? y : x; }
 
-    static Number min(Number x, Number y) { return x.operator<(y) ? x : y; }
+    static number_t min(number_t x, number_t y) { return x.operator<(y) ? x : y; }
 
   public:
-    interval(bound_t lb, bound_t ub) : _lb(lb), _ub(ub) {
+    interval_t(bound_t lb, bound_t ub) : _lb(lb), _ub(ub) {
         if (lb > ub) {
             _lb = 0;
             _ub = -1;
         }
     }
 
-    interval(bound_t b) : _lb(b), _ub(b) {
+    interval_t(bound_t b) : _lb(b), _ub(b) {
         if (b.is_infinite()) {
             _lb = 0;
             _ub = -1;
         }
     }
 
-    interval(Number n) : _lb(n), _ub(n) {}
+    interval_t(number_t n) : _lb(n), _ub(n) {}
 
-    interval(std::string b) : _lb(b), _ub(b) {
+    interval_t(std::string b) : _lb(b), _ub(b) {
         if (_lb.is_infinite()) {
             _lb = 0;
             _ub = -1;
         }
     }
 
-    interval(const interval_t &i) : _lb(i._lb), _ub(i._ub) {}
+    interval_t(const interval_t &i) : _lb(i._lb), _ub(i._ub) {}
 
     interval_t &operator=(interval_t i) {
         _lb = i._lb;
@@ -400,15 +388,15 @@ class interval {
 
     interval_t &operator/=(interval_t x) { return operator=(operator/(x)); }
 
-    std::optional<Number> singleton() const {
+    std::optional<number_t> singleton() const {
         if (!is_bottom() && _lb == _ub) {
             return _lb.number();
         } else {
-            return std::optional<Number>();
+            return std::optional<number_t>();
         }
     }
 
-    bool operator[](Number n) const {
+    bool operator[](number_t n) const {
         if (is_bottom()) {
             return false;
         } else {
@@ -435,79 +423,34 @@ class interval {
         }
     }
 
-    interval_t SRem(interval_t x) const {
-        if (is_bottom() || x.is_bottom()) {
-            return bottom();
-        } else {
-            return top();
-        }
-    }
+    interval_t SRem(interval_t x) const;
 
-    interval_t URem(interval_t x) const {
-        if (is_bottom() || x.is_bottom()) {
-            return bottom();
-        } else {
-            return top();
-        }
-    }
+    interval_t URem(interval_t x) const;
 
     // bitwise operations
-    interval_t And(interval_t x) const {
-        if (is_bottom() || x.is_bottom()) {
-            return bottom();
-        } else {
-            return top();
-        }
-    }
+    interval_t And(interval_t x) const;
 
-    interval_t Or(interval_t x) const {
-        if (is_bottom() || x.is_bottom()) {
-            return bottom();
-        } else {
-            return top();
-        }
-    }
+    interval_t Or(interval_t x) const;
 
-    interval_t Xor(interval_t x) const { return Or(x); }
+    interval_t Xor(interval_t x) const;
 
-    interval_t Shl(interval_t x) const {
-        if (is_bottom() || x.is_bottom()) {
-            return bottom();
-        } else {
-            return top();
-        }
-    }
+    interval_t Shl(interval_t x) const;
 
-    interval_t LShr(interval_t x) const {
-        if (is_bottom() || x.is_bottom()) {
-            return bottom();
-        } else {
-            return top();
-        }
-    }
+    interval_t LShr(interval_t x) const;
 
-    interval_t AShr(interval_t x) const {
-        if (is_bottom() || x.is_bottom()) {
-            return bottom();
-        } else {
-            return top();
-        }
-    }
+    interval_t AShr(interval_t x) const;
 
 }; //  class interval
 
-using interval_t = interval<number_t>;
-
-template <>
-inline interval<z_number> interval<z_number>::operator/(interval<z_number> x) const {
+inline interval_t interval_t::operator/(interval_t x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
         // Divisor is a singleton:
         //   the linear interval solver can perform many divisions where
         //   the divisor is a singleton interval. We optimize for this case.
-        if (std::optional<z_number> n = x.singleton()) {
-            z_number c = *n;
+        if (std::optional<number_t> n = x.singleton()) {
+            number_t c = *n;
             if (c == 1) {
                 return *this;
             } else if (c > 0) {
@@ -518,7 +461,7 @@ inline interval<z_number> interval<z_number>::operator/(interval<z_number> x) co
             }
         }
         // Divisor is not a singleton
-        using z_interval = interval<z_number>;
+        using z_interval = interval_t;
         if (x[0]) {
             z_interval l(x._lb, z_bound(-1));
             z_interval u(z_bound(1), x._ub);
@@ -541,8 +484,7 @@ inline interval<z_number> interval<z_number>::operator/(interval<z_number> x) co
     }
 }
 
-template <>
-inline interval<z_number> interval<z_number>::SRem(interval<z_number> x) const {
+inline interval_t interval_t::SRem(interval_t x) const {
     // note that the sign of the divisor does not matter
 
     if (is_bottom() || x.is_bottom()) {
@@ -577,8 +519,7 @@ inline interval<z_number> interval<z_number>::SRem(interval<z_number> x) const {
     }
 }
 
-template <>
-inline interval<z_number> interval<z_number>::URem(interval<z_number> x) const {
+inline interval_t interval_t::URem(interval_t x) const {
 
     if (is_bottom() || x.is_bottom()) {
         return bottom();
@@ -612,8 +553,7 @@ inline interval<z_number> interval<z_number>::URem(interval<z_number> x) const {
     }
 }
 
-template <>
-inline interval<z_number> interval<z_number>::And(interval<z_number> x) const {
+inline interval_t interval_t::And(interval_t x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
@@ -630,8 +570,7 @@ inline interval<z_number> interval<z_number>::And(interval<z_number> x) const {
     }
 }
 
-template <>
-inline interval<z_number> interval<z_number>::Or(interval<z_number> x) const {
+inline interval_t interval_t::Or(interval_t x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
@@ -656,8 +595,7 @@ inline interval<z_number> interval<z_number>::Or(interval<z_number> x) const {
     }
 }
 
-template <>
-inline interval<z_number> interval<z_number>::Xor(interval<z_number> x) const {
+inline interval_t interval_t::Xor(interval_t x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
@@ -672,8 +610,7 @@ inline interval<z_number> interval<z_number>::Xor(interval<z_number> x) const {
     }
 }
 
-template <>
-inline interval<z_number> interval<z_number>::Shl(interval<z_number> x) const {
+inline interval_t interval_t::Shl(interval_t x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
@@ -698,8 +635,7 @@ inline interval<z_number> interval<z_number>::Shl(interval<z_number> x) const {
     }
 }
 
-template <>
-inline interval<z_number> interval<z_number>::AShr(interval<z_number> x) const {
+inline interval_t interval_t::AShr(interval_t x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
@@ -724,8 +660,7 @@ inline interval<z_number> interval<z_number>::AShr(interval<z_number> x) const {
     }
 }
 
-template <>
-inline interval<z_number> interval<z_number>::LShr(interval<z_number> x) const {
+inline interval_t interval_t::LShr(interval_t x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
@@ -742,7 +677,7 @@ inline interval<z_number> interval<z_number>::LShr(interval<z_number> x) const {
                 if (lb() >= 0 && ub().is_finite() && shift) {
                     z_number lb = *this->lb().number();
                     z_number ub = *this->ub().number();
-                    return interval<z_number>(lb >> k, ub >> k);
+                    return interval_t(lb >> k, ub >> k);
                 }
             }
         }
@@ -750,48 +685,39 @@ inline interval<z_number> interval<z_number>::LShr(interval<z_number> x) const {
     }
 }
 
-template <typename Number>
-inline interval<Number> operator+(Number c, interval<Number> x) {
-    return interval<Number>(c) + x;
+inline interval_t operator+(number_t c, interval_t x) {
+    return interval_t(c) + x;
 }
 
-template <typename Number>
-inline interval<Number> operator+(interval<Number> x, Number c) {
-    return x + interval<Number>(c);
+inline interval_t operator+(interval_t x, number_t c) {
+    return x + interval_t(c);
 }
 
-template <typename Number>
-inline interval<Number> operator*(Number c, interval<Number> x) {
-    return interval<Number>(c) * x;
+inline interval_t operator*(number_t c, interval_t x) {
+    return interval_t(c) * x;
 }
 
-template <typename Number>
-inline interval<Number> operator*(interval<Number> x, Number c) {
-    return x * interval<Number>(c);
+inline interval_t operator*(interval_t x, number_t c) {
+    return x * interval_t(c);
 }
 
-template <typename Number>
-inline interval<Number> operator/(Number c, interval<Number> x) {
-    return interval<Number>(c) / x;
+inline interval_t operator/(number_t c, interval_t x) {
+    return interval_t(c) / x;
 }
 
-template <typename Number>
-inline interval<Number> operator/(interval<Number> x, Number c) {
-    return x / interval<Number>(c);
+inline interval_t operator/(interval_t x, number_t c) {
+    return x / interval_t(c);
 }
 
-template <typename Number>
-inline interval<Number> operator-(Number c, interval<Number> x) {
-    return interval<Number>(c) - x;
+inline interval_t operator-(number_t c, interval_t x) {
+    return interval_t(c) - x;
 }
 
-template <typename Number>
-inline interval<Number> operator-(interval<Number> x, Number c) {
-    return x - interval<Number>(c);
+inline interval_t operator-(interval_t x, number_t c) {
+    return x - interval_t(c);
 }
 
-template <typename Number>
-inline crab::crab_os &operator<<(crab::crab_os &o, const interval<Number> &i) {
+inline crab::crab_os &operator<<(crab::crab_os &o, const interval_t &i) {
     i.write(o);
     return o;
 }

@@ -305,7 +305,7 @@ class wto {
     using wto_cycle_ptr = std::shared_ptr<wto_cycle_t>;
     using wto_component_list_t = boost::container::slist<wto_component_ptr>;
     using wto_component_list_ptr = std::shared_ptr<wto_component_list_t>;
-    using dfn_t = bound<z_number>;
+    using dfn_t = bound_t;
     using dfn_table_t = boost::unordered_map<typename boost::graph_traits<G>::vertex_descriptor, dfn_t>;
     using dfn_table_ptr = std::shared_ptr<dfn_table_t>;
     using stack_t = std::vector<typename boost::graph_traits<G>::vertex_descriptor>;
