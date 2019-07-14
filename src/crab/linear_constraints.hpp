@@ -317,6 +317,8 @@ class linear_expression {
 
 }; // class linear_expression
 
+using linear_expression_t = linear_expression<number_t, crab::varname_t>;
+
 template <typename Number, typename VariableName>
 inline crab::crab_os &operator<<(crab::crab_os &o, const linear_expression<Number, VariableName> &e) {
     e.write(o);
@@ -663,6 +665,8 @@ class linear_constraint {
     void dump() { write(crab::outs()); }
 
 }; // class linear_constraint
+
+using linear_constraint_t = linear_constraint<number_t, crab::varname_t>;
 
 template <typename Number, typename VariableName>
 inline crab::crab_os &operator<<(crab::crab_os &o, const linear_constraint<Number, VariableName> &c) {
@@ -1286,6 +1290,8 @@ class linear_constraint_system {
 
 }; // class linear_constraint_system
 
+using linear_constraint_system_t = linear_constraint_system<number_t, crab::varname_t>;
+
 template <typename Number, typename VariableName>
 inline crab::crab_os &operator<<(crab::crab_os &o, const linear_constraint_system<Number, VariableName> &sys) {
     sys.write(o);
@@ -1293,3 +1299,11 @@ inline crab::crab_os &operator<<(crab::crab_os &o, const linear_constraint_syste
 }
 
 } // namespace ikos
+
+namespace crab {
+
+using ikos::linear_expression_t;
+using ikos::linear_constraint_t;
+using ikos::linear_constraint_system_t;
+
+}

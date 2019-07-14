@@ -257,8 +257,6 @@ class statement_t {
 
 class binary_op_t : public statement_t {
   public:
-    using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
-
     binary_op_t(variable_t lhs, binary_operation_t op, linear_expression_t op1, linear_expression_t op2,
                 debug_info dbg_info = debug_info())
         : statement_t(BIN_OP, dbg_info), m_lhs(lhs), m_op(op), m_op1(op1), m_op2(op2) {
@@ -294,8 +292,6 @@ class binary_op_t : public statement_t {
 
 class assign_t : public statement_t {
   public:
-    using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
-
     assign_t(variable_t lhs, linear_expression_t rhs) : statement_t(ASSIGN), m_lhs(lhs), m_rhs(rhs) {
         this->m_live.add_def(m_lhs);
         for (auto v : m_rhs.variables())
@@ -321,8 +317,6 @@ class assign_t : public statement_t {
 
 class assume_t : public statement_t {
   public:
-    using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
-
     assume_t(linear_constraint_t cst) : statement_t(ASSUME), m_cst(cst) {
         for (auto v : cst.variables())
             this->m_live.add_use(v);
@@ -378,9 +372,6 @@ class havoc_t : public statement_t {
 // natively to avoid a blow up in the size of the CFG.
 class select_t : public statement_t {
   public:
-    using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
-    using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
-
     select_t(variable_t lhs, linear_constraint_t cond, linear_expression_t e1, linear_expression_t e2)
         : statement_t(SELECT), m_lhs(lhs), m_cond(cond), m_e1(e1), m_e2(e2) {
         this->m_live.add_def(m_lhs);
@@ -418,8 +409,6 @@ class select_t : public statement_t {
 
 class assert_t : public statement_t {
   public:
-    using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
-
     assert_t(linear_constraint_t cst, debug_info dbg_info = debug_info()) : statement_t(ASSERT, dbg_info), m_cst(cst) {
         for (auto v : cst.variables())
             this->m_live.add_use(v);
@@ -499,8 +488,6 @@ class int_cast_t : public statement_t {
 //  The semantics is similar to constant arrays in SMT.
 class array_init_t : public statement_t {
   public:
-    using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
-
     using type_t = typename variable_t::type_t;
 
     array_init_t(variable_t arr, linear_expression_t elem_size, linear_expression_t lb, linear_expression_t ub,
@@ -553,8 +540,6 @@ class array_init_t : public statement_t {
 class array_store_t : public statement_t {
   public:
     // forall i \in [lb,ub) % elem_size :: arr[i] := val
-
-    using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
 
     using type_t = typename variable_t::type_t;
 
@@ -620,8 +605,6 @@ class array_store_t : public statement_t {
 
 class array_load_t : public statement_t {
   public:
-    using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
-
     using type_t = typename variable_t::type_t;
 
     array_load_t(variable_t lhs, variable_t arr, linear_expression_t elem_size, linear_expression_t index)
@@ -701,9 +684,6 @@ class basic_block {
 
   public:
     // helper types to build statements
-
-    using lin_exp_t = ikos::linear_expression<number_t, varname_t>;
-    using lin_cst_t = ikos::linear_constraint<number_t, varname_t>;
 
     using basic_block_t = basic_block<basic_block_label_t, VariableName, Number>;
     using interval_t = ikos::interval<Number>;
@@ -999,22 +979,22 @@ class basic_block {
 
     void ashr(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_ASHR, op1, op2)); }
 
-    void assign(variable_t lhs, lin_exp_t rhs) { insert(new assign_t(lhs, rhs)); }
+    void assign(variable_t lhs, linear_expression_t rhs) { insert(new assign_t(lhs, rhs)); }
 
-    void assume(lin_cst_t cst) { insert(new assume_t(cst)); }
+    void assume(linear_constraint_t cst) { insert(new assume_t(cst)); }
 
     void havoc(variable_t lhs) { insert(new havoc_t(lhs)); }
 
     void unreachable() { insert(new unreachable_t()); }
 
-    void select(variable_t lhs, variable_t v, lin_exp_t e1, lin_exp_t e2) {
-        lin_cst_t cond = (v >= Number(1));
+    void select(variable_t lhs, variable_t v, linear_expression_t e1, linear_expression_t e2) {
+        linear_constraint_t cond = (v >= Number(1));
         insert(new select_t(lhs, cond, e1, e2));
     }
 
-    void select(variable_t lhs, lin_cst_t cond, lin_exp_t e1, lin_exp_t e2) { insert(new select_t(lhs, cond, e1, e2)); }
+    void select(variable_t lhs, linear_constraint_t cond, linear_expression_t e1, linear_expression_t e2) { insert(new select_t(lhs, cond, e1, e2)); }
 
-    void assertion(lin_cst_t cst, debug_info di = debug_info()) { insert(new assert_t(cst, di)); }
+    void assertion(linear_constraint_t cst, debug_info di = debug_info()) { insert(new assert_t(cst, di)); }
 
     void truncate(variable_t src, variable_t dst) { insert(new int_cast_t(CAST_TRUNC, src, dst)); }
 
@@ -1022,25 +1002,25 @@ class basic_block {
 
     void zext(variable_t src, variable_t dst) { insert(new int_cast_t(CAST_ZEXT, src, dst)); }
 
-    void array_init(variable_t a, lin_exp_t lb_idx, lin_exp_t ub_idx, lin_exp_t v, lin_exp_t elem_size) {
+    void array_init(variable_t a, linear_expression_t lb_idx, linear_expression_t ub_idx, linear_expression_t v, linear_expression_t elem_size) {
         if (m_track_prec == ARR) {
             insert(new array_init_t(a, elem_size, lb_idx, ub_idx, v));
         }
     }
 
-    void array_store(variable_t arr, lin_exp_t idx, lin_exp_t v, lin_exp_t elem_size, bool is_singleton = false) {
+    void array_store(variable_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size, bool is_singleton = false) {
         if (m_track_prec == ARR) {
             insert(new array_store_t(arr, elem_size, idx, idx, v, is_singleton));
         }
     }
 
-    void array_store_range(variable_t arr, lin_exp_t lb_idx, lin_exp_t ub_idx, lin_exp_t v, lin_exp_t elem_size) {
+    void array_store_range(variable_t arr, linear_expression_t lb_idx, linear_expression_t ub_idx, linear_expression_t v, linear_expression_t elem_size) {
         if (m_track_prec == ARR) {
             insert(new array_store_t(arr, elem_size, lb_idx, ub_idx, v, false));
         }
     }
 
-    void array_load(variable_t lhs, variable_t arr, lin_exp_t idx, lin_exp_t elem_size) {
+    void array_load(variable_t lhs, variable_t arr, linear_expression_t idx, linear_expression_t elem_size) {
         if (m_track_prec == ARR) {
             insert(new array_load_t(lhs, arr, elem_size, idx));
         }

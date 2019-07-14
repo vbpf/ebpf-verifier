@@ -28,6 +28,8 @@ using std::optional;
 using std::to_string;
 
 using crab::variable_factory;
+using crab::linear_expression_t;
+using crab::linear_constraint_t;
 
 constexpr int MAX_PACKET_OFF = 0xffff;
 constexpr int64_t MY_INT_MIN = INT_MIN;
@@ -55,7 +57,6 @@ static basic_block_t& add_child(cfg_t& cfg, basic_block_t& block, std::string su
 using crab::debug_info;
 
 using ikos::variable_t;
-using lin_cst_t = ikos::linear_constraint<ikos::z_number, varname_t>;
 
 /** Encoding of memory regions and types.
  *
@@ -85,11 +86,11 @@ struct dom_t {
     dom_t(variable_t value, variable_t offset, variable_t region) : value(value), offset(offset), region(region) { };
 };
 
-static lin_cst_t is_pointer(dom_t v)   { return v.region >= T_CTX; }
-static lin_cst_t is_init(dom_t v)      { return v.region > T_UNINIT; }
-static lin_cst_t is_singleton(dom_t v) { return v.region < T_SHARED; }
-static lin_cst_t is_shared(dom_t v)    { return v.region > T_SHARED; }
-static lin_cst_t is_not_num(dom_t v)   { return v.region > T_NUM; }
+static linear_constraint_t is_pointer(dom_t v)   { return v.region >= T_CTX; }
+static linear_constraint_t is_init(dom_t v)      { return v.region > T_UNINIT; }
+static linear_constraint_t is_singleton(dom_t v) { return v.region < T_SHARED; }
+static linear_constraint_t is_shared(dom_t v)    { return v.region > T_SHARED; }
+static linear_constraint_t is_not_num(dom_t v)   { return v.region > T_NUM; }
 
 /** An array of triple (region, value, offset).
  *
@@ -116,7 +117,7 @@ struct array_dom_t {
         return { &block };
     }
 
-    void mark_region(basic_block_t& block, lin_exp_t offset, const variable_t v, variable_t width) {
+    void mark_region(basic_block_t& block, linear_expression_t offset, const variable_t v, variable_t width) {
         variable_t lb{vfac["lb"], crab::INT_TYPE, 64};
         variable_t ub{vfac["ub"], crab::INT_TYPE, 64};
         block.assign(lb, offset);
@@ -124,12 +125,12 @@ struct array_dom_t {
         block.array_store_range(regions, lb, ub, v, 1);
     }
 
-    void mark_region(basic_block_t& block, lin_exp_t offset, const variable_t v, int width) {
+    void mark_region(basic_block_t& block, linear_expression_t offset, const variable_t v, int width) {
         for (int i=0; i < width; i++)
             block.array_store(regions, offset + i, v, 1);
     }
 
-    void havoc_num_region(basic_block_t& block, lin_exp_t offset, variable_t width) {
+    void havoc_num_region(basic_block_t& block, linear_expression_t offset, variable_t width) {
         variable_t lb{vfac["lb"], crab::INT_TYPE, 64};
         variable_t ub{vfac["ub"], crab::INT_TYPE, 64};
         block.assign(lb, offset);
@@ -144,7 +145,7 @@ struct array_dom_t {
         block.array_store(offsets, lb, scratch, width);
     }
 
-    vector<basic_block_t*> store(basic_block_t& block, lin_exp_t offset, const dom_t data_reg, int width, debug_info di, cfg_t& cfg) {
+    vector<basic_block_t*> store(basic_block_t& block, linear_expression_t offset, const dom_t data_reg, int width, debug_info di, cfg_t& cfg) {
         mark_region(block, offset, data_reg.region, width);
 
         if (width == 8) {
@@ -357,13 +358,13 @@ void machine_t::setup_entry(basic_block_t& entry)
     }
 }
 
-static lin_cst_t eq(variable_t& a, variable_t& b)  { return {a - b, lin_cst_t::EQUALITY}; }
+static linear_constraint_t eq(variable_t& a, variable_t& b)  { return {a - b, linear_constraint_t::EQUALITY}; }
 
-static lin_cst_t neq(variable_t& a, variable_t& b) { return {a - b, lin_cst_t::DISEQUATION}; };
+static linear_constraint_t neq(variable_t& a, variable_t& b) { return {a - b, linear_constraint_t::DISEQUATION}; };
 
 /** Linear constraint for a pointer comparison.
  */
-static lin_cst_t jmp_to_cst_offsets_reg(Condition::Op op, variable_t& dst_offset, variable_t& src_offset)
+static linear_constraint_t jmp_to_cst_offsets_reg(Condition::Op op, variable_t& dst_offset, variable_t& src_offset)
 {
     using Op = Condition::Op;
     switch (op) {
@@ -385,7 +386,7 @@ static lin_cst_t jmp_to_cst_offsets_reg(Condition::Op op, variable_t& dst_offset
 
 /** Linear constraints for a comparison with a constant.
  */
-static vector<lin_cst_t> jmp_to_cst_imm(Condition::Op op, variable_t& dst_value, int imm)
+static vector<linear_constraint_t> jmp_to_cst_imm(Condition::Op op, variable_t& dst_value, int imm)
 {
     using Op = Condition::Op;
     switch (op) {
@@ -407,7 +408,7 @@ static vector<lin_cst_t> jmp_to_cst_imm(Condition::Op op, variable_t& dst_value,
 
 /** Linear constraint for a numerical comparison between registers.
  */
-static vector<lin_cst_t> jmp_to_cst_reg(Condition::Op op, variable_t& dst_value, variable_t& src_value)
+static vector<linear_constraint_t> jmp_to_cst_reg(Condition::Op op, variable_t& dst_value, variable_t& src_value)
 {
     using Op = Condition::Op;
     switch (op) {
@@ -501,7 +502,7 @@ template<typename W>
 vector<basic_block_t*> instruction_builder_t::exec_stack_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
 {
     basic_block_t& mid = add_child(cfg, block, "assume_stack");
-    lin_exp_t addr = (-offset) - width - mem_reg.offset; // negate access
+    linear_expression_t addr = (-offset) - width - mem_reg.offset; // negate access
 
     mid.assume(mem_reg.region == T_STACK);
     mid.assertion(addr >= 0, di);
@@ -540,7 +541,7 @@ template<typename W>
 vector<basic_block_t*> instruction_builder_t::exec_shared_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
 {
     basic_block_t& mid = add_child(cfg, block, "assume_shared");
-    lin_exp_t addr = mem_reg.offset + offset;
+    linear_expression_t addr = mem_reg.offset + offset;
 
     mid.assume(is_shared(mem_reg));
     mid.assertion(addr >= 0, di);
@@ -564,7 +565,7 @@ template<typename W>
 vector<basic_block_t*> instruction_builder_t::exec_data_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset, W width)
 {
     basic_block_t& mid = add_child(cfg, block, "assume_data");
-    lin_exp_t addr = mem_reg.offset + offset;
+    linear_expression_t addr = mem_reg.offset + offset;
 
     mid.assume(mem_reg.region == T_DATA);
     mid.assertion(machine.meta_size <= addr, di);
@@ -592,7 +593,7 @@ vector<basic_block_t*> instruction_builder_t::exec_ctx_access(basic_block_t& blo
 {
     basic_block_t& mid = add_child(cfg, block, "assume_ctx");
     mid.assume(mem_reg.region == T_CTX);
-    lin_exp_t addr = mem_reg.offset + offset;
+    linear_expression_t addr = mem_reg.offset + offset;
     mid.assertion(addr >= 0, di);
     mid.assertion(addr <= machine.ctx_desc.size - width, di);
 
@@ -1203,7 +1204,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Assume const& b) {
                 basic_block_t& pointers = add_child(cfg, same, "pointers");
                 pointers.assume(is_pointer(dst));
                 pointers.assertion(is_singleton(dst), di);
-                lin_cst_t offset_cst = jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset);
+                linear_constraint_t offset_cst = jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset);
                 if (!offset_cst.is_tautology()) {
                     pointers.assume(offset_cst);
                 }
@@ -1231,8 +1232,8 @@ vector<basic_block_t*> instruction_builder_t::operator()(Assume const& b) {
         return res;
     } else {
         int imm = static_cast<int>(std::get<Imm>(cond.right).v);
-        vector<lin_cst_t> csts = jmp_to_cst_imm(cond.op, dst.value, imm);
-        for (lin_cst_t c : csts)
+        vector<linear_constraint_t> csts = jmp_to_cst_imm(cond.op, dst.value, imm);
+        for (linear_constraint_t c : csts)
             block.assume(c);
         if (!is_privileged() && imm != 0) {
             // only null can be compared to pointers without leaking secrets

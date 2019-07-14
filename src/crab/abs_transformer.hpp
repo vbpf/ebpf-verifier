@@ -50,11 +50,6 @@ namespace analyzer {
  **/
 template <typename Number, typename VariableName>
 class abs_transformer_api : public crab::statement_visitor {
-  public:
-    using lin_exp_t = ikos::linear_expression<number_t, varname_t>;
-    using lin_cst_t = ikos::linear_constraint<number_t, varname_t>;
-    using lin_cst_sys_t = ikos::linear_constraint_system<number_t, varname_t>;
-
   protected:
     virtual void exec(havoc_t &) {}
     virtual void exec(unreachable_t &) {}
@@ -348,8 +343,6 @@ class intra_abs_transformer : public abs_transformer_api<number_t, varname_t> {
 template <typename AbsDom>
 class inter_transformer_helpers {
   public:
-    using linear_expression_t = typename AbsDom::linear_expression_t;
-
     static void unify(AbsDom &inv, variable_t lhs, variable_t rhs) {
         assert(lhs.get_type() == rhs.get_type());
         switch (lhs.get_type()) {

@@ -20,9 +20,6 @@ template <class AbsDom>
 class BackwardAssignOps {
   public:
 
-    using linear_constraint_t = typename AbsDom::linear_constraint_t;
-    using linear_expression_t = typename AbsDom::linear_expression_t;
-
     /*
      * Backward x := e
      *

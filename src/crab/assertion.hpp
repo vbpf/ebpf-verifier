@@ -129,10 +129,6 @@ class assert_property_checker
 
     using abs_tr_t = typename Analyzer::abs_tr_t;
 
-    using lin_exp_t = typename abs_dom_t::linear_expression_t;
-    using lin_cst_t = typename abs_dom_t::linear_constraint_t;
-    using lin_cst_sys_t = typename abs_dom_t::linear_constraint_system_t;
-
   public:
     // set internal state for the checker
     void set(abs_tr_t *abs_tr, const std::set<const statement_t *> &safe_assertions) {
@@ -237,7 +233,7 @@ class assert_property_checker
         if (!this->m_abs_tr)
             return;
 
-        lin_cst_t cst = s.constraint();
+        linear_constraint_t cst = s.constraint();
 
         if (this->m_safe_assertions.count(&s) > 0) {
             crab::crab_string_os os;

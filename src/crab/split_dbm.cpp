@@ -3,10 +3,6 @@
 namespace crab {
 namespace domains {
 
-using linear_constraint_system_t = ikos::linear_constraint_system<number_t, varname_t>;
-using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
-using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
-
 bool SplitDBM::is_unsat_edge(vert_id x, vert_id y, Wt k) {
 
     typename graph_t::mut_val_ref_t w;
