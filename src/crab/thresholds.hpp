@@ -144,7 +144,6 @@ class wto_thresholds : public ikos::wto_component_visitor<CFG> {
     using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
     using bound_t = ikos::bound<number_t>;
 
-    using assume_t = crab::assume_stmt<number_t, varname_t>;
     // using select_t = crab::select_stmt<number_t,varname_t>;
 
     void extract_bounds(const linear_expression_t &e, bool is_strict, std::vector<number_t> &lb_bounds,

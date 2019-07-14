@@ -218,19 +218,19 @@ class assert_property_checker
         if (this->m_abs_tr)
             s.accept(&*this->m_abs_tr);
     }
-    void visit(unreach_t &s) {
+    void visit(unreachable_t &s) {
         if (this->m_abs_tr)
             s.accept(&*this->m_abs_tr);
     }
-    void visit(arr_init_t &s) {
+    void visit(array_init_t &s) {
         if (this->m_abs_tr)
             s.accept(&*this->m_abs_tr);
     }
-    void visit(arr_store_t &s) {
+    void visit(array_store_t &s) {
         if (this->m_abs_tr)
             s.accept(&*this->m_abs_tr);
     }
-    void visit(arr_load_t &s) {
+    void visit(array_load_t &s) {
         if (this->m_abs_tr)
             s.accept(&*this->m_abs_tr);
     }

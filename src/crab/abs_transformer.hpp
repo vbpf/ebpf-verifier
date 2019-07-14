@@ -58,47 +58,33 @@ class abs_transformer_api : public crab::statement_visitor {
     using lin_cst_t = ikos::linear_constraint<number_t, varname_t>;
     using lin_cst_sys_t = ikos::linear_constraint_system<number_t, varname_t>;
 
-    using havoc_t = crab::havoc_stmt<number_t, varname_t>;
-    using unreach_t = crab::unreachable_stmt<number_t, varname_t>;
-
-    using assume_t = crab::assume_stmt<number_t, varname_t>;
-    using select_t = crab::select_stmt<number_t, varname_t>;
-    using assert_t = crab::assert_stmt<number_t, varname_t>;
-
-    using int_cast_t = crab::int_cast_stmt<number_t, varname_t>;
-
-    using arr_init_t = crab::array_init_stmt<number_t, varname_t>;
-    using arr_store_t = crab::array_store_stmt<number_t, varname_t>;
-    using arr_load_t = crab::array_load_stmt<number_t, varname_t>;
-    using arr_assign_t = crab::array_assign_stmt<number_t, varname_t>;
-
   protected:
     virtual void exec(havoc_t &) {}
-    virtual void exec(unreach_t &) {}
+    virtual void exec(unreachable_t &) {}
     virtual void exec(binary_op_t &) {}
     virtual void exec(assign_t &) {}
     virtual void exec(assume_t &) {}
     virtual void exec(select_t &) {}
     virtual void exec(assert_t &) {}
     virtual void exec(int_cast_t &) {}
-    virtual void exec(arr_init_t &) {}
-    virtual void exec(arr_store_t &) {}
-    virtual void exec(arr_load_t &) {}
-    virtual void exec(arr_assign_t &) {}
+    virtual void exec(array_init_t &) {}
+    virtual void exec(array_store_t &) {}
+    virtual void exec(array_load_t &) {}
+    virtual void exec(array_assign_t &) {}
 
   public: /* visitor api */
     void visit(havoc_t &s) { exec(s); }
-    void visit(unreach_t &s) { exec(s); }
+    void visit(unreachable_t &s) { exec(s); }
     void visit(binary_op_t &s) { exec(s); }
     void visit(assign_t &s) { exec(s); }
     void visit(assume_t &s) { exec(s); }
     void visit(select_t &s) { exec(s); }
     void visit(assert_t &s) { exec(s); }
     void visit(int_cast_t &s) { exec(s); }
-    void visit(arr_init_t &s) { exec(s); }
-    void visit(arr_store_t &s) { exec(s); }
-    void visit(arr_load_t &s) { exec(s); }
-    void visit(arr_assign_t &s) { exec(s); }
+    void visit(array_init_t &s) { exec(s); }
+    void visit(array_store_t &s) { exec(s); }
+    void visit(array_load_t &s) { exec(s); }
+    void visit(array_assign_t &s) { exec(s); }
 };
 
 /**
@@ -289,9 +275,9 @@ class intra_abs_transformer : public abs_transformer_api<number_t, varname_t> {
         }
     }
 
-    void exec(unreach_t &stmt) { *get() = abs_dom_t::bottom(); }
+    void exec(unreachable_t &stmt) { *get() = abs_dom_t::bottom(); }
 
-    void exec(arr_init_t &stmt) {
+    void exec(array_init_t &stmt) {
         bool pre_bot = false;
         if (::crab::CrabSanityCheckFlag) {
             pre_bot = get()->is_bottom();
@@ -307,7 +293,7 @@ class intra_abs_transformer : public abs_transformer_api<number_t, varname_t> {
         }
     }
 
-    void exec(arr_store_t &stmt) {
+    void exec(array_store_t &stmt) {
         bool pre_bot = false;
         if (::crab::CrabSanityCheckFlag) {
             pre_bot = get()->is_bottom();
@@ -327,7 +313,7 @@ class intra_abs_transformer : public abs_transformer_api<number_t, varname_t> {
         }
     }
 
-    void exec(arr_load_t &stmt) {
+    void exec(array_load_t &stmt) {
         bool pre_bot = false;
         if (::crab::CrabSanityCheckFlag) {
             pre_bot = get()->is_bottom();
@@ -343,7 +329,7 @@ class intra_abs_transformer : public abs_transformer_api<number_t, varname_t> {
         }
     }
 
-    void exec(arr_assign_t &stmt) {
+    void exec(array_assign_t &stmt) {
         bool pre_bot = false;
         if (::crab::CrabSanityCheckFlag) {
             pre_bot = get()->is_bottom();
@@ -549,7 +535,7 @@ class intra_necessary_preconditions_abs_transformer
     }
 
     // similar to assume(false)
-    void exec(unreach_t &stmt) { *m_pre = abs_dom_t::bottom(); }
+    void exec(unreachable_t &stmt) { *m_pre = abs_dom_t::bottom(); }
 
     // x := *
     // x can be anything before the assignment
@@ -563,7 +549,7 @@ class intra_necessary_preconditions_abs_transformer
         CRAB_LOG("backward-tr", crab::outs() << "\tPRE=" << *m_pre << "\n");
     }
 
-    void exec(arr_init_t &stmt) {
+    void exec(array_init_t &stmt) {
         abs_dom_t invariant = (*m_invariants)[&stmt];
 
         CRAB_LOG("backward-tr", crab::outs() << "** " << stmt << "\n"
@@ -574,7 +560,7 @@ class intra_necessary_preconditions_abs_transformer
         CRAB_LOG("backward-tr", crab::outs() << "\tPRE=" << *m_pre << "\n");
     }
 
-    void exec(arr_load_t &stmt) {
+    void exec(array_load_t &stmt) {
         abs_dom_t invariant = (*m_invariants)[&stmt];
 
         CRAB_LOG("backward-tr", crab::outs() << "** " << stmt << "\n"
@@ -584,7 +570,7 @@ class intra_necessary_preconditions_abs_transformer
         CRAB_LOG("backward-tr", crab::outs() << "\tPRE=" << *m_pre << "\n");
     }
 
-    void exec(arr_store_t &stmt) {
+    void exec(array_store_t &stmt) {
         abs_dom_t invariant = (*m_invariants)[&stmt];
         CRAB_LOG("backward-tr", crab::outs() << "** " << stmt << "\n"
                                              << "\tFORWARD INV=" << invariant << "\n"
@@ -599,7 +585,7 @@ class intra_necessary_preconditions_abs_transformer
         CRAB_LOG("backward-tr", crab::outs() << "\tPRE=" << *m_pre << "\n");
     }
 
-    void exec(arr_assign_t &stmt) {
+    void exec(array_assign_t &stmt) {
         abs_dom_t invariant = (*m_invariants)[&stmt];
         CRAB_LOG("backward-tr", crab::outs() << "** " << stmt << "\n"
                                              << "\tFORWARD INV=" << invariant << "\n"

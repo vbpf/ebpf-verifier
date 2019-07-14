@@ -166,56 +166,33 @@ class basic_block_rev;
 
 class binary_op_t;
 class assign_t;
-
-template <typename N, typename V>
-class assume_stmt;
-template <typename N, typename V>
-class select_stmt;
-template <typename N, typename V>
-class assert_stmt;
-template <typename N, typename V>
-class int_cast_stmt;
-template <typename N, typename V>
-class unreachable_stmt;
-template <typename N, typename V>
-class havoc_stmt;
-template <typename N, typename V>
-class array_init_stmt;
-template <typename N, typename V>
-class array_store_stmt;
-template <typename N, typename V>
-class array_load_stmt;
-template <typename N, typename V>
-class array_assign_stmt;
+class assume_t;
+class select_t;
+class assert_t;
+class int_cast_t;
+class unreachable_t;
+class havoc_t;
+class array_init_t;
+class array_store_t;
+class array_load_t;
+class array_assign_t;
 
 struct statement_visitor {
     using Number = number_t;
     using VariableName = varname_t;
 
-    using assume_t = assume_stmt<number_t, varname_t>;
-    using select_t = select_stmt<number_t, varname_t>;
-    using assert_t = assert_stmt<number_t, varname_t>;
-    using int_cast_t = int_cast_stmt<number_t, varname_t>;
-    using havoc_t = havoc_stmt<number_t, varname_t>;
-    using unreach_t = unreachable_stmt<number_t, varname_t>;
-    using arr_init_t = array_init_stmt<number_t, varname_t>;
-    using arr_store_t = array_store_stmt<number_t, varname_t>;
-    using arr_load_t = array_load_stmt<number_t, varname_t>;
-    using arr_assign_t = array_assign_stmt<number_t, varname_t>;
-
     virtual void visit(binary_op_t &){};
     virtual void visit(assign_t &){};
-
     virtual void visit(assume_t &){};
     virtual void visit(select_t &){};
     virtual void visit(assert_t &){};
     virtual void visit(int_cast_t &){};
-    virtual void visit(unreach_t &){};
+    virtual void visit(unreachable_t &){};
     virtual void visit(havoc_t &){};
-    virtual void visit(arr_init_t &){};
-    virtual void visit(arr_store_t &){};
-    virtual void visit(arr_load_t &){};
-    virtual void visit(arr_assign_t &){};
+    virtual void visit(array_init_t &){};
+    virtual void visit(array_store_t &){};
+    virtual void visit(array_load_t &){};
+    virtual void visit(array_assign_t &){};
 
     template <typename basic_block_label_t>
     void visit(basic_block<basic_block_label_t, varname_t, number_t> &b) {
@@ -237,25 +214,25 @@ struct statement_visitor {
 class statement_t {
   protected:
     live_t m_live;
-    stmt_code m_stmt_code;
+    stmt_code m_t_code;
     debug_info m_dbg_info;
 
-    statement_t(stmt_code code = UNDEF, debug_info dbg_info = debug_info()) : m_stmt_code(code), m_dbg_info(dbg_info) {}
+    statement_t(stmt_code code = UNDEF, debug_info dbg_info = debug_info()) : m_t_code(code), m_dbg_info(dbg_info) {}
 
   public:
     virtual ~statement_t() {}
 
-    bool is_bin_op() const { return (m_stmt_code == BIN_OP); }
-    bool is_assign() const { return (m_stmt_code == ASSIGN); }
-    bool is_assume() const { return (m_stmt_code == ASSUME); }
-    bool is_select() const { return (m_stmt_code == SELECT); }
-    bool is_assert() const { return (m_stmt_code == ASSERT); }
-    bool is_int_cast() const { return (m_stmt_code == INT_CAST); }
-    bool is_havoc() const { return m_stmt_code == HAVOC; }
-    bool is_arr_init() const { return (m_stmt_code == ARR_INIT); }
-    bool is_arr_read() const { return (m_stmt_code == ARR_LOAD); }
-    bool is_arr_write() const { return (m_stmt_code == ARR_STORE); }
-    bool is_arr_assign() const { return (m_stmt_code == ARR_ASSIGN); }
+    bool is_bin_op() const { return (m_t_code == BIN_OP); }
+    bool is_assign() const { return (m_t_code == ASSIGN); }
+    bool is_assume() const { return (m_t_code == ASSUME); }
+    bool is_select() const { return (m_t_code == SELECT); }
+    bool is_assert() const { return (m_t_code == ASSERT); }
+    bool is_int_cast() const { return (m_t_code == INT_CAST); }
+    bool is_havoc() const { return m_t_code == HAVOC; }
+    bool is_arr_init() const { return (m_t_code == ARR_INIT); }
+    bool is_arr_read() const { return (m_t_code == ARR_LOAD); }
+    bool is_arr_write() const { return (m_t_code == ARR_STORE); }
+    bool is_arr_assign() const { return (m_t_code == ARR_ASSIGN); }
     const live_t &get_live() const { return m_live; }
 
     const debug_info &get_debug_info() const { return m_dbg_info; }
@@ -346,17 +323,13 @@ class assign_t : public statement_t {
     linear_expression_t m_rhs;
 };
 
-template <class Number, class VariableName>
-class assume_stmt : public statement_t {
-
-    using this_type = assume_stmt<Number, VariableName>;
-
+class assume_t : public statement_t {
   public:
 
-    using variable_t = ikos::variable<Number, VariableName>;
-    using linear_constraint_t = ikos::linear_constraint<Number, VariableName>;
+    using variable_t = ikos::variable<number_t, varname_t>;
+    using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
 
-    assume_stmt(linear_constraint_t cst) : statement_t(ASSUME), m_cst(cst) {
+    assume_t(linear_constraint_t cst) : statement_t(ASSUME), m_cst(cst) {
         for (auto v : cst.variables())
             this->m_live.add_use(v);
     }
@@ -365,7 +338,7 @@ class assume_stmt : public statement_t {
 
     virtual void accept(statement_visitor *v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new this_type(m_cst); }
+    virtual statement_t *clone() const { return new assume_t(m_cst); }
 
     virtual void write(crab_os &o) const {
         o << "assume(" << m_cst << ")"; //  << " " << this->m_live;
@@ -375,49 +348,35 @@ class assume_stmt : public statement_t {
     linear_constraint_t m_cst;
 };
 
-using assume_t = crab::assume_stmt<number_t, varname_t>;
-
-template <class Number, class VariableName>
-class unreachable_stmt : public statement_t {
-    using this_type = unreachable_stmt<Number, VariableName>;
-
+class unreachable_t : public statement_t {
   public:
-
-
-    unreachable_stmt() : statement_t(UNREACH) {}
+    unreachable_t() : statement_t(UNREACH) {}
 
     virtual void accept(statement_visitor *v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new this_type(); }
+    virtual statement_t *clone() const { return new unreachable_t(); }
 
     virtual void write(crab_os &o) const { o << "unreachable"; }
 };
 
-using unreach_t = crab::unreachable_stmt<number_t, varname_t>;
-
-template <class Number, class VariableName>
-class havoc_stmt : public statement_t {
-    using this_type = havoc_stmt<Number, VariableName>;
-
+class havoc_t : public statement_t {
   public:
 
-    using variable_t = ikos::variable<Number, VariableName>;
+    using variable_t = ikos::variable<number_t, varname_t>;
 
-    havoc_stmt(variable_t lhs) : statement_t(HAVOC), m_lhs(lhs) { this->m_live.add_def(m_lhs); }
+    havoc_t(variable_t lhs) : statement_t(HAVOC), m_lhs(lhs) { this->m_live.add_def(m_lhs); }
 
     variable_t variable() const { return m_lhs; }
 
     virtual void accept(statement_visitor *v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new this_type(m_lhs); }
+    virtual statement_t *clone() const { return new havoc_t(m_lhs); }
 
     void write(crab_os &o) const { o << "havoc(" << m_lhs << ")"; }
 
   private:
     variable_t m_lhs;
 };
-
-using havoc_t = crab::havoc_stmt<number_t, varname_t>;
 
 // select x, c, e1, e2:
 //    if c > 0 then x=e1 else x=e2
@@ -426,18 +385,14 @@ using havoc_t = crab::havoc_stmt<number_t, varname_t>;
 // simulated by splitting blocks. However, frontends like LLVM can
 // generate many select instructions so we prefer to support
 // natively to avoid a blow up in the size of the CFG.
-template <class Number, class VariableName>
-class select_stmt : public statement_t {
-
-    using this_type = select_stmt<Number, VariableName>;
-
+class select_t : public statement_t {
   public:
 
-    using variable_t = ikos::variable<Number, VariableName>;
-    using linear_expression_t = ikos::linear_expression<Number, VariableName>;
-    using linear_constraint_t = ikos::linear_constraint<Number, VariableName>;
+    using variable_t = ikos::variable<number_t, varname_t>;
+    using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
+    using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
 
-    select_stmt(variable_t lhs, linear_constraint_t cond, linear_expression_t e1, linear_expression_t e2)
+    select_t(variable_t lhs, linear_constraint_t cond, linear_expression_t e1, linear_expression_t e2)
         : statement_t(SELECT), m_lhs(lhs), m_cond(cond), m_e1(e1), m_e2(e2) {
         this->m_live.add_def(m_lhs);
         for (auto v : m_cond.variables())
@@ -458,7 +413,7 @@ class select_stmt : public statement_t {
 
     virtual void accept(statement_visitor *v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new this_type(m_lhs, m_cond, m_e1, m_e2); }
+    virtual statement_t *clone() const { return new select_t(m_lhs, m_cond, m_e1, m_e2); }
 
     virtual void write(crab_os &o) const {
         o << m_lhs << " = "
@@ -472,18 +427,13 @@ class select_stmt : public statement_t {
     linear_expression_t m_e2;
 };
 
-using select_t = crab::select_stmt<number_t, varname_t>;
-
-template <class Number, class VariableName>
-class assert_stmt : public statement_t {
-    using this_type = assert_stmt<Number, VariableName>;
-
+class assert_t : public statement_t {
   public:
 
-    using variable_t = ikos::variable<Number, VariableName>;
-    using linear_constraint_t = ikos::linear_constraint<Number, VariableName>;
+    using variable_t = ikos::variable<number_t, varname_t>;
+    using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
 
-    assert_stmt(linear_constraint_t cst, debug_info dbg_info = debug_info())
+    assert_t(linear_constraint_t cst, debug_info dbg_info = debug_info())
         : statement_t(ASSERT, dbg_info), m_cst(cst) {
         for (auto v : cst.variables())
             this->m_live.add_use(v);
@@ -493,7 +443,7 @@ class assert_stmt : public statement_t {
 
     virtual void accept(statement_visitor *v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new this_type(m_cst, this->m_dbg_info); }
+    virtual statement_t *clone() const { return new assert_t(m_cst, this->m_dbg_info); }
 
     virtual void write(crab_os &o) const {
         o << "assert(" << m_cst << ")";
@@ -506,18 +456,13 @@ class assert_stmt : public statement_t {
     linear_constraint_t m_cst;
 };
 
-using assert_t = crab::assert_stmt<number_t, varname_t>;
-
-template <class Number, class VariableName>
-class int_cast_stmt : public statement_t {
-    using this_type = int_cast_stmt<Number, VariableName>;
-
+class int_cast_t : public statement_t {
   public:
-    using variable_t = ikos::variable<Number, VariableName>;
+    using variable_t = ikos::variable<number_t, varname_t>;
 
     using bitwidth_t = typename variable_t::bitwidth_t;
 
-    int_cast_stmt(cast_operation_t op, variable_t src, variable_t dst, debug_info dbg_info = debug_info())
+    int_cast_t(cast_operation_t op, variable_t src, variable_t dst, debug_info dbg_info = debug_info())
         : statement_t(INT_CAST, dbg_info), m_op(op), m_src(src), m_dst(dst) {
         this->m_live.add_use(m_src);
         this->m_live.add_def(m_dst);
@@ -531,7 +476,7 @@ class int_cast_stmt : public statement_t {
 
     virtual void accept(statement_visitor *v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new this_type(m_op, m_src, m_dst, this->m_dbg_info); }
+    virtual statement_t *clone() const { return new int_cast_t(m_op, m_src, m_dst, this->m_dbg_info); }
 
     virtual void write(crab_os &o) const {
         // bitwidths are casted to int, otherwise operator<< may try
@@ -545,14 +490,12 @@ class int_cast_stmt : public statement_t {
     variable_t m_dst;
 };
 
-using int_cast_t = crab::int_cast_stmt<number_t, varname_t>;
-
 /*
   Array statements
 */
 
-// XXX: the array statements array_init_stmt, array_store_stmt,
-// and array_load_stmt take as one of their template parameters
+// XXX: the array statements array_init_t, array_store_t,
+// and array_load_t take as one of their template parameters
 // Number which is the type for the array indexes. Although array
 // indexes should be always integers we keep it as a template
 // parameter in case an analysis over a type different from
@@ -570,17 +513,14 @@ using int_cast_t = crab::int_cast_stmt<number_t, varname_t>;
 
 //! Initialize all array elements to some variable or number.
 //  The semantics is similar to constant arrays in SMT.
-template <class Number, class VariableName>
-class array_init_stmt : public statement_t {
-    using this_type = array_init_stmt<Number, VariableName>;
-
+class array_init_t : public statement_t {
   public:
 
-    using linear_expression_t = ikos::linear_expression<Number, VariableName>;
-    using variable_t = ikos::variable<Number, VariableName>;
+    using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
+    using variable_t = ikos::variable<number_t, varname_t>;
     using type_t = typename variable_t::type_t;
 
-    array_init_stmt(variable_t arr, linear_expression_t elem_size, linear_expression_t lb, linear_expression_t ub,
+    array_init_t(variable_t arr, linear_expression_t elem_size, linear_expression_t lb, linear_expression_t ub,
                     linear_expression_t val)
         : statement_t(ARR_INIT), m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_val(val) {
 
@@ -613,7 +553,7 @@ class array_init_stmt : public statement_t {
 
     virtual void accept(statement_visitor *v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new this_type(m_arr, m_elem_size, m_lb, m_ub, m_val); }
+    virtual statement_t *clone() const { return new array_init_t(m_arr, m_elem_size, m_lb, m_ub, m_val); }
 
     void write(crab_os &o) const { o << m_arr << "[" << m_lb << "..." << m_ub << "] := " << m_val; }
 
@@ -627,21 +567,16 @@ class array_init_stmt : public statement_t {
     linear_expression_t m_val;
 };
 
-using arr_init_t = crab::array_init_stmt<number_t, varname_t>;
-
-template <class Number, class VariableName>
-class array_store_stmt : public statement_t {
-    using this_type = array_store_stmt<Number, VariableName>;
-
+class array_store_t : public statement_t {
   public:
     // forall i \in [lb,ub) % elem_size :: arr[i] := val
 
 
-    using linear_expression_t = ikos::linear_expression<Number, VariableName>;
-    using variable_t = ikos::variable<Number, VariableName>;
+    using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
+    using variable_t = ikos::variable<number_t, varname_t>;
     using type_t = typename variable_t::type_t;
 
-    array_store_stmt(variable_t arr, linear_expression_t elem_size, linear_expression_t lb, linear_expression_t ub,
+    array_store_t(variable_t arr, linear_expression_t elem_size, linear_expression_t lb, linear_expression_t ub,
                      linear_expression_t value, bool is_singleton)
         : statement_t(ARR_STORE), m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_value(value),
           m_is_singleton(is_singleton) {
@@ -678,7 +613,7 @@ class array_store_stmt : public statement_t {
     virtual void accept(statement_visitor *v) { v->visit(*this); }
 
     virtual statement_t *clone() const {
-        return new this_type(m_arr, m_elem_size, m_lb, m_ub, m_value, m_is_singleton);
+        return new array_store_t(m_arr, m_elem_size, m_lb, m_ub, m_value, m_is_singleton);
     }
 
     virtual void write(crab_os &o) const {
@@ -701,19 +636,14 @@ class array_store_stmt : public statement_t {
                          // Only makes sense if m_lb is equal to m_ub.
 };
 
-using arr_store_t = crab::array_store_stmt<number_t, varname_t>;
-
-template <class Number, class VariableName>
-class array_load_stmt : public statement_t {
-    using this_type = array_load_stmt<Number, VariableName>;
-
+class array_load_t : public statement_t {
   public:
 
-    using linear_expression_t = ikos::linear_expression<Number, VariableName>;
-    using variable_t = ikos::variable<Number, VariableName>;
+    using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
+    using variable_t = ikos::variable<number_t, varname_t>;
     using type_t = typename variable_t::type_t;
 
-    array_load_stmt(variable_t lhs, variable_t arr, linear_expression_t elem_size, linear_expression_t index)
+    array_load_t(variable_t lhs, variable_t arr, linear_expression_t elem_size, linear_expression_t index)
         : statement_t(ARR_LOAD), m_lhs(lhs), m_array(arr), m_elem_size(elem_size), m_index(index) {
 
         this->m_live.add_def(lhs);
@@ -738,7 +668,7 @@ class array_load_stmt : public statement_t {
 
     virtual void accept(statement_visitor *v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new this_type(m_lhs, m_array, m_elem_size, m_index); }
+    virtual statement_t *clone() const { return new array_load_t(m_lhs, m_array, m_elem_size, m_index); }
 
     virtual void write(crab_os &o) const {
         o << m_lhs << " = "
@@ -752,19 +682,14 @@ class array_load_stmt : public statement_t {
     linear_expression_t m_index;
 };
 
-using arr_load_t = crab::array_load_stmt<number_t, varname_t>;
-
-template <class Number, class VariableName>
-class array_assign_stmt : public statement_t {
+class array_assign_t : public statement_t {
     //! a = b
-    using this_type = array_assign_stmt<Number, VariableName>;
-
   public:
 
-    using variable_t = ikos::variable<Number, VariableName>;
+    using variable_t = ikos::variable<number_t, varname_t>;
     using type_t = typename variable_t::type_t;
 
-    array_assign_stmt(variable_t lhs, variable_t rhs) : statement_t(ARR_ASSIGN), m_lhs(lhs), m_rhs(rhs) {
+    array_assign_t(variable_t lhs, variable_t rhs) : statement_t(ARR_ASSIGN), m_lhs(lhs), m_rhs(rhs) {
         this->m_live.add_def(lhs);
         this->m_live.add_use(rhs);
     }
@@ -777,7 +702,7 @@ class array_assign_stmt : public statement_t {
 
     virtual void accept(statement_visitor *v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new this_type(m_lhs, m_rhs); }
+    virtual statement_t *clone() const { return new array_assign_t(m_lhs, m_rhs); }
 
     virtual void write(crab_os &o) const { o << m_lhs << " = " << m_rhs; }
 
@@ -785,8 +710,6 @@ class array_assign_stmt : public statement_t {
     variable_t m_lhs;
     variable_t m_rhs;
 };
-
-using arr_assign_t = crab::array_assign_stmt<number_t, varname_t>;
 
 template <class BasicBlockLabel, class VariableName, class Number>
 class cfg;
@@ -799,9 +722,9 @@ class basic_block {
 
   public:
     // helper types to build statements
-    using variable_t = ikos::variable<Number, VariableName>;
-    using lin_exp_t = ikos::linear_expression<Number, VariableName>;
-    using lin_cst_t = ikos::linear_constraint<Number, VariableName>;
+    using variable_t = ikos::variable<number_t, varname_t>;
+    using lin_exp_t = ikos::linear_expression<number_t, varname_t>;
+    using lin_cst_t = ikos::linear_constraint<number_t, varname_t>;
 
     using basic_block_t = basic_block<basic_block_label_t, VariableName, Number>;
     using interval_t = ikos::interval<Number>;
@@ -825,22 +748,9 @@ class basic_block {
 
     // -- statements
 
-    using havoc_t = havoc_stmt<Number, VariableName>;
-    using unreach_t = unreachable_stmt<Number, VariableName>;
-    // Numerical
-    using assume_t = assume_stmt<Number, VariableName>;
-    using select_t = select_stmt<Number, VariableName>;
-    using assert_t = assert_stmt<Number, VariableName>;
-    using int_cast_t = int_cast_stmt<Number, VariableName>;
-    // Arrays
-    using arr_init_t = array_init_stmt<Number, VariableName>;
-    using arr_store_t = array_store_stmt<Number, VariableName>;
-    using arr_load_t = array_load_stmt<Number, VariableName>;
-    using arr_assign_t = array_assign_stmt<Number, VariableName>;
-
   private:
     basic_block_label_t m_bb_id;
-    stmt_list_t m_stmts;
+    stmt_list_t m_ts;
     bb_id_set_t m_prev, m_next;
     tracked_precision m_track_prec;
     // Ideally it should be size_t to indicate any position within the
@@ -883,10 +793,10 @@ class basic_block {
 
     void insert(statement_t *stmt) {
         if (m_insert_point_at_front) {
-            m_stmts.insert(m_stmts.begin(), stmt);
+            m_ts.insert(m_ts.begin(), stmt);
             m_insert_point_at_front = false;
         } else {
-            m_stmts.push_back(stmt);
+            m_ts.push_back(stmt);
         }
         update_uses_and_defs(stmt);
     }
@@ -894,8 +804,8 @@ class basic_block {
   public:
     // The basic block owns the statements
     ~basic_block() {
-        for (unsigned i = 0, e = m_stmts.size(); i < e; ++i) {
-            delete m_stmts[i];
+        for (unsigned i = 0, e = m_ts.size(); i < e; ++i) {
+            delete m_ts[i];
         }
     }
 
@@ -907,7 +817,7 @@ class basic_block {
 
         basic_block_t *b = new basic_block_t(label(), m_track_prec);
         for (auto &s : boost::make_iterator_range(begin(), end())) {
-            b->m_stmts.push_back(s.clone());
+            b->m_ts.push_back(s.clone());
         }
 
         for (auto id : boost::make_iterator_range(prev_blocks())) {
@@ -925,15 +835,15 @@ class basic_block {
 
     std::string name() const { return get_label_str(m_bb_id); }
 
-    iterator begin() { return boost::make_indirect_iterator(m_stmts.begin()); }
-    iterator end() { return boost::make_indirect_iterator(m_stmts.end()); }
-    const_iterator begin() const { return boost::make_indirect_iterator(m_stmts.begin()); }
-    const_iterator end() const { return boost::make_indirect_iterator(m_stmts.end()); }
+    iterator begin() { return boost::make_indirect_iterator(m_ts.begin()); }
+    iterator end() { return boost::make_indirect_iterator(m_ts.end()); }
+    const_iterator begin() const { return boost::make_indirect_iterator(m_ts.begin()); }
+    const_iterator end() const { return boost::make_indirect_iterator(m_ts.end()); }
 
-    reverse_iterator rbegin() { return boost::make_indirect_iterator(m_stmts.rbegin()); }
-    reverse_iterator rend() { return boost::make_indirect_iterator(m_stmts.rend()); }
-    const_reverse_iterator rbegin() const { return boost::make_indirect_iterator(m_stmts.rbegin()); }
-    const_reverse_iterator rend() const { return boost::make_indirect_iterator(m_stmts.rend()); }
+    reverse_iterator rbegin() { return boost::make_indirect_iterator(m_ts.rbegin()); }
+    reverse_iterator rend() { return boost::make_indirect_iterator(m_ts.rend()); }
+    const_reverse_iterator rbegin() const { return boost::make_indirect_iterator(m_ts.rbegin()); }
+    const_reverse_iterator rend() const { return boost::make_indirect_iterator(m_ts.rend()); }
 
     size_t size() const { return std::distance(begin(), end()); }
 
@@ -943,7 +853,7 @@ class basic_block {
 
     // Collect the set of uses and definitions of the basic block
     void update_uses_and_defs() {
-        for (const statement_t *s : m_stmts) {
+        for (const statement_t *s : m_ts) {
             update_uses_and_defs(s);
         }
     }
@@ -976,24 +886,24 @@ class basic_block {
 
     // insert all statements of other at the front
     void copy_front(const basic_block_t &other) {
-        std::vector<statement_t *> cloned_stmts;
-        cloned_stmts.reserve(other.size());
-        std::transform(other.m_stmts.begin(), other.m_stmts.end(), std::back_inserter(cloned_stmts),
+        std::vector<statement_t *> cloned_ts;
+        cloned_ts.reserve(other.size());
+        std::transform(other.m_ts.begin(), other.m_ts.end(), std::back_inserter(cloned_ts),
                        [](const statement_t *s) { return s->clone(); });
 
-        m_stmts.insert(m_stmts.begin(), cloned_stmts.begin(), cloned_stmts.end());
+        m_ts.insert(m_ts.begin(), cloned_ts.begin(), cloned_ts.end());
 
         m_live = m_live | other.m_live;
     }
 
     // insert all statements of other at the back
     void copy_back(const basic_block_t &other) {
-        std::vector<statement_t *> cloned_stmts;
-        cloned_stmts.reserve(other.size());
-        std::transform(other.m_stmts.begin(), other.m_stmts.end(), std::back_inserter(cloned_stmts),
+        std::vector<statement_t *> cloned_ts;
+        cloned_ts.reserve(other.size());
+        std::transform(other.m_ts.begin(), other.m_ts.end(), std::back_inserter(cloned_ts),
                        [](const statement_t *s) { return s->clone(); });
 
-        m_stmts.insert(m_stmts.end(), cloned_stmts.begin(), cloned_stmts.end());
+        m_ts.insert(m_ts.end(), cloned_ts.begin(), cloned_ts.end());
 
         m_live = m_live | other.m_live;
     }
@@ -1001,8 +911,8 @@ class basic_block {
     // Remove s (and free) from this
     void remove(const statement_t *s, bool must_update_uses_and_defs = true) {
         // remove statement using the remove-erase idiom
-        m_stmts.erase(std::remove_if(m_stmts.begin(), m_stmts.end(), [s](const statement_t *o) { return (o == s); }),
-                      m_stmts.end());
+        m_ts.erase(std::remove_if(m_ts.begin(), m_ts.end(), [s](const statement_t *o) { return (o == s); }),
+                      m_ts.end());
 
         if (must_update_uses_and_defs) {
             update_uses_and_defs();
@@ -1015,7 +925,7 @@ class basic_block {
     // Post: old is deleted (and freed) and new is at position i in
     //       the basic block.
     void replace(statement_t *old_s, statement_t *new_s) {
-        std::replace(m_stmts.begin(), m_stmts.end(), old_s, new_s);
+        std::replace(m_ts.begin(), m_ts.end(), old_s, new_s);
         delete old_s;
     }
 
@@ -1110,7 +1020,7 @@ class basic_block {
 
     void havoc(variable_t lhs) { insert(new havoc_t(lhs)); }
 
-    void unreachable() { insert(new unreach_t()); }
+    void unreachable() { insert(new unreachable_t()); }
 
     void select(variable_t lhs, variable_t v, lin_exp_t e1, lin_exp_t e2) {
         lin_cst_t cond = (v >= Number(1));
@@ -1129,31 +1039,31 @@ class basic_block {
 
     void array_init(variable_t a, lin_exp_t lb_idx, lin_exp_t ub_idx, lin_exp_t v, lin_exp_t elem_size) {
         if (m_track_prec == ARR) {
-            insert(new arr_init_t(a, elem_size, lb_idx, ub_idx, v));
+            insert(new array_init_t(a, elem_size, lb_idx, ub_idx, v));
         }
     }
 
     void array_store(variable_t arr, lin_exp_t idx, lin_exp_t v, lin_exp_t elem_size, bool is_singleton = false) {
         if (m_track_prec == ARR) {
-            insert(new arr_store_t(arr, elem_size, idx, idx, v, is_singleton));
+            insert(new array_store_t(arr, elem_size, idx, idx, v, is_singleton));
         }
     }
 
     void array_store_range(variable_t arr, lin_exp_t lb_idx, lin_exp_t ub_idx, lin_exp_t v, lin_exp_t elem_size) {
         if (m_track_prec == ARR) {
-            insert(new arr_store_t(arr, elem_size, lb_idx, ub_idx, v, false));
+            insert(new array_store_t(arr, elem_size, lb_idx, ub_idx, v, false));
         }
     }
 
     void array_load(variable_t lhs, variable_t arr, lin_exp_t idx, lin_exp_t elem_size) {
         if (m_track_prec == ARR) {
-            insert(new arr_load_t(lhs, arr, elem_size, idx));
+            insert(new array_load_t(lhs, arr, elem_size, idx));
         }
     }
 
     void array_assign(variable_t lhs, variable_t rhs) {
         if (m_track_prec == ARR) {
-            insert(new arr_assign_t(lhs, rhs));
+            insert(new array_assign_t(lhs, rhs));
         }
     }
 
@@ -2205,9 +2115,9 @@ class type_checker {
         }
 
         void visit(havoc_t &) {}
-        void visit(unreach_t &) {}
+        void visit(unreachable_t &) {}
 
-        void visit(arr_init_t &s) {
+        void visit(array_init_t &s) {
             // TODO: check that e_sz is the same number that v's bitwidth
             variable_t a = s.array();
             lin_exp_t e_sz = s.elem_size();
@@ -2224,7 +2134,7 @@ class type_checker {
             }
         }
 
-        void visit(arr_store_t &s) {
+        void visit(array_store_t &s) {
             // TODO: check that e_sz is the same number that v's bitwidth
             /// XXX: we allow linear expressions as indexes
             variable_t a = s.array();
@@ -2246,7 +2156,7 @@ class type_checker {
             }
         }
 
-        void visit(arr_load_t &s) {
+        void visit(array_load_t &s) {
             // TODO: check that e_sz is the same number that lhs's bitwidth
             /// XXX: we allow linear expressions as indexes
             variable_t a = s.array();
@@ -2257,7 +2167,7 @@ class type_checker {
             check_array_and_scalar_type(a, lhs, s);
         }
 
-        void visit(arr_assign_t &s) {
+        void visit(array_assign_t &s) {
             variable_t lhs = s.lhs();
             variable_t rhs = s.rhs();
             check_array(lhs, s);
