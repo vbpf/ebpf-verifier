@@ -319,39 +319,34 @@ class linear_expression {
 extern template class linear_expression<number_t, crab::varname_t>;
 using linear_expression_t = linear_expression<number_t, crab::varname_t>;
 
-template <typename Number, typename VariableName>
-inline crab::crab_os &operator<<(crab::crab_os &o, const linear_expression<Number, VariableName> &e) {
+inline crab::crab_os &operator<<(crab::crab_os &o, const linear_expression_t &e) {
     e.write(o);
     return o;
 }
 
-template <typename Number, typename VariableName>
-inline std::size_t hash_value(const linear_expression<Number, VariableName> &e) {
+inline std::size_t hash_value(const linear_expression_t &e) {
     return e.hash();
 }
 
-template <typename Number, typename VariableName>
-struct linear_expression_hasher {
-    size_t operator()(const linear_expression<Number, VariableName> &e) const { return e.hash(); }
+struct linear_expression_hasher_t {
+    size_t operator()(const linear_expression_t &e) const { return e.hash(); }
 };
 
-template <typename Number, typename VariableName>
-struct linear_expression_equal {
-    bool operator()(const linear_expression<Number, VariableName> &e1,
-                    const linear_expression<Number, VariableName> &e2) const {
+struct linear_expression_equal_t {
+    bool operator()(const linear_expression_t &e1,
+                    const linear_expression_t &e2) const {
         return e1.equal(e2);
     }
 };
 
-template <typename Number, typename VariableName>
 using linear_expression_unordered_set =
-    std::unordered_set<linear_expression<Number, VariableName>, linear_expression_hasher<Number, VariableName>,
-                       linear_expression_equal<Number, VariableName>>;
+    std::unordered_set<linear_expression_t, linear_expression_hasher_t,
+                       linear_expression_equal_t>;
 
-template <typename Number, typename VariableName, typename Value>
+template <typename Value>
 using linear_expression_unordered_map =
-    std::unordered_map<linear_expression<Number, VariableName>, Value, linear_expression_hasher<Number, VariableName>,
-                       linear_expression_equal<Number, VariableName>>;
+    std::unordered_map<linear_expression_t, Value, linear_expression_hasher_t,
+                       linear_expression_equal_t>;
 
 inline linear_expression_t operator*(number_t n, variable_t x) { return {n, x}; }
 
@@ -1019,8 +1014,8 @@ class linear_constraint_system {
        Replace pairs e<=0 and -e<=0 with e==0
     **/
     linear_constraint_system_t normalize() const {
-        linear_expression_unordered_set<crab::number_t, crab::varname_t> expr_set;
-        linear_expression_unordered_map<crab::number_t, crab::varname_t, unsigned> index_map;
+        linear_expression_unordered_set expr_set;
+        linear_expression_unordered_map<unsigned> index_map;
         std::vector<bool> toremove(_csts.size(), false); // indexes to be removed
         linear_constraint_system_t out;
 
