@@ -62,7 +62,7 @@ class fwd_analyzer
         : fixpo_iterator_t(cfg, nullptr, 1, UINT_MAX, 0, false /*disable processor*/), m_init(AbsDomain::top()),
           m_abs_tr(std::make_shared<abs_tr_t>(&m_init)) {
         crab::CrabStats::resume("CFG type checking");
-        crab::type_checker<CFG> tc(this->_cfg);
+        crab::type_checker tc(this->_cfg);
         tc.run();
         crab::CrabStats::stop("CFG type checking");
     }

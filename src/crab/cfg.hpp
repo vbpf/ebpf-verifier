@@ -1074,6 +1074,9 @@ class basic_block {
     }
 };
 
+extern template class basic_block<basic_block_label_t, varname_t, number_t>;
+using basic_block_t = basic_block<basic_block_label_t, varname_t, number_t>;
+
 // Viewing a BasicBlock with all statements reversed. Useful for
 // backward analysis.
 template <class BasicBlock>
@@ -1146,6 +1149,9 @@ class basic_block_rev {
         return o;
     }
 };
+
+extern template class basic_block_rev<basic_block_t>;
+using basic_block_rev_t = basic_block_rev<basic_block_t>;
 
 // forward declarations
 template <class Any>
@@ -1527,6 +1533,7 @@ class cfg {
 };
 
 extern template class cfg<basic_block_label_t, varname_t, number_t>;
+using cfg_t = cfg<basic_block_label_t, varname_t, number_t>;
 
 // A lightweight object that wraps a reference to a CFG into a
 // copyable, assignable object.
@@ -1686,6 +1693,8 @@ class cfg_ref {
     //   return boost::fusion::invoke(get(), std::forward<ArgTypes>(args)...);
     // }
 };
+
+extern template class cfg_ref<cfg_t>;
 
 // Viewing a CFG with all edges and block statements
 // reversed. Useful for backward analysis.
@@ -1854,8 +1863,10 @@ class cfg_rev {
     void simplify() {}
 };
 
-template <class CFG>
+extern template class cfg_rev<cfg_t>;
+
 class type_checker {
+    using CFG = cfg_ref<cfg_t>;
 
   public:
     type_checker(CFG cfg) : m_cfg(cfg) {}
