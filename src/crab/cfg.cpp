@@ -78,10 +78,6 @@ class variable_ref_t {
     void write(crab::crab_os &o) const { return m_v->write(o); }
 }; // class variable_ref_t
 
-inline size_t hash_value(const variable_ref_t &v) {
-    return v.hash();
-}
-
 inline crab::crab_os &operator<<(crab::crab_os &o, const variable_ref_t &v) {
     v.write(o);
     return o;
