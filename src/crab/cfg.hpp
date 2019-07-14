@@ -165,9 +165,8 @@ template <class BasicBlock>
 class basic_block_rev;
 
 class binary_op_t;
+class assign_t;
 
-template <typename N, typename V>
-class assignment;
 template <typename N, typename V>
 class assume_stmt;
 template <typename N, typename V>
@@ -193,7 +192,6 @@ struct statement_visitor {
     using Number = number_t;
     using VariableName = varname_t;
 
-    using assign_t = assignment<number_t, varname_t>;
     using assume_t = assume_stmt<number_t, varname_t>;
     using select_t = select_stmt<number_t, varname_t>;
     using assert_t = assert_stmt<number_t, varname_t>;
@@ -207,6 +205,7 @@ struct statement_visitor {
 
     virtual void visit(binary_op_t &){};
     virtual void visit(assign_t &){};
+
     virtual void visit(assume_t &){};
     virtual void visit(select_t &){};
     virtual void visit(assert_t &){};
@@ -318,16 +317,13 @@ class binary_op_t : public statement_t {
     linear_expression_t m_op2;
 };
 
-template <class Number, class VariableName>
-class assignment : public statement_t {
-    using this_type = assignment<Number, VariableName>;
-
+class assign_t : public statement_t {
   public:
 
-    using variable_t = ikos::variable<Number, VariableName>;
-    using linear_expression_t = ikos::linear_expression<Number, VariableName>;
+    using variable_t = ikos::variable<number_t, varname_t>;
+    using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
 
-    assignment(variable_t lhs, linear_expression_t rhs) : statement_t(ASSIGN), m_lhs(lhs), m_rhs(rhs) {
+    assign_t(variable_t lhs, linear_expression_t rhs) : statement_t(ASSIGN), m_lhs(lhs), m_rhs(rhs) {
         this->m_live.add_def(m_lhs);
         for (auto v : m_rhs.variables())
             this->m_live.add_use(v);
@@ -339,7 +335,7 @@ class assignment : public statement_t {
 
     virtual void accept(statement_visitor *v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new this_type(m_lhs, m_rhs); }
+    virtual statement_t *clone() const { return new assign_t(m_lhs, m_rhs); }
 
     virtual void write(crab_os &o) const {
         o << m_lhs << " = " << m_rhs; // << " " << this->m_live;
@@ -349,8 +345,6 @@ class assignment : public statement_t {
     variable_t m_lhs;
     linear_expression_t m_rhs;
 };
-
-using assign_t = crab::assignment<number_t, varname_t>;
 
 template <class Number, class VariableName>
 class assume_stmt : public statement_t {
@@ -834,7 +828,6 @@ class basic_block {
     using havoc_t = havoc_stmt<Number, VariableName>;
     using unreach_t = unreachable_stmt<Number, VariableName>;
     // Numerical
-    using assign_t = assignment<Number, VariableName>;
     using assume_t = assume_stmt<Number, VariableName>;
     using select_t = select_stmt<Number, VariableName>;
     using assert_t = assert_stmt<Number, VariableName>;
@@ -1998,17 +1991,6 @@ class type_checker {
     CFG m_cfg;
 
     struct type_checker_visitor : public statement_visitor {
-        using assign_t = typename statement_visitor::assign_t;
-        using assume_t = typename statement_visitor::assume_t;
-        using assert_t = typename statement_visitor::assert_t;
-        using int_cast_t = typename statement_visitor::int_cast_t;
-        using select_t = typename statement_visitor::select_t;
-        using havoc_t = typename statement_visitor::havoc_t;
-        using unreach_t = typename statement_visitor::unreach_t;
-        using arr_init_t = typename statement_visitor::arr_init_t;
-        using arr_store_t = typename statement_visitor::arr_store_t;
-        using arr_load_t = typename statement_visitor::arr_load_t;
-        using arr_assign_t = typename statement_visitor::arr_assign_t;
 
         using lin_exp_t = ikos::linear_expression<N, V>;
         using lin_cst_t = ikos::linear_constraint<N, V>;
