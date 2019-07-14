@@ -635,6 +635,10 @@ std::map<std::pair<index_t, std::pair<offset_t, unsigned>>, index_t> offset_map<
 //   }
 // }
 
+using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
+using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
+using linear_constraint_system_t = ikos::linear_constraint_system<number_t, varname_t>;
+
 template <typename NumDomain>
 class array_expansion_domain final : public ikos::writeable {
 
@@ -644,9 +648,6 @@ class array_expansion_domain final : public ikos::writeable {
     using array_expansion_domain_t = array_expansion_domain<NumDomain>;
 
   public:
-    using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
-    using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
-    using linear_constraint_system_t = ikos::linear_constraint_system<number_t, varname_t>;
     using variable_vector_t = std::vector<variable_t>;
     using content_domain_t = NumDomain;
     using interval_t = interval<number_t>;
