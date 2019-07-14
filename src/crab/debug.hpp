@@ -11,7 +11,6 @@
 
 namespace crab {
 
-#ifndef NCRABLOG
 #define CRAB_LOG(TAG, CODE)                                            \
     do {                                                               \
         if (::crab::CrabLogFlag && ::crab::CrabLog.count(TAG) > 0) {   \
@@ -20,24 +19,14 @@ namespace crab {
     } while (0)
 extern bool CrabLogFlag;
 extern std::set<std::string> CrabLog;
-void CrabEnableLog(std::string x);
-#else
-#define CRAB_LOG(TAG, CODE)                                                                                            \
-    do {                                                                                                               \
-    } while (0)
-void CrabEnableLog(std::string x);
-#endif
 
 extern unsigned CrabVerbosity;
-void CrabEnableVerbosity(unsigned v);
 #define CRAB_VERBOSE_IF(LEVEL, CODE)                                                                                   \
     do {                                                                                                               \
         if (::crab::CrabVerbosity >= LEVEL) {                                                                          \
             CODE;                                                                                                      \
         }                                                                                                              \
     } while (0)
-
-crab_os &get_msg_stream(bool timestamp = true);
 
 template <typename... ArgTypes>
 inline void ___print___(ArgTypes... args) {
@@ -72,6 +61,5 @@ void CrabEnableWarningMsg(bool b);
     } while (0)
 
 extern bool CrabSanityCheckFlag;
-void CrabEnableSanityChecks(bool b);
 
 } // end namespace crab
