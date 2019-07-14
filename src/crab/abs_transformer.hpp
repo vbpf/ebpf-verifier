@@ -418,7 +418,6 @@ class intra_necessary_preconditions_abs_transformer
     using abs_dom_t = AbsD;
 
     using variable_t = typename abs_dom_t::variable_t;
-    using statement_t = crab::statement<number_t, varname_t>;
     using abs_transform_api_t = abs_transformer_api<number_t, varname_t>;
     using typename abs_transform_api_t::arr_assign_t;
     using typename abs_transform_api_t::arr_init_t;
