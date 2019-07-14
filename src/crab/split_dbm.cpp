@@ -8,6 +8,75 @@ using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
 using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
 using variable_t = ikos::variable<number_t, varname_t>;
 
+bool SplitDBM::is_unsat_edge(vert_id x, vert_id y, Wt k) {
+
+    typename graph_t::mut_val_ref_t w;
+    if (g.lookup(y, x, &w)) {
+        return ((w.get() + k) < Wt(0));
+    } else {
+        interval_t intv_x = interval_t::top();
+        interval_t intv_y = interval_t::top();
+        if (g.elem(0, x) || g.elem(x, 0)) {
+            intv_x = interval_t(g.elem(x, 0) ? -number_t(g.edge_val(x, 0)) : bound_t::minus_infinity(),
+                                g.elem(0, x) ? number_t(g.edge_val(0, x)) : bound_t::plus_infinity());
+        }
+        if (g.elem(0, y) || g.elem(y, 0)) {
+            intv_y = interval_t(g.elem(y, 0) ? -number_t(g.edge_val(y, 0)) : bound_t::minus_infinity(),
+                                g.elem(0, y) ? number_t(g.edge_val(0, y)) : bound_t::plus_infinity());
+        }
+        if (intv_x.is_top() || intv_y.is_top()) {
+            return false;
+        } else {
+            return (!((intv_y - intv_x).lb() <= (number_t)k));
+        }
+    }
+}
+
+SplitDBM::vert_id SplitDBM::get_vert(variable_t v) {
+    auto it = vert_map.find(v);
+    if (it != vert_map.end())
+        return (*it).second;
+
+    vert_id vert(g.new_vertex());
+    vert_map.insert(vmap_elt_t(v, vert));
+    // Initialize
+    assert(vert <= rev_map.size());
+    if (vert < rev_map.size()) {
+        potential[vert] = Wt(0);
+        rev_map[vert] = v;
+    } else {
+        potential.push_back(Wt(0));
+        rev_map.push_back(v);
+    }
+    vert_map.insert(vmap_elt_t(v, vert));
+
+    assert(vert != 0);
+
+    return vert;
+}
+
+SplitDBM::vert_id SplitDBM::get_vert(graph_t &g, vert_map_t &vmap, rev_map_t &rmap, std::vector<Wt> &pot,
+                                     variable_t v) {
+    auto it = vmap.find(v);
+    if (it != vmap.end())
+        return (*it).second;
+
+    vert_id vert(g.new_vertex());
+    vmap.insert(vmap_elt_t(v, vert));
+    // Initialize
+    assert(vert <= rmap.size());
+    if (vert < rmap.size()) {
+        pot[vert] = Wt(0);
+        rmap[vert] = v;
+    } else {
+        pot.push_back(Wt(0));
+        rmap.push_back(v);
+    }
+    vmap.insert(vmap_elt_t(v, vert));
+
+    return vert;
+}
+
 void SplitDBM::close_over_edge(vert_id ii, vert_id jj) {
     Wt_min min_op;
 
@@ -802,6 +871,25 @@ SplitDBM SplitDBM::operator&(SplitDBM o) {
         return res;
     }
 }
+
+void SplitDBM::operator-=(variable_t v) {
+    crab::CrabStats::count(getDomainName() + ".count.forget");
+    crab::ScopedCrabStats __st__(getDomainName() + ".forget");
+
+    if (is_bottom())
+        return;
+    normalize();
+
+    auto it = vert_map.find(v);
+    if (it != vert_map.end()) {
+        CRAB_LOG("zones-split", crab::outs() << "Before forget " << it->second << ": " << g << "\n");
+        g.forget(it->second);
+        CRAB_LOG("zones-split", crab::outs() << "After: " << g << "\n");
+        rev_map[it->second] = std::nullopt;
+        vert_map.erase(v);
+    }
+}
+
 void SplitDBM::operator+=(linear_constraint_t cst) {
     crab::CrabStats::count(getDomainName() + ".count.add_constraints");
     crab::ScopedCrabStats __st__(getDomainName() + ".add_constraints");
@@ -869,6 +957,7 @@ void SplitDBM::operator+=(linear_constraint_t cst) {
     CRAB_LOG("zones-split", crab::outs() << "---" << cst << "\n" << *this << "\n");
     return;
 }
+
 void SplitDBM::assign(variable_t x, linear_expression_t e) {
     crab::CrabStats::count(getDomainName() + ".count.assign");
     crab::ScopedCrabStats __st__(getDomainName() + ".assign");
@@ -1051,6 +1140,255 @@ void SplitDBM::extract(const variable_t &x, linear_constraint_system_t &csts, bo
     }
 }
 
+SplitDBM SplitDBM::operator&&(SplitDBM o) {
+    crab::CrabStats::count(getDomainName() + ".count.narrowing");
+    crab::ScopedCrabStats __st__(getDomainName() + ".narrowing");
+
+    if (is_bottom() || o.is_bottom())
+        return SplitDBM::bottom();
+    else if (is_top())
+        return o;
+    else {
+        CRAB_LOG("zones-split", crab::outs() << "Before narrowing:\n"
+                                             << "DBM 1\n"
+                                             << *this << "\n"
+                                             << "DBM 2\n"
+                                             << o << "\n");
+
+        // FIXME: Implement properly
+        // Narrowing as a no-op should be sound.
+        normalize();
+        SplitDBM res(*this);
+
+        CRAB_LOG("zones-split", crab::outs() << "Result narrowing:\n" << res << "\n");
+        return res;
+    }
+}
+
+void SplitDBM::normalize() {
+    crab::CrabStats::count(getDomainName() + ".count.normalize");
+    crab::ScopedCrabStats __st__(getDomainName() + ".normalize");
+
+    // dbm_canonical(_dbm);
+    // Always maintained in normal form, except for widening
+    if (unstable.size() == 0)
+        return;
+
+    edge_vector delta;
+    // GrOps::close_after_widen(g, potential, vert_set_wrap_t(unstable), delta);
+    // GKG: Check
+    SubGraph<graph_t> g_excl(g, 0);
+    GrOps::close_after_widen(g_excl, potential, vert_set_wrap_t(unstable), delta);
+    // Retrive variable bounds
+    GrOps::close_after_assign(g, potential, 0, delta);
+
+    GrOps::apply_delta(g, delta);
+
+    unstable.clear();
+}
+void SplitDBM::set(variable_t x, interval_t intv) {
+    crab::CrabStats::count(getDomainName() + ".count.assign");
+    crab::ScopedCrabStats __st__(getDomainName() + ".assign");
+
+    if (is_bottom())
+        return;
+
+    if (intv.is_bottom()) {
+        set_to_bottom();
+        return;
+    }
+
+    this->operator-=(x);
+
+    if (intv.is_top()) {
+        return;
+    }
+
+    vert_id v = get_vert(x);
+    bool overflow;
+    if (intv.ub().is_finite()) {
+        Wt ub = convert_NtoW(*(intv.ub().number()), overflow);
+        if (overflow) {
+            return;
+        }
+        potential[v] = potential[0] + ub;
+        g.set_edge(0, ub, v);
+    }
+    if (intv.lb().is_finite()) {
+        Wt lb = convert_NtoW(*(intv.lb().number()), overflow);
+        if (overflow) {
+            return;
+        }
+        potential[v] = potential[0] + lb;
+        g.set_edge(v, -lb, 0);
+    }
+}
+void SplitDBM::apply(operation_t op, variable_t x, variable_t y, variable_t z) {
+    crab::CrabStats::count(getDomainName() + ".count.apply");
+    crab::ScopedCrabStats __st__(getDomainName() + ".apply");
+
+    if (is_bottom()) {
+        return;
+    }
+
+    normalize();
+
+    switch (op) {
+    case OP_ADDITION: assign(x, y + z); return;
+    case OP_SUBTRACTION: assign(x, y - z); return;
+    // For the rest of operations, we fall back on intervals.
+    case OP_MULTIPLICATION: set(x, get_interval(y) * get_interval(z)); break;
+    case OP_SDIV: set(x, get_interval(y) / get_interval(z)); break;
+    case OP_UDIV: set(x, get_interval(y).UDiv(get_interval(z))); break;
+    case OP_SREM: set(x, get_interval(y).SRem(get_interval(z))); break;
+    case OP_UREM: set(x, get_interval(y).URem(get_interval(z))); break;
+    default: CRAB_ERROR("Operation ", op, " not supported");
+    }
+
+    CRAB_LOG("zones-split", crab::outs() << "---" << x << ":=" << y << op << z << "\n" << *this << "\n");
+}
+void SplitDBM::apply(operation_t op, variable_t x, variable_t y, number_t k) {
+    crab::CrabStats::count(getDomainName() + ".count.apply");
+    crab::ScopedCrabStats __st__(getDomainName() + ".apply");
+
+    if (is_bottom()) {
+        return;
+    }
+
+    normalize();
+
+    switch (op) {
+    case OP_ADDITION: assign(x, y + k); return;
+    case OP_SUBTRACTION: assign(x, y - k); return;
+    case OP_MULTIPLICATION: assign(x, k * y); return;
+    // For the rest of operations, we fall back on intervals.
+    case OP_SDIV: set(x, get_interval(y) / interval_t(k)); break;
+    case OP_UDIV: set(x, get_interval(y).UDiv(interval_t(k))); break;
+    case OP_SREM: set(x, get_interval(y).SRem(interval_t(k))); break;
+    case OP_UREM: set(x, get_interval(y).URem(interval_t(k))); break;
+    default: CRAB_ERROR("Operation ", op, " not supported");
+    }
+
+    CRAB_LOG("zones-split", crab::outs() << "---" << x << ":=" << y << op << k << "\n" << *this << "\n");
+}
+
+void SplitDBM::apply(bitwise_operation_t op, variable_t x, variable_t y, variable_t z) {
+    crab::CrabStats::count(getDomainName() + ".count.apply");
+    crab::ScopedCrabStats __st__(getDomainName() + ".apply");
+
+    // Convert to intervals and perform the operation
+    normalize();
+    this->operator-=(x);
+
+    interval_t yi = operator[](y);
+    interval_t zi = operator[](z);
+    interval_t xi = interval_t::bottom();
+    switch (op) {
+    case OP_AND: xi = yi.And(zi); break;
+    case OP_OR: xi = yi.Or(zi); break;
+    case OP_XOR: xi = yi.Xor(zi); break;
+    case OP_SHL: xi = yi.Shl(zi); break;
+    case OP_LSHR: xi = yi.LShr(zi); break;
+    case OP_ASHR: xi = yi.AShr(zi); break;
+    default: CRAB_ERROR("DBM: unreachable");
+    }
+    set(x, xi);
+}
+
+void SplitDBM::apply(bitwise_operation_t op, variable_t x, variable_t y, number_t k) {
+    crab::CrabStats::count(getDomainName() + ".count.apply");
+    crab::ScopedCrabStats __st__(getDomainName() + ".apply");
+
+    // Convert to intervals and perform the operation
+    normalize();
+    interval_t yi = operator[](y);
+    interval_t zi(k);
+    interval_t xi = interval_t::bottom();
+
+    switch (op) {
+    case OP_AND: xi = yi.And(zi); break;
+    case OP_OR: xi = yi.Or(zi); break;
+    case OP_XOR: xi = yi.Xor(zi); break;
+    case OP_SHL: xi = yi.Shl(zi); break;
+    case OP_LSHR: xi = yi.LShr(zi); break;
+    case OP_ASHR: xi = yi.AShr(zi); break;
+    default: CRAB_ERROR("DBM: unreachable");
+    }
+    set(x, xi);
+}
+void SplitDBM::project(const variable_vector_t &variables) {
+    crab::CrabStats::count(getDomainName() + ".count.project");
+    crab::ScopedCrabStats __st__(getDomainName() + ".project");
+
+    if (is_bottom() || is_top()) {
+        return;
+    }
+    if (variables.empty()) {
+        return;
+    }
+
+    normalize();
+
+    std::vector<bool> save(rev_map.size(), false);
+    for (auto x : variables) {
+        auto it = vert_map.find(x);
+        if (it != vert_map.end())
+            save[(*it).second] = true;
+    }
+
+    for (vert_id v = 0; v < rev_map.size(); v++) {
+        if (!save[v] && rev_map[v]) {
+            operator-=((*rev_map[v]));
+        }
+    }
+}
+
+void SplitDBM::forget(const variable_vector_t &variables) {
+    crab::CrabStats::count(getDomainName() + ".count.forget");
+    crab::ScopedCrabStats __st__(getDomainName() + ".forget");
+
+    if (is_bottom() || is_top()) {
+        return;
+    }
+
+    for (auto v : variables) {
+        auto it = vert_map.find(v);
+        if (it != vert_map.end()) {
+            operator-=(v);
+        }
+    }
+}
+
+void SplitDBM::expand(variable_t x, variable_t y) {
+    crab::CrabStats::count(getDomainName() + ".count.expand");
+    crab::ScopedCrabStats __st__(getDomainName() + ".expand");
+
+    if (is_bottom() || is_top()) {
+        return;
+    }
+
+    CRAB_LOG("zones-split", crab::outs() << "Before expand " << x << " into " << y << ":\n" << *this << "\n");
+
+    auto it = vert_map.find(y);
+    if (it != vert_map.end()) {
+        CRAB_ERROR("split_dbm expand operation failed because y already exists");
+    }
+
+    vert_id ii = get_vert(x);
+    vert_id jj = get_vert(y);
+
+    for (auto edge : g.e_preds(ii)) {
+        g.add_edge(edge.vert, edge.val, jj);
+    }
+
+    for (auto edge : g.e_succs(ii)) {
+        g.add_edge(jj, edge.val, edge.vert);
+    }
+
+    potential[jj] = potential[ii];
+
+    CRAB_LOG("zones-split", crab::outs() << "After expand " << x << " into " << y << ":\n" << *this << "\n");
+}
 bool SplitDBM::is_unsat(linear_constraint_t cst) {
     if (is_bottom() || cst.is_contradiction()) {
         return true;
