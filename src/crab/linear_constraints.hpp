@@ -597,8 +597,7 @@ class linear_constraint {
 extern template class linear_constraint<number_t, crab::varname_t>;
 using linear_constraint_t = linear_constraint<number_t, crab::varname_t>;
 
-template <typename Number, typename VariableName>
-inline crab::crab_os &operator<<(crab::crab_os &o, const linear_constraint<Number, VariableName> &c) {
+inline crab::crab_os &operator<<(crab::crab_os &o, const linear_constraint_t &c) {
     c.write(o);
     return o;
 }
