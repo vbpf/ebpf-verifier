@@ -48,17 +48,10 @@ class checks_db {
     // add an entry in the database
     void add(check_kind_t status, crab::debug_info dbg = crab::debug_info()) {
         switch (status) {
-        case _SAFE:
-            m_total_safe++;
-            break;
-        case _ERR:
-            m_total_err++;
-            break;
-        case _UNREACH:
-            m_total_unreach++;
-            break;
-        default:
-            m_total_warn++;
+        case _SAFE: m_total_safe++; break;
+        case _ERR: m_total_err++; break;
+        case _UNREACH: m_total_unreach++; break;
+        default: m_total_warn++;
         }
         if (dbg.has_debug())
             m_db.insert(check_t(dbg, status));
@@ -96,18 +89,10 @@ class checks_db {
 
         for (auto const &p : m_db) {
             switch (p.second) {
-            case _SAFE:
-                o << "safe: ";
-                break;
-            case _ERR:
-                o << "error: ";
-                break;
-            case _UNREACH:
-                o << "unreachable: ";
-                break;
-            default:
-                o << "warning: ";
-                break;
+            case _SAFE: o << "safe: "; break;
+            case _ERR: o << "error: "; break;
+            case _UNREACH: o << "unreachable: "; break;
+            default: o << "warning: "; break;
             }
             // print all checks here
             // o << p.first.m_file << std::string((int) MaxFileLen - p.first.m_file.size(), ' ')
@@ -119,8 +104,7 @@ class checks_db {
 };
 
 template <typename Analyzer>
-class assert_property_checker
-    : public crab::statement_visitor {
+class assert_property_checker : public crab::statement_visitor {
   public:
     using abs_dom_t = typename Analyzer::abs_dom_t;
 
