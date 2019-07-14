@@ -364,7 +364,7 @@ class SplitDBM final : public ikos::writeable {
 
     SplitDBM operator||(SplitDBM o);
 
-    SplitDBM widening_thresholds(SplitDBM o, const iterators::thresholds<number_t> &ts) {
+    SplitDBM widening_thresholds(SplitDBM o, const iterators::thresholds_t &ts) {
         // TODO: use thresholds
         return (*this || o);
     }

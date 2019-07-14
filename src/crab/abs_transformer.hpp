@@ -48,7 +48,6 @@ namespace analyzer {
 /**
  * API abstract transformer
  **/
-template <typename Number, typename VariableName>
 class abs_transformer_api : public crab::statement_visitor {
   protected:
     virtual void exec(havoc_t &) {}
@@ -85,13 +84,13 @@ class abs_transformer_api : public crab::statement_visitor {
  * calls are ignored in a sound manner (by havoc'ing all outputs).
  **/
 template <class AbsD>
-class intra_abs_transformer : public abs_transformer_api<number_t, varname_t> {
+class intra_abs_transformer : public abs_transformer_api {
 
   public:
     using abs_dom_t = AbsD;
 
   public:
-    using abs_transform_api_t = abs_transformer_api<number_t, varname_t>;
+    using abs_transform_api_t = abs_transformer_api;
 
   protected:
     /// XXX: the transformer does not own m_inv.
@@ -367,11 +366,11 @@ class inter_transformer_helpers {
  **/
 template <class AbsD, class InvT>
 class intra_necessary_preconditions_abs_transformer
-    : public abs_transformer_api<number_t, varname_t> {
+    : public abs_transformer_api {
   public:
     using abs_dom_t = AbsD;
 
-    using abs_transform_api_t = abs_transformer_api<number_t, varname_t>;
+    using abs_transform_api_t = abs_transformer_api;
 
   private:
     // used to compute the (necessary) preconditions

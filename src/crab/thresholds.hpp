@@ -21,15 +21,14 @@ namespace iterators {
     Class that represents a set of thresholds used by the widening operator
 **/
 
-template <typename Number>
-class thresholds {
+class thresholds_t {
 
   private:
     std::vector<bound_t> m_thresholds;
     unsigned int m_size;
 
   public:
-    thresholds(int size = UINT_MAX) : m_size(size) {
+    thresholds_t(int size = UINT_MAX) : m_size(size) {
         m_thresholds.push_back(bound_t::minus_infinity());
         m_thresholds.push_back(0);
         m_thresholds.push_back(bound_t::plus_infinity());
@@ -104,8 +103,7 @@ class thresholds {
     }
 };
 
-template <typename Number>
-inline crab_os &operator<<(crab_os &o, const thresholds<Number> &t) {
+inline crab_os &operator<<(crab_os &o, const thresholds_t &t) {
     t.write(o);
     return o;
 }
@@ -113,18 +111,16 @@ inline crab_os &operator<<(crab_os &o, const thresholds<Number> &t) {
 /**
    Collect thresholds per wto cycle (i.e. loop)
 **/
-template <typename CFG>
-class wto_thresholds : public ikos::wto_component_visitor<CFG> {
+class wto_thresholds_t : public ikos::wto_component_visitor<cfg_ref_t> {
 
   public:
-    using wto_vertex_t = ikos::wto_vertex<CFG>;
-    using wto_cycle_t = ikos::wto_cycle<CFG>;
-    using thresholds_t = crab::iterators::thresholds<number_t>;
+    using wto_vertex_t = ikos::wto_vertex<cfg_ref_t>;
+    using wto_cycle_t = ikos::wto_cycle<cfg_ref_t>;
     using thresholds_map_t = boost::unordered_map<basic_block_label_t, thresholds_t>;
 
   private:
     // the cfg
-    CFG m_cfg;
+    cfg_ref_t m_cfg;
     // maximum number of thresholds
     size_t m_max_size;
     // keep a set of thresholds per wto head
@@ -132,7 +128,7 @@ class wto_thresholds : public ikos::wto_component_visitor<CFG> {
     // the top of the stack is the current wto head
     std::vector<basic_block_label_t> m_stack;
 
-    using basic_block_t = typename CFG::basic_block_t;
+    using basic_block_t = typename cfg_ref_t::basic_block_t;
 
     // using select_t = crab::select_stmt<number_t,varname_t>;
 
@@ -191,7 +187,7 @@ class wto_thresholds : public ikos::wto_component_visitor<CFG> {
     }
 
   public:
-    wto_thresholds(CFG cfg, size_t max_size) : m_cfg(cfg), m_max_size(max_size) {}
+    wto_thresholds_t(cfg_ref_t cfg, size_t max_size) : m_cfg(cfg), m_max_size(max_size) {}
 
     void visit(wto_vertex_t &vertex) {
         if (m_stack.empty())
@@ -201,7 +197,7 @@ class wto_thresholds : public ikos::wto_component_visitor<CFG> {
         auto it = m_head_to_thresholds.find(head);
         if (it != m_head_to_thresholds.end()) {
             thresholds_t &thresholds = it->second;
-            typename CFG::basic_block_t &bb = m_cfg.get_node(vertex.node());
+            typename cfg_ref_t::basic_block_t &bb = m_cfg.get_node(vertex.node());
             get_thresholds(bb, thresholds);
         } else {
             CRAB_ERROR("No head found while gathering thresholds");
@@ -210,7 +206,7 @@ class wto_thresholds : public ikos::wto_component_visitor<CFG> {
 
     void visit(wto_cycle_t &cycle) {
         thresholds_t thresholds(m_max_size);
-        typename CFG::basic_block_t &bb = m_cfg.get_node(cycle.head());
+        typename cfg_ref_t::basic_block_t &bb = m_cfg.get_node(cycle.head());
         get_thresholds(bb, thresholds);
 
 #if 1
@@ -218,7 +214,7 @@ class wto_thresholds : public ikos::wto_component_visitor<CFG> {
         // initializations
         for (auto pre : boost::make_iterator_range(bb.prev_blocks())) {
             if (pre != cycle.head()) {
-                typename CFG::basic_block_t &pred_bb = m_cfg.get_node(pre);
+                typename cfg_ref_t::basic_block_t &pred_bb = m_cfg.get_node(pre);
                 get_thresholds(pred_bb, thresholds);
             }
         }
@@ -240,10 +236,9 @@ class wto_thresholds : public ikos::wto_component_visitor<CFG> {
         }
     }
 
-}; // class wto_thresholds
+}; // class wto_thresholds_t
 
-template <typename CFG>
-inline crab::crab_os &operator<<(crab::crab_os &o, const wto_thresholds<CFG> &t) {
+inline crab::crab_os &operator<<(crab::crab_os &o, const wto_thresholds_t &t) {
     t.write(o);
     return o;
 }
