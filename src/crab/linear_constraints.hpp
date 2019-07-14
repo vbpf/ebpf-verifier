@@ -46,8 +46,8 @@
 #include <boost/container/flat_map.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/iterator/transform_iterator.hpp>
-#include <optional>
 #include <memory>
+#include <optional>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -59,7 +59,6 @@ template <typename Number, typename VariableName>
 class linear_expression {
 
   public:
-
     using linear_expression_t = linear_expression<Number, VariableName>;
     using component_t = std::pair<Number, variable_t>;
     using variable_set_t = patricia_tree_set<variable_t>;
@@ -472,7 +471,6 @@ template <typename Number, typename VariableName>
 class linear_constraint {
 
   public:
-
     using linear_constraint_t = linear_constraint<Number, VariableName>;
     using variable_set_t = patricia_tree_set<variable_t>;
     using kind_t = enum { EQUALITY, DISEQUATION, INEQUALITY, STRICT_INEQUALITY };
@@ -511,31 +509,21 @@ class linear_constraint {
 
     bool is_tautology() const {
         switch (this->_kind) {
-        case DISEQUATION:
-            return (this->_expr.is_constant() && this->_expr.constant() != 0);
-        case EQUALITY:
-            return (this->_expr.is_constant() && this->_expr.constant() == 0);
-        case INEQUALITY:
-            return (this->_expr.is_constant() && this->_expr.constant() <= 0);
-        case STRICT_INEQUALITY:
-            return (this->_expr.is_constant() && this->_expr.constant() < 0);
-        default:
-            CRAB_ERROR("Unreachable");
+        case DISEQUATION: return (this->_expr.is_constant() && this->_expr.constant() != 0);
+        case EQUALITY: return (this->_expr.is_constant() && this->_expr.constant() == 0);
+        case INEQUALITY: return (this->_expr.is_constant() && this->_expr.constant() <= 0);
+        case STRICT_INEQUALITY: return (this->_expr.is_constant() && this->_expr.constant() < 0);
+        default: CRAB_ERROR("Unreachable");
         }
     }
 
     bool is_contradiction() const {
         switch (this->_kind) {
-        case DISEQUATION:
-            return (this->_expr.is_constant() && this->_expr.constant() == 0);
-        case EQUALITY:
-            return (this->_expr.is_constant() && this->_expr.constant() != 0);
-        case INEQUALITY:
-            return (this->_expr.is_constant() && this->_expr.constant() > 0);
-        case STRICT_INEQUALITY:
-            return (this->_expr.is_constant() && this->_expr.constant() >= 0);
-        default:
-            CRAB_ERROR("Unreachable");
+        case DISEQUATION: return (this->_expr.is_constant() && this->_expr.constant() == 0);
+        case EQUALITY: return (this->_expr.is_constant() && this->_expr.constant() != 0);
+        case INEQUALITY: return (this->_expr.is_constant() && this->_expr.constant() > 0);
+        case STRICT_INEQUALITY: return (this->_expr.is_constant() && this->_expr.constant() >= 0);
+        default: CRAB_ERROR("Unreachable");
         }
     }
 
@@ -733,12 +721,9 @@ linear_constraint<Number, VariableName> linear_constraint<Number, VariableName>:
             linear_expression_t e = -this->_expr;
             return linear_constraint_t(e, INEQUALITY, is_signed());
         }
-        case EQUALITY:
-            return linear_constraint_t(this->_expr, DISEQUATION);
-        case DISEQUATION:
-            return linear_constraint_t(this->_expr, EQUALITY);
-        default:
-            CRAB_ERROR("Cannot negate linear constraint");
+        case EQUALITY: return linear_constraint_t(this->_expr, DISEQUATION);
+        case DISEQUATION: return linear_constraint_t(this->_expr, EQUALITY);
+        default: CRAB_ERROR("Cannot negate linear constraint");
         }
     }
 }
@@ -1135,6 +1120,7 @@ inline linear_constraint<Number, VariableName> operator!=(const linear_expressio
 template <typename Number, typename VariableName>
 class linear_constraint_system {
     using linear_constraint_system_t = linear_constraint_system<Number, VariableName>;
+
   public:
     using variable_set_t = patricia_tree_set<variable_t>;
 
@@ -1292,8 +1278,8 @@ inline crab::crab_os &operator<<(crab::crab_os &o, const linear_constraint_syste
 
 namespace crab {
 
-using ikos::linear_expression_t;
-using ikos::linear_constraint_t;
 using ikos::linear_constraint_system_t;
+using ikos::linear_constraint_t;
+using ikos::linear_expression_t;
 
-}
+} // namespace crab
