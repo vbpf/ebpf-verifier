@@ -236,17 +236,16 @@ struct statement_visitor {
     virtual ~statement_visitor() {}
 };
 
-template <class Number, class VariableName>
-class statement {
+class statement_t {
   protected:
     live_t m_live;
     stmt_code m_stmt_code;
     debug_info m_dbg_info;
 
-    statement(stmt_code code = UNDEF, debug_info dbg_info = debug_info()) : m_stmt_code(code), m_dbg_info(dbg_info) {}
+    statement_t(stmt_code code = UNDEF, debug_info dbg_info = debug_info()) : m_stmt_code(code), m_dbg_info(dbg_info) {}
 
   public:
-    virtual ~statement() {}
+    virtual ~statement_t() {}
 
     bool is_bin_op() const { return (m_stmt_code == BIN_OP); }
     bool is_assign() const { return (m_stmt_code == ASSIGN); }
@@ -267,29 +266,26 @@ class statement {
 
     virtual void write(crab_os &o) const = 0;
 
-    virtual statement<Number, VariableName> *clone() const = 0;
+    virtual statement_t *clone() const = 0;
 
     // for gdb
     void dump() const { write(crab::errs()); }
 
-    friend crab_os &operator<<(crab_os &o, const statement<Number, VariableName> &s) {
+    friend crab_os &operator<<(crab_os &o, const statement_t &s) {
         s.write(o);
         return o;
     }
 };
-
-using statement_t = crab::statement<number_t, varname_t>;
 
 /*
   Numerical statements
 */
 
 template <class Number, class VariableName>
-class binary_op : public statement<Number, VariableName> {
+class binary_op : public statement_t {
     using this_type = binary_op<Number, VariableName>;
 
   public:
-    using statement_t = statement<Number, VariableName>;
     using variable_t = ikos::variable<Number, VariableName>;
     using linear_expression_t = ikos::linear_expression<Number, VariableName>;
 
@@ -329,11 +325,11 @@ class binary_op : public statement<Number, VariableName> {
 using bin_op_t = crab::binary_op<number_t, varname_t>;
 
 template <class Number, class VariableName>
-class assignment : public statement<Number, VariableName> {
+class assignment : public statement_t {
     using this_type = assignment<Number, VariableName>;
 
   public:
-    using statement_t = statement<Number, VariableName>;
+
     using variable_t = ikos::variable<Number, VariableName>;
     using linear_expression_t = ikos::linear_expression<Number, VariableName>;
 
@@ -363,12 +359,12 @@ class assignment : public statement<Number, VariableName> {
 using assign_t = crab::assignment<number_t, varname_t>;
 
 template <class Number, class VariableName>
-class assume_stmt : public statement<Number, VariableName> {
+class assume_stmt : public statement_t {
 
     using this_type = assume_stmt<Number, VariableName>;
 
   public:
-    using statement_t = statement<Number, VariableName>;
+
     using variable_t = ikos::variable<Number, VariableName>;
     using linear_constraint_t = ikos::linear_constraint<Number, VariableName>;
 
@@ -394,11 +390,11 @@ class assume_stmt : public statement<Number, VariableName> {
 using assume_t = crab::assume_stmt<number_t, varname_t>;
 
 template <class Number, class VariableName>
-class unreachable_stmt : public statement<Number, VariableName> {
+class unreachable_stmt : public statement_t {
     using this_type = unreachable_stmt<Number, VariableName>;
 
   public:
-    using statement_t = statement<Number, VariableName>;
+
 
     unreachable_stmt() : statement_t(UNREACH) {}
 
@@ -412,11 +408,11 @@ class unreachable_stmt : public statement<Number, VariableName> {
 using unreach_t = crab::unreachable_stmt<number_t, varname_t>;
 
 template <class Number, class VariableName>
-class havoc_stmt : public statement<Number, VariableName> {
+class havoc_stmt : public statement_t {
     using this_type = havoc_stmt<Number, VariableName>;
 
   public:
-    using statement_t = statement<Number, VariableName>;
+
     using variable_t = ikos::variable<Number, VariableName>;
 
     havoc_stmt(variable_t lhs) : statement_t(HAVOC), m_lhs(lhs) { this->m_live.add_def(m_lhs); }
@@ -443,12 +439,12 @@ using havoc_t = crab::havoc_stmt<number_t, varname_t>;
 // generate many select instructions so we prefer to support
 // natively to avoid a blow up in the size of the CFG.
 template <class Number, class VariableName>
-class select_stmt : public statement<Number, VariableName> {
+class select_stmt : public statement_t {
 
     using this_type = select_stmt<Number, VariableName>;
 
   public:
-    using statement_t = statement<Number, VariableName>;
+
     using variable_t = ikos::variable<Number, VariableName>;
     using linear_expression_t = ikos::linear_expression<Number, VariableName>;
     using linear_constraint_t = ikos::linear_constraint<Number, VariableName>;
@@ -491,11 +487,11 @@ class select_stmt : public statement<Number, VariableName> {
 using select_t = crab::select_stmt<number_t, varname_t>;
 
 template <class Number, class VariableName>
-class assert_stmt : public statement<Number, VariableName> {
+class assert_stmt : public statement_t {
     using this_type = assert_stmt<Number, VariableName>;
 
   public:
-    using statement_t = statement<Number, VariableName>;
+
     using variable_t = ikos::variable<Number, VariableName>;
     using linear_constraint_t = ikos::linear_constraint<Number, VariableName>;
 
@@ -525,12 +521,12 @@ class assert_stmt : public statement<Number, VariableName> {
 using assert_t = crab::assert_stmt<number_t, varname_t>;
 
 template <class Number, class VariableName>
-class int_cast_stmt : public statement<Number, VariableName> {
+class int_cast_stmt : public statement_t {
     using this_type = int_cast_stmt<Number, VariableName>;
 
   public:
     using variable_t = ikos::variable<Number, VariableName>;
-    using statement_t = statement<Number, VariableName>;
+
     using bitwidth_t = typename variable_t::bitwidth_t;
 
     int_cast_stmt(cast_operation_t op, variable_t src, variable_t dst, debug_info dbg_info = debug_info())
@@ -587,11 +583,11 @@ using int_cast_t = crab::int_cast_stmt<number_t, varname_t>;
 //! Initialize all array elements to some variable or number.
 //  The semantics is similar to constant arrays in SMT.
 template <class Number, class VariableName>
-class array_init_stmt : public statement<Number, VariableName> {
+class array_init_stmt : public statement_t {
     using this_type = array_init_stmt<Number, VariableName>;
 
   public:
-    using statement_t = statement<Number, VariableName>;
+
     using linear_expression_t = ikos::linear_expression<Number, VariableName>;
     using variable_t = ikos::variable<Number, VariableName>;
     using type_t = typename variable_t::type_t;
@@ -646,13 +642,13 @@ class array_init_stmt : public statement<Number, VariableName> {
 using arr_init_t = crab::array_init_stmt<number_t, varname_t>;
 
 template <class Number, class VariableName>
-class array_store_stmt : public statement<Number, VariableName> {
+class array_store_stmt : public statement_t {
     using this_type = array_store_stmt<Number, VariableName>;
 
   public:
     // forall i \in [lb,ub) % elem_size :: arr[i] := val
 
-    using statement_t = statement<Number, VariableName>;
+
     using linear_expression_t = ikos::linear_expression<Number, VariableName>;
     using variable_t = ikos::variable<Number, VariableName>;
     using type_t = typename variable_t::type_t;
@@ -720,11 +716,11 @@ class array_store_stmt : public statement<Number, VariableName> {
 using arr_store_t = crab::array_store_stmt<number_t, varname_t>;
 
 template <class Number, class VariableName>
-class array_load_stmt : public statement<Number, VariableName> {
+class array_load_stmt : public statement_t {
     using this_type = array_load_stmt<Number, VariableName>;
 
   public:
-    using statement_t = statement<Number, VariableName>;
+
     using linear_expression_t = ikos::linear_expression<Number, VariableName>;
     using variable_t = ikos::variable<Number, VariableName>;
     using type_t = typename variable_t::type_t;
@@ -771,12 +767,12 @@ class array_load_stmt : public statement<Number, VariableName> {
 using arr_load_t = crab::array_load_stmt<number_t, varname_t>;
 
 template <class Number, class VariableName>
-class array_assign_stmt : public statement<Number, VariableName> {
+class array_assign_stmt : public statement_t {
     //! a = b
     using this_type = array_assign_stmt<Number, VariableName>;
 
   public:
-    using statement_t = statement<Number, VariableName>;
+
     using variable_t = ikos::variable<Number, VariableName>;
     using type_t = typename variable_t::type_t;
 
@@ -818,7 +814,7 @@ class basic_block {
     using variable_t = ikos::variable<Number, VariableName>;
     using lin_exp_t = ikos::linear_expression<Number, VariableName>;
     using lin_cst_t = ikos::linear_constraint<Number, VariableName>;
-    using statement_t = statement<Number, VariableName>;
+
     using basic_block_t = basic_block<basic_block_label_t, VariableName, Number>;
     using interval_t = ikos::interval<Number>;
 
@@ -1268,7 +1264,6 @@ class cfg {
     using node_t = basic_block_label_t; // for Bgl graphs
     using variable_t = ikos::variable<number_t, varname_t>;
     using basic_block_t = basic_block<basic_block_label_t, VariableName, number_t>;
-    using statement_t = statement<number_t, VariableName>;
 
     using succ_iterator = typename basic_block_t::succ_iterator;
     using pred_iterator = typename basic_block_t::pred_iterator;
@@ -1657,7 +1652,6 @@ class cfg_ref {
 
     using variable_t = typename CFG::variable_t;
     using basic_block_t = typename CFG::basic_block_t;
-    using statement_t = typename CFG::statement_t;
 
     using succ_iterator = typename CFG::succ_iterator;
     using pred_iterator = typename CFG::pred_iterator;
@@ -1816,7 +1810,6 @@ class cfg_rev {
     using node_t = basic_block_label_t; // for Bgl graphs
 
     using variable_t = typename CFGRef::variable_t;
-    using statement_t = typename CFGRef::statement_t;
 
     using pred_range = typename CFGRef::succ_range;
     using succ_range = typename CFGRef::pred_range;
@@ -2024,7 +2017,6 @@ class type_checker {
         using arr_store_t = typename statement_visitor::arr_store_t;
         using arr_load_t = typename statement_visitor::arr_load_t;
         using arr_assign_t = typename statement_visitor::arr_assign_t;
-        using statement_t = typename CFG::statement_t;
 
         using lin_exp_t = ikos::linear_expression<N, V>;
         using lin_cst_t = ikos::linear_constraint<N, V>;

@@ -29,8 +29,6 @@ class fwd_analyzer
     using abs_tr_t = intra_abs_transformer<AbsDomain>;
     using abs_dom_t = typename abs_tr_t::abs_dom_t;
 
-    using stmt_t = typename CFG::statement_t;
-
   private:
     using fixpo_iterator_t = ikos::interleaved_fwd_fixpoint_iterator<CFG, abs_dom_t>;
 
