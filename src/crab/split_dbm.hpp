@@ -42,7 +42,7 @@ namespace crab {
 
 namespace domains {
 
-class SplitDBM final : public abstract_domain<SplitDBM> {
+class SplitDBM final : public ikos::writeable {
   public:
     using linear_constraint_system_t = ikos::linear_constraint_system<number_t, varname_t>;
     using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
@@ -52,7 +52,7 @@ class SplitDBM final : public abstract_domain<SplitDBM> {
     using interval_t = interval<number_t>;
 
   private:
-    using typename abstract_domain<SplitDBM>::variable_vector_t;
+    using variable_vector_t = std::vector<variable_t>;
     using bound_t = bound<number_t>;
 
     using Params = SafeInt64DefaultParams;
@@ -343,6 +343,18 @@ class SplitDBM final : public abstract_domain<SplitDBM> {
 
     bool is_bottom() { return _is_bottom; }
 
+    static SplitDBM top() {
+        SplitDBM abs;
+        abs.set_to_top();
+        return abs;
+    }
+
+    static SplitDBM bottom() {
+        SplitDBM abs;
+        abs.set_to_bottom();
+        return abs;
+    }
+
     bool is_top() {
         if (_is_bottom)
             return false;
@@ -430,34 +442,6 @@ class SplitDBM final : public abstract_domain<SplitDBM> {
 
     void apply(bitwise_operation_t op, variable_t x, variable_t y, number_t k);
 
-    /*
-       Begin unimplemented operations
-
-       SplitDBM implements only standard abstract operations of a
-       numerical domain.  The implementation of boolean, array, or
-       pointer operations is empty because they should never be
-       called.
-    */
-    // array operations
-    void array_init(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx, linear_expression_t ub_idx,
-                    linear_expression_t val) {}
-    void array_load(variable_t lhs, variable_t a, linear_expression_t elem_size, linear_expression_t i) {}
-    void array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i, linear_expression_t v,
-                     bool is_singleton) {}
-    void array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t i, linear_expression_t j,
-                           linear_expression_t v) {}
-    void array_assign(variable_t lhs, variable_t rhs) {}
-    // backward array operations
-    void backward_array_init(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
-                             linear_expression_t ub_idx, linear_expression_t val, SplitDBM invariant) {}
-    void backward_array_load(variable_t lhs, variable_t a, linear_expression_t elem_size, linear_expression_t i,
-                             SplitDBM invariant) {}
-    void backward_array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i, linear_expression_t v,
-                              bool is_singleton, SplitDBM invariant) {}
-    void backward_array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t i,
-                                    linear_expression_t j, linear_expression_t v, SplitDBM invariant) {}
-    void backward_array_assign(variable_t lhs, variable_t rhs, SplitDBM invariant) {}
-    /* End unimplemented operations */
 
     void project(const variable_vector_t &variables);
 
