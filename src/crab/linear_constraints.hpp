@@ -800,9 +800,8 @@ inline linear_constraint<Number, VariableName> operator<(Number n, variable<Numb
     return linear_constraint<Number, VariableName>(n - x, linear_constraint<Number, VariableName>::STRICT_INEQUALITY);
 }
 
-template <typename Number, typename VariableName>
-inline linear_constraint<Number, VariableName> operator<(int n, variable<Number, VariableName> x) {
-    return linear_constraint<Number, VariableName>(n - x, linear_constraint<Number, VariableName>::STRICT_INEQUALITY);
+inline linear_constraint_t operator<(int n, variable_t x) {
+    return linear_constraint_t(n - x, linear_constraint_t::STRICT_INEQUALITY);
 }
 
 inline linear_constraint_t operator<(variable_t x, variable_t y) {
