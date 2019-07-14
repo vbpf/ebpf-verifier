@@ -779,10 +779,8 @@ inline linear_constraint<Number, VariableName> operator<(const linear_expression
     return linear_constraint<Number, VariableName>(e - x, linear_constraint<Number, VariableName>::STRICT_INEQUALITY);
 }
 
-template <typename Number, typename VariableName>
-inline linear_constraint<Number, VariableName> operator<(variable<Number, VariableName> x,
-                                                         const linear_expression<Number, VariableName> &e) {
-    return linear_constraint<Number, VariableName>(x - e, linear_constraint<Number, VariableName>::STRICT_INEQUALITY);
+inline linear_constraint_t operator<(variable_t x, const linear_expression_t &e) {
+    return linear_constraint_t(x - e, linear_constraint_t::STRICT_INEQUALITY);
 }
 
 inline linear_constraint_t operator<(variable_t x, number_t n) {
