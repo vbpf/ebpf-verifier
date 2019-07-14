@@ -21,6 +21,8 @@
 #include "asm_syntax.hpp"
 #include "asm_cfg.hpp"
 
+using namespace ikos::dsl_syntax;
+
 using std::tuple;
 using std::string;
 using std::vector;

@@ -629,7 +629,7 @@ linear_constraint<Number, VariableName> linear_constraint<Number, VariableName>:
 }
 
 inline std::size_t hash_value(const linear_constraint_t &e) { return e.hash(); }
-
+namespace dsl_syntax {
 inline linear_constraint_t operator<=(const linear_expression_t &e, number_t n) {
     return linear_constraint_t(e - n, linear_constraint_t::INEQUALITY);
 }
@@ -951,7 +951,7 @@ inline linear_constraint<Number, VariableName> operator!=(const linear_expressio
                                                           const linear_expression<Number, VariableName> &e2) {
     return linear_constraint<Number, VariableName>(e1 - e2, linear_constraint<Number, VariableName>::DISEQUATION);
 }
-
+} // end namespace dsl_syntax
 template <typename Number, typename VariableName>
 class linear_constraint_system {
     using linear_constraint_system_t = linear_constraint_system<Number, VariableName>;

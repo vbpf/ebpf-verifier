@@ -56,6 +56,10 @@
 
 namespace crab {
 
+namespace {
+    using namespace ikos::dsl_syntax;
+}
+
 // To convert a basic block label to a string
 template <typename T>
 inline std::string get_label_str(T e);
