@@ -60,6 +60,7 @@ namespace crab {
 template <typename T>
 inline std::string get_label_str(T e);
 
+inline std::string get_label_str(std::string e) { return e; };
 // The values must be such that NUM <= PTR <= ARR
 enum tracked_precision { NUM = 0, PTR = 1, ARR = 2 };
 
@@ -1245,19 +1246,6 @@ class cfg {
         }
     }
 
-    cfg_t *clone() const {
-        cfg_t *copy_cfg = new cfg_t();
-        copy_cfg->m_entry = m_entry;
-        copy_cfg->m_track_prec = m_track_prec;
-        copy_cfg->m_exit = m_exit;
-
-        for (auto const &bb : boost::make_iterator_range(begin(), end())) {
-            basic_block_t *copy_bb = bb.clone();
-            copy_cfg->m_blocks.insert(binding_t(copy_bb->label(), copy_bb));
-        }
-        return copy_cfg;
-    }
-
     tracked_precision get_track_prec() const { return m_track_prec; }
 
     bool has_exit() const { return (bool)m_exit; }
@@ -1360,21 +1348,21 @@ class cfg {
         delete bb;
     }
 
-    // Return all variables (either used or defined) in the cfg.
-    //
-    // This operation is linear on the size of the cfg to still keep
-    // a valid set in case a block is removed.
-    std::vector<varname_t> get_vars() const {
-        live_domain_t ls = live_domain_t::bottom();
-        for (auto const &b : boost::make_iterator_range(begin(), end()))
-            ls = ls | b.live();
-        // std::vector<varname_t> vars(ls.size());
-        // vars.insert(vars.end(), ls.begin(), ls.end());
-        std::vector<varname_t> vars;
-        for (auto v : ls)
-            vars.push_back(v);
-        return vars;
-    }
+    // // Return all variables (either used or defined) in the cfg.
+    // //
+    // // This operation is linear on the size of the cfg to still keep
+    // // a valid set in case a block is removed.
+    // std::vector<varname_t> get_vars() const {
+    //     live_domain_t ls = live_domain_t::bottom();
+    //     for (auto const &b : boost::make_iterator_range(begin(), end()))
+    //         ls = ls | b.live();
+    //     // std::vector<varname_t> vars(ls.size());
+    //     // vars.insert(vars.end(), ls.begin(), ls.end());
+    //     std::vector<varname_t> vars;
+    //     for (auto v : ls)
+    //         vars.push_back(v);
+    //     return vars;
+    // }
 
     //! return a begin iterator of BasicBlock's
     iterator begin() { return boost::make_transform_iterator(m_blocks.begin(), get_ref()); }
@@ -1537,6 +1525,8 @@ class cfg {
         }
     }
 };
+
+extern template class cfg<basic_block_label_t, varname_t, number_t>;
 
 // A lightweight object that wraps a reference to a CFG into a
 // copyable, assignable object.
