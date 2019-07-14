@@ -45,11 +45,9 @@ class SplitDBM final : public ikos::writeable {
   public:
 
     using constraint_kind_t = typename linear_constraint_t::kind_t;
-    using interval_t = interval<number_t>;
 
   private:
     using variable_vector_t = std::vector<variable_t>;
-    using bound_t = bound<number_t>;
 
     using Params = SafeInt64DefaultParams;
     using Wt = typename Params::Wt;

@@ -12,10 +12,6 @@ namespace crab {
 
 namespace domains {
 
-using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
-using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
-using linear_constraint_system_t = ikos::linear_constraint_system<number_t, varname_t>;
-
 // Special operations needed by the checker
 template <typename Domain>
 class checker_domain_traits {

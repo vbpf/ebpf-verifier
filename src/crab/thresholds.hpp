@@ -20,13 +20,11 @@ namespace iterators {
 /**
     Class that represents a set of thresholds used by the widening operator
 **/
+
 template <typename Number>
 class thresholds {
 
   private:
-    /// XXX: internal representation of a threshold
-    using bound_t = ikos::bound<Number>;
-
     std::vector<bound_t> m_thresholds;
     unsigned int m_size;
 
@@ -39,8 +37,7 @@ class thresholds {
 
     unsigned size(void) const { return m_thresholds.size(); }
 
-    template <typename N>
-    void add(ikos::bound<N> v1) {
+    void add(bound_t v1) {
         if (m_thresholds.size() < m_size) {
             bound_t v = (v1);
             if (std::find(m_thresholds.begin(), m_thresholds.end(), v) == m_thresholds.end()) {
@@ -68,8 +65,7 @@ class thresholds {
         }
     }
 
-    template <typename N>
-    ikos::bound<N> get_next(ikos::bound<N> v1) const {
+    bound_t get_next(bound_t v1) const {
         if (v1.is_plus_infinity())
             return v1;
         bound_t v = (v1);
@@ -80,8 +76,7 @@ class thresholds {
         return (t);
     }
 
-    template <typename N>
-    ikos::bound<N> get_prev(ikos::bound<N> v1) const {
+    bound_t get_prev(bound_t v1) const {
         if (v1.is_minus_infinity())
             return v1;
         bound_t v = (v1);
@@ -138,8 +133,6 @@ class wto_thresholds : public ikos::wto_component_visitor<CFG> {
     std::vector<basic_block_label_t> m_stack;
 
     using basic_block_t = typename CFG::basic_block_t;
-
-    using bound_t = ikos::bound<number_t>;
 
     // using select_t = crab::select_stmt<number_t,varname_t>;
 

@@ -686,7 +686,6 @@ class basic_block {
     // helper types to build statements
 
     using basic_block_t = basic_block<basic_block_label_t, VariableName, Number>;
-    using interval_t = ikos::interval<Number>;
 
   private:
     using bb_id_set_t = std::vector<basic_block_label_t>;
