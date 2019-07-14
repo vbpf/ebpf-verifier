@@ -474,7 +474,6 @@ class linear_constraint {
   public:
 
     using linear_constraint_t = linear_constraint<Number, VariableName>;
-    using linear_expression_t = linear_expression<Number, VariableName>;
     using variable_set_t = patricia_tree_set<variable_t>;
     using kind_t = enum { EQUALITY, DISEQUATION, INEQUALITY, STRICT_INEQUALITY };
     using iterator = typename linear_expression_t::iterator;
@@ -680,8 +679,6 @@ namespace linear_constraint_impl {
 
 template <typename Number, typename VariableName>
 linear_constraint<Number, VariableName> negate_inequality(const linear_constraint<Number, VariableName> &c) {
-    using linear_expression_t = linear_expression<Number, VariableName>;
-    using linear_constraint_t = linear_constraint<Number, VariableName>;
     assert(c.is_inequality());
     // default implementation: negate(e <= 0) = e > 0
     linear_expression_t e(-c.expression());
@@ -691,8 +688,6 @@ linear_constraint<Number, VariableName> negate_inequality(const linear_constrain
 // Specialized version for z_number
 template <typename VariableName>
 linear_constraint<z_number, VariableName> negate_inequality(const linear_constraint<z_number, VariableName> &c) {
-    using linear_expression_t = linear_expression<z_number, VariableName>;
-    using linear_constraint_t = linear_constraint<z_number, VariableName>;
     assert(c.is_inequality());
     // negate(e <= 0) = e >= 1
     linear_expression_t e(-(c.expression() - 1));
@@ -713,8 +708,6 @@ strict_to_non_strict_inequality(const linear_constraint<Number, VariableName> &c
 template <typename VariableName>
 linear_constraint<z_number, VariableName>
 strict_to_non_strict_inequality(const linear_constraint<z_number, VariableName> &c) {
-    using linear_expression_t = linear_expression<z_number, VariableName>;
-    using linear_constraint_t = linear_constraint<z_number, VariableName>;
     assert(c.is_strict_inequality());
     // e < 0 --> e <= -1
     linear_expression_t e(c.expression() + 1);
@@ -724,8 +717,6 @@ strict_to_non_strict_inequality(const linear_constraint<z_number, VariableName> 
 
 template <typename Number, typename VariableName>
 linear_constraint<Number, VariableName> linear_constraint<Number, VariableName>::negate() const {
-    using linear_constraint_t = linear_constraint<Number, VariableName>;
-    using linear_expression_t = linear_expression<Number, VariableName>;
 
     if (is_tautology()) {
         return get_false();
@@ -1143,12 +1134,8 @@ inline linear_constraint<Number, VariableName> operator!=(const linear_expressio
 
 template <typename Number, typename VariableName>
 class linear_constraint_system {
-
-  public:
-
-    using linear_expression_t = linear_expression<Number, VariableName>;
-    using linear_constraint_t = linear_constraint<Number, VariableName>;
     using linear_constraint_system_t = linear_constraint_system<Number, VariableName>;
+  public:
     using variable_set_t = patricia_tree_set<variable_t>;
 
   private:
