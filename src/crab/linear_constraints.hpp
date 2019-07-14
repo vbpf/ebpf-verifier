@@ -665,14 +665,6 @@ inline crab::crab_os &operator<<(crab::crab_os &o, const linear_constraint<Numbe
 
 namespace linear_constraint_impl {
 
-template <typename Number, typename VariableName>
-linear_constraint<Number, VariableName> negate_inequality(const linear_constraint<Number, VariableName> &c) {
-    assert(c.is_inequality());
-    // default implementation: negate(e <= 0) = e > 0
-    linear_expression_t e(-c.expression());
-    return linear_constraint_t(e, linear_constraint_t::kind_t::STRICT_INEQUALITY, c.is_signed());
-}
-
 // Specialized version for z_number
 template <typename VariableName>
 linear_constraint<z_number, VariableName> negate_inequality(const linear_constraint<z_number, VariableName> &c) {
