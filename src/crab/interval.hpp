@@ -213,12 +213,12 @@ inline crab::crab_os &operator<<(crab::crab_os &o, const bound<Number> &b) {
 }
 
 using z_bound = bound<z_number>;
+using bound_t = z_bound;
 
 template <typename Number>
 class interval {
 
   public:
-    using bound_t = bound<Number>;
     using interval_t = interval<Number>;
 
   private:
@@ -495,6 +495,8 @@ class interval {
     }
 
 }; //  class interval
+
+using interval_t = interval<number_t>;
 
 template <>
 inline interval<z_number> interval<z_number>::operator/(interval<z_number> x) const {
@@ -794,43 +796,21 @@ inline crab::crab_os &operator<<(crab::crab_os &o, const interval<Number> &i) {
     return o;
 }
 
-namespace linear_interval_solver_impl {
-
-// gamma(i) \ gamma(j)
-template <typename Interval>
-inline Interval trim_interval(Interval i, Interval j);
-
-template <typename Interval>
-Interval lower_half_line(Interval i, bool is_signed);
-
-template <typename Interval>
-Interval upper_half_line(Interval i, bool is_signed);
-
-using z_interval = interval<z_number>;
-
-template <>
-inline z_interval trim_interval(z_interval i, z_interval j) {
+inline interval_t trim_interval(interval_t i, interval_t j) {
     if (std::optional<z_number> c = j.singleton()) {
         if (i.lb() == *c) {
-            return z_interval(*c + 1, i.ub());
+            return interval_t(*c + 1, i.ub());
         } else if (i.ub() == *c) {
-            return z_interval(i.lb(), *c - 1);
+            return interval_t(i.lb(), *c - 1);
         } else {
         }
     }
     return i;
 }
 
-template <>
-inline z_interval lower_half_line(z_interval i, bool /*is_signed*/) {
-    return i.lower_half_line();
-}
-
-template <>
-inline z_interval upper_half_line(z_interval i, bool /*is_signed*/) {
-    return i.upper_half_line();
-}
-
-} // namespace linear_interval_solver_impl
-
 } // namespace ikos
+
+namespace crab {
+    using ikos::bound_t;
+    using ikos::interval_t;
+}

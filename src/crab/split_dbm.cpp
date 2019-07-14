@@ -393,7 +393,7 @@ bool SplitDBM::add_linear_leq(const linear_expression_t &exp) {
 void SplitDBM::add_univar_disequation(variable_t x, number_t n) {
     bool overflow;
     interval_t i = get_interval(x);
-    interval_t new_i = linear_interval_solver_impl::trim_interval<interval_t>(i, interval_t(n));
+    interval_t new_i = trim_interval(i, interval_t(n));
     if (new_i.is_bottom()) {
         set_to_bottom();
     } else if (!new_i.is_top() && (new_i <= i)) {

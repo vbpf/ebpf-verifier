@@ -122,9 +122,6 @@ template <typename Analyzer>
 class assert_property_checker
     : public crab::statement_visitor {
   public:
-
-
-    using interval_t = ikos::interval<number_t>;
     using abs_dom_t = typename Analyzer::abs_dom_t;
 
     using abs_tr_t = typename Analyzer::abs_tr_t;

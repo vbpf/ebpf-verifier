@@ -84,7 +84,6 @@ class cell {
   private:
     friend class offset_map<Variable>;
     using cell_t = cell<Variable>;
-    using interval_t = ikos::interval<number_t>;
 
     offset_t _offset;
     unsigned _size;
@@ -645,10 +644,8 @@ class array_expansion_domain final : public ikos::writeable {
   public:
     using variable_vector_t = std::vector<variable_t>;
     using content_domain_t = NumDomain;
-    using interval_t = interval<number_t>;
 
   private:
-    using bound_t = bound<number_t>;
     using type_t = crab::variable_type;
     using offset_map_t = offset_map<variable_t>;
     using cell_t = cell<variable_t>;
