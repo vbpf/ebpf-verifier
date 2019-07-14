@@ -653,16 +653,12 @@ inline linear_constraint_t operator<=(const linear_expression_t &e, number_t n) 
     return linear_constraint_t(e - n, linear_constraint_t::INEQUALITY);
 }
 
-// ELAZAR: Ambiguity
-template <typename Number, typename VariableName>
-inline linear_constraint<Number, VariableName> operator<=(const linear_expression<Number, VariableName> &e, int n) {
-    return linear_constraint<Number, VariableName>(e - n, linear_constraint<Number, VariableName>::INEQUALITY);
+inline linear_constraint_t operator<=(const linear_expression_t &e, int n) {
+    return linear_constraint_t(e - n, linear_constraint_t::INEQUALITY);
 }
 
-// ELAZAR: Ambiguity
-template <typename Number, typename VariableName>
-inline linear_constraint<Number, VariableName> operator<=(Number n, const linear_expression<Number, VariableName> &e) {
-    return linear_constraint<Number, VariableName>(n - e, linear_constraint<Number, VariableName>::INEQUALITY);
+inline linear_constraint_t operator<=(number_t n, const linear_expression_t &e) {
+    return linear_constraint_t(n - e, linear_constraint_t::INEQUALITY);
 }
 
 inline linear_constraint_t operator<=(int n, const linear_expression_t &e) {
@@ -705,15 +701,12 @@ inline linear_constraint_t operator>=(const linear_expression_t &e, number_t n) 
     return linear_constraint_t(n - e, linear_constraint_t::INEQUALITY);
 }
 
-// ELAZAR: Ambiguity
 inline linear_constraint_t operator>=(const linear_expression_t &e, int n) {
     return linear_constraint_t(n - e, linear_constraint_t::INEQUALITY);
 }
 
-// ELAZAR: Ambiguity
-template <typename Number, typename VariableName>
-inline linear_constraint<Number, VariableName> operator>=(Number n, const linear_expression<Number, VariableName> &e) {
-    return linear_constraint<Number, VariableName>(e - n, linear_constraint<Number, VariableName>::INEQUALITY);
+inline linear_constraint_t operator>=(number_t n, const linear_expression_t &e) {
+    return linear_constraint_t(e - n, linear_constraint_t::INEQUALITY);
 }
 
 inline linear_constraint_t operator>=(int n, const linear_expression_t &e) {
