@@ -375,9 +375,7 @@ inline linear_expression_t operator+(int n, variable_t x) { return linear_expres
 
 inline linear_expression_t operator+(variable_t x, variable_t y) { return linear_expression_t(x).operator+(y); }
 
-// ELAZAR: XXX
-template <typename Number, typename VariableName>
-inline linear_expression<Number, VariableName> operator+(Number n, const linear_expression<Number, VariableName> &e) {
+inline linear_expression_t operator+(number_t n, const linear_expression_t &e) {
     return e.operator+(n);
 }
 
@@ -397,10 +395,8 @@ inline linear_expression_t operator-(int n, variable_t x) { return linear_expres
 
 inline linear_expression_t operator-(variable_t x, variable_t y) { return linear_expression_t(x).operator-(y); }
 
-// ELAZAR: XXX
-template <typename Number, typename VariableName>
-inline linear_expression<Number, VariableName> operator-(Number n, const linear_expression<Number, VariableName> &e) {
-    return linear_expression<Number, VariableName>(n).operator-(e);
+inline linear_expression_t operator-(number_t n, const linear_expression_t &e) {
+    return linear_expression_t(n).operator-(e);
 }
 
 inline linear_expression_t operator-(int n, const linear_expression_t &e) {
