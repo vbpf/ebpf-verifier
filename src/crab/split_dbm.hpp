@@ -19,7 +19,6 @@
 
 #include "crab/abstract_domain.hpp"
 #include "crab/abstract_domain_specialized_traits.hpp"
-#include "crab/backward_assign_operations.hpp"
 #include "crab/debug.hpp"
 #include "crab/graph_config.hpp"
 #include "crab/graph_ops.hpp"
@@ -388,17 +387,11 @@ class SplitDBM final : public ikos::writeable {
 
     void apply(operation_t op, variable_t x, variable_t y, number_t k);
 
-    void backward_assign(variable_t x, linear_expression_t e, SplitDBM inv) {
-        crab::domains::BackwardAssignOps<SplitDBM>::assign(*this, x, e, inv);
-    }
+    void backward_assign(variable_t x, linear_expression_t e, SplitDBM inv);
 
-    void backward_apply(operation_t op, variable_t x, variable_t y, number_t z, SplitDBM inv) {
-        crab::domains::BackwardAssignOps<SplitDBM>::apply(*this, op, x, y, z, inv);
-    }
+    void backward_apply(operation_t op, variable_t x, variable_t y, number_t z, SplitDBM inv);
 
-    void backward_apply(operation_t op, variable_t x, variable_t y, variable_t z, SplitDBM inv) {
-        crab::domains::BackwardAssignOps<SplitDBM>::apply(*this, op, x, y, z, inv);
-    }
+    void backward_apply(operation_t op, variable_t x, variable_t y, variable_t z, SplitDBM inv);
 
     void operator+=(linear_constraint_t cst);
 
