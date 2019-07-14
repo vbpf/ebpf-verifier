@@ -4,7 +4,7 @@
 #include <sys/resource.h>
 
 namespace crab {
-  
+
   std::map<std::string,unsigned> CrabStats::counters;
   std::map<std::string,Stopwatch> CrabStats::sw;
 
@@ -28,7 +28,7 @@ namespace crab {
       finished = systemTime();
     }
   }
-  
+
   void Stopwatch::resume() {
     if (finished >= started) {
       timeElapsed += finished - started;
@@ -36,11 +36,11 @@ namespace crab {
       finished = -1;
     }
   }
-  
+
   long Stopwatch::getTimeElapsed() const {
     if (finished < started)
       return timeElapsed + systemTime() - started;
-    else 
+    else
       return timeElapsed + finished - started;
   }
 
@@ -58,8 +58,8 @@ namespace crab {
     if (h > 0) out << h << "h";
     if (m > 0) out << m << "m";
     out << s << "s";
-  }  
-  
+  }
+
   void CrabStats::reset () {
     counters.clear();
     sw.clear();
@@ -70,10 +70,10 @@ namespace crab {
       counters[name] = std::max (counters[name], v);
   }
 
-  unsigned CrabStats::uset (const std::string &n, unsigned v) 
+  unsigned CrabStats::uset (const std::string &n, unsigned v)
   { return counters [n] = v; }
   unsigned CrabStats::get (const std::string &n) { return counters [n]; }
-  
+
   void CrabStats::start (const std::string &name) { sw[name].start (); }
   void CrabStats::stop (const std::string &name) { sw[name].stop (); }
   void CrabStats::resume (const std::string &name) { sw[name].resume (); }
@@ -93,10 +93,10 @@ namespace crab {
     for (auto &kv : counters)
       OS << "BRUNCH_STAT " << kv.first << " " << kv.second << "\n";
     for (auto &kv : sw)
-      OS << "BRUNCH_STAT " << kv.first << " " << (kv.second).toSeconds() << "sec \n"; 
+      OS << "BRUNCH_STAT " << kv.first << " " << (kv.second).toSeconds() << "sec \n";
     OS << "************** BRUNCH STATS END ***************** \n";
   }
-  
+
   ScopedCrabStats::ScopedCrabStats(const std::string &name, bool reset)
     : m_name(name) {
     if (reset) {
@@ -106,9 +106,9 @@ namespace crab {
       CrabStats::resume(m_name);
     }
   }
-  
+
   ScopedCrabStats::~ScopedCrabStats() { CrabStats::stop(m_name); }
 
-  
-    
+
+
 }

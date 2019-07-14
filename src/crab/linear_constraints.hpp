@@ -64,7 +64,7 @@ class linear_expression {
     using variable_set_t = patricia_tree_set<variable_t>;
 
   private:
-    using map_t = boost::container::flat_map<variable_t, Number>;
+    using map_t = boost::container::flat_map<variable_t, Number, variable_t::less>;
     using map_ptr = std::shared_ptr<map_t>;
     using pair_t = typename map_t::value_type;
 
