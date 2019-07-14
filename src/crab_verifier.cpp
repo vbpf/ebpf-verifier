@@ -38,7 +38,7 @@ using printer_t = boost::signals2::signal<void(const string&)>;
 using crab::checker::checks_db;
 
 using dom_t = crab::domains::array_expansion_domain<crab::domain_impl::z_sdbm_domain_t>;
-using analyzer_t = crab::analyzer::fwd_analyzer<crab::cfg_ref<cfg_t>, dom_t>;
+using analyzer_t = crab::analyzer::fwd_analyzer<dom_t>;
 
 static auto extract_pre(analyzer_t& analyzer)
 {
