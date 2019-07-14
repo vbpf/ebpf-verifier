@@ -81,8 +81,8 @@ class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<AbstractValue
   private:
     using wto_iterator_t = interleaved_fwd_fixpoint_iterator_impl::wto_iterator<AbstractValue>;
     using wto_processor_t = interleaved_fwd_fixpoint_iterator_impl::wto_processor<AbstractValue>;
-    using thresholds_t = crab::iterators::thresholds<crab::number_t>;
-    using wto_thresholds_t = crab::iterators::wto_thresholds<cfg_ref_t>;
+    using thresholds_t = crab::iterators::thresholds_t;
+    using wto_thresholds_t = crab::iterators::wto_thresholds_t;
 
   protected:
     using iterator = typename invariant_table_t::iterator;

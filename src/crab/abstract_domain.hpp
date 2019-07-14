@@ -79,7 +79,7 @@ class abstract_domain : public ikos::writeable {
     // TODO: add const reference and ideally const method
     virtual Dom operator&&(const Dom& abs) = 0;
     // Widening with thresholds: widening_ts(*this, abs)
-    virtual Dom widening_thresholds(Dom abs, const crab::iterators::thresholds<number_t> &ts) = 0;
+    virtual Dom widening_thresholds(Dom abs, const crab::iterators::thresholds_t &ts) = 0;
 
     /**************************** Backward arithmetic operations ******************/
     // x = y op z

@@ -82,7 +82,6 @@ inline size_t hash_value(const variable_ref_t &v) {
     return v.hash();
 }
 
-template <typename number_t>
 inline crab::crab_os &operator<<(crab::crab_os &o, const variable_ref_t &v) {
     v.write(o);
     return o;

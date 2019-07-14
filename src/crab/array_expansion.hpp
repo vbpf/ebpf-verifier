@@ -815,7 +815,7 @@ class array_expansion_domain final : public ikos::writeable {
     }
 
     array_expansion_domain_t widening_thresholds(array_expansion_domain_t other,
-                                                 const iterators::thresholds<number_t> &ts) {
+                                                 const iterators::thresholds_t &ts) {
         crab::CrabStats::count(getDomainName() + ".count.widening");
         crab::ScopedCrabStats __st__(getDomainName() + ".widening");
         return array_expansion_domain_t(_inv.widening_thresholds(other._inv, ts));
