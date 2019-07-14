@@ -19,7 +19,7 @@ enum check_kind_t { _SAFE, _ERR, _WARN, _UNREACH };
 // Toy database to store invariants. We may want to replace it with
 // a permanent external database.
 class checks_db {
-    using check_t = std::pair<crab::cfg::debug_info, check_kind_t>;
+    using check_t = std::pair<crab::debug_info, check_kind_t>;
     using checks_db_t = std::set<check_t>;
 
     checks_db_t m_db;
@@ -46,7 +46,7 @@ class checks_db {
     unsigned get_total_error() const { return m_total_err; }
 
     // add an entry in the database
-    void add(check_kind_t status, crab::cfg::debug_info dbg = crab::cfg::debug_info()) {
+    void add(check_kind_t status, crab::debug_info dbg = crab::debug_info()) {
         switch (status) {
         case _SAFE:
             m_total_safe++;
@@ -120,7 +120,7 @@ class checks_db {
 
 template <typename Analyzer>
 class assert_property_checker
-    : public crab::cfg::statement_visitor {
+    : public crab::statement_visitor {
   public:
 
 
@@ -136,19 +136,6 @@ class assert_property_checker
 
     using cfg_t = typename Analyzer::cfg_t;
     using basic_block_t = typename cfg_t::basic_block_t;
-
-    using statement_t = crab::cfg::statement<number_t, varname_t>;
-    using bin_op_t = crab::cfg::binary_op<number_t, varname_t>;
-    using assign_t = crab::cfg::assignment<number_t, varname_t>;
-    using assume_t = crab::cfg::assume_stmt<number_t, varname_t>;
-    using assert_t = crab::cfg::assert_stmt<number_t, varname_t>;
-    using int_cast_t = crab::cfg::int_cast_stmt<number_t, varname_t>;
-    using select_t = crab::cfg::select_stmt<number_t, varname_t>;
-    using havoc_t = crab::cfg::havoc_stmt<number_t, varname_t>;
-    using unreach_t = crab::cfg::unreachable_stmt<number_t, varname_t>;
-    using arr_init_t = crab::cfg::array_init_stmt<number_t, varname_t>;
-    using arr_store_t = crab::cfg::array_store_stmt<number_t, varname_t>;
-    using arr_load_t = crab::cfg::array_load_stmt<number_t, varname_t>;
 
   public:
     // set internal state for the checker

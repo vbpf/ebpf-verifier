@@ -52,7 +52,7 @@ static basic_block_t& add_child(cfg_t& cfg, basic_block_t& block, std::string su
     return add_common_child(cfg, block, {block.label()}, suffix);
 }
 
-using crab::cfg::debug_info;
+using crab::debug_info;
 
 using var_t     = ikos::variable<ikos::z_number, varname_t>;
 using lin_cst_t = ikos::linear_constraint<ikos::z_number, varname_t>;

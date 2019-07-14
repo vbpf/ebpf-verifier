@@ -10,7 +10,7 @@
 #include "crab/cfg.hpp"
 
 namespace crab {
-namespace cfg {
+
 namespace graph {
 template <typename G>
 struct mk_in_edge : public std::unary_function<typename boost::graph_traits<G>::vertex_descriptor,
@@ -36,15 +36,14 @@ struct mk_out_edge : public std::unary_function<typename boost::graph_traits<G>:
     Edge operator()(const Node &dst) const { return Edge(_src, dst); }
 };
 } // end namespace graph
-} // end namespace cfg
 } // end namespace crab
 
 namespace boost {
 
 // cfg
 template <typename BasicBlockLabel, typename VariableName, typename Number>
-struct graph_traits<crab::cfg::cfg<BasicBlockLabel, VariableName, Number>> {
-    using graph_t = crab::cfg::cfg<BasicBlockLabel, VariableName, Number>;
+struct graph_traits<crab::cfg<BasicBlockLabel, VariableName, Number>> {
+    using graph_t = crab::cfg<BasicBlockLabel, VariableName, Number>;
     using vertex_descriptor = BasicBlockLabel;
     using edge_descriptor = std::pair<vertex_descriptor, vertex_descriptor>;
     using const_edge_descriptor = std::pair<const vertex_descriptor, const vertex_descriptor>;
@@ -74,15 +73,15 @@ struct graph_traits<crab::cfg::cfg<BasicBlockLabel, VariableName, Number>> {
     // iterator of basic_block_label_t's
     using vertex_iterator = typename graph_t::label_iterator;
     // iterator of pairs of basic_block_label_t's
-    using in_edge_iterator = transform_iterator<crab::cfg::graph::mk_in_edge<graph_t>, typename graph_t::pred_iterator>;
+    using in_edge_iterator = transform_iterator<crab::graph::mk_in_edge<graph_t>, typename graph_t::pred_iterator>;
     // iterator of pairs of basic_block_label_t's
-    using out_edge_iterator = transform_iterator<crab::cfg::graph::mk_out_edge<graph_t>, typename graph_t::succ_iterator>;
+    using out_edge_iterator = transform_iterator<crab::graph::mk_out_edge<graph_t>, typename graph_t::succ_iterator>;
 }; // end class graph_traits
 
 // cfg_ref
 template <class CFG>
-struct graph_traits<crab::cfg::cfg_ref<CFG>> {
-    using graph_t = crab::cfg::cfg_ref<CFG>;
+struct graph_traits<crab::cfg_ref<CFG>> {
+    using graph_t = crab::cfg_ref<CFG>;
     using vertex_descriptor = basic_block_label_t;
     using edge_descriptor = std::pair<vertex_descriptor, vertex_descriptor>;
     using const_edge_descriptor = std::pair<const vertex_descriptor, const vertex_descriptor>;
@@ -110,14 +109,14 @@ struct graph_traits<crab::cfg::cfg_ref<CFG>> {
     }
 
     using vertex_iterator = typename graph_t::label_iterator;
-    using in_edge_iterator = boost::transform_iterator<crab::cfg::graph::mk_in_edge<graph_t>, typename graph_t::pred_iterator>;
-    using out_edge_iterator = boost::transform_iterator<crab::cfg::graph::mk_out_edge<graph_t>, typename graph_t::succ_iterator>;
+    using in_edge_iterator = boost::transform_iterator<crab::graph::mk_in_edge<graph_t>, typename graph_t::pred_iterator>;
+    using out_edge_iterator = boost::transform_iterator<crab::graph::mk_out_edge<graph_t>, typename graph_t::succ_iterator>;
 }; // end class graph_traits
 
 // cfg_rev
 template <class CFG>
-struct graph_traits<crab::cfg::cfg_rev<CFG>> {
-    using graph_t = crab::cfg::cfg_rev<CFG>;
+struct graph_traits<crab::cfg_rev<CFG>> {
+    using graph_t = crab::cfg_rev<CFG>;
     using vertex_descriptor = basic_block_label_t;
     using edge_descriptor = std::pair<vertex_descriptor, vertex_descriptor>;
     using const_edge_descriptor = std::pair<const vertex_descriptor, const vertex_descriptor>;
@@ -145,14 +144,13 @@ struct graph_traits<crab::cfg::cfg_rev<CFG>> {
     }
 
     using vertex_iterator = typename graph_t::label_iterator;
-    using in_edge_iterator = boost::transform_iterator<crab::cfg::graph::mk_in_edge<graph_t>, typename graph_t::pred_iterator>;
-    using out_edge_iterator = boost::transform_iterator<crab::cfg::graph::mk_out_edge<graph_t>, typename graph_t::succ_iterator>;
+    using in_edge_iterator = boost::transform_iterator<crab::graph::mk_in_edge<graph_t>, typename graph_t::pred_iterator>;
+    using out_edge_iterator = boost::transform_iterator<crab::graph::mk_out_edge<graph_t>, typename graph_t::succ_iterator>;
 }; // end class graph_traits
 } // namespace boost
 
 // XXX: do not put it in the boost namespace because it won't compile
 namespace crab {
-namespace cfg {
 
 // cfg
 
@@ -358,5 +356,4 @@ degree(typename boost::graph_traits<cfg_rev<CFG>>::vertex_descriptor v, cfg_rev<
     return out_degree(v, g) + in_degree(v, g);
 }
 
-} // namespace cfg
 } // namespace crab

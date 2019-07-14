@@ -56,13 +56,9 @@
 
 namespace crab {
 
-namespace cfg_impl {
 // To convert a basic block label to a string
 template <typename T>
 inline std::string get_label_str(T e);
-} // namespace cfg_impl
-
-namespace cfg {
 
 // The values must be such that NUM <= PTR <= ARR
 enum tracked_precision { NUM = 0, PTR = 1, ARR = 2 };
@@ -87,11 +83,9 @@ enum stmt_code {
     INT_CAST = 80
 };
 
-template <typename Number, typename VariableName>
-class live {
+class live_t {
   public:
-    using variable_t = ikos::variable<Number, VariableName>;
-
+    using variable_t = ikos::variable<number_t, varname_t>;
   private:
     using live_set_t = std::vector<variable_t>;
 
@@ -110,8 +104,6 @@ class live {
     }
 
   public:
-    live() {}
-
     void add_use(const variable_t v) { add(m_uses, v); }
     void add_def(const variable_t v) { add(m_defs, v); }
 
@@ -123,7 +115,7 @@ class live {
     size_t num_uses() const { return m_uses.size(); }
     size_t num_defs() const { return m_defs.size(); }
 
-    friend crab_os &operator<<(crab_os &o, const live<Number, VariableName> &live) {
+    friend crab_os &operator<<(crab_os &o, const live_t &live) {
         o << "Use={";
         for (auto const &v : boost::make_iterator_range(live.uses_begin(), live.uses_end()))
             o << v << ",";
@@ -172,7 +164,7 @@ class basic_block;
 template <class BasicBlock>
 class basic_block_rev;
 
-template<typename N, typename V>
+template <typename N, typename V>
 class binary_op;
 template <typename N, typename V>
 class assignment;
@@ -246,10 +238,6 @@ struct statement_visitor {
 
 template <class Number, class VariableName>
 class statement {
-
-  public:
-    using live_t = live<Number, VariableName>;
-
   protected:
     live_t m_live;
     stmt_code m_stmt_code;
@@ -289,6 +277,8 @@ class statement {
         return o;
     }
 };
+
+using statement_t = crab::statement<number_t, varname_t>;
 
 /*
   Numerical statements
@@ -336,6 +326,8 @@ class binary_op : public statement<Number, VariableName> {
     linear_expression_t m_op2;
 };
 
+using bin_op_t = crab::binary_op<number_t, varname_t>;
+
 template <class Number, class VariableName>
 class assignment : public statement<Number, VariableName> {
     using this_type = assignment<Number, VariableName>;
@@ -368,6 +360,8 @@ class assignment : public statement<Number, VariableName> {
     linear_expression_t m_rhs;
 };
 
+using assign_t = crab::assignment<number_t, varname_t>;
+
 template <class Number, class VariableName>
 class assume_stmt : public statement<Number, VariableName> {
 
@@ -397,6 +391,8 @@ class assume_stmt : public statement<Number, VariableName> {
     linear_constraint_t m_cst;
 };
 
+using assume_t = crab::assume_stmt<number_t, varname_t>;
+
 template <class Number, class VariableName>
 class unreachable_stmt : public statement<Number, VariableName> {
     using this_type = unreachable_stmt<Number, VariableName>;
@@ -412,6 +408,8 @@ class unreachable_stmt : public statement<Number, VariableName> {
 
     virtual void write(crab_os &o) const { o << "unreachable"; }
 };
+
+using unreach_t = crab::unreachable_stmt<number_t, varname_t>;
 
 template <class Number, class VariableName>
 class havoc_stmt : public statement<Number, VariableName> {
@@ -434,6 +432,8 @@ class havoc_stmt : public statement<Number, VariableName> {
   private:
     variable_t m_lhs;
 };
+
+using havoc_t = crab::havoc_stmt<number_t, varname_t>;
 
 // select x, c, e1, e2:
 //    if c > 0 then x=e1 else x=e2
@@ -488,6 +488,8 @@ class select_stmt : public statement<Number, VariableName> {
     linear_expression_t m_e2;
 };
 
+using select_t = crab::select_stmt<number_t, varname_t>;
+
 template <class Number, class VariableName>
 class assert_stmt : public statement<Number, VariableName> {
     using this_type = assert_stmt<Number, VariableName>;
@@ -519,6 +521,8 @@ class assert_stmt : public statement<Number, VariableName> {
   private:
     linear_constraint_t m_cst;
 };
+
+using assert_t = crab::assert_stmt<number_t, varname_t>;
 
 template <class Number, class VariableName>
 class int_cast_stmt : public statement<Number, VariableName> {
@@ -556,6 +560,8 @@ class int_cast_stmt : public statement<Number, VariableName> {
     variable_t m_src;
     variable_t m_dst;
 };
+
+using int_cast_t = crab::int_cast_stmt<number_t, varname_t>;
 
 /*
   Array statements
@@ -637,6 +643,8 @@ class array_init_stmt : public statement<Number, VariableName> {
     linear_expression_t m_val;
 };
 
+using arr_init_t = crab::array_init_stmt<number_t, varname_t>;
+
 template <class Number, class VariableName>
 class array_store_stmt : public statement<Number, VariableName> {
     using this_type = array_store_stmt<Number, VariableName>;
@@ -709,6 +717,8 @@ class array_store_stmt : public statement<Number, VariableName> {
                          // Only makes sense if m_lb is equal to m_ub.
 };
 
+using arr_store_t = crab::array_store_stmt<number_t, varname_t>;
+
 template <class Number, class VariableName>
 class array_load_stmt : public statement<Number, VariableName> {
     using this_type = array_load_stmt<Number, VariableName>;
@@ -758,6 +768,8 @@ class array_load_stmt : public statement<Number, VariableName> {
     linear_expression_t m_index;
 };
 
+using arr_load_t = crab::array_load_stmt<number_t, varname_t>;
+
 template <class Number, class VariableName>
 class array_assign_stmt : public statement<Number, VariableName> {
     //! a = b
@@ -790,18 +802,18 @@ class array_assign_stmt : public statement<Number, VariableName> {
     variable_t m_rhs;
 };
 
+using arr_assign_t = crab::array_assign_stmt<number_t, varname_t>;
+
 template <class BasicBlockLabel, class VariableName, class Number>
 class cfg;
 
 template <class BasicBlockLabel, class VariableName, class Number>
 class basic_block {
-    basic_block(const basic_block<basic_block_label_t, VariableName, Number>&) = delete;
+    basic_block(const basic_block<basic_block_label_t, VariableName, Number> &) = delete;
 
     friend class cfg<basic_block_label_t, VariableName, Number>;
 
   public:
-
-
     // helper types to build statements
     using variable_t = ikos::variable<Number, VariableName>;
     using lin_exp_t = ikos::linear_expression<Number, VariableName>;
@@ -929,7 +941,7 @@ class basic_block {
 
     basic_block_label_t label() const { return m_bb_id; }
 
-    std::string name() const { return cfg_impl::get_label_str(m_bb_id); }
+    std::string name() const { return get_label_str(m_bb_id); }
 
     iterator begin() { return boost::make_indirect_iterator(m_stmts.begin()); }
     iterator end() { return boost::make_indirect_iterator(m_stmts.end()); }
@@ -1026,7 +1038,7 @@ class basic_block {
     }
 
     void write(crab_os &o) const {
-        o << cfg_impl::get_label_str(m_bb_id) << ":\n";
+        o << get_label_str(m_bb_id) << ":\n";
         for (auto const &s : *this) {
             o << "  " << s << ";\n";
         }
@@ -1037,7 +1049,7 @@ class basic_block {
             o << "  "
               << "goto ";
             for (; it != et;) {
-                o << cfg_impl::get_label_str(*it);
+                o << get_label_str(*it);
                 ++it;
                 if (it == et) {
                     o << ";";
@@ -1174,7 +1186,6 @@ class basic_block {
 template <class BasicBlock>
 class basic_block_rev {
   public:
-
     using variable_t = typename BasicBlock::variable_t;
 
     using basic_block_rev_t = basic_block_rev<BasicBlock>;
@@ -1251,9 +1262,9 @@ class cfg_ref;
 
 template <class BasicBlockLabel, class VariableName, class Number>
 class cfg {
-    cfg(const cfg<basic_block_label_t, varname_t, number_t>&) = delete;
-  public:
+    cfg(const cfg<basic_block_label_t, varname_t, number_t> &) = delete;
 
+  public:
     using node_t = basic_block_label_t; // for Bgl graphs
     using variable_t = ikos::variable<number_t, varname_t>;
     using basic_block_t = basic_block<basic_block_label_t, VariableName, number_t>;
@@ -2292,5 +2303,4 @@ class type_checker {
     }; // end class type_checker_visitor
 };     // end class type_checker
 
-} // end namespace cfg
 } // end namespace crab

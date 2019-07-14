@@ -49,30 +49,30 @@ namespace analyzer {
  * API abstract transformer
  **/
 template <typename Number, typename VariableName>
-class abs_transformer_api : public crab::cfg::statement_visitor {
+class abs_transformer_api : public crab::statement_visitor {
   public:
 
 
-    using var_t = ikos::variable<number_t, VariableName>;
-    using lin_exp_t = ikos::linear_expression<number_t, VariableName>;
-    using lin_cst_t = ikos::linear_constraint<number_t, VariableName>;
-    using lin_cst_sys_t = ikos::linear_constraint_system<number_t, VariableName>;
+    using var_t = ikos::variable<number_t, varname_t>;
+    using lin_exp_t = ikos::linear_expression<number_t, varname_t>;
+    using lin_cst_t = ikos::linear_constraint<number_t, varname_t>;
+    using lin_cst_sys_t = ikos::linear_constraint_system<number_t, varname_t>;
 
-    using havoc_t = crab::cfg::havoc_stmt<number_t, VariableName>;
-    using unreach_t = crab::cfg::unreachable_stmt<number_t, VariableName>;
+    using havoc_t = crab::havoc_stmt<number_t, varname_t>;
+    using unreach_t = crab::unreachable_stmt<number_t, varname_t>;
 
-    using bin_op_t = crab::cfg::binary_op<number_t, VariableName>;
-    using assign_t = crab::cfg::assignment<number_t, VariableName>;
-    using assume_t = crab::cfg::assume_stmt<number_t, VariableName>;
-    using select_t = crab::cfg::select_stmt<number_t, VariableName>;
-    using assert_t = crab::cfg::assert_stmt<number_t, VariableName>;
+    using bin_op_t = crab::binary_op<number_t, varname_t>;
+    using assign_t = crab::assignment<number_t, varname_t>;
+    using assume_t = crab::assume_stmt<number_t, varname_t>;
+    using select_t = crab::select_stmt<number_t, varname_t>;
+    using assert_t = crab::assert_stmt<number_t, varname_t>;
 
-    using int_cast_t = crab::cfg::int_cast_stmt<number_t, VariableName>;
+    using int_cast_t = crab::int_cast_stmt<number_t, varname_t>;
 
-    using arr_init_t = crab::cfg::array_init_stmt<number_t, VariableName>;
-    using arr_store_t = crab::cfg::array_store_stmt<number_t, VariableName>;
-    using arr_load_t = crab::cfg::array_load_stmt<number_t, VariableName>;
-    using arr_assign_t = crab::cfg::array_assign_stmt<number_t, VariableName>;
+    using arr_init_t = crab::array_init_stmt<number_t, varname_t>;
+    using arr_store_t = crab::array_store_stmt<number_t, varname_t>;
+    using arr_load_t = crab::array_load_stmt<number_t, varname_t>;
+    using arr_assign_t = crab::array_assign_stmt<number_t, varname_t>;
 
   protected:
     virtual void exec(havoc_t &) {}
@@ -418,7 +418,7 @@ class intra_necessary_preconditions_abs_transformer
     using abs_dom_t = AbsD;
 
     using variable_t = typename abs_dom_t::variable_t;
-    using statement_t = crab::cfg::statement<number_t, varname_t>;
+    using statement_t = crab::statement<number_t, varname_t>;
     using abs_transform_api_t = abs_transformer_api<number_t, varname_t>;
     using typename abs_transform_api_t::arr_assign_t;
     using typename abs_transform_api_t::arr_init_t;
