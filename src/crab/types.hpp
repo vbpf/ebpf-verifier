@@ -247,21 +247,21 @@ class variable_factory {
 
 
 namespace ikos {
+
+using crab::varname_t;
 // Container for typed variables used by the crab abstract domains
 // and linear_constraints.
-template <typename Number, typename VariableName>
-class variable {
+class variable_t {
     // XXX: template parameter Number is required even if the class
     // does not use it.  This allows, e.g., linear_constraint to
     // deduce the kind of Number from constraints like x < y.
 
   public:
-    using variable_t = variable<Number, VariableName>;
     using bitwidth_t = unsigned;
     using type_t = crab::variable_type;
 
   private:
-    VariableName _n;
+    varname_t _n;
     type_t _type;
     bitwidth_t _width;
 
@@ -272,16 +272,16 @@ class variable {
      * intended to be used only abstract domains to generate temporary
      * variables.
      **/
-    explicit variable(const VariableName &n) : _n(n), _type(crab::UNK_TYPE), _width(0) {}
+    explicit variable_t(const varname_t &n) : _n(n), _type(crab::UNK_TYPE), _width(0) {}
 
   public:
-    variable(const VariableName &n, type_t type) : _n(n), _type(type), _width(0) {}
+    variable_t(const varname_t &n, type_t type) : _n(n), _type(type), _width(0) {}
 
-    variable(const VariableName &n, type_t type, bitwidth_t width) : _n(n), _type(type), _width(width) {}
+    variable_t(const varname_t &n, type_t type, bitwidth_t width) : _n(n), _type(type), _width(width) {}
 
-    variable(const variable_t &o) : _n(o._n), _type(o._type), _width(o._width) {}
+    variable_t(const variable_t &o) : _n(o._n), _type(o._type), _width(o._width) {}
 
-    variable(variable_t &&o) : _n(std::move(o._n)), _type(std::move(o._type)), _width(std::move(o._width)) {}
+    variable_t(variable_t &&o) : _n(std::move(o._n)), _type(std::move(o._type)), _width(std::move(o._width)) {}
 
     variable_t &operator=(const variable_t &o) {
         if (this != &o) {
@@ -304,12 +304,12 @@ class variable {
 
     bitwidth_t get_bitwidth() const { return _width; }
 
-    const VariableName &name() const { return _n; }
+    const varname_t &name() const { return _n; }
 
-    // Cannot be const because from VariableName we might want to
+    // Cannot be const because from varname_t we might want to
     // access to its variable factory to create e.g., new
-    // VariableName's.
-    VariableName &name() { return _n; }
+    // varname_t's.
+    varname_t &name() { return _n; }
 
     index_t index() const { return _n.index(); }
 
@@ -323,14 +323,11 @@ class variable {
 
     friend class less;
     struct less {
-        bool operator()(variable x, variable y) const {
+        bool operator()(variable_t x, variable_t y) const {
             return x._n.index() < y._n.index();
         }
     };
-}; // class variable
-
-extern template class variable<crab::number_t, crab::varname_t>;
-using variable_t = variable<crab::number_t, crab::varname_t>;
+}; // class variable_t
 
 inline size_t hash_value(const variable_t &v) {
     return v.hash();

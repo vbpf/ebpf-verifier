@@ -41,44 +41,43 @@
 
 #pragma once
 
-#include "crab/patricia_trees.hpp"
-#include "crab/types.hpp"
-#include <boost/container/flat_map.hpp>
-#include <boost/functional/hash.hpp>
-#include <boost/iterator/transform_iterator.hpp>
 #include <memory>
 #include <optional>
-
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#include <boost/container/flat_map.hpp>
+#include <boost/functional/hash.hpp>
+#include <boost/iterator/transform_iterator.hpp>
+
+#include "crab/patricia_trees.hpp"
+#include "crab/types.hpp"
+
 namespace ikos {
 
-template <typename Number, typename VariableName>
-class linear_expression {
+class linear_expression_t {
 
   public:
-    using linear_expression_t = linear_expression<Number, VariableName>;
-    using component_t = std::pair<Number, variable_t>;
+    using component_t = std::pair<number_t, variable_t>;
     using variable_set_t = patricia_tree_set<variable_t>;
 
   private:
-    using map_t = boost::container::flat_map<variable_t, Number, variable_t::less>;
+    using map_t = boost::container::flat_map<variable_t, number_t, variable_t::less>;
     using map_ptr = std::shared_ptr<map_t>;
     using pair_t = typename map_t::value_type;
 
     map_ptr _map;
-    Number _cst;
+    number_t _cst;
 
-    linear_expression(map_ptr map, Number cst) : _map(map), _cst(cst) {}
+    linear_expression_t(map_ptr map, number_t cst) : _map(map), _cst(cst) {}
 
-    linear_expression(const map_t &map, Number cst) : _map(map_ptr(new map_t)), _cst(cst) { *this->_map = map; }
+    linear_expression_t(const map_t &map, number_t cst) : _map(map_ptr(new map_t)), _cst(cst) { *this->_map = map; }
 
-    void add(variable_t x, Number n) {
+    void add(variable_t x, number_t n) {
         typename map_t::iterator it = this->_map->find(x);
         if (it != this->_map->end()) {
-            Number r = it->second + n;
+            number_t r = it->second + n;
             if (r == 0) {
                 this->_map->erase(it);
             } else {
@@ -95,19 +94,24 @@ class linear_expression {
         tr_value_ty() {}
         component_t operator()(const typename map_t::value_type &kv) const { return {kv.second, kv.first}; }
     };
+
   public:
     using iterator = boost::transform_iterator<tr_value_ty, typename map_t::iterator>;
     using const_iterator = boost::transform_iterator<tr_value_ty, typename map_t::const_iterator>;
 
-    linear_expression() : _map(map_ptr(new map_t)), _cst(0) {}
+    linear_expression_t() : _map(map_ptr(new map_t)), _cst(0) {}
 
-    linear_expression(Number n) : _map(map_ptr(new map_t)), _cst(n) {}
+    linear_expression_t(number_t n) : _map(map_ptr(new map_t)), _cst(n) {}
 
-    linear_expression(signed long long int n) : _map(map_ptr(new map_t)), _cst(Number(n)) {}
+    linear_expression_t(signed long long int n) : _map(map_ptr(new map_t)), _cst(number_t(n)) {}
 
-    linear_expression(variable_t x) : _map(map_ptr(new map_t)), _cst(0) { this->_map->insert(pair_t(x, Number(1))); }
+    linear_expression_t(variable_t x) : _map(map_ptr(new map_t)), _cst(0) {
+        this->_map->insert(pair_t(x, number_t(1)));
+    }
 
-    linear_expression(Number n, variable_t x) : _map(map_ptr(new map_t)), _cst(0) { this->_map->insert(pair_t(x, n)); }
+    linear_expression_t(number_t n, variable_t x) : _map(map_ptr(new map_t)), _cst(0) {
+        this->_map->insert(pair_t(x, n));
+    }
 
     linear_expression_t &operator=(const linear_expression_t &e) {
         if (this != &e) {
@@ -117,13 +121,13 @@ class linear_expression {
         return *this;
     }
 
-    const_iterator begin() const { return boost::make_transform_iterator(_map->begin(), tr_value_ty()); }
+    const_iterator begin() const;
 
-    const_iterator end() const { return boost::make_transform_iterator(_map->end(), tr_value_ty()); }
+    const_iterator end() const;
 
-    iterator begin() { return boost::make_transform_iterator(_map->begin(), tr_value_ty()); }
+    iterator begin();
 
-    iterator end() { return boost::make_transform_iterator(_map->end(), tr_value_ty()); }
+    iterator end();
 
     size_t hash() const {
         size_t res = 0;
@@ -162,11 +166,11 @@ class linear_expression {
 
     bool is_constant() const { return (this->_map->size() == 0); }
 
-    Number constant() const { return this->_cst; }
+    number_t constant() const { return this->_cst; }
 
     std::size_t size() const { return this->_map->size(); }
 
-    Number operator[](variable_t x) const {
+    number_t operator[](variable_t x) const {
         typename map_t::const_iterator it = this->_map->find(x);
         if (it != this->_map->end()) {
             return it->second;
@@ -177,7 +181,7 @@ class linear_expression {
 
     template <typename RenamingMap>
     linear_expression_t rename(const RenamingMap &map) const {
-        Number cst(this->_cst);
+        number_t cst(this->_cst);
         linear_expression_t new_exp(cst);
         for (auto v : this->variables()) {
             auto const it = map.find(v);
@@ -191,16 +195,16 @@ class linear_expression {
         return new_exp;
     }
 
-    linear_expression_t operator+(Number n) const {
+    linear_expression_t operator+(number_t n) const {
         linear_expression_t r(this->_map, this->_cst + n);
         return r;
     }
 
-    linear_expression_t operator+(int n) const { return this->operator+(Number(n)); }
+    linear_expression_t operator+(int n) const { return this->operator+(number_t(n)); }
 
     linear_expression_t operator+(variable_t x) const {
         linear_expression_t r(*this->_map, this->_cst);
-        r.add(x, Number(1));
+        r.add(x, number_t(1));
         return r;
     }
 
@@ -212,17 +216,17 @@ class linear_expression {
         return r;
     }
 
-    linear_expression_t operator-(Number n) const { return this->operator+(-n); }
+    linear_expression_t operator-(number_t n) const { return this->operator+(-n); }
 
-    linear_expression_t operator-(int n) const { return this->operator+(-Number(n)); }
+    linear_expression_t operator-(int n) const { return this->operator+(-number_t(n)); }
 
     linear_expression_t operator-(variable_t x) const {
         linear_expression_t r(*this->_map, this->_cst);
-        r.add(x, Number(-1));
+        r.add(x, number_t(-1));
         return r;
     }
 
-    linear_expression_t operator-() const { return this->operator*(Number(-1)); }
+    linear_expression_t operator-() const { return this->operator*(number_t(-1)); }
 
     linear_expression_t operator-(const linear_expression_t &e) const {
         linear_expression_t r(*this->_map, this->_cst - e._cst);
@@ -232,13 +236,13 @@ class linear_expression {
         return r;
     }
 
-    linear_expression_t operator*(Number n) const {
+    linear_expression_t operator*(number_t n) const {
         if (n == 0) {
             return linear_expression_t();
         } else {
             map_ptr map = map_ptr(new map_t);
             for (typename map_t::const_iterator it = this->_map->begin(); it != this->_map->end(); ++it) {
-                Number c = n * it->second;
+                number_t c = n * it->second;
                 if (c != 0) {
                     map->insert(pair_t(it->first, c));
                 }
@@ -247,7 +251,7 @@ class linear_expression {
         }
     }
 
-    linear_expression_t operator*(int n) const { return operator*(Number(n)); }
+    linear_expression_t operator*(int n) const { return operator*(number_t(n)); }
 
     variable_set_t variables() const {
         variable_set_t variables;
@@ -280,7 +284,7 @@ class linear_expression {
         else {
             if ((this->constant() == 0) && (this->size() == 1)) {
                 const_iterator it = this->begin();
-                Number coeff = it->first;
+                number_t coeff = it->first;
                 if (coeff == 1)
                     return std::optional<variable_t>(it->second);
             }
@@ -290,7 +294,7 @@ class linear_expression {
 
     void write(crab::crab_os &o) const {
         for (typename map_t::const_iterator it = this->_map->begin(); it != this->_map->end(); ++it) {
-            Number n = it->second;
+            number_t n = it->second;
             variable_t v = it->first;
             if (n > 0 && it != this->_map->begin()) {
                 o << "+";
@@ -313,10 +317,7 @@ class linear_expression {
     // for dgb
     void dump() { write(crab::outs()); }
 
-}; // class linear_expression
-
-extern template class linear_expression<number_t, crab::varname_t>;
-using linear_expression_t = linear_expression<number_t, crab::varname_t>;
+}; // class linear_expression_t
 
 inline crab::crab_os &operator<<(crab::crab_os &o, const linear_expression_t &e) {
     e.write(o);
@@ -340,12 +341,9 @@ template <typename Value>
 using linear_expression_unordered_map =
     std::unordered_map<linear_expression_t, Value, linear_expression_hasher_t, linear_expression_equal_t>;
 
-
-template <typename Number, typename VariableName>
-class linear_constraint {
+class linear_constraint_t {
 
   public:
-    using linear_constraint_t = linear_constraint<Number, VariableName>;
     using variable_set_t = patricia_tree_set<variable_t>;
     using kind_t = enum { EQUALITY, DISEQUATION, INEQUALITY, STRICT_INEQUALITY };
     using iterator = typename linear_expression_t::iterator;
@@ -360,11 +358,11 @@ class linear_constraint {
     bool _signedness;
 
   public:
-    linear_constraint() : _kind(EQUALITY), _signedness(true) {}
+    linear_constraint_t() : _kind(EQUALITY), _signedness(true) {}
 
-    linear_constraint(const linear_expression_t &expr, kind_t kind) : _kind(kind), _expr(expr), _signedness(true) {}
+    linear_constraint_t(const linear_expression_t &expr, kind_t kind) : _kind(kind), _expr(expr), _signedness(true) {}
 
-    linear_constraint(const linear_expression_t &expr, kind_t kind, bool signedness)
+    linear_constraint_t(const linear_expression_t &expr, kind_t kind, bool signedness)
         : _kind(kind), _expr(expr), _signedness(signedness) {
         if (_kind != INEQUALITY && _kind != STRICT_INEQUALITY) {
             CRAB_ERROR("Only inequalities can have signedness information");
@@ -372,12 +370,12 @@ class linear_constraint {
     }
 
     static linear_constraint_t get_true() {
-        linear_constraint_t res(linear_expression_t(Number(0)), EQUALITY);
+        linear_constraint_t res(linear_expression_t(number_t(0)), EQUALITY);
         return res;
     }
 
     static linear_constraint_t get_false() {
-        linear_constraint_t res(linear_expression_t(Number(0)), DISEQUATION);
+        linear_constraint_t res(linear_expression_t(number_t(0)), DISEQUATION);
         return res;
     }
 
@@ -446,7 +444,7 @@ class linear_constraint {
 
     iterator end() { return this->_expr.end(); }
 
-    Number constant() const { return -this->_expr.constant(); }
+    number_t constant() const { return -this->_expr.constant(); }
 
     std::size_t size() const { return this->_expr.size(); }
 
@@ -470,7 +468,7 @@ class linear_constraint {
         return (index_t)hash();
     }
 
-    Number operator[](variable_t x) const { return this->_expr.operator[](x); }
+    number_t operator[](variable_t x) const { return this->_expr.operator[](x); }
 
     variable_set_t variables() const { return this->_expr.variables(); }
 
@@ -484,52 +482,12 @@ class linear_constraint {
         return linear_constraint_t(e, this->_kind, is_signed());
     }
 
-    void write(crab::crab_os &o) const {
-        if (this->is_contradiction()) {
-            o << "false";
-        } else if (this->is_tautology()) {
-            o << "true";
-        } else {
-            linear_expression_t e = this->_expr - this->_expr.constant();
-            o << e;
-            switch (this->_kind) {
-            case INEQUALITY: {
-                if (is_signed()) {
-                    o << " <= ";
-                } else {
-                    o << " <=_u ";
-                }
-                break;
-            }
-            case STRICT_INEQUALITY: {
-                if (is_signed()) {
-                    o << " < ";
-                } else {
-                    o << " <_u ";
-                }
-                break;
-            }
-            case EQUALITY: {
-                o << " = ";
-                break;
-            }
-            case DISEQUATION: {
-                o << " != ";
-                break;
-            }
-            }
-            Number c = -this->_expr.constant();
-            o << c;
-        }
-    }
+    void write(crab::crab_os &o) const;
 
     // for dgb
     void dump() { write(crab::outs()); }
 
-}; // class linear_constraint
-
-extern template class linear_constraint<number_t, crab::varname_t>;
-using linear_constraint_t = linear_constraint<number_t, crab::varname_t>;
+}; // class linear_constraint_t
 
 inline crab::crab_os &operator<<(crab::crab_os &o, const linear_constraint_t &c) {
     c.write(o);
@@ -543,7 +501,7 @@ inline linear_constraint_t negate_inequality(const linear_constraint_t &c) {
     return linear_constraint_t(e, linear_constraint_t::kind_t::INEQUALITY, c.is_signed());
 }
 
-// Specialized version for z_number
+// Specialized version for z_number_t
 inline linear_constraint_t strict_to_non_strict_inequality(const linear_constraint_t &c) {
     assert(c.is_strict_inequality());
     // e < 0 --> e <= -1
@@ -551,37 +509,9 @@ inline linear_constraint_t strict_to_non_strict_inequality(const linear_constrai
     return linear_constraint_t(e, linear_constraint_t::kind_t::INEQUALITY, c.is_signed());
 }
 
-template <typename Number, typename VariableName>
-linear_constraint<Number, VariableName> linear_constraint<Number, VariableName>::negate() const {
-
-    if (is_tautology()) {
-        return get_false();
-    } else if (is_contradiction()) {
-        return get_true();
-    } else {
-        switch (kind()) {
-        case INEQUALITY: {
-            // negate_inequality tries to take advantage if we use z_number.
-            return negate_inequality(*this);
-        }
-        case STRICT_INEQUALITY: {
-            // negate(x + y < 0)  <-->  x + y >= 0 <--> -x -y <= 0
-            linear_expression_t e = -this->_expr;
-            return linear_constraint_t(e, INEQUALITY, is_signed());
-        }
-        case EQUALITY: return linear_constraint_t(this->_expr, DISEQUATION);
-        case DISEQUATION: return linear_constraint_t(this->_expr, EQUALITY);
-        default: CRAB_ERROR("Cannot negate linear constraint");
-        }
-    }
-}
-
 inline std::size_t hash_value(const linear_constraint_t &e) { return e.hash(); }
 
-template <typename Number, typename VariableName>
-class linear_constraint_system {
-    using linear_constraint_system_t = linear_constraint_system<Number, VariableName>;
-
+class linear_constraint_system_t {
   public:
     using variable_set_t = patricia_tree_set<variable_t>;
 
@@ -596,13 +526,13 @@ class linear_constraint_system {
     cst_collection_t _csts;
 
   public:
-    linear_constraint_system() {}
+    linear_constraint_system_t() {}
 
-    linear_constraint_system(const linear_constraint_t &cst) { _csts.push_back(cst); }
+    linear_constraint_system_t(const linear_constraint_t &cst) { _csts.push_back(cst); }
 
-    linear_constraint_system(const linear_constraint_system_t &o) : _csts(o._csts) {}
+    linear_constraint_system_t(const linear_constraint_system_t &o) : _csts(o._csts) {}
 
-    linear_constraint_system(linear_constraint_system_t &&o) : _csts(std::move(o._csts)) {}
+    linear_constraint_system_t(linear_constraint_system_t &&o) : _csts(std::move(o._csts)) {}
 
     linear_constraint_system_t &operator+=(const linear_constraint_t &c) {
         if (!std::any_of(_csts.begin(), _csts.end(), [c](const linear_constraint_t &c1) { return c1.equal(c); })) {
@@ -630,48 +560,7 @@ class linear_constraint_system {
     /**
        Replace pairs e<=0 and -e<=0 with e==0
     **/
-    linear_constraint_system_t normalize() const {
-        linear_expression_unordered_set expr_set;
-        linear_expression_unordered_map<unsigned> index_map;
-        std::vector<bool> toremove(_csts.size(), false); // indexes to be removed
-        linear_constraint_system_t out;
-
-        for (unsigned i = 0, e = _csts.size(); i < e; ++i) {
-            if (_csts[i].is_inequality()) {
-                linear_expression_t exp = _csts[i].expression();
-                if (expr_set.find(-exp) == expr_set.end()) {
-                    // remember the index and the expression
-                    index_map.insert({exp, i});
-                    expr_set.insert(exp);
-                } else {
-                    // we found exp<=0 and -exp<= 0
-                    unsigned j = index_map[-exp];
-                    if (_csts[i].is_signed() == _csts[j].is_signed()) {
-                        toremove[i] = true;
-                        toremove[j] = true;
-                        bool insert_pos = true;
-                        if (exp.size() == 1 && (*(exp.begin())).first < 0) {
-                            // unary equality: we choose the one with the positive position.
-                            insert_pos = false;
-                        }
-                        if (!insert_pos) {
-                            out += linear_constraint_t(-exp, linear_constraint_t::EQUALITY);
-                        } else {
-                            out += linear_constraint_t(exp, linear_constraint_t::EQUALITY);
-                        }
-                    }
-                }
-            }
-        }
-
-        for (unsigned i = 0, e = _csts.size(); i < e; ++i) {
-            if (!toremove[i]) {
-                out += _csts[i];
-            }
-        }
-
-        return out;
-    }
+    linear_constraint_system_t normalize() const;
 
     const_iterator begin() const { return _csts.begin(); }
 
@@ -724,10 +613,7 @@ class linear_constraint_system {
     // for dgb
     void dump() { write(crab::outs()); }
 
-}; // class linear_constraint_system
-
-extern template class linear_constraint_system<number_t, crab::varname_t>;
-using linear_constraint_system_t = linear_constraint_system<number_t, crab::varname_t>;
+}; // class linear_constraint_system_t
 
 inline crab::crab_os &operator<<(crab::crab_os &o, const linear_constraint_system_t &sys) {
     sys.write(o);
@@ -742,10 +628,10 @@ inline linear_expression_t var_mul(number_t n, variable_t x) { return linear_exp
 inline linear_constraint_t var_eq(variable_t x, variable_t y) {
     return linear_constraint_t(var_sub(x, y), linear_constraint_t::EQUALITY);
 }
-inline linear_constraint_t exp_lte(const linear_expression_t& e, number_t n) {
+inline linear_constraint_t exp_lte(const linear_expression_t &e, number_t n) {
     return linear_constraint_t(e.operator-(n), linear_constraint_t::INEQUALITY);
 }
-inline linear_constraint_t exp_gte(const linear_expression_t& e, number_t n) {
+inline linear_constraint_t exp_gte(const linear_expression_t &e, number_t n) {
     return linear_constraint_t(linear_expression_t(n).operator-(e), linear_constraint_t::INEQUALITY);
 }
 } // namespace ikos
