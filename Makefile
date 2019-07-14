@@ -44,7 +44,7 @@ $(BINDIR)/check: ${BUILDDIR}/main_check.o ${OBJECTS}
 	@$(CXX) ${CXXFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
 
 clean:
-	rm -f $(BINDIR)/check $(BINDIR)/unit-test $(BUILDDIR)/*.o $(BUILDDIR)/crab/*.o $(BUILDDIR)/*.d
+	rm -f $(BINDIR)/check $(BINDIR)/unit-test $(BUILDDIR)/*.o $(BUILDDIR)/crab/*.o $(BUILDDIR)/*.d $(BUILDDIR)/crab/*.d
 
 linux_samples:
 	git clone --depth 1 https://github.com/torvalds/linux.git $(LINUX)

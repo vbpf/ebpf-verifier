@@ -4,7 +4,7 @@
 #include "crab/abstract_domain_specialized_traits.hpp"
 #include "crab/cfg.hpp"
 #include "crab/interleaved_fixpoint_iterator.hpp"
-#include "crab/var_factory.hpp"
+#include "crab/types.hpp"
 
 #include "boost/range/algorithm/set_algorithm.hpp"
 #include <memory>

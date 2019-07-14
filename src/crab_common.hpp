@@ -4,7 +4,6 @@
 #include "crab/debug.hpp"
 #include "crab/cfg.hpp"
 #include "crab/cfg_bgl.hpp"
-#include "crab/var_factory.hpp"
 
 using crab::varname_t;
 using crab::number_t;
