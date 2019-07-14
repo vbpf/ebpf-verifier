@@ -663,37 +663,21 @@ inline crab::crab_os &operator<<(crab::crab_os &o, const linear_constraint<Numbe
     return o;
 }
 
-namespace linear_constraint_impl {
-
-// Specialized version for z_number
-template <typename VariableName>
-linear_constraint<z_number, VariableName> negate_inequality(const linear_constraint<z_number, VariableName> &c) {
+inline linear_constraint_t negate_inequality(const linear_constraint_t &c) {
     assert(c.is_inequality());
     // negate(e <= 0) = e >= 1
     linear_expression_t e(-(c.expression() - 1));
     return linear_constraint_t(e, linear_constraint_t::kind_t::INEQUALITY, c.is_signed());
 }
 
-template <typename Number, typename VariableName>
-linear_constraint<Number, VariableName>
-strict_to_non_strict_inequality(const linear_constraint<Number, VariableName> &c) {
-    assert(c.is_strict_inequality());
-    // Default implementation: do nothing
-    // Given constraint e < 0 we could return two linear constraints: e <= 0 and e != 0.
-    // The linear interval solver lowers strict inequalities in that way.
-    return c;
-}
-
 // Specialized version for z_number
-template <typename VariableName>
-linear_constraint<z_number, VariableName>
-strict_to_non_strict_inequality(const linear_constraint<z_number, VariableName> &c) {
+inline linear_constraint_t
+strict_to_non_strict_inequality(const linear_constraint_t &c) {
     assert(c.is_strict_inequality());
     // e < 0 --> e <= -1
     linear_expression_t e(c.expression() + 1);
     return linear_constraint_t(e, linear_constraint_t::kind_t::INEQUALITY, c.is_signed());
 }
-} // end namespace linear_constraint_impl
 
 template <typename Number, typename VariableName>
 linear_constraint<Number, VariableName> linear_constraint<Number, VariableName>::negate() const {
@@ -706,7 +690,7 @@ linear_constraint<Number, VariableName> linear_constraint<Number, VariableName>:
         switch (kind()) {
         case INEQUALITY: {
             // negate_inequality tries to take advantage if we use z_number.
-            return linear_constraint_impl::negate_inequality(*this);
+            return negate_inequality(*this);
         }
         case STRICT_INEQUALITY: {
             // negate(x + y < 0)  <-->  x + y >= 0 <--> -x -y <= 0
@@ -720,8 +704,7 @@ linear_constraint<Number, VariableName> linear_constraint<Number, VariableName>:
     }
 }
 
-template <typename Number, typename VariableName>
-inline std::size_t hash_value(const linear_constraint<Number, VariableName> &e) {
+inline std::size_t hash_value(const linear_constraint_t& e) {
     return e.hash();
 }
 

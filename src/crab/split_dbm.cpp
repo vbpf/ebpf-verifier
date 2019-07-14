@@ -927,7 +927,7 @@ void SplitDBM::operator+=(linear_constraint_t cst) {
 
     if (cst.is_strict_inequality()) {
         // We try to convert a strict to non-strict.
-        auto nc = linear_constraint_impl::strict_to_non_strict_inequality(cst);
+        auto nc = strict_to_non_strict_inequality(cst);
         if (nc.is_inequality()) {
             // here we succeed
             if (!add_linear_leq(nc.expression())) {
@@ -1407,7 +1407,7 @@ bool SplitDBM::is_unsat(linear_constraint_t cst) {
         linear_expression_t exp = cst.expression();
         diffcsts_of_lin_leq(exp, diffcsts, lbs, ubs);
     } else if (cst.is_strict_inequality()) {
-        auto nc = linear_constraint_impl::strict_to_non_strict_inequality(cst);
+        auto nc = strict_to_non_strict_inequality(cst);
         if (nc.is_inequality()) {
             linear_expression_t exp = nc.expression();
             diffcsts_of_lin_leq(exp, diffcsts, lbs, ubs);
