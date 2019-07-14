@@ -332,13 +332,11 @@ class variable {
 extern template class variable<crab::number_t, crab::varname_t>;
 using variable_t = variable<crab::number_t, crab::varname_t>;
 
-template <typename Number, typename VariableName>
-inline size_t hash_value(const variable<Number, VariableName> &v) {
+inline size_t hash_value(const variable_t &v) {
     return v.hash();
 }
 
-template <typename Number, typename VariableName>
-inline crab::crab_os &operator<<(crab::crab_os &o, const variable<Number, VariableName> &v) {
+inline crab::crab_os &operator<<(crab::crab_os &o, const variable_t &v) {
     v.write(o);
     return o;
 }
