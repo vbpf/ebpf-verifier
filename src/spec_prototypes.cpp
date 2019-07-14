@@ -236,36 +236,36 @@ static const struct bpf_func_proto bpf_current_task_under_cgroup_proto = {
 	.arg2_type  = Arg::ANYTHING,
 };
 
-static const struct bpf_func_proto bpf_perf_event_output_proto_tp = {
-	//.func		= bpf_perf_event_output_tp,
-	//.gpl_only	= true,
-	.ret_type	= Ret::INTEGER,
-	.arg1_type	= Arg::PTR_TO_CTX,
-	.arg2_type	= Arg::CONST_MAP_PTR,
-	.arg3_type	= Arg::ANYTHING,
-	.arg4_type	= Arg::PTR_TO_MEM,
-	.arg5_type	= Arg::CONST_SIZE_OR_ZERO,
-};
+// static const struct bpf_func_proto bpf_perf_event_output_proto_tp = {
+// 	//.func		= bpf_perf_event_output_tp,
+// 	//.gpl_only	= true,
+// 	.ret_type	= Ret::INTEGER,
+// 	.arg1_type	= Arg::PTR_TO_CTX,
+// 	.arg2_type	= Arg::CONST_MAP_PTR,
+// 	.arg3_type	= Arg::ANYTHING,
+// 	.arg4_type	= Arg::PTR_TO_MEM,
+// 	.arg5_type	= Arg::CONST_SIZE_OR_ZERO,
+// };
 
-static const struct bpf_func_proto bpf_get_stackid_proto_tp = {
-	//.func		= bpf_get_stackid_tp,
-	//.gpl_only	= true,
-	.ret_type	= Ret::INTEGER,
-	.arg1_type	= Arg::PTR_TO_CTX,
-	.arg2_type	= Arg::CONST_MAP_PTR,
-	.arg3_type	= Arg::ANYTHING,
-};
+// static const struct bpf_func_proto bpf_get_stackid_proto_tp = {
+// 	//.func		= bpf_get_stackid_tp,
+// 	//.gpl_only	= true,
+// 	.ret_type	= Ret::INTEGER,
+// 	.arg1_type	= Arg::PTR_TO_CTX,
+// 	.arg2_type	= Arg::CONST_MAP_PTR,
+// 	.arg3_type	= Arg::ANYTHING,
+// };
 
-// see bpf_get_stack_proto
-static const struct bpf_func_proto bpf_get_stack_proto_tp = {
-	//.func		= bpf_get_stack_tp,
-	//.gpl_only	= true,
-	.ret_type	= Ret::INTEGER,
-	.arg1_type	= Arg::PTR_TO_CTX,
-	.arg2_type	= Arg::PTR_TO_UNINIT_MEM,
-	.arg3_type	= Arg::CONST_SIZE_OR_ZERO,
-	.arg4_type	= Arg::ANYTHING,
-};
+// // see bpf_get_stack_proto
+// static const struct bpf_func_proto bpf_get_stack_proto_tp = {
+// 	//.func		= bpf_get_stack_tp,
+// 	//.gpl_only	= true,
+// 	.ret_type	= Ret::INTEGER,
+// 	.arg1_type	= Arg::PTR_TO_CTX,
+// 	.arg2_type	= Arg::PTR_TO_UNINIT_MEM,
+// 	.arg3_type	= Arg::CONST_SIZE_OR_ZERO,
+// 	.arg4_type	= Arg::ANYTHING,
+// };
 
 /*
  * int bpf_perf_prog_read_value(struct bpf_perf_event_data *ctx, struct bpf_perf_event_value *buf, u32 buf_size)
@@ -289,33 +289,35 @@ static const struct bpf_func_proto bpf_perf_prog_read_value_proto = {
 	.arg3_type  = Arg::CONST_SIZE,
 };
 
-static const struct bpf_func_proto bpf_perf_event_output_proto_raw_tp = {
-	//.func		= bpf_perf_event_output_raw_tp,
-	//.gpl_only	= true,
-	.ret_type	= Ret::INTEGER,
-	.arg1_type	= Arg::PTR_TO_CTX,
-	.arg2_type	= Arg::CONST_MAP_PTR,
-	.arg3_type	= Arg::ANYTHING,
-	.arg4_type	= Arg::PTR_TO_MEM,
-	.arg5_type	= Arg::CONST_SIZE_OR_ZERO,
-};
-static const struct bpf_func_proto bpf_get_stackid_proto_raw_tp = {
-	//.func		= bpf_get_stackid_raw_tp,
-	//.gpl_only	= true,
-	.ret_type	= Ret::INTEGER,
-	.arg1_type	= Arg::PTR_TO_CTX,
-	.arg2_type	= Arg::CONST_MAP_PTR,
-	.arg3_type	= Arg::ANYTHING,
-};
-static const struct bpf_func_proto bpf_get_stack_proto_raw_tp = {
-	//.func		= bpf_get_stack_raw_tp,
-	//.gpl_only	= true,
-	.ret_type	= Ret::INTEGER,
-	.arg1_type	= Arg::PTR_TO_CTX,
-	.arg2_type	= Arg::PTR_TO_MEM,
-	.arg3_type	= Arg::CONST_SIZE_OR_ZERO,
-	.arg4_type	= Arg::ANYTHING,
-};
+// static const struct bpf_func_proto bpf_perf_event_output_proto_raw_tp = {
+// 	//.func		= bpf_perf_event_output_raw_tp,
+// 	//.gpl_only	= true,
+// 	.ret_type	= Ret::INTEGER,
+// 	.arg1_type	= Arg::PTR_TO_CTX,
+// 	.arg2_type	= Arg::CONST_MAP_PTR,
+// 	.arg3_type	= Arg::ANYTHING,
+// 	.arg4_type	= Arg::PTR_TO_MEM,
+// 	.arg5_type	= Arg::CONST_SIZE_OR_ZERO,
+// };
+
+// static const struct bpf_func_proto bpf_get_stackid_proto_raw_tp = {
+// 	//.func		= bpf_get_stackid_raw_tp,
+// 	//.gpl_only	= true,
+// 	.ret_type	= Ret::INTEGER,
+// 	.arg1_type	= Arg::PTR_TO_CTX,
+// 	.arg2_type	= Arg::CONST_MAP_PTR,
+// 	.arg3_type	= Arg::ANYTHING,
+// };
+
+// static const struct bpf_func_proto bpf_get_stack_proto_raw_tp = {
+// 	//.func		= bpf_get_stack_raw_tp,
+// 	//.gpl_only	= true,
+// 	.ret_type	= Ret::INTEGER,
+// 	.arg1_type	= Arg::PTR_TO_CTX,
+// 	.arg2_type	= Arg::PTR_TO_MEM,
+// 	.arg3_type	= Arg::CONST_SIZE_OR_ZERO,
+// 	.arg4_type	= Arg::ANYTHING,
+// };
 
 /* Always built-in helper functions. */
 
@@ -333,7 +335,7 @@ static const struct bpf_func_proto bpf_map_lookup_elem_proto = {
 	.arg2_type	= Arg::PTR_TO_MAP_KEY,
 };
 
-/* 
+/*
  * int bpf_map_update_elem(&map, &key, &value, flags)
  *     Return: 0 on success or negative error
  */
@@ -556,13 +558,13 @@ static const struct bpf_func_proto bpf_get_stack_proto = {
 /*
  * u32 bpf_raw_smp_processor_id(void)
  *     Return: SMP processor ID
- */
-static const struct bpf_func_proto bpf_get_raw_smp_processor_id_proto = {
-    .name = "get_raw_smp_processor_id",
-	//.func		= bpf_get_raw_cpu_id,
-	//.gpl_only	= false,
-	.ret_type	= Ret::INTEGER,
-};
+//  */
+// static const struct bpf_func_proto bpf_get_raw_smp_processor_id_proto = {
+//     .name = "get_raw_smp_processor_id",
+// 	//.func		= bpf_get_raw_cpu_id,
+// 	//.gpl_only	= false,
+// 	.ret_type	= Ret::INTEGER,
+// };
 
 /*
  * int bpf_skb_store_bytes(skb, offset, from, len, flags)
@@ -660,13 +662,13 @@ static const struct bpf_func_proto bpf_skb_pull_data_proto = {
 	.arg2_type	= Arg::ANYTHING,
 };
 
-static const struct bpf_func_proto sk_skb_pull_data_proto = {
-	//.func		= sk_skb_pull_data,
-	//.gpl_only	= false,
-	.ret_type	= Ret::INTEGER,
-	.arg1_type	= Arg::PTR_TO_CTX,
-	.arg2_type	= Arg::ANYTHING,
-};
+// static const struct bpf_func_proto sk_skb_pull_data_proto = {
+// 	//.func		= sk_skb_pull_data,
+// 	//.gpl_only	= false,
+// 	.ret_type	= Ret::INTEGER,
+// 	.arg1_type	= Arg::PTR_TO_CTX,
+// 	.arg2_type	= Arg::ANYTHING,
+// };
 
 /*
  * int bpf_l3_csum_replace(skb, offset, from, to, flags)
@@ -959,14 +961,14 @@ static const struct bpf_func_proto bpf_skb_change_tail_proto = {
 	.arg3_type	= Arg::ANYTHING,
 };
 
-static const struct bpf_func_proto sk_skb_change_tail_proto = {
-	//.func		= sk_skb_change_tail,
-	//.gpl_only	= false,
-	.ret_type	= Ret::INTEGER,
-	.arg1_type	= Arg::PTR_TO_CTX,
-	.arg2_type	= Arg::ANYTHING,
-	.arg3_type	= Arg::ANYTHING,
-};
+// static const struct bpf_func_proto sk_skb_change_tail_proto = {
+// 	//.func		= sk_skb_change_tail,
+// 	//.gpl_only	= false,
+// 	.ret_type	= Ret::INTEGER,
+// 	.arg1_type	= Arg::PTR_TO_CTX,
+// 	.arg2_type	= Arg::ANYTHING,
+// 	.arg3_type	= Arg::ANYTHING,
+// };
 
 /* int bpf_skb_change_head(struct sk_buff *skb, u32 len, u64 flags)
  * 	Description
@@ -999,14 +1001,14 @@ static const struct bpf_func_proto bpf_skb_change_head_proto = {
 	.arg3_type	= Arg::ANYTHING,
 };
 
-static const struct bpf_func_proto sk_skb_change_head_proto = {
-	//.func		= sk_skb_change_head,
-	//.gpl_only	= false,
-	.ret_type	= Ret::INTEGER,
-	.arg1_type	= Arg::PTR_TO_CTX,
-	.arg2_type	= Arg::ANYTHING,
-	.arg3_type	= Arg::ANYTHING,
-};
+// static const struct bpf_func_proto sk_skb_change_head_proto = {
+// 	//.func		= sk_skb_change_head,
+// 	//.gpl_only	= false,
+// 	.ret_type	= Ret::INTEGER,
+// 	.arg1_type	= Arg::PTR_TO_CTX,
+// 	.arg2_type	= Arg::ANYTHING,
+// 	.arg3_type	= Arg::ANYTHING,
+// };
 
 static const struct bpf_func_proto bpf_xdp_adjust_head_proto = {
     .name = "xdp_adjust_head",
@@ -1035,36 +1037,36 @@ static const struct bpf_func_proto bpf_xdp_adjust_meta_proto = {
 	.arg2_type	= Arg::ANYTHING,
 };
 
-static const struct bpf_func_proto bpf_xdp_redirect_proto = {
-    .name = "xdp_redirect",
-	//.func       = bpf_xdp_redirect,
-	//.gpl_only   = false,
-	.ret_type   = Ret::INTEGER,
-	.arg1_type  = Arg::ANYTHING,
-	.arg2_type  = Arg::ANYTHING,
-};
+// static const struct bpf_func_proto bpf_xdp_redirect_proto = {
+//     .name = "xdp_redirect",
+// 	//.func       = bpf_xdp_redirect,
+// 	//.gpl_only   = false,
+// 	.ret_type   = Ret::INTEGER,
+// 	.arg1_type  = Arg::ANYTHING,
+// 	.arg2_type  = Arg::ANYTHING,
+// };
 
-static const struct bpf_func_proto bpf_xdp_redirect_map_proto = {
-    .name = "xdp_redirect_map",
-	//.func       = bpf_xdp_redirect_map,
-	//.gpl_only   = false,
-	.ret_type   = Ret::INTEGER,
-	.arg1_type  = Arg::CONST_MAP_PTR,
-	.arg2_type  = Arg::ANYTHING,
-	.arg3_type  = Arg::ANYTHING,
-};
+// static const struct bpf_func_proto bpf_xdp_redirect_map_proto = {
+//     .name = "xdp_redirect_map",
+// 	//.func       = bpf_xdp_redirect_map,
+// 	//.gpl_only   = false,
+// 	.ret_type   = Ret::INTEGER,
+// 	.arg1_type  = Arg::CONST_MAP_PTR,
+// 	.arg2_type  = Arg::ANYTHING,
+// 	.arg3_type  = Arg::ANYTHING,
+// };
 
-static const struct bpf_func_proto bpf_skb_event_output_proto = {
-    .name = "skb_event_output",
-	//.func		= bpf_skb_event_output,
-	//.gpl_only	= true,
-	.ret_type	= Ret::INTEGER,
-	.arg1_type	= Arg::PTR_TO_CTX,
-	.arg2_type	= Arg::CONST_MAP_PTR,
-	.arg3_type	= Arg::ANYTHING,
-	.arg4_type	= Arg::PTR_TO_MEM,
-	.arg5_type	= Arg::CONST_SIZE_OR_ZERO,
-};
+// static const struct bpf_func_proto bpf_skb_event_output_proto = {
+//     .name = "skb_event_output",
+// 	//.func		= bpf_skb_event_output,
+// 	//.gpl_only	= true,
+// 	.ret_type	= Ret::INTEGER,
+// 	.arg1_type	= Arg::PTR_TO_CTX,
+// 	.arg2_type	= Arg::CONST_MAP_PTR,
+// 	.arg3_type	= Arg::ANYTHING,
+// 	.arg4_type	= Arg::PTR_TO_MEM,
+// 	.arg5_type	= Arg::CONST_SIZE_OR_ZERO,
+// };
 
 /*
  * int bpf_skb_get_tunnel_key(skb, key, size, flags)
@@ -1171,17 +1173,18 @@ static const struct bpf_func_proto bpf_skb_cgroup_id_proto = {
 	.arg1_type  = Arg::PTR_TO_CTX,
 };
 
-static const struct bpf_func_proto bpf_xdp_event_output_proto = {
-    .name = "xdp_event_output",
-	//.func		= bpf_xdp_event_output,
-	//.gpl_only	= true,
-	.ret_type	= Ret::INTEGER,
-	.arg1_type	= Arg::PTR_TO_CTX,
-	.arg2_type	= Arg::CONST_MAP_PTR,
-	.arg3_type	= Arg::ANYTHING,
-	.arg4_type	= Arg::PTR_TO_MEM,
-	.arg5_type	= Arg::CONST_SIZE_OR_ZERO,
-};
+// static const struct bpf_func_proto bpf_xdp_event_output_proto = {
+//     .name = "xdp_event_output",
+// 	//.func		= bpf_xdp_event_output,
+// 	//.gpl_only	= true,
+// 	.ret_type	= Ret::INTEGER,
+// 	.arg1_type	= Arg::PTR_TO_CTX,
+// 	.arg2_type	= Arg::CONST_MAP_PTR,
+// 	.arg3_type	= Arg::ANYTHING,
+// 	.arg4_type	= Arg::PTR_TO_MEM,
+// 	.arg5_type	= Arg::CONST_SIZE_OR_ZERO,
+// };
+
 static const struct bpf_func_proto bpf_get_socket_cookie_proto = {
     .name = "get_socket_cookie",
 	//.func       = bpf_get_socket_cookie,
@@ -1189,6 +1192,7 @@ static const struct bpf_func_proto bpf_get_socket_cookie_proto = {
 	.ret_type   = Ret::INTEGER,
 	.arg1_type  = Arg::PTR_TO_CTX,
 };
+
 static const struct bpf_func_proto bpf_get_socket_uid_proto = {
     .name = "get_socket_uid",
 	//.func       = bpf_get_socket_uid,
@@ -1196,6 +1200,7 @@ static const struct bpf_func_proto bpf_get_socket_uid_proto = {
 	.ret_type   = Ret::INTEGER,
 	.arg1_type  = Arg::PTR_TO_CTX,
 };
+
 static const struct bpf_func_proto bpf_setsockopt_proto = {
     .name = "setsockopt",
 	//.func		= bpf_setsockopt,
@@ -1288,16 +1293,18 @@ static const struct bpf_func_proto bpf_xdp_fib_lookup_proto = {
 	.arg3_type  = Arg::CONST_SIZE,
 	.arg4_type	= Arg::ANYTHING,
 };
-static const struct bpf_func_proto bpf_skb_fib_lookup_proto = {
-    .name = "skb_fib_lookup",
-	//.func		= bpf_skb_fib_lookup,
-	//.gpl_only	= true,
-	.ret_type	= Ret::INTEGER,
-	.arg1_type  = Arg::PTR_TO_CTX,
-	.arg2_type  = Arg::PTR_TO_MEM,
-	.arg3_type  = Arg::CONST_SIZE,
-	.arg4_type	= Arg::ANYTHING,
-};
+
+// static const struct bpf_func_proto bpf_skb_fib_lookup_proto = {
+//     .name = "skb_fib_lookup",
+// 	//.func		= bpf_skb_fib_lookup,
+// 	//.gpl_only	= true,
+// 	.ret_type	= Ret::INTEGER,
+// 	.arg1_type  = Arg::PTR_TO_CTX,
+// 	.arg2_type  = Arg::PTR_TO_MEM,
+// 	.arg3_type  = Arg::CONST_SIZE,
+// 	.arg4_type	= Arg::ANYTHING,
+// };
+
 static const struct bpf_func_proto bpf_lwt_push_encap_proto = {
     .name = "lwt_push_encap",
 	//.func		= bpf_lwt_push_encap,
