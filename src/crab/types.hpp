@@ -323,6 +323,12 @@ class variable {
 
     void write(crab::crab_os &o) const { o << _n; }
 
+    friend class less;
+    struct less {
+        bool operator()(variable x, variable y) {
+            return x._n.index() < y._n.index();
+        }
+    };
 }; // class variable
 
 extern template class variable<crab::number_t, crab::varname_t>;
