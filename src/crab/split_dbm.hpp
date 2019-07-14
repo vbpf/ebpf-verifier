@@ -42,9 +42,10 @@ namespace crab {
 
 namespace domains {
 
-template <class Number, class VariableName, class Params>
-class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, Params>> {
-    using DBM_t = SplitDBM_<Number, VariableName, Params>;
+template <class Params>
+class SplitDBM_ final : public abstract_domain<SplitDBM_<Params>> {
+    //using Params = SafeInt64DefaultParams;
+    using DBM_t = SplitDBM_<Params>;
     using abstract_domain_t = abstract_domain<DBM_t>;
 
   public:
@@ -2147,8 +2148,9 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
 
 }; // class SplitDBM_
 
-template <class Number, class VariableName, class Params>
-using SplitDBM = SplitDBM_<Number, VariableName, Params>;
+extern template class SplitDBM_<SafeInt64DefaultParams>;
+
+using SplitDBM = SplitDBM_<SafeInt64DefaultParams>;
 
 } // namespace domains
 } // namespace crab
