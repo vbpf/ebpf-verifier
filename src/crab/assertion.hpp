@@ -134,9 +134,6 @@ class assert_property_checker
     using lin_cst_t = typename abs_dom_t::linear_constraint_t;
     using lin_cst_sys_t = typename abs_dom_t::linear_constraint_system_t;
 
-    using cfg_t = typename Analyzer::cfg_t;
-    using basic_block_t = typename cfg_t::basic_block_t;
-
   public:
     // set internal state for the checker
     void set(abs_tr_t *abs_tr, const std::set<const statement_t *> &safe_assertions) {

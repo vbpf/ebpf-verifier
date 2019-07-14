@@ -1695,6 +1695,7 @@ class cfg_ref {
 };
 
 extern template class cfg_ref<cfg_t>;
+using cfg_ref_t = cfg_ref<cfg_t>;
 
 // Viewing a CFG with all edges and block statements
 // reversed. Useful for backward analysis.
