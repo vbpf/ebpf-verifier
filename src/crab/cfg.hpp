@@ -164,8 +164,8 @@ class basic_block;
 template <class BasicBlock>
 class basic_block_rev;
 
-template <typename N, typename V>
-class binary_op;
+class binary_op_t;
+
 template <typename N, typename V>
 class assignment;
 template <typename N, typename V>
@@ -193,7 +193,6 @@ struct statement_visitor {
     using Number = number_t;
     using VariableName = varname_t;
 
-    using bin_op_t = binary_op<number_t, varname_t>;
     using assign_t = assignment<number_t, varname_t>;
     using assume_t = assume_stmt<number_t, varname_t>;
     using select_t = select_stmt<number_t, varname_t>;
@@ -206,7 +205,7 @@ struct statement_visitor {
     using arr_load_t = array_load_stmt<number_t, varname_t>;
     using arr_assign_t = array_assign_stmt<number_t, varname_t>;
 
-    virtual void visit(bin_op_t &){};
+    virtual void visit(binary_op_t &){};
     virtual void visit(assign_t &){};
     virtual void visit(assume_t &){};
     virtual void visit(select_t &){};
@@ -281,16 +280,13 @@ class statement_t {
   Numerical statements
 */
 
-template <class Number, class VariableName>
-class binary_op : public statement_t {
-    using this_type = binary_op<Number, VariableName>;
-
+class binary_op_t : public statement_t {
   public:
-    using variable_t = ikos::variable<Number, VariableName>;
-    using linear_expression_t = ikos::linear_expression<Number, VariableName>;
+    using variable_t = ikos::variable<number_t, varname_t>;
+    using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
 
-    binary_op(variable_t lhs, binary_operation_t op, linear_expression_t op1, linear_expression_t op2,
-              debug_info dbg_info = debug_info())
+    binary_op_t(variable_t lhs, binary_operation_t op, linear_expression_t op1, linear_expression_t op2,
+                debug_info dbg_info = debug_info())
         : statement_t(BIN_OP, dbg_info), m_lhs(lhs), m_op(op), m_op1(op1), m_op2(op2) {
         this->m_live.add_def(m_lhs);
         for (auto v : m_op1.variables()) {
@@ -311,7 +307,7 @@ class binary_op : public statement_t {
 
     virtual void accept(statement_visitor *v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new this_type(m_lhs, m_op, m_op1, m_op2, this->m_dbg_info); }
+    virtual statement_t *clone() const { return new binary_op_t(m_lhs, m_op, m_op1, m_op2, this->m_dbg_info); }
 
     virtual void write(crab_os &o) const { o << m_lhs << " = " << m_op1 << m_op << m_op2; }
 
@@ -321,8 +317,6 @@ class binary_op : public statement_t {
     linear_expression_t m_op1;
     linear_expression_t m_op2;
 };
-
-using bin_op_t = crab::binary_op<number_t, varname_t>;
 
 template <class Number, class VariableName>
 class assignment : public statement_t {
@@ -840,7 +834,6 @@ class basic_block {
     using havoc_t = havoc_stmt<Number, VariableName>;
     using unreach_t = unreachable_stmt<Number, VariableName>;
     // Numerical
-    using bin_op_t = binary_op<Number, VariableName>;
     using assign_t = assignment<Number, VariableName>;
     using assume_t = assume_stmt<Number, VariableName>;
     using select_t = select_stmt<Number, VariableName>;
@@ -1062,61 +1055,61 @@ class basic_block {
 
     /// To build statements
 
-    void add(variable_t lhs, variable_t op1, variable_t op2) { insert(new bin_op_t(lhs, BINOP_ADD, op1, op2)); }
+    void add(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_ADD, op1, op2)); }
 
-    void add(variable_t lhs, variable_t op1, Number op2) { insert(new bin_op_t(lhs, BINOP_ADD, op1, op2)); }
+    void add(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_ADD, op1, op2)); }
 
-    void sub(variable_t lhs, variable_t op1, variable_t op2) { insert(new bin_op_t(lhs, BINOP_SUB, op1, op2)); }
+    void sub(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_SUB, op1, op2)); }
 
-    void sub(variable_t lhs, variable_t op1, Number op2) { insert(new bin_op_t(lhs, BINOP_SUB, op1, op2)); }
+    void sub(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_SUB, op1, op2)); }
 
-    void mul(variable_t lhs, variable_t op1, variable_t op2) { insert(new bin_op_t(lhs, BINOP_MUL, op1, op2)); }
+    void mul(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_MUL, op1, op2)); }
 
-    void mul(variable_t lhs, variable_t op1, Number op2) { insert(new bin_op_t(lhs, BINOP_MUL, op1, op2)); }
+    void mul(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_MUL, op1, op2)); }
 
     // signed division
-    void div(variable_t lhs, variable_t op1, variable_t op2) { insert(new bin_op_t(lhs, BINOP_SDIV, op1, op2)); }
+    void div(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_SDIV, op1, op2)); }
 
-    void div(variable_t lhs, variable_t op1, Number op2) { insert(new bin_op_t(lhs, BINOP_SDIV, op1, op2)); }
+    void div(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_SDIV, op1, op2)); }
 
     // unsigned division
-    void udiv(variable_t lhs, variable_t op1, variable_t op2) { insert(new bin_op_t(lhs, BINOP_UDIV, op1, op2)); }
+    void udiv(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_UDIV, op1, op2)); }
 
-    void udiv(variable_t lhs, variable_t op1, Number op2) { insert(new bin_op_t(lhs, BINOP_UDIV, op1, op2)); }
+    void udiv(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_UDIV, op1, op2)); }
 
     // signed rem
-    void rem(variable_t lhs, variable_t op1, variable_t op2) { insert(new bin_op_t(lhs, BINOP_SREM, op1, op2)); }
+    void rem(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_SREM, op1, op2)); }
 
-    void rem(variable_t lhs, variable_t op1, Number op2) { insert(new bin_op_t(lhs, BINOP_SREM, op1, op2)); }
+    void rem(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_SREM, op1, op2)); }
 
     // unsigned rem
-    void urem(variable_t lhs, variable_t op1, variable_t op2) { insert(new bin_op_t(lhs, BINOP_UREM, op1, op2)); }
+    void urem(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_UREM, op1, op2)); }
 
-    void urem(variable_t lhs, variable_t op1, Number op2) { insert(new bin_op_t(lhs, BINOP_UREM, op1, op2)); }
+    void urem(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_UREM, op1, op2)); }
 
-    void bitwise_and(variable_t lhs, variable_t op1, variable_t op2) { insert(new bin_op_t(lhs, BINOP_AND, op1, op2)); }
+    void bitwise_and(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_AND, op1, op2)); }
 
-    void bitwise_and(variable_t lhs, variable_t op1, Number op2) { insert(new bin_op_t(lhs, BINOP_AND, op1, op2)); }
+    void bitwise_and(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_AND, op1, op2)); }
 
-    void bitwise_or(variable_t lhs, variable_t op1, variable_t op2) { insert(new bin_op_t(lhs, BINOP_OR, op1, op2)); }
+    void bitwise_or(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_OR, op1, op2)); }
 
-    void bitwise_or(variable_t lhs, variable_t op1, Number op2) { insert(new bin_op_t(lhs, BINOP_OR, op1, op2)); }
+    void bitwise_or(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_OR, op1, op2)); }
 
-    void bitwise_xor(variable_t lhs, variable_t op1, variable_t op2) { insert(new bin_op_t(lhs, BINOP_XOR, op1, op2)); }
+    void bitwise_xor(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_XOR, op1, op2)); }
 
-    void bitwise_xor(variable_t lhs, variable_t op1, Number op2) { insert(new bin_op_t(lhs, BINOP_XOR, op1, op2)); }
+    void bitwise_xor(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_XOR, op1, op2)); }
 
-    void shl(variable_t lhs, variable_t op1, variable_t op2) { insert(new bin_op_t(lhs, BINOP_SHL, op1, op2)); }
+    void shl(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_SHL, op1, op2)); }
 
-    void shl(variable_t lhs, variable_t op1, Number op2) { insert(new bin_op_t(lhs, BINOP_SHL, op1, op2)); }
+    void shl(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_SHL, op1, op2)); }
 
-    void lshr(variable_t lhs, variable_t op1, variable_t op2) { insert(new bin_op_t(lhs, BINOP_LSHR, op1, op2)); }
+    void lshr(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_LSHR, op1, op2)); }
 
-    void lshr(variable_t lhs, variable_t op1, Number op2) { insert(new bin_op_t(lhs, BINOP_LSHR, op1, op2)); }
+    void lshr(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_LSHR, op1, op2)); }
 
-    void ashr(variable_t lhs, variable_t op1, variable_t op2) { insert(new bin_op_t(lhs, BINOP_ASHR, op1, op2)); }
+    void ashr(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_ASHR, op1, op2)); }
 
-    void ashr(variable_t lhs, variable_t op1, Number op2) { insert(new bin_op_t(lhs, BINOP_ASHR, op1, op2)); }
+    void ashr(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_ASHR, op1, op2)); }
 
     void assign(variable_t lhs, lin_exp_t rhs) { insert(new assign_t(lhs, rhs)); }
 
@@ -2005,7 +1998,6 @@ class type_checker {
     CFG m_cfg;
 
     struct type_checker_visitor : public statement_visitor {
-        using bin_op_t = typename statement_visitor::bin_op_t;
         using assign_t = typename statement_visitor::assign_t;
         using assume_t = typename statement_visitor::assume_t;
         using assert_t = typename statement_visitor::assert_t;
@@ -2108,7 +2100,7 @@ class type_checker {
             CRAB_ERROR(os.str());
         }
 
-        void visit(bin_op_t &s) {
+        void visit(binary_op_t &s) {
             variable_t lhs = s.lhs();
             lin_exp_t op1 = s.left();
             lin_exp_t op2 = s.right();

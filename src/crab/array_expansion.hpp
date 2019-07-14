@@ -251,7 +251,6 @@ class offset_map {
       as large unsigned numbers.
     */
     using patricia_tree_t = patricia_tree<offset_t, cell_set_t>;
-    using binary_op_t = typename patricia_tree_t::binary_op_t;
     using partial_order_t = typename patricia_tree_t::partial_order_t;
 
     patricia_tree_t _map;

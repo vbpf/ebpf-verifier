@@ -61,7 +61,6 @@ class abs_transformer_api : public crab::statement_visitor {
     using havoc_t = crab::havoc_stmt<number_t, varname_t>;
     using unreach_t = crab::unreachable_stmt<number_t, varname_t>;
 
-    using bin_op_t = crab::binary_op<number_t, varname_t>;
     using assign_t = crab::assignment<number_t, varname_t>;
     using assume_t = crab::assume_stmt<number_t, varname_t>;
     using select_t = crab::select_stmt<number_t, varname_t>;
@@ -77,7 +76,7 @@ class abs_transformer_api : public crab::statement_visitor {
   protected:
     virtual void exec(havoc_t &) {}
     virtual void exec(unreach_t &) {}
-    virtual void exec(bin_op_t &) {}
+    virtual void exec(binary_op_t &) {}
     virtual void exec(assign_t &) {}
     virtual void exec(assume_t &) {}
     virtual void exec(select_t &) {}
@@ -91,7 +90,7 @@ class abs_transformer_api : public crab::statement_visitor {
   public: /* visitor api */
     void visit(havoc_t &s) { exec(s); }
     void visit(unreach_t &s) { exec(s); }
-    void visit(bin_op_t &s) { exec(s); }
+    void visit(binary_op_t &s) { exec(s); }
     void visit(assign_t &s) { exec(s); }
     void visit(assume_t &s) { exec(s); }
     void visit(select_t &s) { exec(s); }
@@ -125,7 +124,6 @@ class intra_abs_transformer : public abs_transformer_api<number_t, varname_t> {
     using typename abs_transform_api_t::assert_t;
     using typename abs_transform_api_t::assign_t;
     using typename abs_transform_api_t::assume_t;
-    using typename abs_transform_api_t::bin_op_t;
     using typename abs_transform_api_t::havoc_t;
     using typename abs_transform_api_t::int_cast_t;
     using typename abs_transform_api_t::lin_cst_sys_t;
@@ -170,7 +168,7 @@ class intra_abs_transformer : public abs_transformer_api<number_t, varname_t> {
         }
     }
 
-    void exec(bin_op_t &stmt) {
+    void exec(binary_op_t &stmt) {
         bool pre_bot = false;
         if (::crab::CrabSanityCheckFlag) {
             pre_bot = get()->is_bottom();
@@ -426,7 +424,6 @@ class intra_necessary_preconditions_abs_transformer
     using typename abs_transform_api_t::assert_t;
     using typename abs_transform_api_t::assign_t;
     using typename abs_transform_api_t::assume_t;
-    using typename abs_transform_api_t::bin_op_t;
     using typename abs_transform_api_t::havoc_t;
     using typename abs_transform_api_t::int_cast_t;
     using typename abs_transform_api_t::lin_cst_sys_t;
@@ -466,7 +463,7 @@ class intra_necessary_preconditions_abs_transformer
 
     abs_dom_t &preconditions() { return *m_pre; }
 
-    void exec(bin_op_t &stmt) {
+    void exec(binary_op_t &stmt) {
         auto op = conv_op<ikos::operation_t>(stmt.op());
         if (!op || op >= ikos::OP_UDIV) {
             // ignore UDIV, SREM, UREM

@@ -194,7 +194,7 @@ class assert_property_checker
     }
 
     /* Visitor API */
-    void visit(bin_op_t &s) {
+    void visit(binary_op_t &s) {
         if (this->m_abs_tr)
             s.accept(&*this->m_abs_tr);
     }
