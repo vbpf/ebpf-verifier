@@ -329,90 +329,7 @@ extern template class variable<crab::number_t, crab::varname_t>;
 using variable_t = variable<crab::number_t, crab::varname_t>;
 
 template <typename Number, typename VariableName>
-class variable_ref {
-  public:
-    using bitwidth_t = typename variable_t::bitwidth_t;
-    using type_t = typename variable_t::type_t;
-    using variable_ref_t = variable_ref<Number, VariableName>;
-
-  private:
-    std::shared_ptr<variable_t> m_v{};
-
-  public:
-    variable_ref() {}
-
-    variable_ref(variable_t v) : m_v(std::make_shared<variable_t>(v)) {}
-
-    bool is_null() const { return !m_v; }
-
-    variable_t get() const {
-        assert(!is_null());
-        return *m_v;
-    }
-
-    bool is_typed() const {
-        assert(!is_null());
-        return m_v->is_typed();
-    }
-
-    bool is_array_type() const {
-        assert(!is_null());
-        return m_v->is_array_type();
-    }
-
-    bool is_int_type() const {
-        assert(!is_null());
-        return m_v->is_int_type();
-    }
-
-    type_t get_type() const {
-        assert(!is_null());
-        return m_v->get_type();
-    }
-
-    bool has_bitwidth() const {
-        assert(!is_null());
-        return m_v->has_bitwidth();
-    }
-
-    bitwidth_t get_bitwidth() const {
-        assert(!is_null());
-        return m_v->get_bitwidth();
-    }
-
-    const VariableName &name() const {
-        assert(!is_null());
-        return m_v->name();
-    }
-
-    VariableName &name() {
-        assert(!is_null());
-        return m_v->name();
-    }
-
-    index_t index() const {
-        assert(!is_null());
-        return m_v->index();
-    }
-
-    std::size_t hash() const {
-        assert(!is_null());
-        return m_v->hash();
-    }
-
-    void write(crab::crab_os &o) const { return m_v->write(o); }
-}; // class variable_ref
-
-extern template class variable_ref<crab::number_t, crab::varname_t>;
-using variable_ref_t = variable_ref<crab::number_t, crab::varname_t>;
-
-template <typename Number, typename VariableName>
 inline size_t hash_value(const variable<Number, VariableName> &v) {
-    return v.hash();
-}
-
-template <typename Number, typename VariableName>
-inline size_t hash_value(const variable_ref<Number, VariableName> &v) {
     return v.hash();
 }
 
@@ -422,11 +339,6 @@ inline crab::crab_os &operator<<(crab::crab_os &o, const variable<Number, Variab
     return o;
 }
 
-template <typename Number, typename VariableName>
-inline crab::crab_os &operator<<(crab::crab_os &o, const variable_ref<Number, VariableName> &v) {
-    v.write(o);
-    return o;
-}
 
 } // end namespace ikos
 

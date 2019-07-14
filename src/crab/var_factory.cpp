@@ -4,12 +4,6 @@
 
 #include "crab/types.hpp"
 
-namespace ikos {
-
-template class variable<crab::number_t, crab::varname_t>;
-template class variable_ref<crab::number_t, crab::varname_t>;
-
-}
 namespace crab {
 static std::string get_str(std::string e) {
     return e;
