@@ -129,7 +129,6 @@ class assert_property_checker
 
     using abs_tr_t = typename Analyzer::abs_tr_t;
 
-    using var_t = typename abs_dom_t::variable_t;
     using lin_exp_t = typename abs_dom_t::linear_expression_t;
     using lin_cst_t = typename abs_dom_t::linear_constraint_t;
     using lin_cst_sys_t = typename abs_dom_t::linear_constraint_system_t;

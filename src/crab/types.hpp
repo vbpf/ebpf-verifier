@@ -331,7 +331,6 @@ using variable_t = variable<crab::number_t, crab::varname_t>;
 template <typename Number, typename VariableName>
 class variable_ref {
   public:
-    using variable_t = variable<Number, VariableName>;
     using bitwidth_t = typename variable_t::bitwidth_t;
     using type_t = typename variable_t::type_t;
     using variable_ref_t = variable_ref<Number, VariableName>;
@@ -432,6 +431,8 @@ inline crab::crab_os &operator<<(crab::crab_os &o, const variable_ref<Number, Va
 } // end namespace ikos
 
 namespace crab {
+using variable_t = ikos::variable_t;
+
 namespace domains {
 using namespace ikos;
 }

@@ -54,7 +54,7 @@ static basic_block_t& add_child(cfg_t& cfg, basic_block_t& block, std::string su
 
 using crab::debug_info;
 
-using var_t     = ikos::variable<ikos::z_number, varname_t>;
+using ikos::variable_t;
 using lin_cst_t = ikos::linear_constraint<ikos::z_number, varname_t>;
 
 /** Encoding of memory regions and types.
@@ -74,15 +74,15 @@ enum region_t {
 };
 
 struct dom_t {
-    var_t value;
-    var_t offset;
-    var_t region;
+    variable_t value;
+    variable_t offset;
+    variable_t region;
     dom_t(variable_factory& vfac, int i) :
         value{vfac[std::string("r") + std::to_string(i)], crab::INT_TYPE, 64},
         offset{vfac[std::string("off") + std::to_string(i)], crab::INT_TYPE, 64},
         region{vfac[std::string("t") + std::to_string(i)], crab::INT_TYPE, 64}
     { }
-    dom_t(var_t value, var_t offset, var_t region) : value(value), offset(offset), region(region) { };
+    dom_t(variable_t value, variable_t offset, variable_t region) : value(value), offset(offset), region(region) { };
 };
 
 static lin_cst_t is_pointer(dom_t v)   { return v.region >= T_CTX; }
@@ -97,9 +97,9 @@ static lin_cst_t is_not_num(dom_t v)   { return v.region > T_NUM; }
  */
 struct array_dom_t {
     variable_factory& vfac;
-    var_t values;
-    var_t offsets;
-    var_t regions;
+    variable_t values;
+    variable_t offsets;
+    variable_t regions;
 
     array_dom_t(variable_factory& vfac, std::string name) :
         vfac(vfac),
@@ -116,28 +116,28 @@ struct array_dom_t {
         return { &block };
     }
 
-    void mark_region(basic_block_t& block, lin_exp_t offset, const var_t v, var_t width) {
-        var_t lb{vfac["lb"], crab::INT_TYPE, 64};
-        var_t ub{vfac["ub"], crab::INT_TYPE, 64};
+    void mark_region(basic_block_t& block, lin_exp_t offset, const variable_t v, variable_t width) {
+        variable_t lb{vfac["lb"], crab::INT_TYPE, 64};
+        variable_t ub{vfac["ub"], crab::INT_TYPE, 64};
         block.assign(lb, offset);
         block.assign(ub, offset + width);
         block.array_store_range(regions, lb, ub, v, 1);
     }
 
-    void mark_region(basic_block_t& block, lin_exp_t offset, const var_t v, int width) {
+    void mark_region(basic_block_t& block, lin_exp_t offset, const variable_t v, int width) {
         for (int i=0; i < width; i++)
             block.array_store(regions, offset + i, v, 1);
     }
 
-    void havoc_num_region(basic_block_t& block, lin_exp_t offset, var_t width) {
-        var_t lb{vfac["lb"], crab::INT_TYPE, 64};
-        var_t ub{vfac["ub"], crab::INT_TYPE, 64};
+    void havoc_num_region(basic_block_t& block, lin_exp_t offset, variable_t width) {
+        variable_t lb{vfac["lb"], crab::INT_TYPE, 64};
+        variable_t ub{vfac["ub"], crab::INT_TYPE, 64};
         block.assign(lb, offset);
         block.assign(ub, offset + width);
 
         block.array_store_range(regions, lb, ub, T_NUM, 1);
 
-        var_t scratch{vfac["scratch"], crab::INT_TYPE, 64};
+        variable_t scratch{vfac["scratch"], crab::INT_TYPE, 64};
         block.havoc(scratch);
         block.array_store(values, lb, scratch, width);
         block.havoc(scratch);
@@ -163,7 +163,7 @@ struct array_dom_t {
             return {&num_only, &pointer_only};
         } else {
             block.assertion(data_reg.region == T_NUM, di);
-            var_t scratch{vfac["scratch"], crab::INT_TYPE, (unsigned int)width};
+            variable_t scratch{vfac["scratch"], crab::INT_TYPE, (unsigned int)width};
             block.havoc(scratch);
             block.array_store(values, offset, scratch, width);
             block.havoc(scratch);
@@ -179,11 +179,11 @@ struct machine_t final
     variable_factory& vfac;
     std::vector<dom_t> regs;
     array_dom_t stack_arr{vfac, "S"};
-    var_t meta_size{vfac[std::string("meta_size")], crab::INT_TYPE, 64};
-    var_t data_size{vfac[std::string("data_size")], crab::INT_TYPE, 64};
+    variable_t meta_size{vfac[std::string("meta_size")], crab::INT_TYPE, 64};
+    variable_t data_size{vfac[std::string("data_size")], crab::INT_TYPE, 64};
 
-    var_t top{vfac[std::string("*")], crab::INT_TYPE, 64};
-    var_t num{vfac[std::string("T_NUM")], crab::INT_TYPE, 64};
+    variable_t top{vfac[std::string("*")], crab::INT_TYPE, 64};
+    variable_t num{vfac[std::string("T_NUM")], crab::INT_TYPE, 64};
 
     program_info info;
 
@@ -357,13 +357,13 @@ void machine_t::setup_entry(basic_block_t& entry)
     }
 }
 
-static lin_cst_t eq(var_t& a, var_t& b)  { return {a - b, lin_cst_t::EQUALITY}; }
+static lin_cst_t eq(variable_t& a, variable_t& b)  { return {a - b, lin_cst_t::EQUALITY}; }
 
-static lin_cst_t neq(var_t& a, var_t& b) { return {a - b, lin_cst_t::DISEQUATION}; };
+static lin_cst_t neq(variable_t& a, variable_t& b) { return {a - b, lin_cst_t::DISEQUATION}; };
 
 /** Linear constraint for a pointer comparison.
  */
-static lin_cst_t jmp_to_cst_offsets_reg(Condition::Op op, var_t& dst_offset, var_t& src_offset)
+static lin_cst_t jmp_to_cst_offsets_reg(Condition::Op op, variable_t& dst_offset, variable_t& src_offset)
 {
     using Op = Condition::Op;
     switch (op) {
@@ -385,7 +385,7 @@ static lin_cst_t jmp_to_cst_offsets_reg(Condition::Op op, var_t& dst_offset, var
 
 /** Linear constraints for a comparison with a constant.
  */
-static vector<lin_cst_t> jmp_to_cst_imm(Condition::Op op, var_t& dst_value, int imm)
+static vector<lin_cst_t> jmp_to_cst_imm(Condition::Op op, variable_t& dst_value, int imm)
 {
     using Op = Condition::Op;
     switch (op) {
@@ -407,7 +407,7 @@ static vector<lin_cst_t> jmp_to_cst_imm(Condition::Op op, var_t& dst_value, int 
 
 /** Linear constraint for a numerical comparison between registers.
  */
-static vector<lin_cst_t> jmp_to_cst_reg(Condition::Op op, var_t& dst_value, var_t& src_value)
+static vector<lin_cst_t> jmp_to_cst_reg(Condition::Op op, variable_t& dst_value, variable_t& src_value)
 {
     using Op = Condition::Op;
     switch (op) {
@@ -458,7 +458,7 @@ static bool is_unsigned_cmp(Condition::Op op)
 //     assert(false);
 // }
 
-static void wrap32(basic_block_t& block, var_t& dst_value)
+static void wrap32(basic_block_t& block, variable_t& dst_value)
 {
     block.bitwise_and(dst_value, dst_value, UINT32_MAX);
 }
@@ -510,7 +510,7 @@ vector<basic_block_t*> instruction_builder_t::exec_stack_access(basic_block_t& b
         machine.stack_arr.load(mid, data_reg, addr, width, cfg);
         mid.assume(is_init(data_reg));
         /* FIX: requires loop
-        var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
+        variable_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
         for (int idx=1; idx < width; idx++) {
             mid.array_load(tmp, machine.stack_arr.regions, addr+idx, 1);
             mid.assertion(eq(tmp, data_reg.region), di);
@@ -659,7 +659,7 @@ vector<basic_block_t*> instruction_builder_t::exec_direct_stack_load(basic_block
         b->assume(is_init(data_reg));
 
         /* FIX
-        var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
+        variable_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
         for (int idx=1; idx < width; idx++) {
             b->array_load(tmp, machine.stack_arr.regions, offset+idx, 1);
             b->assertion(eq(tmp, data_reg.region), di);
@@ -725,7 +725,7 @@ vector<basic_block_t*> instruction_builder_t::exec_mem_access_indirect(basic_blo
     return outs;
 }
 
-void assert_no_overflow(basic_block_t& b, var_t v, debug_info di) {
+void assert_no_overflow(basic_block_t& b, variable_t v, debug_info di) {
     // p1 = data_start; p1 += huge_positive; p1 <= p2 does not imply p1 >= data_start
     b.assertion(v <= MAX_PACKET_OFF , di);
     b.assertion(v >= -4098 , di);
@@ -1017,8 +1017,8 @@ vector<basic_block_t*> instruction_builder_t::operator()(Un const& b) {
 */
 vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
     vector<basic_block_t*> blocks{&block};
-    var_t map_value_size{machine.vfac["map_value_size"], crab::INT_TYPE, 64};
-    var_t map_key_size{machine.vfac["map_key_size"], crab::INT_TYPE, 64};
+    variable_t map_value_size{machine.vfac["map_value_size"], crab::INT_TYPE, 64};
+    variable_t map_key_size{machine.vfac["map_key_size"], crab::INT_TYPE, 64};
     for (ArgSingle param : call.singles) {
         dom_t arg = machine.regs[param.reg.v];
         switch (param.kind) {
@@ -1079,7 +1079,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
             ptr.assertion(is_pointer(arg), di);
             ptr.assertion(arg.value > 0, di);
 
-            var_t width = sizereg.value;
+            variable_t width = sizereg.value;
             {
                 basic_block_t& mid = add_child(cfg, ptr, "assume_stack");
                 mid.assume(arg.region == T_STACK);
@@ -1307,7 +1307,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Mem const& b) {
                 return exec_direct_stack_store_immediate(block, offset, width, imm);
             } else {
                 // FIX: STW stores long long immediate
-                var_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
+                variable_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
                 block.assign(tmp, imm);
                 block.havoc(machine.top);
                 return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, machine.num}, offset, width);

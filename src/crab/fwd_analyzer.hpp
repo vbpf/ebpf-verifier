@@ -24,7 +24,6 @@ template <typename AbsDomain>
 class fwd_analyzer
     : private ikos::interleaved_fwd_fixpoint_iterator<typename intra_abs_transformer<AbsDomain>::abs_dom_t> {
   public:
-    using variable_t = typename cfg_ref_t::variable_t;
     using abs_tr_t = intra_abs_transformer<AbsDomain>;
     using abs_dom_t = typename abs_tr_t::abs_dom_t;
 

@@ -51,9 +51,6 @@ namespace analyzer {
 template <typename Number, typename VariableName>
 class abs_transformer_api : public crab::statement_visitor {
   public:
-
-
-    using var_t = ikos::variable<number_t, varname_t>;
     using lin_exp_t = ikos::linear_expression<number_t, varname_t>;
     using lin_cst_t = ikos::linear_constraint<number_t, varname_t>;
     using lin_cst_sys_t = ikos::linear_constraint_system<number_t, varname_t>;
@@ -97,8 +94,6 @@ class intra_abs_transformer : public abs_transformer_api<number_t, varname_t> {
 
   public:
     using abs_dom_t = AbsD;
-
-    using variable_t = typename abs_dom_t::variable_t;
 
   public:
     using abs_transform_api_t = abs_transformer_api<number_t, varname_t>;
@@ -354,8 +349,6 @@ template <typename AbsDom>
 class inter_transformer_helpers {
   public:
     using linear_expression_t = typename AbsDom::linear_expression_t;
-    using variable_t = typename AbsDom::variable_t;
-
 
     static void unify(AbsDom &inv, variable_t lhs, variable_t rhs) {
         assert(lhs.get_type() == rhs.get_type());
@@ -385,7 +378,6 @@ class intra_necessary_preconditions_abs_transformer
   public:
     using abs_dom_t = AbsD;
 
-    using variable_t = typename abs_dom_t::variable_t;
     using abs_transform_api_t = abs_transformer_api<number_t, varname_t>;
 
   private:

@@ -49,7 +49,6 @@ class type_checker {
 
         using lin_exp_t = ikos::linear_expression<N, V>;
         using lin_cst_t = ikos::linear_constraint<N, V>;
-        using variable_t = ikos::variable<N, V>;
         using variable_ref_t = ikos::variable_ref<N, V>;
 
         type_checker_visitor() {}

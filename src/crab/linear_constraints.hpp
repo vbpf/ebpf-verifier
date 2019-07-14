@@ -60,7 +60,6 @@ class linear_expression {
 
   public:
 
-    using variable_t = variable<Number, VariableName>;
     using linear_expression_t = linear_expression<Number, VariableName>;
     using component_t = std::pair<Number, variable_t>;
     using variable_set_t = patricia_tree_set<variable_t>;
@@ -472,7 +471,6 @@ class linear_constraint {
   public:
 
     using linear_constraint_t = linear_constraint<Number, VariableName>;
-    using variable_t = variable<Number, VariableName>;
     using linear_expression_t = linear_expression<Number, VariableName>;
     using variable_set_t = patricia_tree_set<variable_t>;
     using kind_t = enum { EQUALITY, DISEQUATION, INEQUALITY, STRICT_INEQUALITY };
@@ -1145,7 +1143,6 @@ class linear_constraint_system {
     using linear_expression_t = linear_expression<Number, VariableName>;
     using linear_constraint_t = linear_constraint<Number, VariableName>;
     using linear_constraint_system_t = linear_constraint_system<Number, VariableName>;
-    using variable_t = variable<Number, VariableName>;
     using variable_set_t = patricia_tree_set<variable_t>;
 
   private:
