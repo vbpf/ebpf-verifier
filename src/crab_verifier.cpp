@@ -40,8 +40,7 @@ using printer_t = boost::signals2::signal<void(const string&)>;
 using crab::checker::checks_db;
 
 // Numerical domains over integers
-using SafeInt = crab::domains::SafeInt64DefaultParams;
-using sdbm_domain_t = crab::domains::SplitDBM<ikos::z_number, varname_t, SafeInt>;
+using sdbm_domain_t = crab::domains::SplitDBM;
 using dom_t = crab::domains::array_expansion_domain<sdbm_domain_t>;
 using analyzer_t = crab::analyzer::fwd_analyzer<dom_t>;
 
