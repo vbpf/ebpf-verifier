@@ -1243,165 +1243,6 @@ class basic_block_rev {
     }
 };
 
-
-template <class Number, class VariableName>
-class function_decl {
-  public:
-    using variable_t = ikos::variable<Number, VariableName>;
-    using type_t = typename variable_t::type_t;
-
-  private:
-    std::string m_func_name;
-    std::vector<variable_t> m_inputs;
-    std::vector<variable_t> m_outputs;
-
-    using param_iterator = typename std::vector<variable_t>::iterator;
-    using const_param_iterator = typename std::vector<variable_t>::const_iterator;
-    using this_type = function_decl<Number, VariableName>;
-
-  public:
-    function_decl() : m_func_name("") {}
-
-    function_decl(std::string func_name, std::vector<variable_t> inputs, std::vector<variable_t> outputs)
-        : m_func_name(func_name), m_inputs(inputs), m_outputs(outputs) {
-
-        // CFG restriction: inputs and outputs must be disjoint,
-        // otherwise we cannot produce meaningful input-output
-        // relations.
-        std::set<variable_t> s;
-        for (auto &tv : m_inputs) {
-            s.insert(tv);
-        }
-        for (auto &tv : m_outputs) {
-            s.insert(tv);
-        }
-        if (s.size() != (m_inputs.size() + m_outputs.size())) {
-            CRAB_ERROR("interprocedural analysis requires that for each function ",
-                       "its set of inputs and outputs must be disjoint.");
-        }
-    }
-
-    function_decl(const this_type &o) : m_func_name(o.m_func_name), m_inputs(o.m_inputs), m_outputs(o.m_outputs) {}
-
-    function_decl(const this_type &&o)
-        : m_func_name(std::move(o.m_func_name)), m_inputs(std::move(o.m_inputs)), m_outputs(std::move(o.m_outputs)) {}
-
-    this_type &operator=(const this_type &o) {
-        if (this != &o) {
-            m_func_name = o.m_func_name;
-            m_inputs = o.m_inputs;
-            m_outputs = o.m_outputs;
-        }
-        return *this;
-    }
-
-    this_type &operator=(const this_type &&o) {
-        m_func_name = std::move(o.m_func_name);
-        m_inputs = std::move(o.m_inputs);
-        m_outputs = std::move(o.m_outputs);
-        return *this;
-    }
-
-    bool operator==(const this_type &o) const {
-        if (m_func_name != o.m_func_name) {
-            return false;
-        }
-
-        unsigned ninputs = get_num_inputs();
-        unsigned noutputs = get_num_outputs();
-
-        if (ninputs != o.get_num_inputs()) {
-            return false;
-        }
-
-        if (noutputs != o.get_num_outputs()) {
-            return false;
-        }
-
-        for (unsigned i = 0, e = ninputs; i < e; ++i) {
-            if (get_input_type(i) != o.get_input_type(i)) {
-                return false;
-            }
-        }
-
-        for (unsigned i = 0, e = noutputs; i < e; ++i) {
-            if (get_output_type(i) != o.get_output_type(i)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    std::string get_func_name() const { return m_func_name; }
-
-    const std::vector<variable_t> &get_inputs() const { return m_inputs; }
-
-    const std::vector<variable_t> &get_outputs() const { return m_outputs; }
-
-    unsigned get_num_inputs() const { return m_inputs.size(); }
-
-    unsigned get_num_outputs() const { return m_outputs.size(); }
-
-    variable_t get_input_name(unsigned idx) const {
-        if (idx >= m_inputs.size())
-            CRAB_ERROR("Out-of-bound access to function input parameter");
-        return m_inputs[idx];
-    }
-
-    type_t get_input_type(unsigned idx) const {
-        if (idx >= m_inputs.size())
-            CRAB_ERROR("Out-of-bound access to function output parameter");
-        return m_inputs[idx].get_type();
-    }
-
-    variable_t get_output_name(unsigned idx) const {
-        if (idx >= m_outputs.size())
-            CRAB_ERROR("Out-of-bound access to function input parameter");
-        return m_outputs[idx];
-    }
-
-    type_t get_output_type(unsigned idx) const {
-        if (idx >= m_outputs.size())
-            CRAB_ERROR("Out-of-bound access to function output parameter");
-        return m_outputs[idx].get_type();
-    }
-
-    void write(crab_os &o) const {
-
-        if (m_outputs.empty()) {
-            o << "void";
-        } else if (m_outputs.size() == 1) {
-            auto out = *(m_outputs.begin());
-            o << out << ":" << out.get_type();
-        } else {
-            o << "(";
-            for (auto It = m_outputs.begin(), Et = m_outputs.end(); It != Et;) {
-                auto out = *It;
-                o << out << ":" << out.get_type();
-                ++It;
-                if (It != Et)
-                    o << ",";
-            }
-            o << ")";
-        }
-
-        o << " declare " << m_func_name << "(";
-        for (const_param_iterator It = m_inputs.begin(), Et = m_inputs.end(); It != Et;) {
-            o << (*It) << ":" << (*It).get_type();
-            ++It;
-            if (It != Et)
-                o << ",";
-        }
-        o << ")";
-    }
-
-    friend crab_os &operator<<(crab_os &o, const function_decl<Number, VariableName> &decl) {
-        decl.write(o);
-        return o;
-    }
-};
-
 // forward declarations
 template <class Any>
 class cfg_rev;
@@ -1415,7 +1256,6 @@ class cfg {
 
     using node_t = basic_block_label_t; // for Bgl graphs
     using variable_t = ikos::variable<number_t, varname_t>;
-    using fdecl_t = function_decl<number_t, varname_t>;
     using basic_block_t = basic_block<basic_block_label_t, VariableName, number_t>;
     using statement_t = statement<number_t, VariableName>;
 
@@ -1459,7 +1299,6 @@ class cfg {
     std::optional<basic_block_label_t> m_exit;
     basic_block_map_t m_blocks;
     tracked_precision m_track_prec;
-    fdecl_t m_func_decl;
 
     using visited_t = boost::unordered_set<basic_block_label_t>;
     template <typename T>
@@ -1487,9 +1326,6 @@ class cfg {
     };
 
   public:
-    // --- needed by crab::cg::call_graph<CFG>::cg_node
-    cfg() {}
-
     cfg(basic_block_label_t entry, tracked_precision track_prec = NUM)
         : m_entry(entry), m_exit(std::nullopt), m_track_prec(track_prec) {
         m_blocks.insert(binding_t(m_entry, basic_block_t::create(m_entry, m_track_prec)));
@@ -1497,11 +1333,6 @@ class cfg {
 
     cfg(basic_block_label_t entry, basic_block_label_t exit, tracked_precision track_prec = NUM)
         : m_entry(entry), m_exit(exit), m_track_prec(track_prec) {
-        m_blocks.insert(binding_t(m_entry, basic_block_t::create(m_entry, m_track_prec)));
-    }
-
-    cfg(basic_block_label_t entry, basic_block_label_t exit, fdecl_t func_decl, tracked_precision track_prec = NUM)
-        : m_entry(entry), m_exit(exit), m_track_prec(track_prec), m_func_decl(func_decl) {
         m_blocks.insert(binding_t(m_entry, basic_block_t::create(m_entry, m_track_prec)));
     }
 
@@ -1517,7 +1348,6 @@ class cfg {
         copy_cfg->m_entry = m_entry;
         copy_cfg->m_track_prec = m_track_prec;
         copy_cfg->m_exit = m_exit;
-        copy_cfg->m_func_decl = m_func_decl;
 
         for (auto const &bb : boost::make_iterator_range(begin(), end())) {
             basic_block_t *copy_bb = bb.clone();
@@ -1525,13 +1355,6 @@ class cfg {
         }
         return copy_cfg;
     }
-
-    bool has_func_decl() const {
-        return (!(m_func_decl.get_func_name() == "" && m_func_decl.get_num_inputs() == 0 &&
-                  m_func_decl.get_num_outputs() == 0));
-    }
-
-    fdecl_t get_func_decl() const { return m_func_decl; }
 
     tracked_precision get_track_prec() const { return m_track_prec; }
 
@@ -1546,10 +1369,6 @@ class cfg {
     //! set method to mark the exit block after the cfg has been
     //! created.
     void set_exit(basic_block_label_t exit) { m_exit = exit; }
-
-    //! set method to add the function declaration after the cfg has
-    //! been created.
-    void set_func_decl(fdecl_t decl) { m_func_decl = decl; }
 
     // --- Begin ikos fixpoint API
 
@@ -1678,10 +1497,6 @@ class cfg {
     size_t size() const { return std::distance(begin(), end()); }
 
     void write(crab_os &o) const {
-        if (has_func_decl()) {
-            o << m_func_decl << "\n";
-        }
-
         print_block f(o);
         dfs(f);
     }
@@ -1830,7 +1645,6 @@ class cfg_ref {
     using node_t = typename CFG::node_t;
 
     using variable_t = typename CFG::variable_t;
-    using fdecl_t = typename CFG::fdecl_t;
     using basic_block_t = typename CFG::basic_block_t;
     using statement_t = typename CFG::statement_t;
 
@@ -1948,16 +1762,6 @@ class cfg_ref {
         return (*_ref).get().label_end();
     }
 
-    bool has_func_decl() const {
-        assert(_ref);
-        return (*_ref).get().has_func_decl();
-    }
-
-    fdecl_t get_func_decl() const {
-        assert(_ref);
-        return (*_ref).get().get_func_decl();
-    }
-
     bool has_exit() const {
         assert(_ref);
         return (*_ref).get().has_exit();
@@ -2001,7 +1805,6 @@ class cfg_rev {
     using node_t = basic_block_label_t; // for Bgl graphs
 
     using variable_t = typename CFGRef::variable_t;
-    using fdecl_t = typename CFGRef::fdecl_t;
     using statement_t = typename CFGRef::statement_t;
 
     using pred_range = typename CFGRef::succ_range;
@@ -2144,18 +1947,11 @@ class cfg_rev {
 
     const_label_iterator label_end() const { return _cfg.label_end(); }
 
-    bool has_func_decl() const { return _cfg.has_func_decl(); }
-
-    fdecl_t get_func_decl() const { return _cfg.get_func_decl(); }
-
     bool has_exit() const { return true; }
 
     basic_block_label_t exit() const { return _cfg.entry(); }
 
     void write(crab_os &o) const {
-        if (has_func_decl()) {
-            o << get_func_decl() << "\n";
-        }
         print_block f(o);
         dfs(f);
     }
@@ -2166,23 +1962,6 @@ class cfg_rev {
     }
 
     void simplify() {}
-};
-
-// Helper class
-template <typename CFG>
-struct cfg_hasher {
-    using fdecl_t = typename CFG::fdecl_t;
-
-    static size_t hash(fdecl_t d) {
-        size_t res = boost::hash_value(d.get_func_name());
-        for (unsigned i = 0; i < d.get_num_inputs(); i++) {
-            boost::hash_combine(res, d.get_input_type(i));
-        }
-        for (unsigned i = 0; i < d.get_num_outputs(); i++) {
-            boost::hash_combine(res, d.get_output_type(i));
-        }
-        return res;
-    }
 };
 
 template <class CFG>
@@ -2512,55 +2291,6 @@ class type_checker {
 
     }; // end class type_checker_visitor
 };     // end class type_checker
-
-// extending boost::hash for cfg class
-template <class B, class V, class N>
-std::size_t hash_value(cfg<B, V, N> const &_cfg) {
-    if (!_cfg.has_func_decl()) {
-        CRAB_ERROR("cannot hash a cfg because function declaration is missing");
-    }
-    return cfg_hasher<cfg<B, V, N>>::hash(_cfg.get_func_decl());
-}
-
-template <class CFG>
-std::size_t hash_value(cfg_ref<CFG> const &_cfg) {
-    if (!_cfg.has_func_decl()) {
-        CRAB_ERROR("cannot hash a cfg because function declaration is missing");
-    }
-    return cfg_hasher<cfg_ref<CFG>>::hash(_cfg.get_func_decl());
-}
-
-template <class CFGRef>
-std::size_t hash_value(cfg_rev<CFGRef> const &_cfg) {
-    if (!_cfg.has_func_decl()) {
-        CRAB_ERROR("cannot hash a cfg because function declaration is missing");
-    }
-    return cfg_hasher<cfg_rev<CFGRef>>::hash(_cfg.get_func_decl());
-}
-
-template <class B, class V, class N>
-bool operator==(cfg<B, V, N> const &a, cfg<B, V, N> const &b) {
-    if (!a.has_func_decl() || !b.has_func_decl()) {
-        CRAB_ERROR("cannot call operator== of a cfg because function declaration is missing");
-    }
-    return (a.get_func_decl() == b.get_func_decl());
-}
-
-template <class CFG>
-bool operator==(cfg_ref<CFG> const &a, cfg_ref<CFG> const &b) {
-    if (!a.has_func_decl() || !b.has_func_decl()) {
-        CRAB_ERROR("cannot call operator== of a cfg because function declaration is missing");
-    }
-    return (a.get_func_decl() == b.get_func_decl());
-}
-
-template <class CFGRef>
-bool operator==(cfg_rev<CFGRef> const &a, cfg_rev<CFGRef> const &b) {
-    if (!a.has_func_decl() || !b.has_func_decl()) {
-        CRAB_ERROR("cannot call operator== of a cfg because function declaration is missing");
-    }
-    return (a.get_func_decl() == b.get_func_decl());
-}
 
 } // end namespace cfg
 } // end namespace crab
