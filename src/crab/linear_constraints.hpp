@@ -43,7 +43,6 @@
 
 #include "crab/patricia_trees.hpp"
 #include "crab/types.hpp"
-#include "crab/var_factory.hpp"
 #include <boost/container/flat_map.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/iterator/transform_iterator.hpp>

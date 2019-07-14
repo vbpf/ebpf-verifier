@@ -164,6 +164,8 @@ class z_number {
 
 }; // class z_number
 
+using number_t = z_number;
+
 inline crab::crab_os &operator<<(crab::crab_os &o, const z_number &z) {
     z.write(o);
     return o;
