@@ -38,7 +38,7 @@ using printer_t = boost::signals2::signal<void(const string&)>;
 using crab::checker::checks_db;
 
 using dom_t = crab::domains::array_expansion_domain<crab::domain_impl::z_sdbm_domain_t>;
-using analyzer_t = crab::analyzer::fwd_analyzer<crab::cfg::cfg_ref<cfg_t>, dom_t>;
+using analyzer_t = crab::analyzer::fwd_analyzer<crab::cfg_ref<cfg_t>, dom_t>;
 
 static auto extract_pre(analyzer_t& analyzer)
 {
@@ -118,7 +118,7 @@ static std::vector<string> sorted_labels(cfg_t& cfg)
 std::tuple<bool, double> abs_validate(Cfg const& simple_cfg, program_info info)
 {
     variable_factory vfac;
-    cfg_t cfg(entry_label(), crab::cfg::ARR);
+    cfg_t cfg(entry_label(), crab::ARR);
     build_crab_cfg(cfg, vfac, simple_cfg, info);
 
     printer_t pre_printer;
