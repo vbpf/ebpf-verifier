@@ -33,7 +33,6 @@ class abstract_domain : public ikos::writeable {
     using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
     using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
     using linear_constraint_system_t = ikos::linear_constraint_system<number_t, varname_t>;
-    using variable_t = ikos::variable<number_t, varname_t>;
     using variable_vector_t = std::vector<variable_t>;
 
     abstract_domain() : ikos::writeable() {}

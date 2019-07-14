@@ -649,7 +649,6 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
     using typename abstract_domain_t::linear_constraint_system_t;
     using typename abstract_domain_t::linear_constraint_t;
     using typename abstract_domain_t::linear_expression_t;
-    using typename abstract_domain_t::variable_t;
     using typename abstract_domain_t::variable_vector_t;
     using content_domain_t = NumDomain;
     using interval_t = interval<number_t>;

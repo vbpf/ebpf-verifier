@@ -85,8 +85,6 @@ enum stmt_code {
 };
 
 class live_t {
-  public:
-    using variable_t = ikos::variable<number_t, varname_t>;
   private:
     using live_set_t = std::vector<variable_t>;
 
@@ -259,7 +257,6 @@ class statement_t {
 
 class binary_op_t : public statement_t {
   public:
-    using variable_t = ikos::variable<number_t, varname_t>;
     using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
 
     binary_op_t(variable_t lhs, binary_operation_t op, linear_expression_t op1, linear_expression_t op2,
@@ -297,8 +294,6 @@ class binary_op_t : public statement_t {
 
 class assign_t : public statement_t {
   public:
-
-    using variable_t = ikos::variable<number_t, varname_t>;
     using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
 
     assign_t(variable_t lhs, linear_expression_t rhs) : statement_t(ASSIGN), m_lhs(lhs), m_rhs(rhs) {
@@ -326,8 +321,6 @@ class assign_t : public statement_t {
 
 class assume_t : public statement_t {
   public:
-
-    using variable_t = ikos::variable<number_t, varname_t>;
     using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
 
     assume_t(linear_constraint_t cst) : statement_t(ASSUME), m_cst(cst) {
@@ -362,9 +355,6 @@ class unreachable_t : public statement_t {
 
 class havoc_t : public statement_t {
   public:
-
-    using variable_t = ikos::variable<number_t, varname_t>;
-
     havoc_t(variable_t lhs) : statement_t(HAVOC), m_lhs(lhs) { this->m_live.add_def(m_lhs); }
 
     variable_t variable() const { return m_lhs; }
@@ -388,8 +378,6 @@ class havoc_t : public statement_t {
 // natively to avoid a blow up in the size of the CFG.
 class select_t : public statement_t {
   public:
-
-    using variable_t = ikos::variable<number_t, varname_t>;
     using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
     using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
 
@@ -430,12 +418,9 @@ class select_t : public statement_t {
 
 class assert_t : public statement_t {
   public:
-
-    using variable_t = ikos::variable<number_t, varname_t>;
     using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
 
-    assert_t(linear_constraint_t cst, debug_info dbg_info = debug_info())
-        : statement_t(ASSERT, dbg_info), m_cst(cst) {
+    assert_t(linear_constraint_t cst, debug_info dbg_info = debug_info()) : statement_t(ASSERT, dbg_info), m_cst(cst) {
         for (auto v : cst.variables())
             this->m_live.add_use(v);
     }
@@ -459,8 +444,6 @@ class assert_t : public statement_t {
 
 class int_cast_t : public statement_t {
   public:
-    using variable_t = ikos::variable<number_t, varname_t>;
-
     using bitwidth_t = typename variable_t::bitwidth_t;
 
     int_cast_t(cast_operation_t op, variable_t src, variable_t dst, debug_info dbg_info = debug_info())
@@ -516,13 +499,12 @@ class int_cast_t : public statement_t {
 //  The semantics is similar to constant arrays in SMT.
 class array_init_t : public statement_t {
   public:
-
     using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
-    using variable_t = ikos::variable<number_t, varname_t>;
+
     using type_t = typename variable_t::type_t;
 
     array_init_t(variable_t arr, linear_expression_t elem_size, linear_expression_t lb, linear_expression_t ub,
-                    linear_expression_t val)
+                 linear_expression_t val)
         : statement_t(ARR_INIT), m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_val(val) {
 
         this->m_live.add_def(m_arr);
@@ -572,13 +554,12 @@ class array_store_t : public statement_t {
   public:
     // forall i \in [lb,ub) % elem_size :: arr[i] := val
 
-
     using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
-    using variable_t = ikos::variable<number_t, varname_t>;
+
     using type_t = typename variable_t::type_t;
 
     array_store_t(variable_t arr, linear_expression_t elem_size, linear_expression_t lb, linear_expression_t ub,
-                     linear_expression_t value, bool is_singleton)
+                  linear_expression_t value, bool is_singleton)
         : statement_t(ARR_STORE), m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_value(value),
           m_is_singleton(is_singleton) {
 
@@ -639,9 +620,8 @@ class array_store_t : public statement_t {
 
 class array_load_t : public statement_t {
   public:
-
     using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
-    using variable_t = ikos::variable<number_t, varname_t>;
+
     using type_t = typename variable_t::type_t;
 
     array_load_t(variable_t lhs, variable_t arr, linear_expression_t elem_size, linear_expression_t index)
@@ -686,8 +666,6 @@ class array_load_t : public statement_t {
 class array_assign_t : public statement_t {
     //! a = b
   public:
-
-    using variable_t = ikos::variable<number_t, varname_t>;
     using type_t = typename variable_t::type_t;
 
     array_assign_t(variable_t lhs, variable_t rhs) : statement_t(ARR_ASSIGN), m_lhs(lhs), m_rhs(rhs) {
@@ -723,7 +701,7 @@ class basic_block {
 
   public:
     // helper types to build statements
-    using variable_t = ikos::variable<number_t, varname_t>;
+
     using lin_exp_t = ikos::linear_expression<number_t, varname_t>;
     using lin_cst_t = ikos::linear_constraint<number_t, varname_t>;
 
@@ -913,7 +891,7 @@ class basic_block {
     void remove(const statement_t *s, bool must_update_uses_and_defs = true) {
         // remove statement using the remove-erase idiom
         m_ts.erase(std::remove_if(m_ts.begin(), m_ts.end(), [s](const statement_t *o) { return (o == s); }),
-                      m_ts.end());
+                   m_ts.end());
 
         if (must_update_uses_and_defs) {
             update_uses_and_defs();
@@ -991,15 +969,21 @@ class basic_block {
 
     void urem(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_UREM, op1, op2)); }
 
-    void bitwise_and(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_AND, op1, op2)); }
+    void bitwise_and(variable_t lhs, variable_t op1, variable_t op2) {
+        insert(new binary_op_t(lhs, BINOP_AND, op1, op2));
+    }
 
     void bitwise_and(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_AND, op1, op2)); }
 
-    void bitwise_or(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_OR, op1, op2)); }
+    void bitwise_or(variable_t lhs, variable_t op1, variable_t op2) {
+        insert(new binary_op_t(lhs, BINOP_OR, op1, op2));
+    }
 
     void bitwise_or(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_OR, op1, op2)); }
 
-    void bitwise_xor(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_XOR, op1, op2)); }
+    void bitwise_xor(variable_t lhs, variable_t op1, variable_t op2) {
+        insert(new binary_op_t(lhs, BINOP_XOR, op1, op2));
+    }
 
     void bitwise_xor(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_XOR, op1, op2)); }
 
@@ -1082,8 +1066,6 @@ using basic_block_t = basic_block<basic_block_label_t, varname_t, number_t>;
 template <class BasicBlock>
 class basic_block_rev {
   public:
-    using variable_t = typename BasicBlock::variable_t;
-
     using basic_block_rev_t = basic_block_rev<BasicBlock>;
 
     using succ_iterator = typename BasicBlock::succ_iterator;
@@ -1165,7 +1147,7 @@ class cfg {
 
   public:
     using node_t = basic_block_label_t; // for Bgl graphs
-    using variable_t = ikos::variable<number_t, varname_t>;
+
     using basic_block_t = basic_block<basic_block_label_t, VariableName, number_t>;
 
     using succ_iterator = typename basic_block_t::succ_iterator;
@@ -1543,7 +1525,6 @@ class cfg_ref {
     // CFG's typedefs
     using node_t = typename CFG::node_t;
 
-    using variable_t = typename CFG::variable_t;
     using basic_block_t = typename CFG::basic_block_t;
 
     using succ_iterator = typename CFG::succ_iterator;
@@ -1705,8 +1686,6 @@ class cfg_rev {
     using basic_block_t = basic_block_rev<typename CFGRef::basic_block_t>;
     using node_t = basic_block_label_t; // for Bgl graphs
 
-    using variable_t = typename CFGRef::variable_t;
-
     using pred_range = typename CFGRef::succ_range;
     using succ_range = typename CFGRef::pred_range;
     using const_pred_range = typename CFGRef::const_succ_range;
@@ -1866,6 +1845,6 @@ class cfg_rev {
 
 extern template class cfg_rev<cfg_t>;
 
-void type_check(const cfg_ref<cfg_t>& cfg);
+void type_check(const cfg_ref<cfg_t> &cfg);
 
 } // end namespace crab
