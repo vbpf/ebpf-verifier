@@ -9,7 +9,7 @@
 using crab::varname_t;
 using crab::number_t;
 
-using crab::cfg::variable_factory;
+using crab::variable_factory;
 
 /// CFG over integers
 using cfg_t         = crab::cfg::cfg<basic_block_label_t, varname_t, number_t>;

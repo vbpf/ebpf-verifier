@@ -2150,12 +2150,6 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
 template <class Number, class VariableName, class Params>
 using SplitDBM = SplitDBM_<Number, VariableName, Params>;
 
-template <typename Number, typename VariableName, typename SplitDBMParams>
-struct abstract_domain_traits<SplitDBM<Number, VariableName, SplitDBMParams>> {
-
-    using varname_t = VariableName;
-};
-
 } // namespace domains
 } // namespace crab
 

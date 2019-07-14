@@ -152,7 +152,6 @@ class variable {
 
   public:
     using variable_t = variable<Number, VariableName>;
-    using index_t = typename VariableName::index_t;
     using bitwidth_t = unsigned;
     using type_t = crab::variable_type;
 
@@ -225,7 +224,6 @@ template <typename Number, typename VariableName>
 class variable_ref {
   public:
     using variable_t = variable<Number, VariableName>;
-    using index_t = typename variable_t::index_t;
     using bitwidth_t = typename variable_t::bitwidth_t;
     using type_t = typename variable_t::type_t;
     using variable_ref_t = variable_ref<Number, VariableName>;

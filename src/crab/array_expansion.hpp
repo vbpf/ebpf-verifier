@@ -46,14 +46,14 @@ class offset_map;
 template <typename Domain>
 class array_expansion_domain;
 
-// wrapper for using ikos::index_t as patricia_tree keys
+// wrapper for using index_t as patricia_tree keys
 class offset_t {
-    ikos::index_t _val;
+    index_t _val;
 
   public:
-    explicit offset_t(ikos::index_t v) : _val(v) {}
+    explicit offset_t(index_t v) : _val(v) {}
 
-    ikos::index_t index() const { return _val; }
+    index_t index() const { return _val; }
 
     bool operator<(const offset_t &o) const { return _val < o._val; }
 
@@ -355,14 +355,14 @@ class offset_map {
 
     // global state to map the same triple of array, offset and size
     // to same index
-    static std::map<std::pair<ikos::index_t, std::pair<offset_t, unsigned>>, ikos::index_t> _index_map;
+    static std::map<std::pair<index_t, std::pair<offset_t, unsigned>>, index_t> _index_map;
 
-    ikos::index_t get_index(Variable a, offset_t o, unsigned size) {
+    index_t get_index(Variable a, offset_t o, unsigned size) {
         auto it = _index_map.find({a.index(), {o, size}});
         if (it != _index_map.end()) {
             return it->second;
         } else {
-            ikos::index_t res = _index_map.size();
+            index_t res = _index_map.size();
             _index_map.insert({{a.index(), {o, size}}, res});
             return res;
         }
@@ -376,7 +376,7 @@ class offset_map {
             auto &vfac = array.name().get_var_factory();
             std::string vname = mk_scalar_name(array, o, size);
             type_t vtype = get_array_element_type(array.get_type());
-            ikos::index_t vindex = get_index(array, o, size);
+            index_t vindex = get_index(array, o, size);
 
             // create a new scalar variable for representing the contents
             // of bytes array[o,o+1,..., o+size-1]
@@ -623,7 +623,7 @@ class offset_map {
 };
 
 template <typename Var>
-std::map<std::pair<ikos::index_t, std::pair<offset_t, unsigned>>, ikos::index_t> offset_map<Var>::_index_map;
+std::map<std::pair<index_t, std::pair<offset_t, unsigned>>, index_t> offset_map<Var>::_index_map;
 
 // /* for debugging */
 // namespace array_expansion_domain_impl{
@@ -1302,11 +1302,6 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
     }
 
 }; // end array_expansion_domain
-
-template <typename BaseDomain>
-struct abstract_domain_traits<array_expansion_domain<BaseDomain>> {
-
-};
 
 template <typename BaseDom>
 class checker_domain_traits<array_expansion_domain<BaseDom>> {

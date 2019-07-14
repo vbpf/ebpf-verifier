@@ -27,7 +27,7 @@ using std::vector;
 using std::optional;
 using std::to_string;
 
-using crab::cfg::variable_factory;
+using crab::variable_factory;
 
 constexpr int MAX_PACKET_OFF = 0xffff;
 constexpr int64_t MY_INT_MIN = INT_MIN;

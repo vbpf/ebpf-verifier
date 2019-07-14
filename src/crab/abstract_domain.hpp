@@ -8,9 +8,6 @@ namespace crab {
 
 namespace domains {
 
-template <class Dom>
-struct abstract_domain_traits;
-
 /**
  * All abstract domains must derive from the abstract_domain class
  * and expose publicly all its public typedef's.
@@ -25,9 +22,6 @@ struct abstract_domain_traits;
  *   ...
  * };
  *
- *
- * template<typename Number, typename VariableName>
- * struct abstract_domain_traits<my_new_domain<Number,VariableName>> {
  *
  * };
  **/

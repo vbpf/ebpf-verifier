@@ -9,8 +9,6 @@ namespace crab {
 
     /// BEGIN MUST BE DEFINED BY CRAB CLIENT
     // A variable factory based on strings
-    using variable_factory = cfg::variable_factory;
-    using varname_t = typename variable_factory::varname_t;
 
     template<> inline std::string get_label_str(std::string e)  { return e; }
     /// END MUST BE DEFINED BY CRAB CLIENT
