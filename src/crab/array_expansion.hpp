@@ -154,9 +154,8 @@ class cell {
     // Return true if [symb_lb, symb_ub] may overlap with the cell,
     // where symb_lb and symb_ub are not constant expressions.
     template <typename Dom>
-    bool symbolic_overlap(const typename Dom::linear_expression_t &symb_lb,
-                          const typename Dom::linear_expression_t &symb_ub, const Dom &dom) const {
-        using linear_expression_t = typename Dom::linear_expression_t;
+    bool symbolic_overlap(const linear_expression_t &symb_lb,
+                          const linear_expression_t &symb_ub, const Dom &dom) const {
 
         interval_t x = to_interval();
         assert(x.lb().is_finite());
@@ -549,8 +548,8 @@ class offset_map {
     }
 
     template <typename Dom>
-    void get_overlap_cells_symbolic_offset(const Dom &dom, const typename Dom::linear_expression_t &symb_lb,
-                                           const typename Dom::linear_expression_t &symb_ub,
+    void get_overlap_cells_symbolic_offset(const Dom &dom, const linear_expression_t &symb_lb,
+                                           const linear_expression_t &symb_ub,
                                            std::vector<cell_t> &out) const {
 
         for (auto it = _map.begin(), et = _map.end(); it != et; ++it) {
@@ -634,10 +633,6 @@ std::map<std::pair<index_t, std::pair<offset_t, unsigned>>, index_t> offset_map<
 //     crab::outs() << "(" << dom.size().first << "," << dom.size().second << ")";
 //   }
 // }
-
-using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
-using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
-using linear_constraint_system_t = ikos::linear_constraint_system<number_t, varname_t>;
 
 template <typename NumDomain>
 class array_expansion_domain final : public ikos::writeable {
@@ -1318,7 +1313,6 @@ template <typename BaseDom>
 class checker_domain_traits<array_expansion_domain<BaseDom>> {
   public:
     using this_type = array_expansion_domain<BaseDom>;
-    using linear_constraint_t = typename this_type::linear_constraint_t;
 
     static bool entail(this_type &lhs, const linear_constraint_t &rhs) {
         BaseDom &lhs_dom = lhs.get_content_domain();

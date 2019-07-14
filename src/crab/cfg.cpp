@@ -143,8 +143,6 @@ class type_checker {
 
     struct type_checker_visitor : public statement_visitor {
 
-        using lin_exp_t = ikos::linear_expression<N, varname_t>;
-        using lin_cst_t = ikos::linear_constraint<N, varname_t>;
         using variable_ref_t = ikos::variable_ref<N>;
 
         type_checker_visitor() {}
@@ -194,7 +192,7 @@ class type_checker {
             }
         }
 
-        void check_num_or_var(lin_exp_t e, std::string msg, statement_t &s) {
+        void check_num_or_var(linear_expression_t e, std::string msg, statement_t &s) {
             if (!(e.is_constant() || e.get_variable())) {
                 crab::crab_string_os os;
                 os << "(type checking) " << msg << " in " << s;
@@ -234,8 +232,8 @@ class type_checker {
 
         void visit(binary_op_t &s) {
             variable_t lhs = s.lhs();
-            lin_exp_t op1 = s.left();
-            lin_exp_t op2 = s.right();
+            linear_expression_t op1 = s.left();
+            linear_expression_t op2 = s.right();
 
             check_num(lhs, "lhs must be integer or real", s);
             check_bitwidth_if_int(lhs, "lhs must be have bitwidth > 1", s);
@@ -256,12 +254,12 @@ class type_checker {
 
         void visit(assign_t &s) {
             variable_t lhs = s.lhs();
-            lin_exp_t rhs = s.rhs();
+            linear_expression_t rhs = s.rhs();
 
             check_num(lhs, "lhs must be integer or real", s);
             check_bitwidth_if_int(lhs, "lhs must be have bitwidth > 1", s);
 
-            typename lin_exp_t::variable_set_t vars = rhs.variables();
+            typename linear_expression_t::variable_set_t vars = rhs.variables();
             for (auto const &v : vars) {
                 check_same_type(lhs, v, "variable cannot have different type from lhs", s);
                 check_same_bitwidth(lhs, v, "variable cannot have different bitwidth from lhs", s);
@@ -269,7 +267,7 @@ class type_checker {
         }
 
         void visit(assume_t &s) {
-            typename lin_exp_t::variable_set_t vars = s.constraint().variables();
+            typename linear_expression_t::variable_set_t vars = s.constraint().variables();
             bool first = true;
             variable_ref_t first_var;
             for (auto const &v : vars) {
@@ -284,7 +282,7 @@ class type_checker {
         }
 
         void visit(assert_t &s) {
-            typename lin_exp_t::variable_set_t vars = s.constraint().variables();
+            typename linear_expression_t::variable_set_t vars = s.constraint().variables();
             bool first = true;
             variable_ref_t first_var;
             for (auto const &v : vars) {
@@ -302,12 +300,12 @@ class type_checker {
             check_num(s.lhs(), "lhs must be integer or real", s);
             check_bitwidth_if_int(s.lhs(), "lhs must be have bitwidth > 1", s);
 
-            typename lin_exp_t::variable_set_t left_vars = s.left().variables();
+            typename linear_expression_t::variable_set_t left_vars = s.left().variables();
             for (auto const &v : left_vars) {
                 check_same_type(s.lhs(), v, "inconsistent types in select variables", s);
                 check_same_bitwidth(s.lhs(), v, "inconsistent bitwidths in select variables", s);
             }
-            typename lin_exp_t::variable_set_t right_vars = s.right().variables();
+            typename linear_expression_t::variable_set_t right_vars = s.right().variables();
             for (auto const &v : right_vars) {
                 check_same_type(s.lhs(), v, "inconsistent types in select variables", s);
                 check_same_bitwidth(s.lhs(), v, "inconsistent bitwidths in select variables", s);
@@ -315,7 +313,7 @@ class type_checker {
 
             // -- The condition can have different bitwidth from
             //    lhs/left/right operands but must have same type.
-            typename lin_exp_t::variable_set_t cond_vars = s.cond().variables();
+            typename linear_expression_t::variable_set_t cond_vars = s.cond().variables();
             bool first = true;
             variable_ref_t first_var;
             for (auto const &v : cond_vars) {
@@ -360,10 +358,10 @@ class type_checker {
         void visit(array_init_t &s) {
             // TODO: check that e_sz is the same number that v's bitwidth
             variable_t a = s.array();
-            lin_exp_t e_sz = s.elem_size();
-            lin_exp_t lb = s.lb_index();
-            lin_exp_t ub = s.ub_index();
-            lin_exp_t v = s.val();
+            linear_expression_t e_sz = s.elem_size();
+            linear_expression_t lb = s.lb_index();
+            linear_expression_t ub = s.ub_index();
+            linear_expression_t v = s.val();
             check_array(a, s);
             check_num_or_var(e_sz, "element size must be number or variable", s);
             check_num_or_var(lb, "array lower bound must be number or variable", s);
@@ -378,8 +376,8 @@ class type_checker {
             // TODO: check that e_sz is the same number that v's bitwidth
             /// XXX: we allow linear expressions as indexes
             variable_t a = s.array();
-            lin_exp_t e_sz = s.elem_size();
-            lin_exp_t v = s.value();
+            linear_expression_t e_sz = s.elem_size();
+            linear_expression_t v = s.value();
             if (s.is_singleton()) {
                 if (!(s.lb_index().equal(s.ub_index()))) {
                     crab::crab_string_os os;
@@ -400,7 +398,7 @@ class type_checker {
             // TODO: check that e_sz is the same number that lhs's bitwidth
             /// XXX: we allow linear expressions as indexes
             variable_t a = s.array();
-            lin_exp_t e_sz = s.elem_size();
+            linear_expression_t e_sz = s.elem_size();
             variable_t lhs = s.lhs();
             check_array(a, s);
             check_num_or_var(e_sz, "element size must be number or variable", s);

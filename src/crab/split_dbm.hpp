@@ -44,9 +44,6 @@ namespace domains {
 
 class SplitDBM final : public ikos::writeable {
   public:
-    using linear_constraint_system_t = ikos::linear_constraint_system<number_t, varname_t>;
-    using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
-    using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
 
     using constraint_kind_t = typename linear_constraint_t::kind_t;
     using interval_t = interval<number_t>;
