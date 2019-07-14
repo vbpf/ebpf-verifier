@@ -42,10 +42,9 @@ namespace crab {
 
 namespace domains {
 
-class SplitDBM_ final : public abstract_domain<SplitDBM_> {
+class SplitDBM final : public abstract_domain<SplitDBM> {
     using Params = SafeInt64DefaultParams;
-    using DBM_t = SplitDBM_;
-    using abstract_domain_t = abstract_domain<DBM_t>;
+    using abstract_domain_t = abstract_domain<SplitDBM>;
 
   public:
     using typename abstract_domain_t::linear_constraint_system_t;
@@ -741,14 +740,14 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
     }
 
   public:
-    SplitDBM_(bool is_bottom = false) : _is_bottom(is_bottom) {
+    SplitDBM(bool is_bottom = false) : _is_bottom(is_bottom) {
         g.growTo(1); // Allocate the zero vector
         potential.push_back(Wt(0));
         rev_map.push_back(std::nullopt);
     }
 
     // FIXME: Rewrite to avoid copying if o is _|_
-    SplitDBM_(const DBM_t &o)
+    SplitDBM(const SplitDBM &o)
         : vert_map(o.vert_map), rev_map(o.rev_map), g(o.g), potential(o.potential), unstable(o.unstable),
           _is_bottom(false) {
         crab::CrabStats::count(getDomainName() + ".count.copy");
@@ -761,7 +760,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
             assert(g.size() > 0);
     }
 
-    SplitDBM_(DBM_t &&o)
+    SplitDBM(SplitDBM &&o)
         : vert_map(std::move(o.vert_map)), rev_map(std::move(o.rev_map)), g(std::move(o.g)),
           potential(std::move(o.potential)), unstable(std::move(o.unstable)), _is_bottom(o._is_bottom) {
         crab::CrabStats::count(getDomainName() + ".count.copy");
@@ -769,7 +768,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
     }
 
     // We should probably use the magical rvalue ownership semantics stuff.
-    SplitDBM_(vert_map_t &_vert_map, rev_map_t &_rev_map, graph_t &_g, std::vector<Wt> &_potential,
+    SplitDBM(vert_map_t &_vert_map, rev_map_t &_rev_map, graph_t &_g, std::vector<Wt> &_potential,
               vert_set_t &_unstable)
         : vert_map(_vert_map), rev_map(_rev_map), g(_g), potential(_potential), unstable(_unstable), _is_bottom(false) {
 
@@ -780,7 +779,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
         assert(g.size() > 0);
     }
 
-    SplitDBM_(vert_map_t &&_vert_map, rev_map_t &&_rev_map, graph_t &&_g, std::vector<Wt> &&_potential,
+    SplitDBM(vert_map_t &&_vert_map, rev_map_t &&_rev_map, graph_t &&_g, std::vector<Wt> &&_potential,
               vert_set_t &&_unstable)
         : vert_map(std::move(_vert_map)), rev_map(std::move(_rev_map)), g(std::move(_g)),
           potential(std::move(_potential)), unstable(std::move(_unstable)), _is_bottom(false) {
@@ -794,7 +793,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
         assert(g.size() > 0);
     }
 
-    SplitDBM_ &operator=(const SplitDBM_ &o) {
+    SplitDBM &operator=(const SplitDBM &o) {
         crab::CrabStats::count(getDomainName() + ".count.copy");
         crab::ScopedCrabStats __st__(getDomainName() + ".copy");
 
@@ -814,7 +813,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
         return *this;
     }
 
-    SplitDBM_ &operator=(SplitDBM_ &&o) {
+    SplitDBM &operator=(SplitDBM &&o) {
         crab::CrabStats::count(getDomainName() + ".count.copy");
         crab::ScopedCrabStats __st__(getDomainName() + ".copy");
 
@@ -832,7 +831,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
     }
 
     void set_to_top() {
-        SplitDBM_ abs(false);
+        SplitDBM abs(false);
         std::swap(*this, abs);
     }
 
@@ -846,7 +845,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
     }
 
     // void set_to_bottom() {
-    // 	SplitDBM_ abs(true);
+    // 	SplitDBM abs(true);
     // 	std::swap(*this, abs);
     // }
 
@@ -858,7 +857,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
         return g.is_empty();
     }
 
-    bool operator<=(DBM_t o) {
+    bool operator<=(SplitDBM o) {
         crab::CrabStats::count(getDomainName() + ".count.leq");
         crab::ScopedCrabStats __st__(getDomainName() + ".leq");
 
@@ -927,9 +926,9 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
     }
 
     // FIXME: can be done more efficient
-    void operator|=(DBM_t o) { *this = *this | o; }
+    void operator|=(SplitDBM o) { *this = *this | o; }
 
-    DBM_t operator|(DBM_t o) {
+    SplitDBM operator|(SplitDBM o) {
         crab::CrabStats::count(getDomainName() + ".count.join");
         crab::ScopedCrabStats __st__(getDomainName() + ".join");
 
@@ -1107,8 +1106,8 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
                 }
             }
 
-            // DBM_t res(join_range, out_vmap, out_revmap, join_g, join_pot);
-            DBM_t res(std::move(out_vmap), std::move(out_revmap), std::move(join_g), std::move(pot_rx), vert_set_t());
+            // SplitDBM res(join_range, out_vmap, out_revmap, join_g, join_pot);
+            SplitDBM res(std::move(out_vmap), std::move(out_revmap), std::move(join_g), std::move(pot_rx), vert_set_t());
             // join_g.check_adjs();
             CRAB_LOG("zones-split", crab::outs() << "Result join:\n" << res << "\n");
 
@@ -1116,7 +1115,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
         }
     }
 
-    DBM_t operator||(DBM_t o) {
+    SplitDBM operator||(SplitDBM o) {
         crab::CrabStats::count(getDomainName() + ".count.widening");
         crab::ScopedCrabStats __st__(getDomainName() + ".widening");
 
@@ -1170,7 +1169,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
             for (vert_id v : destabilized)
                 widen_unstable.insert(v);
 
-            DBM_t res(std::move(out_vmap), std::move(out_revmap), std::move(widen_g), std::move(widen_pot),
+            SplitDBM res(std::move(out_vmap), std::move(out_revmap), std::move(widen_g), std::move(widen_pot),
                       std::move(widen_unstable));
 
             CRAB_LOG("zones-split", crab::outs() << "Result widening:\n" << res << "\n");
@@ -1178,17 +1177,17 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
         }
     }
 
-    DBM_t widening_thresholds(DBM_t o, const iterators::thresholds<number_t> &ts) {
+    SplitDBM widening_thresholds(SplitDBM o, const iterators::thresholds<number_t> &ts) {
         // TODO: use thresholds
         return (*this || o);
     }
 
-    DBM_t operator&(DBM_t o) {
+    SplitDBM operator&(SplitDBM o) {
         crab::CrabStats::count(getDomainName() + ".count.meet");
         crab::ScopedCrabStats __st__(getDomainName() + ".meet");
 
         if (is_bottom() || o.is_bottom())
-            return DBM_t::bottom();
+            return SplitDBM::bottom();
         else if (is_top())
             return o;
         else if (o.is_top())
@@ -1259,7 +1258,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
             // We've warm-started pi with the operand potentials
             if (!GrOps::select_potentials(meet_g, meet_pi)) {
                 // Potentials cannot be selected -- state is infeasible.
-                return DBM_t::bottom();
+                return SplitDBM::bottom();
             }
 
             if (!is_closed) {
@@ -1278,18 +1277,18 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
                 GrOps::apply_delta(meet_g, delta);
             }
             check_potential(meet_g, meet_pi, __LINE__);
-            DBM_t res(std::move(meet_verts), std::move(meet_rev), std::move(meet_g), std::move(meet_pi), vert_set_t());
+            SplitDBM res(std::move(meet_verts), std::move(meet_rev), std::move(meet_g), std::move(meet_pi), vert_set_t());
             CRAB_LOG("zones-split", crab::outs() << "Result meet:\n" << res << "\n");
             return res;
         }
     }
 
-    DBM_t operator&&(DBM_t o) {
+    SplitDBM operator&&(SplitDBM o) {
         crab::CrabStats::count(getDomainName() + ".count.narrowing");
         crab::ScopedCrabStats __st__(getDomainName() + ".narrowing");
 
         if (is_bottom() || o.is_bottom())
-            return DBM_t::bottom();
+            return SplitDBM::bottom();
         else if (is_top())
             return o;
         else {
@@ -1302,7 +1301,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
             // FIXME: Implement properly
             // Narrowing as a no-op should be sound.
             normalize();
-            DBM_t res(*this);
+            SplitDBM res(*this);
 
             CRAB_LOG("zones-split", crab::outs() << "Result narrowing:\n" << res << "\n");
             return res;
@@ -1542,16 +1541,16 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
         CRAB_LOG("zones-split", crab::outs() << "---" << x << ":=" << y << op << k << "\n" << *this << "\n");
     }
 
-    void backward_assign(variable_t x, linear_expression_t e, DBM_t inv) {
-        crab::domains::BackwardAssignOps<DBM_t>::assign(*this, x, e, inv);
+    void backward_assign(variable_t x, linear_expression_t e, SplitDBM inv) {
+        crab::domains::BackwardAssignOps<SplitDBM>::assign(*this, x, e, inv);
     }
 
-    void backward_apply(operation_t op, variable_t x, variable_t y, number_t z, DBM_t inv) {
-        crab::domains::BackwardAssignOps<DBM_t>::apply(*this, op, x, y, z, inv);
+    void backward_apply(operation_t op, variable_t x, variable_t y, number_t z, SplitDBM inv) {
+        crab::domains::BackwardAssignOps<SplitDBM>::apply(*this, op, x, y, z, inv);
     }
 
-    void backward_apply(operation_t op, variable_t x, variable_t y, variable_t z, DBM_t inv) {
-        crab::domains::BackwardAssignOps<DBM_t>::apply(*this, op, x, y, z, inv);
+    void backward_apply(operation_t op, variable_t x, variable_t y, variable_t z, SplitDBM inv) {
+        crab::domains::BackwardAssignOps<SplitDBM>::apply(*this, op, x, y, z, inv);
     }
 
     void operator+=(linear_constraint_t cst) {
@@ -1793,14 +1792,14 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
     void array_assign(variable_t lhs, variable_t rhs) {}
     // backward array operations
     void backward_array_init(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
-                             linear_expression_t ub_idx, linear_expression_t val, DBM_t invariant) {}
+                             linear_expression_t ub_idx, linear_expression_t val, SplitDBM invariant) {}
     void backward_array_load(variable_t lhs, variable_t a, linear_expression_t elem_size, linear_expression_t i,
-                             DBM_t invariant) {}
+                             SplitDBM invariant) {}
     void backward_array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i, linear_expression_t v,
-                              bool is_singleton, DBM_t invariant) {}
+                              bool is_singleton, SplitDBM invariant) {}
     void backward_array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t i,
-                                    linear_expression_t j, linear_expression_t v, DBM_t invariant) {}
-    void backward_array_assign(variable_t lhs, variable_t rhs, DBM_t invariant) {}
+                                    linear_expression_t j, linear_expression_t v, SplitDBM invariant) {}
+    void backward_array_assign(variable_t lhs, variable_t rhs, SplitDBM invariant) {}
     /* End unimplemented operations */
 
     void project(const variable_vector_t &variables) {
@@ -2145,11 +2144,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_> {
 
     static std::string getDomainName() { return "SplitDBM"; }
 
-}; // class SplitDBM_
-
-//extern template class SplitDBM_<SafeInt64DefaultParams>;
-
-using SplitDBM = SplitDBM_;//<SafeInt64DefaultParams>;
+}; // class SplitDBM
 
 } // namespace domains
 } // namespace crab
