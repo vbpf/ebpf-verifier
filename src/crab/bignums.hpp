@@ -107,36 +107,36 @@ class z_number {
     bool fits_slong() const;
 
     z_number operator+(z_number x) const;
-    z_number operator+(long x) const { return operator+(z_number(x)); }
+    z_number operator+(int x) const { return operator+(z_number(x)); }
 
     z_number operator*(z_number x) const;
-    z_number operator*(long x) const { return operator*(z_number(x)); }
+    z_number operator*(int x) const { return operator*(z_number(x)); }
 
     z_number operator-(z_number x) const;
-    z_number operator-(long x) const { return operator-(z_number(x)); }
+    z_number operator-(int x) const { return operator-(z_number(x)); }
 
     z_number operator-() const;
 
     z_number operator/(z_number x) const;
-    z_number operator/(long x) const { return operator/(z_number(x)); }
+    z_number operator/(int x) const { return operator/(z_number(x)); }
 
     z_number operator%(z_number x) const;
-    z_number operator%(long x) const { return operator%(z_number(x)); }
+    z_number operator%(int x) const { return operator%(z_number(x)); }
 
     z_number &operator+=(z_number x);
-    z_number &operator+=(long x) { return operator+=(z_number(x)); }
+    z_number &operator+=(int x) { return operator+=(z_number(x)); }
 
     z_number &operator*=(z_number x);
-    z_number &operator*=(long x) { return operator*=(z_number(x)); }
+    z_number &operator*=(int x) { return operator*=(z_number(x)); }
 
     z_number &operator-=(z_number x);
-    z_number &operator-=(long x) { return operator-=(z_number(x)); }
+    z_number &operator-=(int x) { return operator-=(z_number(x)); }
 
     z_number &operator/=(z_number x);
-    z_number &operator/=(long x) { return operator/=(z_number(x)); }
+    z_number &operator/=(int x) { return operator/=(z_number(x)); }
 
     z_number &operator%=(z_number x);
-    z_number &operator%=(long x) { return operator%=(z_number(x)); }
+    z_number &operator%=(int x) { return operator%=(z_number(x)); }
 
     z_number &operator--();
 
@@ -147,37 +147,37 @@ class z_number {
     z_number operator--(int);
 
     bool operator==(z_number x) const;
-    bool operator==(long x) const { return operator==(z_number(x)); }
+    bool operator==(int x) const { return operator==(z_number(x)); }
 
     bool operator!=(z_number x) const;
-    bool operator!=(long x) const { return operator!=(z_number(x)); }
+    bool operator!=(int x) const { return operator!=(z_number(x)); }
 
     bool operator<(z_number x) const;
-    bool operator<(long x) const { return operator<(z_number(x)); }
+    bool operator<(int x) const { return operator<(z_number(x)); }
 
     bool operator<=(z_number x) const;
-    bool operator<=(long x) const { return operator<=(z_number(x)); }
+    bool operator<=(int x) const { return operator<=(z_number(x)); }
 
     bool operator>(z_number x) const;
-    bool operator>(long x) const { return operator>(z_number(x)); }
+    bool operator>(int x) const { return operator>(z_number(x)); }
 
     bool operator>=(z_number x) const;
-    bool operator>=(long x) const { return operator>=(z_number(x)); }
+    bool operator>=(int x) const { return operator>=(z_number(x)); }
 
     z_number operator&(z_number x) const;
-    z_number operator&(long x) const { return operator&(z_number(x)); }
+    z_number operator&(int x) const { return operator&(z_number(x)); }
 
     z_number operator|(z_number x) const;
-    z_number operator|(long x) const { return operator|(z_number(x)); }
+    z_number operator|(int x) const { return operator|(z_number(x)); }
 
     z_number operator^(z_number x) const;
-    z_number operator^(long x) const { return operator^(z_number(x)); }
+    z_number operator^(int x) const { return operator^(z_number(x)); }
 
     z_number operator<<(z_number x) const;
-    z_number operator<<(long x) const { return operator<<(z_number(x)); }
+    z_number operator<<(int x) const { return operator<<(z_number(x)); }
 
     z_number operator>>(z_number x) const;
-    z_number operator>>(long x) const { return operator>>(z_number(x)); }
+    z_number operator>>(int x) const { return operator>>(z_number(x)); }
 
     z_number fill_ones() const;
 
