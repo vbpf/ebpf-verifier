@@ -3,23 +3,20 @@
 
 namespace ikos {
 using crab::varname_t;
+using crab::number_t;
 
-template class variable<crab::number_t, varname_t>;
-
-template <typename Number>
-class variable_ref {
+class variable_ref_t {
   public:
     using bitwidth_t = typename variable_t::bitwidth_t;
     using type_t = typename variable_t::type_t;
-    using variable_ref_t = variable_ref<Number>;
 
   private:
     std::shared_ptr<variable_t> m_v{};
 
   public:
-    variable_ref() {}
+    variable_ref_t() {}
 
-    variable_ref(variable_t v) : m_v(std::make_shared<variable_t>(v)) {}
+    variable_ref_t(variable_t v) : m_v(std::make_shared<variable_t>(v)) {}
 
     bool is_null() const { return !m_v; }
 
@@ -79,17 +76,14 @@ class variable_ref {
     }
 
     void write(crab::crab_os &o) const { return m_v->write(o); }
-}; // class variable_ref
+}; // class variable_ref_t
 
-using variable_ref_t = variable_ref<crab::number_t>;
-
-template <typename Number>
-inline size_t hash_value(const variable_ref<Number> &v) {
+inline size_t hash_value(const variable_ref_t &v) {
     return v.hash();
 }
 
-template <typename Number>
-inline crab::crab_os &operator<<(crab::crab_os &o, const variable_ref<Number> &v) {
+template <typename number_t>
+inline crab::crab_os &operator<<(crab::crab_os &o, const variable_ref_t &v) {
     v.write(o);
     return o;
 }
@@ -104,7 +98,7 @@ template class cfg<basic_block_label_t, varname_t, number_t>;
 template class cfg_ref<cfg_t>;
 template class cfg_rev<cfg_ref<cfg_t>>;
 
-
+using ikos::variable_ref_t;
 
 class type_checker {
     using CFG = cfg_ref<cfg_t>;
@@ -142,8 +136,6 @@ class type_checker {
     CFG m_cfg;
 
     struct type_checker_visitor : public statement_visitor {
-
-        using variable_ref_t = ikos::variable_ref<N>;
 
         type_checker_visitor() {}
 
