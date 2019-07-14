@@ -2,15 +2,16 @@
 #include "crab/cfg.hpp"
 
 namespace ikos {
+using crab::varname_t;
 
-template class variable<crab::number_t, crab::varname_t>;
+template class variable<crab::number_t, varname_t>;
 
-template <typename Number, typename VariableName>
+template <typename Number>
 class variable_ref {
   public:
     using bitwidth_t = typename variable_t::bitwidth_t;
     using type_t = typename variable_t::type_t;
-    using variable_ref_t = variable_ref<Number, VariableName>;
+    using variable_ref_t = variable_ref<Number>;
 
   private:
     std::shared_ptr<variable_t> m_v{};
@@ -57,12 +58,12 @@ class variable_ref {
         return m_v->get_bitwidth();
     }
 
-    const VariableName &name() const {
+    const varname_t &name() const {
         assert(!is_null());
         return m_v->name();
     }
 
-    VariableName &name() {
+    varname_t &name() {
         assert(!is_null());
         return m_v->name();
     }
@@ -80,15 +81,15 @@ class variable_ref {
     void write(crab::crab_os &o) const { return m_v->write(o); }
 }; // class variable_ref
 
-using variable_ref_t = variable_ref<crab::number_t, crab::varname_t>;
+using variable_ref_t = variable_ref<crab::number_t>;
 
-template <typename Number, typename VariableName>
-inline size_t hash_value(const variable_ref<Number, VariableName> &v) {
+template <typename Number>
+inline size_t hash_value(const variable_ref<Number> &v) {
     return v.hash();
 }
 
-template <typename Number, typename VariableName>
-inline crab::crab_os &operator<<(crab::crab_os &o, const variable_ref<Number, VariableName> &v) {
+template <typename Number>
+inline crab::crab_os &operator<<(crab::crab_os &o, const variable_ref<Number> &v) {
     v.write(o);
     return o;
 }
@@ -136,16 +137,15 @@ class type_checker {
     }
 
   private:
-    using V = varname_t;
     using N = number_t;
 
     CFG m_cfg;
 
     struct type_checker_visitor : public statement_visitor {
 
-        using lin_exp_t = ikos::linear_expression<N, V>;
-        using lin_cst_t = ikos::linear_constraint<N, V>;
-        using variable_ref_t = ikos::variable_ref<N, V>;
+        using lin_exp_t = ikos::linear_expression<N, varname_t>;
+        using lin_cst_t = ikos::linear_constraint<N, varname_t>;
+        using variable_ref_t = ikos::variable_ref<N>;
 
         type_checker_visitor() {}
 
