@@ -319,13 +319,11 @@ class variable {
 
     bool operator!=(const variable_t &o) const { return (!(operator==(o))); }
 
-    bool operator<(const variable_t &o) const { return _n.index() < o._n.index(); }
-
     void write(crab::crab_os &o) const { o << _n; }
 
     friend class less;
     struct less {
-        bool operator()(variable x, variable y) {
+        bool operator()(variable x, variable y) const {
             return x._n.index() < y._n.index();
         }
     };

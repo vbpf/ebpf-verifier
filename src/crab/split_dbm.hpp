@@ -53,7 +53,7 @@ class SplitDBM final : public ikos::writeable {
     using Wt = typename Params::Wt;
     using graph_t = typename Params::graph_t;
     using vert_id = typename graph_t::vert_id;
-    using vert_map_t = boost::container::flat_map<variable_t, vert_id>;
+    using vert_map_t = boost::container::flat_map<variable_t, vert_id, variable_t::less>;
     using vmap_elt_t = typename vert_map_t::value_type;
     using rev_map_t = std::vector<std::optional<variable_t>>;
     using GrOps = GraphOps<graph_t>;
