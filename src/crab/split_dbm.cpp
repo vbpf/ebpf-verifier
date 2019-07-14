@@ -1124,15 +1124,15 @@ void SplitDBM::extract(const variable_t &x, linear_constraint_system_t &csts, bo
                     // might not understand inequalities
                     if (g_excl.elem(s, d) && g_excl.elem(d, s) && g_excl.edge_val(s, d) == Wt(0) &&
                         g_excl.edge_val(d, s) == Wt(0)) {
-                        linear_constraint_t cst(linear_expression_t(vs) == vd);
+                        linear_constraint_t cst(var_eq(vs, vd));
                         csts += cst;
                     } else {
                         if (!only_equalities && g_excl.elem(s, d)) {
-                            linear_constraint_t cst(vd - vs <= number_t(g_excl.edge_val(s, d)));
+                            linear_constraint_t cst(exp_lte(var_sub(vd, vs), number_t(g_excl.edge_val(s, d))));
                             csts += cst;
                         }
                         if (!only_equalities && g_excl.elem(d, s)) {
-                            linear_constraint_t cst(vs - vd <= number_t(g_excl.edge_val(d, s)));
+                            linear_constraint_t cst(exp_lte(var_sub(vs, vd), number_t(g_excl.edge_val(d, s))));
                             csts += cst;
                         }
                     }
@@ -1236,8 +1236,8 @@ void SplitDBM::apply(operation_t op, variable_t x, variable_t y, variable_t z) {
     normalize();
 
     switch (op) {
-    case OP_ADDITION: assign(x, y + z); return;
-    case OP_SUBTRACTION: assign(x, y - z); return;
+    case OP_ADDITION: assign(x, var_add(y, z)); return;
+    case OP_SUBTRACTION: assign(x, var_sub(y, z)); return;
     // For the rest of operations, we fall back on intervals.
     case OP_MULTIPLICATION: set(x, get_interval(y) * get_interval(z)); break;
     case OP_SDIV: set(x, get_interval(y) / get_interval(z)); break;
@@ -1260,9 +1260,9 @@ void SplitDBM::apply(operation_t op, variable_t x, variable_t y, number_t k) {
     normalize();
 
     switch (op) {
-    case OP_ADDITION: assign(x, y + k); return;
-    case OP_SUBTRACTION: assign(x, y - k); return;
-    case OP_MULTIPLICATION: assign(x, k * y); return;
+    case OP_ADDITION: assign(x, var_add(y, k)); return;
+    case OP_SUBTRACTION: assign(x, var_sub(y, k)); return;
+    case OP_MULTIPLICATION: assign(x, var_mul(k, y)); return;
     // For the rest of operations, we fall back on intervals.
     case OP_SDIV: set(x, get_interval(y) / interval_t(k)); break;
     case OP_UDIV: set(x, get_interval(y).UDiv(interval_t(k))); break;
@@ -1522,10 +1522,10 @@ linear_constraint_system_t SplitDBM::to_linear_constraint_system() {
         if (!rev_map[v])
             continue;
         if (g.elem(v, 0)) {
-            csts += linear_constraint_t(linear_expression_t(*rev_map[v]) >= -number_t(g.edge_val(v, 0)));
+            csts += linear_constraint_t(exp_gte(linear_expression_t(*rev_map[v]), -number_t(g.edge_val(v, 0))));
         }
         if (g.elem(0, v))
-            csts += linear_constraint_t(linear_expression_t(*rev_map[v]) <= number_t(g.edge_val(0, v)));
+            csts += linear_constraint_t(exp_lte(linear_expression_t(*rev_map[v]), number_t(g.edge_val(0, v))));
     }
 
     for (vert_id s : g_excl.verts()) {
@@ -1536,7 +1536,7 @@ linear_constraint_system_t SplitDBM::to_linear_constraint_system() {
             if (!rev_map[d])
                 continue;
             variable_t vd = *rev_map[d];
-            csts += linear_constraint_t(vd - vs <= number_t(g_excl.edge_val(s, d)));
+            csts += linear_constraint_t(exp_lte(var_sub(vd, vs), number_t(g_excl.edge_val(s, d))));
         }
     }
     return csts;
@@ -1666,10 +1666,10 @@ class BackwardAssignOps {
 
         switch (op) {
         case OP_ADDITION:
-            assign(dom, x, linear_expression_t(y + z), inv);
+            assign(dom, x, linear_expression_t(var_add(y, z)), inv);
             break;
         case OP_SUBTRACTION:
-            assign(dom, x, linear_expression_t(y - z), inv);
+            assign(dom, x, linear_expression_t(var_sub(y, z)), inv);
             break;
         case OP_MULTIPLICATION:
         case OP_SDIV:

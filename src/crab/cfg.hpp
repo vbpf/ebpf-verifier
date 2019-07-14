@@ -56,10 +56,6 @@
 
 namespace crab {
 
-namespace {
-    using namespace ikos::dsl_syntax;
-}
-
 // To convert a basic block label to a string
 template <typename T>
 inline std::string get_label_str(T e);
@@ -991,7 +987,7 @@ class basic_block {
     void unreachable() { insert(new unreachable_t()); }
 
     void select(variable_t lhs, variable_t v, linear_expression_t e1, linear_expression_t e2) {
-        linear_constraint_t cond = (v >= Number(1));
+        linear_constraint_t cond(exp_gte(v, 1));
         insert(new select_t(lhs, cond, e1, e2));
     }
 

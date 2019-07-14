@@ -17,6 +17,7 @@
 #include "crab_common.hpp"
 #include "crab_constraints.hpp"
 #include "crab_verifier.hpp"
+#include "crab/dsl_syntax.hpp"
 
 #include "asm_syntax.hpp"
 #include "asm_cfg.hpp"

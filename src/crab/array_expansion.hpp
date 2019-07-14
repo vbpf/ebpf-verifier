@@ -46,9 +46,9 @@ class offset_map;
 template <typename Domain>
 class array_expansion_domain;
 
-namespace {
-    using namespace ikos::dsl_syntax;
-}
+// namespace {
+//     using namespace ikos::dsl_syntax;
+// }
 
 // wrapper for using index_t as patricia_tree keys
 class offset_t {
@@ -173,16 +173,16 @@ class cell {
                               << " with abstract state=" << tmp << "\n";);
 
         Dom tmp1(dom);
-        tmp1 += (lb >= symb_lb);
-        tmp1 += (lb <= symb_ub);
+        tmp1 += linear_constraint_t(symb_lb - lb, linear_constraint_t::INEQUALITY); //(lb >= symb_lb);
+        tmp1 += linear_constraint_t(lb - symb_lb, linear_constraint_t::INEQUALITY); //(lb <= symb_ub);
         if (!tmp1.is_bottom()) {
             CRAB_LOG("array-expansion-overlap", crab::outs() << "\tyes.\n";);
             return true;
         }
 
         Dom tmp2(dom);
-        tmp2 += (ub >= symb_lb);
-        tmp2 += (ub <= symb_ub);
+        tmp2 += linear_constraint_t(symb_ub - ub, linear_constraint_t::INEQUALITY); // (ub >= symb_lb);
+        tmp2 += linear_constraint_t(ub - symb_ub, linear_constraint_t::INEQUALITY); // (ub <= symb_ub);
         if (!tmp2.is_bottom()) {
             CRAB_LOG("array-expansion-overlap", crab::outs() << "\tyes.\n";);
             return true;
