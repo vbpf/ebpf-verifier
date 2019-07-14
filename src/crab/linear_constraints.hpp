@@ -705,62 +705,55 @@ inline linear_constraint_t operator<=(const linear_expression_t &e1,
     return linear_constraint_t(e1 - e2, linear_constraint_t::INEQUALITY);
 }
 
-template <typename Number, typename VariableName>
-inline linear_constraint<Number, VariableName> operator>=(const linear_expression<Number, VariableName> &e, Number n) {
-    return linear_constraint<Number, VariableName>(n - e, linear_constraint<Number, VariableName>::INEQUALITY);
+inline linear_constraint_t operator>=(const linear_expression_t &e, number_t n) {
+    return linear_constraint_t(n - e, linear_constraint_t::INEQUALITY);
 }
 
+// ELAZAR: Ambiguity
 template <typename Number, typename VariableName>
 inline linear_constraint<Number, VariableName> operator>=(const linear_expression<Number, VariableName> &e, int n) {
     return linear_constraint<Number, VariableName>(n - e, linear_constraint<Number, VariableName>::INEQUALITY);
 }
 
+// ELAZAR: Ambiguity
 template <typename Number, typename VariableName>
 inline linear_constraint<Number, VariableName> operator>=(Number n, const linear_expression<Number, VariableName> &e) {
     return linear_constraint<Number, VariableName>(e - n, linear_constraint<Number, VariableName>::INEQUALITY);
 }
 
-template <typename Number, typename VariableName>
-inline linear_constraint<Number, VariableName> operator>=(int n, const linear_expression<Number, VariableName> &e) {
-    return linear_constraint<Number, VariableName>(e - n, linear_constraint<Number, VariableName>::INEQUALITY);
+inline linear_constraint_t operator>=(int n, const linear_expression_t &e) {
+    return linear_constraint_t(e - n, linear_constraint_t::INEQUALITY);
 }
 
-template <typename Number, typename VariableName>
-inline linear_constraint<Number, VariableName> operator>=(const linear_expression<Number, VariableName> &e,
-                                                          variable<Number, VariableName> x) {
-    return linear_constraint<Number, VariableName>(x - e, linear_constraint<Number, VariableName>::INEQUALITY);
+inline linear_constraint_t operator>=(const linear_expression_t &e,
+                                                          variable_t x) {
+    return linear_constraint_t(x - e, linear_constraint_t::INEQUALITY);
 }
 
-template <typename Number, typename VariableName>
-inline linear_constraint<Number, VariableName> operator>=(variable<Number, VariableName> x,
-                                                          const linear_expression<Number, VariableName> &e) {
-    return linear_constraint<Number, VariableName>(e - x, linear_constraint<Number, VariableName>::INEQUALITY);
+inline linear_constraint_t operator>=(variable_t x,
+                                                          const linear_expression_t &e) {
+    return linear_constraint_t(e - x, linear_constraint_t::INEQUALITY);
 }
 
-template <typename Number, typename VariableName>
-inline linear_constraint<Number, VariableName> operator>=(variable<Number, VariableName> x, Number n) {
-    return linear_constraint<Number, VariableName>(n - x, linear_constraint<Number, VariableName>::INEQUALITY);
+inline linear_constraint_t operator>=(variable_t x, number_t n) {
+    return linear_constraint_t(n - x, linear_constraint_t::INEQUALITY);
 }
 
-template <typename Number, typename VariableName>
-inline linear_constraint<Number, VariableName> operator>=(variable<Number, VariableName> x, int n) {
-    return linear_constraint<Number, VariableName>(n - x, linear_constraint<Number, VariableName>::INEQUALITY);
+inline linear_constraint_t operator>=(variable_t x, int n) {
+    return linear_constraint_t(n - x, linear_constraint_t::INEQUALITY);
 }
 
-template <typename Number, typename VariableName>
-inline linear_constraint<Number, VariableName> operator>=(Number n, variable<Number, VariableName> x) {
-    return linear_constraint<Number, VariableName>(x - n, linear_constraint<Number, VariableName>::INEQUALITY);
+inline linear_constraint_t operator>=(number_t n, variable_t x) {
+    return linear_constraint_t(x - n, linear_constraint_t::INEQUALITY);
 }
 
-template <typename Number, typename VariableName>
-inline linear_constraint<Number, VariableName> operator>=(int n, variable<Number, VariableName> x) {
-    return linear_constraint<Number, VariableName>(x - n, linear_constraint<Number, VariableName>::INEQUALITY);
+inline linear_constraint_t operator>=(int n, variable_t x) {
+    return linear_constraint_t(x - n, linear_constraint_t::INEQUALITY);
 }
 
-template <typename Number, typename VariableName>
-inline linear_constraint<Number, VariableName> operator>=(variable<Number, VariableName> x,
-                                                          variable<Number, VariableName> y) {
-    return linear_constraint<Number, VariableName>(y - x, linear_constraint<Number, VariableName>::INEQUALITY);
+inline linear_constraint_t operator>=(variable_t x,
+                                                          variable_t y) {
+    return linear_constraint_t(y - x, linear_constraint_t::INEQUALITY);
 }
 
 template <typename Number, typename VariableName>
