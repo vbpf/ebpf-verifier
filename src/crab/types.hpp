@@ -325,6 +325,7 @@ class variable {
 
 }; // class variable
 
+extern template class variable<crab::number_t, crab::varname_t>;
 using variable_t = variable<crab::number_t, crab::varname_t>;
 
 template <typename Number, typename VariableName>
@@ -400,24 +401,10 @@ class variable_ref {
         return m_v->hash();
     }
 
-    bool operator==(const variable_ref_t &o) const {
-        assert(!is_null());
-        return m_v->operator==(o);
-    }
-
-    bool operator!=(const variable_ref_t &o) const {
-        assert(!is_null());
-        return m_v->operator!=(o);
-    }
-
-    bool operator<(const variable_ref_t &o) const {
-        assert(!is_null());
-        return m_v->operator<(o);
-    }
-
     void write(crab::crab_os &o) const { return m_v->write(o); }
 }; // class variable_ref
 
+extern template class variable_ref<crab::number_t, crab::varname_t>;
 using variable_ref_t = variable_ref<crab::number_t, crab::varname_t>;
 
 template <typename Number, typename VariableName>
