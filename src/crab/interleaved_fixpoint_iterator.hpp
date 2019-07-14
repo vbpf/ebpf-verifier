@@ -56,37 +56,39 @@
 
 namespace ikos {
 
+using crab::cfg_ref_t;
+
 namespace interleaved_fwd_fixpoint_iterator_impl {
 
-template <typename CFG, typename AbstractValue>
+template <typename AbstractValue>
 class wto_iterator;
 
-template <typename CFG, typename AbstractValue>
+template <typename AbstractValue>
 class wto_processor;
 
 } // namespace interleaved_fwd_fixpoint_iterator_impl
 
-template <typename CFG, typename AbstractValue>
-class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<CFG, AbstractValue> {
+template <typename AbstractValue>
+class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<AbstractValue> {
 
-    friend class interleaved_fwd_fixpoint_iterator_impl::wto_iterator<CFG, AbstractValue>;
+    friend class interleaved_fwd_fixpoint_iterator_impl::wto_iterator<AbstractValue>;
 
   public:
-    using wto_t = wto<CFG>;
+    using wto_t = wto<cfg_ref_t>;
     using assumption_map_t = boost::unordered_map<basic_block_label_t, AbstractValue>;
     using invariant_table_t = boost::unordered_map<basic_block_label_t, AbstractValue>;
 
   private:
-    using wto_iterator_t = interleaved_fwd_fixpoint_iterator_impl::wto_iterator<CFG, AbstractValue>;
-    using wto_processor_t = interleaved_fwd_fixpoint_iterator_impl::wto_processor<CFG, AbstractValue>;
+    using wto_iterator_t = interleaved_fwd_fixpoint_iterator_impl::wto_iterator<AbstractValue>;
+    using wto_processor_t = interleaved_fwd_fixpoint_iterator_impl::wto_processor<AbstractValue>;
     using thresholds_t = crab::iterators::thresholds<crab::number_t>;
-    using wto_thresholds_t = crab::iterators::wto_thresholds<CFG>;
+    using wto_thresholds_t = crab::iterators::wto_thresholds<cfg_ref_t>;
 
   protected:
     using iterator = typename invariant_table_t::iterator;
     using const_iterator = typename invariant_table_t::const_iterator;
 
-    CFG _cfg;
+    cfg_ref_t _cfg;
     wto_t _wto;
     invariant_table_t _pre, _post;
     // number of iterations until triggering widening
@@ -201,7 +203,7 @@ class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<CFG, Abstract
     }
 
   public:
-    interleaved_fwd_fixpoint_iterator(CFG cfg, const wto_t *wto, unsigned int widening_delay,
+    interleaved_fwd_fixpoint_iterator(cfg_ref_t cfg, const wto_t *wto, unsigned int widening_delay,
                                       unsigned int descending_iterations, size_t jump_set_size,
                                       bool enable_processor = true)
         : _cfg(cfg), _wto(!wto ? cfg : *wto), _widening_delay(widening_delay),
@@ -212,7 +214,7 @@ class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<CFG, Abstract
 
     virtual ~interleaved_fwd_fixpoint_iterator() {}
 
-    CFG get_cfg() const { return this->_cfg; }
+    cfg_ref_t get_cfg() const { return this->_cfg; }
 
     const wto_t &get_wto() const { return this->_wto; }
 
@@ -263,14 +265,14 @@ class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<CFG, Abstract
 
 namespace interleaved_fwd_fixpoint_iterator_impl {
 
-template <typename CFG, typename AbstractValue>
-class wto_iterator : public wto_component_visitor<CFG> {
+template <typename AbstractValue>
+class wto_iterator : public wto_component_visitor<cfg_ref_t> {
 
   public:
-    using interleaved_iterator_t = interleaved_fwd_fixpoint_iterator<CFG, AbstractValue>;
-    using wto_vertex_t = wto_vertex<CFG>;
-    using wto_cycle_t = wto_cycle<CFG>;
-    using wto_t = wto<CFG>;
+    using interleaved_iterator_t = interleaved_fwd_fixpoint_iterator<AbstractValue>;
+    using wto_vertex_t = wto_vertex<cfg_ref_t>;
+    using wto_cycle_t = wto_cycle<cfg_ref_t>;
+    using wto_t = wto<cfg_ref_t>;
     using wto_nesting_t = typename wto_t::wto_nesting_t;
     using assumption_map_t = typename interleaved_iterator_t::assumption_map_t;
 
@@ -299,7 +301,7 @@ class wto_iterator : public wto_component_visitor<CFG> {
     }
 
     // Simple visitor to check if node is a member of the wto component.
-    class member_component_visitor : public wto_component_visitor<CFG> {
+    class member_component_visitor : public wto_component_visitor<cfg_ref_t> {
         basic_block_label_t _node;
         bool _found;
 
@@ -514,13 +516,13 @@ class wto_iterator : public wto_component_visitor<CFG> {
 
 }; // class wto_iterator
 
-template <typename CFG, typename AbstractValue>
-class wto_processor : public wto_component_visitor<CFG> {
+template <typename AbstractValue>
+class wto_processor : public wto_component_visitor<cfg_ref_t> {
 
   public:
-    using interleaved_iterator_t = interleaved_fwd_fixpoint_iterator<CFG, AbstractValue>;
-    using wto_vertex_t = wto_vertex<CFG>;
-    using wto_cycle_t = wto_cycle<CFG>;
+    using interleaved_iterator_t = interleaved_fwd_fixpoint_iterator<AbstractValue>;
+    using wto_vertex_t = wto_vertex<cfg_ref_t>;
+    using wto_cycle_t = wto_cycle<cfg_ref_t>;
 
   private:
     interleaved_iterator_t *_iterator;

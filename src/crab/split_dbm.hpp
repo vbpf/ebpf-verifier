@@ -182,13 +182,13 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
 
     // Evaluate an expression under the chosen potentials
     Wt eval_expression(linear_expression_t e, bool overflow) {
-        Wt v(DBM_impl::convert_NtoW(e.constant(), overflow));
+        Wt v(convert_NtoW(e.constant(), overflow));
         if (overflow) {
             return Wt(0);
         }
 
         for (auto p : e) {
-            Wt coef = DBM_impl::convert_NtoW(p.first, overflow);
+            Wt coef = convert_NtoW(p.first, overflow);
             if (overflow) {
                 return Wt(0);
             }
@@ -240,13 +240,13 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
         std::vector<std::pair<variable_t, Wt>> terms;
         bool overflow;
 
-        Wt residual(DBM_impl::convert_NtoW(exp.constant(), overflow));
+        Wt residual(convert_NtoW(exp.constant(), overflow));
         if (overflow) {
             return;
         }
 
         for (auto p : exp) {
-            Wt coeff(DBM_impl::convert_NtoW(p.first, overflow));
+            Wt coeff(convert_NtoW(p.first, overflow));
             if (overflow) {
                 continue;
             }
@@ -259,7 +259,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                 if (y_val.is_infinite()) {
                     return;
                 }
-                residual += DBM_impl::convert_NtoW(*(y_val.number()), overflow) * coeff;
+                residual += convert_NtoW(*(y_val.number()), overflow) * coeff;
                 if (overflow) {
                     continue;
                 }
@@ -273,7 +273,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                     }
                     unbounded_var = y;
                 } else {
-                    Wt ymax(DBM_impl::convert_NtoW(*(y_val.number()), overflow));
+                    Wt ymax(convert_NtoW(*(y_val.number()), overflow));
                     if (overflow) {
                         continue;
                     }
@@ -319,13 +319,13 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
         std::optional<variable_t> unbounded_ubvar;
         bool underflow, overflow;
 
-        Wt exp_ub = -(DBM_impl::convert_NtoW(exp.constant(), overflow));
+        Wt exp_ub = -(convert_NtoW(exp.constant(), overflow));
         if (overflow) {
             return;
         }
 
         // temporary hack
-        DBM_impl::convert_NtoW(exp.constant() - 1, underflow);
+        convert_NtoW(exp.constant() - 1, underflow);
         if (underflow) {
             // We don't like MIN either because the code will compute
             // minus MIN and it will silently overflow.
@@ -334,7 +334,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
 
         std::vector<std::pair<std::pair<Wt, variable_t>, Wt>> pos_terms, neg_terms;
         for (auto p : exp) {
-            Wt coeff(DBM_impl::convert_NtoW(p.first, overflow));
+            Wt coeff(convert_NtoW(p.first, overflow));
             if (overflow) {
                 continue;
             }
@@ -348,7 +348,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                     unbounded_lbvar = y;
                     unbounded_lbcoeff = coeff;
                 } else {
-                    Wt ymin(DBM_impl::convert_NtoW(*(y_lb.number()), overflow));
+                    Wt ymin(convert_NtoW(*(y_lb.number()), overflow));
                     if (overflow) {
                         continue;
                     }
@@ -365,7 +365,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
                     unbounded_ubvar = y;
                     unbounded_ubcoeff = -coeff;
                 } else {
-                    Wt ymax(DBM_impl::convert_NtoW(*(y_ub.number()), overflow));
+                    Wt ymax(convert_NtoW(*(y_ub.number()), overflow));
                     if (overflow) {
                         continue;
                     }
@@ -497,7 +497,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
             Wt_min min_op;
             if (new_i.lb().is_finite()) {
                 // strenghten lb
-                Wt lb_val = DBM_impl::convert_NtoW(-(*(new_i.lb().number())), overflow);
+                Wt lb_val = convert_NtoW(-(*(new_i.lb().number())), overflow);
                 if (overflow) {
                     return;
                 }
@@ -524,7 +524,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
             }
             if (new_i.ub().is_finite()) {
                 // strengthen ub
-                Wt ub_val = DBM_impl::convert_NtoW(*(new_i.ub().number()), overflow);
+                Wt ub_val = convert_NtoW(*(new_i.ub().number()), overflow);
                 if (overflow) {
                     return;
                 }
@@ -1373,7 +1373,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
         std::optional<Wt> lb_w, ub_w;
         bool overflow;
         if (x_int.lb().is_finite()) {
-            lb_w = DBM_impl::convert_NtoW(-(*(x_int.lb().number())), overflow);
+            lb_w = convert_NtoW(-(*(x_int.lb().number())), overflow);
             if (overflow) {
                 operator-=(x);
                 CRAB_LOG("zones-split", crab::outs() << "---" << x << ":=" << e << "\n" << *this << "\n");
@@ -1381,7 +1381,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
             }
         }
         if (x_int.ub().is_finite()) {
-            ub_w = DBM_impl::convert_NtoW(*(x_int.ub().number()), overflow);
+            ub_w = convert_NtoW(*(x_int.ub().number()), overflow);
             if (overflow) {
                 operator-=(x);
                 CRAB_LOG("zones-split", crab::outs() << "---" << x << ":=" << e << "\n" << *this << "\n");
@@ -1665,7 +1665,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
         vert_id v = get_vert(x);
         bool overflow;
         if (intv.ub().is_finite()) {
-            Wt ub = DBM_impl::convert_NtoW(*(intv.ub().number()), overflow);
+            Wt ub = convert_NtoW(*(intv.ub().number()), overflow);
             if (overflow) {
                 return;
             }
@@ -1673,7 +1673,7 @@ class SplitDBM_ final : public abstract_domain<SplitDBM_<Number, VariableName, P
             g.set_edge(0, ub, v);
         }
         if (intv.lb().is_finite()) {
-            Wt lb = DBM_impl::convert_NtoW(*(intv.lb().number()), overflow);
+            Wt lb = convert_NtoW(*(intv.lb().number()), overflow);
             if (overflow) {
                 return;
             }

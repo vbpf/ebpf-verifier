@@ -41,7 +41,7 @@
 
 namespace ikos {
 
-template <typename CFG, typename AbstractValue>
+template <typename AbstractValue>
 class fixpoint_iterator {
   public:
     virtual void analyze(basic_block_label_t, AbstractValue &) = 0;

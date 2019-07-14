@@ -18,6 +18,9 @@
 #include "crab/assertion.hpp"
 
 #include "crab/fwd_analyzer.hpp"
+#include "crab/graph_config.hpp"
+#include "crab/split_dbm.hpp"
+#include "crab/array_expansion.hpp"
 #include "crab/stats.hpp"
 #include "crab/types.hpp"
 
@@ -25,7 +28,6 @@
 #include "config.hpp"
 #include "asm_cfg.hpp"
 
-#include "crab_domains.hpp"
 #include "crab_common.hpp"
 #include "crab_constraints.hpp"
 #include "crab_verifier.hpp"
@@ -37,7 +39,10 @@ using printer_t = boost::signals2::signal<void(const string&)>;
 
 using crab::checker::checks_db;
 
-using dom_t = crab::domains::array_expansion_domain<crab::domain_impl::z_sdbm_domain_t>;
+// Numerical domains over integers
+using SafeInt = crab::domains::SafeInt64DefaultParams;
+using sdbm_domain_t = crab::domains::SplitDBM<ikos::z_number, varname_t, SafeInt>;
+using dom_t = crab::domains::array_expansion_domain<sdbm_domain_t>;
 using analyzer_t = crab::analyzer::fwd_analyzer<dom_t>;
 
 static auto extract_pre(analyzer_t& analyzer)
