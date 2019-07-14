@@ -61,7 +61,6 @@ class abs_transformer_api : public crab::statement_visitor {
     using havoc_t = crab::havoc_stmt<number_t, varname_t>;
     using unreach_t = crab::unreachable_stmt<number_t, varname_t>;
 
-    using assign_t = crab::assignment<number_t, varname_t>;
     using assume_t = crab::assume_stmt<number_t, varname_t>;
     using select_t = crab::select_stmt<number_t, varname_t>;
     using assert_t = crab::assert_stmt<number_t, varname_t>;
@@ -117,21 +116,6 @@ class intra_abs_transformer : public abs_transformer_api<number_t, varname_t> {
 
   public:
     using abs_transform_api_t = abs_transformer_api<number_t, varname_t>;
-    using typename abs_transform_api_t::arr_assign_t;
-    using typename abs_transform_api_t::arr_init_t;
-    using typename abs_transform_api_t::arr_load_t;
-    using typename abs_transform_api_t::arr_store_t;
-    using typename abs_transform_api_t::assert_t;
-    using typename abs_transform_api_t::assign_t;
-    using typename abs_transform_api_t::assume_t;
-    using typename abs_transform_api_t::havoc_t;
-    using typename abs_transform_api_t::int_cast_t;
-    using typename abs_transform_api_t::lin_cst_sys_t;
-    using typename abs_transform_api_t::lin_cst_t;
-    using typename abs_transform_api_t::lin_exp_t;
-    using typename abs_transform_api_t::select_t;
-    using typename abs_transform_api_t::unreach_t;
-    using typename abs_transform_api_t::var_t;
 
   protected:
     /// XXX: the transformer does not own m_inv.
@@ -417,21 +401,6 @@ class intra_necessary_preconditions_abs_transformer
 
     using variable_t = typename abs_dom_t::variable_t;
     using abs_transform_api_t = abs_transformer_api<number_t, varname_t>;
-    using typename abs_transform_api_t::arr_assign_t;
-    using typename abs_transform_api_t::arr_init_t;
-    using typename abs_transform_api_t::arr_load_t;
-    using typename abs_transform_api_t::arr_store_t;
-    using typename abs_transform_api_t::assert_t;
-    using typename abs_transform_api_t::assign_t;
-    using typename abs_transform_api_t::assume_t;
-    using typename abs_transform_api_t::havoc_t;
-    using typename abs_transform_api_t::int_cast_t;
-    using typename abs_transform_api_t::lin_cst_sys_t;
-    using typename abs_transform_api_t::lin_cst_t;
-    using typename abs_transform_api_t::lin_exp_t;
-    using typename abs_transform_api_t::select_t;
-    using typename abs_transform_api_t::unreach_t;
-    using typename abs_transform_api_t::var_t;
 
   private:
     // used to compute the (necessary) preconditions
