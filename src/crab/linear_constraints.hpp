@@ -317,6 +317,7 @@ class linear_expression {
 
 }; // class linear_expression
 
+extern template class linear_expression<number_t, crab::varname_t>;
 using linear_expression_t = linear_expression<number_t, crab::varname_t>;
 
 template <typename Number, typename VariableName>
@@ -666,6 +667,7 @@ class linear_constraint {
 
 }; // class linear_constraint
 
+extern template class linear_constraint<number_t, crab::varname_t>;
 using linear_constraint_t = linear_constraint<number_t, crab::varname_t>;
 
 template <typename Number, typename VariableName>
@@ -1290,6 +1292,7 @@ class linear_constraint_system {
 
 }; // class linear_constraint_system
 
+extern template class linear_constraint_system<number_t, crab::varname_t>;
 using linear_constraint_system_t = linear_constraint_system<number_t, crab::varname_t>;
 
 template <typename Number, typename VariableName>
