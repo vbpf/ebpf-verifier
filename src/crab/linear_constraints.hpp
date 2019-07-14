@@ -706,9 +706,8 @@ inline linear_constraint_t operator>=(const linear_expression_t &e, number_t n) 
 }
 
 // ELAZAR: Ambiguity
-template <typename Number, typename VariableName>
-inline linear_constraint<Number, VariableName> operator>=(const linear_expression<Number, VariableName> &e, int n) {
-    return linear_constraint<Number, VariableName>(n - e, linear_constraint<Number, VariableName>::INEQUALITY);
+inline linear_constraint_t operator>=(const linear_expression_t &e, int n) {
+    return linear_constraint_t(n - e, linear_constraint_t::INEQUALITY);
 }
 
 // ELAZAR: Ambiguity
@@ -753,9 +752,8 @@ inline linear_constraint_t operator>=(const linear_expression_t &e1, const linea
     return linear_constraint_t(e2 - e1, linear_constraint_t::INEQUALITY);
 }
 
-template <typename Number, typename VariableName>
-inline linear_constraint<Number, VariableName> operator<(const linear_expression<Number, VariableName> &e, Number n) {
-    return linear_constraint<Number, VariableName>(e - n, linear_constraint<Number, VariableName>::STRICT_INEQUALITY);
+inline linear_constraint_t operator<(const linear_expression_t &e, number_t n) {
+    return linear_constraint_t(e - n, linear_constraint_t::STRICT_INEQUALITY);
 }
 
 inline linear_constraint_t operator<(const linear_expression_t &e, int n) {
@@ -782,9 +780,8 @@ inline linear_constraint_t operator<(variable_t x, number_t n) {
     return linear_constraint_t(x - n, linear_constraint_t::STRICT_INEQUALITY);
 }
 
-template <typename Number, typename VariableName>
-inline linear_constraint<Number, VariableName> operator<(variable<Number, VariableName> x, int n) {
-    return linear_constraint<Number, VariableName>(x - n, linear_constraint<Number, VariableName>::STRICT_INEQUALITY);
+inline linear_constraint_t operator<(variable_t x, int n) {
+    return linear_constraint_t(x - n, linear_constraint_t::STRICT_INEQUALITY);
 }
 
 inline linear_constraint_t operator<(number_t n, variable_t x) {
