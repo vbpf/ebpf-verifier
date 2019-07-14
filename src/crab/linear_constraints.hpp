@@ -324,29 +324,22 @@ inline crab::crab_os &operator<<(crab::crab_os &o, const linear_expression_t &e)
     return o;
 }
 
-inline std::size_t hash_value(const linear_expression_t &e) {
-    return e.hash();
-}
+inline std::size_t hash_value(const linear_expression_t &e) { return e.hash(); }
 
 struct linear_expression_hasher_t {
     size_t operator()(const linear_expression_t &e) const { return e.hash(); }
 };
 
 struct linear_expression_equal_t {
-    bool operator()(const linear_expression_t &e1,
-                    const linear_expression_t &e2) const {
-        return e1.equal(e2);
-    }
+    bool operator()(const linear_expression_t &e1, const linear_expression_t &e2) const { return e1.equal(e2); }
 };
 
 using linear_expression_unordered_set =
-    std::unordered_set<linear_expression_t, linear_expression_hasher_t,
-                       linear_expression_equal_t>;
+    std::unordered_set<linear_expression_t, linear_expression_hasher_t, linear_expression_equal_t>;
 
 template <typename Value>
 using linear_expression_unordered_map =
-    std::unordered_map<linear_expression_t, Value, linear_expression_hasher_t,
-                       linear_expression_equal_t>;
+    std::unordered_map<linear_expression_t, Value, linear_expression_hasher_t, linear_expression_equal_t>;
 
 inline linear_expression_t operator*(number_t n, variable_t x) { return {n, x}; }
 
@@ -370,9 +363,7 @@ inline linear_expression_t operator+(int n, variable_t x) { return linear_expres
 
 inline linear_expression_t operator+(variable_t x, variable_t y) { return linear_expression_t(x).operator+(y); }
 
-inline linear_expression_t operator+(number_t n, const linear_expression_t &e) {
-    return e.operator+(n);
-}
+inline linear_expression_t operator+(number_t n, const linear_expression_t &e) { return e.operator+(n); }
 
 inline linear_expression_t operator+(int n, const linear_expression_t &e) { return e.operator+(n); }
 
@@ -783,7 +774,7 @@ inline linear_constraint_t operator<(const linear_expression_t &e1, const linear
     return linear_constraint_t(e1 - e2, linear_constraint_t::STRICT_INEQUALITY);
 }
 
-//inline bool operator>(number_t n, int x) { return n.operator>(x); }
+// inline bool operator>(number_t n, int x) { return n.operator>(x); }
 
 inline linear_constraint_t operator>(const linear_expression_t &e, number_t n) {
     return linear_constraint_t(n - e, linear_constraint_t::STRICT_INEQUALITY);
