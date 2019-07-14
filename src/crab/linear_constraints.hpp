@@ -353,14 +353,12 @@ using linear_expression_unordered_map =
     std::unordered_map<linear_expression<Number, VariableName>, Value, linear_expression_hasher<Number, VariableName>,
                        linear_expression_equal<Number, VariableName>>;
 
-template <typename Number, typename VariableName>
-inline linear_expression<Number, VariableName> operator*(Number n, variable<Number, VariableName> x) {
-    return linear_expression<Number, VariableName>(n, x);
+inline linear_expression_t operator*(number_t n, variable_t x) {
+    return {n, x};
 }
 
-template <typename Number, typename VariableName>
-inline linear_expression<Number, VariableName> operator*(int n, variable<Number, VariableName> x) {
-    return linear_expression<Number, VariableName>(Number(n), x);
+inline linear_expression_t operator*(int n, variable_t x) {
+    return linear_expression_t(number_t(n), x);
 }
 
 template <typename Number, typename VariableName>
