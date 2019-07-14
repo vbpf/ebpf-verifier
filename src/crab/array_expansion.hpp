@@ -636,20 +636,18 @@ std::map<std::pair<index_t, std::pair<offset_t, unsigned>>, index_t> offset_map<
 // }
 
 template <typename NumDomain>
-class array_expansion_domain final : public abstract_domain<array_expansion_domain<NumDomain>> {
+class array_expansion_domain final : public ikos::writeable {
 
   public:
-
 
   private:
     using array_expansion_domain_t = array_expansion_domain<NumDomain>;
-    using abstract_domain_t = abstract_domain<array_expansion_domain_t>;
 
   public:
-    using typename abstract_domain_t::linear_constraint_system_t;
-    using typename abstract_domain_t::linear_constraint_t;
-    using typename abstract_domain_t::linear_expression_t;
-    using typename abstract_domain_t::variable_vector_t;
+    using linear_expression_t = ikos::linear_expression<number_t, varname_t>;
+    using linear_constraint_t = ikos::linear_constraint<number_t, varname_t>;
+    using linear_constraint_system_t = ikos::linear_constraint_system<number_t, varname_t>;
+    using variable_vector_t = std::vector<variable_t>;
     using content_domain_t = NumDomain;
     using interval_t = interval<number_t>;
 
@@ -670,6 +668,20 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
     }
 
   public:
+
+    static array_expansion_domain_t top() {
+        array_expansion_domain_t abs;
+        abs.set_to_top();
+        return abs;
+    }
+
+    static array_expansion_domain_t bottom() {
+        array_expansion_domain_t abs;
+        abs.set_to_bottom();
+        return abs;
+    }
+
+
     /**
         Ugly this needs to be fixed: needed if multiple analyses are
         run so we can clear the array map from one run to another.
@@ -728,12 +740,12 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
   public:
     array_expansion_domain() : _inv(NumDomain::top()) {}
 
-    void set_to_top() override {
+    void set_to_top() {
         array_expansion_domain abs(NumDomain::top());
         std::swap(*this, abs);
     }
 
-    void set_to_bottom() override {
+    void set_to_bottom() {
         array_expansion_domain abs(NumDomain::bottom());
         std::swap(*this, abs);
     }
@@ -766,11 +778,11 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
         return *this;
     }
 
-    bool is_bottom() override { return (_inv.is_bottom()); }
+    bool is_bottom() { return (_inv.is_bottom()); }
 
-    bool is_top() override { return (_inv.is_top()); }
+    bool is_top() { return (_inv.is_top()); }
 
-    bool operator<=(array_expansion_domain_t other) override {
+    bool operator<=(array_expansion_domain_t other) {
         crab::CrabStats::count(getDomainName() + ".count.leq");
         crab::ScopedCrabStats __st__(getDomainName() + ".leq");
 
@@ -779,26 +791,26 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
 
     bool operator==(array_expansion_domain_t other) { return (_inv <= other._inv && other._inv <= _inv); }
 
-    void operator|=(array_expansion_domain_t other) override {
+    void operator|=(array_expansion_domain_t other) {
         crab::CrabStats::count(getDomainName() + ".count.join");
         crab::ScopedCrabStats __st__(getDomainName() + ".join");
         _inv |= other._inv;
     }
 
-    array_expansion_domain_t operator|(array_expansion_domain_t other) override {
+    array_expansion_domain_t operator|(array_expansion_domain_t other) {
         crab::CrabStats::count(getDomainName() + ".count.join");
         crab::ScopedCrabStats __st__(getDomainName() + ".join");
         return array_expansion_domain_t(_inv | other._inv);
     }
 
-    array_expansion_domain_t operator&(array_expansion_domain_t other) override {
+    array_expansion_domain_t operator&(array_expansion_domain_t other) {
         crab::CrabStats::count(getDomainName() + ".count.meet");
         crab::ScopedCrabStats __st__(getDomainName() + ".meet");
 
         return array_expansion_domain_t(_inv & other._inv);
     }
 
-    array_expansion_domain_t operator||(array_expansion_domain_t other) override {
+    array_expansion_domain_t operator||(array_expansion_domain_t other) {
         crab::CrabStats::count(getDomainName() + ".count.widening");
         crab::ScopedCrabStats __st__(getDomainName() + ".widening");
 
@@ -806,19 +818,19 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
     }
 
     array_expansion_domain_t widening_thresholds(array_expansion_domain_t other,
-                                                 const iterators::thresholds<number_t> &ts) override {
+                                                 const iterators::thresholds<number_t> &ts) {
         crab::CrabStats::count(getDomainName() + ".count.widening");
         crab::ScopedCrabStats __st__(getDomainName() + ".widening");
         return array_expansion_domain_t(_inv.widening_thresholds(other._inv, ts));
     }
 
-    array_expansion_domain_t operator&&(array_expansion_domain_t other) override {
+    array_expansion_domain_t operator&&(array_expansion_domain_t other) {
         crab::CrabStats::count(getDomainName() + ".count.narrowing");
         crab::ScopedCrabStats __st__(getDomainName() + ".narrowing");
         return array_expansion_domain_t(_inv && other._inv);
     }
 
-    void forget(const variable_vector_t &variables) override {
+    void forget(const variable_vector_t &variables) {
         crab::CrabStats::count(getDomainName() + ".count.forget");
         crab::ScopedCrabStats __st__(getDomainName() + ".forget");
 
@@ -835,7 +847,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
         }
     }
 
-    void project(const variable_vector_t &variables) override {
+    void project(const variable_vector_t &variables) {
         crab::CrabStats::count(getDomainName() + ".count.project");
         crab::ScopedCrabStats __st__(getDomainName() + ".project");
 
@@ -852,13 +864,13 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
         }
     }
 
-    void expand(variable_t var, variable_t new_var) override { CRAB_WARN("array expansion expand not implemented"); }
+    void expand(variable_t var, variable_t new_var) { CRAB_WARN("array expansion expand not implemented"); }
 
-    void normalize() override { CRAB_WARN("array expansion normalize not implemented"); }
+    void normalize() { CRAB_WARN("array expansion normalize not implemented"); }
 
-    void minimize() override { _inv.minimize(); }
+    void minimize() { _inv.minimize(); }
 
-    void operator+=(linear_constraint_system_t csts) override {
+    void operator+=(linear_constraint_system_t csts) {
         crab::CrabStats::count(getDomainName() + ".count.add_constraints");
         crab::ScopedCrabStats __st__(getDomainName() + ".add_constraints");
 
@@ -867,7 +879,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
         CRAB_LOG("array-expansion", crab::outs() << "assume(" << csts << ")  " << *this << "\n";);
     }
 
-    void operator-=(variable_t var) override {
+    void operator-=(variable_t var) {
         crab::CrabStats::count(getDomainName() + ".count.forget");
         crab::ScopedCrabStats __st__(getDomainName() + ".forget");
 
@@ -878,7 +890,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
         }
     }
 
-    void assign(variable_t x, linear_expression_t e) override {
+    void assign(variable_t x, linear_expression_t e) {
         crab::CrabStats::count(getDomainName() + ".count.assign");
         crab::ScopedCrabStats __st__(getDomainName() + ".assign");
 
@@ -887,7 +899,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
         CRAB_LOG("array-expansion", crab::outs() << "apply " << x << " := " << e << " " << *this << "\n";);
     }
 
-    void apply(operation_t op, variable_t x, variable_t y, number_t z) override {
+    void apply(operation_t op, variable_t x, variable_t y, number_t z) {
         crab::CrabStats::count(getDomainName() + ".count.apply");
         crab::ScopedCrabStats __st__(getDomainName() + ".apply");
 
@@ -897,7 +909,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
                  crab::outs() << "apply " << x << " := " << y << " " << op << " " << z << " " << *this << "\n";);
     }
 
-    void apply(operation_t op, variable_t x, variable_t y, variable_t z) override {
+    void apply(operation_t op, variable_t x, variable_t y, variable_t z) {
         crab::CrabStats::count(getDomainName() + ".count.apply");
         crab::ScopedCrabStats __st__(getDomainName() + ".apply");
 
@@ -907,26 +919,26 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
                  crab::outs() << "apply " << x << " := " << y << " " << op << " " << z << " " << *this << "\n";);
     }
 
-    void backward_assign(variable_t x, linear_expression_t e, array_expansion_domain_t inv) override {
+    void backward_assign(variable_t x, linear_expression_t e, array_expansion_domain_t inv) {
         _inv.backward_assign(x, e, inv.get_content_domain());
     }
 
-    void backward_apply(operation_t op, variable_t x, variable_t y, number_t z, array_expansion_domain_t inv) override {
+    void backward_apply(operation_t op, variable_t x, variable_t y, number_t z, array_expansion_domain_t inv) {
         _inv.backward_apply(op, x, y, z, inv.get_content_domain());
     }
 
-    void backward_apply(operation_t op, variable_t x, variable_t y, variable_t z, array_expansion_domain_t inv) override {
+    void backward_apply(operation_t op, variable_t x, variable_t y, variable_t z, array_expansion_domain_t inv) {
         _inv.backward_apply(op, x, y, z, inv.get_content_domain());
     }
 
-    void apply(int_conv_operation_t op, variable_t dst, variable_t src) override {
+    void apply(int_conv_operation_t op, variable_t dst, variable_t src) {
         crab::CrabStats::count(getDomainName() + ".count.apply");
         crab::ScopedCrabStats __st__(getDomainName() + ".apply");
 
         _inv.apply(op, dst, src);
     }
 
-    void apply(bitwise_operation_t op, variable_t x, variable_t y, variable_t z) override {
+    void apply(bitwise_operation_t op, variable_t x, variable_t y, variable_t z) {
         crab::CrabStats::count(getDomainName() + ".count.apply");
         crab::ScopedCrabStats __st__(getDomainName() + ".apply");
 
@@ -936,7 +948,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
                  crab::outs() << "apply " << x << " := " << y << " " << op << " " << z << " " << *this << "\n";);
     }
 
-    void apply(bitwise_operation_t op, variable_t x, variable_t y, number_t k) override {
+    void apply(bitwise_operation_t op, variable_t x, variable_t y, number_t k) {
         crab::CrabStats::count(getDomainName() + ".count.apply");
         crab::ScopedCrabStats __st__(getDomainName() + ".apply");
 
@@ -952,7 +964,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
     // lb_idx and ub_idx are initialized to val. Thus, the first thing
     // we need to do is to kill existing cells.
     virtual void array_init(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
-                            linear_expression_t ub_idx, linear_expression_t val) override {
+                            linear_expression_t ub_idx, linear_expression_t val) {
         crab::CrabStats::count(getDomainName() + ".count.array_init");
         crab::ScopedCrabStats __st__(getDomainName() + ".array_init");
 
@@ -969,7 +981,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
     }
 
     virtual void array_load(variable_t lhs, variable_t a, linear_expression_t elem_size,
-                            linear_expression_t i) override {
+                            linear_expression_t i) {
         crab::CrabStats::count(getDomainName() + ".count.array_load");
         crab::ScopedCrabStats __st__(getDomainName() + ".array_load");
 
@@ -1019,7 +1031,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
     }
 
     virtual void array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i,
-                             linear_expression_t val, bool /*is_singleton*/) override {
+                             linear_expression_t val, bool /*is_singleton*/) {
         crab::CrabStats::count(getDomainName() + ".count.array_store");
         crab::ScopedCrabStats __st__(getDomainName() + ".array_store");
 
@@ -1074,7 +1086,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
 
     // Perform array stores over an array segment
     virtual void array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
-                                   linear_expression_t ub_idx, linear_expression_t val) override {
+                                   linear_expression_t ub_idx, linear_expression_t val) {
 
         // TODO: this should be an user parameter.
         const number_t max_num_elems = 512;
@@ -1120,7 +1132,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
         }
     }
 
-    virtual void array_assign(variable_t lhs, variable_t rhs) override {
+    virtual void array_assign(variable_t lhs, variable_t rhs) {
         //_array_map[lhs] = _array_map[rhs];
         CRAB_ERROR("array_assign in array_expansion domain not implemented");
     }
@@ -1129,7 +1141,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
 
     virtual void backward_array_init(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
                                      linear_expression_t ub_idx, linear_expression_t val,
-                                     array_expansion_domain_t invariant) override {
+                                     array_expansion_domain_t invariant) {
         crab::CrabStats::count(getDomainName() + ".count.backward_array_init");
         crab::ScopedCrabStats __st__(getDomainName() + ".backward_array_init");
 
@@ -1148,7 +1160,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
     }
 
     virtual void backward_array_load(variable_t lhs, variable_t a, linear_expression_t elem_size, linear_expression_t i,
-                                     array_expansion_domain_t invariant) override {
+                                     array_expansion_domain_t invariant) {
         crab::CrabStats::count(getDomainName() + ".count.backward_array_load");
         crab::ScopedCrabStats __st__(getDomainName() + ".backward_array_load");
 
@@ -1184,7 +1196,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
 
     virtual void backward_array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i,
                                       linear_expression_t val, bool /*is_singleton*/,
-                                      array_expansion_domain_t invariant) override {
+                                      array_expansion_domain_t invariant) {
         crab::CrabStats::count(getDomainName() + ".count.backward_array_store");
         crab::ScopedCrabStats __st__(getDomainName() + ".backward_array_store");
 
@@ -1236,7 +1248,7 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
 
     virtual void backward_array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
                                             linear_expression_t ub_idx, linear_expression_t val,
-                                            array_expansion_domain_t invariant) override {
+                                            array_expansion_domain_t invariant) {
 
         // TODO: this should be an user parameter.
         const number_t max_num_elems = 512;
@@ -1268,11 +1280,11 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
         }
     }
 
-    virtual void backward_array_assign(variable_t lhs, variable_t rhs, array_expansion_domain_t invariant) override {
+    virtual void backward_array_assign(variable_t lhs, variable_t rhs, array_expansion_domain_t invariant) {
         CRAB_ERROR("backward_array_assign in array_expansion domain not implemented");
     }
 
-    linear_constraint_system_t to_linear_constraint_system() override {
+    linear_constraint_system_t to_linear_constraint_system() {
         crab::CrabStats::count(getDomainName() + ".count.to_linear_constraints");
         crab::ScopedCrabStats __st__(getDomainName() + ".to_linear_constraints");
 
@@ -1283,14 +1295,14 @@ class array_expansion_domain final : public abstract_domain<array_expansion_doma
 
     NumDomain &get_content_domain() { return _inv; }
 
-    void write(crab_os &o) override { o << _inv; }
+    void write(crab_os &o) { o << _inv; }
 
     static std::string getDomainName() {
         std::string name("ArrayExpansion(" + NumDomain::getDomainName() + ")");
         return name;
     }
 
-    void rename(const variable_vector_t &from, const variable_vector_t &to) override {
+    void rename(const variable_vector_t &from, const variable_vector_t &to) {
         _inv.rename(from, to);
         for (auto &v : from) {
             if (v.is_array_type()) {
