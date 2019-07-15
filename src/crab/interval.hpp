@@ -333,7 +333,7 @@ class interval_t {
         }
     }
 
-    interval_t operator&&(interval_t x) const {
+    interval_t narrow(interval_t x) const {
         if (is_bottom() || x.is_bottom()) {
             return bottom();
         } else {

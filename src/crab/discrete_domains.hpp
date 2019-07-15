@@ -118,7 +118,7 @@ class discrete_domain {
 
     discrete_domain_t operator||(discrete_domain_t other) { return this->operator|(other); }
 
-    discrete_domain_t operator&&(discrete_domain_t other) { return this->operator&(other); }
+    discrete_domain_t narrow(discrete_domain_t other) { return this->operator&(other); }
 
     discrete_domain_t &operator+=(Element s) {
         if (!this->_is_top) {

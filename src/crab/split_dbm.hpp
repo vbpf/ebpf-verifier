@@ -371,7 +371,7 @@ class SplitDBM final : public ikos::writeable {
 
     SplitDBM operator&(SplitDBM o);
 
-    SplitDBM operator&&(SplitDBM o);
+    SplitDBM narrow(SplitDBM o);
 
     void normalize();
 
