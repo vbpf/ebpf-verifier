@@ -504,11 +504,11 @@ bool SplitDBM::operator<=(SplitDBM o) {
             if (o.g.succs(ox).size() == 0)
                 continue;
 
-            assert(vert_renaming[ox] != -1);
+            assert(vert_renaming[ox] != (unsigned)-1);
             vert_id x = vert_renaming[ox];
             for (auto edge : o.g.e_succs(ox)) {
                 vert_id oy = edge.vert;
-                assert(vert_renaming[oy] != -1);
+                assert(vert_renaming[oy] != (unsigned)-1);
                 vert_id y = vert_renaming[oy];
                 Wt ow = edge.val;
 
@@ -1089,7 +1089,7 @@ void SplitDBM::rename(const variable_vector_t &from, const variable_vector_t &to
     vert_map_t new_vert_map;
     for (auto kv : vert_map) {
         ptrdiff_t pos = std::distance(from.begin(), std::find(from.begin(), from.end(), kv.first));
-        if (pos < from.size()) {
+        if ((long unsigned)pos < from.size()) {
             variable_t new_v(to[pos]);
             new_vert_map.insert(vmap_elt_t(new_v, kv.second));
             rev_map[kv.second] = new_v;
