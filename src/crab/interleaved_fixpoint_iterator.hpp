@@ -144,7 +144,7 @@ class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<AbstractValue
             CRAB_VERBOSE_IF(3, crab::outs() << "Prev   : " << before << "\n"
                                             << "Current: " << after << "\n");
 
-            auto widen_res = before || after;
+            auto widen_res = before.widen(after);
             CRAB_VERBOSE_IF(3, crab::outs() << "Res    : " << widen_res << "\n");
             return widen_res;
         }

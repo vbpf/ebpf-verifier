@@ -116,7 +116,7 @@ class discrete_domain {
         }
     }
 
-    discrete_domain_t operator||(discrete_domain_t other) { return this->operator|(other); }
+    discrete_domain_t widen(discrete_domain_t other) { return this->operator|(other); }
 
     discrete_domain_t narrow(discrete_domain_t other) { return this->operator&(other); }
 

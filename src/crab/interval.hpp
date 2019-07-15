@@ -309,7 +309,7 @@ class interval_t {
         }
     }
 
-    interval_t operator||(interval_t x) const {
+    interval_t widen(interval_t x) const {
         if (is_bottom()) {
             return x;
         } else if (x.is_bottom()) {

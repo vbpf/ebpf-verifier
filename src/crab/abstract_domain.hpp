@@ -74,7 +74,7 @@ class abstract_domain : public ikos::writeable {
     virtual Dom operator&(const Dom& abs) = 0;
     // Widening operator: widening(*this, abs)
     // TODO: add const reference and ideally const method
-    virtual Dom operator||(const Dom& abs) = 0;
+    virtual Dom widen(const Dom& abs) = 0;
     // Narrowing operator: narrowing(*this, abs)
     // TODO: add const reference and ideally const method
     virtual Dom narrow(const Dom& abs) = 0;
