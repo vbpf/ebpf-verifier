@@ -821,10 +821,10 @@ class array_expansion_domain final : public ikos::writeable {
         return array_expansion_domain_t(_inv.widening_thresholds(other._inv, ts));
     }
 
-    array_expansion_domain_t operator&&(array_expansion_domain_t other) {
+    array_expansion_domain_t narrow(array_expansion_domain_t other) {
         crab::CrabStats::count(getDomainName() + ".count.narrowing");
         crab::ScopedCrabStats __st__(getDomainName() + ".narrowing");
-        return array_expansion_domain_t(_inv && other._inv);
+        return array_expansion_domain_t(_inv.narrow(other._inv));
     }
 
     void forget(const variable_vector_t &variables) {

@@ -77,7 +77,7 @@ class abstract_domain : public ikos::writeable {
     virtual Dom operator||(const Dom& abs) = 0;
     // Narrowing operator: narrowing(*this, abs)
     // TODO: add const reference and ideally const method
-    virtual Dom operator&&(const Dom& abs) = 0;
+    virtual Dom narrow(const Dom& abs) = 0;
     // Widening with thresholds: widening_ts(*this, abs)
     virtual Dom widening_thresholds(Dom abs, const crab::iterators::thresholds_t &ts) = 0;
 

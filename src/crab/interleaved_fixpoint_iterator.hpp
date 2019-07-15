@@ -161,7 +161,7 @@ class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<AbstractValue
                                             << "Res    : " << narrow_res << "\n");
             return narrow_res;
         } else {
-            auto narrow_res = before && after;
+            auto narrow_res = before.narrow(after);
             CRAB_VERBOSE_IF(3, crab::outs() << "Prev   : " << before << "\n"
                                             << "Current: " << after << "\n"
                                             << "Res    : " << narrow_res << "\n");

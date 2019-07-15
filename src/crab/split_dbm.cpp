@@ -1142,7 +1142,7 @@ void SplitDBM::extract(const variable_t &x, linear_constraint_system_t &csts, bo
     }
 }
 
-SplitDBM SplitDBM::operator&&(SplitDBM o) {
+SplitDBM SplitDBM::narrow(SplitDBM o) {
     crab::CrabStats::count(getDomainName() + ".count.narrowing");
     crab::ScopedCrabStats __st__(getDomainName() + ".narrowing");
 

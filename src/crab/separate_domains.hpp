@@ -128,7 +128,7 @@ class separate_domain {
 
     class narrowing_op : public binary_op_t {
         std::pair<bool, std::optional<Value>> apply(Value x, Value y) {
-            Value z = x.operator&&(y);
+            Value z = x.narrow(y);
             if (z.is_bottom()) {
                 return {true, std::optional<Value>()};
             } else {
@@ -268,7 +268,7 @@ class separate_domain {
     }
 
     // Narrowing
-    separate_domain_t operator&&(separate_domain_t e) {
+    separate_domain_t narrow(separate_domain_t e) {
         if (this->is_bottom() || e.is_bottom()) {
             return separate_domain_t(false);
         } else {
