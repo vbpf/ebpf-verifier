@@ -40,12 +40,6 @@
 namespace crab {
 namespace domains {
 
-// forward declarations
-template <typename Variable>
-class offset_map;
-template <typename Domain>
-class array_expansion_domain;
-
 // wrapper for using index_t as patricia_tree keys
 class offset_t {
     index_t _val;
@@ -79,21 +73,22 @@ class offset_t {
    Only, offset_map objects can create cells. They will consider the
    array when generating the scalar variable.
 */
-template <typename Variable>
-class cell {
+
+class offset_map_t;
+
+class cell_t {
   private:
-    friend class offset_map<Variable>;
-    using cell_t = cell<Variable>;
+    friend class offset_map_t;
 
     offset_t _offset;
     unsigned _size;
-    std::optional<Variable> _scalar;
+    std::optional<variable_t> _scalar;
 
-    // Only offset_map<Variable> can create cells
-    cell() : _offset(0), _size(0), _scalar(std::optional<Variable>()) {}
-    cell(offset_t offset, Variable scalar) : _offset(offset), _size(scalar.get_bitwidth()), _scalar(scalar) {}
+    // Only offset_map_t can create cells
+    cell_t() : _offset(0), _size(0), _scalar(std::optional<variable_t>()) {}
+    cell_t(offset_t offset, variable_t scalar) : _offset(offset), _size(scalar.get_bitwidth()), _scalar(scalar) {}
 
-    cell(offset_t offset, unsigned size) : _offset(offset), _size(size), _scalar(std::optional<Variable>()) {}
+    cell_t(offset_t offset, unsigned size) : _offset(offset), _size(size), _scalar(std::optional<variable_t>()) {}
 
     static interval_t to_interval(const offset_t o, unsigned size) {
         interval_t i(o.index(), o.index() + size - 1);
@@ -111,7 +106,7 @@ class cell {
 
     bool has_scalar() const { return (bool)_scalar; }
 
-    Variable get_scalar() const {
+    variable_t get_scalar() const {
         if (!has_scalar()) {
             CRAB_ERROR("cannot get undefined scalar variable");
         }
@@ -226,17 +221,16 @@ inline bool set_inclusion(Set &s1, Set &s2) {
 }
 } // namespace cell_set_impl
 
-// Map offsets to cells
-template <typename Variable>
-class offset_map {
-  public:
-    using cell_t = cell<Variable>;
+// forward declarations
+template <typename Domain>
+class array_expansion_domain;
 
+// Map offsets to cells
+class offset_map_t {
   private:
     template <typename Dom>
     friend class array_expansion_domain;
 
-    using offset_map_t = offset_map<Variable>;
     using cell_set_t = std::set<cell_t>;
     using type_t = crab::variable_type;
 
@@ -263,10 +257,10 @@ class offset_map {
         }
     };
 
-    patricia_tree_t apply_operation(binary_op_t &o, patricia_tree_t t1, patricia_tree_t t2) {
-        t1.merge_with(t2, o);
-        return t1;
-    }
+    // patricia_tree_t apply_operation(binary_op_t &o, patricia_tree_t t1, patricia_tree_t t2) {
+    //     t1.merge_with(t2, o);
+    //     return t1;
+    // }
 
     class join_op : public binary_op_t {
         // apply is called when two bindings (one each from a
@@ -293,60 +287,15 @@ class offset_map {
         bool default_is_top() { return false; }
     }; // class domain_po
 
-    offset_map(patricia_tree_t m) : _map(m) {}
+    offset_map_t(patricia_tree_t m) : _map(m) {}
 
-    void remove_cell(const cell_t &c) {
-        if (std::optional<cell_set_t> cells = _map.lookup(c.get_offset())) {
-            if ((*cells).erase(c) > 0) {
-                _map.remove(c.get_offset());
-                if (!(*cells).empty()) {
-                    // a bit of a waste ...
-                    _map.insert(c.get_offset(), *cells);
-                }
-            }
-        }
-    }
+    void remove_cell(const cell_t &c);
 
-    void insert_cell(const cell_t &c, bool sanity_check = true) {
-        if (sanity_check && !c.has_scalar()) {
-            CRAB_ERROR("array expansion cannot insert a cell without scalar variable");
-        }
-        if (std::optional<cell_set_t> cells = _map.lookup(c.get_offset())) {
-            if ((*cells).insert(c).second) {
-                // a bit of a waste ...
-                _map.remove(c.get_offset());
-                _map.insert(c.get_offset(), *cells);
-            }
-        } else {
-            cell_set_t new_cells;
-            new_cells.insert(c);
-            _map.insert(c.get_offset(), new_cells);
-        }
-    }
+    void insert_cell(const cell_t &c, bool sanity_check = true);
 
-    cell_t get_cell(offset_t o, unsigned size) const {
-        if (std::optional<cell_set_t> cells = _map.lookup(o)) {
-            cell_t tmp(o, size);
-            auto it = (*cells).find(tmp);
-            if (it != (*cells).end()) {
-                return *it;
-            }
-        }
-        // not found
-        return cell_t();
-    }
+    cell_t get_cell(offset_t o, unsigned size) const;
 
-    static std::string mk_scalar_name(Variable a, offset_t o, unsigned size) {
-        crab::crab_string_os os;
-        os << a << "[";
-        if (size == 1) {
-            os << o;
-        } else {
-            os << o << "..." << o.index() + size - 1;
-        }
-        os << "]";
-        return os.str();
-    }
+    static std::string mk_scalar_name(variable_t a, offset_t o, unsigned size);
 
     static type_t get_array_element_type(type_t array_type) { return INT_TYPE; }
 
@@ -354,7 +303,7 @@ class offset_map {
     // to same index
     static std::map<std::pair<index_t, std::pair<offset_t, unsigned>>, index_t> _index_map;
 
-    index_t get_index(Variable a, offset_t o, unsigned size) {
+    index_t get_index(variable_t a, offset_t o, unsigned size) {
         auto it = _index_map.find({a.index(), {o, size}});
         if (it != _index_map.end()) {
             return it->second;
@@ -365,32 +314,10 @@ class offset_map {
         }
     }
 
-    cell_t mk_cell(Variable array, offset_t o, unsigned size) {
-        // TODO: check array is the array associated to this offset map
-
-        cell_t c = get_cell(o, size);
-        if (c.is_null()) {
-            auto &vfac = array.name().get_var_factory();
-            std::string vname = mk_scalar_name(array, o, size);
-            type_t vtype = get_array_element_type(array.get_type());
-            index_t vindex = get_index(array, o, size);
-
-            // create a new scalar variable for representing the contents
-            // of bytes array[o,o+1,..., o+size-1]
-            Variable scalar_var(vfac.get(vindex, vname), vtype, size);
-            c = cell_t(o, scalar_var);
-            insert_cell(c);
-            CRAB_LOG("array-expansion", crab::outs() << "**Created cell " << c << "\n";);
-        }
-        // sanity check
-        if (!c.has_scalar()) {
-            CRAB_ERROR("array expansion created a new cell without a scalar");
-        }
-        return c;
-    }
+    cell_t mk_cell(variable_t array, offset_t o, unsigned size);
 
   public:
-    offset_map() {}
+    offset_map_t() {}
 
     bool empty() const { return _map.empty(); }
 
@@ -402,19 +329,19 @@ class offset_map {
         return _map.leq(o._map, po);
     }
 
-    // set union: if two cells with same offset do not agree on
-    // size then they are ignored.
-    offset_map_t operator|(const offset_map_t &o) {
-        join_op op;
-        return offset_map_t(apply_operation(op, _map, o._map));
-    }
+    // // set union: if two cells with same offset do not agree on
+    // // size then they are ignored.
+    // offset_map_t operator|(const offset_map_t &o) {
+    //     join_op op;
+    //     return offset_map_t(apply_operation(op, _map, o._map));
+    // }
 
-    // set intersection: if two cells with same offset do not agree
-    // on size then they are ignored.
-    offset_map_t operator&(const offset_map_t &o) {
-        meet_op op;
-        return offset_map_t(apply_operation(op, _map, o._map));
-    }
+    // // set intersection: if two cells with same offset do not agree
+    // // on size then they are ignored.
+    // offset_map_t operator&(const offset_map_t &o) {
+    //     meet_op op;
+    //     return offset_map_t(apply_operation(op, _map, o._map));
+    // }
 
     void operator-=(const cell_t &c) { remove_cell(c); }
 
@@ -424,127 +351,10 @@ class offset_map {
         }
     }
 
-    std::vector<cell_t> get_all_cells() const {
-        std::vector<cell_t> res;
-        for (auto it = _map.begin(), et = _map.end(); it != et; ++it) {
-            auto const &o_cells = it->second;
-            for (auto &c : o_cells) {
-                res.push_back(c);
-            }
-        }
-        return res;
-    }
+    std::vector<cell_t> get_all_cells() const;
 
     // Return in out all cells that might overlap with (o, size).
-    void get_overlap_cells(offset_t o, unsigned size, std::vector<cell_t> &out) {
-        compare_binding_t comp;
-
-        bool added = false;
-        cell_t c = get_cell(o, size);
-        if (c.is_null()) {
-            // we need to add a temporary cell for (o, size)
-            c = cell_t(o, size);
-            insert_cell(c, false /*disable sanity check*/);
-            added = true;
-        }
-
-        auto lb_it = std::lower_bound(_map.begin(), _map.end(), o, comp);
-        if (lb_it != _map.end()) {
-            // Store _map[begin,...,lb_it] into a vector so that we can
-            // go backwards from lb_it.
-            //
-            // TODO: give support for reverse iterator in patricia_tree.
-            std::vector<cell_set_t> upto_lb;
-            upto_lb.reserve(std::distance(_map.begin(), lb_it));
-            for (auto it = _map.begin(), et = lb_it; it != et; ++it) {
-                upto_lb.push_back(it->second);
-            }
-            upto_lb.push_back(lb_it->second);
-
-            for (int i = upto_lb.size() - 1; i >= 0; --i) {
-                ///////
-                // All the cells in upto_lb[i] have the same offset. They
-                // just differ in the size.
-                //
-                // If none of the cells in upto_lb[i] overlap with (o, size)
-                // we can stop.
-                ////////
-                bool continue_outer_loop = false;
-                for (const cell_t &x : upto_lb[i]) {
-                    if (x.overlap(o, size)) {
-                        if (!(x == c)) {
-                            // FIXME: we might have some duplicates. this is a very drastic solution.
-                            if (std::find(out.begin(), out.end(), x) == out.end()) {
-                                out.push_back(x);
-                            }
-                        }
-                        continue_outer_loop = true;
-                    }
-                }
-                if (!continue_outer_loop) {
-                    break;
-                }
-            }
-        }
-
-        // search for overlapping cells > o
-        auto ub_it = std::upper_bound(_map.begin(), _map.end(), o, comp);
-        for (; ub_it != _map.end(); ++ub_it) {
-            bool continue_outer_loop = false;
-            for (const cell_t &x : ub_it->second) {
-                if (x.overlap(o, size)) {
-                    // FIXME: we might have some duplicates. this is a very drastic solution.
-                    if (std::find(out.begin(), out.end(), x) == out.end()) {
-                        out.push_back(x);
-                    }
-                    continue_outer_loop = true;
-                }
-            }
-            if (!continue_outer_loop) {
-                break;
-            }
-        }
-
-        // do not forget the rest of overlapping cells == o
-        for (auto it = ++lb_it, et = ub_it; it != et; ++it) {
-            bool continue_outer_loop = false;
-            for (const cell_t &x : it->second) {
-                if (x == c) { // we dont put it in out
-                    continue;
-                }
-                if (x.overlap(o, size)) {
-                    if (!(x == c)) {
-                        if (std::find(out.begin(), out.end(), x) == out.end()) {
-                            out.push_back(x);
-                        }
-                    }
-                    continue_outer_loop = true;
-                }
-            }
-            if (!continue_outer_loop) {
-                break;
-            }
-        }
-
-        if (added) {
-            // remove the temporary cell for (o, size)
-            assert(!c.is_null());
-            remove_cell(c);
-        }
-
-        CRAB_LOG(
-            "array-expansion-overlap", crab::outs() << "**Overlap set between \n"
-                                                    << *this << "\nand "
-                                                    << "(" << o << "," << size << ")={";
-            for (unsigned i = 0, e = out.size(); i < e;) {
-                crab::outs() << out[i];
-                ++i;
-                if (i < e) {
-                    crab::outs() << ",";
-                }
-            } crab::outs()
-            << "}\n";);
-    }
+    void get_overlap_cells(offset_t o, unsigned size, std::vector<cell_t> &out);
 
     template <typename Dom>
     void get_overlap_cells_symbolic_offset(const Dom &dom, const linear_expression_t &symb_lb,
@@ -581,24 +391,7 @@ class offset_map {
         }
     }
 
-    void write(crab::crab_os &o) const {
-        if (_map.empty()) {
-            o << "empty";
-        } else {
-            for (auto it = _map.begin(), et = _map.end(); it != et; ++it) {
-                const cell_set_t &cells = it->second;
-                o << "{";
-                for (auto cit = cells.begin(), cet = cells.end(); cit != cet;) {
-                    o << *cit;
-                    ++cit;
-                    if (cit != cet) {
-                        o << ",";
-                    }
-                }
-                o << "}\n";
-            }
-        }
-    }
+    void write(crab::crab_os &o) const;
 
     friend crab::crab_os &operator<<(crab::crab_os &o, const offset_map_t &m) {
         m.write(o);
@@ -619,9 +412,6 @@ class offset_map {
     static offset_map_t top() { return offset_map_t(); }
 };
 
-template <typename Var>
-std::map<std::pair<index_t, std::pair<offset_t, unsigned>>, index_t> offset_map<Var>::_index_map;
-
 // /* for debugging */
 // namespace array_expansion_domain_impl{
 //   template<typename Dom>
@@ -635,9 +425,6 @@ std::map<std::pair<index_t, std::pair<offset_t, unsigned>>, index_t> offset_map<
 
 template <typename NumDomain>
 class array_expansion_domain final : public ikos::writeable {
-
-  public:
-
   private:
     using array_expansion_domain_t = array_expansion_domain<NumDomain>;
 
@@ -647,8 +434,6 @@ class array_expansion_domain final : public ikos::writeable {
 
   private:
     using type_t = crab::variable_type;
-    using offset_map_t = offset_map<variable_t>;
-    using cell_t = cell<variable_t>;
     using array_map_t = boost::unordered_map<variable_t, offset_map_t>;
 
     // scalar domain
