@@ -120,7 +120,7 @@ class vec {
         return ret;
     }
     operator T *() { return data; } // (unsafe but convenient)
-    operator const T *()const { return data; }
+    operator const T *() const { return data; }
 
     // Size operations:
     int size() const { return sz; }

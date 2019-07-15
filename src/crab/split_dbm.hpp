@@ -43,7 +43,6 @@ namespace domains {
 
 class SplitDBM final : public ikos::writeable {
   public:
-
     using constraint_kind_t = typename linear_constraint_t::kind_t;
 
   private:
@@ -429,7 +428,6 @@ class SplitDBM final : public ikos::writeable {
     void apply(bitwise_operation_t op, variable_t x, variable_t y, variable_t z);
 
     void apply(bitwise_operation_t op, variable_t x, variable_t y, number_t k);
-
 
     void project(const variable_vector_t &variables);
 

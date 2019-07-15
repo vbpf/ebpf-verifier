@@ -991,7 +991,9 @@ class basic_block {
         insert(new select_t(lhs, cond, e1, e2));
     }
 
-    void select(variable_t lhs, linear_constraint_t cond, linear_expression_t e1, linear_expression_t e2) { insert(new select_t(lhs, cond, e1, e2)); }
+    void select(variable_t lhs, linear_constraint_t cond, linear_expression_t e1, linear_expression_t e2) {
+        insert(new select_t(lhs, cond, e1, e2));
+    }
 
     void assertion(linear_constraint_t cst, debug_info di = debug_info()) { insert(new assert_t(cst, di)); }
 
@@ -1001,19 +1003,22 @@ class basic_block {
 
     void zext(variable_t src, variable_t dst) { insert(new int_cast_t(CAST_ZEXT, src, dst)); }
 
-    void array_init(variable_t a, linear_expression_t lb_idx, linear_expression_t ub_idx, linear_expression_t v, linear_expression_t elem_size) {
+    void array_init(variable_t a, linear_expression_t lb_idx, linear_expression_t ub_idx, linear_expression_t v,
+                    linear_expression_t elem_size) {
         if (m_track_prec == ARR) {
             insert(new array_init_t(a, elem_size, lb_idx, ub_idx, v));
         }
     }
 
-    void array_store(variable_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size, bool is_singleton = false) {
+    void array_store(variable_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size,
+                     bool is_singleton = false) {
         if (m_track_prec == ARR) {
             insert(new array_store_t(arr, elem_size, idx, idx, v, is_singleton));
         }
     }
 
-    void array_store_range(variable_t arr, linear_expression_t lb_idx, linear_expression_t ub_idx, linear_expression_t v, linear_expression_t elem_size) {
+    void array_store_range(variable_t arr, linear_expression_t lb_idx, linear_expression_t ub_idx,
+                           linear_expression_t v, linear_expression_t elem_size) {
         if (m_track_prec == ARR) {
             insert(new array_store_t(arr, elem_size, lb_idx, ub_idx, v, false));
         }

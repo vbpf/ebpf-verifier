@@ -1,12 +1,12 @@
 #include "catch.hpp"
 
+#include <initializer_list>
 #include <iostream>
 #include <unordered_map>
-#include <initializer_list>
 
-#include "ai_dom_set.hpp"
-#include "ai_dom_rcp.hpp"
 #include "ai_dom_mem.hpp"
+#include "ai_dom_rcp.hpp"
+#include "ai_dom_set.hpp"
 
 const RCP_domain T = RCP_domain{TOP};
 const RCP_domain NT = RCP_domain{}.with_num(TOP);
@@ -17,17 +17,17 @@ auto bot = []() -> D { return D{}; };
 
 MemDom mem(std::initializer_list<MemDom::Cell> lst) {
     MemDom m;
-    for (auto c : lst) 
+    for (auto c : lst)
         m.store(c.offset, c.width, c.dom);
     return m;
 }
 
-template <typename ...Args>
+template <typename... Args>
 MemDom mem(Args... lst) {
     return mem({lst...});
 }
 
-TEST_CASE( "mem_dom_join", "[dom][domain][mem]" ) {
+TEST_CASE("mem_dom_join", "[dom][domain][mem]") {
     REQUIRE(D{} == bot());
     REQUIRE_FALSE(bot() == top());
 
@@ -48,7 +48,7 @@ TEST_CASE( "mem_dom_join", "[dom][domain][mem]" ) {
         D m = mem(D::Cell{0, 4, n});
         REQUIRE((m | m) == m);
     }
-    
+
     const RCP_domain n1 = RCP_domain{}.with_num(5);
     const RCP_domain n2 = RCP_domain{}.with_num(9);
     const RCP_domain n3 = RCP_domain{}.with_num(3);
@@ -95,7 +95,7 @@ TEST_CASE( "mem_dom_join", "[dom][domain][mem]" ) {
         D expected = mem({{6, 2, NT}});
         REQUIRE((m1 | m2) == expected);
         REQUIRE((m2 | m1) == expected);
-    }    
+    }
 
     SECTION("-xx-") {
         D m1 = mem({{4, 4, n1}});
@@ -109,30 +109,25 @@ TEST_CASE( "mem_dom_join", "[dom][domain][mem]" ) {
     SECTION("with gap") {
         D m1 = mem({{4, 1, n1}, {6, 2, n1}});
         D m2 = mem({{3, 6, n2}});
-        D expected = mem({{4, 1, NT}, {6, 2, NT} });
+        D expected = mem({{4, 1, NT}, {6, 2, NT}});
 
         REQUIRE((m1 | m2) == expected);
         REQUIRE((m2 | m1) == expected);
     }
 }
 
-TEST_CASE( "mem_dom_no_writes", "[dom][domain][mem]" ) {
+TEST_CASE("mem_dom_no_writes", "[dom][domain][mem]") {
     D m;
     REQUIRE(m.load({0}, 3) == T);
     REQUIRE(m.load({0}, 1) == T);
     REQUIRE(m.load({4}, 100) == T);
 }
 
-TEST_CASE( "mem_dom_single_write", "[dom][domain][mem]" ) {
+TEST_CASE("mem_dom_single_write", "[dom][domain][mem]") {
 
     SECTION("AllTypes") {
-        for (auto n : {
-                        RCP_domain{}.with_num(5),
-                        RCP_domain{}.with_fd(2),
-                        RCP_domain{}.with_map(2, 5),
-                        RCP_domain{}.with_packet(7),
-                        RCP_domain{}.with_stack(17)
-        }) {
+        for (auto n : {RCP_domain{}.with_num(5), RCP_domain{}.with_fd(2), RCP_domain{}.with_map(2, 5),
+                       RCP_domain{}.with_packet(7), RCP_domain{}.with_stack(17)}) {
             D m;
             m.store({0}, 4, n);
             REQUIRE(m.load({0}, 4) == n);
@@ -166,19 +161,19 @@ TEST_CASE( "mem_dom_single_write", "[dom][domain][mem]" ) {
 
     SECTION("WriteToEnd") {
         D m;
-        m.store({STACK_SIZE-4}, 4, n);
+        m.store({STACK_SIZE - 4}, 4, n);
 
-        REQUIRE(m.load({STACK_SIZE-4}, 4) == n);
+        REQUIRE(m.load({STACK_SIZE - 4}, 4) == n);
 
-        REQUIRE(m.load({STACK_SIZE-4}, 3) == NT);
-        REQUIRE(m.load({STACK_SIZE-3}, 3) == NT);
+        REQUIRE(m.load({STACK_SIZE - 4}, 3) == NT);
+        REQUIRE(m.load({STACK_SIZE - 3}, 3) == NT);
 
-        REQUIRE(m.load({STACK_SIZE-4}, 5) == T);
-        REQUIRE(m.load({STACK_SIZE-3}, 4) == T);
+        REQUIRE(m.load({STACK_SIZE - 4}, 5) == T);
+        REQUIRE(m.load({STACK_SIZE - 3}, 4) == T);
     }
 }
 
-TEST_CASE( "m_dom_two_writes", "[dom][domain][m]" ) {
+TEST_CASE("m_dom_two_writes", "[dom][domain][m]") {
     const RCP_domain n1 = RCP_domain{}.with_num(5);
     const RCP_domain n2 = RCP_domain{}.with_num(9);
     const RCP_domain n3 = RCP_domain{}.with_num(3);
@@ -250,7 +245,7 @@ TEST_CASE( "m_dom_two_writes", "[dom][domain][m]" ) {
         REQUIRE(m.load({5}, 2) == NT);
         REQUIRE(m.load({5}, 5) == NT);
         REQUIRE(m.load({7}, 3) == NT);
-        
+
         REQUIRE(m.load({0}, 4) == T);
         REQUIRE(m.load({1}, 3) == T);
         REQUIRE(m.load({2}, 2) == T);
@@ -264,7 +259,7 @@ TEST_CASE( "m_dom_two_writes", "[dom][domain][m]" ) {
         REQUIRE(m.load({5}, 6) == T);
         REQUIRE(m.load({6}, 5) == T);
     }
-    
+
     SECTION("SecondLowerLarger") {
         D m;
         m.store({4}, 4, n1);
@@ -286,7 +281,6 @@ TEST_CASE( "m_dom_two_writes", "[dom][domain][m]" ) {
         REQUIRE(m.load({2}, 1) == NT);
         REQUIRE(m.load({2}, 2) == NT);
         REQUIRE(m.load({2}, 3) == NT);
-        
 
         REQUIRE(m.load({1}, 3) == T);
         REQUIRE(m.load({0}, 4) == T);
@@ -304,23 +298,23 @@ TEST_CASE( "m_dom_two_writes", "[dom][domain][m]" ) {
         m.store({3}, 6, n2);
 
         REQUIRE(m.load({3}, 6) == n2);
-        
+
         D expected;
         expected.store({3}, 6, n2);
         REQUIRE(m == expected);
 
-        for (uint64_t i=1; i < 6; i++)
+        for (uint64_t i = 1; i < 6; i++)
             REQUIRE(m.load({3}, i) == NT);
 
-        for (uint64_t s=4; s < 6; s++)
-            for (uint64_t i=1; s+i < 3+6; i++)
+        for (uint64_t s = 4; s < 6; s++)
+            for (uint64_t i = 1; s + i < 3 + 6; i++)
                 REQUIRE(m.load({s}, i) == NT);
-        
-        for (uint64_t i=1; i < 8; i++)
+
+        for (uint64_t i = 1; i < 8; i++)
             REQUIRE(m.load({2}, i) == T);
 
-        for (uint64_t s=3; s < 10; s++)
-            REQUIRE(m.load({s}, 10-s) == T);
+        for (uint64_t s = 3; s < 10; s++)
+            REQUIRE(m.load({s}, 10 - s) == T);
 
         REQUIRE(m.load({1}, 3) == T);
         REQUIRE(m.load({0}, 4) == T);
@@ -345,7 +339,7 @@ TEST_CASE( "m_dom_two_writes", "[dom][domain][m]" ) {
         REQUIRE(m.load({6}, 2) == NT);
         REQUIRE(m.load({6}, 1) == NT);
         REQUIRE(m.load({7}, 1) == NT);
-        
+
         REQUIRE(m.load({1}, 3) == T);
         REQUIRE(m.load({0}, 4) == T);
         REQUIRE(m.load({0}, 6) == T);
@@ -357,30 +351,34 @@ TEST_CASE( "m_dom_two_writes", "[dom][domain][m]" ) {
     }
 
     SECTION("Permutations") {
-        D m = mem({
-            {0, 4, n1},
-            {4, 4, n2},
-            {8, 4, n3}
-        });
+        D m = mem({{0, 4, n1}, {4, 4, n2}, {8, 4, n3}});
 
         SECTION("840") {
             D m1;
-            m1.store({8}, 4, n3); m1.store({4}, 4, n2); m1.store({0}, 4, n1);
+            m1.store({8}, 4, n3);
+            m1.store({4}, 4, n2);
+            m1.store({0}, 4, n1);
             REQUIRE(m == m1);
         }
         SECTION("480") {
             D m1;
-            m1.store({4}, 4, n2); m1.store({8}, 4, n3); m1.store({0}, 4, n1);
+            m1.store({4}, 4, n2);
+            m1.store({8}, 4, n3);
+            m1.store({0}, 4, n1);
             REQUIRE(m == m1);
         }
         SECTION("408") {
             D m1;
-            m1.store({4}, 4, n2); m1.store({0}, 4, n1); m1.store({8}, 4, n3);
+            m1.store({4}, 4, n2);
+            m1.store({0}, 4, n1);
+            m1.store({8}, 4, n3);
             REQUIRE(m == m1);
         }
         SECTION("084") {
             D m1;
-            m1.store({0}, 4, n1); m1.store({8}, 4, n3); m1.store({4}, 4, n2);
+            m1.store({0}, 4, n1);
+            m1.store({8}, 4, n3);
+            m1.store({4}, 4, n2);
             REQUIRE(m == m1);
         }
     }

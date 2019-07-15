@@ -47,8 +47,8 @@
 
 #include <boost/container/slist.hpp>
 #include <boost/iterator/indirect_iterator.hpp>
-#include <memory>
 #include <boost/unordered_map.hpp>
+#include <memory>
 #include <set>
 #include <vector>
 
@@ -472,12 +472,10 @@ class wto {
                     }
                     CRAB_LOG("wto-nonrec", crab::outs()
                                                << "\tWTO: adding component starting from " << visiting_node << "\n";);
-                    partition->push_front(
-                        component(g, visiting_node));
+                    partition->push_front(component(g, visiting_node));
                 } else {
                     CRAB_LOG("wto-nonrec", crab::outs() << "\tWTO: adding vertex " << visiting_node << "\n";);
-                    partition->push_front(
-                        wto_vertex_ptr(new wto_vertex_t(visiting_node)));
+                    partition->push_front(wto_vertex_ptr(new wto_vertex_t(visiting_node)));
                 }
                 CRAB_LOG("wto-nonrec", crab::outs() << "WTO: END building partition\n";);
             }

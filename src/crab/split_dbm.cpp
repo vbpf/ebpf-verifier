@@ -1,11 +1,9 @@
 #include "crab/split_dbm.hpp"
 
-
 #include "crab/abstract_domain_operators.hpp"
 #include "crab/debug.hpp"
 #include "crab/stats.hpp"
 #include "crab/types.hpp"
-
 
 namespace crab {
 namespace domains {
@@ -1545,7 +1543,6 @@ linear_constraint_system_t SplitDBM::to_linear_constraint_system() {
 template <class AbsDom>
 class BackwardAssignOps {
   public:
-
     /*
      * Backward x := e
      *
@@ -1641,9 +1638,7 @@ class BackwardAssignOps {
         case OP_UDIV:
         case OP_SREM:
         case OP_UREM:
-        default:
-            CRAB_WARN("backwards x:= y ", op, " k is not implemented");
-            dom -= x;
+        default: CRAB_WARN("backwards x:= y ", op, " k is not implemented"); dom -= x;
         }
 
         dom = dom & inv;
@@ -1665,12 +1660,8 @@ class BackwardAssignOps {
                                           << "BEFORE " << dom << "\n";);
 
         switch (op) {
-        case OP_ADDITION:
-            assign(dom, x, linear_expression_t(var_add(y, z)), inv);
-            break;
-        case OP_SUBTRACTION:
-            assign(dom, x, linear_expression_t(var_sub(y, z)), inv);
-            break;
+        case OP_ADDITION: assign(dom, x, linear_expression_t(var_add(y, z)), inv); break;
+        case OP_SUBTRACTION: assign(dom, x, linear_expression_t(var_sub(y, z)), inv); break;
         case OP_MULTIPLICATION:
         case OP_SDIV:
         case OP_UDIV:

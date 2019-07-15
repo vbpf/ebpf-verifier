@@ -7,27 +7,25 @@
 
 #include "CLI11.hpp"
 
-#include "memsize.hpp"
+#include "ai.hpp"
+#include "asm.hpp"
 #include "config.hpp"
 #include "crab_verifier.hpp"
-#include "asm.hpp"
+#include "memsize.hpp"
 #include "spec_assertions.hpp"
-#include "ai.hpp"
 
 #include "linux_verifier.hpp"
 
 using std::string;
 using std::vector;
 
-
-static size_t hash(const raw_program& raw_prog) {
-    char* start = (char*)raw_prog.prog.data();
-    char* end = start + (raw_prog.prog.size() * sizeof(ebpf_inst));
+static size_t hash(const raw_program &raw_prog) {
+    char *start = (char *)raw_prog.prog.data();
+    char *end = start + (raw_prog.prog.size() * sizeof(ebpf_inst));
     return boost::hash_range(start, end);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     // Parse command line arguments:
 
     crab::CrabEnableWarningMsg(false);
@@ -40,10 +38,10 @@ int main(int argc, char **argv)
     std::string desired_section;
 
     app.add_option("section", desired_section, "Section to analyze")->type_name("SECTION");
-    bool list=false;
+    bool list = false;
     app.add_flag("-l", list, "List sections");
 
-    std::string domain="zoneCrab";
+    std::string domain = "zoneCrab";
     std::set<string> doms{"stats", "linux", "rcp", "zoneCrab"};
     app.add_set("-d,--dom,--domain", domain, doms, "Abstract domain")->type_name("DOMAIN");
 
@@ -78,9 +76,7 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    auto create_map = domain == "linux" ? create_map_linux
-                    : domain == "rcp"   ? create_map_rcp
-                    : create_map_crab;
+    auto create_map = domain == "linux" ? create_map_linux : domain == "rcp" ? create_map_rcp : create_map_crab;
     auto raw_progs = read_elf(filename, desired_section, create_map);
 
     if (list || raw_progs.size() != 1) {
@@ -96,15 +92,15 @@ int main(int argc, char **argv)
     }
     raw_program raw_prog = raw_progs.back();
 
-
     auto prog_or_error = unmarshal(raw_prog);
     if (std::holds_alternative<string>(prog_or_error)) {
         std::cout << "trivial verification failure: " << std::get<string>(prog_or_error) << "\n";
         return 1;
     }
 
-    auto& prog = std::get<InstructionSeq>(prog_or_error);
-    if (!asmfile.empty()) print(prog, asmfile);
+    auto &prog = std::get<InstructionSeq>(prog_or_error);
+    if (!asmfile.empty())
+        print(prog, asmfile);
 
     int instruction_count = prog.size();
 
@@ -114,23 +110,22 @@ int main(int argc, char **argv)
         cfg.simplify();
     }
     auto stats = cfg.collect_stats();
-    if (!dotfile.empty()) print_dot(cfg, dotfile);
+    if (!dotfile.empty())
+        print_dot(cfg, dotfile);
 
     if (domain == "stats") {
         std::cout << std::hex << hash(raw_prog) << std::dec << "," << instruction_count;
         for (string h : Cfg::stats_headers()) {
-            std::cout  << "," << stats.at(h);
+            std::cout << "," << stats.at(h);
         }
         std::cout << "\n";
     } else if (domain == "rcp") {
         analyze_rcp(cfg, raw_prog.info);
     } else {
-        const auto [res, seconds] = (domain == "linux")
-            ? bpf_verify_program(raw_prog.info.program_type, raw_prog.prog)
-            : abs_validate(cfg, raw_prog.info);
+        const auto [res, seconds] = (domain == "linux") ? bpf_verify_program(raw_prog.info.program_type, raw_prog.prog)
+                                                        : abs_validate(cfg, raw_prog.info);
         std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
         return !res;
     }
     return 0;
 }
-

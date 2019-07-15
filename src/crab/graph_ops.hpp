@@ -18,7 +18,7 @@ class num_range {
     class value_ref {
       public:
         value_ref(const V &_v) : v(_v) {}
-        const V &operator*()const { return v; }
+        const V &operator*() const { return v; }
         value_ref &operator++() {
             v++;
             return *this;
@@ -102,7 +102,7 @@ class GraphPerm {
       public:
         adj_iterator(std::vector<vert_id> &_inv, const ItG &_v) : inv(_inv), v(_v) {}
 
-        vert_id operator*()const { return inv[*v]; }
+        vert_id operator*() const { return inv[*v]; }
 
         adj_iterator &operator++() {
             ++v;
@@ -127,7 +127,7 @@ class GraphPerm {
 
         e_adj_iterator(std::vector<vert_id> &_inv, const ItG &_v) : inv(_inv), v(_v) {}
 
-        edge_ref operator*()const { return edge_ref(inv[(*v).vert], (*v).val); }
+        edge_ref operator*() const { return edge_ref(inv[(*v).vert], (*v).val); }
 
         e_adj_iterator &operator++() {
             ++v;
@@ -307,7 +307,7 @@ class SubGraph {
     class adj_iterator {
       public:
         adj_iterator(const It &_iG, vert_id _v_ex) : iG(_iG), v_ex(_v_ex) {}
-        vert_id operator*()const { return *iG; }
+        vert_id operator*() const { return *iG; }
         adj_iterator &operator++() {
             ++iG;
             return *this;
@@ -328,7 +328,7 @@ class SubGraph {
         using edge_ref = typename It::edge_ref;
 
         e_adj_iterator(const It &_iG, vert_id _v_ex) : iG(_iG), v_ex(_v_ex) {}
-        edge_ref operator*()const { return *iG; }
+        edge_ref operator*() const { return *iG; }
         e_adj_iterator &operator++() {
             ++iG;
             return *this;
@@ -768,14 +768,9 @@ class GraphOps {
                 // Could do it inline, but this'll do.
                 assert(mark != 0);
                 switch (mark) {
-                case E_LEFT:
-                    colour_succs[2 * s].push_back(d);
-                    break;
-                case E_RIGHT:
-                    colour_succs[2 * s + 1].push_back(d);
-                    break;
-                default:
-                    break;
+                case E_LEFT: colour_succs[2 * s].push_back(d); break;
+                case E_RIGHT: colour_succs[2 * s + 1].push_back(d); break;
+                default: break;
                 }
                 edge_marks[sz * s + d] = mark;
             }

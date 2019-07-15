@@ -685,37 +685,21 @@ inline interval_t interval_t::LShr(interval_t x) const {
     }
 }
 
-inline interval_t operator+(number_t c, interval_t x) {
-    return interval_t(c) + x;
-}
+inline interval_t operator+(number_t c, interval_t x) { return interval_t(c) + x; }
 
-inline interval_t operator+(interval_t x, number_t c) {
-    return x + interval_t(c);
-}
+inline interval_t operator+(interval_t x, number_t c) { return x + interval_t(c); }
 
-inline interval_t operator*(number_t c, interval_t x) {
-    return interval_t(c) * x;
-}
+inline interval_t operator*(number_t c, interval_t x) { return interval_t(c) * x; }
 
-inline interval_t operator*(interval_t x, number_t c) {
-    return x * interval_t(c);
-}
+inline interval_t operator*(interval_t x, number_t c) { return x * interval_t(c); }
 
-inline interval_t operator/(number_t c, interval_t x) {
-    return interval_t(c) / x;
-}
+inline interval_t operator/(number_t c, interval_t x) { return interval_t(c) / x; }
 
-inline interval_t operator/(interval_t x, number_t c) {
-    return x / interval_t(c);
-}
+inline interval_t operator/(interval_t x, number_t c) { return x / interval_t(c); }
 
-inline interval_t operator-(number_t c, interval_t x) {
-    return interval_t(c) - x;
-}
+inline interval_t operator-(number_t c, interval_t x) { return interval_t(c) - x; }
 
-inline interval_t operator-(interval_t x, number_t c) {
-    return x - interval_t(c);
-}
+inline interval_t operator-(interval_t x, number_t c) { return x - interval_t(c); }
 
 inline crab::crab_os &operator<<(crab::crab_os &o, const interval_t &i) {
     i.write(o);
@@ -737,6 +721,6 @@ inline interval_t trim_interval(interval_t i, interval_t j) {
 } // namespace ikos
 
 namespace crab {
-    using ikos::bound_t;
-    using ikos::interval_t;
-}
+using ikos::bound_t;
+using ikos::interval_t;
+} // namespace crab

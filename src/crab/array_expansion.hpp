@@ -121,7 +121,7 @@ class cell_t {
     }
 
     // ignore the scalar variable
-    bool operator==(const cell_t &o) const  { return (get_offset() == o.get_offset() && get_size() == o.get_size()); }
+    bool operator==(const cell_t &o) const { return (get_offset() == o.get_offset() && get_size() == o.get_size()); }
 
     // ignore the scalar variable
     bool operator<(const cell_t &o) const {
@@ -136,7 +136,7 @@ class cell_t {
 
     // Return true if [o, o+size) definitely overlaps with the cell,
     // where o is a constant expression.
-    bool overlap(const offset_t &o, unsigned size) const  {
+    bool overlap(const offset_t &o, unsigned size) const {
         interval_t x = to_interval();
         interval_t y = to_interval(o, size);
         bool res = (!(x & y).is_bottom());
@@ -148,8 +148,8 @@ class cell_t {
     // Return true if [symb_lb, symb_ub] may overlap with the cell,
     // where symb_lb and symb_ub are not constant expressions.
     template <typename Dom>
-    bool symbolic_overlap(const linear_expression_t &symb_lb,
-                          const linear_expression_t &symb_ub, const Dom &dom) const {
+    bool symbolic_overlap(const linear_expression_t &symb_lb, const linear_expression_t &symb_ub,
+                          const Dom &dom) const {
 
         interval_t x = to_interval();
         assert(x.lb().is_finite());
@@ -358,8 +358,7 @@ class offset_map_t {
 
     template <typename Dom>
     void get_overlap_cells_symbolic_offset(const Dom &dom, const linear_expression_t &symb_lb,
-                                           const linear_expression_t &symb_ub,
-                                           std::vector<cell_t> &out) const {
+                                           const linear_expression_t &symb_ub, std::vector<cell_t> &out) const {
 
         for (auto it = _map.begin(), et = _map.end(); it != et; ++it) {
             const cell_set_t &o_cells = it->second;
@@ -446,7 +445,6 @@ class array_expansion_domain final : public ikos::writeable {
     }
 
   public:
-
     static array_expansion_domain_t top() {
         array_expansion_domain_t abs;
         abs.set_to_top();
@@ -458,7 +456,6 @@ class array_expansion_domain final : public ikos::writeable {
         abs.set_to_bottom();
         return abs;
     }
-
 
     /**
         Ugly this needs to be fixed: needed if multiple analyses are
@@ -595,8 +592,7 @@ class array_expansion_domain final : public ikos::writeable {
         return array_expansion_domain_t(_inv.widen(other._inv));
     }
 
-    array_expansion_domain_t widening_thresholds(array_expansion_domain_t other,
-                                                 const iterators::thresholds_t &ts) {
+    array_expansion_domain_t widening_thresholds(array_expansion_domain_t other, const iterators::thresholds_t &ts) {
         crab::CrabStats::count(getDomainName() + ".count.widening");
         crab::ScopedCrabStats __st__(getDomainName() + ".widening");
         return array_expansion_domain_t(_inv.widening_thresholds(other._inv, ts));
@@ -758,8 +754,7 @@ class array_expansion_domain final : public ikos::writeable {
         array_store_range(a, elem_size, lb_idx, ub_idx, val);
     }
 
-    virtual void array_load(variable_t lhs, variable_t a, linear_expression_t elem_size,
-                            linear_expression_t i) {
+    virtual void array_load(variable_t lhs, variable_t a, linear_expression_t elem_size, linear_expression_t i) {
         crab::CrabStats::count(getDomainName() + ".count.array_load");
         crab::ScopedCrabStats __st__(getDomainName() + ".array_load");
 

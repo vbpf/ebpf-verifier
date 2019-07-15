@@ -338,7 +338,7 @@ class SparseWtGraph : public ikos::writeable {
     class vert_iterator {
       public:
         vert_iterator(vert_id _v, const std::vector<bool> &_is_free) : v(_v), is_free(_is_free) {}
-        vert_id operator*()const { return v; }
+        vert_id operator*() const { return v; }
         vert_iterator &operator++() {
             ++v;
             return *this;
@@ -397,7 +397,7 @@ class SparseWtGraph : public ikos::writeable {
                 it = std::unique_ptr<adj_iterator>(new adj_iterator());
             return *it;
         }
-        vert_id operator*()const { return (vert_id)*ptr; }
+        vert_id operator*() const { return (vert_id)*ptr; }
         adj_iterator &operator++() {
             ptr++;
             return *this;
@@ -422,7 +422,7 @@ class SparseWtGraph : public ikos::writeable {
                 it = std::unique_ptr<fwd_edge_iterator>(new fwd_edge_iterator());
             return *it;
         }
-        edge_ref operator*()const { return edge_ref((*it), g->edge_val(s, (*it))); }
+        edge_ref operator*() const { return edge_ref((*it), g->edge_val(s, (*it))); }
         fwd_edge_iterator &operator++() {
             ++it;
             return *this;
@@ -440,7 +440,7 @@ class SparseWtGraph : public ikos::writeable {
         rev_edge_iterator() : g(nullptr) {}
         rev_edge_iterator(graph_t &_g, vert_id _d, adj_iterator _it) : g(&_g), d(_d), it(_it) {}
 
-        edge_ref operator*()const { return edge_ref((*it), g->edge_val((*it), d)); }
+        edge_ref operator*() const { return edge_ref((*it), g->edge_val((*it), d)); }
         rev_edge_iterator &operator++() {
             ++it;
             return *this;

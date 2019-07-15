@@ -345,14 +345,9 @@ class inter_transformer_helpers {
     static void unify(AbsDom &inv, variable_t lhs, variable_t rhs) {
         assert(lhs.get_type() == rhs.get_type());
         switch (lhs.get_type()) {
-        case INT_TYPE:
-            inv.assign(lhs, rhs);
-            break;
-        case ARR_INT_TYPE:
-            inv.array_assign(lhs, rhs);
-            break;
-        default:
-            CRAB_ERROR("unsuported type");
+        case INT_TYPE: inv.assign(lhs, rhs); break;
+        case ARR_INT_TYPE: inv.array_assign(lhs, rhs); break;
+        default: CRAB_ERROR("unsuported type");
         }
     }
 };
@@ -365,8 +360,7 @@ class inter_transformer_helpers {
  * Abstract transformer to compute necessary preconditions.
  **/
 template <class AbsD, class InvT>
-class intra_necessary_preconditions_abs_transformer
-    : public abs_transformer_api {
+class intra_necessary_preconditions_abs_transformer : public abs_transformer_api {
   public:
     using abs_dom_t = AbsD;
 

@@ -122,7 +122,7 @@ class AdaptSMap {
             return *it;
         }
 
-        key_t operator*()const { return (*e).key; }
+        key_t operator*() const { return (*e).key; }
         bool operator!=(const key_iter_t &o) const { return e < o.e; }
         key_iter_t &operator++() {
             ++e;
@@ -131,7 +131,7 @@ class AdaptSMap {
 
         elt_t *e;
     };
-    using elt_iter_t = elt_t*;
+    using elt_iter_t = elt_t *;
 
     class key_range_t {
       public:
@@ -337,7 +337,7 @@ class AdaptGraph : public ikos::writeable {
     class vert_iterator {
       public:
         vert_iterator(vert_id _v, const std::vector<bool> &_is_free) : v(_v), is_free(_is_free) {}
-        vert_id operator*()const { return v; }
+        vert_id operator*() const { return v; }
         bool operator!=(const vert_iterator &o) {
             while (v < o.v && is_free[v])
                 ++v;
@@ -387,7 +387,7 @@ class AdaptGraph : public ikos::writeable {
             return *it;
         }
 
-        edge_ref operator*()const { return edge_ref((*it).key, (*ws)[(*it).val]); }
+        edge_ref operator*() const { return edge_ref((*it).key, (*ws)[(*it).val]); }
         edge_iter operator++() {
             ++it;
             return *this;

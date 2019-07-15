@@ -1,14 +1,15 @@
 #pragma once
 
-#include <memory>
 #include <iosfwd>
+#include <memory>
 
 namespace crab {
 
 // An adaptor for std::ostream that avoids polluting all crab header
 // files with iostream stuff
 class crab_os {
-    crab_os(const crab_os&) = delete;
+    crab_os(const crab_os &) = delete;
+
   private:
     static std::shared_ptr<crab_os> m_cout;
     static std::shared_ptr<crab_os> m_cerr;

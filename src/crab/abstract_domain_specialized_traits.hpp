@@ -5,8 +5,8 @@
 #pragma once
 
 #include "crab/debug.hpp"
-#include "crab/types.hpp"
 #include "crab/linear_constraints.hpp"
+#include "crab/types.hpp"
 
 namespace crab {
 

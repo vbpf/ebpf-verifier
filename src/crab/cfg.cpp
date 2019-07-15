@@ -1,9 +1,9 @@
-#include "crab/types.hpp"
 #include "crab/cfg.hpp"
+#include "crab/types.hpp"
 
 namespace ikos {
-using crab::varname_t;
 using crab::number_t;
+using crab::varname_t;
 
 class variable_ref_t {
   public:
@@ -82,7 +82,7 @@ inline crab::crab_os &operator<<(crab::crab_os &o, const variable_ref_t &v) {
     v.write(o);
     return o;
 }
-}
+} // namespace ikos
 
 namespace crab {
 
@@ -189,8 +189,7 @@ class type_checker {
 
         void check_array(variable_t v, statement_t &s) {
             switch (v.get_type()) {
-            case ARR_INT_TYPE:
-                break;
+            case ARR_INT_TYPE: break;
             default: {
                 crab::crab_string_os os;
                 os << "(type checking) " << v << " must be an array variable in " << s;
@@ -334,8 +333,7 @@ class type_checker {
                     CRAB_ERROR("(type checking) bitwidth of destination must be greater than source in ", s);
                 }
                 break;
-            default:;
-                ; /*unreachable*/
+            default:; ; /*unreachable*/
             }
         }
 
@@ -404,11 +402,11 @@ class type_checker {
     }; // end class type_checker_visitor
 };     // end class type_checker
 
-void type_check(const cfg_ref<cfg_t>& cfg) {
+void type_check(const cfg_ref<cfg_t> &cfg) {
     crab::CrabStats::resume("CFG type checking");
     crab::type_checker tc(cfg);
     tc.run();
     crab::CrabStats::stop("CFG type checking");
 }
 
-}
+} // namespace crab
