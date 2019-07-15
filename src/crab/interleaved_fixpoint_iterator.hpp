@@ -99,10 +99,6 @@ class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<AbstractValue
     // narrowing operation is not available so we must enforce
     // termination.
     unsigned int _descending_iterations;
-    // whether jump set is used for widening
-    bool _use_widening_jump_set;
-    // set of thresholds to jump during widening
-    typename wto_thresholds_t::thresholds_map_t _jump_set;
     // enable post-processing of the invariants
     bool _enable_processor;
 
@@ -148,20 +144,9 @@ class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<AbstractValue
             CRAB_VERBOSE_IF(3, crab::outs() << "Prev   : " << before << "\n"
                                             << "Current: " << after << "\n");
 
-            if (_use_widening_jump_set) {
-                auto it = _jump_set.find(node);
-                if (it == _jump_set.end()) {
-                    CRAB_ERROR("no thresholds found for ", crab::get_label_str(node));
-                }
-                thresholds_t thresholds = it->second;
-                auto widen_res = before.widening_thresholds(after, thresholds);
-                CRAB_VERBOSE_IF(3, crab::outs() << "Res    : " << widen_res << "\n");
-                return widen_res;
-            } else {
-                auto widen_res = before || after;
-                CRAB_VERBOSE_IF(3, crab::outs() << "Res    : " << widen_res << "\n");
-                return widen_res;
-            }
+            auto widen_res = before || after;
+            CRAB_VERBOSE_IF(3, crab::outs() << "Res    : " << widen_res << "\n");
+            return widen_res;
         }
     }
 
@@ -184,24 +169,14 @@ class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<AbstractValue
         }
     }
 
-    void initialize_thresholds(size_t jump_set_size) {
-        if (_use_widening_jump_set) {
-            crab::CrabStats::resume("Fixpo");
-            // select statically some widening points to jump to.
-            wto_thresholds_t wto_thresholds(_cfg, jump_set_size);
-            _wto.accept(&wto_thresholds);
-            _jump_set = wto_thresholds.get_thresholds_map();
-            CRAB_VERBOSE_IF(2, crab::outs() << "Thresholds\n" << wto_thresholds << "\n");
-            crab::CrabStats::stop("Fixpo");
-        }
-    }
+    void initialize_thresholds(size_t jump_set_size) {}
 
   public:
     interleaved_fwd_fixpoint_iterator(cfg_ref_t cfg, const wto_t *wto, unsigned int widening_delay,
                                       unsigned int descending_iterations, size_t jump_set_size,
                                       bool enable_processor = true)
         : _cfg(cfg), _wto(!wto ? cfg : *wto), _widening_delay(widening_delay),
-          _descending_iterations(descending_iterations), _use_widening_jump_set(jump_set_size > 0),
+          _descending_iterations(descending_iterations),
           _enable_processor(enable_processor) {
         initialize_thresholds(jump_set_size);
     }
@@ -333,8 +308,7 @@ class wto_iterator : public wto_component_visitor<cfg_ref_t> {
             _skip = false;
         }
         if (_skip) {
-            CRAB_VERBOSE_IF(2, crab::outs()
-                                   << "** Skipped analysis of  " << crab::get_label_str(node) << "\n");
+            CRAB_VERBOSE_IF(2, crab::outs() << "** Skipped analysis of  " << crab::get_label_str(node) << "\n");
             return;
         }
 
@@ -392,8 +366,7 @@ class wto_iterator : public wto_component_visitor<cfg_ref_t> {
         wto_nesting_t cycle_nesting = this->_iterator->_wto.nesting(head);
 
         if (entry_in_this_cycle) {
-            CRAB_VERBOSE_IF(2, crab::outs()
-                                   << "Skipped predecessors of " << crab::get_label_str(head) << "\n");
+            CRAB_VERBOSE_IF(2, crab::outs() << "Skipped predecessors of " << crab::get_label_str(head) << "\n");
             pre = _iterator->get_pre(_entry);
         } else {
             crab::CrabStats::count("Fixpo.join_predecessors");
