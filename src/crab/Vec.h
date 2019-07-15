@@ -68,12 +68,12 @@ class vec {
     using Datum = T;
 
     // Constructors:
-    vec(void) : data(NULL), sz(0), cap(0) {}
+    vec() : data(NULL), sz(0), cap(0) {}
     vec(int size) : data(NULL), sz(0), cap(0) { growTo(size); }
     vec(int size, const T &pad) : data(NULL), sz(0), cap(0) { growTo(size, pad); }
     vec(T *array, int size)
         : data(array), sz(size), cap(size) {} // (takes ownership of array -- will be deallocated with 'free()')
-    ~vec(void) { clear(true); }
+    ~vec() { clear(true); }
 
     // GKG: Added stuff - copy & move ctors, plus range interface.
     vec(const vec<T> &o) : data(NULL), sz(0), cap(0) {
@@ -108,22 +108,22 @@ class vec {
         return *this;
     }
 
-    T *begin(void) const { return data; }
-    T *end(void) const { return data + sz; }
+    T *begin() const { return data; }
+    T *end() const { return data + sz; }
 
     // Ownership of underlying array:
-    T *release(void) {
+    T *release() {
         T *ret = data;
         data = NULL;
         sz = 0;
         cap = 0;
         return ret;
     }
-    operator T *(void) { return data; } // (unsafe but convenient)
-    operator const T *(void)const { return data; }
+    operator T *() { return data; } // (unsafe but convenient)
+    operator const T *()const { return data; }
 
     // Size operations:
-    int size(void) const { return sz; }
+    int size() const { return sz; }
     void shrink(int nelems) {
         assert(nelems <= sz);
         for (int i = 0; i < nelems; i++)
@@ -133,7 +133,7 @@ class vec {
         assert(nelems <= sz);
         sz -= nelems;
     }
-    void pop(void) { sz--, data[sz].~T(); }
+    void pop() { sz--, data[sz].~T(); }
     void growTo(int size);
     void growTo(int size, const T &pad);
     void clear(bool dealloc = false);
@@ -141,7 +141,7 @@ class vec {
 
     // Stack interface:
 #if 1
-    void push(void) {
+    void push() {
         if (sz == cap) {
             cap = imax(2, (cap * 3 + 1) >> 1);
             data = (T *)realloc(static_cast<void *>(data), cap * sizeof(T));
@@ -163,7 +163,7 @@ class vec {
         data[sz++] = elem;
     }
 #else
-    void push(void) {
+    void push() {
         if (sz == cap)
             grow(sz + 1);
         new (&data[sz]) T();
@@ -177,8 +177,8 @@ class vec {
     }
 #endif
 
-    const T &last(void) const { return data[sz - 1]; }
-    T &last(void) { return data[sz - 1]; }
+    const T &last() const { return data[sz - 1]; }
+    T &last() { return data[sz - 1]; }
 
     // Vector interface:
     const T &operator[](int index) const { return data[index]; }

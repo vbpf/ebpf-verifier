@@ -206,7 +206,7 @@ static const struct bpf_func_proto bpf_perf_event_output_proto = {
 };
 
 /*
- * u64 bpf_get_current_task(void)
+ * u64 bpf_get_current_task()
  *     Returns current task_struct
  *     Return: current
  */
@@ -366,7 +366,7 @@ static const struct bpf_func_proto bpf_map_delete_elem_proto = {
 };
 
 /*
- * u32 bpf_prandom_u32(void)
+ * u32 bpf_prandom_u32()
  *     Return: random value
  */
 static const struct bpf_func_proto bpf_get_prandom_u32_proto = {
@@ -391,7 +391,7 @@ static const struct bpf_func_proto bpf_get_numa_node_id_proto = {
 };
 
 /*
- * u64 bpf_ktime_get_ns(void)
+ * u64 bpf_ktime_get_ns()
  *     Return: current ktime
  */
 static const struct bpf_func_proto bpf_ktime_get_ns_proto = {
@@ -556,7 +556,7 @@ static const struct bpf_func_proto bpf_get_stack_proto = {
 };
 
 /*
- * u32 bpf_raw_smp_processor_id(void)
+ * u32 bpf_raw_smp_processor_id()
  *     Return: SMP processor ID
 //  */
 // static const struct bpf_func_proto bpf_get_raw_smp_processor_id_proto = {
@@ -1377,16 +1377,16 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = {
  *     read arbitrary kernel memory
  *     Return: 0 on success or negative error
  *
- * u64 bpf_ktime_get_ns(void)
+ * u64 bpf_ktime_get_ns()
  *     Return: current ktime
  *
  * int bpf_trace_printk(const char *fmt, int fmt_size, ...)
  *     Return: length of buffer written or negative error
  *
- * u32 bpf_prandom_u32(void)
+ * u32 bpf_prandom_u32()
  *     Return: random value
  *
- * u32 bpf_raw_smp_processor_id(void)
+ * u32 bpf_raw_smp_processor_id()
  *     Return: SMP processor ID
  *
  * int bpf_l3_csum_replace(skb, offset, from, to, flags)
@@ -1425,10 +1425,10 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = {
  *             other bits - reserved
  *     Return: 0 on success or negative error
  *//*
- * u64 bpf_get_current_pid_tgid(void)
+ * u64 bpf_get_current_pid_tgid()
  *     Return: current->tgid << 32 | current->pid
  *//*
- * u64 bpf_get_current_uid_gid(void)
+ * u64 bpf_get_current_uid_gid()
  *     Return: current_gid << 32 | current_uid
  *//*
  * int bpf_get_current_comm(char *buf, int size_of_buf)
@@ -1570,7 +1570,7 @@ static const struct bpf_func_proto bpf_redirect_map_proto = {
  *     @skb: pointer to skb
  *     Return: hash
  *//*
- * u64 bpf_get_current_task(void)
+ * u64 bpf_get_current_task()
  *     Returns current task_struct
  *     Return: current
  *//*

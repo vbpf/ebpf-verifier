@@ -22,7 +22,7 @@ std::string indexed_string::str() const {
     }
 }
 
-index_t variable_factory::get_and_increment_id(void) {
+index_t variable_factory::get_and_increment_id() {
     if (_next_id == std::numeric_limits<index_t>::max()) {
         CRAB_ERROR("Reached limit of ", std::numeric_limits<index_t>::max(), " variables");
     }

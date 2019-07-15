@@ -140,7 +140,7 @@ class SparseWtGraph : public ikos::writeable {
         return *this;
     }
 
-    // void check_adjs(void)
+    // void check_adjs()
     // {
     //   for(vert_id v : verts())
     //   {
@@ -191,9 +191,9 @@ class SparseWtGraph : public ikos::writeable {
         return ret;
     }
 
-    bool is_empty(void) const { return edge_count == 0; }
+    bool is_empty() const { return edge_count == 0; }
 
-    vert_id new_vertex(void) {
+    vert_id new_vertex() {
         vert_id v;
         if (free_id.size() > 0) {
             v = free_id.back();
@@ -279,7 +279,7 @@ class SparseWtGraph : public ikos::writeable {
     // Precondition: elem(x, y) is true.
     Wt operator()(vert_id x, vert_id y) const { return mtx[max_sz * x + y]; }
 
-    void clear_edges(void) {
+    void clear_edges() {
         for (vert_id v : verts()) {
             // Make sure the matrix entries are destructed
             for (vert_id d : succs(v))
@@ -291,7 +291,7 @@ class SparseWtGraph : public ikos::writeable {
         edge_count = 0;
     }
 
-    void clear(void) {
+    void clear() {
         clear_edges();
         is_free.clear();
         free_id.clear();
@@ -299,10 +299,10 @@ class SparseWtGraph : public ikos::writeable {
     }
 
     // Number of allocated vertices
-    int size(void) const { return sz; }
+    int size() const { return sz; }
 
     // Number of edges
-    size_t num_edges(void) const { return edge_count; }
+    size_t num_edges() const { return edge_count; }
 
     // Assumption: (x, y) not in mtx
     void add_edge(vert_id x, Wt wt, vert_id y) {
@@ -338,12 +338,12 @@ class SparseWtGraph : public ikos::writeable {
     class vert_iterator {
       public:
         vert_iterator(vert_id _v, const std::vector<bool> &_is_free) : v(_v), is_free(_is_free) {}
-        vert_id operator*(void)const { return v; }
-        vert_iterator &operator++(void) {
+        vert_id operator*()const { return v; }
+        vert_iterator &operator++() {
             ++v;
             return *this;
         }
-        vert_iterator &operator--(void) {
+        vert_iterator &operator--() {
             --v;
             return *this;
         }
@@ -360,16 +360,16 @@ class SparseWtGraph : public ikos::writeable {
     class vert_range {
       public:
         vert_range(vert_id _sz, const std::vector<bool> &_is_free) : sz(_sz), is_free(_is_free) {}
-        vert_iterator begin(void) const { return vert_iterator(0, is_free); }
-        vert_iterator end(void) const { return vert_iterator(sz, is_free); }
-        // unsigned int size(void) const { return (unsigned int) sz; }
+        vert_iterator begin() const { return vert_iterator(0, is_free); }
+        vert_iterator end() const { return vert_iterator(sz, is_free); }
+        // unsigned int size() const { return (unsigned int) sz; }
       protected:
         vert_id sz;
         const std::vector<bool> &is_free;
     };
     // FIXME: Verts currently iterates over free vertices,
     // as well as existing ones
-    vert_range verts(void) const { return vert_range(sz, is_free); }
+    vert_range verts() const { return vert_range(sz, is_free); }
 
     class edge_ref_t {
       public:
@@ -386,7 +386,7 @@ class SparseWtGraph : public ikos::writeable {
 
     class adj_iterator {
       public:
-        adj_iterator(void) : ptr(nullptr) {}
+        adj_iterator() : ptr(nullptr) {}
         adj_iterator(uint16_t *_p) : ptr(_p) {}
         // XXX: to make sure that we always return the same address
         // for the "empty" iterator, otherwise we can trigger
@@ -397,8 +397,8 @@ class SparseWtGraph : public ikos::writeable {
                 it = std::unique_ptr<adj_iterator>(new adj_iterator());
             return *it;
         }
-        vert_id operator*(void)const { return (vert_id)*ptr; }
-        adj_iterator &operator++(void) {
+        vert_id operator*()const { return (vert_id)*ptr; }
+        adj_iterator &operator++() {
             ptr++;
             return *this;
         }
@@ -411,7 +411,7 @@ class SparseWtGraph : public ikos::writeable {
     class fwd_edge_iterator {
       public:
         using edge_ref = edge_ref_t;
-        fwd_edge_iterator(void) : g(nullptr) {}
+        fwd_edge_iterator() : g(nullptr) {}
         fwd_edge_iterator(graph_t &_g, vert_id _s, adj_iterator _it) : g(&_g), s(_s), it(_it) {}
         // XXX: to make sure that we always return the same address
         // for the "empty" iterator, otherwise we can trigger
@@ -422,8 +422,8 @@ class SparseWtGraph : public ikos::writeable {
                 it = std::unique_ptr<fwd_edge_iterator>(new fwd_edge_iterator());
             return *it;
         }
-        edge_ref operator*(void)const { return edge_ref((*it), g->edge_val(s, (*it))); }
-        fwd_edge_iterator &operator++(void) {
+        edge_ref operator*()const { return edge_ref((*it), g->edge_val(s, (*it))); }
+        fwd_edge_iterator &operator++() {
             ++it;
             return *this;
         }
@@ -437,11 +437,11 @@ class SparseWtGraph : public ikos::writeable {
     class rev_edge_iterator {
       public:
         using edge_ref = edge_ref_t;
-        rev_edge_iterator(void) : g(nullptr) {}
+        rev_edge_iterator() : g(nullptr) {}
         rev_edge_iterator(graph_t &_g, vert_id _d, adj_iterator _it) : g(&_g), d(_d), it(_it) {}
 
-        edge_ref operator*(void)const { return edge_ref((*it), g->edge_val((*it), d)); }
-        rev_edge_iterator &operator++(void) {
+        edge_ref operator*()const { return edge_ref((*it), g->edge_val((*it), d)); }
+        rev_edge_iterator &operator++() {
             ++it;
             return *this;
         }
@@ -459,12 +459,12 @@ class SparseWtGraph : public ikos::writeable {
         using iterator = adj_iterator;
 
         adj_list(uint16_t *_ptr, unsigned int max_sz) : ptr(_ptr), sparseptr(_ptr + 1 + max_sz) {}
-        adj_iterator begin(void) const { return adj_iterator(ptr + 1); }
-        adj_iterator end(void) const { return adj_iterator(ptr + 1 + size()); }
+        adj_iterator begin() const { return adj_iterator(ptr + 1); }
+        adj_iterator end() const { return adj_iterator(ptr + 1 + size()); }
         vert_id operator[](unsigned int idx) const { return (vert_id)ptr[1 + idx]; }
-        uint16_t *sparse(void) const { return sparseptr; }
-        uint16_t *dense(void) const { return (uint16_t *)(ptr + 1); }
-        unsigned int size(void) const { return *ptr; }
+        uint16_t *sparse() const { return sparseptr; }
+        uint16_t *dense() const { return (uint16_t *)(ptr + 1); }
+        unsigned int size() const { return *ptr; }
 
         bool mem(unsigned int v) const {
             unsigned int idx = sparse()[v];
@@ -501,8 +501,8 @@ class SparseWtGraph : public ikos::writeable {
         using iterator = fwd_edge_iterator;
         fwd_edge_range(graph_t &_g, vert_id _s) : g(_g), s(_s) {}
 
-        fwd_edge_iterator begin(void) const { return fwd_edge_iterator(g, s, g.succs(s).begin()); }
-        fwd_edge_iterator end(void) const { return fwd_edge_iterator(g, s, g.succs(s).end()); }
+        fwd_edge_iterator begin() const { return fwd_edge_iterator(g, s, g.succs(s).begin()); }
+        fwd_edge_iterator end() const { return fwd_edge_iterator(g, s, g.succs(s).end()); }
         graph_t &g;
         vert_id s;
     };
@@ -512,8 +512,8 @@ class SparseWtGraph : public ikos::writeable {
         using iterator = rev_edge_iterator;
         rev_edge_range(graph_t &_g, vert_id _d) : g(_g), d(_d) {}
 
-        rev_edge_iterator begin(void) const { return rev_edge_iterator(g, d, g.preds(d).begin()); }
-        rev_edge_iterator end(void) const { return rev_edge_iterator(g, d, g.preds(d).end()); }
+        rev_edge_iterator begin() const { return rev_edge_iterator(g, d, g.preds(d).begin()); }
+        rev_edge_iterator end() const { return rev_edge_iterator(g, d, g.preds(d).end()); }
         graph_t &g;
         vert_id d;
     };
