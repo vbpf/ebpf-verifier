@@ -13,7 +13,7 @@ struct FdSetDom {
     using This = FdSetDom;
 
     std::bitset<NMAPS> fds;
-    
+
     FdSetDom() { }
     FdSetDom(const Top& _) { havoc(); }
     FdSetDom(const std::bitset<NMAPS>& fds) : fds{fds} { }
@@ -37,7 +37,7 @@ struct FdSetDom {
         return os << a.fds;
     }
 
-    void assume(Condition::Op op, const This& b) { 
+    void assume(Condition::Op op, const This& b) {
         if (op == Condition::Op::EQ) {
             (*this) &= b;
         } else if (op == Condition::Op::NE) {
@@ -61,7 +61,6 @@ class NumDomSet {
     bool top{};
 
     static This make_top() { This res; res.havoc(); return res; }
-    static This from_elems(std::vector<uint64_t>&& elems);
 public:
     std::vector<uint64_t> elems;
     template <typename ...Args>
@@ -79,7 +78,7 @@ public:
     void operator&=(const This& o);
 
     void exec(const Bin::Op op, const NumDomSet& o);
-    
+
     void operator+=(const This& o) { exec(Bin::Op::ADD, o); }
     void operator-=(const This& o) { exec(Bin::Op::SUB, o); }
 

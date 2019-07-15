@@ -109,10 +109,6 @@ struct RegsDom {
         return *regs[r.v];
     }
 
-    void to_uninit(Reg r) {
-        regs[r.v] = {};
-    }
-
     bool operator==(const RegsDom& o) const { return regs == o.regs; }
 };
 

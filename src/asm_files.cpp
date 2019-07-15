@@ -16,52 +16,6 @@ using std::cout;
 using std::string;
 using std::vector;
 
-static vector<ebpf_inst> stream_to_prog(std::istream& is, size_t nbytes)
-{
-    vector<ebpf_inst> ebpf_insts(nbytes / sizeof(ebpf_inst));
-    is.read((char*)ebpf_insts.data(), nbytes);
-    return ebpf_insts;
-} 
-
-std::vector<raw_program> read_raw(std::string path, program_info info)
-{
-    using std::ifstream;
-    ifstream is(path, ifstream::ate | ifstream::binary);
-    if (is.fail()) {
-        std::cerr << "file " << path << " does not exist\n";
-        exit(65);
-    }
-    size_t nbytes = is.tellg();
-    is.seekg(0);
-    return { raw_program{path, "",  stream_to_prog(is, nbytes), info} };
-}
-
-void write_binary_file(std::string path, const char* data, size_t size) {
-    using std::ofstream;
-    ofstream os(path, ofstream::binary);
-    if (os.fail()) {
-        std::cerr << "file " << path << " does not exist\n";
-        exit(65);
-    }
-    os.write(data, size);
-}
-
-std::ifstream open_asm_file(std::string path)
-{
-    struct stat path_stat;
-    stat(path.c_str(), &path_stat);
-    if (!S_ISREG(path_stat.st_mode)) {
-        std::cerr << "Cannot read from a directory: " << path << "\n";
-        exit(65);
-    }
-    std::ifstream is(path);
-    if (is.fail()) {
-        std::cerr << "file " << path << " does not exist\n";
-        exit(65);
-    }
-    return is;
-}
-
 #define MAX_MAPS 32
 #define MAX_PROGS 32
 
@@ -89,16 +43,6 @@ static vector<T> vector_of(ELFIO::section* sec) {
     auto size = sec->get_size();
     assert(size % sizeof(T) == 0);
     return {(T*)data, (T*)(data + size)};
-}
-
-std::vector<int> sort_maps_by_size(std::vector<map_def>& map_defs) {
-    // after sorting, the map that was previously at index i will be at index res[i]
-    std::sort(map_defs.begin(), map_defs.end(), [](auto a, auto b) { return a.value_size < b.value_size; });
-    std::vector<int> res(map_defs.size());
-    for (size_t i=0; i<map_defs.size(); i++) {
-        res[map_defs[i].original_fd] = i;
-    }
-    return res;
 }
 
 int create_map_rcp(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries) {
@@ -134,7 +78,7 @@ vector<raw_program> create_blowup(size_t size, MapFd* fd_alloc)
     int out_err = i;
     blowup.emplace_back(to_string(i++), Bin{Bin::Op::MOV, true, Reg{0}, (Value)Imm{1}, false});
     blowup.emplace_back(to_string(i++), Exit{});
-    
+
     blowup.emplace_back(to_string(i++), Bin{Bin::Op::MOV, true, Reg{7}, (Value)Imm{1}, false});
 
     blowup.emplace_back(to_string(i++), LoadMapFd{Reg{1}, fd});
@@ -223,7 +167,7 @@ vector<raw_program> read_elf(std::string path, std::string desired_section, MapF
         std::cerr << "Can't find or process ELF file " << path << "\n";
         exit(2);
     }
-    
+
     program_info info;
     auto mapdefs = vector_of<bpf_load_map_def>(reader.sections["maps"]);
     for (auto s : mapdefs) {
@@ -253,7 +197,7 @@ vector<raw_program> read_elf(std::string path, std::string desired_section, MapF
     };
 
     vector<raw_program> res;
-    
+
     for (const auto section : reader.sections)
     {
         const string name = section->get_name();
@@ -300,7 +244,7 @@ vector<raw_program> read_elf(std::string path, std::string desired_section, MapF
         res.push_back(prog);
     }
     if (res.empty()) {
-        std::cerr << "Could not find relevant section!\n"; 
+        std::cerr << "Could not find relevant section!\n";
     }
     return res;
 }
