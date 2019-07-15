@@ -1,6 +1,6 @@
 #include <vector>
 #include <algorithm>
-#include <iostream> 
+#include <iostream>
 #include <set>
 
 #include <bitset>
@@ -77,13 +77,6 @@ void NumDomSet::exec(const Bin::Op op, const NumDomSet& o) {
         elems.push_back(e);
 }
 
-NumDomSet NumDomSet::from_elems(std::vector<uint64_t>&& elems) {
-    NumDomSet res;
-    res.elems = elems;
-    res.elems.erase(std::unique(res.elems.begin(), res.elems.end()), res.elems.end());
-    return res;
-}
-
 void OffsetDomSet::operator|=(const OffsetDomSet& o) {
     if (top || o.top) {
         havoc();
@@ -145,7 +138,7 @@ NumDomSet OffsetDomSet::operator-(const OffsetDomSet& o) const {
             }
         }
     }
-    
+
     NumDomSet out;
     for (int64_t e : res)
         out.elems.push_back(e);
@@ -178,7 +171,7 @@ void NumDomSet::assume(Condition::Op op, const NumDomSet& right) {
     switch (op) {
         case Op::EQ :
         case Op::NE :
-        case Op::SET: 
+        case Op::SET:
         case Op::NSET: assert(false);
 
         case Op::GT : {
