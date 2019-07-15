@@ -16,5 +16,3 @@ std::vector<raw_program> read_elf(std::string path, std::string section, MapFd* 
 void write_binary_file(std::string path, const char* data, size_t size);
 
 std::ifstream open_asm_file(std::string path);
-
-std::vector<raw_program> create_blowup(size_t size, MapFd* fd_alloc);

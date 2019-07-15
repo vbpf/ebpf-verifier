@@ -29,7 +29,7 @@ static size_t hash(const raw_program& raw_prog) {
 int main(int argc, char **argv)
 {
     // Parse command line arguments:
-    
+
     crab::CrabEnableWarningMsg(false);
 
     CLI::App app{"A new eBPF verifier"};
@@ -57,9 +57,6 @@ int main(int argc, char **argv)
     std::string dotfile;
     app.add_option("--dot", dotfile, "Export cfg to dot FILE")->type_name("FILE");
 
-    size_t size{};
-    app.add_option("--size", size, "size of blowup");
-
     CLI11_PARSE(app, argc, argv);
     if (verbose)
         global_options.print_invariants = global_options.print_failures = true;
@@ -77,16 +74,14 @@ int main(int argc, char **argv)
             std::cout << domain << "?,";
             std::cout << domain << "_sec,";
             std::cout << domain << "_kb";
-        } 
+        }
         return 0;
     }
 
-    auto create_map = domain == "linux" ? create_map_linux 
+    auto create_map = domain == "linux" ? create_map_linux
                     : domain == "rcp"   ? create_map_rcp
                     : create_map_crab;
-    auto raw_progs = filename != "blowup"
-        ? read_elf(filename, desired_section, create_map)
-        : create_blowup(size, create_map);
+    auto raw_progs = read_elf(filename, desired_section, create_map);
 
     if (list || raw_progs.size() != 1) {
         if (!list) {
