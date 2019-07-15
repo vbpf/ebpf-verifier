@@ -80,7 +80,7 @@ class separate_domain {
 
     class widening_op : public binary_op_t {
         std::pair<bool, std::optional<Value>> apply(Value x, Value y) {
-            Value z = x.operator||(y);
+            Value z = x.widen(y);
             if (z.is_top()) {
                 return {false, std::optional<Value>()};
             } else {
@@ -239,7 +239,7 @@ class separate_domain {
     }
 
     // Widening
-    separate_domain_t operator||(separate_domain_t e) {
+    separate_domain_t widen(separate_domain_t e) {
         if (this->is_bottom()) {
             return e;
         } else if (e.is_bottom()) {

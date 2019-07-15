@@ -712,7 +712,7 @@ SplitDBM SplitDBM::operator|(SplitDBM o) {
     }
 }
 
-SplitDBM SplitDBM::operator||(SplitDBM o) {
+SplitDBM SplitDBM::widen(SplitDBM o) {
     crab::CrabStats::count(getDomainName() + ".count.widening");
     crab::ScopedCrabStats __st__(getDomainName() + ".widening");
 

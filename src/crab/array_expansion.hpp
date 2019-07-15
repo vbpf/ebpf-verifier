@@ -807,11 +807,11 @@ class array_expansion_domain final : public ikos::writeable {
         return array_expansion_domain_t(_inv & other._inv);
     }
 
-    array_expansion_domain_t operator||(array_expansion_domain_t other) {
+    array_expansion_domain_t widen(array_expansion_domain_t other) {
         crab::CrabStats::count(getDomainName() + ".count.widening");
         crab::ScopedCrabStats __st__(getDomainName() + ".widening");
 
-        return array_expansion_domain_t(_inv || other._inv);
+        return array_expansion_domain_t(_inv.widen(other._inv));
     }
 
     array_expansion_domain_t widening_thresholds(array_expansion_domain_t other,
