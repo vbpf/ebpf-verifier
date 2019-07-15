@@ -46,10 +46,6 @@ class offset_map;
 template <typename Domain>
 class array_expansion_domain;
 
-// namespace {
-//     using namespace ikos::dsl_syntax;
-// }
-
 // wrapper for using index_t as patricia_tree keys
 class offset_t {
     index_t _val;
