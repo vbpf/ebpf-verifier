@@ -1,8 +1,9 @@
 #pragma once
 
-#include "crab/abstract_domain_operators.hpp"
-#include "crab/thresholds.hpp"
 #include <vector>
+
+#include "crab/thresholds.hpp"
+#include "crab/abstract_domain_operators.hpp"
 
 namespace crab {
 
