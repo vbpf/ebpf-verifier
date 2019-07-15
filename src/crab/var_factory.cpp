@@ -5,9 +5,7 @@
 #include "crab/types.hpp"
 
 namespace crab {
-static std::string get_str(std::string e) {
-    return e;
-}
+static std::string get_str(std::string e) { return e; }
 
 std::string indexed_string::str() const {
     if (_s) {

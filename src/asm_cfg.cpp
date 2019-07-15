@@ -1,25 +1,24 @@
-#include <inttypes.h>
 #include <assert.h>
+#include <inttypes.h>
 
-#include <vector>
-#include <string>
 #include <algorithm>
-#include <map>
-#include <set>
+#include <iostream>
 #include <list>
-#include <iostream>
+#include <map>
 #include <optional>
-#include <iostream>
+#include <set>
+#include <string>
+#include <vector>
 
 #include "asm_cfg.hpp"
 #include "asm_ostream.hpp"
 
-using std::optional;
-using std::to_string;
-using std::string;
-using std::vector;
-using std::set;
 using std::list;
+using std::optional;
+using std::set;
+using std::string;
+using std::to_string;
+using std::vector;
 
 static optional<Label> get_jump(Instruction ins) {
     if (std::holds_alternative<Jmp>(ins)) {
@@ -32,22 +31,20 @@ static bool has_fall(Instruction ins) {
     if (std::holds_alternative<Exit>(ins))
         return false;
 
-    if (std::holds_alternative<Jmp>(ins)
-        && !std::get<Jmp>(ins).cond)
-            return false;
+    if (std::holds_alternative<Jmp>(ins) && !std::get<Jmp>(ins).cond)
+        return false;
 
     return true;
 }
 
-
-Cfg Cfg::make(const InstructionSeq& insts) {
+Cfg Cfg::make(const InstructionSeq &insts) {
     Cfg cfg;
     const auto link = [&cfg](Label from, Label to) {
         cfg[from].nextlist.push_back(to);
         cfg[to].prevlist.push_back(from);
     };
     std::optional<Label> falling_from = {};
-    for (const auto& [label, inst] : insts) {
+    for (const auto &[label, inst] : insts) {
 
         if (std::holds_alternative<Undefined>(inst))
             continue;
@@ -65,23 +62,24 @@ Cfg Cfg::make(const InstructionSeq& insts) {
         if (jump_target)
             link(label, *jump_target);
     }
-    if (falling_from) throw std::invalid_argument{"fallthrough in last instruction"};
+    if (falling_from)
+        throw std::invalid_argument{"fallthrough in last instruction"};
     return cfg;
 }
 
 static Condition::Op reverse(Condition::Op op) {
     switch (op) {
-    case Condition::Op::EQ : return Condition::Op::NE;
-    case Condition::Op::NE : return Condition::Op::EQ;
+    case Condition::Op::EQ: return Condition::Op::NE;
+    case Condition::Op::NE: return Condition::Op::EQ;
 
-    case Condition::Op::GE : return Condition::Op::LT;
-    case Condition::Op::LT : return Condition::Op::GE;
-    
+    case Condition::Op::GE: return Condition::Op::LT;
+    case Condition::Op::LT: return Condition::Op::GE;
+
     case Condition::Op::SGE: return Condition::Op::SLT;
     case Condition::Op::SLT: return Condition::Op::SGE;
 
-    case Condition::Op::LE : return Condition::Op::GT;
-    case Condition::Op::GT : return Condition::Op::LE;
+    case Condition::Op::LE: return Condition::Op::GT;
+    case Condition::Op::GT: return Condition::Op::LE;
 
     case Condition::Op::SLE: return Condition::Op::SGT;
     case Condition::Op::SGT: return Condition::Op::SLE;
@@ -93,42 +91,34 @@ static Condition::Op reverse(Condition::Op op) {
     return {};
 }
 
-static Condition reverse(Condition cond) {
-    return {
-        .op=reverse(cond.op),
-        .left=cond.left,
-        .right=cond.right
-    };
-}
+static Condition reverse(Condition cond) { return {.op = reverse(cond.op), .left = cond.left, .right = cond.right}; }
 
-static vector<Label> unique(const vector<Label>& v) {
+static vector<Label> unique(const vector<Label> &v) {
     vector<Label> res;
     std::unique_copy(v.begin(), v.end(), std::back_inserter(res));
     return res;
 }
 
 static vector<Instruction> expand_lockadd(LockAdd lock) {
-    return {
-        Mem {
-            .access = lock.access,
-            .value = Reg{11},
-            .is_load = true,
-        },
-        Bin {
-            .op = Bin::Op::ADD,
-            .is64 = true,
-            .dst = Reg{11},
-            .v = lock.valreg,
-        },
-        Mem {
-            .access = lock.access,
-            .value = Reg{11},
-            .is_load = false,
-        }
-    };
+    return {Mem{
+                .access = lock.access,
+                .value = Reg{11},
+                .is_load = true,
+            },
+            Bin{
+                .op = Bin::Op::ADD,
+                .is64 = true,
+                .dst = Reg{11},
+                .v = lock.valreg,
+            },
+            Mem{
+                .access = lock.access,
+                .value = Reg{11},
+                .is_load = false,
+            }};
 }
 
-static vector<Instruction> do_expand_locks(vector<Instruction> const& insts) {
+static vector<Instruction> do_expand_locks(vector<Instruction> const &insts) {
     vector<Instruction> res;
     for (Instruction ins : insts) {
         if (std::holds_alternative<LockAdd>(ins)) {
@@ -142,8 +132,7 @@ static vector<Instruction> do_expand_locks(vector<Instruction> const& insts) {
     return res;
 }
 
-
-static Label pop(set<Label>& s) {
+static Label pop(set<Label> &s) {
     Label l = *s.begin();
     s.erase(l);
     return l;
@@ -153,10 +142,10 @@ void Cfg::simplify() {
     set<Label> worklist(keys().begin(), keys().end());
     while (!worklist.empty()) {
         Label label = pop(worklist);
-        BasicBlock& bb = graph[label];
+        BasicBlock &bb = graph[label];
         while (bb.nextlist.size() == 1) {
             Label next_label = bb.nextlist.back();
-            BasicBlock& next_bb = graph[next_label];
+            BasicBlock &next_bb = graph[next_label];
             if (&next_bb == &bb || next_bb.prevlist.size() != 1) {
                 break;
             }
@@ -169,27 +158,23 @@ void Cfg::simplify() {
 
             // reconnect
             for (auto l : bb.nextlist) {
-                for (auto& p : graph[l].prevlist)
+                for (auto &p : graph[l].prevlist)
                     if (p == next_label)
                         p = label;
             }
         }
     }
     ordered_labels.erase(
-        std::remove_if(
-            ordered_labels.begin(), ordered_labels.end(),
-            [&](auto& x) { return !graph.count(x); }
-        ),
-        ordered_labels.end()
-    );
+        std::remove_if(ordered_labels.begin(), ordered_labels.end(), [&](auto &x) { return !graph.count(x); }),
+        ordered_labels.end());
 }
 
 Cfg Cfg::to_nondet(bool expand_locks) const {
     Cfg res;
-    for (auto const& this_label : this->keys()) {
-        BasicBlock const& bb = this->at(this_label);
+    for (auto const &this_label : this->keys()) {
+        BasicBlock const &bb = this->at(this_label);
         res.encountered(this_label);
-        BasicBlock& newbb = res[this_label];
+        BasicBlock &newbb = res[this_label];
 
         for (auto ins : expand_locks ? do_expand_locks(bb.insts) : bb.insts) {
             if (!std::holds_alternative<Jmp>(ins)) {
@@ -198,11 +183,8 @@ Cfg Cfg::to_nondet(bool expand_locks) const {
         }
 
         for (Label prev_label : bb.prevlist) {
-            newbb.prevlist.push_back(
-                unique(this->at(prev_label).nextlist).size() > 1
-                ? prev_label + ":" + this_label
-                : prev_label
-            );
+            newbb.prevlist.push_back(unique(this->at(prev_label).nextlist).size() > 1 ? prev_label + ":" + this_label
+                                                                                      : prev_label);
         }
         // note the special case where we jump to fallthrough
         auto nextlist = unique(bb.nextlist);
@@ -213,15 +195,11 @@ Cfg Cfg::to_nondet(bool expand_locks) const {
                 {bb.nextlist[0], cond},
                 {bb.nextlist[1], reverse(cond)},
             };
-            for (auto const& [next_label, cond] : jumps) {
+            for (auto const &[next_label, cond] : jumps) {
                 Label l = mid_label + next_label;
                 newbb.nextlist.push_back(l);
                 res.encountered(l);
-                res[l] = BasicBlock{
-                    {Assume{cond}},
-                    {next_label},
-                    {this_label}
-                };
+                res[l] = BasicBlock{{Assume{cond}}, {next_label}, {this_label}};
             }
         } else {
             newbb.nextlist = nextlist;
@@ -230,7 +208,6 @@ Cfg Cfg::to_nondet(bool expand_locks) const {
     return res;
 }
 
-
 static std::string instype(Instruction ins) {
     if (std::holds_alternative<Call>(ins)) {
         auto call = std::get<Call>(ins);
@@ -238,7 +215,8 @@ static std::string instype(Instruction ins) {
             return "call_1";
         }
         if (call.pairs.empty()) {
-            if (std::all_of(call.singles.begin(), call.singles.end(), [](ArgSingle kr) { return kr.kind == ArgSingle::Kind::ANYTHING; })) {
+            if (std::all_of(call.singles.begin(), call.singles.end(),
+                            [](ArgSingle kr) { return kr.kind == ArgSingle::Kind::ANYTHING; })) {
                 return "call_nomem";
             }
         }
@@ -267,23 +245,9 @@ static std::string instype(Instruction ins) {
 std::vector<std::string> Cfg::stats_headers() {
     return {
         //"instructions",
-        "basic_blocks",
-        "joins",
-        "other",
-        "jump",
-        "assign",
-        "arith",
-        "load",
-        "store",
-        "load_store",
-        "packet_access",
-        "call_1",
-        "call_mem",
-        "call_nomem",
-        "adjust_head",
-        "map_in_map",
-        "arith64",
-        "arith32",
+        "basic_blocks", "joins",       "other",      "jump",          "assign",  "arith",
+        "load",         "store",       "load_store", "packet_access", "call_1",  "call_mem",
+        "call_nomem",   "adjust_head", "map_in_map", "arith64",       "arith32",
     };
 }
 
@@ -293,8 +257,8 @@ std::map<std::string, int> Cfg::collect_stats() const {
         res[h] = 0;
     }
     res["basic_blocks"] = graph.size();
-    for (Label const& this_label : keys()) {
-        BasicBlock const& bb = at(this_label);
+    for (Label const &this_label : keys()) {
+        BasicBlock const &bb = at(this_label);
         res["instructions"] += bb.insts.size();
         for (Instruction ins : bb.insts) {
             if (std::holds_alternative<LoadMapFd>(ins)) {

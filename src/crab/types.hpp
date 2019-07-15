@@ -1,14 +1,14 @@
 #pragma once
 
+#include "crab/bignums.hpp"
 #include "crab/debug.hpp"
 #include "crab/os.hpp"
-#include "crab/bignums.hpp"
 
-#include <optional>
-#include <memory>
 #include <iosfwd>
-#include <unordered_map>
 #include <limits>
+#include <memory>
+#include <optional>
+#include <unordered_map>
 
 /* Basic type definitions */
 
@@ -20,15 +20,9 @@ using number_t = ikos::z_number;
 
 inline crab_os &operator<<(crab_os &o, variable_type t) {
     switch (t) {
-    case INT_TYPE:
-        o << "int";
-        break;
-    case ARR_INT_TYPE:
-        o << "arr_int";
-        break;
-    default:
-        o << "unknown";
-        break;
+    case INT_TYPE: o << "int"; break;
+    case ARR_INT_TYPE: o << "arr_int"; break;
+    default: o << "unknown"; break;
     }
     return o;
 }
@@ -54,67 +48,31 @@ enum cast_operation_t { CAST_TRUNC, CAST_SEXT, CAST_ZEXT };
 
 inline crab::crab_os &operator<<(crab::crab_os &o, binary_operation_t op) {
     switch (op) {
-    case BINOP_ADD:
-        o << "+";
-        break;
-    case BINOP_SUB:
-        o << "-";
-        break;
-    case BINOP_MUL:
-        o << "*";
-        break;
-    case BINOP_SDIV:
-        o << "/";
-        break;
-    case BINOP_UDIV:
-        o << "/_u";
-        break;
-    case BINOP_SREM:
-        o << "%";
-        break;
-    case BINOP_UREM:
-        o << "%_u";
-        break;
-    case BINOP_AND:
-        o << "&";
-        break;
-    case BINOP_OR:
-        o << "|";
-        break;
-    case BINOP_XOR:
-        o << "^";
-        break;
-    case BINOP_SHL:
-        o << "<<";
-        break;
-    case BINOP_LSHR:
-        o << ">>_l";
-        break;
-    case BINOP_ASHR:
-        o << ">>_r";
-        break;
-    case BINOP_FUNCTION:
-        o << "uf";
-        break;
-    default:
-        CRAB_ERROR("unexpected binary operation ", op);
+    case BINOP_ADD: o << "+"; break;
+    case BINOP_SUB: o << "-"; break;
+    case BINOP_MUL: o << "*"; break;
+    case BINOP_SDIV: o << "/"; break;
+    case BINOP_UDIV: o << "/_u"; break;
+    case BINOP_SREM: o << "%"; break;
+    case BINOP_UREM: o << "%_u"; break;
+    case BINOP_AND: o << "&"; break;
+    case BINOP_OR: o << "|"; break;
+    case BINOP_XOR: o << "^"; break;
+    case BINOP_SHL: o << "<<"; break;
+    case BINOP_LSHR: o << ">>_l"; break;
+    case BINOP_ASHR: o << ">>_r"; break;
+    case BINOP_FUNCTION: o << "uf"; break;
+    default: CRAB_ERROR("unexpected binary operation ", op);
     }
     return o;
 }
 
 inline crab::crab_os &operator<<(crab::crab_os &o, cast_operation_t op) {
     switch (op) {
-    case CAST_TRUNC:
-        o << "trunc";
-        break;
-    case CAST_SEXT:
-        o << "sext";
-        break;
-    case CAST_ZEXT:
-        o << "zext";
-        break;
-    default:
-        CRAB_ERROR("unexpected cast operation", op);
+    case CAST_TRUNC: o << "trunc"; break;
+    case CAST_SEXT: o << "sext"; break;
+    case CAST_ZEXT: o << "zext"; break;
+    default: CRAB_ERROR("unexpected cast operation", op);
     }
     return o;
 }
@@ -142,8 +100,7 @@ inline crab::crab_os &operator<<(crab::crab_os &o, writeable &x) {
     x.write(o);
     return o;
 }
-}
-
+} // namespace ikos
 
 namespace crab {
 
@@ -229,7 +186,7 @@ class variable_factory {
     index_t get_and_increment_id();
 
   public:
-    variable_factory() {};
+    variable_factory(){};
     variable_factory(const variable_factory &) = delete;
 
     // hook for generating indexed_string's without being
@@ -244,7 +201,6 @@ class variable_factory {
 };
 
 } // end namespace crab
-
 
 namespace ikos {
 
@@ -323,21 +279,16 @@ class variable_t {
 
     friend class less;
     struct less {
-        bool operator()(variable_t x, variable_t y) const {
-            return x._n.index() < y._n.index();
-        }
+        bool operator()(variable_t x, variable_t y) const { return x._n.index() < y._n.index(); }
     };
 }; // class variable_t
 
-inline size_t hash_value(const variable_t &v) {
-    return v.hash();
-}
+inline size_t hash_value(const variable_t &v) { return v.hash(); }
 
 inline crab::crab_os &operator<<(crab::crab_os &o, const variable_t &v) {
     v.write(o);
     return o;
 }
-
 
 } // end namespace ikos
 

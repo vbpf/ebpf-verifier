@@ -44,8 +44,8 @@
 
 #include <algorithm>
 #include <boost/iterator/iterator_facade.hpp>
-#include <optional>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "crab/types.hpp"
@@ -81,7 +81,7 @@ class binary_op {
     // else if second element of the pair is empty then top
     // else the value stored in the second element of the pair.
     virtual std::pair<bool, std::optional<Value>> apply(Value,
-                                                          Value) = 0; // The operation is idempotent: apply(x, x) = x
+                                                        Value) = 0; // The operation is idempotent: apply(x, x) = x
 
     virtual bool default_is_absorbing() = 0; // True if the default value is
                                              // absorbing (false if it is neutral)
@@ -860,7 +860,7 @@ typename tree<Key, Value>::ptr tree<Key, Value>::key_merge(typename tree<Key, Va
                     std::optional<Value> value = t->lookup(b.first);
                     if (value) {
                         std::optional<Value> new_value = combine_left_to_right ? op.apply(b.first, b.second, *value)
-                                                                                 : op.apply(b.first, *value, b.second);
+                                                                               : op.apply(b.first, *value, b.second);
                         if (new_value) {
                             if (*new_value == b.second) {
                                 return s;
@@ -882,7 +882,7 @@ typename tree<Key, Value>::ptr tree<Key, Value>::key_merge(typename tree<Key, Va
                     std::optional<Value> value = s->lookup(b.first);
                     if (value) {
                         std::optional<Value> new_value = combine_left_to_right ? op.apply(b.first, *value, b.second)
-                                                                                 : op.apply(b.first, b.second, *value);
+                                                                               : op.apply(b.first, b.second, *value);
                         if (new_value) {
                             if (*new_value == b.second) {
                                 return t;

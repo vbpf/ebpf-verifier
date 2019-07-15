@@ -2,16 +2,16 @@
 
 #include <iostream>
 
-#include "ai_dom_set.hpp"
 #include "ai_dom_rcp.hpp"
+#include "ai_dom_set.hpp"
 
-TEST_CASE( "fd_set_domain", "[dom][domain][fd]" ) {
+TEST_CASE("fd_set_domain", "[dom][domain][fd]") {
     using D = FdSetDom;
     REQUIRE(D{3} == D{3});
     REQUIRE(!(D{4} == D{3}));
 
-    auto top = [](){ return D{TOP}; };
-    auto bot = [](){ return D{}; };
+    auto top = []() { return D{TOP}; };
+    auto bot = []() { return D{}; };
 
     REQUIRE_FALSE(bot() == top());
 
@@ -22,12 +22,12 @@ TEST_CASE( "fd_set_domain", "[dom][domain][fd]" ) {
     REQUIRE((bot() | top()) == top());
 }
 
-TEST_CASE( "numerical_set_domain", "[dom][domain]" ) {
+TEST_CASE("numerical_set_domain", "[dom][domain]") {
     using D = NumDomSet;
 
-    auto top = [](){ return D{TOP}; };
-    auto bot = [](){ return D{}; };
-    
+    auto top = []() { return D{TOP}; };
+    auto bot = []() { return D{}; };
+
     REQUIRE(D{} == bot());
     REQUIRE_FALSE(bot() == top());
 
@@ -39,7 +39,7 @@ TEST_CASE( "numerical_set_domain", "[dom][domain]" ) {
 
     REQUIRE((top() & D(3)) == D(3));
     REQUIRE((top() | D(3)) == top());
-    
+
     REQUIRE((bot() | D(3)) == D(3));
     REQUIRE((bot() & D(3)) == bot());
 
@@ -54,9 +54,9 @@ TEST_CASE( "numerical_set_domain", "[dom][domain]" ) {
         REQUIRE(D(1) + D(2, 3) == D(3, 4));
         REQUIRE(D(1, 2) + D(2, 3) == D(3, 4, 5));
         REQUIRE(D(TOP) + D(2) == D(TOP));
-        REQUIRE(D(2) +  D(TOP) == D(TOP));
+        REQUIRE(D(2) + D(TOP) == D(TOP));
         REQUIRE(D(TOP) + D() == D());
-        REQUIRE(D() +  D(TOP) == D());
+        REQUIRE(D() + D(TOP) == D());
         REQUIRE(D() + D(2) == D());
         REQUIRE(D(2) + D() == D());
     }
@@ -73,14 +73,13 @@ TEST_CASE( "numerical_set_domain", "[dom][domain]" ) {
         REQUIRE(D() - D(2) == D());
         REQUIRE(D(2) - D() == D());
     }
-
 }
 
-TEST_CASE( "offset_set_domain", "[dom][domain]" ) {
+TEST_CASE("offset_set_domain", "[dom][domain]") {
     using D = OffsetDomSet;
 
-    auto top = [](){ return D{TOP}; };
-    auto bot = [](){ return D{}; };
+    auto top = []() { return D{TOP}; };
+    auto bot = []() { return D{}; };
 
     SECTION("simple") {
         REQUIRE(D{} == bot());
@@ -139,11 +138,11 @@ TEST_CASE( "offset_set_domain", "[dom][domain]" ) {
     }
 }
 
-TEST_CASE( "rcp_domain", "[dom][domain]" ) {
+TEST_CASE("rcp_domain", "[dom][domain]") {
     using D = RCP_domain;
 
-    auto top = [](){ return D{TOP}; };
-    auto bot = [](){ return D{}; };
+    auto top = []() { return D{TOP}; };
+    auto bot = []() { return D{}; };
     const auto zero = D{}.with_num(0);
 
     SECTION("simple") {
@@ -156,11 +155,10 @@ TEST_CASE( "rcp_domain", "[dom][domain]" ) {
         REQUIRE((top() | bot()) == top());
         REQUIRE((bot() | top()) == top());
     }
-    
 
     SECTION("map fds") {
         auto fds = D{}.with_num(0).with_fd(1);
-        auto maps_or_null = fds.map_lookup_elem({map_def{}, map_def{ .type=MapType::HASH }});
+        auto maps_or_null = fds.map_lookup_elem({map_def{}, map_def{.type = MapType::HASH}});
 
         REQUIRE(maps_or_null == D{}.with_num(0).with_map(1, 0));
 

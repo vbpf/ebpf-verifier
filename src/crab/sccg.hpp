@@ -6,8 +6,8 @@
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/range/iterator_range.hpp>
-#include <memory>
 #include <boost/unordered_map.hpp>
+#include <memory>
 
 #include "crab/debug.hpp"
 #include "crab/types.hpp"
@@ -32,9 +32,10 @@ class scc_graph {
         std::size_t m_comp;
         node_t m_repr;
     };
-    using scc_graph_t = boost::adjacency_list<boost::setS, // disallow parallel edges
-                                  boost::vecS, boost::bidirectionalS,
-                                  boost::property<boost::vertex_color_t, boost::default_color_type, vertex_t>>;
+    using scc_graph_t =
+        boost::adjacency_list<boost::setS, // disallow parallel edges
+                              boost::vecS, boost::bidirectionalS,
+                              boost::property<boost::vertex_color_t, boost::default_color_type, vertex_t>>;
     using scc_graph_ptr = std::shared_ptr<scc_graph_t>;
     using vertex_descriptor_t = typename boost::graph_traits<scc_graph_t>::vertex_descriptor;
     using edge_descriptor_t = typename boost::graph_traits<scc_graph_t>::edge_descriptor;

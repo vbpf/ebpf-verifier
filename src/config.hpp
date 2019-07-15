@@ -1,8 +1,7 @@
 #pragma once
 
 // defaults are in definition
-struct global_options_t
-{
+struct global_options_t {
     bool simplify;
     bool stats;
     bool check_semantic_reachability;

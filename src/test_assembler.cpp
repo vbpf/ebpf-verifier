@@ -5,12 +5,14 @@
 
 #include <map>
 
-#define assemble_disasm(text) do { REQUIRE(to_string(parse_instruction(text)) == text); } while(0)
+#define assemble_disasm(text)                                                                                          \
+    do {                                                                                                               \
+        REQUIRE(to_string(parse_instruction(text)) == text);                                                           \
+    } while (0)
 
-
-TEST_CASE( "assembler", "[assemble][disasm]" ) {
-    SECTION( "Bin" ) {
-        SECTION( "rX op= rY" ) {
+TEST_CASE("assembler", "[assemble][disasm]") {
+    SECTION("Bin") {
+        SECTION("rX op= rY") {
             assemble_disasm("r1 = r0");
             assemble_disasm("r0 = r1");
             assemble_disasm("r5 = r6");
@@ -22,7 +24,7 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
             assemble_disasm("r4 >>>= r5");
             REQUIRE_THROWS(parse_instruction("r3 //= r2"));
         }
-        SECTION( "rX op= Y" ) {
+        SECTION("rX op= Y") {
             assemble_disasm("r1 = 2");
             assemble_disasm("r0 = -3");
             assemble_disasm("r5 = 6");
@@ -35,7 +37,7 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
 
             REQUIRE_THROWS(parse_instruction("r5 //= 4"));
         }
-        SECTION( "rX op= Y ll" ) {
+        SECTION("rX op= Y ll") {
             assemble_disasm("r8 = 1 ll");
             assemble_disasm("r10 = 2 ll");
             assemble_disasm("r3 = 10 ll");
@@ -53,19 +55,14 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
         }
     }
 
-    SECTION( "Un" ) {
-        
-    }
+    SECTION("Un") {}
 
-    SECTION( "Call" ) {
-    }
+    SECTION("Call") {}
 
-    SECTION( "Exit" ) {
-        assemble_disasm("exit");
-    }
-    
-    SECTION( "Mem" ) {
-        SECTION( "Load" ) {
+    SECTION("Exit") { assemble_disasm("exit"); }
+
+    SECTION("Mem") {
+        SECTION("Load") {
             assemble_disasm("r0 = *(u8 *)(r2 + 1)");
             assemble_disasm("r1 = *(u16 *)(r0 + 12)");
             assemble_disasm("r5 = *(u32 *)(r10 + 31)");
@@ -78,7 +75,7 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
 
             REQUIRE_THROWS(parse_instruction("r8 = *(u15 *)(r1 - 43)"));
         }
-        SECTION( "Store Reg" ) {
+        SECTION("Store Reg") {
             assemble_disasm("*(u8 *)(r2 + 1) = r0");
             assemble_disasm("*(u16 *)(r0 + 12) = r1");
             assemble_disasm("*(u32 *)(r10 + 31) = r5");
@@ -90,7 +87,7 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
 
             REQUIRE_THROWS(parse_instruction("*(u15 *)(r1 - 43) = r8"));
         }
-        SECTION( "Store Imm" ) {
+        SECTION("Store Imm") {
             assemble_disasm("*(u8 *)(r2 + 1) = 0");
             assemble_disasm("*(u16 *)(r0 + 12) = 1");
             assemble_disasm("*(u32 *)(r10 + 31) = 5");
@@ -104,14 +101,14 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
         }
     }
 
-    SECTION( "Packet" ) {
+    SECTION("Packet") {
         assemble_disasm("r0 = *(u32 *)skb[r7]");
         assemble_disasm("r0 = *(u16 *)skb[53]");
 
         // TODO: add examples for r1 + 5, r2 + r3 - or disallow in disassembler
     }
 
-    SECTION( "LockAdd" ) {
+    SECTION("LockAdd") {
         assemble_disasm("lock *(u8 *)(r0 + 0) += r1");
         assemble_disasm("lock *(u16 *)(r1 + 33) += r3");
         assemble_disasm("lock *(u32 *)(r10 - 2) += r10");
@@ -121,23 +118,26 @@ TEST_CASE( "assembler", "[assemble][disasm]" ) {
 
 std::string labeler(Label l) {
     const std::map<std::string, std::string> labelmap = {
-        {"LBB0_44", "+21 <LBB0_44>" },
-        {"LBB0_14", "-303 <LBB0_14>" },
-        {"LBB0_31", "+0 <LBB0_31>" },
-        {"LBB0_18", "+130 <LBB0_18>" },
+        {"LBB0_44", "+21 <LBB0_44>"},
+        {"LBB0_14", "-303 <LBB0_14>"},
+        {"LBB0_31", "+0 <LBB0_31>"},
+        {"LBB0_18", "+130 <LBB0_18>"},
     };
     return labelmap.at(l);
 }
 
-#define jmp_assemble_disasm(text) do { REQUIRE(to_string(parse_instruction(text), labeler) == text); } while(0)
+#define jmp_assemble_disasm(text)                                                                                      \
+    do {                                                                                                               \
+        REQUIRE(to_string(parse_instruction(text), labeler) == text);                                                  \
+    } while (0)
 
-TEST_CASE( "Jmp assembler", "[assemble][disasm]" ) {
-    SECTION( "unconditional" ) {
+TEST_CASE("Jmp assembler", "[assemble][disasm]") {
+    SECTION("unconditional") {
         jmp_assemble_disasm("goto +21 <LBB0_44>");
         jmp_assemble_disasm("goto -303 <LBB0_14>");
         jmp_assemble_disasm("goto +0 <LBB0_31>");
     }
-    SECTION( "register cmp imm" ) {
+    SECTION("register cmp imm") {
         jmp_assemble_disasm("if r1 == 54 goto +21 <LBB0_44>");
         jmp_assemble_disasm("if r0 != 13 goto +21 <LBB0_44>");
         jmp_assemble_disasm("if r1 == 0 goto +21 <LBB0_44>");
@@ -147,7 +147,7 @@ TEST_CASE( "Jmp assembler", "[assemble][disasm]" ) {
 
         REQUIRE_THROWS(parse_instruction("r3 &!= 10 ll"));
     }
-    SECTION( "register cmp register" ) {
+    SECTION("register cmp register") {
         jmp_assemble_disasm("if r2 > r3 goto -303 <LBB0_14>");
         jmp_assemble_disasm("if r2 >= r3 goto -303 <LBB0_14>");
         jmp_assemble_disasm("if r4 s> r1 goto -303 <LBB0_14>");
@@ -158,13 +158,12 @@ TEST_CASE( "Jmp assembler", "[assemble][disasm]" ) {
     }
 }
 
-
-std::ostream& operator<<(std::ostream& os, std::tuple<Label, Instruction> const& labeled_ins) {
+std::ostream &operator<<(std::ostream &os, std::tuple<Label, Instruction> const &labeled_ins) {
     auto [label, ins] = labeled_ins;
     return os << "(" << label << ", " << ins << ")";
 }
 
-TEST_CASE( "Full assembler minimal", "[assemble][full-assemble]") {
+TEST_CASE("Full assembler minimal", "[assemble][full-assemble]") {
     std::string code = R"code(
 sockex1_kern.o:	file format ELF64-BPF
 
@@ -176,7 +175,7 @@ bpf_prog1:
 
     std::vector<std::tuple<Label, Instruction>> expected{
         {"bpf_prog1", parse_instruction("r0 = 1")},
-        {"1",         parse_instruction("exit")},
+        {"1", parse_instruction("exit")},
     };
 
     std::istringstream is(code);
@@ -185,7 +184,7 @@ bpf_prog1:
     REQUIRE(labeled_insts == expected);
 }
 
-TEST_CASE( "Full assembler jump", "[assemble][full-assemble]") {
+TEST_CASE("Full assembler jump", "[assemble][full-assemble]") {
     std::string code = R"code(
 sockex1_kern.o:	file format ELF64-BPF
 
@@ -200,10 +199,10 @@ LBB0_1:
     )code";
 
     std::vector<std::tuple<Label, Instruction>> expected = {
-       {"bpf_prog1", parse_instruction("r0 = 1")},
-       {"1",         parse_instruction("if r0 != 4 goto +1 <LBB0_1>")},
-       {"2",         parse_instruction("r0 = 2")},
-       {"LBB0_1",    parse_instruction("exit")},
+        {"bpf_prog1", parse_instruction("r0 = 1")},
+        {"1", parse_instruction("if r0 != 4 goto +1 <LBB0_1>")},
+        {"2", parse_instruction("r0 = 2")},
+        {"LBB0_1", parse_instruction("exit")},
     };
 
     std::istringstream is(code);
@@ -212,7 +211,7 @@ LBB0_1:
     REQUIRE(labeled_insts == expected);
 }
 
-TEST_CASE( "Full assembler jump after ll", "[assemble][full-assemble]") {
+TEST_CASE("Full assembler jump after ll", "[assemble][full-assemble]") {
     std::string code = R"code(
 sockex1_kern.o:	file format ELF64-BPF
 
@@ -227,10 +226,10 @@ LBB0_1:
     )code";
 
     std::vector<std::tuple<Label, Instruction>> expected = {
-       {"bpf_prog1", parse_instruction("r0 = 1")},
-       {"1",         parse_instruction("if r0 != 4 goto +1 <LBB0_1>")},
-       {"2",         parse_instruction("r0 = 2 ll")},
-       {"LBB0_1",    parse_instruction("exit")},
+        {"bpf_prog1", parse_instruction("r0 = 1")},
+        {"1", parse_instruction("if r0 != 4 goto +1 <LBB0_1>")},
+        {"2", parse_instruction("r0 = 2 ll")},
+        {"LBB0_1", parse_instruction("exit")},
     };
 
     std::istringstream is(code);

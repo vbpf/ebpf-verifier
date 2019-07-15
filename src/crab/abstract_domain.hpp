@@ -29,8 +29,6 @@ namespace domains {
 template <class Dom>
 class abstract_domain : public ikos::writeable {
   public:
-
-
     using variable_vector_t = std::vector<variable_t>;
 
     abstract_domain() : ikos::writeable() {}
@@ -62,22 +60,22 @@ class abstract_domain : public ikos::writeable {
 
     // Inclusion operator: return true if *this is equal or more precise than abs
     // TODO: add const reference
-    virtual bool operator<=(const Dom& abs) = 0;
+    virtual bool operator<=(const Dom &abs) = 0;
     // Join operator: join(*this, abs)
     // TODO: add const reference and ideally const method
-    virtual Dom operator|(const Dom& abs) = 0;
+    virtual Dom operator|(const Dom &abs) = 0;
     // *this = join(*this, abs)
     // TODO: add const reference
-    virtual void operator|=(const Dom& abs) = 0;
+    virtual void operator|=(const Dom &abs) = 0;
     // Meet operator: meet(*this, abs)
     // TODO: add const reference and ideally const method
-    virtual Dom operator&(const Dom& abs) = 0;
+    virtual Dom operator&(const Dom &abs) = 0;
     // Widening operator: widening(*this, abs)
     // TODO: add const reference and ideally const method
-    virtual Dom widen(const Dom& abs) = 0;
+    virtual Dom widen(const Dom &abs) = 0;
     // Narrowing operator: narrowing(*this, abs)
     // TODO: add const reference and ideally const method
-    virtual Dom narrow(const Dom& abs) = 0;
+    virtual Dom narrow(const Dom &abs) = 0;
     // Widening with thresholds: widening_ts(*this, abs)
     virtual Dom widening_thresholds(Dom abs, const crab::iterators::thresholds_t &ts) = 0;
 
@@ -123,10 +121,9 @@ class abstract_domain : public ikos::writeable {
     virtual void expand(variable_t var, variable_t new_var) = 0;
 };
 
-
 template <typename Dom>
 class numeric_abstract_domain : public abstract_domain<numeric_abstract_domain<Dom>> {
-    public:
+  public:
     using variable_vector_t = std::vector<variable_t>;
 
     /**************************** Arithmetic operations *************************/
@@ -148,7 +145,7 @@ class numeric_abstract_domain : public abstract_domain<numeric_abstract_domain<D
 
 template <typename Dom>
 class array_abstract_domain : public numeric_abstract_domain<array_abstract_domain<Dom>> {
-    public:
+  public:
     using variable_vector_t = std::vector<variable_t>;
     /**************************** Array operations *******************************/
     // make a fresh array with contents a[j] initialized to val such that
@@ -178,7 +175,6 @@ class array_abstract_domain : public numeric_abstract_domain<array_abstract_doma
     virtual void backward_array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t i,
                                             linear_expression_t j, linear_expression_t v, Dom invariant) = 0;
     virtual void backward_array_assign(variable_t a, variable_t b, Dom invariant) = 0;
-
 };
 
 } // end namespace domains

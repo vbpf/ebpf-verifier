@@ -109,8 +109,10 @@ struct graph_traits<crab::cfg_ref<CFG>> {
     }
 
     using vertex_iterator = typename graph_t::label_iterator;
-    using in_edge_iterator = boost::transform_iterator<crab::graph::mk_in_edge<graph_t>, typename graph_t::pred_iterator>;
-    using out_edge_iterator = boost::transform_iterator<crab::graph::mk_out_edge<graph_t>, typename graph_t::succ_iterator>;
+    using in_edge_iterator =
+        boost::transform_iterator<crab::graph::mk_in_edge<graph_t>, typename graph_t::pred_iterator>;
+    using out_edge_iterator =
+        boost::transform_iterator<crab::graph::mk_out_edge<graph_t>, typename graph_t::succ_iterator>;
 }; // end class graph_traits
 
 // cfg_rev
@@ -144,8 +146,10 @@ struct graph_traits<crab::cfg_rev<CFG>> {
     }
 
     using vertex_iterator = typename graph_t::label_iterator;
-    using in_edge_iterator = boost::transform_iterator<crab::graph::mk_in_edge<graph_t>, typename graph_t::pred_iterator>;
-    using out_edge_iterator = boost::transform_iterator<crab::graph::mk_out_edge<graph_t>, typename graph_t::succ_iterator>;
+    using in_edge_iterator =
+        boost::transform_iterator<crab::graph::mk_in_edge<graph_t>, typename graph_t::pred_iterator>;
+    using out_edge_iterator =
+        boost::transform_iterator<crab::graph::mk_out_edge<graph_t>, typename graph_t::succ_iterator>;
 }; // end class graph_traits
 } // namespace boost
 

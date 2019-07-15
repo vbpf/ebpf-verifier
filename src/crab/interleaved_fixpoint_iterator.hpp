@@ -176,8 +176,7 @@ class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<AbstractValue
                                       unsigned int descending_iterations, size_t jump_set_size,
                                       bool enable_processor = true)
         : _cfg(cfg), _wto(!wto ? cfg : *wto), _widening_delay(widening_delay),
-          _descending_iterations(descending_iterations),
-          _enable_processor(enable_processor) {
+          _descending_iterations(descending_iterations), _enable_processor(enable_processor) {
         initialize_thresholds(jump_set_size);
     }
 

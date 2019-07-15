@@ -1,6 +1,6 @@
 #pragma once
-#include <inttypes.h>
 #include <assert.h>
+#include <inttypes.h>
 #include <tuple>
 
 struct ebpf_inst {
@@ -32,7 +32,7 @@ struct ebpf_inst {
 #define EBPF_SIZE_B 0x10
 #define EBPF_SIZE_DW 0x18
 
-#define EBPF_SIZE_MASK 0x18 
+#define EBPF_SIZE_MASK 0x18
 
 #define EBPF_MODE_MASK 0xe0
 
@@ -44,37 +44,31 @@ struct ebpf_inst {
 #define EBPF_XADD 6
 #define EBPF_MEM_UNUSED 7
 
-#define EBPF_OP_LDDW_IMM      (EBPF_CLS_LD |EBPF_SRC_IMM|EBPF_SIZE_DW) // Special
+#define EBPF_OP_LDDW_IMM (EBPF_CLS_LD | EBPF_SRC_IMM | EBPF_SIZE_DW) // Special
 
-#define EBPF_OP_JA       (EBPF_CLS_JMP|0x00)
-#define EBPF_OP_CALL     (EBPF_CLS_JMP|0x80)
-#define EBPF_OP_EXIT     (EBPF_CLS_JMP|0x90)
+#define EBPF_OP_JA (EBPF_CLS_JMP | 0x00)
+#define EBPF_OP_CALL (EBPF_CLS_JMP | 0x80)
+#define EBPF_OP_EXIT (EBPF_CLS_JMP | 0x90)
 
-inline uint64_t merge(int32_t imm, int32_t next_imm) {
-    return (((uint64_t)next_imm) << 32) | (uint32_t)imm;
-}
-inline std::tuple<int32_t, int32_t> split(uint64_t v) {
-    return {(uint32_t)v, (uint32_t)(v >> 32) };
-}
+inline uint64_t merge(int32_t imm, int32_t next_imm) { return (((uint64_t)next_imm) << 32) | (uint32_t)imm; }
+inline std::tuple<int32_t, int32_t> split(uint64_t v) { return {(uint32_t)v, (uint32_t)(v >> 32)}; }
 
-inline int opcode_to_width(uint8_t opcode)
-{
+inline int opcode_to_width(uint8_t opcode) {
     switch (opcode & EBPF_SIZE_MASK) {
-        case EBPF_SIZE_B: return 1;
-        case EBPF_SIZE_H: return 2;
-        case EBPF_SIZE_W: return 4;
-        case EBPF_SIZE_DW: return 8;
+    case EBPF_SIZE_B: return 1;
+    case EBPF_SIZE_H: return 2;
+    case EBPF_SIZE_W: return 4;
+    case EBPF_SIZE_DW: return 8;
     }
-	assert(false);
+    assert(false);
 }
 
-inline uint8_t width_to_opcode(int width)
-{
+inline uint8_t width_to_opcode(int width) {
     switch (width) {
-        case 1: return EBPF_SIZE_B;
-        case 2: return EBPF_SIZE_H;
-        case 4: return EBPF_SIZE_W;
-        case 8: return EBPF_SIZE_DW;
+    case 1: return EBPF_SIZE_B;
+    case 2: return EBPF_SIZE_H;
+    case 4: return EBPF_SIZE_W;
+    case 8: return EBPF_SIZE_DW;
     }
-	assert(false);
+    assert(false);
 }
