@@ -18,12 +18,12 @@ class num_range {
     class value_ref {
       public:
         value_ref(const V &_v) : v(_v) {}
-        const V &operator*(void)const { return v; }
-        value_ref &operator++(void) {
+        const V &operator*()const { return v; }
+        value_ref &operator++() {
             v++;
             return *this;
         }
-        value_ref &operator--(void) {
+        value_ref &operator--() {
             v--;
             return *this;
         }
@@ -34,8 +34,8 @@ class num_range {
     };
     num_range(const V &_after) : after(_after) {}
 
-    value_ref begin(void) const { return value_ref((V)0); }
-    value_ref end(void) const { return value_ref(after); }
+    value_ref begin() const { return value_ref((V)0); }
+    value_ref end() const { return value_ref(after); }
 
   protected:
     V after;
@@ -89,11 +89,11 @@ class GraphPerm {
     }
 
     // Number of allocated vertices
-    int size(void) const { return perm.size(); }
+    int size() const { return perm.size(); }
 
     using vert_range = num_range<vert_id>;
     using vert_iterator = typename num_range<vert_id>::value_ref;
-    vert_range verts(void) const { return vert_range(perm.size()); }
+    vert_range verts() const { return vert_range(perm.size()); }
 
     // GKG: Should probably modify this to handle cases where
     // the vertex iterator isn't just a vert_id*.
@@ -102,9 +102,9 @@ class GraphPerm {
       public:
         adj_iterator(std::vector<vert_id> &_inv, const ItG &_v) : inv(_inv), v(_v) {}
 
-        vert_id operator*(void)const { return inv[*v]; }
+        vert_id operator*()const { return inv[*v]; }
 
-        adj_iterator &operator++(void) {
+        adj_iterator &operator++() {
             ++v;
             return *this;
         }
@@ -127,9 +127,9 @@ class GraphPerm {
 
         e_adj_iterator(std::vector<vert_id> &_inv, const ItG &_v) : inv(_inv), v(_v) {}
 
-        edge_ref operator*(void)const { return edge_ref(inv[(*v).vert], (*v).val); }
+        edge_ref operator*()const { return edge_ref(inv[(*v).vert], (*v).val); }
 
-        e_adj_iterator &operator++(void) {
+        e_adj_iterator &operator++() {
             ++v;
             return *this;
         }
@@ -159,13 +159,13 @@ class GraphPerm {
 
         adj_list(std::vector<vert_id> &_perm, std::vector<vert_id> &_inv) : perm(_perm), inv(_inv), adj() {}
 
-        iterator begin(void) const {
+        iterator begin() const {
             if (adj)
                 return iterator(inv, (*adj).begin());
             else
                 return iterator(inv, ItG::empty_iterator());
         }
-        iterator end(void) const {
+        iterator end() const {
             if (adj)
                 return iterator(inv, (*adj).end());
             else
@@ -247,12 +247,12 @@ class SubGraph {
     // Precondition: elem(x, y) is true.
     Wt operator()(vert_id x, vert_id y) const { return g(x, y); }
 
-    void clear_edges(void) { g.clear_edges(); }
+    void clear_edges() { g.clear_edges(); }
 
-    void clear(void) { assert(0 && "SubGraph::clear not implemented."); }
+    void clear() { assert(0 && "SubGraph::clear not implemented."); }
 
     // Number of allocated vertices
-    int size(void) const { return g.size(); }
+    int size() const { return g.size(); }
 
     // Assumption: (x, y) not in mtx
     void add_edge(vert_id x, Wt wt, vert_id y) {
@@ -277,8 +277,8 @@ class SubGraph {
 
         // Skipping of v_ex is done entirely by !=.
         // So we _MUST_ test it != verts.end() before dereferencing.
-        vert_id operator*(void) { return *iG; }
-        vert_iterator operator++(void) {
+        vert_id operator*() { return *iG; }
+        vert_iterator operator++() {
             ++iG;
             return *this;
         }
@@ -295,20 +295,20 @@ class SubGraph {
       public:
         vert_range(const typename G::vert_range &_rG, vert_id _v_ex) : rG(_rG), v_ex(_v_ex) {}
 
-        vert_iterator begin(void) const { return vert_iterator(rG.begin(), v_ex); }
-        vert_iterator end(void) const { return vert_iterator(rG.end(), v_ex); }
+        vert_iterator begin() const { return vert_iterator(rG.begin(), v_ex); }
+        vert_iterator end() const { return vert_iterator(rG.end(), v_ex); }
 
         typename G::vert_range rG;
         vert_id v_ex;
     };
-    vert_range verts(void) const { return vert_range(g.verts(), v_ex); }
+    vert_range verts() const { return vert_range(g.verts(), v_ex); }
 
     template <class It>
     class adj_iterator {
       public:
         adj_iterator(const It &_iG, vert_id _v_ex) : iG(_iG), v_ex(_v_ex) {}
-        vert_id operator*(void)const { return *iG; }
-        adj_iterator &operator++(void) {
+        vert_id operator*()const { return *iG; }
+        adj_iterator &operator++() {
             ++iG;
             return *this;
         }
@@ -328,8 +328,8 @@ class SubGraph {
         using edge_ref = typename It::edge_ref;
 
         e_adj_iterator(const It &_iG, vert_id _v_ex) : iG(_iG), v_ex(_v_ex) {}
-        edge_ref operator*(void)const { return *iG; }
-        e_adj_iterator &operator++(void) {
+        edge_ref operator*()const { return *iG; }
+        e_adj_iterator &operator++() {
             ++iG;
             return *this;
         }
@@ -403,7 +403,7 @@ class GraphRev {
     Wt operator()(vert_id x, vert_id y) const { return g(y, x); }
 
     // Number of allocated vertices
-    int size(void) const { return g.size(); }
+    int size() const { return g.size(); }
 
     //    using adj_list = typename G::adj_list;
     using pred_range = typename G::succ_range;
@@ -412,7 +412,7 @@ class GraphRev {
     using e_pred_range = typename G::e_succ_range;
     using e_succ_range = typename G::e_pred_range;
 
-    typename G::vert_range verts(void) const { return g.verts(); }
+    typename G::vert_range verts() const { return g.verts(); }
 
     succ_range succs(vert_id v) { return g.preds(v); }
     succ_range preds(vert_id v) { return g.succs(v); }

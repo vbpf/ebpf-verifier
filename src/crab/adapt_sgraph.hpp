@@ -28,7 +28,7 @@ class AdaptSMap {
         val_t val;
     };
 
-    AdaptSMap(void)
+    AdaptSMap()
         : sz(0), dense_maxsz(sparse_threshold), sparse_ub(10), dense((elt_t *)malloc(sizeof(elt_t) * sparse_threshold)),
           sparse(nullptr) {}
 
@@ -98,18 +98,18 @@ class AdaptSMap {
         return *this;
     }
 
-    ~AdaptSMap(void) {
+    ~AdaptSMap() {
         if (dense)
             free(dense);
         if (sparse)
             free(sparse);
     }
 
-    size_t size(void) const { return sz; }
+    size_t size() const { return sz; }
 
     class key_iter_t {
       public:
-        key_iter_t(void) : e(nullptr) {}
+        key_iter_t() : e(nullptr) {}
         key_iter_t(elt_t *_e) : e(_e) {}
 
         // XXX: to make sure that we always return the same address
@@ -122,9 +122,9 @@ class AdaptSMap {
             return *it;
         }
 
-        key_t operator*(void)const { return (*e).key; }
+        key_t operator*()const { return (*e).key; }
         bool operator!=(const key_iter_t &o) const { return e < o.e; }
-        key_iter_t &operator++(void) {
+        key_iter_t &operator++() {
             ++e;
             return *this;
         }
@@ -138,10 +138,10 @@ class AdaptSMap {
         using iterator = key_iter_t;
 
         key_range_t(elt_t *_e, size_t _sz) : e(_e), sz(_sz) {}
-        size_t size(void) const { return sz; }
+        size_t size() const { return sz; }
 
-        key_iter_t begin(void) const { return key_iter_t(e); }
-        key_iter_t end(void) const { return key_iter_t(e + sz); }
+        key_iter_t begin() const { return key_iter_t(e); }
+        key_iter_t end() const { return key_iter_t(e + sz); }
 
         elt_t *e;
         size_t sz;
@@ -153,16 +153,16 @@ class AdaptSMap {
 
         elt_range_t(elt_t *_e, size_t _sz) : e(_e), sz(_sz) {}
         elt_range_t(const elt_range_t &o) : e(o.e), sz(o.sz) {}
-        size_t size(void) const { return sz; }
-        elt_iter_t begin(void) const { return elt_iter_t(e); }
-        elt_iter_t end(void) const { return elt_iter_t(e + sz); }
+        size_t size() const { return sz; }
+        elt_iter_t begin() const { return elt_iter_t(e); }
+        elt_iter_t end() const { return elt_iter_t(e + sz); }
 
         elt_t *e;
         size_t sz;
     };
 
-    elt_range_t elts(void) const { return elt_range_t(dense, sz); }
-    key_range_t keys(void) const { return key_range_t(dense, sz); }
+    elt_range_t elts() const { return elt_range_t(dense, sz); }
+    key_range_t keys() const { return key_range_t(dense, sz); }
 
     bool elem(key_t k) const {
         if (sparse) {
@@ -269,7 +269,7 @@ class AdaptSMap {
             sparse[k] = idx++;
     }
 
-    void clear(void) { sz = 0; }
+    void clear() { sz = 0; }
 
     size_t sz;
     size_t dense_maxsz;
@@ -286,7 +286,7 @@ class AdaptGraph : public ikos::writeable {
     using vert_id = unsigned int;
     using Wt = Weight;
 
-    AdaptGraph(void) : edge_count(0) {}
+    AdaptGraph() : edge_count(0) {}
 
     AdaptGraph(AdaptGraph<Wt> &&o)
         : _preds(std::move(o._preds)), _succs(std::move(o._succs)), _ws(std::move(o._ws)), edge_count(o.edge_count),
@@ -337,13 +337,13 @@ class AdaptGraph : public ikos::writeable {
     class vert_iterator {
       public:
         vert_iterator(vert_id _v, const std::vector<bool> &_is_free) : v(_v), is_free(_is_free) {}
-        vert_id operator*(void)const { return v; }
+        vert_id operator*()const { return v; }
         bool operator!=(const vert_iterator &o) {
             while (v < o.v && is_free[v])
                 ++v;
             return v < o.v;
         }
-        vert_iterator &operator++(void) {
+        vert_iterator &operator++() {
             ++v;
             return *this;
         }
@@ -355,13 +355,13 @@ class AdaptGraph : public ikos::writeable {
       public:
         vert_range(const std::vector<bool> &_is_free) : is_free(_is_free) {}
 
-        vert_iterator begin(void) const { return vert_iterator(0, is_free); }
-        vert_iterator end(void) const { return vert_iterator(is_free.size(), is_free); }
+        vert_iterator begin() const { return vert_iterator(0, is_free); }
+        vert_iterator end() const { return vert_iterator(is_free.size(), is_free); }
 
-        size_t size(void) const { return is_free.size(); }
+        size_t size() const { return is_free.size(); }
         const std::vector<bool> &is_free;
     };
-    vert_range verts(void) const { return vert_range(is_free); }
+    vert_range verts() const { return vert_range(is_free); }
 
     class edge_ref_t {
       public:
@@ -375,7 +375,7 @@ class AdaptGraph : public ikos::writeable {
         using edge_ref = edge_ref_t;
         edge_iter(const smap_t::elt_iter_t &_it, vec<Wt> &_ws) : it(_it), ws(&_ws) {}
         edge_iter(const edge_iter &o) : it(o.it), ws(o.ws) {}
-        edge_iter(void) : ws(nullptr) {}
+        edge_iter() : ws(nullptr) {}
 
         // XXX: to make sure that we always return the same address
         // for the "empty" iterator, otherwise we can trigger
@@ -387,8 +387,8 @@ class AdaptGraph : public ikos::writeable {
             return *it;
         }
 
-        edge_ref operator*(void)const { return edge_ref((*it).key, (*ws)[(*it).val]); }
-        edge_iter operator++(void) {
+        edge_ref operator*()const { return edge_ref((*it).key, (*ws)[(*it).val]); }
+        edge_iter operator++() {
             ++it;
             return *this;
         }
@@ -408,9 +408,9 @@ class AdaptGraph : public ikos::writeable {
         edge_range_t(const edge_range_t &o) : r(o.r), ws(o.ws) {}
         edge_range_t(const elt_range_t &_r, vec<Wt> &_ws) : r(_r), ws(_ws) {}
 
-        edge_iter begin(void) const { return edge_iter(r.begin(), ws); }
-        edge_iter end(void) const { return edge_iter(r.end(), ws); }
-        size_t size(void) const { return r.size(); }
+        edge_iter begin() const { return edge_iter(r.begin(), ws); }
+        edge_iter end() const { return edge_iter(r.end(), ws); }
+        size_t size() const { return r.size(); }
 
         elt_range_t r;
         vec<Wt> &ws;
@@ -435,10 +435,10 @@ class AdaptGraph : public ikos::writeable {
     using e_succ_range = edge_range_t;
 
     // Management
-    bool is_empty(void) const { return edge_count == 0; }
-    size_t size(void) const { return _succs.size(); }
-    size_t num_edges(void) const { return edge_count; }
-    vert_id new_vertex(void) {
+    bool is_empty() const { return edge_count == 0; }
+    size_t size() const { return _succs.size(); }
+    size_t num_edges() const { return edge_count; }
+    vert_id new_vertex() {
         vert_id v;
         if (free_id.size() > 0) {
             v = free_id.last();
@@ -480,7 +480,7 @@ class AdaptGraph : public ikos::writeable {
         free_id.push(v);
     }
 
-    void clear_edges(void) {
+    void clear_edges() {
         _ws.clear();
         for (vert_id v : verts()) {
             _succs[v].clear();
@@ -488,7 +488,7 @@ class AdaptGraph : public ikos::writeable {
         }
         edge_count = 0;
     }
-    void clear(void) {
+    void clear() {
         _ws.clear();
         _succs.clear();
         _preds.clear();
