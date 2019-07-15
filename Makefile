@@ -19,21 +19,21 @@ LINUX := $(abspath ../linux)
 
 LDLIBS += -lgmp
 
-CXXFLAGS := -Wall -Wfatal-errors -O2 -g3 -std=c++17 -flto -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 -I $(SRCDIR) -I external #  -Werror does not work well in Linux
-
+CXXFLAGS := -Wall -Wfatal-errors -g3 -std=c++17 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 -I $(SRCDIR) -I external #  -Werror does not work well in Linux
+# CXXFLAGS += -O2 -flto
 all: $(BINDIR)/check  # $(BINDIR)/unit-test
 
--include $(DEPENDS)
+
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.cpp
 	@mkdir -p $(BUILDDIR)
 	@printf "$@ <- $<\n"
-	@$(CXX) ${CXXFLAGS} $< -MMD -c -o $@ # important: use $< and not $^
+	@$(CXX) ${CXXFLAGS} $< -MMD -MP -c -o $@ # important: use $< and not $^
 
 $(BUILDDIR)/crab/%.o: $(SRCDIR)/crab/%.cpp
 	@mkdir -p $(BUILDDIR)
 	@printf "$@ <- $<\n"
-	@$(CXX) ${CXXFLAGS} $< -MMD -c -o $@ # important: use $< and not $^
+	@$(CXX) ${CXXFLAGS} $< -MMD -MP -c -o $@ # important: use $< and not $^
 
 $(BINDIR)/unit-test: ${BUILDDIR}/test.o ${TEST_OBJECTS} ${OBJECTS}
 	@printf "$@ <- $^\n"
@@ -44,7 +44,8 @@ $(BINDIR)/check: ${BUILDDIR}/main_check.o ${OBJECTS}
 	@$(CXX) ${CXXFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
 
 clean:
-	rm -f $(BINDIR)/check $(BINDIR)/unit-test $(BUILDDIR)/*.o $(BUILDDIR)/crab/*.o $(BUILDDIR)/*.d $(BUILDDIR)/crab/*.d
+	rm -f $(BINDIR)/check $(BINDIR)/unit-test
+	rm -rf $(BUILDDIR)
 
 linux_samples:
 	git clone --depth 1 https://github.com/torvalds/linux.git $(LINUX)
@@ -58,3 +59,5 @@ html: ${SRCDIR}/*.*pp
 
 print-% :
 	@echo $* = $($*)
+
+-include $(DEPENDS)
