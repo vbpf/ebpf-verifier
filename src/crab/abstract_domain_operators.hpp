@@ -1,6 +1,6 @@
 #pragma once
 
-#include "crab/linear_constraints.hpp"
+//#include "crab/linear_constraints.hpp"
 #include "crab/types.hpp"
 
 /* Types for abstract domain operations */
