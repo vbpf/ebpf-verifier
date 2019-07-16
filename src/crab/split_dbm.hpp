@@ -384,8 +384,6 @@ class SplitDBM final : public writeable {
 
     void apply(operation_t op, variable_t x, variable_t y, number_t k);
 
-    void backward_assign(variable_t x, linear_expression_t e, SplitDBM inv);
-
     void operator+=(linear_constraint_t cst);
 
     void operator+=(linear_constraint_system_t csts) {

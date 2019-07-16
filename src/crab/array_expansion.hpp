@@ -691,10 +691,6 @@ class array_expansion_domain final : public writeable {
                  outs() << "apply " << x << " := " << y << " " << op << " " << z << " " << *this << "\n";);
     }
 
-    void backward_assign(variable_t x, linear_expression_t e, array_expansion_domain_t inv) {
-        _inv.backward_assign(x, e, inv.get_content_domain());
-    }
-
     void apply(int_conv_operation_t op, variable_t dst, variable_t src) {
         CrabStats::count(getDomainName() + ".count.apply");
         ScopedCrabStats __st__(getDomainName() + ".apply");
