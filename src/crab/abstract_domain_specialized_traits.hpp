@@ -45,7 +45,7 @@ class checker_domain_traits {
         if (rhs.is_contradiction())
             return false;
 
-        CRAB_LOG("checker-entailment", linear_constraint_t tmp(rhs); crab::outs()
+        CRAB_LOG("checker-entailment", linear_constraint_t tmp(rhs); outs()
                                                                      << "Checking whether\n"
                                                                      << lhs << "\nentails " << tmp << "\n";);
 
@@ -62,8 +62,8 @@ class checker_domain_traits {
             res = op(rhs);
         }
 
-        CRAB_LOG("checker-entailment", if (res) { crab::outs() << "\t**entailment holds.\n"; } else {
-            crab::outs() << "\t**entailment does not hold.\n";
+        CRAB_LOG("checker-entailment", if (res) { outs() << "\t**entailment holds.\n"; } else {
+            outs() << "\t**entailment does not hold.\n";
         });
 
         // Note: we cannot convert rhs into Domain and then use the <=

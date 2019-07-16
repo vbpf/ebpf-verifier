@@ -5,7 +5,7 @@
 #include <gmpxx.h>
 #include <string>
 
-namespace ikos {
+namespace crab {
 
 z_number::z_number(mpz_class n) : _n(n) {}
 
@@ -201,6 +201,6 @@ z_number z_number::fill_ones() const {
     return z_number(result);
 }
 
-void z_number::write(crab::crab_os& o) const { o << _n.get_str(); }
+void z_number::write(crab_os& o) const { o << _n.get_str(); }
 
-} // namespace ikos
+} // namespace crab

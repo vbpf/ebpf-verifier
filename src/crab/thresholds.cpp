@@ -2,7 +2,7 @@
 
 namespace crab {
 
-namespace iterators {
+inline namespace iterators {
 
 void thresholds_t::add(bound_t v1) {
     if (m_thresholds.size() < m_size) {
@@ -152,9 +152,9 @@ void wto_thresholds_t::visit(wto_cycle_t& cycle) {
     m_stack.pop_back();
 }
 
-void wto_thresholds_t::write(crab::crab_os& o) const {
+void wto_thresholds_t::write(crab_os& o) const {
     for (auto& kv : m_head_to_thresholds) {
-        o << crab::get_label_str(kv.first) << "=" << kv.second << "\n";
+        o << get_label_str(kv.first) << "=" << kv.second << "\n";
     }
 }
 } // namespace iterators

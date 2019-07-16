@@ -32,7 +32,7 @@ class safe_i64 {
 
     safe_i64(int64_t num);
 
-    safe_i64(ikos::z_number n);
+    safe_i64(z_number n);
 
     operator long() const;
 
@@ -69,7 +69,7 @@ class safe_i64 {
 
     bool operator>=(safe_i64 x) const;
 
-    void write(crab::crab_os& os) const;
+    void write(crab_os& os) const;
 
     friend crab_os& operator<<(crab_os& o, const safe_i64& n) {
         n.write(o);

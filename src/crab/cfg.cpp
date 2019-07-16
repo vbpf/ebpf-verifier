@@ -1,9 +1,7 @@
 #include "crab/cfg.hpp"
 #include "crab/types.hpp"
 
-namespace ikos {
-using crab::number_t;
-using crab::varname_t;
+namespace crab {
 
 class variable_ref_t {
   public:
@@ -75,18 +73,13 @@ class variable_ref_t {
         return m_v->hash();
     }
 
-    void write(crab::crab_os& o) const { return m_v->write(o); }
+    void write(crab_os& o) const { return m_v->write(o); }
 }; // class variable_ref_t
 
-inline crab::crab_os& operator<<(crab::crab_os& o, const variable_ref_t& v) {
+inline crab_os& operator<<(crab_os& o, const variable_ref_t& v) {
     v.write(o);
     return o;
 }
-} // namespace ikos
-
-namespace crab {
-
-using ikos::variable_ref_t;
 
 void statement_visitor::visit(basic_block_t& b) {
     for (auto& s : b) {
@@ -127,7 +120,7 @@ class type_checker {
     type_checker(CFG cfg) : m_cfg(cfg) {}
 
     void run() {
-        CRAB_LOG("type-check", crab::outs() << "Type checking CFG ...\n";);
+        CRAB_LOG("type-check", outs() << "Type checking CFG ...\n";);
 
         // some sanity checks about the CFG
         if (m_cfg.size() == 0)
@@ -147,7 +140,7 @@ class type_checker {
             b.accept(&vis);
         }
 
-        CRAB_LOG("type-check", crab::outs() << "CFG is well-typed!\n";);
+        CRAB_LOG("type-check", outs() << "CFG is well-typed!\n";);
     }
 
   private:
@@ -161,7 +154,7 @@ class type_checker {
 
         void check_num(variable_t v, std::string msg, statement_t& s) {
             if (v.get_type() != INT_TYPE) {
-                crab::crab_string_os os;
+                crab_string_os os;
                 os << "(type checking) " << msg << " in " << s;
                 CRAB_ERROR(os.str());
             }
@@ -169,7 +162,7 @@ class type_checker {
 
         void check_int(variable_t v, std::string msg, statement_t& s) {
             if ((v.get_type() != INT_TYPE) || (v.get_bitwidth() <= 1)) {
-                crab::crab_string_os os;
+                crab_string_os os;
                 os << "(type checking) " << msg << " in " << s;
                 CRAB_ERROR(os.str());
             }
@@ -178,7 +171,7 @@ class type_checker {
         void check_bitwidth_if_int(variable_t v, std::string msg, statement_t& s) {
             if (v.get_type() == INT_TYPE) {
                 if (v.get_bitwidth() <= 1) {
-                    crab::crab_string_os os;
+                    crab_string_os os;
                     os << "(type checking) " << msg << " in " << s;
                     CRAB_ERROR(os.str());
                 }
@@ -187,7 +180,7 @@ class type_checker {
 
         void check_same_type(variable_t v1, variable_t v2, std::string msg, statement_t& s) {
             if (v1.get_type() != v2.get_type()) {
-                crab::crab_string_os os;
+                crab_string_os os;
                 os << "(type checking) " << msg << " in " << s;
                 CRAB_ERROR(os.str());
             }
@@ -197,7 +190,7 @@ class type_checker {
             // assume v1 and v2 have same type
             if (v1.get_type() == INT_TYPE) {
                 if (v1.get_bitwidth() != v2.get_bitwidth()) {
-                    crab::crab_string_os os;
+                    crab_string_os os;
                     os << "(type checking) " << msg << " in " << s;
                     CRAB_ERROR(os.str());
                 }
@@ -206,7 +199,7 @@ class type_checker {
 
         void check_num_or_var(linear_expression_t e, std::string msg, statement_t& s) {
             if (!(e.is_constant() || e.get_variable())) {
-                crab::crab_string_os os;
+                crab_string_os os;
                 os << "(type checking) " << msg << " in " << s;
                 CRAB_ERROR(os.str());
             }
@@ -216,7 +209,7 @@ class type_checker {
             switch (v.get_type()) {
             case ARR_INT_TYPE: break;
             default: {
-                crab::crab_string_os os;
+                crab_string_os os;
                 os << "(type checking) " << v << " must be an array variable in " << s;
                 CRAB_ERROR(os.str());
             }
@@ -231,12 +224,12 @@ class type_checker {
                     return;
                 break;
             default: {
-                crab::crab_string_os os;
+                crab_string_os os;
                 os << "(type checking) " << v1 << " must be an array variable in " << s;
                 CRAB_ERROR(os.str());
             }
             }
-            crab::crab_string_os os;
+            crab_string_os os;
             os << "(type checking) " << v1 << " and " << v2 << " do not have consistent types in " << s;
             CRAB_ERROR(os.str());
         }
@@ -390,7 +383,7 @@ class type_checker {
             linear_expression_t v = s.value();
             if (s.is_singleton()) {
                 if (!(s.lb_index().equal(s.ub_index()))) {
-                    crab::crab_string_os os;
+                    crab_string_os os;
                     os << "(type checking) "
                        << "lower and upper indexes must be equal because array is a singleton in " << s;
                     CRAB_ERROR(os.str());
@@ -428,10 +421,10 @@ class type_checker {
 };     // end class type_checker
 
 void type_check(const cfg_ref_t& cfg) {
-    crab::CrabStats::resume("CFG type checking");
-    crab::type_checker tc(cfg);
+    CrabStats::resume("CFG type checking");
+    type_checker tc(cfg);
     tc.run();
-    crab::CrabStats::stop("CFG type checking");
+    CrabStats::stop("CFG type checking");
 }
 
 } // namespace crab

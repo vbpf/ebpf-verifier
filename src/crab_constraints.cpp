@@ -24,7 +24,7 @@
 #include "asm_cfg.hpp"
 #include "asm_syntax.hpp"
 
-using namespace ikos::dsl_syntax;
+using namespace crab::dsl_syntax;
 
 using std::optional;
 using std::string;
@@ -55,7 +55,7 @@ static basic_block_t& add_child(cfg_t& cfg, basic_block_t& block, std::string su
 
 using crab::debug_info;
 
-using ikos::variable_t;
+using crab::variable_t;
 
 /** Encoding of memory regions and types.
  *

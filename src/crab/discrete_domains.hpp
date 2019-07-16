@@ -46,7 +46,7 @@
 
 #include <boost/range.hpp>
 
-namespace ikos {
+namespace crab {
 
 template <typename Element>
 class discrete_domain {
@@ -200,7 +200,7 @@ class discrete_domain {
         }
     }
 
-    void write(crab::crab_os& o) const {
+    void write(crab_os& o) const {
         if (this->_is_top) {
             o << "{...}";
         } else if (this->_set.empty()) {
@@ -213,9 +213,9 @@ class discrete_domain {
 }; // class discrete_domain
 
 template <typename Elem>
-inline crab::crab_os& operator<<(crab::crab_os& o, const discrete_domain<Elem>& d) {
+inline crab_os& operator<<(crab_os& o, const discrete_domain<Elem>& d) {
     d.write(o);
     return o;
 }
 
-} // namespace ikos
+} // namespace crab

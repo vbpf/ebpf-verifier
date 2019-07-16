@@ -2,7 +2,7 @@
 
 #include <boost/iterator/transform_iterator.hpp>
 
-namespace ikos {
+namespace crab {
 
 linear_expression_t::const_iterator linear_expression_t::begin() const {
     return boost::make_transform_iterator(this->_map->begin(), tr_value_ty());
@@ -44,7 +44,7 @@ linear_constraint_t linear_constraint_t::negate() const {
     }
 }
 
-void linear_constraint_t::write(crab::crab_os& o) const {
+void linear_constraint_t::write(crab_os& o) const {
     if (this->is_contradiction()) {
         o << "false";
     } else if (this->is_tautology()) {
@@ -125,4 +125,4 @@ linear_constraint_system_t linear_constraint_system_t::normalize() const {
 
     return out;
 }
-} // namespace ikos
+} // namespace crab

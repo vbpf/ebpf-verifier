@@ -324,7 +324,7 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
 }
 
 bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
-    CRAB_LOG("zones-split", linear_expression_t exp_tmp(exp); crab::outs() << "Adding: " << exp_tmp << "<= 0"
+    CRAB_LOG("zones-split", linear_expression_t exp_tmp(exp); outs() << "Adding: " << exp_tmp << "<= 0"
                                                                            << "\n");
     std::vector<std::pair<variable_t, Wt>> lbs, ubs;
     std::vector<diffcst_t> csts;
@@ -335,7 +335,7 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
     Wt_min min_op;
     typename graph_t::mut_val_ref_t w;
     for (auto p : lbs) {
-        CRAB_LOG("zones-split", crab::outs() << p.first << ">=" << p.second << "\n");
+        CRAB_LOG("zones-split", outs() << p.first << ">=" << p.second << "\n");
         variable_t x(p.first);
         vert_id v = get_vert(p.first);
         if (g.lookup(v, 0, &w) && w.get() <= -p.second)
@@ -349,7 +349,7 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
         check_potential(g, potential, __LINE__);
     }
     for (auto p : ubs) {
-        CRAB_LOG("zones-split", crab::outs() << p.first << "<=" << p.second << "\n");
+        CRAB_LOG("zones-split", outs() << p.first << "<=" << p.second << "\n");
         variable_t x(p.first);
         vert_id v = get_vert(p.first);
         if (g.lookup(0, v, &w) && w.get() <= p.second)
@@ -363,7 +363,7 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
     }
 
     for (auto diff : csts) {
-        CRAB_LOG("zones-split", crab::outs()
+        CRAB_LOG("zones-split", outs()
                                     << diff.first.first << "-" << diff.first.second << "<=" << diff.second << "\n");
 
         vert_id src = get_vert(diff.first.second);
@@ -456,8 +456,8 @@ void SplitDBM::add_univar_disequation(variable_t x, number_t n) {
 }
 
 bool SplitDBM::operator<=(SplitDBM o) {
-    crab::CrabStats::count(getDomainName() + ".count.leq");
-    crab::ScopedCrabStats __st__(getDomainName() + ".leq");
+    CrabStats::count(getDomainName() + ".count.leq");
+    ScopedCrabStats __st__(getDomainName() + ".leq");
 
     // cover all trivial cases to avoid allocating a dbm matrix
     if (is_bottom())
@@ -471,7 +471,7 @@ bool SplitDBM::operator<=(SplitDBM o) {
     else {
         normalize();
 
-        // CRAB_LOG("zones-split", crab::outs() << "operator<=: "<< *this<< "<=?"<< o <<"\n");
+        // CRAB_LOG("zones-split", outs() << "operator<=: "<< *this<< "<=?"<< o <<"\n");
 
         if (vert_map.size() < o.vert_map.size())
             return false;
@@ -524,15 +524,15 @@ bool SplitDBM::operator<=(SplitDBM o) {
 }
 
 SplitDBM SplitDBM::operator|(SplitDBM o) {
-    crab::CrabStats::count(getDomainName() + ".count.join");
-    crab::ScopedCrabStats __st__(getDomainName() + ".join");
+    CrabStats::count(getDomainName() + ".count.join");
+    ScopedCrabStats __st__(getDomainName() + ".join");
 
     if (is_bottom() || o.is_top())
         return o;
     else if (is_top() || o.is_bottom())
         return *this;
     else {
-        CRAB_LOG("zones-split", crab::outs() << "Before join:\n"
+        CRAB_LOG("zones-split", outs() << "Before join:\n"
                                              << "DBM 1\n"
                                              << *this << "\n"
                                              << "DBM 2\n"
@@ -704,22 +704,22 @@ SplitDBM SplitDBM::operator|(SplitDBM o) {
         // SplitDBM res(join_range, out_vmap, out_revmap, join_g, join_pot);
         SplitDBM res(std::move(out_vmap), std::move(out_revmap), std::move(join_g), std::move(pot_rx), vert_set_t());
         // join_g.check_adjs();
-        CRAB_LOG("zones-split", crab::outs() << "Result join:\n" << res << "\n");
+        CRAB_LOG("zones-split", outs() << "Result join:\n" << res << "\n");
 
         return res;
     }
 }
 
 SplitDBM SplitDBM::widen(SplitDBM o) {
-    crab::CrabStats::count(getDomainName() + ".count.widening");
-    crab::ScopedCrabStats __st__(getDomainName() + ".widening");
+    CrabStats::count(getDomainName() + ".count.widening");
+    ScopedCrabStats __st__(getDomainName() + ".widening");
 
     if (is_bottom())
         return o;
     else if (o.is_bottom())
         return *this;
     else {
-        CRAB_LOG("zones-split", crab::outs() << "Before widening:\n"
+        CRAB_LOG("zones-split", outs() << "Before widening:\n"
                                              << "DBM 1\n"
                                              << *this << "\n"
                                              << "DBM 2\n"
@@ -767,13 +767,13 @@ SplitDBM SplitDBM::widen(SplitDBM o) {
         SplitDBM res(std::move(out_vmap), std::move(out_revmap), std::move(widen_g), std::move(widen_pot),
                      std::move(widen_unstable));
 
-        CRAB_LOG("zones-split", crab::outs() << "Result widening:\n" << res << "\n");
+        CRAB_LOG("zones-split", outs() << "Result widening:\n" << res << "\n");
         return res;
     }
 }
 SplitDBM SplitDBM::operator&(SplitDBM o) {
-    crab::CrabStats::count(getDomainName() + ".count.meet");
-    crab::ScopedCrabStats __st__(getDomainName() + ".meet");
+    CrabStats::count(getDomainName() + ".count.meet");
+    ScopedCrabStats __st__(getDomainName() + ".meet");
 
     if (is_bottom() || o.is_bottom())
         return SplitDBM::bottom();
@@ -782,7 +782,7 @@ SplitDBM SplitDBM::operator&(SplitDBM o) {
     else if (o.is_top())
         return *this;
     else {
-        CRAB_LOG("zones-split", crab::outs() << "Before meet:\n"
+        CRAB_LOG("zones-split", outs() << "Before meet:\n"
                                              << "DBM 1\n"
                                              << *this << "\n"
                                              << "DBM 2\n"
@@ -867,14 +867,14 @@ SplitDBM SplitDBM::operator&(SplitDBM o) {
         }
         check_potential(meet_g, meet_pi, __LINE__);
         SplitDBM res(std::move(meet_verts), std::move(meet_rev), std::move(meet_g), std::move(meet_pi), vert_set_t());
-        CRAB_LOG("zones-split", crab::outs() << "Result meet:\n" << res << "\n");
+        CRAB_LOG("zones-split", outs() << "Result meet:\n" << res << "\n");
         return res;
     }
 }
 
 void SplitDBM::operator-=(variable_t v) {
-    crab::CrabStats::count(getDomainName() + ".count.forget");
-    crab::ScopedCrabStats __st__(getDomainName() + ".forget");
+    CrabStats::count(getDomainName() + ".count.forget");
+    ScopedCrabStats __st__(getDomainName() + ".forget");
 
     if (is_bottom())
         return;
@@ -882,17 +882,17 @@ void SplitDBM::operator-=(variable_t v) {
 
     auto it = vert_map.find(v);
     if (it != vert_map.end()) {
-        CRAB_LOG("zones-split", crab::outs() << "Before forget " << it->second << ": " << g << "\n");
+        CRAB_LOG("zones-split", outs() << "Before forget " << it->second << ": " << g << "\n");
         g.forget(it->second);
-        CRAB_LOG("zones-split", crab::outs() << "After: " << g << "\n");
+        CRAB_LOG("zones-split", outs() << "After: " << g << "\n");
         rev_map[it->second] = std::nullopt;
         vert_map.erase(v);
     }
 }
 
 void SplitDBM::operator+=(linear_constraint_t cst) {
-    crab::CrabStats::count(getDomainName() + ".count.add_constraints");
-    crab::ScopedCrabStats __st__(getDomainName() + ".add_constraints");
+    CrabStats::count(getDomainName() + ".count.add_constraints");
+    ScopedCrabStats __st__(getDomainName() + ".add_constraints");
 
     // XXX: we do nothing with unsigned linear inequalities
     if (cst.is_inequality() && cst.is_unsigned()) {
@@ -919,7 +919,7 @@ void SplitDBM::operator+=(linear_constraint_t cst) {
             set_to_bottom();
         }
         //  g.check_adjs();
-        CRAB_LOG("zones-split", crab::outs() << "--- " << cst << "\n" << *this << "\n");
+        CRAB_LOG("zones-split", outs() << "--- " << cst << "\n" << *this << "\n");
         return;
     }
 
@@ -931,7 +931,7 @@ void SplitDBM::operator+=(linear_constraint_t cst) {
             if (!add_linear_leq(nc.expression())) {
                 set_to_bottom();
             }
-            CRAB_LOG("zones-split", crab::outs() << "--- " << cst << "\n" << *this << "\n");
+            CRAB_LOG("zones-split", outs() << "--- " << cst << "\n" << *this << "\n");
             return;
         }
     }
@@ -939,12 +939,12 @@ void SplitDBM::operator+=(linear_constraint_t cst) {
     if (cst.is_equality()) {
         linear_expression_t exp = cst.expression();
         if (!add_linear_leq(exp) || !add_linear_leq(-exp)) {
-            CRAB_LOG("zones-split", crab::outs() << " ~~> _|_"
+            CRAB_LOG("zones-split", outs() << " ~~> _|_"
                                                  << "\n");
             set_to_bottom();
         }
         // g.check_adjs();
-        CRAB_LOG("zones-split", crab::outs() << "--- " << cst << "\n" << *this << "\n");
+        CRAB_LOG("zones-split", outs() << "--- " << cst << "\n" << *this << "\n");
         return;
     }
 
@@ -954,20 +954,20 @@ void SplitDBM::operator+=(linear_constraint_t cst) {
     }
 
     CRAB_WARN("Unhandled constraint ", cst, " by split_dbm");
-    CRAB_LOG("zones-split", crab::outs() << "---" << cst << "\n" << *this << "\n");
+    CRAB_LOG("zones-split", outs() << "---" << cst << "\n" << *this << "\n");
     return;
 }
 
 void SplitDBM::assign(variable_t x, linear_expression_t e) {
-    crab::CrabStats::count(getDomainName() + ".count.assign");
-    crab::ScopedCrabStats __st__(getDomainName() + ".assign");
+    CrabStats::count(getDomainName() + ".count.assign");
+    ScopedCrabStats __st__(getDomainName() + ".assign");
 
     if (is_bottom()) {
         return;
     }
 
-    CRAB_LOG("zones-split", crab::outs() << "Before assign: " << *this << "\n");
-    CRAB_LOG("zones-split", crab::outs() << x << ":=" << e << "\n");
+    CRAB_LOG("zones-split", outs() << "Before assign: " << *this << "\n");
+    CRAB_LOG("zones-split", outs() << x << ":=" << e << "\n");
     normalize();
 
     check_potential(g, potential, __LINE__);
@@ -980,7 +980,7 @@ void SplitDBM::assign(variable_t x, linear_expression_t e) {
         lb_w = convert_NtoW(-(*(x_int.lb().number())), overflow);
         if (overflow) {
             operator-=(x);
-            CRAB_LOG("zones-split", crab::outs() << "---" << x << ":=" << e << "\n" << *this << "\n");
+            CRAB_LOG("zones-split", outs() << "---" << x << ":=" << e << "\n" << *this << "\n");
             return;
         }
     }
@@ -988,7 +988,7 @@ void SplitDBM::assign(variable_t x, linear_expression_t e) {
         ub_w = convert_NtoW(*(x_int.ub().number()), overflow);
         if (overflow) {
             operator-=(x);
-            CRAB_LOG("zones-split", crab::outs() << "---" << x << ":=" << e << "\n" << *this << "\n");
+            CRAB_LOG("zones-split", outs() << "---" << x << ":=" << e << "\n" << *this << "\n");
             return;
         }
     }
@@ -1063,12 +1063,12 @@ void SplitDBM::assign(variable_t x, linear_expression_t e) {
     // g.check_adjs();
 
     check_potential(g, potential, __LINE__);
-    CRAB_LOG("zones-split", crab::outs() << "---" << x << ":=" << e << "\n" << *this << "\n");
+    CRAB_LOG("zones-split", outs() << "---" << x << ":=" << e << "\n" << *this << "\n");
 }
 
 void SplitDBM::rename(const variable_vector_t& from, const variable_vector_t& to) {
-    crab::CrabStats::count(getDomainName() + ".count.rename");
-    crab::ScopedCrabStats __st__(getDomainName() + ".rename");
+    CrabStats::count(getDomainName() + ".count.rename");
+    ScopedCrabStats __st__(getDomainName() + ".rename");
 
     if (is_top() || is_bottom())
         return;
@@ -1076,13 +1076,13 @@ void SplitDBM::rename(const variable_vector_t& from, const variable_vector_t& to
     // renaming vert_map by creating a new vert_map since we are
     // modifying the keys.
     // rev_map is modified in-place since we only modify values.
-    CRAB_LOG("zones-split", crab::outs() << "Replacing {"; for (auto v
-                                                                : from) crab::outs()
+    CRAB_LOG("zones-split", outs() << "Replacing {"; for (auto v
+                                                                : from) outs()
                                                            << v << ";";
-             crab::outs() << "} with "; for (auto v
-                                             : to) crab::outs()
+             outs() << "} with "; for (auto v
+                                             : to) outs()
                                         << v << ";";
-             crab::outs() << "}:\n"; crab::outs() << *this << "\n";);
+             outs() << "}:\n"; outs() << *this << "\n";);
 
     vert_map_t new_vert_map;
     for (auto kv : vert_map) {
@@ -1097,12 +1097,12 @@ void SplitDBM::rename(const variable_vector_t& from, const variable_vector_t& to
     }
     std::swap(vert_map, new_vert_map);
 
-    CRAB_LOG("zones-split", crab::outs() << "RESULT=" << *this << "\n");
+    CRAB_LOG("zones-split", outs() << "RESULT=" << *this << "\n");
 }
 
 void SplitDBM::extract(const variable_t& x, linear_constraint_system_t& csts, bool only_equalities) {
-    crab::CrabStats::count(getDomainName() + ".count.extract");
-    crab::ScopedCrabStats __st__(getDomainName() + ".extract");
+    CrabStats::count(getDomainName() + ".count.extract");
+    ScopedCrabStats __st__(getDomainName() + ".extract");
 
     normalize();
     if (is_bottom()) {
@@ -1141,15 +1141,15 @@ void SplitDBM::extract(const variable_t& x, linear_constraint_system_t& csts, bo
 }
 
 SplitDBM SplitDBM::narrow(SplitDBM o) {
-    crab::CrabStats::count(getDomainName() + ".count.narrowing");
-    crab::ScopedCrabStats __st__(getDomainName() + ".narrowing");
+    CrabStats::count(getDomainName() + ".count.narrowing");
+    ScopedCrabStats __st__(getDomainName() + ".narrowing");
 
     if (is_bottom() || o.is_bottom())
         return SplitDBM::bottom();
     else if (is_top())
         return o;
     else {
-        CRAB_LOG("zones-split", crab::outs() << "Before narrowing:\n"
+        CRAB_LOG("zones-split", outs() << "Before narrowing:\n"
                                              << "DBM 1\n"
                                              << *this << "\n"
                                              << "DBM 2\n"
@@ -1160,14 +1160,14 @@ SplitDBM SplitDBM::narrow(SplitDBM o) {
         normalize();
         SplitDBM res(*this);
 
-        CRAB_LOG("zones-split", crab::outs() << "Result narrowing:\n" << res << "\n");
+        CRAB_LOG("zones-split", outs() << "Result narrowing:\n" << res << "\n");
         return res;
     }
 }
 
 void SplitDBM::normalize() {
-    crab::CrabStats::count(getDomainName() + ".count.normalize");
-    crab::ScopedCrabStats __st__(getDomainName() + ".normalize");
+    CrabStats::count(getDomainName() + ".count.normalize");
+    ScopedCrabStats __st__(getDomainName() + ".normalize");
 
     // dbm_canonical(_dbm);
     // Always maintained in normal form, except for widening
@@ -1187,8 +1187,8 @@ void SplitDBM::normalize() {
     unstable.clear();
 }
 void SplitDBM::set(variable_t x, interval_t intv) {
-    crab::CrabStats::count(getDomainName() + ".count.assign");
-    crab::ScopedCrabStats __st__(getDomainName() + ".assign");
+    CrabStats::count(getDomainName() + ".count.assign");
+    ScopedCrabStats __st__(getDomainName() + ".assign");
 
     if (is_bottom())
         return;
@@ -1224,8 +1224,8 @@ void SplitDBM::set(variable_t x, interval_t intv) {
     }
 }
 void SplitDBM::apply(operation_t op, variable_t x, variable_t y, variable_t z) {
-    crab::CrabStats::count(getDomainName() + ".count.apply");
-    crab::ScopedCrabStats __st__(getDomainName() + ".apply");
+    CrabStats::count(getDomainName() + ".count.apply");
+    ScopedCrabStats __st__(getDomainName() + ".apply");
 
     if (is_bottom()) {
         return;
@@ -1245,11 +1245,11 @@ void SplitDBM::apply(operation_t op, variable_t x, variable_t y, variable_t z) {
     default: CRAB_ERROR("Operation ", op, " not supported");
     }
 
-    CRAB_LOG("zones-split", crab::outs() << "---" << x << ":=" << y << op << z << "\n" << *this << "\n");
+    CRAB_LOG("zones-split", outs() << "---" << x << ":=" << y << op << z << "\n" << *this << "\n");
 }
 void SplitDBM::apply(operation_t op, variable_t x, variable_t y, number_t k) {
-    crab::CrabStats::count(getDomainName() + ".count.apply");
-    crab::ScopedCrabStats __st__(getDomainName() + ".apply");
+    CrabStats::count(getDomainName() + ".count.apply");
+    ScopedCrabStats __st__(getDomainName() + ".apply");
 
     if (is_bottom()) {
         return;
@@ -1269,12 +1269,12 @@ void SplitDBM::apply(operation_t op, variable_t x, variable_t y, number_t k) {
     default: CRAB_ERROR("Operation ", op, " not supported");
     }
 
-    CRAB_LOG("zones-split", crab::outs() << "---" << x << ":=" << y << op << k << "\n" << *this << "\n");
+    CRAB_LOG("zones-split", outs() << "---" << x << ":=" << y << op << k << "\n" << *this << "\n");
 }
 
 void SplitDBM::apply(bitwise_operation_t op, variable_t x, variable_t y, variable_t z) {
-    crab::CrabStats::count(getDomainName() + ".count.apply");
-    crab::ScopedCrabStats __st__(getDomainName() + ".apply");
+    CrabStats::count(getDomainName() + ".count.apply");
+    ScopedCrabStats __st__(getDomainName() + ".apply");
 
     // Convert to intervals and perform the operation
     normalize();
@@ -1296,8 +1296,8 @@ void SplitDBM::apply(bitwise_operation_t op, variable_t x, variable_t y, variabl
 }
 
 void SplitDBM::apply(bitwise_operation_t op, variable_t x, variable_t y, number_t k) {
-    crab::CrabStats::count(getDomainName() + ".count.apply");
-    crab::ScopedCrabStats __st__(getDomainName() + ".apply");
+    CrabStats::count(getDomainName() + ".count.apply");
+    ScopedCrabStats __st__(getDomainName() + ".apply");
 
     // Convert to intervals and perform the operation
     normalize();
@@ -1317,8 +1317,8 @@ void SplitDBM::apply(bitwise_operation_t op, variable_t x, variable_t y, number_
     set(x, xi);
 }
 void SplitDBM::project(const variable_vector_t& variables) {
-    crab::CrabStats::count(getDomainName() + ".count.project");
-    crab::ScopedCrabStats __st__(getDomainName() + ".project");
+    CrabStats::count(getDomainName() + ".count.project");
+    ScopedCrabStats __st__(getDomainName() + ".project");
 
     if (is_bottom() || is_top()) {
         return;
@@ -1344,8 +1344,8 @@ void SplitDBM::project(const variable_vector_t& variables) {
 }
 
 void SplitDBM::forget(const variable_vector_t& variables) {
-    crab::CrabStats::count(getDomainName() + ".count.forget");
-    crab::ScopedCrabStats __st__(getDomainName() + ".forget");
+    CrabStats::count(getDomainName() + ".count.forget");
+    ScopedCrabStats __st__(getDomainName() + ".forget");
 
     if (is_bottom() || is_top()) {
         return;
@@ -1360,14 +1360,14 @@ void SplitDBM::forget(const variable_vector_t& variables) {
 }
 
 void SplitDBM::expand(variable_t x, variable_t y) {
-    crab::CrabStats::count(getDomainName() + ".count.expand");
-    crab::ScopedCrabStats __st__(getDomainName() + ".expand");
+    CrabStats::count(getDomainName() + ".count.expand");
+    ScopedCrabStats __st__(getDomainName() + ".expand");
 
     if (is_bottom() || is_top()) {
         return;
     }
 
-    CRAB_LOG("zones-split", crab::outs() << "Before expand " << x << " into " << y << ":\n" << *this << "\n");
+    CRAB_LOG("zones-split", outs() << "Before expand " << x << " into " << y << ":\n" << *this << "\n");
 
     auto it = vert_map.find(y);
     if (it != vert_map.end()) {
@@ -1387,7 +1387,7 @@ void SplitDBM::expand(variable_t x, variable_t y) {
 
     potential[jj] = potential[ii];
 
-    CRAB_LOG("zones-split", crab::outs() << "After expand " << x << " into " << y << ":\n" << *this << "\n");
+    CRAB_LOG("zones-split", outs() << "After expand " << x << " into " << y << ":\n" << *this << "\n");
 }
 bool SplitDBM::is_unsat(linear_constraint_t cst) {
     if (is_bottom() || cst.is_contradiction()) {
@@ -1500,8 +1500,8 @@ void SplitDBM::write(crab_os& o) {
     }
 }
 linear_constraint_system_t SplitDBM::to_linear_constraint_system() {
-    crab::CrabStats::count(getDomainName() + ".count.to_linear_constraints");
-    crab::ScopedCrabStats __st__(getDomainName() + ".to_linear_constraints");
+    CrabStats::count(getDomainName() + ".count.to_linear_constraints");
+    ScopedCrabStats __st__(getDomainName() + ".to_linear_constraints");
 
     normalize();
 
@@ -1568,8 +1568,8 @@ class BackwardAssignOps {
 
     // x := e
     static void assign(AbsDom& dom, variable_t x, linear_expression_t e, AbsDom inv) {
-        crab::CrabStats::count(AbsDom::getDomainName() + ".count.backward_assign");
-        crab::ScopedCrabStats __st__(AbsDom::getDomainName() + ".backward_assign");
+        CrabStats::count(AbsDom::getDomainName() + ".count.backward_assign");
+        ScopedCrabStats __st__(AbsDom::getDomainName() + ".backward_assign");
 
         if (dom.is_bottom())
             return;
@@ -1592,14 +1592,14 @@ class BackwardAssignOps {
 
     // x := y op k
     static void apply(AbsDom& dom, operation_t op, variable_t x, variable_t y, number_t k, AbsDom inv) {
-        crab::CrabStats::count(AbsDom::getDomainName() + ".count.backward_apply");
-        crab::ScopedCrabStats __st__(AbsDom::getDomainName() + ".backward_apply");
+        CrabStats::count(AbsDom::getDomainName() + ".count.backward_apply");
+        ScopedCrabStats __st__(AbsDom::getDomainName() + ".backward_apply");
 
         if (dom.is_bottom()) {
             return;
         }
 
-        CRAB_LOG("backward", crab::outs() << x << ":=" << y << " " << op << " " << k << "\n"
+        CRAB_LOG("backward", outs() << x << ":=" << y << " " << op << " " << k << "\n"
                                           << "BEFORE " << dom << "\n";);
 
         switch (op) {
@@ -1643,20 +1643,20 @@ class BackwardAssignOps {
 
         dom = dom & inv;
 
-        CRAB_LOG("backward", crab::outs() << "AFTER " << dom << "\n");
+        CRAB_LOG("backward", outs() << "AFTER " << dom << "\n");
         return;
     }
 
     // x = y op z
     static void apply(AbsDom& dom, operation_t op, variable_t x, variable_t y, variable_t z, AbsDom inv) {
-        crab::CrabStats::count(AbsDom::getDomainName() + ".count.backward_apply");
-        crab::ScopedCrabStats __st__(AbsDom::getDomainName() + ".backward_apply");
+        CrabStats::count(AbsDom::getDomainName() + ".count.backward_apply");
+        ScopedCrabStats __st__(AbsDom::getDomainName() + ".backward_apply");
 
         if (dom.is_bottom()) {
             return;
         }
 
-        CRAB_LOG("backward", crab::outs() << x << ":=" << y << " " << op << " " << z << "\n"
+        CRAB_LOG("backward", outs() << x << ":=" << y << " " << op << " " << z << "\n"
                                           << "BEFORE " << dom << "\n";);
 
         switch (op) {
@@ -1672,20 +1672,20 @@ class BackwardAssignOps {
             break;
         }
         dom = dom & inv;
-        CRAB_LOG("backward", crab::outs() << "AFTER " << dom << "\n");
+        CRAB_LOG("backward", outs() << "AFTER " << dom << "\n");
     }
 };
 
 void SplitDBM::backward_assign(variable_t x, linear_expression_t e, SplitDBM inv) {
-    crab::domains::BackwardAssignOps<SplitDBM>::assign(*this, x, e, inv);
+    domains::BackwardAssignOps<SplitDBM>::assign(*this, x, e, inv);
 }
 
 void SplitDBM::backward_apply(operation_t op, variable_t x, variable_t y, number_t z, SplitDBM inv) {
-    crab::domains::BackwardAssignOps<SplitDBM>::apply(*this, op, x, y, z, inv);
+    domains::BackwardAssignOps<SplitDBM>::apply(*this, op, x, y, z, inv);
 }
 
 void SplitDBM::backward_apply(operation_t op, variable_t x, variable_t y, variable_t z, SplitDBM inv) {
-    crab::domains::BackwardAssignOps<SplitDBM>::apply(*this, op, x, y, z, inv);
+    domains::BackwardAssignOps<SplitDBM>::apply(*this, op, x, y, z, inv);
 }
 } // namespace domains
 } // namespace crab

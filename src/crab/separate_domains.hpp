@@ -43,7 +43,7 @@
 #include "crab/patricia_trees.hpp"
 #include "crab/types.hpp"
 
-namespace ikos {
+namespace crab {
 
 template <typename Key, typename Value>
 class separate_domain {
@@ -331,7 +331,7 @@ class separate_domain {
         }
     }
 
-    void write(crab::crab_os& o) const {
+    void write(crab_os& o) const {
         if (this->is_bottom()) {
             o << "_|_";
         } else {
@@ -351,10 +351,10 @@ class separate_domain {
         }
     }
 
-    friend crab::crab_os& operator<<(crab::crab_os& o, const separate_domain<Key, Value>& d) {
+    friend crab_os& operator<<(crab_os& o, const separate_domain<Key, Value>& d) {
         d.write(o);
         return o;
     }
 }; // class separate_domain
 
-} // namespace ikos
+} // namespace crab

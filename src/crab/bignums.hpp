@@ -48,7 +48,7 @@
 #include <boost/functional/hash.hpp>
 #include <gmpxx.h>
 
-namespace ikos {
+namespace crab {
 
 // GMP can convert directly from/to signed/unsigned long and
 // signed/unsigned int. However, the C++11 standard only guarantees:
@@ -181,17 +181,17 @@ class z_number {
 
     z_number fill_ones() const;
 
-    void write(crab::crab_os& o) const;
+    void write(crab_os& o) const;
 
 }; // class z_number
 
 using number_t = z_number;
 
-inline crab::crab_os& operator<<(crab::crab_os& o, const z_number& z) {
+inline crab_os& operator<<(crab_os& o, const z_number& z) {
     z.write(o);
     return o;
 }
 
 inline std::size_t hash_value(const z_number& z) { return z.hash(); }
 
-} // namespace ikos
+} // namespace crab

@@ -44,7 +44,7 @@ cell_t offset_map_t::get_cell(offset_t o, unsigned size) const {
 }
 
 std::string offset_map_t::mk_scalar_name(variable_t a, offset_t o, unsigned size) {
-    crab::crab_string_os os;
+    crab_string_os os;
     os << a << "[";
     if (size == 1) {
         os << o;
@@ -70,7 +70,7 @@ cell_t offset_map_t::mk_cell(variable_t array, offset_t o, unsigned size) {
         variable_t scalar_var(vfac.get(vindex, vname), vtype, size);
         c = cell_t(o, scalar_var);
         insert_cell(c);
-        CRAB_LOG("array-expansion", crab::outs() << "**Created cell " << c << "\n";);
+        CRAB_LOG("array-expansion", outs() << "**Created cell " << c << "\n";);
     }
     // sanity check
     if (!c.has_scalar()) {
@@ -188,20 +188,20 @@ void offset_map_t::get_overlap_cells(offset_t o, unsigned size, std::vector<cell
     }
 
     CRAB_LOG(
-        "array-expansion-overlap", crab::outs() << "**Overlap set between \n"
+        "array-expansion-overlap", outs() << "**Overlap set between \n"
                                                 << *this << "\nand "
                                                 << "(" << o << "," << size << ")={";
         for (unsigned i = 0, e = out.size(); i < e;) {
-            crab::outs() << out[i];
+            outs() << out[i];
             ++i;
             if (i < e) {
-                crab::outs() << ",";
+                outs() << ",";
             }
-        } crab::outs()
+        } outs()
         << "}\n";);
 }
 
-void offset_map_t::write(crab::crab_os& o) const {
+void offset_map_t::write(crab_os& o) const {
     if (_map.empty()) {
         o << "empty";
     } else {

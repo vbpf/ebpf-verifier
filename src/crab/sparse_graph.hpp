@@ -9,7 +9,7 @@
 namespace crab {
 
 template <class Weight>
-class SparseWtGraph : public ikos::writeable {
+class SparseWtGraph : public writeable {
   public:
     using Wt = Weight;
     using graph_t = SparseWtGraph<Wt>;

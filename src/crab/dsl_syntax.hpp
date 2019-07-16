@@ -1,6 +1,6 @@
 #include "crab/linear_constraints.hpp"
 
-namespace ikos {
+namespace crab {
 
 namespace dsl_syntax {
 inline linear_expression_t operator*(number_t n, variable_t x) { return {n, x}; }
@@ -346,4 +346,4 @@ inline linear_constraint_t operator!=(const linear_expression_t& e1, const linea
 }
 } // end namespace dsl_syntax
 
-} // end namespace ikos
+} // end namespace crab

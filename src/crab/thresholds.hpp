@@ -14,7 +14,7 @@
 
 namespace crab {
 
-namespace iterators {
+inline namespace iterators {
 
 /**
     Class that represents a set of thresholds used by the widening operator
@@ -52,11 +52,11 @@ inline crab_os& operator<<(crab_os& o, const thresholds_t& t) {
 /**
    Collect thresholds per wto cycle (i.e. loop)
 **/
-class wto_thresholds_t : public ikos::wto_component_visitor<cfg_ref_t> {
+class wto_thresholds_t : public wto_component_visitor<cfg_ref_t> {
 
   public:
-    using wto_vertex_t = ikos::wto_vertex<cfg_ref_t>;
-    using wto_cycle_t = ikos::wto_cycle<cfg_ref_t>;
+    using wto_vertex_t = wto_vertex<cfg_ref_t>;
+    using wto_cycle_t = wto_cycle<cfg_ref_t>;
 
   private:
     // the cfg
@@ -68,7 +68,7 @@ class wto_thresholds_t : public ikos::wto_component_visitor<cfg_ref_t> {
     // the top of the stack is the current wto head
     std::vector<basic_block_label_t> m_stack;
 
-    // using select_t = crab::select_stmt<number_t,varname_t>;
+    // using select_t = select_stmt<number_t,varname_t>;
 
     void extract_bounds(const linear_expression_t& e, bool is_strict, std::vector<number_t>& lb_bounds,
                         std::vector<number_t>& ub_bounds) const;
@@ -82,11 +82,11 @@ class wto_thresholds_t : public ikos::wto_component_visitor<cfg_ref_t> {
 
     void visit(wto_cycle_t& cycle);
 
-    void write(crab::crab_os& o) const;
+    void write(crab_os& o) const;
 
 }; // class wto_thresholds_t
 
-inline crab::crab_os& operator<<(crab::crab_os& o, const wto_thresholds_t& t) {
+inline crab_os& operator<<(crab_os& o, const wto_thresholds_t& t) {
     t.write(o);
     return o;
 }

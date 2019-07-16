@@ -28,11 +28,11 @@ namespace domains {
  **/
 
 template <class Dom>
-class abstract_domain : public ikos::writeable {
+class abstract_domain : public writeable {
   public:
     using variable_vector_t = std::vector<variable_t>;
 
-    abstract_domain() : ikos::writeable() {}
+    abstract_domain() : writeable() {}
 
     virtual ~abstract_domain(){};
 
@@ -78,7 +78,7 @@ class abstract_domain : public ikos::writeable {
     // TODO: add const reference and ideally const method
     virtual Dom narrow(const Dom& abs) = 0;
     // Widening with thresholds: widening_ts(*this, abs)
-    virtual Dom widening_thresholds(Dom abs, const crab::iterators::thresholds_t& ts) = 0;
+    virtual Dom widening_thresholds(Dom abs, const iterators::thresholds_t& ts) = 0;
 
     /**************************** Backward arithmetic operations ******************/
     // x = y op z

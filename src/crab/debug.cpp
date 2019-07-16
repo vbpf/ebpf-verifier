@@ -4,9 +4,6 @@ namespace crab {
 bool CrabLogFlag = false;
 std::set<std::string> CrabLog;
 
-} // namespace crab
-
-namespace crab {
 unsigned CrabVerbosity = 0;
 
 bool CrabWarningFlag = true;

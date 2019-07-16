@@ -41,7 +41,7 @@ namespace crab {
 
 namespace domains {
 
-class SplitDBM final : public ikos::writeable {
+class SplitDBM final : public writeable {
   public:
     using constraint_kind_t = typename linear_constraint_t::kind_t;
 
@@ -247,8 +247,8 @@ class SplitDBM final : public ikos::writeable {
     SplitDBM(const SplitDBM& o)
         : vert_map(o.vert_map), rev_map(o.rev_map), g(o.g), potential(o.potential), unstable(o.unstable),
           _is_bottom(false) {
-        crab::CrabStats::count(getDomainName() + ".count.copy");
-        crab::ScopedCrabStats __st__(getDomainName() + ".copy");
+        CrabStats::count(getDomainName() + ".count.copy");
+        ScopedCrabStats __st__(getDomainName() + ".copy");
 
         if (o._is_bottom)
             set_to_bottom();
@@ -260,8 +260,8 @@ class SplitDBM final : public ikos::writeable {
     SplitDBM(SplitDBM&& o)
         : vert_map(std::move(o.vert_map)), rev_map(std::move(o.rev_map)), g(std::move(o.g)),
           potential(std::move(o.potential)), unstable(std::move(o.unstable)), _is_bottom(o._is_bottom) {
-        crab::CrabStats::count(getDomainName() + ".count.copy");
-        crab::ScopedCrabStats __st__(getDomainName() + ".copy");
+        CrabStats::count(getDomainName() + ".count.copy");
+        ScopedCrabStats __st__(getDomainName() + ".copy");
     }
 
     SplitDBM(vert_map_t&& _vert_map, rev_map_t&& _rev_map, graph_t&& _g, std::vector<Wt>&& _potential,
@@ -269,18 +269,18 @@ class SplitDBM final : public ikos::writeable {
         : vert_map(std::move(_vert_map)), rev_map(std::move(_rev_map)), g(std::move(_g)),
           potential(std::move(_potential)), unstable(std::move(_unstable)), _is_bottom(false) {
 
-        crab::CrabStats::count(getDomainName() + ".count.copy");
-        crab::ScopedCrabStats __st__(getDomainName() + ".copy");
+        CrabStats::count(getDomainName() + ".count.copy");
+        ScopedCrabStats __st__(getDomainName() + ".copy");
 
         CRAB_LOG("zones-split-size", auto p = size();
-                 crab::outs() << "#nodes = " << p.first << " #edges=" << p.second << "\n";);
+                 outs() << "#nodes = " << p.first << " #edges=" << p.second << "\n";);
 
         assert(g.size() > 0);
     }
 
     SplitDBM& operator=(const SplitDBM& o) {
-        crab::CrabStats::count(getDomainName() + ".count.copy");
-        crab::ScopedCrabStats __st__(getDomainName() + ".copy");
+        CrabStats::count(getDomainName() + ".count.copy");
+        ScopedCrabStats __st__(getDomainName() + ".copy");
 
         if (this != &o) {
             if (o._is_bottom) {
@@ -299,8 +299,8 @@ class SplitDBM final : public ikos::writeable {
     }
 
     SplitDBM& operator=(SplitDBM&& o) {
-        crab::CrabStats::count(getDomainName() + ".count.copy");
-        crab::ScopedCrabStats __st__(getDomainName() + ".copy");
+        CrabStats::count(getDomainName() + ".count.copy");
+        ScopedCrabStats __st__(getDomainName() + ".copy");
 
         if (o._is_bottom) {
             set_to_bottom();
@@ -402,8 +402,8 @@ class SplitDBM final : public ikos::writeable {
     }
 
     interval_t operator[](variable_t x) {
-        crab::CrabStats::count(getDomainName() + ".count.to_intervals");
-        crab::ScopedCrabStats __st__(getDomainName() + ".to_intervals");
+        CrabStats::count(getDomainName() + ".count.to_intervals");
+        ScopedCrabStats __st__(getDomainName() + ".to_intervals");
 
         // if (is_top())    return interval_t::top();
 
