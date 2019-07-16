@@ -63,16 +63,10 @@ class vec {
     }
 
   public:
-    // Types:
-    using Key = int;
-    using Datum = T;
-
     // Constructors:
     vec() : data(NULL), sz(0), cap(0) {}
     vec(int size) : data(NULL), sz(0), cap(0) { growTo(size); }
     vec(int size, const T& pad) : data(NULL), sz(0), cap(0) { growTo(size, pad); }
-    vec(T* array, int size)
-        : data(array), sz(size), cap(size) {} // (takes ownership of array -- will be deallocated with 'free()')
     ~vec() { clear(true); }
 
     // GKG: Added stuff - copy & move ctors, plus range interface.
@@ -111,17 +105,6 @@ class vec {
     T* begin() const { return data; }
     T* end() const { return data + sz; }
 
-    // Ownership of underlying array:
-    T* release() {
-        T* ret = data;
-        data = NULL;
-        sz = 0;
-        cap = 0;
-        return ret;
-    }
-    operator T*() { return data; } // (unsafe but convenient)
-    operator const T*() const { return data; }
-
     // Size operations:
     int size() const { return sz; }
     void shrink(int nelems) {
@@ -129,10 +112,7 @@ class vec {
         for (int i = 0; i < nelems; i++)
             sz--, data[sz].~T();
     }
-    void shrink_(int nelems) {
-        assert(nelems <= sz);
-        sz -= nelems;
-    }
+
     void pop() { sz--, data[sz].~T(); }
     void growTo(int size);
     void growTo(int size, const T& pad);
@@ -140,7 +120,6 @@ class vec {
     void capacity(int size) { grow(size); }
 
     // Stack interface:
-#if 1
     void push() {
         if (sz == cap) {
             cap = imax(2, (cap * 3 + 1) >> 1);
@@ -149,8 +128,7 @@ class vec {
         new (&data[sz]) T();
         sz++;
     }
-    // void   push  (const T& elem)     { if (sz == cap) { cap = imax(2, (cap*3+1)>>1); data = (T*)realloc(data, cap *
-    // sizeof(T)); } new (&data[sz]) T(elem); sz++; }
+
     void push(const T& elem) {
         if (sz == cap) {
             cap = imax(2, (cap * 3 + 1) >> 1);
@@ -158,24 +136,6 @@ class vec {
         }
         data[sz++] = elem;
     }
-    void push_(const T& elem) {
-        assert(sz < cap);
-        data[sz++] = elem;
-    }
-#else
-    void push() {
-        if (sz == cap)
-            grow(sz + 1);
-        new (&data[sz]) T();
-        sz++;
-    }
-    void push(const T& elem) {
-        if (sz == cap)
-            grow(sz + 1);
-        new (&data[sz]) T(elem);
-        sz++;
-    }
-#endif
 
     const T& last() const { return data[sz - 1]; }
     T& last() { return data[sz - 1]; }
@@ -183,23 +143,6 @@ class vec {
     // Vector interface:
     const T& operator[](int index) const { return data[index]; }
     T& operator[](int index) { return data[index]; }
-
-    // Duplicatation (preferred instead):
-    void copyTo(vec<T>& copy) const {
-        copy.clear();
-        copy.growTo(sz);
-        for (int i = 0; i < sz; i++)
-            new (&copy[i]) T(data[i]);
-    }
-    void moveTo(vec<T>& dest) {
-        dest.clear(true);
-        dest.data = data;
-        dest.sz = sz;
-        dest.cap = cap;
-        data = NULL;
-        sz = 0;
-        cap = 0;
-    }
 };
 
 template <class T>
