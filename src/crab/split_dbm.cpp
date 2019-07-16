@@ -1545,28 +1545,5 @@ linear_constraint_system_t SplitDBM::to_linear_constraint_system() {
     return csts;
 }
 
-void SplitDBM::backward_assign(variable_t x, linear_expression_t e, SplitDBM inv) {
-    SplitDBM& dom = *this;
-    CrabStats::count("SplitDBM.count.backward_assign");
-    ScopedCrabStats __st__("SplitDBM.backward_assign");
-
-    if (dom.is_bottom())
-        return;
-
-    if (e.variables() >= x) {
-        auto& vfac = x.name().get_var_factory();
-        variable_t old_x(vfac.get(), x.get_type());
-        std::map<variable_t, variable_t, variable_t::less> renaming_map;
-        renaming_map.insert({x, old_x});
-        linear_expression_t renamed_e = e.rename(renaming_map);
-        dom += linear_constraint_t(renamed_e - x, linear_constraint_t::EQUALITY);
-        dom -= x;
-        dom.rename({old_x}, {x});
-    } else {
-        dom += linear_constraint_t(e - x, linear_constraint_t::EQUALITY);
-        dom -= x;
-    }
-    dom = dom & inv;
-}
 } // namespace domains
 } // namespace crab

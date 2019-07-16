@@ -80,12 +80,6 @@ class abstract_domain : public writeable {
     // Widening with thresholds: widening_ts(*this, abs)
     virtual AbsDomain widening_thresholds(AbsDomain abs, const iterators::thresholds_t& ts) = 0;
 
-    /**************************** Backward arithmetic operations ******************/
-    // x = e
-    // Substitute x with e in the abstract value
-    // The result is meet with invariant.
-    virtual void backward_assign(variable_t x, linear_expression_t e, AbsDomain invariant) = 0;
-
     /**************************** Miscellaneous operations *************************/
     // forget v
     virtual void operator-=(variable_t v) = 0;
