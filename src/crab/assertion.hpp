@@ -4,9 +4,9 @@
    User-definable assertion checker
  */
 
-#include "crab/debug.hpp"
 #include "crab/abstract_domain_specialized_traits.hpp"
 #include "crab/cfg.hpp"
+#include "crab/debug.hpp"
 
 #include "crab/types.hpp"
 

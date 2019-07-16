@@ -4,13 +4,13 @@
 
 #include <unordered_map>
 
-#include "crab/types.hpp"
-#include "crab/debug.hpp"
-#include "crab/stats.hpp"
-#include "crab/cfg.hpp"
-#include "crab/wto.hpp"
 #include "crab/abs_transformer.hpp"
 #include "crab/abstract_domain_specialized_traits.hpp"
+#include "crab/cfg.hpp"
+#include "crab/debug.hpp"
+#include "crab/stats.hpp"
+#include "crab/types.hpp"
+#include "crab/wto.hpp"
 
 namespace crab {
 
@@ -85,20 +85,19 @@ class interleaved_fwd_fixpoint_iterator {
         }
     }
 
-    AbsDomain extrapolate(basic_block_label_t node, unsigned int iteration, AbsDomain before,
-                              AbsDomain after) {
+    AbsDomain extrapolate(basic_block_label_t node, unsigned int iteration, AbsDomain before, AbsDomain after) {
         CrabStats::count("Fixpo.extrapolate");
         ScopedCrabStats __st__("Fixpo.extrapolate");
 
         if (iteration <= _widening_delay) {
             auto widen_res = before | after;
             CRAB_VERBOSE_IF(3, outs() << "Prev   : " << before << "\n"
-                                            << "Current: " << after << "\n"
-                                            << "Res    : " << widen_res << "\n");
+                                      << "Current: " << after << "\n"
+                                      << "Res    : " << widen_res << "\n");
             return widen_res;
         } else {
             CRAB_VERBOSE_IF(3, outs() << "Prev   : " << before << "\n"
-                                            << "Current: " << after << "\n");
+                                      << "Current: " << after << "\n");
 
             auto widen_res = before.widen(after);
             CRAB_VERBOSE_IF(3, outs() << "Res    : " << widen_res << "\n");
@@ -113,14 +112,14 @@ class interleaved_fwd_fixpoint_iterator {
         if (iteration == 1) {
             auto narrow_res = before & after;
             CRAB_VERBOSE_IF(3, outs() << "Prev   : " << before << "\n"
-                                            << "Current: " << after << "\n"
-                                            << "Res    : " << narrow_res << "\n");
+                                      << "Current: " << after << "\n"
+                                      << "Res    : " << narrow_res << "\n");
             return narrow_res;
         } else {
             auto narrow_res = before.narrow(after);
             CRAB_VERBOSE_IF(3, outs() << "Prev   : " << before << "\n"
-                                            << "Current: " << after << "\n"
-                                            << "Res    : " << narrow_res << "\n");
+                                      << "Current: " << after << "\n"
+                                      << "Res    : " << narrow_res << "\n");
             return narrow_res;
         }
     }
@@ -308,8 +307,8 @@ class wto_iterator : public wto_component_visitor<cfg_ref_t> {
             entry_in_this_cycle = vis.is_member();
             _skip = !entry_in_this_cycle;
             if (_skip) {
-                CRAB_VERBOSE_IF(2, outs() << "** Skipped analysis of WTO cycle rooted at  "
-                                                << get_label_str(head) << "\n");
+                CRAB_VERBOSE_IF(2, outs() << "** Skipped analysis of WTO cycle rooted at  " << get_label_str(head)
+                                          << "\n");
                 return;
             }
         }
