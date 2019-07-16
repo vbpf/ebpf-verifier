@@ -44,11 +44,11 @@ namespace ikos {
 template <typename AbstractValue>
 class fixpoint_iterator {
   public:
-    virtual void analyze(basic_block_label_t, AbstractValue &) = 0;
+    virtual void analyze(crab::basic_block_label_t, AbstractValue&) = 0;
 
-    virtual void process_pre(basic_block_label_t, AbstractValue) = 0;
+    virtual void process_pre(crab::basic_block_label_t, AbstractValue) = 0;
 
-    virtual void process_post(basic_block_label_t, AbstractValue) = 0;
+    virtual void process_post(crab::basic_block_label_t, AbstractValue) = 0;
 
     virtual ~fixpoint_iterator() {}
 

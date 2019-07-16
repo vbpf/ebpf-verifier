@@ -2,7 +2,7 @@
 
 namespace crab {
 namespace domains {
-void offset_map_t::remove_cell(const cell_t &c) {
+void offset_map_t::remove_cell(const cell_t& c) {
     if (std::optional<cell_set_t> cells = _map.lookup(c.get_offset())) {
         if ((*cells).erase(c) > 0) {
             _map.remove(c.get_offset());
@@ -14,7 +14,7 @@ void offset_map_t::remove_cell(const cell_t &c) {
     }
 }
 
-void offset_map_t::insert_cell(const cell_t &c, bool sanity_check) {
+void offset_map_t::insert_cell(const cell_t& c, bool sanity_check) {
     if (sanity_check && !c.has_scalar()) {
         CRAB_ERROR("array expansion cannot insert a cell without scalar variable");
     }
@@ -60,7 +60,7 @@ cell_t offset_map_t::mk_cell(variable_t array, offset_t o, unsigned size) {
 
     cell_t c = get_cell(o, size);
     if (c.is_null()) {
-        auto &vfac = array.name().get_var_factory();
+        auto& vfac = array.name().get_var_factory();
         std::string vname = mk_scalar_name(array, o, size);
         type_t vtype = get_array_element_type(array.get_type());
         index_t vindex = get_index(array, o, size);
@@ -82,8 +82,8 @@ cell_t offset_map_t::mk_cell(variable_t array, offset_t o, unsigned size) {
 std::vector<cell_t> offset_map_t::get_all_cells() const {
     std::vector<cell_t> res;
     for (auto it = _map.begin(), et = _map.end(); it != et; ++it) {
-        auto const &o_cells = it->second;
-        for (auto &c : o_cells) {
+        auto const& o_cells = it->second;
+        for (auto& c : o_cells) {
             res.push_back(c);
         }
     }
@@ -91,7 +91,7 @@ std::vector<cell_t> offset_map_t::get_all_cells() const {
 }
 
 // Return in out all cells that might overlap with (o, size).
-void offset_map_t::get_overlap_cells(offset_t o, unsigned size, std::vector<cell_t> &out) {
+void offset_map_t::get_overlap_cells(offset_t o, unsigned size, std::vector<cell_t>& out) {
     compare_binding_t comp;
 
     bool added = false;
@@ -125,7 +125,7 @@ void offset_map_t::get_overlap_cells(offset_t o, unsigned size, std::vector<cell
             // we can stop.
             ////////
             bool continue_outer_loop = false;
-            for (const cell_t &x : upto_lb[i]) {
+            for (const cell_t& x : upto_lb[i]) {
                 if (x.overlap(o, size)) {
                     if (!(x == c)) {
                         // FIXME: we might have some duplicates. this is a very drastic solution.
@@ -146,7 +146,7 @@ void offset_map_t::get_overlap_cells(offset_t o, unsigned size, std::vector<cell
     auto ub_it = std::upper_bound(_map.begin(), _map.end(), o, comp);
     for (; ub_it != _map.end(); ++ub_it) {
         bool continue_outer_loop = false;
-        for (const cell_t &x : ub_it->second) {
+        for (const cell_t& x : ub_it->second) {
             if (x.overlap(o, size)) {
                 // FIXME: we might have some duplicates. this is a very drastic solution.
                 if (std::find(out.begin(), out.end(), x) == out.end()) {
@@ -163,7 +163,7 @@ void offset_map_t::get_overlap_cells(offset_t o, unsigned size, std::vector<cell
     // do not forget the rest of overlapping cells == o
     for (auto it = ++lb_it, et = ub_it; it != et; ++it) {
         bool continue_outer_loop = false;
-        for (const cell_t &x : it->second) {
+        for (const cell_t& x : it->second) {
             if (x == c) { // we dont put it in out
                 continue;
             }
@@ -201,12 +201,12 @@ void offset_map_t::get_overlap_cells(offset_t o, unsigned size, std::vector<cell
         << "}\n";);
 }
 
-void offset_map_t::write(crab::crab_os &o) const {
+void offset_map_t::write(crab::crab_os& o) const {
     if (_map.empty()) {
         o << "empty";
     } else {
         for (auto it = _map.begin(), et = _map.end(); it != et; ++it) {
-            const cell_set_t &cells = it->second;
+            const cell_set_t& cells = it->second;
             o << "{";
             for (auto cit = cells.begin(), cet = cells.end(); cit != cet;) {
                 o << *cit;

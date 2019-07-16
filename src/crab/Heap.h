@@ -71,7 +71,7 @@ class Heap {
     }
 
   public:
-    Heap(const Comp &c) : lt(c) {}
+    Heap(const Comp& c) : lt(c) {}
 
     int size() const { return heap.size(); }
     bool empty() const { return heap.size() == 0; }
@@ -135,7 +135,7 @@ class Heap {
     // Delete elements from the heap using a given filter function (-object).
     // *** this could probaly be replaced with a more general "buildHeap(vec<int>&)" method ***
     template <class F>
-    void filter(const F &filt) {
+    void filter(const F& filt) {
         int i, j;
         for (i = j = 0; i < heap.size(); i++)
             if (filt(heap[i])) {

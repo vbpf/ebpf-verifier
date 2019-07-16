@@ -9,7 +9,7 @@ using std::max;
 using std::min;
 using std::minmax;
 
-RCP_domain MemDom::load(const OffsetDomSet &offset_dom, uint64_t _width) const {
+RCP_domain MemDom::load(const OffsetDomSet& offset_dom, uint64_t _width) const {
     int64_t width = static_cast<int64_t>(_width);
     if (!offset_dom.is_single()) {
         return {TOP};
@@ -20,7 +20,7 @@ RCP_domain MemDom::load(const OffsetDomSet &offset_dom, uint64_t _width) const {
     int64_t total_width = 0;
     int64_t max_end = 0;
     bool all_must_be_num = true;
-    for (const Cell &cell : cells) {
+    for (const Cell& cell : cells) {
         if (!cell.overlapping(offset, width))
             continue;
 
@@ -44,7 +44,7 @@ RCP_domain MemDom::load(const OffsetDomSet &offset_dom, uint64_t _width) const {
     return numtop();
 }
 
-void MemDom::store_dynamic(const OffsetDomSet &offset_dom, const NumDomSet &_width, const RCP_domain &value) {
+void MemDom::store_dynamic(const OffsetDomSet& offset_dom, const NumDomSet& _width, const RCP_domain& value) {
     if (_width.is_bot() || offset_dom.is_bot())
         return;
     if (_width.is_single() && offset_dom.is_single()) {
@@ -65,7 +65,7 @@ void MemDom::store_dynamic(const OffsetDomSet &offset_dom, const NumDomSet &_wid
     (*this) |= tmp;
 }
 
-void MemDom::store(const OffsetDomSet &offset_dom, uint64_t _width, const RCP_domain &value) {
+void MemDom::store(const OffsetDomSet& offset_dom, uint64_t _width, const RCP_domain& value) {
     int64_t width = static_cast<int64_t>(_width);
     bot = false;
     if (!offset_dom.is_single()) {
@@ -75,7 +75,7 @@ void MemDom::store(const OffsetDomSet &offset_dom, uint64_t _width, const RCP_do
     Cell new_cell{.offset = offset_dom.elems.front(), .width = width, .dom = value};
     std::vector<Cell> to_remove;
     std::vector<Cell> pieces;
-    for (const Cell &cell : cells) {
+    for (const Cell& cell : cells) {
         if (cell.end() <= new_cell.offset)
             continue;
         if (cell.offset >= new_cell.end())
@@ -101,7 +101,7 @@ void MemDom::store(const OffsetDomSet &offset_dom, uint64_t _width, const RCP_do
     std::sort(cells.begin(), cells.end());
 }
 
-void MemDom::operator|=(const MemDom &b) {
+void MemDom::operator|=(const MemDom& b) {
     if (this == &b)
         return;
     if (bot) {
@@ -123,7 +123,7 @@ void MemDom::operator|=(const MemDom &b) {
     // There's at least one cell
     std::vector<Cell> new_cells;
     int to_remove = 0;
-    auto remove = [&](Cell &c) {
+    auto remove = [&](Cell& c) {
         c.offset = std::numeric_limits<int64_t>().max();
         c.width = 0;
         to_remove++;
@@ -131,8 +131,8 @@ void MemDom::operator|=(const MemDom &b) {
     cells.emplace_back();
     remove(cells.back());
     for (auto it = cells.begin(); std::next(it) < cells.end(); ++it) {
-        Cell &current = *it;
-        Cell &after = *std::next(it);
+        Cell& current = *it;
+        Cell& after = *std::next(it);
 
         if (current.end() <= after.offset || current.width == 0) {
             remove(current);

@@ -19,13 +19,13 @@
 using std::string;
 using std::vector;
 
-static size_t hash(const raw_program &raw_prog) {
-    char *start = (char *)raw_prog.prog.data();
-    char *end = start + (raw_prog.prog.size() * sizeof(ebpf_inst));
+static size_t hash(const raw_program& raw_prog) {
+    char* start = (char*)raw_prog.prog.data();
+    char* end = start + (raw_prog.prog.size() * sizeof(ebpf_inst));
     return boost::hash_range(start, end);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     // Parse command line arguments:
 
     crab::CrabEnableWarningMsg(false);
@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    auto &prog = std::get<InstructionSeq>(prog_or_error);
+    auto& prog = std::get<InstructionSeq>(prog_or_error);
     if (!asmfile.empty())
         print(prog, asmfile);
 

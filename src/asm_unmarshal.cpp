@@ -21,15 +21,15 @@ void compare(string field, T actual, T expected) {
 }
 
 struct InvalidInstruction : std::invalid_argument {
-    InvalidInstruction(const char *what) : std::invalid_argument{what} {}
+    InvalidInstruction(const char* what) : std::invalid_argument{what} {}
 };
 
 struct UnsupportedInstruction : std::invalid_argument {
-    UnsupportedInstruction(const char *what) : std::invalid_argument{what} {}
+    UnsupportedInstruction(const char* what) : std::invalid_argument{what} {}
 };
 
 struct UnsupportedMemoryMode : std::invalid_argument {
-    UnsupportedMemoryMode(const char *what) : std::invalid_argument{what} {}
+    UnsupportedMemoryMode(const char* what) : std::invalid_argument{what} {}
 };
 
 static auto getMemIsLoad(uint8_t opcode) -> bool {
@@ -63,10 +63,10 @@ static auto getMemWidth(uint8_t opcode) -> int {
 // }
 
 struct Unmarshaller {
-    vector<vector<string>> &notes;
+    vector<vector<string>>& notes;
     void note(string what) { notes.back().emplace_back(what); }
     void note_next_pc() { notes.emplace_back(); }
-    Unmarshaller(vector<vector<string>> &notes) : notes{notes} { note_next_pc(); }
+    Unmarshaller(vector<vector<string>>& notes) : notes{notes} { note_next_pc(); }
 
     auto getAluOp(ebpf_inst inst) -> std::variant<Bin::Op, Un::Op> {
         switch ((inst.opcode >> 4) & 0xF) {
@@ -229,7 +229,7 @@ struct Unmarshaller {
                           getAluOp(inst));
     }
 
-    auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst> &insts, pc_t pc) -> Instruction {
+    auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& insts, pc_t pc) -> Instruction {
         if (pc >= insts.size() - 1)
             note("incomplete LDDW");
         if (inst.src > 1 || inst.dst > 10 || inst.offset != 0)
@@ -306,7 +306,7 @@ struct Unmarshaller {
         }
         return res;
     }
-    auto makeJmp(ebpf_inst inst, const vector<ebpf_inst> &insts, pc_t pc) -> Instruction {
+    auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, pc_t pc) -> Instruction {
         switch ((inst.opcode >> 4) & 0xF) {
         case 0x8:
             if (!is_valid_prototype(inst.imm))
@@ -335,7 +335,7 @@ struct Unmarshaller {
         }
     }
 
-    vector<LabeledInstruction> unmarshal(vector<ebpf_inst> const &insts) {
+    vector<LabeledInstruction> unmarshal(vector<ebpf_inst> const& insts) {
         vector<LabeledInstruction> prog;
         int exit_count = 0;
         if (insts.size() == 0) {
@@ -406,10 +406,10 @@ struct Unmarshaller {
     }
 };
 
-std::variant<InstructionSeq, std::string> unmarshal(raw_program raw_prog, vector<vector<string>> &notes) {
+std::variant<InstructionSeq, std::string> unmarshal(raw_program raw_prog, vector<vector<string>>& notes) {
     try {
         return Unmarshaller{notes}.unmarshal(raw_prog.prog);
-    } catch (InvalidInstruction &arg) {
+    } catch (InvalidInstruction& arg) {
         std::cerr << arg.what() << "\n";
         return arg.what();
     }

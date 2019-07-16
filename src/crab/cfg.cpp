@@ -55,12 +55,12 @@ class variable_ref_t {
         return m_v->get_bitwidth();
     }
 
-    const varname_t &name() const {
+    const varname_t& name() const {
         assert(!is_null());
         return m_v->name();
     }
 
-    varname_t &name() {
+    varname_t& name() {
         assert(!is_null());
         return m_v->name();
     }
@@ -75,10 +75,10 @@ class variable_ref_t {
         return m_v->hash();
     }
 
-    void write(crab::crab_os &o) const { return m_v->write(o); }
+    void write(crab::crab_os& o) const { return m_v->write(o); }
 }; // class variable_ref_t
 
-inline crab::crab_os &operator<<(crab::crab_os &o, const variable_ref_t &v) {
+inline crab::crab_os& operator<<(crab::crab_os& o, const variable_ref_t& v) {
     v.write(o);
     return o;
 }
@@ -86,17 +86,42 @@ inline crab::crab_os &operator<<(crab::crab_os &o, const variable_ref_t &v) {
 
 namespace crab {
 
-template class basic_block<basic_block_label_t, varname_t, number_t>;
-template class basic_block_rev<basic_block_t>;
-
-template class cfg<basic_block_label_t, varname_t, number_t>;
-template class cfg_ref<cfg_t>;
-template class cfg_rev<cfg_ref<cfg_t>>;
-
 using ikos::variable_ref_t;
 
+void statement_visitor::visit(basic_block_t& b) {
+    for (auto& s : b) {
+        s.accept(this);
+    }
+}
+
+void statement_visitor::visit(basic_block_rev_t& b) {
+    for (auto& s : b) {
+        s.accept(this);
+    }
+}
+
+void cfg_t::remove_useless_blocks() {
+    if (!has_exit())
+        return;
+
+    cfg_rev_t rev_cfg(*this);
+
+    visited_t useful, useless;
+    mark_alive_blocks(rev_cfg.entry(), rev_cfg, useful);
+
+    for (auto const& bb : *this) {
+        if (!(useful.count(bb.label()) > 0)) {
+            useless.insert(bb.label());
+        }
+    }
+
+    for (auto bb_id : useless) {
+        remove(bb_id);
+    }
+}
+
 class type_checker {
-    using CFG = cfg_ref<cfg_t>;
+    using CFG = cfg_ref_t;
 
   public:
     type_checker(CFG cfg) : m_cfg(cfg) {}
@@ -118,7 +143,7 @@ class type_checker {
         // }
         // check all statement are well typed
         type_checker_visitor vis;
-        for (auto &b : boost::make_iterator_range(m_cfg.begin(), m_cfg.end())) {
+        for (auto& b : boost::make_iterator_range(m_cfg.begin(), m_cfg.end())) {
             b.accept(&vis);
         }
 
@@ -134,7 +159,7 @@ class type_checker {
 
         type_checker_visitor() {}
 
-        void check_num(variable_t v, std::string msg, statement_t &s) {
+        void check_num(variable_t v, std::string msg, statement_t& s) {
             if (v.get_type() != INT_TYPE) {
                 crab::crab_string_os os;
                 os << "(type checking) " << msg << " in " << s;
@@ -142,7 +167,7 @@ class type_checker {
             }
         }
 
-        void check_int(variable_t v, std::string msg, statement_t &s) {
+        void check_int(variable_t v, std::string msg, statement_t& s) {
             if ((v.get_type() != INT_TYPE) || (v.get_bitwidth() <= 1)) {
                 crab::crab_string_os os;
                 os << "(type checking) " << msg << " in " << s;
@@ -150,7 +175,7 @@ class type_checker {
             }
         }
 
-        void check_bitwidth_if_int(variable_t v, std::string msg, statement_t &s) {
+        void check_bitwidth_if_int(variable_t v, std::string msg, statement_t& s) {
             if (v.get_type() == INT_TYPE) {
                 if (v.get_bitwidth() <= 1) {
                     crab::crab_string_os os;
@@ -160,7 +185,7 @@ class type_checker {
             }
         }
 
-        void check_same_type(variable_t v1, variable_t v2, std::string msg, statement_t &s) {
+        void check_same_type(variable_t v1, variable_t v2, std::string msg, statement_t& s) {
             if (v1.get_type() != v2.get_type()) {
                 crab::crab_string_os os;
                 os << "(type checking) " << msg << " in " << s;
@@ -168,7 +193,7 @@ class type_checker {
             }
         }
 
-        void check_same_bitwidth(variable_t v1, variable_t v2, std::string msg, statement_t &s) {
+        void check_same_bitwidth(variable_t v1, variable_t v2, std::string msg, statement_t& s) {
             // assume v1 and v2 have same type
             if (v1.get_type() == INT_TYPE) {
                 if (v1.get_bitwidth() != v2.get_bitwidth()) {
@@ -179,7 +204,7 @@ class type_checker {
             }
         }
 
-        void check_num_or_var(linear_expression_t e, std::string msg, statement_t &s) {
+        void check_num_or_var(linear_expression_t e, std::string msg, statement_t& s) {
             if (!(e.is_constant() || e.get_variable())) {
                 crab::crab_string_os os;
                 os << "(type checking) " << msg << " in " << s;
@@ -187,7 +212,7 @@ class type_checker {
             }
         }
 
-        void check_array(variable_t v, statement_t &s) {
+        void check_array(variable_t v, statement_t& s) {
             switch (v.get_type()) {
             case ARR_INT_TYPE: break;
             default: {
@@ -199,7 +224,7 @@ class type_checker {
         }
 
         // v1 is array type and v2 is a scalar type consistent with v1
-        void check_array_and_scalar_type(variable_t v1, variable_t v2, statement_t &s) {
+        void check_array_and_scalar_type(variable_t v1, variable_t v2, statement_t& s) {
             switch (v1.get_type()) {
             case ARR_INT_TYPE:
                 if (v2.get_type() == INT_TYPE)
@@ -216,7 +241,7 @@ class type_checker {
             CRAB_ERROR(os.str());
         }
 
-        void visit(binary_op_t &s) {
+        void visit(binary_op_t& s) {
             variable_t lhs = s.lhs();
             linear_expression_t op1 = s.left();
             linear_expression_t op2 = s.right();
@@ -238,7 +263,7 @@ class type_checker {
             }
         }
 
-        void visit(assign_t &s) {
+        void visit(assign_t& s) {
             variable_t lhs = s.lhs();
             linear_expression_t rhs = s.rhs();
 
@@ -246,17 +271,17 @@ class type_checker {
             check_bitwidth_if_int(lhs, "lhs must be have bitwidth > 1", s);
 
             typename linear_expression_t::variable_set_t vars = rhs.variables();
-            for (auto const &v : vars) {
+            for (auto const& v : vars) {
                 check_same_type(lhs, v, "variable cannot have different type from lhs", s);
                 check_same_bitwidth(lhs, v, "variable cannot have different bitwidth from lhs", s);
             }
         }
 
-        void visit(assume_t &s) {
+        void visit(assume_t& s) {
             typename linear_expression_t::variable_set_t vars = s.constraint().variables();
             bool first = true;
             variable_ref_t first_var;
-            for (auto const &v : vars) {
+            for (auto const& v : vars) {
                 check_num(v, "assume variables must be integer or real", s);
                 if (first) {
                     first_var = variable_ref_t(v);
@@ -267,11 +292,11 @@ class type_checker {
             }
         }
 
-        void visit(assert_t &s) {
+        void visit(assert_t& s) {
             typename linear_expression_t::variable_set_t vars = s.constraint().variables();
             bool first = true;
             variable_ref_t first_var;
-            for (auto const &v : vars) {
+            for (auto const& v : vars) {
                 check_num(v, "assert variables must be integer or real", s);
                 if (first) {
                     first_var = variable_ref_t(v);
@@ -282,17 +307,17 @@ class type_checker {
             }
         }
 
-        void visit(select_t &s) {
+        void visit(select_t& s) {
             check_num(s.lhs(), "lhs must be integer or real", s);
             check_bitwidth_if_int(s.lhs(), "lhs must be have bitwidth > 1", s);
 
             typename linear_expression_t::variable_set_t left_vars = s.left().variables();
-            for (auto const &v : left_vars) {
+            for (auto const& v : left_vars) {
                 check_same_type(s.lhs(), v, "inconsistent types in select variables", s);
                 check_same_bitwidth(s.lhs(), v, "inconsistent bitwidths in select variables", s);
             }
             typename linear_expression_t::variable_set_t right_vars = s.right().variables();
-            for (auto const &v : right_vars) {
+            for (auto const& v : right_vars) {
                 check_same_type(s.lhs(), v, "inconsistent types in select variables", s);
                 check_same_bitwidth(s.lhs(), v, "inconsistent bitwidths in select variables", s);
             }
@@ -302,7 +327,7 @@ class type_checker {
             typename linear_expression_t::variable_set_t cond_vars = s.cond().variables();
             bool first = true;
             variable_ref_t first_var;
-            for (auto const &v : cond_vars) {
+            for (auto const& v : cond_vars) {
                 check_num(v, "assume variables must be integer or real", s);
                 if (first) {
                     first_var = variable_ref_t(v);
@@ -314,7 +339,7 @@ class type_checker {
             }
         }
 
-        void visit(int_cast_t &s) {
+        void visit(int_cast_t& s) {
             variable_t src = s.src();
             variable_t dst = s.dst();
             switch (s.op()) {
@@ -337,10 +362,10 @@ class type_checker {
             }
         }
 
-        void visit(havoc_t &) {}
-        void visit(unreachable_t &) {}
+        void visit(havoc_t&) {}
+        void visit(unreachable_t&) {}
 
-        void visit(array_init_t &s) {
+        void visit(array_init_t& s) {
             // TODO: check that e_sz is the same number that v's bitwidth
             variable_t a = s.array();
             linear_expression_t e_sz = s.elem_size();
@@ -357,7 +382,7 @@ class type_checker {
             }
         }
 
-        void visit(array_store_t &s) {
+        void visit(array_store_t& s) {
             // TODO: check that e_sz is the same number that v's bitwidth
             /// XXX: we allow linear expressions as indexes
             variable_t a = s.array();
@@ -379,7 +404,7 @@ class type_checker {
             }
         }
 
-        void visit(array_load_t &s) {
+        void visit(array_load_t& s) {
             // TODO: check that e_sz is the same number that lhs's bitwidth
             /// XXX: we allow linear expressions as indexes
             variable_t a = s.array();
@@ -390,7 +415,7 @@ class type_checker {
             check_array_and_scalar_type(a, lhs, s);
         }
 
-        void visit(array_assign_t &s) {
+        void visit(array_assign_t& s) {
             variable_t lhs = s.lhs();
             variable_t rhs = s.rhs();
             check_array(lhs, s);
@@ -402,7 +427,7 @@ class type_checker {
     }; // end class type_checker_visitor
 };     // end class type_checker
 
-void type_check(const cfg_ref<cfg_t> &cfg) {
+void type_check(const cfg_ref_t& cfg) {
     crab::CrabStats::resume("CFG type checking");
     crab::type_checker tc(cfg);
     tc.run();

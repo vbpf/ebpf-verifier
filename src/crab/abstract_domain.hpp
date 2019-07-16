@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "crab/thresholds.hpp"
 #include "crab/abstract_domain_operators.hpp"
+#include "crab/thresholds.hpp"
 
 namespace crab {
 
@@ -61,24 +61,24 @@ class abstract_domain : public ikos::writeable {
 
     // Inclusion operator: return true if *this is equal or more precise than abs
     // TODO: add const reference
-    virtual bool operator<=(const Dom &abs) = 0;
+    virtual bool operator<=(const Dom& abs) = 0;
     // Join operator: join(*this, abs)
     // TODO: add const reference and ideally const method
-    virtual Dom operator|(const Dom &abs) = 0;
+    virtual Dom operator|(const Dom& abs) = 0;
     // *this = join(*this, abs)
     // TODO: add const reference
-    virtual void operator|=(const Dom &abs) = 0;
+    virtual void operator|=(const Dom& abs) = 0;
     // Meet operator: meet(*this, abs)
     // TODO: add const reference and ideally const method
-    virtual Dom operator&(const Dom &abs) = 0;
+    virtual Dom operator&(const Dom& abs) = 0;
     // Widening operator: widening(*this, abs)
     // TODO: add const reference and ideally const method
-    virtual Dom widen(const Dom &abs) = 0;
+    virtual Dom widen(const Dom& abs) = 0;
     // Narrowing operator: narrowing(*this, abs)
     // TODO: add const reference and ideally const method
-    virtual Dom narrow(const Dom &abs) = 0;
+    virtual Dom narrow(const Dom& abs) = 0;
     // Widening with thresholds: widening_ts(*this, abs)
-    virtual Dom widening_thresholds(Dom abs, const crab::iterators::thresholds_t &ts) = 0;
+    virtual Dom widening_thresholds(Dom abs, const crab::iterators::thresholds_t& ts) = 0;
 
     /**************************** Backward arithmetic operations ******************/
     // x = y op z
@@ -102,7 +102,7 @@ class abstract_domain : public ikos::writeable {
     virtual linear_constraint_system_t to_linear_constraint_system() = 0;
 
     // Rename in the abstract state the variables "from" with those from "to".
-    virtual void rename(const variable_vector_t &from, const variable_vector_t &to) {
+    virtual void rename(const variable_vector_t& from, const variable_vector_t& to) {
         CRAB_ERROR("rename operation not implemented");
     }
 
@@ -113,10 +113,10 @@ class abstract_domain : public ikos::writeable {
     virtual void minimize() = 0;
 
     // Forget variables form the abstract domain
-    virtual void forget(const variable_vector_t &variables) = 0;
+    virtual void forget(const variable_vector_t& variables) = 0;
 
     // Project the abstract domain onto variables (dual to forget)
-    virtual void project(const variable_vector_t &variables) = 0;
+    virtual void project(const variable_vector_t& variables) = 0;
 
     // Make a new copy of var without relating var with new_var
     virtual void expand(variable_t var, variable_t new_var) = 0;

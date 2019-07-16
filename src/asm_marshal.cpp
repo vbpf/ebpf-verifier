@@ -77,11 +77,11 @@ struct MarshalVisitor {
   public:
     std::function<auto(std::string)->int16_t> label_to_offset;
 
-    vector<ebpf_inst> operator()(Undefined const &a) { assert(false); }
+    vector<ebpf_inst> operator()(Undefined const& a) { assert(false); }
 
-    vector<ebpf_inst> operator()(LoadMapFd const &b) { return makeLddw(b.dst, true, b.mapfd, 0); }
+    vector<ebpf_inst> operator()(LoadMapFd const& b) { return makeLddw(b.dst, true, b.mapfd, 0); }
 
-    vector<ebpf_inst> operator()(Bin const &b) {
+    vector<ebpf_inst> operator()(Bin const& b) {
         if (b.lddw) {
             assert(std::holds_alternative<Imm>(b.v));
             auto [imm, next_imm] = split(std::get<Imm>(b.v).v);
@@ -102,7 +102,7 @@ struct MarshalVisitor {
         return {res};
     }
 
-    vector<ebpf_inst> operator()(Un const &b) {
+    vector<ebpf_inst> operator()(Un const& b) {
         if (b.op == Un::Op::NEG) {
             return {ebpf_inst{
                 // FIX: should be EBPF_CLS_ALU / EBPF_CLS_ALU64
@@ -121,20 +121,20 @@ struct MarshalVisitor {
         }
     }
 
-    vector<ebpf_inst> operator()(Call const &b) {
+    vector<ebpf_inst> operator()(Call const& b) {
         return {
             ebpf_inst{.opcode = static_cast<uint8_t>(EBPF_OP_CALL), .dst = 0, .src = 0, .offset = 0, .imm = b.func}};
     }
 
-    vector<ebpf_inst> operator()(Exit const &b) {
+    vector<ebpf_inst> operator()(Exit const& b) {
         return {ebpf_inst{.opcode = EBPF_OP_EXIT, .dst = 0, .src = 0, .offset = 0, .imm = 0}};
     }
 
-    vector<ebpf_inst> operator()(Assume const &b) { throw std::invalid_argument("Cannot marshal assumptions"); }
+    vector<ebpf_inst> operator()(Assume const& b) { throw std::invalid_argument("Cannot marshal assumptions"); }
 
-    vector<ebpf_inst> operator()(Assert const &b) { throw std::invalid_argument("Cannot marshal assertions"); }
+    vector<ebpf_inst> operator()(Assert const& b) { throw std::invalid_argument("Cannot marshal assertions"); }
 
-    vector<ebpf_inst> operator()(Jmp const &b) {
+    vector<ebpf_inst> operator()(Jmp const& b) {
         if (b.cond) {
             ebpf_inst res{
                 .opcode = static_cast<uint8_t>(EBPF_CLS_JMP | (op(b.cond->op) << 4)),
@@ -153,7 +153,7 @@ struct MarshalVisitor {
         }
     }
 
-    vector<ebpf_inst> operator()(Mem const &b) {
+    vector<ebpf_inst> operator()(Mem const& b) {
         Deref access = b.access;
         ebpf_inst res{
             .opcode = static_cast<uint8_t>((EBPF_MEM << 5) | width_to_opcode(access.width)),
@@ -179,7 +179,7 @@ struct MarshalVisitor {
         return {res};
     }
 
-    vector<ebpf_inst> operator()(Packet const &b) {
+    vector<ebpf_inst> operator()(Packet const& b) {
         ebpf_inst res{
             .opcode = static_cast<uint8_t>(EBPF_CLS_LD | width_to_opcode(b.width)),
             .imm = static_cast<int32_t>(b.offset),
@@ -193,7 +193,7 @@ struct MarshalVisitor {
         return {res};
     }
 
-    vector<ebpf_inst> operator()(LockAdd const &b) {
+    vector<ebpf_inst> operator()(LockAdd const& b) {
         return {ebpf_inst{
             .opcode = static_cast<uint8_t>(EBPF_CLS_ST | 0x1 | (EBPF_XADD << 5) | width_to_opcode(b.access.width)),
             .dst = b.access.basereg.v,
@@ -228,7 +228,7 @@ static int size(Instruction inst) {
     return 1;
 }
 
-static auto get_labels(const InstructionSeq &insts) {
+static auto get_labels(const InstructionSeq& insts) {
     pc_t pc = 0;
     std::unordered_map<std::string, pc_t> pc_of_label;
     for (auto [label, inst] : insts) {
@@ -244,7 +244,7 @@ vector<ebpf_inst> marshal(InstructionSeq insts) {
     pc_t pc = 0;
     for (auto [label, ins] : insts) {
         if (std::holds_alternative<Jmp>(ins)) {
-            Jmp &jmp = std::get<Jmp>(ins);
+            Jmp& jmp = std::get<Jmp>(ins);
             jmp.target = std::to_string(pc_of_label.at(jmp.target));
         }
         for (auto e : marshal(ins, pc)) {

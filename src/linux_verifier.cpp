@@ -39,7 +39,7 @@ static bpf_prog_type to_linuxtype(BpfProgType t) {
     return BPF_PROG_TYPE_UNSPEC;
 };
 
-static int do_bpf(bpf_cmd cmd, union bpf_attr &attr) { return syscall(321, cmd, &attr, sizeof(attr)); }
+static int do_bpf(bpf_cmd cmd, union bpf_attr& attr) { return syscall(321, cmd, &attr, sizeof(attr)); }
 
 /** Try to allocate a Linux map.
  *
@@ -74,7 +74,7 @@ int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value_size, 
  *  \return A pair (passed, elapsec_secs)
  */
 
-std::tuple<bool, double> bpf_verify_program(BpfProgType type, const std::vector<ebpf_inst> &raw_prog) {
+std::tuple<bool, double> bpf_verify_program(BpfProgType type, const std::vector<ebpf_inst>& raw_prog) {
     std::vector<char> buf(global_options.print_failures ? 1000000 : 10);
     buf[0] = 0;
     memset(buf.data(), '\0', buf.size());
@@ -102,7 +102,7 @@ std::tuple<bool, double> bpf_verify_program(BpfProgType type, const std::vector<
     if (res < 0) {
         if (global_options.print_failures) {
             std::cerr << "Failed to verify program: " << strerror(errno) << " (" << errno << ")\n";
-            std::cerr << "LOG: " << (char *)attr.log_buf;
+            std::cerr << "LOG: " << (char*)attr.log_buf;
         }
         return {false, elapsed_secs};
     }

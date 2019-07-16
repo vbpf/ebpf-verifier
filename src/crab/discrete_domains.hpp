@@ -75,7 +75,7 @@ class discrete_domain {
   public:
     discrete_domain() : _is_top(true) {}
 
-    discrete_domain(const discrete_domain_t &other) : _is_top(other._is_top), _set(other._set) {}
+    discrete_domain(const discrete_domain_t& other) : _is_top(other._is_top), _set(other._set) {}
 
     discrete_domain(Element s) : _is_top(false), _set(s) {}
 
@@ -120,7 +120,7 @@ class discrete_domain {
 
     discrete_domain_t narrow(discrete_domain_t other) { return this->operator&(other); }
 
-    discrete_domain_t &operator+=(Element s) {
+    discrete_domain_t& operator+=(Element s) {
         if (!this->_is_top) {
             this->_set += s;
         }
@@ -128,7 +128,7 @@ class discrete_domain {
     }
 
     template <typename Range>
-    discrete_domain_t &operator+=(Range es) {
+    discrete_domain_t& operator+=(Range es) {
         if (!this->_is_top)
             for (auto e : es)
                 this->_set += e;
@@ -148,7 +148,7 @@ class discrete_domain {
         return r;
     }
 
-    discrete_domain_t &operator-=(Element s) {
+    discrete_domain_t& operator-=(Element s) {
         if (!this->_is_top) {
             this->_set -= s;
         }
@@ -156,7 +156,7 @@ class discrete_domain {
     }
 
     template <typename Range>
-    discrete_domain_t &operator-=(Range es) {
+    discrete_domain_t& operator-=(Range es) {
         if (!this->_is_top)
             for (auto e : es)
                 this->_set -= e;
@@ -200,7 +200,7 @@ class discrete_domain {
         }
     }
 
-    void write(crab::crab_os &o) const {
+    void write(crab::crab_os& o) const {
         if (this->_is_top) {
             o << "{...}";
         } else if (this->_set.empty()) {
@@ -213,7 +213,7 @@ class discrete_domain {
 }; // class discrete_domain
 
 template <typename Elem>
-inline crab::crab_os &operator<<(crab::crab_os &o, const discrete_domain<Elem> &d) {
+inline crab::crab_os& operator<<(crab::crab_os& o, const discrete_domain<Elem>& d) {
     d.write(o);
     return o;
 }

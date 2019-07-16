@@ -53,11 +53,11 @@
 #include <boost/iterator/indirect_iterator.hpp>
 #include <boost/unordered_map.hpp>
 
+#include "crab/cfg_bgl.hpp"
 #include "crab/debug.hpp"
-#include "crab/types.hpp"
 #include "crab/interval.hpp"
 #include "crab/stats.hpp"
-#include "crab/cfg_bgl.hpp"
+#include "crab/types.hpp"
 
 namespace ikos {
 
@@ -105,7 +105,7 @@ class wto_nesting {
   private:
     wto_nesting(node_list_ptr l) : _nodes(std::make_shared<node_list_t>(*l)) {}
 
-    int compare(wto_nesting_t &other) const {
+    int compare(wto_nesting_t& other) const {
         const_iterator this_it = this->begin(), other_it = other.begin();
         while (this_it != this->end()) {
             if (other_it == other.end()) {
@@ -167,7 +167,7 @@ class wto_nesting {
 
     bool operator>(wto_nesting_t other) const { return this->compare(other) == 1; }
 
-    void write(crab::crab_os &o) const {
+    void write(crab::crab_os& o) const {
         o << "[";
         for (const_iterator it = this->begin(); it != this->end();) {
             vertex_descriptor<G> n = *it;
@@ -182,7 +182,7 @@ class wto_nesting {
 }; // class nesting
 
 template <typename G>
-inline crab::crab_os &operator<<(crab::crab_os &o, const wto_nesting<G> &n) {
+inline crab::crab_os& operator<<(crab::crab_os& o, const wto_nesting<G>& n) {
     n.write(o);
     return o;
 }
@@ -193,16 +193,16 @@ class wto_component {
   public:
     using wto_nesting_t = wto_nesting<G>;
 
-    virtual void accept(wto_component_visitor<G> *) = 0;
+    virtual void accept(wto_component_visitor<G>*) = 0;
 
     virtual ~wto_component() {}
 
-    virtual void write(crab::crab_os &os) const = 0;
+    virtual void write(crab::crab_os& os) const = 0;
 
 }; // class wto_component
 
 template <typename G>
-inline crab::crab_os &operator<<(crab::crab_os &o, const wto_component<G> &c) {
+inline crab::crab_os& operator<<(crab::crab_os& o, const wto_component<G>& c) {
     c.write(o);
     return o;
 }
@@ -220,9 +220,9 @@ class wto_vertex : public wto_component<G> {
   public:
     vertex_descriptor<G> node() { return this->_node; }
 
-    void accept(wto_component_visitor<G> *v) { v->visit(*this); }
+    void accept(wto_component_visitor<G>* v) { v->visit(*this); }
 
-    void write(crab::crab_os &o) const { o << this->_node; }
+    void write(crab::crab_os& o) const { o << this->_node; }
 
 }; // class wto_vertex
 
@@ -253,7 +253,7 @@ class wto_cycle : public wto_component<G> {
 
     vertex_descriptor<G> head() { return this->_head; }
 
-    void accept(wto_component_visitor<G> *v) { v->visit(*this); }
+    void accept(wto_component_visitor<G>* v) { v->visit(*this); }
 
     iterator begin() { return boost::make_indirect_iterator(_wto_components->begin()); }
 
@@ -267,12 +267,12 @@ class wto_cycle : public wto_component<G> {
 
     unsigned get_fixpo_visits() const { return _num_fixpo; }
 
-    void write(crab::crab_os &o) const {
+    void write(crab::crab_os& o) const {
         o << "(" << this->_head;
         if (!this->_wto_components->empty()) {
             o << " ";
             for (const_iterator it = this->begin(); it != this->end();) {
-                const wto_component_t &c = *it;
+                const wto_component_t& c = *it;
                 o << c;
                 ++it;
                 if (it != this->end()) {
@@ -294,8 +294,8 @@ class wto_component_visitor {
     using wto_vertex_t = wto_vertex<G>;
     using wto_cycle_t = wto_cycle<G>;
 
-    virtual void visit(wto_vertex_t &) = 0;
-    virtual void visit(wto_cycle_t &) = 0;
+    virtual void visit(wto_vertex_t&) = 0;
+    virtual void visit(wto_cycle_t&) = 0;
     virtual ~wto_component_visitor() {}
 
 }; // class wto_component_visitor
@@ -343,7 +343,7 @@ class wto {
       public:
         nesting_builder(nesting_table_ptr nesting_table) : _nesting_table(nesting_table) {}
 
-        void visit(wto_cycle_t &cycle) {
+        void visit(wto_cycle_t& cycle) {
             vertex_descriptor<G> head = cycle.head();
             wto_nesting_t previous_nesting = this->_nesting;
             this->_nesting_table->insert(std::make_pair(head, this->_nesting));
@@ -354,7 +354,7 @@ class wto {
             this->_nesting = previous_nesting;
         }
 
-        void visit(wto_vertex_t &vertex) {
+        void visit(wto_vertex_t& vertex) {
             this->_nesting_table->insert(std::make_pair(vertex.node(), this->_nesting));
         }
 
@@ -512,17 +512,17 @@ class wto {
     }
 
     // deep copy
-    wto(const wto_t &other)
+    wto(const wto_t& other)
         : _wto_components(std::make_shared<wto_component_list_t>(*other._wto_components)),
           _dfn_table(other._dfn_table ? std::make_shared<dfn_table_t>(*other._dfn_table) : nullptr), _num(other._num),
           _stack(other._stack ? std::make_shared<stack_t>(*other._stack) : nullptr),
           _nesting_table(std::make_shared<nesting_table_t>(*other._nesting_table)) {}
 
-    wto(const wto_t &&other)
+    wto(const wto_t&& other)
         : _wto_components(boost::move(other._wto_components)), _dfn_table(boost::move(other._dfn_table)),
           _num(other._num), _stack(boost::move(other._stack)), _nesting_table(boost::move(other._nesting_table)) {}
 
-    wto_t &operator=(const wto_t &other) {
+    wto_t& operator=(const wto_t& other) {
         if (this != &other) {
             this->_wto_components = other._wto_components;
             this->_dfn_table = other._dfn_table;
@@ -550,15 +550,15 @@ class wto {
         }
     }
 
-    void accept(wto_component_visitor<G> *v) {
+    void accept(wto_component_visitor<G>* v) {
         for (iterator it = this->begin(); it != this->end(); ++it) {
             it->accept(v);
         }
     }
 
-    void write(crab::crab_os &o) const {
+    void write(crab::crab_os& o) const {
         for (const_iterator it = this->begin(); it != this->end();) {
-            const wto_component_t &c = *it;
+            const wto_component_t& c = *it;
             o << c;
             ++it;
             if (it != this->end()) {
@@ -567,7 +567,7 @@ class wto {
         }
     }
 
-    friend crab::crab_os &operator<<(crab::crab_os &o, const wto_t &wto) {
+    friend crab::crab_os& operator<<(crab::crab_os& o, const wto_t& wto) {
         wto.write(o);
         return o;
     }

@@ -94,10 +94,10 @@ class separate_domain {
 
     template <typename Thresholds>
     class widening_thresholds_op : public binary_op_t {
-        const Thresholds &m_ts;
+        const Thresholds& m_ts;
 
       public:
-        widening_thresholds_op(const Thresholds &ts) : m_ts(ts) {}
+        widening_thresholds_op(const Thresholds& ts) : m_ts(ts) {}
 
         std::pair<bool, std::optional<Value>> apply(Value x, Value y) {
             Value z = x.widening_thresholds(y, m_ts);
@@ -153,7 +153,7 @@ class separate_domain {
     static separate_domain_t bottom() { return separate_domain_t(false); }
 
   private:
-    static patricia_tree_t apply_operation(binary_op_t &o, patricia_tree_t t1, patricia_tree_t t2, bool &is_bottom) {
+    static patricia_tree_t apply_operation(binary_op_t& o, patricia_tree_t t1, patricia_tree_t t2, bool& is_bottom) {
         is_bottom = t1.merge_with(t2, o);
         return t1;
     }
@@ -165,11 +165,11 @@ class separate_domain {
   public:
     separate_domain() : _is_bottom(false) {}
 
-    separate_domain(const separate_domain_t &e) : _is_bottom(e._is_bottom), _tree(e._tree) {}
+    separate_domain(const separate_domain_t& e) : _is_bottom(e._is_bottom), _tree(e._tree) {}
 
-    separate_domain(const separate_domain_t &&e) : _is_bottom(e._is_bottom), _tree(std::move(e._tree)) {}
+    separate_domain(const separate_domain_t&& e) : _is_bottom(e._is_bottom), _tree(std::move(e._tree)) {}
 
-    separate_domain_t &operator=(separate_domain_t e) {
+    separate_domain_t& operator=(separate_domain_t e) {
         this->_is_bottom = e._is_bottom;
         this->_tree = e._tree;
         return *this;
@@ -254,7 +254,7 @@ class separate_domain {
 
     // Widening with thresholds
     template <typename Thresholds>
-    separate_domain_t widening_thresholds(separate_domain_t e, const Thresholds &ts) {
+    separate_domain_t widening_thresholds(separate_domain_t e, const Thresholds& ts) {
         if (this->is_bottom()) {
             return e;
         } else if (e.is_bottom()) {
@@ -301,7 +301,7 @@ class separate_domain {
         this->_tree = patricia_tree_t();
     }
 
-    separate_domain_t &operator-=(Key k) {
+    separate_domain_t& operator-=(Key k) {
         if (!this->is_bottom()) {
             this->_tree.remove(k);
         }
@@ -331,7 +331,7 @@ class separate_domain {
         }
     }
 
-    void write(crab::crab_os &o) const {
+    void write(crab::crab_os& o) const {
         if (this->is_bottom()) {
             o << "_|_";
         } else {
@@ -351,7 +351,7 @@ class separate_domain {
         }
     }
 
-    friend crab::crab_os &operator<<(crab::crab_os &o, const separate_domain<Key, Value> &d) {
+    friend crab::crab_os& operator<<(crab::crab_os& o, const separate_domain<Key, Value>& d) {
         d.write(o);
         return o;
     }

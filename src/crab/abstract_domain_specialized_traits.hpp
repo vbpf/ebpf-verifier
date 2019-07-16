@@ -19,7 +19,7 @@ class checker_domain_traits {
     struct entailment {
         Domain _dom;
         entailment(Domain dom) : _dom(dom) {}
-        bool operator()(const linear_constraint_t &cst) {
+        bool operator()(const linear_constraint_t& cst) {
             Domain dom(_dom); // copy is necessary
             linear_constraint_t neg_cst = cst.negate();
             dom += neg_cst;
@@ -37,7 +37,7 @@ class checker_domain_traits {
      */
 
     // Return true if lhs entails rhs.
-    static bool entail(Domain &lhs, const linear_constraint_t &rhs) {
+    static bool entail(Domain& lhs, const linear_constraint_t& rhs) {
         if (lhs.is_bottom())
             return true;
         if (rhs.is_tautology())
@@ -78,7 +78,7 @@ class checker_domain_traits {
     }
 
     // Return true if inv intersects with cst.
-    static bool intersect(Domain &inv, const linear_constraint_t &cst) {
+    static bool intersect(Domain& inv, const linear_constraint_t& cst) {
         if (inv.is_bottom() || cst.is_contradiction())
             return false;
         if (inv.is_top() || cst.is_tautology())

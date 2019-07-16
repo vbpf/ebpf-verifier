@@ -21,11 +21,10 @@ namespace analyzer {
  * operations are modeled.
  **/
 template <typename AbsDomain>
-class fwd_analyzer
-    : private ikos::interleaved_fwd_fixpoint_iterator<typename intra_abs_transformer<AbsDomain>::abs_dom_t> {
+class fwd_analyzer : private ikos::interleaved_fwd_fixpoint_iterator<AbsDomain> {
   public:
     using abs_tr_t = intra_abs_transformer<AbsDomain>;
-    using abs_dom_t = typename abs_tr_t::abs_dom_t;
+    using abs_dom_t = AbsDomain;
 
   private:
     using fixpo_iterator_t = ikos::interleaved_fwd_fixpoint_iterator<abs_dom_t>;
@@ -43,11 +42,11 @@ class fwd_analyzer
 
     //! Given a basic block and the invariant at the entry it produces
     //! the invariant at the exit of the block.
-    void analyze(basic_block_label_t node, abs_dom_t &inv) {
-        auto &b = this->get_cfg().get_node(node);
+    void analyze(basic_block_label_t node, abs_dom_t& inv) {
+        auto& b = this->get_cfg().get_node(node);
         // XXX: set takes a reference to inv so no copies here
         m_abs_tr->set(&inv);
-        for (auto &s : b) {
+        for (auto& s : b) {
             s.accept(m_abs_tr.get());
         }
     }
@@ -71,9 +70,9 @@ class fwd_analyzer
 
     cfg_ref_t get_cfg() const { return this->_cfg; }
 
-    const invariant_map_t &get_pre_invariants() const { return this->_pre; }
+    const invariant_map_t& get_pre_invariants() const { return this->_pre; }
 
-    const invariant_map_t &get_post_invariants() const { return this->_post; }
+    const invariant_map_t& get_post_invariants() const { return this->_post; }
 
     iterator pre_begin() { return this->_pre.begin(); }
     iterator pre_end() { return this->_pre.end(); }
@@ -119,7 +118,7 @@ class fwd_analyzer
 
     //! Return the WTO of the CFG. The WTO contains also how many
     //! times each head was visited by the fixpoint iterator.
-    const wto_t &get_wto() const { return fixpo_iterator_t::get_wto(); }
+    const wto_t& get_wto() const { return fixpo_iterator_t::get_wto(); }
 
     // clear all invariants (pre and post)
     void clear() {
@@ -127,7 +126,7 @@ class fwd_analyzer
         this->_post.clear();
     }
 
-    void set_abs_transformer(abs_dom_t *inv) { m_abs_tr->set(inv); }
+    void set_abs_transformer(abs_dom_t* inv) { m_abs_tr->set(inv); }
     std::shared_ptr<abs_tr_t> get_abs_transformer() { return m_abs_tr; }
 };
 

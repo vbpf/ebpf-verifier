@@ -33,7 +33,7 @@
 
 using std::string;
 
-using printer_t = boost::signals2::signal<void(const string &)>;
+using printer_t = boost::signals2::signal<void(const string&)>;
 
 using crab::checker::checks_db;
 
@@ -42,25 +42,25 @@ using sdbm_domain_t = crab::domains::SplitDBM;
 using dom_t = crab::domains::array_expansion_domain<sdbm_domain_t>;
 using analyzer_t = crab::analyzer::fwd_analyzer<dom_t>;
 
-static auto extract_pre(analyzer_t &analyzer) {
+static auto extract_pre(analyzer_t& analyzer) {
     std::map<string, typename analyzer_t::abs_dom_t> res;
-    for (const auto &block : analyzer.get_cfg())
+    for (const auto& block : analyzer.get_cfg())
         res.emplace(block.label(), analyzer.get_pre(block.label()));
     return res;
 }
 
-static auto extract_post(analyzer_t &analyzer) {
+static auto extract_post(analyzer_t& analyzer) {
     std::map<string, typename analyzer_t::abs_dom_t> res;
-    for (const auto &block : analyzer.get_cfg())
+    for (const auto& block : analyzer.get_cfg())
         res.emplace(block.label(), analyzer.get_post(block.label()));
     return res;
 }
 
-static checks_db check(analyzer_t &analyzer) {
+static checks_db check(analyzer_t& analyzer) {
     using checker_t = crab::checker::assert_property_checker<analyzer_t>;
     checker_t checker;
 
-    for (auto &bb : analyzer.get_cfg()) {
+    for (auto& bb : analyzer.get_cfg()) {
         if (checker.is_interesting(bb)) {
             auto inv = analyzer[bb.label()];
             // Note: this has side effect:
@@ -69,7 +69,7 @@ static checks_db check(analyzer_t &analyzer) {
             // propagate forward the invariants from the block entry
             // while checking the property
             checker.set(abs_tr.get(), {});
-            for (auto &stmt : bb) {
+            for (auto& stmt : bb) {
                 stmt.accept(&checker);
             }
         }
@@ -77,7 +77,7 @@ static checks_db check(analyzer_t &analyzer) {
     return checker.get_db();
 }
 
-static checks_db analyze(cfg_t &cfg, printer_t &pre_printer, printer_t &post_printer) {
+static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_printer) {
     dom_t::clear_global_state();
 
     analyzer_t analyzer(cfg);
@@ -85,11 +85,11 @@ static checks_db analyze(cfg_t &cfg, printer_t &pre_printer, printer_t &post_pri
     analyzer.run_forward();
 
     if (global_options.print_invariants) {
-        pre_printer.connect([pre = extract_pre(analyzer)](const string &label) {
+        pre_printer.connect([pre = extract_pre(analyzer)](const string& label) {
             dom_t inv = pre.at(label);
             crab::outs() << "\n" << inv << "\n";
         });
-        post_printer.connect([post = extract_post(analyzer)](const string &label) {
+        post_printer.connect([post = extract_post(analyzer)](const string& label) {
             dom_t inv = post.at(label);
             crab::outs() << "\n" << inv << "\n";
         });
@@ -99,9 +99,9 @@ static checks_db analyze(cfg_t &cfg, printer_t &pre_printer, printer_t &post_pri
     return c;
 }
 
-static std::vector<string> sorted_labels(cfg_t &cfg) {
+static std::vector<string> sorted_labels(cfg_t& cfg) {
     std::vector<string> labels;
-    for (const auto &block : cfg)
+    for (const auto& block : cfg)
         labels.push_back(block.label());
 
     std::sort(labels.begin(), labels.end(), [](string a, string b) {
@@ -114,7 +114,7 @@ static std::vector<string> sorted_labels(cfg_t &cfg) {
     return labels;
 }
 
-std::tuple<bool, double> abs_validate(Cfg const &simple_cfg, program_info info) {
+std::tuple<bool, double> abs_validate(Cfg const& simple_cfg, program_info info) {
     variable_factory vfac;
     cfg_t cfg(entry_label(), crab::ARR);
     build_crab_cfg(cfg, vfac, simple_cfg, info);

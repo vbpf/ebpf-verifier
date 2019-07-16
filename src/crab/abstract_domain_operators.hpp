@@ -10,7 +10,7 @@ namespace ikos {
 // Do not modify the order.
 enum operation_t { OP_ADDITION, OP_SUBTRACTION, OP_MULTIPLICATION, OP_SDIV, OP_UDIV, OP_SREM, OP_UREM };
 
-inline crab::crab_os &operator<<(crab::crab_os &o, operation_t op) {
+inline crab::crab_os& operator<<(crab::crab_os& o, operation_t op) {
     switch (op) {
     case OP_ADDITION: o << "+"; break;
     case OP_SUBTRACTION: o << "-"; break;
@@ -26,7 +26,7 @@ inline crab::crab_os &operator<<(crab::crab_os &o, operation_t op) {
 // Enumeration type for bitwise operations
 enum bitwise_operation_t { OP_AND, OP_OR, OP_XOR, OP_SHL, OP_LSHR, OP_ASHR };
 
-inline crab::crab_os &operator<<(crab::crab_os &o, bitwise_operation_t op) {
+inline crab::crab_os& operator<<(crab::crab_os& o, bitwise_operation_t op) {
     switch (op) {
     case OP_AND: o << "&"; break;
     case OP_OR: o << "|"; break;
@@ -45,7 +45,7 @@ namespace domains {
 // Enumeration type for cast operations
 enum int_conv_operation_t { OP_TRUNC, OP_SEXT, OP_ZEXT };
 
-inline crab::crab_os &operator<<(crab::crab_os &o, int_conv_operation_t op) {
+inline crab::crab_os& operator<<(crab::crab_os& o, int_conv_operation_t op) {
     switch (op) {
     case OP_TRUNC: o << "trunc"; break;
     case OP_SEXT: o << "sext"; break;

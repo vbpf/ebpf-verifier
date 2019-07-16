@@ -136,22 +136,22 @@ class tree {
     using key_binary_op_t = key_binary_op<Key, Value>;
     using partial_order_t = partial_order<Value>;
     struct binding_t {
-        const Key &first;
-        const Value &second;
-        binding_t(const Key &first_, const Value &second_) : first(first_), second(second_) {}
+        const Key& first;
+        const Value& second;
+        binding_t(const Key& first_, const Value& second_) : first(first_), second(second_) {}
     };
 
   public:
     static tree_ptr make_node(index_t, index_t, tree_ptr, tree_ptr);
-    static tree_ptr make_leaf(const Key &, const Value &);
-    static std::pair<bool, tree_ptr> merge(tree_ptr, tree_ptr, binary_op_t &, bool);
-    static tree_ptr key_merge(tree_ptr, tree_ptr, key_binary_op_t &, bool);
+    static tree_ptr make_leaf(const Key&, const Value&);
+    static std::pair<bool, tree_ptr> merge(tree_ptr, tree_ptr, binary_op_t&, bool);
+    static tree_ptr key_merge(tree_ptr, tree_ptr, key_binary_op_t&, bool);
     static tree_ptr join(tree_ptr t0, tree_ptr t1);
-    static std::pair<bool, tree_ptr> insert(tree_ptr, const Key &, const Value &, binary_op_t &, bool);
-    static tree_ptr insert(tree_ptr, const Key &, const Value &, key_binary_op_t &, bool);
-    static tree_ptr transform(tree_ptr, unary_op_t &);
-    static tree_ptr remove(tree_ptr, const Key &);
-    static bool compare(tree_ptr, tree_ptr, partial_order_t &, bool);
+    static std::pair<bool, tree_ptr> insert(tree_ptr, const Key&, const Value&, binary_op_t&, bool);
+    static tree_ptr insert(tree_ptr, const Key&, const Value&, key_binary_op_t&, bool);
+    static tree_ptr transform(tree_ptr, unary_op_t&);
+    static tree_ptr remove(tree_ptr, const Key&);
+    static bool compare(tree_ptr, tree_ptr, partial_order_t&, bool);
 
   public:
     virtual std::size_t size() const = 0;
@@ -161,7 +161,7 @@ class tree {
     virtual tree_ptr right_branch() const = 0;
     virtual index_t prefix() const = 0;
     virtual index_t branching_bit() const = 0;
-    virtual std::optional<Value> lookup(const Key &) const = 0;
+    virtual std::optional<Value> lookup(const Key&) const = 0;
 
   public:
     bool is_node() const { return !is_leaf(); }
@@ -229,7 +229,7 @@ class tree {
             }
         }
 
-        bool equal(const iterator &it) const {
+        bool equal(const iterator& it) const {
             if (this->_current != it._current) {
                 return false;
             }
@@ -277,8 +277,8 @@ class node : public tree<Key, Value> {
 
   private:
     node();
-    node(const node_t &);
-    node_t &operator=(const node_t &);
+    node(const node_t&);
+    node_t& operator=(const node_t&);
 
   public:
     node(index_t prefix_, index_t branching_bit_, tree_ptr left_branch_, tree_ptr right_branch_)
@@ -306,7 +306,7 @@ class node : public tree<Key, Value> {
 
     tree_ptr right_branch() const { return this->_right_branch; }
 
-    std::optional<Value> lookup(const Key &key) const {
+    std::optional<Value> lookup(const Key& key) const {
         if (key.index() <= this->_prefix) {
             if (this->_left_branch) {
                 return this->_left_branch->lookup(key);
@@ -337,11 +337,11 @@ class leaf : public tree<Key, Value> {
 
   private:
     leaf();
-    leaf(const leaf_t &);
-    leaf_t &operator=(const leaf_t &);
+    leaf(const leaf_t&);
+    leaf_t& operator=(const leaf_t&);
 
   public:
-    leaf(const Key &key_, const Value &value_) : _key(key_), _value(value_) {}
+    leaf(const Key& key_, const Value& value_) : _key(key_), _value(value_) {}
 
     std::size_t size() const { return 1; }
 
@@ -357,7 +357,7 @@ class leaf : public tree<Key, Value> {
 
     tree_ptr right_branch() const { CRAB_ERROR("Patricia tree: trying to call right_branch() on a leaf"); }
 
-    std::optional<Value> lookup(const Key &key_) const {
+    std::optional<Value> lookup(const Key& key_) const {
         if (this->_key.index() == key_.index()) {
             return std::optional<Value>(this->_value);
         } else {
@@ -390,7 +390,7 @@ typename tree<Key, Value>::ptr tree<Key, Value>::make_node(index_t prefix, index
 }
 
 template <typename Key, typename Value>
-typename tree<Key, Value>::ptr tree<Key, Value>::make_leaf(const Key &key, const Value &value) {
+typename tree<Key, Value>::ptr tree<Key, Value>::make_leaf(const Key& key, const Value& value) {
     using tree_ptr = typename tree<Key, Value>::ptr;
     return tree_ptr(new leaf<Key, Value>(key, value));
 }
@@ -414,8 +414,8 @@ typename tree<Key, Value>::ptr tree<Key, Value>::join(typename tree<Key, Value>:
 
 template <typename Key, typename Value>
 std::pair<bool, typename tree<Key, Value>::ptr> tree<Key, Value>::insert(typename tree<Key, Value>::ptr t,
-                                                                         const Key &key_, const Value &value_,
-                                                                         binary_op_t &op, bool combine_left_to_right) {
+                                                                         const Key& key_, const Value& value_,
+                                                                         binary_op_t& op, bool combine_left_to_right) {
     using tree_ptr = typename tree<Key, Value>::ptr;
     tree_ptr nil;
     std::pair<bool, tree_ptr> res, res_lb, res_rb;
@@ -474,8 +474,8 @@ std::pair<bool, typename tree<Key, Value>::ptr> tree<Key, Value>::insert(typenam
             }
         } else {
             binding_t b = t->binding();
-            const Key &key = b.first;
-            const Value &value = b.second;
+            const Key& key = b.first;
+            const Value& value = b.second;
             if (key.index() == key_.index()) {
                 new_value = combine_left_to_right ? op.apply(value, value_) : op.apply(value_, value);
                 if (new_value.first) {
@@ -508,8 +508,8 @@ std::pair<bool, typename tree<Key, Value>::ptr> tree<Key, Value>::insert(typenam
 }
 
 template <typename Key, typename Value>
-typename tree<Key, Value>::ptr tree<Key, Value>::insert(typename tree<Key, Value>::ptr t, const Key &key_,
-                                                        const Value &value_, key_binary_op_t &op,
+typename tree<Key, Value>::ptr tree<Key, Value>::insert(typename tree<Key, Value>::ptr t, const Key& key_,
+                                                        const Value& value_, key_binary_op_t& op,
                                                         bool combine_left_to_right) {
     using tree_ptr = typename tree<Key, Value>::ptr;
     tree_ptr nil;
@@ -558,8 +558,8 @@ typename tree<Key, Value>::ptr tree<Key, Value>::insert(typename tree<Key, Value
             }
         } else {
             binding_t b = t->binding();
-            const Key &key = b.first;
-            const Value &value = b.second;
+            const Key& key = b.first;
+            const Value& value = b.second;
             if (key.index() == key_.index()) {
                 std::optional<Value> new_value =
                     combine_left_to_right ? op.apply(key, value, value_) : op.apply(key, value_, value);
@@ -590,7 +590,7 @@ typename tree<Key, Value>::ptr tree<Key, Value>::insert(typename tree<Key, Value
 }
 
 template <typename Key, typename Value>
-typename tree<Key, Value>::ptr tree<Key, Value>::transform(typename tree<Key, Value>::ptr t, unary_op_t &op) {
+typename tree<Key, Value>::ptr tree<Key, Value>::transform(typename tree<Key, Value>::ptr t, unary_op_t& op) {
     using tree_ptr = typename tree<Key, Value>::ptr;
     tree_ptr nil;
     if (t) {
@@ -617,7 +617,7 @@ typename tree<Key, Value>::ptr tree<Key, Value>::transform(typename tree<Key, Va
             }
         } else {
             binding_t b = t->binding();
-            const Value &value = b.second;
+            const Value& value = b.second;
             std::optional<Value> new_value = op.apply(value);
             if (new_value) {
                 if (*new_value == value) {
@@ -635,7 +635,7 @@ typename tree<Key, Value>::ptr tree<Key, Value>::transform(typename tree<Key, Va
 }
 
 template <typename Key, typename Value>
-typename tree<Key, Value>::ptr tree<Key, Value>::remove(typename tree<Key, Value>::ptr t, const Key &key_) {
+typename tree<Key, Value>::ptr tree<Key, Value>::remove(typename tree<Key, Value>::ptr t, const Key& key_) {
     using tree_ptr = typename tree<Key, Value>::ptr;
     tree_ptr nil;
     index_t id = key_.index();
@@ -672,7 +672,7 @@ typename tree<Key, Value>::ptr tree<Key, Value>::remove(typename tree<Key, Value
             }
         } else {
             binding_t b = t->binding();
-            const Key &key = b.first;
+            const Key& key = b.first;
             if (key.index() == id) {
                 return nil;
             } else {
@@ -687,7 +687,7 @@ typename tree<Key, Value>::ptr tree<Key, Value>::remove(typename tree<Key, Value
 template <typename Key, typename Value>
 std::pair<bool, typename tree<Key, Value>::ptr> tree<Key, Value>::merge(typename tree<Key, Value>::ptr s,
                                                                         typename tree<Key, Value>::ptr t,
-                                                                        binary_op_t &op, bool combine_left_to_right) {
+                                                                        binary_op_t& op, bool combine_left_to_right) {
     using tree_ptr = typename tree<Key, Value>::ptr;
     tree_ptr nil;
     std::pair<bool, tree_ptr> res, res_lb, res_rb;
@@ -846,7 +846,7 @@ std::pair<bool, typename tree<Key, Value>::ptr> tree<Key, Value>::merge(typename
 
 template <typename Key, typename Value>
 typename tree<Key, Value>::ptr tree<Key, Value>::key_merge(typename tree<Key, Value>::ptr s,
-                                                           typename tree<Key, Value>::ptr t, key_binary_op_t &op,
+                                                           typename tree<Key, Value>::ptr t, key_binary_op_t& op,
                                                            bool combine_left_to_right) {
     using tree_ptr = typename tree<Key, Value>::ptr;
     tree_ptr nil;
@@ -972,15 +972,15 @@ typename tree<Key, Value>::ptr tree<Key, Value>::key_merge(typename tree<Key, Va
 }
 
 template <typename Key, typename Value>
-bool tree<Key, Value>::compare(typename tree<Key, Value>::ptr s, typename tree<Key, Value>::ptr t, partial_order_t &po,
+bool tree<Key, Value>::compare(typename tree<Key, Value>::ptr s, typename tree<Key, Value>::ptr t, partial_order_t& po,
                                bool compare_left_to_right) {
     if (s) {
         if (t) {
             if (s != t) {
                 if (s->is_leaf()) {
                     binding_t b = s->binding();
-                    const Key &key = b.first;
-                    const Value &value = b.second;
+                    const Key& key = b.first;
+                    const Value& value = b.second;
                     std::optional<Value> value_ = t->lookup(key);
                     if (value_) {
                         Value left = compare_left_to_right ? value : *value_;
@@ -1094,14 +1094,14 @@ class patricia_tree {
       public:
         iterator() {}
 
-        iterator(const patricia_tree_t &pt) : _it(pt._tree) {}
+        iterator(const patricia_tree_t& pt) : _it(pt._tree) {}
 
       private:
         iterator(tree_ptr t) : _it(t) {}
 
         void increment() { ++this->_it; }
 
-        bool equal(const iterator &other) const { return this->_it == other._it; }
+        bool equal(const iterator& other) const { return this->_it == other._it; }
 
         binding_t dereference() const { return *this->_it; }
 
@@ -1117,9 +1117,9 @@ class patricia_tree {
   public:
     patricia_tree() {}
 
-    patricia_tree(const patricia_tree_t &t) : _tree(t._tree) {}
+    patricia_tree(const patricia_tree_t& t) : _tree(t._tree) {}
 
-    patricia_tree_t &operator=(const patricia_tree_t &t) {
+    patricia_tree_t& operator=(const patricia_tree_t& t) {
         this->_tree = t._tree;
         return *this;
     }
@@ -1136,7 +1136,7 @@ class patricia_tree {
 
     iterator end() const { return iterator(); }
 
-    std::optional<Value> lookup(const Key &key) const {
+    std::optional<Value> lookup(const Key& key) const {
         if (this->_tree) {
             return this->_tree->lookup(key);
         } else {
@@ -1144,7 +1144,7 @@ class patricia_tree {
         }
     }
 
-    bool merge_with(const patricia_tree_t &t, binary_op_t &op) {
+    bool merge_with(const patricia_tree_t& t, binary_op_t& op) {
         std::pair<bool, tree_ptr> res;
         res = tree_t::merge(this->_tree, t._tree, op, true);
         if (res.first) {
@@ -1154,26 +1154,26 @@ class patricia_tree {
             return false;
         }
     }
-    void merge_with(const patricia_tree_t &t, key_binary_op_t &op) {
+    void merge_with(const patricia_tree_t& t, key_binary_op_t& op) {
         this->_tree = tree_t::key_merge(this->_tree, t._tree, op, true);
     }
 
-    void insert(const Key &key, const Value &value) {
+    void insert(const Key& key, const Value& value) {
         insert_op op;
         std::pair<bool, tree_ptr> res;
         res = tree_t::insert(this->_tree, key, value, op, true);
         this->_tree = res.second;
     }
 
-    void transform(unary_op_t &op) { this->_tree = tree_t::transform(this->_tree, op); }
+    void transform(unary_op_t& op) { this->_tree = tree_t::transform(this->_tree, op); }
 
-    void remove(const Key &key) { this->_tree = tree_t::remove(this->_tree, key); }
+    void remove(const Key& key) { this->_tree = tree_t::remove(this->_tree, key); }
 
     void clear() { this->_tree.reset(); }
 
     bool empty() const { return !this->_tree; }
 
-    bool leq(const patricia_tree_t &t, partial_order_t &po) const {
+    bool leq(const patricia_tree_t& t, partial_order_t& po) const {
         return tree_t::compare(this->_tree, t._tree, po, true);
     }
 
@@ -1204,14 +1204,14 @@ class patricia_tree_set {
       public:
         iterator() {}
 
-        iterator(const patricia_tree_set_t &ptset) : _it(ptset._tree) {}
+        iterator(const patricia_tree_set_t& ptset) : _it(ptset._tree) {}
 
       private:
         iterator(patricia_tree_t t) : _it(t) {}
 
         void increment() { ++this->_it; }
 
-        bool equal(const iterator &other) const { return this->_it == other._it; }
+        bool equal(const iterator& other) const { return this->_it == other._it; }
 
         Element dereference() const { return this->_it->first; }
 
@@ -1262,14 +1262,14 @@ class patricia_tree_set {
   public:
     patricia_tree_set() {}
 
-    patricia_tree_set(const patricia_tree_set_t &s) : _tree(s._tree) {}
+    patricia_tree_set(const patricia_tree_set_t& s) : _tree(s._tree) {}
 
-    patricia_tree_set_t &operator=(const patricia_tree_set_t &t) {
+    patricia_tree_set_t& operator=(const patricia_tree_set_t& t) {
         this->_tree = t._tree;
         return *this;
     }
 
-    patricia_tree_set(const Element &e) { this->_tree.insert(e, true); }
+    patricia_tree_set(const Element& e) { this->_tree.insert(e, true); }
 
     std::size_t size() const { return this->_tree.size(); }
 
@@ -1277,7 +1277,7 @@ class patricia_tree_set {
 
     iterator end() const { return iterator(); }
 
-    bool operator[](const Element &x) const {
+    bool operator[](const Element& x) const {
         std::optional<bool> r = this->_tree.lookup(x);
         if (!r)
             return false;
@@ -1285,65 +1285,65 @@ class patricia_tree_set {
             return *r;
     }
 
-    patricia_tree_set_t operator+(const Element &e) const {
+    patricia_tree_set_t operator+(const Element& e) const {
         patricia_tree_t t = this->_tree;
         t.insert(e, true);
         return patricia_tree_set_t(t);
     }
 
-    patricia_tree_set_t &operator+=(const Element &e) {
+    patricia_tree_set_t& operator+=(const Element& e) {
         this->_tree.insert(e, true);
         return *this;
     }
 
-    patricia_tree_set_t operator-(const Element &e) const {
+    patricia_tree_set_t operator-(const Element& e) const {
         patricia_tree_t t = this->_tree;
         t.remove(e);
         return patricia_tree_set_t(t);
     }
 
-    patricia_tree_set_t &operator-=(const Element &e) {
+    patricia_tree_set_t& operator-=(const Element& e) {
         this->_tree.remove(e);
         return *this;
     }
 
-    patricia_tree_set &clear() {
+    patricia_tree_set& clear() {
         this->_tree.clear();
         return *this;
     }
 
     bool empty() const { return this->_tree.empty(); }
 
-    patricia_tree_set_t operator|(const patricia_tree_set_t &s) const {
+    patricia_tree_set_t operator|(const patricia_tree_set_t& s) const {
         patricia_tree_set_t u(do_union(this->_tree, s._tree));
         return u;
     }
 
-    patricia_tree_set_t &operator|=(const patricia_tree_set_t &s) {
+    patricia_tree_set_t& operator|=(const patricia_tree_set_t& s) {
         this->_tree = do_union(this->_tree, s._tree);
         return *this;
     }
 
-    patricia_tree_set_t operator&(const patricia_tree_set_t &s) const {
+    patricia_tree_set_t operator&(const patricia_tree_set_t& s) const {
         patricia_tree_set_t i(do_intersection(this->_tree, s._tree));
         return i;
     }
 
-    patricia_tree_set_t &operator&=(const patricia_tree_set_t &s) {
+    patricia_tree_set_t& operator&=(const patricia_tree_set_t& s) {
         this->_tree = do_intersection(this->_tree, s._tree);
         return *this;
     }
 
-    bool operator<=(const patricia_tree_set_t &s) const {
+    bool operator<=(const patricia_tree_set_t& s) const {
         subset_po po;
         return this->_tree.leq(s._tree, po);
     }
 
-    bool operator>=(const patricia_tree_set_t &s) const { return s.operator<=(*this); }
+    bool operator>=(const patricia_tree_set_t& s) const { return s.operator<=(*this); }
 
-    bool operator==(const patricia_tree_set_t &s) const { return (this->operator<=(s) && s.operator<=(*this)); }
+    bool operator==(const patricia_tree_set_t& s) const { return (this->operator<=(s) && s.operator<=(*this)); }
 
-    void write(crab::crab_os &o) const {
+    void write(crab::crab_os& o) const {
         o << "{";
         for (iterator it = begin(); it != end();) {
             it->write(o);
@@ -1355,7 +1355,7 @@ class patricia_tree_set {
         o << "}";
     }
 
-    friend crab::crab_os &operator<<(crab::crab_os &o, const patricia_tree_set<Element> &s) {
+    friend crab::crab_os& operator<<(crab::crab_os& o, const patricia_tree_set<Element>& s) {
         s.write(o);
         return o;
     }

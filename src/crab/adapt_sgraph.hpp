@@ -20,19 +20,19 @@ class AdaptSMap {
     using val_t = Val;
     class elt_t {
       public:
-        elt_t(key_t _k, const val_t &_v) : key(_k), val(_v) {}
+        elt_t(key_t _k, const val_t& _v) : key(_k), val(_v) {}
 
-        elt_t(const elt_t &o) : key(o.key), val(o.val) {}
+        elt_t(const elt_t& o) : key(o.key), val(o.val) {}
 
         key_t key;
         val_t val;
     };
 
     AdaptSMap()
-        : sz(0), dense_maxsz(sparse_threshold), sparse_ub(10), dense((elt_t *)malloc(sizeof(elt_t) * sparse_threshold)),
+        : sz(0), dense_maxsz(sparse_threshold), sparse_ub(10), dense((elt_t*)malloc(sizeof(elt_t) * sparse_threshold)),
           sparse(nullptr) {}
 
-    AdaptSMap(AdaptSMap &&o)
+    AdaptSMap(AdaptSMap&& o)
         : sz(o.sz), dense_maxsz(o.dense_maxsz), sparse_ub(o.sparse_ub), dense(o.dense), sparse(o.sparse) {
         o.dense = nullptr;
         o.sparse = nullptr;
@@ -41,31 +41,31 @@ class AdaptSMap {
         o.sparse_maxsz = 0;
     }
 
-    AdaptSMap(const AdaptSMap &o)
+    AdaptSMap(const AdaptSMap& o)
         : sz(o.sz), dense_maxsz(o.dense_maxsz), sparse_ub(o.sparse_ub),
-          dense((elt_t *)malloc(sizeof(elt_t) * dense_maxsz)), sparse(nullptr) {
-        memcpy(static_cast<void *>(dense), o.dense, sizeof(elt_t) * sz);
+          dense((elt_t*)malloc(sizeof(elt_t) * dense_maxsz)), sparse(nullptr) {
+        memcpy(static_cast<void*>(dense), o.dense, sizeof(elt_t) * sz);
 
         if (o.sparse) {
-            sparse = (key_t *)malloc(sizeof(key_t) * sparse_ub);
+            sparse = (key_t*)malloc(sizeof(key_t) * sparse_ub);
             for (key_t idx = 0; idx < sz; idx++)
                 sparse[dense[idx].key] = idx;
         }
     }
 
-    AdaptSMap &operator=(const AdaptSMap &o) {
+    AdaptSMap& operator=(const AdaptSMap& o) {
         if (this != &o) {
             if (dense_maxsz < o.dense_maxsz) {
                 dense_maxsz = o.dense_maxsz;
-                dense = (elt_t *)realloc(static_cast<void *>(dense), sizeof(elt_t) * dense_maxsz);
+                dense = (elt_t*)realloc(static_cast<void*>(dense), sizeof(elt_t) * dense_maxsz);
             }
             sz = o.sz;
-            memcpy(static_cast<void *>(dense), o.dense, sizeof(elt_t) * sz);
+            memcpy(static_cast<void*>(dense), o.dense, sizeof(elt_t) * sz);
 
             if (o.sparse) {
                 if (!sparse || sparse_ub < o.sparse_ub) {
                     sparse_ub = o.sparse_ub;
-                    sparse = (key_t *)realloc(static_cast<void *>(sparse), sizeof(key_t) * sparse_ub);
+                    sparse = (key_t*)realloc(static_cast<void*>(sparse), sizeof(key_t) * sparse_ub);
                 }
             }
 
@@ -78,7 +78,7 @@ class AdaptSMap {
         return *this;
     }
 
-    AdaptSMap &operator=(AdaptSMap &&o) {
+    AdaptSMap& operator=(AdaptSMap&& o) {
         if (dense)
             free(dense);
         if (sparse)
@@ -110,7 +110,7 @@ class AdaptSMap {
     class key_iter_t {
       public:
         key_iter_t() : e(nullptr) {}
-        key_iter_t(elt_t *_e) : e(_e) {}
+        key_iter_t(elt_t* _e) : e(_e) {}
 
         // XXX: to make sure that we always return the same address
         // for the "empty" iterator, otherwise we can trigger
@@ -123,27 +123,27 @@ class AdaptSMap {
         }
 
         key_t operator*() const { return (*e).key; }
-        bool operator!=(const key_iter_t &o) const { return e < o.e; }
-        key_iter_t &operator++() {
+        bool operator!=(const key_iter_t& o) const { return e < o.e; }
+        key_iter_t& operator++() {
             ++e;
             return *this;
         }
 
-        elt_t *e;
+        elt_t* e;
     };
-    using elt_iter_t = elt_t *;
+    using elt_iter_t = elt_t*;
 
     class key_range_t {
       public:
         using iterator = key_iter_t;
 
-        key_range_t(elt_t *_e, size_t _sz) : e(_e), sz(_sz) {}
+        key_range_t(elt_t* _e, size_t _sz) : e(_e), sz(_sz) {}
         size_t size() const { return sz; }
 
         key_iter_t begin() const { return key_iter_t(e); }
         key_iter_t end() const { return key_iter_t(e + sz); }
 
-        elt_t *e;
+        elt_t* e;
         size_t sz;
     };
 
@@ -151,13 +151,13 @@ class AdaptSMap {
       public:
         using iterator = elt_iter_t;
 
-        elt_range_t(elt_t *_e, size_t _sz) : e(_e), sz(_sz) {}
-        elt_range_t(const elt_range_t &o) : e(o.e), sz(o.sz) {}
+        elt_range_t(elt_t* _e, size_t _sz) : e(_e), sz(_sz) {}
+        elt_range_t(const elt_range_t& o) : e(o.e), sz(o.sz) {}
         size_t size() const { return sz; }
         elt_iter_t begin() const { return elt_iter_t(e); }
         elt_iter_t end() const { return elt_iter_t(e + sz); }
 
-        elt_t *e;
+        elt_t* e;
         size_t sz;
     };
 
@@ -180,7 +180,7 @@ class AdaptSMap {
         }
     }
 
-    bool lookup(key_t k, val_t *v_out) {
+    bool lookup(key_t k, val_t* v_out) {
         if (sparse) {
             // SEE ABOVE WARNING
             int idx = sparse[k];
@@ -210,7 +210,7 @@ class AdaptSMap {
             dense[idx] = repl;
             sparse[repl.key] = idx;
         } else {
-            elt_t *e = dense;
+            elt_t* e = dense;
             while (e->key != k)
                 ++e;
             *e = repl;
@@ -218,7 +218,7 @@ class AdaptSMap {
     }
 
     // precondition: k \notin S
-    void add(key_t k, const val_t &v) {
+    void add(key_t k, const val_t& v) {
         if (dense_maxsz <= sz)
             growDense(sz + 1);
 
@@ -236,7 +236,7 @@ class AdaptSMap {
 
         while (dense_maxsz < new_max)
             dense_maxsz *= 2;
-        elt_t *new_dense = (elt_t *)realloc(static_cast<void *>(dense), sizeof(elt_t) * dense_maxsz);
+        elt_t* new_dense = (elt_t*)realloc(static_cast<void*>(dense), sizeof(elt_t) * dense_maxsz);
         if (!new_dense)
             CRAB_ERROR("Allocation failure.");
         dense = new_dense;
@@ -248,7 +248,7 @@ class AdaptSMap {
                 key_max = std::max(key_max, k);
 
             sparse_ub = key_max + 1;
-            sparse = (key_t *)malloc(sizeof(key_t) * sparse_ub);
+            sparse = (key_t*)malloc(sizeof(key_t) * sparse_ub);
             key_t idx = 0;
             for (key_t k : keys())
                 sparse[k] = idx++;
@@ -258,7 +258,7 @@ class AdaptSMap {
     void growSparse(size_t new_ub) {
         while (sparse_ub < new_ub)
             sparse_ub *= 2;
-        key_t *new_sparse = (key_t *)malloc(sizeof(key_t) * (sparse_ub));
+        key_t* new_sparse = (key_t*)malloc(sizeof(key_t) * (sparse_ub));
         if (!new_sparse)
             CRAB_ERROR("Allocation falure.");
         free(sparse);
@@ -274,8 +274,8 @@ class AdaptSMap {
     size_t sz;
     size_t dense_maxsz;
     size_t sparse_ub;
-    elt_t *dense;
-    key_t *sparse;
+    elt_t* dense;
+    key_t* sparse;
 };
 
 template <class Weight>
@@ -288,15 +288,15 @@ class AdaptGraph : public ikos::writeable {
 
     AdaptGraph() : edge_count(0) {}
 
-    AdaptGraph(AdaptGraph<Wt> &&o)
+    AdaptGraph(AdaptGraph<Wt>&& o)
         : _preds(std::move(o._preds)), _succs(std::move(o._succs)), _ws(std::move(o._ws)), edge_count(o.edge_count),
           is_free(std::move(o.is_free)), free_id(std::move(o.free_id)), free_widx(std::move(o.free_widx)) {}
 
-    AdaptGraph(const AdaptGraph<Wt> &o)
+    AdaptGraph(const AdaptGraph<Wt>& o)
         : _preds(o._preds), _succs(o._succs), _ws(o._ws), edge_count(o.edge_count), is_free(o.is_free),
           free_id(o.free_id), free_widx(o.free_widx) {}
 
-    AdaptGraph<Wt> &operator=(const AdaptGraph<Wt> &o) {
+    AdaptGraph<Wt>& operator=(const AdaptGraph<Wt>& o) {
         if (this != &o) {
             _preds = o._preds;
             _succs = o._succs;
@@ -309,7 +309,7 @@ class AdaptGraph : public ikos::writeable {
         return *this;
     }
 
-    AdaptGraph<Wt> &operator=(AdaptGraph<Wt> &&o) {
+    AdaptGraph<Wt>& operator=(AdaptGraph<Wt>&& o) {
         _preds = std::move(o._preds);
         _succs = std::move(o._succs);
         _ws = std::move(o._ws);
@@ -322,12 +322,12 @@ class AdaptGraph : public ikos::writeable {
     }
 
     template <class G>
-    static AdaptGraph<Wt> copy(const G &o) {
+    static AdaptGraph<Wt> copy(const G& o) {
         AdaptGraph<Wt> g;
         g.growTo(o.size());
 
         for (vert_id s : o.verts()) {
-            for (auto e : const_cast<G &>(o).e_succs(s)) {
+            for (auto e : const_cast<G&>(o).e_succs(s)) {
                 g.add_edge(s, e.val, e.vert);
             }
         }
@@ -336,45 +336,45 @@ class AdaptGraph : public ikos::writeable {
 
     class vert_iterator {
       public:
-        vert_iterator(vert_id _v, const std::vector<bool> &_is_free) : v(_v), is_free(_is_free) {}
+        vert_iterator(vert_id _v, const std::vector<bool>& _is_free) : v(_v), is_free(_is_free) {}
         vert_id operator*() const { return v; }
-        bool operator!=(const vert_iterator &o) {
+        bool operator!=(const vert_iterator& o) {
             while (v < o.v && is_free[v])
                 ++v;
             return v < o.v;
         }
-        vert_iterator &operator++() {
+        vert_iterator& operator++() {
             ++v;
             return *this;
         }
 
         vert_id v;
-        const std::vector<bool> &is_free;
+        const std::vector<bool>& is_free;
     };
     class vert_range {
       public:
-        vert_range(const std::vector<bool> &_is_free) : is_free(_is_free) {}
+        vert_range(const std::vector<bool>& _is_free) : is_free(_is_free) {}
 
         vert_iterator begin() const { return vert_iterator(0, is_free); }
         vert_iterator end() const { return vert_iterator(is_free.size(), is_free); }
 
         size_t size() const { return is_free.size(); }
-        const std::vector<bool> &is_free;
+        const std::vector<bool>& is_free;
     };
     vert_range verts() const { return vert_range(is_free); }
 
     class edge_ref_t {
       public:
-        edge_ref_t(vert_id _vert, Wt &_val) : vert(_vert), val(_val) {}
+        edge_ref_t(vert_id _vert, Wt& _val) : vert(_vert), val(_val) {}
         vert_id vert;
-        Wt &val;
+        Wt& val;
     };
 
     class edge_iter {
       public:
         using edge_ref = edge_ref_t;
-        edge_iter(const smap_t::elt_iter_t &_it, vec<Wt> &_ws) : it(_it), ws(&_ws) {}
-        edge_iter(const edge_iter &o) : it(o.it), ws(o.ws) {}
+        edge_iter(const smap_t::elt_iter_t& _it, vec<Wt>& _ws) : it(_it), ws(&_ws) {}
+        edge_iter(const edge_iter& o) : it(o.it), ws(o.ws) {}
         edge_iter() : ws(nullptr) {}
 
         // XXX: to make sure that we always return the same address
@@ -392,10 +392,10 @@ class AdaptGraph : public ikos::writeable {
             ++it;
             return *this;
         }
-        bool operator!=(const edge_iter &o) { return it != o.it; }
+        bool operator!=(const edge_iter& o) { return it != o.it; }
 
         smap_t::elt_iter_t it;
-        vec<Wt> *ws;
+        vec<Wt>* ws;
     };
 
     using adj_range_t = typename smap_t::key_range_t;
@@ -405,15 +405,15 @@ class AdaptGraph : public ikos::writeable {
       public:
         using elt_range_t = typename smap_t::elt_range_t;
         using iterator = edge_iter;
-        edge_range_t(const edge_range_t &o) : r(o.r), ws(o.ws) {}
-        edge_range_t(const elt_range_t &_r, vec<Wt> &_ws) : r(_r), ws(_ws) {}
+        edge_range_t(const edge_range_t& o) : r(o.r), ws(o.ws) {}
+        edge_range_t(const elt_range_t& _r, vec<Wt>& _ws) : r(_r), ws(_ws) {}
 
         edge_iter begin() const { return edge_iter(r.begin(), ws); }
         edge_iter end() const { return edge_iter(r.end(), ws); }
         size_t size() const { return r.size(); }
 
         elt_range_t r;
-        vec<Wt> &ws;
+        vec<Wt>& ws;
     };
 
     using fwd_edge_iter = edge_iter;
@@ -464,7 +464,7 @@ class AdaptGraph : public ikos::writeable {
         if (is_free[v])
             return;
 
-        for (smap_t::elt_t &e : _succs[v].elts()) {
+        for (smap_t::elt_t& e : _succs[v].elts()) {
             free_widx.push(e.val);
             _preds[e.key].remove(v);
         }
@@ -501,7 +501,7 @@ class AdaptGraph : public ikos::writeable {
 
     bool elem(vert_id s, vert_id d) { return _succs[s].elem(d); }
 
-    Wt &edge_val(vert_id s, vert_id d) {
+    Wt& edge_val(vert_id s, vert_id d) {
         size_t idx{};
         _succs[s].lookup(d, &idx);
         return _ws[idx];
@@ -518,19 +518,19 @@ class AdaptGraph : public ikos::writeable {
             assert(w);
             return *w;
         }
-        void operator=(Wt *_w) { w = _w; }
+        void operator=(Wt* _w) { w = _w; }
         void operator=(Wt _w) {
             assert(w);
             *w = _w;
         }
 
       private:
-        Wt *w;
+        Wt* w;
     };
 
     using mut_val_ref_t = mut_val_ref_t;
 
-    bool lookup(vert_id s, vert_id d, mut_val_ref_t *w) {
+    bool lookup(vert_id s, vert_id d, mut_val_ref_t* w) {
         size_t idx;
         if (_succs[s].lookup(d, &idx)) {
             (*w) = &(_ws[idx]);
@@ -556,7 +556,7 @@ class AdaptGraph : public ikos::writeable {
     }
 
     template <class Op>
-    void update_edge(vert_id s, Wt w, vert_id d, Op &op) {
+    void update_edge(vert_id s, Wt w, vert_id d, Op& op) {
         size_t idx;
         if (_succs[s].lookup(d, &idx)) {
             _ws[idx] = op.apply(_ws[idx], w);
@@ -575,7 +575,7 @@ class AdaptGraph : public ikos::writeable {
         }
     }
 
-    void write(crab_os &o) {
+    void write(crab_os& o) {
         o << "[|";
         bool first = true;
         for (vert_id v : verts()) {

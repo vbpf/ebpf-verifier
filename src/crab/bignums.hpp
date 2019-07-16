@@ -123,24 +123,24 @@ class z_number {
     z_number operator%(z_number x) const;
     z_number operator%(int x) const { return operator%(z_number(x)); }
 
-    z_number &operator+=(z_number x);
-    z_number &operator+=(int x) { return operator+=(z_number(x)); }
+    z_number& operator+=(z_number x);
+    z_number& operator+=(int x) { return operator+=(z_number(x)); }
 
-    z_number &operator*=(z_number x);
-    z_number &operator*=(int x) { return operator*=(z_number(x)); }
+    z_number& operator*=(z_number x);
+    z_number& operator*=(int x) { return operator*=(z_number(x)); }
 
-    z_number &operator-=(z_number x);
-    z_number &operator-=(int x) { return operator-=(z_number(x)); }
+    z_number& operator-=(z_number x);
+    z_number& operator-=(int x) { return operator-=(z_number(x)); }
 
-    z_number &operator/=(z_number x);
-    z_number &operator/=(int x) { return operator/=(z_number(x)); }
+    z_number& operator/=(z_number x);
+    z_number& operator/=(int x) { return operator/=(z_number(x)); }
 
-    z_number &operator%=(z_number x);
-    z_number &operator%=(int x) { return operator%=(z_number(x)); }
+    z_number& operator%=(z_number x);
+    z_number& operator%=(int x) { return operator%=(z_number(x)); }
 
-    z_number &operator--();
+    z_number& operator--();
 
-    z_number &operator++();
+    z_number& operator++();
 
     z_number operator++(int);
 
@@ -181,17 +181,17 @@ class z_number {
 
     z_number fill_ones() const;
 
-    void write(crab::crab_os &o) const;
+    void write(crab::crab_os& o) const;
 
 }; // class z_number
 
 using number_t = z_number;
 
-inline crab::crab_os &operator<<(crab::crab_os &o, const z_number &z) {
+inline crab::crab_os& operator<<(crab::crab_os& o, const z_number& z) {
     z.write(o);
     return o;
 }
 
-inline std::size_t hash_value(const z_number &z) { return z.hash(); }
+inline std::size_t hash_value(const z_number& z) { return z.hash(); }
 
 } // namespace ikos

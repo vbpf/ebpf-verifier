@@ -29,8 +29,8 @@
  *
  * Important notes:
  *
- * - Objects of the class cfg are not copyable. Instead, we provide a
- *   class cfg_ref that wraps cfg references into copyable and
+ * - Objects of the class cfg_t are not copyable. Instead, we provide a
+ *   class cfg_ref_t that wraps cfg_t references into copyable and
  *   assignable objects.
  *
  * Limitations:
@@ -57,9 +57,6 @@
 namespace crab {
 
 // To convert a basic block label to a string
-template <typename T>
-inline std::string get_label_str(T e);
-
 inline std::string get_label_str(std::string e) { return e; };
 // The values must be such that NUM <= PTR <= ARR
 enum tracked_precision { NUM = 0, PTR = 1, ARR = 2 };
@@ -96,7 +93,7 @@ class live_t {
     live_set_t m_uses;
     live_set_t m_defs;
 
-    void add(live_set_t &s, variable_t v) {
+    void add(live_set_t& s, variable_t v) {
         auto it = find(s.begin(), s.end(), v);
         if (it == s.end())
             s.push_back(v);
@@ -114,12 +111,12 @@ class live_t {
     size_t num_uses() const { return m_uses.size(); }
     size_t num_defs() const { return m_defs.size(); }
 
-    friend crab_os &operator<<(crab_os &o, const live_t &live) {
+    friend crab_os& operator<<(crab_os& o, const live_t& live) {
         o << "Use={";
-        for (auto const &v : boost::make_iterator_range(live.uses_begin(), live.uses_end()))
+        for (auto const& v : boost::make_iterator_range(live.uses_begin(), live.uses_end()))
             o << v << ",";
         o << "} Def={";
-        for (auto const &v : boost::make_iterator_range(live.defs_begin(), live.defs_end()))
+        for (auto const& v : boost::make_iterator_range(live.defs_begin(), live.defs_end()))
             o << v << ",";
         o << "}";
         return o;
@@ -136,32 +133,30 @@ struct debug_info {
 
     debug_info(std::string file, unsigned line, unsigned col) : m_file(file), m_line(line), m_col(col) {}
 
-    bool operator<(const debug_info &other) const {
+    bool operator<(const debug_info& other) const {
         return (m_file < other.m_file && m_line < other.m_line && m_col < other.m_col);
     }
 
-    bool operator==(const debug_info &other) const {
+    bool operator==(const debug_info& other) const {
         return (m_file == other.m_file && m_line == other.m_line && m_col == other.m_col);
     }
 
     bool has_debug() const { return ((m_file != "") && (m_line >= 0) && (m_col >= 0)); }
 
-    void write(crab_os &o) const {
+    void write(crab_os& o) const {
         o << "File  : " << m_file << "\n"
           << "Line  : " << m_line << "\n"
           << "Column: " << m_col << "\n";
     }
 };
 
-inline crab_os &operator<<(crab_os &o, const debug_info &l) {
+inline crab_os& operator<<(crab_os& o, const debug_info& l) {
     l.write(o);
     return o;
 }
 
-template <class BasicBlockLabel, class VariableName, class Number>
-class basic_block;
-template <class BasicBlock>
-class basic_block_rev;
+class basic_block_t;
+class basic_block_rev_t;
 
 class binary_op_t;
 class assign_t;
@@ -177,35 +172,25 @@ class array_load_t;
 class array_assign_t;
 
 struct statement_visitor {
-    using Number = number_t;
-    using VariableName = varname_t;
+    using number_t = number_t;
+    using varname_t = varname_t;
 
-    virtual void visit(binary_op_t &){};
-    virtual void visit(assign_t &){};
-    virtual void visit(assume_t &){};
-    virtual void visit(select_t &){};
-    virtual void visit(assert_t &){};
-    virtual void visit(int_cast_t &){};
-    virtual void visit(unreachable_t &){};
-    virtual void visit(havoc_t &){};
-    virtual void visit(array_init_t &){};
-    virtual void visit(array_store_t &){};
-    virtual void visit(array_load_t &){};
-    virtual void visit(array_assign_t &){};
+    virtual void visit(binary_op_t&){};
+    virtual void visit(assign_t&){};
+    virtual void visit(assume_t&){};
+    virtual void visit(select_t&){};
+    virtual void visit(assert_t&){};
+    virtual void visit(int_cast_t&){};
+    virtual void visit(unreachable_t&){};
+    virtual void visit(havoc_t&){};
+    virtual void visit(array_init_t&){};
+    virtual void visit(array_store_t&){};
+    virtual void visit(array_load_t&){};
+    virtual void visit(array_assign_t&){};
 
-    template <typename basic_block_label_t>
-    void visit(basic_block<basic_block_label_t, varname_t, number_t> &b) {
-        for (auto &s : b) {
-            s.accept(this);
-        }
-    }
+    void visit(basic_block_t& b);
 
-    template <typename BasicBlock>
-    void visit(basic_block_rev<BasicBlock> &b) {
-        for (auto &s : b) {
-            s.accept(this);
-        }
-    }
+    void visit(basic_block_rev_t& b);
 
     virtual ~statement_visitor() {}
 };
@@ -232,20 +217,20 @@ class statement_t {
     bool is_arr_read() const { return (m_t_code == ARR_LOAD); }
     bool is_arr_write() const { return (m_t_code == ARR_STORE); }
     bool is_arr_assign() const { return (m_t_code == ARR_ASSIGN); }
-    const live_t &get_live() const { return m_live; }
+    const live_t& get_live() const { return m_live; }
 
-    const debug_info &get_debug_info() const { return m_dbg_info; }
+    const debug_info& get_debug_info() const { return m_dbg_info; }
 
-    virtual void accept(statement_visitor *) = 0;
+    virtual void accept(statement_visitor*) = 0;
 
-    virtual void write(crab_os &o) const = 0;
+    virtual void write(crab_os& o) const = 0;
 
-    virtual statement_t *clone() const = 0;
+    virtual statement_t* clone() const = 0;
 
     // for gdb
     void dump() const { write(crab::errs()); }
 
-    friend crab_os &operator<<(crab_os &o, const statement_t &s) {
+    friend crab_os& operator<<(crab_os& o, const statement_t& s) {
         s.write(o);
         return o;
     }
@@ -277,11 +262,11 @@ class binary_op_t : public statement_t {
 
     linear_expression_t right() const { return m_op2; }
 
-    virtual void accept(statement_visitor *v) { v->visit(*this); }
+    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new binary_op_t(m_lhs, m_op, m_op1, m_op2, this->m_dbg_info); }
+    virtual statement_t* clone() const { return new binary_op_t(m_lhs, m_op, m_op1, m_op2, this->m_dbg_info); }
 
-    virtual void write(crab_os &o) const { o << m_lhs << " = " << m_op1 << m_op << m_op2; }
+    virtual void write(crab_os& o) const { o << m_lhs << " = " << m_op1 << m_op << m_op2; }
 
   private:
     variable_t m_lhs;
@@ -302,11 +287,11 @@ class assign_t : public statement_t {
 
     linear_expression_t rhs() const { return m_rhs; }
 
-    virtual void accept(statement_visitor *v) { v->visit(*this); }
+    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new assign_t(m_lhs, m_rhs); }
+    virtual statement_t* clone() const { return new assign_t(m_lhs, m_rhs); }
 
-    virtual void write(crab_os &o) const {
+    virtual void write(crab_os& o) const {
         o << m_lhs << " = " << m_rhs; // << " " << this->m_live;
     }
 
@@ -324,11 +309,11 @@ class assume_t : public statement_t {
 
     linear_constraint_t constraint() const { return m_cst; }
 
-    virtual void accept(statement_visitor *v) { v->visit(*this); }
+    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new assume_t(m_cst); }
+    virtual statement_t* clone() const { return new assume_t(m_cst); }
 
-    virtual void write(crab_os &o) const {
+    virtual void write(crab_os& o) const {
         o << "assume(" << m_cst << ")"; //  << " " << this->m_live;
     }
 
@@ -340,11 +325,11 @@ class unreachable_t : public statement_t {
   public:
     unreachable_t() : statement_t(UNREACH) {}
 
-    virtual void accept(statement_visitor *v) { v->visit(*this); }
+    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new unreachable_t(); }
+    virtual statement_t* clone() const { return new unreachable_t(); }
 
-    virtual void write(crab_os &o) const { o << "unreachable"; }
+    virtual void write(crab_os& o) const { o << "unreachable"; }
 };
 
 class havoc_t : public statement_t {
@@ -353,11 +338,11 @@ class havoc_t : public statement_t {
 
     variable_t variable() const { return m_lhs; }
 
-    virtual void accept(statement_visitor *v) { v->visit(*this); }
+    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new havoc_t(m_lhs); }
+    virtual statement_t* clone() const { return new havoc_t(m_lhs); }
 
-    void write(crab_os &o) const { o << "havoc(" << m_lhs << ")"; }
+    void write(crab_os& o) const { o << "havoc(" << m_lhs << ")"; }
 
   private:
     variable_t m_lhs;
@@ -391,11 +376,11 @@ class select_t : public statement_t {
 
     linear_expression_t right() const { return m_e2; }
 
-    virtual void accept(statement_visitor *v) { v->visit(*this); }
+    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new select_t(m_lhs, m_cond, m_e1, m_e2); }
+    virtual statement_t* clone() const { return new select_t(m_lhs, m_cond, m_e1, m_e2); }
 
-    virtual void write(crab_os &o) const {
+    virtual void write(crab_os& o) const {
         o << m_lhs << " = "
           << "ite(" << m_cond << "," << m_e1 << "," << m_e2 << ")";
     }
@@ -416,11 +401,11 @@ class assert_t : public statement_t {
 
     linear_constraint_t constraint() const { return m_cst; }
 
-    virtual void accept(statement_visitor *v) { v->visit(*this); }
+    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new assert_t(m_cst, this->m_dbg_info); }
+    virtual statement_t* clone() const { return new assert_t(m_cst, this->m_dbg_info); }
 
-    virtual void write(crab_os &o) const {
+    virtual void write(crab_os& o) const {
         o << "assert(" << m_cst << ")";
         if (this->m_dbg_info.has_debug()) {
             o << " // line=" << this->m_dbg_info.m_line << " column=" << this->m_dbg_info.m_col;
@@ -447,11 +432,11 @@ class int_cast_t : public statement_t {
     variable_t dst() const { return m_dst; }
     bitwidth_t dst_width() const { return m_dst.get_bitwidth(); }
 
-    virtual void accept(statement_visitor *v) { v->visit(*this); }
+    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new int_cast_t(m_op, m_src, m_dst, this->m_dbg_info); }
+    virtual statement_t* clone() const { return new int_cast_t(m_op, m_src, m_dst, this->m_dbg_info); }
 
-    virtual void write(crab_os &o) const {
+    virtual void write(crab_os& o) const {
         // bitwidths are casted to int, otherwise operator<< may try
         // to print them as characters if bitwidth_t = uint8_t
         o << m_op << " " << m_src << ":" << (int)src_width() << " to " << m_dst << ":" << (int)dst_width();
@@ -469,7 +454,7 @@ class int_cast_t : public statement_t {
 
 // XXX: the array statements array_init_t, array_store_t,
 // and array_load_t take as one of their template parameters
-// Number which is the type for the array indexes. Although array
+// number_t which is the type for the array indexes. Although array
 // indexes should be always integers we keep it as a template
 // parameter in case an analysis over a type different from
 // integers (e.g., reals) is done. Note that we don't allow mixing
@@ -521,11 +506,11 @@ class array_init_t : public statement_t {
 
     linear_expression_t val() const { return m_val; }
 
-    virtual void accept(statement_visitor *v) { v->visit(*this); }
+    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new array_init_t(m_arr, m_elem_size, m_lb, m_ub, m_val); }
+    virtual statement_t* clone() const { return new array_init_t(m_arr, m_elem_size, m_lb, m_ub, m_val); }
 
-    void write(crab_os &o) const { o << m_arr << "[" << m_lb << "..." << m_ub << "] := " << m_val; }
+    void write(crab_os& o) const { o << m_arr << "[" << m_lb << "..." << m_ub << "] := " << m_val; }
 
   private:
     // forall i \in [lb,ub) % elem_size :: arr[i] := val and
@@ -577,13 +562,13 @@ class array_store_t : public statement_t {
 
     bool is_singleton() const { return m_is_singleton; }
 
-    virtual void accept(statement_visitor *v) { v->visit(*this); }
+    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t *clone() const {
+    virtual statement_t* clone() const {
         return new array_store_t(m_arr, m_elem_size, m_lb, m_ub, m_value, m_is_singleton);
     }
 
-    virtual void write(crab_os &o) const {
+    virtual void write(crab_os& o) const {
         if (m_lb.equal(m_ub)) {
             o << "array_store(" << m_arr << "," << m_lb << "," << m_value << ",sz=" << elem_size() << ")";
         } else {
@@ -630,11 +615,11 @@ class array_load_t : public statement_t {
 
     linear_expression_t elem_size() const { return m_elem_size; }
 
-    virtual void accept(statement_visitor *v) { v->visit(*this); }
+    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new array_load_t(m_lhs, m_array, m_elem_size, m_index); }
+    virtual statement_t* clone() const { return new array_load_t(m_lhs, m_array, m_elem_size, m_index); }
 
-    virtual void write(crab_os &o) const {
+    virtual void write(crab_os& o) const {
         o << m_lhs << " = "
           << "array_load(" << m_array << "," << m_index << ",sz=" << elem_size() << ")";
     }
@@ -662,34 +647,27 @@ class array_assign_t : public statement_t {
 
     type_t array_type() const { return m_lhs.get_type(); }
 
-    virtual void accept(statement_visitor *v) { v->visit(*this); }
+    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t *clone() const { return new array_assign_t(m_lhs, m_rhs); }
+    virtual statement_t* clone() const { return new array_assign_t(m_lhs, m_rhs); }
 
-    virtual void write(crab_os &o) const { o << m_lhs << " = " << m_rhs; }
+    virtual void write(crab_os& o) const { o << m_lhs << " = " << m_rhs; }
 
   private:
     variable_t m_lhs;
     variable_t m_rhs;
 };
 
-template <class BasicBlockLabel, class VariableName, class Number>
-class cfg;
+class cfg_t;
 
-template <class BasicBlockLabel, class VariableName, class Number>
-class basic_block {
-    basic_block(const basic_block<basic_block_label_t, VariableName, Number> &) = delete;
+class basic_block_t {
+    basic_block_t(const basic_block_t&) = delete;
 
-    friend class cfg<basic_block_label_t, VariableName, Number>;
-
-  public:
-    // helper types to build statements
-
-    using basic_block_t = basic_block<basic_block_label_t, VariableName, Number>;
+    friend class cfg_t;
 
   private:
     using bb_id_set_t = std::vector<basic_block_label_t>;
-    using stmt_list_t = std::vector<statement_t *>;
+    using stmt_list_t = std::vector<statement_t*>;
 
   public:
     // -- iterators
@@ -720,36 +698,36 @@ class basic_block {
     // set of used/def variables
     live_domain_t m_live;
 
-    void insert_adjacent(bb_id_set_t &c, basic_block_label_t e) {
+    void insert_adjacent(bb_id_set_t& c, basic_block_label_t e) {
         if (std::find(c.begin(), c.end(), e) == c.end()) {
             c.push_back(e);
         }
     }
 
-    void remove_adjacent(bb_id_set_t &c, basic_block_label_t e) {
+    void remove_adjacent(bb_id_set_t& c, basic_block_label_t e) {
         if (std::find(c.begin(), c.end(), e) != c.end()) {
             c.erase(std::remove(c.begin(), c.end(), e), c.end());
         }
     }
 
-    basic_block(basic_block_label_t bb_id, tracked_precision track_prec)
+    basic_block_t(basic_block_label_t bb_id, tracked_precision track_prec)
         : m_bb_id(bb_id), m_track_prec(track_prec), m_insert_point_at_front(false), m_live(live_domain_t::bottom()) {}
 
-    static basic_block_t *create(basic_block_label_t bb_id, tracked_precision prec) {
+    static basic_block_t* create(basic_block_label_t bb_id, tracked_precision prec) {
         return new basic_block_t(bb_id, prec);
     }
 
-    void update_uses_and_defs(const statement_t *s) {
+    void update_uses_and_defs(const statement_t* s) {
         auto ls = s->get_live();
-        for (auto &v : boost::make_iterator_range(ls.uses_begin(), ls.uses_end())) {
+        for (auto& v : boost::make_iterator_range(ls.uses_begin(), ls.uses_end())) {
             m_live += v;
         }
-        for (auto &v : boost::make_iterator_range(ls.defs_begin(), ls.defs_end())) {
+        for (auto& v : boost::make_iterator_range(ls.defs_begin(), ls.defs_end())) {
             m_live += v;
         }
     }
 
-    void insert(statement_t *stmt) {
+    void insert(statement_t* stmt) {
         if (m_insert_point_at_front) {
             m_ts.insert(m_ts.begin(), stmt);
             m_insert_point_at_front = false;
@@ -761,7 +739,7 @@ class basic_block {
 
   public:
     // The basic block owns the statements
-    ~basic_block() {
+    ~basic_block_t() {
         for (unsigned i = 0, e = m_ts.size(); i < e; ++i) {
             delete m_ts[i];
         }
@@ -770,11 +748,11 @@ class basic_block {
     // it will be set to false after the first insertion
     void set_insert_point_front() { m_insert_point_at_front = true; }
 
-    basic_block_t *clone() const {
+    basic_block_t* clone() const {
         // The basic block labels (i.e., identifiers) are not cloned.
 
-        basic_block_t *b = new basic_block_t(label(), m_track_prec);
-        for (auto &s : boost::make_iterator_range(begin(), end())) {
+        basic_block_t* b = new basic_block_t(label(), m_track_prec);
+        for (auto& s : boost::make_iterator_range(begin(), end())) {
             b->m_ts.push_back(s.clone());
         }
 
@@ -805,18 +783,18 @@ class basic_block {
 
     size_t size() const { return std::distance(begin(), end()); }
 
-    live_domain_t &live() { return m_live; }
+    live_domain_t& live() { return m_live; }
 
-    const live_domain_t &live() const { return m_live; }
+    const live_domain_t& live() const { return m_live; }
 
     // Collect the set of uses and definitions of the basic block
     void update_uses_and_defs() {
-        for (const statement_t *s : m_ts) {
+        for (const statement_t* s : m_ts) {
             update_uses_and_defs(s);
         }
     }
 
-    void accept(statement_visitor *v) { v->visit(*this); }
+    void accept(statement_visitor* v) { v->visit(*this); }
 
     std::pair<succ_iterator, succ_iterator> next_blocks() { return std::make_pair(m_next.begin(), m_next.end()); }
 
@@ -830,24 +808,24 @@ class basic_block {
         return std::make_pair(m_prev.begin(), m_prev.end());
     }
 
-    // Add a cfg edge from *this to b
-    void operator>>(basic_block_t &b) {
+    // Add a cfg_t edge from *this to b
+    void operator>>(basic_block_t& b) {
         insert_adjacent(m_next, b.m_bb_id);
         insert_adjacent(b.m_prev, m_bb_id);
     }
 
-    // Remove a cfg edge from *this to b
-    void operator-=(basic_block_t &b) {
+    // Remove a cfg_t edge from *this to b
+    void operator-=(basic_block_t& b) {
         remove_adjacent(m_next, b.m_bb_id);
         remove_adjacent(b.m_prev, m_bb_id);
     }
 
     // insert all statements of other at the front
-    void copy_front(const basic_block_t &other) {
-        std::vector<statement_t *> cloned_ts;
+    void copy_front(const basic_block_t& other) {
+        std::vector<statement_t*> cloned_ts;
         cloned_ts.reserve(other.size());
         std::transform(other.m_ts.begin(), other.m_ts.end(), std::back_inserter(cloned_ts),
-                       [](const statement_t *s) { return s->clone(); });
+                       [](const statement_t* s) { return s->clone(); });
 
         m_ts.insert(m_ts.begin(), cloned_ts.begin(), cloned_ts.end());
 
@@ -855,11 +833,11 @@ class basic_block {
     }
 
     // insert all statements of other at the back
-    void copy_back(const basic_block_t &other) {
-        std::vector<statement_t *> cloned_ts;
+    void copy_back(const basic_block_t& other) {
+        std::vector<statement_t*> cloned_ts;
         cloned_ts.reserve(other.size());
         std::transform(other.m_ts.begin(), other.m_ts.end(), std::back_inserter(cloned_ts),
-                       [](const statement_t *s) { return s->clone(); });
+                       [](const statement_t* s) { return s->clone(); });
 
         m_ts.insert(m_ts.end(), cloned_ts.begin(), cloned_ts.end());
 
@@ -867,9 +845,9 @@ class basic_block {
     }
 
     // Remove s (and free) from this
-    void remove(const statement_t *s, bool must_update_uses_and_defs = true) {
+    void remove(const statement_t* s, bool must_update_uses_and_defs = true) {
         // remove statement using the remove-erase idiom
-        m_ts.erase(std::remove_if(m_ts.begin(), m_ts.end(), [s](const statement_t *o) { return (o == s); }),
+        m_ts.erase(std::remove_if(m_ts.begin(), m_ts.end(), [s](const statement_t* o) { return (o == s); }),
                    m_ts.end());
 
         if (must_update_uses_and_defs) {
@@ -882,14 +860,14 @@ class basic_block {
     //      new is not part of any basic block.
     // Post: old is deleted (and freed) and new is at position i in
     //       the basic block.
-    void replace(statement_t *old_s, statement_t *new_s) {
+    void replace(statement_t* old_s, statement_t* new_s) {
         std::replace(m_ts.begin(), m_ts.end(), old_s, new_s);
         delete old_s;
     }
 
-    void write(crab_os &o) const {
+    void write(crab_os& o) const {
         o << get_label_str(m_bb_id) << ":\n";
-        for (auto const &s : *this) {
+        for (auto const& s : *this) {
             o << "  " << s << ";\n";
         }
         std::pair<const_succ_iterator, const_succ_iterator> p = next_blocks();
@@ -918,65 +896,69 @@ class basic_block {
 
     void add(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_ADD, op1, op2)); }
 
-    void add(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_ADD, op1, op2)); }
+    void add(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_ADD, op1, op2)); }
 
     void sub(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_SUB, op1, op2)); }
 
-    void sub(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_SUB, op1, op2)); }
+    void sub(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_SUB, op1, op2)); }
 
     void mul(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_MUL, op1, op2)); }
 
-    void mul(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_MUL, op1, op2)); }
+    void mul(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_MUL, op1, op2)); }
 
     // signed division
     void div(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_SDIV, op1, op2)); }
 
-    void div(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_SDIV, op1, op2)); }
+    void div(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_SDIV, op1, op2)); }
 
     // unsigned division
     void udiv(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_UDIV, op1, op2)); }
 
-    void udiv(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_UDIV, op1, op2)); }
+    void udiv(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_UDIV, op1, op2)); }
 
     // signed rem
     void rem(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_SREM, op1, op2)); }
 
-    void rem(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_SREM, op1, op2)); }
+    void rem(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_SREM, op1, op2)); }
 
     // unsigned rem
     void urem(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_UREM, op1, op2)); }
 
-    void urem(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_UREM, op1, op2)); }
+    void urem(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_UREM, op1, op2)); }
 
     void bitwise_and(variable_t lhs, variable_t op1, variable_t op2) {
         insert(new binary_op_t(lhs, BINOP_AND, op1, op2));
     }
 
-    void bitwise_and(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_AND, op1, op2)); }
+    void bitwise_and(variable_t lhs, variable_t op1, number_t op2) {
+        insert(new binary_op_t(lhs, BINOP_AND, op1, op2));
+    }
 
     void bitwise_or(variable_t lhs, variable_t op1, variable_t op2) {
         insert(new binary_op_t(lhs, BINOP_OR, op1, op2));
     }
 
-    void bitwise_or(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_OR, op1, op2)); }
+    void bitwise_or(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_OR, op1, op2)); }
 
     void bitwise_xor(variable_t lhs, variable_t op1, variable_t op2) {
         insert(new binary_op_t(lhs, BINOP_XOR, op1, op2));
     }
 
-    void bitwise_xor(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_XOR, op1, op2)); }
+    void bitwise_xor(variable_t lhs, variable_t op1, number_t op2) {
+        insert(new binary_op_t(lhs, BINOP_XOR, op1, op2));
+    }
 
     void shl(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_SHL, op1, op2)); }
 
-    void shl(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_SHL, op1, op2)); }
+    void shl(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_SHL, op1, op2)); }
 
     void lshr(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_LSHR, op1, op2)); }
 
-    void lshr(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_LSHR, op1, op2)); }
+    void lshr(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_LSHR, op1, op2)); }
 
     void ashr(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_ASHR, op1, op2)); }
 
-    void ashr(variable_t lhs, variable_t op1, Number op2) { insert(new binary_op_t(lhs, BINOP_ASHR, op1, op2)); }
+    void ashr(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_ASHR, op1, op2)); }
 
     void assign(variable_t lhs, linear_expression_t rhs) { insert(new assign_t(lhs, rhs)); }
 
@@ -1036,36 +1018,30 @@ class basic_block {
         }
     }
 
-    friend crab_os &operator<<(crab_os &o, const basic_block_t &b) {
+    friend crab_os& operator<<(crab_os& o, const basic_block_t& b) {
         b.write(o);
         return o;
     }
 };
 
-extern template class basic_block<basic_block_label_t, varname_t, number_t>;
-using basic_block_t = basic_block<basic_block_label_t, varname_t, number_t>;
-
-// Viewing a BasicBlock with all statements reversed. Useful for
+// Viewing basic_block_t with all statements reversed. Useful for
 // backward analysis.
-template <class BasicBlock>
-class basic_block_rev {
+class basic_block_rev_t {
   public:
-    using basic_block_rev_t = basic_block_rev<BasicBlock>;
-
-    using succ_iterator = typename BasicBlock::succ_iterator;
-    using const_succ_iterator = typename BasicBlock::const_succ_iterator;
+    using succ_iterator = typename basic_block_t::succ_iterator;
+    using const_succ_iterator = typename basic_block_t::const_succ_iterator;
     using pred_iterator = succ_iterator;
     using const_pred_iterator = const_succ_iterator;
 
-    using iterator = typename BasicBlock::reverse_iterator;
-    using const_iterator = typename BasicBlock::const_reverse_iterator;
+    using iterator = typename basic_block_t::reverse_iterator;
+    using const_iterator = typename basic_block_t::const_reverse_iterator;
     using live_domain_t = ikos::discrete_domain<variable_t>;
 
   private:
-    BasicBlock &_bb;
+    basic_block_t& _bb;
 
   public:
-    basic_block_rev(BasicBlock &bb) : _bb(bb) {}
+    basic_block_rev_t(basic_block_t& bb) : _bb(bb) {}
 
     basic_block_label_t label() const { return _bb.label(); }
 
@@ -1081,9 +1057,9 @@ class basic_block_rev {
 
     std::size_t size() const { return std::distance(begin(), end()); }
 
-    void accept(statement_visitor *v) { v->visit(*this); }
+    void accept(statement_visitor* v) { v->visit(*this); }
 
-    live_domain_t &live() { return _bb.live(); }
+    live_domain_t& live() { return _bb.live(); }
 
     live_domain_t live() const { return _bb.live(); }
 
@@ -1095,13 +1071,13 @@ class basic_block_rev {
 
     std::pair<const_pred_iterator, const_pred_iterator> prev_blocks() const { return _bb.next_blocks(); }
 
-    void write(crab_os &o) const {
+    void write(crab_os& o) const {
         o << name() << ":\n";
-        for (auto const &s : *this) {
+        for (auto const& s : *this) {
             o << "  " << s << ";\n";
         }
         o << "--> [";
-        for (auto const &n : boost::make_iterator_range(next_blocks())) {
+        for (auto const& n : boost::make_iterator_range(next_blocks())) {
             o << n << ";";
         }
         o << "]\n";
@@ -1110,29 +1086,21 @@ class basic_block_rev {
     // for gdb
     void dump() const { write(crab::errs()); }
 
-    friend crab_os &operator<<(crab_os &o, const basic_block_rev_t &b) {
+    friend crab_os& operator<<(crab_os& o, const basic_block_rev_t& b) {
         b.write(o);
         return o;
     }
 };
 
-extern template class basic_block_rev<basic_block_t>;
-using basic_block_rev_t = basic_block_rev<basic_block_t>;
-
 // forward declarations
-template <class Any>
-class cfg_rev;
-template <class Any>
-class cfg_ref;
+class cfg_rev_t;
+class cfg_ref_t;
 
-template <class BasicBlockLabel, class VariableName, class Number>
-class cfg {
-    cfg(const cfg<basic_block_label_t, varname_t, number_t> &) = delete;
+class cfg_t {
+    cfg_t(const cfg_t&) = delete;
 
   public:
     using node_t = basic_block_label_t; // for Bgl graphs
-
-    using basic_block_t = basic_block<basic_block_label_t, VariableName, number_t>;
 
     using succ_iterator = typename basic_block_t::succ_iterator;
     using pred_iterator = typename basic_block_t::pred_iterator;
@@ -1145,19 +1113,18 @@ class cfg {
     using const_pred_range = boost::iterator_range<const_pred_iterator>;
 
   private:
-    using cfg_t = cfg<basic_block_label_t, VariableName, Number>;
-    using basic_block_map_t = boost::unordered_map<basic_block_label_t, basic_block_t *>;
+    using basic_block_map_t = boost::unordered_map<basic_block_label_t, basic_block_t*>;
     using binding_t = typename basic_block_map_t::value_type;
     using live_domain_t = typename basic_block_t::live_domain_t;
 
     struct get_ref : public std::unary_function<binding_t, basic_block_t> {
         get_ref() {}
-        basic_block_t &operator()(const binding_t &p) const { return *(p.second); }
+        basic_block_t& operator()(const binding_t& p) const { return *(p.second); }
     };
 
     struct get_label : public std::unary_function<binding_t, basic_block_label_t> {
         get_label() {}
-        basic_block_label_t operator()(const binding_t &p) const { return p.second->label(); }
+        basic_block_label_t operator()(const binding_t& p) const { return p.second->label(); }
     };
 
   public:
@@ -1177,11 +1144,11 @@ class cfg {
 
     using visited_t = boost::unordered_set<basic_block_label_t>;
     template <typename T>
-    void dfs_rec(basic_block_label_t curId, visited_t &visited, T f) const {
+    void dfs_rec(basic_block_label_t curId, visited_t& visited, T f) const {
         if (!visited.insert(curId).second)
             return;
 
-        const basic_block_t &cur = get_node(curId);
+        const basic_block_t& cur = get_node(curId);
         f(cur);
         for (auto const n : boost::make_iterator_range(cur.next_blocks())) {
             dfs_rec(n, visited, f);
@@ -1195,25 +1162,25 @@ class cfg {
     }
 
     struct print_block {
-        crab_os &m_o;
-        print_block(crab_os &o) : m_o(o) {}
-        void operator()(const basic_block_t &B) { B.write(m_o); }
+        crab_os& m_o;
+        print_block(crab_os& o) : m_o(o) {}
+        void operator()(const basic_block_t& B) { B.write(m_o); }
     };
 
   public:
-    cfg(basic_block_label_t entry, tracked_precision track_prec = NUM)
+    cfg_t(basic_block_label_t entry, tracked_precision track_prec = NUM)
         : m_entry(entry), m_exit(std::nullopt), m_track_prec(track_prec) {
         m_blocks.insert(binding_t(m_entry, basic_block_t::create(m_entry, m_track_prec)));
     }
 
-    cfg(basic_block_label_t entry, basic_block_label_t exit, tracked_precision track_prec = NUM)
+    cfg_t(basic_block_label_t entry, basic_block_label_t exit, tracked_precision track_prec = NUM)
         : m_entry(entry), m_exit(exit), m_track_prec(track_prec) {
         m_blocks.insert(binding_t(m_entry, basic_block_t::create(m_entry, m_track_prec)));
     }
 
-    // The cfg owns the basic blocks
-    ~cfg() {
-        for (auto &kv : m_blocks) {
+    // The cfg_t owns the basic blocks
+    ~cfg_t() {
+        for (auto& kv : m_blocks) {
             delete kv.second;
         }
     }
@@ -1225,10 +1192,10 @@ class cfg {
     basic_block_label_t exit() const {
         if (has_exit())
             return *m_exit;
-        CRAB_ERROR("cfg does not have an exit block");
+        CRAB_ERROR("cfg_t does not have an exit block");
     }
 
-    //! set method to mark the exit block after the cfg has been
+    //! set method to mark the exit block after the cfg_t has been
     //! created.
     void set_exit(basic_block_label_t exit) { m_exit = exit; }
 
@@ -1237,26 +1204,26 @@ class cfg {
     basic_block_label_t entry() const { return m_entry; }
 
     const_succ_range next_nodes(basic_block_label_t bb_id) const {
-        const basic_block_t &b = get_node(bb_id);
+        const basic_block_t& b = get_node(bb_id);
         return boost::make_iterator_range(b.next_blocks());
     }
 
     const_pred_range prev_nodes(basic_block_label_t bb_id) const {
-        const basic_block_t &b = get_node(bb_id);
+        const basic_block_t& b = get_node(bb_id);
         return boost::make_iterator_range(b.prev_blocks());
     }
 
     succ_range next_nodes(basic_block_label_t bb_id) {
-        basic_block_t &b = get_node(bb_id);
+        basic_block_t& b = get_node(bb_id);
         return boost::make_iterator_range(b.next_blocks());
     }
 
     pred_range prev_nodes(basic_block_label_t bb_id) {
-        basic_block_t &b = get_node(bb_id);
+        basic_block_t& b = get_node(bb_id);
         return boost::make_iterator_range(b.prev_blocks());
     }
 
-    basic_block_t &get_node(basic_block_label_t bb_id) {
+    basic_block_t& get_node(basic_block_label_t bb_id) {
         auto it = m_blocks.find(bb_id);
         if (it == m_blocks.end()) {
             CRAB_ERROR("Basic block ", bb_id, " not found in the CFG: ", __LINE__);
@@ -1265,7 +1232,7 @@ class cfg {
         return *(it->second);
     }
 
-    const basic_block_t &get_node(basic_block_label_t bb_id) const {
+    const basic_block_t& get_node(basic_block_label_t bb_id) const {
         auto it = m_blocks.find(bb_id);
         if (it == m_blocks.end()) {
             CRAB_ERROR("Basic block ", bb_id, " not found in the CFG: ", __LINE__);
@@ -1276,12 +1243,12 @@ class cfg {
 
     // --- End ikos fixpoint API
 
-    basic_block_t &insert(basic_block_label_t bb_id) {
+    basic_block_t& insert(basic_block_label_t bb_id) {
         auto it = m_blocks.find(bb_id);
         if (it != m_blocks.end())
             return *(it->second);
 
-        basic_block_t *block = basic_block_t::create(bb_id, m_track_prec);
+        basic_block_t* block = basic_block_t::create(bb_id, m_track_prec);
         m_blocks.insert(binding_t(bb_id, block));
         return *block;
     }
@@ -1295,19 +1262,19 @@ class cfg {
             CRAB_ERROR("Cannot remove exit block");
         }
 
-        std::vector<std::pair<basic_block_t *, basic_block_t *>> dead_edges;
-        basic_block_t *bb = &(get_node(bb_id));
+        std::vector<std::pair<basic_block_t*, basic_block_t*>> dead_edges;
+        basic_block_t* bb = &(get_node(bb_id));
 
         for (auto id : boost::make_iterator_range(bb->prev_blocks())) {
             if (bb_id != id) {
-                basic_block_t &p = get_node(id);
+                basic_block_t& p = get_node(id);
                 dead_edges.push_back({&p, bb});
             }
         }
 
         for (auto id : boost::make_iterator_range(bb->next_blocks())) {
             if (bb_id != id) {
-                basic_block_t &s = get_node(id);
+                basic_block_t& s = get_node(id);
                 dead_edges.push_back({bb, &s});
             }
         }
@@ -1320,9 +1287,9 @@ class cfg {
         delete bb;
     }
 
-    // // Return all variables (either used or defined) in the cfg.
+    // // Return all variables (either used or defined) in the cfg_t.
     // //
-    // // This operation is linear on the size of the cfg to still keep
+    // // This operation is linear on the size of the cfg_t to still keep
     // // a valid set in case a block is removed.
     // std::vector<varname_t> get_vars() const {
     //     live_domain_t ls = live_domain_t::bottom();
@@ -1336,10 +1303,10 @@ class cfg {
     //     return vars;
     // }
 
-    //! return a begin iterator of BasicBlock's
+    //! return a begin iterator of basic_block_t's
     iterator begin() { return boost::make_transform_iterator(m_blocks.begin(), get_ref()); }
 
-    //! return an end iterator of BasicBlock's
+    //! return an end iterator of basic_block_t's
     iterator end() { return boost::make_transform_iterator(m_blocks.end(), get_ref()); }
 
     const_iterator begin() const { return boost::make_transform_iterator(m_blocks.begin(), get_ref()); }
@@ -1358,21 +1325,21 @@ class cfg {
 
     size_t size() const { return std::distance(begin(), end()); }
 
-    void write(crab_os &o) const {
+    void write(crab_os& o) const {
         print_block f(o);
         dfs(f);
     }
 
     // for gdb
     void dump() const {
-        crab::errs() << "Number of basic blocks=" << size() << "\n";
-        for (auto &bb : boost::make_iterator_range(begin(), end())) {
+        crab::errs() << "number_t of basic blocks=" << size() << "\n";
+        for (auto& bb : boost::make_iterator_range(begin(), end())) {
             bb.dump();
         }
     }
 
-    friend crab_os &operator<<(crab_os &o, const cfg_t &cfg) {
-        cfg.write(o);
+    friend crab_os& operator<<(crab_os& o, const cfg_t& cfg_t) {
+        cfg_t.write(o);
         return o;
     }
 
@@ -1388,7 +1355,7 @@ class cfg {
 
   private:
     ////
-    // Trivial cfg simplifications
+    // Trivial cfg_t simplifications
     // TODO: move to transform directory
     ////
 
@@ -1403,27 +1370,27 @@ class cfg {
         return (std::distance(rng.begin(), rng.end()) == 1);
     }
 
-    basic_block_t &get_child(basic_block_label_t b) {
+    basic_block_t& get_child(basic_block_label_t b) {
         assert(has_one_child(b));
         auto rng = next_nodes(b);
         return get_node(*(rng.begin()));
     }
 
-    basic_block_t &get_parent(basic_block_label_t b) {
+    basic_block_t& get_parent(basic_block_label_t b) {
         assert(has_one_parent(b));
         auto rng = prev_nodes(b);
         return get_node(*(rng.begin()));
     }
 
-    void merge_blocks_rec(basic_block_label_t curId, visited_t &visited) {
+    void merge_blocks_rec(basic_block_label_t curId, visited_t& visited) {
         if (!visited.insert(curId).second)
             return;
 
-        basic_block_t &cur = get_node(curId);
+        basic_block_t& cur = get_node(curId);
 
         if (has_one_child(curId) && has_one_parent(curId)) {
-            basic_block_t &parent = get_parent(curId);
-            basic_block_t &child = get_child(curId);
+            basic_block_t& parent = get_parent(curId);
+            basic_block_t& child = get_child(curId);
 
             // Merge with its parent if it's its only child.
             if (has_one_child(parent.label())) {
@@ -1451,12 +1418,12 @@ class cfg {
 
     // mark reachable blocks from curId
     template <class AnyCfg>
-    void mark_alive_blocks(basic_block_label_t curId, AnyCfg &cfg, visited_t &visited) {
+    void mark_alive_blocks(basic_block_label_t curId, AnyCfg& cfg_t, visited_t& visited) {
         if (visited.count(curId) > 0)
             return;
         visited.insert(curId);
-        for (auto child : cfg.next_nodes(curId)) {
-            mark_alive_blocks(child, cfg, visited);
+        for (auto child : cfg_t.next_nodes(curId)) {
+            mark_alive_blocks(child, cfg_t, visited);
         }
     }
 
@@ -1465,7 +1432,7 @@ class cfg {
         visited_t alive, dead;
         mark_alive_blocks(entry(), *this, alive);
 
-        for (auto const &bb : *this) {
+        for (auto const& bb : *this) {
             if (!(alive.count(bb.label()) > 0)) {
                 dead.insert(bb.label());
             }
@@ -1477,39 +1444,17 @@ class cfg {
     }
 
     // remove blocks that cannot reach the exit block
-    void remove_useless_blocks() {
-        if (!has_exit())
-            return;
-
-        cfg_rev<cfg_ref<cfg_t>> rev_cfg(*this);
-
-        visited_t useful, useless;
-        mark_alive_blocks(rev_cfg.entry(), rev_cfg, useful);
-
-        for (auto const &bb : *this) {
-            if (!(useful.count(bb.label()) > 0)) {
-                useless.insert(bb.label());
-            }
-        }
-
-        for (auto bb_id : useless) {
-            remove(bb_id);
-        }
-    }
+    void remove_useless_blocks();
 };
-
-extern template class cfg<basic_block_label_t, varname_t, number_t>;
-using cfg_t = cfg<basic_block_label_t, varname_t, number_t>;
 
 // A lightweight object that wraps a reference to a CFG into a
 // copyable, assignable object.
-template <class CFG>
-class cfg_ref {
+class cfg_ref_t {
+    using CFG = cfg_t;
+
   public:
     // CFG's typedefs
     using node_t = typename CFG::node_t;
-
-    using basic_block_t = typename CFG::basic_block_t;
 
     using succ_iterator = typename CFG::succ_iterator;
     using pred_iterator = typename CFG::pred_iterator;
@@ -1531,16 +1476,16 @@ class cfg_ref {
 
   public:
     // --- hook needed by crab::cg::CallGraph<CFG>::CgNode
-    cfg_ref() {}
+    cfg_ref_t() {}
 
-    cfg_ref(CFG &cfg) : _ref(std::reference_wrapper<CFG>(cfg)) {}
+    cfg_ref_t(CFG& cfg_t) : _ref(std::reference_wrapper<CFG>(cfg_t)) {}
 
-    const CFG &get() const {
+    const CFG& get() const {
         assert(_ref);
         return *_ref;
     }
 
-    CFG &get() {
+    CFG& get() {
         assert(_ref);
         return *_ref;
     }
@@ -1570,12 +1515,12 @@ class cfg_ref {
         return (*_ref).get().prev_nodes(bb);
     }
 
-    basic_block_t &get_node(basic_block_label_t bb) {
+    basic_block_t& get_node(basic_block_label_t bb) {
         assert(_ref);
         return (*_ref).get().get_node(bb);
     }
 
-    const basic_block_t &get_node(basic_block_label_t bb) const {
+    const basic_block_t& get_node(basic_block_label_t bb) const {
         assert(_ref);
         return (*_ref).get().get_node(bb);
     }
@@ -1635,8 +1580,8 @@ class cfg_ref {
         return (*_ref).get().exit();
     }
 
-    friend crab_os &operator<<(crab_os &o, const cfg_ref<CFG> &cfg) {
-        o << cfg.get();
+    friend crab_os& operator<<(crab_os& o, const cfg_ref_t& cfg_t) {
+        o << cfg_t.get();
         return o;
     }
 
@@ -1659,21 +1604,16 @@ class cfg_ref {
     // }
 };
 
-extern template class cfg_ref<cfg_t>;
-using cfg_ref_t = cfg_ref<cfg_t>;
-
 // Viewing a CFG with all edges and block statements
 // reversed. Useful for backward analysis.
-template <class CFGRef> // CFGRef must be copyable!
-class cfg_rev {
+class cfg_rev_t {
   public:
-    using basic_block_t = basic_block_rev<typename CFGRef::basic_block_t>;
     using node_t = basic_block_label_t; // for Bgl graphs
 
-    using pred_range = typename CFGRef::succ_range;
-    using succ_range = typename CFGRef::pred_range;
-    using const_pred_range = typename CFGRef::const_succ_range;
-    using const_succ_range = typename CFGRef::const_pred_range;
+    using pred_range = typename cfg_ref_t::succ_range;
+    using succ_range = typename cfg_ref_t::pred_range;
+    using const_pred_range = typename cfg_ref_t::const_succ_range;
+    using const_succ_range = typename cfg_ref_t::const_pred_range;
 
     // For BGL
     using succ_iterator = typename basic_block_t::succ_iterator;
@@ -1681,15 +1621,13 @@ class cfg_rev {
     using const_succ_iterator = typename basic_block_t::const_succ_iterator;
     using const_pred_iterator = typename basic_block_t::const_pred_iterator;
 
-    using cfg_rev_t = cfg_rev<CFGRef>;
-
   private:
-    struct getRev : public std::unary_function<typename CFGRef::basic_block_t, basic_block_t> {
-        const boost::unordered_map<basic_block_label_t, basic_block_t> &_rev_bbs;
+    struct getRev : public std::unary_function<basic_block_t, basic_block_rev_t> {
+        const boost::unordered_map<basic_block_label_t, basic_block_rev_t>& _rev_bbs;
 
-        getRev(const boost::unordered_map<basic_block_label_t, basic_block_t> &rev_bbs) : _rev_bbs(rev_bbs) {}
+        getRev(const boost::unordered_map<basic_block_label_t, basic_block_rev_t>& rev_bbs) : _rev_bbs(rev_bbs) {}
 
-        const basic_block_t &operator()(typename CFGRef::basic_block_t &bb) const {
+        const basic_block_rev_t& operator()(basic_block_t& bb) const {
             auto it = _rev_bbs.find(bb.label());
             if (it != _rev_bbs.end())
                 return it->second;
@@ -1700,11 +1638,10 @@ class cfg_rev {
     using visited_t = boost::unordered_set<basic_block_label_t>;
 
     template <typename T>
-    void dfs_rec(basic_block_label_t curId, visited_t &visited, T f) const {
+    void dfs_rec(basic_block_label_t curId, visited_t& visited, T f) const {
         if (!visited.insert(curId).second)
             return;
-        const basic_block_t &cur = get_node(curId);
-        f(cur);
+        f(get_node(curId));
         for (auto const n : next_nodes(curId)) {
             dfs_rec(n, visited, f);
         }
@@ -1717,42 +1654,42 @@ class cfg_rev {
     }
 
     struct print_block {
-        crab_os &m_o;
-        print_block(crab_os &o) : m_o(o) {}
-        void operator()(const basic_block_t &B) { B.write(m_o); }
+        crab_os& m_o;
+        print_block(crab_os& o) : m_o(o) {}
+        void operator()(const basic_block_rev_t& B) { B.write(m_o); }
     };
 
   public:
-    using iterator = boost::transform_iterator<getRev, typename CFGRef::iterator>;
-    using const_iterator = boost::transform_iterator<getRev, typename CFGRef::const_iterator>;
-    using label_iterator = typename CFGRef::label_iterator;
-    using const_label_iterator = typename CFGRef::const_label_iterator;
-    using var_iterator = typename CFGRef::var_iterator;
-    using const_var_iterator = typename CFGRef::const_var_iterator;
+    using iterator = boost::transform_iterator<getRev, cfg_ref_t::iterator>;
+    using const_iterator = boost::transform_iterator<getRev, cfg_ref_t::const_iterator>;
+    using label_iterator = cfg_ref_t::label_iterator;
+    using const_label_iterator = cfg_ref_t::const_label_iterator;
+    using var_iterator = cfg_ref_t::var_iterator;
+    using const_var_iterator = cfg_ref_t::const_var_iterator;
 
   private:
-    CFGRef _cfg;
-    boost::unordered_map<basic_block_label_t, basic_block_t> _rev_bbs;
+    cfg_ref_t _cfg;
+    boost::unordered_map<basic_block_label_t, basic_block_rev_t> _rev_bbs;
 
   public:
-    // --- hook needed by crab::cg::CallGraph<CFGRef>::CgNode
-    cfg_rev() {}
+    // --- hook needed by crab::cg::CallGraph<cfg_ref_t>::CgNode
+    cfg_rev_t() {}
 
-    cfg_rev(CFGRef cfg) : _cfg(cfg) {
-        // Create basic_block_rev from BasicBlock objects
-        // Note that basic_block_rev is also a view of BasicBlock so it
-        // doesn't modify BasicBlock objects.
-        for (auto &bb : cfg) {
-            basic_block_t rev(bb);
+    cfg_rev_t(cfg_ref_t cfg_t) : _cfg(cfg_t) {
+        // Create basic_block_rev_t from basic_block_t objects
+        // Note that basic_block_rev_t is also a view of basic_block_t so it
+        // doesn't modify basic_block_t objects.
+        for (auto& bb : cfg_t) {
+            basic_block_rev_t rev(bb);
             _rev_bbs.insert(std::make_pair(bb.label(), rev));
         }
     }
 
-    cfg_rev(const cfg_rev_t &o) : _cfg(o._cfg), _rev_bbs(o._rev_bbs) {}
+    cfg_rev_t(const cfg_rev_t& o) : _cfg(o._cfg), _rev_bbs(o._rev_bbs) {}
 
-    cfg_rev(cfg_rev_t &&o) : _cfg(std::move(o._cfg)), _rev_bbs(std::move(o._rev_bbs)) {}
+    cfg_rev_t(cfg_rev_t&& o) : _cfg(std::move(o._cfg)), _rev_bbs(std::move(o._rev_bbs)) {}
 
-    cfg_rev_t &operator=(const cfg_rev_t &o) {
+    cfg_rev_t& operator=(const cfg_rev_t& o) {
         if (this != &o) {
             _cfg = o._cfg;
             _rev_bbs = o._rev_bbs;
@@ -1760,7 +1697,7 @@ class cfg_rev {
         return *this;
     }
 
-    cfg_rev_t &operator=(cfg_rev_t &&o) {
+    cfg_rev_t& operator=(cfg_rev_t&& o) {
         _cfg = std::move(o._cfg);
         _rev_bbs = std::move(o._rev_bbs);
         return *this;
@@ -1780,14 +1717,14 @@ class cfg_rev {
 
     pred_range prev_nodes(basic_block_label_t bb) { return _cfg.next_nodes(bb); }
 
-    basic_block_t &get_node(basic_block_label_t bb_id) {
+    basic_block_rev_t& get_node(basic_block_label_t bb_id) {
         auto it = _rev_bbs.find(bb_id);
         if (it == _rev_bbs.end())
             CRAB_ERROR("Basic block ", bb_id, " not found in the CFG: ", __LINE__);
         return it->second;
     }
 
-    const basic_block_t &get_node(basic_block_label_t bb_id) const {
+    const basic_block_rev_t& get_node(basic_block_label_t bb_id) const {
         auto it = _rev_bbs.find(bb_id);
         if (it == _rev_bbs.end())
             CRAB_ERROR("Basic block ", bb_id, " not found in the CFG: ", __LINE__);
@@ -1814,21 +1751,19 @@ class cfg_rev {
 
     basic_block_label_t exit() const { return _cfg.entry(); }
 
-    void write(crab_os &o) const {
+    void write(crab_os& o) const {
         print_block f(o);
         dfs(f);
     }
 
-    friend crab_os &operator<<(crab_os &o, const cfg_rev<CFGRef> &cfg) {
-        cfg.write(o);
+    friend crab_os& operator<<(crab_os& o, const cfg_rev_t& cfg_t) {
+        cfg_t.write(o);
         return o;
     }
 
     void simplify() {}
 };
 
-extern template class cfg_rev<cfg_t>;
-
-void type_check(const cfg_ref<cfg_t> &cfg);
+void type_check(const cfg_ref_t& cfg_t);
 
 } // end namespace crab

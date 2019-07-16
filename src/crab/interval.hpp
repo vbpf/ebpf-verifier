@@ -64,9 +64,9 @@ class bound_t {
 
     bound_t(number_t n) : _is_infinite(false), _n(n) {}
 
-    bound_t(const bound_t &o) : _is_infinite(o._is_infinite), _n(o._n) {}
+    bound_t(const bound_t& o) : _is_infinite(o._is_infinite), _n(o._n) {}
 
-    bound_t &operator=(const bound_t &o) {
+    bound_t& operator=(const bound_t& o) {
         if (this != &o) {
             _is_infinite = o._is_infinite;
             _n = o._n;
@@ -98,11 +98,11 @@ class bound_t {
         }
     }
 
-    bound_t &operator+=(bound_t x) { return operator=(operator+(x)); }
+    bound_t& operator+=(bound_t x) { return operator=(operator+(x)); }
 
     bound_t operator-(bound_t x) const { return operator+(x.operator-()); }
 
-    bound_t &operator-=(bound_t x) { return operator=(operator-(x)); }
+    bound_t& operator-=(bound_t x) { return operator=(operator-(x)); }
 
     bound_t operator*(bound_t x) const {
         if (x._n == 0)
@@ -113,7 +113,7 @@ class bound_t {
             return bound_t(_is_infinite || x._is_infinite, _n * x._n);
     }
 
-    bound_t &operator*=(bound_t x) { return operator=(operator*(x)); }
+    bound_t& operator*=(bound_t x) { return operator=(operator*(x)); }
 
     bound_t operator/(bound_t x) const {
         if (x._n == 0) {
@@ -139,7 +139,7 @@ class bound_t {
         }
     }
 
-    bound_t &operator/=(bound_t x) { return operator=(operator/(x)); }
+    bound_t& operator/=(bound_t x) { return operator=(operator/(x)); }
 
     bool operator<(bound_t x) const { return !operator>=(x); }
 
@@ -189,7 +189,7 @@ class bound_t {
         }
     }
 
-    void write(crab::crab_os &o) const {
+    void write(crab::crab_os& o) const {
         if (is_plus_infinity()) {
             o << "+oo";
         } else if (is_minus_infinity()) {
@@ -201,7 +201,7 @@ class bound_t {
 
 }; // class bound
 
-inline crab::crab_os &operator<<(crab::crab_os &o, const bound_t &b) {
+inline crab::crab_os& operator<<(crab::crab_os& o, const bound_t& b) {
     b.write(o);
     return o;
 }
@@ -251,9 +251,9 @@ class interval_t {
         }
     }
 
-    interval_t(const interval_t &i) : _lb(i._lb), _ub(i._ub) {}
+    interval_t(const interval_t& i) : _lb(i._lb), _ub(i._ub) {}
 
-    interval_t &operator=(interval_t i) {
+    interval_t& operator=(interval_t i) {
         _lb = i._lb;
         _ub = i._ub;
         return *this;
@@ -321,7 +321,7 @@ class interval_t {
     }
 
     template <typename Thresholds>
-    interval_t widening_thresholds(interval_t x, const Thresholds &ts) {
+    interval_t widening_thresholds(interval_t x, const Thresholds& ts) {
         if (is_bottom()) {
             return x;
         } else if (x.is_bottom()) {
@@ -350,7 +350,7 @@ class interval_t {
         }
     }
 
-    interval_t &operator+=(interval_t x) { return operator=(operator+(x)); }
+    interval_t& operator+=(interval_t x) { return operator=(operator+(x)); }
 
     interval_t operator-() const {
         if (is_bottom()) {
@@ -368,7 +368,7 @@ class interval_t {
         }
     }
 
-    interval_t &operator-=(interval_t x) { return operator=(operator-(x)); }
+    interval_t& operator-=(interval_t x) { return operator=(operator-(x)); }
 
     interval_t operator*(interval_t x) const {
         if (is_bottom() || x.is_bottom()) {
@@ -382,11 +382,11 @@ class interval_t {
         }
     }
 
-    interval_t &operator*=(interval_t x) { return operator=(operator*(x)); }
+    interval_t& operator*=(interval_t x) { return operator=(operator*(x)); }
 
     interval_t operator/(interval_t x) const;
 
-    interval_t &operator/=(interval_t x) { return operator=(operator/(x)); }
+    interval_t& operator/=(interval_t x) { return operator=(operator/(x)); }
 
     std::optional<number_t> singleton() const {
         if (!is_bottom() && _lb == _ub) {
@@ -405,7 +405,7 @@ class interval_t {
         }
     }
 
-    void write(crab::crab_os &o) const {
+    void write(crab::crab_os& o) const {
         if (is_bottom()) {
             o << "_|_";
         } else {
@@ -458,7 +458,7 @@ inline interval_t operator-(number_t c, interval_t x) { return interval_t(c) - x
 
 inline interval_t operator-(interval_t x, number_t c) { return x - interval_t(c); }
 
-inline crab::crab_os &operator<<(crab::crab_os &o, const interval_t &i) {
+inline crab::crab_os& operator<<(crab::crab_os& o, const interval_t& i) {
     i.write(o);
     return o;
 }
