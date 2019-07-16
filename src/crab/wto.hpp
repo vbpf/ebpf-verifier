@@ -45,19 +45,30 @@
 
 #pragma once
 
-#include <boost/container/slist.hpp>
-#include <boost/iterator/indirect_iterator.hpp>
-#include <boost/unordered_map.hpp>
 #include <memory>
 #include <set>
 #include <vector>
 
+#include <boost/container/slist.hpp>
+#include <boost/iterator/indirect_iterator.hpp>
+#include <boost/unordered_map.hpp>
+
 #include "crab/debug.hpp"
+#include "crab/types.hpp"
 #include "crab/interval.hpp"
 #include "crab/stats.hpp"
-#include "crab/types.hpp"
+#include "crab/cfg_bgl.hpp"
 
 namespace ikos {
+
+template <typename G>
+using vertex_descriptor = typename boost::graph_traits<G>::vertex_descriptor;
+
+template <typename G>
+using out_edge_iterator = typename boost::graph_traits<G>::out_edge_iterator;
+
+template <typename G>
+using edge_descriptor = typename boost::graph_traits<G>::edge_descriptor;
 
 template <typename G>
 class wto;
@@ -82,7 +93,7 @@ class wto_nesting {
     using wto_nesting_t = wto_nesting<G>;
 
   private:
-    using node_list_t = std::vector<typename boost::graph_traits<G>::vertex_descriptor>;
+    using node_list_t = std::vector<vertex_descriptor<G>>;
     using node_list_ptr = std::shared_ptr<node_list_t>;
 
     node_list_ptr _nodes;
@@ -116,12 +127,12 @@ class wto_nesting {
   public:
     wto_nesting() : _nodes(std::make_shared<node_list_t>()) {}
 
-    void operator+=(typename boost::graph_traits<G>::vertex_descriptor n) {
+    void operator+=(vertex_descriptor<G> n) {
         this->_nodes = std::make_shared<node_list_t>(*(this->_nodes));
         this->_nodes->push_back(n);
     }
 
-    wto_nesting_t operator+(typename boost::graph_traits<G>::vertex_descriptor n) {
+    wto_nesting_t operator+(vertex_descriptor<G> n) {
         wto_nesting_t res(this->_nodes);
         res._nodes->push_back(n);
         return res;
@@ -159,7 +170,7 @@ class wto_nesting {
     void write(crab::crab_os &o) const {
         o << "[";
         for (const_iterator it = this->begin(); it != this->end();) {
-            typename boost::graph_traits<G>::vertex_descriptor n = *it;
+            vertex_descriptor<G> n = *it;
             o << n;
             ++it;
             if (it != this->end()) {
@@ -202,12 +213,12 @@ class wto_vertex : public wto_component<G> {
     friend class wto<G>;
 
   private:
-    typename boost::graph_traits<G>::vertex_descriptor _node;
+    vertex_descriptor<G> _node;
 
-    wto_vertex(typename boost::graph_traits<G>::vertex_descriptor node) : _node(node) {}
+    wto_vertex(vertex_descriptor<G> node) : _node(node) {}
 
   public:
-    typename boost::graph_traits<G>::vertex_descriptor node() { return this->_node; }
+    vertex_descriptor<G> node() { return this->_node; }
 
     void accept(wto_component_visitor<G> *v) { v->visit(*this); }
 
@@ -228,19 +239,19 @@ class wto_cycle : public wto_component<G> {
     using wto_component_list_t = boost::container::slist<wto_component_ptr>;
     using wto_component_list_ptr = std::shared_ptr<wto_component_list_t>;
 
-    typename boost::graph_traits<G>::vertex_descriptor _head;
+    vertex_descriptor<G> _head;
     wto_component_list_ptr _wto_components;
     // number of times the wto cycle is analyzed by the fixpoint iterator
     unsigned _num_fixpo;
 
-    wto_cycle(typename boost::graph_traits<G>::vertex_descriptor head, wto_component_list_ptr wto_components)
+    wto_cycle(vertex_descriptor<G> head, wto_component_list_ptr wto_components)
         : _head(head), _wto_components(wto_components), _num_fixpo(0) {}
 
   public:
     using iterator = boost::indirect_iterator<typename wto_component_list_t::iterator>;
     using const_iterator = boost::indirect_iterator<typename wto_component_list_t::const_iterator>;
 
-    typename boost::graph_traits<G>::vertex_descriptor head() { return this->_head; }
+    vertex_descriptor<G> head() { return this->_head; }
 
     void accept(wto_component_visitor<G> *v) { v->visit(*this); }
 
@@ -306,11 +317,11 @@ class wto {
     using wto_component_list_t = boost::container::slist<wto_component_ptr>;
     using wto_component_list_ptr = std::shared_ptr<wto_component_list_t>;
     using dfn_t = bound_t;
-    using dfn_table_t = boost::unordered_map<typename boost::graph_traits<G>::vertex_descriptor, dfn_t>;
+    using dfn_table_t = boost::unordered_map<vertex_descriptor<G>, dfn_t>;
     using dfn_table_ptr = std::shared_ptr<dfn_table_t>;
-    using stack_t = std::vector<typename boost::graph_traits<G>::vertex_descriptor>;
+    using stack_t = std::vector<vertex_descriptor<G>>;
     using stack_ptr = std::shared_ptr<stack_t>;
-    using nesting_table_t = boost::unordered_map<typename boost::graph_traits<G>::vertex_descriptor, wto_nesting_t>;
+    using nesting_table_t = boost::unordered_map<vertex_descriptor<G>, wto_nesting_t>;
     using nesting_table_ptr = std::shared_ptr<nesting_table_t>;
 
     wto_component_list_ptr _wto_components;
@@ -333,7 +344,7 @@ class wto {
         nesting_builder(nesting_table_ptr nesting_table) : _nesting_table(nesting_table) {}
 
         void visit(wto_cycle_t &cycle) {
-            typename boost::graph_traits<G>::vertex_descriptor head = cycle.head();
+            vertex_descriptor<G> head = cycle.head();
             wto_nesting_t previous_nesting = this->_nesting;
             this->_nesting_table->insert(std::make_pair(head, this->_nesting));
             this->_nesting += head;
@@ -349,7 +360,7 @@ class wto {
 
     }; // class nesting_builder
 
-    dfn_t get_dfn(typename boost::graph_traits<G>::vertex_descriptor n) {
+    dfn_t get_dfn(vertex_descriptor<G> n) {
         typename dfn_table_t::iterator it = this->_dfn_table->find(n);
         if (it == this->_dfn_table->end()) {
             return 0;
@@ -358,33 +369,30 @@ class wto {
         }
     }
 
-    void set_dfn(typename boost::graph_traits<G>::vertex_descriptor n, dfn_t dfn) {
+    void set_dfn(vertex_descriptor<G> n, dfn_t dfn) {
         std::pair<typename dfn_table_t::iterator, bool> res = this->_dfn_table->insert(std::make_pair(n, dfn));
         if (!res.second) {
             (res.first)->second = dfn;
         }
     }
 
-    typename boost::graph_traits<G>::vertex_descriptor pop() {
+    vertex_descriptor<G> pop() {
         if (this->_stack->empty()) {
             CRAB_ERROR("WTO computation: empty stack");
         } else {
-            typename boost::graph_traits<G>::vertex_descriptor top = this->_stack->back();
+            vertex_descriptor<G> top = this->_stack->back();
             this->_stack->pop_back();
             return top;
         }
     }
 
-    void push(typename boost::graph_traits<G>::vertex_descriptor n) { this->_stack->push_back(n); }
+    void push(vertex_descriptor<G> n) { this->_stack->push_back(n); }
 
-    wto_cycle_ptr component(G g, typename boost::graph_traits<G>::vertex_descriptor vertex) {
+    wto_cycle_ptr component(G g, vertex_descriptor<G> vertex) {
         auto partition = std::make_shared<wto_component_list_t>();
-        std::pair<typename boost::graph_traits<G>::out_edge_iterator,
-                  typename boost::graph_traits<G>::out_edge_iterator>
-            succ_edges = out_edges(vertex, g);
-        for (typename boost::graph_traits<G>::out_edge_iterator it = succ_edges.first, et = succ_edges.second; it != et;
-             ++it) {
-            typename boost::graph_traits<G>::vertex_descriptor succ = target(*it, g);
+        std::pair<out_edge_iterator<G>, out_edge_iterator<G>> succ_edges = out_edges(vertex, g);
+        for (out_edge_iterator<G> it = succ_edges.first, et = succ_edges.second; it != et; ++it) {
+            vertex_descriptor<G> succ = target(*it, g);
             if (this->get_dfn(succ) == 0) {
                 this->visit(g, succ, partition);
             }
@@ -393,23 +401,22 @@ class wto {
     }
 
     struct visit_stack_elem {
-        using succ_iterator = typename boost::graph_traits<G>::out_edge_iterator;
-        typename boost::graph_traits<G>::vertex_descriptor _node;
+        using succ_iterator = out_edge_iterator<G>;
+        vertex_descriptor<G> _node;
         succ_iterator _it; // begin iterator for node's successors
         succ_iterator _et; // end iterator for node's successors
         dfn_t _min;        // smallest dfn number of any (direct or
                            // indirect) node's successor through node's
                            // DFS subtree, included node.
 
-        visit_stack_elem(typename boost::graph_traits<G>::vertex_descriptor node,
-                         std::pair<succ_iterator, succ_iterator> succs, dfn_t min)
+        visit_stack_elem(vertex_descriptor<G> node, std::pair<succ_iterator, succ_iterator> succs, dfn_t min)
             : _node(node), _it(succs.first), _et(succs.second), _min(min) {}
     };
 
-    void visit(G g, typename boost::graph_traits<G>::vertex_descriptor vertex, wto_component_list_ptr partition) {
+    void visit(G g, vertex_descriptor<G> vertex, wto_component_list_ptr partition) {
 
         std::vector<visit_stack_elem> visit_stack;
-        std::set<typename boost::graph_traits<G>::vertex_descriptor> loop_nodes;
+        std::set<vertex_descriptor<G>> loop_nodes;
 
         /* discover vertex */
         push(vertex);
@@ -427,8 +434,8 @@ class wto {
              * visit_stack one more descendant.
              */
             while (visit_stack.back()._it != visit_stack.back()._et) {
-                typename boost::graph_traits<G>::edge_descriptor e = *visit_stack.back()._it++;
-                typename boost::graph_traits<G>::vertex_descriptor child = target(e, g);
+                edge_descriptor<G> e = *visit_stack.back()._it++;
+                vertex_descriptor<G> child = target(e, g);
                 dfn_t child_dfn = get_dfn(child);
                 if (child_dfn == 0) {
                     /* discover new vertex */
@@ -447,7 +454,7 @@ class wto {
             }
 
             // propagate min from child to parent
-            typename boost::graph_traits<G>::vertex_descriptor visiting_node = visit_stack.back()._node;
+            vertex_descriptor<G> visiting_node = visit_stack.back()._node;
             dfn_t min_visiting_node = visit_stack.back()._min;
             bool is_loop = loop_nodes.count(visiting_node) > 0;
             visit_stack.pop_back();
@@ -463,7 +470,7 @@ class wto {
                 CRAB_LOG("wto-nonrec", crab::outs()
                                            << "WTO: BEGIN building partition for node " << visiting_node << "\n";);
                 set_dfn(visiting_node, dfn_t::plus_infinity());
-                typename boost::graph_traits<G>::vertex_descriptor element = pop();
+                vertex_descriptor<G> element = pop();
                 if (is_loop) {
                     while (!(element == visiting_node)) {
                         set_dfn(element, 0);
@@ -534,7 +541,7 @@ class wto {
 
     const_iterator end() const { return boost::make_indirect_iterator(_wto_components->end()); }
 
-    wto_nesting_t nesting(typename boost::graph_traits<G>::vertex_descriptor n) {
+    wto_nesting_t nesting(vertex_descriptor<G> n) {
         typename nesting_table_t::iterator it = this->_nesting_table->find(n);
         if (it == this->_nesting_table->end()) {
             CRAB_ERROR("WTO nesting: node ", n, " not found");

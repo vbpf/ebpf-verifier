@@ -44,7 +44,6 @@ clean:
 
 linux_samples:
 	git clone --depth 1 https://github.com/torvalds/linux.git $(LINUX)
-	cd $(LINUX); git apply counter/linux.patch
 	make -C $(LINUX) headers_install
 	make -C $(LINUX) oldconfig < /dev/null
 	make -C $(LINUX) samples/bpf/

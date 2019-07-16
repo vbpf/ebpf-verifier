@@ -46,7 +46,6 @@
 #include <boost/unordered_map.hpp>
 #include <memory>
 
-#include "crab/cfg_bgl.hpp" // needed by wto
 #include "crab/debug.hpp"
 #include "crab/fixpoint_iterators_api.hpp"
 #include "crab/stats.hpp"

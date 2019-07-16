@@ -5,6 +5,7 @@
 #include <iostream>
 #include <optional>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include <assert.h>
@@ -15,6 +16,7 @@
 #include "spec_type_descriptors.hpp"
 
 #include "crab/dsl_syntax.hpp"
+
 #include "crab_common.hpp"
 #include "crab_constraints.hpp"
 #include "crab_verifier.hpp"
@@ -38,8 +40,6 @@ constexpr int MAX_PACKET_OFF = 0xffff;
 constexpr int64_t MY_INT_MIN = INT_MIN;
 constexpr int64_t MY_INT_MAX = INT_MAX;
 constexpr int64_t PTR_MAX = MY_INT_MAX - MAX_PACKET_OFF;
-
-static int first_num(const basic_block_t &block) { return first_num(block.label()); }
 
 static basic_block_t &add_common_child(cfg_t &cfg, basic_block_t &block, std::vector<basic_block_label_t> labels,
                                        std::string suffix) {
@@ -195,7 +195,7 @@ class instruction_builder_t final {
   public:
     vector<basic_block_t *> exec();
     instruction_builder_t(machine_t &machine, Instruction ins, basic_block_t &block, cfg_t &cfg)
-        : machine(machine), ins(ins), block(block), cfg(cfg), pc(first_num(block)), di{"pc", (unsigned int)pc, 0} {}
+        : machine(machine), ins(ins), block(block), cfg(cfg), pc(first_num(block.label())), di{"pc", (unsigned int)pc, 0} {}
 
   private:
     machine_t &machine;
@@ -764,7 +764,7 @@ vector<basic_block_t *> instruction_builder_t::operator()(Bin const &bin) {
 
     if (std::holds_alternative<Imm>(bin.v)) {
         // dst += K
-        int imm = static_cast<int>(get<Imm>(bin.v).v);
+        int imm = static_cast<int>(std::get<Imm>(bin.v).v);
         switch (bin.op) {
         case Bin::Op::MOV:
             block.assign(dst.value, imm);

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "crab/cfg.hpp"
-#include "crab/cfg_bgl.hpp" // needed by wto.hpp
 #include "crab/debug.hpp"
 #include "crab/interval.hpp"
 #include "crab/linear_constraints.hpp"

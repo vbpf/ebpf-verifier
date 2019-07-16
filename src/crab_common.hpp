@@ -1,7 +1,6 @@
 #pragma once
 
 #include "crab/cfg.hpp"
-#include "crab/cfg_bgl.hpp"
 #include "crab/debug.hpp"
 #include "crab/types.hpp"
 
