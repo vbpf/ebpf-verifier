@@ -162,8 +162,7 @@ namespace crab {
 //// functions in case the edge_descriptor is std::pair.
 
 // this is not part of BGL but needed by Crab's algorithms
-inline typename boost::graph_traits<cfg_t>::vertex_descriptor
-entry(const cfg_t& g) { return g.entry(); }
+inline typename boost::graph_traits<cfg_t>::vertex_descriptor entry(const cfg_t& g) { return g.entry(); }
 
 inline std::pair<typename boost::graph_traits<cfg_t>::vertex_iterator,
                  typename boost::graph_traits<cfg_t>::vertex_iterator>
@@ -205,8 +204,8 @@ out_degree(typename boost::graph_traits<cfg_t>::vertex_descriptor v, const cfg_t
     return std::distance(succs.begin(), succs.end());
 }
 
-inline typename boost::graph_traits<cfg_t>::degree_size_type degree(typename boost::graph_traits<cfg_t>::vertex_descriptor v,
-                                                             const cfg_t& g) {
+inline typename boost::graph_traits<cfg_t>::degree_size_type
+degree(typename boost::graph_traits<cfg_t>::vertex_descriptor v, const cfg_t& g) {
     return out_degree(v, g) + in_degree(v, g);
 }
 
@@ -269,8 +268,7 @@ degree(typename boost::graph_traits<cfg_ref_t>::vertex_descriptor v, cfg_ref_t g
 //// functions in case the edge_descriptor is std::pair.
 
 // this is not part of BGL but needed by Crab's algorithms
-inline typename boost::graph_traits<cfg_rev_t>::vertex_descriptor
-entry(const cfg_rev_t& g) { return g.entry(); }
+inline typename boost::graph_traits<cfg_rev_t>::vertex_descriptor entry(const cfg_rev_t& g) { return g.entry(); }
 
 inline std::pair<typename boost::graph_traits<cfg_rev_t>::vertex_iterator,
                  typename boost::graph_traits<cfg_rev_t>::vertex_iterator>
