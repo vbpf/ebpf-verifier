@@ -13,14 +13,14 @@ namespace crab {
 namespace domains {
 
 // Special operations needed by the checker
-template <typename Domain>
+template <typename AbsDomain>
 class checker_domain_traits {
   private:
     struct entailment {
-        Domain _dom;
-        entailment(Domain dom) : _dom(dom) {}
+        AbsDomain _dom;
+        entailment(AbsDomain dom) : _dom(dom) {}
         bool operator()(const linear_constraint_t& cst) {
-            Domain dom(_dom); // copy is necessary
+            AbsDomain dom(_dom); // copy is necessary
             linear_constraint_t neg_cst = cst.negate();
             dom += neg_cst;
             return dom.is_bottom();
@@ -31,13 +31,13 @@ class checker_domain_traits {
     /*
        Public API
 
-       static bool entail(Domain&, const linear_constraint_t&);
+       static bool entail(AbsDomain&, const linear_constraint_t&);
 
-       static bool intersect(Domain&, const linear_constraint_t&);
+       static bool intersect(AbsDomain&, const linear_constraint_t&);
      */
 
     // Return true if lhs entails rhs.
-    static bool entail(Domain& lhs, const linear_constraint_t& rhs) {
+    static bool entail(AbsDomain& lhs, const linear_constraint_t& rhs) {
         if (lhs.is_bottom())
             return true;
         if (rhs.is_tautology())
@@ -65,25 +65,25 @@ class checker_domain_traits {
             outs() << "\t**entailment does not hold.\n";
         });
 
-        // Note: we cannot convert rhs into Domain and then use the <=
+        // Note: we cannot convert rhs into AbsDomain and then use the <=
         //       operator. The problem is that we cannot know for sure
-        //       whether Domain can represent precisely rhs. It is not
+        //       whether AbsDomain can represent precisely rhs. It is not
         //       enough to do something like
         //
-        //       Dom dom = rhs;
+        //       AbsDomain dom = rhs;
         //       if (dom.is_top()) { ... }
 
         return res;
     }
 
     // Return true if inv intersects with cst.
-    static bool intersect(Domain& inv, const linear_constraint_t& cst) {
+    static bool intersect(AbsDomain& inv, const linear_constraint_t& cst) {
         if (inv.is_bottom() || cst.is_contradiction())
             return false;
         if (inv.is_top() || cst.is_tautology())
             return true;
 
-        Domain dom(inv);
+        AbsDomain dom(inv);
         dom += cst;
         return !dom.is_bottom();
     }

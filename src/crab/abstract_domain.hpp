@@ -27,7 +27,7 @@ namespace domains {
  * };
  **/
 
-template <class Dom>
+template <class AbsDomain>
 class abstract_domain : public writeable {
   public:
     using variable_vector_t = std::vector<variable_t>;
@@ -36,14 +36,14 @@ class abstract_domain : public writeable {
 
     virtual ~abstract_domain(){};
 
-    static Dom top() {
-        Dom abs;
+    static AbsDomain top() {
+        AbsDomain abs;
         abs.set_to_top();
         return abs;
     }
 
-    static Dom bottom() {
-        Dom abs;
+    static AbsDomain bottom() {
+        AbsDomain abs;
         abs.set_to_bottom();
         return abs;
     }
@@ -61,38 +61,30 @@ class abstract_domain : public writeable {
 
     // Inclusion operator: return true if *this is equal or more precise than abs
     // TODO: add const reference
-    virtual bool operator<=(const Dom& abs) = 0;
+    virtual bool operator<=(const AbsDomain& abs) = 0;
     // Join operator: join(*this, abs)
     // TODO: add const reference and ideally const method
-    virtual Dom operator|(const Dom& abs) = 0;
+    virtual AbsDomain operator|(const AbsDomain& abs) = 0;
     // *this = join(*this, abs)
     // TODO: add const reference
-    virtual void operator|=(const Dom& abs) = 0;
+    virtual void operator|=(const AbsDomain& abs) = 0;
     // Meet operator: meet(*this, abs)
     // TODO: add const reference and ideally const method
-    virtual Dom operator&(const Dom& abs) = 0;
+    virtual AbsDomain operator&(const AbsDomain& abs) = 0;
     // Widening operator: widening(*this, abs)
     // TODO: add const reference and ideally const method
-    virtual Dom widen(const Dom& abs) = 0;
+    virtual AbsDomain widen(const AbsDomain& abs) = 0;
     // Narrowing operator: narrowing(*this, abs)
     // TODO: add const reference and ideally const method
-    virtual Dom narrow(const Dom& abs) = 0;
+    virtual AbsDomain narrow(const AbsDomain& abs) = 0;
     // Widening with thresholds: widening_ts(*this, abs)
-    virtual Dom widening_thresholds(Dom abs, const iterators::thresholds_t& ts) = 0;
+    virtual AbsDomain widening_thresholds(AbsDomain abs, const iterators::thresholds_t& ts) = 0;
 
     /**************************** Backward arithmetic operations ******************/
-    // x = y op z
-    // Substitute x with y op z in the abstract value
-    // The result is meet with invariant.
-    virtual void backward_apply(operation_t op, variable_t x, variable_t y, variable_t z, Dom invariant) = 0;
-    // x = y op k
-    // Substitute x with y op k in the abstract value
-    // The result is meet with invariant.
-    virtual void backward_apply(operation_t op, variable_t x, variable_t y, number_t k, Dom invariant) = 0;
     // x = e
     // Substitute x with e in the abstract value
     // The result is meet with invariant.
-    virtual void backward_assign(variable_t x, linear_expression_t e, Dom invariant) = 0;
+    virtual void backward_assign(variable_t x, linear_expression_t e, AbsDomain invariant) = 0;
 
     /**************************** Miscellaneous operations *************************/
     // forget v
@@ -122,8 +114,8 @@ class abstract_domain : public writeable {
     virtual void expand(variable_t var, variable_t new_var) = 0;
 };
 
-template <typename Dom>
-class numeric_abstract_domain : public abstract_domain<numeric_abstract_domain<Dom>> {
+template <typename AbsDomain>
+class numeric_abstract_domain : public abstract_domain<numeric_abstract_domain<AbsDomain>> {
   public:
     using variable_vector_t = std::vector<variable_t>;
 
@@ -144,8 +136,8 @@ class numeric_abstract_domain : public abstract_domain<numeric_abstract_domain<D
     virtual void apply(int_conv_operation_t op, variable_t dst, variable_t src) = 0;
 };
 
-template <typename Dom>
-class array_abstract_domain : public numeric_abstract_domain<array_abstract_domain<Dom>> {
+template <typename AbsDomain>
+class array_abstract_domain : public numeric_abstract_domain<array_abstract_domain<AbsDomain>> {
   public:
     using variable_vector_t = std::vector<variable_t>;
     /**************************** Array operations *******************************/
@@ -168,14 +160,14 @@ class array_abstract_domain : public numeric_abstract_domain<array_abstract_doma
 
     /**************************** Backward array operations ******************/
     virtual void backward_array_init(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
-                                     linear_expression_t ub_idx, linear_expression_t val, Dom invariant) = 0;
+                                     linear_expression_t ub_idx, linear_expression_t val, AbsDomain invariant) = 0;
     virtual void backward_array_load(variable_t lhs, variable_t a, linear_expression_t elem_size, linear_expression_t i,
-                                     Dom invariant) = 0;
+                                     AbsDomain invariant) = 0;
     virtual void backward_array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i,
-                                      linear_expression_t v, bool is_singleton, Dom invariant) = 0;
+                                      linear_expression_t v, bool is_singleton, AbsDomain invariant) = 0;
     virtual void backward_array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t i,
-                                            linear_expression_t j, linear_expression_t v, Dom invariant) = 0;
-    virtual void backward_array_assign(variable_t a, variable_t b, Dom invariant) = 0;
+                                            linear_expression_t j, linear_expression_t v, AbsDomain invariant) = 0;
+    virtual void backward_array_assign(variable_t a, variable_t b, AbsDomain invariant) = 0;
 };
 
 } // end namespace domains

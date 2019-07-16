@@ -147,9 +147,9 @@ class cell_t {
 
     // Return true if [symb_lb, symb_ub] may overlap with the cell,
     // where symb_lb and symb_ub are not constant expressions.
-    template <typename Dom>
+    template <typename AbsDomain>
     bool symbolic_overlap(const linear_expression_t& symb_lb, const linear_expression_t& symb_ub,
-                          const Dom& dom) const {
+                          const AbsDomain& dom) const {
 
         interval_t x = to_interval();
         assert(x.lb().is_finite());
@@ -157,13 +157,13 @@ class cell_t {
         linear_expression_t lb(*(x.lb().number()));
         linear_expression_t ub(*(x.ub().number()));
 
-        CRAB_LOG("array-expansion-overlap", Dom tmp(dom); linear_expression_t tmp_symb_lb(symb_lb);
+        CRAB_LOG("array-expansion-overlap", AbsDomain tmp(dom); linear_expression_t tmp_symb_lb(symb_lb);
                  linear_expression_t tmp_symb_ub(symb_ub);
                  outs() << "**Checking if " << *this << " overlaps with symbolic "
                         << "[" << tmp_symb_lb << "," << tmp_symb_ub << "]"
                         << " with abstract state=" << tmp << "\n";);
 
-        Dom tmp1(dom);
+        AbsDomain tmp1(dom);
         tmp1 += linear_constraint_t(symb_lb - lb, linear_constraint_t::INEQUALITY); //(lb >= symb_lb);
         tmp1 += linear_constraint_t(lb - symb_lb, linear_constraint_t::INEQUALITY); //(lb <= symb_ub);
         if (!tmp1.is_bottom()) {
@@ -171,7 +171,7 @@ class cell_t {
             return true;
         }
 
-        Dom tmp2(dom);
+        AbsDomain tmp2(dom);
         tmp2 += linear_constraint_t(symb_ub - ub, linear_constraint_t::INEQUALITY); // (ub >= symb_lb);
         tmp2 += linear_constraint_t(ub - symb_ub, linear_constraint_t::INEQUALITY); // (ub <= symb_ub);
         if (!tmp2.is_bottom()) {
@@ -222,13 +222,13 @@ inline bool set_inclusion(Set& s1, Set& s2) {
 } // namespace cell_set_impl
 
 // forward declarations
-template <typename Domain>
+template <typename AbsDomain>
 class array_expansion_domain;
 
 // Map offsets to cells
 class offset_map_t {
   private:
-    template <typename Dom>
+    template <typename AbsDomain>
     friend class array_expansion_domain;
 
     using cell_set_t = std::set<cell_t>;
@@ -355,8 +355,8 @@ class offset_map_t {
     // Return in out all cells that might overlap with (o, size).
     void get_overlap_cells(offset_t o, unsigned size, std::vector<cell_t>& out);
 
-    template <typename Dom>
-    void get_overlap_cells_symbolic_offset(const Dom& dom, const linear_expression_t& symb_lb,
+    template <typename AbsDomain>
+    void get_overlap_cells_symbolic_offset(const AbsDomain& dom, const linear_expression_t& symb_lb,
                                            const linear_expression_t& symb_ub, std::vector<cell_t>& out) const {
 
         for (auto it = _map.begin(), et = _map.end(); it != et; ++it) {
@@ -412,8 +412,8 @@ class offset_map_t {
 
 // /* for debugging */
 // namespace array_expansion_domain_impl{
-//   template<typename Dom>
-//   inline void print_size(const Dom& dom) {}
+//   template<typename AbsDomain>
+//   inline void print_size(const AbsDomain& dom) {}
 
 //   template<typename N, typename V>
 //   inline void print_size(const domains::SplitDBM<N,V>& dom) {
@@ -421,20 +421,20 @@ class offset_map_t {
 //   }
 // }
 
-template <typename NumDomain>
+template <typename NumAbsDomain>
 class array_expansion_domain final : public writeable {
   private:
-    using array_expansion_domain_t = array_expansion_domain<NumDomain>;
+    using array_expansion_domain_t = array_expansion_domain<NumAbsDomain>;
 
   public:
     using variable_vector_t = std::vector<variable_t>;
-    using content_domain_t = NumDomain;
+    using content_domain_t = NumAbsDomain;
 
   private:
     using array_map_t = boost::unordered_map<variable_t, offset_map_t>;
 
     // scalar domain
-    NumDomain _inv;
+    NumAbsDomain _inv;
 
     // We use a global array map
     static array_map_t& get_array_map() {
@@ -481,9 +481,9 @@ class array_expansion_domain final : public writeable {
         return map[v];
     }
 
-    array_expansion_domain(NumDomain inv) : _inv(inv) {}
+    array_expansion_domain(NumAbsDomain inv) : _inv(inv) {}
 
-    interval_t to_interval(linear_expression_t expr, NumDomain inv) {
+    interval_t to_interval(linear_expression_t expr, NumAbsDomain inv) {
         interval_t r(expr.constant());
         for (typename linear_expression_t::iterator it = expr.begin(); it != expr.end(); ++it) {
             interval_t c(it->first);
@@ -494,7 +494,7 @@ class array_expansion_domain final : public writeable {
 
     interval_t to_interval(linear_expression_t expr) { return to_interval(expr, _inv); }
 
-    void kill_cells(const std::vector<cell_t>& cells, offset_map_t& offset_map, NumDomain& dom) {
+    void kill_cells(const std::vector<cell_t>& cells, offset_map_t& offset_map, NumAbsDomain& dom) {
         if (!cells.empty()) {
             // Forget the scalars from the numerical domain
             for (unsigned i = 0, e = cells.size(); i < e; ++i) {
@@ -511,15 +511,15 @@ class array_expansion_domain final : public writeable {
     }
 
   public:
-    array_expansion_domain() : _inv(NumDomain::top()) {}
+    array_expansion_domain() : _inv(NumAbsDomain::top()) {}
 
     void set_to_top() {
-        array_expansion_domain abs(NumDomain::top());
+        array_expansion_domain abs(NumAbsDomain::top());
         std::swap(*this, abs);
     }
 
     void set_to_bottom() {
-        array_expansion_domain abs(NumDomain::bottom());
+        array_expansion_domain abs(NumAbsDomain::bottom());
         std::swap(*this, abs);
     }
 
@@ -695,14 +695,6 @@ class array_expansion_domain final : public writeable {
         _inv.backward_assign(x, e, inv.get_content_domain());
     }
 
-    void backward_apply(operation_t op, variable_t x, variable_t y, number_t z, array_expansion_domain_t inv) {
-        _inv.backward_apply(op, x, y, z, inv.get_content_domain());
-    }
-
-    void backward_apply(operation_t op, variable_t x, variable_t y, variable_t z, array_expansion_domain_t inv) {
-        _inv.backward_apply(op, x, y, z, inv.get_content_domain());
-    }
-
     void apply(int_conv_operation_t op, variable_t dst, variable_t src) {
         CrabStats::count(getDomainName() + ".count.apply");
         ScopedCrabStats __st__(getDomainName() + ".apply");
@@ -735,7 +727,7 @@ class array_expansion_domain final : public writeable {
     // array_init returns a fresh array where all elements between
     // lb_idx and ub_idx are initialized to val. Thus, the first thing
     // we need to do is to kill existing cells.
-    virtual void array_init(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
+    void array_init(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
                             linear_expression_t ub_idx, linear_expression_t val) {
         CrabStats::count(getDomainName() + ".count.array_init");
         ScopedCrabStats __st__(getDomainName() + ".array_init");
@@ -752,7 +744,7 @@ class array_expansion_domain final : public writeable {
         array_store_range(a, elem_size, lb_idx, ub_idx, val);
     }
 
-    virtual void array_load(variable_t lhs, variable_t a, linear_expression_t elem_size, linear_expression_t i) {
+    void array_load(variable_t lhs, variable_t a, linear_expression_t elem_size, linear_expression_t i) {
         CrabStats::count(getDomainName() + ".count.array_load");
         ScopedCrabStats __st__(getDomainName() + ".array_load");
 
@@ -801,7 +793,7 @@ class array_expansion_domain final : public writeable {
                  outs() << lhs << ":=" << a << "[" << i << "..." << ub << "]  -- " << *this << "\n";);
     }
 
-    virtual void array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i,
+    void array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i,
                              linear_expression_t val, bool /*is_singleton*/) {
         CrabStats::count(getDomainName() + ".count.array_store");
         ScopedCrabStats __st__(getDomainName() + ".array_store");
@@ -856,7 +848,7 @@ class array_expansion_domain final : public writeable {
     }
 
     // Perform array stores over an array segment
-    virtual void array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
+    void array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
                                    linear_expression_t ub_idx, linear_expression_t val) {
 
         // TODO: this should be an user parameter.
@@ -903,14 +895,14 @@ class array_expansion_domain final : public writeable {
         }
     }
 
-    virtual void array_assign(variable_t lhs, variable_t rhs) {
+    void array_assign(variable_t lhs, variable_t rhs) {
         //_array_map[lhs] = _array_map[rhs];
         CRAB_ERROR("array_assign in array_expansion domain not implemented");
     }
 
     // backward array operations
 
-    virtual void backward_array_init(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
+    void backward_array_init(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
                                      linear_expression_t ub_idx, linear_expression_t val,
                                      array_expansion_domain_t invariant) {
         CrabStats::count(getDomainName() + ".count.backward_array_init");
@@ -930,7 +922,7 @@ class array_expansion_domain final : public writeable {
         *this = *this & invariant;
     }
 
-    virtual void backward_array_load(variable_t lhs, variable_t a, linear_expression_t elem_size, linear_expression_t i,
+    void backward_array_load(variable_t lhs, variable_t a, linear_expression_t elem_size, linear_expression_t i,
                                      array_expansion_domain_t invariant) {
         CrabStats::count(getDomainName() + ".count.backward_array_load");
         ScopedCrabStats __st__(getDomainName() + ".backward_array_load");
@@ -964,7 +956,7 @@ class array_expansion_domain final : public writeable {
                  outs() << "BACKWARD " << lhs << ":=" << a << "[" << i << "..." << ub << "]  -- " << *this << "\n";);
     }
 
-    virtual void backward_array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i,
+    void backward_array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i,
                                       linear_expression_t val, bool /*is_singleton*/,
                                       array_expansion_domain_t invariant) {
         CrabStats::count(getDomainName() + ".count.backward_array_store");
@@ -1015,7 +1007,7 @@ class array_expansion_domain final : public writeable {
                  outs() << "BACKWARD " << a << "[" << i << "..." << ub << "]:=" << val << " -- " << *this << "\n";);
     }
 
-    virtual void backward_array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
+    void backward_array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
                                             linear_expression_t ub_idx, linear_expression_t val,
                                             array_expansion_domain_t invariant) {
 
@@ -1049,7 +1041,7 @@ class array_expansion_domain final : public writeable {
         }
     }
 
-    virtual void backward_array_assign(variable_t lhs, variable_t rhs, array_expansion_domain_t invariant) {
+    void backward_array_assign(variable_t lhs, variable_t rhs, array_expansion_domain_t invariant) {
         CRAB_ERROR("backward_array_assign in array_expansion domain not implemented");
     }
 
@@ -1060,14 +1052,14 @@ class array_expansion_domain final : public writeable {
         return _inv.to_linear_constraint_system();
     }
 
-    NumDomain get_content_domain() const { return _inv; }
+    NumAbsDomain get_content_domain() const { return _inv; }
 
-    NumDomain& get_content_domain() { return _inv; }
+    NumAbsDomain& get_content_domain() { return _inv; }
 
     void write(crab_os& o) { o << _inv; }
 
     static std::string getDomainName() {
-        std::string name("ArrayExpansion(" + NumDomain::getDomainName() + ")");
+        std::string name("ArrayExpansion(" + NumAbsDomain::getDomainName() + ")");
         return name;
     }
 
