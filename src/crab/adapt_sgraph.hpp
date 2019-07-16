@@ -1,6 +1,6 @@
 #pragma once
 
-#include "crab/Vec.h"
+#include "crab/vec.hpp"
 // Adaptive sparse-set based weighted graph implementation
 
 #pragma GCC diagnostic push
