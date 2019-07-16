@@ -232,7 +232,6 @@ class offset_map_t {
     friend class array_expansion_domain;
 
     using cell_set_t = std::set<cell_t>;
-    using type_t = variable_type;
 
     /*
       The keys in the patricia tree are processing in big-endian
@@ -297,7 +296,7 @@ class offset_map_t {
 
     static std::string mk_scalar_name(variable_t a, offset_t o, unsigned size);
 
-    static type_t get_array_element_type(type_t array_type) { return INT_TYPE; }
+    static variable_type_t get_array_element_type(variable_type_t array_type) { return INT_TYPE; }
 
     // global state to map the same triple of array, offset and size
     // to same index
@@ -432,7 +431,6 @@ class array_expansion_domain final : public writeable {
     using content_domain_t = NumDomain;
 
   private:
-    using type_t = variable_type;
     using array_map_t = boost::unordered_map<variable_t, offset_map_t>;
 
     // scalar domain

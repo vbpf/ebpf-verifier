@@ -263,7 +263,7 @@ class linear_expression_t {
 
     bool is_well_typed() const {
         typename variable_t::bitwidth_t b;
-        variable_type type;
+        variable_type_t type;
         for (const_iterator it = begin(), et = end(); it != et; ++it) {
             variable_t v = it->second;
             if (it == begin()) {

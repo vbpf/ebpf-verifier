@@ -6,7 +6,6 @@ namespace crab {
 class variable_ref_t {
   public:
     using bitwidth_t = typename variable_t::bitwidth_t;
-    using type_t = typename variable_t::type_t;
 
   private:
     std::shared_ptr<variable_t> m_v{};
@@ -33,12 +32,7 @@ class variable_ref_t {
         return m_v->is_array_type();
     }
 
-    bool is_int_type() const {
-        assert(!is_null());
-        return m_v->is_int_type();
-    }
-
-    type_t get_type() const {
+    variable_type_t get_type() const {
         assert(!is_null());
         return m_v->get_type();
     }

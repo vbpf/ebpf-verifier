@@ -43,10 +43,11 @@
 #pragma once
 
 #include <algorithm>
-#include <boost/iterator/iterator_facade.hpp>
 #include <memory>
 #include <optional>
 #include <vector>
+
+#include <boost/iterator/iterator_facade.hpp>
 
 #include "crab/types.hpp"
 
