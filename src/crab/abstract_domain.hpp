@@ -158,16 +158,6 @@ class array_abstract_domain : public numeric_abstract_domain<array_abstract_doma
     // forall i :: a[i] := b[i]
     virtual void array_assign(variable_t a, variable_t b) = 0;
 
-    /**************************** Backward array operations ******************/
-    virtual void backward_array_init(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
-                                     linear_expression_t ub_idx, linear_expression_t val, AbsDomain invariant) = 0;
-    virtual void backward_array_load(variable_t lhs, variable_t a, linear_expression_t elem_size, linear_expression_t i,
-                                     AbsDomain invariant) = 0;
-    virtual void backward_array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i,
-                                      linear_expression_t v, bool is_singleton, AbsDomain invariant) = 0;
-    virtual void backward_array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t i,
-                                            linear_expression_t j, linear_expression_t v, AbsDomain invariant) = 0;
-    virtual void backward_array_assign(variable_t a, variable_t b, AbsDomain invariant) = 0;
 };
 
 } // end namespace domains
