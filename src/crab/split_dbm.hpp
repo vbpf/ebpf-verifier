@@ -247,8 +247,8 @@ class SplitDBM final : public writeable {
     SplitDBM(const SplitDBM& o)
         : vert_map(o.vert_map), rev_map(o.rev_map), g(o.g), potential(o.potential), unstable(o.unstable),
           _is_bottom(false) {
-        CrabStats::count(getDomainName() + ".count.copy");
-        ScopedCrabStats __st__(getDomainName() + ".copy");
+        CrabStats::count("SplitDBM.count.copy");
+        ScopedCrabStats __st__("SplitDBM.copy");
 
         if (o._is_bottom)
             set_to_bottom();
@@ -260,8 +260,8 @@ class SplitDBM final : public writeable {
     SplitDBM(SplitDBM&& o)
         : vert_map(std::move(o.vert_map)), rev_map(std::move(o.rev_map)), g(std::move(o.g)),
           potential(std::move(o.potential)), unstable(std::move(o.unstable)), _is_bottom(o._is_bottom) {
-        CrabStats::count(getDomainName() + ".count.copy");
-        ScopedCrabStats __st__(getDomainName() + ".copy");
+        CrabStats::count("SplitDBM.count.copy");
+        ScopedCrabStats __st__("SplitDBM.copy");
     }
 
     SplitDBM(vert_map_t&& _vert_map, rev_map_t&& _rev_map, graph_t&& _g, std::vector<Wt>&& _potential,
@@ -269,8 +269,8 @@ class SplitDBM final : public writeable {
         : vert_map(std::move(_vert_map)), rev_map(std::move(_rev_map)), g(std::move(_g)),
           potential(std::move(_potential)), unstable(std::move(_unstable)), _is_bottom(false) {
 
-        CrabStats::count(getDomainName() + ".count.copy");
-        ScopedCrabStats __st__(getDomainName() + ".copy");
+        CrabStats::count("SplitDBM.count.copy");
+        ScopedCrabStats __st__("SplitDBM.copy");
 
         CRAB_LOG("zones-split-size", auto p = size();
                  outs() << "#nodes = " << p.first << " #edges=" << p.second << "\n";);
@@ -279,8 +279,8 @@ class SplitDBM final : public writeable {
     }
 
     SplitDBM& operator=(const SplitDBM& o) {
-        CrabStats::count(getDomainName() + ".count.copy");
-        ScopedCrabStats __st__(getDomainName() + ".copy");
+        CrabStats::count("SplitDBM.count.copy");
+        ScopedCrabStats __st__("SplitDBM.copy");
 
         if (this != &o) {
             if (o._is_bottom) {
@@ -299,8 +299,8 @@ class SplitDBM final : public writeable {
     }
 
     SplitDBM& operator=(SplitDBM&& o) {
-        CrabStats::count(getDomainName() + ".count.copy");
-        ScopedCrabStats __st__(getDomainName() + ".copy");
+        CrabStats::count("SplitDBM.count.copy");
+        ScopedCrabStats __st__("SplitDBM.copy");
 
         if (o._is_bottom) {
             set_to_bottom();
@@ -386,10 +386,6 @@ class SplitDBM final : public writeable {
 
     void backward_assign(variable_t x, linear_expression_t e, SplitDBM inv);
 
-    void backward_apply(operation_t op, variable_t x, variable_t y, number_t z, SplitDBM inv);
-
-    void backward_apply(operation_t op, variable_t x, variable_t y, variable_t z, SplitDBM inv);
-
     void operator+=(linear_constraint_t cst);
 
     void operator+=(linear_constraint_system_t csts) {
@@ -402,8 +398,8 @@ class SplitDBM final : public writeable {
     }
 
     interval_t operator[](variable_t x) {
-        CrabStats::count(getDomainName() + ".count.to_intervals");
-        ScopedCrabStats __st__(getDomainName() + ".to_intervals");
+        CrabStats::count("SplitDBM.count.to_intervals");
+        ScopedCrabStats __st__("SplitDBM.to_intervals");
 
         // if (is_top())    return interval_t::top();
 
