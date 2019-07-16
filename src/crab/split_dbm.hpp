@@ -77,30 +77,30 @@ class SplitDBM final : public ikos::writeable {
     class Wt_max {
       public:
         Wt_max() {}
-        Wt apply(const Wt &x, const Wt &y) { return std::max(x, y); }
+        Wt apply(const Wt& x, const Wt& y) { return std::max(x, y); }
         bool default_is_absorbing() { return true; }
     };
 
     class Wt_min {
       public:
         Wt_min() {}
-        Wt apply(const Wt &x, const Wt &y) { return std::min(x, y); }
+        Wt apply(const Wt& x, const Wt& y) { return std::min(x, y); }
         bool default_is_absorbing() { return false; }
     };
 
     vert_id get_vert(variable_t v);
 
-    vert_id get_vert(graph_t &g, vert_map_t &vmap, rev_map_t &rmap, std::vector<Wt> &pot, variable_t v);
+    vert_id get_vert(graph_t& g, vert_map_t& vmap, rev_map_t& rmap, std::vector<Wt>& pot, variable_t v);
 
     template <class G, class P>
-    inline void check_potential(G &g, P &p, unsigned line) {}
+    inline void check_potential(G& g, P& p, unsigned line) {}
 
     class vert_set_wrap_t {
       public:
-        vert_set_wrap_t(const vert_set_t &_vs) : vs(_vs) {}
+        vert_set_wrap_t(const vert_set_t& _vs) : vs(_vs) {}
 
         bool operator[](vert_id v) const { return vs.find(v) != vs.end(); }
-        const vert_set_t &vs;
+        const vert_set_t& vs;
     };
 
     // Evaluate the potential value of a variable.
@@ -111,7 +111,7 @@ class SplitDBM final : public ikos::writeable {
         return ((Wt)0);
     }
 
-    Wt pot_value(variable_t v, std::vector<Wt> &potential) {
+    Wt pot_value(variable_t v, std::vector<Wt>& potential) {
         auto it = vert_map.find(v);
         if (it != vert_map.end())
             return potential[(*it).second];
@@ -172,11 +172,11 @@ class SplitDBM final : public ikos::writeable {
                             bool extract_upper_bounds,
                             /* foreach {v, k} \in diff_csts we have
                                the difference constraint v - k <= k */
-                            std::vector<std::pair<variable_t, Wt>> &diff_csts);
+                            std::vector<std::pair<variable_t, Wt>>& diff_csts);
 
     // Turn an assignment into a set of difference constraints.
-    void diffcsts_of_assign(variable_t x, linear_expression_t exp, std::vector<std::pair<variable_t, Wt>> &lb,
-                            std::vector<std::pair<variable_t, Wt>> &ub) {
+    void diffcsts_of_assign(variable_t x, linear_expression_t exp, std::vector<std::pair<variable_t, Wt>>& lb,
+                            std::vector<std::pair<variable_t, Wt>>& ub) {
         diffcsts_of_assign(x, exp, true, ub);
         diffcsts_of_assign(x, exp, false, lb);
     }
@@ -185,15 +185,15 @@ class SplitDBM final : public ikos::writeable {
      * Turn a linear inequality into a set of difference
      * constraints.
      **/
-    void diffcsts_of_lin_leq(const linear_expression_t &exp,
+    void diffcsts_of_lin_leq(const linear_expression_t& exp,
                              /* difference contraints */
-                             std::vector<diffcst_t> &csts,
+                             std::vector<diffcst_t>& csts,
                              /* x >= lb for each {x,lb} in lbs */
-                             std::vector<std::pair<variable_t, Wt>> &lbs,
+                             std::vector<std::pair<variable_t, Wt>>& lbs,
                              /* x <= ub for each {x,ub} in ubs */
-                             std::vector<std::pair<variable_t, Wt>> &ubs);
+                             std::vector<std::pair<variable_t, Wt>>& ubs);
 
-    bool add_linear_leq(const linear_expression_t &exp);
+    bool add_linear_leq(const linear_expression_t& exp);
 
     // x != n
     void add_univar_disequation(variable_t x, number_t n);
@@ -213,7 +213,7 @@ class SplitDBM final : public ikos::writeable {
 
     interval_t get_interval(variable_t x) { return get_interval(vert_map, g, x); }
 
-    interval_t get_interval(vert_map_t &m, graph_t &r, variable_t x) {
+    interval_t get_interval(vert_map_t& m, graph_t& r, variable_t x) {
         auto it = m.find(x);
         if (it == m.end()) {
             return interval_t::top();
@@ -244,7 +244,7 @@ class SplitDBM final : public ikos::writeable {
     }
 
     // FIXME: Rewrite to avoid copying if o is _|_
-    SplitDBM(const SplitDBM &o)
+    SplitDBM(const SplitDBM& o)
         : vert_map(o.vert_map), rev_map(o.rev_map), g(o.g), potential(o.potential), unstable(o.unstable),
           _is_bottom(false) {
         crab::CrabStats::count(getDomainName() + ".count.copy");
@@ -257,15 +257,15 @@ class SplitDBM final : public ikos::writeable {
             assert(g.size() > 0);
     }
 
-    SplitDBM(SplitDBM &&o)
+    SplitDBM(SplitDBM&& o)
         : vert_map(std::move(o.vert_map)), rev_map(std::move(o.rev_map)), g(std::move(o.g)),
           potential(std::move(o.potential)), unstable(std::move(o.unstable)), _is_bottom(o._is_bottom) {
         crab::CrabStats::count(getDomainName() + ".count.copy");
         crab::ScopedCrabStats __st__(getDomainName() + ".copy");
     }
 
-    SplitDBM(vert_map_t &&_vert_map, rev_map_t &&_rev_map, graph_t &&_g, std::vector<Wt> &&_potential,
-             vert_set_t &&_unstable)
+    SplitDBM(vert_map_t&& _vert_map, rev_map_t&& _rev_map, graph_t&& _g, std::vector<Wt>&& _potential,
+             vert_set_t&& _unstable)
         : vert_map(std::move(_vert_map)), rev_map(std::move(_rev_map)), g(std::move(_g)),
           potential(std::move(_potential)), unstable(std::move(_unstable)), _is_bottom(false) {
 
@@ -278,7 +278,7 @@ class SplitDBM final : public ikos::writeable {
         assert(g.size() > 0);
     }
 
-    SplitDBM &operator=(const SplitDBM &o) {
+    SplitDBM& operator=(const SplitDBM& o) {
         crab::CrabStats::count(getDomainName() + ".count.copy");
         crab::ScopedCrabStats __st__(getDomainName() + ".copy");
 
@@ -298,7 +298,7 @@ class SplitDBM final : public ikos::writeable {
         return *this;
     }
 
-    SplitDBM &operator=(SplitDBM &&o) {
+    SplitDBM& operator=(SplitDBM&& o) {
         crab::CrabStats::count(getDomainName() + ".count.copy");
         crab::ScopedCrabStats __st__(getDomainName() + ".copy");
 
@@ -363,7 +363,7 @@ class SplitDBM final : public ikos::writeable {
 
     SplitDBM widen(SplitDBM o);
 
-    SplitDBM widening_thresholds(SplitDBM o, const iterators::thresholds_t &ts) {
+    SplitDBM widening_thresholds(SplitDBM o, const iterators::thresholds_t& ts) {
         // TODO: use thresholds
         return ((*this).widen(o));
     }
@@ -429,22 +429,22 @@ class SplitDBM final : public ikos::writeable {
 
     void apply(bitwise_operation_t op, variable_t x, variable_t y, number_t k);
 
-    void project(const variable_vector_t &variables);
+    void project(const variable_vector_t& variables);
 
-    void forget(const variable_vector_t &variables);
+    void forget(const variable_vector_t& variables);
 
     void expand(variable_t x, variable_t y);
 
-    void rename(const variable_vector_t &from, const variable_vector_t &to);
+    void rename(const variable_vector_t& from, const variable_vector_t& to);
 
-    void extract(const variable_t &x, linear_constraint_system_t &csts, bool only_equalities);
+    void extract(const variable_t& x, linear_constraint_system_t& csts, bool only_equalities);
 
     // -- begin array_sgraph_domain_helper_traits
 
     // -- end array_sgraph_domain_helper_traits
 
     // Output function
-    void write(crab_os &o);
+    void write(crab_os& o);
 
     linear_constraint_system_t to_linear_constraint_system();
 

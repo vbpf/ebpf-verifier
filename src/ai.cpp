@@ -31,13 +31,13 @@ using std::vector;
 
 // implement here, where Assertion is complete
 Assert::~Assert() = default;
-Assert::Assert(const Assert &a) : p{std::make_unique<Assertion>(*a.p)}, satisfied{a.satisfied} {}
-Assert::Assert(AssertionPtr &&p) : p{std::move(p)} {}
-void Assert::operator=(const Assert &a) {
+Assert::Assert(const Assert& a) : p{std::make_unique<Assertion>(*a.p)}, satisfied{a.satisfied} {}
+Assert::Assert(AssertionPtr&& p) : p{std::move(p)} {}
+void Assert::operator=(const Assert& a) {
     *p = *a.p;
     satisfied = a.satisfied;
 }
-bool operator==(const Assert &a, const Assert &b) { return *a.p == *b.p && a.satisfied == b.satisfied; }
+bool operator==(const Assert& a, const Assert& b) { return *a.p == *b.p && a.satisfied == b.satisfied; }
 
 constexpr Reg DATA_END_REG = Reg{13};
 // constexpr Reg META_REG = Reg{14};
@@ -47,11 +47,11 @@ struct RegsDom {
     std::array<std::optional<ValDom>, 16> regs;
 
     RegsDom() {
-        for (auto &r : regs)
+        for (auto& r : regs)
             r = ValDom{};
     }
 
-    friend std::ostream &operator<<(std::ostream &os, const RegsDom &d) {
+    friend std::ostream& operator<<(std::ostream& os, const RegsDom& d) {
         os << "<<";
         for (size_t i = 0; i < 10; i++) {
             os << "r" << i << ": ";
@@ -65,8 +65,8 @@ struct RegsDom {
         return os;
     }
 
-    void init(const ValDom &ctx, const ValDom &stack_end, const ValDom &top_num) {
-        for (auto &r : regs)
+    void init(const ValDom& ctx, const ValDom& stack_end, const ValDom& top_num) {
+        for (auto& r : regs)
             r = {};
         regs[1] = ctx;
         regs[10] = stack_end;
@@ -85,7 +85,7 @@ struct RegsDom {
         return false;
     }
 
-    void operator|=(const RegsDom &o) {
+    void operator|=(const RegsDom& o) {
         for (size_t i = 0; i < regs.size(); i++) {
             if (!regs[i] || !o.regs[i])
                 regs[i] = {};
@@ -94,7 +94,7 @@ struct RegsDom {
         }
     }
 
-    void operator&=(const RegsDom &o) {
+    void operator&=(const RegsDom& o) {
         for (size_t i = 0; i < regs.size(); i++)
             if (!regs[i] || !o.regs[i])
                 regs[i] = {};
@@ -107,15 +107,15 @@ struct RegsDom {
             regs[i] = {};
     }
 
-    void assign(Reg r, const ValDom &v) { regs[r.v] = v; }
+    void assign(Reg r, const ValDom& v) { regs[r.v] = v; }
 
-    ValDom &at(Reg r) {
+    ValDom& at(Reg r) {
         if (!regs[r.v])
             throw std::runtime_error{std::string("Uninitialized register r") + std::to_string(r.v)};
         return *regs[r.v];
     }
 
-    bool operator==(const RegsDom &o) const { return regs == o.regs; }
+    bool operator==(const RegsDom& o) const { return regs == o.regs; }
 };
 
 struct Machine {
@@ -136,7 +136,7 @@ struct Machine {
 
     bool is_bot() { return regs.is_bot() || stack_arr.is_bot(); }
 
-    friend std::ostream &operator<<(std::ostream &os, const Machine &d) { return os << d.regs << " " << d.stack_arr; }
+    friend std::ostream& operator<<(std::ostream& os, const Machine& d) { return os << d.regs << " " << d.stack_arr; }
 
     RCP_domain eval(uint64_t v) { return BOT.with_num(v); }
 
@@ -148,12 +148,12 @@ struct Machine {
         }
     }
 
-    void operator|=(const Machine &o) {
+    void operator|=(const Machine& o) {
         regs |= o.regs;
         stack_arr |= o.stack_arr;
     }
 
-    void operator&=(const Machine &o) {
+    void operator&=(const Machine& o) {
         regs &= o.regs;
         stack_arr &= o.stack_arr;
     }
@@ -161,12 +161,12 @@ struct Machine {
     bool operator==(Machine o) const { return regs == o.regs && stack_arr == o.stack_arr; }
     bool operator!=(Machine o) const { return !(*this == o); }
 
-    void operator()(Undefined const &a) { assert(false); }
+    void operator()(Undefined const& a) { assert(false); }
 
-    void operator()(LoadMapFd const &a) { regs.assign(a.dst, BOT.with_fd(a.mapfd)); }
+    void operator()(LoadMapFd const& a) { regs.assign(a.dst, BOT.with_fd(a.mapfd)); }
 
-    void operator()(Un const &a){};
-    void operator()(Bin const &a) {
+    void operator()(Un const& a){};
+    void operator()(Bin const& a) {
         switch (a.op) {
         case Bin::Op::MOV: regs.assign(a.dst, eval(a.v)); return;
         case Bin::Op::ADD: regs.at(a.dst) += eval(a.v); return;
@@ -177,19 +177,19 @@ struct Machine {
         return;
     }
 
-    void operator()(Assume const &a) { RCP_domain::assume(regs.at(a.cond.left), a.cond.op, eval(a.cond.right)); }
+    void operator()(Assume const& a) { RCP_domain::assume(regs.at(a.cond.left), a.cond.op, eval(a.cond.right)); }
 
-    void operator()(Assert const &a) {
+    void operator()(Assert const& a) {
         // treat as assume
-        std::visit(overloaded{[this](const LinearConstraint &lc) {
+        std::visit(overloaded{[this](const LinearConstraint& lc) {
                                   assert((lc.when_types & TypeSet::num).none() ||
                                          (lc.when_types & TypeSet::ptr).none());
                                   const RCP_domain right =
                                       regs.at(lc.reg).zero() + (eval(lc.v) - eval(lc.width) - eval(lc.offset));
                                   RCP_domain::assume(regs.at(lc.reg), lc.op, right, lc.when_types);
                               },
-                              [this](const TypeConstraint &tc) {
-                                  auto &r = regs.at(tc.then.reg);
+                              [this](const TypeConstraint& tc) {
+                                  auto& r = regs.at(tc.then.reg);
                                   auto t = tc.then.types;
                                   if (tc.given) {
                                       RCP_domain::assume(r, t, regs.at(tc.given->reg), tc.given->types);
@@ -200,13 +200,13 @@ struct Machine {
                    a.p->cst);
     }
 
-    bool satisfied(Assert const &a) {
-        return std::visit(overloaded{[this](const LinearConstraint &lc) {
+    bool satisfied(Assert const& a) {
+        return std::visit(overloaded{[this](const LinearConstraint& lc) {
                                          const RCP_domain right =
                                              regs.at(lc.reg).zero() + (eval(lc.v) - eval(lc.width) - eval(lc.offset));
                                          return RCP_domain::satisfied(regs.at(lc.reg), lc.op, right, lc.when_types);
                                      },
-                                     [this](const TypeConstraint &tc) {
+                                     [this](const TypeConstraint& tc) {
                                          const RCP_domain left = regs.at(tc.then.reg);
                                          auto t = tc.then.types;
                                          // if (left.is_bot()) return false;
@@ -220,11 +220,11 @@ struct Machine {
                           a.p->cst);
     }
 
-    void operator()(Exit const &a) {}
+    void operator()(Exit const& a) {}
 
-    void operator()(Jmp const &a) {}
+    void operator()(Jmp const& a) {}
 
-    void operator()(Call const &call) {
+    void operator()(Call const& call) {
         for (ArgSingle arg : call.singles) {
             switch (arg.kind) {
             case ArgSingle::Kind::ANYTHING: break;
@@ -259,13 +259,13 @@ struct Machine {
         regs.scratch_regs();
     }
 
-    void operator()(Packet const &a) {
+    void operator()(Packet const& a) {
         // Different syntax for a function call
         regs.assign(Reg{0}, numtop);
         regs.scratch_regs();
     }
 
-    void store(const RCP_domain &addr, const NumDomSet &width, const RCP_domain &value) {
+    void store(const RCP_domain& addr, const NumDomSet& width, const RCP_domain& value) {
         if (addr.get_types().count() > 1)
             std::cerr << "store: " << addr << "\n";
         OffsetDomSet as_stack = addr.get_stack();
@@ -287,14 +287,14 @@ struct Machine {
         }
     }
 
-    RCP_domain load_stack(const OffsetDomSet &as_stack, int width) {
+    RCP_domain load_stack(const OffsetDomSet& as_stack, int width) {
         RCP_domain r;
         if (!as_stack.is_bot())
             r |= stack_arr.load(as_stack, width);
         return r;
     }
 
-    RCP_domain load_ctx(const OffsetDomSet &as_ctx, int width) {
+    RCP_domain load_ctx(const OffsetDomSet& as_ctx, int width) {
         if (as_ctx.is_bot())
             return {};
         RCP_domain r;
@@ -315,20 +315,20 @@ struct Machine {
         return r;
     }
 
-    RCP_domain load_other(const RCP_domain &addr) {
+    RCP_domain load_other(const RCP_domain& addr) {
         if (addr.maybe_packet() || addr.maybe_map())
             return numtop;
         return {};
     }
 
-    RCP_domain load(const RCP_domain &addr, int width) {
+    RCP_domain load(const RCP_domain& addr, int width) {
         if (addr.get_types().count() > 1)
             std::cerr << "load: " << addr << "\n";
         return load_stack(addr.get_stack(), width) | load_ctx(addr.get_ctx(), width) | load_other(addr);
     }
 
-    void operator()(Mem const &a) {
-        const auto &addr = regs.at(a.access.basereg) + eval(a.access.offset);
+    void operator()(Mem const& a) {
+        const auto& addr = regs.at(a.access.basereg) + eval(a.access.offset);
         if (a.is_load) {
             regs.assign(std::get<Reg>(a.value), load(addr, a.access.width));
         } else {
@@ -336,18 +336,18 @@ struct Machine {
         }
     }
 
-    void operator()(LockAdd const &a) {}
+    void operator()(LockAdd const& a) {}
 
     void visit(Instruction ins) { std::visit(*this, ins); }
 };
 
-static Label pop(std::list<Label> &wl) {
+static Label pop(std::list<Label>& wl) {
     Label u = wl.front();
     wl.pop_front();
     return u;
 }
 
-static auto initialized_invs(const Cfg &cfg, program_info info) -> std::unordered_map<Label, Machine> {
+static auto initialized_invs(const Cfg& cfg, program_info info) -> std::unordered_map<Label, Machine> {
     std::unordered_map<Label, Machine> df;
     for (auto l : cfg.keys()) {
         df.emplace(l, info);
@@ -356,19 +356,19 @@ static auto initialized_invs(const Cfg &cfg, program_info info) -> std::unordere
     return df;
 }
 
-static Machine transfer(const BasicBlock &bb, Machine m) {
-    for (const Instruction &ins : bb.insts) {
+static Machine transfer(const BasicBlock& bb, Machine m) {
+    for (const Instruction& ins : bb.insts) {
         m.visit(ins);
     }
     return m;
 }
 
-static auto chaotic(const Cfg &cfg, program_info info) -> std::unordered_map<Label, Machine> {
+static auto chaotic(const Cfg& cfg, program_info info) -> std::unordered_map<Label, Machine> {
     std::list<Label> wl{cfg.keys().front()};
     auto df = initialized_invs(cfg, info);
     while (!wl.empty()) {
         Label u = pop(wl);
-        const BasicBlock &bb = cfg.at(u);
+        const BasicBlock& bb = cfg.at(u);
         for (auto v : bb.nextlist) {
             auto old_as = df.at(v);
             auto new_as = transfer(bb, df.at(u)) | old_as;
@@ -383,15 +383,15 @@ static auto chaotic(const Cfg &cfg, program_info info) -> std::unordered_map<Lab
     return df;
 }
 
-void analyze_rcp(Cfg &cfg, program_info info) {
+void analyze_rcp(Cfg& cfg, program_info info) {
     auto df = chaotic(cfg, info);
 
     for (auto l : cfg.keys()) {
         auto dom = df.at(l);
-        for (Instruction &ins : cfg[l].insts) {
+        for (Instruction& ins : cfg[l].insts) {
             // bool unsatisfied_assertion = false;
             if (std::holds_alternative<Assert>(ins)) {
-                Assert &a = std::get<Assert>(ins);
+                Assert& a = std::get<Assert>(ins);
                 if (!a.satisfied) { // && !dom.is_bot()
                     a.satisfied = dom.satisfied(a);
                     // unsatisfied_assertion = !a.satisfied;
@@ -425,7 +425,7 @@ class AssertionExtractor {
         return Assertion{TypeConstraint{{r, t}}};
     };
 
-    void check_access(vector<Assertion> &assumptions, Types t, Reg reg, int offset, Value width) {
+    void check_access(vector<Assertion>& assumptions, Types t, Reg reg, int offset, Value width) {
         using Op = Condition::Op;
         assumptions.push_back(Assertion{LinearConstraint{Op::GE, reg, offset, (Value)Imm{0}, Imm{0}, t}});
         for (size_t i : type_indices) {
@@ -471,9 +471,9 @@ class AssertionExtractor {
         return {};
     }
 
-    vector<Assertion> operator()(Exit const &e) { return {type_of(Reg{0}, TypeSet::num)}; }
+    vector<Assertion> operator()(Exit const& e) { return {type_of(Reg{0}, TypeSet::num)}; }
 
-    vector<Assertion> operator()(Call const &call) {
+    vector<Assertion> operator()(Call const& call) {
         vector<Assertion> res;
         for (ArgSingle arg : call.singles) {
             switch (arg.kind) {
@@ -580,7 +580,7 @@ class AssertionExtractor {
         return res;
     };
 
-    void same_type(vector<Assertion> &res, Types ts, Reg r1, Reg r2) {
+    void same_type(vector<Assertion>& res, Types ts, Reg r1, Reg r2) {
         for (size_t i : type_indices) {
             if (ts[i]) {
                 Types t = TypeSet::single(i);
@@ -615,9 +615,9 @@ class AssertionExtractor {
     }
 };
 
-void explicate_assertions(Cfg &cfg, program_info info) {
-    for (auto const &this_label : cfg.keys()) {
-        vector<Instruction> &old_insts = cfg[this_label].insts;
+void explicate_assertions(Cfg& cfg, program_info info) {
+    for (auto const& this_label : cfg.keys()) {
+        vector<Instruction>& old_insts = cfg[this_label].insts;
         vector<Instruction> insts;
 
         for (auto ins : old_insts) {

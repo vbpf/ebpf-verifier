@@ -38,15 +38,15 @@ namespace crab {
 
 template <class T>
 class vec {
-    T *data;
+    T* data;
     int sz;
     int cap;
 
-    void init(int size, const T &pad);
+    void init(int size, const T& pad);
     void grow(int min_cap);
 
     // Don't allow copying (error prone):
-    vec<T> &operator=(vec<T> &other) {
+    vec<T>& operator=(vec<T>& other) {
         assert(0);
         return *this;
     }
@@ -70,25 +70,25 @@ class vec {
     // Constructors:
     vec() : data(NULL), sz(0), cap(0) {}
     vec(int size) : data(NULL), sz(0), cap(0) { growTo(size); }
-    vec(int size, const T &pad) : data(NULL), sz(0), cap(0) { growTo(size, pad); }
-    vec(T *array, int size)
+    vec(int size, const T& pad) : data(NULL), sz(0), cap(0) { growTo(size, pad); }
+    vec(T* array, int size)
         : data(array), sz(size), cap(size) {} // (takes ownership of array -- will be deallocated with 'free()')
     ~vec() { clear(true); }
 
     // GKG: Added stuff - copy & move ctors, plus range interface.
-    vec(const vec<T> &o) : data(NULL), sz(0), cap(0) {
+    vec(const vec<T>& o) : data(NULL), sz(0), cap(0) {
         capacity(o.cap);
         for (int ii = 0; ii < o.sz; ii++)
             new (data + ii) T(o[ii]);
         sz = o.sz;
     }
 
-    vec(vec<T> &&o) : data(o.data), sz(o.sz), cap(o.cap) {
+    vec(vec<T>&& o) : data(o.data), sz(o.sz), cap(o.cap) {
         o.data = nullptr;
         o.sz = 0;
         o.cap = 0;
     }
-    vec<T> &operator=(vec<T> &&o) {
+    vec<T>& operator=(vec<T>&& o) {
         if (data)
             free(data);
         data = o.data;
@@ -99,7 +99,7 @@ class vec {
         o.cap = 0;
         return *this;
     }
-    vec<T> &operator=(const vec<T> &o) {
+    vec<T>& operator=(const vec<T>& o) {
         clear();
         capacity(o.cap);
         for (int ii = 0; ii < o.sz; ii++)
@@ -108,19 +108,19 @@ class vec {
         return *this;
     }
 
-    T *begin() const { return data; }
-    T *end() const { return data + sz; }
+    T* begin() const { return data; }
+    T* end() const { return data + sz; }
 
     // Ownership of underlying array:
-    T *release() {
-        T *ret = data;
+    T* release() {
+        T* ret = data;
         data = NULL;
         sz = 0;
         cap = 0;
         return ret;
     }
-    operator T *() { return data; } // (unsafe but convenient)
-    operator const T *() const { return data; }
+    operator T*() { return data; } // (unsafe but convenient)
+    operator const T*() const { return data; }
 
     // Size operations:
     int size() const { return sz; }
@@ -135,7 +135,7 @@ class vec {
     }
     void pop() { sz--, data[sz].~T(); }
     void growTo(int size);
-    void growTo(int size, const T &pad);
+    void growTo(int size, const T& pad);
     void clear(bool dealloc = false);
     void capacity(int size) { grow(size); }
 
@@ -144,21 +144,21 @@ class vec {
     void push() {
         if (sz == cap) {
             cap = imax(2, (cap * 3 + 1) >> 1);
-            data = (T *)realloc(static_cast<void *>(data), cap * sizeof(T));
+            data = (T*)realloc(static_cast<void*>(data), cap * sizeof(T));
         }
         new (&data[sz]) T();
         sz++;
     }
     // void   push  (const T& elem)     { if (sz == cap) { cap = imax(2, (cap*3+1)>>1); data = (T*)realloc(data, cap *
     // sizeof(T)); } new (&data[sz]) T(elem); sz++; }
-    void push(const T &elem) {
+    void push(const T& elem) {
         if (sz == cap) {
             cap = imax(2, (cap * 3 + 1) >> 1);
-            data = (T *)realloc(static_cast<void *>(data), cap * sizeof(T));
+            data = (T*)realloc(static_cast<void*>(data), cap * sizeof(T));
         }
         data[sz++] = elem;
     }
-    void push_(const T &elem) {
+    void push_(const T& elem) {
         assert(sz < cap);
         data[sz++] = elem;
     }
@@ -169,7 +169,7 @@ class vec {
         new (&data[sz]) T();
         sz++;
     }
-    void push(const T &elem) {
+    void push(const T& elem) {
         if (sz == cap)
             grow(sz + 1);
         new (&data[sz]) T(elem);
@@ -177,21 +177,21 @@ class vec {
     }
 #endif
 
-    const T &last() const { return data[sz - 1]; }
-    T &last() { return data[sz - 1]; }
+    const T& last() const { return data[sz - 1]; }
+    T& last() { return data[sz - 1]; }
 
     // Vector interface:
-    const T &operator[](int index) const { return data[index]; }
-    T &operator[](int index) { return data[index]; }
+    const T& operator[](int index) const { return data[index]; }
+    T& operator[](int index) { return data[index]; }
 
     // Duplicatation (preferred instead):
-    void copyTo(vec<T> &copy) const {
+    void copyTo(vec<T>& copy) const {
         copy.clear();
         copy.growTo(sz);
         for (int i = 0; i < sz; i++)
             new (&copy[i]) T(data[i]);
     }
-    void moveTo(vec<T> &dest) {
+    void moveTo(vec<T>& dest) {
         dest.clear(true);
         dest.data = data;
         dest.sz = sz;
@@ -212,11 +212,11 @@ void vec<T>::grow(int min_cap) {
         do
             cap = (cap * 3 + 1) >> 1;
         while (cap < min_cap);
-    data = (T *)realloc(static_cast<void *>(data), cap * sizeof(T));
+    data = (T*)realloc(static_cast<void*>(data), cap * sizeof(T));
 }
 
 template <class T>
-void vec<T>::growTo(int size, const T &pad) {
+void vec<T>::growTo(int size, const T& pad) {
     if (sz >= size)
         return;
     grow(size);

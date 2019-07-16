@@ -57,7 +57,7 @@ bound_t thresholds_t::get_prev(bound_t v1) const {
     return (m_thresholds[0]);
 }
 
-void thresholds_t::write(crab_os &o) const {
+void thresholds_t::write(crab_os& o) const {
     o << "{";
     for (typename std::vector<bound_t>::const_iterator it = m_thresholds.begin(), et = m_thresholds.end(); it != et;) {
         bound_t b(*it);
@@ -69,10 +69,10 @@ void thresholds_t::write(crab_os &o) const {
     o << "}";
 }
 
-void wto_thresholds_t::extract_bounds(const linear_expression_t &e, bool is_strict, std::vector<number_t> &lb_bounds,
-                                      std::vector<number_t> &ub_bounds) const {
+void wto_thresholds_t::extract_bounds(const linear_expression_t& e, bool is_strict, std::vector<number_t>& lb_bounds,
+                                      std::vector<number_t>& ub_bounds) const {
     if (e.size() == 1) {
-        auto const &kv = *(e.begin());
+        auto const& kv = *(e.begin());
         number_t coeff = kv.first;
         variable_t var = kv.second;
         number_t k = -e.constant();
@@ -88,12 +88,12 @@ void wto_thresholds_t::extract_bounds(const linear_expression_t &e, bool is_stri
     }
 }
 
-void wto_thresholds_t::get_thresholds(const basic_block_t &bb, thresholds_t &thresholds) const {
+void wto_thresholds_t::get_thresholds(const basic_block_t& bb, thresholds_t& thresholds) const {
 
     std::vector<number_t> lb_bounds, ub_bounds;
-    for (auto const &i : boost::make_iterator_range(bb.begin(), bb.end())) {
+    for (auto const& i : boost::make_iterator_range(bb.begin(), bb.end())) {
         if (i.is_assume()) {
-            auto a = static_cast<const assume_t *>(&i);
+            auto a = static_cast<const assume_t*>(&i);
             linear_constraint_t cst = a->constraint();
             if (cst.is_inequality() || cst.is_strict_inequality()) {
                 extract_bounds(cst.expression(), cst.is_strict_inequality(), lb_bounds, ub_bounds);
@@ -115,31 +115,31 @@ void wto_thresholds_t::get_thresholds(const basic_block_t &bb, thresholds_t &thr
     }
 }
 
-void wto_thresholds_t::visit(wto_vertex_t &vertex) {
+void wto_thresholds_t::visit(wto_vertex_t& vertex) {
     if (m_stack.empty())
         return;
 
     basic_block_label_t head = m_stack.back();
     auto it = m_head_to_thresholds.find(head);
     if (it != m_head_to_thresholds.end()) {
-        thresholds_t &thresholds = it->second;
-        typename cfg_ref_t::basic_block_t &bb = m_cfg.get_node(vertex.node());
+        thresholds_t& thresholds = it->second;
+        basic_block_t& bb = m_cfg.get_node(vertex.node());
         get_thresholds(bb, thresholds);
     } else {
         CRAB_ERROR("No head found while gathering thresholds");
     }
 }
 
-void wto_thresholds_t::visit(wto_cycle_t &cycle) {
+void wto_thresholds_t::visit(wto_cycle_t& cycle) {
     thresholds_t thresholds(m_max_size);
-    typename cfg_ref_t::basic_block_t &bb = m_cfg.get_node(cycle.head());
+    basic_block_t& bb = m_cfg.get_node(cycle.head());
     get_thresholds(bb, thresholds);
 
     // XXX: if we want to consider constants from loop
     // initializations
     for (auto pre : boost::make_iterator_range(bb.prev_blocks())) {
         if (pre != cycle.head()) {
-            typename cfg_ref_t::basic_block_t &pred_bb = m_cfg.get_node(pre);
+            basic_block_t& pred_bb = m_cfg.get_node(pre);
             get_thresholds(pred_bb, thresholds);
         }
     }
@@ -152,8 +152,8 @@ void wto_thresholds_t::visit(wto_cycle_t &cycle) {
     m_stack.pop_back();
 }
 
-void wto_thresholds_t::write(crab::crab_os &o) const {
-    for (auto &kv : m_head_to_thresholds) {
+void wto_thresholds_t::write(crab::crab_os& o) const {
+    for (auto& kv : m_head_to_thresholds) {
         o << crab::get_label_str(kv.first) << "=" << kv.second << "\n";
     }
 }

@@ -58,7 +58,7 @@ Reg reg(std::string s) {
 Imm imm(std::string s) {
     try {
         return Imm{boost::lexical_cast<uint64_t>(s)};
-    } catch (const boost::bad_lexical_cast &) {
+    } catch (const boost::bad_lexical_cast&) {
         throw std::invalid_argument("number too large");
     }
 }
@@ -140,7 +140,7 @@ Instruction parse_instruction(std::string text) {
     return Undefined{0};
 }
 
-std::vector<std::tuple<Label, Instruction>> parse_program(std::istream &is) {
+std::vector<std::tuple<Label, Instruction>> parse_program(std::istream& is) {
     std::string line;
     int lineno = 0;
     std::vector<Label> pc_to_label;

@@ -21,7 +21,7 @@ struct MemDom {
                    (other_offset <= offset && other_offset + other_width > offset);
         }
 
-        static Cell from_range(int64_t start, int64_t end, const RCP_domain &dom) {
+        static Cell from_range(int64_t start, int64_t end, const RCP_domain& dom) {
             return {start, max(int64_t(0), end - start), dom};
         }
 
@@ -35,9 +35,9 @@ struct MemDom {
             return {lower, upper};
         }
 
-        static std::tuple<Cell, Cell, Cell, Cell> split(const Cell &a, const Cell &b) {
-            auto [lower_start, higher_start] = minmax(a, b, [](auto &a, auto &b) { return a.offset < a.offset; });
-            auto [lower_end, higher_end] = minmax(a, b, [](auto &a, auto &b) { return a.end() < b.end(); });
+        static std::tuple<Cell, Cell, Cell, Cell> split(const Cell& a, const Cell& b) {
+            auto [lower_start, higher_start] = minmax(a, b, [](auto& a, auto& b) { return a.offset < a.offset; });
+            auto [lower_end, higher_end] = minmax(a, b, [](auto& a, auto& b) { return a.end() < b.end(); });
             auto [left, mid1] = lower_start.split(higher_start.offset);
             if (&lower_start == &higher_end) {
                 assert(higher_start.end() >= mid1.offset);
@@ -50,8 +50,8 @@ struct MemDom {
             }
         }
 
-        bool operator==(const Cell &o) const { return offset == o.offset && dom == o.dom && width == o.width; }
-        bool operator<(const Cell &o) const {
+        bool operator==(const Cell& o) const { return offset == o.offset && dom == o.dom && width == o.width; }
+        bool operator<(const Cell& o) const {
             return offset < o.offset;
         } // TODO: reverse order // TODO: make overlapping equivalent
     };
@@ -59,19 +59,19 @@ struct MemDom {
     std::vector<Cell> cells;
 
     MemDom() {}
-    MemDom(const Top &_) { havoc(); }
+    MemDom(const Top& _) { havoc(); }
 
     static RCP_domain numtop() { return RCP_domain{}.with_num(TOP); }
 
-    RCP_domain load(const OffsetDomSet &offset_dom, uint64_t _width) const;
+    RCP_domain load(const OffsetDomSet& offset_dom, uint64_t _width) const;
 
-    void store_dynamic(const OffsetDomSet &offset_dom, const NumDomSet &_width, const RCP_domain &value);
+    void store_dynamic(const OffsetDomSet& offset_dom, const NumDomSet& _width, const RCP_domain& value);
 
-    void store(const OffsetDomSet &offset_dom, uint64_t _width, const RCP_domain &value);
+    void store(const OffsetDomSet& offset_dom, uint64_t _width, const RCP_domain& value);
 
-    void operator|=(const MemDom &b);
+    void operator|=(const MemDom& b);
 
-    void operator&=(const MemDom &o) {
+    void operator&=(const MemDom& o) {
         if (this == &o)
             return;
         if (is_bot() || o.is_bot()) {
@@ -96,9 +96,9 @@ struct MemDom {
         bot = true;
     }
 
-    bool operator==(const MemDom &o) const { return bot == o.bot && cells == o.cells; }
+    bool operator==(const MemDom& o) const { return bot == o.bot && cells == o.cells; }
 
-    friend std::ostream &operator<<(std::ostream &os, const MemDom &d) {
+    friend std::ostream& operator<<(std::ostream& os, const MemDom& d) {
         if (d.bot)
             return os << "{BOT}";
         os << "{";

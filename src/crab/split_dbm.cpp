@@ -55,7 +55,7 @@ SplitDBM::vert_id SplitDBM::get_vert(variable_t v) {
     return vert;
 }
 
-SplitDBM::vert_id SplitDBM::get_vert(graph_t &g, vert_map_t &vmap, rev_map_t &rmap, std::vector<Wt> &pot,
+SplitDBM::vert_id SplitDBM::get_vert(graph_t& g, vert_map_t& vmap, rev_map_t& rmap, std::vector<Wt>& pot,
                                      variable_t v) {
     auto it = vmap.find(v);
     if (it != vmap.end())
@@ -150,7 +150,7 @@ void SplitDBM::diffcsts_of_assign(variable_t x, linear_expression_t exp,
                                   bool extract_upper_bounds,
                                   /* foreach {v, k} \in diff_csts we have
                                      the difference constraint v - k <= k */
-                                  std::vector<std::pair<variable_t, Wt>> &diff_csts) {
+                                  std::vector<std::pair<variable_t, Wt>>& diff_csts) {
 
     std::optional<variable_t> unbounded_var;
     std::vector<std::pair<variable_t, Wt>> terms;
@@ -210,13 +210,13 @@ void SplitDBM::diffcsts_of_assign(variable_t x, linear_expression_t exp,
     }
 }
 
-void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t &exp,
+void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
                                    /* difference contraints */
-                                   std::vector<diffcst_t> &csts,
+                                   std::vector<diffcst_t>& csts,
                                    /* x >= lb for each {x,lb} in lbs */
-                                   std::vector<std::pair<variable_t, Wt>> &lbs,
+                                   std::vector<std::pair<variable_t, Wt>>& lbs,
                                    /* x <= ub for each {x,ub} in ubs */
-                                   std::vector<std::pair<variable_t, Wt>> &ubs) {
+                                   std::vector<std::pair<variable_t, Wt>>& ubs) {
 
     Wt unbounded_lbcoeff;
     Wt unbounded_ubcoeff;
@@ -323,7 +323,7 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t &exp,
     }
 }
 
-bool SplitDBM::add_linear_leq(const linear_expression_t &exp) {
+bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
     CRAB_LOG("zones-split", linear_expression_t exp_tmp(exp); crab::outs() << "Adding: " << exp_tmp << "<= 0"
                                                                            << "\n");
     std::vector<std::pair<variable_t, Wt>> lbs, ubs;
@@ -1066,7 +1066,7 @@ void SplitDBM::assign(variable_t x, linear_expression_t e) {
     CRAB_LOG("zones-split", crab::outs() << "---" << x << ":=" << e << "\n" << *this << "\n");
 }
 
-void SplitDBM::rename(const variable_vector_t &from, const variable_vector_t &to) {
+void SplitDBM::rename(const variable_vector_t& from, const variable_vector_t& to) {
     crab::CrabStats::count(getDomainName() + ".count.rename");
     crab::ScopedCrabStats __st__(getDomainName() + ".rename");
 
@@ -1100,7 +1100,7 @@ void SplitDBM::rename(const variable_vector_t &from, const variable_vector_t &to
     CRAB_LOG("zones-split", crab::outs() << "RESULT=" << *this << "\n");
 }
 
-void SplitDBM::extract(const variable_t &x, linear_constraint_system_t &csts, bool only_equalities) {
+void SplitDBM::extract(const variable_t& x, linear_constraint_system_t& csts, bool only_equalities) {
     crab::CrabStats::count(getDomainName() + ".count.extract");
     crab::ScopedCrabStats __st__(getDomainName() + ".extract");
 
@@ -1316,7 +1316,7 @@ void SplitDBM::apply(bitwise_operation_t op, variable_t x, variable_t y, number_
     }
     set(x, xi);
 }
-void SplitDBM::project(const variable_vector_t &variables) {
+void SplitDBM::project(const variable_vector_t& variables) {
     crab::CrabStats::count(getDomainName() + ".count.project");
     crab::ScopedCrabStats __st__(getDomainName() + ".project");
 
@@ -1343,7 +1343,7 @@ void SplitDBM::project(const variable_vector_t &variables) {
     }
 }
 
-void SplitDBM::forget(const variable_vector_t &variables) {
+void SplitDBM::forget(const variable_vector_t& variables) {
     crab::CrabStats::count(getDomainName() + ".count.forget");
     crab::ScopedCrabStats __st__(getDomainName() + ".forget");
 
@@ -1446,7 +1446,7 @@ bool SplitDBM::is_unsat(linear_constraint_t cst) {
     return false;
 }
 
-void SplitDBM::write(crab_os &o) {
+void SplitDBM::write(crab_os& o) {
 
     normalize();
 
@@ -1567,7 +1567,7 @@ class BackwardAssignOps {
      **/
 
     // x := e
-    static void assign(AbsDom &dom, variable_t x, linear_expression_t e, AbsDom inv) {
+    static void assign(AbsDom& dom, variable_t x, linear_expression_t e, AbsDom inv) {
         crab::CrabStats::count(AbsDom::getDomainName() + ".count.backward_assign");
         crab::ScopedCrabStats __st__(AbsDom::getDomainName() + ".backward_assign");
 
@@ -1575,7 +1575,7 @@ class BackwardAssignOps {
             return;
 
         if (e.variables() >= x) {
-            auto &vfac = x.name().get_var_factory();
+            auto& vfac = x.name().get_var_factory();
             variable_t old_x(vfac.get(), x.get_type());
             std::map<variable_t, variable_t, variable_t::less> renaming_map;
             renaming_map.insert({x, old_x});
@@ -1591,7 +1591,7 @@ class BackwardAssignOps {
     }
 
     // x := y op k
-    static void apply(AbsDom &dom, operation_t op, variable_t x, variable_t y, number_t k, AbsDom inv) {
+    static void apply(AbsDom& dom, operation_t op, variable_t x, variable_t y, number_t k, AbsDom inv) {
         crab::CrabStats::count(AbsDom::getDomainName() + ".count.backward_apply");
         crab::ScopedCrabStats __st__(AbsDom::getDomainName() + ".backward_apply");
 
@@ -1648,7 +1648,7 @@ class BackwardAssignOps {
     }
 
     // x = y op z
-    static void apply(AbsDom &dom, operation_t op, variable_t x, variable_t y, variable_t z, AbsDom inv) {
+    static void apply(AbsDom& dom, operation_t op, variable_t x, variable_t y, variable_t z, AbsDom inv) {
         crab::CrabStats::count(AbsDom::getDomainName() + ".count.backward_apply");
         crab::ScopedCrabStats __st__(AbsDom::getDomainName() + ".backward_apply");
 

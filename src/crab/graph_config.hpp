@@ -35,7 +35,7 @@ struct SafeInt64DefaultParams {
  * is the template parameter of the DBM-based abstract domain to
  * represent a number. Number might not fit into Wt type.
  **/
-inline safe_i64 convert_NtoW(const ikos::z_number &n, bool &overflow) {
+inline safe_i64 convert_NtoW(const ikos::z_number& n, bool& overflow) {
     overflow = false;
     if (!n.fits_slong()) {
         overflow = true;

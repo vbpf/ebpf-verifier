@@ -16,5 +16,5 @@
  *  \param notes is where errors and warnings are written to.
  *  \return a sequence of instruction if successful, an error string otherwise.
  */
-std::variant<InstructionSeq, std::string> unmarshal(raw_program raw_prog, std::vector<std::vector<std::string>> &notes);
+std::variant<InstructionSeq, std::string> unmarshal(raw_program raw_prog, std::vector<std::vector<std::string>>& notes);
 std::variant<InstructionSeq, std::string> unmarshal(raw_program raw_prog);

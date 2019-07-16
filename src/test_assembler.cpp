@@ -158,7 +158,7 @@ TEST_CASE("Jmp assembler", "[assemble][disasm]") {
     }
 }
 
-std::ostream &operator<<(std::ostream &os, std::tuple<Label, Instruction> const &labeled_ins) {
+std::ostream& operator<<(std::ostream& os, std::tuple<Label, Instruction> const& labeled_ins) {
     auto [label, ins] = labeled_ins;
     return os << "(" << label << ", " << ins << ")";
 }

@@ -27,21 +27,21 @@ class Cfg {
 
     void encountered(Label l) { ordered_labels.push_back(l); }
     Cfg() {}
-    Cfg(const Cfg &_) = delete;
+    Cfg(const Cfg& _) = delete;
 
   public:
-    Cfg(Cfg &&_) = default;
-    Cfg &operator=(Cfg &&_) = default;
-    BasicBlock &operator[](Label l) { return graph[l]; }
-    BasicBlock const &at(Label l) const { return graph.at(l); }
+    Cfg(Cfg&& _) = default;
+    Cfg& operator=(Cfg&& _) = default;
+    BasicBlock& operator[](Label l) { return graph[l]; }
+    BasicBlock const& at(Label l) const { return graph.at(l); }
 
-    std::vector<Label> const &keys() const { return ordered_labels; }
+    std::vector<Label> const& keys() const { return ordered_labels; }
 
     /** Create a graph from a sequence of instructions.
      *
      * The graph is not simplified yet.
      */
-    static Cfg make(const InstructionSeq &labeled_insts);
+    static Cfg make(const InstructionSeq& labeled_insts);
 
     /** Create a CFG with jumps replaced by assumptions in the target location.
      */

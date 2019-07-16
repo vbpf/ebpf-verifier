@@ -50,7 +50,7 @@ enum class Arg {
 };
 
 struct bpf_func_proto {
-    const char *name;
+    const char* name;
     bool pkt_access;
     Ret ret_type;
     Arg arg1_type;

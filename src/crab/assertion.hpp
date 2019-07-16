@@ -58,7 +58,7 @@ class checks_db {
     }
 
     // merge two databases
-    void operator+=(const checks_db &other) {
+    void operator+=(const checks_db& other) {
         m_db.insert(other.m_db.begin(), other.m_db.end());
         m_total_safe += other.m_total_safe;
         m_total_err += other.m_total_err;
@@ -66,7 +66,7 @@ class checks_db {
         m_total_unreach += other.m_total_unreach;
     }
 
-    void write(crab_os &o) const {
+    void write(crab_os& o) const {
         std::vector<unsigned> cnts = {m_total_safe, m_total_err, m_total_warn, m_total_unreach};
         unsigned MaxValLen = 0;
         for (auto c : cnts) {
@@ -83,11 +83,11 @@ class checks_db {
           << std::string(2, ' ') << "Number of total unreachable checks\n";
 
         unsigned MaxFileLen = 0;
-        for (auto const &p : m_db) {
+        for (auto const& p : m_db) {
             MaxFileLen = std::max(MaxFileLen, (unsigned)p.first.m_file.size());
         }
 
-        for (auto const &p : m_db) {
+        for (auto const& p : m_db) {
             switch (p.second) {
             case _SAFE: o << "safe: "; break;
             case _ERR: o << "error: "; break;
@@ -112,25 +112,25 @@ class assert_property_checker : public crab::statement_visitor {
 
   public:
     // set internal state for the checker
-    void set(abs_tr_t *abs_tr, const std::set<const statement_t *> &safe_assertions) {
+    void set(abs_tr_t* abs_tr, const std::set<const statement_t*>& safe_assertions) {
         m_abs_tr = abs_tr;
         m_safe_assertions.insert(safe_assertions.begin(), safe_assertions.end());
     }
 
-    const checks_db &get_db() const { return m_db; }
+    const checks_db& get_db() const { return m_db; }
 
-    checks_db &get_db() { return m_db; }
+    checks_db& get_db() { return m_db; }
 
-    const std::vector<const statement_t *> &get_safe_checks() const { return m_safe_checks; }
+    const std::vector<const statement_t*>& get_safe_checks() const { return m_safe_checks; }
 
-    const std::vector<const statement_t *> &get_warning_checks() const { return m_warning_checks; }
+    const std::vector<const statement_t*>& get_warning_checks() const { return m_warning_checks; }
 
-    const std::vector<const statement_t *> &get_error_checks() const { return m_error_checks; }
+    const std::vector<const statement_t*>& get_error_checks() const { return m_error_checks; }
 
-    void write(crab_os &o) const { m_db.write(o); }
+    void write(crab_os& o) const { m_db.write(o); }
 
-    bool is_interesting(const basic_block_t &bb) const {
-        for (auto &s : bb) {
+    bool is_interesting(const basic_block_t& bb) const {
+        for (auto& s : bb) {
             if (s.is_assert()) {
                 return true;
             }
@@ -139,78 +139,78 @@ class assert_property_checker : public crab::statement_visitor {
     }
 
     // The abstract transformer
-    abs_tr_t *m_abs_tr{};
+    abs_tr_t* m_abs_tr{};
     // Known safe assertions before start forward propagation (it can be empty)
-    std::set<const statement_t *> m_safe_assertions;
+    std::set<const statement_t*> m_safe_assertions;
     // Verbosity to print user messages
     int m_verbose;
     // Store debug information about the checks
     checks_db m_db;
     // Statements where checks occur
-    std::vector<const statement_t *> m_safe_checks;
-    std::vector<const statement_t *> m_warning_checks;
-    std::vector<const statement_t *> m_error_checks;
+    std::vector<const statement_t*> m_safe_checks;
+    std::vector<const statement_t*> m_warning_checks;
+    std::vector<const statement_t*> m_error_checks;
 
-    void add_safe(std::string msg, const statement_t *s) {
+    void add_safe(std::string msg, const statement_t* s) {
         m_db.add(_SAFE);
         m_safe_checks.push_back(s);
     }
 
-    void add_warning(std::string msg, const statement_t *s) {
+    void add_warning(std::string msg, const statement_t* s) {
         m_db.add(_WARN, s->get_debug_info());
         m_warning_checks.push_back(s);
     }
 
-    void add_error(std::string msg, const statement_t *s) {
+    void add_error(std::string msg, const statement_t* s) {
         m_db.add(_ERR, s->get_debug_info());
         m_error_checks.push_back(s);
     }
 
     /* Visitor API */
-    void visit(binary_op_t &s) {
+    void visit(binary_op_t& s) {
         if (this->m_abs_tr)
             s.accept(&*this->m_abs_tr);
     }
-    void visit(assign_t &s) {
+    void visit(assign_t& s) {
         if (this->m_abs_tr)
             s.accept(&*this->m_abs_tr);
     }
-    void visit(assume_t &s) {
+    void visit(assume_t& s) {
         if (this->m_abs_tr)
             s.accept(&*this->m_abs_tr);
     }
-    void visit(select_t &s) {
+    void visit(select_t& s) {
         if (this->m_abs_tr)
             s.accept(&*this->m_abs_tr);
     }
-    void visit(int_cast_t &s) {
+    void visit(int_cast_t& s) {
         if (this->m_abs_tr)
             s.accept(&*this->m_abs_tr);
     }
-    void visit(havoc_t &s) {
+    void visit(havoc_t& s) {
         if (this->m_abs_tr)
             s.accept(&*this->m_abs_tr);
     }
-    void visit(unreachable_t &s) {
+    void visit(unreachable_t& s) {
         if (this->m_abs_tr)
             s.accept(&*this->m_abs_tr);
     }
-    void visit(array_init_t &s) {
+    void visit(array_init_t& s) {
         if (this->m_abs_tr)
             s.accept(&*this->m_abs_tr);
     }
-    void visit(array_store_t &s) {
+    void visit(array_store_t& s) {
         if (this->m_abs_tr)
             s.accept(&*this->m_abs_tr);
     }
-    void visit(array_load_t &s) {
+    void visit(array_load_t& s) {
         if (this->m_abs_tr)
             s.accept(&*this->m_abs_tr);
     }
 
-    void visit(assert_t &s) { check(s); }
+    void visit(assert_t& s) { check(s); }
 
-    void check(assert_t &s) {
+    void check(assert_t& s) {
         if (!this->m_abs_tr)
             return;
 

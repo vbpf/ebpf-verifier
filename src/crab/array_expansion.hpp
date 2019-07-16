@@ -49,15 +49,15 @@ class offset_t {
 
     index_t index() const { return _val; }
 
-    bool operator<(const offset_t &o) const { return _val < o._val; }
+    bool operator<(const offset_t& o) const { return _val < o._val; }
 
-    bool operator==(const offset_t &o) const { return _val == o._val; }
+    bool operator==(const offset_t& o) const { return _val == o._val; }
 
-    bool operator!=(const offset_t &o) const { return !(*this == o); }
+    bool operator!=(const offset_t& o) const { return !(*this == o); }
 
-    void write(crab::crab_os &o) const { o << _val; }
+    void write(crab::crab_os& o) const { o << _val; }
 
-    friend crab::crab_os &operator<<(crab::crab_os &o, const offset_t &v) {
+    friend crab::crab_os& operator<<(crab::crab_os& o, const offset_t& v) {
         v.write(o);
         return o;
     }
@@ -114,17 +114,17 @@ class cell_t {
     }
 
     // inclusion test
-    bool operator<=(const cell_t &o) const {
+    bool operator<=(const cell_t& o) const {
         interval_t x = to_interval();
         interval_t y = o.to_interval();
         return x <= y;
     }
 
     // ignore the scalar variable
-    bool operator==(const cell_t &o) const { return (get_offset() == o.get_offset() && get_size() == o.get_size()); }
+    bool operator==(const cell_t& o) const { return (get_offset() == o.get_offset() && get_size() == o.get_size()); }
 
     // ignore the scalar variable
-    bool operator<(const cell_t &o) const {
+    bool operator<(const cell_t& o) const {
         if (get_offset() < o.get_offset()) {
             return true;
         } else if (get_offset() == o.get_offset()) {
@@ -136,7 +136,7 @@ class cell_t {
 
     // Return true if [o, o+size) definitely overlaps with the cell,
     // where o is a constant expression.
-    bool overlap(const offset_t &o, unsigned size) const {
+    bool overlap(const offset_t& o, unsigned size) const {
         interval_t x = to_interval();
         interval_t y = to_interval(o, size);
         bool res = (!(x & y).is_bottom());
@@ -148,8 +148,8 @@ class cell_t {
     // Return true if [symb_lb, symb_ub] may overlap with the cell,
     // where symb_lb and symb_ub are not constant expressions.
     template <typename Dom>
-    bool symbolic_overlap(const linear_expression_t &symb_lb, const linear_expression_t &symb_ub,
-                          const Dom &dom) const {
+    bool symbolic_overlap(const linear_expression_t& symb_lb, const linear_expression_t& symb_ub,
+                          const Dom& dom) const {
 
         interval_t x = to_interval();
         assert(x.lb().is_finite());
@@ -183,7 +183,7 @@ class cell_t {
         return false;
     }
 
-    void write(crab::crab_os &o) const {
+    void write(crab::crab_os& o) const {
         o << to_interval() << " -> ";
         if (has_scalar()) {
             o << get_scalar();
@@ -192,7 +192,7 @@ class cell_t {
         }
     }
 
-    friend crab::crab_os &operator<<(crab::crab_os &o, const cell_t &c) {
+    friend crab::crab_os& operator<<(crab::crab_os& o, const cell_t& c) {
         c.write(o);
         return o;
     }
@@ -200,21 +200,21 @@ class cell_t {
 
 namespace cell_set_impl {
 template <typename Set>
-inline Set set_intersection(Set &s1, Set &s2) {
+inline Set set_intersection(Set& s1, Set& s2) {
     Set s3;
     boost::set_intersection(s1, s2, std::inserter(s3, s3.end()));
     return s3;
 }
 
 template <typename Set>
-inline Set set_union(Set &s1, Set &s2) {
+inline Set set_union(Set& s1, Set& s2) {
     Set s3;
     boost::set_union(s1, s2, std::inserter(s3, s3.end()));
     return s3;
 }
 
 template <typename Set>
-inline bool set_inclusion(Set &s1, Set &s2) {
+inline bool set_inclusion(Set& s1, Set& s2) {
     Set s3;
     boost::set_difference(s1, s2, std::inserter(s3, s3.end()));
     return s3.empty();
@@ -249,10 +249,10 @@ class offset_map_t {
 
     // for algorithm::lower_bound and algorithm::upper_bound
     struct compare_binding_t {
-        bool operator()(const typename patricia_tree_t::binding_t &kv, const offset_t &o) const { return kv.first < o; }
-        bool operator()(const offset_t &o, const typename patricia_tree_t::binding_t &kv) const { return o < kv.first; }
-        bool operator()(const typename patricia_tree_t::binding_t &kv1,
-                        const typename patricia_tree_t::binding_t &kv2) const {
+        bool operator()(const typename patricia_tree_t::binding_t& kv, const offset_t& o) const { return kv.first < o; }
+        bool operator()(const offset_t& o, const typename patricia_tree_t::binding_t& kv) const { return o < kv.first; }
+        bool operator()(const typename patricia_tree_t::binding_t& kv1,
+                        const typename patricia_tree_t::binding_t& kv2) const {
             return kv1.first < kv2.first;
         }
     };
@@ -289,9 +289,9 @@ class offset_map_t {
 
     offset_map_t(patricia_tree_t m) : _map(m) {}
 
-    void remove_cell(const cell_t &c);
+    void remove_cell(const cell_t& c);
 
-    void insert_cell(const cell_t &c, bool sanity_check = true);
+    void insert_cell(const cell_t& c, bool sanity_check = true);
 
     cell_t get_cell(offset_t o, unsigned size) const;
 
@@ -324,7 +324,7 @@ class offset_map_t {
     std::size_t size() const { return _map.size(); }
 
     // leq operator
-    bool operator<=(const offset_map_t &o) const {
+    bool operator<=(const offset_map_t& o) const {
         domain_po po;
         return _map.leq(o._map, po);
     }
@@ -343,9 +343,9 @@ class offset_map_t {
     //     return offset_map_t(apply_operation(op, _map, o._map));
     // }
 
-    void operator-=(const cell_t &c) { remove_cell(c); }
+    void operator-=(const cell_t& c) { remove_cell(c); }
 
-    void operator-=(const std::vector<cell_t> &cells) {
+    void operator-=(const std::vector<cell_t>& cells) {
         for (unsigned i = 0, e = cells.size(); i < e; ++i) {
             this->operator-=(cells[i]);
         }
@@ -354,14 +354,14 @@ class offset_map_t {
     std::vector<cell_t> get_all_cells() const;
 
     // Return in out all cells that might overlap with (o, size).
-    void get_overlap_cells(offset_t o, unsigned size, std::vector<cell_t> &out);
+    void get_overlap_cells(offset_t o, unsigned size, std::vector<cell_t>& out);
 
     template <typename Dom>
-    void get_overlap_cells_symbolic_offset(const Dom &dom, const linear_expression_t &symb_lb,
-                                           const linear_expression_t &symb_ub, std::vector<cell_t> &out) const {
+    void get_overlap_cells_symbolic_offset(const Dom& dom, const linear_expression_t& symb_lb,
+                                           const linear_expression_t& symb_ub, std::vector<cell_t>& out) const {
 
         for (auto it = _map.begin(), et = _map.end(); it != et; ++it) {
-            const cell_set_t &o_cells = it->second;
+            const cell_set_t& o_cells = it->second;
             // All cells in o_cells have the same offset. They only differ
             // in the size. If the largest cell overlaps with [offset,
             // offset + size) then the rest of cells are considered to
@@ -370,7 +370,7 @@ class offset_map_t {
             // doesn't necessarily overlap with smaller cells. For
             // efficiency, we assume it overlaps with all.
             cell_t largest_cell;
-            for (auto &c : o_cells) {
+            for (auto& c : o_cells) {
                 if (largest_cell.is_null()) {
                     largest_cell = c;
                 } else {
@@ -382,7 +382,7 @@ class offset_map_t {
             }
             if (!largest_cell.is_null()) {
                 if (largest_cell.symbolic_overlap(symb_lb, symb_ub, dom)) {
-                    for (auto &c : o_cells) {
+                    for (auto& c : o_cells) {
                         out.push_back(c);
                     }
                 }
@@ -390,15 +390,15 @@ class offset_map_t {
         }
     }
 
-    void write(crab::crab_os &o) const;
+    void write(crab::crab_os& o) const;
 
-    friend crab::crab_os &operator<<(crab::crab_os &o, const offset_map_t &m) {
+    friend crab::crab_os& operator<<(crab::crab_os& o, const offset_map_t& m) {
         m.write(o);
         return o;
     }
 
     /* Operations needed if used as value in a separate_domain */
-    bool operator==(const offset_map_t &o) const { return *this <= o && o <= *this; }
+    bool operator==(const offset_map_t& o) const { return *this <= o && o <= *this; }
     bool is_top() const { return empty(); }
     bool is_bottom() const { return false; }
     /*
@@ -439,8 +439,8 @@ class array_expansion_domain final : public ikos::writeable {
     NumDomain _inv;
 
     // We use a global array map
-    static array_map_t &get_array_map() {
-        static array_map_t *array_map = new array_map_t();
+    static array_map_t& get_array_map() {
+        static array_map_t* array_map = new array_map_t();
         return *array_map;
     }
 
@@ -462,7 +462,7 @@ class array_expansion_domain final : public ikos::writeable {
         run so we can clear the array map from one run to another.
     **/
     static void clear_global_state() {
-        array_map_t &map = get_array_map();
+        array_map_t& map = get_array_map();
         if (!map.empty()) {
             if (::crab::CrabSanityCheckFlag) {
                 CRAB_WARN("array_expansion static variable map is being cleared");
@@ -472,14 +472,14 @@ class array_expansion_domain final : public ikos::writeable {
     }
 
   private:
-    void remove_array_map(const variable_t &v) {
+    void remove_array_map(const variable_t& v) {
         /// We keep the array map as global so we don't remove any entry.
         // array_map_t& map = get_array_map();
         // map.erase(v);
     }
 
-    offset_map_t &lookup_array_map(const variable_t &v) {
-        array_map_t &map = get_array_map();
+    offset_map_t& lookup_array_map(const variable_t& v) {
+        array_map_t& map = get_array_map();
         return map[v];
     }
 
@@ -496,11 +496,11 @@ class array_expansion_domain final : public ikos::writeable {
 
     interval_t to_interval(linear_expression_t expr) { return to_interval(expr, _inv); }
 
-    void kill_cells(const std::vector<cell_t> &cells, offset_map_t &offset_map, NumDomain &dom) {
+    void kill_cells(const std::vector<cell_t>& cells, offset_map_t& offset_map, NumDomain& dom) {
         if (!cells.empty()) {
             // Forget the scalars from the numerical domain
             for (unsigned i = 0, e = cells.size(); i < e; ++i) {
-                const cell_t &c = cells[i];
+                const cell_t& c = cells[i];
                 if (c.has_scalar()) {
                     dom -= c.get_scalar();
                 } else {
@@ -525,17 +525,17 @@ class array_expansion_domain final : public ikos::writeable {
         std::swap(*this, abs);
     }
 
-    array_expansion_domain(const array_expansion_domain_t &other) : _inv(other._inv) {
+    array_expansion_domain(const array_expansion_domain_t& other) : _inv(other._inv) {
         crab::CrabStats::count(getDomainName() + ".count.copy");
         crab::ScopedCrabStats __st__(getDomainName() + ".copy");
     }
 
-    array_expansion_domain(const array_expansion_domain_t &&other) : _inv(std::move(other._inv)) {
+    array_expansion_domain(const array_expansion_domain_t&& other) : _inv(std::move(other._inv)) {
         crab::CrabStats::count(getDomainName() + ".count.copy");
         crab::ScopedCrabStats __st__(getDomainName() + ".copy");
     }
 
-    array_expansion_domain_t &operator=(const array_expansion_domain_t &other) {
+    array_expansion_domain_t& operator=(const array_expansion_domain_t& other) {
         crab::CrabStats::count(getDomainName() + ".count.copy");
         crab::ScopedCrabStats __st__(getDomainName() + ".copy");
         if (this != &other) {
@@ -544,7 +544,7 @@ class array_expansion_domain final : public ikos::writeable {
         return *this;
     }
 
-    array_expansion_domain_t &operator=(const array_expansion_domain_t &&other) {
+    array_expansion_domain_t& operator=(const array_expansion_domain_t&& other) {
         crab::CrabStats::count(getDomainName() + ".count.copy");
         crab::ScopedCrabStats __st__(getDomainName() + ".copy");
         if (this != &other) {
@@ -592,7 +592,7 @@ class array_expansion_domain final : public ikos::writeable {
         return array_expansion_domain_t(_inv.widen(other._inv));
     }
 
-    array_expansion_domain_t widening_thresholds(array_expansion_domain_t other, const iterators::thresholds_t &ts) {
+    array_expansion_domain_t widening_thresholds(array_expansion_domain_t other, const iterators::thresholds_t& ts) {
         crab::CrabStats::count(getDomainName() + ".count.widening");
         crab::ScopedCrabStats __st__(getDomainName() + ".widening");
         return array_expansion_domain_t(_inv.widening_thresholds(other._inv, ts));
@@ -604,7 +604,7 @@ class array_expansion_domain final : public ikos::writeable {
         return array_expansion_domain_t(_inv.narrow(other._inv));
     }
 
-    void forget(const variable_vector_t &variables) {
+    void forget(const variable_vector_t& variables) {
         crab::CrabStats::count(getDomainName() + ".count.forget");
         crab::ScopedCrabStats __st__(getDomainName() + ".forget");
 
@@ -621,7 +621,7 @@ class array_expansion_domain final : public ikos::writeable {
         }
     }
 
-    void project(const variable_vector_t &variables) {
+    void project(const variable_vector_t& variables) {
         crab::CrabStats::count(getDomainName() + ".count.project");
         crab::ScopedCrabStats __st__(getDomainName() + ".project");
 
@@ -745,7 +745,7 @@ class array_expansion_domain final : public ikos::writeable {
         if (is_bottom())
             return;
 
-        offset_map_t &offset_map = lookup_array_map(a);
+        offset_map_t& offset_map = lookup_array_map(a);
         std::vector<cell_t> old_cells = offset_map.get_all_cells();
         if (!old_cells.empty()) {
             kill_cells(old_cells, offset_map, _inv);
@@ -763,7 +763,7 @@ class array_expansion_domain final : public ikos::writeable {
 
         interval_t ii = to_interval(i);
         if (std::optional<number_t> n = ii.singleton()) {
-            offset_map_t &offset_map = lookup_array_map(a);
+            offset_map_t& offset_map = lookup_array_map(a);
             offset_t o((long)*n);
             interval_t i_elem_size = to_interval(elem_size);
             if (std::optional<number_t> n_bytes = i_elem_size.singleton()) {
@@ -818,7 +818,7 @@ class array_expansion_domain final : public ikos::writeable {
         }
 
         unsigned size = (long)(*n_bytes);
-        offset_map_t &offset_map = lookup_array_map(a);
+        offset_map_t& offset_map = lookup_array_map(a);
         interval_t ii = to_interval(i);
         if (std::optional<number_t> n = ii.singleton()) {
             // -- Constant index: kill overlapping cells + perform strong update
@@ -922,7 +922,7 @@ class array_expansion_domain final : public ikos::writeable {
             return;
 
         // make all array cells uninitialized
-        offset_map_t &offset_map = lookup_array_map(a);
+        offset_map_t& offset_map = lookup_array_map(a);
         std::vector<cell_t> old_cells = offset_map.get_all_cells();
         if (!old_cells.empty()) {
             kill_cells(old_cells, offset_map, _inv);
@@ -943,7 +943,7 @@ class array_expansion_domain final : public ikos::writeable {
         // XXX: we use the forward invariant to extract the array index
         interval_t ii = to_interval(i, invariant.get_content_domain());
         if (std::optional<number_t> n = ii.singleton()) {
-            offset_map_t &offset_map = lookup_array_map(a);
+            offset_map_t& offset_map = lookup_array_map(a);
             offset_t o((long)*n);
             interval_t i_elem_size = to_interval(elem_size, invariant.get_content_domain());
             if (std::optional<number_t> n_bytes = i_elem_size.singleton()) {
@@ -984,7 +984,7 @@ class array_expansion_domain final : public ikos::writeable {
         }
 
         unsigned size = (long)(*n_bytes);
-        offset_map_t &offset_map = lookup_array_map(a);
+        offset_map_t& offset_map = lookup_array_map(a);
         // XXX: we use the forward invariant to extract the array index
         interval_t ii = to_interval(i, invariant.get_content_domain());
         if (std::optional<number_t> n = ii.singleton()) {
@@ -1066,18 +1066,18 @@ class array_expansion_domain final : public ikos::writeable {
 
     NumDomain get_content_domain() const { return _inv; }
 
-    NumDomain &get_content_domain() { return _inv; }
+    NumDomain& get_content_domain() { return _inv; }
 
-    void write(crab_os &o) { o << _inv; }
+    void write(crab_os& o) { o << _inv; }
 
     static std::string getDomainName() {
         std::string name("ArrayExpansion(" + NumDomain::getDomainName() + ")");
         return name;
     }
 
-    void rename(const variable_vector_t &from, const variable_vector_t &to) {
+    void rename(const variable_vector_t& from, const variable_vector_t& to) {
         _inv.rename(from, to);
-        for (auto &v : from) {
+        for (auto& v : from) {
             if (v.is_array_type()) {
                 CRAB_WARN("TODO: rename array variable");
             }
@@ -1091,13 +1091,13 @@ class checker_domain_traits<array_expansion_domain<BaseDom>> {
   public:
     using this_type = array_expansion_domain<BaseDom>;
 
-    static bool entail(this_type &lhs, const linear_constraint_t &rhs) {
-        BaseDom &lhs_dom = lhs.get_content_domain();
+    static bool entail(this_type& lhs, const linear_constraint_t& rhs) {
+        BaseDom& lhs_dom = lhs.get_content_domain();
         return checker_domain_traits<BaseDom>::entail(lhs_dom, rhs);
     }
 
-    static bool intersect(this_type &inv, const linear_constraint_t &cst) {
-        BaseDom &dom = inv.get_content_domain();
+    static bool intersect(this_type& inv, const linear_constraint_t& cst) {
+        BaseDom& dom = inv.get_content_domain();
         return checker_domain_traits<BaseDom>::intersect(dom, cst);
     }
 };

@@ -43,7 +43,7 @@ z_number::z_number() : _n(0) {}
 z_number::z_number(std::string s) {
     try {
         _n = s;
-    } catch (std::invalid_argument &e) {
+    } catch (std::invalid_argument& e) {
         CRAB_ERROR("z_number: invalid string in constructor", s);
     }
 }
@@ -103,22 +103,22 @@ z_number z_number::operator%(z_number x) const {
     }
 }
 
-z_number &z_number::operator+=(z_number x) {
+z_number& z_number::operator+=(z_number x) {
     _n += x._n;
     return *this;
 }
 
-z_number &z_number::operator*=(z_number x) {
+z_number& z_number::operator*=(z_number x) {
     _n *= x._n;
     return *this;
 }
 
-z_number &z_number::operator-=(z_number x) {
+z_number& z_number::operator-=(z_number x) {
     _n -= x._n;
     return *this;
 }
 
-z_number &z_number::operator/=(z_number x) {
+z_number& z_number::operator/=(z_number x) {
     if (x._n == 0) {
         CRAB_ERROR("z_number: division by zero [3]");
     } else {
@@ -127,7 +127,7 @@ z_number &z_number::operator/=(z_number x) {
     }
 }
 
-z_number &z_number::operator%=(z_number x) {
+z_number& z_number::operator%=(z_number x) {
     if (x._n == 0) {
         CRAB_ERROR("z_number: division by zero [4]");
     } else {
@@ -136,12 +136,12 @@ z_number &z_number::operator%=(z_number x) {
     }
 }
 
-z_number &z_number::operator--() {
+z_number& z_number::operator--() {
     --(_n);
     return *this;
 }
 
-z_number &z_number::operator++() {
+z_number& z_number::operator++() {
     ++(_n);
     return *this;
 }
@@ -201,6 +201,6 @@ z_number z_number::fill_ones() const {
     return z_number(result);
 }
 
-void z_number::write(crab::crab_os &o) const { o << _n.get_str(); }
+void z_number::write(crab::crab_os& o) const { o << _n.get_str(); }
 
 } // namespace ikos

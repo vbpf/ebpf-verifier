@@ -31,19 +31,19 @@ struct bpf_load_map_def {
 
 struct bpf_map_data {
     int fd;
-    char *name;
+    char* name;
     size_t elf_offset;
     struct bpf_load_map_def def;
 };
 
 template <typename T>
-static vector<T> vector_of(ELFIO::section *sec) {
+static vector<T> vector_of(ELFIO::section* sec) {
     if (!sec)
         return {};
     auto data = sec->get_data();
     auto size = sec->get_size();
     assert(size % sizeof(T) == 0);
-    return {(T *)data, (T *)(data + size)};
+    return {(T*)data, (T*)(data + size)};
 }
 
 int create_map_rcp(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries) {
@@ -100,7 +100,7 @@ static BpfProgType section_to_progtype(std::string section, std::string path) {
     return BpfProgType::SOCKET_FILTER;
 }
 
-vector<raw_program> read_elf(std::string path, std::string desired_section, MapFd *fd_alloc) {
+vector<raw_program> read_elf(std::string path, std::string desired_section, MapFd* fd_alloc) {
     assert(fd_alloc != nullptr);
     ELFIO::elfio reader;
     if (!reader.load(path)) {
@@ -170,7 +170,7 @@ vector<raw_program> read_elf(std::string path, std::string desired_section, MapF
             ELFIO::Elf_Sxword addend;
             for (unsigned int i = 0; i < reloc.get_entries_num(); i++) {
                 if (reloc.get_entry(i, offset, symbol, type, addend)) {
-                    auto &inst = prog.prog[offset / sizeof(ebpf_inst)];
+                    auto& inst = prog.prog[offset / sizeof(ebpf_inst)];
                     inst.src = 1; // magic number for LoadFd
                                   // if (fd_alloc == allocate_fds) {
                                   //     std::cout << read_reloc_value(symbol) << "=" <<

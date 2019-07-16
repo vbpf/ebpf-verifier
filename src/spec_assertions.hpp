@@ -38,7 +38,7 @@ const Types ptr = mem | ctx;
 const Types nonfd = ptr | num;
 }; // namespace TypeSet
 
-void explicate_assertions(Cfg &cfg, program_info info);
+void explicate_assertions(Cfg& cfg, program_info info);
 
 struct LinearConstraint {
     Condition::Op op;
@@ -65,25 +65,25 @@ struct Assertion {
 };
 
 #define DECLARE_EQ6(T, f1, f2, f3, f4, f5, f6)                                                                         \
-    inline bool operator==(T const &a, T const &b) {                                                                   \
+    inline bool operator==(T const& a, T const& b) {                                                                   \
         return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4 && a.f5 == b.f5 && a.f6 == b.f6;           \
     }
 #define DECLARE_EQ5(T, f1, f2, f3, f4, f5)                                                                             \
-    inline bool operator==(T const &a, T const &b) {                                                                   \
+    inline bool operator==(T const& a, T const& b) {                                                                   \
         return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4 && a.f5 == b.f5;                           \
     }
 #define DECLARE_EQ4(T, f1, f2, f3, f4)                                                                                 \
-    inline bool operator==(T const &a, T const &b) {                                                                   \
+    inline bool operator==(T const& a, T const& b) {                                                                   \
         return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4;                                           \
     }
 #define DECLARE_EQ3(T, f1, f2, f3)                                                                                     \
-    inline bool operator==(T const &a, T const &b) { return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3; }
+    inline bool operator==(T const& a, T const& b) { return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3; }
 #define DECLARE_EQ2(T, f1, f2)                                                                                         \
-    inline bool operator==(T const &a, T const &b) { return a.f1 == b.f1 && a.f2 == b.f2; }
+    inline bool operator==(T const& a, T const& b) { return a.f1 == b.f1 && a.f2 == b.f2; }
 #define DECLARE_EQ1(T, f1)                                                                                             \
-    inline bool operator==(T const &a, T const &b) { return a.f1 == b.f1; }
+    inline bool operator==(T const& a, T const& b) { return a.f1 == b.f1; }
 #define DECLARE_EQ0(T)                                                                                                 \
-    inline bool operator==(T const &a, T const &b) { return true; }
+    inline bool operator==(T const& a, T const& b) { return true; }
 
 DECLARE_EQ2(TypeConstraint::RT, reg, types)
 DECLARE_EQ2(TypeConstraint, given, then)

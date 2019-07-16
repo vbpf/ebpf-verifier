@@ -11,7 +11,7 @@ int64_t safe_i64::get_max() const { return std::numeric_limits<int64_t>::max(); 
 
 int64_t safe_i64::get_min() const { return std::numeric_limits<int64_t>::min(); }
 
-int safe_i64::checked_add(int64_t a, int64_t b, int64_t *rp) const {
+int safe_i64::checked_add(int64_t a, int64_t b, int64_t* rp) const {
 #if 1
     wideint_t lr = (wideint_t)a + (wideint_t)b;
     *rp = lr;
@@ -30,19 +30,19 @@ int safe_i64::checked_add(int64_t a, int64_t b, int64_t *rp) const {
 #endif
 }
 
-int safe_i64::checked_sub(int64_t a, int64_t b, int64_t *rp) const {
+int safe_i64::checked_sub(int64_t a, int64_t b, int64_t* rp) const {
     wideint_t lr = (wideint_t)a - (wideint_t)b;
     *rp = lr;
     return lr > get_max() || lr < get_min();
 }
 
-int safe_i64::checked_mul(int64_t a, int64_t b, int64_t *rp) const {
+int safe_i64::checked_mul(int64_t a, int64_t b, int64_t* rp) const {
     wideint_t lr = (wideint_t)a * (wideint_t)b;
     *rp = lr;
     return lr > get_max() || lr < get_min();
 }
 
-int safe_i64::checked_div(int64_t a, int64_t b, int64_t *rp) const {
+int safe_i64::checked_div(int64_t a, int64_t b, int64_t* rp) const {
     wideint_t lr = (wideint_t)a / (wideint_t)b;
     *rp = lr;
     return lr > get_max() || lr < get_min();
@@ -100,7 +100,7 @@ safe_i64 safe_i64::operator/(safe_i64 x) const {
 safe_i64 safe_i64::operator-() const { return safe_i64(0) - *this; }
 
 // FIXME: operation should not raise an error.
-safe_i64 &safe_i64::operator+=(safe_i64 x) {
+safe_i64& safe_i64::operator+=(safe_i64 x) {
     int err = checked_add(m_num, x.m_num, &m_num);
     if (err) {
         CRAB_ERROR("Integer overflow during addition");
@@ -109,7 +109,7 @@ safe_i64 &safe_i64::operator+=(safe_i64 x) {
 }
 
 // FIXME: operation should not raise an error.
-safe_i64 &safe_i64::operator-=(safe_i64 x) {
+safe_i64& safe_i64::operator-=(safe_i64 x) {
     int err = checked_sub(m_num, x.m_num, &m_num);
     if (err) {
         CRAB_ERROR("Integer overflow during subtraction");
@@ -129,6 +129,6 @@ bool safe_i64::operator>(safe_i64 x) const { return m_num > x.m_num; }
 
 bool safe_i64::operator>=(safe_i64 x) const { return m_num >= x.m_num; }
 
-void safe_i64::write(crab::crab_os &os) const { os << m_num; }
+void safe_i64::write(crab::crab_os& os) const { os << m_num; }
 
 } // end namespace crab

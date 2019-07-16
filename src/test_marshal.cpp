@@ -6,7 +6,7 @@
 #include "asm_ostream.hpp"
 #include "asm_unmarshal.hpp"
 
-static void compare_marshal_unmarshal(const Instruction &ins, bool double_cmd = false) {
+static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = false) {
     InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", marshal(ins, 0), {}}));
     REQUIRE(parsed.size() == 1);
     auto [_, single] = parsed.back();

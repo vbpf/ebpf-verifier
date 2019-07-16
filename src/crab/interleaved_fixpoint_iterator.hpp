@@ -55,6 +55,7 @@
 
 namespace ikos {
 
+using crab::basic_block_label_t;
 using crab::cfg_ref_t;
 
 namespace interleaved_fwd_fixpoint_iterator_impl {
@@ -102,7 +103,7 @@ class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<AbstractValue
     bool _enable_processor;
 
   private:
-    void set(invariant_table_t &table, basic_block_label_t node, const AbstractValue &v) {
+    void set(invariant_table_t& table, basic_block_label_t node, const AbstractValue& v) {
         crab::CrabStats::count("Fixpo.invariant_table.update");
         crab::ScopedCrabStats __st__("Fixpo.invariant_table.update");
 
@@ -112,11 +113,11 @@ class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<AbstractValue
         }
     }
 
-    inline void set_pre(basic_block_label_t node, const AbstractValue &v) { this->set(this->_pre, node, v); }
+    inline void set_pre(basic_block_label_t node, const AbstractValue& v) { this->set(this->_pre, node, v); }
 
-    inline void set_post(basic_block_label_t node, const AbstractValue &v) { this->set(this->_post, node, v); }
+    inline void set_post(basic_block_label_t node, const AbstractValue& v) { this->set(this->_post, node, v); }
 
-    AbstractValue get(invariant_table_t &table, basic_block_label_t n) {
+    AbstractValue get(invariant_table_t& table, basic_block_label_t n) {
         crab::CrabStats::count("Fixpo.invariant_table.lookup");
         crab::ScopedCrabStats __st__("Fixpo.invariant_table.lookup");
 
@@ -171,7 +172,7 @@ class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<AbstractValue
     void initialize_thresholds(size_t jump_set_size) {}
 
   public:
-    interleaved_fwd_fixpoint_iterator(cfg_ref_t cfg, const wto_t *wto, unsigned int widening_delay,
+    interleaved_fwd_fixpoint_iterator(cfg_ref_t cfg, const wto_t* wto, unsigned int widening_delay,
                                       unsigned int descending_iterations, size_t jump_set_size,
                                       bool enable_processor = true)
         : _cfg(cfg), _wto(!wto ? cfg : *wto), _widening_delay(widening_delay),
@@ -183,15 +184,15 @@ class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<AbstractValue
 
     cfg_ref_t get_cfg() const { return this->_cfg; }
 
-    const wto_t &get_wto() const { return this->_wto; }
+    const wto_t& get_wto() const { return this->_wto; }
 
     AbstractValue get_pre(basic_block_label_t node) { return this->get(this->_pre, node); }
 
     AbstractValue get_post(basic_block_label_t node) { return this->get(this->_post, node); }
 
-    const invariant_table_t &get_pre_invariants() const { return this->_pre; }
+    const invariant_table_t& get_pre_invariants() const { return this->_pre; }
 
-    const invariant_table_t &get_post_invariants() const { return this->_post; }
+    const invariant_table_t& get_post_invariants() const { return this->_post; }
 
     void run(AbstractValue init) {
         crab::ScopedCrabStats __st__("Fixpo");
@@ -205,7 +206,7 @@ class interleaved_fwd_fixpoint_iterator : public fixpoint_iterator<AbstractValue
         CRAB_VERBOSE_IF(2, crab::outs() << "Wto:\n" << _wto << "\n");
     }
 
-    void run(basic_block_label_t entry, AbstractValue init, const assumption_map_t &assumptions) {
+    void run(basic_block_label_t entry, AbstractValue init, const assumption_map_t& assumptions) {
         crab::ScopedCrabStats __st__("Fixpo");
         this->set_pre(entry, init);
         wto_iterator_t iterator(this, entry, &assumptions);
@@ -238,10 +239,10 @@ class wto_iterator : public wto_component_visitor<cfg_ref_t> {
     using assumption_map_t = typename interleaved_iterator_t::assumption_map_t;
 
   private:
-    interleaved_iterator_t *_iterator;
+    interleaved_iterator_t* _iterator;
     // Initial entry point of the analysis
     basic_block_label_t _entry;
-    const assumption_map_t *_assumptions;
+    const assumption_map_t* _assumptions;
     // Used to skip the analysis until _entry is found
     bool _skip;
 
@@ -269,13 +270,13 @@ class wto_iterator : public wto_component_visitor<cfg_ref_t> {
       public:
         member_component_visitor(basic_block_label_t node) : _node(node), _found(false) {}
 
-        void visit(wto_vertex_t &c) {
+        void visit(wto_vertex_t& c) {
             if (!_found) {
                 _found = (c.node() == _node);
             }
         }
 
-        void visit(wto_cycle_t &c) {
+        void visit(wto_cycle_t& c) {
             if (!_found) {
                 _found = (c.head() == _node);
                 if (!_found) {
@@ -292,13 +293,13 @@ class wto_iterator : public wto_component_visitor<cfg_ref_t> {
     };
 
   public:
-    wto_iterator(interleaved_iterator_t *iterator)
+    wto_iterator(interleaved_iterator_t* iterator)
         : _iterator(iterator), _entry(_iterator->get_cfg().entry()), _assumptions(nullptr), _skip(true) {}
 
-    wto_iterator(interleaved_iterator_t *iterator, basic_block_label_t entry, const assumption_map_t *assumptions)
+    wto_iterator(interleaved_iterator_t* iterator, basic_block_label_t entry, const assumption_map_t* assumptions)
         : _iterator(iterator), _entry(entry), _assumptions(assumptions), _skip(true) {}
 
-    void visit(wto_vertex_t &vertex) {
+    void visit(wto_vertex_t& vertex) {
         basic_block_label_t node = vertex.node();
 
         /** decide whether skip vertex or not **/
@@ -340,7 +341,7 @@ class wto_iterator : public wto_component_visitor<cfg_ref_t> {
         this->_iterator->set_post(node, post);
     }
 
-    void visit(wto_cycle_t &cycle) {
+    void visit(wto_cycle_t& cycle) {
         basic_block_label_t head = cycle.head();
 
         /** decide whether skip cycle or not **/
@@ -466,12 +467,12 @@ class wto_processor : public wto_component_visitor<cfg_ref_t> {
     using wto_cycle_t = wto_cycle<cfg_ref_t>;
 
   private:
-    interleaved_iterator_t *_iterator;
+    interleaved_iterator_t* _iterator;
 
   public:
-    wto_processor(interleaved_iterator_t *iterator) : _iterator(iterator) {}
+    wto_processor(interleaved_iterator_t* iterator) : _iterator(iterator) {}
 
-    void visit(wto_vertex_t &vertex) {
+    void visit(wto_vertex_t& vertex) {
         crab::CrabStats::count("Fixpo.process_invariants");
         crab::ScopedCrabStats __st__("Fixpo.process_invariants");
 
@@ -480,7 +481,7 @@ class wto_processor : public wto_component_visitor<cfg_ref_t> {
         this->_iterator->process_post(node, this->_iterator->get_post(node));
     }
 
-    void visit(wto_cycle_t &cycle) {
+    void visit(wto_cycle_t& cycle) {
         crab::CrabStats::count("Fixpo.process_invariants");
         crab::ScopedCrabStats __st__("Fixpo.process_invariants");
 

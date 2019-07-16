@@ -11,20 +11,20 @@
 using Set = std::vector<uint64_t>;
 
 template <typename T>
-static std::vector<T> set_union(const std::vector<T> &a, const std::vector<T> &b) {
+static std::vector<T> set_union(const std::vector<T>& a, const std::vector<T>& b) {
     std::vector<T> res;
     std::set_union(a.begin(), a.end(), b.begin(), b.end(), std::back_inserter(res));
     return res;
 }
 
 template <typename T>
-static std::vector<T> set_intersection(const std::vector<T> &a, const std::vector<T> &b) {
+static std::vector<T> set_intersection(const std::vector<T>& a, const std::vector<T>& b) {
     std::vector<T> res;
     std::set_intersection(a.begin(), a.end(), b.begin(), b.end(), std::back_inserter(res));
     return res;
 }
 
-void NumDomSet::operator|=(const NumDomSet &o) {
+void NumDomSet::operator|=(const NumDomSet& o) {
     if (top || o.top) {
         havoc();
         return;
@@ -32,7 +32,7 @@ void NumDomSet::operator|=(const NumDomSet &o) {
     elems = set_union(elems, o.elems);
 }
 
-void NumDomSet::operator&=(const NumDomSet &o) {
+void NumDomSet::operator&=(const NumDomSet& o) {
     if (o.top) {
         return;
     }
@@ -43,7 +43,7 @@ void NumDomSet::operator&=(const NumDomSet &o) {
     elems = set_intersection(elems, o.elems);
 }
 
-void NumDomSet::exec(const Bin::Op op, const NumDomSet &o) {
+void NumDomSet::exec(const Bin::Op op, const NumDomSet& o) {
     using Op = Bin::Op;
     if (is_bot() || o.is_bot()) {
         to_bot();
@@ -77,7 +77,7 @@ void NumDomSet::exec(const Bin::Op op, const NumDomSet &o) {
         elems.push_back(e);
 }
 
-void OffsetDomSet::operator|=(const OffsetDomSet &o) {
+void OffsetDomSet::operator|=(const OffsetDomSet& o) {
     if (top || o.top) {
         havoc();
         return;
@@ -85,7 +85,7 @@ void OffsetDomSet::operator|=(const OffsetDomSet &o) {
     elems = set_union(elems, o.elems);
 }
 
-void OffsetDomSet::operator&=(const OffsetDomSet &o) {
+void OffsetDomSet::operator&=(const OffsetDomSet& o) {
     if (o.top) {
         return;
     }
@@ -96,7 +96,7 @@ void OffsetDomSet::operator&=(const OffsetDomSet &o) {
     elems = set_intersection(elems, o.elems);
 }
 
-void OffsetDomSet::exec(bool add, const NumDomSet &o) {
+void OffsetDomSet::exec(bool add, const NumDomSet& o) {
     if (is_bot() || o.is_bot()) {
         to_bot();
         return;
@@ -122,7 +122,7 @@ void OffsetDomSet::exec(bool add, const NumDomSet &o) {
         elems.push_back(e);
 }
 
-NumDomSet OffsetDomSet::operator-(const OffsetDomSet &o) const {
+NumDomSet OffsetDomSet::operator-(const OffsetDomSet& o) const {
     if (is_bot() || o.is_bot()) {
         return {};
     }
@@ -145,7 +145,7 @@ NumDomSet OffsetDomSet::operator-(const OffsetDomSet &o) const {
     return out;
 }
 
-void NumDomSet::assume(Condition::Op op, const NumDomSet &right) {
+void NumDomSet::assume(Condition::Op op, const NumDomSet& right) {
     if (right.is_top())
         return;
     using Op = Condition::Op;
@@ -234,7 +234,7 @@ void NumDomSet::assume(Condition::Op op, const NumDomSet &right) {
     }
 }
 
-void OffsetDomSet::assume(Condition::Op op, const OffsetDomSet &right) {
+void OffsetDomSet::assume(Condition::Op op, const OffsetDomSet& right) {
     if (right.is_top())
         return;
     using Op = Condition::Op;

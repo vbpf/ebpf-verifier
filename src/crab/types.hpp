@@ -18,7 +18,7 @@ enum variable_type { INT_TYPE, ARR_INT_TYPE, UNK_TYPE };
 
 using number_t = ikos::z_number;
 
-inline crab_os &operator<<(crab_os &o, variable_type t) {
+inline crab_os& operator<<(crab_os& o, variable_type t) {
     switch (t) {
     case INT_TYPE: o << "int"; break;
     case ARR_INT_TYPE: o << "arr_int"; break;
@@ -46,7 +46,7 @@ enum binary_operation_t {
 
 enum cast_operation_t { CAST_TRUNC, CAST_SEXT, CAST_ZEXT };
 
-inline crab::crab_os &operator<<(crab::crab_os &o, binary_operation_t op) {
+inline crab::crab_os& operator<<(crab::crab_os& o, binary_operation_t op) {
     switch (op) {
     case BINOP_ADD: o << "+"; break;
     case BINOP_SUB: o << "-"; break;
@@ -67,7 +67,7 @@ inline crab::crab_os &operator<<(crab::crab_os &o, binary_operation_t op) {
     return o;
 }
 
-inline crab::crab_os &operator<<(crab::crab_os &o, cast_operation_t op) {
+inline crab::crab_os& operator<<(crab::crab_os& o, cast_operation_t op) {
     switch (op) {
     case CAST_TRUNC: o << "trunc"; break;
     case CAST_SEXT: o << "sext"; break;
@@ -92,11 +92,11 @@ using index_t = uint64_t;
 // Interface for writeable objects
 class writeable {
   public:
-    virtual void write(crab::crab_os &o) = 0;
+    virtual void write(crab::crab_os& o) = 0;
     virtual ~writeable() {}
 }; // class writeable
 
-inline crab::crab_os &operator<<(crab::crab_os &o, writeable &x) {
+inline crab::crab_os& operator<<(crab::crab_os& o, writeable& x) {
     x.write(o);
     return o;
 }
@@ -119,19 +119,19 @@ class indexed_string {
     std::optional<var_key> _s;
     index_t _id;
     std::string _name; // optional string name associated with _id
-    variable_factory *_vfac;
+    variable_factory* _vfac;
 
     // NOT IMPLEMENTED
     indexed_string();
 
-    indexed_string(index_t id, variable_factory *vfac, std::string name = "") : _id(id), _name(name), _vfac(vfac) {}
+    indexed_string(index_t id, variable_factory* vfac, std::string name = "") : _id(id), _name(name), _vfac(vfac) {}
 
-    indexed_string(var_key s, index_t id, variable_factory *vfac) : _s(s), _id(id), _name(""), _vfac(vfac) {}
+    indexed_string(var_key s, index_t id, variable_factory* vfac) : _s(s), _id(id), _name(""), _vfac(vfac) {}
 
   public:
-    indexed_string(const indexed_string &is) : _s(is._s), _id(is._id), _name(is._name), _vfac(is._vfac) {}
+    indexed_string(const indexed_string& is) : _s(is._s), _id(is._id), _name(is._name), _vfac(is._vfac) {}
 
-    indexed_string &operator=(const indexed_string &is) {
+    indexed_string& operator=(const indexed_string& is) {
         if (this != &is) {
             _s = is._s;
             _id = is._id;
@@ -147,15 +147,15 @@ class indexed_string {
 
     std::optional<var_key> get() const { return _s ? *_s : std::optional<var_key>(); }
 
-    variable_factory &get_var_factory() { return *_vfac; }
+    variable_factory& get_var_factory() { return *_vfac; }
 
     bool operator<(indexed_string s) const { return (_id < s._id); }
 
     bool operator==(indexed_string s) const { return (_id == s._id); }
 
-    void write(crab_os &o) const { o << str(); }
+    void write(crab_os& o) const { o << str(); }
 
-    friend crab_os &operator<<(crab_os &o, indexed_string s) {
+    friend crab_os& operator<<(crab_os& o, indexed_string s) {
         o << s.str();
         return o;
     }
@@ -187,7 +187,7 @@ class variable_factory {
 
   public:
     variable_factory(){};
-    variable_factory(const variable_factory &) = delete;
+    variable_factory(const variable_factory&) = delete;
 
     // hook for generating indexed_string's without being
     // associated with a particular var_key (w/o caching).
@@ -228,18 +228,18 @@ class variable_t {
      * intended to be used only abstract domains to generate temporary
      * variables.
      **/
-    explicit variable_t(const varname_t &n) : _n(n), _type(crab::UNK_TYPE), _width(0) {}
+    explicit variable_t(const varname_t& n) : _n(n), _type(crab::UNK_TYPE), _width(0) {}
 
   public:
-    variable_t(const varname_t &n, type_t type) : _n(n), _type(type), _width(0) {}
+    variable_t(const varname_t& n, type_t type) : _n(n), _type(type), _width(0) {}
 
-    variable_t(const varname_t &n, type_t type, bitwidth_t width) : _n(n), _type(type), _width(width) {}
+    variable_t(const varname_t& n, type_t type, bitwidth_t width) : _n(n), _type(type), _width(width) {}
 
-    variable_t(const variable_t &o) : _n(o._n), _type(o._type), _width(o._width) {}
+    variable_t(const variable_t& o) : _n(o._n), _type(o._type), _width(o._width) {}
 
-    variable_t(variable_t &&o) : _n(std::move(o._n)), _type(std::move(o._type)), _width(std::move(o._width)) {}
+    variable_t(variable_t&& o) : _n(std::move(o._n)), _type(std::move(o._type)), _width(std::move(o._width)) {}
 
-    variable_t &operator=(const variable_t &o) {
+    variable_t& operator=(const variable_t& o) {
         if (this != &o) {
             _n = o._n;
             _type = o._type;
@@ -260,22 +260,22 @@ class variable_t {
 
     bitwidth_t get_bitwidth() const { return _width; }
 
-    const varname_t &name() const { return _n; }
+    const varname_t& name() const { return _n; }
 
     // Cannot be const because from varname_t we might want to
     // access to its variable factory to create e.g., new
     // varname_t's.
-    varname_t &name() { return _n; }
+    varname_t& name() { return _n; }
 
     index_t index() const { return _n.index(); }
 
     std::size_t hash() const { return (size_t)_n.index(); }
 
-    bool operator==(const variable_t &o) const { return _n.index() == o._n.index(); }
+    bool operator==(const variable_t& o) const { return _n.index() == o._n.index(); }
 
-    bool operator!=(const variable_t &o) const { return (!(operator==(o))); }
+    bool operator!=(const variable_t& o) const { return (!(operator==(o))); }
 
-    void write(crab::crab_os &o) const { o << _n; }
+    void write(crab::crab_os& o) const { o << _n; }
 
     friend class less;
     struct less {
@@ -283,9 +283,9 @@ class variable_t {
     };
 }; // class variable_t
 
-inline size_t hash_value(const variable_t &v) { return v.hash(); }
+inline size_t hash_value(const variable_t& v) { return v.hash(); }
 
-inline crab::crab_os &operator<<(crab::crab_os &o, const variable_t &v) {
+inline crab::crab_os& operator<<(crab::crab_os& o, const variable_t& v) {
     v.write(o);
     return o;
 }
@@ -298,6 +298,7 @@ using variable_t = ikos::variable_t;
 namespace domains {
 using namespace ikos;
 }
-} // namespace crab
 
 using basic_block_label_t = std::string;
+
+} // namespace crab
