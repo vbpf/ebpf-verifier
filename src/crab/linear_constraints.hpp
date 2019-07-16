@@ -54,7 +54,7 @@
 #include "crab/patricia_trees.hpp"
 #include "crab/types.hpp"
 
-namespace ikos {
+namespace crab {
 
 class linear_expression_t {
 
@@ -263,7 +263,7 @@ class linear_expression_t {
 
     bool is_well_typed() const {
         typename variable_t::bitwidth_t b;
-        crab::variable_type type;
+        variable_type type;
         for (const_iterator it = begin(), et = end(); it != et; ++it) {
             variable_t v = it->second;
             if (it == begin()) {
@@ -292,7 +292,7 @@ class linear_expression_t {
         }
     }
 
-    void write(crab::crab_os& o) const {
+    void write(crab_os& o) const {
         for (typename map_t::const_iterator it = this->_map->begin(); it != this->_map->end(); ++it) {
             number_t n = it->second;
             variable_t v = it->first;
@@ -315,11 +315,11 @@ class linear_expression_t {
     }
 
     // for dgb
-    void dump() { write(crab::outs()); }
+    void dump() { write(outs()); }
 
 }; // class linear_expression_t
 
-inline crab::crab_os& operator<<(crab::crab_os& o, const linear_expression_t& e) {
+inline crab_os& operator<<(crab_os& o, const linear_expression_t& e) {
     e.write(o);
     return o;
 }
@@ -482,14 +482,14 @@ class linear_constraint_t {
         return linear_constraint_t(e, this->_kind, is_signed());
     }
 
-    void write(crab::crab_os& o) const;
+    void write(crab_os& o) const;
 
     // for dgb
-    void dump() { write(crab::outs()); }
+    void dump() { write(outs()); }
 
 }; // class linear_constraint_t
 
-inline crab::crab_os& operator<<(crab::crab_os& o, const linear_constraint_t& c) {
+inline crab_os& operator<<(crab_os& o, const linear_constraint_t& c) {
     c.write(o);
     return o;
 }
@@ -597,7 +597,7 @@ class linear_constraint_system_t {
 
     std::size_t size() const { return _csts.size(); }
 
-    void write(crab::crab_os& o) const {
+    void write(crab_os& o) const {
         o << "{";
         for (const_iterator it = this->begin(); it != this->end();) {
             auto c = *it;
@@ -611,11 +611,11 @@ class linear_constraint_system_t {
     }
 
     // for dgb
-    void dump() { write(crab::outs()); }
+    void dump() { write(outs()); }
 
 }; // class linear_constraint_system_t
 
-inline crab::crab_os& operator<<(crab::crab_os& o, const linear_constraint_system_t& sys) {
+inline crab_os& operator<<(crab_os& o, const linear_constraint_system_t& sys) {
     sys.write(o);
     return o;
 }
@@ -634,12 +634,4 @@ inline linear_constraint_t exp_lte(const linear_expression_t& e, number_t n) {
 inline linear_constraint_t exp_gte(const linear_expression_t& e, number_t n) {
     return linear_constraint_t(linear_expression_t(n).operator-(e), linear_constraint_t::INEQUALITY);
 }
-} // namespace ikos
-
-namespace crab {
-
-using ikos::linear_constraint_system_t;
-using ikos::linear_constraint_t;
-using ikos::linear_expression_t;
-
 } // namespace crab

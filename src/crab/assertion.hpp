@@ -4,9 +4,9 @@
    User-definable assertion checker
  */
 
+#include "crab/debug.hpp"
 #include "crab/abstract_domain_specialized_traits.hpp"
 #include "crab/cfg.hpp"
-#include "crab/debug.hpp"
 
 #include "crab/types.hpp"
 
@@ -19,7 +19,7 @@ enum check_kind_t { _SAFE, _ERR, _WARN, _UNREACH };
 // Toy database to store invariants. We may want to replace it with
 // a permanent external database.
 class checks_db {
-    using check_t = std::pair<crab::debug_info, check_kind_t>;
+    using check_t = std::pair<debug_info, check_kind_t>;
     using checks_db_t = std::set<check_t>;
 
     checks_db_t m_db;
@@ -46,7 +46,7 @@ class checks_db {
     unsigned get_total_error() const { return m_total_err; }
 
     // add an entry in the database
-    void add(check_kind_t status, crab::debug_info dbg = crab::debug_info()) {
+    void add(check_kind_t status, debug_info dbg = debug_info()) {
         switch (status) {
         case _SAFE: m_total_safe++; break;
         case _ERR: m_total_err++; break;
@@ -104,7 +104,7 @@ class checks_db {
 };
 
 template <typename Analyzer>
-class assert_property_checker : public crab::statement_visitor {
+class assert_property_checker : public statement_visitor {
   public:
     using abs_dom_t = typename Analyzer::abs_dom_t;
 
@@ -217,7 +217,7 @@ class assert_property_checker : public crab::statement_visitor {
         linear_constraint_t cst = s.constraint();
 
         if (this->m_safe_assertions.count(&s) > 0) {
-            crab::crab_string_os os;
+            crab_string_os os;
             if (this->m_verbose >= 3) {
                 os << "Property : " << cst << "\n";
                 os << "Invariant: " << *(this->m_abs_tr->get()) << "\n";
@@ -227,14 +227,14 @@ class assert_property_checker : public crab::statement_visitor {
         } else {
             if (cst.is_contradiction()) {
                 if (this->m_abs_tr->get()->is_bottom()) {
-                    crab::crab_string_os os;
+                    crab_string_os os;
                     if (this->m_verbose >= 3) {
                         os << "Property : " << cst << "\n";
                         os << "Invariant: " << *(this->m_abs_tr->get());
                     }
                     this->add_safe(os.str(), &s);
                 } else {
-                    crab::crab_string_os os;
+                    crab_string_os os;
                     if (this->m_verbose >= 2) {
                         os << "Property : " << cst << "\n";
                         os << "Invariant: " << *(this->m_abs_tr->get());
@@ -250,15 +250,15 @@ class assert_property_checker : public crab::statement_visitor {
             }
 
             abs_dom_t inv(*(this->m_abs_tr->get()));
-            if (crab::domains::checker_domain_traits<abs_dom_t>::entail(inv, cst)) {
-                crab::crab_string_os os;
+            if (domains::checker_domain_traits<abs_dom_t>::entail(inv, cst)) {
+                crab_string_os os;
                 if (this->m_verbose >= 3) {
                     os << "Property : " << cst << "\n";
                     os << "Invariant: " << inv;
                 }
                 this->add_safe(os.str(), &s);
-            } else if (crab::domains::checker_domain_traits<abs_dom_t>::intersect(inv, cst)) {
-                crab::crab_string_os os;
+            } else if (domains::checker_domain_traits<abs_dom_t>::intersect(inv, cst)) {
+                crab_string_os os;
                 if (this->m_verbose >= 2) {
                     os << "Property : " << cst << "\n";
                     os << "Invariant: " << inv;
@@ -281,7 +281,7 @@ class assert_property_checker : public crab::statement_visitor {
  Note that inv does not either entail or intersect with cst.
  However, the original program does not violate the assertion.
 */
-                crab::crab_string_os os;
+                crab_string_os os;
                 if (this->m_verbose >= 2) {
                     os << "Property : " << cst << "\n";
                     os << "Invariant: " << inv;

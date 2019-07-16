@@ -279,7 +279,7 @@ class AdaptSMap {
 };
 
 template <class Weight>
-class AdaptGraph : public ikos::writeable {
+class AdaptGraph : public writeable {
     using smap_t = AdaptSMap<size_t>;
 
   public:

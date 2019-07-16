@@ -228,7 +228,7 @@ class statement_t {
     virtual statement_t* clone() const = 0;
 
     // for gdb
-    void dump() const { write(crab::errs()); }
+    void dump() const { write(errs()); }
 
     friend crab_os& operator<<(crab_os& o, const statement_t& s) {
         s.write(o);
@@ -680,7 +680,7 @@ class basic_block_t {
     using const_iterator = boost::indirect_iterator<typename stmt_list_t::const_iterator>;
     using reverse_iterator = boost::indirect_iterator<typename stmt_list_t::reverse_iterator>;
     using const_reverse_iterator = boost::indirect_iterator<typename stmt_list_t::const_reverse_iterator>;
-    using live_domain_t = ikos::discrete_domain<variable_t>;
+    using live_domain_t = discrete_domain<variable_t>;
 
     // -- statements
 
@@ -890,7 +890,7 @@ class basic_block_t {
     }
 
     // for gdb
-    void dump() const { write(crab::errs()); }
+    void dump() const { write(errs()); }
 
     /// To build statements
 
@@ -1035,7 +1035,7 @@ class basic_block_rev_t {
 
     using iterator = typename basic_block_t::reverse_iterator;
     using const_iterator = typename basic_block_t::const_reverse_iterator;
-    using live_domain_t = ikos::discrete_domain<variable_t>;
+    using live_domain_t = discrete_domain<variable_t>;
 
   private:
     basic_block_t& _bb;
@@ -1084,7 +1084,7 @@ class basic_block_rev_t {
     }
 
     // for gdb
-    void dump() const { write(crab::errs()); }
+    void dump() const { write(errs()); }
 
     friend crab_os& operator<<(crab_os& o, const basic_block_rev_t& b) {
         b.write(o);
@@ -1332,7 +1332,7 @@ class cfg_t {
 
     // for gdb
     void dump() const {
-        crab::errs() << "number_t of basic blocks=" << size() << "\n";
+        errs() << "number_t of basic blocks=" << size() << "\n";
         for (auto& bb : boost::make_iterator_range(begin(), end())) {
             bb.dump();
         }
@@ -1475,7 +1475,7 @@ class cfg_ref_t {
     std::optional<std::reference_wrapper<CFG>> _ref;
 
   public:
-    // --- hook needed by crab::cg::CallGraph<CFG>::CgNode
+    // --- hook needed by cg::CallGraph<CFG>::CgNode
     cfg_ref_t() {}
 
     cfg_ref_t(CFG& cfg_t) : _ref(std::reference_wrapper<CFG>(cfg_t)) {}
@@ -1672,7 +1672,7 @@ class cfg_rev_t {
     boost::unordered_map<basic_block_label_t, basic_block_rev_t> _rev_bbs;
 
   public:
-    // --- hook needed by crab::cg::CallGraph<cfg_ref_t>::CgNode
+    // --- hook needed by cg::CallGraph<cfg_ref_t>::CgNode
     cfg_rev_t() {}
 
     cfg_rev_t(cfg_ref_t cfg_t) : _cfg(cfg_t) {

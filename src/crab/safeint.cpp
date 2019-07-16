@@ -52,7 +52,7 @@ safe_i64::safe_i64() : m_num(0) {}
 
 safe_i64::safe_i64(int64_t num) : m_num(num) {}
 
-safe_i64::safe_i64(ikos::z_number n) : m_num((long)n) {}
+safe_i64::safe_i64(z_number n) : m_num((long)n) {}
 
 safe_i64::operator long() const { return (long)m_num; }
 
@@ -129,6 +129,6 @@ bool safe_i64::operator>(safe_i64 x) const { return m_num > x.m_num; }
 
 bool safe_i64::operator>=(safe_i64 x) const { return m_num >= x.m_num; }
 
-void safe_i64::write(crab::crab_os& os) const { os << m_num; }
+void safe_i64::write(crab_os& os) const { os << m_num; }
 
 } // end namespace crab

@@ -50,7 +50,7 @@
 
 #include "crab/types.hpp"
 
-namespace ikos {
+namespace crab {
 
 template <typename Value>
 class partial_order {
@@ -1343,7 +1343,7 @@ class patricia_tree_set {
 
     bool operator==(const patricia_tree_set_t& s) const { return (this->operator<=(s) && s.operator<=(*this)); }
 
-    void write(crab::crab_os& o) const {
+    void write(crab_os& o) const {
         o << "{";
         for (iterator it = begin(); it != end();) {
             it->write(o);
@@ -1355,10 +1355,10 @@ class patricia_tree_set {
         o << "}";
     }
 
-    friend crab::crab_os& operator<<(crab::crab_os& o, const patricia_tree_set<Element>& s) {
+    friend crab_os& operator<<(crab_os& o, const patricia_tree_set<Element>& s) {
         s.write(o);
         return o;
     }
 
 }; // class patricia_tree_set
-} // namespace ikos
+} // namespace crab

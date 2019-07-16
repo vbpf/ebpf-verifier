@@ -11,21 +11,21 @@
 
 namespace crab {
 
-#define CRAB_LOG(TAG, CODE)                                                                                            \
-    do {                                                                                                               \
-        if (::crab::CrabLogFlag && ::crab::CrabLog.count(TAG) > 0) {                                                   \
-            CODE;                                                                                                      \
-        }                                                                                                              \
+#define CRAB_LOG(TAG, CODE)                                       \
+    do {                                                          \
+        if (crab::CrabLogFlag && crab::CrabLog.count(TAG) > 0) {      \
+            CODE;                                                 \
+        }                                                         \
     } while (0)
 extern bool CrabLogFlag;
 extern std::set<std::string> CrabLog;
 
 extern unsigned CrabVerbosity;
-#define CRAB_VERBOSE_IF(LEVEL, CODE)                                                                                   \
-    do {                                                                                                               \
-        if (::crab::CrabVerbosity >= LEVEL) {                                                                          \
-            CODE;                                                                                                      \
-        }                                                                                                              \
+#define CRAB_VERBOSE_IF(LEVEL, CODE)           \
+    do {                                       \
+        if (crab::CrabVerbosity >= LEVEL) {    \
+            CODE;                              \
+        }                                      \
     } while (0)
 
 template <typename... ArgTypes>
@@ -37,14 +37,14 @@ inline void ___print___(ArgTypes... args) {
     // trick is to use the side effect of list-initializer to call a function
     // on every argument.
     // (void) is to suppress "statement has no effect" warnings
-    (void)expand_variadic_pack{0, ((crab::errs() << args), void(), 0)...};
+    (void)expand_variadic_pack{0, ((errs() << args), void(), 0)...};
 }
 
 #define CRAB_ERROR(...)                                                                                                \
     do {                                                                                                               \
-        crab::errs() << "CRAB ERROR: ";                                                                                \
-        crab::___print___(__VA_ARGS__);                                                                                \
-        crab::errs() << "\n";                                                                                          \
+        errs() << "CRAB ERROR: ";                                                                                \
+        ___print___(__VA_ARGS__);                                                                                \
+        errs() << "\n";                                                                                          \
         std::exit(EXIT_FAILURE);                                                                                       \
     } while (0)
 
@@ -53,10 +53,10 @@ void CrabEnableWarningMsg(bool b);
 
 #define CRAB_WARN(...)                                                                                                 \
     do {                                                                                                               \
-        if (::crab::CrabWarningFlag) {                                                                                 \
-            crab::errs() << "CRAB WARNING: ";                                                                          \
-            crab::___print___(__VA_ARGS__);                                                                            \
-            crab::errs() << "\n";                                                                                      \
+        if (crab::CrabWarningFlag) {                                                                                 \
+            errs() << "CRAB WARNING: ";                                                                          \
+            ___print___(__VA_ARGS__);                                                                            \
+            errs() << "\n";                                                                                      \
         }                                                                                                              \
     } while (0)
 

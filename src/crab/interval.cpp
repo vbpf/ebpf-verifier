@@ -1,6 +1,6 @@
 #include "crab/interval.hpp"
 
-namespace ikos {
+namespace crab {
 
 interval_t interval_t::operator/(interval_t x) const {
     if (is_bottom() || x.is_bottom()) {
@@ -245,4 +245,4 @@ interval_t interval_t::LShr(interval_t x) const {
     }
 }
 
-} // namespace ikos
+} // namespace crab
