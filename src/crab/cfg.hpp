@@ -473,8 +473,6 @@ class int_cast_t : public statement_t {
 //  The semantics is similar to constant arrays in SMT.
 class array_init_t : public statement_t {
   public:
-    using type_t = typename variable_t::type_t;
-
     array_init_t(variable_t arr, linear_expression_t elem_size, linear_expression_t lb, linear_expression_t ub,
                  linear_expression_t val)
         : statement_t(ARR_INIT), m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_val(val) {
@@ -496,7 +494,7 @@ class array_init_t : public statement_t {
 
     variable_t array() const { return m_arr; }
 
-    type_t array_type() const { return m_arr.get_type(); }
+    variable_type_t array_type() const { return m_arr.get_type(); }
 
     linear_expression_t elem_size() const { return m_elem_size; }
 
@@ -525,9 +523,6 @@ class array_init_t : public statement_t {
 class array_store_t : public statement_t {
   public:
     // forall i \in [lb,ub) % elem_size :: arr[i] := val
-
-    using type_t = typename variable_t::type_t;
-
     array_store_t(variable_t arr, linear_expression_t elem_size, linear_expression_t lb, linear_expression_t ub,
                   linear_expression_t value, bool is_singleton)
         : statement_t(ARR_STORE), m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_value(value),
@@ -556,7 +551,7 @@ class array_store_t : public statement_t {
 
     linear_expression_t value() const { return m_value; }
 
-    type_t array_type() const { return m_arr.get_type(); }
+    variable_type_t array_type() const { return m_arr.get_type(); }
 
     linear_expression_t elem_size() const { return m_elem_size; }
 
@@ -590,8 +585,6 @@ class array_store_t : public statement_t {
 
 class array_load_t : public statement_t {
   public:
-    using type_t = typename variable_t::type_t;
-
     array_load_t(variable_t lhs, variable_t arr, linear_expression_t elem_size, linear_expression_t index)
         : statement_t(ARR_LOAD), m_lhs(lhs), m_array(arr), m_elem_size(elem_size), m_index(index) {
 
@@ -609,7 +602,7 @@ class array_load_t : public statement_t {
 
     variable_t array() const { return m_array; }
 
-    type_t array_type() const { return m_array.get_type(); }
+    variable_type_t array_type() const { return m_array.get_type(); }
 
     linear_expression_t index() const { return m_index; }
 
@@ -634,8 +627,6 @@ class array_load_t : public statement_t {
 class array_assign_t : public statement_t {
     //! a = b
   public:
-    using type_t = typename variable_t::type_t;
-
     array_assign_t(variable_t lhs, variable_t rhs) : statement_t(ARR_ASSIGN), m_lhs(lhs), m_rhs(rhs) {
         this->m_live.add_def(lhs);
         this->m_live.add_use(rhs);
@@ -645,7 +636,7 @@ class array_assign_t : public statement_t {
 
     variable_t rhs() const { return m_rhs; }
 
-    type_t array_type() const { return m_lhs.get_type(); }
+    variable_type_t array_type() const { return m_lhs.get_type(); }
 
     virtual void accept(statement_visitor* v) { v->visit(*this); }
 

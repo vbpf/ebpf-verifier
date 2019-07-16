@@ -62,7 +62,7 @@ cell_t offset_map_t::mk_cell(variable_t array, offset_t o, unsigned size) {
     if (c.is_null()) {
         auto& vfac = array.name().get_var_factory();
         std::string vname = mk_scalar_name(array, o, size);
-        type_t vtype = get_array_element_type(array.get_type());
+        variable_type_t vtype = get_array_element_type(array.get_type());
         index_t vindex = get_index(array, o, size);
 
         // create a new scalar variable for representing the contents

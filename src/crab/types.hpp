@@ -14,11 +14,15 @@
 
 namespace crab {
 
-enum variable_type { INT_TYPE, ARR_INT_TYPE, UNK_TYPE };
+
+// Numerical type for indexed objects
+using index_t = uint64_t;
 
 using number_t = z_number;
 
-inline crab_os& operator<<(crab_os& o, variable_type t) {
+enum variable_type_t { INT_TYPE, ARR_INT_TYPE, UNK_TYPE };
+
+inline crab_os& operator<<(crab_os& o, variable_type_t t) {
     switch (t) {
     case INT_TYPE: o << "int"; break;
     case ARR_INT_TYPE: o << "arr_int"; break;
@@ -82,9 +86,6 @@ inline std::optional<T> conv_op(binary_operation_t op);
 
 template <typename T>
 inline std::optional<T> conv_op(cast_operation_t op);
-
-// Numerical type for indexed objects
-using index_t = uint64_t;
 
 // Interface for writeable objects
 class writeable {
@@ -202,11 +203,10 @@ class variable_t {
 
   public:
     using bitwidth_t = unsigned;
-    using type_t = variable_type;
 
   private:
     varname_t _n;
-    type_t _type;
+    variable_type_t _type;
     bitwidth_t _width;
 
   public:
@@ -219,9 +219,9 @@ class variable_t {
     explicit variable_t(const varname_t& n) : _n(n), _type(UNK_TYPE), _width(0) {}
 
   public:
-    variable_t(const varname_t& n, type_t type) : _n(n), _type(type), _width(0) {}
+    variable_t(const varname_t& n, variable_type_t type) : _n(n), _type(type), _width(0) {}
 
-    variable_t(const varname_t& n, type_t type, bitwidth_t width) : _n(n), _type(type), _width(width) {}
+    variable_t(const varname_t& n, variable_type_t type, bitwidth_t width) : _n(n), _type(type), _width(width) {}
 
     variable_t(const variable_t& o) : _n(o._n), _type(o._type), _width(o._width) {}
 
@@ -240,9 +240,7 @@ class variable_t {
 
     bool is_array_type() const { return is_typed() && _type >= ARR_INT_TYPE; }
 
-    bool is_int_type() const { return _type == INT_TYPE; }
-
-    type_t get_type() const { return _type; }
+    variable_type_t get_type() const { return _type; }
 
     bool has_bitwidth() const { return _width > 0; }
 
