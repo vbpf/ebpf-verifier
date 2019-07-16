@@ -45,9 +45,8 @@ class checker_domain_traits {
         if (rhs.is_contradiction())
             return false;
 
-        CRAB_LOG("checker-entailment", linear_constraint_t tmp(rhs); outs()
-                                                                     << "Checking whether\n"
-                                                                     << lhs << "\nentails " << tmp << "\n";);
+        CRAB_LOG("checker-entailment", linear_constraint_t tmp(rhs); outs() << "Checking whether\n"
+                                                                            << lhs << "\nentails " << tmp << "\n";);
 
         bool res;
         entailment op(lhs);

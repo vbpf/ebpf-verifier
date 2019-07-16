@@ -410,8 +410,8 @@ class intra_necessary_preconditions_abs_transformer : public abs_transformer_api
         abs_dom_t invariant = (*m_invariants)[&stmt];
 
         CRAB_LOG("backward-tr", outs() << "** " << stmt.lhs() << " := " << op1 << " " << *op << " " << op2 << "\n"
-                                             << "\tFORWARD INV=" << invariant << "\n"
-                                             << "\tPOST=" << *m_pre << "\n");
+                                       << "\tFORWARD INV=" << invariant << "\n"
+                                       << "\tPOST=" << *m_pre << "\n");
 
         if (op1.get_variable() && op2.get_variable()) {
             m_pre->backward_apply(*op, stmt.lhs(), (*op1.get_variable()), (*op2.get_variable()), invariant);
@@ -471,8 +471,8 @@ class intra_necessary_preconditions_abs_transformer : public abs_transformer_api
         abs_dom_t invariant = (*m_invariants)[&stmt];
 
         CRAB_LOG("backward-tr", auto rhs = stmt.rhs(); outs() << "** " << stmt.lhs() << " := " << rhs << "\n"
-                                                                    << "\tFORWARD INV=" << invariant << "\n"
-                                                                    << "\tPOST=" << *m_pre << "\n");
+                                                              << "\tFORWARD INV=" << invariant << "\n"
+                                                              << "\tPOST=" << *m_pre << "\n");
 
         m_pre->backward_assign(stmt.lhs(), stmt.rhs(), invariant);
         CRAB_LOG("backward-tr", outs() << "\tPRE=" << *m_pre << "\n");
@@ -482,7 +482,7 @@ class intra_necessary_preconditions_abs_transformer : public abs_transformer_api
     // the precondition must contain c so forward and backward are the same.
     void exec(assume_t& stmt) {
         CRAB_LOG("backward-tr", outs() << "** " << stmt << "\n"
-                                             << "\tPOST=" << *m_pre << "\n");
+                                       << "\tPOST=" << *m_pre << "\n");
         *m_pre += stmt.constraint();
         CRAB_LOG("backward-tr", outs() << "\tPRE=" << *m_pre << "\n");
     }
@@ -491,7 +491,7 @@ class intra_necessary_preconditions_abs_transformer : public abs_transformer_api
     void exec(assert_t& stmt) {
         if (!m_ignore_assert) {
             CRAB_LOG("backward-tr", outs() << "** " << stmt << "\n"
-                                                 << "\tPOST=" << *m_pre << "\n");
+                                           << "\tPOST=" << *m_pre << "\n");
             if (m_good_states) {
                 // similar to assume(c)
                 *m_pre += stmt.constraint();
@@ -522,7 +522,7 @@ class intra_necessary_preconditions_abs_transformer : public abs_transformer_api
     void exec(int_cast_t& stmt) {
         abs_dom_t invariant = (*m_invariants)[&stmt];
         CRAB_LOG("backward-tr", outs() << "** " << stmt << "\n"
-                                             << "\tPOST=" << *m_pre << "\n");
+                                       << "\tPOST=" << *m_pre << "\n");
         m_pre->backward_assign(stmt.dst(), stmt.src(), invariant);
         CRAB_LOG("backward-tr", outs() << "\tPRE=" << *m_pre << "\n");
     }
@@ -531,8 +531,8 @@ class intra_necessary_preconditions_abs_transformer : public abs_transformer_api
         abs_dom_t invariant = (*m_invariants)[&stmt];
 
         CRAB_LOG("backward-tr", outs() << "** " << stmt << "\n"
-                                             << "\tFORWARD INV=" << invariant << "\n"
-                                             << "\tPOST=" << *m_pre << "\n");
+                                       << "\tFORWARD INV=" << invariant << "\n"
+                                       << "\tPOST=" << *m_pre << "\n");
         m_pre->backward_array_init(stmt.array(), stmt.elem_size(), stmt.lb_index(), stmt.ub_index(), stmt.val(),
                                    invariant);
         CRAB_LOG("backward-tr", outs() << "\tPRE=" << *m_pre << "\n");
@@ -542,8 +542,8 @@ class intra_necessary_preconditions_abs_transformer : public abs_transformer_api
         abs_dom_t invariant = (*m_invariants)[&stmt];
 
         CRAB_LOG("backward-tr", outs() << "** " << stmt << "\n"
-                                             << "\tFORWARD INV=" << invariant << "\n"
-                                             << "\tPOST=" << *m_pre << "\n");
+                                       << "\tFORWARD INV=" << invariant << "\n"
+                                       << "\tPOST=" << *m_pre << "\n");
         m_pre->backward_array_load(stmt.lhs(), stmt.array(), stmt.elem_size(), stmt.index(), invariant);
         CRAB_LOG("backward-tr", outs() << "\tPRE=" << *m_pre << "\n");
     }
@@ -551,8 +551,8 @@ class intra_necessary_preconditions_abs_transformer : public abs_transformer_api
     void exec(array_store_t& stmt) {
         abs_dom_t invariant = (*m_invariants)[&stmt];
         CRAB_LOG("backward-tr", outs() << "** " << stmt << "\n"
-                                             << "\tFORWARD INV=" << invariant << "\n"
-                                             << "\tPOST=" << *m_pre << "\n");
+                                       << "\tFORWARD INV=" << invariant << "\n"
+                                       << "\tPOST=" << *m_pre << "\n");
         if (stmt.lb_index().equal(stmt.ub_index())) {
             m_pre->backward_array_store(stmt.array(), stmt.elem_size(), stmt.lb_index(), stmt.value(),
                                         stmt.is_singleton(), invariant);
@@ -566,8 +566,8 @@ class intra_necessary_preconditions_abs_transformer : public abs_transformer_api
     void exec(array_assign_t& stmt) {
         abs_dom_t invariant = (*m_invariants)[&stmt];
         CRAB_LOG("backward-tr", outs() << "** " << stmt << "\n"
-                                             << "\tFORWARD INV=" << invariant << "\n"
-                                             << "\tPOST=" << *m_pre << "\n");
+                                       << "\tFORWARD INV=" << invariant << "\n"
+                                       << "\tPOST=" << *m_pre << "\n");
         m_pre->backward_array_assign(stmt.lhs(), stmt.rhs(), invariant);
         CRAB_LOG("backward-tr", outs() << "\tPRE=" << *m_pre << "\n");
     }

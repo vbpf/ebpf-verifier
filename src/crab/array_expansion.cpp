@@ -189,8 +189,8 @@ void offset_map_t::get_overlap_cells(offset_t o, unsigned size, std::vector<cell
 
     CRAB_LOG(
         "array-expansion-overlap", outs() << "**Overlap set between \n"
-                                                << *this << "\nand "
-                                                << "(" << o << "," << size << ")={";
+                                          << *this << "\nand "
+                                          << "(" << o << "," << size << ")={";
         for (unsigned i = 0, e = out.size(); i < e;) {
             outs() << out[i];
             ++i;

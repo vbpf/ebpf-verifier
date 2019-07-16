@@ -160,8 +160,8 @@ class cell_t {
         CRAB_LOG("array-expansion-overlap", Dom tmp(dom); linear_expression_t tmp_symb_lb(symb_lb);
                  linear_expression_t tmp_symb_ub(symb_ub);
                  outs() << "**Checking if " << *this << " overlaps with symbolic "
-                              << "[" << tmp_symb_lb << "," << tmp_symb_ub << "]"
-                              << " with abstract state=" << tmp << "\n";);
+                        << "[" << tmp_symb_lb << "," << tmp_symb_ub << "]"
+                        << " with abstract state=" << tmp << "\n";);
 
         Dom tmp1(dom);
         tmp1 += linear_constraint_t(symb_lb - lb, linear_constraint_t::INEQUALITY); //(lb >= symb_lb);
@@ -963,8 +963,7 @@ class array_expansion_domain final : public writeable {
         }
 
         CRAB_LOG("array-expansion", linear_expression_t ub = i + elem_size - 1;
-                 outs() << "BACKWARD " << lhs << ":=" << a << "[" << i << "..." << ub << "]  -- " << *this
-                              << "\n";);
+                 outs() << "BACKWARD " << lhs << ":=" << a << "[" << i << "..." << ub << "]  -- " << *this << "\n";);
     }
 
     virtual void backward_array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i,
@@ -1015,8 +1014,7 @@ class array_expansion_domain final : public writeable {
         }
 
         CRAB_LOG("array-expansion", linear_expression_t ub = i + elem_size - 1;
-                 outs() << "BACKWARD " << a << "[" << i << "..." << ub << "]:=" << val << " -- " << *this
-                              << "\n";);
+                 outs() << "BACKWARD " << a << "[" << i << "..." << ub << "]:=" << val << " -- " << *this << "\n";);
     }
 
     virtual void backward_array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,

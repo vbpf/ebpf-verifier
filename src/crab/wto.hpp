@@ -463,12 +463,11 @@ class wto {
             }
 
             auto dfn_visiting_node = get_dfn(visiting_node);
-            CRAB_LOG("wto-nonrec", outs() << "WTO: popped node " << visiting_node << " dfs num= "
-                                                << dfn_visiting_node << ": min=" << min_visiting_node << "\n";);
+            CRAB_LOG("wto-nonrec", outs() << "WTO: popped node " << visiting_node << " dfs num= " << dfn_visiting_node
+                                          << ": min=" << min_visiting_node << "\n";);
 
             if (min_visiting_node == get_dfn(visiting_node)) {
-                CRAB_LOG("wto-nonrec", outs()
-                                           << "WTO: BEGIN building partition for node " << visiting_node << "\n";);
+                CRAB_LOG("wto-nonrec", outs() << "WTO: BEGIN building partition for node " << visiting_node << "\n";);
                 set_dfn(visiting_node, dfn_t::plus_infinity());
                 vertex_descriptor<G> element = pop();
                 if (is_loop) {
