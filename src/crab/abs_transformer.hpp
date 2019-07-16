@@ -129,7 +129,7 @@ class intra_abs_transformer : public abs_transformer_api {
 
     void exec(binary_op_t& stmt) {
         bool pre_bot = false;
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             pre_bot = get()->is_bottom();
         }
 
@@ -142,7 +142,7 @@ class intra_abs_transformer : public abs_transformer_api {
             apply(*get(), stmt.op(), stmt.lhs(), (*op1.get_variable()), op2.constant());
         }
 
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             bool post_bot = get()->is_bottom();
             if (!(pre_bot || !post_bot)) {
                 CRAB_ERROR("Invariant became bottom after ", stmt);
@@ -152,7 +152,7 @@ class intra_abs_transformer : public abs_transformer_api {
 
     void exec(select_t& stmt) {
         bool pre_bot = false;
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             pre_bot = get()->is_bottom();
         }
 
@@ -162,7 +162,7 @@ class intra_abs_transformer : public abs_transformer_api {
         inv1 += stmt.cond();
         inv2 += stmt.cond().negate();
 
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             if (!pre_bot && (inv1.is_bottom() && inv2.is_bottom())) {
                 CRAB_ERROR("select condition and its negation cannot be false simultaneously ", stmt);
             }
@@ -180,7 +180,7 @@ class intra_abs_transformer : public abs_transformer_api {
             *get() = inv1 | inv2;
         }
 
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             bool post_bot = get()->is_bottom();
             if (!(pre_bot || !post_bot)) {
                 CRAB_ERROR("Invariant became bottom after ", stmt);
@@ -190,13 +190,13 @@ class intra_abs_transformer : public abs_transformer_api {
 
     void exec(assign_t& stmt) {
         bool pre_bot = false;
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             pre_bot = get()->is_bottom();
         }
 
         get()->assign(stmt.lhs(), stmt.rhs());
 
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             bool post_bot = get()->is_bottom();
             if (!(pre_bot || !post_bot)) {
                 CRAB_ERROR("Invariant became bottom after ", stmt);
@@ -211,13 +211,13 @@ class intra_abs_transformer : public abs_transformer_api {
             return;
 
         bool pre_bot = false;
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             pre_bot = get()->is_bottom();
         }
 
         *get() += stmt.constraint();
 
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             if (!stmt.constraint().is_contradiction()) {
                 bool post_bot = get()->is_bottom();
                 if (!(pre_bot || !post_bot)) {
@@ -230,7 +230,7 @@ class intra_abs_transformer : public abs_transformer_api {
 
     void exec(int_cast_t& stmt) {
         bool pre_bot = false;
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             pre_bot = get()->is_bottom();
         }
 
@@ -240,7 +240,7 @@ class intra_abs_transformer : public abs_transformer_api {
             CRAB_ERROR("unsupported cast operator ", stmt.op());
         }
 
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             bool post_bot = get()->is_bottom();
             if (!(pre_bot || !post_bot)) {
                 CRAB_ERROR("Invariant became bottom after ", stmt);
@@ -250,13 +250,13 @@ class intra_abs_transformer : public abs_transformer_api {
 
     void exec(havoc_t& stmt) {
         bool pre_bot = false;
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             pre_bot = get()->is_bottom();
         }
 
         (*get()) -= stmt.variable();
 
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             bool post_bot = get()->is_bottom();
             if (!(pre_bot || !post_bot)) {
                 CRAB_ERROR("Invariant became bottom after ", stmt);
@@ -268,13 +268,13 @@ class intra_abs_transformer : public abs_transformer_api {
 
     void exec(array_init_t& stmt) {
         bool pre_bot = false;
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             pre_bot = get()->is_bottom();
         }
 
         get()->array_init(stmt.array(), stmt.elem_size(), stmt.lb_index(), stmt.ub_index(), stmt.val());
 
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             bool post_bot = get()->is_bottom();
             if (!(pre_bot || !post_bot)) {
                 CRAB_ERROR("Invariant became bottom after ", stmt);
@@ -284,7 +284,7 @@ class intra_abs_transformer : public abs_transformer_api {
 
     void exec(array_store_t& stmt) {
         bool pre_bot = false;
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             pre_bot = get()->is_bottom();
         }
 
@@ -294,7 +294,7 @@ class intra_abs_transformer : public abs_transformer_api {
             get()->array_store_range(stmt.array(), stmt.elem_size(), stmt.lb_index(), stmt.ub_index(), stmt.value());
         }
 
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             bool post_bot = get()->is_bottom();
             if (!(pre_bot || !post_bot)) {
                 CRAB_ERROR("Invariant became bottom after ", stmt);
@@ -304,13 +304,13 @@ class intra_abs_transformer : public abs_transformer_api {
 
     void exec(array_load_t& stmt) {
         bool pre_bot = false;
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             pre_bot = get()->is_bottom();
         }
 
         get()->array_load(stmt.lhs(), stmt.array(), stmt.elem_size(), stmt.index());
 
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             bool post_bot = get()->is_bottom();
             if (!(pre_bot || !post_bot)) {
                 CRAB_ERROR("Invariant became bottom after ", stmt);
@@ -320,13 +320,13 @@ class intra_abs_transformer : public abs_transformer_api {
 
     void exec(array_assign_t& stmt) {
         bool pre_bot = false;
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             pre_bot = get()->is_bottom();
         }
 
         get()->array_assign(stmt.lhs(), stmt.rhs());
 
-        if (CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             bool post_bot = get()->is_bottom();
             if (!(pre_bot || !post_bot)) {
                 CRAB_ERROR("Invariant became bottom after ", stmt);

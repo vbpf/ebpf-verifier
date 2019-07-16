@@ -3,3 +3,4 @@ ColumnLimit: 120
 AlwaysBreakTemplateDeclarations: Yes
 AllowShortCaseLabelsOnASingleLine: true
 PointerAlignment: Left
+AlignEscapedNewlines: Left
