@@ -3,15 +3,15 @@ BUILDDIR := build
 BINDIR := .
 SRCDIR := src
 
-SOURCES := $(wildcard ${SRCDIR}/*.cpp) $(wildcard ${SRCDIR}/crab/*.cpp)
-ALL_OBJECTS := $(SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
+SOURCES := $(wildcard $(SRCDIR)/*.cpp) $(wildcard $(SRCDIR)/crab/*.cpp)
+ALL_OBJECTS := $(SOURCES:$(SRCDIR)/%.cpp=$(BUILDDIR)/%.o)
 DEPENDS := $(ALL_OBJECTS:%.o=%.d)
 
-TEST_SOURCES := $(wildcard ${SRCDIR}/test*.cpp)
-TEST_OBJECTS := $(TEST_SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
+TEST_SOURCES := $(wildcard $(SRCDIR)/test*.cpp)
+TEST_OBJECTS := $(TEST_SOURCES:$(SRCDIR)/%.cpp=$(BUILDDIR)/%.o)
 
-MAIN_SOURCES := $(wildcard ${SRCDIR}/main_*.cpp)
-MAIN_OBJECTS := $(MAIN_SOURCES:${SRCDIR}/%.cpp=${BUILDDIR}/%.o)
+MAIN_SOURCES := $(wildcard $(SRCDIR)/main_*.cpp)
+MAIN_OBJECTS := $(MAIN_SOURCES:$(SRCDIR)/%.cpp=$(BUILDDIR)/%.o)
 
 OBJECTS := $(filter-out $(MAIN_OBJECTS) $(TEST_OBJECTS),$(ALL_OBJECTS))
 
@@ -26,22 +26,17 @@ all: $(BINDIR)/check  # $(BINDIR)/unit-test
 
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.cpp
-	@mkdir -p $(BUILDDIR)
+	@mkdir -p $(dir $@)
 	@printf "$@ <- $<\n"
-	@$(CXX) ${CXXFLAGS} $< -MMD -MP -c -o $@ # important: use $< and not $^
+	@$(CXX) $(CXXFLAGS) $< -MMD -MP -c -o $@ # important: use $< and not $^
 
-$(BUILDDIR)/crab/%.o: $(SRCDIR)/crab/%.cpp
-	@mkdir -p $(BUILDDIR)
-	@printf "$@ <- $<\n"
-	@$(CXX) ${CXXFLAGS} $< -MMD -MP -c -o $@ # important: use $< and not $^
-
-$(BINDIR)/unit-test: ${BUILDDIR}/test.o ${TEST_OBJECTS} ${OBJECTS}
+$(BINDIR)/unit-test: $(BUILDDIR)/test.o $(TEST_OBJECTS) $(OBJECTS)
 	@printf "$@ <- $^\n"
-	@$(CXX) ${CXXFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
+	@$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
-$(BINDIR)/check: ${BUILDDIR}/main_check.o ${OBJECTS}
+$(BINDIR)/check: $(BUILDDIR)/main_check.o $(OBJECTS)
 	@printf "$@ <- $^\n"
-	@$(CXX) ${CXXFLAGS} ${LDFLAGS} $^ ${LDLIBS} -o $@
+	@$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 clean:
 	rm -f $(BINDIR)/check $(BINDIR)/unit-test
@@ -54,7 +49,7 @@ linux_samples:
 	make -C $(LINUX) oldconfig < /dev/null
 	make -C $(LINUX) samples/bpf/
 
-html: ${SRCDIR}/*.*pp
+html: $(SRCDIR)/*.*pp $(SRCDIR)/*/*/*.*pp
 	doxygen
 
 print-% :
