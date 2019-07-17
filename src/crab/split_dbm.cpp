@@ -1099,46 +1099,6 @@ void SplitDBM::rename(const variable_vector_t& from, const variable_vector_t& to
     CRAB_LOG("zones-split", outs() << "RESULT=" << *this << "\n");
 }
 
-void SplitDBM::extract(const variable_t& x, linear_constraint_system_t& csts, bool only_equalities) {
-    CrabStats::count("SplitDBM.count.extract");
-    ScopedCrabStats __st__("SplitDBM.extract");
-
-    normalize();
-    if (is_bottom()) {
-        return;
-    }
-
-    auto it = vert_map.find(x);
-    if (it != vert_map.end()) {
-        vert_id s = (*it).second;
-        if (rev_map[s]) {
-            variable_t vs = *rev_map[s];
-            SubGraph<graph_t> g_excl(g, 0);
-            for (vert_id d : g_excl.verts()) {
-                if (rev_map[d]) {
-                    variable_t vd = *rev_map[d];
-                    // We give priority to equalities since some domains
-                    // might not understand inequalities
-                    if (g_excl.elem(s, d) && g_excl.elem(d, s) && g_excl.edge_val(s, d) == Wt(0) &&
-                        g_excl.edge_val(d, s) == Wt(0)) {
-                        linear_constraint_t cst(var_eq(vs, vd));
-                        csts += cst;
-                    } else {
-                        if (!only_equalities && g_excl.elem(s, d)) {
-                            linear_constraint_t cst(exp_lte(var_sub(vd, vs), number_t(g_excl.edge_val(s, d))));
-                            csts += cst;
-                        }
-                        if (!only_equalities && g_excl.elem(d, s)) {
-                            linear_constraint_t cst(exp_lte(var_sub(vs, vd), number_t(g_excl.edge_val(d, s))));
-                            csts += cst;
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 SplitDBM SplitDBM::narrow(SplitDBM o) {
     CrabStats::count("SplitDBM.count.narrowing");
     ScopedCrabStats __st__("SplitDBM.narrowing");
@@ -1440,51 +1400,7 @@ void SplitDBM::write(crab_os& o) {
             }
         }
         o << "}";
-
-        // linear_constraint_system_t inv = to_linear_constraint_system();
-        // o << inv;
     }
-}
-
-linear_constraint_system_t SplitDBM::to_linear_constraint_system() {
-    CrabStats::count("SplitDBM.count.to_linear_constraints");
-    ScopedCrabStats __st__("SplitDBM.to_linear_constraints");
-
-    normalize();
-
-    linear_constraint_system_t csts;
-
-    if (is_bottom()) {
-        csts += linear_constraint_t::get_false();
-        return csts;
-    }
-
-    // Extract all the edges
-
-    SubGraph<graph_t> g_excl(g, 0);
-
-    for (vert_id v : g_excl.verts()) {
-        if (!rev_map[v])
-            continue;
-        if (g.elem(v, 0)) {
-            csts += linear_constraint_t(exp_gte(linear_expression_t(*rev_map[v]), -number_t(g.edge_val(v, 0))));
-        }
-        if (g.elem(0, v))
-            csts += linear_constraint_t(exp_lte(linear_expression_t(*rev_map[v]), number_t(g.edge_val(0, v))));
-    }
-
-    for (vert_id s : g_excl.verts()) {
-        if (!rev_map[s])
-            continue;
-        variable_t vs = *rev_map[s];
-        for (vert_id d : g_excl.succs(s)) {
-            if (!rev_map[d])
-                continue;
-            variable_t vd = *rev_map[d];
-            csts += linear_constraint_t(exp_lte(var_sub(vd, vs), number_t(g_excl.edge_val(s, d))));
-        }
-    }
-    return csts;
 }
 
 } // namespace domains

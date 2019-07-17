@@ -83,46 +83,4 @@ void linear_constraint_t::write(crab_os& o) const {
     }
 }
 
-linear_constraint_system_t linear_constraint_system_t::normalize() const {
-    linear_expression_unordered_set expr_set;
-    linear_expression_unordered_map<unsigned> index_map;
-    std::vector<bool> toremove(_csts.size(), false); // indexes to be removed
-    linear_constraint_system_t out;
-
-    for (unsigned i = 0, e = _csts.size(); i < e; ++i) {
-        if (_csts[i].is_inequality()) {
-            linear_expression_t exp = _csts[i].expression();
-            if (expr_set.find(-exp) == expr_set.end()) {
-                // remember the index and the expression
-                index_map.insert({exp, i});
-                expr_set.insert(exp);
-            } else {
-                // we found exp<=0 and -exp<= 0
-                unsigned j = index_map[-exp];
-                if (_csts[i].is_signed() == _csts[j].is_signed()) {
-                    toremove[i] = true;
-                    toremove[j] = true;
-                    bool insert_pos = true;
-                    if (exp.size() == 1 && (*(exp.begin())).first < 0) {
-                        // unary equality: we choose the one with the positive position.
-                        insert_pos = false;
-                    }
-                    if (!insert_pos) {
-                        out += linear_constraint_t(-exp, linear_constraint_t::EQUALITY);
-                    } else {
-                        out += linear_constraint_t(exp, linear_constraint_t::EQUALITY);
-                    }
-                }
-            }
-        }
-    }
-
-    for (unsigned i = 0, e = _csts.size(); i < e; ++i) {
-        if (!toremove[i]) {
-            out += _csts[i];
-        }
-    }
-
-    return out;
-}
 } // namespace crab

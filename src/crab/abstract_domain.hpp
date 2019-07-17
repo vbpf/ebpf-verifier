@@ -84,9 +84,6 @@ class abstract_domain : public writeable {
     // forget v
     virtual void operator-=(variable_t v) = 0;
 
-    // Convert the abstract state into a conjunction of linear constraints
-    virtual linear_constraint_system_t to_linear_constraint_system() = 0;
-
     // Rename in the abstract state the variables "from" with those from "to".
     virtual void rename(const variable_vector_t& from, const variable_vector_t& to) {
         CRAB_ERROR("rename operation not implemented");
@@ -111,8 +108,6 @@ class numeric_abstract_domain : public abstract_domain<numeric_abstract_domain<A
     virtual void apply(operation_t op, variable_t x, variable_t y, number_t k) = 0;
     // x := e
     virtual void assign(variable_t x, linear_expression_t e) = 0;
-    // forall cst in csts: assume(cst)
-    virtual void operator+=(linear_constraint_system_t csts) = 0;
     // x := y op z
     virtual void apply(bitwise_operation_t op, variable_t x, variable_t y, variable_t z) = 0;
     // x := y op k
