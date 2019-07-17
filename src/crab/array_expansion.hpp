@@ -42,9 +42,10 @@ namespace domains {
 
 // wrapper for using index_t as patricia_tree keys
 class offset_t {
-    index_t _val;
+    index_t _val{};
 
   public:
+    offset_t() = default;
     explicit offset_t(index_t v) : _val(v) {}
 
     index_t index() const { return _val; }
@@ -80,15 +81,15 @@ class cell_t {
   private:
     friend class offset_map_t;
 
-    offset_t _offset;
-    unsigned _size;
-    std::optional<variable_t> _scalar;
+    offset_t _offset{};
+    unsigned _size{};
+    std::optional<variable_t> _scalar{};
 
     // Only offset_map_t can create cells
-    cell_t() : _offset(0), _size(0), _scalar(std::optional<variable_t>()) {}
+    cell_t() = default;
     cell_t(offset_t offset, variable_t scalar) : _offset(offset), _size(scalar.get_bitwidth()), _scalar(scalar) {}
 
-    cell_t(offset_t offset, unsigned size) : _offset(offset), _size(size), _scalar(std::optional<variable_t>()) {}
+    cell_t(offset_t offset, unsigned size) : _offset(offset), _size(size) {}
 
     static interval_t to_interval(const offset_t o, unsigned size) {
         interval_t i(o.index(), o.index() + size - 1);
@@ -316,7 +317,7 @@ class offset_map_t {
     cell_t mk_cell(variable_t array, offset_t o, unsigned size);
 
   public:
-    offset_map_t() {}
+    offset_map_t() = default;
 
     bool empty() const { return _map.empty(); }
 
