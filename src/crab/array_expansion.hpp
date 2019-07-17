@@ -621,13 +621,13 @@ class array_expansion_domain final : public writeable {
 
     void normalize() { CRAB_WARN("array expansion normalize not implemented"); }
 
-    void operator+=(linear_constraint_system_t csts) {
+    void operator+=(linear_constraint_t cst) {
         CrabStats::count(getDomainName() + ".count.add_constraints");
         ScopedCrabStats __st__(getDomainName() + ".add_constraints");
 
-        _inv += csts;
+        _inv += cst;
 
-        CRAB_LOG("array-expansion", outs() << "assume(" << csts << ")  " << *this << "\n";);
+        CRAB_LOG("array-expansion", outs() << "assume(" << cst << ")  " << *this << "\n";);
     }
 
     void operator-=(variable_t var) {
@@ -873,13 +873,6 @@ class array_expansion_domain final : public writeable {
     void array_assign(variable_t lhs, variable_t rhs) {
         //_array_map[lhs] = _array_map[rhs];
         CRAB_ERROR("array_assign in array_expansion domain not implemented");
-    }
-
-    linear_constraint_system_t to_linear_constraint_system() {
-        CrabStats::count(getDomainName() + ".count.to_linear_constraints");
-        ScopedCrabStats __st__(getDomainName() + ".to_linear_constraints");
-
-        return _inv.to_linear_constraint_system();
     }
 
     NumAbsDomain get_content_domain() const { return _inv; }

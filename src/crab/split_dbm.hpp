@@ -384,15 +384,6 @@ class SplitDBM final : public writeable {
 
     void operator+=(linear_constraint_t cst);
 
-    void operator+=(linear_constraint_system_t csts) {
-        if (is_bottom())
-            return;
-
-        for (auto cst : csts) {
-            operator+=(cst);
-        }
-    }
-
     interval_t operator[](variable_t x) {
         CrabStats::count("SplitDBM.count.to_intervals");
         ScopedCrabStats __st__("SplitDBM.to_intervals");
@@ -425,16 +416,12 @@ class SplitDBM final : public writeable {
 
     void rename(const variable_vector_t& from, const variable_vector_t& to);
 
-    void extract(const variable_t& x, linear_constraint_system_t& csts, bool only_equalities);
-
     // -- begin array_sgraph_domain_helper_traits
 
     // -- end array_sgraph_domain_helper_traits
 
     // Output function
     void write(crab_os& o);
-
-    linear_constraint_system_t to_linear_constraint_system();
 
     // return number of vertices and edges
     std::pair<std::size_t, std::size_t> size() const { return {g.size(), g.num_edges()}; }

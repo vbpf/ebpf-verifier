@@ -53,10 +53,8 @@ class checker_domain_traits {
         if (rhs.is_equality()) {
             // try to convert the equality into inequalities so when it's
             // negated we do not have disequalities.
-            linear_constraint_system_t inequalities;
-            inequalities += linear_constraint_t(rhs.expression(), linear_constraint_t::INEQUALITY);
-            inequalities += linear_constraint_t(rhs.expression() * number_t(-1), linear_constraint_t::INEQUALITY);
-            res = std::all_of(inequalities.begin(), inequalities.end(), op);
+            res = op(linear_constraint_t(rhs.expression(), linear_constraint_t::INEQUALITY))
+               && op(linear_constraint_t(rhs.expression() * number_t(-1), linear_constraint_t::INEQUALITY));
         } else {
             res = op(rhs);
         }
