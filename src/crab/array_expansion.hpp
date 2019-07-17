@@ -619,8 +619,6 @@ class array_expansion_domain final : public writeable {
         }
     }
 
-    void expand(variable_t var, variable_t new_var) { CRAB_WARN("array expansion expand not implemented"); }
-
     void normalize() { CRAB_WARN("array expansion normalize not implemented"); }
 
     void operator+=(linear_constraint_system_t csts) {

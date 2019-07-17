@@ -1335,37 +1335,6 @@ void SplitDBM::forget(const variable_vector_t& variables) {
     }
 }
 
-void SplitDBM::expand(variable_t x, variable_t y) {
-    CrabStats::count("SplitDBM.count.expand");
-    ScopedCrabStats __st__("SplitDBM.expand");
-
-    if (is_bottom() || is_top()) {
-        return;
-    }
-
-    CRAB_LOG("zones-split", outs() << "Before expand " << x << " into " << y << ":\n" << *this << "\n");
-
-    auto it = vert_map.find(y);
-    if (it != vert_map.end()) {
-        CRAB_ERROR("split_dbm expand operation failed because y already exists");
-    }
-
-    vert_id ii = get_vert(x);
-    vert_id jj = get_vert(y);
-
-    for (auto edge : g.e_preds(ii)) {
-        g.add_edge(edge.vert, edge.val, jj);
-    }
-
-    for (auto edge : g.e_succs(ii)) {
-        g.add_edge(jj, edge.val, edge.vert);
-    }
-
-    potential[jj] = potential[ii];
-
-    CRAB_LOG("zones-split", outs() << "After expand " << x << " into " << y << ":\n" << *this << "\n");
-}
-
 bool SplitDBM::is_unsat(linear_constraint_t cst) {
     if (is_bottom() || cst.is_contradiction()) {
         return true;
