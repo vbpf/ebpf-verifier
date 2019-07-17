@@ -1319,33 +1319,6 @@ void SplitDBM::apply(bitwise_operation_t op, variable_t x, variable_t y, number_
     set(x, xi);
 }
 
-void SplitDBM::project(const variable_vector_t& variables) {
-    CrabStats::count("SplitDBM.count.project");
-    ScopedCrabStats __st__("SplitDBM.project");
-
-    if (is_bottom() || is_top()) {
-        return;
-    }
-    if (variables.empty()) {
-        return;
-    }
-
-    normalize();
-
-    std::vector<bool> save(rev_map.size(), false);
-    for (auto x : variables) {
-        auto it = vert_map.find(x);
-        if (it != vert_map.end())
-            save[(*it).second] = true;
-    }
-
-    for (vert_id v = 0; v < rev_map.size(); v++) {
-        if (!save[v] && rev_map[v]) {
-            operator-=((*rev_map[v]));
-        }
-    }
-}
-
 void SplitDBM::forget(const variable_vector_t& variables) {
     CrabStats::count("SplitDBM.count.forget");
     ScopedCrabStats __st__("SplitDBM.forget");

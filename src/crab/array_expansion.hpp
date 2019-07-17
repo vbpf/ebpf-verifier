@@ -619,28 +619,9 @@ class array_expansion_domain final : public writeable {
         }
     }
 
-    void project(const variable_vector_t& variables) {
-        CrabStats::count(getDomainName() + ".count.project");
-        ScopedCrabStats __st__(getDomainName() + ".project");
-
-        if (is_bottom() || is_top()) {
-            return;
-        }
-
-        _inv.project(variables);
-
-        for (variable_t v : variables) {
-            if (v.is_array_type()) {
-                CRAB_WARN("TODO: project onto an array variable");
-            }
-        }
-    }
-
     void expand(variable_t var, variable_t new_var) { CRAB_WARN("array expansion expand not implemented"); }
 
     void normalize() { CRAB_WARN("array expansion normalize not implemented"); }
-
-    void minimize() { _inv.minimize(); }
 
     void operator+=(linear_constraint_system_t csts) {
         CrabStats::count(getDomainName() + ".count.add_constraints");
