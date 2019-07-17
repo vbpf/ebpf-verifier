@@ -217,11 +217,6 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
                                    std::vector<std::pair<variable_t, Wt>>& lbs,
                                    /* x <= ub for each {x,ub} in ubs */
                                    std::vector<std::pair<variable_t, Wt>>& ubs) {
-
-    Wt unbounded_lbcoeff;
-    Wt unbounded_ubcoeff;
-    std::optional<variable_t> unbounded_lbvar;
-    std::optional<variable_t> unbounded_ubvar;
     bool underflow, overflow;
 
     Wt exp_ub = -(convert_NtoW(exp.constant(), overflow));
@@ -236,6 +231,11 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
         // minus MIN and it will silently overflow.
         return;
     }
+
+    Wt unbounded_lbcoeff;
+    Wt unbounded_ubcoeff;
+    std::optional<variable_t> unbounded_lbvar;
+    std::optional<variable_t> unbounded_ubvar;
 
     std::vector<std::pair<std::pair<Wt, variable_t>, Wt>> pos_terms, neg_terms;
     for (auto p : exp) {
