@@ -523,19 +523,11 @@ class array_expansion_domain final : public writeable {
         std::swap(*this, abs);
     }
 
-    array_expansion_domain(const array_expansion_domain_t& other) : _inv(other._inv) {
-        CrabStats::count(getDomainName() + ".count.copy");
-        ScopedCrabStats __st__(getDomainName() + ".copy");
-    }
+    array_expansion_domain(const array_expansion_domain_t& other) : _inv(other._inv) {}
 
-    array_expansion_domain(const array_expansion_domain_t&& other) : _inv(std::move(other._inv)) {
-        CrabStats::count(getDomainName() + ".count.copy");
-        ScopedCrabStats __st__(getDomainName() + ".copy");
-    }
+    array_expansion_domain(const array_expansion_domain_t&& other) : _inv(std::move(other._inv)) {}
 
     array_expansion_domain_t& operator=(const array_expansion_domain_t& other) {
-        CrabStats::count(getDomainName() + ".count.copy");
-        ScopedCrabStats __st__(getDomainName() + ".copy");
         if (this != &other) {
             _inv = other._inv;
         }
@@ -543,8 +535,6 @@ class array_expansion_domain final : public writeable {
     }
 
     array_expansion_domain_t& operator=(const array_expansion_domain_t&& other) {
-        CrabStats::count(getDomainName() + ".count.copy");
-        ScopedCrabStats __st__(getDomainName() + ".copy");
         if (this != &other) {
             _inv = std::move(other._inv);
         }
@@ -555,56 +545,35 @@ class array_expansion_domain final : public writeable {
 
     bool is_top() { return (_inv.is_top()); }
 
-    bool operator<=(array_expansion_domain_t other) {
-        CrabStats::count(getDomainName() + ".count.leq");
-        ScopedCrabStats __st__(getDomainName() + ".leq");
-
-        return (_inv <= other._inv);
-    }
+    bool operator<=(array_expansion_domain_t other) { return (_inv <= other._inv); }
 
     bool operator==(array_expansion_domain_t other) { return (_inv <= other._inv && other._inv <= _inv); }
 
-    void operator|=(array_expansion_domain_t other) {
-        CrabStats::count(getDomainName() + ".count.join");
-        ScopedCrabStats __st__(getDomainName() + ".join");
-        _inv |= other._inv;
-    }
+    void operator|=(array_expansion_domain_t other) { _inv |= other._inv; }
 
     array_expansion_domain_t operator|(array_expansion_domain_t other) {
-        CrabStats::count(getDomainName() + ".count.join");
-        ScopedCrabStats __st__(getDomainName() + ".join");
         return array_expansion_domain_t(_inv | other._inv);
     }
 
     array_expansion_domain_t operator&(array_expansion_domain_t other) {
-        CrabStats::count(getDomainName() + ".count.meet");
-        ScopedCrabStats __st__(getDomainName() + ".meet");
 
         return array_expansion_domain_t(_inv & other._inv);
     }
 
     array_expansion_domain_t widen(array_expansion_domain_t other) {
-        CrabStats::count(getDomainName() + ".count.widening");
-        ScopedCrabStats __st__(getDomainName() + ".widening");
 
         return array_expansion_domain_t(_inv.widen(other._inv));
     }
 
     array_expansion_domain_t widening_thresholds(array_expansion_domain_t other, const iterators::thresholds_t& ts) {
-        CrabStats::count(getDomainName() + ".count.widening");
-        ScopedCrabStats __st__(getDomainName() + ".widening");
         return array_expansion_domain_t(_inv.widening_thresholds(other._inv, ts));
     }
 
     array_expansion_domain_t narrow(array_expansion_domain_t other) {
-        CrabStats::count(getDomainName() + ".count.narrowing");
-        ScopedCrabStats __st__(getDomainName() + ".narrowing");
         return array_expansion_domain_t(_inv.narrow(other._inv));
     }
 
     void forget(const variable_vector_t& variables) {
-        CrabStats::count(getDomainName() + ".count.forget");
-        ScopedCrabStats __st__(getDomainName() + ".forget");
 
         if (is_bottom() || is_top()) {
             return;
@@ -621,18 +590,9 @@ class array_expansion_domain final : public writeable {
 
     void normalize() { CRAB_WARN("array expansion normalize not implemented"); }
 
-    void operator+=(linear_constraint_t cst) {
-        CrabStats::count(getDomainName() + ".count.add_constraints");
-        ScopedCrabStats __st__(getDomainName() + ".add_constraints");
-
-        _inv += cst;
-
-        CRAB_LOG("array-expansion", outs() << "assume(" << cst << ")  " << *this << "\n";);
-    }
+    void operator+=(linear_constraint_t cst) { _inv += cst; }
 
     void operator-=(variable_t var) {
-        CrabStats::count(getDomainName() + ".count.forget");
-        ScopedCrabStats __st__(getDomainName() + ".forget");
 
         if (var.is_array_type()) {
             remove_array_map(var);
@@ -641,71 +601,25 @@ class array_expansion_domain final : public writeable {
         }
     }
 
-    void assign(variable_t x, linear_expression_t e) {
-        CrabStats::count(getDomainName() + ".count.assign");
-        ScopedCrabStats __st__(getDomainName() + ".assign");
+    void assign(variable_t x, linear_expression_t e) { _inv.assign(x, e); }
 
-        _inv.assign(x, e);
+    void apply(operation_t op, variable_t x, variable_t y, number_t z) { _inv.apply(op, x, y, z); }
 
-        CRAB_LOG("array-expansion", outs() << "apply " << x << " := " << e << " " << *this << "\n";);
-    }
+    void apply(operation_t op, variable_t x, variable_t y, variable_t z) { _inv.apply(op, x, y, z); }
 
-    void apply(operation_t op, variable_t x, variable_t y, number_t z) {
-        CrabStats::count(getDomainName() + ".count.apply");
-        ScopedCrabStats __st__(getDomainName() + ".apply");
+    void apply(int_conv_operation_t op, variable_t dst, variable_t src) { _inv.apply(op, dst, src); }
 
-        _inv.apply(op, x, y, z);
+    void apply(bitwise_operation_t op, variable_t x, variable_t y, variable_t z) { _inv.apply(op, x, y, z); }
 
-        CRAB_LOG("array-expansion",
-                 outs() << "apply " << x << " := " << y << " " << op << " " << z << " " << *this << "\n";);
-    }
-
-    void apply(operation_t op, variable_t x, variable_t y, variable_t z) {
-        CrabStats::count(getDomainName() + ".count.apply");
-        ScopedCrabStats __st__(getDomainName() + ".apply");
-
-        _inv.apply(op, x, y, z);
-
-        CRAB_LOG("array-expansion",
-                 outs() << "apply " << x << " := " << y << " " << op << " " << z << " " << *this << "\n";);
-    }
-
-    void apply(int_conv_operation_t op, variable_t dst, variable_t src) {
-        CrabStats::count(getDomainName() + ".count.apply");
-        ScopedCrabStats __st__(getDomainName() + ".apply");
-
-        _inv.apply(op, dst, src);
-    }
-
-    void apply(bitwise_operation_t op, variable_t x, variable_t y, variable_t z) {
-        CrabStats::count(getDomainName() + ".count.apply");
-        ScopedCrabStats __st__(getDomainName() + ".apply");
-
-        _inv.apply(op, x, y, z);
-
-        CRAB_LOG("array-expansion",
-                 outs() << "apply " << x << " := " << y << " " << op << " " << z << " " << *this << "\n";);
-    }
-
-    void apply(bitwise_operation_t op, variable_t x, variable_t y, number_t k) {
-        CrabStats::count(getDomainName() + ".count.apply");
-        ScopedCrabStats __st__(getDomainName() + ".apply");
-
-        _inv.apply(op, x, y, k);
-
-        CRAB_LOG("array-expansion",
-                 outs() << "apply " << x << " := " << y << " " << op << " " << k << " " << *this << "\n";);
-    }
+    void apply(bitwise_operation_t op, variable_t x, variable_t y, number_t k) { _inv.apply(op, x, y, k); }
 
     // array_operators_api
 
     // array_init returns a fresh array where all elements between
     // lb_idx and ub_idx are initialized to val. Thus, the first thing
     // we need to do is to kill existing cells.
-    void array_init(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
-                            linear_expression_t ub_idx, linear_expression_t val) {
-        CrabStats::count(getDomainName() + ".count.array_init");
-        ScopedCrabStats __st__(getDomainName() + ".array_init");
+    void array_init(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx, linear_expression_t ub_idx,
+                    linear_expression_t val) {
 
         if (is_bottom())
             return;
@@ -720,8 +634,6 @@ class array_expansion_domain final : public writeable {
     }
 
     void array_load(variable_t lhs, variable_t a, linear_expression_t elem_size, linear_expression_t i) {
-        CrabStats::count(getDomainName() + ".count.array_load");
-        ScopedCrabStats __st__(getDomainName() + ".array_load");
 
         if (is_bottom())
             return;
@@ -768,10 +680,8 @@ class array_expansion_domain final : public writeable {
                  outs() << lhs << ":=" << a << "[" << i << "..." << ub << "]  -- " << *this << "\n";);
     }
 
-    void array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i,
-                             linear_expression_t val, bool /*is_singleton*/) {
-        CrabStats::count(getDomainName() + ".count.array_store");
-        ScopedCrabStats __st__(getDomainName() + ".array_store");
+    void array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i, linear_expression_t val,
+                     bool /*is_singleton*/) {
 
         if (is_bottom())
             return;
@@ -824,7 +734,7 @@ class array_expansion_domain final : public writeable {
 
     // Perform array stores over an array segment
     void array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
-                                   linear_expression_t ub_idx, linear_expression_t val) {
+                           linear_expression_t ub_idx, linear_expression_t val) {
 
         // TODO: this should be an user parameter.
         const number_t max_num_elems = 512;
