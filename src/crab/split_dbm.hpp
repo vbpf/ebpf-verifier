@@ -374,8 +374,6 @@ class SplitDBM final : public writeable {
 
     void normalize();
 
-    void minimize() {}
-
     void operator-=(variable_t v);
 
     void assign(variable_t x, linear_expression_t e);
@@ -422,8 +420,6 @@ class SplitDBM final : public writeable {
     void apply(bitwise_operation_t op, variable_t x, variable_t y, variable_t z);
 
     void apply(bitwise_operation_t op, variable_t x, variable_t y, number_t k);
-
-    void project(const variable_vector_t& variables);
 
     void forget(const variable_vector_t& variables);
 
