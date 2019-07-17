@@ -423,8 +423,6 @@ class SplitDBM final : public writeable {
 
     void forget(const variable_vector_t& variables);
 
-    void expand(variable_t x, variable_t y);
-
     void rename(const variable_vector_t& from, const variable_vector_t& to);
 
     void extract(const variable_t& x, linear_constraint_system_t& csts, bool only_equalities);

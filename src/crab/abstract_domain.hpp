@@ -97,9 +97,6 @@ class abstract_domain : public writeable {
 
     // Forget variables form the abstract domain
     virtual void forget(const variable_vector_t& variables) = 0;
-
-    // Make a new copy of var without relating var with new_var
-    virtual void expand(variable_t var, variable_t new_var) = 0;
 };
 
 template <typename AbsDomain>
