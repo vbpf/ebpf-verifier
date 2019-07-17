@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
             std::cout << raw_prog.section << " ";
         }
         std::cout << "\n";
-        return 64;
+        return list ? 0 : 64;
     }
     raw_program raw_prog = raw_progs.back();
 
