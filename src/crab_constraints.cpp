@@ -264,7 +264,8 @@ class instruction_builder_t final {
  * Each instruction is translated to a tree of Crab instructions, which are then
  * joined together.
  */
-void build_crab_cfg(cfg_t& cfg, variable_factory& vfac, Cfg const& simple_cfg, program_info info) {
+cfg_t build_crab_cfg(variable_factory& vfac, Cfg const& simple_cfg, program_info info) {
+    cfg_t cfg(entry_label());
     machine_t machine(vfac, info);
     {
         auto& entry = cfg.insert(entry_label());
@@ -301,6 +302,7 @@ void build_crab_cfg(cfg_t& cfg, variable_factory& vfac, Cfg const& simple_cfg, p
     if (global_options.simplify) {
         cfg.simplify();
     }
+    return cfg;
 }
 
 static void assert_init(basic_block_t& block, const dom_t data_reg, debug_info di) {
