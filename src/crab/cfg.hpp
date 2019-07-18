@@ -53,6 +53,7 @@
 #include "crab/types.hpp"
 
 #include <functional> // for wrapper_reference
+#include <memory>
 
 namespace crab {
 
@@ -84,8 +85,8 @@ class live_t {
     using live_set_t = std::vector<variable_t>;
 
   public:
-    using const_use_iterator = typename live_set_t::const_iterator;
-    using const_def_iterator = typename live_set_t::const_iterator;
+    using const_use_iterator = live_set_t::const_iterator;
+    using const_def_iterator = live_set_t::const_iterator;
 
   private:
     live_set_t m_uses;
@@ -223,8 +224,6 @@ class statement_t {
 
     virtual void write(crab_os& o) const = 0;
 
-    virtual statement_t* clone() const = 0;
-
     // for gdb
     void dump() const { write(errs()); }
 
@@ -262,8 +261,6 @@ class binary_op_t : public statement_t {
 
     virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t* clone() const { return new binary_op_t(m_lhs, m_op, m_op1, m_op2, this->m_dbg_info); }
-
     virtual void write(crab_os& o) const { o << m_lhs << " = " << m_op1 << m_op << m_op2; }
 
   private:
@@ -287,8 +284,6 @@ class assign_t : public statement_t {
 
     virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t* clone() const { return new assign_t(m_lhs, m_rhs); }
-
     virtual void write(crab_os& o) const {
         o << m_lhs << " = " << m_rhs; // << " " << this->m_live;
     }
@@ -309,8 +304,6 @@ class assume_t : public statement_t {
 
     virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t* clone() const { return new assume_t(m_cst); }
-
     virtual void write(crab_os& o) const {
         o << "assume(" << m_cst << ")"; //  << " " << this->m_live;
     }
@@ -325,8 +318,6 @@ class unreachable_t : public statement_t {
 
     virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t* clone() const { return new unreachable_t(); }
-
     virtual void write(crab_os& o) const { o << "unreachable"; }
 };
 
@@ -337,8 +328,6 @@ class havoc_t : public statement_t {
     variable_t variable() const { return m_lhs; }
 
     virtual void accept(statement_visitor* v) { v->visit(*this); }
-
-    virtual statement_t* clone() const { return new havoc_t(m_lhs); }
 
     void write(crab_os& o) const { o << "havoc(" << m_lhs << ")"; }
 
@@ -376,8 +365,6 @@ class select_t : public statement_t {
 
     virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t* clone() const { return new select_t(m_lhs, m_cond, m_e1, m_e2); }
-
     virtual void write(crab_os& o) const {
         o << m_lhs << " = "
           << "ite(" << m_cond << "," << m_e1 << "," << m_e2 << ")";
@@ -401,8 +388,6 @@ class assert_t : public statement_t {
 
     virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t* clone() const { return new assert_t(m_cst, this->m_dbg_info); }
-
     virtual void write(crab_os& o) const {
         o << "assert(" << m_cst << ")";
         if (this->m_dbg_info.has_debug()) {
@@ -416,7 +401,7 @@ class assert_t : public statement_t {
 
 class int_cast_t : public statement_t {
   public:
-    using bitwidth_t = typename variable_t::bitwidth_t;
+    using bitwidth_t = variable_t::bitwidth_t;
 
     int_cast_t(cast_operation_t op, variable_t src, variable_t dst, debug_info dbg_info = debug_info())
         : statement_t(INT_CAST, dbg_info), m_op(op), m_src(src), m_dst(dst) {
@@ -431,8 +416,6 @@ class int_cast_t : public statement_t {
     bitwidth_t dst_width() const { return m_dst.get_bitwidth(); }
 
     virtual void accept(statement_visitor* v) { v->visit(*this); }
-
-    virtual statement_t* clone() const { return new int_cast_t(m_op, m_src, m_dst, this->m_dbg_info); }
 
     virtual void write(crab_os& o) const {
         // bitwidths are casted to int, otherwise operator<< may try
@@ -504,8 +487,6 @@ class array_init_t : public statement_t {
 
     virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t* clone() const { return new array_init_t(m_arr, m_elem_size, m_lb, m_ub, m_val); }
-
     void write(crab_os& o) const { o << m_arr << "[" << m_lb << "..." << m_ub << "] := " << m_val; }
 
   private:
@@ -557,10 +538,6 @@ class array_store_t : public statement_t {
 
     virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t* clone() const {
-        return new array_store_t(m_arr, m_elem_size, m_lb, m_ub, m_value, m_is_singleton);
-    }
-
     virtual void write(crab_os& o) const {
         if (m_lb.equal(m_ub)) {
             o << "array_store(" << m_arr << "," << m_lb << "," << m_value << ",sz=" << elem_size() << ")";
@@ -608,8 +585,6 @@ class array_load_t : public statement_t {
 
     virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t* clone() const { return new array_load_t(m_lhs, m_array, m_elem_size, m_index); }
-
     virtual void write(crab_os& o) const {
         o << m_lhs << " = "
           << "array_load(" << m_array << "," << m_index << ",sz=" << elem_size() << ")";
@@ -638,7 +613,6 @@ class array_assign_t : public statement_t {
 
     virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual statement_t* clone() const { return new array_assign_t(m_lhs, m_rhs); }
 
     virtual void write(crab_os& o) const { o << m_lhs << " = " << m_rhs; }
 
@@ -656,19 +630,19 @@ class basic_block_t {
 
   private:
     using bb_id_set_t = std::vector<basic_block_label_t>;
-    using stmt_list_t = std::vector<statement_t*>;
+    using stmt_list_t = std::vector<std::unique_ptr<statement_t>>;
 
   public:
     // -- iterators
 
-    using succ_iterator = typename bb_id_set_t::iterator;
-    using const_succ_iterator = typename bb_id_set_t::const_iterator;
+    using succ_iterator = bb_id_set_t::iterator;
+    using const_succ_iterator = bb_id_set_t::const_iterator;
     using pred_iterator = succ_iterator;
     using const_pred_iterator = const_succ_iterator;
-    using iterator = boost::indirect_iterator<typename stmt_list_t::iterator>;
-    using const_iterator = boost::indirect_iterator<typename stmt_list_t::const_iterator>;
-    using reverse_iterator = boost::indirect_iterator<typename stmt_list_t::reverse_iterator>;
-    using const_reverse_iterator = boost::indirect_iterator<typename stmt_list_t::const_reverse_iterator>;
+    using iterator = boost::indirect_iterator<stmt_list_t::iterator>;
+    using const_iterator = boost::indirect_iterator<stmt_list_t::const_iterator>;
+    using reverse_iterator = boost::indirect_iterator<stmt_list_t::reverse_iterator>;
+    using const_reverse_iterator = boost::indirect_iterator<stmt_list_t::const_reverse_iterator>;
     using live_domain_t = discrete_domain<variable_t>;
 
     // -- statements
@@ -699,7 +673,7 @@ class basic_block_t {
         return new basic_block_t(bb_id);
     }
 
-    void update_uses_and_defs(const statement_t* s) {
+    void update_uses_and_defs(const std::unique_ptr<statement_t>& s) {
         auto ls = s->get_live();
         for (auto& v : boost::make_iterator_range(ls.uses_begin(), ls.uses_end())) {
             m_live += v;
@@ -709,37 +683,13 @@ class basic_block_t {
         }
     }
 
-    void insert(statement_t* stmt) {
-        m_ts.push_back(stmt);
+    void insert(std::unique_ptr<statement_t> stmt) {
         update_uses_and_defs(stmt);
+        m_ts.emplace_back(std::move(stmt));
     }
 
   public:
-    // The basic block owns the statements
-    ~basic_block_t() {
-        for (unsigned i = 0, e = m_ts.size(); i < e; ++i) {
-            delete m_ts[i];
-        }
-    }
-
-    basic_block_t* clone() const {
-        // The basic block labels (i.e., identifiers) are not cloned.
-
-        basic_block_t* b = new basic_block_t(label());
-        for (auto& s : boost::make_iterator_range(begin(), end())) {
-            b->m_ts.push_back(s.clone());
-        }
-
-        for (auto id : boost::make_iterator_range(prev_blocks())) {
-            b->m_prev.push_back(id);
-        }
-        for (auto id : boost::make_iterator_range(next_blocks())) {
-            b->m_next.push_back(id);
-        }
-
-        b->m_live = m_live;
-        return b;
-    }
+    ~basic_block_t() = default;
 
     basic_block_label_t label() const { return m_bb_id; }
 
@@ -763,7 +713,7 @@ class basic_block_t {
 
     // Collect the set of uses and definitions of the basic block
     void update_uses_and_defs() {
-        for (const statement_t* s : m_ts) {
+        for (const std::unique_ptr<statement_t>& s : m_ts) {
             update_uses_and_defs(s);
         }
     }
@@ -794,49 +744,12 @@ class basic_block_t {
         remove_adjacent(b.m_prev, m_bb_id);
     }
 
-    // insert all statements of other at the front
-    void copy_front(const basic_block_t& other) {
-        std::vector<statement_t*> cloned_ts;
-        cloned_ts.reserve(other.size());
-        std::transform(other.m_ts.begin(), other.m_ts.end(), std::back_inserter(cloned_ts),
-                       [](const statement_t* s) { return s->clone(); });
-
-        m_ts.insert(m_ts.begin(), cloned_ts.begin(), cloned_ts.end());
-
-        m_live = m_live | other.m_live;
-    }
-
     // insert all statements of other at the back
-    void copy_back(const basic_block_t& other) {
-        std::vector<statement_t*> cloned_ts;
-        cloned_ts.reserve(other.size());
-        std::transform(other.m_ts.begin(), other.m_ts.end(), std::back_inserter(cloned_ts),
-                       [](const statement_t* s) { return s->clone(); });
-
-        m_ts.insert(m_ts.end(), cloned_ts.begin(), cloned_ts.end());
+    void move_back(basic_block_t& other) {
+        m_ts.reserve(m_ts.size() + other.m_ts.size());
+        std::move(other.m_ts.begin(), other.m_ts.end(), std::back_inserter(m_ts));
 
         m_live = m_live | other.m_live;
-    }
-
-    // Remove s (and free) from this
-    void remove(const statement_t* s, bool must_update_uses_and_defs = true) {
-        // remove statement using the remove-erase idiom
-        m_ts.erase(std::remove_if(m_ts.begin(), m_ts.end(), [s](const statement_t* o) { return (o == s); }),
-                   m_ts.end());
-
-        if (must_update_uses_and_defs) {
-            update_uses_and_defs();
-        }
-        delete s;
-    }
-
-    // Pre: old is a statement at position i in this
-    //      new is not part of any basic block.
-    // Post: old is deleted (and freed) and new is at position i in
-    //       the basic block.
-    void replace(statement_t* old_s, statement_t* new_s) {
-        std::replace(m_ts.begin(), m_ts.end(), old_s, new_s);
-        delete old_s;
     }
 
     void write(crab_os& o) const {
@@ -868,118 +781,118 @@ class basic_block_t {
 
     /// To build statements
 
-    void add(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_ADD, op1, op2)); }
+    void add(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_ADD, op1, op2)); }
 
-    void add(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_ADD, op1, op2)); }
+    void add(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_ADD, op1, op2)); }
 
-    void sub(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_SUB, op1, op2)); }
+    void sub(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_SUB, op1, op2)); }
 
-    void sub(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_SUB, op1, op2)); }
+    void sub(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_SUB, op1, op2)); }
 
-    void mul(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_MUL, op1, op2)); }
+    void mul(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_MUL, op1, op2)); }
 
-    void mul(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_MUL, op1, op2)); }
+    void mul(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_MUL, op1, op2)); }
 
     // signed division
-    void div(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_SDIV, op1, op2)); }
+    void div(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_SDIV, op1, op2)); }
 
-    void div(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_SDIV, op1, op2)); }
+    void div(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_SDIV, op1, op2)); }
 
     // unsigned division
-    void udiv(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_UDIV, op1, op2)); }
+    void udiv(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_UDIV, op1, op2)); }
 
-    void udiv(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_UDIV, op1, op2)); }
+    void udiv(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_UDIV, op1, op2)); }
 
     // signed rem
-    void rem(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_SREM, op1, op2)); }
+    void rem(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_SREM, op1, op2)); }
 
-    void rem(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_SREM, op1, op2)); }
+    void rem(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_SREM, op1, op2)); }
 
     // unsigned rem
-    void urem(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_UREM, op1, op2)); }
+    void urem(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_UREM, op1, op2)); }
 
-    void urem(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_UREM, op1, op2)); }
+    void urem(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_UREM, op1, op2)); }
 
     void bitwise_and(variable_t lhs, variable_t op1, variable_t op2) {
-        insert(new binary_op_t(lhs, BINOP_AND, op1, op2));
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_AND, op1, op2));
     }
 
     void bitwise_and(variable_t lhs, variable_t op1, number_t op2) {
-        insert(new binary_op_t(lhs, BINOP_AND, op1, op2));
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_AND, op1, op2));
     }
 
     void bitwise_or(variable_t lhs, variable_t op1, variable_t op2) {
-        insert(new binary_op_t(lhs, BINOP_OR, op1, op2));
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_OR, op1, op2));
     }
 
-    void bitwise_or(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_OR, op1, op2)); }
+    void bitwise_or(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_OR, op1, op2)); }
 
     void bitwise_xor(variable_t lhs, variable_t op1, variable_t op2) {
-        insert(new binary_op_t(lhs, BINOP_XOR, op1, op2));
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_XOR, op1, op2));
     }
 
     void bitwise_xor(variable_t lhs, variable_t op1, number_t op2) {
-        insert(new binary_op_t(lhs, BINOP_XOR, op1, op2));
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_XOR, op1, op2));
     }
 
-    void shl(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_SHL, op1, op2)); }
+    void shl(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_SHL, op1, op2)); }
 
-    void shl(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_SHL, op1, op2)); }
+    void shl(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_SHL, op1, op2)); }
 
-    void lshr(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_LSHR, op1, op2)); }
+    void lshr(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_LSHR, op1, op2)); }
 
-    void lshr(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_LSHR, op1, op2)); }
+    void lshr(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_LSHR, op1, op2)); }
 
-    void ashr(variable_t lhs, variable_t op1, variable_t op2) { insert(new binary_op_t(lhs, BINOP_ASHR, op1, op2)); }
+    void ashr(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_ASHR, op1, op2)); }
 
-    void ashr(variable_t lhs, variable_t op1, number_t op2) { insert(new binary_op_t(lhs, BINOP_ASHR, op1, op2)); }
+    void ashr(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_ASHR, op1, op2)); }
 
-    void assign(variable_t lhs, linear_expression_t rhs) { insert(new assign_t(lhs, rhs)); }
+    void assign(variable_t lhs, linear_expression_t rhs) { insert(std::make_unique<assign_t>(lhs, rhs)); }
 
-    void assume(linear_constraint_t cst) { insert(new assume_t(cst)); }
+    void assume(linear_constraint_t cst) { insert(std::make_unique<assume_t>(cst)); }
 
-    void havoc(variable_t lhs) { insert(new havoc_t(lhs)); }
+    void havoc(variable_t lhs) { insert(std::make_unique<havoc_t>(lhs)); }
 
-    void unreachable() { insert(new unreachable_t()); }
+    void unreachable() { insert(std::make_unique<unreachable_t>()); }
 
     void select(variable_t lhs, variable_t v, linear_expression_t e1, linear_expression_t e2) {
         linear_constraint_t cond(exp_gte(v, 1));
-        insert(new select_t(lhs, cond, e1, e2));
+        insert(std::make_unique<select_t>(lhs, cond, e1, e2));
     }
 
     void select(variable_t lhs, linear_constraint_t cond, linear_expression_t e1, linear_expression_t e2) {
-        insert(new select_t(lhs, cond, e1, e2));
+        insert(std::make_unique<select_t>(lhs, cond, e1, e2));
     }
 
-    void assertion(linear_constraint_t cst, debug_info di = debug_info()) { insert(new assert_t(cst, di)); }
+    void assertion(linear_constraint_t cst, debug_info di = debug_info()) { insert(std::make_unique<assert_t>(cst, di)); }
 
-    void truncate(variable_t src, variable_t dst) { insert(new int_cast_t(CAST_TRUNC, src, dst)); }
+    void truncate(variable_t src, variable_t dst) { insert(std::make_unique<int_cast_t>(CAST_TRUNC, src, dst)); }
 
-    void sext(variable_t src, variable_t dst) { insert(new int_cast_t(CAST_SEXT, src, dst)); }
+    void sext(variable_t src, variable_t dst) { insert(std::make_unique<int_cast_t>(CAST_SEXT, src, dst)); }
 
-    void zext(variable_t src, variable_t dst) { insert(new int_cast_t(CAST_ZEXT, src, dst)); }
+    void zext(variable_t src, variable_t dst) { insert(std::make_unique<int_cast_t>(CAST_ZEXT, src, dst)); }
 
     void array_init(variable_t a, linear_expression_t lb_idx, linear_expression_t ub_idx, linear_expression_t v,
                     linear_expression_t elem_size) {
-        insert(new array_init_t(a, elem_size, lb_idx, ub_idx, v));
+        insert(std::make_unique<array_init_t>(a, elem_size, lb_idx, ub_idx, v));
     }
 
     void array_store(variable_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size,
                      bool is_singleton = false) {
-        insert(new array_store_t(arr, elem_size, idx, idx, v, is_singleton));
+        insert(std::make_unique<array_store_t>(arr, elem_size, idx, idx, v, is_singleton));
     }
 
     void array_store_range(variable_t arr, linear_expression_t lb_idx, linear_expression_t ub_idx,
                            linear_expression_t v, linear_expression_t elem_size) {
-        insert(new array_store_t(arr, elem_size, lb_idx, ub_idx, v, false));
+        insert(std::make_unique<array_store_t>(arr, elem_size, lb_idx, ub_idx, v, false));
     }
 
     void array_load(variable_t lhs, variable_t arr, linear_expression_t idx, linear_expression_t elem_size) {
-        insert(new array_load_t(lhs, arr, elem_size, idx));
+        insert(std::make_unique<array_load_t>(lhs, arr, elem_size, idx));
     }
 
     void array_assign(variable_t lhs, variable_t rhs) {
-        insert(new array_assign_t(lhs, rhs));
+        insert(std::make_unique<array_assign_t>(lhs, rhs));
     }
 
     friend crab_os& operator<<(crab_os& o, const basic_block_t& b) {
@@ -992,13 +905,13 @@ class basic_block_t {
 // backward analysis.
 class basic_block_rev_t {
   public:
-    using succ_iterator = typename basic_block_t::succ_iterator;
-    using const_succ_iterator = typename basic_block_t::const_succ_iterator;
+    using succ_iterator = basic_block_t::succ_iterator;
+    using const_succ_iterator = basic_block_t::const_succ_iterator;
     using pred_iterator = succ_iterator;
     using const_pred_iterator = const_succ_iterator;
 
-    using iterator = typename basic_block_t::reverse_iterator;
-    using const_iterator = typename basic_block_t::const_reverse_iterator;
+    using iterator = basic_block_t::reverse_iterator;
+    using const_iterator = basic_block_t::const_reverse_iterator;
     using live_domain_t = discrete_domain<variable_t>;
 
   private:
@@ -1064,10 +977,10 @@ class cfg_t {
   public:
     using node_t = basic_block_label_t; // for Bgl graphs
 
-    using succ_iterator = typename basic_block_t::succ_iterator;
-    using pred_iterator = typename basic_block_t::pred_iterator;
-    using const_succ_iterator = typename basic_block_t::const_succ_iterator;
-    using const_pred_iterator = typename basic_block_t::const_pred_iterator;
+    using succ_iterator = basic_block_t::succ_iterator;
+    using pred_iterator = basic_block_t::pred_iterator;
+    using const_succ_iterator = basic_block_t::const_succ_iterator;
+    using const_pred_iterator = basic_block_t::const_pred_iterator;
 
     using succ_range = boost::iterator_range<succ_iterator>;
     using pred_range = boost::iterator_range<pred_iterator>;
@@ -1076,8 +989,8 @@ class cfg_t {
 
   private:
     using basic_block_map_t = boost::unordered_map<basic_block_label_t, basic_block_t*>;
-    using binding_t = typename basic_block_map_t::value_type;
-    using live_domain_t = typename basic_block_t::live_domain_t;
+    using binding_t = basic_block_map_t::value_type;
+    using live_domain_t = basic_block_t::live_domain_t;
 
     struct get_ref : public std::unary_function<binding_t, basic_block_t> {
         get_ref() {}
@@ -1090,13 +1003,13 @@ class cfg_t {
     };
 
   public:
-    using iterator = boost::transform_iterator<get_ref, typename basic_block_map_t::iterator>;
-    using const_iterator = boost::transform_iterator<get_ref, typename basic_block_map_t::const_iterator>;
-    using label_iterator = boost::transform_iterator<get_label, typename basic_block_map_t::iterator>;
-    using const_label_iterator = boost::transform_iterator<get_label, typename basic_block_map_t::const_iterator>;
+    using iterator = boost::transform_iterator<get_ref, basic_block_map_t::iterator>;
+    using const_iterator = boost::transform_iterator<get_ref, basic_block_map_t::const_iterator>;
+    using label_iterator = boost::transform_iterator<get_label, basic_block_map_t::iterator>;
+    using const_label_iterator = boost::transform_iterator<get_label, basic_block_map_t::const_iterator>;
 
-    using var_iterator = typename std::vector<varname_t>::iterator;
-    using const_var_iterator = typename std::vector<varname_t>::const_iterator;
+    using var_iterator = std::vector<varname_t>::iterator;
+    using const_var_iterator = std::vector<varname_t>::const_iterator;
 
   private:
     basic_block_label_t m_entry;
@@ -1358,7 +1271,7 @@ class cfg_t {
             // Merge with its parent if it's its only child.
             if (has_one_child(parent.label())) {
                 // move all statements from cur to parent
-                parent.copy_back(cur);
+                parent.move_back(cur);
                 visited.erase(curId);
                 remove(curId);
                 parent >> child;
@@ -1417,22 +1330,22 @@ class cfg_ref_t {
 
   public:
     // CFG's typedefs
-    using node_t = typename CFG::node_t;
+    using node_t = CFG::node_t;
 
-    using succ_iterator = typename CFG::succ_iterator;
-    using pred_iterator = typename CFG::pred_iterator;
-    using const_succ_iterator = typename CFG::const_succ_iterator;
-    using const_pred_iterator = typename CFG::const_pred_iterator;
-    using succ_range = typename CFG::succ_range;
-    using pred_range = typename CFG::pred_range;
-    using const_succ_range = typename CFG::const_succ_range;
-    using const_pred_range = typename CFG::const_pred_range;
-    using iterator = typename CFG::iterator;
-    using const_iterator = typename CFG::const_iterator;
-    using label_iterator = typename CFG::label_iterator;
-    using const_label_iterator = typename CFG::const_label_iterator;
-    using var_iterator = typename CFG::var_iterator;
-    using const_var_iterator = typename CFG::const_var_iterator;
+    using succ_iterator = CFG::succ_iterator;
+    using pred_iterator = CFG::pred_iterator;
+    using const_succ_iterator = CFG::const_succ_iterator;
+    using const_pred_iterator = CFG::const_pred_iterator;
+    using succ_range = CFG::succ_range;
+    using pred_range = CFG::pred_range;
+    using const_succ_range = CFG::const_succ_range;
+    using const_pred_range = CFG::const_pred_range;
+    using iterator = CFG::iterator;
+    using const_iterator = CFG::const_iterator;
+    using label_iterator = CFG::label_iterator;
+    using const_label_iterator = CFG::const_label_iterator;
+    using var_iterator = CFG::var_iterator;
+    using const_var_iterator = CFG::const_var_iterator;
 
   private:
     std::optional<std::reference_wrapper<CFG>> _ref;
@@ -1558,13 +1471,6 @@ class cfg_ref_t {
         assert(_ref);
         (*_ref).get().simplify();
     }
-
-    // #include <boost/fusion/functional/invocation/invoke.hpp>
-    // template< class... ArgTypes >
-    // typename std::result_of<CFG&(ArgTypes&&...)>::type
-    // operator() ( ArgTypes&&... args ) const {
-    //   return boost::fusion::invoke(get(), std::forward<ArgTypes>(args)...);
-    // }
 };
 
 // Viewing a CFG with all edges and block statements
@@ -1573,16 +1479,16 @@ class cfg_rev_t {
   public:
     using node_t = basic_block_label_t; // for Bgl graphs
 
-    using pred_range = typename cfg_ref_t::succ_range;
-    using succ_range = typename cfg_ref_t::pred_range;
-    using const_pred_range = typename cfg_ref_t::const_succ_range;
-    using const_succ_range = typename cfg_ref_t::const_pred_range;
+    using pred_range = cfg_ref_t::succ_range;
+    using succ_range = cfg_ref_t::pred_range;
+    using const_pred_range = cfg_ref_t::const_succ_range;
+    using const_succ_range = cfg_ref_t::const_pred_range;
 
     // For BGL
-    using succ_iterator = typename basic_block_t::succ_iterator;
-    using pred_iterator = typename basic_block_t::pred_iterator;
-    using const_succ_iterator = typename basic_block_t::const_succ_iterator;
-    using const_pred_iterator = typename basic_block_t::const_pred_iterator;
+    using succ_iterator = basic_block_t::succ_iterator;
+    using pred_iterator = basic_block_t::pred_iterator;
+    using const_succ_iterator = basic_block_t::const_succ_iterator;
+    using const_pred_iterator = basic_block_t::const_pred_iterator;
 
   private:
     struct getRev : public std::unary_function<basic_block_t, basic_block_rev_t> {
