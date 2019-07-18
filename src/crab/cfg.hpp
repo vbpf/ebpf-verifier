@@ -58,8 +58,6 @@ namespace crab {
 
 // To convert a basic block label to a string
 inline std::string get_label_str(std::string e) { return e; };
-// The values must be such that NUM <= PTR <= ARR
-enum tracked_precision { NUM = 0, PTR = 1, ARR = 2 };
 
 enum stmt_code {
     UNDEF = 0,
@@ -679,7 +677,6 @@ class basic_block_t {
     basic_block_label_t m_bb_id;
     stmt_list_t m_ts;
     bb_id_set_t m_prev, m_next;
-    tracked_precision m_track_prec;
     // set of used/def variables
     live_domain_t m_live{live_domain_t::bottom()};
 
@@ -695,11 +692,11 @@ class basic_block_t {
         }
     }
 
-    basic_block_t(basic_block_label_t bb_id, tracked_precision track_prec)
-        : m_bb_id(bb_id), m_track_prec(track_prec) {}
+    basic_block_t(basic_block_label_t bb_id)
+        : m_bb_id(bb_id) {}
 
-    static basic_block_t* create(basic_block_label_t bb_id, tracked_precision prec) {
-        return new basic_block_t(bb_id, prec);
+    static basic_block_t* create(basic_block_label_t bb_id) {
+        return new basic_block_t(bb_id);
     }
 
     void update_uses_and_defs(const statement_t* s) {
@@ -728,7 +725,7 @@ class basic_block_t {
     basic_block_t* clone() const {
         // The basic block labels (i.e., identifiers) are not cloned.
 
-        basic_block_t* b = new basic_block_t(label(), m_track_prec);
+        basic_block_t* b = new basic_block_t(label());
         for (auto& s : boost::make_iterator_range(begin(), end())) {
             b->m_ts.push_back(s.clone());
         }
@@ -964,35 +961,25 @@ class basic_block_t {
 
     void array_init(variable_t a, linear_expression_t lb_idx, linear_expression_t ub_idx, linear_expression_t v,
                     linear_expression_t elem_size) {
-        if (m_track_prec == ARR) {
-            insert(new array_init_t(a, elem_size, lb_idx, ub_idx, v));
-        }
+        insert(new array_init_t(a, elem_size, lb_idx, ub_idx, v));
     }
 
     void array_store(variable_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size,
                      bool is_singleton = false) {
-        if (m_track_prec == ARR) {
-            insert(new array_store_t(arr, elem_size, idx, idx, v, is_singleton));
-        }
+        insert(new array_store_t(arr, elem_size, idx, idx, v, is_singleton));
     }
 
     void array_store_range(variable_t arr, linear_expression_t lb_idx, linear_expression_t ub_idx,
                            linear_expression_t v, linear_expression_t elem_size) {
-        if (m_track_prec == ARR) {
-            insert(new array_store_t(arr, elem_size, lb_idx, ub_idx, v, false));
-        }
+        insert(new array_store_t(arr, elem_size, lb_idx, ub_idx, v, false));
     }
 
     void array_load(variable_t lhs, variable_t arr, linear_expression_t idx, linear_expression_t elem_size) {
-        if (m_track_prec == ARR) {
-            insert(new array_load_t(lhs, arr, elem_size, idx));
-        }
+        insert(new array_load_t(lhs, arr, elem_size, idx));
     }
 
     void array_assign(variable_t lhs, variable_t rhs) {
-        if (m_track_prec == ARR) {
-            insert(new array_assign_t(lhs, rhs));
-        }
+        insert(new array_assign_t(lhs, rhs));
     }
 
     friend crab_os& operator<<(crab_os& o, const basic_block_t& b) {
@@ -1117,7 +1104,6 @@ class cfg_t {
     basic_block_label_t m_entry;
     std::optional<basic_block_label_t> m_exit;
     basic_block_map_t m_blocks;
-    tracked_precision m_track_prec;
 
     using visited_t = boost::unordered_set<basic_block_label_t>;
     template <typename T>
@@ -1145,14 +1131,14 @@ class cfg_t {
     };
 
   public:
-    cfg_t(basic_block_label_t entry, tracked_precision track_prec = NUM)
-        : m_entry(entry), m_exit(std::nullopt), m_track_prec(track_prec) {
-        m_blocks.insert(binding_t(m_entry, basic_block_t::create(m_entry, m_track_prec)));
+    cfg_t(basic_block_label_t entry)
+        : m_entry(entry), m_exit(std::nullopt) {
+        m_blocks.insert(binding_t(m_entry, basic_block_t::create(m_entry)));
     }
 
-    cfg_t(basic_block_label_t entry, basic_block_label_t exit, tracked_precision track_prec = NUM)
-        : m_entry(entry), m_exit(exit), m_track_prec(track_prec) {
-        m_blocks.insert(binding_t(m_entry, basic_block_t::create(m_entry, m_track_prec)));
+    cfg_t(basic_block_label_t entry, basic_block_label_t exit)
+        : m_entry(entry), m_exit(exit) {
+        m_blocks.insert(binding_t(m_entry, basic_block_t::create(m_entry)));
     }
 
     // The cfg_t owns the basic blocks
@@ -1161,8 +1147,6 @@ class cfg_t {
             delete kv.second;
         }
     }
-
-    tracked_precision get_track_prec() const { return m_track_prec; }
 
     bool has_exit() const { return (bool)m_exit; }
 
@@ -1225,7 +1209,7 @@ class cfg_t {
         if (it != m_blocks.end())
             return *(it->second);
 
-        basic_block_t* block = basic_block_t::create(bb_id, m_track_prec);
+        basic_block_t* block = basic_block_t::create(bb_id);
         m_blocks.insert(binding_t(bb_id, block));
         return *block;
     }
