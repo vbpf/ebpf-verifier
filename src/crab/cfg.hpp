@@ -76,48 +76,6 @@ enum stmt_code {
     HAVOC = 60,
 };
 
-class live_t {
-  private:
-    using live_set_t = std::vector<variable_t>;
-
-  public:
-    using const_use_iterator = live_set_t::const_iterator;
-    using const_def_iterator = live_set_t::const_iterator;
-
-  private:
-    live_set_t m_uses;
-    live_set_t m_defs;
-
-    void add(live_set_t& s, variable_t v) {
-        auto it = find(s.begin(), s.end(), v);
-        if (it == s.end())
-            s.push_back(v);
-    }
-
-  public:
-    void add_use(const variable_t v) { add(m_uses, v); }
-    void add_def(const variable_t v) { add(m_defs, v); }
-
-    const_use_iterator uses_begin() const { return m_uses.begin(); }
-    const_use_iterator uses_end() const { return m_uses.end(); }
-    const_use_iterator defs_begin() const { return m_defs.begin(); }
-    const_use_iterator defs_end() const { return m_defs.end(); }
-
-    size_t num_uses() const { return m_uses.size(); }
-    size_t num_defs() const { return m_defs.size(); }
-
-    friend crab_os& operator<<(crab_os& o, const live_t& live) {
-        o << "Use={";
-        for (auto const& v : boost::make_iterator_range(live.uses_begin(), live.uses_end()))
-            o << v << ",";
-        o << "} Def={";
-        for (auto const& v : boost::make_iterator_range(live.defs_begin(), live.defs_end()))
-            o << v << ",";
-        o << "}";
-        return o;
-    }
-};
-
 struct debug_info {
 
     std::string m_file;
@@ -188,7 +146,6 @@ struct statement_visitor {
 
 class statement_t {
   protected:
-    live_t m_live;
     stmt_code m_t_code;
     debug_info m_dbg_info;
 
@@ -199,7 +156,6 @@ class statement_t {
 
     bool is_assume() const { return (m_t_code == ASSUME); }
     bool is_assert() const { return (m_t_code == ASSERT); }
-    const live_t& get_live() const { return m_live; }
 
     const debug_info& get_debug_info() const { return m_dbg_info; }
 
@@ -225,13 +181,6 @@ class binary_op_t : public statement_t {
     binary_op_t(variable_t lhs, binary_operation_t op, linear_expression_t op1, linear_expression_t op2,
                 debug_info dbg_info = debug_info())
         : statement_t(BIN_OP, dbg_info), m_lhs(lhs), m_op(op), m_op1(op1), m_op2(op2) {
-        this->m_live.add_def(m_lhs);
-        for (auto v : m_op1.variables()) {
-            this->m_live.add_use(v);
-        }
-        for (auto v : m_op2.variables()) {
-            this->m_live.add_use(v);
-        }
     }
 
     variable_t lhs() const { return m_lhs; }
@@ -256,9 +205,6 @@ class binary_op_t : public statement_t {
 class assign_t : public statement_t {
   public:
     assign_t(variable_t lhs, linear_expression_t rhs) : statement_t(ASSIGN), m_lhs(lhs), m_rhs(rhs) {
-        this->m_live.add_def(m_lhs);
-        for (auto v : m_rhs.variables())
-            this->m_live.add_use(v);
     }
 
     variable_t lhs() const { return m_lhs; }
@@ -268,7 +214,7 @@ class assign_t : public statement_t {
     virtual void accept(statement_visitor* v) { v->visit(*this); }
 
     virtual void write(crab_os& o) const {
-        o << m_lhs << " = " << m_rhs; // << " " << this->m_live;
+        o << m_lhs << " = " << m_rhs;
     }
 
   private:
@@ -279,8 +225,6 @@ class assign_t : public statement_t {
 class assume_t : public statement_t {
   public:
     assume_t(linear_constraint_t cst) : statement_t(ASSUME), m_cst(cst) {
-        for (auto v : cst.variables())
-            this->m_live.add_use(v);
     }
 
     linear_constraint_t constraint() const { return m_cst; }
@@ -288,7 +232,7 @@ class assume_t : public statement_t {
     virtual void accept(statement_visitor* v) { v->visit(*this); }
 
     virtual void write(crab_os& o) const {
-        o << "assume(" << m_cst << ")"; //  << " " << this->m_live;
+        o << "assume(" << m_cst << ")";
     }
 
   private:
@@ -297,7 +241,7 @@ class assume_t : public statement_t {
 
 class havoc_t : public statement_t {
   public:
-    havoc_t(variable_t lhs) : statement_t(HAVOC), m_lhs(lhs) { this->m_live.add_def(m_lhs); }
+    havoc_t(variable_t lhs) : statement_t(HAVOC), m_lhs(lhs) { }
 
     variable_t variable() const { return m_lhs; }
 
@@ -320,13 +264,6 @@ class select_t : public statement_t {
   public:
     select_t(variable_t lhs, linear_constraint_t cond, linear_expression_t e1, linear_expression_t e2)
         : statement_t(SELECT), m_lhs(lhs), m_cond(cond), m_e1(e1), m_e2(e2) {
-        this->m_live.add_def(m_lhs);
-        for (auto v : m_cond.variables())
-            this->m_live.add_use(v);
-        for (auto v : m_e1.variables())
-            this->m_live.add_use(v);
-        for (auto v : m_e2.variables())
-            this->m_live.add_use(v);
     }
 
     variable_t lhs() const { return m_lhs; }
@@ -354,8 +291,6 @@ class select_t : public statement_t {
 class assert_t : public statement_t {
   public:
     assert_t(linear_constraint_t cst, debug_info dbg_info = debug_info()) : statement_t(ASSERT, dbg_info), m_cst(cst) {
-        for (auto v : cst.variables())
-            this->m_live.add_use(v);
     }
 
     linear_constraint_t constraint() const { return m_cst; }
@@ -401,20 +336,6 @@ class array_init_t : public statement_t {
     array_init_t(variable_t arr, linear_expression_t elem_size, linear_expression_t lb, linear_expression_t ub,
                  linear_expression_t val)
         : statement_t(ARR_INIT), m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_val(val) {
-
-        this->m_live.add_def(m_arr);
-        for (auto v : m_elem_size.variables()) {
-            this->m_live.add_use(v);
-        }
-        for (auto v : m_lb.variables()) {
-            this->m_live.add_use(v);
-        }
-        for (auto v : m_ub.variables()) {
-            this->m_live.add_use(v);
-        }
-        for (auto v : m_val.variables()) {
-            this->m_live.add_use(v);
-        }
     }
 
     variable_t array() const { return m_arr; }
@@ -451,19 +372,6 @@ class array_store_t : public statement_t {
         : statement_t(ARR_STORE), m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_value(value),
           m_is_singleton(is_singleton) {
 
-        this->m_live.add_def(m_arr);
-        for (auto v : m_elem_size.variables()) {
-            this->m_live.add_use(v);
-        }
-        for (auto v : m_lb.variables()) {
-            this->m_live.add_use(v);
-        }
-        for (auto v : m_ub.variables()) {
-            this->m_live.add_use(v);
-        }
-        for (auto v : m_value.variables()) {
-            this->m_live.add_use(v);
-        }
     }
 
     variable_t array() const { return m_arr; }
@@ -506,15 +414,6 @@ class array_load_t : public statement_t {
   public:
     array_load_t(variable_t lhs, variable_t arr, linear_expression_t elem_size, linear_expression_t index)
         : statement_t(ARR_LOAD), m_lhs(lhs), m_array(arr), m_elem_size(elem_size), m_index(index) {
-
-        this->m_live.add_def(lhs);
-        this->m_live.add_use(m_array);
-        for (auto v : m_elem_size.variables()) {
-            this->m_live.add_use(v);
-        }
-        for (auto v : m_index.variables()) {
-            this->m_live.add_use(v);
-        }
     }
 
     variable_t lhs() const { return m_lhs; }
@@ -545,8 +444,6 @@ class array_assign_t : public statement_t {
     //! a = b
   public:
     array_assign_t(variable_t lhs, variable_t rhs) : statement_t(ARR_ASSIGN), m_lhs(lhs), m_rhs(rhs) {
-        this->m_live.add_def(lhs);
-        this->m_live.add_use(rhs);
     }
 
     variable_t lhs() const { return m_lhs; }
@@ -586,7 +483,6 @@ class basic_block_t {
     using const_iterator = boost::indirect_iterator<stmt_list_t::const_iterator>;
     using reverse_iterator = boost::indirect_iterator<stmt_list_t::reverse_iterator>;
     using const_reverse_iterator = boost::indirect_iterator<stmt_list_t::const_reverse_iterator>;
-    using live_domain_t = discrete_domain<variable_t>;
 
     // -- statements
 
@@ -594,8 +490,6 @@ class basic_block_t {
     basic_block_label_t m_bb_id;
     stmt_list_t m_ts;
     bb_id_set_t m_prev, m_next;
-    // set of used/def variables
-    live_domain_t m_live{live_domain_t::bottom()};
 
     void insert_adjacent(bb_id_set_t& c, basic_block_label_t e) {
         if (std::find(c.begin(), c.end(), e) == c.end()) {
@@ -612,22 +506,11 @@ class basic_block_t {
     basic_block_t(const basic_block_label_t bb_id) : m_bb_id(bb_id) {}
 
     basic_block_t(basic_block_t&& bb)
-        : m_bb_id(bb.label()), m_ts(std::move(bb.m_ts)), m_prev(bb.m_prev), m_next(bb.m_next), m_live(bb.m_live) {}
+        : m_bb_id(bb.label()), m_ts(std::move(bb.m_ts)), m_prev(bb.m_prev), m_next(bb.m_next) {}
 
     static basic_block_t* create(basic_block_label_t bb_id) { return new basic_block_t(bb_id); }
 
-    void update_uses_and_defs(const std::unique_ptr<statement_t>& s) {
-        auto ls = s->get_live();
-        for (auto& v : boost::make_iterator_range(ls.uses_begin(), ls.uses_end())) {
-            m_live += v;
-        }
-        for (auto& v : boost::make_iterator_range(ls.defs_begin(), ls.defs_end())) {
-            m_live += v;
-        }
-    }
-
     void insert(std::unique_ptr<statement_t> stmt) {
-        update_uses_and_defs(stmt);
         m_ts.emplace_back(std::move(stmt));
     }
 
@@ -649,17 +532,6 @@ class basic_block_t {
     const_reverse_iterator rend() const { return boost::make_indirect_iterator(m_ts.rend()); }
 
     size_t size() const { return std::distance(begin(), end()); }
-
-    live_domain_t& live() { return m_live; }
-
-    const live_domain_t& live() const { return m_live; }
-
-    // Collect the set of uses and definitions of the basic block
-    void update_uses_and_defs() {
-        for (const std::unique_ptr<statement_t>& s : m_ts) {
-            update_uses_and_defs(s);
-        }
-    }
 
     void accept(statement_visitor* v) { v->visit(*this); }
 
@@ -691,8 +563,6 @@ class basic_block_t {
     void move_back(basic_block_t& other) {
         m_ts.reserve(m_ts.size() + other.m_ts.size());
         std::move(other.m_ts.begin(), other.m_ts.end(), std::back_inserter(m_ts));
-
-        m_live = m_live | other.m_live;
     }
 
     void write(crab_os& o) const {
@@ -889,7 +759,6 @@ class basic_block_rev_t {
 
     using iterator = basic_block_t::reverse_iterator;
     using const_iterator = basic_block_t::const_reverse_iterator;
-    using live_domain_t = discrete_domain<variable_t>;
 
   private:
 
@@ -913,10 +782,6 @@ class basic_block_rev_t {
     std::size_t size() const { return std::distance(begin(), end()); }
 
     void accept(statement_visitor* v) { v->visit(*this); }
-
-    live_domain_t& live() { return _bb.live(); }
-
-    live_domain_t live() const { return _bb.live(); }
 
     std::pair<succ_iterator, succ_iterator> next_blocks() { return _bb.prev_blocks(); }
 
@@ -968,7 +833,6 @@ class cfg_t {
   private:
     using basic_block_map_t = std::unordered_map<basic_block_label_t, std::unique_ptr<basic_block_t>>;
     using binding_t = basic_block_map_t::value_type;
-    using live_domain_t = basic_block_t::live_domain_t;
 
     struct get_ref : public std::unary_function<binding_t, basic_block_t> {
         get_ref() {}
