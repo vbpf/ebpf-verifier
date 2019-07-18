@@ -92,18 +92,15 @@ class cell_t {
     cell_t(offset_t offset, unsigned size) : _offset(offset), _size(size) {}
 
     static interval_t to_interval(const offset_t o, unsigned size) {
-        interval_t i(o.index(), o.index() + size - 1);
-        return i;
+        return {o.index(), o.index() + size - 1};
     }
 
-    interval_t to_interval() const { return to_interval(get_offset(), get_size()); }
+    interval_t to_interval() const { return to_interval(_offset, _size); }
 
   public:
-    bool is_null() const { return (_offset.index() == 0 && _size == 0); }
+    bool is_null() const { return _offset.index() == 0 && _size == 0; }
 
     offset_t get_offset() const { return _offset; }
-
-    size_t get_size() const { return _size; }
 
     bool has_scalar() const { return (bool)_scalar; }
 
@@ -114,25 +111,14 @@ class cell_t {
         return *_scalar;
     }
 
-    // inclusion test
-    bool operator<=(const cell_t& o) const {
-        interval_t x = to_interval();
-        interval_t y = o.to_interval();
-        return x <= y;
-    }
-
     // ignore the scalar variable
-    bool operator==(const cell_t& o) const { return (get_offset() == o.get_offset() && get_size() == o.get_size()); }
+    bool operator==(const cell_t& o) const { return to_interval() == o.to_interval(); }
 
     // ignore the scalar variable
     bool operator<(const cell_t& o) const {
-        if (get_offset() < o.get_offset()) {
-            return true;
-        } else if (get_offset() == o.get_offset()) {
-            return get_size() < o.get_size();
-        } else {
-            return false;
-        }
+        if (_offset == o._offset)
+            return _size < o._size;
+        return _offset < o._offset;
     }
 
     // Return true if [o, o+size) definitely overlaps with the cell,
@@ -257,11 +243,6 @@ class offset_map_t {
         }
     };
 
-    // patricia_tree_t apply_operation(binary_op_t &o, patricia_tree_t t1, patricia_tree_t t2) {
-    //     t1.merge_with(t2, o);
-    //     return t1;
-    // }
-
     class join_op : public binary_op_t {
         // apply is called when two bindings (one each from a
         // different map) have the same key(i.e., offset).
@@ -276,8 +257,7 @@ class offset_map_t {
         std::pair<bool, std::optional<cell_set_t>> apply(cell_set_t x, cell_set_t y) {
             return {false, cell_set_impl::set_intersection(x, y)};
         }
-        // if one map does not have a key in the other map we ignore
-        // it.
+        // if one map does not have a key in the other map we ignore it.
         bool default_is_absorbing() { return true; }
     };
 
@@ -299,8 +279,7 @@ class offset_map_t {
 
     static variable_type_t get_array_element_type(variable_type_t array_type) { return INT_TYPE; }
 
-    // global state to map the same triple of array, offset and size
-    // to same index
+    // global state to map the same triple of array, offset and size to same index
     static std::map<std::pair<index_t, std::pair<offset_t, unsigned>>, index_t> _index_map;
 
     index_t get_index(variable_t a, offset_t o, unsigned size) {
@@ -328,20 +307,6 @@ class offset_map_t {
         domain_po po;
         return _map.leq(o._map, po);
     }
-
-    // // set union: if two cells with same offset do not agree on
-    // // size then they are ignored.
-    // offset_map_t operator|(const offset_map_t &o) {
-    //     join_op op;
-    //     return offset_map_t(apply_operation(op, _map, o._map));
-    // }
-
-    // // set intersection: if two cells with same offset do not agree
-    // // on size then they are ignored.
-    // offset_map_t operator&(const offset_map_t &o) {
-    //     meet_op op;
-    //     return offset_map_t(apply_operation(op, _map, o._map));
-    // }
 
     void operator-=(const cell_t& c) { remove_cell(c); }
 
@@ -410,17 +375,6 @@ class offset_map_t {
     static offset_map_t bottom() { return offset_map_t(); }
     static offset_map_t top() { return offset_map_t(); }
 };
-
-// /* for debugging */
-// namespace array_expansion_domain_impl{
-//   template<typename AbsDomain>
-//   inline void print_size(const AbsDomain& dom) {}
-
-//   template<typename N, typename V>
-//   inline void print_size(const domains::SplitDBM<N,V>& dom) {
-//     outs() << "(" << dom.size().first << "," << dom.size().second << ")";
-//   }
-// }
 
 template <typename NumAbsDomain>
 class array_expansion_domain final : public writeable {
