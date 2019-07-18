@@ -312,15 +312,6 @@ class assert_t : public statement_t {
   Array statements
 */
 
-// XXX: the array statements array_init_t, array_store_t,
-// and array_load_t take as one of their template parameters
-// number_t which is the type for the array indexes. Although array
-// indexes should be always integers we keep it as a template
-// parameter in case an analysis over a type different from
-// integers (e.g., reals) is done. Note that we don't allow mixing
-// non-integers and integers so we cannot have analysis where all
-// variables are non-integers except array indexes.
-//
 // Each of these statements requires an element size, that is, the
 // number of bytes that are being accessed. If the front-end is
 // LLVM, then the element size is always known at compilation
@@ -510,8 +501,9 @@ class basic_block_t {
 
     static basic_block_t* create(basic_block_label_t bb_id) { return new basic_block_t(bb_id); }
 
-    void insert(std::unique_ptr<statement_t> stmt) {
-        m_ts.emplace_back(std::move(stmt));
+    template <typename T, typename... Args>
+    void insert(Args&&... args) {
+        m_ts.emplace_back(std::make_unique<T>(std::forward<Args>(args)...));
     }
 
   public:
@@ -595,152 +587,152 @@ class basic_block_t {
     /// To build statements
 
     void add(variable_t lhs, variable_t op1, variable_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_ADD, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_ADD, op1, op2);
     }
 
     void add(variable_t lhs, variable_t op1, number_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_ADD, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_ADD, op1, op2);
     }
 
     void sub(variable_t lhs, variable_t op1, variable_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_SUB, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_SUB, op1, op2);
     }
 
     void sub(variable_t lhs, variable_t op1, number_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_SUB, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_SUB, op1, op2);
     }
 
     void mul(variable_t lhs, variable_t op1, variable_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_MUL, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_MUL, op1, op2);
     }
 
     void mul(variable_t lhs, variable_t op1, number_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_MUL, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_MUL, op1, op2);
     }
 
     // signed division
     void div(variable_t lhs, variable_t op1, variable_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_SDIV, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_SDIV, op1, op2);
     }
 
     void div(variable_t lhs, variable_t op1, number_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_SDIV, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_SDIV, op1, op2);
     }
 
     // unsigned division
     void udiv(variable_t lhs, variable_t op1, variable_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_UDIV, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_UDIV, op1, op2);
     }
 
     void udiv(variable_t lhs, variable_t op1, number_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_UDIV, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_UDIV, op1, op2);
     }
 
     // signed rem
     void rem(variable_t lhs, variable_t op1, variable_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_SREM, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_SREM, op1, op2);
     }
 
     void rem(variable_t lhs, variable_t op1, number_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_SREM, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_SREM, op1, op2);
     }
 
     // unsigned rem
     void urem(variable_t lhs, variable_t op1, variable_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_UREM, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_UREM, op1, op2);
     }
 
     void urem(variable_t lhs, variable_t op1, number_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_UREM, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_UREM, op1, op2);
     }
 
     void bitwise_and(variable_t lhs, variable_t op1, variable_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_AND, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_AND, op1, op2);
     }
 
     void bitwise_and(variable_t lhs, variable_t op1, number_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_AND, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_AND, op1, op2);
     }
 
     void bitwise_or(variable_t lhs, variable_t op1, variable_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_OR, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_OR, op1, op2);
     }
 
     void bitwise_or(variable_t lhs, variable_t op1, number_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_OR, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_OR, op1, op2);
     }
 
     void bitwise_xor(variable_t lhs, variable_t op1, variable_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_XOR, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_XOR, op1, op2);
     }
 
     void bitwise_xor(variable_t lhs, variable_t op1, number_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_XOR, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_XOR, op1, op2);
     }
 
     void shl(variable_t lhs, variable_t op1, variable_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_SHL, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_SHL, op1, op2);
     }
 
     void shl(variable_t lhs, variable_t op1, number_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_SHL, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_SHL, op1, op2);
     }
 
     void lshr(variable_t lhs, variable_t op1, variable_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_LSHR, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_LSHR, op1, op2);
     }
 
     void lshr(variable_t lhs, variable_t op1, number_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_LSHR, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_LSHR, op1, op2);
     }
 
     void ashr(variable_t lhs, variable_t op1, variable_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_ASHR, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_ASHR, op1, op2);
     }
 
     void ashr(variable_t lhs, variable_t op1, number_t op2) {
-        insert(std::make_unique<binary_op_t>(lhs, BINOP_ASHR, op1, op2));
+        insert<binary_op_t>(lhs, BINOP_ASHR, op1, op2);
     }
 
-    void assign(variable_t lhs, linear_expression_t rhs) { insert(std::make_unique<assign_t>(lhs, rhs)); }
+    void assign(variable_t lhs, linear_expression_t rhs) { insert<assign_t>(lhs, rhs); }
 
-    void assume(linear_constraint_t cst) { insert(std::make_unique<assume_t>(cst)); }
+    void assume(linear_constraint_t cst) { insert<assume_t>(cst); }
 
-    void havoc(variable_t lhs) { insert(std::make_unique<havoc_t>(lhs)); }
+    void havoc(variable_t lhs) { insert<havoc_t>(lhs); }
 
     void select(variable_t lhs, variable_t v, linear_expression_t e1, linear_expression_t e2) {
         linear_constraint_t cond(exp_gte(v, 1));
-        insert(std::make_unique<select_t>(lhs, cond, e1, e2));
+        insert<select_t>(lhs, cond, e1, e2);
     }
 
     void select(variable_t lhs, linear_constraint_t cond, linear_expression_t e1, linear_expression_t e2) {
-        insert(std::make_unique<select_t>(lhs, cond, e1, e2));
+        insert<select_t>(lhs, cond, e1, e2);
     }
 
     void assertion(linear_constraint_t cst, debug_info di = debug_info()) {
-        insert(std::make_unique<assert_t>(cst, di));
+        insert<assert_t>(cst, di);
     }
 
     void array_init(variable_t a, linear_expression_t lb_idx, linear_expression_t ub_idx, linear_expression_t v,
                     linear_expression_t elem_size) {
-        insert(std::make_unique<array_init_t>(a, elem_size, lb_idx, ub_idx, v));
+        insert<array_init_t>(a, elem_size, lb_idx, ub_idx, v);
     }
 
     void array_store(variable_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size,
                      bool is_singleton = false) {
-        insert(std::make_unique<array_store_t>(arr, elem_size, idx, idx, v, is_singleton));
+        insert<array_store_t>(arr, elem_size, idx, idx, v, is_singleton);
     }
 
     void array_store_range(variable_t arr, linear_expression_t lb_idx, linear_expression_t ub_idx,
                            linear_expression_t v, linear_expression_t elem_size) {
-        insert(std::make_unique<array_store_t>(arr, elem_size, lb_idx, ub_idx, v, false));
+        insert<array_store_t>(arr, elem_size, lb_idx, ub_idx, v, false);
     }
 
     void array_load(variable_t lhs, variable_t arr, linear_expression_t idx, linear_expression_t elem_size) {
-        insert(std::make_unique<array_load_t>(lhs, arr, elem_size, idx));
+        insert<array_load_t>(lhs, arr, elem_size, idx);
     }
 
-    void array_assign(variable_t lhs, variable_t rhs) { insert(std::make_unique<array_assign_t>(lhs, rhs)); }
+    void array_assign(variable_t lhs, variable_t rhs) { insert<array_assign_t>(lhs, rhs); }
 
     friend crab_os& operator<<(crab_os& o, const basic_block_t& b) {
         b.write(o);
