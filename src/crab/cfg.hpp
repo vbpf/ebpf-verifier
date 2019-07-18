@@ -39,21 +39,20 @@
  *   operations.
  *
  */
+#include <functional> // for wrapper_reference
+#include <memory>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <boost/iterator/indirect_iterator.hpp>
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/range/iterator_range.hpp>
-#include <boost/unordered_map.hpp>
-#include <boost/unordered_set.hpp>
 
 #include "crab/bignums.hpp"
 #include "crab/discrete_domains.hpp"
 #include "crab/interval.hpp"
 #include "crab/linear_constraints.hpp"
 #include "crab/types.hpp"
-
-#include <functional> // for wrapper_reference
-#include <memory>
 
 namespace crab {
 
@@ -613,7 +612,6 @@ class array_assign_t : public statement_t {
 
     virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-
     virtual void write(crab_os& o) const { o << m_lhs << " = " << m_rhs; }
 
   private:
@@ -666,12 +664,12 @@ class basic_block_t {
         }
     }
 
-    basic_block_t(basic_block_label_t bb_id)
-        : m_bb_id(bb_id) {}
+    basic_block_t(const basic_block_label_t bb_id) : m_bb_id(bb_id) {}
 
-    static basic_block_t* create(basic_block_label_t bb_id) {
-        return new basic_block_t(bb_id);
-    }
+    basic_block_t(basic_block_t&& bb)
+        : m_bb_id(bb.label()), m_ts(std::move(bb.m_ts)), m_prev(bb.m_prev), m_next(bb.m_next), m_live(bb.m_live) {}
+
+    static basic_block_t* create(basic_block_label_t bb_id) { return new basic_block_t(bb_id); }
 
     void update_uses_and_defs(const std::unique_ptr<statement_t>& s) {
         auto ls = s->get_live();
@@ -781,37 +779,65 @@ class basic_block_t {
 
     /// To build statements
 
-    void add(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_ADD, op1, op2)); }
+    void add(variable_t lhs, variable_t op1, variable_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_ADD, op1, op2));
+    }
 
-    void add(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_ADD, op1, op2)); }
+    void add(variable_t lhs, variable_t op1, number_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_ADD, op1, op2));
+    }
 
-    void sub(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_SUB, op1, op2)); }
+    void sub(variable_t lhs, variable_t op1, variable_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_SUB, op1, op2));
+    }
 
-    void sub(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_SUB, op1, op2)); }
+    void sub(variable_t lhs, variable_t op1, number_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_SUB, op1, op2));
+    }
 
-    void mul(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_MUL, op1, op2)); }
+    void mul(variable_t lhs, variable_t op1, variable_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_MUL, op1, op2));
+    }
 
-    void mul(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_MUL, op1, op2)); }
+    void mul(variable_t lhs, variable_t op1, number_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_MUL, op1, op2));
+    }
 
     // signed division
-    void div(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_SDIV, op1, op2)); }
+    void div(variable_t lhs, variable_t op1, variable_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_SDIV, op1, op2));
+    }
 
-    void div(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_SDIV, op1, op2)); }
+    void div(variable_t lhs, variable_t op1, number_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_SDIV, op1, op2));
+    }
 
     // unsigned division
-    void udiv(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_UDIV, op1, op2)); }
+    void udiv(variable_t lhs, variable_t op1, variable_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_UDIV, op1, op2));
+    }
 
-    void udiv(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_UDIV, op1, op2)); }
+    void udiv(variable_t lhs, variable_t op1, number_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_UDIV, op1, op2));
+    }
 
     // signed rem
-    void rem(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_SREM, op1, op2)); }
+    void rem(variable_t lhs, variable_t op1, variable_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_SREM, op1, op2));
+    }
 
-    void rem(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_SREM, op1, op2)); }
+    void rem(variable_t lhs, variable_t op1, number_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_SREM, op1, op2));
+    }
 
     // unsigned rem
-    void urem(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_UREM, op1, op2)); }
+    void urem(variable_t lhs, variable_t op1, variable_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_UREM, op1, op2));
+    }
 
-    void urem(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_UREM, op1, op2)); }
+    void urem(variable_t lhs, variable_t op1, number_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_UREM, op1, op2));
+    }
 
     void bitwise_and(variable_t lhs, variable_t op1, variable_t op2) {
         insert(std::make_unique<binary_op_t>(lhs, BINOP_AND, op1, op2));
@@ -825,7 +851,9 @@ class basic_block_t {
         insert(std::make_unique<binary_op_t>(lhs, BINOP_OR, op1, op2));
     }
 
-    void bitwise_or(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_OR, op1, op2)); }
+    void bitwise_or(variable_t lhs, variable_t op1, number_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_OR, op1, op2));
+    }
 
     void bitwise_xor(variable_t lhs, variable_t op1, variable_t op2) {
         insert(std::make_unique<binary_op_t>(lhs, BINOP_XOR, op1, op2));
@@ -835,17 +863,29 @@ class basic_block_t {
         insert(std::make_unique<binary_op_t>(lhs, BINOP_XOR, op1, op2));
     }
 
-    void shl(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_SHL, op1, op2)); }
+    void shl(variable_t lhs, variable_t op1, variable_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_SHL, op1, op2));
+    }
 
-    void shl(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_SHL, op1, op2)); }
+    void shl(variable_t lhs, variable_t op1, number_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_SHL, op1, op2));
+    }
 
-    void lshr(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_LSHR, op1, op2)); }
+    void lshr(variable_t lhs, variable_t op1, variable_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_LSHR, op1, op2));
+    }
 
-    void lshr(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_LSHR, op1, op2)); }
+    void lshr(variable_t lhs, variable_t op1, number_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_LSHR, op1, op2));
+    }
 
-    void ashr(variable_t lhs, variable_t op1, variable_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_ASHR, op1, op2)); }
+    void ashr(variable_t lhs, variable_t op1, variable_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_ASHR, op1, op2));
+    }
 
-    void ashr(variable_t lhs, variable_t op1, number_t op2) { insert(std::make_unique<binary_op_t>(lhs, BINOP_ASHR, op1, op2)); }
+    void ashr(variable_t lhs, variable_t op1, number_t op2) {
+        insert(std::make_unique<binary_op_t>(lhs, BINOP_ASHR, op1, op2));
+    }
 
     void assign(variable_t lhs, linear_expression_t rhs) { insert(std::make_unique<assign_t>(lhs, rhs)); }
 
@@ -864,7 +904,9 @@ class basic_block_t {
         insert(std::make_unique<select_t>(lhs, cond, e1, e2));
     }
 
-    void assertion(linear_constraint_t cst, debug_info di = debug_info()) { insert(std::make_unique<assert_t>(cst, di)); }
+    void assertion(linear_constraint_t cst, debug_info di = debug_info()) {
+        insert(std::make_unique<assert_t>(cst, di));
+    }
 
     void truncate(variable_t src, variable_t dst) { insert(std::make_unique<int_cast_t>(CAST_TRUNC, src, dst)); }
 
@@ -891,9 +933,7 @@ class basic_block_t {
         insert(std::make_unique<array_load_t>(lhs, arr, elem_size, idx));
     }
 
-    void array_assign(variable_t lhs, variable_t rhs) {
-        insert(std::make_unique<array_assign_t>(lhs, rhs));
-    }
+    void array_assign(variable_t lhs, variable_t rhs) { insert(std::make_unique<array_assign_t>(lhs, rhs)); }
 
     friend crab_os& operator<<(crab_os& o, const basic_block_t& b) {
         b.write(o);
@@ -915,9 +955,10 @@ class basic_block_rev_t {
     using live_domain_t = discrete_domain<variable_t>;
 
   private:
-    basic_block_t& _bb;
 
   public:
+    basic_block_t& _bb;
+
     basic_block_rev_t(basic_block_t& bb) : _bb(bb) {}
 
     basic_block_label_t label() const { return _bb.label(); }
@@ -988,7 +1029,7 @@ class cfg_t {
     using const_pred_range = boost::iterator_range<const_pred_iterator>;
 
   private:
-    using basic_block_map_t = boost::unordered_map<basic_block_label_t, basic_block_t*>;
+    using basic_block_map_t = std::unordered_map<basic_block_label_t, std::unique_ptr<basic_block_t>>;
     using binding_t = basic_block_map_t::value_type;
     using live_domain_t = basic_block_t::live_domain_t;
 
@@ -1016,7 +1057,7 @@ class cfg_t {
     std::optional<basic_block_label_t> m_exit;
     basic_block_map_t m_blocks;
 
-    using visited_t = boost::unordered_set<basic_block_label_t>;
+    using visited_t = std::unordered_set<basic_block_label_t>;
     template <typename T>
     void dfs_rec(basic_block_label_t curId, visited_t& visited, T f) const {
         if (!visited.insert(curId).second)
@@ -1042,26 +1083,19 @@ class cfg_t {
     };
 
   public:
-    cfg_t(basic_block_label_t entry)
-        : m_entry(entry), m_exit(std::nullopt) {
-        m_blocks.insert(binding_t(m_entry, basic_block_t::create(m_entry)));
+    cfg_t(basic_block_label_t entry) : m_entry(entry), m_exit(std::nullopt) {
+        m_blocks.emplace(m_entry, basic_block_t::create(m_entry));
     }
 
-    cfg_t(basic_block_label_t entry, basic_block_label_t exit)
-        : m_entry(entry), m_exit(exit) {
-        m_blocks.insert(binding_t(m_entry, basic_block_t::create(m_entry)));
+    cfg_t(basic_block_label_t entry, basic_block_label_t exit) : m_entry(entry), m_exit(exit) {
+        m_blocks.emplace(m_entry, basic_block_t::create(m_entry));
     }
 
     cfg_t(const cfg_t&) = delete;
 
-    cfg_t(const cfg_t&& o) : m_entry(o.m_entry), m_exit(o.m_exit), m_blocks(o.m_blocks) { }
+    cfg_t(cfg_t&& o) : m_entry(o.m_entry), m_exit(o.m_exit), m_blocks(std::move(o.m_blocks)) {}
 
-    // The cfg_t owns the basic blocks
-    ~cfg_t() {
-        for (auto& kv : m_blocks) {
-            delete kv.second;
-        }
-    }
+    ~cfg_t() = default;
 
     bool has_exit() const { return (bool)m_exit; }
 
@@ -1124,9 +1158,8 @@ class cfg_t {
         if (it != m_blocks.end())
             return *(it->second);
 
-        basic_block_t* block = basic_block_t::create(bb_id);
-        m_blocks.insert(binding_t(bb_id, block));
-        return *block;
+        m_blocks.emplace(bb_id, basic_block_t::create(bb_id));
+        return get_node(bb_id);
     }
 
     void remove(basic_block_label_t bb_id) {
@@ -1139,19 +1172,17 @@ class cfg_t {
         }
 
         std::vector<std::pair<basic_block_t*, basic_block_t*>> dead_edges;
-        basic_block_t* bb = &(get_node(bb_id));
+        basic_block_t& bb = get_node(bb_id);
 
-        for (auto id : boost::make_iterator_range(bb->prev_blocks())) {
+        for (auto id : boost::make_iterator_range(bb.prev_blocks())) {
             if (bb_id != id) {
-                basic_block_t& p = get_node(id);
-                dead_edges.push_back({&p, bb});
+                dead_edges.push_back({&get_node(id), &bb});
             }
         }
 
-        for (auto id : boost::make_iterator_range(bb->next_blocks())) {
+        for (auto id : boost::make_iterator_range(bb.next_blocks())) {
             if (bb_id != id) {
-                basic_block_t& s = get_node(id);
-                dead_edges.push_back({bb, &s});
+                dead_edges.push_back({&bb, &get_node(id)});
             }
         }
 
@@ -1160,24 +1191,7 @@ class cfg_t {
         }
 
         m_blocks.erase(bb_id);
-        delete bb;
     }
-
-    // // Return all variables (either used or defined) in the cfg_t.
-    // //
-    // // This operation is linear on the size of the cfg_t to still keep
-    // // a valid set in case a block is removed.
-    // std::vector<varname_t> get_vars() const {
-    //     live_domain_t ls = live_domain_t::bottom();
-    //     for (auto const &b : boost::make_iterator_range(begin(), end()))
-    //         ls = ls | b.live();
-    //     // std::vector<varname_t> vars(ls.size());
-    //     // vars.insert(vars.end(), ls.begin(), ls.end());
-    //     std::vector<varname_t> vars;
-    //     for (auto v : ls)
-    //         vars.push_back(v);
-    //     return vars;
-    // }
 
     //! return a begin iterator of basic_block_t's
     iterator begin() { return boost::make_transform_iterator(m_blocks.begin(), get_ref()); }
@@ -1492,9 +1506,9 @@ class cfg_rev_t {
 
   private:
     struct getRev : public std::unary_function<basic_block_t, basic_block_rev_t> {
-        const boost::unordered_map<basic_block_label_t, basic_block_rev_t>& _rev_bbs;
+        const std::unordered_map<basic_block_label_t, basic_block_rev_t>& _rev_bbs;
 
-        getRev(const boost::unordered_map<basic_block_label_t, basic_block_rev_t>& rev_bbs) : _rev_bbs(rev_bbs) {}
+        getRev(const std::unordered_map<basic_block_label_t, basic_block_rev_t>& rev_bbs) : _rev_bbs(rev_bbs) {}
 
         const basic_block_rev_t& operator()(basic_block_t& bb) const {
             auto it = _rev_bbs.find(bb.label());
@@ -1504,7 +1518,7 @@ class cfg_rev_t {
         }
     };
 
-    using visited_t = boost::unordered_set<basic_block_label_t>;
+    using visited_t = std::unordered_set<basic_block_label_t>;
 
     template <typename T>
     void dfs_rec(basic_block_label_t curId, visited_t& visited, T f) const {
@@ -1538,19 +1552,16 @@ class cfg_rev_t {
 
   private:
     cfg_ref_t _cfg;
-    boost::unordered_map<basic_block_label_t, basic_block_rev_t> _rev_bbs;
+    std::unordered_map<basic_block_label_t, basic_block_rev_t> _rev_bbs;
 
   public:
-    // --- hook needed by cg::CallGraph<cfg_ref_t>::CgNode
-    cfg_rev_t() {}
 
     cfg_rev_t(cfg_ref_t cfg_t) : _cfg(cfg_t) {
         // Create basic_block_rev_t from basic_block_t objects
         // Note that basic_block_rev_t is also a view of basic_block_t so it
         // doesn't modify basic_block_t objects.
         for (auto& bb : cfg_t) {
-            basic_block_rev_t rev(bb);
-            _rev_bbs.insert(std::make_pair(bb.label(), rev));
+            _rev_bbs.emplace(bb.label(), bb);
         }
     }
 
@@ -1560,8 +1571,10 @@ class cfg_rev_t {
 
     cfg_rev_t& operator=(const cfg_rev_t& o) {
         if (this != &o) {
+            _rev_bbs.clear();
+            for (auto& [k, rev_bb] : o._rev_bbs)
+                _rev_bbs.emplace(k, rev_bb._bb);
             _cfg = o._cfg;
-            _rev_bbs = o._rev_bbs;
         }
         return *this;
     }
