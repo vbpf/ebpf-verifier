@@ -562,8 +562,6 @@ class array_expansion_domain final : public writeable {
 
     void apply(operation_t op, variable_t x, variable_t y, variable_t z) { _inv.apply(op, x, y, z); }
 
-    void apply(int_conv_operation_t op, variable_t dst, variable_t src) { _inv.apply(op, dst, src); }
-
     void apply(bitwise_operation_t op, variable_t x, variable_t y, variable_t z) { _inv.apply(op, x, y, z); }
 
     void apply(bitwise_operation_t op, variable_t x, variable_t y, number_t k) { _inv.apply(op, x, y, k); }

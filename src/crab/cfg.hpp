@@ -65,7 +65,6 @@ enum stmt_code {
     BIN_OP = 20,
     ASSIGN = 21,
     ASSUME = 22,
-    UNREACH = 23,
     SELECT = 24,
     ASSERT = 25,
     // arrays
@@ -73,10 +72,8 @@ enum stmt_code {
     ARR_STORE = 31,
     ARR_LOAD = 32,
     ARR_ASSIGN = 33,
-    // integers/arrays/pointers/boolean
+
     HAVOC = 60,
-    // casts
-    INT_CAST = 80
 };
 
 class live_t {
@@ -161,8 +158,6 @@ class assign_t;
 class assume_t;
 class select_t;
 class assert_t;
-class int_cast_t;
-class unreachable_t;
 class havoc_t;
 class array_init_t;
 class array_store_t;
@@ -178,8 +173,6 @@ struct statement_visitor {
     virtual void visit(assume_t&){};
     virtual void visit(select_t&){};
     virtual void visit(assert_t&){};
-    virtual void visit(int_cast_t&){};
-    virtual void visit(unreachable_t&){};
     virtual void visit(havoc_t&){};
     virtual void visit(array_init_t&){};
     virtual void visit(array_store_t&){};
@@ -204,17 +197,8 @@ class statement_t {
   public:
     virtual ~statement_t() {}
 
-    bool is_bin_op() const { return (m_t_code == BIN_OP); }
-    bool is_assign() const { return (m_t_code == ASSIGN); }
     bool is_assume() const { return (m_t_code == ASSUME); }
-    bool is_select() const { return (m_t_code == SELECT); }
     bool is_assert() const { return (m_t_code == ASSERT); }
-    bool is_int_cast() const { return (m_t_code == INT_CAST); }
-    bool is_havoc() const { return m_t_code == HAVOC; }
-    bool is_arr_init() const { return (m_t_code == ARR_INIT); }
-    bool is_arr_read() const { return (m_t_code == ARR_LOAD); }
-    bool is_arr_write() const { return (m_t_code == ARR_STORE); }
-    bool is_arr_assign() const { return (m_t_code == ARR_ASSIGN); }
     const live_t& get_live() const { return m_live; }
 
     const debug_info& get_debug_info() const { return m_dbg_info; }
@@ -311,15 +295,6 @@ class assume_t : public statement_t {
     linear_constraint_t m_cst;
 };
 
-class unreachable_t : public statement_t {
-  public:
-    unreachable_t() : statement_t(UNREACH) {}
-
-    virtual void accept(statement_visitor* v) { v->visit(*this); }
-
-    virtual void write(crab_os& o) const { o << "unreachable"; }
-};
-
 class havoc_t : public statement_t {
   public:
     havoc_t(variable_t lhs) : statement_t(HAVOC), m_lhs(lhs) { this->m_live.add_def(m_lhs); }
@@ -396,36 +371,6 @@ class assert_t : public statement_t {
 
   private:
     linear_constraint_t m_cst;
-};
-
-class int_cast_t : public statement_t {
-  public:
-    using bitwidth_t = variable_t::bitwidth_t;
-
-    int_cast_t(cast_operation_t op, variable_t src, variable_t dst, debug_info dbg_info = debug_info())
-        : statement_t(INT_CAST, dbg_info), m_op(op), m_src(src), m_dst(dst) {
-        this->m_live.add_use(m_src);
-        this->m_live.add_def(m_dst);
-    }
-
-    cast_operation_t op() const { return m_op; }
-    variable_t src() const { return m_src; }
-    bitwidth_t src_width() const { return m_src.get_bitwidth(); }
-    variable_t dst() const { return m_dst; }
-    bitwidth_t dst_width() const { return m_dst.get_bitwidth(); }
-
-    virtual void accept(statement_visitor* v) { v->visit(*this); }
-
-    virtual void write(crab_os& o) const {
-        // bitwidths are casted to int, otherwise operator<< may try
-        // to print them as characters if bitwidth_t = uint8_t
-        o << m_op << " " << m_src << ":" << (int)src_width() << " to " << m_dst << ":" << (int)dst_width();
-    }
-
-  private:
-    cast_operation_t m_op;
-    variable_t m_src;
-    variable_t m_dst;
 };
 
 /*
@@ -893,8 +838,6 @@ class basic_block_t {
 
     void havoc(variable_t lhs) { insert(std::make_unique<havoc_t>(lhs)); }
 
-    void unreachable() { insert(std::make_unique<unreachable_t>()); }
-
     void select(variable_t lhs, variable_t v, linear_expression_t e1, linear_expression_t e2) {
         linear_constraint_t cond(exp_gte(v, 1));
         insert(std::make_unique<select_t>(lhs, cond, e1, e2));
@@ -907,12 +850,6 @@ class basic_block_t {
     void assertion(linear_constraint_t cst, debug_info di = debug_info()) {
         insert(std::make_unique<assert_t>(cst, di));
     }
-
-    void truncate(variable_t src, variable_t dst) { insert(std::make_unique<int_cast_t>(CAST_TRUNC, src, dst)); }
-
-    void sext(variable_t src, variable_t dst) { insert(std::make_unique<int_cast_t>(CAST_SEXT, src, dst)); }
-
-    void zext(variable_t src, variable_t dst) { insert(std::make_unique<int_cast_t>(CAST_ZEXT, src, dst)); }
 
     void array_init(variable_t a, linear_expression_t lb_idx, linear_expression_t ub_idx, linear_expression_t v,
                     linear_expression_t elem_size) {

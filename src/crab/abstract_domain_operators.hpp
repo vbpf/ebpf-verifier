@@ -38,22 +38,6 @@ inline crab_os& operator<<(crab_os& o, bitwise_operation_t op) {
     return o;
 }
 
-namespace domains {
-
-// Enumeration type for cast operations
-enum int_conv_operation_t { OP_TRUNC, OP_SEXT, OP_ZEXT };
-
-inline crab_os& operator<<(crab_os& o, int_conv_operation_t op) {
-    switch (op) {
-    case OP_TRUNC: o << "trunc"; break;
-    case OP_SEXT: o << "sext"; break;
-    default: /*OP_ZEXT*/ o << "zext"; break;
-    }
-    return o;
-}
-
-} // end namespace domains
-
 /**
  * Convert CFG operations into abstract domain operations
  **/
@@ -81,16 +65,6 @@ inline std::optional<bitwise_operation_t> conv_op(binary_operation_t op) {
     case BINOP_LSHR: return OP_LSHR;
     case BINOP_ASHR: return OP_ASHR;
     default: return std::optional<bitwise_operation_t>();
-    }
-}
-
-template <>
-inline std::optional<domains::int_conv_operation_t> conv_op(cast_operation_t op) {
-    switch (op) {
-    case CAST_TRUNC: return domains::OP_TRUNC;
-    case CAST_SEXT: return domains::OP_SEXT;
-    case CAST_ZEXT: return domains::OP_ZEXT;
-    default: return std::optional<domains::int_conv_operation_t>();
     }
 }
 
