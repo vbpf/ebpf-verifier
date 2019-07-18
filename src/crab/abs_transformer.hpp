@@ -20,18 +20,6 @@
      v := a[i];
      a := b
 
-   POINTERS
-     *p = q;
-     p = *q;
-     p := q+n
-     p := &obj;
-     p := &fun
-     p := null;
-
-   FUNCTIONS
-     x := foo(arg1,...,argn);
-     return r;
-
    havoc(x);
 
  */
@@ -317,14 +305,13 @@ class intra_abs_transformer : public abs_transformer_api {
 
 enum class check_kind_t { Safe, Error, Warning, Unreachable };
 
-// Toy database to store invariants. We may want to replace it with
-// a permanent external database.
+// Toy database to store invariants.
 class checks_db {
     using check_t = std::pair<debug_info, check_kind_t>;
 
   public:
     std::set<check_t> m_db{};
-    std::map<check_kind_t, unsigned> total{
+    std::map<check_kind_t, int> total{
         {check_kind_t::Safe, {}},
         {check_kind_t::Error, {}},
         {check_kind_t::Warning, {}},
@@ -339,12 +326,14 @@ class checks_db {
         other.total.clear();
     }
 
-    unsigned total_safe() const { return total.at(check_kind_t::Safe); }
-    unsigned total_error() const { return total.at(check_kind_t::Error); }
-    unsigned total_warning() const { return total.at(check_kind_t::Warning); }
-    unsigned total_unreachable() const { return total.at(check_kind_t::Unreachable); }
+    int total_safe() const { return total.at(check_kind_t::Safe); }
+    int total_error() const { return total.at(check_kind_t::Error); }
+    int total_warning() const { return total.at(check_kind_t::Warning); }
+    int total_unreachable() const { return total.at(check_kind_t::Unreachable); }
 
   public:
+    checks_db() = default;
+
     void add_warning(const assert_t& s) {
         add(check_kind_t::Warning, s);
     }
@@ -357,8 +346,6 @@ class checks_db {
         add(check_kind_t::Unreachable, s);
     }
 
-    checks_db() = default;
-
     void add(check_kind_t status, const assert_t& s) {
         total[status]++;
         debug_info dbg = s.get_debug_info();
@@ -367,10 +354,10 @@ class checks_db {
     }
 
     void write(crab_os& o) const {
-        std::vector<unsigned> cnts = {total_safe(), total_error(), total_warning(), total_unreachable()};
-        unsigned maxvlen = 0;
+        std::vector<int> cnts = {total_safe(), total_error(), total_warning(), total_unreachable()};
+        int maxvlen = 0;
         for (auto c : cnts) {
-            maxvlen = std::max(maxvlen, (unsigned)std::to_string(c).size());
+            maxvlen = std::max(maxvlen, (int)std::to_string(c).size());
         }
 
         o << std::string((int)maxvlen - std::to_string(total_safe()).size(), ' ') << total_safe()
