@@ -45,7 +45,6 @@ enum binary_operation_t {
     BINOP_SHL,
     BINOP_LSHR,
     BINOP_ASHR,
-    BINOP_FUNCTION
 };
 
 inline crab_os& operator<<(crab_os& o, binary_operation_t op) {
@@ -63,7 +62,6 @@ inline crab_os& operator<<(crab_os& o, binary_operation_t op) {
     case BINOP_SHL: o << "<<"; break;
     case BINOP_LSHR: o << ">>_l"; break;
     case BINOP_ASHR: o << ">>_r"; break;
-    case BINOP_FUNCTION: o << "uf"; break;
     default: CRAB_ERROR("unexpected binary operation ", op);
     }
     return o;
