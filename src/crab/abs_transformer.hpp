@@ -83,11 +83,11 @@ class abs_transformer_api : public statement_visitor {
  * can be redefined by derived classes. By default, all function
  * calls are ignored in a sound manner (by havoc'ing all outputs).
  **/
-template <class AbsD>
+template <class AbsDomain>
 class intra_abs_transformer : public abs_transformer_api {
 
   public:
-    using abs_dom_t = AbsD;
+    using abs_dom_t = AbsDomain;
 
   public:
     using abs_transform_api_t = abs_transformer_api;
