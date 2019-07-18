@@ -1228,8 +1228,8 @@ class cfg_t {
         }
     }
 
-    friend crab_os& operator<<(crab_os& o, const cfg_t& cfg_t) {
-        cfg_t.write(o);
+    friend crab_os& operator<<(crab_os& o, const cfg_t& cfg) {
+        cfg.write(o);
         return o;
     }
 
@@ -1340,42 +1340,37 @@ class cfg_t {
 // A lightweight object that wraps a reference to a CFG into a
 // copyable, assignable object.
 class cfg_ref_t {
-    using CFG = cfg_t;
-
   public:
-    // CFG's typedefs
-    using node_t = CFG::node_t;
+    // cfg_t's typedefs
+    using node_t = cfg_t::node_t;
 
-    using succ_iterator = CFG::succ_iterator;
-    using pred_iterator = CFG::pred_iterator;
-    using const_succ_iterator = CFG::const_succ_iterator;
-    using const_pred_iterator = CFG::const_pred_iterator;
-    using succ_range = CFG::succ_range;
-    using pred_range = CFG::pred_range;
-    using const_succ_range = CFG::const_succ_range;
-    using const_pred_range = CFG::const_pred_range;
-    using iterator = CFG::iterator;
-    using const_iterator = CFG::const_iterator;
-    using label_iterator = CFG::label_iterator;
-    using const_label_iterator = CFG::const_label_iterator;
-    using var_iterator = CFG::var_iterator;
-    using const_var_iterator = CFG::const_var_iterator;
+    using succ_iterator = cfg_t::succ_iterator;
+    using pred_iterator = cfg_t::pred_iterator;
+    using const_succ_iterator = cfg_t::const_succ_iterator;
+    using const_pred_iterator = cfg_t::const_pred_iterator;
+    using succ_range = cfg_t::succ_range;
+    using pred_range = cfg_t::pred_range;
+    using const_succ_range = cfg_t::const_succ_range;
+    using const_pred_range = cfg_t::const_pred_range;
+    using iterator = cfg_t::iterator;
+    using const_iterator = cfg_t::const_iterator;
+    using label_iterator = cfg_t::label_iterator;
+    using const_label_iterator = cfg_t::const_label_iterator;
+    using var_iterator = cfg_t::var_iterator;
+    using const_var_iterator = cfg_t::const_var_iterator;
 
   private:
-    std::optional<std::reference_wrapper<CFG>> _ref;
+    std::optional<std::reference_wrapper<cfg_t>> _ref;
 
   public:
-    // --- hook needed by cg::CallGraph<CFG>::CgNode
-    cfg_ref_t() {}
+    cfg_ref_t(cfg_t& cfg) : _ref(std::reference_wrapper<cfg_t>(cfg)) {}
 
-    cfg_ref_t(CFG& cfg_t) : _ref(std::reference_wrapper<CFG>(cfg_t)) {}
-
-    const CFG& get() const {
+    const cfg_t& get() const {
         assert(_ref);
         return *_ref;
     }
 
-    CFG& get() {
+    cfg_t& get() {
         assert(_ref);
         return *_ref;
     }
@@ -1487,7 +1482,7 @@ class cfg_ref_t {
     }
 };
 
-// Viewing a CFG with all edges and block statements
+// Viewing a cfg_t with all edges and block statements
 // reversed. Useful for backward analysis.
 class cfg_rev_t {
   public:
