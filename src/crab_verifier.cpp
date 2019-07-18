@@ -15,8 +15,6 @@
 
 #include <boost/signals2.hpp>
 
-#include "crab/assertion.hpp"
-
 #include "crab/array_expansion.hpp"
 #include "crab/fwd_analyzer.hpp"
 #include "crab/graph_config.hpp"
@@ -35,68 +33,50 @@ using std::string;
 
 using printer_t = boost::signals2::signal<void(const string&)>;
 
-using crab::checker::checks_db;
+using crab::checks_db;
 
 // Numerical domains over integers
 using sdbm_domain_t = crab::domains::SplitDBM;
 using dom_t = crab::domains::array_expansion_domain<sdbm_domain_t>;
-using analyzer_t = crab::analyzer::fwd_analyzer<dom_t>;
+using analyzer_t = crab::interleaved_fwd_fixpoint_iterator<dom_t>;;
 
-static auto extract_pre(analyzer_t& analyzer) {
-    std::map<string, typename analyzer_t::abs_dom_t> res;
-    for (const auto& block : analyzer.get_cfg())
+static auto extract_pre(analyzer_t& analyzer, cfg_t& cfg) {
+    std::map<string, dom_t> res;
+    for (const auto& block : cfg)
         res.emplace(block.label(), analyzer.get_pre(block.label()));
     return res;
 }
 
-static auto extract_post(analyzer_t& analyzer) {
-    std::map<string, typename analyzer_t::abs_dom_t> res;
-    for (const auto& block : analyzer.get_cfg())
+static auto extract_post(analyzer_t& analyzer, cfg_t& cfg) {
+    std::map<string, dom_t> res;
+    for (const auto& block : cfg)
         res.emplace(block.label(), analyzer.get_post(block.label()));
     return res;
-}
-
-static checks_db check(analyzer_t& analyzer) {
-    using checker_t = crab::checker::assert_property_checker<analyzer_t>;
-    checker_t checker;
-
-    for (auto& bb : analyzer.get_cfg()) {
-        if (checker.is_interesting(bb)) {
-            auto inv = analyzer[bb.label()];
-            // Note: this has side effect:
-            analyzer.set_abs_transformer(&inv);
-            std::shared_ptr<checker_t::abs_tr_t> abs_tr = analyzer.get_abs_transformer();
-            // propagate forward the invariants from the block entry
-            // while checking the property
-            checker.set(abs_tr.get(), {});
-            for (auto& stmt : bb) {
-                stmt.accept(&checker);
-            }
-        }
-    }
-    return checker.get_db();
 }
 
 static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_printer) {
     dom_t::clear_global_state();
 
+    type_check(cfg);
     analyzer_t analyzer(cfg);
-
-    analyzer.run_forward();
+    analyzer.run(dom_t::top());
 
     if (global_options.print_invariants) {
-        pre_printer.connect([pre = extract_pre(analyzer)](const string& label) {
+        pre_printer.connect([pre = extract_pre(analyzer, cfg)](const string& label) {
             dom_t inv = pre.at(label);
             crab::outs() << "\n" << inv << "\n";
         });
-        post_printer.connect([post = extract_post(analyzer)](const string& label) {
+        post_printer.connect([post = extract_post(analyzer, cfg)](const string& label) {
             dom_t inv = post.at(label);
             crab::outs() << "\n" << inv << "\n";
         });
     }
-
-    checks_db c = check(analyzer);
-    return c;
+    checks_db db;
+    db.m_verbose = 2;
+    for (const basic_block_t& bb : cfg) {
+        check_block(bb, analyzer.get_pre(bb.label()), db);
+    }
+    return db;
 }
 
 static std::vector<string> sorted_labels(cfg_t& cfg) {
