@@ -72,7 +72,6 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
         });
     }
     checks_db db;
-    db.m_verbose = 2;
     for (const basic_block_t& bb : cfg) {
         check_block(bb, analyzer.get_pre(bb.label()), db);
     }
@@ -110,7 +109,7 @@ std::tuple<bool, double> abs_validate(Cfg const& simple_cfg, program_info info) 
     clock_t end = clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
 
-    int nwarn = checks.get_total_warning() + checks.get_total_error();
+    int nwarn = checks.total_warning() + checks.total_error();
     if (global_options.print_invariants) {
         for (string label : sorted_labels(cfg)) {
             pre_printer(label);

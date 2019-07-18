@@ -36,13 +36,13 @@
 
  */
 
-#include "crab/cfg.hpp"
-#include "crab/debug.hpp"
-#include "crab/stats.hpp"
-#include "crab/types.hpp"
-#include "crab/linear_constraints.hpp"
 #include "crab/abstract_domain_operators.hpp"
 #include "crab/abstract_domain_specialized_traits.hpp"
+#include "crab/cfg.hpp"
+#include "crab/debug.hpp"
+#include "crab/linear_constraints.hpp"
+#include "crab/stats.hpp"
+#include "crab/types.hpp"
 
 namespace crab {
 
@@ -51,7 +51,7 @@ namespace crab {
  **/
 class abs_transformer_api : public statement_visitor {
   protected:
-    virtual ~abs_transformer_api() { }
+    virtual ~abs_transformer_api() {}
 
     virtual void exec(havoc_t&) {}
     virtual void exec(unreachable_t&) {}
@@ -106,9 +106,9 @@ class intra_abs_transformer : public abs_transformer_api {
     }
 
   public:
-    intra_abs_transformer(const abs_dom_t& inv) : m_inv(inv) { }
+    intra_abs_transformer(const abs_dom_t& inv) : m_inv(inv) {}
 
-    virtual ~intra_abs_transformer() { }
+    virtual ~intra_abs_transformer() {}
 
     void exec(binary_op_t& stmt) {
         bool pre_bot = false;
@@ -315,7 +315,7 @@ class intra_abs_transformer : public abs_transformer_api {
     }
 };
 
-enum check_kind_t { _SAFE, _ERR, _WARN, _UNREACH };
+enum class check_kind_t { Safe, Error, Warning, Unreachable };
 
 // Toy database to store invariants. We may want to replace it with
 // a permanent external database.
@@ -324,157 +324,98 @@ class checks_db {
 
   public:
     std::set<check_t> m_db{};
-    unsigned m_total_safe{};
-    unsigned m_total_err{};
-    unsigned m_total_unreach{};
-    unsigned m_total_warn{};
+    std::map<check_kind_t, unsigned> total{
+        {check_kind_t::Safe, {}},
+        {check_kind_t::Error, {}},
+        {check_kind_t::Warning, {}},
+        {check_kind_t::Unreachable, {}},
+    };
 
-    // Verbosity to print user messages
-    int m_verbose{};
+    void merge_db(checks_db&& other) {
+        m_db.insert(other.m_db.begin(), other.m_db.end());
+        for (auto [k, v] : other.total)
+            total[k] += v;
+        other.m_db.clear();
+        other.total.clear();
+    }
 
-    // Statements where checks occur
-    std::vector<const assert_t*> m_safe_checks{};
-    std::vector<const assert_t*> m_warning_checks{};
-    std::vector<const assert_t*> m_error_checks{};
+    unsigned total_safe() const { return total.at(check_kind_t::Safe); }
+    unsigned total_error() const { return total.at(check_kind_t::Error); }
+    unsigned total_warning() const { return total.at(check_kind_t::Warning); }
+    unsigned total_unreachable() const { return total.at(check_kind_t::Unreachable); }
 
   public:
-    void add_safe(std::string msg, const assert_t* s) {
-        add(_SAFE);
-        m_safe_checks.push_back(s);
+    void add_warning(const assert_t& s) {
+        add(check_kind_t::Warning, s);
     }
 
-    void add_warning(std::string msg, const assert_t* s) {
-        add(_WARN, s->get_debug_info());
-        m_warning_checks.push_back(s);
+    void add_redundant(const assert_t& s) {
+        add(check_kind_t::Safe, s);
     }
 
-    void add_error(std::string msg, const assert_t* s) {
-        add(_ERR, s->get_debug_info());
-        m_error_checks.push_back(s);
+    void add_unreachable(const assert_t& s) {
+        add(check_kind_t::Unreachable, s);
     }
 
-
-    template <typename AbsDomain>
-    void add_warning(const assert_t& s, const AbsDomain& invariant) {
-        if (m_verbose >= 2) {
-            crab_string_os os;
-            os << "Property : " << s.constraint() << "\n";
-            // os << "Invariant: " << invariant;
-            add_warning(os.str(), &s);
-        } else {
-            add_warning("", &s);
-        }
-    }
-
-    template <typename AbsDomain>
-    void add_redundant(const assert_t& s, const AbsDomain& invariant) {
-        if (m_verbose >= 3) {
-            crab_string_os os;
-            os << "Property : " << s.constraint() << "\n";
-            // os << "Invariant: " << invariant;
-            add_safe(os.str(), &s);
-        } else {
-            add_safe("", &s);
-        }
-    }
     checks_db() = default;
 
-    unsigned get_total_safe() const { return m_total_safe + m_total_unreach; }
-
-    unsigned get_total_warning() const { return m_total_warn; }
-
-    unsigned get_total_error() const { return m_total_err; }
-
-    // add an entry in the database
-    void add(check_kind_t status, debug_info dbg = debug_info()) {
-        switch (status) {
-        case _SAFE: m_total_safe++; break;
-        case _ERR: m_total_err++; break;
-        case _UNREACH: m_total_unreach++; break;
-        default: m_total_warn++;
-        }
+    void add(check_kind_t status, const assert_t& s) {
+        total[status]++;
+        debug_info dbg = s.get_debug_info();
         if (dbg.has_debug())
             m_db.insert(check_t(dbg, status));
     }
 
-    // merge two databases
-    void operator+=(const checks_db& other) {
-        m_db.insert(other.m_db.begin(), other.m_db.end());
-        m_total_safe += other.m_total_safe;
-        m_total_err += other.m_total_err;
-        m_total_warn += other.m_total_warn;
-        m_total_unreach += other.m_total_unreach;
-    }
-
     void write(crab_os& o) const {
-        std::vector<unsigned> cnts = {m_total_safe, m_total_err, m_total_warn, m_total_unreach};
-        unsigned MaxValLen = 0;
+        std::vector<unsigned> cnts = {total_safe(), total_error(), total_warning(), total_unreachable()};
+        unsigned maxvlen = 0;
         for (auto c : cnts) {
-            MaxValLen = std::max(MaxValLen, (unsigned)std::to_string(c).size());
+            maxvlen = std::max(maxvlen, (unsigned)std::to_string(c).size());
         }
 
-        o << std::string((int)MaxValLen - std::to_string(m_total_safe).size(), ' ') << m_total_safe
+        o << std::string((int)maxvlen - std::to_string(total_safe()).size(), ' ') << total_safe()
           << std::string(2, ' ') << "Number of total safe checks\n";
-        o << std::string((int)MaxValLen - std::to_string(m_total_err).size(), ' ') << m_total_err << std::string(2, ' ')
-          << "Number of total error checks\n";
-        o << std::string((int)MaxValLen - std::to_string(m_total_warn).size(), ' ') << m_total_warn
+        o << std::string((int)maxvlen - std::to_string(total_error()).size(), ' ') << total_error()
+          << std::string(2, ' ') << "Number of total error checks\n";
+        o << std::string((int)maxvlen - std::to_string(total_warning()).size(), ' ') << total_warning()
           << std::string(2, ' ') << "Number of total warning checks\n";
-        o << std::string((int)MaxValLen - std::to_string(m_total_unreach).size(), ' ') << m_total_unreach
+        o << std::string((int)maxvlen - std::to_string(total_unreachable()).size(), ' ') << total_unreachable()
           << std::string(2, ' ') << "Number of total unreachable checks\n";
-
-        unsigned MaxFileLen = 0;
-        for (auto const& p : m_db) {
-            MaxFileLen = std::max(MaxFileLen, (unsigned)p.first.m_file.size());
-        }
-
-        for (auto const& p : m_db) {
-            switch (p.second) {
-            case _SAFE: o << "safe: "; break;
-            case _ERR: o << "error: "; break;
-            case _UNREACH: o << "unreachable: "; break;
-            default: o << "warning: "; break;
-            }
-            // print all checks here
-            // o << p.first.m_file << std::string((int) MaxFileLen - p.first.m_file.size(), ' ')
-            //   << std::string(2, ' ')
-            //   << " line " << p.first.m_line
-            //   << " col " << p.first.m_col << "\n";
-        }
     }
 };
 
 template <typename AbsDomain>
 class assert_property_checker : public intra_abs_transformer<AbsDomain> {
-    // FIX: no need for refernce; simply merge dbs.
-    checks_db& m_db;
 
   public:
+    checks_db m_db;
     using abs_dom_t = AbsDomain;
-    using intra_abs_transformer<AbsDomain>::intra_abs_transformer;
+    using parent = intra_abs_transformer<AbsDomain>;
 
-    assert_property_checker(const AbsDomain& from_inv, checks_db& db) : intra_abs_transformer<AbsDomain>(from_inv), m_db(db)  { }
+    using parent::parent;
 
-protected:
+  protected:
     virtual void visit(assert_t& s) override {
         linear_constraint_t cst = s.constraint();
         if (cst.is_contradiction()) {
             if (this->m_inv.is_bottom()) {
-                m_db.add_redundant(s, this->m_inv);
+                m_db.add_redundant(s);
             } else {
-                m_db.add_warning(s, this->m_inv);
+                m_db.add_warning(s);
             }
             return;
         }
 
         if (this->m_inv.is_bottom()) {
-            m_db.add(_UNREACH);
+            m_db.add_unreachable(s);
             return;
         }
 
         if (domains::checker_domain_traits<abs_dom_t>::entail(this->m_inv, cst)) {
-            m_db.add_redundant(s, this->m_inv);
+            m_db.add_redundant(s);
         } else if (domains::checker_domain_traits<abs_dom_t>::intersect(this->m_inv, cst)) {
-            m_db.add_warning(s, this->m_inv);
+            // TODO: add_error() if imply negation
+            m_db.add_warning(s);
         } else {
             /* Instead this program:
                 x:=0;
@@ -492,9 +433,9 @@ protected:
             Note that inv does not either entail or intersect with cst.
             However, the original program does not violate the assertion.
             */
-            m_db.add_warning(s, this->m_inv);
+            m_db.add_warning(s);
         }
-        intra_abs_transformer<AbsDomain>::visit(s); // propagate invariants to the next stmt
+        parent::visit(s); // propagate invariants to the next stmt
     }
 };
 
@@ -511,11 +452,11 @@ template <typename AbsDomain>
 inline void check_block(const basic_block_t& bb, const AbsDomain& from_inv, checks_db& db) {
     if (std::none_of(bb.begin(), bb.end(), [](const auto& s) { return s.is_assert(); }))
         return;
-    assert_property_checker<AbsDomain> checker(from_inv, db);
+    assert_property_checker<AbsDomain> checker(from_inv);
     for (statement_t& statement : bb) {
-            statement.accept(&checker);
+        statement.accept(&checker);
     }
+    db.merge_db(std::move(checker.m_db));
 }
-
 
 } // namespace crab
