@@ -95,7 +95,7 @@ static std::vector<string> sorted_labels(cfg_t& cfg) {
 
 std::tuple<bool, double> abs_validate(Cfg const& simple_cfg, program_info info) {
     variable_factory vfac;
-    cfg_t cfg(entry_label(), crab::ARR);
+    cfg_t cfg(entry_label());
     build_crab_cfg(cfg, vfac, simple_cfg, info);
 
     printer_t pre_printer;
