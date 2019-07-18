@@ -1061,8 +1061,6 @@ class cfg_rev_t;
 class cfg_ref_t;
 
 class cfg_t {
-    cfg_t(const cfg_t&) = delete;
-
   public:
     using node_t = basic_block_label_t; // for Bgl graphs
 
@@ -1140,6 +1138,10 @@ class cfg_t {
         : m_entry(entry), m_exit(exit) {
         m_blocks.insert(binding_t(m_entry, basic_block_t::create(m_entry)));
     }
+
+    cfg_t(const cfg_t&) = delete;
+
+    cfg_t(const cfg_t&& o) : m_entry(o.m_entry), m_exit(o.m_exit), m_blocks(o.m_blocks) { }
 
     // The cfg_t owns the basic blocks
     ~cfg_t() {

@@ -20,4 +20,4 @@ inline int first_num(const basic_block_label_t& s) {
 
 /** Translate an eBPF Cfg to to Crab's cfg_t.
  */
-void build_crab_cfg(cfg_t& cfg, variable_factory& vfac, Cfg const& simple_cfg, program_info info);
+cfg_t build_crab_cfg(variable_factory& vfac, Cfg const& simple_cfg, program_info info);
