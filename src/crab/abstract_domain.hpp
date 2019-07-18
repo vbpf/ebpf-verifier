@@ -112,8 +112,6 @@ class numeric_abstract_domain : public abstract_domain<numeric_abstract_domain<A
     virtual void apply(bitwise_operation_t op, variable_t x, variable_t y, variable_t z) = 0;
     // x := y op k
     virtual void apply(bitwise_operation_t op, variable_t x, variable_t y, number_t k) = 0;
-    // dst := src
-    virtual void apply(int_conv_operation_t op, variable_t dst, variable_t src) = 0;
 };
 
 template <typename AbsDomain>

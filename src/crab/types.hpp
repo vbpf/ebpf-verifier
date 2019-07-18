@@ -48,8 +48,6 @@ enum binary_operation_t {
     BINOP_FUNCTION
 };
 
-enum cast_operation_t { CAST_TRUNC, CAST_SEXT, CAST_ZEXT };
-
 inline crab_os& operator<<(crab_os& o, binary_operation_t op) {
     switch (op) {
     case BINOP_ADD: o << "+"; break;
@@ -71,21 +69,8 @@ inline crab_os& operator<<(crab_os& o, binary_operation_t op) {
     return o;
 }
 
-inline crab_os& operator<<(crab_os& o, cast_operation_t op) {
-    switch (op) {
-    case CAST_TRUNC: o << "trunc"; break;
-    case CAST_SEXT: o << "sext"; break;
-    case CAST_ZEXT: o << "zext"; break;
-    default: CRAB_ERROR("unexpected cast operation", op);
-    }
-    return o;
-}
-
 template <typename T>
 inline std::optional<T> conv_op(binary_operation_t op);
-
-template <typename T>
-inline std::optional<T> conv_op(cast_operation_t op);
 
 // Interface for writeable objects
 class writeable {

@@ -42,13 +42,11 @@ class abs_transformer_api : public statement_visitor {
     virtual ~abs_transformer_api() {}
 
     virtual void exec(havoc_t&) {}
-    virtual void exec(unreachable_t&) {}
     virtual void exec(binary_op_t&) {}
     virtual void exec(assign_t&) {}
     virtual void exec(assume_t&) {}
     virtual void exec(select_t&) {}
     virtual void exec(assert_t&) {}
-    virtual void exec(int_cast_t&) {}
     virtual void exec(array_init_t&) {}
     virtual void exec(array_store_t&) {}
     virtual void exec(array_load_t&) {}
@@ -56,13 +54,11 @@ class abs_transformer_api : public statement_visitor {
 
   public: /* visitor api */
     void visit(havoc_t& s) { exec(s); }
-    void visit(unreachable_t& s) { exec(s); }
     void visit(binary_op_t& s) { exec(s); }
     void visit(assign_t& s) { exec(s); }
     void visit(assume_t& s) { exec(s); }
     void visit(select_t& s) { exec(s); }
     void visit(assert_t& s) { exec(s); }
-    void visit(int_cast_t& s) { exec(s); }
     void visit(array_init_t& s) { exec(s); }
     void visit(array_store_t& s) { exec(s); }
     void visit(array_load_t& s) { exec(s); }
@@ -196,26 +192,6 @@ class intra_abs_transformer : public abs_transformer_api {
         }
     }
 
-    void exec(int_cast_t& stmt) {
-        bool pre_bot = false;
-        if constexpr (CrabSanityCheckFlag) {
-            pre_bot = m_inv.is_bottom();
-        }
-
-        if (auto op = conv_op<domains::int_conv_operation_t>(stmt.op())) {
-            m_inv.apply(*op, stmt.dst(), stmt.src());
-        } else {
-            CRAB_ERROR("unsupported cast operator ", stmt.op());
-        }
-
-        if constexpr (CrabSanityCheckFlag) {
-            bool post_bot = m_inv.is_bottom();
-            if (!(pre_bot || !post_bot)) {
-                CRAB_ERROR("Invariant became bottom after ", stmt);
-            }
-        }
-    }
-
     void exec(havoc_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {
@@ -231,8 +207,6 @@ class intra_abs_transformer : public abs_transformer_api {
             }
         }
     }
-
-    void exec(unreachable_t& stmt) { m_inv = abs_dom_t::bottom(); }
 
     void exec(array_init_t& stmt) {
         bool pre_bot = false;

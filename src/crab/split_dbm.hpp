@@ -399,14 +399,6 @@ class SplitDBM final : public writeable {
 
     void set(variable_t x, interval_t intv);
 
-    // int_cast_operators_api
-
-    void apply(int_conv_operation_t /*op*/, variable_t dst, variable_t src) {
-        // since reasoning about infinite precision we simply assign and
-        // ignore the widths.
-        assign(dst, src);
-    }
-
     // bitwise_operators_api
     void apply(bitwise_operation_t op, variable_t x, variable_t y, variable_t z);
 

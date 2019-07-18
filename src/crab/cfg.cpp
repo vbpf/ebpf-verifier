@@ -291,31 +291,7 @@ struct type_checker_visitor : public statement_visitor {
         }
     }
 
-    void visit(int_cast_t& s) {
-        variable_t src = s.src();
-        variable_t dst = s.dst();
-        switch (s.op()) {
-        case CAST_TRUNC:
-            check_int(src, "source operand must be integer", s);
-            check_bitwidth_if_int(dst, "type and bitwidth of destination operand do not match", s);
-            if (src.get_bitwidth() <= dst.get_bitwidth()) {
-                CRAB_ERROR("(type checking) bitwidth of source operand must be greater than destination in ", s);
-            }
-            break;
-        case CAST_SEXT:
-        case CAST_ZEXT:
-            check_int(dst, "destination operand must be integer", s);
-            check_bitwidth_if_int(src, "type and bitwidth of source operand do not match", s);
-            if (dst.get_bitwidth() <= src.get_bitwidth()) {
-                CRAB_ERROR("(type checking) bitwidth of destination must be greater than source in ", s);
-            }
-            break;
-        default:; ; /*unreachable*/
-        }
-    }
-
     void visit(havoc_t&) {}
-    void visit(unreachable_t&) {}
 
     void visit(array_init_t& s) {
         // TODO: check that e_sz is the same number that v's bitwidth
