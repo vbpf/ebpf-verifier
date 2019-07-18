@@ -180,8 +180,7 @@ class binary_op_t : public statement_t {
   public:
     binary_op_t(variable_t lhs, binary_operation_t op, linear_expression_t op1, linear_expression_t op2,
                 debug_info dbg_info = debug_info())
-        : statement_t(BIN_OP, dbg_info), m_lhs(lhs), m_op(op), m_op1(op1), m_op2(op2) {
-    }
+        : statement_t(BIN_OP, dbg_info), m_lhs(lhs), m_op(op), m_op1(op1), m_op2(op2) {}
 
     variable_t lhs() const { return m_lhs; }
 
@@ -204,8 +203,7 @@ class binary_op_t : public statement_t {
 
 class assign_t : public statement_t {
   public:
-    assign_t(variable_t lhs, linear_expression_t rhs) : statement_t(ASSIGN), m_lhs(lhs), m_rhs(rhs) {
-    }
+    assign_t(variable_t lhs, linear_expression_t rhs) : statement_t(ASSIGN), m_lhs(lhs), m_rhs(rhs) {}
 
     variable_t lhs() const { return m_lhs; }
 
@@ -213,9 +211,7 @@ class assign_t : public statement_t {
 
     virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual void write(crab_os& o) const {
-        o << m_lhs << " = " << m_rhs;
-    }
+    virtual void write(crab_os& o) const { o << m_lhs << " = " << m_rhs; }
 
   private:
     variable_t m_lhs;
@@ -224,16 +220,13 @@ class assign_t : public statement_t {
 
 class assume_t : public statement_t {
   public:
-    assume_t(linear_constraint_t cst) : statement_t(ASSUME), m_cst(cst) {
-    }
+    assume_t(linear_constraint_t cst) : statement_t(ASSUME), m_cst(cst) {}
 
     linear_constraint_t constraint() const { return m_cst; }
 
     virtual void accept(statement_visitor* v) { v->visit(*this); }
 
-    virtual void write(crab_os& o) const {
-        o << "assume(" << m_cst << ")";
-    }
+    virtual void write(crab_os& o) const { o << "assume(" << m_cst << ")"; }
 
   private:
     linear_constraint_t m_cst;
@@ -241,7 +234,7 @@ class assume_t : public statement_t {
 
 class havoc_t : public statement_t {
   public:
-    havoc_t(variable_t lhs) : statement_t(HAVOC), m_lhs(lhs) { }
+    havoc_t(variable_t lhs) : statement_t(HAVOC), m_lhs(lhs) {}
 
     variable_t variable() const { return m_lhs; }
 
@@ -263,8 +256,7 @@ class havoc_t : public statement_t {
 class select_t : public statement_t {
   public:
     select_t(variable_t lhs, linear_constraint_t cond, linear_expression_t e1, linear_expression_t e2)
-        : statement_t(SELECT), m_lhs(lhs), m_cond(cond), m_e1(e1), m_e2(e2) {
-    }
+        : statement_t(SELECT), m_lhs(lhs), m_cond(cond), m_e1(e1), m_e2(e2) {}
 
     variable_t lhs() const { return m_lhs; }
 
@@ -290,8 +282,7 @@ class select_t : public statement_t {
 
 class assert_t : public statement_t {
   public:
-    assert_t(linear_constraint_t cst, debug_info dbg_info = debug_info()) : statement_t(ASSERT, dbg_info), m_cst(cst) {
-    }
+    assert_t(linear_constraint_t cst, debug_info dbg_info = debug_info()) : statement_t(ASSERT, dbg_info), m_cst(cst) {}
 
     linear_constraint_t constraint() const { return m_cst; }
 
@@ -326,8 +317,7 @@ class array_init_t : public statement_t {
   public:
     array_init_t(variable_t arr, linear_expression_t elem_size, linear_expression_t lb, linear_expression_t ub,
                  linear_expression_t val)
-        : statement_t(ARR_INIT), m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_val(val) {
-    }
+        : statement_t(ARR_INIT), m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_val(val) {}
 
     variable_t array() const { return m_arr; }
 
@@ -361,9 +351,7 @@ class array_store_t : public statement_t {
     array_store_t(variable_t arr, linear_expression_t elem_size, linear_expression_t lb, linear_expression_t ub,
                   linear_expression_t value, bool is_singleton)
         : statement_t(ARR_STORE), m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_value(value),
-          m_is_singleton(is_singleton) {
-
-    }
+          m_is_singleton(is_singleton) {}
 
     variable_t array() const { return m_arr; }
 
@@ -404,8 +392,7 @@ class array_store_t : public statement_t {
 class array_load_t : public statement_t {
   public:
     array_load_t(variable_t lhs, variable_t arr, linear_expression_t elem_size, linear_expression_t index)
-        : statement_t(ARR_LOAD), m_lhs(lhs), m_array(arr), m_elem_size(elem_size), m_index(index) {
-    }
+        : statement_t(ARR_LOAD), m_lhs(lhs), m_array(arr), m_elem_size(elem_size), m_index(index) {}
 
     variable_t lhs() const { return m_lhs; }
 
@@ -434,8 +421,7 @@ class array_load_t : public statement_t {
 class array_assign_t : public statement_t {
     //! a = b
   public:
-    array_assign_t(variable_t lhs, variable_t rhs) : statement_t(ARR_ASSIGN), m_lhs(lhs), m_rhs(rhs) {
-    }
+    array_assign_t(variable_t lhs, variable_t rhs) : statement_t(ARR_ASSIGN), m_lhs(lhs), m_rhs(rhs) {}
 
     variable_t lhs() const { return m_lhs; }
 
@@ -586,113 +572,61 @@ class basic_block_t {
 
     /// To build statements
 
-    void add(variable_t lhs, variable_t op1, variable_t op2) {
-        insert<binary_op_t>(lhs, BINOP_ADD, op1, op2);
-    }
+    void add(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_ADD, op1, op2); }
 
-    void add(variable_t lhs, variable_t op1, number_t op2) {
-        insert<binary_op_t>(lhs, BINOP_ADD, op1, op2);
-    }
+    void add(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_ADD, op1, op2); }
 
-    void sub(variable_t lhs, variable_t op1, variable_t op2) {
-        insert<binary_op_t>(lhs, BINOP_SUB, op1, op2);
-    }
+    void sub(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_SUB, op1, op2); }
 
-    void sub(variable_t lhs, variable_t op1, number_t op2) {
-        insert<binary_op_t>(lhs, BINOP_SUB, op1, op2);
-    }
+    void sub(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_SUB, op1, op2); }
 
-    void mul(variable_t lhs, variable_t op1, variable_t op2) {
-        insert<binary_op_t>(lhs, BINOP_MUL, op1, op2);
-    }
+    void mul(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_MUL, op1, op2); }
 
-    void mul(variable_t lhs, variable_t op1, number_t op2) {
-        insert<binary_op_t>(lhs, BINOP_MUL, op1, op2);
-    }
+    void mul(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_MUL, op1, op2); }
 
     // signed division
-    void div(variable_t lhs, variable_t op1, variable_t op2) {
-        insert<binary_op_t>(lhs, BINOP_SDIV, op1, op2);
-    }
+    void div(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_SDIV, op1, op2); }
 
-    void div(variable_t lhs, variable_t op1, number_t op2) {
-        insert<binary_op_t>(lhs, BINOP_SDIV, op1, op2);
-    }
+    void div(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_SDIV, op1, op2); }
 
     // unsigned division
-    void udiv(variable_t lhs, variable_t op1, variable_t op2) {
-        insert<binary_op_t>(lhs, BINOP_UDIV, op1, op2);
-    }
+    void udiv(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_UDIV, op1, op2); }
 
-    void udiv(variable_t lhs, variable_t op1, number_t op2) {
-        insert<binary_op_t>(lhs, BINOP_UDIV, op1, op2);
-    }
+    void udiv(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_UDIV, op1, op2); }
 
     // signed rem
-    void rem(variable_t lhs, variable_t op1, variable_t op2) {
-        insert<binary_op_t>(lhs, BINOP_SREM, op1, op2);
-    }
+    void rem(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_SREM, op1, op2); }
 
-    void rem(variable_t lhs, variable_t op1, number_t op2) {
-        insert<binary_op_t>(lhs, BINOP_SREM, op1, op2);
-    }
+    void rem(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_SREM, op1, op2); }
 
     // unsigned rem
-    void urem(variable_t lhs, variable_t op1, variable_t op2) {
-        insert<binary_op_t>(lhs, BINOP_UREM, op1, op2);
-    }
+    void urem(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_UREM, op1, op2); }
 
-    void urem(variable_t lhs, variable_t op1, number_t op2) {
-        insert<binary_op_t>(lhs, BINOP_UREM, op1, op2);
-    }
+    void urem(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_UREM, op1, op2); }
 
-    void bitwise_and(variable_t lhs, variable_t op1, variable_t op2) {
-        insert<binary_op_t>(lhs, BINOP_AND, op1, op2);
-    }
+    void bitwise_and(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_AND, op1, op2); }
 
-    void bitwise_and(variable_t lhs, variable_t op1, number_t op2) {
-        insert<binary_op_t>(lhs, BINOP_AND, op1, op2);
-    }
+    void bitwise_and(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_AND, op1, op2); }
 
-    void bitwise_or(variable_t lhs, variable_t op1, variable_t op2) {
-        insert<binary_op_t>(lhs, BINOP_OR, op1, op2);
-    }
+    void bitwise_or(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_OR, op1, op2); }
 
-    void bitwise_or(variable_t lhs, variable_t op1, number_t op2) {
-        insert<binary_op_t>(lhs, BINOP_OR, op1, op2);
-    }
+    void bitwise_or(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_OR, op1, op2); }
 
-    void bitwise_xor(variable_t lhs, variable_t op1, variable_t op2) {
-        insert<binary_op_t>(lhs, BINOP_XOR, op1, op2);
-    }
+    void bitwise_xor(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_XOR, op1, op2); }
 
-    void bitwise_xor(variable_t lhs, variable_t op1, number_t op2) {
-        insert<binary_op_t>(lhs, BINOP_XOR, op1, op2);
-    }
+    void bitwise_xor(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_XOR, op1, op2); }
 
-    void shl(variable_t lhs, variable_t op1, variable_t op2) {
-        insert<binary_op_t>(lhs, BINOP_SHL, op1, op2);
-    }
+    void shl(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_SHL, op1, op2); }
 
-    void shl(variable_t lhs, variable_t op1, number_t op2) {
-        insert<binary_op_t>(lhs, BINOP_SHL, op1, op2);
-    }
+    void shl(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_SHL, op1, op2); }
 
-    void lshr(variable_t lhs, variable_t op1, variable_t op2) {
-        insert<binary_op_t>(lhs, BINOP_LSHR, op1, op2);
-    }
+    void lshr(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_LSHR, op1, op2); }
 
-    void lshr(variable_t lhs, variable_t op1, number_t op2) {
-        insert<binary_op_t>(lhs, BINOP_LSHR, op1, op2);
-    }
+    void lshr(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_LSHR, op1, op2); }
 
-    void ashr(variable_t lhs, variable_t op1, variable_t op2) {
-        insert<binary_op_t>(lhs, BINOP_ASHR, op1, op2);
-    }
+    void ashr(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_ASHR, op1, op2); }
 
-    void ashr(variable_t lhs, variable_t op1, number_t op2) {
-        insert<binary_op_t>(lhs, BINOP_ASHR, op1, op2);
-    }
+    void ashr(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_ASHR, op1, op2); }
 
     void assign(variable_t lhs, linear_expression_t rhs) { insert<assign_t>(lhs, rhs); }
 
@@ -709,9 +643,7 @@ class basic_block_t {
         insert<select_t>(lhs, cond, e1, e2);
     }
 
-    void assertion(linear_constraint_t cst, debug_info di = debug_info()) {
-        insert<assert_t>(cst, di);
-    }
+    void assertion(linear_constraint_t cst, debug_info di = debug_info()) { insert<assert_t>(cst, di); }
 
     void array_init(variable_t a, linear_expression_t lb_idx, linear_expression_t ub_idx, linear_expression_t v,
                     linear_expression_t elem_size) {
@@ -753,7 +685,6 @@ class basic_block_rev_t {
     using const_iterator = basic_block_t::const_reverse_iterator;
 
   private:
-
   public:
     basic_block_t& _bb;
 
@@ -1343,7 +1274,6 @@ class cfg_rev_t {
     std::unordered_map<basic_block_label_t, basic_block_rev_t> _rev_bbs;
 
   public:
-
     cfg_rev_t(cfg_ref_t cfg_t) : _cfg(cfg_t) {
         // Create basic_block_rev_t from basic_block_t objects
         // Note that basic_block_rev_t is also a view of basic_block_t so it
