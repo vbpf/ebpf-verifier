@@ -50,8 +50,8 @@ class separate_domain {
 
   private:
     using patricia_tree_t = patricia_tree<Key, Value>;
-    using unary_op_t = typename patricia_tree_t::unary_op_t;
-    using binary_op_t = typename patricia_tree_t::binary_op_t;
+    using unary_action_t = typename patricia_tree_t::unary_action_t;
+    using binary_action_t = typename patricia_tree_t::binary_action_t;
     using partial_order_t = typename patricia_tree_t::partial_order_t;
 
   public:
@@ -65,7 +65,7 @@ class separate_domain {
     patricia_tree_t _tree;
 
   public:
-    class join_op : public binary_op_t {
+    class join_op : public binary_action_t {
         std::pair<bool, std::optional<Value>> apply(Value x, Value y) {
             Value z = x.operator|(y);
             if (z.is_top()) {
@@ -78,7 +78,7 @@ class separate_domain {
         bool default_is_absorbing() { return true; }
     }; // class join_op
 
-    class widening_op : public binary_op_t {
+    class widening_op : public binary_action_t {
         std::pair<bool, std::optional<Value>> apply(Value x, Value y) {
             Value z = x.widen(y);
             if (z.is_top()) {
@@ -93,7 +93,7 @@ class separate_domain {
     }; // class widening_op
 
     template <typename Thresholds>
-    class widening_thresholds_op : public binary_op_t {
+    class widening_thresholds_op : public binary_action_t {
         const Thresholds& m_ts;
 
       public:
@@ -112,7 +112,7 @@ class separate_domain {
 
     }; // class widening_thresholds_op
 
-    class meet_op : public binary_op_t {
+    class meet_op : public binary_action_t {
         std::pair<bool, std::optional<Value>> apply(Value x, Value y) {
             Value z = x.operator&(y);
             if (z.is_bottom()) {
@@ -126,7 +126,7 @@ class separate_domain {
 
     }; // class meet_op
 
-    class narrowing_op : public binary_op_t {
+    class narrowing_op : public binary_action_t {
         std::pair<bool, std::optional<Value>> apply(Value x, Value y) {
             Value z = x.narrow(y);
             if (z.is_bottom()) {
@@ -153,7 +153,7 @@ class separate_domain {
     static separate_domain_t bottom() { return separate_domain_t(false); }
 
   private:
-    static patricia_tree_t apply_operation(binary_op_t& o, patricia_tree_t t1, patricia_tree_t t2, bool& is_bottom) {
+    static patricia_tree_t apply_operation(binary_action_t& o, patricia_tree_t t1, patricia_tree_t t2, bool& is_bottom) {
         is_bottom = t1.merge_with(t2, o);
         return t1;
     }
