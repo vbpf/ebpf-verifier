@@ -680,14 +680,8 @@ class basic_block_t {
     stmt_list_t m_ts;
     bb_id_set_t m_prev, m_next;
     tracked_precision m_track_prec;
-    // Ideally it should be size_t to indicate any position within the
-    // block. For now, we only allow to insert either at front or at
-    // the back (default). Note that if insertions at the front are
-    // very common we should replace stmt_list_t from a vector to a
-    // deque.
-    bool m_insert_point_at_front;
     // set of used/def variables
-    live_domain_t m_live;
+    live_domain_t m_live{live_domain_t::bottom()};
 
     void insert_adjacent(bb_id_set_t& c, basic_block_label_t e) {
         if (std::find(c.begin(), c.end(), e) == c.end()) {
@@ -702,7 +696,7 @@ class basic_block_t {
     }
 
     basic_block_t(basic_block_label_t bb_id, tracked_precision track_prec)
-        : m_bb_id(bb_id), m_track_prec(track_prec), m_insert_point_at_front(false), m_live(live_domain_t::bottom()) {}
+        : m_bb_id(bb_id), m_track_prec(track_prec) {}
 
     static basic_block_t* create(basic_block_label_t bb_id, tracked_precision prec) {
         return new basic_block_t(bb_id, prec);
@@ -719,12 +713,7 @@ class basic_block_t {
     }
 
     void insert(statement_t* stmt) {
-        if (m_insert_point_at_front) {
-            m_ts.insert(m_ts.begin(), stmt);
-            m_insert_point_at_front = false;
-        } else {
-            m_ts.push_back(stmt);
-        }
+        m_ts.push_back(stmt);
         update_uses_and_defs(stmt);
     }
 
@@ -735,9 +724,6 @@ class basic_block_t {
             delete m_ts[i];
         }
     }
-
-    // it will be set to false after the first insertion
-    void set_insert_point_front() { m_insert_point_at_front = true; }
 
     basic_block_t* clone() const {
         // The basic block labels (i.e., identifiers) are not cloned.
