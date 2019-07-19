@@ -35,41 +35,12 @@
 namespace crab {
 
 /**
- * API abstract transformer
- **/
-class abs_transformer_api : public statement_visitor {
-  protected:
-    virtual ~abs_transformer_api() {}
-
-    virtual void exec(havoc_t&) {}
-    virtual void exec(binary_op_t&) {}
-    virtual void exec(assign_t&) {}
-    virtual void exec(assume_t&) {}
-    virtual void exec(select_t&) {}
-    virtual void exec(assert_t&) {}
-    virtual void exec(array_init_t&) {}
-    virtual void exec(array_store_t&) {}
-    virtual void exec(array_load_t&) {}
-
-  public: /* visitor api */
-    void visit(havoc_t& s) { exec(s); }
-    void visit(binary_op_t& s) { exec(s); }
-    void visit(assign_t& s) { exec(s); }
-    void visit(assume_t& s) { exec(s); }
-    void visit(select_t& s) { exec(s); }
-    void visit(assert_t& s) { exec(s); }
-    void visit(array_init_t& s) { exec(s); }
-    void visit(array_store_t& s) { exec(s); }
-    void visit(array_load_t& s) { exec(s); }
-};
-
-/**
  * Abstract forward transformer for all statements. Function calls
  * can be redefined by derived classes. By default, all function
  * calls are ignored in a sound manner (by havoc'ing all outputs).
  **/
 template <class AbsDomain>
-class intra_abs_transformer : public abs_transformer_api {
+class intra_abs_transformer : public statement_visitor {
     using abs_dom_t = AbsDomain;
 
   public:
@@ -92,7 +63,7 @@ class intra_abs_transformer : public abs_transformer_api {
 
     virtual ~intra_abs_transformer() {}
 
-    void exec(binary_op_t& stmt) {
+    void visit(binary_op_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {
             pre_bot = m_inv.is_bottom();
@@ -115,7 +86,7 @@ class intra_abs_transformer : public abs_transformer_api {
         }
     }
 
-    void exec(select_t& stmt) {
+    void visit(select_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {
             pre_bot = m_inv.is_bottom();
@@ -153,7 +124,7 @@ class intra_abs_transformer : public abs_transformer_api {
         }
     }
 
-    void exec(assign_t& stmt) {
+    void visit(assign_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {
             pre_bot = m_inv.is_bottom();
@@ -169,9 +140,9 @@ class intra_abs_transformer : public abs_transformer_api {
         }
     }
 
-    void exec(assume_t& stmt) { m_inv += stmt.constraint(); }
+    void visit(assume_t& stmt) { m_inv += stmt.constraint(); }
 
-    void exec(assert_t& stmt) {
+    void visit(assert_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {
             pre_bot = m_inv.is_bottom();
@@ -190,7 +161,7 @@ class intra_abs_transformer : public abs_transformer_api {
         }
     }
 
-    void exec(havoc_t& stmt) {
+    void visit(havoc_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {
             pre_bot = m_inv.is_bottom();
@@ -206,7 +177,7 @@ class intra_abs_transformer : public abs_transformer_api {
         }
     }
 
-    void exec(array_init_t& stmt) {
+    void visit(array_init_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {
             pre_bot = m_inv.is_bottom();
@@ -222,7 +193,7 @@ class intra_abs_transformer : public abs_transformer_api {
         }
     }
 
-    void exec(array_store_t& stmt) {
+    void visit(array_store_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {
             pre_bot = m_inv.is_bottom();
@@ -242,7 +213,7 @@ class intra_abs_transformer : public abs_transformer_api {
         }
     }
 
-    void exec(array_load_t& stmt) {
+    void visit(array_load_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {
             pre_bot = m_inv.is_bottom();
