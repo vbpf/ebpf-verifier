@@ -715,11 +715,6 @@ class array_expansion_domain final : public writeable {
         }
     }
 
-    void array_assign(variable_t lhs, variable_t rhs) {
-        //_array_map[lhs] = _array_map[rhs];
-        CRAB_ERROR("array_assign in array_expansion domain not implemented");
-    }
-
     NumAbsDomain get_content_domain() const { return _inv; }
 
     NumAbsDomain& get_content_domain() { return _inv; }

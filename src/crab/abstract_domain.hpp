@@ -132,9 +132,6 @@ class array_abstract_domain : public numeric_abstract_domain<array_abstract_doma
     // elem_size is in bytes
     virtual void array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t i,
                                    linear_expression_t j, linear_expression_t v) = 0;
-    // forall i :: a[i] := b[i]
-    virtual void array_assign(variable_t a, variable_t b) = 0;
-
 };
 
 } // end namespace domains
