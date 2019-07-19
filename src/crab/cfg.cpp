@@ -88,7 +88,7 @@ static crab_os& operator<<(crab_os& o, const select_t& s) {
 static crab_os& operator<<(crab_os& o, const assert_t& s) {
     o << "assert(" << s.constraint << ")";
     if (s.debug.has_debug()) {
-        o << " // line=" << s.debug.m_line << " column=" << s.debug.m_col;
+        o << " // line=" << s.debug.line << " column=" << s.debug.col;
     }
     return o;
 }
