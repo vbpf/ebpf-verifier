@@ -18,7 +18,6 @@
      a[l...u] := v (a,b are arrays and v can be bool/integer/pointer)
      a[i] := v;
      v := a[i];
-     a := b
 
    havoc(x);
 
@@ -40,7 +39,7 @@ namespace crab {
  * calls are ignored in a sound manner (by havoc'ing all outputs).
  **/
 template <class AbsDomain>
-class intra_abs_transformer : public statement_visitor {
+class intra_abs_transformer {
     using abs_dom_t = AbsDomain;
 
   public:
@@ -61,9 +60,7 @@ class intra_abs_transformer : public statement_visitor {
   public:
     intra_abs_transformer(const abs_dom_t& inv) : m_inv(inv) {}
 
-    virtual ~intra_abs_transformer() {}
-
-    void visit(binary_op_t& stmt) {
+    void operator()(const binary_op_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {
             pre_bot = m_inv.is_bottom();
@@ -86,7 +83,7 @@ class intra_abs_transformer : public statement_visitor {
         }
     }
 
-    void visit(select_t& stmt) {
+    void operator()(const select_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {
             pre_bot = m_inv.is_bottom();
@@ -124,7 +121,7 @@ class intra_abs_transformer : public statement_visitor {
         }
     }
 
-    void visit(assign_t& stmt) {
+    void operator()(const assign_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {
             pre_bot = m_inv.is_bottom();
@@ -140,9 +137,9 @@ class intra_abs_transformer : public statement_visitor {
         }
     }
 
-    void visit(assume_t& stmt) { m_inv += stmt.constraint(); }
+    void operator()(const assume_t& stmt) { m_inv += stmt.constraint(); }
 
-    void visit(assert_t& stmt) {
+    void operator()(const assert_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {
             pre_bot = m_inv.is_bottom();
@@ -161,7 +158,7 @@ class intra_abs_transformer : public statement_visitor {
         }
     }
 
-    void visit(havoc_t& stmt) {
+    void operator()(const havoc_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {
             pre_bot = m_inv.is_bottom();
@@ -177,7 +174,7 @@ class intra_abs_transformer : public statement_visitor {
         }
     }
 
-    void visit(array_init_t& stmt) {
+    void operator()(const array_init_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {
             pre_bot = m_inv.is_bottom();
@@ -193,7 +190,7 @@ class intra_abs_transformer : public statement_visitor {
         }
     }
 
-    void visit(array_store_t& stmt) {
+    void operator()(const array_store_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {
             pre_bot = m_inv.is_bottom();
@@ -213,7 +210,7 @@ class intra_abs_transformer : public statement_visitor {
         }
     }
 
-    void visit(array_load_t& stmt) {
+    void operator()(const array_load_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {
             pre_bot = m_inv.is_bottom();
@@ -228,6 +225,8 @@ class intra_abs_transformer : public statement_visitor {
             }
         }
     }
+
+    void operator()(const std::monostate& stmt) { }
 };
 
 enum class check_kind_t { Safe, Error, Warning, Unreachable };
@@ -308,8 +307,7 @@ class assert_property_checker : public intra_abs_transformer<AbsDomain> {
 
     using parent::parent;
 
-  protected:
-    virtual void visit(assert_t& s) override {
+    void operator()(const assert_t& s) {
         linear_constraint_t cst = s.constraint();
         if (cst.is_contradiction()) {
             if (this->m_inv.is_bottom()) {
@@ -349,15 +347,18 @@ class assert_property_checker : public intra_abs_transformer<AbsDomain> {
             */
             m_db.add_warning(s);
         }
-        parent::visit(s); // propagate invariants to the next stmt
+        parent::operator()(s); // propagate invariants to the next stmt
     }
+
+    template <typename T>
+    void operator()(const T& s) { parent::operator()(s); }
 };
 
 template <typename AbsDomain>
 inline AbsDomain transform(const basic_block_t& bb, const AbsDomain& from_inv) {
     intra_abs_transformer<AbsDomain> transformer(from_inv);
     for (statement_t& statement : bb) {
-        statement.accept(&transformer);
+        std::visit(transformer, statement_to_new(statement));
     }
     return std::move(transformer.m_inv);
 }
@@ -368,7 +369,7 @@ inline void check_block(const basic_block_t& bb, const AbsDomain& from_inv, chec
         return;
     assert_property_checker<AbsDomain> checker(from_inv);
     for (statement_t& statement : bb) {
-        statement.accept(&checker);
+        std::visit(checker, statement_to_new(statement));
     }
     db.merge_db(std::move(checker.m_db));
 }

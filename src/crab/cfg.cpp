@@ -75,18 +75,6 @@ inline crab_os& operator<<(crab_os& o, const variable_ref_t& v) {
     return o;
 }
 
-void statement_visitor::visit(basic_block_t& b) {
-    for (auto& s : b) {
-        s.accept(this);
-    }
-}
-
-void statement_visitor::visit(basic_block_rev_t& b) {
-    for (auto& s : b) {
-        s.accept(this);
-    }
-}
-
 void cfg_t::remove_useless_blocks() {
     if (!has_exit())
         return;
@@ -107,11 +95,11 @@ void cfg_t::remove_useless_blocks() {
     }
 }
 
-struct type_checker_visitor : public statement_visitor {
+struct type_checker_visitor {
 
     type_checker_visitor() {}
 
-    void check_num(variable_t v, std::string msg, statement_t& s) {
+    void check_num(variable_t v, std::string msg, const statement_t& s) {
         if (v.get_type() != INT_TYPE) {
             crab_string_os os;
             os << "(type checking) " << msg << " in " << s;
@@ -119,7 +107,7 @@ struct type_checker_visitor : public statement_visitor {
         }
     }
 
-    void check_int(variable_t v, std::string msg, statement_t& s) {
+    void check_int(variable_t v, std::string msg, const statement_t& s) {
         if ((v.get_type() != INT_TYPE) || (v.get_bitwidth() <= 1)) {
             crab_string_os os;
             os << "(type checking) " << msg << " in " << s;
@@ -127,7 +115,7 @@ struct type_checker_visitor : public statement_visitor {
         }
     }
 
-    void check_bitwidth_if_int(variable_t v, std::string msg, statement_t& s) {
+    void check_bitwidth_if_int(variable_t v, std::string msg, const statement_t& s) {
         if (v.get_type() == INT_TYPE) {
             if (v.get_bitwidth() <= 1) {
                 crab_string_os os;
@@ -137,7 +125,7 @@ struct type_checker_visitor : public statement_visitor {
         }
     }
 
-    void check_same_type(variable_t v1, variable_t v2, std::string msg, statement_t& s) {
+    void check_same_type(variable_t v1, variable_t v2, std::string msg, const statement_t& s) {
         if (v1.get_type() != v2.get_type()) {
             crab_string_os os;
             os << "(type checking) " << msg << " in " << s;
@@ -145,7 +133,7 @@ struct type_checker_visitor : public statement_visitor {
         }
     }
 
-    void check_same_bitwidth(variable_t v1, variable_t v2, std::string msg, statement_t& s) {
+    void check_same_bitwidth(variable_t v1, variable_t v2, std::string msg, const statement_t& s) {
         // assume v1 and v2 have same type
         if (v1.get_type() == INT_TYPE) {
             if (v1.get_bitwidth() != v2.get_bitwidth()) {
@@ -156,7 +144,7 @@ struct type_checker_visitor : public statement_visitor {
         }
     }
 
-    void check_num_or_var(linear_expression_t e, std::string msg, statement_t& s) {
+    void check_num_or_var(linear_expression_t e, std::string msg, const statement_t& s) {
         if (!(e.is_constant() || e.get_variable())) {
             crab_string_os os;
             os << "(type checking) " << msg << " in " << s;
@@ -164,7 +152,7 @@ struct type_checker_visitor : public statement_visitor {
         }
     }
 
-    void check_array(variable_t v, statement_t& s) {
+    void check_array(variable_t v, const statement_t& s) {
         switch (v.get_type()) {
         case ARR_INT_TYPE: break;
         default: {
@@ -176,7 +164,7 @@ struct type_checker_visitor : public statement_visitor {
     }
 
     // v1 is array type and v2 is a scalar type consistent with v1
-    void check_array_and_scalar_type(variable_t v1, variable_t v2, statement_t& s) {
+    void check_array_and_scalar_type(variable_t v1, variable_t v2, const statement_t& s) {
         switch (v1.get_type()) {
         case ARR_INT_TYPE:
             if (v2.get_type() == INT_TYPE)
@@ -193,7 +181,7 @@ struct type_checker_visitor : public statement_visitor {
         CRAB_ERROR(os.str());
     }
 
-    void visit(binary_op_t& s) {
+    void operator()(const binary_op_t& s) {
         variable_t lhs = s.lhs();
         linear_expression_t op1 = s.left();
         linear_expression_t op2 = s.right();
@@ -215,7 +203,7 @@ struct type_checker_visitor : public statement_visitor {
         }
     }
 
-    void visit(assign_t& s) {
+    void operator()(const assign_t& s) {
         variable_t lhs = s.lhs();
         linear_expression_t rhs = s.rhs();
 
@@ -229,7 +217,7 @@ struct type_checker_visitor : public statement_visitor {
         }
     }
 
-    void visit(assume_t& s) {
+    void operator()(const assume_t& s) {
         typename linear_expression_t::variable_set_t vars = s.constraint().variables();
         bool first = true;
         variable_ref_t first_var;
@@ -244,7 +232,7 @@ struct type_checker_visitor : public statement_visitor {
         }
     }
 
-    void visit(assert_t& s) {
+    void operator()(const assert_t& s) {
         typename linear_expression_t::variable_set_t vars = s.constraint().variables();
         bool first = true;
         variable_ref_t first_var;
@@ -259,7 +247,7 @@ struct type_checker_visitor : public statement_visitor {
         }
     }
 
-    void visit(select_t& s) {
+    void operator()(const select_t& s) {
         check_num(s.lhs(), "lhs must be integer or real", s);
         check_bitwidth_if_int(s.lhs(), "lhs must be have bitwidth > 1", s);
 
@@ -291,9 +279,9 @@ struct type_checker_visitor : public statement_visitor {
         }
     }
 
-    void visit(havoc_t&) {}
+    void operator()(const havoc_t&) {}
 
-    void visit(array_init_t& s) {
+    void operator()(const array_init_t& s) {
         // TODO: check that e_sz is the same number that v's bitwidth
         variable_t a = s.array();
         linear_expression_t e_sz = s.elem_size();
@@ -310,7 +298,7 @@ struct type_checker_visitor : public statement_visitor {
         }
     }
 
-    void visit(array_store_t& s) {
+    void operator()(const array_store_t& s) {
         // TODO: check that e_sz is the same number that v's bitwidth
         /// XXX: we allow linear expressions as indexes
         variable_t a = s.array();
@@ -332,7 +320,7 @@ struct type_checker_visitor : public statement_visitor {
         }
     }
 
-    void visit(array_load_t& s) {
+    void operator()(const array_load_t& s) {
         // TODO: check that e_sz is the same number that lhs's bitwidth
         /// XXX: we allow linear expressions as indexes
         variable_t a = s.array();
@@ -342,12 +330,16 @@ struct type_checker_visitor : public statement_visitor {
         check_num_or_var(e_sz, "element size must be number or variable", s);
         check_array_and_scalar_type(a, lhs, s);
     }
+
+    void operator()(const std::monostate& s) {
+    }
 }; // end class type_checker_visitor
 
 void type_check(const cfg_ref_t& cfg) {
     type_checker_visitor vis;
     for (auto& bb : cfg) {
-        bb.accept(&vis);
+        for (auto& s : bb)
+            std::visit(vis, statement_to_new(s));
     }
 }
 
