@@ -58,9 +58,6 @@
 
 namespace crab {
 
-// To convert a basic block label to a string
-inline std::string get_label_str(std::string e) { return e; };
-
 struct debug_info {
     int line{-1};
     int col{-1};
@@ -229,7 +226,7 @@ class basic_block_t {
 
     basic_block_label_t label() const { return m_bb_id; }
 
-    std::string name() const { return get_label_str(m_bb_id); }
+    std::string name() const { return m_bb_id; }
 
     iterator begin() { return (m_ts.begin()); }
     iterator end() { return (m_ts.end()); }
@@ -274,7 +271,7 @@ class basic_block_t {
     }
 
     void write(crab_os& o) const {
-        o << get_label_str(m_bb_id) << ":\n";
+        o << m_bb_id << ":\n";
         for (auto const& s : *this) {
             o << "  " << s << ";\n";
         }
@@ -285,7 +282,7 @@ class basic_block_t {
             o << "  "
               << "goto ";
             for (; it != et;) {
-                o << get_label_str(*it);
+                o << *it;
                 ++it;
                 if (it == et) {
                     o << ";";

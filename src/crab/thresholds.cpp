@@ -154,7 +154,7 @@ void wto_thresholds_t::visit(wto_cycle_t& cycle) {
 
 void wto_thresholds_t::write(crab_os& o) const {
     for (auto& kv : m_head_to_thresholds) {
-        o << get_label_str(kv.first) << "=" << kv.second << "\n";
+        o << kv.first << "=" << kv.second << "\n";
     }
 }
 } // namespace iterators
