@@ -504,10 +504,6 @@ class basic_block_rev_t {
     }
 };
 
-// forward declarations
-class cfg_rev_t;
-class cfg_ref_t;
-
 class cfg_t {
   public:
     using node_t = basic_block_label_t; // for Bgl graphs
@@ -989,11 +985,11 @@ class cfg_rev_t {
     using const_var_iterator = cfg_t::const_var_iterator;
 
   private:
-    cfg_ref_t _cfg;
+    cfg_t& _cfg;
     std::unordered_map<basic_block_label_t, basic_block_rev_t> _rev_bbs;
 
   public:
-    cfg_rev_t(cfg_ref_t cfg) : _cfg(cfg) {
+    cfg_rev_t(cfg_t& cfg) : _cfg(cfg) {
         // Create basic_block_rev_t from basic_block_t objects
         // Note that basic_block_rev_t is also a view of basic_block_t so it
         // doesn't modify basic_block_t objects.
@@ -1004,23 +1000,7 @@ class cfg_rev_t {
 
     cfg_rev_t(const cfg_rev_t& o) : _cfg(o._cfg), _rev_bbs(o._rev_bbs) {}
 
-    cfg_rev_t(cfg_rev_t&& o) : _cfg(std::move(o._cfg)), _rev_bbs(std::move(o._rev_bbs)) {}
-
-    cfg_rev_t& operator=(const cfg_rev_t& o) {
-        if (this != &o) {
-            _rev_bbs.clear();
-            for (auto& [k, rev_bb] : o._rev_bbs)
-                _rev_bbs.emplace(k, rev_bb._bb);
-            _cfg = o._cfg;
-        }
-        return *this;
-    }
-
-    cfg_rev_t& operator=(cfg_rev_t&& o) {
-        _cfg = std::move(o._cfg);
-        _rev_bbs = std::move(o._rev_bbs);
-        return *this;
-    }
+    cfg_rev_t(cfg_rev_t&& o) : _cfg(o._cfg), _rev_bbs(std::move(o._rev_bbs)) {}
 
     basic_block_label_t entry() const {
         if (!_cfg.has_exit())
