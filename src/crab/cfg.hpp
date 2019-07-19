@@ -120,7 +120,6 @@ class havoc_t;
 class array_init_t;
 class array_store_t;
 class array_load_t;
-class array_assign_t;
 
 struct statement_visitor {
     using number_t = number_t;
@@ -135,7 +134,6 @@ struct statement_visitor {
     virtual void visit(array_init_t&){};
     virtual void visit(array_store_t&){};
     virtual void visit(array_load_t&){};
-    virtual void visit(array_assign_t&){};
 
     void visit(basic_block_t& b);
 
@@ -418,26 +416,6 @@ class array_load_t : public statement_t {
     linear_expression_t m_index;
 };
 
-class array_assign_t : public statement_t {
-    //! a = b
-  public:
-    array_assign_t(variable_t lhs, variable_t rhs) : statement_t(ARR_ASSIGN), m_lhs(lhs), m_rhs(rhs) {}
-
-    variable_t lhs() const { return m_lhs; }
-
-    variable_t rhs() const { return m_rhs; }
-
-    variable_type_t array_type() const { return m_lhs.get_type(); }
-
-    virtual void accept(statement_visitor* v) { v->visit(*this); }
-
-    virtual void write(crab_os& o) const { o << m_lhs << " = " << m_rhs; }
-
-  private:
-    variable_t m_lhs;
-    variable_t m_rhs;
-};
-
 class cfg_t;
 
 class basic_block_t {
@@ -663,8 +641,6 @@ class basic_block_t {
     void array_load(variable_t lhs, variable_t arr, linear_expression_t idx, linear_expression_t elem_size) {
         insert<array_load_t>(lhs, arr, elem_size, idx);
     }
-
-    void array_assign(variable_t lhs, variable_t rhs) { insert<array_assign_t>(lhs, rhs); }
 
     friend crab_os& operator<<(crab_os& o, const basic_block_t& b) {
         b.write(o);
