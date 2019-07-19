@@ -646,45 +646,9 @@ class cfg_t {
 
     // --- End ikos fixpoint API
 
-    basic_block_t& insert(basic_block_label_t bb_id) {
-        auto it = m_blocks.find(bb_id);
-        if (it != m_blocks.end())
-            return *(it->second);
+    basic_block_t& insert(basic_block_label_t bb_id);
 
-        m_blocks.emplace(bb_id, basic_block_t::create(bb_id));
-        return get_node(bb_id);
-    }
-
-    void remove(basic_block_label_t bb_id) {
-        if (bb_id == m_entry) {
-            CRAB_ERROR("Cannot remove entry block");
-        }
-
-        if (m_exit && *m_exit == bb_id) {
-            CRAB_ERROR("Cannot remove exit block");
-        }
-
-        std::vector<std::pair<basic_block_t*, basic_block_t*>> dead_edges;
-        basic_block_t& bb = get_node(bb_id);
-
-        for (auto id : boost::make_iterator_range(bb.prev_blocks())) {
-            if (bb_id != id) {
-                dead_edges.push_back({&get_node(id), &bb});
-            }
-        }
-
-        for (auto id : boost::make_iterator_range(bb.next_blocks())) {
-            if (bb_id != id) {
-                dead_edges.push_back({&bb, &get_node(id)});
-            }
-        }
-
-        for (auto p : dead_edges) {
-            (*p.first) -= (*p.second);
-        }
-
-        m_blocks.erase(bb_id);
-    }
+    void remove(basic_block_label_t bb_id);
 
     //! return a begin iterator of basic_block_t's
     iterator begin() { return boost::make_transform_iterator(m_blocks.begin(), get_ref()); }
@@ -810,21 +774,7 @@ class cfg_t {
         }
     }
 
-    // remove unreachable blocks
-    void remove_unreachable_blocks() {
-        visited_t alive, dead;
-        mark_alive_blocks(entry(), *this, alive);
-
-        for (auto const& bb : *this) {
-            if (!(alive.count(bb.label()) > 0)) {
-                dead.insert(bb.label());
-            }
-        }
-
-        for (auto bb_id : dead) {
-            remove(bb_id);
-        }
-    }
+    void remove_unreachable_blocks();
 
     // remove blocks that cannot reach the exit block
     void remove_useless_blocks();

@@ -308,7 +308,7 @@ struct type_checker_visitor {
             if (!(s.lb_index.equal(s.ub_index))) {
                 crab_string_os os;
                 os << "(type checking) "
-                    << "lower and upper indexes must be equal because array is a singleton in " << s;
+                   << "lower and upper indexes must be equal because array is a singleton in " << s;
                 CRAB_ERROR(os.str());
             }
         }
@@ -331,9 +331,63 @@ struct type_checker_visitor {
         check_array_and_scalar_type(a, lhs, s);
     }
 
-    void operator()(const std::monostate& s) {
-    }
+    void operator()(const std::monostate& s) {}
 }; // end class type_checker_visitor
+
+basic_block_t& cfg_t::insert(basic_block_label_t bb_id) {
+    auto it = m_blocks.find(bb_id);
+    if (it != m_blocks.end())
+        return *(it->second);
+
+    m_blocks.emplace(bb_id, basic_block_t::create(bb_id));
+    return get_node(bb_id);
+}
+
+void cfg_t::remove(basic_block_label_t bb_id) {
+    if (bb_id == m_entry) {
+        CRAB_ERROR("Cannot remove entry block");
+    }
+
+    if (m_exit && *m_exit == bb_id) {
+        CRAB_ERROR("Cannot remove exit block");
+    }
+
+    std::vector<std::pair<basic_block_t*, basic_block_t*>> dead_edges;
+    basic_block_t& bb = get_node(bb_id);
+
+    for (auto id : boost::make_iterator_range(bb.prev_blocks())) {
+        if (bb_id != id) {
+            dead_edges.push_back({&get_node(id), &bb});
+        }
+    }
+
+    for (auto id : boost::make_iterator_range(bb.next_blocks())) {
+        if (bb_id != id) {
+            dead_edges.push_back({&bb, &get_node(id)});
+        }
+    }
+
+    for (auto p : dead_edges) {
+        (*p.first) -= (*p.second);
+    }
+
+    m_blocks.erase(bb_id);
+}
+
+void cfg_t::remove_unreachable_blocks() {
+    visited_t alive, dead;
+    mark_alive_blocks(entry(), *this, alive);
+
+    for (auto const& bb : *this) {
+        if (!(alive.count(bb.label()) > 0)) {
+            dead.insert(bb.label());
+        }
+    }
+
+    for (auto bb_id : dead) {
+        remove(bb_id);
+    }
+}
 
 void type_check(const cfg_ref_t& cfg) {
     type_checker_visitor vis;
