@@ -91,9 +91,7 @@ class cell_t {
 
     cell_t(offset_t offset, unsigned size) : _offset(offset), _size(size) {}
 
-    static interval_t to_interval(const offset_t o, unsigned size) {
-        return {o.index(), o.index() + size - 1};
-    }
+    static interval_t to_interval(const offset_t o, unsigned size) { return {o.index(), o.index() + size - 1}; }
 
     interval_t to_interval() const { return to_interval(_offset, _size); }
 
@@ -185,29 +183,6 @@ class cell_t {
     }
 };
 
-namespace cell_set_impl {
-template <typename Set>
-inline Set set_intersection(Set& s1, Set& s2) {
-    Set s3;
-    boost::set_intersection(s1, s2, std::inserter(s3, s3.end()));
-    return s3;
-}
-
-template <typename Set>
-inline Set set_union(Set& s1, Set& s2) {
-    Set s3;
-    boost::set_union(s1, s2, std::inserter(s3, s3.end()));
-    return s3;
-}
-
-template <typename Set>
-inline bool set_inclusion(Set& s1, Set& s2) {
-    Set s3;
-    boost::set_difference(s1, s2, std::inserter(s3, s3.end()));
-    return s3.empty();
-}
-} // namespace cell_set_impl
-
 // forward declarations
 template <typename AbsDomain>
 class array_expansion_domain;
@@ -247,7 +222,9 @@ class offset_map_t {
         // apply is called when two bindings (one each from a
         // different map) have the same key(i.e., offset).
         std::pair<bool, std::optional<cell_set_t>> apply(cell_set_t x, cell_set_t y) {
-            return {false, cell_set_impl::set_union(x, y)};
+            cell_set_t z;
+            boost::set_union(x, y, std::inserter(z, z.end()));
+            return {false, z};
         }
         // if one map does not have a key in the other map we add it.
         bool default_is_absorbing() { return false; }
@@ -255,14 +232,22 @@ class offset_map_t {
 
     class meet_op : public binary_op_t {
         std::pair<bool, std::optional<cell_set_t>> apply(cell_set_t x, cell_set_t y) {
-            return {false, cell_set_impl::set_intersection(x, y)};
+            cell_set_t z;
+            boost::set_intersection(x, y, std::inserter(z, z.end()));
+            return {false, z};
         }
         // if one map does not have a key in the other map we ignore it.
         bool default_is_absorbing() { return true; }
     };
 
     class domain_po : public partial_order_t {
-        bool leq(cell_set_t x, cell_set_t y) { return cell_set_impl::set_inclusion(x, y); }
+        bool leq(cell_set_t x, cell_set_t y) {
+            {
+                cell_set_t z;
+                boost::set_difference(x, y, std::inserter(z, z.end()));
+                return z.empty();
+            }
+        }
         // default value is bottom (i.e., empty map)
         bool default_is_top() { return false; }
     }; // class domain_po
