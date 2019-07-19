@@ -97,65 +97,43 @@ inline crab_os& operator<<(crab_os& o, const debug_info& l) {
   Numerical statements
 */
 
-class binary_op_t {
-  public:
-    binary_op_t(variable_t lhs, binary_operation_t op, linear_expression_t op1, linear_expression_t op2)
-        : m_lhs(lhs), m_op(op), m_op1(op1), m_op2(op2) {}
+struct binary_op_t {
+    binary_op_t(variable_t lhs, binary_operation_t op, linear_expression_t left, linear_expression_t right)
+        : lhs(lhs), op(op), left(left), right(right) {}
 
-    variable_t lhs() const { return m_lhs; }
+    void write(crab_os& o) const { o << lhs << " = " << left << op << right; }
 
-    binary_operation_t op() const { return m_op; }
-
-    linear_expression_t left() const { return m_op1; }
-
-    linear_expression_t right() const { return m_op2; }
-
-    void write(crab_os& o) const { o << m_lhs << " = " << m_op1 << m_op << m_op2; }
-
-  private:
-    variable_t m_lhs;
-    binary_operation_t m_op;
-    linear_expression_t m_op1;
-    linear_expression_t m_op2;
+    variable_t lhs;
+    binary_operation_t op;
+    linear_expression_t left;
+    linear_expression_t right;
 };
 
-class assign_t {
-  public:
-    assign_t(variable_t lhs, linear_expression_t rhs) : m_lhs(lhs), m_rhs(rhs) {}
+struct assign_t {
+    assign_t(variable_t lhs, linear_expression_t rhs) : lhs(lhs), rhs(rhs) {}
 
-    variable_t lhs() const { return m_lhs; }
+    void write(crab_os& o) const { o << lhs << " = " << rhs; }
 
-    linear_expression_t rhs() const { return m_rhs; }
-
-    void write(crab_os& o) const { o << m_lhs << " = " << m_rhs; }
-
-  private:
-    variable_t m_lhs;
-    linear_expression_t m_rhs;
+    variable_t lhs;
+    linear_expression_t rhs;
 };
 
-class assume_t {
-  public:
-    assume_t(linear_constraint_t cst) : m_cst(cst) {}
+struct assume_t {
+    assume_t(linear_constraint_t constraint) : constraint(constraint) {}
 
-    linear_constraint_t constraint() const { return m_cst; }
+    void write(crab_os& o) const { o << "assume(" << constraint << ")"; }
 
-    void write(crab_os& o) const { o << "assume(" << m_cst << ")"; }
-
-  private:
-    linear_constraint_t m_cst;
+    linear_constraint_t constraint;
 };
 
-class havoc_t {
-  public:
-    havoc_t(variable_t lhs) : m_lhs(lhs) {}
+struct havoc_t {
+    havoc_t(variable_t lhs) : lhs(lhs) {}
 
-    variable_t variable() const { return m_lhs; }
+    variable_t variable() const { return lhs; }
 
-    void write(crab_os& o) const { o << "havoc(" << m_lhs << ")"; }
+    void write(crab_os& o) const { o << "havoc(" << lhs << ")"; }
 
-  private:
-    variable_t m_lhs;
+    variable_t lhs;
 };
 
 // select x, c, e1, e2:
@@ -165,39 +143,26 @@ class havoc_t {
 // simulated by splitting blocks. However, frontends like LLVM can
 // generate many select instructions so we prefer to support
 // natively to avoid a blow up in the size of the CFG.
-class select_t {
-  public:
-    select_t(variable_t lhs, linear_constraint_t cond, linear_expression_t e1, linear_expression_t e2)
-        : m_lhs(lhs), m_cond(cond), m_e1(e1), m_e2(e2) {}
-
-    variable_t lhs() const { return m_lhs; }
-
-    linear_constraint_t cond() const { return m_cond; }
-
-    linear_expression_t left() const { return m_e1; }
-
-    linear_expression_t right() const { return m_e2; }
+struct select_t {
+    select_t(variable_t lhs, linear_constraint_t cond, linear_expression_t left, linear_expression_t right)
+        : lhs(lhs), cond(cond), left(left), right(right) {}
 
     void write(crab_os& o) const {
-        o << m_lhs << " = "
-          << "ite(" << m_cond << "," << m_e1 << "," << m_e2 << ")";
+        o << lhs << " = "
+          << "ite(" << cond << "," << left << "," << right << ")";
     }
 
-  private:
-    variable_t m_lhs;
-    linear_constraint_t m_cond;
-    linear_expression_t m_e1;
-    linear_expression_t m_e2;
+    variable_t lhs;
+    linear_constraint_t cond;
+    linear_expression_t left;
+    linear_expression_t right;
 };
 
-class assert_t {
-  public:
-    assert_t(linear_constraint_t cst, debug_info dbg_info = {}) : m_cst(cst), m_dbg_info(dbg_info) {}
-
-    linear_constraint_t constraint() const { return m_cst; }
+struct assert_t {
+    assert_t(linear_constraint_t constraint, debug_info dbg_info = {}) : constraint(constraint), m_dbg_info(dbg_info) {}
 
     void write(crab_os& o) const {
-        o << "assert(" << m_cst << ")";
+        o << "assert(" << constraint << ")";
         if (this->m_dbg_info.has_debug()) {
             o << " // line=" << this->m_dbg_info.m_line << " column=" << this->m_dbg_info.m_col;
         }
@@ -205,8 +170,7 @@ class assert_t {
 
     const debug_info& get_debug_info() const { return m_dbg_info; }
 
-  private:
-    linear_constraint_t m_cst;
+    linear_constraint_t constraint;
     debug_info m_dbg_info;
 };
 
@@ -224,96 +188,60 @@ class assert_t {
 
 //! Initialize all array elements to some variable or number.
 //  The semantics is similar to constant arrays in SMT.
-class array_init_t {
-  public:
-    array_init_t(variable_t arr, linear_expression_t elem_size, linear_expression_t lb, linear_expression_t ub,
+struct array_init_t {
+    array_init_t(variable_t array, linear_expression_t elem_size, linear_expression_t lb_index, linear_expression_t ub_index,
                  linear_expression_t val)
-        : m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_val(val) {}
+        : array(array), elem_size(elem_size), lb_index(lb_index), ub_index(ub_index), val(val) {}
 
-    variable_t array() const { return m_arr; }
+    void write(crab_os& o) const { o << array << "[" << lb_index << "..." << ub_index << "] := " << val; }
 
-    linear_expression_t elem_size() const { return m_elem_size; }
-
-    linear_expression_t lb_index() const { return m_lb; }
-
-    linear_expression_t ub_index() const { return m_ub; }
-
-    linear_expression_t val() const { return m_val; }
-
-    void write(crab_os& o) const { o << m_arr << "[" << m_lb << "..." << m_ub << "] := " << m_val; }
-
-  private:
     // forall i \in [lb,ub) % elem_size :: arr[i] := val and
     // forall j < lb or j >= ub :: arr[j] is undefined.
-    variable_t m_arr;
-    linear_expression_t m_elem_size; //! size in bytes
-    linear_expression_t m_lb;
-    linear_expression_t m_ub;
-    linear_expression_t m_val;
+    variable_t array;
+    linear_expression_t elem_size; //! size in bytes
+    linear_expression_t lb_index;
+    linear_expression_t ub_index;
+    linear_expression_t val;
 };
 
-class array_store_t {
-  public:
+struct array_store_t {
     // forall i \in [lb,ub) % elem_size :: arr[i] := val
-    array_store_t(variable_t arr, linear_expression_t elem_size, linear_expression_t lb, linear_expression_t ub,
+    array_store_t(variable_t array, linear_expression_t elem_size, linear_expression_t lb_index, linear_expression_t ub_index,
                   linear_expression_t value, bool is_singleton)
-        : m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_value(value), m_is_singleton(is_singleton) {}
-
-    variable_t array() const { return m_arr; }
-
-    linear_expression_t lb_index() const { return m_lb; }
-
-    linear_expression_t ub_index() const { return m_ub; }
-
-    linear_expression_t value() const { return m_value; }
-
-    linear_expression_t elem_size() const { return m_elem_size; }
-
-    bool is_singleton() const { return m_is_singleton; }
+        : array(array), elem_size(elem_size), lb_index(lb_index), ub_index(ub_index), value(value), is_singleton(is_singleton) {}
 
     void write(crab_os& o) const {
-        if (m_lb.equal(m_ub)) {
-            o << "array_store(" << m_arr << "," << m_lb << "," << m_value << ",sz=" << elem_size() << ")";
+        if (lb_index.equal(ub_index)) {
+            o << "array_store(" << array << "," << lb_index <<                     "," << value << ",sz=" << elem_size << ")";
         } else {
-            o << "array_store(" << m_arr << "," << m_lb << ".." << m_ub << "," << m_value << ",sz=" << elem_size()
+            o << "array_store(" << array << "," << lb_index << ".." << ub_index << "," << value << ",sz=" << elem_size
               << ")";
         }
     }
 
-  private:
-    variable_t m_arr;
-    linear_expression_t m_elem_size; //! size in bytes
-    linear_expression_t m_lb;
-    linear_expression_t m_ub;
-    linear_expression_t m_value;
-    bool m_is_singleton; // whether the store writes to a singleton
-                         // cell (size one). If unknown set to false.
-                         // Only makes sense if m_lb is equal to m_ub.
+    variable_t array;
+    linear_expression_t elem_size; //! size in bytes
+    linear_expression_t lb_index;
+    linear_expression_t ub_index;
+    linear_expression_t value;
+    bool is_singleton; // whether the store writes to a singleton
+                       // cell (size one). If unknown set to false.
+                       // Only makes sense if m_lb is equal to m_ub.
 };
 
-class array_load_t {
-  public:
-    array_load_t(variable_t lhs, variable_t arr, linear_expression_t elem_size, linear_expression_t index)
-        : m_lhs(lhs), m_array(arr), m_elem_size(elem_size), m_index(index) {}
-
-    variable_t lhs() const { return m_lhs; }
-
-    variable_t array() const { return m_array; }
-
-    linear_expression_t index() const { return m_index; }
-
-    linear_expression_t elem_size() const { return m_elem_size; }
+struct array_load_t {
+    array_load_t(variable_t lhs, variable_t array, linear_expression_t elem_size, linear_expression_t index)
+        : lhs(lhs), array(array), elem_size(elem_size), index(index) {}
 
     void write(crab_os& o) const {
-        o << m_lhs << " = "
-          << "array_load(" << m_array << "," << m_index << ",sz=" << elem_size() << ")";
+        o << lhs << " = "
+          << "array_load(" << array << "," << index << ",sz=" << elem_size << ")";
     }
 
-  private:
-    variable_t m_lhs;
-    variable_t m_array;
-    linear_expression_t m_elem_size; //! size in bytes
-    linear_expression_t m_index;
+    variable_t lhs;
+    variable_t array;
+    linear_expression_t elem_size; //! size in bytes
+    linear_expression_t index;
 };
 
 using new_statement_t = std::variant<binary_op_t, assign_t, assume_t, select_t, assert_t, havoc_t, array_init_t,

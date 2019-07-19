@@ -66,13 +66,13 @@ class intra_abs_transformer {
             pre_bot = m_inv.is_bottom();
         }
 
-        auto op1 = stmt.left();
-        auto op2 = stmt.right();
+        auto op1 = stmt.left;
+        auto op2 = stmt.right;
         if (op1.get_variable() && op2.get_variable()) {
-            apply(m_inv, stmt.op(), stmt.lhs(), (*op1.get_variable()), (*op2.get_variable()));
+            apply(m_inv, stmt.op, stmt.lhs, (*op1.get_variable()), (*op2.get_variable()));
         } else {
             assert(op1.get_variable() && op2.is_constant());
-            apply(m_inv, stmt.op(), stmt.lhs(), (*op1.get_variable()), op2.constant());
+            apply(m_inv, stmt.op, stmt.lhs, (*op1.get_variable()), op2.constant());
         }
 
         if constexpr (CrabSanityCheckFlag) {
@@ -92,8 +92,8 @@ class intra_abs_transformer {
         abs_dom_t inv1(m_inv);
         abs_dom_t inv2(m_inv);
 
-        inv1 += stmt.cond();
-        inv2 += stmt.cond().negate();
+        inv1 += stmt.cond;
+        inv2 += stmt.cond.negate();
 
         if constexpr (CrabSanityCheckFlag) {
             if (!pre_bot && (inv1.is_bottom() && inv2.is_bottom())) {
@@ -102,14 +102,14 @@ class intra_abs_transformer {
         }
 
         if (inv2.is_bottom()) {
-            inv1.assign(stmt.lhs(), stmt.left());
+            inv1.assign(stmt.lhs, stmt.left);
             m_inv = inv1;
         } else if (inv1.is_bottom()) {
-            inv2.assign(stmt.lhs(), stmt.right());
+            inv2.assign(stmt.lhs, stmt.right);
             m_inv = inv2;
         } else {
-            inv1.assign(stmt.lhs(), stmt.left());
-            inv2.assign(stmt.lhs(), stmt.right());
+            inv1.assign(stmt.lhs, stmt.left);
+            inv2.assign(stmt.lhs, stmt.right);
             m_inv = inv1 | inv2;
         }
 
@@ -127,7 +127,7 @@ class intra_abs_transformer {
             pre_bot = m_inv.is_bottom();
         }
 
-        m_inv.assign(stmt.lhs(), stmt.rhs());
+        m_inv.assign(stmt.lhs, stmt.rhs);
 
         if constexpr (CrabSanityCheckFlag) {
             bool post_bot = m_inv.is_bottom();
@@ -137,7 +137,7 @@ class intra_abs_transformer {
         }
     }
 
-    void operator()(const assume_t& stmt) { m_inv += stmt.constraint(); }
+    void operator()(const assume_t& stmt) { m_inv += stmt.constraint; }
 
     void operator()(const assert_t& stmt) {
         bool pre_bot = false;
@@ -145,10 +145,10 @@ class intra_abs_transformer {
             pre_bot = m_inv.is_bottom();
         }
 
-        m_inv += stmt.constraint();
+        m_inv += stmt.constraint;
 
         if constexpr (CrabSanityCheckFlag) {
-            if (!stmt.constraint().is_contradiction()) {
+            if (!stmt.constraint.is_contradiction()) {
                 bool post_bot = m_inv.is_bottom();
                 if (!(pre_bot || !post_bot)) {
                     CRAB_WARN("Invariant became bottom after ", stmt, ".",
@@ -180,7 +180,7 @@ class intra_abs_transformer {
             pre_bot = m_inv.is_bottom();
         }
 
-        m_inv.array_init(stmt.array(), stmt.elem_size(), stmt.lb_index(), stmt.ub_index(), stmt.val());
+        m_inv.array_init(stmt.array, stmt.elem_size, stmt.lb_index, stmt.ub_index, stmt.val);
 
         if constexpr (CrabSanityCheckFlag) {
             bool post_bot = m_inv.is_bottom();
@@ -196,10 +196,10 @@ class intra_abs_transformer {
             pre_bot = m_inv.is_bottom();
         }
 
-        if (stmt.lb_index().equal(stmt.ub_index())) {
-            m_inv.array_store(stmt.array(), stmt.elem_size(), stmt.lb_index(), stmt.value(), stmt.is_singleton());
+        if (stmt.lb_index.equal(stmt.ub_index)) {
+            m_inv.array_store(stmt.array, stmt.elem_size, stmt.lb_index, stmt.value, stmt.is_singleton);
         } else {
-            m_inv.array_store_range(stmt.array(), stmt.elem_size(), stmt.lb_index(), stmt.ub_index(), stmt.value());
+            m_inv.array_store_range(stmt.array, stmt.elem_size, stmt.lb_index, stmt.ub_index, stmt.value);
         }
 
         if constexpr (CrabSanityCheckFlag) {
@@ -216,7 +216,7 @@ class intra_abs_transformer {
             pre_bot = m_inv.is_bottom();
         }
 
-        m_inv.array_load(stmt.lhs(), stmt.array(), stmt.elem_size(), stmt.index());
+        m_inv.array_load(stmt.lhs, stmt.array, stmt.elem_size, stmt.index);
 
         if constexpr (CrabSanityCheckFlag) {
             bool post_bot = m_inv.is_bottom();
@@ -308,7 +308,7 @@ class assert_property_checker : public intra_abs_transformer<AbsDomain> {
     using parent::parent;
 
     void operator()(const assert_t& s) {
-        linear_constraint_t cst = s.constraint();
+        linear_constraint_t cst = s.constraint;
         if (cst.is_contradiction()) {
             if (this->m_inv.is_bottom()) {
                 m_db.add_redundant(s);
