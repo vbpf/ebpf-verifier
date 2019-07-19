@@ -176,7 +176,7 @@ class wto_iterator : public wto_component_visitor<cfg_ref_t> {
             _skip = false;
         }
         if (_skip) {
-            CRAB_VERBOSE_IF(2, outs() << "** Skipped analysis of  " << get_label_str(node) << "\n");
+            CRAB_VERBOSE_IF(2, outs() << "** Skipped analysis of  " << node << "\n");
             return;
         }
 
@@ -222,7 +222,7 @@ class wto_iterator : public wto_component_visitor<cfg_ref_t> {
             entry_in_this_cycle = vis.is_member();
             _skip = !entry_in_this_cycle;
             if (_skip) {
-                CRAB_VERBOSE_IF(2, outs() << "** Skipped analysis of WTO cycle rooted at  " << get_label_str(head)
+                CRAB_VERBOSE_IF(2, outs() << "** Skipped analysis of WTO cycle rooted at  " << head
                                           << "\n");
                 return;
             }
@@ -233,7 +233,7 @@ class wto_iterator : public wto_component_visitor<cfg_ref_t> {
         wto_nesting_t cycle_nesting = this->_iterator->_wto.nesting(head);
 
         if (entry_in_this_cycle) {
-            CRAB_VERBOSE_IF(2, outs() << "Skipped predecessors of " << get_label_str(head) << "\n");
+            CRAB_VERBOSE_IF(2, outs() << "Skipped predecessors of " << head << "\n");
             pre = _iterator->get_pre(_entry);
         } else {
             CrabStats::count("Fixpo.join_predecessors");
