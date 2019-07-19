@@ -134,17 +134,6 @@ struct assert_t {
 // the element size is not just a constant integer but it can also
 // be a variable.
 
-//! Initialize all array elements to some variable or number.
-//  The semantics is similar to constant arrays in SMT.
-struct array_init_t {
-    // forall i \in [lb,ub) % elem_size :: arr[i] := val and
-    // forall j < lb or j >= ub :: arr[j] is undefined.
-    variable_t array;
-    linear_expression_t elem_size; //! size in bytes
-    linear_expression_t lb_index;
-    linear_expression_t ub_index;
-    linear_expression_t val;
-};
 
 struct array_store_t {
     // forall i \in [lb,ub) % elem_size :: arr[i] := val
@@ -162,7 +151,7 @@ struct array_load_t {
     linear_expression_t index;
 };
 
-using new_statement_t = std::variant<binary_op_t, assign_t, assume_t, select_t, assert_t, havoc_t, array_init_t,
+using new_statement_t = std::variant<binary_op_t, assign_t, assume_t, select_t, assert_t, havoc_t,
                                      array_store_t, array_load_t>;
 
 crab_os& operator<<(crab_os& os, const new_statement_t& a);
@@ -371,11 +360,6 @@ class basic_block_t {
     }
 
     void assertion(linear_constraint_t cst, debug_info di = {}) { insert<assert_t>(cst, di); }
-
-    void array_init(variable_t a, linear_expression_t lb_idx, linear_expression_t ub_idx, linear_expression_t v,
-                    linear_expression_t elem_size) {
-        insert<array_init_t>(a, elem_size, lb_idx, ub_idx, v);
-    }
 
     void array_store(variable_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size) {
         insert<array_store_t>(arr, elem_size, idx, idx, v);
