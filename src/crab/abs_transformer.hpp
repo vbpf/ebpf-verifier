@@ -40,14 +40,12 @@ namespace crab {
  **/
 template <typename AbsDomain>
 class intra_abs_transformer {
-    using abs_dom_t = AbsDomain;
-
   public:
-    abs_dom_t m_inv;
+    AbsDomain m_inv;
 
   private:
     template <typename NumOrVar>
-    void apply(abs_dom_t& inv, binary_operation_t op, variable_t x, variable_t y, NumOrVar z) {
+    void apply(AbsDomain& inv, binary_operation_t op, variable_t x, variable_t y, NumOrVar z) {
         if (auto top = conv_op<operation_t>(op)) {
             inv.apply(*top, x, y, z);
         } else if (auto top = conv_op<bitwise_operation_t>(op)) {
@@ -58,7 +56,7 @@ class intra_abs_transformer {
     }
 
   public:
-    intra_abs_transformer(const abs_dom_t& inv) : m_inv(inv) {}
+    intra_abs_transformer(const AbsDomain& inv) : m_inv(inv) {}
 
     void operator()(const binary_op_t& stmt) {
         bool pre_bot = false;
@@ -89,8 +87,8 @@ class intra_abs_transformer {
             pre_bot = m_inv.is_bottom();
         }
 
-        abs_dom_t inv1(m_inv);
-        abs_dom_t inv2(m_inv);
+        AbsDomain inv1(m_inv);
+        AbsDomain inv2(m_inv);
 
         inv1 += stmt.cond;
         inv2 += stmt.cond.negate();
@@ -302,7 +300,6 @@ class assert_property_checker : public intra_abs_transformer<AbsDomain> {
 
   public:
     checks_db m_db;
-    using abs_dom_t = AbsDomain;
     using parent = intra_abs_transformer<AbsDomain>;
 
     using parent::parent;
@@ -323,9 +320,9 @@ class assert_property_checker : public intra_abs_transformer<AbsDomain> {
             return;
         }
 
-        if (domains::checker_domain_traits<abs_dom_t>::entail(this->m_inv, cst)) {
+        if (domains::checker_domain_traits<AbsDomain>::entail(this->m_inv, cst)) {
             m_db.add_redundant(s);
-        } else if (domains::checker_domain_traits<abs_dom_t>::intersect(this->m_inv, cst)) {
+        } else if (domains::checker_domain_traits<AbsDomain>::intersect(this->m_inv, cst)) {
             // TODO: add_error() if imply negation
             m_db.add_warning(s);
         } else {
