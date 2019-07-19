@@ -993,11 +993,11 @@ class cfg_rev_t {
     std::unordered_map<basic_block_label_t, basic_block_rev_t> _rev_bbs;
 
   public:
-    cfg_rev_t(cfg_ref_t cfg_t) : _cfg(cfg_t) {
+    cfg_rev_t(cfg_ref_t cfg) : _cfg(cfg) {
         // Create basic_block_rev_t from basic_block_t objects
         // Note that basic_block_rev_t is also a view of basic_block_t so it
         // doesn't modify basic_block_t objects.
-        for (auto& bb : cfg_t) {
+        for (auto& bb : cfg) {
             _rev_bbs.emplace(bb.label(), bb);
         }
     }
