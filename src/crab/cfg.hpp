@@ -182,12 +182,15 @@ struct array_load_t {
 using new_statement_t = std::variant<binary_op_t, assign_t, assume_t, select_t, assert_t, havoc_t, array_init_t,
                                      array_store_t, array_load_t>;
 
-inline crab_os& operator<<(crab_os& o, const binary_op_t& s) { return o << s.lhs << " = " << s.left << s.op << s.right; }
+inline crab_os& operator<<(crab_os& o, const binary_op_t& s) {
+    return o << s.lhs << " = " << s.left << s.op << s.right;
+}
 inline crab_os& operator<<(crab_os& o, const assign_t& s) { return o << s.lhs << " = " << s.rhs; }
 inline crab_os& operator<<(crab_os& o, const assume_t& s) { return o << "assume(" << s.constraint << ")"; }
 inline crab_os& operator<<(crab_os& o, const havoc_t& s) { return o << "havoc(" << s.lhs << ")"; }
 inline crab_os& operator<<(crab_os& o, const select_t& s) {
-    return o << s.lhs << " = " << "ite(" << s.cond << "," << s.left << "," << s.right << ")";
+    return o << s.lhs << " = "
+             << "ite(" << s.cond << "," << s.left << "," << s.right << ")";
 }
 inline crab_os& operator<<(crab_os& o, const assert_t& s) {
     o << "assert(" << s.constraint << ")";
@@ -196,7 +199,9 @@ inline crab_os& operator<<(crab_os& o, const assert_t& s) {
     }
     return o;
 }
-inline crab_os& operator<<(crab_os& o, const array_init_t& s) { return o << s.array << "[" << s.lb_index << "..." << s.ub_index << "] := " << s.val; }
+inline crab_os& operator<<(crab_os& o, const array_init_t& s) {
+    return o << s.array << "[" << s.lb_index << "..." << s.ub_index << "] := " << s.val;
+}
 inline crab_os& operator<<(crab_os& o, const array_store_t& s) {
     o << "array_store(" << s.array << "," << s.lb_index;
     if (s.lb_index.equal(s.ub_index)) {
@@ -206,7 +211,8 @@ inline crab_os& operator<<(crab_os& o, const array_store_t& s) {
     return o;
 }
 inline crab_os& operator<<(crab_os& o, const array_load_t& s) {
-    return o << s.lhs << " = " << "array_load(" << s.array << "," << s.index << ",sz=" << s.elem_size << ")";
+    return o << s.lhs << " = "
+             << "array_load(" << s.array << "," << s.index << ",sz=" << s.elem_size << ")";
 }
 inline crab_os& operator<<(crab_os& os, const new_statement_t& a) {
     std::visit([&](const auto& arg) { os << arg; }, a);
@@ -799,126 +805,57 @@ class cfg_ref_t {
     using const_var_iterator = cfg_t::const_var_iterator;
 
   private:
-    std::optional<std::reference_wrapper<cfg_t>> _ref;
+    std::reference_wrapper<cfg_t> _ref;
 
   public:
-    cfg_ref_t(cfg_t& cfg) : _ref(std::reference_wrapper<cfg_t>(cfg)) {}
+    cfg_ref_t(cfg_t& cfg) : _ref(std::ref(cfg)) {}
 
-    const cfg_t& get() const {
-        assert(_ref);
-        return *_ref;
-    }
+    const cfg_t& get() const { return _ref; }
 
-    cfg_t& get() {
-        assert(_ref);
-        return *_ref;
-    }
+    cfg_t& get() { return _ref; }
 
-    basic_block_label_t entry() const {
-        assert(_ref);
-        return (*_ref).get().entry();
-    }
+    basic_block_label_t entry() const { return get().entry(); }
 
-    const_succ_range next_nodes(basic_block_label_t bb) const {
-        assert(_ref);
-        return (*_ref).get().next_nodes(bb);
-    }
+    const_succ_range next_nodes(basic_block_label_t bb) const { return get().next_nodes(bb); }
 
-    const_pred_range prev_nodes(basic_block_label_t bb) const {
-        assert(_ref);
-        return (*_ref).get().prev_nodes(bb);
-    }
+    const_pred_range prev_nodes(basic_block_label_t bb) const { return get().prev_nodes(bb); }
 
-    succ_range next_nodes(basic_block_label_t bb) {
-        assert(_ref);
-        return (*_ref).get().next_nodes(bb);
-    }
+    succ_range next_nodes(basic_block_label_t bb) { return get().next_nodes(bb); }
 
-    pred_range prev_nodes(basic_block_label_t bb) {
-        assert(_ref);
-        return (*_ref).get().prev_nodes(bb);
-    }
+    pred_range prev_nodes(basic_block_label_t bb) { return get().prev_nodes(bb); }
 
-    basic_block_t& get_node(basic_block_label_t bb) {
-        assert(_ref);
-        return (*_ref).get().get_node(bb);
-    }
+    basic_block_t& get_node(basic_block_label_t bb) { return get().get_node(bb); }
 
-    const basic_block_t& get_node(basic_block_label_t bb) const {
-        assert(_ref);
-        return (*_ref).get().get_node(bb);
-    }
+    const basic_block_t& get_node(basic_block_label_t bb) const { return get().get_node(bb); }
 
-    size_t size() const {
-        assert(_ref);
-        return (*_ref).get().size();
-    }
+    size_t size() const { return get().size(); }
 
-    iterator begin() {
-        assert(_ref);
-        return (*_ref).get().begin();
-    }
+    iterator begin() { return get().begin(); }
 
-    iterator end() {
-        assert(_ref);
-        return (*_ref).get().end();
-    }
+    iterator end() { return get().end(); }
 
-    const_iterator begin() const {
-        assert(_ref);
-        return (*_ref).get().begin();
-    }
+    const_iterator begin() const { return get().begin(); }
 
-    const_iterator end() const {
-        assert(_ref);
-        return (*_ref).get().end();
-    }
+    const_iterator end() const { return get().end(); }
 
-    label_iterator label_begin() {
-        assert(_ref);
-        return (*_ref).get().label_begin();
-    }
+    label_iterator label_begin() { return get().label_begin(); }
 
-    label_iterator label_end() {
-        assert(_ref);
-        return (*_ref).get().label_end();
-    }
+    label_iterator label_end() { return get().label_end(); }
 
-    const_label_iterator label_begin() const {
-        assert(_ref);
-        return (*_ref).get().label_begin();
-    }
+    const_label_iterator label_begin() const { return get().label_begin(); }
 
-    const_label_iterator label_end() const {
-        assert(_ref);
-        return (*_ref).get().label_end();
-    }
+    const_label_iterator label_end() const { return get().label_end(); }
 
-    bool has_exit() const {
-        assert(_ref);
-        return (*_ref).get().has_exit();
-    }
+    bool has_exit() const { return get().has_exit(); }
 
-    basic_block_label_t exit() const {
-        assert(_ref);
-        return (*_ref).get().exit();
-    }
+    basic_block_label_t exit() const { return get().exit(); }
 
-    friend crab_os& operator<<(crab_os& o, const cfg_ref_t& cfg_t) {
-        o << cfg_t.get();
-        return o;
-    }
+    friend crab_os& operator<<(crab_os& o, const cfg_ref_t& cfg) { return o << cfg.get(); }
 
     // for gdb
-    void dump() const {
-        assert(_ref);
-        (*_ref).get().dump();
-    }
+    void dump() const { get().dump(); }
 
-    void simplify() {
-        assert(_ref);
-        (*_ref).get().simplify();
-    }
+    void simplify() { get().simplify(); }
 };
 
 // Viewing a cfg_t with all edges and block statements
