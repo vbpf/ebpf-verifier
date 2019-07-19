@@ -44,6 +44,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <variant>
+
 #include <boost/iterator/indirect_iterator.hpp>
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/range/iterator_range.hpp>
@@ -708,6 +710,40 @@ class basic_block_rev_t {
         return o;
     }
 };
+
+using new_statement_t = std::variant<
+    std::monostate,
+    binary_op_t,
+    assign_t,
+    assume_t,
+    select_t,
+    assert_t,
+    havoc_t,
+    array_init_t,
+    array_store_t,
+    array_load_t
+>;
+
+
+struct statement_to_new_visitor : public statement_visitor {
+    virtual void visit(binary_op_t& t){ result = t; };
+    virtual void visit(assign_t& t){ result = t; };
+    virtual void visit(assume_t& t){ result = t; };
+    virtual void visit(select_t& t){ result = t; };
+    virtual void visit(assert_t& t){ result = t; };
+    virtual void visit(havoc_t& t){ result = t; };
+    virtual void visit(array_init_t& t){ result = t; };
+    virtual void visit(array_store_t& t){ result = t; };
+    virtual void visit(array_load_t& t){ result = t; };
+
+    new_statement_t result;
+};
+
+inline new_statement_t statement_to_new(statement_t& statement) {
+    statement_to_new_visitor translator;
+    statement.accept(&translator);
+    return translator.result;
+}
 
 // forward declarations
 class cfg_rev_t;
