@@ -99,7 +99,7 @@ struct type_checker_visitor {
 
     type_checker_visitor() {}
 
-    void check_num(variable_t v, std::string msg, const statement_t& s) {
+    void check_num(variable_t v, std::string msg, new_statement_t s) {
         if (v.get_type() != INT_TYPE) {
             crab_string_os os;
             os << "(type checking) " << msg << " in " << s;
@@ -107,7 +107,7 @@ struct type_checker_visitor {
         }
     }
 
-    void check_int(variable_t v, std::string msg, const statement_t& s) {
+    void check_int(variable_t v, std::string msg, new_statement_t s) {
         if ((v.get_type() != INT_TYPE) || (v.get_bitwidth() <= 1)) {
             crab_string_os os;
             os << "(type checking) " << msg << " in " << s;
@@ -115,7 +115,7 @@ struct type_checker_visitor {
         }
     }
 
-    void check_bitwidth_if_int(variable_t v, std::string msg, const statement_t& s) {
+    void check_bitwidth_if_int(variable_t v, std::string msg, const new_statement_t s) {
         if (v.get_type() == INT_TYPE) {
             if (v.get_bitwidth() <= 1) {
                 crab_string_os os;
@@ -125,7 +125,7 @@ struct type_checker_visitor {
         }
     }
 
-    void check_same_type(variable_t v1, variable_t v2, std::string msg, const statement_t& s) {
+    void check_same_type(variable_t v1, variable_t v2, std::string msg, new_statement_t s) {
         if (v1.get_type() != v2.get_type()) {
             crab_string_os os;
             os << "(type checking) " << msg << " in " << s;
@@ -133,7 +133,7 @@ struct type_checker_visitor {
         }
     }
 
-    void check_same_bitwidth(variable_t v1, variable_t v2, std::string msg, const statement_t& s) {
+    void check_same_bitwidth(variable_t v1, variable_t v2, std::string msg, new_statement_t s) {
         // assume v1 and v2 have same type
         if (v1.get_type() == INT_TYPE) {
             if (v1.get_bitwidth() != v2.get_bitwidth()) {
@@ -144,7 +144,7 @@ struct type_checker_visitor {
         }
     }
 
-    void check_num_or_var(linear_expression_t e, std::string msg, const statement_t& s) {
+    void check_num_or_var(linear_expression_t e, std::string msg, new_statement_t s) {
         if (!(e.is_constant() || e.get_variable())) {
             crab_string_os os;
             os << "(type checking) " << msg << " in " << s;
@@ -152,7 +152,7 @@ struct type_checker_visitor {
         }
     }
 
-    void check_array(variable_t v, const statement_t& s) {
+    void check_array(variable_t v, new_statement_t s) {
         switch (v.get_type()) {
         case ARR_INT_TYPE: break;
         default: {
@@ -164,7 +164,7 @@ struct type_checker_visitor {
     }
 
     // v1 is array type and v2 is a scalar type consistent with v1
-    void check_array_and_scalar_type(variable_t v1, variable_t v2, const statement_t& s) {
+    void check_array_and_scalar_type(variable_t v1, variable_t v2, new_statement_t s) {
         switch (v1.get_type()) {
         case ARR_INT_TYPE:
             if (v2.get_type() == INT_TYPE)
@@ -338,8 +338,8 @@ struct type_checker_visitor {
 void type_check(const cfg_ref_t& cfg) {
     type_checker_visitor vis;
     for (auto& bb : cfg) {
-        for (auto& s : bb)
-            std::visit(vis, statement_to_new(s));
+        for (const new_statement_t& statement : bb)
+            std::visit(vis, statement);
     }
 }
 

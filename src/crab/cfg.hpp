@@ -61,21 +61,6 @@ namespace crab {
 // To convert a basic block label to a string
 inline std::string get_label_str(std::string e) { return e; };
 
-enum stmt_code {
-    // numerical
-    BIN_OP = 20,
-    ASSIGN = 21,
-    ASSUME = 22,
-    SELECT = 24,
-    ASSERT = 25,
-    // arrays
-    ARR_INIT = 30,
-    ARR_STORE = 31,
-    ARR_LOAD = 32,
-
-    HAVOC = 60,
-};
-
 struct debug_info {
 
     std::string m_file;
@@ -142,43 +127,14 @@ struct statement_visitor {
     virtual ~statement_visitor() {}
 };
 
-class statement_t {
-  protected:
-    stmt_code m_t_code;
-    debug_info m_dbg_info;
-
-    statement_t(stmt_code code, debug_info dbg_info = debug_info()) : m_t_code(code), m_dbg_info(dbg_info) {}
-
-  public:
-    virtual ~statement_t() {}
-
-    bool is_assume() const { return (m_t_code == ASSUME); }
-    bool is_assert() const { return (m_t_code == ASSERT); }
-
-    const debug_info& get_debug_info() const { return m_dbg_info; }
-
-    virtual void accept(statement_visitor*) = 0;
-
-    virtual void write(crab_os& o) const = 0;
-
-    // for gdb
-    void dump() const { write(errs()); }
-
-    friend crab_os& operator<<(crab_os& o, const statement_t& s) {
-        s.write(o);
-        return o;
-    }
-};
-
 /*
   Numerical statements
 */
 
-class binary_op_t : public statement_t {
+class binary_op_t {
   public:
-    binary_op_t(variable_t lhs, binary_operation_t op, linear_expression_t op1, linear_expression_t op2,
-                debug_info dbg_info = debug_info())
-        : statement_t(BIN_OP, dbg_info), m_lhs(lhs), m_op(op), m_op1(op1), m_op2(op2) {}
+    binary_op_t(variable_t lhs, binary_operation_t op, linear_expression_t op1, linear_expression_t op2)
+        : m_lhs(lhs), m_op(op), m_op1(op1), m_op2(op2) {}
 
     variable_t lhs() const { return m_lhs; }
 
@@ -187,8 +143,6 @@ class binary_op_t : public statement_t {
     linear_expression_t left() const { return m_op1; }
 
     linear_expression_t right() const { return m_op2; }
-
-    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
     virtual void write(crab_os& o) const { o << m_lhs << " = " << m_op1 << m_op << m_op2; }
 
@@ -199,15 +153,13 @@ class binary_op_t : public statement_t {
     linear_expression_t m_op2;
 };
 
-class assign_t : public statement_t {
+class assign_t {
   public:
-    assign_t(variable_t lhs, linear_expression_t rhs) : statement_t(ASSIGN), m_lhs(lhs), m_rhs(rhs) {}
+    assign_t(variable_t lhs, linear_expression_t rhs) : m_lhs(lhs), m_rhs(rhs) {}
 
     variable_t lhs() const { return m_lhs; }
 
     linear_expression_t rhs() const { return m_rhs; }
-
-    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
     virtual void write(crab_os& o) const { o << m_lhs << " = " << m_rhs; }
 
@@ -216,13 +168,11 @@ class assign_t : public statement_t {
     linear_expression_t m_rhs;
 };
 
-class assume_t : public statement_t {
+class assume_t {
   public:
-    assume_t(linear_constraint_t cst) : statement_t(ASSUME), m_cst(cst) {}
+    assume_t(linear_constraint_t cst) : m_cst(cst) {}
 
     linear_constraint_t constraint() const { return m_cst; }
-
-    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
     virtual void write(crab_os& o) const { o << "assume(" << m_cst << ")"; }
 
@@ -230,13 +180,11 @@ class assume_t : public statement_t {
     linear_constraint_t m_cst;
 };
 
-class havoc_t : public statement_t {
+class havoc_t {
   public:
-    havoc_t(variable_t lhs) : statement_t(HAVOC), m_lhs(lhs) {}
+    havoc_t(variable_t lhs) : m_lhs(lhs) {}
 
     variable_t variable() const { return m_lhs; }
-
-    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
     void write(crab_os& o) const { o << "havoc(" << m_lhs << ")"; }
 
@@ -251,10 +199,10 @@ class havoc_t : public statement_t {
 // simulated by splitting blocks. However, frontends like LLVM can
 // generate many select instructions so we prefer to support
 // natively to avoid a blow up in the size of the CFG.
-class select_t : public statement_t {
+class select_t {
   public:
     select_t(variable_t lhs, linear_constraint_t cond, linear_expression_t e1, linear_expression_t e2)
-        : statement_t(SELECT), m_lhs(lhs), m_cond(cond), m_e1(e1), m_e2(e2) {}
+        : m_lhs(lhs), m_cond(cond), m_e1(e1), m_e2(e2) {}
 
     variable_t lhs() const { return m_lhs; }
 
@@ -263,8 +211,6 @@ class select_t : public statement_t {
     linear_expression_t left() const { return m_e1; }
 
     linear_expression_t right() const { return m_e2; }
-
-    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
     virtual void write(crab_os& o) const {
         o << m_lhs << " = "
@@ -278,13 +224,11 @@ class select_t : public statement_t {
     linear_expression_t m_e2;
 };
 
-class assert_t : public statement_t {
+class assert_t {
   public:
-    assert_t(linear_constraint_t cst, debug_info dbg_info = debug_info()) : statement_t(ASSERT, dbg_info), m_cst(cst) {}
+    assert_t(linear_constraint_t cst, debug_info dbg_info = {}) : m_cst(cst), m_dbg_info(dbg_info) {}
 
     linear_constraint_t constraint() const { return m_cst; }
-
-    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
     virtual void write(crab_os& o) const {
         o << "assert(" << m_cst << ")";
@@ -293,8 +237,11 @@ class assert_t : public statement_t {
         }
     }
 
+    const debug_info& get_debug_info() const { return m_dbg_info; }
+
   private:
     linear_constraint_t m_cst;
+    debug_info m_dbg_info;
 };
 
 /*
@@ -311,11 +258,11 @@ class assert_t : public statement_t {
 
 //! Initialize all array elements to some variable or number.
 //  The semantics is similar to constant arrays in SMT.
-class array_init_t : public statement_t {
+class array_init_t {
   public:
     array_init_t(variable_t arr, linear_expression_t elem_size, linear_expression_t lb, linear_expression_t ub,
                  linear_expression_t val)
-        : statement_t(ARR_INIT), m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_val(val) {}
+        : m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_val(val) {}
 
     variable_t array() const { return m_arr; }
 
@@ -329,8 +276,6 @@ class array_init_t : public statement_t {
 
     linear_expression_t val() const { return m_val; }
 
-    virtual void accept(statement_visitor* v) { v->visit(*this); }
-
     void write(crab_os& o) const { o << m_arr << "[" << m_lb << "..." << m_ub << "] := " << m_val; }
 
   private:
@@ -343,13 +288,12 @@ class array_init_t : public statement_t {
     linear_expression_t m_val;
 };
 
-class array_store_t : public statement_t {
+class array_store_t {
   public:
     // forall i \in [lb,ub) % elem_size :: arr[i] := val
     array_store_t(variable_t arr, linear_expression_t elem_size, linear_expression_t lb, linear_expression_t ub,
                   linear_expression_t value, bool is_singleton)
-        : statement_t(ARR_STORE), m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_value(value),
-          m_is_singleton(is_singleton) {}
+        : m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_value(value), m_is_singleton(is_singleton) {}
 
     variable_t array() const { return m_arr; }
 
@@ -364,8 +308,6 @@ class array_store_t : public statement_t {
     linear_expression_t elem_size() const { return m_elem_size; }
 
     bool is_singleton() const { return m_is_singleton; }
-
-    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
     virtual void write(crab_os& o) const {
         if (m_lb.equal(m_ub)) {
@@ -387,10 +329,10 @@ class array_store_t : public statement_t {
                          // Only makes sense if m_lb is equal to m_ub.
 };
 
-class array_load_t : public statement_t {
+class array_load_t {
   public:
     array_load_t(variable_t lhs, variable_t arr, linear_expression_t elem_size, linear_expression_t index)
-        : statement_t(ARR_LOAD), m_lhs(lhs), m_array(arr), m_elem_size(elem_size), m_index(index) {}
+        : m_lhs(lhs), m_array(arr), m_elem_size(elem_size), m_index(index) {}
 
     variable_t lhs() const { return m_lhs; }
 
@@ -401,8 +343,6 @@ class array_load_t : public statement_t {
     linear_expression_t index() const { return m_index; }
 
     linear_expression_t elem_size() const { return m_elem_size; }
-
-    virtual void accept(statement_visitor* v) { v->visit(*this); }
 
     virtual void write(crab_os& o) const {
         o << m_lhs << " = "
@@ -416,6 +356,14 @@ class array_load_t : public statement_t {
     linear_expression_t m_index;
 };
 
+using new_statement_t = std::variant<binary_op_t, assign_t, assume_t, select_t, assert_t, havoc_t, array_init_t,
+                                     array_store_t, array_load_t>;
+
+inline crab_os& operator<<(crab_os& os, const new_statement_t& a) {
+    std::visit([&](const auto& arg) { arg.write(os); }, a);
+    return os;
+}
+
 class cfg_t;
 
 class basic_block_t {
@@ -425,7 +373,7 @@ class basic_block_t {
 
   private:
     using bb_id_set_t = std::vector<basic_block_label_t>;
-    using stmt_list_t = std::vector<std::unique_ptr<statement_t>>;
+    using stmt_list_t = std::vector<new_statement_t>;
 
   public:
     // -- iterators
@@ -434,10 +382,10 @@ class basic_block_t {
     using const_succ_iterator = bb_id_set_t::const_iterator;
     using pred_iterator = succ_iterator;
     using const_pred_iterator = const_succ_iterator;
-    using iterator = boost::indirect_iterator<stmt_list_t::iterator>;
-    using const_iterator = boost::indirect_iterator<stmt_list_t::const_iterator>;
-    using reverse_iterator = boost::indirect_iterator<stmt_list_t::reverse_iterator>;
-    using const_reverse_iterator = boost::indirect_iterator<stmt_list_t::const_reverse_iterator>;
+    using iterator = stmt_list_t::iterator;
+    using const_iterator = stmt_list_t::const_iterator;
+    using reverse_iterator = stmt_list_t::reverse_iterator;
+    using const_reverse_iterator = stmt_list_t::const_reverse_iterator;
 
     // -- statements
 
@@ -467,7 +415,7 @@ class basic_block_t {
 
     template <typename T, typename... Args>
     void insert(Args&&... args) {
-        m_ts.emplace_back(std::make_unique<T>(std::forward<Args>(args)...));
+        m_ts.emplace_back(T{std::forward<Args>(args)...});
     }
 
   public:
@@ -477,19 +425,17 @@ class basic_block_t {
 
     std::string name() const { return get_label_str(m_bb_id); }
 
-    iterator begin() { return boost::make_indirect_iterator(m_ts.begin()); }
-    iterator end() { return boost::make_indirect_iterator(m_ts.end()); }
-    const_iterator begin() const { return boost::make_indirect_iterator(m_ts.begin()); }
-    const_iterator end() const { return boost::make_indirect_iterator(m_ts.end()); }
+    iterator begin() { return (m_ts.begin()); }
+    iterator end() { return (m_ts.end()); }
+    const_iterator begin() const { return (m_ts.begin()); }
+    const_iterator end() const { return (m_ts.end()); }
 
-    reverse_iterator rbegin() { return boost::make_indirect_iterator(m_ts.rbegin()); }
-    reverse_iterator rend() { return boost::make_indirect_iterator(m_ts.rend()); }
-    const_reverse_iterator rbegin() const { return boost::make_indirect_iterator(m_ts.rbegin()); }
-    const_reverse_iterator rend() const { return boost::make_indirect_iterator(m_ts.rend()); }
+    reverse_iterator rbegin() { return (m_ts.rbegin()); }
+    reverse_iterator rend() { return (m_ts.rend()); }
+    const_reverse_iterator rbegin() const { return (m_ts.rbegin()); }
+    const_reverse_iterator rend() const { return (m_ts.rend()); }
 
     size_t size() const { return std::distance(begin(), end()); }
-
-    void accept(statement_visitor* v) { v->visit(*this); }
 
     std::pair<succ_iterator, succ_iterator> next_blocks() { return std::make_pair(m_next.begin(), m_next.end()); }
 
@@ -680,8 +626,6 @@ class basic_block_rev_t {
 
     std::size_t size() const { return std::distance(begin(), end()); }
 
-    void accept(statement_visitor* v) { v->visit(*this); }
-
     std::pair<succ_iterator, succ_iterator> next_blocks() { return _bb.prev_blocks(); }
 
     std::pair<pred_iterator, pred_iterator> prev_blocks() { return _bb.next_blocks(); }
@@ -710,40 +654,6 @@ class basic_block_rev_t {
         return o;
     }
 };
-
-using new_statement_t = std::variant<
-    std::monostate,
-    binary_op_t,
-    assign_t,
-    assume_t,
-    select_t,
-    assert_t,
-    havoc_t,
-    array_init_t,
-    array_store_t,
-    array_load_t
->;
-
-
-struct statement_to_new_visitor : public statement_visitor {
-    virtual void visit(binary_op_t& t){ result = t; };
-    virtual void visit(assign_t& t){ result = t; };
-    virtual void visit(assume_t& t){ result = t; };
-    virtual void visit(select_t& t){ result = t; };
-    virtual void visit(assert_t& t){ result = t; };
-    virtual void visit(havoc_t& t){ result = t; };
-    virtual void visit(array_init_t& t){ result = t; };
-    virtual void visit(array_store_t& t){ result = t; };
-    virtual void visit(array_load_t& t){ result = t; };
-
-    new_statement_t result;
-};
-
-inline new_statement_t statement_to_new(statement_t& statement) {
-    statement_to_new_visitor translator;
-    statement.accept(&translator);
-    return translator.result;
-}
 
 // forward declarations
 class cfg_rev_t;

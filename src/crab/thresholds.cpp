@@ -1,3 +1,4 @@
+#include "crab/cfg.hpp"
 #include "crab/thresholds.hpp"
 
 namespace crab {
@@ -92,9 +93,8 @@ void wto_thresholds_t::get_thresholds(const basic_block_t& bb, thresholds_t& thr
 
     std::vector<number_t> lb_bounds, ub_bounds;
     for (auto const& i : boost::make_iterator_range(bb.begin(), bb.end())) {
-        if (i.is_assume()) {
-            auto a = static_cast<const assume_t*>(&i);
-            linear_constraint_t cst = a->constraint();
+        if (std::holds_alternative<assume_t>(i)) {
+            linear_constraint_t cst = std::get<assume_t>(i).constraint();
             if (cst.is_inequality() || cst.is_strict_inequality()) {
                 extract_bounds(cst.expression(), cst.is_strict_inequality(), lb_bounds, ub_bounds);
             }

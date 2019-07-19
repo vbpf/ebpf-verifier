@@ -357,19 +357,19 @@ class assert_property_checker : public intra_abs_transformer<AbsDomain> {
 template <typename AbsDomain>
 inline AbsDomain transform(const basic_block_t& bb, const AbsDomain& from_inv) {
     intra_abs_transformer<AbsDomain> transformer(from_inv);
-    for (statement_t& statement : bb) {
-        std::visit(transformer, statement_to_new(statement));
+    for (const new_statement_t& statement : bb) {
+        std::visit(transformer, statement);
     }
     return std::move(transformer.m_inv);
 }
 
 template <typename AbsDomain>
 inline void check_block(const basic_block_t& bb, const AbsDomain& from_inv, checks_db& db) {
-    if (std::none_of(bb.begin(), bb.end(), [](const auto& s) { return s.is_assert(); }))
+    if (std::none_of(bb.begin(), bb.end(), [](const auto& s) { return std::holds_alternative<assert_t>(s); }))
         return;
     assert_property_checker<AbsDomain> checker(from_inv);
-    for (statement_t& statement : bb) {
-        std::visit(checker, statement_to_new(statement));
+    for (const new_statement_t& statement : bb) {
+        std::visit(checker, statement);
     }
     db.merge_db(std::move(checker.m_db));
 }
