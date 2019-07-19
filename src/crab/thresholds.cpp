@@ -73,9 +73,7 @@ void thresholds_t::write(crab_os& o) const {
 void wto_thresholds_t::extract_bounds(const linear_expression_t& e, bool is_strict, std::vector<number_t>& lb_bounds,
                                       std::vector<number_t>& ub_bounds) const {
     if (e.size() == 1) {
-        auto const& kv = *(e.begin());
-        number_t coeff = kv.first;
-        variable_t var = kv.second;
+        auto [coeff, var] = *e.begin();
         number_t k = -e.constant();
         if (coeff > 0) {
             // e is c*var <= k and c > 0  <---> var <= k/coeff
@@ -153,8 +151,8 @@ void wto_thresholds_t::visit(wto_cycle_t& cycle) {
 }
 
 void wto_thresholds_t::write(crab_os& o) const {
-    for (auto& kv : m_head_to_thresholds) {
-        o << kv.first << "=" << kv.second << "\n";
+    for (auto& [label, th] : m_head_to_thresholds) {
+        o << label << "=" << th << "\n";
     }
 }
 } // namespace iterators
