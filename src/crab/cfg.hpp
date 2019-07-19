@@ -179,42 +179,7 @@ struct array_load_t {
 using new_statement_t = std::variant<binary_op_t, assign_t, assume_t, select_t, assert_t, havoc_t, array_init_t,
                                      array_store_t, array_load_t>;
 
-inline crab_os& operator<<(crab_os& o, const binary_op_t& s) {
-    return o << s.lhs << " = " << s.left << s.op << s.right;
-}
-inline crab_os& operator<<(crab_os& o, const assign_t& s) { return o << s.lhs << " = " << s.rhs; }
-inline crab_os& operator<<(crab_os& o, const assume_t& s) { return o << "assume(" << s.constraint << ")"; }
-inline crab_os& operator<<(crab_os& o, const havoc_t& s) { return o << "havoc(" << s.lhs << ")"; }
-inline crab_os& operator<<(crab_os& o, const select_t& s) {
-    return o << s.lhs << " = "
-             << "ite(" << s.cond << "," << s.left << "," << s.right << ")";
-}
-inline crab_os& operator<<(crab_os& o, const assert_t& s) {
-    o << "assert(" << s.constraint << ")";
-    if (s.debug.has_debug()) {
-        o << " // line=" << s.debug.m_line << " column=" << s.debug.m_col;
-    }
-    return o;
-}
-inline crab_os& operator<<(crab_os& o, const array_init_t& s) {
-    return o << s.array << "[" << s.lb_index << "..." << s.ub_index << "] := " << s.val;
-}
-inline crab_os& operator<<(crab_os& o, const array_store_t& s) {
-    o << "array_store(" << s.array << "," << s.lb_index;
-    if (!s.lb_index.equal(s.ub_index)) {
-        o << ".." << s.ub_index;
-    }
-    o << "," << s.value << ",sz=" << s.elem_size << ")";
-    return o;
-}
-inline crab_os& operator<<(crab_os& o, const array_load_t& s) {
-    return o << s.lhs << " = "
-             << "array_load(" << s.array << "," << s.index << ",sz=" << s.elem_size << ")";
-}
-inline crab_os& operator<<(crab_os& os, const new_statement_t& a) {
-    std::visit([&](const auto& arg) { os << arg; }, a);
-    return os;
-}
+crab_os& operator<<(crab_os& os, const new_statement_t& a);
 
 class cfg_t;
 
