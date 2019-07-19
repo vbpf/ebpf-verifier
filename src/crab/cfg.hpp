@@ -60,7 +60,6 @@ namespace crab {
 inline std::string get_label_str(std::string e) { return e; };
 
 enum stmt_code {
-    UNDEF = 0,
     // numerical
     BIN_OP = 20,
     ASSIGN = 21,
@@ -71,7 +70,6 @@ enum stmt_code {
     ARR_INIT = 30,
     ARR_STORE = 31,
     ARR_LOAD = 32,
-    ARR_ASSIGN = 33,
 
     HAVOC = 60,
 };
@@ -79,10 +77,10 @@ enum stmt_code {
 struct debug_info {
 
     std::string m_file;
-    int m_line;
-    int m_col;
+    int m_line{-1};
+    int m_col{-1};
 
-    debug_info() : m_file(""), m_line(-1), m_col(-1) {}
+    debug_info() = default;
 
     debug_info(std::string file, unsigned line, unsigned col) : m_file(file), m_line(line), m_col(col) {}
 
@@ -147,7 +145,7 @@ class statement_t {
     stmt_code m_t_code;
     debug_info m_dbg_info;
 
-    statement_t(stmt_code code = UNDEF, debug_info dbg_info = debug_info()) : m_t_code(code), m_dbg_info(dbg_info) {}
+    statement_t(stmt_code code, debug_info dbg_info = debug_info()) : m_t_code(code), m_dbg_info(dbg_info) {}
 
   public:
     virtual ~statement_t() {}
