@@ -50,7 +50,6 @@ class abs_transformer_api : public statement_visitor {
     virtual void exec(array_init_t&) {}
     virtual void exec(array_store_t&) {}
     virtual void exec(array_load_t&) {}
-    virtual void exec(array_assign_t&) {}
 
   public: /* visitor api */
     void visit(havoc_t& s) { exec(s); }
@@ -62,7 +61,6 @@ class abs_transformer_api : public statement_visitor {
     void visit(array_init_t& s) { exec(s); }
     void visit(array_store_t& s) { exec(s); }
     void visit(array_load_t& s) { exec(s); }
-    void visit(array_assign_t& s) { exec(s); }
 };
 
 /**
@@ -251,22 +249,6 @@ class intra_abs_transformer : public abs_transformer_api {
         }
 
         m_inv.array_load(stmt.lhs(), stmt.array(), stmt.elem_size(), stmt.index());
-
-        if constexpr (CrabSanityCheckFlag) {
-            bool post_bot = m_inv.is_bottom();
-            if (!(pre_bot || !post_bot)) {
-                CRAB_ERROR("Invariant became bottom after ", stmt);
-            }
-        }
-    }
-
-    void exec(array_assign_t& stmt) {
-        bool pre_bot = false;
-        if constexpr (CrabSanityCheckFlag) {
-            pre_bot = m_inv.is_bottom();
-        }
-
-        m_inv.array_assign(stmt.lhs(), stmt.rhs());
 
         if constexpr (CrabSanityCheckFlag) {
             bool post_bot = m_inv.is_bottom();

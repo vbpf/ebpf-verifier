@@ -342,16 +342,6 @@ struct type_checker_visitor : public statement_visitor {
         check_num_or_var(e_sz, "element size must be number or variable", s);
         check_array_and_scalar_type(a, lhs, s);
     }
-
-    void visit(array_assign_t& s) {
-        variable_t lhs = s.lhs();
-        variable_t rhs = s.rhs();
-        check_array(lhs, s);
-        check_array(rhs, s);
-        check_same_type(lhs, rhs, "array variables must have same type", s);
-        check_same_bitwidth(lhs, rhs, "array variables must have same bitwidth", s);
-    }
-
 }; // end class type_checker_visitor
 
 void type_check(const cfg_ref_t& cfg) {
