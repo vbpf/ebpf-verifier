@@ -27,7 +27,7 @@ namespace domains {
  * };
  **/
 
-template <class AbsDomain>
+template <typename AbsDomain>
 class abstract_domain : public writeable {
   public:
     using variable_vector_t = std::vector<variable_t>;

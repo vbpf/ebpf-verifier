@@ -38,7 +38,7 @@ namespace crab {
  * can be redefined by derived classes. By default, all function
  * calls are ignored in a sound manner (by havoc'ing all outputs).
  **/
-template <class AbsDomain>
+template <typename AbsDomain>
 class intra_abs_transformer {
     using abs_dom_t = AbsDomain;
 
