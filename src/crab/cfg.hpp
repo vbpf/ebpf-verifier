@@ -807,12 +807,12 @@ class cfg_ref_t {
   private:
     std::reference_wrapper<cfg_t> _ref;
 
-  public:
-    cfg_ref_t(cfg_t& cfg) : _ref(std::ref(cfg)) {}
-
     const cfg_t& get() const { return _ref; }
 
     cfg_t& get() { return _ref; }
+
+  public:
+    cfg_ref_t(cfg_t& cfg) : _ref(std::ref(cfg)) {}
 
     basic_block_label_t entry() const { return get().entry(); }
 
