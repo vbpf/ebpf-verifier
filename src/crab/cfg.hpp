@@ -201,10 +201,10 @@ inline crab_os& operator<<(crab_os& o, const array_init_t& s) {
 }
 inline crab_os& operator<<(crab_os& o, const array_store_t& s) {
     o << "array_store(" << s.array << "," << s.lb_index;
-    if (s.lb_index.equal(s.ub_index)) {
+    if (!s.lb_index.equal(s.ub_index)) {
         o << ".." << s.ub_index;
     }
-    o << "," << s.value << ",sz=" << s.elem_size;
+    o << "," << s.value << ",sz=" << s.elem_size << ")";
     return o;
 }
 inline crab_os& operator<<(crab_os& o, const array_load_t& s) {
