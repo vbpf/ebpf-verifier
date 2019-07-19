@@ -182,9 +182,9 @@ struct type_checker_visitor {
     }
 
     void operator()(const binary_op_t& s) {
-        variable_t lhs = s.lhs();
-        linear_expression_t op1 = s.left();
-        linear_expression_t op2 = s.right();
+        variable_t lhs = s.lhs;
+        linear_expression_t op1 = s.left;
+        linear_expression_t op2 = s.right;
 
         check_num(lhs, "lhs must be integer or real", s);
         check_bitwidth_if_int(lhs, "lhs must be have bitwidth > 1", s);
@@ -204,8 +204,8 @@ struct type_checker_visitor {
     }
 
     void operator()(const assign_t& s) {
-        variable_t lhs = s.lhs();
-        linear_expression_t rhs = s.rhs();
+        variable_t lhs = s.lhs;
+        linear_expression_t rhs = s.rhs;
 
         check_num(lhs, "lhs must be integer or real", s);
         check_bitwidth_if_int(lhs, "lhs must be have bitwidth > 1", s);
@@ -218,7 +218,7 @@ struct type_checker_visitor {
     }
 
     void operator()(const assume_t& s) {
-        typename linear_expression_t::variable_set_t vars = s.constraint().variables();
+        typename linear_expression_t::variable_set_t vars = s.constraint.variables();
         bool first = true;
         variable_ref_t first_var;
         for (auto const& v : vars) {
@@ -233,7 +233,7 @@ struct type_checker_visitor {
     }
 
     void operator()(const assert_t& s) {
-        typename linear_expression_t::variable_set_t vars = s.constraint().variables();
+        typename linear_expression_t::variable_set_t vars = s.constraint.variables();
         bool first = true;
         variable_ref_t first_var;
         for (auto const& v : vars) {
@@ -248,23 +248,23 @@ struct type_checker_visitor {
     }
 
     void operator()(const select_t& s) {
-        check_num(s.lhs(), "lhs must be integer or real", s);
-        check_bitwidth_if_int(s.lhs(), "lhs must be have bitwidth > 1", s);
+        check_num(s.lhs, "lhs must be integer or real", s);
+        check_bitwidth_if_int(s.lhs, "lhs must be have bitwidth > 1", s);
 
-        typename linear_expression_t::variable_set_t left_vars = s.left().variables();
+        typename linear_expression_t::variable_set_t left_vars = s.left.variables();
         for (auto const& v : left_vars) {
-            check_same_type(s.lhs(), v, "inconsistent types in select variables", s);
-            check_same_bitwidth(s.lhs(), v, "inconsistent bitwidths in select variables", s);
+            check_same_type(s.lhs, v, "inconsistent types in select variables", s);
+            check_same_bitwidth(s.lhs, v, "inconsistent bitwidths in select variables", s);
         }
-        typename linear_expression_t::variable_set_t right_vars = s.right().variables();
+        typename linear_expression_t::variable_set_t right_vars = s.right.variables();
         for (auto const& v : right_vars) {
-            check_same_type(s.lhs(), v, "inconsistent types in select variables", s);
-            check_same_bitwidth(s.lhs(), v, "inconsistent bitwidths in select variables", s);
+            check_same_type(s.lhs, v, "inconsistent types in select variables", s);
+            check_same_bitwidth(s.lhs, v, "inconsistent bitwidths in select variables", s);
         }
 
         // -- The condition can have different bitwidth from
         //    lhs/left/right operands but must have same type.
-        typename linear_expression_t::variable_set_t cond_vars = s.cond().variables();
+        typename linear_expression_t::variable_set_t cond_vars = s.cond.variables();
         bool first = true;
         variable_ref_t first_var;
         for (auto const& v : cond_vars) {
@@ -273,7 +273,7 @@ struct type_checker_visitor {
                 first_var = variable_ref_t(v);
                 first = false;
             }
-            check_same_type(s.lhs(), v, "inconsistent types in select condition variables", s);
+            check_same_type(s.lhs, v, "inconsistent types in select condition variables", s);
             check_same_type(first_var.get(), v, "inconsistent types in select condition variables", s);
             check_same_bitwidth(first_var.get(), v, "inconsistent bitwidths in select condition variables", s);
         }
@@ -283,11 +283,11 @@ struct type_checker_visitor {
 
     void operator()(const array_init_t& s) {
         // TODO: check that e_sz is the same number that v's bitwidth
-        variable_t a = s.array();
-        linear_expression_t e_sz = s.elem_size();
-        linear_expression_t lb = s.lb_index();
-        linear_expression_t ub = s.ub_index();
-        linear_expression_t v = s.val();
+        variable_t a = s.array;
+        linear_expression_t e_sz = s.elem_size;
+        linear_expression_t lb = s.lb_index;
+        linear_expression_t ub = s.ub_index;
+        linear_expression_t v = s.val;
         check_array(a, s);
         check_num_or_var(e_sz, "element size must be number or variable", s);
         check_num_or_var(lb, "array lower bound must be number or variable", s);
@@ -301,11 +301,11 @@ struct type_checker_visitor {
     void operator()(const array_store_t& s) {
         // TODO: check that e_sz is the same number that v's bitwidth
         /// XXX: we allow linear expressions as indexes
-        variable_t a = s.array();
-        linear_expression_t e_sz = s.elem_size();
-        linear_expression_t v = s.value();
-        if (s.is_singleton()) {
-            if (!(s.lb_index().equal(s.ub_index()))) {
+        variable_t a = s.array;
+        linear_expression_t e_sz = s.elem_size;
+        linear_expression_t v = s.value;
+        if (s.is_singleton) {
+            if (!(s.lb_index.equal(s.ub_index))) {
                 crab_string_os os;
                 os << "(type checking) "
                     << "lower and upper indexes must be equal because array is a singleton in " << s;
@@ -323,9 +323,9 @@ struct type_checker_visitor {
     void operator()(const array_load_t& s) {
         // TODO: check that e_sz is the same number that lhs's bitwidth
         /// XXX: we allow linear expressions as indexes
-        variable_t a = s.array();
-        linear_expression_t e_sz = s.elem_size();
-        variable_t lhs = s.lhs();
+        variable_t a = s.array;
+        linear_expression_t e_sz = s.elem_size;
+        variable_t lhs = s.lhs;
         check_array(a, s);
         check_num_or_var(e_sz, "element size must be number or variable", s);
         check_array_and_scalar_type(a, lhs, s);
