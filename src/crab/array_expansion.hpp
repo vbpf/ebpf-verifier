@@ -277,8 +277,6 @@ class offset_map_t {
 
     static std::string mk_scalar_name(variable_t a, offset_t o, unsigned size);
 
-    static variable_type_t get_array_element_type(variable_type_t array_type) { return INT_TYPE; }
-
     // global state to map the same triple of array, offset and size to same index
     static std::map<std::pair<index_t, std::pair<offset_t, unsigned>>, index_t> _index_map;
 
