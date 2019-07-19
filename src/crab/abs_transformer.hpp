@@ -172,22 +172,6 @@ class intra_abs_transformer {
         }
     }
 
-    void operator()(const array_init_t& stmt) {
-        bool pre_bot = false;
-        if constexpr (CrabSanityCheckFlag) {
-            pre_bot = m_inv.is_bottom();
-        }
-
-        m_inv.array_init(stmt.array, stmt.elem_size, stmt.lb_index, stmt.ub_index, stmt.val);
-
-        if constexpr (CrabSanityCheckFlag) {
-            bool post_bot = m_inv.is_bottom();
-            if (!(pre_bot || !post_bot)) {
-                CRAB_ERROR("Invariant became bottom after ", stmt);
-            }
-        }
-    }
-
     void operator()(const array_store_t& stmt) {
         bool pre_bot = false;
         if constexpr (CrabSanityCheckFlag) {

@@ -92,9 +92,6 @@ static crab_os& operator<<(crab_os& o, const assert_t& s) {
     }
     return o;
 }
-static crab_os& operator<<(crab_os& o, const array_init_t& s) {
-    return o << s.array << "[" << s.lb_index << "..." << s.ub_index << "] := " << s.val;
-}
 static crab_os& operator<<(crab_os& o, const array_store_t& s) {
     o << "array_store(" << s.array << "," << s.lb_index;
     if (!s.lb_index.equal(s.ub_index)) {
@@ -319,23 +316,6 @@ struct type_checker_visitor {
     }
 
     void operator()(const havoc_t&) {}
-
-    void operator()(const array_init_t& s) {
-        // TODO: check that e_sz is the same number that v's bitwidth
-        variable_t a = s.array;
-        linear_expression_t e_sz = s.elem_size;
-        linear_expression_t lb = s.lb_index;
-        linear_expression_t ub = s.ub_index;
-        linear_expression_t v = s.val;
-        check_array(a, s);
-        check_num_or_var(e_sz, "element size must be number or variable", s);
-        check_num_or_var(lb, "array lower bound must be number or variable", s);
-        check_num_or_var(ub, "array upper bound must be number or variable", s);
-        check_num_or_var(v, "array value must be number or variable", s);
-        if (std::optional<variable_t> vv = v.get_variable()) {
-            check_array_and_scalar_type(a, *vv, s);
-        }
-    }
 
     void operator()(const array_store_t& s) {
         // TODO: check that e_sz is the same number that v's bitwidth
