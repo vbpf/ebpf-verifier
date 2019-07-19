@@ -151,7 +151,6 @@ struct assert_t {
 //! Initialize all array elements to some variable or number.
 //  The semantics is similar to constant arrays in SMT.
 struct array_init_t {
-
     // forall i \in [lb,ub) % elem_size :: arr[i] := val and
     // forall j < lb or j >= ub :: arr[j] is undefined.
     variable_t array;
@@ -982,10 +981,10 @@ class cfg_rev_t {
   public:
     using node_t = basic_block_label_t; // for Bgl graphs
 
-    using pred_range = cfg_ref_t::succ_range;
-    using succ_range = cfg_ref_t::pred_range;
-    using const_pred_range = cfg_ref_t::const_succ_range;
-    using const_succ_range = cfg_ref_t::const_pred_range;
+    using pred_range = cfg_t::succ_range;
+    using succ_range = cfg_t::pred_range;
+    using const_pred_range = cfg_t::const_succ_range;
+    using const_succ_range = cfg_t::const_pred_range;
 
     // For BGL
     using succ_iterator = basic_block_t::succ_iterator;
@@ -1032,12 +1031,12 @@ class cfg_rev_t {
     };
 
   public:
-    using iterator = boost::transform_iterator<getRev, cfg_ref_t::iterator>;
-    using const_iterator = boost::transform_iterator<getRev, cfg_ref_t::const_iterator>;
-    using label_iterator = cfg_ref_t::label_iterator;
-    using const_label_iterator = cfg_ref_t::const_label_iterator;
-    using var_iterator = cfg_ref_t::var_iterator;
-    using const_var_iterator = cfg_ref_t::const_var_iterator;
+    using iterator = boost::transform_iterator<getRev, cfg_t::iterator>;
+    using const_iterator = boost::transform_iterator<getRev, cfg_t::const_iterator>;
+    using label_iterator = cfg_t::label_iterator;
+    using const_label_iterator = cfg_t::const_label_iterator;
+    using var_iterator = cfg_t::var_iterator;
+    using const_var_iterator = cfg_t::const_var_iterator;
 
   private:
     cfg_ref_t _cfg;
