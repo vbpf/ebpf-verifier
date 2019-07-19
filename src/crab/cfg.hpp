@@ -98,11 +98,6 @@ inline crab_os& operator<<(crab_os& o, const debug_info& l) {
 */
 
 struct binary_op_t {
-    binary_op_t(variable_t lhs, binary_operation_t op, linear_expression_t left, linear_expression_t right)
-        : lhs(lhs), op(op), left(left), right(right) {}
-
-    void write(crab_os& o) const { o << lhs << " = " << left << op << right; }
-
     variable_t lhs;
     binary_operation_t op;
     linear_expression_t left;
@@ -110,29 +105,15 @@ struct binary_op_t {
 };
 
 struct assign_t {
-    assign_t(variable_t lhs, linear_expression_t rhs) : lhs(lhs), rhs(rhs) {}
-
-    void write(crab_os& o) const { o << lhs << " = " << rhs; }
-
     variable_t lhs;
     linear_expression_t rhs;
 };
 
 struct assume_t {
-    assume_t(linear_constraint_t constraint) : constraint(constraint) {}
-
-    void write(crab_os& o) const { o << "assume(" << constraint << ")"; }
-
     linear_constraint_t constraint;
 };
 
 struct havoc_t {
-    havoc_t(variable_t lhs) : lhs(lhs) {}
-
-    variable_t variable() const { return lhs; }
-
-    void write(crab_os& o) const { o << "havoc(" << lhs << ")"; }
-
     variable_t lhs;
 };
 
@@ -144,14 +125,6 @@ struct havoc_t {
 // generate many select instructions so we prefer to support
 // natively to avoid a blow up in the size of the CFG.
 struct select_t {
-    select_t(variable_t lhs, linear_constraint_t cond, linear_expression_t left, linear_expression_t right)
-        : lhs(lhs), cond(cond), left(left), right(right) {}
-
-    void write(crab_os& o) const {
-        o << lhs << " = "
-          << "ite(" << cond << "," << left << "," << right << ")";
-    }
-
     variable_t lhs;
     linear_constraint_t cond;
     linear_expression_t left;
@@ -159,19 +132,8 @@ struct select_t {
 };
 
 struct assert_t {
-    assert_t(linear_constraint_t constraint, debug_info dbg_info = {}) : constraint(constraint), m_dbg_info(dbg_info) {}
-
-    void write(crab_os& o) const {
-        o << "assert(" << constraint << ")";
-        if (this->m_dbg_info.has_debug()) {
-            o << " // line=" << this->m_dbg_info.m_line << " column=" << this->m_dbg_info.m_col;
-        }
-    }
-
-    const debug_info& get_debug_info() const { return m_dbg_info; }
-
     linear_constraint_t constraint;
-    debug_info m_dbg_info;
+    debug_info debug;
 };
 
 /*
@@ -189,11 +151,6 @@ struct assert_t {
 //! Initialize all array elements to some variable or number.
 //  The semantics is similar to constant arrays in SMT.
 struct array_init_t {
-    array_init_t(variable_t array, linear_expression_t elem_size, linear_expression_t lb_index, linear_expression_t ub_index,
-                 linear_expression_t val)
-        : array(array), elem_size(elem_size), lb_index(lb_index), ub_index(ub_index), val(val) {}
-
-    void write(crab_os& o) const { o << array << "[" << lb_index << "..." << ub_index << "] := " << val; }
 
     // forall i \in [lb,ub) % elem_size :: arr[i] := val and
     // forall j < lb or j >= ub :: arr[j] is undefined.
@@ -206,38 +163,17 @@ struct array_init_t {
 
 struct array_store_t {
     // forall i \in [lb,ub) % elem_size :: arr[i] := val
-    array_store_t(variable_t array, linear_expression_t elem_size, linear_expression_t lb_index, linear_expression_t ub_index,
-                  linear_expression_t value, bool is_singleton)
-        : array(array), elem_size(elem_size), lb_index(lb_index), ub_index(ub_index), value(value), is_singleton(is_singleton) {}
-
-    void write(crab_os& o) const {
-        if (lb_index.equal(ub_index)) {
-            o << "array_store(" << array << "," << lb_index <<                     "," << value << ",sz=" << elem_size << ")";
-        } else {
-            o << "array_store(" << array << "," << lb_index << ".." << ub_index << "," << value << ",sz=" << elem_size
-              << ")";
-        }
-    }
-
     variable_t array;
     linear_expression_t elem_size; //! size in bytes
     linear_expression_t lb_index;
     linear_expression_t ub_index;
     linear_expression_t value;
-    bool is_singleton; // whether the store writes to a singleton
-                       // cell (size one). If unknown set to false.
-                       // Only makes sense if m_lb is equal to m_ub.
+    bool is_singleton{}; // whether the store writes to a singleton
+                         // cell (size one). If unknown set to false.
+                         // Only makes sense if m_lb is equal to m_ub.
 };
 
 struct array_load_t {
-    array_load_t(variable_t lhs, variable_t array, linear_expression_t elem_size, linear_expression_t index)
-        : lhs(lhs), array(array), elem_size(elem_size), index(index) {}
-
-    void write(crab_os& o) const {
-        o << lhs << " = "
-          << "array_load(" << array << "," << index << ",sz=" << elem_size << ")";
-    }
-
     variable_t lhs;
     variable_t array;
     linear_expression_t elem_size; //! size in bytes
@@ -247,8 +183,34 @@ struct array_load_t {
 using new_statement_t = std::variant<binary_op_t, assign_t, assume_t, select_t, assert_t, havoc_t, array_init_t,
                                      array_store_t, array_load_t>;
 
+inline crab_os& operator<<(crab_os& o, const binary_op_t& s) { return o << s.lhs << " = " << s.left << s.op << s.right; }
+inline crab_os& operator<<(crab_os& o, const assign_t& s) { return o << s.lhs << " = " << s.rhs; }
+inline crab_os& operator<<(crab_os& o, const assume_t& s) { return o << "assume(" << s.constraint << ")"; }
+inline crab_os& operator<<(crab_os& o, const havoc_t& s) { return o << "havoc(" << s.lhs << ")"; }
+inline crab_os& operator<<(crab_os& o, const select_t& s) {
+    return o << s.lhs << " = " << "ite(" << s.cond << "," << s.left << "," << s.right << ")";
+}
+inline crab_os& operator<<(crab_os& o, const assert_t& s) {
+    o << "assert(" << s.constraint << ")";
+    if (s.debug.has_debug()) {
+        o << " // line=" << s.debug.m_line << " column=" << s.debug.m_col;
+    }
+    return o;
+}
+inline crab_os& operator<<(crab_os& o, const array_init_t& s) { return o << s.array << "[" << s.lb_index << "..." << s.ub_index << "] := " << s.val; }
+inline crab_os& operator<<(crab_os& o, const array_store_t& s) {
+    o << "array_store(" << s.array << "," << s.lb_index;
+    if (s.lb_index.equal(s.ub_index)) {
+        o << ".." << s.ub_index;
+    }
+    o << "," << s.value << ",sz=" << s.elem_size;
+    return o;
+}
+inline crab_os& operator<<(crab_os& o, const array_load_t& s) {
+    return o << s.lhs << " = " << "array_load(" << s.array << "," << s.index << ",sz=" << s.elem_size << ")";
+}
 inline crab_os& operator<<(crab_os& os, const new_statement_t& a) {
-    std::visit([&](const auto& arg) { arg.write(os); }, a);
+    std::visit([&](const auto& arg) { os << arg; }, a);
     return os;
 }
 

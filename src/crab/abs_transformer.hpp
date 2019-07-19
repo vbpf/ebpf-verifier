@@ -164,7 +164,7 @@ class intra_abs_transformer {
             pre_bot = m_inv.is_bottom();
         }
 
-        m_inv -= stmt.variable();
+        m_inv -= stmt.lhs;
 
         if constexpr (CrabSanityCheckFlag) {
             bool post_bot = m_inv.is_bottom();
@@ -274,7 +274,7 @@ class checks_db {
 
     void add(check_kind_t status, const assert_t& s) {
         total[status]++;
-        debug_info dbg = s.get_debug_info();
+        debug_info dbg = s.debug;
         if (dbg.has_debug())
             m_db.insert(check_t(dbg, status));
     }
