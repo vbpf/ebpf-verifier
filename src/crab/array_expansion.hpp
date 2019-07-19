@@ -631,8 +631,7 @@ class array_expansion_domain final : public writeable {
                  outs() << lhs << ":=" << a << "[" << i << "..." << ub << "]  -- " << *this << "\n";);
     }
 
-    void array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i, linear_expression_t val,
-                     bool /*is_singleton*/) {
+    void array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i, linear_expression_t val) {
 
         if (is_bottom())
             return;
@@ -726,7 +725,7 @@ class array_expansion_domain final : public writeable {
         }
 
         for (number_t i = *lb, e = *ub; i < e;) {
-            array_store(a, elem_size, i, val, false);
+            array_store(a, elem_size, i, val);
             i = i + *n;
         }
     }

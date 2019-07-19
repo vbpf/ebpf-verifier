@@ -304,14 +304,6 @@ struct type_checker_visitor {
         variable_t a = s.array;
         linear_expression_t e_sz = s.elem_size;
         linear_expression_t v = s.value;
-        if (s.is_singleton) {
-            if (!(s.lb_index.equal(s.ub_index))) {
-                crab_string_os os;
-                os << "(type checking) "
-                   << "lower and upper indexes must be equal because array is a singleton in " << s;
-                CRAB_ERROR(os.str());
-            }
-        }
         check_array(a, s);
         check_num_or_var(e_sz, "element size must be number or variable", s);
         check_num_or_var(v, "array value must be number or variable", s);
