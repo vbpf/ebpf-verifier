@@ -127,8 +127,7 @@ class array_abstract_domain : public numeric_abstract_domain<array_abstract_doma
     // lhs := a[i] where elem_size is in bytes
     virtual void array_load(variable_t lhs, variable_t a, linear_expression_t elem_size, linear_expression_t i) = 0;
     // a[i] := v where elem_size is in bytes
-    virtual void array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i, linear_expression_t v,
-                             bool is_singleton) = 0;
+    virtual void array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i, linear_expression_t v) = 0;
     // forall i<=k<j and k % elem_size == 0 :: a[k] := v.
     // elem_size is in bytes
     virtual void array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t i,

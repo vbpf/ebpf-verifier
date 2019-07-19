@@ -197,7 +197,7 @@ class intra_abs_transformer {
         }
 
         if (stmt.lb_index.equal(stmt.ub_index)) {
-            m_inv.array_store(stmt.array, stmt.elem_size, stmt.lb_index, stmt.value, stmt.is_singleton);
+            m_inv.array_store(stmt.array, stmt.elem_size, stmt.lb_index, stmt.value);
         } else {
             m_inv.array_store_range(stmt.array, stmt.elem_size, stmt.lb_index, stmt.ub_index, stmt.value);
         }

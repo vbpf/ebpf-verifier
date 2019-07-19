@@ -167,9 +167,6 @@ struct array_store_t {
     linear_expression_t lb_index;
     linear_expression_t ub_index;
     linear_expression_t value;
-    bool is_singleton{}; // whether the store writes to a singleton
-                         // cell (size one). If unknown set to false.
-                         // Only makes sense if m_lb is equal to m_ub.
 };
 
 struct array_load_t {
@@ -429,14 +426,13 @@ class basic_block_t {
         insert<array_init_t>(a, elem_size, lb_idx, ub_idx, v);
     }
 
-    void array_store(variable_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size,
-                     bool is_singleton = false) {
-        insert<array_store_t>(arr, elem_size, idx, idx, v, is_singleton);
+    void array_store(variable_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size) {
+        insert<array_store_t>(arr, elem_size, idx, idx, v);
     }
 
     void array_store_range(variable_t arr, linear_expression_t lb_idx, linear_expression_t ub_idx,
                            linear_expression_t v, linear_expression_t elem_size) {
-        insert<array_store_t>(arr, elem_size, lb_idx, ub_idx, v, false);
+        insert<array_store_t>(arr, elem_size, lb_idx, ub_idx, v);
     }
 
     void array_load(variable_t lhs, variable_t arr, linear_expression_t idx, linear_expression_t elem_size) {
