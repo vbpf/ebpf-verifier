@@ -62,34 +62,23 @@ namespace crab {
 inline std::string get_label_str(std::string e) { return e; };
 
 struct debug_info {
-
-    std::string m_file;
-    int m_line{-1};
-    int m_col{-1};
-
-    debug_info() = default;
-
-    debug_info(std::string file, unsigned line, unsigned col) : m_file(file), m_line(line), m_col(col) {}
+    int line{-1};
+    int col{-1};
 
     bool operator<(const debug_info& other) const {
-        return (m_file < other.m_file && m_line < other.m_line && m_col < other.m_col);
+        return line < other.line && col < other.col;
     }
 
     bool operator==(const debug_info& other) const {
-        return (m_file == other.m_file && m_line == other.m_line && m_col == other.m_col);
+        return line == other.line && col == other.col;
     }
 
-    bool has_debug() const { return ((m_file != "") && (m_line >= 0) && (m_col >= 0)); }
-
-    void write(crab_os& o) const {
-        o << "File  : " << m_file << "\n"
-          << "Line  : " << m_line << "\n"
-          << "Column: " << m_col << "\n";
-    }
+    bool has_debug() const { return line >= 0 && col >= 0; }
 };
 
 inline crab_os& operator<<(crab_os& o, const debug_info& l) {
-    l.write(o);
+    o << "Line  : " << l.line << "\n"
+      << "Column: " << l.col  << "\n";
     return o;
 }
 
@@ -384,7 +373,7 @@ class basic_block_t {
         insert<select_t>(lhs, cond, e1, e2);
     }
 
-    void assertion(linear_constraint_t cst, debug_info di = debug_info()) { insert<assert_t>(cst, di); }
+    void assertion(linear_constraint_t cst, debug_info di = {}) { insert<assert_t>(cst, di); }
 
     void array_init(variable_t a, linear_expression_t lb_idx, linear_expression_t ub_idx, linear_expression_t v,
                     linear_expression_t elem_size) {

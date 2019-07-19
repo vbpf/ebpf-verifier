@@ -196,7 +196,7 @@ class instruction_builder_t final {
     vector<basic_block_t*> exec();
     instruction_builder_t(machine_t& machine, Instruction ins, basic_block_t& block, cfg_t& cfg)
         : machine(machine), ins(ins), block(block), cfg(cfg),
-          pc(first_num(block.label())), di{"pc", (unsigned int)pc, 0} {}
+          pc(first_num(block.label())), di{pc, 0} {}
 
   private:
     machine_t& machine;
