@@ -62,12 +62,11 @@ cell_t offset_map_t::mk_cell(variable_t array, offset_t o, unsigned size) {
     if (c.is_null()) {
         auto& vfac = array.name().get_var_factory();
         std::string vname = mk_scalar_name(array, o, size);
-        variable_type_t vtype = get_array_element_type(array.get_type());
         index_t vindex = get_index(array, o, size);
 
         // create a new scalar variable for representing the contents
         // of bytes array[o,o+1,..., o+size-1]
-        variable_t scalar_var(vfac.get(vindex, vname), vtype, size);
+        variable_t scalar_var(vfac.get(vindex, vname), INT_TYPE, size);
         c = cell_t(o, scalar_var);
         insert_cell(c);
         CRAB_LOG("array-expansion", outs() << "**Created cell " << c << "\n";);

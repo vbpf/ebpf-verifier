@@ -93,40 +93,6 @@ inline crab_os& operator<<(crab_os& o, const debug_info& l) {
     return o;
 }
 
-class basic_block_t;
-class basic_block_rev_t;
-
-class binary_op_t;
-class assign_t;
-class assume_t;
-class select_t;
-class assert_t;
-class havoc_t;
-class array_init_t;
-class array_store_t;
-class array_load_t;
-
-struct statement_visitor {
-    using number_t = number_t;
-    using varname_t = varname_t;
-
-    virtual void visit(binary_op_t&){};
-    virtual void visit(assign_t&){};
-    virtual void visit(assume_t&){};
-    virtual void visit(select_t&){};
-    virtual void visit(assert_t&){};
-    virtual void visit(havoc_t&){};
-    virtual void visit(array_init_t&){};
-    virtual void visit(array_store_t&){};
-    virtual void visit(array_load_t&){};
-
-    void visit(basic_block_t& b);
-
-    void visit(basic_block_rev_t& b);
-
-    virtual ~statement_visitor() {}
-};
-
 /*
   Numerical statements
 */
@@ -144,7 +110,7 @@ class binary_op_t {
 
     linear_expression_t right() const { return m_op2; }
 
-    virtual void write(crab_os& o) const { o << m_lhs << " = " << m_op1 << m_op << m_op2; }
+    void write(crab_os& o) const { o << m_lhs << " = " << m_op1 << m_op << m_op2; }
 
   private:
     variable_t m_lhs;
@@ -161,7 +127,7 @@ class assign_t {
 
     linear_expression_t rhs() const { return m_rhs; }
 
-    virtual void write(crab_os& o) const { o << m_lhs << " = " << m_rhs; }
+    void write(crab_os& o) const { o << m_lhs << " = " << m_rhs; }
 
   private:
     variable_t m_lhs;
@@ -174,7 +140,7 @@ class assume_t {
 
     linear_constraint_t constraint() const { return m_cst; }
 
-    virtual void write(crab_os& o) const { o << "assume(" << m_cst << ")"; }
+    void write(crab_os& o) const { o << "assume(" << m_cst << ")"; }
 
   private:
     linear_constraint_t m_cst;
@@ -212,7 +178,7 @@ class select_t {
 
     linear_expression_t right() const { return m_e2; }
 
-    virtual void write(crab_os& o) const {
+    void write(crab_os& o) const {
         o << m_lhs << " = "
           << "ite(" << m_cond << "," << m_e1 << "," << m_e2 << ")";
     }
@@ -230,7 +196,7 @@ class assert_t {
 
     linear_constraint_t constraint() const { return m_cst; }
 
-    virtual void write(crab_os& o) const {
+    void write(crab_os& o) const {
         o << "assert(" << m_cst << ")";
         if (this->m_dbg_info.has_debug()) {
             o << " // line=" << this->m_dbg_info.m_line << " column=" << this->m_dbg_info.m_col;
@@ -265,8 +231,6 @@ class array_init_t {
         : m_arr(arr), m_elem_size(elem_size), m_lb(lb), m_ub(ub), m_val(val) {}
 
     variable_t array() const { return m_arr; }
-
-    variable_type_t array_type() const { return m_arr.get_type(); }
 
     linear_expression_t elem_size() const { return m_elem_size; }
 
@@ -303,13 +267,11 @@ class array_store_t {
 
     linear_expression_t value() const { return m_value; }
 
-    variable_type_t array_type() const { return m_arr.get_type(); }
-
     linear_expression_t elem_size() const { return m_elem_size; }
 
     bool is_singleton() const { return m_is_singleton; }
 
-    virtual void write(crab_os& o) const {
+    void write(crab_os& o) const {
         if (m_lb.equal(m_ub)) {
             o << "array_store(" << m_arr << "," << m_lb << "," << m_value << ",sz=" << elem_size() << ")";
         } else {
@@ -338,13 +300,11 @@ class array_load_t {
 
     variable_t array() const { return m_array; }
 
-    variable_type_t array_type() const { return m_array.get_type(); }
-
     linear_expression_t index() const { return m_index; }
 
     linear_expression_t elem_size() const { return m_elem_size; }
 
-    virtual void write(crab_os& o) const {
+    void write(crab_os& o) const {
         o << m_lhs << " = "
           << "array_load(" << m_array << "," << m_index << ",sz=" << elem_size() << ")";
     }
