@@ -137,8 +137,7 @@ static label_t pop(set<label_t>& s) {
 
 Cfg to_nondet(const Cfg& cfg) {
     Cfg res(cfg.entry());
-    for (auto const& [this_label, _] : cfg) {
-        BasicBlock const& bb = cfg.get_node(this_label);
+    for (auto const& [this_label, bb] : cfg) {
         BasicBlock& newbb = res.insert(this_label);
 
         for (auto ins : bb) {
@@ -150,7 +149,7 @@ Cfg to_nondet(const Cfg& cfg) {
         auto [pb, pe] = bb.prev_blocks();
         for (label_t prev_label : vector<label_t>(pb, pe)) {
             bool is_one = unique(cfg.get_node(prev_label).next_blocks()).size() > 1;
-            BasicBlock& pbb = res.get_node(is_one ? prev_label + ":" + this_label : prev_label);
+            BasicBlock& pbb = res.insert(is_one ? prev_label + ":" + this_label : prev_label);
             pbb >> newbb;
         }
         // note the special case where we jump to fallthrough
