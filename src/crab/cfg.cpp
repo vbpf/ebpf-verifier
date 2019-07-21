@@ -13,9 +13,9 @@ void cfg_t::remove_useless_blocks() {
     visited_t useful, useless;
     mark_alive_blocks(rev_cfg.entry(), rev_cfg, useful);
 
-    for (auto const& bb : *this) {
-        if (!(useful.count(bb.label()) > 0)) {
-            useless.insert(bb.label());
+    for (auto const& [label, bb] : *this) {
+        if (!(useful.count(label) > 0)) {
+            useless.insert(label);
         }
     }
 
@@ -232,9 +232,9 @@ struct type_checker_visitor {
 basic_block_t& cfg_t::insert(basic_block_label_t bb_id) {
     auto it = m_blocks.find(bb_id);
     if (it != m_blocks.end())
-        return *(it->second);
+        return it->second;
 
-    m_blocks.emplace(bb_id, new basic_block_t(bb_id));
+    m_blocks.emplace(bb_id, bb_id);
     return get_node(bb_id);
 }
 
@@ -248,7 +248,7 @@ void cfg_t::remove(basic_block_label_t bb_id) {
     }
 
     std::vector<std::pair<basic_block_t*, basic_block_t*>> dead_edges;
-    basic_block_t& bb = get_node(bb_id);
+    auto& bb = get_node(bb_id);
 
     for (auto id : boost::make_iterator_range(bb.prev_blocks())) {
         if (bb_id != id) {
@@ -273,9 +273,9 @@ void cfg_t::remove_unreachable_blocks() {
     visited_t alive, dead;
     mark_alive_blocks(entry(), *this, alive);
 
-    for (auto const& bb : *this) {
-        if (!(alive.count(bb.label()) > 0)) {
-            dead.insert(bb.label());
+    for (auto const& [label, bb] : *this) {
+        if (!(alive.count(label) > 0)) {
+            dead.insert(label);
         }
     }
 
@@ -286,7 +286,7 @@ void cfg_t::remove_unreachable_blocks() {
 
 void type_check(const cfg_ref_t& cfg) {
     type_checker_visitor vis;
-    for (auto& bb : cfg) {
+    for (auto& [label, bb] : cfg) {
         for (const new_statement_t& statement : bb)
             std::visit(vis, statement);
     }

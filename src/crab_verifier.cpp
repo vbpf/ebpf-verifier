@@ -42,15 +42,15 @@ using analyzer_t = crab::interleaved_fwd_fixpoint_iterator<dom_t>;;
 
 static auto extract_pre(analyzer_t& analyzer, cfg_t& cfg) {
     std::map<string, dom_t> res;
-    for (const auto& block : cfg)
-        res.emplace(block.label(), analyzer.get_pre(block.label()));
+    for (const auto& [label, block] : cfg)
+        res.emplace(label, analyzer.get_pre(label));
     return res;
 }
 
 static auto extract_post(analyzer_t& analyzer, cfg_t& cfg) {
     std::map<string, dom_t> res;
-    for (const auto& block : cfg)
-        res.emplace(block.label(), analyzer.get_post(block.label()));
+    for (const auto& [label, block] : cfg)
+        res.emplace(label, analyzer.get_post(label));
     return res;
 }
 
@@ -72,16 +72,16 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
         });
     }
     checks_db db;
-    for (const basic_block_t& bb : cfg) {
-        check_block(bb, analyzer.get_pre(bb.label()), db);
+    for (const auto& [label, bb] : cfg) {
+        check_block(bb, analyzer.get_pre(label), db);
     }
     return db;
 }
 
 static std::vector<string> sorted_labels(cfg_t& cfg) {
     std::vector<string> labels;
-    for (const auto& block : cfg)
-        labels.push_back(block.label());
+    for (const auto& [label, block] : cfg)
+        labels.push_back(label);
 
     std::sort(labels.begin(), labels.end(), [](string a, string b) {
         if (first_num(a) < first_num(b))
