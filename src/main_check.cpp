@@ -104,10 +104,18 @@ int main(int argc, char** argv) {
 
     int instruction_count = prog.size();
 
-    Cfg cfg = to_nondet(instruction_seq_to_cfg(prog));
-    if (global_options.simplify) {
-        cfg.simplify();
-    }
+    Cfg det_cfg = instruction_seq_to_cfg(prog);
+    if (!dotfile.empty())
+        print_dot(det_cfg, dotfile);
+    std::cout << "---\n\n\n";
+
+    Cfg cfg = to_nondet(det_cfg);
+    if (!dotfile.empty())
+        print_dot(cfg, dotfile);
+    std::cout << "---\n\n\n";
+    // if (global_options.simplify) {
+    //     cfg.simplify();
+    // }
     auto stats = collect_stats(cfg);
     if (!dotfile.empty())
         print_dot(cfg, dotfile);
