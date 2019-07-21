@@ -109,18 +109,18 @@ int main(int argc, char** argv) {
     if (!dotfile.empty()) {
         std::cout << "det:\n";
         print_dot(det_cfg, dotfile);
+        std::cout << "---\n\n\n";
     }
-    std::cout << "---\n\n\n";
 
-    std::cout << "to nondet...\n";
+    // std::cout << "to nondet...\n";
     Cfg cfg = to_nondet(det_cfg);
     if (!dotfile.empty()) {
         std::cout << "nondet:\n";
         print_dot(cfg, dotfile);
+        std::cout << "---\n\n\n";
     }
-    std::cout << "---\n\n\n";
     if (global_options.simplify) {
-        std::cout << "simplifying...\n";
+        // std::cout << "simplifying...\n";
         cfg.simplify();
         if (!dotfile.empty()) {
             std::cout << "simplified:\n";
