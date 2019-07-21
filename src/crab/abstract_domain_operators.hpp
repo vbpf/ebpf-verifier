@@ -44,13 +44,13 @@ inline crab_os& operator<<(crab_os& o, bitwise_operation_t op) {
 template <>
 inline std::optional<operation_t> conv_op(binary_operation_t op) {
     switch (op) {
-    case BINOP_ADD: return OP_ADDITION;
-    case BINOP_SUB: return OP_SUBTRACTION;
-    case BINOP_MUL: return OP_MULTIPLICATION;
-    case BINOP_SDIV: return OP_SDIV;
-    case BINOP_UDIV: return OP_UDIV;
-    case BINOP_SREM: return OP_SREM;
-    case BINOP_UREM: return OP_UREM;
+    case BINOP::ADD: return OP_ADDITION;
+    case BINOP::SUB: return OP_SUBTRACTION;
+    case BINOP::MUL: return OP_MULTIPLICATION;
+    case BINOP::SDIV: return OP_SDIV;
+    case BINOP::UDIV: return OP_UDIV;
+    case BINOP::SREM: return OP_SREM;
+    case BINOP::UREM: return OP_UREM;
     default: return std::optional<operation_t>();
     }
 }
@@ -58,12 +58,12 @@ inline std::optional<operation_t> conv_op(binary_operation_t op) {
 template <>
 inline std::optional<bitwise_operation_t> conv_op(binary_operation_t op) {
     switch (op) {
-    case BINOP_AND: return OP_AND;
-    case BINOP_OR: return OP_OR;
-    case BINOP_XOR: return OP_XOR;
-    case BINOP_SHL: return OP_SHL;
-    case BINOP_LSHR: return OP_LSHR;
-    case BINOP_ASHR: return OP_ASHR;
+    case BINOP::AND: return OP_AND;
+    case BINOP::OR: return OP_OR;
+    case BINOP::XOR: return OP_XOR;
+    case BINOP::SHL: return OP_SHL;
+    case BINOP::LSHR: return OP_LSHR;
+    case BINOP::ASHR: return OP_ASHR;
     default: return std::optional<bitwise_operation_t>();
     }
 }
