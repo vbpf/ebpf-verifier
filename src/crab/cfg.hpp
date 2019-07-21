@@ -93,8 +93,6 @@ class basic_block_t final {
     basic_block_t(basic_block_t&& bb)
         : m_bb_id(bb.label()), m_ts(std::move(bb.m_ts)), m_prev(bb.m_prev), m_next(bb.m_next) {}
 
-    static basic_block_t* create(basic_block_label_t bb_id) { return new basic_block_t(bb_id); }
-
     template <typename T, typename... Args>
     void insert(Args&&... args) {
         m_ts.emplace_back(T{std::forward<Args>(args)...});
@@ -379,7 +377,7 @@ class cfg_t final {
         if (!visited.insert(curId).second)
             return;
 
-        const basic_block_t& cur = get_node(curId);
+        const auto& cur = get_node(curId);
         f(cur);
         for (auto const n : boost::make_iterator_range(cur.next_blocks())) {
             dfs_rec(n, visited, f);
@@ -400,11 +398,11 @@ class cfg_t final {
 
   public:
     cfg_t(basic_block_label_t entry) : m_entry(entry), m_exit(std::nullopt) {
-        m_blocks.emplace(m_entry, basic_block_t::create(m_entry));
+        m_blocks.emplace(m_entry, new basic_block_t(m_entry));
     }
 
     cfg_t(basic_block_label_t entry, basic_block_label_t exit) : m_entry(entry), m_exit(exit) {
-        m_blocks.emplace(m_entry, basic_block_t::create(m_entry));
+        m_blocks.emplace(m_entry, new basic_block_t(m_entry));
     }
 
     cfg_t(const cfg_t&) = delete;
@@ -430,22 +428,22 @@ class cfg_t final {
     basic_block_label_t entry() const { return m_entry; }
 
     const_succ_range next_nodes(basic_block_label_t bb_id) const {
-        const basic_block_t& b = get_node(bb_id);
+        const auto& b = get_node(bb_id);
         return boost::make_iterator_range(b.next_blocks());
     }
 
     const_pred_range prev_nodes(basic_block_label_t bb_id) const {
-        const basic_block_t& b = get_node(bb_id);
+        const auto& b = get_node(bb_id);
         return boost::make_iterator_range(b.prev_blocks());
     }
 
     succ_range next_nodes(basic_block_label_t bb_id) {
-        basic_block_t& b = get_node(bb_id);
+        auto& b = get_node(bb_id);
         return boost::make_iterator_range(b.next_blocks());
     }
 
     pred_range prev_nodes(basic_block_label_t bb_id) {
-        basic_block_t& b = get_node(bb_id);
+        auto& b = get_node(bb_id);
         return boost::make_iterator_range(b.prev_blocks());
     }
 
@@ -556,11 +554,11 @@ class cfg_t final {
         if (!visited.insert(curId).second)
             return;
 
-        basic_block_t& cur = get_node(curId);
+        auto& cur = get_node(curId);
 
         if (has_one_child(curId) && has_one_parent(curId)) {
-            basic_block_t& parent = get_parent(curId);
-            basic_block_t& child = get_child(curId);
+            auto& parent = get_parent(curId);
+            auto& child = get_child(curId);
 
             // Merge with its parent if it's its only child.
             if (has_one_child(parent.label())) {

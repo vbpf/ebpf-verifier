@@ -121,7 +121,7 @@ void wto_thresholds_t::visit(wto_vertex_t& vertex) {
     auto it = m_head_to_thresholds.find(head);
     if (it != m_head_to_thresholds.end()) {
         thresholds_t& thresholds = it->second;
-        basic_block_t& bb = m_cfg.get_node(vertex.node());
+        auto& bb = m_cfg.get_node(vertex.node());
         get_thresholds(bb, thresholds);
     } else {
         CRAB_ERROR("No head found while gathering thresholds");
@@ -130,14 +130,14 @@ void wto_thresholds_t::visit(wto_vertex_t& vertex) {
 
 void wto_thresholds_t::visit(wto_cycle_t& cycle) {
     thresholds_t thresholds(m_max_size);
-    basic_block_t& bb = m_cfg.get_node(cycle.head());
+    auto& bb = m_cfg.get_node(cycle.head());
     get_thresholds(bb, thresholds);
 
     // XXX: if we want to consider constants from loop
     // initializations
     for (auto pre : boost::make_iterator_range(bb.prev_blocks())) {
         if (pre != cycle.head()) {
-            basic_block_t& pred_bb = m_cfg.get_node(pre);
+            auto& pred_bb = m_cfg.get_node(pre);
             get_thresholds(pred_bb, thresholds);
         }
     }

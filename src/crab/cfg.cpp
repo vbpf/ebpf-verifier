@@ -234,7 +234,7 @@ basic_block_t& cfg_t::insert(basic_block_label_t bb_id) {
     if (it != m_blocks.end())
         return *(it->second);
 
-    m_blocks.emplace(bb_id, basic_block_t::create(bb_id));
+    m_blocks.emplace(bb_id, new basic_block_t(bb_id));
     return get_node(bb_id);
 }
 
