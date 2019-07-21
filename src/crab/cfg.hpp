@@ -44,18 +44,23 @@
 #include "crab/linear_constraints.hpp"
 #include "crab/types.hpp"
 
+#include "asm_syntax.hpp"
+
 namespace crab {
 
 class cfg_t;
 
-class basic_block_t final {
-    basic_block_t(const basic_block_t&) = delete;
+template <typename Language>
+class basic_block final {
+    using basic_block_t = basic_block<Language>;
+
+    basic_block(const basic_block_t&) = delete;
 
     friend class cfg_t;
 
   private:
     using bb_id_set_t = std::vector<label_t>;
-    using stmt_list_t = std::vector<new_statement_t>;
+    using stmt_list_t = std::vector<Language>;
 
   public:
     // -- iterators
@@ -64,10 +69,10 @@ class basic_block_t final {
     using const_succ_iterator = bb_id_set_t::const_iterator;
     using pred_iterator = succ_iterator;
     using const_pred_iterator = const_succ_iterator;
-    using iterator = stmt_list_t::iterator;
-    using const_iterator = stmt_list_t::const_iterator;
-    using reverse_iterator = stmt_list_t::reverse_iterator;
-    using const_reverse_iterator = stmt_list_t::const_reverse_iterator;
+    using iterator = typename stmt_list_t::iterator;
+    using const_iterator = typename stmt_list_t::const_iterator;
+    using reverse_iterator = typename stmt_list_t::reverse_iterator;
+    using const_reverse_iterator = typename stmt_list_t::const_reverse_iterator;
 
   private:
     label_t m_label;
@@ -92,12 +97,12 @@ class basic_block_t final {
         m_ts.emplace_back(T{std::forward<Args>(args)...});
     }
 
-    basic_block_t(const label_t& _label) : m_label(_label) {}
+    basic_block(const label_t& _label) : m_label(_label) {}
 
-    basic_block_t(basic_block_t&& bb)
+    basic_block(basic_block_t&& bb)
         : m_label(bb.label()), m_ts(std::move(bb.m_ts)), m_prev(bb.m_prev), m_next(bb.m_next) {}
 
-    ~basic_block_t() = default;
+    ~basic_block() = default;
 
     label_t label() const { return m_label; }
 
@@ -175,6 +180,8 @@ class basic_block_t final {
         return o;
     }
 };
+
+using basic_block_t = basic_block<new_statement_t>;
 
 // Viewing basic_block_t with all statements reversed. Useful for
 // backward analysis.
