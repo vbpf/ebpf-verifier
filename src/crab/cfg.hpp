@@ -301,12 +301,6 @@ class cfg_t final {
         dfs_rec(m_entry, visited, f);
     }
 
-    struct print_block {
-        crab_os& m_o;
-        print_block(crab_os& o) : m_o(o) {}
-        void operator()(const basic_block_t& B) { B.write(m_o); }
-    };
-
   public:
     cfg_t(basic_block_label_t entry) : m_entry(entry), m_exit(std::nullopt) {
         m_blocks.emplace(m_entry, m_entry);
@@ -405,8 +399,7 @@ class cfg_t final {
     size_t size() const { return std::distance(begin(), end()); }
 
     void write(crab_os& o) const {
-        print_block f(o);
-        dfs(f);
+        dfs([&](const auto& bb) { bb.write(o); });
     }
 
     // for gdb
@@ -624,12 +617,6 @@ class cfg_rev_t final {
         dfs_rec(entry(), visited, f);
     }
 
-    struct print_block {
-        crab_os& m_o;
-        print_block(crab_os& o) : m_o(o) {}
-        void operator()(const basic_block_rev_t& B) { B.write(m_o); }
-    };
-
   public:
     using basic_block_rev_map_t = std::unordered_map<basic_block_label_t, basic_block_rev_t>;
     using iterator = basic_block_rev_map_t::iterator;
@@ -706,8 +693,7 @@ class cfg_rev_t final {
     basic_block_label_t exit() const { return _cfg.entry(); }
 
     void write(crab_os& o) const {
-        print_block f(o);
-        dfs(f);
+        dfs([&](const auto& bb) { bb.write(o); });
     }
 
     friend crab_os& operator<<(crab_os& o, const cfg_rev_t& cfg_t) {
