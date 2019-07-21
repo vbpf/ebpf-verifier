@@ -117,7 +117,7 @@ void wto_thresholds_t::visit(wto_vertex_t& vertex) {
     if (m_stack.empty())
         return;
 
-    basic_block_label_t head = m_stack.back();
+    label_t head = m_stack.back();
     auto it = m_head_to_thresholds.find(head);
     if (it != m_head_to_thresholds.end()) {
         thresholds_t& thresholds = it->second;

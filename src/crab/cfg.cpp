@@ -229,7 +229,7 @@ struct type_checker_visitor {
     void operator()(const std::monostate& s) {}
 }; // end class type_checker_visitor
 
-basic_block_t& cfg_t::insert(basic_block_label_t bb_id) {
+basic_block_t& cfg_t::insert(label_t bb_id) {
     auto it = m_blocks.find(bb_id);
     if (it != m_blocks.end())
         return it->second;
@@ -238,7 +238,7 @@ basic_block_t& cfg_t::insert(basic_block_label_t bb_id) {
     return get_node(bb_id);
 }
 
-void cfg_t::remove(basic_block_label_t bb_id) {
+void cfg_t::remove(label_t bb_id) {
     if (bb_id == m_entry) {
         CRAB_ERROR("Cannot remove entry block");
     }

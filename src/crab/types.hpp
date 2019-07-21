@@ -251,6 +251,6 @@ inline crab_os& operator<<(crab_os& o, const variable_t& v) {
     return o;
 }
 
-using basic_block_label_t = std::string;
+using label_t = std::string;
 
 } // namespace crab

@@ -44,7 +44,7 @@ namespace boost {
 template <>
 struct graph_traits<crab::cfg_t> {
     using graph_t = crab::cfg_t;
-    using vertex_descriptor = crab::basic_block_label_t;
+    using vertex_descriptor = crab::label_t;
     using edge_descriptor = std::pair<vertex_descriptor, vertex_descriptor>;
     using const_edge_descriptor = std::pair<const vertex_descriptor, const vertex_descriptor>;
 
@@ -70,11 +70,11 @@ struct graph_traits<crab::cfg_t> {
         }
     }
 
-    // iterator of basic_block_label_t's
+    // iterator of label_t's
     using vertex_iterator = typename graph_t::label_iterator;
-    // iterator of pairs of basic_block_label_t's
+    // iterator of pairs of label_t's
     using in_edge_iterator = transform_iterator<crab::graph::mk_in_edge<graph_t>, typename graph_t::pred_iterator>;
-    // iterator of pairs of basic_block_label_t's
+    // iterator of pairs of label_t's
     using out_edge_iterator = transform_iterator<crab::graph::mk_out_edge<graph_t>, typename graph_t::succ_iterator>;
 }; // end class graph_traits
 
@@ -82,7 +82,7 @@ struct graph_traits<crab::cfg_t> {
 template <>
 struct graph_traits<crab::cfg_ref_t> {
     using graph_t = crab::cfg_ref_t;
-    using vertex_descriptor = crab::basic_block_label_t;
+    using vertex_descriptor = crab::label_t;
     using edge_descriptor = std::pair<vertex_descriptor, vertex_descriptor>;
     using const_edge_descriptor = std::pair<const vertex_descriptor, const vertex_descriptor>;
 
@@ -119,7 +119,7 @@ struct graph_traits<crab::cfg_ref_t> {
 template <>
 struct graph_traits<crab::cfg_rev_t> {
     using graph_t = crab::cfg_rev_t;
-    using vertex_descriptor = crab::basic_block_label_t;
+    using vertex_descriptor = crab::label_t;
     using edge_descriptor = std::pair<vertex_descriptor, vertex_descriptor>;
     using const_edge_descriptor = std::pair<const vertex_descriptor, const vertex_descriptor>;
 

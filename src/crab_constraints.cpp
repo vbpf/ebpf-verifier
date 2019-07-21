@@ -43,7 +43,7 @@ constexpr int64_t MY_INT_MIN = INT_MIN;
 constexpr int64_t MY_INT_MAX = INT_MAX;
 constexpr int64_t PTR_MAX = MY_INT_MAX - MAX_PACKET_OFF;
 
-static basic_block_t& add_common_child(cfg_t& cfg, basic_block_t& block, std::vector<basic_block_label_t> labels,
+static basic_block_t& add_common_child(cfg_t& cfg, basic_block_t& block, std::vector<label_t> labels,
                                        std::string suffix) {
     basic_block_t& child = cfg.insert(block.label() + ":" + suffix);
     for (auto label : labels)
