@@ -150,7 +150,7 @@ struct type_checker_visitor {
         linear_expression_t op1 = s.left;
         linear_expression_t op2 = s.right;
 
-        check_num(lhs, "lhs must be integer or real", s);
+        check_num(lhs, "lhs must be integer", s);
         check_bitwidth_if_int(lhs, "lhs must be have bitwidth > 1", s);
 
         if (std::optional<variable_t> v1 = op1.get_variable()) {
@@ -207,7 +207,7 @@ struct type_checker_visitor {
     }
 
     void operator()(const select_t& s) {
-        check_num(s.lhs, "lhs must be integer or real", s);
+        check_num(s.lhs, "lhs must be integer", s);
         check_bitwidth_if_int(s.lhs, "lhs must be have bitwidth > 1", s);
 
         for (const variable_t& v : s.left.variables()) {
@@ -223,7 +223,7 @@ struct type_checker_visitor {
         //    lhs/left/right operands but must have same type.
         const variable_t* first_var = nullptr;
         for (const variable_t& v : s.cond.variables()) {
-            check_num(v, "assume variables must be integer or real", s);
+            check_num(v, "assume variables must be integer", s);
             check_same_type(s.lhs, v, "inconsistent types in select condition variables", s);
             if (first_var) {
                 check_same_type(*first_var, v, "inconsistent types in select condition variables", s);
