@@ -52,7 +52,6 @@ class basic_block_t final {
     basic_block_t(const basic_block_t&) = delete;
 
     friend class cfg_t;
-
   private:
     using bb_id_set_t = std::vector<basic_block_label_t>;
     using stmt_list_t = std::vector<new_statement_t>;
@@ -88,17 +87,19 @@ class basic_block_t final {
         }
     }
 
-    basic_block_t(const basic_block_label_t bb_id) : m_bb_id(bb_id) {}
+  public:
 
-    basic_block_t(basic_block_t&& bb)
-        : m_bb_id(bb.label()), m_ts(std::move(bb.m_ts)), m_prev(bb.m_prev), m_next(bb.m_next) {}
 
     template <typename T, typename... Args>
     void insert(Args&&... args) {
         m_ts.emplace_back(T{std::forward<Args>(args)...});
     }
 
-  public:
+    basic_block_t(const basic_block_label_t& bb_id) : m_bb_id(bb_id) {}
+
+    basic_block_t(basic_block_t&& bb)
+        : m_bb_id(bb.label()), m_ts(std::move(bb.m_ts)), m_prev(bb.m_prev), m_next(bb.m_next) {}
+
     ~basic_block_t() = default;
 
     basic_block_label_t label() const { return m_bb_id; }
@@ -152,9 +153,7 @@ class basic_block_t final {
         for (auto const& s : *this) {
             o << "  " << s << ";\n";
         }
-        std::pair<const_succ_iterator, const_succ_iterator> p = next_blocks();
-        const_succ_iterator it = p.first;
-        const_succ_iterator et = p.second;
+        auto [it, et] = next_blocks();
         if (it != et) {
             o << "  "
               << "goto ";
@@ -173,94 +172,6 @@ class basic_block_t final {
 
     // for gdb
     void dump() const { write(errs()); }
-
-    /// To build statements
-
-    void add(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::ADD, op1, op2); }
-
-    void add(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::ADD, op1, op2); }
-
-    void sub(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::SUB, op1, op2); }
-
-    void sub(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::SUB, op1, op2); }
-
-    void mul(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::MUL, op1, op2); }
-
-    void mul(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::MUL, op1, op2); }
-
-    // signed division
-    void div(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::SDIV, op1, op2); }
-
-    void div(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::SDIV, op1, op2); }
-
-    // unsigned division
-    void udiv(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::UDIV, op1, op2); }
-
-    void udiv(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::UDIV, op1, op2); }
-
-    // signed rem
-    void rem(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::SREM, op1, op2); }
-
-    void rem(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::SREM, op1, op2); }
-
-    // unsigned rem
-    void urem(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::UREM, op1, op2); }
-
-    void urem(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::UREM, op1, op2); }
-
-    void bitwise_and(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::AND, op1, op2); }
-
-    void bitwise_and(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::AND, op1, op2); }
-
-    void bitwise_or(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::OR, op1, op2); }
-
-    void bitwise_or(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::OR, op1, op2); }
-
-    void bitwise_xor(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::XOR, op1, op2); }
-
-    void bitwise_xor(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::XOR, op1, op2); }
-
-    void shl(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::SHL, op1, op2); }
-
-    void shl(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::SHL, op1, op2); }
-
-    void lshr(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::LSHR, op1, op2); }
-
-    void lshr(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::LSHR, op1, op2); }
-
-    void ashr(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::ASHR, op1, op2); }
-
-    void ashr(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::ASHR, op1, op2); }
-
-    void assign(variable_t lhs, linear_expression_t rhs) { insert<assign_t>(lhs, rhs); }
-
-    void assume(linear_constraint_t cst) { insert<assume_t>(cst); }
-
-    void havoc(variable_t lhs) { insert<havoc_t>(lhs); }
-
-    void select(variable_t lhs, variable_t v, linear_expression_t e1, linear_expression_t e2) {
-        linear_constraint_t cond(exp_gte(v, 1));
-        insert<select_t>(lhs, cond, e1, e2);
-    }
-
-    void select(variable_t lhs, linear_constraint_t cond, linear_expression_t e1, linear_expression_t e2) {
-        insert<select_t>(lhs, cond, e1, e2);
-    }
-
-    void assertion(linear_constraint_t cst, debug_info di = {}) { insert<assert_t>(cst, di); }
-
-    void array_store(variable_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size) {
-        insert<array_store_t>(arr, elem_size, idx, idx, v);
-    }
-
-    void array_store_range(variable_t arr, linear_expression_t lb_idx, linear_expression_t ub_idx,
-                           linear_expression_t v, linear_expression_t elem_size) {
-        insert<array_store_t>(arr, elem_size, lb_idx, ub_idx, v);
-    }
-
-    void array_load(variable_t lhs, variable_t arr, linear_expression_t idx, linear_expression_t elem_size) {
-        insert<array_load_t>(lhs, arr, elem_size, idx);
-    }
 
     friend crab_os& operator<<(crab_os& o, const basic_block_t& b) {
         b.write(o);
@@ -344,22 +255,22 @@ class cfg_t final {
     using const_pred_range = boost::iterator_range<const_pred_iterator>;
 
   private:
-    using basic_block_map_t = std::unordered_map<basic_block_label_t, std::unique_ptr<basic_block_t>>;
+    using basic_block_map_t = std::unordered_map<basic_block_label_t, basic_block_t>;
     using binding_t = basic_block_map_t::value_type;
 
     struct get_ref : public std::unary_function<binding_t, basic_block_t> {
         get_ref() {}
-        basic_block_t& operator()(const binding_t& p) const { return *(p.second); }
+        basic_block_t& operator()(binding_t& p) const { return p.second; }
     };
 
     struct get_label : public std::unary_function<binding_t, basic_block_label_t> {
         get_label() {}
-        basic_block_label_t operator()(const binding_t& p) const { return p.second->label(); }
+        basic_block_label_t operator()(const binding_t& p) const { return p.second.label(); }
     };
 
   public:
-    using iterator = boost::transform_iterator<get_ref, basic_block_map_t::iterator>;
-    using const_iterator = boost::transform_iterator<get_ref, basic_block_map_t::const_iterator>;
+    using iterator = basic_block_map_t::iterator;
+    using const_iterator = basic_block_map_t::const_iterator;
     using label_iterator = boost::transform_iterator<get_label, basic_block_map_t::iterator>;
     using const_label_iterator = boost::transform_iterator<get_label, basic_block_map_t::const_iterator>;
 
@@ -398,11 +309,11 @@ class cfg_t final {
 
   public:
     cfg_t(basic_block_label_t entry) : m_entry(entry), m_exit(std::nullopt) {
-        m_blocks.emplace(m_entry, new basic_block_t(m_entry));
+        m_blocks.emplace(m_entry, m_entry);
     }
 
     cfg_t(basic_block_label_t entry, basic_block_label_t exit) : m_entry(entry), m_exit(exit) {
-        m_blocks.emplace(m_entry, new basic_block_t(m_entry));
+        m_blocks.emplace(m_entry, m_entry);
     }
 
     cfg_t(const cfg_t&) = delete;
@@ -453,7 +364,7 @@ class cfg_t final {
             CRAB_ERROR("Basic block ", bb_id, " not found in the CFG: ", __LINE__);
         }
 
-        return *(it->second);
+        return it->second;
     }
 
     const basic_block_t& get_node(basic_block_label_t bb_id) const {
@@ -462,7 +373,7 @@ class cfg_t final {
             CRAB_ERROR("Basic block ", bb_id, " not found in the CFG: ", __LINE__);
         }
 
-        return *(it->second);
+        return it->second;
     }
 
     // --- End ikos fixpoint API
@@ -472,14 +383,14 @@ class cfg_t final {
     void remove(basic_block_label_t bb_id);
 
     //! return a begin iterator of basic_block_t's
-    iterator begin() { return boost::make_transform_iterator(m_blocks.begin(), get_ref()); }
+    iterator begin() { return m_blocks.begin(); }
 
     //! return an end iterator of basic_block_t's
-    iterator end() { return boost::make_transform_iterator(m_blocks.end(), get_ref()); }
+    iterator end() { return m_blocks.end(); }
 
-    const_iterator begin() const { return boost::make_transform_iterator(m_blocks.begin(), get_ref()); }
+    const_iterator begin() const { return m_blocks.begin(); }
 
-    const_iterator end() const { return boost::make_transform_iterator(m_blocks.end(), get_ref()); }
+    const_iterator end() const { return m_blocks.end(); }
 
     //! return a begin iterator of basic_block_label_t's
     label_iterator label_begin() { return boost::make_transform_iterator(m_blocks.begin(), get_label()); }
@@ -501,7 +412,7 @@ class cfg_t final {
     // for gdb
     void dump() const {
         errs() << "number_t of basic blocks=" << size() << "\n";
-        for (auto& bb : boost::make_iterator_range(begin(), end())) {
+        for (auto& [label, bb] : boost::make_iterator_range(begin(), end())) {
             bb.dump();
         }
     }
@@ -695,19 +606,6 @@ class cfg_rev_t final {
     using const_pred_iterator = basic_block_t::const_pred_iterator;
 
   private:
-    struct getRev : public std::unary_function<basic_block_t, basic_block_rev_t> {
-        const std::unordered_map<basic_block_label_t, basic_block_rev_t>& _rev_bbs;
-
-        getRev(const std::unordered_map<basic_block_label_t, basic_block_rev_t>& rev_bbs) : _rev_bbs(rev_bbs) {}
-
-        const basic_block_rev_t& operator()(basic_block_t& bb) const {
-            auto it = _rev_bbs.find(bb.label());
-            if (it != _rev_bbs.end())
-                return it->second;
-            CRAB_ERROR("Basic block ", bb.label(), " not found in the CFG: ", __LINE__);
-        }
-    };
-
     using visited_t = std::unordered_set<basic_block_label_t>;
 
     template <typename T>
@@ -733,8 +631,9 @@ class cfg_rev_t final {
     };
 
   public:
-    using iterator = boost::transform_iterator<getRev, cfg_t::iterator>;
-    using const_iterator = boost::transform_iterator<getRev, cfg_t::const_iterator>;
+    using basic_block_rev_map_t = std::unordered_map<basic_block_label_t, basic_block_rev_t>;
+    using iterator = basic_block_rev_map_t::iterator;
+    using const_iterator = basic_block_rev_map_t::const_iterator;
     using label_iterator = cfg_t::label_iterator;
     using const_label_iterator = cfg_t::const_label_iterator;
     using var_iterator = cfg_t::var_iterator;
@@ -742,15 +641,15 @@ class cfg_rev_t final {
 
   private:
     cfg_t& _cfg;
-    std::unordered_map<basic_block_label_t, basic_block_rev_t> _rev_bbs;
+    basic_block_rev_map_t _rev_bbs;
 
   public:
     cfg_rev_t(cfg_t& cfg) : _cfg(cfg) {
         // Create basic_block_rev_t from basic_block_t objects
         // Note that basic_block_rev_t is also a view of basic_block_t so it
         // doesn't modify basic_block_t objects.
-        for (auto& bb : cfg) {
-            _rev_bbs.emplace(bb.label(), bb);
+        for (auto& [label, bb] : cfg) {
+            _rev_bbs.emplace(label, bb);
         }
     }
 
@@ -786,13 +685,13 @@ class cfg_rev_t final {
         return it->second;
     }
 
-    iterator begin() { return boost::make_transform_iterator(_cfg.begin(), getRev(_rev_bbs)); }
+    iterator begin() { return _rev_bbs.begin(); }
 
-    iterator end() { return boost::make_transform_iterator(_cfg.end(), getRev(_rev_bbs)); }
+    iterator end() { return _rev_bbs.end(); }
 
-    const_iterator begin() const { return boost::make_transform_iterator(_cfg.begin(), getRev(_rev_bbs)); }
+    const_iterator begin() const { return _rev_bbs.begin(); }
 
-    const_iterator end() const { return boost::make_transform_iterator(_cfg.end(), getRev(_rev_bbs)); }
+    const_iterator end() const { return _rev_bbs.end(); }
 
     label_iterator label_begin() { return _cfg.label_begin(); }
 
