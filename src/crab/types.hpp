@@ -20,48 +20,51 @@ using index_t = uint64_t;
 
 using number_t = z_number;
 
-enum variable_type_t { INT_TYPE, ARR_INT_TYPE, UNK_TYPE };
+enum variable_type_t { INT, ARR };
+
+using TYPE = variable_type_t;
 
 inline crab_os& operator<<(crab_os& o, variable_type_t t) {
     switch (t) {
-    case INT_TYPE: o << "int"; break;
-    case ARR_INT_TYPE: o << "arr_int"; break;
-    default: o << "unknown"; break;
+    case TYPE::INT: o << "int"; break;
+    case TYPE::ARR: o << "arr_int"; break;
     }
     return o;
 }
 
-enum binary_operation_t {
-    BINOP_ADD,
-    BINOP_SUB,
-    BINOP_MUL,
-    BINOP_SDIV,
-    BINOP_UDIV,
-    BINOP_SREM,
-    BINOP_UREM,
-    BINOP_AND,
-    BINOP_OR,
-    BINOP_XOR,
-    BINOP_SHL,
-    BINOP_LSHR,
-    BINOP_ASHR,
+enum class binary_operation_t {
+    ADD,
+    SUB,
+    MUL,
+    SDIV,
+    UDIV,
+    SREM,
+    UREM,
+    AND,
+    OR,
+    XOR,
+    SHL,
+    LSHR,
+    ASHR,
 };
+
+using BINOP = binary_operation_t;
 
 inline crab_os& operator<<(crab_os& o, binary_operation_t op) {
     switch (op) {
-    case BINOP_ADD: o << "+"; break;
-    case BINOP_SUB: o << "-"; break;
-    case BINOP_MUL: o << "*"; break;
-    case BINOP_SDIV: o << "/"; break;
-    case BINOP_UDIV: o << "/_u"; break;
-    case BINOP_SREM: o << "%"; break;
-    case BINOP_UREM: o << "%_u"; break;
-    case BINOP_AND: o << "&"; break;
-    case BINOP_OR: o << "|"; break;
-    case BINOP_XOR: o << "^"; break;
-    case BINOP_SHL: o << "<<"; break;
-    case BINOP_LSHR: o << ">>_l"; break;
-    case BINOP_ASHR: o << ">>_r"; break;
+    case BINOP::ADD: o << "+"; break;
+    case BINOP::SUB: o << "-"; break;
+    case BINOP::MUL: o << "*"; break;
+    case BINOP::SDIV: o << "/"; break;
+    case BINOP::UDIV: o << "/_u"; break;
+    case BINOP::SREM: o << "%"; break;
+    case BINOP::UREM: o << "%_u"; break;
+    case BINOP::AND: o << "&"; break;
+    case BINOP::OR: o << "|"; break;
+    case BINOP::XOR: o << "^"; break;
+    case BINOP::SHL: o << "<<"; break;
+    case BINOP::LSHR: o << ">>_l"; break;
+    case BINOP::ASHR: o << ">>_r"; break;
     default: CRAB_ERROR("unexpected binary operation ", op);
     }
     return o;
@@ -193,15 +196,6 @@ class variable_t {
     bitwidth_t _width;
 
   public:
-    /**
-     * DO NOT USE this constructor to create a CFG since all CFG
-     * statements must be strongly typed.  This constructor is
-     * intended to be used only abstract domains to generate temporary
-     * variables.
-     **/
-    explicit variable_t(const varname_t& n) : _n(n), _type(UNK_TYPE), _width(0) {}
-
-  public:
     variable_t(const varname_t& n, variable_type_t type) : _n(n), _type(type), _width(0) {}
 
     variable_t(const varname_t& n, variable_type_t type, bitwidth_t width) : _n(n), _type(type), _width(width) {}
@@ -219,9 +213,7 @@ class variable_t {
         return *this;
     }
 
-    bool is_typed() const { return _type != UNK_TYPE; }
-
-    bool is_array_type() const { return is_typed() && _type >= ARR_INT_TYPE; }
+    bool is_array_type() const { return _type == TYPE::ARR; }
 
     variable_type_t get_type() const { return _type; }
 

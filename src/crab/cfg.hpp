@@ -288,61 +288,61 @@ class basic_block_t {
 
     /// To build statements
 
-    void add(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_ADD, op1, op2); }
+    void add(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::ADD, op1, op2); }
 
-    void add(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_ADD, op1, op2); }
+    void add(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::ADD, op1, op2); }
 
-    void sub(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_SUB, op1, op2); }
+    void sub(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::SUB, op1, op2); }
 
-    void sub(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_SUB, op1, op2); }
+    void sub(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::SUB, op1, op2); }
 
-    void mul(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_MUL, op1, op2); }
+    void mul(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::MUL, op1, op2); }
 
-    void mul(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_MUL, op1, op2); }
+    void mul(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::MUL, op1, op2); }
 
     // signed division
-    void div(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_SDIV, op1, op2); }
+    void div(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::SDIV, op1, op2); }
 
-    void div(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_SDIV, op1, op2); }
+    void div(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::SDIV, op1, op2); }
 
     // unsigned division
-    void udiv(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_UDIV, op1, op2); }
+    void udiv(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::UDIV, op1, op2); }
 
-    void udiv(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_UDIV, op1, op2); }
+    void udiv(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::UDIV, op1, op2); }
 
     // signed rem
-    void rem(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_SREM, op1, op2); }
+    void rem(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::SREM, op1, op2); }
 
-    void rem(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_SREM, op1, op2); }
+    void rem(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::SREM, op1, op2); }
 
     // unsigned rem
-    void urem(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_UREM, op1, op2); }
+    void urem(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::UREM, op1, op2); }
 
-    void urem(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_UREM, op1, op2); }
+    void urem(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::UREM, op1, op2); }
 
-    void bitwise_and(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_AND, op1, op2); }
+    void bitwise_and(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::AND, op1, op2); }
 
-    void bitwise_and(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_AND, op1, op2); }
+    void bitwise_and(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::AND, op1, op2); }
 
-    void bitwise_or(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_OR, op1, op2); }
+    void bitwise_or(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::OR, op1, op2); }
 
-    void bitwise_or(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_OR, op1, op2); }
+    void bitwise_or(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::OR, op1, op2); }
 
-    void bitwise_xor(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_XOR, op1, op2); }
+    void bitwise_xor(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::XOR, op1, op2); }
 
-    void bitwise_xor(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_XOR, op1, op2); }
+    void bitwise_xor(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::XOR, op1, op2); }
 
-    void shl(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_SHL, op1, op2); }
+    void shl(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::SHL, op1, op2); }
 
-    void shl(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_SHL, op1, op2); }
+    void shl(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::SHL, op1, op2); }
 
-    void lshr(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_LSHR, op1, op2); }
+    void lshr(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::LSHR, op1, op2); }
 
-    void lshr(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_LSHR, op1, op2); }
+    void lshr(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::LSHR, op1, op2); }
 
-    void ashr(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP_ASHR, op1, op2); }
+    void ashr(variable_t lhs, variable_t op1, variable_t op2) { insert<binary_op_t>(lhs, BINOP::ASHR, op1, op2); }
 
-    void ashr(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP_ASHR, op1, op2); }
+    void ashr(variable_t lhs, variable_t op1, number_t op2) { insert<binary_op_t>(lhs, BINOP::ASHR, op1, op2); }
 
     void assign(variable_t lhs, linear_expression_t rhs) { insert<assign_t>(lhs, rhs); }
 

@@ -78,9 +78,9 @@ struct dom_t {
     variable_t offset;
     variable_t region;
     dom_t(variable_factory& vfac, int i)
-        : value{vfac[std::string("r") + std::to_string(i)], crab::INT_TYPE, 64},
-          offset{vfac[std::string("off") + std::to_string(i)], crab::INT_TYPE, 64},
-          region{vfac[std::string("t") + std::to_string(i)], crab::INT_TYPE, 64} {}
+        : value{vfac[std::string("r") + std::to_string(i)], crab::TYPE::INT, 64},
+          offset{vfac[std::string("off") + std::to_string(i)], crab::TYPE::INT, 64},
+          region{vfac[std::string("t") + std::to_string(i)], crab::TYPE::INT, 64} {}
     dom_t(variable_t value, variable_t offset, variable_t region) : value(value), offset(offset), region(region){};
 };
 
@@ -101,9 +101,9 @@ struct array_dom_t {
     variable_t regions;
 
     array_dom_t(variable_factory& vfac, std::string name)
-        : vfac(vfac), values{vfac[std::string(name + "_r")], crab::ARR_INT_TYPE, 64},
-          offsets{vfac[std::string(name + "_off")], crab::ARR_INT_TYPE, 64}, regions{vfac[std::string(name + "_t")],
-                                                                                     crab::ARR_INT_TYPE, 64} {}
+        : vfac(vfac), values{vfac[std::string(name + "_r")], crab::TYPE::ARR, 64},
+          offsets{vfac[std::string(name + "_off")], crab::TYPE::ARR, 64}, regions{vfac[std::string(name + "_t")],
+                                                                                     crab::TYPE::ARR, 64} {}
 
     template <typename T, typename W>
     vector<basic_block_t*> load(basic_block_t& block, dom_t data_reg, const T& offset, W width, cfg_t& cfg) {
@@ -114,8 +114,8 @@ struct array_dom_t {
     }
 
     void mark_region(basic_block_t& block, linear_expression_t offset, const variable_t v, variable_t width) {
-        variable_t lb{vfac["lb"], crab::INT_TYPE, 64};
-        variable_t ub{vfac["ub"], crab::INT_TYPE, 64};
+        variable_t lb{vfac["lb"], crab::TYPE::INT, 64};
+        variable_t ub{vfac["ub"], crab::TYPE::INT, 64};
         block.assign(lb, offset);
         block.assign(ub, offset + width);
         block.array_store_range(regions, lb, ub, v, 1);
@@ -127,14 +127,14 @@ struct array_dom_t {
     }
 
     void havoc_num_region(basic_block_t& block, linear_expression_t offset, variable_t width) {
-        variable_t lb{vfac["lb"], crab::INT_TYPE, 64};
-        variable_t ub{vfac["ub"], crab::INT_TYPE, 64};
+        variable_t lb{vfac["lb"], crab::TYPE::INT, 64};
+        variable_t ub{vfac["ub"], crab::TYPE::INT, 64};
         block.assign(lb, offset);
         block.assign(ub, offset + width);
 
         block.array_store_range(regions, lb, ub, T_NUM, 1);
 
-        variable_t scratch{vfac["scratch"], crab::INT_TYPE, 64};
+        variable_t scratch{vfac["scratch"], crab::TYPE::INT, 64};
         block.havoc(scratch);
         block.array_store(values, lb, scratch, width);
         block.havoc(scratch);
@@ -161,7 +161,7 @@ struct array_dom_t {
             return {&num_only, &pointer_only};
         } else {
             block.assertion(data_reg.region == T_NUM, di);
-            variable_t scratch{vfac["scratch"], crab::INT_TYPE, (unsigned int)width};
+            variable_t scratch{vfac["scratch"], crab::TYPE::INT, (unsigned int)width};
             block.havoc(scratch);
             block.array_store(values, offset, scratch, width);
             block.havoc(scratch);
@@ -176,11 +176,11 @@ struct machine_t final {
     variable_factory& vfac;
     std::vector<dom_t> regs;
     array_dom_t stack_arr{vfac, "S"};
-    variable_t meta_size{vfac[std::string("meta_size")], crab::INT_TYPE, 64};
-    variable_t data_size{vfac[std::string("data_size")], crab::INT_TYPE, 64};
+    variable_t meta_size{vfac[std::string("meta_size")], crab::TYPE::INT, 64};
+    variable_t data_size{vfac[std::string("data_size")], crab::TYPE::INT, 64};
 
-    variable_t top{vfac[std::string("*")], crab::INT_TYPE, 64};
-    variable_t num{vfac[std::string("T_NUM")], crab::INT_TYPE, 64};
+    variable_t top{vfac[std::string("*")], crab::TYPE::INT, 64};
+    variable_t num{vfac[std::string("T_NUM")], crab::TYPE::INT, 64};
 
     program_info info;
 
@@ -488,7 +488,7 @@ vector<basic_block_t*> instruction_builder_t::exec_stack_access(basic_block_t& b
         machine.stack_arr.load(mid, data_reg, addr, width, cfg);
         mid.assume(is_init(data_reg));
         /* FIX: requires loop
-        variable_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
+        variable_t tmp{machine.vfac["tmp"], crab::TYPE::INT, 64};
         for (int idx=1; idx < width; idx++) {
             mid.array_load(tmp, machine.stack_arr.regions, addr+idx, 1);
             mid.assertion(eq(tmp, data_reg.region), di);
@@ -634,7 +634,7 @@ vector<basic_block_t*> instruction_builder_t::exec_direct_stack_load(basic_block
         b->assume(is_init(data_reg));
 
         /* FIX
-        variable_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
+        variable_t tmp{machine.vfac["tmp"], crab::TYPE::INT, 64};
         for (int idx=1; idx < width; idx++) {
             b->array_load(tmp, machine.stack_arr.regions, offset+idx, 1);
             b->assertion(eq(tmp, data_reg.region), di);
@@ -990,8 +990,8 @@ vector<basic_block_t*> instruction_builder_t::operator()(Un const& b) {
  */
 vector<basic_block_t*> instruction_builder_t::operator()(Call const& call) {
     vector<basic_block_t*> blocks{&block};
-    variable_t map_value_size{machine.vfac["map_value_size"], crab::INT_TYPE, 64};
-    variable_t map_key_size{machine.vfac["map_key_size"], crab::INT_TYPE, 64};
+    variable_t map_value_size{machine.vfac["map_value_size"], crab::TYPE::INT, 64};
+    variable_t map_key_size{machine.vfac["map_key_size"], crab::TYPE::INT, 64};
     for (ArgSingle param : call.singles) {
         dom_t arg = machine.regs[param.reg.v];
         switch (param.kind) {
@@ -1277,7 +1277,7 @@ vector<basic_block_t*> instruction_builder_t::operator()(Mem const& b) {
                 return exec_direct_stack_store_immediate(block, offset, width, imm);
             } else {
                 // FIX: STW stores long long immediate
-                variable_t tmp{machine.vfac["tmp"], crab::INT_TYPE, 64};
+                variable_t tmp{machine.vfac["tmp"], crab::TYPE::INT, 64};
                 block.assign(tmp, imm);
                 block.havoc(machine.top);
                 return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, machine.num}, offset,
