@@ -22,7 +22,6 @@
    havoc(x);
 
  */
-
 #include "crab/abstract_domain_operators.hpp"
 #include "crab/abstract_domain_specialized_traits.hpp"
 #include "crab/cfg.hpp"
@@ -34,9 +33,7 @@
 namespace crab {
 
 /**
- * Abstract forward transformer for all statements. Function calls
- * can be redefined by derived classes. By default, all function
- * calls are ignored in a sound manner (by havoc'ing all outputs).
+ * Abstract forward transformer for all statements.
  **/
 template <typename AbsDomain>
 class intra_abs_transformer {
@@ -59,45 +56,23 @@ class intra_abs_transformer {
     intra_abs_transformer(const AbsDomain& inv) : m_inv(inv) {}
 
     void operator()(const binary_op_t& stmt) {
-        bool pre_bot = false;
-        if constexpr (CrabSanityCheckFlag) {
-            pre_bot = m_inv.is_bottom();
-        }
-
-        auto op1 = stmt.left;
-        auto op2 = stmt.right;
-        if (op1.get_variable() && op2.get_variable()) {
-            apply(m_inv, stmt.op, stmt.lhs, (*op1.get_variable()), (*op2.get_variable()));
+        assert(stmt.left.get_variable());
+        variable_t var1 = *stmt.left.get_variable();
+        linear_expression_t op2 = stmt.right;
+        if (op2.get_variable()) {
+            apply(m_inv, stmt.op, stmt.lhs, var1, *op2.get_variable());
         } else {
-            assert(op1.get_variable() && op2.is_constant());
-            apply(m_inv, stmt.op, stmt.lhs, (*op1.get_variable()), op2.constant());
-        }
-
-        if constexpr (CrabSanityCheckFlag) {
-            bool post_bot = m_inv.is_bottom();
-            if (!(pre_bot || !post_bot)) {
-                CRAB_ERROR("Invariant became bottom after ", stmt);
-            }
+            assert(op2.is_constant());
+            apply(m_inv, stmt.op, stmt.lhs, var1, op2.constant());
         }
     }
 
     void operator()(const select_t& stmt) {
-        bool pre_bot = false;
-        if constexpr (CrabSanityCheckFlag) {
-            pre_bot = m_inv.is_bottom();
-        }
-
         AbsDomain inv1(m_inv);
         AbsDomain inv2(m_inv);
 
         inv1 += stmt.cond;
         inv2 += stmt.cond.negate();
-
-        if constexpr (CrabSanityCheckFlag) {
-            if (!pre_bot && (inv1.is_bottom() && inv2.is_bottom())) {
-                CRAB_ERROR("select condition and its negation cannot be false simultaneously ", stmt);
-            }
-        }
 
         if (inv2.is_bottom()) {
             inv1.assign(stmt.lhs, stmt.left);
@@ -110,101 +85,67 @@ class intra_abs_transformer {
             inv2.assign(stmt.lhs, stmt.right);
             m_inv = inv1 | inv2;
         }
-
-        if constexpr (CrabSanityCheckFlag) {
-            bool post_bot = m_inv.is_bottom();
-            if (!(pre_bot || !post_bot)) {
-                CRAB_ERROR("Invariant became bottom after ", stmt);
-            }
-        }
     }
 
-    void operator()(const assign_t& stmt) {
-        bool pre_bot = false;
-        if constexpr (CrabSanityCheckFlag) {
-            pre_bot = m_inv.is_bottom();
-        }
-
-        m_inv.assign(stmt.lhs, stmt.rhs);
-
-        if constexpr (CrabSanityCheckFlag) {
-            bool post_bot = m_inv.is_bottom();
-            if (!(pre_bot || !post_bot)) {
-                CRAB_ERROR("Invariant became bottom after ", stmt);
-            }
-        }
-    }
+    void operator()(const assign_t& stmt) { m_inv.assign(stmt.lhs, stmt.rhs); }
 
     void operator()(const assume_t& stmt) { m_inv += stmt.constraint; }
 
-    void operator()(const assert_t& stmt) {
-        bool pre_bot = false;
-        if constexpr (CrabSanityCheckFlag) {
-            pre_bot = m_inv.is_bottom();
-        }
+    void operator()(const assert_t& stmt) { m_inv += stmt.constraint; }
 
-        m_inv += stmt.constraint;
-
-        if constexpr (CrabSanityCheckFlag) {
-            if (!stmt.constraint.is_contradiction()) {
-                bool post_bot = m_inv.is_bottom();
-                if (!(pre_bot || !post_bot)) {
-                    CRAB_WARN("Invariant became bottom after ", stmt, ".",
-                              " This might indicate that the assertion is violated");
-                }
-            }
-        }
-    }
-
-    void operator()(const havoc_t& stmt) {
-        bool pre_bot = false;
-        if constexpr (CrabSanityCheckFlag) {
-            pre_bot = m_inv.is_bottom();
-        }
-
-        m_inv -= stmt.lhs;
-
-        if constexpr (CrabSanityCheckFlag) {
-            bool post_bot = m_inv.is_bottom();
-            if (!(pre_bot || !post_bot)) {
-                CRAB_ERROR("Invariant became bottom after ", stmt);
-            }
-        }
-    }
+    void operator()(const havoc_t& stmt) { m_inv -= stmt.lhs; }
 
     void operator()(const array_store_t& stmt) {
-        bool pre_bot = false;
-        if constexpr (CrabSanityCheckFlag) {
-            pre_bot = m_inv.is_bottom();
-        }
-
         if (stmt.lb_index.equal(stmt.ub_index)) {
             m_inv.array_store(stmt.array, stmt.elem_size, stmt.lb_index, stmt.value);
         } else {
             m_inv.array_store_range(stmt.array, stmt.elem_size, stmt.lb_index, stmt.ub_index, stmt.value);
         }
+    }
 
-        if constexpr (CrabSanityCheckFlag) {
-            bool post_bot = m_inv.is_bottom();
-            if (!(pre_bot || !post_bot)) {
-                CRAB_ERROR("Invariant became bottom after ", stmt);
-            }
+    void operator()(const array_load_t& stmt) { m_inv.array_load(stmt.lhs, stmt.array, stmt.elem_size, stmt.index); }
+};
+
+template <typename AbsDomain>
+struct sanity_checker {
+
+    intra_abs_transformer<AbsDomain>& super;
+
+    sanity_checker(intra_abs_transformer<AbsDomain>& super) : super(super) { }
+
+    template <typename T>
+    void operator()(const T& stmt) {
+        bool pre_bot = super.m_inv.is_bottom();
+
+        super(stmt);
+
+        bool post_bot = super.m_inv.is_bottom();
+        if (!(pre_bot || !post_bot)) {
+            CRAB_ERROR("Invariant became bottom after ", stmt);
         }
     }
 
-    void operator()(const array_load_t& stmt) {
-        bool pre_bot = false;
-        if constexpr (CrabSanityCheckFlag) {
-            pre_bot = m_inv.is_bottom();
-        }
+    void operator()(const assume_t& stmt) { super(stmt); }
+    void operator()(const assert_t& stmt) { super(stmt); }
 
-        m_inv.array_load(stmt.lhs, stmt.array, stmt.elem_size, stmt.index);
+    void operator()(const select_t& stmt) {
+        bool pre_bot = super.m_inv.is_bottom();
+        if (!pre_bot) {
+            auto inv1(super.m_inv);
+            auto inv2(super.m_inv);
 
-        if constexpr (CrabSanityCheckFlag) {
-            bool post_bot = m_inv.is_bottom();
-            if (!(pre_bot || !post_bot)) {
-                CRAB_ERROR("Invariant became bottom after ", stmt);
+            inv1 += stmt.cond;
+            inv2 += stmt.cond.negate();
+
+            if (inv1.is_bottom() && inv2.is_bottom()) {
+                CRAB_ERROR("select condition and its negation cannot be false simultaneously ", stmt);
             }
+        }
+        super(stmt);
+
+        bool post_bot = super.m_inv.is_bottom();
+        if (!(pre_bot || !post_bot)) {
+            CRAB_ERROR("Invariant became bottom after ", stmt);
         }
     }
 };
@@ -240,17 +181,11 @@ class checks_db final {
   public:
     checks_db() = default;
 
-    void add_warning(const assert_t& s) {
-        add(check_kind_t::Warning, s);
-    }
+    void add_warning(const assert_t& s) { add(check_kind_t::Warning, s); }
 
-    void add_redundant(const assert_t& s) {
-        add(check_kind_t::Safe, s);
-    }
+    void add_redundant(const assert_t& s) { add(check_kind_t::Safe, s); }
 
-    void add_unreachable(const assert_t& s) {
-        add(check_kind_t::Unreachable, s);
-    }
+    void add_unreachable(const assert_t& s) { add(check_kind_t::Unreachable, s); }
 
     void add(check_kind_t status, const assert_t& s) {
         total[status]++;
@@ -266,8 +201,8 @@ class checks_db final {
             maxvlen = std::max(maxvlen, (int)std::to_string(c).size());
         }
 
-        o << std::string((int)maxvlen - std::to_string(total_safe()).size(), ' ') << total_safe()
-          << std::string(2, ' ') << "Number of total safe checks\n";
+        o << std::string((int)maxvlen - std::to_string(total_safe()).size(), ' ') << total_safe() << std::string(2, ' ')
+          << "Number of total safe checks\n";
         o << std::string((int)maxvlen - std::to_string(total_error()).size(), ' ') << total_error()
           << std::string(2, ' ') << "Number of total error checks\n";
         o << std::string((int)maxvlen - std::to_string(total_warning()).size(), ' ') << total_warning()
@@ -330,14 +265,23 @@ class assert_property_checker final : public intra_abs_transformer<AbsDomain> {
     }
 
     template <typename T>
-    void operator()(const T& s) { parent::operator()(s); }
+    void operator()(const T& s) {
+        parent::operator()(s);
+    }
 };
 
 template <typename AbsDomain>
 inline AbsDomain transform(const basic_block_t& bb, const AbsDomain& from_inv) {
     intra_abs_transformer<AbsDomain> transformer(from_inv);
-    for (const auto& statement : bb) {
-        std::visit(transformer, statement);
+    if constexpr (CrabSanityCheckFlag) {
+        sanity_checker checker(transformer);
+        for (const auto& statement : bb) {
+            std::visit(checker, statement);
+        }
+    } else {
+        for (const auto& statement : bb) {
+            std::visit(transformer, statement);
+        }
     }
     return std::move(transformer.m_inv);
 }
