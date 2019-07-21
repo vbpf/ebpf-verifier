@@ -28,14 +28,12 @@
  *   assignable objects.
  *
  */
-#include <functional> // for wrapper_reference
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
 
 #include <variant>
 
-#include <boost/iterator/indirect_iterator.hpp>
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/range/iterator_range.hpp>
 
