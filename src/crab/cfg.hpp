@@ -588,27 +588,30 @@ class cfg_ref final {
 };
 
 
-using basic_block_t = basic_block<new_statement_t>;
-using basic_block_rev_t = basic_block_rev<new_statement_t>;
-using cfg_t = cfg<new_statement_t>;
-using cfg_ref_t = cfg_ref<new_statement_t>;
-
 // Viewing a cfg_t with all edges and block statements
 // reversed. Useful for backward analysis.
-class cfg_rev_t final {
+template <typename Language>
+class cfg_rev final {
+
+    using basic_block_t = basic_block<Language>;
+    using basic_block_rev_t = basic_block_rev<Language>;
+    using cfg_t = cfg<Language>;
+    using cfg_ref_t = cfg_ref<Language>;
+    using cfg_rev_t = cfg_rev<Language>;
+
   public:
     using node_t = label_t; // for Bgl graphs
 
-    using pred_range = cfg_t::succ_range;
-    using succ_range = cfg_t::pred_range;
-    using const_pred_range = cfg_t::const_succ_range;
-    using const_succ_range = cfg_t::const_pred_range;
+    using pred_range = typename cfg_t::succ_range;
+    using succ_range = typename cfg_t::pred_range;
+    using const_pred_range = typename cfg_t::const_succ_range;
+    using const_succ_range = typename cfg_t::const_pred_range;
 
     // For BGL
-    using succ_iterator = basic_block_t::succ_iterator;
-    using pred_iterator = basic_block_t::pred_iterator;
-    using const_succ_iterator = basic_block_t::const_succ_iterator;
-    using const_pred_iterator = basic_block_t::const_pred_iterator;
+    using succ_iterator = typename basic_block_t::succ_iterator;
+    using pred_iterator = typename basic_block_t::pred_iterator;
+    using const_succ_iterator = typename basic_block_t::const_succ_iterator;
+    using const_pred_iterator = typename basic_block_t::const_pred_iterator;
 
   private:
     using visited_t = std::unordered_set<label_t>;
@@ -631,19 +634,19 @@ class cfg_rev_t final {
 
   public:
     using basic_block_rev_map_t = std::unordered_map<label_t, basic_block_rev_t>;
-    using iterator = basic_block_rev_map_t::iterator;
-    using const_iterator = basic_block_rev_map_t::const_iterator;
-    using label_iterator = cfg_t::label_iterator;
-    using const_label_iterator = cfg_t::const_label_iterator;
-    using var_iterator = cfg_t::var_iterator;
-    using const_var_iterator = cfg_t::const_var_iterator;
+    using iterator = typename basic_block_rev_map_t::iterator;
+    using const_iterator = typename basic_block_rev_map_t::const_iterator;
+    using label_iterator = typename cfg_t::label_iterator;
+    using const_label_iterator = typename cfg_t::const_label_iterator;
+    using var_iterator = typename cfg_t::var_iterator;
+    using const_var_iterator = typename cfg_t::const_var_iterator;
 
   private:
     cfg_t& _cfg;
     basic_block_rev_map_t _rev_bbs;
 
   public:
-    cfg_rev_t(cfg_t& cfg) : _cfg(cfg) {
+    cfg_rev(cfg_t& cfg) : _cfg(cfg) {
         // Create basic_block_rev_t from basic_block_t objects
         // Note that basic_block_rev_t is also a view of basic_block_t so it
         // doesn't modify basic_block_t objects.
@@ -652,9 +655,9 @@ class cfg_rev_t final {
         }
     }
 
-    cfg_rev_t(const cfg_rev_t& o) : _cfg(o._cfg), _rev_bbs(o._rev_bbs) {}
+    cfg_rev(const cfg_rev_t& o) : _cfg(o._cfg), _rev_bbs(o._rev_bbs) {}
 
-    cfg_rev_t(cfg_rev_t&& o) : _cfg(o._cfg), _rev_bbs(std::move(o._rev_bbs)) {}
+    cfg_rev(cfg_rev_t&& o) : _cfg(o._cfg), _rev_bbs(std::move(o._rev_bbs)) {}
 
     label_t entry() const {
         if (!_cfg.has_exit())
@@ -721,7 +724,7 @@ inline void cfg<Language>::remove_useless_blocks() {
     if (!has_exit())
         return;
 
-    cfg_rev_t rev_cfg(*this);
+    cfg_rev<Language> rev_cfg(*this);
 
     visited_t useful, useless;
     mark_alive_blocks(rev_cfg.entry(), rev_cfg, useful);
@@ -794,5 +797,11 @@ inline void cfg<Language>::remove_unreachable_blocks() {
         remove(_label);
     }
 }
+
+using basic_block_t = basic_block<new_statement_t>;
+using basic_block_rev_t = basic_block_rev<new_statement_t>;
+using cfg_t = cfg<new_statement_t>;
+using cfg_ref_t = cfg_ref<new_statement_t>;
+using cfg_rev_t = cfg_rev<new_statement_t>;
 
 } // end namespace crab
