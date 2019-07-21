@@ -83,7 +83,7 @@ template <typename G>
 class wto_component_visitor;
 
 template <typename G>
-class wto_nesting {
+class wto_nesting final {
 
     friend class wto<G>;
     friend class wto_vertex<G>;
@@ -208,7 +208,7 @@ inline crab_os& operator<<(crab_os& o, const wto_component<G>& c) {
 }
 
 template <typename G>
-class wto_vertex : public wto_component<G> {
+class wto_vertex final : public wto_component<G> {
 
     friend class wto<G>;
 
@@ -227,7 +227,7 @@ class wto_vertex : public wto_component<G> {
 }; // class wto_vertex
 
 template <typename G>
-class wto_cycle : public wto_component<G> {
+class wto_cycle final : public wto_component<G> {
 
     friend class wto<G>;
 
@@ -301,7 +301,7 @@ class wto_component_visitor {
 }; // class wto_component_visitor
 
 template <typename G>
-class wto {
+class wto final {
 
   public:
     using wto_nesting_t = wto_nesting<G>;

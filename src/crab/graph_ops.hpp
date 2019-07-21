@@ -15,7 +15,7 @@ namespace crab {
 // of the graph without actually constructing it.
 // ============
 template <class V>
-class num_range {
+class num_range final {
   public:
     class value_ref {
       public:

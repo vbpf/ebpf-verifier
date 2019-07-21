@@ -56,7 +56,7 @@
 
 namespace crab {
 
-class linear_expression_t {
+class linear_expression_t final {
 
   public:
     using component_t = std::pair<number_t, variable_t>;
@@ -341,7 +341,7 @@ template <typename Value>
 using linear_expression_unordered_map =
     std::unordered_map<linear_expression_t, Value, linear_expression_hasher_t, linear_expression_equal_t>;
 
-class linear_constraint_t {
+class linear_constraint_t final {
 
   public:
     using variable_set_t = patricia_tree_set<variable_t>;

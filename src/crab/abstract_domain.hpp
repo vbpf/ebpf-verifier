@@ -119,11 +119,6 @@ class array_abstract_domain : public numeric_abstract_domain<array_abstract_doma
   public:
     using variable_vector_t = std::vector<variable_t>;
     /**************************** Array operations *******************************/
-    // make a fresh array with contents a[j] initialized to val such that
-    // j \in [lb_idx,ub_idx) and j % elem_size == 0.
-    // elem_size is in bytes.
-    virtual void array_init(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
-                            linear_expression_t ub_idx, linear_expression_t val) = 0;
     // lhs := a[i] where elem_size is in bytes
     virtual void array_load(variable_t lhs, variable_t a, linear_expression_t elem_size, linear_expression_t i) = 0;
     // a[i] := v where elem_size is in bytes

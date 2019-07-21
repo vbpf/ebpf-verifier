@@ -70,7 +70,7 @@ namespace crab {
 // both Linux and mac OS on an Intel 64, the size of long integers is
 // 8 bytes. But for Windows on Intel 64, the size is 4 bytes.
 
-class z_number {
+class z_number final {
   private:
     mpz_class _n;
 

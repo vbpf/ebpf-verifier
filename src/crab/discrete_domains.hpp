@@ -49,7 +49,7 @@
 namespace crab {
 
 template <typename Element>
-class discrete_domain {
+class discrete_domain final {
 
   private:
     using ptset_t = patricia_tree_set<Element>;

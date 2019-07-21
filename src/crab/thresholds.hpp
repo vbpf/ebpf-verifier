@@ -20,7 +20,7 @@ inline namespace iterators {
     Class that represents a set of thresholds used by the widening operator
 **/
 
-class thresholds_t {
+class thresholds_t final {
 
   private:
     std::vector<bound_t> m_thresholds;
@@ -52,7 +52,7 @@ inline crab_os& operator<<(crab_os& o, const thresholds_t& t) {
 /**
    Collect thresholds per wto cycle (i.e. loop)
 **/
-class wto_thresholds_t : public wto_component_visitor<cfg_ref_t> {
+class wto_thresholds_t final : public wto_component_visitor<cfg_ref_t> {
 
   public:
     using wto_vertex_t = wto_vertex<cfg_ref_t>;

@@ -48,7 +48,7 @@ extern crab_os& outs();
 extern crab_os& errs();
 
 // An adaptor for std::ostringstream
-class crab_string_os : public crab_os {
+class crab_string_os final : public crab_os {
 
     std::ostringstream* m_string_os;
 
