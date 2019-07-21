@@ -506,31 +506,32 @@ class cfg final {
     void remove_useless_blocks();
 };
 
-using basic_block_t = basic_block<new_statement_t>;
-using basic_block_rev_t = basic_block_rev<new_statement_t>;
-using cfg_t = cfg<new_statement_t>;
-
 // A lightweight object that wraps a reference to a CFG into a
 // copyable, assignable object.
-class cfg_ref_t final {
+template <typename Language>
+class cfg_ref final {
+    using basic_block_t = basic_block<Language>;
+    using basic_block_rev_t = basic_block_rev<Language>;
+    using cfg_t = cfg<Language>;
+    using cfg_ref_t = cfg_ref<Language>;
   public:
     // cfg_t's typedefs
-    using node_t = cfg_t::node_t;
+    using node_t = typename cfg_t::node_t;
 
-    using succ_iterator = cfg_t::succ_iterator;
-    using pred_iterator = cfg_t::pred_iterator;
-    using const_succ_iterator = cfg_t::const_succ_iterator;
-    using const_pred_iterator = cfg_t::const_pred_iterator;
-    using succ_range = cfg_t::succ_range;
-    using pred_range = cfg_t::pred_range;
-    using const_succ_range = cfg_t::const_succ_range;
-    using const_pred_range = cfg_t::const_pred_range;
-    using iterator = cfg_t::iterator;
-    using const_iterator = cfg_t::const_iterator;
-    using label_iterator = cfg_t::label_iterator;
-    using const_label_iterator = cfg_t::const_label_iterator;
-    using var_iterator = cfg_t::var_iterator;
-    using const_var_iterator = cfg_t::const_var_iterator;
+    using succ_iterator = typename cfg_t::succ_iterator;
+    using pred_iterator = typename cfg_t::pred_iterator;
+    using const_succ_iterator = typename cfg_t::const_succ_iterator;
+    using const_pred_iterator = typename cfg_t::const_pred_iterator;
+    using succ_range = typename cfg_t::succ_range;
+    using pred_range = typename cfg_t::pred_range;
+    using const_succ_range = typename cfg_t::const_succ_range;
+    using const_pred_range = typename cfg_t::const_pred_range;
+    using iterator = typename cfg_t::iterator;
+    using const_iterator = typename cfg_t::const_iterator;
+    using label_iterator = typename cfg_t::label_iterator;
+    using const_label_iterator = typename cfg_t::const_label_iterator;
+    using var_iterator = typename cfg_t::var_iterator;
+    using const_var_iterator = typename cfg_t::const_var_iterator;
 
   private:
     std::reference_wrapper<cfg_t> _ref;
@@ -540,7 +541,7 @@ class cfg_ref_t final {
     cfg_t& get() { return _ref; }
 
   public:
-    cfg_ref_t(cfg_t& cfg) : _ref(std::ref(cfg)) {}
+    cfg_ref(cfg_t& cfg) : _ref(std::ref(cfg)) {}
 
     label_t entry() const { return get().entry(); }
 
@@ -585,6 +586,12 @@ class cfg_ref_t final {
 
     void simplify() { get().simplify(); }
 };
+
+
+using basic_block_t = basic_block<new_statement_t>;
+using basic_block_rev_t = basic_block_rev<new_statement_t>;
+using cfg_t = cfg<new_statement_t>;
+using cfg_ref_t = cfg_ref<new_statement_t>;
 
 // Viewing a cfg_t with all edges and block statements
 // reversed. Useful for backward analysis.
