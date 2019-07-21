@@ -116,7 +116,7 @@ TEST_CASE("assembler", "[assemble][disasm]") {
     }
 }
 
-std::string labeler(Label l) {
+std::string labeler(label_t l) {
     const std::map<std::string, std::string> labelmap = {
         {"LBB0_44", "+21 <LBB0_44>"},
         {"LBB0_14", "-303 <LBB0_14>"},
@@ -158,7 +158,7 @@ TEST_CASE("Jmp assembler", "[assemble][disasm]") {
     }
 }
 
-std::ostream& operator<<(std::ostream& os, std::tuple<Label, Instruction> const& labeled_ins) {
+std::ostream& operator<<(std::ostream& os, std::tuple<label_t, Instruction> const& labeled_ins) {
     auto [label, ins] = labeled_ins;
     return os << "(" << label << ", " << ins << ")";
 }
@@ -173,7 +173,7 @@ bpf_prog1:
        1:	exit
     )code";
 
-    std::vector<std::tuple<Label, Instruction>> expected{
+    std::vector<std::tuple<label_t, Instruction>> expected{
         {"bpf_prog1", parse_instruction("r0 = 1")},
         {"1", parse_instruction("exit")},
     };
@@ -198,7 +198,7 @@ LBB0_1:
        3:	exit
     )code";
 
-    std::vector<std::tuple<Label, Instruction>> expected = {
+    std::vector<std::tuple<label_t, Instruction>> expected = {
         {"bpf_prog1", parse_instruction("r0 = 1")},
         {"1", parse_instruction("if r0 != 4 goto +1 <LBB0_1>")},
         {"2", parse_instruction("r0 = 2")},
@@ -225,7 +225,7 @@ LBB0_1:
        4:	exit
     )code";
 
-    std::vector<std::tuple<Label, Instruction>> expected = {
+    std::vector<std::tuple<label_t, Instruction>> expected = {
         {"bpf_prog1", parse_instruction("r0 = 1")},
         {"1", parse_instruction("if r0 != 4 goto +1 <LBB0_1>")},
         {"2", parse_instruction("r0 = 2 ll")},
