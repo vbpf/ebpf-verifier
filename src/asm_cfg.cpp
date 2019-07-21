@@ -39,23 +39,24 @@ static bool has_fall(Instruction ins) {
 }
 
 Cfg instruction_seq_to_cfg(const InstructionSeq& insts) {
-    Cfg cfg(entry_label());
+    Cfg cfg("0");
     std::optional<label_t> falling_from = {};
     for (const auto& [label, inst] : insts) {
 
         if (std::holds_alternative<Undefined>(inst))
             continue;
 
-        cfg.insert(label).insert(inst);
+        auto& bb = cfg.insert(label);
+        bb.insert(inst);
         if (falling_from) {
-            cfg.get_node(*falling_from) >> cfg.get_node(label);
+            cfg.get_node(*falling_from) >> bb;
             falling_from = {};
         }
         if (has_fall(inst))
             falling_from = label;
         auto jump_target = get_jump(inst);
         if (jump_target)
-            cfg.get_node(label) >> cfg.get_node(*jump_target);
+            bb >> cfg.insert(*jump_target);
     }
     if (falling_from)
         throw std::invalid_argument{"fallthrough in last instruction"};
