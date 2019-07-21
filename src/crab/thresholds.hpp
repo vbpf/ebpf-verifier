@@ -64,9 +64,9 @@ class wto_thresholds_t final : public wto_component_visitor<cfg_ref_t> {
     // maximum number of thresholds
     size_t m_max_size;
     // keep a set of thresholds per wto head
-    boost::unordered_map<basic_block_label_t, thresholds_t> m_head_to_thresholds;
+    boost::unordered_map<label_t, thresholds_t> m_head_to_thresholds;
     // the top of the stack is the current wto head
-    std::vector<basic_block_label_t> m_stack;
+    std::vector<label_t> m_stack;
 
     // using select_t = select_stmt<number_t,varname_t>;
 

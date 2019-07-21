@@ -4,7 +4,7 @@
 #include "crab/debug.hpp"
 #include "crab/types.hpp"
 
-using crab::basic_block_label_t;
+using crab::label_t;
 using crab::number_t;
 using crab::varname_t;
 
