@@ -323,49 +323,43 @@ class cfg_t final {
 
     label_t entry() const { return m_entry; }
 
-    const_succ_range next_nodes(label_t bb_id) const {
-        const auto& b = get_node(bb_id);
-        return boost::make_iterator_range(b.next_blocks());
+    const_succ_range next_nodes(label_t _label) const {
+        return boost::make_iterator_range(get_node(_label).next_blocks());
     }
 
-    const_pred_range prev_nodes(label_t bb_id) const {
-        const auto& b = get_node(bb_id);
-        return boost::make_iterator_range(b.prev_blocks());
+    const_pred_range prev_nodes(label_t _label) const {
+        return boost::make_iterator_range(get_node(_label).prev_blocks());
     }
 
-    succ_range next_nodes(label_t bb_id) {
-        auto& b = get_node(bb_id);
-        return boost::make_iterator_range(b.next_blocks());
+    succ_range next_nodes(label_t _label) {
+        return boost::make_iterator_range(get_node(_label).next_blocks());
     }
 
-    pred_range prev_nodes(label_t bb_id) {
-        auto& b = get_node(bb_id);
-        return boost::make_iterator_range(b.prev_blocks());
+    pred_range prev_nodes(label_t _label) {
+        return boost::make_iterator_range(get_node(_label).prev_blocks());
     }
 
-    basic_block_t& get_node(label_t bb_id) {
-        auto it = m_blocks.find(bb_id);
+    basic_block_t& get_node(label_t _label) {
+        auto it = m_blocks.find(_label);
         if (it == m_blocks.end()) {
-            CRAB_ERROR("Basic block ", bb_id, " not found in the CFG: ", __LINE__);
+            CRAB_ERROR("Basic block ", _label, " not found in the CFG: ", __LINE__);
         }
-
         return it->second;
     }
 
-    const basic_block_t& get_node(label_t bb_id) const {
-        auto it = m_blocks.find(bb_id);
+    const basic_block_t& get_node(label_t _label) const {
+        auto it = m_blocks.find(_label);
         if (it == m_blocks.end()) {
-            CRAB_ERROR("Basic block ", bb_id, " not found in the CFG: ", __LINE__);
+            CRAB_ERROR("Basic block ", _label, " not found in the CFG: ", __LINE__);
         }
-
         return it->second;
     }
 
     // --- End ikos fixpoint API
 
-    basic_block_t& insert(label_t bb_id);
+    basic_block_t& insert(label_t _label);
 
-    void remove(label_t bb_id);
+    void remove(label_t _label);
 
     //! return a begin iterator of basic_block_t's
     iterator begin() { return m_blocks.begin(); }
@@ -649,17 +643,17 @@ class cfg_rev_t final {
 
     pred_range prev_nodes(label_t bb) { return _cfg.next_nodes(bb); }
 
-    basic_block_rev_t& get_node(label_t bb_id) {
-        auto it = _rev_bbs.find(bb_id);
+    basic_block_rev_t& get_node(label_t _label) {
+        auto it = _rev_bbs.find(_label);
         if (it == _rev_bbs.end())
-            CRAB_ERROR("Basic block ", bb_id, " not found in the CFG: ", __LINE__);
+            CRAB_ERROR("Basic block ", _label, " not found in the CFG: ", __LINE__);
         return it->second;
     }
 
-    const basic_block_rev_t& get_node(label_t bb_id) const {
-        auto it = _rev_bbs.find(bb_id);
+    const basic_block_rev_t& get_node(label_t _label) const {
+        auto it = _rev_bbs.find(_label);
         if (it == _rev_bbs.end())
-            CRAB_ERROR("Basic block ", bb_id, " not found in the CFG: ", __LINE__);
+            CRAB_ERROR("Basic block ", _label, " not found in the CFG: ", __LINE__);
         return it->second;
     }
 
@@ -694,7 +688,5 @@ class cfg_rev_t final {
 
     void simplify() {}
 };
-
-void type_check(const cfg_ref_t& cfg_t);
 
 } // end namespace crab

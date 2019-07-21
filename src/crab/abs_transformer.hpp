@@ -355,4 +355,6 @@ inline void check_block(const basic_block_t& bb, const AbsDomain& from_inv, chec
     db.merge_db(std::move(checker.m_db));
 }
 
+void type_check(const cfg_ref_t& cfg_t);
+
 } // namespace crab
