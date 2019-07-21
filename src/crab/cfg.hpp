@@ -258,11 +258,6 @@ class cfg_t final {
     using basic_block_map_t = std::unordered_map<basic_block_label_t, basic_block_t>;
     using binding_t = basic_block_map_t::value_type;
 
-    struct get_ref : public std::unary_function<binding_t, basic_block_t> {
-        get_ref() {}
-        basic_block_t& operator()(binding_t& p) const { return p.second; }
-    };
-
     struct get_label : public std::unary_function<binding_t, basic_block_label_t> {
         get_label() {}
         basic_block_label_t operator()(const binding_t& p) const { return p.second.label(); }
@@ -303,11 +298,12 @@ class cfg_t final {
 
   public:
     cfg_t(basic_block_label_t entry) : m_entry(entry), m_exit(std::nullopt) {
-        m_blocks.emplace(m_entry, m_entry);
+        m_blocks.emplace(entry, entry);
     }
 
     cfg_t(basic_block_label_t entry, basic_block_label_t exit) : m_entry(entry), m_exit(exit) {
-        m_blocks.emplace(m_entry, m_entry);
+        m_blocks.emplace(entry, entry);
+        m_blocks.emplace(exit, exit);
     }
 
     cfg_t(const cfg_t&) = delete;
