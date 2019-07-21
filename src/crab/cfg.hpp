@@ -158,7 +158,7 @@ crab_os& operator<<(crab_os& os, const new_statement_t& a);
 
 class cfg_t;
 
-class basic_block_t {
+class basic_block_t final {
     basic_block_t(const basic_block_t&) = delete;
 
     friend class cfg_t;
@@ -382,7 +382,7 @@ class basic_block_t {
 
 // Viewing basic_block_t with all statements reversed. Useful for
 // backward analysis.
-class basic_block_rev_t {
+class basic_block_rev_t final {
   public:
     using succ_iterator = basic_block_t::succ_iterator;
     using const_succ_iterator = basic_block_t::const_succ_iterator;
@@ -441,7 +441,7 @@ class basic_block_rev_t {
     }
 };
 
-class cfg_t {
+class cfg_t final {
   public:
     using node_t = basic_block_label_t; // for Bgl graphs
 
@@ -715,7 +715,7 @@ class cfg_t {
 
 // A lightweight object that wraps a reference to a CFG into a
 // copyable, assignable object.
-class cfg_ref_t {
+class cfg_ref_t final {
   public:
     // cfg_t's typedefs
     using node_t = cfg_t::node_t;
@@ -791,7 +791,7 @@ class cfg_ref_t {
 
 // Viewing a cfg_t with all edges and block statements
 // reversed. Useful for backward analysis.
-class cfg_rev_t {
+class cfg_rev_t final {
   public:
     using node_t = basic_block_label_t; // for Bgl graphs
 

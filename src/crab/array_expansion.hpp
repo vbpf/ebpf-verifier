@@ -41,7 +41,7 @@ namespace crab {
 namespace domains {
 
 // wrapper for using index_t as patricia_tree keys
-class offset_t {
+class offset_t final {
     index_t _val{};
 
   public:
@@ -77,7 +77,7 @@ class offset_t {
 
 class offset_map_t;
 
-class cell_t {
+class cell_t final {
   private:
     friend class offset_map_t;
 
@@ -188,7 +188,7 @@ template <typename AbsDomain>
 class array_expansion_domain;
 
 // Map offsets to cells
-class offset_map_t {
+class offset_map_t final {
   private:
     template <typename AbsDomain>
     friend class array_expansion_domain;

@@ -21,7 +21,7 @@ template <typename AbsDomain>
 class wto_processor;
 
 template <typename AbsDomain>
-class interleaved_fwd_fixpoint_iterator {
+class interleaved_fwd_fixpoint_iterator final {
 
     friend class wto_iterator<AbsDomain>;
 
@@ -100,7 +100,7 @@ class interleaved_fwd_fixpoint_iterator {
 }; // class interleaved_fwd_fixpoint_iterator
 
 template <typename AbsDomain>
-class wto_iterator : public wto_component_visitor<cfg_ref_t> {
+class wto_iterator final : public wto_component_visitor<cfg_ref_t> {
 
   public:
     using interleaved_iterator_t = interleaved_fwd_fixpoint_iterator<AbsDomain>;
@@ -318,7 +318,7 @@ class wto_iterator : public wto_component_visitor<cfg_ref_t> {
 }; // class wto_iterator
 
 template <typename AbsDomain>
-class wto_processor : public wto_component_visitor<cfg_ref_t> {
+class wto_processor final : public wto_component_visitor<cfg_ref_t> {
 
   public:
     using interleaved_iterator_t = interleaved_fwd_fixpoint_iterator<AbsDomain>;

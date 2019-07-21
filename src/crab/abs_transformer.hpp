@@ -214,7 +214,7 @@ class intra_abs_transformer {
 enum class check_kind_t { Safe, Error, Warning, Unreachable };
 
 // Toy database to store invariants.
-class checks_db {
+class checks_db final {
     using check_t = std::pair<debug_info, check_kind_t>;
 
   public:
@@ -280,7 +280,7 @@ class checks_db {
 };
 
 template <typename AbsDomain>
-class assert_property_checker : public intra_abs_transformer<AbsDomain> {
+class assert_property_checker final : public intra_abs_transformer<AbsDomain> {
 
   public:
     checks_db m_db;

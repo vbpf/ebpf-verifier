@@ -46,7 +46,7 @@
 namespace crab {
 
 template <typename Key, typename Value>
-class separate_domain {
+class separate_domain final {
 
   private:
     using patricia_tree_t = patricia_tree<Key, Value>;

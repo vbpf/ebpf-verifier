@@ -14,7 +14,7 @@ namespace domains {
 
 // Special operations needed by the checker
 template <typename AbsDomain>
-class checker_domain_traits {
+class checker_domain_traits final {
   private:
     struct entailment {
         AbsDomain _dom;

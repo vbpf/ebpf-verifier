@@ -37,7 +37,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace crab {
 
 template <class T>
-class vec {
+class vec final {
     T* data;
     int sz;
     int cap;

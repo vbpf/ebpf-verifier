@@ -13,7 +13,7 @@
 
 namespace crab {
 
-class bound_t {
+class bound_t final {
   private:
     bool _is_infinite;
     number_t _n;
@@ -208,7 +208,7 @@ inline crab_os& operator<<(crab_os& o, const bound_t& b) {
 
 using z_bound = bound_t;
 
-class interval_t {
+class interval_t final {
   private:
     bound_t _lb;
     bound_t _ub;

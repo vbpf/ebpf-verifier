@@ -263,7 +263,7 @@ class tree {
 }; // class tree
 
 template <typename Key, typename Value>
-class node : public tree<Key, Value> {
+class node final : public tree<Key, Value> {
   private:
     using tree_ptr = typename tree<Key, Value>::ptr;
     using binding_t = typename tree<Key, Value>::binding_t;
@@ -326,7 +326,7 @@ class node : public tree<Key, Value> {
 }; // class node
 
 template <typename Key, typename Value>
-class leaf : public tree<Key, Value> {
+class leaf final : public tree<Key, Value> {
   private:
     using tree_ptr = typename tree<Key, Value>::ptr;
     using binding_t = typename tree<Key, Value>::binding_t;
@@ -1068,7 +1068,7 @@ bool tree<Key, Value>::compare(typename tree<Key, Value>::ptr s, typename tree<K
 } // namespace patricia_trees_impl
 
 template <typename Key, typename Value>
-class patricia_tree {
+class patricia_tree final {
   private:
     using tree_t = patricia_trees_impl::tree<Key, Value>;
     using tree_ptr = typename tree_t::ptr;
@@ -1181,7 +1181,7 @@ class patricia_tree {
 }; // class patricia_tree
 
 template <typename Element>
-class patricia_tree_set {
+class patricia_tree_set final {
   private:
     using patricia_tree_t = patricia_tree<Element, bool>;
 

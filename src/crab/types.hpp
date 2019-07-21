@@ -92,7 +92,7 @@ using var_key = std::string;
 // However, this change is a bit involving since we need to change the
 // algorithm api's in patricia_trees.hpp because they assume index_t.
 
-class indexed_string {
+class indexed_string final {
     friend class variable_factory;
 
   private:
@@ -154,7 +154,7 @@ using varname_t = indexed_string;
 //
 // The factory uses a counter of type index_t to generate variable
 // id's that always increases.
-class variable_factory {
+class variable_factory final {
     using t_map_t = std::unordered_map<var_key, indexed_string>;
     using shadow_map_t = std::unordered_map<index_t, indexed_string>;
 
@@ -182,7 +182,7 @@ class variable_factory {
 
 // Container for typed variables used by the crab abstract domains
 // and linear_constraints.
-class variable_t {
+class variable_t final {
     // XXX: template parameter Number is required even if the class
     // does not use it.  This allows, e.g., linear_constraint to
     // deduce the kind of Number from constraints like x < y.
