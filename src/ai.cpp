@@ -341,35 +341,36 @@ struct Machine {
     void visit(Instruction ins) { std::visit(*this, ins); }
 };
 
-static Label pop(std::list<Label>& wl) {
-    Label u = wl.front();
+static label_t pop(std::list<label_t>& wl) {
+    label_t u = wl.front();
     wl.pop_front();
     return u;
 }
 
-static auto initialized_invs(const Cfg& cfg, program_info info) -> std::unordered_map<Label, Machine> {
-    std::unordered_map<Label, Machine> df;
-    for (auto l : cfg.keys()) {
+static auto initialized_invs(const Cfg& cfg, program_info info) -> std::unordered_map<label_t, Machine> {
+    std::unordered_map<label_t, Machine> df;
+    for (auto& [l, _] : cfg) {
         df.emplace(l, info);
     }
-    df.at(cfg.keys().front()).init();
+    df.at(*cfg.label_begin()).init();
     return df;
 }
 
 static Machine transfer(const BasicBlock& bb, Machine m) {
-    for (const Instruction& ins : bb.insts) {
+    for (const Instruction& ins : bb) {
         m.visit(ins);
     }
     return m;
 }
 
-static auto chaotic(const Cfg& cfg, program_info info) -> std::unordered_map<Label, Machine> {
-    std::list<Label> wl{cfg.keys().front()};
+static auto chaotic(const Cfg& cfg, program_info info) -> std::unordered_map<label_t, Machine> {
+    std::list<label_t> wl{*cfg.label_begin()};
     auto df = initialized_invs(cfg, info);
     while (!wl.empty()) {
-        Label u = pop(wl);
-        const BasicBlock& bb = cfg.at(u);
-        for (auto v : bb.nextlist) {
+        label_t u = pop(wl);
+        const BasicBlock& bb = cfg.get_node(u);
+        auto [nb, ne] = bb.next_blocks();
+        for (auto v : std::vector<label_t>(nb, ne)) {
             auto old_as = df.at(v);
             auto new_as = transfer(bb, df.at(u)) | old_as;
             if (new_as != old_as) {
@@ -386,9 +387,9 @@ static auto chaotic(const Cfg& cfg, program_info info) -> std::unordered_map<Lab
 void analyze_rcp(Cfg& cfg, program_info info) {
     auto df = chaotic(cfg, info);
 
-    for (auto l : cfg.keys()) {
+    for (auto& [l, _] : cfg) {
         auto dom = df.at(l);
-        for (Instruction& ins : cfg[l].insts) {
+        for (Instruction& ins : cfg.get_node(l)) {
             // bool unsatisfied_assertion = false;
             if (std::holds_alternative<Assert>(ins)) {
                 Assert& a = std::get<Assert>(ins);
@@ -408,7 +409,8 @@ void analyze_rcp(Cfg& cfg, program_info info) {
             }
         }
         if (global_options.print_invariants) {
-            for (auto n : cfg[l].nextlist)
+            auto [b, e] = cfg.get_node(l).next_blocks();
+            for (auto n : std::vector(b, e))
                 std::cerr << n << ",";
             std::cerr << "\n";
         }
@@ -616,16 +618,14 @@ class AssertionExtractor {
 };
 
 void explicate_assertions(Cfg& cfg, program_info info) {
-    for (auto const& this_label : cfg.keys()) {
-        vector<Instruction>& old_insts = cfg[this_label].insts;
+    for (auto& [this_label, bb] : cfg) {
+        vector<Instruction> old_insts(bb.begin(), bb.end());
         vector<Instruction> insts;
 
         for (auto ins : old_insts) {
             for (auto a : std::visit(AssertionExtractor{info}, ins))
-                insts.emplace_back(std::make_unique<Assertion>(a));
-            insts.push_back(ins);
+                bb.insert(std::make_unique<Assertion>(a));
+            bb.insert(ins);
         }
-
-        old_insts = insts;
     }
 }

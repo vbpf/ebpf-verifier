@@ -7,7 +7,7 @@
 #include "asm_cfg.hpp"
 #include "asm_syntax.hpp"
 
-inline pc_t label_to_pc(Label label) {
+inline pc_t label_to_pc(label_t label) {
     try {
         return boost::lexical_cast<pc_t>(label);
     } catch (const boost::bad_lexical_cast&) {
@@ -15,14 +15,14 @@ inline pc_t label_to_pc(Label label) {
     }
 }
 
-using LabelTranslator = std::function<std::string(Label)>;
+using LabelTranslator = std::function<std::string(label_t)>;
 
-inline std::function<int16_t(Label)> label_to_offset(pc_t pc) {
-    return [=](Label label) { return label_to_pc(label) - pc - 1; };
+inline std::function<int16_t(label_t)> label_to_offset(pc_t pc) {
+    return [=](label_t label) { return label_to_pc(label) - pc - 1; };
 }
 
 inline LabelTranslator label_to_offset_string(pc_t pc) {
-    return [=](Label label) {
+    return [=](label_t label) {
         int16_t target = label_to_offset(pc)(label);
         return std::string(target > 0 ? "+" : "") + std::to_string(target);
     };

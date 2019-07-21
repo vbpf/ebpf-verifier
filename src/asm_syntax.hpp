@@ -6,8 +6,9 @@
 #include <variant>
 
 #include <boost/lexical_cast.hpp>
+#include "crab/types.hpp"
 
-using Label = std::string;
+using crab::label_t;
 
 struct Imm {
     uint64_t v{};
@@ -82,7 +83,7 @@ struct Condition {
 
 struct Jmp {
     std::optional<Condition> cond;
-    Label target;
+    label_t target;
 };
 
 struct ArgSingle {
@@ -167,7 +168,7 @@ struct Assert {
 
 using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Exit, Jmp, Mem, Packet, LockAdd, Assume, Assert>;
 
-using LabeledInstruction = std::tuple<Label, Instruction>;
+using LabeledInstruction = std::tuple<label_t, Instruction>;
 using InstructionSeq = std::vector<LabeledInstruction>;
 
 using pc_t = uint16_t;

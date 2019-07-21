@@ -61,14 +61,14 @@ class basic_block final {
     friend class cfg;
 
   private:
-    using bb_id_set_t = std::vector<label_t>;
+    using label_vec_t = std::vector<label_t>;
     using stmt_list_t = std::vector<Language>;
 
   public:
     // -- iterators
 
-    using succ_iterator = bb_id_set_t::iterator;
-    using const_succ_iterator = bb_id_set_t::const_iterator;
+    using succ_iterator = label_vec_t::iterator;
+    using const_succ_iterator = label_vec_t::const_iterator;
     using pred_iterator = succ_iterator;
     using const_pred_iterator = const_succ_iterator;
     using iterator = typename stmt_list_t::iterator;
@@ -79,15 +79,15 @@ class basic_block final {
   private:
     label_t m_label;
     stmt_list_t m_ts;
-    bb_id_set_t m_prev, m_next;
+    label_vec_t m_prev, m_next;
 
-    void insert_adjacent(bb_id_set_t& c, label_t e) {
+    void insert_adjacent(label_vec_t& c, label_t e) {
         if (std::find(c.begin(), c.end(), e) == c.end()) {
             c.push_back(e);
         }
     }
 
-    void remove_adjacent(bb_id_set_t& c, label_t e) {
+    void remove_adjacent(label_vec_t& c, label_t e) {
         if (std::find(c.begin(), c.end(), e) != c.end()) {
             c.erase(std::remove(c.begin(), c.end(), e), c.end());
         }
@@ -97,6 +97,11 @@ class basic_block final {
     template <typename T, typename... Args>
     void insert(Args&&... args) {
         m_ts.emplace_back(T{std::forward<Args>(args)...});
+    }
+
+    template <typename T>
+    void insert(const T& arg) {
+        m_ts.push_back(arg);
     }
 
     basic_block(const label_t& _label) : m_label(_label) {}

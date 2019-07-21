@@ -140,12 +140,12 @@ Instruction parse_instruction(std::string text) {
     return Undefined{0};
 }
 
-std::vector<std::tuple<Label, Instruction>> parse_program(std::istream& is) {
+std::vector<std::tuple<label_t, Instruction>> parse_program(std::istream& is) {
     std::string line;
     int lineno = 0;
-    std::vector<Label> pc_to_label;
-    std::vector<std::tuple<Label, Instruction>> labeled_insts;
-    std::unordered_set<Label> seen_labels;
+    std::vector<label_t> pc_to_label;
+    std::vector<std::tuple<label_t, Instruction>> labeled_insts;
+    std::unordered_set<label_t> seen_labels;
     std::optional<std::string> next_label;
     while (std::getline(is, line)) {
         lineno++;

@@ -96,7 +96,7 @@ static string size(int w) { return string("u") + std::to_string(w * 8); }
 
 struct InstructionPrinterVisitor {
     std::ostream& os_;
-    LabelTranslator labeler = [](Label l) { return l; };
+    LabelTranslator labeler = [](label_t l) { return l; };
 
     template <typename T>
     void visit(const T& item) {
@@ -208,11 +208,11 @@ struct InstructionPrinterVisitor {
     }
 };
 
-static vector<std::tuple<Label, optional<Label>>> slide(const vector<Label>& labels) {
+static vector<std::tuple<label_t, optional<label_t>>> slide(const vector<label_t>& labels) {
     if (labels.size() == 0)
         return {};
-    vector<std::tuple<Label, optional<Label>>> label_pairs;
-    Label prev;
+    vector<std::tuple<label_t, optional<label_t>>> label_pairs;
+    label_t prev;
     for (auto label : labels) {
         if (!prev.empty())
             label_pairs.push_back({prev, label});
@@ -229,7 +229,7 @@ string to_string(Instruction const& ins, LabelTranslator labeler) {
 }
 
 std::ostream& operator<<(std::ostream& os, Instruction const& ins) {
-    std::visit(InstructionPrinterVisitor{os, [](Label l) { return string("<") + l + ">"; }}, ins);
+    std::visit(InstructionPrinterVisitor{os, [](label_t l) { return string("<") + l + ">"; }}, ins);
     return os;
 }
 
@@ -306,7 +306,7 @@ std::ostream& operator<<(std::ostream& os, Assertion const& a) {
 }
 
 string to_string(Instruction const& ins) {
-    return to_string(ins, [](Label l) { return string("<") + l + ">"; });
+    return to_string(ins, [](label_t l) { return string("<") + l + ">"; });
 }
 
 int size(Instruction inst) {
@@ -374,12 +374,14 @@ void print(const InstructionSeq& insts) { print(insts, std::cout); }
 void print(const Cfg& cfg, bool nondet, std::ostream& out) {
     if (!global_options.print_invariants)
         return;
+    return;
+    /*
     for (auto [label, next] : slide(cfg.keys())) {
         out << std::setw(10) << label << ":\t";
-        const auto& bb = cfg.at(label);
+        const auto& bb = cfg.get_node(label);
         bool first = true;
         int i = 0;
-        for (auto ins : bb.insts) {
+        for (auto ins : bb) {
             if (is_satisfied(ins))
                 continue;
             if (!first)
@@ -395,16 +397,17 @@ void print(const Cfg& cfg, bool nondet, std::ostream& out) {
                     << "                             " << bb.posts.at(i) << "\n";
             ++i;
         }
-        if (nondet && bb.nextlist.size() > 0 && (!next || bb.nextlist != vector<Label>{*next})) {
+        if (nondet && bb.nextlist.size() > 0 && (!next || bb.nextlist != vector<label_t>{*next})) {
             if (!first)
                 out << std::setw(10) << " \t";
             first = false;
             out << "goto ";
-            for (Label label : bb.nextlist)
+            for (label_t label : bb.nextlist)
                 out << label << ", ";
             out << "\n";
         }
     }
+    */
 }
 
 void print(const Cfg& cfg, bool nondet, std::string outfile) {
@@ -419,18 +422,19 @@ void print(const Cfg& cfg, bool nondet) { print(cfg, nondet, std::cout); }
 void print_dot(const Cfg& cfg, std::ostream& out) {
     out << "digraph program {\n";
     out << "    node [shape = rectangle];\n";
-    for (auto label : cfg.keys()) {
+    for (const auto& [label, _] : cfg) {
         out << "    \"" << label << "\"[xlabel=\"" << label << "\",label=\"";
 
-        const auto& bb = cfg.at(label);
-        for (auto ins : bb.insts) {
+        const auto& bb = cfg.get_node(label);
+        for (auto ins : bb) {
             if (is_satisfied(ins))
                 continue;
             out << ins << "\\l";
         }
 
         out << "\"];\n";
-        for (Label next : bb.nextlist)
+        auto [b, e] = bb.next_blocks();
+        for (label_t next : std::vector<label_t>(b, e))
             out << "    \"" << label << "\" -> \"" << next << "\";\n";
         out << "\n";
     }

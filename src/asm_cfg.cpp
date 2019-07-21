@@ -12,6 +12,7 @@
 
 #include "asm_cfg.hpp"
 #include "asm_ostream.hpp"
+#include "crab_constraints.hpp"
 
 using std::list;
 using std::optional;
@@ -20,7 +21,7 @@ using std::string;
 using std::to_string;
 using std::vector;
 
-static optional<Label> get_jump(Instruction ins) {
+static optional<label_t> get_jump(Instruction ins) {
     if (std::holds_alternative<Jmp>(ins)) {
         return std::get<Jmp>(ins).target;
     }
@@ -37,30 +38,24 @@ static bool has_fall(Instruction ins) {
     return true;
 }
 
-Cfg Cfg::make(const InstructionSeq& insts) {
-    Cfg cfg;
-    const auto link = [&cfg](Label from, Label to) {
-        cfg[from].nextlist.push_back(to);
-        cfg[to].prevlist.push_back(from);
-    };
-    std::optional<Label> falling_from = {};
+Cfg instruction_seq_to_cfg(const InstructionSeq& insts) {
+    Cfg cfg(entry_label());
+    std::optional<label_t> falling_from = {};
     for (const auto& [label, inst] : insts) {
 
         if (std::holds_alternative<Undefined>(inst))
             continue;
 
-        // create cfg[label] if not exists
-        cfg.encountered(label);
-        cfg[label].insts = {inst};
+        cfg.insert(label).insert(inst);
         if (falling_from) {
-            link(*falling_from, label);
+            cfg.get_node(*falling_from) >> cfg.get_node(label);
             falling_from = {};
         }
         if (has_fall(inst))
             falling_from = label;
         auto jump_target = get_jump(inst);
         if (jump_target)
-            link(label, *jump_target);
+            cfg.get_node(label) >> cfg.get_node(*jump_target);
     }
     if (falling_from)
         throw std::invalid_argument{"fallthrough in last instruction"};
@@ -93,9 +88,10 @@ static Condition::Op reverse(Condition::Op op) {
 
 static Condition reverse(Condition cond) { return {.op = reverse(cond.op), .left = cond.left, .right = cond.right}; }
 
-static vector<Label> unique(const vector<Label>& v) {
-    vector<Label> res;
-    std::unique_copy(v.begin(), v.end(), std::back_inserter(res));
+template <typename T>
+static vector<label_t> unique(const std::pair<T, T>& be) {
+    vector<label_t> res;
+    std::unique_copy(be.first, be.second, std::back_inserter(res));
     return res;
 }
 
@@ -132,77 +128,49 @@ static vector<Instruction> do_expand_locks(vector<Instruction> const& insts) {
     return res;
 }
 
-static Label pop(set<Label>& s) {
-    Label l = *s.begin();
+static label_t pop(set<label_t>& s) {
+    label_t l = *s.begin();
     s.erase(l);
     return l;
 }
 
-void Cfg::simplify() {
-    set<Label> worklist(keys().begin(), keys().end());
-    while (!worklist.empty()) {
-        Label label = pop(worklist);
-        BasicBlock& bb = graph[label];
-        while (bb.nextlist.size() == 1) {
-            Label next_label = bb.nextlist.back();
-            BasicBlock& next_bb = graph[next_label];
-            if (&next_bb == &bb || next_bb.prevlist.size() != 1) {
-                break;
-            }
-            bb.nextlist = std::move(next_bb.nextlist);
-            for (Instruction inst : next_bb.insts) {
-                bb.insts.push_back(inst);
-            }
-            worklist.erase(next_label);
-            graph.erase(next_label);
+Cfg to_nondet(const Cfg& cfg, bool expand_locks) {
+    Cfg res(cfg.entry());
+    for (auto const& [this_label, _] : cfg) {
+        BasicBlock const& bb = cfg.get_node(this_label);
+        BasicBlock& newbb = res.insert(this_label);
 
-            // reconnect
-            for (auto l : bb.nextlist) {
-                for (auto& p : graph[l].prevlist)
-                    if (p == next_label)
-                        p = label;
-            }
-        }
-    }
-    ordered_labels.erase(
-        std::remove_if(ordered_labels.begin(), ordered_labels.end(), [&](auto& x) { return !graph.count(x); }),
-        ordered_labels.end());
-}
-
-Cfg Cfg::to_nondet(bool expand_locks) const {
-    Cfg res;
-    for (auto const& this_label : this->keys()) {
-        BasicBlock const& bb = this->at(this_label);
-        res.encountered(this_label);
-        BasicBlock& newbb = res[this_label];
-
-        for (auto ins : expand_locks ? do_expand_locks(bb.insts) : bb.insts) {
+        for (auto ins : bb) {
             if (!std::holds_alternative<Jmp>(ins)) {
-                newbb.insts.push_back(ins);
+                newbb.insert(ins);
             }
         }
 
-        for (Label prev_label : bb.prevlist) {
-            newbb.prevlist.push_back(unique(this->at(prev_label).nextlist).size() > 1 ? prev_label + ":" + this_label
-                                                                                      : prev_label);
+        auto [pb, pe] = bb.prev_blocks();
+        for (label_t prev_label : vector<label_t>(pb, pe)) {
+            bool is_one = unique(cfg.get_node(prev_label).next_blocks()).size() > 1;
+            BasicBlock& pbb = res.get_node(is_one ? prev_label + ":" + this_label : prev_label);
+            pbb >> newbb;
         }
         // note the special case where we jump to fallthrough
-        auto nextlist = unique(bb.nextlist);
+        auto nextlist = unique(bb.next_blocks());
         if (nextlist.size() == 2) {
-            Label mid_label = this_label + ":";
-            Condition cond = *std::get<Jmp>(bb.insts.back()).cond;
-            vector<std::tuple<Label, Condition>> jumps{
-                {bb.nextlist[0], cond},
-                {bb.nextlist[1], reverse(cond)},
+            label_t mid_label = this_label + ":";
+            Condition cond = *std::get<Jmp>(*bb.rbegin()).cond;
+            vector<std::tuple<label_t, Condition>> jumps{
+                {*bb.next_blocks().first, cond},
+                {*std::next(bb.next_blocks().first), reverse(cond)},
             };
             for (auto const& [next_label, cond] : jumps) {
-                Label l = mid_label + next_label;
-                newbb.nextlist.push_back(l);
-                res.encountered(l);
-                res[l] = BasicBlock{{Assume{cond}}, {next_label}, {this_label}};
+                label_t l = mid_label + next_label;
+                BasicBlock& bb = res.insert(l);
+                bb.insert<Assume>(cond);
+                newbb >> bb;
+                bb >> res.insert(next_label);
             }
         } else {
-            newbb.nextlist = nextlist;
+            for (auto label : nextlist)
+                newbb >> res.insert(label);
         }
     }
     return res;
@@ -242,7 +210,7 @@ static std::string instype(Instruction ins) {
     }
 }
 
-std::vector<std::string> Cfg::stats_headers() {
+std::vector<std::string> stats_headers() {
     return {
         //"instructions",
         "basic_blocks", "joins",       "other",      "jump",          "assign",  "arith",
@@ -251,16 +219,16 @@ std::vector<std::string> Cfg::stats_headers() {
     };
 }
 
-std::map<std::string, int> Cfg::collect_stats() const {
+std::map<std::string, int> collect_stats(const Cfg& cfg) {
     std::map<std::string, int> res;
     for (auto h : stats_headers()) {
         res[h] = 0;
     }
-    res["basic_blocks"] = graph.size();
-    for (Label const& this_label : keys()) {
-        BasicBlock const& bb = at(this_label);
-        res["instructions"] += bb.insts.size();
-        for (Instruction ins : bb.insts) {
+    for (auto const& [this_label, _] : cfg) {
+        res["basic_blocks"]++;
+        BasicBlock const& bb = cfg.get_node(this_label);
+        res["instructions"] += bb.size();
+        for (Instruction ins : bb) {
             if (std::holds_alternative<LoadMapFd>(ins)) {
                 if (std::get<LoadMapFd>(ins).mapfd == -1) {
                     res["map_in_map"] = 1;
@@ -277,9 +245,9 @@ std::map<std::string, int> Cfg::collect_stats() const {
             }
             res[instype(ins)]++;
         }
-        if (bb.prevlist.size() > 1)
+        if (unique(bb.prev_blocks()).size() > 1)
             res["joins"]++;
-        if (bb.nextlist.size() > 1)
+        if (unique(bb.prev_blocks()).size() > 1)
             res["jumps"]++;
     }
     return res;
