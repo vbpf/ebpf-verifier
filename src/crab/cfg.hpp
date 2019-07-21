@@ -48,7 +48,8 @@
 
 namespace crab {
 
-class cfg_t;
+template <typename Language>
+class cfg;
 
 template <typename Language>
 class basic_block final {
@@ -56,7 +57,8 @@ class basic_block final {
 
     basic_block(const basic_block_t&) = delete;
 
-    friend class cfg_t;
+    template <typename Lang>
+    friend class cfg;
 
   private:
     using bb_id_set_t = std::vector<label_t>;
@@ -245,17 +247,20 @@ class basic_block_rev final {
     }
 };
 
-using basic_block_t = basic_block<new_statement_t>;
-using basic_block_rev_t = basic_block_rev<new_statement_t>;
+template <typename Language>
+class cfg final {
 
-class cfg_t final {
+    using basic_block_t = basic_block<Language>;
+    using basic_block_rev_t = basic_block_rev<Language>;
+    using cfg_t = cfg<Language>;
+
   public:
     using node_t = label_t; // for Bgl graphs
 
-    using succ_iterator = basic_block_t::succ_iterator;
-    using pred_iterator = basic_block_t::pred_iterator;
-    using const_succ_iterator = basic_block_t::const_succ_iterator;
-    using const_pred_iterator = basic_block_t::const_pred_iterator;
+    using succ_iterator = typename basic_block_t::succ_iterator;
+    using pred_iterator = typename basic_block_t::pred_iterator;
+    using const_succ_iterator = typename basic_block_t::const_succ_iterator;
+    using const_pred_iterator = typename basic_block_t::const_pred_iterator;
 
     using succ_range = boost::iterator_range<succ_iterator>;
     using pred_range = boost::iterator_range<pred_iterator>;
@@ -264,7 +269,7 @@ class cfg_t final {
 
   private:
     using basic_block_map_t = std::unordered_map<label_t, basic_block_t>;
-    using binding_t = basic_block_map_t::value_type;
+    using binding_t = typename basic_block_map_t::value_type;
 
     struct get_label : public std::unary_function<binding_t, label_t> {
         get_label() {}
@@ -272,10 +277,10 @@ class cfg_t final {
     };
 
   public:
-    using iterator = basic_block_map_t::iterator;
-    using const_iterator = basic_block_map_t::const_iterator;
-    using label_iterator = boost::transform_iterator<get_label, basic_block_map_t::iterator>;
-    using const_label_iterator = boost::transform_iterator<get_label, basic_block_map_t::const_iterator>;
+    using iterator = typename basic_block_map_t::iterator;
+    using const_iterator = typename basic_block_map_t::const_iterator;
+    using label_iterator = boost::transform_iterator<get_label, typename basic_block_map_t::iterator>;
+    using const_label_iterator = boost::transform_iterator<get_label, typename basic_block_map_t::const_iterator>;
 
     using var_iterator = std::vector<varname_t>::iterator;
     using const_var_iterator = std::vector<varname_t>::const_iterator;
@@ -305,18 +310,18 @@ class cfg_t final {
     }
 
   public:
-    cfg_t(label_t entry) : m_entry(entry), m_exit(std::nullopt) { m_blocks.emplace(entry, entry); }
+    cfg(label_t entry) : m_entry(entry), m_exit(std::nullopt) { m_blocks.emplace(entry, entry); }
 
-    cfg_t(label_t entry, label_t exit) : m_entry(entry), m_exit(exit) {
+    cfg(label_t entry, label_t exit) : m_entry(entry), m_exit(exit) {
         m_blocks.emplace(entry, entry);
         m_blocks.emplace(exit, exit);
     }
 
-    cfg_t(const cfg_t&) = delete;
+    cfg(const cfg_t&) = delete;
 
-    cfg_t(cfg_t&& o) : m_entry(o.m_entry), m_exit(o.m_exit), m_blocks(std::move(o.m_blocks)) {}
+    cfg(cfg_t&& o) : m_entry(o.m_entry), m_exit(o.m_exit), m_blocks(std::move(o.m_blocks)) {}
 
-    ~cfg_t() = default;
+    ~cfg() = default;
 
     bool has_exit() const { return (bool)m_exit; }
 
@@ -500,6 +505,10 @@ class cfg_t final {
     // remove blocks that cannot reach the exit block
     void remove_useless_blocks();
 };
+
+using basic_block_t = basic_block<new_statement_t>;
+using basic_block_rev_t = basic_block_rev<new_statement_t>;
+using cfg_t = cfg<new_statement_t>;
 
 // A lightweight object that wraps a reference to a CFG into a
 // copyable, assignable object.
@@ -699,5 +708,84 @@ class cfg_rev_t final {
 
     void simplify() {}
 };
+
+template <typename Language>
+inline void cfg<Language>::remove_useless_blocks() {
+    if (!has_exit())
+        return;
+
+    cfg_rev_t rev_cfg(*this);
+
+    visited_t useful, useless;
+    mark_alive_blocks(rev_cfg.entry(), rev_cfg, useful);
+
+    for (auto const& [label, bb] : *this) {
+        if (!(useful.count(label) > 0)) {
+            useless.insert(label);
+        }
+    }
+
+    for (auto _label : useless) {
+        remove(_label);
+    }
+}
+
+template <typename Language>
+inline basic_block<Language>& cfg<Language>::insert(label_t _label) {
+    auto it = m_blocks.find(_label);
+    if (it != m_blocks.end())
+        return it->second;
+
+    m_blocks.emplace(_label, _label);
+    return get_node(_label);
+}
+
+template <typename Language>
+inline void cfg<Language>::remove(label_t _label) {
+    if (_label == m_entry) {
+        CRAB_ERROR("Cannot remove entry block");
+    }
+
+    if (m_exit && *m_exit == _label) {
+        CRAB_ERROR("Cannot remove exit block");
+    }
+
+    std::vector<std::pair<basic_block_t*, basic_block_t*>> dead_edges;
+    auto& bb = get_node(_label);
+
+    for (auto id : boost::make_iterator_range(bb.prev_blocks())) {
+        if (_label != id) {
+            dead_edges.push_back({&get_node(id), &bb});
+        }
+    }
+
+    for (auto id : boost::make_iterator_range(bb.next_blocks())) {
+        if (_label != id) {
+            dead_edges.push_back({&bb, &get_node(id)});
+        }
+    }
+
+    for (auto p : dead_edges) {
+        (*p.first) -= (*p.second);
+    }
+
+    m_blocks.erase(_label);
+}
+
+template <typename Language>
+inline void cfg<Language>::remove_unreachable_blocks() {
+    visited_t alive, dead;
+    mark_alive_blocks(entry(), *this, alive);
+
+    for (auto const& [label, bb] : *this) {
+        if (!(alive.count(label) > 0)) {
+            dead.insert(label);
+        }
+    }
+
+    for (auto _label : dead) {
+        remove(_label);
+    }
+}
 
 } // end namespace crab
