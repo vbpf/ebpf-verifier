@@ -9,6 +9,6 @@
 using BasicBlock = crab::basic_block<Instruction>;
 using Cfg = crab::cfg<Instruction>;
 Cfg instruction_seq_to_cfg(const InstructionSeq&);
-Cfg to_nondet(const Cfg&, bool expand_locks);
+Cfg to_nondet(const Cfg&);
 std::vector<std::string> stats_headers();
 std::map<std::string, int> collect_stats(const Cfg&);

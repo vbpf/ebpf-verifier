@@ -274,13 +274,12 @@ cfg_t build_crab_cfg(variable_factory& vfac, Cfg const& simple_cfg, program_info
         machine.setup_entry(entry);
         entry >> cfg.insert(label(0));
     }
-    for (auto const& this_label : simple_cfg.keys()) {
-        auto const& bb = simple_cfg.at(this_label);
+    for (auto const& [this_label, bb] : simple_cfg) {
         basic_block_t* exit = &cfg.insert(this_label);
-        if (bb.insts.size() > 0) {
+        if (bb.size() > 0) {
             int iteration = 0;
             string label = this_label;
-            for (auto ins : bb.insts) {
+            for (auto ins : bb) {
                 basic_block_t& this_block = cfg.insert(label);
                 if (iteration > 0) {
                     (*exit) >> this_block;
@@ -294,10 +293,11 @@ cfg_t build_crab_cfg(variable_factory& vfac, Cfg const& simple_cfg, program_info
                 label = this_label + ":" + to_string(iteration);
             }
         }
-        if (bb.nextlist.size() == 0) {
+        auto [b, e] = bb.next_blocks();
+        if (b == e) {
             cfg.set_exit(exit->label());
         } else {
-            for (auto label : bb.nextlist)
+            for (label_t label : std::vector<label_t>(b, e))
                 *exit >> cfg.insert(label);
         }
     }
