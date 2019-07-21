@@ -106,19 +106,19 @@ int main(int argc, char** argv) {
 
     Cfg det_cfg = instruction_seq_to_cfg(prog);
 
-    if (!dotfile.empty()) {
-        std::cout << "det:\n";
-        print_dot(det_cfg, dotfile);
-        std::cout << "---\n\n\n";
-    }
+    // if (!dotfile.empty()) {
+    //     std::cout << "det:\n";
+    //     print_dot(det_cfg, dotfile);
+    //     std::cout << "---\n\n\n";
+    // }
 
     // std::cout << "to nondet...\n";
     Cfg cfg = to_nondet(det_cfg);
-    if (!dotfile.empty()) {
-        std::cout << "nondet:\n";
-        print_dot(cfg, dotfile);
-        std::cout << "---\n\n\n";
-    }
+    // if (!dotfile.empty()) {
+    //     std::cout << "nondet:\n";
+    //     print_dot(cfg, dotfile);
+    //     std::cout << "---\n\n\n";
+    // }
     if (global_options.simplify) {
         // std::cout << "simplifying...\n";
         cfg.simplify();
@@ -128,8 +128,6 @@ int main(int argc, char** argv) {
         }
     }
     auto stats = collect_stats(cfg);
-    if (!dotfile.empty())
-        print_dot(cfg, dotfile);
 
     if (domain == "stats") {
         std::cout << std::hex << hash(raw_prog) << std::dec << "," << instruction_count;

@@ -427,6 +427,7 @@ class cfg final {
         // after removing useless blocks there can be opportunities to
         // merge more blocks.
         merge_blocks();
+        remove_joining_blocks();
         merge_blocks();
     }
 
@@ -508,6 +509,25 @@ class cfg final {
 
     // remove blocks that cannot reach the exit block
     void remove_useless_blocks();
+
+    void remove_joining_blocks() {
+        visited_t useless;
+        for (auto const& [label, bb] : *this) {
+            if (bb.size() == 0 && label != *m_exit) {
+                useless.insert(label);
+            }
+        }
+
+        for (const label_t& label : useless) {
+            auto& bb = get_node(label);
+            for (const label_t& prev : bb.m_prev) {
+                for (const label_t& next : bb.m_next) {
+                    get_node(prev) >> get_node(next);
+                }
+            }
+            remove(label);
+        }
+    }
 };
 
 // A lightweight object that wraps a reference to a CFG into a
@@ -733,7 +753,7 @@ inline void cfg<Language>::remove_useless_blocks() {
     visited_t useful, useless;
     mark_alive_blocks(rev_cfg.entry(), rev_cfg, useful);
 
-    for (auto const& [label, bb] : *this) {
+    for (auto const& [label, _] : *this) {
         if (!(useful.count(label) > 0)) {
             useless.insert(label);
         }
