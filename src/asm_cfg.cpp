@@ -134,7 +134,7 @@ static label_t pop(set<label_t>& s) {
     return l;
 }
 
-Cfg to_nondet(const Cfg& cfg, bool expand_locks) {
+Cfg to_nondet(const Cfg& cfg) {
     Cfg res(cfg.entry());
     for (auto const& [this_label, _] : cfg) {
         BasicBlock const& bb = cfg.get_node(this_label);

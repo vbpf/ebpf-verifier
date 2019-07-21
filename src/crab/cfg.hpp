@@ -99,8 +99,7 @@ class basic_block final {
         m_ts.emplace_back(T{std::forward<Args>(args)...});
     }
 
-    template <typename T>
-    void insert(const T& arg) {
+    void insert(const Language& arg) {
         m_ts.push_back(arg);
     }
 

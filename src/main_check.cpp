@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
         if (domain == "stats") {
             std::cout << "hash";
             std::cout << ",instructions";
-            for (string h : Cfg::stats_headers()) {
+            for (string h : stats_headers()) {
                 std::cout << "," << h;
             }
         } else {
@@ -104,18 +104,17 @@ int main(int argc, char** argv) {
 
     int instruction_count = prog.size();
 
-    Cfg cfg = Cfg::make(prog);
-    cfg = cfg.to_nondet(false);
+    Cfg cfg = to_nondet(instruction_seq_to_cfg(prog));
     if (global_options.simplify) {
         cfg.simplify();
     }
-    auto stats = cfg.collect_stats();
+    auto stats = collect_stats(cfg);
     if (!dotfile.empty())
         print_dot(cfg, dotfile);
 
     if (domain == "stats") {
         std::cout << std::hex << hash(raw_prog) << std::dec << "," << instruction_count;
-        for (string h : Cfg::stats_headers()) {
+        for (string h : stats_headers()) {
             std::cout << "," << stats.at(h);
         }
         std::cout << "\n";
