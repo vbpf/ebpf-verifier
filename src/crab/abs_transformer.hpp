@@ -207,8 +207,6 @@ class intra_abs_transformer {
             }
         }
     }
-
-    void operator()(const std::monostate& stmt) { }
 };
 
 enum class check_kind_t { Safe, Error, Warning, Unreachable };
