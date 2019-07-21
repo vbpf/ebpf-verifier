@@ -181,25 +181,26 @@ class basic_block final {
     }
 };
 
-using basic_block_t = basic_block<new_statement_t>;
-
 // Viewing basic_block_t with all statements reversed. Useful for
 // backward analysis.
-class basic_block_rev_t final {
+template <typename Language>
+class basic_block_rev final {
+    using basic_block_rev_t = basic_block_rev<Language>;
+    using basic_block_t = basic_block<Language>;
   public:
-    using succ_iterator = basic_block_t::succ_iterator;
-    using const_succ_iterator = basic_block_t::const_succ_iterator;
+    using succ_iterator = typename basic_block_t::succ_iterator;
+    using const_succ_iterator = typename basic_block_t::const_succ_iterator;
     using pred_iterator = succ_iterator;
     using const_pred_iterator = const_succ_iterator;
 
-    using iterator = basic_block_t::reverse_iterator;
-    using const_iterator = basic_block_t::const_reverse_iterator;
+    using iterator = typename basic_block_t::reverse_iterator;
+    using const_iterator = typename basic_block_t::const_reverse_iterator;
 
   private:
   public:
     basic_block_t& _bb;
 
-    basic_block_rev_t(basic_block_t& bb) : _bb(bb) {}
+    basic_block_rev(basic_block_t& bb) : _bb(bb) {}
 
     label_t label() const { return _bb.label(); }
 
@@ -243,6 +244,9 @@ class basic_block_rev_t final {
         return o;
     }
 };
+
+using basic_block_t = basic_block<new_statement_t>;
+using basic_block_rev_t = basic_block_rev<new_statement_t>;
 
 class cfg_t final {
   public:
