@@ -431,14 +431,13 @@ void machine_t::setup_entry(basic_block_t& entry) {
              .assume(1 <= machine.regs[1].value)
              .assume(machine.regs[1].value <= PTR_MAX)
              .assign(machine.regs[1].offset, 0)
-             .assign(machine.regs[1].region, T_CTX);
+             .assign(machine.regs[1].region, T_CTX)
+             .assume(0 <= machine.data_size)
+             .assume(machine.data_size <= 1 << 30);
 
     for (int i : {0, 2, 3, 4, 5, 6, 7, 8, 9}) {
         in(entry).assign(machine.regs[i].region, T_UNINIT);
     }
-
-    in(entry).assume(0 <= machine.data_size)
-             .assume(machine.data_size <= 1 << 30);
     if (machine.ctx_desc.meta >= 0) {
         in(entry).assume(machine.meta_size <= 0);
     } else {
