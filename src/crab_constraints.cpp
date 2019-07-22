@@ -187,6 +187,14 @@ struct basic_block_builder {
         }
         return *this;
     }
+
+    basic_block_builder& assert_no_overflow(variable_t v, debug_info di) {
+        // p1 = data_start; p1 += huge_positive; p1 <= p2 does not imply p1 >= data_start
+        assertion(v <= MAX_PACKET_OFF, di);
+        assertion(v >= -4098, di);
+        return *this;
+    }
+
 };
 
 basic_block_builder in(basic_block_t& bb) { return {bb}; }
@@ -765,12 +773,6 @@ basic_block_t& instruction_builder_t::exec_mem_access_indirect(basic_block_t& bl
     return *tmp;
 }
 
-void assert_no_overflow(basic_block_t& b, variable_t v, debug_info di) {
-    // p1 = data_start; p1 += huge_positive; p1 <= p2 does not imply p1 >= data_start
-    in(b).assertion(v <= MAX_PACKET_OFF, di)
-         .assertion(v >= -4098, di);
-}
-
 /** Should never occur */
 basic_block_t& instruction_builder_t::operator()(Undefined const& a) { assert(false); }
 
@@ -812,21 +814,21 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
     if (std::holds_alternative<Reg>(bin.v)) {
         in(block).assert_init(machine.reg(bin.v), di);
     }
+
     if (bin.op != Bin::Op::MOV) {
         in(block).assert_init(dst, di);
     }
 
     auto underflow = [&](basic_block_t& b) -> basic_block_t& {
-        auto& c = in(add_child(cfg, b, "underflow"))
-                 .assume(MY_INT_MIN > dst.value)
-                 .havoc(dst.value);
-        return *c;
+        return *in(add_child(cfg, b, "underflow"))
+               .assume(MY_INT_MIN > dst.value)
+               .havoc(dst.value);
     };
+
     auto overflow = [&](basic_block_t& b) -> basic_block_t& {
-        auto& c = in(add_child(cfg, b, "overflow"))
-                  .assume(dst.value > MY_INT_MAX)
-                  .havoc(dst.value);
-        return *c;
+        return *in(add_child(cfg, b, "overflow"))
+               .assume(dst.value > MY_INT_MAX)
+               .havoc(dst.value);
     };
 
     if (std::holds_alternative<Imm>(bin.v)) {
@@ -842,11 +844,9 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
                 return block;
             in(block).add(dst.value, dst.value, imm)
                      .add(dst.offset, dst.offset, imm);
-            if (imm > 0) {
-                return join(block, overflow(block));
-            } else {
-                return join(block, underflow(block));
-            }
+            return join(block, imm > 0
+                      ? overflow(block)
+                      : underflow(block));
         case Bin::Op::SUB:
             if (imm == 0)
                 return block;
@@ -923,19 +923,19 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
                            .assume(is_pointer(dst))
                            .assertion(src.region == T_NUM, di)
                            .add(dst.offset, dst.offset, src.value)
-                           .add(dst.value, dst.value, src.value);
-            assert_no_overflow(*ptr_dst, dst.offset, di);
+                           .add(dst.value, dst.value, src.value)
+                           .assert_no_overflow(dst.offset, di);
 
             auto& ptr_src = in(add_child(cfg, block, "ptr_src"))
-                .assume(is_pointer(src))
-                .assertion(dst.region == T_NUM, di)
-                .add(dst.offset, dst.value, src.offset)
-                .add(dst.value, dst.value, src.value);
-            assert_no_overflow(*ptr_src, dst.offset, di);
-            ptr_src.assign(dst.region, src.region)
-                   .havoc(machine.top)
-                   .assign(dst.value, machine.top)
-                   .assume(4098 <= dst.value);
+                           .assume(is_pointer(src))
+                           .assertion(dst.region == T_NUM, di)
+                           .add(dst.offset, dst.value, src.offset)
+                           .add(dst.value, dst.value, src.value)
+                           .assert_no_overflow(dst.offset, di)
+                           .assign(dst.region, src.region)
+                           .havoc(machine.top)
+                           .assign(dst.value, machine.top)
+                           .assume(4098 <= dst.value);
 
             auto& both_num = in(add_child(cfg, block, "both_num"))
                             .assume(dst.region == T_NUM)
@@ -958,8 +958,8 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
             {
                 auto& ptr_dst = in(add_child(cfg, *num_src, "ptr_dst"))
                                .assume(is_pointer(dst))
-                               .sub(dst.offset, dst.offset, src.value);
-                assert_no_overflow(*ptr_dst, dst.offset, di);
+                               .sub(dst.offset, dst.offset, src.value)
+                               .assert_no_overflow(dst.offset, di);
 
                 auto& both_num = in(add_child(cfg, *num_src, "both_num"))
                                 .assume(dst.region == T_NUM)
@@ -1005,9 +1005,9 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
                      .no_pointer(dst);
             break;
         case Bin::Op::MOV:
-            in(block).assign(dst.value, src.value);
-            in(block).assign(dst.offset, src.offset);
-            in(block).assign(dst.region, src.region);
+            in(block).assign(dst.value, src.value)
+                     .assign(dst.offset, src.offset)
+                     .assign(dst.region, src.region);
             break;
         case Bin::Op::ARSH:
             in(block).ashr(dst.value, dst.value, src.value) // = (int64_t)dst >> src;
@@ -1092,43 +1092,37 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
     for (ArgPair param : call.pairs) {
         dom_t arg = machine.regs[param.mem.v];
         dom_t sizereg = machine.regs[param.size.v];
-        in(*current).assertion(sizereg.region == T_NUM, di);
-        if (param.can_be_zero) {
-            in(*current).assertion(sizereg.value >= 0, di);
-        } else {
-            in(*current).assertion(sizereg.value > 0, di);
-        }
+        in(*current).assertion(sizereg.region == T_NUM, di)
+                    .assertion(param.can_be_zero ? sizereg.value >= 0 : sizereg.value > 0, di);
         auto assert_mem = [&](basic_block_t& ptr, bool may_write, bool may_read) -> basic_block_t& {
             in(ptr).assertion(is_pointer(arg), di)
                    .assertion(arg.value > 0, di);
 
             variable_t width = sizereg.value;
             auto assume_stack = [&]() -> basic_block_t& {
-                auto& mid = in(add_child(cfg, ptr, "assume_stack"))
-                           .assume(arg.region == T_STACK)
-                           .assertion(arg.offset + width <= 0, di)
-                           .assertion(arg.offset <= STACK_SIZE, di);
+                auto& mid = *in(add_child(cfg, ptr, "assume_stack"))
+                            .assume(arg.region == T_STACK)
+                            .assertion(arg.offset + width <= 0, di)
+                            .assertion(arg.offset <= STACK_SIZE, di);
                 if (may_write) {
-                    machine.stack_arr.havoc_num_region(*mid, -(width + arg.offset), width);
+                    machine.stack_arr.havoc_num_region(mid, -(width + arg.offset), width);
                 }
                 if (may_read) {
                     // TODO: check initialization
                 }
-                return *mid;
+                return mid;
             };
             auto assume_shared = [&]() -> basic_block_t& {
-                auto& mid = in(add_child(cfg, ptr, "assume_shared"))
-                           .assume(is_shared(arg))
-                           .assertion(arg.offset >= 0, di)
-                           .assertion(arg.offset <= arg.region - width, di);
-                return *mid;
+                return *in(add_child(cfg, ptr, "assume_shared"))
+                       .assume(is_shared(arg))
+                       .assertion(arg.offset >= 0, di)
+                       .assertion(arg.offset <= arg.region - width, di);
             };
             auto assume_data = [&]() -> basic_block_t& {
-                auto& mid = in(add_child(cfg, ptr, "assume_data"))
-                           .assume(arg.region == T_DATA)
-                           .assertion(machine.meta_size <= arg.offset, di)
-                           .assertion(arg.offset <= machine.data_size - width, di);
-                return *mid;
+                return *in(add_child(cfg, ptr, "assume_data"))
+                       .assume(arg.region == T_DATA)
+                       .assertion(machine.meta_size <= arg.offset, di)
+                       .assertion(arg.offset <= machine.data_size - width, di);
             };
             auto& res = join(assume_stack(), assume_shared());
             if (machine.ctx_desc.data >= 0) {
@@ -1162,7 +1156,7 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
         //    || machine.info.map_defs.at(map_type).type == MapType::HASH_OF_MAPS) { }
         in(*current).assign(r0.region, map_value_size)
                     .havoc(r0.value)
-        // This is the only way to get a null pointer - note the `<=`:
+                    // This is the only way to get a null pointer - note the `<=`:
                     .assume(0 <= r0.value)
                     .assume(r0.value <= PTR_MAX)
                     .assign(r0.offset, 0);
@@ -1208,11 +1202,10 @@ basic_block_t& instruction_builder_t::operator()(Assume const& b) {
                 return *numbers;
             };
             auto pointers = [&]() -> basic_block_t& {
-                auto& pointers = in(add_child(cfg, *same, "pointers"))
-                                .assume(is_pointer(dst))
-                                .assertion(is_singleton(dst), di)
-                                .assume(jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset));
-                return *pointers;
+                return *in(add_child(cfg, *same, "pointers"))
+                       .assume(is_pointer(dst))
+                       .assertion(is_singleton(dst), di)
+                       .assume(jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset));
             };
             return join(numbers(), pointers());
         };
