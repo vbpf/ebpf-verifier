@@ -223,16 +223,21 @@ struct basic_block_builder {
 
 basic_block_builder in(basic_block_t& bb) { return {bb}; }
 
-struct array_dom_t {
+struct machine_t final {
+    ptype_descr ctx_desc;
     variable_factory& vfac;
+    std::vector<dom_t> regs;
+
+    program_info info;
+
     variable_t values;
     variable_t offsets;
     variable_t regions;
 
-    array_dom_t(variable_factory& vfac, std::string name)
-        : vfac(vfac), values{vfac[std::string(name + "_r")], crab::TYPE::ARR, 64},
-          offsets{vfac[std::string(name + "_off")], crab::TYPE::ARR, 64}, regions{vfac[std::string(name + "_t")],
-                                                                                  crab::TYPE::ARR, 64} {}
+    variable_t meta_size{vfac["meta_size"], crab::TYPE::INT, 64};
+    variable_t data_size{vfac["data_size"], crab::TYPE::INT, 64};
+
+    variable_t top{vfac["*"], crab::TYPE::INT, 64};
 
     template <typename T, typename W>
     basic_block_t& load(basic_block_t& block, dom_t data_reg, const T& offset, W width, cfg_t& cfg) {
@@ -297,20 +302,6 @@ struct array_dom_t {
                    .array_store(offsets, offset, scratch, width);
         }
     }
-};
-
-struct machine_t final {
-    ptype_descr ctx_desc;
-    variable_factory& vfac;
-    std::vector<dom_t> regs;
-    array_dom_t stack_arr{vfac, "S"};
-    variable_t meta_size{vfac[std::string("meta_size")], crab::TYPE::INT, 64};
-    variable_t data_size{vfac[std::string("data_size")], crab::TYPE::INT, 64};
-
-    variable_t top{vfac[std::string("*")], crab::TYPE::INT, 64};
-    variable_t num{vfac[std::string("T_NUM")], crab::TYPE::INT, 64};
-
-    program_info info;
 
     std::vector<dom_t> caller_saved_registers() const {
         return {regs[1], regs[2], regs[3], regs[4], regs[5]};
@@ -429,7 +420,11 @@ cfg_t build_crab_cfg(variable_factory& vfac, Cfg const& simple_cfg, program_info
 }
 
 machine_t::machine_t(variable_factory& vfac, program_info info)
-    : ctx_desc{get_descriptor(info.program_type)}, vfac{vfac}, info{info} {
+    : ctx_desc{get_descriptor(info.program_type)}, vfac{vfac}, info{info},
+        values{vfac["S_r"],    crab::TYPE::ARR, 64},
+        offsets{vfac["S_off"], crab::TYPE::ARR, 64},
+        regions{vfac["S_t"],   crab::TYPE::ARR, 64}
+ {
     for (int i = 0; i < 12; i++) {
         regs.emplace_back(vfac, i);
     }
@@ -447,7 +442,6 @@ machine_t::machine_t(variable_factory& vfac, program_info info)
 void machine_t::setup_entry(basic_block_t& entry) {
     machine_t& machine = *this;
     in(entry).havoc(machine.top)
-             .assign(machine.num, T_NUM)
              .assume(STACK_SIZE <= machine.regs[10].value)
              .assign(machine.regs[10].offset, 0) // XXX: Maybe start with STACK_SIZE
              .assign(machine.regs[10].region, T_STACK)
@@ -574,17 +568,17 @@ basic_block_t& instruction_builder_t::exec_stack_access(basic_block_t& block, bo
                .assertion(addr >= 0, di)
                .assertion(addr <= STACK_SIZE - width, di);
     if (is_load) {
-        return *in(machine.stack_arr.load(*mid, data_reg, addr, width, cfg))
+        return *in(machine.load(*mid, data_reg, addr, width, cfg))
                .assume(is_init(data_reg));
         /* FIX: requires loop
         variable_t tmp{machine.vfac["tmp"], crab::TYPE::INT, 64};
         for (int idx=1; idx < width; idx++) {
-            mid.array_load(tmp, machine.stack_arr.regions, addr+idx, 1);
+            mid.array_load(tmp, machine.regions, addr+idx, 1);
             in(mid).assertion(eq(tmp, data_reg.region), di);
         }*/
     } else {
         mid.assert_init(data_reg, di);
-        return *in(machine.stack_arr.store(*mid, addr, data_reg, width, di, cfg))
+        return *in(machine.store(*mid, addr, data_reg, width, di, cfg))
                .havoc(machine.top);
     }
 }
@@ -700,13 +694,13 @@ basic_block_t& instruction_builder_t::exec_direct_stack_load(basic_block_t& bloc
                                                              int width) {
     assert_in_stack(block, offset, width, di);
     int start = get_start(offset, width);
-    auto& child = machine.stack_arr.load(block, data_reg, start, width, cfg);
+    auto& child = machine.load(block, data_reg, start, width, cfg);
     in(child).assume(is_init(data_reg));
 
     /* FIX
     variable_t tmp{machine.vfac["tmp"], crab::TYPE::INT, 64};
     for (int idx=1; idx < width; idx++) {
-        in(*b).array_load(tmp, machine.stack_arr.regions, offset+idx, 1);
+        in(*b).array_load(tmp, machine.regions, offset+idx, 1);
         in(*b).assertion(eq(tmp, data_reg.region), di);
     }
     */
@@ -719,7 +713,7 @@ basic_block_t& instruction_builder_t::exec_direct_stack_store(basic_block_t& blo
                                                               int width) {
     assert_in_stack(block, offset, width, di);
     in(block).assert_init(data_reg, di);
-    return machine.stack_arr.store(block, (-offset) - width, data_reg, width, di, cfg);
+    return machine.store(block, (-offset) - width, data_reg, width, di, cfg);
 }
 
 /** Translate a direct store of a number, with r10 as base address (known to be a store to the stack).
@@ -730,10 +724,10 @@ basic_block_t& instruction_builder_t::exec_direct_stack_store_immediate(basic_bl
     int start = get_start(offset, width);
     in(block).havoc(machine.top);
     for (int i = start; i <= start + width; i++) {
-        in(block).array_store(machine.stack_arr.regions, i, T_NUM, 1)
-                 .array_store(machine.stack_arr.offsets, i, machine.top, 1);
+        in(block).array_store(machine.regions, i, T_NUM, 1)
+                 .array_store(machine.offsets, i, machine.top, 1);
     }
-    in(block).array_store(machine.stack_arr.values, start, immediate, width);
+    in(block).array_store(machine.values, start, immediate, width);
     return block;
 }
 
@@ -1089,7 +1083,7 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
                             .assertion(arg.offset + width <= 0, di)
                             .assertion(arg.offset <= STACK_SIZE, di);
                 if (may_write) {
-                    machine.stack_arr.havoc_num_region(mid, -(width + arg.offset), width);
+                    machine.havoc_num_region(mid, -(width + arg.offset), width);
                 }
                 if (may_read) {
                     // TODO: check initialization
@@ -1289,9 +1283,11 @@ basic_block_t& instruction_builder_t::operator()(Mem const& b) {
             } else {
                 // FIX: STW stores long long immediate
                 variable_t tmp{machine.vfac["tmp"], crab::TYPE::INT, 64};
+                variable_t num{machine.vfac["T_NUM"], crab::TYPE::INT, 64};
                 in(block).assign(tmp, imm)
-                         .havoc(machine.top);
-                return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, machine.num}, offset,
+                         .havoc(machine.top)
+                         .assign(num, T_NUM);
+                return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, num}, offset,
                                                 width);
             }
         }
