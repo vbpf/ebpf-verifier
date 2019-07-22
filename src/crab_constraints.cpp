@@ -109,17 +109,31 @@ struct basic_block_builder {
     using linear_expression_t = crab::linear_expression_t;
 
     basic_block_t& bb;
+    basic_block_builder* parent{};
+    bool cond = true;
 
-    basic_block_builder(basic_block_t& bb) : bb(bb) { }
-    /// To build statements
+    basic_block_builder(basic_block_t& bb, basic_block_builder* parent=nullptr, bool cond=true) : bb(bb), parent(parent), cond(cond) { }
 
     basic_block_t& operator*() { return bb; }
-    basic_block_t* operator->() { return &bb; }
 
     template <typename T, typename... Args>
     basic_block_builder& insert(Args&&... args) {
-        bb.insert<T>(std::forward<Args>(args)...);
+        if (cond)
+            bb.insert<T>(std::forward<Args>(args)...);
         return *this;
+    }
+
+    std::unique_ptr<basic_block_builder> where(bool new_condition) {
+        return std::make_unique<basic_block_builder>(bb, this, new_condition);
+    }
+
+    std::unique_ptr<basic_block_builder> otherwise() {
+        return std::make_unique<basic_block_builder>(bb, parent, !cond);
+    }
+
+    basic_block_builder& done() {
+        assert(parent);
+        return *parent;
     }
 
     basic_block_builder& add(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::ADD, op1, op2); }
@@ -442,15 +456,12 @@ void machine_t::setup_entry(basic_block_t& entry) {
              .assign(machine.regs[1].offset, 0)
              .assign(machine.regs[1].region, T_CTX)
              .assume(0 <= machine.data_size)
-             .assume(machine.data_size <= 1 << 30);
-
+             .assume(machine.data_size <= 1 << 30)
+             .where(machine.ctx_desc.meta >= 0)->assume(machine.meta_size <= 0)
+                                   .otherwise()->assign(machine.meta_size, 0)
+             .done();
     for (int i : {0, 2, 3, 4, 5, 6, 7, 8, 9}) {
         in(entry).assign(machine.regs[i].region, T_UNINIT);
-    }
-    if (machine.ctx_desc.meta >= 0) {
-        in(entry).assume(machine.meta_size <= 0);
-    } else {
-        in(entry).assign(machine.meta_size, 0);
     }
 }
 
@@ -593,18 +604,18 @@ template <typename W>
 basic_block_t& instruction_builder_t::exec_shared_access(basic_block_t& block, bool is_load, dom_t mem_reg,
                                                          dom_t data_reg, int offset, W width) {
     linear_expression_t addr = mem_reg.offset + offset;
-    auto& mid = in(add_child(cfg, block, "assume_shared"))
-               .assume(is_shared(mem_reg))
-               .assertion(addr >= 0, di)
-               .assertion(addr <= mem_reg.region - width, di);
-    if (is_load) {
-        mid.havoc(data_reg.value)
-           .assign(data_reg.region, T_NUM)
-           .havoc(data_reg.offset);
-    } else {
-        mid.assertion(data_reg.region == T_NUM, di);
-    }
-    return *mid;
+    return *in(add_child(cfg, block, "assume_shared"))
+           .assume(is_shared(mem_reg))
+           .assertion(addr >= 0, di)
+           .assertion(addr <= mem_reg.region - width, di)
+           .where(is_load)
+                ->havoc(data_reg.value)
+                 .assign(data_reg.region, T_NUM)
+                 .havoc(data_reg.offset)
+           .otherwise()
+                ->assertion(data_reg.region == T_NUM, di)
+           .done();
+
 }
 
 /** Translate a packet memory access
@@ -617,16 +628,15 @@ basic_block_t& instruction_builder_t::exec_data_access(basic_block_t& block, boo
                                                        dom_t data_reg, int offset, W width) {
     linear_expression_t addr = mem_reg.offset + offset;
 
-    auto& mid = in(add_child(cfg, block, "assume_data"))
-               .assume(mem_reg.region == T_DATA)
-               .assertion(machine.meta_size <= addr, di)
-               .assertion(addr <= machine.data_size - width, di);
-    if (is_load) {
-        mid.havoc(data_reg.offset)
-           .havoc(data_reg.value)
-           .assign(data_reg.region, T_NUM);
-    }
-    return *mid;
+    return *in(add_child(cfg, block, "assume_data"))
+           .assume(mem_reg.region == T_DATA)
+           .assertion(machine.meta_size <= addr, di)
+           .assertion(addr <= machine.data_size - width, di)
+           .where(is_load)
+                ->havoc(data_reg.offset)
+                 .havoc(data_reg.value)
+                 .assign(data_reg.region, T_NUM)
+           .done();
 }
 
 /** Translate memory access to the context.
@@ -740,12 +750,10 @@ basic_block_t& instruction_builder_t::exec_mem_access_indirect(basic_block_t& bl
                                                                dom_t mem_reg, dom_t data_reg, int offset, W width) {
     bool can_ctx = is_load || !is_ST;
     in(block).assertion(mem_reg.value != 0, di)
-             .assertion(is_not_num(mem_reg), di);
-    if (!can_ctx) {
-        // "BPF_ST stores into R1 context is not allowed"
-        // (This seems somewhat arbitrary)
-        in(block).assertion(mem_reg.region != T_CTX, di);
-    }
+             .assertion(is_not_num(mem_reg), di)
+            // "BPF_ST stores into R1 context is not allowed"
+            // (This seems somewhat arbitrary)
+             .where(!can_ctx)->assertion(mem_reg.region != T_CTX, di).done();
     basic_block_t* tmp = &join(exec_stack_access(block, is_load, mem_reg, data_reg, offset, width),
                                exec_shared_access(block, is_load, mem_reg, data_reg, offset, width));
     if (can_ctx) {
@@ -767,7 +775,8 @@ basic_block_t& instruction_builder_t::operator()(Undefined const& a) { assert(fa
  */
 basic_block_t& instruction_builder_t::operator()(LoadMapFd const& ld) {
     auto reg = machine.reg(ld.dst);
-    return *in(block).assign(reg.region, T_MAP)
+    return *in(block)
+           .assign(reg.region, T_MAP)
            .assign(reg.value, ld.mapfd)
            .havoc(reg.offset);
 }
@@ -775,7 +784,8 @@ basic_block_t& instruction_builder_t::operator()(LoadMapFd const& ld) {
 /** load-increment-store, from shared regions only. */
 basic_block_t& instruction_builder_t::operator()(LockAdd const& b) {
     auto addr = machine.reg(b.access.basereg).offset + b.access.offset;
-    return *in(block).assertion(is_shared(machine.reg(b.access.basereg)), di)
+    return *in(block)
+           .assertion(is_shared(machine.reg(b.access.basereg)), di)
            .assertion(machine.reg(b.valreg).region == T_NUM, di)
            .assertion(addr >= 0, di)
            .assertion(addr <= machine.reg(b.access.basereg).region - b.access.width, di);
@@ -792,14 +802,9 @@ basic_block_t& instruction_builder_t::operator()(LockAdd const& b) {
  */
 basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
     dom_t& dst = machine.reg(bin.dst);
-
-    if (std::holds_alternative<Reg>(bin.v)) {
-        in(block).assert_init(machine.reg(bin.v), di);
-    }
-
-    if (bin.op != Bin::Op::MOV) {
-        in(block).assert_init(dst, di);
-    }
+    auto& b = in(block)
+             .where(bin.op != Bin::Op::MOV)->assert_init(dst, di).done();
+    if (std::holds_alternative<Reg>(bin.v)) b.assert_init(machine.reg(bin.v), di);
 
     auto underflow = [&](basic_block_t& b) -> basic_block_t& {
         return *in(add_child(cfg, b, "underflow"))
@@ -868,12 +873,11 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
             break;
         case Bin::Op::AND:
             // FIX: what to do with ptr&-8 as in counter/simple_loop_unrolled?
-            in(block).bitwise_and(dst.value, dst.value, imm);
-            if ((int32_t)imm > 0) {
-                in(block).assume(dst.value <= imm)
-                         .assume(0 <= dst.value);
-            }
-            in(block).no_pointer(dst);
+            in(block).bitwise_and(dst.value, dst.value, imm)
+            .where((int32_t)imm > 0)->assume(dst.value <= imm)
+                                     .assume(0 <= dst.value)
+                                     .done()
+            .no_pointer(dst);
             break;
         case Bin::Op::RSH:
             in(block).ashr(dst.value, dst.value, imm)
@@ -997,9 +1001,7 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
             break;
         }
     }
-
-    if (!bin.is64)
-        in(block).bitwise_and(dst.value, dst.value, UINT32_MAX);
+    in(block).where(!bin.is64)->bitwise_and(dst.value, dst.value, UINT32_MAX).done();
 
     return block;
 }
@@ -1246,7 +1248,8 @@ basic_block_t& instruction_builder_t::operator()(Packet const& b) {
      * Output:
      *   R0 - 8/16/32-bit skb data converted to cpu endianness
      */
-    return *in(block).assertion(machine.regs[6].region == T_CTX, di)
+    return *in(block)
+           .assertion(machine.regs[6].region == T_CTX, di)
            .assign(machine.regs[0].region, T_NUM)
            .havoc(machine.regs[0].offset)
            .havoc(machine.regs[0].value)
