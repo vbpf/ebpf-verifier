@@ -267,7 +267,7 @@ class instruction_builder_t final {
  * joined together.
  */
 cfg_t build_crab_cfg(variable_factory& vfac, Cfg const& simple_cfg, program_info info) {
-    cfg_t cfg(entry_label());
+    cfg_t cfg(entry_label(), simple_cfg.exit());
     machine_t machine(vfac, info);
     {
         auto& entry = cfg.insert(entry_label());
@@ -294,9 +294,7 @@ cfg_t build_crab_cfg(variable_factory& vfac, Cfg const& simple_cfg, program_info
             }
         }
         auto [b, e] = bb.next_blocks();
-        if (b == e) {
-            cfg.set_exit(exit->label());
-        } else {
+        if (b != e) {
             for (label_t label : std::vector<label_t>(b, e))
                 *exit >> cfg.insert(label);
         }

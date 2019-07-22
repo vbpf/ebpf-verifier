@@ -39,7 +39,13 @@ static bool has_fall(Instruction ins) {
 }
 
 Cfg instruction_seq_to_cfg(const InstructionSeq& insts) {
-    Cfg cfg("0");
+    string exit_label;
+    for (const auto& [label, inst] : insts) {
+        if (std::holds_alternative<Exit>(inst))
+            exit_label = label;
+    }
+    if (exit_label.empty()) throw std::runtime_error("no exit");
+    Cfg cfg("0", exit_label);
     std::optional<label_t> falling_from = {};
     for (const auto& [label, inst] : insts) {
 
@@ -136,7 +142,7 @@ static label_t pop(set<label_t>& s) {
 }
 
 Cfg to_nondet(const Cfg& cfg) {
-    Cfg res(cfg.entry());
+    Cfg res(cfg.entry(), cfg.exit());
     for (auto const& [this_label, bb] : cfg) {
         BasicBlock& newbb = res.insert(this_label);
 
