@@ -149,7 +149,10 @@ struct basic_block_builder {
     basic_block_builder& ashr(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::ASHR, op1, op2); }
     basic_block_builder& ashr(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::ASHR, op1, op2); }
     basic_block_builder& assign(variable_t lhs, linear_expression_t rhs) { return insert<crab::assign_t>(lhs, rhs); }
-    basic_block_builder& assume(linear_constraint_t cst) { return insert<crab::assume_t>(cst); }
+    basic_block_builder& assume(linear_constraint_t cst) {
+        if (cst.is_tautology()) return *this;
+        return insert<crab::assume_t>(cst);
+    }
     basic_block_builder& havoc(variable_t lhs) { return insert<crab::havoc_t>(lhs); }
     basic_block_builder& select(variable_t lhs, variable_t v, linear_expression_t e1, linear_expression_t e2) {
         linear_constraint_t cond(exp_gte(v, 1));
@@ -175,6 +178,14 @@ struct basic_block_builder {
     }
     basic_block_builder& no_pointer(dom_t v) {
         return assign(v.region, T_NUM).havoc(v.offset);
+    }
+    basic_block_builder& scratch(std::vector<dom_t> regs) {
+        for (dom_t& reg : regs) {
+            havoc(reg.value);
+            havoc(reg.offset);
+            assign(reg.region, T_UNINIT);
+        }
+        return *this;
     }
 };
 
@@ -270,6 +281,10 @@ struct machine_t final {
 
     program_info info;
 
+    std::vector<dom_t> caller_saved_registers() const {
+        return {regs[1], regs[2], regs[3], regs[4], regs[5]};
+    }
+
     dom_t& reg(Value v) { return regs[std::get<Reg>(v).v]; }
 
     void setup_entry(basic_block_t& entry);
@@ -307,8 +322,6 @@ class instruction_builder_t final {
 
     // derived fields
     debug_info di;
-
-    void scratch_regs(basic_block_t& block);
 
     template <typename W>
     basic_block_t& exec_stack_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset,
@@ -526,18 +539,6 @@ static void wrap32(basic_block_t& block, variable_t& dst_value) {
 template <typename T>
 static void move_into(vector<T>& dst, vector<T>&& src) {
     dst.insert(dst.end(), std::make_move_iterator(src.begin()), std::make_move_iterator(src.end()));
-}
-
-/** Set caller-saved registers r1-r5 as uninitialized.
- *
- * This happens after a function call and a safe packet access.
- */
-void instruction_builder_t::scratch_regs(basic_block_t& block) {
-    for (int i = 1; i <= 5; i++) {
-        in(block).havoc(machine.regs[i].value)
-                 .havoc(machine.regs[i].offset)
-                 .assign(machine.regs[i].region, T_UNINIT);
-    }
 }
 
 /** Translate a memory access to a location that might be the stack (but do not explicitly use r10).
@@ -1154,7 +1155,7 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
         }
     }
     dom_t r0 = machine.regs[0];
-    scratch_regs(*current);
+    in(*current).scratch(machine.caller_saved_registers());
     if (call.returns_map) {
         // no support for map-in-map yet:
         //   if (machine.info.map_defs.at(map_type).type == MapType::ARRAY_OF_MAPS
@@ -1195,45 +1196,40 @@ basic_block_t& instruction_builder_t::operator()(Assume const& b) {
     if (std::holds_alternative<Reg>(cond.right)) {
         dom_t& src = machine.reg(cond.right);
         auto same_type = [&]() -> basic_block_t& {
-            auto& same = add_child(cfg, block, "same_type");
-            in(same).assume(eq(dst.region, src.region));
+            auto& same = in(add_child(cfg, block, "same_type"))
+                        .assume(eq(dst.region, src.region));
             auto numbers = [&]() -> basic_block_t& {
-                auto& numbers = add_child(cfg, same, "numbers");
-                in(numbers).assume(dst.region == T_NUM);
+                auto& numbers = in(add_child(cfg, *same, "numbers"))
+                               .assume(dst.region == T_NUM);
                 if (!is_unsigned_cmp(cond.op)) {
                     for (auto c : jmp_to_cst_reg(cond.op, dst.value, src.value))
-                        in(numbers).assume(c);
+                        numbers.assume(c);
                 }
-                return numbers;
+                return *numbers;
             };
             auto pointers = [&]() -> basic_block_t& {
-                auto& pointers = in(add_child(cfg, same, "pointers"))
+                auto& pointers = in(add_child(cfg, *same, "pointers"))
                                 .assume(is_pointer(dst))
-                                .assertion(is_singleton(dst), di);
-                linear_constraint_t offset_cst = jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset);
-                if (!offset_cst.is_tautology()) {
-                    pointers.assume(offset_cst);
-                }
+                                .assertion(is_singleton(dst), di)
+                                .assume(jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset));
                 return *pointers;
             };
             return join(numbers(), pointers());
         };
         auto different_type = [&]() -> basic_block_t& {
-            auto& different = add_child(cfg, block, "different_type");
-            in(different).assume(neq(dst.region, src.region));
+            auto& different = in(add_child(cfg, block, "different_type"))
+                             .assume(neq(dst.region, src.region));
             auto null_src = [&]() -> basic_block_t& {
-                auto& null_src = in(add_child(cfg, different, "null_src"))
-                                .assume(is_pointer(dst))
-                                .assertion(src.region == T_NUM)
-                                .assertion(src.value == 0, di);
-                return *null_src;
+                return *in(add_child(cfg, *different, "null_src"))
+                       .assume(is_pointer(dst))
+                       .assertion(src.region == T_NUM)
+                       .assertion(src.value == 0, di);
             };
             auto null_dst = [&]() -> basic_block_t& {
-                auto& null_dst = in(add_child(cfg, different, "null_dst"))
-                                .assume(is_pointer(src))
-                                .assertion(dst.region == T_NUM)
-                                .assertion(dst.value == 0, di);
-                return *null_dst;
+                return *in(add_child(cfg, *different, "null_dst"))
+                       .assume(is_pointer(src))
+                       .assertion(dst.region == T_NUM)
+                       .assertion(dst.value == 0, di);
             };
             return join(null_src(), null_dst());
         };
@@ -1276,12 +1272,11 @@ basic_block_t& instruction_builder_t::operator()(Packet const& b) {
      * Output:
      *   R0 - 8/16/32-bit skb data converted to cpu endianness
      */
-    in(block).assertion(machine.regs[6].region == T_CTX, di)
-             .assign(machine.regs[0].region, T_NUM)
-             .havoc(machine.regs[0].offset)
-             .havoc(machine.regs[0].value);
-    scratch_regs(block);
-    return block;
+    return *in(block).assertion(machine.regs[6].region == T_CTX, di)
+           .assign(machine.regs[0].region, T_NUM)
+           .havoc(machine.regs[0].offset)
+           .havoc(machine.regs[0].value)
+           .scratch(machine.caller_saved_registers());
 }
 
 /** Generate constraints and instructions for memory accesses.
