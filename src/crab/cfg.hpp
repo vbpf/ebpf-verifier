@@ -99,9 +99,7 @@ class basic_block final {
         m_ts.emplace_back(T{std::forward<Args>(args)...});
     }
 
-    void insert(const Language& arg) {
-        m_ts.push_back(arg);
-    }
+    void insert(const Language& arg) { m_ts.push_back(arg); }
 
     basic_block(const label_t& _label) : m_label(_label) {}
 
@@ -188,6 +186,7 @@ template <typename Language>
 class basic_block_rev final {
     using basic_block_rev_t = basic_block_rev<Language>;
     using basic_block_t = basic_block<Language>;
+
   public:
     using succ_iterator = typename basic_block_t::succ_iterator;
     using const_succ_iterator = typename basic_block_t::const_succ_iterator;
@@ -283,7 +282,7 @@ class cfg final {
 
   private:
     label_t m_entry;
-    std::optional<label_t> m_exit;
+    label_t m_exit;
     basic_block_map_t m_blocks;
 
     using visited_t = std::unordered_set<label_t>;
@@ -306,8 +305,6 @@ class cfg final {
     }
 
   public:
-    cfg(label_t entry) : m_entry(entry), m_exit(std::nullopt) { m_blocks.emplace(entry, entry); }
-
     cfg(label_t entry, label_t exit) : m_entry(entry), m_exit(exit) {
         m_blocks.emplace(entry, entry);
         m_blocks.emplace(exit, exit);
@@ -319,17 +316,7 @@ class cfg final {
 
     ~cfg() = default;
 
-    bool has_exit() const { return (bool)m_exit; }
-
-    label_t exit() const {
-        if (has_exit())
-            return *m_exit;
-        CRAB_ERROR("cfg_t does not have an exit block");
-    }
-
-    //! set method to mark the exit block after the cfg_t has been
-    //! created.
-    void set_exit(label_t exit) { m_exit = exit; }
+    label_t exit() const { return m_exit; }
 
     // --- Begin ikos fixpoint API
 
@@ -343,13 +330,9 @@ class cfg final {
         return boost::make_iterator_range(get_node(_label).prev_blocks());
     }
 
-    succ_range next_nodes(label_t _label) {
-        return boost::make_iterator_range(get_node(_label).next_blocks());
-    }
+    succ_range next_nodes(label_t _label) { return boost::make_iterator_range(get_node(_label).next_blocks()); }
 
-    pred_range prev_nodes(label_t _label) {
-        return boost::make_iterator_range(get_node(_label).prev_blocks());
-    }
+    pred_range prev_nodes(label_t _label) { return boost::make_iterator_range(get_node(_label).prev_blocks()); }
 
     basic_block_t& get_node(label_t _label) {
         auto it = m_blocks.find(_label);
@@ -452,22 +435,24 @@ class cfg final {
         return get_node(*(rng.begin()));
     }
 
-    void merge_blocks_rec(label_t curId, visited_t& visited) {
-        if (!visited.insert(curId).second)
+    void merge_blocks_rec(label_t current_label, visited_t& visited) {
+        if (!visited.insert(current_label).second)
             return;
 
-        auto& cur = get_node(curId);
+        auto& cur = get_node(current_label);
 
-        if (has_one_child(curId) && has_one_parent(curId)) {
-            auto& parent = get_parent(curId);
-            auto& child = get_child(curId);
+        if (has_one_child(current_label) && has_one_parent(current_label)) {
+            auto& parent = get_parent(current_label);
+            auto& child = get_child(current_label);
 
             // Merge with its parent if it's its only child.
             if (has_one_child(parent.label())) {
                 // move all statements from cur to parent
                 parent.move_back(cur);
-                visited.erase(curId);
-                remove(curId);
+                visited.erase(current_label);
+                if (current_label == m_exit)
+                    m_exit = child.label();
+                remove(current_label);
                 parent >> child;
                 merge_blocks_rec(child.label(), visited);
                 return;
@@ -505,11 +490,12 @@ class cfg final {
     void remove_joining_blocks() {
         visited_t useless;
         for (auto const& [label, bb] : *this) {
-            if (bb.size() == 0 && label != *m_exit) {
+            if (bb.size() == 0 && label != m_exit) {
                 useless.insert(label);
             }
         }
-
+        if (useless.count(m_exit))
+            CRAB_ERROR("exit removed??");
         for (const label_t& label : useless) {
             auto& bb = get_node(label);
             for (const label_t& prev : bb.m_prev) {
@@ -530,6 +516,7 @@ class cfg_ref final {
     using basic_block_rev_t = basic_block_rev<Language>;
     using cfg_t = cfg<Language>;
     using cfg_ref_t = cfg_ref<Language>;
+
   public:
     // cfg_t's typedefs
     using node_t = typename cfg_t::node_t;
@@ -591,8 +578,6 @@ class cfg_ref final {
 
     const_label_iterator label_end() const { return get().label_end(); }
 
-    bool has_exit() const { return get().has_exit(); }
-
     label_t exit() const { return get().exit(); }
 
     friend crab_os& operator<<(crab_os& o, const cfg_ref_t& cfg) { return o << cfg.get(); }
@@ -602,7 +587,6 @@ class cfg_ref final {
 
     void simplify() { get().simplify(); }
 };
-
 
 // Viewing a cfg_t with all edges and block statements
 // reversed. Useful for backward analysis.
@@ -675,11 +659,7 @@ class cfg_rev final {
 
     cfg_rev(cfg_rev_t&& o) : _cfg(o._cfg), _rev_bbs(std::move(o._rev_bbs)) {}
 
-    label_t entry() const {
-        if (!_cfg.has_exit())
-            CRAB_ERROR("Entry not found!");
-        return _cfg.exit();
-    }
+    label_t entry() const { return _cfg.exit(); }
 
     const_succ_range next_nodes(label_t bb) const { return _cfg.prev_nodes(bb); }
 
@@ -719,8 +699,6 @@ class cfg_rev final {
 
     const_label_iterator label_end() const { return _cfg.label_end(); }
 
-    bool has_exit() const { return true; }
-
     label_t exit() const { return _cfg.entry(); }
 
     void write(crab_os& o) const {
@@ -737,16 +715,15 @@ class cfg_rev final {
 
 template <typename Language>
 inline void cfg<Language>::remove_useless_blocks() {
-    if (!has_exit())
-        return;
-
     cfg_rev<Language> rev_cfg(*this);
 
     visited_t useful, useless;
     mark_alive_blocks(rev_cfg.entry(), rev_cfg, useful);
 
+    if (!useful.count(m_exit))
+        CRAB_ERROR("Exit block must be reachable");
     for (auto const& [label, _] : *this) {
-        if (!(useful.count(label) > 0)) {
+        if (!useful.count(label)) {
             useless.insert(label);
         }
     }
@@ -768,13 +745,11 @@ inline basic_block<Language>& cfg<Language>::insert(label_t _label) {
 
 template <typename Language>
 inline void cfg<Language>::remove(label_t _label) {
-    if (_label == m_entry) {
+    if (_label == m_entry)
         CRAB_ERROR("Cannot remove entry block");
-    }
 
-    if (m_exit && *m_exit == _label) {
+    if (_label == m_exit)
         CRAB_ERROR("Cannot remove exit block");
-    }
 
     std::vector<std::pair<basic_block_t*, basic_block_t*>> dead_edges;
     auto& bb = get_node(_label);
@@ -804,11 +779,13 @@ inline void cfg<Language>::remove_unreachable_blocks() {
     mark_alive_blocks(entry(), *this, alive);
 
     for (auto const& [label, bb] : *this) {
-        if (!(alive.count(label) > 0)) {
+        if (alive.count(label) <= 0) {
             dead.insert(label);
         }
     }
 
+    if (dead.count(m_exit))
+        CRAB_ERROR("Exit block must be reachable");
     for (auto _label : dead) {
         remove(_label);
     }
