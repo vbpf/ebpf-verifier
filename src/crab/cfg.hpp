@@ -105,9 +105,6 @@ class basic_block final {
 
     basic_block(const label_t& _label) : m_label(_label) {}
 
-    basic_block(basic_block_t&& bb)
-        : m_label(bb.label()), m_ts(std::move(bb.m_ts)), m_prev(bb.m_prev), m_next(bb.m_next) {}
-
     ~basic_block() = default;
 
     label_t label() const { return m_label; }
