@@ -112,8 +112,6 @@ class basic_block final {
 
     label_t label() const { return m_label; }
 
-    std::string name() const { return m_label; }
-
     iterator begin() { return (m_ts.begin()); }
     iterator end() { return (m_ts.end()); }
     const_iterator begin() const { return (m_ts.begin()); }
@@ -202,15 +200,12 @@ class basic_block_rev final {
     using iterator = typename basic_block_t::reverse_iterator;
     using const_iterator = typename basic_block_t::const_reverse_iterator;
 
-  private:
   public:
     basic_block_t& _bb;
 
     basic_block_rev(basic_block_t& bb) : _bb(bb) {}
 
     label_t label() const { return _bb.label(); }
-
-    std::string name() const { return _bb.name(); }
 
     iterator begin() { return _bb.rbegin(); }
 
@@ -231,7 +226,7 @@ class basic_block_rev final {
     std::pair<const_pred_iterator, const_pred_iterator> prev_blocks() const { return _bb.next_blocks(); }
 
     void write(crab_os& o) const {
-        o << name() << ":\n";
+        o << label() << ":\n";
         for (auto const& s : *this) {
             o << "  " << s << ";\n";
         }
