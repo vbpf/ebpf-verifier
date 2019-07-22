@@ -109,10 +109,13 @@ struct basic_block_builder {
     using linear_expression_t = crab::linear_expression_t;
 
     basic_block_t& bb;
+    variable_factory& vfac;
     basic_block_builder* parent{};
     bool cond = true;
 
-    basic_block_builder(basic_block_t& bb, basic_block_builder* parent=nullptr, bool cond=true) : bb(bb), parent(parent), cond(cond) { }
+    basic_block_builder(basic_block_t& bb, variable_factory& vfac, basic_block_builder* parent = nullptr,
+                        bool cond = true)
+        : bb(bb), vfac(vfac), parent(parent), cond(cond) {}
 
     basic_block_t& operator*() { return bb; }
 
@@ -124,11 +127,11 @@ struct basic_block_builder {
     }
 
     std::unique_ptr<basic_block_builder> where(bool new_condition) {
-        return std::make_unique<basic_block_builder>(bb, this, new_condition);
+        return std::make_unique<basic_block_builder>(bb, vfac, this, new_condition);
     }
 
     std::unique_ptr<basic_block_builder> otherwise() {
-        return std::make_unique<basic_block_builder>(bb, parent, !cond);
+        return std::make_unique<basic_block_builder>(bb, vfac, parent, !cond);
     }
 
     basic_block_builder& done() {
@@ -179,6 +182,11 @@ struct basic_block_builder {
     basic_block_builder& array_store(variable_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size) {
         return insert<crab::array_store_t>(arr, elem_size, idx, idx, v);
     }
+    basic_block_builder& array_forget(variable_t arr, linear_expression_t idx, linear_expression_t elem_size) {
+        variable_t scratch{vfac["scratch"], crab::TYPE::INT, 64};
+        havoc(scratch);
+        return insert<crab::array_store_t>(arr, elem_size, idx, idx, scratch);
+    }
     basic_block_builder& array_store_range(variable_t arr, linear_expression_t lb_idx, linear_expression_t ub_idx,
                         linear_expression_t v, linear_expression_t elem_size) {
         return insert<crab::array_store_t>(arr, elem_size, lb_idx, ub_idx, v);
@@ -221,8 +229,6 @@ struct basic_block_builder {
     }
 };
 
-basic_block_builder in(basic_block_t& bb) { return {bb}; }
-
 struct machine_t final {
     ptype_descr ctx_desc;
     variable_factory& vfac;
@@ -238,6 +244,8 @@ struct machine_t final {
     variable_t data_size{vfac["data_size"], crab::TYPE::INT, 64};
 
     variable_t top{vfac["*"], crab::TYPE::INT, 64};
+
+    basic_block_builder in(basic_block_t& bb) { return {bb, vfac}; }
 
     template <typename T, typename W>
     basic_block_t& load(basic_block_t& block, dom_t data_reg, const T& offset, W width, cfg_t& cfg) {
@@ -268,10 +276,8 @@ struct machine_t final {
         in(block).assign(lb, offset)
                  .assign(ub, offset + width)
                  .array_store_range(regions, lb, ub, T_NUM, 1)
-                 .havoc(scratch)
-                 .array_store(values, lb, scratch, width)
-                 .havoc(scratch)
-                 .array_store(offsets, lb, scratch, width);
+                 .array_forget(values, lb, width)
+                 .array_forget(offsets, lb, width);
     }
 
     basic_block_t& store(basic_block_t& block, linear_expression_t offset, const dom_t data_reg, int width,
@@ -294,12 +300,10 @@ struct machine_t final {
 
             return join(cfg, *num_only, *pointer_only);
         } else {
-            variable_t scratch{vfac["scratch"], crab::TYPE::INT, (unsigned int)width};
-            return *in(block).assertion(data_reg.region == T_NUM, di)
-                   .havoc(scratch)
-                   .array_store(values, offset, scratch, width)
-                   .havoc(scratch)
-                   .array_store(offsets, offset, scratch, width);
+            return *in(block)
+                   .assertion(data_reg.region == T_NUM, di)
+                   .array_forget(values, offset, width)
+                   .array_forget(offsets, offset, width);
         }
     }
 
@@ -337,6 +341,7 @@ class instruction_builder_t final {
     /** Unimplemented */
     basic_block_t& operator()(Assert const& b) { assert(false); };
 
+
   private:
     machine_t& machine;
     basic_block_t& block;
@@ -344,6 +349,8 @@ class instruction_builder_t final {
 
     // derived fields
     debug_info di;
+
+    basic_block_builder in(basic_block_t& bb) { return {bb, machine.vfac}; }
 
     template <typename W>
     basic_block_t& exec_stack_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset,
