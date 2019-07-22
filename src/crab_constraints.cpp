@@ -26,8 +26,6 @@
 
 using namespace crab::dsl_syntax;
 
-basic_block_builder in(basic_block_t& bb) { return {bb}; }
-
 using std::optional;
 using std::string;
 using std::to_string;
@@ -103,6 +101,84 @@ static linear_constraint_t is_not_num(dom_t v) { return v.region > T_NUM; }
  *
  * Enables coordinated load/store/havoc operations.
  */
+
+struct basic_block_builder {
+    using variable_t = crab::variable_t;
+    using number_t = crab::number_t;
+    using linear_constraint_t = crab::linear_constraint_t;
+    using linear_expression_t = crab::linear_expression_t;
+
+    basic_block_t& bb;
+
+    basic_block_builder(basic_block_t& bb) : bb(bb) { }
+    /// To build statements
+
+    basic_block_t& operator*() { return bb; }
+    basic_block_t* operator->() { return &bb; }
+
+    template <typename T, typename... Args>
+    basic_block_builder& insert(Args&&... args) {
+        bb.insert<T>(std::forward<Args>(args)...);
+        return *this;
+    }
+
+    basic_block_builder& add(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::ADD, op1, op2); }
+    basic_block_builder& add(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::ADD, op1, op2); }
+    basic_block_builder& sub(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::SUB, op1, op2); }
+    basic_block_builder& sub(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::SUB, op1, op2); }
+    basic_block_builder& mul(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::MUL, op1, op2); }
+    basic_block_builder& mul(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::MUL, op1, op2); }
+    basic_block_builder& div(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::SDIV, op1, op2); }
+    basic_block_builder& div(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::SDIV, op1, op2); }
+    basic_block_builder& udiv(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::UDIV, op1, op2); }
+    basic_block_builder& udiv(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::UDIV, op1, op2); }
+    basic_block_builder& rem(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::SREM, op1, op2); }
+    basic_block_builder& rem(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::SREM, op1, op2); }
+    basic_block_builder& urem(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::UREM, op1, op2); }
+    basic_block_builder& urem(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::UREM, op1, op2); }
+    basic_block_builder& bitwise_and(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::AND, op1, op2); }
+    basic_block_builder& bitwise_and(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::AND, op1, op2); }
+    basic_block_builder& bitwise_or(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::OR, op1, op2); }
+    basic_block_builder& bitwise_or(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::OR, op1, op2); }
+    basic_block_builder& bitwise_xor(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::XOR, op1, op2); }
+    basic_block_builder& bitwise_xor(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::XOR, op1, op2); }
+    basic_block_builder& shl(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::SHL, op1, op2); }
+    basic_block_builder& shl(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::SHL, op1, op2); }
+    basic_block_builder& lshr(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::LSHR, op1, op2); }
+    basic_block_builder& lshr(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::LSHR, op1, op2); }
+    basic_block_builder& ashr(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::ASHR, op1, op2); }
+    basic_block_builder& ashr(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs, crab::BINOP::ASHR, op1, op2); }
+    basic_block_builder& assign(variable_t lhs, linear_expression_t rhs) { return insert<crab::assign_t>(lhs, rhs); }
+    basic_block_builder& assume(linear_constraint_t cst) { return insert<crab::assume_t>(cst); }
+    basic_block_builder& havoc(variable_t lhs) { return insert<crab::havoc_t>(lhs); }
+    basic_block_builder& select(variable_t lhs, variable_t v, linear_expression_t e1, linear_expression_t e2) {
+        linear_constraint_t cond(exp_gte(v, 1));
+        return insert<crab::select_t>(lhs, cond, e1, e2);
+    }
+    basic_block_builder& select(variable_t lhs, linear_constraint_t cond, linear_expression_t e1, linear_expression_t e2) {
+        return insert<crab::select_t>(lhs, cond, e1, e2);
+    }
+    basic_block_builder& assertion(linear_constraint_t cst, crab::debug_info di = {}) { return insert<crab::assert_t>(cst, di); }
+    basic_block_builder& array_store(variable_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size) {
+        return insert<crab::array_store_t>(arr, elem_size, idx, idx, v);
+    }
+    basic_block_builder& array_store_range(variable_t arr, linear_expression_t lb_idx, linear_expression_t ub_idx,
+                        linear_expression_t v, linear_expression_t elem_size) {
+        return insert<crab::array_store_t>(arr, elem_size, lb_idx, ub_idx, v);
+    }
+    basic_block_builder& array_load(variable_t lhs, variable_t arr, linear_expression_t idx, linear_expression_t elem_size) {
+        return insert<crab::array_load_t>(lhs, arr, elem_size, idx);
+    }
+
+    basic_block_builder& assert_init(const dom_t data_reg, debug_info di) {
+        return assertion(is_init(data_reg), di);
+    }
+    basic_block_builder& no_pointer(dom_t v) {
+        return assign(v.region, T_NUM).havoc(v.offset);
+    }
+};
+
+basic_block_builder in(basic_block_t& bb) { return {bb}; }
 
 struct array_dom_t {
     variable_factory& vfac;
@@ -233,7 +309,6 @@ class instruction_builder_t final {
     debug_info di;
 
     void scratch_regs(basic_block_t& block);
-    static void no_pointer(basic_block_t& block, dom_t v);
 
     template <typename W>
     basic_block_t& exec_stack_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg, int offset,
@@ -307,10 +382,6 @@ cfg_t build_crab_cfg(variable_factory& vfac, Cfg const& simple_cfg, program_info
         cfg.simplify();
     }
     return cfg;
-}
-
-static void assert_init(basic_block_t& block, const dom_t data_reg, debug_info di) {
-    in(block).assertion(is_init(data_reg), di);
 }
 
 machine_t::machine_t(variable_factory& vfac, program_info info)
@@ -452,11 +523,6 @@ static void wrap32(basic_block_t& block, variable_t& dst_value) {
     in(block).bitwise_and(dst_value, dst_value, UINT32_MAX);
 }
 
-void instruction_builder_t::no_pointer(basic_block_t& block, dom_t v) {
-    in(block).assign(v.region, T_NUM)
-             .havoc(v.offset);
-}
-
 template <typename T>
 static void move_into(vector<T>& dst, vector<T>&& src) {
     dst.insert(dst.end(), std::make_move_iterator(src.begin()), std::make_move_iterator(src.end()));
@@ -499,7 +565,7 @@ basic_block_t& instruction_builder_t::exec_stack_access(basic_block_t& block, bo
         }*/
         return mid;
     } else {
-        assert_init(mid, data_reg, di);
+        in(mid).assert_init(data_reg, di);
         auto& res = machine.stack_arr.store(mid, addr, data_reg, width, di, cfg);
         in(res).havoc(machine.top);
         return res;
@@ -649,7 +715,7 @@ basic_block_t& instruction_builder_t::exec_direct_stack_load(basic_block_t& bloc
 basic_block_t& instruction_builder_t::exec_direct_stack_store(basic_block_t& block, dom_t data_reg, int offset,
                                                               int width) {
     assert_in_stack(block, offset, width, di);
-    assert_init(block, data_reg, di);
+    in(block).assert_init(data_reg, di);
     return machine.stack_arr.store(block, (-offset) - width, data_reg, width, di, cfg);
 }
 
@@ -743,10 +809,10 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
     dom_t& dst = machine.reg(bin.dst);
 
     if (std::holds_alternative<Reg>(bin.v)) {
-        assert_init(block, machine.reg(bin.v), di);
+        in(block).assert_init(machine.reg(bin.v), di);
     }
     if (bin.op != Bin::Op::MOV) {
-        assert_init(block, dst, di);
+        in(block).assert_init(dst, di);
     }
 
     auto underflow = [&](basic_block_t& b) -> basic_block_t& {
@@ -767,8 +833,8 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
         int imm = static_cast<int>(std::get<Imm>(bin.v).v);
         switch (bin.op) {
         case Bin::Op::MOV:
-            in(block).assign(dst.value, imm);
-            no_pointer(block, dst);
+            in(block).assign(dst.value, imm)
+                     .no_pointer(dst);
             break;
         case Bin::Op::ADD:
             if (imm == 0)
@@ -792,12 +858,12 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
             }
             break;
         case Bin::Op::MUL:
-            in(block).mul(dst.value, dst.value, imm);
-            no_pointer(block, dst);
+            in(block).mul(dst.value, dst.value, imm)
+                     .no_pointer(dst);
             return join(block, join(overflow(block), underflow(block)));
         case Bin::Op::DIV:
-            in(block).div(dst.value, dst.value, imm);
-            no_pointer(block, dst);
+            in(block).div(dst.value, dst.value, imm)
+                     .no_pointer(dst);
             if (imm == -1) {
                 return join(block, overflow(block));
             } else {
@@ -805,8 +871,8 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
             }
             break;
         case Bin::Op::MOD:
-            in(block).rem(dst.value, dst.value, imm);
-            no_pointer(block, dst);
+            in(block).rem(dst.value, dst.value, imm)
+                     .no_pointer(dst);
             if (imm == -1) {
                 return join(block, overflow(block));
             } else {
@@ -814,8 +880,8 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
             }
             break;
         case Bin::Op::OR:
-            in(block).bitwise_or(dst.value, dst.value, imm);
-            no_pointer(block, dst);
+            in(block).bitwise_or(dst.value, dst.value, imm)
+                     .no_pointer(dst);
             break;
         case Bin::Op::AND:
             // FIX: what to do with ptr&-8 as in counter/simple_loop_unrolled?
@@ -824,27 +890,27 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
                 in(block).assume(dst.value <= imm)
                          .assume(0 <= dst.value);
             }
-            no_pointer(block, dst);
+            in(block).no_pointer(dst);
             break;
         case Bin::Op::RSH:
             in(block).ashr(dst.value, dst.value, imm)
                      .assume(dst.value <= (1 << (64 - imm)))
-                     .assume(dst.value >= 0);
-            no_pointer(block, dst);
+                     .assume(dst.value >= 0)
+                     .no_pointer(dst);
             break;
         case Bin::Op::LSH:
-            in(block).lshr(dst.value, dst.value, imm);
-            no_pointer(block, dst);
+            in(block).lshr(dst.value, dst.value, imm)
+                     .no_pointer(dst);
             return join(block, join(overflow(block), underflow(block)));
         case Bin::Op::XOR:
-            in(block).bitwise_xor(dst.value, dst.value, imm);
-            no_pointer(block, dst);
+            in(block).bitwise_xor(dst.value, dst.value, imm)
+                     .no_pointer(dst);
             break;
         case Bin::Op::ARSH:
             in(block).ashr(dst.value, dst.value, imm) // = (int64_t)dst >> imm;
                      .assume(dst.value <= (1 << (64 - imm)))
-                     .assume(dst.value >= -(1 << (64 - imm)));
-            no_pointer(block, dst);
+                     .assume(dst.value >= -(1 << (64 - imm)))
+                     .no_pointer(dst);
             break;
         }
     } else {
@@ -902,40 +968,40 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
             }
         } break;
         case Bin::Op::MUL:
-            in(block).mul(dst.value, dst.value, src.value);
-            no_pointer(block, dst);
+            in(block).mul(dst.value, dst.value, src.value)
+                     .no_pointer(dst);
             return join(block, join(overflow(block), underflow(block)));
         case Bin::Op::DIV:
             // For some reason, DIV is not checked for zerodiv
-            in(block).div(dst.value, dst.value, src.value);
-            no_pointer(block, dst);
+            in(block).div(dst.value, dst.value, src.value)
+                     .no_pointer(dst);
             // overflow if INT_MIN / -1
             return join(block, overflow(block));
         case Bin::Op::MOD:
             // See DIV comment
-            in(block).rem(dst.value, dst.value, src.value);
-            no_pointer(block, dst);
+            in(block).rem(dst.value, dst.value, src.value)
+                     .no_pointer(dst);
             // overflow if INT_MIN % -1
             return join(block, overflow(block));
         case Bin::Op::OR:
-            in(block).bitwise_or(dst.value, dst.value, src.value);
-            no_pointer(block, dst);
+            in(block).bitwise_or(dst.value, dst.value, src.value)
+                     .no_pointer(dst);
             break;
         case Bin::Op::AND:
-            in(block).bitwise_and(dst.value, dst.value, src.value);
-            no_pointer(block, dst);
+            in(block).bitwise_and(dst.value, dst.value, src.value)
+                     .no_pointer(dst);
             break;
         case Bin::Op::LSH:
-            in(block).lshr(dst.value, dst.value, src.value);
-            no_pointer(block, dst);
+            in(block).lshr(dst.value, dst.value, src.value)
+                     .no_pointer(dst);
             return join(block, join(overflow(block), underflow(block)));
         case Bin::Op::RSH:
-            in(block).ashr(dst.value, dst.value, src.value);
-            no_pointer(block, dst);
+            in(block).ashr(dst.value, dst.value, src.value)
+                     .no_pointer(dst);
             break;
         case Bin::Op::XOR:
-            in(block).bitwise_xor(dst.value, dst.value, src.value);
-            no_pointer(block, dst);
+            in(block).bitwise_xor(dst.value, dst.value, src.value)
+                     .no_pointer(dst);
             break;
         case Bin::Op::MOV:
             in(block).assign(dst.value, src.value);
@@ -943,8 +1009,8 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
             in(block).assign(dst.region, src.region);
             break;
         case Bin::Op::ARSH:
-            in(block).ashr(dst.value, dst.value, src.value); // = (int64_t)dst >> src;
-            no_pointer(block, dst);
+            in(block).ashr(dst.value, dst.value, src.value) // = (int64_t)dst >> src;
+                     .no_pointer(dst);
             break;
         }
     }
@@ -959,13 +1025,13 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
  */
 basic_block_t& instruction_builder_t::operator()(Un const& b) {
     dom_t& dst = machine.reg(b.dst);
-    assert_init(block, dst, di);
+    in(block).assert_init(dst, di);
     switch (b.op) {
     case Un::Op::LE16:
     case Un::Op::LE32:
     case Un::Op::LE64:
-        in(block).havoc(dst.value);
-        no_pointer(block, dst);
+        in(block).havoc(dst.value)
+                 .no_pointer(dst);
         break;
     case Un::Op::NEG:
         in(block).assign(dst.value, 0 - dst.value);
@@ -1121,9 +1187,9 @@ basic_block_t& instruction_builder_t::operator()(Exit const& b) {
 basic_block_t& instruction_builder_t::operator()(Assume const& b) {
     Condition cond = b.cond;
     if (std::holds_alternative<Reg>(cond.right)) {
-        assert_init(block, machine.reg(cond.right), di);
+        in(block).assert_init(machine.reg(cond.right), di);
     }
-    assert_init(block, machine.reg(cond.left), di);
+    in(block).assert_init(machine.reg(cond.left), di);
 
     dom_t& dst = machine.reg(cond.left);
     if (std::holds_alternative<Reg>(cond.right)) {
