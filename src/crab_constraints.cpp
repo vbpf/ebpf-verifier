@@ -520,20 +520,19 @@ basic_block_t& instruction_builder_t::exec_stack_access(basic_block_t& block, bo
 template <typename W>
 basic_block_t& instruction_builder_t::exec_shared_access(basic_block_t& block, bool is_load, dom_t mem_reg,
                                                          dom_t data_reg, int offset, W width) {
-    auto& mid = add_child(cfg, block, "assume_shared");
     linear_expression_t addr = mem_reg.offset + offset;
-
-    in(mid).assume(is_shared(mem_reg))
-           .assertion(addr >= 0, di)
-           .assertion(addr <= mem_reg.region - width, di);
+    auto& mid = in(add_child(cfg, block, "assume_shared"))
+               .assume(is_shared(mem_reg))
+               .assertion(addr >= 0, di)
+               .assertion(addr <= mem_reg.region - width, di);
     if (is_load) {
-        in(mid).havoc(data_reg.value)
-               .assign(data_reg.region, T_NUM)
-               .havoc(data_reg.offset);
+        mid.havoc(data_reg.value)
+           .assign(data_reg.region, T_NUM)
+           .havoc(data_reg.offset);
     } else {
-        in(mid).assertion(data_reg.region == T_NUM, di);
+        mid.assertion(data_reg.region == T_NUM, di);
     }
-    return mid;
+    return *mid;
 }
 
 /** Translate a packet memory access
@@ -546,16 +545,16 @@ basic_block_t& instruction_builder_t::exec_data_access(basic_block_t& block, boo
                                                        dom_t data_reg, int offset, W width) {
     linear_expression_t addr = mem_reg.offset + offset;
 
-    auto& mid = add_child(cfg, block, "assume_data");
-    in(mid).assume(mem_reg.region == T_DATA)
-           .assertion(machine.meta_size <= addr, di)
-           .assertion(addr <= machine.data_size - width, di);
+    auto& mid = in(add_child(cfg, block, "assume_data"))
+               .assume(mem_reg.region == T_DATA)
+               .assertion(machine.meta_size <= addr, di)
+               .assertion(addr <= machine.data_size - width, di);
     if (is_load) {
-        in(mid).havoc(data_reg.offset)
-               .havoc(data_reg.value)
-               .assign(data_reg.region, T_NUM);
+        mid.havoc(data_reg.offset)
+           .havoc(data_reg.value)
+           .assign(data_reg.region, T_NUM);
     }
-    return mid;
+    return *mid;
 }
 
 /** Translate memory access to the context.
