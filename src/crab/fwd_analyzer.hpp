@@ -14,16 +14,18 @@
 
 namespace crab {
 
-template <typename AbsDomain>
+template <typename AbsDomain, typename Language>
 class wto_iterator;
 
-template <typename AbsDomain>
+template <typename AbsDomain, typename Language>
 class wto_processor;
 
-template <typename AbsDomain>
+template <typename AbsDomain, typename Language>
 class interleaved_fwd_fixpoint_iterator final {
+    using cfg_ref_t = cfg_ref<Language>;
 
-    friend class wto_iterator<AbsDomain>;
+    template <typename AbsDom, typename Lang>
+    friend class wto_iterator;
 
   public:
     using wto_t = wto<cfg_ref_t>;
@@ -31,8 +33,8 @@ class interleaved_fwd_fixpoint_iterator final {
     using invariant_table_t = std::unordered_map<label_t, AbsDomain>;
 
   private:
-    using wto_iterator_t = wto_iterator<AbsDomain>;
-    using wto_processor_t = wto_processor<AbsDomain>;
+    using wto_iterator_t = wto_iterator<AbsDomain, Language>;
+    using wto_processor_t = wto_processor<AbsDomain, Language>;
     using thresholds_t = iterators::thresholds_t;
     using wto_thresholds_t = iterators::wto_thresholds_t;
 
@@ -99,11 +101,12 @@ class interleaved_fwd_fixpoint_iterator final {
     }
 }; // class interleaved_fwd_fixpoint_iterator
 
-template <typename AbsDomain>
-class wto_iterator final : public wto_component_visitor<cfg_ref_t> {
+template <typename AbsDomain, typename Language>
+class wto_iterator final : public wto_component_visitor<cfg_ref<Language>> {
+    using cfg_ref_t = cfg_ref<Language>;
 
   public:
-    using interleaved_iterator_t = interleaved_fwd_fixpoint_iterator<AbsDomain>;
+    using interleaved_iterator_t = interleaved_fwd_fixpoint_iterator<AbsDomain, Language>;
     using wto_vertex_t = wto_vertex<cfg_ref_t>;
     using wto_cycle_t = wto_cycle<cfg_ref_t>;
     using wto_t = wto<cfg_ref_t>;
@@ -317,11 +320,12 @@ class wto_iterator final : public wto_component_visitor<cfg_ref_t> {
 
 }; // class wto_iterator
 
-template <typename AbsDomain>
-class wto_processor final : public wto_component_visitor<cfg_ref_t> {
+template <typename AbsDomain, typename Language>
+class wto_processor final : public wto_component_visitor<cfg_ref<Language>> {
+    using cfg_ref_t = cfg_ref<Language>;
 
   public:
-    using interleaved_iterator_t = interleaved_fwd_fixpoint_iterator<AbsDomain>;
+    using interleaved_iterator_t = interleaved_fwd_fixpoint_iterator<AbsDomain, Language>;
     using wto_vertex_t = wto_vertex<cfg_ref_t>;
     using wto_cycle_t = wto_cycle<cfg_ref_t>;
 

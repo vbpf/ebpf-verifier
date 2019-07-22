@@ -38,7 +38,7 @@ using crab::checks_db;
 // Numerical domains over integers
 using sdbm_domain_t = crab::domains::SplitDBM;
 using dom_t = crab::domains::array_expansion_domain<sdbm_domain_t>;
-using analyzer_t = crab::interleaved_fwd_fixpoint_iterator<dom_t>;;
+using analyzer_t = crab::interleaved_fwd_fixpoint_iterator<dom_t, crab::new_statement_t>;
 
 static auto extract_pre(analyzer_t& analyzer, cfg_t& cfg) {
     std::map<string, dom_t> res;
