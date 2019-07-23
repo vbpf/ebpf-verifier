@@ -54,7 +54,7 @@ static basic_block_t& add_child(cfg_t& cfg, basic_block_t& block, std::string su
 }
 
 basic_block_t& join(cfg_t& cfg, basic_block_t& left, basic_block_t& right) {
-    auto& bb = cfg.insert(left.label() + "+" + right.label());
+    basic_block_t& bb = cfg.insert(left.label() + "+" + right.label());
     left >> bb;
     right >> bb;
     return bb;
@@ -307,7 +307,7 @@ struct basic_block_builder {
     basic_block_builder in(basic_block_t& child) { return {child, machine, cfg, di, parent, cond}; }
 
     basic_block_t& join(basic_block_t& left, basic_block_t& right) {
-        auto& bb = cfg.insert(left.label() + "+" + right.label());
+        basic_block_t& bb = cfg.insert(left.label() + "+" + right.label());
         left >> bb;
         right >> bb;
         return bb;
@@ -415,7 +415,7 @@ cfg_t build_crab_cfg(variable_factory& vfac, Cfg const& simple_cfg, program_info
     cfg_t cfg(entry_label(), simple_cfg.exit());
     machine_t machine(vfac, info);
     {
-        auto& entry = cfg.insert(entry_label());
+        basic_block_t& entry = cfg.insert(entry_label());
         machine.setup_entry(entry, cfg);
         entry >> cfg.insert(label(0));
     }
@@ -686,7 +686,7 @@ basic_block_t& instruction_builder_t::exec_ctx_access(basic_block_t& block, bool
         return *mid.assume_normal(addr, desc)
                    .assertion(data_reg.region == T_NUM);
     } else {
-        auto& normal = *in(add_child(cfg, *mid, "assume_ctx_not_special"))
+        basic_block_t& normal = *in(add_child(cfg, *mid, "assume_ctx_not_special"))
                        .assume_normal(addr, desc)
                        .assign(data_reg.region, T_NUM)
                        .havoc(data_reg.offset)
@@ -702,11 +702,11 @@ basic_block_t& instruction_builder_t::exec_ctx_access(basic_block_t& block, bool
                    .assume(data_reg.value <= PTR_MAX)
                    .assign(data_reg.offset, offset);
         };
-        auto& start_end = join(load_datap("data_start", desc.data, 0),
+        basic_block_t& start_end = join(load_datap("data_start", desc.data, 0),
                                load_datap("data_end",   desc.end, machine.data_size));
         if (desc.meta < 0)
             return join(start_end, normal);
-        auto& meta = load_datap("meta", desc.meta, machine.meta_size);
+        basic_block_t& meta = load_datap("meta", desc.meta, machine.meta_size);
         return join(join(start_end, meta), normal);
     }
 }
@@ -1039,7 +1039,7 @@ basic_block_t& instruction_builder_t::operator()(Un const& b) {
         break;
     case Un::Op::NEG:
         in(block).assign(dst.value, 0 - dst.value);
-        auto& overflow = in(add_child(cfg, block, "overflow"))
+        auto overflow = in(add_child(cfg, block, "overflow"))
                         .assume(dst.value > MY_INT_MAX)
                         .havoc(dst.value);
         return join(block, *overflow);
@@ -1125,7 +1125,7 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
                        .assertion(machine.meta_size <= arg.offset)
                        .assertion(arg.offset <= machine.data_size - width);
             };
-            auto& res = join(assume_stack(), assume_shared());
+            basic_block_t& res = join(assume_stack(), assume_shared());
             if (machine.ctx_desc.data >= 0) {
                 return join(res, assume_data());
             }
@@ -1133,11 +1133,11 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
         };
         switch (param.kind) {
         case ArgPair::Kind::PTR_TO_MEM_OR_NULL: {
-            auto& null = in(add_child(cfg, *current, "null"))
+            auto null = in(add_child(cfg, *current, "null"))
                         .assume(arg.region == T_NUM)
                         .assertion(arg.value == 0);
 
-            auto& ptr = in(add_child(cfg, *current, "ptr"))
+            auto ptr = in(add_child(cfg, *current, "ptr"))
                        .assume(is_not_num(arg));
             current = &join(*null, assert_mem(*ptr, false, true));
         } break;
@@ -1190,26 +1190,26 @@ basic_block_t& instruction_builder_t::operator()(Assume const& b) {
     dom_t dst = machine.reg(cond.left);
     if (std::holds_alternative<Reg>(cond.right)) {
         dom_t src = machine.reg(cond.right);
-        auto& same = *in(add_child(cfg, block, "same_type"))
+        basic_block_t& same = *in(add_child(cfg, block, "same_type"))
                     .assume(eq(dst.region, src.region));
-        auto& numbers = *in(add_child(cfg, same, "numbers"))
+        basic_block_t& numbers = *in(add_child(cfg, same, "numbers"))
                         .assume(dst.region == T_NUM)
                         .where(!is_unsigned_cmp(cond.op))->assume(jmp_to_cst_reg(cond.op, dst.value, src.value))
                         .done();
-        auto& pointers = *in(add_child(cfg, same, "pointers"))
+        basic_block_t& pointers = *in(add_child(cfg, same, "pointers"))
                             .assume(is_pointer(dst))
                             .assertion(is_singleton(dst))
                             .assume(jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset));
 
-        auto& different = *in(add_child(cfg, block, "different_type"))
+        basic_block_t& different = *in(add_child(cfg, block, "different_type"))
                             .assume(neq(dst.region, src.region));
 
-        auto& null_src = *in(add_child(cfg, different, "null_src"))
+        basic_block_t& null_src = *in(add_child(cfg, different, "null_src"))
                             .assume(is_pointer(dst))
                             .assertion(src.region == T_NUM)
                             .assertion(src.value == 0);
 
-        auto& null_dst = *in(add_child(cfg, different, "null_dst"))
+        basic_block_t& null_dst = *in(add_child(cfg, different, "null_dst"))
                             .assume(is_pointer(src))
                             .assertion(dst.region == T_NUM)
                             .assertion(dst.value == 0);
