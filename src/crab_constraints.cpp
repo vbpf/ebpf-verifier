@@ -303,12 +303,22 @@ struct basic_block_builder {
     basic_block_builder fork(std::string label, linear_constraint_t cst1, linear_constraint_t cst2) { 
         return in(add_child(cfg, bb, label)).assume(cst1).assume(cst2);
     }
+
     basic_block_t& join(basic_block_t& left, basic_block_t& right) {
         basic_block_t& bb = cfg.insert(left.label() + "+" + right.label());
         left >> bb;
         right >> bb;
         return bb;
     }
+
+
+    basic_block_builder join_with_underflow(variable_t v) {
+        return in(join(bb, *fork("underflow", MY_INT_MIN > v).havoc(v)));
+    };
+
+    basic_block_builder join_with_overflow(variable_t v) {
+        return in(join(bb, *fork("overflow", v > MY_INT_MAX).havoc(v)));
+    };
 
     basic_block_builder store(linear_expression_t offset, const dom_t data_reg, int width) {
         mark_region(offset, data_reg.region, width);
@@ -810,16 +820,6 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
              .done();
     if (std::holds_alternative<Reg>(bin.v)) b.assert_init(machine.reg(bin.v));
 
-    auto underflow = [&](basic_block_t& b) -> basic_block_t& {
-        return *in(b).fork("underflow", MY_INT_MIN > dst.value)
-               .havoc(dst.value);
-    };
-
-    auto overflow = [&](basic_block_t& b) -> basic_block_t& {
-        return *in(b).fork("overflow", dst.value > MY_INT_MAX)
-               .havoc(dst.value);
-    };
-
     if (std::holds_alternative<Imm>(bin.v)) {
         // dst += K
         int imm = static_cast<int>(std::get<Imm>(bin.v).v);
@@ -832,42 +832,36 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
             if (imm == 0)
                 return block;
             in(block).add(dst.value, dst.value, imm)
-                     .add(dst.offset, dst.offset, imm);
-            return join(block, imm > 0
-                      ? overflow(block)
-                      : underflow(block));
+                     .add(dst.offset, dst.offset, imm)
+                     .where(imm > 0)->join_with_overflow(dst.value)
+                     .otherwise()->join_with_underflow(dst.value)
+                     .done();
+            break;
         case Bin::Op::SUB:
             if (imm == 0)
                 return block;
             in(block).sub(dst.value, dst.value, imm)
-                     .sub(dst.offset, dst.offset, imm);
-            if (imm < 0) {
-                return join(block, overflow(block));
-            } else {
-                return join(block, underflow(block));
-            }
+                     .sub(dst.offset, dst.offset, imm)
+                     .where(imm < 0)->join_with_overflow(dst.value)
+                     .otherwise()->join_with_underflow(dst.value)
+                     .done();
             break;
         case Bin::Op::MUL:
             in(block).mul(dst.value, dst.value, imm)
-                     .no_pointer(dst);
-            return join(block, join(overflow(block), underflow(block)));
+                     .no_pointer(dst)
+                     .join_with_overflow(dst.value)
+                     .join_with_underflow(dst.value);
         case Bin::Op::DIV:
             in(block).div(dst.value, dst.value, imm)
-                     .no_pointer(dst);
-            if (imm == -1) {
-                return join(block, overflow(block));
-            } else {
-                return block;
-            }
+                     .no_pointer(dst)
+                     .where(imm == -1)->join_with_overflow(dst.value)
+                     .done();
             break;
         case Bin::Op::MOD:
             in(block).rem(dst.value, dst.value, imm)
-                     .no_pointer(dst);
-            if (imm == -1) {
-                return join(block, overflow(block));
-            } else {
-                return block;
-            }
+                     .no_pointer(dst)
+                     .where(imm == -1)->join_with_overflow(dst.value)
+                     .done();
             break;
         case Bin::Op::OR:
             in(block).bitwise_or(dst.value, dst.value, imm)
@@ -876,10 +870,10 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
         case Bin::Op::AND:
             // FIX: what to do with ptr&-8 as in counter/simple_loop_unrolled?
             in(block).bitwise_and(dst.value, dst.value, imm)
-            .where((int32_t)imm > 0)->assume(dst.value <= imm)
-                                     .assume(0 <= dst.value)
-            .done()
-            .no_pointer(dst);
+                     .where((int32_t)imm > 0)->assume(dst.value <= imm)
+                                              .assume(0 <= dst.value)
+                     .done()
+                     .no_pointer(dst);
             break;
         case Bin::Op::RSH:
             in(block).ashr(dst.value, dst.value, imm)
@@ -889,8 +883,10 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
             break;
         case Bin::Op::LSH:
             in(block).lshr(dst.value, dst.value, imm)
-                     .no_pointer(dst);
-            return join(block, join(overflow(block), underflow(block)));
+                     .no_pointer(dst)
+                     .join_with_overflow(dst.value)
+                     .join_with_underflow(dst.value);
+            break;
         case Bin::Op::XOR:
             in(block).bitwise_xor(dst.value, dst.value, imm)
                      .no_pointer(dst);
@@ -924,9 +920,10 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
 
             auto both_num = in(block).fork("both_num", dst.region == T_NUM, src.region == T_NUM)
                             .add(dst.value, dst.value, src.value);
-
-            return join(join(*both_num, join(*ptr_src, *ptr_dst)), join(overflow(*both_num), underflow(*both_num)));
-        } break;
+            return *in(join(*both_num, join(*ptr_src, *ptr_dst)))
+                     .join_with_overflow(dst.value)
+                     .join_with_underflow(dst.value);
+        }
         case Bin::Op::SUB: {
             auto same = in(block).fork("ptr_src", is_pointer(src))
                         .assertion(is_singleton(src)) // since map values of the same type can point to different maps
@@ -944,25 +941,29 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
                 auto both_num = num_src.fork("both_num", dst.region == T_NUM)
                                 .sub(dst.value, dst.value, src.value);
 
-                return join(join(join(*both_num, *same), *ptr_dst), join(overflow(*both_num), underflow(*both_num)));
+                return *in(join(join(*both_num, *same), *ptr_dst))
+                       .join_with_overflow(dst.value)
+                       .join_with_underflow(dst.value);
             }
-        } break;
+        }
         case Bin::Op::MUL:
             in(block).mul(dst.value, dst.value, src.value)
-                     .no_pointer(dst);
-            return join(block, join(overflow(block), underflow(block)));
+                     .no_pointer(dst)
+                     .join_with_overflow(dst.value)
+                     .join_with_underflow(dst.value);
+            break;
         case Bin::Op::DIV:
             // For some reason, DIV is not checked for zerodiv
             in(block).div(dst.value, dst.value, src.value)
-                     .no_pointer(dst);
-            // overflow if INT_MIN / -1
-            return join(block, overflow(block));
+                     .no_pointer(dst)
+                     .join_with_overflow(dst.value);
+            break;
         case Bin::Op::MOD:
             // See DIV comment
             in(block).rem(dst.value, dst.value, src.value)
-                     .no_pointer(dst);
-            // overflow if INT_MIN % -1
-            return join(block, overflow(block));
+                     .no_pointer(dst)
+                     .join_with_overflow(dst.value);
+            break;
         case Bin::Op::OR:
             in(block).bitwise_or(dst.value, dst.value, src.value)
                      .no_pointer(dst);
@@ -973,8 +974,9 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
             break;
         case Bin::Op::LSH:
             in(block).lshr(dst.value, dst.value, src.value)
-                     .no_pointer(dst);
-            return join(block, join(overflow(block), underflow(block)));
+                     .no_pointer(dst)
+                     .join_with_overflow(dst.value)
+                     .join_with_underflow(dst.value);
         case Bin::Op::RSH:
             in(block).ashr(dst.value, dst.value, src.value)
                      .no_pointer(dst);
@@ -1013,10 +1015,8 @@ basic_block_t& instruction_builder_t::operator()(Un const& b) {
                  .no_pointer(dst);
         break;
     case Un::Op::NEG:
-        in(block).assign(dst.value, 0 - dst.value);
-        auto overflow = in(block).fork("overflow", dst.value > MY_INT_MAX)
-                        .havoc(dst.value);
-        return join(block, *overflow);
+        in(block).assign(dst.value, 0 - dst.value)
+                 .join_with_overflow(dst.value);
     }
     return block;
 }
