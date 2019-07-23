@@ -179,6 +179,7 @@ struct basic_block_builder {
     basic_block_builder& add_overflow(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,   crab::arith_binop_t::ADD, op1, op2, true); }
     basic_block_builder& sub_overflow(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::arith_binop_t::SUB, op1, op2, true); }
     basic_block_builder& sub_overflow(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,   crab::arith_binop_t::SUB, op1, op2, true); }
+    basic_block_builder& neg(variable_t lhs) { return insert<crab::binary_op_t>(lhs, crab::arith_binop_t::MUL, lhs, -1, true); }
     basic_block_builder& mul(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::arith_binop_t::MUL, op1, op2, true); }
     basic_block_builder& mul(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,   crab::arith_binop_t::MUL, op1, op2, true); }
     basic_block_builder& div(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::arith_binop_t::SDIV, op1, op2, true); }
@@ -324,7 +325,7 @@ struct basic_block_builder {
         return in(join(bb, *fork("overflow", v > MY_INT_MAX).havoc(v)));
     };
 
-    basic_block_builder store(linear_expression_t offset, const dom_t data_reg, int width) {
+    basic_block_builder store(linear_expression_t offset, dom_t data_reg, int width) {
         mark_region(offset, data_reg.region, width);
 
         if (width != 8) {
@@ -346,6 +347,15 @@ struct basic_block_builder {
                         .havoc(data_reg.offset);
 
         return in(join(*num_only, *pointer_only));
+    }
+    basic_block_builder access_num_only(dom_t data_reg, bool is_load) {
+        return where(is_load)
+                    ->havoc(data_reg.offset)
+                        .havoc(data_reg.value)
+                        .assign(data_reg.region, T_NUM)
+                .otherwise()
+                    ->assertion(data_reg.region == T_NUM)
+                .done("exec_data_access");
     }
 };
 
@@ -636,13 +646,7 @@ basic_block_t& instruction_builder_t::exec_shared_access(basic_block_t& block, b
     return *in(block).fork("assume_shared", is_shared(mem_reg))
            .assertion(addr >= 0)
            .assertion(addr <= mem_reg.region - width)
-           .where(is_load)
-                ->havoc(data_reg.value)
-                 .assign(data_reg.region, T_NUM)
-                 .havoc(data_reg.offset)
-           .otherwise()
-                ->assertion(data_reg.region == T_NUM)
-           .done("exec_shared_access");
+           .access_num_only(data_reg, is_load);
 
 }
 
@@ -659,11 +663,7 @@ basic_block_t& instruction_builder_t::exec_data_access(basic_block_t& block, boo
     return *in(block).fork("assume_data", mem_reg.region == T_DATA)
            .assertion(machine.meta_size <= addr)
            .assertion(addr <= machine.data_size - width)
-           .where(is_load)
-                ->havoc(data_reg.offset)
-                 .havoc(data_reg.value)
-                 .assign(data_reg.region, T_NUM)
-           .done("exec_data_access");
+           .access_num_only(data_reg, is_load);
 }
 
 /** Translate memory access to the context.
@@ -875,9 +875,7 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
             break;
         case Bin::Op::LSH:
             in(block).lshr(dst.value, dst.value, imm)
-                     .no_pointer(dst)
-                     .join_with_overflow(dst.value)
-                     .join_with_underflow(dst.value);
+                     .no_pointer(dst);
             break;
         case Bin::Op::XOR:
             in(block).bitwise_xor(dst.value, dst.value, imm)
@@ -995,8 +993,7 @@ basic_block_t& instruction_builder_t::operator()(Un const& b) {
                  .no_pointer(dst);
         break;
     case Un::Op::NEG:
-        in(block).assign(dst.value, 0 - dst.value)
-                 .join_with_overflow(dst.value);
+        in(block).neg(dst.value);
     }
     return block;
 }
