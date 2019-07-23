@@ -1184,7 +1184,7 @@ void SplitDBM::set(variable_t x, interval_t intv) {
     }
 }
 
-void SplitDBM::apply(operation_t op, variable_t x, variable_t y, variable_t z) {
+void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, variable_t z) {
     CrabStats::count("SplitDBM.count.apply");
     ScopedCrabStats __st__("SplitDBM.apply");
 
@@ -1195,21 +1195,21 @@ void SplitDBM::apply(operation_t op, variable_t x, variable_t y, variable_t z) {
     normalize();
 
     switch (op) {
-    case OP_ADDITION: assign(x, var_add(y, z)); return;
-    case OP_SUBTRACTION: assign(x, var_sub(y, z)); return;
+    case arith_binop_t::ADD: assign(x, var_add(y, z)); return;
+    case arith_binop_t::SUB: assign(x, var_sub(y, z)); return;
     // For the rest of operations, we fall back on intervals.
-    case OP_MULTIPLICATION: set(x, get_interval(y) * get_interval(z)); break;
-    case OP_SDIV: set(x, get_interval(y) / get_interval(z)); break;
-    case OP_UDIV: set(x, get_interval(y).UDiv(get_interval(z))); break;
-    case OP_SREM: set(x, get_interval(y).SRem(get_interval(z))); break;
-    case OP_UREM: set(x, get_interval(y).URem(get_interval(z))); break;
+    case arith_binop_t::MUL: set(x, get_interval(y) * get_interval(z)); break;
+    case arith_binop_t::SDIV: set(x, get_interval(y) / get_interval(z)); break;
+    case arith_binop_t::UDIV: set(x, get_interval(y).UDiv(get_interval(z))); break;
+    case arith_binop_t::SREM: set(x, get_interval(y).SRem(get_interval(z))); break;
+    case arith_binop_t::UREM: set(x, get_interval(y).URem(get_interval(z))); break;
     default: CRAB_ERROR("Operation ", op, " not supported");
     }
 
     CRAB_LOG("zones-split", outs() << "---" << x << ":=" << y << op << z << "\n" << *this << "\n");
 }
 
-void SplitDBM::apply(operation_t op, variable_t x, variable_t y, number_t k) {
+void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, number_t k) {
     CrabStats::count("SplitDBM.count.apply");
     ScopedCrabStats __st__("SplitDBM.apply");
 
@@ -1220,21 +1220,21 @@ void SplitDBM::apply(operation_t op, variable_t x, variable_t y, number_t k) {
     normalize();
 
     switch (op) {
-    case OP_ADDITION: assign(x, var_add(y, k)); return;
-    case OP_SUBTRACTION: assign(x, var_sub(y, k)); return;
-    case OP_MULTIPLICATION: assign(x, var_mul(k, y)); return;
+    case arith_binop_t::ADD: assign(x, var_add(y, k)); return;
+    case arith_binop_t::SUB: assign(x, var_sub(y, k)); return;
+    case arith_binop_t::MUL: assign(x, var_mul(k, y)); return;
     // For the rest of operations, we fall back on intervals.
-    case OP_SDIV: set(x, get_interval(y) / interval_t(k)); break;
-    case OP_UDIV: set(x, get_interval(y).UDiv(interval_t(k))); break;
-    case OP_SREM: set(x, get_interval(y).SRem(interval_t(k))); break;
-    case OP_UREM: set(x, get_interval(y).URem(interval_t(k))); break;
+    case arith_binop_t::SDIV: set(x, get_interval(y) / interval_t(k)); break;
+    case arith_binop_t::UDIV: set(x, get_interval(y).UDiv(interval_t(k))); break;
+    case arith_binop_t::SREM: set(x, get_interval(y).SRem(interval_t(k))); break;
+    case arith_binop_t::UREM: set(x, get_interval(y).URem(interval_t(k))); break;
     default: CRAB_ERROR("Operation ", op, " not supported");
     }
 
     CRAB_LOG("zones-split", outs() << "---" << x << ":=" << y << op << k << "\n" << *this << "\n");
 }
 
-void SplitDBM::apply(bitwise_operation_t op, variable_t x, variable_t y, variable_t z) {
+void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t z) {
     CrabStats::count("SplitDBM.count.apply");
     ScopedCrabStats __st__("SplitDBM.apply");
 
@@ -1246,18 +1246,18 @@ void SplitDBM::apply(bitwise_operation_t op, variable_t x, variable_t y, variabl
     interval_t zi = operator[](z);
     interval_t xi = interval_t::bottom();
     switch (op) {
-    case OP_AND: xi = yi.And(zi); break;
-    case OP_OR: xi = yi.Or(zi); break;
-    case OP_XOR: xi = yi.Xor(zi); break;
-    case OP_SHL: xi = yi.Shl(zi); break;
-    case OP_LSHR: xi = yi.LShr(zi); break;
-    case OP_ASHR: xi = yi.AShr(zi); break;
+    case bitwise_binop_t::AND: xi = yi.And(zi); break;
+    case bitwise_binop_t::OR: xi = yi.Or(zi); break;
+    case bitwise_binop_t::XOR: xi = yi.Xor(zi); break;
+    case bitwise_binop_t::SHL: xi = yi.Shl(zi); break;
+    case bitwise_binop_t::LSHR: xi = yi.LShr(zi); break;
+    case bitwise_binop_t::ASHR: xi = yi.AShr(zi); break;
     default: CRAB_ERROR("DBM: unreachable");
     }
     set(x, xi);
 }
 
-void SplitDBM::apply(bitwise_operation_t op, variable_t x, variable_t y, number_t k) {
+void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, number_t k) {
     CrabStats::count("SplitDBM.count.apply");
     ScopedCrabStats __st__("SplitDBM.apply");
 
@@ -1268,12 +1268,12 @@ void SplitDBM::apply(bitwise_operation_t op, variable_t x, variable_t y, number_
     interval_t xi = interval_t::bottom();
 
     switch (op) {
-    case OP_AND: xi = yi.And(zi); break;
-    case OP_OR: xi = yi.Or(zi); break;
-    case OP_XOR: xi = yi.Xor(zi); break;
-    case OP_SHL: xi = yi.Shl(zi); break;
-    case OP_LSHR: xi = yi.LShr(zi); break;
-    case OP_ASHR: xi = yi.AShr(zi); break;
+    case bitwise_binop_t::AND: xi = yi.And(zi); break;
+    case bitwise_binop_t::OR: xi = yi.Or(zi); break;
+    case bitwise_binop_t::XOR: xi = yi.Xor(zi); break;
+    case bitwise_binop_t::SHL: xi = yi.Shl(zi); break;
+    case bitwise_binop_t::LSHR: xi = yi.LShr(zi); break;
+    case bitwise_binop_t::ASHR: xi = yi.AShr(zi); break;
     default: CRAB_ERROR("DBM: unreachable");
     }
     set(x, xi);

@@ -3,6 +3,7 @@
 #include "crab/linear_constraints.hpp"
 #include "crab/os.hpp"
 #include "crab/types.hpp"
+#include "crab/abstract_domain_operators.hpp"
 
 namespace crab {
 
@@ -31,9 +32,10 @@ inline crab_os& operator<<(crab_os& o, const debug_info& l) {
 
 struct binary_op_t {
     variable_t lhs;
-    binary_operation_t op;
+    binop_t op;
     linear_expression_t left;
     linear_expression_t right;
+
 };
 
 struct assign_t {

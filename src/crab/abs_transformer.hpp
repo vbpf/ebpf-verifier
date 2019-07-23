@@ -22,6 +22,8 @@
    havoc(x);
 
  */
+#include <variant>
+
 #include "crab/abstract_domain_operators.hpp"
 #include "crab/abstract_domain_specialized_traits.hpp"
 #include "crab/cfg.hpp"
@@ -42,14 +44,8 @@ class intra_abs_transformer {
 
   private:
     template <typename NumOrVar>
-    void apply(AbsDomain& inv, binary_operation_t op, variable_t x, variable_t y, NumOrVar z) {
-        if (auto top = conv_op<operation_t>(op)) {
-            inv.apply(*top, x, y, z);
-        } else if (auto top = conv_op<bitwise_operation_t>(op)) {
-            inv.apply(*top, x, y, z);
-        } else {
-            CRAB_ERROR("unsupported binary operator", op);
-        }
+    void apply(AbsDomain& inv, binop_t op, variable_t x, variable_t y, NumOrVar z) {
+        inv.apply(op, x, y, z);
     }
 
   public:
