@@ -297,10 +297,10 @@ struct basic_block_builder {
     }
 
     basic_block_builder in(basic_block_t& child) { return {child, machine, cfg, di, parent, cond}; }
-    basic_block_builder fork(std::string label, linear_constraint_t constraint) { 
+    basic_block_builder fork(std::string label, linear_constraint_t constraint) {
         return in(add_child(cfg, bb, label)).assume(constraint);
     }
-    basic_block_builder fork(std::string label, linear_constraint_t cst1, linear_constraint_t cst2) { 
+    basic_block_builder fork(std::string label, linear_constraint_t cst1, linear_constraint_t cst2) {
         return in(add_child(cfg, bb, label)).assume(cst1).assume(cst2);
     }
 
@@ -685,7 +685,7 @@ basic_block_t& instruction_builder_t::exec_ctx_access(basic_block_t& block, bool
         return *mid.assume_normal(addr, desc)
                    .assertion(data_reg.region == T_NUM);
     } else {
-        basic_block_t& normal = *mid.fork("assume_ctx_not_special", data_reg.region == data_reg.region).assume_normal(addr, desc) //FIX
+        basic_block_t& normal = *mid.fork("assume_ctx_not_special", eq(data_reg.region, data_reg.region)).assume_normal(addr, desc) //FIX
                        .assign(data_reg.region, T_NUM)
                        .havoc(data_reg.offset)
                        .havoc(data_reg.value);
