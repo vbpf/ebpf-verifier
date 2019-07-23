@@ -119,7 +119,7 @@ struct machine_t final {
         return {regs[1], regs[2], regs[3], regs[4], regs[5]};
     }
 
-    dom_t& reg(Value v) { return regs[std::get<Reg>(v).v]; }
+    dom_t reg(Value v) { return regs[std::get<Reg>(v).v]; }
 
     void setup_entry(basic_block_t& entry, cfg_t& cfg);
 
@@ -167,7 +167,6 @@ struct basic_block_builder {
     }
 
     basic_block_builder& done(std::string s = {}) {
-        if (!parent) std::cout << s << "\n";
         assert(parent);
         return *parent;
     }
@@ -228,6 +227,13 @@ struct basic_block_builder {
         return insert<crab::array_load_t>(lhs, arr, elem_size, idx);
     }
 
+    basic_block_builder& assume(std::vector<linear_constraint_t> csts) {
+        for (auto cst : csts)
+            if (!cst.is_tautology())
+                insert<crab::assume_t>(cst);
+         return *this;
+    }
+
     basic_block_builder& assert_init(const dom_t data_reg) {
         return assertion(is_init(data_reg));
     }
@@ -235,7 +241,7 @@ struct basic_block_builder {
         return assign(v.region, T_NUM).havoc(v.offset);
     }
     basic_block_builder& scratch(std::vector<dom_t> regs) {
-        for (dom_t& reg : regs) {
+        for (dom_t reg : regs) {
             havoc(reg.value);
             havoc(reg.offset);
             assign(reg.region, T_UNINIT);
@@ -670,7 +676,7 @@ template <typename W>
 basic_block_t& instruction_builder_t::exec_ctx_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg,
                                                       int offset, W width) {
     linear_expression_t addr = mem_reg.offset + offset;
-    auto& mid = in(add_child(cfg, block, "assume_ctx"))
+    auto  mid = in(add_child(cfg, block, "assume_ctx"))
                .assume(mem_reg.region == T_CTX)
                .assertion(addr >= 0)
                .assertion(addr <= machine.ctx_desc.size - width);
@@ -680,6 +686,13 @@ basic_block_t& instruction_builder_t::exec_ctx_access(basic_block_t& block, bool
         return *mid.assume_normal(addr, desc)
                    .assertion(data_reg.region == T_NUM);
     } else {
+        auto& normal = *in(add_child(cfg, *mid, "assume_ctx_not_special"))
+                       .assume_normal(addr, desc)
+                       .assign(data_reg.region, T_NUM)
+                       .havoc(data_reg.offset)
+                       .havoc(data_reg.value);
+        if (desc.data < 0)
+            return normal;
         auto load_datap = [&](string suffix, int start, auto offset) -> basic_block_t& {
             return *in(add_child(cfg, *mid, suffix))
                    .assume(addr == start)
@@ -689,13 +702,6 @@ basic_block_t& instruction_builder_t::exec_ctx_access(basic_block_t& block, bool
                    .assume(data_reg.value <= PTR_MAX)
                    .assign(data_reg.offset, offset);
         };
-        auto& normal = *in(add_child(cfg, *mid, "assume_ctx_not_special"))
-                       .assume_normal(addr, desc)
-                       .assign(data_reg.region, T_NUM)
-                       .havoc(data_reg.offset)
-                       .havoc(data_reg.value);
-        if (desc.data < 0)
-            return normal;
         auto& start_end = join(load_datap("data_start", desc.data, 0),
                                load_datap("data_end",   desc.end, machine.data_size));
         if (desc.meta < 0)
@@ -812,8 +818,8 @@ basic_block_t& instruction_builder_t::operator()(LockAdd const& b) {
  * `src` must be initialized, and, Except in plain assignment, `dst
  */
 basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
-    dom_t& dst = machine.reg(bin.dst);
-    auto& b = in(block)
+    dom_t dst = machine.reg(bin.dst);
+    auto b = in(block)
              .where(bin.op != Bin::Op::MOV)->assert_init(dst)
              .done();
     if (std::holds_alternative<Reg>(bin.v)) b.assert_init(machine.reg(bin.v));
@@ -914,17 +920,17 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
         }
     } else {
         // dst op= src
-        dom_t& src = machine.reg(bin.v);
+        dom_t src = machine.reg(bin.v);
         switch (bin.op) {
         case Bin::Op::ADD: {
-            auto& ptr_dst = in(add_child(cfg, block, "ptr_dst"))
+            auto ptr_dst = in(add_child(cfg, block, "ptr_dst"))
                            .assume(is_pointer(dst))
                            .assertion(src.region == T_NUM)
                            .add(dst.offset, dst.offset, src.value)
                            .add(dst.value, dst.value, src.value)
                            .assert_no_overflow(dst.offset);
 
-            auto& ptr_src = in(add_child(cfg, block, "ptr_src"))
+            auto ptr_src = in(add_child(cfg, block, "ptr_src"))
                            .assume(is_pointer(src))
                            .assertion(dst.region == T_NUM)
                            .add(dst.offset, dst.value, src.offset)
@@ -935,7 +941,7 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
                            .assign(dst.value, machine.top)
                            .assume(4098 <= dst.value);
 
-            auto& both_num = in(add_child(cfg, block, "both_num"))
+            auto both_num = in(add_child(cfg, block, "both_num"))
                             .assume(dst.region == T_NUM)
                             .assume(src.region == T_NUM)
                             .add(dst.value, dst.value, src.value);
@@ -943,7 +949,7 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
             return join(join(*both_num, join(*ptr_src, *ptr_dst)), join(overflow(*both_num), underflow(*both_num)));
         } break;
         case Bin::Op::SUB: {
-            auto& same = in(add_child(cfg, block, "ptr_src"))
+            auto same = in(add_child(cfg, block, "ptr_src"))
                         .assume(is_pointer(src))
                         .assertion(is_singleton(src)) // since map values of the same type can point to different maps
                         .assertion(eq(dst.region, src.region))
@@ -951,15 +957,15 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
                         .assign(dst.region, T_NUM)
                         .havoc(dst.offset);
 
-            auto& num_src = in(add_child(cfg, block, "num_src"))
+            auto num_src = in(add_child(cfg, block, "num_src"))
                            .assume(src.region == T_NUM);
             {
-                auto& ptr_dst = in(add_child(cfg, *num_src, "ptr_dst"))
+                auto ptr_dst = in(add_child(cfg, *num_src, "ptr_dst"))
                                .assume(is_pointer(dst))
                                .sub(dst.offset, dst.offset, src.value)
                                .assert_no_overflow(dst.offset);
 
-                auto& both_num = in(add_child(cfg, *num_src, "both_num"))
+                auto both_num = in(add_child(cfg, *num_src, "both_num"))
                                 .assume(dst.region == T_NUM)
                                 .sub(dst.value, dst.value, src.value);
 
@@ -1022,7 +1028,7 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
 /** Translate unary operations: either a negation, or an endianness swapping.
  */
 basic_block_t& instruction_builder_t::operator()(Un const& b) {
-    dom_t& dst = machine.reg(b.dst);
+    dom_t dst = machine.reg(b.dst);
     in(block).assert_init(dst);
     switch (b.op) {
     case Un::Op::LE16:
@@ -1181,56 +1187,40 @@ basic_block_t& instruction_builder_t::operator()(Assume const& b) {
     }
     in(block).assert_init(machine.reg(cond.left));
 
-    dom_t& dst = machine.reg(cond.left);
+    dom_t dst = machine.reg(cond.left);
     if (std::holds_alternative<Reg>(cond.right)) {
-        dom_t& src = machine.reg(cond.right);
-        auto same_type = [&]() -> basic_block_t& {
-            auto& same = in(add_child(cfg, block, "same_type"))
-                        .assume(eq(dst.region, src.region));
-            auto numbers = [&]() -> basic_block_t& {
-                auto& numbers = in(add_child(cfg, *same, "numbers"))
-                               .assume(dst.region == T_NUM);
-                if (!is_unsigned_cmp(cond.op)) {
-                    for (auto c : jmp_to_cst_reg(cond.op, dst.value, src.value))
-                        numbers.assume(c);
-                }
-                return *numbers;
-            };
-            auto pointers = [&]() -> basic_block_t& {
-                return *in(add_child(cfg, *same, "pointers"))
-                       .assume(is_pointer(dst))
-                       .assertion(is_singleton(dst))
-                       .assume(jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset));
-            };
-            return join(numbers(), pointers());
-        };
-        auto different_type = [&]() -> basic_block_t& {
-            auto& different = *in(add_child(cfg, block, "different_type"))
-                              .assume(neq(dst.region, src.region));
+        dom_t src = machine.reg(cond.right);
+        auto& same = *in(add_child(cfg, block, "same_type"))
+                    .assume(eq(dst.region, src.region));
+        auto& numbers = *in(add_child(cfg, same, "numbers"))
+                        .assume(dst.region == T_NUM)
+                        .where(!is_unsigned_cmp(cond.op))->assume(jmp_to_cst_reg(cond.op, dst.value, src.value))
+                        .done();
+        auto& pointers = *in(add_child(cfg, same, "pointers"))
+                            .assume(is_pointer(dst))
+                            .assertion(is_singleton(dst))
+                            .assume(jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset));
 
-            auto& null_src = *in(add_child(cfg, different, "null_src"))
-                             .assume(is_pointer(dst))
-                             .assertion(src.region == T_NUM)
-                             .assertion(src.value == 0);
+        auto& different = *in(add_child(cfg, block, "different_type"))
+                            .assume(neq(dst.region, src.region));
 
-            auto& null_dst = *in(add_child(cfg, different, "null_dst"))
-                             .assume(is_pointer(src))
-                             .assertion(dst.region == T_NUM)
-                             .assertion(dst.value == 0);
+        auto& null_src = *in(add_child(cfg, different, "null_src"))
+                            .assume(is_pointer(dst))
+                            .assertion(src.region == T_NUM)
+                            .assertion(src.value == 0);
 
-            return join(null_src, null_dst);
-        };
-        return join(same_type(), different_type());
+        auto& null_dst = *in(add_child(cfg, different, "null_dst"))
+                            .assume(is_pointer(src))
+                            .assertion(dst.region == T_NUM)
+                            .assertion(dst.value == 0);
+        return join(join(numbers, pointers), join(null_src, null_dst));
     } else {
         int imm = static_cast<int>(std::get<Imm>(cond.right).v);
-        vector<linear_constraint_t> csts = jmp_to_cst_imm(cond.op, dst.value, imm);
-        for (linear_constraint_t c : csts)
-            in(block).assume(c);
-        if (!is_privileged() && imm != 0) {
-            // only null can be compared to pointers without leaking secrets
-            in(block).assertion(dst.region == T_NUM);
-        }
-        return block;
+        // only null can be compared to pointers without leaking secrets
+        return *in(block)
+               .assume(jmp_to_cst_imm(cond.op, dst.value, imm))
+               .where(!is_privileged() && imm != 0)->assertion(dst.region == T_NUM)
+               .done();
     }
 }
 
