@@ -220,9 +220,9 @@ struct basic_block_builder {
         havoc(scratch);
         return insert<crab::array_store_t>(arr, elem_size, idx, idx, scratch);
     }
-    basic_block_builder& array_store_range(variable_t arr, linear_expression_t lb_idx, linear_expression_t ub_idx,
+    basic_block_builder& array_store_range(variable_t arr, linear_expression_t lb_idx, linear_expression_t width,
                         linear_expression_t v, linear_expression_t elem_size) {
-        return insert<crab::array_store_t>(arr, elem_size, lb_idx, ub_idx, v);
+        return insert<crab::array_store_t>(arr, elem_size, lb_idx, lb_idx + width, v);
     }
     basic_block_builder& array_load(variable_t lhs, variable_t arr, linear_expression_t idx, linear_expression_t elem_size) {
         return insert<crab::array_load_t>(lhs, arr, elem_size, idx);
@@ -278,11 +278,7 @@ struct basic_block_builder {
 
 
     basic_block_builder& mark_region(linear_expression_t offset, const variable_t v, variable_t width) {
-        variable_t lb{machine.vfac["lb"], crab::TYPE::INT, 64};
-        variable_t ub{machine.vfac["ub"], crab::TYPE::INT, 64};
-        assign(lb, offset);
-        assign(ub, offset + width);
-        array_store_range(machine.regions, lb, ub, v, 1);
+        array_store_range(machine.regions, offset, width, v, 1);
         return *this;
     }
 
@@ -293,15 +289,10 @@ struct basic_block_builder {
     }
 
     basic_block_builder& havoc_num_region(linear_expression_t offset, variable_t width) {
-        variable_t lb{machine.vfac["lb"], crab::TYPE::INT, 64};
-        variable_t ub{machine.vfac["ub"], crab::TYPE::INT, 64};
         variable_t scratch{machine.vfac["scratch"], crab::TYPE::INT, 64};
-
-        assign(lb, offset);
-        assign(ub, offset + width);
-        array_store_range(machine.regions, lb, ub, T_NUM, 1);
-        array_forget(machine.values, lb, width);
-        array_forget(machine.offsets, lb, width);
+        array_store_range(machine.regions, offset, width, T_NUM, 1);
+        array_forget(machine.values, offset, width);
+        array_forget(machine.offsets, offset, width);
         return *this;
     }
 
