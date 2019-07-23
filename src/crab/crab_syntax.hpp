@@ -7,18 +7,20 @@
 namespace crab {
 
 struct debug_info {
-    int line{-1};
-    int col{-1};
+    std::string msg{};
+    int line{-2};
+    int col{-2};
 
-    bool operator<(const debug_info& other) const { return line < other.line && col < other.col; }
+    bool operator<(const debug_info& other) const { return msg < other.msg && line < other.line && col < other.col; }
 
-    bool operator==(const debug_info& other) const { return line == other.line && col == other.col; }
+    bool operator==(const debug_info& other) const { return msg == other.msg && line == other.line && col == other.col; }
 
-    bool has_debug() const { return line >= 0 && col >= 0; }
+    bool has_debug() const { return line > -2 || col > -2; }
 };
 
 inline crab_os& operator<<(crab_os& o, const debug_info& l) {
-    o << "Line  : " << l.line << "\n"
+    o << l.msg <<"\n"
+      << "Line  : " << l.line << "\n"
       << "Column: " << l.col << "\n";
     return o;
 }

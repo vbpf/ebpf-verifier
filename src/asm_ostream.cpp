@@ -208,20 +208,6 @@ struct InstructionPrinterVisitor {
     }
 };
 
-static vector<std::tuple<label_t, optional<label_t>>> slide(const vector<label_t>& labels) {
-    if (labels.size() == 0)
-        return {};
-    vector<std::tuple<label_t, optional<label_t>>> label_pairs;
-    label_t prev;
-    for (auto label : labels) {
-        if (!prev.empty())
-            label_pairs.push_back({prev, label});
-        prev = label;
-    }
-    label_pairs.push_back({prev, {}});
-    return label_pairs;
-}
-
 string to_string(Instruction const& ins, LabelTranslator labeler) {
     std::stringstream str;
     std::visit(InstructionPrinterVisitor{str, labeler}, ins);

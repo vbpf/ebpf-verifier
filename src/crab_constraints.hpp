@@ -15,7 +15,12 @@ inline auto exit_label(const label_t& label) { return label + ":exit"; }
 inline auto entry_label() { return label(-1, "entry"); }
 
 inline int first_num(const label_t& s) {
-    return boost::lexical_cast<int>(s.substr(0, s.find_first_of(':')));
+    try {
+        return boost::lexical_cast<int>(s.substr(0, s.find_first_of(":+")));
+    } catch (...) {
+        std::cout << "bad label:" << s << "\n";
+        throw;
+    }
 }
 
 /** Translate an eBPF Cfg to to Crab's cfg_t.

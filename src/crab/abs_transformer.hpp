@@ -181,7 +181,10 @@ class checks_db final {
   public:
     checks_db() = default;
 
-    void add_warning(const assert_t& s) { add(check_kind_t::Warning, s); }
+    void add_warning(const assert_t& s) {
+            outs() << s.debug << "\n";
+            add(check_kind_t::Warning, s);
+    }
 
     void add_redundant(const assert_t& s) { add(check_kind_t::Safe, s); }
 
@@ -190,8 +193,9 @@ class checks_db final {
     void add(check_kind_t status, const assert_t& s) {
         total[status]++;
         debug_info dbg = s.debug;
-        if (dbg.has_debug())
+        if (dbg.has_debug()) {
             m_db.insert(check_t(dbg, status));
+        }
     }
 
     void write(crab_os& o) const {
