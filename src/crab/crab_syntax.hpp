@@ -35,7 +35,7 @@ struct binary_op_t {
     binop_t op;
     linear_expression_t left;
     linear_expression_t right;
-
+    bool finite_width{};
 };
 
 struct assign_t {

@@ -175,24 +175,28 @@ struct basic_block_builder {
     basic_block_builder& add(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,   crab::arith_binop_t::ADD, op1, op2); }
     basic_block_builder& sub(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::arith_binop_t::SUB, op1, op2); }
     basic_block_builder& sub(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,   crab::arith_binop_t::SUB, op1, op2); }
-    basic_block_builder& mul(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::arith_binop_t::MUL, op1, op2); }
-    basic_block_builder& mul(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,   crab::arith_binop_t::MUL, op1, op2); }
-    basic_block_builder& div(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::arith_binop_t::SDIV, op1, op2); }
-    basic_block_builder& div(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,   crab::arith_binop_t::SDIV, op1, op2); }
-    basic_block_builder& udiv(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs,crab::arith_binop_t::UDIV, op1, op2); }
-    basic_block_builder& udiv(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,  crab::arith_binop_t::UDIV, op1, op2); }
-    basic_block_builder& rem(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::arith_binop_t::SREM, op1, op2); }
-    basic_block_builder& rem(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,   crab::arith_binop_t::SREM, op1, op2); }
-    basic_block_builder& urem(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs,crab::arith_binop_t::UREM, op1, op2); }
-    basic_block_builder& urem(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,  crab::arith_binop_t::UREM, op1, op2); }
+    basic_block_builder& add_overflow(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::arith_binop_t::ADD, op1, op2, true); }
+    basic_block_builder& add_overflow(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,   crab::arith_binop_t::ADD, op1, op2, true); }
+    basic_block_builder& sub_overflow(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::arith_binop_t::SUB, op1, op2, true); }
+    basic_block_builder& sub_overflow(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,   crab::arith_binop_t::SUB, op1, op2, true); }
+    basic_block_builder& mul(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::arith_binop_t::MUL, op1, op2, true); }
+    basic_block_builder& mul(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,   crab::arith_binop_t::MUL, op1, op2, true); }
+    basic_block_builder& div(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::arith_binop_t::SDIV, op1, op2, true); }
+    basic_block_builder& div(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,   crab::arith_binop_t::SDIV, op1, op2, true); }
+    basic_block_builder& udiv(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs,crab::arith_binop_t::UDIV, op1, op2, true); }
+    basic_block_builder& udiv(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,  crab::arith_binop_t::UDIV, op1, op2, true); }
+    basic_block_builder& rem(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::arith_binop_t::SREM, op1, op2, true); }
+    basic_block_builder& rem(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,   crab::arith_binop_t::SREM, op1, op2, true); }
+    basic_block_builder& urem(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs,crab::arith_binop_t::UREM, op1, op2, true); }
+    basic_block_builder& urem(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,  crab::arith_binop_t::UREM, op1, op2, true); }
     basic_block_builder& bitwise_and(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::bitwise_binop_t::AND, op1, op2); }
     basic_block_builder& bitwise_and(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,   crab::bitwise_binop_t::AND, op1, op2); }
     basic_block_builder& bitwise_or(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs,  crab::bitwise_binop_t::OR, op1, op2); }
     basic_block_builder& bitwise_or(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,    crab::bitwise_binop_t::OR, op1, op2); }
     basic_block_builder& bitwise_xor(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::bitwise_binop_t::XOR, op1, op2); }
     basic_block_builder& bitwise_xor(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,   crab::bitwise_binop_t::XOR, op1, op2); }
-    basic_block_builder& shl(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs,         crab::bitwise_binop_t::SHL, op1, op2); }
-    basic_block_builder& shl(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,           crab::bitwise_binop_t::SHL, op1, op2); }
+    basic_block_builder& shl(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs,         crab::bitwise_binop_t::SHL, op1, op2, true); }
+    basic_block_builder& shl(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,           crab::bitwise_binop_t::SHL, op1, op2, true); }
     basic_block_builder& lshr(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs,        crab::bitwise_binop_t::LSHR, op1, op2); }
     basic_block_builder& lshr(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,          crab::bitwise_binop_t::LSHR, op1, op2); }
     basic_block_builder& ashr(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs,        crab::bitwise_binop_t::ASHR, op1, op2); }
@@ -831,37 +835,25 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
         case Bin::Op::ADD:
             if (imm == 0)
                 return block;
-            in(block).add(dst.value, dst.value, imm)
-                     .add(dst.offset, dst.offset, imm)
-                     .where(imm > 0)->join_with_overflow(dst.value)
-                     .otherwise()->join_with_underflow(dst.value)
-                     .done();
+            in(block).add_overflow(dst.value, dst.value, imm)
+                     .add(dst.offset, dst.offset, imm);
             break;
         case Bin::Op::SUB:
             if (imm == 0)
                 return block;
-            in(block).sub(dst.value, dst.value, imm)
-                     .sub(dst.offset, dst.offset, imm)
-                     .where(imm < 0)->join_with_overflow(dst.value)
-                     .otherwise()->join_with_underflow(dst.value)
-                     .done();
+            in(block).sub_overflow(dst.value, dst.value, imm)
+                     .sub(dst.offset, dst.offset, imm);
             break;
         case Bin::Op::MUL:
             in(block).mul(dst.value, dst.value, imm)
-                     .no_pointer(dst)
-                     .join_with_overflow(dst.value)
-                     .join_with_underflow(dst.value);
+                     .no_pointer(dst);
         case Bin::Op::DIV:
             in(block).div(dst.value, dst.value, imm)
-                     .no_pointer(dst)
-                     .where(imm == -1)->join_with_overflow(dst.value)
-                     .done();
+                     .no_pointer(dst);
             break;
         case Bin::Op::MOD:
             in(block).rem(dst.value, dst.value, imm)
-                     .no_pointer(dst)
-                     .where(imm == -1)->join_with_overflow(dst.value)
-                     .done();
+                     .no_pointer(dst);
             break;
         case Bin::Op::OR:
             in(block).bitwise_or(dst.value, dst.value, imm)
@@ -905,24 +897,20 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
         case Bin::Op::ADD: {
             auto ptr_dst = in(block).fork("ptr_dst", is_pointer(dst))
                            .assertion(src.region == T_NUM)
-                           .add(dst.offset, dst.offset, src.value)
-                           .add(dst.value, dst.value, src.value)
-                           .assert_no_overflow(dst.offset);
+                           .add_overflow(dst.value, dst.value, src.value)
+                           .add(dst.offset, dst.offset, src.value);
 
             auto ptr_src = in(block).fork("ptr_src", is_pointer(src))
                            .assertion(dst.region == T_NUM)
                            .add(dst.offset, dst.value, src.offset)
-                           .add(dst.value, dst.value, src.value)
                            .assert_no_overflow(dst.offset)
                            .assign(dst.region, src.region)
                            .havoc(dst.value)
                            .assume(4098 <= dst.value);
 
             auto both_num = in(block).fork("both_num", dst.region == T_NUM, src.region == T_NUM)
-                            .add(dst.value, dst.value, src.value);
-            return *in(join(*both_num, join(*ptr_src, *ptr_dst)))
-                     .join_with_overflow(dst.value)
-                     .join_with_underflow(dst.value);
+                            .add_overflow(dst.value, dst.value, src.value);
+            return join(*both_num, join(*ptr_src, *ptr_dst));
         }
         case Bin::Op::SUB: {
             auto same = in(block).fork("ptr_src", is_pointer(src))
@@ -939,30 +927,24 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
                                .assert_no_overflow(dst.offset);
 
                 auto both_num = num_src.fork("both_num", dst.region == T_NUM)
-                                .sub(dst.value, dst.value, src.value);
+                                .sub_overflow(dst.value, dst.value, src.value);
 
-                return *in(join(join(*both_num, *same), *ptr_dst))
-                       .join_with_overflow(dst.value)
-                       .join_with_underflow(dst.value);
+                return join(join(*both_num, *same), *ptr_dst);
             }
         }
         case Bin::Op::MUL:
             in(block).mul(dst.value, dst.value, src.value)
-                     .no_pointer(dst)
-                     .join_with_overflow(dst.value)
-                     .join_with_underflow(dst.value);
+                     .no_pointer(dst);
             break;
         case Bin::Op::DIV:
             // For some reason, DIV is not checked for zerodiv
             in(block).div(dst.value, dst.value, src.value)
-                     .no_pointer(dst)
-                     .join_with_overflow(dst.value);
+                     .no_pointer(dst);
             break;
         case Bin::Op::MOD:
             // See DIV comment
             in(block).rem(dst.value, dst.value, src.value)
-                     .no_pointer(dst)
-                     .join_with_overflow(dst.value);
+                     .no_pointer(dst);
             break;
         case Bin::Op::OR:
             in(block).bitwise_or(dst.value, dst.value, src.value)
@@ -974,9 +956,7 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
             break;
         case Bin::Op::LSH:
             in(block).lshr(dst.value, dst.value, src.value)
-                     .no_pointer(dst)
-                     .join_with_overflow(dst.value)
-                     .join_with_underflow(dst.value);
+                     .no_pointer(dst);
         case Bin::Op::RSH:
             in(block).ashr(dst.value, dst.value, src.value)
                      .no_pointer(dst);

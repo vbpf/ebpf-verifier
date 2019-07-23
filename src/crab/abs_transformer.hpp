@@ -23,6 +23,7 @@
 
  */
 #include <variant>
+#include <limits>
 
 #include "crab/abstract_domain_operators.hpp"
 #include "crab/abstract_domain_specialized_traits.hpp"
@@ -60,6 +61,15 @@ class intra_abs_transformer {
         } else {
             assert(op2.is_constant());
             apply(m_inv, stmt.op, stmt.lhs, var1, op2.constant());
+        }
+        if (stmt.finite_width) {
+            // handle overflow, assuming 64 bit
+            number_t max(std::numeric_limits<int64_t>::max());
+            number_t min(std::numeric_limits<int64_t>::min());
+            AbsDomain over(m_inv); over += linear_constraint_t(linear_expression_t(number_t(-1), stmt.lhs).operator+(max), linear_constraint_t::STRICT_INEQUALITY);
+            AbsDomain under(m_inv); under += linear_constraint_t(var_sub(stmt.lhs, min), linear_constraint_t::STRICT_INEQUALITY);
+            if (over.is_bottom() || under.is_bottom())
+                m_inv -= stmt.lhs;
         }
     }
 

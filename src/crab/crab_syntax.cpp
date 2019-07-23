@@ -3,7 +3,10 @@
 namespace crab {
 
 static crab_os& operator<<(crab_os& o, const binary_op_t& s) {
-    return o << s.lhs << " = " << s.left << s.op << s.right;
+    o << s.lhs << " = " << s.left << s.op << s.right;
+    if (s.finite_width)
+        o << " % 2^64";
+    return o;
 }
 static crab_os& operator<<(crab_os& o, const assign_t& s) { return o << s.lhs << " = " << s.rhs; }
 static crab_os& operator<<(crab_os& o, const assume_t& s) { return o << "assume(" << s.constraint << ")"; }
