@@ -378,9 +378,19 @@ class SplitDBM final : public writeable {
 
     void assign(variable_t x, linear_expression_t e);
 
-    void apply(operation_t op, variable_t x, variable_t y, variable_t z);
+    void apply(arith_binop_t op, variable_t x, variable_t y, variable_t z);
 
-    void apply(operation_t op, variable_t x, variable_t y, number_t k);
+    void apply(arith_binop_t op, variable_t x, variable_t y, number_t k);
+
+    // bitwise_operators_api
+    void apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t z);
+
+    void apply(bitwise_binop_t op, variable_t x, variable_t y, number_t k);
+
+    template <typename NumOrVar>
+    void apply(binop_t op, variable_t x, variable_t y, NumOrVar z) {
+        std::visit([&](auto top) { apply(top, x, y, z); }, op);
+    }
 
     void operator+=(linear_constraint_t cst);
 
@@ -398,11 +408,6 @@ class SplitDBM final : public writeable {
     }
 
     void set(variable_t x, interval_t intv);
-
-    // bitwise_operators_api
-    void apply(bitwise_operation_t op, variable_t x, variable_t y, variable_t z);
-
-    void apply(bitwise_operation_t op, variable_t x, variable_t y, number_t k);
 
     void forget(const variable_vector_t& variables);
 

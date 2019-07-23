@@ -543,14 +543,18 @@ class array_expansion_domain final : public writeable {
 
     void assign(variable_t x, linear_expression_t e) { _inv.assign(x, e); }
 
-    void apply(operation_t op, variable_t x, variable_t y, number_t z) { _inv.apply(op, x, y, z); }
+    void apply(arith_binop_t op, variable_t x, variable_t y, number_t z) { _inv.apply(op, x, y, z); }
 
-    void apply(operation_t op, variable_t x, variable_t y, variable_t z) { _inv.apply(op, x, y, z); }
+    void apply(arith_binop_t op, variable_t x, variable_t y, variable_t z) { _inv.apply(op, x, y, z); }
 
-    void apply(bitwise_operation_t op, variable_t x, variable_t y, variable_t z) { _inv.apply(op, x, y, z); }
+    void apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t z) { _inv.apply(op, x, y, z); }
 
-    void apply(bitwise_operation_t op, variable_t x, variable_t y, number_t k) { _inv.apply(op, x, y, k); }
+    void apply(bitwise_binop_t op, variable_t x, variable_t y, number_t k) { _inv.apply(op, x, y, k); }
 
+    template <typename NumOrVar>
+    void apply(binop_t op, variable_t x, variable_t y, NumOrVar z) {
+        std::visit([&](auto top) { apply(top, x, y, z); }, op);
+    }
     // array_operators_api
 
     // array_init returns a fresh array where all elements between

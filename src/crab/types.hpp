@@ -32,47 +32,6 @@ inline crab_os& operator<<(crab_os& o, variable_type_t t) {
     return o;
 }
 
-enum class binary_operation_t {
-    ADD,
-    SUB,
-    MUL,
-    SDIV,
-    UDIV,
-    SREM,
-    UREM,
-    AND,
-    OR,
-    XOR,
-    SHL,
-    LSHR,
-    ASHR,
-};
-
-using BINOP = binary_operation_t;
-
-inline crab_os& operator<<(crab_os& o, binary_operation_t op) {
-    switch (op) {
-    case BINOP::ADD: o << "+"; break;
-    case BINOP::SUB: o << "-"; break;
-    case BINOP::MUL: o << "*"; break;
-    case BINOP::SDIV: o << "/"; break;
-    case BINOP::UDIV: o << "/_u"; break;
-    case BINOP::SREM: o << "%"; break;
-    case BINOP::UREM: o << "%_u"; break;
-    case BINOP::AND: o << "&"; break;
-    case BINOP::OR: o << "|"; break;
-    case BINOP::XOR: o << "^"; break;
-    case BINOP::SHL: o << "<<"; break;
-    case BINOP::LSHR: o << ">>_l"; break;
-    case BINOP::ASHR: o << ">>_r"; break;
-    default: CRAB_ERROR("unexpected binary operation ", op);
-    }
-    return o;
-}
-
-template <typename T>
-inline std::optional<T> conv_op(binary_operation_t op);
-
 // Interface for writeable objects
 class writeable {
   public:

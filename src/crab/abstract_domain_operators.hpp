@@ -1,6 +1,6 @@
 #pragma once
 
-//#include "crab/linear_constraints.hpp"
+#include <variant>
 #include "crab/types.hpp"
 
 /* Types for abstract domain operations */
@@ -8,64 +8,40 @@
 namespace crab {
 // Enumeration type for basic arithmetic operations
 // Do not modify the order.
-enum operation_t { OP_ADDITION, OP_SUBTRACTION, OP_MULTIPLICATION, OP_SDIV, OP_UDIV, OP_SREM, OP_UREM };
+enum class arith_binop_t { ADD, SUB, MUL, SDIV, UDIV, SREM, UREM };
 
-inline crab_os& operator<<(crab_os& o, operation_t op) {
+inline crab_os& operator<<(crab_os& o, arith_binop_t op) {
     switch (op) {
-    case OP_ADDITION: o << "+"; break;
-    case OP_SUBTRACTION: o << "-"; break;
-    case OP_MULTIPLICATION: o << "*"; break;
-    case OP_SDIV: o << "/"; break;
-    case OP_UDIV: o << "/_u"; break;
-    case OP_SREM: o << "%"; break;
-    default: o << "%_u"; break;
+    case arith_binop_t::ADD: o << "+"; break;
+    case arith_binop_t::SUB: o << "-"; break;
+    case arith_binop_t::MUL: o << "*"; break;
+    case arith_binop_t::SDIV: o << "/"; break;
+    case arith_binop_t::UDIV: o << "/_u"; break;
+    case arith_binop_t::SREM: o << "%"; break;
+    case arith_binop_t::UREM: o << "%"; break;
     }
     return o;
 }
 
 // Enumeration type for bitwise operations
-enum bitwise_operation_t { OP_AND, OP_OR, OP_XOR, OP_SHL, OP_LSHR, OP_ASHR };
+enum class bitwise_binop_t { AND, OR, XOR, SHL, LSHR, ASHR };
 
-inline crab_os& operator<<(crab_os& o, bitwise_operation_t op) {
+inline crab_os& operator<<(crab_os& o, bitwise_binop_t op) {
     switch (op) {
-    case OP_AND: o << "&"; break;
-    case OP_OR: o << "|"; break;
-    case OP_XOR: o << "^"; break;
-    case OP_SHL: o << "<<"; break;
-    case OP_LSHR: o << ">>_l"; break;
-    default: o << ">>_a"; break;
+    case bitwise_binop_t::AND: o << "&"; break;
+    case bitwise_binop_t::OR: o << "|"; break;
+    case bitwise_binop_t::XOR: o << "^"; break;
+    case bitwise_binop_t::SHL: o << "<<"; break;
+    case bitwise_binop_t::LSHR: o << ">>_l"; break;
+    case bitwise_binop_t::ASHR: o << ">>_l"; break;
     }
     return o;
 }
 
-/**
- * Convert CFG operations into abstract domain operations
- **/
-template <>
-inline std::optional<operation_t> conv_op(binary_operation_t op) {
-    switch (op) {
-    case BINOP::ADD: return OP_ADDITION;
-    case BINOP::SUB: return OP_SUBTRACTION;
-    case BINOP::MUL: return OP_MULTIPLICATION;
-    case BINOP::SDIV: return OP_SDIV;
-    case BINOP::UDIV: return OP_UDIV;
-    case BINOP::SREM: return OP_SREM;
-    case BINOP::UREM: return OP_UREM;
-    default: return std::optional<operation_t>();
-    }
-}
+using binop_t = std::variant<arith_binop_t, bitwise_binop_t>;
 
-template <>
-inline std::optional<bitwise_operation_t> conv_op(binary_operation_t op) {
-    switch (op) {
-    case BINOP::AND: return OP_AND;
-    case BINOP::OR: return OP_OR;
-    case BINOP::XOR: return OP_XOR;
-    case BINOP::SHL: return OP_SHL;
-    case BINOP::LSHR: return OP_LSHR;
-    case BINOP::ASHR: return OP_ASHR;
-    default: return std::optional<bitwise_operation_t>();
-    }
+inline crab_os& operator<<(crab_os& o, binop_t op) {
+    return std::visit([&](auto top) -> crab_os& { return o << top; }, op);
 }
 
 } // end namespace crab
