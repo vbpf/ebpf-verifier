@@ -91,7 +91,9 @@ class cell_t final {
 
     cell_t(offset_t offset, unsigned size) : _offset(offset), _size(size) {}
 
-    static interval_t to_interval(const offset_t o, unsigned size) { return {o.index(), o.index() + size - 1}; }
+    static interval_t to_interval(const offset_t o, unsigned size) {
+        return {static_cast<int>(o.index()),
+                static_cast<int>(o.index()) + static_cast<int>(size - 1)}; }
 
     interval_t to_interval() const { return to_interval(_offset, _size); }
 
