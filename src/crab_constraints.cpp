@@ -214,7 +214,8 @@ struct basic_block_builder {
     basic_block_builder& array_store(variable_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size) {
         return insert<crab::array_store_t>(arr, elem_size, idx, idx, v);
     }
-    basic_block_builder& array_forget(variable_t arr, linear_expression_t idx, linear_expression_t elem_size) {
+    template <typename W>
+    basic_block_builder& array_forget(variable_t arr, linear_expression_t idx, W elem_size) {
         variable_t scratch{machine.vfac["scratch"], crab::TYPE::INT, 64};
         havoc(scratch);
         return insert<crab::array_store_t>(arr, elem_size, idx, idx, scratch);
@@ -472,7 +473,6 @@ void machine_t::setup_entry(basic_block_t& entry, cfg_t& cfg) {
     machine_t& machine = *this;
     crab::debug_info di{"entry block"};
     basic_block_builder(entry, machine, cfg, di)
-             .havoc(machine.top)
              .assume(STACK_SIZE <= machine.regs[10].value)
              .assign(machine.regs[10].offset, 0) // XXX: Maybe start with STACK_SIZE
              .assign(machine.regs[10].region, T_STACK)
@@ -602,7 +602,6 @@ basic_block_t& instruction_builder_t::exec_stack_access(basic_block_t& block, bo
                            .assume(is_init(data_reg))
               .otherwise()->assert_init(data_reg)
                            .store(addr, data_reg, width)
-                           .havoc(machine.top)
            .done("exec_stack_access");
     /* FIX: requires loop
     variable_t tmp{machine.vfac["tmp"], crab::TYPE::INT, 64};
@@ -744,10 +743,9 @@ basic_block_t& instruction_builder_t::exec_direct_stack_store(basic_block_t& blo
 basic_block_t& instruction_builder_t::exec_direct_stack_store_immediate(basic_block_t& block, int offset, int width,
                                                                         uint64_t immediate) {
     int start = get_start(offset, width);
-    in(block).havoc(machine.top);
     for (int i = start; i <= start + width; i++) {
         in(block).array_store(machine.regions, i, T_NUM, 1)
-                 .array_store(machine.offsets, i, machine.top, 1);
+                 .array_forget(machine.offsets, i, 1);
     }
     in(block).array_store(machine.values, start, immediate, width);
     return block;
@@ -770,7 +768,7 @@ basic_block_t& instruction_builder_t::exec_mem_access_indirect(basic_block_t& bl
             // "BPF_ST stores into R1 context is not allowed"
             // (This seems somewhat arbitrary)
              .where(!can_ctx)->assertion(mem_reg.region != T_CTX)
-             .done("exec_mem_access_indirect");
+             .done();
     basic_block_t* tmp = &join(exec_stack_access(block, is_load, mem_reg, data_reg, offset, width),
                                exec_shared_access(block, is_load, mem_reg, data_reg, offset, width));
     if (can_ctx) {
@@ -937,8 +935,7 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
                            .add(dst.value, dst.value, src.value)
                            .assert_no_overflow(dst.offset)
                            .assign(dst.region, src.region)
-                           .havoc(machine.top)
-                           .assign(dst.value, machine.top)
+                           .havoc(dst.value)
                            .assume(4098 <= dst.value);
 
             auto both_num = in(add_child(cfg, block, "both_num"))
@@ -1291,10 +1288,11 @@ basic_block_t& instruction_builder_t::operator()(Mem const& b) {
                 // FIX: STW stores long long immediate
                 variable_t tmp{machine.vfac["tmp"], crab::TYPE::INT, 64};
                 variable_t num{machine.vfac["T_NUM"], crab::TYPE::INT, 64};
+                variable_t top{machine.vfac["top1"], crab::TYPE::INT, 64};
                 in(block).assign(tmp, imm)
-                         .havoc(machine.top)
+                         .havoc(top)
                          .assign(num, T_NUM);
-                return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, machine.top, num}, offset,
+                return exec_mem_access_indirect(block, false, true, mem_reg, {tmp, top, num}, offset,
                                                 width);
             }
         }
