@@ -114,19 +114,15 @@ int main(int argc, char** argv) {
 
     // std::cout << "to nondet...\n";
     Cfg cfg = to_nondet(det_cfg);
-    // if (!dotfile.empty()) {
-    //     std::cout << "nondet:\n";
-    //     print_dot(cfg, dotfile);
-    //     std::cout << "---\n\n\n";
-    // }
     if (global_options.simplify) {
         // std::cout << "simplifying...\n";
         cfg.simplify();
-        if (!dotfile.empty()) {
-            std::cout << "simplified:\n";
-            print_dot(cfg, dotfile);
-        }
     }
+
+    if (!dotfile.empty()) {
+        print_dot(cfg, dotfile);
+    }
+
     auto stats = collect_stats(cfg);
 
     if (domain == "stats") {

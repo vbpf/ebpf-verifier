@@ -102,45 +102,6 @@ static vector<label_t> unique(const std::pair<T, T>& be) {
     return res;
 }
 
-static vector<Instruction> expand_lockadd(LockAdd lock) {
-    return {Mem{
-                .access = lock.access,
-                .value = Reg{11},
-                .is_load = true,
-            },
-            Bin{
-                .op = Bin::Op::ADD,
-                .is64 = true,
-                .dst = Reg{11},
-                .v = lock.valreg,
-            },
-            Mem{
-                .access = lock.access,
-                .value = Reg{11},
-                .is_load = false,
-            }};
-}
-
-static vector<Instruction> do_expand_locks(vector<Instruction> const& insts) {
-    vector<Instruction> res;
-    for (Instruction ins : insts) {
-        if (std::holds_alternative<LockAdd>(ins)) {
-            for (auto ins : expand_lockadd(std::get<LockAdd>(ins))) {
-                res.push_back(ins);
-            }
-        } else {
-            res.push_back(ins);
-        }
-    }
-    return res;
-}
-
-static label_t pop(set<label_t>& s) {
-    label_t l = *s.begin();
-    s.erase(l);
-    return l;
-}
-
 Cfg to_nondet(const Cfg& cfg) {
     Cfg res(cfg.entry(), cfg.exit());
     for (auto const& [this_label, bb] : cfg) {
