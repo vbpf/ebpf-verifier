@@ -4,6 +4,7 @@ BINDIR := .
 SRCDIR := src
 
 BUILD := debug
+optimization.sanitize := -fsanitize=address -O1 -fno-omit-frame-pointer
 optimization.debug := -O0
 optimization.release := -O2 -flto # -DNDEBUG -Wno-return-type
 

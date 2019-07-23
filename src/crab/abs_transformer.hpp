@@ -182,8 +182,7 @@ class checks_db final {
     checks_db() = default;
 
     void add_warning(const assert_t& s) {
-            outs() << s.debug << "\n";
-            add(check_kind_t::Warning, s);
+        add(check_kind_t::Warning, s);
     }
 
     void add_redundant(const assert_t& s) { add(check_kind_t::Safe, s); }
