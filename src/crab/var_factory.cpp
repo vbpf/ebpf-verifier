@@ -28,16 +28,6 @@ index_t variable_factory::get_and_increment_id() {
     ++_next_id;
     return res;
 }
-
-// hook for generating indexed_string's without being
-// associated with a particular T (w/o caching).
-// XXX: do not use it unless strictly necessary.
-indexed_string variable_factory::get() {
-    indexed_string is(get_and_increment_id(), this);
-    _shadow_vars.push_back(is);
-    return is;
-}
-
 // generate a shadow indexed_string's associated to some key
 indexed_string variable_factory::get(index_t key, std::string name) {
     auto it = _shadow_map.find(key);
@@ -61,5 +51,8 @@ indexed_string variable_factory::operator[](var_key s) {
         return it->second;
     }
 }
+
+
+variable_factory variable_factory::vfac;
 
 } // end namespace crab

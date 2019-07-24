@@ -35,6 +35,8 @@ using std::vector;
 using crab::linear_constraint_t;
 using crab::linear_expression_t;
 using crab::variable_factory;
+using crab::array_kind_t;
+
 
 constexpr int MAX_PACKET_OFF = 0xffff;
 constexpr int64_t MY_INT_MAX = INT_MAX;
@@ -83,10 +85,10 @@ struct dom_t {
     variable_t value;
     variable_t offset;
     variable_t region;
-    dom_t(variable_factory& vfac, int i)
-        : value{vfac[std::string("r") + std::to_string(i)], crab::TYPE::INT, 64},
-          offset{vfac[std::string("off") + std::to_string(i)], crab::TYPE::INT, 64},
-          region{vfac[std::string("t") + std::to_string(i)], crab::TYPE::INT, 64} {}
+    dom_t(int i)
+        : value{variable_factory::vfac[std::string("r") + std::to_string(i)]},
+          offset{variable_factory::vfac[std::string("off") + std::to_string(i)]},
+          region{variable_factory::vfac[std::string("t") + std::to_string(i)]} {}
     dom_t(variable_t value, variable_t offset, variable_t region) : value(value), offset(offset), region(region){};
 };
 
@@ -98,19 +100,16 @@ static linear_constraint_t is_not_num(dom_t v) { return v.region > T_NUM; }
 
 struct machine_t final {
     ptype_descr ctx_desc;
-    variable_factory& vfac;
     std::vector<dom_t> regs;
 
     program_info info;
 
-    variable_t values;
-    variable_t offsets;
-    variable_t regions;
+    const array_kind_t values = array_kind_t::values;
+    const array_kind_t offsets = array_kind_t::offsets;
+    const array_kind_t regions = array_kind_t::regions;
 
-    variable_t meta_size{vfac["meta_size"], crab::TYPE::INT, 64};
-    variable_t data_size{vfac["data_size"], crab::TYPE::INT, 64};
-
-    variable_t top{vfac["*"], crab::TYPE::INT, 64};
+    variable_t meta_size;
+    variable_t data_size;
 
     //basic_block_builder in(basic_block_t& bb) { return {bb, *this}; }
 
@@ -122,7 +121,7 @@ struct machine_t final {
 
     void setup_entry(basic_block_t& entry, cfg_t& cfg);
 
-    machine_t(variable_factory& vfac, program_info info);
+    machine_t(program_info info);
 
 };
 
@@ -216,18 +215,18 @@ struct basic_block_builder {
         return insert<crab::select_t>(lhs, cond, e1, e2);
     }
     basic_block_builder& assertion(linear_constraint_t cst) { di.col++; return insert<crab::assert_t>(cst, di); }
-    basic_block_builder& array_store(variable_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size) {
+    basic_block_builder& array_store(array_kind_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size) {
         return insert<crab::array_store_t>(arr, elem_size, idx, idx, v);
     }
     template <typename W>
-    basic_block_builder& array_forget(variable_t arr, linear_expression_t idx, W elem_size) {
+    basic_block_builder& array_forget(array_kind_t arr, linear_expression_t idx, W elem_size) {
         return insert<crab::array_havoc_t>(arr, elem_size, idx);
     }
-    basic_block_builder& array_store_range(variable_t arr, linear_expression_t lb_idx, linear_expression_t width,
+    basic_block_builder& array_store_range(array_kind_t arr, linear_expression_t lb_idx, linear_expression_t width,
                         linear_expression_t v, linear_expression_t elem_size) {
         return insert<crab::array_store_t>(arr, elem_size, lb_idx, lb_idx + width, v);
     }
-    basic_block_builder& array_load(variable_t lhs, variable_t arr, linear_expression_t idx, linear_expression_t elem_size) {
+    basic_block_builder& array_load(variable_t lhs, array_kind_t arr, linear_expression_t idx, linear_expression_t elem_size) {
         return insert<crab::array_load_t>(lhs, arr, elem_size, idx);
     }
 
@@ -431,9 +430,9 @@ class instruction_builder_t final {
  * Each instruction is translated to a tree of Crab instructions, which are then
  * joined together.
  */
-cfg_t build_crab_cfg(variable_factory& vfac, Cfg const& simple_cfg, program_info info) {
+cfg_t build_crab_cfg(Cfg const& simple_cfg, program_info info) {
     cfg_t cfg(entry_label(), simple_cfg.exit());
-    machine_t machine(vfac, info);
+    machine_t machine(info);
     {
         basic_block_t& entry = cfg.insert(entry_label());
         machine.setup_entry(entry, cfg);
@@ -468,14 +467,13 @@ cfg_t build_crab_cfg(variable_factory& vfac, Cfg const& simple_cfg, program_info
     return cfg;
 }
 
-machine_t::machine_t(variable_factory& vfac, program_info info)
-    : ctx_desc{get_descriptor(info.program_type)}, vfac{vfac}, info{info},
-        values{vfac["S_r"],    crab::TYPE::ARR, 64},
-        offsets{vfac["S_off"], crab::TYPE::ARR, 64},
-        regions{vfac["S_t"],   crab::TYPE::ARR, 64}
+machine_t::machine_t(program_info info)
+    : ctx_desc{get_descriptor(info.program_type)}, info{info},
+        meta_size{variable_factory::vfac["meta_size"]},
+        data_size{variable_factory::vfac["data_size"]}
  {
     for (int i = 0; i < 12; i++) {
-        regs.emplace_back(vfac, i);
+        regs.emplace_back(i);
     }
 }
 
@@ -620,7 +618,7 @@ basic_block_t& instruction_builder_t::exec_stack_access(basic_block_t& block, bo
               .otherwise().store(addr, data_reg, width)
            .done("exec_stack_access");
     /* FIX: requires loop
-    variable_t tmp{machine.vfac["tmp"], crab::TYPE::INT, 64};
+    variable_t tmp{variable_factory::vfac["tmp"]};
     for (int idx=1; idx < width; idx++) {
         mid.array_load(tmp, machine.regions, addr+idx, 1);
         in(mid).assertion(eq(tmp, data_reg.region));
@@ -934,8 +932,8 @@ basic_block_t& instruction_builder_t::operator()(Un const& b) {
  * Registers r1-r5 are scratched.
  */
 basic_block_t& instruction_builder_t::operator()(Call const& call) {
-    variable_t map_value_size{machine.vfac["map_value_size"], crab::TYPE::INT, 64};
-    variable_t map_key_size{machine.vfac["map_key_size"], crab::TYPE::INT, 64};
+    variable_t map_value_size{variable_factory::vfac["map_value_size"]};
+    variable_t map_key_size{variable_factory::vfac["map_key_size"]};
     for (ArgSingle param : call.singles) {
         dom_t arg = machine.regs[param.reg.v];
         switch (param.kind) {
@@ -1146,9 +1144,9 @@ basic_block_t& instruction_builder_t::operator()(Mem const& b) {
         } else {
             // mem[offset] = immediate
             // FIX: STW stores long long immediate
-            variable_t tmp{machine.vfac["tmp"], crab::TYPE::INT, 64};
-            variable_t num{machine.vfac["T_NUM"], crab::TYPE::INT, 64};
-            variable_t top{machine.vfac["top1"], crab::TYPE::INT, 64};
+            variable_t tmp{variable_factory::vfac["tmp"]};
+            variable_t num{variable_factory::vfac["T_NUM"]};
+            variable_t top{variable_factory::vfac["top1"]};
             in(block).assign(tmp, std::get<Imm>(b.value).v)
                         .havoc(top)
                         .assign(num, T_NUM);

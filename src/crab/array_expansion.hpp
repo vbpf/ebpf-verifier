@@ -83,13 +83,12 @@ class cell_t final {
 
     offset_t _offset{};
     unsigned _size{};
-    std::optional<variable_t> _scalar{};
+    std::optional<variable_t> _scalar;
 
     // Only offset_map_t can create cells
     cell_t() = default;
-    cell_t(offset_t offset, variable_t scalar) : _offset(offset), _size(scalar.get_bitwidth()), _scalar(scalar) {}
 
-    cell_t(offset_t offset, unsigned size) : _offset(offset), _size(size) {}
+    cell_t(offset_t offset, unsigned size, std::optional<variable_t> scalar = {}) : _offset(offset), _size(size), _scalar{scalar} {}
 
     static interval_t to_interval(const offset_t o, unsigned size) {
         return {static_cast<int>(o.index()),
@@ -304,12 +303,12 @@ class offset_map_t final {
     std::vector<cell_t> get_all_cells() const;
 
     // Return in out all cells that might overlap with (o, size).
-    void get_overlap_cells(offset_t o, unsigned size, std::vector<cell_t>& out);
+    std::vector<cell_t> get_overlap_cells(offset_t o, unsigned size);
 
     template <typename AbsDomain>
-    void get_overlap_cells_symbolic_offset(const AbsDomain& dom, const linear_expression_t& symb_lb,
-                                           const linear_expression_t& symb_ub, std::vector<cell_t>& out) const {
-
+    std::vector<cell_t> get_overlap_cells_symbolic_offset(const AbsDomain& dom, const linear_expression_t& symb_lb,
+                                           const linear_expression_t& symb_ub) const {
+        std::vector<cell_t> out;
         for (auto it = _map.begin(), et = _map.end(); it != et; ++it) {
             const cell_set_t& o_cells = it->second;
             // All cells in o_cells have the same offset. They only differ
@@ -338,6 +337,7 @@ class offset_map_t final {
                 }
             }
         }
+        return out;
     }
 
     void write(crab_os& o) const;
@@ -520,12 +520,6 @@ class array_expansion_domain final : public writeable {
         }
 
         _inv.forget(variables);
-
-        for (variable_t v : variables) {
-            if (v.is_array_type()) {
-                remove_array_map(v);
-            }
-        }
     }
 
     void normalize() { CRAB_WARN("array expansion normalize not implemented"); }
@@ -533,12 +527,7 @@ class array_expansion_domain final : public writeable {
     void operator+=(linear_constraint_t cst) { _inv += cst; }
 
     void operator-=(variable_t var) {
-
-        if (var.is_array_type()) {
-            remove_array_map(var);
-        } else {
-            _inv -= var;
-        }
+        _inv -= var;
     }
 
     void assign(variable_t x, linear_expression_t e) { _inv.assign(x, e); }
@@ -587,8 +576,7 @@ class array_expansion_domain final : public writeable {
             interval_t i_elem_size = to_interval(elem_size);
             if (std::optional<number_t> n_bytes = i_elem_size.singleton()) {
                 unsigned size = (long)*n_bytes;
-                std::vector<cell_t> cells;
-                offset_map.get_overlap_cells(o, size, cells);
+                std::vector<cell_t> cells = offset_map.get_overlap_cells(o, size);
                 if (!cells.empty()) {
                     CRAB_WARN("Ignored read from cell ", a, "[", o, "...", o.index() + size - 1, "]",
                               " because it overlaps with ", cells.size(), " cells");
@@ -622,7 +610,7 @@ class array_expansion_domain final : public writeable {
                  outs() << lhs << ":=" << a << "[" << i << "..." << ub << "]  -- " << *this << "\n";);
     }
 
-    std::optional<variable_t> kill_and_find_var(variable_t a, linear_expression_t elem_size, linear_expression_t i) {
+    std::optional<std::pair<offset_t, unsigned>> kill_and_find_var(variable_t a, linear_expression_t elem_size, linear_expression_t i) {
         if (is_bottom())
             return {};
 
@@ -632,43 +620,41 @@ class array_expansion_domain final : public writeable {
             CRAB_ERROR("array expansion domain expects constant array element sizes");
         }
 
+        std::optional<std::pair<offset_t, unsigned>> res;
+
         unsigned size = (long)(*n_bytes);
         offset_map_t& offset_map = lookup_array_map(a);
         interval_t ii = to_interval(i);
+        std::vector<cell_t> cells;
         if (std::optional<number_t> n = ii.singleton()) {
-            // -- Constant index: kill overlapping cells + perform strong update
-            std::vector<cell_t> cells;
+            // -- Constant index: kill overlapping cells
             offset_t o((long)*n);
-            offset_map.get_overlap_cells(o, size, cells);
-            if (cells.size() > 0) {
-                kill_cells(cells, offset_map, _inv);
-            }
-            // Perform scalar update
-            // -- create a new cell it there is no one already
-            return offset_map.mk_cell(a, o, size).get_scalar();
+            cells = offset_map.get_overlap_cells(o, size);
+            res = std::make_pair(o, size);
         } else {
             // -- Non-constant index: kill overlapping cells
-            linear_expression_t symb_lb(i);
-            linear_expression_t symb_ub(i + number_t(size - 1));
-            std::vector<cell_t> cells;
-            offset_map.get_overlap_cells_symbolic_offset(_inv, symb_lb, symb_ub, cells);
-            kill_cells(cells, offset_map, _inv);
-            return {};
+            cells = offset_map.get_overlap_cells_symbolic_offset(_inv,
+                linear_expression_t(i),
+                linear_expression_t(i + number_t(size - 1))
+            );
         }
+        kill_cells(cells, offset_map, _inv);
+
+        return res;
     }
 
     void array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i, linear_expression_t val) {
-        std::optional<variable_t> maybe_var = kill_and_find_var(a, elem_size, i);
-        if (maybe_var) {
-            _inv.assign(*maybe_var, val);
+        auto maybe_cell = kill_and_find_var(a, elem_size, i);
+        if (maybe_cell) {
+            // perform strong update
+            //outs() << "(" << maybe_cell->first.index() << ", " << maybe_cell->second << ")\n";
+            variable_t v = lookup_array_map(a).mk_cell(a, maybe_cell->first, maybe_cell->second).get_scalar();
+            _inv.assign(v, val);
         }
     }
 
     void array_havoc(variable_t a, linear_expression_t elem_size, linear_expression_t i) {
-        std::optional<variable_t> maybe_var = kill_and_find_var(a, elem_size, i);
-        if (maybe_var) {
-            _inv -= *maybe_var;
-        }
+        kill_and_find_var(a, elem_size, i);
     }
     // Perform array stores over an array segment
     void array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
@@ -731,11 +717,6 @@ class array_expansion_domain final : public writeable {
 
     void rename(const variable_vector_t& from, const variable_vector_t& to) {
         _inv.rename(from, to);
-        for (auto& v : from) {
-            if (v.is_array_type()) {
-                CRAB_WARN("TODO: rename array variable");
-            }
-        }
     }
 
 }; // end array_expansion_domain

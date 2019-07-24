@@ -60,16 +60,14 @@ cell_t offset_map_t::mk_cell(variable_t array, offset_t o, unsigned size) {
 
     cell_t c = get_cell(o, size);
     if (c.is_null()) {
-        auto& vfac = array.name().get_var_factory();
         std::string vname = mk_scalar_name(array, o, size);
         index_t vindex = get_index(array, o, size);
 
         // create a new scalar variable for representing the contents
         // of bytes array[o,o+1,..., o+size-1]
-        variable_t scalar_var(vfac.get(vindex, vname), TYPE::INT, size);
-        c = cell_t(o, scalar_var);
+        variable_t scalar_var(variable_factory::vfac.get(vindex, vname));
+        c = cell_t(o, size, scalar_var);
         insert_cell(c);
-        CRAB_LOG("array-expansion", outs() << "**Created cell " << c << "\n";);
     }
     // sanity check
     if (!c.has_scalar()) {
@@ -89,8 +87,9 @@ std::vector<cell_t> offset_map_t::get_all_cells() const {
     return res;
 }
 
-// Return in out all cells that might overlap with (o, size).
-void offset_map_t::get_overlap_cells(offset_t o, unsigned size, std::vector<cell_t>& out) {
+// Return all cells that might overlap with (o, size).
+std::vector<cell_t> offset_map_t::get_overlap_cells(offset_t o, unsigned size) {
+    std::vector<cell_t> out;
     compare_binding_t comp;
 
     bool added = false;
@@ -185,19 +184,7 @@ void offset_map_t::get_overlap_cells(offset_t o, unsigned size, std::vector<cell
         assert(!c.is_null());
         remove_cell(c);
     }
-
-    CRAB_LOG(
-        "array-expansion-overlap", outs() << "**Overlap set between \n"
-                                          << *this << "\nand "
-                                          << "(" << o << "," << size << ")={";
-        for (unsigned i = 0, e = out.size(); i < e;) {
-            outs() << out[i];
-            ++i;
-            if (i < e) {
-                outs() << ",";
-            }
-        } outs()
-        << "}\n";);
+    return out;
 }
 
 void offset_map_t::write(crab_os& o) const {

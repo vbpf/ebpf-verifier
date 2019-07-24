@@ -34,7 +34,6 @@
 #include "crab/types.hpp"
 
 namespace crab {
-
 /**
  * Abstract forward transformer for all statements.
  **/
@@ -103,17 +102,19 @@ class intra_abs_transformer {
 
     void operator()(const array_store_t& stmt) {
         if (stmt.lb_index.equal(stmt.ub_index)) {
-            m_inv.array_store(stmt.array, stmt.elem_size, stmt.lb_index, stmt.value);
+            m_inv.array_store(array_var_of(stmt.array), stmt.elem_size, stmt.lb_index, stmt.value);
         } else {
-            m_inv.array_store_range(stmt.array, stmt.elem_size, stmt.lb_index, stmt.ub_index, stmt.value);
+            m_inv.array_store_range(array_var_of(stmt.array), stmt.elem_size, stmt.lb_index, stmt.ub_index, stmt.value);
         }
     }
 
     void operator()(const array_havoc_t& stmt) {
-        m_inv.array_havoc(stmt.array, stmt.elem_size, stmt.index);
+        m_inv.array_havoc(array_var_of(stmt.array), stmt.elem_size, stmt.index);
     }
 
-    void operator()(const array_load_t& stmt) { m_inv.array_load(stmt.lhs, stmt.array, stmt.elem_size, stmt.index); }
+    void operator()(const array_load_t& stmt) {
+        m_inv.array_load(stmt.lhs, array_var_of(stmt.array), stmt.elem_size, stmt.index);
+    }
 };
 
 template <typename AbsDomain>
@@ -310,7 +311,4 @@ inline void check_block(const basic_block_t& bb, const AbsDomain& from_inv, chec
     }
     db.merge_db(std::move(checker.m_db));
 }
-
-void type_check(const cfg_ref_t& cfg_t);
-
 } // namespace crab
