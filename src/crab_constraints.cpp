@@ -986,17 +986,20 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
         switch (param.kind) {
         case ArgPair::Kind::PTR_TO_MEM_OR_NULL: {
             auto null = in(*current).fork("null", arg.region == T_NUM)
-                        .assertion(arg.value == 0);
+                                    .assertion(arg.value == 0);
 
             auto ptr = in(*current).fork("ptr", is_not_num(arg));
             current = &join(*null, assert_mem(*ptr, false, true));
-        } break;
+            break;
+        }
         case ArgPair::Kind::PTR_TO_MEM: {
             current = &assert_mem(*current, false, true);
-        } break;
+            break;
+        }
         case ArgPair::Kind::PTR_TO_UNINIT_MEM: {
             current = &assert_mem(*current, true, false);
-        } break;
+            break;
+        }
         }
     }
     dom_t r0 = machine.regs[0];
