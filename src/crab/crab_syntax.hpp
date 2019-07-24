@@ -98,8 +98,16 @@ struct array_load_t {
     linear_expression_t index;
 };
 
+struct array_havoc_t {
+    // forall i \in [lb,ub) % elem_size :: arr[i] := val
+    variable_t array;
+    linear_expression_t elem_size; //! size in bytes
+    linear_expression_t index;
+};
+
 using new_statement_t =
-    std::variant<binary_op_t, assign_t, assume_t, select_t, assert_t, havoc_t, array_store_t, array_load_t>;
+    std::variant<binary_op_t, assign_t, assume_t, select_t, assert_t, havoc_t,
+                 array_store_t, array_load_t, array_havoc_t>;
 
 crab_os& operator<<(crab_os& os, const new_statement_t& a);
 

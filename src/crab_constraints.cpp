@@ -221,9 +221,7 @@ struct basic_block_builder {
     }
     template <typename W>
     basic_block_builder& array_forget(variable_t arr, linear_expression_t idx, W elem_size) {
-        variable_t scratch{machine.vfac["scratch"], crab::TYPE::INT, 64};
-        havoc(scratch);
-        return insert<crab::array_store_t>(arr, elem_size, idx, idx, scratch);
+        return insert<crab::array_havoc_t>(arr, elem_size, idx);
     }
     basic_block_builder& array_store_range(variable_t arr, linear_expression_t lb_idx, linear_expression_t width,
                         linear_expression_t v, linear_expression_t elem_size) {
@@ -360,7 +358,7 @@ struct basic_block_builder {
         return in(join(*num_only, *pointer_only));
     }
 
-    basic_block_builder access_num_only(dom_t data_reg, bool is_load) {
+    basic_block_builder& access_num_only(dom_t data_reg, bool is_load) {
         if (!cond) return *this;
         return where(is_load)
                     .havoc(data_reg.offset)
