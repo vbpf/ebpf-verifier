@@ -375,7 +375,7 @@ class instruction_builder_t final {
     basic_block_t& operator()(Jmp const& b) { assert(false); }
 
     /** Unimplemented */
-    basic_block_t& operator()(Assert const& b) { assert(false); };
+    basic_block_t& operator()(Assert const& b) { return block; };
 
 
   private:
