@@ -1111,12 +1111,10 @@ basic_block_t& instruction_builder_t::operator()(Mem const& b) {
                    .otherwise().store(start, data_reg, width)
                    .done();
         } else {
-            for (int i = 0; i <= width; i++) {
-                in(block).array_store(machine.regions, start + i, T_NUM, 1)
-                         .array_forget(machine.offsets, start + i, 1);
-            }
-            in(block).array_store(machine.values, start, std::get<Imm>(b.value).v, width);
-            return block;
+            return *in(block)
+                   .array_forget(machine.offsets, start, width)
+                   .array_store_range(start, width, T_NUM)
+                   .array_store(machine.values, start, std::get<Imm>(b.value).v, width);
         }
     }
 
