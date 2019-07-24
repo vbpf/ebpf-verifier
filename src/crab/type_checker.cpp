@@ -159,6 +159,9 @@ struct type_checker_visitor {
     }
 
     void operator()(const havoc_t&) {}
+    void operator()(const array_havoc_t& s) {
+
+    }
 
     void operator()(const array_store_t& s) {
         // TODO: check that e_sz is the same number that v's bitwidth

@@ -35,6 +35,10 @@ static crab_os& operator<<(crab_os& o, const array_load_t& s) {
              << "array_load(" << s.array << "," << s.index << ",sz=" << s.elem_size << ")";
 }
 
+static crab_os& operator<<(crab_os& o, const array_havoc_t& s) {
+    return o << "havoc(" << s.array << "," << s.index << ",sz=" << s.elem_size << ")";
+}
+
 crab_os& operator<<(crab_os& os, const new_statement_t& a) {
     std::visit([&](const auto& arg) { os << arg; }, a);
     return os;

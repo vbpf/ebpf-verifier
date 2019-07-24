@@ -622,10 +622,9 @@ class array_expansion_domain final : public writeable {
                  outs() << lhs << ":=" << a << "[" << i << "..." << ub << "]  -- " << *this << "\n";);
     }
 
-    void array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i, linear_expression_t val) {
-
+    std::optional<variable_t> kill_and_find_var(variable_t a, linear_expression_t elem_size, linear_expression_t i) {
         if (is_bottom())
-            return;
+            return {};
 
         interval_t i_elem_size = to_interval(elem_size);
         std::optional<number_t> n_bytes = i_elem_size.singleton();
@@ -642,37 +641,35 @@ class array_expansion_domain final : public writeable {
             offset_t o((long)*n);
             offset_map.get_overlap_cells(o, size, cells);
             if (cells.size() > 0) {
-                CRAB_LOG("array-expansion", CRAB_WARN("Killed ", cells.size(), " overlapping cells with ", "[", o,
-                                                      "...", o.index() + size - 1, "]", " before writing."));
-
                 kill_cells(cells, offset_map, _inv);
             }
             // Perform scalar update
             // -- create a new cell it there is no one already
-            cell_t c = offset_map.mk_cell(a, o, size);
-            // -- strong update
-            _inv.assign(c.get_scalar(), val);
+            return offset_map.mk_cell(a, o, size).get_scalar();
         } else {
             // -- Non-constant index: kill overlapping cells
-            CRAB_WARN("array expansion ignored array write with non-constant index ", i);
             linear_expression_t symb_lb(i);
             linear_expression_t symb_ub(i + number_t(size - 1));
             std::vector<cell_t> cells;
             offset_map.get_overlap_cells_symbolic_offset(_inv, symb_lb, symb_ub, cells);
-            CRAB_LOG("array-expansion", outs() << "Killed cells: {"; for (unsigned j = 0; j < cells.size();) {
-                outs() << cells[j];
-                ++j;
-                if (j < cells.size()) {
-                    outs() << ",";
-                }
-            } outs() << "}\n";);
             kill_cells(cells, offset_map, _inv);
+            return {};
         }
-
-        CRAB_LOG("array-expansion", linear_expression_t ub = i + elem_size - 1;
-                 outs() << a << "[" << i << "..." << ub << "]:=" << val << " -- " << *this << "\n";);
     }
 
+    void array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i, linear_expression_t val) {
+        std::optional<variable_t> maybe_var = kill_and_find_var(a, elem_size, i);
+        if (maybe_var) {
+            _inv.assign(*maybe_var, val);
+        }
+    }
+
+    void array_havoc(variable_t a, linear_expression_t elem_size, linear_expression_t i) {
+        std::optional<variable_t> maybe_var = kill_and_find_var(a, elem_size, i);
+        if (maybe_var) {
+            _inv -= *maybe_var;
+        }
+    }
     // Perform array stores over an array segment
     void array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
                            linear_expression_t ub_idx, linear_expression_t val) {

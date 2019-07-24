@@ -109,6 +109,10 @@ class intra_abs_transformer {
         }
     }
 
+    void operator()(const array_havoc_t& stmt) {
+        m_inv.array_havoc(stmt.array, stmt.elem_size, stmt.index);
+    }
+
     void operator()(const array_load_t& stmt) { m_inv.array_load(stmt.lhs, stmt.array, stmt.elem_size, stmt.index); }
 };
 
