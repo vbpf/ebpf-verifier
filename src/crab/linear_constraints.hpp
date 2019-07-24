@@ -261,23 +261,6 @@ class linear_expression_t final {
         return variables;
     }
 
-    bool is_well_typed() const {
-        typename variable_t::bitwidth_t b;
-        variable_type_t type;
-        for (const_iterator it = begin(), et = end(); it != et; ++it) {
-            variable_t v = it->second;
-            if (it == begin()) {
-                b = v.get_bitwidth();
-                type = v.get_type();
-            } else {
-                if (v.get_bitwidth() != b || v.get_type() != type) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
     std::optional<variable_t> get_variable() const {
         if (this->is_constant())
             return std::optional<variable_t>();
@@ -471,8 +454,6 @@ class linear_constraint_t final {
     number_t operator[](variable_t x) const { return this->_expr.operator[](x); }
 
     variable_set_t variables() const { return this->_expr.variables(); }
-
-    bool is_well_typed() const { return _expr.is_well_typed(); }
 
     linear_constraint_t negate() const;
 

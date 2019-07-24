@@ -22,6 +22,16 @@ static crab_os& operator<<(crab_os& o, const assert_t& s) {
     }
     return o;
 }
+
+static crab_os& operator<<(crab_os& o, const array_kind_t& s) {
+    switch (s) {
+        case array_kind_t::offsets: return o << "S_off";
+        case array_kind_t::regions: return o << "S_t";
+        case array_kind_t::values: return o << "S_r";
+    }
+    assert(false);
+}
+
 static crab_os& operator<<(crab_os& o, const array_store_t& s) {
     o << "array_store(" << s.array << "," << s.lb_index;
     if (!s.lb_index.equal(s.ub_index)) {
@@ -30,6 +40,7 @@ static crab_os& operator<<(crab_os& o, const array_store_t& s) {
     o << "," << s.value << ",sz=" << s.elem_size << ")";
     return o;
 }
+
 static crab_os& operator<<(crab_os& o, const array_load_t& s) {
     return o << s.lhs << " = "
              << "array_load(" << s.array << "," << s.index << ",sz=" << s.elem_size << ")";
@@ -42,6 +53,18 @@ static crab_os& operator<<(crab_os& o, const array_havoc_t& s) {
 crab_os& operator<<(crab_os& os, const new_statement_t& a) {
     std::visit([&](const auto& arg) { os << arg; }, a);
     return os;
+}
+
+variable_t array_var_of(array_kind_t kind) {
+    static variable_t arr_values{variable_factory::vfac["S_r"]};
+    static variable_t arr_offsets{variable_factory::vfac["S_off"]};
+    static variable_t arr_regions{variable_factory::vfac["S_t"]};
+    switch (kind) {
+        case array_kind_t::values: return arr_values;
+        case array_kind_t::offsets: return arr_offsets;
+        case array_kind_t::regions: return arr_regions;
+    }
+    assert(false);
 }
 
 } // namespace crab

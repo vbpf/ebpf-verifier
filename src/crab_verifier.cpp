@@ -57,7 +57,6 @@ static auto extract_post(analyzer_t& analyzer, cfg_t& cfg) {
 static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_printer) {
     dom_t::clear_global_state();
 
-    type_check(cfg);
     analyzer_t analyzer(cfg);
     analyzer.run(dom_t::top());
 
@@ -94,8 +93,7 @@ static std::vector<string> sorted_labels(cfg_t& cfg) {
 }
 
 std::tuple<bool, double> abs_validate(Cfg const& simple_cfg, program_info info) {
-    variable_factory vfac;
-    cfg_t cfg = build_crab_cfg(vfac, simple_cfg, info);
+    cfg_t cfg = build_crab_cfg(simple_cfg, info);
 
     printer_t pre_printer;
     printer_t post_printer;

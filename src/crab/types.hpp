@@ -20,18 +20,6 @@ using index_t = uint64_t;
 
 using number_t = z_number;
 
-enum variable_type_t { INT, ARR };
-
-using TYPE = variable_type_t;
-
-inline crab_os& operator<<(crab_os& o, variable_type_t t) {
-    switch (t) {
-    case TYPE::INT: o << "int"; break;
-    case TYPE::ARR: o << "arr_int"; break;
-    }
-    return o;
-}
-
 // Interface for writeable objects
 class writeable {
   public:
@@ -124,8 +112,11 @@ class variable_factory final {
 
     index_t get_and_increment_id();
 
+    variable_factory() = default;
   public:
-    variable_factory(){};
+    static variable_factory vfac;
+
+    variable_factory(variable_factory&&) = delete;
     variable_factory(const variable_factory&) = delete;
 
     // hook for generating indexed_string's without being
@@ -151,34 +142,21 @@ class variable_t final {
 
   private:
     varname_t _n;
-    variable_type_t _type;
-    bitwidth_t _width;
+    const bitwidth_t _width{64};
 
   public:
-    variable_t(const varname_t& n, variable_type_t type) : _n(n), _type(type), _width(0) {}
+    variable_t(const varname_t& n) : _n(n) {}
 
-    variable_t(const varname_t& n, variable_type_t type, bitwidth_t width) : _n(n), _type(type), _width(width) {}
+    variable_t(const variable_t& o) : _n(o._n) {}
 
-    variable_t(const variable_t& o) : _n(o._n), _type(o._type), _width(o._width) {}
-
-    variable_t(variable_t&& o) : _n(std::move(o._n)), _type(std::move(o._type)), _width(std::move(o._width)) {}
+    variable_t(variable_t&& o) : _n(std::move(o._n))  {}
 
     variable_t& operator=(const variable_t& o) {
         if (this != &o) {
             _n = o._n;
-            _type = o._type;
-            _width = o._width;
         }
         return *this;
     }
-
-    bool is_array_type() const { return _type == TYPE::ARR; }
-
-    variable_type_t get_type() const { return _type; }
-
-    bool has_bitwidth() const { return _width > 0; }
-
-    bitwidth_t get_bitwidth() const { return _width; }
 
     const varname_t& name() const { return _n; }
 
