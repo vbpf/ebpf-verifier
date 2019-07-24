@@ -546,24 +546,6 @@ class array_expansion_domain final : public writeable {
     }
     // array_operators_api
 
-    // array_init returns a fresh array where all elements between
-    // lb_idx and ub_idx are initialized to val. Thus, the first thing
-    // we need to do is to kill existing cells.
-    void array_init(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx, linear_expression_t ub_idx,
-                    linear_expression_t val) {
-
-        if (is_bottom())
-            return;
-
-        offset_map_t& offset_map = lookup_array_map(a);
-        std::vector<cell_t> old_cells = offset_map.get_all_cells();
-        if (!old_cells.empty()) {
-            kill_cells(old_cells, offset_map, _inv);
-        }
-
-        array_store_range(a, elem_size, lb_idx, ub_idx, val);
-    }
-
     void array_load(variable_t lhs, variable_t a, linear_expression_t elem_size, linear_expression_t i) {
 
         if (is_bottom())
@@ -657,8 +639,8 @@ class array_expansion_domain final : public writeable {
         kill_and_find_var(a, elem_size, i);
     }
     // Perform array stores over an array segment
-    void array_store_range(variable_t a, linear_expression_t elem_size, linear_expression_t lb_idx,
-                           linear_expression_t ub_idx, linear_expression_t val) {
+    void array_store_range(variable_t a, linear_expression_t _idx,
+                           linear_expression_t _width, linear_expression_t val) {
 
         // TODO: this should be an user parameter.
         const number_t max_num_elems = 512;
@@ -666,41 +648,34 @@ class array_expansion_domain final : public writeable {
         if (is_bottom())
             return;
 
-        interval_t n_i = to_interval(elem_size);
-        auto n = n_i.singleton();
-        if (!n) {
-            CRAB_ERROR("array expansion domain expects constant array element sizes");
-        }
-
-        interval_t lb_i = to_interval(lb_idx);
-        auto lb = lb_i.singleton();
-        if (!lb) {
+        interval_t idx_i = to_interval(_idx);
+        auto idx_n = idx_i.singleton();
+        if (!idx_n) {
             CRAB_WARN("array expansion store range ignored because ", "lower bound is not constant");
             return;
         }
 
-        interval_t ub_i = to_interval(ub_idx);
-        auto ub = ub_i.singleton();
-        if (!ub) {
+        interval_t width_i = to_interval(_width);
+        auto width = width_i.singleton();
+        if (!width) {
             CRAB_WARN("array expansion store range ignored because ", "upper bound is not constant");
             return;
         }
 
-        if ((*ub - *lb) % *n != 0) {
-            CRAB_WARN("array expansion store range ignored because ", "the number of elements must be divisible by ",
-                      *n);
-            return;
-        }
-
-        if (*ub - *lb > max_num_elems) {
+        if (*idx_n + *width > max_num_elems) {
             CRAB_WARN("array expansion store range ignored because ",
                       "the number of elements is larger than default limit of ", max_num_elems);
             return;
         }
 
-        for (number_t i = *lb, e = *ub; i < e;) {
-            array_store(a, elem_size, i, val);
-            i = i + *n;
+        offset_map_t& offset_map = lookup_array_map(a);
+        kill_cells(offset_map.get_overlap_cells(offset_t((long)*idx_n), (unsigned)(int)*width), offset_map, _inv);
+        auto idx = *idx_n;
+        for (number_t i = 0; i < *width; i = i + 1) {
+            // perform strong update
+            variable_t v = offset_map.mk_cell(a, offset_t((long)idx), 1).get_scalar();
+            _inv.assign(v, val);
+            idx = idx + 1;
         }
     }
 

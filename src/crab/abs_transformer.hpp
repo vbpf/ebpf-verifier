@@ -100,12 +100,12 @@ class intra_abs_transformer {
 
     void operator()(const havoc_t& stmt) { m_inv -= stmt.lhs; }
 
-    void operator()(const array_store_t& stmt) {
-        if (stmt.lb_index.equal(stmt.ub_index)) {
-            m_inv.array_store(array_var_of(stmt.array), stmt.elem_size, stmt.lb_index, stmt.value);
-        } else {
-            m_inv.array_store_range(array_var_of(stmt.array), stmt.elem_size, stmt.lb_index, stmt.ub_index, stmt.value);
-        }
+    void operator()(const array_store_range_t& stmt) {
+        m_inv.array_store_range(array_var_of(stmt.array), stmt.index, stmt.width, stmt.value);
+    }
+
+     void operator()(const array_store_t& stmt) {
+        m_inv.array_store(array_var_of(stmt.array), stmt.elem_size, stmt.index, stmt.value);
     }
 
     void operator()(const array_havoc_t& stmt) {
