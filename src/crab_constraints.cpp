@@ -216,15 +216,14 @@ struct basic_block_builder {
     }
     basic_block_builder& assertion(linear_constraint_t cst) { di.col++; return insert<crab::assert_t>(cst, di); }
     basic_block_builder& array_store(array_kind_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size) {
-        return insert<crab::array_store_t>(arr, elem_size, idx, idx, v);
+        return insert<crab::array_store_t>(arr, idx, elem_size, v);
     }
     template <typename W>
     basic_block_builder& array_forget(array_kind_t arr, linear_expression_t idx, W elem_size) {
         return insert<crab::array_havoc_t>(arr, elem_size, idx);
     }
-    basic_block_builder& array_store_range(array_kind_t arr, linear_expression_t lb_idx, linear_expression_t width,
-                        linear_expression_t v, linear_expression_t elem_size) {
-        return insert<crab::array_store_t>(arr, elem_size, lb_idx, lb_idx + width, v);
+    basic_block_builder& array_store_range(linear_expression_t idx, linear_expression_t width, linear_expression_t v) {
+        return insert<crab::array_store_range_t>(array_kind_t::regions, idx, width, v);
     }
     basic_block_builder& array_load(variable_t lhs, array_kind_t arr, linear_expression_t idx, linear_expression_t elem_size) {
         return insert<crab::array_load_t>(lhs, arr, elem_size, idx);
@@ -253,7 +252,7 @@ struct basic_block_builder {
         for (dom_t reg : regs) {
             havoc(reg.value);
             havoc(reg.offset);
-            assign(reg.region, T_UNINIT);
+            havoc(reg.region);
         }
         return *this;
     }
@@ -295,23 +294,9 @@ struct basic_block_builder {
         return *this;
     }
 
-
-    basic_block_builder& mark_region(linear_expression_t offset, const variable_t v, variable_t width) {
-        if (!cond) return *this;
-        array_store_range(machine.regions, offset, width, v, 1);
-        return *this;
-    }
-
-    basic_block_builder& mark_region(linear_expression_t offset, const variable_t v, int width) {
-        if (!cond) return *this;
-        for (int i = 0; i < width; i++)
-            array_store(machine.regions, offset + i, v, 1);
-        return *this;
-    }
-
     basic_block_builder& havoc_num_region(linear_expression_t offset, variable_t width) {
         if (!cond) return *this;
-        array_store_range(machine.regions, offset, width, T_NUM, 1);
+        array_store_range(offset, width, T_NUM);
         array_forget(machine.values, offset, width);
         array_forget(machine.offsets, offset, width);
         return *this;
@@ -335,7 +320,7 @@ struct basic_block_builder {
     basic_block_builder store(linear_expression_t offset, dom_t data_reg, int width) {
         if (!cond) return *this;
         assert_init(data_reg);
-        mark_region(offset, data_reg.region, width);
+        array_store_range(offset, width, data_reg.region);
 
         if (width != 8) {
             assertion(data_reg.region == T_NUM);
@@ -502,9 +487,6 @@ void machine_t::setup_entry(basic_block_t& entry, cfg_t& cfg) {
              .where(machine.ctx_desc.meta >= 0).assume(machine.meta_size <= 0)
                                    .otherwise().assign(machine.meta_size, 0)
              .done();
-    for (int i : {0, 2, 3, 4, 5, 6, 7, 8, 9}) {
-        basic_block_builder(entry, machine, cfg, di).assign(machine.regs[i].region, T_UNINIT);
-    }
 }
 
 static linear_constraint_t eq(variable_t& a, variable_t& b) { return {a - b, linear_constraint_t::EQUALITY}; }

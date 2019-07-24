@@ -33,12 +33,11 @@ static crab_os& operator<<(crab_os& o, const array_kind_t& s) {
 }
 
 static crab_os& operator<<(crab_os& o, const array_store_t& s) {
-    o << "array_store(" << s.array << "," << s.lb_index;
-    if (!s.lb_index.equal(s.ub_index)) {
-        o << ".." << s.ub_index;
-    }
-    o << "," << s.value << ",sz=" << s.elem_size << ")";
-    return o;
+    return o << "array_store(" << s.array << "," << s.index << ":" << s.elem_size << "," << s.value << ")";
+}
+
+static crab_os& operator<<(crab_os& o, const array_store_range_t& s) {
+    return o << "array_store_range(" << s.array << "," << s.index << "," << s.value << ",sz=" << s.width << ")";
 }
 
 static crab_os& operator<<(crab_os& o, const array_load_t& s) {
