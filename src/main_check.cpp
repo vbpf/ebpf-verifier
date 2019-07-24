@@ -119,6 +119,8 @@ int main(int argc, char** argv) {
         cfg.simplify();
     }
 
+    explicate_assertions(cfg, raw_prog.info);
+
     if (!dotfile.empty()) {
         print_dot(cfg, dotfile);
     }

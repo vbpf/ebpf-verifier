@@ -619,13 +619,12 @@ class AssertionExtractor {
 
 void explicate_assertions(Cfg& cfg, program_info info) {
     for (auto& [this_label, bb] : cfg) {
-        vector<Instruction> old_insts(bb.begin(), bb.end());
         vector<Instruction> insts;
-
-        for (auto ins : old_insts) {
+        for (auto ins : vector<Instruction>(bb.begin(), bb.end())) {
             for (auto a : std::visit(AssertionExtractor{info}, ins))
-                bb.insert(std::make_unique<Assertion>(a));
-            bb.insert(ins);
+                insts.push_back(std::make_unique<Assertion>(a));
+            insts.push_back(ins);
         }
+        bb.swap_instructions(insts);
     }
 }

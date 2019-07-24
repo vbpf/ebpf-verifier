@@ -62,11 +62,11 @@ class basic_block final {
 
   private:
     using label_vec_t = std::vector<label_t>;
-    using stmt_list_t = std::vector<Language>;
 
   public:
     // -- iterators
 
+    using stmt_list_t = std::vector<Language>;
     using succ_iterator = label_vec_t::iterator;
     using const_succ_iterator = label_vec_t::const_iterator;
     using pred_iterator = succ_iterator;
@@ -147,6 +147,10 @@ class basic_block final {
     void move_back(basic_block_t& other) {
         m_ts.reserve(m_ts.size() + other.m_ts.size());
         std::move(other.m_ts.begin(), other.m_ts.end(), std::back_inserter(m_ts));
+    }
+
+    void swap_instructions(stmt_list_t& ts) {
+        std::swap(m_ts, ts);
     }
 
     void write(crab_os& o) const {
