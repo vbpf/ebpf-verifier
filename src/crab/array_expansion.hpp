@@ -29,7 +29,6 @@
 
 #include "crab/interval.hpp"
 #include "crab/patricia_trees.hpp"
-#include "crab/separate_domains.hpp"
 
 #include "boost/range/algorithm/set_algorithm.hpp"
 #include <algorithm>
@@ -219,28 +218,6 @@ class offset_map_t final {
         }
     };
 
-    class join_op : public binary_op_t {
-        // apply is called when two bindings (one each from a
-        // different map) have the same key(i.e., offset).
-        std::pair<bool, std::optional<cell_set_t>> apply(cell_set_t x, cell_set_t y) {
-            cell_set_t z;
-            boost::set_union(x, y, std::inserter(z, z.end()));
-            return {false, z};
-        }
-        // if one map does not have a key in the other map we add it.
-        bool default_is_absorbing() { return false; }
-    };
-
-    class meet_op : public binary_op_t {
-        std::pair<bool, std::optional<cell_set_t>> apply(cell_set_t x, cell_set_t y) {
-            cell_set_t z;
-            boost::set_intersection(x, y, std::inserter(z, z.end()));
-            return {false, z};
-        }
-        // if one map does not have a key in the other map we ignore it.
-        bool default_is_absorbing() { return true; }
-    };
-
     class domain_po : public partial_order_t {
         bool leq(cell_set_t x, cell_set_t y) {
             {
@@ -260,20 +237,6 @@ class offset_map_t final {
     void insert_cell(const cell_t& c, bool sanity_check = true);
 
     cell_t get_cell(offset_t o, unsigned size) const;
-
-    // // global state to map the same triple of array, offset and size to same index
-    // static std::map<std::pair<index_t, std::pair<offset_t, unsigned>>, index_t> _index_map;
-
-    // index_t get_index(variable_t a, offset_t o, unsigned size) {
-    //     auto it = _index_map.find({a.index(), {o, size}});
-    //     if (it != _index_map.end()) {
-    //         return it->second;
-    //     } else {
-    //         index_t res = _index_map.size();
-    //         _index_map.insert({{a.index(), {o, size}}, res});
-    //         return res;
-    //     }
-    // }
 
     cell_t mk_cell(variable_t array, offset_t o, unsigned size);
 

@@ -41,7 +41,6 @@
 #pragma once
 
 #include "crab/patricia_trees.hpp"
-#include "crab/separate_domains.hpp"
 #include "crab/types.hpp"
 
 #include <boost/range.hpp>
