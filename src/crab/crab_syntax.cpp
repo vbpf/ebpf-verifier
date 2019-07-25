@@ -23,15 +23,6 @@ static crab_os& operator<<(crab_os& o, const assert_t& s) {
     return o;
 }
 
-static crab_os& operator<<(crab_os& o, const data_kind_t& s) {
-    switch (s) {
-        case data_kind_t::offsets: return o << "S_off";
-        case data_kind_t::regions: return o << "S_t";
-        case data_kind_t::values: return o << "S_r";
-    }
-    assert(false);
-}
-
 static crab_os& operator<<(crab_os& o, const array_store_t& s) {
     return o << "array_store(" << s.array << "," << s.index << ":" << s.elem_size << "," << s.value << ")";
 }

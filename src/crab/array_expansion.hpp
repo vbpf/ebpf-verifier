@@ -82,12 +82,11 @@ class cell_t final {
 
     offset_t _offset{};
     unsigned _size{};
-    std::optional<variable_t> _scalar;
 
     // Only offset_map_t can create cells
     cell_t() = default;
 
-    cell_t(offset_t offset, unsigned size, std::optional<variable_t> scalar = {}) : _offset(offset), _size(size), _scalar{scalar} {}
+    cell_t(offset_t offset, unsigned size) : _offset(offset), _size(size) {}
 
     static interval_t to_interval(const offset_t o, unsigned size) {
         return {static_cast<int>(o.index()),
@@ -100,13 +99,8 @@ class cell_t final {
 
     offset_t get_offset() const { return _offset; }
 
-    bool has_scalar() const { return (bool)_scalar; }
-
-    variable_t get_scalar() const {
-        if (!has_scalar()) {
-            CRAB_ERROR("cannot get undefined scalar variable");
-        }
-        return *_scalar;
+    variable_t get_scalar(data_kind_t kind) const {
+        return variable_t::cell_var(kind, _offset.index(), _size);
     }
 
     // ignore the scalar variable
@@ -169,12 +163,7 @@ class cell_t final {
     }
 
     void write(crab_os& o) const {
-        o << to_interval() << " -> ";
-        if (has_scalar()) {
-            o << get_scalar();
-        } else {
-            o << "_";
-        }
+        o << "cell(" << to_interval() << ")";
     }
 
     friend crab_os& operator<<(crab_os& o, const cell_t& c) {
@@ -238,7 +227,7 @@ class offset_map_t final {
 
     cell_t get_cell(offset_t o, unsigned size) const;
 
-    cell_t mk_cell(variable_t array, offset_t o, unsigned size);
+    cell_t mk_cell(offset_t o, unsigned size);
 
   public:
     offset_map_t() = default;
@@ -322,6 +311,11 @@ class offset_map_t final {
     static offset_map_t top() { return offset_map_t(); }
 };
 
+// We use a global array map
+using array_map_t = boost::unordered_map<data_kind_t, offset_map_t>;
+extern array_map_t global_array_map;
+void clear_global_state();
+
 template <typename NumAbsDomain>
 class array_expansion_domain final : public writeable {
   private:
@@ -332,16 +326,9 @@ class array_expansion_domain final : public writeable {
     using content_domain_t = NumAbsDomain;
 
   private:
-    using array_map_t = boost::unordered_map<variable_t, offset_map_t>;
 
     // scalar domain
     NumAbsDomain _inv;
-
-    // We use a global array map
-    static array_map_t& get_array_map() {
-        static array_map_t* array_map = new array_map_t();
-        return *array_map;
-    }
 
   public:
     static array_expansion_domain_t top() {
@@ -356,30 +343,9 @@ class array_expansion_domain final : public writeable {
         return abs;
     }
 
-    /**
-        Ugly this needs to be fixed: needed if multiple analyses are
-        run so we can clear the array map from one run to another.
-    **/
-    static void clear_global_state() {
-        array_map_t& map = get_array_map();
-        if (!map.empty()) {
-            if (crab::CrabSanityCheckFlag) {
-                CRAB_WARN("array_expansion static variable map is being cleared");
-            }
-            map.clear();
-        }
-    }
-
   private:
-    void remove_array_map(const variable_t& v) {
-        /// We keep the array map as global so we don't remove any entry.
-        // array_map_t& map = get_array_map();
-        // map.erase(v);
-    }
-
-    offset_map_t& lookup_array_map(const variable_t& v) {
-        array_map_t& map = get_array_map();
-        return map[v];
+    offset_map_t& lookup_array_map(data_kind_t kind) {
+        return global_array_map[kind];
     }
 
     array_expansion_domain(NumAbsDomain inv) : _inv(inv) {}
@@ -395,16 +361,11 @@ class array_expansion_domain final : public writeable {
 
     interval_t to_interval(linear_expression_t expr) { return to_interval(expr, _inv); }
 
-    void kill_cells(const std::vector<cell_t>& cells, offset_map_t& offset_map, NumAbsDomain& dom) {
+    void kill_cells(data_kind_t kind, const std::vector<cell_t>& cells, offset_map_t& offset_map, NumAbsDomain& dom) {
         if (!cells.empty()) {
             // Forget the scalars from the numerical domain
             for (unsigned i = 0, e = cells.size(); i < e; ++i) {
-                const cell_t& c = cells[i];
-                if (c.has_scalar()) {
-                    dom -= c.get_scalar();
-                } else {
-                    CRAB_ERROR("array expansion: cell without scalar variable in array store");
-                }
+                dom -= cells[i].get_scalar(kind);
             }
             // Remove the cells. If needed again they they will be re-created.
             offset_map -= cells;
@@ -507,21 +468,28 @@ class array_expansion_domain final : public writeable {
     }
     // array_operators_api
 
-    void array_load(variable_t lhs, variable_t a, linear_expression_t elem_size, linear_expression_t i) {
+    void array_load(variable_t lhs, data_kind_t kind, linear_expression_t elem_size, linear_expression_t i) {
 
         if (is_bottom())
             return;
 
         interval_t ii = to_interval(i);
         if (std::optional<number_t> n = ii.singleton()) {
-            offset_map_t& offset_map = lookup_array_map(a);
+            offset_map_t& offset_map = lookup_array_map(kind);
             offset_t o((long)*n);
             interval_t i_elem_size = to_interval(elem_size);
             if (std::optional<number_t> n_bytes = i_elem_size.singleton()) {
                 unsigned size = (long)*n_bytes;
                 std::vector<cell_t> cells = offset_map.get_overlap_cells(o, size);
-                if (!cells.empty()) {
-                    CRAB_WARN("Ignored read from cell ", a, "[", o, "...", o.index() + size - 1, "]",
+                if (cells.empty()) {
+                    cell_t c = offset_map.mk_cell(o, size);
+                    // Here it's ok to do assignment (instead of expand)
+                    // because c is not a summarized variable. Otherwise, it
+                    // would be unsound.
+                    _inv.assign(lhs, c.get_scalar(kind));
+                    return;
+                } else {
+                    CRAB_WARN("Ignored read from cell ", kind, "[", o, "...", o.index() + size - 1, "]",
                               " because it overlaps with ", cells.size(), " cells");
                     /*
                        TODO: we can apply here "Value Recomposition" 'a la'
@@ -529,14 +497,6 @@ class array_expansion_domain final : public writeable {
                        of bytes. It can be endian-independent but it would more
                        precise if we choose between little- and big-endian.
                     */
-                } else {
-                    cell_t c = offset_map.mk_cell(a, o, size);
-                    assert(c.has_scalar());
-                    // Here it's ok to do assignment (instead of expand)
-                    // because c is not a summarized variable. Otherwise, it
-                    // would be unsound.
-                    _inv.assign(lhs, c.get_scalar());
-                    goto array_load_end;
                 }
             } else {
                 CRAB_ERROR("array expansion domain expects constant array element sizes");
@@ -547,13 +507,9 @@ class array_expansion_domain final : public writeable {
         }
 
         _inv -= lhs;
-
-    array_load_end:
-        CRAB_LOG("array-expansion", linear_expression_t ub = i + elem_size - 1;
-                 outs() << lhs << ":=" << a << "[" << i << "..." << ub << "]  -- " << *this << "\n";);
     }
 
-    std::optional<std::pair<offset_t, unsigned>> kill_and_find_var(variable_t a, linear_expression_t elem_size, linear_expression_t i) {
+    std::optional<std::pair<offset_t, unsigned>> kill_and_find_var(data_kind_t kind, linear_expression_t elem_size, linear_expression_t i) {
         if (is_bottom())
             return {};
 
@@ -566,7 +522,7 @@ class array_expansion_domain final : public writeable {
         std::optional<std::pair<offset_t, unsigned>> res;
 
         unsigned size = (long)(*n_bytes);
-        offset_map_t& offset_map = lookup_array_map(a);
+        offset_map_t& offset_map = lookup_array_map(kind);
         interval_t ii = to_interval(i);
         std::vector<cell_t> cells;
         if (std::optional<number_t> n = ii.singleton()) {
@@ -581,26 +537,27 @@ class array_expansion_domain final : public writeable {
                 linear_expression_t(i + number_t(size - 1))
             );
         }
-        kill_cells(cells, offset_map, _inv);
+        kill_cells(kind, cells, offset_map, _inv);
 
         return res;
     }
 
-    void array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i, linear_expression_t val) {
-        auto maybe_cell = kill_and_find_var(a, elem_size, i);
+    void array_store(data_kind_t kind, linear_expression_t elem_size, linear_expression_t i, linear_expression_t val) {
+        auto maybe_cell = kill_and_find_var(kind, elem_size, i);
         if (maybe_cell) {
             // perform strong update
             //outs() << "(" << maybe_cell->first.index() << ", " << maybe_cell->second << ")\n";
-            variable_t v = lookup_array_map(a).mk_cell(a, maybe_cell->first, maybe_cell->second).get_scalar();
+            auto [offset, size] = *maybe_cell;
+            variable_t v = lookup_array_map(kind).mk_cell(offset, size).get_scalar(kind);
             _inv.assign(v, val);
         }
     }
 
-    void array_havoc(variable_t a, linear_expression_t elem_size, linear_expression_t i) {
-        kill_and_find_var(a, elem_size, i);
+    void array_havoc(data_kind_t kind, linear_expression_t elem_size, linear_expression_t i) {
+        kill_and_find_var(kind, elem_size, i);
     }
     // Perform array stores over an array segment
-    void array_store_range(variable_t a, linear_expression_t _idx,
+    void array_store_range(data_kind_t kind, linear_expression_t _idx,
                            linear_expression_t _width, linear_expression_t val) {
 
         // TODO: this should be an user parameter.
@@ -629,12 +586,12 @@ class array_expansion_domain final : public writeable {
             return;
         }
 
-        offset_map_t& offset_map = lookup_array_map(a);
-        kill_cells(offset_map.get_overlap_cells(offset_t((long)*idx_n), (unsigned)(int)*width), offset_map, _inv);
+        offset_map_t& offset_map = lookup_array_map(kind);
+        kill_cells(kind, offset_map.get_overlap_cells(offset_t((long)*idx_n), (unsigned)(int)*width), offset_map, _inv);
         auto idx = *idx_n;
         for (number_t i = 0; i < *width; i = i + 1) {
             // perform strong update
-            variable_t v = offset_map.mk_cell(a, offset_t((long)idx), 1).get_scalar();
+            variable_t v = offset_map.mk_cell(offset_t((long)idx), 1).get_scalar(kind);
             _inv.assign(v, val);
             idx = idx + 1;
         }

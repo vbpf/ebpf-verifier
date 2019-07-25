@@ -2,6 +2,23 @@
 
 namespace crab {
 namespace domains {
+
+// We use a global array map
+array_map_t global_array_map;
+
+/**
+    Ugly this needs to be fixed: needed if multiple analyses are
+    run so we can clear the array map from one run to another.
+**/
+void clear_global_state() {
+    if (!global_array_map.empty()) {
+        if (crab::CrabSanityCheckFlag) {
+            CRAB_WARN("array_expansion static variable map is being cleared");
+        }
+        global_array_map.clear();
+    }
+}
+
 void offset_map_t::remove_cell(const cell_t& c) {
     if (std::optional<cell_set_t> cells = _map.lookup(c.get_offset())) {
         if ((*cells).erase(c) > 0) {
@@ -15,9 +32,6 @@ void offset_map_t::remove_cell(const cell_t& c) {
 }
 
 void offset_map_t::insert_cell(const cell_t& c, bool sanity_check) {
-    if (sanity_check && !c.has_scalar()) {
-        CRAB_ERROR("array expansion cannot insert a cell without scalar variable");
-    }
     if (std::optional<cell_set_t> cells = _map.lookup(c.get_offset())) {
         if ((*cells).insert(c).second) {
             // a bit of a waste ...
@@ -43,19 +57,15 @@ cell_t offset_map_t::get_cell(offset_t o, unsigned size) const {
     return cell_t();
 }
 
-cell_t offset_map_t::mk_cell(variable_t array, offset_t o, unsigned size) {
+cell_t offset_map_t::mk_cell(offset_t o, unsigned size) {
     // TODO: check array is the array associated to this offset map
 
     cell_t c = get_cell(o, size);
     if (c.is_null()) {
         // create a new scalar variable for representing the contents
         // of bytes array[o,o+1,..., o+size-1]
-        c = cell_t(o, size, variable_t::cell_var(array, o.index(), size));
+        c = cell_t(o, size);
         insert_cell(c);
-    }
-    // sanity check
-    if (!c.has_scalar()) {
-        CRAB_ERROR("array expansion created a new cell without a scalar");
     }
     return c;
 }

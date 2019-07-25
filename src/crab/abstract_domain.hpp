@@ -114,19 +114,5 @@ class numeric_abstract_domain : public abstract_domain<numeric_abstract_domain<A
     virtual void apply(bitwise_binop_t op, variable_t x, variable_t y, number_t k) = 0;
 };
 
-template <typename AbsDomain>
-class array_abstract_domain : public numeric_abstract_domain<array_abstract_domain<AbsDomain>> {
-  public:
-    using variable_vector_t = std::vector<variable_t>;
-    /**************************** Array operations *******************************/
-    // lhs := a[i] where elem_size is in bytes
-    virtual void array_load(variable_t lhs, variable_t a, linear_expression_t elem_size, linear_expression_t i) = 0;
-    // a[i] := v where elem_size is in bytes
-    virtual void array_store(variable_t a, linear_expression_t elem_size, linear_expression_t i, linear_expression_t v) = 0;
-    // forall i<=k<j and k % elem_size == 0 :: a[k] := v.
-    // elem_size is in bytes
-    virtual void array_store_range(variable_t a, linear_expression_t i, linear_expression_t width, linear_expression_t v) = 0;
-};
-
 } // end namespace domains
 } // end namespace crab
