@@ -33,6 +33,8 @@
 #include "crab/stats.hpp"
 #include "crab/types.hpp"
 
+#include "config.hpp"
+
 namespace crab {
 /**
  * Abstract forward transformer for all statements.
@@ -101,19 +103,19 @@ class intra_abs_transformer {
     void operator()(const havoc_t& stmt) { m_inv -= stmt.lhs; }
 
     void operator()(const array_store_range_t& stmt) {
-        m_inv.array_store_range(array_var_of(stmt.array), stmt.index, stmt.width, stmt.value);
+        m_inv.array_store_range(variable_t::array(stmt.array), stmt.index, stmt.width, stmt.value);
     }
 
      void operator()(const array_store_t& stmt) {
-        m_inv.array_store(array_var_of(stmt.array), stmt.elem_size, stmt.index, stmt.value);
+        m_inv.array_store(variable_t::array(stmt.array), stmt.elem_size, stmt.index, stmt.value);
     }
 
     void operator()(const array_havoc_t& stmt) {
-        m_inv.array_havoc(array_var_of(stmt.array), stmt.elem_size, stmt.index);
+        m_inv.array_havoc(variable_t::array(stmt.array), stmt.elem_size, stmt.index);
     }
 
     void operator()(const array_load_t& stmt) {
-        m_inv.array_load(stmt.lhs, array_var_of(stmt.array), stmt.elem_size, stmt.index);
+        m_inv.array_load(stmt.lhs, variable_t::array(stmt.array), stmt.elem_size, stmt.index);
     }
 };
 
@@ -193,7 +195,8 @@ class checks_db final {
     checks_db() = default;
 
     void add_warning(const assert_t& s) {
-        //outs() << s << "\n";
+        if (global_options.print_failures)
+            outs() << s << "\n";
         add(check_kind_t::Warning, s);
     }
 

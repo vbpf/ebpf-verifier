@@ -74,13 +74,6 @@ struct assert_t {
   Array statements
 */
 
-enum class array_kind_t {
-    regions, values, offsets
-};
-
-variable_t array_var_of(array_kind_t);
-
-
 // Each of these statements requires an element size, that is, the
 // number of bytes that are being accessed. If the front-end is
 // LLVM, then the element size is always known at compilation
@@ -91,14 +84,14 @@ variable_t array_var_of(array_kind_t);
 
 struct array_store_t {
     // forall i \in [lb,ub) % elem_size :: arr[i] := val
-    array_kind_t array;
+    data_kind_t array;
     linear_expression_t index;
     linear_expression_t elem_size; //! size in bytes
     linear_expression_t value;
 };
 
 struct array_store_range_t {
-    array_kind_t array;
+    data_kind_t array;
     linear_expression_t index;
     linear_expression_t width;
     linear_expression_t value;
@@ -106,13 +99,13 @@ struct array_store_range_t {
 
 struct array_load_t {
     variable_t lhs;
-    array_kind_t array;
+    data_kind_t array;
     linear_expression_t elem_size; //! size in bytes
     linear_expression_t index;
 };
 
 struct array_havoc_t {
-    array_kind_t array;
+    data_kind_t array;
     linear_expression_t elem_size; //! size in bytes
     linear_expression_t index;
 };

@@ -43,7 +43,7 @@ namespace domains {
 
 class SplitDBM final : public writeable {
   public:
-    using constraint_kind_t = typename linear_constraint_t::kind_t;
+    using constraint_kind_t = typename linear_constraint_t::constraint_kind_t;
 
   private:
     using variable_vector_t = std::vector<variable_t>;

@@ -328,12 +328,12 @@ class linear_constraint_t final {
 
   public:
     using variable_set_t = patricia_tree_set<variable_t>;
-    using kind_t = enum { EQUALITY, DISEQUATION, INEQUALITY, STRICT_INEQUALITY };
+    using constraint_kind_t = enum { EQUALITY, DISEQUATION, INEQUALITY, STRICT_INEQUALITY };
     using iterator = typename linear_expression_t::iterator;
     using const_iterator = typename linear_expression_t::const_iterator;
 
   private:
-    kind_t _kind;
+    constraint_kind_t _kind;
     linear_expression_t _expr;
     // This flag has meaning only if _kind == INEQUALITY or STRICT_INEQUALITY.
     // If true the inequality is signed otherwise unsigned.
@@ -343,9 +343,9 @@ class linear_constraint_t final {
   public:
     linear_constraint_t() : _kind(EQUALITY), _signedness(true) {}
 
-    linear_constraint_t(const linear_expression_t& expr, kind_t kind) : _kind(kind), _expr(expr), _signedness(true) {}
+    linear_constraint_t(const linear_expression_t& expr, constraint_kind_t kind) : _kind(kind), _expr(expr), _signedness(true) {}
 
-    linear_constraint_t(const linear_expression_t& expr, kind_t kind, bool signedness)
+    linear_constraint_t(const linear_expression_t& expr, constraint_kind_t kind, bool signedness)
         : _kind(kind), _expr(expr), _signedness(signedness) {
         if (_kind != INEQUALITY && _kind != STRICT_INEQUALITY) {
             CRAB_ERROR("Only inequalities can have signedness information");
@@ -392,7 +392,7 @@ class linear_constraint_t final {
 
     const linear_expression_t& expression() const { return this->_expr; }
 
-    kind_t kind() const { return this->_kind; }
+    constraint_kind_t kind() const { return this->_kind; }
 
     bool is_signed() const {
         if (_kind != INEQUALITY && _kind != STRICT_INEQUALITY) {
@@ -479,7 +479,7 @@ inline linear_constraint_t negate_inequality(const linear_constraint_t& c) {
     assert(c.is_inequality());
     // negate(e <= 0) = e >= 1
     linear_expression_t e(-(c.expression() - 1));
-    return linear_constraint_t(e, linear_constraint_t::kind_t::INEQUALITY, c.is_signed());
+    return linear_constraint_t(e, linear_constraint_t::constraint_kind_t::INEQUALITY, c.is_signed());
 }
 
 // Specialized version for z_number_t
@@ -487,7 +487,7 @@ inline linear_constraint_t strict_to_non_strict_inequality(const linear_constrai
     assert(c.is_strict_inequality());
     // e < 0 --> e <= -1
     linear_expression_t e(c.expression() + 1);
-    return linear_constraint_t(e, linear_constraint_t::kind_t::INEQUALITY, c.is_signed());
+    return linear_constraint_t(e, linear_constraint_t::constraint_kind_t::INEQUALITY, c.is_signed());
 }
 
 inline std::size_t hash_value(const linear_constraint_t& e) { return e.hash(); }

@@ -35,7 +35,7 @@ using std::vector;
 using crab::linear_constraint_t;
 using crab::linear_expression_t;
 using crab::variable_factory;
-using crab::array_kind_t;
+using crab::data_kind_t;
 
 
 constexpr int MAX_PACKET_OFF = 0xffff;
@@ -86,9 +86,9 @@ struct dom_t {
     variable_t offset;
     variable_t region;
     dom_t(int i)
-        : value{variable_factory::vfac[std::string("r") + std::to_string(i)]},
-          offset{variable_factory::vfac[std::string("off") + std::to_string(i)]},
-          region{variable_factory::vfac[std::string("t") + std::to_string(i)]} {}
+        : value{variable_t::reg(data_kind_t::values, i)},
+          offset{variable_t::reg(data_kind_t::offsets, i)},
+          region{variable_t::reg(data_kind_t::regions, i)} {}
     dom_t(variable_t value, variable_t offset, variable_t region) : value(value), offset(offset), region(region){};
 };
 
@@ -104,12 +104,12 @@ struct machine_t final {
 
     program_info info;
 
-    const array_kind_t values = array_kind_t::values;
-    const array_kind_t offsets = array_kind_t::offsets;
-    const array_kind_t regions = array_kind_t::regions;
+    const data_kind_t values = data_kind_t::values;
+    const data_kind_t offsets = data_kind_t::offsets;
+    const data_kind_t regions = data_kind_t::regions;
 
-    variable_t meta_size;
-    variable_t data_size;
+    const variable_t meta_size{variable_t::meta_size()};
+    const variable_t data_size{variable_t::data_size()};
 
     //basic_block_builder in(basic_block_t& bb) { return {bb, *this}; }
 
@@ -186,7 +186,7 @@ struct basic_block_builder {
     basic_block_builder& udiv(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs,crab::arith_binop_t::UDIV, op1, op2, true); }
     basic_block_builder& udiv(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,  crab::arith_binop_t::UDIV, op1, op2, true); }
     basic_block_builder& rem(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::arith_binop_t::SREM, op1, op2, true); }
-    basic_block_builder& rem(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,   crab::arith_binop_t::SREM, op1, op2, true); }
+    basic_block_builder& rem(variable_t lhs, variable_t op1, number_t op2, bool mod=true) { return insert<crab::binary_op_t>(lhs,   crab::arith_binop_t::SREM, op1, op2, mod); }
     basic_block_builder& urem(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs,crab::arith_binop_t::UREM, op1, op2, true); }
     basic_block_builder& urem(variable_t lhs, variable_t op1, number_t op2) { return insert<crab::binary_op_t>(lhs,  crab::arith_binop_t::UREM, op1, op2, true); }
     basic_block_builder& bitwise_and(variable_t lhs, variable_t op1, variable_t op2) { return insert<crab::binary_op_t>(lhs, crab::bitwise_binop_t::AND, op1, op2); }
@@ -215,17 +215,17 @@ struct basic_block_builder {
         return insert<crab::select_t>(lhs, cond, e1, e2);
     }
     basic_block_builder& assertion(linear_constraint_t cst) { di.col++; return insert<crab::assert_t>(cst, di); }
-    basic_block_builder& array_store(array_kind_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size) {
+    basic_block_builder& array_store(data_kind_t arr, linear_expression_t idx, linear_expression_t v, linear_expression_t elem_size) {
         return insert<crab::array_store_t>(arr, idx, elem_size, v);
     }
     template <typename W>
-    basic_block_builder& array_forget(array_kind_t arr, linear_expression_t idx, W elem_size) {
+    basic_block_builder& array_forget(data_kind_t arr, linear_expression_t idx, W elem_size) {
         return insert<crab::array_havoc_t>(arr, elem_size, idx);
     }
     basic_block_builder& array_store_range(linear_expression_t idx, linear_expression_t width, linear_expression_t v) {
-        return insert<crab::array_store_range_t>(array_kind_t::regions, idx, width, v);
+        return insert<crab::array_store_range_t>(data_kind_t::regions, idx, width, v);
     }
-    basic_block_builder& array_load(variable_t lhs, array_kind_t arr, linear_expression_t idx, linear_expression_t elem_size) {
+    basic_block_builder& array_load(variable_t lhs, data_kind_t arr, linear_expression_t idx, linear_expression_t elem_size) {
         return insert<crab::array_load_t>(lhs, arr, elem_size, idx);
     }
 
@@ -342,6 +342,19 @@ struct basic_block_builder {
         return in(join(*num_only, *pointer_only));
     }
 
+    basic_block_builder store(linear_expression_t offset, int imm, int width) {
+        if (!cond) return *this;
+        array_store_range(offset, width, T_NUM);
+        array_forget(machine.offsets, offset, width);
+
+        if (width != 8) {
+            array_forget(machine.values, offset, width);
+        } else {
+            array_store(machine.values, offset, imm, width);
+        }
+        return *this;
+    }
+
     basic_block_builder& access_num_only(dom_t data_reg, bool is_load) {
         if (!cond) return *this;
         return where(is_load)
@@ -453,11 +466,9 @@ cfg_t build_crab_cfg(Cfg const& simple_cfg, program_info info) {
 }
 
 machine_t::machine_t(program_info info)
-    : ctx_desc{get_descriptor(info.program_type)}, info{info},
-        meta_size{variable_factory::vfac["meta_size"]},
-        data_size{variable_factory::vfac["data_size"]}
+    : ctx_desc{get_descriptor(info.program_type)}, info{info}
  {
-    for (int i = 0; i < 12; i++) {
+    for (int i = 0; i <= 10; i++) {
         regs.emplace_back(i);
     }
 }
@@ -600,7 +611,7 @@ basic_block_t& instruction_builder_t::exec_stack_access(basic_block_t& block, bo
               .otherwise().store(addr, data_reg, width)
            .done("exec_stack_access");
     /* FIX: requires loop
-    variable_t tmp{variable_factory::vfac["tmp"]};
+    variable_t tmp;
     for (int idx=1; idx < width; idx++) {
         mid.array_load(tmp, machine.regions, addr+idx, 1);
         in(mid).assertion(eq(tmp, data_reg.region));
@@ -914,8 +925,8 @@ basic_block_t& instruction_builder_t::operator()(Un const& b) {
  * Registers r1-r5 are scratched.
  */
 basic_block_t& instruction_builder_t::operator()(Call const& call) {
-    variable_t map_value_size{variable_factory::vfac["map_value_size"]};
-    variable_t map_key_size{variable_factory::vfac["map_key_size"]};
+    variable_t map_value_size{variable_t::map_value_size()};
+    variable_t map_key_size{variable_t::map_key_size()};
     for (ArgSingle param : call.singles) {
         dom_t arg = machine.regs[param.reg.v];
         switch (param.kind) {
@@ -928,7 +939,7 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
         case ArgSingle::Kind::MAP_FD:
             in(block).assertion(arg.region == T_MAP)
                      .lshr(map_value_size, arg.value, 14)
-                     .rem(map_key_size, arg.value, 1 << 14)
+                     .rem(map_key_size, arg.value, 1 << 14, false)
                      .lshr(map_key_size, map_key_size, 6);
             break;
         case ArgSingle::Kind::PTR_TO_MAP_KEY:
@@ -1121,37 +1132,28 @@ basic_block_t& instruction_builder_t::operator()(Mem const& b) {
         }
     }
 
-    auto [data_reg, can_ctx] = [&]() -> std::tuple<dom_t, bool> {
-        if (std::holds_alternative<Reg>(b.value)) {
-            return std::make_tuple(machine.reg(std::get<Reg>(b.value)), true);
-        } else {
-            // mem[offset] = immediate
-            // FIX: STW stores long long immediate
-            variable_t tmp{variable_factory::vfac["tmp"]};
-            variable_t num{variable_factory::vfac["T_NUM"]};
-            variable_t top{variable_factory::vfac["top1"]};
-            in(block).assign(tmp, std::get<Imm>(b.value).v)
-                        .havoc(top)
-                        .assign(num, T_NUM);
-            return std::make_tuple(dom_t{tmp, num, top}, false);
-        }
-    }();
-
     dom_t mem_reg = machine.reg(b.access.basereg);
-    in(block).assertion(mem_reg.value != 0)
-             .assertion(is_not_num(mem_reg))
-            // "BPF_ST stores into R1 context is not allowed"
-            // (This seems somewhat arbitrary)
-             .where(!can_ctx).assertion(mem_reg.region != T_CTX)
-             .done();
+    in(block).assertion(mem_reg.value != 0).assertion(is_not_num(mem_reg));
 
-    basic_block_t* tmp = &join(exec_stack_access(block, b.is_load, mem_reg, data_reg, offset, width),
-                               exec_shared_access(block, b.is_load, mem_reg, data_reg, offset, width));
-    if (can_ctx) {
-        tmp = &join(*tmp, exec_ctx_access(block, b.is_load, mem_reg, data_reg, offset, width));
+    if (std::holds_alternative<Imm>(b.value)) {
+        // mem[offset] = immediate
+        // FIX: STW stores long long immediate
+        linear_expression_t addr = (-offset) - width - mem_reg.offset; // negate access
+        return join(*in(block).assertion(mem_reg.region != T_CTX),
+                    *in(block).fork("assume_stack", mem_reg.region == T_STACK)
+                              .assertion(addr >= 0)
+                              .assertion(addr <= STACK_SIZE - width)
+                              .store(addr, std::get<Imm>(b.value).v, width)
+                              .done("exec_stack_access"));
     }
+    auto data_reg = machine.reg(std::get<Reg>(b.value));
+
+    basic_block_t& tmp =  join(
+                          join(exec_stack_access( block, b.is_load, mem_reg, data_reg, offset, width),
+                               exec_shared_access(block, b.is_load, mem_reg, data_reg, offset, width)),
+                               exec_ctx_access(   block, b.is_load, mem_reg, data_reg, offset, width));
     if (machine.ctx_desc.data >= 0) {
-        tmp = &join(*tmp, exec_data_access(block, b.is_load, mem_reg, data_reg, offset, width));
+        return join(tmp, exec_data_access(block, b.is_load, mem_reg, data_reg, offset, width));
     }
-    return *tmp;
+    return tmp;
 }
