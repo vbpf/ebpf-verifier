@@ -119,15 +119,14 @@ class variable_factory final {
     variable_factory(variable_factory&&) = delete;
     variable_factory(const variable_factory&) = delete;
 
-    // hook for generating indexed_string's without being
-    // associated with a particular var_key (w/o caching).
-    // XXX: do not use it unless strictly necessary.
-    indexed_string get();
-
     // generate a shadow indexed_string's associated to some key
     indexed_string get(index_t key, std::string name = "");
 
     indexed_string operator[](var_key s);
+};
+
+enum class data_kind_t {
+    regions, values, offsets
 };
 
 // Container for typed variables used by the crab abstract domains
@@ -142,8 +141,8 @@ class variable_t final {
 
   private:
     varname_t _n;
-    const bitwidth_t _width{64};
 
+    static std::map<std::string, variable_t> vars;
   public:
     variable_t(const varname_t& n) : _n(n) {}
 
@@ -179,6 +178,13 @@ class variable_t final {
     struct less {
         bool operator()(variable_t x, variable_t y) const { return x._n.index() < y._n.index(); }
     };
+
+    static variable_t reg(data_kind_t,  int);
+    static variable_t array(data_kind_t);
+    static variable_t map_value_size();
+    static variable_t map_key_size();
+    static variable_t meta_size();
+    static variable_t data_size();
 }; // class variable_t
 
 inline size_t hash_value(const variable_t& v) { return v.hash(); }
