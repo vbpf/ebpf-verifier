@@ -41,10 +41,10 @@ class thresholds_t final {
 
     bound_t get_prev(bound_t v1) const;
 
-    void write(crab_os& o) const;
+    void write(std::ostream& o) const;
 };
 
-inline crab_os& operator<<(crab_os& o, const thresholds_t& t) {
+inline std::ostream& operator<<(std::ostream& o, const thresholds_t& t) {
     t.write(o);
     return o;
 }
@@ -80,11 +80,11 @@ class wto_thresholds_t final : public wto_component_visitor<cfg_ref_t> {
 
     void visit(wto_cycle_t& cycle);
 
-    void write(crab_os& o) const;
+    void write(std::ostream& o) const;
 
 }; // class wto_thresholds_t
 
-inline crab_os& operator<<(crab_os& o, const wto_thresholds_t& t) {
+inline std::ostream& operator<<(std::ostream& o, const wto_thresholds_t& t) {
     t.write(o);
     return o;
 }

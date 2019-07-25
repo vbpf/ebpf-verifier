@@ -44,7 +44,7 @@ linear_constraint_t linear_constraint_t::negate() const {
     }
 }
 
-void linear_constraint_t::write(crab_os& o) const {
+void linear_constraint_t::write(std::ostream& o) const {
     if (this->is_contradiction()) {
         o << "false";
     } else if (this->is_tautology()) {

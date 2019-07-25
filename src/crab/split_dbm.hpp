@@ -273,7 +273,7 @@ class SplitDBM final : public writeable {
         ScopedCrabStats __st__("SplitDBM.copy");
 
         CRAB_LOG("zones-split-size", auto p = size();
-                 outs() << "#nodes = " << p.first << " #edges=" << p.second << "\n";);
+                 std::cout << "#nodes = " << p.first << " #edges=" << p.second << "\n";);
 
         assert(g.size() > 0);
     }
@@ -418,7 +418,7 @@ class SplitDBM final : public writeable {
     // -- end array_sgraph_domain_helper_traits
 
     // Output function
-    void write(crab_os& o);
+    void write(std::ostream& o);
 
     // return number of vertices and edges
     std::pair<std::size_t, std::size_t> size() const { return {g.size(), g.num_edges()}; }

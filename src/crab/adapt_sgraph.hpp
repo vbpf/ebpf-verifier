@@ -575,7 +575,7 @@ class AdaptGraph : public writeable {
         }
     }
 
-    void write(crab_os& o) {
+    void write(std::ostream& o) {
         o << "[|";
         bool first = true;
         for (vert_id v : verts()) {

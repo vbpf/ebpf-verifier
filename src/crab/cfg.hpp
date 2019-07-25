@@ -37,16 +37,20 @@
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/range/iterator_range.hpp>
 
+#include "crab/debug.hpp"
+#include "crab/types.hpp"
 #include "crab/bignums.hpp"
 #include "crab/crab_syntax.hpp"
 #include "crab/interval.hpp"
 #include "crab/linear_constraints.hpp"
-#include "crab/types.hpp"
+
+namespace crab {
+using label_t = std::string;
+}
 
 #include "asm_syntax.hpp"
 
 namespace crab {
-
 template <typename Language>
 class cfg;
 
@@ -152,7 +156,7 @@ class basic_block final {
         std::swap(m_ts, ts);
     }
 
-    void write(crab_os& o) const {
+    void write(std::ostream& o) const {
         o << m_label << ":\n";
         for (auto const& s : *this) {
             o << "  " << s << ";\n";
@@ -175,9 +179,9 @@ class basic_block final {
     }
 
     // for gdb
-    void dump() const { write(errs()); }
+    void dump() const { write(std::cerr); }
 
-    friend crab_os& operator<<(crab_os& o, const basic_block_t& b) {
+    friend std::ostream& operator<<(std::ostream& o, const basic_block_t& b) {
         b.write(o);
         return o;
     }
@@ -224,7 +228,7 @@ class basic_block_rev final {
 
     std::pair<const_pred_iterator, const_pred_iterator> prev_blocks() const { return _bb.next_blocks(); }
 
-    void write(crab_os& o) const {
+    void write(std::ostream& o) const {
         o << label() << ":\n";
         for (auto const& s : *this) {
             o << "  " << s << ";\n";
@@ -237,9 +241,9 @@ class basic_block_rev final {
     }
 
     // for gdb
-    void dump() const { write(errs()); }
+    void dump() const { write(std::cerr); }
 
-    friend crab_os& operator<<(crab_os& o, const basic_block_rev_t& b) {
+    friend std::ostream& operator<<(std::ostream& o, const basic_block_rev_t& b) {
         b.write(o);
         return o;
     }
@@ -378,19 +382,19 @@ class cfg final {
 
     size_t size() const { return std::distance(begin(), end()); }
 
-    void write(crab_os& o) const {
+    void write(std::ostream& o) const {
         dfs([&](const auto& bb) { bb.write(o); });
     }
 
     // for gdb
     void dump() const {
-        errs() << "number_t of basic blocks=" << size() << "\n";
+        std::cerr << "number_t of basic blocks=" << size() << "\n";
         for (auto& [label, bb] : boost::make_iterator_range(begin(), end())) {
             bb.dump();
         }
     }
 
-    friend crab_os& operator<<(crab_os& o, const cfg_t& cfg) {
+    friend std::ostream& operator<<(std::ostream& o, const cfg_t& cfg) {
         cfg.write(o);
         return o;
     }
@@ -578,7 +582,7 @@ class cfg_ref final {
 
     label_t exit() const { return get().exit(); }
 
-    friend crab_os& operator<<(crab_os& o, const cfg_ref_t& cfg) { return o << cfg.get(); }
+    friend std::ostream& operator<<(std::ostream& o, const cfg_ref_t& cfg) { return o << cfg.get(); }
 
     // for gdb
     void dump() const { get().dump(); }
@@ -697,11 +701,11 @@ class cfg_rev final {
 
     label_t exit() const { return _cfg.entry(); }
 
-    void write(crab_os& o) const {
+    void write(std::ostream& o) const {
         dfs([&](const auto& bb) { bb.write(o); });
     }
 
-    friend crab_os& operator<<(crab_os& o, const cfg_rev_t& cfg_t) {
+    friend std::ostream& operator<<(std::ostream& o, const cfg_rev_t& cfg_t) {
         cfg_t.write(o);
         return o;
     }

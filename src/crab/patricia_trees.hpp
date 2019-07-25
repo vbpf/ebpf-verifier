@@ -1344,7 +1344,7 @@ class patricia_tree_set final {
 
     bool operator==(const patricia_tree_set_t& s) const { return (this->operator<=(s) && s.operator<=(*this)); }
 
-    void write(crab_os& o) const {
+    void write(std::ostream& o) const {
         o << "{";
         for (iterator it = begin(); it != end();) {
             it->write(o);
@@ -1356,7 +1356,7 @@ class patricia_tree_set final {
         o << "}";
     }
 
-    friend crab_os& operator<<(crab_os& o, const patricia_tree_set<Element>& s) {
+    friend std::ostream& operator<<(std::ostream& o, const patricia_tree_set<Element>& s) {
         s.write(o);
         return o;
     }

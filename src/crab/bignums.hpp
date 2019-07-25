@@ -43,7 +43,9 @@
 
 #pragma once
 
-#include "crab/os.hpp"
+#include <iostream>
+#include <sstream>
+
 
 #include <boost/functional/hash.hpp>
 #include <gmpxx.h>
@@ -181,13 +183,13 @@ class z_number final {
 
     z_number fill_ones() const;
 
-    void write(crab_os& o) const;
+    void write(std::ostream& o) const;
 
 }; // class z_number
 
 using number_t = z_number;
 
-inline crab_os& operator<<(crab_os& o, const z_number& z) {
+inline std::ostream& operator<<(std::ostream& o, const z_number& z) {
     z.write(o);
     return o;
 }

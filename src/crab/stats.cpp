@@ -49,7 +49,7 @@ double Stopwatch::toSeconds() {
     return time;
 }
 
-void Stopwatch::Print(crab_os& out) const {
+void Stopwatch::Print(std::ostream& out) const {
     long time = getTimeElapsed();
     long h = time / 3600000000L;
     long m = time / 60000000L - h * 60;
@@ -78,7 +78,7 @@ void CrabStats::stop(const std::string& name) { sw[name].stop(); }
 void CrabStats::resume(const std::string& name) { sw[name].resume(); }
 
 /** Outputs all statistics to std output */
-void CrabStats::Print(crab_os& OS) {
+void CrabStats::Print(std::ostream& OS) {
     OS << "\n\n************** STATS ***************** \n";
     for (auto& kv : counters)
         OS << kv.first << ": " << kv.second << "\n";
@@ -87,7 +87,7 @@ void CrabStats::Print(crab_os& OS) {
     OS << "************** STATS END ***************** \n";
 }
 
-void CrabStats::PrintBrunch(crab_os& OS) {
+void CrabStats::PrintBrunch(std::ostream& OS) {
     OS << "\n\n************** BRUNCH STATS ***************** \n";
     for (auto& kv : counters)
         OS << "BRUNCH_STAT " << kv.first << " " << kv.second << "\n";

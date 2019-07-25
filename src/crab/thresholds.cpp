@@ -58,7 +58,7 @@ bound_t thresholds_t::get_prev(bound_t v1) const {
     return (m_thresholds[0]);
 }
 
-void thresholds_t::write(crab_os& o) const {
+void thresholds_t::write(std::ostream& o) const {
     o << "{";
     for (typename std::vector<bound_t>::const_iterator it = m_thresholds.begin(), et = m_thresholds.end(); it != et;) {
         bound_t b(*it);
@@ -150,7 +150,7 @@ void wto_thresholds_t::visit(wto_cycle_t& cycle) {
     m_stack.pop_back();
 }
 
-void wto_thresholds_t::write(crab_os& o) const {
+void wto_thresholds_t::write(std::ostream& o) const {
     for (auto& [label, th] : m_head_to_thresholds) {
         o << label << "=" << th << "\n";
     }

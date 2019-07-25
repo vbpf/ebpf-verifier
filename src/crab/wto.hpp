@@ -167,7 +167,7 @@ class wto_nesting final {
 
     bool operator>(wto_nesting_t other) const { return this->compare(other) == 1; }
 
-    void write(crab_os& o) const {
+    void write(std::ostream& o) const {
         o << "[";
         for (const_iterator it = this->begin(); it != this->end();) {
             vertex_descriptor<G> n = *it;
@@ -182,7 +182,7 @@ class wto_nesting final {
 }; // class nesting
 
 template <typename G>
-inline crab_os& operator<<(crab_os& o, const wto_nesting<G>& n) {
+inline std::ostream& operator<<(std::ostream& o, const wto_nesting<G>& n) {
     n.write(o);
     return o;
 }
@@ -197,12 +197,12 @@ class wto_component {
 
     virtual ~wto_component() {}
 
-    virtual void write(crab_os& os) const = 0;
+    virtual void write(std::ostream& os) const = 0;
 
 }; // class wto_component
 
 template <typename G>
-inline crab_os& operator<<(crab_os& o, const wto_component<G>& c) {
+inline std::ostream& operator<<(std::ostream& o, const wto_component<G>& c) {
     c.write(o);
     return o;
 }
@@ -222,7 +222,7 @@ class wto_vertex final : public wto_component<G> {
 
     void accept(wto_component_visitor<G>* v) { v->visit(*this); }
 
-    void write(crab_os& o) const { o << this->_node; }
+    void write(std::ostream& o) const { o << this->_node; }
 
 }; // class wto_vertex
 
@@ -267,7 +267,7 @@ class wto_cycle final : public wto_component<G> {
 
     unsigned get_fixpo_visits() const { return _num_fixpo; }
 
-    void write(crab_os& o) const {
+    void write(std::ostream& o) const {
         o << "(" << this->_head;
         if (!this->_wto_components->empty()) {
             o << " ";
@@ -424,7 +424,7 @@ class wto final {
         set_dfn(vertex, _num);
 
         visit_stack.push_back(visit_stack_elem(vertex, out_edges(vertex, g), _num));
-        CRAB_LOG("wto-nonrec", outs() << "WTO: Node " << vertex << ": dfs num=" << _num << "\n";);
+        CRAB_LOG("wto-nonrec", std::cout << "WTO: Node " << vertex << ": dfs num=" << _num << "\n";);
         while (!visit_stack.empty()) {
             /*
              * Perform dfs.
@@ -443,11 +443,11 @@ class wto final {
                     _num += 1;
                     set_dfn(child, _num);
                     visit_stack.push_back(visit_stack_elem(child, out_edges(child, g), _num));
-                    CRAB_LOG("wto-nonrec", outs() << "WTO: Node " << child << ": dfs num=" << _num << "\n";);
+                    CRAB_LOG("wto-nonrec", std::cout << "WTO: Node " << child << ": dfs num=" << _num << "\n";);
                 } else {
                     if (child_dfn <= visit_stack.back()._min) {
                         visit_stack.back()._min = child_dfn;
-                        CRAB_LOG("wto-nonrec", outs() << "WTO: loop found " << child << "\n";);
+                        CRAB_LOG("wto-nonrec", std::cout << "WTO: loop found " << child << "\n";);
                         loop_nodes.insert(child);
                     }
                 }
@@ -463,27 +463,27 @@ class wto final {
             }
 
             auto dfn_visiting_node = get_dfn(visiting_node);
-            CRAB_LOG("wto-nonrec", outs() << "WTO: popped node " << visiting_node << " dfs num= " << dfn_visiting_node
+            CRAB_LOG("wto-nonrec", std::cout << "WTO: popped node " << visiting_node << " dfs num= " << dfn_visiting_node
                                           << ": min=" << min_visiting_node << "\n";);
 
             if (min_visiting_node == get_dfn(visiting_node)) {
-                CRAB_LOG("wto-nonrec", outs() << "WTO: BEGIN building partition for node " << visiting_node << "\n";);
+                CRAB_LOG("wto-nonrec", std::cout << "WTO: BEGIN building partition for node " << visiting_node << "\n";);
                 set_dfn(visiting_node, dfn_t::plus_infinity());
                 vertex_descriptor<G> element = pop();
                 if (is_loop) {
                     while (!(element == visiting_node)) {
                         set_dfn(element, 0);
-                        CRAB_LOG("wto-nonrec", outs() << "\tWTO: node " << element << ": dfn num=0\n";);
+                        CRAB_LOG("wto-nonrec", std::cout << "\tWTO: node " << element << ": dfn num=0\n";);
                         element = pop();
                     }
-                    CRAB_LOG("wto-nonrec", outs()
+                    CRAB_LOG("wto-nonrec", std::cout
                                                << "\tWTO: adding component starting from " << visiting_node << "\n";);
                     partition->push_front(component(g, visiting_node));
                 } else {
-                    CRAB_LOG("wto-nonrec", outs() << "\tWTO: adding vertex " << visiting_node << "\n";);
+                    CRAB_LOG("wto-nonrec", std::cout << "\tWTO: adding vertex " << visiting_node << "\n";);
                     partition->push_front(wto_vertex_ptr(new wto_vertex_t(visiting_node)));
                 }
-                CRAB_LOG("wto-nonrec", outs() << "WTO: END building partition\n";);
+                CRAB_LOG("wto-nonrec", std::cout << "WTO: END building partition\n";);
             }
         } // end while (!visit_stack.empty())
     }
@@ -555,7 +555,7 @@ class wto final {
         }
     }
 
-    void write(crab_os& o) const {
+    void write(std::ostream& o) const {
         for (const_iterator it = this->begin(); it != this->end();) {
             const wto_component_t& c = *it;
             o << c;
@@ -566,7 +566,7 @@ class wto final {
         }
     }
 
-    friend crab_os& operator<<(crab_os& o, const wto_t& wto) {
+    friend std::ostream& operator<<(std::ostream& o, const wto_t& wto) {
         wto.write(o);
         return o;
     }

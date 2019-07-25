@@ -45,7 +45,7 @@ class checker_domain_traits final {
         if (rhs.is_contradiction())
             return false;
 
-        CRAB_LOG("checker-entailment", linear_constraint_t tmp(rhs); outs() << "Checking whether\n"
+        CRAB_LOG("checker-entailment", linear_constraint_t tmp(rhs); std::cout << "Checking whether\n"
                                                                             << lhs << "\nentails " << tmp << "\n";);
 
         bool res;
@@ -59,8 +59,8 @@ class checker_domain_traits final {
             res = op(rhs);
         }
 
-        CRAB_LOG("checker-entailment", if (res) { outs() << "\t**entailment holds.\n"; } else {
-            outs() << "\t**entailment does not hold.\n";
+        CRAB_LOG("checker-entailment", if (res) { std::cout << "\t**entailment holds.\n"; } else {
+            std::cout << "\t**entailment does not hold.\n";
         });
 
         // Note: we cannot convert rhs into AbsDomain and then use the <=

@@ -55,9 +55,9 @@ class offset_t final {
 
     bool operator!=(const offset_t& o) const { return !(*this == o); }
 
-    void write(crab_os& o) const { o << _val; }
+    void write(std::ostream& o) const { o << _val; }
 
-    friend crab_os& operator<<(crab_os& o, const offset_t& v) {
+    friend std::ostream& operator<<(std::ostream& o, const offset_t& v) {
         v.write(o);
         return o;
     }
@@ -120,7 +120,7 @@ class cell_t final {
         interval_t y = to_interval(o, size);
         bool res = (!(x & y).is_bottom());
         CRAB_LOG("array-expansion-overlap",
-                 outs() << "**Checking if " << x << " overlaps with " << y << "=" << res << "\n";);
+                 std::cout << "**Checking if " << x << " overlaps with " << y << "=" << res << "\n";);
         return res;
     }
 
@@ -138,7 +138,7 @@ class cell_t final {
 
         CRAB_LOG("array-expansion-overlap", AbsDomain tmp(dom); linear_expression_t tmp_symb_lb(symb_lb);
                  linear_expression_t tmp_symb_ub(symb_ub);
-                 outs() << "**Checking if " << *this << " overlaps with symbolic "
+                 std::cout << "**Checking if " << *this << " overlaps with symbolic "
                         << "[" << tmp_symb_lb << "," << tmp_symb_ub << "]"
                         << " with abstract state=" << tmp << "\n";);
 
@@ -146,7 +146,7 @@ class cell_t final {
         tmp1 += linear_constraint_t(symb_lb - lb, linear_constraint_t::INEQUALITY); //(lb >= symb_lb);
         tmp1 += linear_constraint_t(lb - symb_lb, linear_constraint_t::INEQUALITY); //(lb <= symb_ub);
         if (!tmp1.is_bottom()) {
-            CRAB_LOG("array-expansion-overlap", outs() << "\tyes.\n";);
+            CRAB_LOG("array-expansion-overlap", std::cout << "\tyes.\n";);
             return true;
         }
 
@@ -154,19 +154,19 @@ class cell_t final {
         tmp2 += linear_constraint_t(symb_ub - ub, linear_constraint_t::INEQUALITY); // (ub >= symb_lb);
         tmp2 += linear_constraint_t(ub - symb_ub, linear_constraint_t::INEQUALITY); // (ub <= symb_ub);
         if (!tmp2.is_bottom()) {
-            CRAB_LOG("array-expansion-overlap", outs() << "\tyes.\n";);
+            CRAB_LOG("array-expansion-overlap", std::cout << "\tyes.\n";);
             return true;
         }
 
-        CRAB_LOG("array-expansion-overlap", outs() << "\tno.\n";);
+        CRAB_LOG("array-expansion-overlap", std::cout << "\tno.\n";);
         return false;
     }
 
-    void write(crab_os& o) const {
+    void write(std::ostream& o) const {
         o << "cell(" << to_interval() << ")";
     }
 
-    friend crab_os& operator<<(crab_os& o, const cell_t& c) {
+    friend std::ostream& operator<<(std::ostream& o, const cell_t& c) {
         c.write(o);
         return o;
     }
@@ -290,9 +290,9 @@ class offset_map_t final {
         return out;
     }
 
-    void write(crab_os& o) const;
+    void write(std::ostream& o) const;
 
-    friend crab_os& operator<<(crab_os& o, const offset_map_t& m) {
+    friend std::ostream& operator<<(std::ostream& o, const offset_map_t& m) {
         m.write(o);
         return o;
     }
@@ -546,7 +546,7 @@ class array_expansion_domain final : public writeable {
         auto maybe_cell = kill_and_find_var(kind, elem_size, i);
         if (maybe_cell) {
             // perform strong update
-            //outs() << "(" << maybe_cell->first.index() << ", " << maybe_cell->second << ")\n";
+            //std::cout << "(" << maybe_cell->first.index() << ", " << maybe_cell->second << ")\n";
             auto [offset, size] = *maybe_cell;
             variable_t v = lookup_array_map(kind).mk_cell(offset, size).get_scalar(kind);
             _inv.assign(v, val);
@@ -601,7 +601,7 @@ class array_expansion_domain final : public writeable {
 
     NumAbsDomain& get_content_domain() { return _inv; }
 
-    void write(crab_os& o) { o << _inv; }
+    void write(std::ostream& o) { o << _inv; }
 
     static std::string getDomainName() {
         std::string name("ArrayExpansion(" + NumAbsDomain::getDomainName() + ")");

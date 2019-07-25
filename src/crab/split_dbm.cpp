@@ -324,7 +324,7 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
 }
 
 bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
-    CRAB_LOG("zones-split", linear_expression_t exp_tmp(exp); outs() << "Adding: " << exp_tmp << "<= 0"
+    CRAB_LOG("zones-split", linear_expression_t exp_tmp(exp); std::cout << "Adding: " << exp_tmp << "<= 0"
                                                                      << "\n");
     std::vector<std::pair<variable_t, Wt>> lbs, ubs;
     std::vector<diffcst_t> csts;
@@ -335,7 +335,7 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
     Wt_min min_op;
     typename graph_t::mut_val_ref_t w;
     for (auto p : lbs) {
-        CRAB_LOG("zones-split", outs() << p.first << ">=" << p.second << "\n");
+        CRAB_LOG("zones-split", std::cout << p.first << ">=" << p.second << "\n");
         vert_id v = get_vert(p.first);
         if (g.lookup(v, 0, &w) && w.get() <= -p.second)
             continue;
@@ -348,7 +348,7 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
         check_potential(g, potential, __LINE__);
     }
     for (auto p : ubs) {
-        CRAB_LOG("zones-split", outs() << p.first << "<=" << p.second << "\n");
+        CRAB_LOG("zones-split", std::cout << p.first << "<=" << p.second << "\n");
         vert_id v = get_vert(p.first);
         if (g.lookup(0, v, &w) && w.get() <= p.second)
             continue;
@@ -361,7 +361,7 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
     }
 
     for (auto diff : csts) {
-        CRAB_LOG("zones-split", outs() << diff.first.first << "-" << diff.first.second << "<=" << diff.second << "\n");
+        CRAB_LOG("zones-split", std::cout << diff.first.first << "-" << diff.first.second << "<=" << diff.second << "\n");
 
         vert_id src = get_vert(diff.first.second);
         vert_id dest = get_vert(diff.first.first);
@@ -468,7 +468,7 @@ bool SplitDBM::operator<=(SplitDBM o) {
     else {
         normalize();
 
-        // CRAB_LOG("zones-split", outs() << "operator<=: "<< *this<< "<=?"<< o <<"\n");
+        // CRAB_LOG("zones-split", std::cout << "operator<=: "<< *this<< "<=?"<< o <<"\n");
 
         if (vert_map.size() < o.vert_map.size())
             return false;
@@ -529,7 +529,7 @@ SplitDBM SplitDBM::operator|(SplitDBM o) {
     else if (is_top() || o.is_bottom())
         return *this;
     else {
-        CRAB_LOG("zones-split", outs() << "Before join:\n"
+        CRAB_LOG("zones-split", std::cout << "Before join:\n"
                                        << "DBM 1\n"
                                        << *this << "\n"
                                        << "DBM 2\n"
@@ -701,7 +701,7 @@ SplitDBM SplitDBM::operator|(SplitDBM o) {
         // SplitDBM res(join_range, out_vmap, out_revmap, join_g, join_pot);
         SplitDBM res(std::move(out_vmap), std::move(out_revmap), std::move(join_g), std::move(pot_rx), vert_set_t());
         // join_g.check_adjs();
-        CRAB_LOG("zones-split", outs() << "Result join:\n" << res << "\n");
+        CRAB_LOG("zones-split", std::cout << "Result join:\n" << res << "\n");
 
         return res;
     }
@@ -716,7 +716,7 @@ SplitDBM SplitDBM::widen(SplitDBM o) {
     else if (o.is_bottom())
         return *this;
     else {
-        CRAB_LOG("zones-split", outs() << "Before widening:\n"
+        CRAB_LOG("zones-split", std::cout << "Before widening:\n"
                                        << "DBM 1\n"
                                        << *this << "\n"
                                        << "DBM 2\n"
@@ -764,7 +764,7 @@ SplitDBM SplitDBM::widen(SplitDBM o) {
         SplitDBM res(std::move(out_vmap), std::move(out_revmap), std::move(widen_g), std::move(widen_pot),
                      std::move(widen_unstable));
 
-        CRAB_LOG("zones-split", outs() << "Result widening:\n" << res << "\n");
+        CRAB_LOG("zones-split", std::cout << "Result widening:\n" << res << "\n");
         return res;
     }
 }
@@ -779,7 +779,7 @@ SplitDBM SplitDBM::operator&(SplitDBM o) {
     else if (o.is_top())
         return *this;
     else {
-        CRAB_LOG("zones-split", outs() << "Before meet:\n"
+        CRAB_LOG("zones-split", std::cout << "Before meet:\n"
                                        << "DBM 1\n"
                                        << *this << "\n"
                                        << "DBM 2\n"
@@ -864,7 +864,7 @@ SplitDBM SplitDBM::operator&(SplitDBM o) {
         }
         check_potential(meet_g, meet_pi, __LINE__);
         SplitDBM res(std::move(meet_verts), std::move(meet_rev), std::move(meet_g), std::move(meet_pi), vert_set_t());
-        CRAB_LOG("zones-split", outs() << "Result meet:\n" << res << "\n");
+        CRAB_LOG("zones-split", std::cout << "Result meet:\n" << res << "\n");
         return res;
     }
 }
@@ -879,9 +879,9 @@ void SplitDBM::operator-=(variable_t v) {
 
     auto it = vert_map.find(v);
     if (it != vert_map.end()) {
-        CRAB_LOG("zones-split", outs() << "Before forget " << it->second << ": " << g << "\n");
+        CRAB_LOG("zones-split", std::cout << "Before forget " << it->second << ": " << g << "\n");
         g.forget(it->second);
-        CRAB_LOG("zones-split", outs() << "After: " << g << "\n");
+        CRAB_LOG("zones-split", std::cout << "After: " << g << "\n");
         rev_map[it->second] = std::nullopt;
         vert_map.erase(v);
     }
@@ -916,7 +916,7 @@ void SplitDBM::operator+=(linear_constraint_t cst) {
             set_to_bottom();
         }
         //  g.check_adjs();
-        CRAB_LOG("zones-split", outs() << "--- " << cst << "\n" << *this << "\n");
+        CRAB_LOG("zones-split", std::cout << "--- " << cst << "\n" << *this << "\n");
         return;
     }
 
@@ -928,7 +928,7 @@ void SplitDBM::operator+=(linear_constraint_t cst) {
             if (!add_linear_leq(nc.expression())) {
                 set_to_bottom();
             }
-            CRAB_LOG("zones-split", outs() << "--- " << cst << "\n" << *this << "\n");
+            CRAB_LOG("zones-split", std::cout << "--- " << cst << "\n" << *this << "\n");
             return;
         }
     }
@@ -936,12 +936,12 @@ void SplitDBM::operator+=(linear_constraint_t cst) {
     if (cst.is_equality()) {
         linear_expression_t exp = cst.expression();
         if (!add_linear_leq(exp) || !add_linear_leq(-exp)) {
-            CRAB_LOG("zones-split", outs() << " ~~> _|_"
+            CRAB_LOG("zones-split", std::cout << " ~~> _|_"
                                            << "\n");
             set_to_bottom();
         }
         // g.check_adjs();
-        CRAB_LOG("zones-split", outs() << "--- " << cst << "\n" << *this << "\n");
+        CRAB_LOG("zones-split", std::cout << "--- " << cst << "\n" << *this << "\n");
         return;
     }
 
@@ -951,7 +951,7 @@ void SplitDBM::operator+=(linear_constraint_t cst) {
     }
 
     CRAB_WARN("Unhandled constraint ", cst, " by split_dbm");
-    CRAB_LOG("zones-split", outs() << "---" << cst << "\n" << *this << "\n");
+    CRAB_LOG("zones-split", std::cout << "---" << cst << "\n" << *this << "\n");
     return;
 }
 
@@ -963,8 +963,8 @@ void SplitDBM::assign(variable_t x, linear_expression_t e) {
         return;
     }
 
-    CRAB_LOG("zones-split", outs() << "Before assign: " << *this << "\n");
-    CRAB_LOG("zones-split", outs() << x << ":=" << e << "\n");
+    CRAB_LOG("zones-split", std::cout << "Before assign: " << *this << "\n");
+    CRAB_LOG("zones-split", std::cout << x << ":=" << e << "\n");
     normalize();
 
     check_potential(g, potential, __LINE__);
@@ -977,7 +977,7 @@ void SplitDBM::assign(variable_t x, linear_expression_t e) {
         lb_w = convert_NtoW(-(*(x_int.lb().number())), overflow);
         if (overflow) {
             operator-=(x);
-            CRAB_LOG("zones-split", outs() << "---" << x << ":=" << e << "\n" << *this << "\n");
+            CRAB_LOG("zones-split", std::cout << "---" << x << ":=" << e << "\n" << *this << "\n");
             return;
         }
     }
@@ -985,7 +985,7 @@ void SplitDBM::assign(variable_t x, linear_expression_t e) {
         ub_w = convert_NtoW(*(x_int.ub().number()), overflow);
         if (overflow) {
             operator-=(x);
-            CRAB_LOG("zones-split", outs() << "---" << x << ":=" << e << "\n" << *this << "\n");
+            CRAB_LOG("zones-split", std::cout << "---" << x << ":=" << e << "\n" << *this << "\n");
             return;
         }
     }
@@ -1060,7 +1060,7 @@ void SplitDBM::assign(variable_t x, linear_expression_t e) {
     // g.check_adjs();
 
     check_potential(g, potential, __LINE__);
-    CRAB_LOG("zones-split", outs() << "---" << x << ":=" << e << "\n" << *this << "\n");
+    CRAB_LOG("zones-split", std::cout << "---" << x << ":=" << e << "\n" << *this << "\n");
 }
 
 void SplitDBM::rename(const variable_vector_t& from, const variable_vector_t& to) {
@@ -1073,13 +1073,13 @@ void SplitDBM::rename(const variable_vector_t& from, const variable_vector_t& to
     // renaming vert_map by creating a new vert_map since we are
     // modifying the keys.
     // rev_map is modified in-place since we only modify values.
-    CRAB_LOG("zones-split", outs() << "Replacing {"; for (auto v
-                                                          : from) outs()
+    CRAB_LOG("zones-split", std::cout << "Replacing {"; for (auto v
+                                                          : from) std::cout
                                                      << v << ";";
-             outs() << "} with "; for (auto v
-                                       : to) outs()
+             std::cout << "} with "; for (auto v
+                                       : to) std::cout
                                   << v << ";";
-             outs() << "}:\n"; outs() << *this << "\n";);
+             std::cout << "}:\n"; std::cout << *this << "\n";);
 
     vert_map_t new_vert_map;
     for (auto kv : vert_map) {
@@ -1094,7 +1094,7 @@ void SplitDBM::rename(const variable_vector_t& from, const variable_vector_t& to
     }
     std::swap(vert_map, new_vert_map);
 
-    CRAB_LOG("zones-split", outs() << "RESULT=" << *this << "\n");
+    CRAB_LOG("zones-split", std::cout << "RESULT=" << *this << "\n");
 }
 
 SplitDBM SplitDBM::narrow(SplitDBM o) {
@@ -1106,7 +1106,7 @@ SplitDBM SplitDBM::narrow(SplitDBM o) {
     else if (is_top())
         return o;
     else {
-        CRAB_LOG("zones-split", outs() << "Before narrowing:\n"
+        CRAB_LOG("zones-split", std::cout << "Before narrowing:\n"
                                        << "DBM 1\n"
                                        << *this << "\n"
                                        << "DBM 2\n"
@@ -1117,7 +1117,7 @@ SplitDBM SplitDBM::narrow(SplitDBM o) {
         normalize();
         SplitDBM res(*this);
 
-        CRAB_LOG("zones-split", outs() << "Result narrowing:\n" << res << "\n");
+        CRAB_LOG("zones-split", std::cout << "Result narrowing:\n" << res << "\n");
         return res;
     }
 }
@@ -1204,7 +1204,7 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, variable_t z)
     default: CRAB_ERROR("Operation ", op, " not supported");
     }
 
-    CRAB_LOG("zones-split", outs() << "---" << x << ":=" << y << op << z << "\n" << *this << "\n");
+    CRAB_LOG("zones-split", std::cout << "---" << x << ":=" << y << op << z << "\n" << *this << "\n");
 }
 
 void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, number_t k) {
@@ -1229,7 +1229,7 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, number_t k) {
     default: CRAB_ERROR("Operation ", op, " not supported");
     }
 
-    CRAB_LOG("zones-split", outs() << "---" << x << ":=" << y << op << k << "\n" << *this << "\n");
+    CRAB_LOG("zones-split", std::cout << "---" << x << ":=" << y << op << k << "\n" << *this << "\n");
 }
 
 void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t z) {
@@ -1350,7 +1350,7 @@ bool SplitDBM::is_unsat(linear_constraint_t cst) {
     return false;
 }
 
-void SplitDBM::write(crab_os& o) {
+void SplitDBM::write(std::ostream& o) {
 
     normalize();
 

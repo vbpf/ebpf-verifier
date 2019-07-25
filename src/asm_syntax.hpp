@@ -7,6 +7,7 @@
 
 #include <boost/lexical_cast.hpp>
 #include "crab/types.hpp"
+#include "crab/cfg.hpp"
 
 using crab::label_t;
 

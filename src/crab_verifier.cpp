@@ -63,11 +63,11 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
     if (global_options.print_invariants) {
         pre_printer.connect([pre = extract_pre(analyzer, cfg)](const string& label) {
             dom_t inv = pre.at(label);
-            crab::outs() << "\n" << inv << "\n";
+            std::cout << "\n" << inv << "\n";
         });
         post_printer.connect([post = extract_post(analyzer, cfg)](const string& label) {
             dom_t inv = post.at(label);
-            crab::outs() << "\n" << inv << "\n";
+            std::cout << "\n" << inv << "\n";
         });
     }
     checks_db db;
@@ -110,14 +110,14 @@ std::tuple<bool, double> abs_validate(Cfg const& simple_cfg, program_info info) 
     if (global_options.print_invariants) {
         for (string label : sorted_labels(cfg)) {
             pre_printer(label);
-            cfg.get_node(label).write(crab::outs());
+            cfg.get_node(label).write(std::cout);
             post_printer(label);
         }
     }
 
     if (nwarn > 0) {
         if (global_options.print_failures) {
-            checks.write(crab::outs());
+            checks.write(std::cout);
         }
         return {false, elapsed_secs};
     }

@@ -129,6 +129,6 @@ bool safe_i64::operator>(safe_i64 x) const { return m_num > x.m_num; }
 
 bool safe_i64::operator>=(safe_i64 x) const { return m_num >= x.m_num; }
 
-void safe_i64::write(crab_os& os) const { os << m_num; }
+void safe_i64::write(std::ostream& os) const { os << m_num; }
 
 } // end namespace crab

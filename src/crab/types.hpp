@@ -1,14 +1,15 @@
 #pragma once
 
-#include "crab/bignums.hpp"
-#include "crab/debug.hpp"
-#include "crab/os.hpp"
-
+#include <iostream>
+#include <sstream>
 #include <iosfwd>
 #include <limits>
 #include <memory>
 #include <optional>
 #include <unordered_map>
+
+#include "crab/bignums.hpp"
+#include "crab/debug.hpp"
 
 /* Basic type definitions */
 
@@ -22,17 +23,17 @@ using number_t = z_number;
 // Interface for writeable objects
 class writeable {
   public:
-    virtual void write(crab_os& o) = 0;
+    virtual void write(std::ostream& o) = 0;
     virtual ~writeable() {}
 }; // class writeable
 
-inline crab_os& operator<<(crab_os& o, writeable& x) {
+inline std::ostream& operator<<(std::ostream& o, writeable& x) {
     x.write(o);
     return o;
 }
 
 enum class data_kind_t { regions, values, offsets };
-crab_os& operator<<(crab_os& o, const data_kind_t& s);
+std::ostream& operator<<(std::ostream& o, const data_kind_t& s);
 
 // Container for typed variables used by the crab abstract domains
 // and linear_constraints.
@@ -57,7 +58,7 @@ class variable_t final {
 
     bool operator!=(const variable_t& o) const { return (!(operator==(o))); }
 
-    void write(crab_os& o) const { o << names.at(_id); }
+    void write(std::ostream& o) const { o << names.at(_id); }
 
     friend class less;
     struct less {
@@ -74,11 +75,9 @@ class variable_t final {
 
 inline size_t hash_value(const variable_t& v) { return v.hash(); }
 
-inline crab_os& operator<<(crab_os& o, const variable_t& v) {
+inline std::ostream& operator<<(std::ostream& o, const variable_t& v) {
     v.write(o);
     return o;
 }
-
-using label_t = std::string;
 
 } // namespace crab

@@ -275,7 +275,7 @@ class linear_expression_t final {
         }
     }
 
-    void write(crab_os& o) const {
+    void write(std::ostream& o) const {
         for (typename map_t::const_iterator it = this->_map->begin(); it != this->_map->end(); ++it) {
             number_t n = it->second;
             variable_t v = it->first;
@@ -298,11 +298,11 @@ class linear_expression_t final {
     }
 
     // for dgb
-    void dump() { write(outs()); }
+    void dump() { write(std::cout); }
 
 }; // class linear_expression_t
 
-inline crab_os& operator<<(crab_os& o, const linear_expression_t& e) {
+inline std::ostream& operator<<(std::ostream& o, const linear_expression_t& e) {
     e.write(o);
     return o;
 }
@@ -463,14 +463,14 @@ class linear_constraint_t final {
         return linear_constraint_t(e, this->_kind, is_signed());
     }
 
-    void write(crab_os& o) const;
+    void write(std::ostream& o) const;
 
     // for dgb
-    void dump() { write(outs()); }
+    void dump() { write(std::cout); }
 
 }; // class linear_constraint_t
 
-inline crab_os& operator<<(crab_os& o, const linear_constraint_t& c) {
+inline std::ostream& operator<<(std::ostream& o, const linear_constraint_t& c) {
     c.write(o);
     return o;
 }
