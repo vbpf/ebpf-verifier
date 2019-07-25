@@ -39,6 +39,7 @@ static std::string name_of(data_kind_t kind) {
         case data_kind_t::values: return "r";
         case data_kind_t::regions: return "t";
     }
+    return {};
 }
 
 variable_t variable_t::reg(data_kind_t kind, int i) {
