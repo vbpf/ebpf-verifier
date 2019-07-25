@@ -31,7 +31,7 @@ void offset_map_t::remove_cell(const cell_t& c) {
     }
 }
 
-void offset_map_t::insert_cell(const cell_t& c, bool sanity_check) {
+void offset_map_t::insert_cell(const cell_t& c) {
     if (std::optional<cell_set_t> cells = _map.lookup(c.get_offset())) {
         if ((*cells).insert(c).second) {
             // a bit of a waste ...
@@ -45,7 +45,7 @@ void offset_map_t::insert_cell(const cell_t& c, bool sanity_check) {
     }
 }
 
-cell_t offset_map_t::get_cell(offset_t o, unsigned size) const {
+std::optional<cell_t> offset_map_t::get_cell(offset_t o, unsigned size) const {
     if (std::optional<cell_set_t> cells = _map.lookup(o)) {
         cell_t tmp(o, size);
         auto it = (*cells).find(tmp);
@@ -54,19 +54,19 @@ cell_t offset_map_t::get_cell(offset_t o, unsigned size) const {
         }
     }
     // not found
-    return cell_t();
+    return {};
 }
 
 cell_t offset_map_t::mk_cell(offset_t o, unsigned size) {
     // TODO: check array is the array associated to this offset map
 
-    cell_t c = get_cell(o, size);
-    if (c.is_null()) {
-        // create a new scalar variable for representing the contents
-        // of bytes array[o,o+1,..., o+size-1]
-        c = cell_t(o, size);
-        insert_cell(c);
-    }
+    auto maybe_c = get_cell(o, size);
+    if (maybe_c)
+        return *maybe_c;
+    // create a new scalar variable for representing the contents
+    // of bytes array[o,o+1,..., o+size-1]
+    cell_t c(o, size);
+    insert_cell(c);
     return c;
 }
 
@@ -87,11 +87,10 @@ std::vector<cell_t> offset_map_t::get_overlap_cells(offset_t o, unsigned size) {
     compare_binding_t comp;
 
     bool added = false;
-    cell_t c = get_cell(o, size);
-    if (c.is_null()) {
-        // we need to add a temporary cell for (o, size)
-        c = cell_t(o, size);
-        insert_cell(c, false /*disable sanity check*/);
+    auto maybe_c = get_cell(o, size);
+    if (!maybe_c) {
+        maybe_c = cell_t(o, size);
+        insert_cell(*maybe_c);
         added = true;
     }
 
@@ -119,7 +118,7 @@ std::vector<cell_t> offset_map_t::get_overlap_cells(offset_t o, unsigned size) {
             bool continue_outer_loop = false;
             for (const cell_t& x : upto_lb[i]) {
                 if (x.overlap(o, size)) {
-                    if (!(x == c)) {
+                    if (!(x == *maybe_c)) {
                         // FIXME: we might have some duplicates. this is a very drastic solution.
                         if (std::find(out.begin(), out.end(), x) == out.end()) {
                             out.push_back(x);
@@ -156,11 +155,11 @@ std::vector<cell_t> offset_map_t::get_overlap_cells(offset_t o, unsigned size) {
     for (auto it = ++lb_it, et = ub_it; it != et; ++it) {
         bool continue_outer_loop = false;
         for (const cell_t& x : it->second) {
-            if (x == c) { // we dont put it in out
+            if (x == *maybe_c) { // we dont put it in out
                 continue;
             }
             if (x.overlap(o, size)) {
-                if (!(x == c)) {
+                if (!(x == *maybe_c)) {
                     if (std::find(out.begin(), out.end(), x) == out.end()) {
                         out.push_back(x);
                     }
@@ -174,9 +173,7 @@ std::vector<cell_t> offset_map_t::get_overlap_cells(offset_t o, unsigned size) {
     }
 
     if (added) {
-        // remove the temporary cell for (o, size)
-        assert(!c.is_null());
-        remove_cell(c);
+        remove_cell(*maybe_c);
     }
     return out;
 }
