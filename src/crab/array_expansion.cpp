@@ -43,30 +43,14 @@ cell_t offset_map_t::get_cell(offset_t o, unsigned size) const {
     return cell_t();
 }
 
-std::string offset_map_t::mk_scalar_name(variable_t a, offset_t o, unsigned size) {
-    crab_string_os os;
-    os << a << "[";
-    if (size == 1) {
-        os << o;
-    } else {
-        os << o << "..." << o.index() + size - 1;
-    }
-    os << "]";
-    return os.str();
-}
-
 cell_t offset_map_t::mk_cell(variable_t array, offset_t o, unsigned size) {
     // TODO: check array is the array associated to this offset map
 
     cell_t c = get_cell(o, size);
     if (c.is_null()) {
-        std::string vname = mk_scalar_name(array, o, size);
-        index_t vindex = get_index(array, o, size);
-
         // create a new scalar variable for representing the contents
         // of bytes array[o,o+1,..., o+size-1]
-        variable_t scalar_var(variable_factory::vfac.get(vindex, vname));
-        c = cell_t(o, size, scalar_var);
+        c = cell_t(o, size, variable_t::cell_var(array, o.index(), size));
         insert_cell(c);
     }
     // sanity check
@@ -206,6 +190,5 @@ void offset_map_t::write(crab_os& o) const {
     }
 }
 
-std::map<std::pair<index_t, std::pair<offset_t, unsigned>>, index_t> offset_map_t::_index_map;
 } // namespace domains
 } // namespace crab

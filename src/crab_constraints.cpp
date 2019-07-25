@@ -34,7 +34,6 @@ using std::vector;
 
 using crab::linear_constraint_t;
 using crab::linear_expression_t;
-using crab::variable_factory;
 using crab::data_kind_t;
 
 

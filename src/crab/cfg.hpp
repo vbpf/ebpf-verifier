@@ -281,9 +281,6 @@ class cfg final {
     using label_iterator = boost::transform_iterator<get_label, typename basic_block_map_t::iterator>;
     using const_label_iterator = boost::transform_iterator<get_label, typename basic_block_map_t::const_iterator>;
 
-    using var_iterator = std::vector<varname_t>::iterator;
-    using const_var_iterator = std::vector<varname_t>::const_iterator;
-
   private:
     label_t m_entry;
     label_t m_exit;
@@ -537,8 +534,6 @@ class cfg_ref final {
     using const_iterator = typename cfg_t::const_iterator;
     using label_iterator = typename cfg_t::label_iterator;
     using const_label_iterator = typename cfg_t::const_label_iterator;
-    using var_iterator = typename cfg_t::var_iterator;
-    using const_var_iterator = typename cfg_t::const_var_iterator;
 
   private:
     std::reference_wrapper<cfg_t> _ref;
@@ -642,8 +637,6 @@ class cfg_rev final {
     using const_iterator = typename basic_block_rev_map_t::const_iterator;
     using label_iterator = typename cfg_t::label_iterator;
     using const_label_iterator = typename cfg_t::const_label_iterator;
-    using var_iterator = typename cfg_t::var_iterator;
-    using const_var_iterator = typename cfg_t::const_var_iterator;
 
   private:
     cfg_t& _cfg;

@@ -261,21 +261,19 @@ class offset_map_t final {
 
     cell_t get_cell(offset_t o, unsigned size) const;
 
-    static std::string mk_scalar_name(variable_t a, offset_t o, unsigned size);
+    // // global state to map the same triple of array, offset and size to same index
+    // static std::map<std::pair<index_t, std::pair<offset_t, unsigned>>, index_t> _index_map;
 
-    // global state to map the same triple of array, offset and size to same index
-    static std::map<std::pair<index_t, std::pair<offset_t, unsigned>>, index_t> _index_map;
-
-    index_t get_index(variable_t a, offset_t o, unsigned size) {
-        auto it = _index_map.find({a.index(), {o, size}});
-        if (it != _index_map.end()) {
-            return it->second;
-        } else {
-            index_t res = _index_map.size();
-            _index_map.insert({{a.index(), {o, size}}, res});
-            return res;
-        }
-    }
+    // index_t get_index(variable_t a, offset_t o, unsigned size) {
+    //     auto it = _index_map.find({a.index(), {o, size}});
+    //     if (it != _index_map.end()) {
+    //         return it->second;
+    //     } else {
+    //         index_t res = _index_map.size();
+    //         _index_map.insert({{a.index(), {o, size}}, res});
+    //         return res;
+    //     }
+    // }
 
     cell_t mk_cell(variable_t array, offset_t o, unsigned size);
 
