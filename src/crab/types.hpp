@@ -58,12 +58,9 @@ class variable_t final {
 
     bool operator!=(const variable_t& o) const { return (!(operator==(o))); }
 
-    void write(std::ostream& o) const { o << names.at(_id); }
+    bool operator<(const variable_t& o) const { return _id < o._id; }
 
-    friend class less;
-    struct less {
-        bool operator()(variable_t x, variable_t y) const { return x._id < y._id; }
-    };
+    void write(std::ostream& o) const { o << names.at(_id); }
 
     static variable_t reg(data_kind_t, int);
     static variable_t cell_var(data_kind_t array, index_t offset, unsigned size);
