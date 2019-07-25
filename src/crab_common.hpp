@@ -6,9 +6,6 @@
 
 using crab::label_t;
 using crab::number_t;
-using crab::varname_t;
-
-using crab::variable_factory;
 
 /// CFG over integers
 using crab::basic_block_t;

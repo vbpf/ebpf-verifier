@@ -68,8 +68,6 @@ class wto_thresholds_t final : public wto_component_visitor<cfg_ref_t> {
     // the top of the stack is the current wto head
     std::vector<label_t> m_stack;
 
-    // using select_t = select_stmt<number_t,varname_t>;
-
     void extract_bounds(const linear_expression_t& e, bool is_strict, std::vector<number_t>& lb_bounds,
                         std::vector<number_t>& ub_bounds) const;
 

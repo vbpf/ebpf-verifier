@@ -336,7 +336,6 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
     typename graph_t::mut_val_ref_t w;
     for (auto p : lbs) {
         CRAB_LOG("zones-split", outs() << p.first << ">=" << p.second << "\n");
-        variable_t x(p.first);
         vert_id v = get_vert(p.first);
         if (g.lookup(v, 0, &w) && w.get() <= -p.second)
             continue;
@@ -350,7 +349,6 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
     }
     for (auto p : ubs) {
         CRAB_LOG("zones-split", outs() << p.first << "<=" << p.second << "\n");
-        variable_t x(p.first);
         vert_id v = get_vert(p.first);
         if (g.lookup(0, v, &w) && w.get() <= p.second)
             continue;
