@@ -55,7 +55,7 @@ static auto extract_post(analyzer_t& analyzer, cfg_t& cfg) {
 }
 
 static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_printer) {
-    dom_t::clear_global_state();
+    crab::domains::clear_global_state();
 
     analyzer_t analyzer(cfg);
     analyzer.run(dom_t::top());

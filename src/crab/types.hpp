@@ -32,6 +32,7 @@ inline crab_os& operator<<(crab_os& o, writeable& x) {
 }
 
 enum class data_kind_t { regions, values, offsets };
+crab_os& operator<<(crab_os& o, const data_kind_t& s);
 
 // Container for typed variables used by the crab abstract domains
 // and linear_constraints.
@@ -64,8 +65,7 @@ class variable_t final {
     };
 
     static variable_t reg(data_kind_t, int);
-    static variable_t cell_var(variable_t array, index_t offset, unsigned size);
-    static variable_t array(data_kind_t);
+    static variable_t cell_var(data_kind_t array, index_t offset, unsigned size);
     static variable_t map_value_size();
     static variable_t map_key_size();
     static variable_t meta_size();

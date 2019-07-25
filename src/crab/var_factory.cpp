@@ -46,9 +46,18 @@ variable_t variable_t::reg(data_kind_t kind, int i) {
     return make(name_of(kind) + std::to_string(i));
 }
 
-static std::string mk_scalar_name(variable_t a, index_t o, unsigned size) {
+crab_os& operator<<(crab_os& o, const data_kind_t& s) {
+    switch (s) {
+        case data_kind_t::offsets: return o << "S_off";
+        case data_kind_t::regions: return o << "S_t";
+        case data_kind_t::values: return o << "S_r";
+    }
+    assert(false);
+}
+
+static std::string mk_scalar_name(data_kind_t kind, index_t o, unsigned size) {
     crab_string_os os;
-    os << a << "[" << o;
+    os << "S_" << name_of(kind) << "[" << o;
     if (size != 1) {
         os << "..." << o + size - 1;
     }
@@ -57,12 +66,8 @@ static std::string mk_scalar_name(variable_t a, index_t o, unsigned size) {
 }
 
 // TODO: kind_t for array
-variable_t variable_t::cell_var(variable_t array, index_t offset, unsigned size) {
+variable_t variable_t::cell_var(data_kind_t array, index_t offset, unsigned size) {
     return make(mk_scalar_name(array, offset, size));
-}
-
-variable_t variable_t::array(data_kind_t kind) {
-    return make("S_" + name_of(kind));
 }
 
 variable_t variable_t::map_value_size() { return make("map_value_size"); }
