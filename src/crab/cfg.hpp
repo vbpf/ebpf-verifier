@@ -39,7 +39,6 @@
 
 #include "crab/bignums.hpp"
 #include "crab/crab_syntax.hpp"
-#include "crab/discrete_domains.hpp"
 #include "crab/interval.hpp"
 #include "crab/linear_constraints.hpp"
 #include "crab/types.hpp"
