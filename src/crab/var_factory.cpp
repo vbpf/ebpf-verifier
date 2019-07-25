@@ -65,7 +65,6 @@ static std::string mk_scalar_name(data_kind_t kind, index_t o, unsigned size) {
     return os.str();
 }
 
-// TODO: kind_t for array
 variable_t variable_t::cell_var(data_kind_t array, index_t offset, unsigned size) {
     return make(mk_scalar_name(array, offset, size));
 }

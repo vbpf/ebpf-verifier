@@ -223,9 +223,9 @@ class offset_map_t final {
 
     void remove_cell(const cell_t& c);
 
-    void insert_cell(const cell_t& c, bool sanity_check = true);
+    void insert_cell(const cell_t& c);
 
-    cell_t get_cell(offset_t o, unsigned size) const;
+    std::optional<cell_t> get_cell(offset_t o, unsigned size) const;
 
     cell_t mk_cell(offset_t o, unsigned size);
 
