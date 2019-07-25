@@ -189,7 +189,7 @@ class bound_t final {
         }
     }
 
-    void write(crab_os& o) const {
+    void write(std::ostream& o) const {
         if (is_plus_infinity()) {
             o << "+oo";
         } else if (is_minus_infinity()) {
@@ -201,7 +201,7 @@ class bound_t final {
 
 }; // class bound
 
-inline crab_os& operator<<(crab_os& o, const bound_t& b) {
+inline std::ostream& operator<<(std::ostream& o, const bound_t& b) {
     b.write(o);
     return o;
 }
@@ -405,7 +405,7 @@ class interval_t final {
         }
     }
 
-    void write(crab_os& o) const {
+    void write(std::ostream& o) const {
         if (is_bottom()) {
             o << "_|_";
         } else {
@@ -458,7 +458,7 @@ inline interval_t operator-(number_t c, interval_t x) { return interval_t(c) - x
 
 inline interval_t operator-(interval_t x, number_t c) { return x - interval_t(c); }
 
-inline crab_os& operator<<(crab_os& o, const interval_t& i) {
+inline std::ostream& operator<<(std::ostream& o, const interval_t& i) {
     i.write(o);
     return o;
 }

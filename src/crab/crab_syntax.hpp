@@ -1,7 +1,9 @@
 #pragma once
 
+#include <iostream>
+#include <sstream>
+
 #include "crab/linear_constraints.hpp"
-#include "crab/os.hpp"
 #include "crab/types.hpp"
 #include "crab/abstract_domain_operators.hpp"
 
@@ -19,7 +21,7 @@ struct debug_info {
     bool has_debug() const { return line > -2 || col > -2; }
 };
 
-inline crab_os& operator<<(crab_os& o, const debug_info& l) {
+inline std::ostream& operator<<(std::ostream& o, const debug_info& l) {
     o << l.msg <<"\n"
       << "Line  : " << l.line << "\n"
       << "Column: " << l.col << "\n";
@@ -114,6 +116,6 @@ using new_statement_t =
     std::variant<binary_op_t, assign_t, assume_t, select_t, assert_t, havoc_t,
                  array_store_t, array_store_range_t, array_load_t, array_havoc_t>;
 
-crab_os& operator<<(crab_os& os, const new_statement_t& a);
+std::ostream& operator<<(std::ostream& os, const new_statement_t& a);
 
 } // namespace crab

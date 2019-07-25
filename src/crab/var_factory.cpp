@@ -46,7 +46,7 @@ variable_t variable_t::reg(data_kind_t kind, int i) {
     return make(name_of(kind) + std::to_string(i));
 }
 
-crab_os& operator<<(crab_os& o, const data_kind_t& s) {
+std::ostream& operator<<(std::ostream& o, const data_kind_t& s) {
     switch (s) {
         case data_kind_t::offsets: return o << "S_off";
         case data_kind_t::regions: return o << "S_t";
@@ -56,7 +56,7 @@ crab_os& operator<<(crab_os& o, const data_kind_t& s) {
 }
 
 static std::string mk_scalar_name(data_kind_t kind, index_t o, unsigned size) {
-    crab_string_os os;
+    std::stringstream os;
     os << "S_" << name_of(kind) << "[" << o;
     if (size != 1) {
         os << "..." << o + size - 1;

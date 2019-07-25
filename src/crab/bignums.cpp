@@ -201,6 +201,6 @@ z_number z_number::fill_ones() const {
     return z_number(result);
 }
 
-void z_number::write(crab_os& o) const { o << _n.get_str(); }
+void z_number::write(std::ostream& o) const { o << _n.get_str(); }
 
 } // namespace crab

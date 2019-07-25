@@ -178,7 +178,7 @@ std::vector<cell_t> offset_map_t::get_overlap_cells(offset_t o, unsigned size) {
     return out;
 }
 
-void offset_map_t::write(crab_os& o) const {
+void offset_map_t::write(std::ostream& o) const {
     if (_map.empty()) {
         o << "empty";
     } else {

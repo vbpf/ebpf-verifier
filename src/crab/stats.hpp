@@ -20,11 +20,11 @@ class Stopwatch {
     void stop();
     void resume();
     long getTimeElapsed() const;
-    void Print(crab_os& out) const;
+    void Print(std::ostream& out) const;
     double toSeconds();
 };
 
-inline crab_os& operator<<(crab_os& OS, const Stopwatch& sw) {
+inline std::ostream& operator<<(std::ostream& OS, const Stopwatch& sw) {
     sw.Print(OS);
     return OS;
 }
@@ -48,8 +48,8 @@ class CrabStats {
     static void resume(const std::string& name);
 
     /** Outputs all statistics to std output */
-    static void Print(crab_os& OS);
-    static void PrintBrunch(crab_os& OS);
+    static void Print(std::ostream& OS);
+    static void PrintBrunch(std::ostream& OS);
 };
 
 class ScopedCrabStats {

@@ -69,9 +69,9 @@ class safe_i64 {
 
     bool operator>=(safe_i64 x) const;
 
-    void write(crab_os& os) const;
+    void write(std::ostream& os) const;
 
-    friend crab_os& operator<<(crab_os& o, const safe_i64& n) {
+    friend std::ostream& operator<<(std::ostream& o, const safe_i64& n) {
         n.write(o);
         return o;
     }

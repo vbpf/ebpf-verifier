@@ -179,7 +179,7 @@ class wto_iterator final : public wto_component_visitor<cfg_ref<Language>> {
             _skip = false;
         }
         if (_skip) {
-            CRAB_VERBOSE_IF(2, outs() << "** Skipped analysis of  " << node << "\n");
+            CRAB_VERBOSE_IF(2, std::cout << "** Skipped analysis of  " << node << "\n");
             return;
         }
 
@@ -204,11 +204,11 @@ class wto_iterator final : public wto_component_visitor<cfg_ref<Language>> {
             this->_iterator->set_pre(node, pre);
         }
 
-        CRAB_VERBOSE_IF(4, outs() << "PRE Invariants:\n" << pre << "\n");
+        CRAB_VERBOSE_IF(4, std::cout << "PRE Invariants:\n" << pre << "\n");
         CrabStats::resume("Fixpo.analyze_block");
         AbsDomain post = transform(this->_iterator->_cfg.get_node(node), pre);
         CrabStats::stop("Fixpo.analyze_block");
-        CRAB_VERBOSE_IF(3, outs() << "POST Invariants:\n" << post << "\n");
+        CRAB_VERBOSE_IF(3, std::cout << "POST Invariants:\n" << post << "\n");
         this->_iterator->set_post(node, post);
     }
 
@@ -225,7 +225,7 @@ class wto_iterator final : public wto_component_visitor<cfg_ref<Language>> {
             entry_in_this_cycle = vis.is_member();
             _skip = !entry_in_this_cycle;
             if (_skip) {
-                CRAB_VERBOSE_IF(2, outs() << "** Skipped analysis of WTO cycle rooted at  " << head
+                CRAB_VERBOSE_IF(2, std::cout << "** Skipped analysis of WTO cycle rooted at  " << head
                                           << "\n");
                 return;
             }
@@ -236,7 +236,7 @@ class wto_iterator final : public wto_component_visitor<cfg_ref<Language>> {
         wto_nesting_t cycle_nesting = this->_iterator->_wto.nesting(head);
 
         if (entry_in_this_cycle) {
-            CRAB_VERBOSE_IF(2, outs() << "Skipped predecessors of " << head << "\n");
+            CRAB_VERBOSE_IF(2, std::cout << "Skipped predecessors of " << head << "\n");
             pre = _iterator->get_pre(_entry);
         } else {
             CrabStats::count("Fixpo.join_predecessors");
@@ -257,11 +257,11 @@ class wto_iterator final : public wto_component_visitor<cfg_ref<Language>> {
 
             // Increasing iteration sequence with widening
             this->_iterator->set_pre(head, pre);
-            CRAB_VERBOSE_IF(4, outs() << "PRE Invariants:\n" << pre << "\n");
+            CRAB_VERBOSE_IF(4, std::cout << "PRE Invariants:\n" << pre << "\n");
             CrabStats::resume("Fixpo.analyze_block");
             AbsDomain post = transform(this->_iterator->_cfg.get_node(head), pre);
             CrabStats::stop("Fixpo.analyze_block");
-            CRAB_VERBOSE_IF(3, outs() << "POST Invariants:\n" << post << "\n");
+            CRAB_VERBOSE_IF(3, std::cout << "POST Invariants:\n" << post << "\n");
 
             this->_iterator->set_post(head, post);
             for (typename wto_cycle_t::iterator it = cycle.begin(); it != cycle.end(); ++it) {
@@ -289,12 +289,12 @@ class wto_iterator final : public wto_component_visitor<cfg_ref<Language>> {
         for (unsigned int iteration = 1;; ++iteration) {
             // Decreasing iteration sequence with narrowing
 
-            CRAB_VERBOSE_IF(4, outs() << "PRE Invariants:\n" << pre << "\n");
+            CRAB_VERBOSE_IF(4, std::cout << "PRE Invariants:\n" << pre << "\n");
             CrabStats::resume("Fixpo.analyze_block");
             AbsDomain post = transform(this->_iterator->_cfg.get_node(head), pre);
             this->_iterator->set_post(head, post);
             CrabStats::stop("Fixpo.analyze_block");
-            CRAB_VERBOSE_IF(3, outs() << "POST Invariants:\n" << post << "\n");
+            CRAB_VERBOSE_IF(3, std::cout << "POST Invariants:\n" << post << "\n");
 
             for (typename wto_cycle_t::iterator it = cycle.begin(); it != cycle.end(); ++it) {
                 it->accept(this);

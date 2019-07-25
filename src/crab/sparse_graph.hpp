@@ -537,7 +537,7 @@ class SparseWtGraph : public writeable {
         // GKG: Need to be careful about free_ids.
     }
 
-    void write(crab_os& o) {
+    void write(std::ostream& o) {
         o << "[|";
         bool first = true;
         for (vert_id v = 0; v < sz; v++) {

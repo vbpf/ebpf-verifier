@@ -2,7 +2,8 @@
 
 /* Logging and debug messages */
 
-#include "crab/os.hpp"
+#include <iostream>
+#include <sstream>
 
 #include <iosfwd>
 #include <set>
@@ -37,14 +38,14 @@ inline void ___print___(ArgTypes... args) {
     // trick is to use the side effect of list-initializer to call a function
     // on every argument.
     // (void) is to suppress "statement has no effect" warnings
-    (void)expand_variadic_pack{0, ((errs() << args), void(), 0)...};
+    (void)expand_variadic_pack{0, ((std::cerr << args), void(), 0)...};
 }
 
 #define CRAB_ERROR(...)           \
     do {                          \
-        errs() << "CRAB ERROR: "; \
+        std::cerr << "CRAB ERROR: "; \
         ___print___(__VA_ARGS__); \
-        errs() << "\n";           \
+        std::cerr << "\n";           \
         std::exit(EXIT_FAILURE);  \
     } while (0)
 
@@ -54,9 +55,9 @@ void CrabEnableWarningMsg(bool b);
 #define CRAB_WARN(...)                  \
     do {                                \
         if (crab::CrabWarningFlag) {    \
-            errs() << "CRAB WARNING: "; \
+            std::cerr << "CRAB WARNING: "; \
             ___print___(__VA_ARGS__);   \
-            errs() << "\n";             \
+            std::cerr << "\n";             \
         }                               \
     } while (0)
 

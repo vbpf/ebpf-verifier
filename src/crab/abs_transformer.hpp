@@ -196,7 +196,7 @@ class checks_db final {
 
     void add_warning(const assert_t& s) {
         if (global_options.print_failures)
-            outs() << s << "\n";
+            std::cout << s << "\n";
         add(check_kind_t::Warning, s);
     }
 
@@ -212,7 +212,7 @@ class checks_db final {
         }
     }
 
-    void write(crab_os& o) const {
+    void write(std::ostream& o) const {
         std::vector<int> cnts = {total_safe(), total_error(), total_warning(), total_unreachable()};
         int maxvlen = 0;
         for (auto c : cnts) {

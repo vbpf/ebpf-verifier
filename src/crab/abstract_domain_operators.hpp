@@ -10,7 +10,7 @@ namespace crab {
 // Do not modify the order.
 enum class arith_binop_t { ADD, SUB, MUL, SDIV, UDIV, SREM, UREM };
 
-inline crab_os& operator<<(crab_os& o, arith_binop_t op) {
+inline std::ostream& operator<<(std::ostream& o, arith_binop_t op) {
     switch (op) {
     case arith_binop_t::ADD: o << "+"; break;
     case arith_binop_t::SUB: o << "-"; break;
@@ -26,7 +26,7 @@ inline crab_os& operator<<(crab_os& o, arith_binop_t op) {
 // Enumeration type for bitwise operations
 enum class bitwise_binop_t { AND, OR, XOR, SHL, LSHR, ASHR };
 
-inline crab_os& operator<<(crab_os& o, bitwise_binop_t op) {
+inline std::ostream& operator<<(std::ostream& o, bitwise_binop_t op) {
     switch (op) {
     case bitwise_binop_t::AND: o << "&"; break;
     case bitwise_binop_t::OR: o << "|"; break;
@@ -40,8 +40,8 @@ inline crab_os& operator<<(crab_os& o, bitwise_binop_t op) {
 
 using binop_t = std::variant<arith_binop_t, bitwise_binop_t>;
 
-inline crab_os& operator<<(crab_os& o, binop_t op) {
-    return std::visit([&](auto top) -> crab_os& { return o << top; }, op);
+inline std::ostream& operator<<(std::ostream& o, binop_t op) {
+    return std::visit([&](auto top) -> std::ostream& { return o << top; }, op);
 }
 
 } // end namespace crab
