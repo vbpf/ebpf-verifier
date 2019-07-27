@@ -7,12 +7,12 @@
 
 enum {
     T_UNINIT = -6,
-    T_CTX = -5,
-    T_STACK = -4,
-    T_DATA = -3,
-    T_NUM = -2,
-    T_FD = -1,
-    T_MAP = 0,
+    T_NUM = -5,
+    T_MAP = -4,
+    T_CTX = -3,
+    T_STACK = -2,
+    T_DATA = -1,
+    T_SHARED = 0
 };
 
 using Types = std::bitset<NMAPS + NONMAPS>;
@@ -28,7 +28,7 @@ static Types single(int n) {
 
 const Types all = Types{}.set();
 const Types num = single(T_NUM);
-const Types fd = single(T_FD);
+const Types fd = single(T_MAP);
 const Types ctx = single(T_CTX);
 const Types packet = single(T_DATA);
 const Types stack = single(T_STACK);
@@ -36,7 +36,7 @@ const Types maps = (num | fd | ctx | packet | stack).flip();
 const Types mem = maps | packet | stack;
 const Types ptr = mem | ctx;
 const Types nonfd = ptr | num;
-}; // namespace TypeSet
+} // namespace TypeSet
 
 void explicate_assertions(Cfg& cfg, program_info info);
 

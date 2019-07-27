@@ -256,7 +256,7 @@ struct Unmarshaller {
     ArgSingle::Kind toArgSingleKind(Arg t) {
         switch (t) {
         case Arg::ANYTHING: return ArgSingle::Kind::ANYTHING;
-        case Arg::CONST_MAP_PTR: return ArgSingle::Kind::MAP_FD;
+        case Arg::CONST_SHARED_PTR: return ArgSingle::Kind::MAP_FD;
         case Arg::PTR_TO_MAP_KEY: return ArgSingle::Kind::PTR_TO_MAP_KEY;
         case Arg::PTR_TO_MAP_VALUE: return ArgSingle::Kind::PTR_TO_MAP_VALUE;
         case Arg::PTR_TO_CTX: return ArgSingle::Kind::PTR_TO_CTX;
@@ -289,7 +289,7 @@ struct Unmarshaller {
             switch (args[i]) {
             case Arg::DONTCARE: return res;
             case Arg::ANYTHING:
-            case Arg::CONST_MAP_PTR:
+            case Arg::CONST_SHARED_PTR:
             case Arg::PTR_TO_MAP_KEY:
             case Arg::PTR_TO_MAP_VALUE:
             case Arg::PTR_TO_CTX: res.singles.push_back({toArgSingleKind(args[i]), Reg{(uint8_t)i}}); break;
