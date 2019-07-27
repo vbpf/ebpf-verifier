@@ -24,6 +24,8 @@
 #include "asm_cfg.hpp"
 #include "asm_syntax.hpp"
 
+#include "spec_assertions.hpp"
+
 using namespace crab::dsl_syntax;
 
 using std::optional;
@@ -70,15 +72,6 @@ using crab::variable_t;
  * polyhedra...) will only track intervals of these values. We should have a way
  * of saying `is_pointer`, `is_shared` etc. See below.
  */
-enum region_t {
-    T_UNINIT = -6,
-    T_NUM = -5,
-    T_MAP = -4,
-    T_CTX = -3,
-    T_STACK = -2,
-    T_DATA = -1,
-    T_SHARED = 0,
-};
 
 struct dom_t {
     variable_t value;
@@ -386,8 +379,9 @@ class instruction_builder_t final {
     /** Never happens - Jmps are translated to Assume */
     basic_block_t& operator()(Jmp const& b) { assert(false); }
 
-    /** Unimplemented */
-    basic_block_t& operator()(Assert const& b) { return block; };
+    basic_block_t& operator()(Assert const& b) {
+
+    };
 
 
   private:

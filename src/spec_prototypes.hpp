@@ -12,7 +12,7 @@ enum class Arg {
      */
 
     /* const argument used as pointer to bpf_map */
-    CONST_MAP_PTR,
+    CONST_SHARED_PTR,
 
     /* pointer to stack used as map key */
     PTR_TO_MAP_KEY,

@@ -42,7 +42,7 @@ const struct bpf_func_proto bpf_tail_call_proto = {
     //.gpl_only	= false,
     .ret_type = Ret::VOID,
     .arg1_type = Arg::PTR_TO_CTX,
-    .arg2_type = Arg::CONST_MAP_PTR,
+    .arg2_type = Arg::CONST_SHARED_PTR,
     .arg3_type = Arg::ANYTHING,
 };
 
@@ -123,7 +123,7 @@ static const struct bpf_func_proto bpf_perf_event_read_proto = {
     //.func		= bpf_perf_event_read,
     //.gpl_only	= true,
     .ret_type = Ret::INTEGER,
-    .arg1_type = Arg::CONST_MAP_PTR,
+    .arg1_type = Arg::CONST_SHARED_PTR,
     .arg2_type = Arg::ANYTHING,
 };
 
@@ -141,7 +141,7 @@ static const struct bpf_func_proto bpf_perf_event_read_value_proto = {
     //.func		= bpf_perf_event_read_value,
     //.gpl_only	= true,
     .ret_type = Ret::INTEGER,
-    .arg1_type = Arg::CONST_MAP_PTR,
+    .arg1_type = Arg::CONST_SHARED_PTR,
     .arg2_type = Arg::ANYTHING,
     .arg3_type = Arg::PTR_TO_UNINIT_MEM,
     .arg4_type = Arg::CONST_SIZE,
@@ -199,7 +199,7 @@ static const struct bpf_func_proto bpf_perf_event_output_proto = {
     //.gpl_only	= true,
     .ret_type = Ret::INTEGER,
     .arg1_type = Arg::PTR_TO_CTX,
-    .arg2_type = Arg::CONST_MAP_PTR,
+    .arg2_type = Arg::CONST_SHARED_PTR,
     .arg3_type = Arg::ANYTHING,
     .arg4_type = Arg::PTR_TO_MEM,
     .arg5_type = Arg::CONST_SIZE_OR_ZERO,
@@ -232,7 +232,7 @@ static const struct bpf_func_proto bpf_current_task_under_cgroup_proto = {
     //.func       = bpf_current_task_under_cgroup,
     //.gpl_only   = false,
     .ret_type = Ret::INTEGER,
-    .arg1_type = Arg::CONST_MAP_PTR,
+    .arg1_type = Arg::CONST_SHARED_PTR,
     .arg2_type = Arg::ANYTHING,
 };
 
@@ -241,7 +241,7 @@ static const struct bpf_func_proto bpf_current_task_under_cgroup_proto = {
 // 	//.gpl_only	= true,
 // 	.ret_type	= Ret::INTEGER,
 // 	.arg1_type	= Arg::PTR_TO_CTX,
-// 	.arg2_type	= Arg::CONST_MAP_PTR,
+// 	.arg2_type	= Arg::CONST_SHARED_PTR,
 // 	.arg3_type	= Arg::ANYTHING,
 // 	.arg4_type	= Arg::PTR_TO_MEM,
 // 	.arg5_type	= Arg::CONST_SIZE_OR_ZERO,
@@ -252,7 +252,7 @@ static const struct bpf_func_proto bpf_current_task_under_cgroup_proto = {
 // 	//.gpl_only	= true,
 // 	.ret_type	= Ret::INTEGER,
 // 	.arg1_type	= Arg::PTR_TO_CTX,
-// 	.arg2_type	= Arg::CONST_MAP_PTR,
+// 	.arg2_type	= Arg::CONST_SHARED_PTR,
 // 	.arg3_type	= Arg::ANYTHING,
 // };
 
@@ -294,7 +294,7 @@ static const struct bpf_func_proto bpf_perf_prog_read_value_proto = {
 // 	//.gpl_only	= true,
 // 	.ret_type	= Ret::INTEGER,
 // 	.arg1_type	= Arg::PTR_TO_CTX,
-// 	.arg2_type	= Arg::CONST_MAP_PTR,
+// 	.arg2_type	= Arg::CONST_SHARED_PTR,
 // 	.arg3_type	= Arg::ANYTHING,
 // 	.arg4_type	= Arg::PTR_TO_MEM,
 // 	.arg5_type	= Arg::CONST_SIZE_OR_ZERO,
@@ -305,7 +305,7 @@ static const struct bpf_func_proto bpf_perf_prog_read_value_proto = {
 // 	//.gpl_only	= true,
 // 	.ret_type	= Ret::INTEGER,
 // 	.arg1_type	= Arg::PTR_TO_CTX,
-// 	.arg2_type	= Arg::CONST_MAP_PTR,
+// 	.arg2_type	= Arg::CONST_SHARED_PTR,
 // 	.arg3_type	= Arg::ANYTHING,
 // };
 
@@ -331,7 +331,7 @@ static const struct bpf_func_proto bpf_map_lookup_elem_proto = {
     //.gpl_only	= false,
     .pkt_access = true,
     .ret_type = Ret::PTR_TO_MAP_VALUE_OR_NULL,
-    .arg1_type = Arg::CONST_MAP_PTR,
+    .arg1_type = Arg::CONST_SHARED_PTR,
     .arg2_type = Arg::PTR_TO_MAP_KEY,
 };
 
@@ -345,7 +345,7 @@ static const struct bpf_func_proto bpf_map_update_elem_proto = {
     //.gpl_only	= false,
     .pkt_access = true,
     .ret_type = Ret::INTEGER,
-    .arg1_type = Arg::CONST_MAP_PTR,
+    .arg1_type = Arg::CONST_SHARED_PTR,
     .arg2_type = Arg::PTR_TO_MAP_KEY,
     .arg3_type = Arg::PTR_TO_MAP_VALUE,
     .arg4_type = Arg::ANYTHING,
@@ -361,7 +361,7 @@ static const struct bpf_func_proto bpf_map_delete_elem_proto = {
     //.gpl_only	= false,
     .pkt_access = true,
     .ret_type = Ret::INTEGER,
-    .arg1_type = Arg::CONST_MAP_PTR,
+    .arg1_type = Arg::CONST_SHARED_PTR,
     .arg2_type = Arg::PTR_TO_MAP_KEY,
 };
 
@@ -470,7 +470,7 @@ static const struct bpf_func_proto bpf_sock_map_update_proto = {
     .pkt_access = true,
     .ret_type = Ret::INTEGER,
     .arg1_type = Arg::PTR_TO_CTX,
-    .arg2_type = Arg::CONST_MAP_PTR,
+    .arg2_type = Arg::CONST_SHARED_PTR,
     .arg3_type = Arg::PTR_TO_MAP_KEY,
     .arg4_type = Arg::ANYTHING,
 };
@@ -482,7 +482,7 @@ static const struct bpf_func_proto bpf_sock_hash_update_proto = {
     .pkt_access = true,
     .ret_type = Ret::INTEGER,
     .arg1_type = Arg::PTR_TO_CTX,
-    .arg2_type = Arg::CONST_MAP_PTR,
+    .arg2_type = Arg::CONST_SHARED_PTR,
     .arg3_type = Arg::PTR_TO_MAP_KEY,
     .arg4_type = Arg::ANYTHING,
 };
@@ -506,7 +506,7 @@ static const struct bpf_func_proto bpf_get_stackid_proto = {
     //.gpl_only	= true,
     .ret_type = Ret::INTEGER,
     .arg1_type = Arg::PTR_TO_CTX,
-    .arg2_type = Arg::CONST_MAP_PTR,
+    .arg2_type = Arg::CONST_SHARED_PTR,
     .arg3_type = Arg::ANYTHING,
 };
 
@@ -772,7 +772,7 @@ static const struct bpf_func_proto bpf_sk_redirect_hash_proto = {
     //.gpl_only   = false,
     .ret_type = Ret::INTEGER,
     .arg1_type = Arg::PTR_TO_CTX,
-    .arg2_type = Arg::CONST_MAP_PTR,
+    .arg2_type = Arg::CONST_SHARED_PTR,
     .arg3_type = Arg::PTR_TO_MAP_KEY,
     .arg4_type = Arg::ANYTHING,
 };
@@ -782,7 +782,7 @@ static const struct bpf_func_proto bpf_sk_redirect_map_proto = {
     //.gpl_only   = false,
     .ret_type = Ret::INTEGER,
     .arg1_type = Arg::PTR_TO_CTX,
-    .arg2_type = Arg::CONST_MAP_PTR,
+    .arg2_type = Arg::CONST_SHARED_PTR,
     .arg3_type = Arg::ANYTHING,
     .arg4_type = Arg::ANYTHING,
 };
@@ -792,7 +792,7 @@ static const struct bpf_func_proto bpf_msg_redirect_hash_proto = {
     //.gpl_only   = false,
     .ret_type = Ret::INTEGER,
     .arg1_type = Arg::PTR_TO_CTX,
-    .arg2_type = Arg::CONST_MAP_PTR,
+    .arg2_type = Arg::CONST_SHARED_PTR,
     .arg3_type = Arg::PTR_TO_MAP_KEY,
     .arg4_type = Arg::ANYTHING,
 };
@@ -802,7 +802,7 @@ static const struct bpf_func_proto bpf_msg_redirect_map_proto = {
     //.gpl_only   = false,
     .ret_type = Ret::INTEGER,
     .arg1_type = Arg::PTR_TO_CTX,
-    .arg2_type = Arg::CONST_MAP_PTR,
+    .arg2_type = Arg::CONST_SHARED_PTR,
     .arg3_type = Arg::ANYTHING,
     .arg4_type = Arg::ANYTHING,
 };
@@ -1051,7 +1051,7 @@ static const struct bpf_func_proto bpf_xdp_adjust_meta_proto = {
 // 	//.func       = bpf_xdp_redirect_map,
 // 	//.gpl_only   = false,
 // 	.ret_type   = Ret::INTEGER,
-// 	.arg1_type  = Arg::CONST_MAP_PTR,
+// 	.arg1_type  = Arg::CONST_SHARED_PTR,
 // 	.arg2_type  = Arg::ANYTHING,
 // 	.arg3_type  = Arg::ANYTHING,
 // };
@@ -1062,7 +1062,7 @@ static const struct bpf_func_proto bpf_xdp_adjust_meta_proto = {
 // 	//.gpl_only	= true,
 // 	.ret_type	= Ret::INTEGER,
 // 	.arg1_type	= Arg::PTR_TO_CTX,
-// 	.arg2_type	= Arg::CONST_MAP_PTR,
+// 	.arg2_type	= Arg::CONST_SHARED_PTR,
 // 	.arg3_type	= Arg::ANYTHING,
 // 	.arg4_type	= Arg::PTR_TO_MEM,
 // 	.arg5_type	= Arg::CONST_SIZE_OR_ZERO,
@@ -1161,7 +1161,7 @@ static const struct bpf_func_proto bpf_skb_under_cgroup_proto = {
     //.gpl_only	= false,
     .ret_type = Ret::INTEGER,
     .arg1_type = Arg::PTR_TO_CTX,
-    .arg2_type = Arg::CONST_MAP_PTR,
+    .arg2_type = Arg::CONST_SHARED_PTR,
     .arg3_type = Arg::ANYTHING,
 };
 
@@ -1179,7 +1179,7 @@ static const struct bpf_func_proto bpf_skb_cgroup_id_proto = {
 // 	//.gpl_only	= true,
 // 	.ret_type	= Ret::INTEGER,
 // 	.arg1_type	= Arg::PTR_TO_CTX,
-// 	.arg2_type	= Arg::CONST_MAP_PTR,
+// 	.arg2_type	= Arg::CONST_SHARED_PTR,
 // 	.arg3_type	= Arg::ANYTHING,
 // 	.arg4_type	= Arg::PTR_TO_MEM,
 // 	.arg5_type	= Arg::CONST_SIZE_OR_ZERO,
@@ -1478,7 +1478,7 @@ static const struct bpf_func_proto bpf_rc_keydown_proto = {
 static const struct bpf_func_proto bpf_redirect_map_proto = {
     .name = "redirect_map",
     .ret_type = Ret::INTEGER,
-    .arg1_type = Arg::CONST_MAP_PTR,
+    .arg1_type = Arg::CONST_SHARED_PTR,
     .arg2_type = Arg::ANYTHING,
     .arg3_type = Arg::ANYTHING,
 };

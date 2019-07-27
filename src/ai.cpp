@@ -465,7 +465,7 @@ class AssertionExtractor {
         type_indices.push_back(ALL_TYPES + T_STACK);
         type_indices.push_back(ALL_TYPES + T_DATA);
         type_indices.push_back(ALL_TYPES + T_NUM);
-        type_indices.push_back(ALL_TYPES + T_FD);
+        type_indices.push_back(ALL_TYPES + T_MAP);
     }
 
     template <typename T>

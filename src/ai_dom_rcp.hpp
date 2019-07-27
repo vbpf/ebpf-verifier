@@ -47,7 +47,7 @@ class RCP_domain {
         if (t[t.size() + T_NUM])
             if (!p(num))
                 return false;
-        if (t[t.size() + T_FD])
+        if (t[t.size() + T_MAP])
             if (!p(fd))
                 return false;
         return true;
@@ -71,7 +71,7 @@ class RCP_domain {
         if (t[t.size() + T_NUM])
             if (!p(num, o.num))
                 return false;
-        if (t[t.size() + T_FD])
+        if (t[t.size() + T_MAP])
             if (!p(fd, o.fd))
                 return false;
         return true;
@@ -96,7 +96,7 @@ class RCP_domain {
             f(packet, o.packet);
         if (t[t.size() + T_NUM])
             f(num, o.num);
-        if (t[t.size() + T_FD])
+        if (t[t.size() + T_MAP])
             f(fd, o.fd);
     }
 
@@ -114,7 +114,7 @@ class RCP_domain {
             f(packet);
         if (t[t.size() + T_NUM])
             f(num);
-        if (t[t.size() + T_FD])
+        if (t[t.size() + T_MAP])
             f(fd);
     }
 

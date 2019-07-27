@@ -237,7 +237,7 @@ std::ostream& operator<<(std::ostream& os, Types ts) {
     if (ts[ts.size() + T_NUM])
         os << "N"
            << "|";
-    if (ts[ts.size() + T_FD])
+    if (ts[ts.size() + T_MAP])
         os << "FD"
            << "|";
     if (ts[ts.size() + T_CTX])
