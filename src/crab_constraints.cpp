@@ -379,8 +379,26 @@ class instruction_builder_t final {
     /** Never happens - Jmps are translated to Assume */
     basic_block_t& operator()(Jmp const& b) { assert(false); }
 
-    basic_block_t& operator()(Assert const& b) {
-
+    basic_block_t& operator()(Assert const& stmt) {
+        return std::visit(overloaded{
+            [this](const ValidAccess& s) -> basic_block_t& {
+                return block;
+            },
+            [this](const ValidSize& s) -> basic_block_t&{
+                variable_t r = machine.reg(s.reg).value;
+                if (s.can_be_zero) in(block).assertion(r >= 0);
+                else in(block).assertion(r > 0);
+                return block;
+            },
+            [this](const OnlyZeroIfNum& s) -> basic_block_t&{
+                // TODO: maybe should be part of ValidAccess, as a flag "maybe null"
+                auto reg = machine.reg(s.reg);
+                return join(block, *in(block).fork("is null", reg.region == T_NUM).assertion(reg.value == 0));
+            },
+            [this](const TypeConstraint& s) -> basic_block_t&{
+                return block;
+            },
+        }, stmt.p->cst);
     };
 
 
