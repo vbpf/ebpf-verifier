@@ -49,6 +49,11 @@ struct ValidSize {
     bool can_be_zero{};
 };
 
+struct Comparable {
+    Reg r1;
+    Reg r2;
+};
+
 struct ValidAccess {
     Reg reg;
     int offset{};
@@ -68,7 +73,7 @@ struct TypeConstraint {
 };
 
 struct Assertion {
-    std::variant<ValidAccess, ValidSize, OnlyZeroIfNum, TypeConstraint> cst;
+    std::variant<Comparable, ValidAccess, ValidSize, OnlyZeroIfNum, TypeConstraint> cst;
 };
 
 #define DECLARE_EQ6(T, f1, f2, f3, f4, f5, f6)                                                                         \
@@ -96,5 +101,6 @@ DECLARE_EQ2(TypeConstraint::RT, reg, types)
 DECLARE_EQ2(TypeConstraint, given, then)
 DECLARE_EQ1(OnlyZeroIfNum, reg)
 DECLARE_EQ2(ValidSize, reg, can_be_zero)
+DECLARE_EQ2(Comparable, r1, r2)
 DECLARE_EQ4(ValidAccess, reg, offset, width, or_null)
 DECLARE_EQ1(Assertion, cst)

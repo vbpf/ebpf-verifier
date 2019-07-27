@@ -168,12 +168,7 @@ class AssertionExtractor {
     };
 
     void same_type(vector<Assertion>& res, Types ts, Reg r1, Reg r2) {
-        for (size_t i : type_indices) {
-            if (ts[i]) {
-                Types t = TypeSet::single(i);
-                res.push_back(Assertion{TypeConstraint{{r1, t}, {r2, t}}});
-            }
-        }
+        res.push_back(Assertion{Comparable{r1, r2}});
     }
 
     vector<Assertion> operator()(Bin ins) {
