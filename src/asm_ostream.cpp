@@ -268,6 +268,10 @@ std::ostream& operator<<(std::ostream& os, OnlyZeroIfNum const& a) {
     return os << a.reg << " == 0 ->" << a.reg << " is NUM";
 }
 
+std::ostream& operator<<(std::ostream& os, Comparable const& a) {
+    return os << "type(" << a.r1 << ") == type(" << a.r2 << ")";
+}
+
 std::ostream& operator<<(std::ostream& os, TypeConstraint const& tc) {
     if (tc.given) {
         os << *tc.given << " -> ";

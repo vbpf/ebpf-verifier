@@ -37,6 +37,12 @@ using std::vector;
 using crab::linear_constraint_t;
 using crab::linear_expression_t;
 using crab::data_kind_t;
+using crab::debug_info;
+using crab::variable_t;
+
+static linear_constraint_t eq(variable_t& a, variable_t& b) { return {a - b, linear_constraint_t::EQUALITY}; }
+
+static linear_constraint_t neq(variable_t& a, variable_t& b) { return {a - b, linear_constraint_t::DISEQUATION}; };
 
 
 constexpr int MAX_PACKET_OFF = 0xffff;
@@ -61,10 +67,6 @@ basic_block_t& join(cfg_t& cfg, basic_block_t& left, basic_block_t& right) {
     right >> bb;
     return bb;
 }
-
-using crab::debug_info;
-
-using crab::variable_t;
 
 /** Encoding of memory regions and types.
  *
@@ -381,6 +383,12 @@ class instruction_builder_t final {
 
     basic_block_t& operator()(Assert const& stmt) {
         return std::visit(overloaded{
+            [this](const Comparable& s) -> basic_block_t& {
+                auto r1 = machine.reg(s.r1);
+                auto r2 = machine.reg(s.r2);
+                in(block).assertion(eq(r1.region, r2.region));
+                return block;
+            },
             [this](const ValidAccess& s) -> basic_block_t& {
                 return block;
             },
@@ -510,10 +518,6 @@ void machine_t::setup_entry(basic_block_t& entry, cfg_t& cfg) {
                                    .otherwise().assign(machine.meta_size, 0)
              .done();
 }
-
-static linear_constraint_t eq(variable_t& a, variable_t& b) { return {a - b, linear_constraint_t::EQUALITY}; }
-
-static linear_constraint_t neq(variable_t& a, variable_t& b) { return {a - b, linear_constraint_t::DISEQUATION}; };
 
 /** Linear constraint for a pointer comparison.
  */
