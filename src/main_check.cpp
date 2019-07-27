@@ -7,7 +7,6 @@
 
 #include "CLI11.hpp"
 
-#include "ai.hpp"
 #include "asm.hpp"
 #include "config.hpp"
 #include "crab_verifier.hpp"
@@ -42,7 +41,7 @@ int main(int argc, char** argv) {
     app.add_flag("-l", list, "List sections");
 
     std::string domain = "zoneCrab";
-    std::set<string> doms{"stats", "linux", "rcp", "zoneCrab"};
+    std::set<string> doms{"stats", "linux", "zoneCrab"};
     app.add_set("-d,--dom,--domain", domain, doms, "Abstract domain")->type_name("DOMAIN");
 
     bool verbose = false;
@@ -76,7 +75,7 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    auto create_map = domain == "linux" ? create_map_linux : domain == "rcp" ? create_map_rcp : create_map_crab;
+    auto create_map = domain == "linux" ? create_map_linux : create_map_crab;
     auto raw_progs = read_elf(filename, desired_section, create_map);
 
     if (list || raw_progs.size() != 1) {
@@ -133,8 +132,6 @@ int main(int argc, char** argv) {
             std::cout << "," << stats.at(h);
         }
         std::cout << "\n";
-    } else if (domain == "rcp") {
-        analyze_rcp(cfg, raw_prog.info);
     } else {
         const auto [res, seconds] = (domain == "linux") ? bpf_verify_program(raw_prog.info.program_type, raw_prog.prog)
                                                         : abs_validate(cfg, raw_prog.info);
