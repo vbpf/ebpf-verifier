@@ -40,13 +40,20 @@ const Types nonfd = ptr | num;
 
 void explicate_assertions(Cfg& cfg, program_info info);
 
-struct LinearConstraint {
-    Condition::Op op;
+struct OnlyZeroIfNum {
+    Reg reg;
+};
+
+struct ValidSize {
+    Reg reg;
+    bool can_be_zero{};
+};
+
+struct ValidAccess {
     Reg reg;
     int offset{};
     Value width;
-    Value v;
-    Types when_types;
+    bool or_null{};
 };
 
 struct TypeConstraint {
@@ -61,7 +68,7 @@ struct TypeConstraint {
 };
 
 struct Assertion {
-    std::variant<LinearConstraint, TypeConstraint> cst;
+    std::variant<ValidAccess, ValidSize, OnlyZeroIfNum, TypeConstraint> cst;
 };
 
 #define DECLARE_EQ6(T, f1, f2, f3, f4, f5, f6)                                                                         \
@@ -87,5 +94,7 @@ struct Assertion {
 
 DECLARE_EQ2(TypeConstraint::RT, reg, types)
 DECLARE_EQ2(TypeConstraint, given, then)
-DECLARE_EQ6(LinearConstraint, op, reg, offset, width, v, when_types)
+DECLARE_EQ1(OnlyZeroIfNum, reg)
+DECLARE_EQ2(ValidSize, reg, can_be_zero)
+DECLARE_EQ4(ValidAccess, reg, offset, width, or_null)
 DECLARE_EQ1(Assertion, cst)

@@ -254,26 +254,18 @@ std::ostream& operator<<(std::ostream& os, Types ts) {
 
 std::ostream& operator<<(std::ostream& os, TypeConstraint::RT const& a) { return os << a.reg << " : " << a.types; }
 
-std::ostream& operator<<(std::ostream& os, LinearConstraint const& a) {
-    if (!a.when_types.all()) {
-        os << TypeConstraint::RT{a.reg, a.when_types} << " -> ";
-    }
-    os << a.reg;
-    string sign = a.offset < 0 ? " - " : " + ";
-    int offset = std::abs(a.offset); // what about INT_MIN?
-    if (offset != 0)
-        os << sign << offset;
-    if (std::holds_alternative<Imm>(a.width)) {
-        int imm = (int)std::get<Imm>(a.width).v;
-        string sign = imm < 0 ? " - " : " + ";
-        imm = std::abs(imm); // what about INT_MIN?
-        if (imm != 0)
-            os << sign << imm;
-    } else {
-        os << " + " << a.width;
-    }
-    os << " " << a.op << " " << a.v;
-    return os;
+std::ostream& operator<<(std::ostream& os, ValidAccess const& a) {
+    if (a.or_null) os << a.reg << " == 0 or ";
+    return os << "valid_access(" << a.reg << ", " << a.offset << ":" << a.width << ")";
+}
+
+std::ostream& operator<<(std::ostream& os, ValidSize const& a) {
+    auto op = a.can_be_zero ? " >= " : " > ";
+    return os << a.reg << op << 0;
+}
+
+std::ostream& operator<<(std::ostream& os, OnlyZeroIfNum const& a) {
+    return os << a.reg << " == 0 ->" << a.reg << " is NUM";
 }
 
 std::ostream& operator<<(std::ostream& os, TypeConstraint const& tc) {
@@ -284,11 +276,7 @@ std::ostream& operator<<(std::ostream& os, TypeConstraint const& tc) {
 }
 
 std::ostream& operator<<(std::ostream& os, Assertion const& a) {
-    if (std::holds_alternative<TypeConstraint>(a.cst)) {
-        return os << std::get<TypeConstraint>(a.cst);
-    } else {
-        return os << std::get<LinearConstraint>(a.cst);
-    }
+    return std::visit([&](const auto& a) -> std::ostream& { return os << a; }, a.cst);
 }
 
 string to_string(Instruction const& ins) {
