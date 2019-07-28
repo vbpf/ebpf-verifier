@@ -258,13 +258,6 @@ struct basic_block_builder {
         return *this;
     }
 
-    basic_block_builder assert_is_null(dom_t d) {
-        if (!cond) return *this;
-        assertion(d.region == T_NUM);
-        assertion(d.value == 0);
-        return *this;
-    }
-
     basic_block_builder& assume_normal(const linear_expression_t& addr, ptype_descr desc) {
         if (!cond) return *this;
         if (desc.data >= 0) {
@@ -440,26 +433,8 @@ class instruction_builder_t final {
         }, stmt.p->cst);
     };
 
-    template <typename W>
-    basic_block_t& exec_stack_access(basic_block_t& block, bool is_load, dom_t mem_reg,
-                                                            dom_t data_reg, int offset, W width) {
-        linear_expression_t addr = offset + mem_reg.offset;
-
-        return *in(block).fork("assume_stack", mem_reg.region == T_STACK)
-                .where(is_load).load(data_reg, addr, width)
-                    .otherwise().store(addr, data_reg, width)
-                .done("exec_stack_access");
-        /* FIX: requires loop
-        variable_t tmp;
-        for (int idx=1; idx < width; idx++) {
-            mid.array_load(tmp, machine.regions, addr+idx, 1);
-            in(mid).assertion(eq(tmp, data_reg.region));
-        }*/
-    }
-
-    template <typename W>
     basic_block_t& exec_ctx_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg,
-                                                        int offset, W width) {
+                                                        int offset, int width) {
         linear_expression_t addr = mem_reg.offset + offset;
         auto mid = in(block).fork("assume_ctx", mem_reg.region == T_CTX);
 
@@ -1045,14 +1020,17 @@ basic_block_t& instruction_builder_t::operator()(Mem const& b) {
         return join(block,
                     *in(block).fork("assume_stack", mem_reg.region == T_STACK)
                               .store(addr, std::get<Imm>(b.value).v, width)
-                              .done("exec_stack_access"));
+                              .done());
     }
     auto data_reg = machine.reg(std::get<Reg>(b.value));
-
+    linear_expression_t addr = offset + mem_reg.offset;
     basic_block_t& tmp =  join(
-                          join(exec_stack_access( block, b.is_load, mem_reg, data_reg, offset, width),
+                          join(*in(block).fork("assume_stack", mem_reg.region == T_STACK)
+                                         .where(b.is_load).load(data_reg, addr, width) // FIX: requires loop
+                                              .otherwise().store(addr, data_reg, width)
+                                         .done(),
                                *in(block).fork("assume_shared", is_shared(mem_reg))
-                                         .access_num_only(data_reg, b.is_load)),
+                                          .access_num_only(data_reg, b.is_load)),
                                exec_ctx_access(   block, b.is_load, mem_reg, data_reg, offset, width));
     if (machine.ctx_desc.data >= 0) {
         return join(tmp, *in(block).fork("assume_data", mem_reg.region == T_PACKET)
