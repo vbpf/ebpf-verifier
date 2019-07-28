@@ -412,14 +412,14 @@ class instruction_builder_t final {
     template <typename W>
     basic_block_t& exec_stack_access(basic_block_t& block, bool is_load, dom_t mem_reg,
                                                             dom_t data_reg, int offset, W width) {
-        linear_expression_t addr = (-offset) - width - mem_reg.offset; // negate access
+        linear_expression_t addr = offset + mem_reg.offset; // negate access
 
         return *in(block).fork("assume_stack", mem_reg.region == T_STACK)
-            .assertion(addr >= 0)
-            .assertion(addr <= STACK_SIZE - width)
-            .where(is_load).load(data_reg, addr, width)
-                .otherwise().store(addr, data_reg, width)
-            .done("exec_stack_access");
+                .assertion(addr >= 0)
+                .assertion(addr <= STACK_SIZE - width)
+                .where(is_load).load(data_reg, addr, width)
+                    .otherwise().store(addr, data_reg, width)
+                .done("exec_stack_access");
         /* FIX: requires loop
         variable_t tmp;
         for (int idx=1; idx < width; idx++) {
@@ -567,7 +567,7 @@ void machine_t::setup_entry(basic_block_t& entry, cfg_t& cfg) {
     crab::debug_info di{"entry block"};
     basic_block_builder(entry, machine, cfg, di)
              .assume(STACK_SIZE <= machine.regs[10].value)
-             .assign(machine.regs[10].offset, 0) // XXX: Maybe start with STACK_SIZE
+             .assign(machine.regs[10].offset, STACK_SIZE)
              .assign(machine.regs[10].region, T_STACK)
              .assume(1 <= machine.regs[1].value)
              .assume(machine.regs[1].value <= PTR_MAX)
@@ -913,14 +913,14 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
         case ArgSingle::Kind::PTR_TO_MAP_KEY:
             in(block).assertion(arg.value > 0)
                      .assertion(arg.region == T_STACK)
-                     .assertion(arg.offset + map_key_size <= 0)
-                     .assertion(arg.offset <= STACK_SIZE);
+                     .assertion(arg.offset >= 0)
+                     .assertion(arg.offset <= STACK_SIZE - map_key_size);
             break;
         case ArgSingle::Kind::PTR_TO_MAP_VALUE:
             in(block).assertion(arg.value > 0)
                      .assertion(arg.region == T_STACK)
-                     .assertion(arg.offset + map_value_size <= 0)
-                     .assertion(arg.offset <= STACK_SIZE);
+                     .assertion(arg.offset >= 0)
+                     .assertion(arg.offset <= STACK_SIZE - map_value_size);
             break;
         case ArgSingle::Kind::PTR_TO_CTX:
             // FIX: should be arg.offset == 0
@@ -942,9 +942,9 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
                    .assertion(arg.value > 0);
 
             auto assume_stack = in(ptr).fork("assume_stack", arg.region == T_STACK)
-                       .assertion(arg.offset + width <= 0)
-                       .assertion(arg.offset <= STACK_SIZE)
-                       .where(may_write).havoc_num_region(-(width + arg.offset), width)
+                       .assertion(arg.offset >= 0)
+                       .assertion(arg.offset <= STACK_SIZE - width)
+                       .where(may_write).havoc_num_region(arg.offset, width)
                        .done()
                        .where(may_read)
                        .done(); // TODO: check initialization
@@ -1085,7 +1085,7 @@ basic_block_t& instruction_builder_t::operator()(Mem const& b) {
     int width = (int)b.access.width;
     int offset = (int)b.access.offset;
     if (b.access.basereg.v == 10) {
-        int start =  (-offset) - width;
+        int start = STACK_SIZE + offset;
         if (std::holds_alternative<Reg>(b.value)) {
             dom_t data_reg = machine.reg(std::get<Reg>(b.value));
             return *in(block)
@@ -1106,7 +1106,7 @@ basic_block_t& instruction_builder_t::operator()(Mem const& b) {
     if (std::holds_alternative<Imm>(b.value)) {
         // mem[offset] = immediate
         // FIX: STW stores long long immediate
-        linear_expression_t addr = (-offset) - width - mem_reg.offset; // negate access
+        linear_expression_t addr = offset + mem_reg.offset; // negate access
         return join(*in(block).assertion(mem_reg.region != T_CTX),
                     *in(block).fork("assume_stack", mem_reg.region == T_STACK)
                               .assertion(addr >= 0)
