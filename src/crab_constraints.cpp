@@ -919,38 +919,27 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
     for (ArgPair param : call.pairs) {
         dom_t arg = machine.regs[param.mem.v];
         dom_t sizereg = machine.regs[param.size.v];
-        in(*current).assertion(sizereg.region == T_NUM)
-                    .assertion(param.can_be_zero ? sizereg.value >= 0 : sizereg.value > 0);
         auto assert_mem = [&](basic_block_t& ptr, bool may_write, bool may_read) -> basic_block_t& {
             variable_t width = sizereg.value;
-            in(ptr).assertion(is_pointer(arg))
-                   .assertion(arg.value > 0);
 
             auto assume_stack = in(ptr).fork("assume_stack", arg.region == T_STACK)
-                       .assertion(arg.offset >= 0)
-                       .assertion(arg.offset <= STACK_SIZE - width)
                        .where(may_write).havoc_num_region(arg.offset, width)
                        .done()
                        .where(may_read)
                        .done(); // TODO: check initialization
 
-            auto assume_shared = in(ptr).fork("assume_shared", is_shared(arg))
-                       .assertion(arg.offset >= 0)
-                       .assertion(arg.offset <= arg.region - width);
+            auto assume_shared = in(ptr).fork("assume_shared", is_shared(arg));
 
             basic_block_t& res = join(*assume_stack, *assume_shared);
             if (machine.ctx_desc.data >= 0) {
-                auto assume_data = in(ptr).fork("assume_data", arg.region == T_PACKET)
-                        .assertion(0 <= arg.offset) // was machine.meta_size <= arg.offset ????
-                        .assertion(arg.offset <= machine.data_size - width);
+                auto assume_data = in(ptr).fork("assume_data", arg.region == T_PACKET);
                 return join(res, *assume_data);
             }
             return res;
         };
         switch (param.kind) {
         case ArgPair::Kind::PTR_TO_MEM_OR_NULL: {
-            auto null = in(*current).fork("null", arg.region == T_NUM)
-                                    .assertion(arg.value == 0);
+            auto null = in(*current).fork("null", arg.region == T_NUM);
 
             auto ptr = in(*current).fork("ptr", is_not_num(arg));
             current = &join(*null, assert_mem(*ptr, false, true));
