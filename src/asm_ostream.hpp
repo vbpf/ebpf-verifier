@@ -32,14 +32,6 @@ void print(const InstructionSeq& prog, std::ostream& out);
 void print(const InstructionSeq& insts, std::string outfile);
 void print(const InstructionSeq& prog);
 
-void print(const Cfg& cfg, bool nondet, std::ostream& out);
-void print(const Cfg& cfg, bool nondet, std::string outfile);
-void print(const Cfg& cfg, bool nondet);
-
-void print_dot(const Cfg& cfg, std::ostream& out);
-void print_dot(const Cfg& cfg, std::string outfile);
-void print_dot(const Cfg& cfg);
-
 std::ostream& operator<<(std::ostream& os, Instruction const& ins);
 std::string to_string(Instruction const& ins);
 std::string to_string(Instruction const& ins, LabelTranslator labeler);

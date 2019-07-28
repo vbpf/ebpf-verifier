@@ -11,7 +11,6 @@
 #include "config.hpp"
 #include "crab_verifier.hpp"
 #include "memsize.hpp"
-#include "assertions.hpp"
 
 #include "linux_verifier.hpp"
 
