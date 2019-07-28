@@ -746,16 +746,15 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
         dom_t src = machine.reg(bin.v);
         switch (bin.op) {
         case Bin::Op::ADD: {
+
             auto ptr_dst = in(block).fork("ptr_dst", is_pointer(dst))
                            .add_overflow(dst.value, dst.value, src.value)
                            .add(dst.offset, dst.offset, src.value);
 
             auto ptr_src = in(block).fork("ptr_src", is_pointer(src))
-                           .add(dst.offset, dst.value, src.offset)
-                           .assert_no_overflow(dst.offset)
-                           .assign(dst.region, src.region)
-                           .havoc(dst.value)
-                           .assume(4098 <= dst.value);
+                           .add_overflow(dst.value, src.value, dst.value)
+                           .add(dst.offset, src.offset, dst.value)
+                           .assign(dst.region, src.region);
 
             auto both_num = in(block).fork("both_num", dst.region == T_NUM, src.region == T_NUM)
                             .add_overflow(dst.value, dst.value, src.value);

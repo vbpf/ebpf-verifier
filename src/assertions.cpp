@@ -30,8 +30,7 @@ bool operator==(const Assert& a, const Assert& b) { return *a.p == *b.p && a.sat
 
 class AssertionExtractor {
     program_info info;
-    std::vector<size_t> type_indices;
-    bool is_privileged = info.program_type == BpfProgType::KPROBE;
+    const bool is_privileged = info.program_type == BpfProgType::KPROBE;
 
     auto type_of(Reg r, TypeGroup t) {
         return Assertion{TypeConstraint{r, t}};
@@ -43,14 +42,6 @@ class AssertionExtractor {
 
   public:
     AssertionExtractor(program_info info) : info{info} {
-        for (size_t i = 0; i < info.map_defs.size(); i++) {
-            type_indices.push_back(i);
-        }
-        type_indices.push_back(ALL_TYPES + T_CTX);
-        type_indices.push_back(ALL_TYPES + T_STACK);
-        type_indices.push_back(ALL_TYPES + T_PACKET);
-        type_indices.push_back(ALL_TYPES + T_NUM);
-        type_indices.push_back(ALL_TYPES + T_MAP);
     }
 
     template <typename T>
