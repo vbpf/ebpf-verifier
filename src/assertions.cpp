@@ -113,6 +113,7 @@ class AssertionExtractor {
         if (is_privileged)
             return {};
         vector<Assertion> res;
+        res.push_back(Assertion{ValidAccess{cond.left}});
         if (std::holds_alternative<Imm>(cond.right)) {
             if (std::get<Imm>(cond.right).v != 0) {
                 res.push_back(type_of(cond.left, TypeGroup::num));
@@ -121,6 +122,7 @@ class AssertionExtractor {
                 // Everything can be compared to 0
             }
         } else {
+            res.push_back(Assertion{ValidAccess{std::get<Reg>(cond.right)}});
             if (cond.op != Condition::Op::EQ && cond.op != Condition::Op::NE) {
                 res.push_back(type_of(cond.left, TypeGroup::non_map_fd));
             }

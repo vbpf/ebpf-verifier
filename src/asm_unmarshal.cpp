@@ -39,7 +39,7 @@ static auto getMemIsLoad(uint8_t opcode) -> bool {
     case EBPF_CLS_ST: return false;
     case EBPF_CLS_STX: return false;
     }
-    assert(false);
+    return {};
 }
 
 static auto getMemWidth(uint8_t opcode) -> int {
@@ -49,7 +49,7 @@ static auto getMemWidth(uint8_t opcode) -> int {
     case EBPF_SIZE_W: return 4;
     case EBPF_SIZE_DW: return 8;
     }
-    assert(false);
+    return {};
 }
 
 // static auto getMemX(uint8_t opcode) -> bool {
@@ -59,7 +59,7 @@ static auto getMemWidth(uint8_t opcode) -> int {
 //         case EBPF_CLS_LDX: return true;
 //         case EBPF_CLS_STX: return true;
 //     }
-//     assert(false);
+//     return {};
 // }
 
 struct Unmarshaller {
@@ -102,7 +102,7 @@ struct Unmarshaller {
         case 0xe: throw InvalidInstruction{"Invalid ALU op 0xe"};
         case 0xf: throw InvalidInstruction{"Invalid ALU op 0xf"};
         }
-        assert(false);
+        return {};
     }
 
     auto getBinValue(ebpf_inst inst) -> Value {
@@ -122,7 +122,7 @@ struct Unmarshaller {
     auto getJmpOp(uint8_t opcode) -> Condition::Op {
         using Op = Condition::Op;
         switch ((opcode >> 4) & 0xF) {
-        case 0x0: assert(false); // goto
+        case 0x0: return {}; // goto
         case 0x1: return Op::EQ;
         case 0x2: return Op::GT;
         case 0x3: return Op::GE;
@@ -130,15 +130,15 @@ struct Unmarshaller {
         case 0x5: return Op::NE;
         case 0x6: return Op::SGT;
         case 0x7: return Op::SGE;
-        case 0x8: assert(false); // call
-        case 0x9: assert(false); // exit
+        case 0x8: return {}; // call
+        case 0x9: return {}; // exit
         case 0xa: return Op::LT;
         case 0xb: return Op::LE;
         case 0xc: return Op::SLT;
         case 0xd: return Op::SLE;
         case 0xe: throw InvalidInstruction{"Invalid JMP op 0xe"};
         }
-        assert(false);
+        return {};
     }
 
     auto makeMemOp(ebpf_inst inst) -> Instruction {
@@ -207,7 +207,7 @@ struct Unmarshaller {
             };
         case EBPF_MEM_UNUSED: throw UnsupportedMemoryMode{"Memory mode 7"};
         }
-        assert(false);
+        return {};
     }
 
     auto makeAluOp(ebpf_inst inst) -> Instruction {
@@ -262,7 +262,6 @@ struct Unmarshaller {
         case Arg::PTR_TO_CTX: return ArgSingle::Kind::PTR_TO_CTX;
         default: break;
         }
-        assert(false);
         return {};
     }
     ArgPair::Kind toArgPairKind(Arg t) {
@@ -272,7 +271,6 @@ struct Unmarshaller {
         case Arg::PTR_TO_UNINIT_MEM: return ArgPair::Kind::PTR_TO_UNINIT_MEM;
         default: break;
         }
-        assert(false);
         return {};
     }
 

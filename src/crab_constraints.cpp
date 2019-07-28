@@ -101,8 +101,8 @@ struct machine_t final {
     const data_kind_t offsets = data_kind_t::offsets;
     const data_kind_t regions = data_kind_t::regions;
 
-    const variable_t meta_size{variable_t::meta_size()};
-    const variable_t data_size{variable_t::data_size()};
+    const variable_t meta_offset{variable_t::meta_offset()};
+    const variable_t packet_size{variable_t::packet_size()};
 
     //basic_block_builder in(basic_block_t& bb) { return {bb, *this}; }
 
@@ -245,14 +245,6 @@ struct basic_block_builder {
         return *this;
     }
 
-    basic_block_builder& assert_no_overflow(variable_t v) {
-        // p1 = data_start; p1 += huge_positive; p1 <= p2 does not imply p1 >= data_start
-        if (!cond) return *this;
-        assertion(v <= MAX_PACKET_OFF);
-        assertion(v >= -4098);
-        return *this;
-    }
-
     basic_block_builder& assume_normal(const linear_expression_t& addr, ptype_descr desc) {
         if (!cond) return *this;
         if (desc.data >= 0) {
@@ -266,12 +258,12 @@ struct basic_block_builder {
     }
 
     template <typename T, typename W>
-    basic_block_builder& load(dom_t data_reg, const T& offset, W width) {
+    basic_block_builder& load(dom_t packet_reg, const T& offset, W width) {
         if (!cond) return *this;
-        array_load(data_reg.value,  machine.values, offset, width);
-        array_load(data_reg.region, machine.regions, offset, 1);
-        array_load(data_reg.offset, machine.offsets, offset, width);
-        assume(is_init(data_reg));
+        array_load(packet_reg.value,  machine.values, offset, width);
+        array_load(packet_reg.region, machine.regions, offset, 1);
+        array_load(packet_reg.offset, machine.offsets, offset, width);
+        assume(is_init(packet_reg));
         return *this;
     }
 
@@ -298,9 +290,9 @@ struct basic_block_builder {
         return bb;
     }
 
-    basic_block_builder store(linear_expression_t offset, dom_t data_reg, int width) {
+    basic_block_builder store(linear_expression_t offset, dom_t packet_reg, int width) {
         if (!cond) return *this;
-        array_store_range(offset, width, data_reg.region);
+        array_store_range(offset, width, packet_reg.region);
 
         if (width != 8) {
             array_forget(machine.values, offset, width);
@@ -308,16 +300,16 @@ struct basic_block_builder {
             return *this;
         }
 
-        basic_block_builder pointer_only = in(bb).fork("non_num", is_not_num(data_reg))
-                            .array_store(machine.offsets, offset, data_reg.offset, width)
-                            .array_store(machine.values, offset, data_reg.value, width);
+        basic_block_builder pointer_only = in(bb).fork("non_num", is_not_num(packet_reg))
+                            .array_store(machine.offsets, offset, packet_reg.offset, width)
+                            .array_store(machine.values, offset, packet_reg.value, width);
 
-        basic_block_builder num_only = in(bb).fork("num_only", data_reg.region == T_NUM)
-                        .array_store(machine.values, offset, data_reg.value, width)
+        basic_block_builder num_only = in(bb).fork("num_only", packet_reg.region == T_NUM)
+                        .array_store(machine.values, offset, packet_reg.value, width)
                         // kill the cell
-                        .array_store(machine.offsets, offset, data_reg.offset, width)
+                        .array_store(machine.offsets, offset, packet_reg.offset, width)
                         // so that relational domains won't think it's worth keeping track of
-                        .havoc(data_reg.offset);
+                        .havoc(packet_reg.offset);
         return in(join(*num_only, *pointer_only));
     }
 
@@ -334,13 +326,13 @@ struct basic_block_builder {
         return *this;
     }
 
-    basic_block_builder& access_num_only(dom_t data_reg, bool is_load) {
+    basic_block_builder& access_num_only(dom_t packet_reg, bool is_load) {
         if (!cond) return *this;
         return where(is_load)
-                    .havoc(data_reg.offset)
-                    .havoc(data_reg.value)
-                    .assign(data_reg.region, T_NUM)
-                .done("exec_data_access");
+                    .havoc(packet_reg.offset)
+                    .havoc(packet_reg.value)
+                    .assign(packet_reg.region, T_NUM)
+                .done("exec_packet_access");
     }
 };
 
@@ -362,7 +354,7 @@ class instruction_builder_t final {
     basic_block_t& operator()(Assume const& b);
 
     /** Never happens - Jmps are translated to Assume */
-    basic_block_t& operator()(Jmp const& b) { assert(false); }
+    basic_block_t& operator()(Jmp const& b) { return block; }
 
     basic_block_t& operator()(Assert const& stmt) {
         return std::visit(overloaded{
@@ -385,19 +377,29 @@ class instruction_builder_t final {
                 return block;
             },
             [this](const ValidAccess& s) -> basic_block_t& {
+                const bool is_comparison_check = s.width == (Value)Imm{0};
                 auto reg = machine.reg(s.reg);
                 auto addr = reg.offset + s.offset;
                 basic_block_builder ptr = in(block).fork("ptr", reg.region > T_NUM)
-                                                   .assertion(addr >= 0);
+                                                   ;
                 // This is not the check for non-num, non-map_fd etc.
-                // TODO: maybe it should be? without join:
+                // It could, without join:
                 // b.fork("num", reg.region == T_NUM).assertion(neq(reg.region, reg.region));
                 // b.fork("map_fd", reg.region == T_MAP).assertion(neq(reg.region, reg.region));
-                auto& ptrs = join(*ptr.fork("stack", reg.region == T_STACK).assertion(addr <= STACK_SIZE),
-                             join(*ptr.fork("shared",       is_shared(reg)).assertion(addr <= reg.region),
-                             join(*ptr.fork("context", reg.region == T_CTX).assertion(addr <= machine.ctx_desc.size),
-                                  *ptr.fork("data", reg.region == T_PACKET).assertion(addr <= machine.data_size))));
-                if (!s.or_null) return ptrs;
+                // But then we'll need a different check for pointer comparison
+                auto& ptrs = join(*ptr.fork("stack", reg.region == T_STACK).assertion(addr >= 0).assertion(addr <= STACK_SIZE),
+                             join(*ptr.fork("shared",       is_shared(reg)).assertion(addr >= 0).assertion(addr <= reg.region),
+                             join(*ptr.fork("context", reg.region == T_CTX).assertion(addr >= 0).assertion(addr <= machine.ctx_desc.size),
+                                  *ptr.fork("packet", reg.region == T_PACKET).assertion(addr >= machine.meta_offset)
+                                        .where(is_comparison_check).assertion(addr <= MAX_PACKET_OFF)
+                                        .otherwise().assertion(addr <= machine.packet_size)
+                                        .done())));
+                if (!s.or_null) {
+                    if (is_comparison_check) {
+                        return join(block, ptrs);
+                    }
+                    return ptrs;
+                }
                 return join(ptrs, *in(block).fork("is null", reg.region == T_NUM)
                                             .assertion(reg.value == 0));
             },
@@ -427,7 +429,7 @@ class instruction_builder_t final {
         }, stmt.p->cst);
     };
 
-    basic_block_t& exec_ctx_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg,
+    basic_block_t& exec_ctx_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t packet_reg,
                                                         int offset, int width) {
         linear_expression_t addr = mem_reg.offset + offset;
         auto mid = in(block).fork("assume_ctx", mem_reg.region == T_CTX);
@@ -436,25 +438,25 @@ class instruction_builder_t final {
         if (!is_load) {
             return *mid.assume_normal(addr, desc);
         } else {
-            basic_block_t& normal = *mid.fork("context-not-special", eq(data_reg.region, data_reg.region)).assume_normal(addr, desc) //FIX
-                        .assign(data_reg.region, T_NUM)
-                        .havoc(data_reg.offset)
-                        .havoc(data_reg.value);
+            basic_block_t& normal = *mid.fork("context-not-special", eq(packet_reg.region, packet_reg.region)).assume_normal(addr, desc) //FIX
+                        .assign(packet_reg.region, T_NUM)
+                        .havoc(packet_reg.offset)
+                        .havoc(packet_reg.value);
             if (desc.data < 0)
                 return normal;
             auto load_datap = [&](string suffix, int start, auto offset) -> basic_block_t& {
                 return *mid.fork(suffix, addr == start)
-                    .assign(data_reg.region, T_PACKET)
-                    .havoc(data_reg.value)
-                    .assume(4098 <= data_reg.value)
-                    .assume(data_reg.value <= PTR_MAX)
-                    .assign(data_reg.offset, offset);
+                    .assign(packet_reg.region, T_PACKET)
+                    .havoc(packet_reg.value)
+                    .assume(4098 <= packet_reg.value)
+                    .assume(packet_reg.value <= PTR_MAX)
+                    .assign(packet_reg.offset, offset);
             };
-            basic_block_t& start_end = join(load_datap("context-data_start", desc.data, 0),
-                                load_datap("context-data_end",   desc.end, machine.data_size));
+            basic_block_t& start_end = join(load_datap("context-packet_start", desc.data, 0),
+                                load_datap("context-packet_end",   desc.end, machine.packet_size));
             if (desc.meta < 0)
                 return join(start_end, normal);
-            basic_block_t& meta = load_datap("context-meta", desc.meta, machine.meta_size);
+            basic_block_t& meta = load_datap("context-meta", desc.meta, machine.meta_offset);
             return join(join(start_end, meta), normal);
         }
     }
@@ -530,9 +532,9 @@ machine_t::machine_t(program_info info)
  *
  * 1. r10 points to the stack
  * 2. r1 points to the context
- * 3. data_start points to the packet
- * 4. data_end points to the and unknown but bounded location above data_start
- * 5. meta_start points to just-before data_start
+ * 3. packet_start points to the packet
+ * 4. packet_end points to the and unknown but bounded location above packet_start
+ * 5. meta_start points to just-before packet_start
  * 6. Other registers are scratched
  */
 void machine_t::setup_entry(basic_block_t& entry, cfg_t& cfg) {
@@ -546,10 +548,10 @@ void machine_t::setup_entry(basic_block_t& entry, cfg_t& cfg) {
              .assume(machine.regs[1].value <= PTR_MAX)
              .assign(machine.regs[1].offset, 0)
              .assign(machine.regs[1].region, T_CTX)
-             .assume(0 <= machine.data_size)
-             .assume(machine.data_size <= 1 << 30)
-             .where(machine.ctx_desc.meta >= 0).assume(machine.meta_size >= 0)  // was <= 0 ????
-                                   .otherwise().assign(machine.meta_size, 0)
+             .assume(0 <= machine.packet_size)
+             .assume(machine.packet_size < MAX_PACKET_OFF)
+             .where(machine.ctx_desc.meta >= 0).assume(machine.meta_offset <= 0).assume(machine.meta_offset >= -4098)
+                                   .otherwise().assign(machine.meta_offset, 0)
              .done();
 }
 
@@ -589,9 +591,9 @@ static vector<linear_constraint_t> jmp_to_cst_imm(Condition::Op op, variable_t& 
     case Op::LT: return {dst_value <= (unsigned)imm - 1}; // FIX unsigned
     case Op::SLT: return {dst_value <= imm - 1};
     case Op::SET: throw std::exception();
-    case Op::NSET: assert(false);
+    case Op::NSET: return {};
     }
-    assert(false);
+    return {};
 }
 
 /** Linear constraint for a numerical comparison between registers.
@@ -611,9 +613,9 @@ static vector<linear_constraint_t> jmp_to_cst_reg(Condition::Op op, variable_t& 
     case Op::LT: return {src_value >= dst_value + 1}; // FIX unsigned
     case Op::SLT: return {src_value >= dst_value + 1};
     case Op::SET: throw std::exception();
-    case Op::NSET: assert(false);
+    case Op::NSET: return {};
     }
-    assert(false);
+    return {};
 }
 
 static bool is_unsigned_cmp(Condition::Op op) {
@@ -625,7 +627,7 @@ static bool is_unsigned_cmp(Condition::Op op) {
     case Op::LT: return true;
     default: return false;
     }
-    assert(false);
+    return {};
 }
 
 // static bool is_signed_cmp(Condition::Op op)
@@ -640,11 +642,11 @@ static bool is_unsigned_cmp(Condition::Op op) {
 //         default:
 //             return false;
 //     }
-//     assert(false);
+//     return {};
 // }
 
 /** Should never occur */
-basic_block_t& instruction_builder_t::operator()(Undefined const& a) { assert(false); }
+basic_block_t& instruction_builder_t::operator()(Undefined const& a) { return block; }
 
 /** Translate operation of the form `r2 = map_fd 0x5436`.
  *
@@ -770,7 +772,8 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
             {
                 auto ptr_dst = num_src.fork("ptr_dst", is_pointer(dst))
                                .sub(dst.offset, dst.offset, src.value)
-                               .assert_no_overflow(dst.offset);
+                               .assertion(dst.offset <= MAX_PACKET_OFF)
+                               .assertion(dst.offset >= -4098);
 
                 auto both_num = num_src.fork("both_num", dst.region == T_NUM)
                                 .sub_overflow(dst.value, dst.value, src.value);
@@ -916,6 +919,7 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
 /** Translate `Exit` to an assertion that r0 holds a number.
  */
 basic_block_t& instruction_builder_t::operator()(Exit const& b) {
+    // in(block).assertion(machine.meta_offset == 98); // Fail, to find false positives
     return block;
 }
 
@@ -987,10 +991,10 @@ basic_block_t& instruction_builder_t::operator()(Mem const& b) {
     if (b.access.basereg.v == 10) {
         int start = STACK_SIZE + offset;
         if (std::holds_alternative<Reg>(b.value)) {
-            dom_t data_reg = machine.reg(std::get<Reg>(b.value));
+            dom_t packet_reg = machine.reg(std::get<Reg>(b.value));
             return *in(block)
-                   .where(b.is_load).load(data_reg, start, width)
-                   .otherwise().store(start, data_reg, width)
+                   .where(b.is_load).load(packet_reg, start, width)
+                   .otherwise().store(start, packet_reg, width)
                    .done();
         } else {
             return *in(block)
@@ -1011,19 +1015,19 @@ basic_block_t& instruction_builder_t::operator()(Mem const& b) {
                               .store(addr, std::get<Imm>(b.value).v, width)
                               .done());
     }
-    auto data_reg = machine.reg(std::get<Reg>(b.value));
+    auto packet_reg = machine.reg(std::get<Reg>(b.value));
     linear_expression_t addr = offset + mem_reg.offset;
     basic_block_t& tmp =  join(
                           join(*in(block).fork("assume_stack", mem_reg.region == T_STACK)
-                                         .where(b.is_load).load(data_reg, addr, width) // FIX: requires loop
-                                              .otherwise().store(addr, data_reg, width)
+                                         .where(b.is_load).load(packet_reg, addr, width) // FIX: requires loop
+                                              .otherwise().store(addr, packet_reg, width)
                                          .done(),
                                *in(block).fork("assume_shared", is_shared(mem_reg))
-                                          .access_num_only(data_reg, b.is_load)),
-                               exec_ctx_access(   block, b.is_load, mem_reg, data_reg, offset, width));
+                                          .access_num_only(packet_reg, b.is_load)),
+                               exec_ctx_access(   block, b.is_load, mem_reg, packet_reg, offset, width));
     if (machine.ctx_desc.data >= 0) {
-        return join(tmp, *in(block).fork("assume_data", mem_reg.region == T_PACKET)
-                                   .access_num_only(data_reg, b.is_load));
+        return join(tmp, *in(block).fork("assume_packet", mem_reg.region == T_PACKET)
+                                   .access_num_only(packet_reg, b.is_load));
     }
     return tmp;
 }
