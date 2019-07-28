@@ -44,11 +44,8 @@
 #include "crab/interval.hpp"
 #include "crab/linear_constraints.hpp"
 
-namespace crab {
-using label_t = std::string;
-}
-
 #include "asm_syntax.hpp"
+#include "asm_ostream.hpp"
 
 namespace crab {
 template <typename Language>
@@ -791,10 +788,27 @@ inline void cfg<Language>::remove_unreachable_blocks() {
     }
 }
 
-using basic_block_t = basic_block<new_statement_t>;
-using basic_block_rev_t = basic_block_rev<new_statement_t>;
-using cfg_t = cfg<new_statement_t>;
-using cfg_ref_t = cfg_ref<new_statement_t>;
-using cfg_rev_t = cfg_rev<new_statement_t>;
+using basic_block_t = basic_block<Instruction>;
+using basic_block_rev_t = basic_block_rev<Instruction>;
+using cfg_t = cfg<Instruction>;
+using cfg_ref_t = cfg_ref<Instruction>;
+using cfg_rev_t = cfg_rev<Instruction>;
 
 } // end namespace crab
+
+using BasicBlock = crab::basic_block<Instruction>;
+using Cfg = crab::cfg<Instruction>;
+Cfg instruction_seq_to_cfg(const InstructionSeq&);
+Cfg to_nondet(const Cfg&);
+std::vector<std::string> stats_headers();
+std::map<std::string, int> collect_stats(const Cfg&);
+
+void explicate_assertions(Cfg& cfg, program_info info);
+
+void print(const Cfg& cfg, bool nondet, std::ostream& out);
+void print(const Cfg& cfg, bool nondet, std::string outfile);
+void print(const Cfg& cfg, bool nondet);
+
+void print_dot(const Cfg& cfg, std::ostream& out);
+void print_dot(const Cfg& cfg, std::string outfile);
+void print_dot(const Cfg& cfg);

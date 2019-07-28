@@ -117,6 +117,19 @@ class intra_abs_transformer {
     void operator()(const array_load_t& stmt) {
         m_inv.array_load(stmt.lhs, stmt.array, stmt.elem_size, stmt.index);
     }
+
+    void operator()(Undefined const& a) { }
+    void operator()(LoadMapFd const& a) { }
+    void operator()(Bin const& a) { }
+    void operator()(Un const& a) { }
+    void operator()(Call const& a) { }
+    void operator()(Exit const& a) { }
+    void operator()(Jmp const& a) { }
+    void operator()(Assume const& a) { }
+    void operator()(Assert const& a) { }
+    void operator()(Packet const& a) { }
+    void operator()(Mem const& a) { }
+    void operator()(LockAdd const& a) { }
 };
 
 template <typename AbsDomain>
@@ -306,7 +319,7 @@ inline AbsDomain transform(const basic_block_t& bb, const AbsDomain& from_inv) {
 
 template <typename AbsDomain>
 inline void check_block(const basic_block_t& bb, const AbsDomain& from_inv, checks_db& db) {
-    if (std::none_of(bb.begin(), bb.end(), [](const auto& s) { return std::holds_alternative<assert_t>(s); }))
+    if (std::none_of(bb.begin(), bb.end(), [](const auto& s) { return std::holds_alternative<Assert>(s); }))
         return;
     assert_property_checker<AbsDomain> checker(from_inv);
     for (const auto& statement : bb) {
