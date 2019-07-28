@@ -11,7 +11,7 @@
 #include "config.hpp"
 #include "crab_verifier.hpp"
 #include "memsize.hpp"
-#include "spec_assertions.hpp"
+#include "assertions.hpp"
 
 #include "linux_verifier.hpp"
 
@@ -49,6 +49,9 @@ int main(int argc, char** argv) {
     app.add_flag("-f", global_options.print_failures, "Print verifier's failure logs");
     app.add_flag("-v", verbose, "Print both invariants and failures");
 
+    bool no_simplify;
+    app.add_flag("--no-simplify", no_simplify, "Do not simplify");
+
     std::string asmfile;
     app.add_option("--asm", asmfile, "Print disassembly to FILE")->type_name("FILE");
     std::string dotfile;
@@ -58,6 +61,7 @@ int main(int argc, char** argv) {
     if (verbose)
         global_options.print_invariants = global_options.print_failures = true;
 
+    global_options.simplify = !no_simplify;
     // Main program
 
     if (filename == "@headers") {
@@ -112,13 +116,14 @@ int main(int argc, char** argv) {
     // }
 
     // std::cout << "to nondet...\n";
+    explicate_assertions(det_cfg, raw_prog.info);
+
     Cfg cfg = to_nondet(det_cfg);
     if (global_options.simplify) {
         // std::cout << "simplifying...\n";
         cfg.simplify();
     }
 
-    explicate_assertions(cfg, raw_prog.info);
 
     if (!dotfile.empty()) {
         print_dot(cfg, dotfile);

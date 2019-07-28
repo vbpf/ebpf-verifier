@@ -53,8 +53,8 @@ int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value_size, 
     attr.value_size = value_size;
     attr.max_entries = 20;
     attr.map_flags = map_type == BPF_MAP_TYPE_HASH ? BPF_F_NO_PREALLOC : 0;
-    int fd = do_bpf(BPF_MAP_CREATE, attr);
-    if (fd < 0) {
+    int map_fd = do_bpf(BPF_MAP_CREATE, attr);
+    if (map_fd < 0) {
         if (global_options.print_failures) {
             std::cerr << "Failed to create map, " << strerror(errno) << "\n";
             std::cerr << "Map: \n"
@@ -66,7 +66,7 @@ int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value_size, 
         }
         exit(2);
     }
-    return fd;
+    return map_fd;
 }
 
 /** Run the built-in Linux verifier on a raw eBPF program.
