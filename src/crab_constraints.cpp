@@ -467,8 +467,7 @@ class instruction_builder_t final {
 
         ptype_descr desc = machine.ctx_desc;
         if (!is_load) {
-            return *mid.assume_normal(addr, desc)
-                    .assertion(data_reg.region == T_NUM);
+            return *mid.assume_normal(addr, desc);
         } else {
             basic_block_t& normal = *mid.fork("context-not-special", eq(data_reg.region, data_reg.region)).assume_normal(addr, desc) //FIX
                         .assign(data_reg.region, T_NUM)
@@ -695,10 +694,7 @@ basic_block_t& instruction_builder_t::operator()(LoadMapFd const& ld) {
 
 /** load-increment-store, from shared regions only. */
 basic_block_t& instruction_builder_t::operator()(LockAdd const& b) {
-    auto addr = machine.reg(b.access.basereg).offset + b.access.offset;
-    return *in(block)
-           .assertion(is_shared(machine.reg(b.access.basereg)))
-           .assertion(machine.reg(b.valreg).region == T_NUM);
+    return block;
 }
 
 /** Translate eBPF binary instructions to Crab.
@@ -787,12 +783,10 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
         switch (bin.op) {
         case Bin::Op::ADD: {
             auto ptr_dst = in(block).fork("ptr_dst", is_pointer(dst))
-                           .assertion(src.region == T_NUM)
                            .add_overflow(dst.value, dst.value, src.value)
                            .add(dst.offset, dst.offset, src.value);
 
             auto ptr_src = in(block).fork("ptr_src", is_pointer(src))
-                           .assertion(dst.region == T_NUM)
                            .add(dst.offset, dst.value, src.offset)
                            .assert_no_overflow(dst.offset)
                            .assign(dst.region, src.region)
@@ -805,8 +799,6 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
         }
         case Bin::Op::SUB: {
             auto same = in(block).fork("ptr_src", is_pointer(src))
-                        .assertion(is_singleton(src)) // since map values of the same type can point to different maps
-                        .assertion(eq(dst.region, src.region))
                         .sub(dst.value, dst.offset, src.offset)
                         .assign(dst.region, T_NUM)
                         .havoc(dst.offset);
