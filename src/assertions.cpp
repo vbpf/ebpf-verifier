@@ -58,6 +58,10 @@ class AssertionExtractor {
         return {};
     }
 
+    vector<Assertion> operator()(Packet const& ins) {
+        return {type_of(Reg{6}, TypeGroup::ctx)};
+    }
+
     vector<Assertion> operator()(Exit const& e) { return {type_of(Reg{0}, TypeGroup::num)}; }
 
     vector<Assertion> operator()(Call const& call) {
