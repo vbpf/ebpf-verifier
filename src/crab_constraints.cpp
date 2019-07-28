@@ -88,7 +88,6 @@ struct dom_t {
 
 static linear_constraint_t is_pointer(dom_t v) { return v.region >= T_CTX; }
 static linear_constraint_t is_init(dom_t v) { return v.region > T_UNINIT; }
-static linear_constraint_t is_singleton(dom_t v) { return v.region < T_SHARED; }
 static linear_constraint_t is_shared(dom_t v) { return v.region > T_SHARED; }
 static linear_constraint_t is_not_num(dom_t v) { return v.region > T_NUM; }
 
@@ -979,8 +978,6 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
 /** Translate `Exit` to an assertion that r0 holds a number.
  */
 basic_block_t& instruction_builder_t::operator()(Exit const& b) {
-    // assert_init(block, machine.regs[0]);
-    in(block).assertion(machine.regs[0].region == T_NUM);
     return block;
 }
 
@@ -1001,7 +998,6 @@ basic_block_t& instruction_builder_t::operator()(Assume const& b) {
                                  .where(!is_unsigned_cmp(cond.op)).assume(jmp_to_cst_reg(cond.op, dst.value, src.value))
                                  .done();
         basic_block_t& pointers = *in(same).fork("pointers", is_pointer(dst))
-                                  .assertion(is_singleton(dst))
                                   .assume(jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset));
 
         basic_block_t& different = *in(block).fork("different_type",neq(dst.region, src.region));
@@ -1012,11 +1008,8 @@ basic_block_t& instruction_builder_t::operator()(Assume const& b) {
         return join(join(numbers, pointers), join(null_src, null_dst));
     } else {
         int imm = static_cast<int>(std::get<Imm>(cond.right).v);
-        // only null can be compared to pointers without leaking secrets
         return *in(block)
-               .assume(jmp_to_cst_imm(cond.op, dst.value, imm))
-               .where(!is_privileged() && imm != 0).assertion(dst.region == T_NUM)
-               .done();
+               .assume(jmp_to_cst_imm(cond.op, dst.value, imm));
     }
 }
 
@@ -1046,7 +1039,6 @@ basic_block_t& instruction_builder_t::operator()(Packet const& b) {
      *   R0 - 8/16/32-bit skb data converted to cpu endianness
      */
     return *in(block)
-           .assertion(machine.regs[6].region == T_CTX)
            .assign(machine.regs[0].region, T_NUM)
            .havoc(machine.regs[0].offset)
            .havoc(machine.regs[0].value)
@@ -1075,13 +1067,12 @@ basic_block_t& instruction_builder_t::operator()(Mem const& b) {
     }
 
     dom_t mem_reg = machine.reg(b.access.basereg);
-    in(block).assertion(mem_reg.value != 0).assertion(is_not_num(mem_reg));
 
     if (std::holds_alternative<Imm>(b.value)) {
         // mem[offset] = immediate
         // FIX: STW stores long long immediate
         linear_expression_t addr = offset + mem_reg.offset; // negate access
-        return join(*in(block).assertion(mem_reg.region != T_CTX),
+        return join(block,
                     *in(block).fork("assume_stack", mem_reg.region == T_STACK)
                               .store(addr, std::get<Imm>(b.value).v, width)
                               .done("exec_stack_access"));
