@@ -157,7 +157,11 @@ class AssertionExtractor {
             res.emplace_back(type_of(reg, TypeGroup::ptr));
             check_access(res, reg, offset, width);
             if (!is_privileged && !ins.is_load && std::holds_alternative<Reg>(ins.value)) {
-                res.push_back(Assertion{ValidStore{ins.access.basereg, std::get<Reg>(ins.value)}});
+                auto valreg = std::get<Reg>(ins.value);
+                if (width.v != 8)
+                    res.push_back(Assertion{TypeConstraint{valreg, TypeGroup::num}});
+                else
+                    res.push_back(Assertion{ValidStore{ins.access.basereg, valreg}});
             }
         }
         return res;
