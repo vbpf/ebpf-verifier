@@ -251,9 +251,9 @@ std::ostream& operator<<(std::ostream& os, ValidSize const& a) {
     return os << a.reg << op << 0;
 }
 
-// std::ostream& operator<<(std::ostream& os, OnlyZeroIfNum const& a) {
-//     return os << a.reg << " == 0 ->" << a.reg << " is NUM";
-// }
+std::ostream& operator<<(std::ostream& os, ValidMapKeyValue const& a) {
+    return os << "within stack("<< a.access_reg << ":" << (a.key ? "key_size" : "value_size") << "(" << a.map_fd_reg << "))";
+}
 
 std::ostream& operator<<(std::ostream& os, Comparable const& a) {
     return os << "type(" << a.r1 << ") == type(" << a.r2 << ")";
