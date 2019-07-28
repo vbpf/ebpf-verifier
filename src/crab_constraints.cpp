@@ -24,7 +24,7 @@
 #include "asm_cfg.hpp"
 #include "asm_syntax.hpp"
 
-#include "spec_assertions.hpp"
+#include "assertions.hpp"
 
 using namespace crab::dsl_syntax;
 
@@ -40,9 +40,9 @@ using crab::data_kind_t;
 using crab::debug_info;
 using crab::variable_t;
 
-static linear_constraint_t eq(variable_t& a, variable_t& b) { return {a - b, linear_constraint_t::EQUALITY}; }
+static linear_constraint_t eq(const variable_t& a, const variable_t& b) { return {a - b, linear_constraint_t::EQUALITY}; }
 
-static linear_constraint_t neq(variable_t& a, variable_t& b) { return {a - b, linear_constraint_t::DISEQUATION}; };
+static linear_constraint_t neq(const variable_t& a, const variable_t& b) { return {a - b, linear_constraint_t::DISEQUATION}; };
 
 
 constexpr int MAX_PACKET_OFF = 0xffff;
@@ -389,32 +389,52 @@ class instruction_builder_t final {
                 in(block).assertion(eq(r1.region, r2.region));
                 return block;
             },
-            [this](const ValidSize& s) -> basic_block_t&{
+            [this](const ValidSize& s) -> basic_block_t& {
                 variable_t r = machine.reg(s.reg).value;
                 if (s.can_be_zero) in(block).assertion(r >= 0);
                 else in(block).assertion(r > 0);
                 return block;
             },
-            [this](const OnlyZeroIfNum& s) -> basic_block_t&{
-                // TODO: maybe should be part of ValidAccess, as a flag "maybe null"
-                auto reg = machine.reg(s.reg);
-                return join(block, *in(block).fork("is null", reg.region == T_NUM).assertion(reg.value == 0));
-            },
             [this](const ValidAccess& s) -> basic_block_t& {
                 auto reg = machine.reg(s.reg);
                 auto addr = reg.offset + s.offset;
-                basic_block_builder b = in(block);
-                b.assertion(addr >= 0);
-                // This is not the check for non-num, non-fd etc.
+                basic_block_builder ptr = in(block).fork("ptr", reg.region > T_NUM)
+                                                   .assertion(addr >= 0);
+                // This is not the check for non-num, non-map_fd etc.
                 // TODO: maybe it should be? without join:
                 // b.fork("num", reg.region == T_NUM).assertion(neq(reg.region, reg.region));
-                // b.fork("fd", reg.region == T_MAP).assertion(neq(reg.region, reg.region));
-                return join(*b.fork("stack", reg.region == T_STACK).assertion(addr <= STACK_SIZE),
-                       join(*b.fork("shared", is_shared(reg)).assertion(addr <= reg.region),
-                       join(*b.fork("context", reg.region == T_CTX).assertion(addr <= machine.info.descriptor.size),
-                            *b.fork("data", reg.region == T_DATA).assertion(addr <= machine.data_size))));
+                // b.fork("map_fd", reg.region == T_MAP).assertion(neq(reg.region, reg.region));
+                auto& ptrs = join(*ptr.fork("stack", reg.region == T_STACK).assertion(addr <= STACK_SIZE),
+                             join(*ptr.fork("shared",       is_shared(reg)).assertion(addr <= reg.region),
+                             join(*ptr.fork("context", reg.region == T_CTX).assertion(addr <= machine.ctx_desc.size),
+                                  *ptr.fork("data", reg.region == T_PACKET).assertion(addr <= machine.data_size))));
+                if (!s.or_null) return ptrs;
+                return join(ptrs, *in(block).fork("is null", reg.region == T_NUM)
+                                            .assertion(reg.value == 0));
             },
-            [this](const TypeConstraint& s) -> basic_block_t&{
+            [this](const ValidStore& s) -> basic_block_t& {
+                return join(block, *in(block).fork("non-stack", machine.reg(s.mem).region != T_STACK)
+                                             .assertion(machine.reg(s.val).region == T_NUM));
+            },
+            [this](const TypeConstraint& s) -> basic_block_t& {
+                if (!s.given) {
+                    basic_block_builder b = in(block);
+                    variable_t t = machine.reg(s.then.reg).region;
+                    switch (s.then.types) {
+                       case TypeGroup::num: b.assertion(t == T_NUM); break;
+                       case TypeGroup::map_fd: b.assertion(t == T_MAP); break;
+                       case TypeGroup::ctx: b.assertion(t == T_CTX); break;
+                       case TypeGroup::packet: b.assertion(t == T_PACKET); break;
+                       case TypeGroup::stack: b.assertion(t == T_STACK); break;
+                       case TypeGroup::shared: b.assertion(t > T_SHARED); break;
+                       case TypeGroup::non_map_fd: b.assertion(t >= T_NUM); break;
+                       case TypeGroup::mem: b.assertion(t >= T_STACK); break;
+                       case TypeGroup::mem_or_num: b.assertion(t >= T_NUM).assertion(t != T_CTX); break;
+                       case TypeGroup::ptr: b.assertion(t >= T_CTX); break;
+                       case TypeGroup::ptr_or_num: b.assertion(t >= T_NUM); break;
+                       case TypeGroup::stack_or_packet: b.assertion(t >= T_STACK).assertion(t <= T_PACKET); break;
+                    }
+                }
                 return block;
             },
         }, stmt.p->cst);
@@ -455,8 +475,8 @@ class instruction_builder_t final {
                                                         dom_t data_reg, int offset, W width) {
         linear_expression_t addr = mem_reg.offset + offset;
 
-        return *in(block).fork("assume_data", mem_reg.region == T_DATA)
-            .assertion(machine.meta_size <= addr)
+        return *in(block).fork("assume_data", mem_reg.region == T_PACKET)
+            .assertion(0 <= addr) // was machine.meta_size <= addr ????
             .assertion(addr <= machine.data_size - width)
             .access_num_only(data_reg, is_load);
     }
@@ -482,7 +502,7 @@ class instruction_builder_t final {
                 return normal;
             auto load_datap = [&](string suffix, int start, auto offset) -> basic_block_t& {
                 return *mid.fork(suffix, addr == start)
-                    .assign(data_reg.region, T_DATA)
+                    .assign(data_reg.region, T_PACKET)
                     .havoc(data_reg.value)
                     .assume(4098 <= data_reg.value)
                     .assume(data_reg.value <= PTR_MAX)
@@ -586,7 +606,7 @@ void machine_t::setup_entry(basic_block_t& entry, cfg_t& cfg) {
              .assign(machine.regs[1].region, T_CTX)
              .assume(0 <= machine.data_size)
              .assume(machine.data_size <= 1 << 30)
-             .where(machine.ctx_desc.meta >= 0).assume(machine.meta_size <= 0)
+             .where(machine.ctx_desc.meta >= 0).assume(machine.meta_size >= 0)  // was <= 0 ????
                                    .otherwise().assign(machine.meta_size, 0)
              .done();
 }
@@ -684,7 +704,7 @@ static bool is_unsigned_cmp(Condition::Op op) {
 /** Should never occur */
 basic_block_t& instruction_builder_t::operator()(Undefined const& a) { assert(false); }
 
-/** Translate operation of the form `r2 = fd 0x5436`.
+/** Translate operation of the form `r2 = map_fd 0x5436`.
  *
  * This instruction is one of the two possible sources of map descriptors.
  * (The other one, `call 1` on a map-in-map, is not supported yet)
@@ -966,8 +986,8 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
 
             basic_block_t& res = join(*assume_stack, *assume_shared);
             if (machine.ctx_desc.data >= 0) {
-                auto assume_data = in(ptr).fork("assume_data", arg.region == T_DATA)
-                        .assertion(machine.meta_size <= arg.offset)
+                auto assume_data = in(ptr).fork("assume_data", arg.region == T_PACKET)
+                        .assertion(0 <= arg.offset) // was machine.meta_size <= arg.offset ????
                         .assertion(arg.offset <= machine.data_size - width);
                 return join(res, *assume_data);
             }

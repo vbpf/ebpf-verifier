@@ -9,7 +9,7 @@
 #include "asm_ostream.hpp"
 #include "asm_syntax.hpp"
 #include "config.hpp"
-#include "spec_assertions.hpp"
+#include "assertions.hpp"
 
 using std::optional;
 using std::string;
@@ -105,7 +105,7 @@ struct InstructionPrinterVisitor {
 
     void operator()(Undefined const& a) { os_ << "Undefined{" << a.opcode << "}"; }
 
-    void operator()(LoadMapFd const& b) { os_ << b.dst << " = fd " << b.mapfd; }
+    void operator()(LoadMapFd const& b) { os_ << b.dst << " = map_fd " << b.mapfd; }
 
     void operator()(Bin const& b) {
         os_ << b.dst << " " << b.op << "= " << b.v;
@@ -219,40 +219,29 @@ std::ostream& operator<<(std::ostream& os, Instruction const& ins) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, Types ts) {
-    os << "|";
-    bool all_maps = true;
-    for (size_t i = 0; i < NMAPS; i++) {
-        if (!ts[i])
-            all_maps = false;
+std::ostream& operator<<(std::ostream& os, TypeGroup ts) {
+    switch (ts) {
+       case TypeGroup::num: return os << "num";
+       case TypeGroup::map_fd: return os << "map_fd";
+       case TypeGroup::ctx: return os << "ctx";
+       case TypeGroup::packet: return os << "packet";
+       case TypeGroup::stack: return os << "stack";
+       case TypeGroup::shared: return os << "shared";
+       case TypeGroup::mem: return os << "mem";
+       case TypeGroup::ptr: return os << "ptr";
+       case TypeGroup::non_map_fd: return os << "non_map_fd";
+       case TypeGroup::ptr_or_num: return os << "ptr_or_num";
+       case TypeGroup::stack_or_packet: return os << "stack_or_packet";
+       case TypeGroup::mem_or_num: return os << "mem_or_num";
     }
-    if (all_maps)
-        os << "MAP|";
-    else
-        for (size_t i = 0; i < NMAPS; i++) {
-            if (ts[i]) {
-                os << "M" << i << "|";
-            }
-        }
-    if (ts[ts.size() + T_NUM])
-        os << "N"
-           << "|";
-    if (ts[ts.size() + T_MAP])
-        os << "FD"
-           << "|";
-    if (ts[ts.size() + T_CTX])
-        os << "C"
-           << "|";
-    if (ts[ts.size() + T_DATA])
-        os << "P"
-           << "|";
-    if (ts[ts.size() + T_STACK])
-        os << "S"
-           << "|";
     return os;
 }
 
 std::ostream& operator<<(std::ostream& os, TypeConstraint::RT const& a) { return os << a.reg << " : " << a.types; }
+
+std::ostream& operator<<(std::ostream& os, ValidStore const& a) {
+    return os << "!stack("<< a.mem << ") -> num(" << a.val << ")";
+}
 
 std::ostream& operator<<(std::ostream& os, ValidAccess const& a) {
     if (a.or_null) os << a.reg << " == 0 or ";
@@ -264,9 +253,9 @@ std::ostream& operator<<(std::ostream& os, ValidSize const& a) {
     return os << a.reg << op << 0;
 }
 
-std::ostream& operator<<(std::ostream& os, OnlyZeroIfNum const& a) {
-    return os << a.reg << " == 0 ->" << a.reg << " is NUM";
-}
+// std::ostream& operator<<(std::ostream& os, OnlyZeroIfNum const& a) {
+//     return os << a.reg << " == 0 ->" << a.reg << " is NUM";
+// }
 
 std::ostream& operator<<(std::ostream& os, Comparable const& a) {
     return os << "type(" << a.r1 << ") == type(" << a.r2 << ")";

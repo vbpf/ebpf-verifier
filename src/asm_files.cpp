@@ -30,7 +30,7 @@ struct bpf_load_map_def {
 };
 
 struct bpf_map_data {
-    int fd;
+    int map_fd;
     char* name;
     size_t elf_offset;
     struct bpf_load_map_def def;
