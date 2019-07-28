@@ -34,7 +34,7 @@ class AssertionExtractor {
     bool is_privileged = false;
 
     auto type_of(Reg r, TypeGroup t) {
-        return Assertion{TypeConstraint{{r, t}}};
+        return Assertion{TypeConstraint{r, t}};
     };
 
     void check_access(vector<Assertion>& assumptions, Reg reg, int offset, Value width, bool or_null=false) {
@@ -174,8 +174,8 @@ class AssertionExtractor {
         case Bin::Op::ADD:
             if (std::holds_alternative<Reg>(ins.v)) {
                 Reg reg = std::get<Reg>(ins.v);
-                return {Assertion{TypeConstraint{{reg, TypeGroup::num}, {ins.dst, TypeGroup::ptr}}},
-                        Assertion{TypeConstraint{{ins.dst, TypeGroup::num}, {reg, TypeGroup::ptr}}}};
+                return {Assertion{Addable{reg, ins.dst,}},
+                        Assertion{Addable{ins.dst, reg}}};
             }
             return {};
         case Bin::Op::SUB:

@@ -389,6 +389,12 @@ class instruction_builder_t final {
                 in(block).assertion(eq(r1.region, r2.region));
                 return block;
             },
+            [this](const Addable& s) -> basic_block_t& {
+                auto num = machine.reg(s.num).region;
+                auto ptr = machine.reg(s.ptr).region;
+                return join(block, *in(block).fork(std::to_string(s.ptr.v) + " is ptr", ptr > T_NUM)
+                                             .assertion(num == T_NUM));
+            },
             [this](const ValidSize& s) -> basic_block_t& {
                 variable_t r = machine.reg(s.reg).value;
                 if (s.can_be_zero) in(block).assertion(r >= 0);
@@ -417,23 +423,21 @@ class instruction_builder_t final {
                                              .assertion(machine.reg(s.val).region == T_NUM));
             },
             [this](const TypeConstraint& s) -> basic_block_t& {
-                if (!s.given) {
-                    basic_block_builder b = in(block);
-                    variable_t t = machine.reg(s.then.reg).region;
-                    switch (s.then.types) {
-                       case TypeGroup::num: b.assertion(t == T_NUM); break;
-                       case TypeGroup::map_fd: b.assertion(t == T_MAP); break;
-                       case TypeGroup::ctx: b.assertion(t == T_CTX); break;
-                       case TypeGroup::packet: b.assertion(t == T_PACKET); break;
-                       case TypeGroup::stack: b.assertion(t == T_STACK); break;
-                       case TypeGroup::shared: b.assertion(t > T_SHARED); break;
-                       case TypeGroup::non_map_fd: b.assertion(t >= T_NUM); break;
-                       case TypeGroup::mem: b.assertion(t >= T_STACK); break;
-                       case TypeGroup::mem_or_num: b.assertion(t >= T_NUM).assertion(t != T_CTX); break;
-                       case TypeGroup::ptr: b.assertion(t >= T_CTX); break;
-                       case TypeGroup::ptr_or_num: b.assertion(t >= T_NUM); break;
-                       case TypeGroup::stack_or_packet: b.assertion(t >= T_STACK).assertion(t <= T_PACKET); break;
-                    }
+                basic_block_builder b = in(block);
+                variable_t t = machine.reg(s.reg).region;
+                switch (s.types) {
+                    case TypeGroup::num: b.assertion(t == T_NUM); break;
+                    case TypeGroup::map_fd: b.assertion(t == T_MAP); break;
+                    case TypeGroup::ctx: b.assertion(t == T_CTX); break;
+                    case TypeGroup::packet: b.assertion(t == T_PACKET); break;
+                    case TypeGroup::stack: b.assertion(t == T_STACK); break;
+                    case TypeGroup::shared: b.assertion(t > T_SHARED); break;
+                    case TypeGroup::non_map_fd: b.assertion(t >= T_NUM); break;
+                    case TypeGroup::mem: b.assertion(t >= T_STACK); break;
+                    case TypeGroup::mem_or_num: b.assertion(t >= T_NUM).assertion(t != T_CTX); break;
+                    case TypeGroup::ptr: b.assertion(t >= T_CTX); break;
+                    case TypeGroup::ptr_or_num: b.assertion(t >= T_NUM); break;
+                    case TypeGroup::stack_or_packet: b.assertion(t >= T_STACK).assertion(t <= T_PACKET); break;
                 }
                 return block;
             },
