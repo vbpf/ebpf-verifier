@@ -57,6 +57,7 @@ class AssertionExtractor {
 
     vector<Assertion> operator()(Call const& call) {
         vector<Assertion> res;
+        std::optional<Reg> map_fd_reg;
         for (ArgSingle arg : call.singles) {
             switch (arg.kind) {
             case ArgSingle::Kind::ANYTHING:
@@ -64,17 +65,15 @@ class AssertionExtractor {
                 if (!is_privileged)
                     res.push_back(type_of(arg.reg, TypeGroup::num));
                 break;
-            case ArgSingle::Kind::MAP_FD: res.push_back(type_of(arg.reg, TypeGroup::map_fd)); break;
-            case ArgSingle::Kind::PTR_TO_MAP_KEY:
-                // what other conditions?
-                // looks like packet is valid
-                // TODO: maybe arg.packet_access?
-                res.push_back(type_of(arg.reg, TypeGroup::stack_or_packet));
-                // TODO: check_access
+            case ArgSingle::Kind::MAP_FD:
+                res.push_back(type_of(arg.reg, TypeGroup::map_fd));
+                map_fd_reg = arg.reg;
                 break;
+            case ArgSingle::Kind::PTR_TO_MAP_KEY:
             case ArgSingle::Kind::PTR_TO_MAP_VALUE:
                 res.push_back(type_of(arg.reg, TypeGroup::stack_or_packet));
-                // TODO: check_access
+                res.push_back(Assertion{ValidMapKeyValue{arg.reg, *map_fd_reg,
+                                        arg.kind == ArgSingle::Kind::PTR_TO_MAP_KEY}});
                 break;
             case ArgSingle::Kind::PTR_TO_CTX:
                 res.push_back(type_of(arg.reg, TypeGroup::ctx));

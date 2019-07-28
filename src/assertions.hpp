@@ -59,6 +59,12 @@ struct ValidAccess {
     bool or_null{};
 };
 
+struct ValidMapKeyValue {
+    Reg access_reg;
+    Reg map_fd_reg;
+    bool key{};
+};
+
 // "if mem is not stack, val is num"
 struct ValidStore {
     Reg mem;
@@ -71,7 +77,7 @@ struct TypeConstraint {
 };
 
 struct Assertion {
-    std::variant<Comparable, Addable, ValidAccess, ValidStore, ValidSize, TypeConstraint> cst;
+    std::variant<Comparable, Addable, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint> cst;
 };
 
 #define DECLARE_EQ6(T, f1, f2, f3, f4, f5, f6)                                                                         \
@@ -102,4 +108,5 @@ DECLARE_EQ2(Comparable, r1, r2)
 DECLARE_EQ2(Addable, ptr, num)
 DECLARE_EQ2(ValidStore, mem, val)
 DECLARE_EQ4(ValidAccess, reg, offset, width, or_null)
+DECLARE_EQ3(ValidMapKeyValue, access_reg, map_fd_reg, key)
 DECLARE_EQ1(Assertion, cst)

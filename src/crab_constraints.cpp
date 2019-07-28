@@ -245,6 +245,14 @@ struct basic_block_builder {
         return *this;
     }
 
+    basic_block_builder& extract_map(variable_t v) {
+        lshr(variable_t::map_value_size(), v, 14);
+        variable_t mk = variable_t::map_key_size();
+        rem(mk, v, 1 << 14, false);
+        lshr(mk, mk, 6);
+        return *this;
+    }
+
     basic_block_builder& assume_normal(const linear_expression_t& addr, ptype_descr desc) {
         if (!cond) return *this;
         if (desc.data >= 0) {
@@ -356,77 +364,93 @@ class instruction_builder_t final {
     /** Never happens - Jmps are translated to Assume */
     basic_block_t& operator()(Jmp const& b) { return block; }
 
+    auto operator()(const Comparable& s) -> basic_block_t& {
+        auto r1 = machine.reg(s.r1);
+        auto r2 = machine.reg(s.r2);
+        in(block).assertion(eq(r1.region, r2.region));
+        return block;
+    }
+
+    auto operator()(const Addable& s) -> basic_block_t& {
+        auto num = machine.reg(s.num).region;
+        auto ptr = machine.reg(s.ptr).region;
+        return join(block, *in(block).fork(std::to_string(s.ptr.v) + " is ptr", ptr > T_NUM)
+                                        .assertion(num == T_NUM));
+    }
+
+    auto operator()(const ValidSize& s) -> basic_block_t& {
+        variable_t r = machine.reg(s.reg).value;
+        if (s.can_be_zero) in(block).assertion(r >= 0);
+        else in(block).assertion(r > 0);
+        return block;
+    }
+
+    auto operator()(const ValidMapKeyValue& s) -> basic_block_t& {
+        in(block).extract_map(machine.reg(s.map_fd_reg).value);
+        return check_access(machine.reg(s.access_reg), 0,
+                            s.key ? variable_t::map_key_size() : variable_t::map_value_size(), false, false);
+    }
+
+    auto check_access(dom_t reg, int offset, linear_expression_t width, bool is_comparison_check, bool or_null) -> basic_block_t& {
+        auto lb = reg.offset + offset;
+        auto ub = lb + width;
+        basic_block_builder ptr = in(block).fork("ptr", reg.region > T_NUM);
+        // This is not the check for non-num, non-map_fd etc.
+        // It could, without join:
+        // b.fork("num", reg.region == T_NUM).assertion(neq(reg.region, reg.region));
+        // b.fork("map_fd", reg.region == T_MAP).assertion(neq(reg.region, reg.region));
+        // But then we'll need a different check for pointer comparison
+        auto& ptrs = join(*ptr.fork("stack", reg.region == T_STACK).assertion(lb >= 0).assertion(ub <= STACK_SIZE),
+                        join(*ptr.fork("shared",       is_shared(reg)).assertion(lb >= 0).assertion(ub <= reg.region),
+                        join(*ptr.fork("context", reg.region == T_CTX).assertion(lb >= 0).assertion(ub <= machine.ctx_desc.size),
+                            *ptr.fork("packet", reg.region == T_PACKET).assertion(lb >= machine.meta_offset)
+                                .where(is_comparison_check).assertion(ub <= MAX_PACKET_OFF)
+                                .otherwise().assertion(ub <= machine.packet_size)
+                                .done())));
+        if (!or_null) {
+            if (is_comparison_check) {
+                return join(block, ptrs);
+            }
+            return ptrs;
+        }
+        return join(ptrs, *in(block).fork("is null", reg.region == T_NUM)
+                                    .assertion(reg.value == 0));
+    }
+
+    auto operator()(const ValidAccess& s) -> basic_block_t& {
+        linear_expression_t width;
+        if (std::holds_alternative<Imm>(s.width)) width = std::get<Imm>(s.width).v;
+        else width = machine.reg(s.width).value;
+        return check_access(machine.reg(s.reg), s.offset, width, s.width == (Value)Imm{0}, s.or_null);
+    }
+
+    auto operator()(const ValidStore& s) -> basic_block_t& {
+        return join(block, *in(block).fork("non-stack", machine.reg(s.mem).region != T_STACK)
+                                        .assertion(machine.reg(s.val).region == T_NUM));
+    }
+
+    auto operator()(const TypeConstraint& s) -> basic_block_t& {
+        basic_block_builder b = in(block);
+        variable_t t = machine.reg(s.reg).region;
+        switch (s.types) {
+            case TypeGroup::num: b.assertion(t == T_NUM); break;
+            case TypeGroup::map_fd: b.assertion(t == T_MAP); break;
+            case TypeGroup::ctx: b.assertion(t == T_CTX); break;
+            case TypeGroup::packet: b.assertion(t == T_PACKET); break;
+            case TypeGroup::stack: b.assertion(t == T_STACK); break;
+            case TypeGroup::shared: b.assertion(t > T_SHARED); break;
+            case TypeGroup::non_map_fd: b.assertion(t >= T_NUM); break;
+            case TypeGroup::mem: b.assertion(t >= T_STACK); break;
+            case TypeGroup::mem_or_num: b.assertion(t >= T_NUM).assertion(t != T_CTX); break;
+            case TypeGroup::ptr: b.assertion(t >= T_CTX); break;
+            case TypeGroup::ptr_or_num: b.assertion(t >= T_NUM); break;
+            case TypeGroup::stack_or_packet: b.assertion(t >= T_STACK).assertion(t <= T_PACKET); break;
+        }
+        return block;
+    }
+
     basic_block_t& operator()(Assert const& stmt) {
-        return std::visit(overloaded{
-            [this](const Comparable& s) -> basic_block_t& {
-                auto r1 = machine.reg(s.r1);
-                auto r2 = machine.reg(s.r2);
-                in(block).assertion(eq(r1.region, r2.region));
-                return block;
-            },
-            [this](const Addable& s) -> basic_block_t& {
-                auto num = machine.reg(s.num).region;
-                auto ptr = machine.reg(s.ptr).region;
-                return join(block, *in(block).fork(std::to_string(s.ptr.v) + " is ptr", ptr > T_NUM)
-                                             .assertion(num == T_NUM));
-            },
-            [this](const ValidSize& s) -> basic_block_t& {
-                variable_t r = machine.reg(s.reg).value;
-                if (s.can_be_zero) in(block).assertion(r >= 0);
-                else in(block).assertion(r > 0);
-                return block;
-            },
-            [this](const ValidAccess& s) -> basic_block_t& {
-                const bool is_comparison_check = s.width == (Value)Imm{0};
-                auto reg = machine.reg(s.reg);
-                auto addr = reg.offset + s.offset;
-                basic_block_builder ptr = in(block).fork("ptr", reg.region > T_NUM)
-                                                   ;
-                // This is not the check for non-num, non-map_fd etc.
-                // It could, without join:
-                // b.fork("num", reg.region == T_NUM).assertion(neq(reg.region, reg.region));
-                // b.fork("map_fd", reg.region == T_MAP).assertion(neq(reg.region, reg.region));
-                // But then we'll need a different check for pointer comparison
-                auto& ptrs = join(*ptr.fork("stack", reg.region == T_STACK).assertion(addr >= 0).assertion(addr <= STACK_SIZE),
-                             join(*ptr.fork("shared",       is_shared(reg)).assertion(addr >= 0).assertion(addr <= reg.region),
-                             join(*ptr.fork("context", reg.region == T_CTX).assertion(addr >= 0).assertion(addr <= machine.ctx_desc.size),
-                                  *ptr.fork("packet", reg.region == T_PACKET).assertion(addr >= machine.meta_offset)
-                                        .where(is_comparison_check).assertion(addr <= MAX_PACKET_OFF)
-                                        .otherwise().assertion(addr <= machine.packet_size)
-                                        .done())));
-                if (!s.or_null) {
-                    if (is_comparison_check) {
-                        return join(block, ptrs);
-                    }
-                    return ptrs;
-                }
-                return join(ptrs, *in(block).fork("is null", reg.region == T_NUM)
-                                            .assertion(reg.value == 0));
-            },
-            [this](const ValidStore& s) -> basic_block_t& {
-                return join(block, *in(block).fork("non-stack", machine.reg(s.mem).region != T_STACK)
-                                             .assertion(machine.reg(s.val).region == T_NUM));
-            },
-            [this](const TypeConstraint& s) -> basic_block_t& {
-                basic_block_builder b = in(block);
-                variable_t t = machine.reg(s.reg).region;
-                switch (s.types) {
-                    case TypeGroup::num: b.assertion(t == T_NUM); break;
-                    case TypeGroup::map_fd: b.assertion(t == T_MAP); break;
-                    case TypeGroup::ctx: b.assertion(t == T_CTX); break;
-                    case TypeGroup::packet: b.assertion(t == T_PACKET); break;
-                    case TypeGroup::stack: b.assertion(t == T_STACK); break;
-                    case TypeGroup::shared: b.assertion(t > T_SHARED); break;
-                    case TypeGroup::non_map_fd: b.assertion(t >= T_NUM); break;
-                    case TypeGroup::mem: b.assertion(t >= T_STACK); break;
-                    case TypeGroup::mem_or_num: b.assertion(t >= T_NUM).assertion(t != T_CTX); break;
-                    case TypeGroup::ptr: b.assertion(t >= T_CTX); break;
-                    case TypeGroup::ptr_or_num: b.assertion(t >= T_NUM); break;
-                    case TypeGroup::stack_or_packet: b.assertion(t >= T_STACK).assertion(t <= T_PACKET); break;
-                }
-                return block;
-            },
-        }, stmt.p->cst);
+        return std::visit(*this, stmt.p->cst);
     };
 
     basic_block_t& exec_ctx_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t packet_reg,
@@ -772,8 +796,7 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
             {
                 auto ptr_dst = num_src.fork("ptr_dst", is_pointer(dst))
                                .sub(dst.offset, dst.offset, src.value)
-                               .assertion(dst.offset <= MAX_PACKET_OFF)
-                               .assertion(dst.offset >= -4098);
+                               .sub_overflow(dst.value, dst.value, src.value);
 
                 auto both_num = num_src.fork("both_num", dst.region == T_NUM)
                                 .sub_overflow(dst.value, dst.value, src.value);
@@ -848,15 +871,13 @@ basic_block_t& instruction_builder_t::operator()(Un const& b) {
     return block;
 }
 
-/** Generate assertions and commands that overapproximate eBPF function call.
+/** Generate commands that overapproximate eBPF function call.
  *
  * Function calls has two different kinds of arguments: single and (mem, size) pair.
  * Except `call 1`, functions always return a number to register r0.
  * Registers r1-r5 are scratched.
  */
 basic_block_t& instruction_builder_t::operator()(Call const& call) {
-    variable_t map_value_size{variable_t::map_value_size()};
-    variable_t map_key_size{variable_t::map_key_size()};
     for (ArgSingle param : call.singles) {
         dom_t arg = machine.regs[param.reg.v];
         switch (param.kind) {
@@ -864,17 +885,11 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
             // avoid pointer leakage:
             break;
         case ArgSingle::Kind::MAP_FD:
-            in(block).lshr(map_value_size, arg.value, 14)
-                     .rem(map_key_size, arg.value, 1 << 14, false)
-                     .lshr(map_key_size, map_key_size, 6);
+            in(block).extract_map(arg.value);
             break;
         case ArgSingle::Kind::PTR_TO_MAP_KEY:
-            // TODO: move to assertions.cpp
-            in(block).assertion(arg.offset <= STACK_SIZE - map_key_size);
             break;
         case ArgSingle::Kind::PTR_TO_MAP_VALUE:
-            // TODO: move to assertions.cpp
-            in(block).assertion(arg.offset <= STACK_SIZE - map_value_size);
             break;
         case ArgSingle::Kind::PTR_TO_CTX:
             break;
@@ -901,7 +916,7 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
         // no support for map-in-map yet:
         //   if (machine.info.map_defs.at(map_type).type == MapType::ARRAY_OF_MAPS
         //    || machine.info.map_defs.at(map_type).type == MapType::HASH_OF_MAPS) { }
-        in(*current).assign(r0.region, map_value_size)
+        in(*current).assign(r0.region, variable_t::map_value_size())
                     .havoc(r0.value)
                     // This is the only way to get a null pointer - note the `<=`:
                     .assume(0 <= r0.value)
@@ -916,15 +931,10 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
     return *current;
 }
 
-/** Translate `Exit` to an assertion that r0 holds a number.
- */
 basic_block_t& instruction_builder_t::operator()(Exit const& b) {
-    // in(block).assertion(machine.meta_offset == 98); // Fail, to find false positives
     return block;
 }
 
-/** Generate Crab assertions and assumptions for a single eBPF `assume` command (extracted from a Jmp).
- */
 basic_block_t& instruction_builder_t::operator()(Assume const& b) {
     Condition cond = b.cond;
 
