@@ -230,11 +230,6 @@ struct basic_block_builder {
          return *this;
     }
 
-    basic_block_builder& assert_init(const dom_t data_reg) {
-        if (!cond) return *this;
-        return assertion(is_init(data_reg));
-    }
-
     basic_block_builder& no_pointer(dom_t v) {
         if (!cond) return *this;
         return assign(v.region, T_NUM).havoc(v.offset);
@@ -305,7 +300,6 @@ struct basic_block_builder {
 
     basic_block_builder store(linear_expression_t offset, dom_t data_reg, int width) {
         if (!cond) return *this;
-        assert_init(data_reg);
         array_store_range(offset, width, data_reg.region);
 
         if (width != 8) {
@@ -681,10 +675,7 @@ basic_block_t& instruction_builder_t::operator()(LockAdd const& b) {
  */
 basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
     dom_t dst = machine.reg(bin.dst);
-    auto b = in(block)
-             .where(bin.op != Bin::Op::MOV).assert_init(dst)
-             .done();
-    if (std::holds_alternative<Reg>(bin.v)) b.assert_init(machine.reg(bin.v));
+    auto b = in(block);
 
     if (std::holds_alternative<Imm>(bin.v)) {
         // dst += K
@@ -842,7 +833,6 @@ basic_block_t& instruction_builder_t::operator()(Bin const& bin) {
  */
 basic_block_t& instruction_builder_t::operator()(Un const& b) {
     dom_t dst = machine.reg(b.dst);
-    in(block).assert_init(dst);
     switch (b.op) {
     case Un::Op::LE16:
     case Un::Op::LE32:
