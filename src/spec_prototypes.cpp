@@ -1735,7 +1735,6 @@ static const struct bpf_func_proto bpf_redirect_map_proto = {
  */
 
 #define FN(x) bpf_##x##_proto
-
 // keep this on a round line
 const struct bpf_func_proto prototypes[81] = {
     FN(unspec),
