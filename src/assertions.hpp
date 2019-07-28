@@ -55,7 +55,7 @@ struct Addable {
 struct ValidAccess {
     Reg reg;
     int offset{};
-    Value width;
+    Value width{Imm{0}};
     bool or_null{};
 };
 

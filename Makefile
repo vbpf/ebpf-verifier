@@ -5,7 +5,7 @@ SRCDIR := src
 
 BUILD := debug
 optimization.sanitize := -fsanitize=address -O1 -fno-omit-frame-pointer
-optimization.debug := -O0
+optimization.debug := -O0 -g3
 optimization.release := -O2 -flto # -DNDEBUG -Wno-return-type
 
 SOURCES := $(wildcard $(SRCDIR)/*.cpp) $(wildcard $(SRCDIR)/crab/*.cpp)
@@ -24,7 +24,7 @@ LINUX := $(abspath ../linux)
 
 LDLIBS += -lgmp
 
-CXXFLAGS := -Wall -Wfatal-errors -g3 -std=c++17 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 -I $(SRCDIR) -I external #  -Werror does not work well in Linux
+CXXFLAGS := -Wall -Wfatal-errors -std=c++17 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 -I $(SRCDIR) -I external #  -Werror does not work well in Linux
 CXXFLAGS += ${optimization.${BUILD}}
 
 all: $(BINDIR)/check  # $(BINDIR)/unit-test

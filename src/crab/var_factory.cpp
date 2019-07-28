@@ -52,7 +52,7 @@ std::ostream& operator<<(std::ostream& o, const data_kind_t& s) {
         case data_kind_t::regions: return o << "S_t";
         case data_kind_t::values: return o << "S_r";
     }
-    assert(false);
+    return o;
 }
 
 static std::string mk_scalar_name(data_kind_t kind, index_t o, unsigned size) {
@@ -71,7 +71,7 @@ variable_t variable_t::cell_var(data_kind_t array, index_t offset, unsigned size
 
 variable_t variable_t::map_value_size() { return make("map_value_size"); }
 variable_t variable_t::map_key_size() { return make("map_key_size"); }
-variable_t variable_t::meta_size() { return make("meta_size"); }
-variable_t variable_t::data_size() { return make("data_size"); }
+variable_t variable_t::meta_offset() { return make("meta_offset"); }
+variable_t variable_t::packet_size() { return make("packet_size"); }
 
 } // end namespace crab

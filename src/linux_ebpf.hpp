@@ -61,6 +61,7 @@ inline int opcode_to_width(uint8_t opcode) {
     case EBPF_SIZE_DW: return 8;
     }
     assert(false);
+    return {};
 }
 
 inline uint8_t width_to_opcode(int width) {
@@ -71,4 +72,5 @@ inline uint8_t width_to_opcode(int width) {
     case 8: return EBPF_SIZE_DW;
     }
     assert(false);
+    return {};
 }

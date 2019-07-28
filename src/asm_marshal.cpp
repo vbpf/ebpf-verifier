@@ -77,7 +77,7 @@ struct MarshalVisitor {
   public:
     std::function<auto(std::string)->int16_t> label_to_offset;
 
-    vector<ebpf_inst> operator()(Undefined const& a) { assert(false); }
+    vector<ebpf_inst> operator()(Undefined const& a) { assert(false); return {}; }
 
     vector<ebpf_inst> operator()(LoadMapFd const& b) { return makeLddw(b.dst, true, b.mapfd, 0); }
 

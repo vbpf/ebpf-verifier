@@ -66,8 +66,8 @@ class variable_t final {
     static variable_t cell_var(data_kind_t array, index_t offset, unsigned size);
     static variable_t map_value_size();
     static variable_t map_key_size();
-    static variable_t meta_size();
-    static variable_t data_size();
+    static variable_t meta_offset();
+    static variable_t packet_size();
 }; // class variable_t
 
 inline size_t hash_value(const variable_t& v) { return v.hash(); }
