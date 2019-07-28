@@ -237,8 +237,6 @@ std::ostream& operator<<(std::ostream& os, TypeGroup ts) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, TypeConstraint::RT const& a) { return os << a.reg << " : " << a.types; }
-
 std::ostream& operator<<(std::ostream& os, ValidStore const& a) {
     return os << "!stack("<< a.mem << ") -> num(" << a.val << ")";
 }
@@ -261,11 +259,12 @@ std::ostream& operator<<(std::ostream& os, Comparable const& a) {
     return os << "type(" << a.r1 << ") == type(" << a.r2 << ")";
 }
 
+std::ostream& operator<<(std::ostream& os, Addable const& a) {
+    return os << a.ptr << " : ptr -> " << a.num << " : num";
+}
+
 std::ostream& operator<<(std::ostream& os, TypeConstraint const& tc) {
-    if (tc.given) {
-        os << *tc.given << " -> ";
-    }
-    return os << tc.then;
+    return os << tc.reg << " : " << tc.types;
 }
 
 std::ostream& operator<<(std::ostream& os, Assertion const& a) {
