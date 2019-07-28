@@ -31,7 +31,7 @@ bool operator==(const Assert& a, const Assert& b) { return *a.p == *b.p && a.sat
 class AssertionExtractor {
     program_info info;
     std::vector<size_t> type_indices;
-    bool is_privileged = false;
+    bool is_privileged = info.program_type == BpfProgType::KPROBE;
 
     auto type_of(Reg r, TypeGroup t) {
         return Assertion{TypeConstraint{r, t}};

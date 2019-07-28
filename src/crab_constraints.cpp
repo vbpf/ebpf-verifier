@@ -355,8 +355,6 @@ struct basic_block_builder {
                     .havoc(data_reg.offset)
                     .havoc(data_reg.value)
                     .assign(data_reg.region, T_NUM)
-                .otherwise()
-                    .assertion(data_reg.region == T_NUM)
                 .done("exec_data_access");
     }
 };
@@ -447,11 +445,9 @@ class instruction_builder_t final {
     template <typename W>
     basic_block_t& exec_stack_access(basic_block_t& block, bool is_load, dom_t mem_reg,
                                                             dom_t data_reg, int offset, W width) {
-        linear_expression_t addr = offset + mem_reg.offset; // negate access
+        linear_expression_t addr = offset + mem_reg.offset;
 
         return *in(block).fork("assume_stack", mem_reg.region == T_STACK)
-                .assertion(addr >= 0)
-                .assertion(addr <= STACK_SIZE - width)
                 .where(is_load).load(data_reg, addr, width)
                     .otherwise().store(addr, data_reg, width)
                 .done("exec_stack_access");
@@ -464,41 +460,17 @@ class instruction_builder_t final {
     }
 
     template <typename W>
-    basic_block_t& exec_shared_access(basic_block_t& block, bool is_load, dom_t mem_reg,
-                                                            dom_t data_reg, int offset, W width) {
-        linear_expression_t addr = mem_reg.offset + offset;
-        return *in(block).fork("assume_shared", is_shared(mem_reg))
-            .assertion(addr >= 0)
-            .assertion(addr <= mem_reg.region - width)
-            .access_num_only(data_reg, is_load);
-
-    }
-
-    template <typename W>
-    basic_block_t& exec_data_access(basic_block_t& block, bool is_load, dom_t mem_reg,
-                                                        dom_t data_reg, int offset, W width) {
-        linear_expression_t addr = mem_reg.offset + offset;
-
-        return *in(block).fork("assume_data", mem_reg.region == T_PACKET)
-            .assertion(0 <= addr) // was machine.meta_size <= addr ????
-            .assertion(addr <= machine.data_size - width)
-            .access_num_only(data_reg, is_load);
-    }
-
-    template <typename W>
     basic_block_t& exec_ctx_access(basic_block_t& block, bool is_load, dom_t mem_reg, dom_t data_reg,
                                                         int offset, W width) {
         linear_expression_t addr = mem_reg.offset + offset;
-        auto  mid = in(block).fork("assume_ctx", mem_reg.region == T_CTX)
-                .assertion(addr >= 0)
-                .assertion(addr <= machine.ctx_desc.size - width);
+        auto mid = in(block).fork("assume_ctx", mem_reg.region == T_CTX);
 
         ptype_descr desc = machine.ctx_desc;
         if (!is_load) {
             return *mid.assume_normal(addr, desc)
                     .assertion(data_reg.region == T_NUM);
         } else {
-            basic_block_t& normal = *mid.fork("assume_ctx_not_special", eq(data_reg.region, data_reg.region)).assume_normal(addr, desc) //FIX
+            basic_block_t& normal = *mid.fork("context-not-special", eq(data_reg.region, data_reg.region)).assume_normal(addr, desc) //FIX
                         .assign(data_reg.region, T_NUM)
                         .havoc(data_reg.offset)
                         .havoc(data_reg.value);
@@ -512,11 +484,11 @@ class instruction_builder_t final {
                     .assume(data_reg.value <= PTR_MAX)
                     .assign(data_reg.offset, offset);
             };
-            basic_block_t& start_end = join(load_datap("data_start", desc.data, 0),
-                                load_datap("data_end",   desc.end, machine.data_size));
+            basic_block_t& start_end = join(load_datap("context-data_start", desc.data, 0),
+                                load_datap("context-data_end",   desc.end, machine.data_size));
             if (desc.meta < 0)
                 return join(start_end, normal);
-            basic_block_t& meta = load_datap("meta", desc.meta, machine.meta_size);
+            basic_block_t& meta = load_datap("context-meta", desc.meta, machine.meta_size);
             return join(join(start_end, meta), normal);
         }
     }
@@ -726,9 +698,7 @@ basic_block_t& instruction_builder_t::operator()(LockAdd const& b) {
     auto addr = machine.reg(b.access.basereg).offset + b.access.offset;
     return *in(block)
            .assertion(is_shared(machine.reg(b.access.basereg)))
-           .assertion(machine.reg(b.valreg).region == T_NUM)
-           .assertion(addr >= 0)
-           .assertion(addr <= machine.reg(b.access.basereg).region - b.access.width);
+           .assertion(machine.reg(b.valreg).region == T_NUM);
 }
 
 /** Translate eBPF binary instructions to Crab.
@@ -1144,8 +1114,6 @@ basic_block_t& instruction_builder_t::operator()(Mem const& b) {
         linear_expression_t addr = offset + mem_reg.offset; // negate access
         return join(*in(block).assertion(mem_reg.region != T_CTX),
                     *in(block).fork("assume_stack", mem_reg.region == T_STACK)
-                              .assertion(addr >= 0)
-                              .assertion(addr <= STACK_SIZE - width)
                               .store(addr, std::get<Imm>(b.value).v, width)
                               .done("exec_stack_access"));
     }
@@ -1153,10 +1121,12 @@ basic_block_t& instruction_builder_t::operator()(Mem const& b) {
 
     basic_block_t& tmp =  join(
                           join(exec_stack_access( block, b.is_load, mem_reg, data_reg, offset, width),
-                               exec_shared_access(block, b.is_load, mem_reg, data_reg, offset, width)),
+                               *in(block).fork("assume_shared", is_shared(mem_reg))
+                                         .access_num_only(data_reg, b.is_load)),
                                exec_ctx_access(   block, b.is_load, mem_reg, data_reg, offset, width));
     if (machine.ctx_desc.data >= 0) {
-        return join(tmp, exec_data_access(block, b.is_load, mem_reg, data_reg, offset, width));
+        return join(tmp, *in(block).fork("assume_data", mem_reg.region == T_PACKET)
+                                   .access_num_only(data_reg, b.is_load));
     }
     return tmp;
 }
