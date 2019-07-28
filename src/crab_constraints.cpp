@@ -401,7 +401,18 @@ class instruction_builder_t final {
                 return join(block, *in(block).fork("is null", reg.region == T_NUM).assertion(reg.value == 0));
             },
             [this](const ValidAccess& s) -> basic_block_t& {
-                return block;
+                auto reg = machine.reg(s.reg);
+                auto addr = reg.offset + s.offset;
+                basic_block_builder b = in(block);
+                b.assertion(addr >= 0);
+                // This is not the check for non-num, non-fd etc.
+                // TODO: maybe it should be? without join:
+                // b.fork("num", reg.region == T_NUM).assertion(neq(reg.region, reg.region));
+                // b.fork("fd", reg.region == T_MAP).assertion(neq(reg.region, reg.region));
+                return join(*b.fork("stack", reg.region == T_STACK).assertion(addr <= STACK_SIZE),
+                       join(*b.fork("shared", is_shared(reg)).assertion(addr <= reg.region),
+                       join(*b.fork("context", reg.region == T_CTX).assertion(addr <= machine.info.descriptor.size),
+                            *b.fork("data", reg.region == T_DATA).assertion(addr <= machine.data_size))));
             },
             [this](const TypeConstraint& s) -> basic_block_t&{
                 return block;
