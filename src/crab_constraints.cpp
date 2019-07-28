@@ -897,33 +897,21 @@ basic_block_t& instruction_builder_t::operator()(Call const& call) {
         switch (param.kind) {
         case ArgSingle::Kind::ANYTHING:
             // avoid pointer leakage:
-            if (!is_privileged()) {
-                in(block).assertion(arg.region == T_NUM);
-            }
             break;
         case ArgSingle::Kind::MAP_FD:
-            in(block).assertion(arg.region == T_MAP)
-                     .lshr(map_value_size, arg.value, 14)
+            in(block).lshr(map_value_size, arg.value, 14)
                      .rem(map_key_size, arg.value, 1 << 14, false)
                      .lshr(map_key_size, map_key_size, 6);
             break;
         case ArgSingle::Kind::PTR_TO_MAP_KEY:
-            in(block).assertion(arg.value > 0)
-                     .assertion(arg.region == T_STACK)
-                     .assertion(arg.offset >= 0)
-                     .assertion(arg.offset <= STACK_SIZE - map_key_size);
+            // TODO: move to assertions.cpp
+            in(block).assertion(arg.offset <= STACK_SIZE - map_key_size);
             break;
         case ArgSingle::Kind::PTR_TO_MAP_VALUE:
-            in(block).assertion(arg.value > 0)
-                     .assertion(arg.region == T_STACK)
-                     .assertion(arg.offset >= 0)
-                     .assertion(arg.offset <= STACK_SIZE - map_value_size);
+            // TODO: move to assertions.cpp
+            in(block).assertion(arg.offset <= STACK_SIZE - map_value_size);
             break;
         case ArgSingle::Kind::PTR_TO_CTX:
-            // FIX: should be arg.offset == 0
-            in(block).assertion(arg.value > 0)
-                     .assertion(arg.region == T_CTX)
-                     .assertion(arg.offset >= 0);
             break;
         }
     }
