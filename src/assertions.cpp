@@ -75,9 +75,11 @@ class AssertionExtractor {
                 // looks like packet is valid
                 // TODO: maybe arg.packet_access?
                 res.push_back(type_of(arg.reg, TypeGroup::stack_or_packet));
+                // TODO: check_access
                 break;
             case ArgSingle::Kind::PTR_TO_MAP_VALUE:
                 res.push_back(type_of(arg.reg, TypeGroup::stack_or_packet));
+                // TODO: check_access
                 break;
             case ArgSingle::Kind::PTR_TO_CTX:
                 res.push_back(type_of(arg.reg, TypeGroup::ctx));
@@ -96,6 +98,7 @@ class AssertionExtractor {
                 break;
             case ArgPair::Kind::PTR_TO_MEM:
                 /* LINUX: pointer to valid memory (stack, packet, map value) */
+                // TODO: check initialization
                 res.push_back(type_of(arg.mem, TypeGroup::mem));
                 break;
             case ArgPair::Kind::PTR_TO_UNINIT_MEM:
