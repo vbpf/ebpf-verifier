@@ -316,7 +316,6 @@ struct basic_block_builder {
         array_store_range(offset, width, data_reg.region);
 
         if (width != 8) {
-            assertion(data_reg.region == T_NUM);
             array_forget(machine.values, offset, width);
             array_forget(machine.offsets, offset, width);
             return *this;
@@ -985,10 +984,6 @@ basic_block_t& instruction_builder_t::operator()(Exit const& b) {
  */
 basic_block_t& instruction_builder_t::operator()(Assume const& b) {
     Condition cond = b.cond;
-    if (std::holds_alternative<Reg>(cond.right)) {
-        in(block).assert_init(machine.reg(cond.right));
-    }
-    in(block).assert_init(machine.reg(cond.left));
 
     dom_t dst = machine.reg(cond.left);
     if (std::holds_alternative<Reg>(cond.right)) {
@@ -1002,8 +997,8 @@ basic_block_t& instruction_builder_t::operator()(Assume const& b) {
 
         basic_block_t& different = *in(block).fork("different_type",neq(dst.region, src.region));
 
-        basic_block_t& null_src = *in(different).fork("null_src", is_pointer(dst)).assert_is_null(src);
-        basic_block_t& null_dst = *in(different).fork("null_dst", is_pointer(src)).assert_is_null(dst);
+        basic_block_t& null_src = *in(different).fork("null_src", is_pointer(dst));
+        basic_block_t& null_dst = *in(different).fork("null_dst", is_pointer(src));
 
         return join(join(numbers, pointers), join(null_src, null_dst));
     } else {
