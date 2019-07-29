@@ -1,6 +1,6 @@
 #pragma once
 
-#include "asm_cfg.hpp"
+#include "crab/cfg.hpp"
 #include "asm_files.hpp"
 #include "asm_marshal.hpp"
 #include "asm_ostream.hpp"

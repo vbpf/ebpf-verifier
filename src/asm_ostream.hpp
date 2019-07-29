@@ -3,8 +3,9 @@
 #include <functional>
 #include <ostream>
 #include <variant>
+#include <vector>
 
-#include "asm_cfg.hpp"
+#include "crab/cfg.hpp"
 #include "asm_syntax.hpp"
 
 inline pc_t label_to_pc(label_t label) {

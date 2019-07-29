@@ -10,7 +10,9 @@
 #include <string>
 #include <vector>
 
-#include "asm_cfg.hpp"
+#include "asm_syntax.hpp"
+#include "crab/cfg.hpp"
+
 #include "asm_ostream.hpp"
 #include "crab_constraints.hpp"
 
