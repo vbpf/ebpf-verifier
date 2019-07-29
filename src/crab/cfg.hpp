@@ -7,23 +7,11 @@
  * All the CFG statements are strongly typed. However, only variables
  * need to be typed. The types of constants can be inferred from the
  * context since they always appear together with at least one
- * variable. Types form a **flat** lattice consisting of:
+ * variable.
  *
- * - integers,
- * - array of integers,
+ * Important note:
  *
- * Crab CFG supports the modelling of:
- *
- *   - arithmetic operations over integers or reals,
- *   - boolean operations,
- *   - C-like pointers,
- *   - uni-dimensional arrays of booleans, integers or pointers
- *     (useful for C-like arrays and heap abstractions),
- *   - and functions
- *
- * Important notes:
- *
- * - Objects of the class cfg_t are not copyable. Instead, we provide a
+ *   Objects of the class cfg_t are not copyable. Instead, we provide a
  *   class cfg_ref_t that wraps cfg_t references into copyable and
  *   assignable objects.
  *
@@ -31,21 +19,21 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
-#include <vector>
 #include <variant>
+#include <vector>
 
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/range/iterator_range.hpp>
 
-#include "crab/debug.hpp"
-#include "crab/types.hpp"
 #include "crab/bignums.hpp"
 #include "crab/crab_syntax.hpp"
+#include "crab/debug.hpp"
 #include "crab/interval.hpp"
 #include "crab/linear_constraints.hpp"
+#include "crab/types.hpp"
 
-#include "asm_syntax.hpp"
 #include "asm_ostream.hpp"
+#include "asm_syntax.hpp"
 
 namespace crab {
 
@@ -145,9 +133,7 @@ class basic_block_t final {
         std::move(other.m_ts.begin(), other.m_ts.end(), std::back_inserter(m_ts));
     }
 
-    void swap_instructions(stmt_list_t& ts) {
-        std::swap(m_ts, ts);
-    }
+    void swap_instructions(stmt_list_t& ts) { std::swap(m_ts, ts); }
 
     void write(std::ostream& o) const;
 
@@ -538,8 +524,7 @@ class cfg_ref_t final {
     void simplify() { get().simplify(); }
 };
 
-// Viewing a cfg_t with all edges and block statements
-// reversed. Useful for backward analysis.
+// Viewing a cfg_t with all edges and block statements reversed. Useful for backward analysis.
 class cfg_rev_t final {
   public:
     using node_t = label_t; // for Bgl graphs
