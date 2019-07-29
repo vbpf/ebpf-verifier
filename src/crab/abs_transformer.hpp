@@ -414,10 +414,8 @@ class intra_abs_transformer {
         ptype_descr desc = global_program_info.descriptor;
 
         AbsDomain assume_normal{assume_ctx}; 
-        assume(addr != desc.data);
-        assume(addr != desc.end);
-            assume_normal += mem_reg_offset != desc.data;
-            assume_normal += mem_reg_offset != desc.end;
+        assume_normal += mem_reg_offset != desc.data;
+        assume_normal += mem_reg_offset != desc.end;
         if (desc.meta >= 0) {
             assume_normal += mem_reg_offset != desc.meta;
         }
@@ -427,12 +425,6 @@ class intra_abs_transformer {
 
         if (desc.data < 0) {
             std::swap(assume_ctx, assume_normal);
-            return;
-        }
-        if (!assume_normal.is_bottom()) {
-            assume_ctx -= data_reg_value;
-            assume_ctx -= data_reg_offset;
-            assume_ctx -= data_reg_type;
             return;
         }
         std::cerr << "Looking for packet registers\n";
@@ -455,7 +447,7 @@ class intra_abs_transformer {
             assume_ctx.assign(data_reg_offset, variable_t::packet_size());
         else if (load_datap(desc.meta))
             assume_ctx.assign(data_reg_offset, variable_t::meta_offset());
-        else assert(false);
+        assume_ctx |= assume_normal;
     }
 
     template <typename A, typename X, typename Y, typename Z>
