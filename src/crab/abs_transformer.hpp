@@ -3,25 +3,7 @@
 /*
    Implementation of the abstract transfer functions by reducing them
    to abstract domain operations.
-
-   These are the main Crab statements for which we define their abstract
-   transfer functions:
-
-   ARITHMETIC and BOOLEAN
-     x := y bin_op z;
-     x := y;
-     assume(cst)
-     assert(cst);
-     x := select(cond, y, z);
-
-   ARRAYS
-     a[l...u] := v (a,b are arrays and v can be bool/integer/pointer)
-     a[i] := v;
-     v := a[i];
-
-   havoc(x);
-
- */
+*/
 #include <limits>
 #include <variant>
 #include <iostream>
@@ -51,12 +33,12 @@ variable_t reg_value(Reg i) { return reg_value(i.v); }
 variable_t reg_offset(Reg i) { return reg_offset(i.v); }
 variable_t reg_type(Reg i) { return reg_type(i.v); }
 
-inline linear_constraint_t eq(const variable_t& a, const variable_t& b) {
+inline linear_constraint_t eq(variable_t a, variable_t b) {
     using namespace dsl_syntax;
     return {a - b, linear_constraint_t::EQUALITY};
 }
 
-inline linear_constraint_t neq(const variable_t& a, const variable_t& b) {
+inline linear_constraint_t neq(variable_t a, variable_t b) {
     using namespace dsl_syntax;
     return {a - b, linear_constraint_t::DISEQUATION};
 };
@@ -64,6 +46,84 @@ inline linear_constraint_t neq(const variable_t& a, const variable_t& b) {
 constexpr int MAX_PACKET_OFF = 0xffff;
 constexpr int64_t MY_INT_MAX = INT_MAX;
 constexpr int64_t PTR_MAX = MY_INT_MAX - MAX_PACKET_OFF;
+
+/** Linear constraint for a pointer comparison.
+ */
+inline linear_constraint_t jmp_to_cst_offsets_reg(Condition::Op op, variable_t dst_offset, variable_t src_offset) {
+    using namespace dsl_syntax;
+    using Op = Condition::Op;
+    switch (op) {
+    case Op::EQ: return eq(dst_offset, src_offset);
+    case Op::NE: return neq(dst_offset, src_offset);
+    case Op::GE: return dst_offset >= src_offset;
+    case Op::SGE: return dst_offset >= src_offset; // pointer comparison is unsigned
+    case Op::LE: return dst_offset <= src_offset;
+    case Op::SLE: return dst_offset <= src_offset; // pointer comparison is unsigned
+    case Op::GT: return dst_offset >= src_offset + 1;
+    case Op::SGT: return dst_offset >= src_offset + 1; // pointer comparison is unsigned
+    case Op::SLT: return src_offset >= dst_offset + 1;
+    // Note: reverse the test as a workaround strange lookup:
+    case Op::LT: return src_offset >= dst_offset + 1; // FIX unsigned
+    default: return dst_offset - dst_offset == 0;
+    }
+}
+
+/** Linear constraints for a comparison with a constant.
+ */
+inline std::vector<linear_constraint_t> jmp_to_cst_imm(Condition::Op op, variable_t dst_value, int imm) {
+    using namespace dsl_syntax;
+    using Op = Condition::Op;
+    switch (op) {
+    case Op::EQ: return {dst_value == imm};
+    case Op::NE: return {dst_value != imm};
+    case Op::GE: return {dst_value >= (unsigned)imm}; // FIX unsigned
+    case Op::SGE: return {dst_value >= imm};
+    case Op::LE: return {dst_value <= imm, 0 <= dst_value}; // FIX unsigned
+    case Op::SLE: return {dst_value <= imm};
+    case Op::GT: return {dst_value >= (unsigned)imm + 1}; // FIX unsigned
+    case Op::SGT: return {dst_value >= imm + 1};
+    case Op::LT: return {dst_value <= (unsigned)imm - 1}; // FIX unsigned
+    case Op::SLT: return {dst_value <= imm - 1};
+    case Op::SET: throw std::exception();
+    case Op::NSET: return {};
+    }
+    return {};
+}
+
+/** Linear constraint for a numerical comparison between registers.
+ */
+inline std::vector<linear_constraint_t> jmp_to_cst_reg(Condition::Op op, variable_t dst_value, variable_t src_value) {
+    using namespace dsl_syntax;
+    using Op = Condition::Op;
+    switch (op) {
+    case Op::EQ: return {eq(dst_value, src_value)};
+    case Op::NE: return {neq(dst_value, src_value)};
+    case Op::GE: return {dst_value >= src_value}; // FIX unsigned
+    case Op::SGE: return {dst_value >= src_value};
+    case Op::LE: return {dst_value <= src_value, 0 <= dst_value}; // FIX unsigned
+    case Op::SLE: return {dst_value <= src_value};
+    case Op::GT: return {dst_value >= src_value + 1}; // FIX unsigned
+    case Op::SGT: return {dst_value >= src_value + 1};
+    // Note: reverse the test as a workaround strange lookup:
+    case Op::LT: return {src_value >= dst_value + 1}; // FIX unsigned
+    case Op::SLT: return {src_value >= dst_value + 1};
+    case Op::SET: throw std::exception();
+    case Op::NSET: return {};
+    }
+    return {};
+}
+
+inline bool is_unsigned_cmp(Condition::Op op) {
+    using Op = Condition::Op;
+    switch (op) {
+    case Op::GE:
+    case Op::LE:
+    case Op::GT:
+    case Op::LT: return true;
+    default: return false;
+    }
+    return {};
+}
 
 template <typename AbsDomain>
 class intra_abs_transformer {
@@ -132,10 +192,10 @@ class intra_abs_transformer {
         no_pointer(r.v);
     }
 
-    static linear_constraint_t is_pointer(int v) { using namespace dsl_syntax; return reg_type(v) >= T_CTX; }
-    static linear_constraint_t is_init(int v) { using namespace dsl_syntax; return reg_type(v) > T_UNINIT; }
-    static linear_constraint_t is_shared(int v) { using namespace dsl_syntax; return reg_type(v) > T_SHARED; }
-    static linear_constraint_t is_not_num(int v) { using namespace dsl_syntax; return reg_type(v) > T_NUM; }
+    static linear_constraint_t is_pointer(Reg v) { using namespace dsl_syntax; return reg_type(v) >= T_CTX; }
+    static linear_constraint_t is_init(Reg v) { using namespace dsl_syntax; return reg_type(v) > T_UNINIT; }
+    static linear_constraint_t is_shared(Reg v) { using namespace dsl_syntax; return reg_type(v) > T_SHARED; }
+    static linear_constraint_t is_not_num(Reg v) { using namespace dsl_syntax; return reg_type(v) > T_NUM; }
 
     void overflow(variable_t lhs) {
         // handle overflow, assuming 64 bit
@@ -208,6 +268,46 @@ class intra_abs_transformer {
 
     void operator()(const array_load_t& stmt) { m_inv.array_load(stmt.lhs, stmt.array, stmt.elem_size, stmt.index); }
 
+    void operator()(Assume const& b) {
+        using namespace dsl_syntax;
+        Condition cond = b.cond;
+        Reg dst = cond.left;
+        variable_t dst_value  = reg_value (dst);
+        variable_t dst_offset = reg_offset(dst);
+        variable_t dst_type   = reg_type  (dst);
+        if (std::holds_alternative<Reg>(cond.right)) {
+            Reg src = std::get<Reg>(cond.right);
+            variable_t src_value  = reg_value (src);
+            variable_t src_offset = reg_offset(src);
+            variable_t src_type   = reg_type  (src);
+            AbsDomain different{m_inv};
+            different += neq(dst_type, src_type);
+
+            AbsDomain null_src{different}; null_src += is_pointer(dst);
+            AbsDomain null_dst{different}; null_dst += is_pointer(src);
+
+            m_inv += eq(dst_type, src_type);
+
+            AbsDomain numbers{m_inv};
+            numbers += dst_type == T_NUM;
+            if (!is_unsigned_cmp(cond.op))
+                for (const linear_constraint_t& cst : jmp_to_cst_reg(cond.op, dst_value, src_value))
+                    numbers += cst;
+
+            m_inv += is_pointer(dst);
+            m_inv += jmp_to_cst_offsets_reg(cond.op, dst_offset, src_offset);
+
+            m_inv |= numbers;
+
+            m_inv |= null_src;
+            m_inv |= null_dst;
+        } else {
+            int imm = static_cast<int>(std::get<Imm>(cond.right).v);
+            for (const linear_constraint_t& cst : jmp_to_cst_imm(cond.op, dst_value, imm))
+                assume(cst);
+        }
+    }
+
     void operator()(Undefined const& a) {}
     void operator()(Un const& stmt) {
         switch (stmt.op) {
@@ -225,7 +325,6 @@ class intra_abs_transformer {
     }
     void operator()(Exit const& a) {}
     void operator()(Jmp const& a) {}
-    void operator()(Assume const& a) {}
 
     void operator()(const Comparable& s) {
         m_inv += eq(reg_type(s.r1), reg_type(s.r2));
@@ -362,7 +461,7 @@ class intra_abs_transformer {
     }
 
     void operator()(LoadMapFd const& ins) {
-        int dst = ins.dst.v;
+        Reg dst = ins.dst;
         assign(reg_type(dst), T_MAP);
         assign(reg_value(dst), ins.mapfd);
         havoc(reg_offset(dst));
@@ -371,7 +470,7 @@ class intra_abs_transformer {
     void operator()(Bin const& bin) {
         using namespace dsl_syntax;
 
-        int dst = bin.dst.v;
+        Reg dst = bin.dst;
         variable_t dst_value = reg_value(dst);
         variable_t dst_offset = reg_offset(dst);
         variable_t dst_type = reg_type(dst);
@@ -444,7 +543,7 @@ class intra_abs_transformer {
             }
         } else {
             // dst op= src
-            int src = static_cast<int>(std::get<Reg>(bin.v).v);
+            Reg src = std::get<Reg>(bin.v);
             variable_t src_value = reg_value(src);
             variable_t src_offset = reg_offset(src);
             variable_t src_type = reg_type(src);
