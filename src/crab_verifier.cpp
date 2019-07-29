@@ -21,9 +21,9 @@
 #include "crab/split_dbm.hpp"
 #include "crab/stats.hpp"
 #include "crab/types.hpp"
+#include "crab/cfg.hpp"
 
 #include "asm_syntax.hpp"
-#include "asm_cfg.hpp"
 #include "config.hpp"
 
 #include "crab_common.hpp"

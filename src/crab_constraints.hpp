@@ -3,7 +3,7 @@
 
 #include "spec_type_descriptors.hpp"
 
-#include "asm_cfg.hpp"
+#include "crab/cfg.hpp"
 #include "asm_syntax.hpp"
 
 #include "crab_common.hpp"

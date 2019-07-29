@@ -3,9 +3,7 @@
 #include <tuple>
 
 #include "spec_type_descriptors.hpp"
-
-#include "asm_cfg.hpp"
-
+#include "crab/cfg.hpp"
 /** Run the analysis using crab.
  *
  * \return A pair (passed, number_of_seconds)
