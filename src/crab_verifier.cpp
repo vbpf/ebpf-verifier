@@ -39,7 +39,7 @@ using crab::checks_db;
 // Numerical domains over integers
 using sdbm_domain_t = crab::domains::SplitDBM;
 using dom_t = crab::domains::array_expansion_domain<sdbm_domain_t>;
-using analyzer_t = crab::interleaved_fwd_fixpoint_iterator<dom_t, Instruction>;
+using analyzer_t = crab::interleaved_fwd_fixpoint_iterator<dom_t>;
 
 static auto extract_pre(analyzer_t& analyzer, cfg_t& cfg) {
     std::map<string, dom_t> res;
@@ -93,7 +93,7 @@ static std::vector<string> sorted_labels(cfg_t& cfg) {
     return labels;
 }
 
-std::tuple<bool, double> abs_validate(Cfg& simple_cfg, program_info info) {
+std::tuple<bool, double> abs_validate(cfg_t& simple_cfg, program_info info) {
     cfg_t& cfg = simple_cfg;
 
     printer_t pre_printer;

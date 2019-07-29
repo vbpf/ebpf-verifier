@@ -40,14 +40,14 @@ static bool has_fall(Instruction ins) {
     return true;
 }
 
-Cfg instruction_seq_to_cfg(const InstructionSeq& insts) {
+cfg_t instruction_seq_to_cfg(const InstructionSeq& insts) {
     string exit_label;
     for (const auto& [label, inst] : insts) {
         if (std::holds_alternative<Exit>(inst))
             exit_label = label;
     }
     if (exit_label.empty()) throw std::runtime_error("no exit");
-    Cfg cfg("0", exit_label);
+    cfg_t cfg("0", exit_label);
     std::optional<label_t> falling_from = {};
     for (const auto& [label, inst] : insts) {
 
@@ -104,10 +104,10 @@ static vector<label_t> unique(const std::pair<T, T>& be) {
     return res;
 }
 
-Cfg to_nondet(const Cfg& cfg) {
-    Cfg res(cfg.entry(), cfg.exit());
+cfg_t to_nondet(const cfg_t& cfg) {
+    cfg_t res(cfg.entry(), cfg.exit());
     for (auto const& [this_label, bb] : cfg) {
-        BasicBlock& newbb = res.insert(this_label);
+        basic_block_t& newbb = res.insert(this_label);
 
         for (auto ins : bb) {
             if (!std::holds_alternative<Jmp>(ins)) {
@@ -118,7 +118,7 @@ Cfg to_nondet(const Cfg& cfg) {
         auto [pb, pe] = bb.prev_blocks();
         for (label_t prev_label : vector<label_t>(pb, pe)) {
             bool is_one = unique(cfg.get_node(prev_label).next_blocks()).size() > 1;
-            BasicBlock& pbb = res.insert(is_one ? prev_label + ":" + this_label : prev_label);
+            basic_block_t& pbb = res.insert(is_one ? prev_label + ":" + this_label : prev_label);
             pbb >> newbb;
         }
         // note the special case where we jump to fallthrough
@@ -132,7 +132,7 @@ Cfg to_nondet(const Cfg& cfg) {
             };
             for (auto const& [next_label, cond] : jumps) {
                 label_t l = mid_label + next_label;
-                BasicBlock& bb = res.insert(l);
+                basic_block_t& bb = res.insert(l);
                 bb.insert<Assume>(cond);
                 newbb >> bb;
                 bb >> res.insert(next_label);
@@ -188,14 +188,14 @@ std::vector<std::string> stats_headers() {
     };
 }
 
-std::map<std::string, int> collect_stats(const Cfg& cfg) {
+std::map<std::string, int> collect_stats(const cfg_t& cfg) {
     std::map<std::string, int> res;
     for (auto h : stats_headers()) {
         res[h] = 0;
     }
     for (auto const& [this_label, _] : cfg) {
         res["basic_blocks"]++;
-        BasicBlock const& bb = cfg.get_node(this_label);
+        basic_block_t const& bb = cfg.get_node(this_label);
         res["instructions"] += bb.size();
         for (Instruction ins : bb) {
             if (std::holds_alternative<LoadMapFd>(ins)) {

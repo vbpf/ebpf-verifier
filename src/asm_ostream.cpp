@@ -337,7 +337,7 @@ void print(const InstructionSeq& insts, std::string outfile) {
 
 void print(const InstructionSeq& insts) { print(insts, std::cout); }
 
-void print(const Cfg& cfg, bool nondet, std::ostream& out) {
+void print(const cfg_t& cfg, bool nondet, std::ostream& out) {
     if (!global_options.print_invariants)
         return;
     return;
@@ -376,16 +376,16 @@ void print(const Cfg& cfg, bool nondet, std::ostream& out) {
     */
 }
 
-void print(const Cfg& cfg, bool nondet, std::string outfile) {
+void print(const cfg_t& cfg, bool nondet, std::string outfile) {
     std::ofstream out{outfile};
     if (out.fail())
         throw std::runtime_error(std::string("Could not open file ") + outfile);
     print(cfg, nondet, out);
 }
 
-void print(const Cfg& cfg, bool nondet) { print(cfg, nondet, std::cout); }
+void print(const cfg_t& cfg, bool nondet) { print(cfg, nondet, std::cout); }
 
-void print_dot(const Cfg& cfg, std::ostream& out) {
+void print_dot(const cfg_t& cfg, std::ostream& out) {
     out << "digraph program {\n";
     out << "    node [shape = rectangle];\n";
     for (const auto& [label, _] : cfg) {
@@ -407,11 +407,11 @@ void print_dot(const Cfg& cfg, std::ostream& out) {
     out << "}\n";
 }
 
-void print_dot(const Cfg& cfg, std::string outfile) {
+void print_dot(const cfg_t& cfg, std::string outfile) {
     std::ofstream out{outfile};
     if (out.fail())
         throw std::runtime_error(std::string("Could not open file ") + outfile);
     print_dot(cfg, out);
 }
 
-void print_dot(const Cfg& cfg) { print_dot(cfg, std::cout); }
+void print_dot(const cfg_t& cfg) { print_dot(cfg, std::cout); }
