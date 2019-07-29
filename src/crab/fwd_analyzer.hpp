@@ -87,7 +87,6 @@ class interleaved_fwd_fixpoint_iterator final {
   public:
     interleaved_fwd_fixpoint_iterator(cfg_ref_t cfg)
         : _cfg(cfg), _wto(cfg), _widening_delay(1) {
-        setup_entry(_pre[_cfg.entry()]);
     }
 
     AbsDomain get_pre(label_t node) { return this->get(this->_pre, node); }
