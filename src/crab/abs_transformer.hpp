@@ -47,6 +47,10 @@ variable_t reg_value(int i) { return variable_t::reg(data_kind_t::values, i); }
 variable_t reg_offset(int i) { return variable_t::reg(data_kind_t::offsets, i); }
 variable_t reg_type(int i) { return variable_t::reg(data_kind_t::regions, i); }
 
+constexpr int MAX_PACKET_OFF = 0xffff;
+constexpr int64_t MY_INT_MAX = INT_MAX;
+constexpr int64_t PTR_MAX = MY_INT_MAX - MAX_PACKET_OFF;
+
 template <typename AbsDomain>
 class intra_abs_transformer {
   public:
@@ -177,7 +181,6 @@ class intra_abs_transformer {
 
     void operator()(Undefined const& a) {}
     void operator()(Un const& a) {}
-    void operator()(Call const& a) {}
     void operator()(Exit const& a) {}
     void operator()(Jmp const& a) {}
     void operator()(Assume const& a) {}
@@ -185,6 +188,63 @@ class intra_abs_transformer {
     void operator()(Packet const& a) {}
     void operator()(Mem const& a) {}
     void operator()(LockAdd const& a) {}
+
+    void operator()(Call const& call) {
+        using namespace dsl_syntax;
+        for (ArgSingle param : call.singles) {
+            switch (param.kind) {
+            case ArgSingle::Kind::ANYTHING:
+                break;
+            case ArgSingle::Kind::MAP_FD: {
+                variable_t v = reg_value(param.reg.v);
+                apply(m_inv, crab::bitwise_binop_t::LSHR, variable_t::map_value_size(), v, (number_t)14);
+                variable_t mk = variable_t::map_key_size();
+                apply(m_inv, crab::arith_binop_t::UREM, mk, v, (number_t)(1 << 14));
+                lshr(mk, 6);
+                break;
+            }
+            case ArgSingle::Kind::PTR_TO_MAP_KEY:
+                break;
+            case ArgSingle::Kind::PTR_TO_MAP_VALUE:
+                break;
+            case ArgSingle::Kind::PTR_TO_CTX:
+                break;
+            }
+        }
+        for (ArgPair param : call.pairs) {
+            switch (param.kind) {
+            case ArgPair::Kind::PTR_TO_MEM_OR_NULL: break;
+            case ArgPair::Kind::PTR_TO_MEM: break;
+            case ArgPair::Kind::PTR_TO_UNINIT_MEM:
+                // assume it's always the stack. The following fails to work for some reason
+                // fork("assume_stack_uninit", arg.region == T_STACK)
+                //    havoc_num_region(arg.offset, sizereg.value));
+                // havoc_num_region(arg.offset, sizereg.value);
+                break;
+            }
+        }
+        for (int i = 1; i <= 5; i++) {
+            m_inv -= reg_value(i);
+            m_inv -= reg_offset(i);
+            m_inv -= reg_type(i);
+        }
+        variable_t r0 = reg_value(0);
+        m_inv -= r0;
+        if (call.returns_map) {
+            // no support for map-in-map yet:
+            //   if (machine.info.map_defs.at(map_type).type == MapType::ARRAY_OF_MAPS
+            //    || machine.info.map_defs.at(map_type).type == MapType::HASH_OF_MAPS) { }
+            // This is the only way to get a null pointer - note the `<=`:
+            m_inv += 0 <= r0;
+            m_inv += r0 <= PTR_MAX;
+            m_inv.assign(reg_offset(0), 0);
+            m_inv.assign(reg_type(0), variable_t::map_value_size());
+        } else {
+            m_inv -= reg_offset(0);
+            m_inv.assign(reg_type(0), T_NUM);
+            // assume(r0 < 0); for VOID, which is actually "no return if succeed".
+        }
+    }
 
     void operator()(LoadMapFd const& ins) {
         int dst = ins.dst.v;
@@ -492,9 +552,6 @@ class assert_property_checker final : public intra_abs_transformer<AbsDomain> {
     }
 };
 
-constexpr int MAX_PACKET_OFF = 0xffff;
-constexpr int64_t MY_INT_MAX = INT_MAX;
-constexpr int64_t PTR_MAX = MY_INT_MAX - MAX_PACKET_OFF;
 
 template <typename AbsDomain>
 inline AbsDomain setup_entry() {
