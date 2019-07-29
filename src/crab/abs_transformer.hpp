@@ -176,7 +176,6 @@ class intra_abs_transformer {
     void operator()(const array_load_t& stmt) { m_inv.array_load(stmt.lhs, stmt.array, stmt.elem_size, stmt.index); }
 
     void operator()(Undefined const& a) {}
-    void operator()(LoadMapFd const& a) {}
     void operator()(Un const& a) {}
     void operator()(Call const& a) {}
     void operator()(Exit const& a) {}
@@ -186,6 +185,13 @@ class intra_abs_transformer {
     void operator()(Packet const& a) {}
     void operator()(Mem const& a) {}
     void operator()(LockAdd const& a) {}
+
+    void operator()(LoadMapFd const& ins) {
+        int dst = ins.dst.v;
+        m_inv.assign(reg_type(dst), T_MAP);
+        m_inv.assign(reg_value(dst), ins.mapfd);
+        m_inv -= reg_offset(dst);
+    }
 
     void operator()(Bin const& bin) {
         using namespace dsl_syntax;
