@@ -199,9 +199,11 @@ protected:
         no_pointer(r.v);
     }
 
+    static linear_constraint_t is_shared(variable_t v) { using namespace dsl_syntax; return v > T_SHARED; }
+
     static linear_constraint_t is_pointer(Reg v) { using namespace dsl_syntax; return reg_type(v) >= T_CTX; }
     static linear_constraint_t is_init(Reg v) { using namespace dsl_syntax; return reg_type(v) > T_UNINIT; }
-    static linear_constraint_t is_shared(Reg v) { using namespace dsl_syntax; return reg_type(v) > T_SHARED; }
+    static linear_constraint_t is_shared(Reg v) { return is_shared(reg_type(v)); }
     static linear_constraint_t is_not_num(Reg v) { using namespace dsl_syntax; return reg_type(v) > T_NUM; }
 
     void overflow(variable_t lhs) {
@@ -268,12 +270,12 @@ protected:
     }
 
     void operator()(const array_store_t& stmt) {
-        m_inv.array_store(stmt.array, stmt.elem_size, stmt.index, stmt.value);
+        m_inv.array_store(stmt.array, stmt.index, stmt.elem_size, stmt.value);
     }
 
     void operator()(const array_havoc_t& stmt) { m_inv.array_havoc(stmt.array, stmt.index, stmt.elem_size); }
 
-    void operator()(const array_load_t& stmt) { m_inv.array_load(stmt.lhs, stmt.array, stmt.elem_size, stmt.index); }
+    // void operator()(const array_load_t& stmt) { m_inv.array_load(stmt.lhs, stmt.array, stmt.elem_size, stmt.index); }
 
     void operator()(Assume const& s) {
         using namespace dsl_syntax;
@@ -355,9 +357,77 @@ protected:
     }
 
     void operator()(const ValidMapKeyValue& s) {
+        using namespace dsl_syntax;
+
+        variable_t v = reg_value(s.map_fd_reg);
+        apply(m_inv, crab::bitwise_binop_t::LSHR, variable_t::map_value_size(), v, (number_t)14);
+        variable_t mk = variable_t::map_key_size();
+        apply(m_inv, crab::arith_binop_t::UREM, mk, v, (number_t)(1 << 14));
+        lshr(mk, 6);
+
+        variable_t lb = reg_offset(s.access_reg);
+        variable_t width = s.key ? variable_t::map_key_size() : variable_t::map_value_size();
+        check_access(reg_type(s.access_reg), lb, lb + width, false, std::nullopt, s);
     }
 
     void operator()(const ValidAccess& s) {
+        using namespace dsl_syntax;
+
+        linear_expression_t lb = reg_offset(s.reg) + s.offset;
+        linear_expression_t ub;
+        if (std::holds_alternative<Imm>(s.width)) ub = lb + std::get<Imm>(s.width).v;
+        else ub = lb + reg_value(std::get<Reg>(s.width));
+        bool is_comparison_check = s.width == (Value)Imm{0};
+        std::optional<variable_t> reg_value_for_null = s.or_null ? std::optional<variable_t>(reg_value(s.reg)) : std::nullopt;
+        return check_access(reg_type(s.reg), lb, ub, is_comparison_check, reg_value_for_null, s);
+    }
+
+    void check_access(variable_t reg_type, linear_expression_t lb, linear_expression_t ub, bool is_comparison_check, std::optional<variable_t> reg_value_for_null, AssertionConstraint s) {
+        using namespace dsl_syntax;
+        AbsDomain ptr{m_inv};
+        assume(ptr, reg_type > T_NUM);
+        // This is not the check for non-num, non-map_fd etc.
+        // It could, without join:
+        // b.fork("num", reg_type == T_NUM).assertion(neq(reg_type, reg_type));
+        // b.fork("map_fd", reg_type == T_MAP).assertion(neq(reg_type, reg_type));
+        // But then we'll need a different check for pointer comparison
+        // this is why "assume" and not "require"
+
+        AbsDomain packet{ptr};
+        assume(packet, reg_type == T_PACKET);
+        require(packet, lb >= variable_t::meta_offset(), s);
+        require(packet, is_comparison_check ? (ub <= MAX_PACKET_OFF) : (ub <= variable_t::packet_size()), s);
+
+        require(ptr, lb >= 0, s);
+
+        AbsDomain stack{ptr};
+        assume(stack, reg_type == T_STACK);
+        require(stack, ub <= STACK_SIZE, s);
+
+        AbsDomain shared{ptr};
+        assume(shared, is_shared(reg_type));
+        require(shared, ub <= reg_type, s);
+
+        AbsDomain context{ptr};
+        assume(context, is_shared(reg_type));
+        require(context, ub <= global_program_info.descriptor.size, s);
+
+        if (!reg_value_for_null) {
+            if (is_comparison_check) {
+                m_inv |= ptr;
+            } else {
+                std::swap(m_inv, ptr);
+            }
+            return;
+        }
+
+        assume(reg_type == T_NUM);
+        require(*reg_value_for_null == 0, s);
+
+        m_inv |= stack;
+        m_inv |= shared;
+        m_inv |= context;
+        m_inv |= packet;
     }
 
     void operator()(const ValidStore& s) {
@@ -434,12 +504,12 @@ protected:
             std::swap(assume_ctx, assume_normal);
             return;
         }
-        std::cerr << "Looking for packet registers\n";
+        // std::cerr << "Looking for packet registers\n";
         auto load_datap = [&](int start) -> bool {
             AbsDomain ret{assume_ctx};
             ret += addr == start;
             if (!ret.is_bottom()) {
-                std::cerr << "Found!\n";
+                // std::cerr << "Found!\n";
                 return true;
             }
             return false;
@@ -475,9 +545,9 @@ protected:
     template <typename A>
     void do_load_stack(AbsDomain& m_inv, int width, A addr, Reg target) {
         if (width == 8) {
-            m_inv.array_load(reg_offset(target), data_kind_t::offsets, width, addr);
-            m_inv.array_load(reg_value(target), data_kind_t::values, width, addr);
-            m_inv.array_load(reg_type(target), data_kind_t::types, width, addr);
+            m_inv.array_load(reg_offset(target), data_kind_t::offsets, 8, addr);
+            m_inv.array_load(reg_value(target), data_kind_t::values, 8, addr);
+            m_inv.array_load(reg_type(target), data_kind_t::types, 8, addr);
         } else {
             m_inv -= reg_offset(target);
             m_inv -= reg_value(target);
@@ -581,11 +651,7 @@ protected:
             case ArgSingle::Kind::ANYTHING:
                 break;
             case ArgSingle::Kind::MAP_FD: {
-                variable_t v = reg_value(param.reg.v);
-                apply(m_inv, crab::bitwise_binop_t::LSHR, variable_t::map_value_size(), v, (number_t)14);
-                variable_t mk = variable_t::map_key_size();
-                apply(m_inv, crab::arith_binop_t::UREM, mk, v, (number_t)(1 << 14));
-                lshr(mk, 6);
+                // should have been done in the assertion
                 break;
             }
             case ArgSingle::Kind::PTR_TO_MAP_KEY:
@@ -934,6 +1000,10 @@ out:
 
 template <typename AbsDomain>
 inline AbsDomain setup_entry() {
+    std::cerr << "meta: " << global_program_info.descriptor.meta << "\n";
+    std::cerr << "data: " << global_program_info.descriptor.data << "\n";
+    std::cerr << "end: " << global_program_info.descriptor.end << "\n";
+    std::cerr << "ctx size: " << global_program_info.descriptor.size << "\n";
     using namespace dsl_syntax;
 
     // intra_abs_transformer<AbsDomain>(inv);

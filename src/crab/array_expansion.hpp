@@ -542,8 +542,8 @@ class array_expansion_domain final : public writeable {
         return res;
     }
 
-    void array_store(data_kind_t kind, linear_expression_t elem_size, linear_expression_t i, linear_expression_t val) {
-        auto maybe_cell = kill_and_find_var(kind, elem_size, i);
+    void array_store(data_kind_t kind, linear_expression_t idx, linear_expression_t elem_size, linear_expression_t val) {
+        auto maybe_cell = kill_and_find_var(kind, elem_size, idx);
         if (maybe_cell) {
             // perform strong update
             //std::cout << "(" << maybe_cell->first.index() << ", " << maybe_cell->second << ")\n";
