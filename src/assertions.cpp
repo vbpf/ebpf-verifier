@@ -185,7 +185,7 @@ class AssertExtractor {
     }
 };
 
-void explicate_assertions(Cfg& cfg, program_info info) {
+void explicate_assertions(cfg_t& cfg, program_info info) {
     for (auto& [this_label, bb] : cfg) {
         vector<Instruction> insts;
         for (auto ins : vector<Instruction>(bb.begin(), bb.end())) {

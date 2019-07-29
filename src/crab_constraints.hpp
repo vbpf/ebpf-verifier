@@ -23,6 +23,6 @@ inline int first_num(const label_t& s) {
     }
 }
 
-/** Translate an eBPF Cfg to to Crab's cfg_t.
+/** Translate an eBPF cfg_t to to Crab's cfg_t.
  */
-cfg_t build_crab_cfg(Cfg const& simple_cfg, program_info info);
+cfg_t build_crab_cfg(cfg_t const& simple_cfg, program_info info);

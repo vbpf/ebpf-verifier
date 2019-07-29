@@ -106,7 +106,7 @@ int main(int argc, char** argv) {
 
     int instruction_count = prog.size();
 
-    Cfg det_cfg = instruction_seq_to_cfg(prog);
+    cfg_t det_cfg = instruction_seq_to_cfg(prog);
 
     // if (!dotfile.empty()) {
     //     std::cout << "det:\n";
@@ -117,7 +117,7 @@ int main(int argc, char** argv) {
     // std::cout << "to nondet...\n";
     explicate_assertions(det_cfg, raw_prog.info);
 
-    Cfg cfg = to_nondet(det_cfg);
+    cfg_t cfg = to_nondet(det_cfg);
     if (global_options.simplify) {
         // std::cout << "simplifying...\n";
         cfg.simplify();

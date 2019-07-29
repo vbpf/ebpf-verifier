@@ -31,7 +31,7 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
-
+#include <vector>
 #include <variant>
 
 #include <boost/iterator/transform_iterator.hpp>
@@ -48,17 +48,13 @@
 #include "asm_ostream.hpp"
 
 namespace crab {
-template <typename Language>
-class cfg;
 
-template <typename Language>
-class basic_block final {
-    using basic_block_t = basic_block<Language>;
+class cfg_t;
 
-    basic_block(const basic_block_t&) = delete;
+class basic_block_t final {
+    basic_block_t(const basic_block_t&) = delete;
 
-    template <typename Lang>
-    friend class cfg;
+    friend class cfg_t;
 
   private:
     using label_vec_t = std::vector<label_t>;
@@ -66,7 +62,7 @@ class basic_block final {
   public:
     // -- iterators
 
-    using stmt_list_t = std::vector<Language>;
+    using stmt_list_t = std::vector<Instruction>;
     using succ_iterator = label_vec_t::iterator;
     using const_succ_iterator = label_vec_t::const_iterator;
     using pred_iterator = succ_iterator;
@@ -99,11 +95,11 @@ class basic_block final {
         m_ts.emplace_back(T{std::forward<Args>(args)...});
     }
 
-    void insert(const Language& arg) { m_ts.push_back(arg); }
+    void insert(const Instruction& arg) { m_ts.push_back(arg); }
 
-    basic_block(const label_t& _label) : m_label(_label) {}
+    basic_block_t(const label_t& _label) : m_label(_label) {}
 
-    ~basic_block() = default;
+    ~basic_block_t() = default;
 
     label_t label() const { return m_label; }
 
@@ -153,27 +149,7 @@ class basic_block final {
         std::swap(m_ts, ts);
     }
 
-    void write(std::ostream& o) const {
-        o << m_label << ":\n";
-        for (auto const& s : *this) {
-            o << "  " << s << ";\n";
-        }
-        auto [it, et] = next_blocks();
-        if (it != et) {
-            o << "  "
-              << "goto ";
-            for (; it != et;) {
-                o << *it;
-                ++it;
-                if (it == et) {
-                    o << ";";
-                } else {
-                    o << ",";
-                }
-            }
-        }
-        o << "\n";
-    }
+    void write(std::ostream& o) const;
 
     // for gdb
     void dump() const { write(std::cerr); }
@@ -186,11 +162,7 @@ class basic_block final {
 
 // Viewing basic_block_t with all statements reversed. Useful for
 // backward analysis.
-template <typename Language>
-class basic_block_rev final {
-    using basic_block_rev_t = basic_block_rev<Language>;
-    using basic_block_t = basic_block<Language>;
-
+class basic_block_rev_t final {
   public:
     using succ_iterator = typename basic_block_t::succ_iterator;
     using const_succ_iterator = typename basic_block_t::const_succ_iterator;
@@ -203,7 +175,7 @@ class basic_block_rev final {
   public:
     basic_block_t& _bb;
 
-    basic_block_rev(basic_block_t& bb) : _bb(bb) {}
+    basic_block_rev_t(basic_block_t& bb) : _bb(bb) {}
 
     label_t label() const { return _bb.label(); }
 
@@ -225,17 +197,7 @@ class basic_block_rev final {
 
     std::pair<const_pred_iterator, const_pred_iterator> prev_blocks() const { return _bb.next_blocks(); }
 
-    void write(std::ostream& o) const {
-        o << label() << ":\n";
-        for (auto const& s : *this) {
-            o << "  " << s << ";\n";
-        }
-        o << "--> [";
-        for (auto const& n : boost::make_iterator_range(next_blocks())) {
-            o << n << ";";
-        }
-        o << "]\n";
-    }
+    void write(std::ostream& o) const;
 
     // for gdb
     void dump() const { write(std::cerr); }
@@ -246,13 +208,7 @@ class basic_block_rev final {
     }
 };
 
-template <typename Language>
-class cfg final {
-
-    using basic_block_t = basic_block<Language>;
-    using basic_block_rev_t = basic_block_rev<Language>;
-    using cfg_t = cfg<Language>;
-
+class cfg_t final {
   public:
     using node_t = label_t; // for Bgl graphs
 
@@ -306,16 +262,16 @@ class cfg final {
     }
 
   public:
-    cfg(label_t entry, label_t exit) : m_entry(entry), m_exit(exit) {
+    cfg_t(label_t entry, label_t exit) : m_entry(entry), m_exit(exit) {
         m_blocks.emplace(entry, entry);
         m_blocks.emplace(exit, exit);
     }
 
-    cfg(const cfg_t&) = delete;
+    cfg_t(const cfg_t&) = delete;
 
-    cfg(cfg_t&& o) : m_entry(o.m_entry), m_exit(o.m_exit), m_blocks(std::move(o.m_blocks)) {}
+    cfg_t(cfg_t&& o) : m_entry(o.m_entry), m_exit(o.m_exit), m_blocks(std::move(o.m_blocks)) {}
 
-    ~cfg() = default;
+    ~cfg_t() = default;
 
     label_t exit() const { return m_exit; }
 
@@ -511,12 +467,7 @@ class cfg final {
 
 // A lightweight object that wraps a reference to a CFG into a
 // copyable, assignable object.
-template <typename Language>
-class cfg_ref final {
-    using basic_block_t = basic_block<Language>;
-    using basic_block_rev_t = basic_block_rev<Language>;
-    using cfg_t = cfg<Language>;
-    using cfg_ref_t = cfg_ref<Language>;
+class cfg_ref_t final {
 
   public:
     // cfg_t's typedefs
@@ -543,7 +494,7 @@ class cfg_ref final {
     cfg_t& get() { return _ref; }
 
   public:
-    cfg_ref(cfg_t& cfg) : _ref(std::ref(cfg)) {}
+    cfg_ref_t(cfg_t& cfg) : _ref(std::ref(cfg)) {}
 
     label_t entry() const { return get().entry(); }
 
@@ -589,15 +540,7 @@ class cfg_ref final {
 
 // Viewing a cfg_t with all edges and block statements
 // reversed. Useful for backward analysis.
-template <typename Language>
-class cfg_rev final {
-
-    using basic_block_t = basic_block<Language>;
-    using basic_block_rev_t = basic_block_rev<Language>;
-    using cfg_t = cfg<Language>;
-    using cfg_ref_t = cfg_ref<Language>;
-    using cfg_rev_t = cfg_rev<Language>;
-
+class cfg_rev_t final {
   public:
     using node_t = label_t; // for Bgl graphs
 
@@ -643,7 +586,7 @@ class cfg_rev final {
     basic_block_rev_map_t _rev_bbs;
 
   public:
-    cfg_rev(cfg_t& cfg) : _cfg(cfg) {
+    cfg_rev_t(cfg_t& cfg) : _cfg(cfg) {
         // Create basic_block_rev_t from basic_block_t objects
         // Note that basic_block_rev_t is also a view of basic_block_t so it
         // doesn't modify basic_block_t objects.
@@ -652,9 +595,9 @@ class cfg_rev final {
         }
     }
 
-    cfg_rev(const cfg_rev_t& o) : _cfg(o._cfg), _rev_bbs(o._rev_bbs) {}
+    cfg_rev_t(const cfg_rev_t& o) : _cfg(o._cfg), _rev_bbs(o._rev_bbs) {}
 
-    cfg_rev(cfg_rev_t&& o) : _cfg(o._cfg), _rev_bbs(std::move(o._rev_bbs)) {}
+    cfg_rev_t(cfg_rev_t&& o) : _cfg(o._cfg), _rev_bbs(std::move(o._rev_bbs)) {}
 
     label_t entry() const { return _cfg.exit(); }
 
@@ -710,9 +653,8 @@ class cfg_rev final {
     void simplify() {}
 };
 
-template <typename Language>
-inline void cfg<Language>::remove_useless_blocks() {
-    cfg_rev<Language> rev_cfg(*this);
+inline void cfg_t::remove_useless_blocks() {
+    cfg_rev_t rev_cfg(*this);
 
     visited_t useful, useless;
     mark_alive_blocks(rev_cfg.entry(), rev_cfg, useful);
@@ -730,8 +672,7 @@ inline void cfg<Language>::remove_useless_blocks() {
     }
 }
 
-template <typename Language>
-inline basic_block<Language>& cfg<Language>::insert(label_t _label) {
+inline basic_block_t& cfg_t::insert(label_t _label) {
     auto it = m_blocks.find(_label);
     if (it != m_blocks.end())
         return it->second;
@@ -740,8 +681,7 @@ inline basic_block<Language>& cfg<Language>::insert(label_t _label) {
     return get_node(_label);
 }
 
-template <typename Language>
-inline void cfg<Language>::remove(label_t _label) {
+inline void cfg_t::remove(label_t _label) {
     if (_label == m_entry)
         CRAB_ERROR("Cannot remove entry block");
 
@@ -770,8 +710,7 @@ inline void cfg<Language>::remove(label_t _label) {
     m_blocks.erase(_label);
 }
 
-template <typename Language>
-inline void cfg<Language>::remove_unreachable_blocks() {
+inline void cfg_t::remove_unreachable_blocks() {
     visited_t alive, dead;
     mark_alive_blocks(entry(), *this, alive);
 
@@ -788,27 +727,21 @@ inline void cfg<Language>::remove_unreachable_blocks() {
     }
 }
 
-using basic_block_t = basic_block<Instruction>;
-using basic_block_rev_t = basic_block_rev<Instruction>;
-using cfg_t = cfg<Instruction>;
-using cfg_ref_t = cfg_ref<Instruction>;
-using cfg_rev_t = cfg_rev<Instruction>;
-
 } // end namespace crab
 
-using BasicBlock = crab::basic_block<Instruction>;
-using Cfg = crab::cfg<Instruction>;
-Cfg instruction_seq_to_cfg(const InstructionSeq&);
-Cfg to_nondet(const Cfg&);
+using crab::basic_block_t;
+using crab::cfg_t;
+cfg_t instruction_seq_to_cfg(const InstructionSeq&);
+cfg_t to_nondet(const cfg_t&);
 std::vector<std::string> stats_headers();
-std::map<std::string, int> collect_stats(const Cfg&);
+std::map<std::string, int> collect_stats(const cfg_t&);
 
-void explicate_assertions(Cfg& cfg, program_info info);
+void explicate_assertions(cfg_t& cfg, program_info info);
 
-void print(const Cfg& cfg, bool nondet, std::ostream& out);
-void print(const Cfg& cfg, bool nondet, std::string outfile);
-void print(const Cfg& cfg, bool nondet);
+void print(const cfg_t& cfg, bool nondet, std::ostream& out);
+void print(const cfg_t& cfg, bool nondet, std::string outfile);
+void print(const cfg_t& cfg, bool nondet);
 
-void print_dot(const Cfg& cfg, std::ostream& out);
-void print_dot(const Cfg& cfg, std::string outfile);
-void print_dot(const Cfg& cfg);
+void print_dot(const cfg_t& cfg, std::ostream& out);
+void print_dot(const cfg_t& cfg, std::string outfile);
+void print_dot(const cfg_t& cfg);
