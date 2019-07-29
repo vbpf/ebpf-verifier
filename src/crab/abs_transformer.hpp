@@ -34,6 +34,9 @@
 #include "crab/types.hpp"
 
 #include "config.hpp"
+#include "spec_prototypes.hpp"
+#include "spec_type_descriptors.hpp"
+#include "dsl_syntax.hpp"
 
 namespace crab {
 /**
@@ -301,9 +304,35 @@ class assert_property_checker final : public intra_abs_transformer<AbsDomain> {
     }
 };
 
-template <typename AbsDomain>
-inline void setup_entry(AbsDomain& inv) {
 
+constexpr int MAX_PACKET_OFF = 0xffff;
+constexpr int64_t MY_INT_MAX = INT_MAX;
+constexpr int64_t PTR_MAX = MY_INT_MAX - MAX_PACKET_OFF;
+
+template <typename AbsDomain>
+inline AbsDomain setup_entry() {
+    auto reg_value  = [](int i) { return variable_t::reg(data_kind_t::values , i); };
+    auto reg_offset = [](int i) { return variable_t::reg(data_kind_t::offsets, i); };
+    auto reg_type   = [](int i) { return variable_t::reg(data_kind_t::regions, i); };
+    using namespace dsl_syntax;
+
+    //intra_abs_transformer<AbsDomain>(inv);
+    AbsDomain inv;
+    inv += STACK_SIZE <= reg_value(10);
+    inv.assign(reg_offset(10), STACK_SIZE);
+    inv.assign(reg_type(10), T_STACK);
+
+    inv += 1 <= reg_value(1);
+    inv += reg_value(1) <= PTR_MAX;
+    inv.assign(reg_offset(1), 0);
+    inv.assign(reg_offset(1), T_CTX);
+
+    inv += 0 <= variable_t::packet_size();
+    inv += variable_t::packet_size() < MAX_PACKET_OFF;
+        //  .where(machine.ctx_desc.meta >= 0).assume(machine.meta_offset <= 0).assume(machine.meta_offset >= -4098)
+        //                        .otherwise().assign(machine.meta_offset, 0)
+        //  .done();
+    return inv;
 }
 
 template <typename AbsDomain>

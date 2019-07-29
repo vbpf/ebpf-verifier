@@ -59,7 +59,7 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
     crab::domains::clear_global_state();
 
     analyzer_t analyzer(cfg);
-    analyzer.run(dom_t::top());
+    analyzer.run(crab::setup_entry<dom_t>());
 
     if (global_options.print_invariants) {
         pre_printer.connect([pre = extract_pre(analyzer, cfg)](const string& label) {
