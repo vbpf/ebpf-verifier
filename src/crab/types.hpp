@@ -32,7 +32,7 @@ inline std::ostream& operator<<(std::ostream& o, writeable& x) {
     return o;
 }
 
-enum class data_kind_t { regions, values, offsets };
+enum class data_kind_t { types, values, offsets };
 std::ostream& operator<<(std::ostream& o, const data_kind_t& s);
 
 // Container for typed variables used by the crab abstract domains

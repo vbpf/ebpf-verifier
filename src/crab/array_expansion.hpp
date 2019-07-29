@@ -553,8 +553,8 @@ class array_expansion_domain final : public writeable {
         }
     }
 
-    void array_havoc(data_kind_t kind, linear_expression_t elem_size, linear_expression_t i) {
-        kill_and_find_var(kind, elem_size, i);
+    void array_havoc(data_kind_t kind, linear_expression_t idx, linear_expression_t elem_size) {
+        kill_and_find_var(kind, elem_size, idx);
     }
     // Perform array stores over an array segment
     void array_store_range(data_kind_t kind, linear_expression_t _idx,

@@ -36,6 +36,8 @@ using printer_t = boost::signals2::signal<void(const string&)>;
 
 using crab::checks_db;
 
+program_info global_program_info;
+
 // Numerical domains over integers
 using sdbm_domain_t = crab::domains::SplitDBM;
 using dom_t = crab::domains::array_expansion_domain<sdbm_domain_t>;
@@ -94,6 +96,7 @@ static std::vector<string> sorted_labels(cfg_t& cfg) {
 }
 
 std::tuple<bool, double> abs_validate(cfg_t& simple_cfg, program_info info) {
+    global_program_info = info;
     cfg_t& cfg = simple_cfg;
 
     printer_t pre_printer;
