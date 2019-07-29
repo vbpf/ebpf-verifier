@@ -302,6 +302,11 @@ class assert_property_checker final : public intra_abs_transformer<AbsDomain> {
 };
 
 template <typename AbsDomain>
+inline void setup_entry(AbsDomain& inv) {
+
+}
+
+template <typename AbsDomain>
 inline AbsDomain transform(const basic_block_t& bb, const AbsDomain& from_inv) {
     intra_abs_transformer<AbsDomain> transformer(from_inv);
     if constexpr (CrabSanityCheckFlag) {
