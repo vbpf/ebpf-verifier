@@ -47,6 +47,20 @@ variable_t reg_value(int i) { return variable_t::reg(data_kind_t::values, i); }
 variable_t reg_offset(int i) { return variable_t::reg(data_kind_t::offsets, i); }
 variable_t reg_type(int i) { return variable_t::reg(data_kind_t::regions, i); }
 
+variable_t reg_value(Reg i) { return reg_value(i.v); }
+variable_t reg_offset(Reg i) { return reg_offset(i.v); }
+variable_t reg_type(Reg i) { return reg_type(i.v); }
+
+inline linear_constraint_t eq(const variable_t& a, const variable_t& b) {
+    using namespace dsl_syntax;
+    return {a - b, linear_constraint_t::EQUALITY};
+}
+
+inline linear_constraint_t neq(const variable_t& a, const variable_t& b) {
+    using namespace dsl_syntax;
+    return {a - b, linear_constraint_t::DISEQUATION};
+};
+
 constexpr int MAX_PACKET_OFF = 0xffff;
 constexpr int64_t MY_INT_MAX = INT_MAX;
 constexpr int64_t PTR_MAX = MY_INT_MAX - MAX_PACKET_OFF;
@@ -96,7 +110,7 @@ class intra_abs_transformer {
     void lshr(variable_t lhs, number_t op2) {                    apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
     void ashr(variable_t lhs, variable_t op2) {                  apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
     void ashr(variable_t lhs, number_t op2) {                    apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
-    void assume(linear_constraint_t cst) { m_inv += cst; }
+    void assume(const linear_constraint_t& cst) { m_inv += cst; }
 
     void no_pointer(int i) {
         m_inv.assign(reg_type(i), T_NUM);
@@ -184,9 +198,71 @@ class intra_abs_transformer {
     void operator()(Exit const& a) {}
     void operator()(Jmp const& a) {}
     void operator()(Assume const& a) {}
-    void operator()(Assert const& a) {}
+
+    void operator()(const Comparable& s) {
+        m_inv += eq(reg_type(s.r1), reg_type(s.r2));
+    }
+
+    void operator()(const Addable& s) {
+        using namespace dsl_syntax;
+        AbsDomain is_ptr{m_inv};
+        is_ptr += reg_type(s.ptr) > T_NUM;
+        is_ptr += reg_type(s.num) == T_NUM; // TODO: assert
+        m_inv |= is_ptr;
+    }
+
+    void operator()(const ValidSize& s) {
+        using namespace dsl_syntax;
+        variable_t r = reg_value(s.reg);
+        m_inv += s.can_be_zero ? r >= 0 : r > 0;
+    }
+
+    void operator()(const ValidMapKeyValue& s) {
+    }
+
+    void operator()(const ValidAccess& s) {
+    }
+
+    void operator()(const ValidStore& s) {
+        using namespace dsl_syntax;
+        AbsDomain non_stack{m_inv};
+        non_stack += reg_type(s.mem) != T_STACK;
+        non_stack += reg_type(s.val) == T_NUM; // TODO: assert
+        m_inv |= non_stack;
+    }
+
+    void operator()(const TypeConstraint& s) {
+        using namespace dsl_syntax;
+        variable_t t = reg_type(s.reg);
+        switch (s.types) {
+            case TypeGroup::num: assume(t == T_NUM); break;
+            case TypeGroup::map_fd: assume(t == T_MAP); break;
+            case TypeGroup::ctx: assume(t == T_CTX); break;
+            case TypeGroup::packet: assume(t == T_PACKET); break;
+            case TypeGroup::stack: assume(t == T_STACK); break;
+            case TypeGroup::shared: assume(t > T_SHARED); break;
+            case TypeGroup::non_map_fd: assume(t >= T_NUM); break;
+            case TypeGroup::mem: assume(t >= T_STACK); break;
+            case TypeGroup::mem_or_num: assume(t >= T_NUM); assume(t != T_CTX); break;
+            case TypeGroup::ptr: assume(t >= T_CTX); break;
+            case TypeGroup::ptr_or_num: assume(t >= T_NUM); break;
+            case TypeGroup::stack_or_packet: assume(t >= T_STACK); assume(t <= T_PACKET); break;
+        }
+    }
+
+    void operator()(Assert const& stmt) {
+        std::visit(*this, stmt.cst);
+    };
+
     void operator()(Packet const& a) {}
-    void operator()(Mem const& a) {}
+    void operator()(Mem const& a) {
+        if (a.is_load) {
+            Reg v = std::get<Reg>(a.value);
+            m_inv -= reg_value(v);
+            m_inv -= reg_offset(v);
+            m_inv -= reg_type(v);
+        }
+    }
     void operator()(LockAdd const& a) {}
 
     void operator()(Call const& call) {
