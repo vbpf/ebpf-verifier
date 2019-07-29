@@ -71,6 +71,15 @@ class intra_abs_transformer {
     AbsDomain m_inv;
 
   private:
+
+    void scratch_caller_saved_registers() {
+        for (int i = 1; i <= 5; i++) {
+            havoc(reg_value(i));
+            havoc(reg_offset(i));
+            havoc(reg_type(i));
+        }
+    }
+
     template <typename NumOrVar>
     void apply(AbsDomain& inv, binop_t op, variable_t x, variable_t y, NumOrVar z, bool finite_width = false) {
         inv.apply(op, x, y, z);
@@ -280,7 +289,13 @@ class intra_abs_transformer {
         std::visit(*this, stmt.cst);
     };
 
-    void operator()(Packet const& a) {}
+    void operator()(Packet const& a) {
+        assign(reg_type(0), T_NUM);
+        havoc(reg_offset(0));
+        havoc(reg_value(0));
+        scratch_caller_saved_registers();
+    }
+
     void operator()(Mem const& a) {
         if (a.is_load) {
             Reg v = std::get<Reg>(a.value);
@@ -289,7 +304,9 @@ class intra_abs_transformer {
             havoc(reg_type(v));
         }
     }
-    void operator()(LockAdd const& a) {}
+    void operator()(LockAdd const& a) {
+        // nothing to do here
+    }
 
     void operator()(Call const& call) {
         using namespace dsl_syntax;
@@ -325,11 +342,7 @@ class intra_abs_transformer {
                 break;
             }
         }
-        for (int i = 1; i <= 5; i++) {
-            havoc(reg_value(i));
-            havoc(reg_offset(i));
-            havoc(reg_type(i));
-        }
+        scratch_caller_saved_registers();
         variable_t r0 = reg_value(0);
         havoc(r0);
         if (call.returns_map) {
