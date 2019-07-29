@@ -179,7 +179,14 @@ class intra_abs_transformer {
     void lshr(variable_t lhs, number_t op2) {                    apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
     void ashr(variable_t lhs, variable_t op2) {                  apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
     void ashr(variable_t lhs, number_t op2) {                    apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
-    void assume(const linear_constraint_t& cst) { m_inv += cst; }
+
+protected:
+    void assume(const linear_constraint_t& cst) { assume(m_inv, cst); }
+    void assume(AbsDomain& inv, const linear_constraint_t& cst) { inv += cst; }
+
+    void require(const linear_constraint_t& cst, const AssertionConstraint& s) { require(this->m_inv, cst, s); }
+    virtual void require(AbsDomain& inv, const linear_constraint_t& cst, const AssertionConstraint& s) { assume(inv, cst); }
+
     void havoc(variable_t v) { m_inv -= v; }
     void assign(variable_t lhs, variable_t rhs) { m_inv.assign(lhs, rhs); }
     void assign(variable_t lhs, number_t rhs) { m_inv.assign(lhs, rhs); }
@@ -268,9 +275,9 @@ class intra_abs_transformer {
 
     void operator()(const array_load_t& stmt) { m_inv.array_load(stmt.lhs, stmt.array, stmt.elem_size, stmt.index); }
 
-    void operator()(Assume const& b) {
+    void operator()(Assume const& s) {
         using namespace dsl_syntax;
-        Condition cond = b.cond;
+        Condition cond = s.cond;
         Reg dst = cond.left;
         variable_t dst_value  = reg_value (dst);
         variable_t dst_offset = reg_offset(dst);
@@ -327,7 +334,7 @@ class intra_abs_transformer {
     void operator()(Jmp const& a) {}
 
     void operator()(const Comparable& s) {
-        m_inv += eq(reg_type(s.r1), reg_type(s.r2));
+        require(m_inv, eq(reg_type(s.r1), reg_type(s.r2)), s);
     }
 
     void operator()(const Addable& s) {
@@ -335,7 +342,7 @@ class intra_abs_transformer {
         linear_constraint_t cond = reg_type(s.ptr) > T_NUM;
         AbsDomain is_ptr{m_inv};
         is_ptr += cond;
-        is_ptr += reg_type(s.num) == T_NUM; // TODO: assert
+        require(is_ptr, reg_type(s.num) == T_NUM, s); // TODO: assert
 
         m_inv += cond.negate();
         m_inv |= is_ptr;
@@ -344,7 +351,7 @@ class intra_abs_transformer {
     void operator()(const ValidSize& s) {
         using namespace dsl_syntax;
         variable_t r = reg_value(s.reg);
-        m_inv += s.can_be_zero ? r >= 0 : r > 0;
+        require(s.can_be_zero ? r >= 0 : r > 0, s);
     }
 
     void operator()(const ValidMapKeyValue& s) {
@@ -359,7 +366,7 @@ class intra_abs_transformer {
 
         AbsDomain non_stack{m_inv};
         non_stack += cond;
-        non_stack += reg_type(s.val) == T_NUM; // TODO: assert
+        require(non_stack, reg_type(s.val) == T_NUM, s);
 
         m_inv += cond.negate();
         m_inv |= non_stack;
@@ -369,18 +376,18 @@ class intra_abs_transformer {
         using namespace dsl_syntax;
         variable_t t = reg_type(s.reg);
         switch (s.types) {
-            case TypeGroup::num: assume(t == T_NUM); break;
-            case TypeGroup::map_fd: assume(t == T_MAP); break;
-            case TypeGroup::ctx: assume(t == T_CTX); break;
-            case TypeGroup::packet: assume(t == T_PACKET); break;
-            case TypeGroup::stack: assume(t == T_STACK); break;
-            case TypeGroup::shared: assume(t > T_SHARED); break;
-            case TypeGroup::non_map_fd: assume(t >= T_NUM); break;
-            case TypeGroup::mem: assume(t >= T_STACK); break;
-            case TypeGroup::mem_or_num: assume(t >= T_NUM); assume(t != T_CTX); break;
-            case TypeGroup::ptr: assume(t >= T_CTX); break;
-            case TypeGroup::ptr_or_num: assume(t >= T_NUM); break;
-            case TypeGroup::stack_or_packet: assume(t >= T_STACK); assume(t <= T_PACKET); break;
+            case TypeGroup::num: require(t == T_NUM, s); break;
+            case TypeGroup::map_fd: require(t == T_MAP, s); break;
+            case TypeGroup::ctx: require(t == T_CTX, s); break;
+            case TypeGroup::packet: require(t == T_PACKET, s); break;
+            case TypeGroup::stack: require(t == T_STACK, s); break;
+            case TypeGroup::shared: require(t > T_SHARED, s); break;
+            case TypeGroup::non_map_fd: require(t >= T_NUM, s); break;
+            case TypeGroup::mem: require(t >= T_STACK, s); break;
+            case TypeGroup::mem_or_num: require(t >= T_NUM, s); require(t != T_CTX, s); break;
+            case TypeGroup::ptr: require(t >= T_CTX, s); break;
+            case TypeGroup::ptr_or_num: require(t >= T_NUM, s); break;
+            case TypeGroup::stack_or_packet: require(t >= T_STACK, s); require(t <= T_PACKET, s); break;
         }
     }
 
@@ -413,7 +420,7 @@ class intra_abs_transformer {
 
         ptype_descr desc = global_program_info.descriptor;
 
-        AbsDomain assume_normal{assume_ctx}; 
+        AbsDomain assume_normal{assume_ctx};
         assume_normal += mem_reg_offset != desc.data;
         assume_normal += mem_reg_offset != desc.end;
         if (desc.meta >= 0) {
@@ -457,7 +464,7 @@ class intra_abs_transformer {
             m_inv.array_store(data_kind_t::values, addr, width, val_value);
             if (opt_val_offset)
                 m_inv.array_store(data_kind_t::offsets, addr, width, *opt_val_offset);
-            else 
+            else
                 m_inv.array_havoc(data_kind_t::offsets, addr, width);
         } else {
             m_inv.array_havoc(data_kind_t::values, addr, width);
@@ -553,7 +560,7 @@ class intra_abs_transformer {
         // do_store_stack(assume_stack, b.access.width, addr, reg_type(data_reg), reg_value(data_reg), reg_offset(data_reg));
 
         // variable_t data_reg = std::get<Reg>(b.value);
-        
+
         // AbsDomain assume_stack{m_inv}; assume_stack += mem_reg_type == T_STACK;
         // AbsDomain assume_shared{m_inv}; assume_shared += is_shared(mem_reg_type);
         // AbsDomain assume_ctx{m_inv}; assume_ctx += mem_reg_type == T_CTX;
@@ -834,22 +841,18 @@ class checks_db final {
   public:
     checks_db() = default;
 
-    void add_warning(const assert_t& s) {
+    void add_warning(const AssertionConstraint& s) {
         if (global_options.print_failures)
             std::cout << s << "\n";
         add(check_kind_t::Warning, s);
     }
 
-    void add_redundant(const assert_t& s) { add(check_kind_t::Safe, s); }
+    void add_redundant(const AssertionConstraint& s) { add(check_kind_t::Safe, s); }
 
-    void add_unreachable(const assert_t& s) { add(check_kind_t::Unreachable, s); }
+    void add_unreachable(const AssertionConstraint& s) { add(check_kind_t::Unreachable, s); }
 
-    void add(check_kind_t status, const assert_t& s) {
+    void add(check_kind_t status, const AssertionConstraint& s) {
         total[status]++;
-        debug_info dbg = s.debug;
-        if (dbg.has_debug()) {
-            m_db.insert(check_t(dbg, status));
-        }
     }
 
     void write(std::ostream& o) const {
@@ -879,25 +882,24 @@ class assert_property_checker final : public intra_abs_transformer<AbsDomain> {
 
     using parent::parent;
 
-    void operator()(const assert_t& s) {
-        linear_constraint_t cst = s.constraint;
+    void require(AbsDomain& inv, const linear_constraint_t& cst, const AssertionConstraint& s) override {
         if (cst.is_contradiction()) {
-            if (this->m_inv.is_bottom()) {
+            if (inv.is_bottom()) {
                 m_db.add_redundant(s);
             } else {
                 m_db.add_warning(s);
             }
-            return;
+            goto out;
         }
 
-        if (this->m_inv.is_bottom()) {
+        if (inv.is_bottom()) {
             m_db.add_unreachable(s);
-            return;
+            goto out;
         }
 
-        if (domains::checker_domain_traits<AbsDomain>::entail(this->m_inv, cst)) {
+        if (domains::checker_domain_traits<AbsDomain>::entail(inv, cst)) {
             m_db.add_redundant(s);
-        } else if (domains::checker_domain_traits<AbsDomain>::intersect(this->m_inv, cst)) {
+        } else if (domains::checker_domain_traits<AbsDomain>::intersect(inv, cst)) {
             // TODO: add_error() if imply negation
             m_db.add_warning(s);
         } else {
@@ -919,7 +921,8 @@ class assert_property_checker final : public intra_abs_transformer<AbsDomain> {
             */
             m_db.add_warning(s);
         }
-        parent::operator()(s); // propagate invariants to the next stmt
+out:
+        this->assume(inv, cst);
     }
 
     template <typename T>
