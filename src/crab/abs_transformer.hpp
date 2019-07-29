@@ -22,8 +22,9 @@
    havoc(x);
 
  */
-#include <variant>
 #include <limits>
+#include <variant>
+#include <iostream>
 
 #include "crab/abstract_domain_operators.hpp"
 #include "crab/abstract_domain_specialized_traits.hpp"
@@ -34,14 +35,18 @@
 #include "crab/types.hpp"
 
 #include "config.hpp"
+#include "dsl_syntax.hpp"
 #include "spec_prototypes.hpp"
 #include "spec_type_descriptors.hpp"
-#include "dsl_syntax.hpp"
 
 namespace crab {
 /**
  * Abstract forward transformer for all statements.
  **/
+variable_t reg_value(int i) { return variable_t::reg(data_kind_t::values, i); }
+variable_t reg_offset(int i) { return variable_t::reg(data_kind_t::offsets, i); }
+variable_t reg_type(int i) { return variable_t::reg(data_kind_t::regions, i); }
+
 template <typename AbsDomain>
 class intra_abs_transformer {
   public:
@@ -49,8 +54,67 @@ class intra_abs_transformer {
 
   private:
     template <typename NumOrVar>
-    void apply(AbsDomain& inv, binop_t op, variable_t x, variable_t y, NumOrVar z) {
+    void apply(AbsDomain& inv, binop_t op, variable_t x, variable_t y, NumOrVar z, bool finite_width = false) {
         inv.apply(op, x, y, z);
+        if (finite_width)
+            overflow(x);
+    }
+
+    void add(variable_t lhs, variable_t op2) {                   apply(m_inv, crab::arith_binop_t::ADD,    lhs, lhs, op2); }
+    void add(variable_t lhs, number_t op2) {                     apply(m_inv, crab::arith_binop_t::ADD,    lhs, lhs, op2); }
+    void sub(variable_t lhs, variable_t op2) {                   apply(m_inv, crab::arith_binop_t::SUB,    lhs, lhs, op2); }
+    void sub(variable_t lhs, number_t op2) {                     apply(m_inv, crab::arith_binop_t::SUB,    lhs, lhs, op2); }
+    void add_overflow(variable_t lhs, variable_t op2) {          apply(m_inv, crab::arith_binop_t::ADD,    lhs, lhs, op2, true); }
+    void add_overflow(variable_t lhs, number_t op2) {            apply(m_inv, crab::arith_binop_t::ADD,    lhs, lhs, op2, true); }
+    void sub_overflow(variable_t lhs, variable_t op2) {          apply(m_inv, crab::arith_binop_t::SUB,    lhs, lhs, op2, true); }
+    void sub_overflow(variable_t lhs, number_t op2) {            apply(m_inv, crab::arith_binop_t::SUB,    lhs, lhs, op2, true); }
+    void neg(variable_t lhs) {                                   apply(m_inv, crab::arith_binop_t::MUL,    lhs, lhs, -1,  true); }
+    void mul(variable_t lhs, variable_t op2) {                   apply(m_inv, crab::arith_binop_t::MUL,    lhs, lhs, op2, true); }
+    void mul(variable_t lhs, number_t op2) {                     apply(m_inv, crab::arith_binop_t::MUL,    lhs, lhs, op2, true); }
+    void div(variable_t lhs, variable_t op2) {                   apply(m_inv, crab::arith_binop_t::SDIV,   lhs, lhs, op2, true); }
+    void div(variable_t lhs, number_t op2) {                     apply(m_inv, crab::arith_binop_t::SDIV,   lhs, lhs, op2, true); }
+    void udiv(variable_t lhs, variable_t op2) {                  apply(m_inv, crab::arith_binop_t::UDIV,   lhs, lhs, op2, true); }
+    void udiv(variable_t lhs, number_t op2) {                    apply(m_inv, crab::arith_binop_t::UDIV,   lhs, lhs, op2, true); }
+    void rem(variable_t lhs, variable_t op2) {                   apply(m_inv, crab::arith_binop_t::SREM,   lhs, lhs, op2, true); }
+    void rem(variable_t lhs, number_t op2, bool mod = true) {    apply(m_inv, crab::arith_binop_t::SREM,   lhs, lhs, op2, mod); }
+    void urem(variable_t lhs, variable_t op2) {                  apply(m_inv, crab::arith_binop_t::UREM,   lhs, lhs, op2, true); }
+    void urem(variable_t lhs, number_t op2) {                    apply(m_inv, crab::arith_binop_t::UREM,   lhs, lhs, op2, true); }
+
+    void bitwise_and(variable_t lhs, variable_t op2) {           apply(m_inv, crab::bitwise_binop_t::AND,  lhs, lhs, op2); }
+    void bitwise_and(variable_t lhs, number_t op2) {             apply(m_inv, crab::bitwise_binop_t::AND,  lhs, lhs, op2); }
+    void bitwise_or(variable_t lhs, variable_t op2) {            apply(m_inv, crab::bitwise_binop_t::OR,   lhs, lhs, op2); }
+    void bitwise_or(variable_t lhs, number_t op2) {              apply(m_inv, crab::bitwise_binop_t::OR,   lhs, lhs, op2); }
+    void bitwise_xor(variable_t lhs, variable_t op2) {           apply(m_inv, crab::bitwise_binop_t::XOR,  lhs, lhs, op2); }
+    void bitwise_xor(variable_t lhs, number_t op2) {             apply(m_inv, crab::bitwise_binop_t::XOR,  lhs, lhs, op2); }
+    void shl(variable_t lhs, variable_t op2) {                   apply(m_inv, crab::bitwise_binop_t::SHL,  lhs, lhs, op2, true); }
+    void shl(variable_t lhs, number_t op2) {                     apply(m_inv, crab::bitwise_binop_t::SHL,  lhs, lhs, op2, true); }
+    void lshr(variable_t lhs, variable_t op2) {                  apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
+    void lshr(variable_t lhs, number_t op2) {                    apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
+    void ashr(variable_t lhs, variable_t op2) {                  apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
+    void ashr(variable_t lhs, number_t op2) {                    apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
+    void assume(linear_constraint_t cst) { m_inv += cst; }
+
+    void no_pointer(int i) {
+        m_inv.assign(reg_type(i), T_NUM);
+        m_inv -= reg_offset(i);
+    };
+
+    static linear_constraint_t is_pointer(int v) { using namespace dsl_syntax; return reg_type(v) >= T_CTX; }
+    static linear_constraint_t is_init(int v) { using namespace dsl_syntax; return reg_type(v) > T_UNINIT; }
+    static linear_constraint_t is_shared(int v) { using namespace dsl_syntax; return reg_type(v) > T_SHARED; }
+    static linear_constraint_t is_not_num(int v) { using namespace dsl_syntax; return reg_type(v) > T_NUM; }
+
+    void overflow(variable_t lhs) {
+        // handle overflow, assuming 64 bit
+        number_t max(std::numeric_limits<int64_t>::max());
+        number_t min(std::numeric_limits<int64_t>::min());
+        AbsDomain over(m_inv);
+        over += linear_constraint_t(linear_expression_t(number_t(-1), lhs).operator+(max),
+                                    linear_constraint_t::STRICT_INEQUALITY);
+        AbsDomain under(m_inv);
+        under += linear_constraint_t(var_sub(lhs, min), linear_constraint_t::STRICT_INEQUALITY);
+        if (over.is_bottom() || under.is_bottom())
+            m_inv -= lhs;
     }
 
   public:
@@ -67,13 +131,7 @@ class intra_abs_transformer {
             apply(m_inv, stmt.op, stmt.lhs, var1, op2.constant());
         }
         if (stmt.finite_width) {
-            // handle overflow, assuming 64 bit
-            number_t max(std::numeric_limits<int64_t>::max());
-            number_t min(std::numeric_limits<int64_t>::min());
-            AbsDomain over(m_inv); over += linear_constraint_t(linear_expression_t(number_t(-1), stmt.lhs).operator+(max), linear_constraint_t::STRICT_INEQUALITY);
-            AbsDomain under(m_inv); under += linear_constraint_t(var_sub(stmt.lhs, min), linear_constraint_t::STRICT_INEQUALITY);
-            if (over.is_bottom() || under.is_bottom())
-                m_inv -= stmt.lhs;
+            // overflow()
         }
     }
 
@@ -109,72 +167,196 @@ class intra_abs_transformer {
         m_inv.array_store_range(stmt.array, stmt.index, stmt.width, stmt.value);
     }
 
-     void operator()(const array_store_t& stmt) {
+    void operator()(const array_store_t& stmt) {
         m_inv.array_store(stmt.array, stmt.elem_size, stmt.index, stmt.value);
     }
 
-    void operator()(const array_havoc_t& stmt) {
-        m_inv.array_havoc(stmt.array, stmt.elem_size, stmt.index);
-    }
+    void operator()(const array_havoc_t& stmt) { m_inv.array_havoc(stmt.array, stmt.elem_size, stmt.index); }
 
-    void operator()(const array_load_t& stmt) {
-        m_inv.array_load(stmt.lhs, stmt.array, stmt.elem_size, stmt.index);
-    }
+    void operator()(const array_load_t& stmt) { m_inv.array_load(stmt.lhs, stmt.array, stmt.elem_size, stmt.index); }
 
-    void operator()(Undefined const& a) { }
-    void operator()(LoadMapFd const& a) { }
-    void operator()(Bin const& a) { }
-    void operator()(Un const& a) { }
-    void operator()(Call const& a) { }
-    void operator()(Exit const& a) { }
-    void operator()(Jmp const& a) { }
-    void operator()(Assume const& a) { }
-    void operator()(Assert const& a) { }
-    void operator()(Packet const& a) { }
-    void operator()(Mem const& a) { }
-    void operator()(LockAdd const& a) { }
-};
+    void operator()(Undefined const& a) {}
+    void operator()(LoadMapFd const& a) {}
+    void operator()(Un const& a) {}
+    void operator()(Call const& a) {}
+    void operator()(Exit const& a) {}
+    void operator()(Jmp const& a) {}
+    void operator()(Assume const& a) {}
+    void operator()(Assert const& a) {}
+    void operator()(Packet const& a) {}
+    void operator()(Mem const& a) {}
+    void operator()(LockAdd const& a) {}
 
-template <typename AbsDomain>
-struct sanity_checker {
+    void operator()(Bin const& bin) {
+        using namespace dsl_syntax;
 
-    intra_abs_transformer<AbsDomain>& super;
+        int dst = bin.dst.v;
+        variable_t dst_value = reg_value(dst);
+        variable_t dst_offset = reg_offset(dst);
+        variable_t dst_type = reg_type(dst);
 
-    sanity_checker(intra_abs_transformer<AbsDomain>& super) : super(super) { }
+        if (std::holds_alternative<Imm>(bin.v)) {
+            // dst += K
+            int imm = static_cast<int>(std::get<Imm>(bin.v).v);
+            switch (bin.op) {
+            case Bin::Op::MOV:
+                m_inv.assign(dst_value, imm);
+                no_pointer(dst);
+                break;
+            case Bin::Op::ADD:
+                if (imm == 0)
+                    return;
+                add_overflow(dst_value, imm);
+                add(dst_offset, imm);
+                break;
+            case Bin::Op::SUB:
+                if (imm == 0)
+                    return;
+                sub_overflow(dst_value, imm);
+                sub(dst_offset, imm);
+                break;
+            case Bin::Op::MUL:
+                mul(dst_value, imm);
+                no_pointer(dst);
+                break;
+            case Bin::Op::DIV:
+                div(dst_value, imm);
+                no_pointer(dst);
+                break;
+            case Bin::Op::MOD:
+                rem(dst_value, imm);
+                no_pointer(dst);
+                break;
+            case Bin::Op::OR:
+                bitwise_or(dst_value, imm);
+                no_pointer(dst);
+                break;
+            case Bin::Op::AND:
+                // FIX: what to do with ptr&-8 as in counter/simple_loop_unrolled?
+                bitwise_and(dst_value, imm);
+                if ((int32_t)imm > 0) {
+                    assume(dst_value <= imm);
+                    assume(0 <= dst_value);
+                }
+                no_pointer(dst);
+                break;
+            case Bin::Op::RSH:
+                ashr(dst_value, imm);
+                assume(dst_value <= (1 << (64 - imm)));
+                assume(dst_value >= 0);
+                no_pointer(dst);
+                break;
+            case Bin::Op::LSH:
+                lshr(dst_value, imm);
+                no_pointer(dst);
+                break;
+            case Bin::Op::XOR:
+                bitwise_xor(dst_value, imm);
+                no_pointer(dst);
+                break;
+            case Bin::Op::ARSH:
+                ashr(dst_value, imm); // = (int64_t)dst >> imm;
+                assume(dst_value <= (1 << (64 - imm)));
+                assume(dst_value >= -(1 << (64 - imm)));
+                no_pointer(dst);
+                break;
+            }
+        } else {
+            // dst op= src
+            int src = static_cast<int>(std::get<Reg>(bin.v).v);
+            variable_t src_value = reg_value(src);
+            variable_t src_offset = reg_offset(src);
+            variable_t src_type = reg_type(src);
+            switch (bin.op) {
+            case Bin::Op::ADD: {
+                AbsDomain ptr_dst{m_inv};
+                ptr_dst += is_pointer(dst);
+                apply(ptr_dst, crab::arith_binop_t::ADD, dst_value , dst_value , src_value, true);
+                apply(ptr_dst, crab::arith_binop_t::ADD, dst_offset, dst_offset, src_value, false);
 
-    template <typename T>
-    void operator()(const T& stmt) {
-        bool pre_bot = super.m_inv.is_bottom();
+                AbsDomain ptr_src{m_inv};
+                ptr_src += is_pointer(src);
+                apply(ptr_src, crab::arith_binop_t::ADD, dst_value , src_value , dst_value, true);
+                apply(ptr_src, crab::arith_binop_t::ADD, dst_offset, src_offset, dst_value, false);
+                ptr_src.assign(dst_type, src_type);
 
-        super(stmt);
+                m_inv += dst_type == T_NUM;
+                m_inv += src_type == T_NUM;
+                add_overflow(dst_value, src_value);
 
-        bool post_bot = super.m_inv.is_bottom();
-        if (!(pre_bot || !post_bot)) {
-            CRAB_ERROR("Invariant became bottom after ", stmt);
-        }
-    }
+                m_inv = m_inv | ptr_dst;
+                m_inv = m_inv | ptr_src;
+                break;
+            }
+            case Bin::Op::SUB: {
+                AbsDomain num_src{m_inv};
+                num_src += src_type == T_NUM;
 
-    void operator()(const assume_t& stmt) { super(stmt); }
-    void operator()(const assert_t& stmt) { super(stmt); }
+                AbsDomain ptr_dst{num_src};
+                ptr_dst += is_pointer(dst);
+                apply(ptr_dst, crab::arith_binop_t::SUB, dst_value , dst_value , src_value, true);
+                apply(ptr_dst, crab::arith_binop_t::SUB, dst_offset, dst_offset, src_value, false);
 
-    void operator()(const select_t& stmt) {
-        bool pre_bot = super.m_inv.is_bottom();
-        if (!pre_bot) {
-            auto inv1(super.m_inv);
-            auto inv2(super.m_inv);
+                AbsDomain both_num{num_src};
+                both_num += dst_type == T_NUM;
+                apply(both_num, crab::arith_binop_t::SUB, dst_value , dst_value , src_value, true);
 
-            inv1 += stmt.cond;
-            inv2 += stmt.cond.negate();
+                m_inv += is_pointer(src);
+                apply(m_inv, crab::arith_binop_t::SUB, dst_value , dst_offset , dst_offset);
+                m_inv.assign(dst_type, T_NUM);
+                m_inv -= dst_offset;
 
-            if (inv1.is_bottom() && inv2.is_bottom()) {
-                CRAB_ERROR("select condition and its negation cannot be false simultaneously ", stmt);
+                m_inv |= both_num;
+                m_inv |= ptr_dst;
+                break;
+            }
+            case Bin::Op::MUL:
+                mul(dst_value, src_value);
+                no_pointer(dst);
+                break;
+            case Bin::Op::DIV:
+                // For some reason, DIV is not checked for zerodiv
+                div(dst_value, src_value);
+                no_pointer(dst);
+                break;
+            case Bin::Op::MOD:
+                // See DIV comment
+                rem(dst_value, src_value);
+                no_pointer(dst);
+                break;
+            case Bin::Op::OR:
+                bitwise_or(dst_value, src_value);
+                no_pointer(dst);
+                break;
+            case Bin::Op::AND:
+                bitwise_and(dst_value, src_value);
+                no_pointer(dst);
+                break;
+            case Bin::Op::LSH:
+                lshr(dst_value, src_value);
+                no_pointer(dst);
+                break;
+            case Bin::Op::RSH:
+                ashr(dst_value, src_value);
+                no_pointer(dst);
+                break;
+            case Bin::Op::XOR:
+                bitwise_xor(dst_value, src_value);
+                no_pointer(dst);
+                break;
+            case Bin::Op::MOV:
+                m_inv.assign(dst_value, src_value);
+                m_inv.assign(dst_offset, src_offset);
+                m_inv.assign(dst_type, src_type);
+                break;
+            case Bin::Op::ARSH:
+                ashr(dst_value, src_value); // = (int64_t)dst >> src;
+                no_pointer(dst);
+                break;
             }
         }
-        super(stmt);
-
-        bool post_bot = super.m_inv.is_bottom();
-        if (!(pre_bot || !post_bot)) {
-            CRAB_ERROR("Invariant became bottom after ", stmt);
+        if (!bin.is64) {
+            bitwise_and(dst_value, UINT32_MAX);
         }
     }
 };
@@ -304,19 +486,15 @@ class assert_property_checker final : public intra_abs_transformer<AbsDomain> {
     }
 };
 
-
 constexpr int MAX_PACKET_OFF = 0xffff;
 constexpr int64_t MY_INT_MAX = INT_MAX;
 constexpr int64_t PTR_MAX = MY_INT_MAX - MAX_PACKET_OFF;
 
 template <typename AbsDomain>
 inline AbsDomain setup_entry() {
-    auto reg_value  = [](int i) { return variable_t::reg(data_kind_t::values , i); };
-    auto reg_offset = [](int i) { return variable_t::reg(data_kind_t::offsets, i); };
-    auto reg_type   = [](int i) { return variable_t::reg(data_kind_t::regions, i); };
     using namespace dsl_syntax;
 
-    //intra_abs_transformer<AbsDomain>(inv);
+    // intra_abs_transformer<AbsDomain>(inv);
     AbsDomain inv;
     inv += STACK_SIZE <= reg_value(10);
     inv.assign(reg_offset(10), STACK_SIZE);
@@ -329,24 +507,17 @@ inline AbsDomain setup_entry() {
 
     inv += 0 <= variable_t::packet_size();
     inv += variable_t::packet_size() < MAX_PACKET_OFF;
-        //  .where(machine.ctx_desc.meta >= 0).assume(machine.meta_offset <= 0).assume(machine.meta_offset >= -4098)
-        //                        .otherwise().assign(machine.meta_offset, 0)
-        //  .done();
+    //  .where(machine.ctx_desc.meta >= 0).assume(machine.meta_offset <= 0).assume(machine.meta_offset >= -4098)
+    //                        .otherwise().assign(machine.meta_offset, 0)
+    //  .done();
     return inv;
 }
 
 template <typename AbsDomain>
 inline AbsDomain transform(const basic_block_t& bb, const AbsDomain& from_inv) {
     intra_abs_transformer<AbsDomain> transformer(from_inv);
-    if constexpr (CrabSanityCheckFlag) {
-        sanity_checker checker(transformer);
-        for (const auto& statement : bb) {
-            std::visit(checker, statement);
-        }
-    } else {
-        for (const auto& statement : bb) {
-            std::visit(transformer, statement);
-        }
+    for (const auto& statement : bb) {
+        std::visit(transformer, statement);
     }
     return std::move(transformer.m_inv);
 }
