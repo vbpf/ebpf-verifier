@@ -86,7 +86,7 @@ class intra_abs_transformer {
     void add_overflow(variable_t lhs, number_t op2) {            apply(m_inv, crab::arith_binop_t::ADD,    lhs, lhs, op2, true); }
     void sub_overflow(variable_t lhs, variable_t op2) {          apply(m_inv, crab::arith_binop_t::SUB,    lhs, lhs, op2, true); }
     void sub_overflow(variable_t lhs, number_t op2) {            apply(m_inv, crab::arith_binop_t::SUB,    lhs, lhs, op2, true); }
-    void neg(variable_t lhs) {                                   apply(m_inv, crab::arith_binop_t::MUL,    lhs, lhs, -1,  true); }
+    void neg(variable_t lhs) {                                   apply(m_inv, crab::arith_binop_t::MUL,    lhs, lhs, (number_t)-1,  true); }
     void mul(variable_t lhs, variable_t op2) {                   apply(m_inv, crab::arith_binop_t::MUL,    lhs, lhs, op2, true); }
     void mul(variable_t lhs, number_t op2) {                     apply(m_inv, crab::arith_binop_t::MUL,    lhs, lhs, op2, true); }
     void div(variable_t lhs, variable_t op2) {                   apply(m_inv, crab::arith_binop_t::SDIV,   lhs, lhs, op2, true); }
@@ -111,11 +111,17 @@ class intra_abs_transformer {
     void ashr(variable_t lhs, variable_t op2) {                  apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
     void ashr(variable_t lhs, number_t op2) {                    apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
     void assume(const linear_constraint_t& cst) { m_inv += cst; }
+    void havoc(variable_t v) { m_inv -= v; }
+    void assign(variable_t lhs, variable_t rhs) { m_inv.assign(lhs, rhs); }
+    void assign(variable_t lhs, number_t rhs) { m_inv.assign(lhs, rhs); }
 
     void no_pointer(int i) {
-        m_inv.assign(reg_type(i), T_NUM);
-        m_inv -= reg_offset(i);
+        assign(reg_type(i), T_NUM);
+        havoc(reg_offset(i));
     };
+    void no_pointer(Reg r) {
+        no_pointer(r.v);
+    }
 
     static linear_constraint_t is_pointer(int v) { using namespace dsl_syntax; return reg_type(v) >= T_CTX; }
     static linear_constraint_t is_init(int v) { using namespace dsl_syntax; return reg_type(v) > T_UNINIT; }
@@ -132,7 +138,7 @@ class intra_abs_transformer {
         AbsDomain under(m_inv);
         under += linear_constraint_t(var_sub(lhs, min), linear_constraint_t::STRICT_INEQUALITY);
         if (over.is_bottom() || under.is_bottom())
-            m_inv -= lhs;
+            havoc(lhs);
     }
 
   public:
@@ -173,13 +179,13 @@ class intra_abs_transformer {
         }
     }
 
-    void operator()(const assign_t& stmt) { m_inv.assign(stmt.lhs, stmt.rhs); }
+    void operator()(const assign_t& stmt) { assign(stmt.lhs, stmt.rhs); }
 
     void operator()(const assume_t& stmt) { m_inv += stmt.constraint; }
 
     void operator()(const assert_t& stmt) { m_inv += stmt.constraint; }
 
-    void operator()(const havoc_t& stmt) { m_inv -= stmt.lhs; }
+    void operator()(const havoc_t& stmt) { havoc(stmt.lhs); }
 
     void operator()(const array_store_range_t& stmt) {
         m_inv.array_store_range(stmt.array, stmt.index, stmt.width, stmt.value);
@@ -194,7 +200,20 @@ class intra_abs_transformer {
     void operator()(const array_load_t& stmt) { m_inv.array_load(stmt.lhs, stmt.array, stmt.elem_size, stmt.index); }
 
     void operator()(Undefined const& a) {}
-    void operator()(Un const& a) {}
+    void operator()(Un const& stmt) {
+        switch (stmt.op) {
+        case Un::Op::LE16:
+        case Un::Op::LE32:
+        case Un::Op::LE64:
+            havoc(reg_value(stmt.dst));
+            no_pointer(stmt.dst);
+            break;
+        case Un::Op::NEG:
+            neg(reg_value(stmt.dst));
+            no_pointer(stmt.dst);
+            break;
+        }
+    }
     void operator()(Exit const& a) {}
     void operator()(Jmp const& a) {}
     void operator()(Assume const& a) {}
@@ -205,9 +224,12 @@ class intra_abs_transformer {
 
     void operator()(const Addable& s) {
         using namespace dsl_syntax;
+        linear_constraint_t cond = reg_type(s.ptr) > T_NUM;
         AbsDomain is_ptr{m_inv};
-        is_ptr += reg_type(s.ptr) > T_NUM;
+        is_ptr += cond;
         is_ptr += reg_type(s.num) == T_NUM; // TODO: assert
+
+        m_inv += cond.negate();
         m_inv |= is_ptr;
     }
 
@@ -225,9 +247,13 @@ class intra_abs_transformer {
 
     void operator()(const ValidStore& s) {
         using namespace dsl_syntax;
+        linear_constraint_t cond = reg_type(s.mem) != T_STACK;
+
         AbsDomain non_stack{m_inv};
-        non_stack += reg_type(s.mem) != T_STACK;
+        non_stack += cond;
         non_stack += reg_type(s.val) == T_NUM; // TODO: assert
+
+        m_inv += cond.negate();
         m_inv |= non_stack;
     }
 
@@ -258,9 +284,9 @@ class intra_abs_transformer {
     void operator()(Mem const& a) {
         if (a.is_load) {
             Reg v = std::get<Reg>(a.value);
-            m_inv -= reg_value(v);
-            m_inv -= reg_offset(v);
-            m_inv -= reg_type(v);
+            havoc(reg_value(v));
+            havoc(reg_offset(v));
+            havoc(reg_type(v));
         }
     }
     void operator()(LockAdd const& a) {}
@@ -300,12 +326,12 @@ class intra_abs_transformer {
             }
         }
         for (int i = 1; i <= 5; i++) {
-            m_inv -= reg_value(i);
-            m_inv -= reg_offset(i);
-            m_inv -= reg_type(i);
+            havoc(reg_value(i));
+            havoc(reg_offset(i));
+            havoc(reg_type(i));
         }
         variable_t r0 = reg_value(0);
-        m_inv -= r0;
+        havoc(r0);
         if (call.returns_map) {
             // no support for map-in-map yet:
             //   if (machine.info.map_defs.at(map_type).type == MapType::ARRAY_OF_MAPS
@@ -313,20 +339,20 @@ class intra_abs_transformer {
             // This is the only way to get a null pointer - note the `<=`:
             m_inv += 0 <= r0;
             m_inv += r0 <= PTR_MAX;
-            m_inv.assign(reg_offset(0), 0);
-            m_inv.assign(reg_type(0), variable_t::map_value_size());
+            assign(reg_offset(0), 0);
+            assign(reg_type(0), variable_t::map_value_size());
         } else {
-            m_inv -= reg_offset(0);
-            m_inv.assign(reg_type(0), T_NUM);
+            havoc(reg_offset(0));
+            assign(reg_type(0), T_NUM);
             // assume(r0 < 0); for VOID, which is actually "no return if succeed".
         }
     }
 
     void operator()(LoadMapFd const& ins) {
         int dst = ins.dst.v;
-        m_inv.assign(reg_type(dst), T_MAP);
-        m_inv.assign(reg_value(dst), ins.mapfd);
-        m_inv -= reg_offset(dst);
+        assign(reg_type(dst), T_MAP);
+        assign(reg_value(dst), ins.mapfd);
+        havoc(reg_offset(dst));
     }
 
     void operator()(Bin const& bin) {
@@ -342,7 +368,7 @@ class intra_abs_transformer {
             int imm = static_cast<int>(std::get<Imm>(bin.v).v);
             switch (bin.op) {
             case Bin::Op::MOV:
-                m_inv.assign(dst_value, imm);
+                assign(dst_value, imm);
                 no_pointer(dst);
                 break;
             case Bin::Op::ADD:
@@ -426,13 +452,14 @@ class intra_abs_transformer {
                 m_inv += src_type == T_NUM;
                 add_overflow(dst_value, src_value);
 
-                m_inv = m_inv | ptr_dst;
-                m_inv = m_inv | ptr_src;
+                m_inv |= ptr_dst;
+                m_inv |= ptr_src;
                 break;
             }
             case Bin::Op::SUB: {
+                linear_constraint_t cond = src_type == T_NUM;
                 AbsDomain num_src{m_inv};
-                num_src += src_type == T_NUM;
+                num_src += cond;
 
                 AbsDomain ptr_dst{num_src};
                 ptr_dst += is_pointer(dst);
@@ -445,9 +472,10 @@ class intra_abs_transformer {
 
                 m_inv += is_pointer(src);
                 apply(m_inv, crab::arith_binop_t::SUB, dst_value , dst_offset , dst_offset);
-                m_inv.assign(dst_type, T_NUM);
-                m_inv -= dst_offset;
+                assign(dst_type, T_NUM);
+                havoc(dst_offset);
 
+                m_inv += cond.negate();
                 m_inv |= both_num;
                 m_inv |= ptr_dst;
                 break;
@@ -487,9 +515,9 @@ class intra_abs_transformer {
                 no_pointer(dst);
                 break;
             case Bin::Op::MOV:
-                m_inv.assign(dst_value, src_value);
-                m_inv.assign(dst_offset, src_offset);
-                m_inv.assign(dst_type, src_type);
+                assign(dst_value, src_value);
+                assign(dst_offset, src_offset);
+                assign(dst_type, src_type);
                 break;
             case Bin::Op::ARSH:
                 ashr(dst_value, src_value); // = (int64_t)dst >> src;
