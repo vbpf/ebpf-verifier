@@ -37,7 +37,7 @@ static std::string name_of(data_kind_t kind) {
     switch (kind) {
         case data_kind_t::offsets: return "off";
         case data_kind_t::values: return "r";
-        case data_kind_t::regions: return "t";
+        case data_kind_t::types: return "t";
     }
     return {};
 }
@@ -49,7 +49,7 @@ variable_t variable_t::reg(data_kind_t kind, int i) {
 std::ostream& operator<<(std::ostream& o, const data_kind_t& s) {
     switch (s) {
         case data_kind_t::offsets: return o << "S_off";
-        case data_kind_t::regions: return o << "S_t";
+        case data_kind_t::types: return o << "S_t";
         case data_kind_t::values: return o << "S_r";
     }
     return o;

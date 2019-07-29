@@ -98,6 +98,8 @@ struct program_info {
     ptype_descr descriptor;
 };
 
+extern program_info global_program_info;
+
 struct raw_program {
     std::string filename;
     std::string section;

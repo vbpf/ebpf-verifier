@@ -1075,7 +1075,7 @@ class GraphOps {
 
         for (vert_id v : g.verts()) {
             // We're abusing edge_marks to store _vertex_ flags.
-            // Should really just switch this to allocating regions of a fixed-size buffer.
+            // Should really just switch this to allocating types of a fixed-size buffer.
             edge_marks[v] = is_stable[v] ? V_STABLE : V_UNSTABLE;
         }
 
