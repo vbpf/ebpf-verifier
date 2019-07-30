@@ -596,12 +596,20 @@ protected:
               | do_load_stack           (when(m_inv, mem_reg_type == T_STACK) , target, addr, width);
     }
 
+    int get_type(variable_t v) {
+        auto res = m_inv.to_interval(v).singleton();
+        if (!res) return T_UNINIT;
+        return (int)*res;
+    }
+
+    int get_type(int t) { return t; }
+
     template <typename A, typename X, typename Y, typename Z>
     void do_store_stack(AbsDomain& inv, int width, A addr, X val_type, Y val_value, std::optional<Z> opt_val_offset) {
         inv.array_store_range(data_kind_t::types, addr, width, val_type);
         if (width == 8) {
             inv.array_store(data_kind_t::values, addr, width, val_value);
-            if (opt_val_offset)
+            if (opt_val_offset && get_type(val_type) != T_NUM)
                 inv.array_store(data_kind_t::offsets, addr, width, *opt_val_offset);
             else
                 inv.array_havoc(data_kind_t::offsets, addr, width);
@@ -665,14 +673,25 @@ protected:
         }
         for (ArgPair param : call.pairs) {
             switch (param.kind) {
-            case ArgPair::Kind::PTR_TO_MEM_OR_NULL: break;
-            case ArgPair::Kind::PTR_TO_MEM: break;
+            case ArgPair::Kind::PTR_TO_MEM_OR_NULL:
+            case ArgPair::Kind::PTR_TO_MEM:
+                // TODO: check that initialzied
+                break;
 
-            // assume it's always the stack. The following fails to work for some reason
-            // fork("assume_stack_uninit", arg.region == T_STACK)
-            //    havoc_num_region(arg.offset, sizereg.value));
-            // havoc_num_region(arg.offset, sizereg.value);
-            case ArgPair::Kind::PTR_TO_UNINIT_MEM: break;
+            case ArgPair::Kind::PTR_TO_UNINIT_MEM: {
+                AbsDomain stack{m_inv};
+                stack += reg_type(param.mem) == T_STACK;
+                if (!stack.is_bottom()) {
+                    variable_t addr = reg_offset(param.mem);
+                    variable_t width = reg_value(param.size);
+                    std::cerr << "writing nums to " << addr.name() << " : " << width.name() << "\n";
+                    stack.array_store_range(data_kind_t::types,   addr, width, T_NUM);
+                    stack.array_havoc(      data_kind_t::values,  addr, width);
+                    stack.array_havoc(      data_kind_t::offsets, addr, width);
+                }
+                m_inv += reg_type(param.mem) == T_PACKET;
+                m_inv |= stack;
+            }
             }
         }
         scratch_caller_saved_registers();
@@ -945,12 +964,17 @@ template <typename AbsDomain>
 class assert_property_checker final : private intra_abs_transformer<AbsDomain> {
 
   public:
+    label_t label;
     checks_db m_db;
     using parent = intra_abs_transformer<AbsDomain>;
 
-    using parent::parent;
+    assert_property_checker(const AbsDomain& inv, label_t label) :
+        intra_abs_transformer<AbsDomain>(inv), label(label) {
+
+    }
 
     void require(AbsDomain& inv, const linear_constraint_t& cst, std::string s) override {
+        s = label + ": " + s;
         if (cst.is_contradiction()) {
             if (inv.is_bottom()) {
                 m_db.add_redundant(s);
@@ -1048,7 +1072,7 @@ template <typename AbsDomain>
 inline void check_block(const basic_block_t& bb, const AbsDomain& from_inv, checks_db& db) {
     if (std::none_of(bb.begin(), bb.end(), [](const auto& s) { return std::holds_alternative<Assert>(s); }))
         return;
-    assert_property_checker<AbsDomain> checker(from_inv);
+    assert_property_checker<AbsDomain> checker(from_inv, bb.label());
     for (const auto& statement : bb) {
         std::visit(checker, statement);
     }
