@@ -61,6 +61,7 @@ class variable_t final {
     bool operator<(const variable_t& o) const { return _id < o._id; }
 
     void write(std::ostream& o) const { o << names.at(_id); }
+    std::string name() const { return names.at(_id); }
 
     static variable_t reg(data_kind_t, int);
     static variable_t cell_var(data_kind_t array, index_t offset, unsigned size);
