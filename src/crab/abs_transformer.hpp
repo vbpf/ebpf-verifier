@@ -212,15 +212,12 @@ protected:
     static linear_constraint_t is_not_num(Reg v) { using namespace dsl_syntax; return reg_type(v) > T_NUM; }
 
     void overflow(variable_t lhs) {
+        using namespace dsl_syntax;
+        auto interval = m_inv.to_interval(lhs);
         // handle overflow, assuming 64 bit
-        number_t max(std::numeric_limits<int64_t>::max());
-        number_t min(std::numeric_limits<int64_t>::min());
-        AbsDomain over(m_inv);
-        over += linear_constraint_t(linear_expression_t(number_t(-1), lhs).operator+(max),
-                                    linear_constraint_t::STRICT_INEQUALITY);
-        AbsDomain under(m_inv);
-        under += linear_constraint_t(var_sub(lhs, min), linear_constraint_t::STRICT_INEQUALITY);
-        if (over.is_bottom() || under.is_bottom())
+        number_t max(std::numeric_limits<int64_t>::max() / 2);
+        number_t min(std::numeric_limits<int64_t>::min() / 2);
+        if (interval.lb() <= min || interval.ub() >= max)
             havoc(lhs);
     }
 
@@ -757,10 +754,11 @@ protected:
                 }
                 no_pointer(dst);
                 break;
-            case Bin::Op::LSH:
-                havoc(dst_value); // avoid signedness and overflow issues in shl_overflow(dst_value, imm);
+            case Bin::Op::LSH: {
+                shl_overflow(dst_value, imm); // avoid signedness and overflow issues in shl_overflow(dst_value, imm);
                 no_pointer(dst);
                 break;
+            }
             case Bin::Op::RSH:
                 havoc(dst_value); // avoid signedness and overflow issues in lshr(dst_value, imm);
                 no_pointer(dst);
@@ -852,7 +850,7 @@ protected:
                 no_pointer(dst);
                 break;
             case Bin::Op::LSH:
-                havoc(dst_value); // avoid signedness and overflow issues in shl_overflow(dst_value, src_value);
+                shl_overflow(dst_value, src_value); // avoid signedness and overflow issues in shl_overflow(dst_value, src_value);
                 no_pointer(dst);
                 break;
             case Bin::Op::RSH:
