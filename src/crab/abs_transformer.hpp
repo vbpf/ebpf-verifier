@@ -518,7 +518,7 @@ protected:
         variable_t target_value = reg_value(target);
         variable_t target_offset = reg_offset(target);
         variable_t target_type = reg_type(target);
-        
+
         inv -= target_value;
 
         if (desc.end < 0) {
@@ -566,24 +566,26 @@ protected:
     static AbsDomain do_load_stack(AbsDomain inv, Reg target, linear_expression_t addr, int width) {
         if (inv.is_bottom()) return inv;
 
+        bool is_num = true;
+        for (int i=0; i < width; i++) {
+            inv.array_load(reg_type(target), data_kind_t::types, addr, 1);
+            std::optional<number_t> t = inv.to_interval(reg_type(target)).singleton();
+            if (!t && (*t) != T_NUM) {
+                is_num = false;
+                break;
+            }
+        }
+        if (!is_num) {
+            inv -= reg_type(target);
+        }
         if (width == 8) {
             inv.array_load(reg_value(target), data_kind_t::values, addr, width);
-            // fix: reg_type when reading overlapping ints 
-            inv.array_load(reg_type(target), data_kind_t::types, addr, width);
-            inv.array_load(reg_offset(target), data_kind_t::offsets, addr, width);
-        } else {
-            bool is_num = true;
-            for (int i=0; i < width; i++) {
-                inv.array_load(reg_type(target), data_kind_t::types, addr, 1);
-                std::optional<number_t> t = inv.to_interval(reg_type(target)).singleton();
-                if (!t && (*t) != T_NUM) {
-                    is_num = false;
-                    break;
-                }
+            if (is_num) {
+                inv -= reg_offset(target);
+            } else {
+                inv.array_load(reg_offset(target), data_kind_t::offsets, addr, width);
             }
-            if (!is_num)
-                inv -= reg_type(target);
-
+        } else {
             inv -= reg_value(target);
             inv -= reg_offset(target);
         }
