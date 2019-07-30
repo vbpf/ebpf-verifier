@@ -132,6 +132,11 @@ class intra_abs_transformer {
 
   private:
 
+    static AbsDomain when(AbsDomain inv, linear_constraint_t cond) {
+        inv += cond;
+        return inv;
+    }
+
     void scratch_caller_saved_registers() {
         for (int i = 1; i <= 5; i++) {
             havoc(reg_value(i));
@@ -472,74 +477,102 @@ protected:
         scratch_caller_saved_registers();
     }
 
-    void exec_ctx_access(AbsDomain& assume_ctx, bool is_load, Reg mem_reg, Reg data_reg, int offset, int width) {
+    static AbsDomain do_load_packet_or_shared(AbsDomain inv, Reg target, linear_expression_t addr, int width) {
+        if (inv.is_bottom()) return inv;
+
+        inv.assign(reg_type(target), T_NUM);
+        inv -= reg_offset(target);
+        inv -= reg_value(target);
+        return inv;
+    }
+
+    static AbsDomain do_load_ctx(AbsDomain inv, Reg target, linear_expression_t addr_vague, int width) {
         using namespace dsl_syntax;
-        if (!is_load) return;
-        variable_t mem_reg_type = reg_type(mem_reg);
-        assume_ctx += mem_reg_type == T_CTX;
-        if (assume_ctx.is_bottom()) return;
+        if (inv.is_bottom()) return inv;
 
-        std::optional<number_t> maybe_mem_reg_offset = assume_ctx.to_interval(reg_offset(mem_reg)).singleton();
+        std::optional<number_t> maybe_addr = inv.to_interval(addr_vague).singleton();
 
-        variable_t data_reg_value = reg_value(data_reg);
-        variable_t data_reg_offset = reg_offset(data_reg);
-        variable_t data_reg_type = reg_type(data_reg);
+        variable_t target_value = reg_value(target);
+        variable_t target_offset = reg_offset(target);
+        variable_t target_type = reg_type(target);
 
-        if (!maybe_mem_reg_offset) {
-            assume_ctx -= data_reg_value;
-            assume_ctx -= data_reg_offset;
-            assume_ctx -= data_reg_type;
-            return;
+        if (!maybe_addr || width != 4) {
+            inv -= target_value;
+            inv -= target_offset;
+            inv -= target_type;
+            return inv;
         }
 
-        number_t addr = *maybe_mem_reg_offset + (number_t)offset;
+        number_t addr = *maybe_addr;
 
         ptype_descr desc = global_program_info.descriptor;
 
-        assume_ctx -= data_reg_value;
+        inv -= target_value;
         bool is_packet = true;
         if (addr == desc.data) {
-            assume_ctx.assign(data_reg_offset, offset);
+            inv.assign(target_offset, 0);
         } else if (addr == desc.end) {
-            assume_ctx.assign(data_reg_offset, variable_t::packet_size());
+            inv.assign(target_offset, variable_t::packet_size());
         } else if (addr == desc.meta) {
-            assume_ctx.assign(data_reg_offset, variable_t::meta_offset());
+            std::cout << "addr = " << addr << "\n";
+            inv.assign(target_offset, variable_t::meta_offset());
         } else {
-            assume_ctx -= data_reg_offset;
-            assume_ctx.assign(data_reg_type, T_NUM);
+            inv -= target_offset;
+            inv.assign(target_type, T_NUM);
             is_packet = false;
         }
         if (is_packet) {
-            assume_ctx += 4098 <= data_reg_value;
-            assume_ctx += data_reg_value <= PTR_MAX;
+            inv.assign(target_type, T_PACKET);
+            inv += 4098 <= target_value;
+            inv += target_value <= PTR_MAX;
         }
+        return inv;
+    }
+
+    static AbsDomain do_load_stack(AbsDomain inv, Reg target, linear_expression_t addr, int width) {
+        if (inv.is_bottom()) return inv;
+
+        if (width == 8) {
+            inv.array_load(reg_offset(target), data_kind_t::offsets, 8, addr);
+            inv.array_load(reg_value(target), data_kind_t::values, 8, addr);
+            inv.array_load(reg_type(target), data_kind_t::types, 8, addr);
+        } else {
+            inv -= reg_offset(target);
+            inv -= reg_value(target);
+            inv -= reg_type(target);
+        }
+        return inv;
+    }
+
+    void do_load(Mem const& b, Reg target) {
+        using namespace dsl_syntax;
+        Reg mem_reg = b.access.basereg;
+        int width = (int)b.access.width;
+        int offset = (int)b.access.offset;
+        linear_expression_t addr = reg_offset(mem_reg) + (number_t)offset;
+        if (mem_reg.v == 10) {
+            m_inv = do_load_stack(m_inv, target, addr, width);
+            return;
+        }
+
+        variable_t mem_reg_type = reg_type(mem_reg);
+        m_inv = do_load_ctx             (when(m_inv, mem_reg_type == T_CTX)   , target, addr, width)
+              | do_load_packet_or_shared(when(m_inv, mem_reg_type >= T_SHARED), target, addr, width)
+              | do_load_stack           (when(m_inv, mem_reg_type == T_STACK) , target, addr, width);
     }
 
     template <typename A, typename X, typename Y, typename Z>
-    void do_store_stack(AbsDomain& m_inv, int width, A addr, X val_type, Y val_value, std::optional<Z> opt_val_offset) {
-        m_inv.array_store_range(data_kind_t::types, addr, width, val_type);
+    void do_store_stack(AbsDomain& inv, int width, A addr, X val_type, Y val_value, std::optional<Z> opt_val_offset) {
+        inv.array_store_range(data_kind_t::types, addr, width, val_type);
         if (width == 8) {
-            m_inv.array_store(data_kind_t::values, addr, width, val_value);
+            inv.array_store(data_kind_t::values, addr, width, val_value);
             if (opt_val_offset)
-                m_inv.array_store(data_kind_t::offsets, addr, width, *opt_val_offset);
+                inv.array_store(data_kind_t::offsets, addr, width, *opt_val_offset);
             else
-                m_inv.array_havoc(data_kind_t::offsets, addr, width);
+                inv.array_havoc(data_kind_t::offsets, addr, width);
         } else {
-            m_inv.array_havoc(data_kind_t::values, addr, width);
-            m_inv.array_havoc(data_kind_t::offsets, addr, width);
-        }
-    }
-
-    template <typename A>
-    void do_load_stack(AbsDomain& m_inv, int width, A addr, Reg target) {
-        if (width == 8) {
-            m_inv.array_load(reg_offset(target), data_kind_t::offsets, 8, addr);
-            m_inv.array_load(reg_value(target), data_kind_t::values, 8, addr);
-            m_inv.array_load(reg_type(target), data_kind_t::types, 8, addr);
-        } else {
-            m_inv -= reg_offset(target);
-            m_inv -= reg_value(target);
-            m_inv -= reg_type(target);
+            inv.array_havoc(data_kind_t::values, addr, width);
+            inv.array_havoc(data_kind_t::offsets, addr, width);
         }
     }
 
@@ -547,49 +580,13 @@ protected:
         if (std::holds_alternative<Reg>(b.value)) {
             Reg data_reg = std::get<Reg>(b.value);
             if (b.is_load) {
-                do_mem_load(b, data_reg);
+                do_load(b, data_reg);
             } else {
                 do_mem_store(b, reg_type(data_reg), reg_value(data_reg), reg_offset(data_reg));
             }
         } else {
             do_mem_store(b, T_NUM, std::get<Imm>(b.value).v, std::optional<variable_t>{});
         }
-    }
-
-    void do_mem_load(Mem const& b, Reg target) {
-        using namespace dsl_syntax;
-        Reg mem_reg = b.access.basereg;
-        int width = (int)b.access.width;
-        int offset = (int)b.access.offset;
-        if (mem_reg.v == 10) {
-            number_t addr = STACK_SIZE + offset;
-            do_load_stack(m_inv, width, addr, target);
-            return;
-        }
-        variable_t mem_reg_type = reg_type(mem_reg);
-        linear_expression_t addr = reg_offset(mem_reg) + (number_t)offset;
-
-        AbsDomain assume_not_stack(m_inv);
-        assume_not_stack += mem_reg_type != T_STACK;
-        if (!assume_not_stack.is_bottom()) {
-            AbsDomain assume_ctx{assume_not_stack};
-            exec_ctx_access(assume_ctx, true, mem_reg, target, offset, width);
-
-            assume_not_stack += mem_reg_type != T_CTX;
-            if (assume_not_stack.is_bottom()) {
-                std::swap(assume_not_stack, assume_ctx);
-            } else {
-                assume_not_stack.assign(reg_type(target), T_NUM);
-                assume_not_stack -= reg_offset(target);
-                assume_not_stack -= reg_value(target);
-                assume_not_stack |= assume_ctx;
-            }
-        }
-        m_inv += mem_reg_type == T_STACK;
-        if (!m_inv.is_bottom()) {
-            do_load_stack(m_inv, width, addr, target);
-        }
-        m_inv |= assume_not_stack;
     }
 
     template <typename Type, typename Value>
