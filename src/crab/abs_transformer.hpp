@@ -396,9 +396,7 @@ protected:
                              | check_access_stack  (when(m_inv, reg_type(s.reg) == T_STACK) , lb, ub, m)
                              | check_access_shared (when(m_inv, is_shared(reg_type(s.reg))) , lb, ub, m, reg_type(s.reg))
                              | check_access_context(when(m_inv, reg_type(s.reg) == T_CTX)   , lb, ub, m);
-
         if (is_comparison_check) {
-            m_inv += reg_type(s.reg) <= T_NUM;
             m_inv |= assume_ptr;
             return;
         } else if (s.or_null) {
@@ -557,13 +555,25 @@ protected:
         if (inv.is_bottom()) return inv;
 
         if (width == 8) {
-            inv.array_load(reg_offset(target), data_kind_t::offsets, 8, addr);
-            inv.array_load(reg_value(target), data_kind_t::values, 8, addr);
-            inv.array_load(reg_type(target), data_kind_t::types, 8, addr);
+            inv.array_load(reg_value(target), data_kind_t::values, addr, width);
+            // fix: reg_type when reading overlapping ints 
+            inv.array_load(reg_type(target), data_kind_t::types, addr, width);
+            inv.array_load(reg_offset(target), data_kind_t::offsets, addr, width);
         } else {
-            inv -= reg_offset(target);
+            bool is_num = true;
+            for (int i=0; i < width; i++) {
+                inv.array_load(reg_type(target), data_kind_t::types, addr, 1);
+                std::optional<number_t> t = inv.to_interval(reg_type(target)).singleton();
+                if (!t && (*t) != T_NUM) {
+                    is_num = false;
+                    break;
+                }
+            }
+            if (!is_num)
+                inv -= reg_type(target);
+
             inv -= reg_value(target);
-            inv -= reg_type(target);
+            inv -= reg_offset(target);
         }
         return inv;
     }
@@ -962,7 +972,7 @@ class assert_property_checker final : public intra_abs_transformer<AbsDomain> {
             if (inv.is_bottom()) {
                 m_db.add_redundant(s);
             } else {
-                m_db.add_warning(s);
+                m_db.add_warning(std::string("Contradition: ") + s);
             }
             goto out;
         }
@@ -1005,7 +1015,7 @@ out:
         bool pre_bot = this->m_inv.is_bottom();
         parent::operator()(s);
 
-        if (!pre_bot && this->m_inv.is_bottom()) {
+        if (!pre_bot && this->m_inv.is_bottom() && global_options.print_failures) {
             std::cout << "inv became bot after "<< s <<"\n";
         }
     }

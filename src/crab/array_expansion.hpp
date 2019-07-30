@@ -469,7 +469,7 @@ class array_expansion_domain final : public writeable {
     }
     // array_operators_api
 
-    void array_load(variable_t lhs, data_kind_t kind, linear_expression_t elem_size, linear_expression_t i) {
+    void array_load(variable_t lhs, data_kind_t kind, linear_expression_t i, int width) {
 
         if (is_bottom())
             return;
@@ -478,29 +478,24 @@ class array_expansion_domain final : public writeable {
         if (std::optional<number_t> n = ii.singleton()) {
             offset_map_t& offset_map = lookup_array_map(kind);
             offset_t o((long)*n);
-            interval_t i_elem_size = to_interval(elem_size);
-            if (std::optional<number_t> n_bytes = i_elem_size.singleton()) {
-                unsigned size = (long)*n_bytes;
-                std::vector<cell_t> cells = offset_map.get_overlap_cells(o, size);
-                if (cells.empty()) {
-                    cell_t c = offset_map.mk_cell(o, size);
-                    // Here it's ok to do assignment (instead of expand)
-                    // because c is not a summarized variable. Otherwise, it
-                    // would be unsound.
-                    _inv.assign(lhs, c.get_scalar(kind));
-                    return;
-                } else {
-                    CRAB_WARN("Ignored read from cell ", kind, "[", o, "...", o.index() + size - 1, "]",
-                              " because it overlaps with ", cells.size(), " cells");
-                    /*
-                       TODO: we can apply here "Value Recomposition" 'a la'
-                       Mine'06 to construct values of some type from a sequence
-                       of bytes. It can be endian-independent but it would more
-                       precise if we choose between little- and big-endian.
-                    */
-                }
+            unsigned size = (long)width;
+            std::vector<cell_t> cells = offset_map.get_overlap_cells(o, size);
+            if (cells.empty()) {
+                cell_t c = offset_map.mk_cell(o, size);
+                // Here it's ok to do assignment (instead of expand)
+                // because c is not a summarized variable. Otherwise, it
+                // would be unsound.
+                _inv.assign(lhs, c.get_scalar(kind));
+                return;
             } else {
-                CRAB_ERROR("array expansion domain expects constant array element sizes");
+                CRAB_WARN("Ignored read from cell ", kind, "[", o, "...", o.index() + size - 1, "]",
+                            " because it overlaps with ", cells.size(), " cells");
+                /*
+                    TODO: we can apply here "Value Recomposition" 'a la'
+                    Mine'06 to construct values of some type from a sequence
+                    of bytes. It can be endian-independent but it would more
+                    precise if we choose between little- and big-endian.
+                */
             }
         } else {
             // TODO: we can be more precise here
