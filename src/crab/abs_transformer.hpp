@@ -475,56 +475,44 @@ protected:
     void exec_ctx_access(AbsDomain& assume_ctx, bool is_load, Reg mem_reg, Reg data_reg, int offset, int width) {
         using namespace dsl_syntax;
         if (!is_load) return;
-        variable_t mem_reg_offset = reg_offset(mem_reg);
         variable_t mem_reg_type = reg_type(mem_reg);
+        assume_ctx += mem_reg_type == T_CTX;
+        if (assume_ctx.is_bottom()) return;
+
+        std::optional<number_t> maybe_mem_reg_offset = assume_ctx.to_interval(reg_offset(mem_reg)).singleton();
 
         variable_t data_reg_value = reg_value(data_reg);
         variable_t data_reg_offset = reg_offset(data_reg);
         variable_t data_reg_type = reg_type(data_reg);
 
-        linear_expression_t addr = mem_reg_offset + (number_t)offset;
+        if (!maybe_mem_reg_offset) {
+            assume_ctx -= data_reg_value;
+            assume_ctx -= data_reg_offset;
+            assume_ctx -= data_reg_type;
+            return;
+        }
 
-        assume_ctx += mem_reg_type == T_CTX;
-
-        if (assume_ctx.is_bottom()) return;
+        number_t addr = *maybe_mem_reg_offset + (number_t)offset;
 
         ptype_descr desc = global_program_info.descriptor;
 
-        AbsDomain assume_normal{assume_ctx};
-        assume_normal += mem_reg_offset != desc.data;
-        assume_normal += mem_reg_offset != desc.end;
-        if (desc.meta >= 0) {
-            assume_normal += mem_reg_offset != desc.meta;
-        }
-        assume_normal -= data_reg_value;
-        assume_normal -= data_reg_offset;
-        assume_normal.assign(data_reg_type, T_NUM);
-
-        if (desc.data < 0) {
-            std::swap(assume_ctx, assume_normal);
-            return;
-        }
-        // std::cerr << "Looking for packet registers\n";
-        auto load_datap = [&](int start) -> bool {
-            AbsDomain ret{assume_ctx};
-            ret += addr == start;
-            if (!ret.is_bottom()) {
-                // std::cerr << "Found!\n";
-                return true;
-            }
-            return false;
-        };
-        assume_ctx.assign(data_reg_type, T_PACKET);
         assume_ctx -= data_reg_value;
-        assume_ctx += 4098 <= data_reg_value;
-        assume_ctx += data_reg_value <= PTR_MAX;
-        if (load_datap(desc.data))
+        bool is_packet = true;
+        if (addr == desc.data) {
             assume_ctx.assign(data_reg_offset, offset);
-        else if (load_datap(desc.end))
+        } else if (addr == desc.end) {
             assume_ctx.assign(data_reg_offset, variable_t::packet_size());
-        else if (load_datap(desc.meta))
+        } else if (addr == desc.meta) {
             assume_ctx.assign(data_reg_offset, variable_t::meta_offset());
-        assume_ctx |= assume_normal;
+        } else {
+            assume_ctx -= data_reg_offset;
+            assume_ctx.assign(data_reg_type, T_NUM);
+            is_packet = false;
+        }
+        if (is_packet) {
+            assume_ctx += 4098 <= data_reg_value;
+            assume_ctx += data_reg_value <= PTR_MAX;
+        }
     }
 
     template <typename A, typename X, typename Y, typename Z>
