@@ -513,25 +513,36 @@ protected:
         using namespace dsl_syntax;
         if (inv.is_bottom()) return inv;
 
-        std::optional<number_t> maybe_addr = inv.to_interval(addr_vague).singleton();
+        ptype_descr desc = global_program_info.descriptor;
 
         variable_t target_value = reg_value(target);
         variable_t target_offset = reg_offset(target);
         variable_t target_type = reg_type(target);
+        
+        inv -= target_value;
 
-        if (!maybe_addr || width != 4) {
-            inv -= target_value;
+        if (desc.end < 0) {
             inv -= target_offset;
-            inv -= target_type;
+            inv.assign(target_type, T_NUM);
+            return inv;
+        }
+
+        interval_t interval = inv.to_interval(addr_vague);
+        std::optional<number_t> maybe_addr = interval.singleton();
+        
+        bool may_touch_ptr = interval[desc.data] || interval[desc.end] || interval[desc.end];
+
+        if (!maybe_addr) {
+            inv -= target_offset;
+            if (may_touch_ptr)
+                inv -= target_type;
+            else
+                inv.assign(target_type, T_NUM);
             return inv;
         }
 
         number_t addr = *maybe_addr;
 
-        ptype_descr desc = global_program_info.descriptor;
-
-        inv -= target_value;
-        bool is_packet = true;
         if (addr == desc.data) {
             inv.assign(target_offset, 0);
         } else if (addr == desc.end) {
@@ -540,14 +551,15 @@ protected:
             inv.assign(target_offset, variable_t::meta_offset());
         } else {
             inv -= target_offset;
-            inv.assign(target_type, T_NUM);
-            is_packet = false;
+            if (may_touch_ptr)
+                inv -= target_type;
+            else
+                inv.assign(target_type, T_NUM);
+            return inv;
         }
-        if (is_packet) {
-            inv.assign(target_type, T_PACKET);
-            inv += 4098 <= target_value;
-            inv += target_value <= PTR_MAX;
-        }
+        inv.assign(target_type, T_PACKET);
+        inv += 4098 <= target_value;
+        inv += target_value <= PTR_MAX;
         return inv;
     }
 
