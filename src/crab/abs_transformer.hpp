@@ -178,8 +178,8 @@ class intra_abs_transformer {
     void bitwise_or(variable_t lhs, number_t op2) {              apply(m_inv, crab::bitwise_binop_t::OR,   lhs, lhs, op2); }
     void bitwise_xor(variable_t lhs, variable_t op2) {           apply(m_inv, crab::bitwise_binop_t::XOR,  lhs, lhs, op2); }
     void bitwise_xor(variable_t lhs, number_t op2) {             apply(m_inv, crab::bitwise_binop_t::XOR,  lhs, lhs, op2); }
-    void shl(variable_t lhs, variable_t op2) {                   apply(m_inv, crab::bitwise_binop_t::SHL,  lhs, lhs, op2, true); }
-    void shl(variable_t lhs, number_t op2) {                     apply(m_inv, crab::bitwise_binop_t::SHL,  lhs, lhs, op2, true); }
+    void shl_overflow(variable_t lhs, variable_t op2) {          apply(m_inv, crab::bitwise_binop_t::SHL,  lhs, lhs, op2, true); }
+    void shl_overflow(variable_t lhs, number_t op2) {            apply(m_inv, crab::bitwise_binop_t::SHL,  lhs, lhs, op2, true); }
     void lshr(variable_t lhs, variable_t op2) {                  apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
     void lshr(variable_t lhs, number_t op2) {                    apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
     void ashr(variable_t lhs, variable_t op2) {                  apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
@@ -412,15 +412,9 @@ protected:
 
     AbsDomain check_access_packet(AbsDomain inv, linear_expression_t lb, linear_expression_t ub, std::string s, bool is_comparison_check) {
         using namespace dsl_syntax;
-        // This is not the check for non-num, non-map_fd etc.
-        // It could, without join:
-        // b.fork("num", reg_type == T_NUM).assertion(neq(reg_type, reg_type));
-        // b.fork("map_fd", reg_type == T_MAP).assertion(neq(reg_type, reg_type));
-        // But then we'll need a different check for pointer comparison
-        // this is why "assume" and not "require"
         require(inv, lb >= variable_t::meta_offset(),
             std::string("Lower bound must be higher than meta_offset") + s);
-        if (is_comparison_check) 
+        if (is_comparison_check)
             require(inv, ub <= MAX_PACKET_OFF,
                 std::string("Upper bound must be lower than ") + std::to_string(MAX_PACKET_OFF) + s);
         else
@@ -529,7 +523,7 @@ protected:
 
         interval_t interval = inv.to_interval(addr_vague);
         std::optional<number_t> maybe_addr = interval.singleton();
-        
+
         bool may_touch_ptr = interval[desc.data] || interval[desc.end] || interval[desc.end];
 
         if (!maybe_addr) {
@@ -658,19 +652,6 @@ protected:
             do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset);
         }
         m_inv |= assume_not_stack;
-        // TODO: rest of regions
-        // assume_stack += mem_reg_type == T_STACK;
-        // do_store_stack(assume_stack, b.access.width, addr, reg_type(data_reg), reg_value(data_reg), reg_offset(data_reg));
-
-        // variable_t data_reg = std::get<Reg>(b.value);
-
-        // AbsDomain assume_stack{m_inv}; assume_stack += mem_reg_type == T_STACK;
-        // AbsDomain assume_shared{m_inv}; assume_shared += is_shared(mem_reg_type);
-        // AbsDomain assume_ctx{m_inv}; assume_ctx += mem_reg_type == T_CTX;
-        // if (machine.ctx_desc.data >= 0) {
-        //     AbsDomain assume_packet{m_inv}; assume_packet += mem_reg_type == T_PACKET;
-        // }
-        // return m_inv;
     }
 
     void operator()(LockAdd const& a) {
@@ -681,30 +662,24 @@ protected:
         using namespace dsl_syntax;
         for (ArgSingle param : call.singles) {
             switch (param.kind) {
-            case ArgSingle::Kind::ANYTHING:
-                break;
-            case ArgSingle::Kind::MAP_FD: {
-                // should have been done in the assertion
-                break;
-            }
-            case ArgSingle::Kind::PTR_TO_MAP_KEY:
-                break;
-            case ArgSingle::Kind::PTR_TO_MAP_VALUE:
-                break;
-            case ArgSingle::Kind::PTR_TO_CTX:
-                break;
+            case ArgSingle::Kind::ANYTHING: break;
+            // should have been done in the assertion
+            case ArgSingle::Kind::MAP_FD: break;
+            case ArgSingle::Kind::PTR_TO_MAP_KEY: break;
+            case ArgSingle::Kind::PTR_TO_MAP_VALUE: break;
+            case ArgSingle::Kind::PTR_TO_CTX: break;
             }
         }
         for (ArgPair param : call.pairs) {
             switch (param.kind) {
             case ArgPair::Kind::PTR_TO_MEM_OR_NULL: break;
             case ArgPair::Kind::PTR_TO_MEM: break;
-            case ArgPair::Kind::PTR_TO_UNINIT_MEM:
-                // assume it's always the stack. The following fails to work for some reason
-                // fork("assume_stack_uninit", arg.region == T_STACK)
-                //    havoc_num_region(arg.offset, sizereg.value));
-                // havoc_num_region(arg.offset, sizereg.value);
-                break;
+
+            // assume it's always the stack. The following fails to work for some reason
+            // fork("assume_stack_uninit", arg.region == T_STACK)
+            //    havoc_num_region(arg.offset, sizereg.value));
+            // havoc_num_region(arg.offset, sizereg.value);
+            case ArgPair::Kind::PTR_TO_UNINIT_MEM: break;
             }
         }
         scratch_caller_saved_registers();
@@ -786,24 +761,22 @@ protected:
                 }
                 no_pointer(dst);
                 break;
-            case Bin::Op::RSH:
-                ashr(dst_value, imm);
-                assume(dst_value <= (1 << (64 - imm)));
-                assume(dst_value >= 0);
+            case Bin::Op::LSH:
+                havoc(dst_value); // avoid signedness and overflow issues in shl_overflow(dst_value, imm);
                 no_pointer(dst);
                 break;
-            case Bin::Op::LSH:
-                lshr(dst_value, imm);
+            case Bin::Op::RSH:
+                havoc(dst_value); // avoid signedness and overflow issues in lshr(dst_value, imm);
+                no_pointer(dst);
+                break;
+            case Bin::Op::ARSH:
+                havoc(dst_value); // avoid signedness and overflow issues in ashr(dst_value, imm); // = (int64_t)dst >> imm;
+                // assume(dst_value <= (1 << (64 - imm)));
+                // assume(dst_value >= -(1 << (64 - imm)));
                 no_pointer(dst);
                 break;
             case Bin::Op::XOR:
                 bitwise_xor(dst_value, imm);
-                no_pointer(dst);
-                break;
-            case Bin::Op::ARSH:
-                ashr(dst_value, imm); // = (int64_t)dst >> imm;
-                assume(dst_value <= (1 << (64 - imm)));
-                assume(dst_value >= -(1 << (64 - imm)));
                 no_pointer(dst);
                 break;
             }
@@ -848,14 +821,16 @@ protected:
                 both_num += dst_type == T_NUM;
                 apply(both_num, crab::arith_binop_t::SUB, dst_value , dst_value , src_value, true);
 
-                m_inv += is_pointer(src);
-                apply(m_inv, crab::arith_binop_t::SUB, dst_value , dst_offset , dst_offset);
-                assign(dst_type, T_NUM);
-                havoc(dst_offset);
+                AbsDomain both_ptr{m_inv};
+                both_ptr += is_pointer(src);
+                both_ptr += eq(src_type, dst_type);
+                apply(both_ptr, crab::arith_binop_t::SUB, dst_value , dst_offset , src_offset);
+                both_ptr.assign(dst_type, T_NUM);
+                both_ptr -= dst_offset;
 
-                m_inv += cond.negate();
-                m_inv |= both_num;
-                m_inv |= ptr_dst;
+                m_inv = both_num
+                      | ptr_dst
+                      | both_ptr;
                 break;
             }
             case Bin::Op::MUL:
@@ -881,11 +856,15 @@ protected:
                 no_pointer(dst);
                 break;
             case Bin::Op::LSH:
-                lshr(dst_value, src_value);
+                havoc(dst_value); // avoid signedness and overflow issues in shl_overflow(dst_value, src_value);
                 no_pointer(dst);
                 break;
             case Bin::Op::RSH:
-                ashr(dst_value, src_value);
+                havoc(dst_value); // avoid signedness and overflow issues in lshr(dst_value, src_value);
+                no_pointer(dst);
+                break;
+            case Bin::Op::ARSH:
+                havoc(dst_value); // avoid signedness and overflow issues in ashr(dst_value, src_value); // = (int64_t)dst >> src;
                 no_pointer(dst);
                 break;
             case Bin::Op::XOR:
@@ -896,10 +875,6 @@ protected:
                 assign(dst_value, src_value);
                 assign(dst_offset, src_offset);
                 assign(dst_type, src_type);
-                break;
-            case Bin::Op::ARSH:
-                ashr(dst_value, src_value); // = (int64_t)dst >> src;
-                no_pointer(dst);
                 break;
             }
         }
@@ -973,7 +948,7 @@ class checks_db final {
 };
 
 template <typename AbsDomain>
-class assert_property_checker final : public intra_abs_transformer<AbsDomain> {
+class assert_property_checker final : private intra_abs_transformer<AbsDomain> {
 
   public:
     checks_db m_db;
@@ -1029,8 +1004,8 @@ out:
         bool pre_bot = this->m_inv.is_bottom();
         parent::operator()(s);
 
-        if (!pre_bot && this->m_inv.is_bottom() && global_options.print_failures) {
-            std::cout << "inv became bot after "<< s <<"\n";
+        if (!pre_bot && this->m_inv.is_bottom()) {
+            m_db.add_warning("inv became bot after " + to_string(s));
         }
     }
 };
