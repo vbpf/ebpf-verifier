@@ -505,32 +505,31 @@ class array_expansion_domain final : public writeable {
         _inv -= lhs;
     }
 
-    std::optional<std::pair<offset_t, unsigned>> kill_and_find_var(data_kind_t kind, linear_expression_t elem_size, linear_expression_t i) {
+    std::optional<std::pair<offset_t, unsigned>> kill_and_find_var(data_kind_t kind, linear_expression_t i, linear_expression_t elem_size) {
         if (is_bottom())
             return {};
 
-        interval_t i_elem_size = to_interval(elem_size);
-        std::optional<number_t> n_bytes = i_elem_size.singleton();
-        if (!n_bytes) {
-            CRAB_ERROR("array expansion domain expects constant array element sizes");
-        }
-
         std::optional<std::pair<offset_t, unsigned>> res;
 
-        unsigned size = (long)(*n_bytes);
         offset_map_t& offset_map = lookup_array_map(kind);
         interval_t ii = to_interval(i);
         std::vector<cell_t> cells;
         if (std::optional<number_t> n = ii.singleton()) {
-            // -- Constant index: kill overlapping cells
-            offset_t o((long)*n);
-            cells = offset_map.get_overlap_cells(o, size);
-            res = std::make_pair(o, size);
-        } else {
+            interval_t i_elem_size = to_interval(elem_size);
+            std::optional<number_t> n_bytes = i_elem_size.singleton();
+            if (n_bytes) {
+                unsigned size = (long)(*n_bytes);
+                // -- Constant index: kill overlapping cells
+                offset_t o((long)*n);
+                cells = offset_map.get_overlap_cells(o, size);
+                res = std::make_pair(o, size);
+            }
+        }
+        if (!res) {
             // -- Non-constant index: kill overlapping cells
             cells = offset_map.get_overlap_cells_symbolic_offset(_inv,
                 linear_expression_t(i),
-                linear_expression_t(i + number_t(size - 1))
+                linear_expression_t(i + elem_size)
             );
         }
         kill_cells(kind, cells, offset_map, _inv);
@@ -539,7 +538,7 @@ class array_expansion_domain final : public writeable {
     }
 
     void array_store(data_kind_t kind, linear_expression_t idx, linear_expression_t elem_size, linear_expression_t val) {
-        auto maybe_cell = kill_and_find_var(kind, elem_size, idx);
+        auto maybe_cell = kill_and_find_var(kind, idx, elem_size);
         if (maybe_cell) {
             // perform strong update
             //std::cout << "(" << maybe_cell->first.index() << ", " << maybe_cell->second << ")\n";
@@ -550,7 +549,7 @@ class array_expansion_domain final : public writeable {
     }
 
     void array_havoc(data_kind_t kind, linear_expression_t idx, linear_expression_t elem_size) {
-        kill_and_find_var(kind, elem_size, idx);
+        kill_and_find_var(kind, idx, elem_size);
     }
     // Perform array stores over an array segment
     void array_store_range(data_kind_t kind, linear_expression_t _idx,
