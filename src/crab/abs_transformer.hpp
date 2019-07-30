@@ -562,7 +562,7 @@ protected:
 
         bool is_num = true;
         for (int i=0; i < width; i++) {
-            inv.array_load(reg_type(target), data_kind_t::types, addr, 1);
+            inv.array_load(reg_type(target), data_kind_t::types, addr + i, 1);
             std::optional<number_t> t = inv.to_interval(reg_type(target)).singleton();
             if (!t && (*t) != T_NUM) {
                 is_num = false;
@@ -573,12 +573,8 @@ protected:
             inv -= reg_type(target);
         }
         if (width == 8) {
-            inv.array_load(reg_value(target), data_kind_t::values, addr, width);
-            if (is_num) {
-                inv -= reg_offset(target);
-            } else {
-                inv.array_load(reg_offset(target), data_kind_t::offsets, addr, width);
-            }
+            inv.array_load(reg_value(target) , data_kind_t::values , addr, width);
+            inv.array_load(reg_offset(target), data_kind_t::offsets, addr, width);
         } else {
             inv -= reg_value(target);
             inv -= reg_offset(target);
