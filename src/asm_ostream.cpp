@@ -275,6 +275,12 @@ string to_string(Instruction const& ins) {
     return to_string(ins, [](label_t l) { return string("<") + l + ">"; });
 }
 
+string to_string(AssertionConstraint const& constraint) {
+    std::stringstream str;
+    str << constraint;
+    return str.str();
+}
+
 int size(Instruction inst) {
     if (std::holds_alternative<Bin>(inst)) {
         if (std::get<Bin>(inst).lddw)

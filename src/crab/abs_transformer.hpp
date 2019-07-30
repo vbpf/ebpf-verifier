@@ -189,8 +189,8 @@ protected:
     void assume(const linear_constraint_t& cst) { assume(m_inv, cst); }
     void assume(AbsDomain& inv, const linear_constraint_t& cst) { inv += cst; }
 
-    void require(const linear_constraint_t& cst, const AssertionConstraint& s) { require(this->m_inv, cst, s); }
-    virtual void require(AbsDomain& inv, const linear_constraint_t& cst, const AssertionConstraint& s) { assume(inv, cst); }
+    void require(const linear_constraint_t& cst, std::string s) { require(this->m_inv, cst, s); }
+    virtual void require(AbsDomain& inv, const linear_constraint_t& cst, std::string s) { assume(inv, cst); }
 
     void havoc(variable_t v) { m_inv -= v; }
     void assign(variable_t lhs, variable_t rhs) { m_inv.assign(lhs, rhs); }
@@ -341,7 +341,7 @@ protected:
     void operator()(Jmp const& a) {}
 
     void operator()(const Comparable& s) {
-        require(m_inv, eq(reg_type(s.r1), reg_type(s.r2)), s);
+        require(m_inv, eq(reg_type(s.r1), reg_type(s.r2)), to_string(s));
     }
 
     void operator()(const Addable& s) {
@@ -349,7 +349,8 @@ protected:
         linear_constraint_t cond = reg_type(s.ptr) > T_NUM;
         AbsDomain is_ptr{m_inv};
         is_ptr += cond;
-        require(is_ptr, reg_type(s.num) == T_NUM, s); // TODO: assert
+        require(is_ptr, reg_type(s.num) == T_NUM,
+            "only numbers can be added to pointers (" + to_string(s) + ")");
 
         m_inv += cond.negate();
         m_inv |= is_ptr;
@@ -358,7 +359,7 @@ protected:
     void operator()(const ValidSize& s) {
         using namespace dsl_syntax;
         variable_t r = reg_value(s.reg);
-        require(s.can_be_zero ? r >= 0 : r > 0, s);
+        require(s.can_be_zero ? r >= 0 : r > 0, to_string(s));
     }
 
     void operator()(const ValidMapKeyValue& s) {
@@ -372,67 +373,89 @@ protected:
 
         variable_t lb = reg_offset(s.access_reg);
         variable_t width = s.key ? variable_t::map_key_size() : variable_t::map_value_size();
-        check_access(reg_type(s.access_reg), lb, lb + width, false, std::nullopt, s);
+        linear_expression_t ub = lb + width;
+        std::string m = std::string(" (") + to_string(s) + ")";
+        require(m_inv, reg_type(s.access_reg) >= T_STACK, "Only stack or packet can be used as a parameter" + m);
+        require(m_inv, reg_type(s.access_reg) <= T_PACKET, "Only stack or packet can be used as a parameter" + m);
+        m_inv = check_access_packet(when(m_inv, reg_type(s.access_reg) == T_PACKET), lb, ub, m, false)
+              | check_access_stack (when(m_inv, reg_type(s.access_reg) == T_STACK) , lb, ub, m);
     }
 
     void operator()(const ValidAccess& s) {
         using namespace dsl_syntax;
 
+        bool is_comparison_check = s.width == (Value)Imm{0};
+
         linear_expression_t lb = reg_offset(s.reg) + s.offset;
         linear_expression_t ub;
         if (std::holds_alternative<Imm>(s.width)) ub = lb + std::get<Imm>(s.width).v;
         else ub = lb + reg_value(std::get<Reg>(s.width));
-        bool is_comparison_check = s.width == (Value)Imm{0};
-        std::optional<variable_t> reg_value_for_null = s.or_null ? std::optional<variable_t>(reg_value(s.reg)) : std::nullopt;
-        return check_access(reg_type(s.reg), lb, ub, is_comparison_check, reg_value_for_null, s);
+        std::string m = std::string(" (") + to_string(s) + ")";
+
+        AbsDomain assume_ptr = check_access_packet (when(m_inv, reg_type(s.reg) == T_PACKET), lb, ub, m, is_comparison_check)
+                             | check_access_stack  (when(m_inv, reg_type(s.reg) == T_STACK) , lb, ub, m)
+                             | check_access_shared (when(m_inv, is_shared(reg_type(s.reg))) , lb, ub, m, reg_type(s.reg))
+                             | check_access_context(when(m_inv, reg_type(s.reg) == T_CTX)   , lb, ub, m);
+
+        if (is_comparison_check) {
+            m_inv += reg_type(s.reg) <= T_NUM;
+            m_inv |= assume_ptr;
+            return;
+        } else if (s.or_null) {
+            assume(m_inv, reg_type(s.reg) == T_NUM);
+            require(m_inv, reg_value(s.reg) == 0, "Pointers may be compared only to the number 0");
+            m_inv |= assume_ptr;
+            return;
+        } else {
+            require(m_inv, reg_type(s.reg) > T_NUM, "Only pointers can be dereferenced");
+        }
+        std::swap(m_inv, assume_ptr);
     }
 
-    void check_access(variable_t reg_type, linear_expression_t lb, linear_expression_t ub, bool is_comparison_check, std::optional<variable_t> reg_value_for_null, AssertionConstraint s) {
+    AbsDomain check_access_packet(AbsDomain inv, linear_expression_t lb, linear_expression_t ub, std::string s, bool is_comparison_check) {
         using namespace dsl_syntax;
-        AbsDomain ptr{m_inv};
-        assume(ptr, reg_type > T_NUM);
         // This is not the check for non-num, non-map_fd etc.
         // It could, without join:
         // b.fork("num", reg_type == T_NUM).assertion(neq(reg_type, reg_type));
         // b.fork("map_fd", reg_type == T_MAP).assertion(neq(reg_type, reg_type));
         // But then we'll need a different check for pointer comparison
         // this is why "assume" and not "require"
+        require(inv, lb >= variable_t::meta_offset(),
+            std::string("Lower bound must be higher than meta_offset") + s);
+        if (is_comparison_check) 
+            require(inv, ub <= MAX_PACKET_OFF,
+                std::string("Upper bound must be lower than ") + std::to_string(MAX_PACKET_OFF) + s);
+        else
+            require(inv, ub <= variable_t::packet_size(),
+                std::string("Upper bound must be lower than meta_offset") + s);
+        return inv;
+    }
 
-        AbsDomain packet{ptr};
-        assume(packet, reg_type == T_PACKET);
-        require(packet, lb >= variable_t::meta_offset(), s);
-        require(packet, is_comparison_check ? (ub <= MAX_PACKET_OFF) : (ub <= variable_t::packet_size()), s);
+    AbsDomain check_access_stack(AbsDomain inv, linear_expression_t lb, linear_expression_t ub, std::string s) {
+        using namespace dsl_syntax;
+        require(inv, lb >= 0,
+            std::string("Lower bound must be higher than 0") + s);
+        require(inv, ub <= STACK_SIZE,
+            std::string("Upper bound must be lower than STACK_SIZE") + s);
+        return inv;
+    }
 
-        require(ptr, lb >= 0, s);
+    AbsDomain check_access_shared(AbsDomain inv, linear_expression_t lb, linear_expression_t ub, std::string s, variable_t reg_type) {
+        using namespace dsl_syntax;
+        require(inv, lb >= 0,
+            std::string("Lower bound must be higher than 0") + s);
+        require(inv, ub <= reg_type,
+            std::string("Upper bound must be lower than ") + reg_type.name() + s);
+        return inv;
+    }
 
-        AbsDomain stack{ptr};
-        assume(stack, reg_type == T_STACK);
-        require(stack, ub <= STACK_SIZE, s);
-
-        AbsDomain shared{ptr};
-        assume(shared, is_shared(reg_type));
-        require(shared, ub <= reg_type, s);
-
-        AbsDomain context{ptr};
-        assume(context, is_shared(reg_type));
-        require(context, ub <= global_program_info.descriptor.size, s);
-
-        if (!reg_value_for_null) {
-            if (is_comparison_check) {
-                m_inv |= ptr;
-            } else {
-                std::swap(m_inv, ptr);
-            }
-            return;
-        }
-
-        assume(reg_type == T_NUM);
-        require(*reg_value_for_null == 0, s);
-
-        m_inv |= stack;
-        m_inv |= shared;
-        m_inv |= context;
-        m_inv |= packet;
+    AbsDomain check_access_context(AbsDomain inv, linear_expression_t lb, linear_expression_t ub, std::string s) {
+        using namespace dsl_syntax;
+        require(inv, lb >= 0,
+            std::string("Lower bound must be higher than 0") + s);
+        require(inv, ub <= global_program_info.descriptor.size,
+            std::string("Upper bound must be lower than ") + std::to_string(global_program_info.descriptor.size) + s);
+        return inv;
     }
 
     void operator()(const ValidStore& s) {
@@ -441,7 +464,8 @@ protected:
 
         AbsDomain non_stack{m_inv};
         non_stack += cond;
-        require(non_stack, reg_type(s.val) == T_NUM, s);
+        require(non_stack, reg_type(s.val) == T_NUM,
+            "Only numbers can be stored to externally-visible regions");
 
         m_inv += cond.negate();
         m_inv |= non_stack;
@@ -450,19 +474,20 @@ protected:
     void operator()(const TypeConstraint& s) {
         using namespace dsl_syntax;
         variable_t t = reg_type(s.reg);
+        std::string str = to_string(s);
         switch (s.types) {
-            case TypeGroup::num: require(t == T_NUM, s); break;
-            case TypeGroup::map_fd: require(t == T_MAP, s); break;
-            case TypeGroup::ctx: require(t == T_CTX, s); break;
-            case TypeGroup::packet: require(t == T_PACKET, s); break;
-            case TypeGroup::stack: require(t == T_STACK, s); break;
-            case TypeGroup::shared: require(t > T_SHARED, s); break;
-            case TypeGroup::non_map_fd: require(t >= T_NUM, s); break;
-            case TypeGroup::mem: require(t >= T_STACK, s); break;
-            case TypeGroup::mem_or_num: require(t >= T_NUM, s); require(t != T_CTX, s); break;
-            case TypeGroup::ptr: require(t >= T_CTX, s); break;
-            case TypeGroup::ptr_or_num: require(t >= T_NUM, s); break;
-            case TypeGroup::stack_or_packet: require(t >= T_STACK, s); require(t <= T_PACKET, s); break;
+            case TypeGroup::num: require(t == T_NUM, str); break;
+            case TypeGroup::map_fd: require(t == T_MAP, str); break;
+            case TypeGroup::ctx: require(t == T_CTX, str); break;
+            case TypeGroup::packet: require(t == T_PACKET, str); break;
+            case TypeGroup::stack: require(t == T_STACK, str); break;
+            case TypeGroup::shared: require(t > T_SHARED, str); break;
+            case TypeGroup::non_map_fd: require(t >= T_NUM, str); break;
+            case TypeGroup::mem: require(t >= T_STACK, str); break;
+            case TypeGroup::mem_or_num: require(t >= T_NUM, str); require(t != T_CTX, str); break;
+            case TypeGroup::ptr: require(t >= T_CTX, str); break;
+            case TypeGroup::ptr_or_num: require(t >= T_NUM, str); break;
+            case TypeGroup::stack_or_packet: require(t >= T_STACK, str); require(t <= T_PACKET, str); break;
         }
     }
 
@@ -514,7 +539,6 @@ protected:
         } else if (addr == desc.end) {
             inv.assign(target_offset, variable_t::packet_size());
         } else if (addr == desc.meta) {
-            std::cout << "addr = " << addr << "\n";
             inv.assign(target_offset, variable_t::meta_offset());
         } else {
             inv -= target_offset;
@@ -557,7 +581,7 @@ protected:
 
         variable_t mem_reg_type = reg_type(mem_reg);
         m_inv = do_load_ctx             (when(m_inv, mem_reg_type == T_CTX)   , target, addr, width)
-              | do_load_packet_or_shared(when(m_inv, mem_reg_type >= T_SHARED), target, addr, width)
+              | do_load_packet_or_shared(when(m_inv, mem_reg_type >= T_PACKET), target, addr, width)
               | do_load_stack           (when(m_inv, mem_reg_type == T_STACK) , target, addr, width);
     }
 
@@ -892,17 +916,17 @@ class checks_db final {
   public:
     checks_db() = default;
 
-    void add_warning(const AssertionConstraint& s) {
+    void add_warning(std::string s) {
         if (global_options.print_failures)
             std::cout << s << "\n";
         add(check_kind_t::Warning, s);
     }
 
-    void add_redundant(const AssertionConstraint& s) { add(check_kind_t::Safe, s); }
+    void add_redundant(std::string s) { add(check_kind_t::Safe, s); }
 
-    void add_unreachable(const AssertionConstraint& s) { add(check_kind_t::Unreachable, s); }
+    void add_unreachable(std::string s) { add(check_kind_t::Unreachable, s); }
 
-    void add(check_kind_t status, const AssertionConstraint& s) {
+    void add(check_kind_t status, std::string s) {
         total[status]++;
     }
 
@@ -933,7 +957,7 @@ class assert_property_checker final : public intra_abs_transformer<AbsDomain> {
 
     using parent::parent;
 
-    void require(AbsDomain& inv, const linear_constraint_t& cst, const AssertionConstraint& s) override {
+    void require(AbsDomain& inv, const linear_constraint_t& cst, std::string s) override {
         if (cst.is_contradiction()) {
             if (inv.is_bottom()) {
                 m_db.add_redundant(s);
@@ -978,7 +1002,12 @@ out:
 
     template <typename T>
     void operator()(const T& s) {
+        bool pre_bot = this->m_inv.is_bottom();
         parent::operator()(s);
+
+        if (!pre_bot && this->m_inv.is_bottom()) {
+            std::cout << "inv became bot after "<< s <<"\n";
+        }
     }
 };
 
