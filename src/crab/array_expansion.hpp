@@ -350,17 +350,6 @@ class array_expansion_domain final : public writeable {
 
     array_expansion_domain(NumAbsDomain inv) : _inv(inv) {}
 
-    interval_t to_interval(linear_expression_t expr, NumAbsDomain inv) {
-        interval_t r(expr.constant());
-        for (typename linear_expression_t::iterator it = expr.begin(); it != expr.end(); ++it) {
-            interval_t c(it->first);
-            r += c * inv[it->second];
-        }
-        return r;
-    }
-
-    interval_t to_interval(linear_expression_t expr) { return to_interval(expr, _inv); }
-
     void kill_cells(data_kind_t kind, const std::vector<cell_t>& cells, offset_map_t& offset_map, NumAbsDomain& dom) {
         if (!cells.empty()) {
             // Forget the scalars from the numerical domain
@@ -372,7 +361,19 @@ class array_expansion_domain final : public writeable {
         }
     }
 
+    interval_t to_interval(linear_expression_t expr, NumAbsDomain inv) {
+        interval_t r(expr.constant());
+        for (typename linear_expression_t::iterator it = expr.begin(); it != expr.end(); ++it) {
+            interval_t c(it->first);
+            r += c * inv[it->second];
+        }
+        return r;
+    }
+
   public:
+
+    interval_t to_interval(linear_expression_t expr) { return to_interval(expr, _inv); }
+
     array_expansion_domain() : _inv(NumAbsDomain::top()) {}
 
     void set_to_top() {
