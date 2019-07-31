@@ -1,6 +1,5 @@
 #include "crab/cfg.hpp"
 #include "crab/thresholds.hpp"
-#include "crab/crab_syntax.hpp"
 
 namespace crab {
 

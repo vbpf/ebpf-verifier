@@ -26,7 +26,6 @@
 #include <boost/range/iterator_range.hpp>
 
 #include "crab/bignums.hpp"
-#include "crab/crab_syntax.hpp"
 #include "crab/debug.hpp"
 #include "crab/interval.hpp"
 #include "crab/linear_constraints.hpp"

@@ -224,61 +224,6 @@ protected:
   public:
     intra_abs_transformer(const AbsDomain& inv) : m_inv(inv) {}
 
-    void operator()(const binary_op_t& stmt) {
-        assert(stmt.left.get_variable());
-        variable_t var1 = *stmt.left.get_variable();
-        linear_expression_t op2 = stmt.right;
-        if (op2.get_variable()) {
-            apply(m_inv, stmt.op, stmt.lhs, var1, *op2.get_variable());
-        } else {
-            assert(op2.is_constant());
-            apply(m_inv, stmt.op, stmt.lhs, var1, op2.constant());
-        }
-        if (stmt.finite_width) {
-            // overflow()
-        }
-    }
-
-    void operator()(const select_t& stmt) {
-        AbsDomain inv1(m_inv);
-        AbsDomain inv2(m_inv);
-
-        inv1 += stmt.cond;
-        inv2 += stmt.cond.negate();
-
-        if (inv2.is_bottom()) {
-            inv1.assign(stmt.lhs, stmt.left);
-            m_inv = inv1;
-        } else if (inv1.is_bottom()) {
-            inv2.assign(stmt.lhs, stmt.right);
-            m_inv = inv2;
-        } else {
-            inv1.assign(stmt.lhs, stmt.left);
-            inv2.assign(stmt.lhs, stmt.right);
-            m_inv = inv1 | inv2;
-        }
-    }
-
-    void operator()(const assign_t& stmt) { assign(stmt.lhs, stmt.rhs); }
-
-    void operator()(const assume_t& stmt) { m_inv += stmt.constraint; }
-
-    void operator()(const assert_t& stmt) { m_inv += stmt.constraint; }
-
-    void operator()(const havoc_t& stmt) { havoc(stmt.lhs); }
-
-    void operator()(const array_store_range_t& stmt) {
-        m_inv.array_store_range(stmt.array, stmt.index, stmt.width, stmt.value);
-    }
-
-    void operator()(const array_store_t& stmt) {
-        m_inv.array_store(stmt.array, stmt.index, stmt.elem_size, stmt.value);
-    }
-
-    void operator()(const array_havoc_t& stmt) { m_inv.array_havoc(stmt.array, stmt.index, stmt.elem_size); }
-
-    // void operator()(const array_load_t& stmt) { m_inv.array_load(stmt.lhs, stmt.array, stmt.elem_size, stmt.index); }
-
     void operator()(Assume const& s) {
         using namespace dsl_syntax;
         Condition cond = s.cond;
