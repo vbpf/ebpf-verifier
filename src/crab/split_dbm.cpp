@@ -1349,48 +1349,54 @@ void SplitDBM::write(std::ostream& o) {
     if (is_bottom()) {
         o << "_|_";
         return;
-    } else if (is_top()) {
+    }
+    if (is_top()) {
         o << "{}";
         return;
-    } else {
-        // Intervals
-        bool first = true;
-        o << "{";
-        // Extract all the edges
-        SubGraph<graph_t> g_excl(g, 0);
-        for (vert_id v : g_excl.verts()) {
-            if (!rev_map[v])
+    }
+    // Intervals
+    bool first = true;
+    o << "{";
+    // Extract all the edges
+    SubGraph<graph_t> g_excl(g, 0);
+    for (vert_id v : g_excl.verts()) {
+        if (!rev_map[v])
+            continue;
+        if (!g.elem(0, v) && !g.elem(v, 0))
+            continue;
+        interval_t v_out = interval_t(g.elem(v, 0) ? -number_t(g.edge_val(v, 0)) : bound_t::minus_infinity(),
+                                      g.elem(0, v) ?  number_t(g.edge_val(0, v)) : bound_t::plus_infinity());
+
+        if (first)
+            first = false;
+        else
+            o << ", ";
+        o << *(rev_map[v]) << " -> ";
+        if (v_out.lb() == v_out.ub())
+            o << "[" << v_out.lb() << "]";
+        else
+            o << v_out;
+    }
+    if (!first) o << "\n ";
+    first = true;
+
+    for (vert_id s : g_excl.verts()) {
+        if (!rev_map[s])
+            continue;
+        variable_t vs = *rev_map[s];
+        for (vert_id d : g_excl.succs(s)) {
+            if (!rev_map[d])
                 continue;
-            if (!g.elem(0, v) && !g.elem(v, 0))
-                continue;
-            interval_t v_out = interval_t(g.elem(v, 0) ? -number_t(g.edge_val(v, 0)) : bound_t::minus_infinity(),
-                                          g.elem(0, v) ? number_t(g.edge_val(0, v)) : bound_t::plus_infinity());
+            variable_t vd = *rev_map[d];
 
             if (first)
                 first = false;
             else
                 o << ", ";
-            o << *(rev_map[v]) << " -> " << v_out;
+            o << vd << "-" << vs << "<=" << g_excl.edge_val(s, d);
         }
-
-        for (vert_id s : g_excl.verts()) {
-            if (!rev_map[s])
-                continue;
-            variable_t vs = *rev_map[s];
-            for (vert_id d : g_excl.succs(s)) {
-                if (!rev_map[d])
-                    continue;
-                variable_t vd = *rev_map[d];
-
-                if (first)
-                    first = false;
-                else
-                    o << ", ";
-                o << vd << "-" << vs << "<=" << g_excl.edge_val(s, d);
-            }
-        }
-        o << "}";
     }
+    o << "}";
 }
 
 } // namespace domains
