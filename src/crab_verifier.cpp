@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <boost/signals2.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include "crab/array_expansion.hpp"
 #include "crab/fwd_analyzer.hpp"
@@ -22,12 +23,12 @@
 #include "crab/stats.hpp"
 #include "crab/types.hpp"
 #include "crab/cfg.hpp"
+#include "crab/debug.hpp"
+#include "crab/types.hpp"
 
 #include "asm_syntax.hpp"
 #include "config.hpp"
-
-#include "crab_common.hpp"
-#include "crab_constraints.hpp"
+#include "spec_type_descriptors.hpp"
 #include "crab_verifier.hpp"
 
 using std::string;
@@ -78,6 +79,15 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
         check_block(bb, analyzer.get_pre(label), db);
     }
     return db;
+}
+
+inline int first_num(const label_t& s) {
+    try {
+        return boost::lexical_cast<int>(s.substr(0, s.find_first_of(":+")));
+    } catch (...) {
+        std::cout << "bad label:" << s << "\n";
+        throw;
+    }
 }
 
 static std::vector<string> sorted_labels(cfg_t& cfg) {
