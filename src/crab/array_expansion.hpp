@@ -457,6 +457,7 @@ class array_expansion_domain final : public writeable {
     void operator-=(variable_t var) { _inv -= var; }
 
     void assign(variable_t x, linear_expression_t e) { _inv.assign(x, e); }
+    void assign(variable_t x, int e) { _inv.set(x, interval_t(number_t(e))); }
 
     void apply(arith_binop_t op, variable_t x, variable_t y, number_t z) { _inv.apply(op, x, y, z); }
 
@@ -568,6 +569,7 @@ class array_expansion_domain final : public writeable {
         auto idx_n = idx_i.singleton();
         if (!idx_n) {
             CRAB_WARN("array expansion store range ignored because ", "lower bound is not constant");
+            array_havoc(kind, _idx, _width);
             return;
         }
 
@@ -575,14 +577,16 @@ class array_expansion_domain final : public writeable {
         auto width = width_i.singleton();
         if (!width) {
             CRAB_WARN("array expansion store range ignored because ", "upper bound is not constant");
+            array_havoc(kind, _idx, _width);
             return;
         }
 
         if (*idx_n + *width > max_num_elems) {
             CRAB_WARN("array expansion store range ignored because ",
                       "the number of elements is larger than default limit of ", max_num_elems);
+            array_havoc(kind, _idx, _width);
             return;
-        }
+        } 
 
         offset_map_t& offset_map = lookup_array_map(kind);
         kill_cells(kind, offset_map.get_overlap_cells(offset_t((long)*idx_n), (unsigned)(int)*width), offset_map, _inv);
