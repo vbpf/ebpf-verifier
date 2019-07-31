@@ -5,6 +5,8 @@
 #include <variant>
 #include <vector>
 
+#include <boost/lexical_cast.hpp>
+
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
 

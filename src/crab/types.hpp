@@ -5,8 +5,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
-#include <sstream>
-#include <unordered_map>
+#include <vector>
 
 #include "crab/bignums.hpp"
 #include "crab/debug.hpp"

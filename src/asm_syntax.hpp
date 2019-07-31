@@ -4,8 +4,7 @@
 #include <string>
 #include <tuple>
 #include <variant>
-
-#include <boost/lexical_cast.hpp>
+#include <vector>
 
 #include "crab/types.hpp"
 #include "spec_type_descriptors.hpp"

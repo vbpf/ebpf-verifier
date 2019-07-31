@@ -1,15 +1,16 @@
 
 #if __linux__
 
+#include <unistd.h>
+#include <linux/bpf.h>
+#include <ctime>
+
 #include <iostream>
 
 #include "asm_syntax.hpp"
 #include "config.hpp"
 
 #include "spec_type_descriptors.hpp"
-
-#include <ctime>
-#include <linux/bpf.h>
 
 static bpf_prog_type to_linuxtype(BpfProgType t) {
     switch (t) {
