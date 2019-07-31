@@ -101,7 +101,7 @@ ebpf-samples,cilium,bpf_lxc.o,2/1,69a5e4fc57ca1c94,41,6,10,1,1,1,0.057409,21796
     * "DOM_sec" is the number of seconds that the fixpoint operation took
     * "DOM_kb" is the peak memory resident set size consumed by the analysis, and is an estimate for the amount of additional memory needed by the analysis
 
-Note that in the full benchmark, exactly 3 programs should be rejected by `zoneCrab`, our domain of choice. Other domain reject different number of programs.
+Note that in the full benchmark, exactly 2 programs should be rejected by `zoneCrab`, our domain of choice. Other domain reject different number of programs.
 
 Any subset of the available domains is valid. So in order to compare the two different
 implementations of the `zone` domain, one can run
