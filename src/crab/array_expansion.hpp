@@ -21,6 +21,14 @@
 
 #pragma once
 
+#include <algorithm>
+#include <optional>
+#include <set>
+#include <vector>
+#include <unordered_map>
+
+#include "boost/range/algorithm/set_algorithm.hpp"
+
 #include "crab/abstract_domain.hpp"
 #include "crab/abstract_domain_specialized_traits.hpp"
 #include "crab/debug.hpp"
@@ -30,11 +38,6 @@
 #include "crab/interval.hpp"
 #include "crab/patricia_trees.hpp"
 
-#include "boost/range/algorithm/set_algorithm.hpp"
-#include <algorithm>
-#include <optional>
-#include <set>
-#include <vector>
 
 namespace crab {
 namespace domains {
@@ -308,7 +311,7 @@ class offset_map_t final {
 };
 
 // We use a global array map
-using array_map_t = boost::unordered_map<data_kind_t, offset_map_t>;
+using array_map_t = std::unordered_map<data_kind_t, offset_map_t>;
 extern array_map_t global_array_map;
 void clear_global_state();
 
