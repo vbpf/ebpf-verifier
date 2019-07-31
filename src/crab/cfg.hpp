@@ -9,12 +9,6 @@
  * context since they always appear together with at least one
  * variable.
  *
- * Important note:
- *
- *   Objects of the class cfg_t are not copyable. Instead, we provide a
- *   class cfg_ref_t that wraps cfg_t references into copyable and
- *   assignable objects.
- *
  */
 #include <memory>
 #include <unordered_map>
@@ -448,79 +442,6 @@ class cfg_t final {
             remove(label);
         }
     }
-};
-
-// A lightweight object that wraps a reference to a CFG into a
-// copyable, assignable object.
-class cfg_ref_t final {
-
-  public:
-    // cfg_t's typedefs
-    using node_t = typename cfg_t::node_t;
-
-    using succ_iterator = typename cfg_t::succ_iterator;
-    using pred_iterator = typename cfg_t::pred_iterator;
-    using const_succ_iterator = typename cfg_t::const_succ_iterator;
-    using const_pred_iterator = typename cfg_t::const_pred_iterator;
-    using succ_range = typename cfg_t::succ_range;
-    using pred_range = typename cfg_t::pred_range;
-    using const_succ_range = typename cfg_t::const_succ_range;
-    using const_pred_range = typename cfg_t::const_pred_range;
-    using iterator = typename cfg_t::iterator;
-    using const_iterator = typename cfg_t::const_iterator;
-    using label_iterator = typename cfg_t::label_iterator;
-    using const_label_iterator = typename cfg_t::const_label_iterator;
-
-  private:
-    std::reference_wrapper<cfg_t> _ref;
-
-    const cfg_t& get() const { return _ref; }
-
-    cfg_t& get() { return _ref; }
-
-  public:
-    cfg_ref_t(cfg_t& cfg) : _ref(std::ref(cfg)) {}
-
-    label_t entry() const { return get().entry(); }
-
-    const_succ_range next_nodes(label_t bb) const { return get().next_nodes(bb); }
-
-    const_pred_range prev_nodes(label_t bb) const { return get().prev_nodes(bb); }
-
-    succ_range next_nodes(label_t bb) { return get().next_nodes(bb); }
-
-    pred_range prev_nodes(label_t bb) { return get().prev_nodes(bb); }
-
-    basic_block_t& get_node(label_t bb) { return get().get_node(bb); }
-
-    const basic_block_t& get_node(label_t bb) const { return get().get_node(bb); }
-
-    size_t size() const { return get().size(); }
-
-    iterator begin() { return get().begin(); }
-
-    iterator end() { return get().end(); }
-
-    const_iterator begin() const { return get().begin(); }
-
-    const_iterator end() const { return get().end(); }
-
-    label_iterator label_begin() { return get().label_begin(); }
-
-    label_iterator label_end() { return get().label_end(); }
-
-    const_label_iterator label_begin() const { return get().label_begin(); }
-
-    const_label_iterator label_end() const { return get().label_end(); }
-
-    label_t exit() const { return get().exit(); }
-
-    friend std::ostream& operator<<(std::ostream& o, const cfg_ref_t& cfg) { return o << cfg.get(); }
-
-    // for gdb
-    void dump() const { get().dump(); }
-
-    void simplify() { get().simplify(); }
 };
 
 // Viewing a cfg_t with all edges and block statements reversed. Useful for backward analysis.

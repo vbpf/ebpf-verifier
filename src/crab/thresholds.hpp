@@ -52,15 +52,15 @@ inline std::ostream& operator<<(std::ostream& o, const thresholds_t& t) {
 /**
    Collect thresholds per wto cycle (i.e. loop)
 **/
-class wto_thresholds_t final : public wto_component_visitor<cfg_ref_t> {
+class wto_thresholds_t final : public wto_component_visitor<cfg_t> {
 
   public:
-    using wto_vertex_t = wto_vertex<cfg_ref_t>;
-    using wto_cycle_t = wto_cycle<cfg_ref_t>;
+    using wto_vertex_t = wto_vertex<cfg_t>;
+    using wto_cycle_t = wto_cycle<cfg_t>;
 
   private:
     // the cfg
-    cfg_ref_t m_cfg;
+    cfg_t& m_cfg;
     // maximum number of thresholds
     size_t m_max_size;
     // keep a set of thresholds per wto head
@@ -74,7 +74,7 @@ class wto_thresholds_t final : public wto_component_visitor<cfg_ref_t> {
     void get_thresholds(const basic_block_t& bb, thresholds_t& thresholds) const;
 
   public:
-    wto_thresholds_t(cfg_ref_t cfg, size_t max_size) : m_cfg(cfg), m_max_size(max_size) {}
+    wto_thresholds_t(cfg_t& cfg, size_t max_size) : m_cfg(cfg), m_max_size(max_size) {}
 
     void visit(wto_vertex_t& vertex);
 

@@ -388,7 +388,7 @@ class wto final {
 
     void push(vertex_descriptor<G> n) { this->_stack->push_back(n); }
 
-    wto_cycle_ptr component(G g, vertex_descriptor<G> vertex) {
+    wto_cycle_ptr component(G& g, vertex_descriptor<G> vertex) {
         auto partition = std::make_shared<wto_component_list_t>();
         std::pair<out_edge_iterator<G>, out_edge_iterator<G>> succ_edges = out_edges(vertex, g);
         for (out_edge_iterator<G> it = succ_edges.first, et = succ_edges.second; it != et; ++it) {
@@ -413,7 +413,7 @@ class wto final {
             : _node(node), _it(succs.first), _et(succs.second), _min(min) {}
     };
 
-    void visit(G g, vertex_descriptor<G> vertex, wto_component_list_ptr partition) {
+    void visit(G& g, vertex_descriptor<G> vertex, wto_component_list_ptr partition) {
 
         std::vector<visit_stack_elem> visit_stack;
         std::set<vertex_descriptor<G>> loop_nodes;
@@ -499,7 +499,7 @@ class wto final {
     using iterator = boost::indirect_iterator<typename wto_component_list_t::iterator>;
     using const_iterator = boost::indirect_iterator<typename wto_component_list_t::const_iterator>;
 
-    wto(G g)
+    wto(G& g)
         : _wto_components(std::make_shared<wto_component_list_t>()), _dfn_table(std::make_shared<dfn_table_t>()),
           _num(0), _stack(std::make_shared<stack_t>()), _nesting_table(std::make_shared<nesting_table_t>()) {
         ScopedCrabStats __st__("Fixpo.WTO");
@@ -510,16 +510,11 @@ class wto final {
         this->build_nesting();
     }
 
-    // deep copy
-    wto(const wto_t& other)
-        : _wto_components(std::make_shared<wto_component_list_t>(*other._wto_components)),
-          _dfn_table(other._dfn_table ? std::make_shared<dfn_table_t>(*other._dfn_table) : nullptr), _num(other._num),
-          _stack(other._stack ? std::make_shared<stack_t>(*other._stack) : nullptr),
-          _nesting_table(std::make_shared<nesting_table_t>(*other._nesting_table)) {}
+    wto(const wto_t& other) = delete;
 
     wto(const wto_t&& other)
-        : _wto_components(boost::move(other._wto_components)), _dfn_table(boost::move(other._dfn_table)),
-          _num(other._num), _stack(boost::move(other._stack)), _nesting_table(boost::move(other._nesting_table)) {}
+        : _wto_components(std::move(other._wto_components)), _dfn_table(std::move(other._dfn_table)),
+          _num(other._num), _stack(std::move(other._stack)), _nesting_table(std::move(other._nesting_table)) {}
 
     wto_t& operator=(const wto_t& other) {
         if (this != &other) {

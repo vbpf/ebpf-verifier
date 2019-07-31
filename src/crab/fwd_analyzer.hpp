@@ -26,7 +26,7 @@ class interleaved_fwd_fixpoint_iterator final {
     friend class wto_iterator;
 
   public:
-    using wto_t = wto<cfg_ref_t>;
+    using wto_t = wto<cfg_t>;
     using assumption_map_t = std::unordered_map<label_t, AbsDomain>;
     using invariant_table_t = std::unordered_map<label_t, AbsDomain>;
 
@@ -40,7 +40,7 @@ class interleaved_fwd_fixpoint_iterator final {
     using iterator = typename invariant_table_t::iterator;
     using const_iterator = typename invariant_table_t::const_iterator;
 
-    cfg_ref_t _cfg;
+    cfg_t& _cfg;
     wto_t _wto;
     invariant_table_t _pre, _post;
     // number of iterations until triggering widening
@@ -85,7 +85,7 @@ class interleaved_fwd_fixpoint_iterator final {
     }
 
   public:
-    interleaved_fwd_fixpoint_iterator(cfg_ref_t cfg)
+    interleaved_fwd_fixpoint_iterator(cfg_t& cfg)
         : _cfg(cfg), _wto(cfg), _widening_delay(1) {
     }
 
@@ -101,12 +101,12 @@ class interleaved_fwd_fixpoint_iterator final {
 }; // class interleaved_fwd_fixpoint_iterator
 
 template <typename AbsDomain>
-class wto_iterator final : public wto_component_visitor<cfg_ref_t> {
+class wto_iterator final : public wto_component_visitor<cfg_t> {
   public:
     using interleaved_iterator_t = interleaved_fwd_fixpoint_iterator<AbsDomain>;
-    using wto_vertex_t = wto_vertex<cfg_ref_t>;
-    using wto_cycle_t = wto_cycle<cfg_ref_t>;
-    using wto_t = wto<cfg_ref_t>;
+    using wto_vertex_t = wto_vertex<cfg_t>;
+    using wto_cycle_t = wto_cycle<cfg_t>;
+    using wto_t = wto<cfg_t>;
     using wto_nesting_t = typename wto_t::wto_nesting_t;
     using assumption_map_t = typename interleaved_iterator_t::assumption_map_t;
 
@@ -132,7 +132,7 @@ class wto_iterator final : public wto_component_visitor<cfg_ref_t> {
     }
 
     // Simple visitor to check if node is a member of the wto component.
-    class member_component_visitor : public wto_component_visitor<cfg_ref_t> {
+    class member_component_visitor : public wto_component_visitor<cfg_t> {
         label_t _node;
         bool _found;
 
@@ -318,11 +318,11 @@ class wto_iterator final : public wto_component_visitor<cfg_ref_t> {
 }; // class wto_iterator
 
 template <typename AbsDomain>
-class wto_processor final : public wto_component_visitor<cfg_ref_t> {
+class wto_processor final : public wto_component_visitor<cfg_t> {
   public:
     using interleaved_iterator_t = interleaved_fwd_fixpoint_iterator<AbsDomain>;
-    using wto_vertex_t = wto_vertex<cfg_ref_t>;
-    using wto_cycle_t = wto_cycle<cfg_ref_t>;
+    using wto_vertex_t = wto_vertex<cfg_t>;
+    using wto_cycle_t = wto_cycle<cfg_t>;
 
   private:
     interleaved_iterator_t* _iterator;
