@@ -1,9 +1,12 @@
-#include "crab/bignums.hpp"
-#include "crab/debug.hpp"
-
 #include <climits>
 #include <gmpxx.h>
 #include <string>
+
+#include <boost/functional/hash.hpp>
+
+#include "crab/bignums.hpp"
+#include "crab/debug.hpp"
+
 
 namespace crab {
 
