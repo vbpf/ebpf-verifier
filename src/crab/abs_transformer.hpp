@@ -531,6 +531,7 @@ class intra_abs_transformer {
             inv -= reg_type(target);
         }
         if (width == 8) {
+            inv.array_load(reg_type(target), data_kind_t::types, addr, width);
             inv.array_load(reg_value(target), data_kind_t::values, addr, width);
             inv.array_load(reg_offset(target), data_kind_t::offsets, addr, width);
         } else {
@@ -579,8 +580,8 @@ class intra_abs_transformer {
 
     template <typename A, typename X, typename Y, typename Z>
     void do_store_stack(AbsDomain& inv, int width, A addr, X val_type, Y val_value, std::optional<Z> opt_val_offset) {
-        inv.array_store_range(data_kind_t::types, addr, width, val_type);
         if (width == 8) {
+            inv.array_store(data_kind_t::types, addr, width, val_type);
             inv.array_store(data_kind_t::values, addr, width, val_value);
             if (opt_val_offset && get_type(val_type) != T_NUM)
                 inv.array_store(data_kind_t::offsets, addr, width, *opt_val_offset);
@@ -660,7 +661,7 @@ class intra_abs_transformer {
                 if (!stack.is_bottom()) {
                     variable_t addr = reg_offset(param.mem);
                     variable_t width = reg_value(param.size);
-                    stack.array_store_range(data_kind_t::types, addr, width, T_NUM);
+                    stack.array_store_numbers(addr, width);
                     stack.array_havoc(data_kind_t::values, addr, width);
                     stack.array_havoc(data_kind_t::offsets, addr, width);
                 }
