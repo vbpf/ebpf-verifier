@@ -280,26 +280,6 @@ class SplitDBM final : public writeable {
     }
 
     // FIXME: Rewrite to avoid copying if o is _|_
-    SplitDBM(const SplitDBM& o)
-        : vert_map(o.vert_map), rev_map(o.rev_map), g(o.g), potential(o.potential), unstable(o.unstable),
-          _is_bottom(false) {
-        CrabStats::count("SplitDBM.count.copy");
-        ScopedCrabStats __st__("SplitDBM.copy");
-
-        if (o._is_bottom)
-            set_to_bottom();
-
-        if (!_is_bottom)
-            assert(g.size() > 0);
-    }
-
-    SplitDBM(SplitDBM&& o)
-        : vert_map(std::move(o.vert_map)), rev_map(std::move(o.rev_map)), g(std::move(o.g)),
-          potential(std::move(o.potential)), unstable(std::move(o.unstable)), _is_bottom(o._is_bottom) {
-        CrabStats::count("SplitDBM.count.copy");
-        ScopedCrabStats __st__("SplitDBM.copy");
-    }
-
     SplitDBM(vert_map_t&& _vert_map, rev_map_t&& _rev_map, graph_t&& _g, std::vector<Wt>&& _potential,
              vert_set_t&& _unstable)
         : vert_map(std::move(_vert_map)), rev_map(std::move(_rev_map)), g(std::move(_g)),
@@ -314,74 +294,30 @@ class SplitDBM final : public writeable {
         assert(g.size() > 0);
     }
 
-    SplitDBM& operator=(const SplitDBM& o) {
-        CrabStats::count("SplitDBM.count.copy");
-        ScopedCrabStats __st__("SplitDBM.copy");
+    SplitDBM(const SplitDBM& o) = default;
+    SplitDBM(SplitDBM&& o) = default;
 
-        if (this != &o) {
-            if (o._is_bottom) {
-                set_to_bottom();
-            } else {
-                _is_bottom = false;
-                vert_map = o.vert_map;
-                rev_map = o.rev_map;
-                g = o.g;
-                potential = o.potential;
-                unstable = o.unstable;
-                assert(g.size() > 0);
-            }
-        }
-        return *this;
-    }
-
-    SplitDBM& operator=(SplitDBM&& o) {
-        CrabStats::count("SplitDBM.count.copy");
-        ScopedCrabStats __st__("SplitDBM.copy");
-
-        if (o._is_bottom) {
-            set_to_bottom();
-        } else {
-            _is_bottom = false;
-            vert_map = std::move(o.vert_map);
-            rev_map = std::move(o.rev_map);
-            g = std::move(o.g);
-            potential = std::move(o.potential);
-            unstable = std::move(o.unstable);
-        }
-        return *this;
-    }
+    SplitDBM& operator=(const SplitDBM& o) = default;
+    SplitDBM& operator=(SplitDBM&& o) = default;
 
     void set_to_top() {
-        SplitDBM abs(false);
-        std::swap(*this, abs);
+        this->~SplitDBM();
+        new(this) SplitDBM(false);
     }
 
     void set_to_bottom() {
-        vert_map.clear();
-        rev_map.clear();
-        g.clear();
-        potential.clear();
-        unstable.clear();
-        _is_bottom = true;
+        this->~SplitDBM();
+        new(this) SplitDBM(true);
     }
-
-    // void set_to_bottom() {
-    // 	SplitDBM abs(true);
-    // 	std::swap(*this, abs);
-    // }
 
     bool is_bottom() const { return _is_bottom; }
 
     static SplitDBM top() {
-        SplitDBM abs;
-        abs.set_to_top();
-        return abs;
+        return SplitDBM(false);
     }
 
     static SplitDBM bottom() {
-        SplitDBM abs;
-        abs.set_to_bottom();
-        return abs;
+        return SplitDBM(true);
     }
 
     bool is_top() const {
