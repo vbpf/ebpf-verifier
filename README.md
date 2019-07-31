@@ -3,6 +3,8 @@
 
 A new eBPF verifier.
 
+The version discussed in the PLDI paper is available [here](https://github.com/vbpf/ebpf-verifier/tree/d29fd26345c3126bf166cf1c45233a9b2f9fb0a0).
+
 ## Getting Started
 
 ### Dependencies from vanilla Ubuntu
@@ -99,12 +101,12 @@ ebpf-samples,cilium,bpf_lxc.o,2/1,69a5e4fc57ca1c94,41,6,10,1,1,1,0.057409,21796
     * "DOM_sec" is the number of seconds that the fixpoint operation took
     * "DOM_kb" is the peak memory resident set size consumed by the analysis, and is an estimate for the amount of additional memory needed by the analysis
 
-Note that in the full benchmark, exactly 2 programs should be rejected by `zoneCrab`, our domain of choice. Other domain reject different number of programs.
+Note that in the full benchmark, exactly 3 programs should be rejected by `zoneCrab`, our domain of choice. Other domain reject different number of programs.
 
 Any subset of the available domains is valid. So in order to compare the two different
 implementations of the `zone` domain, one can run
 ```
-scripts/runperf.sh ebpf-samples/linux stats zoneCrab zoneElina | results.csv
+scripts/runperf.sh ebpf-samples/linux stats zoneCrab | results.csv
 python3 scripts/makeplot.py results.csv stores
 ```
 The script `scripts/makeplot.py` takes a csv file in the format described above, and the key to plot against (usually instructions or stores) and plots two graphs: on showing runtime as a function of the number of stores, and the other is the memory consumption as a function of the number of stores.
@@ -113,10 +115,6 @@ The script `scripts/makeplot.py` takes a csv file in the format described above,
 When performed on a VM without sufficient memory, some analyses of some domains
 are terminated by the OS due to insufficient memory, resulting in "-1" runtime
 and skewing the graph. To avoid this, the failing cases should be omitted.
-
-4GB RAM should be enough for `zoneCrab`, our domain of choice, but other domains
-may require much more than that. To reproduce the results as will be published
-in the final version, it is recommended to use bare-metal Linux machine.
 
 ## Testing the Linux verifier
 
