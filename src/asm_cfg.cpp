@@ -14,7 +14,13 @@
 #include "crab/cfg.hpp"
 
 #include "asm_ostream.hpp"
-#include "crab_constraints.hpp"
+#include "spec_type_descriptors.hpp"
+
+#include "crab/cfg.hpp"
+#include "asm_syntax.hpp"
+#include "crab/debug.hpp"
+#include "crab/types.hpp"
+
 
 using std::list;
 using std::optional;
