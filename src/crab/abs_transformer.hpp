@@ -684,7 +684,6 @@ protected:
                 if (!stack.is_bottom()) {
                     variable_t addr = reg_offset(param.mem);
                     variable_t width = reg_value(param.size);
-                    std::cerr << "writing nums to " << addr.name() << " : " << width.name() << "\n";
                     stack.array_store_range(data_kind_t::types,   addr, width, T_NUM);
                     stack.array_havoc(      data_kind_t::values,  addr, width);
                     stack.array_havoc(      data_kind_t::offsets, addr, width);
@@ -897,71 +896,72 @@ protected:
     }
 };
 
-enum class check_kind_t { Safe, Error, Warning, Unreachable };
+enum class check_kind_t { Error, Warning, Redundant, Unreachable };
 
 // Toy database to store invariants.
 class checks_db final {
-    using check_t = std::pair<debug_info, check_kind_t>;
-
-  public:
-    std::set<check_t> m_db{};
+    std::map<label_t, std::vector<std::pair<std::string, check_kind_t>>> m_db;
     std::map<check_kind_t, int> total{
-        {check_kind_t::Safe, {}},
         {check_kind_t::Error, {}},
         {check_kind_t::Warning, {}},
+        {check_kind_t::Redundant, {}},
         {check_kind_t::Unreachable, {}},
     };
 
+  public:
     void merge_db(checks_db&& other) {
-        m_db.insert(other.m_db.begin(), other.m_db.end());
+        for (auto [label, vec] : other.m_db)
+            for (auto p : vec)
+                m_db[label].push_back(p);
         for (auto [k, v] : other.total)
             total[k] += v;
         other.m_db.clear();
         other.total.clear();
     }
 
-    int total_safe() const { return total.at(check_kind_t::Safe); }
-    int total_error() const { return total.at(check_kind_t::Error); }
-    int total_warning() const { return total.at(check_kind_t::Warning); }
-    int total_unreachable() const { return total.at(check_kind_t::Unreachable); }
 
-  public:
-    checks_db() = default;
-
-    void add_warning(std::string s) {
-        if (global_options.print_failures)
-            std::cout << s << "\n";
-        add(check_kind_t::Warning, s);
-    }
-
-    void add_redundant(std::string s) { add(check_kind_t::Safe, s); }
-
-    void add_unreachable(std::string s) { add(check_kind_t::Unreachable, s); }
-
-    void add(check_kind_t status, std::string s) {
+    void add(label_t label, check_kind_t status, std::string msg) {
+        m_db[label].emplace_back(msg, status);
         total[status]++;
     }
 
+    int total_error() const { return total.at(check_kind_t::Error); }
+    int total_warning() const { return total.at(check_kind_t::Warning); }
+    int total_redundant() const { return total.at(check_kind_t::Unreachable); }
+    int total_unreachable() const { return total.at(check_kind_t::Unreachable); }
+    checks_db() = default;
+
     void write(std::ostream& o) const {
-        std::vector<int> cnts = {total_safe(), total_error(), total_warning(), total_unreachable()};
+        for (auto [label, reports] : m_db) {
+            o << label << ":\n";
+            for (auto [k, t] : reports)
+                o << "  " << k << "\n";
+        }
+
+        std::vector<int> cnts = {total_error(), total_warning(), total_redundant(), total_unreachable()};
         int maxvlen = 0;
         for (auto c : cnts) {
             maxvlen = std::max(maxvlen, (int)std::to_string(c).size());
         }
 
-        o << std::string((int)maxvlen - std::to_string(total_safe()).size(), ' ') << total_safe() << std::string(2, ' ')
-          << "Number of total safe checks\n";
         o << std::string((int)maxvlen - std::to_string(total_error()).size(), ' ') << total_error()
           << std::string(2, ' ') << "Number of total error checks\n";
         o << std::string((int)maxvlen - std::to_string(total_warning()).size(), ' ') << total_warning()
           << std::string(2, ' ') << "Number of total warning checks\n";
+        o << std::string((int)maxvlen - std::to_string(total_redundant()).size(), ' ') << total_redundant() << std::string(2, ' ')
+          << "Number of total redundant checks\n";
         o << std::string((int)maxvlen - std::to_string(total_unreachable()).size(), ' ') << total_unreachable()
-          << std::string(2, ' ') << "Number of total unreachable checks\n";
+          << std::string(2, ' ') << "Number of block that become unreachable\n";
     }
 };
 
 template <typename AbsDomain>
 class assert_property_checker final : private intra_abs_transformer<AbsDomain> {
+
+    void add_error(std::string msg) { m_db.add(label, check_kind_t::Error, msg); }
+    void add_warning(std::string msg) { m_db.add(label, check_kind_t::Warning, msg); }
+    void add_redundant(std::string msg) { m_db.add(label, check_kind_t::Redundant, msg); }
+    void add_unreachable(std::string msg) { m_db.add(label, check_kind_t::Unreachable, msg); }
 
   public:
     label_t label;
@@ -977,23 +977,23 @@ class assert_property_checker final : private intra_abs_transformer<AbsDomain> {
         s = label + ": " + s;
         if (cst.is_contradiction()) {
             if (inv.is_bottom()) {
-                m_db.add_redundant(s);
+                add_redundant(s);
             } else {
-                m_db.add_warning(std::string("Contradition: ") + s);
+                add_warning(std::string("Contradition: ") + s);
             }
             goto out;
         }
 
         if (inv.is_bottom()) {
-            m_db.add_unreachable(s);
+            add_unreachable(s);
             goto out;
         }
 
         if (domains::checker_domain_traits<AbsDomain>::entail(inv, cst)) {
-            m_db.add_redundant(s);
+            add_redundant(s);
         } else if (domains::checker_domain_traits<AbsDomain>::intersect(inv, cst)) {
             // TODO: add_error() if imply negation
-            m_db.add_warning(s);
+            add_warning(s);
         } else {
             /* Instead this program:
                 x:=0;
@@ -1011,7 +1011,7 @@ class assert_property_checker final : private intra_abs_transformer<AbsDomain> {
             Note that inv does not either entail or intersect with cst.
             However, the original program does not violate the assertion.
             */
-            m_db.add_warning(s);
+            add_warning(s);
         }
 out:
         this->assume(inv, cst);
@@ -1023,7 +1023,7 @@ out:
         parent::operator()(s);
 
         if (!pre_bot && this->m_inv.is_bottom()) {
-            m_db.add_warning("inv became bot after " + to_string(s));
+            add_unreachable("inv became bot after " + to_string(s));
         }
     }
 };
