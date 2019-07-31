@@ -1,6 +1,7 @@
+#include <ostream>
+
 #include "crab/cfg.hpp"
 #include "crab/types.hpp"
-#include <iostream>
 
 namespace crab {
 

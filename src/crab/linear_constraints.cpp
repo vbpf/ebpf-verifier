@@ -1,6 +1,6 @@
-#include "crab/linear_constraints.hpp"
-
 #include <boost/iterator/transform_iterator.hpp>
+
+#include "crab/linear_constraints.hpp"
 
 namespace crab {
 

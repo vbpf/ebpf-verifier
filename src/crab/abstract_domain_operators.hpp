@@ -1,7 +1,8 @@
 #pragma once
 
-#include "crab/types.hpp"
 #include <variant>
+
+#include "crab/types.hpp"
 
 /* Types for abstract domain operations */
 
