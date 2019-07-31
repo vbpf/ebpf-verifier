@@ -1,8 +1,28 @@
-#include <boost/iterator/transform_iterator.hpp>
+
+#include <boost/functional/hash.hpp>
 
 #include "crab/linear_constraints.hpp"
 
 namespace crab {
+
+size_t linear_expression_t::hash() const {
+    size_t res = 0;
+    for (auto p : (*this)) {
+        boost::hash_combine(res, p);
+    }
+    boost::hash_combine(res, _cst);
+    return res;
+}
+
+size_t linear_constraint_t::hash() const {
+    size_t res = 0;
+    boost::hash_combine(res, _expr);
+    boost::hash_combine(res, _kind);
+    if (_kind == INEQUALITY || _kind == STRICT_INEQUALITY) {
+        boost::hash_combine(res, _signedness);
+    }
+    return res;
+}
 
 linear_constraint_t linear_constraint_t::negate() const {
 
