@@ -975,22 +975,14 @@ class assert_property_checker final : private intra_abs_transformer<AbsDomain> {
 
     void require(AbsDomain& inv, const linear_constraint_t& cst, std::string s) override {
         s = label + ": " + s;
+        if (inv.is_bottom()) goto out;
         if (cst.is_contradiction()) {
-            if (inv.is_bottom()) {
-                add_redundant(s);
-            } else {
-                add_warning(std::string("Contradition: ") + s);
-            }
+            add_warning(std::string("Contradition: ") + s);
             goto out;
         }
-
-        if (inv.is_bottom()) {
-            add_unreachable(s);
-            goto out;
-        }
-
+ 
         if (domains::checker_domain_traits<AbsDomain>::entail(inv, cst)) {
-            add_redundant(s);
+            // add_redundant(s);
         } else if (domains::checker_domain_traits<AbsDomain>::intersect(inv, cst)) {
             // TODO: add_error() if imply negation
             add_warning(s);
