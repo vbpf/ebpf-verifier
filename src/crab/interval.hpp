@@ -6,10 +6,11 @@
 
 #pragma once
 
+#include <optional>
+
 #include "crab/bignums.hpp"
 #include "crab/stats.hpp"
 #include "crab/types.hpp"
-#include <optional>
 
 namespace crab {
 

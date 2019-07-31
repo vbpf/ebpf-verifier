@@ -1,7 +1,5 @@
 #pragma once
 
-#include <memory>
-
 #include <unordered_map>
 
 #include "crab/abs_transformer.hpp"
