@@ -266,10 +266,10 @@ class intra_abs_transformer {
             m_inv += is_pointer(dst);
             m_inv += jmp_to_cst_offsets_reg(cond.op, dst_offset, src_offset);
 
-            m_inv |= numbers;
+            m_inv |= std::move(numbers);
 
-            m_inv |= null_src;
-            m_inv |= null_dst;
+            m_inv |= std::move(null_src);
+            m_inv |= std::move(null_dst);
         } else {
             int imm = static_cast<int>(std::get<Imm>(cond.right).v);
             for (const linear_constraint_t& cst : jmp_to_cst_imm(cond.op, dst_value, imm))
@@ -305,7 +305,7 @@ class intra_abs_transformer {
         require(is_ptr, reg_type(s.num) == T_NUM, "only numbers can be added to pointers (" + to_string(s) + ")");
 
         m_inv += cond.negate();
-        m_inv |= is_ptr;
+        m_inv |= std::move(is_ptr);
     }
 
     void operator()(const ValidSize& s) {
@@ -352,17 +352,17 @@ class intra_abs_transformer {
             check_access_shared(when(m_inv, is_shared(reg_type(s.reg))), lb, ub, m, reg_type(s.reg)) |
             check_access_context(when(m_inv, reg_type(s.reg) == T_CTX), lb, ub, m);
         if (is_comparison_check) {
-            m_inv |= assume_ptr;
+            m_inv |= std::move(assume_ptr);
             return;
         } else if (s.or_null) {
             assume(m_inv, reg_type(s.reg) == T_NUM);
             require(m_inv, reg_value(s.reg) == 0, "Pointers may be compared only to the number 0");
-            m_inv |= assume_ptr;
+            m_inv |= std::move(assume_ptr);
             return;
         } else {
             require(m_inv, reg_type(s.reg) > T_NUM, "Only pointers can be dereferenced");
         }
-        std::swap(m_inv, assume_ptr);
+        m_inv = std::move(assume_ptr);
     }
 
     AbsDomain check_access_packet(AbsDomain inv, linear_expression_t lb, linear_expression_t ub, std::string s,
@@ -411,7 +411,7 @@ class intra_abs_transformer {
         require(non_stack, reg_type(s.val) == T_NUM, "Only numbers can be stored to externally-visible regions");
 
         m_inv += cond.negate();
-        m_inv |= non_stack;
+        m_inv |= std::move(non_stack);
     }
 
     void operator()(const TypeConstraint& s) {
@@ -614,7 +614,7 @@ class intra_abs_transformer {
         if (!m_inv.is_bottom()) {
             do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset);
         }
-        m_inv |= assume_not_stack;
+        m_inv |= std::move(assume_not_stack);
     }
 
     void operator()(LockAdd const& a) {
@@ -651,7 +651,7 @@ class intra_abs_transformer {
                     stack.array_havoc(data_kind_t::offsets, addr, width);
                 }
                 m_inv += reg_type(param.mem) == T_PACKET;
-                m_inv |= stack;
+                m_inv |= std::move(stack);
             }
             }
         }
@@ -778,8 +778,8 @@ class intra_abs_transformer {
                 m_inv += src_type == T_NUM;
                 add_overflow(dst_value, src_value);
 
-                m_inv |= ptr_dst;
-                m_inv |= ptr_src;
+                m_inv |= std::move(ptr_dst);
+                m_inv |= std::move(ptr_src);
                 break;
             }
             case Bin::Op::SUB: {
@@ -803,7 +803,7 @@ class intra_abs_transformer {
                 both_ptr.assign(dst_type, T_NUM);
                 both_ptr -= dst_offset;
 
-                m_inv = both_num | ptr_dst | both_ptr;
+                m_inv = std::move(both_num) | std::move(ptr_dst) | std::move(both_ptr);
                 break;
             }
             case Bin::Op::MUL:
