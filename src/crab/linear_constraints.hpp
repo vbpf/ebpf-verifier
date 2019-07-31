@@ -48,8 +48,6 @@
 #include <vector>
 
 #include <boost/container/flat_map.hpp>
-#include <boost/functional/hash.hpp>
-#include <boost/iterator/transform_iterator.hpp>
 
 #include "crab/patricia_trees.hpp"
 #include "crab/types.hpp"
@@ -135,14 +133,7 @@ class linear_expression_t final {
         return this->_map->end();
     }
 
-    size_t hash() const {
-        size_t res = 0;
-        for (auto p : (*this)) {
-            boost::hash_combine(res, p);
-        }
-        boost::hash_combine(res, _cst);
-        return res;
-    }
+    size_t hash() const;
 
     // syntactic equality
     bool equal(const linear_expression_t& o) const {
@@ -445,16 +436,8 @@ class linear_constraint_t final {
         return (_kind == o._kind && _signedness == o._signedness && _expr.equal(o._expr));
     }
 
-    size_t hash() const {
-        size_t res = 0;
-        boost::hash_combine(res, _expr);
-        boost::hash_combine(res, _kind);
-        if (_kind == INEQUALITY || _kind == STRICT_INEQUALITY) {
-            boost::hash_combine(res, _signedness);
-        }
-        return res;
-    }
-
+    size_t hash() const;
+    
     index_t index() const {
         // XXX: to store linear constraints in patricia trees
         return (index_t)hash();
