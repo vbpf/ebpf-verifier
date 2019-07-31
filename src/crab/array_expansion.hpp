@@ -439,6 +439,8 @@ class array_expansion_domain final : public writeable {
         return array_expansion_domain_t(_inv.narrow(other._inv));
     }
 
+    interval_t operator[](variable_t x) { return _inv[x]; }
+
     void forget(const variable_vector_t& variables) {
 
         if (is_bottom() || is_top()) {
