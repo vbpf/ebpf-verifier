@@ -19,9 +19,9 @@
 
 #include <optional>
 #include <type_traits>
+#include <unordered_set>
 
 #include <boost/container/flat_map.hpp>
-#include <boost/unordered_set.hpp>
 
 #include "crab/abstract_domain.hpp"
 #include "crab/abstract_domain_specialized_traits.hpp"
@@ -99,7 +99,7 @@ class SplitDBM final : public writeable {
     using edge_vector = typename GrOps::edge_vector;
     // < <x, y>, k> == x - y <= k.
     using diffcst_t = std::pair<std::pair<variable_t, variable_t>, Wt>;
-    using vert_set_t = boost::unordered_set<vert_id>;
+    using vert_set_t = std::unordered_set<vert_id>;
 
   private:
     //================

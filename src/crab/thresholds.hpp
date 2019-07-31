@@ -1,16 +1,16 @@
 #pragma once
 
+#include <unordered_map>
+#include <algorithm>
+#include <climits>
+
+#include <boost/range/iterator_range.hpp>
+
 #include "crab/cfg.hpp"
 #include "crab/debug.hpp"
 #include "crab/interval.hpp"
 #include "crab/linear_constraints.hpp"
 #include "crab/wto.hpp"
-
-#include <boost/range/iterator_range.hpp>
-#include <boost/unordered_map.hpp>
-
-#include <algorithm>
-#include <climits>
 
 namespace crab {
 
@@ -64,7 +64,7 @@ class wto_thresholds_t final : public wto_component_visitor<cfg_t> {
     // maximum number of thresholds
     size_t m_max_size;
     // keep a set of thresholds per wto head
-    boost::unordered_map<label_t, thresholds_t> m_head_to_thresholds;
+    std::unordered_map<label_t, thresholds_t> m_head_to_thresholds;
     // the top of the stack is the current wto head
     std::vector<label_t> m_stack;
 

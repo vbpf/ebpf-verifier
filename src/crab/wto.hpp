@@ -48,10 +48,10 @@
 #include <memory>
 #include <set>
 #include <vector>
+#include <forward_list>
+#include <unordered_map>
 
-#include <boost/container/slist.hpp>
 #include <boost/iterator/indirect_iterator.hpp>
-#include <boost/unordered_map.hpp>
 
 #include "crab/cfg_bgl.hpp"
 #include "crab/debug.hpp"
@@ -236,7 +236,7 @@ class wto_cycle final : public wto_component<G> {
 
   private:
     using wto_component_ptr = std::shared_ptr<wto_component_t>;
-    using wto_component_list_t = boost::container::slist<wto_component_ptr>;
+    using wto_component_list_t = std::forward_list<wto_component_ptr>;
     using wto_component_list_ptr = std::shared_ptr<wto_component_list_t>;
 
     vertex_descriptor<G> _head;
@@ -313,15 +313,15 @@ class wto final {
   private:
     using wto_component_ptr = std::shared_ptr<wto_component_t>;
     using wto_vertex_ptr = std::shared_ptr<wto_vertex_t>;
-    using wto_cycle_ptr = std::shared_ptr<wto_cycle_t>;
-    using wto_component_list_t = boost::container::slist<wto_component_ptr>;
+    using wto_cycle_ptr = std::shared_ptr<wto_cycle_t>; 
+    using wto_component_list_t = std::forward_list<wto_component_ptr>;
     using wto_component_list_ptr = std::shared_ptr<wto_component_list_t>;
     using dfn_t = bound_t;
-    using dfn_table_t = boost::unordered_map<vertex_descriptor<G>, dfn_t>;
+    using dfn_table_t = std::unordered_map<vertex_descriptor<G>, dfn_t>;
     using dfn_table_ptr = std::shared_ptr<dfn_table_t>;
     using stack_t = std::vector<vertex_descriptor<G>>;
     using stack_ptr = std::shared_ptr<stack_t>;
-    using nesting_table_t = boost::unordered_map<vertex_descriptor<G>, wto_nesting_t>;
+    using nesting_table_t = std::unordered_map<vertex_descriptor<G>, wto_nesting_t>;
     using nesting_table_ptr = std::shared_ptr<nesting_table_t>;
 
     wto_component_list_ptr _wto_components;
