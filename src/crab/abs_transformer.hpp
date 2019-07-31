@@ -601,7 +601,7 @@ class intra_abs_transformer {
                 do_mem_store(b, reg_type(data_reg), reg_value(data_reg), reg_offset(data_reg));
             }
         } else {
-            do_mem_store(b, T_NUM, std::get<Imm>(b.value).v, std::optional<variable_t>{});
+            do_mem_store(b, T_NUM, std::get<Imm>(b.value).v, {});
         }
     }
 
@@ -797,27 +797,26 @@ class intra_abs_transformer {
                 break;
             }
             case Bin::Op::SUB: {
-                linear_constraint_t cond = src_type == T_NUM;
-                AbsDomain num_src{m_inv};
-                num_src += cond;
-
-                AbsDomain ptr_dst{num_src};
+                AbsDomain ptr_dst{m_inv};
+                ptr_dst += src_type == T_NUM;
                 ptr_dst += is_pointer(dst);
                 apply(ptr_dst, crab::arith_binop_t::SUB, dst_value, dst_value, src_value, true);
                 apply(ptr_dst, crab::arith_binop_t::SUB, dst_offset, dst_offset, src_value, false);
 
-                AbsDomain both_num{num_src};
+                AbsDomain both_num{m_inv};
+                both_num += src_type == T_NUM;
                 both_num += dst_type == T_NUM;
                 apply(both_num, crab::arith_binop_t::SUB, dst_value, dst_value, src_value, true);
 
-                AbsDomain both_ptr{m_inv};
-                both_ptr += is_pointer(src);
-                both_ptr += eq(src_type, dst_type);
-                apply(both_ptr, crab::arith_binop_t::SUB, dst_value, dst_offset, src_offset);
-                both_ptr.assign(dst_type, T_NUM);
-                both_ptr -= dst_offset;
+                m_inv += is_pointer(src);
+                m_inv += src_type < T_SHARED; // cannot subtract two pointers to shared regions
+                m_inv += eq(src_type, dst_type);
+                apply(m_inv, crab::arith_binop_t::SUB, dst_value, dst_offset, src_offset);
+                m_inv.assign(dst_type, T_NUM);
+                m_inv -= dst_offset;
 
-                m_inv = std::move(both_num) | std::move(ptr_dst) | std::move(both_ptr);
+                m_inv |= std::move(both_num);
+                m_inv |= std::move(ptr_dst);
                 break;
             }
             case Bin::Op::MUL:
@@ -825,7 +824,7 @@ class intra_abs_transformer {
                 no_pointer(dst);
                 break;
             case Bin::Op::DIV:
-                // For some reason, DIV is not checked for zerodiv
+                // DIV is not checked for zerodiv
                 div(dst_value, src_value);
                 no_pointer(dst);
                 break;
@@ -843,17 +842,15 @@ class intra_abs_transformer {
                 no_pointer(dst);
                 break;
             case Bin::Op::LSH:
-                shl_overflow(dst_value,
-                             src_value); // avoid signedness and overflow issues in shl_overflow(dst_value, src_value);
+                shl_overflow(dst_value, src_value);
                 no_pointer(dst);
                 break;
             case Bin::Op::RSH:
-                havoc(dst_value); // avoid signedness and overflow issues in lshr(dst_value, src_value);
+                havoc(dst_value);
                 no_pointer(dst);
                 break;
             case Bin::Op::ARSH:
-                havoc(dst_value); // avoid signedness and overflow issues in ashr(dst_value, src_value); // =
-                                  // (int64_t)dst >> src;
+                havoc(dst_value);
                 no_pointer(dst);
                 break;
             case Bin::Op::XOR:
