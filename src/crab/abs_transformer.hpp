@@ -580,8 +580,8 @@ class intra_abs_transformer {
 
     template <typename A, typename X, typename Y, typename Z>
     void do_store_stack(AbsDomain& inv, int width, A addr, X val_type, Y val_value, std::optional<Z> opt_val_offset) {
+        inv.array_store(data_kind_t::types, addr, width, val_type);
         if (width == 8) {
-            inv.array_store(data_kind_t::types, addr, width, val_type);
             inv.array_store(data_kind_t::values, addr, width, val_value);
             if (opt_val_offset && get_type(val_type) != T_NUM)
                 inv.array_store(data_kind_t::offsets, addr, width, *opt_val_offset);
