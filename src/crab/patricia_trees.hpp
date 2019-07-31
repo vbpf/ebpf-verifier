@@ -414,9 +414,9 @@ typename tree<Key, Value>::ptr tree<Key, Value>::join(typename tree<Key, Value>:
 }
 
 template <typename Key, typename Value>
-std::pair<bool, typename tree<Key, Value>::ptr> tree<Key, Value>::insert(typename tree<Key, Value>::ptr t,
-                                                                         const Key& key_, const Value& value_,
-                                                                         binary_action_t& op, bool combine_left_to_right) {
+std::pair<bool, typename tree<Key, Value>::ptr>
+tree<Key, Value>::insert(typename tree<Key, Value>::ptr t, const Key& key_, const Value& value_, binary_action_t& op,
+                         bool combine_left_to_right) {
     using tree_ptr = typename tree<Key, Value>::ptr;
     tree_ptr nil;
     std::pair<bool, tree_ptr> res, res_lb, res_rb;
@@ -686,9 +686,9 @@ typename tree<Key, Value>::ptr tree<Key, Value>::remove(typename tree<Key, Value
 }
 
 template <typename Key, typename Value>
-std::pair<bool, typename tree<Key, Value>::ptr> tree<Key, Value>::merge(typename tree<Key, Value>::ptr s,
-                                                                        typename tree<Key, Value>::ptr t,
-                                                                        binary_action_t& op, bool combine_left_to_right) {
+std::pair<bool, typename tree<Key, Value>::ptr>
+tree<Key, Value>::merge(typename tree<Key, Value>::ptr s, typename tree<Key, Value>::ptr t, binary_action_t& op,
+                        bool combine_left_to_right) {
     using tree_ptr = typename tree<Key, Value>::ptr;
     tree_ptr nil;
     std::pair<bool, tree_ptr> res, res_lb, res_rb;

@@ -89,8 +89,8 @@ class cell_t final {
     cell_t(offset_t offset, unsigned size) : _offset(offset), _size(size) {}
 
     static interval_t to_interval(const offset_t o, unsigned size) {
-        return {static_cast<int>(o.index()),
-                static_cast<int>(o.index()) + static_cast<int>(size - 1)}; }
+        return {static_cast<int>(o.index()), static_cast<int>(o.index()) + static_cast<int>(size - 1)};
+    }
 
     interval_t to_interval() const { return to_interval(_offset, _size); }
 
@@ -99,9 +99,7 @@ class cell_t final {
 
     offset_t get_offset() const { return _offset; }
 
-    variable_t get_scalar(data_kind_t kind) const {
-        return variable_t::cell_var(kind, _offset.index(), _size);
-    }
+    variable_t get_scalar(data_kind_t kind) const { return variable_t::cell_var(kind, _offset.index(), _size); }
 
     // ignore the scalar variable
     bool operator==(const cell_t& o) const { return to_interval() == o.to_interval(); }
@@ -139,8 +137,8 @@ class cell_t final {
         CRAB_LOG("array-expansion-overlap", AbsDomain tmp(dom); linear_expression_t tmp_symb_lb(symb_lb);
                  linear_expression_t tmp_symb_ub(symb_ub);
                  std::cout << "**Checking if " << *this << " overlaps with symbolic "
-                        << "[" << tmp_symb_lb << "," << tmp_symb_ub << "]"
-                        << " with abstract state=" << tmp << "\n";);
+                           << "[" << tmp_symb_lb << "," << tmp_symb_ub << "]"
+                           << " with abstract state=" << tmp << "\n";);
 
         AbsDomain tmp1(dom);
         tmp1 += linear_constraint_t(symb_lb - lb, linear_constraint_t::INEQUALITY); //(lb >= symb_lb);
@@ -162,9 +160,7 @@ class cell_t final {
         return false;
     }
 
-    void write(std::ostream& o) const {
-        o << "cell(" << to_interval() << ")";
-    }
+    void write(std::ostream& o) const { o << "cell(" << to_interval() << ")"; }
 
     friend std::ostream& operator<<(std::ostream& o, const cell_t& c) {
         c.write(o);
@@ -257,7 +253,7 @@ class offset_map_t final {
 
     template <typename AbsDomain>
     std::vector<cell_t> get_overlap_cells_symbolic_offset(const AbsDomain& dom, const linear_expression_t& symb_lb,
-                                           const linear_expression_t& symb_ub) const {
+                                                          const linear_expression_t& symb_ub) const {
         std::vector<cell_t> out;
         for (auto it = _map.begin(), et = _map.end(); it != et; ++it) {
             const cell_set_t& o_cells = it->second;
@@ -326,7 +322,6 @@ class array_expansion_domain final : public writeable {
     using content_domain_t = NumAbsDomain;
 
   private:
-
     // scalar domain
     NumAbsDomain _inv;
 
@@ -344,9 +339,7 @@ class array_expansion_domain final : public writeable {
     }
 
   private:
-    offset_map_t& lookup_array_map(data_kind_t kind) {
-        return global_array_map[kind];
-    }
+    offset_map_t& lookup_array_map(data_kind_t kind) { return global_array_map[kind]; }
 
     array_expansion_domain(NumAbsDomain inv) : _inv(inv) {}
 
@@ -371,7 +364,6 @@ class array_expansion_domain final : public writeable {
     }
 
   public:
-
     interval_t to_interval(linear_expression_t expr) { return to_interval(expr, _inv); }
 
     array_expansion_domain() : _inv(NumAbsDomain::top()) {}
@@ -449,9 +441,7 @@ class array_expansion_domain final : public writeable {
 
     void operator+=(linear_constraint_t cst) { _inv += cst; }
 
-    void operator-=(variable_t var) {
-        _inv -= var;
-    }
+    void operator-=(variable_t var) { _inv -= var; }
 
     void assign(variable_t x, linear_expression_t e) { _inv.assign(x, e); }
 
@@ -489,7 +479,7 @@ class array_expansion_domain final : public writeable {
                 return;
             } else {
                 CRAB_WARN("Ignored read from cell ", kind, "[", o, "...", o.index() + size - 1, "]",
-                            " because it overlaps with ", cells.size(), " cells");
+                          " because it overlaps with ", cells.size(), " cells");
                 /*
                     TODO: we can apply here "Value Recomposition" 'a la'
                     Mine'06 to construct values of some type from a sequence
@@ -505,7 +495,8 @@ class array_expansion_domain final : public writeable {
         _inv -= lhs;
     }
 
-    std::optional<std::pair<offset_t, unsigned>> kill_and_find_var(data_kind_t kind, linear_expression_t i, linear_expression_t elem_size) {
+    std::optional<std::pair<offset_t, unsigned>> kill_and_find_var(data_kind_t kind, linear_expression_t i,
+                                                                   linear_expression_t elem_size) {
         if (is_bottom())
             return {};
 
@@ -527,21 +518,20 @@ class array_expansion_domain final : public writeable {
         }
         if (!res) {
             // -- Non-constant index: kill overlapping cells
-            cells = offset_map.get_overlap_cells_symbolic_offset(_inv,
-                linear_expression_t(i),
-                linear_expression_t(i + elem_size)
-            );
+            cells = offset_map.get_overlap_cells_symbolic_offset(_inv, linear_expression_t(i),
+                                                                 linear_expression_t(i + elem_size));
         }
         kill_cells(kind, cells, offset_map, _inv);
 
         return res;
     }
 
-    void array_store(data_kind_t kind, linear_expression_t idx, linear_expression_t elem_size, linear_expression_t val) {
+    void array_store(data_kind_t kind, linear_expression_t idx, linear_expression_t elem_size,
+                     linear_expression_t val) {
         auto maybe_cell = kill_and_find_var(kind, idx, elem_size);
         if (maybe_cell) {
             // perform strong update
-            //std::cout << "(" << maybe_cell->first.index() << ", " << maybe_cell->second << ")\n";
+            // std::cout << "(" << maybe_cell->first.index() << ", " << maybe_cell->second << ")\n";
             auto [offset, size] = *maybe_cell;
             variable_t v = lookup_array_map(kind).mk_cell(offset, size).get_scalar(kind);
             _inv.assign(v, val);
@@ -552,8 +542,8 @@ class array_expansion_domain final : public writeable {
         kill_and_find_var(kind, idx, elem_size);
     }
     // Perform array stores over an array segment
-    void array_store_range(data_kind_t kind, linear_expression_t _idx,
-                           linear_expression_t _width, linear_expression_t val) {
+    void array_store_range(data_kind_t kind, linear_expression_t _idx, linear_expression_t _width,
+                           linear_expression_t val) {
 
         // TODO: this should be an user parameter.
         const number_t max_num_elems = 512;
@@ -603,9 +593,7 @@ class array_expansion_domain final : public writeable {
         return name;
     }
 
-    void rename(const variable_vector_t& from, const variable_vector_t& to) {
-        _inv.rename(from, to);
-    }
+    void rename(const variable_vector_t& from, const variable_vector_t& to) { _inv.rename(from, to); }
 
 }; // end array_expansion_domain
 

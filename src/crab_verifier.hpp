@@ -2,8 +2,8 @@
 
 #include <tuple>
 
-#include "spec_type_descriptors.hpp"
 #include "crab/cfg.hpp"
+#include "spec_type_descriptors.hpp"
 
 std::tuple<bool, double> abs_validate(cfg_t& cfg, program_info info);
 

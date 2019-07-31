@@ -5,8 +5,8 @@
 #include <variant>
 #include <vector>
 
-#include "crab/cfg.hpp"
 #include "asm_syntax.hpp"
+#include "crab/cfg.hpp"
 
 inline pc_t label_to_pc(label_t label) {
     try {

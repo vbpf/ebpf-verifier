@@ -13,23 +13,21 @@
 #include <tuple>
 #include <vector>
 
-#include <boost/signals2.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/signals2.hpp>
 
 #include "crab/array_expansion.hpp"
-#include "crab/fwd_analyzer.hpp"
-#include "crab/graph_config.hpp"
-#include "crab/split_dbm.hpp"
-#include "crab/stats.hpp"
-#include "crab/types.hpp"
 #include "crab/cfg.hpp"
 #include "crab/debug.hpp"
+#include "crab/fwd_analyzer.hpp"
+#include "crab/split_dbm.hpp"
+#include "crab/stats.hpp"
 #include "crab/types.hpp"
 
 #include "asm_syntax.hpp"
 #include "config.hpp"
-#include "spec_type_descriptors.hpp"
 #include "crab_verifier.hpp"
+#include "spec_type_descriptors.hpp"
 
 using std::string;
 

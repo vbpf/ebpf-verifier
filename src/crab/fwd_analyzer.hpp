@@ -52,7 +52,6 @@ class interleaved_fwd_fixpoint_iterator final {
         if (!res.second) {
             res.first->second = std::move(v);
         }
-
     }
 
     inline void set_pre(label_t node, const AbsDomain& v) { this->set(this->_pre, node, v); }
@@ -85,9 +84,7 @@ class interleaved_fwd_fixpoint_iterator final {
     }
 
   public:
-    interleaved_fwd_fixpoint_iterator(cfg_t& cfg)
-        : _cfg(cfg), _wto(cfg), _widening_delay(1) {
-    }
+    interleaved_fwd_fixpoint_iterator(cfg_t& cfg) : _cfg(cfg), _wto(cfg), _widening_delay(1) {}
 
     AbsDomain get_pre(label_t node) { return this->get(this->_pre, node); }
 
@@ -222,8 +219,7 @@ class wto_iterator final : public wto_component_visitor<cfg_t> {
             entry_in_this_cycle = vis.is_member();
             _skip = !entry_in_this_cycle;
             if (_skip) {
-                CRAB_VERBOSE_IF(2, std::cout << "** Skipped analysis of WTO cycle rooted at  " << head
-                                          << "\n");
+                CRAB_VERBOSE_IF(2, std::cout << "** Skipped analysis of WTO cycle rooted at  " << head << "\n");
                 return;
             }
         }
