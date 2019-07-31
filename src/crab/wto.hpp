@@ -463,11 +463,12 @@ class wto final {
             }
 
             auto dfn_visiting_node = get_dfn(visiting_node);
-            CRAB_LOG("wto-nonrec", std::cout << "WTO: popped node " << visiting_node << " dfs num= " << dfn_visiting_node
-                                          << ": min=" << min_visiting_node << "\n";);
+            CRAB_LOG("wto-nonrec", std::cout << "WTO: popped node " << visiting_node << " dfs num= "
+                                             << dfn_visiting_node << ": min=" << min_visiting_node << "\n";);
 
             if (min_visiting_node == get_dfn(visiting_node)) {
-                CRAB_LOG("wto-nonrec", std::cout << "WTO: BEGIN building partition for node " << visiting_node << "\n";);
+                CRAB_LOG("wto-nonrec",
+                         std::cout << "WTO: BEGIN building partition for node " << visiting_node << "\n";);
                 set_dfn(visiting_node, dfn_t::plus_infinity());
                 vertex_descriptor<G> element = pop();
                 if (is_loop) {
@@ -476,8 +477,8 @@ class wto final {
                         CRAB_LOG("wto-nonrec", std::cout << "\tWTO: node " << element << ": dfn num=0\n";);
                         element = pop();
                     }
-                    CRAB_LOG("wto-nonrec", std::cout
-                                               << "\tWTO: adding component starting from " << visiting_node << "\n";);
+                    CRAB_LOG("wto-nonrec",
+                             std::cout << "\tWTO: adding component starting from " << visiting_node << "\n";);
                     partition->push_front(component(g, visiting_node));
                 } else {
                     CRAB_LOG("wto-nonrec", std::cout << "\tWTO: adding vertex " << visiting_node << "\n";);
@@ -513,8 +514,8 @@ class wto final {
     wto(const wto_t& other) = delete;
 
     wto(const wto_t&& other)
-        : _wto_components(std::move(other._wto_components)), _dfn_table(std::move(other._dfn_table)),
-          _num(other._num), _stack(std::move(other._stack)), _nesting_table(std::move(other._nesting_table)) {}
+        : _wto_components(std::move(other._wto_components)), _dfn_table(std::move(other._dfn_table)), _num(other._num),
+          _stack(std::move(other._stack)), _nesting_table(std::move(other._nesting_table)) {}
 
     wto_t& operator=(const wto_t& other) {
         if (this != &other) {

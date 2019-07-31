@@ -1,5 +1,5 @@
-#include "crab/cfg.hpp"
 #include "crab/thresholds.hpp"
+#include "crab/cfg.hpp"
 
 namespace crab {
 
@@ -89,28 +89,28 @@ void wto_thresholds_t::extract_bounds(const linear_expression_t& e, bool is_stri
 
 void wto_thresholds_t::get_thresholds(const basic_block_t& bb, thresholds_t& thresholds) const {
 
-        // std::vector<number_t> lb_bounds, ub_bounds;
-        // for (auto const& i : boost::make_iterator_range(bb.begin(), bb.end())) {
-        //     if (std::holds_alternative<Assume>(i)) {
-        //         auto cst = std::get<Assume>(i).cond;
-        //         if (is_inequality(cst.op) || is_inequality(cst.op)) {
-        //             extract_bounds(cst.expression(), is_inequality(cst.op), lb_bounds, ub_bounds);
-        //         }
-        //     }
-        // }
+    // std::vector<number_t> lb_bounds, ub_bounds;
+    // for (auto const& i : boost::make_iterator_range(bb.begin(), bb.end())) {
+    //     if (std::holds_alternative<Assume>(i)) {
+    //         auto cst = std::get<Assume>(i).cond;
+    //         if (is_inequality(cst.op) || is_inequality(cst.op)) {
+    //             extract_bounds(cst.expression(), is_inequality(cst.op), lb_bounds, ub_bounds);
+    //         }
+    //     }
+    // }
 
-        // // Assuming that the variable is incremented/decremented by
-        // // some constant k, then we want to adjust the threshold to
-        // // +/- k so that we have more chance to stabilize in one
-        // // iteration after widening has been applied.
-        // int k = 1;
-        // for (auto n : lb_bounds) {
-        //     thresholds.add(bound_t(n - k));
-        // }
+    // // Assuming that the variable is incremented/decremented by
+    // // some constant k, then we want to adjust the threshold to
+    // // +/- k so that we have more chance to stabilize in one
+    // // iteration after widening has been applied.
+    // int k = 1;
+    // for (auto n : lb_bounds) {
+    //     thresholds.add(bound_t(n - k));
+    // }
 
-        // for (auto n : ub_bounds) {
-        //     thresholds.add(bound_t(n + k));
-        // }
+    // for (auto n : ub_bounds) {
+    //     thresholds.add(bound_t(n + k));
+    // }
 }
 
 void wto_thresholds_t::visit(wto_vertex_t& vertex) {

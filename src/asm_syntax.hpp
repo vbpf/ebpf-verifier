@@ -11,7 +11,7 @@
 #include "spec_type_descriptors.hpp"
 
 namespace crab {
-    using label_t = std::string;
+using label_t = std::string;
 }
 using crab::label_t;
 
@@ -156,15 +156,7 @@ struct Assume {
     Condition cond;
 };
 
-enum {
-    T_UNINIT = -6,
-    T_MAP = -5,
-    T_NUM = -4,
-    T_CTX = -3,
-    T_STACK = -2,
-    T_PACKET = -1,
-    T_SHARED = 0
-};
+enum { T_UNINIT = -6, T_MAP = -5, T_NUM = -4, T_CTX = -3, T_STACK = -2, T_PACKET = -1, T_SHARED = 0 };
 
 enum class TypeGroup {
     num,
@@ -173,14 +165,13 @@ enum class TypeGroup {
     packet,
     stack,
     shared,
-    non_map_fd, // reg >= T_NUM
-    mem, // shared | packet | stack = reg >= T_STACK
-    mem_or_num, // reg >= T_NUM && reg != T_CTX
-    ptr, // reg >= T_CTX
-    ptr_or_num, // reg >= T_NUM
+    non_map_fd,     // reg >= T_NUM
+    mem,            // shared | packet | stack = reg >= T_STACK
+    mem_or_num,     // reg >= T_NUM && reg != T_CTX
+    ptr,            // reg >= T_CTX
+    ptr_or_num,     // reg >= T_NUM
     stack_or_packet // reg >= T_STACK && reg <= T_PACKET
 };
-
 
 struct ValidSize {
     Reg reg;
@@ -222,32 +213,33 @@ struct TypeConstraint {
     TypeGroup types;
 };
 
-using AssertionConstraint = std::variant<Comparable, Addable, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint>;
+using AssertionConstraint =
+    std::variant<Comparable, Addable, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint>;
 
 struct Assert {
     AssertionConstraint cst;
     bool satisfied = false;
 };
 
-#define DECLARE_EQ6(T, f1, f2, f3, f4, f5, f6)                                                                         \
-    inline bool operator==(T const& a, T const& b) {                                                                   \
-        return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4 && a.f5 == b.f5 && a.f6 == b.f6;           \
+#define DECLARE_EQ6(T, f1, f2, f3, f4, f5, f6)                                                               \
+    inline bool operator==(T const& a, T const& b) {                                                         \
+        return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4 && a.f5 == b.f5 && a.f6 == b.f6; \
     }
-#define DECLARE_EQ5(T, f1, f2, f3, f4, f5)                                                                             \
-    inline bool operator==(T const& a, T const& b) {                                                                   \
-        return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4 && a.f5 == b.f5;                           \
+#define DECLARE_EQ5(T, f1, f2, f3, f4, f5)                                                   \
+    inline bool operator==(T const& a, T const& b) {                                         \
+        return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4 && a.f5 == b.f5; \
     }
-#define DECLARE_EQ4(T, f1, f2, f3, f4)                                                                                 \
-    inline bool operator==(T const& a, T const& b) {                                                                   \
-        return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4;                                           \
+#define DECLARE_EQ4(T, f1, f2, f3, f4)                                       \
+    inline bool operator==(T const& a, T const& b) {                         \
+        return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4; \
     }
-#define DECLARE_EQ3(T, f1, f2, f3)                                                                                     \
+#define DECLARE_EQ3(T, f1, f2, f3) \
     inline bool operator==(T const& a, T const& b) { return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3; }
-#define DECLARE_EQ2(T, f1, f2)                                                                                         \
+#define DECLARE_EQ2(T, f1, f2) \
     inline bool operator==(T const& a, T const& b) { return a.f1 == b.f1 && a.f2 == b.f2; }
-#define DECLARE_EQ1(T, f1)                                                                                             \
+#define DECLARE_EQ1(T, f1) \
     inline bool operator==(T const& a, T const& b) { return a.f1 == b.f1; }
-#define DECLARE_EQ0(T)                                                                                                 \
+#define DECLARE_EQ0(T) \
     inline bool operator==(T const& a, T const& b) { return true; }
 
 using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Exit, Jmp, Mem, Packet, LockAdd, Assume, Assert>;

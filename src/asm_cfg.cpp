@@ -16,11 +16,10 @@
 #include "asm_ostream.hpp"
 #include "spec_type_descriptors.hpp"
 
-#include "crab/cfg.hpp"
 #include "asm_syntax.hpp"
+#include "crab/cfg.hpp"
 #include "crab/debug.hpp"
 #include "crab/types.hpp"
-
 
 using std::list;
 using std::optional;
@@ -52,7 +51,8 @@ cfg_t instruction_seq_to_cfg(const InstructionSeq& insts) {
         if (std::holds_alternative<Exit>(inst))
             exit_label = label;
     }
-    if (exit_label.empty()) throw std::runtime_error("no exit");
+    if (exit_label.empty())
+        throw std::runtime_error("no exit");
     cfg_t cfg("0", exit_label);
     std::optional<label_t> falling_from = {};
     for (const auto& [label, inst] : insts) {

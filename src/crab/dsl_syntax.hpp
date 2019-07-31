@@ -1,5 +1,5 @@
-#include "crab/linear_constraints.hpp"
 #include "crab/cfg.hpp"
+#include "crab/linear_constraints.hpp"
 
 namespace crab {
 

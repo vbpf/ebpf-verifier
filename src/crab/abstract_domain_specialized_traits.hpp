@@ -46,22 +46,23 @@ class checker_domain_traits final {
             return false;
 
         CRAB_LOG("checker-entailment", linear_constraint_t tmp(rhs); std::cout << "Checking whether\n"
-                                                                            << lhs << "\nentails " << tmp << "\n";);
+                                                                               << lhs << "\nentails " << tmp << "\n";);
 
         bool res;
         entailment op(lhs);
         if (rhs.is_equality()) {
             // try to convert the equality into inequalities so when it's
             // negated we do not have disequalities.
-            res = op(linear_constraint_t(rhs.expression(), linear_constraint_t::INEQUALITY))
-               && op(linear_constraint_t(rhs.expression() * number_t(-1), linear_constraint_t::INEQUALITY));
+            res = op(linear_constraint_t(rhs.expression(), linear_constraint_t::INEQUALITY)) &&
+                  op(linear_constraint_t(rhs.expression() * number_t(-1), linear_constraint_t::INEQUALITY));
         } else {
             res = op(rhs);
         }
 
-        CRAB_LOG("checker-entailment", if (res) { std::cout << "\t**entailment holds.\n"; } else {
-            std::cout << "\t**entailment does not hold.\n";
-        });
+        CRAB_LOG(
+            "checker-entailment", if (res) { std::cout << "\t**entailment holds.\n"; } else {
+                std::cout << "\t**entailment does not hold.\n";
+            });
 
         // Note: we cannot convert rhs into AbsDomain and then use the <=
         //       operator. The problem is that we cannot know for sure

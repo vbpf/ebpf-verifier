@@ -4,9 +4,9 @@
    Implementation of the abstract transfer functions by reducing them
    to abstract domain operations.
 */
+#include <iostream>
 #include <limits>
 #include <variant>
-#include <iostream>
 
 #include "crab/abstract_domain_operators.hpp"
 #include "crab/abstract_domain_specialized_traits.hpp"
@@ -131,7 +131,6 @@ class intra_abs_transformer {
     AbsDomain m_inv;
 
   private:
-
     static AbsDomain when(AbsDomain inv, linear_constraint_t cond) {
         inv += cond;
         return inv;
@@ -152,40 +151,42 @@ class intra_abs_transformer {
             overflow(x);
     }
 
-    void add(variable_t lhs, variable_t op2) {                   apply(m_inv, crab::arith_binop_t::ADD,    lhs, lhs, op2); }
-    void add(variable_t lhs, number_t op2) {                     apply(m_inv, crab::arith_binop_t::ADD,    lhs, lhs, op2); }
-    void sub(variable_t lhs, variable_t op2) {                   apply(m_inv, crab::arith_binop_t::SUB,    lhs, lhs, op2); }
-    void sub(variable_t lhs, number_t op2) {                     apply(m_inv, crab::arith_binop_t::SUB,    lhs, lhs, op2); }
-    void add_overflow(variable_t lhs, variable_t op2) {          apply(m_inv, crab::arith_binop_t::ADD,    lhs, lhs, op2, true); }
-    void add_overflow(variable_t lhs, number_t op2) {            apply(m_inv, crab::arith_binop_t::ADD,    lhs, lhs, op2, true); }
-    void sub_overflow(variable_t lhs, variable_t op2) {          apply(m_inv, crab::arith_binop_t::SUB,    lhs, lhs, op2, true); }
-    void sub_overflow(variable_t lhs, number_t op2) {            apply(m_inv, crab::arith_binop_t::SUB,    lhs, lhs, op2, true); }
-    void neg(variable_t lhs) {                                   apply(m_inv, crab::arith_binop_t::MUL,    lhs, lhs, (number_t)-1,  true); }
-    void mul(variable_t lhs, variable_t op2) {                   apply(m_inv, crab::arith_binop_t::MUL,    lhs, lhs, op2, true); }
-    void mul(variable_t lhs, number_t op2) {                     apply(m_inv, crab::arith_binop_t::MUL,    lhs, lhs, op2, true); }
-    void div(variable_t lhs, variable_t op2) {                   apply(m_inv, crab::arith_binop_t::SDIV,   lhs, lhs, op2, true); }
-    void div(variable_t lhs, number_t op2) {                     apply(m_inv, crab::arith_binop_t::SDIV,   lhs, lhs, op2, true); }
-    void udiv(variable_t lhs, variable_t op2) {                  apply(m_inv, crab::arith_binop_t::UDIV,   lhs, lhs, op2, true); }
-    void udiv(variable_t lhs, number_t op2) {                    apply(m_inv, crab::arith_binop_t::UDIV,   lhs, lhs, op2, true); }
-    void rem(variable_t lhs, variable_t op2) {                   apply(m_inv, crab::arith_binop_t::SREM,   lhs, lhs, op2, true); }
-    void rem(variable_t lhs, number_t op2, bool mod = true) {    apply(m_inv, crab::arith_binop_t::SREM,   lhs, lhs, op2, mod); }
-    void urem(variable_t lhs, variable_t op2) {                  apply(m_inv, crab::arith_binop_t::UREM,   lhs, lhs, op2, true); }
-    void urem(variable_t lhs, number_t op2) {                    apply(m_inv, crab::arith_binop_t::UREM,   lhs, lhs, op2, true); }
+    void add(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2); }
+    void add(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2); }
+    void sub(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2); }
+    void sub(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2); }
+    void add_overflow(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2, true); }
+    void add_overflow(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2, true); }
+    void sub_overflow(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2, true); }
+    void sub_overflow(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2, true); }
+    void neg(variable_t lhs) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, (number_t)-1, true); }
+    void mul(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, op2, true); }
+    void mul(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, op2, true); }
+    void div(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SDIV, lhs, lhs, op2, true); }
+    void div(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::SDIV, lhs, lhs, op2, true); }
+    void udiv(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::UDIV, lhs, lhs, op2, true); }
+    void udiv(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::UDIV, lhs, lhs, op2, true); }
+    void rem(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SREM, lhs, lhs, op2, true); }
+    void rem(variable_t lhs, number_t op2, bool mod = true) {
+        apply(m_inv, crab::arith_binop_t::SREM, lhs, lhs, op2, mod);
+    }
+    void urem(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::UREM, lhs, lhs, op2, true); }
+    void urem(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::UREM, lhs, lhs, op2, true); }
 
-    void bitwise_and(variable_t lhs, variable_t op2) {           apply(m_inv, crab::bitwise_binop_t::AND,  lhs, lhs, op2); }
-    void bitwise_and(variable_t lhs, number_t op2) {             apply(m_inv, crab::bitwise_binop_t::AND,  lhs, lhs, op2); }
-    void bitwise_or(variable_t lhs, variable_t op2) {            apply(m_inv, crab::bitwise_binop_t::OR,   lhs, lhs, op2); }
-    void bitwise_or(variable_t lhs, number_t op2) {              apply(m_inv, crab::bitwise_binop_t::OR,   lhs, lhs, op2); }
-    void bitwise_xor(variable_t lhs, variable_t op2) {           apply(m_inv, crab::bitwise_binop_t::XOR,  lhs, lhs, op2); }
-    void bitwise_xor(variable_t lhs, number_t op2) {             apply(m_inv, crab::bitwise_binop_t::XOR,  lhs, lhs, op2); }
-    void shl_overflow(variable_t lhs, variable_t op2) {          apply(m_inv, crab::bitwise_binop_t::SHL,  lhs, lhs, op2, true); }
-    void shl_overflow(variable_t lhs, number_t op2) {            apply(m_inv, crab::bitwise_binop_t::SHL,  lhs, lhs, op2, true); }
-    void lshr(variable_t lhs, variable_t op2) {                  apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
-    void lshr(variable_t lhs, number_t op2) {                    apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
-    void ashr(variable_t lhs, variable_t op2) {                  apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
-    void ashr(variable_t lhs, number_t op2) {                    apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
+    void bitwise_and(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::AND, lhs, lhs, op2); }
+    void bitwise_and(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::AND, lhs, lhs, op2); }
+    void bitwise_or(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::OR, lhs, lhs, op2); }
+    void bitwise_or(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::OR, lhs, lhs, op2); }
+    void bitwise_xor(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::XOR, lhs, lhs, op2); }
+    void bitwise_xor(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::XOR, lhs, lhs, op2); }
+    void shl_overflow(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::SHL, lhs, lhs, op2, true); }
+    void shl_overflow(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::SHL, lhs, lhs, op2, true); }
+    void lshr(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
+    void lshr(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
+    void ashr(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
+    void ashr(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
 
-protected:
+  protected:
     void assume(const linear_constraint_t& cst) { assume(m_inv, cst); }
     void assume(AbsDomain& inv, const linear_constraint_t& cst) { inv += cst; }
 
@@ -200,16 +201,26 @@ protected:
         assign(reg_type(i), T_NUM);
         havoc(reg_offset(i));
     };
-    void no_pointer(Reg r) {
-        no_pointer(r.v);
+    void no_pointer(Reg r) { no_pointer(r.v); }
+
+    static linear_constraint_t is_shared(variable_t v) {
+        using namespace dsl_syntax;
+        return v > T_SHARED;
     }
 
-    static linear_constraint_t is_shared(variable_t v) { using namespace dsl_syntax; return v > T_SHARED; }
-
-    static linear_constraint_t is_pointer(Reg v) { using namespace dsl_syntax; return reg_type(v) >= T_CTX; }
-    static linear_constraint_t is_init(Reg v) { using namespace dsl_syntax; return reg_type(v) > T_UNINIT; }
+    static linear_constraint_t is_pointer(Reg v) {
+        using namespace dsl_syntax;
+        return reg_type(v) >= T_CTX;
+    }
+    static linear_constraint_t is_init(Reg v) {
+        using namespace dsl_syntax;
+        return reg_type(v) > T_UNINIT;
+    }
     static linear_constraint_t is_shared(Reg v) { return is_shared(reg_type(v)); }
-    static linear_constraint_t is_not_num(Reg v) { using namespace dsl_syntax; return reg_type(v) > T_NUM; }
+    static linear_constraint_t is_not_num(Reg v) {
+        using namespace dsl_syntax;
+        return reg_type(v) > T_NUM;
+    }
 
     void overflow(variable_t lhs) {
         using namespace dsl_syntax;
@@ -228,19 +239,21 @@ protected:
         using namespace dsl_syntax;
         Condition cond = s.cond;
         Reg dst = cond.left;
-        variable_t dst_value  = reg_value (dst);
+        variable_t dst_value = reg_value(dst);
         variable_t dst_offset = reg_offset(dst);
-        variable_t dst_type   = reg_type  (dst);
+        variable_t dst_type = reg_type(dst);
         if (std::holds_alternative<Reg>(cond.right)) {
             Reg src = std::get<Reg>(cond.right);
-            variable_t src_value  = reg_value (src);
+            variable_t src_value = reg_value(src);
             variable_t src_offset = reg_offset(src);
-            variable_t src_type   = reg_type  (src);
+            variable_t src_type = reg_type(src);
             AbsDomain different{m_inv};
             different += neq(dst_type, src_type);
 
-            AbsDomain null_src{different}; null_src += is_pointer(dst);
-            AbsDomain null_dst{different}; null_dst += is_pointer(src);
+            AbsDomain null_src{different};
+            null_src += is_pointer(dst);
+            AbsDomain null_dst{different};
+            null_dst += is_pointer(src);
 
             m_inv += eq(dst_type, src_type);
 
@@ -282,17 +295,14 @@ protected:
     void operator()(Exit const& a) {}
     void operator()(Jmp const& a) {}
 
-    void operator()(const Comparable& s) {
-        require(m_inv, eq(reg_type(s.r1), reg_type(s.r2)), to_string(s));
-    }
+    void operator()(const Comparable& s) { require(m_inv, eq(reg_type(s.r1), reg_type(s.r2)), to_string(s)); }
 
     void operator()(const Addable& s) {
         using namespace dsl_syntax;
         linear_constraint_t cond = reg_type(s.ptr) > T_NUM;
         AbsDomain is_ptr{m_inv};
         is_ptr += cond;
-        require(is_ptr, reg_type(s.num) == T_NUM,
-            "only numbers can be added to pointers (" + to_string(s) + ")");
+        require(is_ptr, reg_type(s.num) == T_NUM, "only numbers can be added to pointers (" + to_string(s) + ")");
 
         m_inv += cond.negate();
         m_inv |= is_ptr;
@@ -319,8 +329,8 @@ protected:
         std::string m = std::string(" (") + to_string(s) + ")";
         require(m_inv, reg_type(s.access_reg) >= T_STACK, "Only stack or packet can be used as a parameter" + m);
         require(m_inv, reg_type(s.access_reg) <= T_PACKET, "Only stack or packet can be used as a parameter" + m);
-        m_inv = check_access_packet(when(m_inv, reg_type(s.access_reg) == T_PACKET), lb, ub, m, false)
-              | check_access_stack (when(m_inv, reg_type(s.access_reg) == T_STACK) , lb, ub, m);
+        m_inv = check_access_packet(when(m_inv, reg_type(s.access_reg) == T_PACKET), lb, ub, m, false) |
+                check_access_stack(when(m_inv, reg_type(s.access_reg) == T_STACK), lb, ub, m);
     }
 
     void operator()(const ValidAccess& s) {
@@ -330,14 +340,17 @@ protected:
 
         linear_expression_t lb = reg_offset(s.reg) + s.offset;
         linear_expression_t ub;
-        if (std::holds_alternative<Imm>(s.width)) ub = lb + std::get<Imm>(s.width).v;
-        else ub = lb + reg_value(std::get<Reg>(s.width));
+        if (std::holds_alternative<Imm>(s.width))
+            ub = lb + std::get<Imm>(s.width).v;
+        else
+            ub = lb + reg_value(std::get<Reg>(s.width));
         std::string m = std::string(" (") + to_string(s) + ")";
 
-        AbsDomain assume_ptr = check_access_packet (when(m_inv, reg_type(s.reg) == T_PACKET), lb, ub, m, is_comparison_check)
-                             | check_access_stack  (when(m_inv, reg_type(s.reg) == T_STACK) , lb, ub, m)
-                             | check_access_shared (when(m_inv, is_shared(reg_type(s.reg))) , lb, ub, m, reg_type(s.reg))
-                             | check_access_context(when(m_inv, reg_type(s.reg) == T_CTX)   , lb, ub, m);
+        AbsDomain assume_ptr =
+            check_access_packet(when(m_inv, reg_type(s.reg) == T_PACKET), lb, ub, m, is_comparison_check) |
+            check_access_stack(when(m_inv, reg_type(s.reg) == T_STACK), lb, ub, m) |
+            check_access_shared(when(m_inv, is_shared(reg_type(s.reg))), lb, ub, m, reg_type(s.reg)) |
+            check_access_context(when(m_inv, reg_type(s.reg) == T_CTX), lb, ub, m);
         if (is_comparison_check) {
             m_inv |= assume_ptr;
             return;
@@ -352,43 +365,40 @@ protected:
         std::swap(m_inv, assume_ptr);
     }
 
-    AbsDomain check_access_packet(AbsDomain inv, linear_expression_t lb, linear_expression_t ub, std::string s, bool is_comparison_check) {
+    AbsDomain check_access_packet(AbsDomain inv, linear_expression_t lb, linear_expression_t ub, std::string s,
+                                  bool is_comparison_check) {
         using namespace dsl_syntax;
-        require(inv, lb >= variable_t::meta_offset(),
-            std::string("Lower bound must be higher than meta_offset") + s);
+        require(inv, lb >= variable_t::meta_offset(), std::string("Lower bound must be higher than meta_offset") + s);
         if (is_comparison_check)
             require(inv, ub <= MAX_PACKET_OFF,
-                std::string("Upper bound must be lower than ") + std::to_string(MAX_PACKET_OFF) + s);
+                    std::string("Upper bound must be lower than ") + std::to_string(MAX_PACKET_OFF) + s);
         else
             require(inv, ub <= variable_t::packet_size(),
-                std::string("Upper bound must be lower than meta_offset") + s);
+                    std::string("Upper bound must be lower than meta_offset") + s);
         return inv;
     }
 
     AbsDomain check_access_stack(AbsDomain inv, linear_expression_t lb, linear_expression_t ub, std::string s) {
         using namespace dsl_syntax;
-        require(inv, lb >= 0,
-            std::string("Lower bound must be higher than 0") + s);
-        require(inv, ub <= STACK_SIZE,
-            std::string("Upper bound must be lower than STACK_SIZE") + s);
+        require(inv, lb >= 0, std::string("Lower bound must be higher than 0") + s);
+        require(inv, ub <= STACK_SIZE, std::string("Upper bound must be lower than STACK_SIZE") + s);
         return inv;
     }
 
-    AbsDomain check_access_shared(AbsDomain inv, linear_expression_t lb, linear_expression_t ub, std::string s, variable_t reg_type) {
+    AbsDomain check_access_shared(AbsDomain inv, linear_expression_t lb, linear_expression_t ub, std::string s,
+                                  variable_t reg_type) {
         using namespace dsl_syntax;
-        require(inv, lb >= 0,
-            std::string("Lower bound must be higher than 0") + s);
-        require(inv, ub <= reg_type,
-            std::string("Upper bound must be lower than ") + reg_type.name() + s);
+        require(inv, lb >= 0, std::string("Lower bound must be higher than 0") + s);
+        require(inv, ub <= reg_type, std::string("Upper bound must be lower than ") + reg_type.name() + s);
         return inv;
     }
 
     AbsDomain check_access_context(AbsDomain inv, linear_expression_t lb, linear_expression_t ub, std::string s) {
         using namespace dsl_syntax;
-        require(inv, lb >= 0,
-            std::string("Lower bound must be higher than 0") + s);
+        require(inv, lb >= 0, std::string("Lower bound must be higher than 0") + s);
         require(inv, ub <= global_program_info.descriptor.size,
-            std::string("Upper bound must be lower than ") + std::to_string(global_program_info.descriptor.size) + s);
+                std::string("Upper bound must be lower than ") + std::to_string(global_program_info.descriptor.size) +
+                    s);
         return inv;
     }
 
@@ -398,8 +408,7 @@ protected:
 
         AbsDomain non_stack{m_inv};
         non_stack += cond;
-        require(non_stack, reg_type(s.val) == T_NUM,
-            "Only numbers can be stored to externally-visible regions");
+        require(non_stack, reg_type(s.val) == T_NUM, "Only numbers can be stored to externally-visible regions");
 
         m_inv += cond.negate();
         m_inv |= non_stack;
@@ -410,24 +419,28 @@ protected:
         variable_t t = reg_type(s.reg);
         std::string str = to_string(s);
         switch (s.types) {
-            case TypeGroup::num: require(t == T_NUM, str); break;
-            case TypeGroup::map_fd: require(t == T_MAP, str); break;
-            case TypeGroup::ctx: require(t == T_CTX, str); break;
-            case TypeGroup::packet: require(t == T_PACKET, str); break;
-            case TypeGroup::stack: require(t == T_STACK, str); break;
-            case TypeGroup::shared: require(t > T_SHARED, str); break;
-            case TypeGroup::non_map_fd: require(t >= T_NUM, str); break;
-            case TypeGroup::mem: require(t >= T_STACK, str); break;
-            case TypeGroup::mem_or_num: require(t >= T_NUM, str); require(t != T_CTX, str); break;
-            case TypeGroup::ptr: require(t >= T_CTX, str); break;
-            case TypeGroup::ptr_or_num: require(t >= T_NUM, str); break;
-            case TypeGroup::stack_or_packet: require(t >= T_STACK, str); require(t <= T_PACKET, str); break;
+        case TypeGroup::num: require(t == T_NUM, str); break;
+        case TypeGroup::map_fd: require(t == T_MAP, str); break;
+        case TypeGroup::ctx: require(t == T_CTX, str); break;
+        case TypeGroup::packet: require(t == T_PACKET, str); break;
+        case TypeGroup::stack: require(t == T_STACK, str); break;
+        case TypeGroup::shared: require(t > T_SHARED, str); break;
+        case TypeGroup::non_map_fd: require(t >= T_NUM, str); break;
+        case TypeGroup::mem: require(t >= T_STACK, str); break;
+        case TypeGroup::mem_or_num:
+            require(t >= T_NUM, str);
+            require(t != T_CTX, str);
+            break;
+        case TypeGroup::ptr: require(t >= T_CTX, str); break;
+        case TypeGroup::ptr_or_num: require(t >= T_NUM, str); break;
+        case TypeGroup::stack_or_packet:
+            require(t >= T_STACK, str);
+            require(t <= T_PACKET, str);
+            break;
         }
     }
 
-    void operator()(Assert const& stmt) {
-        std::visit(*this, stmt.cst);
-    };
+    void operator()(Assert const& stmt) { std::visit(*this, stmt.cst); };
 
     void operator()(Packet const& a) {
         assign(reg_type(0), T_NUM);
@@ -437,7 +450,8 @@ protected:
     }
 
     static AbsDomain do_load_packet_or_shared(AbsDomain inv, Reg target, linear_expression_t addr, int width) {
-        if (inv.is_bottom()) return inv;
+        if (inv.is_bottom())
+            return inv;
 
         inv.assign(reg_type(target), T_NUM);
         inv -= reg_offset(target);
@@ -447,7 +461,8 @@ protected:
 
     static AbsDomain do_load_ctx(AbsDomain inv, Reg target, linear_expression_t addr_vague, int width) {
         using namespace dsl_syntax;
-        if (inv.is_bottom()) return inv;
+        if (inv.is_bottom())
+            return inv;
 
         ptype_descr desc = global_program_info.descriptor;
 
@@ -500,10 +515,11 @@ protected:
     }
 
     static AbsDomain do_load_stack(AbsDomain inv, Reg target, linear_expression_t addr, int width) {
-        if (inv.is_bottom()) return inv;
+        if (inv.is_bottom())
+            return inv;
 
         bool is_num = true;
-        for (int i=0; i < width; i++) {
+        for (int i = 0; i < width; i++) {
             inv.array_load(reg_type(target), data_kind_t::types, addr + i, 1);
             std::optional<number_t> t = inv.to_interval(reg_type(target)).singleton();
             if (!t && (*t) != T_NUM) {
@@ -515,7 +531,7 @@ protected:
             inv -= reg_type(target);
         }
         if (width == 8) {
-            inv.array_load(reg_value(target) , data_kind_t::values , addr, width);
+            inv.array_load(reg_value(target), data_kind_t::values, addr, width);
             inv.array_load(reg_offset(target), data_kind_t::offsets, addr, width);
         } else {
             inv -= reg_value(target);
@@ -536,14 +552,15 @@ protected:
         }
 
         variable_t mem_reg_type = reg_type(mem_reg);
-        m_inv = do_load_ctx             (when(m_inv, mem_reg_type == T_CTX)   , target, addr, width)
-              | do_load_packet_or_shared(when(m_inv, mem_reg_type >= T_PACKET), target, addr, width)
-              | do_load_stack           (when(m_inv, mem_reg_type == T_STACK) , target, addr, width);
+        m_inv = do_load_ctx(when(m_inv, mem_reg_type == T_CTX), target, addr, width) |
+                do_load_packet_or_shared(when(m_inv, mem_reg_type >= T_PACKET), target, addr, width) |
+                do_load_stack(when(m_inv, mem_reg_type == T_STACK), target, addr, width);
     }
 
     int get_type(variable_t v) {
         auto res = m_inv.to_interval(v).singleton();
-        if (!res) return T_UNINIT;
+        if (!res)
+            return T_UNINIT;
         return (int)*res;
     }
 
@@ -629,9 +646,9 @@ protected:
                 if (!stack.is_bottom()) {
                     variable_t addr = reg_offset(param.mem);
                     variable_t width = reg_value(param.size);
-                    stack.array_store_range(data_kind_t::types,   addr, width, T_NUM);
-                    stack.array_havoc(      data_kind_t::values,  addr, width);
-                    stack.array_havoc(      data_kind_t::offsets, addr, width);
+                    stack.array_store_range(data_kind_t::types, addr, width, T_NUM);
+                    stack.array_havoc(data_kind_t::values, addr, width);
+                    stack.array_havoc(data_kind_t::offsets, addr, width);
                 }
                 m_inv += reg_type(param.mem) == T_PACKET;
                 m_inv |= stack;
@@ -727,7 +744,8 @@ protected:
                 no_pointer(dst);
                 break;
             case Bin::Op::ARSH:
-                havoc(dst_value); // avoid signedness and overflow issues in ashr(dst_value, imm); // = (int64_t)dst >> imm;
+                havoc(dst_value); // avoid signedness and overflow issues in ashr(dst_value, imm); // = (int64_t)dst >>
+                                  // imm;
                 // assume(dst_value <= (1 << (64 - imm)));
                 // assume(dst_value >= -(1 << (64 - imm)));
                 no_pointer(dst);
@@ -747,12 +765,12 @@ protected:
             case Bin::Op::ADD: {
                 AbsDomain ptr_dst{m_inv};
                 ptr_dst += is_pointer(dst);
-                apply(ptr_dst, crab::arith_binop_t::ADD, dst_value , dst_value , src_value, true);
+                apply(ptr_dst, crab::arith_binop_t::ADD, dst_value, dst_value, src_value, true);
                 apply(ptr_dst, crab::arith_binop_t::ADD, dst_offset, dst_offset, src_value, false);
 
                 AbsDomain ptr_src{m_inv};
                 ptr_src += is_pointer(src);
-                apply(ptr_src, crab::arith_binop_t::ADD, dst_value , src_value , dst_value, true);
+                apply(ptr_src, crab::arith_binop_t::ADD, dst_value, src_value, dst_value, true);
                 apply(ptr_src, crab::arith_binop_t::ADD, dst_offset, src_offset, dst_value, false);
                 ptr_src.assign(dst_type, src_type);
 
@@ -771,23 +789,21 @@ protected:
 
                 AbsDomain ptr_dst{num_src};
                 ptr_dst += is_pointer(dst);
-                apply(ptr_dst, crab::arith_binop_t::SUB, dst_value , dst_value , src_value, true);
+                apply(ptr_dst, crab::arith_binop_t::SUB, dst_value, dst_value, src_value, true);
                 apply(ptr_dst, crab::arith_binop_t::SUB, dst_offset, dst_offset, src_value, false);
 
                 AbsDomain both_num{num_src};
                 both_num += dst_type == T_NUM;
-                apply(both_num, crab::arith_binop_t::SUB, dst_value , dst_value , src_value, true);
+                apply(both_num, crab::arith_binop_t::SUB, dst_value, dst_value, src_value, true);
 
                 AbsDomain both_ptr{m_inv};
                 both_ptr += is_pointer(src);
                 both_ptr += eq(src_type, dst_type);
-                apply(both_ptr, crab::arith_binop_t::SUB, dst_value , dst_offset , src_offset);
+                apply(both_ptr, crab::arith_binop_t::SUB, dst_value, dst_offset, src_offset);
                 both_ptr.assign(dst_type, T_NUM);
                 both_ptr -= dst_offset;
 
-                m_inv = both_num
-                      | ptr_dst
-                      | both_ptr;
+                m_inv = both_num | ptr_dst | both_ptr;
                 break;
             }
             case Bin::Op::MUL:
@@ -813,7 +829,8 @@ protected:
                 no_pointer(dst);
                 break;
             case Bin::Op::LSH:
-                shl_overflow(dst_value, src_value); // avoid signedness and overflow issues in shl_overflow(dst_value, src_value);
+                shl_overflow(dst_value,
+                             src_value); // avoid signedness and overflow issues in shl_overflow(dst_value, src_value);
                 no_pointer(dst);
                 break;
             case Bin::Op::RSH:
@@ -821,7 +838,8 @@ protected:
                 no_pointer(dst);
                 break;
             case Bin::Op::ARSH:
-                havoc(dst_value); // avoid signedness and overflow issues in ashr(dst_value, src_value); // = (int64_t)dst >> src;
+                havoc(dst_value); // avoid signedness and overflow issues in ashr(dst_value, src_value); // =
+                                  // (int64_t)dst >> src;
                 no_pointer(dst);
                 break;
             case Bin::Op::XOR:
@@ -864,7 +882,6 @@ class checks_db final {
         other.total.clear();
     }
 
-
     void add(label_t label, check_kind_t status, std::string msg) {
         m_db[label].emplace_back(msg, status);
         total[status]++;
@@ -893,8 +910,8 @@ class checks_db final {
           << std::string(2, ' ') << "Number of total error checks\n";
         o << std::string((int)maxvlen - std::to_string(total_warning()).size(), ' ') << total_warning()
           << std::string(2, ' ') << "Number of total warning checks\n";
-        o << std::string((int)maxvlen - std::to_string(total_redundant()).size(), ' ') << total_redundant() << std::string(2, ' ')
-          << "Number of total redundant checks\n";
+        o << std::string((int)maxvlen - std::to_string(total_redundant()).size(), ' ') << total_redundant()
+          << std::string(2, ' ') << "Number of total redundant checks\n";
         o << std::string((int)maxvlen - std::to_string(total_unreachable()).size(), ' ') << total_unreachable()
           << std::string(2, ' ') << "Number of block that become unreachable\n";
     }
@@ -913,19 +930,18 @@ class assert_property_checker final : private intra_abs_transformer<AbsDomain> {
     checks_db m_db;
     using parent = intra_abs_transformer<AbsDomain>;
 
-    assert_property_checker(const AbsDomain& inv, label_t label) :
-        intra_abs_transformer<AbsDomain>(inv), label(label) {
-
-    }
+    assert_property_checker(const AbsDomain& inv, label_t label)
+        : intra_abs_transformer<AbsDomain>(inv), label(label) {}
 
     void require(AbsDomain& inv, const linear_constraint_t& cst, std::string s) override {
         s = label + ": " + s;
-        if (inv.is_bottom()) goto out;
+        if (inv.is_bottom())
+            goto out;
         if (cst.is_contradiction()) {
             add_warning(std::string("Contradition: ") + s);
             goto out;
         }
- 
+
         if (domains::checker_domain_traits<AbsDomain>::entail(inv, cst)) {
             // add_redundant(s);
         } else if (domains::checker_domain_traits<AbsDomain>::intersect(inv, cst)) {
@@ -950,7 +966,7 @@ class assert_property_checker final : private intra_abs_transformer<AbsDomain> {
             */
             add_warning(s);
         }
-out:
+    out:
         this->assume(inv, cst);
     }
 
@@ -964,7 +980,6 @@ out:
         }
     }
 };
-
 
 template <typename AbsDomain>
 inline AbsDomain setup_entry() {

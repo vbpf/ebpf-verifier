@@ -7,10 +7,10 @@
 #include <string>
 #include <vector>
 
-#include "crab/cfg.hpp"
 #include "asm_ostream.hpp"
 #include "asm_syntax.hpp"
 #include "config.hpp"
+#include "crab/cfg.hpp"
 #include "spec_type_descriptors.hpp"
 
 using std::string;
@@ -21,26 +21,21 @@ class AssertExtractor {
     program_info info;
     const bool is_privileged = info.program_type == BpfProgType::KPROBE;
 
-    auto type_of(Reg r, TypeGroup t) {
-        return Assert{TypeConstraint{r, t}};
-    };
+    auto type_of(Reg r, TypeGroup t) { return Assert{TypeConstraint{r, t}}; };
 
-    void check_access(vector<Assert>& assumptions, Reg reg, int offset, Value width, bool or_null=false) {
+    void check_access(vector<Assert>& assumptions, Reg reg, int offset, Value width, bool or_null = false) {
         assumptions.push_back(Assert{ValidAccess{reg, offset, width, or_null}});
     }
 
   public:
-    AssertExtractor(program_info info) : info{info} {
-    }
+    AssertExtractor(program_info info) : info{info} {}
 
     template <typename T>
     vector<Assert> operator()(T ins) {
         return {};
     }
 
-    vector<Assert> operator()(Packet const& ins) {
-        return {type_of(Reg{6}, TypeGroup::ctx)};
-    }
+    vector<Assert> operator()(Packet const& ins) { return {type_of(Reg{6}, TypeGroup::ctx)}; }
 
     vector<Assert> operator()(Exit const& e) { return {type_of(Reg{0}, TypeGroup::num)}; }
 
@@ -61,8 +56,8 @@ class AssertExtractor {
             case ArgSingle::Kind::PTR_TO_MAP_KEY:
             case ArgSingle::Kind::PTR_TO_MAP_VALUE:
                 res.push_back(type_of(arg.reg, TypeGroup::stack_or_packet));
-                res.push_back(Assert{ValidMapKeyValue{arg.reg, *map_fd_reg,
-                                        arg.kind == ArgSingle::Kind::PTR_TO_MAP_KEY}});
+                res.push_back(
+                    Assert{ValidMapKeyValue{arg.reg, *map_fd_reg, arg.kind == ArgSingle::Kind::PTR_TO_MAP_KEY}});
                 break;
             case ArgSingle::Kind::PTR_TO_CTX:
                 res.push_back(type_of(arg.reg, TypeGroup::ctx));
@@ -76,7 +71,7 @@ class AssertExtractor {
             switch (arg.kind) {
             case ArgPair::Kind::PTR_TO_MEM_OR_NULL:
                 res.push_back(type_of(arg.mem, TypeGroup::mem_or_num));
-                //res.push_back(Assert{OnlyZeroIfNum{arg.mem}});
+                // res.push_back(Assert{OnlyZeroIfNum{arg.mem}});
                 or_null = true;
                 break;
             case ArgPair::Kind::PTR_TO_MEM:
@@ -151,14 +146,11 @@ class AssertExtractor {
     vector<Assert> operator()(LockAdd ins) {
         vector<Assert> res;
         res.push_back(type_of(ins.access.basereg, TypeGroup::shared));
-        check_access(res, ins.access.basereg, ins.access.offset,
-                     Imm{static_cast<uint32_t>(ins.access.width)});
+        check_access(res, ins.access.basereg, ins.access.offset, Imm{static_cast<uint32_t>(ins.access.width)});
         return res;
     };
 
-    void same_type(vector<Assert>& res, Reg r1, Reg r2) {
-        res.push_back(Assert{Comparable{r1, r2}});
-    }
+    void same_type(vector<Assert>& res, Reg r1, Reg r2) { res.push_back(Assert{Comparable{r1, r2}}); }
 
     vector<Assert> operator()(Bin ins) {
         switch (ins.op) {
@@ -166,7 +158,10 @@ class AssertExtractor {
         case Bin::Op::ADD:
             if (std::holds_alternative<Reg>(ins.v)) {
                 Reg reg = std::get<Reg>(ins.v);
-                return {Assert{Addable{reg, ins.dst,}},
+                return {Assert{Addable{
+                            reg,
+                            ins.dst,
+                        }},
                         Assert{Addable{ins.dst, reg}}};
             }
             return {};

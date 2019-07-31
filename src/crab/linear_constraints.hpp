@@ -343,7 +343,8 @@ class linear_constraint_t final {
   public:
     linear_constraint_t() : _kind(EQUALITY), _signedness(true) {}
 
-    linear_constraint_t(const linear_expression_t& expr, constraint_kind_t kind) : _kind(kind), _expr(expr), _signedness(true) {}
+    linear_constraint_t(const linear_expression_t& expr, constraint_kind_t kind)
+        : _kind(kind), _expr(expr), _signedness(true) {}
 
     linear_constraint_t(const linear_expression_t& expr, constraint_kind_t kind, bool signedness)
         : _kind(kind), _expr(expr), _signedness(signedness) {

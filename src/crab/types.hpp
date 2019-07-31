@@ -1,11 +1,11 @@
 #pragma once
 
-#include <iostream>
-#include <sstream>
 #include <iosfwd>
+#include <iostream>
 #include <limits>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <unordered_map>
 
 #include "crab/bignums.hpp"
@@ -41,10 +41,10 @@ class variable_t final {
     index_t _id;
     static std::vector<std::string> names;
 
-    explicit variable_t(index_t id) : _id(id) { }
+    explicit variable_t(index_t id) : _id(id) {}
     static variable_t make(std::string name);
-  public:
 
+  public:
     variable_t(const variable_t& o) = default;
     variable_t(variable_t&& o) = default;
 

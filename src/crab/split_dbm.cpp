@@ -325,7 +325,7 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
 
 bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
     CRAB_LOG("zones-split", linear_expression_t exp_tmp(exp); std::cout << "Adding: " << exp_tmp << "<= 0"
-                                                                     << "\n");
+                                                                        << "\n");
     std::vector<std::pair<variable_t, Wt>> lbs, ubs;
     std::vector<diffcst_t> csts;
     diffcsts_of_lin_leq(exp, csts, lbs, ubs);
@@ -361,7 +361,8 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
     }
 
     for (auto diff : csts) {
-        CRAB_LOG("zones-split", std::cout << diff.first.first << "-" << diff.first.second << "<=" << diff.second << "\n");
+        CRAB_LOG("zones-split",
+                 std::cout << diff.first.first << "-" << diff.first.second << "<=" << diff.second << "\n");
 
         vert_id src = get_vert(diff.first.second);
         vert_id dest = get_vert(diff.first.first);
@@ -530,10 +531,10 @@ SplitDBM SplitDBM::operator|(SplitDBM o) {
         return *this;
     else {
         CRAB_LOG("zones-split", std::cout << "Before join:\n"
-                                       << "DBM 1\n"
-                                       << *this << "\n"
-                                       << "DBM 2\n"
-                                       << o << "\n");
+                                          << "DBM 1\n"
+                                          << *this << "\n"
+                                          << "DBM 2\n"
+                                          << o << "\n");
 
         normalize();
         o.normalize();
@@ -717,10 +718,10 @@ SplitDBM SplitDBM::widen(SplitDBM o) {
         return *this;
     else {
         CRAB_LOG("zones-split", std::cout << "Before widening:\n"
-                                       << "DBM 1\n"
-                                       << *this << "\n"
-                                       << "DBM 2\n"
-                                       << o << "\n");
+                                          << "DBM 1\n"
+                                          << *this << "\n"
+                                          << "DBM 2\n"
+                                          << o << "\n");
         o.normalize();
 
         // Figure out the common renaming
@@ -780,10 +781,10 @@ SplitDBM SplitDBM::operator&(SplitDBM o) {
         return *this;
     else {
         CRAB_LOG("zones-split", std::cout << "Before meet:\n"
-                                       << "DBM 1\n"
-                                       << *this << "\n"
-                                       << "DBM 2\n"
-                                       << o << "\n");
+                                          << "DBM 1\n"
+                                          << *this << "\n"
+                                          << "DBM 2\n"
+                                          << o << "\n");
         normalize();
         o.normalize();
 
@@ -937,7 +938,7 @@ void SplitDBM::operator+=(linear_constraint_t cst) {
         linear_expression_t exp = cst.expression();
         if (!add_linear_leq(exp) || !add_linear_leq(-exp)) {
             CRAB_LOG("zones-split", std::cout << " ~~> _|_"
-                                           << "\n");
+                                              << "\n");
             set_to_bottom();
         }
         // g.check_adjs();
@@ -1074,11 +1075,11 @@ void SplitDBM::rename(const variable_vector_t& from, const variable_vector_t& to
     // modifying the keys.
     // rev_map is modified in-place since we only modify values.
     CRAB_LOG("zones-split", std::cout << "Replacing {"; for (auto v
-                                                          : from) std::cout
-                                                     << v << ";";
+                                                             : from) std::cout
+                                                        << v << ";";
              std::cout << "} with "; for (auto v
-                                       : to) std::cout
-                                  << v << ";";
+                                          : to) std::cout
+                                     << v << ";";
              std::cout << "}:\n"; std::cout << *this << "\n";);
 
     vert_map_t new_vert_map;
@@ -1107,10 +1108,10 @@ SplitDBM SplitDBM::narrow(SplitDBM o) {
         return o;
     else {
         CRAB_LOG("zones-split", std::cout << "Before narrowing:\n"
-                                       << "DBM 1\n"
-                                       << *this << "\n"
-                                       << "DBM 2\n"
-                                       << o << "\n");
+                                          << "DBM 1\n"
+                                          << *this << "\n"
+                                          << "DBM 2\n"
+                                          << o << "\n");
 
         // FIXME: Implement properly
         // Narrowing as a no-op should be sound.

@@ -41,24 +41,24 @@ inline void ___print___(ArgTypes... args) {
     (void)expand_variadic_pack{0, ((std::cerr << args), void(), 0)...};
 }
 
-#define CRAB_ERROR(...)           \
-    do {                          \
+#define CRAB_ERROR(...)              \
+    do {                             \
         std::cerr << "CRAB ERROR: "; \
-        ___print___(__VA_ARGS__); \
+        ___print___(__VA_ARGS__);    \
         std::cerr << "\n";           \
-        std::exit(EXIT_FAILURE);  \
+        std::exit(EXIT_FAILURE);     \
     } while (0)
 
 extern bool CrabWarningFlag;
 void CrabEnableWarningMsg(bool b);
 
-#define CRAB_WARN(...)                  \
-    do {                                \
-        if (crab::CrabWarningFlag) {    \
+#define CRAB_WARN(...)                     \
+    do {                                   \
+        if (crab::CrabWarningFlag) {       \
             std::cerr << "CRAB WARNING: "; \
-            ___print___(__VA_ARGS__);   \
+            ___print___(__VA_ARGS__);      \
             std::cerr << "\n";             \
-        }                               \
+        }                                  \
     } while (0)
 
 constexpr bool CrabSanityCheckFlag = false;

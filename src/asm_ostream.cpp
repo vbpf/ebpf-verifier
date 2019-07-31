@@ -1,14 +1,14 @@
-#include <variant>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
-#include "asm_syntax.hpp"
-#include "crab/cfg.hpp"
 #include "asm_ostream.hpp"
+#include "asm_syntax.hpp"
 #include "config.hpp"
+#include "crab/cfg.hpp"
 
 using std::optional;
 using std::string;
@@ -95,28 +95,29 @@ static string size(int w) { return string("u") + std::to_string(w * 8); }
 
 std::ostream& operator<<(std::ostream& os, TypeGroup ts) {
     switch (ts) {
-       case TypeGroup::num: return os << "num";
-       case TypeGroup::map_fd: return os << "map_fd";
-       case TypeGroup::ctx: return os << "ctx";
-       case TypeGroup::packet: return os << "packet";
-       case TypeGroup::stack: return os << "stack";
-       case TypeGroup::shared: return os << "shared";
-       case TypeGroup::mem: return os << "mem";
-       case TypeGroup::ptr: return os << "ptr";
-       case TypeGroup::non_map_fd: return os << "non_map_fd";
-       case TypeGroup::ptr_or_num: return os << "ptr_or_num";
-       case TypeGroup::stack_or_packet: return os << "stack_or_packet";
-       case TypeGroup::mem_or_num: return os << "mem_or_num";
+    case TypeGroup::num: return os << "num";
+    case TypeGroup::map_fd: return os << "map_fd";
+    case TypeGroup::ctx: return os << "ctx";
+    case TypeGroup::packet: return os << "packet";
+    case TypeGroup::stack: return os << "stack";
+    case TypeGroup::shared: return os << "shared";
+    case TypeGroup::mem: return os << "mem";
+    case TypeGroup::ptr: return os << "ptr";
+    case TypeGroup::non_map_fd: return os << "non_map_fd";
+    case TypeGroup::ptr_or_num: return os << "ptr_or_num";
+    case TypeGroup::stack_or_packet: return os << "stack_or_packet";
+    case TypeGroup::mem_or_num: return os << "mem_or_num";
     }
     return os;
 }
 
 std::ostream& operator<<(std::ostream& os, ValidStore const& a) {
-    return os << "!stack("<< a.mem << ") -> num(" << a.val << ")";
+    return os << "!stack(" << a.mem << ") -> num(" << a.val << ")";
 }
 
 std::ostream& operator<<(std::ostream& os, ValidAccess const& a) {
-    if (a.or_null) os << a.reg << " == 0 or ";
+    if (a.or_null)
+        os << a.reg << " == 0 or ";
     return os << "valid_access(" << a.reg << ", " << a.offset << ":" << a.width << ")";
 }
 
@@ -126,7 +127,8 @@ std::ostream& operator<<(std::ostream& os, ValidSize const& a) {
 }
 
 std::ostream& operator<<(std::ostream& os, ValidMapKeyValue const& a) {
-    return os << "within stack("<< a.access_reg << ":" << (a.key ? "key_size" : "value_size") << "(" << a.map_fd_reg << "))";
+    return os << "within stack(" << a.access_reg << ":" << (a.key ? "key_size" : "value_size") << "(" << a.map_fd_reg
+              << "))";
 }
 
 std::ostream& operator<<(std::ostream& os, Comparable const& a) {
@@ -137,9 +139,7 @@ std::ostream& operator<<(std::ostream& os, Addable const& a) {
     return os << a.ptr << " : ptr -> " << a.num << " : num";
 }
 
-std::ostream& operator<<(std::ostream& os, TypeConstraint const& tc) {
-    return os << tc.reg << " : " << tc.types;
-}
+std::ostream& operator<<(std::ostream& os, TypeConstraint const& tc) { return os << tc.reg << " : " << tc.types; }
 
 std::ostream& operator<<(std::ostream& os, AssertionConstraint const& a) {
     return std::visit([&](const auto& a) -> std::ostream& { return os << a; }, a);
@@ -253,11 +253,10 @@ struct InstructionPrinterVisitor {
     }
 
     void operator()(Assert const& a) {
-        os_ << "assert " <<  a.cst;
+        os_ << "assert " << a.cst;
         if (a.satisfied)
             os_ << " V";
     }
-
 };
 
 string to_string(Instruction const& ins, LabelTranslator labeler) {
