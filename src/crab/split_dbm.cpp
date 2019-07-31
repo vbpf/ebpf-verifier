@@ -356,8 +356,7 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
     }
 
     for (auto [diff, k] : csts) {
-        CRAB_LOG("zones-split",
-                 std::cout << diff.first << "-" << diff.second << "<=" << k << "\n");
+        CRAB_LOG("zones-split", std::cout << diff.first << "-" << diff.second << "<=" << k << "\n");
 
         vert_id src = get_vert(diff.second);
         vert_id dest = get_vert(diff.first);
@@ -516,191 +515,190 @@ bool SplitDBM::operator<=(SplitDBM o) {
     }
 }
 
-SplitDBM SplitDBM::operator|(SplitDBM o) {
+SplitDBM SplitDBM::operator|(const SplitDBM& _o) & {
     CrabStats::count("SplitDBM.count.join");
     ScopedCrabStats __st__("SplitDBM.join");
 
-    if (is_bottom() || o.is_top())
-        return o;
-    else if (is_top() || o.is_bottom())
+    if (is_bottom() || _o.is_top())
+        return _o;
+    else if (is_top() || _o.is_bottom())
         return *this;
-    else {
-        CRAB_LOG("zones-split", std::cout << "Before join:\n"
-                                          << "DBM 1\n"
-                                          << *this << "\n"
-                                          << "DBM 2\n"
-                                          << o << "\n");
+    SplitDBM o{_o};
+    CRAB_LOG("zones-split", std::cout << "Before join:\n"
+                                      << "DBM 1\n"
+                                      << *this << "\n"
+                                      << "DBM 2\n"
+                                      << o << "\n");
 
-        normalize();
-        o.normalize();
+    normalize();
+    o.normalize();
 
-        check_potential(g, potential, __LINE__);
-        check_potential(o.g, o.potential, __LINE__);
+    check_potential(g, potential, __LINE__);
+    check_potential(o.g, o.potential, __LINE__);
 
-        // Figure out the common renaming, initializing the
-        // resulting potentials as we go.
-        std::vector<vert_id> perm_x;
-        std::vector<vert_id> perm_y;
-        std::vector<variable_t> perm_inv;
+    // Figure out the common renaming, initializing the
+    // resulting potentials as we go.
+    std::vector<vert_id> perm_x;
+    std::vector<vert_id> perm_y;
+    std::vector<variable_t> perm_inv;
 
-        std::vector<Wt> pot_rx;
-        std::vector<Wt> pot_ry;
-        vert_map_t out_vmap;
-        rev_map_t out_revmap;
-        // Add the zero vertex
-        assert(potential.size() > 0);
-        pot_rx.push_back(0);
-        pot_ry.push_back(0);
-        perm_x.push_back(0);
-        perm_y.push_back(0);
-        out_revmap.push_back(std::nullopt);
+    std::vector<Wt> pot_rx;
+    std::vector<Wt> pot_ry;
+    vert_map_t out_vmap;
+    rev_map_t out_revmap;
+    // Add the zero vertex
+    assert(potential.size() > 0);
+    pot_rx.push_back(0);
+    pot_ry.push_back(0);
+    perm_x.push_back(0);
+    perm_y.push_back(0);
+    out_revmap.push_back(std::nullopt);
 
-        for (auto [v, n] : vert_map) {
-            auto it = o.vert_map.find(v);
-            // Variable exists in both
-            if (it != o.vert_map.end()) {
-                out_vmap.insert(vmap_elt_t(v, perm_x.size()));
-                out_revmap.push_back(v);
+    for (auto [v, n] : vert_map) {
+        auto it = o.vert_map.find(v);
+        // Variable exists in both
+        if (it != o.vert_map.end()) {
+            out_vmap.insert(vmap_elt_t(v, perm_x.size()));
+            out_revmap.push_back(v);
 
-                pot_rx.push_back(potential[n] - potential[0]);
-                // XXX JNL: check this out
-                // pot_ry.push_back(o.potential[p.second] - o.potential[0]);
-                pot_ry.push_back(o.potential[it->second] - o.potential[0]);
-                perm_inv.push_back(v);
-                perm_x.push_back(n);
-                perm_y.push_back(it->second);
-            }
+            pot_rx.push_back(potential[n] - potential[0]);
+            // XXX JNL: check this out
+            // pot_ry.push_back(o.potential[p.second] - o.potential[0]);
+            pot_ry.push_back(o.potential[it->second] - o.potential[0]);
+            perm_inv.push_back(v);
+            perm_x.push_back(n);
+            perm_y.push_back(it->second);
         }
-        unsigned int sz = perm_x.size();
-
-        // Build the permuted view of x and y.
-        assert(g.size() > 0);
-        GrPerm gx(perm_x, g);
-        assert(o.g.size() > 0);
-        GrPerm gy(perm_y, o.g);
-
-        // Compute the deferred relations
-        graph_t g_ix_ry;
-        g_ix_ry.growTo(sz);
-        SubGraph<GrPerm> gy_excl(gy, 0);
-        for (vert_id s : gy_excl.verts()) {
-            for (vert_id d : gy_excl.succs(s)) {
-                typename graph_t::mut_val_ref_t ws;
-                typename graph_t::mut_val_ref_t wd;
-                if (gx.lookup(s, 0, &ws) && gx.lookup(0, d, &wd)) {
-                    g_ix_ry.add_edge(s, ws.get() + wd.get(), d);
-                }
-            }
-        }
-        // Apply the deferred relations, and re-close.
-        edge_vector delta;
-        bool is_closed;
-        graph_t g_rx(GrOps::meet(gx, g_ix_ry, is_closed));
-        check_potential(g_rx, pot_rx, __LINE__);
-        if (!is_closed) {
-            SubGraph<graph_t> g_rx_excl(g_rx, 0);
-            GrOps::close_after_meet(g_rx_excl, pot_rx, gx, g_ix_ry, delta);
-            GrOps::apply_delta(g_rx, delta);
-        }
-
-        graph_t g_rx_iy;
-        g_rx_iy.growTo(sz);
-
-        SubGraph<GrPerm> gx_excl(gx, 0);
-        for (vert_id s : gx_excl.verts()) {
-            for (vert_id d : gx_excl.succs(s)) {
-                typename graph_t::mut_val_ref_t ws;
-                typename graph_t::mut_val_ref_t wd;
-                // Assumption: gx.mem(s, d) -> gx.edge_val(s, d) <= ranges[var(s)].ub() - ranges[var(d)].lb()
-                // That is, if the relation exists, it's at least as strong as the bounds.
-                if (gy.lookup(s, 0, &ws) && gy.lookup(0, d, &wd))
-                    g_rx_iy.add_edge(s, ws.get() + wd.get(), d);
-            }
-        }
-        delta.clear();
-        // Similarly, should use a SubGraph view.
-        graph_t g_ry(GrOps::meet(gy, g_rx_iy, is_closed));
-        check_potential(g_rx, pot_rx, __LINE__);
-        if (!is_closed) {
-
-            SubGraph<graph_t> g_ry_excl(g_ry, 0);
-            GrOps::close_after_meet(g_ry_excl, pot_ry, gy, g_rx_iy, delta);
-            GrOps::apply_delta(g_ry, delta);
-        }
-
-        // We now have the relevant set of relations. Because g_rx and g_ry are closed,
-        // the result is also closed.
-        Wt_min min_op;
-        graph_t join_g(GrOps::join(g_rx, g_ry));
-
-        // Now reapply the missing independent relations.
-        // Need to derive vert_ids from lb_up/lb_down, and make sure the vertices exist
-        std::vector<vert_id> lb_up;
-        std::vector<vert_id> lb_down;
-        std::vector<vert_id> ub_up;
-        std::vector<vert_id> ub_down;
-
-        typename graph_t::mut_val_ref_t wx;
-        typename graph_t::mut_val_ref_t wy;
-        for (vert_id v : gx_excl.verts()) {
-            if (gx.lookup(0, v, &wx) && gy.lookup(0, v, &wy)) {
-                if (wx.get() < wy.get())
-                    ub_up.push_back(v);
-                if (wy.get() < wx.get())
-                    ub_down.push_back(v);
-            }
-            if (gx.lookup(v, 0, &wx) && gy.lookup(v, 0, &wy)) {
-                if (wx.get() < wy.get())
-                    lb_down.push_back(v);
-                if (wy.get() < wx.get())
-                    lb_up.push_back(v);
-            }
-        }
-
-        for (vert_id s : lb_up) {
-            Wt dx_s = gx.edge_val(s, 0);
-            Wt dy_s = gy.edge_val(s, 0);
-            for (vert_id d : ub_up) {
-                if (s == d)
-                    continue;
-
-                join_g.update_edge(s, std::max(dx_s + gx.edge_val(0, d), dy_s + gy.edge_val(0, d)), d, min_op);
-            }
-        }
-
-        for (vert_id s : lb_down) {
-            Wt dx_s = gx.edge_val(s, 0);
-            Wt dy_s = gy.edge_val(s, 0);
-            for (vert_id d : ub_down) {
-                if (s == d)
-                    continue;
-
-                join_g.update_edge(s, std::max(dx_s + gx.edge_val(0, d), dy_s + gy.edge_val(0, d)), d, min_op);
-            }
-        }
-
-        // Conjecture: join_g remains closed.
-
-        // Now garbage collect any unused vertices
-        for (vert_id v : join_g.verts()) {
-            if (v == 0)
-                continue;
-            if (join_g.succs(v).size() == 0 && join_g.preds(v).size() == 0) {
-                join_g.forget(v);
-                if (out_revmap[v]) {
-                    out_vmap.erase(*(out_revmap[v]));
-                    out_revmap[v] = std::nullopt;
-                }
-            }
-        }
-
-        // SplitDBM res(join_range, out_vmap, out_revmap, join_g, join_pot);
-        SplitDBM res(std::move(out_vmap), std::move(out_revmap), std::move(join_g), std::move(pot_rx), vert_set_t());
-        // join_g.check_adjs();
-        CRAB_LOG("zones-split", std::cout << "Result join:\n" << res << "\n");
-
-        return res;
     }
+    unsigned int sz = perm_x.size();
+
+    // Build the permuted view of x and y.
+    assert(g.size() > 0);
+    GrPerm gx(perm_x, g);
+    assert(o.g.size() > 0);
+    GrPerm gy(perm_y, o.g);
+
+    // Compute the deferred relations
+    graph_t g_ix_ry;
+    g_ix_ry.growTo(sz);
+    SubGraph<GrPerm> gy_excl(gy, 0);
+    for (vert_id s : gy_excl.verts()) {
+        for (vert_id d : gy_excl.succs(s)) {
+            typename graph_t::mut_val_ref_t ws;
+            typename graph_t::mut_val_ref_t wd;
+            if (gx.lookup(s, 0, &ws) && gx.lookup(0, d, &wd)) {
+                g_ix_ry.add_edge(s, ws.get() + wd.get(), d);
+            }
+        }
+    }
+    // Apply the deferred relations, and re-close.
+    edge_vector delta;
+    bool is_closed;
+    graph_t g_rx(GrOps::meet(gx, g_ix_ry, is_closed));
+    check_potential(g_rx, pot_rx, __LINE__);
+    if (!is_closed) {
+        SubGraph<graph_t> g_rx_excl(g_rx, 0);
+        GrOps::close_after_meet(g_rx_excl, pot_rx, gx, g_ix_ry, delta);
+        GrOps::apply_delta(g_rx, delta);
+    }
+
+    graph_t g_rx_iy;
+    g_rx_iy.growTo(sz);
+
+    SubGraph<GrPerm> gx_excl(gx, 0);
+    for (vert_id s : gx_excl.verts()) {
+        for (vert_id d : gx_excl.succs(s)) {
+            typename graph_t::mut_val_ref_t ws;
+            typename graph_t::mut_val_ref_t wd;
+            // Assumption: gx.mem(s, d) -> gx.edge_val(s, d) <= ranges[var(s)].ub() - ranges[var(d)].lb()
+            // That is, if the relation exists, it's at least as strong as the bounds.
+            if (gy.lookup(s, 0, &ws) && gy.lookup(0, d, &wd))
+                g_rx_iy.add_edge(s, ws.get() + wd.get(), d);
+        }
+    }
+    delta.clear();
+    // Similarly, should use a SubGraph view.
+    graph_t g_ry(GrOps::meet(gy, g_rx_iy, is_closed));
+    check_potential(g_rx, pot_rx, __LINE__);
+    if (!is_closed) {
+
+        SubGraph<graph_t> g_ry_excl(g_ry, 0);
+        GrOps::close_after_meet(g_ry_excl, pot_ry, gy, g_rx_iy, delta);
+        GrOps::apply_delta(g_ry, delta);
+    }
+
+    // We now have the relevant set of relations. Because g_rx and g_ry are closed,
+    // the result is also closed.
+    Wt_min min_op;
+    graph_t join_g(GrOps::join(g_rx, g_ry));
+
+    // Now reapply the missing independent relations.
+    // Need to derive vert_ids from lb_up/lb_down, and make sure the vertices exist
+    std::vector<vert_id> lb_up;
+    std::vector<vert_id> lb_down;
+    std::vector<vert_id> ub_up;
+    std::vector<vert_id> ub_down;
+
+    typename graph_t::mut_val_ref_t wx;
+    typename graph_t::mut_val_ref_t wy;
+    for (vert_id v : gx_excl.verts()) {
+        if (gx.lookup(0, v, &wx) && gy.lookup(0, v, &wy)) {
+            if (wx.get() < wy.get())
+                ub_up.push_back(v);
+            if (wy.get() < wx.get())
+                ub_down.push_back(v);
+        }
+        if (gx.lookup(v, 0, &wx) && gy.lookup(v, 0, &wy)) {
+            if (wx.get() < wy.get())
+                lb_down.push_back(v);
+            if (wy.get() < wx.get())
+                lb_up.push_back(v);
+        }
+    }
+
+    for (vert_id s : lb_up) {
+        Wt dx_s = gx.edge_val(s, 0);
+        Wt dy_s = gy.edge_val(s, 0);
+        for (vert_id d : ub_up) {
+            if (s == d)
+                continue;
+
+            join_g.update_edge(s, std::max(dx_s + gx.edge_val(0, d), dy_s + gy.edge_val(0, d)), d, min_op);
+        }
+    }
+
+    for (vert_id s : lb_down) {
+        Wt dx_s = gx.edge_val(s, 0);
+        Wt dy_s = gy.edge_val(s, 0);
+        for (vert_id d : ub_down) {
+            if (s == d)
+                continue;
+
+            join_g.update_edge(s, std::max(dx_s + gx.edge_val(0, d), dy_s + gy.edge_val(0, d)), d, min_op);
+        }
+    }
+
+    // Conjecture: join_g remains closed.
+
+    // Now garbage collect any unused vertices
+    for (vert_id v : join_g.verts()) {
+        if (v == 0)
+            continue;
+        if (join_g.succs(v).size() == 0 && join_g.preds(v).size() == 0) {
+            join_g.forget(v);
+            if (out_revmap[v]) {
+                out_vmap.erase(*(out_revmap[v]));
+                out_revmap[v] = std::nullopt;
+            }
+        }
+    }
+
+    // SplitDBM res(join_range, out_vmap, out_revmap, join_g, join_pot);
+    SplitDBM res(std::move(out_vmap), std::move(out_revmap), std::move(join_g), std::move(pot_rx), vert_set_t());
+    // join_g.check_adjs();
+    CRAB_LOG("zones-split", std::cout << "Result join:\n" << res << "\n");
+
+    return res;
 }
 
 SplitDBM SplitDBM::widen(SplitDBM o) {

@@ -370,7 +370,7 @@ class SplitDBM final : public writeable {
     // 	std::swap(*this, abs);
     // }
 
-    bool is_bottom() { return _is_bottom; }
+    bool is_bottom() const { return _is_bottom; }
 
     static SplitDBM top() {
         SplitDBM abs;
@@ -384,7 +384,7 @@ class SplitDBM final : public writeable {
         return abs;
     }
 
-    bool is_top() {
+    bool is_top() const {
         if (_is_bottom)
             return false;
         return g.is_empty();
@@ -394,8 +394,19 @@ class SplitDBM final : public writeable {
 
     // FIXME: can be done more efficient
     void operator|=(SplitDBM o) { *this = *this | o; }
+    void operator|=(SplitDBM&& o) {
+        if (is_bottom()) {
+            std::swap(*this, o);
+        } else {
+            *this = *this | o;
+        }
+    }
 
-    SplitDBM operator|(SplitDBM o);
+    SplitDBM operator|(const SplitDBM& o) &;
+    SplitDBM operator|(const SplitDBM& o) && {
+        if (o.is_bottom()) return *this;
+        return static_cast<SplitDBM&>(*this) | o;
+    }
 
     SplitDBM widen(SplitDBM o);
 
