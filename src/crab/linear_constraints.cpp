@@ -4,22 +4,6 @@
 
 namespace crab {
 
-linear_expression_t::const_iterator linear_expression_t::begin() const {
-    return boost::make_transform_iterator(this->_map->begin(), tr_value_ty());
-}
-
-linear_expression_t::const_iterator linear_expression_t::end() const {
-    return boost::make_transform_iterator(this->_map->end(), tr_value_ty());
-}
-
-linear_expression_t::iterator linear_expression_t::begin() {
-    return boost::make_transform_iterator(this->_map->begin(), tr_value_ty());
-}
-
-linear_expression_t::iterator linear_expression_t::end() {
-    return boost::make_transform_iterator(this->_map->end(), tr_value_ty());
-}
-
 linear_constraint_t linear_constraint_t::negate() const {
 
     if (is_tautology()) {

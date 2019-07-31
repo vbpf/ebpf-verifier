@@ -73,7 +73,7 @@ void thresholds_t::write(std::ostream& o) const {
 void wto_thresholds_t::extract_bounds(const linear_expression_t& e, bool is_strict, std::vector<number_t>& lb_bounds,
                                       std::vector<number_t>& ub_bounds) const {
     if (e.size() == 1) {
-        auto [coeff, var] = *e.begin();
+        auto [var, coeff] = *e.begin();
         number_t k = -e.constant();
         if (coeff > 0) {
             // e is c*var <= k and c > 0  <---> var <= k/coeff
