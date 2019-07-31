@@ -399,9 +399,9 @@ class array_expansion_domain final : public writeable {
         return *this;
     }
 
-    bool is_bottom() { return (_inv.is_bottom()); }
+    bool is_bottom() const { return (_inv.is_bottom()); }
 
-    bool is_top() { return (_inv.is_top()); }
+    bool is_top() const { return (_inv.is_top()); }
 
     bool operator<=(array_expansion_domain_t other) { return (_inv <= other._inv); }
 
@@ -409,7 +409,15 @@ class array_expansion_domain final : public writeable {
 
     void operator|=(array_expansion_domain_t other) { _inv |= other._inv; }
 
-    array_expansion_domain_t operator|(array_expansion_domain_t other) {
+    array_expansion_domain_t operator|(array_expansion_domain_t&& other) {
+        return array_expansion_domain_t(_inv | other._inv);
+    }
+
+    array_expansion_domain_t operator|(const array_expansion_domain_t& other) & {
+        return array_expansion_domain_t(_inv | other._inv);
+    }
+
+    array_expansion_domain_t operator|(const array_expansion_domain_t& other) && {
         return array_expansion_domain_t(_inv | other._inv);
     }
 
