@@ -164,29 +164,28 @@ class SplitDBM final : public writeable {
             return Wt(0);
         }
 
-        for (auto p : e) {
-            Wt coef = convert_NtoW(p.first, overflow);
+        for (auto [n, v] : e) {
+            Wt coef = convert_NtoW(v, overflow);
             if (overflow) {
                 return Wt(0);
             }
-            v += (pot_value(p.second) - potential[0]) * coef;
+            v += (pot_value(n) - potential[0]) * coef;
         }
         return v;
     }
 
     interval_t eval_interval(linear_expression_t e) {
         interval_t r = e.constant();
-        for (auto p : e)
-            r += p.first * operator[](p.second);
+        for (auto [v, n] : e)
+            r += n * operator[](v);
         return r;
     }
 
     interval_t compute_residual(linear_expression_t e, variable_t pivot) {
         interval_t residual(-e.constant());
-        for (typename linear_expression_t::iterator it = e.begin(); it != e.end(); ++it) {
-            variable_t v = it->second;
+        for (auto [v, n] : e) {
             if (v.index() != pivot.index()) {
-                residual = residual - (interval_t(it->first) * this->operator[](v));
+                residual = residual - (interval_t(n) * this->operator[](v));
             }
         }
         return residual;
@@ -239,10 +238,8 @@ class SplitDBM final : public writeable {
 
     void add_disequation(linear_expression_t e) {
         // XXX: similar precision as the interval domain
-
-        for (typename linear_expression_t::iterator it = e.begin(); it != e.end(); ++it) {
-            variable_t pivot = it->second;
-            interval_t i = compute_residual(e, pivot) / interval_t(it->first);
+        for (auto [pivot, n] : e) {
+            interval_t i = compute_residual(e, pivot) / interval_t(n);
             if (auto k = i.singleton()) {
                 add_univar_disequation(pivot, *k);
             }

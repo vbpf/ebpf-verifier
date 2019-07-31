@@ -72,7 +72,7 @@ class linear_expression_t final {
 
     linear_expression_t(map_ptr map, number_t cst) : _map(map), _cst(cst) {}
 
-    linear_expression_t(const map_t& map, number_t cst) : _map(map_ptr(new map_t)), _cst(cst) { *this->_map = map; }
+    linear_expression_t(const map_t& map, number_t cst) : _map(std::make_shared<map_t>()), _cst(cst) { *this->_map = map; }
 
     void add(variable_t x, number_t n) {
         typename map_t::iterator it = this->_map->find(x);
@@ -90,26 +90,24 @@ class linear_expression_t final {
         }
     }
 
-    struct tr_value_ty : public std::unary_function<typename map_t::value_type, component_t> {
-        tr_value_ty() {}
-        component_t operator()(const typename map_t::value_type& kv) const { return {kv.second, kv.first}; }
-    };
-
   public:
-    using iterator = boost::transform_iterator<tr_value_ty, typename map_t::iterator>;
-    using const_iterator = boost::transform_iterator<tr_value_ty, typename map_t::const_iterator>;
+    using iterator = typename map_t::iterator;
+    using const_iterator = typename map_t::const_iterator;
 
-    linear_expression_t() : _map(map_ptr(new map_t)), _cst(0) {}
+    linear_expression_t() : _map(std::make_shared<map_t>()), _cst(0) {}
 
-    linear_expression_t(number_t n) : _map(map_ptr(new map_t)), _cst(n) {}
+    linear_expression_t(linear_expression_t&& other) = default;
+    linear_expression_t(const linear_expression_t& other) = default;
 
-    linear_expression_t(signed long long int n) : _map(map_ptr(new map_t)), _cst(number_t(n)) {}
+    linear_expression_t(number_t n) : _map(std::make_shared<map_t>()), _cst(n) {}
 
-    linear_expression_t(variable_t x) : _map(map_ptr(new map_t)), _cst(0) {
+    linear_expression_t(signed long long int n) : _map(std::make_shared<map_t>()), _cst(number_t(n)) {}
+
+    linear_expression_t(variable_t x) : _map(std::make_shared<map_t>()), _cst(0) {
         this->_map->insert(pair_t(x, number_t(1)));
     }
 
-    linear_expression_t(number_t n, variable_t x) : _map(map_ptr(new map_t)), _cst(0) {
+    linear_expression_t(number_t n, variable_t x) : _map(std::make_shared<map_t>()), _cst(0) {
         this->_map->insert(pair_t(x, n));
     }
 
@@ -121,18 +119,26 @@ class linear_expression_t final {
         return *this;
     }
 
-    const_iterator begin() const;
+    const_iterator begin() const {
+        return this->_map->begin();
+    }
 
-    const_iterator end() const;
+    const_iterator end() const {
+        return this->_map->end();
+    }
 
-    iterator begin();
+    iterator begin() {
+        return this->_map->begin();
+    }
 
-    iterator end();
+    iterator end() {
+        return this->_map->end();
+    }
 
     size_t hash() const {
         size_t res = 0;
-        for (const_iterator it = begin(), et = end(); it != et; ++it) {
-            boost::hash_combine(res, std::make_pair((*it).second, (*it).first));
+        for (auto p : (*this)) {
+            boost::hash_combine(res, p);
         }
         boost::hash_combine(res, _cst);
         return res;
@@ -240,7 +246,7 @@ class linear_expression_t final {
         if (n == 0) {
             return linear_expression_t();
         } else {
-            map_ptr map = map_ptr(new map_t);
+            map_ptr map = std::make_shared<map_t>();
             for (typename map_t::const_iterator it = this->_map->begin(); it != this->_map->end(); ++it) {
                 number_t c = n * it->second;
                 if (c != 0) {
@@ -255,31 +261,30 @@ class linear_expression_t final {
 
     variable_set_t variables() const {
         variable_set_t variables;
-        for (const_iterator it = this->begin(); it != this->end(); ++it) {
-            variables += it->second;
+        for (auto [var, _] : (*this)) {
+            variables += var;
         }
         return variables;
     }
 
     std::optional<variable_t> get_variable() const {
         if (this->is_constant())
-            return std::optional<variable_t>();
+            return {};
         else {
             if ((this->constant() == 0) && (this->size() == 1)) {
                 const_iterator it = this->begin();
-                number_t coeff = it->first;
+                number_t coeff = it->second;
                 if (coeff == 1)
-                    return std::optional<variable_t>(it->second);
+                    return std::optional<variable_t>(it->first);
             }
-            return std::optional<variable_t>();
+            return {};
         }
     }
 
     void write(std::ostream& o) const {
-        for (typename map_t::const_iterator it = this->_map->begin(); it != this->_map->end(); ++it) {
-            number_t n = it->second;
-            variable_t v = it->first;
-            if (n > 0 && it != this->_map->begin()) {
+        bool start = true;
+        for (auto [v, n] : *this) {
+            if (n > 0 && !start) {
                 o << "+";
             }
             if (n == -1) {
@@ -288,6 +293,7 @@ class linear_expression_t final {
                 o << n << "*";
             }
             o << v;
+            start = false;
         }
         if (this->_cst > 0 && this->_map->size() > 0) {
             o << "+";
@@ -342,6 +348,8 @@ class linear_constraint_t final {
 
   public:
     linear_constraint_t() : _kind(EQUALITY), _signedness(true) {}
+    linear_constraint_t(linear_constraint_t&& other) = default;
+    linear_constraint_t(const linear_constraint_t& other) = default;
 
     linear_constraint_t(const linear_expression_t& expr, constraint_kind_t kind)
         : _kind(kind), _expr(expr), _signedness(true) {}

@@ -356,9 +356,9 @@ class array_expansion_domain final : public writeable {
 
     interval_t to_interval(linear_expression_t expr, NumAbsDomain inv) {
         interval_t r(expr.constant());
-        for (typename linear_expression_t::iterator it = expr.begin(); it != expr.end(); ++it) {
-            interval_t c(it->first);
-            r += c * inv[it->second];
+        for (auto [v, n] : expr) {
+            interval_t c(n);
+            r += c * inv[v];
         }
         return r;
     }

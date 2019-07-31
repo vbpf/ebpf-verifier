@@ -125,12 +125,10 @@ void SplitDBM::close_over_edge(vert_id ii, vert_id jj) {
         }
     }
 
-    for (auto s_p : src_dec) {
-        vert_id se = s_p.first;
-        Wt wt_sij = c + s_p.second;
-        for (auto d_p : dest_dec) {
-            vert_id de = d_p.first;
-            Wt wt_sijd = wt_sij + d_p.second;
+    for (auto [se, p1] : src_dec) {
+        Wt wt_sij = c + p1;
+        for (auto [de, p2] : dest_dec) {
+            Wt wt_sijd = wt_sij + p2;
             if (g.lookup(se, de, &w)) {
                 if (w.get() <= wt_sijd)
                     continue;
@@ -161,13 +159,12 @@ void SplitDBM::diffcsts_of_assign(variable_t x, linear_expression_t exp,
         return;
     }
 
-    for (auto p : exp) {
-        Wt coeff(convert_NtoW(p.first, overflow));
+    for (auto [y, n] : exp) {
+        Wt coeff(convert_NtoW(n, overflow));
         if (overflow) {
             continue;
         }
 
-        variable_t y(p.second);
         if (coeff < Wt(0)) {
             // Can't do anything with negative coefficients.
             bound_t y_val = (extract_upper_bounds ? operator[](y).lb() : operator[](y).ub());
@@ -204,8 +201,8 @@ void SplitDBM::diffcsts_of_assign(variable_t x, linear_expression_t exp,
         // coefficient
         diff_csts.push_back({*unbounded_var, residual});
     } else {
-        for (auto p : terms) {
-            diff_csts.push_back({p.first, residual - p.second});
+        for (auto [v, n] : terms) {
+            diff_csts.push_back({v, residual - n});
         }
     }
 }
@@ -238,13 +235,12 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
     std::optional<variable_t> unbounded_ubvar;
 
     std::vector<std::pair<std::pair<Wt, variable_t>, Wt>> pos_terms, neg_terms;
-    for (auto p : exp) {
-        Wt coeff(convert_NtoW(p.first, overflow));
+    for (auto [y, n] : exp) {
+        Wt coeff(convert_NtoW(n, overflow));
         if (overflow) {
             continue;
         }
         if (coeff > Wt(0)) {
-            variable_t y(p.second);
             bound_t y_lb = operator[](y).lb();
             if (y_lb.is_infinite()) {
                 if (unbounded_lbvar) {
@@ -261,7 +257,6 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
                 pos_terms.push_back({{coeff, y}, ymin});
             }
         } else {
-            variable_t y(p.second);
             bound_t y_ub = operator[](y).ub();
             if (y_ub.is_infinite()) {
                 if (unbounded_ubvar) {
@@ -290,8 +285,8 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
             csts.push_back({{x, y}, exp_ub});
         } else {
             if (unbounded_lbcoeff == Wt(1)) {
-                for (auto p : neg_terms) {
-                    csts.push_back({{x, p.first.second}, exp_ub - p.second});
+                for (auto [nv, k] : neg_terms) {
+                    csts.push_back({{x, nv.second}, exp_ub - k});
                 }
             }
             // Add bounds for x
@@ -301,23 +296,23 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
         if (unbounded_ubvar) {
             variable_t y(*unbounded_ubvar);
             if (unbounded_ubcoeff == Wt(1)) {
-                for (auto p : pos_terms) {
-                    csts.push_back({{p.first.second, y}, exp_ub + p.second});
+                for (auto [nv, k] : pos_terms) {
+                    csts.push_back({{nv.second, y}, exp_ub + k});
                 }
             }
             // Add bounds for y
             lbs.push_back({y, -exp_ub / unbounded_ubcoeff});
         } else {
-            for (auto pl : neg_terms) {
-                for (auto pu : pos_terms) {
-                    csts.push_back({{pu.first.second, pl.first.second}, exp_ub - pl.second + pu.second});
+            for (auto [neg_nv, neg_k] : neg_terms) {
+                for (auto [pos_nv, pos_k] : pos_terms) {
+                    csts.push_back({{pos_nv.second, neg_nv.second}, exp_ub - neg_k + pos_k});
                 }
             }
-            for (auto pl : neg_terms) {
-                lbs.push_back({pl.first.second, -exp_ub / pl.first.first + pl.second});
+            for (auto [neg_nv, neg_k] : neg_terms) {
+                lbs.push_back({neg_nv.second, -exp_ub / neg_nv.first + neg_k});
             }
-            for (auto pu : pos_terms) {
-                ubs.push_back({pu.first.second, exp_ub / pu.first.first + pu.second});
+            for (auto [pos_nv, pos_k] : pos_terms) {
+                ubs.push_back({pos_nv.second, exp_ub / pos_nv.first + pos_k});
             }
         }
     }
@@ -334,39 +329,39 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
 
     Wt_min min_op;
     typename graph_t::mut_val_ref_t w;
-    for (auto p : lbs) {
-        CRAB_LOG("zones-split", std::cout << p.first << ">=" << p.second << "\n");
-        vert_id v = get_vert(p.first);
-        if (g.lookup(v, 0, &w) && w.get() <= -p.second)
+    for (auto [var, n] : lbs) {
+        CRAB_LOG("zones-split", std::cout << var << ">=" << n << "\n");
+        vert_id vert = get_vert(var);
+        if (g.lookup(vert, 0, &w) && w.get() <= -n)
             continue;
-        g.set_edge(v, -p.second, 0);
+        g.set_edge(vert, -n, 0);
 
-        if (!repair_potential(v, 0)) {
+        if (!repair_potential(vert, 0)) {
             set_to_bottom();
             return false;
         }
         check_potential(g, potential, __LINE__);
     }
-    for (auto p : ubs) {
-        CRAB_LOG("zones-split", std::cout << p.first << "<=" << p.second << "\n");
-        vert_id v = get_vert(p.first);
-        if (g.lookup(0, v, &w) && w.get() <= p.second)
+    for (auto [var, n] : ubs) {
+        CRAB_LOG("zones-split", std::cout << var << "<=" << n << "\n");
+        vert_id vert = get_vert(var);
+        if (g.lookup(0, vert, &w) && w.get() <= n)
             continue;
-        g.set_edge(0, p.second, v);
-        if (!repair_potential(0, v)) {
+        g.set_edge(0, n, vert);
+        if (!repair_potential(0, vert)) {
             set_to_bottom();
             return false;
         }
         check_potential(g, potential, __LINE__);
     }
 
-    for (auto diff : csts) {
+    for (auto [diff, k] : csts) {
         CRAB_LOG("zones-split",
-                 std::cout << diff.first.first << "-" << diff.first.second << "<=" << diff.second << "\n");
+                 std::cout << diff.first << "-" << diff.second << "<=" << k << "\n");
 
-        vert_id src = get_vert(diff.first.second);
-        vert_id dest = get_vert(diff.first.first);
-        g.update_edge(src, diff.second, dest, min_op);
+        vert_id src = get_vert(diff.second);
+        vert_id dest = get_vert(diff.first);
+        g.update_edge(src, k, dest, min_op);
         if (!repair_potential(src, dest)) {
             set_to_bottom();
             return false;
@@ -480,16 +475,16 @@ bool SplitDBM::operator<=(SplitDBM o) {
         // Set up a mapping from o to this.
         std::vector<unsigned int> vert_renaming(o.g.size(), -1);
         vert_renaming[0] = 0;
-        for (auto p : o.vert_map) {
-            if (o.g.succs(p.second).size() == 0 && o.g.preds(p.second).size() == 0)
+        for (auto [v, n] : o.vert_map) {
+            if (o.g.succs(n).size() == 0 && o.g.preds(n).size() == 0)
                 continue;
 
-            auto it = vert_map.find(p.first);
+            auto it = vert_map.find(v);
             // We can't have this <= o if we're missing some
             // vertex.
             if (it == vert_map.end())
                 return false;
-            vert_renaming[p.second] = (*it).second;
+            vert_renaming[n] = it->second;
             // vert_renaming[(*it).second] = p.second;
         }
 
@@ -560,20 +555,20 @@ SplitDBM SplitDBM::operator|(SplitDBM o) {
         perm_y.push_back(0);
         out_revmap.push_back(std::nullopt);
 
-        for (auto p : vert_map) {
-            auto it = o.vert_map.find(p.first);
+        for (auto [v, n] : vert_map) {
+            auto it = o.vert_map.find(v);
             // Variable exists in both
             if (it != o.vert_map.end()) {
-                out_vmap.insert(vmap_elt_t(p.first, perm_x.size()));
-                out_revmap.push_back(p.first);
+                out_vmap.insert(vmap_elt_t(v, perm_x.size()));
+                out_revmap.push_back(v);
 
-                pot_rx.push_back(potential[p.second] - potential[0]);
+                pot_rx.push_back(potential[n] - potential[0]);
                 // XXX JNL: check this out
                 // pot_ry.push_back(o.potential[p.second] - o.potential[0]);
-                pot_ry.push_back(o.potential[(*it).second] - o.potential[0]);
-                perm_inv.push_back(p.first);
-                perm_x.push_back(p.second);
-                perm_y.push_back((*it).second);
+                pot_ry.push_back(o.potential[it->second] - o.potential[0]);
+                perm_inv.push_back(v);
+                perm_x.push_back(n);
+                perm_y.push_back(it->second);
             }
         }
         unsigned int sz = perm_x.size();
@@ -737,16 +732,16 @@ SplitDBM SplitDBM::widen(SplitDBM o) {
         perm_x.push_back(0);
         perm_y.push_back(0);
         out_revmap.push_back(std::nullopt);
-        for (auto p : vert_map) {
-            auto it = o.vert_map.find(p.first);
+        for (auto [v, n] : vert_map) {
+            auto it = o.vert_map.find(v);
             // Variable exists in both
             if (it != o.vert_map.end()) {
-                out_vmap.insert(vmap_elt_t(p.first, perm_x.size()));
-                out_revmap.push_back(p.first);
+                out_vmap.insert(vmap_elt_t(v, perm_x.size()));
+                out_revmap.push_back(v);
 
-                widen_pot.push_back(potential[p.second] - potential[0]);
-                perm_x.push_back(p.second);
-                perm_y.push_back((*it).second);
+                widen_pot.push_back(potential[n] - potential[0]);
+                perm_x.push_back(n);
+                perm_y.push_back(it->second);
             }
         }
 
@@ -803,30 +798,30 @@ SplitDBM SplitDBM::operator&(SplitDBM o) {
         perm_y.push_back(0);
         meet_pi.push_back(Wt(0));
         meet_rev.push_back(std::nullopt);
-        for (auto p : vert_map) {
+        for (auto [v, n] : vert_map) {
             vert_id vv = perm_x.size();
-            meet_verts.insert(vmap_elt_t(p.first, vv));
-            meet_rev.push_back(p.first);
+            meet_verts.insert(vmap_elt_t(v, vv));
+            meet_rev.push_back(v);
 
-            perm_x.push_back(p.second);
+            perm_x.push_back(n);
             perm_y.push_back(-1);
-            meet_pi.push_back(potential[p.second] - potential[0]);
+            meet_pi.push_back(potential[n] - potential[0]);
         }
 
         // Add missing mappings from the right operand.
-        for (auto p : o.vert_map) {
-            auto it = meet_verts.find(p.first);
+        for (auto [v, n] : o.vert_map) {
+            auto it = meet_verts.find(v);
 
             if (it == meet_verts.end()) {
                 vert_id vv = perm_y.size();
-                meet_rev.push_back(p.first);
+                meet_rev.push_back(v);
 
-                perm_y.push_back(p.second);
+                perm_y.push_back(n);
                 perm_x.push_back(-1);
-                meet_pi.push_back(o.potential[p.second] - o.potential[0]);
-                meet_verts.insert(vmap_elt_t(p.first, vv));
+                meet_pi.push_back(o.potential[n] - o.potential[0]);
+                meet_verts.insert(vmap_elt_t(v, vv));
             } else {
-                perm_y[(*it).second] = p.second;
+                perm_y[it->second] = n;
             }
         }
 
@@ -1015,42 +1010,42 @@ void SplitDBM::assign(variable_t x, linear_expression_t e) {
                 return;
             }
             // Allocate a new vertex for x
-            vert_id v = g.new_vertex();
-            assert(v <= rev_map.size());
-            if (v == rev_map.size()) {
+            vert_id vert = g.new_vertex();
+            assert(vert <= rev_map.size());
+            if (vert == rev_map.size()) {
                 rev_map.push_back(x);
                 potential.push_back(potential[0] + e_val);
             } else {
-                potential[v] = potential[0] + e_val;
-                rev_map[v] = x;
+                potential[vert] = potential[0] + e_val;
+                rev_map[vert] = x;
             }
 
             edge_vector delta;
-            for (auto diff : diffs_lb) {
-                delta.push_back({{v, get_vert(diff.first)}, -diff.second});
+            for (auto [var, n] : diffs_lb) {
+                delta.push_back({{vert, get_vert(var)}, -n});
             }
 
-            for (auto diff : diffs_ub) {
-                delta.push_back({{get_vert(diff.first), v}, diff.second});
+            for (auto [var, n] : diffs_ub) {
+                delta.push_back({{get_vert(var), vert}, n});
             }
 
             // apply_delta should be safe here, as x has no edges in G.
             GrOps::apply_delta(g, delta);
             delta.clear();
             SubGraph<graph_t> g_excl(g, 0);
-            GrOps::close_after_assign(g_excl, potential, v, delta);
+            GrOps::close_after_assign(g_excl, potential, vert, delta);
             GrOps::apply_delta(g, delta);
 
             Wt_min min_op;
             if (lb_w) {
-                g.update_edge(v, *lb_w, 0, min_op);
+                g.update_edge(vert, *lb_w, 0, min_op);
             }
             if (ub_w) {
-                g.update_edge(0, *ub_w, v, min_op);
+                g.update_edge(0, *ub_w, vert, min_op);
             }
             // Clear the old x vertex
             operator-=(x);
-            vert_map.insert(vmap_elt_t(x, v));
+            vert_map.insert(vmap_elt_t(x, vert));
         } else {
             set(x, x_int);
         }
@@ -1327,23 +1322,21 @@ bool SplitDBM::is_unsat(linear_constraint_t cst) {
     }
 
     // check difference constraints
-    for (auto diffcst : diffcsts) {
-        variable_t x = diffcst.first.first;
-        variable_t y = diffcst.first.second;
-        Wt k = diffcst.second;
+    for (auto [diff, k] : diffcsts) {
+        auto [x, y] = diff;
         if (is_unsat_edge(get_vert(y), get_vert(x), k)) {
             return true;
         }
     }
 
     // check interval constraints
-    for (auto ub : ubs) {
-        if (is_unsat_edge(0, get_vert(ub.first), ub.second)) {
+    for (auto [var, n] : ubs) {
+        if (is_unsat_edge(0, get_vert(var), n)) {
             return true;
         }
     }
-    for (auto lb : lbs) {
-        if (is_unsat_edge(get_vert(lb.first), 0, -lb.second)) {
+    for (auto [var, n] : lbs) {
+        if (is_unsat_edge(get_vert(var), 0, -n)) {
             return true;
         }
     }
