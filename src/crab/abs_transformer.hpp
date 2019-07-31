@@ -224,7 +224,7 @@ class intra_abs_transformer {
 
     void overflow(variable_t lhs) {
         using namespace dsl_syntax;
-        auto interval = m_inv.to_interval(lhs);
+        auto interval = m_inv[lhs];
         // handle overflow, assuming 64 bit
         number_t max(std::numeric_limits<int64_t>::max() / 2);
         number_t min(std::numeric_limits<int64_t>::min() / 2);
@@ -521,7 +521,7 @@ class intra_abs_transformer {
         bool is_num = true;
         for (int i = 0; i < width; i++) {
             inv.array_load(reg_type(target), data_kind_t::types, addr + i, 1);
-            std::optional<number_t> t = inv.to_interval(reg_type(target)).singleton();
+            std::optional<number_t> t = inv[reg_type(target)].singleton();
             if (!t && (*t) != T_NUM) {
                 is_num = false;
                 break;
@@ -546,19 +546,30 @@ class intra_abs_transformer {
         int width = (int)b.access.width;
         int offset = (int)b.access.offset;
         linear_expression_t addr = reg_offset(mem_reg) + (number_t)offset;
+        variable_t mem_reg_type = reg_type(mem_reg);
+
         if (mem_reg.v == 10) {
-            m_inv = do_load_stack(m_inv, target, addr, width);
+            m_inv = do_load_stack(std::move(m_inv), target, addr, width);
             return;
         }
 
-        variable_t mem_reg_type = reg_type(mem_reg);
+        int type = get_type(mem_reg_type);
+        if (type != T_UNINIT) {
+            switch (type) {
+                case T_CTX: m_inv = do_load_ctx(std::move(m_inv), target, addr, width); break;
+                case T_STACK: m_inv = do_load_stack(std::move(m_inv), target, addr, width); break;
+                default: m_inv = do_load_packet_or_shared(std::move(m_inv), target, addr, width); break;
+            }
+            return;
+        }
+
         m_inv = do_load_ctx(when(m_inv, mem_reg_type == T_CTX), target, addr, width) |
                 do_load_packet_or_shared(when(m_inv, mem_reg_type >= T_PACKET), target, addr, width) |
                 do_load_stack(when(m_inv, mem_reg_type == T_STACK), target, addr, width);
     }
 
     int get_type(variable_t v) {
-        auto res = m_inv.to_interval(v).singleton();
+        auto res = m_inv[v].singleton();
         if (!res)
             return T_UNINIT;
         return (int)*res;
@@ -607,7 +618,10 @@ class intra_abs_transformer {
         }
         variable_t mem_reg_type = reg_type(mem_reg);
         linear_expression_t addr = reg_offset(mem_reg) + (number_t)offset;
-
+        if (get_type(mem_reg_type) == T_STACK) {
+            do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset);
+            return;
+        }
         AbsDomain assume_not_stack(m_inv);
         assume_not_stack += mem_reg_type != T_STACK;
         m_inv += mem_reg_type == T_STACK;
