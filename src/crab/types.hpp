@@ -7,9 +7,9 @@
 #include <optional>
 #include <vector>
 
-#include "crab/bignums.hpp"
 #include "crab/debug.hpp"
 
+using z_number = int64_t;
 /* Basic type definitions */
 
 namespace crab {
@@ -17,7 +17,7 @@ namespace crab {
 // Numerical type for indexed objects
 using index_t = uint64_t;
 
-using number_t = z_number;
+using number_t = int64_t;
 
 // Interface for writeable objects
 class writeable {

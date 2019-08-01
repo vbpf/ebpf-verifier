@@ -97,8 +97,6 @@ class linear_expression_t final {
     linear_expression_t(linear_expression_t&& other) = default;
     linear_expression_t(const linear_expression_t& other) = default;
 
-    linear_expression_t(number_t n) : _map(std::make_shared<map_t>()), _cst(n) {}
-
     linear_expression_t(signed long long int n) : _map(std::make_shared<map_t>()), _cst(number_t(n)) {}
 
     linear_expression_t(variable_t x) : _map(std::make_shared<map_t>()), _cst(0) {
@@ -197,7 +195,6 @@ class linear_expression_t final {
         return r;
     }
 
-    linear_expression_t operator+(int n) const { return this->operator+(number_t(n)); }
 
     linear_expression_t operator+(variable_t x) const {
         linear_expression_t r(*this->_map, this->_cst);
@@ -215,7 +212,6 @@ class linear_expression_t final {
 
     linear_expression_t operator-(number_t n) const { return this->operator+(-n); }
 
-    linear_expression_t operator-(int n) const { return this->operator+(-number_t(n)); }
 
     linear_expression_t operator-(variable_t x) const {
         linear_expression_t r(*this->_map, this->_cst);
@@ -248,7 +244,6 @@ class linear_expression_t final {
         }
     }
 
-    linear_expression_t operator*(int n) const { return operator*(number_t(n)); }
 
     variable_set_t variables() const {
         variable_set_t variables;

@@ -8,7 +8,6 @@
 
 #include <optional>
 
-#include "crab/bignums.hpp"
 #include "crab/stats.hpp"
 #include "crab/types.hpp"
 
@@ -50,18 +49,6 @@ class bound_t final {
 
   public:
     bound_t(int n) : _is_infinite(false), _n(n) {}
-
-    bound_t(std::string s) : _n(1) {
-        if (s == "+oo") {
-            _is_infinite = true;
-        } else if (s == "-oo") {
-            _is_infinite = true;
-            _n = -1;
-        } else {
-            _is_infinite = false;
-            _n = number_t(s);
-        }
-    }
 
     bound_t(number_t n) : _is_infinite(false), _n(n) {}
 
@@ -224,9 +211,9 @@ class interval_t final {
 
     static number_t abs(number_t x) { return x < 0 ? -x : x; }
 
-    static number_t max(number_t x, number_t y) { return x.operator<=(y) ? y : x; }
+    static number_t max(number_t x, number_t y) { return x <= y ? y : x; }
 
-    static number_t min(number_t x, number_t y) { return x.operator<(y) ? x : y; }
+    static number_t min(number_t x, number_t y) { return x < y ? x : y; }
 
   public:
     interval_t(bound_t lb, bound_t ub) : _lb(lb), _ub(ub) {
@@ -244,13 +231,6 @@ class interval_t final {
     }
 
     interval_t(number_t n) : _lb(n), _ub(n) {}
-
-    interval_t(std::string b) : _lb(b), _ub(b) {
-        if (_lb.is_infinite()) {
-            _lb = 0;
-            _ub = -1;
-        }
-    }
 
     interval_t(const interval_t& i) : _lb(i._lb), _ub(i._ub) {}
 

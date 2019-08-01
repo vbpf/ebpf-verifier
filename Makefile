@@ -22,7 +22,7 @@ OBJECTS := $(filter-out $(MAIN_OBJECTS) $(TEST_OBJECTS),$(ALL_OBJECTS))
 
 LINUX := $(abspath ../linux)
 
-LDLIBS += -lgmp
+LDLIBS +=
 
 CXXFLAGS := -Wall -Wfatal-errors -std=c++17 -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8 -I $(SRCDIR) -I external -I /usr/local/Cellar/boost/1.70.0/include -I /usr/local/Cellar/gmp/6.1.2_2/include
 CXXFLAGS += ${optimization.${BUILD}}

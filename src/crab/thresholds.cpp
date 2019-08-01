@@ -16,13 +16,13 @@ void thresholds_t::add(bound_t v1) {
                 auto prev = ub;
                 --prev;
                 if (prev != m_thresholds.begin()) {
-                    if (*prev + 1 == v) {
+                    if (*prev + (bound_t)1 == v) {
                         *prev = v;
                         return;
                     }
                 }
             } else if (v < 0) {
-                if (*ub - 1 == v) {
+                if (*ub - (bound_t)1 == v) {
                     *ub = v;
                     return;
                 }

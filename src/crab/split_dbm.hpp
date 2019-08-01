@@ -26,7 +26,6 @@
 #include "crab/abstract_domain.hpp"
 #include "crab/abstract_domain_specialized_traits.hpp"
 #include "crab/adapt_sgraph.hpp"
-#include "crab/bignums.hpp"
 #include "crab/debug.hpp"
 #include "crab/graph_ops.hpp"
 #include "crab/interval.hpp"

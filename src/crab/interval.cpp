@@ -145,7 +145,7 @@ interval_t interval_t::Or(interval_t x) const {
 
             if (left_ub && right_ub) {
                 z_number m = (*left_ub > *right_ub ? *left_ub : *right_ub);
-                return interval_t(0, m.fill_ones());
+                return interval_t(0, 0x7FFFFFFFFFFFFFFFL);
             } else {
                 return interval_t(0, bound_t::plus_infinity());
             }
