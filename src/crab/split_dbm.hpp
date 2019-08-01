@@ -31,7 +31,7 @@
 #include "crab/graph_ops.hpp"
 #include "crab/interval.hpp"
 #include "crab/linear_constraints.hpp"
-#include "crab/safeint.hpp"
+//#include "crab/safeint.hpp"
 #include "crab/sparse_graph.hpp"
 #include "crab/stats.hpp"
 #include "crab/types.hpp"
@@ -62,7 +62,7 @@ namespace domains {
  **/
 
 struct SafeInt64DefaultParams {
-    using Wt = safe_i64;
+    using Wt = int64_t;
     using graph_t = AdaptGraph<Wt>;
 };
 
@@ -71,13 +71,8 @@ struct SafeInt64DefaultParams {
  * is the template parameter of the DBM-based abstract domain to
  * represent a number. Number might not fit into Wt type.
  **/
-inline safe_i64 convert_NtoW(const z_number& n, bool& overflow) {
-    overflow = false;
-    if (!n.fits_slong()) {
-        overflow = true;
-        return 0;
-    }
-    return safe_i64(n);
+inline int64_t convert_NtoW(const z_number& n, bool& overflow) {
+    return (long)(n);
 }
 
 class SplitDBM final : public writeable {
