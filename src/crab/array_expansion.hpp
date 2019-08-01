@@ -633,7 +633,23 @@ class array_expansion_domain final : public writeable {
 
     void write(std::ostream& o) {
         o << _inv << "\n";
-        o << non_numerical_bytes;
+        o << "Numbers -> {";
+        bool first = true;
+        for (int i = -512; i < 0; i++) {
+            if (non_numerical_bytes[512 + i]) continue;
+            if (!first) o << ", ";
+            first = false;
+            o << "[" << i;
+            int j = i + 1;
+            for (; j < 0; j++)
+                if (non_numerical_bytes[512 + j])
+                    break;
+            if (j > i+1)
+                o << "..." << i-1;
+            o << "]";
+            i = j;
+        }
+        o << "}";
     }
 
     void rename(const variable_vector_t& from, const variable_vector_t& to) { _inv.rename(from, to); }
