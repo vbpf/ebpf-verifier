@@ -51,7 +51,7 @@ std::ostream& operator<<(std::ostream& o, const data_kind_t& s) {
     return o;
 }
 
-static std::string mk_scalar_name(data_kind_t kind, index_t o, unsigned size) {
+static std::string mk_scalar_name(data_kind_t kind, int o, int size) {
     std::stringstream os;
     os << "S_" << name_of(kind) << "[" << o;
     if (size != 1) {
@@ -62,7 +62,7 @@ static std::string mk_scalar_name(data_kind_t kind, index_t o, unsigned size) {
 }
 
 variable_t variable_t::cell_var(data_kind_t array, index_t offset, unsigned size) {
-    return make(mk_scalar_name(array, offset, size));
+    return make(mk_scalar_name(array, - (512 - (int)offset), (int)size));
 }
 
 variable_t variable_t::map_value_size() { return make("map_value_size"); }
