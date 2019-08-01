@@ -604,7 +604,6 @@ class array_expansion_domain final : public writeable {
         if (is_bottom())
             return;
 
-        array_havoc(data_kind_t::types, _idx, _width);
         std::optional<number_t> idx_n = _inv[_idx].singleton();
         if (!idx_n) {
             CRAB_WARN("array expansion store range ignored because ", "lower bound is not constant");
@@ -622,7 +621,6 @@ class array_expansion_domain final : public writeable {
                       "the number of elements is larger than default limit of ", max_num_elems);
             return;
         }
-
         long idx = (long)*idx_n;
         for (int i = 0; i < (long)*width; i++) {
             non_numerical_bytes.reset(idx + i);
