@@ -646,17 +646,17 @@ class intra_abs_transformer {
                 break;
 
             case ArgPair::Kind::PTR_TO_UNINIT_MEM: {
-                AbsDomain stack{m_inv};
-                stack += reg_type(param.mem) == T_STACK;
-                if (!stack.is_bottom()) {
-                    variable_t addr = reg_offset(param.mem);
-                    variable_t width = reg_value(param.size);
-                    stack.array_store_numbers(addr, width);
-                    stack.array_havoc(data_kind_t::values, addr, width);
-                    stack.array_havoc(data_kind_t::offsets, addr, width);
+                variable_t addr = reg_offset(param.mem);
+                variable_t width = reg_value(param.size);
+                interval_t t = m_inv[reg_type(param.mem)];
+                if (t[T_STACK]) {
+                    m_inv.array_havoc(data_kind_t::types, addr, width);
+                    m_inv.array_havoc(data_kind_t::values, addr, width);
+                    m_inv.array_havoc(data_kind_t::offsets, addr, width);
+                    if (t.singleton()) {
+                        m_inv.array_store_numbers(addr, width);
+                    }
                 }
-                m_inv += reg_type(param.mem) == T_PACKET;
-                m_inv |= std::move(stack);
             }
             }
         }
