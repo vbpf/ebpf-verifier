@@ -518,23 +518,13 @@ class intra_abs_transformer {
         if (inv.is_bottom())
             return inv;
 
-        bool is_num = true;
-        for (int i = 0; i < width; i++) {
-            inv.array_load(reg_type(target), data_kind_t::types, addr + i, 1);
-            std::optional<number_t> t = inv[reg_type(target)].singleton();
-            if (!t && (*t) != T_NUM) {
-                is_num = false;
-                break;
-            }
-        }
-        if (!is_num) {
-            inv -= reg_type(target);
-        }
         if (width == 8) {
             inv.array_load(reg_type(target), data_kind_t::types, addr, width);
             inv.array_load(reg_value(target), data_kind_t::values, addr, width);
             inv.array_load(reg_offset(target), data_kind_t::offsets, addr, width);
         } else {
+            // havocing handled in array_expansion
+            inv.array_load(reg_type(target), data_kind_t::types, addr, width);
             inv -= reg_value(target);
             inv -= reg_offset(target);
         }

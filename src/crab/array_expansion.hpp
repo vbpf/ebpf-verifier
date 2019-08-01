@@ -503,7 +503,7 @@ class array_expansion_domain final : public writeable {
                     _inv.assign(lhs, T_NUM);
                     return;
                 }
-                if (non_num_only) {
+                if (!non_num_only || width != 8) {
                     _inv -= lhs;
                     return;
                 }
