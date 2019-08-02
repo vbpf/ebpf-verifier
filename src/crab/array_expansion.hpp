@@ -315,6 +315,112 @@ using array_map_t = std::unordered_map<data_kind_t, offset_map_t>;
 extern array_map_t global_array_map;
 void clear_global_state();
 
+class array_bitset_domain_t final : public writeable {
+  private:
+    using bits_t = std::bitset<512>;
+    bits_t non_numerical_bytes;
+
+  private:
+    offset_map_t& lookup_array_map(data_kind_t kind) { return global_array_map[kind]; }
+
+  public:
+    array_bitset_domain_t() {
+        non_numerical_bytes.set();
+    }
+
+    array_bitset_domain_t(bits_t non_numerical_bytes) : non_numerical_bytes{non_numerical_bytes} {
+    }
+
+    void set_to_top() {
+        non_numerical_bytes.set();
+    }
+
+    void set_to_bottom() {
+        non_numerical_bytes.reset();
+    }
+
+    bool is_top() const { return non_numerical_bytes.all(); }
+
+    bool operator<=(array_bitset_domain_t other) {
+        return (non_numerical_bytes | other.non_numerical_bytes) == other.non_numerical_bytes;
+    }
+
+    bool operator==(const array_bitset_domain_t& other) {
+        return non_numerical_bytes == other.non_numerical_bytes;
+    }
+
+    void operator|=(const array_bitset_domain_t& other) {
+        non_numerical_bytes |= other.non_numerical_bytes;
+    }
+
+    array_bitset_domain_t operator|(array_bitset_domain_t&& other) {
+        return non_numerical_bytes | other.non_numerical_bytes;
+    }
+
+    array_bitset_domain_t operator|(const array_bitset_domain_t& other) {
+        return non_numerical_bytes | other.non_numerical_bytes;
+    }
+
+    array_bitset_domain_t operator&(const array_bitset_domain_t& other) {
+        return non_numerical_bytes & other.non_numerical_bytes;
+    }
+
+    array_bitset_domain_t widen(const array_bitset_domain_t& other) {
+        return non_numerical_bytes | other.non_numerical_bytes;
+    }
+
+    array_bitset_domain_t narrow(const array_bitset_domain_t& other) {
+        return non_numerical_bytes & other.non_numerical_bytes;
+    }
+
+    std::pair<bool, bool> uniformity(int lb, int width) {
+        bool only_num = true;
+        bool only_non_num = true;
+        for (int j = 0; j < width; j++) {
+            bool b = non_numerical_bytes[lb + j];
+            only_num &= !b;
+            only_non_num &= b;
+        }
+        return std::make_pair(only_num, only_non_num);
+    }
+
+    void store(int lb, int width, std::optional<number_t> val) {
+        for (int i = 0; i < width; i++) {
+            if (val && (long)*val == T_NUM)
+                non_numerical_bytes.reset(lb + i);
+            else
+                non_numerical_bytes.set(lb + i);
+        }
+    }
+
+    void havoc(int lb, int width) {
+        for (int i = 0; i < width; i++) {
+            non_numerical_bytes.set(lb + i);
+        }
+    }
+
+    void write(std::ostream& o) {
+        o << "Numbers -> {";
+        bool first = true;
+        for (int i = -512; i < 0; i++) {
+            if (non_numerical_bytes[512 + i]) continue;
+            if (!first) o << ", ";
+            first = false;
+            o << "[" << i;
+            int j = i + 1;
+            for (; j < 0; j++)
+                if (non_numerical_bytes[512 + j])
+                    break;
+            if (j > i+1)
+                o << "..." << j-1;
+            o << "]";
+            i = j;
+        }
+        o << "}";
+    }
+};
+
+
 template <typename NumAbsDomain>
 class array_expansion_domain final : public writeable {
   private:
@@ -322,12 +428,11 @@ class array_expansion_domain final : public writeable {
 
   public:
     using variable_vector_t = std::vector<variable_t>;
-    using content_domain_t = NumAbsDomain;
 
   private:
     // scalar domain
     NumAbsDomain _inv;
-    std::bitset<512> non_numerical_bytes;
+    array_bitset_domain_t num_bytes;
 
   public:
     static array_expansion_domain_t top() {
@@ -345,8 +450,8 @@ class array_expansion_domain final : public writeable {
   private:
     offset_map_t& lookup_array_map(data_kind_t kind) { return global_array_map[kind]; }
 
-    array_expansion_domain(NumAbsDomain inv, std::bitset<512> non_numerical_bytes)
-        : _inv(inv), non_numerical_bytes(non_numerical_bytes) {}
+    array_expansion_domain(NumAbsDomain inv, array_bitset_domain_t num_bytes)
+        : _inv(inv), num_bytes(num_bytes) {}
 
     void kill_cells(data_kind_t kind, const std::vector<cell_t>& cells, offset_map_t& offset_map, NumAbsDomain& dom) {
         if (!cells.empty()) {
@@ -371,73 +476,56 @@ class array_expansion_domain final : public writeable {
   public:
     interval_t to_interval(linear_expression_t expr) { return to_interval(expr, _inv); }
 
-    array_expansion_domain() : _inv(NumAbsDomain::top()) { non_numerical_bytes.set(); }
+    array_expansion_domain() : _inv(NumAbsDomain::top()) { }
 
     void set_to_top() {
-        array_expansion_domain abs;
-        std::swap(*this, abs);
+        _inv.set_to_top();
+        num_bytes.set_to_top();
     }
 
     void set_to_bottom() {
-        array_expansion_domain abs(NumAbsDomain::bottom(), {});
-        std::swap(*this, abs);
+        _inv.set_to_bottom();
     }
 
-    array_expansion_domain(const array_expansion_domain_t& other) : _inv(other._inv), non_numerical_bytes(other.non_numerical_bytes) {}
+    bool is_bottom() const { return _inv.is_bottom(); }
 
-    array_expansion_domain(const array_expansion_domain_t&& other) : _inv(std::move(other._inv)), non_numerical_bytes(other.non_numerical_bytes) {}
-
-    array_expansion_domain_t& operator=(const array_expansion_domain_t& other) {
-        if (this != &other) {
-            _inv = other._inv;
-            non_numerical_bytes = other.non_numerical_bytes;
-        }
-        return *this;
-    }
-
-    array_expansion_domain_t& operator=(const array_expansion_domain_t&& other) {
-        if (this != &other) {
-            _inv = std::move(other._inv);
-            non_numerical_bytes = std::move(other.non_numerical_bytes);
-        }
-        return *this;
-    }
-
-    bool is_bottom() const { return (_inv.is_bottom()); }
-
-    bool is_top() const { return _inv.is_top() && non_numerical_bytes.all(); }
+    bool is_top() const { return _inv.is_top() && num_bytes.is_top(); }
 
     bool operator<=(array_expansion_domain_t other) {
-        return _inv <= other._inv && ((non_numerical_bytes | other.non_numerical_bytes) == other.non_numerical_bytes);
+        return _inv <= other._inv && num_bytes <= other.num_bytes;
     }
 
     bool operator==(array_expansion_domain_t other) {
-        return non_numerical_bytes == other.non_numerical_bytes && _inv <= other._inv && other._inv <= _inv;
+        return num_bytes == other.num_bytes && _inv <= other._inv && other._inv <= _inv;
     }
 
     void operator|=(array_expansion_domain_t other) {
+        if (is_bottom()) {
+            *this = std::move(other);
+            return;
+        }
         _inv |= other._inv;
-        non_numerical_bytes |= other.non_numerical_bytes;
+        num_bytes |= other.num_bytes;
     }
 
     array_expansion_domain_t operator|(array_expansion_domain_t&& other) {
-        return array_expansion_domain_t(_inv | other._inv, non_numerical_bytes | other.non_numerical_bytes);
+        return array_expansion_domain_t(_inv | other._inv, num_bytes | other.num_bytes);
     }
 
     array_expansion_domain_t operator|(const array_expansion_domain_t& other) & {
-        return array_expansion_domain_t(_inv | other._inv, non_numerical_bytes | other.non_numerical_bytes);
+        return array_expansion_domain_t(_inv | other._inv, num_bytes | other.num_bytes);
     }
 
     array_expansion_domain_t operator|(const array_expansion_domain_t& other) && {
-        return array_expansion_domain_t(_inv | other._inv, non_numerical_bytes | other.non_numerical_bytes);
+        return array_expansion_domain_t(_inv | other._inv, num_bytes | other.num_bytes);
     }
 
     array_expansion_domain_t operator&(array_expansion_domain_t other) {
-        return array_expansion_domain_t(_inv & std::move(other._inv), non_numerical_bytes & other.non_numerical_bytes);
+        return array_expansion_domain_t(_inv & std::move(other._inv), num_bytes & other.num_bytes);
     }
 
     array_expansion_domain_t widen(array_expansion_domain_t other) {
-        return array_expansion_domain_t(_inv.widen(other._inv), non_numerical_bytes | other.non_numerical_bytes);
+        return array_expansion_domain_t(_inv.widen(other._inv), num_bytes | other.num_bytes);
     }
 
     array_expansion_domain_t widening_thresholds(array_expansion_domain_t other, const iterators::thresholds_t& ts) {
@@ -445,7 +533,7 @@ class array_expansion_domain final : public writeable {
     }
 
     array_expansion_domain_t narrow(array_expansion_domain_t other) {
-        return array_expansion_domain_t(_inv.narrow(other._inv), non_numerical_bytes & other.non_numerical_bytes);
+        return array_expansion_domain_t(_inv.narrow(other._inv), num_bytes & other.num_bytes);
     }
 
     interval_t operator[](variable_t x) { return _inv[x]; }
@@ -492,18 +580,12 @@ class array_expansion_domain final : public writeable {
             offset_map_t& offset_map = lookup_array_map(kind);
             long k = (long)*n;
             if (kind == data_kind_t::types) {
-                bool no_non_num = false;
-                bool non_num_only = true;
-                for (int j = 0; j < width; j++) {
-                    bool b = non_numerical_bytes[k + j];
-                    no_non_num |= b;
-                    non_num_only &= b;
-                }
-                if (!no_non_num) {
+                auto [only_num, only_non_num] = num_bytes.uniformity(k, width);
+                if (only_num) {
                     _inv.assign(lhs, T_NUM);
                     return;
                 }
-                if (!non_num_only || width != 8) {
+                if (!only_non_num || width != 8) {
                     _inv -= lhs;
                     return;
                 }
@@ -574,12 +656,8 @@ class array_expansion_domain final : public writeable {
             // perform strong update
             auto [offset, size] = *maybe_cell;
             if (kind == data_kind_t::types) {
-                auto t = to_interval(val).singleton();
-                for (int i = 0; i < size; i++)
-                    if (t && *t == T_NUM)
-                        non_numerical_bytes.reset((long)offset.index() + i);
-                    else
-                        non_numerical_bytes.set((long)offset.index() + i);
+                std::optional<number_t> t = to_interval(val).singleton();
+                num_bytes.store(offset.index(), size, t);
             }
             variable_t v = lookup_array_map(kind).mk_cell(offset, size).get_scalar(kind);
             _inv.assign(v, val);
@@ -590,8 +668,7 @@ class array_expansion_domain final : public writeable {
         auto maybe_cell = kill_and_find_var(kind, idx, elem_size);
         if (maybe_cell && kind == data_kind_t::types) {
             auto [offset, size] = *maybe_cell;
-            for (int i = 0; i < size; i++)
-                non_numerical_bytes.set(offset.index() + i);
+            num_bytes.havoc(offset.index(), size);
         }
     }
 
@@ -621,10 +698,7 @@ class array_expansion_domain final : public writeable {
                       "the number of elements is larger than default limit of ", max_num_elems);
             return;
         }
-        long idx = (long)*idx_n;
-        for (int i = 0; i < (long)*width; i++) {
-            non_numerical_bytes.reset(idx + i);
-        }
+        num_bytes.store((long)*idx_n, (long)*width, std::optional<number_t>(T_NUM));
     }
 
     NumAbsDomain get_content_domain() const { return _inv; }
@@ -632,29 +706,17 @@ class array_expansion_domain final : public writeable {
     NumAbsDomain& get_content_domain() { return _inv; }
 
     void write(std::ostream& o) {
-        o << _inv << "\n";
-        o << "Numbers -> {";
-        bool first = true;
-        for (int i = -512; i < 0; i++) {
-            if (non_numerical_bytes[512 + i]) continue;
-            if (!first) o << ", ";
-            first = false;
-            o << "[" << i;
-            int j = i + 1;
-            for (; j < 0; j++)
-                if (non_numerical_bytes[512 + j])
-                    break;
-            if (j > i+1)
-                o << "..." << i-1;
-            o << "]";
-            i = j;
+        if (is_bottom()) {
+            o << "_|_";
+            return;
         }
-        o << "}";
+        o << _inv << "\n" << num_bytes;
     }
 
     void rename(const variable_vector_t& from, const variable_vector_t& to) { _inv.rename(from, to); }
 
 }; // end array_expansion_domain
+
 
 template <typename BaseDom>
 class checker_domain_traits<array_expansion_domain<BaseDom>> {
