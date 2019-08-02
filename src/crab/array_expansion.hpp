@@ -317,7 +317,7 @@ void clear_global_state();
 
 class array_bitset_domain_t final : public writeable {
   private:
-    using bits_t = std::bitset<512>;
+    using bits_t = std::bitset<STACK_SIZE>;
     bits_t non_numerical_bytes;
 
   private:
@@ -402,14 +402,14 @@ class array_bitset_domain_t final : public writeable {
     void write(std::ostream& o) {
         o << "Numbers -> {";
         bool first = true;
-        for (int i = -512; i < 0; i++) {
-            if (non_numerical_bytes[512 + i]) continue;
+        for (int i = -STACK_SIZE; i < 0; i++) {
+            if (non_numerical_bytes[STACK_SIZE + i]) continue;
             if (!first) o << ", ";
             first = false;
             o << "[" << i;
             int j = i + 1;
             for (; j < 0; j++)
-                if (non_numerical_bytes[512 + j])
+                if (non_numerical_bytes[STACK_SIZE + j])
                     break;
             if (j > i+1)
                 o << "..." << j-1;
@@ -464,17 +464,8 @@ class array_expansion_domain final : public writeable {
         }
     }
 
-    interval_t to_interval(linear_expression_t expr, NumAbsDomain inv) {
-        interval_t r(expr.constant());
-        for (auto [v, n] : expr) {
-            interval_t c(n);
-            r += c * inv[v];
-        }
-        return r;
-    }
-
   public:
-    interval_t to_interval(linear_expression_t expr) { return to_interval(expr, _inv); }
+    interval_t to_interval(linear_expression_t expr) { return _inv.eval_interval(expr); }
 
     array_expansion_domain() : _inv(NumAbsDomain::top()) { }
 
@@ -575,7 +566,7 @@ class array_expansion_domain final : public writeable {
         if (is_bottom())
             return;
 
-        interval_t ii = to_interval(i);
+        interval_t ii = _inv.eval_interval(i);
         if (std::optional<number_t> n = ii.singleton()) {
             offset_map_t& offset_map = lookup_array_map(kind);
             long k = (long)*n;
@@ -626,10 +617,10 @@ class array_expansion_domain final : public writeable {
         std::optional<std::pair<offset_t, unsigned>> res;
 
         offset_map_t& offset_map = lookup_array_map(kind);
-        interval_t ii = to_interval(i);
+        interval_t ii = _inv.eval_interval(i);
         std::vector<cell_t> cells;
         if (std::optional<number_t> n = ii.singleton()) {
-            interval_t i_elem_size = to_interval(elem_size);
+            interval_t i_elem_size = _inv.eval_interval(elem_size);
             std::optional<number_t> n_bytes = i_elem_size.singleton();
             if (n_bytes) {
                 unsigned size = (long)(*n_bytes);
@@ -656,7 +647,7 @@ class array_expansion_domain final : public writeable {
             // perform strong update
             auto [offset, size] = *maybe_cell;
             if (kind == data_kind_t::types) {
-                std::optional<number_t> t = to_interval(val).singleton();
+                std::optional<number_t> t = _inv.eval_interval(val).singleton();
                 num_bytes.store(offset.index(), size, t);
             }
             variable_t v = lookup_array_map(kind).mk_cell(offset, size).get_scalar(kind);
@@ -676,7 +667,7 @@ class array_expansion_domain final : public writeable {
     void array_store_numbers(variable_t _idx, variable_t _width) {
 
         // TODO: this should be an user parameter.
-        const number_t max_num_elems = 512;
+        const number_t max_num_elems = STACK_SIZE;
 
         if (is_bottom())
             return;
