@@ -28,9 +28,7 @@ do
 		echo -n ,$s
 		for dom in "$@"
 		do
-			echo >> errors.log
-			echo "with_timeout 10m ./check $f $s --domain=$dom" >> errors.log
-			rkm=$(with_timeout 10m ./check $f $s --domain=$dom 2>>errors.log)
+			rkm=$(with_timeout 10m ./check $f $s --domain=$dom 2> /dev/null)
 			echo -n ",${rkm:=0,-1,-1}"
 		done
 		echo
