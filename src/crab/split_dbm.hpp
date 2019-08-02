@@ -174,13 +174,6 @@ class SplitDBM final : public writeable {
         return v;
     }
 
-    interval_t eval_interval(linear_expression_t e) {
-        interval_t r = e.constant();
-        for (auto [v, n] : e)
-            r += n * operator[](v);
-        return r;
-    }
-
     interval_t compute_residual(linear_expression_t e, variable_t pivot) {
         interval_t residual(-e.constant());
         for (auto [v, n] : e) {
@@ -376,6 +369,13 @@ class SplitDBM final : public writeable {
     }
 
     void operator+=(linear_constraint_t cst);
+
+    interval_t eval_interval(linear_expression_t e) {
+        interval_t r = e.constant();
+        for (auto [v, n] : e)
+            r += n * operator[](v);
+        return r;
+    }
 
     interval_t operator[](variable_t x) {
         CrabStats::count("SplitDBM.count.to_intervals");
