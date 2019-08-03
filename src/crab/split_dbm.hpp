@@ -23,9 +23,9 @@
 
 #include <boost/container/flat_map.hpp>
 
-#include "crab/abstract_domain.hpp"
-#include "crab/abstract_domain_specialized_traits.hpp"
 #include "crab/adapt_sgraph.hpp"
+#include "crab/thresholds.hpp"
+#include "crab/abstract_domain_operators.hpp"
 #include "crab/bignums.hpp"
 #include "crab/debug.hpp"
 #include "crab/graph_ops.hpp"
@@ -295,23 +295,19 @@ class SplitDBM final : public writeable {
 
     void set_to_top() {
         this->~SplitDBM();
-        new(this) SplitDBM(false);
+        new (this) SplitDBM(false);
     }
 
     void set_to_bottom() {
         this->~SplitDBM();
-        new(this) SplitDBM(true);
+        new (this) SplitDBM(true);
     }
 
     bool is_bottom() const { return _is_bottom; }
 
-    static SplitDBM top() {
-        return SplitDBM(false);
-    }
+    static SplitDBM top() { return SplitDBM(false); }
 
-    static SplitDBM bottom() {
-        return SplitDBM(true);
-    }
+    static SplitDBM bottom() { return SplitDBM(true); }
 
     bool is_top() const {
         if (_is_bottom)
@@ -322,7 +318,7 @@ class SplitDBM final : public writeable {
     bool operator<=(SplitDBM o);
 
     // FIXME: can be done more efficient
-    void operator|=(SplitDBM o) { *this = *this | o; }
+    void operator|=(const SplitDBM& o) { *this = *this | o; }
     void operator|=(SplitDBM&& o) {
         if (is_bottom()) {
             std::swap(*this, o);
@@ -333,7 +329,8 @@ class SplitDBM final : public writeable {
 
     SplitDBM operator|(const SplitDBM& o) &;
     SplitDBM operator|(const SplitDBM& o) && {
-        if (o.is_bottom()) return *this;
+        if (o.is_bottom())
+            return *this;
         return static_cast<SplitDBM&>(*this) | o;
     }
 
@@ -408,6 +405,64 @@ class SplitDBM final : public writeable {
 
     static std::string getDomainName() { return "SplitDBM"; }
 
+  private:
+    bool entail_aux(const linear_constraint_t& cst) {
+        SplitDBM dom(*this); // copy is necessary
+        dom += cst.negate();
+        return dom.is_bottom();
+    }
+
+    bool intersect_aux(const linear_constraint_t& cst) {
+        SplitDBM dom(*this); // copy is necessary
+        dom += cst;
+        return !dom.is_bottom();
+    }
+
+  public:
+    /*
+       Public API
+
+       bool entail(const linear_constraint_t&);
+
+       bool intersect(const linear_constraint_t&);
+     */
+
+
+    // Return true if inv intersects with cst.
+    bool intersect(const linear_constraint_t& cst) {
+        if (is_bottom() || cst.is_contradiction())
+            return false;
+        if (is_top() || cst.is_tautology())
+            return true;
+        return intersect_aux(cst);
+    }
+
+    // Return true if entails rhs.
+    bool entail(const linear_constraint_t& rhs) {
+        if (is_bottom())
+            return true;
+        if (rhs.is_tautology())
+            return true;
+        if (rhs.is_contradiction())
+            return false;
+
+        if (rhs.is_equality()) {
+            // try to convert the equality into inequalities so when it's
+            // negated we do not have disequalities.
+            return entail_aux(linear_constraint_t(rhs.expression(), linear_constraint_t::INEQUALITY)) &&
+                   entail_aux(linear_constraint_t(rhs.expression() * number_t(-1), linear_constraint_t::INEQUALITY));
+        } else {
+            return entail_aux(rhs);
+        }
+
+        // Note: we cannot convert rhs into SplitDBM and then use the <=
+        //       operator. The problem is that we cannot know for sure
+        //       whether SplitDBM can represent precisely rhs. It is not
+        //       enough to do something like
+        //
+        //       SplitDBM dom = rhs;
+        //       if (dom.is_top()) { ... }
+    }
 }; // class SplitDBM
 
 } // namespace domains

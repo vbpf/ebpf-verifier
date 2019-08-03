@@ -2,8 +2,6 @@
 
 #include <unordered_map>
 
-#include "crab/abs_transformer.hpp"
-#include "crab/abstract_domain_specialized_traits.hpp"
 #include "crab/cfg.hpp"
 #include "crab/debug.hpp"
 #include "crab/stats.hpp"
@@ -12,25 +10,21 @@
 
 namespace crab {
 
-template <typename AbsDomain>
-class wto_iterator;
+using domains::ebpf_domain_t;
 
-template <typename AbsDomain>
-class wto_processor;
+class wto_iterator_t;
 
-template <typename AbsDomain>
-class interleaved_fwd_fixpoint_iterator final {
-    template <typename AbsDom>
-    friend class wto_iterator;
+class wto_processor_t;
+
+class interleaved_fwd_fixpoint_iterator_t final {
+    friend class wto_iterator_t;
 
   public:
     using wto_t = wto<cfg_t>;
-    using assumption_map_t = std::unordered_map<label_t, AbsDomain>;
-    using invariant_table_t = std::unordered_map<label_t, AbsDomain>;
+    using assumption_map_t = std::unordered_map<label_t, ebpf_domain_t>;
+    using invariant_table_t = std::unordered_map<label_t, ebpf_domain_t>;
 
   private:
-    using wto_iterator_t = wto_iterator<AbsDomain>;
-    using wto_processor_t = wto_processor<AbsDomain>;
     using thresholds_t = iterators::thresholds_t;
     using wto_thresholds_t = iterators::wto_thresholds_t;
 
@@ -45,27 +39,27 @@ class interleaved_fwd_fixpoint_iterator final {
     const unsigned int _widening_delay;
 
   private:
-    void set(invariant_table_t& table, label_t node, const AbsDomain& v) {
+    void set(invariant_table_t& table, label_t node, const ebpf_domain_t& v) {
         std::pair<iterator, bool> res = table.emplace(std::make_pair(node, v));
         if (!res.second) {
             res.first->second = std::move(v);
         }
     }
 
-    inline void set_pre(label_t node, const AbsDomain& v) { this->set(this->_pre, node, v); }
+    inline void set_pre(label_t node, const ebpf_domain_t& v) { this->set(this->_pre, node, v); }
 
-    inline void set_post(label_t node, const AbsDomain& v) { this->set(this->_post, node, v); }
+    inline void set_post(label_t node, const ebpf_domain_t& v) { this->set(this->_post, node, v); }
 
-    AbsDomain get(invariant_table_t& table, label_t n) {
+    ebpf_domain_t get(invariant_table_t& table, label_t n) {
         typename invariant_table_t::iterator it = table.find(n);
         if (it != table.end()) {
             return it->second;
         } else {
-            return AbsDomain::bottom();
+            return ebpf_domain_t::bottom();
         }
     }
 
-    AbsDomain extrapolate(label_t node, unsigned int iteration, AbsDomain before, AbsDomain after) {
+    ebpf_domain_t extrapolate(label_t node, unsigned int iteration, ebpf_domain_t before, ebpf_domain_t after) {
         if (iteration <= _widening_delay) {
             return before | after;
         } else {
@@ -73,7 +67,7 @@ class interleaved_fwd_fixpoint_iterator final {
         }
     }
 
-    AbsDomain refine(label_t node, unsigned int iteration, AbsDomain before, AbsDomain after) {
+    ebpf_domain_t refine(label_t node, unsigned int iteration, ebpf_domain_t before, ebpf_domain_t after) {
         if (iteration == 1) {
             return before & after;
         } else {
@@ -82,38 +76,32 @@ class interleaved_fwd_fixpoint_iterator final {
     }
 
   public:
-    interleaved_fwd_fixpoint_iterator(cfg_t& cfg) : _cfg(cfg), _wto(cfg), _widening_delay(1) {}
+    interleaved_fwd_fixpoint_iterator_t(cfg_t& cfg) : _cfg(cfg), _wto(cfg), _widening_delay(1) {}
 
-    AbsDomain get_pre(label_t node) { return this->get(this->_pre, node); }
+    ebpf_domain_t get_pre(label_t node) { return this->get(this->_pre, node); }
 
-    AbsDomain get_post(label_t node) { return this->get(this->_post, node); }
+    ebpf_domain_t get_post(label_t node) { return this->get(this->_post, node); }
 
-    void run(AbsDomain init) {
-        this->set_pre(this->_cfg.entry(), init);
-        wto_iterator_t iterator(this, this->_cfg.entry());
-        this->_wto.accept(&iterator);
-    }
-}; // class interleaved_fwd_fixpoint_iterator
+    void run(ebpf_domain_t init);
+}; // class interleaved_fwd_fixpoint_iterator_t
 
-template <typename AbsDomain>
-class wto_iterator final : public wto_component_visitor<cfg_t> {
+class wto_iterator_t final : public wto_component_visitor<cfg_t> {
   public:
-    using interleaved_iterator_t = interleaved_fwd_fixpoint_iterator<AbsDomain>;
     using wto_vertex_t = wto_vertex<cfg_t>;
     using wto_cycle_t = wto_cycle<cfg_t>;
     using wto_t = wto<cfg_t>;
     using wto_nesting_t = typename wto_t::wto_nesting_t;
-    using assumption_map_t = typename interleaved_iterator_t::assumption_map_t;
+    using assumption_map_t = typename interleaved_fwd_fixpoint_iterator_t::assumption_map_t;
 
   private:
-    interleaved_iterator_t* _iterator;
+    interleaved_fwd_fixpoint_iterator_t* _iterator;
     // Initial entry point of the analysis
     label_t _entry;
     const assumption_map_t* _assumptions;
     // Used to skip the analysis until _entry is found
     bool _skip;
 
-    inline AbsDomain strengthen(label_t n, AbsDomain inv) {
+    inline ebpf_domain_t strengthen(label_t n, ebpf_domain_t inv) {
         CrabStats::count("Fixpo.strengthen");
         ScopedCrabStats __st__("Fixpo.strengthen");
 
@@ -157,10 +145,10 @@ class wto_iterator final : public wto_component_visitor<cfg_t> {
     };
 
   public:
-    wto_iterator(interleaved_iterator_t* iterator, label_t entry)
+    wto_iterator_t(interleaved_fwd_fixpoint_iterator_t* iterator, label_t entry)
         : _iterator(iterator), _entry(entry), _assumptions(nullptr), _skip(true) {}
 
-    wto_iterator(interleaved_iterator_t* iterator, label_t entry, const assumption_map_t* assumptions)
+    wto_iterator_t(interleaved_fwd_fixpoint_iterator_t* iterator, label_t entry, const assumption_map_t* assumptions)
         : _iterator(iterator), _entry(entry), _assumptions(assumptions), _skip(true) {}
 
     void visit(wto_vertex_t& vertex) {
@@ -175,7 +163,7 @@ class wto_iterator final : public wto_component_visitor<cfg_t> {
             return;
         }
 
-        AbsDomain pre;
+        ebpf_domain_t pre;
         if (node == _entry) {
             pre = this->_iterator->get_pre(node);
             if (_assumptions) { // no necessary but it might avoid copies
@@ -185,7 +173,7 @@ class wto_iterator final : public wto_component_visitor<cfg_t> {
         } else {
             auto prev_nodes = this->_iterator->_cfg.prev_nodes(node);
             CrabStats::resume("Fixpo.join_predecessors");
-            pre = AbsDomain::bottom();
+            pre = ebpf_domain_t::bottom();
             for (label_t prev : prev_nodes) {
                 pre |= this->_iterator->get_post(prev);
             }
@@ -198,7 +186,7 @@ class wto_iterator final : public wto_component_visitor<cfg_t> {
 
         CRAB_VERBOSE_IF(4, std::cout << "PRE Invariants:\n" << pre << "\n");
         CrabStats::resume("Fixpo.analyze_block");
-        AbsDomain post = transform(this->_iterator->_cfg.get_node(node), pre);
+        ebpf_domain_t post = pre.transform(this->_iterator->_cfg.get_node(node));
         CrabStats::stop("Fixpo.analyze_block");
         CRAB_VERBOSE_IF(3, std::cout << "POST Invariants:\n" << post << "\n");
         this->_iterator->set_post(node, post);
@@ -223,7 +211,7 @@ class wto_iterator final : public wto_component_visitor<cfg_t> {
         }
 
         auto prev_nodes = this->_iterator->_cfg.prev_nodes(head);
-        AbsDomain pre = AbsDomain::bottom();
+        ebpf_domain_t pre = ebpf_domain_t::bottom();
         wto_nesting_t cycle_nesting = this->_iterator->_wto.nesting(head);
 
         if (entry_in_this_cycle) {
@@ -250,7 +238,7 @@ class wto_iterator final : public wto_component_visitor<cfg_t> {
             this->_iterator->set_pre(head, pre);
             CRAB_VERBOSE_IF(4, std::cout << "PRE Invariants:\n" << pre << "\n");
             CrabStats::resume("Fixpo.analyze_block");
-            AbsDomain post = transform(this->_iterator->_cfg.get_node(head), pre);
+            ebpf_domain_t post = pre.transform(this->_iterator->_cfg.get_node(head));
             CrabStats::stop("Fixpo.analyze_block");
             CRAB_VERBOSE_IF(3, std::cout << "POST Invariants:\n" << post << "\n");
 
@@ -259,7 +247,7 @@ class wto_iterator final : public wto_component_visitor<cfg_t> {
                 it->accept(this);
             }
             CrabStats::resume("Fixpo.join_predecessors");
-            AbsDomain new_pre = AbsDomain::bottom();
+            ebpf_domain_t new_pre = ebpf_domain_t::bottom();
             for (label_t prev : prev_nodes) {
                 new_pre |= this->_iterator->get_post(prev);
             }
@@ -282,7 +270,7 @@ class wto_iterator final : public wto_component_visitor<cfg_t> {
 
             CRAB_VERBOSE_IF(4, std::cout << "PRE Invariants:\n" << pre << "\n");
             CrabStats::resume("Fixpo.analyze_block");
-            AbsDomain post = transform(this->_iterator->_cfg.get_node(head), pre);
+            ebpf_domain_t post = pre.transform(this->_iterator->_cfg.get_node(head));
             this->_iterator->set_post(head, post);
             CrabStats::stop("Fixpo.analyze_block");
             CRAB_VERBOSE_IF(3, std::cout << "POST Invariants:\n" << post << "\n");
@@ -291,7 +279,7 @@ class wto_iterator final : public wto_component_visitor<cfg_t> {
                 it->accept(this);
             }
             CrabStats::resume("Fixpo.join_predecessors");
-            AbsDomain new_pre = AbsDomain::bottom();
+            ebpf_domain_t new_pre = ebpf_domain_t::bottom();
             for (label_t prev : prev_nodes) {
                 new_pre |= this->_iterator->get_post(prev);
             }
@@ -309,38 +297,12 @@ class wto_iterator final : public wto_component_visitor<cfg_t> {
         }
     }
 
-}; // class wto_iterator
+}; // class wto_iterator_t
 
-template <typename AbsDomain>
-class wto_processor final : public wto_component_visitor<cfg_t> {
-  public:
-    using interleaved_iterator_t = interleaved_fwd_fixpoint_iterator<AbsDomain>;
-    using wto_vertex_t = wto_vertex<cfg_t>;
-    using wto_cycle_t = wto_cycle<cfg_t>;
-
-  private:
-    interleaved_iterator_t* _iterator;
-
-  public:
-    wto_processor(interleaved_iterator_t* iterator) : _iterator(iterator) {}
-
-    void visit(wto_vertex_t& vertex) {
-        CrabStats::count("Fixpo.process_invariants");
-        ScopedCrabStats __st__("Fixpo.process_invariants");
-
-        label_t node = vertex.node();
-    }
-
-    void visit(wto_cycle_t& cycle) {
-        CrabStats::count("Fixpo.process_invariants");
-        ScopedCrabStats __st__("Fixpo.process_invariants");
-
-        label_t head = cycle.head();
-        for (typename wto_cycle_t::iterator it = cycle.begin(); it != cycle.end(); ++it) {
-            it->accept(this);
-        }
-    }
-
-}; // class wto_processor
+inline void interleaved_fwd_fixpoint_iterator_t::run(ebpf_domain_t init) {
+    this->set_pre(this->_cfg.entry(), init);
+    wto_iterator_t iterator(this, this->_cfg.entry());
+    this->_wto.accept(&iterator);
+}
 
 } // namespace crab
