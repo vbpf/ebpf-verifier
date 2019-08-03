@@ -68,6 +68,13 @@ class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t
         }
     }
 
+    ebpf_domain_t join_all_prevs(label_t node) {
+        ebpf_domain_t res = ebpf_domain_t::bottom();
+        for (label_t prev : _cfg.prev_nodes(node)) {
+            res |= get_post(prev);
+        }
+        return res;
+    }
   public:
     interleaved_fwd_fixpoint_iterator_t(cfg_t& cfg) : _cfg(cfg), _wto(cfg), _widening_delay(1) {}
 
