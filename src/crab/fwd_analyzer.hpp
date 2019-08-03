@@ -20,7 +20,6 @@ class interleaved_fwd_fixpoint_iterator_t final {
     friend class wto_iterator_t;
 
   public:
-    using wto_t = wto<cfg_t>;
     using assumption_map_t = std::unordered_map<label_t, ebpf_domain_t>;
     using invariant_table_t = std::unordered_map<label_t, ebpf_domain_t>;
 
@@ -85,12 +84,8 @@ class interleaved_fwd_fixpoint_iterator_t final {
     void run(ebpf_domain_t init);
 }; // class interleaved_fwd_fixpoint_iterator_t
 
-class wto_iterator_t final : public wto_component_visitor<cfg_t> {
+class wto_iterator_t final : public wto_component_visitor_t {
   public:
-    using wto_vertex_t = wto_vertex<cfg_t>;
-    using wto_cycle_t = wto_cycle<cfg_t>;
-    using wto_t = wto<cfg_t>;
-    using wto_nesting_t = typename wto_t::wto_nesting_t;
     using assumption_map_t = typename interleaved_fwd_fixpoint_iterator_t::assumption_map_t;
 
   private:
@@ -115,7 +110,7 @@ class wto_iterator_t final : public wto_component_visitor<cfg_t> {
     }
 
     // Simple visitor to check if node is a member of the wto component.
-    class member_component_visitor : public wto_component_visitor<cfg_t> {
+    class member_component_visitor : public wto_component_visitor_t {
         label_t _node;
         bool _found;
 

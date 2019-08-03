@@ -52,12 +52,7 @@ inline std::ostream& operator<<(std::ostream& o, const thresholds_t& t) {
 /**
    Collect thresholds per wto cycle (i.e. loop)
 **/
-class wto_thresholds_t final : public wto_component_visitor<cfg_t> {
-
-  public:
-    using wto_vertex_t = wto_vertex<cfg_t>;
-    using wto_cycle_t = wto_cycle<cfg_t>;
-
+class wto_thresholds_t final : public wto_component_visitor_t {
   private:
     // the cfg
     cfg_t& m_cfg;

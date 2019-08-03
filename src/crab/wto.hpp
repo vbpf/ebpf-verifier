@@ -61,39 +61,30 @@
 
 namespace crab {
 
-template <typename G>
-using vertex_descriptor = typename boost::graph_traits<G>::vertex_descriptor;
 
-template <typename G>
-using out_edge_iterator = typename boost::graph_traits<G>::out_edge_iterator;
+using vertex_descriptor_t = typename boost::graph_traits<cfg_t>::vertex_descriptor;
 
-template <typename G>
-using edge_descriptor = typename boost::graph_traits<G>::edge_descriptor;
 
-template <typename G>
-class wto;
+using out_edge_iterator_t = typename boost::graph_traits<cfg_t>::out_edge_iterator;
 
-template <typename G>
-class wto_vertex;
 
-template <typename G>
-class wto_cycle;
+using edge_descriptor_t = typename boost::graph_traits<cfg_t>::edge_descriptor;
 
-template <typename G>
-class wto_component_visitor;
 
-template <typename G>
-class wto_nesting final {
+class wto_t;
+class wto_vertex_t;
+class wto_cycle_t;
+class wto_component_visitor_t;
 
-    friend class wto<G>;
-    friend class wto_vertex<G>;
-    friend class wto_cycle<G>;
 
-  public:
-    using wto_nesting_t = wto_nesting<G>;
+class wto_nesting_t final {
+
+    friend class wto_t;
+    friend class wto_vertex_t;
+    friend class wto_cycle_t;
 
   private:
-    using node_list_t = std::vector<vertex_descriptor<G>>;
+    using node_list_t = std::vector<vertex_descriptor_t>;
     using node_list_ptr = std::shared_ptr<node_list_t>;
 
     node_list_ptr _nodes;
@@ -103,7 +94,7 @@ class wto_nesting final {
     using const_iterator = typename node_list_t::const_iterator;
 
   private:
-    wto_nesting(node_list_ptr l) : _nodes(std::make_shared<node_list_t>(*l)) {}
+    wto_nesting_t(node_list_ptr l) : _nodes(std::make_shared<node_list_t>(*l)) {}
 
     int compare(wto_nesting_t& other) const {
         const_iterator this_it = this->begin(), other_it = other.begin();
@@ -125,14 +116,14 @@ class wto_nesting final {
     }
 
   public:
-    wto_nesting() : _nodes(std::make_shared<node_list_t>()) {}
+    wto_nesting_t() : _nodes(std::make_shared<node_list_t>()) {}
 
-    void operator+=(vertex_descriptor<G> n) {
+    void operator+=(vertex_descriptor_t n) {
         this->_nodes = std::make_shared<node_list_t>(*(this->_nodes));
         this->_nodes->push_back(n);
     }
 
-    wto_nesting_t operator+(vertex_descriptor<G> n) {
+    wto_nesting_t operator+(vertex_descriptor_t n) {
         wto_nesting_t res(this->_nodes);
         res._nodes->push_back(n);
         return res;
@@ -163,14 +154,12 @@ class wto_nesting final {
 
     bool operator==(wto_nesting_t other) const { return this->compare(other) == 0; }
 
-    bool operator>=(wto_nesting_t other) const { return this->operator<=(other, *this); }
-
     bool operator>(wto_nesting_t other) const { return this->compare(other) == 1; }
 
     void write(std::ostream& o) const {
         o << "[";
         for (const_iterator it = this->begin(); it != this->end();) {
-            vertex_descriptor<G> n = *it;
+            vertex_descriptor_t n = *it;
             o << n;
             ++it;
             if (it != this->end()) {
@@ -181,79 +170,84 @@ class wto_nesting final {
     }
 }; // class nesting
 
-template <typename G>
-inline std::ostream& operator<<(std::ostream& o, const wto_nesting<G>& n) {
+
+inline std::ostream& operator<<(std::ostream& o, const wto_nesting_t& n) {
     n.write(o);
     return o;
 }
 
-template <typename G>
-class wto_component {
+
+class wto_component_t {
 
   public:
-    using wto_nesting_t = wto_nesting<G>;
+    virtual void accept(wto_component_visitor_t*) = 0;
 
-    virtual void accept(wto_component_visitor<G>*) = 0;
-
-    virtual ~wto_component() {}
+    virtual ~wto_component_t() {}
 
     virtual void write(std::ostream& os) const = 0;
 
 }; // class wto_component
 
-template <typename G>
-inline std::ostream& operator<<(std::ostream& o, const wto_component<G>& c) {
+
+inline std::ostream& operator<<(std::ostream& o, const wto_component_t& c) {
     c.write(o);
     return o;
 }
 
-template <typename G>
-class wto_vertex final : public wto_component<G> {
 
-    friend class wto<G>;
 
-  private:
-    vertex_descriptor<G> _node;
-
-    wto_vertex(vertex_descriptor<G> node) : _node(node) {}
+class wto_component_visitor_t {
 
   public:
-    vertex_descriptor<G> node() { return this->_node; }
+    virtual void visit(wto_vertex_t&) = 0;
+    virtual void visit(wto_cycle_t&) = 0;
+    virtual ~wto_component_visitor_t() {}
 
-    void accept(wto_component_visitor<G>* v) { v->visit(*this); }
+}; // class wto_component_visitor_t
+
+
+class wto_vertex_t final : public wto_component_t {
+
+    friend class wto_t;
+
+  private:
+    vertex_descriptor_t _node;
+
+    wto_vertex_t(vertex_descriptor_t node) : _node(node) {}
+
+  public:
+    vertex_descriptor_t node() { return this->_node; }
+
+    void accept(wto_component_visitor_t* v) { v->visit(*this); }
 
     void write(std::ostream& o) const { o << this->_node; }
 
 }; // class wto_vertex
 
-template <typename G>
-class wto_cycle final : public wto_component<G> {
 
-    friend class wto<G>;
+class wto_cycle_t final : public wto_component_t {
 
-  public:
-    using wto_component_t = wto_component<G>;
-
+    friend class wto_t;
   private:
     using wto_component_ptr = std::shared_ptr<wto_component_t>;
     using wto_component_list_t = std::forward_list<wto_component_ptr>;
     using wto_component_list_ptr = std::shared_ptr<wto_component_list_t>;
 
-    vertex_descriptor<G> _head;
+    vertex_descriptor_t _head;
     wto_component_list_ptr _wto_components;
     // number of times the wto cycle is analyzed by the fixpoint iterator
     unsigned _num_fixpo;
 
-    wto_cycle(vertex_descriptor<G> head, wto_component_list_ptr wto_components)
+    wto_cycle_t(vertex_descriptor_t head, wto_component_list_ptr wto_components)
         : _head(head), _wto_components(wto_components), _num_fixpo(0) {}
 
   public:
     using iterator = boost::indirect_iterator<typename wto_component_list_t::iterator>;
     using const_iterator = boost::indirect_iterator<typename wto_component_list_t::const_iterator>;
 
-    vertex_descriptor<G> head() { return this->_head; }
+    vertex_descriptor_t head() { return this->_head; }
 
-    void accept(wto_component_visitor<G>* v) { v->visit(*this); }
+    void accept(wto_component_visitor_t* v) { v->visit(*this); }
 
     iterator begin() { return boost::make_indirect_iterator(_wto_components->begin()); }
 
@@ -287,41 +281,19 @@ class wto_cycle final : public wto_component<G> {
 
 }; // class wto_cycle
 
-template <typename G>
-class wto_component_visitor {
-
-  public:
-    using wto_vertex_t = wto_vertex<G>;
-    using wto_cycle_t = wto_cycle<G>;
-
-    virtual void visit(wto_vertex_t&) = 0;
-    virtual void visit(wto_cycle_t&) = 0;
-    virtual ~wto_component_visitor() {}
-
-}; // class wto_component_visitor
-
-template <typename G>
-class wto final {
-
-  public:
-    using wto_nesting_t = wto_nesting<G>;
-    using wto_component_t = wto_component<G>;
-    using wto_vertex_t = wto_vertex<G>;
-    using wto_cycle_t = wto_cycle<G>;
-    using wto_t = wto<G>;
-
+class wto_t final {
   private:
     using wto_component_ptr = std::shared_ptr<wto_component_t>;
     using wto_vertex_ptr = std::shared_ptr<wto_vertex_t>;
-    using wto_cycle_ptr = std::shared_ptr<wto_cycle_t>; 
+    using wto_cycle_ptr = std::shared_ptr<wto_cycle_t>;
     using wto_component_list_t = std::forward_list<wto_component_ptr>;
     using wto_component_list_ptr = std::shared_ptr<wto_component_list_t>;
     using dfn_t = bound_t;
-    using dfn_table_t = std::unordered_map<vertex_descriptor<G>, dfn_t>;
+    using dfn_table_t = std::unordered_map<vertex_descriptor_t, dfn_t>;
     using dfn_table_ptr = std::shared_ptr<dfn_table_t>;
-    using stack_t = std::vector<vertex_descriptor<G>>;
+    using stack_t = std::vector<vertex_descriptor_t>;
     using stack_ptr = std::shared_ptr<stack_t>;
-    using nesting_table_t = std::unordered_map<vertex_descriptor<G>, wto_nesting_t>;
+    using nesting_table_t = std::unordered_map<vertex_descriptor_t, wto_nesting_t>;
     using nesting_table_ptr = std::shared_ptr<nesting_table_t>;
 
     wto_component_list_ptr _wto_components;
@@ -330,12 +302,7 @@ class wto final {
     stack_ptr _stack;
     nesting_table_ptr _nesting_table;
 
-    class nesting_builder : public wto_component_visitor<G> {
-
-      public:
-        using wto_vertex_t = wto_vertex<G>;
-        using wto_cycle_t = wto_cycle<G>;
-
+    class nesting_builder : public wto_component_visitor_t {
       private:
         wto_nesting_t _nesting;
         nesting_table_ptr _nesting_table;
@@ -344,7 +311,7 @@ class wto final {
         nesting_builder(nesting_table_ptr nesting_table) : _nesting_table(nesting_table) {}
 
         void visit(wto_cycle_t& cycle) {
-            vertex_descriptor<G> head = cycle.head();
+            vertex_descriptor_t head = cycle.head();
             wto_nesting_t previous_nesting = this->_nesting;
             this->_nesting_table->insert(std::make_pair(head, this->_nesting));
             this->_nesting += head;
@@ -360,7 +327,7 @@ class wto final {
 
     }; // class nesting_builder
 
-    dfn_t get_dfn(vertex_descriptor<G> n) {
+    dfn_t get_dfn(vertex_descriptor_t n) {
         typename dfn_table_t::iterator it = this->_dfn_table->find(n);
         if (it == this->_dfn_table->end()) {
             return 0;
@@ -369,30 +336,30 @@ class wto final {
         }
     }
 
-    void set_dfn(vertex_descriptor<G> n, dfn_t dfn) {
+    void set_dfn(vertex_descriptor_t n, dfn_t dfn) {
         std::pair<typename dfn_table_t::iterator, bool> res = this->_dfn_table->insert(std::make_pair(n, dfn));
         if (!res.second) {
             (res.first)->second = dfn;
         }
     }
 
-    vertex_descriptor<G> pop() {
+    vertex_descriptor_t pop() {
         if (this->_stack->empty()) {
             CRAB_ERROR("WTO computation: empty stack");
         } else {
-            vertex_descriptor<G> top = this->_stack->back();
+            vertex_descriptor_t top = this->_stack->back();
             this->_stack->pop_back();
             return top;
         }
     }
 
-    void push(vertex_descriptor<G> n) { this->_stack->push_back(n); }
+    void push(vertex_descriptor_t n) { this->_stack->push_back(n); }
 
-    wto_cycle_ptr component(G& g, vertex_descriptor<G> vertex) {
+    wto_cycle_ptr component(cfg_t& g, vertex_descriptor_t vertex) {
         auto partition = std::make_shared<wto_component_list_t>();
-        std::pair<out_edge_iterator<G>, out_edge_iterator<G>> succ_edges = out_edges(vertex, g);
-        for (out_edge_iterator<G> it = succ_edges.first, et = succ_edges.second; it != et; ++it) {
-            vertex_descriptor<G> succ = target(*it, g);
+        std::pair<out_edge_iterator_t, out_edge_iterator_t> succ_edges = out_edges(vertex, g);
+        for (out_edge_iterator_t it = succ_edges.first, et = succ_edges.second; it != et; ++it) {
+            vertex_descriptor_t succ = target(*it, g);
             if (this->get_dfn(succ) == 0) {
                 this->visit(g, succ, partition);
             }
@@ -401,22 +368,22 @@ class wto final {
     }
 
     struct visit_stack_elem {
-        using succ_iterator = out_edge_iterator<G>;
-        vertex_descriptor<G> _node;
+        using succ_iterator = out_edge_iterator_t;
+        vertex_descriptor_t _node;
         succ_iterator _it; // begin iterator for node's successors
         succ_iterator _et; // end iterator for node's successors
         dfn_t _min;        // smallest dfn number of any (direct or
                            // indirect) node's successor through node's
                            // DFS subtree, included node.
 
-        visit_stack_elem(vertex_descriptor<G> node, std::pair<succ_iterator, succ_iterator> succs, dfn_t min)
+        visit_stack_elem(vertex_descriptor_t node, std::pair<succ_iterator, succ_iterator> succs, dfn_t min)
             : _node(node), _it(succs.first), _et(succs.second), _min(min) {}
     };
 
-    void visit(G& g, vertex_descriptor<G> vertex, wto_component_list_ptr partition) {
+    void visit(cfg_t& g, vertex_descriptor_t vertex, wto_component_list_ptr partition) {
 
         std::vector<visit_stack_elem> visit_stack;
-        std::set<vertex_descriptor<G>> loop_nodes;
+        std::set<vertex_descriptor_t> loop_nodes;
 
         /* discover vertex */
         push(vertex);
@@ -434,8 +401,8 @@ class wto final {
              * visit_stack one more descendant.
              */
             while (visit_stack.back()._it != visit_stack.back()._et) {
-                edge_descriptor<G> e = *visit_stack.back()._it++;
-                vertex_descriptor<G> child = target(e, g);
+                edge_descriptor_t e = *visit_stack.back()._it++;
+                vertex_descriptor_t child = target(e, g);
                 dfn_t child_dfn = get_dfn(child);
                 if (child_dfn == 0) {
                     /* discover new vertex */
@@ -454,7 +421,7 @@ class wto final {
             }
 
             // propagate min from child to parent
-            vertex_descriptor<G> visiting_node = visit_stack.back()._node;
+            vertex_descriptor_t visiting_node = visit_stack.back()._node;
             dfn_t min_visiting_node = visit_stack.back()._min;
             bool is_loop = loop_nodes.count(visiting_node) > 0;
             visit_stack.pop_back();
@@ -470,7 +437,7 @@ class wto final {
                 CRAB_LOG("wto-nonrec",
                          std::cout << "WTO: BEGIN building partition for node " << visiting_node << "\n";);
                 set_dfn(visiting_node, dfn_t::plus_infinity());
-                vertex_descriptor<G> element = pop();
+                vertex_descriptor_t element = pop();
                 if (is_loop) {
                     while (!(element == visiting_node)) {
                         set_dfn(element, 0);
@@ -500,7 +467,7 @@ class wto final {
     using iterator = boost::indirect_iterator<typename wto_component_list_t::iterator>;
     using const_iterator = boost::indirect_iterator<typename wto_component_list_t::const_iterator>;
 
-    wto(G& g)
+    wto_t(cfg_t& g)
         : _wto_components(std::make_shared<wto_component_list_t>()), _dfn_table(std::make_shared<dfn_table_t>()),
           _num(0), _stack(std::make_shared<stack_t>()), _nesting_table(std::make_shared<nesting_table_t>()) {
         ScopedCrabStats __st__("Fixpo.WTO");
@@ -511,9 +478,9 @@ class wto final {
         this->build_nesting();
     }
 
-    wto(const wto_t& other) = delete;
+    wto_t(const wto_t& other) = delete;
 
-    wto(const wto_t&& other)
+    wto_t(const wto_t&& other)
         : _wto_components(std::move(other._wto_components)), _dfn_table(std::move(other._dfn_table)), _num(other._num),
           _stack(std::move(other._stack)), _nesting_table(std::move(other._nesting_table)) {}
 
@@ -536,7 +503,7 @@ class wto final {
 
     const_iterator end() const { return boost::make_indirect_iterator(_wto_components->end()); }
 
-    wto_nesting_t nesting(vertex_descriptor<G> n) {
+    wto_nesting_t nesting(vertex_descriptor_t n) {
         typename nesting_table_t::iterator it = this->_nesting_table->find(n);
         if (it == this->_nesting_table->end()) {
             CRAB_ERROR("WTO nesting: node ", n, " not found");
@@ -545,7 +512,7 @@ class wto final {
         }
     }
 
-    void accept(wto_component_visitor<G>* v) {
+    void accept(wto_component_visitor_t* v) {
         for (iterator it = this->begin(); it != this->end(); ++it) {
             it->accept(v);
         }
