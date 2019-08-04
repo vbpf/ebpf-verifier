@@ -580,8 +580,8 @@ class ebpf_domain_t final {
             *this = std::move(other);
             return;
         }
-        m_inv |= other.m_inv;
-        num_bytes |= other.num_bytes;
+        m_inv |= std::move(other.m_inv);
+        num_bytes |= std::move(other.num_bytes);
     }
 
     ebpf_domain_t operator|(ebpf_domain_t&& other) {
@@ -894,6 +894,24 @@ class ebpf_domain_t final {
             variable_t src_value = reg_value(src);
             variable_t src_offset = reg_offset(src);
             variable_t src_type = reg_type(src);
+            int stype = get_type(src_type);
+            int dtype = get_type(dst_type);
+            if (stype == dtype) {
+                switch (stype) {
+                    case T_MAP: break;
+                    case T_UNINIT: break;
+                    case T_NUM: {
+                        if (!is_unsigned_cmp(cond.op))
+                            for (const linear_constraint_t& cst : jmp_to_cst_reg(cond.op, dst_value, src_value))
+                                m_inv += cst;
+                        return;
+                    }
+                    default: {
+                        m_inv += jmp_to_cst_offsets_reg(cond.op, dst_offset, src_offset);
+                        return;
+                    }
+                }
+            }
             NumAbsDomain different{m_inv};
             different += neq(dst_type, src_type);
 
@@ -1191,18 +1209,23 @@ class ebpf_domain_t final {
         }
 
         int type = get_type(mem_reg_type);
-        if (type != T_UNINIT) {
-            switch (type) {
-            case T_CTX: m_inv = do_load_ctx(std::move(m_inv), target, addr, width); break;
-            case T_STACK: m_inv = do_load_stack(std::move(m_inv), target, addr, width); break;
-            default: m_inv = do_load_packet_or_shared(std::move(m_inv), target, addr, width); break;
-            }
+        if (type == T_UNINIT) {
             return;
         }
 
-        m_inv = do_load_ctx(when(m_inv, mem_reg_type == T_CTX), target, addr, width) |
-                do_load_packet_or_shared(when(m_inv, mem_reg_type >= T_PACKET), target, addr, width) |
-                do_load_stack(when(m_inv, mem_reg_type == T_STACK), target, addr, width);
+        switch (type) {
+            case T_UNINIT: {
+                m_inv = do_load_ctx(when(m_inv, mem_reg_type == T_CTX), target, addr, width) |
+                        do_load_packet_or_shared(when(m_inv, mem_reg_type >= T_PACKET), target, addr, width) |
+                        do_load_stack(when(m_inv, mem_reg_type == T_STACK), target, addr, width);
+                return;
+            }
+            case T_MAP: return;
+            case T_NUM: return;
+            case T_CTX: m_inv = do_load_ctx(std::move(m_inv), target, addr, width); break;
+            case T_STACK: m_inv = do_load_stack(std::move(m_inv), target, addr, width); break;
+            default: m_inv = do_load_packet_or_shared(std::move(m_inv), target, addr, width); break;
+        }
     }
 
     int get_type(variable_t v) {
@@ -1256,17 +1279,19 @@ class ebpf_domain_t final {
         }
         variable_t mem_reg_type = reg_type(mem_reg);
         linear_expression_t addr = reg_offset(mem_reg) + (number_t)offset;
-        if (get_type(mem_reg_type) == T_STACK) {
-            do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset);
-            return;
+        switch (get_type(mem_reg_type)) {
+            case T_STACK: do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset); return;
+            case T_UNINIT: { //maybe stack
+                NumAbsDomain assume_not_stack(m_inv);
+                assume_not_stack += mem_reg_type != T_STACK;
+                m_inv += mem_reg_type == T_STACK;
+                if (!m_inv.is_bottom()) {
+                    do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset);
+                }
+                m_inv |= std::move(assume_not_stack);
+            }
+            default: break;
         }
-        NumAbsDomain assume_not_stack(m_inv);
-        assume_not_stack += mem_reg_type != T_STACK;
-        m_inv += mem_reg_type == T_STACK;
-        if (!m_inv.is_bottom()) {
-            do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset);
-        }
-        m_inv |= std::move(assume_not_stack);
     }
 
     void operator()(LockAdd const& a) {
@@ -1415,46 +1440,41 @@ class ebpf_domain_t final {
             variable_t src_type = reg_type(src);
             switch (bin.op) {
             case Bin::Op::ADD: {
-                NumAbsDomain ptr_dst{m_inv};
-                ptr_dst += is_pointer(dst);
-                apply(ptr_dst, crab::arith_binop_t::ADD, dst_value, dst_value, src_value, true);
-                apply(ptr_dst, crab::arith_binop_t::ADD, dst_offset, dst_offset, src_value, false);
-
-                NumAbsDomain ptr_src{m_inv};
-                ptr_src += is_pointer(src);
-                apply(ptr_src, crab::arith_binop_t::ADD, dst_value, src_value, dst_value, true);
-                apply(ptr_src, crab::arith_binop_t::ADD, dst_offset, src_offset, dst_value, false);
-                ptr_src.assign(dst_type, src_type);
-
-                m_inv += dst_type == T_NUM;
-                m_inv += src_type == T_NUM;
-                add_overflow(dst_value, src_value);
-
-                m_inv |= std::move(ptr_dst);
-                m_inv |= std::move(ptr_src);
+                auto stype = get_type(src_type);
+                auto dtype = get_type(dst_type);
+                if (stype == T_NUM && dtype == T_NUM) {
+                    add_overflow(dst_value, src_value);
+                } else if (dtype == T_NUM) {
+                    apply(m_inv, crab::arith_binop_t::ADD, dst_value, src_value, dst_value, true);
+                    apply(m_inv, crab::arith_binop_t::ADD, dst_offset, src_offset, dst_value, false);
+                    m_inv.assign(dst_type, src_type);
+                } else if (stype == T_NUM) {
+                    add_overflow(dst_value, src_value);
+                    add(dst_offset, src_value);
+                } else {
+                    havoc(dst_type);
+                    havoc(dst_value);
+                    havoc(dst_offset);
+                }
                 break;
             }
             case Bin::Op::SUB: {
-                NumAbsDomain ptr_dst{m_inv};
-                ptr_dst += src_type == T_NUM;
-                ptr_dst += is_pointer(dst);
-                apply(ptr_dst, crab::arith_binop_t::SUB, dst_value, dst_value, src_value, true);
-                apply(ptr_dst, crab::arith_binop_t::SUB, dst_offset, dst_offset, src_value, false);
-
-                NumAbsDomain both_num{m_inv};
-                both_num += src_type == T_NUM;
-                both_num += dst_type == T_NUM;
-                apply(both_num, crab::arith_binop_t::SUB, dst_value, dst_value, src_value, true);
-
-                m_inv += is_pointer(src);
-                m_inv += src_type < T_SHARED; // cannot subtract two pointers to shared regions
-                m_inv += eq(src_type, dst_type);
-                apply(m_inv, crab::arith_binop_t::SUB, dst_value, dst_offset, src_offset);
-                m_inv.assign(dst_type, T_NUM);
-                m_inv -= dst_offset;
-
-                m_inv |= std::move(both_num);
-                m_inv |= std::move(ptr_dst);
+                auto stype = get_type(src_type);
+                auto dtype = get_type(dst_type);
+                if (dtype == T_NUM && stype == T_NUM) {
+                    sub_overflow(dst_value, src_value);
+                } else if (stype == T_NUM) {
+                    sub_overflow(dst_value, src_value);
+                    sub(dst_offset, src_value);
+                } else if (stype == dtype && stype < 0) { // subtracting non-shared poitners
+                    apply(m_inv, crab::arith_binop_t::SUB, dst_value, dst_offset, src_offset, true);
+                    havoc(dst_offset);
+                    assign(dst_type, T_NUM);
+                } else {
+                    havoc(dst_type);
+                    havoc(dst_value);
+                    havoc(dst_offset);
+                }
                 break;
             }
             case Bin::Op::MUL:
