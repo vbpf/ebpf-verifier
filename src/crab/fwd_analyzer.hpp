@@ -27,28 +27,19 @@ class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t
     wto_t _wto;
     invariant_table_t _pre, _post;
     // number of iterations until triggering widening
-    const unsigned int _widening_delay;
+    const unsigned int _widening_delay{1};
     // Used to skip the analysis until _entry is found
     bool _skip{true};
 
   private:
 
-    inline void set_pre(label_t label, const ebpf_domain_t& v) { _pre.insert_or_assign(label, v); }
+    inline void set_pre(label_t label, const ebpf_domain_t& v) { _pre[label] = v; }
 
     inline void transform_to_post(label_t label, ebpf_domain_t pre) {
         for (const Instruction& statement : _cfg.get_node(label)) {
             std::visit(pre, statement);
         }
-        _post.insert_or_assign(label, std::move(pre));
-    }
-
-    ebpf_domain_t get(invariant_table_t& table, label_t n) {
-        iterator it = table.find(n);
-        if (it != table.end()) {
-            return it->second;
-        } else {
-            return ebpf_domain_t::bottom();
-        }
+        _post[label] = std::move(pre);
     }
 
     ebpf_domain_t extrapolate(label_t node, unsigned int iteration, ebpf_domain_t before, ebpf_domain_t after) {
@@ -75,18 +66,23 @@ class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t
         return res;
     }
   public:
-    interleaved_fwd_fixpoint_iterator_t(cfg_t& cfg) : _cfg(cfg), _wto(cfg), _widening_delay(1) {}
+    interleaved_fwd_fixpoint_iterator_t(cfg_t& cfg) : _cfg(cfg), _wto(cfg) {
+        for (auto& [label, _] : _cfg) {
+            _pre.emplace(label, ebpf_domain_t::bottom());
+            _post.emplace(label, ebpf_domain_t::bottom());
+        }
+        _pre[this->_cfg.entry()] = ebpf_domain_t::setup_entry();
+    }
 
-    ebpf_domain_t get_pre(label_t node) { return this->get(this->_pre, node); }
+    ebpf_domain_t get_pre(label_t node) { return _pre.at(node); }
 
-    ebpf_domain_t get_post(label_t node) { return this->get(this->_post, node); }
+    ebpf_domain_t get_post(label_t node) { return _post.at(node); }
 
     void visit(wto_vertex_t& vertex);
 
     void visit(wto_cycle_t& cycle);
 
-    void run(ebpf_domain_t init) {
-        this->set_pre(this->_cfg.entry(), init);
+    void run() {
         this->_wto.accept(this);
     }
 };

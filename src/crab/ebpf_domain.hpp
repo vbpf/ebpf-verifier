@@ -511,7 +511,7 @@ inline bool is_unsigned_cmp(Condition::Op op) {
     return {};
 }
 
-class ebpf_domain_t final : public writeable {
+class ebpf_domain_t final {
   public:
     using variable_vector_t = std::vector<variable_t>;
     typedef void check_require_func_t(NumAbsDomain&, const linear_constraint_t&, std::string);
@@ -1511,12 +1511,13 @@ class ebpf_domain_t final : public writeable {
 
     NumAbsDomain& get_content_domain() { return m_inv; }
 
-    void write(std::ostream& o) {
-        if (is_bottom()) {
+    friend std::ostream& operator<<(std::ostream& o, ebpf_domain_t dom) {
+        if (dom.is_bottom()) {
             o << "_|_";
-            return;
+        } else {
+            o << dom.m_inv << "\n" << dom.num_bytes;
         }
-        o << m_inv << "\n" << num_bytes;
+        return o;
     }
 
     void rename(const variable_vector_t& from, const variable_vector_t& to) { m_inv.rename(from, to); }

@@ -14,7 +14,6 @@
 #include <vector>
 
 #include <boost/lexical_cast.hpp>
-#include <boost/signals2.hpp>
 
 #include "crab/ebpf_domain.hpp"
 #include "crab/cfg.hpp"
@@ -31,8 +30,6 @@
 
 using std::string;
 
-using printer_t = boost::signals2::signal<void(const string&)>;
-
 using crab::linear_constraint_t;
 
 program_info global_program_info;
@@ -41,20 +38,6 @@ program_info global_program_info;
 //using sdbm_domain_t = crab::domains::SplitDBM;
 using crab::domains::ebpf_domain_t;
 using analyzer_t = crab::interleaved_fwd_fixpoint_iterator_t;
-
-static auto extract_pre(analyzer_t& analyzer, cfg_t& cfg) {
-    std::map<string, ebpf_domain_t> res;
-    for (const auto& [label, block] : cfg)
-        res.emplace(label, analyzer.get_pre(label));
-    return res;
-}
-
-static auto extract_post(analyzer_t& analyzer, cfg_t& cfg) {
-    std::map<string, ebpf_domain_t> res;
-    for (const auto& [label, block] : cfg)
-        res.emplace(label, analyzer.get_post(label));
-    return res;
-}
 
 // Toy database to store invariants.
 class checks_db final {
@@ -108,25 +91,46 @@ class checks_db final {
     }
 };
 
-static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_printer) {
+inline int first_num(const label_t& s) {
+    try {
+        return boost::lexical_cast<int>(s.substr(0, s.find_first_of(":+")));
+    } catch (...) {
+        std::cout << "bad label:" << s << "\n";
+        throw;
+    }
+}
+
+static std::vector<string> sorted_labels(cfg_t& cfg) {
+    std::vector<string> labels;
+    for (const auto& [label, block] : cfg)
+        labels.push_back(label);
+
+    std::sort(labels.begin(), labels.end(), [](string a, string b) {
+        if (first_num(a) < first_num(b))
+            return true;
+        if (first_num(a) > first_num(b))
+            return false;
+        return a < b;
+    });
+    return labels;
+}
+
+static checks_db analyze(cfg_t& cfg) {
     crab::domains::clear_global_state();
 
     analyzer_t analyzer(cfg);
-    analyzer.run(ebpf_domain_t::setup_entry());
+    analyzer.run();
 
-    if (global_options.print_invariants) {
-        pre_printer.connect([pre = extract_pre(analyzer, cfg)](const string& label) {
-            ebpf_domain_t inv = pre.at(label);
-            std::cout << "\n" << inv << "\n";
-        });
-        post_printer.connect([post = extract_post(analyzer, cfg)](const string& label) {
-            ebpf_domain_t inv = post.at(label);
-            std::cout << "\n" << inv << "\n";
-        });
-    }
     checks_db m_db;
-    for (const auto& [_label, bb] : cfg) {
-        std::string label = _label;
+    for (label_t label : sorted_labels(cfg)) {
+        basic_block_t& bb = cfg.get_node(label);
+
+        if (global_options.print_invariants) {
+            std::cout << "\n" << analyzer.get_pre(label) << "\n";
+            std::cout << bb;
+            std::cout << "\n" << analyzer.get_post(label) << "\n";
+        }
+
         if (std::none_of(bb.begin(), bb.end(), [](const auto& s) { return std::holds_alternative<Assert>(s); }))
             continue;
         ebpf_domain_t from_inv(analyzer.get_pre(label));
@@ -160,53 +164,19 @@ static checks_db analyze(cfg_t& cfg, printer_t& pre_printer, printer_t& post_pri
     return m_db;
 }
 
-inline int first_num(const label_t& s) {
-    try {
-        return boost::lexical_cast<int>(s.substr(0, s.find_first_of(":+")));
-    } catch (...) {
-        std::cout << "bad label:" << s << "\n";
-        throw;
-    }
-}
-
-static std::vector<string> sorted_labels(cfg_t& cfg) {
-    std::vector<string> labels;
-    for (const auto& [label, block] : cfg)
-        labels.push_back(label);
-
-    std::sort(labels.begin(), labels.end(), [](string a, string b) {
-        if (first_num(a) < first_num(b))
-            return true;
-        if (first_num(a) > first_num(b))
-            return false;
-        return a < b;
-    });
-    return labels;
-}
-
 std::tuple<bool, double> abs_validate(cfg_t& simple_cfg, program_info info) {
     global_program_info = info;
     cfg_t& cfg = simple_cfg;
 
-    printer_t pre_printer;
-    printer_t post_printer;
-
     using namespace std;
     clock_t begin = clock();
 
-    checks_db checks = analyze(cfg, pre_printer, post_printer);
+    checks_db checks = analyze(cfg);
 
     clock_t end = clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
 
     int nwarn = checks.total_warning() + checks.total_error();
-    if (global_options.print_invariants) {
-        for (string label : sorted_labels(cfg)) {
-            pre_printer(label);
-            cfg.get_node(label).write(std::cout);
-            post_printer(label);
-        }
-    }
 
     if (nwarn > 0) {
         if (global_options.print_failures) {
