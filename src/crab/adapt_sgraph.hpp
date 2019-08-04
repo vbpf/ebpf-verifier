@@ -450,8 +450,8 @@ class AdaptGraph : public writeable {
         } else {
             v = _succs.size();
             is_free.push_back(false);
-            _succs.push();
-            _preds.push();
+            _succs.emplace_back();
+            _preds.emplace_back();
         }
 
         return v;
@@ -467,7 +467,7 @@ class AdaptGraph : public writeable {
             return;
 
         for (smap_t::elt_t& e : _succs[v].elts()) {
-            free_widx.push(e.val);
+            free_widx.push_back(e.val);
             _preds[e.key].remove(v);
         }
         edge_count -= _succs[v].size();
@@ -479,7 +479,7 @@ class AdaptGraph : public writeable {
         _preds[v].clear();
 
         is_free[v] = true;
-        free_id.push(v);
+        free_id.push_back(v);
     }
 
     void clear_edges() {
@@ -549,7 +549,7 @@ class AdaptGraph : public writeable {
             _ws[idx] = w;
         } else {
             idx = _ws.size();
-            _ws.push(w);
+            _ws.push_back(w);
         }
 
         _succs[s].add(d, idx);
@@ -603,8 +603,8 @@ class AdaptGraph : public writeable {
 
     // Ick. This'll have another indirection on every operation.
     // We'll see what the performance costs are like.
-    vec<smap_t> _preds;
-    vec<smap_t> _succs;
+    std::vector<smap_t> _preds;
+    std::vector<smap_t> _succs;
     vec<Wt> _ws;
 
     int edge_count;

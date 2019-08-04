@@ -97,7 +97,7 @@ class Heap {
         assert(!inHeap(n));
 
         indices[n] = heap.size();
-        heap.push(n);
+        heap.push_back(n);
         percolateUp(indices[n]);
     }
 

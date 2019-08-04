@@ -26,6 +26,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cassert>
 #include <cstdlib>
 #include <new>
+#include <type_traits>
 
 //===========================================================================================
 // Automatically resizable arrays
@@ -38,19 +39,17 @@ namespace crab {
 
 template <class T>
 class vec final {
-    T* data;
-    int sz;
-    int cap;
+    static_assert(std::is_trivially_copyable<T>::value,
+                  "Don't use this vector on datatypes that cannot be re-located in memory (with realloc)");
+    T* data{};
+    int sz{};
+    int cap{};
 
     void init(int size, const T& pad);
     void grow(int min_cap);
 
     // Don't allow copying (error prone):
-    vec<T>& operator=(vec<T>& other) {
-        assert(0);
-        return *this;
-    }
-    /*         vec        (vec<T>& other) { assert(0); } */
+    vec<T>& operator=(vec<T>& other) = delete;
 
     static inline int imin(int x, int y) {
         int mask = (x - y) >> (sizeof(int) * 8 - 1);
@@ -64,33 +63,27 @@ class vec final {
 
   public:
     // Constructors:
-    vec() : data(NULL), sz(0), cap(0) {}
-    vec(int size) : data(NULL), sz(0), cap(0) { growTo(size); }
-    vec(int size, const T& pad) : data(NULL), sz(0), cap(0) { growTo(size, pad); }
+    vec() = default;
+    vec(int size) { growTo(size); }
+    vec(int size, const T& pad) { growTo(size, pad); }
     ~vec() { clear(true); }
 
     // GKG: Added stuff - copy & move ctors, plus range interface.
-    vec(const vec<T>& o) : data(NULL), sz(0), cap(0) {
+    vec(const vec<T>& o) {
         capacity(o.cap);
         for (int ii = 0; ii < o.sz; ii++)
             new (data + ii) T(o[ii]);
         sz = o.sz;
     }
 
-    vec(vec<T>&& o) : data(o.data), sz(o.sz), cap(o.cap) {
-        o.data = nullptr;
-        o.sz = 0;
-        o.cap = 0;
-    }
+    vec(vec<T>&& o) : data(o.data), sz(o.sz), cap(o.cap) { o.data = nullptr; }
     vec<T>& operator=(vec<T>&& o) {
         if (data)
             free(data);
         data = o.data;
         o.data = nullptr;
         sz = o.sz;
-        o.sz = 0;
         cap = o.cap;
-        o.cap = 0;
         return *this;
     }
     vec<T>& operator=(const vec<T>& o) {
@@ -110,17 +103,17 @@ class vec final {
     void shrink(int nelems) {
         assert(nelems <= sz);
         for (int i = 0; i < nelems; i++)
-            sz--, data[sz].~T();
+            pop();
     }
 
-    void pop() { sz--, data[sz].~T(); }
+    void pop() { data[--sz].~T(); }
     void growTo(int size);
     void growTo(int size, const T& pad);
     void clear(bool dealloc = false);
     void capacity(int size) { grow(size); }
 
     // Stack interface:
-    void push() {
+    void emplace_back() {
         if (sz == cap) {
             cap = imax(2, (cap * 3 + 1) >> 1);
             data = (T*)realloc(static_cast<void*>(data), cap * sizeof(T));
@@ -129,7 +122,7 @@ class vec final {
         sz++;
     }
 
-    void push(const T& elem) {
+    void push_back(const T& elem) {
         if (sz == cap) {
             cap = imax(2, (cap * 3 + 1) >> 1);
             data = (T*)realloc(static_cast<void*>(data), cap * sizeof(T));
@@ -180,12 +173,12 @@ void vec<T>::growTo(int size) {
 
 template <class T>
 void vec<T>::clear(bool dealloc) {
-    if (data != NULL) {
+    if (data != nullptr) {
         for (int i = 0; i < sz; i++)
             data[i].~T();
         sz = 0;
         if (dealloc)
-            free(data), data = NULL, cap = 0;
+            free(data), data = nullptr, cap = 0;
     }
 }
 
