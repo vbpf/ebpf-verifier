@@ -338,7 +338,7 @@ class AdaptGraph : public writeable {
 
     class vert_iterator {
       public:
-        vert_iterator(vert_id _v, const std::vector<bool>& _is_free) : v(_v), is_free(_is_free) {}
+        vert_iterator(vert_id _v, const std::vector<int>& _is_free) : v(_v), is_free(_is_free) {}
         vert_id operator*() const { return v; }
         bool operator!=(const vert_iterator& o) {
             while (v < o.v && is_free[v])
@@ -351,17 +351,17 @@ class AdaptGraph : public writeable {
         }
 
         vert_id v;
-        const std::vector<bool>& is_free;
+        const std::vector<int>& is_free;
     };
     class vert_range {
       public:
-        vert_range(const std::vector<bool>& _is_free) : is_free(_is_free) {}
+        vert_range(const std::vector<int>& _is_free) : is_free(_is_free) {}
 
         vert_iterator begin() const { return vert_iterator(0, is_free); }
         vert_iterator end() const { return vert_iterator(is_free.size(), is_free); }
 
         size_t size() const { return is_free.size(); }
-        const std::vector<bool>& is_free;
+        const std::vector<int>& is_free;
     };
     vert_range verts() const { return vert_range(is_free); }
 
@@ -609,7 +609,7 @@ class AdaptGraph : public writeable {
 
     int edge_count;
 
-    std::vector<bool> is_free;
+    std::vector<int> is_free;
     vec<vert_id> free_id;
     vec<size_t> free_widx;
 };

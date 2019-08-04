@@ -199,7 +199,7 @@ class SparseWtGraph : public writeable {
             v = free_id.back();
             assert(v < sz);
             free_id.pop_back();
-            is_free[v] = false;
+            is_free[v] = (int)false;
         } else {
             if (max_sz <= sz) {
                 // Make sure max_sz is strictly increasing
@@ -222,7 +222,7 @@ class SparseWtGraph : public writeable {
             return;
 
         free_id.push_back(v);
-        is_free[v] = true;
+        is_free[v] = (int)true;
 
         // Remove (s -> v) from preds.
         edge_count -= succs(v).size();
@@ -337,7 +337,7 @@ class SparseWtGraph : public writeable {
 
     class vert_iterator {
       public:
-        vert_iterator(vert_id _v, const std::vector<bool>& _is_free) : v(_v), is_free(_is_free) {}
+        vert_iterator(vert_id _v, const std::vector<int>& _is_free) : v(_v), is_free(_is_free) {}
         vert_id operator*() const { return v; }
         vert_iterator& operator++() {
             ++v;
@@ -355,17 +355,17 @@ class SparseWtGraph : public writeable {
 
       protected:
         vert_id v;
-        const std::vector<bool>& is_free;
+        const std::vector<int>& is_free;
     };
     class vert_range {
       public:
-        vert_range(vert_id _sz, const std::vector<bool>& _is_free) : sz(_sz), is_free(_is_free) {}
+        vert_range(vert_id _sz, const std::vector<int>& _is_free) : sz(_sz), is_free(_is_free) {}
         vert_iterator begin() const { return vert_iterator(0, is_free); }
         vert_iterator end() const { return vert_iterator(sz, is_free); }
         // unsigned int size() const { return (unsigned int) sz; }
       protected:
         vert_id sz;
-        const std::vector<bool>& is_free;
+        const std::vector<int>& is_free;
     };
     // FIXME: Verts currently iterates over free vertices,
     // as well as existing ones
@@ -632,7 +632,7 @@ class SparseWtGraph : public writeable {
     uint16_t* rev_adjs;
     Wt* mtx;
 
-    std::vector<bool> is_free;
+    std::vector<int> is_free; // don't use vector<bool>
     std::vector<int> free_id;
 };
 
