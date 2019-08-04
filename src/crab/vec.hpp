@@ -103,10 +103,10 @@ class vec final {
     void shrink(int nelems) {
         assert(nelems <= sz);
         for (int i = 0; i < nelems; i++)
-            pop();
+            pop_back();
     }
 
-    void pop() { data[--sz].~T(); }
+    void pop_back() { data[--sz].~T(); }
     void growTo(int size);
     void growTo(int size, const T& pad);
     void clear(bool dealloc = false);
@@ -130,8 +130,8 @@ class vec final {
         data[sz++] = elem;
     }
 
-    const T& last() const { return data[sz - 1]; }
-    T& last() { return data[sz - 1]; }
+    const T& back() const { return data[sz - 1]; }
+    T& back() { return data[sz - 1]; }
 
     // Vector interface:
     const T& operator[](int index) const { return data[index]; }

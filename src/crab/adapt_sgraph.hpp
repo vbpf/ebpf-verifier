@@ -375,7 +375,7 @@ class AdaptGraph : public writeable {
     class edge_iter {
       public:
         using edge_ref = edge_ref_t;
-        edge_iter(const smap_t::elt_iter_t& _it, vec<Wt>& _ws) : it(_it), ws(&_ws) {}
+        edge_iter(const smap_t::elt_iter_t& _it, std::vector<Wt>& _ws) : it(_it), ws(&_ws) {}
         edge_iter(const edge_iter& o) : it(o.it), ws(o.ws) {}
         edge_iter() : ws(nullptr) {}
 
@@ -397,7 +397,7 @@ class AdaptGraph : public writeable {
         bool operator!=(const edge_iter& o) { return it != o.it; }
 
         smap_t::elt_iter_t it;
-        vec<Wt>* ws;
+        std::vector<Wt>* ws;
     };
 
     using adj_range_t = typename smap_t::key_range_t;
@@ -408,14 +408,14 @@ class AdaptGraph : public writeable {
         using elt_range_t = typename smap_t::elt_range_t;
         using iterator = edge_iter;
         edge_range_t(const edge_range_t& o) : r(o.r), ws(o.ws) {}
-        edge_range_t(const elt_range_t& _r, vec<Wt>& _ws) : r(_r), ws(_ws) {}
+        edge_range_t(const elt_range_t& _r, std::vector<Wt>& _ws) : r(_r), ws(_ws) {}
 
         edge_iter begin() const { return edge_iter(r.begin(), ws); }
         edge_iter end() const { return edge_iter(r.end(), ws); }
         size_t size() const { return r.size(); }
 
         elt_range_t r;
-        vec<Wt>& ws;
+        std::vector<Wt>& ws;
     };
 
     using fwd_edge_iter = edge_iter;
@@ -443,9 +443,9 @@ class AdaptGraph : public writeable {
     vert_id new_vertex() {
         vert_id v;
         if (free_id.size() > 0) {
-            v = free_id.last();
+            v = free_id.back();
             assert(v < _succs.size());
-            free_id.pop();
+            free_id.pop_back();
             is_free[v] = false;
         } else {
             v = _succs.size();
@@ -544,8 +544,8 @@ class AdaptGraph : public writeable {
     void add_edge(vert_id s, Wt w, vert_id d) {
         size_t idx;
         if (free_widx.size() > 0) {
-            idx = free_widx.last();
-            free_widx.pop();
+            idx = free_widx.back();
+            free_widx.pop_back();
             _ws[idx] = w;
         } else {
             idx = _ws.size();
@@ -605,13 +605,13 @@ class AdaptGraph : public writeable {
     // We'll see what the performance costs are like.
     std::vector<smap_t> _preds;
     std::vector<smap_t> _succs;
-    vec<Wt> _ws;
+    std::vector<Wt> _ws;
 
     int edge_count;
 
     std::vector<int> is_free;
-    vec<vert_id> free_id;
-    vec<size_t> free_widx;
+    std::vector<vert_id> free_id;
+    std::vector<size_t> free_widx;
 };
 } // namespace crab
 #pragma GCC diagnostic pop

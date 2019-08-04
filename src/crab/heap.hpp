@@ -103,10 +103,10 @@ class Heap {
 
     int removeMin() {
         int x = heap[0];
-        heap[0] = heap.last();
+        heap[0] = heap.back();
         indices[heap[0]] = 0;
         indices[x] = -1;
-        heap.pop();
+        heap.pop_back();
         if (heap.size() > 1)
             percolateDown(0);
         return x;
