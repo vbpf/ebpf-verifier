@@ -49,7 +49,7 @@ void interleaved_fwd_fixpoint_iterator_t::visit(wto_vertex_t& vertex) {
     ebpf_domain_t pre = node == _cfg.entry() ? get_pre(node) : join_all_prevs(node);
 
     set_pre(node, pre);
-    set_post(node, pre.transform(_cfg.get_node(node)));
+    transform_to_post(node, pre);
 }
 
 void interleaved_fwd_fixpoint_iterator_t::visit(wto_cycle_t& cycle) {
@@ -87,7 +87,7 @@ void interleaved_fwd_fixpoint_iterator_t::visit(wto_cycle_t& cycle) {
 
         // Increasing iteration sequence with widening
         set_pre(head, pre);
-        set_post(head, pre.transform(_cfg.get_node(head)));
+        transform_to_post(head, pre);
         for (auto& x : cycle) {
             x.accept(this);
         }
@@ -104,7 +104,7 @@ void interleaved_fwd_fixpoint_iterator_t::visit(wto_cycle_t& cycle) {
 
     for (unsigned int iteration = 1;; ++iteration) {
         // Decreasing iteration sequence with narrowing
-        set_post(head, pre.transform(_cfg.get_node(head)));
+        transform_to_post(head, pre);
 
         for (auto& x : cycle) {
             x.accept(this);

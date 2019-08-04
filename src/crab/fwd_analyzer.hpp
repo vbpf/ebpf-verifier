@@ -32,16 +32,15 @@ class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t
     bool _skip{true};
 
   private:
-    void set(invariant_table_t& table, label_t node, const ebpf_domain_t& v) {
-        std::pair<iterator, bool> res = table.emplace(std::make_pair(node, v));
-        if (!res.second) {
-            res.first->second = std::move(v);
+
+    inline void set_pre(label_t label, const ebpf_domain_t& v) { _pre.insert_or_assign(label, v); }
+
+    inline void transform_to_post(label_t label, ebpf_domain_t pre) {
+        for (const Instruction& statement : _cfg.get_node(label)) {
+            std::visit(pre, statement);
         }
+        _post.insert_or_assign(label, std::move(pre));
     }
-
-    inline void set_pre(label_t node, const ebpf_domain_t& v) { this->set(this->_pre, node, v); }
-
-    inline void set_post(label_t node, const ebpf_domain_t& v) { this->set(this->_post, node, v); }
 
     ebpf_domain_t get(invariant_table_t& table, label_t n) {
         iterator it = table.find(n);
