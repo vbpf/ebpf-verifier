@@ -21,7 +21,6 @@ LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ******************************************************************************************/
-#include "vec.hpp"
 #include <vector>
 
 //=========================================================================================
@@ -34,7 +33,7 @@ template <class Comp>
 class Heap {
     Comp lt;
     std::vector<int> heap;    // heap of ints
-    vec<int> indices; // int -> index in heap
+    std::vector<int> indices; // int -> index in heap
 
     // Index "traversal" functions
     static inline int left(int i) { return i * 2 + 1; }
@@ -94,7 +93,7 @@ class Heap {
     }
 
     void insert(int n) {
-        indices.growTo(n + 1, -1);
+        indices.resize(n + 1, -1);
         assert(!inHeap(n));
 
         indices[n] = heap.size();
@@ -134,7 +133,7 @@ class Heap {
     }
 
     // Delete elements from the heap using a given filter function (-object).
-    // *** this could probaly be replaced with a more general "buildHeap(vec<int>&)" method ***
+    // *** this could probaly be replaced with a more general "buildHeap(vector<int>&)" method ***
     template <class F>
     void filter(const F& filt) {
         int i, j;

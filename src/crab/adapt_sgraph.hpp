@@ -1,6 +1,5 @@
 #pragma once
 
-#include "crab/vec.hpp"
 #include "crab/debug.hpp"
 #include "crab/types.hpp"
 // Adaptive sparse-set based weighted graph implementation
