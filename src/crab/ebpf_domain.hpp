@@ -1554,14 +1554,6 @@ class ebpf_domain_t final : public writeable {
 
     bool intersect(const linear_constraint_t& cst) { return m_inv.intersect(cst); }
 
-    ebpf_domain_t transform(const basic_block_t& bb) const {
-        ebpf_domain_t inv(*this);
-        for (const auto& statement : bb) {
-            std::visit(inv, statement);
-        }
-        return inv;
-    }
-
 }; // end ebpf_domain_t
 
 } // namespace domains
