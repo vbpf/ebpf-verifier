@@ -25,7 +25,6 @@
 
 #include "crab/adapt_sgraph.hpp"
 #include "crab/thresholds.hpp"
-#include "crab/abstract_domain_operators.hpp"
 #include "crab/bignums.hpp"
 #include "crab/debug.hpp"
 #include "crab/graph_ops.hpp"
@@ -43,6 +42,11 @@
 #pragma GCC diagnostic ignored "-Wsign-compare"
 
 namespace crab {
+
+enum class arith_binop_t { ADD, SUB, MUL, SDIV, UDIV, SREM, UREM };
+enum class bitwise_binop_t { AND, OR, XOR, SHL, LSHR, ASHR };
+using binop_t = std::variant<arith_binop_t, bitwise_binop_t>;
+
 
 namespace domains {
 

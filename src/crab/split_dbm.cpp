@@ -1,6 +1,5 @@
 #include "crab/split_dbm.hpp"
 
-#include "crab/abstract_domain_operators.hpp"
 #include "crab/debug.hpp"
 #include "crab/stats.hpp"
 #include "crab/types.hpp"
@@ -1195,10 +1194,8 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, variable_t z)
     case arith_binop_t::UDIV: set(x, get_interval(y).UDiv(get_interval(z))); break;
     case arith_binop_t::SREM: set(x, get_interval(y).SRem(get_interval(z))); break;
     case arith_binop_t::UREM: set(x, get_interval(y).URem(get_interval(z))); break;
-    default: CRAB_ERROR("Operation ", op, " not supported");
+    default: CRAB_ERROR("DBM: unreachable");
     }
-
-    CRAB_LOG("zones-split", std::cout << "---" << x << ":=" << y << op << z << "\n" << *this << "\n");
 }
 
 void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, number_t k) {
@@ -1220,10 +1217,8 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, number_t k) {
     case arith_binop_t::UDIV: set(x, get_interval(y).UDiv(interval_t(k))); break;
     case arith_binop_t::SREM: set(x, get_interval(y).SRem(interval_t(k))); break;
     case arith_binop_t::UREM: set(x, get_interval(y).URem(interval_t(k))); break;
-    default: CRAB_ERROR("Operation ", op, " not supported");
+    default: CRAB_ERROR("DBM: unreachable");
     }
-
-    CRAB_LOG("zones-split", std::cout << "---" << x << ":=" << y << op << k << "\n" << *this << "\n");
 }
 
 void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t z) {
