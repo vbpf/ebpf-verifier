@@ -37,58 +37,26 @@ program_info global_program_info;
 // Numerical domains over integers
 //using sdbm_domain_t = crab::domains::SplitDBM;
 using crab::domains::ebpf_domain_t;
-using analyzer_t = crab::interleaved_fwd_fixpoint_iterator_t;
 
 // Toy database to store invariants.
-class checks_db final {
+struct checks_db final {
     enum class check_kind_t { Error, Warning, Redundant, Unreachable };
-    std::map<label_t, std::vector<std::pair<std::string, check_kind_t>>> m_db;
-    std::map<check_kind_t, int> total{
-        {check_kind_t::Error, {}},
-        {check_kind_t::Warning, {}},
-        {check_kind_t::Redundant, {}},
-        {check_kind_t::Unreachable, {}},
-    };
+    std::map<label_t, std::vector<std::string>> m_db;
+    int total_errors{};
+    int total_warnings{};
+    int total_redundant{};
+    int total_unreachable{};
 
-    void add(label_t label, check_kind_t status, std::string msg) {
-        m_db[label].emplace_back(msg, status);
-        total[status]++;
+    void add(label_t label, std::string msg) {
+        m_db[label].emplace_back(msg);
     }
-  public:
 
-    void add_error(label_t label, std::string msg) { add(label,check_kind_t::Error, msg); }
-    void add_warning(label_t label, std::string msg) { add(label,check_kind_t::Warning, msg); }
-    void add_redundant(label_t label, std::string msg) { add(label,check_kind_t::Redundant, msg); }
-    void add_unreachable(label_t label, std::string msg) { add(label,check_kind_t::Unreachable, msg); }
+    void add_error(label_t label, std::string msg) { add(label,       msg); total_errors++; }
+    void add_warning(label_t label, std::string msg) { add(label,     msg); total_warnings++; }
+    void add_redundant(label_t label, std::string msg) { add(label,   msg); total_redundant++; }
+    void add_unreachable(label_t label, std::string msg) { add(label, msg); total_unreachable++; }
 
-    int total_error() const { return total.at(check_kind_t::Error); }
-    int total_warning() const { return total.at(check_kind_t::Warning); }
-    int total_redundant() const { return total.at(check_kind_t::Redundant); }
-    int total_unreachable() const { return total.at(check_kind_t::Unreachable); }
     checks_db() = default;
-
-    void write(std::ostream& o) const {
-        for (auto [label, reports] : m_db) {
-            o << label << ":\n";
-            for (auto [k, t] : reports)
-                o << "  " << k << "\n";
-        }
-
-        std::vector<int> cnts = {total_error(), total_warning(), total_redundant(), total_unreachable()};
-        int maxvlen = 0;
-        for (auto c : cnts) {
-            maxvlen = std::max(maxvlen, (int)std::to_string(c).size());
-        }
-
-        o << std::string((int)maxvlen - std::to_string(total_error()).size(), ' ') << total_error()
-          << std::string(2, ' ') << "Number of total error checks\n";
-        o << std::string((int)maxvlen - std::to_string(total_warning()).size(), ' ') << total_warning()
-          << std::string(2, ' ') << "Number of total warning checks\n";
-        o << std::string((int)maxvlen - std::to_string(total_redundant()).size(), ' ') << total_redundant()
-          << std::string(2, ' ') << "Number of total redundant checks\n";
-        o << std::string((int)maxvlen - std::to_string(total_unreachable()).size(), ' ') << total_unreachable()
-          << std::string(2, ' ') << "Number of block that become unreachable\n";
-    }
 };
 
 inline int first_num(const label_t& s) {
@@ -118,24 +86,22 @@ static std::vector<string> sorted_labels(cfg_t& cfg) {
 static checks_db analyze(cfg_t& cfg) {
     crab::domains::clear_global_state();
 
-    analyzer_t analyzer(cfg);
-    analyzer.run();
+    auto [preconditions, postconditions] = crab::run_forward_analyzer(cfg);
 
     checks_db m_db;
     for (label_t label : sorted_labels(cfg)) {
         basic_block_t& bb = cfg.get_node(label);
 
         if (global_options.print_invariants) {
-            std::cout << "\n" << analyzer.get_pre(label) << "\n";
+            std::cout << "\n" << preconditions.at(label) << "\n";
             std::cout << bb;
-            std::cout << "\n" << analyzer.get_post(label) << "\n";
+            std::cout << "\n" << postconditions.at(label) << "\n";
         }
 
         if (std::none_of(bb.begin(), bb.end(), [](const auto& s) { return std::holds_alternative<Assert>(s); }))
             continue;
-        ebpf_domain_t from_inv(analyzer.get_pre(label));
+        ebpf_domain_t from_inv(preconditions.at(label));
         from_inv.set_require_check([&m_db, label](auto& inv, const linear_constraint_t& cst, std::string s) {
-            s = label + ": " + s;
             if (inv.is_bottom())
                 return;
             if (cst.is_contradiction()) {
@@ -171,18 +137,22 @@ std::tuple<bool, double> abs_validate(cfg_t& simple_cfg, program_info info) {
     using namespace std;
     clock_t begin = clock();
 
-    checks_db checks = analyze(cfg);
+    const checks_db db = analyze(cfg);
 
     clock_t end = clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
 
-    int nwarn = checks.total_warning() + checks.total_error();
+    int nwarn = db.total_warnings;
 
-    if (nwarn > 0) {
-        if (global_options.print_failures) {
-            checks.write(std::cout);
+    if (global_options.print_failures) {
+        std::cout << "\n";
+        for (auto [label, messages] : db.m_db) {
+            std::cout << label << ":\n";
+            for (auto msg : messages)
+                std::cout << "  " << msg << "\n";
         }
-        return {false, elapsed_secs};
+        std::cout << "\n";
+        std::cout << db.total_warnings << " warnings\n";
     }
-    return {true, elapsed_secs};
+    return {nwarn == 0, elapsed_secs};
 }
