@@ -22,6 +22,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ******************************************************************************************/
 #include "vec.hpp"
+#include <vector>
 
 //=========================================================================================
 // A heap implementation with support for decrease/increase key.
@@ -32,7 +33,7 @@ namespace crab {
 template <class Comp>
 class Heap {
     Comp lt;
-    vec<int> heap;    // heap of ints
+    std::vector<int> heap;    // heap of ints
     vec<int> indices; // int -> index in heap
 
     // Index "traversal" functions
@@ -144,7 +145,7 @@ class Heap {
             } else
                 indices[heap[i]] = -1;
 
-        heap.shrink(i - j);
+        heap.resize(heap.size() - (i - j));
         for (int i = heap.size() / 2 - 1; i >= 0; i--)
             percolateDown(i);
 
