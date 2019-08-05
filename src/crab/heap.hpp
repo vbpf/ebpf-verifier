@@ -53,8 +53,8 @@ class Heap {
 
     inline void percolateDown(int i) {
         int x = heap[i];
-        while (left(i) < heap.size()) {
-            int child = right(i) < heap.size() && lt(heap[right(i)], heap[left(i)]) ? right(i) : left(i);
+        while (static_cast<size_t>(left(i)) < heap.size()) {
+            int child = static_cast<size_t>(right(i)) < heap.size() && lt(heap[right(i)], heap[left(i)]) ? right(i) : left(i);
             if (!lt(heap[child], x))
                 break;
             heap[i] = heap[child];
@@ -75,9 +75,9 @@ class Heap {
 
     int size() const { return heap.size(); }
     bool empty() const { return heap.size() == 0; }
-    bool inHeap(int n) const { return n < indices.size() && indices[n] >= 0; }
+    bool inHeap(int n) const { return static_cast<size_t>(n) < indices.size() && indices[n] >= 0; }
     int operator[](int index) const {
-        assert(index < heap.size());
+        assert(static_cast<size_t>(index) < heap.size());
         return heap[index];
     }
 
@@ -112,14 +112,14 @@ class Heap {
         return x;
     }
 
-    void clear(bool dealloc = false) {
-        for (int i = 0; i < heap.size(); i++)
+    void clear() {
+        for (size_t i = 0; i < heap.size(); i++)
             indices[heap[i]] = -1;
 #ifdef NDEBUG
         for (int i = 0; i < indices.size(); i++)
             assert(indices[i] == -1);
 #endif
-        heap.clear(dealloc);
+        heap.clear();
     }
 
     // Fool proof variant of insert/decrease/increase
@@ -137,7 +137,7 @@ class Heap {
     template <class F>
     void filter(const F& filt) {
         int i, j;
-        for (i = j = 0; i < heap.size(); i++)
+        for (i = j = 0; static_cast<size_t>(i) < heap.size(); i++)
             if (filt(heap[i])) {
                 heap[j] = heap[i];
                 indices[heap[i]] = j++;
