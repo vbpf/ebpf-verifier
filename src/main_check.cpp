@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
     app.add_flag("-f", global_options.print_failures, "Print verifier's failure logs");
     app.add_flag("-v", verbose, "Print both invariants and failures");
 
-    bool no_simplify;
+    bool no_simplify{false};
     app.add_flag("--no-simplify", no_simplify, "Do not simplify");
 
     std::string asmfile;
