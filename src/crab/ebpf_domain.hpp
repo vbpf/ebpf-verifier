@@ -575,13 +575,27 @@ class ebpf_domain_t final {
         return num_bytes == other.num_bytes && m_inv <= other.m_inv && other.m_inv <= m_inv;
     }
 
-    void operator|=(ebpf_domain_t other) {
+    void operator|=(ebpf_domain_t&& other) {
         if (is_bottom()) {
-            *this = std::move(other);
+            *this = other;
             return;
         }
         m_inv |= std::move(other.m_inv);
         num_bytes |= std::move(other.num_bytes);
+    }
+
+    void operator|=(const ebpf_domain_t& other) {
+        ebpf_domain_t tmp{other};
+        operator|=(std::move(tmp));
+    }
+
+    void operator|=(ebpf_domain_t& other) {
+        if (is_bottom()) {
+            *this = other;
+            return;
+        }
+        m_inv |= other.m_inv;
+        num_bytes |= other.num_bytes;
     }
 
     ebpf_domain_t operator|(ebpf_domain_t&& other) {
