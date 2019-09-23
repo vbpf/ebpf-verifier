@@ -15,11 +15,11 @@ pip3 install matplotlib   # for plotting the graphs
 ```
 
 ### Installation
-Clone, make and run:
+Clone and make:
 ```
 git clone --recurse-submodules https://github.com/vbpf/ebpf-verifier.git
 cd ebpf-verifier
-make
+cmake -B build && cmake --build build
 ```
 
 ### Running with Docker

@@ -7,4 +7,5 @@ check
 ./unit-test
 .vscode/*
 logs/*
+build
 html
