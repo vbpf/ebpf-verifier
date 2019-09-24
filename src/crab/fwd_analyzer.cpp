@@ -1,9 +1,9 @@
 #include "crab/fwd_analyzer.hpp"
 
+#include <utility>
+
 #include "crab/cfg.hpp"
 #include "crab/debug.hpp"
-#include "crab/stats.hpp"
-#include "crab/types.hpp"
 #include "crab/wto.hpp"
 
 #include "crab/ebpf_domain.hpp"
@@ -13,20 +13,20 @@ namespace crab {
 using domains::ebpf_domain_t;
 
 // Simple visitor to check if node is a member of the wto component.
-class member_component_visitor : public wto_component_visitor_t {
+class member_component_visitor final : public wto_component_visitor_t {
     label_t _node;
     bool _found;
 
   public:
-    member_component_visitor(label_t node) : _node(node), _found(false) {}
+    explicit member_component_visitor(label_t node) : _node(std::move(node)), _found(false) {}
 
-    void visit(wto_vertex_t& c) {
+    void visit(wto_vertex_t& c) override {
         if (!_found) {
             _found = (c.node() == _node);
         }
     }
 
-    void visit(wto_cycle_t& c) {
+    void visit(wto_cycle_t& c) override {
         if (!_found) {
             _found = (c.head() == _node);
             if (!_found) {
@@ -39,7 +39,7 @@ class member_component_visitor : public wto_component_visitor_t {
         }
     }
 
-    bool is_member() const { return _found; }
+    [[nodiscard]] bool is_member() const { return _found; }
 };
 
 class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t{
@@ -61,16 +61,16 @@ class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t
 
   private:
 
-    inline void set_pre(label_t label, const ebpf_domain_t& v) { _pre[label] = v; }
+    inline void set_pre(const label_t& label, const ebpf_domain_t& v) { _pre[label] = v; }
 
-    inline void transform_to_post(label_t label, ebpf_domain_t pre) {
+    inline void transform_to_post(const label_t& label, ebpf_domain_t pre) {
         for (const Instruction& statement : _cfg.get_node(label)) {
             std::visit(pre, statement);
         }
         _post[label] = std::move(pre);
     }
 
-    ebpf_domain_t extrapolate(label_t node, unsigned int iteration, ebpf_domain_t before, ebpf_domain_t after) {
+    ebpf_domain_t extrapolate(const label_t& node, unsigned int iteration, ebpf_domain_t before, const ebpf_domain_t& after) {
         if (iteration <= _widening_delay) {
             return before | after;
         } else {
@@ -78,7 +78,7 @@ class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t
         }
     }
 
-    ebpf_domain_t refine(label_t node, unsigned int iteration, ebpf_domain_t before, ebpf_domain_t after) {
+    static ebpf_domain_t refine(const label_t& node, unsigned int iteration, ebpf_domain_t before, const ebpf_domain_t& after) {
         if (iteration == 1) {
             return before & after;
         } else {
@@ -86,15 +86,15 @@ class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t
         }
     }
 
-    ebpf_domain_t join_all_prevs(label_t node) {
+    ebpf_domain_t join_all_prevs(const label_t& node) {
         ebpf_domain_t res = ebpf_domain_t::bottom();
-        for (label_t prev : _cfg.prev_nodes(node)) {
+        for (const label_t& prev : _cfg.prev_nodes(node)) {
             res |= get_post(prev);
         }
         return res;
     }
   public:
-    interleaved_fwd_fixpoint_iterator_t(cfg_t& cfg) : _cfg(cfg), _wto(cfg) {
+    explicit interleaved_fwd_fixpoint_iterator_t(cfg_t& cfg) : _cfg(cfg), _wto(cfg) {
         for (auto& [label, _] : _cfg) {
             _pre.emplace(label, ebpf_domain_t::bottom());
             _post.emplace(label, ebpf_domain_t::bottom());
@@ -102,13 +102,13 @@ class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t
         _pre[this->_cfg.entry()] = ebpf_domain_t::setup_entry();
     }
 
-    ebpf_domain_t get_pre(label_t node) { return _pre.at(node); }
+    ebpf_domain_t get_pre(const label_t& node) { return _pre.at(node); }
 
-    ebpf_domain_t get_post(label_t node) { return _post.at(node); }
+    ebpf_domain_t get_post(const label_t& node) { return _post.at(node); }
 
-    void visit(wto_vertex_t& vertex);
+    void visit(wto_vertex_t& vertex) override;
 
-    void visit(wto_cycle_t& cycle);
+    void visit(wto_cycle_t& cycle) override;
 
     friend std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg);
 };
@@ -158,7 +158,7 @@ void interleaved_fwd_fixpoint_iterator_t::visit(wto_cycle_t& cycle) {
         pre = get_pre(_cfg.entry());
     } else {
         wto_nesting_t cycle_nesting = _wto.nesting(head);
-        for (label_t prev : _cfg.prev_nodes(head)) {
+        for (const label_t& prev : _cfg.prev_nodes(head)) {
             if (!(_wto.nesting(prev) > cycle_nesting)) {
                 pre |= get_post(prev);
             }
@@ -182,7 +182,7 @@ void interleaved_fwd_fixpoint_iterator_t::visit(wto_cycle_t& cycle) {
             pre = std::move(new_pre);
             break;
         } else {
-            pre = extrapolate(head, iteration, pre, std::move(new_pre));
+            pre = extrapolate(head, iteration, pre, new_pre);
         }
     }
 
@@ -198,7 +198,7 @@ void interleaved_fwd_fixpoint_iterator_t::visit(wto_cycle_t& cycle) {
             // No more refinement possible(pre == new_pre)
             break;
         } else {
-            pre = refine(head, iteration, pre, std::move(new_pre));
+            pre = refine(head, iteration, pre, new_pre);
             set_pre(head, pre);
         }
     }
