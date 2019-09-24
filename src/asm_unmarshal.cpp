@@ -2,6 +2,7 @@
 #include <cstring> // memcmp
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "linux_ebpf.hpp"
@@ -9,7 +10,6 @@
 #include "spec_prototypes.hpp"
 
 #include "asm_syntax.hpp"
-#include "asm_unmarshal.hpp"
 
 using std::string;
 using std::vector;
@@ -22,10 +22,6 @@ void compare(string field, T actual, T expected) {
 
 struct InvalidInstruction : std::invalid_argument {
     InvalidInstruction(const char* what) : std::invalid_argument{what} {}
-};
-
-struct UnsupportedInstruction : std::invalid_argument {
-    UnsupportedInstruction(const char* what) : std::invalid_argument{what} {}
 };
 
 struct UnsupportedMemoryMode : std::invalid_argument {
@@ -64,7 +60,7 @@ static auto getMemWidth(uint8_t opcode) -> int {
 
 struct Unmarshaller {
     vector<vector<string>>& notes;
-    void note(string what) { notes.back().emplace_back(what); }
+    void note(const string& what) { notes.back().emplace_back(what); }
     void note_next_pc() { notes.emplace_back(); }
     Unmarshaller(vector<vector<string>>& notes) : notes{notes} { note_next_pc(); }
 
@@ -415,5 +411,5 @@ std::variant<InstructionSeq, std::string> unmarshal(raw_program raw_prog, vector
 
 std::variant<InstructionSeq, std::string> unmarshal(raw_program raw_prog) {
     vector<vector<string>> notes;
-    return unmarshal(raw_prog, notes);
+    return unmarshal(std::move(raw_prog), notes);
 }

@@ -156,7 +156,7 @@ std::vector<std::tuple<label_t, Instruction>> parse_program(std::istream& is) {
                 throw std::invalid_argument("duplicate labels");
             line = m.suffix();
         }
-        if (regex_search(line, m, regex("^\\s*(\\d+:)?\\s*"))) {
+        if (regex_search(line, m, regex(R"(^\s*(\d+:)?\s*)"))) {
             line = m.suffix();
         }
         if (line.empty())

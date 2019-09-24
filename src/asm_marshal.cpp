@@ -1,5 +1,4 @@
-#include <assert.h>
-#include <iostream>
+#include <cassert>
 #include <unordered_map>
 #include <variant>
 #include <vector>
@@ -65,7 +64,7 @@ static uint8_t imm(Un::Op op) {
 
 struct MarshalVisitor {
   private:
-    vector<ebpf_inst> makeLddw(Reg dst, bool isFd, int32_t imm, int32_t next_imm) {
+    static vector<ebpf_inst> makeLddw(Reg dst, bool isFd, int32_t imm, int32_t next_imm) {
         return {ebpf_inst{.opcode = static_cast<uint8_t>(EBPF_CLS_LD | width_to_opcode(8)),
                           .dst = dst.v,
                           .src = static_cast<uint8_t>(isFd ? 1 : 0),
@@ -115,7 +114,7 @@ struct MarshalVisitor {
             }};
         } else {
             // must be LE
-            uint8_t cls = static_cast<uint8_t>(b.op == Un::Op::LE64 ? EBPF_CLS_ALU64 : EBPF_CLS_ALU);
+            auto cls = static_cast<uint8_t>(b.op == Un::Op::LE64 ? EBPF_CLS_ALU64 : EBPF_CLS_ALU);
             return {ebpf_inst{
                 .opcode = static_cast<uint8_t>(cls | 0x8 | (0xd << 4)),
                 .dst = b.dst.v,
@@ -208,7 +207,7 @@ struct MarshalVisitor {
 
 vector<ebpf_inst> marshal(Instruction ins, pc_t pc) { return std::visit(MarshalVisitor{label_to_offset(pc)}, ins); }
 
-vector<ebpf_inst> marshal(vector<Instruction> insts) {
+vector<ebpf_inst> marshal(const vector<Instruction>& insts) {
     vector<ebpf_inst> res;
     pc_t pc = 0;
     for (auto ins : insts) {
