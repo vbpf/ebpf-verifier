@@ -1,25 +1,14 @@
-#include <assert.h>
-#include <inttypes.h>
+#include <cassert>
 
 #include <algorithm>
-#include <iostream>
 #include <list>
 #include <map>
 #include <optional>
-#include <set>
 #include <string>
 #include <vector>
 
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
-
-#include "asm_ostream.hpp"
-#include "spec_type_descriptors.hpp"
-
-#include "asm_syntax.hpp"
-#include "crab/cfg.hpp"
-#include "crab/debug.hpp"
-#include "crab/types.hpp"
 
 using std::list;
 using std::optional;
