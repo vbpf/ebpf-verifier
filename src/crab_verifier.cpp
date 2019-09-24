@@ -2,8 +2,7 @@
  *  This module is about selecting the numerical and memory domains, initiating
  *  the verification process and returning the results.
  **/
-#include <assert.h>
-#include <inttypes.h>
+#include <cinttypes>
 
 #include <ctime>
 #include <functional>
@@ -11,21 +10,16 @@
 #include <map>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include <boost/lexical_cast.hpp>
 
 #include "crab/ebpf_domain.hpp"
 #include "crab/cfg.hpp"
-#include "crab/debug.hpp"
 #include "crab/fwd_analyzer.hpp"
-#include "crab/split_dbm.hpp"
-#include "crab/stats.hpp"
-#include "crab/types.hpp"
 
 #include "asm_syntax.hpp"
-#include "config.hpp"
-#include "crab_verifier.hpp"
 #include "spec_type_descriptors.hpp"
 
 using std::string;
@@ -40,21 +34,16 @@ using crab::domains::ebpf_domain_t;
 
 // Toy database to store invariants.
 struct checks_db final {
-    enum class check_kind_t { Error, Warning, Redundant, Unreachable };
     std::map<label_t, std::vector<std::string>> m_db;
-    int total_errors{};
     int total_warnings{};
-    int total_redundant{};
     int total_unreachable{};
 
-    void add(label_t label, std::string msg) {
+    void add(const label_t& label, const std::string& msg) {
         m_db[label].emplace_back(msg);
     }
 
-    void add_error(label_t label, std::string msg) { add(label,       msg); total_errors++; }
-    void add_warning(label_t label, std::string msg) { add(label,     msg); total_warnings++; }
-    void add_redundant(label_t label, std::string msg) { add(label,   msg); total_redundant++; }
-    void add_unreachable(label_t label, std::string msg) { add(label, msg); total_unreachable++; }
+    void add_warning(const label_t& label, const std::string& msg) { add(label,     msg); total_warnings++; }
+    void add_unreachable(const label_t& label, const std::string& msg) { add(label, msg); total_unreachable++; }
 
     checks_db() = default;
 };
@@ -73,7 +62,7 @@ static std::vector<string> sorted_labels(cfg_t& cfg) {
     for (const auto& [label, block] : cfg)
         labels.push_back(label);
 
-    std::sort(labels.begin(), labels.end(), [](string a, string b) {
+    std::sort(labels.begin(), labels.end(), [](const string& a, const string& b) {
         if (first_num(a) < first_num(b))
             return true;
         if (first_num(a) > first_num(b))
@@ -89,7 +78,7 @@ static checks_db analyze(cfg_t& cfg) {
     auto [preconditions, postconditions] = crab::run_forward_analyzer(cfg);
 
     checks_db m_db;
-    for (label_t label : sorted_labels(cfg)) {
+    for (const label_t& label : sorted_labels(cfg)) {
         basic_block_t& bb = cfg.get_node(label);
 
         if (global_options.print_invariants) {
@@ -101,7 +90,7 @@ static checks_db analyze(cfg_t& cfg) {
         if (std::none_of(bb.begin(), bb.end(), [](const auto& s) { return std::holds_alternative<Assert>(s); }))
             continue;
         ebpf_domain_t from_inv(preconditions.at(label));
-        from_inv.set_require_check([&m_db, label](auto& inv, const linear_constraint_t& cst, std::string s) {
+        from_inv.set_require_check([&m_db, label](auto& inv, const linear_constraint_t& cst, const std::string& s) {
             if (inv.is_bottom())
                 return;
             if (cst.is_contradiction()) {
@@ -131,7 +120,7 @@ static checks_db analyze(cfg_t& cfg) {
 }
 
 std::tuple<bool, double> abs_validate(cfg_t& simple_cfg, program_info info) {
-    global_program_info = info;
+    global_program_info = std::move(info);
     cfg_t& cfg = simple_cfg;
 
     using namespace std;
@@ -148,7 +137,7 @@ std::tuple<bool, double> abs_validate(cfg_t& simple_cfg, program_info info) {
         std::cout << "\n";
         for (auto [label, messages] : db.m_db) {
             std::cout << label << ":\n";
-            for (auto msg : messages)
+            for (const auto& msg : messages)
                 std::cout << "  " << msg << "\n";
         }
         std::cout << "\n";
