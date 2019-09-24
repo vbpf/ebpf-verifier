@@ -1,15 +1,10 @@
-#include <assert.h>
-#include <inttypes.h>
+#include <cinttypes>
 
-#include <algorithm>
-#include <functional>
-#include <iostream>
-#include <string>
+#include <utility>
 #include <vector>
 
 #include "asm_ostream.hpp"
 #include "asm_syntax.hpp"
-#include "config.hpp"
 #include "crab/cfg.hpp"
 #include "spec_type_descriptors.hpp"
 
@@ -21,14 +16,14 @@ class AssertExtractor {
     program_info info;
     const bool is_privileged = info.program_type == BpfProgType::KPROBE;
 
-    auto type_of(Reg r, TypeGroup t) { return Assert{TypeConstraint{r, t}}; };
+    static auto type_of(Reg r, TypeGroup t) { return Assert{TypeConstraint{r, t}}; };
 
-    void check_access(vector<Assert>& assumptions, Reg reg, int offset, Value width, bool or_null = false) {
+    static void check_access(vector<Assert>& assumptions, Reg reg, int offset, Value width, bool or_null = false) {
         assumptions.push_back(Assert{ValidAccess{reg, offset, width, or_null}});
     }
 
   public:
-    AssertExtractor(program_info info) : info{info} {}
+    explicit AssertExtractor(program_info info) : info{std::move(info)} {}
 
     template <typename T>
     vector<Assert> operator()(T ins) {
@@ -150,7 +145,7 @@ class AssertExtractor {
         return res;
     };
 
-    void same_type(vector<Assert>& res, Reg r1, Reg r2) { res.push_back(Assert{Comparable{r1, r2}}); }
+    static void same_type(vector<Assert>& res, Reg r1, Reg r2) { res.push_back(Assert{Comparable{r1, r2}}); }
 
     vector<Assert> operator()(Bin ins) {
         switch (ins.op) {
@@ -180,12 +175,12 @@ class AssertExtractor {
     }
 };
 
-void explicate_assertions(cfg_t& cfg, program_info info) {
+void explicate_assertions(cfg_t& cfg, const program_info& info) {
     for (auto& [this_label, bb] : cfg) {
         vector<Instruction> insts;
-        for (auto ins : vector<Instruction>(bb.begin(), bb.end())) {
+        for (const auto& ins : vector<Instruction>(bb.begin(), bb.end())) {
             for (auto a : std::visit(AssertExtractor{info}, ins))
-                insts.push_back(a);
+                insts.emplace_back(a);
             insts.push_back(ins);
         }
         bb.swap_instructions(insts);

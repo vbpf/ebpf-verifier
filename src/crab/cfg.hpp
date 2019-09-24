@@ -641,7 +641,7 @@ cfg_t to_nondet(const cfg_t&);
 std::vector<std::string> stats_headers();
 std::map<std::string, int> collect_stats(const cfg_t&);
 
-void explicate_assertions(cfg_t& cfg, program_info info);
+void explicate_assertions(cfg_t& cfg, const program_info& info);
 
 void print(const cfg_t& cfg, bool nondet, std::ostream& out);
 void print(const cfg_t& cfg, bool nondet, std::string outfile);
