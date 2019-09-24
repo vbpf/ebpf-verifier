@@ -47,7 +47,7 @@ static int do_bpf(bpf_cmd cmd, union bpf_attr& attr) { return syscall(321, cmd, 
  *  This function requires admin privileges.
  */
 int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries) {
-    union bpf_attr attr;
+    union bpf_attr attr{};
     memset(&attr, '\0', sizeof(attr));
     attr.map_type = map_type;
     attr.key_size = key_size;
@@ -80,7 +80,7 @@ std::tuple<bool, double> bpf_verify_program(BpfProgType type, const std::vector<
     buf[0] = 0;
     memset(buf.data(), '\0', buf.size());
 
-    union bpf_attr attr;
+    union bpf_attr attr{};
     memset(&attr, '\0', sizeof(attr));
     attr.prog_type = (__u32)to_linuxtype(type);
     attr.insn_cnt = (__u32)raw_prog.size();
