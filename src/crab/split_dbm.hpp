@@ -321,6 +321,7 @@ class SplitDBM final : public writeable {
     void operator-=(variable_t v);
 
     void assign(variable_t x, const linear_expression_t& e);
+    void assign(variable_t x, signed long long int n) { assign(x, linear_expression_t(n)); }
 
     void apply(arith_binop_t op, variable_t x, variable_t y, variable_t z);
 

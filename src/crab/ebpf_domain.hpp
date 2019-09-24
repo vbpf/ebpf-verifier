@@ -856,7 +856,7 @@ class ebpf_domain_t final {
 
     void havoc(variable_t v) { m_inv -= v; }
     void assign(variable_t lhs, variable_t rhs) { m_inv.assign(lhs, rhs); }
-    void assign(variable_t lhs, number_t rhs) { m_inv.assign(lhs, rhs); }
+    void assign(variable_t lhs, number_t rhs) { m_inv.assign(lhs, linear_expression_t(rhs)); }
 
     void no_pointer(int i) {
         assign(reg_type(i), T_NUM);

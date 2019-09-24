@@ -45,6 +45,7 @@
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include <boost/container/flat_map.hpp>
@@ -68,11 +69,11 @@ class linear_expression_t final {
     map_ptr _map;
     number_t _cst;
 
-    linear_expression_t(map_ptr map, number_t cst) : _map(map), _cst(cst) {}
+    linear_expression_t(map_ptr map, number_t cst) : _map(std::move(map)), _cst(std::move(cst)) {}
 
-    linear_expression_t(const map_t& map, number_t cst) : _map(std::make_shared<map_t>()), _cst(cst) { *this->_map = map; }
+    linear_expression_t(const map_t& map, number_t cst) : _map(std::make_shared<map_t>()), _cst(std::move(cst)) { *this->_map = map; }
 
-    void add(variable_t x, number_t n) {
+    void add(variable_t x, const number_t& n) {
         typename map_t::iterator it = this->_map->find(x);
         if (it != this->_map->end()) {
             number_t r = it->second + n;
@@ -97,7 +98,7 @@ class linear_expression_t final {
     linear_expression_t(linear_expression_t&& other) = default;
     linear_expression_t(const linear_expression_t& other) = default;
 
-    linear_expression_t(number_t n) : _map(std::make_shared<map_t>()), _cst(n) {}
+    explicit linear_expression_t(number_t n) : _map(std::make_shared<map_t>()), _cst(std::move(n)) {}
 
     linear_expression_t(signed long long int n) : _map(std::make_shared<map_t>()), _cst(number_t(n)) {}
 
@@ -105,7 +106,7 @@ class linear_expression_t final {
         this->_map->insert(pair_t(x, number_t(1)));
     }
 
-    linear_expression_t(number_t n, variable_t x) : _map(std::make_shared<map_t>()), _cst(0) {
+    linear_expression_t(const number_t& n, variable_t x) : _map(std::make_shared<map_t>()), _cst(0) {
         this->_map->insert(pair_t(x, n));
     }
 
@@ -161,7 +162,7 @@ class linear_expression_t final {
         }
     }
 
-    bool is_constant() const { return (this->_map->size() == 0); }
+    bool is_constant() const { return (this->_map->empty()); }
 
     number_t constant() const { return this->_cst; }
 
@@ -193,7 +194,7 @@ class linear_expression_t final {
     }
 
     linear_expression_t operator+(number_t n) const {
-        linear_expression_t r(this->_map, this->_cst + n);
+        linear_expression_t r(this->_map, this->_cst + std::move(n));
         return r;
     }
 
@@ -213,7 +214,7 @@ class linear_expression_t final {
         return r;
     }
 
-    linear_expression_t operator-(number_t n) const { return this->operator+(-n); }
+    linear_expression_t operator-(const number_t& n) const { return this->operator+(-n); }
 
     linear_expression_t operator-(int n) const { return this->operator+(-number_t(n)); }
 
@@ -233,7 +234,7 @@ class linear_expression_t final {
         return r;
     }
 
-    linear_expression_t operator*(number_t n) const {
+    linear_expression_t operator*(const number_t& n) const {
         if (n == 0) {
             return linear_expression_t();
         } else {
@@ -258,20 +259,6 @@ class linear_expression_t final {
         return variables;
     }
 
-    std::optional<variable_t> get_variable() const {
-        if (this->is_constant())
-            return {};
-        else {
-            if ((this->constant() == 0) && (this->size() == 1)) {
-                const_iterator it = this->begin();
-                number_t coeff = it->second;
-                if (coeff == 1)
-                    return std::optional<variable_t>(it->first);
-            }
-            return {};
-        }
-    }
-
     void write(std::ostream& o) const {
         bool start = true;
         for (auto [v, n] : *this) {
@@ -286,10 +273,10 @@ class linear_expression_t final {
             o << v;
             start = false;
         }
-        if (this->_cst > 0 && this->_map->size() > 0) {
+        if (this->_cst > 0 && !this->_map->empty()) {
             o << "+";
         }
-        if (this->_cst != 0 || this->_map->size() == 0) {
+        if (this->_cst != 0 || this->_map->empty()) {
             o << this->_cst;
         }
     }
@@ -342,11 +329,11 @@ class linear_constraint_t final {
     linear_constraint_t(linear_constraint_t&& other) = default;
     linear_constraint_t(const linear_constraint_t& other) = default;
 
-    linear_constraint_t(const linear_expression_t& expr, constraint_kind_t kind)
-        : _kind(kind), _expr(expr), _signedness(true) {}
+    linear_constraint_t(linear_expression_t  expr, constraint_kind_t kind)
+        : _kind(kind), _expr(std::move(expr)), _signedness(true) {}
 
-    linear_constraint_t(const linear_expression_t& expr, constraint_kind_t kind, bool signedness)
-        : _kind(kind), _expr(expr), _signedness(signedness) {
+    linear_constraint_t(linear_expression_t  expr, constraint_kind_t kind, bool signedness)
+        : _kind(kind), _expr(std::move(expr)), _signedness(signedness) {
         if (_kind != INEQUALITY && _kind != STRICT_INEQUALITY) {
             CRAB_ERROR("Only inequalities can have signedness information");
         }
@@ -484,18 +471,9 @@ inline linear_constraint_t strict_to_non_strict_inequality(const linear_constrai
 
 inline std::size_t hash_value(const linear_constraint_t& e) { return e.hash(); }
 
-inline linear_expression_t var_sub(variable_t x, number_t n) { return linear_expression_t(x).operator-(n); }
+inline linear_expression_t var_sub(variable_t x, const number_t& n) { return linear_expression_t(x).operator-(n); }
 inline linear_expression_t var_sub(variable_t x, variable_t y) { return linear_expression_t(x).operator-(y); }
-inline linear_expression_t var_add(variable_t x, number_t n) { return linear_expression_t(x).operator+(n); }
+inline linear_expression_t var_add(variable_t x, number_t n) { return linear_expression_t(x).operator+(std::move(n)); }
 inline linear_expression_t var_add(variable_t x, variable_t y) { return linear_expression_t(x).operator+(y); }
-inline linear_expression_t var_mul(number_t n, variable_t x) { return linear_expression_t(n, x); }
-inline linear_constraint_t var_eq(variable_t x, variable_t y) {
-    return linear_constraint_t(var_sub(x, y), linear_constraint_t::EQUALITY);
-}
-inline linear_constraint_t exp_lte(const linear_expression_t& e, number_t n) {
-    return linear_constraint_t(e.operator-(n), linear_constraint_t::INEQUALITY);
-}
-inline linear_constraint_t exp_gte(const linear_expression_t& e, number_t n) {
-    return linear_constraint_t(linear_expression_t(n).operator-(e), linear_constraint_t::INEQUALITY);
-}
+inline linear_expression_t var_mul(const number_t& n, variable_t x) { return linear_expression_t(n, x); }
 } // namespace crab
