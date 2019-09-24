@@ -247,8 +247,6 @@ class offset_map_t final {
         }
     }
 
-    std::vector<cell_t> get_all_cells() const;
-
     // Return in out all cells that might overlap with (o, size).
     std::vector<cell_t> get_overlap_cells(offset_t o, unsigned size);
 

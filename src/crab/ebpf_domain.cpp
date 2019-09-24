@@ -70,17 +70,6 @@ cell_t offset_map_t::mk_cell(offset_t o, unsigned size) {
     return c;
 }
 
-std::vector<cell_t> offset_map_t::get_all_cells() const {
-    std::vector<cell_t> res;
-    for (auto it = _map.begin(), et = _map.end(); it != et; ++it) {
-        auto const& o_cells = it->second;
-        for (auto& c : o_cells) {
-            res.push_back(c);
-        }
-    }
-    return res;
-}
-
 // Return all cells that might overlap with (o, size).
 std::vector<cell_t> offset_map_t::get_overlap_cells(offset_t o, unsigned size) {
     std::vector<cell_t> out;
