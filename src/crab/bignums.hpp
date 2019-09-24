@@ -75,7 +75,7 @@ class z_number final {
     mpz_class _n;
 
   public:
-    z_number(mpz_class n);
+    explicit z_number(mpz_class n);
 
     // The mpz_class constructor can take any standard C++ type except
     // long long.
@@ -94,7 +94,7 @@ class z_number final {
 
     z_number();
 
-    z_number(std::string s);
+    explicit z_number(std::string s);
 
     z_number(signed long long int n);
 
@@ -179,7 +179,7 @@ class z_number final {
     z_number operator>>(z_number x) const;
     z_number operator>>(int x) const { return operator>>(z_number(x)); }
 
-    z_number fill_ones() const;
+    [[nodiscard]] z_number fill_ones() const;
 
     void write(std::ostream& o) const;
 
