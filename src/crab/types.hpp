@@ -23,7 +23,7 @@ using number_t = z_number;
 class writeable {
   public:
     virtual void write(std::ostream& o) = 0;
-    virtual ~writeable() {}
+    virtual ~writeable() = default;
 }; // class writeable
 
 inline std::ostream& operator<<(std::ostream& o, writeable& x) {

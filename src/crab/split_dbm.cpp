@@ -52,7 +52,6 @@ void SplitDBM::close_over_edge(vert_id ii, vert_id jj) {
                     continue;
 
                 w = wt_sij;
-                // g_excl.set_edge(se, wt_sij, jj);
             } else {
                 g_excl.add_edge(se, wt_sij, jj);
             }
@@ -790,18 +789,13 @@ SplitDBM SplitDBM::operator&(SplitDBM o) {
 }
 
 void SplitDBM::operator-=(variable_t v) {
-    CrabStats::count("SplitDBM.count.forget");
-    ScopedCrabStats __st__("SplitDBM.forget");
-
     if (is_bottom())
         return;
     normalize();
 
     auto it = vert_map.find(v);
     if (it != vert_map.end()) {
-        CRAB_LOG("zones-split", std::cout << "Before forget " << it->second << ": " << g << "\n");
         g.forget(it->second);
-        CRAB_LOG("zones-split", std::cout << "After: " << g << "\n");
         rev_map[it->second] = std::nullopt;
         vert_map.erase(v);
     }
@@ -1187,9 +1181,6 @@ void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, const numbe
 }
 
 void SplitDBM::forget(const variable_vector_t& variables) {
-    CrabStats::count("SplitDBM.count.forget");
-    ScopedCrabStats __st__("SplitDBM.forget");
-
     if (is_bottom() || is_top()) {
         return;
     }

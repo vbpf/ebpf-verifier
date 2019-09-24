@@ -27,9 +27,9 @@ class thresholds_t final {
     unsigned int m_size;
 
   public:
-    thresholds_t(int size = UINT_MAX) : m_size(size) {
+    explicit thresholds_t(int size = UINT_MAX) : m_size(size) {
         m_thresholds.push_back(bound_t::minus_infinity());
-        m_thresholds.push_back(0);
+        m_thresholds.emplace_back(0);
         m_thresholds.push_back(bound_t::plus_infinity());
     }
 
@@ -64,9 +64,9 @@ class wto_thresholds_t final : public wto_component_visitor_t {
   public:
     wto_thresholds_t(cfg_t& cfg, size_t max_size) : m_cfg(cfg), m_max_size(max_size) {}
 
-    void visit(wto_vertex_t& vertex);
+    void visit(wto_vertex_t& vertex) override;
 
-    void visit(wto_cycle_t& cycle);
+    void visit(wto_cycle_t& cycle) override;
 
     void write(std::ostream& o) const;
 

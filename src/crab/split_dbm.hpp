@@ -32,7 +32,6 @@
 #include "crab/interval.hpp"
 #include "crab/linear_constraints.hpp"
 #include "crab/safeint.hpp"
-#include "crab/sparse_graph.hpp"
 #include "crab/stats.hpp"
 #include "crab/types.hpp"
 

@@ -439,7 +439,6 @@ class GraphOps {
   public:
     using Wt = typename Gr::Wt;
     // The following code assumes vert_id is an integer.
-    //    using graph_t = SparseWtGraph<Wt>;
     using graph_t = Gr;
     using vert_id = typename graph_t::vert_id;
     using mut_val_ref_t = typename graph_t::mut_val_ref_t;
