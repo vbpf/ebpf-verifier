@@ -57,12 +57,10 @@ template <typename Value>
 class partial_order {
   public:
     virtual bool leq(Value, Value) = 0;
+    // True if the default value is the top element for the partial order (false if it is bottom)
+    virtual bool default_is_top() = 0;
 
-    virtual bool default_is_top() = 0; // True if the default value is the top
-                                       // element for the partial order (false if
-                                       // it is bottom)
-
-    virtual ~partial_order() {}
+    virtual ~partial_order() = default;
 
 }; // class partial_order
 
@@ -71,7 +69,7 @@ class unary_action {
   public:
     virtual std::optional<Value> apply(Value) = 0;
 
-    virtual ~unary_action() {}
+    virtual ~unary_action() = default;
 
 }; // class unary_action
 
@@ -84,10 +82,10 @@ class binary_action {
     virtual std::pair<bool, std::optional<Value>> apply(Value,
                                                         Value) = 0; // The operation is idempotent: apply(x, x) = x
 
-    virtual bool default_is_absorbing() = 0; // True if the default value is
-                                             // absorbing (false if it is neutral)
+    // True if the default value is absorbing (false if it is neutral)
+    virtual bool default_is_absorbing() = 0;
 
-    virtual ~binary_action() {}
+    virtual ~binary_action() = default;
 
 }; // class binary_action
 
@@ -96,10 +94,10 @@ class key_binary_action {
   public:
     virtual std::optional<Value> apply(Key, Value, Value) = 0; // The operation is idempotent: apply(x, x) = x
 
-    virtual bool default_is_absorbing() = 0; // True if the default value is
-                                             // absorbing (false if it is neutral)
+    // True if the default value is absorbing (false if it is neutral)
+    virtual bool default_is_absorbing() = 0;
 
-    virtual ~key_binary_action() {}
+    virtual ~key_binary_action() = default;
 
 }; // class binary_action
 
@@ -167,7 +165,7 @@ class tree {
   public:
     bool is_node() const { return !is_leaf(); }
 
-    virtual ~tree() {}
+    virtual ~tree() = default;
 
   public:
     class iterator : public boost::iterator_facade<iterator, binding_t, boost::forward_traversal_tag, binding_t> {
@@ -182,9 +180,9 @@ class tree {
         branching_stack_t _stack;
 
       public:
-        iterator() {}
+        iterator() = default;
 
-        iterator(tree_ptr t) { this->look_for_next_leaf(t); }
+        explicit iterator(tree_ptr t) { this->look_for_next_leaf(t); }
 
       private:
         void look_for_next_leaf(tree_ptr t) {
@@ -276,15 +274,15 @@ class node final : public tree<Key, Value> {
     tree_ptr _left_branch;
     tree_ptr _right_branch;
 
-  private:
-    node();
-    node(const node_t&);
-    node_t& operator=(const node_t&);
+  public:
+    node() = delete;
+    node(const node_t&) = delete;
+    node_t& operator=(const node_t&) = delete;
 
   public:
     node(index_t prefix_, index_t branching_bit_, tree_ptr left_branch_, tree_ptr right_branch_)
-        : _prefix(prefix_), _branching_bit(branching_bit_), _left_branch(left_branch_), _right_branch(right_branch_) {
-        this->_size = 0;
+        : _size(0), _prefix(prefix_), _branching_bit(branching_bit_), _left_branch(left_branch_),
+          _right_branch(right_branch_) {
         if (left_branch_) {
             this->_size += left_branch_->size();
         }
@@ -336,10 +334,10 @@ class leaf final : public tree<Key, Value> {
     Key _key;
     Value _value;
 
-  private:
-    leaf();
-    leaf(const leaf_t&);
-    leaf_t& operator=(const leaf_t&);
+  public:
+    leaf() = delete;
+    leaf(const leaf_t&) = delete;
+    leaf_t& operator=(const leaf_t&) = delete;
 
   public:
     leaf(const Key& key_, const Value& value_) : _key(key_), _value(value_) {}
@@ -372,28 +370,25 @@ template <typename Key, typename Value>
 typename tree<Key, Value>::ptr tree<Key, Value>::make_node(index_t prefix, index_t branching_bit,
                                                            typename tree<Key, Value>::ptr left_branch,
                                                            typename tree<Key, Value>::ptr right_branch) {
-    using tree_ptr = typename tree<Key, Value>::ptr;
-    tree_ptr n;
     if (left_branch) {
         if (right_branch) {
-            n = tree_ptr(new node<Key, Value>(prefix, branching_bit, left_branch, right_branch));
+            return
+                typename tree<Key, Value>::ptr(new node<Key, Value>(prefix, branching_bit, left_branch, right_branch));
         } else {
-            n = left_branch;
+            return left_branch;
         }
     } else {
         if (right_branch) {
-            n = right_branch;
+            return right_branch;
         } else {
-            // both branches are empty
+            return {}; // both branches are empty
         }
     }
-    return n;
 }
 
 template <typename Key, typename Value>
 typename tree<Key, Value>::ptr tree<Key, Value>::make_leaf(const Key& key, const Value& value) {
-    using tree_ptr = typename tree<Key, Value>::ptr;
-    return tree_ptr(new leaf<Key, Value>(key, value));
+    return typename tree<Key, Value>::ptr(new leaf<Key, Value>(key, value));
 }
 
 template <typename Key, typename Value>
@@ -1093,12 +1088,12 @@ class patricia_tree final {
         typename tree_t::iterator _it;
 
       public:
-        iterator() {}
+        iterator() = default;
 
-        iterator(const patricia_tree_t& pt) : _it(pt._tree) {}
+        explicit iterator(const patricia_tree_t& pt) : _it(pt._tree) {}
 
       private:
-        iterator(tree_ptr t) : _it(t) {}
+        explicit iterator(tree_ptr t) : _it(t) {}
 
         void increment() { ++this->_it; }
 
@@ -1116,7 +1111,7 @@ class patricia_tree final {
     }; // class insert_op
 
   public:
-    patricia_tree() {}
+    patricia_tree() = default;
 
     patricia_tree(const patricia_tree_t& t) : _tree(t._tree) {}
 
@@ -1155,9 +1150,6 @@ class patricia_tree final {
             return false;
         }
     }
-    void merge_with(const patricia_tree_t& t, key_binary_action_t& op) {
-        this->_tree = tree_t::key_merge(this->_tree, t._tree, op, true);
-    }
 
     void insert(const Key& key, const Value& value) {
         insert_op op;
@@ -1165,8 +1157,6 @@ class patricia_tree final {
         res = tree_t::insert(this->_tree, key, value, op, true);
         this->_tree = res.second;
     }
-
-    void transform(unary_action_t& op) { this->_tree = tree_t::transform(this->_tree, op); }
 
     void remove(const Key& key) { this->_tree = tree_t::remove(this->_tree, key); }
 
@@ -1196,19 +1186,18 @@ class patricia_tree_set final {
 
   public:
     class iterator : public boost::iterator_facade<iterator, Element, boost::forward_traversal_tag, Element> {
-        friend class boost::iterator_core_access;
         friend class patricia_tree_set<Element>;
 
       private:
         typename patricia_tree_t::iterator _it;
 
       public:
-        iterator() {}
+        iterator() = default;
 
-        iterator(const patricia_tree_set_t& ptset) : _it(ptset._tree) {}
+        explicit iterator(const patricia_tree_set_t& ptset) : _it(ptset._tree) {}
 
       private:
-        iterator(patricia_tree_t t) : _it(t) {}
+        explicit iterator(patricia_tree_t t) : _it(t) {}
 
         void increment() { ++this->_it; }
 
@@ -1257,11 +1246,8 @@ class patricia_tree_set final {
         return t1;
     }
 
-  private:
-    patricia_tree_set(patricia_tree_t t) : _tree(t) {}
-
   public:
-    patricia_tree_set() {}
+    patricia_tree_set() = default;
 
     patricia_tree_set(const patricia_tree_set_t& s) : _tree(s._tree) {}
 
@@ -1270,7 +1256,7 @@ class patricia_tree_set final {
         return *this;
     }
 
-    patricia_tree_set(const Element& e) { this->_tree.insert(e, true); }
+    explicit patricia_tree_set(const Element& e) { this->_tree.insert(e, true); }
 
     std::size_t size() const { return this->_tree.size(); }
 
@@ -1360,6 +1346,5 @@ class patricia_tree_set final {
         s.write(o);
         return o;
     }
-
-}; // class patricia_tree_set
+};
 } // namespace crab
