@@ -1,15 +1,13 @@
 #include <iostream>
 #include <vector>
 
-#include "crab/debug.hpp"
-
 #include <boost/functional/hash.hpp>
 
 #include "CLI11.hpp"
 
+#include "crab/debug.hpp"
 #include "asm_files.hpp"
 #include "asm_ostream.hpp"
-#include "asm_parse.hpp"
 #include "asm_syntax.hpp"
 #include "asm_unmarshal.hpp"
 #include "config.hpp"
@@ -17,7 +15,6 @@
 #include "crab_verifier.hpp"
 #include "linux_ebpf.hpp"
 #include "memsize.hpp"
-
 #include "linux_verifier.hpp"
 
 using std::string;
@@ -73,7 +70,7 @@ int main(int argc, char** argv) {
         if (domain == "stats") {
             std::cout << "hash";
             std::cout << ",instructions";
-            for (string h : stats_headers()) {
+            for (const string& h : stats_headers()) {
                 std::cout << "," << h;
             }
         } else {
@@ -92,7 +89,7 @@ int main(int argc, char** argv) {
             std::cout << "please specify a section\n";
             std::cout << "available sections:\n";
         }
-        for (raw_program raw_prog : raw_progs) {
+        for (const raw_program& raw_prog : raw_progs) {
             std::cout << raw_prog.section << " ";
         }
         std::cout << "\n";
@@ -137,7 +134,7 @@ int main(int argc, char** argv) {
 
     if (domain == "stats") {
         std::cout << std::hex << hash(raw_prog) << std::dec << "," << instruction_count;
-        for (string h : stats_headers()) {
+        for (const string& h : stats_headers()) {
             std::cout << "," << stats.at(h);
         }
         std::cout << "\n";
