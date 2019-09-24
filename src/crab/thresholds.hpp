@@ -37,10 +37,6 @@ class thresholds_t final {
 
     void add(bound_t v1);
 
-    bound_t get_next(bound_t v1) const;
-
-    bound_t get_prev(bound_t v1) const;
-
     void write(std::ostream& o) const;
 };
 
@@ -62,9 +58,6 @@ class wto_thresholds_t final : public wto_component_visitor_t {
     std::unordered_map<label_t, thresholds_t> m_head_to_thresholds;
     // the top of the stack is the current wto head
     std::vector<label_t> m_stack;
-
-    void extract_bounds(const linear_expression_t& e, bool is_strict, std::vector<number_t>& lb_bounds,
-                        std::vector<number_t>& ub_bounds) const;
 
     void get_thresholds(const basic_block_t& bb, thresholds_t& thresholds) const;
 

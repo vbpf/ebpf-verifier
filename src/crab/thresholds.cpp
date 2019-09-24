@@ -33,31 +33,6 @@ void thresholds_t::add(bound_t v1) {
     }
 }
 
-bound_t thresholds_t::get_next(bound_t v1) const {
-    if (v1.is_plus_infinity())
-        return v1;
-    bound_t v = (v1);
-    bound_t t = m_thresholds[m_thresholds.size() - 1];
-    auto ub = std::upper_bound(m_thresholds.begin(), m_thresholds.end(), v);
-    if (ub != m_thresholds.end())
-        t = *ub;
-    return (t);
-}
-
-bound_t thresholds_t::get_prev(bound_t v1) const {
-    if (v1.is_minus_infinity())
-        return v1;
-    bound_t v = (v1);
-    auto lb = std::lower_bound(m_thresholds.begin(), m_thresholds.end(), v);
-    if (lb != m_thresholds.end()) {
-        --lb;
-        if (lb != m_thresholds.end()) {
-            return (*lb);
-        }
-    }
-    return (m_thresholds[0]);
-}
-
 void thresholds_t::write(std::ostream& o) const {
     o << "{";
     for (typename std::vector<bound_t>::const_iterator it = m_thresholds.begin(), et = m_thresholds.end(); it != et;) {
@@ -70,47 +45,8 @@ void thresholds_t::write(std::ostream& o) const {
     o << "}";
 }
 
-void wto_thresholds_t::extract_bounds(const linear_expression_t& e, bool is_strict, std::vector<number_t>& lb_bounds,
-                                      std::vector<number_t>& ub_bounds) const {
-    if (e.size() == 1) {
-        auto [var, coeff] = *e.begin();
-        number_t k = -e.constant();
-        if (coeff > 0) {
-            // e is c*var <= k and c > 0  <---> var <= k/coeff
-            ub_bounds.push_back(!is_strict ? k / coeff : (k / coeff) - 1);
-            return;
-        } else if (coeff < 0) {
-            // e is c*var <= k  and c < 0 <---> var >= k/coeff
-            lb_bounds.push_back(!is_strict ? k / coeff : (k / coeff) + 1);
-            return;
-        }
-    }
-}
-
 void wto_thresholds_t::get_thresholds(const basic_block_t& bb, thresholds_t& thresholds) const {
 
-    // std::vector<number_t> lb_bounds, ub_bounds;
-    // for (auto const& i : boost::make_iterator_range(bb.begin(), bb.end())) {
-    //     if (std::holds_alternative<Assume>(i)) {
-    //         auto cst = std::get<Assume>(i).cond;
-    //         if (is_inequality(cst.op) || is_inequality(cst.op)) {
-    //             extract_bounds(cst.expression(), is_inequality(cst.op), lb_bounds, ub_bounds);
-    //         }
-    //     }
-    // }
-
-    // // Assuming that the variable is incremented/decremented by
-    // // some constant k, then we want to adjust the threshold to
-    // // +/- k so that we have more chance to stabilize in one
-    // // iteration after widening has been applied.
-    // int k = 1;
-    // for (auto n : lb_bounds) {
-    //     thresholds.add(bound_t(n - k));
-    // }
-
-    // for (auto n : ub_bounds) {
-    //     thresholds.add(bound_t(n + k));
-    // }
 }
 
 void wto_thresholds_t::visit(wto_vertex_t& vertex) {

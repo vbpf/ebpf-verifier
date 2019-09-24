@@ -41,7 +41,7 @@ class variable_t final {
     static std::vector<std::string> names;
 
     explicit variable_t(index_t id) : _id(id) {}
-    static variable_t make(std::string name);
+    static variable_t make(const std::string& name);
 
   public:
     variable_t(const variable_t& o) = default;

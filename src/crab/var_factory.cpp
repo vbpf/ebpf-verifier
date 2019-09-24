@@ -6,7 +6,7 @@
 
 namespace crab {
 
-variable_t variable_t::make(std::string name) {
+variable_t variable_t::make(const std::string& name) {
     auto it = std::find(names.begin(), names.end(), name);
     if (it == names.end()) {
         names.emplace_back(name);
