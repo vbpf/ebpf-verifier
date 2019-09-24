@@ -71,7 +71,7 @@ class Heap {
     }
 
   public:
-    Heap(const Comp& c) : lt(c) {}
+    explicit Heap(const Comp& c) : lt(c) {}
 
     int size() const { return heap.size(); }
     bool empty() const { return heap.size() == 0; }
@@ -84,12 +84,6 @@ class Heap {
     void decrease(int n) {
         assert(inHeap(n));
         percolateUp(indices[n]);
-    }
-
-    // RENAME WHEN THE DEPRECATED INCREASE IS REMOVED.
-    void increase_(int n) {
-        assert(inHeap(n));
-        percolateDown(indices[n]);
     }
 
     void insert(int n) {
@@ -121,42 +115,5 @@ class Heap {
 #endif
         heap.clear();
     }
-
-    // Fool proof variant of insert/decrease/increase
-    void update(int n) {
-        if (!inHeap(n))
-            insert(n);
-        else {
-            percolateUp(indices[n]);
-            percolateDown(indices[n]);
-        }
-    }
-
-    // Delete elements from the heap using a given filter function (-object).
-    // *** this could probaly be replaced with a more general "buildHeap(vector<int>&)" method ***
-    template <class F>
-    void filter(const F& filt) {
-        int i, j;
-        for (i = j = 0; static_cast<size_t>(i) < heap.size(); i++)
-            if (filt(heap[i])) {
-                heap[j] = heap[i];
-                indices[heap[i]] = j++;
-            } else
-                indices[heap[i]] = -1;
-
-        heap.resize(heap.size() - (i - j));
-        for (int i = heap.size() / 2 - 1; i >= 0; i--)
-            percolateDown(i);
-
-        assert(heapProperty());
-    }
-
-    // DEBUG: consistency checking
-    bool heapProperty() const { return heapProperty(1); }
-
-    // COMPAT: should be removed
-    void setBounds(int n) {}
-    void increase(int n) { decrease(n); }
-    int getmin() { return removeMin(); }
 };
 } // namespace crab
