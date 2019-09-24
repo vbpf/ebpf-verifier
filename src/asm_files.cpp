@@ -1,23 +1,15 @@
-#include <fstream>
 #include <iostream>
 #include <string>
-#include <sys/stat.h>
 #include <vector>
 
 #include "asm_files.hpp"
 #include "spec_type_descriptors.hpp"
 
-#include "asm_marshal.hpp"
-#include "asm_ostream.hpp"
-#include "asm_unmarshal.hpp"
 #include "elfio/elfio.hpp"
 
 using std::cout;
 using std::string;
 using std::vector;
-
-#define MAX_MAPS 32
-#define MAX_PROGS 32
 
 struct bpf_load_map_def {
     unsigned int type;
@@ -44,12 +36,6 @@ static vector<T> vector_of(ELFIO::section* sec) {
     auto size = sec->get_size();
     assert(size % sizeof(T) == 0);
     return {(T*)data, (T*)(data + size)};
-}
-
-int create_map_rcp(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries) {
-    static int i = -1;
-    i++;
-    return i;
 }
 
 int create_map_crab(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries) {
@@ -108,7 +94,7 @@ vector<raw_program> read_elf(std::string path, std::string desired_section, MapF
         exit(2);
     }
 
-    program_info info;
+    program_info info{};
     auto mapdefs = vector_of<bpf_load_map_def>(reader.sections["maps"]);
     for (auto s : mapdefs) {
         info.map_defs.emplace_back(map_def{
@@ -119,7 +105,7 @@ vector<raw_program> read_elf(std::string path, std::string desired_section, MapF
         });
     }
     for (size_t i = 0; i < mapdefs.size(); i++) {
-        int inner = mapdefs[i].inner_map_idx;
+        unsigned int inner = mapdefs[i].inner_map_idx;
         info.map_defs[i].inner_map_fd = info.map_defs[inner].original_fd;
     }
 
@@ -144,7 +130,7 @@ vector<raw_program> read_elf(std::string path, std::string desired_section, MapF
             continue;
         if (name == "license" || name == "version" || name == "maps")
             continue;
-        if (name.find(".") == 0) {
+        if (name.find('.') == 0) {
             continue;
         }
         info.program_type = section_to_progtype(name, path);
