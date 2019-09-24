@@ -241,7 +241,7 @@ interval_t interval_t::LShr(interval_t x) const {
                 }
             }
         }
-        return this->top();
+        return top();
     }
 }
 

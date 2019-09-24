@@ -7,7 +7,7 @@ namespace crab {
 
 size_t linear_expression_t::hash() const {
     size_t res = 0;
-    for (auto p : (*this)) {
+    for (const auto& p : *this) {
         boost::hash_combine(res, p);
     }
     boost::hash_combine(res, _cst);

@@ -22,6 +22,7 @@
 #include <unordered_set>
 
 #include <boost/container/flat_map.hpp>
+#include <utility>
 
 #include "crab/adapt_sgraph.hpp"
 #include "crab/thresholds.hpp"
@@ -117,30 +118,11 @@ class SplitDBM final : public writeable {
     vert_set_t unstable;
     bool _is_bottom;
 
-    class Wt_max {
-      public:
-        Wt_max() {}
-        Wt apply(const Wt& x, const Wt& y) { return std::max(x, y); }
-        bool default_is_absorbing() { return true; }
-    };
-
-    class Wt_min {
-      public:
-        Wt_min() {}
-        Wt apply(const Wt& x, const Wt& y) { return std::min(x, y); }
-        bool default_is_absorbing() { return false; }
-    };
-
     vert_id get_vert(variable_t v);
-
-    vert_id get_vert(graph_t& g, vert_map_t& vmap, rev_map_t& rmap, std::vector<Wt>& pot, variable_t v);
-
-    template <class G, class P>
-    inline void check_potential(G& g, P& p, unsigned line) {}
 
     class vert_set_wrap_t {
       public:
-        vert_set_wrap_t(const vert_set_t& _vs) : vs(_vs) {}
+        explicit vert_set_wrap_t(const vert_set_t& _vs) : vs(_vs) {}
 
         bool operator[](vert_id v) const { return vs.find(v) != vs.end(); }
         const vert_set_t& vs;
@@ -154,15 +136,8 @@ class SplitDBM final : public writeable {
         return ((Wt)0);
     }
 
-    Wt pot_value(variable_t v, std::vector<Wt>& potential) {
-        auto it = vert_map.find(v);
-        if (it != vert_map.end())
-            return potential[(*it).second];
-        return ((Wt)0);
-    }
-
     // Evaluate an expression under the chosen potentials
-    Wt eval_expression(linear_expression_t e, bool overflow) {
+    Wt eval_expression(const linear_expression_t& e, bool overflow) {
         Wt v(convert_NtoW(e.constant(), overflow));
         if (overflow) {
             return Wt(0);
@@ -178,7 +153,7 @@ class SplitDBM final : public writeable {
         return v;
     }
 
-    interval_t compute_residual(linear_expression_t e, variable_t pivot) {
+    interval_t compute_residual(const linear_expression_t& e, variable_t pivot) {
         interval_t residual(-e.constant());
         for (auto [v, n] : e) {
             if (v.index() != pivot.index()) {
@@ -201,7 +176,7 @@ class SplitDBM final : public writeable {
      *     x - v <= lb((a-1)*x + b*y + k)
      *     y - v <= lb(a*x + (b-1)*y + k)
      **/
-    void diffcsts_of_assign(variable_t x, linear_expression_t exp,
+    void diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
                             /* if true then process the upper
                                bounds, else the lower bounds */
                             bool extract_upper_bounds,
@@ -210,7 +185,7 @@ class SplitDBM final : public writeable {
                             std::vector<std::pair<variable_t, Wt>>& diff_csts);
 
     // Turn an assignment into a set of difference constraints.
-    void diffcsts_of_assign(variable_t x, linear_expression_t exp, std::vector<std::pair<variable_t, Wt>>& lb,
+    void diffcsts_of_assign(variable_t x, const linear_expression_t& exp, std::vector<std::pair<variable_t, Wt>>& lb,
                             std::vector<std::pair<variable_t, Wt>>& ub) {
         diffcsts_of_assign(x, exp, true, ub);
         diffcsts_of_assign(x, exp, false, lb);
@@ -233,7 +208,7 @@ class SplitDBM final : public writeable {
     // x != n
     void add_univar_disequation(variable_t x, number_t n);
 
-    void add_disequation(linear_expression_t e) {
+    void add_disequation(const linear_expression_t& e) {
         // XXX: similar precision as the interval domain
         for (auto [pivot, n] : e) {
             interval_t i = compute_residual(e, pivot) / interval_t(n);
@@ -241,12 +216,11 @@ class SplitDBM final : public writeable {
                 add_univar_disequation(pivot, *k);
             }
         }
-        return;
     }
 
     interval_t get_interval(variable_t x) { return get_interval(vert_map, g, x); }
 
-    interval_t get_interval(vert_map_t& m, graph_t& r, variable_t x) {
+    static interval_t get_interval(vert_map_t& m, graph_t& r, variable_t x) {
         auto it = m.find(x);
         if (it == m.end()) {
             return interval_t::top();
@@ -263,16 +237,10 @@ class SplitDBM final : public writeable {
     // Restore closure after a single edge addition
     void close_over_edge(vert_id ii, vert_id jj);
 
-    // return true if edge from x to y with weight k is unsatisfiable
-    bool is_unsat_edge(vert_id x, vert_id y, Wt k);
-
-    // return true iff cst is unsatisfiable without modifying the DBM
-    bool is_unsat(linear_constraint_t cst);
-
   public:
-    SplitDBM(bool is_bottom = false) : _is_bottom(is_bottom) {
+    explicit SplitDBM(bool is_bottom = false) : _is_bottom(is_bottom) {
         g.growTo(1); // Allocate the zero vector
-        potential.push_back(Wt(0));
+        potential.emplace_back(0);
         rev_map.push_back(std::nullopt);
     }
 
@@ -342,7 +310,7 @@ class SplitDBM final : public writeable {
 
     SplitDBM widening_thresholds(SplitDBM o, const iterators::thresholds_t& ts) {
         // TODO: use thresholds
-        return ((*this).widen(o));
+        return ((*this).widen(std::move(o)));
     }
 
     SplitDBM operator&(SplitDBM o);
@@ -353,25 +321,25 @@ class SplitDBM final : public writeable {
 
     void operator-=(variable_t v);
 
-    void assign(variable_t x, linear_expression_t e);
+    void assign(variable_t x, const linear_expression_t& e);
 
     void apply(arith_binop_t op, variable_t x, variable_t y, variable_t z);
 
-    void apply(arith_binop_t op, variable_t x, variable_t y, number_t k);
+    void apply(arith_binop_t op, variable_t x, variable_t y, const number_t& k);
 
     // bitwise_operators_api
     void apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t z);
 
-    void apply(bitwise_binop_t op, variable_t x, variable_t y, number_t k);
+    void apply(bitwise_binop_t op, variable_t x, variable_t y, const number_t& k);
 
     template <typename NumOrVar>
     void apply(binop_t op, variable_t x, variable_t y, NumOrVar z) {
         std::visit([&](auto top) { apply(top, x, y, z); }, op);
     }
 
-    void operator+=(linear_constraint_t cst);
+    void operator+=(const linear_constraint_t& cst);
 
-    interval_t eval_interval(linear_expression_t e) {
+    interval_t eval_interval(const linear_expression_t& e) {
         interval_t r = e.constant();
         for (auto [v, n] : e)
             r += n * operator[](v);
@@ -382,8 +350,6 @@ class SplitDBM final : public writeable {
         CrabStats::count("SplitDBM.count.to_intervals");
         ScopedCrabStats __st__("SplitDBM.to_intervals");
 
-        // if (is_top())    return interval_t::top();
-
         if (is_bottom()) {
             return interval_t::bottom();
         } else {
@@ -391,7 +357,7 @@ class SplitDBM final : public writeable {
         }
     }
 
-    void set(variable_t x, interval_t intv);
+    void set(variable_t x, const interval_t& intv);
 
     void forget(const variable_vector_t& variables);
 
@@ -402,12 +368,10 @@ class SplitDBM final : public writeable {
     // -- end array_sgraph_domain_helper_traits
 
     // Output function
-    void write(std::ostream& o);
+    void write(std::ostream& o) override;
 
     // return number of vertices and edges
     std::pair<std::size_t, std::size_t> size() const { return {g.size(), g.num_edges()}; }
-
-    static std::string getDomainName() { return "SplitDBM"; }
 
   private:
     bool entail_aux(const linear_constraint_t& cst) {

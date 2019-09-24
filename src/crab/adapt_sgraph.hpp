@@ -556,14 +556,12 @@ class AdaptGraph : public writeable {
         edge_count++;
     }
 
-    template <class Op>
-    void update_edge(vert_id s, Wt w, vert_id d, Op& op) {
+    void update_edge(vert_id s, Wt w, vert_id d) {
         size_t idx;
         if (_succs[s].lookup(d, &idx)) {
-            _ws[idx] = op.apply(_ws[idx], w);
+            _ws[idx] = std::min(_ws[idx], w);
         } else {
-            if (!op.default_is_absorbing())
-                add_edge(s, w, d);
+            add_edge(s, w, d);
         }
     }
 
@@ -576,7 +574,7 @@ class AdaptGraph : public writeable {
         }
     }
 
-    void write(std::ostream& o) {
+    void write(std::ostream& o) override {
         o << "[|";
         bool first = true;
         for (vert_id v : verts()) {

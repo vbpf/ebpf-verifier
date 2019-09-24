@@ -32,7 +32,7 @@ class safe_i64 {
 
     safe_i64(int64_t num);
 
-    safe_i64(z_number n);
+    safe_i64(const z_number& n);
 
     operator long() const;
 
