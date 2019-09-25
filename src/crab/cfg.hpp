@@ -86,7 +86,7 @@ class basic_block_t final {
 
     iterator begin() { return (m_ts.begin()); }
     iterator end() { return (m_ts.end()); }
-    const_iterator begin() const { return (m_ts.begin()); }
+    [[nodiscard]] const_iterator begin() const { return (m_ts.begin()); }
     const_iterator end() const { return (m_ts.end()); }
 
     reverse_iterator rbegin() { return (m_ts.rbegin()); }

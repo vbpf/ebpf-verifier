@@ -115,7 +115,7 @@ struct Unmarshaller {
         }
     }
 
-    auto getJmpOp(uint8_t opcode) -> Condition::Op {
+    static auto getJmpOp(uint8_t opcode) -> Condition::Op {
         using Op = Condition::Op;
         switch ((opcode >> 4) & 0xF) {
         case 0x0: return {}; // goto
@@ -249,7 +249,7 @@ struct Unmarshaller {
         };
     }
 
-    ArgSingle::Kind toArgSingleKind(Arg t) {
+    static ArgSingle::Kind toArgSingleKind(Arg t) {
         switch (t) {
         case Arg::ANYTHING: return ArgSingle::Kind::ANYTHING;
         case Arg::CONST_SHARED_PTR: return ArgSingle::Kind::MAP_FD;
@@ -260,7 +260,7 @@ struct Unmarshaller {
         }
         return {};
     }
-    ArgPair::Kind toArgPairKind(Arg t) {
+    static ArgPair::Kind toArgPairKind(Arg t) {
         switch (t) {
         case Arg::PTR_TO_MEM_OR_NULL: return ArgPair::Kind::PTR_TO_MEM_OR_NULL;
         case Arg::PTR_TO_MEM: return ArgPair::Kind::PTR_TO_MEM;

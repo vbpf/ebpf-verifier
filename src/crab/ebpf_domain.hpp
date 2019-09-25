@@ -839,7 +839,7 @@ class ebpf_domain_t final {
     void ashr(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
 
     void assume(const linear_constraint_t& cst) { assume(m_inv, cst); }
-    void assume(NumAbsDomain& inv, const linear_constraint_t& cst) { inv += cst; }
+    static void assume(NumAbsDomain& inv, const linear_constraint_t& cst) { inv += cst; }
 
     void require(NumAbsDomain& inv, const linear_constraint_t& cst, std::string s) {
         if (check_require)
@@ -1119,7 +1119,7 @@ class ebpf_domain_t final {
         scratch_caller_saved_registers();
     }
 
-    NumAbsDomain do_load_packet_or_shared(NumAbsDomain inv, Reg target, linear_expression_t addr, int width) {
+    static NumAbsDomain do_load_packet_or_shared(NumAbsDomain inv, Reg target, linear_expression_t addr, int width) {
         if (inv.is_bottom())
             return inv;
 
@@ -1129,7 +1129,7 @@ class ebpf_domain_t final {
         return inv;
     }
 
-    NumAbsDomain do_load_ctx(NumAbsDomain inv, Reg target, linear_expression_t addr_vague, int width) {
+    static NumAbsDomain do_load_ctx(NumAbsDomain inv, Reg target, linear_expression_t addr_vague, int width) {
         using namespace dsl_syntax;
         if (inv.is_bottom())
             return inv;
@@ -1240,7 +1240,7 @@ class ebpf_domain_t final {
         return (int)*res;
     }
 
-    int get_type(int t) { return t; }
+    static int get_type(int t) { return t; }
 
     template <typename A, typename X, typename Y, typename Z>
     void do_store_stack(NumAbsDomain& inv, int width, A addr, X val_type, Y val_value,
