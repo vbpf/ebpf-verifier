@@ -42,10 +42,7 @@ class member_component_visitor final : public wto_component_visitor_t {
     bool is_member() const { return _found; }
 };
 
-class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t{
-  public:
-
-  private:
+class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t {
     using thresholds_t = iterators::thresholds_t;
     using wto_thresholds_t = iterators::wto_thresholds_t;
     using iterator = typename invariant_table_t::iterator;
@@ -60,7 +57,6 @@ class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t
     bool _skip{true};
 
   private:
-
     inline void set_pre(const label_t& label, const ebpf_domain_t& v) { _pre[label] = v; }
 
     inline void transform_to_post(const label_t& label, ebpf_domain_t pre) {
@@ -70,7 +66,8 @@ class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t
         _post[label] = std::move(pre);
     }
 
-    ebpf_domain_t extrapolate(const label_t& node, unsigned int iteration, ebpf_domain_t before, const ebpf_domain_t& after) {
+    ebpf_domain_t extrapolate(const label_t& node, unsigned int iteration, ebpf_domain_t before,
+                              const ebpf_domain_t& after) {
         if (iteration <= _widening_delay) {
             return before | after;
         } else {
@@ -78,7 +75,8 @@ class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t
         }
     }
 
-    static ebpf_domain_t refine(const label_t& node, unsigned int iteration, ebpf_domain_t before, const ebpf_domain_t& after) {
+    static ebpf_domain_t refine(const label_t& node, unsigned int iteration, ebpf_domain_t before,
+                                const ebpf_domain_t& after) {
         if (iteration == 1) {
             return before & after;
         } else {
@@ -93,6 +91,7 @@ class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t
         }
         return res;
     }
+
   public:
     explicit interleaved_fwd_fixpoint_iterator_t(cfg_t& cfg) : _cfg(cfg), _wto(cfg) {
         for (auto& [label, _] : _cfg) {
