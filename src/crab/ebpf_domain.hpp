@@ -652,23 +652,23 @@ class ebpf_domain_t final {
     }
     // array_operators_api
 
-    void array_load(NumAbsDomain& m_inv, variable_t lhs, data_kind_t kind, const linear_expression_t& i, int width) {
+    void array_load(NumAbsDomain& inv, variable_t lhs, data_kind_t kind, const linear_expression_t& i, int width) {
 
-        if (m_inv.is_bottom())
+        if (inv.is_bottom())
             return;
 
-        interval_t ii = m_inv.eval_interval(i);
+        interval_t ii = inv.eval_interval(i);
         if (std::optional<number_t> n = ii.singleton()) {
             offset_map_t& offset_map = lookup_array_map(kind);
             long k = (long)*n;
             if (kind == data_kind_t::types) {
                 auto [only_num, only_non_num] = num_bytes.uniformity(k, width);
                 if (only_num) {
-                    m_inv.assign(lhs, T_NUM);
+                    inv.assign(lhs, T_NUM);
                     return;
                 }
                 if (!only_non_num || width != 8) {
-                    m_inv -= lhs;
+                    inv -= lhs;
                     return;
                 }
             }
@@ -680,7 +680,7 @@ class ebpf_domain_t final {
                 // Here it's ok to do assignment (instead of expand)
                 // because c is not a summarized variable. Otherwise, it
                 // would be unsound.
-                m_inv.assign(lhs, c.get_scalar(kind));
+                inv.assign(lhs, c.get_scalar(kind));
                 return;
             } else {
                 CRAB_WARN("Ignored read from cell ", kind, "[", o, "...", o.index() + size - 1, "]",
@@ -697,21 +697,22 @@ class ebpf_domain_t final {
             CRAB_WARN("array expansion: ignored array load because of non-constant array index ", i);
         }
 
-        m_inv -= lhs;
+        inv -= lhs;
     }
 
     static std::optional<std::pair<offset_t, unsigned>>
-    kill_and_find_var(NumAbsDomain& m_inv, data_kind_t kind, const linear_expression_t& i, const linear_expression_t& elem_size) {
-        if (m_inv.is_bottom())
+
+    kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, const linear_expression_t& elem_size) {
+        if (inv.is_bottom())
             return {};
 
         std::optional<std::pair<offset_t, unsigned>> res;
 
         offset_map_t& offset_map = lookup_array_map(kind);
-        interval_t ii = m_inv.eval_interval(i);
+        interval_t ii = inv.eval_interval(i);
         std::vector<cell_t> cells;
         if (std::optional<number_t> n = ii.singleton()) {
-            interval_t i_elem_size = m_inv.eval_interval(elem_size);
+            interval_t i_elem_size = inv.eval_interval(elem_size);
             std::optional<number_t> n_bytes = i_elem_size.singleton();
             if (n_bytes) {
                 unsigned size = (long)(*n_bytes);
@@ -723,31 +724,31 @@ class ebpf_domain_t final {
         }
         if (!res) {
             // -- Non-constant index: kill overlapping cells
-            cells = offset_map.get_overlap_cells_symbolic_offset(m_inv, linear_expression_t(i),
+            cells = offset_map.get_overlap_cells_symbolic_offset(inv, linear_expression_t(i),
                                                                  linear_expression_t(i + elem_size));
         }
-        kill_cells(kind, cells, offset_map, m_inv);
+        kill_cells(kind, cells, offset_map, inv);
 
         return res;
     }
 
-    void array_store(NumAbsDomain& m_inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size,
+    void array_store(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size,
                      const linear_expression_t& val) {
-        auto maybe_cell = kill_and_find_var(m_inv, kind, idx, elem_size);
+        auto maybe_cell = kill_and_find_var(inv, kind, idx, elem_size);
         if (maybe_cell) {
             // perform strong update
             auto [offset, size] = *maybe_cell;
             if (kind == data_kind_t::types) {
-                std::optional<number_t> t = m_inv.eval_interval(val).singleton();
+                std::optional<number_t> t = inv.eval_interval(val).singleton();
                 num_bytes.store(offset.index(), size, t);
             }
             variable_t v = lookup_array_map(kind).mk_cell(offset, size).get_scalar(kind);
-            m_inv.assign(v, val);
+            inv.assign(v, val);
         }
     }
 
-    void array_havoc(NumAbsDomain& m_inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size) {
-        auto maybe_cell = kill_and_find_var(m_inv, kind, idx, elem_size);
+    void array_havoc(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size) {
+        auto maybe_cell = kill_and_find_var(inv, kind, idx, elem_size);
         if (maybe_cell && kind == data_kind_t::types) {
             auto [offset, size] = *maybe_cell;
             num_bytes.havoc(offset.index(), size);
@@ -755,7 +756,7 @@ class ebpf_domain_t final {
     }
 
     // Perform array stores over an array segment
-    void array_store_numbers(NumAbsDomain& m_inv, variable_t _idx, variable_t _width) {
+    void array_store_numbers(NumAbsDomain& inv, variable_t _idx, variable_t _width) {
 
         // TODO: this should be an user parameter.
         const number_t max_num_elems = STACK_SIZE;
@@ -763,13 +764,13 @@ class ebpf_domain_t final {
         if (is_bottom())
             return;
 
-        std::optional<number_t> idx_n = m_inv[_idx].singleton();
+        std::optional<number_t> idx_n = inv[_idx].singleton();
         if (!idx_n) {
             CRAB_WARN("array expansion store range ignored because ", "lower bound is not constant");
             return;
         }
 
-        std::optional<number_t> width = m_inv[_width].singleton();
+        std::optional<number_t> width = inv[_width].singleton();
         if (!width) {
             CRAB_WARN("array expansion store range ignored because ", "upper bound is not constant");
             return;

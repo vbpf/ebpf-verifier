@@ -2,7 +2,7 @@
 
 namespace crab {
 
-interval_t interval_t::operator/(interval_t x) const {
+interval_t interval_t::operator/(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
@@ -14,9 +14,9 @@ interval_t interval_t::operator/(interval_t x) const {
             if (c == 1) {
                 return *this;
             } else if (c > 0) {
-                return interval_t(_lb / (bound_t)c, _ub / (bound_t)c);
+                return interval_t(_lb / bound_t{c}, _ub / bound_t{c});
             } else if (c < 0) {
-                return interval_t(_ub / (bound_t)c, _lb / (bound_t)c);
+                return interval_t(_ub / bound_t{c}, _lb / bound_t{c});
             } else {
             }
         }
@@ -44,7 +44,7 @@ interval_t interval_t::operator/(interval_t x) const {
     }
 }
 
-interval_t interval_t::SRem(interval_t x) const {
+interval_t interval_t::SRem(const interval_t& x) const {
     // note that the sign of the divisor does not matter
 
     if (is_bottom() || x.is_bottom()) {
@@ -79,7 +79,7 @@ interval_t interval_t::SRem(interval_t x) const {
     }
 }
 
-interval_t interval_t::URem(interval_t x) const {
+interval_t interval_t::URem(const interval_t& x) const {
 
     if (is_bottom() || x.is_bottom()) {
         return bottom();
@@ -113,7 +113,7 @@ interval_t interval_t::URem(interval_t x) const {
     }
 }
 
-interval_t interval_t::And(interval_t x) const {
+interval_t interval_t::And(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
@@ -130,7 +130,7 @@ interval_t interval_t::And(interval_t x) const {
     }
 }
 
-interval_t interval_t::Or(interval_t x) const {
+interval_t interval_t::Or(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
@@ -155,7 +155,7 @@ interval_t interval_t::Or(interval_t x) const {
     }
 }
 
-interval_t interval_t::Xor(interval_t x) const {
+interval_t interval_t::Xor(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
@@ -170,7 +170,7 @@ interval_t interval_t::Xor(interval_t x) const {
     }
 }
 
-interval_t interval_t::Shl(interval_t x) const {
+interval_t interval_t::Shl(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
@@ -195,7 +195,7 @@ interval_t interval_t::Shl(interval_t x) const {
     }
 }
 
-interval_t interval_t::AShr(interval_t x) const {
+interval_t interval_t::AShr(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
@@ -220,7 +220,7 @@ interval_t interval_t::AShr(interval_t x) const {
     }
 }
 
-interval_t interval_t::LShr(interval_t x) const {
+interval_t interval_t::LShr(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {

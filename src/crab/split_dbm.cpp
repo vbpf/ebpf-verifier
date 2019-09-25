@@ -117,7 +117,7 @@ void SplitDBM::diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
 
         if (coeff < Wt(0)) {
             // Can't do anything with negative coefficients.
-            bound_t y_val = (extract_upper_bounds ? operator[](y).lb() : operator[](y).ub());
+            auto y_val = (extract_upper_bounds ? operator[](y).lb() : operator[](y).ub());
 
             if (y_val.is_infinite()) {
                 return;
@@ -128,7 +128,7 @@ void SplitDBM::diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
             }
 
         } else {
-            bound_t y_val = (extract_upper_bounds ? operator[](y).ub() : operator[](y).lb());
+            auto y_val = (extract_upper_bounds ? operator[](y).ub() : operator[](y).lb());
 
             if (y_val.is_infinite()) {
                 if (unbounded_var || coeff != Wt(1)) {
@@ -191,7 +191,7 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
             continue;
         }
         if (coeff > Wt(0)) {
-            bound_t y_lb = operator[](y).lb();
+            auto y_lb = operator[](y).lb();
             if (y_lb.is_infinite()) {
                 if (unbounded_lbvar) {
                     return;
@@ -207,7 +207,7 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
                 pos_terms.push_back({{coeff, y}, ymin});
             }
         } else {
-            bound_t y_ub = operator[](y).ub();
+            auto y_ub = operator[](y).ub();
             if (y_ub.is_infinite()) {
                 if (unbounded_ubvar) {
                     return;
@@ -320,10 +320,10 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
     return true;
 }
 
-void SplitDBM::add_univar_disequation(variable_t x, number_t n) {
+void SplitDBM::add_univar_disequation(variable_t x, const number_t& n) {
     bool overflow;
     interval_t i = get_interval(x);
-    interval_t new_i = trim_interval(i, interval_t(std::move(n)));
+    interval_t new_i = trim_interval(i, interval_t(n));
     if (new_i.is_bottom()) {
         set_to_bottom();
     } else if (!new_i.is_top() && (new_i <= i)) {
@@ -910,7 +910,7 @@ void SplitDBM::assign(variable_t x, const linear_expression_t& e) {
     // operator misses some non-redundant edges. Need to
     // investigate more this.
     if (std::optional<number_t> x_n = x_int.singleton()) {
-        set(x, *x_n);
+        set(x, interval_t{*x_n});
         is_rhs_constant = true;
     }
 
