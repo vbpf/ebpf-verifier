@@ -27,6 +27,7 @@
 #include <optional>
 #include <set>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "boost/range/algorithm/set_algorithm.hpp"
@@ -44,8 +45,7 @@
 #include "spec_prototypes.hpp"
 #include "spec_type_descriptors.hpp"
 
-namespace crab {
-namespace domains {
+namespace crab::domains {
 
 using NumAbsDomain = SplitDBM;
 
@@ -205,7 +205,7 @@ class offset_map_t final {
     };
 
     class domain_po : public partial_order_t {
-        bool leq(cell_set_t x, cell_set_t y) {
+        bool leq(cell_set_t x, cell_set_t y) override {
             {
                 cell_set_t z;
                 boost::set_difference(x, y, std::inserter(z, z.end()));
@@ -213,10 +213,10 @@ class offset_map_t final {
             }
         }
         // default value is bottom (i.e., empty map)
-        bool default_is_top() { return false; }
+        bool default_is_top() override { return false; }
     }; // class domain_po
 
-    offset_map_t(patricia_tree_t m) : _map(m) {}
+    explicit offset_map_t(const patricia_tree_t& m) : _map(m) {}
 
     void remove_cell(const cell_t& c);
 
@@ -242,8 +242,8 @@ class offset_map_t final {
     void operator-=(const cell_t& c) { remove_cell(c); }
 
     void operator-=(const std::vector<cell_t>& cells) {
-        for (unsigned i = 0, e = cells.size(); i < e; ++i) {
-            this->operator-=(cells[i]);
+        for (auto c : cells) {
+            this->operator-=(c);
         }
     }
 
@@ -315,9 +315,6 @@ class array_bitset_domain_t final : public writeable {
     using bits_t = std::bitset<STACK_SIZE>;
     bits_t non_numerical_bytes;
 
-  private:
-    offset_map_t& lookup_array_map(data_kind_t kind) { return global_array_map[kind]; }
-
   public:
     array_bitset_domain_t() { non_numerical_bytes.set(); }
 
@@ -383,7 +380,7 @@ class array_bitset_domain_t final : public writeable {
         }
     }
 
-    void write(std::ostream& o) {
+    void write(std::ostream& o) override {
         o << "Numbers -> {";
         bool first = true;
         for (int i = -STACK_SIZE; i < 0; i++) {
@@ -521,7 +518,7 @@ class ebpf_domain_t final {
     std::function<check_require_func_t> check_require{};
 
   public:
-    void set_require_check(std::function<check_require_func_t> f) { check_require = f; }
+    void set_require_check(std::function<check_require_func_t> f) { check_require = std::move(f); }
 
     static ebpf_domain_t top() {
         ebpf_domain_t abs;
@@ -536,13 +533,13 @@ class ebpf_domain_t final {
     }
 
   private:
-    offset_map_t& lookup_array_map(data_kind_t kind) { return global_array_map[kind]; }
+    static offset_map_t& lookup_array_map(data_kind_t kind) { return global_array_map[kind]; }
 
-    void kill_cells(data_kind_t kind, const std::vector<cell_t>& cells, offset_map_t& offset_map, NumAbsDomain& dom) {
+    static void kill_cells(data_kind_t kind, const std::vector<cell_t>& cells, offset_map_t& offset_map, NumAbsDomain& dom) {
         if (!cells.empty()) {
             // Forget the scalars from the numerical domain
-            for (unsigned i = 0, e = cells.size(); i < e; ++i) {
-                dom -= cells[i].get_scalar(kind);
+            for (auto c : cells) {
+                dom -= c.get_scalar(kind);
             }
             // Remove the cells. If needed again they they will be re-created.
             offset_map -= cells;
@@ -550,11 +547,9 @@ class ebpf_domain_t final {
     }
 
   public:
-    interval_t to_interval(linear_expression_t expr) { return m_inv.eval_interval(expr); }
-
     ebpf_domain_t() : m_inv(NumAbsDomain::top()) {}
 
-    ebpf_domain_t(const NumAbsDomain& inv, array_bitset_domain_t num_bytes) : m_inv(inv), num_bytes(num_bytes) {}
+    ebpf_domain_t(NumAbsDomain  inv, array_bitset_domain_t num_bytes) : m_inv(std::move(inv)), num_bytes(num_bytes) {}
 
     void set_to_top() {
         m_inv.set_to_top();
@@ -567,7 +562,7 @@ class ebpf_domain_t final {
 
     bool is_top() const { return m_inv.is_top() && num_bytes.is_top(); }
 
-    bool operator<=(ebpf_domain_t other) { return m_inv <= other.m_inv && num_bytes <= other.num_bytes; }
+    bool operator<=(const ebpf_domain_t& other) { return m_inv <= other.m_inv && num_bytes <= other.num_bytes; }
 
     bool operator==(ebpf_domain_t other) {
         return num_bytes == other.num_bytes && m_inv <= other.m_inv && other.m_inv <= m_inv;
@@ -579,7 +574,7 @@ class ebpf_domain_t final {
             return;
         }
         m_inv |= std::move(other.m_inv);
-        num_bytes |= std::move(other.num_bytes);
+        num_bytes |= other.num_bytes;
     }
 
     void operator|=(const ebpf_domain_t& other) {
@@ -612,15 +607,15 @@ class ebpf_domain_t final {
         return ebpf_domain_t(m_inv & std::move(other.m_inv), num_bytes & other.num_bytes);
     }
 
-    ebpf_domain_t widen(ebpf_domain_t other) {
+    ebpf_domain_t widen(const ebpf_domain_t& other) {
         return ebpf_domain_t(m_inv.widen(other.m_inv), num_bytes | other.num_bytes);
     }
 
-    ebpf_domain_t widening_thresholds(ebpf_domain_t other, const iterators::thresholds_t& ts) {
+    ebpf_domain_t widening_thresholds(const ebpf_domain_t& other, const iterators::thresholds_t& ts) {
         return ebpf_domain_t(m_inv.widening_thresholds(other.m_inv, ts), num_bytes | other.num_bytes);
     }
 
-    ebpf_domain_t narrow(ebpf_domain_t other) {
+    ebpf_domain_t narrow(const ebpf_domain_t& other) {
         return ebpf_domain_t(m_inv.narrow(other.m_inv), num_bytes & other.num_bytes);
     }
 
@@ -635,9 +630,7 @@ class ebpf_domain_t final {
         m_inv.forget(variables);
     }
 
-    void normalize() { CRAB_WARN("array expansion normalize not implemented"); }
-
-    void operator+=(linear_constraint_t cst) { m_inv += cst; }
+    void operator+=(const linear_constraint_t& cst) { m_inv += cst; }
 
     void operator-=(variable_t var) { m_inv -= var; }
 
@@ -658,7 +651,7 @@ class ebpf_domain_t final {
     }
     // array_operators_api
 
-    void array_load(NumAbsDomain& m_inv, variable_t lhs, data_kind_t kind, linear_expression_t i, int width) {
+    void array_load(NumAbsDomain& m_inv, variable_t lhs, data_kind_t kind, const linear_expression_t& i, int width) {
 
         if (m_inv.is_bottom())
             return;
@@ -706,8 +699,8 @@ class ebpf_domain_t final {
         m_inv -= lhs;
     }
 
-    std::optional<std::pair<offset_t, unsigned>>
-    kill_and_find_var(NumAbsDomain& m_inv, data_kind_t kind, linear_expression_t i, linear_expression_t elem_size) {
+    static std::optional<std::pair<offset_t, unsigned>>
+    kill_and_find_var(NumAbsDomain& m_inv, data_kind_t kind, linear_expression_t i, const linear_expression_t& elem_size) {
         if (m_inv.is_bottom())
             return {};
 
@@ -738,8 +731,8 @@ class ebpf_domain_t final {
     }
 
     void array_store(NumAbsDomain& m_inv, data_kind_t kind, linear_expression_t idx, linear_expression_t elem_size,
-                     linear_expression_t val) {
-        auto maybe_cell = kill_and_find_var(m_inv, kind, idx, elem_size);
+                     const linear_expression_t& val) {
+        auto maybe_cell = kill_and_find_var(m_inv, kind, std::move(idx), std::move(elem_size));
         if (maybe_cell) {
             // perform strong update
             auto [offset, size] = *maybe_cell;
@@ -753,7 +746,7 @@ class ebpf_domain_t final {
     }
 
     void array_havoc(NumAbsDomain& m_inv, data_kind_t kind, linear_expression_t idx, linear_expression_t elem_size) {
-        auto maybe_cell = kill_and_find_var(m_inv, kind, idx, elem_size);
+        auto maybe_cell = kill_and_find_var(m_inv, kind, std::move(idx), std::move(elem_size));
         if (maybe_cell && kind == data_kind_t::types) {
             auto [offset, size] = *maybe_cell;
             num_bytes.havoc(offset.index(), size);
@@ -1589,5 +1582,4 @@ class ebpf_domain_t final {
 
 }; // end ebpf_domain_t
 
-} // namespace domains
 } // namespace crab
