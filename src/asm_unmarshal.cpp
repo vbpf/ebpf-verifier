@@ -21,11 +21,11 @@ void compare(string field, T actual, T expected) {
 }
 
 struct InvalidInstruction : std::invalid_argument {
-    InvalidInstruction(const char* what) : std::invalid_argument{what} {}
+    explicit InvalidInstruction(const char* what) : std::invalid_argument{what} {}
 };
 
 struct UnsupportedMemoryMode : std::invalid_argument {
-    UnsupportedMemoryMode(const char* what) : std::invalid_argument{what} {}
+    explicit UnsupportedMemoryMode(const char* what) : std::invalid_argument{what} {}
 };
 
 static auto getMemIsLoad(uint8_t opcode) -> bool {
@@ -62,7 +62,7 @@ struct Unmarshaller {
     vector<vector<string>>& notes;
     void note(const string& what) { notes.back().emplace_back(what); }
     void note_next_pc() { notes.emplace_back(); }
-    Unmarshaller(vector<vector<string>>& notes) : notes{notes} { note_next_pc(); }
+    explicit Unmarshaller(vector<vector<string>>& notes) : notes{notes} { note_next_pc(); }
 
     auto getAluOp(ebpf_inst inst) -> std::variant<Bin::Op, Un::Op> {
         switch ((inst.opcode >> 4) & 0xF) {
@@ -270,7 +270,7 @@ struct Unmarshaller {
         return {};
     }
 
-    auto makeCall(int32_t imm) {
+    static auto makeCall(int32_t imm) {
         bpf_func_proto proto = get_prototype(imm);
         Call res;
         res.func = imm;
@@ -400,7 +400,7 @@ struct Unmarshaller {
     }
 };
 
-std::variant<InstructionSeq, std::string> unmarshal(raw_program raw_prog, vector<vector<string>>& notes) {
+std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, vector<vector<string>>& notes) {
     try {
         return Unmarshaller{notes}.unmarshal(raw_prog.prog);
     } catch (InvalidInstruction& arg) {
@@ -409,7 +409,7 @@ std::variant<InstructionSeq, std::string> unmarshal(raw_program raw_prog, vector
     }
 }
 
-std::variant<InstructionSeq, std::string> unmarshal(raw_program raw_prog) {
+std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog) {
     vector<vector<string>> notes;
-    return unmarshal(std::move(raw_prog), notes);
+    return unmarshal(raw_prog, notes);
 }
