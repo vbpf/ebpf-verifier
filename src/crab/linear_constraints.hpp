@@ -49,6 +49,7 @@
 #include <vector>
 
 #include <boost/container/flat_map.hpp>
+#include <boost/functional/hash.hpp>
 
 #include "crab/patricia_trees.hpp"
 #include "crab/types.hpp"
@@ -71,7 +72,9 @@ class linear_expression_t final {
 
     linear_expression_t(map_ptr map, number_t cst) : _map(std::move(map)), _cst(std::move(cst)) {}
 
-    linear_expression_t(const map_t& map, number_t cst) : _map(std::make_shared<map_t>()), _cst(std::move(cst)) { *this->_map = map; }
+    linear_expression_t(const map_t& map, number_t cst) : _map(std::make_shared<map_t>()), _cst(std::move(cst)) {
+        *this->_map = map;
+    }
 
     void add(variable_t x, const number_t& n) {
         typename map_t::iterator it = this->_map->find(x);
@@ -118,23 +121,22 @@ class linear_expression_t final {
         return *this;
     }
 
-    const_iterator begin() const {
-        return this->_map->begin();
-    }
+    const_iterator begin() const { return this->_map->begin(); }
 
-    const_iterator end() const {
-        return this->_map->end();
-    }
+    const_iterator end() const { return this->_map->end(); }
 
-    iterator begin() {
-        return this->_map->begin();
-    }
+    iterator begin() { return this->_map->begin(); }
 
-    iterator end() {
-        return this->_map->end();
-    }
+    iterator end() { return this->_map->end(); }
 
-    size_t hash() const;
+    size_t hash() const {
+        size_t res = 0;
+        for (const auto& p : *this) {
+            boost::hash_combine(res, p);
+        }
+        boost::hash_combine(res, _cst);
+        return res;
+    }
 
     // syntactic equality
     bool equal(const linear_expression_t& o) const {
@@ -329,10 +331,10 @@ class linear_constraint_t final {
     linear_constraint_t(linear_constraint_t&& other) = default;
     linear_constraint_t(const linear_constraint_t& other) = default;
 
-    linear_constraint_t(linear_expression_t  expr, constraint_kind_t kind)
+    linear_constraint_t(linear_expression_t expr, constraint_kind_t kind)
         : _kind(kind), _expr(std::move(expr)), _signedness(true) {}
 
-    linear_constraint_t(linear_expression_t  expr, constraint_kind_t kind, bool signedness)
+    linear_constraint_t(linear_expression_t expr, constraint_kind_t kind, bool signedness)
         : _kind(kind), _expr(std::move(expr)), _signedness(signedness) {
         if (_kind != INEQUALITY && _kind != STRICT_INEQUALITY) {
             CRAB_ERROR("Only inequalities can have signedness information");
@@ -390,22 +392,6 @@ class linear_constraint_t final {
 
     bool is_unsigned() const { return (!is_signed()); }
 
-    void set_signed() {
-        if (_kind == INEQUALITY || _kind == STRICT_INEQUALITY) {
-            _signedness = true;
-        } else {
-            CRAB_WARN("Only inequalities have signedness");
-        }
-    }
-
-    void set_unsigned() {
-        if (_kind == INEQUALITY || _kind == STRICT_INEQUALITY) {
-            _signedness = false;
-        } else {
-            CRAB_WARN("Only inequalities have signedness");
-        }
-    }
-
     const_iterator begin() const { return this->_expr.begin(); }
 
     const_iterator end() const { return this->_expr.end(); }
@@ -414,8 +400,6 @@ class linear_constraint_t final {
 
     iterator end() { return this->_expr.end(); }
 
-    number_t constant() const { return -this->_expr.constant(); }
-
     std::size_t size() const { return this->_expr.size(); }
 
     // syntactic equality
@@ -423,8 +407,16 @@ class linear_constraint_t final {
         return (_kind == o._kind && _signedness == o._signedness && _expr.equal(o._expr));
     }
 
-    size_t hash() const;
-    
+    size_t hash() const {
+        size_t res = 0;
+        boost::hash_combine(res, _expr);
+        boost::hash_combine(res, _kind);
+        if (_kind == INEQUALITY || _kind == STRICT_INEQUALITY) {
+            boost::hash_combine(res, _signedness);
+        }
+        return res;
+    }
+
     index_t index() const {
         // XXX: to store linear constraints in patricia trees
         return (index_t)hash();
@@ -432,9 +424,30 @@ class linear_constraint_t final {
 
     number_t operator[](variable_t x) const { return this->_expr.operator[](x); }
 
-    variable_set_t variables() const { return this->_expr.variables(); }
+    linear_constraint_t negate() const {
 
-    linear_constraint_t negate() const;
+        if (is_tautology()) {
+            return get_false();
+        } else if (is_contradiction()) {
+            return get_true();
+        } else {
+            switch (kind()) {
+            case INEQUALITY: {
+                // try to take advantage if we use z_number_t.
+                // negate(e <= 0) = e >= 1
+                return linear_constraint_t(-(expression() - 1), INEQUALITY, is_signed());
+            }
+            case STRICT_INEQUALITY: {
+                // negate(x + y < 0)  <-->  x + y >= 0 <--> -x -y <= 0
+                linear_expression_t e = -this->_expr;
+                return linear_constraint_t(e, INEQUALITY, is_signed());
+            }
+            case EQUALITY: return linear_constraint_t(this->_expr, DISEQUATION);
+            case DISEQUATION: return linear_constraint_t(this->_expr, EQUALITY);
+            default: CRAB_ERROR("Cannot negate linear constraint");
+            }
+        }
+    }
 
     template <typename RenamingMap>
     linear_constraint_t rename(const RenamingMap& map) const {
@@ -442,7 +455,44 @@ class linear_constraint_t final {
         return linear_constraint_t(e, this->_kind, is_signed());
     }
 
-    void write(std::ostream& o) const;
+    void write(std::ostream& o) const {
+        if (this->is_contradiction()) {
+            o << "false";
+        } else if (this->is_tautology()) {
+            o << "true";
+        } else {
+            linear_expression_t e = this->_expr - this->_expr.constant();
+            o << e;
+            switch (this->_kind) {
+            case INEQUALITY: {
+                if (is_signed()) {
+                    o << " <= ";
+                } else {
+                    o << " <=_u ";
+                }
+                break;
+            }
+            case STRICT_INEQUALITY: {
+                if (is_signed()) {
+                    o << " < ";
+                } else {
+                    o << " <_u ";
+                }
+                break;
+            }
+            case EQUALITY: {
+                o << " = ";
+                break;
+            }
+            case DISEQUATION: {
+                o << " != ";
+                break;
+            }
+            }
+            number_t c = -this->_expr.constant();
+            o << c;
+        }
+    }
 
     // for dgb
     void dump() { write(std::cout); }
@@ -452,21 +502,6 @@ class linear_constraint_t final {
 inline std::ostream& operator<<(std::ostream& o, const linear_constraint_t& c) {
     c.write(o);
     return o;
-}
-
-inline linear_constraint_t negate_inequality(const linear_constraint_t& c) {
-    assert(c.is_inequality());
-    // negate(e <= 0) = e >= 1
-    linear_expression_t e(-(c.expression() - 1));
-    return linear_constraint_t(e, linear_constraint_t::constraint_kind_t::INEQUALITY, c.is_signed());
-}
-
-// Specialized version for z_number_t
-inline linear_constraint_t strict_to_non_strict_inequality(const linear_constraint_t& c) {
-    assert(c.is_strict_inequality());
-    // e < 0 --> e <= -1
-    linear_expression_t e(c.expression() + 1);
-    return linear_constraint_t(e, linear_constraint_t::constraint_kind_t::INEQUALITY, c.is_signed());
 }
 
 inline std::size_t hash_value(const linear_constraint_t& e) { return e.hash(); }
