@@ -19,7 +19,8 @@ Clone and make:
 ```
 git clone --recurse-submodules https://github.com/vbpf/ebpf-verifier.git
 cd ebpf-verifier
-cmake -B build && cmake --build build
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
 
 ### Running with Docker
