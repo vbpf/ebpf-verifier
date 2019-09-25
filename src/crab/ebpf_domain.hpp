@@ -184,7 +184,7 @@ class offset_map_t final {
 
     /*
       The keys in the patricia tree are processing in big-endian
-      order. This means that the keys are sorted. Sortedeness is
+      order. This means that the keys are sorted. Sortedness is
       very important to perform efficiently operations such as
       checking for overlap cells. Since keys are treated as bit
       patterns, negative offsets can be used but they are treated
@@ -327,7 +327,7 @@ class array_bitset_domain_t final : public writeable {
 
     bool is_top() const { return non_numerical_bytes.all(); }
 
-    bool operator<=(array_bitset_domain_t other) {
+    bool operator<=(const array_bitset_domain_t& other) {
         return (non_numerical_bytes | other.non_numerical_bytes) == other.non_numerical_bytes;
     }
 
@@ -550,7 +550,7 @@ class ebpf_domain_t final {
   public:
     ebpf_domain_t() : m_inv(NumAbsDomain::top()) {}
 
-    ebpf_domain_t(NumAbsDomain  inv, array_bitset_domain_t num_bytes) : m_inv(std::move(inv)), num_bytes(num_bytes) {}
+    ebpf_domain_t(NumAbsDomain  inv, array_bitset_domain_t num_bytes) : m_inv(std::move(inv)), num_bytes(std::move(num_bytes)) {}
 
     void set_to_top() {
         m_inv.set_to_top();
@@ -635,16 +635,16 @@ class ebpf_domain_t final {
 
     void operator-=(variable_t var) { m_inv -= var; }
 
-    void assign(variable_t x, linear_expression_t e) { m_inv.assign(x, e); }
+    void assign(variable_t x, const linear_expression_t& e) { m_inv.assign(x, e); }
     void assign(variable_t x, int e) { m_inv.set(x, interval_t(number_t(e))); }
 
-    void apply(arith_binop_t op, variable_t x, variable_t y, number_t z) { m_inv.apply(op, x, y, z); }
+    void apply(arith_binop_t op, variable_t x, variable_t y, const number_t& z) { m_inv.apply(op, x, y, z); }
 
     void apply(arith_binop_t op, variable_t x, variable_t y, variable_t z) { m_inv.apply(op, x, y, z); }
 
     void apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t z) { m_inv.apply(op, x, y, z); }
 
-    void apply(bitwise_binop_t op, variable_t x, variable_t y, number_t k) { m_inv.apply(op, x, y, k); }
+    void apply(bitwise_binop_t op, variable_t x, variable_t y, const number_t& k) { m_inv.apply(op, x, y, k); }
 
     template <typename NumOrVar>
     void apply(binop_t op, variable_t x, variable_t y, NumOrVar z) {
@@ -701,7 +701,7 @@ class ebpf_domain_t final {
     }
 
     static std::optional<std::pair<offset_t, unsigned>>
-    kill_and_find_var(NumAbsDomain& m_inv, data_kind_t kind, linear_expression_t i, const linear_expression_t& elem_size) {
+    kill_and_find_var(NumAbsDomain& m_inv, data_kind_t kind, const linear_expression_t& i, const linear_expression_t& elem_size) {
         if (m_inv.is_bottom())
             return {};
 
@@ -731,9 +731,9 @@ class ebpf_domain_t final {
         return res;
     }
 
-    void array_store(NumAbsDomain& m_inv, data_kind_t kind, linear_expression_t idx, linear_expression_t elem_size,
+    void array_store(NumAbsDomain& m_inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size,
                      const linear_expression_t& val) {
-        auto maybe_cell = kill_and_find_var(m_inv, kind, std::move(idx), std::move(elem_size));
+        auto maybe_cell = kill_and_find_var(m_inv, kind, idx, elem_size);
         if (maybe_cell) {
             // perform strong update
             auto [offset, size] = *maybe_cell;
@@ -746,8 +746,8 @@ class ebpf_domain_t final {
         }
     }
 
-    void array_havoc(NumAbsDomain& m_inv, data_kind_t kind, linear_expression_t idx, linear_expression_t elem_size) {
-        auto maybe_cell = kill_and_find_var(m_inv, kind, std::move(idx), std::move(elem_size));
+    void array_havoc(NumAbsDomain& m_inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size) {
+        auto maybe_cell = kill_and_find_var(m_inv, kind, idx, elem_size);
         if (maybe_cell && kind == data_kind_t::types) {
             auto [offset, size] = *maybe_cell;
             num_bytes.havoc(offset.index(), size);
@@ -784,7 +784,7 @@ class ebpf_domain_t final {
     }
 
   private:
-    static NumAbsDomain when(NumAbsDomain inv, linear_constraint_t cond) {
+    static NumAbsDomain when(NumAbsDomain inv, const linear_constraint_t& cond) {
         inv += cond;
         return inv;
     }
@@ -805,52 +805,51 @@ class ebpf_domain_t final {
     }
 
     void add(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2); }
-    void add(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2); }
+    void add(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, std::move(op2)); }
     void sub(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2); }
-    void sub(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2); }
+    void sub(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, std::move(op2)); }
     void add_overflow(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2, true); }
-    void add_overflow(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2, true); }
+    void add_overflow(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, std::move(op2), true); }
     void sub_overflow(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2, true); }
-    void sub_overflow(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2, true); }
+    void sub_overflow(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, std::move(op2), true); }
     void neg(variable_t lhs) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, (number_t)-1, true); }
     void mul(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, op2, true); }
-    void mul(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, op2, true); }
+    void mul(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, std::move(op2), true); }
     void div(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SDIV, lhs, lhs, op2, true); }
-    void div(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::SDIV, lhs, lhs, op2, true); }
+    void div(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::SDIV, lhs, lhs, std::move(op2), true); }
     void udiv(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::UDIV, lhs, lhs, op2, true); }
-    void udiv(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::UDIV, lhs, lhs, op2, true); }
+    void udiv(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::UDIV, lhs, lhs, std::move(op2), true); }
     void rem(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SREM, lhs, lhs, op2, true); }
     void rem(variable_t lhs, number_t op2, bool mod = true) {
-        apply(m_inv, crab::arith_binop_t::SREM, lhs, lhs, op2, mod);
+        apply(m_inv, crab::arith_binop_t::SREM, lhs, lhs, std::move(op2), mod);
     }
     void urem(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::UREM, lhs, lhs, op2, true); }
-    void urem(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::UREM, lhs, lhs, op2, true); }
+    void urem(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::UREM, lhs, lhs, std::move(op2), true); }
 
     void bitwise_and(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::AND, lhs, lhs, op2); }
-    void bitwise_and(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::AND, lhs, lhs, op2); }
+    void bitwise_and(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::AND, lhs, lhs, std::move(op2)); }
     void bitwise_or(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::OR, lhs, lhs, op2); }
-    void bitwise_or(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::OR, lhs, lhs, op2); }
+    void bitwise_or(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::OR, lhs, lhs, std::move(op2)); }
     void bitwise_xor(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::XOR, lhs, lhs, op2); }
-    void bitwise_xor(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::XOR, lhs, lhs, op2); }
+    void bitwise_xor(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::XOR, lhs, lhs, std::move(op2)); }
     void shl_overflow(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::SHL, lhs, lhs, op2, true); }
-    void shl_overflow(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::SHL, lhs, lhs, op2, true); }
+    void shl_overflow(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::SHL, lhs, lhs, std::move(op2), true); }
     void lshr(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
-    void lshr(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
+    void lshr(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, std::move(op2)); }
     void ashr(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
-    void ashr(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
+    void ashr(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, std::move(op2)); }
 
     void assume(const linear_constraint_t& cst) { assume(m_inv, cst); }
     static void assume(NumAbsDomain& inv, const linear_constraint_t& cst) { inv += cst; }
 
     void require(NumAbsDomain& inv, const linear_constraint_t& cst, std::string s) {
         if (check_require)
-            check_require(inv, cst, s);
+            check_require(inv, cst, std::move(s));
         assume(inv, cst);
     }
 
     void havoc(variable_t v) { m_inv -= v; }
     void assign(variable_t lhs, variable_t rhs) { m_inv.assign(lhs, rhs); }
-    void assign(variable_t lhs, number_t rhs) { m_inv.assign(lhs, linear_expression_t(rhs)); }
 
     void no_pointer(int i) {
         assign(reg_type(i), T_NUM);
@@ -866,15 +865,6 @@ class ebpf_domain_t final {
     static linear_constraint_t is_pointer(Reg v) {
         using namespace dsl_syntax;
         return reg_type(v) >= T_CTX;
-    }
-    static linear_constraint_t is_init(Reg v) {
-        using namespace dsl_syntax;
-        return reg_type(v) > T_UNINIT;
-    }
-    static linear_constraint_t is_shared(Reg v) { return is_shared(reg_type(v)); }
-    static linear_constraint_t is_not_num(Reg v) {
-        using namespace dsl_syntax;
-        return reg_type(v) > T_NUM;
     }
 
     void overflow(variable_t lhs) {
@@ -1036,7 +1026,7 @@ class ebpf_domain_t final {
         m_inv = std::move(assume_ptr);
     }
 
-    NumAbsDomain check_access_packet(NumAbsDomain inv, linear_expression_t lb, linear_expression_t ub, std::string s,
+    NumAbsDomain check_access_packet(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
                                      bool is_comparison_check) {
         using namespace dsl_syntax;
         require(inv, lb >= variable_t::meta_offset(), std::string("Lower bound must be higher than meta_offset") + s);
@@ -1049,14 +1039,14 @@ class ebpf_domain_t final {
         return inv;
     }
 
-    NumAbsDomain check_access_stack(NumAbsDomain inv, linear_expression_t lb, linear_expression_t ub, std::string s) {
+    NumAbsDomain check_access_stack(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s) {
         using namespace dsl_syntax;
         require(inv, lb >= 0, std::string("Lower bound must be higher than 0") + s);
         require(inv, ub <= STACK_SIZE, std::string("Upper bound must be lower than STACK_SIZE") + s);
         return inv;
     }
 
-    NumAbsDomain check_access_shared(NumAbsDomain inv, linear_expression_t lb, linear_expression_t ub, std::string s,
+    NumAbsDomain check_access_shared(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
                                      variable_t reg_type) {
         using namespace dsl_syntax;
         require(inv, lb >= 0, std::string("Lower bound must be higher than 0") + s);
@@ -1064,7 +1054,7 @@ class ebpf_domain_t final {
         return inv;
     }
 
-    NumAbsDomain check_access_context(NumAbsDomain inv, linear_expression_t lb, linear_expression_t ub, std::string s) {
+    NumAbsDomain check_access_context(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s) {
         using namespace dsl_syntax;
         require(inv, lb >= 0, std::string("Lower bound must be higher than 0") + s);
         require(inv, ub <= global_program_info.descriptor.size,
@@ -1120,7 +1110,7 @@ class ebpf_domain_t final {
         scratch_caller_saved_registers();
     }
 
-    static NumAbsDomain do_load_packet_or_shared(NumAbsDomain inv, Reg target, linear_expression_t addr, int width) {
+    static NumAbsDomain do_load_packet_or_shared(NumAbsDomain inv, Reg target, const linear_expression_t& addr, int width) {
         if (inv.is_bottom())
             return inv;
 
@@ -1130,7 +1120,7 @@ class ebpf_domain_t final {
         return inv;
     }
 
-    static NumAbsDomain do_load_ctx(NumAbsDomain inv, Reg target, linear_expression_t addr_vague, int width) {
+    static NumAbsDomain do_load_ctx(NumAbsDomain inv, Reg target, const linear_expression_t& addr_vague, int width) {
         using namespace dsl_syntax;
         if (inv.is_bottom())
             return inv;
@@ -1185,7 +1175,7 @@ class ebpf_domain_t final {
         return inv;
     }
 
-    NumAbsDomain do_load_stack(NumAbsDomain inv, Reg target, linear_expression_t addr, int width) {
+    NumAbsDomain do_load_stack(NumAbsDomain inv, Reg target, const linear_expression_t& addr, int width) {
         if (inv.is_bottom())
             return inv;
 
@@ -1533,10 +1523,6 @@ class ebpf_domain_t final {
         }
     }
 
-    NumAbsDomain get_content_domain() const { return m_inv; }
-
-    NumAbsDomain& get_content_domain() { return m_inv; }
-
     friend std::ostream& operator<<(std::ostream& o, ebpf_domain_t dom) {
         if (dom.is_bottom()) {
             o << "_|_";
@@ -1545,8 +1531,6 @@ class ebpf_domain_t final {
         }
         return o;
     }
-
-    void rename(const variable_vector_t& from, const variable_vector_t& to) { m_inv.rename(from, to); }
 
     static ebpf_domain_t setup_entry() {
         using namespace dsl_syntax;
@@ -1572,11 +1556,6 @@ class ebpf_domain_t final {
         }
         return inv;
     }
-
-    bool entail(const linear_constraint_t& cst) { return m_inv.entail(cst); }
-
-    bool intersect(const linear_constraint_t& cst) { return m_inv.intersect(cst); }
-
 }; // end ebpf_domain_t
 
 } // namespace crab
