@@ -25,7 +25,6 @@
 #include "crab/linear_constraints.hpp"
 #include "crab/types.hpp"
 
-#include "asm_ostream.hpp"
 #include "asm_syntax.hpp"
 
 namespace crab {
@@ -126,16 +125,6 @@ class basic_block_t final {
     }
 
     void swap_instructions(stmt_list_t& ts) { std::swap(m_ts, ts); }
-
-    void write(std::ostream& o) const;
-
-    // for gdb
-    void dump() const { write(std::cerr); }
-
-    friend std::ostream& operator<<(std::ostream& o, const basic_block_t& b) {
-        b.write(o);
-        return o;
-    }
 };
 
 // Viewing basic_block_t with all statements reversed. Useful for
@@ -174,16 +163,6 @@ class basic_block_rev_t final {
     std::pair<const_succ_iterator, const_succ_iterator> next_blocks() const { return _bb.prev_blocks(); }
 
     std::pair<const_pred_iterator, const_pred_iterator> prev_blocks() const { return _bb.next_blocks(); }
-
-    void write(std::ostream& o) const;
-
-    // for gdb
-    void dump() const { write(std::cerr); }
-
-    friend std::ostream& operator<<(std::ostream& o, const basic_block_rev_t& b) {
-        b.write(o);
-        return o;
-    }
 };
 
 class cfg_t final {
@@ -231,6 +210,7 @@ class cfg_t final {
             dfs_rec(n, visited, f);
         }
     }
+  public:
 
     template <typename T>
     void dfs(T f) const {
@@ -238,7 +218,6 @@ class cfg_t final {
         dfs_rec(m_entry, visited, f);
     }
 
-  public:
     cfg_t(const label_t& entry, const label_t& exit) : m_entry(entry), m_exit(exit) {
         m_blocks.emplace(entry, entry);
         m_blocks.emplace(exit, exit);
@@ -246,7 +225,8 @@ class cfg_t final {
 
     cfg_t(const cfg_t&) = delete;
 
-    cfg_t(cfg_t&& o) noexcept : m_entry(std::move(o.m_entry)), m_exit(std::move(o.m_exit)), m_blocks(std::move(o.m_blocks)) {}
+    cfg_t(cfg_t&& o) noexcept
+        : m_entry(std::move(o.m_entry)), m_exit(std::move(o.m_exit)), m_blocks(std::move(o.m_blocks)) {}
 
     ~cfg_t() = default;
 
@@ -286,7 +266,7 @@ class cfg_t final {
 
     // --- End ikos fixpoint API
 
-    basic_block_t& insert(const label_t& _label){
+    basic_block_t& insert(const label_t& _label) {
         auto it = m_blocks.find(_label);
         if (it != m_blocks.end())
             return it->second;
@@ -342,23 +322,6 @@ class cfg_t final {
 
     size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
 
-    void write(std::ostream& o) const {
-        dfs([&](const auto& bb) { bb.write(o); });
-    }
-
-    // for gdb
-    void dump() const {
-        std::cerr << "number_t of basic blocks=" << size() << "\n";
-        for (auto& [label, bb] : boost::make_iterator_range(begin(), end())) {
-            bb.dump();
-        }
-    }
-
-    friend std::ostream& operator<<(std::ostream& o, const cfg_t& cfg) {
-        cfg.write(o);
-        return o;
-    }
-
     void simplify() {
         merge_blocks();
         remove_unreachable_blocks();
@@ -371,11 +334,6 @@ class cfg_t final {
     }
 
   private:
-    ////
-    // Trivial cfg_t simplifications
-    // TODO: move to transform directory
-    ////
-
     // Helpers
     bool has_one_child(const label_t& b) const {
         auto rng = next_nodes(b);
@@ -569,15 +527,6 @@ class cfg_rev_t final {
     label_iterator label_end() { return _cfg.label_end(); }
 
     label_t exit() const { return _cfg.entry(); }
-
-    void write(std::ostream& o) const {
-        dfs([&](const auto& bb) { bb.write(o); });
-    }
-
-    friend std::ostream& operator<<(std::ostream& o, const cfg_rev_t& cfg_t) {
-        cfg_t.write(o);
-        return o;
-    }
 };
 
 inline void cfg_t::remove_useless_blocks() {

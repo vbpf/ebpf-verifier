@@ -44,6 +44,7 @@
 #include "dsl_syntax.hpp"
 #include "spec_prototypes.hpp"
 #include "spec_type_descriptors.hpp"
+#include "asm_ostream.hpp"
 
 namespace crab::domains {
 

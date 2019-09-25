@@ -368,3 +368,44 @@ void print_dot(const cfg_t& cfg, const std::string& outfile) {
         throw std::runtime_error(std::string("Could not open file ") + outfile);
     print_dot(cfg, out);
 }
+
+std::ostream& operator<<(std::ostream& o, const basic_block_t& bb) {
+    o << bb.label() << ":\n";
+    for (auto const& s : bb) {
+        o << "  " << s << ";\n";
+    }
+    auto [it, et] = bb.next_blocks();
+    if (it != et) {
+        o << "  "
+          << "goto ";
+        for (; it != et;) {
+            o << *it;
+            ++it;
+            if (it == et) {
+                o << ";";
+            } else {
+                o << ",";
+            }
+        }
+    }
+    o << "\n";
+    return o;
+}
+
+std::ostream& operator<<(std::ostream& o, const crab::basic_block_rev_t& bb) {
+    o << bb.label() << ":\n";
+    for (auto const& s : bb) {
+        o << "  " << s << ";\n";
+    }
+    o << "--> [";
+    for (auto const& n : boost::make_iterator_range(bb.next_blocks())) {
+        o << n << ";";
+    }
+    o << "]\n";
+    return o;
+}
+
+std::ostream& operator<<(std::ostream& o, const cfg_t& cfg) {
+    cfg.dfs([&](const auto& bb) { o << bb; });
+    return o;
+}
