@@ -98,7 +98,7 @@ struct ArgSingle {
         PTR_TO_MAP_VALUE,
         PTR_TO_CTX,
         ANYTHING,
-    } kind;
+    } kind{};
     Reg reg;
 };
 
@@ -107,10 +107,10 @@ struct ArgPair {
         PTR_TO_MEM,
         PTR_TO_MEM_OR_NULL,
         PTR_TO_UNINIT_MEM,
-    } kind;
+    } kind{};
     Reg mem;
     Reg size;
-    bool can_be_zero;
+    bool can_be_zero{};
 };
 
 struct Call {
@@ -220,14 +220,6 @@ struct Assert {
     bool satisfied = false;
 };
 
-#define DECLARE_EQ6(T, f1, f2, f3, f4, f5, f6)                                                               \
-    inline bool operator==(T const& a, T const& b) {                                                         \
-        return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4 && a.f5 == b.f5 && a.f6 == b.f6; \
-    }
-#define DECLARE_EQ5(T, f1, f2, f3, f4, f5)                                                   \
-    inline bool operator==(T const& a, T const& b) {                                         \
-        return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4 && a.f5 == b.f5; \
-    }
 #define DECLARE_EQ4(T, f1, f2, f3, f4)                                       \
     inline bool operator==(T const& a, T const& b) {                         \
         return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4; \
@@ -238,8 +230,6 @@ struct Assert {
     inline bool operator==(T const& a, T const& b) { return a.f1 == b.f1 && a.f2 == b.f2; }
 #define DECLARE_EQ1(T, f1) \
     inline bool operator==(T const& a, T const& b) { return a.f1 == b.f1; }
-#define DECLARE_EQ0(T) \
-    inline bool operator==(T const& a, T const& b) { return true; }
 
 using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Exit, Jmp, Mem, Packet, LockAdd, Assume, Assert>;
 
