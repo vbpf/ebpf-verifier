@@ -32,7 +32,7 @@ inline LabelTranslator label_to_offset_string(pc_t pc) {
 }
 
 void print(const InstructionSeq& prog, std::ostream& out);
-void print(const InstructionSeq& insts, std::string outfile);
+void print(const InstructionSeq& insts, const std::string& outfile);
 void print(const InstructionSeq& prog);
 
 std::ostream& operator<<(std::ostream& os, Instruction const& ins);

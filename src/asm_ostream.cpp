@@ -2,12 +2,12 @@
 #include <iomanip>
 #include <iostream>
 #include <unordered_map>
+#include <utility>
 #include <variant>
 #include <vector>
 
 #include "asm_ostream.hpp"
 #include "asm_syntax.hpp"
-#include "config.hpp"
 #include "crab/cfg.hpp"
 
 using std::optional;
@@ -261,17 +261,17 @@ struct InstructionPrinterVisitor {
 
 string to_string(Instruction const& ins, LabelTranslator labeler) {
     std::stringstream str;
-    std::visit(InstructionPrinterVisitor{str, labeler}, ins);
+    std::visit(InstructionPrinterVisitor{str, std::move(labeler)}, ins);
     return str.str();
 }
 
 std::ostream& operator<<(std::ostream& os, Instruction const& ins) {
-    std::visit(InstructionPrinterVisitor{os, [](label_t l) { return string("<") + l + ">"; }}, ins);
+    std::visit(InstructionPrinterVisitor{os, [](const label_t& l) { return string("<") + l + ">"; }}, ins);
     return os;
 }
 
 string to_string(Instruction const& ins) {
-    return to_string(ins, [](label_t l) { return string("<") + l + ">"; });
+    return to_string(ins, [](const label_t& l) { return string("<") + l + ">"; });
 }
 
 string to_string(AssertionConstraint const& constraint) {
@@ -309,8 +309,8 @@ void print(const InstructionSeq& insts, std::ostream& out) {
     auto pc_of_label = get_labels(insts);
     pc_t pc = 0;
     InstructionPrinterVisitor visitor{out};
-    for (LabeledInstruction labeled_inst : insts) {
-        auto [label, ins] = labeled_inst;
+    for (const LabeledInstruction& labeled_inst : insts) {
+        const auto& [label, ins] = labeled_inst;
         if (is_satisfied(ins))
             continue;
         if (!std::all_of(label.begin(), label.end(), isdigit)) {
@@ -335,60 +335,10 @@ void print(const InstructionSeq& insts, std::ostream& out) {
     }
 }
 
-void print(const InstructionSeq& insts, std::string outfile) {
+void print(const InstructionSeq& insts, const std::string& outfile) {
     std::ofstream out{outfile};
     print(insts, out);
 }
-
-void print(const InstructionSeq& insts) { print(insts, std::cout); }
-
-void print(const cfg_t& cfg, bool nondet, std::ostream& out) {
-    if (!global_options.print_invariants)
-        return;
-    return;
-    /*
-    for (auto [label, next] : slide(cfg.keys())) {
-        out << std::setw(10) << label << ":\t";
-        const auto& bb = cfg.get_node(label);
-        bool first = true;
-        int i = 0;
-        for (auto ins : bb) {
-            if (is_satisfied(ins))
-                continue;
-            if (!first)
-                out << std::setw(10) << " \t";
-            first = false;
-            if (!bb.pres.empty())
-                out << std::setw(10) << " \t"
-                    << "                             " << bb.pres.at(i) << "\n";
-            std::visit(InstructionPrinterVisitor{out}, ins);
-            out << "\n";
-            if (!bb.posts.empty())
-                out << std::setw(10) << " \t"
-                    << "                             " << bb.posts.at(i) << "\n";
-            ++i;
-        }
-        if (nondet && bb.nextlist.size() > 0 && (!next || bb.nextlist != vector<label_t>{*next})) {
-            if (!first)
-                out << std::setw(10) << " \t";
-            first = false;
-            out << "goto ";
-            for (label_t label : bb.nextlist)
-                out << label << ", ";
-            out << "\n";
-        }
-    }
-    */
-}
-
-void print(const cfg_t& cfg, bool nondet, std::string outfile) {
-    std::ofstream out{outfile};
-    if (out.fail())
-        throw std::runtime_error(std::string("Could not open file ") + outfile);
-    print(cfg, nondet, out);
-}
-
-void print(const cfg_t& cfg, bool nondet) { print(cfg, nondet, std::cout); }
 
 void print_dot(const cfg_t& cfg, std::ostream& out) {
     out << "digraph program {\n";
@@ -397,7 +347,7 @@ void print_dot(const cfg_t& cfg, std::ostream& out) {
         out << "    \"" << label << "\"[xlabel=\"" << label << "\",label=\"";
 
         const auto& bb = cfg.get_node(label);
-        for (auto ins : bb) {
+        for (const auto& ins : bb) {
             if (is_satisfied(ins))
                 continue;
             out << ins << "\\l";
@@ -405,18 +355,16 @@ void print_dot(const cfg_t& cfg, std::ostream& out) {
 
         out << "\"];\n";
         auto [b, e] = bb.next_blocks();
-        for (label_t next : std::vector<label_t>(b, e))
+        for (const label_t& next : std::vector<label_t>(b, e))
             out << "    \"" << label << "\" -> \"" << next << "\";\n";
         out << "\n";
     }
     out << "}\n";
 }
 
-void print_dot(const cfg_t& cfg, std::string outfile) {
+void print_dot(const cfg_t& cfg, const std::string& outfile) {
     std::ofstream out{outfile};
     if (out.fail())
         throw std::runtime_error(std::string("Could not open file ") + outfile);
     print_dot(cfg, out);
 }
-
-void print_dot(const cfg_t& cfg) { print_dot(cfg, std::cout); }

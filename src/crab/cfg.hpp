@@ -33,14 +33,13 @@ namespace crab {
 class cfg_t;
 
 class basic_block_t final {
-    basic_block_t(const basic_block_t&) = delete;
-
     friend class cfg_t;
 
   private:
     using label_vec_t = std::vector<label_t>;
 
   public:
+    basic_block_t(const basic_block_t&) = delete;
     // -- iterators
 
     using stmt_list_t = std::vector<Instruction>;
@@ -58,13 +57,13 @@ class basic_block_t final {
     stmt_list_t m_ts;
     label_vec_t m_prev, m_next;
 
-    static void insert_adjacent(label_vec_t& c, label_t e) {
+    static void insert_adjacent(label_vec_t& c, const label_t& e) {
         if (std::find(c.begin(), c.end(), e) == c.end()) {
             c.push_back(e);
         }
     }
 
-    static void remove_adjacent(label_vec_t& c, label_t e) {
+    static void remove_adjacent(label_vec_t& c, const label_t& e) {
         if (std::find(c.begin(), c.end(), e) != c.end()) {
             c.erase(std::remove(c.begin(), c.end(), e), c.end());
         }
@@ -78,7 +77,7 @@ class basic_block_t final {
 
     void insert(const Instruction& arg) { m_ts.push_back(arg); }
 
-    basic_block_t(const label_t& _label) : m_label(_label) {}
+    explicit basic_block_t(label_t _label) : m_label(std::move(_label)) {}
 
     ~basic_block_t() = default;
 
@@ -94,7 +93,7 @@ class basic_block_t final {
     const_reverse_iterator rbegin() const { return (m_ts.rbegin()); }
     const_reverse_iterator rend() const { return (m_ts.rend()); }
 
-    size_t size() const { return std::distance(begin(), end()); }
+    size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
 
     std::pair<succ_iterator, succ_iterator> next_blocks() { return std::make_pair(m_next.begin(), m_next.end()); }
 
@@ -154,7 +153,7 @@ class basic_block_rev_t final {
   public:
     basic_block_t& _bb;
 
-    basic_block_rev_t(basic_block_t& bb) : _bb(bb) {}
+    explicit basic_block_rev_t(basic_block_t& bb) : _bb(bb) {}
 
     label_t label() const { return _bb.label(); }
 
@@ -166,7 +165,7 @@ class basic_block_rev_t final {
 
     const_iterator end() const { return _bb.rend(); }
 
-    std::size_t size() const { return std::distance(begin(), end()); }
+    std::size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
 
     std::pair<succ_iterator, succ_iterator> next_blocks() { return _bb.prev_blocks(); }
 
@@ -206,7 +205,6 @@ class cfg_t final {
     using binding_t = typename basic_block_map_t::value_type;
 
     struct get_label : public std::unary_function<binding_t, label_t> {
-        get_label() {}
         label_t operator()(const binding_t& p) const { return p.second.label(); }
     };
 
@@ -223,13 +221,13 @@ class cfg_t final {
 
     using visited_t = std::unordered_set<label_t>;
     template <typename T>
-    void dfs_rec(label_t curId, visited_t& visited, T f) const {
+    void dfs_rec(const label_t& curId, visited_t& visited, T f) const {
         if (!visited.insert(curId).second)
             return;
 
         const auto& cur = get_node(curId);
         f(cur);
-        for (auto const n : boost::make_iterator_range(cur.next_blocks())) {
+        for (const auto& n : boost::make_iterator_range(cur.next_blocks())) {
             dfs_rec(n, visited, f);
         }
     }
@@ -241,14 +239,14 @@ class cfg_t final {
     }
 
   public:
-    cfg_t(label_t entry, label_t exit) : m_entry(entry), m_exit(exit) {
+    cfg_t(const label_t& entry, const label_t& exit) : m_entry(entry), m_exit(exit) {
         m_blocks.emplace(entry, entry);
         m_blocks.emplace(exit, exit);
     }
 
     cfg_t(const cfg_t&) = delete;
 
-    cfg_t(cfg_t&& o) : m_entry(o.m_entry), m_exit(o.m_exit), m_blocks(std::move(o.m_blocks)) {}
+    cfg_t(cfg_t&& o) noexcept : m_entry(std::move(o.m_entry)), m_exit(std::move(o.m_exit)), m_blocks(std::move(o.m_blocks)) {}
 
     ~cfg_t() = default;
 
@@ -258,19 +256,19 @@ class cfg_t final {
 
     label_t entry() const { return m_entry; }
 
-    const_succ_range next_nodes(label_t _label) const {
+    const_succ_range next_nodes(const label_t& _label) const {
         return boost::make_iterator_range(get_node(_label).next_blocks());
     }
 
-    const_pred_range prev_nodes(label_t _label) const {
+    const_pred_range prev_nodes(const label_t& _label) const {
         return boost::make_iterator_range(get_node(_label).prev_blocks());
     }
 
-    succ_range next_nodes(label_t _label) { return boost::make_iterator_range(get_node(_label).next_blocks()); }
+    succ_range next_nodes(const label_t& _label) { return boost::make_iterator_range(get_node(_label).next_blocks()); }
 
-    pred_range prev_nodes(label_t _label) { return boost::make_iterator_range(get_node(_label).prev_blocks()); }
+    pred_range prev_nodes(const label_t& _label) { return boost::make_iterator_range(get_node(_label).prev_blocks()); }
 
-    basic_block_t& get_node(label_t _label) {
+    basic_block_t& get_node(const label_t& _label) {
         auto it = m_blocks.find(_label);
         if (it == m_blocks.end()) {
             CRAB_ERROR("Basic block ", _label, " not found in the CFG: ", __LINE__);
@@ -278,7 +276,7 @@ class cfg_t final {
         return it->second;
     }
 
-    const basic_block_t& get_node(label_t _label) const {
+    const basic_block_t& get_node(const label_t& _label) const {
         auto it = m_blocks.find(_label);
         if (it == m_blocks.end()) {
             CRAB_ERROR("Basic block ", _label, " not found in the CFG: ", __LINE__);
@@ -288,9 +286,43 @@ class cfg_t final {
 
     // --- End ikos fixpoint API
 
-    basic_block_t& insert(label_t _label);
+    basic_block_t& insert(const label_t& _label){
+        auto it = m_blocks.find(_label);
+        if (it != m_blocks.end())
+            return it->second;
 
-    void remove(label_t _label);
+        m_blocks.emplace(_label, _label);
+        return get_node(_label);
+    }
+
+    void remove(const label_t& _label) {
+        if (_label == m_entry)
+            CRAB_ERROR("Cannot remove entry block");
+
+        if (_label == m_exit)
+            CRAB_ERROR("Cannot remove exit block");
+
+        std::vector<std::pair<basic_block_t*, basic_block_t*>> dead_edges;
+        auto& bb = get_node(_label);
+
+        for (const auto& id : boost::make_iterator_range(bb.prev_blocks())) {
+            if (_label != id) {
+                dead_edges.emplace_back(&get_node(id), &bb);
+            }
+        }
+
+        for (const auto& id : boost::make_iterator_range(bb.next_blocks())) {
+            if (_label != id) {
+                dead_edges.emplace_back(&bb, &get_node(id));
+            }
+        }
+
+        for (auto p : dead_edges) {
+            (*p.first) -= (*p.second);
+        }
+
+        m_blocks.erase(_label);
+    }
 
     //! return a begin iterator of basic_block_t's
     iterator begin() { return m_blocks.begin(); }
@@ -308,11 +340,7 @@ class cfg_t final {
     //! return an end iterator of label_t's
     label_iterator label_end() { return boost::make_transform_iterator(m_blocks.end(), get_label()); }
 
-    const_label_iterator label_begin() const { return boost::make_transform_iterator(m_blocks.begin(), get_label()); }
-
-    const_label_iterator label_end() const { return boost::make_transform_iterator(m_blocks.end(), get_label()); }
-
-    size_t size() const { return std::distance(begin(), end()); }
+    size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
 
     void write(std::ostream& o) const {
         dfs([&](const auto& bb) { bb.write(o); });
@@ -349,29 +377,29 @@ class cfg_t final {
     ////
 
     // Helpers
-    bool has_one_child(label_t b) const {
+    bool has_one_child(const label_t& b) const {
         auto rng = next_nodes(b);
         return (std::distance(rng.begin(), rng.end()) == 1);
     }
 
-    bool has_one_parent(label_t b) const {
+    bool has_one_parent(const label_t& b) const {
         auto rng = prev_nodes(b);
         return (std::distance(rng.begin(), rng.end()) == 1);
     }
 
-    basic_block_t& get_child(label_t b) {
+    basic_block_t& get_child(const label_t& b) {
         assert(has_one_child(b));
         auto rng = next_nodes(b);
         return get_node(*(rng.begin()));
     }
 
-    basic_block_t& get_parent(label_t b) {
+    basic_block_t& get_parent(const label_t& b) {
         assert(has_one_parent(b));
         auto rng = prev_nodes(b);
         return get_node(*(rng.begin()));
     }
 
-    void merge_blocks_rec(label_t current_label, visited_t& visited) {
+    void merge_blocks_rec(const label_t& current_label, visited_t& visited) {
         if (!visited.insert(current_label).second)
             return;
 
@@ -395,7 +423,7 @@ class cfg_t final {
             }
         }
 
-        for (auto n : boost::make_iterator_range(cur.next_blocks())) {
+        for (const auto& n : boost::make_iterator_range(cur.next_blocks())) {
             merge_blocks_rec(n, visited);
         }
     }
@@ -413,7 +441,7 @@ class cfg_t final {
         if (visited.count(curId) > 0)
             return;
         visited.insert(curId);
-        for (auto child : cfg_t.next_nodes(curId)) {
+        for (const auto& child : cfg_t.next_nodes(curId)) {
             mark_alive_blocks(child, cfg_t, visited);
         }
     }
@@ -464,11 +492,11 @@ class cfg_rev_t final {
     using visited_t = std::unordered_set<label_t>;
 
     template <typename T>
-    void dfs_rec(label_t curId, visited_t& visited, T f) const {
+    void dfs_rec(const label_t& curId, visited_t& visited, T f) const {
         if (!visited.insert(curId).second)
             return;
         f(get_node(curId));
-        for (auto const n : next_nodes(curId)) {
+        for (const auto& n : next_nodes(curId)) {
             dfs_rec(n, visited, f);
         }
     }
@@ -491,7 +519,7 @@ class cfg_rev_t final {
     basic_block_rev_map_t _rev_bbs;
 
   public:
-    cfg_rev_t(cfg_t& cfg) : _cfg(cfg) {
+    explicit cfg_rev_t(cfg_t& cfg) : _cfg(cfg) {
         // Create basic_block_rev_t from basic_block_t objects
         // Note that basic_block_rev_t is also a view of basic_block_t so it
         // doesn't modify basic_block_t objects.
@@ -500,28 +528,28 @@ class cfg_rev_t final {
         }
     }
 
-    cfg_rev_t(const cfg_rev_t& o) : _cfg(o._cfg), _rev_bbs(o._rev_bbs) {}
+    cfg_rev_t(const cfg_rev_t& o) = default;
 
-    cfg_rev_t(cfg_rev_t&& o) : _cfg(o._cfg), _rev_bbs(std::move(o._rev_bbs)) {}
+    cfg_rev_t(cfg_rev_t&& o) noexcept : _cfg(o._cfg), _rev_bbs(std::move(o._rev_bbs)) {}
 
     label_t entry() const { return _cfg.exit(); }
 
-    const_succ_range next_nodes(label_t bb) const { return _cfg.prev_nodes(bb); }
+    const_succ_range next_nodes(const label_t& bb) const { return _cfg.prev_nodes(bb); }
 
-    const_pred_range prev_nodes(label_t bb) const { return _cfg.next_nodes(bb); }
+    const_pred_range prev_nodes(const label_t& bb) const { return _cfg.next_nodes(bb); }
 
-    succ_range next_nodes(label_t bb) { return _cfg.prev_nodes(bb); }
+    succ_range next_nodes(const label_t& bb) { return _cfg.prev_nodes(bb); }
 
-    pred_range prev_nodes(label_t bb) { return _cfg.next_nodes(bb); }
+    pred_range prev_nodes(const label_t& bb) { return _cfg.next_nodes(bb); }
 
-    basic_block_rev_t& get_node(label_t _label) {
+    basic_block_rev_t& get_node(const label_t& _label) {
         auto it = _rev_bbs.find(_label);
         if (it == _rev_bbs.end())
             CRAB_ERROR("Basic block ", _label, " not found in the CFG: ", __LINE__);
         return it->second;
     }
 
-    const basic_block_rev_t& get_node(label_t _label) const {
+    const basic_block_rev_t& get_node(const label_t& _label) const {
         auto it = _rev_bbs.find(_label);
         if (it == _rev_bbs.end())
             CRAB_ERROR("Basic block ", _label, " not found in the CFG: ", __LINE__);
@@ -540,10 +568,6 @@ class cfg_rev_t final {
 
     label_iterator label_end() { return _cfg.label_end(); }
 
-    const_label_iterator label_begin() const { return _cfg.label_begin(); }
-
-    const_label_iterator label_end() const { return _cfg.label_end(); }
-
     label_t exit() const { return _cfg.entry(); }
 
     void write(std::ostream& o) const {
@@ -554,8 +578,6 @@ class cfg_rev_t final {
         cfg_t.write(o);
         return o;
     }
-
-    static void simplify() {}
 };
 
 inline void cfg_t::remove_useless_blocks() {
@@ -572,47 +594,9 @@ inline void cfg_t::remove_useless_blocks() {
         }
     }
 
-    for (auto _label : useless) {
+    for (const auto& _label : useless) {
         remove(_label);
     }
-}
-
-inline basic_block_t& cfg_t::insert(label_t _label) {
-    auto it = m_blocks.find(_label);
-    if (it != m_blocks.end())
-        return it->second;
-
-    m_blocks.emplace(_label, _label);
-    return get_node(_label);
-}
-
-inline void cfg_t::remove(label_t _label) {
-    if (_label == m_entry)
-        CRAB_ERROR("Cannot remove entry block");
-
-    if (_label == m_exit)
-        CRAB_ERROR("Cannot remove exit block");
-
-    std::vector<std::pair<basic_block_t*, basic_block_t*>> dead_edges;
-    auto& bb = get_node(_label);
-
-    for (auto id : boost::make_iterator_range(bb.prev_blocks())) {
-        if (_label != id) {
-            dead_edges.push_back({&get_node(id), &bb});
-        }
-    }
-
-    for (auto id : boost::make_iterator_range(bb.next_blocks())) {
-        if (_label != id) {
-            dead_edges.push_back({&bb, &get_node(id)});
-        }
-    }
-
-    for (auto p : dead_edges) {
-        (*p.first) -= (*p.second);
-    }
-
-    m_blocks.erase(_label);
 }
 
 inline void cfg_t::remove_unreachable_blocks() {
@@ -627,7 +611,7 @@ inline void cfg_t::remove_unreachable_blocks() {
 
     if (dead.count(m_exit))
         CRAB_ERROR("Exit block must be reachable");
-    for (auto _label : dead) {
+    for (const auto& _label : dead) {
         remove(_label);
     }
 }
@@ -643,10 +627,5 @@ std::map<std::string, int> collect_stats(const cfg_t&);
 
 void explicate_assertions(cfg_t& cfg, const program_info& info);
 
-void print(const cfg_t& cfg, bool nondet, std::ostream& out);
-void print(const cfg_t& cfg, bool nondet, std::string outfile);
-void print(const cfg_t& cfg, bool nondet);
-
 void print_dot(const cfg_t& cfg, std::ostream& out);
-void print_dot(const cfg_t& cfg, std::string outfile);
-void print_dot(const cfg_t& cfg);
+void print_dot(const cfg_t& cfg, const std::string& outfile);
