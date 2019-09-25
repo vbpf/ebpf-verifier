@@ -7,5 +7,6 @@ RUN pip3 install matplotlib
 
 WORKDIR /verifier
 COPY . /verifier/
-RUN cmake -B build && cmake --build build
+RUN cmake -B build -DCMAKE_BUILD_TYPE=Release
+RUN cmake --build build
 ENTRYPOINT ["./check"]

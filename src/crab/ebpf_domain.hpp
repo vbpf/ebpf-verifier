@@ -1548,10 +1548,6 @@ class ebpf_domain_t final {
     void rename(const variable_vector_t& from, const variable_vector_t& to) { m_inv.rename(from, to); }
 
     static ebpf_domain_t setup_entry() {
-        std::cerr << "meta: " << global_program_info.descriptor.meta << "\n";
-        std::cerr << "data: " << global_program_info.descriptor.data << "\n";
-        std::cerr << "end: " << global_program_info.descriptor.end << "\n";
-        std::cerr << "ctx size: " << global_program_info.descriptor.size << "\n";
         using namespace dsl_syntax;
 
         // intra_abs_transformer<AbsDomain>(inv);
