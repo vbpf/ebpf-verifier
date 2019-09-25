@@ -19,7 +19,7 @@ class num_range final {
   public:
     class value_ref {
       public:
-        value_ref(const V& _v) : v(_v) {}
+        explicit value_ref(const V& _v) : v(_v) {}
         const V& operator*() const { return v; }
         value_ref& operator++() {
             v++;
@@ -34,7 +34,7 @@ class num_range final {
       protected:
         V v;
     };
-    num_range(const V& _after) : after(_after) {}
+    explicit num_range(const V& _after) : after(_after) {}
 
     value_ref begin() const { return value_ref((V)0); }
     value_ref end() const { return value_ref(after); }
@@ -428,7 +428,7 @@ class GraphRev {
 template <class V>
 class DistComp {
   public:
-    DistComp(V& _A) : A(_A) {}
+    explicit DistComp(V& _A) : A(_A) {}
     bool operator()(int x, int y) const { return A[x] < A[y]; }
     V& A;
 };
@@ -759,7 +759,7 @@ class GraphOps {
             //        unsigned int g_count = 0;
             //        unsigned int r_count = 0;
             for (auto e : g.e_succs(s)) {
-                char mark = 0;
+                unsigned char mark = 0;
                 vert_id d = e.vert;
                 if (l.lookup(s, d, &w) && w.get() == e.val)
                     mark |= E_LEFT;
@@ -848,17 +848,6 @@ class GraphOps {
                     }
                 }
             }
-        }
-    }
-
-    template <class G, class P>
-    static void close_johnson(G& g, const P& p, edge_vector& out) {
-        std::vector<std::pair<vert_id, Wt>> adjs;
-        for (vert_id v : g.verts()) {
-            adjs.clear();
-            dijkstra(g, p, v, adjs);
-            for (auto p : adjs)
-                out.push_back(std::make_pair(std::make_pair(v, p.first), p.second));
         }
     }
 
@@ -991,31 +980,6 @@ class GraphOps {
         }
     }
 
-    class forall_except {
-      public:
-        forall_except(vert_id _v) : v(_v) {}
-
-        bool operator[](vert_id w) const { return w != v; }
-
-      protected:
-        vert_id v;
-    };
-
-    /*
-    template<class V>
-    class vec_neg {
-    public:
-      vec_neg(const V& _vec)
-        : vec(_vec)
-      { }
-
-      auto operator[](size_t idx) const { return -(vec[idx]); }
-    protected:
-      const V& vec;
-    };
-    template<class V>
-    vec_neg<V> negate_vec(const V& vec) { return vec_neg<V>(vec); }
-    */
     template <class G, class P>
     static bool repair_potential(G& g, P& p, vert_id ii, vert_id jj) {
         // Ensure there's enough scratch space.
@@ -1083,8 +1047,8 @@ class GraphOps {
             if (!edge_marks[v]) {
                 aux.clear();
                 dijkstra_recover(g, p, edge_marks, v, aux);
-                for (auto p : aux)
-                    delta.push_back(std::make_pair(std::make_pair(v, p.first), p.second));
+                for (auto [vid, wt] : aux)
+                    delta.push_back(std::make_pair(std::make_pair(v, vid), wt));
             }
         }
     }
@@ -1095,7 +1059,7 @@ class GraphOps {
     template <class P>
     class AdjCmp {
       public:
-        AdjCmp(const P& _p) : p(_p) {}
+        explicit AdjCmp(const P& _p) : p(_p) {}
 
         bool operator()(vert_id d1, vert_id d2) const { return (dists[d1] - p[d1]) < (dists[d2] - p[d2]); }
 
@@ -1111,7 +1075,7 @@ class GraphOps {
     template <class P>
     class NegP {
       public:
-        NegP(const P& _p) : p(_p) {}
+        explicit NegP(const P& _p) : p(_p) {}
         Wt operator[](vert_id v) const { return -(p[v]); }
 
         const P& p;
@@ -1176,31 +1140,32 @@ class GraphOps {
     static void close_after_assign(G& g, P& p, vert_id v, edge_vector& delta) {
         unsigned int sz = g.size();
         grow_scratch(sz);
-
-        std::vector<std::pair<vert_id, Wt>> aux;
-
-        close_after_assign_fwd(g, p, v, aux);
-        for (auto p : aux)
-            delta.push_back(std::make_pair(std::make_pair(v, p.first), p.second));
-
-        aux.clear();
-        GraphRev<G> g_rev(g);
-        close_after_assign_fwd(g_rev, make_negp(p), v, aux);
-        for (auto p : aux)
-            delta.push_back(std::make_pair(std::make_pair(p.first, v), p.second));
+        {
+            std::vector<std::pair<vert_id, Wt>> aux;
+            close_after_assign_fwd(g, p, v, aux);
+            for (auto [vid, wt] : aux)
+                delta.push_back(std::make_pair(std::make_pair(v, vid), wt));
+        }
+        {
+            std::vector<std::pair<vert_id, Wt>> aux;
+            GraphRev<G> g_rev(g);
+            close_after_assign_fwd(g_rev, make_negp(p), v, aux);
+            for (auto [vid, wt] : aux)
+                delta.push_back(std::make_pair(std::make_pair(vid, v), wt));
+        }
     }
 };
 
 // Static data allocation
 template <class Wt>
-char* GraphOps<Wt>::edge_marks = NULL;
+char* GraphOps<Wt>::edge_marks = nullptr;
 
 // Used for Bellman-Ford queueing
 template <class Wt>
 typename GraphOps<Wt>::vert_id* GraphOps<Wt>::dual_queue = NULL;
 
 template <class Wt>
-int* GraphOps<Wt>::vert_marks = NULL;
+int* GraphOps<Wt>::vert_marks = nullptr;
 
 template <class Wt>
 unsigned int GraphOps<Wt>::scratch_sz = 0;
