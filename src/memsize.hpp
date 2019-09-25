@@ -8,8 +8,8 @@
 #include <unistd.h>
 
 inline long resident_set_size_kb() {
-    std::string _;
-    unsigned long __;
+    std::string _{};
+    unsigned long __{};
     long rss = 0;
     {
         std::ifstream stat_stream("/proc/self/stat", std::ios_base::in);

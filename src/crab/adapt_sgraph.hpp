@@ -154,8 +154,8 @@ class AdaptSMap {
         elt_range_t(elt_t* _e, size_t _sz) : e(_e), sz(_sz) {}
         elt_range_t(const elt_range_t& o) : e(o.e), sz(o.sz) {}
         size_t size() const { return sz; }
-        elt_iter_t begin() const { return elt_iter_t(e); }
-        elt_iter_t end() const { return elt_iter_t(e + sz); }
+        elt_iter_t begin() const { return e; }
+        elt_iter_t end() const { return e + sz; }
 
         elt_t* e;
         size_t sz;

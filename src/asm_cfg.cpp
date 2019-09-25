@@ -125,12 +125,12 @@ cfg_t to_nondet(const cfg_t& cfg) {
                 {*bb.next_blocks().first, cond},
                 {*std::next(bb.next_blocks().first), reverse(cond)},
             };
-            for (auto const& [next_label, cond] : jumps) {
+            for (auto const& [next_label, cond1] : jumps) {
                 label_t l = mid_label + next_label;
-                basic_block_t& bb = res.insert(l);
-                bb.insert<Assume>(cond);
-                newbb >> bb;
-                bb >> res.insert(next_label);
+                basic_block_t& bb1 = res.insert(l);
+                bb1.insert<Assume>(cond1);
+                newbb >> bb1;
+                bb1 >> res.insert(next_label);
             }
         } else {
             for (auto label : nextlist)

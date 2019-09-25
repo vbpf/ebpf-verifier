@@ -7,6 +7,7 @@
 #pragma once
 
 #include <optional>
+#include <utility>
 
 #include "crab/bignums.hpp"
 #include "crab/stats.hpp"
@@ -20,9 +21,8 @@ class bound_t final {
     number_t _n;
 
   private:
-    bound_t();
 
-    bound_t(bool is_infinite, number_t n) : _is_infinite(is_infinite), _n(n) {
+    bound_t(bool is_infinite, const number_t& n) : _is_infinite(is_infinite), _n(n) {
         if (is_infinite) {
             if (n > 0)
                 _n = 1;
@@ -51,7 +51,7 @@ class bound_t final {
   public:
     bound_t(int n) : _is_infinite(false), _n(n) {}
 
-    bound_t(std::string s) : _n(1) {
+    bound_t(const std::string& s) : _n(1) {
         if (s == "+oo") {
             _is_infinite = true;
         } else if (s == "-oo") {
@@ -63,9 +63,9 @@ class bound_t final {
         }
     }
 
-    bound_t(number_t n) : _is_infinite(false), _n(n) {}
+    bound_t(number_t n) : _is_infinite(false), _n(std::move(n)) {}
 
-    bound_t(const bound_t& o) : _is_infinite(o._is_infinite), _n(o._n) {}
+    bound_t(const bound_t& o) = default;
 
     bound_t& operator=(const bound_t& o) {
         if (this != &o) {

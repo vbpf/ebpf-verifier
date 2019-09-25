@@ -422,7 +422,7 @@ inline linear_constraint_t eq(variable_t a, variable_t b) {
 inline linear_constraint_t neq(variable_t a, variable_t b) {
     using namespace dsl_syntax;
     return {a - b, linear_constraint_t::DISEQUATION};
-};
+}
 
 constexpr int MAX_PACKET_OFF = 0xffff;
 constexpr int64_t MY_INT_MAX = INT_MAX;
@@ -1203,8 +1203,8 @@ class ebpf_domain_t final {
     void do_load(Mem const& b, Reg target) {
         using namespace dsl_syntax;
         Reg mem_reg = b.access.basereg;
-        int width = (int)b.access.width;
-        int offset = (int)b.access.offset;
+        int width = b.access.width;
+        int offset = b.access.offset;
         linear_expression_t addr = reg_offset(mem_reg) + (number_t)offset;
         variable_t mem_reg_type = reg_type(mem_reg);
 
@@ -1275,8 +1275,8 @@ class ebpf_domain_t final {
     void do_mem_store(Mem const& b, Type val_type, Value val_value, std::optional<variable_t> opt_val_offset) {
         using namespace dsl_syntax;
         Reg mem_reg = b.access.basereg;
-        int width = (int)b.access.width;
-        int offset = (int)b.access.offset;
+        int width = b.access.width;
+        int offset = b.access.offset;
         if (mem_reg.v == 10) {
             int addr = STACK_SIZE + offset;
             do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset);

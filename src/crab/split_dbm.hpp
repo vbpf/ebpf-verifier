@@ -137,7 +137,7 @@ class SplitDBM final : public writeable {
 
     // Evaluate an expression under the chosen potentials
     Wt eval_expression(const linear_expression_t& e, bool overflow) {
-        Wt v(convert_NtoW(e.constant(), overflow));
+        Wt res(convert_NtoW(e.constant(), overflow));
         if (overflow) {
             return Wt(0);
         }
@@ -147,9 +147,9 @@ class SplitDBM final : public writeable {
             if (overflow) {
                 return Wt(0);
             }
-            v += (pot_value(n) - potential[0]) * coef;
+            res += (pot_value(n) - potential[0]) * coef;
         }
-        return v;
+        return res;
     }
 
     interval_t compute_residual(const linear_expression_t& e, variable_t pivot) {

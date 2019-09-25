@@ -38,7 +38,7 @@ static bpf_prog_type to_linuxtype(BpfProgType t) {
     default: return BPF_PROG_TYPE_SOCKET_FILTER;
     }
     return BPF_PROG_TYPE_UNSPEC;
-};
+}
 
 static int do_bpf(bpf_cmd cmd, union bpf_attr& attr) { return syscall(321, cmd, &attr, sizeof(attr)); }
 
