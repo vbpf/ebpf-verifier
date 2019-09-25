@@ -58,7 +58,7 @@ struct graph_traits<crab::cfg_t> {
     using degree_size_type = size_t;
 
     static vertex_descriptor null_vertex() {
-        if (std::is_pointer<vertex_descriptor>::value)
+        if constexpr (std::is_pointer<vertex_descriptor>::value)
             return nullptr;
         else {
             // XXX: if vertex_descriptor is a basic type then
@@ -96,7 +96,7 @@ struct graph_traits<crab::cfg_rev_t> {
     using degree_size_type = size_t;
 
     static vertex_descriptor null_vertex() {
-        if (std::is_pointer<vertex_descriptor>::value)
+        if constexpr (std::is_pointer<vertex_descriptor>::value)
             return nullptr;
         else {
             // XXX: if vertex_descriptor is a basic type then

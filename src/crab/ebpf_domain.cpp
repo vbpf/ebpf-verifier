@@ -12,7 +12,7 @@ array_map_t global_array_map;
 **/
 void clear_global_state() {
     if (!global_array_map.empty()) {
-        if (crab::CrabSanityCheckFlag) {
+        if constexpr (crab::CrabSanityCheckFlag) {
             CRAB_WARN("array_expansion static variable map is being cleared");
         }
         global_array_map.clear();
