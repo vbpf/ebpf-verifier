@@ -39,7 +39,7 @@ class member_component_visitor final : public wto_component_visitor_t {
         }
     }
 
-    [[nodiscard]] bool is_member() const { return _found; }
+    bool is_member() const { return _found; }
 };
 
 class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t{

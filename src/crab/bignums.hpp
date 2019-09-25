@@ -43,10 +43,17 @@
 
 #pragma once
 
+#include <climits>
 #include <iostream>
 #include <sstream>
+#include <string>
+
+#include <boost/functional/hash.hpp>
+#include <utility>
 
 #include <gmpxx.h>
+
+#include "crab/debug.hpp"
 
 namespace crab {
 
@@ -72,116 +79,225 @@ namespace crab {
 
 class z_number final {
   private:
-    mpz_class _n;
+    mpz_class _n{0};
 
   public:
-    explicit z_number(mpz_class n);
+    z_number() = default;
+    explicit z_number(mpz_class n) : _n(std::move(n)) {}
 
-    // The mpz_class constructor can take any standard C++ type except
-    // long long.
-    static z_number from_ulong(unsigned long n);
+    z_number(signed long long int n) : _n((signed long int)n) {
+        if (n > LONG_MAX) {
+            CRAB_ERROR(n, " cannot fit into a signed long int: use another mpz_class constructor");
+        }
+    }
 
-    // The mpz_class constructor can take any standard C++ type except
-    // long long.
-    static z_number from_slong(signed long n);
+    explicit z_number(const std::string& s) {
+        try {
+            _n = s;
+        } catch (std::invalid_argument& e) {
+            CRAB_ERROR("z_number: invalid string in constructor", s);
+        }
+    }
 
     // overloaded typecast operators
-    explicit operator long() const;
+    explicit operator long() const {
+        if (_n.fits_slong_p()) {
+            return _n.get_si();
+        } else {
+            CRAB_ERROR("mpz_class ", _n.get_str(), " does not fit into a signed long integer");
+        }
+    }
 
-    explicit operator int() const;
+    explicit operator int() const {
+        if (_n.fits_sint_p()) {
+            // get_si returns a signed long so we cast it to int
+            return (int)_n.get_si();
+        } else {
+            CRAB_ERROR("mpz_class ", _n.get_str(), " does not fit into a signed integer");
+        }
+    }
 
-    explicit operator mpz_class() const;
+    explicit operator mpz_class() const { return _n; }
 
-    z_number();
+    std::size_t hash() const {
+        boost::hash<std::string> hasher;
+        return hasher(_n.get_str());
+    }
 
-    explicit z_number(std::string s);
+    bool fits_sint() const { return _n.fits_sint_p(); }
 
-    z_number(signed long long int n);
+    bool fits_slong() const { return _n.fits_slong_p(); }
 
-    std::string get_str() const;
+    z_number operator+(const z_number& x) const {
+        mpz_class r = _n + x._n;
+        return z_number(r);
+    }
 
-    std::size_t hash() const;
-
-    bool fits_sint() const;
-
-    bool fits_slong() const;
-
-    z_number operator+(z_number x) const;
     z_number operator+(int x) const { return operator+(z_number(x)); }
 
-    z_number operator*(z_number x) const;
+    z_number operator*(const z_number& x) const {
+        mpz_class r = _n * x._n;
+        return z_number(r);
+    }
+
     z_number operator*(int x) const { return operator*(z_number(x)); }
 
-    z_number operator-(z_number x) const;
+    z_number operator-(const z_number& x) const {
+        mpz_class r = _n - x._n;
+        return z_number(r);
+    }
+
     z_number operator-(int x) const { return operator-(z_number(x)); }
 
-    z_number operator-() const;
+    z_number operator-() const {
+        mpz_class r = -_n;
+        return z_number(r);
+    }
 
-    z_number operator/(z_number x) const;
+    z_number operator/(const z_number& x) const {
+        if (x._n == 0) {
+            CRAB_ERROR("z_number: division by zero [1]");
+        } else {
+            mpz_class r = _n / x._n;
+            return z_number(r);
+        }
+    }
+
     z_number operator/(int x) const { return operator/(z_number(x)); }
 
-    z_number operator%(z_number x) const;
+    z_number operator%(const z_number& x) const {
+        if (x._n == 0) {
+            CRAB_ERROR("z_number: division by zero [2]");
+        } else {
+            mpz_class r = _n % x._n;
+            return z_number(r);
+        }
+    }
+
     z_number operator%(int x) const { return operator%(z_number(x)); }
 
-    z_number& operator+=(z_number x);
+    z_number& operator+=(const z_number& x) {
+        _n += x._n;
+        return *this;
+    }
+
     z_number& operator+=(int x) { return operator+=(z_number(x)); }
 
-    z_number& operator*=(z_number x);
+    z_number& operator*=(const z_number& x) {
+        _n *= x._n;
+        return *this;
+    }
+
     z_number& operator*=(int x) { return operator*=(z_number(x)); }
 
-    z_number& operator-=(z_number x);
+    z_number& operator-=(const z_number& x) {
+        _n -= x._n;
+        return *this;
+    }
+
     z_number& operator-=(int x) { return operator-=(z_number(x)); }
 
-    z_number& operator/=(z_number x);
+    z_number& operator/=(const z_number& x) {
+        if (x._n == 0) {
+            CRAB_ERROR("z_number: division by zero [3]");
+        } else {
+            _n /= x._n;
+            return *this;
+        }
+    }
+
     z_number& operator/=(int x) { return operator/=(z_number(x)); }
 
-    z_number& operator%=(z_number x);
+    z_number& operator%=(const z_number& x) {
+        if (x._n == 0) {
+            CRAB_ERROR("z_number: division by zero [4]");
+        } else {
+            _n %= x._n;
+            return *this;
+        }
+    }
+
     z_number& operator%=(int x) { return operator%=(z_number(x)); }
 
-    z_number& operator--();
+    z_number& operator--() & {
+        --(_n);
+        return *this;
+    }
 
-    z_number& operator++();
+    z_number& operator++() & {
+        ++(_n);
+        return *this;
+    }
 
-    z_number operator++(int);
+    z_number operator++(int) & {
+        z_number r(*this);
+        ++(*this);
+        return r;
+    }
 
-    z_number operator--(int);
+    z_number operator--(int) & {
+        z_number r(*this);
+        --(*this);
+        return r;
+    }
 
-    bool operator==(z_number x) const;
+    bool operator==(const z_number& x) const { return _n == x._n; }
     bool operator==(int x) const { return operator==(z_number(x)); }
 
-    bool operator!=(z_number x) const;
+    bool operator!=(const z_number& x) const { return _n != x._n; }
     bool operator!=(int x) const { return operator!=(z_number(x)); }
 
-    bool operator<(z_number x) const;
+    bool operator<(const z_number& x) const { return _n < x._n; }
+
     bool operator<(int x) const { return operator<(z_number(x)); }
 
-    bool operator<=(z_number x) const;
+    bool operator<=(const z_number& x) const { return _n <= x._n; }
     bool operator<=(int x) const { return operator<=(z_number(x)); }
 
-    bool operator>(z_number x) const;
+    bool operator>(const z_number& x) const { return _n > x._n; }
     bool operator>(int x) const { return operator>(z_number(x)); }
 
-    bool operator>=(z_number x) const;
+    bool operator>=(const z_number& x) const { return _n >= x._n; }
     bool operator>=(int x) const { return operator>=(z_number(x)); }
 
-    z_number operator&(z_number x) const;
+    z_number operator&(const z_number& x) const { return z_number(_n & x._n); }
     z_number operator&(int x) const { return operator&(z_number(x)); }
 
-    z_number operator|(z_number x) const;
+    z_number operator|(const z_number& x) const { return z_number(_n | x._n); }
     z_number operator|(int x) const { return operator|(z_number(x)); }
 
-    z_number operator^(z_number x) const;
+    z_number operator^(const z_number& x) const { return z_number(_n ^ x._n); }
     z_number operator^(int x) const { return operator^(z_number(x)); }
 
-    z_number operator<<(z_number x) const;
+    z_number operator<<(z_number x) const {
+        mpz_t tmp;
+        mpz_init(tmp);
+        mpz_mul_2exp(tmp, _n.get_mpz_t(), mpz_get_ui(x._n.get_mpz_t()));
+        mpz_class result(tmp);
+        return z_number(result);
+    }
+
     z_number operator<<(int x) const { return operator<<(z_number(x)); }
 
-    z_number operator>>(z_number x) const;
+    z_number operator>>(z_number x) const {
+        mpz_class tmp(_n);
+        return z_number(tmp.operator>>=(mpz_get_ui(x._n.get_mpz_t())));
+    }
     z_number operator>>(int x) const { return operator>>(z_number(x)); }
 
-    [[nodiscard]] z_number fill_ones() const;
+    z_number fill_ones() const {
+        assert(_n >= 0);
+        if (_n == 0) {
+            return z_number(0);
+        }
 
-    void write(std::ostream& o) const;
+        mpz_class result;
+        for (result = 1; result < _n; result = 2 * result + 1)
+            ;
+        return z_number(result);
+    }
+
+    void write(std::ostream& o) const { o << _n.get_str(); }
 
 }; // class z_number
 
