@@ -58,10 +58,12 @@ Positionals:
 Options:
   -h,--help                   Print this help message and exit
   -l                          List sections
-  -d,--dom,--domain DOMAIN    Abstract domain
+  -d,--dom,--domain DOMAIN:{linux,stats,zoneCrab}
+                              Abstract domain
   -i                          Print invariants
   -f                          Print verifier's failure logs
   -v                          Print both invariants and failures
+  --no-simplify               Do not simplify
   --asm FILE                  Print disassembly to FILE
   --dot FILE                  Export cfg to dot FILE
 ```
@@ -165,11 +167,3 @@ $ ./check counter/objects/simple_loop_ptr_backwards.o
 1,0.018346,7900
 ```
 (not all the programs in the folder are verified)
-
-### Important components:
-
-The analyzer code is divided to two main parts: front end, parsing eBPF binaries into CFG, and backend, translating the eBPF CFG into crab-specific CFG of constraints.
-
-The front end (files named `asm_*`) is potentially reusable by any other analyzer or tool for eBPF. The most important file is `src/asm_syntax.hpp`, which describes the syntax of the language in a relatively self-explanatory way (structs and variant types).
-
-The backend is mostly confined into `src/crab_verifier.cpp` and `src/crab_constraints.cpp`. The latter does the translation of eBPF instructions to the language handled by crab.
