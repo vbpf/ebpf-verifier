@@ -58,13 +58,13 @@ class basic_block_t final {
     stmt_list_t m_ts;
     label_vec_t m_prev, m_next;
 
-    void insert_adjacent(label_vec_t& c, label_t e) {
+    static void insert_adjacent(label_vec_t& c, label_t e) {
         if (std::find(c.begin(), c.end(), e) == c.end()) {
             c.push_back(e);
         }
     }
 
-    void remove_adjacent(label_vec_t& c, label_t e) {
+    static void remove_adjacent(label_vec_t& c, label_t e) {
         if (std::find(c.begin(), c.end(), e) != c.end()) {
             c.erase(std::remove(c.begin(), c.end(), e), c.end());
         }
@@ -555,7 +555,7 @@ class cfg_rev_t final {
         return o;
     }
 
-    void simplify() {}
+    static void simplify() {}
 };
 
 inline void cfg_t::remove_useless_blocks() {

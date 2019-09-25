@@ -33,13 +33,12 @@ class AdaptSMap {
         : sz(0), dense_maxsz(sparse_threshold), sparse_ub(10), dense((elt_t*)malloc(sizeof(elt_t) * sparse_threshold)),
           sparse(nullptr) {}
 
-    AdaptSMap(AdaptSMap&& o)
+    AdaptSMap(AdaptSMap&& o) noexcept
         : sz(o.sz), dense_maxsz(o.dense_maxsz), sparse_ub(o.sparse_ub), dense(o.dense), sparse(o.sparse) {
         o.dense = nullptr;
         o.sparse = nullptr;
         o.sz = 0;
         o.dense_maxsz = 0;
-        o.sparse_maxsz = 0;
     }
 
     AdaptSMap(const AdaptSMap& o)
@@ -79,7 +78,7 @@ class AdaptSMap {
         return *this;
     }
 
-    AdaptSMap& operator=(AdaptSMap&& o) {
+    AdaptSMap& operator=(AdaptSMap&& o) noexcept {
         if (dense)
             free(dense);
         if (sparse)
@@ -111,7 +110,7 @@ class AdaptSMap {
     class key_iter_t {
       public:
         key_iter_t() : e(nullptr) {}
-        key_iter_t(elt_t* _e) : e(_e) {}
+        explicit key_iter_t(elt_t* _e) : e(_e) {}
 
         // XXX: to make sure that we always return the same address
         // for the "empty" iterator, otherwise we can trigger
@@ -237,7 +236,7 @@ class AdaptSMap {
 
         while (dense_maxsz < new_max)
             dense_maxsz *= 2;
-        elt_t* new_dense = (elt_t*)realloc(static_cast<void*>(dense), sizeof(elt_t) * dense_maxsz);
+        auto* new_dense = (elt_t*)realloc(static_cast<void*>(dense), sizeof(elt_t) * dense_maxsz);
         if (!new_dense)
             CRAB_ERROR("Allocation failure.");
         dense = new_dense;
@@ -259,7 +258,7 @@ class AdaptSMap {
     void growSparse(size_t new_ub) {
         while (sparse_ub < new_ub)
             sparse_ub *= 2;
-        key_t* new_sparse = (key_t*)malloc(sizeof(key_t) * (sparse_ub));
+        auto* new_sparse = (key_t*)malloc(sizeof(key_t) * (sparse_ub));
         if (!new_sparse)
             CRAB_ERROR("Allocation falure.");
         free(sparse);
@@ -289,7 +288,7 @@ class AdaptGraph : public writeable {
 
     AdaptGraph() : edge_count(0) {}
 
-    AdaptGraph(AdaptGraph<Wt>&& o)
+    AdaptGraph(AdaptGraph<Wt>&& o) noexcept
         : _preds(std::move(o._preds)), _succs(std::move(o._succs)), _ws(std::move(o._ws)), edge_count(o.edge_count),
           is_free(std::move(o.is_free)), free_id(std::move(o.free_id)), free_widx(std::move(o.free_widx)) {}
 
@@ -310,7 +309,7 @@ class AdaptGraph : public writeable {
         return *this;
     }
 
-    AdaptGraph<Wt>& operator=(AdaptGraph<Wt>&& o) {
+    AdaptGraph<Wt>& operator=(AdaptGraph<Wt>&& o) noexcept {
         _preds = std::move(o._preds);
         _succs = std::move(o._succs);
         _ws = std::move(o._ws);
@@ -354,7 +353,7 @@ class AdaptGraph : public writeable {
     };
     class vert_range {
       public:
-        vert_range(const std::vector<int>& _is_free) : is_free(_is_free) {}
+        explicit vert_range(const std::vector<int>& _is_free) : is_free(_is_free) {}
 
         vert_iterator begin() const { return vert_iterator(0, is_free); }
         vert_iterator end() const { return vert_iterator(is_free.size(), is_free); }
@@ -376,7 +375,7 @@ class AdaptGraph : public writeable {
         using edge_ref = edge_ref_t;
         edge_iter(const smap_t::elt_iter_t& _it, std::vector<Wt>& _ws) : it(_it), ws(&_ws) {}
         edge_iter(const edge_iter& o) : it(o.it), ws(o.ws) {}
-        edge_iter() : ws(nullptr) {}
+        edge_iter() = default;
 
         // XXX: to make sure that we always return the same address
         // for the "empty" iterator, otherwise we can trigger
@@ -395,8 +394,8 @@ class AdaptGraph : public writeable {
         }
         bool operator!=(const edge_iter& o) { return it != o.it; }
 
-        smap_t::elt_iter_t it;
-        std::vector<Wt>* ws;
+        smap_t::elt_iter_t it{};
+        std::vector<Wt>* ws{};
     };
 
     using adj_range_t = typename smap_t::key_range_t;
