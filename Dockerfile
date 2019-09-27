@@ -10,6 +10,6 @@ COPY . /verifier/
 RUN mkdir build
 WORKDIR /verifier/build
 RUN cmake .. -DCMAKE_BUILD_TYPE=Release
-RUN make
+RUN make -j
 WORKDIR /verifier
 ENTRYPOINT ["./check"]
