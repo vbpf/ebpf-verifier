@@ -70,7 +70,7 @@ struct MarshalVisitor {
                           .src = static_cast<uint8_t>(isFd ? 1 : 0),
                           .offset = 0,
                           .imm = imm},
-                ebpf_inst{.imm = next_imm}};
+                ebpf_inst{.opcode = 0, .dst = 0, .src = 0, .offset = 0, .imm = next_imm}};
     }
 
   public:
@@ -110,6 +110,8 @@ struct MarshalVisitor {
                 // FIX: should be EBPF_CLS_ALU / EBPF_CLS_ALU64
                 .opcode = static_cast<uint8_t>(EBPF_CLS_ALU | 0x3 | (0x8 << 4)),
                 .dst = b.dst.v,
+                .src = 0,
+                .offset = 0,
                 .imm = imm(b.op),
             }};
         } else {
@@ -118,6 +120,8 @@ struct MarshalVisitor {
             return {ebpf_inst{
                 .opcode = static_cast<uint8_t>(cls | 0x8 | (0xd << 4)),
                 .dst = b.dst.v,
+                .src = 0,
+                .offset = 0,
                 .imm = imm(b.op),
             }};
         }
@@ -141,6 +145,7 @@ struct MarshalVisitor {
             ebpf_inst res{
                 .opcode = static_cast<uint8_t>(EBPF_CLS_JMP | (op(b.cond->op) << 4)),
                 .dst = b.cond->left.v,
+                .src = 0,
                 .offset = label_to_offset(b.target),
             };
             visit(overloaded{[&](Reg right) {
@@ -159,6 +164,8 @@ struct MarshalVisitor {
         Deref access = b.access;
         ebpf_inst res{
             .opcode = static_cast<uint8_t>((EBPF_MEM << 5) | width_to_opcode(access.width)),
+            .dst = 0,
+            .src = 0,
             .offset = static_cast<int16_t>(access.offset),
         };
         if (b.is_load) {
@@ -184,6 +191,9 @@ struct MarshalVisitor {
     vector<ebpf_inst> operator()(Packet const& b) {
         ebpf_inst res{
             .opcode = static_cast<uint8_t>(EBPF_CLS_LD | width_to_opcode(b.width)),
+            .dst = 0,
+            .src = 0,
+            .offset = 0,
             .imm = static_cast<int32_t>(b.offset),
         };
         if (b.regoffset) {
