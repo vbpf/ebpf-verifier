@@ -185,10 +185,10 @@ std::vector<std::string> stats_headers() {
 
 std::map<std::string, int> collect_stats(const cfg_t& cfg) {
     std::map<std::string, int> res;
-    for (auto h : stats_headers()) {
+    for (const auto& h : stats_headers()) {
         res[h] = 0;
     }
-    for (auto const& [this_label, _] : cfg) {
+    for (const auto& this_label : cfg.labels()) {
         res["basic_blocks"]++;
         basic_block_t const& bb = cfg.get_node(this_label);
         res["instructions"] += bb.size();

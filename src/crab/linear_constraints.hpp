@@ -255,8 +255,8 @@ class linear_expression_t final {
 
     variable_set_t variables() const {
         variable_set_t variables;
-        for (auto [var, _] : *this) {
-            variables += var;
+        for (const auto& v_c : *this) {
+            variables += v_c.first;
         }
         return variables;
     }

@@ -94,7 +94,7 @@ class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t
 
   public:
     explicit interleaved_fwd_fixpoint_iterator_t(cfg_t& cfg) : _cfg(cfg), _wto(cfg) {
-        for (auto& [label, _] : _cfg) {
+        for (const auto& label : _cfg.labels()) {
             _pre.emplace(label, ebpf_domain_t::bottom());
             _post.emplace(label, ebpf_domain_t::bottom());
         }

@@ -320,6 +320,15 @@ class cfg_t final {
     //! return an end iterator of label_t's
     label_iterator label_end() { return boost::make_transform_iterator(m_blocks.end(), get_label()); }
 
+    //! return a begin iterator of label_t's
+    std::vector<label_t> labels() const {
+        std::vector<label_t> res;
+        res.reserve(m_blocks.size());
+        for (const auto& p : m_blocks)
+            res.push_back(p.first);
+        return res;
+    }
+
     size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
 
     void simplify() {
@@ -537,7 +546,7 @@ inline void cfg_t::remove_useless_blocks() {
 
     if (!useful.count(m_exit))
         CRAB_ERROR("Exit block must be reachable");
-    for (auto const& [label, _] : *this) {
+    for (auto const& label : labels()) {
         if (!useful.count(label)) {
             useless.insert(label);
         }
@@ -552,7 +561,7 @@ inline void cfg_t::remove_unreachable_blocks() {
     visited_t alive, dead;
     mark_alive_blocks(entry(), *this, alive);
 
-    for (auto const& [label, _] : *this) {
+    for (auto const& label : labels()) {
         if (alive.count(label) <= 0) {
             dead.insert(label);
         }

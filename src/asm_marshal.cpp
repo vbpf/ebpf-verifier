@@ -250,11 +250,12 @@ static auto get_labels(const InstructionSeq& insts) {
     return pc_of_label;
 }
 
-vector<ebpf_inst> marshal(InstructionSeq insts) {
+vector<ebpf_inst> marshal(const InstructionSeq& insts) {
     vector<ebpf_inst> res;
     auto pc_of_label = get_labels(insts);
     pc_t pc = 0;
-    for (auto [_, ins] : insts) {
+    for (auto [label, ins] : insts) {
+        label.empty(); // placate the compiler
         if (std::holds_alternative<Jmp>(ins)) {
             Jmp& jmp = std::get<Jmp>(ins);
             jmp.target = std::to_string(pc_of_label.at(jmp.target));

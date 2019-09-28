@@ -57,10 +57,8 @@ inline int first_num(const label_t& s) {
     }
 }
 
-static std::vector<string> sorted_labels(cfg_t& cfg) {
-    std::vector<string> labels;
-    for (const auto& [label, _] : cfg)
-        labels.push_back(label);
+static std::vector<label_t> sorted_labels(cfg_t& cfg) {
+    std::vector<label_t> labels = cfg.labels();
 
     std::sort(labels.begin(), labels.end(), [](const string& a, const string& b) {
         if (first_num(a) < first_num(b))
