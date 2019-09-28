@@ -328,10 +328,13 @@ static const struct bpf_func_proto bpf_map_lookup_elem_proto = {
     .name = "map_lookup_elem",
     //.func		= bpf_map_lookup_elem,
     //.gpl_only	= false,
-    .pkt_access = true,
     .ret_type = Ret::PTR_TO_MAP_VALUE_OR_NULL,
     .arg1_type = Arg::CONST_SHARED_PTR,
     .arg2_type = Arg::PTR_TO_MAP_KEY,
+    .arg3_type = Arg::DONTCARE,
+    .arg4_type = Arg::DONTCARE,
+    .arg5_type = Arg::DONTCARE,
+    .pkt_access = true,
 };
 
 /*
@@ -342,12 +345,13 @@ static const struct bpf_func_proto bpf_map_update_elem_proto = {
     .name = "map_update_elem",
     //.func		= bpf_map_update_elem,
     //.gpl_only	= false,
-    .pkt_access = true,
     .ret_type = Ret::INTEGER,
     .arg1_type = Arg::CONST_SHARED_PTR,
     .arg2_type = Arg::PTR_TO_MAP_KEY,
     .arg3_type = Arg::PTR_TO_MAP_VALUE,
     .arg4_type = Arg::ANYTHING,
+    .arg5_type = Arg::DONTCARE,
+    .pkt_access = true,
 };
 
 /*
@@ -358,10 +362,13 @@ static const struct bpf_func_proto bpf_map_delete_elem_proto = {
     .name = "map_delete_elem",
     //.func		= bpf_map_delete_elem,
     //.gpl_only	= false,
-    .pkt_access = true,
     .ret_type = Ret::INTEGER,
     .arg1_type = Arg::CONST_SHARED_PTR,
     .arg2_type = Arg::PTR_TO_MAP_KEY,
+    .arg3_type = Arg::DONTCARE,
+    .arg4_type = Arg::DONTCARE,
+    .arg5_type = Arg::DONTCARE,
+    .pkt_access = true,
 };
 
 /*
@@ -466,24 +473,26 @@ static const struct bpf_func_proto bpf_sock_map_update_proto = {
     .name = "sock_map_update",
     //.func		= bpf_sock_map_update,
     //.gpl_only	= false,
-    .pkt_access = true,
     .ret_type = Ret::INTEGER,
     .arg1_type = Arg::PTR_TO_CTX,
     .arg2_type = Arg::CONST_SHARED_PTR,
     .arg3_type = Arg::PTR_TO_MAP_KEY,
     .arg4_type = Arg::ANYTHING,
+    .arg5_type = Arg::DONTCARE,
+    .pkt_access = true,
 };
 
 static const struct bpf_func_proto bpf_sock_hash_update_proto = {
     .name = "sock_hash_update",
     //.func		= bpf_sock_hash_update,
     //.gpl_only	= false,
-    .pkt_access = true,
     .ret_type = Ret::INTEGER,
     .arg1_type = Arg::PTR_TO_CTX,
     .arg2_type = Arg::CONST_SHARED_PTR,
     .arg3_type = Arg::PTR_TO_MAP_KEY,
     .arg4_type = Arg::ANYTHING,
+    .arg5_type = Arg::DONTCARE,
+    .pkt_access = true,
 };
 
 /*
@@ -730,13 +739,13 @@ static const struct bpf_func_proto bpf_csum_diff_proto = {
     .name = "csum_diff",
     //.func		= bpf_csum_diff,
     //.gpl_only	= false,
-    .pkt_access = true,
     .ret_type = Ret::INTEGER,
     .arg1_type = Arg::PTR_TO_MEM_OR_NULL,
     .arg2_type = Arg::CONST_SIZE_OR_ZERO,
     .arg3_type = Arg::PTR_TO_MEM_OR_NULL,
     .arg4_type = Arg::CONST_SIZE_OR_ZERO,
     .arg5_type = Arg::ANYTHING,
+    .pkt_access = true,
 };
 
 static const struct bpf_func_proto bpf_csum_update_proto = {
