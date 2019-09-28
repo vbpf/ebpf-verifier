@@ -3,14 +3,6 @@ dist: bionic
 jobs:
   include:
     - stage: Bare metal build
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-8
-      env:
-        - CXX: g++-8
       before_install:
         - sudo apt update
         - sudo apt install cmake libboost-dev
