@@ -552,7 +552,7 @@ inline void cfg_t::remove_unreachable_blocks() {
     visited_t alive, dead;
     mark_alive_blocks(entry(), *this, alive);
 
-    for (auto const& [label, bb] : *this) {
+    for (auto const& [label, _] : *this) {
         if (alive.count(label) <= 0) {
             dead.insert(label);
         }

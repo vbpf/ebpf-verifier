@@ -51,13 +51,13 @@ enum class Arg {
 
 struct bpf_func_proto {
     const char* name;
-    bool pkt_access;
     Ret ret_type;
     Arg arg1_type;
     Arg arg2_type;
     Arg arg3_type;
     Arg arg4_type;
     Arg arg5_type;
+    bool pkt_access;
 };
 
 bpf_func_proto get_prototype(unsigned int n);

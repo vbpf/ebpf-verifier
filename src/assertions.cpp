@@ -176,7 +176,7 @@ class AssertExtractor {
 };
 
 void explicate_assertions(cfg_t& cfg, const program_info& info) {
-    for (auto& [this_label, bb] : cfg) {
+    for (auto& [_, bb] : cfg) {
         vector<Instruction> insts;
         for (const auto& ins : vector<Instruction>(bb.begin(), bb.end())) {
             for (auto a : std::visit(AssertExtractor{info}, ins))
