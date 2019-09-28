@@ -254,7 +254,7 @@ vector<ebpf_inst> marshal(InstructionSeq insts) {
     vector<ebpf_inst> res;
     auto pc_of_label = get_labels(insts);
     pc_t pc = 0;
-    for (auto [label, ins] : insts) {
+    for (auto [_, ins] : insts) {
         if (std::holds_alternative<Jmp>(ins)) {
             Jmp& jmp = std::get<Jmp>(ins);
             jmp.target = std::to_string(pc_of_label.at(jmp.target));
