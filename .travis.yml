@@ -2,9 +2,11 @@ language: cpp
 dist: bionic
 jobs:
   include:
-    - before_install:
-        - sudo apt update
-        - sudo apt install cmake libboost-dev
+    - addons:
+        apt:
+          packages:
+            - libboost-dev
+            - libgmp-dev
       install:
         - mkdir build
         - cd build
