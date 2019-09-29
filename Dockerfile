@@ -2,8 +2,7 @@ FROM ubuntu:18.10
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
-RUN apt-get -yq --no-install-suggests --no-install-recommends install libboost-graph1.65-dev libboost1.65-tools-dev libgmp-dev python3-pip python3-tk
-RUN pip3 install matplotlib
+RUN apt-get -yq --no-install-suggests --no-install-recommends install cmake libboost-graph1.65-dev libboost1.65-tools-dev libgmp-dev
 
 WORKDIR /verifier
 COPY . /verifier/
