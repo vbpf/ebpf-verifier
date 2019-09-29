@@ -9,11 +9,11 @@ jobs:
       install:
         - mkdir build
         - cd build
-        - cmake .. -DCMAKE_BUILD_TYPE=Release
+        - cmake ..
+        - make -j3
       script:
-        - make -j
+        - cd ..
+        - scripts/runperf.sh ebpf-samples zoneCrab
     - stage: Dockerfile build
-      services:
-        - docker
-      script:
-        - docker build .
+      services: docker
+      script: docker build .
