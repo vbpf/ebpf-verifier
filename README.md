@@ -9,7 +9,7 @@ The version discussed in the PLDI paper is available [here](https://github.com/v
 
 ### Dependencies from vanilla Ubuntu
 ```bash
-sudo apt install build-essential git cmake libboost-dev libgmp-dev g++-8
+sudo apt install build-essential git cmake libboost-dev libgmp-dev
 sudo apt install python3-pip python3-tk
 pip3 install matplotlib   # for plotting the graphs
 ```

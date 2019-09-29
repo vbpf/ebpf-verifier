@@ -3,6 +3,8 @@ project(ebpf_verifier)
 
 set(CMAKE_CXX_STANDARD 17)
 
+find_package(Boost REQUIRED COMPONENTS graph)
+
 find_library(GMP_LIB gmp)
 if (NOT GMP_LIB)
     message(FATAL_ERROR "gmp library not found")

@@ -5,8 +5,7 @@ jobs:
     - addons:
         apt:
           packages:
-            - libboost-graph1.65-dev
-            - libboost1.65-tools-dev
+            - libboost-dev
       install:
         - mkdir build
         - cd build
