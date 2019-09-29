@@ -2,8 +2,7 @@ language: cpp
 dist: bionic
 jobs:
   include:
-    - stage: Bare metal build
-      before_install:
+    - before_install:
         - sudo apt update
         - sudo apt install cmake libboost-dev
       install:
@@ -14,6 +13,5 @@ jobs:
       script:
         - cd ..
         - scripts/runperf.sh ebpf-samples zoneCrab
-    - stage: Dockerfile build
-      services: docker
+    - services: docker
       script: docker build .
