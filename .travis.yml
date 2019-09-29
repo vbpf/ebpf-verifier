@@ -2,26 +2,17 @@ language: cpp
 dist: bionic
 jobs:
   include:
-    - stage: Bare metal build
-      addons:
+    - addons:
         apt:
-          sources:
-            - ubuntu-toolchain-r-test
           packages:
-            - g++-8
-      env:
-        - CXX: g++-8
-      before_install:
-        - sudo apt update
-        - sudo apt install cmake libboost-dev
+            - libboost-dev
       install:
         - mkdir build
         - cd build
         - cmake .. -DCMAKE_BUILD_TYPE=Release
+        - make -j3
       script:
-        - make -j
-    - stage: Dockerfile build
-      services:
-        - docker
-      script:
-        - docker build .
+        - cd ..
+        - scripts/runperf.sh ebpf-samples zoneCrab
+    - services: docker
+      script: docker build .
