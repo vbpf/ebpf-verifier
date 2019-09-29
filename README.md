@@ -3,7 +3,7 @@
 
 A new eBPF verifier.
 
-The version discussed in the PLDI paper is available [here](https://github.com/vbpf/ebpf-verifier/tree/d29fd26345c3126bf166cf1c45233a9b2f9fb0a0).
+The version discussed in the [PLDI paper](https://vbpf.github.io/assets/prevail-paper.pdf) is available [here](https://github.com/vbpf/ebpf-verifier/tree/d29fd26345c3126bf166cf1c45233a9b2f9fb0a0).
 
 ## Getting Started
 
