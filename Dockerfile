@@ -1,8 +1,8 @@
 FROM ubuntu:18.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update
-RUN apt -yq --no-install-suggests --no-install-recommends install build-essential cmake libboost-graph1.65-dev libboost1.65-tools-dev libgmp-dev
+RUN apt-get update
+RUN apt-get -yq --no-install-suggests --no-install-recommends install build-essential cmake libboost-graph1.65-dev libboost1.65-tools-dev libgmp-dev
 
 WORKDIR /verifier
 COPY . /verifier/
