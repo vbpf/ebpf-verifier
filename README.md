@@ -109,7 +109,7 @@ Note that in the full benchmark, exactly 2 programs should be rejected by `zoneC
 Any subset of the available domains is valid. So in order to compare the two different
 implementations of the `zone` domain, one can run
 ```
-scripts/runperf.sh ebpf-samples/linux stats zoneCrab | results.csv
+scripts/runperf.sh ebpf-samples/linux stats zoneCrab | tee results.csv
 python3 scripts/makeplot.py results.csv stores
 ```
 The script `scripts/makeplot.py` takes a csv file in the format described above, and the key to plot against (usually instructions or stores) and plots two graphs: on showing runtime as a function of the number of stores, and the other is the memory consumption as a function of the number of stores.
