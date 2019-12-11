@@ -3,7 +3,7 @@ project(ebpf_verifier)
 
 set(CMAKE_CXX_STANDARD 17)
 
-#find_package(Boost REQUIRED COMPONENTS graph)
+find_package(Boost REQUIRED)
 
 find_library(GMP_LIB gmp)
 if (NOT GMP_LIB)
@@ -12,6 +12,10 @@ endif ()
 
 include_directories(external)
 include_directories(src)
+include_directories(${GMP_LIB_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS})
+link_directories(${GMP_LIB_LIBRARY_DIRS})
+link_directories(${Boost_LIBRARY_DIRS})
 
 file(GLOB ALL_SRC
         "src/*.cpp"
