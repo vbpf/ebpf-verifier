@@ -43,12 +43,7 @@ static std::string name_of(data_kind_t kind) {
 variable_t variable_t::reg(data_kind_t kind, int i) { return make(name_of(kind) + std::to_string(i)); }
 
 std::ostream& operator<<(std::ostream& o, const data_kind_t& s) {
-    switch (s) {
-    case data_kind_t::offsets: return o << "S_off";
-    case data_kind_t::types: return o << "S_t";
-    case data_kind_t::values: return o << "S_r";
-    }
-    return o;
+    return o << name_of(s);
 }
 
 static std::string mk_scalar_name(data_kind_t kind, int o, int size) {
