@@ -70,11 +70,9 @@ static std::vector<label_t> sorted_labels(cfg_t& cfg) {
     return labels;
 }
 
-static checks_db analyze(cfg_t& cfg) {
-    crab::domains::clear_global_state();
-
-    auto [preconditions, postconditions] = crab::run_forward_analyzer(cfg);
-
+static checks_db generate_report(cfg_t& cfg,
+                                 crab::invariant_table_t& preconditions,
+                                 crab::invariant_table_t& postconditions) {
     checks_db m_db;
     for (const label_t& label : sorted_labels(cfg)) {
         basic_block_t& bb = cfg.get_node(label);
@@ -92,7 +90,7 @@ static checks_db analyze(cfg_t& cfg) {
             if (inv.is_bottom())
                 return;
             if (cst.is_contradiction()) {
-                m_db.add_warning(label, std::string("Contradition: ") + s);
+                m_db.add_warning(label, std::string("Contradiction: ") + s);
                 return;
             }
 
@@ -117,29 +115,40 @@ static checks_db analyze(cfg_t& cfg) {
     return m_db;
 }
 
-std::tuple<bool, double> abs_validate(cfg_t& simple_cfg, program_info info) {
-    global_program_info = std::move(info);
-    cfg_t& cfg = simple_cfg;
-
-    using namespace std;
+template<typename F>
+auto timed_execution(F f) {
     clock_t begin = clock();
 
-    const checks_db db = analyze(cfg);
+    const auto&& res = f();
 
     clock_t end = clock();
-    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
 
-    int nwarn = db.total_warnings;
+    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    return std::make_tuple(res, elapsed_secs);
+}
+
+static void print_report(const checks_db& db) {
+    std::cout << "\n";
+    for (auto [label, messages] : db.m_db) {
+        std::cout << label << ":\n";
+        for (const auto& msg : messages)
+            std::cout << "  " << msg << "\n";
+    }
+    std::cout << "\n";
+    std::cout << db.total_warnings << " warnings\n";
+}
+
+std::tuple<bool, double> run_ebpf_analysis(cfg_t& cfg, program_info info) {
+    global_program_info = std::move(info);
+    crab::domains::clear_global_state();
+
+    auto&& [report, elapsed_secs] = timed_execution([&] {
+        auto [preconditions, postconditions] = crab::run_forward_analyzer(cfg);
+        return generate_report(cfg, preconditions, postconditions);
+    });
 
     if (global_options.print_failures) {
-        std::cout << "\n";
-        for (auto [label, messages] : db.m_db) {
-            std::cout << label << ":\n";
-            for (const auto& msg : messages)
-                std::cout << "  " << msg << "\n";
-        }
-        std::cout << "\n";
-        std::cout << db.total_warnings << " warnings\n";
+        print_report(report);
     }
-    return {nwarn == 0, elapsed_secs};
+    return {report.total_warnings == 0, elapsed_secs};
 }

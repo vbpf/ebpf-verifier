@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
         std::cout << "\n";
     } else {
         const auto [res, seconds] = (domain == "linux") ? bpf_verify_program(raw_prog.info.program_type, raw_prog.prog)
-                                                        : abs_validate(cfg, raw_prog.info);
+                                                        : run_ebpf_analysis(cfg, raw_prog.info);
         std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
         return !res;
     }
