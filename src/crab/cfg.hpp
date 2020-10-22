@@ -578,10 +578,12 @@ inline void cfg_t::remove_unreachable_blocks() {
 
 using crab::basic_block_t;
 using crab::cfg_t;
-cfg_t instruction_seq_to_cfg(const InstructionSeq&);
-cfg_t to_nondet(const cfg_t&);
+
 std::vector<std::string> stats_headers();
+
 std::map<std::string, int> collect_stats(const cfg_t&);
+
+cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool simplify);
 
 void explicate_assertions(cfg_t& cfg, const program_info& info);
 

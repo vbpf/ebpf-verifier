@@ -1,7 +1,6 @@
 #include <cassert>
 
 #include <algorithm>
-#include <list>
 #include <map>
 #include <optional>
 #include <string>
@@ -10,7 +9,6 @@
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
 
-using std::list;
 using std::optional;
 using std::set;
 using std::string;
@@ -34,7 +32,7 @@ static bool has_fall(Instruction ins) {
     return true;
 }
 
-cfg_t instruction_seq_to_cfg(const InstructionSeq& insts) {
+static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts) {
     string exit_label;
     for (const auto& [label, inst] : insts) {
         if (std::holds_alternative<Exit>(inst))
@@ -99,7 +97,7 @@ static vector<label_t> unique(const std::pair<T, T>& be) {
     return res;
 }
 
-cfg_t to_nondet(const cfg_t& cfg) {
+static cfg_t to_nondet(const cfg_t& cfg) {
     cfg_t res(cfg.entry(), cfg.exit());
     for (auto const& [this_label, bb] : cfg) {
         basic_block_t& newbb = res.insert(this_label);
@@ -215,4 +213,15 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
             res["jumps"]++;
     }
     return res;
+}
+
+cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool simplify) {
+    cfg_t det_cfg = instruction_seq_to_cfg(prog);
+    explicate_assertions(det_cfg, info);
+    cfg_t cfg = to_nondet(det_cfg);
+
+    if (simplify) {
+        cfg.simplify();
+    }
+    return cfg;
 }

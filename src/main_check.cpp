@@ -5,15 +5,13 @@
 
 #include "CLI11.hpp"
 
-#include "crab/debug.hpp"
+#include "asm_syntax.hpp"
+#include "crab/cfg.hpp"
 #include "asm_files.hpp"
 #include "asm_ostream.hpp"
-#include "asm_syntax.hpp"
 #include "asm_unmarshal.hpp"
 #include "config.hpp"
-#include "crab/cfg.hpp"
 #include "crab_verifier.hpp"
-#include "linux_ebpf.hpp"
 #include "memsize.hpp"
 #include "linux_verifier.hpp"
 
@@ -104,36 +102,32 @@ int main(int argc, char** argv) {
     }
 
     auto& prog = std::get<InstructionSeq>(prog_or_error);
-    if (!asmfile.empty())
+    if (!asmfile.empty()) {
         print(prog, asmfile);
-
-    int instruction_count = prog.size();
-
-    cfg_t det_cfg = instruction_seq_to_cfg(prog);
-    explicate_assertions(det_cfg, raw_prog.info);
-    cfg_t cfg = to_nondet(det_cfg);
-
-    if (global_options.simplify) {
-        cfg.simplify();
     }
 
-    if (!dotfile.empty()) {
-        print_dot(cfg, dotfile);
-    }
-
-    auto stats = collect_stats(cfg);
-
-    if (domain == "stats") {
-        std::cout << std::hex << hash(raw_prog) << std::dec << "," << instruction_count;
+    if (domain == "zoneCrab") {
+        cfg_t cfg = prepare_cfg(prog, raw_prog.info, global_options.simplify);
+        const auto [res, seconds] = run_ebpf_analysis(cfg, raw_prog.info);
+        std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
+        return !res;
+    } else if (domain == "linux") {
+        const auto [res, seconds] = bpf_verify_program(raw_prog.info.program_type, raw_prog.prog);
+        std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
+        return !res;
+    } else if (domain == "stats") {
+        cfg_t cfg = prepare_cfg(prog, raw_prog.info, global_options.simplify);
+        auto stats = collect_stats(cfg);
+        if (!dotfile.empty()) {
+            print_dot(cfg, dotfile);
+        }
+        std::cout << std::hex << hash(raw_prog) << std::dec << "," << prog.size();
         for (const string& h : stats_headers()) {
             std::cout << "," << stats.at(h);
         }
         std::cout << "\n";
     } else {
-        const auto [res, seconds] = (domain == "linux") ? bpf_verify_program(raw_prog.info.program_type, raw_prog.prog)
-                                                        : run_ebpf_analysis(cfg, raw_prog.info);
-        std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
-        return !res;
+        assert(false);
     }
     return 0;
 }
