@@ -646,8 +646,11 @@ class ebpf_domain_t final {
 
     void apply(bitwise_binop_t op, variable_t x, variable_t y, const number_t& k) { m_inv.apply(op, x, y, k); }
 
-    template <typename NumOrVar>
-    void apply(binop_t op, variable_t x, variable_t y, NumOrVar z) {
+    void apply(binop_t op, variable_t x, variable_t y, const number_t& z) {
+        std::visit([&](auto top) { apply(top, x, y, z); }, op);
+    }
+
+    void apply(binop_t op, variable_t x, variable_t y, variable_t z) {
         std::visit([&](auto top) { apply(top, x, y, z); }, op);
     }
     // array_operators_api
