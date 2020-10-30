@@ -190,22 +190,18 @@ class bound_t final {
         }
     }
 
-    void write(std::ostream& o) const {
-        if (is_plus_infinity()) {
+    friend std::ostream& operator<<(std::ostream& o, const bound_t& b) {
+        if (b.is_plus_infinity()) {
             o << "+oo";
-        } else if (is_minus_infinity()) {
+        } else if (b.is_minus_infinity()) {
             o << "-oo";
         } else {
-            o << _n;
+            o << b._n;
         }
+        return o;
     }
 
 }; // class bound
-
-inline std::ostream& operator<<(std::ostream& o, const bound_t& b) {
-    b.write(o);
-    return o;
-}
 
 using z_bound = bound_t;
 
@@ -398,12 +394,13 @@ class interval_t final {
         }
     }
 
-    void write(std::ostream& o) const {
-        if (is_bottom()) {
+    friend std::ostream& operator<<(std::ostream& o, const interval_t& i) {
+        if (i.is_bottom()) {
             o << "_|_";
         } else {
-            o << "[" << _lb << ", " << _ub << "]";
+            o << "[" << i._lb << ", " << i._ub << "]";
         }
+        return o;
     }
 
     // division and remainder operations
@@ -450,11 +447,6 @@ inline interval_t operator/(const interval_t& x, const number_t& c) { return x /
 inline interval_t operator-(const number_t& c, const interval_t& x) { return interval_t(c) - x; }
 
 inline interval_t operator-(const interval_t& x, const number_t& c) { return x - interval_t(c); }
-
-inline std::ostream& operator<<(std::ostream& o, const interval_t& i) {
-    i.write(o);
-    return o;
-}
 
 inline interval_t trim_interval(const interval_t& i, const interval_t& j) {
     if (std::optional<z_number> c = j.singleton()) {

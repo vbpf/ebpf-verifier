@@ -167,12 +167,12 @@ std::vector<cell_t> offset_map_t::get_overlap_cells(offset_t o, unsigned size) {
     return out;
 }
 
-void offset_map_t::write(std::ostream& o) const {
-    if (_map.empty()) {
+std::ostream& operator<<(std::ostream& o, const offset_map_t& m) {
+    if (m._map.empty()) {
         o << "empty";
     } else {
-        for (auto it = _map.begin(), et = _map.end(); it != et; ++it) {
-            const cell_set_t& cells = it->second;
+        for (auto it = m._map.begin(), et = m._map.end(); it != et; ++it) {
+            const offset_map_t::cell_set_t& cells = it->second;
             o << "{";
             for (auto cit = cells.begin(), cet = cells.end(); cit != cet;) {
                 o << *cit;
@@ -184,6 +184,7 @@ void offset_map_t::write(std::ostream& o) const {
             o << "}\n";
         }
     }
+    return o;
 }
 
 } // namespace domains

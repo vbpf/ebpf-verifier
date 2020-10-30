@@ -261,9 +261,9 @@ class linear_expression_t final {
         return variables;
     }
 
-    void write(std::ostream& o) const {
+    friend std::ostream& operator<<(std::ostream& o, const linear_expression_t& e) {
         bool start = true;
-        for (auto [v, n] : *this) {
+        for (auto [v, n] : e) {
             if (n > 0 && !start) {
                 o << "+";
             }
@@ -275,23 +275,15 @@ class linear_expression_t final {
             o << v;
             start = false;
         }
-        if (this->_cst > 0 && !this->_map->empty()) {
+        if (e._cst > 0 && !e._map->empty()) {
             o << "+";
         }
-        if (this->_cst != 0 || this->_map->empty()) {
-            o << this->_cst;
+        if (e._cst != 0 || e._map->empty()) {
+            o << e._cst;
         }
+        return o;
     }
-
-    // for dgb
-    void dump() { write(std::cout); }
-
 }; // class linear_expression_t
-
-inline std::ostream& operator<<(std::ostream& o, const linear_expression_t& e) {
-    e.write(o);
-    return o;
-}
 
 inline std::size_t hash_value(const linear_expression_t& e) { return e.hash(); }
 
@@ -455,17 +447,17 @@ class linear_constraint_t final {
         return linear_constraint_t(e, this->_kind, is_signed());
     }
 
-    void write(std::ostream& o) const {
-        if (this->is_contradiction()) {
+    friend std::ostream& operator<<(std::ostream& o, const linear_constraint_t& c) {
+        if (c.is_contradiction()) {
             o << "false";
-        } else if (this->is_tautology()) {
+        } else if (c.is_tautology()) {
             o << "true";
         } else {
-            linear_expression_t e = this->_expr - this->_expr.constant();
+            linear_expression_t e = c._expr - c._expr.constant();
             o << e;
-            switch (this->_kind) {
+            switch (c._kind) {
             case INEQUALITY: {
-                if (is_signed()) {
+                if (c.is_signed()) {
                     o << " <= ";
                 } else {
                     o << " <=_u ";
@@ -473,7 +465,7 @@ class linear_constraint_t final {
                 break;
             }
             case STRICT_INEQUALITY: {
-                if (is_signed()) {
+                if (c.is_signed()) {
                     o << " < ";
                 } else {
                     o << " <_u ";
@@ -489,20 +481,13 @@ class linear_constraint_t final {
                 break;
             }
             }
-            number_t c = -this->_expr.constant();
-            o << c;
+            number_t n = -c._expr.constant();
+            o << n;
         }
+        return o;
     }
 
-    // for dgb
-    void dump() { write(std::cout); }
-
 }; // class linear_constraint_t
-
-inline std::ostream& operator<<(std::ostream& o, const linear_constraint_t& c) {
-    c.write(o);
-    return o;
-}
 
 inline std::size_t hash_value(const linear_constraint_t& e) { return e.hash(); }
 

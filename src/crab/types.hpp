@@ -19,18 +19,6 @@ using index_t = uint64_t;
 
 using number_t = z_number;
 
-// Interface for writeable objects
-class writeable {
-  public:
-    virtual void write(std::ostream& o) = 0;
-    virtual ~writeable() = default;
-}; // class writeable
-
-inline std::ostream& operator<<(std::ostream& o, writeable& x) {
-    x.write(o);
-    return o;
-}
-
 enum class data_kind_t { types, values, offsets };
 std::ostream& operator<<(std::ostream& o, const data_kind_t& s);
 
@@ -59,7 +47,7 @@ class variable_t final {
 
     bool operator<(const variable_t& o) const { return _id < o._id; }
 
-    void write(std::ostream& o) const { o << names.at(_id); }
+    friend std::ostream& operator<<(std::ostream& o, const variable_t& v)  { return o << names.at(v._id); }
     std::string name() const { return names.at(_id); }
 
     static variable_t reg(data_kind_t, int);
@@ -71,10 +59,5 @@ class variable_t final {
 }; // class variable_t
 
 inline size_t hash_value(const variable_t& v) { return v.hash(); }
-
-inline std::ostream& operator<<(std::ostream& o, const variable_t& v) {
-    v.write(o);
-    return o;
-}
 
 } // namespace crab

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "crab/debug.hpp"
+#include "crab/safeint.hpp"
 #include "crab/types.hpp"
 // Adaptive sparse-set based weighted graph implementation
 
@@ -12,8 +13,8 @@ namespace crab {
 // Starts off as an unsorted vector, switching to a
 // sparse-set when |S| >= sparse_threshold
 // WARNING: Assumes Val is a basic type (so doesn't need a ctor/dtor call)
-template <class Val>
 class AdaptSMap {
+    using Val = size_t;
     enum { sparse_threshold = 8 };
 
   public:
@@ -180,7 +181,7 @@ class AdaptSMap {
         }
     }
 
-    bool lookup(key_t k, val_t* v_out) {
+    bool lookup(key_t k, val_t* v_out) const {
         if (sparse) {
             // SEE ABOVE WARNING
             int idx = sparse[k];
@@ -278,9 +279,10 @@ class AdaptSMap {
     key_t* sparse;
 };
 
-template <class Weight>
-class AdaptGraph : public writeable {
-    using smap_t = AdaptSMap<size_t>;
+
+class AdaptGraph {
+    using Weight = crab::safe_i64;
+    using smap_t = AdaptSMap;
 
   public:
     using vert_id = unsigned int;
@@ -288,15 +290,15 @@ class AdaptGraph : public writeable {
 
     AdaptGraph() : edge_count(0) {}
 
-    AdaptGraph(AdaptGraph<Wt>&& o) noexcept
+    AdaptGraph(AdaptGraph&& o) noexcept
         : _preds(std::move(o._preds)), _succs(std::move(o._succs)), _ws(std::move(o._ws)), edge_count(o.edge_count),
           is_free(std::move(o.is_free)), free_id(std::move(o.free_id)), free_widx(std::move(o.free_widx)) {}
 
-    AdaptGraph(const AdaptGraph<Wt>& o)
+    AdaptGraph(const AdaptGraph& o)
         : _preds(o._preds), _succs(o._succs), _ws(o._ws), edge_count(o.edge_count), is_free(o.is_free),
           free_id(o.free_id), free_widx(o.free_widx) {}
 
-    AdaptGraph<Wt>& operator=(const AdaptGraph<Wt>& o) {
+    AdaptGraph& operator=(const AdaptGraph& o) {
         if (this != &o) {
             _preds = o._preds;
             _succs = o._succs;
@@ -309,7 +311,7 @@ class AdaptGraph : public writeable {
         return *this;
     }
 
-    AdaptGraph<Wt>& operator=(AdaptGraph<Wt>&& o) noexcept {
+    AdaptGraph& operator=(AdaptGraph&& o) noexcept {
         _preds = std::move(o._preds);
         _succs = std::move(o._succs);
         _ws = std::move(o._ws);
@@ -322,8 +324,8 @@ class AdaptGraph : public writeable {
     }
 
     template <class G>
-    static AdaptGraph<Wt> copy(const G& o) {
-        AdaptGraph<Wt> g;
+    static AdaptGraph copy(const G& o) {
+        AdaptGraph g;
         g.growTo(o.size());
 
         for (vert_id s : o.verts()) {
@@ -499,9 +501,9 @@ class AdaptGraph : public writeable {
         edge_count = 0;
     }
 
-    bool elem(vert_id s, vert_id d) { return _succs[s].elem(d); }
+    bool elem(vert_id s, vert_id d) const { return _succs[s].elem(d); }
 
-    Wt& edge_val(vert_id s, vert_id d) {
+    const Wt& edge_val(vert_id s, vert_id d) const {
         size_t idx{};
         _succs[s].lookup(d, &idx);
         return _ws[idx];
@@ -573,12 +575,12 @@ class AdaptGraph : public writeable {
         }
     }
 
-    void write(std::ostream& o) override {
+    friend std::ostream& operator<<(std::ostream& o, AdaptGraph& a) {
         o << "[|";
         bool first = true;
-        for (vert_id v : verts()) {
-            auto it = e_succs(v).begin();
-            auto end = e_succs(v).end();
+        for (vert_id v : a.verts()) {
+            auto it = a.e_succs(v).begin();
+            auto end = a.e_succs(v).end();
 
             if (it != end) {
                 if (first)
@@ -595,6 +597,7 @@ class AdaptGraph : public writeable {
             }
         }
         o << "|]";
+        return o;
     }
 
     // Ick. This'll have another indirection on every operation.

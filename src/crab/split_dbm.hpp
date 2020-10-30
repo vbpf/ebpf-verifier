@@ -13,6 +13,7 @@
  * Author: Graeme Gange (gkgange@unimelb.edu.au)
  *
  * Contributors: Jorge A. Navas (jorge.navas@sri.com)
+ *               Elazar Gershuni (elazarg@gmail.com)
  ******************************************************************************/
 
 #pragma once
@@ -67,7 +68,7 @@ namespace domains {
 
 struct SafeInt64DefaultParams {
     using Wt = safe_i64;
-    using graph_t = AdaptGraph<Wt>;
+    using graph_t = AdaptGraph;
 };
 
 /**
@@ -84,7 +85,7 @@ inline safe_i64 convert_NtoW(const z_number& n, bool& overflow) {
     return safe_i64(n);
 }
 
-class SplitDBM final : public writeable {
+class SplitDBM final {
   public:
     using constraint_kind_t = typename linear_constraint_t::constraint_kind_t;
 
@@ -219,7 +220,7 @@ class SplitDBM final : public writeable {
 
     interval_t get_interval(variable_t x) { return get_interval(vert_map, g, x); }
 
-    static interval_t get_interval(vert_map_t& m, graph_t& r, variable_t x) {
+    static interval_t get_interval(const vert_map_t& m, const graph_t& r, variable_t x) {
         auto it = m.find(x);
         if (it == m.end()) {
             return interval_t::top();
@@ -322,6 +323,16 @@ class SplitDBM final : public writeable {
 
     void assign(variable_t x, const linear_expression_t& e);
     void assign(variable_t x, signed long long int n) { assign(x, linear_expression_t(n)); }
+    void assign(variable_t x, variable_t v) {
+        assign(x, linear_expression_t{v});
+    }
+    void assign(variable_t x, const std::optional<linear_expression_t>& e) {
+        if (e) {
+            assign(x, *e);
+        } else {
+            *this -= x;
+        }
+    };
 
     void apply(arith_binop_t op, variable_t x, variable_t y, variable_t z);
 
@@ -339,14 +350,14 @@ class SplitDBM final : public writeable {
 
     void operator+=(const linear_constraint_t& cst);
 
-    interval_t eval_interval(const linear_expression_t& e) {
+    interval_t eval_interval(const linear_expression_t& e) const {
         interval_t r{e.constant()};
         for (auto [v, n] : e)
             r += n * operator[](v);
         return r;
     }
 
-    interval_t operator[](variable_t x) {
+    interval_t operator[](variable_t x) const {
         CrabStats::count("SplitDBM.count.to_intervals");
         ScopedCrabStats __st__("SplitDBM.to_intervals");
 
@@ -363,12 +374,7 @@ class SplitDBM final : public writeable {
 
     void rename(const variable_vector_t& from, const variable_vector_t& to);
 
-    // -- begin array_sgraph_domain_helper_traits
-
-    // -- end array_sgraph_domain_helper_traits
-
-    // Output function
-    void write(std::ostream& o) override;
+    friend std::ostream& operator<<(std::ostream& o, SplitDBM& dom);
 
     // return number of vertices and edges
     std::pair<std::size_t, std::size_t> size() const { return {g.size(), g.num_edges()}; }

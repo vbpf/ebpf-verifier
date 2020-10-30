@@ -101,7 +101,7 @@ class safe_i64 {
 
 
     // TODO: output parameters whether operation overflows
-    safe_i64& operator+=(safe_i64 x){
+    safe_i64& operator+=(safe_i64 x) {
         int err = checked_add(m_num, x.m_num, &m_num);
         if (err) {
             CRAB_ERROR("Integer overflow during addition");
