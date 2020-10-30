@@ -321,7 +321,24 @@ class SplitDBM final : public writeable {
     void operator-=(variable_t v);
 
     void assign(variable_t x, const linear_expression_t& e);
+
+    void assign(std::optional<variable_t> x, const linear_expression_t& e) {
+        if (x) {
+            assign(*x, e);
+        }
+    }
     void assign(variable_t x, signed long long int n) { assign(x, linear_expression_t(n)); }
+
+    void assign(variable_t x, variable_t v) {
+        assign(x, linear_expression_t{v});
+    }
+    void assign(variable_t x, const std::optional<linear_expression_t>& e) {
+        if (e) {
+            assign(x, *e);
+        } else {
+            *this -= x;
+        }
+    };
 
     void apply(arith_binop_t op, variable_t x, variable_t y, variable_t z);
 
@@ -435,5 +452,3 @@ class SplitDBM final : public writeable {
 
 } // namespace domains
 } // namespace crab
-
-#pragma GCC diagnostic pop
