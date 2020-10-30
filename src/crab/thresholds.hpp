@@ -37,18 +37,13 @@ class thresholds_t final {
 
     void add(bound_t v1);
 
-    void write(std::ostream& o) const;
+    friend std::ostream& operator<<(std::ostream& o, const thresholds_t& t);
 };
-
-inline std::ostream& operator<<(std::ostream& o, const thresholds_t& t) {
-    t.write(o);
-    return o;
-}
 
 /**
    Collect thresholds per wto cycle (i.e. loop)
 **/
-class wto_thresholds_t final : public wto_component_visitor_t {
+class wto_thresholds_t final {
   private:
     // the cfg
     cfg_t& m_cfg;
@@ -64,18 +59,13 @@ class wto_thresholds_t final : public wto_component_visitor_t {
   public:
     wto_thresholds_t(cfg_t& cfg, size_t max_size) : m_cfg(cfg), m_max_size(max_size) {}
 
-    void visit(wto_vertex_t& vertex) override;
+    void operator()(wto_vertex_t& vertex);
 
-    void visit(wto_cycle_t& cycle) override;
+    void operator()(wto_cycle_t& cycle);
 
-    void write(std::ostream& o) const;
+    friend std::ostream& operator<<(std::ostream& o, const wto_thresholds_t& t);
 
 }; // class wto_thresholds_t
-
-inline std::ostream& operator<<(std::ostream& o, const wto_thresholds_t& t) {
-    t.write(o);
-    return o;
-}
 
 } // end namespace iterators
 } // end namespace crab

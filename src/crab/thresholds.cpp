@@ -33,23 +33,24 @@ void thresholds_t::add(bound_t v1) {
     }
 }
 
-void thresholds_t::write(std::ostream& o) const {
+std::ostream& operator<<(std::ostream& o, const thresholds_t& t) {
     o << "{";
-    for (typename std::vector<bound_t>::const_iterator it = m_thresholds.begin(), et = m_thresholds.end(); it != et;) {
+    for (typename std::vector<bound_t>::const_iterator it = t.m_thresholds.begin(), et = t.m_thresholds.end(); it != et;) {
         bound_t b(*it);
-        b.write(o);
+        o << b;
         ++it;
-        if (it != m_thresholds.end())
+        if (it != t.m_thresholds.end())
             o << ",";
     }
     o << "}";
+    return o;
 }
 
 void wto_thresholds_t::get_thresholds(const basic_block_t& bb, thresholds_t& thresholds) const {
 
 }
 
-void wto_thresholds_t::visit(wto_vertex_t& vertex) {
+void wto_thresholds_t::operator()(wto_vertex_t& vertex) {
     if (m_stack.empty())
         return;
 
@@ -64,7 +65,7 @@ void wto_thresholds_t::visit(wto_vertex_t& vertex) {
     }
 }
 
-void wto_thresholds_t::visit(wto_cycle_t& cycle) {
+void wto_thresholds_t::operator()(wto_cycle_t& cycle) {
     thresholds_t thresholds(m_max_size);
     auto& bb = m_cfg.get_node(cycle.head());
     get_thresholds(bb, thresholds);
@@ -80,16 +81,17 @@ void wto_thresholds_t::visit(wto_cycle_t& cycle) {
 
     m_head_to_thresholds.insert(std::make_pair(cycle.head(), thresholds));
     m_stack.push_back(cycle.head());
-    for (typename wto_cycle_t::iterator it = cycle.begin(); it != cycle.end(); ++it) {
-        it->accept(this);
+    for (wto_component_t& c : cycle) {
+        std::visit(*this, c);
     }
     m_stack.pop_back();
 }
 
-void wto_thresholds_t::write(std::ostream& o) const {
-    for (auto& [label, th] : m_head_to_thresholds) {
+std::ostream& operator<<(std::ostream& o, const wto_thresholds_t& t) {
+    for (auto& [label, th] : t.m_head_to_thresholds) {
         o << label << "=" << th << "\n";
     }
+    return o;
 }
 } // namespace iterators
 

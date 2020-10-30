@@ -1,39 +1,38 @@
-#include "crab/fwd_analyzer.hpp"
-
 #include <utility>
+#include <variant>
 
 #include "crab/cfg.hpp"
-#include "crab/debug.hpp"
 #include "crab/wto.hpp"
 
 #include "crab/ebpf_domain.hpp"
+#include "crab/fwd_analyzer.hpp"
 
 namespace crab {
 
 using domains::ebpf_domain_t;
 
 // Simple visitor to check if node is a member of the wto component.
-class member_component_visitor final : public wto_component_visitor_t {
+class member_component_visitor final {
     label_t _node;
     bool _found;
 
   public:
     explicit member_component_visitor(label_t node) : _node(std::move(node)), _found(false) {}
 
-    void visit(wto_vertex_t& c) override {
+    void operator()(wto_vertex_t& c) {
         if (!_found) {
             _found = (c.node() == _node);
         }
     }
 
-    void visit(wto_cycle_t& c) override {
+    void operator()(wto_cycle_t& c) {
         if (!_found) {
             _found = (c.head() == _node);
             if (!_found) {
                 for (auto& x : c) {
                     if (_found)
                         break;
-                    x.accept(this);
+                    std::visit(*this, x);
                 }
             }
         }
@@ -42,11 +41,8 @@ class member_component_visitor final : public wto_component_visitor_t {
     bool is_member() const { return _found; }
 };
 
-class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t {
-    using thresholds_t = iterators::thresholds_t;
-    using wto_thresholds_t = iterators::wto_thresholds_t;
+class interleaved_fwd_fixpoint_iterator_t final {
     using iterator = typename invariant_table_t::iterator;
-    using const_iterator = typename invariant_table_t::const_iterator;
 
     cfg_t& _cfg;
     wto_t _wto;
@@ -105,20 +101,22 @@ class interleaved_fwd_fixpoint_iterator_t final : public wto_component_visitor_t
 
     ebpf_domain_t get_post(const label_t& node) { return _post.at(node); }
 
-    void visit(wto_vertex_t& vertex) override;
+    void operator()(wto_vertex_t& vertex);
 
-    void visit(wto_cycle_t& cycle) override;
+    void operator()(wto_cycle_t& cycle);
 
     friend std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg);
 };
 
 std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg) {
     interleaved_fwd_fixpoint_iterator_t analyzer(cfg);
-    analyzer._wto.accept(&analyzer);
+    for (wto_component_t& c : analyzer._wto) {
+        std::visit(analyzer, c);
+    }
     return std::make_pair(analyzer._pre, analyzer._post);
 }
 
-void interleaved_fwd_fixpoint_iterator_t::visit(wto_vertex_t& vertex) {
+void interleaved_fwd_fixpoint_iterator_t::operator()(wto_vertex_t& vertex) {
     label_t node = vertex.node();
 
     /** decide whether skip vertex or not **/
@@ -135,7 +133,7 @@ void interleaved_fwd_fixpoint_iterator_t::visit(wto_vertex_t& vertex) {
     transform_to_post(node, pre);
 }
 
-void interleaved_fwd_fixpoint_iterator_t::visit(wto_cycle_t& cycle) {
+void interleaved_fwd_fixpoint_iterator_t::operator()(wto_cycle_t& cycle) {
     label_t head = cycle.head();
 
     /** decide whether skip cycle or not **/
@@ -144,7 +142,7 @@ void interleaved_fwd_fixpoint_iterator_t::visit(wto_cycle_t& cycle) {
         // We only skip the analysis of cycle is _entry is not a
         // component of it, included nested components.
         member_component_visitor vis(_cfg.entry());
-        cycle.accept(&vis);
+        vis(cycle);
         entry_in_this_cycle = vis.is_member();
         _skip = !entry_in_this_cycle;
         if (_skip) {
@@ -172,7 +170,7 @@ void interleaved_fwd_fixpoint_iterator_t::visit(wto_cycle_t& cycle) {
         set_pre(head, pre);
         transform_to_post(head, pre);
         for (auto& x : cycle) {
-            x.accept(this);
+            std::visit(*this, x);
         }
         ebpf_domain_t new_pre = join_all_prevs(head);
         if (new_pre <= pre) {
@@ -190,7 +188,7 @@ void interleaved_fwd_fixpoint_iterator_t::visit(wto_cycle_t& cycle) {
         transform_to_post(head, pre);
 
         for (auto& x : cycle) {
-            x.accept(this);
+            std::visit(*this, x);
         }
         ebpf_domain_t new_pre = join_all_prevs(head);
         if (pre <= new_pre) {
