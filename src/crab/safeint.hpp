@@ -130,12 +130,7 @@ class safe_i64 {
 
     bool operator>=(safe_i64 x) const{ return m_num >= x.m_num; }
 
-    void write(std::ostream& os) const { os << m_num; }
-
-    friend std::ostream& operator<<(std::ostream& o, const safe_i64& n) {
-        n.write(o);
-        return o;
-    }
+    friend std::ostream& operator<<(std::ostream& o, const safe_i64& n) { return o << n.m_num; }
 
   private:
     int64_t m_num;

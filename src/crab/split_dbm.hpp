@@ -84,7 +84,7 @@ inline SafeInt64DefaultParams::Wt convert_NtoW(const z_number& n, bool& overflow
     return SafeInt64DefaultParams::Wt(n);
 }
 
-class SplitDBM final : public writeable {
+class SplitDBM final {
   private:
     using variable_vector_t = std::vector<variable_t>;
 
@@ -384,9 +384,6 @@ class SplitDBM final : public writeable {
 
     // -- end array_sgraph_domain_helper_traits
 
-    // Output function
-    void write(std::ostream& o) override;
-
     // return number of vertices and edges
     std::pair<std::size_t, std::size_t> size() const { return {g.size(), g.num_edges()}; }
 
@@ -448,6 +445,8 @@ class SplitDBM final : public writeable {
         //       SplitDBM dom = rhs;
         //       if (dom.is_top()) { ... }
     }
+
+    friend std::ostream& operator<<(std::ostream& o, SplitDBM& dom);
 }; // class SplitDBM
 
 } // namespace domains

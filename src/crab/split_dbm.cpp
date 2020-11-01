@@ -1194,36 +1194,34 @@ void SplitDBM::forget(const variable_vector_t& variables) {
     }
 }
 
-void SplitDBM::write(std::ostream& o) {
+std::ostream& operator<<(std::ostream& o, SplitDBM& dom) {
 
-    normalize();
+    dom.normalize();
 
-    if (is_bottom()) {
-        o << "_|_";
-        return;
+    if (dom.is_bottom()) {
+        return o << "_|_";
     }
-    if (is_top()) {
-        o << "{}";
-        return;
+    if (dom.is_top()) {
+        return o << "{}";
     }
     // Intervals
     bool first = true;
     o << "{";
     // Extract all the edges
-    SubGraph<graph_t> g_excl(g, 0);
-    for (vert_id v : g_excl.verts()) {
-        if (!rev_map[v])
+    SubGraph<SplitDBM::graph_t> g_excl(dom.g, 0);
+    for (SplitDBM::vert_id v : g_excl.verts()) {
+        if (!dom.rev_map[v])
             continue;
-        if (!g.elem(0, v) && !g.elem(v, 0))
+        if (!dom.g.elem(0, v) && !dom.g.elem(v, 0))
             continue;
-        interval_t v_out = interval_t(g.elem(v, 0) ? -number_t(g.edge_val(v, 0)) : bound_t::minus_infinity(),
-                                      g.elem(0, v) ?  number_t(g.edge_val(0, v)) : bound_t::plus_infinity());
+        interval_t v_out = interval_t(dom.g.elem(v, 0) ? -number_t(dom.g.edge_val(v, 0)) : bound_t::minus_infinity(),
+                                      dom.g.elem(0, v) ?  number_t(dom.g.edge_val(0, v)) : bound_t::plus_infinity());
 
         if (first)
             first = false;
         else
             o << ", ";
-        o << *(rev_map[v]) << " -> ";
+        o << *(dom.rev_map[v]) << " -> ";
         if (v_out.lb() == v_out.ub())
             o << "[" << v_out.lb() << "]";
         else
@@ -1232,14 +1230,14 @@ void SplitDBM::write(std::ostream& o) {
     if (!first) o << "\n ";
     first = true;
 
-    for (vert_id s : g_excl.verts()) {
-        if (!rev_map[s])
+    for (SplitDBM::vert_id s : g_excl.verts()) {
+        if (!dom.rev_map[s])
             continue;
-        variable_t vs = *rev_map[s];
-        for (vert_id d : g_excl.succs(s)) {
-            if (!rev_map[d])
+        variable_t vs = *dom.rev_map[s];
+        for (SplitDBM::vert_id d : g_excl.succs(s)) {
+            if (!dom.rev_map[d])
                 continue;
-            variable_t vd = *rev_map[d];
+            variable_t vd = *dom.rev_map[d];
 
             if (first)
                 first = false;
@@ -1249,6 +1247,7 @@ void SplitDBM::write(std::ostream& o) {
         }
     }
     o << "}";
+    return o;
 }
 
 } // namespace crab::domains

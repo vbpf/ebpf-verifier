@@ -1330,21 +1330,18 @@ class patricia_tree_set final {
 
     bool operator==(const patricia_tree_set_t& s) const { return (this->operator<=(s) && s.operator<=(*this)); }
 
-    void write(std::ostream& o) const {
+    friend std::ostream& operator<<(std::ostream& o, const patricia_tree_set<Element>& s) {
         o << "{";
-        for (iterator it = begin(); it != end();) {
+        for (iterator it = s.begin(); it != s.end();) {
             it->write(o);
             ++it;
-            if (it != end()) {
+            if (it != s.end()) {
                 o << "; ";
             }
         }
         o << "}";
-    }
-
-    friend std::ostream& operator<<(std::ostream& o, const patricia_tree_set<Element>& s) {
-        s.write(o);
         return o;
     }
+
 };
 } // namespace crab

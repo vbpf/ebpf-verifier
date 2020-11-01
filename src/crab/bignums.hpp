@@ -297,16 +297,11 @@ class z_number final {
         return z_number(result);
     }
 
-    void write(std::ostream& o) const { o << _n.get_str(); }
+    friend std::ostream& operator<<(std::ostream& o, const z_number& z) { return o << z._n.get_str(); }
 
 }; // class z_number
 
 using number_t = z_number;
-
-inline std::ostream& operator<<(std::ostream& o, const z_number& z) {
-    z.write(o);
-    return o;
-}
 
 inline std::size_t hash_value(const z_number& z) { return z.hash(); }
 
