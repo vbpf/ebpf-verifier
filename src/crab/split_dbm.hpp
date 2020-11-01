@@ -67,21 +67,21 @@ namespace domains {
 
 struct SafeInt64DefaultParams {
     using Wt = safe_i64;
-    using graph_t = AdaptGraph<Wt>;
+    using graph_t = AdaptGraph;
 };
 
 /**
  * Helper to translate from Number to DBM Wt (graph weights).  Number
- * is the template parameter of the DBM-based abstract domain to
+ * used to be the template parameter of the DBM-based abstract domain to
  * represent a number. Number might not fit into Wt type.
  **/
-inline safe_i64 convert_NtoW(const z_number& n, bool& overflow) {
+inline SafeInt64DefaultParams::Wt convert_NtoW(const z_number& n, bool& overflow) {
     overflow = false;
     if (!n.fits_slong()) {
         overflow = true;
         return 0;
     }
-    return safe_i64(n);
+    return SafeInt64DefaultParams::Wt(n);
 }
 
 class SplitDBM final : public writeable {
@@ -346,8 +346,11 @@ class SplitDBM final : public writeable {
 
     void apply(bitwise_binop_t op, variable_t x, variable_t y, const number_t& k);
 
-    template <typename NumOrVar>
-    void apply(binop_t op, variable_t x, variable_t y, NumOrVar z) {
+    void apply(binop_t op, variable_t x, variable_t y, const number_t& z) {
+        std::visit([&](auto top) { apply(top, x, y, z); }, op);
+    }
+
+    void apply(binop_t op, variable_t x, variable_t y, variable_t z) {
         std::visit([&](auto top) { apply(top, x, y, z); }, op);
     }
 

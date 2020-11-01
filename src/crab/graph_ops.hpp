@@ -129,7 +129,7 @@ class GraphPerm {
 
         e_adj_iterator(std::vector<vert_id>& _inv, const ItG& _v) : inv(_inv), v(_v) {}
 
-        edge_ref operator*() const { return edge_ref(inv[(*v).vert], (*v).val); }
+        edge_ref operator*() const { return edge_ref{inv[(*v).vert], (*v).val}; }
 
         e_adj_iterator& operator++() {
             ++v;

@@ -2,6 +2,7 @@
 
 #include "crab/debug.hpp"
 #include "crab/types.hpp"
+#include "crab/safeint.hpp"
 // Adaptive sparse-set based weighted graph implementation
 
 #pragma GCC diagnostic push
@@ -12,9 +13,10 @@ namespace crab {
 // Starts off as an unsorted vector, switching to a
 // sparse-set when |S| >= sparse_threshold
 // WARNING: Assumes Val is a basic type (so doesn't need a ctor/dtor call)
-template <class Val>
-class AdaptSMap {
-    enum { sparse_threshold = 8 };
+
+class AdaptSMap final {
+    using Val = size_t;
+    static constexpr int sparse_threshold = 8;
 
   public:
     using key_t = uint16_t;
@@ -278,9 +280,9 @@ class AdaptSMap {
     key_t* sparse;
 };
 
-template <class Weight>
-class AdaptGraph : public writeable {
-    using smap_t = AdaptSMap<size_t>;
+class AdaptGraph final {
+    using Weight = safe_i64;  // same as SafeInt64DefaultParams::Wt; previously template
+    using smap_t = AdaptSMap;
 
   public:
     using vert_id = unsigned int;
@@ -288,42 +290,21 @@ class AdaptGraph : public writeable {
 
     AdaptGraph() : edge_count(0) {}
 
-    AdaptGraph(AdaptGraph<Wt>&& o) noexcept
+    AdaptGraph(AdaptGraph&& o) noexcept
         : _preds(std::move(o._preds)), _succs(std::move(o._succs)), _ws(std::move(o._ws)), edge_count(o.edge_count),
           is_free(std::move(o.is_free)), free_id(std::move(o.free_id)), free_widx(std::move(o.free_widx)) {}
 
-    AdaptGraph(const AdaptGraph<Wt>& o)
+    AdaptGraph(const AdaptGraph& o)
         : _preds(o._preds), _succs(o._succs), _ws(o._ws), edge_count(o.edge_count), is_free(o.is_free),
           free_id(o.free_id), free_widx(o.free_widx) {}
 
-    AdaptGraph<Wt>& operator=(const AdaptGraph<Wt>& o) {
-        if (this != &o) {
-            _preds = o._preds;
-            _succs = o._succs;
-            _ws = o._ws;
-            edge_count = o.edge_count;
-            is_free = o.is_free;
-            free_id = o.free_id;
-            free_widx = o.free_widx;
-        }
-        return *this;
-    }
+    AdaptGraph& operator=(const AdaptGraph& o) = default;
 
-    AdaptGraph<Wt>& operator=(AdaptGraph<Wt>&& o) noexcept {
-        _preds = std::move(o._preds);
-        _succs = std::move(o._succs);
-        _ws = std::move(o._ws);
-        edge_count = o.edge_count;
-        is_free = std::move(o.is_free);
-        free_id = std::move(o.free_id);
-        free_widx = std::move(o.free_widx);
-
-        return *this;
-    }
+    AdaptGraph& operator=(AdaptGraph&& o) noexcept = default;
 
     template <class G>
-    static AdaptGraph<Wt> copy(const G& o) {
-        AdaptGraph<Wt> g;
+    static AdaptGraph copy(const G& o) {
+        AdaptGraph g;
         g.growTo(o.size());
 
         for (vert_id s : o.verts()) {
@@ -334,45 +315,44 @@ class AdaptGraph : public writeable {
         return g;
     }
 
-    class vert_iterator {
-      public:
-        vert_iterator(vert_id _v, const std::vector<int>& _is_free) : v(_v), is_free(_is_free) {}
+    struct vert_iterator {
+        vert_id v;
+        const std::vector<int>& is_free;
+
         vert_id operator*() const { return v; }
+
         bool operator!=(const vert_iterator& o) {
             while (v < o.v && is_free[v])
                 ++v;
             return v < o.v;
         }
+
         vert_iterator& operator++() {
             ++v;
             return *this;
         }
-
-        vert_id v;
-        const std::vector<int>& is_free;
     };
-    class vert_range {
-      public:
+    struct vert_range {
+        const std::vector<int>& is_free;
+
         explicit vert_range(const std::vector<int>& _is_free) : is_free(_is_free) {}
 
-        vert_iterator begin() const { return vert_iterator(0, is_free); }
-        vert_iterator end() const { return vert_iterator(is_free.size(), is_free); }
+        vert_iterator begin() const { return vert_iterator{0, is_free}; }
+        vert_iterator end() const { return vert_iterator{static_cast<vert_id>(is_free.size()), is_free}; }
 
         size_t size() const { return is_free.size(); }
-        const std::vector<int>& is_free;
     };
-    vert_range verts() const { return vert_range(is_free); }
+    vert_range verts() const { return vert_range{is_free}; }
 
-    class edge_ref_t {
-      public:
-        edge_ref_t(vert_id _vert, Wt& _val) : vert(_vert), val(_val) {}
-        vert_id vert;
-        Wt& val;
-    };
+    struct edge_iter {
+        struct edge_ref {
+            vert_id vert;
+            Wt& val;
+        };
 
-    class edge_iter {
-      public:
-        using edge_ref = edge_ref_t;
+        smap_t::elt_iter_t it{};
+        std::vector<Wt>* ws{};
+
         edge_iter(const smap_t::elt_iter_t& _it, std::vector<Wt>& _ws) : it(_it), ws(&_ws) {}
         edge_iter(const edge_iter& o) : it(o.it), ws(o.ws) {}
         edge_iter() = default;
@@ -387,33 +367,26 @@ class AdaptGraph : public writeable {
             return *it;
         }
 
-        edge_ref operator*() const { return edge_ref((*it).key, (*ws)[(*it).val]); }
+        edge_ref operator*() const { return edge_ref{(*it).key, (*ws)[(*it).val]}; }
         edge_iter operator++() {
             ++it;
             return *this;
         }
         bool operator!=(const edge_iter& o) { return it != o.it; }
-
-        smap_t::elt_iter_t it{};
-        std::vector<Wt>* ws{};
     };
 
     using adj_range_t = typename smap_t::key_range_t;
-    using adj_iterator_t = typename adj_range_t::iterator;
 
-    class edge_range_t {
-      public:
+    struct edge_range_t {
         using elt_range_t = typename smap_t::elt_range_t;
         using iterator = edge_iter;
-        edge_range_t(const edge_range_t& o) : r(o.r), ws(o.ws) {}
-        edge_range_t(const elt_range_t& _r, std::vector<Wt>& _ws) : r(_r), ws(_ws) {}
+
+        elt_range_t r;
+        std::vector<Wt>& ws;
 
         edge_iter begin() const { return edge_iter(r.begin(), ws); }
         edge_iter end() const { return edge_iter(r.end(), ws); }
         size_t size() const { return r.size(); }
-
-        elt_range_t r;
-        std::vector<Wt>& ws;
     };
 
     using fwd_edge_iter = edge_iter;
@@ -428,8 +401,8 @@ class AdaptGraph : public writeable {
     using fwd_edge_range = edge_range_t;
     using rev_edge_range = edge_range_t;
 
-    edge_range_t e_succs(vert_id v) { return edge_range_t(_succs[v].elts(), _ws); }
-    edge_range_t e_preds(vert_id v) { return edge_range_t(_preds[v].elts(), _ws); }
+    edge_range_t e_succs(vert_id v) { return {_succs[v].elts(), _ws}; }
+    edge_range_t e_preds(vert_id v) { return {_preds[v].elts(), _ws}; }
 
     using e_pred_range = edge_range_t;
     using e_succ_range = edge_range_t;
@@ -573,12 +546,13 @@ class AdaptGraph : public writeable {
         }
     }
 
-    void write(std::ostream& o) override {
+    // XXX: g cannot be marked const for complicated reasons
+    friend std::ostream& operator<<(std::ostream& o, AdaptGraph& g) {
         o << "[|";
         bool first = true;
-        for (vert_id v : verts()) {
-            auto it = e_succs(v).begin();
-            auto end = e_succs(v).end();
+        for (vert_id v : g.verts()) {
+            auto it = g.e_succs(v).begin();
+            auto end = g.e_succs(v).end();
 
             if (it != end) {
                 if (first)
@@ -595,6 +569,7 @@ class AdaptGraph : public writeable {
             }
         }
         o << "|]";
+        return o;
     }
 
     // Ick. This'll have another indirection on every operation.
