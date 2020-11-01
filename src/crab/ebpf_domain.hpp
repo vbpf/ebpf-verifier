@@ -1345,7 +1345,7 @@ class ebpf_domain_t final {
             switch (param.kind) {
             case ArgPair::Kind::PTR_TO_MEM_OR_NULL:
             case ArgPair::Kind::PTR_TO_MEM:
-                // TODO: check that initialzied
+                // TODO: check that initialized
                 break;
 
             case ArgPair::Kind::PTR_TO_UNINIT_MEM: {

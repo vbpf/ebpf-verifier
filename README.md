@@ -157,7 +157,7 @@ There are several simple programs with loops in the folder `counter/src`, called
 ```
 $ sudo ./check counter/objects/simple_loop_ptr_backwards.o --domain=linux -v
 counter/objects/simple_loop_ptr_backwards.o
-	sk_skb/loop-ptr,bpf_load_program(prog_cnt=0) err=22
+	sk_skb/loop-tree_ptr,bpf_load_program(prog_cnt=0) err=22
 back-edge from insn 7 to 5
 ```
 

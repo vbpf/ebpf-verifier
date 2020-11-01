@@ -1,7 +1,7 @@
 #pragma once
 
 /* Logging and debug messages */
-
+#include <cstdlib>
 #include <iostream>
 #include <sstream>
 
