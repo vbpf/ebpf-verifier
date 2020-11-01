@@ -1034,11 +1034,9 @@ class ebpf_domain_t final {
         bool is_comparison_check = s.width == (Value)Imm{0};
 
         linear_expression_t lb = reg_offset(s.reg) + s.offset;
-        linear_expression_t ub;
-        if (std::holds_alternative<Imm>(s.width))
-            ub = lb + std::get<Imm>(s.width).v;
-        else
-            ub = lb + reg_value(std::get<Reg>(s.width));
+        linear_expression_t ub = std::holds_alternative<Imm>(s.width)
+            ? lb + std::get<Imm>(s.width).v
+            : lb + reg_value(std::get<Reg>(s.width));
         std::string m = std::string(" (") + to_string(s) + ")";
 
         NumAbsDomain assume_ptr =

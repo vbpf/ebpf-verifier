@@ -61,27 +61,23 @@ class linear_expression_t final {
     using map_t = boost::container::flat_map<variable_t, number_t>;
     using pair_t = typename map_t::value_type;
 
-    std::shared_ptr<map_t> _map = std::make_shared<map_t>();
-    number_t _cst = 0;
+    const map_t _map;
+    const number_t _cst = 0;
 
-    linear_expression_t(std::shared_ptr<map_t> map, number_t cst) : _map(std::move(map)), _cst(std::move(cst)) {}
+    linear_expression_t(map_t map, number_t cst) : _map(std::move(map)), _cst(std::move(cst)) {}
 
-    linear_expression_t(const map_t& map, number_t cst) : _map(std::make_shared<map_t>()), _cst(std::move(cst)) {
-        *this->_map = map;
-    }
-
-    void add(variable_t x, const number_t& n) {
-        typename map_t::iterator it = this->_map->find(x);
-        if (it != this->_map->end()) {
+    static void add(map_t& map, variable_t x, const number_t& n) {
+        typename map_t::iterator it = map.find(x);
+        if (it != map.end()) {
             number_t r = it->second + n;
             if (r == 0) {
-                this->_map->erase(it);
+                map.erase(it);
             } else {
                 it->second = r;
             }
         } else {
             if (n != 0) {
-                this->_map->insert(pair_t(x, n));
+                map.insert(pair_t(x, n));
             }
         }
     }
@@ -99,23 +95,15 @@ class linear_expression_t final {
 
     linear_expression_t(signed long long int n) : _cst(number_t(n)) {}
 
-    linear_expression_t(variable_t x) {
-        this->_map->insert(pair_t(x, number_t(1)));
+    linear_expression_t(variable_t x) : _map{ {x, number_t(1)} } {
     }
 
-    linear_expression_t(const number_t& n, variable_t x) {
-        this->_map->insert(pair_t(x, n));
+    linear_expression_t(const number_t& n, variable_t x) : _map{ {x, n} } {
     }
 
-    linear_expression_t& operator=(const linear_expression_t& e) = default;
+    const_iterator begin() const { return this->_map.begin(); }
 
-    const_iterator begin() const { return this->_map->begin(); }
-
-    const_iterator end() const { return this->_map->end(); }
-
-    iterator begin() { return this->_map->begin(); }
-
-    iterator end() { return this->_map->end(); }
+    const_iterator end() const { return this->_map.end(); }
 
     size_t hash() const {
         size_t res = 0;
@@ -142,15 +130,15 @@ class linear_expression_t final {
         return true;
     }
 
-    bool is_constant() const { return (this->_map->empty()); }
+    bool is_constant() const { return (this->_map.empty()); }
 
     number_t constant() const { return this->_cst; }
 
-    std::size_t size() const { return this->_map->size(); }
+    std::size_t size() const { return this->_map.size(); }
 
     number_t operator[](variable_t x) const {
-        typename map_t::const_iterator it = this->_map->find(x);
-        if (it != this->_map->end()) {
+        typename map_t::const_iterator it = this->_map.find(x);
+        if (it != this->_map.end()) {
             return it->second;
         } else {
             return 0;
@@ -165,17 +153,17 @@ class linear_expression_t final {
     linear_expression_t operator+(int n) const { return this->operator+(number_t(n)); }
 
     linear_expression_t operator+(variable_t x) const {
-        linear_expression_t r(*this->_map, this->_cst);
-        r.add(x, number_t(1));
-        return r;
+        map_t map = this->_map;
+        add(map, x, number_t(1));
+        return linear_expression_t(map, this->_cst);
     }
 
     linear_expression_t operator+(const linear_expression_t& e) const {
-        linear_expression_t r(*this->_map, this->_cst + e._cst);
-        for (typename map_t::const_iterator it = e._map->begin(); it != e._map->end(); ++it) {
-            r.add(it->first, it->second);
+        map_t map = this->_map;
+        for (typename map_t::const_iterator it = e._map.begin(); it != e._map.end(); ++it) {
+            add(map, it->first, it->second);
         }
-        return r;
+        return linear_expression_t(map, this->_cst + e._cst);
     }
 
     linear_expression_t operator-(const number_t& n) const { return this->operator+(-n); }
@@ -183,30 +171,30 @@ class linear_expression_t final {
     linear_expression_t operator-(int n) const { return this->operator+(-number_t(n)); }
 
     linear_expression_t operator-(variable_t x) const {
-        linear_expression_t r(*this->_map, this->_cst);
-        r.add(x, number_t(-1));
-        return r;
+        map_t map = this->_map;
+        add(map, x, number_t(-1));
+        return linear_expression_t(map, this->_cst);
     }
 
     linear_expression_t operator-() const { return this->operator*(number_t(-1)); }
 
     linear_expression_t operator-(const linear_expression_t& e) const {
-        linear_expression_t r(*this->_map, this->_cst - e._cst);
-        for (typename map_t::const_iterator it = e._map->begin(); it != e._map->end(); ++it) {
-            r.add(it->first, -it->second);
+        map_t map = this->_map;
+        for (typename map_t::const_iterator it = e._map.begin(); it != e._map.end(); ++it) {
+            add(map, it->first, -it->second);
         }
-        return r;
+        return linear_expression_t(map, this->_cst - e._cst);
     }
 
     linear_expression_t operator*(const number_t& n) const {
         if (n == 0) {
             return linear_expression_t();
         } else {
-            std::shared_ptr<map_t> map = std::make_shared<map_t>();
-            for (auto [k, v] : *_map) {
+            map_t map;
+            for (auto [k, v] : _map) {
                 number_t c = n * v;
                 if (c != 0) {
-                    map->insert(pair_t(k, c));
+                    map.insert(pair_t(k, c));
                 }
             }
             return linear_expression_t(map, n * this->_cst);
@@ -229,10 +217,10 @@ class linear_expression_t final {
             o << v;
             start = false;
         }
-        if (e._cst > 0 && !e._map->empty()) {
+        if (e._cst > 0 && !e._map.empty()) {
             o << "+";
         }
-        if (e._cst != 0 || e._map->empty()) {
+        if (e._cst != 0 || e._map.empty()) {
             o << e._cst;
         }
         return o;
@@ -250,12 +238,12 @@ class linear_constraint_t final {
     using const_iterator = typename linear_expression_t::const_iterator;
 
   private:
-    cst_kind _kind;
-    linear_expression_t _expr;
+    const cst_kind _kind;
+    const linear_expression_t _expr;
     // This flag has meaning only if _kind == INEQUALITY or STRICT_INEQUALITY.
     // If true the inequality is signed otherwise unsigned.
     // By default all constraints are signed.
-    bool _signedness;
+    const bool _signedness;
 
   public:
     // linear_constraint_t() : _kind(EQUALITY), _signedness(true) {}
@@ -332,10 +320,6 @@ class linear_constraint_t final {
     const_iterator begin() const { return this->_expr.begin(); }
 
     const_iterator end() const { return this->_expr.end(); }
-
-    iterator begin() { return this->_expr.begin(); }
-
-    iterator end() { return this->_expr.end(); }
 
     std::size_t size() const { return this->_expr.size(); }
 
