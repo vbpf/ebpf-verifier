@@ -85,9 +85,6 @@ inline safe_i64 convert_NtoW(const z_number& n, bool& overflow) {
 }
 
 class SplitDBM final : public writeable {
-  public:
-    using constraint_kind_t = typename linear_constraint_t::constraint_kind_t;
-
   private:
     using variable_vector_t = std::vector<variable_t>;
 
@@ -434,8 +431,8 @@ class SplitDBM final : public writeable {
         if (rhs.is_equality()) {
             // try to convert the equality into inequalities so when it's
             // negated we do not have disequalities.
-            return entail_aux(linear_constraint_t(rhs.expression(), linear_constraint_t::INEQUALITY)) &&
-                   entail_aux(linear_constraint_t(rhs.expression() * number_t(-1), linear_constraint_t::INEQUALITY));
+            return entail_aux(linear_constraint_t(rhs.expression(), cst_kind::INEQUALITY)) &&
+                   entail_aux(linear_constraint_t(rhs.expression() * number_t(-1), cst_kind::INEQUALITY));
         } else {
             return entail_aux(rhs);
         }

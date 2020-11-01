@@ -837,7 +837,7 @@ void SplitDBM::operator+=(const linear_constraint_t& cst) {
     if (cst.is_strict_inequality()) {
         // We try to convert a strict to non-strict.
         // e < 0 --> e <= -1
-        auto nc = linear_constraint_t(cst.expression() + 1, constraint_kind_t::INEQUALITY, cst.is_signed());
+        auto nc = linear_constraint_t(cst.expression() + 1, cst_kind::INEQUALITY, cst.is_signed());
         if (nc.is_inequality()) {
             // here we succeed
             if (!add_linear_leq(nc.expression())) {

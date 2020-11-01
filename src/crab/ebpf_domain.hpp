@@ -66,11 +66,8 @@ class offset_t final {
 
     bool operator!=(const offset_t& o) const { return !(*this == o); }
 
-    void write(std::ostream& o) const { o << _val; }
-
     friend std::ostream& operator<<(std::ostream& o, const offset_t& v) {
-        v.write(o);
-        return o;
+        return o << v._val;
     }
 };
 
@@ -145,16 +142,17 @@ class cell_t final {
         linear_expression_t ub(*(x.ub().number()));
 
         NumAbsDomain tmp1(dom);
-        tmp1 += linear_constraint_t(symb_lb - lb, linear_constraint_t::INEQUALITY); //(lb >= symb_lb);
-        tmp1 += linear_constraint_t(lb - symb_lb, linear_constraint_t::INEQUALITY); //(lb <= symb_ub);
+        using namespace dsl_syntax;
+        tmp1 += lb >= symb_lb; //(lb >= symb_lb);
+        tmp1 += lb <= symb_ub; //(lb <= symb_ub);
         if (!tmp1.is_bottom()) {
             CRAB_LOG("array-expansion-overlap", std::cout << "\tyes.\n";);
             return true;
         }
 
         NumAbsDomain tmp2(dom);
-        tmp2 += linear_constraint_t(symb_ub - ub, linear_constraint_t::INEQUALITY); // (ub >= symb_lb);
-        tmp2 += linear_constraint_t(ub - symb_ub, linear_constraint_t::INEQUALITY); // (ub <= symb_ub);
+        tmp2 += ub >= symb_lb; // (ub >= symb_lb);
+        tmp2 += ub <= symb_ub; // (ub <= symb_ub);
         if (!tmp2.is_bottom()) {
             CRAB_LOG("array-expansion-overlap", std::cout << "\tyes.\n";);
             return true;
@@ -164,21 +162,18 @@ class cell_t final {
         return false;
     }
 
-    void write(std::ostream& o) const { o << "cell(" << to_interval() << ")"; }
-
     friend std::ostream& operator<<(std::ostream& o, const cell_t& c) {
-        c.write(o);
-        return o;
+        return o << "cell(" << c.to_interval() << ")";
     }
 };
 
 // forward declarations
-class ebpf_domain_t;
+class array_domain_t;
 
 // Map offsets to cells
 class offset_map_t final {
   private:
-    friend class ebpf_domain_t;
+    friend class array_domain_t;
 
     using cell_set_t = std::set<cell_t>;
 
@@ -285,12 +280,7 @@ class offset_map_t final {
         return out;
     }
 
-    void write(std::ostream& o) const;
-
-    friend std::ostream& operator<<(std::ostream& o, const offset_map_t& m) {
-        m.write(o);
-        return o;
-    }
+    friend std::ostream& operator<<(std::ostream& o, const offset_map_t& m);
 
     /* Operations needed if used as value in a separate_domain */
     bool operator==(const offset_map_t& o) const { return *this <= o && o <= *this; }
@@ -311,7 +301,7 @@ using array_map_t = std::unordered_map<data_kind_t, offset_map_t>;
 extern array_map_t global_array_map;
 void clear_global_state();
 
-class array_bitset_domain_t final : public writeable {
+class array_bitset_domain_t final {
   private:
     using bits_t = std::bitset<STACK_SIZE>;
     bits_t non_numerical_bytes;
@@ -326,6 +316,8 @@ class array_bitset_domain_t final : public writeable {
     void set_to_bottom() { non_numerical_bytes.reset(); }
 
     bool is_top() const { return non_numerical_bytes.all(); }
+
+    bool is_bottom() const { return false; }
 
     bool operator<=(const array_bitset_domain_t& other) {
         return (non_numerical_bytes | other.non_numerical_bytes) == other.non_numerical_bytes;
@@ -381,11 +373,11 @@ class array_bitset_domain_t final : public writeable {
         }
     }
 
-    void write(std::ostream& o) override {
+    friend std::ostream& operator<<(std::ostream& o, const array_bitset_domain_t& array) {
         o << "Numbers -> {";
         bool first = true;
         for (int i = -STACK_SIZE; i < 0; i++) {
-            if (non_numerical_bytes[STACK_SIZE + i])
+            if (array.non_numerical_bytes[STACK_SIZE + i])
                 continue;
             if (!first)
                 o << ", ";
@@ -393,7 +385,7 @@ class array_bitset_domain_t final : public writeable {
             o << "[" << i;
             int j = i + 1;
             for (; j < 0; j++)
-                if (non_numerical_bytes[STACK_SIZE + j])
+                if (array.non_numerical_bytes[STACK_SIZE + j])
                     break;
             if (j > i + 1)
                 o << "..." << j - 1;
@@ -401,6 +393,7 @@ class array_bitset_domain_t final : public writeable {
             i = j;
         }
         o << "}";
+        return o;
     }
 };
 
@@ -417,12 +410,12 @@ inline variable_t reg_type(Reg i) { return reg_type(i.v); }
 
 inline linear_constraint_t eq(variable_t a, variable_t b) {
     using namespace dsl_syntax;
-    return {a - b, linear_constraint_t::EQUALITY};
+    return {a - b, cst_kind::EQUALITY};
 }
 
 inline linear_constraint_t neq(variable_t a, variable_t b) {
     using namespace dsl_syntax;
-    return {a - b, linear_constraint_t::DISEQUATION};
+    return {a - b, cst_kind::DISEQUATION};
 }
 
 constexpr int MAX_PACKET_OFF = 0xffff;
@@ -507,6 +500,199 @@ inline bool is_unsigned_cmp(Condition::Op op) {
     return {};
 }
 
+class array_domain_t final {
+    array_bitset_domain_t num_bytes;
+
+  private:
+    static offset_map_t& lookup_array_map(data_kind_t kind) { return global_array_map[kind]; }
+
+    static std::optional<std::pair<offset_t, unsigned>>
+    kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, const linear_expression_t& elem_size) {
+        std::optional<std::pair<offset_t, unsigned>> res;
+
+        offset_map_t& offset_map = lookup_array_map(kind);
+        interval_t ii = inv.eval_interval(i);
+        std::vector<cell_t> cells;
+        if (std::optional<number_t> n = ii.singleton()) {
+            interval_t i_elem_size = inv.eval_interval(elem_size);
+            std::optional<number_t> n_bytes = i_elem_size.singleton();
+            if (n_bytes) {
+                unsigned size = (long)(*n_bytes);
+                // -- Constant index: kill overlapping cells
+                offset_t o((long)*n);
+                cells = offset_map.get_overlap_cells(o, size);
+                res = std::make_pair(o, size);
+            }
+        }
+        if (!res) {
+            // -- Non-constant index: kill overlapping cells
+            cells = offset_map.get_overlap_cells_symbolic_offset(inv, linear_expression_t(i),
+                                                                 linear_expression_t(i + elem_size));
+        }
+        if (!cells.empty()) {
+            // Forget the scalars from the numerical domain
+            for (auto c : cells) {
+                inv -= c.get_scalar(kind);
+            }
+            // Remove the cells. If needed again they they will be re-created.
+            offset_map -= cells;
+        }
+        return res;
+    }
+
+  public:
+    array_domain_t() = default;
+
+    array_domain_t(const array_bitset_domain_t& num_bytes) : num_bytes(num_bytes) { }
+
+    void set_to_top() {
+        num_bytes.set_to_top();
+    }
+
+    void set_to_bottom() { num_bytes.set_to_bottom(); }
+
+    bool is_bottom() const { return num_bytes.is_bottom(); }
+
+    bool is_top() const { return num_bytes.is_top(); }
+
+    bool operator<=(const array_domain_t& other) { return num_bytes <= other.num_bytes; }
+
+    bool operator==(const array_domain_t& other) {
+        return num_bytes == other.num_bytes;
+    }
+
+    void operator|=(const array_domain_t& other) {
+        if (is_bottom()) {
+            *this = other;
+            return;
+        }
+        num_bytes |= other.num_bytes;
+    }
+
+    array_domain_t operator|(const array_domain_t& other) & {
+        return array_domain_t(num_bytes | other.num_bytes);
+    }
+
+    array_domain_t operator|(const array_domain_t& other) && {
+        return array_domain_t(num_bytes | other.num_bytes);
+    }
+
+    array_domain_t operator&(array_domain_t other) {
+        return array_domain_t(num_bytes & other.num_bytes);
+    }
+
+    array_domain_t widen(const array_domain_t& other) {
+        return array_domain_t(num_bytes | other.num_bytes);
+    }
+
+    array_domain_t widening_thresholds(const array_domain_t& other, const iterators::thresholds_t& ts) {
+        return array_domain_t(num_bytes | other.num_bytes);
+    }
+
+    array_domain_t narrow(const array_domain_t& other) {
+        return array_domain_t(num_bytes & other.num_bytes);
+    }
+
+    friend std::ostream& operator<<(std::ostream& o, const array_domain_t& dom) {
+        return o << dom.num_bytes;
+    }
+
+    std::optional<linear_expression_t> load(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, int width) {
+
+        interval_t ii = inv.eval_interval(i);
+        if (std::optional<number_t> n = ii.singleton()) {
+            offset_map_t& offset_map = lookup_array_map(kind);
+            long k = (long)*n;
+            if (kind == data_kind_t::types) {
+                auto [only_num, only_non_num] = num_bytes.uniformity(k, width);
+                if (only_num) {
+                    return T_NUM;
+                }
+                if (!only_non_num || width != 8) {
+                    return {};
+                }
+            }
+            offset_t o(k);
+            unsigned size = (long)width;
+            std::vector<cell_t> cells = offset_map.get_overlap_cells(o, size);
+            if (cells.empty()) {
+                cell_t c = offset_map.mk_cell(o, size);
+                // Here it's ok to do assignment (instead of expand)
+                // because c is not a summarized variable. Otherwise, it
+                // would be unsound.
+                return c.get_scalar(kind);
+            } else {
+                CRAB_WARN("Ignored read from cell ", kind, "[", o, "...", o.index() + size - 1, "]",
+                          " because it overlaps with ", cells.size(), " cells");
+                /*
+                    TODO: we can apply here "Value Recomposition" 'a la'
+                    Mine'06 to construct values of some type from a sequence
+                    of bytes. It can be endian-independent but it would more
+                    precise if we choose between little- and big-endian.
+                */
+            }
+        } else {
+            // TODO: we can be more precise here
+            CRAB_WARN("array expansion: ignored array load because of non-constant array index ", i);
+        }
+        return {};
+    }
+
+    std::optional<variable_t> store(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size,
+                                    const linear_expression_t& val) {
+        auto maybe_cell = kill_and_find_var(inv, kind, idx, elem_size);
+        if (maybe_cell) {
+            // perform strong update
+            auto [offset, size] = *maybe_cell;
+            if (kind == data_kind_t::types) {
+                std::optional<number_t> t = inv.eval_interval(val).singleton();
+                num_bytes.store(offset.index(), size, t);
+            }
+            variable_t v = lookup_array_map(kind).mk_cell(offset, size).get_scalar(kind);
+            return v;
+        }
+        return {};
+    }
+
+    void havoc(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size) {
+        auto maybe_cell = kill_and_find_var(inv, kind, idx, elem_size);
+        if (maybe_cell && kind == data_kind_t::types) {
+            auto [offset, size] = *maybe_cell;
+            num_bytes.havoc(offset.index(), size);
+        }
+    }
+
+    // Perform array stores over an array segment
+    void store_numbers(NumAbsDomain& inv, variable_t _idx, variable_t _width) {
+
+        // TODO: this should be an user parameter.
+        const number_t max_num_elems = STACK_SIZE;
+
+        if (is_bottom())
+            return;
+
+        std::optional<number_t> idx_n = inv[_idx].singleton();
+        if (!idx_n) {
+            CRAB_WARN("array expansion store range ignored because ", "lower bound is not constant");
+            return;
+        }
+
+        std::optional<number_t> width = inv[_width].singleton();
+        if (!width) {
+            CRAB_WARN("array expansion store range ignored because ", "upper bound is not constant");
+            return;
+        }
+
+        if (*idx_n + *width > max_num_elems) {
+            CRAB_WARN("array expansion store range ignored because ",
+                      "the number of elements is larger than default limit of ", max_num_elems);
+            return;
+        }
+        num_bytes.store((long)*idx_n, (long)*width, std::optional<number_t>(T_NUM));
+    }
+
+};
+
 class ebpf_domain_t final {
   public:
     using variable_vector_t = std::vector<variable_t>;
@@ -515,7 +701,7 @@ class ebpf_domain_t final {
   private:
     // scalar domain
     NumAbsDomain m_inv;
-    array_bitset_domain_t num_bytes;
+    array_domain_t stack;
     std::function<check_require_func_t> check_require{};
 
   public:
@@ -533,40 +719,26 @@ class ebpf_domain_t final {
         return abs;
     }
 
-  private:
-    static offset_map_t& lookup_array_map(data_kind_t kind) { return global_array_map[kind]; }
-
-    static void kill_cells(data_kind_t kind, const std::vector<cell_t>& cells, offset_map_t& offset_map, NumAbsDomain& dom) {
-        if (!cells.empty()) {
-            // Forget the scalars from the numerical domain
-            for (auto c : cells) {
-                dom -= c.get_scalar(kind);
-            }
-            // Remove the cells. If needed again they they will be re-created.
-            offset_map -= cells;
-        }
-    }
-
   public:
     ebpf_domain_t() : m_inv(NumAbsDomain::top()) {}
 
-    ebpf_domain_t(NumAbsDomain  inv, array_bitset_domain_t num_bytes) : m_inv(std::move(inv)), num_bytes(std::move(num_bytes)) {}
+    ebpf_domain_t(NumAbsDomain inv, array_domain_t stack) : m_inv(std::move(inv)), stack(std::move(stack)) {}
 
     void set_to_top() {
         m_inv.set_to_top();
-        num_bytes.set_to_top();
+        stack.set_to_top();
     }
 
     void set_to_bottom() { m_inv.set_to_bottom(); }
 
     bool is_bottom() const { return m_inv.is_bottom(); }
 
-    bool is_top() const { return m_inv.is_top() && num_bytes.is_top(); }
+    bool is_top() const { return m_inv.is_top() && stack.is_top(); }
 
-    bool operator<=(const ebpf_domain_t& other) { return m_inv <= other.m_inv && num_bytes <= other.num_bytes; }
+    bool operator<=(const ebpf_domain_t& other) { return m_inv <= other.m_inv && stack <= other.stack; }
 
     bool operator==(ebpf_domain_t other) {
-        return num_bytes == other.num_bytes && m_inv <= other.m_inv && other.m_inv <= m_inv;
+        return stack == other.stack && m_inv <= other.m_inv && other.m_inv <= m_inv;
     }
 
     void operator|=(ebpf_domain_t&& other) {
@@ -574,8 +746,8 @@ class ebpf_domain_t final {
             *this = other;
             return;
         }
-        m_inv |= std::move(other.m_inv);
-        num_bytes |= other.num_bytes;
+        m_inv |= other.m_inv;
+        stack |= other.stack;
     }
 
     void operator|=(const ebpf_domain_t& other) {
@@ -583,41 +755,32 @@ class ebpf_domain_t final {
         operator|=(std::move(tmp));
     }
 
-    void operator|=(ebpf_domain_t& other) {
-        if (is_bottom()) {
-            *this = other;
-            return;
-        }
-        m_inv |= other.m_inv;
-        num_bytes |= other.num_bytes;
-    }
-
     ebpf_domain_t operator|(ebpf_domain_t&& other) {
-        return ebpf_domain_t(m_inv | other.m_inv, num_bytes | other.num_bytes);
+        return ebpf_domain_t(m_inv | other.m_inv, stack | other.stack);
     }
 
     ebpf_domain_t operator|(const ebpf_domain_t& other) & {
-        return ebpf_domain_t(m_inv | other.m_inv, num_bytes | other.num_bytes);
+        return ebpf_domain_t(m_inv | other.m_inv, stack | other.stack);
     }
 
     ebpf_domain_t operator|(const ebpf_domain_t& other) && {
-        return ebpf_domain_t(m_inv | other.m_inv, num_bytes | other.num_bytes);
+        return ebpf_domain_t(m_inv | other.m_inv, stack | other.stack);
     }
 
     ebpf_domain_t operator&(ebpf_domain_t other) {
-        return ebpf_domain_t(m_inv & std::move(other.m_inv), num_bytes & other.num_bytes);
+        return ebpf_domain_t(m_inv & std::move(other.m_inv), stack & other.stack);
     }
 
     ebpf_domain_t widen(const ebpf_domain_t& other) {
-        return ebpf_domain_t(m_inv.widen(other.m_inv), num_bytes | other.num_bytes);
+        return ebpf_domain_t(m_inv.widen(other.m_inv), stack | other.stack);
     }
 
     ebpf_domain_t widening_thresholds(const ebpf_domain_t& other, const iterators::thresholds_t& ts) {
-        return ebpf_domain_t(m_inv.widening_thresholds(other.m_inv, ts), num_bytes | other.num_bytes);
+        return ebpf_domain_t(m_inv.widening_thresholds(other.m_inv, ts), stack | other.stack);
     }
 
     ebpf_domain_t narrow(const ebpf_domain_t& other) {
-        return ebpf_domain_t(m_inv.narrow(other.m_inv), num_bytes & other.num_bytes);
+        return ebpf_domain_t(m_inv.narrow(other.m_inv), stack & other.stack);
     }
 
     interval_t operator[](variable_t x) { return m_inv[x]; }
@@ -652,139 +815,6 @@ class ebpf_domain_t final {
 
     void apply(binop_t op, variable_t x, variable_t y, variable_t z) {
         std::visit([&](auto top) { apply(top, x, y, z); }, op);
-    }
-    // array_operators_api
-
-    void array_load(NumAbsDomain& inv, variable_t lhs, data_kind_t kind, const linear_expression_t& i, int width) {
-
-        if (inv.is_bottom())
-            return;
-
-        interval_t ii = inv.eval_interval(i);
-        if (std::optional<number_t> n = ii.singleton()) {
-            offset_map_t& offset_map = lookup_array_map(kind);
-            long k = (long)*n;
-            if (kind == data_kind_t::types) {
-                auto [only_num, only_non_num] = num_bytes.uniformity(k, width);
-                if (only_num) {
-                    inv.assign(lhs, T_NUM);
-                    return;
-                }
-                if (!only_non_num || width != 8) {
-                    inv -= lhs;
-                    return;
-                }
-            }
-            offset_t o(k);
-            unsigned size = (long)width;
-            std::vector<cell_t> cells = offset_map.get_overlap_cells(o, size);
-            if (cells.empty()) {
-                cell_t c = offset_map.mk_cell(o, size);
-                // Here it's ok to do assignment (instead of expand)
-                // because c is not a summarized variable. Otherwise, it
-                // would be unsound.
-                inv.assign(lhs, c.get_scalar(kind));
-                return;
-            } else {
-                CRAB_WARN("Ignored read from cell ", kind, "[", o, "...", o.index() + size - 1, "]",
-                          " because it overlaps with ", cells.size(), " cells");
-                /*
-                    TODO: we can apply here "Value Recomposition" 'a la'
-                    Mine'06 to construct values of some type from a sequence
-                    of bytes. It can be endian-independent but it would more
-                    precise if we choose between little- and big-endian.
-                */
-            }
-        } else {
-            // TODO: we can be more precise here
-            CRAB_WARN("array expansion: ignored array load because of non-constant array index ", i);
-        }
-
-        inv -= lhs;
-    }
-
-    static std::optional<std::pair<offset_t, unsigned>>
-
-    kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, const linear_expression_t& elem_size) {
-        if (inv.is_bottom())
-            return {};
-
-        std::optional<std::pair<offset_t, unsigned>> res;
-
-        offset_map_t& offset_map = lookup_array_map(kind);
-        interval_t ii = inv.eval_interval(i);
-        std::vector<cell_t> cells;
-        if (std::optional<number_t> n = ii.singleton()) {
-            interval_t i_elem_size = inv.eval_interval(elem_size);
-            std::optional<number_t> n_bytes = i_elem_size.singleton();
-            if (n_bytes) {
-                unsigned size = (long)(*n_bytes);
-                // -- Constant index: kill overlapping cells
-                offset_t o((long)*n);
-                cells = offset_map.get_overlap_cells(o, size);
-                res = std::make_pair(o, size);
-            }
-        }
-        if (!res) {
-            // -- Non-constant index: kill overlapping cells
-            cells = offset_map.get_overlap_cells_symbolic_offset(inv, linear_expression_t(i),
-                                                                 linear_expression_t(i + elem_size));
-        }
-        kill_cells(kind, cells, offset_map, inv);
-
-        return res;
-    }
-
-    void array_store(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size,
-                     const linear_expression_t& val) {
-        auto maybe_cell = kill_and_find_var(inv, kind, idx, elem_size);
-        if (maybe_cell) {
-            // perform strong update
-            auto [offset, size] = *maybe_cell;
-            if (kind == data_kind_t::types) {
-                std::optional<number_t> t = inv.eval_interval(val).singleton();
-                num_bytes.store(offset.index(), size, t);
-            }
-            variable_t v = lookup_array_map(kind).mk_cell(offset, size).get_scalar(kind);
-            inv.assign(v, val);
-        }
-    }
-
-    void array_havoc(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size) {
-        auto maybe_cell = kill_and_find_var(inv, kind, idx, elem_size);
-        if (maybe_cell && kind == data_kind_t::types) {
-            auto [offset, size] = *maybe_cell;
-            num_bytes.havoc(offset.index(), size);
-        }
-    }
-
-    // Perform array stores over an array segment
-    void array_store_numbers(NumAbsDomain& inv, variable_t _idx, variable_t _width) {
-
-        // TODO: this should be an user parameter.
-        const number_t max_num_elems = STACK_SIZE;
-
-        if (is_bottom())
-            return;
-
-        std::optional<number_t> idx_n = inv[_idx].singleton();
-        if (!idx_n) {
-            CRAB_WARN("array expansion store range ignored because ", "lower bound is not constant");
-            return;
-        }
-
-        std::optional<number_t> width = inv[_width].singleton();
-        if (!width) {
-            CRAB_WARN("array expansion store range ignored because ", "upper bound is not constant");
-            return;
-        }
-
-        if (*idx_n + *width > max_num_elems) {
-            CRAB_WARN("array expansion store range ignored because ",
-                      "the number of elements is larger than default limit of ", max_num_elems);
-            return;
-        }
-        num_bytes.store((long)*idx_n, (long)*width, std::optional<number_t>(T_NUM));
     }
 
   private:
@@ -1180,15 +1210,12 @@ class ebpf_domain_t final {
     }
 
     NumAbsDomain do_load_stack(NumAbsDomain inv, Reg target, const linear_expression_t& addr, int width) {
-        if (inv.is_bottom())
-            return inv;
-
         if (width == 8) {
-            array_load(inv, reg_type(target), data_kind_t::types, addr, width);
-            array_load(inv, reg_value(target), data_kind_t::values, addr, width);
-            array_load(inv, reg_offset(target), data_kind_t::offsets, addr, width);
+            inv.assign(reg_type(target), stack.load(inv, data_kind_t::types, addr, width));
+            inv.assign(reg_value(target), stack.load(inv,  data_kind_t::values, addr, width));
+            inv.assign(reg_offset(target), stack.load(inv, data_kind_t::offsets, addr, width));
         } else {
-            array_load(inv, reg_type(target), data_kind_t::types, addr, width);
+            inv.assign(reg_type(target), stack.load(inv, data_kind_t::types, addr, width));
             inv -= reg_value(target);
             inv -= reg_offset(target);
         }
@@ -1196,6 +1223,8 @@ class ebpf_domain_t final {
     }
 
     void do_load(Mem const& b, Reg target) {
+        if (m_inv.is_bottom())
+            return;
         using namespace dsl_syntax;
         Reg mem_reg = b.access.basereg;
         int width = b.access.width;
@@ -1240,16 +1269,16 @@ class ebpf_domain_t final {
     template <typename A, typename X, typename Y, typename Z>
     void do_store_stack(NumAbsDomain& inv, int width, A addr, X val_type, Y val_value,
                         std::optional<Z> opt_val_offset) {
-        array_store(inv, data_kind_t::types, addr, width, val_type);
+        inv.assign(stack.store(inv, data_kind_t::types, addr, width, val_type), val_type);
         if (width == 8) {
-            array_store(inv, data_kind_t::values, addr, width, val_value);
+            inv.assign(stack.store(inv, data_kind_t::values, addr, width, val_value), val_value);
             if (opt_val_offset && get_type(val_type) != T_NUM)
-                array_store(inv, data_kind_t::offsets, addr, width, *opt_val_offset);
+                inv.assign(stack.store(inv, data_kind_t::offsets, addr, width, *opt_val_offset), *opt_val_offset);
             else
-                array_havoc(inv, data_kind_t::offsets, addr, width);
+                stack.havoc(inv, data_kind_t::offsets, addr, width);
         } else {
-            array_havoc(inv, data_kind_t::values, addr, width);
-            array_havoc(inv, data_kind_t::offsets, addr, width);
+            stack.havoc(inv, data_kind_t::values, addr, width);
+            stack.havoc(inv, data_kind_t::offsets, addr, width);
         }
     }
 
@@ -1268,6 +1297,8 @@ class ebpf_domain_t final {
 
     template <typename Type, typename Value>
     void do_mem_store(Mem const& b, Type val_type, Value val_value, std::optional<variable_t> opt_val_offset) {
+        if (m_inv.is_bottom())
+            return;
         using namespace dsl_syntax;
         Reg mem_reg = b.access.basereg;
         int width = b.access.width;
@@ -1299,6 +1330,8 @@ class ebpf_domain_t final {
     }
 
     void operator()(Call const& call) {
+        if (m_inv.is_bottom())
+            return;
         using namespace dsl_syntax;
         for (ArgSingle param : call.singles) {
             switch (param.kind) {
@@ -1322,11 +1355,11 @@ class ebpf_domain_t final {
                 variable_t width = reg_value(param.size);
                 interval_t t = m_inv[reg_type(param.mem)];
                 if (t[T_STACK]) {
-                    array_havoc(m_inv, data_kind_t::types, addr, width);
-                    array_havoc(m_inv, data_kind_t::values, addr, width);
-                    array_havoc(m_inv, data_kind_t::offsets, addr, width);
+                    stack.havoc(m_inv, data_kind_t::types, addr, width);
+                    stack.havoc(m_inv, data_kind_t::values, addr, width);
+                    stack.havoc(m_inv, data_kind_t::offsets, addr, width);
                     if (t.singleton()) {
-                        array_store_numbers(m_inv, addr, width);
+                        stack.store_numbers(m_inv, addr, width);
                     }
                 }
             }
@@ -1466,7 +1499,7 @@ class ebpf_domain_t final {
                 } else if (stype == T_NUM) {
                     sub_overflow(dst_value, src_value);
                     sub(dst_offset, src_value);
-                } else if (stype == dtype && stype < 0) { // subtracting non-shared poitners
+                } else if (stype == dtype && stype < 0) { // subtracting non-shared pointers
                     apply(m_inv, crab::arith_binop_t::SUB, dst_value, dst_offset, src_offset, true);
                     havoc(dst_offset);
                     assign(dst_type, T_NUM);
@@ -1531,7 +1564,7 @@ class ebpf_domain_t final {
         if (dom.is_bottom()) {
             o << "_|_";
         } else {
-            o << dom.m_inv << "\n" << dom.num_bytes;
+            o << dom.m_inv << "\n" << dom.stack;
         }
         return o;
     }
