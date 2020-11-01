@@ -51,7 +51,7 @@
 #include <boost/container/flat_map.hpp>
 #include <boost/functional/hash.hpp>
 
-#include "crab/types.hpp"
+#include "crab/variable.hpp"
 #include "crab_types/patricia_trees.hpp"
 
 namespace crab {

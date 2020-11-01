@@ -32,9 +32,9 @@
 
 #include "boost/range/algorithm/set_algorithm.hpp"
 
-#include "crab/debug.hpp"
-#include "crab/stats.hpp"
-#include "crab/types.hpp"
+#include "crab/variable.hpp"
+#include "crab_types/debug.hpp"
+#include "crab_types/stats.hpp"
 
 #include "crab/interval.hpp"
 #include "crab/split_dbm.hpp"

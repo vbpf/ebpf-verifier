@@ -2,7 +2,7 @@
  * Factories for variable names.
  */
 
-#include "crab/types.hpp"
+#include "crab/variable.hpp"
 
 namespace crab {
 

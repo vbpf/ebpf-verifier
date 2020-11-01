@@ -9,9 +9,9 @@
 #include <optional>
 #include <utility>
 
-#include "crab/stats.hpp"
-#include "crab/types.hpp"
 #include "crab_types/bignums.hpp"
+#include "crab_types/stats.hpp"
+#include "crab/variable.hpp"
 
 namespace crab {
 

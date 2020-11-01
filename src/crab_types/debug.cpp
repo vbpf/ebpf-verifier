@@ -1,4 +1,4 @@
-#include "crab/debug.hpp"
+#include "debug.hpp"
 
 namespace crab {
 bool CrabLogFlag = false;

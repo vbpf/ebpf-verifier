@@ -7,10 +7,10 @@
 #include <boost/range/iterator_range.hpp>
 
 #include "crab/cfg.hpp"
-#include "crab/debug.hpp"
 #include "crab/interval.hpp"
 #include "crab/linear_constraints.hpp"
 #include "crab/wto.hpp"
+#include "crab_types/debug.hpp"
 
 namespace crab {
 

@@ -17,6 +17,7 @@ link_directories(${Boost_LIBRARY_DIRS})
 file(GLOB ALL_SRC
         "./src/*.cpp"
         "./src/crab/*.cpp"
+        "./src/crab_types/*.cpp"
         )
 
 set(COMMON_FLAGS -Wall -Wfatal-errors -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8)

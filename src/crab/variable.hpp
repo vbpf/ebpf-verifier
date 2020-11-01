@@ -7,15 +7,13 @@
 #include <optional>
 #include <vector>
 
-#include "crab/debug.hpp"
 #include "crab_types/bignums.hpp"
+#include "crab_types/debug.hpp"
 #include "crab_types/patricia_trees.hpp"
 
 /* Basic type definitions */
 
 namespace crab {
-
-using number_t = z_number;
 
 enum class data_kind_t { types, values, offsets };
 std::ostream& operator<<(std::ostream& o, const data_kind_t& s);

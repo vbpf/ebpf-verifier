@@ -53,7 +53,7 @@
 
 #include <gmpxx.h>
 
-#include "crab/debug.hpp"
+#include "debug.hpp"
 
 namespace crab {
 

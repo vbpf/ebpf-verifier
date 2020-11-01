@@ -1,4 +1,4 @@
-#include "crab/stats.hpp"
+#include "stats.hpp"
 
 #include <sys/resource.h>
 #include <sys/time.h>

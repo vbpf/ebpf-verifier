@@ -1,7 +1,7 @@
 #pragma once
 
-#include "crab/debug.hpp"
 #include "crab_types/safeint.hpp"
+#include "debug.hpp"
 // Adaptive sparse-set based weighted graph implementation
 
 #pragma GCC diagnostic push

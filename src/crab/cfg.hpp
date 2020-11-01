@@ -19,11 +19,9 @@
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/range/iterator_range.hpp>
 
-#include "crab/debug.hpp"
-#include "crab/interval.hpp"
-#include "crab/linear_constraints.hpp"
-#include "crab/types.hpp"
+#include "crab/variable.hpp"
 #include "crab_types/bignums.hpp"
+#include "crab_types/debug.hpp"
 
 #include "asm_syntax.hpp"
 

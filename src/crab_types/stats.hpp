@@ -3,7 +3,7 @@
 #include <map>
 #include <string>
 
-#include "crab/types.hpp"
+#include "crab/variable.hpp"
 
 namespace crab {
 

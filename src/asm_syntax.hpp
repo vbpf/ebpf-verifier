@@ -6,7 +6,7 @@
 #include <variant>
 #include <vector>
 
-#include "crab/types.hpp"
+#include "crab/variable.hpp"
 #include "spec_type_descriptors.hpp"
 
 namespace crab {

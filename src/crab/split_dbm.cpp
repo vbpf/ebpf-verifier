@@ -2,8 +2,8 @@
 
 #include <utility>
 
-#include "crab/debug.hpp"
-#include "crab/stats.hpp"
+#include "crab_types/debug.hpp"
+#include "crab_types/stats.hpp"
 
 namespace crab::domains {
 
