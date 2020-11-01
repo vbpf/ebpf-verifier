@@ -29,11 +29,11 @@ interval_t interval_t::operator/(const interval_t& x) const {
         } else if (operator[](0)) {
             z_interval l(_lb, z_bound(-1));
             z_interval u(z_bound(1), _ub);
-            return ((l / x) | (u / x) | z_interval(z_number(0)));
+            return ((l / x) | (u / x) | z_interval(number_t(0)));
         } else {
             // Neither the dividend nor the divisor contains 0
             z_interval a = (_ub < 0)
-                               ? (*this + ((x._ub < 0) ? (x + z_interval(z_number(1))) : (z_interval(z_number(1)) - x)))
+                               ? (*this + ((x._ub < 0) ? (x + z_interval(number_t(1))) : (z_interval(number_t(1)) - x)))
                                : *this;
             bound_t ll = a._lb / x._lb;
             bound_t lu = a._lb / x._ub;
@@ -50,8 +50,8 @@ interval_t interval_t::SRem(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else if (singleton() && x.singleton()) {
-        z_number dividend = *singleton();
-        z_number divisor = *x.singleton();
+        number_t dividend = *singleton();
+        number_t divisor = *x.singleton();
 
         if (divisor == 0) {
             return bottom();
@@ -59,7 +59,7 @@ interval_t interval_t::SRem(const interval_t& x) const {
 
         return interval_t(dividend % divisor);
     } else if (x.ub().is_finite() && x.lb().is_finite()) {
-        z_number max_divisor = max(abs(*x.lb().number()), abs(*x.ub().number()));
+        number_t max_divisor = max(abs(*x.lb().number()), abs(*x.ub().number()));
 
         if (max_divisor == 0) {
             return bottom();
@@ -84,8 +84,8 @@ interval_t interval_t::URem(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else if (singleton() && x.singleton()) {
-        z_number dividend = *singleton();
-        z_number divisor = *x.singleton();
+        number_t dividend = *singleton();
+        number_t divisor = *x.singleton();
 
         if (divisor < 0) {
             return top();
@@ -99,7 +99,7 @@ interval_t interval_t::URem(const interval_t& x) const {
             return interval_t(dividend % divisor);
         }
     } else if (x.ub().is_finite() && x.lb().is_finite()) {
-        z_number max_divisor = *x.ub().number();
+        number_t max_divisor = *x.ub().number();
 
         if (x.lb() < 0 || x.ub() < 0) {
             return top();
@@ -117,8 +117,8 @@ interval_t interval_t::And(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
-        std::optional<z_number> left_op = singleton();
-        std::optional<z_number> right_op = x.singleton();
+        std::optional<number_t> left_op = singleton();
+        std::optional<number_t> right_op = x.singleton();
 
         if (left_op && right_op) {
             return interval_t((*left_op) & (*right_op));
@@ -134,17 +134,17 @@ interval_t interval_t::Or(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
-        std::optional<z_number> left_op = singleton();
-        std::optional<z_number> right_op = x.singleton();
+        std::optional<number_t> left_op = singleton();
+        std::optional<number_t> right_op = x.singleton();
 
         if (left_op && right_op) {
             return interval_t((*left_op) | (*right_op));
         } else if (lb() >= 0 && x.lb() >= 0) {
-            std::optional<z_number> left_ub = ub().number();
-            std::optional<z_number> right_ub = x.ub().number();
+            std::optional<number_t> left_ub = ub().number();
+            std::optional<number_t> right_ub = x.ub().number();
 
             if (left_ub && right_ub) {
-                z_number m = (*left_ub > *right_ub ? *left_ub : *right_ub);
+                number_t m = (*left_ub > *right_ub ? *left_ub : *right_ub);
                 return interval_t(0, m.fill_ones());
             } else {
                 return interval_t(0, bound_t::plus_infinity());
@@ -159,8 +159,8 @@ interval_t interval_t::Xor(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
-        std::optional<z_number> left_op = singleton();
-        std::optional<z_number> right_op = x.singleton();
+        std::optional<number_t> left_op = singleton();
+        std::optional<number_t> right_op = x.singleton();
 
         if (left_op && right_op) {
             return interval_t((*left_op) ^ (*right_op));
@@ -174,8 +174,8 @@ interval_t interval_t::Shl(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
-        if (std::optional<z_number> shift = x.singleton()) {
-            z_number k = *shift;
+        if (std::optional<number_t> shift = x.singleton()) {
+            number_t k = *shift;
             if (k < 0) {
                 // CRAB_ERROR("lshr shift operand cannot be negative");
                 return top();
@@ -184,7 +184,7 @@ interval_t interval_t::Shl(const interval_t& x) const {
             // huge shifts.  We limit the number of times the loop is run
             // to avoid wasting too much time on it.
             if (k <= 128) {
-                z_number factor = 1;
+                number_t factor = 1;
                 for (int i = 0; k > i; i++) {
                     factor *= 2;
                 }
@@ -199,8 +199,8 @@ interval_t interval_t::AShr(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
-        if (std::optional<z_number> shift = x.singleton()) {
-            z_number k = *shift;
+        if (std::optional<number_t> shift = x.singleton()) {
+            number_t k = *shift;
             if (k < 0) {
                 // CRAB_ERROR("ashr shift operand cannot be negative");
                 return top();
@@ -209,7 +209,7 @@ interval_t interval_t::AShr(const interval_t& x) const {
             // huge shifts.  We limit the number of times the loop is run
             // to avoid wasting too much time on it.
             if (k <= 128) {
-                z_number factor = 1;
+                number_t factor = 1;
                 for (int i = 0; k > i; i++) {
                     factor *= 2;
                 }
@@ -224,8 +224,8 @@ interval_t interval_t::LShr(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
-        if (std::optional<z_number> shift = x.singleton()) {
-            z_number k = *shift;
+        if (std::optional<number_t> shift = x.singleton()) {
+            number_t k = *shift;
             if (k < 0) {
                 // CRAB_ERROR("lshr shift operand cannot be negative");
                 return top();
@@ -235,8 +235,8 @@ interval_t interval_t::LShr(const interval_t& x) const {
             // to avoid wasting too much time on it.
             if (k <= 128) {
                 if (lb() >= 0 && ub().is_finite() && shift) {
-                    z_number lb = *this->lb().number();
-                    z_number ub = *this->ub().number();
+                    number_t lb = *this->lb().number();
+                    number_t ub = *this->ub().number();
                     return interval_t(lb >> k, ub >> k);
                 }
             }

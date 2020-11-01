@@ -7,15 +7,13 @@
 #include <optional>
 #include <vector>
 
-#include "crab/bignums.hpp"
 #include "crab/debug.hpp"
+#include "crab_types/bignums.hpp"
+#include "crab_types/patricia_trees.hpp"
 
 /* Basic type definitions */
 
 namespace crab {
-
-// Numerical type for indexed objects
-using index_t = uint64_t;
 
 using number_t = z_number;
 

@@ -49,9 +49,10 @@
 
 #include <boost/iterator/iterator_facade.hpp>
 
-#include "crab/types.hpp"
-
 namespace crab {
+
+// Numerical type for indexed objects
+using index_t = uint64_t;
 
 namespace patricia_trees_impl {
 

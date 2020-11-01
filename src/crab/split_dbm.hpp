@@ -24,16 +24,16 @@
 #include <boost/container/flat_map.hpp>
 #include <utility>
 
-#include "crab/adapt_sgraph.hpp"
-#include "crab/thresholds.hpp"
-#include "crab/bignums.hpp"
 #include "crab/debug.hpp"
 #include "crab/graph_ops.hpp"
 #include "crab/interval.hpp"
 #include "crab/linear_constraints.hpp"
-#include "crab/safeint.hpp"
 #include "crab/stats.hpp"
+#include "crab/thresholds.hpp"
 #include "crab/types.hpp"
+#include "crab_types/adapt_sgraph.hpp"
+#include "crab_types/bignums.hpp"
+#include "crab_types/safeint.hpp"
 
 //#define CHECK_POTENTIAL
 //#define SDBM_NO_NORMALIZE

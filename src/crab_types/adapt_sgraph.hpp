@@ -1,8 +1,7 @@
 #pragma once
 
 #include "crab/debug.hpp"
-#include "crab/types.hpp"
-#include "crab/safeint.hpp"
+#include "crab_types/safeint.hpp"
 // Adaptive sparse-set based weighted graph implementation
 
 #pragma GCC diagnostic push
@@ -36,7 +35,7 @@ class AdaptSMap final {
           sparse(nullptr) {}
 
     AdaptSMap(AdaptSMap&& o) noexcept
-        : sz(o.sz), dense_maxsz(o.dense_maxsz), sparse_ub(o.sparse_ub), dense(o.dense), sparse(o.sparse) {
+        : sz(o.sz), dense_maxsz(o.dense_maxsz), sparse_ub(o.sparse_ub), dense(std::move(o.dense)), sparse(std::move(o.sparse)) {
         o.dense = nullptr;
         o.sparse = nullptr;
         o.sz = 0;
@@ -86,9 +85,9 @@ class AdaptSMap final {
         if (sparse)
             free(sparse);
 
-        dense = o.dense;
+        dense = std::move(o.dense);
         o.dense = nullptr;
-        sparse = o.sparse;
+        sparse = std::move(o.sparse);
         o.sparse = nullptr;
 
         sz = o.sz;

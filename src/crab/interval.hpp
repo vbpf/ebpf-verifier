@@ -9,9 +9,9 @@
 #include <optional>
 #include <utility>
 
-#include "crab/bignums.hpp"
 #include "crab/stats.hpp"
 #include "crab/types.hpp"
+#include "crab_types/bignums.hpp"
 
 namespace crab {
 
@@ -449,7 +449,7 @@ inline interval_t operator-(const number_t& c, const interval_t& x) { return int
 inline interval_t operator-(const interval_t& x, const number_t& c) { return x - interval_t(c); }
 
 inline interval_t trim_interval(const interval_t& i, const interval_t& j) {
-    if (std::optional<z_number> c = j.singleton()) {
+    if (std::optional<number_t> c = j.singleton()) {
         if (i.lb() == bound_t{*c}) {
             return interval_t(bound_t{*c + 1}, i.ub());
         } else if (i.ub() == bound_t{*c}) {

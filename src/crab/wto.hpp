@@ -52,11 +52,9 @@
 #include <unordered_map>
 #include <variant>
 
+#include "crab/cfg.hpp"
 #include "crab/cfg_bgl.hpp"
 #include "crab/debug.hpp"
-#include "crab/interval.hpp"
-#include "crab/stats.hpp"
-#include "crab/types.hpp"
 
 
 namespace crab {

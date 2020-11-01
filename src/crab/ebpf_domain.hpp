@@ -37,8 +37,8 @@
 #include "crab/types.hpp"
 
 #include "crab/interval.hpp"
-#include "crab/patricia_trees.hpp"
 #include "crab/split_dbm.hpp"
+#include "crab_types/patricia_trees.hpp"
 
 #include "config.hpp"
 #include "dsl_syntax.hpp"

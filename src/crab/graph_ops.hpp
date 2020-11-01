@@ -1,8 +1,9 @@
 #pragma once
 
+#include <algorithm>
 #include <optional>
 
-#include "crab/heap.hpp"
+#include "crab_types/heap.hpp"
 
 //============================
 // A set of utility algorithms for manipulating graphs.
