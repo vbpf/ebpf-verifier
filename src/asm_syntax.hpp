@@ -14,6 +14,7 @@ using label_t = std::string;
 }
 using crab::label_t;
 
+namespace asm_syntax {
 struct Imm {
     uint64_t v{};
 };
@@ -291,6 +292,10 @@ DECLARE_EQ2(ValidStore, mem, val)
 DECLARE_EQ4(ValidAccess, reg, offset, width, or_null)
 DECLARE_EQ3(ValidMapKeyValue, access_reg, map_fd_reg, key)
 DECLARE_EQ1(Assert, cst)
+
+}
+
+using namespace asm_syntax;
 
 template <class... Ts>
 struct overloaded : Ts... {

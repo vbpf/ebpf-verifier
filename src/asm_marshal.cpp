@@ -65,7 +65,7 @@ static uint8_t imm(Un::Op op) {
 struct MarshalVisitor {
   private:
     static vector<ebpf_inst> makeLddw(Reg dst, bool isFd, int32_t imm, int32_t next_imm) {
-        return {ebpf_inst{.opcode = static_cast<uint8_t>(EBPF_CLS_LD | width_to_opcode(8)),
+        return {ebpf_inst{.opcode = static_cast<uint8_t>(INST_CLS_LD | width_to_opcode(8)),
                           .dst = dst.v,
                           .src = static_cast<uint8_t>(isFd ? 1 : 0),
                           .offset = 0,
@@ -90,13 +90,13 @@ struct MarshalVisitor {
             return makeLddw(b.dst, false, imm, next_imm);
         }
 
-        ebpf_inst res{.opcode = static_cast<uint8_t>((b.is64 ? EBPF_CLS_ALU64 : EBPF_CLS_ALU) | (op(b.op) << 4)),
+        ebpf_inst res{.opcode = static_cast<uint8_t>((b.is64 ? INST_CLS_ALU64 : INST_CLS_ALU) | (op(b.op) << 4)),
                       .dst = b.dst.v,
                       .src = 0,
                       .offset = 0,
                       .imm = 0};
         std::visit(overloaded{[&](Reg right) {
-                                  res.opcode |= EBPF_SRC_REG;
+                                  res.opcode |= INST_SRC_REG;
                                   res.src = right.v;
                               },
                               [&](Imm right) { res.imm = right.v; }},
@@ -107,8 +107,8 @@ struct MarshalVisitor {
     vector<ebpf_inst> operator()(Un const& b) {
         if (b.op == Un::Op::NEG) {
             return {ebpf_inst{
-                // FIX: should be EBPF_CLS_ALU / EBPF_CLS_ALU64
-                .opcode = static_cast<uint8_t>(EBPF_CLS_ALU | 0x3 | (0x8 << 4)),
+                // FIX: should be INST_CLS_ALU / INST_CLS_ALU64
+                .opcode = static_cast<uint8_t>(INST_CLS_ALU | 0x3 | (0x8 << 4)),
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,
@@ -116,7 +116,7 @@ struct MarshalVisitor {
             }};
         } else {
             // must be LE
-            auto cls = static_cast<uint8_t>(b.op == Un::Op::LE64 ? EBPF_CLS_ALU64 : EBPF_CLS_ALU);
+            auto cls = static_cast<uint8_t>(b.op == Un::Op::LE64 ? INST_CLS_ALU64 : INST_CLS_ALU);
             return {ebpf_inst{
                 .opcode = static_cast<uint8_t>(cls | 0x8 | (0xd << 4)),
                 .dst = b.dst.v,
@@ -129,11 +129,11 @@ struct MarshalVisitor {
 
     vector<ebpf_inst> operator()(Call const& b) {
         return {
-            ebpf_inst{.opcode = static_cast<uint8_t>(EBPF_OP_CALL), .dst = 0, .src = 0, .offset = 0, .imm = b.func}};
+            ebpf_inst{.opcode = static_cast<uint8_t>(INST_OP_CALL), .dst = 0, .src = 0, .offset = 0, .imm = b.func}};
     }
 
     vector<ebpf_inst> operator()(Exit const& b) {
-        return {ebpf_inst{.opcode = EBPF_OP_EXIT, .dst = 0, .src = 0, .offset = 0, .imm = 0}};
+        return {ebpf_inst{.opcode = INST_OP_EXIT, .dst = 0, .src = 0, .offset = 0, .imm = 0}};
     }
 
     vector<ebpf_inst> operator()(Assume const& b) { throw std::invalid_argument("Cannot marshal assumptions"); }
@@ -143,27 +143,27 @@ struct MarshalVisitor {
     vector<ebpf_inst> operator()(Jmp const& b) {
         if (b.cond) {
             ebpf_inst res{
-                .opcode = static_cast<uint8_t>(EBPF_CLS_JMP | (op(b.cond->op) << 4)),
+                .opcode = static_cast<uint8_t>(INST_CLS_JMP | (op(b.cond->op) << 4)),
                 .dst = b.cond->left.v,
                 .src = 0,
                 .offset = label_to_offset(b.target),
             };
             visit(overloaded{[&](Reg right) {
-                                 res.opcode |= EBPF_SRC_REG;
+                                 res.opcode |= INST_SRC_REG;
                                  res.src = right.v;
                              },
                              [&](Imm right) { res.imm = right.v; }},
                   b.cond->right);
             return {res};
         } else {
-            return {ebpf_inst{.opcode = EBPF_OP_JA, .dst = 0, .src = 0, .offset = label_to_offset(b.target), .imm = 0}};
+            return {ebpf_inst{.opcode = INST_OP_JA, .dst = 0, .src = 0, .offset = label_to_offset(b.target), .imm = 0}};
         }
     }
 
     vector<ebpf_inst> operator()(Mem const& b) {
         Deref access = b.access;
         ebpf_inst res{
-            .opcode = static_cast<uint8_t>((EBPF_MEM << 5) | width_to_opcode(access.width)),
+            .opcode = static_cast<uint8_t>((INST_MEM << 5) | width_to_opcode(access.width)),
             .dst = 0,
             .src = 0,
             .offset = static_cast<int16_t>(access.offset),
@@ -171,11 +171,11 @@ struct MarshalVisitor {
         if (b.is_load) {
             if (!std::holds_alternative<Reg>(b.value))
                 throw std::runtime_error(std::string("LD IMM: ") + to_string(b));
-            res.opcode |= EBPF_CLS_LD | 0x1;
+            res.opcode |= INST_CLS_LD | 0x1;
             res.dst = static_cast<uint8_t>(std::get<Reg>(b.value).v);
             res.src = static_cast<uint8_t>(access.basereg.v);
         } else {
-            res.opcode |= EBPF_CLS_ST;
+            res.opcode |= INST_CLS_ST;
             res.dst = access.basereg.v;
             if (std::holds_alternative<Reg>(b.value)) {
                 res.opcode |= 0x1;
@@ -190,24 +190,24 @@ struct MarshalVisitor {
 
     vector<ebpf_inst> operator()(Packet const& b) {
         ebpf_inst res{
-            .opcode = static_cast<uint8_t>(EBPF_CLS_LD | width_to_opcode(b.width)),
+            .opcode = static_cast<uint8_t>(INST_CLS_LD | width_to_opcode(b.width)),
             .dst = 0,
             .src = 0,
             .offset = 0,
             .imm = static_cast<int32_t>(b.offset),
         };
         if (b.regoffset) {
-            res.opcode |= (EBPF_IND << 5);
+            res.opcode |= (INST_IND << 5);
             res.src = b.regoffset->v;
         } else {
-            res.opcode |= (EBPF_ABS << 5);
+            res.opcode |= (INST_ABS << 5);
         }
         return {res};
     }
 
     vector<ebpf_inst> operator()(LockAdd const& b) {
         return {ebpf_inst{
-            .opcode = static_cast<uint8_t>(EBPF_CLS_ST | 0x1 | (EBPF_XADD << 5) | width_to_opcode(b.access.width)),
+            .opcode = static_cast<uint8_t>(INST_CLS_ST | 0x1 | (INST_XADD << 5) | width_to_opcode(b.access.width)),
             .dst = b.access.basereg.v,
             .src = b.valreg.v,
             .offset = static_cast<int16_t>(b.access.offset),
