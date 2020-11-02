@@ -29,11 +29,11 @@
 #include "crab/linear_constraints.hpp"
 #include "crab/thresholds.hpp"
 #include "crab/variable.hpp"
-#include "crab_types/adapt_sgraph.hpp"
-#include "crab_types/bignums.hpp"
-#include "crab_types/debug.hpp"
-#include "crab_types/safeint.hpp"
-#include "crab_types/stats.hpp"
+#include "crab_utils/adapt_sgraph.hpp"
+#include "crab_utils/bignums.hpp"
+#include "crab_utils/debug.hpp"
+#include "crab_utils/safeint.hpp"
+#include "crab_utils/stats.hpp"
 
 //#define CHECK_POTENTIAL
 //#define SDBM_NO_NORMALIZE

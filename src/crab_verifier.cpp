@@ -119,7 +119,7 @@ template<typename F>
 auto timed_execution(F f) {
     clock_t begin = clock();
 
-    const auto&& res = f();
+    const auto& res = f();
 
     clock_t end = clock();
 

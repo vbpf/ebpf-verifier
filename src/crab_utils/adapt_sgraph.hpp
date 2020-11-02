@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "crab_types/safeint.hpp"
+#include "crab_utils/safeint.hpp"
 #include "debug.hpp"
 // Adaptive sparse-set based weighted graph implementation
 

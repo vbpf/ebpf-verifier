@@ -55,7 +55,7 @@
 #include "crab/cfg.hpp"
 #include "crab/cfg_bgl.hpp"
 #include "crab/interval.hpp"
-#include "crab_types/debug.hpp"
+#include "crab_utils/debug.hpp"
 
 namespace crab {
 

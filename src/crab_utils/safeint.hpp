@@ -7,8 +7,8 @@
 #include <cstdint>
 #include <limits>
 
-#include "crab_types/bignums.hpp"
-#include "crab_types/safeint.hpp"
+#include "crab_utils/bignums.hpp"
+#include "crab_utils/safeint.hpp"
 
 namespace crab {
 

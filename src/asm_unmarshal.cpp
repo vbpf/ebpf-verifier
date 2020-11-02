@@ -1,4 +1,4 @@
-#include <assert.h>
+#include <cassert>
 #include <cstring> // memcmp
 #include <iostream>
 #include <string>
@@ -52,9 +52,9 @@ struct UnsupportedMemoryMode : std::invalid_argument {
 
 static auto getMemIsLoad(uint8_t opcode) -> bool {
     switch (opcode & INST_CLS_MASK) {
-    case INST_CLS_LD: return true;
+    case INST_CLS_LD:
     case INST_CLS_LDX: return true;
-    case INST_CLS_ST: return false;
+    case INST_CLS_ST:
     case INST_CLS_STX: return false;
     }
     return {};

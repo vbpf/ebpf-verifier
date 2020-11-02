@@ -20,8 +20,8 @@
 #include <boost/range/iterator_range.hpp>
 
 #include "crab/variable.hpp"
-#include "crab_types/bignums.hpp"
-#include "crab_types/debug.hpp"
+#include "crab_utils/bignums.hpp"
+#include "crab_utils/debug.hpp"
 
 #include "asm_syntax.hpp"
 

@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <optional>
 
-#include "crab_types/heap.hpp"
+#include "crab_utils/heap.hpp"
 
 //============================
 // A set of utility algorithms for manipulating graphs.

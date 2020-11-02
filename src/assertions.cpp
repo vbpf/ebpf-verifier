@@ -3,10 +3,10 @@
 #include <utility>
 #include <vector>
 
-#include "asm_ostream.hpp"
+#include "spec_type_descriptors.hpp"
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
-#include "spec_type_descriptors.hpp"
+#include "asm_ostream.hpp"
 
 using std::string;
 using std::to_string;
@@ -34,7 +34,7 @@ class AssertExtractor {
 
     vector<Assert> operator()(Exit const& e) { return {type_of(Reg{0}, TypeGroup::num)}; }
 
-    vector<Assert> operator()(Call const& call) {
+    vector<Assert> operator()(Call const& call) const {
         vector<Assert> res;
         std::optional<Reg> map_fd_reg;
         for (ArgSingle arg : call.singles) {
@@ -87,7 +87,7 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assert> explicate(Condition cond) {
+    [[nodiscard]] vector<Assert> explicate(Condition cond) const {
         if (is_privileged)
             return {};
         vector<Assert> res;
@@ -109,15 +109,15 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assert> operator()(Assume ins) { return explicate(ins.cond); }
+    vector<Assert> operator()(Assume ins) const { return explicate(ins.cond); }
 
-    vector<Assert> operator()(Jmp ins) {
+    vector<Assert> operator()(Jmp ins) const {
         if (!ins.cond)
             return {};
         return explicate(*ins.cond);
     }
 
-    vector<Assert> operator()(Mem ins) {
+    vector<Assert> operator()(Mem ins) const {
         vector<Assert> res;
         Reg reg = ins.access.basereg;
         Imm width{static_cast<uint32_t>(ins.access.width)};

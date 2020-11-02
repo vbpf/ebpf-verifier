@@ -7,9 +7,9 @@
 #include <optional>
 #include <vector>
 
-#include "crab_types/bignums.hpp"
-#include "crab_types/debug.hpp"
-#include "crab_types/patricia_trees.hpp"
+#include "crab_utils/bignums.hpp"
+#include "crab_utils/debug.hpp"
+#include "crab_utils/patricia_trees.hpp"
 
 /* Basic type definitions */
 

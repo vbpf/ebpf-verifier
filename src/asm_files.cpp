@@ -1,9 +1,10 @@
+#include <cassert>
 #include <iostream>
 #include <string>
 #include <vector>
 
-#include "asm_files.hpp"
 #include "spec_type_descriptors.hpp"
+#include "asm_files.hpp"
 
 #include "elfio/elfio.hpp"
 
@@ -45,7 +46,7 @@ int create_map_crab(uint32_t map_type, uint32_t key_size, uint32_t value_size, u
     return (value_size << 14) + (key_size << 6); // + i;
 }
 
-static BpfProgType section_to_progtype(std::string section, std::string path) {
+static BpfProgType section_to_progtype(const std::string& section, const std::string& path) {
     // linux only deduces from section, but cilium and cilium_test have this information
     // in the filename:
     // * cilium/bpf_xdp.o:from-netdev is XDP
@@ -79,14 +80,14 @@ static BpfProgType section_to_progtype(std::string section, std::string path) {
         {"sk_skb", BpfProgType::SK_SKB},
         {"sk_msg", BpfProgType::SK_MSG},
     };
-    for (const auto [prefix, t] : prefixes) {
+    for (const auto& [prefix, t] : prefixes) {
         if (section.find(prefix) == 0)
             return t;
     }
     return BpfProgType::SOCKET_FILTER;
 }
 
-vector<raw_program> read_elf(std::string path, std::string desired_section, MapFd* fd_alloc) {
+vector<raw_program> read_elf(const std::string& path, const std::string& desired_section, MapFd* fd_alloc) {
     assert(fd_alloc != nullptr);
     ELFIO::elfio reader;
     if (!reader.load(path)) {

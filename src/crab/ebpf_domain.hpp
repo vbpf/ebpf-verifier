@@ -33,12 +33,12 @@
 #include "boost/range/algorithm/set_algorithm.hpp"
 
 #include "crab/variable.hpp"
-#include "crab_types/debug.hpp"
-#include "crab_types/stats.hpp"
+#include "crab_utils/debug.hpp"
+#include "crab_utils/stats.hpp"
 
 #include "crab/interval.hpp"
 #include "crab/split_dbm.hpp"
-#include "crab_types/patricia_trees.hpp"
+#include "crab_utils/patricia_trees.hpp"
 
 #include "config.hpp"
 #include "dsl_syntax.hpp"

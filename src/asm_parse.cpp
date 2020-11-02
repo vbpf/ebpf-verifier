@@ -70,7 +70,7 @@ Value reg_or_imm(std::string s) {
         return imm(s);
 }
 
-static Deref deref(std::string width, std::string basereg, std::string sign, std::string _offset) {
+static Deref deref(const std::string& width, const std::string& basereg, const std::string& sign, const std::string& _offset) {
     int offset = boost::lexical_cast<int>(_offset);
     return Deref{
         .width = str_to_width.at(width),
@@ -79,7 +79,7 @@ static Deref deref(std::string width, std::string basereg, std::string sign, std
     };
 }
 
-Instruction parse_instruction(std::string text) {
+Instruction parse_instruction(const std::string& text) {
     std::smatch m;
     if (regex_match(text, m, regex("exit"))) {
         return Exit{};

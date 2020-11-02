@@ -2,13 +2,12 @@
 #include <iomanip>
 #include <iostream>
 #include <unordered_map>
-#include <utility>
 #include <variant>
 #include <vector>
 
-#include "asm_ostream.hpp"
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
+#include "asm_ostream.hpp"
 
 using std::optional;
 using std::string;
