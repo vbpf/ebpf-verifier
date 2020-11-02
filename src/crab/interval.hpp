@@ -75,13 +75,13 @@ class bound_t final {
         return *this;
     }
 
-    bool is_infinite() const { return _is_infinite; }
+    [[nodiscard]] bool is_infinite() const { return _is_infinite; }
 
-    bool is_finite() const { return !_is_infinite; }
+    [[nodiscard]] bool is_finite() const { return !_is_infinite; }
 
-    bool is_plus_infinity() const { return (is_infinite() && _n > 0); }
+    [[nodiscard]] bool is_plus_infinity() const { return (is_infinite() && _n > 0); }
 
-    bool is_minus_infinity() const { return (is_infinite() && _n < 0); }
+    [[nodiscard]] bool is_minus_infinity() const { return (is_infinite() && _n < 0); }
 
     bound_t operator-() const { return bound_t(_is_infinite, -_n); }
 
@@ -174,7 +174,7 @@ class bound_t final {
         return _n >= x._n;
     }
 
-    bound_t abs() const {
+    [[nodiscard]] bound_t abs() const {
         if (operator>=(bound_t{0})) {
             return *this;
         } else {
@@ -182,11 +182,11 @@ class bound_t final {
         }
     }
 
-    std::optional<number_t> number() const {
+    [[nodiscard]] std::optional<number_t> number() const {
         if (is_infinite()) {
-            return std::optional<number_t>();
+            return {};
         } else {
-            return std::optional<number_t>(_n);
+            return {_n};
         }
     }
 
@@ -225,40 +225,27 @@ class interval_t final {
     static number_t min(const number_t& x, const number_t& y) { return x.operator<(y) ? x : y; }
 
   public:
-    interval_t(const bound_t& lb, const bound_t& ub) : _lb(lb), _ub(ub) {
-        if (lb > ub) {
-            _lb = bound_t{0};
-            _ub = bound_t{-1};
-        }
+    interval_t(const bound_t& lb, const bound_t& ub) : _lb(lb > ub ? bound_t{0}  : lb),
+                                                       _ub(lb > ub ? bound_t{-1} : ub) {
     }
 
-    explicit interval_t(const bound_t& b) : _lb(b), _ub(b) {
-        if (b.is_infinite()) {
-            _lb = bound_t{0};
-            _ub = bound_t{-1};
-        }
+    explicit interval_t(const bound_t& b) : _lb(b.is_infinite() ? bound_t{0}  : b),
+                                            _ub(b.is_infinite() ? bound_t{-1} : b) {
     }
 
     explicit interval_t(const number_t& n) : _lb(n), _ub(n) {}
-
-    explicit interval_t(const std::string& b) : _lb(b), _ub(b) {
-        if (_lb.is_infinite()) {
-            _lb = bound_t{0};
-            _ub = bound_t{-1};
-        }
-    }
 
     interval_t(const interval_t& i) = default;
 
     interval_t& operator=(const interval_t& i) = default;
 
-    bound_t lb() const { return _lb; }
+    [[nodiscard]] bound_t lb() const { return _lb; }
 
-    bound_t ub() const { return _ub; }
+    [[nodiscard]] bound_t ub() const { return _ub; }
 
-    bool is_bottom() const { return (_lb > _ub); }
+    [[nodiscard]] bool is_bottom() const { return (_lb > _ub); }
 
-    bool is_top() const { return (_lb.is_infinite() && _ub.is_infinite()); }
+    [[nodiscard]] bool is_top() const { return (_lb.is_infinite() && _ub.is_infinite()); }
 
     bool operator==(const interval_t& x) const {
         if (is_bottom()) {
@@ -298,7 +285,7 @@ class interval_t final {
         }
     }
 
-    interval_t widen(const interval_t& x) const {
+    [[nodiscard]] interval_t widen(const interval_t& x) const {
         if (is_bottom()) {
             return x;
         } else if (x.is_bottom()) {
@@ -322,7 +309,7 @@ class interval_t final {
         }
     }
 
-    interval_t narrow(const interval_t& x) const {
+    [[nodiscard]] interval_t narrow(const interval_t& x) const {
         if (is_bottom() || x.is_bottom()) {
             return bottom();
         } else {
@@ -377,7 +364,7 @@ class interval_t final {
 
     interval_t& operator/=(const interval_t& x) { return operator=(operator/(x)); }
 
-    std::optional<number_t> singleton() const {
+    [[nodiscard]] std::optional<number_t> singleton() const {
         if (!is_bottom() && _lb == _ub) {
             return _lb.number();
         } else {
@@ -385,11 +372,11 @@ class interval_t final {
         }
     }
 
-    bool operator[](number_t n) const {
+    bool operator[](const number_t& n) const {
         if (is_bottom()) {
             return false;
         } else {
-            bound_t b(std::move(n));
+            bound_t b(n);
             return (_lb <= b) && (b <= _ub);
         }
     }
@@ -405,7 +392,7 @@ class interval_t final {
 
     // division and remainder operations
 
-    interval_t UDiv(const interval_t& x) const {
+    [[nodiscard]] interval_t UDiv(const interval_t& x) const {
         if (is_bottom() || x.is_bottom()) {
             return bottom();
         } else {
@@ -413,22 +400,22 @@ class interval_t final {
         }
     }
 
-    interval_t SRem(const interval_t& x) const;
+    [[nodiscard]] interval_t SRem(const interval_t& x) const;
 
-    interval_t URem(const interval_t& x) const;
+    [[nodiscard]] interval_t URem(const interval_t& x) const;
 
     // bitwise operations
-    interval_t And(const interval_t& x) const;
+    [[nodiscard]] interval_t And(const interval_t& x) const;
 
-    interval_t Or(const interval_t& x) const;
+    [[nodiscard]] interval_t Or(const interval_t& x) const;
 
-    interval_t Xor(const interval_t& x) const;
+    [[nodiscard]] interval_t Xor(const interval_t& x) const;
 
-    interval_t Shl(const interval_t& x) const;
+    [[nodiscard]] interval_t Shl(const interval_t& x) const;
 
-    interval_t LShr(const interval_t& x) const;
+    [[nodiscard]] interval_t LShr(const interval_t& x) const;
 
-    interval_t AShr(const interval_t& x) const;
+    [[nodiscard]] interval_t AShr(const interval_t& x) const;
 
 }; //  class interval
 
