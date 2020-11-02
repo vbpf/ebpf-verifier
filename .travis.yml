@@ -13,6 +13,7 @@ jobs:
         - make -j $(nproc)
       script:
         - cd ..
+        - ./test
         - scripts/runperf.sh ebpf-samples zoneCrab
     - services: docker
       script: docker build .
