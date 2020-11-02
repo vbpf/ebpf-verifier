@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "crab_types/safeint.hpp"
 #include "debug.hpp"
 // Adaptive sparse-set based weighted graph implementation
@@ -20,12 +22,7 @@ class AdaptSMap final {
   public:
     using key_t = uint16_t;
     using val_t = Val;
-    class elt_t {
-      public:
-        elt_t(key_t _k, const val_t& _v) : key(_k), val(_v) {}
-
-        elt_t(const elt_t& o) : key(o.key), val(o.val) {}
-
+    struct elt_t {
         key_t key;
         val_t val;
     };
@@ -35,7 +32,7 @@ class AdaptSMap final {
           sparse(nullptr) {}
 
     AdaptSMap(AdaptSMap&& o) noexcept
-        : sz(o.sz), dense_maxsz(o.dense_maxsz), sparse_ub(o.sparse_ub), dense(std::move(o.dense)), sparse(std::move(o.sparse)) {
+        : sz(o.sz), dense_maxsz(o.dense_maxsz), sparse_ub(o.sparse_ub), dense(o.dense), sparse(o.sparse) {
         o.dense = nullptr;
         o.sparse = nullptr;
         o.sz = 0;
@@ -85,9 +82,9 @@ class AdaptSMap final {
         if (sparse)
             free(sparse);
 
-        dense = std::move(o.dense);
+        dense = o.dense;
         o.dense = nullptr;
-        sparse = std::move(o.sparse);
+        sparse = o.sparse;
         o.sparse = nullptr;
 
         sz = o.sz;
@@ -106,7 +103,7 @@ class AdaptSMap final {
             free(sparse);
     }
 
-    size_t size() const { return sz; }
+    [[nodiscard]] size_t size() const { return sz; }
 
     class key_iter_t {
       public:
@@ -119,7 +116,7 @@ class AdaptSMap final {
         static key_iter_t empty_iterator() {
             static std::unique_ptr<key_iter_t> it = nullptr;
             if (!it)
-                it = std::unique_ptr<key_iter_t>(new key_iter_t());
+                it = std::make_unique<key_iter_t>();
             return *it;
         }
 
@@ -139,10 +136,10 @@ class AdaptSMap final {
         using iterator = key_iter_t;
 
         key_range_t(elt_t* _e, size_t _sz) : e(_e), sz(_sz) {}
-        size_t size() const { return sz; }
+        [[nodiscard]] size_t size() const { return sz; }
 
-        key_iter_t begin() const { return key_iter_t(e); }
-        key_iter_t end() const { return key_iter_t(e + sz); }
+        [[nodiscard]] key_iter_t begin() const { return key_iter_t(e); }
+        [[nodiscard]] key_iter_t end() const { return key_iter_t(e + sz); }
 
         elt_t* e;
         size_t sz;
@@ -153,19 +150,19 @@ class AdaptSMap final {
         using iterator = elt_iter_t;
 
         elt_range_t(elt_t* _e, size_t _sz) : e(_e), sz(_sz) {}
-        elt_range_t(const elt_range_t& o) : e(o.e), sz(o.sz) {}
-        size_t size() const { return sz; }
-        elt_iter_t begin() const { return e; }
-        elt_iter_t end() const { return e + sz; }
+        elt_range_t(const elt_range_t& o) = default;
+        [[nodiscard]] size_t size() const { return sz; }
+        [[nodiscard]] elt_iter_t begin() const { return e; }
+        [[nodiscard]] elt_iter_t end() const { return e + sz; }
 
         elt_t* e;
         size_t sz;
     };
 
-    elt_range_t elts() const { return elt_range_t(dense, sz); }
-    key_range_t keys() const { return key_range_t(dense, sz); }
+    [[nodiscard]] elt_range_t elts() const { return elt_range_t(dense, sz); }
+    [[nodiscard]] key_range_t keys() const { return key_range_t(dense, sz); }
 
-    bool elem(key_t k) const {
+    [[nodiscard]] bool elem(key_t k) const {
         if (sparse) {
             // NOTE: This can (often will) read beyond the bounds of sparse.
             // This is totally okay. But valgrind will complain, and
@@ -181,7 +178,7 @@ class AdaptSMap final {
         }
     }
 
-    bool lookup(key_t k, val_t* v_out) {
+    bool lookup(key_t k, val_t* v_out) const {
         if (sparse) {
             // SEE ABOVE WARNING
             int idx = sparse[k];
@@ -223,7 +220,7 @@ class AdaptSMap final {
         if (dense_maxsz <= sz)
             growDense(sz + 1);
 
-        dense[sz] = elt_t(k, v);
+        dense[sz] = elt_t{k, v};
         if (sparse) {
             if (sparse_ub <= k)
                 growSparse(k + 1);
@@ -293,9 +290,7 @@ class AdaptGraph final {
         : _preds(std::move(o._preds)), _succs(std::move(o._succs)), _ws(std::move(o._ws)), edge_count(o.edge_count),
           is_free(std::move(o.is_free)), free_id(std::move(o.free_id)), free_widx(std::move(o.free_widx)) {}
 
-    AdaptGraph(const AdaptGraph& o)
-        : _preds(o._preds), _succs(o._succs), _ws(o._ws), edge_count(o.edge_count), is_free(o.is_free),
-          free_id(o.free_id), free_widx(o.free_widx) {}
+    AdaptGraph(const AdaptGraph& o) = default;
 
     AdaptGraph& operator=(const AdaptGraph& o) = default;
 
@@ -336,12 +331,12 @@ class AdaptGraph final {
 
         explicit vert_range(const std::vector<int>& _is_free) : is_free(_is_free) {}
 
-        vert_iterator begin() const { return vert_iterator{0, is_free}; }
-        vert_iterator end() const { return vert_iterator{static_cast<vert_id>(is_free.size()), is_free}; }
+        [[nodiscard]] vert_iterator begin() const { return vert_iterator{0, is_free}; }
+        [[nodiscard]] vert_iterator end() const { return vert_iterator{static_cast<vert_id>(is_free.size()), is_free}; }
 
-        size_t size() const { return is_free.size(); }
+        [[nodiscard]] size_t size() const { return is_free.size(); }
     };
-    vert_range verts() const { return vert_range{is_free}; }
+    [[nodiscard]] vert_range verts() const { return vert_range{is_free}; }
 
     struct edge_iter {
         struct edge_ref {
@@ -353,7 +348,7 @@ class AdaptGraph final {
         std::vector<Wt>* ws{};
 
         edge_iter(const smap_t::elt_iter_t& _it, std::vector<Wt>& _ws) : it(_it), ws(&_ws) {}
-        edge_iter(const edge_iter& o) : it(o.it), ws(o.ws) {}
+        edge_iter(const edge_iter& o) = default;
         edge_iter() = default;
 
         // XXX: to make sure that we always return the same address
@@ -362,7 +357,7 @@ class AdaptGraph final {
         static edge_iter empty_iterator() {
             static std::unique_ptr<edge_iter> it = nullptr;
             if (!it)
-                it = std::unique_ptr<edge_iter>(new edge_iter());
+                it = std::make_unique<edge_iter>();
             return *it;
         }
 
@@ -371,7 +366,7 @@ class AdaptGraph final {
             ++it;
             return *this;
         }
-        bool operator!=(const edge_iter& o) { return it != o.it; }
+        bool operator!=(const edge_iter& o) const { return it != o.it; }
     };
 
     using adj_range_t = typename smap_t::key_range_t;
@@ -383,9 +378,9 @@ class AdaptGraph final {
         elt_range_t r;
         std::vector<Wt>& ws;
 
-        edge_iter begin() const { return edge_iter(r.begin(), ws); }
-        edge_iter end() const { return edge_iter(r.end(), ws); }
-        size_t size() const { return r.size(); }
+        [[nodiscard]] edge_iter begin() const { return edge_iter(r.begin(), ws); }
+        [[nodiscard]] edge_iter end() const { return edge_iter(r.end(), ws); }
+        [[nodiscard]] size_t size() const { return r.size(); }
     };
 
     using fwd_edge_iter = edge_iter;
@@ -407,12 +402,12 @@ class AdaptGraph final {
     using e_succ_range = edge_range_t;
 
     // Management
-    bool is_empty() const { return edge_count == 0; }
-    size_t size() const { return _succs.size(); }
-    size_t num_edges() const { return edge_count; }
+    [[nodiscard]] bool is_empty() const { return edge_count == 0; }
+    [[nodiscard]] size_t size() const { return _succs.size(); }
+    [[nodiscard]] size_t num_edges() const { return edge_count; }
     vert_id new_vertex() {
         vert_id v;
-        if (free_id.size() > 0) {
+        if (!free_id.empty()) {
             v = free_id.back();
             assert(v < _succs.size());
             free_id.pop_back();
@@ -513,7 +508,7 @@ class AdaptGraph final {
 
     void add_edge(vert_id s, Wt w, vert_id d) {
         size_t idx;
-        if (free_widx.size() > 0) {
+        if (!free_widx.empty()) {
             idx = free_widx.back();
             free_widx.pop_back();
             _ws[idx] = w;

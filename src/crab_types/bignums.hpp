@@ -119,14 +119,14 @@ class z_number final {
 
     explicit operator mpz_class() const { return _n; }
 
-    std::size_t hash() const {
+    [[nodiscard]] std::size_t hash() const {
         boost::hash<std::string> hasher;
         return hasher(_n.get_str());
     }
 
-    bool fits_sint() const { return _n.fits_sint_p(); }
+    [[nodiscard]] bool fits_sint() const { return _n.fits_sint_p(); }
 
-    bool fits_slong() const { return _n.fits_slong_p(); }
+    [[nodiscard]] bool fits_slong() const { return _n.fits_slong_p(); }
 
     z_number operator+(const z_number& x) const {
         mpz_class r = _n + x._n;
@@ -285,7 +285,7 @@ class z_number final {
     }
     z_number operator>>(int x) const { return operator>>(z_number(x)); }
 
-    z_number fill_ones() const {
+    [[nodiscard]] z_number fill_ones() const {
         assert(_n >= 0);
         if (_n == 0) {
             return z_number(0);

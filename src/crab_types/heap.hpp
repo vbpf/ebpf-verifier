@@ -65,7 +65,7 @@ class Heap {
         indices[x] = i;
     }
 
-    bool heapProperty(int i) const {
+    [[nodiscard]] bool heapProperty(int i) const {
         return i >= heap.size() ||
                ((i == 0 || !lt(heap[i], heap[parent(i)])) && heapProperty(left(i)) && heapProperty(right(i)));
     }
@@ -73,9 +73,9 @@ class Heap {
   public:
     explicit Heap(const Comp& c) : lt(c) {}
 
-    int size() const { return heap.size(); }
-    bool empty() const { return heap.size() == 0; }
-    bool inHeap(int n) const { return static_cast<size_t>(n) < indices.size() && indices[n] >= 0; }
+    [[nodiscard]] int size() const { return heap.size(); }
+    [[nodiscard]] bool empty() const { return heap.empty(); }
+    [[nodiscard]] bool inHeap(int n) const { return static_cast<size_t>(n) < indices.size() && indices[n] >= 0; }
     int operator[](int index) const {
         assert(static_cast<size_t>(index) < heap.size());
         return heap[index];
@@ -107,8 +107,8 @@ class Heap {
     }
 
     void clear() {
-        for (size_t i = 0; i < heap.size(); i++)
-            indices[heap[i]] = -1;
+        for (int i : heap)
+            indices[i] = -1;
 #ifdef NDEBUG
         for (int i = 0; i < indices.size(); i++)
             assert(indices[i] == -1);

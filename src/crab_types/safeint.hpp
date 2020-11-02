@@ -22,26 +22,26 @@ class safe_i64 {
     // architecture is x86/64, but it wont' work with 32 bits.
     using wideint_t = __int128;
 
-    inline int64_t get_max() const{ return std::numeric_limits<int64_t>::max(); }
-    inline int64_t get_min() const { return std::numeric_limits<int64_t>::min(); }
+    [[nodiscard]] static int64_t get_max() { return std::numeric_limits<int64_t>::max(); }
+    [[nodiscard]] static int64_t get_min() { return std::numeric_limits<int64_t>::min(); }
 
-    int checked_add(int64_t a, int64_t b, int64_t* rp) const {
+    static int checked_add(int64_t a, int64_t b, int64_t* rp) {
         wideint_t lr = (wideint_t)a + (wideint_t)b;
         *rp = lr;
         return lr > get_max() || lr < get_min();
     }
 
-    int checked_sub(int64_t a, int64_t b, int64_t* rp) const{
+    static int checked_sub(int64_t a, int64_t b, int64_t* rp) {
         wideint_t lr = (wideint_t)a - (wideint_t)b;
         *rp = lr;
         return lr > get_max() || lr < get_min();
     }
-    int checked_mul(int64_t a, int64_t b, int64_t* rp) const{
+    static int checked_mul(int64_t a, int64_t b, int64_t* rp) {
         wideint_t lr = (wideint_t)a * (wideint_t)b;
         *rp = lr;
         return lr > get_max() || lr < get_min();
     }
-    int checked_div(int64_t a, int64_t b, int64_t* rp) const{
+    static int checked_div(int64_t a, int64_t b, int64_t* rp) {
         wideint_t lr = (wideint_t)a / (wideint_t)b;
         *rp = lr;
         return lr > get_max() || lr < get_min();
