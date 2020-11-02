@@ -30,14 +30,14 @@ set(RELEASE_FLAGS -O2 -flto)
 set(SANITIZE_FLAGS -fsanitize=address -O1 -fno-omit-frame-pointer)
 
 add_executable(check src/main/check.cpp ${ALL_SRC})
-add_executable(test ${ALL_TEST} ${ALL_SRC})
+add_executable(tests ${ALL_TEST} ${ALL_SRC})
 
 set_target_properties(check
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
 
 
-set_target_properties(test
+set_target_properties(tests
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
 
@@ -50,9 +50,9 @@ target_compile_options(check PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
 target_link_libraries(check PRIVATE gmp)
 
 
-target_compile_options(test PRIVATE ${COMMON_FLAGS})
-target_compile_options(test PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
-target_compile_options(test PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
-target_compile_options(test PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
+target_compile_options(tests PRIVATE ${COMMON_FLAGS})
+target_compile_options(tests PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
+target_compile_options(tests PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
+target_compile_options(tests PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
 
-target_link_libraries(test PRIVATE gmp)
+target_link_libraries(tests PRIVATE gmp)
