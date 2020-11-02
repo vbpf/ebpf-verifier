@@ -93,20 +93,13 @@ class tree {
 
     }; // class partial_order
 
-    class unary_action_t {
-      public:
-        virtual std::optional<Value> apply(Value) = 0;
-
-        virtual ~unary_action_t() = default;
-
-    }; // class unary_action
     class binary_action_t {
       public:
         // if first element of the pair is true then bottom and ignore second element
         // else if second element of the pair is empty then top
         // else the value stored in the second element of the pair.
-        virtual std::pair<bool, std::optional<Value>> apply(Value,
-                                                            Value) = 0; // The operation is idempotent: apply(x, x) = x
+        virtual std::pair<bool, std::optional<Value>> apply(const Value&,
+                                                            const Value&) = 0; // The operation is idempotent: apply(x, x) = x
 
         // True if the default value is absorbing (false if it is neutral)
         virtual bool default_is_absorbing() = 0;
@@ -123,22 +116,21 @@ class tree {
     static std::pair<bool, tree_ptr> merge(tree_ptr, tree_ptr, binary_action_t&, bool);
     static tree_ptr join(tree_ptr t0, tree_ptr t1);
     static std::pair<bool, tree_ptr> insert(tree_ptr, const Key&, const Value&, binary_action_t&, bool);
-    static tree_ptr transform(tree_ptr, unary_action_t&);
     static tree_ptr remove(tree_ptr, const Key&);
     static bool compare(tree_ptr, tree_ptr, partial_order_t&, bool);
 
   public:
-    virtual std::size_t size() const = 0;
-    virtual bool is_leaf() const = 0;
+    [[nodiscard]] virtual std::size_t size() const = 0;
+    [[nodiscard]] virtual bool is_leaf() const = 0;
     virtual binding_t binding() const = 0;
     virtual tree_ptr left_branch() const = 0;
     virtual tree_ptr right_branch() const = 0;
-    virtual index_t prefix() const = 0;
-    virtual index_t branching_bit() const = 0;
+    [[nodiscard]] virtual index_t prefix() const = 0;
+    [[nodiscard]] virtual index_t branching_bit() const = 0;
     virtual std::optional<Value> lookup(const Key&) const = 0;
 
   public:
-    bool is_node() const { return !is_leaf(); }
+    [[nodiscard]] bool is_node() const { return !is_leaf(); }
 
     virtual ~tree() = default;
 
@@ -266,13 +258,13 @@ class node final : public tree<Key, Value> {
         }
     }
 
-    std::size_t size() const { return this->_size; }
+    [[nodiscard]] std::size_t size() const { return this->_size; }
 
-    index_t prefix() const { return this->_prefix; }
+    [[nodiscard]] index_t prefix() const { return this->_prefix; }
 
-    index_t branching_bit() const { return this->_branching_bit; }
+    [[nodiscard]] index_t branching_bit() const { return this->_branching_bit; }
 
-    bool is_leaf() const { return false; }
+    [[nodiscard]] bool is_leaf() const { return false; }
 
     binding_t binding() const { CRAB_ERROR("Patricia tree: trying to call binding() on a node"); }
 
@@ -317,13 +309,13 @@ class leaf final : public tree<Key, Value> {
   public:
     leaf(const Key& key_, const Value& value_) : _key(key_), _value(value_) {}
 
-    std::size_t size() const { return 1; }
+    [[nodiscard]] std::size_t size() const { return 1; }
 
-    index_t prefix() const { return this->_key.index(); }
+    [[nodiscard]] index_t prefix() const { return this->_key.index(); }
 
-    index_t branching_bit() const { return 0; }
+    [[nodiscard]] index_t branching_bit() const { return 0; }
 
-    bool is_leaf() const { return true; }
+    [[nodiscard]] bool is_leaf() const { return true; }
 
     binding_t binding() const { return binding_t(this->_key, this->_value); }
 
@@ -469,50 +461,6 @@ auto tree<Key, Value>::insert(tree_ptr t, const Key& key_, const Value& value_, 
         } else {
             return {false, make_leaf(key_, value_)};
         }
-    }
-}
-
-template <typename Key, typename Value>
-auto tree<Key, Value>::transform(tree_ptr t, unary_action_t& op) -> tree_ptr {
-    tree_ptr nil;
-    if (t) {
-        if (t->is_node()) {
-            index_t branching_bit = t->branching_bit();
-            index_t prefix = t->prefix();
-            tree_ptr lb = t->left_branch();
-            tree_ptr rb = t->right_branch();
-            tree_ptr new_lb, new_rb;
-            if (lb) {
-                new_lb = transform(lb, op);
-            } else {
-                new_lb = lb;
-            }
-            if (rb) {
-                new_rb = transform(rb, op);
-            } else {
-                new_rb = rb;
-            }
-            if (lb == new_lb && rb == new_rb) {
-                return t;
-            } else {
-                return make_node(prefix, branching_bit, new_lb, new_rb);
-            }
-        } else {
-            binding_t b = t->binding();
-            const Value& value = b.second;
-            std::optional<Value> new_value = op.apply(value);
-            if (new_value) {
-                if (*new_value == value) {
-                    return t;
-                } else {
-                    return make_leaf(b.first, *new_value);
-                }
-            } else {
-                return nil;
-            }
-        }
-    } else {
-        return t;
     }
 }
 
@@ -826,7 +774,6 @@ class patricia_tree final {
 
   public:
     using patricia_tree_t = patricia_tree<Key, Value>;
-    using unary_action_t = typename tree_t::unary_action_t;
     using binary_action_t = typename tree_t::binary_action_t;
     using partial_order_t = typename tree_t::partial_order_t;
     using binding_t = typename tree_t::binding_t;
@@ -859,7 +806,7 @@ class patricia_tree final {
     }; // class iterator
 
     class insert_op : public binary_action_t {
-        std::pair<bool, std::optional<Value>> apply(Value /* old_value */, Value new_value) {
+        std::pair<bool, std::optional<Value>> apply(const Value& /* old_value */, const Value& new_value) {
             return {false, std::optional<Value>(new_value)};
         }
         bool default_is_absorbing() { return false; }
@@ -870,12 +817,12 @@ class patricia_tree final {
 
     patricia_tree(const patricia_tree_t& t) : _tree(t._tree) {}
 
-    patricia_tree_t& operator=(const patricia_tree_t& t) {
+    patricia_tree& operator=(const patricia_tree_t& t) {
         this->_tree = t._tree;
         return *this;
     }
 
-    std::size_t size() const {
+    [[nodiscard]] std::size_t size() const {
         if (this->_tree) {
             return this->_tree->size();
         } else {
@@ -917,7 +864,7 @@ class patricia_tree final {
 
     void clear() { this->_tree.reset(); }
 
-    bool empty() const { return !this->_tree; }
+    [[nodiscard]] bool empty() const { return !this->_tree; }
 
     bool leq(const patricia_tree_t& t, partial_order_t& po) const {
         return tree_t::compare(this->_tree, t._tree, po, true);

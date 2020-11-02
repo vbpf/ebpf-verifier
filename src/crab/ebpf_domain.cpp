@@ -1,7 +1,6 @@
 #include "crab/ebpf_domain.hpp"
 
-namespace crab {
-namespace domains {
+namespace crab::domains {
 
 // We use a global array map
 array_map_t global_array_map;
@@ -187,5 +186,4 @@ std::ostream& operator<<(std::ostream& o, const offset_map_t& m) {
     return o;
 }
 
-} // namespace domains
-} // namespace crab
+} // namespace crab::domains
