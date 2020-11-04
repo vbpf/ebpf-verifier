@@ -246,6 +246,7 @@ class offset_map_t final {
     // Return in out all cells that might overlap with (o, size).
     std::vector<cell_t> get_overlap_cells(offset_t o, unsigned size);
 
+    [[nodiscard]]
     std::vector<cell_t> get_overlap_cells_symbolic_offset(const NumAbsDomain& dom, const linear_expression_t& symb_lb,
                                                           const linear_expression_t& symb_ub) const {
         std::vector<cell_t> out;
@@ -284,8 +285,8 @@ class offset_map_t final {
 
     /* Operations needed if used as value in a separate_domain */
     bool operator==(const offset_map_t& o) const { return *this <= o && o <= *this; }
-    bool is_top() const { return empty(); }
-    bool is_bottom() const { return false; }
+    [[nodiscard]] bool is_top() const { return empty(); }
+    [[nodiscard]] bool is_bottom() const { return false; }
     /*
        We don't distinguish between bottom and top.
        This is fine because separate_domain only calls bottom if
@@ -315,9 +316,9 @@ class array_bitset_domain_t final {
 
     void set_to_bottom() { non_numerical_bytes.reset(); }
 
-    bool is_top() const { return non_numerical_bytes.all(); }
+    [[nodiscard]] bool is_top() const { return non_numerical_bytes.all(); }
 
-    bool is_bottom() const { return false; }
+    [[nodiscard]] bool is_bottom() const { return false; }
 
     bool operator<=(const array_bitset_domain_t& other) {
         return (non_numerical_bytes | other.non_numerical_bytes) == other.non_numerical_bytes;
@@ -551,9 +552,9 @@ class array_domain_t final {
 
     void set_to_bottom() { num_bytes.set_to_bottom(); }
 
-    bool is_bottom() const { return num_bytes.is_bottom(); }
+    [[nodiscard]] bool is_bottom() const { return num_bytes.is_bottom(); }
 
-    bool is_top() const { return num_bytes.is_top(); }
+    [[nodiscard]] bool is_top() const { return num_bytes.is_top(); }
 
     bool operator<=(const array_domain_t& other) { return num_bytes <= other.num_bytes; }
 
@@ -722,7 +723,7 @@ class ebpf_domain_t final {
   public:
     ebpf_domain_t() : m_inv(NumAbsDomain::top()) {}
 
-    ebpf_domain_t(NumAbsDomain inv, array_domain_t stack) : m_inv(std::move(inv)), stack(std::move(stack)) {}
+    ebpf_domain_t(NumAbsDomain inv, array_domain_t stack) : m_inv(std::move(inv)), stack(stack) {}
 
     void set_to_top() {
         m_inv.set_to_top();
@@ -831,47 +832,52 @@ class ebpf_domain_t final {
         }
     }
 
-    template <typename NumOrVar>
-    void apply(NumAbsDomain& inv, binop_t op, variable_t x, variable_t y, NumOrVar z, bool finite_width = false) {
+    void apply(NumAbsDomain& inv, binop_t op, variable_t x, variable_t y, const number_t& z, bool finite_width = false) {
+        inv.apply(op, x, y, z);
+        if (finite_width)
+            overflow(x);
+    }
+
+    void apply(NumAbsDomain& inv, binop_t op, variable_t x, variable_t y, variable_t z, bool finite_width = false) {
         inv.apply(op, x, y, z);
         if (finite_width)
             overflow(x);
     }
 
     void add(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2); }
-    void add(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, std::move(op2)); }
+    void add(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2); }
     void sub(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2); }
-    void sub(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, std::move(op2)); }
+    void sub(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2); }
     void add_overflow(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2, true); }
-    void add_overflow(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, std::move(op2), true); }
+    void add_overflow(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2, true); }
     void sub_overflow(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2, true); }
-    void sub_overflow(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, std::move(op2), true); }
+    void sub_overflow(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2, true); }
     void neg(variable_t lhs) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, (number_t)-1, true); }
     void mul(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, op2, true); }
-    void mul(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, std::move(op2), true); }
+    void mul(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, op2, true); }
     void div(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SDIV, lhs, lhs, op2, true); }
-    void div(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::SDIV, lhs, lhs, std::move(op2), true); }
+    void div(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::SDIV, lhs, lhs, op2, true); }
     void udiv(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::UDIV, lhs, lhs, op2, true); }
-    void udiv(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::UDIV, lhs, lhs, std::move(op2), true); }
+    void udiv(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::UDIV, lhs, lhs, op2, true); }
     void rem(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SREM, lhs, lhs, op2, true); }
-    void rem(variable_t lhs, number_t op2, bool mod = true) {
-        apply(m_inv, crab::arith_binop_t::SREM, lhs, lhs, std::move(op2), mod);
+    void rem(variable_t lhs, const number_t& op2, bool mod = true) {
+        apply(m_inv, crab::arith_binop_t::SREM, lhs, lhs, op2, mod);
     }
     void urem(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::UREM, lhs, lhs, op2, true); }
-    void urem(variable_t lhs, number_t op2) { apply(m_inv, crab::arith_binop_t::UREM, lhs, lhs, std::move(op2), true); }
+    void urem(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::UREM, lhs, lhs, op2, true); }
 
     void bitwise_and(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::AND, lhs, lhs, op2); }
-    void bitwise_and(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::AND, lhs, lhs, std::move(op2)); }
+    void bitwise_and(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::AND, lhs, lhs, op2); }
     void bitwise_or(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::OR, lhs, lhs, op2); }
-    void bitwise_or(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::OR, lhs, lhs, std::move(op2)); }
+    void bitwise_or(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::OR, lhs, lhs, op2); }
     void bitwise_xor(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::XOR, lhs, lhs, op2); }
-    void bitwise_xor(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::XOR, lhs, lhs, std::move(op2)); }
+    void bitwise_xor(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::XOR, lhs, lhs, op2); }
     void shl_overflow(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::SHL, lhs, lhs, op2, true); }
-    void shl_overflow(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::SHL, lhs, lhs, std::move(op2), true); }
+    void shl_overflow(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::SHL, lhs, lhs, op2, true); }
     void lshr(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
-    void lshr(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, std::move(op2)); }
+    void lshr(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
     void ashr(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
-    void ashr(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, std::move(op2)); }
+    void ashr(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
 
     void assume(const linear_constraint_t& cst) { assume(m_inv, cst); }
     static void assume(NumAbsDomain& inv, const linear_constraint_t& cst) { inv += cst; }
@@ -1328,35 +1334,40 @@ class ebpf_domain_t final {
     }
 
     void operator()(Call const& call) {
+        using namespace dsl_syntax;
         if (m_inv.is_bottom())
             return;
-        using namespace dsl_syntax;
         for (ArgSingle param : call.singles) {
             switch (param.kind) {
-            case ArgSingle::Kind::ANYTHING: break;
-            // should have been done in the assertion
-            case ArgSingle::Kind::MAP_FD: break;
-            case ArgSingle::Kind::PTR_TO_MAP_KEY: break;
-            case ArgSingle::Kind::PTR_TO_MAP_VALUE: break;
-            case ArgSingle::Kind::PTR_TO_CTX: break;
+            case ArgSingle::Kind::ANYTHING:
+            case ArgSingle::Kind::MAP_FD:
+            case ArgSingle::Kind::PTR_TO_MAP_KEY:
+            case ArgSingle::Kind::PTR_TO_MAP_VALUE:
+            case ArgSingle::Kind::PTR_TO_CTX:
+                // Do nothing. We don't track the content of relevant memory regions
+                break;
             }
         }
         for (ArgPair param : call.pairs) {
             switch (param.kind) {
             case ArgPair::Kind::PTR_TO_MEM_OR_NULL:
             case ArgPair::Kind::PTR_TO_MEM:
-                // TODO: check that initialized
+                // Do nothing. No side effect allowed.
                 break;
 
             case ArgPair::Kind::PTR_TO_UNINIT_MEM: {
-                variable_t addr = reg_offset(param.mem);
-                variable_t width = reg_value(param.size);
+                // Pointer to a memory region that the called function may change,
+                // so we must havoc.
                 interval_t t = m_inv[reg_type(param.mem)];
                 if (t[T_STACK]) {
+                    variable_t addr = reg_offset(param.mem);
+                    variable_t width = reg_value(param.size);
                     stack.havoc(m_inv, data_kind_t::types, addr, width);
                     stack.havoc(m_inv, data_kind_t::values, addr, width);
                     stack.havoc(m_inv, data_kind_t::offsets, addr, width);
                     if (t.singleton()) {
+                        // Functions are not allowed to write sensitive data,
+                        // and initialization is guaranteed
                         stack.store_numbers(m_inv, addr, width);
                     }
                 }
@@ -1442,11 +1453,10 @@ class ebpf_domain_t final {
                 }
                 no_pointer(dst);
                 break;
-            case Bin::Op::LSH: {
+            case Bin::Op::LSH:
                 shl_overflow(dst_value, imm); // avoid signedness and overflow issues in shl_overflow(dst_value, imm);
                 no_pointer(dst);
                 break;
-            }
             case Bin::Op::RSH:
                 havoc(dst_value); // avoid signedness and overflow issues in lshr(dst_value, imm);
                 no_pointer(dst);

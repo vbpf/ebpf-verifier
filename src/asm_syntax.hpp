@@ -60,6 +60,8 @@ struct Un {
     Reg dst;
 };
 
+/// This instruction is encoded similarly to LDDW.
+/// See comment in makeLddw() at asm_unmarshal.cpp
 struct LoadMapFd {
     Reg dst;
     int mapfd{};
@@ -156,6 +158,7 @@ struct Assume {
     Condition cond;
 };
 
+// The exact numbers are taken advantage of, in the abstract domain
 enum { T_UNINIT = -6, T_MAP = -5, T_NUM = -4, T_CTX = -3, T_STACK = -2, T_PACKET = -1, T_SHARED = 0 };
 
 enum class TypeGroup {
@@ -219,6 +222,7 @@ using AssertionConstraint =
 struct Assert {
     AssertionConstraint cst;
     bool satisfied = false;
+    Assert(AssertionConstraint cst, bool satisfied=false): cst(cst), satisfied(satisfied) { }
 };
 
 #define DECLARE_EQ4(T, f1, f2, f3, f4)                                       \
