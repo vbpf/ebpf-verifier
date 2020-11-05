@@ -15,8 +15,8 @@
 
 #include <boost/lexical_cast.hpp>
 
-#include "crab/ebpf_domain.hpp"
 #include "crab/cfg.hpp"
+#include "crab/ebpf_domain.hpp"
 #include "crab/fwd_analyzer.hpp"
 
 #include "asm_syntax.hpp"

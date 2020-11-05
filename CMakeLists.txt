@@ -17,11 +17,11 @@ link_directories(${Boost_LIBRARY_DIRS})
 file(GLOB ALL_SRC
         "./src/*.cpp"
         "./src/crab/*.cpp"
-        "src/crab_utils/*.cpp"
+        "./src/crab_utils/*.cpp"
         )
 
 file(GLOB ALL_TEST
-        "src/test/*.cpp"
+        "./src/test/*.cpp"
         )
 
 set(COMMON_FLAGS -Wall -Wfatal-errors -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8)
