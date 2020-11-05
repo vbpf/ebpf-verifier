@@ -52,24 +52,7 @@ namespace crab::domains {
 
 using NumAbsDomain = SplitDBM;
 
-// wrapper for using index_t as patricia_tree keys
-class offset_t final {
-    index_t _val{};
-
-  public:
-    offset_t() = default;
-    explicit offset_t(index_t v) : _val(v) {}
-
-    [[nodiscard]] index_t index() const { return _val; }
-
-    bool operator<(const offset_t& o) const { return _val < o._val; }
-
-    bool operator==(const offset_t& o) const { return _val == o._val; }
-
-    bool operator!=(const offset_t& o) const { return !(*this == o); }
-
-    friend std::ostream& operator<<(std::ostream& o, const offset_t& v) { return o << v._val; }
-};
+using offset_t = index_t;
 
 /*
    Conceptually, a cell is tuple of an array, offset, size, and
@@ -97,17 +80,17 @@ class cell_t final {
     cell_t(offset_t offset, unsigned size) : _offset(offset), _size(size) {}
 
     static interval_t to_interval(const offset_t o, unsigned size) {
-        return {static_cast<int>(o.index()), static_cast<int>(o.index()) + static_cast<int>(size - 1)};
+        return {static_cast<int>(o), static_cast<int>(o) + static_cast<int>(size - 1)};
     }
 
-    interval_t to_interval() const { return to_interval(_offset, _size); }
+    [[nodiscard]] interval_t to_interval() const { return to_interval(_offset, _size); }
 
   public:
-    [[nodiscard]] bool is_null() const { return _offset.index() == 0 && _size == 0; }
+    [[nodiscard]] bool is_null() const { return _offset == 0 && _size == 0; }
 
     [[nodiscard]] offset_t get_offset() const { return _offset; }
 
-    variable_t get_scalar(data_kind_t kind) const { return variable_t::cell_var(kind, _offset.index(), _size); }
+    [[nodiscard]] variable_t get_scalar(data_kind_t kind) const { return variable_t::cell_var(kind, _offset, _size); }
 
     // ignore the scalar variable
     bool operator==(const cell_t& o) const { return to_interval() == o.to_interval(); }
@@ -132,7 +115,9 @@ class cell_t final {
 
     // Return true if [symb_lb, symb_ub] may overlap with the cell,
     // where symb_lb and symb_ub are not constant expressions.
-    bool symbolic_overlap(const linear_expression_t& symb_lb, const linear_expression_t& symb_ub,
+    [[nodiscard]]
+    bool symbolic_overlap(const linear_expression_t& symb_lb,
+                          const linear_expression_t& symb_ub,
                           const NumAbsDomain& dom) const;
 
     friend std::ostream& operator<<(std::ostream& o, const cell_t& c) { return o << "cell(" << c.to_interval() << ")"; }
@@ -189,16 +174,16 @@ class offset_map_t final {
 
     void insert_cell(const cell_t& c);
 
-    std::optional<cell_t> get_cell(offset_t o, unsigned size) const;
+    [[nodiscard]] std::optional<cell_t> get_cell(offset_t o, unsigned size) const;
 
     cell_t mk_cell(offset_t o, unsigned size);
 
   public:
     offset_map_t() = default;
 
-    bool empty() const { return _map.empty(); }
+    [[nodiscard]] bool empty() const { return _map.empty(); }
 
-    std::size_t size() const { return _map.size(); }
+    [[nodiscard]] std::size_t size() const { return _map.size(); }
 
     // leq operator
     bool operator<=(const offset_map_t& o) const {
@@ -317,7 +302,7 @@ class array_domain_t final {
         auto maybe_cell = kill_and_find_var(inv, kind, idx, elem_size);
         if (maybe_cell && kind == data_kind_t::types) {
             auto [offset, size] = *maybe_cell;
-            num_bytes.havoc(offset.index(), size);
+            num_bytes.havoc(offset, size);
         }
     }
 

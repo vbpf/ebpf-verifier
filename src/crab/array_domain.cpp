@@ -1,28 +1,21 @@
 
 #include <algorithm>
 #include <bitset>
-#include <functional>
 #include <optional>
 #include <set>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "boost/range/algorithm/set_algorithm.hpp"
 
 #include "crab/variable.hpp"
-#include "crab_utils/debug.hpp"
-#include "crab_utils/stats.hpp"
 
 #include "crab/interval.hpp"
 #include "crab/split_dbm.hpp"
 #include "crab_utils/patricia_trees.hpp"
 
-#include "config.hpp"
 #include "dsl_syntax.hpp"
-#include "spec_prototypes.hpp"
 #include "spec_type_descriptors.hpp"
-#include "asm_ostream.hpp"
 
 #include "crab/array_domain.hpp"
 
@@ -338,7 +331,7 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
             // would be unsound.
             return c.get_scalar(kind);
         } else {
-            CRAB_WARN("Ignored read from cell ", kind, "[", o, "...", o.index() + size - 1, "]",
+            CRAB_WARN("Ignored read from cell ", kind, "[", o, "...", o + size - 1, "]",
                       " because it overlaps with ", cells.size(), " cells");
             /*
                 TODO: we can apply here "Value Recomposition" 'a la'
@@ -365,9 +358,9 @@ std::optional<variable_t> array_domain_t::store(NumAbsDomain& inv, data_kind_t k
         if (kind == data_kind_t::types) {
             std::optional<number_t> t = inv.eval_interval(val).singleton();
             if (t && (long)*t == T_NUM)
-                num_bytes.reset(offset.index(), size);
+                num_bytes.reset(offset, size);
             else
-                num_bytes.havoc(offset.index(), size);
+                num_bytes.havoc(offset, size);
         }
         variable_t v = lookup_array_map(kind).mk_cell(offset, size).get_scalar(kind);
         return v;

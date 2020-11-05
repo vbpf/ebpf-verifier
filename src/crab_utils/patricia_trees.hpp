@@ -54,6 +54,11 @@ namespace crab {
 // Numerical type for indexed objects
 using index_t = uint64_t;
 
+inline index_t index(index_t i) { return i; }
+
+template <typename T>
+inline index_t index(const T& x) { return x.index(); }
+
 namespace patricia_trees_impl {
 
 inline index_t highest_bit(index_t x, index_t m) {
@@ -273,7 +278,7 @@ class node final : public tree<Key, Value> {
     tree_ptr right_branch() const { return this->_right_branch; }
 
     std::optional<Value> lookup(const Key& key) const {
-        if (key.index() <= this->_prefix) {
+        if (index(key) <= this->_prefix) {
             if (this->_left_branch) {
                 return this->_left_branch->lookup(key);
             } else {
@@ -311,7 +316,7 @@ class leaf final : public tree<Key, Value> {
 
     [[nodiscard]] std::size_t size() const { return 1; }
 
-    [[nodiscard]] index_t prefix() const { return this->_key.index(); }
+    [[nodiscard]] index_t prefix() const { return index(this->_key); }
 
     [[nodiscard]] index_t branching_bit() const { return 0; }
 
@@ -324,7 +329,7 @@ class leaf final : public tree<Key, Value> {
     tree_ptr right_branch() const { CRAB_ERROR("Patricia tree: trying to call right_branch() on a leaf"); }
 
     std::optional<Value> lookup(const Key& key_) const {
-        if (this->_key.index() == key_.index()) {
+        if (index(this->_key) == index(key_)) {
             return std::optional<Value>(this->_value);
         } else {
             return std::optional<Value>();
@@ -382,8 +387,8 @@ auto tree<Key, Value>::insert(tree_ptr t, const Key& key_, const Value& value_, 
         if (t->is_node()) {
             index_t branching_bit = t->branching_bit();
             index_t prefix = t->prefix();
-            if (match_prefix(key_.index(), prefix, branching_bit)) {
-                if (zero_bit(key_.index(), branching_bit)) {
+            if (match_prefix(index(key_), prefix, branching_bit)) {
+                if (zero_bit(index(key_), branching_bit)) {
                     tree_ptr lb = t->left_branch();
                     tree_ptr new_lb;
                     if (lb) {
@@ -433,7 +438,7 @@ auto tree<Key, Value>::insert(tree_ptr t, const Key& key_, const Value& value_, 
             binding_t b = t->binding();
             const Key& key = b.first;
             const Value& value = b.second;
-            if (key.index() == key_.index()) {
+            if (index(key) == index(key_)) {
                 new_value = combine_left_to_right ? op.apply(value, value_) : op.apply(value_, value);
                 if (new_value.first) {
                     return bottom;
@@ -467,7 +472,7 @@ auto tree<Key, Value>::insert(tree_ptr t, const Key& key_, const Value& value_, 
 template <typename Key, typename Value>
 auto tree<Key, Value>::remove(tree_ptr t, const Key& key_) -> tree_ptr {
     tree_ptr nil;
-    index_t id = key_.index();
+    index_t id = index(key_);
     if (t) {
         if (t->is_node()) {
             index_t branching_bit = t->branching_bit();
@@ -501,8 +506,7 @@ auto tree<Key, Value>::remove(tree_ptr t, const Key& key_) -> tree_ptr {
             }
         } else {
             binding_t b = t->binding();
-            const Key& key = b.first;
-            if (key.index() == id) {
+            if (index(b.first) == id) {
                 return nil;
             } else {
                 return t;
