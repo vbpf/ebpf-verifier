@@ -103,8 +103,8 @@ class tree {
         // if first element of the pair is true then bottom and ignore second element
         // else if second element of the pair is empty then top
         // else the value stored in the second element of the pair.
-        virtual std::pair<bool, std::optional<Value>> apply(const Value&,
-                                                            const Value&) = 0; // The operation is idempotent: apply(x, x) = x
+        // The operation is idempotent: apply(x, x) = x
+        virtual std::pair<bool, std::optional<Value>> apply(const Value&, const Value&) = 0;
 
         // True if the default value is absorbing (false if it is neutral)
         virtual bool default_is_absorbing() = 0;
@@ -380,7 +380,7 @@ template <typename Key, typename Value>
 auto tree<Key, Value>::insert(tree_ptr t, const Key& key_, const Value& value_, binary_action_t& op,
                               bool combine_left_to_right) -> std::pair<bool, tree_ptr> {
     tree_ptr nil;
-    std::pair<bool, tree_ptr> res, res_lb, res_rb;
+    std::pair<bool, tree_ptr> res_lb, res_rb;
     std::pair<bool, std::optional<Value>> new_value;
     std::pair<bool, tree_ptr> bottom = {true, nil};
     if (t) {
@@ -392,11 +392,11 @@ auto tree<Key, Value>::insert(tree_ptr t, const Key& key_, const Value& value_, 
                     tree_ptr lb = t->left_branch();
                     tree_ptr new_lb;
                     if (lb) {
-                        res = insert(lb, key_, value_, op, combine_left_to_right);
-                        if (res.first) {
+                        auto [is_bottom, tree_ptr] = insert(lb, key_, value_, op, combine_left_to_right);
+                        if (is_bottom) {
                             return bottom;
                         }
-                        new_lb = res.second;
+                        new_lb = tree_ptr;
                     } else {
                         if (!op.default_is_absorbing()) {
                             new_lb = make_leaf(key_, value_);
@@ -411,11 +411,11 @@ auto tree<Key, Value>::insert(tree_ptr t, const Key& key_, const Value& value_, 
                     tree_ptr rb = t->right_branch();
                     tree_ptr new_rb;
                     if (rb) {
-                        res = insert(rb, key_, value_, op, combine_left_to_right);
-                        if (res.first) {
+                        auto [is_bottom, tree_ptr] = insert(rb, key_, value_, op, combine_left_to_right);
+                        if (is_bottom) {
                             return bottom;
                         }
-                        new_rb = res.second;
+                        new_rb = tree_ptr;
                     } else {
                         if (!op.default_is_absorbing()) {
                             new_rb = make_leaf(key_, value_);
@@ -435,9 +435,7 @@ auto tree<Key, Value>::insert(tree_ptr t, const Key& key_, const Value& value_, 
                 }
             }
         } else {
-            binding_t b = t->binding();
-            const Key& key = b.first;
-            const Value& value = b.second;
+            const auto& [key, value] = t->binding();
             if (index(key) == index(key_)) {
                 new_value = combine_left_to_right ? op.apply(value, value_) : op.apply(value_, value);
                 if (new_value.first) {
@@ -847,21 +845,19 @@ class patricia_tree final {
     }
 
     bool merge_with(const patricia_tree_t& t, binary_action_t& op) {
-        std::pair<bool, tree_ptr> res;
-        res = tree_t::merge(this->_tree, t._tree, op, true);
-        if (res.first) {
+        auto [is_bottom, tree_ptr] = tree_t::merge(this->_tree, t._tree, op, true);
+        if (is_bottom) {
             return true; // bottom must be propagated
         } else {
-            this->_tree = res.second;
+            this->_tree = tree_ptr;
             return false;
         }
     }
 
     void insert(const Key& key, const Value& value) {
         insert_op op;
-        std::pair<bool, tree_ptr> res;
-        res = tree_t::insert(this->_tree, key, value, op, true);
-        this->_tree = res.second;
+        auto [is_bottom, tree_ptr] = tree_t::insert(this->_tree, key, value, op, true);
+        this->_tree = tree_ptr;
     }
 
     void remove(const Key& key) { this->_tree = tree_t::remove(this->_tree, key); }
