@@ -152,7 +152,7 @@ class SplitDBM final {
     interval_t compute_residual(const linear_expression_t& e, variable_t pivot) {
         interval_t residual(-e.constant());
         for (auto [v, n] : e) {
-            if (v.index() != pivot.index()) {
+            if (v != pivot) {
                 residual = residual - (interval_t(n) * this->operator[](v));
             }
         }

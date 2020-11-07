@@ -338,11 +338,6 @@ class linear_constraint_t final {
         return res;
     }
 
-    index_t index() const {
-        // XXX: to store linear constraints in patricia trees
-        return (index_t)hash();
-    }
-
     number_t operator[](variable_t x) const { return this->_expr.operator[](x); }
 
     linear_constraint_t negate() const {
