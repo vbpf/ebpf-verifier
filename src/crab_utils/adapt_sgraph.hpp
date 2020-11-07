@@ -17,7 +17,7 @@ namespace crab {
 
 class AdaptSMap final {
     using Val = size_t;
-    static constexpr int sparse_threshold = 8;
+    static constexpr int sparse_threshold = 1;
 
   public:
     using key_t = uint16_t;
