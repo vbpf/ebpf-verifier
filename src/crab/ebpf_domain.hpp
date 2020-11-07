@@ -67,11 +67,11 @@ inline linear_constraint_t jmp_to_cst_offsets_reg(Condition::Op op, variable_t d
     case Op::SGE: return dst_offset >= src_offset; // pointer comparison is unsigned
     case Op::LE: return dst_offset <= src_offset;
     case Op::SLE: return dst_offset <= src_offset; // pointer comparison is unsigned
-    case Op::GT: return dst_offset >= src_offset + 1;
-    case Op::SGT: return dst_offset >= src_offset + 1; // pointer comparison is unsigned
-    case Op::SLT: return src_offset >= dst_offset + 1;
+    case Op::GT: return dst_offset > src_offset;
+    case Op::SGT: return dst_offset > src_offset; // pointer comparison is unsigned
+    case Op::SLT: return src_offset > dst_offset;
     // Note: reverse the test as a workaround strange lookup:
-    case Op::LT: return src_offset >= dst_offset + 1; // FIX unsigned
+    case Op::LT: return src_offset > dst_offset; // FIX unsigned
     default: return dst_offset - dst_offset == 0;
     }
 }
@@ -88,10 +88,10 @@ inline std::vector<linear_constraint_t> jmp_to_cst_imm(Condition::Op op, variabl
     case Op::SGE: return {dst_value >= imm};
     case Op::LE: return {dst_value <= imm, 0 <= dst_value}; // FIX unsigned
     case Op::SLE: return {dst_value <= imm};
-    case Op::GT: return {dst_value >= (unsigned)imm + 1}; // FIX unsigned
-    case Op::SGT: return {dst_value >= imm + 1};
-    case Op::LT: return {dst_value <= (unsigned)imm - 1}; // FIX unsigned
-    case Op::SLT: return {dst_value <= imm - 1};
+    case Op::GT: return {dst_value > (unsigned)imm}; // FIX unsigned
+    case Op::SGT: return {dst_value > imm};
+    case Op::LT: return {dst_value < (unsigned)imm}; // FIX unsigned
+    case Op::SLT: return {dst_value < imm};
     case Op::SET: throw std::exception();
     case Op::NSET: return {};
     }
@@ -110,11 +110,11 @@ inline std::vector<linear_constraint_t> jmp_to_cst_reg(Condition::Op op, variabl
     case Op::SGE: return {dst_value >= src_value};
     case Op::LE: return {dst_value <= src_value, 0 <= dst_value}; // FIX unsigned
     case Op::SLE: return {dst_value <= src_value};
-    case Op::GT: return {dst_value >= src_value + 1}; // FIX unsigned
-    case Op::SGT: return {dst_value >= src_value + 1};
+    case Op::GT: return {dst_value > src_value}; // FIX unsigned
+    case Op::SGT: return {dst_value > src_value};
     // Note: reverse the test as a workaround strange lookup:
-    case Op::LT: return {src_value >= dst_value + 1}; // FIX unsigned
-    case Op::SLT: return {src_value >= dst_value + 1};
+    case Op::LT: return {src_value > dst_value}; // FIX unsigned
+    case Op::SLT: return {src_value > dst_value};
     case Op::SET: throw std::exception();
     case Op::NSET: return {};
     }
