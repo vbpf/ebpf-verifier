@@ -518,29 +518,25 @@ auto tree<Key, Value>::remove(tree_ptr t, const Key& key_) -> tree_ptr {
 template <typename Key, typename Value>
 auto tree<Key, Value>::merge(tree_ptr s, tree_ptr t, binary_action_t& op,
                              bool combine_left_to_right) -> std::pair<bool, tree_ptr> {
-    tree_ptr nil;
-    std::pair<bool, tree_ptr> res, res_lb, res_rb;
-    std::pair<bool, std::optional<Value>> new_value;
-    std::pair<bool, tree_ptr> bottom = {true, nil};
+    constexpr tree_ptr nil;
+    constexpr std::pair<bool, tree_ptr> bottom = {true, nil};
     if (s) {
         if (t) {
             if (s == t) {
                 return {false, s};
             } else if (s->is_leaf()) {
-                binding_t b = s->binding();
+                auto& [key, old_value] = s->binding();
                 if (op.default_is_absorbing()) {
-                    std::optional<Value> value = t->lookup(b.first);
-                    if (value) {
-                        new_value = combine_left_to_right ? op.apply(b.second, *value) : op.apply(*value, b.second);
-                        if (new_value.first) {
+                    if (std::optional<Value> value = t->lookup(key, old_value)) {
+                        auto [is_bottom, tree] = combine_left_to_right ? op.apply(old_value, *value) : op.apply(*value, old_value);
+                        if (is_bottom) {
                             return bottom;
                         }
-
-                        if (new_value.second) {
-                            if (*(new_value.second) == b.second) {
+                        if (tree) {
+                            if (*tree == old_value) {
                                 return {false, s};
                             } else {
-                                return {false, make_leaf(b.first, *(new_value.second))};
+                                return {false, make_leaf(key, *value)};
                             }
                         } else {
                             return {false, nil};
@@ -549,22 +545,21 @@ auto tree<Key, Value>::merge(tree_ptr s, tree_ptr t, binary_action_t& op,
                         return {false, nil};
                     }
                 } else {
-                    return insert(t, b.first, b.second, op, !combine_left_to_right);
+                    return insert(t, key, old_value, op, !combine_left_to_right);
                 }
             } else if (t->is_leaf()) {
-                binding_t b = t->binding();
+                auto& [key, old_value] = t->binding();
                 if (op.default_is_absorbing()) {
-                    std::optional<Value> value = s->lookup(b.first);
-                    if (value) {
-                        new_value = combine_left_to_right ? op.apply(*value, b.second) : op.apply(b.second, *value);
-                        if (new_value.first) {
+                    if (std::optional<Value> value = s->lookup(key)) {
+                        auto [is_bottom, new_value] = combine_left_to_right ? op.apply(*value, old_value) : op.apply(old_value, *value);
+                        if (is_bottom) {
                             return bottom;
                         }
-                        if (new_value.second) {
-                            if (*(new_value.second) == b.second) {
+                        if (new_value) {
+                            if (*new_value == old_value) {
                                 return {false, t};
                             } else {
-                                return {false, make_leaf(b.first, *(new_value.second))};
+                                return {false, make_leaf(old_value, *new_value)};
                             }
                         } else {
                             return {false, nil};
@@ -573,20 +568,18 @@ auto tree<Key, Value>::merge(tree_ptr s, tree_ptr t, binary_action_t& op,
                         return {false, nil};
                     }
                 } else {
-                    return insert(s, b.first, b.second, op, combine_left_to_right);
+                    return insert(s, key, old_value, op, combine_left_to_right);
                 }
             } else {
                 if (s->branching_bit() == t->branching_bit() && s->prefix() == t->prefix()) {
-                    res_lb = merge(s->left_branch(), t->left_branch(), op, combine_left_to_right);
-                    if (res_lb.first) {
+                    auto [is_bottom_lb, new_lb] = merge(s->left_branch(), t->left_branch(), op, combine_left_to_right);
+                    if (is_bottom_lb) {
                         return bottom;
                     }
-                    tree_ptr new_lb = res_lb.second;
-                    res_rb = merge(s->right_branch(), t->right_branch(), op, combine_left_to_right);
-                    if (res_rb.first) {
+                    auto [is_bottom_rb, new_rb] = merge(s->right_branch(), t->right_branch(), op, combine_left_to_right);
+                    if (is_bottom_rb) {
                         return bottom;
                     }
-                    tree_ptr new_rb = res_rb.second;
                     if (new_lb == s->left_branch() && new_rb == s->right_branch()) {
                         return {false, s};
                     } else if (new_lb == t->left_branch() && new_rb == t->right_branch()) {
@@ -597,11 +590,10 @@ auto tree<Key, Value>::merge(tree_ptr s, tree_ptr t, binary_action_t& op,
                 } else if (s->branching_bit() > t->branching_bit() &&
                            match_prefix(t->prefix(), s->prefix(), s->branching_bit())) {
                     if (zero_bit(t->prefix(), s->branching_bit())) {
-                        res_lb = merge(s->left_branch(), t, op, combine_left_to_right);
-                        if (res_lb.first) {
+                        auto [is_bottom, new_lb] = merge(s->left_branch(), t, op, combine_left_to_right);
+                        if (is_bottom) {
                             return bottom;
                         }
-                        tree_ptr new_lb = res_lb.second;
                         tree_ptr new_rb = op.default_is_absorbing() ? nil : s->right_branch();
                         if (new_lb == s->left_branch() && new_rb == s->right_branch()) {
                             return {false, s};
@@ -610,11 +602,10 @@ auto tree<Key, Value>::merge(tree_ptr s, tree_ptr t, binary_action_t& op,
                         }
                     } else {
                         tree_ptr new_lb = op.default_is_absorbing() ? nil : s->left_branch();
-                        res_rb = merge(s->right_branch(), t, op, combine_left_to_right);
-                        if (res_rb.first) {
+                        auto [is_bottom, new_rb] = merge(s->right_branch(), t, op, combine_left_to_right);
+                        if (is_bottom) {
                             return bottom;
                         }
-                        tree_ptr new_rb = res_rb.second;
                         if (new_lb == s->left_branch() && new_rb == s->right_branch()) {
                             return {false, s};
                         } else {
@@ -624,11 +615,10 @@ auto tree<Key, Value>::merge(tree_ptr s, tree_ptr t, binary_action_t& op,
                 } else if (s->branching_bit() < t->branching_bit() &&
                            match_prefix(s->prefix(), t->prefix(), t->branching_bit())) {
                     if (zero_bit(s->prefix(), t->branching_bit())) {
-                        res_lb = merge(s, t->left_branch(), op, combine_left_to_right);
-                        if (res_lb.first) {
+                        auto [is_bottom, new_lb] = merge(s, t->left_branch(), op, combine_left_to_right);
+                        if (is_bottom) {
                             return bottom;
                         }
-                        tree_ptr new_lb = res_lb.second;
                         tree_ptr new_rb = op.default_is_absorbing() ? nil : t->right_branch();
                         if (new_lb == t->left_branch() && new_rb == t->right_branch()) {
                             return {false, t};
@@ -637,12 +627,10 @@ auto tree<Key, Value>::merge(tree_ptr s, tree_ptr t, binary_action_t& op,
                         }
                     } else {
                         tree_ptr new_lb = op.default_is_absorbing() ? nil : t->left_branch();
-
-                        res_rb = merge(s, t->right_branch(), op, combine_left_to_right);
-                        if (res_rb.first) {
+                        auto [is_bottom, new_rb] = merge(s, t->right_branch(), op, combine_left_to_right);
+                        if (is_bottom) {
                             return bottom;
                         }
-                        tree_ptr new_rb = res_rb.second;
                         if (new_lb == t->left_branch() && new_rb == t->right_branch()) {
                             return {false, t};
                         } else {
@@ -680,9 +668,7 @@ bool tree<Key, Value>::compare(tree_ptr s, tree_ptr t, partial_order_t& po,
         if (t) {
             if (s != t) {
                 if (s->is_leaf()) {
-                    binding_t b = s->binding();
-                    const Key& key = b.first;
-                    const Value& value = b.second;
+                    auto [key, value] = s->binding();
                     std::optional<Value> value_ = t->lookup(key);
                     if (value_) {
                         Value left = compare_left_to_right ? value : *value_;
