@@ -488,17 +488,22 @@ class ebpf_domain_t final {
             check_access_shared(when(m_inv, is_shared(reg.type)), lb, ub, m, reg.type) |
             check_access_context(when(m_inv, reg.type == T_CTX), lb, ub, m);
         if (is_comparison_check) {
-            m_inv |= std::move(assume_ptr);
-            return;
-        } else if (s.or_null) {
-            assume(m_inv, reg.type == T_NUM);
-            require(m_inv, reg.value == 0, "Pointers may be compared only to the number 0");
+            assume(m_inv, reg.type <= T_NUM);
             m_inv |= std::move(assume_ptr);
             return;
         } else {
-            require(m_inv, reg.type > T_NUM, "Only pointers can be dereferenced");
+            if (s.or_null) {
+                require(m_inv, reg.type >= T_NUM, "Must be a pointer or null");
+                assume(m_inv, reg.type == T_NUM);
+                require(m_inv, reg.value == 0, "Pointers may be compared only to the number 0");
+                m_inv |= std::move(assume_ptr);
+                return;
+            } else {
+                require(m_inv, reg.type > T_NUM, "Only pointers can be dereferenced");
+                m_inv = std::move(assume_ptr);
+                return;
+            }
         }
-        m_inv = std::move(assume_ptr);
     }
 
     NumAbsDomain check_access_packet(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
