@@ -52,7 +52,7 @@ class TreeSMap final {
       public:
         using iterator = key_iter_t;
 
-        key_range_t(const col& c) : c{c} {}
+        explicit key_range_t(const col& c) : c{c} {}
         [[nodiscard]] size_t size() const { return c.size(); }
 
         [[nodiscard]] key_iter_t begin() const { return key_iter_t(c.begin()); }
@@ -119,12 +119,12 @@ class AdaptGraph final {
     AdaptGraph& operator=(AdaptGraph&& o) noexcept = default;
 
     template <class G>
-    static AdaptGraph copy(const G& o) {
+    static AdaptGraph copy(G& o) {
         AdaptGraph g;
         g.growTo(o.size());
 
         for (vert_id s : o.verts()) {
-            for (auto e : const_cast<G&>(o).e_succs(s)) {
+            for (auto e : o.e_succs(s)) {
                 g.add_edge(s, e.val, e.vert);
             }
         }
@@ -163,13 +163,13 @@ class AdaptGraph final {
     struct edge_iter {
         struct edge_ref {
             vert_id vert;
-            Wt& val;
+            Wt val;
         };
 
         smap_t::elt_iter_t it{};
-        std::vector<Wt>* ws{};
+        const std::vector<Wt>* ws{};
 
-        edge_iter(const smap_t::elt_iter_t& _it, std::vector<Wt>& _ws) : it(_it), ws(&_ws) {}
+        edge_iter(const smap_t::elt_iter_t& _it, const std::vector<Wt>& _ws) : it(_it), ws(&_ws) {}
         edge_iter(const edge_iter& o) = default;
         edge_iter() = default;
 
@@ -181,7 +181,7 @@ class AdaptGraph final {
             return *_empty_iter;
         }
 
-        edge_ref operator*() const { return edge_ref{(*it).first, (*ws)[(*it).second]}; }
+        edge_ref operator*() const { return edge_ref{it->first, (*ws)[it->second]}; }
         edge_iter operator++() {
             ++it;
             return *this;
@@ -196,7 +196,7 @@ class AdaptGraph final {
         using iterator = edge_iter;
 
         elt_range_t r;
-        std::vector<Wt>& ws;
+        const std::vector<Wt>& ws;
 
         [[nodiscard]] edge_iter begin() const { return edge_iter(r.begin(), ws); }
         [[nodiscard]] edge_iter end() const { return edge_iter(r.end(), ws); }
@@ -215,8 +215,8 @@ class AdaptGraph final {
     using fwd_edge_range = edge_range_t;
     using rev_edge_range = edge_range_t;
 
-    edge_range_t e_succs(vert_id v) { return {_succs[v].elts(), _ws}; }
-    edge_range_t e_preds(vert_id v) { return {_preds[v].elts(), _ws}; }
+    [[nodiscard]] edge_range_t e_succs(vert_id v) const { return {_succs[v].elts(), _ws}; }
+    [[nodiscard]] edge_range_t e_preds(vert_id v) const { return {_preds[v].elts(), _ws}; }
 
     using e_pred_range = edge_range_t;
     using e_succ_range = edge_range_t;
