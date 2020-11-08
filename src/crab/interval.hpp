@@ -11,7 +11,6 @@
 
 #include "crab_utils/bignums.hpp"
 #include "crab_utils/stats.hpp"
-#include "crab/variable.hpp"
 
 namespace crab {
 

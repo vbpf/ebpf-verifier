@@ -24,7 +24,6 @@
 #include <boost/container/flat_map.hpp>
 #include <utility>
 
-#include "crab/graph_ops.hpp"
 #include "crab/interval.hpp"
 #include "crab/linear_constraints.hpp"
 #include "crab/thresholds.hpp"
@@ -32,6 +31,7 @@
 #include "crab_utils/adapt_sgraph.hpp"
 #include "crab_utils/bignums.hpp"
 #include "crab_utils/debug.hpp"
+#include "crab_utils/graph_ops.hpp"
 #include "crab_utils/safeint.hpp"
 #include "crab_utils/stats.hpp"
 
