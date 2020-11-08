@@ -29,17 +29,17 @@ class variable_t final {
   public:
     [[nodiscard]] std::size_t hash() const { return (size_t)_id; }
 
-    bool operator==(const variable_t& o) const { return _id == o._id; }
+    bool operator==(variable_t o) const { return _id == o._id; }
 
-    bool operator!=(const variable_t& o) const { return (!(operator==(o))); }
+    bool operator!=(variable_t o) const { return (!(operator==(o))); }
 
     // for flat_map
-    bool operator<(const variable_t& o) const { return _id < o._id; }
+    bool operator<(variable_t o) const { return _id < o._id; }
 
 
     [[nodiscard]] std::string name() const { return names.at(_id); }
 
-    friend std::ostream& operator<<(std::ostream& o, const variable_t& v)  { return o << names.at(v._id); }
+    friend std::ostream& operator<<(std::ostream& o, variable_t v)  { return o << names.at(v._id); }
 
     // var_factory portion.
     // This singleton is eBPF-specific, to avoid life time issues and/or passing factory explicitly everywhere:
@@ -56,6 +56,6 @@ class variable_t final {
     static variable_t packet_size();
 }; // class variable_t
 
-inline size_t hash_value(const variable_t& v) { return v.hash(); }
+inline size_t hash_value(variable_t v) { return v.hash(); }
 
 } // namespace crab
