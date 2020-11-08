@@ -108,7 +108,7 @@ class AdaptSMap final {
     class key_iter_t {
       public:
         key_iter_t() : e(nullptr) {}
-        explicit key_iter_t(elt_t* _e) : e(_e) {}
+        explicit key_iter_t(const elt_t* _e) : e(_e) {}
 
         // XXX: to make sure that we always return the same address
         // for the "empty" iterator, otherwise we can trigger
@@ -127,21 +127,21 @@ class AdaptSMap final {
             return *this;
         }
 
-        elt_t* e;
+        const elt_t* e;
     };
-    using elt_iter_t = elt_t*;
+    using elt_iter_t = const elt_t*;
 
     class key_range_t {
       public:
         using iterator = key_iter_t;
 
-        key_range_t(elt_t* _e, size_t _sz) : e(_e), sz(_sz) {}
+        key_range_t(const elt_t* _e, size_t _sz) : e(_e), sz(_sz) {}
         [[nodiscard]] size_t size() const { return sz; }
 
         [[nodiscard]] key_iter_t begin() const { return key_iter_t(e); }
         [[nodiscard]] key_iter_t end() const { return key_iter_t(e + sz); }
 
-        elt_t* e;
+        const elt_t* e;
         size_t sz;
     };
 
@@ -149,13 +149,13 @@ class AdaptSMap final {
       public:
         using iterator = elt_iter_t;
 
-        elt_range_t(elt_t* _e, size_t _sz) : e(_e), sz(_sz) {}
+        elt_range_t(const elt_t* _e, size_t _sz) : e(_e), sz(_sz) {}
         elt_range_t(const elt_range_t& o) = default;
         [[nodiscard]] size_t size() const { return sz; }
         [[nodiscard]] elt_iter_t begin() const { return e; }
         [[nodiscard]] elt_iter_t end() const { return e + sz; }
 
-        elt_t* e;
+        const elt_t* e;
         size_t sz;
     };
 
@@ -431,7 +431,7 @@ class AdaptGraph final {
         if (is_free[v])
             return;
 
-        for (smap_t::elt_t& e : _succs[v].elts()) {
+        for (const smap_t::elt_t& e : _succs[v].elts()) {
             free_widx.push_back(e.val);
             _preds[e.key].remove(v);
         }
@@ -481,7 +481,7 @@ class AdaptGraph final {
             assert(w);
             return *w;
         }
-        Wt get() const {
+        [[nodiscard]] Wt get() const {
             assert(w);
             return *w;
         }
