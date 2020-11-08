@@ -19,6 +19,7 @@ class AdaptSMap final {
     using Val = size_t;
     static constexpr int sparse_threshold = 1;
 
+
   public:
     using key_t = uint16_t;
     using val_t = Val;
@@ -27,13 +28,31 @@ class AdaptSMap final {
         val_t val;
     };
 
+    void malloc_dense(size_t n) {
+        _dense = (elt_t*)malloc(sizeof(elt_t) * n);
+    }
+    void resize_dense(size_t n) {
+        _dense = (elt_t*)realloc(static_cast<void*>(_dense), sizeof(elt_t) * n);
+    }
+    void copy_dense(const AdaptSMap& o, size_t sz) {
+        memcpy(static_cast<void*>(_dense), o._dense, sizeof(elt_t) * sz);
+    }
+    elt_t* dense() {
+        return _dense;
+    }
+    elt_t* dense() const {
+        return _dense;
+    }
+
     AdaptSMap()
-        : sz(0), dense_maxsz(sparse_threshold), sparse_ub(10), dense((elt_t*)malloc(sizeof(elt_t) * sparse_threshold)),
-          sparse(nullptr) {}
+        : sz(0), dense_maxsz(sparse_threshold), sparse_ub(10),
+          sparse(nullptr) {
+        malloc_dense(sparse_threshold);
+    }
 
     AdaptSMap(AdaptSMap&& o) noexcept
-        : sz(o.sz), dense_maxsz(o.dense_maxsz), sparse_ub(o.sparse_ub), dense(o.dense), sparse(o.sparse) {
-        o.dense = nullptr;
+        : sz(o.sz), dense_maxsz(o.dense_maxsz), sparse_ub(o.sparse_ub), _dense(std::move(o._dense)), sparse(o.sparse) {
+        o._dense = nullptr;
         o.sparse = nullptr;
         o.sz = 0;
         o.dense_maxsz = 0;
@@ -41,13 +60,14 @@ class AdaptSMap final {
 
     AdaptSMap(const AdaptSMap& o)
         : sz(o.sz), dense_maxsz(o.dense_maxsz), sparse_ub(o.sparse_ub),
-          dense((elt_t*)malloc(sizeof(elt_t) * dense_maxsz)), sparse(nullptr) {
-        memcpy(static_cast<void*>(dense), o.dense, sizeof(elt_t) * sz);
+          sparse(nullptr) {
+        malloc_dense(dense_maxsz);
+        copy_dense(o, sz);
 
         if (o.sparse) {
             sparse = (key_t*)malloc(sizeof(key_t) * sparse_ub);
             for (key_t idx = 0; idx < sz; idx++)
-                sparse[dense[idx].key] = idx;
+                sparse[dense()[idx].key] = idx;
         }
     }
 
@@ -55,10 +75,10 @@ class AdaptSMap final {
         if (this != &o) {
             if (dense_maxsz < o.dense_maxsz) {
                 dense_maxsz = o.dense_maxsz;
-                dense = (elt_t*)realloc(static_cast<void*>(dense), sizeof(elt_t) * dense_maxsz);
+                resize_dense(dense_maxsz);
             }
             sz = o.sz;
-            memcpy(static_cast<void*>(dense), o.dense, sizeof(elt_t) * sz);
+            copy_dense(o, sz);
 
             if (o.sparse) {
                 if (!sparse || sparse_ub < o.sparse_ub) {
@@ -69,7 +89,7 @@ class AdaptSMap final {
 
             if (sparse) {
                 for (key_t idx = 0; idx < sz; idx++)
-                    sparse[dense[idx].key] = idx;
+                    sparse[dense()[idx].key] = idx;
             }
         }
 
@@ -77,13 +97,13 @@ class AdaptSMap final {
     }
 
     AdaptSMap& operator=(AdaptSMap&& o) noexcept {
-        if (dense)
-            free(dense);
+        if (_dense)
+            free(_dense);
         if (sparse)
             free(sparse);
 
-        dense = o.dense;
-        o.dense = nullptr;
+        _dense = o._dense;
+        o._dense = nullptr;
         sparse = o.sparse;
         o.sparse = nullptr;
 
@@ -97,8 +117,8 @@ class AdaptSMap final {
     }
 
     ~AdaptSMap() {
-        if (dense)
-            free(dense);
+        if (_dense)
+            free(_dense);
         if (sparse)
             free(sparse);
     }
@@ -113,11 +133,9 @@ class AdaptSMap final {
         // XXX: to make sure that we always return the same address
         // for the "empty" iterator, otherwise we can trigger
         // undefined behavior.
+        inline static std::unique_ptr<key_iter_t> _empty_iter = std::make_unique<key_iter_t>();
         static key_iter_t empty_iterator() {
-            static std::unique_ptr<key_iter_t> it = nullptr;
-            if (!it)
-                it = std::make_unique<key_iter_t>();
-            return *it;
+            return *_empty_iter;
         }
 
         key_t operator*() const { return (*e).key; }
@@ -159,8 +177,8 @@ class AdaptSMap final {
         size_t sz;
     };
 
-    [[nodiscard]] elt_range_t elts() const { return elt_range_t(dense, sz); }
-    [[nodiscard]] key_range_t keys() const { return key_range_t(dense, sz); }
+    [[nodiscard]] elt_range_t elts() const { return elt_range_t(dense(), sz); }
+    [[nodiscard]] key_range_t keys() const { return key_range_t(dense(), sz); }
 
     [[nodiscard]] bool elem(key_t k) const {
         if (sparse) {
@@ -168,7 +186,7 @@ class AdaptSMap final {
             // This is totally okay. But valgrind will complain, and
             // compiling with AddressSanitizer will probably break.
             int idx = sparse[k];
-            return (idx < sz) && dense[idx].key == k;
+            return (idx < sz) && dense()[idx].key == k;
         } else {
             for (key_t ke : keys()) {
                 if (ke == k)
@@ -182,8 +200,8 @@ class AdaptSMap final {
         if (sparse) {
             // SEE ABOVE WARNING
             int idx = sparse[k];
-            if (idx < sz && dense[idx].key == k) {
-                (*v_out) = dense[idx].val;
+            if (idx < sz && dense()[idx].key == k) {
+                (*v_out) = dense()[idx].val;
                 return true;
             }
             return false;
@@ -201,14 +219,14 @@ class AdaptSMap final {
     // precondition: k \in S
     void remove(key_t k) {
         --sz;
-        elt_t repl = dense[sz];
+        elt_t repl = dense()[sz];
         if (sparse) {
             int idx = sparse[k];
 
-            dense[idx] = repl;
+            dense()[idx] = repl;
             sparse[repl.key] = idx;
         } else {
-            elt_t* e = dense;
+            elt_t* e = dense();
             while (e->key != k)
                 ++e;
             *e = repl;
@@ -220,7 +238,7 @@ class AdaptSMap final {
         if (dense_maxsz <= sz)
             growDense(sz + 1);
 
-        dense[sz] = elt_t{k, v};
+        dense()[sz] = elt_t{k, v};
         if (sparse) {
             if (sparse_ub <= k)
                 growSparse(k + 1);
@@ -234,10 +252,7 @@ class AdaptSMap final {
 
         while (dense_maxsz < new_max)
             dense_maxsz *= 2;
-        auto* new_dense = (elt_t*)realloc(static_cast<void*>(dense), sizeof(elt_t) * dense_maxsz);
-        if (!new_dense)
-            CRAB_ERROR("Allocation failure.");
-        dense = new_dense;
+        resize_dense(dense_maxsz);
 
         if (!sparse) {
             // After resizing the first time, we switch to an sset.
@@ -272,7 +287,7 @@ class AdaptSMap final {
     size_t sz;
     size_t dense_maxsz;
     size_t sparse_ub;
-    elt_t* dense;
+    elt_t* _dense;
     key_t* sparse;
 };
 
@@ -354,11 +369,9 @@ class AdaptGraph final {
         // XXX: to make sure that we always return the same address
         // for the "empty" iterator, otherwise we can trigger
         // undefined behavior.
+        inline static std::unique_ptr<edge_iter> _empty_iter = std::make_unique<edge_iter>();
         static edge_iter empty_iterator() {
-            static std::unique_ptr<edge_iter> it = nullptr;
-            if (!it)
-                it = std::make_unique<edge_iter>();
-            return *it;
+            return *_empty_iter;
         }
 
         edge_ref operator*() const { return edge_ref{(*it).key, (*ws)[(*it).val]}; }
