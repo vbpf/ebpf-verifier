@@ -10,19 +10,11 @@
 #pragma GCC diagnostic ignored "-Wsign-compare"
 
 namespace crab {
-// An adaptive sparse-map.
-// Starts off as an unsorted vector, switching to a
-// sparse-set when |S| >= sparse_threshold
-// WARNING: Assumes Val is a basic type (so doesn't need a ctor/dtor call)
 
-class AdaptSMap final {
-    using Val = size_t;
-    static constexpr int sparse_threshold = 1;
-
-
+class TreeSMap final {
   public:
     using key_t = uint16_t;
-    using val_t = Val;
+    using val_t = size_t;
 
   private:
     using col = std::map<key_t, val_t>;
@@ -110,7 +102,7 @@ class AdaptSMap final {
 
 class AdaptGraph final {
     using Weight = safe_i64;  // same as SafeInt64DefaultParams::Wt; previously template
-    using smap_t = AdaptSMap;
+    using smap_t = TreeSMap;
 
   public:
     using vert_id = unsigned int;
