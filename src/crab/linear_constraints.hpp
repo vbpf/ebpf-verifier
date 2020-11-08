@@ -101,11 +101,11 @@ class linear_expression_t final {
     linear_expression_t(const number_t& n, variable_t x) : _map{ {x, n} } {
     }
 
-    const_iterator begin() const { return this->_map.begin(); }
+    [[nodiscard]] const_iterator begin() const { return this->_map.begin(); }
 
-    const_iterator end() const { return this->_map.end(); }
+    [[nodiscard]] const_iterator end() const { return this->_map.end(); }
 
-    size_t hash() const {
+    [[nodiscard]] size_t hash() const {
         size_t res = 0;
         for (const auto& p : *this) {
             boost::hash_combine(res, p);
@@ -115,7 +115,7 @@ class linear_expression_t final {
     }
 
     // syntactic equality
-    bool equal(const linear_expression_t& o) const {
+    [[nodiscard]] bool equal(const linear_expression_t& o) const {
         if (is_constant()) {
             return o.is_constant() && constant() == o.constant();
         }
@@ -130,11 +130,11 @@ class linear_expression_t final {
         return true;
     }
 
-    bool is_constant() const { return (this->_map.empty()); }
+    [[nodiscard]] bool is_constant() const { return (this->_map.empty()); }
 
-    number_t constant() const { return this->_cst; }
+    [[nodiscard]] number_t constant() const { return this->_cst; }
 
-    std::size_t size() const { return this->_map.size(); }
+    [[nodiscard]] std::size_t size() const { return this->_map.size(); }
 
     number_t operator[](variable_t x) const {
         typename map_t::const_iterator it = this->_map.find(x);
@@ -145,8 +145,8 @@ class linear_expression_t final {
         }
     }
 
-    linear_expression_t operator+(number_t n) const {
-        linear_expression_t r(this->_map, this->_cst + std::move(n));
+    linear_expression_t operator+(const number_t& n) const {
+        linear_expression_t r(this->_map, this->_cst + n);
         return r;
     }
 
@@ -160,8 +160,8 @@ class linear_expression_t final {
 
     linear_expression_t operator+(const linear_expression_t& e) const {
         map_t map = this->_map;
-        for (typename map_t::const_iterator it = e._map.begin(); it != e._map.end(); ++it) {
-            add(map, it->first, it->second);
+        for (auto [k, v] : e._map) {
+            add(map, k, v);
         }
         return linear_expression_t(map, this->_cst + e._cst);
     }
@@ -180,8 +180,8 @@ class linear_expression_t final {
 
     linear_expression_t operator-(const linear_expression_t& e) const {
         map_t map = this->_map;
-        for (typename map_t::const_iterator it = e._map.begin(); it != e._map.end(); ++it) {
-            add(map, it->first, -it->second);
+        for (auto [k ,v] : e._map) {
+            add(map, k, -v);
         }
         return linear_expression_t(map, this->_cst - e._cst);
     }
@@ -270,7 +270,7 @@ class linear_constraint_t final {
         return res;
     }
 
-    bool is_tautology() const {
+    [[nodiscard]] bool is_tautology() const {
         if (!this->_expr.is_constant())
             return false;
         const number_t c = this->_expr.constant();
@@ -283,7 +283,7 @@ class linear_constraint_t final {
         }
     }
 
-    bool is_contradiction() const {
+    [[nodiscard]] bool is_contradiction() const {
         if (!this->_expr.is_constant())
             return false;
         const number_t c = this->_expr.constant();
@@ -296,39 +296,39 @@ class linear_constraint_t final {
         }
     }
 
-    bool is_inequality() const { return (this->_kind == cst_kind::INEQUALITY); }
+    [[nodiscard]] bool is_inequality() const { return (this->_kind == cst_kind::INEQUALITY); }
 
-    bool is_strict_inequality() const { return (this->_kind == cst_kind::STRICT_INEQUALITY); }
+    [[nodiscard]] bool is_strict_inequality() const { return (this->_kind == cst_kind::STRICT_INEQUALITY); }
 
-    bool is_equality() const { return (this->_kind == cst_kind::EQUALITY); }
+    [[nodiscard]] bool is_equality() const { return (this->_kind == cst_kind::EQUALITY); }
 
-    bool is_disequation() const { return (this->_kind == cst_kind::DISEQUATION); }
+    [[nodiscard]] bool is_disequation() const { return (this->_kind == cst_kind::DISEQUATION); }
 
-    const linear_expression_t& expression() const { return this->_expr; }
+    [[nodiscard]] const linear_expression_t& expression() const { return this->_expr; }
 
-    cst_kind kind() const { return this->_kind; }
+    [[nodiscard]] cst_kind kind() const { return this->_kind; }
 
-    bool is_signed() const {
+    [[nodiscard]] bool is_signed() const {
         if (_kind != cst_kind::INEQUALITY && _kind != cst_kind::STRICT_INEQUALITY) {
             CRAB_WARN("Only inequalities have signedness");
         }
         return _signedness;
     }
 
-    bool is_unsigned() const { return (!is_signed()); }
+    [[nodiscard]] bool is_unsigned() const { return (!is_signed()); }
 
-    const_iterator begin() const { return this->_expr.begin(); }
+    [[nodiscard]] const_iterator begin() const { return this->_expr.begin(); }
 
-    const_iterator end() const { return this->_expr.end(); }
+    [[nodiscard]] const_iterator end() const { return this->_expr.end(); }
 
-    std::size_t size() const { return this->_expr.size(); }
+    [[nodiscard]] std::size_t size() const { return this->_expr.size(); }
 
     // syntactic equality
-    bool equal(const linear_constraint_t& o) const {
+    [[nodiscard]] bool equal(const linear_constraint_t& o) const {
         return (_kind == o._kind && _signedness == o._signedness && _expr.equal(o._expr));
     }
 
-    size_t hash() const {
+    [[nodiscard]] size_t hash() const {
         size_t res = 0;
         boost::hash_combine(res, _expr);
         boost::hash_combine(res, _kind);
@@ -340,7 +340,7 @@ class linear_constraint_t final {
 
     number_t operator[](variable_t x) const { return this->_expr.operator[](x); }
 
-    linear_constraint_t negate() const {
+    [[nodiscard]] linear_constraint_t negate() const {
         if (is_tautology()) {
             return get_false();
         } else if (is_contradiction()) {
@@ -409,7 +409,7 @@ inline std::size_t hash_value(const linear_constraint_t& e) { return e.hash(); }
 
 inline linear_expression_t var_sub(variable_t x, const number_t& n) { return linear_expression_t(x).operator-(n); }
 inline linear_expression_t var_sub(variable_t x, variable_t y) { return linear_expression_t(x).operator-(y); }
-inline linear_expression_t var_add(variable_t x, number_t n) { return linear_expression_t(x).operator+(std::move(n)); }
+inline linear_expression_t var_add(variable_t x, const number_t& n) { return linear_expression_t(x).operator+(n); }
 inline linear_expression_t var_add(variable_t x, variable_t y) { return linear_expression_t(x).operator+(y); }
 inline linear_expression_t var_mul(const number_t& n, variable_t x) { return linear_expression_t(n, x); }
 } // namespace crab
