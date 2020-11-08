@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "crab_utils/safeint.hpp"
-#include "debug.hpp"
+#include "crab_utils/debug.hpp"
 // Adaptive sparse-set based weighted graph implementation
 
 #pragma GCC diagnostic push
@@ -23,112 +23,20 @@ class AdaptSMap final {
   public:
     using key_t = uint16_t;
     using val_t = Val;
-    struct elt_t {
-        key_t key;
-        val_t val;
-    };
 
-    void malloc_dense(size_t n) {
-        _dense = (elt_t*)malloc(sizeof(elt_t) * n);
-    }
-    void resize_dense(size_t n) {
-        _dense = (elt_t*)realloc(static_cast<void*>(_dense), sizeof(elt_t) * n);
-    }
-    void copy_dense(const AdaptSMap& o, size_t sz) {
-        memcpy(static_cast<void*>(_dense), o._dense, sizeof(elt_t) * sz);
-    }
-    elt_t* dense() {
-        return _dense;
-    }
-    elt_t* dense() const {
-        return _dense;
-    }
+  private:
+    using col = std::map<key_t, val_t>;
+    col map;
 
-    AdaptSMap()
-        : sz(0), dense_maxsz(sparse_threshold), sparse_ub(10),
-          sparse(nullptr) {
-        malloc_dense(sparse_threshold);
-    }
-
-    AdaptSMap(AdaptSMap&& o) noexcept
-        : sz(o.sz), dense_maxsz(o.dense_maxsz), sparse_ub(o.sparse_ub), _dense(std::move(o._dense)), sparse(o.sparse) {
-        o._dense = nullptr;
-        o.sparse = nullptr;
-        o.sz = 0;
-        o.dense_maxsz = 0;
-    }
-
-    AdaptSMap(const AdaptSMap& o)
-        : sz(o.sz), dense_maxsz(o.dense_maxsz), sparse_ub(o.sparse_ub),
-          sparse(nullptr) {
-        malloc_dense(dense_maxsz);
-        copy_dense(o, sz);
-
-        if (o.sparse) {
-            sparse = (key_t*)malloc(sizeof(key_t) * sparse_ub);
-            for (key_t idx = 0; idx < sz; idx++)
-                sparse[dense()[idx].key] = idx;
-        }
-    }
-
-    AdaptSMap& operator=(const AdaptSMap& o) {
-        if (this != &o) {
-            if (dense_maxsz < o.dense_maxsz) {
-                dense_maxsz = o.dense_maxsz;
-                resize_dense(dense_maxsz);
-            }
-            sz = o.sz;
-            copy_dense(o, sz);
-
-            if (o.sparse) {
-                if (!sparse || sparse_ub < o.sparse_ub) {
-                    sparse_ub = o.sparse_ub;
-                    sparse = (key_t*)realloc(static_cast<void*>(sparse), sizeof(key_t) * sparse_ub);
-                }
-            }
-
-            if (sparse) {
-                for (key_t idx = 0; idx < sz; idx++)
-                    sparse[dense()[idx].key] = idx;
-            }
-        }
-
-        return *this;
-    }
-
-    AdaptSMap& operator=(AdaptSMap&& o) noexcept {
-        if (_dense)
-            free(_dense);
-        if (sparse)
-            free(sparse);
-
-        _dense = o._dense;
-        o._dense = nullptr;
-        sparse = o.sparse;
-        o.sparse = nullptr;
-
-        sz = o.sz;
-        o.sz = 0;
-        dense_maxsz = o.dense_maxsz;
-        o.dense_maxsz = 0;
-        sparse_ub = o.sparse_ub;
-        o.sparse_ub = 0;
-        return *this;
-    }
-
-    ~AdaptSMap() {
-        if (_dense)
-            free(_dense);
-        if (sparse)
-            free(sparse);
-    }
-
-    [[nodiscard]] size_t size() const { return sz; }
+  public:
+    using elt_t = std::pair<key_t, val_t>;
+    using elt_iter_t = col::const_iterator;
+    [[nodiscard]] size_t size() const { return map.size(); }
 
     class key_iter_t {
       public:
-        key_iter_t() : e(nullptr) {}
-        explicit key_iter_t(const elt_t* _e) : e(_e) {}
+        key_iter_t() = default;
+        explicit key_iter_t(col::const_iterator _e) : e(_e) {}
 
         // XXX: to make sure that we always return the same address
         // for the "empty" iterator, otherwise we can trigger
@@ -138,157 +46,66 @@ class AdaptSMap final {
             return *_empty_iter;
         }
 
-        key_t operator*() const { return (*e).key; }
-        bool operator!=(const key_iter_t& o) const { return e < o.e; }
+        key_t operator*() const { return e->first; }
+        bool operator!=(const key_iter_t& o) const { return e != o.e; }
         key_iter_t& operator++() {
             ++e;
             return *this;
         }
 
-        const elt_t* e;
+        col::const_iterator e;
     };
-    using elt_iter_t = const elt_t*;
 
     class key_range_t {
       public:
         using iterator = key_iter_t;
 
-        key_range_t(const elt_t* _e, size_t _sz) : e(_e), sz(_sz) {}
-        [[nodiscard]] size_t size() const { return sz; }
+        key_range_t(const col& c) : c{c} {}
+        [[nodiscard]] size_t size() const { return c.size(); }
 
-        [[nodiscard]] key_iter_t begin() const { return key_iter_t(e); }
-        [[nodiscard]] key_iter_t end() const { return key_iter_t(e + sz); }
+        [[nodiscard]] key_iter_t begin() const { return key_iter_t(c.begin()); }
+        [[nodiscard]] key_iter_t end() const { return key_iter_t(c.end()); }
 
-        const elt_t* e;
-        size_t sz;
+        const col& c;
     };
 
     class elt_range_t {
       public:
-        using iterator = elt_iter_t;
+        elt_range_t(const col& c) : c{c} {}
+        [[nodiscard]] size_t size() const { return c.size(); }
 
-        elt_range_t(const elt_t* _e, size_t _sz) : e(_e), sz(_sz) {}
-        elt_range_t(const elt_range_t& o) = default;
-        [[nodiscard]] size_t size() const { return sz; }
-        [[nodiscard]] elt_iter_t begin() const { return e; }
-        [[nodiscard]] elt_iter_t end() const { return e + sz; }
+        [[nodiscard]] auto begin() const { return c.begin(); }
+        [[nodiscard]] auto end() const { return c.end(); }
 
-        const elt_t* e;
-        size_t sz;
+        const col& c;
     };
 
-    [[nodiscard]] elt_range_t elts() const { return elt_range_t(dense(), sz); }
-    [[nodiscard]] key_range_t keys() const { return key_range_t(dense(), sz); }
+    [[nodiscard]] elt_range_t elts() const { return elt_range_t(map); }
+    [[nodiscard]] key_range_t keys() const { return key_range_t(map); }
 
-    [[nodiscard]] bool elem(key_t k) const {
-        if (sparse) {
-            // NOTE: This can (often will) read beyond the bounds of sparse.
-            // This is totally okay. But valgrind will complain, and
-            // compiling with AddressSanitizer will probably break.
-            int idx = sparse[k];
-            return (idx < sz) && dense()[idx].key == k;
-        } else {
-            for (key_t ke : keys()) {
-                if (ke == k)
-                    return true;
-            }
-            return false;
-        }
+    [[nodiscard]] bool contains(key_t k) const {
+        return map.count(k);
     }
 
     bool lookup(key_t k, val_t* v_out) const {
-        if (sparse) {
-            // SEE ABOVE WARNING
-            int idx = sparse[k];
-            if (idx < sz && dense()[idx].key == k) {
-                (*v_out) = dense()[idx].val;
-                return true;
-            }
-            return false;
-        } else {
-            for (elt_t elt : elts()) {
-                if (elt.key == k) {
-                    (*v_out) = elt.val;
-                    return true;
-                }
-            }
-            return false;
+        auto v = map.find(k);
+        if (v != map.end()) {
+            *v_out = v->second;
+            return true;
         }
+        return false;
     }
 
     // precondition: k \in S
     void remove(key_t k) {
-        --sz;
-        elt_t repl = dense()[sz];
-        if (sparse) {
-            int idx = sparse[k];
-
-            dense()[idx] = repl;
-            sparse[repl.key] = idx;
-        } else {
-            elt_t* e = dense();
-            while (e->key != k)
-                ++e;
-            *e = repl;
-        }
+        map.erase(k);
     }
 
     // precondition: k \notin S
     void add(key_t k, const val_t& v) {
-        if (dense_maxsz <= sz)
-            growDense(sz + 1);
-
-        dense()[sz] = elt_t{k, v};
-        if (sparse) {
-            if (sparse_ub <= k)
-                growSparse(k + 1);
-            sparse[k] = sz;
-        }
-        sz++;
+        map.insert_or_assign(k, v);
     }
-
-    void growDense(size_t new_max) {
-        assert(dense_maxsz < new_max);
-
-        while (dense_maxsz < new_max)
-            dense_maxsz *= 2;
-        resize_dense(dense_maxsz);
-
-        if (!sparse) {
-            // After resizing the first time, we switch to an sset.
-            key_t key_max = 0;
-            for (key_t k : keys())
-                key_max = std::max(key_max, k);
-
-            sparse_ub = key_max + 1;
-            sparse = (key_t*)malloc(sizeof(key_t) * sparse_ub);
-            key_t idx = 0;
-            for (key_t k : keys())
-                sparse[k] = idx++;
-        }
-    }
-
-    void growSparse(size_t new_ub) {
-        while (sparse_ub < new_ub)
-            sparse_ub *= 2;
-        auto* new_sparse = (key_t*)malloc(sizeof(key_t) * (sparse_ub));
-        if (!new_sparse)
-            CRAB_ERROR("Allocation falure.");
-        free(sparse);
-        sparse = new_sparse;
-
-        key_t idx = 0;
-        for (key_t k : keys())
-            sparse[k] = idx++;
-    }
-
-    void clear() { sz = 0; }
-
-    size_t sz;
-    size_t dense_maxsz;
-    size_t sparse_ub;
-    elt_t* _dense;
-    key_t* sparse;
+    void clear() { map.clear(); }
 };
 
 class AdaptGraph final {
@@ -301,9 +118,7 @@ class AdaptGraph final {
 
     AdaptGraph() : edge_count(0) {}
 
-    AdaptGraph(AdaptGraph&& o) noexcept
-        : _preds(std::move(o._preds)), _succs(std::move(o._succs)), _ws(std::move(o._ws)), edge_count(o.edge_count),
-          is_free(std::move(o.is_free)), free_id(std::move(o.free_id)), free_widx(std::move(o.free_widx)) {}
+    AdaptGraph(AdaptGraph&& o) noexcept = default;
 
     AdaptGraph(const AdaptGraph& o) = default;
 
@@ -374,7 +189,7 @@ class AdaptGraph final {
             return *_empty_iter;
         }
 
-        edge_ref operator*() const { return edge_ref{(*it).key, (*ws)[(*it).val]}; }
+        edge_ref operator*() const { return edge_ref{(*it).first, (*ws)[(*it).second]}; }
         edge_iter operator++() {
             ++it;
             return *this;
@@ -444,9 +259,9 @@ class AdaptGraph final {
         if (is_free[v])
             return;
 
-        for (const smap_t::elt_t& e : _succs[v].elts()) {
-            free_widx.push_back(e.val);
-            _preds[e.key].remove(v);
+        for (const auto& [key, val] : _succs[v].elts()) {
+            free_widx.push_back(val);
+            _preds[key].remove(v);
         }
         edge_count -= _succs[v].size();
         _succs[v].clear();
@@ -479,7 +294,7 @@ class AdaptGraph final {
         edge_count = 0;
     }
 
-    bool elem(vert_id s, vert_id d) { return _succs[s].elem(d); }
+    bool elem(vert_id s, vert_id d) { return _succs[s].contains(d); }
 
     Wt& edge_val(vert_id s, vert_id d) {
         size_t idx{};
