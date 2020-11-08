@@ -79,13 +79,12 @@ class TreeSMap final {
         return map.count(k);
     }
 
-    bool lookup(key_t k, val_t* v_out) const {
+    [[nodiscard]] std::optional<val_t> lookup(key_t k) const {
         auto v = map.find(k);
         if (v != map.end()) {
-            *v_out = v->second;
-            return true;
+            return {v->second};
         }
-        return false;
+        return {};
     }
 
     // precondition: k \in S
@@ -289,9 +288,7 @@ class AdaptGraph final {
     bool elem(vert_id s, vert_id d) { return _succs[s].contains(d); }
 
     Wt& edge_val(vert_id s, vert_id d) {
-        size_t idx{};
-        _succs[s].lookup(d, &idx);
-        return _ws[idx];
+        return _ws[*_succs[s].lookup(d)];
     }
 
     class mut_val_ref_t {
@@ -315,12 +312,9 @@ class AdaptGraph final {
         Wt* w;
     };
 
-    using mut_val_ref_t = mut_val_ref_t;
-
     bool lookup(vert_id s, vert_id d, mut_val_ref_t* w) {
-        size_t idx;
-        if (_succs[s].lookup(d, &idx)) {
-            (*w) = &(_ws[idx]);
+        if (auto idx = _succs[s].lookup(d)) {
+            *w = &_ws[*idx];
             return true;
         }
         return false;
@@ -343,18 +337,16 @@ class AdaptGraph final {
     }
 
     void update_edge(vert_id s, Wt w, vert_id d) {
-        size_t idx;
-        if (_succs[s].lookup(d, &idx)) {
-            _ws[idx] = std::min(_ws[idx], w);
+        if (auto idx = _succs[s].lookup(d)) {
+            _ws[*idx] = std::min(_ws[*idx], w);
         } else {
             add_edge(s, w, d);
         }
     }
 
     void set_edge(vert_id s, Wt w, vert_id d) {
-        size_t idx;
-        if (_succs[s].lookup(d, &idx)) {
-            _ws[idx] = w;
+        if (auto idx = _succs[s].lookup(d)) {
+            _ws[*idx] = w;
         } else {
             add_edge(s, w, d);
         }
