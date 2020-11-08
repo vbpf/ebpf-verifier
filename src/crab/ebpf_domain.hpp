@@ -35,8 +35,8 @@ struct reg_pack_t {
 inline reg_pack_t reg_pack(int i) {
     return {
        variable_t::reg(data_kind_t::values, i),
-       variable_t::reg(data_kind_t::types, i),
        variable_t::reg(data_kind_t::offsets, i),
+       variable_t::reg(data_kind_t::types, i),
     };
 }
 inline reg_pack_t reg_pack(Reg r) { return reg_pack(r.v); }
