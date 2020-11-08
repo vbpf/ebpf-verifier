@@ -102,14 +102,14 @@ static cfg_t to_nondet(const cfg_t& cfg) {
     for (auto const& [this_label, bb] : cfg) {
         basic_block_t& newbb = res.insert(this_label);
 
-        for (auto ins : bb) {
+        for (const auto& ins : bb) {
             if (!std::holds_alternative<Jmp>(ins)) {
                 newbb.insert(ins);
             }
         }
 
         auto [pb, pe] = bb.prev_blocks();
-        for (label_t prev_label : vector<label_t>(pb, pe)) {
+        for (const label_t& prev_label : vector<label_t>(pb, pe)) {
             bool is_one = unique(cfg.get_node(prev_label).next_blocks()).size() > 1;
             basic_block_t& pbb = res.insert(is_one ? prev_label + ":" + this_label : prev_label);
             pbb >> newbb;
@@ -131,7 +131,7 @@ static cfg_t to_nondet(const cfg_t& cfg) {
                 bb1 >> res.insert(next_label);
             }
         } else {
-            for (auto label : nextlist)
+            for (const auto& label : nextlist)
                 newbb >> res.insert(label);
         }
     }
