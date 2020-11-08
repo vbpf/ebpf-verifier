@@ -215,12 +215,12 @@ struct MarshalVisitor {
     }
 };
 
-vector<ebpf_inst> marshal(Instruction ins, pc_t pc) { return std::visit(MarshalVisitor{label_to_offset(pc)}, ins); }
+vector<ebpf_inst> marshal(const Instruction& ins, pc_t pc) { return std::visit(MarshalVisitor{label_to_offset(pc)}, ins); }
 
 vector<ebpf_inst> marshal(const vector<Instruction>& insts) {
     vector<ebpf_inst> res;
     pc_t pc = 0;
-    for (auto ins : insts) {
+    for (const auto& ins : insts) {
         for (auto e : marshal(ins, pc)) {
             pc++;
             res.push_back(e);

@@ -4,5 +4,5 @@
 #include "linux_ebpf.hpp"
 #include <vector>
 
-std::vector<ebpf_inst> marshal(Instruction ins, pc_t pc);
+std::vector<ebpf_inst> marshal(const Instruction& ins, pc_t pc);
 // TODO marshal to ostream?
