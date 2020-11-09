@@ -16,6 +16,7 @@ link_directories(${Boost_LIBRARY_DIRS})
 
 file(GLOB ALL_SRC
         "./src/*.cpp"
+        "./src/gpl/*.cpp"
         "./src/crab/*.cpp"
         "./src/crab_utils/*.cpp"
         )

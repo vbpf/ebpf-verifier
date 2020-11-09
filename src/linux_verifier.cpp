@@ -10,7 +10,7 @@
 #include "asm_syntax.hpp"
 #include "config.hpp"
 
-#include "spec_type_descriptors.hpp"
+#include "gpl/spec_type_descriptors.hpp"
 
 static bpf_prog_type to_linuxtype(BpfProgType t) {
     switch (t) {

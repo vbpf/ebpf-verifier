@@ -2,7 +2,7 @@
 
 #include <bitset>
 
-#include "spec_type_descriptors.hpp"  // for STACK_SIZE
+#include "gpl/spec_type_descriptors.hpp" // for STACK_SIZE
 
 class bitset_domain_t final {
   private:

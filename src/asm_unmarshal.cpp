@@ -7,7 +7,7 @@
 
 #include "linux_ebpf.hpp"
 
-#include "spec_prototypes.hpp"
+#include "gpl/spec_prototypes.hpp"
 
 #include "asm_syntax.hpp"
 

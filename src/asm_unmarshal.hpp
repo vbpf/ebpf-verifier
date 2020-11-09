@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "asm_syntax.hpp"
-#include "spec_type_descriptors.hpp"
+#include "gpl/spec_type_descriptors.hpp"
 
 /** Translate a sequence of eBPF instructions (elf binary format) to a sequence
  *  of Instructions.

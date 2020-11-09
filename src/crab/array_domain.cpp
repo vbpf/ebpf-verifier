@@ -15,7 +15,7 @@
 #include "crab_utils/patricia_trees.hpp"
 
 #include "dsl_syntax.hpp"
-#include "spec_type_descriptors.hpp"
+#include "gpl/spec_type_descriptors.hpp"
 
 #include "crab/array_domain.hpp"
 

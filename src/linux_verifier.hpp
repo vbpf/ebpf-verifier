@@ -7,8 +7,8 @@
 #include <vector>
 
 #include "asm_syntax.hpp"
+#include "gpl/spec_type_descriptors.hpp"
 #include "linux_ebpf.hpp"
-#include "spec_type_descriptors.hpp"
 
 int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries);
 std::tuple<bool, double> bpf_verify_program(BpfProgType type, const std::vector<ebpf_inst>& raw_prog);

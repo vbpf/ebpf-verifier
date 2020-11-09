@@ -3,7 +3,7 @@
 #include <tuple>
 
 #include "crab/cfg.hpp"
-#include "spec_type_descriptors.hpp"
+#include "gpl/spec_type_descriptors.hpp"
 
 std::tuple<bool, double> run_ebpf_analysis(cfg_t& cfg, program_info info);
 

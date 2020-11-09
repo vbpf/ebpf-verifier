@@ -3,8 +3,8 @@
 #include <string>
 #include <vector>
 
-#include "spec_type_descriptors.hpp"
 #include "asm_files.hpp"
+#include "gpl/spec_type_descriptors.hpp"
 
 #include "elfio/elfio.hpp"
 
