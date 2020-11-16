@@ -31,9 +31,11 @@ class AssertExtractor {
         return {};
     }
 
+    /// Packet access implicitly uses R6, so verify that R6 still has a pointer to the context.
     vector<Assert> operator()(Packet const& ins) const { return {Assert{TypeConstraint{Reg{6}, TypeGroup::ctx}}}; }
 
-    vector<Assert> operator()(Exit const& e) const { return {Assert{TypeConstraint{Reg{0}, TypeGroup::num}}}; }
+    /// Verify that Exit returns a number.
+    vector<Assert> operator()(Exit const& e) const { return {Assert{TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::num}}}; }
 
     vector<Assert> operator()(Call const& call) const {
         vector<Assert> res;
@@ -124,7 +126,8 @@ class AssertExtractor {
         Reg basereg = ins.access.basereg;
         Imm width{static_cast<uint32_t>(ins.access.width)};
         int offset = ins.access.offset;
-        if (basereg.v == 10) {
+        if (basereg.v == R10_STACK_POINTER) {
+            // We know we are accessing the stack.
             res.emplace_back(ValidAccess{basereg, offset, width, false});
         } else {
             res.emplace_back(TypeConstraint{basereg, TypeGroup::ptr});
@@ -174,6 +177,11 @@ class AssertExtractor {
     }
 };
 
+/// Annotate the CFG by adding explicit assertions for all the preconditions
+/// of any instruction. For example, jump instructions are asserted not to
+/// compare numbers and pointers, or pointers to potentially distinct memory
+/// regions. The verifier will use these assertions to treat the program as
+/// unsafe unless it can prove that the assertions can never fail.
 void explicate_assertions(cfg_t& cfg, const program_info& info) {
     for (auto& [label, bb] : cfg) {
         vector<Instruction> insts;

@@ -1,5 +1,7 @@
 #pragma once
 
+// This file is eBPF-specific, not derived from CRAB.
+
 #include <algorithm>
 #include <bitset>
 #include <functional>
@@ -139,9 +141,16 @@ class ebpf_domain_t final {
     typedef void check_require_func_t(NumAbsDomain&, const linear_constraint_t&, std::string);
 
   private:
-    // scalar domain
+    /// Mapping from variables (including registers, types, offsets,
+    /// memory locations, etc.) to numeric intervals or relationships
+    /// to other variables.
     NumAbsDomain m_inv;
+
+    /// Represents the stack as a memory region, i.e., an array of bytes,
+    /// allowing mapping to variable in the m_inv numeric domains
+    /// while dealing with overlapping byte ranges.
     array_domain_t stack;
+
     std::function<check_require_func_t> check_require{};
 
   public:
@@ -328,9 +337,12 @@ class ebpf_domain_t final {
         assume(inv, cst);
     }
 
+    /// Forget everything we know about the value of a variable.
     void havoc(variable_t v) { m_inv -= v; }
+
     void assign(variable_t lhs, variable_t rhs) { m_inv.assign(lhs, rhs); }
 
+    /// Set a register to an integer with unknown value.
     void no_pointer(reg_pack_t reg) {
         assign(reg.type, T_NUM);
         havoc(reg.offset);
@@ -357,6 +369,11 @@ class ebpf_domain_t final {
     }
 
   public:
+    // All transfer functions are operations on this abstract domain.
+    // It provides the basic operations of setting a variable or adding
+    // a constraint, so all of them would be converted to some kind of
+    // constraint that is added to the domain.
+
     void operator()(Assume const& s) {
         using namespace dsl_syntax;
         Condition cond = s.cond;

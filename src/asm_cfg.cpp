@@ -32,6 +32,7 @@ static bool has_fall(Instruction ins) {
     return true;
 }
 
+/// Convert an instruction sequence to a control-flow graph (CFG).
 static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts) {
     string exit_label;
     for (const auto& [label, inst] : insts) {
@@ -64,6 +65,7 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts) {
     return cfg;
 }
 
+/// Get the inverse of a given comparison operation.
 static Condition::Op reverse(Condition::Op op) {
     switch (op) {
     case Condition::Op::EQ: return Condition::Op::NE;
@@ -88,6 +90,7 @@ static Condition::Op reverse(Condition::Op op) {
     return {};
 }
 
+/// Get the inverse of a given comparison condition.
 static Condition reverse(Condition cond) { return {.op = reverse(cond.op), .left = cond.left, .right = cond.right}; }
 
 template <typename T>
@@ -97,6 +100,10 @@ static vector<label_t> unique(const std::pair<T, T>& be) {
     return res;
 }
 
+/// Get a non-deterministic version of a control-flow graph,
+/// i.e., where instead of using if/else, both branches are taken
+/// simultaneously, and are replaced by Assume instructions
+/// immediately after the branch.
 static cfg_t to_nondet(const cfg_t& cfg) {
     cfg_t res(cfg.entry(), cfg.exit());
     for (auto const& [this_label, bb] : cfg) {
@@ -138,6 +145,8 @@ static cfg_t to_nondet(const cfg_t& cfg) {
     return res;
 }
 
+/// Get the type of a given instruction.
+/// Most of these type names are also statistics header labels.
 static std::string instype(Instruction ins) {
     if (std::holds_alternative<Call>(ins)) {
         auto call = std::get<Call>(ins);
@@ -216,12 +225,24 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
 }
 
 cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool simplify) {
+    // Convert the instruction sequence to a deterministic control-flow graph.
     cfg_t det_cfg = instruction_seq_to_cfg(prog);
+
+    // Annotate the CFG by adding in assertions before every memory instruction.
     explicate_assertions(det_cfg, info);
+
+    // Translate conditional jumps to non-determinstic jumps.
     cfg_t cfg = to_nondet(det_cfg);
 
+    // Except when debugging, combine chains of instructions into
+    // basic blocks where possible, i.e., into a range of instructions
+    // where there is a single entry point and a single exit point.
+    // An abstract interpreter will keep values at every basic block,
+    // so the fewer basic blocks we have, the less information it has to
+    // keep track of.
     if (simplify) {
         cfg.simplify();
     }
+
     return cfg;
 }
