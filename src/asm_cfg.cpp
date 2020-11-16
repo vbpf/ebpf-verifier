@@ -175,7 +175,7 @@ static std::string instype(Instruction ins) {
 std::vector<std::string> stats_headers() {
     return {
         //"instructions",
-        "basic_blocks", "joins",       "other",      "jump",          "assign",  "arith",
+        "basic_blocks", "joins",       "other",      "jumps",         "assign",  "arith",
         "load",         "store",       "load_store", "packet_access", "call_1",  "call_mem",
         "call_nomem",   "adjust_head", "map_in_map", "arith64",       "arith32",
     };
