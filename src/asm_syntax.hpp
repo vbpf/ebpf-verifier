@@ -14,17 +14,22 @@ using label_t = std::string;
 }
 using crab::label_t;
 
+// Abstract Syntax Machine (ASM) syntax.
 namespace asm_syntax {
+
+/// Immediate argument.
 struct Imm {
     uint64_t v{};
 };
 
+/// Register argument.
 struct Reg {
     uint8_t v{};
 };
 
 using Value = std::variant<Imm, Reg>;
 
+/// Binary operation.
 struct Bin {
     enum class Op {
         MOV,
@@ -43,11 +48,12 @@ struct Bin {
 
     Op op;
     bool is64{};
-    Reg dst;
+    Reg dst;      ///< Destination.
     Value v;
     bool lddw{};
 };
 
+/// Unary operation.
 struct Un {
     enum class Op {
         LE16,
@@ -105,14 +111,15 @@ struct ArgSingle {
     Reg reg;
 };
 
+/// Pair of arguments to a function for pointer and size.
 struct ArgPair {
     enum class Kind {
         PTR_TO_MEM,
         PTR_TO_MEM_OR_NULL,
         PTR_TO_UNINIT_MEM,
     } kind{};
-    Reg mem;
-    Reg size;
+    Reg mem;            ///< Pointer.
+    Reg size;           ///< Size of space pointed to.
     bool can_be_zero{};
 };
 
@@ -133,27 +140,36 @@ struct Deref {
     int offset{};
 };
 
+/// Load/store instruction.
 struct Mem {
     Deref access;
     Value value;
     bool is_load{};
 };
 
+/// A special instruction for checked access to packets; it is actually a
+/// function call, and analyzed as one, e.g., by scratching caller-saved
+/// registers after it is performed.
 struct Packet {
     int width{};
     int offset{};
     std::optional<Reg> regoffset;
 };
 
+/// Special instruction for incrementing values inside shared memory.
 struct LockAdd {
     Deref access;
     Reg valreg;
 };
 
+/// Not an instruction, just used for failure cases.
 struct Undefined {
     int opcode{};
 };
 
+/// When a CFG is translated to its nondeterministic form, Conditional Jump
+/// instructions are replaced by two Assume instructions, immediately after
+/// the branch and before each jump target.
 struct Assume {
     Condition cond;
 };
@@ -164,10 +180,10 @@ enum { T_UNINIT = -6, T_MAP = -5, T_NUM = -4, T_CTX = -3, T_STACK = -2, T_PACKET
 enum class TypeGroup {
     num,
     map_fd,
-    ctx,
-    packet,
-    stack,
-    shared,
+    ctx,            ///< pointer to the special memory region named 'ctx'
+    packet,         ///< pointer to the packet
+    stack,          ///< pointer to the stack
+    shared,         ///< pointer to shared memory
     non_map_fd,     // reg >= T_NUM
     mem,            // shared | packet | stack = reg >= T_STACK
     mem_or_num,     // reg >= T_NUM && reg != T_CTX
@@ -176,11 +192,15 @@ enum class TypeGroup {
     stack_or_packet // reg >= T_STACK && reg <= T_PACKET
 };
 
+/// Condition check whether something is a valid size.
 struct ValidSize {
     Reg reg;
     bool can_be_zero{};
 };
 
+/// Condition check whether two registers can be compared with each other.
+/// For example, one is not allowed to compare a number with a pointer,
+/// or compare pointers to different memory regions.
 struct Comparable {
     Reg r1;
     Reg r2;
@@ -199,6 +219,7 @@ struct ValidAccess {
     bool or_null{};
 };
 
+/// Condition check whether something is a valid key value.
 struct ValidMapKeyValue {
     Reg access_reg;
     Reg map_fd_reg;

@@ -5,15 +5,15 @@
  * consisting of a triple <offset, size, var> where:
  *
  * - offset is an unsigned number
- * - size  is an unsigned number
+ * - size is an unsigned number
  * - var is a scalar variable that represents the content of
- *   a[offset,...,offset+size-1]
+ *   a[offset, ..., offset + size - 1]
  *
  * The domain is general enough to represent any possible sequence of
  * consecutive bytes including sequences of bytes starting at the same
  * offsets but different sizes, overlapping sequences starting at
  * different offsets, etc. However, there are some cases that have
- * been implemented an imprecise manner:
+ * been implemented in an imprecise manner:
  *
  * (1) array store/load with a non-constant index are conservatively ignored.
  * (2) array load from a cell that overlaps with other cells return top.
@@ -50,6 +50,7 @@
 
 namespace crab::domains {
 
+// Numerical abstract domain.
 using NumAbsDomain = SplitDBM;
 
 using offset_t = index_t;
@@ -58,7 +59,7 @@ using offset_t = index_t;
    Conceptually, a cell is tuple of an array, offset, size, and
    scalar variable such that:
 
-       _scalar = array[_offset, _offset+1,...,_offset+_size-1]
+       _scalar = array[_offset, _offset + 1, ..., _offset + _size - 1]
 
    For simplicity, we don't carry the array inside the cell class.
    Only, offset_map objects can create cells. They will consider the
@@ -102,7 +103,7 @@ class cell_t final {
         return _offset < o._offset;
     }
 
-    // Return true if [o, o+size) definitely overlaps with the cell,
+    // Return true if [o, o + size) definitely overlaps with the cell,
     // where o is a constant expression.
     bool overlap(const offset_t& o, unsigned size) const {
         interval_t x = to_interval();
@@ -136,7 +137,7 @@ class offset_map_t final {
     /*
       The keys in the patricia tree are processing in big-endian
       order. This means that the keys are sorted. Sortedness is
-      very important to perform efficiently operations such as
+      very important to efficiently perform operations such as
       checking for overlap cells. Since keys are treated as bit
       patterns, negative offsets can be used but they are treated
       as large unsigned numbers.

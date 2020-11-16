@@ -1,4 +1,4 @@
-
+// This file is eBPF-specific, not derived from CRAB.
 #include <algorithm>
 #include <bitset>
 #include <optional>

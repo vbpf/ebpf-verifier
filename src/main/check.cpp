@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
     std::string asmfile;
     app.add_option("--asm", asmfile, "Print disassembly to FILE")->type_name("FILE");
     std::string dotfile;
-    app.add_option("--dot", dotfile, "Export cfg to dot FILE")->type_name("FILE");
+    app.add_option("--dot", dotfile, "Export control-flow graph to dot FILE")->type_name("FILE");
 
     app.footer("You can use @headers as the path to instead just show the output field headers.\n");
 
@@ -90,6 +90,8 @@ int main(int argc, char** argv) {
 #endif
 
     auto create_map = domain == "linux" ? create_map_linux : create_map_crab;
+
+    // Read a set of raw program sections from an ELF file.
     auto raw_progs = read_elf(filename, desired_section, create_map);
 
     if (list || raw_progs.size() != 1) {
@@ -103,9 +105,12 @@ int main(int argc, char** argv) {
         std::cout << "\n";
         return list ? 0 : 64;
     }
+
+    // Select the last program section.
     raw_program raw_prog = raw_progs.back();
 
-    auto prog_or_error = unmarshal(raw_prog);
+    // Convert the raw program section to a set of instructions.
+    std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
     if (std::holds_alternative<string>(prog_or_error)) {
         std::cout << "trivial verification failure: " << std::get<string>(prog_or_error) << "\n";
         return 1;
@@ -117,16 +122,24 @@ int main(int argc, char** argv) {
     }
 
     if (domain == "zoneCrab") {
+        // Convert the instruction sequence to a control-flow graph
+        // in a "passive", non-deterministic form.
         cfg_t cfg = prepare_cfg(prog, raw_prog.info, global_options.simplify);
+
+        // Analyze the control-flow graph.
         const auto [res, seconds] = run_ebpf_analysis(cfg, raw_prog.info);
         std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
         return !res;
     } else if (domain == "linux") {
+        // Pass the intruction sequence to the Linux kernel verifier.
         const auto [res, seconds] = bpf_verify_program(raw_prog.info.program_type, raw_prog.prog);
         std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
         return !res;
     } else if (domain == "stats") {
+        // Convert the instruction sequence to a control-flow graph.
         cfg_t cfg = prepare_cfg(prog, raw_prog.info, global_options.simplify);
+
+        // Just print eBPF program stats.
         auto stats = collect_stats(cfg);
         if (!dotfile.empty()) {
             print_dot(cfg, dotfile);

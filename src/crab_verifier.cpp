@@ -143,6 +143,8 @@ std::tuple<bool, double> run_ebpf_analysis(cfg_t& cfg, program_info info) {
     crab::domains::clear_global_state();
 
     auto&& [report, elapsed_secs] = timed_execution([&] {
+        // Get dictionaries of preconditions and postconditions for each
+        // basic block.
         auto [preconditions, postconditions] = crab::run_forward_analyzer(cfg);
         return generate_report(cfg, preconditions, postconditions);
     });

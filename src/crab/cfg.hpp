@@ -163,6 +163,7 @@ class basic_block_rev_t final {
     std::pair<const_pred_iterator, const_pred_iterator> prev_blocks() const { return _bb.next_blocks(); }
 };
 
+/// Control-Flow Graph.
 class cfg_t final {
   public:
     using node_t = label_t; // for Bgl graphs

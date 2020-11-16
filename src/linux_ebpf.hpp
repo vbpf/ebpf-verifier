@@ -3,10 +3,10 @@
 
 struct ebpf_inst {
     std::uint8_t opcode;
-    std::uint8_t dst : 4;
-    std::uint8_t src : 4;
+    std::uint8_t dst : 4; //< Destination register
+    std::uint8_t src : 4; //< Source register
     std::int16_t offset;
-    std::int32_t imm;
+    std::int32_t imm;     //< Immediate constant
 };
 
 enum {
@@ -47,6 +47,20 @@ enum {
     INST_OP_CALL = (INST_CLS_JMP | 0x80),
     INST_OP_EXIT = (INST_CLS_JMP | 0x90),
     INST_ALU_OP_MASK = 0xf0
+};
+
+enum {
+    R0_RETURN_VALUE = 0,
+    R1_ARG = 1,
+    R2_ARG = 2,
+    R3_ARG = 3,
+    R4_ARG = 4,
+    R5_ARG = 5,
+    R6 = 6,
+    R7 = 7,
+    R8 = 8,
+    R9 = 9,
+    R10_STACK_POINTER = 10
 };
 
 int opcode_to_width(uint8_t opcode);

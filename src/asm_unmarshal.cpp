@@ -160,7 +160,7 @@ struct Unmarshaller {
     }
 
     auto makeMemOp(ebpf_inst inst) -> Instruction {
-        if (inst.dst > 10 || inst.src > 10)
+        if (inst.dst > R10_STACK_POINTER || inst.src > R10_STACK_POINTER)
             note("Bad register");
 
         int width = getMemWidth(inst.opcode);
@@ -185,14 +185,14 @@ struct Unmarshaller {
             if (isLD)
                 throw UnsupportedMemoryMode{"plain LD"};
             bool isLoad = getMemIsLoad(inst.opcode);
-            if (isLoad && inst.dst == 10)
+            if (isLoad && inst.dst == R10_STACK_POINTER)
                 note("Cannot modify r10");
             bool isImm = !(inst.opcode & 1);
 
             assert(!(isLoad && isImm));
             uint8_t basereg = isLoad ? inst.src : inst.dst;
 
-            if (basereg == 10 && (inst.offset + opcode_to_width(inst.opcode) > 0 || inst.offset < -STACK_SIZE)) {
+            if (basereg == R10_STACK_POINTER && (inst.offset + opcode_to_width(inst.opcode) > 0 || inst.offset < -STACK_SIZE)) {
                 note("Stack access out of bounds");
             }
             auto res = Mem{
@@ -229,7 +229,7 @@ struct Unmarshaller {
     }
 
     auto makeAluOp(ebpf_inst inst) -> Instruction {
-        if (inst.dst == 10)
+        if (inst.dst == R10_STACK_POINTER)
             note("Invalid target r10");
         return std::visit(overloaded{[&](Un::Op op) -> Instruction { return Un{.op = op, .dst = Reg{inst.dst}}; },
                                      [&](Bin::Op op) -> Instruction {
@@ -250,7 +250,7 @@ struct Unmarshaller {
     auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& insts, pc_t pc) -> Instruction {
         if (pc >= insts.size() - 1)
             note("incomplete LDDW");
-        if (inst.src > 1 || inst.dst > 10 || inst.offset != 0)
+        if (inst.src > 1 || inst.dst > R10_STACK_POINTER || inst.offset != 0)
             note("LDDW uses reserved fields");
 
         if (inst.src == 1) {

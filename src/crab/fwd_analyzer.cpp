@@ -109,6 +109,7 @@ class interleaved_fwd_fixpoint_iterator_t final {
 };
 
 std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg) {
+    // Go over the CFG in weak topological order (accounting for loops).
     interleaved_fwd_fixpoint_iterator_t analyzer(cfg);
     for (wto_component_t& c : analyzer._wto) {
         std::visit(analyzer, c);
