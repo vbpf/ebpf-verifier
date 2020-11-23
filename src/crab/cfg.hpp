@@ -181,7 +181,7 @@ class cfg_t final {
     using basic_block_map_t = std::unordered_map<label_t, basic_block_t>;
     using binding_t = typename basic_block_map_t::value_type;
 
-    struct get_label : public std::unary_function<binding_t, label_t> {
+    struct get_label {
         label_t operator()(const binding_t& p) const { return p.second.label(); }
     };
 
