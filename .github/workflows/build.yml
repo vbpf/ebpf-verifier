@@ -4,7 +4,7 @@ on:
   pull_request:
 
 jobs:
-  build:
+  build_ubuntu:
     runs-on: ubuntu-20.04
 
     steps:
@@ -24,3 +24,21 @@ jobs:
 
       - name: Run unit tests
         run: ./tests -d yes
+
+  build_windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: Build
+        run: |
+          $env:BOOST_ROOT=$env:BOOST_ROOT_1_72_0
+          mkdir build
+          cmake -B build
+          cmake --build build -j $(nproc) --config Release
+
+      - name: Run unit tests
+        run: ./Release/tests -d yes

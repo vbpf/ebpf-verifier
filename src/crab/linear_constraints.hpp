@@ -149,6 +149,9 @@ class linear_expression_t final {
     }
 
     linear_expression_t operator+(int n) const { return this->operator+(number_t(n)); }
+#ifdef _MSC_VER
+    linear_expression_t operator+(uint64_t n) const { return this->operator+(number_t(n)); }
+#endif
 
     linear_expression_t operator+(variable_t x) const {
         map_t map = this->_map;

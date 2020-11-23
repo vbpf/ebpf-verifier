@@ -2,19 +2,37 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "stats.hpp"
 
+#ifdef _WIN32
+#include <windows.h>
+#undef max
+#else
 #include <sys/resource.h>
 #include <sys/time.h>
+#endif
 
 namespace crab {
 
 std::map<std::string, unsigned> CrabStats::counters;
 std::map<std::string, Stopwatch> CrabStats::sw;
 
+// Gets the amount of user CPU time used, in microseconds.
 long Stopwatch::systemTime() const {
+#ifdef _WIN32
+    FILETIME creation_time, exit_time, kernel_time, user_time;
+    if (!GetProcessTimes(GetCurrentProcess(), &creation_time, &exit_time, &kernel_time, &user_time)) {
+        return 0;
+    }
+
+    // Convert from 100ns intervals to microseconds.
+    uint64_t total_us = (((uint64_t)user_time.dwHighDateTime << 32) | (uint64_t)user_time.dwLowDateTime) / 10;
+
+    return (long)total_us;
+#else
     struct rusage ru;
     getrusage(RUSAGE_SELF, &ru);
     long r = ru.ru_utime.tv_sec * 1000000L + ru.ru_utime.tv_usec;
     return r;
+#endif
 }
 
 Stopwatch::Stopwatch() { start(); }

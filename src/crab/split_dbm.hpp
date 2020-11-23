@@ -40,8 +40,10 @@
 //#define CHECK_POTENTIAL
 //#define SDBM_NO_NORMALIZE
 
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
+#endif
 
 namespace crab {
 
@@ -453,3 +455,6 @@ class SplitDBM final {
 
 } // namespace domains
 } // namespace crab
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif

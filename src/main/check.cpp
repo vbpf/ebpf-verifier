@@ -1,5 +1,5 @@
 // Copyright (c) Prevail Verifier contributors.
-// // SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 #include <iostream>
 #include <vector>
 
@@ -14,7 +14,11 @@
 #include "asm_unmarshal.hpp"
 #include "config.hpp"
 #include "crab_verifier.hpp"
-#include "memsize.hpp"
+#ifdef _WIN32
+#include "memsize_windows.hpp"
+#else
+#include "memsize_linux.hpp"
+#endif
 #include "linux_verifier.hpp"
 
 using std::string;

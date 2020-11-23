@@ -8,8 +8,10 @@
 #include "crab_utils/debug.hpp"
 // Adaptive sparse-set based weighted graph implementation
 
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
+#endif
 
 namespace crab {
 
@@ -393,4 +395,6 @@ class AdaptGraph final {
     std::vector<size_t> free_widx;
 };
 } // namespace crab
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif

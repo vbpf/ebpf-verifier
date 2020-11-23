@@ -12,8 +12,8 @@
  * variable.
  *
  */
-#include <memory>
 #include <map>
+#include <memory>
 #include <set>
 #include <variant>
 #include <vector>

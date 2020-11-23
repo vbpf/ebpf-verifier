@@ -101,7 +101,7 @@ struct MarshalVisitor {
                                   res.opcode |= INST_SRC_REG;
                                   res.src = right.v;
                               },
-                              [&](Imm right) { res.imm = right.v; }},
+                              [&](Imm right) { res.imm = static_cast<int32_t>(right.v); }},
                    b.v);
         return {res};
     }
@@ -154,7 +154,7 @@ struct MarshalVisitor {
                                  res.opcode |= INST_SRC_REG;
                                  res.src = right.v;
                              },
-                             [&](Imm right) { res.imm = right.v; }},
+                             [&](Imm right) { res.imm = static_cast<int32_t>(right.v); }},
                   b.cond->right);
             return {res};
         } else {
@@ -184,7 +184,7 @@ struct MarshalVisitor {
                 res.src = std::get<Reg>(b.value).v;
             } else {
                 res.opcode |= 0x0;
-                res.imm = std::get<Imm>(b.value).v;
+                res.imm = static_cast<int32_t>(std::get<Imm>(b.value).v);
             }
         }
         return {res};

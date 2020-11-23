@@ -777,13 +777,20 @@ class ebpf_domain_t final {
             do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset);
             return;
         }
-        linear_expression_t addr = mem_reg.offset + (number_t)offset;
+        linear_expression_t addr = linear_expression_t(mem_reg.offset) + offset;
         switch (get_type(mem_reg.type)) {
             case T_STACK: do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset); return;
             case T_UNINIT: { //maybe stack
                 NumAbsDomain assume_not_stack(m_inv);
+#ifdef _MSC_VER
+                // MSVC seems to have a harder time coercing the right things, so force
+                // the correct interpretations.
+                assume_not_stack += (linear_constraint_t)(mem_reg.type != T_STACK);
+                m_inv += crab::dsl_syntax::operator==(mem_reg.type, T_STACK);
+#else
                 assume_not_stack += mem_reg.type != T_STACK;
                 m_inv += mem_reg.type == T_STACK;
+#endif
                 if (!m_inv.is_bottom()) {
                     do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset);
                 }

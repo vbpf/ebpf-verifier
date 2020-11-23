@@ -22,7 +22,7 @@ class z_number final {
 
   public:
     z_number() = default;
-    explicit z_number(cpp_int n) : _n(std::move(n)) {}
+    z_number(cpp_int n) : _n(std::move(n)) {}
     explicit z_number(const std::string& s) { _n = cpp_int(s); }
 
     z_number(signed long long int n) { _n = n; }
