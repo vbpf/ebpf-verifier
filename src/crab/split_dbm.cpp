@@ -492,7 +492,7 @@ SplitDBM SplitDBM::operator|(const SplitDBM& _o) & {
         auto it = o.vert_map.find(v);
         // Variable exists in both
         if (it != o.vert_map.end()) {
-            out_vmap.insert(vmap_elt_t(v, perm_x.size()));
+            out_vmap.insert(vmap_elt_t(v, static_cast<vert_id>(perm_x.size())));
             out_revmap.push_back(v);
 
             pot_rx.push_back(potential[n] - potential[0]);
@@ -504,7 +504,7 @@ SplitDBM SplitDBM::operator|(const SplitDBM& _o) & {
             perm_y.push_back(it->second);
         }
     }
-    unsigned int sz = perm_x.size();
+    size_t sz = perm_x.size();
 
     // Build the permuted view of x and y.
     assert(g.size() > 0);
@@ -665,7 +665,7 @@ SplitDBM SplitDBM::widen(SplitDBM o) {
             auto it = o.vert_map.find(v);
             // Variable exists in both
             if (it != o.vert_map.end()) {
-                out_vmap.insert(vmap_elt_t(v, perm_x.size()));
+                out_vmap.insert(vmap_elt_t(v, static_cast<vert_id>(perm_x.size())));
                 out_revmap.push_back(v);
 
                 widen_pot.push_back(potential[n] - potential[0]);
@@ -725,7 +725,7 @@ SplitDBM SplitDBM::operator&(SplitDBM o) {
         meet_pi.emplace_back(0);
         meet_rev.push_back(std::nullopt);
         for (auto [v, n] : vert_map) {
-            vert_id vv = perm_x.size();
+            vert_id vv = static_cast<vert_id>(perm_x.size());
             meet_verts.insert(vmap_elt_t(v, vv));
             meet_rev.push_back(v);
 
@@ -739,7 +739,7 @@ SplitDBM SplitDBM::operator&(SplitDBM o) {
             auto it = meet_verts.find(v);
 
             if (it == meet_verts.end()) {
-                vert_id vv = perm_y.size();
+                vert_id vv = static_cast<vert_id>(perm_y.size());
                 meet_rev.push_back(v);
 
                 perm_y.push_back(n);

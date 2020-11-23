@@ -183,7 +183,7 @@ std::vector<cell_t> offset_map_t::get_overlap_cells(offset_t o, unsigned size) {
         }
         upto_lb.push_back(lb_it->second);
 
-        for (int i = upto_lb.size() - 1; i >= 0; --i) {
+        for (int i = static_cast<int>(upto_lb.size() - 1); i >= 0; --i) {
             ///////
             // All the cells in upto_lb[i] have the same offset. They
             // just differ in the size.

@@ -87,11 +87,12 @@ class Heap {
     }
 
     void insert(int n) {
-        if (n >= indices.size())
+        assert(n >= 0);
+        if (static_cast<size_t>(n) >= indices.size())
             indices.resize(n + 1, -1);
         assert(!inHeap(n));
 
-        indices[n] = heap.size();
+        indices[n] = static_cast<int>(heap.size());
         heap.push_back(n);
         percolateUp(indices[n]);
     }

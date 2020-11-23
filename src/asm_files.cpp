@@ -122,7 +122,9 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
         ELFIO::Elf_Half section_index;
         unsigned char other;
         symbols.get_symbol(symbol, symbol_name, value, size, bind, type, section_index, other);
-        return value / sizeof(bpf_load_map_def);
+
+        // We assume the reloc value fits safely in an int, but cast to avoid compiler warnings.
+        return static_cast<int>(value / sizeof(bpf_load_map_def));
     };
 
     vector<raw_program> res;
