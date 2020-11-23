@@ -9,7 +9,6 @@
 #include <limits>
 
 #include "crab_utils/bignums.hpp"
-#include "crab_utils/safeint.hpp"
 
 namespace crab {
 
@@ -20,7 +19,7 @@ class safe_i64 {
 
     // TODO/FIXME: the current code compiles assuming the type __int128
     // exists. Both clang and gcc supports __int128 if the targeted
-    // architecture is x86/64, but it wont' work with 32 bits.
+    // architecture is x86/64, but it won't work with 32 bits.
     using wideint_t = __int128;
 
     [[nodiscard]] static int64_t get_max() { return std::numeric_limits<int64_t>::max(); }
@@ -28,23 +27,23 @@ class safe_i64 {
 
     static int checked_add(int64_t a, int64_t b, int64_t* rp) {
         wideint_t lr = (wideint_t)a + (wideint_t)b;
-        *rp = lr;
+        *rp = static_cast<int64_t>(lr);
         return lr > get_max() || lr < get_min();
     }
 
     static int checked_sub(int64_t a, int64_t b, int64_t* rp) {
         wideint_t lr = (wideint_t)a - (wideint_t)b;
-        *rp = lr;
+        *rp = static_cast<int64_t>(lr);
         return lr > get_max() || lr < get_min();
     }
     static int checked_mul(int64_t a, int64_t b, int64_t* rp) {
         wideint_t lr = (wideint_t)a * (wideint_t)b;
-        *rp = lr;
+        *rp = static_cast<int64_t>(lr);
         return lr > get_max() || lr < get_min();
     }
     static int checked_div(int64_t a, int64_t b, int64_t* rp) {
         wideint_t lr = (wideint_t)a / (wideint_t)b;
-        *rp = lr;
+        *rp = static_cast<int64_t>(lr);
         return lr > get_max() || lr < get_min();
     }
 

@@ -52,7 +52,7 @@ class bitset_domain_t final {
         return non_numerical_bytes & other.non_numerical_bytes;
     }
 
-    std::pair<bool, bool> uniformity(int lb, int width) {
+    std::pair<bool, bool> uniformity(size_t lb, int width) {
         bool only_num = true;
         bool only_non_num = true;
         for (int j = 0; j < width; j++) {
@@ -63,13 +63,13 @@ class bitset_domain_t final {
         return std::make_pair(only_num, only_non_num);
     }
 
-    void reset(int lb, int n) {
+    void reset(size_t lb, int n) {
         for (int i = 0; i < n; i++) {
             non_numerical_bytes.reset(lb + i);
         }
     }
 
-    void havoc(int lb, int width) {
+    void havoc(size_t lb, int width) {
         for (int i = 0; i < width; i++) {
             non_numerical_bytes.set(lb + i);
         }

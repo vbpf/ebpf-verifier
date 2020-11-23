@@ -200,7 +200,11 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
     for (const auto& this_label : cfg.labels()) {
         res["basic_blocks"]++;
         basic_block_t const& bb = cfg.get_node(this_label);
-        res["instructions"] += bb.size();
+
+        // We assume that the total number of instructions <= INT_MAX
+        // and so casting from size_t to int is safe, as is the addition.
+        res["instructions"] += static_cast<int>(bb.size());
+
         for (Instruction ins : bb) {
             if (std::holds_alternative<LoadMapFd>(ins)) {
                 if (std::get<LoadMapFd>(ins).mapfd == -1) {

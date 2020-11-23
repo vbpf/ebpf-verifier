@@ -94,11 +94,11 @@ class GraphPerm {
     }
 
     // Number of allocated vertices
-    int size() const { return perm.size(); }
+    size_t size() const { return perm.size(); }
 
     using vert_range = num_range<vert_id>;
     using vert_iterator = typename num_range<vert_id>::value_ref;
-    vert_range verts() const { return vert_range(perm.size()); }
+    vert_range verts() const { return vert_range(static_cast<vert_id>(perm.size())); }
 
     // GKG: Should probably modify this to handle cases where
     // the vertex iterator isn't just a vert_id*.
@@ -257,7 +257,7 @@ class SubGraph {
     void clear() { assert(0 && "SubGraph::clear not implemented."); }
 
     // Number of allocated vertices
-    int size() const { return g.size(); }
+    size_t size() const { return g.size(); }
 
     // Assumption: (x, y) not in mtx
     void add_edge(vert_id x, Wt wt, vert_id y) {
@@ -472,7 +472,7 @@ class GraphOps {
     // Used for Bellman-Ford queueing
     static vert_id* dual_queue;
     static int* vert_marks;
-    static unsigned int scratch_sz;
+    static size_t scratch_sz;
 
     // For locality, should combine dists & dist_ts.
     // Wt must have an empty constructor, but does _not_
@@ -486,14 +486,14 @@ class GraphOps {
     static unsigned int ts;
     static unsigned int ts_idx;
 
-    static void grow_scratch(unsigned int sz) {
+    static void grow_scratch(size_t sz) {
         if (sz <= scratch_sz)
             return;
 
         if (scratch_sz == 0)
             scratch_sz = 10; // Introduce enums for init_sz and growth_factor
         while (scratch_sz < sz)
-            scratch_sz *= 1.5;
+            scratch_sz = static_cast<size_t>(scratch_sz * 1.5);
 
         edge_marks = (char*)realloc(edge_marks, sizeof(char) * scratch_sz * scratch_sz);
         dual_queue = (vert_id*)realloc(dual_queue, sizeof(vert_id) * 2 * scratch_sz);
@@ -512,7 +512,7 @@ class GraphOps {
     static graph_t join(G1& l, G2& r) {
         // For the join, potentials are preserved
         assert(l.size() == r.size());
-        int sz = l.size();
+        size_t sz = l.size();
 
         graph_t g;
         g.growTo(sz);
@@ -628,7 +628,7 @@ class GraphOps {
 
     template <class G>
     static void compute_sccs(G& x, std::vector<std::vector<vert_id>>& out_scc) {
-        int sz = x.size();
+        size_t sz = x.size();
         grow_scratch(sz);
 
         for (vert_id v : x.verts())
@@ -659,7 +659,7 @@ class GraphOps {
     // Returns false if there is some negative cycle.
     template <class G, class P>
     static bool select_potentials(G& g, P& potentials) {
-        int sz = g.size();
+        size_t sz = g.size();
         assert(potentials.size() >= sz);
         grow_scratch(sz);
 
@@ -698,7 +698,7 @@ class GraphOps {
                 qtail++;
             }
 
-            for (int iter = 0; iter < scc.size(); iter++) {
+            for (size_t iter = 0; iter < scc.size(); iter++) {
                 for (; qtail != qhead;) {
                     vert_id s = *(--qtail);
                     // If it _was_ on the queue, it must be in the SCC
@@ -750,7 +750,7 @@ class GraphOps {
         // and potentials have been initialized.
         // We just want to restore closure.
         assert(l.size() == r.size());
-        unsigned int sz = l.size();
+        size_t sz = l.size();
         grow_scratch(sz);
         delta.clear();
 
@@ -805,7 +805,7 @@ class GraphOps {
     // Straight implementation of Dijkstra's algorithm
     template <class G, class P>
     static void dijkstra(G& g, const P& p, vert_id src, std::vector<std::pair<vert_id, Wt>>& out) {
-        unsigned int sz = g.size();
+        size_t sz = g.size();
         if (sz == 0)
             return;
         grow_scratch(sz);
@@ -859,7 +859,7 @@ class GraphOps {
     template <class G, class P>
     static void chrome_dijkstra(G& g, const P& p, std::vector<std::vector<vert_id>>& colour_succs, vert_id src,
                                 std::vector<std::pair<vert_id, Wt>>& out) {
-        unsigned int sz = g.size();
+        size_t sz = g.size();
         if (sz == 0)
             return;
         grow_scratch(sz);
@@ -922,7 +922,7 @@ class GraphOps {
     template <class G, class P, class S>
     static void dijkstra_recover(G& g, const P& p, const S& is_stable, vert_id src,
                                  std::vector<std::pair<vert_id, Wt>>& out) {
-        unsigned int sz = g.size();
+        size_t sz = g.size();
         if (sz == 0)
             return;
         if (is_stable[src])
@@ -986,7 +986,7 @@ class GraphOps {
     template <class G, class P>
     static bool repair_potential(G& g, P& p, vert_id ii, vert_id jj) {
         // Ensure there's enough scratch space.
-        unsigned int sz = g.size();
+        size_t sz = g.size();
         // assert(src < (int) sz && dest < (int) sz);
         grow_scratch(sz);
 
@@ -1035,7 +1035,7 @@ class GraphOps {
 
     template <class G, class P, class V>
     static void close_after_widen(G& g, P& p, const V& is_stable, edge_vector& delta) {
-        unsigned int sz = g.size();
+        size_t sz = g.size();
         grow_scratch(sz);
         //      assert(orig.size() == sz);
 
@@ -1141,7 +1141,7 @@ class GraphOps {
 
     template <class G, class P>
     static void close_after_assign(G& g, P& p, vert_id v, edge_vector& delta) {
-        unsigned int sz = g.size();
+        size_t sz = g.size();
         grow_scratch(sz);
         {
             std::vector<std::pair<vert_id, Wt>> aux;
@@ -1171,7 +1171,7 @@ template <class Wt>
 int* GraphOps<Wt>::vert_marks = nullptr;
 
 template <class Wt>
-unsigned int GraphOps<Wt>::scratch_sz = 0;
+size_t GraphOps<Wt>::scratch_sz = 0;
 
 template <class G>
 std::vector<typename G::Wt> GraphOps<G>::dists;

@@ -35,7 +35,7 @@ class thresholds_t final {
         m_thresholds.push_back(bound_t::plus_infinity());
     }
 
-    unsigned size() const { return m_thresholds.size(); }
+    size_t size() const { return m_thresholds.size(); }
 
     void add(bound_t v1);
 
