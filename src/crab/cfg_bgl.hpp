@@ -13,8 +13,7 @@ namespace crab {
 
 namespace graph {
 template <typename G>
-struct mk_in_edge : public std::unary_function<typename boost::graph_traits<G>::vertex_descriptor,
-                                               typename boost::graph_traits<G>::edge_descriptor> {
+struct mk_in_edge {
     using Node = typename boost::graph_traits<G>::vertex_descriptor;
     using Edge = typename boost::graph_traits<G>::edge_descriptor;
 
@@ -25,8 +24,7 @@ struct mk_in_edge : public std::unary_function<typename boost::graph_traits<G>::
 };
 
 template <typename G>
-struct mk_out_edge : public std::unary_function<typename boost::graph_traits<G>::vertex_descriptor,
-                                                typename boost::graph_traits<G>::edge_descriptor> {
+struct mk_out_edge {
     using Node = typename boost::graph_traits<G>::vertex_descriptor;
     using Edge = typename boost::graph_traits<G>::edge_descriptor;
 
