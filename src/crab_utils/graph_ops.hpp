@@ -10,8 +10,10 @@
 //============================
 // A set of utility algorithms for manipulating graphs.
 
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
+#endif
 
 namespace crab {
 // Graph views - for when we want to traverse some mutation
@@ -1194,4 +1196,6 @@ template <class G>
 unsigned int GraphOps<G>::ts_idx = 0;
 
 } // namespace crab
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif

@@ -14,13 +14,25 @@ sudo apt install python3-pip python3-tk
 pip3 install matplotlib   # for plotting the graphs
 ```
 
+### Dependencies from vanilla Windows
+
+* Install [git](https://git-scm.com/download/win)
+* Install [Visual Studio Build Tools 2019](https://aka.ms/vs/16/release/vs_buildtools.exe) and choose the "C++ build tools" workload (Visual Studio Build Tools 2019 has support for CMake Version 3.15).
+* Install [Boost](https://www.boost.org/doc/libs/1_75_0/more/getting_started/windows.html#get-boost) and then set the `BOOST_ROOT` environment variable to the directory you unpacked Boost in.
+
 ### Installation
-Clone and make:
+Clone and make, on Ubuntu:
 ```
 git clone --recurse-submodules https://github.com/vbpf/ebpf-verifier.git
 cd ebpf-verifier
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
+```
+
+Windows uses a multi-configuration generator, so replace the last two steps with:
+```
+cmake -B build
+cmake --build build --config Release
 ```
 
 ### Running with Docker

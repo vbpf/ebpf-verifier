@@ -8,6 +8,9 @@
 
 #include <cstdint>
 #include <limits>
+#ifndef __GNUC__
+#include <boost/multiprecision/cpp_int.hpp>
+#endif
 
 #include "crab_utils/bignums.hpp"
 
@@ -18,10 +21,14 @@ class safe_i64 {
     // Current implementation is based on
     // https://blog.regehr.org/archives/1139 using wider integers.
 
+#ifdef __GNUC__
     // TODO/FIXME: the current code compiles assuming the type __int128
     // exists. Both clang and gcc supports __int128 if the targeted
     // architecture is x86/64, but it won't work with 32 bits.
     using wideint_t = __int128;
+#else
+    using wideint_t = boost::multiprecision::int128_t;
+#endif
 
     [[nodiscard]] static int64_t get_max() { return std::numeric_limits<int64_t>::max(); }
     [[nodiscard]] static int64_t get_min() { return std::numeric_limits<int64_t>::min(); }

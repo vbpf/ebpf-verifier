@@ -9,7 +9,14 @@ if (IS_DIRECTORY "${PROJECT_SOURCE_DIR}/.git")
        DESTINATION "${PROJECT_SOURCE_DIR}/.git/hooks")
 endif ()
 
-set(CMAKE_CXX_STANDARD 17)
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
+    "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  set(CMAKE_CXX_STANDARD 17)
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+  # MSVC's C++17 standard option doesn't actually support all the C++17
+  # features we use, but its "latest" option does.  However, cmake can't
+  # deal with that here, so we set it below.
+endif()
 
 find_package(Boost REQUIRED)
 
@@ -37,13 +44,19 @@ file(GLOB ALL_TEST
         "./src/test/*.cpp"
         )
 
-set(COMMON_FLAGS -Wall -Wfatal-errors -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8)
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
+    "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  set(COMMON_FLAGS -Wall -Wfatal-errors -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8)
+  set(DEBUG_FLAGS -O0 -g3)
+  set(RELEASE_FLAGS -O2 -flto)
+  set(SANITIZE_FLAGS -fsanitize=address -O1 -fno-omit-frame-pointer)
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++latest")
+endif ()
+
 if (USE_GMP)
   set(COMMON_FLAGS ${COMMON_FLAGS} -DBIGNUMS_GMP)
 endif()
-set(DEBUG_FLAGS -O0 -g3)
-set(RELEASE_FLAGS -O2 -flto)
-set(SANITIZE_FLAGS -fsanitize=address -O1 -fno-omit-frame-pointer)
 
 add_library(ebpfverifier ${LIB_SRC})
 add_executable(check src/main/check.cpp)
@@ -52,7 +65,6 @@ add_executable(tests ${ALL_TEST})
 set_target_properties(check
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
-
 
 set_target_properties(tests
         PROPERTIES

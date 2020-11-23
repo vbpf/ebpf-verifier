@@ -368,7 +368,7 @@ struct Unmarshaller {
             case INST_CLS_LD:
                 if (inst.opcode == INST_OP_LDDW_IMM) {
                     uint32_t next_imm = pc < insts.size() - 1 ? insts[pc + 1].imm : 0;
-                    new_ins = makeLddw(inst, next_imm, insts, pc);
+                    new_ins = makeLddw(inst, next_imm, insts, static_cast<pc_t>(pc));
                     lddw = true;
                     break;
                 }
@@ -381,7 +381,7 @@ struct Unmarshaller {
             case INST_CLS_ALU64: new_ins = makeAluOp(inst); break;
 
             case INST_CLS_JMP: {
-                new_ins = makeJmp(inst, insts, pc);
+                new_ins = makeJmp(inst, insts, static_cast<pc_t>(pc));
                 if (std::holds_alternative<Exit>(new_ins)) {
                     fallthrough = false;
                     exit_count++;
@@ -410,7 +410,7 @@ struct Unmarshaller {
             */
             if (pc == insts.size() - 1 && fallthrough)
                 note("fallthrough in last instruction");
-            prog.emplace_back(label_t(pc), new_ins);
+            prog.emplace_back(label_t(static_cast<int>(pc)), new_ins);
             pc++;
             note_next_pc();
             if (lddw) {
