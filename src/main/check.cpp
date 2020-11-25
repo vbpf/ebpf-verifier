@@ -57,6 +57,8 @@ int main(int argc, char** argv) {
     std::string dotfile;
     app.add_option("--dot", dotfile, "Export cfg to dot FILE")->type_name("FILE");
 
+    app.footer("You can use @headers as the path to instead just show the output field headers.\n");
+
     CLI11_PARSE(app, argc, argv);
     if (verbose)
         global_options.print_invariants = global_options.print_failures = true;

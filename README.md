@@ -66,6 +66,8 @@ Options:
   --no-simplify               Do not simplify
   --asm FILE                  Print disassembly to FILE
   --dot FILE                  Export cfg to dot FILE
+
+You can use @headers as the path to instead just show the output field headers.
 ```
 
 A standard alternative to the --asm flag is `llvm-objdump -S FILE`.
