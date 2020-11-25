@@ -78,6 +78,7 @@ int main(int argc, char** argv) {
             std::cout << domain << "_sec,";
             std::cout << domain << "_kb";
         }
+        std::cout << "\n";
         return 0;
     }
 
