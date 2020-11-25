@@ -14,7 +14,8 @@ echo -n suite,project,file,section,
 echo -n $(./check @headers --domain=stats)
 for dom in "$@"
 do
-	echo -n ,$(./check @headers --domain=${dom})
+	echo -n ,
+	./check @headers --domain=${dom} | tr '\n' ' '
 done
 echo
 
