@@ -79,6 +79,13 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+#if !__linux__
+    if (domain == "linux") {
+        std::cerr << "linux domain is unsupported on this machine\n";
+        return 64;
+    }
+#endif
+
     auto create_map = domain == "linux" ? create_map_linux : create_map_crab;
     auto raw_progs = read_elf(filename, desired_section, create_map);
 
