@@ -14,7 +14,7 @@ using label_t = std::string;
 }
 using crab::label_t;
 
-// Abstract Syntax Machine (ASM) syntax.
+// Assembly syntax.
 namespace asm_syntax {
 
 /// Immediate argument.
