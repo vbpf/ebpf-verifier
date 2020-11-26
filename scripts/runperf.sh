@@ -10,9 +10,10 @@ with_timeout() {
 
 files=($(find ${dir} -name '*.o'  -exec ls -Sd {} + ))
 
-echo -n suite,project,file,section,
+echo -n suite,project,file,section
 for dom in "$@"
 do
+	echo -n ,
 	./check @headers --domain=${dom} | tr -d '\n'
 done
 echo
