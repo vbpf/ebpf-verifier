@@ -99,6 +99,11 @@ int main(int argc, char** argv) {
             std::cout << "please specify a section\n";
             std::cout << "available sections:\n";
         }
+        if (!desired_section.empty() && raw_progs.size() == 0) {
+            // We could not find the desired section, so get the full list
+            // of possibilities.
+            raw_progs = read_elf(filename, string(), create_map);
+        }
         for (const raw_program& raw_prog : raw_progs) {
             std::cout << raw_prog.section << " ";
         }
