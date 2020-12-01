@@ -1,3 +1,5 @@
+// Copyright (c) Prevail Verifier contributors.
+// SPDX-License-Identifier: MIT
 #include "crab/thresholds.hpp"
 #include "crab/cfg.hpp"
 

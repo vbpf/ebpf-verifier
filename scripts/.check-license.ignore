@@ -1,16 +1,42 @@
 # This file uses regular expressions, not shell globs!
 
-# File extensions
+# File extensions that don't support embedding license info
+.*\.a$
 .*\.md$
 .*\.patch$
 
-# Directories
-external/.*
-external/elfio/.*
+# Directories using GPL
+src/gpl
+counter
 
-# Files
+# Other Directories
+ebpf-samples
+external
+
+# Files using NASA-1.3 license
+src/crab/linear_constraints.hpp
+src/crab/split_dbm.hpp
+src/crab/wto.hpp
+src/crab_utils/bignums.hpp
+src/crab_utils/patricia_trees.hpp
+src/crab_utils/safeint.hpp
+
+# Files using Apache-2.0 license
+src/crab_utils/debug.cpp
+
+# Files using CC-BY-SA-2.5 license
+src/memsize.hpp
+
+# Files with custom licenses embedded
+src/crab_utils/heap.hpp
+
+# Other Files
 \.check-license\.ignore
 \.clang-format
+\.dockerignore
 \.gitattributes
 \.gitignore
 \.gitmodules
+\.travis.yml
+\Dockerfile
+\LICENSE.txt

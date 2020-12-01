@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: NASA-1.3
 /*******************************************************************************
  *
  * Implementation of bignums based on GMP, the Gnu Multiple Precision Arithmetic

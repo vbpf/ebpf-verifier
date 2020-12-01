@@ -1,3 +1,5 @@
+// Copyright (c) Prevail Verifier contributors.
+// SPDX-License-Identifier: Apache-2.0
 #include "debug.hpp"
 
 namespace crab {

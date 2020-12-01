@@ -1,3 +1,5 @@
+// Copyright (c) Prevail Verifier contributors.
+// SPDX-License-Identifier: MIT
 #include "catch.hpp"
 
 #include "asm_ostream.hpp"

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: NASA-1.3
 /*******************************************************************************
  *
  * Construction and management of weak topological orderings (WTOs).

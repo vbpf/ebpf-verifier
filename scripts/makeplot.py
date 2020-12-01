@@ -1,4 +1,7 @@
 #!/usr/bin/python3
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+#
 # Usage: python3 makeplot.py results.csv [loads|stores|instructions|...]
 import matplotlib.pyplot as plt
 import numpy as np

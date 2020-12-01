@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: NASA-1.3
 /*******************************************************************************
  *
  * Implementation of Patricia trees based on the algorithms described in

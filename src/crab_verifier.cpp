@@ -1,3 +1,5 @@
+// Copyright (c) Prevail Verifier contributors.
+// SPDX-License-Identifier: MIT
 /**
  *  This module is about selecting the numerical and memory domains, initiating
  *  the verification process and returning the results.

@@ -1,5 +1,7 @@
+// SPDX-License-Identifier: CC-BY-SA-2.5
 #pragma once
 // from https://stackoverflow.com/a/671389/2289509
+// see https://stackoverflow.com/help/licensing
 
 #include <fstream>
 #include <ios>
