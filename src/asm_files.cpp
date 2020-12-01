@@ -133,7 +133,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
             continue;
         if (name == "license" || name == "version" || name == "maps")
             continue;
-        if (name.find('.') == 0) {
+        if (name != ".text" && name.find('.') == 0) {
             continue;
         }
         info.program_type = section_to_progtype(name, path);
