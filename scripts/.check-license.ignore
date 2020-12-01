@@ -1,0 +1,16 @@
+# This file uses regular expressions, not shell globs!
+
+# File extensions
+.*\.md$
+.*\.patch$
+
+# Directories
+external/.*
+external/elfio/.*
+
+# Files
+\.check-license\.ignore
+\.clang-format
+\.gitattributes
+\.gitignore
+\.gitmodules
