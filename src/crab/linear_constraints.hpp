@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: NASA-1.3
 /*******************************************************************************
  *
  * Data structures for the symbolic manipulation of linear constraints.

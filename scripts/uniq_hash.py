@@ -1,4 +1,6 @@
 #!/usr/bin/python3
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
 import fileinput
 import sys
 

@@ -1,4 +1,5 @@
-
+// Copyright (c) Prevail Verifier contributors.
+// SPDX-License-Identifier: MIT
 #if __linux__
 
 #include <unistd.h>

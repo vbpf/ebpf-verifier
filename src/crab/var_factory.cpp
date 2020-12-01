@@ -1,3 +1,5 @@
+// Copyright (c) Prevail Verifier contributors.
+// SPDX-License-Identifier: MIT
 /*
  * Factories for variable names.
  */

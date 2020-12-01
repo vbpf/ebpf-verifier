@@ -37,6 +37,6 @@ fi
 
 scripts=$(git rev-parse --show-toplevel)/scripts
 
-if ! "$scripts/check-license" "${files[@]}"; then
+if ! "$scripts/check-license.sh" "${files[@]}"; then
     exit_ "Commit failed: please add license headers to the above files"
 fi

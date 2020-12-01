@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+
 dir=$1
 test -d $dir || (echo "first argument should be a directory"; exit 1)
 shift

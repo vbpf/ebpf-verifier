@@ -1,3 +1,5 @@
+// Copyright (c) Prevail Verifier contributors.
+// SPDX-License-Identifier: MIT
 #include <algorithm>
 #include <boost/lexical_cast.hpp>
 #include <map>

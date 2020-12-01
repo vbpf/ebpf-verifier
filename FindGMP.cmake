@@ -1,3 +1,6 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+
 # Try to find the GNU Multiple Precision Arithmetic Library (GMP)
 # See http://gmplib.org/
 

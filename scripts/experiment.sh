@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+
 # double-strncmp loop experiment
 # generate increasingly long unrolled versions of the function
 # 

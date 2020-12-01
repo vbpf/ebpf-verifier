@@ -1,3 +1,5 @@
+// Copyright (c) Prevail Verifier contributors.
+// SPDX-License-Identifier: MIT
 #pragma once
 
 // This file is eBPF-specific, not derived from CRAB.

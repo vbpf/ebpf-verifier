@@ -1,3 +1,5 @@
+// Copyright (c) Prevail Verifier contributors.
+// SPDX-License-Identifier: MIT
 #include <cassert>
 #include <unordered_map>
 #include <variant>

@@ -1,3 +1,5 @@
+// Copyright (c) Prevail Verifier contributors.
+// SPDX-License-Identifier: MIT
 /*******************************************************************************
  *
  * A simple class for representing intervals and performing interval arithmetic.

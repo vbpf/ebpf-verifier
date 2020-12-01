@@ -1,5 +1,13 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
 cmake_minimum_required(VERSION 3.10)
 project(ebpf_verifier)
+
+if (IS_DIRECTORY "${PROJECT_SOURCE_DIR}/.git")
+  # Install Git pre-commit hook
+  file(COPY scripts/pre-commit scripts/commit-msg
+       DESTINATION "${PROJECT_SOURCE_DIR}/.git/hooks")
+endif ()
 
 set(CMAKE_CXX_STANDARD 17)
 
