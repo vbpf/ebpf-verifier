@@ -87,7 +87,8 @@ class Heap {
     }
 
     void insert(int n) {
-        indices.resize(n + 1, -1);
+        if (n >= indices.size())
+            indices.resize(n + 1, -1);
         assert(!inHeap(n));
 
         indices[n] = heap.size();
