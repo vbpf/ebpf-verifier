@@ -40,7 +40,6 @@ file(GLOB ALL_TEST
 set(COMMON_FLAGS -Wall -Wfatal-errors -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8)
 if (USE_GMP)
   set(COMMON_FLAGS ${COMMON_FLAGS} -DBIGNUMS_GMP)
-  message("COMMON_FLAGS is ${COMMON_FLAGS}")
 endif()
 set(DEBUG_FLAGS -O0 -g3)
 set(RELEASE_FLAGS -O2 -flto)
