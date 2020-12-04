@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: NASA-1.3
+// Copyright (c) Prevail Verifier contributors.
+// SPDX-License-Identifier: MIT
 #pragma once
 
 /**
