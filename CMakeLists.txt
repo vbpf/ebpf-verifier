@@ -13,7 +13,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(Boost REQUIRED)
 
-option(USE_GMP "Use GMP for multiprecision integer support" ON)
+option(USE_GMP "Use GMP for multiprecision integer support")
 
 include_directories(./external)
 include_directories(./src)

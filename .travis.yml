@@ -15,5 +15,18 @@ jobs:
         - cd ..
         - ./tests
         - scripts/runperf.sh ebpf-samples zoneCrab
+    - addons:
+        apt:
+          packages:
+            - libboost-dev
+      install:
+        - mkdir build
+        - cd build
+        - cmake .. -DUSE_GMP=ON -DCMAKE_BUILD_TYPE=Release
+        - make -j $(nproc)
+      script:
+        - cd ..
+        - ./tests
+        - scripts/runperf.sh ebpf-samples zoneCrab
     - services: docker
       script: docker build .
