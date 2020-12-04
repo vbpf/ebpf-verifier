@@ -17,7 +17,7 @@ external
 src/crab/linear_constraints.hpp
 src/crab/split_dbm.hpp
 src/crab/wto.hpp
-src/crab_utils/bignums.hpp
+src/crab_utils/bignums_gmp.hpp
 src/crab_utils/patricia_trees.hpp
 src/crab_utils/safeint.hpp
 
