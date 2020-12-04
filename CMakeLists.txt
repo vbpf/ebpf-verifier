@@ -13,14 +13,18 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(Boost REQUIRED)
 
-find_library(GMP REQUIRED)
+option(USE_GMP "Use GMP for multiprecision integer support" ON)
 
 include_directories(./external)
 include_directories(./src)
-include_directories(${GMP_LIB_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
-link_directories(${GMP_LIB_LIBRARY_DIRS})
 link_directories(${Boost_LIBRARY_DIRS})
+
+if (USE_GMP)
+  find_library(GMP REQUIRED)
+  include_directories(${GMP_LIB_INCLUDE_DIRS})
+  link_directories(${GMP_LIB_LIBRARY_DIRS})
+endif ()
 
 file(GLOB ALL_SRC
         "./src/*.cpp"
@@ -34,6 +38,10 @@ file(GLOB ALL_TEST
         )
 
 set(COMMON_FLAGS -Wall -Wfatal-errors -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8)
+if (USE_GMP)
+  set(COMMON_FLAGS ${COMMON_FLAGS} -DBIGNUMS_GMP)
+  message("COMMON_FLAGS is ${COMMON_FLAGS}")
+endif()
 set(DEBUG_FLAGS -O0 -g3)
 set(RELEASE_FLAGS -O2 -flto)
 set(SANITIZE_FLAGS -fsanitize=address -O1 -fno-omit-frame-pointer)
@@ -56,12 +64,15 @@ target_compile_options(check PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
 target_compile_options(check PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
 target_compile_options(check PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
 
-target_link_libraries(check PRIVATE gmp)
-
+if (USE_GMP)
+  target_link_libraries(check PRIVATE gmp)
+endif()
 
 target_compile_options(tests PRIVATE ${COMMON_FLAGS})
 target_compile_options(tests PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
 target_compile_options(tests PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
 target_compile_options(tests PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
 
-target_link_libraries(tests PRIVATE gmp)
+if (USE_GMP)
+  target_link_libraries(tests PRIVATE gmp)
+endif()
