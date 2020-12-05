@@ -486,18 +486,27 @@ class GraphOps {
     static unsigned int ts;
     static unsigned int ts_idx;
 
+    static void check_realloc(void** ptr, size_t size) {
+        void* newptr = realloc(*ptr, size);
+        if (newptr == nullptr)
+            throw std::bad_alloc();
+        *ptr = newptr;
+    }
+
     static void grow_scratch(size_t sz) {
         if (sz <= scratch_sz)
             return;
 
-        if (scratch_sz == 0)
-            scratch_sz = 10; // Introduce enums for init_sz and growth_factor
-        while (scratch_sz < sz)
-            scratch_sz = static_cast<size_t>(scratch_sz * 1.5);
+        size_t new_sz = scratch_sz;
+        if (new_sz == 0)
+            new_sz = 10; // TODO: Introduce enums for init_sz and growth_factor
+        while (new_sz < sz)
+            new_sz = static_cast<size_t>(scratch_sz * 1.5);
 
-        edge_marks = (char*)realloc(edge_marks, sizeof(char) * scratch_sz * scratch_sz);
-        dual_queue = (vert_id*)realloc(dual_queue, sizeof(vert_id) * 2 * scratch_sz);
-        vert_marks = (int*)realloc(vert_marks, sizeof(int) * scratch_sz);
+        check_realloc((void**)&edge_marks, sizeof(char) * new_sz * new_sz);
+        check_realloc((void**)&dual_queue, sizeof(vert_id) * 2 * new_sz);
+        check_realloc((void**)&vert_marks, sizeof(int) * new_sz);
+        scratch_sz = new_sz;
 
         // Initialize new elements as necessary.
         while (dists.size() < scratch_sz) {
