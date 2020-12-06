@@ -501,7 +501,7 @@ class GraphOps {
         if (new_sz == 0)
             new_sz = 10; // TODO: Introduce enums for init_sz and growth_factor
         while (new_sz < sz)
-            new_sz = static_cast<size_t>(scratch_sz * 1.5);
+            new_sz = static_cast<size_t>(new_sz * 1.5);
 
         check_realloc((void**)&edge_marks, sizeof(char) * new_sz * new_sz);
         check_realloc((void**)&dual_queue, sizeof(vert_id) * 2 * new_sz);
