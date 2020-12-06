@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
     app.add_flag("-l", list, "List sections");
 
     std::string domain = "zoneCrab";
-    std::set<string> doms{"stats", "linux", "zoneCrab"};
+    std::set<string> doms{"stats", "linux", "zoneCrab", "cfg"};
     app.add_set("-d,--dom,--domain", domain, doms, "Abstract domain")->type_name("DOMAIN");
 
     bool verbose = false;
@@ -155,6 +155,11 @@ int main(int argc, char** argv) {
         for (const string& h : stats_headers()) {
             std::cout << "," << stats.at(h);
         }
+        std::cout << "\n";
+    } else if (domain == "cfg") {
+        // Convert the instruction sequence to a control-flow graph.
+        cfg_t cfg = prepare_cfg(prog, raw_prog.info, global_options.simplify);
+        std::cout << cfg;
         std::cout << "\n";
     } else {
         assert(false);
