@@ -125,6 +125,14 @@ class basic_block_t final {
         std::move(other.m_ts.begin(), other.m_ts.end(), std::back_inserter(m_ts));
     }
 
+    size_t in_degree() {
+        return m_prev.size();
+    }
+
+    size_t out_degree() {
+        return m_next.size();
+    }
+
     void swap_instructions(stmt_list_t& ts) { std::swap(m_ts, ts); }
 };
 
@@ -334,14 +342,40 @@ class cfg_t final {
     size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
 
     void simplify() {
-        merge_blocks();
-        remove_unreachable_blocks();
-        remove_useless_blocks();
-        // after removing useless blocks there can be opportunities to
-        // merge more blocks.
-        merge_blocks();
-        remove_joining_blocks();
-        merge_blocks();
+        std::unordered_set<label_t> worklist(this->label_begin(), this->label_end());
+        while (!worklist.empty()) {
+            label_t label = *worklist.begin();
+            worklist.erase(label);
+
+            basic_block_t& bb = get_node(label);
+            if (bb.in_degree() == 1 && get_parent(label).out_degree() == 1) {
+                continue;
+            }
+            while (bb.out_degree() == 1) {
+                basic_block_t& next_bb = get_child(label);
+
+                if (&next_bb == &bb || next_bb.in_degree() != 1) {
+                    break;
+                }
+
+                worklist.erase(next_bb.label());
+
+                if (next_bb.label() == m_exit) {
+                    m_exit = label;
+                }
+
+                bb.move_back(next_bb);
+                bb -= next_bb;
+                std::vector<label_t> children = next_bb.m_next;
+                for (const label_t& next_next_label : children) {
+                    basic_block_t& next_next_bb = get_node(next_next_label);
+                    bb >> next_next_bb;
+                }
+
+                // delete next_bb entirely
+                remove(next_bb.label());
+            }
+        }
     }
 
   private:
@@ -368,42 +402,6 @@ class cfg_t final {
         return get_node(*(rng.begin()));
     }
 
-    void merge_blocks_rec(const label_t& current_label, visited_t& visited) {
-        if (!visited.insert(current_label).second)
-            return;
-
-        auto& cur = get_node(current_label);
-
-        if (has_one_child(current_label) && has_one_parent(current_label)) {
-            auto& parent = get_parent(current_label);
-            auto& child = get_child(current_label);
-
-            // Merge with its parent if it's its only child.
-            if (has_one_child(parent.label())) {
-                // move all statements from cur to parent
-                parent.move_back(cur);
-                visited.erase(current_label);
-                if (current_label == m_exit)
-                    m_exit = child.label();
-                remove(current_label);
-                parent >> child;
-                merge_blocks_rec(child.label(), visited);
-                return;
-            }
-        }
-
-        for (const auto& n : boost::make_iterator_range(cur.next_blocks())) {
-            merge_blocks_rec(n, visited);
-        }
-    }
-
-    // Merges a basic block into its predecessor if there is only one
-    // and the predecessor only has one successor.
-    void merge_blocks() {
-        visited_t visited;
-        merge_blocks_rec(entry(), visited);
-    }
-
     // mark reachable blocks from curId
     template <class AnyCfg>
     void mark_alive_blocks(label_t curId, AnyCfg& cfg_t, visited_t& visited) {
@@ -419,26 +417,6 @@ class cfg_t final {
 
     // remove blocks that cannot reach the exit block
     void remove_useless_blocks();
-
-    void remove_joining_blocks() {
-        visited_t useless;
-        for (auto const& [label, bb] : *this) {
-            if (bb.size() == 0 && label != m_exit) {
-                useless.insert(label);
-            }
-        }
-        if (useless.count(m_exit))
-            CRAB_ERROR("exit removed??");
-        for (const label_t& label : useless) {
-            auto& bb = get_node(label);
-            for (const label_t& prev : bb.m_prev) {
-                for (const label_t& next : bb.m_next) {
-                    get_node(prev) >> get_node(next);
-                }
-            }
-            remove(label);
-        }
-    }
 };
 
 // Viewing a cfg_t with all edges and block statements reversed. Useful for backward analysis.
