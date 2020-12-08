@@ -419,6 +419,8 @@ std::ostream& operator<<(std::ostream& o, const crab::basic_block_rev_t& bb) {
 }
 
 std::ostream& operator<<(std::ostream& o, const cfg_t& cfg) {
-    cfg.dfs([&](const auto& bb) { o << bb; });
+    for (const label_t& label : cfg.sorted_labels()) {
+        o << cfg.get_node(label);
+    }
     return o;
 }

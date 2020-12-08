@@ -342,7 +342,7 @@ class cfg_t final {
     size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
 
     void simplify() {
-        std::unordered_set<label_t> worklist(this->label_begin(), this->label_end());
+        std::set<label_t> worklist(this->label_begin(), this->label_end());
         while (!worklist.empty()) {
             label_t label = *worklist.begin();
             worklist.erase(label);
@@ -376,6 +376,12 @@ class cfg_t final {
                 remove(next_bb.label());
             }
         }
+    }
+
+    [[nodiscard]] std::vector<label_t> sorted_labels() const {
+        std::vector<label_t> labels = this->labels();
+        std::sort(labels.begin(), labels.end());
+        return labels;
     }
 
   private:

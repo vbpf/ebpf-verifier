@@ -50,17 +50,11 @@ struct checks_db final {
     checks_db() = default;
 };
 
-static std::vector<label_t> sorted_labels(cfg_t& cfg) {
-    std::vector<label_t> labels = cfg.labels();
-    std::sort(labels.begin(), labels.end());
-    return labels;
-}
-
 static checks_db generate_report(cfg_t& cfg,
                                  crab::invariant_table_t& preconditions,
                                  crab::invariant_table_t& postconditions) {
     checks_db m_db;
-    for (const label_t& label : sorted_labels(cfg)) {
+    for (const label_t& label : cfg.sorted_labels()) {
         basic_block_t& bb = cfg.get_node(label);
 
         if (global_options.print_invariants) {
