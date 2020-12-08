@@ -20,6 +20,7 @@
 
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/range/iterator_range.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include "crab/variable.hpp"
 #include "crab_utils/bignums.hpp"
@@ -36,7 +37,7 @@ class basic_block_t final {
     friend class cfg_t;
 
   private:
-    using label_vec_t = std::vector<label_t>;
+    using label_vec_t = std::set<label_t>;
 
   public:
     basic_block_t(const basic_block_t&) = delete;
@@ -56,18 +57,6 @@ class basic_block_t final {
     label_t m_label;
     stmt_list_t m_ts;
     label_vec_t m_prev, m_next;
-
-    static void insert_adjacent(label_vec_t& c, const label_t& e) {
-        if (std::find(c.begin(), c.end(), e) == c.end()) {
-            c.push_back(e);
-        }
-    }
-
-    static void remove_adjacent(label_vec_t& c, const label_t& e) {
-        if (std::find(c.begin(), c.end(), e) != c.end()) {
-            c.erase(std::remove(c.begin(), c.end(), e), c.end());
-        }
-    }
 
   public:
     template <typename T, typename... Args>
@@ -109,14 +98,14 @@ class basic_block_t final {
 
     // Add a cfg_t edge from *this to b
     void operator>>(basic_block_t& b) {
-        insert_adjacent(m_next, b.m_label);
-        insert_adjacent(b.m_prev, m_label);
+        m_next.insert(b.m_label);
+        b.m_prev.insert(m_label);
     }
 
     // Remove a cfg_t edge from *this to b
     void operator-=(basic_block_t& b) {
-        remove_adjacent(m_next, b.m_label);
-        remove_adjacent(b.m_prev, m_label);
+        m_next.erase(b.m_label);
+        b.m_prev.erase(m_label);
     }
 
     // insert all statements of other at the back
@@ -366,7 +355,7 @@ class cfg_t final {
 
                 bb.move_back(next_bb);
                 bb -= next_bb;
-                std::vector<label_t> children = next_bb.m_next;
+                auto children = next_bb.m_next;
                 for (const label_t& next_next_label : children) {
                     basic_block_t& next_next_bb = get_node(next_next_label);
                     bb >> next_next_bb;
