@@ -12,10 +12,7 @@
 #include <map>
 #include <string>
 #include <tuple>
-#include <utility>
 #include <vector>
-
-#include <boost/lexical_cast.hpp>
 
 #include "crab/cfg.hpp"
 #include "crab/ebpf_domain.hpp"
