@@ -12,7 +12,29 @@
 #include "gpl/spec_type_descriptors.hpp"
 
 namespace crab {
-using label_t = std::string;
+struct label_t {
+    int from{}; ///< Jump source, or simply index of instruction
+    int to = 0; ///< Jump target or 0
+
+    explicit label_t(int index) : from(index) { }
+    label_t(const label_t& src_label, const label_t& target_label) : from(src_label.from), to(target_label.from) {
+        assert(src_label.to == 0);
+        assert(target_label.to == 0);
+    }
+
+    bool operator==(const label_t& other) const { return from == other.from && to == other.to; }
+    bool operator!=(const label_t& other) const { return !(*this == other); }
+    bool operator<(const label_t& other) const { return from < other.from || (from == other.from && to < other.to); }
+
+    // no hash; intended for use in ordered containers.
+
+    [[nodiscard]] bool isjump() const { return to != 0; }
+    friend std::ostream& operator<<(std::ostream& os, const label_t& label) {
+        if (label.to == 0)
+            return os << label.from;
+        return os << label.from << ":" << label.to;
+    }
+};
 }
 using crab::label_t;
 

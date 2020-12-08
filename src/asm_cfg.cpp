@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "crab_utils/debug.hpp"
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
 
@@ -34,16 +35,21 @@ static bool has_fall(Instruction ins) {
     return true;
 }
 
-/// Convert an instruction sequence to a control-flow graph (CFG).
-static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts) {
-    string exit_label;
+static label_t find_exit_label(const InstructionSeq& insts) {
+    std::optional<label_t> exit_label;
     for (const auto& [label, inst] : insts) {
         if (std::holds_alternative<Exit>(inst))
             exit_label = label;
     }
-    if (exit_label.empty())
+    if (!exit_label)
         throw std::runtime_error("no exit");
-    cfg_t cfg("0", exit_label);
+    return *exit_label;
+}
+
+/// Convert an instruction sequence to a control-flow graph (CFG).
+static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts) {
+    cfg_t cfg(label_t{0}, find_exit_label(insts));
+
     std::optional<label_t> falling_from = {};
     for (const auto& [label, inst] : insts) {
 
@@ -120,24 +126,24 @@ static cfg_t to_nondet(const cfg_t& cfg) {
         auto [pb, pe] = bb.prev_blocks();
         for (const label_t& prev_label : vector<label_t>(pb, pe)) {
             bool is_one = unique(cfg.get_node(prev_label).next_blocks()).size() > 1;
-            basic_block_t& pbb = res.insert(is_one ? prev_label + ":" + this_label : prev_label);
+            basic_block_t& pbb = res.insert(is_one ? label_t(prev_label, this_label) : prev_label);
             pbb >> newbb;
         }
         // note the special case where we jump to fallthrough
         auto nextlist = unique(bb.next_blocks());
         if (nextlist.size() == 2) {
-            label_t mid_label = this_label + ":";
+            label_t mid_label = this_label;
             Condition cond = *std::get<Jmp>(*bb.rbegin()).cond;
             vector<std::tuple<label_t, Condition>> jumps{
                 {*bb.next_blocks().first, cond},
                 {*std::next(bb.next_blocks().first), reverse(cond)},
             };
             for (auto const& [next_label, cond1] : jumps) {
-                label_t l = mid_label + next_label;
-                basic_block_t& bb1 = res.insert(l);
-                bb1.insert<Assume>(cond1);
-                newbb >> bb1;
-                bb1 >> res.insert(next_label);
+                label_t jump_label(mid_label, next_label);
+                basic_block_t& jump_bb = res.insert(jump_label);
+                jump_bb.insert<Assume>(cond1);
+                newbb >> jump_bb;
+                jump_bb >> res.insert(next_label);
             }
         } else {
             for (const auto& label : nextlist)

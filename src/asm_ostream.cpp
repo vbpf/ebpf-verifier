@@ -148,7 +148,6 @@ std::ostream& operator<<(std::ostream& os, AssertionConstraint const& a) {
 
 struct InstructionPrinterVisitor {
     std::ostream& os_;
-    LabelTranslator labeler = [](label_t l) { return l; };
 
     template <typename T>
     void visit(const T& item) {
@@ -199,12 +198,26 @@ struct InstructionPrinterVisitor {
     void operator()(Exit const& b) { os_ << "exit"; }
 
     void operator()(Jmp const& b) {
+        // A "standalone" jump instruction.
+        // Print the label without offset calculations.
         if (b.cond) {
             os_ << "if ";
             print(*b.cond);
             os_ << " ";
         }
-        os_ << "goto " << labeler(b.target);
+        os_ << "goto label <" << to_string(b.target) << ">";
+    }
+
+    void operator()(Jmp const& b, int offset) {
+        string sign = offset > 0 ? "+" : "";
+        string target = sign + std::to_string(offset) + " <" + to_string(b.target) + ">";
+
+        if (b.cond) {
+            os_ << "if ";
+            print(*b.cond);
+            os_ << " ";
+        }
+        os_ << "goto " << target;
     }
 
     void operator()(Packet const& b) {
@@ -260,19 +273,21 @@ struct InstructionPrinterVisitor {
     }
 };
 
-string to_string(Instruction const& ins, LabelTranslator labeler) {
+string to_string(label_t const& label) {
     std::stringstream str;
-    std::visit(InstructionPrinterVisitor{str, std::move(labeler)}, ins);
+    str << label;
     return str.str();
 }
 
 std::ostream& operator<<(std::ostream& os, Instruction const& ins) {
-    std::visit(InstructionPrinterVisitor{os, [](const label_t& l) { return string("<") + l + ">"; }}, ins);
+    std::visit(InstructionPrinterVisitor{os}, ins);
     return os;
 }
 
 string to_string(Instruction const& ins) {
-    return to_string(ins, [](const label_t& l) { return string("<") + l + ">"; });
+    std::stringstream str;
+    str << ins;
+    return str.str();
 }
 
 string to_string(AssertionConstraint const& constraint) {
@@ -294,7 +309,7 @@ int size(Instruction inst) {
 
 auto get_labels(const InstructionSeq& insts) {
     pc_t pc = 0;
-    std::unordered_map<string, pc_t> pc_of_label;
+    std::map<label_t, pc_t> pc_of_label;
     for (auto [label, inst] : insts) {
         pc_of_label[label] = pc;
         pc += size(inst);
@@ -314,7 +329,7 @@ void print(const InstructionSeq& insts, std::ostream& out) {
         const auto& [label, ins] = labeled_inst;
         if (is_satisfied(ins))
             continue;
-        if (!std::all_of(label.begin(), label.end(), isdigit)) {
+        if (label.isjump()) {
             out << "\n";
             out << label << ":\n";
         }
@@ -322,12 +337,9 @@ void print(const InstructionSeq& insts, std::ostream& out) {
         if (std::holds_alternative<Jmp>(ins)) {
             auto jmp = std::get<Jmp>(ins);
             if (pc_of_label.count(jmp.target) == 0)
-                throw std::runtime_error(string("Cannot find label ") + jmp.target);
+                throw std::runtime_error(string("Cannot find label ") + to_string(jmp.target));
             pc_t target_pc = pc_of_label.at(jmp.target);
-            string sign = (target_pc > pc) ? "+" : "";
-            string offset = std::to_string(target_pc - pc - 1);
-            jmp.target = sign + offset + " <" + jmp.target + ">";
-            visitor(jmp);
+            visitor(jmp, target_pc - (int)pc - 1);
         } else {
             std::visit(visitor, ins);
         }

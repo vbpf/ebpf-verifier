@@ -129,7 +129,7 @@ Instruction parse_instruction(const std::string& text) {
     }
     if (regex_match(text, m, regex("(if " REG CMPOP REG_OR_IMM " )?goto " IMM WRAPPED_LABEL))) {
         // We ignore second IMM
-        Jmp res{.cond = {}, .target = m[6]};
+        Jmp res{.cond = {}, .target = label_t(boost::lexical_cast<int>(m[6]))};
         if (m[1].matched) {
             res.cond = Condition{
                 .op = str_to_cmpop.at(m[3]),
@@ -147,14 +147,14 @@ std::vector<std::tuple<label_t, Instruction>> parse_program(std::istream& is) {
     int lineno = 0;
     std::vector<label_t> pc_to_label;
     std::vector<std::tuple<label_t, Instruction>> labeled_insts;
-    std::unordered_set<label_t> seen_labels;
-    std::optional<std::string> next_label;
+    std::set<label_t> seen_labels;
+    std::optional<label_t> next_label;
     while (std::getline(is, line)) {
         lineno++;
         std::smatch m;
         if (regex_search(line, m, regex("^" LABEL ":"))) {
-            next_label = m[1];
-            if (seen_labels.count(m[1]) != 0)
+            next_label = label_t(boost::lexical_cast<int>(m[1]));
+            if (seen_labels.count(*next_label) != 0)
                 throw std::invalid_argument("duplicate labels");
             line = m.suffix();
         }
@@ -168,7 +168,7 @@ std::vector<std::tuple<label_t, Instruction>> parse_program(std::istream& is) {
             continue;
 
         if (!next_label)
-            next_label = std::to_string(labeled_insts.size());
+            next_label = label_t(labeled_insts.size());
         labeled_insts.emplace_back(*next_label, ins);
         next_label = {};
     }

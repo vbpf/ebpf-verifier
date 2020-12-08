@@ -10,28 +10,18 @@
 #include <boost/lexical_cast.hpp>
 
 #include "asm_syntax.hpp"
-#include "crab/cfg.hpp"
-
-inline pc_t label_to_pc(const label_t& label) {
-    try {
-        return boost::lexical_cast<pc_t>(label);
-    } catch (const boost::bad_lexical_cast&) {
-        throw std::invalid_argument(std::string("Cannot convert ") + label + " to pc_t");
-    }
-}
-
-using LabelTranslator = std::function<std::string(label_t)>;
 
 inline std::function<int16_t(label_t)> label_to_offset(pc_t pc) {
-    return [=](const label_t& label) { return label_to_pc(label) - pc - 1; };
+    return [=](const label_t& label) { return label.from - pc - 1; };
 }
 
 void print(const InstructionSeq& prog, std::ostream& out);
 void print(const InstructionSeq& insts, const std::string& outfile);
 
+std::string to_string(label_t const& label);
+
 std::ostream& operator<<(std::ostream& os, Instruction const& ins);
 std::string to_string(Instruction const& ins);
-std::string to_string(Instruction const& ins, LabelTranslator labeler);
 
 std::ostream& operator<<(std::ostream& os, Bin::Op op);
 std::ostream& operator<<(std::ostream& os, Condition::Op op);
@@ -58,7 +48,3 @@ inline std::ostream& operator<<(std::ostream& os, Assume const& a) { return os <
 inline std::ostream& operator<<(std::ostream& os, Assert const& a) { return os << (Instruction)a; }
 std::ostream& operator<<(std::ostream& os, AssertionConstraint const& a);
 std::string to_string(AssertionConstraint const& constraint);
-
-std::ostream& operator<<(std::ostream& o, const crab::basic_block_t& bb);
-std::ostream& operator<<(std::ostream& o, const crab::basic_block_rev_t& bb);
-std::ostream& operator<<(std::ostream& o, const cfg_t& cfg);

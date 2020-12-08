@@ -347,7 +347,7 @@ struct Unmarshaller {
                                                     };
             return Jmp{
                 .cond = cond,
-                .target = std::to_string(new_pc),
+                .target = label_t{new_pc},
             };
         }
         }
@@ -359,7 +359,7 @@ struct Unmarshaller {
         if (insts.size() == 0) {
             throw std::invalid_argument("Zero length programs are not allowed");
         }
-        for (pc_t pc = 0; pc < insts.size();) {
+        for (size_t pc = 0; pc < insts.size();) {
             ebpf_inst inst = insts[pc];
             Instruction new_ins;
             bool lddw = false;
@@ -410,7 +410,7 @@ struct Unmarshaller {
             */
             if (pc == insts.size() - 1 && fallthrough)
                 note("fallthrough in last instruction");
-            prog.emplace_back(std::to_string(pc), new_ins);
+            prog.emplace_back(label_t{pc}, new_ins);
             pc++;
             note_next_pc();
             if (lddw) {
