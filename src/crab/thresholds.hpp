@@ -1,5 +1,5 @@
 // Copyright (c) Prevail Verifier contributors.
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 #pragma once
 
 #include <unordered_map>

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-3-Clause
 #pragma once
 
 // CLI11: Version 1.9.1

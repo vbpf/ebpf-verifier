@@ -1,5 +1,5 @@
 // Copyright (c) Prevail Verifier contributors.
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 #include "crab/split_dbm.hpp"
 
 #include <utility>
