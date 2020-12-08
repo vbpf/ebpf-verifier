@@ -57,19 +57,6 @@ struct graph_traits<crab::cfg_t> {
     using edges_size_type = size_t;
     using degree_size_type = size_t;
 
-    static vertex_descriptor null_vertex() {
-        if constexpr (std::is_pointer<vertex_descriptor>::value)
-            return nullptr;
-        else {
-            // XXX: if vertex_descriptor is a basic type then
-            // null_vertex will return an undefined value, otherwise it
-            // will return the result of calling the default
-            // constructor.
-            vertex_descriptor n;
-            return n;
-        }
-    }
-
     // iterator of label_t's
     using vertex_iterator = typename graph_t::label_iterator;
     // iterator of pairs of label_t's
@@ -94,19 +81,6 @@ struct graph_traits<crab::cfg_rev_t> {
     using vertices_size_type = size_t;
     using edges_size_type = size_t;
     using degree_size_type = size_t;
-
-    static vertex_descriptor null_vertex() {
-        if constexpr (std::is_pointer<vertex_descriptor>::value)
-            return nullptr;
-        else {
-            // XXX: if vertex_descriptor is a basic type then
-            // null_vertex will return an undefined value, otherwise it
-            // will return the result of calling the default
-            // constructor.
-            vertex_descriptor n;
-            return n;
-        }
-    }
 
     using vertex_iterator = typename graph_t::label_iterator;
     using in_edge_iterator =

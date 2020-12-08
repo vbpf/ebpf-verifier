@@ -13,8 +13,8 @@
  *
  */
 #include <memory>
-#include <unordered_map>
-#include <unordered_set>
+#include <map>
+#include <set>
 #include <variant>
 #include <vector>
 
@@ -26,6 +26,7 @@
 #include "crab_utils/debug.hpp"
 
 #include "asm_syntax.hpp"
+#include "asm_ostream.hpp"
 
 namespace crab {
 
@@ -181,7 +182,7 @@ class cfg_t final {
     using const_pred_range = boost::iterator_range<const_pred_iterator>;
 
   private:
-    using basic_block_map_t = std::unordered_map<label_t, basic_block_t>;
+    using basic_block_map_t = std::map<label_t, basic_block_t>;
     using binding_t = typename basic_block_map_t::value_type;
 
     struct get_label {
@@ -199,7 +200,7 @@ class cfg_t final {
     label_t m_exit;
     basic_block_map_t m_blocks;
 
-    using visited_t = std::unordered_set<label_t>;
+    using visited_t = std::set<label_t>;
     template <typename T>
     void dfs_rec(const label_t& curId, visited_t& visited, T f) const {
         if (!visited.insert(curId).second)
@@ -457,7 +458,7 @@ class cfg_rev_t final {
     using const_pred_iterator = typename basic_block_t::const_pred_iterator;
 
   private:
-    using visited_t = std::unordered_set<label_t>;
+    using visited_t = std::set<label_t>;
 
     template <typename T>
     void dfs_rec(const label_t& curId, visited_t& visited, T f) const {
@@ -476,7 +477,7 @@ class cfg_rev_t final {
     }
 
   public:
-    using basic_block_rev_map_t = std::unordered_map<label_t, basic_block_rev_t>;
+    using basic_block_rev_map_t = std::map<label_t, basic_block_rev_t>;
     using iterator = typename basic_block_rev_map_t::iterator;
     using const_iterator = typename basic_block_rev_map_t::const_iterator;
     using label_iterator = typename cfg_t::label_iterator;
@@ -590,3 +591,7 @@ void explicate_assertions(cfg_t& cfg, const program_info& info);
 
 void print_dot(const cfg_t& cfg, std::ostream& out);
 void print_dot(const cfg_t& cfg, const std::string& outfile);
+
+std::ostream& operator<<(std::ostream& o, const crab::basic_block_t& bb);
+std::ostream& operator<<(std::ostream& o, const crab::basic_block_rev_t& bb);
+std::ostream& operator<<(std::ostream& o, const cfg_t& cfg);

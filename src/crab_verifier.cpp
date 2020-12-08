@@ -50,25 +50,9 @@ struct checks_db final {
     checks_db() = default;
 };
 
-inline int first_num(const label_t& s) {
-    try {
-        return boost::lexical_cast<int>(s.substr(0, s.find_first_of(":+")));
-    } catch (...) {
-        std::cout << "bad label:" << s << "\n";
-        throw;
-    }
-}
-
 static std::vector<label_t> sorted_labels(cfg_t& cfg) {
     std::vector<label_t> labels = cfg.labels();
-
-    std::sort(labels.begin(), labels.end(), [](const string& a, const string& b) {
-        if (first_num(a) < first_num(b))
-            return true;
-        if (first_num(a) > first_num(b))
-            return false;
-        return a < b;
-    });
+    std::sort(labels.begin(), labels.end());
     return labels;
 }
 

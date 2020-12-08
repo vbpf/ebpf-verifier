@@ -50,7 +50,7 @@
 #include <set>
 #include <vector>
 #include <forward_list>
-#include <unordered_map>
+#include <map>
 #include <variant>
 
 #include "crab/cfg.hpp"
@@ -251,9 +251,9 @@ class wto_t final {
   private:
     using wto_component_list_t = std::forward_list<wto_component_t>;
     using dfn_t = bound_t;
-    using dfn_table_t = std::unordered_map<vertex_descriptor_t, dfn_t>;
+    using dfn_table_t = std::map<vertex_descriptor_t, dfn_t>;
     using stack_t = std::vector<vertex_descriptor_t>;
-    using nesting_table_t = std::unordered_map<vertex_descriptor_t, wto_nesting_t>;
+    using nesting_table_t = std::map<vertex_descriptor_t, wto_nesting_t>;
 
     wto_component_list_t _wto_components;
     dfn_table_t _dfn_table;

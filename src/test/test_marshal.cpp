@@ -59,13 +59,13 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
         SECTION("Reg right") {
             for (auto op : ops) {
                 Condition cond{.op = op, .left = Reg{1}, .right = Reg{2}};
-                compare_marshal_unmarshal(Jmp{.cond = cond, .target = "1"});
+                compare_marshal_unmarshal(Jmp{.cond = cond, .target = label_t(1)});
             }
         }
         SECTION("Imm right") {
             for (auto op : ops) {
                 Condition cond{.op = op, .left = Reg{1}, .right = Imm{2}};
-                compare_marshal_unmarshal(Jmp{.cond = cond, .target = "1"});
+                compare_marshal_unmarshal(Jmp{.cond = cond, .target = label_t(1)});
             }
         }
     }

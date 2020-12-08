@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-#include <unordered_map>
+#include <map>
 #include <algorithm>
 #include <climits>
 
@@ -52,7 +52,7 @@ class wto_thresholds_t final {
     // maximum number of thresholds
     size_t m_max_size;
     // keep a set of thresholds per wto head
-    std::unordered_map<label_t, thresholds_t> m_head_to_thresholds;
+    std::map<label_t, thresholds_t> m_head_to_thresholds;
     // the top of the stack is the current wto head
     std::vector<label_t> m_stack;
 
