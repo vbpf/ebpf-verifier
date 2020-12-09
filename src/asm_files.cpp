@@ -109,22 +109,24 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
     }
     for (size_t i = 0; i < mapdefs.size(); i++) {
         unsigned int inner = mapdefs[i].inner_map_idx;
-        info.map_defs[i].inner_map_fd = info.map_defs[inner].original_fd;
+        if (inner >= info.map_defs.size())
+            throw std::runtime_error(string("bad inner map index ") + std::to_string(inner)
+                                     + " for map " + std::to_string(i));
+        info.map_defs[i].inner_map_fd = info.map_defs.at(inner).original_fd;
     }
 
     ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
-    auto read_reloc_value = [&symbols](int symbol) -> int {
+    auto read_reloc_value = [&symbols](int symbol) -> size_t {
         string symbol_name;
         ELFIO::Elf64_Addr value{};
-        ELFIO::Elf_Xword size;
-        unsigned char bind;
-        unsigned char type;
-        ELFIO::Elf_Half section_index;
-        unsigned char other;
+        ELFIO::Elf_Xword size{};
+        unsigned char bind{};
+        unsigned char type{};
+        ELFIO::Elf_Half section_index{};
+        unsigned char other{};
         symbols.get_symbol(symbol, symbol_name, value, size, bind, type, section_index, other);
 
-        // We assume the reloc value fits safely in an int, but cast to avoid compiler warnings.
-        return static_cast<int>(value / sizeof(bpf_load_map_def));
+        return value / sizeof(bpf_load_map_def);
     };
 
     vector<raw_program> res;
@@ -159,16 +161,20 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
             ELFIO::Elf_Word symbol{};
             ELFIO::Elf_Word type;
             ELFIO::Elf_Sxword addend;
-            for (unsigned int i = 0; i < reloc.get_entries_num(); i++) {
+            for (ELFIO::Elf_Xword i = 0; i < reloc.get_entries_num(); i++) {
                 if (reloc.get_entry(i, offset, symbol, type, addend)) {
                     auto& inst = prog.prog[offset / sizeof(ebpf_inst)];
                     inst.src = 1; // magic number for LoadFd
-                                  // if (fd_alloc == allocate_fds) {
-                                  //     std::cout << read_reloc_value(symbol) << "=" <<
-                    //     info.map_defs[updated_fds.at(read_reloc_value(symbol))].value_size << "\n"; inst.imm =
-                    //     updated_fds.at(read_reloc_value(symbol));
+
+                    // if (fd_alloc == allocate_fds) {
+                    //     std::cout << read_reloc_value(symbol) << "=" <<
+                    //     info.map_defs[updated_fds.at(read_reloc_value(symbol))].value_size << "\n";
+                    //     inst.imm = updated_fds.at(read_reloc_value(symbol));
                     // } else {
-                    inst.imm = info.map_defs[read_reloc_value(symbol)].original_fd;
+                    size_t reloc_value = read_reloc_value(symbol);
+                    if (reloc_value >= info.map_defs.size())
+                        throw std::runtime_error(string("bad reloc value ") + std::to_string(reloc_value));
+                    inst.imm = info.map_defs.at(reloc_value).original_fd;
                     // }
                 }
             }
