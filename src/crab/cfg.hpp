@@ -66,33 +66,33 @@ class basic_block_t final {
 
     void insert(const Instruction& arg) { m_ts.push_back(arg); }
 
-    explicit basic_block_t(label_t _label) : m_label(std::move(_label)) {}
+    explicit basic_block_t(label_t _label) : m_label(_label) {}
 
     ~basic_block_t() = default;
 
-    label_t label() const { return m_label; }
+    [[nodiscard]] label_t label() const { return m_label; }
 
     iterator begin() { return (m_ts.begin()); }
     iterator end() { return (m_ts.end()); }
-    const_iterator begin() const { return (m_ts.begin()); }
-    const_iterator end() const { return (m_ts.end()); }
+    [[nodiscard]] const_iterator begin() const { return (m_ts.begin()); }
+    [[nodiscard]] const_iterator end() const { return (m_ts.end()); }
 
     reverse_iterator rbegin() { return (m_ts.rbegin()); }
     reverse_iterator rend() { return (m_ts.rend()); }
-    const_reverse_iterator rbegin() const { return (m_ts.rbegin()); }
-    const_reverse_iterator rend() const { return (m_ts.rend()); }
+    [[nodiscard]] const_reverse_iterator rbegin() const { return (m_ts.rbegin()); }
+    [[nodiscard]] const_reverse_iterator rend() const { return (m_ts.rend()); }
 
-    size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
+    [[nodiscard]] size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
 
     std::pair<succ_iterator, succ_iterator> next_blocks() { return std::make_pair(m_next.begin(), m_next.end()); }
 
     std::pair<pred_iterator, pred_iterator> prev_blocks() { return std::make_pair(m_prev.begin(), m_prev.end()); }
 
-    std::pair<const_succ_iterator, const_succ_iterator> next_blocks() const {
+    [[nodiscard]] std::pair<const_succ_iterator, const_succ_iterator> next_blocks() const {
         return std::make_pair(m_next.begin(), m_next.end());
     }
 
-    std::pair<const_pred_iterator, const_pred_iterator> prev_blocks() const {
+    [[nodiscard]] std::pair<const_pred_iterator, const_pred_iterator> prev_blocks() const {
         return std::make_pair(m_prev.begin(), m_prev.end());
     }
 
@@ -114,11 +114,11 @@ class basic_block_t final {
         std::move(other.m_ts.begin(), other.m_ts.end(), std::back_inserter(m_ts));
     }
 
-    size_t in_degree() {
+    [[nodiscard]] size_t in_degree() const {
         return m_prev.size();
     }
 
-    size_t out_degree() {
+    [[nodiscard]] size_t out_degree() const {
         return m_next.size();
     }
 
@@ -142,25 +142,25 @@ class basic_block_rev_t final {
 
     explicit basic_block_rev_t(basic_block_t& bb) : _bb(bb) {}
 
-    label_t label() const { return _bb.label(); }
+    [[nodiscard]] label_t label() const { return _bb.label(); }
 
     iterator begin() { return _bb.rbegin(); }
 
     iterator end() { return _bb.rend(); }
 
-    const_iterator begin() const { return _bb.rbegin(); }
+    [[nodiscard]] const_iterator begin() const { return _bb.rbegin(); }
 
-    const_iterator end() const { return _bb.rend(); }
+    [[nodiscard]] const_iterator end() const { return _bb.rend(); }
 
-    std::size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
+    [[nodiscard]] std::size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
 
     std::pair<succ_iterator, succ_iterator> next_blocks() { return _bb.prev_blocks(); }
 
     std::pair<pred_iterator, pred_iterator> prev_blocks() { return _bb.next_blocks(); }
 
-    std::pair<const_succ_iterator, const_succ_iterator> next_blocks() const { return _bb.prev_blocks(); }
+    [[nodiscard]] std::pair<const_succ_iterator, const_succ_iterator> next_blocks() const { return _bb.prev_blocks(); }
 
-    std::pair<const_pred_iterator, const_pred_iterator> prev_blocks() const { return _bb.next_blocks(); }
+    [[nodiscard]] std::pair<const_pred_iterator, const_pred_iterator> prev_blocks() const { return _bb.next_blocks(); }
 };
 
 /// Control-Flow Graph.
