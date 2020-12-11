@@ -410,7 +410,7 @@ struct Unmarshaller {
             */
             if (pc == insts.size() - 1 && fallthrough)
                 note("fallthrough in last instruction");
-            prog.emplace_back(label_t{pc}, new_ins);
+            prog.emplace_back(label_t(pc), new_ins);
             pc++;
             note_next_pc();
             if (lddw) {
