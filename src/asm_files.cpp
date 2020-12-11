@@ -93,8 +93,9 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
     assert(fd_alloc != nullptr);
     ELFIO::elfio reader;
     if (!reader.load(path)) {
-        std::cerr << "Can't find or process ELF file " << path << "\n";
-        exit(2);
+        std::stringstream msg;
+        msg << "Can't find or process ELF file " << path << "\n";
+        throw std::runtime_error(msg.str());
     }
 
     program_info info{};
