@@ -1,0 +1,23 @@
+name: CPP CI
+
+on:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt install libboost-dev
+
+      - uses: actions/checkout@v2
+      - name: Build
+        run: |
+          mkdir build
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j $(nproc)
+
+      - name: Run unit tests
+        run: ./tests
