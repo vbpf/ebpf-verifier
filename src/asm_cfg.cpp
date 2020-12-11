@@ -123,20 +123,23 @@ static cfg_t to_nondet(const cfg_t& cfg) {
             }
         }
 
-        auto [pb, pe] = bb.prev_blocks();
-        for (const label_t& prev_label : vector<label_t>(pb, pe)) {
-            bool is_one = unique(cfg.get_node(prev_label).next_blocks()).size() > 1;
+        for (const label_t& prev_label : bb.prev_blocks_set()) {
+            bool is_one = cfg.get_node(prev_label).next_blocks_set().size() > 1;
             basic_block_t& pbb = res.insert(is_one ? label_t(prev_label, this_label) : prev_label);
             pbb >> newbb;
         }
         // note the special case where we jump to fallthrough
-        auto nextlist = unique(bb.next_blocks());
+        auto nextlist = bb.next_blocks_set();
         if (nextlist.size() == 2) {
             label_t mid_label = this_label;
-            Condition cond = *std::get<Jmp>(*bb.rbegin()).cond;
+            Jmp jmp = std::get<Jmp>(*bb.rbegin());
+
+            nextlist.erase(jmp.target);
+            label_t fallthrough = *nextlist.begin();
+
             vector<std::tuple<label_t, Condition>> jumps{
-                {*bb.next_blocks().first, cond},
-                {*std::next(bb.next_blocks().first), reverse(cond)},
+                {jmp.target, *jmp.cond},
+                {fallthrough, reverse(*jmp.cond)},
             };
             for (auto const& [next_label, cond1] : jumps) {
                 label_t jump_label(mid_label, next_label);

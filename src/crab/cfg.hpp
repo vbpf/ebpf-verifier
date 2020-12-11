@@ -37,12 +37,11 @@ class basic_block_t final {
     friend class cfg_t;
 
   private:
-    using label_vec_t = std::set<label_t>;
 
   public:
     basic_block_t(const basic_block_t&) = delete;
-    // -- iterators
 
+    using label_vec_t = std::set<label_t>;
     using stmt_list_t = std::vector<Instruction>;
     using succ_iterator = label_vec_t::iterator;
     using const_succ_iterator = label_vec_t::const_iterator;
@@ -94,6 +93,14 @@ class basic_block_t final {
 
     [[nodiscard]] std::pair<const_pred_iterator, const_pred_iterator> prev_blocks() const {
         return std::make_pair(m_prev.begin(), m_prev.end());
+    }
+
+    [[nodiscard]] const label_vec_t& next_blocks_set() const {
+        return m_next;
+    }
+
+    [[nodiscard]] const label_vec_t& prev_blocks_set() const {
+        return m_prev;
     }
 
     // Add a cfg_t edge from *this to b
@@ -161,6 +168,15 @@ class basic_block_rev_t final {
     [[nodiscard]] std::pair<const_succ_iterator, const_succ_iterator> next_blocks() const { return _bb.prev_blocks(); }
 
     [[nodiscard]] std::pair<const_pred_iterator, const_pred_iterator> prev_blocks() const { return _bb.next_blocks(); }
+
+
+    [[nodiscard]] const basic_block_t::label_vec_t& next_blocks_set() const {
+        return _bb.prev_blocks_set();
+    }
+
+    [[nodiscard]] const basic_block_t::label_vec_t& prev_blocks_set() const {
+        return _bb.next_blocks_set();
+    }
 };
 
 /// Control-Flow Graph.

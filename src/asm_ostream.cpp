@@ -367,8 +367,7 @@ void print_dot(const cfg_t& cfg, std::ostream& out) {
         }
 
         out << "\"];\n";
-        auto [b, e] = bb.next_blocks();
-        for (const label_t& next : std::vector<label_t>(b, e))
+        for (const label_t& next : bb.next_blocks_set())
             out << "    \"" << label << "\" -> \"" << next << "\";\n";
         out << "\n";
     }
@@ -411,8 +410,8 @@ std::ostream& operator<<(std::ostream& o, const crab::basic_block_rev_t& bb) {
         o << "  " << s << ";\n";
     }
     o << "--> [";
-    for (auto const& n : boost::make_iterator_range(bb.next_blocks())) {
-        o << n << ";";
+    for (const label_t& label : bb.next_blocks_set()) {
+        o << label << ";";
     }
     o << "]\n";
     return o;
