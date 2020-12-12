@@ -48,24 +48,24 @@ TEST_CASE("bad verify arguments", "[verify][failure]") {
 }
 
 #define TEST_SECTION(dirname, filename, sectionname) \
-  { \
+  do { \
     std::stringstream pathname, sectiondesc; \
     pathname << "ebpf-samples/" << dirname << "/" << filename; \
     sectiondesc << filename << " " << sectionname; \
     SECTION(sectiondesc.str()) { \
         REQUIRE(try_verify(pathname.str().c_str(), sectionname)); \
     } \
-  }
+  } while (0)
 
 #define TEST_SECTION_FAIL(dirname, filename, sectionname) \
-  { \
+  do { \
     std::stringstream pathname, sectiondesc; \
     pathname << "ebpf-samples/" << dirname << "/" << filename; \
     sectiondesc << filename << " " << sectionname; \
     SECTION(sectiondesc.str()) { \
         REQUIRE(!try_verify(pathname.str().c_str(), sectionname)); \
     } \
-  }
+  } while (0)
 
 TEST_CASE("verify bpf_cilium_test samples", "[verify][bpf_cilium_test]") {
     TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "1/0xdc06");
