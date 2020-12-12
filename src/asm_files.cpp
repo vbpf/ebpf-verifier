@@ -93,9 +93,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
     assert(fd_alloc != nullptr);
     ELFIO::elfio reader;
     if (!reader.load(path)) {
-        std::stringstream msg;
-        msg << "Can't find or process ELF file " << path << "\n";
-        throw std::runtime_error(msg.str());
+        throw std::runtime_error(string("Can't find or process ELF file ") + path);
     }
 
     program_info info{};
@@ -183,7 +181,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
         res.push_back(prog);
     }
     if (res.empty()) {
-        std::cerr << "Could not find relevant section!\n";
+        throw std::runtime_error(string("Can't find section ") + desired_section + " in file " + path);
     }
     return res;
 }
