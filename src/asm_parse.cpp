@@ -91,11 +91,11 @@ Instruction parse_instruction(const std::string& text) {
         return Call{.func = func};
     }
     if (regex_match(text, m, regex(REG OPASSIGN REG))) {
-        return Bin{.op = str_to_binop.at(m[2]), .is64 = true, .dst = reg(m[1]), .v = reg(m[3]), .lddw = false};
+        return Bin{.op = str_to_binop.at(m[2]), .dst = reg(m[1]), .v = reg(m[3]), .is64 = true, .lddw = false};
     }
     if (regex_match(text, m, regex(REG OPASSIGN IMM LONGLONG))) {
         return Bin{
-            .op = str_to_binop.at(m[2]), .is64 = true, .dst = reg(m[1]), .v = imm(m[3]), .lddw = !m[4].str().empty()};
+            .op = str_to_binop.at(m[2]), .dst = reg(m[1]), .v = imm(m[3]), .is64 = true, .lddw = !m[4].str().empty()};
     }
     if (regex_match(text, m, regex(REG ASSIGN DEREF PAREN(REG PLUSMINUS IMM)))) {
         return Mem{

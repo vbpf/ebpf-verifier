@@ -71,9 +71,9 @@ struct Bin {
     };
 
     Op op;
-    bool is64{};
     Reg dst;      ///< Destination.
     Value v;
+    bool is64{};
     bool lddw{};
 };
 

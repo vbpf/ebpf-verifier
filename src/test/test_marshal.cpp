@@ -21,19 +21,19 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
                     Bin::Op::OR,  Bin::Op::AND, Bin::Op::LSH, Bin::Op::RSH, Bin::Op::ARSH, Bin::Op::XOR};
         SECTION("Reg src") {
             for (auto op : ops) {
-                compare_marshal_unmarshal(Bin{.op = op, .is64 = true, .dst = Reg{1}, .v = Reg{2}});
-                compare_marshal_unmarshal(Bin{.op = op, .is64 = false, .dst = Reg{1}, .v = Reg{2}});
+                compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Reg{2}, .is64 = true});
+                compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Reg{2}, .is64 = false});
             }
         }
         SECTION("Imm src") {
             for (auto op : ops) {
                 // .is64=true should fail?
-                compare_marshal_unmarshal(Bin{.op = op, .is64 = false, .dst = Reg{1}, .v = Imm{2}});
-                compare_marshal_unmarshal(Bin{.op = op, .is64 = true, .dst = Reg{1}, .v = Imm{2}});
+                compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Imm{2}, .is64 = false});
+                compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Imm{2}, .is64 = true});
             }
             SECTION("LDDW") {
                 compare_marshal_unmarshal(
-                    Bin{.op = Bin::Op::MOV, .is64 = true, .dst = Reg{1}, .v = Imm{2}, .lddw = true}, true);
+                    Bin{.op = Bin::Op::MOV, .dst = Reg{1}, .v = Imm{2}, .is64 = true, .lddw = true}, true);
             }
         }
     }

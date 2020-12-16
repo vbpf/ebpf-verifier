@@ -39,7 +39,7 @@ uint8_t width_to_opcode(int width) {
 }
 
 template <typename T>
-void compare(string field, T actual, T expected) {
+void compare(const string& field, T actual, T expected) {
     if (actual != expected)
         std::cerr << field << ": (actual) " << std::hex << (int)actual << " != " << (int)expected << " (expected)\n";
 }
@@ -237,9 +237,9 @@ struct Unmarshaller {
                                      [&](Bin::Op op) -> Instruction {
                                          Bin res{
                                              .op = op,
-                                             .is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64,
                                              .dst = Reg{inst.dst},
                                              .v = getBinValue(inst),
+                                             .is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64,
                                          };
                                          if (op == Bin::Op::DIV || op == Bin::Op::MOD)
                                              if (std::holds_alternative<Imm>(res.v) && std::get<Imm>(res.v).v == 0)
@@ -266,9 +266,9 @@ struct Unmarshaller {
             note("invalid LDDW");
         return Bin{
             .op = Bin::Op::MOV,
-            .is64 = true,
             .dst = Reg{inst.dst},
             .v = Imm{merge(inst.imm, next_imm)},
+            .is64 = true,
             .lddw = true,
         };
     }
@@ -356,7 +356,7 @@ struct Unmarshaller {
     vector<LabeledInstruction> unmarshal(vector<ebpf_inst> const& insts) {
         vector<LabeledInstruction> prog;
         int exit_count = 0;
-        if (insts.size() == 0) {
+        if (insts.empty()) {
             throw std::invalid_argument("Zero length programs are not allowed");
         }
         for (size_t pc = 0; pc < insts.size();) {
