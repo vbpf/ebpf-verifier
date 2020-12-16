@@ -49,9 +49,18 @@ class interleaved_fwd_fixpoint_iterator_t final {
     cfg_t& _cfg;
     wto_t _wto;
     invariant_table_t _pre, _post;
-    // number of iterations until triggering widening
+
+    /// number of iterations until triggering widening
     const unsigned int _widening_delay{1};
-    // Used to skip the analysis until _entry is found
+
+    /// number of narrowing iterations. If the narrowing operator is
+    /// indeed a narrowing operator this parameter is not
+    /// needed. However, there are abstract domains for which an actual
+    /// narrowing operation is not available so we must enforce
+    /// termination.
+    const unsigned int _descending_iterations;
+
+    /// Used to skip the analysis until _entry is found
     bool _skip{true};
 
   private:
@@ -91,7 +100,7 @@ class interleaved_fwd_fixpoint_iterator_t final {
     }
 
   public:
-    explicit interleaved_fwd_fixpoint_iterator_t(cfg_t& cfg) : _cfg(cfg), _wto(cfg) {
+    explicit interleaved_fwd_fixpoint_iterator_t(cfg_t& cfg, unsigned int descending_iterations) : _cfg(cfg), _wto(cfg), _descending_iterations(descending_iterations) {
         for (const auto& label : _cfg.labels()) {
             _pre.emplace(label, ebpf_domain_t::bottom());
             _post.emplace(label, ebpf_domain_t::bottom());
@@ -112,7 +121,8 @@ class interleaved_fwd_fixpoint_iterator_t final {
 
 std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg) {
     // Go over the CFG in weak topological order (accounting for loops).
-    interleaved_fwd_fixpoint_iterator_t analyzer(cfg);
+    constexpr unsigned int descending_iterations = 20;
+    interleaved_fwd_fixpoint_iterator_t analyzer(cfg, descending_iterations);
     for (wto_component_t& c : analyzer._wto) {
         std::visit(analyzer, c);
     }
@@ -186,6 +196,11 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(wto_cycle_t& cycle) {
         }
     }
 
+    if (this->_descending_iterations == 0) {
+        // no narrowing
+        return;
+    }
+
     for (unsigned int iteration = 1;; ++iteration) {
         // Decreasing iteration sequence with narrowing
         transform_to_post(head, pre);
@@ -198,6 +213,8 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(wto_cycle_t& cycle) {
             // No more refinement possible(pre == new_pre)
             break;
         } else {
+            if (iteration > _descending_iterations)
+                break;
             pre = refine(head, iteration, pre, new_pre);
             set_pre(head, pre);
         }
