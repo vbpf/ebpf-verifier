@@ -75,6 +75,7 @@ Options:
   -l                          List sections
   -d,--dom,--domain DOMAIN:{cfg,linux,stats,zoneCrab}
                               Abstract domain
+  --termination               Verify termination
   -i                          Print invariants
   -f                          Print verifier's failure logs
   -v                          Print both invariants and failures
@@ -179,9 +180,8 @@ counter/objects/simple_loop_ptr_backwards.o
 back-edge from insn 7 to 5
 ```
 
-Using our tool, the safety (but not termination) of some loop-based programs can be verified:
+Using our tool, the safety and termination of some loop-based programs can be verified:
 ```
-$ ./check counter/objects/simple_loop_ptr_backwards.o
-1,0.018346,7900
+$ ./check --termination counter/objects/simple_loop_ptr_backwards.o
 ```
 (not all the programs in the folder are verified)

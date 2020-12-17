@@ -47,6 +47,9 @@ int main(int argc, char** argv) {
     std::set<string> doms{"stats", "linux", "zoneCrab", "cfg"};
     app.add_set("-d,--dom,--domain", domain, doms, "Abstract domain")->type_name("DOMAIN");
 
+    ebpf_verifier_options.check_termination = false;
+    app.add_flag("--termination", ebpf_verifier_options.check_termination, "Verify termination");
+
     bool verbose = false;
     app.add_flag("-i", ebpf_verifier_options.print_invariants, "Print invariants");
     app.add_flag("-f", ebpf_verifier_options.print_failures, "Print verifier's failure logs");

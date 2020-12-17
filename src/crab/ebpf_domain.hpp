@@ -378,10 +378,20 @@ class ebpf_domain_t final {
     // a constraint, so all of them would be converted to some kind of
     // constraint that is added to the domain.
 
-    void operator()(const basic_block_t& bb) {
+    void operator()(const basic_block_t& bb, bool check_termination) {
         for (const Instruction& statement : bb) {
             std::visit(*this, statement);
         }
+        if (check_termination) {
+            // +1 to avoid being tricked by empty loops
+            add(variable_t::instruction_count(), z_number((unsigned)bb.size() + 1));
+        }
+    }
+
+    bool terminates() {
+        using namespace crab::dsl_syntax;
+        constexpr int max_instructions = 100000;
+        return m_inv.entail(variable_t::instruction_count() <= max_instructions);
     }
 
     void operator()(Assume const& s) {
@@ -1045,7 +1055,7 @@ class ebpf_domain_t final {
         return o;
     }
 
-    static ebpf_domain_t setup_entry() {
+    static ebpf_domain_t setup_entry(bool check_termination) {
         using namespace dsl_syntax;
 
         // intra_abs_transformer<AbsDomain>(inv);
@@ -1068,6 +1078,9 @@ class ebpf_domain_t final {
             inv += variable_t::meta_offset() >= -4098;
         } else {
             inv.assign(variable_t::meta_offset(), 0);
+        }
+        if (check_termination) {
+            inv.assign(variable_t::instruction_count(), 0);
         }
         return inv;
     }

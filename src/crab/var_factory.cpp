@@ -66,5 +66,6 @@ variable_t variable_t::map_value_size() { return make("map_value_size"); }
 variable_t variable_t::map_key_size() { return make("map_key_size"); }
 variable_t variable_t::meta_offset() { return make("meta_offset"); }
 variable_t variable_t::packet_size() { return make("packet_size"); }
+variable_t variable_t::instruction_count() { return make("instruction_count"); }
 
 } // end namespace crab

@@ -36,6 +36,7 @@ struct checks_db final {
     std::map<label_t, std::vector<std::string>> m_db;
     int total_warnings{};
     int total_unreachable{};
+    std::set<label_t> maybe_nonterminating;
 
     void add(const label_t& label, const std::string& msg) {
         m_db[label].emplace_back(msg);
@@ -49,6 +50,11 @@ struct checks_db final {
     void add_unreachable(const label_t& label, const std::string& msg) {
         add(label, msg);
         total_unreachable++;
+    }
+
+    void add_nontermination(const label_t& label) {
+        maybe_nonterminating.insert(label);
+        total_warnings++;
     }
 
     checks_db() = default;
@@ -69,8 +75,6 @@ static checks_db generate_report(std::ostream& s,
             s << "\n" << postconditions.at(label) << "\n";
         }
 
-        if (std::none_of(bb.begin(), bb.end(), [](const auto& s) { return std::holds_alternative<Assert>(s); }))
-            continue;
         ebpf_domain_t from_inv(preconditions.at(label));
         from_inv.set_require_check([&m_db, label](auto& inv, const linear_constraint_t& cst, const std::string& s) {
             if (inv.is_bottom())
@@ -90,9 +94,18 @@ static checks_db generate_report(std::ostream& s,
             }
         });
 
+        if (options.check_termination) {
+            bool pre_join_terminates = false;
+            for (const label_t& prev_label : bb.prev_blocks_set())
+                pre_join_terminates |= preconditions.at(prev_label).terminates();
+
+            if (pre_join_terminates && !from_inv.terminates())
+                m_db.add_nontermination(label);
+        }
+
         bool pre_bot = from_inv.is_bottom();
 
-        from_inv(bb);
+        from_inv(bb, options.check_termination);
 
         if (!pre_bot && from_inv.is_bottom()) {
             m_db.add_unreachable(label, std::string("Invariant became _|_ after ") + to_string(bb.label()));
@@ -109,6 +122,15 @@ static void print_report(std::ostream& s, const checks_db& db) {
             s << "  " << msg << "\n";
     }
     s << "\n";
+    if (db.maybe_nonterminating.empty()) {
+        s << "Always terminates\n";
+    } else {
+        s << "Could not prove termination on join into: ";
+        for (const label_t& label : db.maybe_nonterminating) {
+            s << label << ", ";
+        }
+        s << "\n";
+    }
     s << db.total_warnings << " warnings\n";
 }
 
@@ -122,7 +144,7 @@ bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, program_info info, const ebp
 
     // Get dictionaries of preconditions and postconditions for each
     // basic block.
-    auto [preconditions, postconditions] = crab::run_forward_analyzer(cfg);
+    auto [preconditions, postconditions] = crab::run_forward_analyzer(cfg, options->check_termination);
 
     checks_db report = generate_report(s, cfg, preconditions, postconditions, *options);
 

@@ -3,6 +3,7 @@
 #pragma once
 
 struct ebpf_verifier_options_t {
+    bool check_termination;
     bool print_invariants;
     bool print_failures;
 };
