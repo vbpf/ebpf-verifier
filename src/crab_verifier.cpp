@@ -41,8 +41,15 @@ struct checks_db final {
         m_db[label].emplace_back(msg);
     }
 
-    void add_warning(const label_t& label, const std::string& msg) { add(label,     msg); total_warnings++; }
-    void add_unreachable(const label_t& label, const std::string& msg) { add(label, msg); total_unreachable++; }
+    void add_warning(const label_t& label, const std::string& msg) {
+        add(label, msg);
+        total_warnings++;
+    }
+
+    void add_unreachable(const label_t& label, const std::string& msg) {
+        add(label, msg);
+        total_unreachable++;
+    }
 
     checks_db() = default;
 };
