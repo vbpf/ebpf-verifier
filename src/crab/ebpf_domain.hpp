@@ -186,7 +186,9 @@ class ebpf_domain_t final {
 
     bool is_top() const { return m_inv.is_top() && stack.is_top(); }
 
-    bool operator<=(const ebpf_domain_t& other) { return m_inv <= other.m_inv && stack <= other.stack; }
+    bool operator<=(const ebpf_domain_t& other) {
+        return m_inv <= other.m_inv && stack <= other.stack;
+    }
 
     bool operator==(ebpf_domain_t other) {
         return stack == other.stack && m_inv <= other.m_inv && other.m_inv <= m_inv;
