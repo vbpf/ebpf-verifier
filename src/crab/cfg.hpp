@@ -214,24 +214,7 @@ class cfg_t final {
     basic_block_map_t m_blocks;
 
     using visited_t = std::set<label_t>;
-    template <typename T>
-    void dfs_rec(const label_t& curId, visited_t& visited, T f) const {
-        if (!visited.insert(curId).second)
-            return;
-
-        const auto& cur = get_node(curId);
-        f(cur);
-        for (const auto& n : boost::make_iterator_range(cur.next_blocks())) {
-            dfs_rec(n, visited, f);
-        }
-    }
   public:
-
-    template <typename T>
-    void dfs(T f) const {
-        visited_t visited;
-        dfs_rec(m_entry, visited, f);
-    }
 
     cfg_t(const label_t& entry, const label_t& exit) : m_entry(entry), m_exit(exit) {
         m_blocks.emplace(entry, entry);
@@ -448,22 +431,6 @@ class cfg_rev_t final {
 
   private:
     using visited_t = std::set<label_t>;
-
-    template <typename T>
-    void dfs_rec(const label_t& curId, visited_t& visited, T f) const {
-        if (!visited.insert(curId).second)
-            return;
-        f(get_node(curId));
-        for (const auto& n : next_nodes(curId)) {
-            dfs_rec(n, visited, f);
-        }
-    }
-
-    template <typename T>
-    void dfs(T f) const {
-        visited_t visited;
-        dfs_rec(entry(), visited, f);
-    }
 
   public:
     using basic_block_rev_map_t = std::map<label_t, basic_block_rev_t>;
