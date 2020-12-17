@@ -926,6 +926,8 @@ class ebpf_domain_t final {
                 // avoid signedness and overflow issues in ashr(dst.value, imm);
                 // = (int64_t)dst >> imm;
                 havoc(dst.value);
+                // assume(dst.value <= (1 << (64 - imm)));
+                // assume(dst.value >= -(1 << (64 - imm)));
                 no_pointer(dst);
                 break;
             case Bin::Op::XOR:

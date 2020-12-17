@@ -122,6 +122,7 @@ static void print_report(const checks_db& db) {
     std::cout << db.total_warnings << " warnings\n";
 }
 
+/// First item of returned value is true if the program passes verification
 std::tuple<bool, double> run_ebpf_analysis(cfg_t& cfg, program_info info) {
     global_program_info = std::move(info);
     crab::domains::clear_global_state();
