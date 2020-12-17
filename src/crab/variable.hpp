@@ -56,6 +56,7 @@ class variable_t final {
     static variable_t map_key_size();
     static variable_t meta_offset();
     static variable_t packet_size();
+    static variable_t instruction_count();
 }; // class variable_t
 
 inline size_t hash_value(variable_t v) { return v.hash(); }
