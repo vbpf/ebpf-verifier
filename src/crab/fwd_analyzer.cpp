@@ -96,7 +96,7 @@ class interleaved_fwd_fixpoint_iterator_t final {
             _pre.emplace(label, ebpf_domain_t::bottom());
             _post.emplace(label, ebpf_domain_t::bottom());
         }
-        _pre[this->_cfg.entry()] = ebpf_domain_t::setup_entry();
+        _pre[this->_cfg.entry_label()] = ebpf_domain_t::setup_entry_label();
     }
 
     ebpf_domain_t get_pre(const label_t& node) { return _pre.at(node); }
@@ -123,14 +123,14 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(wto_vertex_t& vertex) {
     label_t node = vertex.node();
 
     /** decide whether skip vertex or not **/
-    if (_skip && (node == _cfg.entry())) {
+    if (_skip && (node == _cfg.entry_label())) {
         _skip = false;
     }
     if (_skip) {
         return;
     }
 
-    ebpf_domain_t pre = node == _cfg.entry() ? get_pre(node) : join_all_prevs(node);
+    ebpf_domain_t pre = node == _cfg.entry_label() ? get_pre(node) : join_all_prevs(node);
 
     set_pre(node, pre);
     transform_to_post(node, pre);
@@ -144,7 +144,7 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(wto_cycle_t& cycle) {
     if (_skip) {
         // We only skip the analysis of cycle is _entry is not a
         // component of it, included nested components.
-        member_component_visitor vis(_cfg.entry());
+        member_component_visitor vis(_cfg.entry_label());
         vis(cycle);
         entry_in_this_cycle = vis.is_member();
         _skip = !entry_in_this_cycle;
@@ -155,7 +155,7 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(wto_cycle_t& cycle) {
 
     ebpf_domain_t pre = ebpf_domain_t::bottom();
     if (entry_in_this_cycle) {
-        pre = get_pre(_cfg.entry());
+        pre = get_pre(_cfg.entry_label());
     } else {
         wto_nesting_t cycle_nesting = _wto.nesting(head);
         for (const label_t& prev : _cfg.prev_nodes(head)) {

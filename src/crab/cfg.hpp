@@ -228,11 +228,11 @@ class cfg_t final {
 
     ~cfg_t() = default;
 
-    [[nodiscard]] label_t exit() const { return m_exit; }
+    [[nodiscard]] label_t exit_label() const { return m_exit; }
 
     // --- Begin ikos fixpoint API
 
-    [[nodiscard]] label_t entry() const { return m_entry; }
+    [[nodiscard]] label_t entry_label() const { return m_entry; }
 
     [[nodiscard]] const_succ_range next_nodes(const label_t& _label) const {
         return boost::make_iterator_range(get_node(_label).next_blocks());
@@ -454,7 +454,7 @@ class cfg_rev_t final {
 
     cfg_rev_t(cfg_rev_t&& o) noexcept : _cfg(o._cfg), _rev_bbs(std::move(o._rev_bbs)) {}
 
-    [[nodiscard]] label_t entry() const { return _cfg.exit(); }
+    [[nodiscard]] label_t entry_label() const { return _cfg.exit_label(); }
 
     [[nodiscard]] const_succ_range next_nodes(const label_t& bb) const { return _cfg.prev_nodes(bb); }
 
@@ -490,14 +490,14 @@ class cfg_rev_t final {
 
     label_iterator label_end() { return _cfg.label_end(); }
 
-    [[nodiscard]] label_t exit() const { return _cfg.entry(); }
+    [[nodiscard]] label_t exit_label() const { return _cfg.entry_label(); }
 };
 
 inline void cfg_t::remove_useless_blocks() {
     cfg_rev_t rev_cfg(*this);
 
     visited_t useful, useless;
-    mark_alive_blocks(rev_cfg.entry(), rev_cfg, useful);
+    mark_alive_blocks(rev_cfg.entry_label(), rev_cfg, useful);
 
     if (!useful.count(m_exit))
         CRAB_ERROR("Exit block must be reachable");
@@ -514,7 +514,7 @@ inline void cfg_t::remove_useless_blocks() {
 
 inline void cfg_t::remove_unreachable_blocks() {
     visited_t alive, dead;
-    mark_alive_blocks(entry(), *this, alive);
+    mark_alive_blocks(entry_label(), *this, alive);
 
     for (auto const& label : labels()) {
         if (alive.count(label) <= 0) {

@@ -113,7 +113,7 @@ static vector<label_t> unique(const std::pair<T, T>& be) {
 /// simultaneously, and are replaced by Assume instructions
 /// immediately after the branch.
 static cfg_t to_nondet(const cfg_t& cfg) {
-    cfg_t res(cfg.entry(), cfg.exit());
+    cfg_t res(cfg.entry_label(), cfg.exit_label());
     for (auto const& [this_label, bb] : cfg) {
         basic_block_t& newbb = res.insert(this_label);
 

@@ -1027,7 +1027,7 @@ class ebpf_domain_t final {
         return o;
     }
 
-    static ebpf_domain_t setup_entry() {
+    static ebpf_domain_t setup_entry_label() {
         using namespace dsl_syntax;
 
         // intra_abs_transformer<AbsDomain>(inv);
