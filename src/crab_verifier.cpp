@@ -88,12 +88,12 @@ static checks_db generate_report(cfg_t& cfg,
             }
         });
 
-        for (const auto& statement : bb) {
-            bool pre_bot = from_inv.is_bottom();
-            std::visit(from_inv, statement);
-            if (!pre_bot && from_inv.is_bottom()) {
-                m_db.add_unreachable(label, "inv became bot after " + to_string(statement));
-            }
+        bool pre_bot = from_inv.is_bottom();
+
+        from_inv(bb);
+
+        if (!pre_bot && from_inv.is_bottom()) {
+            m_db.add_unreachable(label, std::string("inv became bot after ") + to_string(bb.label()));
         }
     }
     return m_db;

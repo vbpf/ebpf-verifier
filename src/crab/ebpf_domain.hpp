@@ -376,6 +376,12 @@ class ebpf_domain_t final {
     // a constraint, so all of them would be converted to some kind of
     // constraint that is added to the domain.
 
+    void operator()(const basic_block_t& bb) {
+        for (const Instruction& statement : bb) {
+            std::visit(*this, statement);
+        }
+    }
+
     void operator()(Assume const& s) {
         using namespace dsl_syntax;
         Condition cond = s.cond;
@@ -907,18 +913,19 @@ class ebpf_domain_t final {
                 no_pointer(dst);
                 break;
             case Bin::Op::LSH:
-                shl_overflow(dst.value, imm); // avoid signedness and overflow issues in shl_overflow(dst.value, imm);
+                // avoid signedness and overflow issues in shl_overflow(dst.value, imm);
+                shl_overflow(dst.value, imm);
                 no_pointer(dst);
                 break;
             case Bin::Op::RSH:
-                havoc(dst.value); // avoid signedness and overflow issues in lshr(dst.value, imm);
+                // avoid signedness and overflow issues in lshr(dst.value, imm);
+                havoc(dst.value);
                 no_pointer(dst);
                 break;
             case Bin::Op::ARSH:
-                havoc(dst.value); // avoid signedness and overflow issues in ashr(dst.value, imm); // = (int64_t)dst >>
-                                  // imm;
-                // assume(dst.value <= (1 << (64 - imm)));
-                // assume(dst.value >= -(1 << (64 - imm)));
+                // avoid signedness and overflow issues in ashr(dst.value, imm);
+                // = (int64_t)dst >> imm;
+                havoc(dst.value);
                 no_pointer(dst);
                 break;
             case Bin::Op::XOR:
@@ -1027,7 +1034,7 @@ class ebpf_domain_t final {
         return o;
     }
 
-    static ebpf_domain_t setup_entry_label() {
+    static ebpf_domain_t setup_entry() {
         using namespace dsl_syntax;
 
         // intra_abs_transformer<AbsDomain>(inv);

@@ -19,7 +19,7 @@ class member_component_visitor final {
     bool _found;
 
   public:
-    explicit member_component_visitor(label_t node) : _node(std::move(node)), _found(false) {}
+    explicit member_component_visitor(label_t node) : _node(node), _found(false) {}
 
     void operator()(wto_vertex_t& c) {
         if (!_found) {
@@ -40,7 +40,7 @@ class member_component_visitor final {
         }
     }
 
-    bool is_member() const { return _found; }
+    [[nodiscard]] bool is_member() const { return _found; }
 };
 
 class interleaved_fwd_fixpoint_iterator_t final {
@@ -58,14 +58,14 @@ class interleaved_fwd_fixpoint_iterator_t final {
     inline void set_pre(const label_t& label, const ebpf_domain_t& v) { _pre[label] = v; }
 
     inline void transform_to_post(const label_t& label, ebpf_domain_t pre) {
-        for (const Instruction& statement : _cfg.get_node(label)) {
-            std::visit(pre, statement);
-        }
+        basic_block_t& bb = _cfg.get_node(label);
+        pre(bb);
         _post[label] = std::move(pre);
     }
 
+    [[nodiscard]]
     ebpf_domain_t extrapolate(const label_t& node, unsigned int iteration, ebpf_domain_t before,
-                              const ebpf_domain_t& after) {
+                              const ebpf_domain_t& after) const {
         if (iteration <= _widening_delay) {
             return before | after;
         } else {
@@ -96,7 +96,7 @@ class interleaved_fwd_fixpoint_iterator_t final {
             _pre.emplace(label, ebpf_domain_t::bottom());
             _post.emplace(label, ebpf_domain_t::bottom());
         }
-        _pre[this->_cfg.entry_label()] = ebpf_domain_t::setup_entry_label();
+        _pre[this->_cfg.entry_label()] = ebpf_domain_t::setup_entry();
     }
 
     ebpf_domain_t get_pre(const label_t& node) { return _pre.at(node); }
