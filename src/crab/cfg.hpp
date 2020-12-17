@@ -63,7 +63,11 @@ class basic_block_t final {
         m_ts.emplace_back(T{std::forward<Args>(args)...});
     }
 
-    void insert(const Instruction& arg) { m_ts.push_back(arg); }
+    void insert(const Instruction& arg) {
+        assert(label() != label_t::entry);
+        assert(label() != label_t::exit);
+        m_ts.push_back(arg);
+    }
 
     explicit basic_block_t(label_t _label) : m_label(_label) {}
 
@@ -105,6 +109,8 @@ class basic_block_t final {
 
     // Add a cfg_t edge from *this to b
     void operator>>(basic_block_t& b) {
+        assert(b.label() != label_t::entry);
+        assert(this->label() != label_t::exit);
         m_next.insert(b.m_label);
         b.m_prev.insert(m_label);
     }
@@ -209,30 +215,27 @@ class cfg_t final {
     using const_label_iterator = boost::transform_iterator<get_label, typename basic_block_map_t::const_iterator>;
 
   private:
-    label_t m_entry;
-    label_t m_exit;
     basic_block_map_t m_blocks;
 
     using visited_t = std::set<label_t>;
   public:
 
-    cfg_t(const label_t& entry, const label_t& exit) : m_entry(entry), m_exit(exit) {
-        m_blocks.emplace(entry, entry);
-        m_blocks.emplace(exit, exit);
+    cfg_t() {
+        m_blocks.emplace(entry_label(), entry_label());
+        m_blocks.emplace(exit_label(), exit_label());
     }
 
     cfg_t(const cfg_t&) = delete;
 
-    cfg_t(cfg_t&& o) noexcept
-        : m_entry(o.m_entry), m_exit(o.m_exit), m_blocks(std::move(o.m_blocks)) {}
+    cfg_t(cfg_t&& o) noexcept : m_blocks(std::move(o.m_blocks)) {}
 
     ~cfg_t() = default;
 
-    [[nodiscard]] label_t exit_label() const { return m_exit; }
+    [[nodiscard]] label_t exit_label() const { return label_t::exit; }
 
     // --- Begin ikos fixpoint API
 
-    [[nodiscard]] label_t entry_label() const { return m_entry; }
+    [[nodiscard]] label_t entry_label() const { return label_t::entry; }
 
     [[nodiscard]] const_succ_range next_nodes(const label_t& _label) const {
         return boost::make_iterator_range(get_node(_label).next_blocks());
@@ -274,10 +277,10 @@ class cfg_t final {
     }
 
     void remove(const label_t& _label) {
-        if (_label == m_entry)
+        if (_label == entry_label())
             CRAB_ERROR("Cannot remove entry block");
 
-        if (_label == m_exit)
+        if (_label == exit_label())
             CRAB_ERROR("Cannot remove exit block");
 
         std::vector<std::pair<basic_block_t*, basic_block_t*>> dead_edges;
@@ -345,12 +348,10 @@ class cfg_t final {
                 if (&next_bb == &bb || next_bb.in_degree() != 1) {
                     break;
                 }
-
-                worklist.erase(next_bb.label());
-
-                if (next_bb.label() == m_exit) {
-                    m_exit = label;
+                if (next_bb.label() == exit_label()) {
+                    break;
                 }
+                worklist.erase(next_bb.label());
 
                 bb.move_back(next_bb);
                 bb -= next_bb;
@@ -499,7 +500,7 @@ inline void cfg_t::remove_useless_blocks() {
     visited_t useful, useless;
     mark_alive_blocks(rev_cfg.entry_label(), rev_cfg, useful);
 
-    if (!useful.count(m_exit))
+    if (!useful.count(exit_label()))
         CRAB_ERROR("Exit block must be reachable");
     for (auto const& label : labels()) {
         if (!useful.count(label)) {
@@ -522,7 +523,7 @@ inline void cfg_t::remove_unreachable_blocks() {
         }
     }
 
-    if (dead.count(m_exit))
+    if (dead.count(exit_label()))
         CRAB_ERROR("Exit block must be reachable");
     for (const auto& _label : dead) {
         remove(_label);
