@@ -341,7 +341,6 @@ inline bool operator==(Assume const& a, Assume const& b) { return a.cond == b.co
 bool operator==(Assert const& a, Assert const& b);
 
 DECLARE_EQ2(TypeConstraint, reg, types)
-// DECLARE_EQ1(OnlyZeroIfNum, reg)
 DECLARE_EQ2(ValidSize, reg, can_be_zero)
 DECLARE_EQ2(Comparable, r1, r2)
 DECLARE_EQ2(Addable, ptr, num)

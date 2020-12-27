@@ -71,7 +71,6 @@ class AssertExtractor {
             switch (arg.kind) {
             case ArgPair::Kind::PTR_TO_MEM_OR_NULL:
                 res.emplace_back(TypeConstraint{arg.mem, TypeGroup::mem_or_num});
-                // res.emplace_back(OnlyZeroIfNum{arg.mem});
                 break;
             case ArgPair::Kind::PTR_TO_MEM:
                 /* LINUX: pointer to valid memory (stack, packet, map value) */
