@@ -47,7 +47,6 @@ The output is three comma-separated values:
 
 Usage:
 ```
-ebpf-verifier$ ./check -h
 A new eBPF verifier
 Usage: ./check [OPTIONS] path [section]
 
@@ -58,14 +57,14 @@ Positionals:
 Options:
   -h,--help                   Print this help message and exit
   -l                          List sections
-  -d,--dom,--domain DOMAIN:{linux,stats,zoneCrab}
+  -d,--dom,--domain DOMAIN:{cfg,linux,stats,zoneCrab}
                               Abstract domain
   -i                          Print invariants
   -f                          Print verifier's failure logs
   -v                          Print both invariants and failures
   --no-simplify               Do not simplify
   --asm FILE                  Print disassembly to FILE
-  --dot FILE                  Export cfg to dot FILE
+  --dot FILE                  Export control-flow graph to dot FILE
 
 You can use @headers as the path to instead just show the output field headers.
 ```
