@@ -26,7 +26,7 @@ if (USE_GMP)
   link_directories(${GMP_LIB_LIBRARY_DIRS})
 endif ()
 
-file(GLOB ALL_SRC
+file(GLOB LIB_SRC
         "./src/*.cpp"
         "./src/gpl/*.cpp"
         "./src/crab/*.cpp"
@@ -45,8 +45,9 @@ set(DEBUG_FLAGS -O0 -g3)
 set(RELEASE_FLAGS -O2 -flto)
 set(SANITIZE_FLAGS -fsanitize=address -O1 -fno-omit-frame-pointer)
 
-add_executable(check src/main/check.cpp ${ALL_SRC})
-add_executable(tests ${ALL_TEST} ${ALL_SRC})
+add_library(ebpfverifier ${LIB_SRC})
+add_executable(check src/main/check.cpp)
+add_executable(tests ${ALL_TEST})
 
 set_target_properties(check
         PROPERTIES
@@ -57,11 +58,16 @@ set_target_properties(tests
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
 
+target_compile_options(ebpfverifier PRIVATE ${COMMON_FLAGS})
+target_compile_options(ebpfverifier PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
+target_compile_options(ebpfverifier PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
+target_compile_options(ebpfverifier PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
 
 target_compile_options(check PRIVATE ${COMMON_FLAGS})
 target_compile_options(check PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
 target_compile_options(check PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
 target_compile_options(check PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
+target_link_libraries(check PRIVATE ebpfverifier)
 
 if (USE_GMP)
   target_link_libraries(check PRIVATE gmp)
@@ -71,6 +77,7 @@ target_compile_options(tests PRIVATE ${COMMON_FLAGS})
 target_compile_options(tests PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
 target_compile_options(tests PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
 target_compile_options(tests PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
+target_link_libraries(tests PRIVATE ebpfverifier)
 
 if (USE_GMP)
   target_link_libraries(tests PRIVATE gmp)
