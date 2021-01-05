@@ -21,15 +21,19 @@ pip3 install matplotlib   # for plotting the graphs
 * Install [Boost](https://www.boost.org/doc/libs/1_75_0/more/getting_started/windows.html#get-boost) and then set the `BOOST_ROOT` environment variable to the directory you unpacked Boost in.
 
 ### Installation
-Clone and make, on Ubuntu:
+Clone:
 ```
 git clone --recurse-submodules https://github.com/vbpf/ebpf-verifier.git
 cd ebpf-verifier
+```
+
+Make on Ubuntu:
+```
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-Windows uses a multi-configuration generator, so replace the last two steps with:
+Make on Windows (which uses a multi-configuration generator):
 ```
 cmake -B build
 cmake --build build --config Release
