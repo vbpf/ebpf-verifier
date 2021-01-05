@@ -135,9 +135,10 @@ make -C counter
 scripts/runperf.sh counter/objects stats zoneCrab
 ```
 
-Two examples of real-world false positive are taken from the Linux samples suite.
-The file `xdp_tx_iptunnel_kern.o` is valid and passes both the Linux tool and ours.
-However, in the original source code there are redundant loads from memory to a varaible holding the same value. These were added happen due to untracked register spilling that led to false positive. Two fixes are compiled into `xdp_tx_iptunnel_1_kern.o` and `xdp_tx_iptunnel_2_kern.o`. Both pass our verifier (without any special effort) but fail the existing one:
+Valid programs that are rejected by a verifier are referred to as false positives.
+Two examples of real-world false positives are taken from the Linux samples suite.
+The file `xdp_tx_iptunnel_kern.o` is valid and passes both the Linux kernel verifier and ours.
+However, in the original source code there are redundant loads from memory to a variable holding the same value. These were added due to untracked register spilling that led to a false positive. Two fixes are compiled into `xdp_tx_iptunnel_1_kern.o` and `xdp_tx_iptunnel_2_kern.o`. Both pass our verifier (without any special effort) but fail the Linux kernel verifier:
 ```
 $ ./check counter/objects/xdp_tx_iptunnel_2_kern.o
 1,0.314213,86740
