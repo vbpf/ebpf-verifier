@@ -14,7 +14,7 @@
 namespace crab {
 struct label_t {
     int from; ///< Jump source, or simply index of instruction
-    int to; ///< Jump target or 0
+    int to; ///< Jump target or -1
 
     constexpr explicit label_t(int index, int to=-1) noexcept : from(index), to(to) { }
 
@@ -24,14 +24,23 @@ struct label_t {
 
     constexpr bool operator==(const label_t& other) const { return from == other.from && to == other.to; }
     constexpr bool operator!=(const label_t& other) const { return !(*this == other); }
-    constexpr bool operator<(const label_t& other) const { return from < other.from || (from == other.from && to < other.to); }
+    constexpr bool operator<(const label_t& other) const {
+        if (this == &other) return false;
+        if (*this == label_t::exit) return false;
+        if (other == label_t::exit) return true;
+        return from < other.from || (from == other.from && to < other.to);
+    }
 
     // no hash; intended for use in ordered containers.
 
     [[nodiscard]] constexpr bool isjump() const { return to != -1; }
 
     friend std::ostream& operator<<(std::ostream& os, const label_t& label) {
-        if (label.to == 0)
+        if (label == entry)
+            return os << "entry";
+        if (label == exit)
+            return os << "exit";
+        if (label.to == -1)
             return os << label.from;
         return os << label.from << ":" << label.to;
     }
