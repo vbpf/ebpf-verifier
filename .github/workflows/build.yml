@@ -19,7 +19,7 @@ jobs:
       - name: Build
         run: |
           mkdir build
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake -B build -DCMAKE_BUILD_TYPE=Debug
           cmake --build build -j $(nproc)
 
       - name: Run unit tests
