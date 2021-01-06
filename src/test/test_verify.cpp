@@ -1,16 +1,12 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
 #include "catch.hpp"
-
-#include "asm_files.hpp"
-#include "asm_unmarshal.hpp"
-#include "crab/cfg.hpp"
-#include "crab_verifier.hpp"
+#include "ebpf_verifier.hpp"
 
 #define FAIL_LOAD_ELF(dirname, filename, sectionname) \
     TEST_CASE("Try loading nonexisting program: " dirname "/" filename, "[elf]") { \
         try { \
-            read_elf("ebpf-samples/" dirname "/" filename, sectionname, create_map_crab); \
+            read_elf("ebpf-samples/" dirname "/" filename, sectionname, create_map_crab, nullptr); \
             REQUIRE(false); \
         } catch (const std::runtime_error& ex) { \
         }\
@@ -23,14 +19,14 @@ FAIL_LOAD_ELF("cilium", "bpf_lxc.o", "not-found")
 
 #define VERIFY_SECTION(dirname, filename, sectionname) \
     do { \
-        auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, create_map_crab); \
+        auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, create_map_crab, nullptr); \
         REQUIRE(raw_progs.size() == 1); \
         raw_program raw_prog = raw_progs.back(); \
         std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog); \
         REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error)); \
         auto& prog = std::get<InstructionSeq>(prog_or_error); \
         cfg_t cfg = prepare_cfg(prog, raw_prog.info, true); \
-        const auto [res, seconds] = run_ebpf_analysis(cfg, raw_prog.info); \
+        bool res = run_ebpf_analysis(std::cout, cfg, raw_prog.info, nullptr); \
         REQUIRE(res); \
     } while (0)
 

@@ -41,7 +41,7 @@ static vector<T> vector_of(ELFIO::section* sec) {
     return {(T*)data, (T*)(data + size)};
 }
 
-int create_map_crab(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries) {
+int create_map_crab(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries, ebpf_verifier_options_t options) {
     if (map_type == 12 || map_type == 13) {
         return -1;
     }
@@ -89,8 +89,10 @@ static BpfProgType section_to_progtype(const std::string& section, const std::st
     return BpfProgType::SOCKET_FILTER;
 }
 
-vector<raw_program> read_elf(const std::string& path, const std::string& desired_section, MapFd* fd_alloc) {
+vector<raw_program> read_elf(const std::string& path, const std::string& desired_section, MapFd* fd_alloc, const ebpf_verifier_options_t* options) {
     assert(fd_alloc != nullptr);
+    if (options == nullptr)
+        options = &ebpf_verifier_default_options;
     ELFIO::elfio reader;
     if (!reader.load(path)) {
         throw std::runtime_error(string("Can't find or process ELF file ") + path);
@@ -100,7 +102,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
     auto mapdefs = vector_of<bpf_load_map_def>(reader.sections["maps"]);
     for (auto s : mapdefs) {
         info.map_defs.emplace_back(map_def{
-            .original_fd = fd_alloc(s.type, s.key_size, s.value_size, s.max_entries),
+            .original_fd = fd_alloc(s.type, s.key_size, s.value_size, s.max_entries, *options),
             .type = MapType{s.type},
             .key_size = s.key_size,
             .value_size = s.value_size,
