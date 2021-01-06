@@ -93,7 +93,7 @@ static checks_db generate_report(cfg_t& cfg,
         from_inv(bb);
 
         if (!pre_bot && from_inv.is_bottom()) {
-            m_db.add_unreachable(label, std::string("inv became bot after ") + to_string(bb.label()));
+            m_db.add_unreachable(label, std::string("Invariant became _|_ after ") + to_string(bb.label()));
         }
     }
     return m_db;
