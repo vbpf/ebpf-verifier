@@ -4,7 +4,6 @@
 
 // defaults are in definition
 struct global_options_t {
-    bool simplify;
     bool print_invariants;
     bool print_failures;
 };
