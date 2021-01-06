@@ -69,7 +69,6 @@ int main(int argc, char** argv) {
     if (verbose)
         global_options.print_invariants = global_options.print_failures = true;
 
-    global_options.simplify = !no_simplify;
     // Main program
 
     if (filename == "@headers") {
@@ -135,7 +134,7 @@ int main(int argc, char** argv) {
     if (domain == "zoneCrab") {
         // Convert the instruction sequence to a control-flow graph
         // in a "passive", non-deterministic form.
-        cfg_t cfg = prepare_cfg(prog, raw_prog.info, global_options.simplify);
+        cfg_t cfg = prepare_cfg(prog, raw_prog.info, !no_simplify);
 
         // Analyze the control-flow graph.
         const auto [res, seconds] = run_ebpf_analysis(cfg, raw_prog.info);
@@ -148,7 +147,7 @@ int main(int argc, char** argv) {
         return !res;
     } else if (domain == "stats") {
         // Convert the instruction sequence to a control-flow graph.
-        cfg_t cfg = prepare_cfg(prog, raw_prog.info, global_options.simplify);
+        cfg_t cfg = prepare_cfg(prog, raw_prog.info, !no_simplify);
 
         // Just print eBPF program stats.
         auto stats = collect_stats(cfg);
@@ -162,7 +161,7 @@ int main(int argc, char** argv) {
         std::cout << "\n";
     } else if (domain == "cfg") {
         // Convert the instruction sequence to a control-flow graph.
-        cfg_t cfg = prepare_cfg(prog, raw_prog.info, global_options.simplify);
+        cfg_t cfg = prepare_cfg(prog, raw_prog.info, !no_simplify);
         std::cout << cfg;
         std::cout << "\n";
     } else {
