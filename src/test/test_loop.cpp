@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "catch.hpp"
 
-#include "crab/cfg.hpp"
-#include "crab_verifier.hpp"
+#include "ebpf_verifier.hpp"
 
 using namespace crab;
 
@@ -22,6 +21,6 @@ TEST_CASE("Trivial loop: middle", "[sanity][loop]") {
     middle >> middle;
     middle >> exit;
 
-    auto [pass, time] = run_ebpf_analysis(cfg, {});
+    bool pass = run_ebpf_analysis(std::cout, cfg, {}, nullptr);
     REQUIRE(pass);
 }

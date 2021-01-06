@@ -2,10 +2,9 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
-// defaults are in definition
-struct global_options_t {
+struct ebpf_verifier_options_t {
     bool print_invariants;
     bool print_failures;
 };
 
-extern global_options_t global_options;
+extern const ebpf_verifier_options_t ebpf_verifier_default_options;

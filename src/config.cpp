@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 #include "config.hpp"
 
-global_options_t global_options{
+const ebpf_verifier_options_t ebpf_verifier_default_options = 
+{
     .print_invariants = false,
     .print_failures = false
 };

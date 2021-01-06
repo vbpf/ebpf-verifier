@@ -54,17 +54,19 @@ struct checks_db final {
     checks_db() = default;
 };
 
-static checks_db generate_report(cfg_t& cfg,
+static checks_db generate_report(std::ostream& s,
+                                 cfg_t& cfg,
                                  crab::invariant_table_t& preconditions,
-                                 crab::invariant_table_t& postconditions) {
+                                 crab::invariant_table_t& postconditions,
+                                 ebpf_verifier_options_t options) {
     checks_db m_db;
     for (const label_t& label : cfg.sorted_labels()) {
         basic_block_t& bb = cfg.get_node(label);
 
-        if (global_options.print_invariants) {
-            std::cout << "\n" << preconditions.at(label) << "\n";
-            std::cout << bb;
-            std::cout << "\n" << postconditions.at(label) << "\n";
+        if (options.print_invariants) {
+            s << "\n" << preconditions.at(label) << "\n";
+            s << bb;
+            s << "\n" << postconditions.at(label) << "\n";
         }
 
         if (std::none_of(bb.begin(), bb.end(), [](const auto& s) { return std::holds_alternative<Assert>(s); }))
@@ -99,43 +101,33 @@ static checks_db generate_report(cfg_t& cfg,
     return m_db;
 }
 
-template<typename F>
-auto timed_execution(F f) {
-    clock_t begin = clock();
-
-    const auto& res = f();
-
-    clock_t end = clock();
-
-    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-    return std::make_tuple(res, elapsed_secs);
-}
-
-static void print_report(const checks_db& db) {
-    std::cout << "\n";
+static void print_report(std::ostream& s, const checks_db& db) {
+    s << "\n";
     for (auto [label, messages] : db.m_db) {
-        std::cout << label << ":\n";
+        s << label << ":\n";
         for (const auto& msg : messages)
-            std::cout << "  " << msg << "\n";
+            s << "  " << msg << "\n";
     }
-    std::cout << "\n";
-    std::cout << db.total_warnings << " warnings\n";
+    s << "\n";
+    s << db.total_warnings << " warnings\n";
 }
 
-/// First item of returned value is true if the program passes verification
-std::tuple<bool, double> run_ebpf_analysis(cfg_t& cfg, program_info info) {
+/// Returned value is true if the program passes verification.
+bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options) {
+    if (options == nullptr)
+        options = &ebpf_verifier_default_options;
+
     global_program_info = std::move(info);
     crab::domains::clear_global_state();
 
-    auto&& [report, elapsed_secs] = timed_execution([&] {
-        // Get dictionaries of preconditions and postconditions for each
-        // basic block.
-        auto [preconditions, postconditions] = crab::run_forward_analyzer(cfg);
-        return generate_report(cfg, preconditions, postconditions);
-    });
+    // Get dictionaries of preconditions and postconditions for each
+    // basic block.
+    auto [preconditions, postconditions] = crab::run_forward_analyzer(cfg);
 
-    if (global_options.print_failures) {
-        print_report(report);
+    checks_db report = generate_report(s, cfg, preconditions, postconditions, *options);
+
+    if (options->print_failures) {
+        print_report(s, report);
     }
-    return {report.total_warnings == 0, elapsed_secs};
+    return (report.total_warnings == 0);
 }
