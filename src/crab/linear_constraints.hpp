@@ -42,11 +42,11 @@
 
 #pragma once
 
+#include <map>
 #include <optional>
 #include <utility>
 #include <vector>
 
-#include <boost/container/flat_map.hpp>
 #include <boost/functional/hash.hpp>
 
 #include "crab/variable.hpp"
@@ -56,10 +56,10 @@ namespace crab {
 
 class linear_expression_t final {
   private:
-    using map_t = boost::container::flat_map<variable_t, number_t>;
+    using map_t = std::map<variable_t, number_t>;
 
-    const map_t _map;
-    const number_t _cst = 0;
+    map_t _map;
+    number_t _cst = 0;
 
     linear_expression_t(map_t map, number_t cst) : _map(std::move(map)), _cst(std::move(cst)) {}
 
