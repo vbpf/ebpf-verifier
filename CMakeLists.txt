@@ -59,7 +59,7 @@ if (USE_GMP)
 endif()
 
 add_library(ebpfverifier ${LIB_SRC})
-add_executable(check src/main/check.cpp)
+add_executable(check src/main/check.cpp src/main/linux_verifier.cpp)
 add_executable(tests ${ALL_TEST})
 
 set_target_properties(check
