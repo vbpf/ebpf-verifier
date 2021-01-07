@@ -807,12 +807,6 @@ void SplitDBM::operator+=(const linear_constraint_t& cst) {
     CrabStats::count("SplitDBM.count.add_constraints");
     ScopedCrabStats __st__("SplitDBM.add_constraints");
 
-    // XXX: we do nothing with unsigned linear inequalities
-    if (cst.is_inequality() && cst.is_unsigned()) {
-        CRAB_WARN("unsigned inequality ", cst, " skipped by split_dbm domain");
-        return;
-    }
-
     if (is_bottom())
         return;
     normalize();
@@ -839,7 +833,7 @@ void SplitDBM::operator+=(const linear_constraint_t& cst) {
     if (cst.is_strict_inequality()) {
         // We try to convert a strict to non-strict.
         // e < 0 --> e <= -1
-        auto nc = linear_constraint_t(cst.expression() + 1, cst_kind::INEQUALITY, cst.is_signed());
+        auto nc = linear_constraint_t(cst.expression() + 1, cst_kind::INEQUALITY);
         if (nc.is_inequality()) {
             // here we succeed
             if (!add_linear_leq(nc.expression())) {
