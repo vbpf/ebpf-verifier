@@ -10,7 +10,7 @@
 external/elfio
 
 # Directories using GPL
-src/gpl
+src/linux/gpl
 counter
 
 # Other Directories

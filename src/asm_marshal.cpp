@@ -5,8 +5,6 @@
 #include <variant>
 #include <vector>
 
-#include "linux_ebpf.hpp"
-
 #include "asm_marshal.hpp"
 #include "asm_ostream.hpp"
 

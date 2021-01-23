@@ -2,6 +2,12 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <cinttypes>
+#include <tuple>
+
+// Header describing the Instruction Set Architecture (ISA)
+// for the eBPF virtual machine.
+// See https://github.com/iovisor/bpf-docs/blob/master/eBPF.md
+// for documentation.
 
 struct ebpf_inst {
     std::uint8_t opcode;

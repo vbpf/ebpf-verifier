@@ -45,7 +45,7 @@
 #include "asm_ostream.hpp"
 #include "config.hpp"
 #include "dsl_syntax.hpp"
-#include "gpl/spec_prototypes.hpp"
+#include "helpers.hpp"
 #include "spec_type_descriptors.hpp"
 
 #include "crab/bitset_domain.hpp"

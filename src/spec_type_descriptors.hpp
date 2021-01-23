@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
+#include <string>
+#include <vector>
+#include "ebpf_vm_isa.hpp"
+
 constexpr int EBPF_STACK_SIZE = 512;
 
 struct EbpfMapDescriptor {
@@ -20,3 +24,26 @@ struct EbpfContextDescriptor {
     int end = -1;   // Offset into ctx struct of pointer to end of data.
     int meta = -1;  // Offset into ctx struct of pointer to metadata.
 };
+
+struct EbpfProgramType {
+    std::string name; // For ease of display, not used by the verifier.
+    EbpfContextDescriptor context_descriptor;
+    uint64_t platform_specific_data; // E.g., integer program type.
+    std::vector<std::string> section_prefixes;
+    bool is_privileged;
+};
+
+struct program_info {
+    const struct ebpf_platform_t* platform;
+    std::vector<EbpfMapDescriptor> map_descriptors;
+    EbpfProgramType type;
+};
+
+struct raw_program {
+    std::string filename;
+    std::string section;
+    std::vector<ebpf_inst> prog;
+    program_info info;
+};
+
+extern program_info global_program_info;

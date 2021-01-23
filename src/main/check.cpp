@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
     auto create_map = domain == "linux" ? create_map_linux : create_map_crab;
 
     // Read a set of raw program sections from an ELF file.
-    auto raw_progs = read_elf(filename, desired_section, create_map, &ebpf_verifier_options);
+    auto raw_progs = read_elf(filename, desired_section, create_map, &ebpf_verifier_options, &g_ebpf_platform_linux);
 
     if (list || raw_progs.size() != 1) {
         if (!list) {
@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
         if (!desired_section.empty() && raw_progs.size() == 0) {
             // We could not find the desired section, so get the full list
             // of possibilities.
-            raw_progs = read_elf(filename, string(), create_map, &ebpf_verifier_options);
+            raw_progs = read_elf(filename, string(), create_map, &ebpf_verifier_options, &g_ebpf_platform_linux);
         }
         for (const raw_program& raw_prog : raw_progs) {
             std::cout << raw_prog.section << " ";
@@ -120,7 +120,7 @@ int main(int argc, char** argv) {
     raw_program raw_prog = raw_progs.back();
 
     // Convert the raw program section to a set of instructions.
-    std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
+    std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog, &g_ebpf_platform_linux);
     if (std::holds_alternative<string>(prog_or_error)) {
         std::cout << "trivial verification failure: " << std::get<string>(prog_or_error) << "\n";
         return 1;
@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
         return !res;
     } else if (domain == "linux") {
         // Pass the intruction sequence to the Linux kernel verifier.
-        const auto [res, seconds] = bpf_verify_program(raw_prog.info.program_type, raw_prog.prog, &ebpf_verifier_options);
+        const auto [res, seconds] = bpf_verify_program(raw_prog.info.type, raw_prog.prog, &ebpf_verifier_options);
         std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
         return !res;
     } else if (domain == "stats") {

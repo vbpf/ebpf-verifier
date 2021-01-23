@@ -25,9 +25,8 @@
 #include "asm_ostream.hpp"
 #include "config.hpp"
 #include "dsl_syntax.hpp"
-#include "gpl/spec_prototypes.hpp"
+#include "helpers.hpp"
 #include "spec_type_descriptors.hpp"
-#include "gpl/spec_type_descriptors.hpp"
 
 #include "crab/array_domain.hpp"
 
@@ -575,8 +574,8 @@ class ebpf_domain_t final {
     NumAbsDomain check_access_context(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s) {
         using namespace dsl_syntax;
         require(inv, lb >= 0, std::string("Lower bound must be higher than 0") + s);
-        require(inv, ub <= global_program_info.context_descriptor.size,
-                std::string("Upper bound must be lower than ") + std::to_string(global_program_info.context_descriptor.size) +
+        require(inv, ub <= global_program_info.type.context_descriptor.size,
+                std::string("Upper bound must be lower than ") + std::to_string(global_program_info.type.context_descriptor.size) +
                     s);
         return inv;
     }
@@ -644,7 +643,7 @@ class ebpf_domain_t final {
         if (inv.is_bottom())
             return inv;
 
-        EbpfContextDescriptor desc = global_program_info.context_descriptor;
+        EbpfContextDescriptor desc = global_program_info.type.context_descriptor;
 
         inv -= target.value;
 
@@ -1074,7 +1073,7 @@ class ebpf_domain_t final {
 
         inv += 0 <= variable_t::packet_size();
         inv += variable_t::packet_size() < MAX_PACKET_OFF;
-        if (global_program_info.context_descriptor.meta >= 0) {
+        if (global_program_info.type.context_descriptor.meta >= 0) {
             inv += variable_t::meta_offset() <= 0;
             inv += variable_t::meta_offset() >= -4098;
         } else {
