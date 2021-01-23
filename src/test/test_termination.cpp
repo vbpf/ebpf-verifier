@@ -5,6 +5,7 @@
 #include "crab/cfg.hpp"
 #include "crab_verifier.hpp"
 #include "config.hpp"
+#include "platform.hpp"
 
 using namespace crab;
 
@@ -22,7 +23,10 @@ TEST_CASE("Trivial infinite loop", "[loop][termination]") {
     ebpf_verifier_options_t options{
         .check_termination = true,
     };
-    bool pass = run_ebpf_analysis(std::cout, cfg, {}, &options);
+    program_info info{
+        .platform = &g_ebpf_platform_linux
+    };
+    bool pass = run_ebpf_analysis(std::cout, cfg, info, &options);
     REQUIRE_FALSE(pass);
 }
 
@@ -47,6 +51,9 @@ TEST_CASE("Trivial finite loop", "[loop][termination]") {
     ebpf_verifier_options_t options{
         .check_termination = true,
     };
-    bool pass = run_ebpf_analysis(std::cout, cfg, {}, &options);
+    program_info info{
+        .platform = &g_ebpf_platform_linux
+    };
+    bool pass = run_ebpf_analysis(std::cout, cfg, info, &options);
     REQUIRE(pass);
 }

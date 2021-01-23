@@ -35,9 +35,10 @@ endif ()
 
 file(GLOB LIB_SRC
         "./src/*.cpp"
-        "./src/gpl/*.cpp"
         "./src/crab/*.cpp"
         "./src/crab_utils/*.cpp"
+        "./src/linux/gpl/*.cpp"
+        "./src/linux/linux_platform.cpp"
         )
 
 file(GLOB ALL_TEST

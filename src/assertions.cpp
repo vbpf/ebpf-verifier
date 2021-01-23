@@ -6,9 +6,9 @@
 #include <vector>
 
 #include "asm_syntax.hpp"
+#include "ebpf_vm_isa.hpp"
+#include "platform.hpp"
 #include "crab/cfg.hpp"
-#include "spec_type_descriptors.hpp"
-#include "gpl/spec_type_descriptors.hpp"
 
 using std::string;
 using std::to_string;
@@ -16,7 +16,6 @@ using std::vector;
 
 class AssertExtractor {
     program_info info;
-    const bool is_privileged = info.program_type == BpfProgType::KPROBE;
 
     static Reg reg(Value v) {
         return std::get<Reg>(v);
@@ -47,7 +46,7 @@ class AssertExtractor {
             switch (arg.kind) {
             case ArgSingle::Kind::ANYTHING:
                 // avoid pointer leakage:
-                if (!is_privileged) {
+                if (!info.type.is_privileged) {
                     res.emplace_back(TypeConstraint{arg.reg, TypeGroup::num});
                 }
                 break;
@@ -94,7 +93,7 @@ class AssertExtractor {
 
     [[nodiscard]]
     vector<Assert> explicate(Condition cond) const {
-        if (is_privileged)
+        if (info.type.is_privileged)
             return {};
         vector<Assert> res;
         res.emplace_back(ValidAccess{cond.left});
@@ -134,7 +133,7 @@ class AssertExtractor {
         } else {
             res.emplace_back(TypeConstraint{basereg, TypeGroup::ptr});
             res.emplace_back(ValidAccess{basereg, offset, width, false});
-            if (!is_privileged && !ins.is_load && std::holds_alternative<Reg>(ins.value)) {
+            if (!info.type.is_privileged && !ins.is_load && std::holds_alternative<Reg>(ins.value)) {
                 if (width.v != 8)
                     res.emplace_back(TypeConstraint{reg(ins.value), TypeGroup::num});
                 else

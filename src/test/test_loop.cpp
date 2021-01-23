@@ -24,6 +24,9 @@ TEST_CASE("Trivial loop: middle", "[sanity][loop]") {
     ebpf_verifier_options_t options{
         .check_termination=false
     };
-    bool pass = run_ebpf_analysis(std::cout, cfg, {}, &options);
+    program_info info{
+        .platform = &g_ebpf_platform_linux
+    };
+    bool pass = run_ebpf_analysis(std::cout, cfg, info, &options);
     REQUIRE(pass);
 }

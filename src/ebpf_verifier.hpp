@@ -7,3 +7,4 @@
 #include "config.hpp"
 #include "crab/cfg.hpp"
 #include "crab_verifier.hpp"
+#include "platform.hpp"

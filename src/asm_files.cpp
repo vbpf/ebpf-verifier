@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "asm_files.hpp"
+#include "platform.hpp"
 
 #include "elfio/elfio.hpp"
 
@@ -48,48 +49,7 @@ int create_map_crab(uint32_t map_type, uint32_t key_size, uint32_t value_size, u
     return (value_size << 14) + (key_size << 6); // + i;
 }
 
-static BpfProgType section_to_progtype(const std::string& section, const std::string& path) {
-    // linux only deduces from section, but cilium and cilium_test have this information
-    // in the filename:
-    // * cilium/bpf_xdp.o:from-netdev is XDP
-    // * bpf_cilium_test/bpf_lb-DLB_L3.o:from-netdev is SK_SKB
-    if (path.find("cilium") != std::string::npos) {
-        if (path.find("xdp") != std::string::npos)
-            return BpfProgType::XDP;
-        if (path.find("lxc") != std::string::npos)
-            return BpfProgType::SCHED_CLS;
-    }
-    static const std::unordered_map<std::string, BpfProgType> prefixes{
-        {"socket", BpfProgType::SOCKET_FILTER},
-        {"kprobe/", BpfProgType::KPROBE},
-        {"kretprobe/", BpfProgType::KPROBE},
-        {"tracepoint/", BpfProgType::TRACEPOINT},
-        {"raw_tracepoint/", BpfProgType::RAW_TRACEPOINT},
-        {"xdp", BpfProgType::XDP},
-        {"perf_section", BpfProgType::PERF_EVENT},
-        {"perf_event", BpfProgType::PERF_EVENT},
-        {"classifier", BpfProgType::SCHED_CLS},
-        {"action", BpfProgType::SCHED_ACT},
-        {"cgroup/skb", BpfProgType::CGROUP_SKB},
-        {"cgroup/sock", BpfProgType::CGROUP_SOCK},
-        {"cgroup/dev", BpfProgType::CGROUP_DEVICE},
-        {"lwt_in", BpfProgType::LWT_IN},
-        {"lwt_out", BpfProgType::LWT_OUT},
-        {"lwt_xmit", BpfProgType::LWT_XMIT},
-        {"lwt_seg6local", BpfProgType::LWT_SEG6LOCAL},
-        {"lirc_mode2", BpfProgType::LIRC_MODE2},
-        {"sockops", BpfProgType::SOCK_OPS},
-        {"sk_skb", BpfProgType::SK_SKB},
-        {"sk_msg", BpfProgType::SK_MSG},
-    };
-    for (const auto& [prefix, t] : prefixes) {
-        if (section.find(prefix) == 0)
-            return t;
-    }
-    return BpfProgType::SOCKET_FILTER;
-}
-
-vector<raw_program> read_elf(const std::string& path, const std::string& desired_section, MapFd* fd_alloc, const ebpf_verifier_options_t* options) {
+vector<raw_program> read_elf(const std::string& path, const std::string& desired_section, MapFd* fd_alloc, const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
     assert(fd_alloc != nullptr);
     if (options == nullptr)
         options = &ebpf_verifier_default_options;
@@ -98,7 +58,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
         throw std::runtime_error(string("Can't find or process ELF file ") + path);
     }
 
-    program_info info{};
+    program_info info{platform};
     auto mapdefs = vector_of<bpf_load_map_def>(reader.sections["maps"]);
     for (auto s : mapdefs) {
         info.map_descriptors.emplace_back(EbpfMapDescriptor{
@@ -141,8 +101,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
         if (name != ".text" && name.find('.') == 0) {
             continue;
         }
-        info.program_type = section_to_progtype(name, path);
-        info.context_descriptor = get_context_descriptor(info.program_type);
+        info.type = platform->get_program_type(name, path);
         if (section->get_size() == 0)
             continue;
         raw_program prog{path, name, vector_of<ebpf_inst>(section), info};

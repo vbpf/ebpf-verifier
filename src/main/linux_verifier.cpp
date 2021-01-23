@@ -5,39 +5,12 @@
 #include <unistd.h>
 #include <linux/bpf.h>
 #include <ctime>
+#include <tuple>
 
 #include "config.hpp"
 #include "linux_verifier.hpp"
+#include "spec_type_descriptors.hpp"
 #include "utils.hpp"
-
-
-static bpf_prog_type to_linuxtype(BpfProgType t) {
-    switch (t) {
-    case BpfProgType::UNSPEC: return BPF_PROG_TYPE_UNSPEC;
-    case BpfProgType::SOCKET_FILTER: return BPF_PROG_TYPE_SOCKET_FILTER;
-    case BpfProgType::KPROBE: return BPF_PROG_TYPE_KPROBE;
-    case BpfProgType::SCHED_CLS: return BPF_PROG_TYPE_SCHED_CLS;
-    case BpfProgType::SCHED_ACT: return BPF_PROG_TYPE_SCHED_ACT;
-    case BpfProgType::TRACEPOINT: return BPF_PROG_TYPE_TRACEPOINT;
-    case BpfProgType::XDP: return BPF_PROG_TYPE_XDP;
-    case BpfProgType::PERF_EVENT: return BPF_PROG_TYPE_PERF_EVENT;
-    case BpfProgType::CGROUP_SKB: return BPF_PROG_TYPE_CGROUP_SKB;
-    case BpfProgType::CGROUP_SOCK: return BPF_PROG_TYPE_CGROUP_SOCK;
-    case BpfProgType::LWT_IN: return BPF_PROG_TYPE_LWT_IN;
-    case BpfProgType::LWT_OUT: return BPF_PROG_TYPE_LWT_OUT;
-    case BpfProgType::LWT_XMIT: return BPF_PROG_TYPE_LWT_XMIT;
-    case BpfProgType::SOCK_OPS: return BPF_PROG_TYPE_SOCK_OPS;
-    case BpfProgType::SK_SKB: return BPF_PROG_TYPE_SK_SKB;
-    case BpfProgType::CGROUP_DEVICE: return BPF_PROG_TYPE_CGROUP_DEVICE;
-    // case BpfProgType::SK_MSG: return BPF_PROG_TYPE_SK_MSG;
-    // case BpfProgType::RAW_TRACEPOINT: return BPF_PROG_TYPE_RAW_TRACEPOINT;
-    // case BpfProgType::CGROUP_SOCK_ADDR: return BPF_PROG_TYPE_CGROUP_SOCK_ADDR;
-    // case BpfProgType::LWT_SEG6LOCAL: return BPF_PROG_TYPE_LWT_SEG6LOCAL;
-    // case BpfProgType::LIRC_MODE2: return BPF_PROG_TYPE_LIRC_MODE2;
-    default: return BPF_PROG_TYPE_SOCKET_FILTER;
-    }
-    return BPF_PROG_TYPE_UNSPEC;
-}
 
 static int do_bpf(bpf_cmd cmd, union bpf_attr& attr) { return syscall(321, cmd, &attr, sizeof(attr)); }
 
@@ -74,14 +47,14 @@ int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value_size, 
  *  \return A pair (passed, elapsec_secs)
  */
 
-std::tuple<bool, double> bpf_verify_program(BpfProgType type, const std::vector<ebpf_inst>& raw_prog, ebpf_verifier_options_t* options) {
+std::tuple<bool, double> bpf_verify_program(EbpfProgramType type, const std::vector<ebpf_inst>& raw_prog, ebpf_verifier_options_t* options) {
     std::vector<char> buf(options->print_failures ? 1000000 : 10);
     buf[0] = 0;
     memset(buf.data(), '\0', buf.size());
 
     union bpf_attr attr{};
     memset(&attr, '\0', sizeof(attr));
-    attr.prog_type = (__u32)to_linuxtype(type);
+    attr.prog_type = (__u32)type.platform_specific_data;
     attr.insn_cnt = (__u32)raw_prog.size();
     attr.insns = (__u64)raw_prog.data();
     attr.license = (__u64) "GPL";
@@ -105,5 +78,4 @@ std::tuple<bool, double> bpf_verify_program(BpfProgType type, const std::vector<
     }
     return {true, elapsed_secs};
 }
-
 #endif

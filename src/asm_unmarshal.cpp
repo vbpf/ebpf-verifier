@@ -5,11 +5,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <tuple>
 
-#include "linux_ebpf.hpp"
-
-#include "gpl/spec_prototypes.hpp"
+#include "ebpf_vm_isa.hpp"
 
 #include "asm_unmarshal.hpp"
 
@@ -83,10 +80,11 @@ static auto getMemWidth(uint8_t opcode) -> int {
 // }
 
 struct Unmarshaller {
+    const ebpf_platform_t* platform;
     vector<vector<string>>& notes;
     void note(const string& what) { notes.back().emplace_back(what); }
     void note_next_pc() { notes.emplace_back(); }
-    explicit Unmarshaller(vector<vector<string>>& notes) : notes{notes} { note_next_pc(); }
+    explicit Unmarshaller(vector<vector<string>>& notes, const ebpf_platform_t* platform) : notes{notes}, platform{platform} { note_next_pc(); }
 
     auto getAluOp(ebpf_inst inst) -> std::variant<Bin::Op, Un::Op> {
         switch ((inst.opcode >> 4) & 0xF) {
@@ -273,49 +271,55 @@ struct Unmarshaller {
         };
     }
 
-    static ArgSingle::Kind toArgSingleKind(Arg t) {
+    static ArgSingle::Kind toArgSingleKind(EbpfHelperArgumentType t) {
         switch (t) {
-        case Arg::ANYTHING: return ArgSingle::Kind::ANYTHING;
-        case Arg::CONST_SHARED_PTR: return ArgSingle::Kind::MAP_FD;
-        case Arg::PTR_TO_MAP_KEY: return ArgSingle::Kind::PTR_TO_MAP_KEY;
-        case Arg::PTR_TO_MAP_VALUE: return ArgSingle::Kind::PTR_TO_MAP_VALUE;
-        case Arg::PTR_TO_CTX: return ArgSingle::Kind::PTR_TO_CTX;
+        case EbpfHelperArgumentType::ANYTHING: return ArgSingle::Kind::ANYTHING;
+        case EbpfHelperArgumentType::CONST_SHARED_PTR: return ArgSingle::Kind::MAP_FD;
+        case EbpfHelperArgumentType::PTR_TO_MAP_KEY: return ArgSingle::Kind::PTR_TO_MAP_KEY;
+        case EbpfHelperArgumentType::PTR_TO_MAP_VALUE: return ArgSingle::Kind::PTR_TO_MAP_VALUE;
+        case EbpfHelperArgumentType::PTR_TO_CTX: return ArgSingle::Kind::PTR_TO_CTX;
         default: break;
         }
         return {};
     }
-    static ArgPair::Kind toArgPairKind(Arg t) {
+    static ArgPair::Kind toArgPairKind(EbpfHelperArgumentType t) {
         switch (t) {
-        case Arg::PTR_TO_MEM_OR_NULL: return ArgPair::Kind::PTR_TO_MEM_OR_NULL;
-        case Arg::PTR_TO_MEM: return ArgPair::Kind::PTR_TO_MEM;
-        case Arg::PTR_TO_UNINIT_MEM: return ArgPair::Kind::PTR_TO_UNINIT_MEM;
+        case EbpfHelperArgumentType::PTR_TO_MEM_OR_NULL: return ArgPair::Kind::PTR_TO_MEM_OR_NULL;
+        case EbpfHelperArgumentType::PTR_TO_MEM: return ArgPair::Kind::PTR_TO_MEM;
+        case EbpfHelperArgumentType::PTR_TO_UNINIT_MEM: return ArgPair::Kind::PTR_TO_UNINIT_MEM;
         default: break;
         }
         return {};
     }
 
-    static auto makeCall(int32_t imm) {
-        bpf_func_proto proto = get_prototype(imm);
+    static auto makeCall(const ebpf_platform_t* platform, int32_t imm) {
+        EbpfHelperPrototype proto = platform->get_helper_prototype(imm);
         Call res;
         res.func = imm;
         res.name = proto.name;
-        res.returns_map = proto.ret_type == Ret::PTR_TO_MAP_VALUE_OR_NULL;
-        std::array<Arg, 7> args = {{Arg::DONTCARE, proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type,
-                                    proto.arg5_type, Arg::DONTCARE}};
+        res.returns_map = proto.return_type == EbpfHelperReturnType::PTR_TO_MAP_VALUE_OR_NULL;
+        std::array<EbpfHelperArgumentType, 7> args = {{
+            EbpfHelperArgumentType::DONTCARE,
+            proto.argument_type[0],
+            proto.argument_type[1],
+            proto.argument_type[2],
+            proto.argument_type[3],
+            proto.argument_type[4],
+            EbpfHelperArgumentType::DONTCARE}};
         for (size_t i = 1; i < args.size() - 1; i++) {
             switch (args[i]) {
-            case Arg::DONTCARE: return res;
-            case Arg::ANYTHING:
-            case Arg::CONST_SHARED_PTR:
-            case Arg::PTR_TO_MAP_KEY:
-            case Arg::PTR_TO_MAP_VALUE:
-            case Arg::PTR_TO_CTX: res.singles.push_back({toArgSingleKind(args[i]), Reg{(uint8_t)i}}); break;
-            case Arg::CONST_SIZE: assert(false); continue;
-            case Arg::CONST_SIZE_OR_ZERO: assert(false); continue;
-            case Arg::PTR_TO_MEM_OR_NULL:
-            case Arg::PTR_TO_MEM:
-            case Arg::PTR_TO_UNINIT_MEM:
-                bool can_be_zero = (args[i + 1] == Arg::CONST_SIZE_OR_ZERO);
+            case EbpfHelperArgumentType::DONTCARE: return res;
+            case EbpfHelperArgumentType::ANYTHING:
+            case EbpfHelperArgumentType::CONST_SHARED_PTR:
+            case EbpfHelperArgumentType::PTR_TO_MAP_KEY:
+            case EbpfHelperArgumentType::PTR_TO_MAP_VALUE:
+            case EbpfHelperArgumentType::PTR_TO_CTX: res.singles.push_back({toArgSingleKind(args[i]), Reg{(uint8_t)i}}); break;
+            case EbpfHelperArgumentType::CONST_SIZE: assert(false); continue;
+            case EbpfHelperArgumentType::CONST_SIZE_OR_ZERO: assert(false); continue;
+            case EbpfHelperArgumentType::PTR_TO_MEM_OR_NULL:
+            case EbpfHelperArgumentType::PTR_TO_MEM:
+            case EbpfHelperArgumentType::PTR_TO_UNINIT_MEM:
+                bool can_be_zero = (args[i + 1] == EbpfHelperArgumentType::CONST_SIZE_OR_ZERO);
                 res.pairs.push_back({toArgPairKind(args[i]), Reg{(uint8_t)i}, Reg{(uint8_t)(i + 1)}, can_be_zero});
                 i++;
                 break;
@@ -326,9 +330,9 @@ struct Unmarshaller {
     auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, pc_t pc) -> Instruction {
         switch ((inst.opcode >> 4) & 0xF) {
         case 0x8:
-            if (!is_valid_prototype(inst.imm))
+            if (!platform->is_helper_usable(inst.imm))
                 note("invalid function id ");
-            return makeCall(inst.imm);
+            return makeCall(platform, inst.imm);
         case 0x9: return Exit{};
         default: {
             pc_t new_pc = pc + 1 + inst.offset;
@@ -423,16 +427,16 @@ struct Unmarshaller {
     }
 };
 
-std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, vector<vector<string>>& notes) {
+std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, const ebpf_platform_t* platform, vector<vector<string>>& notes) {
     try {
-        return Unmarshaller{notes}.unmarshal(raw_prog.prog);
+        return Unmarshaller{notes,platform}.unmarshal(raw_prog.prog);
     } catch (InvalidInstruction& arg) {
         std::cerr << arg.what() << "\n";
         return arg.what();
     }
 }
 
-std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog) {
+std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, const ebpf_platform_t* platform) {
     vector<vector<string>> notes;
-    return unmarshal(raw_prog, notes);
+    return unmarshal(raw_prog, platform, notes);
 }
