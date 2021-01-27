@@ -1,22 +1,5 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: Apache-2.0
-#include <algorithm>
-#include <bitset>
-#include <optional>
-#include <set>
-#include <utility>
-#include <vector>
-
-#include "boost/range/algorithm/set_algorithm.hpp"
-
-#include "crab/variable.hpp"
-
-#include "crab/interval.hpp"
-#include "crab/split_dbm.hpp"
-#include "crab_utils/patricia_trees.hpp"
-
-#include "dsl_syntax.hpp"
-#include "gpl/spec_type_descriptors.hpp"
 
 #include "crab/array_domain.hpp"
 

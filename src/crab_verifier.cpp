@@ -11,15 +11,13 @@
 #include <iostream>
 #include <map>
 #include <string>
-#include <tuple>
 #include <vector>
 
-#include "crab/cfg.hpp"
 #include "crab/ebpf_domain.hpp"
 #include "crab/fwd_analyzer.hpp"
 
 #include "asm_syntax.hpp"
-#include "gpl/spec_type_descriptors.hpp"
+#include "crab_verifier.hpp"
 
 using std::string;
 

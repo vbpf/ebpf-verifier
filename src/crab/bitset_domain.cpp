@@ -6,8 +6,8 @@
 std::ostream& operator<<(std::ostream& o, const bitset_domain_t& b) {
     o << "Numbers -> {";
     bool first = true;
-    for (int i = -STACK_SIZE; i < 0; i++) {
-        if (b.non_numerical_bytes[STACK_SIZE + i])
+    for (int i = -EBPF_STACK_SIZE; i < 0; i++) {
+        if (b.non_numerical_bytes[EBPF_STACK_SIZE + i])
             continue;
         if (!first)
             o << ", ";
@@ -15,7 +15,7 @@ std::ostream& operator<<(std::ostream& o, const bitset_domain_t& b) {
         o << "[" << i;
         int j = i + 1;
         for (; j < 0; j++)
-            if (b.non_numerical_bytes[STACK_SIZE + j])
+            if (b.non_numerical_bytes[EBPF_STACK_SIZE + j])
                 break;
         if (j > i + 1)
             o << "..." << j - 1;
