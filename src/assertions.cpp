@@ -7,6 +7,7 @@
 
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
+#include "spec_type_descriptors.hpp"
 #include "gpl/spec_type_descriptors.hpp"
 
 using std::string;

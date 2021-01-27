@@ -4,11 +4,11 @@
 
 #include <bitset>
 
-#include "gpl/spec_type_descriptors.hpp" // for STACK_SIZE
+#include "spec_type_descriptors.hpp" // for EBPF_STACK_SIZE
 
 class bitset_domain_t final {
   private:
-    using bits_t = std::bitset<STACK_SIZE>;
+    using bits_t = std::bitset<EBPF_STACK_SIZE>;
     bits_t non_numerical_bytes;
 
   public:

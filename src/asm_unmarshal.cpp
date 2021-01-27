@@ -11,7 +11,7 @@
 
 #include "gpl/spec_prototypes.hpp"
 
-#include "asm_syntax.hpp"
+#include "asm_unmarshal.hpp"
 
 using std::string;
 using std::vector;
@@ -194,7 +194,7 @@ struct Unmarshaller {
             assert(!(isLoad && isImm));
             uint8_t basereg = isLoad ? inst.src : inst.dst;
 
-            if (basereg == R10_STACK_POINTER && (inst.offset + opcode_to_width(inst.opcode) > 0 || inst.offset < -STACK_SIZE)) {
+            if (basereg == R10_STACK_POINTER && (inst.offset + opcode_to_width(inst.opcode) > 0 || inst.offset < -EBPF_STACK_SIZE)) {
                 note("Stack access out of bounds");
             }
             auto res = Mem{

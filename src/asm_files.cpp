@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "asm_files.hpp"
-#include "gpl/spec_type_descriptors.hpp"
 
 #include "elfio/elfio.hpp"
 

@@ -6,13 +6,10 @@
 #include <linux/bpf.h>
 #include <ctime>
 
-#include <iostream>
-
-#include "asm_syntax.hpp"
 #include "config.hpp"
+#include "linux_verifier.hpp"
 #include "utils.hpp"
 
-#include "gpl/spec_type_descriptors.hpp"
 
 static bpf_prog_type to_linuxtype(BpfProgType t) {
     switch (t) {

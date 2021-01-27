@@ -26,6 +26,7 @@
 #include "config.hpp"
 #include "dsl_syntax.hpp"
 #include "gpl/spec_prototypes.hpp"
+#include "spec_type_descriptors.hpp"
 #include "gpl/spec_type_descriptors.hpp"
 
 #include "crab/array_domain.hpp"
@@ -559,7 +560,7 @@ class ebpf_domain_t final {
     NumAbsDomain check_access_stack(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s) {
         using namespace dsl_syntax;
         require(inv, lb >= 0, std::string("Lower bound must be higher than 0") + s);
-        require(inv, ub <= STACK_SIZE, std::string("Upper bound must be lower than STACK_SIZE") + s);
+        require(inv, ub <= EBPF_STACK_SIZE, std::string("Upper bound must be lower than EBPF_STACK_SIZE") + s);
         return inv;
     }
 
@@ -643,7 +644,7 @@ class ebpf_domain_t final {
         if (inv.is_bottom())
             return inv;
 
-        ptype_descr desc = global_program_info.descriptor;
+        EbpfContextDescriptor desc = global_program_info.descriptor;
 
         inv -= target.value;
 
@@ -783,7 +784,7 @@ class ebpf_domain_t final {
         int width = b.access.width;
         int offset = b.access.offset;
         if (b.access.basereg.v == 10) {
-            int addr = STACK_SIZE + offset;
+            int addr = EBPF_STACK_SIZE + offset;
             do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset);
             return;
         }
@@ -1061,8 +1062,8 @@ class ebpf_domain_t final {
         // intra_abs_transformer<AbsDomain>(inv);
         ebpf_domain_t inv;
         auto r10 = reg_pack(10);
-        inv += STACK_SIZE <= r10.value;
-        inv.assign(r10.offset, STACK_SIZE);
+        inv += EBPF_STACK_SIZE <= r10.value;
+        inv.assign(r10.offset, EBPF_STACK_SIZE);
         inv.assign(r10.type, T_STACK);
 
         auto r1 = reg_pack(1);

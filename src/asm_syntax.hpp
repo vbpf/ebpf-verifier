@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "crab/variable.hpp"
-#include "gpl/spec_type_descriptors.hpp"
 
 namespace crab {
 struct label_t {

@@ -58,7 +58,6 @@ enum class MapType : unsigned int {
     STACK,
 };
 
-constexpr int STACK_SIZE = 512;
 constexpr int NMAPS = 64;
 constexpr int NONMAPS = 5;
 constexpr int ALL_TYPES = NMAPS + NONMAPS;
@@ -78,13 +77,6 @@ constexpr int cgroup_sock_regions = 12 * 4;
 constexpr int sock_ops_regions = 42 * 4 + 2 * 8;
 constexpr int sk_skb_regions = 36 * 4;
 
-struct ptype_descr {
-    int size{};
-    int data = -1;
-    int end = -1;
-    int meta = -1; // data to meta is like end to data. i.e. meta <= data <= end
-};
-
 struct map_def {
     int original_fd;
     MapType type;
@@ -96,7 +88,7 @@ struct map_def {
 struct program_info {
     BpfProgType program_type;
     std::vector<map_def> map_defs;
-    ptype_descr descriptor;
+    EbpfContextDescriptor descriptor;
 };
 
 extern program_info global_program_info;
@@ -108,24 +100,24 @@ struct raw_program {
     program_info info;
 };
 
-constexpr ptype_descr sk_buff = {sk_skb_regions, 19 * 4, 20 * 4, 35 * 4};
-constexpr ptype_descr xdp_md = {xdp_regions, 0, 1 * 4, 2 * 4};
-constexpr ptype_descr sk_msg_md = {17 * 4, 0, 1 * 8, -1}; // TODO: verify
-constexpr ptype_descr unspec_descr = {0};
-constexpr ptype_descr cgroup_dev_descr = {cgroup_dev_regions};
-constexpr ptype_descr kprobe_descr = {kprobe_regions};
-constexpr ptype_descr tracepoint_descr = {tracepoint_regions};
-constexpr ptype_descr perf_event_descr = {perf_event_regions};
-constexpr ptype_descr socket_filter_descr = sk_buff;
-constexpr ptype_descr sched_descr = sk_buff;
-constexpr ptype_descr xdp_descr = xdp_md;
-constexpr ptype_descr lwt_xmit_descr = sk_buff;
-constexpr ptype_descr lwt_inout_descr = sk_buff;
-constexpr ptype_descr cgroup_sock_descr = {cgroup_sock_regions};
-constexpr ptype_descr sock_ops_descr = {sock_ops_regions};
-constexpr ptype_descr sk_skb_descr = sk_buff;
+constexpr EbpfContextDescriptor sk_buff = {sk_skb_regions, 19 * 4, 20 * 4, 35 * 4};
+constexpr EbpfContextDescriptor xdp_md = {xdp_regions, 0, 1 * 4, 2 * 4};
+constexpr EbpfContextDescriptor sk_msg_md = {17 * 4, 0, 1 * 8, -1}; // TODO: verify
+constexpr EbpfContextDescriptor unspec_descr = {0};
+constexpr EbpfContextDescriptor cgroup_dev_descr = {cgroup_dev_regions};
+constexpr EbpfContextDescriptor kprobe_descr = {kprobe_regions};
+constexpr EbpfContextDescriptor tracepoint_descr = {tracepoint_regions};
+constexpr EbpfContextDescriptor perf_event_descr = {perf_event_regions};
+constexpr EbpfContextDescriptor socket_filter_descr = sk_buff;
+constexpr EbpfContextDescriptor sched_descr = sk_buff;
+constexpr EbpfContextDescriptor xdp_descr = xdp_md;
+constexpr EbpfContextDescriptor lwt_xmit_descr = sk_buff;
+constexpr EbpfContextDescriptor lwt_inout_descr = sk_buff;
+constexpr EbpfContextDescriptor cgroup_sock_descr = {cgroup_sock_regions};
+constexpr EbpfContextDescriptor sock_ops_descr = {sock_ops_regions};
+constexpr EbpfContextDescriptor sk_skb_descr = sk_buff;
 
-inline ptype_descr get_descriptor(BpfProgType t) {
+inline EbpfContextDescriptor get_descriptor(BpfProgType t) {
     switch (t) {
     case BpfProgType::UNSPEC: return unspec_descr;
     case BpfProgType::CGROUP_DEVICE: return cgroup_dev_descr;

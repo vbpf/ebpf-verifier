@@ -46,7 +46,7 @@
 #include "config.hpp"
 #include "dsl_syntax.hpp"
 #include "gpl/spec_prototypes.hpp"
-#include "gpl/spec_type_descriptors.hpp"
+#include "spec_type_descriptors.hpp"
 
 #include "crab/bitset_domain.hpp"
 
@@ -313,7 +313,7 @@ class array_domain_t final {
     void store_numbers(NumAbsDomain& inv, variable_t _idx, variable_t _width) {
 
         // TODO: this should be an user parameter.
-        const number_t max_num_elems = STACK_SIZE;
+        const number_t max_num_elems = EBPF_STACK_SIZE;
 
         if (is_bottom())
             return;

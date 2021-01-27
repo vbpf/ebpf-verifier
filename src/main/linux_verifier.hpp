@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "asm_syntax.hpp"
+#include "spec_type_descriptors.hpp"
 #include "gpl/spec_type_descriptors.hpp"
 #include "linux_ebpf.hpp"
 
