@@ -4,6 +4,14 @@
 
 constexpr int EBPF_STACK_SIZE = 512;
 
+struct EbpfMapDescriptor {
+    int original_fd;
+    uint32_t type; // Platform-specific type value in ELF file.
+    unsigned int key_size;
+    unsigned int value_size;
+    unsigned int inner_map_fd;
+};
+
 // The following struct describes how to access the layout in
 // memory of the data (e.g., the actual packet).
 struct EbpfContextDescriptor {

@@ -77,18 +77,10 @@ constexpr int cgroup_sock_regions = 12 * 4;
 constexpr int sock_ops_regions = 42 * 4 + 2 * 8;
 constexpr int sk_skb_regions = 36 * 4;
 
-struct map_def {
-    int original_fd;
-    MapType type;
-    unsigned int key_size;
-    unsigned int value_size;
-    unsigned int inner_map_fd;
-};
-
 struct program_info {
     BpfProgType program_type;
-    std::vector<map_def> map_defs;
-    EbpfContextDescriptor descriptor;
+    std::vector<EbpfMapDescriptor> map_descriptors;
+    EbpfContextDescriptor context_descriptor;
 };
 
 extern program_info global_program_info;
@@ -117,7 +109,7 @@ constexpr EbpfContextDescriptor cgroup_sock_descr = {cgroup_sock_regions};
 constexpr EbpfContextDescriptor sock_ops_descr = {sock_ops_regions};
 constexpr EbpfContextDescriptor sk_skb_descr = sk_buff;
 
-inline EbpfContextDescriptor get_descriptor(BpfProgType t) {
+inline EbpfContextDescriptor get_context_descriptor(BpfProgType t) {
     switch (t) {
     case BpfProgType::UNSPEC: return unspec_descr;
     case BpfProgType::CGROUP_DEVICE: return cgroup_dev_descr;
