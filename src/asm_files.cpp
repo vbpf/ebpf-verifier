@@ -13,14 +13,15 @@ using std::cout;
 using std::string;
 using std::vector;
 
+// Map definitions as they appear in an ELF file, so field width matters.
 struct bpf_load_map_def {
-    unsigned int type;
-    unsigned int key_size;
-    unsigned int value_size;
-    unsigned int max_entries;
-    unsigned int map_flags;
-    unsigned int inner_map_idx;
-    unsigned int numa_node;
+    uint32_t type;
+    uint32_t key_size;
+    uint32_t value_size;
+    uint32_t max_entries;
+    uint32_t map_flags;
+    uint32_t inner_map_idx;
+    uint32_t numa_node;
 };
 
 struct bpf_map_data {
@@ -100,19 +101,19 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
     program_info info{};
     auto mapdefs = vector_of<bpf_load_map_def>(reader.sections["maps"]);
     for (auto s : mapdefs) {
-        info.map_defs.emplace_back(map_def{
+        info.map_descriptors.emplace_back(EbpfMapDescriptor{
             .original_fd = fd_alloc(s.type, s.key_size, s.value_size, s.max_entries, *options),
-            .type = MapType{s.type},
+            .type = s.type,
             .key_size = s.key_size,
             .value_size = s.value_size,
         });
     }
     for (size_t i = 0; i < mapdefs.size(); i++) {
         unsigned int inner = mapdefs[i].inner_map_idx;
-        if (inner >= info.map_defs.size())
+        if (inner >= info.map_descriptors.size())
             throw std::runtime_error(string("bad inner map index ") + std::to_string(inner)
                                      + " for map " + std::to_string(i));
-        info.map_defs[i].inner_map_fd = info.map_defs.at(inner).original_fd;
+        info.map_descriptors[i].inner_map_fd = info.map_descriptors.at(inner).original_fd;
     }
 
     ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
@@ -141,7 +142,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
             continue;
         }
         info.program_type = section_to_progtype(name, path);
-        info.descriptor = get_descriptor(info.program_type);
+        info.context_descriptor = get_context_descriptor(info.program_type);
         if (section->get_size() == 0)
             continue;
         raw_program prog{path, name, vector_of<ebpf_inst>(section), info};
@@ -149,11 +150,11 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
         if (!prelocs)
             prelocs = reader.sections[string(".rela") + name];
 
-        // // std::vector<int> updated_fds = sort_maps_by_size(info.map_defs);
+        // // std::vector<int> updated_fds = sort_maps_by_size(info.map_descriptors);
         // for (auto n : updated_fds) {
-        //     std::cout << "old=" << info.map_defs[n].original_fd << ", "
+        //     std::cout << "old=" << info.map_descriptors[n].original_fd << ", "
         //               << "new=" << n << ", "
-        //               << "size=" << info.map_defs[n].value_size << "\n";
+        //               << "size=" << info.map_descriptors[n].value_size << "\n";
         // }
         if (prelocs) {
             ELFIO::const_relocation_section_accessor reloc{reader, prelocs};
@@ -168,13 +169,13 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
 
                     // if (fd_alloc == allocate_fds) {
                     //     std::cout << read_reloc_value(symbol) << "=" <<
-                    //     info.map_defs[updated_fds.at(read_reloc_value(symbol))].value_size << "\n";
+                    //     info.map_descriptors[updated_fds.at(read_reloc_value(symbol))].value_size << "\n";
                     //     inst.imm = updated_fds.at(read_reloc_value(symbol));
                     // } else {
                     size_t reloc_value = read_reloc_value(symbol);
-                    if (reloc_value >= info.map_defs.size())
+                    if (reloc_value >= info.map_descriptors.size())
                         throw std::runtime_error(string("bad reloc value ") + std::to_string(reloc_value));
-                    inst.imm = info.map_defs.at(reloc_value).original_fd;
+                    inst.imm = info.map_descriptors.at(reloc_value).original_fd;
                     // }
                 }
             }
