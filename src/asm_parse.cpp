@@ -168,7 +168,7 @@ std::vector<std::tuple<label_t, Instruction>> parse_program(std::istream& is) {
             continue;
 
         if (!next_label)
-            next_label = label_t(labeled_insts.size());
+            next_label = label_t(static_cast<int>(labeled_insts.size()));
         labeled_insts.emplace_back(*next_label, ins);
         next_label = {};
     }
