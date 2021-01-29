@@ -26,10 +26,10 @@ class thresholds_t final {
 
   private:
     std::vector<bound_t> m_thresholds;
-    unsigned int m_size;
+    size_t m_size;
 
   public:
-    explicit thresholds_t(int size = UINT_MAX) : m_size(size) {
+    explicit thresholds_t(size_t size = UINT_MAX) : m_size(size) {
         m_thresholds.push_back(bound_t::minus_infinity());
         m_thresholds.emplace_back(0);
         m_thresholds.push_back(bound_t::plus_infinity());

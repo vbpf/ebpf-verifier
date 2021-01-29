@@ -8,7 +8,7 @@
         try { \
             read_elf("ebpf-samples/" dirname "/" filename, sectionname, create_map_crab, nullptr); \
             REQUIRE(false); \
-        } catch (const std::runtime_error& ex) { \
+        } catch (const std::runtime_error&) { \
         }\
     }
 
