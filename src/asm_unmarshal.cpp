@@ -299,7 +299,6 @@ struct Unmarshaller {
         Call res;
         res.func = imm;
         res.name = proto.name;
-        res.pkt_access = proto.pkt_access;
         res.returns_map = proto.ret_type == Ret::PTR_TO_MAP_VALUE_OR_NULL;
         std::array<Arg, 7> args = {{Arg::DONTCARE, proto.arg1_type, proto.arg2_type, proto.arg3_type, proto.arg4_type,
                                     proto.arg5_type, Arg::DONTCARE}};
