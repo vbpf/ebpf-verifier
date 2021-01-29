@@ -57,7 +57,6 @@ struct bpf_func_proto {
     Arg arg3_type;
     Arg arg4_type;
     Arg arg5_type;
-    bool pkt_access;
 };
 
 bpf_func_proto get_prototype(unsigned int n);
