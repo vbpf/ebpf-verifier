@@ -122,7 +122,7 @@ int main(int argc, char** argv) {
     // Convert the raw program section to a set of instructions.
     std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog, &g_ebpf_platform_linux);
     if (std::holds_alternative<string>(prog_or_error)) {
-        std::cout << "trivial verification failure: " << std::get<string>(prog_or_error) << "\n";
+        std::cout << "unmarshaling error at " << std::get<string>(prog_or_error) << "\n";
         return 1;
     }
 
