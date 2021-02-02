@@ -2,28 +2,21 @@
 // SPDX-License-Identifier: MIT
 #if __linux__
 #include <linux/bpf.h>
+#define PTYPE(name, descr, native_type, prefixes) \
+             {name, descr, native_type, prefixes}
+#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) \
+                        {name, descr, native_type, prefixes, true}
+#else
+#define PTYPE(name, descr, native_type, prefixes) \
+             {name, descr, 0, prefixes}
+#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) \
+                        {name, descr, 0, prefixes, true}
 #endif
 #include "spec_type_descriptors.hpp"
 #include "helpers.hpp"
 #include "platform.hpp"
 #include "linux_platform.hpp"
 #include "linux/gpl/spec_type_descriptors.hpp"
-
-#ifdef BPF_PROG_TYPE_UNSPEC
-#define PTYPE(name, descr, native_type, prefixes) \
-               {name, descr, native_type, prefixes}
-
-#define PTYPE(name, descr, native_type, prefixes, is_privileged) \
-                       {name, descr, native_type, prefixes, is_privileged}
-
-#else
-
-#define PTYPE(name, descr, native_type, prefixes) \
-                       {name, descr, 0, prefixes}
-
-#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) \
-                       {name, descr, 0, prefixes, true}
-#endif
 
 // Allow for comma as a separator between multiple prefixes, to make
 // the preprocessor treat a prefix list as one macro argument.

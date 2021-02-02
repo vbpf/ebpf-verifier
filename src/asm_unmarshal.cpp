@@ -274,7 +274,7 @@ struct Unmarshaller {
     static ArgSingle::Kind toArgSingleKind(EbpfHelperArgumentType t) {
         switch (t) {
         case EbpfHelperArgumentType::ANYTHING: return ArgSingle::Kind::ANYTHING;
-        case EbpfHelperArgumentType::CONST_SHARED_PTR: return ArgSingle::Kind::MAP_FD;
+        case EbpfHelperArgumentType::PTR_TO_MAP: return ArgSingle::Kind::MAP_FD;
         case EbpfHelperArgumentType::PTR_TO_MAP_KEY: return ArgSingle::Kind::PTR_TO_MAP_KEY;
         case EbpfHelperArgumentType::PTR_TO_MAP_VALUE: return ArgSingle::Kind::PTR_TO_MAP_VALUE;
         case EbpfHelperArgumentType::PTR_TO_CTX: return ArgSingle::Kind::PTR_TO_CTX;
@@ -310,7 +310,7 @@ struct Unmarshaller {
             switch (args[i]) {
             case EbpfHelperArgumentType::DONTCARE: return res;
             case EbpfHelperArgumentType::ANYTHING:
-            case EbpfHelperArgumentType::CONST_SHARED_PTR:
+            case EbpfHelperArgumentType::PTR_TO_MAP:
             case EbpfHelperArgumentType::PTR_TO_MAP_KEY:
             case EbpfHelperArgumentType::PTR_TO_MAP_VALUE:
             case EbpfHelperArgumentType::PTR_TO_CTX: res.singles.push_back({toArgSingleKind(args[i]), Reg{(uint8_t)i}}); break;

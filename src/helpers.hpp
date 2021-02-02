@@ -10,11 +10,11 @@ enum class EbpfHelperReturnType {
 
 enum class EbpfHelperArgumentType {
     DONTCARE = 0,
-    ANYTHING,
-    CONST_SHARED_PTR,
+    ANYTHING, // All values are valid, e.g., 64-bit flags.
     CONST_SIZE,
     CONST_SIZE_OR_ZERO,
     PTR_TO_CTX,
+    PTR_TO_MAP,
     PTR_TO_MAP_KEY,
     PTR_TO_MAP_VALUE,
     PTR_TO_MEM,
