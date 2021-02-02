@@ -1993,10 +1993,10 @@ const struct EbpfHelperPrototype prototypes[81] = {
     FN(get_current_cgroup_id),
 };
 
+bool is_helper_usable_linux(unsigned int n) { return n < sizeof(prototypes) / sizeof(prototypes[0]) && n > 0; }
+
 EbpfHelperPrototype get_helper_prototype_linux(unsigned int n) {
-    if (n >= sizeof(prototypes) / sizeof(prototypes[0]))
-        return bpf_unspec_proto;
+    if (!is_helper_usable_linux(n))
+        throw std::exception();
     return prototypes[n];
 }
-
-bool is_helper_usable_linux(unsigned int n) { return n < sizeof(prototypes) / sizeof(prototypes[0]) && n > 0; }

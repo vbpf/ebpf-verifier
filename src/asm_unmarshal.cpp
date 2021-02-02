@@ -42,7 +42,8 @@ void compare(const string& field, T actual, T expected) {
 }
 
 struct InvalidInstruction : std::invalid_argument {
-    explicit InvalidInstruction(const char* what) : std::invalid_argument{what} {}
+    size_t pc;
+    explicit InvalidInstruction(size_t pc, const char* what) : std::invalid_argument{what}, pc{pc} {}
 };
 
 struct UnsupportedMemoryMode : std::invalid_argument {
@@ -86,7 +87,7 @@ struct Unmarshaller {
     void note_next_pc() { notes.emplace_back(); }
     explicit Unmarshaller(vector<vector<string>>& notes, const ebpf_platform_t* platform) : notes{notes}, platform{platform} { note_next_pc(); }
 
-    auto getAluOp(ebpf_inst inst) -> std::variant<Bin::Op, Un::Op> {
+    auto getAluOp(size_t pc, ebpf_inst inst) -> std::variant<Bin::Op, Un::Op> {
         switch ((inst.opcode >> 4) & 0xF) {
         case 0x0: return Bin::Op::ADD;
         case 0x1: return Bin::Op::SUB;
@@ -109,16 +110,16 @@ struct Unmarshaller {
             case 16: return Un::Op::LE16;
             case 32:
                 if ((inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64)
-                    throw InvalidInstruction("invalid endian immediate 32 for 64 bit instruction");
+                    throw InvalidInstruction(pc, "invalid endian immediate 32 for 64 bit instruction");
                 return Un::Op::LE32;
             case 64:
                 if ((inst.opcode & INST_CLS_MASK) == INST_CLS_ALU)
-                    throw InvalidInstruction("invalid endian immediate 64 for 32 bit instruction");
+                    throw InvalidInstruction(pc, "invalid endian immediate 64 for 32 bit instruction");
                 return Un::Op::LE64;
             default: note("invalid endian immediate; falling back to 64"); return Un::Op::LE64;
             }
-        case 0xe: throw InvalidInstruction{"Invalid ALU op 0xe"};
-        case 0xf: throw InvalidInstruction{"Invalid ALU op 0xf"};
+        case 0xe: throw InvalidInstruction{pc, "invalid ALU op 0xe"};
+        case 0xf: throw InvalidInstruction{pc, "invalid ALU op 0xf"};
         }
         return {};
     }
@@ -137,7 +138,7 @@ struct Unmarshaller {
         }
     }
 
-    static auto getJmpOp(uint8_t opcode) -> Condition::Op {
+    static auto getJmpOp(size_t pc, uint8_t opcode) -> Condition::Op {
         using Op = Condition::Op;
         switch ((opcode >> 4) & 0xF) {
         case 0x0: return {}; // goto
@@ -154,7 +155,7 @@ struct Unmarshaller {
         case 0xb: return Op::LE;
         case 0xc: return Op::SLT;
         case 0xd: return Op::SLE;
-        case 0xe: throw InvalidInstruction{"Invalid JMP op 0xe"};
+        case 0xe: throw InvalidInstruction(pc, "invalid JMP op 0xe");
         }
         return {};
     }
@@ -228,7 +229,7 @@ struct Unmarshaller {
         return {};
     }
 
-    auto makeAluOp(ebpf_inst inst) -> Instruction {
+    auto makeAluOp(size_t pc, ebpf_inst inst) -> Instruction {
         if (inst.dst == R10_STACK_POINTER)
             note("Invalid target r10");
         return std::visit(overloaded{[&](Un::Op op) -> Instruction { return Un{.op = op, .dst = Reg{inst.dst}}; },
@@ -244,7 +245,7 @@ struct Unmarshaller {
                                                  note("division by zero");
                                          return res;
                                      }},
-                          getAluOp(inst));
+                          getAluOp(pc, inst));
     }
 
     auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& insts, pc_t pc) -> Instruction {
@@ -331,7 +332,7 @@ struct Unmarshaller {
         switch ((inst.opcode >> 4) & 0xF) {
         case 0x8:
             if (!platform->is_helper_usable(inst.imm))
-                note("invalid function id ");
+                throw InvalidInstruction(pc, "invalid helper function id");
             return makeCall(platform, inst.imm);
         case 0x9: return Exit{};
         default: {
@@ -343,7 +344,7 @@ struct Unmarshaller {
 
             auto cond = inst.opcode == INST_OP_JA ? std::optional<Condition>{}
                                                   : Condition{
-                                                        .op = getJmpOp(inst.opcode),
+                                                        .op = getJmpOp(pc, inst.opcode),
                                                         .left = Reg{inst.dst},
                                                         .right = (inst.opcode & INST_SRC_REG) ? (Value)Reg{inst.src}
                                                                                               : Imm{(uint32_t)inst.imm},
@@ -381,7 +382,7 @@ struct Unmarshaller {
             case INST_CLS_STX: new_ins = makeMemOp(inst); break;
 
             case INST_CLS_ALU:
-            case INST_CLS_ALU64: new_ins = makeAluOp(inst); break;
+            case INST_CLS_ALU64: new_ins = makeAluOp(pc, inst); break;
 
             case INST_CLS_JMP: {
                 new_ins = makeJmp(inst, insts, static_cast<pc_t>(pc));
@@ -396,7 +397,7 @@ struct Unmarshaller {
                 break;
             }
 
-            case INST_CLS_UNUSED: throw InvalidInstruction{"Invalid class 0x6"};
+            case INST_CLS_UNUSED: throw InvalidInstruction(pc, "invalid class 0x6");
             }
             /*
             vector<ebpf_inst> marshalled = marshal(new_ins[0], pc);
@@ -431,8 +432,9 @@ std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog,
     try {
         return Unmarshaller{notes,platform}.unmarshal(raw_prog.prog);
     } catch (InvalidInstruction& arg) {
-        std::cerr << arg.what() << "\n";
-        return arg.what();
+        std::ostringstream ss;
+        ss << arg.pc << ": " << arg.what() << "\n";
+        return ss.str();
     }
 }
 

@@ -120,9 +120,7 @@ static void print_report(std::ostream& s, const checks_db& db) {
             s << "  " << msg << "\n";
     }
     s << "\n";
-    if (db.maybe_nonterminating.empty()) {
-        s << "Always terminates\n";
-    } else {
+    if (!db.maybe_nonterminating.empty()) {
         s << "Could not prove termination on join into: ";
         for (const label_t& label : db.maybe_nonterminating) {
             s << label << ", ";

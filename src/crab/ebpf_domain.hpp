@@ -277,7 +277,7 @@ class ebpf_domain_t final {
     }
 
     void scratch_caller_saved_registers() {
-        for (int i = 1; i <= 5; i++) {
+        for (int i = R1_ARG; i <= R5_ARG; i++) {
             auto reg = reg_pack(i);
             havoc(reg.value);
             havoc(reg.offset);
@@ -621,7 +621,7 @@ class ebpf_domain_t final {
     void operator()(Assert const& stmt) { std::visit(*this, stmt.cst); };
 
     void operator()(Packet const& a) {
-        auto reg = reg_pack(0);
+        auto reg = reg_pack(R0_RETURN_VALUE);
         assign(reg.type, T_NUM);
         havoc(reg.offset);
         havoc(reg.value);
@@ -711,7 +711,7 @@ class ebpf_domain_t final {
         int offset = b.access.offset;
         linear_expression_t addr = mem_reg.offset + (number_t)offset;
 
-        if (b.access.basereg.v == 10) {
+        if (b.access.basereg.v == R10_STACK_POINTER) {
             m_inv = do_load_stack(std::move(m_inv), target, addr, width);
             return;
         }
@@ -782,7 +782,7 @@ class ebpf_domain_t final {
         auto mem_reg = reg_pack(b.access.basereg);
         int width = b.access.width;
         int offset = b.access.offset;
-        if (b.access.basereg.v == 10) {
+        if (b.access.basereg.v == R10_STACK_POINTER) {
             int addr = EBPF_STACK_SIZE + offset;
             do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset);
             return;
@@ -856,7 +856,7 @@ class ebpf_domain_t final {
             }
         }
         scratch_caller_saved_registers();
-        auto r0 = reg_pack(0);
+        auto r0 = reg_pack(R0_RETURN_VALUE);
         havoc(r0.value);
         if (call.returns_map) {
             // no support for map-in-map yet:
@@ -1058,14 +1058,13 @@ class ebpf_domain_t final {
     static ebpf_domain_t setup_entry(bool check_termination) {
         using namespace dsl_syntax;
 
-        // intra_abs_transformer<AbsDomain>(inv);
         ebpf_domain_t inv;
-        auto r10 = reg_pack(10);
+        auto r10 = reg_pack(R10_STACK_POINTER);
         inv += EBPF_STACK_SIZE <= r10.value;
         inv.assign(r10.offset, EBPF_STACK_SIZE);
         inv.assign(r10.type, T_STACK);
 
-        auto r1 = reg_pack(1);
+        auto r1 = reg_pack(R1_ARG);
         inv += 1 <= r1.value;
         inv += r1.value <= PTR_MAX;
         inv.assign(r1.offset, 0);
