@@ -42,7 +42,7 @@ const struct EbpfHelperPrototype bpf_tail_call_proto = {
     .return_type = EbpfHelperReturnType::VOID,
     .argument_type = {
         EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::CONST_SHARED_PTR,
+        EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::ANYTHING,
     },
 };
@@ -136,7 +136,7 @@ static const struct EbpfHelperPrototype bpf_perf_event_read_proto = {
     //.gpl_only	= true,
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::CONST_SHARED_PTR,
+        EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::ANYTHING,
     },
 };
@@ -156,7 +156,7 @@ static const struct EbpfHelperPrototype bpf_perf_event_read_value_proto = {
     //.gpl_only	= true,
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::CONST_SHARED_PTR,
+        EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::PTR_TO_UNINIT_MEM,
         EbpfHelperArgumentType::CONST_SIZE,
@@ -216,7 +216,7 @@ static const struct EbpfHelperPrototype bpf_perf_event_output_proto = {
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = {
         EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::CONST_SHARED_PTR,
+        EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::PTR_TO_MEM,
         EbpfHelperArgumentType::CONST_SIZE_OR_ZERO,
@@ -251,7 +251,7 @@ static const struct EbpfHelperPrototype bpf_current_task_under_cgroup_proto = {
     //.gpl_only   = false,
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::CONST_SHARED_PTR,
+        EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::ANYTHING,
     },
 };
@@ -262,7 +262,7 @@ static const struct EbpfHelperPrototype bpf_current_task_under_cgroup_proto = {
 // 	.return_type	= EbpfHelperReturnType::INTEGER,
 // 	.argument_type = {
 // 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::CONST_SHARED_PTR,
+// 	    EbpfHelperArgumentType::PTR_TO_MAP,
 // 	    EbpfHelperArgumentType::ANYTHING,
 // 	    EbpfHelperArgumentType::PTR_TO_MEM,
 // 	    EbpfHelperArgumentType::CONST_SIZE_OR_ZERO,
@@ -275,7 +275,7 @@ static const struct EbpfHelperPrototype bpf_current_task_under_cgroup_proto = {
 // 	.return_type	= EbpfHelperReturnType::INTEGER,
 // 	.argument_type = {
 // 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::CONST_SHARED_PTR,
+// 	    EbpfHelperArgumentType::PTR_TO_MAP,
 // 	    EbpfHelperArgumentType::ANYTHING,
 //  },
 // };
@@ -323,7 +323,7 @@ static const struct EbpfHelperPrototype bpf_perf_prog_read_value_proto = {
 // 	.return_type	= EbpfHelperReturnType::INTEGER,
 // 	.argument_type = {
 // 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::CONST_SHARED_PTR,
+// 	    EbpfHelperArgumentType::PTR_TO_MAP,
 // 	    EbpfHelperArgumentType::ANYTHING,
 // 	    EbpfHelperArgumentType::PTR_TO_MEM,
 // 	    EbpfHelperArgumentType::CONST_SIZE_OR_ZERO,
@@ -336,7 +336,7 @@ static const struct EbpfHelperPrototype bpf_perf_prog_read_value_proto = {
 // 	.return_type	= EbpfHelperReturnType::INTEGER,
 // 	.argument_type = {
 // 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::CONST_SHARED_PTR,
+// 	    EbpfHelperArgumentType::PTR_TO_MAP,
 // 	    EbpfHelperArgumentType::ANYTHING,
 //   },
 // };
@@ -365,7 +365,7 @@ static const struct EbpfHelperPrototype bpf_map_lookup_elem_proto = {
     //.gpl_only	= false,
     .return_type = EbpfHelperReturnType::PTR_TO_MAP_VALUE_OR_NULL,
     .argument_type = {
-        EbpfHelperArgumentType::CONST_SHARED_PTR,
+        EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::PTR_TO_MAP_KEY,
         EbpfHelperArgumentType::DONTCARE,
         EbpfHelperArgumentType::DONTCARE,
@@ -383,7 +383,7 @@ static const struct EbpfHelperPrototype bpf_map_update_elem_proto = {
     //.gpl_only	= false,
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::CONST_SHARED_PTR,
+        EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::PTR_TO_MAP_KEY,
         EbpfHelperArgumentType::PTR_TO_MAP_VALUE,
         EbpfHelperArgumentType::ANYTHING,
@@ -401,7 +401,7 @@ static const struct EbpfHelperPrototype bpf_map_delete_elem_proto = {
     //.gpl_only	= false,
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::CONST_SHARED_PTR,
+        EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::PTR_TO_MAP_KEY,
         EbpfHelperArgumentType::DONTCARE,
         EbpfHelperArgumentType::DONTCARE,
@@ -516,7 +516,7 @@ static const struct EbpfHelperPrototype bpf_sock_map_update_proto = {
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = {
         EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::CONST_SHARED_PTR,
+        EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::PTR_TO_MAP_KEY,
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::DONTCARE,
@@ -530,7 +530,7 @@ static const struct EbpfHelperPrototype bpf_sock_hash_update_proto = {
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = {
         EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::CONST_SHARED_PTR,
+        EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::PTR_TO_MAP_KEY,
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::DONTCARE,
@@ -557,7 +557,7 @@ static const struct EbpfHelperPrototype bpf_get_stackid_proto = {
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = {
         EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::CONST_SHARED_PTR,
+        EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::ANYTHING,
     },
 };
@@ -848,7 +848,7 @@ static const struct EbpfHelperPrototype bpf_sk_redirect_hash_proto = {
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = {
         EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::CONST_SHARED_PTR,
+        EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::PTR_TO_MAP_KEY,
         EbpfHelperArgumentType::ANYTHING,
     },
@@ -860,7 +860,7 @@ static const struct EbpfHelperPrototype bpf_sk_redirect_map_proto = {
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = {
         EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::CONST_SHARED_PTR,
+        EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::ANYTHING,
     },
@@ -872,7 +872,7 @@ static const struct EbpfHelperPrototype bpf_msg_redirect_hash_proto = {
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = {
         EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::CONST_SHARED_PTR,
+        EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::PTR_TO_MAP_KEY,
         EbpfHelperArgumentType::ANYTHING,
     },
@@ -884,7 +884,7 @@ static const struct EbpfHelperPrototype bpf_msg_redirect_map_proto = {
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = {
         EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::CONST_SHARED_PTR,
+        EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::ANYTHING,
     },
@@ -1173,7 +1173,7 @@ static const struct EbpfHelperPrototype bpf_xdp_adjust_meta_proto = {
 // 	//.gpl_only   = false,
 // 	.return_type   = EbpfHelperReturnType::INTEGER,
 // 	.argument_type = {
-// 	    EbpfHelperArgumentType::CONST_SHARED_PTR,
+// 	    EbpfHelperArgumentType::PTR_TO_MAP,
 // 	    EbpfHelperArgumentType::ANYTHING,
 // 	    EbpfHelperArgumentType::ANYTHING,
 // 	},
@@ -1186,7 +1186,7 @@ static const struct EbpfHelperPrototype bpf_xdp_adjust_meta_proto = {
 // 	.return_type	= EbpfHelperReturnType::INTEGER,
 // 	.argument_type = {
 // 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::CONST_SHARED_PTR,
+// 	    EbpfHelperArgumentType::PTR_TO_MAP,
 // 	    EbpfHelperArgumentType::ANYTHING,
 // 	    EbpfHelperArgumentType::PTR_TO_MEM,
 // 	    EbpfHelperArgumentType::CONST_SIZE_OR_ZERO,
@@ -1295,7 +1295,7 @@ static const struct EbpfHelperPrototype bpf_skb_under_cgroup_proto = {
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = {
         EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::CONST_SHARED_PTR,
+        EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::ANYTHING,
     },
 };
@@ -1317,7 +1317,7 @@ static const struct EbpfHelperPrototype bpf_skb_cgroup_id_proto = {
 // 	.return_type	= EbpfHelperReturnType::INTEGER,
 // 	.argument_type = {
 // 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::CONST_SHARED_PTR,
+// 	    EbpfHelperArgumentType::PTR_TO_MAP,
 // 	    EbpfHelperArgumentType::ANYTHING,
 // 	    EbpfHelperArgumentType::PTR_TO_MEM,
 // 	    EbpfHelperArgumentType::CONST_SIZE_OR_ZERO,
@@ -1650,7 +1650,7 @@ static const struct EbpfHelperPrototype bpf_redirect_map_proto = {
     .name = "redirect_map",
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::CONST_SHARED_PTR,
+        EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::ANYTHING,
     },
