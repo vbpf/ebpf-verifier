@@ -123,7 +123,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
             ELFIO::Elf_Sxword addend;
             for (ELFIO::Elf_Xword i = 0; i < reloc.get_entries_num(); i++) {
                 if (reloc.get_entry(i, offset, symbol, type, addend)) {
-                    auto& inst = prog.prog[offset / sizeof(ebpf_inst)];
+                    ebpf_inst& inst = prog.prog[offset / sizeof(ebpf_inst)];
                     inst.src = 1; // magic number for LoadFd
 
                     // if (fd_alloc == allocate_fds) {
@@ -132,8 +132,10 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
                     //     inst.imm = updated_fds.at(read_reloc_value(symbol));
                     // } else {
                     size_t reloc_value = read_reloc_value(symbol);
-                    if (reloc_value >= info.map_descriptors.size())
-                        throw std::runtime_error(string("bad reloc value ") + std::to_string(reloc_value));
+                    if (reloc_value >= info.map_descriptors.size()) {
+                        throw std::runtime_error(string("Bad reloc value (") + std::to_string(reloc_value) + "). "
+                                                 + "Make sure to compile with -O2.");
+                    }
                     inst.imm = info.map_descriptors.at(reloc_value).original_fd;
                     // }
                 }
