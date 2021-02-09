@@ -7,13 +7,10 @@
 #include <vector>
 
 #include "asm_syntax.hpp"
-#include "config.hpp"
-#include "spec_type_descriptors.hpp"
-
-using MapFd = auto(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries, ebpf_verifier_options_t options) -> int;
+#include "platform.hpp"
 
 std::vector<raw_program> read_raw(std::string path, program_info info);
-std::vector<raw_program> read_elf(const std::string& path, const std::string& section, MapFd* allocate_fds, const ebpf_verifier_options_t* options, const ebpf_platform_t* platform);
+std::vector<raw_program> read_elf(const std::string& path, const std::string& section, ebpf_alloc_map_fd_fn alloc_map_fd, const ebpf_verifier_options_t* options, const ebpf_platform_t* platform);
 
 void write_binary_file(std::string path, const char* data, size_t size);
 

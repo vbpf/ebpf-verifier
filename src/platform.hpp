@@ -6,6 +6,7 @@
 // that supports eBPF can have an ebpf_platform_t struct that the verifier
 // can use to call platform-specific functions.
 
+#include "config.hpp"
 #include "spec_type_descriptors.hpp"
 #include "helpers.hpp"
 
@@ -15,10 +16,22 @@ typedef EbpfHelperPrototype (*ebpf_get_helper_prototype_fn)(unsigned int n);
 
 typedef bool (*ebpf_is_helper_usable_fn)(unsigned int n);
 
+// Return an fd for a map created with the given parameters.
+typedef int (*ebpf_alloc_map_fd_fn)(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries, ebpf_verifier_options_t options);
+
+// Parse map records and allocate map fd's.
+// In the future we may want to move map fd allocation after the verifier step.
+typedef void (*ebpf_parse_maps_section_fn)(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t size, ebpf_alloc_map_fd_fn fd_alloc, ebpf_verifier_options_t options);
+
 struct ebpf_platform_t {
     ebpf_get_program_type_fn get_program_type;
     ebpf_get_helper_prototype_fn get_helper_prototype;
     ebpf_is_helper_usable_fn is_helper_usable;
+
+    // Size of a record in the "maps" section of an ELF file.
+    size_t map_record_size;
+
+    ebpf_parse_maps_section_fn parse_maps_section;
 };
 
 extern const ebpf_platform_t g_ebpf_platform_linux;
