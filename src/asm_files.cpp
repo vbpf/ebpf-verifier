@@ -14,24 +14,6 @@ using std::cout;
 using std::string;
 using std::vector;
 
-// Map definitions as they appear in an ELF file, so field width matters.
-struct bpf_load_map_def {
-    uint32_t type;
-    uint32_t key_size;
-    uint32_t value_size;
-    uint32_t max_entries;
-    uint32_t map_flags;
-    uint32_t inner_map_idx;
-    uint32_t numa_node;
-};
-
-struct bpf_map_data {
-    int map_fd;
-    char* name;
-    size_t elf_offset;
-    struct bpf_load_map_def def;
-};
-
 template <typename T>
 static vector<T> vector_of(ELFIO::section* sec) {
     if (!sec)
@@ -43,13 +25,12 @@ static vector<T> vector_of(ELFIO::section* sec) {
 }
 
 int create_map_crab(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries, ebpf_verifier_options_t options) {
-    if (map_type == 12 || map_type == 13) {
-        return -1;
-    }
+    // For now we just make up a number as if the map were created,
+    // without actually creating anything.
     return (value_size << 14) + (key_size << 6); // + i;
 }
 
-vector<raw_program> read_elf(const std::string& path, const std::string& desired_section, MapFd* fd_alloc, const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
+vector<raw_program> read_elf(const std::string& path, const std::string& desired_section, ebpf_alloc_map_fd_fn fd_alloc, const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
     assert(fd_alloc != nullptr);
     if (options == nullptr)
         options = &ebpf_verifier_default_options;
@@ -59,25 +40,14 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
     }
 
     program_info info{platform};
-    auto mapdefs = vector_of<bpf_load_map_def>(reader.sections["maps"]);
-    for (auto s : mapdefs) {
-        info.map_descriptors.emplace_back(EbpfMapDescriptor{
-            .original_fd = fd_alloc(s.type, s.key_size, s.value_size, s.max_entries, *options),
-            .type = s.type,
-            .key_size = s.key_size,
-            .value_size = s.value_size,
-        });
-    }
-    for (size_t i = 0; i < mapdefs.size(); i++) {
-        unsigned int inner = mapdefs[i].inner_map_idx;
-        if (inner >= info.map_descriptors.size())
-            throw std::runtime_error(string("bad inner map index ") + std::to_string(inner)
-                                     + " for map " + std::to_string(i));
-        info.map_descriptors[i].inner_map_fd = info.map_descriptors.at(inner).original_fd;
+
+    ELFIO::section* maps_section = reader.sections["maps"];
+    if (maps_section) {
+        platform->parse_maps_section(info.map_descriptors, maps_section->get_data(), maps_section->get_size(), fd_alloc, *options);
     }
 
     ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
-    auto read_reloc_value = [&symbols](int symbol) -> size_t {
+    auto read_reloc_value = [&symbols,platform](int symbol) -> size_t {
         string symbol_name;
         ELFIO::Elf64_Addr value{};
         ELFIO::Elf_Xword size{};
@@ -87,7 +57,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
         unsigned char other{};
         symbols.get_symbol(symbol, symbol_name, value, size, bind, type, section_index, other);
 
-        return value / sizeof(bpf_load_map_def);
+        return value / platform->map_record_size;
     };
 
     vector<raw_program> res;

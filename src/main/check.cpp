@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
 
 #if !__linux__
     if (domain == "linux") {
-        std::cerr << "linux domain is unsupported on this machine\n";
+        std::cerr << "error: linux domain is unsupported on this machine\n";
         return 64;
     }
 #endif
@@ -97,7 +97,13 @@ int main(int argc, char** argv) {
     auto create_map = domain == "linux" ? create_map_linux : create_map_crab;
 
     // Read a set of raw program sections from an ELF file.
-    auto raw_progs = read_elf(filename, desired_section, create_map, &ebpf_verifier_options, &g_ebpf_platform_linux);
+    vector<raw_program> raw_progs;
+    try {
+        raw_progs = read_elf(filename, desired_section, create_map, &ebpf_verifier_options, &g_ebpf_platform_linux);
+    } catch (std::runtime_error e) {
+        std::cerr << "error: " << e.what() << std::endl;
+        return 1;
+    }
 
     if (list || raw_progs.size() != 1) {
         if (!list) {
