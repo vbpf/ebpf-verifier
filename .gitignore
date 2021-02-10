@@ -9,3 +9,5 @@ check
 logs/*
 build
 html
+Debug/*
+Release/*
