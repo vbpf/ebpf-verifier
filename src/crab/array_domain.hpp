@@ -297,6 +297,7 @@ class array_domain_t final {
     }
 
     std::optional<linear_expression_t> load(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, int width);
+    bool all_num(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub);
 
     std::optional<variable_t> store(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size,
                                     const linear_expression_t& val);

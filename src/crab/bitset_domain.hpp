@@ -1,7 +1,7 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
 #pragma once
-
+#include <cassert>
 #include <bitset>
 
 #include "spec_type_descriptors.hpp" // for EBPF_STACK_SIZE
@@ -76,4 +76,16 @@ class bitset_domain_t final {
     }
 
     friend std::ostream& operator<<(std::ostream& o, const bitset_domain_t& array);
+
+    // Test whether all values in the range [lb,ub) are numerical.
+    bool all_num(int lb, int ub) {
+        assert(lb < ub);
+        if (lb < 0 || ub > (int)non_numerical_bytes.size())
+            return false;
+
+        for (int i = lb; i < ub; i++)
+            if (non_numerical_bytes[i])
+                return false;
+        return true;
+    }
 };

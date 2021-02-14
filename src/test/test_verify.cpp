@@ -17,7 +17,7 @@ FAIL_LOAD_ELF("cilium", "not-found.o", "2/1")
 FAIL_LOAD_ELF("cilium", "bpf_lxc.o", "not-found")
 
 
-#define VERIFY_SECTION(dirname, filename, sectionname) \
+#define VERIFY_SECTION(dirname, filename, sectionname, pass) \
     do { \
         auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, create_map_crab, nullptr, &g_ebpf_platform_linux); \
         REQUIRE(raw_progs.size() == 1); \
@@ -27,17 +27,25 @@ FAIL_LOAD_ELF("cilium", "bpf_lxc.o", "not-found")
         auto& prog = std::get<InstructionSeq>(prog_or_error); \
         cfg_t cfg = prepare_cfg(prog, raw_prog.info, true); \
         bool res = run_ebpf_analysis(std::cout, cfg, raw_prog.info, nullptr); \
-        REQUIRE(res); \
+        if (pass)                                            \
+            REQUIRE(res);                                    \
+        else                                                 \
+            REQUIRE(!res);                                   \
     } while (0)
 
 #define TEST_SECTION(project, filename, section) \
     TEST_CASE("./check ebpf-samples/" project "/" filename " " section, "[verify][samples][" project "]") { \
-        VERIFY_SECTION(project, filename, section); \
+        VERIFY_SECTION(project, filename, section, true); \
+    }
+
+#define TEST_SECTION_REJECT(project, filename, section) \
+    TEST_CASE("./check ebpf-samples/" project "/" filename " " section, "[verify][samples][" project "]") { \
+        VERIFY_SECTION(project, filename, section, false); \
     }
 
 #define TEST_SECTION_FAIL(project, filename, section) \
     TEST_CASE("expect failure ebpf-samples/" project "/" filename " " section, "[!shouldfail][verify][samples][" project "]") { \
-        VERIFY_SECTION(project, filename, section); \
+        VERIFY_SECTION(project, filename, section, true); \
     }
 
 TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "1/0xdc06")
@@ -315,9 +323,8 @@ TEST_SECTION("suricata", "xdp_filter.o", "xdp")
 
 // Test some programs that ought to fail verification.
 //
-// False negative: exposing kernel pointers to user-mode apps
-// This should be changed to TEST_SECTION_FAIL once fixed.
-TEST_SECTION("build", "exposeptr.o", ".text")
+// Exposing kernel pointers to user-mode apps
+TEST_SECTION_REJECT("build", "exposeptr.o", ".text")
 
 // The following eBPF programs currently fail verification.
 // If the verifier is later updated to accept them, these should move

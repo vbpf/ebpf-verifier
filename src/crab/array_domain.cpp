@@ -291,6 +291,14 @@ array_domain_t::kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const lin
     return res;
 }
 
+bool array_domain_t::all_num(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) {
+    auto min_lb = inv.eval_interval(lb).lb().number();
+    auto max_ub = inv.eval_interval(ub).ub().number();
+    if (!min_lb || !max_ub || !min_lb->fits_sint() || !max_ub->fits_sint())
+        return false;
+    return this->num_bytes.all_num((int)*min_lb, (int)*max_ub);
+}
+
 std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, int width) {
     interval_t ii = inv.eval_interval(i);
     if (std::optional<number_t> n = ii.singleton()) {
