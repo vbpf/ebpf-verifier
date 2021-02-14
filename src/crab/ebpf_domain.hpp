@@ -503,6 +503,16 @@ class ebpf_domain_t final {
         std::string m = std::string(" (") + to_string(s) + ")";
         require(m_inv, access_reg.type >= T_STACK, "Only stack or packet can be used as a parameter" + m);
         require(m_inv, access_reg.type <= T_PACKET, "Only stack or packet can be used as a parameter" + m);
+
+        if (!s.key) {
+            auto when_stack = when(m_inv, access_reg.type == T_STACK);
+            when_stack -= variable_t::type_sampler();
+            when_stack += variable_t::type_sampler() >= lb;
+            when_stack += variable_t::type_sampler() <= ub;
+            when_stack.assign(variable_t::type_sampler(),
+                              stack.load(when_stack, data_kind_t::types, variable_t::type_sampler(), 1));
+            require(when_stack, variable_t::type_sampler() == T_NUM, "Illegal map update with a non-numerical value.");
+        }
         m_inv = check_access_packet(when(m_inv, access_reg.type == T_PACKET), lb, ub, m, false) |
                 check_access_stack(when(m_inv, access_reg.type == T_STACK), lb, ub, m);
     }
