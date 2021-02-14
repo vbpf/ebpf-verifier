@@ -313,6 +313,12 @@ TEST_SECTION("suricata", "filter.o", "filter")
 TEST_SECTION("suricata", "vlan_filter.o", "filter")
 TEST_SECTION("suricata", "xdp_filter.o", "xdp")
 
+// Test some programs that ought to fail verification.
+//
+// False negative: exposing kernel pointers to user-mode apps
+// This should be changed to TEST_SECTION_FAIL once fixed.
+TEST_SECTION("build", "exposeptr.o", ".text")
+
 // The following eBPF programs currently fail verification.
 // If the verifier is later updated to accept them, these should move
 // up to the previous test case.
