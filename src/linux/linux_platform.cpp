@@ -13,7 +13,7 @@
 #define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) \
                         {name, descr, 0, prefixes, true}
 #endif
-#include "spec_type_descriptors.hpp"
+#include "crab_verifier.hpp"
 #include "helpers.hpp"
 #include "platform.hpp"
 #include "linux_platform.hpp"
@@ -97,7 +97,7 @@ static EbpfProgramType get_program_type_linux(const std::string& section, const 
     return linux_socket_filter_program_type;
 }
 
-void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t size, ebpf_alloc_map_fd_fn fd_alloc, ebpf_verifier_options_t options)
+void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t size, ebpf_create_map_fn create_map, ebpf_verifier_options_t options)
 {
     if (size % sizeof(bpf_load_map_def) != 0) {
         throw std::runtime_error(std::string("bad maps section size"));
@@ -106,7 +106,7 @@ void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, c
     auto mapdefs = std::vector<bpf_load_map_def>((bpf_load_map_def*)data, (bpf_load_map_def*)(data + size));
     for (auto s : mapdefs) {
         map_descriptors.emplace_back(EbpfMapDescriptor{
-            .original_fd = fd_alloc(s.type, s.key_size, s.value_size, s.max_entries, options),
+            .original_fd = create_map(s.type, s.key_size, s.value_size, s.max_entries, options),
             .type = s.type,
             .key_size = s.key_size,
             .value_size = s.value_size,
@@ -121,10 +121,71 @@ void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, c
     }
 }
 
+#if __linux__
+static int do_bpf(bpf_cmd cmd, union bpf_attr& attr) { return syscall(321, cmd, &attr, sizeof(attr)); }
+#endif
+
+/** Try to allocate a Linux map.
+ *
+ *  This function requires admin privileges.
+ */
+int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
+                     ebpf_verifier_options_t options)
+{
+    if (options.mock_map_fds) {
+        return create_map_crab(map_type, key_size, value_size, max_entries, options);
+    }
+
+#if __linux__
+    union bpf_attr attr {};
+    memset(&attr, '\0', sizeof(attr));
+    attr.map_type = map_type;
+    attr.key_size = key_size;
+    attr.value_size = value_size;
+    attr.max_entries = 20;
+    attr.map_flags = map_type == BPF_MAP_TYPE_HASH ? BPF_F_NO_PREALLOC : 0;
+    int map_fd = do_bpf(BPF_MAP_CREATE, attr);
+    if (map_fd < 0) {
+        if (options.print_failures) {
+            std::cerr << "Failed to create map, " << strerror(errno) << "\n";
+            std::cerr << "Map: \n"
+                      << " map_type = " << attr.map_type << "\n"
+                      << " key_size = " << attr.key_size << "\n"
+                      << " value_size = " << attr.value_size << "\n"
+                      << " max_entries = " << attr.max_entries << "\n"
+                      << " map_flags = " << attr.map_flags << "\n";
+        }
+        exit(2);
+    }
+    return map_fd;
+#else
+    throw std::runtime_error(std::string("cannot create a Linux map"));
+#endif
+}
+
+EbpfMapDescriptor& get_map_descriptor_linux(int map_fd)
+{
+    // First check if we already have the map descriptor cached.
+    EbpfMapDescriptor* map = find_map_descriptor(map_fd);
+    if (map != nullptr) {
+        return *map;
+    }
+
+    // This fd was not created from the maps section of an ELF file,
+    // but it may be an fd created by an app before calling the verifier.
+    // In this case, we would like to query the map descriptor info
+    // (key size, value size) from the execution context, but this is
+    // not yet supported on Linux.
+
+    throw std::runtime_error(std::string("map_fd not found"));
+}
+
 const ebpf_platform_t g_ebpf_platform_linux = {
     get_program_type_linux,
     get_helper_prototype_linux,
     is_helper_usable_linux,
     sizeof(bpf_load_map_def),
     parse_maps_section_linux,
+    create_map_linux,
+    get_map_descriptor_linux,
 };

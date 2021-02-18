@@ -7,6 +7,9 @@ struct ebpf_verifier_options_t {
     bool print_invariants;
     bool print_failures;
     bool no_simplify;
+
+    // False to use actual map fd's, true to use mock fd's.
+    bool mock_map_fds;
 };
 
 extern const ebpf_verifier_options_t ebpf_verifier_default_options;

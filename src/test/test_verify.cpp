@@ -6,7 +6,7 @@
 #define FAIL_LOAD_ELF(dirname, filename, sectionname) \
     TEST_CASE("Try loading nonexisting program: " dirname "/" filename, "[elf]") { \
         try { \
-            read_elf("ebpf-samples/" dirname "/" filename, sectionname, create_map_crab, nullptr, &g_ebpf_platform_linux); \
+            read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &g_ebpf_platform_linux); \
             REQUIRE(false); \
         } catch (const std::runtime_error&) { \
         }\
@@ -19,7 +19,7 @@ FAIL_LOAD_ELF("cilium", "bpf_lxc.o", "not-found")
 
 #define VERIFY_SECTION(dirname, filename, sectionname, pass) \
     do { \
-        auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, create_map_crab, nullptr, &g_ebpf_platform_linux); \
+        auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &g_ebpf_platform_linux); \
         REQUIRE(raw_progs.size() == 1); \
         raw_program raw_prog = raw_progs.back(); \
         std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog, &g_ebpf_platform_linux); \

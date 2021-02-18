@@ -31,8 +31,16 @@ int create_map_crab(uint32_t map_type, uint32_t key_size, uint32_t value_size, u
     return (value_size << 14) + (key_size << 6); // + i;
 }
 
-vector<raw_program> read_elf(const std::string& path, const std::string& desired_section, ebpf_alloc_map_fd_fn fd_alloc, const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
-    assert(fd_alloc != nullptr);
+EbpfMapDescriptor* find_map_descriptor(int map_fd) {
+    for (EbpfMapDescriptor& map : global_program_info.map_descriptors) {
+        if (map.original_fd == map_fd) {
+            return &map;
+        }
+    }
+    return nullptr;
+}
+
+vector<raw_program> read_elf(const std::string& path, const std::string& desired_section, const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
     if (options == nullptr)
         options = &ebpf_verifier_default_options;
     ELFIO::elfio reader;
@@ -48,7 +56,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
 
     ELFIO::section* maps_section = reader.sections["maps"];
     if (maps_section) {
-        platform->parse_maps_section(info.map_descriptors, maps_section->get_data(), maps_section->get_size(), fd_alloc, *options);
+        platform->parse_maps_section(info.map_descriptors, maps_section->get_data(), maps_section->get_size(), platform->create_map, *options);
     }
 
     ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
@@ -95,18 +103,12 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
                     ebpf_inst& inst = prog.prog[offset / sizeof(ebpf_inst)];
                     inst.src = 1; // magic number for LoadFd
 
-                    // if (fd_alloc == allocate_fds) {
-                    //     std::cout << read_reloc_value(symbol) << "=" <<
-                    //     info.map_descriptors[updated_fds.at(read_reloc_value(symbol))].value_size << "\n";
-                    //     inst.imm = updated_fds.at(read_reloc_value(symbol));
-                    // } else {
                     size_t reloc_value = read_reloc_value(symbol);
                     if (reloc_value >= info.map_descriptors.size()) {
                         throw std::runtime_error(string("Bad reloc value (") + std::to_string(reloc_value) + "). "
                                                  + "Make sure to compile with -O2.");
                     }
                     inst.imm = info.map_descriptors.at(reloc_value).original_fd;
-                    // }
                 }
             }
         }
