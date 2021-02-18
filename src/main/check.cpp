@@ -92,12 +92,14 @@ int main(int argc, char** argv) {
     }
 #endif
 
-    auto create_map = domain == "linux" ? create_map_linux : create_map_crab;
+    if (domain == "linux")
+        ebpf_verifier_options.mock_map_fds = false;
+    const ebpf_platform_t* platform = &g_ebpf_platform_linux;
 
     // Read a set of raw program sections from an ELF file.
     vector<raw_program> raw_progs;
     try {
-        raw_progs = read_elf(filename, desired_section, create_map, &ebpf_verifier_options, &g_ebpf_platform_linux);
+        raw_progs = read_elf(filename, desired_section, &ebpf_verifier_options, platform);
     } catch (std::runtime_error e) {
         std::cerr << "error: " << e.what() << std::endl;
         return 1;
@@ -111,7 +113,7 @@ int main(int argc, char** argv) {
         if (!desired_section.empty() && raw_progs.size() == 0) {
             // We could not find the desired section, so get the full list
             // of possibilities.
-            raw_progs = read_elf(filename, string(), create_map, &ebpf_verifier_options, &g_ebpf_platform_linux);
+            raw_progs = read_elf(filename, string(), &ebpf_verifier_options, platform);
         }
         for (const raw_program& raw_prog : raw_progs) {
             std::cout << raw_prog.section << " ";
