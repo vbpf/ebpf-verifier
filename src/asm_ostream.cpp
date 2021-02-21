@@ -45,7 +45,7 @@ std::ostream& operator<<(std::ostream& os, ArgSingle arg) {
 }
 
 std::ostream& operator<<(std::ostream& os, ArgPair arg) {
-    os << arg.mem << ":" << arg.kind << "[" << arg.size;
+    os << arg.mem << " is " << arg.kind << "[" << arg.size;
     if (arg.can_be_zero)
         os << "?";
     os << "]";
@@ -96,18 +96,18 @@ static string size(int w) { return string("u") + std::to_string(w * 8); }
 
 std::ostream& operator<<(std::ostream& os, TypeGroup ts) {
     switch (ts) {
-    case TypeGroup::num: return os << "num";
+    case TypeGroup::number: return os << "number";
     case TypeGroup::map_fd: return os << "map_fd";
     case TypeGroup::ctx: return os << "ctx";
     case TypeGroup::packet: return os << "packet";
     case TypeGroup::stack: return os << "stack";
     case TypeGroup::shared: return os << "shared";
     case TypeGroup::mem: return os << "mem";
-    case TypeGroup::ptr: return os << "ptr";
+    case TypeGroup::pointer: return os << "pointer";
     case TypeGroup::non_map_fd: return os << "non_map_fd";
-    case TypeGroup::ptr_or_num: return os << "ptr_or_num";
+    case TypeGroup::ptr_or_num: return os << "pointer_or_number";
     case TypeGroup::stack_or_packet: return os << "stack_or_packet";
-    case TypeGroup::mem_or_num: return os << "mem_or_num";
+    case TypeGroup::mem_or_num: return os << "mem_or_number";
     }
     return os;
 }
@@ -140,7 +140,7 @@ std::ostream& operator<<(std::ostream& os, Addable const& a) {
     return os << a.ptr << " : ptr -> " << a.num << " : num";
 }
 
-std::ostream& operator<<(std::ostream& os, TypeConstraint const& tc) { return os << tc.reg << " : " << tc.types; }
+std::ostream& operator<<(std::ostream& os, TypeConstraint const& tc) { return os << tc.reg << " is " << tc.types; }
 
 std::ostream& operator<<(std::ostream& os, AssertionConstraint const& a) {
     return std::visit([&](const auto& a) -> std::ostream& { return os << a; }, a);
@@ -321,7 +321,7 @@ static bool is_satisfied(Instruction ins) {
     return std::holds_alternative<Assert>(ins) && std::get<Assert>(ins).satisfied;
 }
 
-void print(const InstructionSeq& insts, std::ostream& out) {
+void print(const InstructionSeq& insts, std::ostream& out, std::optional<const label_t> label_to_print) {
     auto pc_of_label = get_labels(insts);
     pc_t pc = 0;
     InstructionPrinterVisitor visitor{out};
@@ -329,28 +329,35 @@ void print(const InstructionSeq& insts, std::ostream& out) {
         const auto& [label, ins] = labeled_inst;
         if (is_satisfied(ins))
             continue;
-        if (label.isjump()) {
+        if (!label_to_print.has_value() || (label == label_to_print)) {
+            std::ostream& out = visitor.os_;
+            if (label.isjump()) {
+                out << "\n";
+                out << label << ":\n";
+            }
+            if (label_to_print.has_value()) {
+                out << pc << ": ";
+            } else {
+                out << std::setw(8) << pc << ":\t";
+            }
+            if (std::holds_alternative<Jmp>(ins)) {
+                auto jmp = std::get<Jmp>(ins);
+                if (pc_of_label.count(jmp.target) == 0)
+                    throw std::runtime_error(string("Cannot find label ") + to_string(jmp.target));
+                pc_t target_pc = pc_of_label.at(jmp.target);
+                visitor(jmp, target_pc - (int)pc - 1);
+            } else {
+                std::visit(visitor, ins);
+            }
             out << "\n";
-            out << label << ":\n";
         }
-        out << std::setw(8) << pc << ":\t";
-        if (std::holds_alternative<Jmp>(ins)) {
-            auto jmp = std::get<Jmp>(ins);
-            if (pc_of_label.count(jmp.target) == 0)
-                throw std::runtime_error(string("Cannot find label ") + to_string(jmp.target));
-            pc_t target_pc = pc_of_label.at(jmp.target);
-            visitor(jmp, target_pc - (int)pc - 1);
-        } else {
-            std::visit(visitor, ins);
-        }
-        out << "\n";
         pc += size(ins);
     }
 }
 
 void print(const InstructionSeq& insts, const std::string& outfile) {
     std::ofstream out{outfile};
-    print(insts, out);
+    print(insts, out, {});
 }
 
 void print_dot(const cfg_t& cfg, std::ostream& out) {

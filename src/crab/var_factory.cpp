@@ -18,31 +18,33 @@ variable_t variable_t::make(const std::string& name) {
     }
 }
 
-std::vector<std::string> variable_t::names{"r0",          "off0",      "t0",
-                                           "r1",          "off1",      "t1",
-                                           "r2",          "off2",      "t2",
-                                           "r3",          "off3",      "t3",
-                                           "r4",          "off4",      "t4",
-                                           "r5",          "off5",      "t5",
-                                           "r6",          "off6",      "t6",
-                                           "r7",          "off7",      "t7",
-                                           "r8",          "off8",      "t8",
-                                           "r9",          "off9",      "t9",
-                                           "r10",         "off10",     "t10",
-                                           "S_r",         "S_off",     "S_t",
-                                           "data_size",   "meta_size", "map_value_size",
-                                           "map_key_size"};
+std::vector<std::string> variable_t::names{
+    "r0.value",    "r0.offset",  "r0.type",
+    "r1.value",    "r1.offset",  "r1.type",
+    "r2.value",    "r2.offset",  "r2.type",
+    "r3.value",    "r3.offset",  "r3.type",
+    "r4.value",    "r4.offset",  "r4.type",
+    "r5.value",    "r5.offset",  "r5.type",
+    "r6.value",    "r6.offset",  "r6.type",
+    "r7.value",    "r7.offset",  "r7.type",
+    "r8.value",    "r8.offset",  "r8.type",
+    "r9.value",    "r9.offset",  "r9.type",
+    "r10.value",   "r10.offset", "r10.type",
+    "S.value",     "S.offset",   "S.type",
+    "data_size",   "meta_size",  "map_value_size",
+    "map_key_size"};
 
 static std::string name_of(data_kind_t kind) {
     switch (kind) {
-    case data_kind_t::offsets: return "off";
-    case data_kind_t::values: return "r";
-    case data_kind_t::types: return "t";
+    case data_kind_t::offsets: return "offset";
+    case data_kind_t::values: return "value";
+    case data_kind_t::types: return "type";
     }
     return {};
 }
 
-variable_t variable_t::reg(data_kind_t kind, int i) { return make(name_of(kind) + std::to_string(i)); }
+variable_t variable_t::reg(data_kind_t kind, int i) {
+    return make("r" + std::to_string(i) + "." + name_of(kind)); }
 
 std::ostream& operator<<(std::ostream& o, const data_kind_t& s) {
     return o << name_of(s);
@@ -50,7 +52,7 @@ std::ostream& operator<<(std::ostream& o, const data_kind_t& s) {
 
 static std::string mk_scalar_name(data_kind_t kind, int o, int size) {
     std::stringstream os;
-    os << "S_" << name_of(kind) << "[" << o;
+    os << "S." << name_of(kind) << "[" << o;
     if (size != 1) {
         os << "..." << o + size - 1;
     }

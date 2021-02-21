@@ -569,7 +569,7 @@ class ebpf_domain_t final {
     NumAbsDomain check_access_stack(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s) {
         using namespace dsl_syntax;
         require(inv, lb >= 0, std::string("Lower bound must be higher than 0") + s);
-        require(inv, ub <= EBPF_STACK_SIZE, std::string("Upper bound must be lower than EBPF_STACK_SIZE") + s);
+        require(inv, ub <= EBPF_STACK_SIZE, std::string("Upper bound must be lower than EBPF_STACK_SIZE") + s + std::string(", make sure to bounds check any pointer access"));
         return inv;
     }
 
@@ -607,7 +607,7 @@ class ebpf_domain_t final {
         variable_t t = reg_pack(s.reg).type;
         std::string str = to_string(s);
         switch (s.types) {
-        case TypeGroup::num: require(m_inv, t == T_NUM, str); break;
+        case TypeGroup::number: require(m_inv, t == T_NUM, str); break;
         case TypeGroup::map_fd: require(m_inv, t == T_MAP, str); break;
         case TypeGroup::ctx: require(m_inv, t == T_CTX, str); break;
         case TypeGroup::packet: require(m_inv, t == T_PACKET, str); break;
@@ -619,7 +619,7 @@ class ebpf_domain_t final {
             require(m_inv, t >= T_NUM, str);
             require(m_inv, t != T_CTX, str);
             break;
-        case TypeGroup::ptr: require(m_inv, t >= T_CTX, str); break;
+        case TypeGroup::pointer: require(m_inv, t >= T_CTX, str); break;
         case TypeGroup::ptr_or_num: require(m_inv, t >= T_NUM, str); break;
         case TypeGroup::stack_or_packet:
             require(m_inv, t >= T_STACK, str);
@@ -1060,7 +1060,7 @@ class ebpf_domain_t final {
         if (dom.is_bottom()) {
             o << "_|_";
         } else {
-            o << dom.m_inv << "\n" << dom.stack;
+            o << dom.m_inv << "\nStack: " << dom.stack;
         }
         return o;
     }

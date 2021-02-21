@@ -54,9 +54,7 @@ int main(int argc, char** argv) {
     app.add_flag("-i", ebpf_verifier_options.print_invariants, "Print invariants");
     app.add_flag("-f", ebpf_verifier_options.print_failures, "Print verifier's failure logs");
     app.add_flag("-v", verbose, "Print both invariants and failures");
-
-    bool no_simplify{false};
-    app.add_flag("--no-simplify", no_simplify, "Do not simplify");
+    app.add_flag("--no-simplify", ebpf_verifier_options.no_simplify, "Do not simplify");
 
     std::string asmfile;
     app.add_option("--asm", asmfile, "Print disassembly to FILE")->type_name("FILE");
@@ -138,13 +136,8 @@ int main(int argc, char** argv) {
     }
 
     if (domain == "zoneCrab") {
-        // Convert the instruction sequence to a control-flow graph
-        // in a "passive", non-deterministic form.
-        cfg_t cfg = prepare_cfg(prog, raw_prog.info, !no_simplify);
-
-        // Analyze the control-flow graph.
         const auto [res, seconds] = timed_execution([&] {
-            return run_ebpf_analysis(std::cout, cfg, raw_prog.info, &ebpf_verifier_options);
+            return ebpf_verify_program(std::cout, prog, raw_prog.info, &ebpf_verifier_options);
         });
         std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
         return !res;
@@ -155,7 +148,7 @@ int main(int argc, char** argv) {
         return !res;
     } else if (domain == "stats") {
         // Convert the instruction sequence to a control-flow graph.
-        cfg_t cfg = prepare_cfg(prog, raw_prog.info, !no_simplify);
+        cfg_t cfg = prepare_cfg(prog, raw_prog.info, !ebpf_verifier_options.no_simplify);
 
         // Just print eBPF program stats.
         auto stats = collect_stats(cfg);
@@ -169,7 +162,7 @@ int main(int argc, char** argv) {
         std::cout << "\n";
     } else if (domain == "cfg") {
         // Convert the instruction sequence to a control-flow graph.
-        cfg_t cfg = prepare_cfg(prog, raw_prog.info, !no_simplify);
+        cfg_t cfg = prepare_cfg(prog, raw_prog.info, !ebpf_verifier_options.no_simplify);
         std::cout << cfg;
         std::cout << "\n";
     } else {

@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <sys/stat.h>
 
 #include "asm_files.hpp"
 #include "platform.hpp"
@@ -36,7 +37,11 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
         options = &ebpf_verifier_default_options;
     ELFIO::elfio reader;
     if (!reader.load(path)) {
-        throw std::runtime_error(string("Can't find or process ELF file ") + path);
+        struct stat st;
+        if (stat(path.c_str(), &st)) {
+            throw std::runtime_error(string(strerror(errno)) + " opening " + path);
+        }
+        throw std::runtime_error(string("Can't process ELF file ") + path);
     }
 
     program_info info{platform};
@@ -79,12 +84,6 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
         if (!prelocs)
             prelocs = reader.sections[string(".rela") + name];
 
-        // // std::vector<int> updated_fds = sort_maps_by_size(info.map_descriptors);
-        // for (auto n : updated_fds) {
-        //     std::cout << "old=" << info.map_descriptors[n].original_fd << ", "
-        //               << "new=" << n << ", "
-        //               << "size=" << info.map_descriptors[n].value_size << "\n";
-        // }
         if (prelocs) {
             ELFIO::const_relocation_section_accessor reloc{reader, prelocs};
             ELFIO::Elf64_Addr offset;
@@ -114,6 +113,9 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
         res.push_back(prog);
     }
     if (res.empty()) {
+        if (desired_section.empty()) {
+            throw std::runtime_error(string("Can't find any non-empty TEXT sections in file ") + path);
+        }
         throw std::runtime_error(string("Can't find section ") + desired_section + " in file " + path);
     }
     return res;

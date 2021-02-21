@@ -1217,10 +1217,19 @@ std::ostream& operator<<(std::ostream& o, SplitDBM& dom) {
             first = false;
         else
             o << ", ";
-        o << *(dom.rev_map[v]) << " -> ";
-        if (v_out.lb() == v_out.ub())
-            o << "[" << v_out.lb() << "]";
-        else
+        variable_t variable = *(dom.rev_map[v]);
+        o << variable << "=";
+        if (v_out.lb() == v_out.ub()) {
+            if (variable.is_type()) {
+                static const char* type_string[] = {"shared_pointer", "packet_pointer", "stack_pointer", "ctx_pointer", "number", "map_fd", "uninitialized"};
+                int type = (int)v_out.lb().number().value();
+                if (type <= 0 && type > -std::size(type_string))
+                    o << type_string[-type];
+                else
+                    o << "map_value_of_size(" << v_out.lb() << ")";
+            } else
+                o << "[" << v_out.lb() << "]";
+        } else
             o << v_out;
     }
     if (!first) o << "\n ";

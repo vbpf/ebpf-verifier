@@ -68,9 +68,9 @@ static checks_db generate_report(std::ostream& s,
         basic_block_t& bb = cfg.get_node(label);
 
         if (options.print_invariants) {
-            s << "\n" << preconditions.at(label) << "\n";
+            s << "\nPreconditions : " << preconditions.at(label) << "\n";
             s << bb;
-            s << "\n" << postconditions.at(label) << "\n";
+            s << "\nPostconditions: " << postconditions.at(label) << "\n";
         }
 
         ebpf_domain_t from_inv(preconditions.at(label));
@@ -88,7 +88,7 @@ static checks_db generate_report(std::ostream& s,
                 // TODO: add_error() if imply negation
                 m_db.add_warning(label, s);
             } else {
-                m_db.add_warning(label, s);
+                m_db.add_warning(label, std::string("assertion failed: ") + s);
             }
         });
 
@@ -106,16 +106,25 @@ static checks_db generate_report(std::ostream& s,
         from_inv(bb, options.check_termination);
 
         if (!pre_bot && from_inv.is_bottom()) {
-            m_db.add_unreachable(label, std::string("Invariant became _|_ after ") + to_string(bb.label()));
+            m_db.add_unreachable(label, std::string("Code is unreachable after ") + to_string(bb.label()));
         }
     }
     return m_db;
 }
 
-static void print_report(std::ostream& s, const checks_db& db) {
+static void print_report(std::ostream& s, const checks_db& db, const InstructionSeq& prog) {
     s << "\n";
     for (auto [label, messages] : db.m_db) {
-        s << label << ":\n";
+        // See if there is an instruction with this label.
+        auto it = std::find_if(prog.begin(), prog.end(), [label](const LabeledInstruction& val) {
+            return (std::get<0>(val) == label);
+        });
+        if (it != std::end(prog)) {
+            print(prog, s, label);
+        } else {
+            s << label << ":\n";
+        }
+
         for (const auto& msg : messages)
             s << "  " << msg << "\n";
     }
@@ -127,14 +136,10 @@ static void print_report(std::ostream& s, const checks_db& db) {
         }
         s << "\n";
     }
-    s << db.total_warnings << " warnings\n";
+    s << db.total_warnings << " errors\n";
 }
 
-/// Returned value is true if the program passes verification.
-bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options) {
-    if (options == nullptr)
-        options = &ebpf_verifier_default_options;
-
+static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options) {
     global_program_info = std::move(info);
     crab::domains::clear_global_state();
 
@@ -142,10 +147,31 @@ bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, program_info info, const ebp
     // basic block.
     auto [preconditions, postconditions] = crab::run_forward_analyzer(cfg, options->check_termination);
 
-    checks_db report = generate_report(s, cfg, preconditions, postconditions, *options);
+    // Analyze the control-flow graph.
+    return generate_report(s, cfg, preconditions, postconditions, *options);
+}
 
+/// Returned value is true if the program passes verification.
+bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options) {
+    if (options == nullptr)
+        options = &ebpf_verifier_default_options;
+    checks_db report = get_ebpf_report(s, cfg, info, options);
+    return (report.total_warnings == 0);
+}
+
+/// Returned value is true if the program passes verification.
+bool ebpf_verify_program(std::ostream& s, const InstructionSeq& prog, program_info info,
+                         const ebpf_verifier_options_t* options) {
+    if (options == nullptr)
+        options = &ebpf_verifier_default_options;
+
+    // Convert the instruction sequence to a control-flow graph
+    // in a "passive", non-deterministic form.
+    cfg_t cfg = prepare_cfg(prog, info, !options->no_simplify);
+
+    checks_db report = get_ebpf_report(s, cfg, info, options);
     if (options->print_failures) {
-        print_report(s, report);
+        print_report(s, report, prog);
     }
     return (report.total_warnings == 0);
 }
