@@ -217,7 +217,7 @@ struct Assume {
 enum { T_UNINIT = -6, T_MAP = -5, T_NUM = -4, T_CTX = -3, T_STACK = -2, T_PACKET = -1, T_SHARED = 0 };
 
 enum class TypeGroup {
-    num,
+    number,
     map_fd,
     ctx,            ///< pointer to the special memory region named 'ctx'
     packet,         ///< pointer to the packet
@@ -226,7 +226,7 @@ enum class TypeGroup {
     non_map_fd,     // reg >= T_NUM
     mem,            // shared | packet | stack = reg >= T_STACK
     mem_or_num,     // reg >= T_NUM && reg != T_CTX
-    ptr,            // reg >= T_CTX
+    pointer,        // reg >= T_CTX
     ptr_or_num,     // reg >= T_NUM
     stack_or_packet // reg >= T_STACK && reg <= T_PACKET
 };

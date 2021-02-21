@@ -41,6 +41,8 @@ class variable_t final {
 
     [[nodiscard]] std::string name() const { return names.at(_id); }
 
+    bool is_type() { return names.at(_id).find(".type") != std::string::npos; }
+
     friend std::ostream& operator<<(std::ostream& o, variable_t v)  { return o << names.at(v._id); }
 
     // var_factory portion.

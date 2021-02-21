@@ -15,7 +15,7 @@ inline std::function<int16_t(label_t)> label_to_offset(pc_t pc) {
     return [=](const label_t& label) { return label.from - pc - 1; };
 }
 
-void print(const InstructionSeq& prog, std::ostream& out);
+void print(const InstructionSeq& insts, std::ostream& out, std::optional<const label_t> label_to_print);
 void print(const InstructionSeq& insts, const std::string& outfile);
 
 std::string to_string(label_t const& label);

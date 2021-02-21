@@ -37,7 +37,7 @@ class AssertExtractor {
     vector<Assert> operator()(Packet const& ins) const { return {Assert{TypeConstraint{Reg{6}, TypeGroup::ctx}}}; }
 
     /// Verify that Exit returns a number.
-    vector<Assert> operator()(Exit const& e) const { return {Assert{TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::num}}}; }
+    vector<Assert> operator()(Exit const& e) const { return {Assert{TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::number}}}; }
 
     vector<Assert> operator()(Call const& call) const {
         vector<Assert> res;
@@ -47,7 +47,7 @@ class AssertExtractor {
             case ArgSingle::Kind::ANYTHING:
                 // avoid pointer leakage:
                 if (!info.type.is_privileged) {
-                    res.emplace_back(TypeConstraint{arg.reg, TypeGroup::num});
+                    res.emplace_back(TypeConstraint{arg.reg, TypeGroup::number});
                 }
                 break;
             case ArgSingle::Kind::MAP_FD:
@@ -83,7 +83,7 @@ class AssertExtractor {
                 break;
             }
             // TODO: reg is constant (or maybe it's not important)
-            res.emplace_back(TypeConstraint{arg.size, TypeGroup::num});
+            res.emplace_back(TypeConstraint{arg.size, TypeGroup::number});
             res.emplace_back(ValidSize{arg.size, arg.can_be_zero});
             res.emplace_back(ValidAccess{arg.mem, 0, arg.size,
                                          arg.kind == ArgPair::Kind::PTR_TO_MEM_OR_NULL});
@@ -99,7 +99,7 @@ class AssertExtractor {
         res.emplace_back(ValidAccess{cond.left});
         if (std::holds_alternative<Imm>(cond.right)) {
             if (imm(cond.right).v != 0) {
-                res.emplace_back(TypeConstraint{cond.left, TypeGroup::num});
+                res.emplace_back(TypeConstraint{cond.left, TypeGroup::number});
             } else {
                 // OK - map_fd is just another pointer
                 // Anything can be compared to 0
@@ -131,11 +131,11 @@ class AssertExtractor {
             // We know we are accessing the stack.
             res.emplace_back(ValidAccess{basereg, offset, width, false});
         } else {
-            res.emplace_back(TypeConstraint{basereg, TypeGroup::ptr});
+            res.emplace_back(TypeConstraint{basereg, TypeGroup::pointer});
             res.emplace_back(ValidAccess{basereg, offset, width, false});
             if (!info.type.is_privileged && !ins.is_load && std::holds_alternative<Reg>(ins.value)) {
                 if (width.v != 8)
-                    res.emplace_back(TypeConstraint{reg(ins.value), TypeGroup::num});
+                    res.emplace_back(TypeConstraint{reg(ins.value), TypeGroup::number});
                 else
                     res.emplace_back(ValidStore{ins.access.basereg, reg(ins.value)});
             }
@@ -173,7 +173,7 @@ class AssertExtractor {
             }
             return {};
         default:
-            return { Assert{TypeConstraint{ins.dst, TypeGroup::num}} };
+            return { Assert{TypeConstraint{ins.dst, TypeGroup::number}} };
         }
     }
 };
