@@ -322,13 +322,19 @@ TEST_SECTION("suricata", "vlan_filter.o", "filter")
 TEST_SECTION("suricata", "xdp_filter.o", "xdp")
 
 // Test some programs that ought to fail verification.
-//
-// Exposing kernel pointers to user-mode apps
+TEST_SECTION_REJECT("build", "badhelpercall.o", ".text")
 TEST_SECTION_REJECT("build", "exposeptr.o", ".text")
 
+// Test some programs that ought to fail verification but
+// are currently allowed through.  These should be changed
+// to TEST_SECTION_REJECT() once fixed.
+TEST_SECTION("build", "exposeptr2.o", ".text")
+TEST_SECTION("build", "mapoverflow.o", ".text")
+TEST_SECTION("build", "mapunderflow.o", ".text")
+
 // The following eBPF programs currently fail verification.
-// If the verifier is later updated to accept them, these should move
-// up to the previous test case.
+// If the verifier is later updated to accept them, these should
+// be changed to TEST_SECTION().
 
 // Unsupported: map-in-map
 TEST_SECTION_FAIL("linux", "map_perf_test_kern.o", "kprobe/sys_connect")
