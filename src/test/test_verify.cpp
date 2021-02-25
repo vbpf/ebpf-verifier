@@ -324,11 +324,12 @@ TEST_SECTION("suricata", "xdp_filter.o", "xdp")
 // Test some programs that ought to fail verification.
 TEST_SECTION_REJECT("build", "badhelpercall.o", ".text")
 TEST_SECTION_REJECT("build", "exposeptr.o", ".text")
+TEST_SECTION_REJECT("build", "exposeptr2.o", ".text")
 
 // Test some programs that ought to fail verification but
 // are currently allowed through.  These should be changed
 // to TEST_SECTION_REJECT() once fixed.
-TEST_SECTION("build", "exposeptr2.o", ".text")
+
 TEST_SECTION("build", "mapoverflow.o", ".text")
 TEST_SECTION("build", "mapunderflow.o", ".text")
 
