@@ -517,12 +517,10 @@ class ebpf_domain_t final {
         require(m_inv, access_reg.type >= T_STACK, "Only stack or packet can be used as a parameter" + m);
         require(m_inv, access_reg.type <= T_PACKET, "Only stack or packet can be used as a parameter" + m);
 
-        if (!s.key) {
-            auto when_stack = when(m_inv, access_reg.type == T_STACK);
-            if (!when_stack.is_bottom()) {
-                if (!stack.all_num(when_stack, lb, ub)) {
-                    require(when_stack, access_reg.type != T_STACK, "Illegal map update with a non-numerical value.");
-                }
+        auto when_stack = when(m_inv, access_reg.type == T_STACK);
+        if (!when_stack.is_bottom()) {
+            if (!stack.all_num(when_stack, lb, ub)) {
+                require(when_stack, access_reg.type != T_STACK, "Illegal map update with a non-numerical value.");
             }
         }
 
