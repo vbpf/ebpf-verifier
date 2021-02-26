@@ -4,6 +4,7 @@
 counter/samples/*
 **/#*
 check
+tests
 ./unit-test
 .vscode/*
 logs/*
