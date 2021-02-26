@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
     vector<raw_program> raw_progs;
     try {
         raw_progs = read_elf(filename, desired_section, &ebpf_verifier_options, platform);
-    } catch (std::runtime_error e) {
+    } catch (std::runtime_error& e) {
         std::cerr << "error: " << e.what() << std::endl;
         return 1;
     }

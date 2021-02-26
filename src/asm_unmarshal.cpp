@@ -81,8 +81,8 @@ static auto getMemWidth(uint8_t opcode) -> int {
 // }
 
 struct Unmarshaller {
-    const ebpf_platform_t* platform;
     vector<vector<string>>& notes;
+    const ebpf_platform_t* platform;
     void note(const string& what) { notes.back().emplace_back(what); }
     void note_next_pc() { notes.emplace_back(); }
     explicit Unmarshaller(vector<vector<string>>& notes, const ebpf_platform_t* platform) : notes{notes}, platform{platform} { note_next_pc(); }

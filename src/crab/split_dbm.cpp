@@ -1223,7 +1223,7 @@ std::ostream& operator<<(std::ostream& o, SplitDBM& dom) {
             if (variable.is_type()) {
                 static const char* type_string[] = {"shared_pointer", "packet_pointer", "stack_pointer", "ctx_pointer", "number", "map_fd", "uninitialized"};
                 int type = (int)v_out.lb().number().value();
-                if (type <= 0 && type > -std::size(type_string))
+                if (type <= 0 && type > -static_cast<int>(std::size(type_string)))
                     o << type_string[-type];
                 else
                     o << "map_value_of_size(" << v_out.lb() << ")";
