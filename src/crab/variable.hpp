@@ -11,7 +11,8 @@
 
 #include "crab_utils/bignums.hpp"
 #include "crab_utils/debug.hpp"
-#include "crab_utils/patricia_trees.hpp"
+#include "radix_tree/radix_tree.hpp"
+using index_t = uint64_t;
 
 /* Basic type definitions */
 
