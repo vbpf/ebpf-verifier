@@ -50,7 +50,7 @@
 #include <boost/functional/hash.hpp>
 
 #include "crab/variable.hpp"
-#include "crab_utils/patricia_trees.hpp"
+#include "radix_tree/radix_tree.hpp"
 
 namespace crab {
 

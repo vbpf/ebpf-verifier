@@ -54,12 +54,13 @@ void clear_global_state() {
 }
 
 void offset_map_t::remove_cell(const cell_t& c) {
-    if (std::optional<cell_set_t> cells = _map.lookup(c.get_offset())) {
+    offset_t key = c.get_offset();
+    if (std::optional<cell_set_t> cells = _map[key]) {
         if ((*cells).erase(c) > 0) {
-            _map.remove(c.get_offset());
+            _map.erase(key);
             if (!(*cells).empty()) {
                 // a bit of a waste ...
-                _map.insert(c.get_offset(), *cells);
+                _map[key] = *cells;
             }
         }
     }
@@ -68,7 +69,7 @@ void offset_map_t::remove_cell(const cell_t& c) {
 [[nodiscard]]
 std::vector<cell_t> offset_map_t::get_overlap_cells_symbolic_offset(const NumAbsDomain& dom,
                                                                     const linear_expression_t& symb_lb,
-                                                                    const linear_expression_t& symb_ub) const {
+                                                                    const linear_expression_t& symb_ub) {
     std::vector<cell_t> out;
     for (auto it = _map.begin(), et = _map.end(); it != et; ++it) {
         const cell_set_t& o_cells = it->second;
@@ -102,21 +103,22 @@ std::vector<cell_t> offset_map_t::get_overlap_cells_symbolic_offset(const NumAbs
 }
 
 void offset_map_t::insert_cell(const cell_t& c) {
-    if (std::optional<cell_set_t> cells = _map.lookup(c.get_offset())) {
+    offset_t key = c.get_offset();
+    if (std::optional<cell_set_t> cells = _map[key]) {
         if ((*cells).insert(c).second) {
             // a bit of a waste ...
-            _map.remove(c.get_offset());
-            _map.insert(c.get_offset(), *cells);
+            _map.erase(key);
+            _map[key] = *cells;
         }
     } else {
         cell_set_t new_cells;
         new_cells.insert(c);
-        _map.insert(c.get_offset(), new_cells);
+        _map[key] = new_cells;
     }
 }
 
-std::optional<cell_t> offset_map_t::get_cell(offset_t o, unsigned size) const {
-    if (std::optional<cell_set_t> cells = _map.lookup(o)) {
+std::optional<cell_t> offset_map_t::get_cell(offset_t o, unsigned size) {
+    if (std::optional<cell_set_t> cells = _map[o]) {
         cell_t tmp(o, size);
         auto it = (*cells).find(tmp);
         if (it != (*cells).end()) {
@@ -237,7 +239,7 @@ std::vector<cell_t> offset_map_t::get_overlap_cells(offset_t o, unsigned size) {
     return out;
 }
 
-std::ostream& operator<<(std::ostream& o, const offset_map_t& m) {
+std::ostream& operator<<(std::ostream& o, offset_map_t& m) {
     if (m._map.empty()) {
         o << "empty";
     } else {
@@ -358,6 +360,34 @@ std::optional<variable_t> array_domain_t::store(NumAbsDomain& inv, data_kind_t k
         return v;
     }
     return {};
+}
+
+// Get a range of bits out of the middle of a key, starting at [begin] for a given length.
+offset_t radix_substr(const offset_t& key, int begin, int length)
+{
+    uint64_t mask;
+
+    if (length == offset_t::bitsize)
+        mask = 0;
+    else
+        mask = ((index_t)1) << length;
+
+    mask -= 1;
+    mask <<= offset_t::bitsize - length - begin;
+
+    index_t value = (((index_t)key) & mask) << begin;
+    return offset_t{value, length};
+}
+
+// Concatenate two bit patterns.
+offset_t radix_join(const offset_t& entry1, const offset_t& entry2)
+{
+    index_t value1 = (index_t)entry1;
+    index_t value2 = (index_t)entry2;
+    index_t value = value1 | (value2 >> entry1.prefix_length());
+    int prefix_length = entry1.prefix_length() + entry2.prefix_length();
+
+    return offset_t{value, prefix_length};
 }
 
 } // namespace crab::domains
