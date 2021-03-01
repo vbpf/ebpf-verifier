@@ -26,9 +26,17 @@ static vector<T> vector_of(ELFIO::section* sec) {
 }
 
 int create_map_crab(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries, ebpf_verifier_options_t options) {
-    // For now we just make up a number as if the map were created,
-    // without actually creating anything.
-    return (value_size << 14) + (key_size << 6); // + i;
+    // BPF_MAP_TYPE_ARRAY_OF_MAPS and
+    // BPF_MAP_TYPE_HASH_OF_MAPS are not yet supported.
+    if (map_type == 12 || map_type == 13) {
+        return -1;
+    }
+    if (key_size > (1 << 8))
+        throw std::runtime_error("bad map key size " + std::to_string(key_size));
+    if (value_size > (1 << (31 - 8)))
+        throw std::runtime_error("bad map value size " + std::to_string(value_size));
+    int res = (value_size << 8) + key_size;
+    return res;
 }
 
 EbpfMapDescriptor* find_map_descriptor(int map_fd) {
