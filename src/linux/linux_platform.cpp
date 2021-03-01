@@ -30,6 +30,9 @@ struct bpf_load_map_def {
     uint32_t numa_node;
 };
 
+static int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
+                            ebpf_verifier_options_t options);
+
 // Allow for comma as a separator between multiple prefixes, to make
 // the preprocessor treat a prefix list as one macro argument.
 #define COMMA ,
@@ -97,7 +100,57 @@ static EbpfProgramType get_program_type_linux(const std::string& section, const 
     return linux_socket_filter_program_type;
 }
 
-void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t size, ebpf_create_map_fn create_map, ebpf_verifier_options_t options)
+#ifdef __linux__
+#define BPF_MAP_TYPE(x) BPF_MAP_TYPE_##x, #x
+#else
+#define BPF_MAP_TYPE(x) 0, #x
+#endif
+
+static const EbpfMapType linux_map_types[] = {
+    {BPF_MAP_TYPE(UNSPEC)},
+    {BPF_MAP_TYPE(HASH)},
+    {BPF_MAP_TYPE(ARRAY), true},
+    {BPF_MAP_TYPE(PROG_ARRAY), true},
+    {BPF_MAP_TYPE(PERF_EVENT_ARRAY), true},
+    {BPF_MAP_TYPE(PERCPU_HASH)},
+    {BPF_MAP_TYPE(PERCPU_ARRAY), true},
+    {BPF_MAP_TYPE(STACK_TRACE)},
+    {BPF_MAP_TYPE(CGROUP_ARRAY), true},
+    {BPF_MAP_TYPE(LRU_HASH)},
+    {BPF_MAP_TYPE(LRU_PERCPU_HASH)},
+    {BPF_MAP_TYPE(LPM_TRIE)},
+    {BPF_MAP_TYPE(ARRAY_OF_MAPS), true, true},
+    {BPF_MAP_TYPE(HASH_OF_MAPS), false, true},
+    {BPF_MAP_TYPE(DEVMAP)},
+    {BPF_MAP_TYPE(SOCKMAP)},
+    {BPF_MAP_TYPE(CPUMAP)},
+#ifdef BPF_MAP_TYPE_XSKMAP
+    {BPF_MAP_TYPE(XSKMAP)},
+    {BPF_MAP_TYPE(SOCKHASH)},
+    {BPF_MAP_TYPE(CGROUP_STORAGE)},
+    {BPF_MAP_TYPE(REUSEPORT_SOCKARRAY)},
+    {BPF_MAP_TYPE(PERCPU_CGROUP_STORAGE)},
+    {BPF_MAP_TYPE(QUEUE)},
+    {BPF_MAP_TYPE(STACK)},
+#endif
+};
+
+EbpfMapType get_map_type_linux(uint32_t platform_specific_type)
+{
+    uint32_t index = platform_specific_type;
+    if ((index == 0) || (index >= sizeof(linux_map_types) / sizeof(linux_map_types[0]))) {
+        return linux_map_types[0];
+    }
+    EbpfMapType type = linux_map_types[index];
+#ifdef __linux__
+    assert(type.platform_specific_type == platform_specific_type);
+#else
+    type.platform_specific_type = platform_specific_type;
+#endif
+    return type;
+}
+
+void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t size, const ebpf_platform_t* platform, ebpf_verifier_options_t options)
 {
     if (size % sizeof(bpf_load_map_def) != 0) {
         throw std::runtime_error(std::string("bad maps section size"));
@@ -105,11 +158,13 @@ void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, c
 
     auto mapdefs = std::vector<bpf_load_map_def>((bpf_load_map_def*)data, (bpf_load_map_def*)(data + size));
     for (auto s : mapdefs) {
+        EbpfMapType type = get_map_type_linux(s.type);
         map_descriptors.emplace_back(EbpfMapDescriptor{
-            .original_fd = create_map(s.type, s.key_size, s.value_size, s.max_entries, options),
+            .original_fd = create_map_linux(s.type, s.key_size, s.value_size, s.max_entries, options),
             .type = s.type,
             .key_size = s.key_size,
             .value_size = s.value_size,
+            .max_entries = s.max_entries
         });
     }
     for (size_t i = 0; i < mapdefs.size(); i++) {
@@ -129,11 +184,12 @@ static int do_bpf(bpf_cmd cmd, union bpf_attr& attr) { return syscall(321, cmd, 
  *
  *  This function requires admin privileges.
  */
-int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
-                     ebpf_verifier_options_t options)
+static int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
+                            ebpf_verifier_options_t options)
 {
     if (options.mock_map_fds) {
-        return create_map_crab(map_type, key_size, value_size, max_entries, options);
+        EbpfMapType type = get_map_type_linux(map_type);
+        return create_map_crab(type, key_size, value_size, max_entries, options);
     }
 
 #if __linux__
@@ -186,6 +242,6 @@ const ebpf_platform_t g_ebpf_platform_linux = {
     is_helper_usable_linux,
     sizeof(bpf_load_map_def),
     parse_maps_section_linux,
-    create_map_linux,
     get_map_descriptor_linux,
+    get_map_type_linux,
 };

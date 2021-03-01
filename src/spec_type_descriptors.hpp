@@ -8,11 +8,19 @@
 
 constexpr int EBPF_STACK_SIZE = 512;
 
+struct EbpfMapType {
+    uint32_t platform_specific_type; // EbpfMapDescriptor.type value.
+    std::string name; // For ease of display, not used by the verifier.
+    bool is_array; // True if key is integer in range [0,max_entries-1].
+    bool is_value_map_fd; // True if value is map_fd.
+};
+
 struct EbpfMapDescriptor {
     int original_fd;
     uint32_t type; // Platform-specific type value in ELF file.
     unsigned int key_size;
     unsigned int value_size;
+    unsigned int max_entries;
     unsigned int inner_map_fd;
 };
 

@@ -25,13 +25,12 @@ static vector<T> vector_of(ELFIO::section* sec) {
     return {(T*)data, (T*)(data + size)};
 }
 
-int create_map_crab(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries, ebpf_verifier_options_t options) {
-    // BPF_MAP_TYPE_ARRAY_OF_MAPS and
-    // BPF_MAP_TYPE_HASH_OF_MAPS are not yet supported.
-    if (map_type == 12 || map_type == 13) {
+int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries, ebpf_verifier_options_t options) {
+    if (map_type.is_value_map_fd) {
+        // Map-in-map is not yet supported.
         return -1;
     }
-    if (key_size > (1 << 8))
+    if ((map_type.is_array && key_size != 4) || (key_size > (1 << 8)))
         throw std::runtime_error("bad map key size " + std::to_string(key_size));
     if (value_size > (1 << (31 - 8)))
         throw std::runtime_error("bad map value size " + std::to_string(value_size));
@@ -64,7 +63,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
 
     ELFIO::section* maps_section = reader.sections["maps"];
     if (maps_section) {
-        platform->parse_maps_section(info.map_descriptors, maps_section->get_data(), maps_section->get_size(), platform->create_map, *options);
+        platform->parse_maps_section(info.map_descriptors, maps_section->get_data(), maps_section->get_size(), platform, *options);
     }
 
     ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
