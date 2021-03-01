@@ -12,16 +12,20 @@
 
 typedef EbpfProgramType (*ebpf_get_program_type_fn)(const std::string& section, const std::string& path);
 
+typedef EbpfMapType (*ebpf_get_map_type_fn)(uint32_t platform_specific_type);
+
 typedef EbpfHelperPrototype (*ebpf_get_helper_prototype_fn)(unsigned int n);
 
 typedef bool (*ebpf_is_helper_usable_fn)(unsigned int n);
 
+#if 0
 // Return an fd for a map created with the given parameters.
 typedef int (*ebpf_create_map_fn)(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries, ebpf_verifier_options_t options);
+#endif
 
 // Parse map records and allocate map fd's.
 // In the future we may want to move map fd allocation after the verifier step.
-typedef void (*ebpf_parse_maps_section_fn)(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t size, ebpf_create_map_fn create_map, ebpf_verifier_options_t options);
+typedef void (*ebpf_parse_maps_section_fn)(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t size, const struct ebpf_platform_t* platform, ebpf_verifier_options_t options);
 
 typedef EbpfMapDescriptor& (*ebpf_get_map_descriptor_fn)(int map_fd);
 
@@ -34,8 +38,8 @@ struct ebpf_platform_t {
     size_t map_record_size;
 
     ebpf_parse_maps_section_fn parse_maps_section;
-    ebpf_create_map_fn create_map;
     ebpf_get_map_descriptor_fn get_map_descriptor;
+    ebpf_get_map_type_fn get_map_type;
 };
 
 extern const ebpf_platform_t g_ebpf_platform_linux;
