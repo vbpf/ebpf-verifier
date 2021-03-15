@@ -558,6 +558,7 @@ class ebpf_domain_t final {
                 return;
             } else {
                 require(m_inv, reg.type > T_NUM, "Only pointers can be dereferenced");
+                require(m_inv, reg.value > 0, "Possible null access");
                 m_inv = std::move(assume_ptr);
                 return;
             }
@@ -1082,6 +1083,7 @@ class ebpf_domain_t final {
         ebpf_domain_t inv;
         auto r10 = reg_pack(R10_STACK_POINTER);
         inv += EBPF_STACK_SIZE <= r10.value;
+        inv += r10.value <= PTR_MAX;
         inv.assign(r10.offset, EBPF_STACK_SIZE);
         inv.assign(r10.type, T_STACK);
 
