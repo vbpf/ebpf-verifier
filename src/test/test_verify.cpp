@@ -430,6 +430,7 @@ TEST_SECTION_REJECT("build", "exposeptr2.o", ".text")
 
 TEST_SECTION("build", "mapoverflow.o", ".text")
 TEST_SECTION("build", "mapunderflow.o", ".text")
+TEST_SECTION("build", "nullmapref.o", "test")
 
 // The following eBPF programs currently fail verification.
 // If the verifier is later updated to accept them, these should
