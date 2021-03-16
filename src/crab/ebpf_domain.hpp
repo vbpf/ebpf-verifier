@@ -568,36 +568,36 @@ class ebpf_domain_t final {
     NumAbsDomain check_access_packet(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
                                      bool is_comparison_check) {
         using namespace dsl_syntax;
-        require(inv, lb >= variable_t::meta_offset(), std::string("Lower bound must be higher than meta_offset") + s);
+        require(inv, lb >= variable_t::meta_offset(), std::string("Lower bound must be at least meta_offset") + s);
         if (is_comparison_check)
             require(inv, ub <= MAX_PACKET_OFF,
-                    std::string("Upper bound must be lower than ") + std::to_string(MAX_PACKET_OFF) + s);
+                    std::string("Upper bound must be at most ") + std::to_string(MAX_PACKET_OFF) + s);
         else
             require(inv, ub <= variable_t::packet_size(),
-                    std::string("Upper bound must be lower than meta_offset") + s);
+                    std::string("Upper bound must be at most packet_size") + s);
         return inv;
     }
 
     NumAbsDomain check_access_stack(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s) {
         using namespace dsl_syntax;
-        require(inv, lb >= 0, std::string("Lower bound must be higher than 0") + s);
-        require(inv, ub <= EBPF_STACK_SIZE, std::string("Upper bound must be lower than EBPF_STACK_SIZE") + s + std::string(", make sure to bounds check any pointer access"));
+        require(inv, lb >= 0, std::string("Lower bound must be at least 0") + s);
+        require(inv, ub <= EBPF_STACK_SIZE, std::string("Upper bound must be at most EBPF_STACK_SIZE") + s + std::string(", make sure to bounds check any pointer access"));
         return inv;
     }
 
     NumAbsDomain check_access_shared(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
                                      variable_t reg_type) {
         using namespace dsl_syntax;
-        require(inv, lb >= 0, std::string("Lower bound must be higher than 0") + s);
-        require(inv, ub <= reg_type, std::string("Upper bound must be lower than ") + reg_type.name() + s);
+        require(inv, lb >= 0, std::string("Lower bound must be at least 0") + s);
+        require(inv, ub <= reg_type, std::string("Upper bound must be at most ") + reg_type.name() + s);
         return inv;
     }
 
     NumAbsDomain check_access_context(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s) {
         using namespace dsl_syntax;
-        require(inv, lb >= 0, std::string("Lower bound must be higher than 0") + s);
+        require(inv, lb >= 0, std::string("Lower bound must be at least 0") + s);
         require(inv, ub <= global_program_info.type.context_descriptor.size,
-                std::string("Upper bound must be lower than ") + std::to_string(global_program_info.type.context_descriptor.size) +
+                std::string("Upper bound must be at most ") + std::to_string(global_program_info.type.context_descriptor.size) +
                     s);
         return inv;
     }
