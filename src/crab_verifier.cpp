@@ -21,8 +21,6 @@
 
 using std::string;
 
-using crab::linear_constraint_t;
-
 program_info global_program_info;
 
 // Numerical domains over integers

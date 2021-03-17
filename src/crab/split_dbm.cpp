@@ -106,12 +106,12 @@ void SplitDBM::diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
     std::vector<std::pair<variable_t, Wt>> terms;
     bool overflow;
 
-    Wt residual(convert_NtoW(exp.constant(), overflow));
+    Wt residual(convert_NtoW(exp.constant_term(), overflow));
     if (overflow) {
         return;
     }
 
-    for (auto [y, n] : exp) {
+    for (auto [y, n] : exp.variable_terms()) {
         Wt coeff(convert_NtoW(n, overflow));
         if (overflow) {
             continue;
@@ -168,13 +168,13 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
                                    std::vector<std::pair<variable_t, Wt>>& ubs) {
     bool underflow, overflow;
 
-    Wt exp_ub = -(convert_NtoW(exp.constant(), overflow));
+    Wt exp_ub = -(convert_NtoW(exp.constant_term(), overflow));
     if (overflow) {
         return;
     }
 
     // temporary hack
-    convert_NtoW(exp.constant() - 1, underflow);
+    convert_NtoW(exp.constant_term() - 1, underflow);
     if (underflow) {
         // We don't like MIN either because the code will compute
         // minus MIN and it will silently overflow.
@@ -187,7 +187,7 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
     std::optional<variable_t> unbounded_ubvar;
 
     std::vector<std::pair<std::pair<Wt, variable_t>, Wt>> pos_terms, neg_terms;
-    for (auto [y, n] : exp) {
+    for (auto [y, n] : exp.variable_terms()) {
         Wt coeff(convert_NtoW(n, overflow));
         if (overflow) {
             continue;
@@ -821,7 +821,7 @@ void SplitDBM::operator+=(const linear_constraint_t& cst) {
         return;
     }
 
-    if (cst.is_inequality()) {
+    if (cst.kind() == constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO) {
         if (!add_linear_leq(cst.expression())) {
             set_to_bottom();
         }
@@ -830,21 +830,18 @@ void SplitDBM::operator+=(const linear_constraint_t& cst) {
         return;
     }
 
-    if (cst.is_strict_inequality()) {
+    if (cst.kind() == constraint_kind_t::LESS_THAN_ZERO) {
         // We try to convert a strict to non-strict.
         // e < 0 --> e <= -1
-        auto nc = linear_constraint_t(cst.expression() + 1, cst_kind::INEQUALITY);
-        if (nc.is_inequality()) {
-            // here we succeed
-            if (!add_linear_leq(nc.expression())) {
-                set_to_bottom();
-            }
-            CRAB_LOG("zones-split", std::cout << "--- " << cst << "\n" << *this << "\n");
-            return;
+        auto nc = linear_constraint_t(cst.expression() + 1, constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO);
+        if (!add_linear_leq(nc.expression())) {
+            set_to_bottom();
         }
+        CRAB_LOG("zones-split", std::cout << "--- " << cst << "\n" << *this << "\n");
+        return;
     }
 
-    if (cst.is_equality()) {
+    if (cst.kind() == constraint_kind_t::EQUALS_ZERO) {
         const linear_expression_t& exp = cst.expression();
         if (!add_linear_leq(exp) || !add_linear_leq(-exp)) {
             CRAB_LOG("zones-split", std::cout << " ~~> _|_"
@@ -856,7 +853,7 @@ void SplitDBM::operator+=(const linear_constraint_t& cst) {
         return;
     }
 
-    if (cst.is_disequation()) {
+    if (cst.kind() == constraint_kind_t::NOT_ZERO) {
         add_disequation(cst.expression());
         return;
     }
@@ -1097,8 +1094,8 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, variable_t z)
     normalize();
 
     switch (op) {
-    case arith_binop_t::ADD: assign(x, var_add(y, z)); return;
-    case arith_binop_t::SUB: assign(x, var_sub(y, z)); return;
+    case arith_binop_t::ADD: assign(x, linear_expression_t(y) + z); return;
+    case arith_binop_t::SUB: assign(x, linear_expression_t(y) - z); return;
     // For the rest of operations, we fall back on intervals.
     case arith_binop_t::MUL: set(x, get_interval(y) * get_interval(z)); break;
     case arith_binop_t::SDIV: set(x, get_interval(y) / get_interval(z)); break;
@@ -1120,9 +1117,9 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, const number_
     normalize();
 
     switch (op) {
-    case arith_binop_t::ADD: assign(x, var_add(y, k)); return;
-    case arith_binop_t::SUB: assign(x, var_sub(y, k)); return;
-    case arith_binop_t::MUL: assign(x, var_mul(k, y)); return;
+    case arith_binop_t::ADD: assign(x, linear_expression_t(y) + k); return;
+    case arith_binop_t::SUB: assign(x, linear_expression_t(y) - k); return;
+    case arith_binop_t::MUL: assign(x, linear_expression_t(k, y)); return;
     // For the rest of operations, we fall back on intervals.
     case arith_binop_t::SDIV: set(x, get_interval(y) / interval_t(k)); break;
     case arith_binop_t::UDIV: set(x, get_interval(y).UDiv(interval_t(k))); break;

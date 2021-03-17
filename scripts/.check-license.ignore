@@ -17,10 +17,8 @@ counter
 ebpf-samples
 
 # Files using NASA-1.3 license
-src/crab/linear_constraints.hpp
 src/crab/wto.hpp
 src/crab_utils/bignums_gmp.hpp
-src/crab_utils/patricia_trees.hpp
 
 # Files using Apache-2.0 license
 src/crab/array_domain.cpp

@@ -10,7 +10,7 @@
 
 #include "crab/cfg.hpp"
 #include "crab/interval.hpp"
-#include "crab/linear_constraints.hpp"
+#include "crab/linear_constraint.hpp"
 #include "crab/wto.hpp"
 #include "crab_utils/debug.hpp"
 
