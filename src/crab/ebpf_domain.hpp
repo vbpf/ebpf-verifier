@@ -47,12 +47,12 @@ inline reg_pack_t reg_pack(Reg r) { return reg_pack(r.v); }
 
 inline linear_constraint_t eq(variable_t a, variable_t b) {
     using namespace dsl_syntax;
-    return {a - b, cst_kind::EQUALITY};
+    return {a - b, constraint_kind_t::EQUALS_ZERO};
 }
 
 inline linear_constraint_t neq(variable_t a, variable_t b) {
     using namespace dsl_syntax;
-    return {a - b, cst_kind::DISEQUATION};
+    return {a - b, constraint_kind_t::NOT_ZERO};
 }
 
 constexpr int MAX_PACKET_OFF = 0xffff;
