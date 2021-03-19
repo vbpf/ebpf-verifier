@@ -76,7 +76,7 @@ struct SafeInt64DefaultParams {
  **/
 inline SafeInt64DefaultParams::Wt convert_NtoW(const z_number& n, bool& overflow) {
     overflow = false;
-    if (!n.fits_slong()) {
+    if (!n.fits_sint64()) {
         overflow = true;
         return 0;
     }

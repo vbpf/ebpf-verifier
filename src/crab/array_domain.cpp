@@ -270,9 +270,9 @@ array_domain_t::kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const lin
         interval_t i_elem_size = inv.eval_interval(elem_size);
         std::optional<number_t> n_bytes = i_elem_size.singleton();
         if (n_bytes) {
-            unsigned size = (long)(*n_bytes);
+            unsigned int size = (unsigned int)(*n_bytes);
             // -- Constant index: kill overlapping cells
-            offset_t o((long)*n);
+            offset_t o((uint64_t)*n);
             cells = offset_map.get_overlap_cells(o, size);
             res = std::make_pair(o, size);
         }
@@ -305,7 +305,7 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
     interval_t ii = inv.eval_interval(i);
     if (std::optional<number_t> n = ii.singleton()) {
         offset_map_t& offset_map = lookup_array_map(kind);
-        long k = (long)*n;
+        int64_t k = (int64_t)*n;
         if (kind == data_kind_t::types) {
             auto [only_num, only_non_num] = num_bytes.uniformity(k, width);
             if (only_num) {
@@ -351,7 +351,7 @@ std::optional<variable_t> array_domain_t::store(NumAbsDomain& inv, data_kind_t k
         auto [offset, size] = *maybe_cell;
         if (kind == data_kind_t::types) {
             std::optional<number_t> t = inv.eval_interval(val).singleton();
-            if (t && (long)*t == T_NUM)
+            if (t && (int64_t)*t == T_NUM)
                 num_bytes.reset(offset, size);
             else
                 num_bytes.havoc(offset, size);
