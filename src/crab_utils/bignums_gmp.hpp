@@ -101,11 +101,19 @@ class z_number final {
     }
 
     // overloaded typecast operators
-    explicit operator long() const {
+    explicit operator int64_t() const {
         if (_n.fits_slong_p()) {
             return _n.get_si();
         } else {
-            CRAB_ERROR("mpz_class ", _n.get_str(), " does not fit into a signed long integer");
+            CRAB_ERROR("mpz_class ", _n.get_str(), " does not fit into a signed 64-bit integer");
+        }
+    }
+
+    explicit operator uint64_t() const {
+        if (_n.fits_ulong_p()) {
+            return _n.get_ui();
+        } else {
+            CRAB_ERROR("mpz_class ", _n.get_str(), " does not fit into an unsigned 64-bit integer");
         }
     }
 
@@ -118,6 +126,14 @@ class z_number final {
         }
     }
 
+    explicit operator unsigned int() const {
+        if (_n.fits_uint_p()) {
+            return (unsigned int)_n.get_ui();
+        } else {
+            CRAB_ERROR("mpz_class ", _n.get_str(), " does not fit into an unsigned integer");
+        }
+    }
+
     explicit operator mpz_class() const { return _n; }
 
     [[nodiscard]] std::size_t hash() const {
@@ -127,7 +143,7 @@ class z_number final {
 
     [[nodiscard]] bool fits_sint() const { return _n.fits_sint_p(); }
 
-    [[nodiscard]] bool fits_slong() const { return _n.fits_slong_p(); }
+    [[nodiscard]] bool fits_sint64() const { return _n.fits_slong_p(); }
 
     z_number operator+(const z_number& x) const {
         mpz_class r = _n + x._n;

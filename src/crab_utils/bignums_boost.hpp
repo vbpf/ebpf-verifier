@@ -32,11 +32,19 @@ class z_number final {
     z_number(long n) { _n = n; }
 
     // overloaded typecast operators
-    explicit operator long() const {
-        if (!fits_slong()) {
-            CRAB_ERROR("z_number ", _n.str(), " does not fit into a signed long integer");
+    explicit operator int64_t() const {
+        if (!fits_sint64()) {
+            CRAB_ERROR("z_number ", _n.str(), " does not fit into a signed 64-bit integer");
         } else {
-            return (long)_n;
+            return (int64_t)_n;
+        }
+    }
+
+    explicit operator uint64_t() const {
+        if (!fits_uint64()) {
+            CRAB_ERROR("z_number ", _n.str(), " does not fit into an unsigned 64-bit integer");
+        } else {
+            return (uint64_t)_n;
         }
     }
 
@@ -45,6 +53,14 @@ class z_number final {
             CRAB_ERROR("z_number ", _n.str(), " does not fit into a signed integer");
         } else {
             return (int)_n;
+        }
+    }
+
+    explicit operator unsigned int() const {
+        if (!fits_uint()) {
+            CRAB_ERROR("z_number ", _n.str(), " does not fit into an unsigned integer");
+        } else {
+            return (unsigned int)_n;
         }
     }
 
@@ -59,9 +75,16 @@ class z_number final {
         return ((_n >= INT_MIN) && (_n <= INT_MAX));
     }
 
-    [[nodiscard]] bool fits_slong() const {
-        return ((_n >= LONG_MIN) && (_n <= LONG_MAX));
+    [[nodiscard]] bool fits_uint() const { return ((_n >= 0) && (_n <= UINT_MAX)); }
+
+    [[nodiscard]] bool fits_sint64() const {
+        // "long long" is always 64-bits, whereas "long" varies
+        // (see https://en.cppreference.com/w/cpp/language/types)
+        // so make sure we use 64-bit numbers.
+        return ((_n >= LLONG_MIN) && (_n <= LLONG_MAX));
     }
+
+    [[nodiscard]] bool fits_uint64() const { return ((_n >= 0) && (_n <= ULLONG_MAX)); }
 
     z_number operator+(const z_number& x) const {
         return z_number(_n + x._n);
