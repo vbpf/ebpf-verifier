@@ -423,6 +423,7 @@ TEST_SECTION("raw_tracepoint/filler/sys_recvfrom_x")
 TEST_SECTION_REJECT("build", "badhelpercall.o", ".text")
 TEST_SECTION_REJECT("build", "exposeptr.o", ".text")
 TEST_SECTION_REJECT("build", "exposeptr2.o", ".text")
+TEST_SECTION_REJECT("build", "mapvalue-overrun.o", ".text")
 TEST_SECTION_REJECT("build", "nullmapref.o", "test")
 
 // Test some programs that ought to fail verification but
@@ -431,7 +432,7 @@ TEST_SECTION_REJECT("build", "nullmapref.o", "test")
 
 TEST_SECTION("build", "mapoverflow.o", ".text")
 TEST_SECTION("build", "mapunderflow.o", ".text")
-
+TEST_SECTION("build", "wronghelper.o", "xdp")
 
 // The following eBPF programs currently fail verification.
 // If the verifier is later updated to accept them, these should
