@@ -138,7 +138,7 @@ class SplitDBM final {
             return Wt(0);
         }
 
-        for (auto [variable, coefficient] : e.variable_terms()) {
+        for (const auto& [variable, coefficient] : e.variable_terms()) {
             Wt coef = convert_NtoW(coefficient, overflow);
             if (overflow) {
                 return Wt(0);
@@ -150,9 +150,9 @@ class SplitDBM final {
 
     interval_t compute_residual(const linear_expression_t& e, variable_t pivot) {
         interval_t residual(-e.constant_term());
-        for (auto [v, n] : e.variable_terms()) {
-            if (v != pivot) {
-                residual = residual - (interval_t(n) * this->operator[](v));
+        for (const auto& [variable, coefficient] : e.variable_terms()) {
+            if (variable != pivot) {
+                residual = residual - (interval_t(coefficient) * this->operator[](variable));
             }
         }
         return residual;
@@ -205,10 +205,10 @@ class SplitDBM final {
 
     void add_disequation(const linear_expression_t& e) {
         // XXX: similar precision as the interval domain
-        for (auto [pivot, n] : e.variable_terms()) {
-            interval_t i = compute_residual(e, pivot) / interval_t(n);
+        for (const auto& [variable, coefficient] : e.variable_terms()) {
+            interval_t i = compute_residual(e, variable) / interval_t(coefficient);
             if (auto k = i.singleton()) {
-                add_univar_disequation(pivot, *k);
+                add_univar_disequation(variable, *k);
             }
         }
     }
@@ -357,8 +357,8 @@ class SplitDBM final {
 
     interval_t eval_interval(const linear_expression_t& e) {
         interval_t r{e.constant_term()};
-        for (auto [v, n] : e.variable_terms())
-            r += n * operator[](v);
+        for (const auto& [variable, coefficient] : e.variable_terms())
+            r += coefficient * operator[](variable);
         return r;
     }
 

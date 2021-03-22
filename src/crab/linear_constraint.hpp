@@ -20,18 +20,14 @@ class linear_constraint_t final {
     constraint_kind_t _constraint_kind;
 
   public:
-    linear_constraint_t(const linear_expression_t expression, constraint_kind_t constraint_kind)
-    {
-        _expression = expression;
-        _constraint_kind = constraint_kind;
-    }
+    linear_constraint_t(const linear_expression_t& expression, constraint_kind_t constraint_kind) : _expression(expression), _constraint_kind(constraint_kind) {}
 
     [[nodiscard]] const linear_expression_t& expression() const { return _expression; }
     [[nodiscard]] constraint_kind_t kind() const { return _constraint_kind; }
 
     // Test whether the constraint is guaranteed to be false.
     [[nodiscard]] bool is_contradiction() const {
-        if (!_expression.variable_terms().empty()) {
+        if (!_expression.is_constant()) {
             return false;
         }
         number_t constant = _expression.constant_term();
@@ -46,7 +42,7 @@ class linear_constraint_t final {
 
     // Test whether the constraint is guaranteed to be true.
     [[nodiscard]] bool is_tautology() const {
-        if (!_expression.variable_terms().empty()) {
+        if (!_expression.is_constant()) {
             return false;
         }
         return !is_contradiction();
@@ -84,7 +80,11 @@ inline std::ostream& operator<<(std::ostream& o, const linear_constraint_t& cons
         expression.output_variable_terms(o);
 
         const char* constraint_kind_label[] = {" == ", " <= ", " < ", " != "};
-        o << constraint_kind_label[(int)constraint.kind()] << -expression.constant_term();
+        int kind = (int)constraint.kind();
+        if (kind < 0 || kind >= sizeof(constraint_kind_label) / sizeof(*constraint_kind_label)) {
+            throw std::exception();
+        }
+        o << constraint_kind_label[kind] << -expression.constant_term();
     }
     return o;
 };
