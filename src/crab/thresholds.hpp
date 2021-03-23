@@ -61,9 +61,9 @@ class wto_thresholds_t final {
   public:
     wto_thresholds_t(cfg_t& cfg, size_t max_size) : m_cfg(cfg), m_max_size(max_size) {}
 
-    void operator()(wto_vertex_t& vertex);
+    void operator()(const wto_vertex_t& vertex);
 
-    void operator()(wto_cycle_t& cycle);
+    void operator()(std::shared_ptr<wto_cycle_t>& cycle);
 
     friend std::ostream& operator<<(std::ostream& o, const wto_thresholds_t& t);
 

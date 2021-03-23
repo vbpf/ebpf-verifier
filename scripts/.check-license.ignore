@@ -17,7 +17,6 @@ counter
 ebpf-samples
 
 # Files using NASA-1.3 license
-src/crab/wto.hpp
 src/crab_utils/bignums_gmp.hpp
 
 # Files using Apache-2.0 license

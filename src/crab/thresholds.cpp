@@ -52,7 +52,7 @@ void wto_thresholds_t::get_thresholds(const basic_block_t& bb, thresholds_t& thr
 
 }
 
-void wto_thresholds_t::operator()(wto_vertex_t& vertex) {
+void wto_thresholds_t::operator()(const wto_vertex_t& vertex) {
     if (m_stack.empty())
         return;
 
@@ -60,31 +60,31 @@ void wto_thresholds_t::operator()(wto_vertex_t& vertex) {
     auto it = m_head_to_thresholds.find(head);
     if (it != m_head_to_thresholds.end()) {
         thresholds_t& thresholds = it->second;
-        auto& bb = m_cfg.get_node(vertex.node());
+        basic_block_t& bb = m_cfg.get_node(vertex);
         get_thresholds(bb, thresholds);
     } else {
         CRAB_ERROR("No head found while gathering thresholds");
     }
 }
 
-void wto_thresholds_t::operator()(wto_cycle_t& cycle) {
+void wto_thresholds_t::operator()(std::shared_ptr<wto_cycle_t>& cycle) {
     thresholds_t thresholds(m_max_size);
-    auto& bb = m_cfg.get_node(cycle.head());
+    auto& bb = m_cfg.get_node(cycle->head());
     get_thresholds(bb, thresholds);
 
     // XXX: if we want to consider constants from loop
     // initializations
     for (auto pre : boost::make_iterator_range(bb.prev_blocks())) {
-        if (pre != cycle.head()) {
+        if (pre != cycle->head()) {
             auto& pred_bb = m_cfg.get_node(pre);
             get_thresholds(pred_bb, thresholds);
         }
     }
 
-    m_head_to_thresholds.insert(std::make_pair(cycle.head(), thresholds));
-    m_stack.push_back(cycle.head());
-    for (wto_component_t& c : cycle) {
-        std::visit(*this, c);
+    m_head_to_thresholds.insert(std::make_pair(cycle->head(), thresholds));
+    m_stack.push_back(cycle->head());
+    for (auto& c : cycle->components()) {
+        std::visit(*this, *c.get());
     }
     m_stack.pop_back();
 }
