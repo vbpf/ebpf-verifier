@@ -38,8 +38,8 @@ int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t val
     return res;
 }
 
-EbpfMapDescriptor* find_map_descriptor(int map_fd) {
-    for (EbpfMapDescriptor& map : global_program_info.map_descriptors) {
+const EbpfMapDescriptor* find_map_descriptor(int map_fd, const program_info& info) {
+    for (const EbpfMapDescriptor& map : info.map_descriptors) {
         if (map.original_fd == map_fd) {
             return &map;
         }

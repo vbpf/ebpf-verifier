@@ -219,10 +219,10 @@ static int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value
 #endif
 }
 
-EbpfMapDescriptor& get_map_descriptor_linux(int map_fd)
+const EbpfMapDescriptor& get_map_descriptor_linux(int map_fd, const program_info& info)
 {
     // First check if we already have the map descriptor cached.
-    EbpfMapDescriptor* map = find_map_descriptor(map_fd);
+    const EbpfMapDescriptor* map = find_map_descriptor(map_fd, info);
     if (map != nullptr) {
         return *map;
     }

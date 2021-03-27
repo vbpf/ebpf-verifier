@@ -21,8 +21,6 @@
 
 using std::string;
 
-program_info global_program_info;
-
 // Numerical domains over integers
 //using sdbm_domain_t = crab::domains::SplitDBM;
 using crab::domains::ebpf_domain_t;
@@ -137,13 +135,12 @@ static void print_report(std::ostream& s, const checks_db& db, const Instruction
     s << db.total_warnings << " errors\n";
 }
 
-static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options) {
-    global_program_info = std::move(info);
+static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info& info, const ebpf_verifier_options_t* options) {
     crab::domains::clear_global_state();
 
     // Get dictionaries of preconditions and postconditions for each
     // basic block.
-    auto [preconditions, postconditions] = crab::run_forward_analyzer(cfg, options->check_termination);
+    auto [preconditions, postconditions] = crab::run_forward_analyzer(cfg, info, options->check_termination);
 
     // Analyze the control-flow graph.
     return generate_report(s, cfg, preconditions, postconditions, *options);
@@ -158,7 +155,7 @@ bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, program_info info, const ebp
 }
 
 /// Returned value is true if the program passes verification.
-bool ebpf_verify_program(std::ostream& s, const InstructionSeq& prog, program_info info,
+bool ebpf_verify_program(std::ostream& s, const InstructionSeq& prog, program_info& info,
                          const ebpf_verifier_options_t* options) {
     if (options == nullptr)
         options = &ebpf_verifier_default_options;

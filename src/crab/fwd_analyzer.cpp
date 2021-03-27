@@ -46,6 +46,7 @@ class member_component_visitor final {
 class interleaved_fwd_fixpoint_iterator_t final {
     using iterator = typename invariant_table_t::iterator;
 
+    program_info& _program_info;
     cfg_t& _cfg;
     wto_t _wto;
     invariant_table_t _pre, _post;
@@ -104,13 +105,13 @@ class interleaved_fwd_fixpoint_iterator_t final {
     }
 
   public:
-    explicit interleaved_fwd_fixpoint_iterator_t(cfg_t& cfg, unsigned int descending_iterations, bool check_termination)
-        : _cfg(cfg), _wto(cfg), _descending_iterations(descending_iterations), check_termination(check_termination) {
+    explicit interleaved_fwd_fixpoint_iterator_t(cfg_t& cfg, program_info& info, unsigned int descending_iterations, bool check_termination)
+        : _cfg(cfg), _wto(cfg), _program_info(info), _descending_iterations(descending_iterations), check_termination(check_termination) {
         for (const auto& label : _cfg.labels()) {
             _pre.emplace(label, ebpf_domain_t::bottom());
             _post.emplace(label, ebpf_domain_t::bottom());
         }
-        _pre[this->_cfg.entry_label()] = ebpf_domain_t::setup_entry(check_termination);
+        _pre[this->_cfg.entry_label()] = ebpf_domain_t::setup_entry(check_termination, info);
     }
 
     ebpf_domain_t get_pre(const label_t& node) { return _pre.at(node); }
@@ -121,13 +122,13 @@ class interleaved_fwd_fixpoint_iterator_t final {
 
     void operator()(std::shared_ptr<wto_cycle_t>& cycle);
 
-    friend std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg, bool check_termination);
+    friend std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg, program_info& info, bool check_termination);
 };
 
-std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg, bool check_termination) {
+std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg, program_info& info, bool check_termination) {
     // Go over the CFG in weak topological order (accounting for loops).
     constexpr unsigned int descending_iterations = 2000000;
-    interleaved_fwd_fixpoint_iterator_t analyzer(cfg, descending_iterations, check_termination);
+    interleaved_fwd_fixpoint_iterator_t analyzer(cfg, info, descending_iterations, check_termination);
     for (auto& component : analyzer._wto) {
         std::visit(analyzer, *component);
     }

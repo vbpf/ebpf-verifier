@@ -53,5 +53,3 @@ struct raw_program {
     std::vector<ebpf_inst> prog;
     program_info info;
 };
-
-extern program_info global_program_info;
