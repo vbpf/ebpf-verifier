@@ -27,6 +27,7 @@
 #include "dsl_syntax.hpp"
 #include "helpers.hpp"
 #include "platform.hpp"
+#include "spec_type_descriptors.hpp"
 
 #include "crab/array_domain.hpp"
 
@@ -143,6 +144,10 @@ class ebpf_domain_t final {
     typedef void check_require_func_t(NumAbsDomain&, const linear_constraint_t&, std::string);
 
   private:
+    /// Job info, or nullptr if this domain is just top() or bottom(), which are
+    /// the same regardless of platform or program type.
+    crab_verifier_job_t* m_job;
+
     /// Mapping from variables (including registers, types, offsets,
     /// memory locations, etc.) to numeric intervals or relationships
     /// to other variables.
@@ -154,10 +159,6 @@ class ebpf_domain_t final {
     array_domain_t stack;
 
     std::function<check_require_func_t> check_require{};
-
-    /// Program info, or nullptr if this domain is just top() or bottom(), which are
-    /// the same regardless of platform or program type.
-    const program_info* m_program_info;
 
   public:
     void set_require_check(std::function<check_require_func_t> f) { check_require = std::move(f); }
@@ -175,12 +176,12 @@ class ebpf_domain_t final {
     }
 
   public:
-    ebpf_domain_t() : m_program_info(nullptr), m_inv(NumAbsDomain::top()) {}
+    ebpf_domain_t() : m_job(nullptr), m_inv(NumAbsDomain::top()) {}
 
-    ebpf_domain_t(const program_info& info) : m_program_info(&info), m_inv(NumAbsDomain::top()) {}
+    ebpf_domain_t(crab_verifier_job_t* job) : m_job(job), m_inv(NumAbsDomain::top()), stack(job) {}
 
-    ebpf_domain_t(const program_info& info, NumAbsDomain inv, array_domain_t stack)
-        : m_program_info(&info), m_inv(std::move(inv)), stack(stack) {}
+    ebpf_domain_t(crab_verifier_job_t* job, NumAbsDomain inv, array_domain_t stack)
+        : m_job(job), m_inv(std::move(inv)), stack(stack) {}
 
     void set_to_top() {
         m_inv.set_to_top();
@@ -215,40 +216,40 @@ class ebpf_domain_t final {
         operator|=(std::move(tmp));
     }
 
-    // top and bottom won't have program info, but everything else will, so get whichever
+    // top and bottom won't have a job, but everything else will, so get whichever
     // one has a value (this should never be called with both this and other being top or bottom,
-    // or both this and other having different programs).
-    const program_info& get_program_info(const ebpf_domain_t& other) const {
-        assert(m_program_info != nullptr || other.m_program_info != nullptr);
-        return (m_program_info != nullptr) ? *m_program_info : *other.m_program_info;
+    // or both this and other having different jobs).
+    crab_verifier_job_t* get_job(const ebpf_domain_t& other) const {
+        assert(m_job != nullptr || other.m_job != nullptr);
+        return (m_job != nullptr) ? m_job : other.m_job;
     }
 
     ebpf_domain_t operator|(ebpf_domain_t&& other) {
-        return ebpf_domain_t(get_program_info(other), m_inv | other.m_inv, stack | other.stack);
+        return ebpf_domain_t(get_job(other), m_inv | other.m_inv, stack | other.stack);
     }
 
     ebpf_domain_t operator|(const ebpf_domain_t& other) & {
-        return ebpf_domain_t(get_program_info(other), m_inv | other.m_inv, stack | other.stack);
+        return ebpf_domain_t(get_job(other), m_inv | other.m_inv, stack | other.stack);
     }
 
     ebpf_domain_t operator|(const ebpf_domain_t& other) && {
-        return ebpf_domain_t(get_program_info(other), m_inv | other.m_inv, stack | other.stack);
+        return ebpf_domain_t(get_job(other), m_inv | other.m_inv, stack | other.stack);
     }
 
     ebpf_domain_t operator&(ebpf_domain_t other) {
-        return ebpf_domain_t(get_program_info(other), m_inv & std::move(other.m_inv), stack & other.stack);
+        return ebpf_domain_t(get_job(other), m_inv & std::move(other.m_inv), stack & other.stack);
     }
 
     ebpf_domain_t widen(const ebpf_domain_t& other) {
-        return ebpf_domain_t(get_program_info(other), m_inv.widen(other.m_inv), stack | other.stack);
+        return ebpf_domain_t(get_job(other), m_inv.widen(other.m_inv), stack | other.stack);
     }
 
     ebpf_domain_t widening_thresholds(const ebpf_domain_t& other, const iterators::thresholds_t& ts) {
-        return ebpf_domain_t(get_program_info(other), m_inv.widening_thresholds(other.m_inv, ts), stack | other.stack);
+        return ebpf_domain_t(get_job(other), m_inv.widening_thresholds(other.m_inv, ts), stack | other.stack);
     }
 
     ebpf_domain_t narrow(const ebpf_domain_t& other) {
-        return ebpf_domain_t(get_program_info(other), m_inv.narrow(other.m_inv), stack & other.stack);
+        return ebpf_domain_t(get_job(other), m_inv.narrow(other.m_inv), stack & other.stack);
     }
 
     interval_t operator[](variable_t x) { return m_inv[x]; }
@@ -514,7 +515,8 @@ class ebpf_domain_t final {
             std::optional<number_t> fd_opt = fd_interval.singleton();
             if (fd_opt.has_value()) {
                 number_t map_fd = *fd_opt;
-                const EbpfMapDescriptor& map_descriptor = m_program_info->platform->get_map_descriptor((int)map_fd, *m_program_info);
+                const program_info& info = get_program_info();
+                const EbpfMapDescriptor& map_descriptor = info.platform->get_map_descriptor((int)map_fd, info);
                 m_inv.assign(variable_t::map_value_size(), (int)map_descriptor.value_size);
                 m_inv.assign(variable_t::map_key_size(), (int)map_descriptor.key_size);
             } else {
@@ -611,9 +613,9 @@ class ebpf_domain_t final {
     NumAbsDomain check_access_context(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s) {
         using namespace dsl_syntax;
         require(inv, lb >= 0, std::string("Lower bound must be at least 0") + s);
-        require(inv, ub <= m_program_info->type.context_descriptor.size,
-                std::string("Upper bound must be at most ") + std::to_string(m_program_info->type.context_descriptor.size) +
-                    s);
+        require(inv, ub <= get_program_info().type.context_descriptor.size,
+                std::string("Upper bound must be at most ") +
+                    std::to_string(get_program_info().type.context_descriptor.size) + s);
         return inv;
     }
 
@@ -675,12 +677,14 @@ class ebpf_domain_t final {
         return inv;
     }
 
+    const program_info& get_program_info() const;
+
     NumAbsDomain do_load_ctx(NumAbsDomain inv, reg_pack_t target, const linear_expression_t& addr_vague, int width) {
         using namespace dsl_syntax;
         if (inv.is_bottom())
             return inv;
 
-        EbpfContextDescriptor desc = m_program_info->type.context_descriptor;
+        EbpfContextDescriptor desc = get_program_info().type.context_descriptor;
 
         inv -= target.value;
 
@@ -1092,10 +1096,10 @@ class ebpf_domain_t final {
         return o;
     }
 
-    static ebpf_domain_t setup_entry(bool check_termination, const program_info& info) {
+    static ebpf_domain_t setup_entry(bool check_termination, crab_verifier_job_t* job) {
         using namespace dsl_syntax;
 
-        ebpf_domain_t inv(info);
+        ebpf_domain_t inv(job);
 
         auto r10 = reg_pack(R10_STACK_POINTER);
         inv += EBPF_STACK_SIZE <= r10.value;
@@ -1111,7 +1115,7 @@ class ebpf_domain_t final {
 
         inv += 0 <= variable_t::packet_size();
         inv += variable_t::packet_size() < MAX_PACKET_OFF;
-        if (info.type.context_descriptor.meta >= 0) {
+        if (inv.get_program_info().type.context_descriptor.meta >= 0) {
             inv += variable_t::meta_offset() <= 0;
             inv += variable_t::meta_offset() >= -4098;
         } else {

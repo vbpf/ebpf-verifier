@@ -1,12 +1,9 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: Apache-2.0
 
-#include "crab/array_domain.hpp"
+#include "crab_verifier_job.hpp"
 
 namespace crab::domains {
-
-// We use a global array map
-array_map_t global_array_map;
 
 // Return true if [symb_lb, symb_ub] may overlap with the cell,
 // where symb_lb and symb_ub are not constant expressions.
@@ -38,19 +35,6 @@ bool cell_t::symbolic_overlap(const linear_expression_t& symb_lb, const linear_e
 
     CRAB_LOG("array-expansion-overlap", std::cout << "\tno.\n";);
     return false;
-}
-
-/**
-    Ugly this needs to be fixed: needed if multiple analyses are
-    run so we can clear the array map from one run to another.
-**/
-void clear_global_state() {
-    if (!global_array_map.empty()) {
-        if constexpr (crab::CrabSanityCheckFlag) {
-            CRAB_WARN("array_expansion static variable map is being cleared");
-        }
-        global_array_map.clear();
-    }
 }
 
 void offset_map_t::remove_cell(const cell_t& c) {
@@ -260,10 +244,10 @@ std::ostream& operator<<(std::ostream& o, offset_map_t& m) {
 }
 
 std::optional<std::pair<offset_t, unsigned>>
-array_domain_t::kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, const linear_expression_t& elem_size) {
+array_domain_t::kill_and_find_var(crab_verifier_job_t* job, NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, const linear_expression_t& elem_size) {
     std::optional<std::pair<offset_t, unsigned>> res;
 
-    offset_map_t& offset_map = lookup_array_map(kind);
+    offset_map_t& offset_map = job->lookup_array_map(kind);
     interval_t ii = inv.eval_interval(i);
     std::vector<cell_t> cells;
     if (std::optional<number_t> n = ii.singleton()) {
@@ -304,7 +288,7 @@ bool array_domain_t::all_num(NumAbsDomain& inv, const linear_expression_t& lb, c
 std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, int width) {
     interval_t ii = inv.eval_interval(i);
     if (std::optional<number_t> n = ii.singleton()) {
-        offset_map_t& offset_map = lookup_array_map(kind);
+        offset_map_t& offset_map = _job->lookup_array_map(kind);
         int64_t k = (int64_t)*n;
         if (kind == data_kind_t::types) {
             auto [only_num, only_non_num] = num_bytes.uniformity(k, width);
@@ -345,7 +329,7 @@ std::optional<variable_t> array_domain_t::store(NumAbsDomain& inv, data_kind_t k
                                                 const linear_expression_t& idx,
                                                 const linear_expression_t& elem_size,
                                                 const linear_expression_t& val) {
-    auto maybe_cell = kill_and_find_var(inv, kind, idx, elem_size);
+    auto maybe_cell = kill_and_find_var(_job, inv, kind, idx, elem_size);
     if (maybe_cell) {
         // perform strong update
         auto [offset, size] = *maybe_cell;
@@ -356,7 +340,7 @@ std::optional<variable_t> array_domain_t::store(NumAbsDomain& inv, data_kind_t k
             else
                 num_bytes.havoc(offset, size);
         }
-        variable_t v = lookup_array_map(kind).mk_cell(offset, size).get_scalar(kind);
+        variable_t v = _job->lookup_array_map(kind).mk_cell(offset, size).get_scalar(kind);
         return v;
     }
     return {};

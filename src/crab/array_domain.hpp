@@ -44,13 +44,20 @@
 
 #include "asm_ostream.hpp"
 #include "config.hpp"
+#include "crab_verifier_job.hpp"
 #include "dsl_syntax.hpp"
 #include "helpers.hpp"
 #include "spec_type_descriptors.hpp"
 
 #include "crab/bitset_domain.hpp"
 
-namespace crab::domains {
+namespace crab {
+
+class crab_verifier_job_t;
+
+namespace domains {
+
+class offset_map_t;
 
 // Numerical abstract domain.
 using NumAbsDomain = SplitDBM;
@@ -223,24 +230,22 @@ class offset_map_t final {
     static offset_map_t top() { return offset_map_t(); }
 };
 
-// We use a global array map
 using array_map_t = std::unordered_map<data_kind_t, offset_map_t>;
-extern array_map_t global_array_map;
-void clear_global_state();
 
 class array_domain_t final {
     bitset_domain_t num_bytes;
+    crab_verifier_job_t* _job;
 
   private:
-    static offset_map_t& lookup_array_map(data_kind_t kind) { return global_array_map[kind]; }
-
     static std::optional<std::pair<offset_t, unsigned>>
-    kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, const linear_expression_t& elem_size);
+    kill_and_find_var(crab_verifier_job_t* job, NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, const linear_expression_t& elem_size);
 
   public:
-    array_domain_t() = default;
+    array_domain_t() : _job(nullptr) {}
 
-    array_domain_t(const bitset_domain_t& num_bytes) : num_bytes(num_bytes) { }
+    array_domain_t(crab_verifier_job_t* job) : _job(job) {}
+
+    array_domain_t(crab_verifier_job_t* job, const bitset_domain_t& num_bytes) : _job(job), num_bytes(num_bytes) {}
 
     void set_to_top() {
         num_bytes.set_to_top();
@@ -267,27 +272,27 @@ class array_domain_t final {
     }
 
     array_domain_t operator|(const array_domain_t& other) & {
-        return array_domain_t(num_bytes | other.num_bytes);
+        return array_domain_t(_job, num_bytes | other.num_bytes);
     }
 
     array_domain_t operator|(const array_domain_t& other) && {
-        return array_domain_t(num_bytes | other.num_bytes);
+        return array_domain_t(_job, num_bytes | other.num_bytes);
     }
 
     array_domain_t operator&(array_domain_t other) {
-        return array_domain_t(num_bytes & other.num_bytes);
+        return array_domain_t(_job, num_bytes & other.num_bytes);
     }
 
     array_domain_t widen(const array_domain_t& other) {
-        return array_domain_t(num_bytes | other.num_bytes);
+        return array_domain_t(_job, num_bytes | other.num_bytes);
     }
 
     array_domain_t widening_thresholds(const array_domain_t& other, const iterators::thresholds_t& ts) {
-        return array_domain_t(num_bytes | other.num_bytes);
+        return array_domain_t(_job, num_bytes | other.num_bytes);
     }
 
     array_domain_t narrow(const array_domain_t& other) {
-        return array_domain_t(num_bytes & other.num_bytes);
+        return array_domain_t(_job, num_bytes & other.num_bytes);
     }
 
     friend std::ostream& operator<<(std::ostream& o, const array_domain_t& dom) {
@@ -301,7 +306,7 @@ class array_domain_t final {
                                     const linear_expression_t& val);
 
     void havoc(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size) {
-        auto maybe_cell = kill_and_find_var(inv, kind, idx, elem_size);
+        auto maybe_cell = kill_and_find_var(_job, inv, kind, idx, elem_size);
         if (maybe_cell && kind == data_kind_t::types) {
             auto [offset, size] = *maybe_cell;
             num_bytes.havoc(offset, size);
@@ -339,4 +344,5 @@ class array_domain_t final {
 
 };
 
-}
+} // namespace domains
+} // namespace crab

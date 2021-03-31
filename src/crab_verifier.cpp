@@ -13,8 +13,7 @@
 #include <string>
 #include <vector>
 
-#include "crab/ebpf_domain.hpp"
-#include "crab/fwd_analyzer.hpp"
+#include "crab_verifier_job.hpp"
 
 #include "asm_syntax.hpp"
 #include "crab_verifier.hpp"
@@ -136,11 +135,12 @@ static void print_report(std::ostream& s, const checks_db& db, const Instruction
 }
 
 static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info& info, const ebpf_verifier_options_t* options) {
-    crab::domains::clear_global_state();
+    constexpr unsigned int descending_iterations = 2000000;
+    crab::crab_verifier_job_t job(cfg, info, descending_iterations, options->check_termination);
 
     // Get dictionaries of preconditions and postconditions for each
     // basic block.
-    auto [preconditions, postconditions] = crab::run_forward_analyzer(cfg, info, options->check_termination);
+    auto [preconditions, postconditions] = job.analyzer().analyze();
 
     // Analyze the control-flow graph.
     return generate_report(s, cfg, preconditions, postconditions, *options);
