@@ -17,26 +17,29 @@
 //   1 --> 2 --------> 8
 //
 // results in the WTO: 1 2 (3 4 (5 6) 7) 8
-// where a single vertex is represented via wto_vertex_t, and a
+// where a single vertex is represented via label_t, and a
 // cycle such as (5 6) is represented via a wto_cycle_t.
 // Each arrow points to a wto_component_t, which can be either a
 // single vertex such as 8, or a cycle such as (5 6).
 
 #include <stack>
 #include <vector>
+#include "crab/cfg.hpp"
+#include "crab/wto_nesting.hpp"
 
-using label_t = crab::label_t;
+// Define types used by both this header file and wto_cycle.hpp
 using wto_component_t = std::variant<std::shared_ptr<class wto_cycle_t>, label_t>;
 using wto_partition_t = std::vector<std::shared_ptr<wto_component_t>>;
 
-#include "crab/cfg.hpp"
 #include "crab/wto_cycle.hpp"
-#include "crab/wto_nesting.hpp"
 
 class wto_t final {
     // Original control-flow graph.
     const crab::cfg_t& _cfg;
 
+    // The following members are named to match the names in the paper,
+    // which never explains their meaning.  Bourdoncle's thesis (reference [4])
+    // is all in French but expands DFN as "depth first number".
     std::map<label_t, int> _dfn;
     int _num;
     std::stack<label_t> _stack;
@@ -55,7 +58,7 @@ class wto_t final {
     public:
 
     // Implementation of the Visit() function defined in Figure 4 of the paper.
-    int visit(const wto_vertex_t& vertex, wto_partition_t& partition, std::weak_ptr<wto_cycle_t> containing_cycle) {
+    int visit(const label_t& vertex, wto_partition_t& partition, std::weak_ptr<wto_cycle_t> containing_cycle) {
         _stack.push(vertex);
         _num++;
         int head = _dfn[vertex] = _num;
@@ -86,10 +89,10 @@ class wto_t final {
                 // Create a new cycle component.
                 auto cycle = std::make_shared<wto_cycle_t>(containing_cycle);
                 auto component = std::make_shared<wto_component_t>(cycle);
-                cycle.get()->initialize(*this, vertex, cycle);
+                cycle->initialize(*this, vertex, cycle);
 
                 // Insert the component into the current partition.
-                partition.push_back(component);
+                partition.emplace_back(component);
 
                 // Remember that we put the vertex into the new cycle.
                 _containing_cycle.emplace(vertex, cycle);
@@ -108,7 +111,7 @@ class wto_t final {
     }
 
     [[nodiscard]] const crab::cfg_t& cfg() const { return _cfg; }
-    [[nodiscard]] int dfn(const wto_vertex_t& vertex) const { return _dfn.at(vertex); }
+    [[nodiscard]] int dfn(const label_t& vertex) const { return _dfn.at(vertex); }
 
     // Construct a Weak Topological Ordering from a control-flow graph using
     // the algorithm of figure 4 in the paper, where this constructor matches
@@ -121,7 +124,13 @@ class wto_t final {
         visit(cfg.entry_label(), _components, {});
     }
 
-    [[nodiscard]] wto_partition_t& components() { return _components; }
+    [[nodiscard]] wto_partition_t::reverse_iterator begin() { return _components.rbegin(); }
+    [[nodiscard]] wto_partition_t::reverse_iterator end() { return _components.rend(); }
+
+    friend std::ostream& operator<<(std::ostream& o, wto_t& wto) {
+        o << wto._components << std::endl;
+        return o;
+    }
 
     // Get the vertex at the head of the component containing a given
     // label, as discussed in section 4.2 of the paper.  If the label
@@ -167,14 +176,9 @@ class wto_t final {
             heads.push_back(h.value());
         }
 
-        wto_nesting_t n = wto_nesting_t(heads);
+        wto_nesting_t n = wto_nesting_t(std::move(heads));
         _nesting.emplace(label, std::move(n));
         return _nesting.at(label);
     }
 
 };
-
-inline std::ostream& operator<<(std::ostream& o, wto_t& wto) {
-    o << wto.components() << std::endl;
-    return o;
-}

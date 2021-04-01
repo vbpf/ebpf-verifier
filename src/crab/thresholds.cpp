@@ -52,7 +52,7 @@ void wto_thresholds_t::get_thresholds(const basic_block_t& bb, thresholds_t& thr
 
 }
 
-void wto_thresholds_t::operator()(const wto_vertex_t& vertex) {
+void wto_thresholds_t::operator()(const label_t& vertex) {
     if (m_stack.empty())
         return;
 
@@ -83,8 +83,8 @@ void wto_thresholds_t::operator()(std::shared_ptr<wto_cycle_t>& cycle) {
 
     m_head_to_thresholds.insert(std::make_pair(cycle->head(), thresholds));
     m_stack.push_back(cycle->head());
-    for (auto& c : cycle->components()) {
-        std::visit(*this, *c.get());
+    for (auto& component : *cycle) {
+        std::visit(*this, *component);
     }
     m_stack.pop_back();
 }

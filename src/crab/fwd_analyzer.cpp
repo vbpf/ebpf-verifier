@@ -21,7 +21,7 @@ class member_component_visitor final {
   public:
     explicit member_component_visitor(label_t node) : _node(node), _found(false) {}
 
-    void operator()(const wto_vertex_t& vertex) {
+    void operator()(const label_t& vertex) {
         if (!_found) {
             _found = (vertex == _node);
         }
@@ -31,10 +31,10 @@ class member_component_visitor final {
         if (!_found) {
             _found = (c->head() == _node);
             if (!_found) {
-                for (auto it = c->components().rbegin(); it != c->components().rend(); it++) {
+                for (auto& component : *c) {
                     if (_found)
                         break;
-                    std::visit(*this, *it->get());
+                    std::visit(*this, *component);
                 }
             }
         }
@@ -117,7 +117,7 @@ class interleaved_fwd_fixpoint_iterator_t final {
 
     ebpf_domain_t get_post(const label_t& node) { return _post.at(node); }
 
-    void operator()(const wto_vertex_t& vertex);
+    void operator()(const label_t& vertex);
 
     void operator()(std::shared_ptr<wto_cycle_t>& cycle);
 
@@ -128,13 +128,13 @@ std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg,
     // Go over the CFG in weak topological order (accounting for loops).
     constexpr unsigned int descending_iterations = 2000000;
     interleaved_fwd_fixpoint_iterator_t analyzer(cfg, descending_iterations, check_termination);
-    for (auto it = analyzer._wto.components().rbegin(); it != analyzer._wto.components().rend(); it++) {
-        std::visit(analyzer, *it->get());
+    for (auto& component : analyzer._wto) {
+        std::visit(analyzer, *component);
     }
     return std::make_pair(analyzer._pre, analyzer._post);
 }
 
-void interleaved_fwd_fixpoint_iterator_t::operator()(const wto_vertex_t& node) {
+void interleaved_fwd_fixpoint_iterator_t::operator()(const label_t& node) {
     /** decide whether skip vertex or not **/
     if (_skip && (node == _cfg.entry_label())) {
         _skip = false;
@@ -182,8 +182,8 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(std::shared_ptr<wto_cycle_t
         // Increasing iteration sequence with widening
         set_pre(head, pre);
         transform_to_post(head, pre);
-        for (auto it = cycle->components().rbegin(); it != cycle->components().rend(); it++) {
-            std::visit(*this, *it->get());
+        for (auto& component : *cycle) {
+            std::visit(*this, *component);
         }
         ebpf_domain_t new_pre = join_all_prevs(head);
         if (new_pre <= pre) {
@@ -205,8 +205,8 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(std::shared_ptr<wto_cycle_t
         // Decreasing iteration sequence with narrowing
         transform_to_post(head, pre);
 
-        for (auto it = cycle->components().rbegin(); it != cycle->components().rend(); it++) {
-            std::visit(*this, *it->get());
+        for (auto& component : *cycle) {
+            std::visit(*this, *component);
         }
         ebpf_domain_t new_pre = join_all_prevs(head);
         if (pre <= new_pre) {

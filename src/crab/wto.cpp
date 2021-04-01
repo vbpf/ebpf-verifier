@@ -6,7 +6,7 @@
 #include "wto.hpp"
 
 // This is the Component() function described in figure 4 of the paper.
-void wto_cycle_t::initialize(class wto_t& wto, const wto_vertex_t& vertex, std::shared_ptr<wto_cycle_t>& self)
+void wto_cycle_t::initialize(class wto_t& wto, const label_t& vertex, std::shared_ptr<wto_cycle_t>& self)
 {
     // Walk the control flow graph, adding nodes to this cycle.
     for (const label_t& succ : wto.cfg().next_nodes(vertex)) {
