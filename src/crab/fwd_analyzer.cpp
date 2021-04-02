@@ -21,20 +21,20 @@ class member_component_visitor final {
   public:
     explicit member_component_visitor(label_t node) : _node(node), _found(false) {}
 
-    void operator()(wto_vertex_t& c) {
+    void operator()(const label_t& vertex) {
         if (!_found) {
-            _found = (c.node() == _node);
+            _found = (vertex == _node);
         }
     }
 
-    void operator()(wto_cycle_t& c) {
+    void operator()(std::shared_ptr<wto_cycle_t>& c) {
         if (!_found) {
-            _found = (c.head() == _node);
+            _found = (c->head() == _node);
             if (!_found) {
-                for (auto& x : c) {
+                for (auto& component : *c) {
                     if (_found)
                         break;
-                    std::visit(*this, x);
+                    std::visit(*this, *component);
                 }
             }
         }
@@ -117,9 +117,9 @@ class interleaved_fwd_fixpoint_iterator_t final {
 
     ebpf_domain_t get_post(const label_t& node) { return _post.at(node); }
 
-    void operator()(wto_vertex_t& vertex);
+    void operator()(const label_t& vertex);
 
-    void operator()(wto_cycle_t& cycle);
+    void operator()(std::shared_ptr<wto_cycle_t>& cycle);
 
     friend std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg, bool check_termination);
 };
@@ -128,15 +128,13 @@ std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg,
     // Go over the CFG in weak topological order (accounting for loops).
     constexpr unsigned int descending_iterations = 2000000;
     interleaved_fwd_fixpoint_iterator_t analyzer(cfg, descending_iterations, check_termination);
-    for (wto_component_t& c : analyzer._wto) {
-        std::visit(analyzer, c);
+    for (auto& component : analyzer._wto) {
+        std::visit(analyzer, *component);
     }
     return std::make_pair(analyzer._pre, analyzer._post);
 }
 
-void interleaved_fwd_fixpoint_iterator_t::operator()(wto_vertex_t& vertex) {
-    label_t node = vertex.node();
-
+void interleaved_fwd_fixpoint_iterator_t::operator()(const label_t& node) {
     /** decide whether skip vertex or not **/
     if (_skip && (node == _cfg.entry_label())) {
         _skip = false;
@@ -151,13 +149,13 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(wto_vertex_t& vertex) {
     transform_to_post(node, pre);
 }
 
-void interleaved_fwd_fixpoint_iterator_t::operator()(wto_cycle_t& cycle) {
-    label_t head = cycle.head();
+void interleaved_fwd_fixpoint_iterator_t::operator()(std::shared_ptr<wto_cycle_t>& cycle) {
+    label_t head = cycle->head();
 
-    /** decide whether skip cycle or not **/
+    /** decide whether to skip cycle or not **/
     bool entry_in_this_cycle = false;
     if (_skip) {
-        // We only skip the analysis of cycle is _entry is not a
+        // We only skip the analysis of cycle if _entry is not a
         // component of it, included nested components.
         member_component_visitor vis(_cfg.entry_label());
         vis(cycle);
@@ -181,14 +179,11 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(wto_cycle_t& cycle) {
     }
 
     for (unsigned int iteration = 1;; ++iteration) {
-        // keep track of how many times the cycle is visited by the fixpoint
-        cycle.increment_fixpo_visits();
-
         // Increasing iteration sequence with widening
         set_pre(head, pre);
         transform_to_post(head, pre);
-        for (auto& x : cycle) {
-            std::visit(*this, x);
+        for (auto& component : *cycle) {
+            std::visit(*this, *component);
         }
         ebpf_domain_t new_pre = join_all_prevs(head);
         if (new_pre <= pre) {
@@ -210,8 +205,8 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(wto_cycle_t& cycle) {
         // Decreasing iteration sequence with narrowing
         transform_to_post(head, pre);
 
-        for (auto& x : cycle) {
-            std::visit(*this, x);
+        for (auto& component : *cycle) {
+            std::visit(*this, *component);
         }
         ebpf_domain_t new_pre = join_all_prevs(head);
         if (pre <= new_pre) {
