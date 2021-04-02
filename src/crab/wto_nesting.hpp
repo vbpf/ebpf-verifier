@@ -12,7 +12,7 @@ class wto_nesting_t final {
     std::vector<label_t> _heads;
 
   public:
-    wto_nesting_t(std::vector<label_t>&& heads) : _heads(heads) {}
+    wto_nesting_t(std::vector<label_t>&& heads) : _heads(std::move(heads)) {}
 
     // Test whether this nesting is a longer subset of another nesting.
     bool operator>(const wto_nesting_t& nesting) const {
