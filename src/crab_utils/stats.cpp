@@ -12,8 +12,8 @@
 
 namespace crab {
 
-std::map<std::string, unsigned> CrabStats::counters;
-std::map<std::string, Stopwatch> CrabStats::sw;
+thread_local std::map<std::string, unsigned> CrabStats::counters;
+thread_local std::map<std::string, Stopwatch> CrabStats::sw;
 
 // Gets the amount of user CPU time used, in microseconds.
 long Stopwatch::systemTime() const {

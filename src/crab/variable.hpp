@@ -50,9 +50,10 @@ class variable_t final {
     // This singleton is eBPF-specific, to avoid life time issues and/or passing factory explicitly everywhere:
   private:
     static variable_t make(const std::string& name);
-    static std::vector<std::string> names;
+    static thread_local std::vector<std::string> names;
 
   public:
+    static void clear_thread_local_state();
     static variable_t reg(data_kind_t, int);
     static variable_t cell_var(data_kind_t array, index_t offset, unsigned size);
     static variable_t map_value_size();

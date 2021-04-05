@@ -469,12 +469,12 @@ class GraphOps {
     // Should really switch to some kind of arena allocator, rather
     // than having all these static structures.
     // ===========================================
-    static char* edge_marks;
+    static thread_local char* edge_marks;
 
     // Used for Bellman-Ford queueing
-    static vert_id* dual_queue;
-    static int* vert_marks;
-    static size_t scratch_sz;
+    static thread_local vert_id* dual_queue;
+    static thread_local int* vert_marks;
+    static thread_local size_t scratch_sz;
 
     // For locality, should combine dists & dist_ts.
     // Wt must have an empty constructor, but does _not_
@@ -482,11 +482,11 @@ class GraphOps {
     // dist_ts tells us which distances are current,
     // and ts_idx prevents wraparound problems, in the unlikely
     // circumstance that we have more than 2^sizeof(uint) iterations.
-    static std::vector<Wt> dists;
-    static std::vector<Wt> dists_alt;
-    static std::vector<unsigned int> dist_ts;
-    static unsigned int ts;
-    static unsigned int ts_idx;
+    static thread_local std::vector<Wt> dists;
+    static thread_local std::vector<Wt> dists_alt;
+    static thread_local std::vector<unsigned int> dist_ts;
+    static thread_local unsigned int ts;
+    static thread_local unsigned int ts_idx;
 
     static void check_realloc(void** ptr, size_t size) {
         void* newptr = realloc(*ptr, size);
@@ -1172,28 +1172,28 @@ class GraphOps {
 
 // Static data allocation
 template <class Wt>
-char* GraphOps<Wt>::edge_marks = nullptr;
+thread_local char* GraphOps<Wt>::edge_marks = nullptr;
 
 // Used for Bellman-Ford queueing
 template <class Wt>
-typename GraphOps<Wt>::vert_id* GraphOps<Wt>::dual_queue = NULL;
+thread_local typename GraphOps<Wt>::vert_id* GraphOps<Wt>::dual_queue = NULL;
 
 template <class Wt>
-int* GraphOps<Wt>::vert_marks = nullptr;
+thread_local int* GraphOps<Wt>::vert_marks = nullptr;
 
 template <class Wt>
-size_t GraphOps<Wt>::scratch_sz = 0;
+thread_local size_t GraphOps<Wt>::scratch_sz = 0;
 
 template <class G>
-std::vector<typename G::Wt> GraphOps<G>::dists;
+thread_local std::vector<typename G::Wt> GraphOps<G>::dists;
 template <class G>
-std::vector<typename G::Wt> GraphOps<G>::dists_alt;
+thread_local std::vector<typename G::Wt> GraphOps<G>::dists_alt;
 template <class G>
-std::vector<unsigned int> GraphOps<G>::dist_ts;
+thread_local std::vector<unsigned int> GraphOps<G>::dist_ts;
 template <class G>
-unsigned int GraphOps<G>::ts = 0;
+thread_local unsigned int GraphOps<G>::ts = 0;
 template <class G>
-unsigned int GraphOps<G>::ts_idx = 0;
+thread_local unsigned int GraphOps<G>::ts_idx = 0;
 
 } // namespace crab
 #ifdef __GNUC__

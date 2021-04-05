@@ -225,7 +225,7 @@ class offset_map_t final {
 
 // We use a global array map
 using array_map_t = std::unordered_map<data_kind_t, offset_map_t>;
-extern array_map_t global_array_map;
+extern thread_local array_map_t global_array_map;
 void clear_global_state();
 
 class array_domain_t final {

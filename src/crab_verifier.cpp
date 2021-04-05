@@ -21,7 +21,7 @@
 
 using std::string;
 
-program_info global_program_info;
+thread_local program_info global_program_info;
 
 // Numerical domains over integers
 //using sdbm_domain_t = crab::domains::SplitDBM;
@@ -140,6 +140,7 @@ static void print_report(std::ostream& s, const checks_db& db, const Instruction
 static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options) {
     global_program_info = std::move(info);
     crab::domains::clear_global_state();
+    variable_t::clear_thread_local_state();
 
     // Get dictionaries of preconditions and postconditions for each
     // basic block.

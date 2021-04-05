@@ -1,5 +1,6 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
+#include <thread>
 #include "catch.hpp"
 #include "ebpf_verifier.hpp"
 
@@ -447,3 +448,35 @@ TEST_SECTION_FAIL("prototype-kernel", "xdp_ddos01_blacklist_kern.o", ".text")
 
 // False positive: correlated branches
 TEST_SECTION_FAIL("prototype-kernel", "xdp_ddos01_blacklist_kern.o", "xdp_prog")
+
+void test_analyze_thread(cfg_t* cfg, program_info* info, bool* res) {
+    *res = run_ebpf_analysis(std::cout, *cfg, *info, nullptr);
+}
+
+// Test multithreading
+TEST_CASE("multithreading", "[verify][multithreading]") {
+    auto raw_progs1 = read_elf("ebpf-samples/bpf_cilium_test/bpf_netdev.o", "2/1", nullptr, &g_ebpf_platform_linux);
+    REQUIRE(raw_progs1.size() == 1);
+    raw_program raw_prog1 = raw_progs1.back();
+    std::variant<InstructionSeq, std::string> prog_or_error1 = unmarshal(raw_prog1, &g_ebpf_platform_linux);
+    REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error1));
+    auto& prog1 = std::get<InstructionSeq>(prog_or_error1);
+    cfg_t cfg1 = prepare_cfg(prog1, raw_prog1.info, true);
+
+    auto raw_progs2 = read_elf("ebpf-samples/bpf_cilium_test/bpf_netdev.o", "2/2", nullptr, &g_ebpf_platform_linux);
+    REQUIRE(raw_progs2.size() == 1);
+    raw_program raw_prog2 = raw_progs2.back();
+    std::variant<InstructionSeq, std::string> prog_or_error2 = unmarshal(raw_prog2, &g_ebpf_platform_linux);
+    REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error2));
+    auto& prog2 = std::get<InstructionSeq>(prog_or_error2);
+    cfg_t cfg2 = prepare_cfg(prog2, raw_prog2.info, true);
+
+    bool res1, res2;
+    std::thread a(test_analyze_thread, &cfg1, &raw_prog1.info, &res1);
+    std::thread b(test_analyze_thread, &cfg2, &raw_prog2.info, &res2);
+    a.join();
+    b.join();
+
+    REQUIRE(res1);
+    REQUIRE(res2);
+}
