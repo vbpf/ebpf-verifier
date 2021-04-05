@@ -2,7 +2,7 @@ FROM ubuntu:20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
-RUN apt-get -yq --no-install-suggests --no-install-recommends install build-essential cmake libgmp-dev libboost-dev
+RUN apt-get -yq --no-install-suggests --no-install-recommends install build-essential cmake libboost-dev
 
 WORKDIR /verifier
 COPY . /verifier/
