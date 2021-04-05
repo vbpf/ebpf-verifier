@@ -10,6 +10,7 @@ static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = 
     InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", marshal(ins, 0), {}}, &g_ebpf_platform_linux));
     REQUIRE(parsed.size() == 1);
     auto [_, single] = parsed.back();
+    (void)_; // unused
     REQUIRE(single == ins);
 }
 

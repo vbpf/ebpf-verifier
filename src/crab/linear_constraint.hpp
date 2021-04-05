@@ -81,7 +81,7 @@ inline std::ostream& operator<<(std::ostream& o, const linear_constraint_t& cons
 
         const char* constraint_kind_label[] = {" == ", " <= ", " < ", " != "};
         int kind = (int)constraint.kind();
-        if (kind < 0 || kind >= sizeof(constraint_kind_label) / sizeof(*constraint_kind_label)) {
+        if (kind < 0 || kind >= (int)(sizeof(constraint_kind_label) / sizeof(*constraint_kind_label))) {
             throw std::exception();
         }
         o << constraint_kind_label[kind] << -expression.constant_term();

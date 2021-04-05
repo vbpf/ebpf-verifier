@@ -185,6 +185,7 @@ class AssertExtractor {
 /// unsafe unless it can prove that the assertions can never fail.
 void explicate_assertions(cfg_t& cfg, const program_info& info) {
     for (auto& [label, bb] : cfg) {
+        (void)label; // unused
         vector<Instruction> insts;
         for (const auto& ins : vector<Instruction>(bb.begin(), bb.end())) {
             for (auto a : std::visit(AssertExtractor{info}, ins))
