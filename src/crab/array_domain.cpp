@@ -6,7 +6,7 @@
 namespace crab::domains {
 
 // We use a global array map
-array_map_t global_array_map;
+thread_local array_map_t global_array_map;
 
 // Return true if [symb_lb, symb_ub] may overlap with the cell,
 // where symb_lb and symb_ub are not constant expressions.

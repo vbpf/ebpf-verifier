@@ -32,8 +32,8 @@ inline std::ostream& operator<<(std::ostream& OS, const Stopwatch& sw) {
 }
 
 class CrabStats {
-    static std::map<std::string, unsigned> counters;
-    static std::map<std::string, Stopwatch> sw;
+    static thread_local std::map<std::string, unsigned> counters;
+    static thread_local std::map<std::string, Stopwatch> sw;
 
   public:
     static void reset();

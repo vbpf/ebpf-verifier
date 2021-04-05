@@ -54,4 +54,4 @@ struct raw_program {
     program_info info;
 };
 
-extern program_info global_program_info;
+extern thread_local program_info global_program_info;

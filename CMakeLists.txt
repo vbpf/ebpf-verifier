@@ -92,6 +92,11 @@ target_compile_options(tests PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
 target_compile_options(tests PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
 target_link_libraries(tests PRIVATE ebpfverifier)
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 if (USE_GMP)
-  target_link_libraries(tests PRIVATE gmp)
+  target_link_libraries(tests PRIVATE gmp Threads::Threads)
+else()
+  target_link_libraries(tests PRIVATE Threads::Threads)
 endif()
