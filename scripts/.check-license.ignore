@@ -16,9 +16,6 @@ counter
 # Other Directories
 ebpf-samples
 
-# Files using NASA-1.3 license
-src/crab_utils/bignums_gmp.hpp
-
 # Files using Apache-2.0 license
 src/crab/array_domain.cpp
 src/crab/array_domain.hpp

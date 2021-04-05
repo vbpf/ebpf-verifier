@@ -9,7 +9,7 @@ The version discussed in the [PLDI paper](https://vbpf.github.io/assets/prevail-
 
 ### Dependencies from vanilla Ubuntu
 ```bash
-sudo apt install build-essential git cmake libboost-dev libgmp-dev
+sudo apt install build-essential git cmake libboost-dev
 sudo apt install python3-pip python3-tk
 pip3 install matplotlib   # for plotting the graphs
 ```

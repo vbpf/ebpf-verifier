@@ -683,8 +683,6 @@ class GraphOps {
       // Zero existing potentials.
       // Not strictly necessary, but means we're less
       // likely to run into over/underflow.
-      // (gmp_z won't overflow, but there's a performance penalty
-      // if magnitudes become large)
       //
       // Though this hurts our chances of early cutoff.
       for(vert_id v : g.verts())

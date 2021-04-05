@@ -20,18 +20,10 @@ endif()
 
 find_package(Boost REQUIRED)
 
-option(USE_GMP "Use GMP for multiprecision integer support")
-
 include_directories(./external)
 include_directories(./src)
 include_directories(${Boost_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS})
-
-if (USE_GMP)
-  find_library(GMP REQUIRED)
-  include_directories(${GMP_LIB_INCLUDE_DIRS})
-  link_directories(${GMP_LIB_LIBRARY_DIRS})
-endif ()
 
 file(GLOB LIB_SRC
         "./src/*.cpp"
@@ -54,10 +46,6 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++latest")
 endif ()
-
-if (USE_GMP)
-  set(COMMON_FLAGS ${COMMON_FLAGS} -DBIGNUMS_GMP)
-endif()
 
 add_library(ebpfverifier ${LIB_SRC})
 add_executable(check src/main/check.cpp src/main/linux_verifier.cpp)
@@ -82,10 +70,6 @@ target_compile_options(check PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
 target_compile_options(check PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
 target_link_libraries(check PRIVATE ebpfverifier)
 
-if (USE_GMP)
-  target_link_libraries(check PRIVATE gmp)
-endif()
-
 target_compile_options(tests PRIVATE ${COMMON_FLAGS})
 target_compile_options(tests PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
 target_compile_options(tests PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
@@ -94,9 +78,4 @@ target_link_libraries(tests PRIVATE ebpfverifier)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
-
-if (USE_GMP)
-  target_link_libraries(tests PRIVATE gmp Threads::Threads)
-else()
-  target_link_libraries(tests PRIVATE Threads::Threads)
-endif()
+target_link_libraries(tests PRIVATE Threads::Threads)
