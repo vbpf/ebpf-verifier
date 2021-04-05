@@ -1,7 +1,5 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
-#pragma once
-
 #include "asm_syntax.hpp"
 #include "wto.hpp"
 

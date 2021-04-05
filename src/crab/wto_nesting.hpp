@@ -25,7 +25,7 @@ class wto_nesting_t final {
 
         // Compare entries one at a time starting from the outermost
         // (i.e., end of the vectors).
-        for (int index = 0; index < other_size; index++) {
+        for (size_t index = 0; index < other_size; index++) {
             if (this->_heads[this_size - 1 - index] != nesting._heads[other_size - 1 - index]) {
                 return false;
             }
