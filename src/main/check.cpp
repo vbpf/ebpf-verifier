@@ -53,6 +53,7 @@ int main(int argc, char** argv) {
     bool verbose = false;
     app.add_flag("-i", ebpf_verifier_options.print_invariants, "Print invariants");
     app.add_flag("-f", ebpf_verifier_options.print_failures, "Print verifier's failure logs");
+    app.add_flag("-s", ebpf_verifier_options.strict, "Apply additional checks that would cause runtime failures");
     app.add_flag("-v", verbose, "Print both invariants and failures");
     app.add_flag("--no-simplify", ebpf_verifier_options.no_simplify, "Do not simplify");
 

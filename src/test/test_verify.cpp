@@ -29,7 +29,7 @@ FAIL_LOAD_ELF("cilium", "bpf_lxc.o", "not-found")
 // Some intentional unmarshal failures
 FAIL_UNMARSHAL("build", "wronghelper.o", "xdp")
 
-#define VERIFY_SECTION(dirname, filename, sectionname, pass) \
+#define VERIFY_SECTION(dirname, filename, sectionname, options, pass) \
     do { \
         auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &g_ebpf_platform_linux); \
         REQUIRE(raw_progs.size() == 1); \
@@ -38,7 +38,7 @@ FAIL_UNMARSHAL("build", "wronghelper.o", "xdp")
         REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error)); \
         auto& prog = std::get<InstructionSeq>(prog_or_error); \
         cfg_t cfg = prepare_cfg(prog, raw_prog.info, true); \
-        bool res = run_ebpf_analysis(std::cout, cfg, raw_prog.info, nullptr); \
+        bool res = run_ebpf_analysis(std::cout, cfg, raw_prog.info, options); \
         if (pass)                                            \
             REQUIRE(res);                                    \
         else                                                 \
@@ -47,17 +47,25 @@ FAIL_UNMARSHAL("build", "wronghelper.o", "xdp")
 
 #define TEST_SECTION(project, filename, section) \
     TEST_CASE("./check ebpf-samples/" project "/" filename " " section, "[verify][samples][" project "]") { \
-        VERIFY_SECTION(project, filename, section, true); \
+        VERIFY_SECTION(project, filename, section, nullptr, true); \
     }
 
 #define TEST_SECTION_REJECT(project, filename, section) \
     TEST_CASE("./check ebpf-samples/" project "/" filename " " section, "[verify][samples][" project "]") { \
-        VERIFY_SECTION(project, filename, section, false); \
+        VERIFY_SECTION(project, filename, section, nullptr, false); \
+    }
+
+#define TEST_SECTION_REJECT_IF_STRICT(project, filename, section) \
+    TEST_CASE("./check ebpf-samples/" project "/" filename " " section, "[verify][samples][" project "]") { \
+        ebpf_verifier_options_t options = ebpf_verifier_default_options; \
+        VERIFY_SECTION(project, filename, section, &options, true); \
+        options.strict = true; \
+        VERIFY_SECTION(project, filename, section, &options, false); \
     }
 
 #define TEST_SECTION_FAIL(project, filename, section) \
     TEST_CASE("expect failure ebpf-samples/" project "/" filename " " section, "[!shouldfail][verify][samples][" project "]") { \
-        VERIFY_SECTION(project, filename, section, true); \
+        VERIFY_SECTION(project, filename, section, nullptr, true); \
     }
 
 TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "1/0xdc06")
@@ -348,6 +356,10 @@ TEST_SECTION("falco", "probe.o", "raw_tracepoint/signal_deliver")
 
 TEST_SECTION("build", "stackok.o", ".text")
 
+// Test some programs that should pass verification except when the strict flag is set.
+TEST_SECTION_REJECT_IF_STRICT("build", "mapoverflow.o", ".text")
+TEST_SECTION_REJECT_IF_STRICT("build", "mapunderflow.o", ".text")
+
 /*
  * These programs contain "call -1" instruction and cannot be verified:
 TEST_SECTION("raw_tracepoint/filler/sys_access_e")
@@ -441,13 +453,6 @@ TEST_SECTION_REJECT("build", "exposeptr.o", ".text")
 TEST_SECTION_REJECT("build", "exposeptr2.o", ".text")
 TEST_SECTION_REJECT("build", "mapvalue-overrun.o", ".text")
 TEST_SECTION_REJECT("build", "nullmapref.o", "test")
-
-// Test some programs that ought to fail verification but
-// are currently allowed through.  These should be changed
-// to TEST_SECTION_REJECT() once fixed.
-
-TEST_SECTION("build", "mapoverflow.o", ".text")
-TEST_SECTION("build", "mapunderflow.o", ".text")
 
 // The following eBPF programs currently fail verification.
 // If the verifier is later updated to accept them, these should

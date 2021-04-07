@@ -22,6 +22,7 @@
 using std::string;
 
 thread_local program_info global_program_info;
+thread_local ebpf_verifier_options_t thread_local_options;
 
 // Numerical domains over integers
 //using sdbm_domain_t = crab::domains::SplitDBM;
@@ -59,13 +60,12 @@ struct checks_db final {
 static checks_db generate_report(std::ostream& s,
                                  cfg_t& cfg,
                                  crab::invariant_table_t& preconditions,
-                                 crab::invariant_table_t& postconditions,
-                                 ebpf_verifier_options_t options) {
+                                 crab::invariant_table_t& postconditions) {
     checks_db m_db;
     for (const label_t& label : cfg.sorted_labels()) {
         basic_block_t& bb = cfg.get_node(label);
 
-        if (options.print_invariants) {
+        if (thread_local_options.print_invariants) {
             s << "\nPreconditions : " << preconditions.at(label) << "\n";
             s << bb;
             s << "\nPostconditions: " << postconditions.at(label) << "\n";
@@ -90,7 +90,7 @@ static checks_db generate_report(std::ostream& s,
             }
         });
 
-        if (options.check_termination) {
+        if (thread_local_options.check_termination) {
             bool pre_join_terminates = false;
             for (const label_t& prev_label : bb.prev_blocks_set())
                 pre_join_terminates |= preconditions.at(prev_label).terminates();
@@ -101,7 +101,7 @@ static checks_db generate_report(std::ostream& s,
 
         bool pre_bot = from_inv.is_bottom();
 
-        from_inv(bb, options.check_termination);
+        from_inv(bb, thread_local_options.check_termination);
 
         if (!pre_bot && from_inv.is_bottom()) {
             m_db.add_unreachable(label, std::string("Code is unreachable after ") + to_string(bb.label()));
@@ -141,6 +141,7 @@ static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info,
     global_program_info = std::move(info);
     crab::domains::clear_global_state();
     variable_t::clear_thread_local_state();
+    thread_local_options = *options;
 
     try {
         // Get dictionaries of preconditions and postconditions for each
@@ -148,7 +149,7 @@ static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info,
         auto [preconditions, postconditions] = crab::run_forward_analyzer(cfg, options->check_termination);
 
         // Analyze the control-flow graph.
-        return generate_report(s, cfg, preconditions, postconditions, *options);
+        return generate_report(s, cfg, preconditions, postconditions);
     } catch (std::runtime_error& e) {
         // Convert verifier runtime_error exceptions to failure.
         checks_db db;
