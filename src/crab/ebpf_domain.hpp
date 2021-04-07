@@ -30,6 +30,8 @@
 
 #include "crab/array_domain.hpp"
 
+extern thread_local ebpf_verifier_options_t thread_local_options;
+
 namespace crab::domains {
 
 struct reg_pack_t {
@@ -341,6 +343,11 @@ class ebpf_domain_t final {
         assume(inv, cst);
     }
 
+    void require_false(NumAbsDomain& inv, std::string s) {
+        using namespace dsl_syntax;
+        require(m_inv, linear_expression_t(0) != 0, s);
+    }
+
     /// Forget everything we know about the value of a variable.
     void havoc(variable_t v) { m_inv -= v; }
 
@@ -492,6 +499,8 @@ class ebpf_domain_t final {
         // Get the actual map_fd value to look up the key size and value size.
         auto fd_reg = reg_pack(s.map_fd_reg);
         interval_t fd_interval = operator[](fd_reg.value);
+        std::optional<EbpfMapType> map_type;
+        uint32_t max_entries = 0;
         if (fd_interval.is_bottom()) {
             m_inv.set(variable_t::map_value_size(), interval_t::bottom());
             m_inv.set(variable_t::map_key_size(), interval_t::bottom());
@@ -502,6 +511,8 @@ class ebpf_domain_t final {
                 EbpfMapDescriptor& map_descriptor = global_program_info.platform->get_map_descriptor((int)map_fd);
                 m_inv.assign(variable_t::map_value_size(), (int)map_descriptor.value_size);
                 m_inv.assign(variable_t::map_key_size(), (int)map_descriptor.key_size);
+                map_type = global_program_info.platform->get_map_type(map_descriptor.type);
+                max_entries = map_descriptor.max_entries;
             } else {
                 m_inv.set(variable_t::map_value_size(), interval_t::top());
                 m_inv.set(variable_t::map_key_size(), interval_t::top());
@@ -521,6 +532,20 @@ class ebpf_domain_t final {
         if (!when_stack.is_bottom()) {
             if (!stack.all_num(when_stack, lb, ub)) {
                 require(when_stack, access_reg.type != T_STACK, "Illegal map update with a non-numerical value.");
+            } else if (thread_local_options.strict && map_type.has_value() && map_type->is_array) {
+                // Get offset value.
+                variable_t key_ptr = access_reg.offset;
+                std::optional<number_t> offset = m_inv[key_ptr].singleton();
+                if (!offset.has_value()) {
+                    require_false(m_inv, "Pointer must be a singleton");
+                } else if (s.key) {
+                    // Look up the value pointed to by the key pointer.
+                    variable_t key_value =
+                        variable_t::cell_var(data_kind_t::values, (uint64_t)offset.value(), sizeof(uint32_t));
+
+                    require(m_inv, key_value < max_entries, "Array index overflow");
+                    require(m_inv, key_value >= 0, "Array index underflow");
+                }
             }
         }
 
