@@ -334,6 +334,19 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
                 precise if we choose between little- and big-endian.
             */
         }
+    } else if (kind == data_kind_t::types) {
+        // Check whether the kind is uniform across the entire interval.
+        auto lb = ii.lb().number();
+        auto ub = ii.ub().number();
+        if (lb.has_value() && ub.has_value()) {
+            z_number fullwidth = ub.value() - lb.value() + width;
+            if (lb.value().fits_uint() && fullwidth.fits_uint()) {
+                auto [only_num, only_non_num] = num_bytes.uniformity((unsigned int)lb.value(), (unsigned int)fullwidth);
+                if (only_num) {
+                    return T_NUM;
+                }
+            }
+        }
     } else {
         // TODO: we can be more precise here
         CRAB_WARN("array expansion: ignored array load because of non-constant array index ", i);

@@ -656,7 +656,15 @@ class ebpf_domain_t final {
 
         inv.assign(target.type, T_NUM);
         inv -= target.offset;
-        inv -= target.value;
+
+        // A 1 or 2 byte copy results in a limited range of values that may be used as array indices.
+        if (width == 1) {
+            inv.set(target.value, interval_t(0, UINT8_MAX));
+        } else if (width == 2) {
+            inv.set(target.value, interval_t(0, UINT16_MAX));
+        } else {
+            inv -= target.value;
+        }
         return inv;
     }
 
@@ -712,7 +720,7 @@ class ebpf_domain_t final {
     }
 
     NumAbsDomain do_load_stack(NumAbsDomain inv, reg_pack_t target, const linear_expression_t& addr, int width) {
-        if (width == 8) {
+        if (width == 1 || width == 2 || width == 4 || width == 8) {
             inv.assign(target.type, stack.load(inv, data_kind_t::types, addr, width));
             inv.assign(target.value, stack.load(inv,  data_kind_t::values, addr, width));
             inv.assign(target.offset, stack.load(inv, data_kind_t::offsets, addr, width));
@@ -777,6 +785,10 @@ class ebpf_domain_t final {
                 inv.assign(stack.store(inv, data_kind_t::offsets, addr, width, *opt_val_offset), *opt_val_offset);
             else
                 stack.havoc(inv, data_kind_t::offsets, addr, width);
+        } else if ((width == 1 || width == 2 || width == 4) && get_type(val_type) == T_NUM) {
+            // Keep track of numbers on the stack that might be used as array indices.
+            inv.assign(stack.store(inv, data_kind_t::values, addr, width, val_value), val_value);
+            stack.havoc(inv, data_kind_t::offsets, addr, width);
         } else {
             stack.havoc(inv, data_kind_t::values, addr, width);
             stack.havoc(inv, data_kind_t::offsets, addr, width);

@@ -335,6 +335,8 @@ TEST_SECTION("falco", "probe.o", "raw_tracepoint/page_fault_user")
 TEST_SECTION("falco", "probe.o", "raw_tracepoint/sched_switch")
 TEST_SECTION("falco", "probe.o", "raw_tracepoint/signal_deliver")
 
+TEST_SECTION("build", "stackok.o", ".text")
+
 /*
  * These programs contain "call -1" instruction and cannot be verified:
 TEST_SECTION("raw_tracepoint/filler/sys_access_e")
