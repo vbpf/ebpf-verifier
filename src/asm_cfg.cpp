@@ -193,7 +193,6 @@ static std::string instype(Instruction ins) {
 
 std::vector<std::string> stats_headers() {
     return {
-        //"instructions",
         "basic_blocks", "joins",       "other",      "jumps",         "assign",  "arith",
         "load",         "store",       "load_store", "packet_access", "call_1",  "call_mem",
         "call_nomem",   "adjust_head", "map_in_map", "arith64",       "arith32",
@@ -208,10 +207,6 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
     for (const auto& this_label : cfg.labels()) {
         res["basic_blocks"]++;
         basic_block_t const& bb = cfg.get_node(this_label);
-
-        // We assume that the total number of instructions <= INT_MAX
-        // and so casting from size_t to int is safe, as is the addition.
-        res["instructions"] += static_cast<int>(bb.size());
 
         for (Instruction ins : bb) {
             if (std::holds_alternative<LoadMapFd>(ins)) {
