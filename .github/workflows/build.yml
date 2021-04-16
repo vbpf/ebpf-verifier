@@ -35,10 +35,6 @@ jobs:
 
       - name: Build
         run: |
-          $Url = "https://sourceforge.net/projects/boost/files/boost-binaries/1.72.0/boost_1_72_0-msvc-14.2-64.exe"
-          (New-Object System.Net.WebClient).DownloadFile($Url, "$env:TEMP\boost.exe")
-          Start-Process -Wait -FilePath "$env:TEMP\boost.exe" "/SILENT","/SP-","/SUPPRESSMSGBOXES","/DIR=C:\hostedtoolcache\windows\Boost\1.72.0\x86_64"
-          $env:BOOST_ROOT="C:\hostedtoolcache\windows\Boost\1.72.0\x86_64"
           mkdir build
           cmake -B build
           cmake --build build -j $(nproc) --config Release
