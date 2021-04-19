@@ -18,7 +18,7 @@ pip3 install matplotlib   # for plotting the graphs
 
 * Install [git](https://git-scm.com/download/win)
 * Install [Visual Studio Build Tools 2019](https://aka.ms/vs/16/release/vs_buildtools.exe) and choose the "C++ build tools" workload (Visual Studio Build Tools 2019 has support for CMake Version 3.15).
-* Install [Boost](https://www.boost.org/doc/libs/1_75_0/more/getting_started/windows.html#get-boost) and then set the `BOOST_ROOT` environment variable to the directory you unpacked Boost in.
+* Install [nuget.exe](https://www.nuget.org/downloads)
 
 ### Installation
 Clone:
