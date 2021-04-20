@@ -142,12 +142,19 @@ static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info,
     crab::domains::clear_global_state();
     variable_t::clear_thread_local_state();
 
-    // Get dictionaries of preconditions and postconditions for each
-    // basic block.
-    auto [preconditions, postconditions] = crab::run_forward_analyzer(cfg, options->check_termination);
+    try {
+        // Get dictionaries of preconditions and postconditions for each
+        // basic block.
+        auto [preconditions, postconditions] = crab::run_forward_analyzer(cfg, options->check_termination);
 
-    // Analyze the control-flow graph.
-    return generate_report(s, cfg, preconditions, postconditions, *options);
+        // Analyze the control-flow graph.
+        return generate_report(s, cfg, preconditions, postconditions, *options);
+    } catch (std::runtime_error& e) {
+        // Convert verifier runtime_error exceptions to failure.
+        checks_db db;
+        db.add_warning(label_t::exit, e.what());
+        return db;
+    }
 }
 
 /// Returned value is true if the program passes verification.
