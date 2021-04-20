@@ -424,6 +424,7 @@ TEST_SECTION("raw_tracepoint/filler/sys_recvfrom_x")
 
 // Test some programs that ought to fail verification.
 TEST_SECTION_REJECT("build", "badhelpercall.o", ".text")
+TEST_SECTION_REJECT("build", "badmapptr.o", "test")
 TEST_SECTION_REJECT("build", "exposeptr.o", ".text")
 TEST_SECTION_REJECT("build", "exposeptr2.o", ".text")
 TEST_SECTION_REJECT("build", "mapvalue-overrun.o", ".text")
