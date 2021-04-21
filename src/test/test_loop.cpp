@@ -25,7 +25,8 @@ TEST_CASE("Trivial loop: middle", "[sanity][loop]") {
         .check_termination=false
     };
     program_info info{
-        .platform = &g_ebpf_platform_linux
+        .platform = &g_ebpf_platform_linux,
+        .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")
     };
     bool pass = run_ebpf_analysis(std::cout, cfg, info, &options);
     REQUIRE(pass);

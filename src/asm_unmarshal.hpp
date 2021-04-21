@@ -16,9 +16,8 @@
  *  of Instructions.
  *
  *  \param raw_prog is the input program to parse.
- *  \param platform is the platform on which the instructions are intended to run.
  *  \param notes is where errors and warnings are written to.
  *  \return a sequence of instruction if successful, an error string otherwise.
  */
-std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, const ebpf_platform_t* platform, std::vector<std::vector<std::string>>& notes);
-std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, const ebpf_platform_t* platform);
+std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, std::vector<std::vector<std::string>>& notes);
+std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog);

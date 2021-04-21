@@ -17,13 +17,24 @@
 FAIL_LOAD_ELF("cilium", "not-found.o", "2/1")
 FAIL_LOAD_ELF("cilium", "bpf_lxc.o", "not-found")
 
+#define FAIL_UNMARSHAL(dirname, filename, sectionname) \
+    TEST_CASE("Try unmarshaling bad program: " dirname "/" filename, "[unmarshal]") { \
+        auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &g_ebpf_platform_linux); \
+        REQUIRE(raw_progs.size() == 1); \
+        raw_program raw_prog = raw_progs.back(); \
+        std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog); \
+        REQUIRE(std::holds_alternative<std::string>(prog_or_error)); \
+    }
+
+// Some intentional unmarshal failures
+FAIL_UNMARSHAL("build", "wronghelper.o", "xdp")
 
 #define VERIFY_SECTION(dirname, filename, sectionname, pass) \
     do { \
         auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &g_ebpf_platform_linux); \
         REQUIRE(raw_progs.size() == 1); \
         raw_program raw_prog = raw_progs.back(); \
-        std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog, &g_ebpf_platform_linux); \
+        std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog); \
         REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error)); \
         auto& prog = std::get<InstructionSeq>(prog_or_error); \
         cfg_t cfg = prepare_cfg(prog, raw_prog.info, true); \
@@ -436,7 +447,6 @@ TEST_SECTION_REJECT("build", "nullmapref.o", "test")
 
 TEST_SECTION("build", "mapoverflow.o", ".text")
 TEST_SECTION("build", "mapunderflow.o", ".text")
-TEST_SECTION("build", "wronghelper.o", "xdp")
 
 // The following eBPF programs currently fail verification.
 // If the verifier is later updated to accept them, these should
@@ -461,7 +471,7 @@ TEST_CASE("multithreading", "[verify][multithreading]") {
     auto raw_progs1 = read_elf("ebpf-samples/bpf_cilium_test/bpf_netdev.o", "2/1", nullptr, &g_ebpf_platform_linux);
     REQUIRE(raw_progs1.size() == 1);
     raw_program raw_prog1 = raw_progs1.back();
-    std::variant<InstructionSeq, std::string> prog_or_error1 = unmarshal(raw_prog1, &g_ebpf_platform_linux);
+    std::variant<InstructionSeq, std::string> prog_or_error1 = unmarshal(raw_prog1);
     REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error1));
     auto& prog1 = std::get<InstructionSeq>(prog_or_error1);
     cfg_t cfg1 = prepare_cfg(prog1, raw_prog1.info, true);
@@ -469,7 +479,7 @@ TEST_CASE("multithreading", "[verify][multithreading]") {
     auto raw_progs2 = read_elf("ebpf-samples/bpf_cilium_test/bpf_netdev.o", "2/2", nullptr, &g_ebpf_platform_linux);
     REQUIRE(raw_progs2.size() == 1);
     raw_program raw_prog2 = raw_progs2.back();
-    std::variant<InstructionSeq, std::string> prog_or_error2 = unmarshal(raw_prog2, &g_ebpf_platform_linux);
+    std::variant<InstructionSeq, std::string> prog_or_error2 = unmarshal(raw_prog2);
     REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error2));
     auto& prog2 = std::get<InstructionSeq>(prog_or_error2);
     cfg_t cfg2 = prepare_cfg(prog2, raw_prog2.info, true);

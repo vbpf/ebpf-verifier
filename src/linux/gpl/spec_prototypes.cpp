@@ -1,4 +1,20 @@
 #include "platform.hpp"
+#include "spec_type_descriptors.hpp"
+
+const EbpfContextDescriptor g_sk_buff = sk_buff;
+const EbpfContextDescriptor g_xdp_md = xdp_md;
+const EbpfContextDescriptor g_sk_msg_md = sk_msg_md;
+const EbpfContextDescriptor g_unspec_descr = unspec_descr;
+const EbpfContextDescriptor g_cgroup_dev_descr = cgroup_dev_descr;
+const EbpfContextDescriptor g_kprobe_descr = kprobe_descr;
+const EbpfContextDescriptor g_tracepoint_descr = tracepoint_descr;
+const EbpfContextDescriptor g_perf_event_descr = perf_event_descr;
+const EbpfContextDescriptor g_cgroup_sock_descr = cgroup_sock_descr;
+const EbpfContextDescriptor g_sock_ops_descr = sock_ops_descr;
+
+// eBPF helpers are documented at the following links:
+// https://github.com/iovisor/bpf-docs/blob/master/bpf_helpers.rst
+// https://www.man7.org/linux/man-pages/man7/bpf-helpers.7.html
 
 static const struct EbpfHelperPrototype bpf_unspec_proto = {
     .name = "unspec",
@@ -315,6 +331,7 @@ static const struct EbpfHelperPrototype bpf_perf_prog_read_value_proto = {
         EbpfHelperArgumentType::PTR_TO_UNINIT_MEM,
         EbpfHelperArgumentType::CONST_SIZE,
     },
+    .context_descriptor = &g_perf_event_descr
 };
 
 // static const struct EbpfHelperPrototype bpf_perf_event_output_proto_raw_tp = {
@@ -521,6 +538,7 @@ static const struct EbpfHelperPrototype bpf_sock_map_update_proto = {
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::DONTCARE,
     },
+    .context_descriptor = &g_sock_ops_descr
 };
 
 static const struct EbpfHelperPrototype bpf_sock_hash_update_proto = {
@@ -535,6 +553,7 @@ static const struct EbpfHelperPrototype bpf_sock_hash_update_proto = {
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::DONTCARE,
     },
+    .context_descriptor = &g_sock_ops_descr
 };
 
 /*
@@ -643,6 +662,7 @@ static const struct EbpfHelperPrototype bpf_skb_store_bytes_proto = {
         EbpfHelperArgumentType::CONST_SIZE,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 /*
@@ -674,6 +694,7 @@ static const struct EbpfHelperPrototype bpf_skb_load_bytes_proto = {
         EbpfHelperArgumentType::PTR_TO_UNINIT_MEM,
         EbpfHelperArgumentType::CONST_SIZE,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 /*
@@ -711,6 +732,7 @@ static const struct EbpfHelperPrototype bpf_skb_load_bytes_relative_proto = {
         EbpfHelperArgumentType::CONST_SIZE,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 static const struct EbpfHelperPrototype bpf_skb_pull_data_proto = {
@@ -722,6 +744,7 @@ static const struct EbpfHelperPrototype bpf_skb_pull_data_proto = {
         EbpfHelperArgumentType::PTR_TO_CTX,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 // static const struct EbpfHelperPrototype sk_skb_pull_data_proto = {
@@ -757,6 +780,7 @@ static const struct EbpfHelperPrototype bpf_l3_csum_replace_proto = {
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 /*
@@ -783,6 +807,7 @@ static const struct EbpfHelperPrototype bpf_l4_csum_replace_proto = {
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 /*
@@ -818,6 +843,7 @@ static const struct EbpfHelperPrototype bpf_csum_update_proto = {
         EbpfHelperArgumentType::PTR_TO_CTX,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 static const struct EbpfHelperPrototype bpf_clone_redirect_proto = {
@@ -830,6 +856,7 @@ static const struct EbpfHelperPrototype bpf_clone_redirect_proto = {
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 static const struct EbpfHelperPrototype bpf_redirect_proto = {
     .name = "redirect",
@@ -852,6 +879,7 @@ static const struct EbpfHelperPrototype bpf_sk_redirect_hash_proto = {
         EbpfHelperArgumentType::PTR_TO_MAP_KEY,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 static const struct EbpfHelperPrototype bpf_sk_redirect_map_proto = {
     .name = "sk_redirect_map",
@@ -864,6 +892,7 @@ static const struct EbpfHelperPrototype bpf_sk_redirect_map_proto = {
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 static const struct EbpfHelperPrototype bpf_msg_redirect_hash_proto = {
     .name = "msg_redirect_hash",
@@ -876,6 +905,7 @@ static const struct EbpfHelperPrototype bpf_msg_redirect_hash_proto = {
         EbpfHelperArgumentType::PTR_TO_MAP_KEY,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_msg_md
 };
 static const struct EbpfHelperPrototype bpf_msg_redirect_map_proto = {
     .name = "msg_redirect_map",
@@ -888,6 +918,7 @@ static const struct EbpfHelperPrototype bpf_msg_redirect_map_proto = {
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_msg_md
 };
 static const struct EbpfHelperPrototype bpf_msg_apply_bytes_proto = {
     .name = "msg_apply_bytes",
@@ -898,6 +929,7 @@ static const struct EbpfHelperPrototype bpf_msg_apply_bytes_proto = {
         EbpfHelperArgumentType::PTR_TO_CTX,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_msg_md
 };
 static const struct EbpfHelperPrototype bpf_msg_cork_bytes_proto = {
     .name = "msg_cork_bytes",
@@ -908,6 +940,7 @@ static const struct EbpfHelperPrototype bpf_msg_cork_bytes_proto = {
         EbpfHelperArgumentType::PTR_TO_CTX,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_msg_md
 };
 static const struct EbpfHelperPrototype bpf_msg_pull_data_proto = {
     .name = "msg_pull_data",
@@ -920,6 +953,7 @@ static const struct EbpfHelperPrototype bpf_msg_pull_data_proto = {
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_msg_md
 };
 static const struct EbpfHelperPrototype bpf_get_cgroup_classid_proto = {
     .name = "get_cgroup_classid",
@@ -927,6 +961,7 @@ static const struct EbpfHelperPrototype bpf_get_cgroup_classid_proto = {
     //.gpl_only   = false,
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = { EbpfHelperArgumentType::PTR_TO_CTX, },
+    .context_descriptor = &g_sk_buff
 };
 static const struct EbpfHelperPrototype bpf_get_route_realm_proto = {
     .name = "get_route_realm",
@@ -934,6 +969,7 @@ static const struct EbpfHelperPrototype bpf_get_route_realm_proto = {
     //.gpl_only   = false,
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = { EbpfHelperArgumentType::PTR_TO_CTX, },
+    .context_descriptor = &g_sk_buff
 };
 static const struct EbpfHelperPrototype bpf_get_hash_recalc_proto = {
     .name = "get_hash_recalc",
@@ -943,6 +979,7 @@ static const struct EbpfHelperPrototype bpf_get_hash_recalc_proto = {
     .argument_type = {
         EbpfHelperArgumentType::PTR_TO_CTX,
     },
+    .context_descriptor = &g_sk_buff
 };
 static const struct EbpfHelperPrototype bpf_set_hash_invalid_proto = {
     .name = "set_hash_invalid",
@@ -952,6 +989,7 @@ static const struct EbpfHelperPrototype bpf_set_hash_invalid_proto = {
     .argument_type = {
         EbpfHelperArgumentType::PTR_TO_CTX,
     },
+    .context_descriptor = &g_sk_buff
 };
 static const struct EbpfHelperPrototype bpf_set_hash_proto = {
     .name = "set_hash",
@@ -962,6 +1000,7 @@ static const struct EbpfHelperPrototype bpf_set_hash_proto = {
         EbpfHelperArgumentType::PTR_TO_CTX,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 static const struct EbpfHelperPrototype bpf_skb_vlan_push_proto = {
     .name = "skb_vlan_push",
@@ -973,6 +1012,7 @@ static const struct EbpfHelperPrototype bpf_skb_vlan_push_proto = {
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 static const struct EbpfHelperPrototype bpf_skb_vlan_pop_proto = {
     .name = "skb_vlan_pop",
@@ -982,6 +1022,7 @@ static const struct EbpfHelperPrototype bpf_skb_vlan_pop_proto = {
     .argument_type = {
         EbpfHelperArgumentType::PTR_TO_CTX,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 /*
@@ -1005,6 +1046,7 @@ static const struct EbpfHelperPrototype bpf_skb_change_proto_proto = {
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 /*
@@ -1023,6 +1065,7 @@ static const struct EbpfHelperPrototype bpf_skb_change_type_proto = {
         EbpfHelperArgumentType::PTR_TO_CTX,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 /*
@@ -1045,6 +1088,7 @@ static const struct EbpfHelperPrototype bpf_skb_adjust_room_proto = {
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 /*
@@ -1066,6 +1110,7 @@ static const struct EbpfHelperPrototype bpf_skb_change_tail_proto = {
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 // static const struct EbpfHelperPrototype sk_skb_change_tail_proto = {
@@ -1110,6 +1155,7 @@ static const struct EbpfHelperPrototype bpf_skb_change_head_proto = {
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 // static const struct EbpfHelperPrototype sk_skb_change_head_proto = {
@@ -1132,6 +1178,7 @@ static const struct EbpfHelperPrototype bpf_xdp_adjust_head_proto = {
         EbpfHelperArgumentType::PTR_TO_CTX,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_xdp_descr
 };
 
 static const struct EbpfHelperPrototype bpf_xdp_adjust_tail_proto = {
@@ -1143,6 +1190,7 @@ static const struct EbpfHelperPrototype bpf_xdp_adjust_tail_proto = {
         EbpfHelperArgumentType::PTR_TO_CTX,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_xdp_descr
 };
 
 static const struct EbpfHelperPrototype bpf_xdp_adjust_meta_proto = {
@@ -1154,6 +1202,7 @@ static const struct EbpfHelperPrototype bpf_xdp_adjust_meta_proto = {
         EbpfHelperArgumentType::PTR_TO_CTX,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_xdp_descr
 };
 
 // static const struct EbpfHelperPrototype bpf_xdp_redirect_proto = {
@@ -1213,6 +1262,7 @@ static const struct EbpfHelperPrototype bpf_skb_get_tunnel_key_proto = {
         EbpfHelperArgumentType::CONST_SIZE,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 /*
@@ -1233,6 +1283,7 @@ static const struct EbpfHelperPrototype bpf_skb_get_tunnel_opt_proto = {
         EbpfHelperArgumentType::PTR_TO_UNINIT_MEM,
         EbpfHelperArgumentType::CONST_SIZE,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 /*
@@ -1255,6 +1306,7 @@ static const struct EbpfHelperPrototype bpf_skb_set_tunnel_key_proto = {
         EbpfHelperArgumentType::CONST_SIZE,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 /*
@@ -1275,6 +1327,7 @@ static const struct EbpfHelperPrototype bpf_skb_set_tunnel_opt_proto = {
         EbpfHelperArgumentType::PTR_TO_MEM,
         EbpfHelperArgumentType::CONST_SIZE,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 /*
@@ -1298,6 +1351,7 @@ static const struct EbpfHelperPrototype bpf_skb_under_cgroup_proto = {
         EbpfHelperArgumentType::PTR_TO_MAP,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 static const struct EbpfHelperPrototype bpf_skb_cgroup_id_proto = {
@@ -1308,6 +1362,7 @@ static const struct EbpfHelperPrototype bpf_skb_cgroup_id_proto = {
     .argument_type = {
         EbpfHelperArgumentType::PTR_TO_CTX,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 // static const struct EbpfHelperPrototype bpf_xdp_event_output_proto = {
@@ -1330,6 +1385,7 @@ static const struct EbpfHelperPrototype bpf_get_socket_cookie_proto = {
     //.gpl_only   = false,
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = { EbpfHelperArgumentType::PTR_TO_CTX, },
+    .context_descriptor = &g_sk_buff
 };
 
 static const struct EbpfHelperPrototype bpf_get_socket_uid_proto = {
@@ -1338,6 +1394,7 @@ static const struct EbpfHelperPrototype bpf_get_socket_uid_proto = {
     //.gpl_only   = false,
     .return_type = EbpfHelperReturnType::INTEGER,
     .argument_type = { EbpfHelperArgumentType::PTR_TO_CTX, },
+    .context_descriptor = &g_sk_buff
 };
 
 static const struct EbpfHelperPrototype bpf_setsockopt_proto = {
@@ -1388,6 +1445,7 @@ static const struct EbpfHelperPrototype bpf_sock_ops_cb_flags_set_proto = {
         EbpfHelperArgumentType::PTR_TO_CTX,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sock_ops_descr
 };
 static const struct EbpfHelperPrototype bpf_bind_proto = {
     .name = "bind",
@@ -1430,6 +1488,7 @@ static const struct EbpfHelperPrototype bpf_skb_get_xfrm_state_proto = {
         EbpfHelperArgumentType::CONST_SIZE,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 
 static const struct EbpfHelperPrototype bpf_xdp_fib_lookup_proto = {
@@ -1460,15 +1519,16 @@ static const struct EbpfHelperPrototype bpf_xdp_fib_lookup_proto = {
 
 static const struct EbpfHelperPrototype bpf_lwt_push_encap_proto = {
     .name = "lwt_push_encap",
-   //.func		= bpf_lwt_push_encap,
-   //.gpl_only	= false,
-   .return_type = EbpfHelperReturnType::INTEGER,
-   .argument_type = {
-       EbpfHelperArgumentType::PTR_TO_CTX,
-       EbpfHelperArgumentType::ANYTHING,
-       EbpfHelperArgumentType::PTR_TO_MEM,
-       EbpfHelperArgumentType::CONST_SIZE
-   },
+    //.func		= bpf_lwt_push_encap,
+    //.gpl_only	= false,
+    .return_type = EbpfHelperReturnType::INTEGER,
+    .argument_type = {
+        EbpfHelperArgumentType::PTR_TO_CTX,
+        EbpfHelperArgumentType::ANYTHING,
+        EbpfHelperArgumentType::PTR_TO_MEM,
+        EbpfHelperArgumentType::CONST_SIZE
+    },
+    .context_descriptor = &g_sk_buff
 };
 static const struct EbpfHelperPrototype bpf_lwt_seg6_store_bytes_proto = {
     .name = "lwt_seg6_store_bytes",
@@ -1481,6 +1541,7 @@ static const struct EbpfHelperPrototype bpf_lwt_seg6_store_bytes_proto = {
         EbpfHelperArgumentType::PTR_TO_MEM,
         EbpfHelperArgumentType::CONST_SIZE
     },
+    .context_descriptor = &g_sk_buff
 };
 static const struct EbpfHelperPrototype bpf_lwt_seg6_action_proto = {
     .name = "lwt_seg6_action",
@@ -1493,6 +1554,7 @@ static const struct EbpfHelperPrototype bpf_lwt_seg6_action_proto = {
         EbpfHelperArgumentType::PTR_TO_MEM,
         EbpfHelperArgumentType::CONST_SIZE
     },
+    .context_descriptor = &g_sk_buff
 };
 static const struct EbpfHelperPrototype bpf_lwt_seg6_adjust_srh_proto = {
     .name = "lwt_seg6_adjust_srh",
@@ -1504,6 +1566,7 @@ static const struct EbpfHelperPrototype bpf_lwt_seg6_adjust_srh_proto = {
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .context_descriptor = &g_sk_buff
 };
 static const struct EbpfHelperPrototype bpf_rc_repeat_proto = {
     .name = "rc_repeat", // without bpf_ originally
@@ -1993,7 +2056,17 @@ const struct EbpfHelperPrototype prototypes[81] = {
     FN(get_current_cgroup_id),
 };
 
-bool is_helper_usable_linux(unsigned int n) { return n < sizeof(prototypes) / sizeof(prototypes[0]) && n > 0; }
+bool is_helper_usable_linux(unsigned int n) {
+    if (n >= sizeof(prototypes) / sizeof(prototypes[0]) || n < 0)
+        return false;
+
+    // If the helper has a context_descriptor, it must match the hook's context_descriptor.
+    if ((prototypes[n].context_descriptor != nullptr) &&
+        (prototypes[n].context_descriptor != global_program_info.type.context_descriptor))
+        return false;
+
+    return true;
+}
 
 EbpfHelperPrototype get_helper_prototype_linux(unsigned int n) {
     if (!is_helper_usable_linux(n))

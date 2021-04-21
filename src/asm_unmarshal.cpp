@@ -428,9 +428,10 @@ struct Unmarshaller {
     }
 };
 
-std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, const ebpf_platform_t* platform, vector<vector<string>>& notes) {
+std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, vector<vector<string>>& notes) {
+    global_program_info = raw_prog.info;
     try {
-        return Unmarshaller{notes,platform}.unmarshal(raw_prog.prog);
+        return Unmarshaller{notes, raw_prog.info.platform}.unmarshal(raw_prog.prog);
     } catch (InvalidInstruction& arg) {
         std::ostringstream ss;
         ss << arg.pc << ": " << arg.what() << "\n";
@@ -438,7 +439,7 @@ std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog,
     }
 }
 
-std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, const ebpf_platform_t* platform) {
+std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog) {
     vector<vector<string>> notes;
-    return unmarshal(raw_prog, platform, notes);
+    return unmarshal(raw_prog, notes);
 }
