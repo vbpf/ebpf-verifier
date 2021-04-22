@@ -62,8 +62,7 @@ class AssertExtractor {
                 break;
             case ArgSingle::Kind::PTR_TO_CTX:
                 res.emplace_back(TypeConstraint{arg.reg, TypeGroup::ctx});
-                // TODO: the kernel has some other conditions here -
-                //       maybe offset == 0
+                res.emplace_back(ZeroOffset{arg.reg});
                 break;
             }
         }
