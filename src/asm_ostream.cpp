@@ -10,6 +10,7 @@
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
 #include "asm_ostream.hpp"
+#include "crab/variable.hpp"
 
 using std::optional;
 using std::string;
@@ -132,8 +133,13 @@ std::ostream& operator<<(std::ostream& os, ValidMapKeyValue const& a) {
               << "))";
 }
 
+std::ostream& operator<<(std::ostream& os, ZeroOffset const& a) {
+    return os << crab::variable_t::reg(crab::data_kind_t::offsets, a.reg.v) << " == 0";
+}
+
 std::ostream& operator<<(std::ostream& os, Comparable const& a) {
-    return os << "type(" << a.r1 << ") == type(" << a.r2 << ")";
+    return os << crab::variable_t::reg(crab::data_kind_t::types, a.r1.v) << " == "
+              << crab::variable_t::reg(crab::data_kind_t::types, a.r2.v);
 }
 
 std::ostream& operator<<(std::ostream& os, Addable const& a) {

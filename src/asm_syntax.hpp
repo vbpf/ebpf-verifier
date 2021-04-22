@@ -276,8 +276,13 @@ struct TypeConstraint {
     TypeGroup types;
 };
 
+/// Condition check whether something is a valid size.
+struct ZeroOffset {
+    Reg reg;
+};
+
 using AssertionConstraint =
-    std::variant<Comparable, Addable, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint>;
+    std::variant<Comparable, Addable, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint, ZeroOffset>;
 
 struct Assert {
     AssertionConstraint cst;
@@ -354,6 +359,7 @@ DECLARE_EQ2(Addable, ptr, num)
 DECLARE_EQ2(ValidStore, mem, val)
 DECLARE_EQ4(ValidAccess, reg, offset, width, or_null)
 DECLARE_EQ3(ValidMapKeyValue, access_reg, map_fd_reg, key)
+DECLARE_EQ1(ZeroOffset, reg)
 DECLARE_EQ1(Assert, cst)
 
 }

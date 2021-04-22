@@ -640,6 +640,12 @@ class ebpf_domain_t final {
         }
     }
 
+    void operator()(const ZeroOffset& s) {
+        using namespace dsl_syntax;
+        auto reg = reg_pack(s.reg);
+        require(m_inv, reg.offset == 0, to_string(s));
+    }
+
     void operator()(Assert const& stmt) { std::visit(*this, stmt.cst); };
 
     void operator()(Packet const& a) {
