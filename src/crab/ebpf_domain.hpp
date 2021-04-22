@@ -919,6 +919,7 @@ class ebpf_domain_t final {
         using namespace dsl_syntax;
 
         auto dst = reg_pack(bin.dst);
+        auto dtype = get_type(dst.type);
 
         if (std::holds_alternative<Imm>(bin.v)) {
             // dst += K
@@ -932,13 +933,19 @@ class ebpf_domain_t final {
                 if (imm == 0)
                     return;
                 add_overflow(dst.value, imm);
-                add(dst.offset, imm);
+                if (dtype == T_CTX)
+                    no_pointer(dst);
+                else
+                    add(dst.offset, imm);
                 break;
             case Bin::Op::SUB:
                 if (imm == 0)
                     return;
                 sub_overflow(dst.value, imm);
-                sub(dst.offset, imm);
+                if (dtype == T_CTX)
+                    no_pointer(dst);
+                else
+                    sub(dst.offset, imm);
                 break;
             case Bin::Op::MUL:
                 mul(dst.value, imm);
