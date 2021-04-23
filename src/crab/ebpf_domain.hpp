@@ -346,9 +346,9 @@ class ebpf_domain_t final {
 
     void assign(variable_t lhs, variable_t rhs) { m_inv.assign(lhs, rhs); }
 
-    /// Set a register to an integer with unknown value.
-    void no_pointer(reg_pack_t reg) {
-        assign(reg.type, T_NUM);
+    void assert_no_pointer(reg_pack_t reg) {
+        using namespace dsl_syntax;
+        require(m_inv, reg.type == T_NUM, "invalid operation on a non-numerical value");
         havoc(reg.offset);
     }
 
@@ -456,11 +456,11 @@ class ebpf_domain_t final {
         case Un::Op::LE32:
         case Un::Op::LE64:
             havoc(dst.value);
-            no_pointer(dst);
+            assert_no_pointer(dst);
             break;
         case Un::Op::NEG:
             neg(dst.value);
-            no_pointer(dst);
+            assert_no_pointer(dst);
             break;
         }
     }
@@ -926,7 +926,8 @@ class ebpf_domain_t final {
             switch (bin.op) {
             case Bin::Op::MOV:
                 assign(dst.value, imm);
-                no_pointer(dst);
+                assign(dst.type, T_NUM);
+                havoc(dst.offset);
                 break;
             case Bin::Op::ADD:
                 if (imm == 0)
@@ -942,19 +943,19 @@ class ebpf_domain_t final {
                 break;
             case Bin::Op::MUL:
                 mul(dst.value, imm);
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             case Bin::Op::DIV:
                 div(dst.value, imm);
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             case Bin::Op::MOD:
                 rem(dst.value, imm);
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             case Bin::Op::OR:
                 bitwise_or(dst.value, imm);
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             case Bin::Op::AND:
                 // FIX: what to do with ptr&-8 as in counter/simple_loop_unrolled?
@@ -963,17 +964,17 @@ class ebpf_domain_t final {
                     assume(dst.value <= imm);
                     assume(0 <= dst.value);
                 }
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             case Bin::Op::LSH:
                 // avoid signedness and overflow issues in shl_overflow(dst.value, imm);
                 shl_overflow(dst.value, imm);
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             case Bin::Op::RSH:
                 // avoid signedness and overflow issues in lshr(dst.value, imm);
                 havoc(dst.value);
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             case Bin::Op::ARSH:
                 // avoid signedness and overflow issues in ashr(dst.value, imm);
@@ -981,11 +982,11 @@ class ebpf_domain_t final {
                 havoc(dst.value);
                 // assume(dst.value <= (1 << (64 - imm)));
                 // assume(dst.value >= -(1 << (64 - imm)));
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             case Bin::Op::XOR:
                 bitwise_xor(dst.value, imm);
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             }
         } else {
@@ -1032,41 +1033,41 @@ class ebpf_domain_t final {
             }
             case Bin::Op::MUL:
                 mul(dst.value, src.value);
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             case Bin::Op::DIV:
                 // DIV is not checked for zerodiv
                 div(dst.value, src.value);
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             case Bin::Op::MOD:
                 // See DIV comment
                 rem(dst.value, src.value);
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             case Bin::Op::OR:
                 bitwise_or(dst.value, src.value);
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             case Bin::Op::AND:
                 bitwise_and(dst.value, src.value);
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             case Bin::Op::LSH:
                 shl_overflow(dst.value, src.value);
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             case Bin::Op::RSH:
                 havoc(dst.value);
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             case Bin::Op::ARSH:
                 havoc(dst.value);
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             case Bin::Op::XOR:
                 bitwise_xor(dst.value, src.value);
-                no_pointer(dst);
+                assert_no_pointer(dst);
                 break;
             case Bin::Op::MOV:
                 assign(dst.value, src.value);
