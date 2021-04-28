@@ -7,7 +7,9 @@
 #include "asm_unmarshal.hpp"
 
 static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = false) {
-    InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", marshal(ins, 0), {}}, &g_ebpf_platform_linux));
+    program_info info{.platform = &g_ebpf_platform_linux,
+                      .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")};
+    InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", marshal(ins, 0), info}));
     REQUIRE(parsed.size() == 1);
     auto [_, single] = parsed.back();
     (void)_; // unused

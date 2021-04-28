@@ -31,4 +31,7 @@ struct EbpfHelperPrototype {
 
     // Arguments are passed in registers R1 to R5.
     EbpfHelperArgumentType argument_type[5];
+
+    // If R1 holds a context, then this holds a pointer to the context descriptor.
+    const EbpfContextDescriptor* context_descriptor;
 };

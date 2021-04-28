@@ -33,11 +33,26 @@ constexpr EbpfContextDescriptor cgroup_dev_descr = {cgroup_dev_regions};
 constexpr EbpfContextDescriptor kprobe_descr = {kprobe_regions};
 constexpr EbpfContextDescriptor tracepoint_descr = {tracepoint_regions};
 constexpr EbpfContextDescriptor perf_event_descr = {perf_event_regions};
-constexpr EbpfContextDescriptor socket_filter_descr = sk_buff;
-constexpr EbpfContextDescriptor sched_descr = sk_buff;
-constexpr EbpfContextDescriptor xdp_descr = xdp_md;
-constexpr EbpfContextDescriptor lwt_xmit_descr = sk_buff;
-constexpr EbpfContextDescriptor lwt_inout_descr = sk_buff;
 constexpr EbpfContextDescriptor cgroup_sock_descr = {cgroup_sock_regions};
 constexpr EbpfContextDescriptor sock_ops_descr = {sock_ops_regions};
-constexpr EbpfContextDescriptor sk_skb_descr = sk_buff;
+
+extern const EbpfContextDescriptor g_sk_buff;
+extern const EbpfContextDescriptor g_xdp_md;
+extern const EbpfContextDescriptor g_sk_msg_md;
+extern const EbpfContextDescriptor g_unspec_descr;
+extern const EbpfContextDescriptor g_cgroup_dev_descr;
+extern const EbpfContextDescriptor g_kprobe_descr;
+extern const EbpfContextDescriptor g_tracepoint_descr;
+extern const EbpfContextDescriptor g_perf_event_descr;
+extern const EbpfContextDescriptor g_cgroup_sock_descr;
+extern const EbpfContextDescriptor g_sock_ops_descr;
+
+// The following all used the sk_buff descriptor and so the ctx is apparently interchangeable.
+#define g_socket_filter_descr g_sk_buff
+#define g_sched_descr g_sk_buff
+#define g_lwt_xmit_descr g_sk_buff
+#define g_lwt_inout_descr g_sk_buff
+#define g_sk_skb_descr g_sk_buff
+
+// And these were also interchangeable.
+#define g_xdp_descr g_xdp_md

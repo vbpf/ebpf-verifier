@@ -38,40 +38,40 @@ static int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value
 #define COMMA ,
 
 const EbpfProgramType linux_socket_filter_program_type =
-    PTYPE("socket_filter", socket_filter_descr, BPF_PROG_TYPE_SOCKET_FILTER, {"socket"});
+    PTYPE("socket_filter", &g_socket_filter_descr, BPF_PROG_TYPE_SOCKET_FILTER, {"socket"});
 
 const EbpfProgramType linux_xdp_program_type =
-    PTYPE("xdp", xdp_descr, BPF_PROG_TYPE_XDP, {"xdp"});
+    PTYPE("xdp", &g_xdp_descr, BPF_PROG_TYPE_XDP, {"xdp"});
 
 const EbpfProgramType cilium_lxc_program_type =
-    PTYPE("lxc", sched_descr, BPF_PROG_TYPE_SOCKET_FILTER, {});
+    PTYPE("lxc", &g_sched_descr, BPF_PROG_TYPE_SOCKET_FILTER, {});
 
 const std::vector<EbpfProgramType> linux_program_types = {
-    PTYPE("unspec", unspec_descr, BPF_PROG_TYPE_UNSPEC, {}),
+    PTYPE("unspec", &g_unspec_descr, BPF_PROG_TYPE_UNSPEC, {}),
     linux_socket_filter_program_type,
     linux_xdp_program_type,
-    PTYPE("cgroup_device", cgroup_dev_descr, BPF_PROG_TYPE_CGROUP_DEVICE, {"cgroup/dev"}),
-    PTYPE("cgroup_skb", socket_filter_descr, BPF_PROG_TYPE_CGROUP_SKB, {"cgroup/skb"}),
-    PTYPE("cgroup_sock", cgroup_sock_descr, BPF_PROG_TYPE_CGROUP_SOCK, {"cgroup/sock"}),
-    PTYPE_PRIVILEGED("kprobe", kprobe_descr, BPF_PROG_TYPE_KPROBE, {"kprobe/" COMMA "kretprobe/"}),
-    PTYPE("lwt_in", lwt_inout_descr, BPF_PROG_TYPE_LWT_IN, {"lwt_in"}),
-    PTYPE("lwt_out", lwt_inout_descr, BPF_PROG_TYPE_LWT_OUT, {"lwt_out"}),
-    PTYPE("lwt_xmit", lwt_xmit_descr, BPF_PROG_TYPE_LWT_XMIT, {"lwt_xmit"}),
-    PTYPE("perf_event", perf_event_descr, BPF_PROG_TYPE_PERF_EVENT, {"perf_section" COMMA "perf_event"}),
-    PTYPE("sched_act", sched_descr, BPF_PROG_TYPE_SCHED_ACT, {"action"}),
-    PTYPE("sched_cls", sched_descr, BPF_PROG_TYPE_SCHED_CLS, {"classifier"}),
-    PTYPE("sk_skb", sk_skb_descr, BPF_PROG_TYPE_SK_SKB, {"sk_skb"}),
-    PTYPE("sock_ops", sock_ops_descr, BPF_PROG_TYPE_SOCK_OPS, {"sockops"}),
-    PTYPE("tracepoint", tracepoint_descr, BPF_PROG_TYPE_TRACEPOINT, {"tracepoint/"}),
+    PTYPE("cgroup_device", &g_cgroup_dev_descr, BPF_PROG_TYPE_CGROUP_DEVICE, {"cgroup/dev"}),
+    PTYPE("cgroup_skb", &g_socket_filter_descr, BPF_PROG_TYPE_CGROUP_SKB, {"cgroup/skb"}),
+    PTYPE("cgroup_sock", &g_cgroup_sock_descr, BPF_PROG_TYPE_CGROUP_SOCK, {"cgroup/sock"}),
+    PTYPE_PRIVILEGED("kprobe", &g_kprobe_descr, BPF_PROG_TYPE_KPROBE, {"kprobe/" COMMA "kretprobe/"}),
+    PTYPE("lwt_in", &g_lwt_inout_descr, BPF_PROG_TYPE_LWT_IN, {"lwt_in"}),
+    PTYPE("lwt_out", &g_lwt_inout_descr, BPF_PROG_TYPE_LWT_OUT, {"lwt_out"}),
+    PTYPE("lwt_xmit", &g_lwt_xmit_descr, BPF_PROG_TYPE_LWT_XMIT, {"lwt_xmit"}),
+    PTYPE("perf_event", &g_perf_event_descr, BPF_PROG_TYPE_PERF_EVENT, {"perf_section" COMMA "perf_event"}),
+    PTYPE("sched_act", &g_sched_descr, BPF_PROG_TYPE_SCHED_ACT, {"action"}),
+    PTYPE("sched_cls", &g_sched_descr, BPF_PROG_TYPE_SCHED_CLS, {"classifier"}),
+    PTYPE("sk_skb", &g_sk_skb_descr, BPF_PROG_TYPE_SK_SKB, {"sk_skb"}),
+    PTYPE("sock_ops", &g_sock_ops_descr, BPF_PROG_TYPE_SOCK_OPS, {"sockops"}),
+    PTYPE("tracepoint", &g_tracepoint_descr, BPF_PROG_TYPE_TRACEPOINT, {"tracepoint/"}),
 
     // The following types are currently mapped to the socket filter program
     // type but should be mapped to the relevant native linux program type
     // value.
-    PTYPE("sk_msg", sk_msg_md, BPF_PROG_TYPE_SOCKET_FILTER, {"sk_msg"}),
-    PTYPE("raw_tracepoint", tracepoint_descr, BPF_PROG_TYPE_SOCKET_FILTER, {"raw_tracepoint/"}),
-    PTYPE("cgroup_sock_addr", cgroup_sock_descr, BPF_PROG_TYPE_SOCKET_FILTER, {}),
-    PTYPE("lwt_seg6local", lwt_xmit_descr, BPF_PROG_TYPE_SOCKET_FILTER, {"lwt_seg6local"}),
-    PTYPE("lirc_mode2", sk_msg_md, BPF_PROG_TYPE_SOCKET_FILTER, {"lirc_mode2"}),
+    PTYPE("sk_msg", &g_sk_msg_md, BPF_PROG_TYPE_SOCKET_FILTER, {"sk_msg"}),
+    PTYPE("raw_tracepoint", &g_tracepoint_descr, BPF_PROG_TYPE_SOCKET_FILTER, {"raw_tracepoint/"}),
+    PTYPE("cgroup_sock_addr", &g_cgroup_sock_descr, BPF_PROG_TYPE_SOCKET_FILTER, {}),
+    PTYPE("lwt_seg6local", &g_lwt_xmit_descr, BPF_PROG_TYPE_SOCKET_FILTER, {"lwt_seg6local"}),
+    PTYPE("lirc_mode2", &g_sk_msg_md, BPF_PROG_TYPE_SOCKET_FILTER, {"lirc_mode2"}),
 };
 
 static EbpfProgramType get_program_type_linux(const std::string& section, const std::string& path) {
