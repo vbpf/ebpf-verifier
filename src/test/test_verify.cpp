@@ -18,7 +18,7 @@ FAIL_LOAD_ELF("cilium", "not-found.o", "2/1")
 FAIL_LOAD_ELF("cilium", "bpf_lxc.o", "not-found")
 
 #define FAIL_UNMARSHAL(dirname, filename, sectionname) \
-    TEST_CASE("Try unmarshaling bad program: " dirname "/" filename, "[unmarshal]") { \
+    TEST_CASE("Try unmarshalling bad program: " dirname "/" filename, "[unmarshal]") { \
         auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &g_ebpf_platform_linux); \
         REQUIRE(raw_progs.size() == 1); \
         raw_program raw_prog = raw_progs.back(); \
