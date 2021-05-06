@@ -454,6 +454,12 @@ TEST_SECTION_REJECT("build", "exposeptr2.o", ".text")
 TEST_SECTION_REJECT("build", "mapvalue-overrun.o", ".text")
 TEST_SECTION_REJECT("build", "nullmapref.o", "test")
 
+// Test some programs that ought to fail verification but
+// are currently allowed through.  These should be changed
+// to TEST_SECTION_REJECT() or FAIL_LOAD_ELF() once fixed.
+
+TEST_SECTION("build", "badrelo.o", ".text")
+
 // The following eBPF programs currently fail verification.
 // If the verifier is later updated to accept them, these should
 // be changed to TEST_SECTION().
