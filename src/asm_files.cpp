@@ -102,12 +102,28 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
         if (prelocs) {
             ELFIO::const_relocation_section_accessor reloc{reader, prelocs};
             ELFIO::Elf64_Addr offset;
+            ELFIO::Elf64_Addr value{};
             ELFIO::Elf_Word symbol{};
             ELFIO::Elf_Word type;
+            ELFIO::Elf_Xword size{};
             ELFIO::Elf_Sxword addend;
             for (ELFIO::Elf_Xword i = 0; i < reloc.get_entries_num(); i++) {
                 if (reloc.get_entry(i, offset, symbol, type, addend)) {
                     ebpf_inst& inst = prog.prog[offset / sizeof(ebpf_inst)];
+
+                    if ((inst.opcode & INST_CLS_MASK) == INST_CLS_JMP) {
+                        string symbol_name;
+                        unsigned char symbol_bind{};
+                        unsigned char symbol_type{};
+                        ELFIO::Elf_Half section_index{};
+                        unsigned char other{};
+
+                        symbols.get_symbol(symbol, symbol_name, value, size, symbol_bind, symbol_type, section_index, other);
+
+                        throw std::runtime_error(string("Unresolved external function call " + symbol_name
+                                                 + " at location " + std::to_string(offset / sizeof(ebpf_inst))));
+                    }
+
                     inst.src = 1; // magic number for LoadFd
 
                     size_t reloc_value = read_reloc_value(symbol);
