@@ -109,19 +109,21 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
                 if (reloc.get_entry(i, offset, symbol, type, addend)) {
                     ebpf_inst& inst = prog.prog[offset / sizeof(ebpf_inst)];
 
-                    if ((inst.opcode & INST_CLS_MASK) == INST_CLS_JMP) {
-                        string symbol_name;
-                        ELFIO::Elf64_Addr symbol_value{};
-                        unsigned char symbol_bind{};
-                        unsigned char symbol_type{};
-                        ELFIO::Elf_Half symbol_section_index{};
-                        unsigned char symbol_other{};
-                        ELFIO::Elf_Xword symbol_size{};
+                    string symbol_name;
+                    ELFIO::Elf64_Addr symbol_value{};
+                    unsigned char symbol_bind{};
+                    unsigned char symbol_type{};
+                    ELFIO::Elf_Half symbol_section_index{};
+                    unsigned char symbol_other{};
+                    ELFIO::Elf_Xword symbol_size{};
 
-                        symbols.get_symbol(symbol, symbol_name, symbol_value, symbol_size, symbol_bind, symbol_type, symbol_section_index, symbol_other);
+                    symbols.get_symbol(symbol, symbol_name, symbol_value, symbol_size, symbol_bind, symbol_type,
+                                       symbol_section_index, symbol_other);
 
-                        throw std::runtime_error(string("Unresolved external function call " + symbol_name
-                                                 + " at location " + std::to_string(offset / sizeof(ebpf_inst))));
+                    // Only perform relocation for symbols located in the maps section.
+                    if (symbol_section_index != maps_section->get_index()) {
+                        throw std::runtime_error(string("Unresolved external symbol " + symbol_name +
+                                                        " at location " + std::to_string(offset / sizeof(ebpf_inst))));
                     }
 
                     inst.src = 1; // magic number for LoadFd
