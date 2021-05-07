@@ -18,11 +18,11 @@ using std::vector;
 
 std::ostream& operator<<(std::ostream& os, ArgSingle::Kind kind) {
     switch (kind) {
-    case ArgSingle::Kind::ANYTHING: return os << "";
-    case ArgSingle::Kind::PTR_TO_CTX: return os << "CTX";
-    case ArgSingle::Kind::MAP_FD: return os << "FD";
-    case ArgSingle::Kind::PTR_TO_MAP_KEY: return os << "K";
-    case ArgSingle::Kind::PTR_TO_MAP_VALUE: return os << "V";
+    case ArgSingle::Kind::ANYTHING: return os << "uint64_t";
+    case ArgSingle::Kind::PTR_TO_CTX: return os << "ctx";
+    case ArgSingle::Kind::MAP_FD: return os << "map_fd";
+    case ArgSingle::Kind::PTR_TO_MAP_KEY: return os << "map_key";
+    case ArgSingle::Kind::PTR_TO_MAP_VALUE: return os << "map_value";
     }
     assert(false);
     return os;
@@ -30,26 +30,24 @@ std::ostream& operator<<(std::ostream& os, ArgSingle::Kind kind) {
 
 std::ostream& operator<<(std::ostream& os, ArgPair::Kind kind) {
     switch (kind) {
-    case ArgPair::Kind::PTR_TO_MEM: return os << "MEM";
-    case ArgPair::Kind::PTR_TO_MEM_OR_NULL: return os << "MEM?";
-    case ArgPair::Kind::PTR_TO_UNINIT_MEM: return os << "OUT";
+    case ArgPair::Kind::PTR_TO_MEM: return os << "mem";
+    case ArgPair::Kind::PTR_TO_MEM_OR_NULL: return os << "mem?";
+    case ArgPair::Kind::PTR_TO_UNINIT_MEM: return os << "out";
     }
     assert(false);
     return os;
 }
 
 std::ostream& operator<<(std::ostream& os, ArgSingle arg) {
-    os << arg.reg;
-    if (arg.kind != ArgSingle::Kind::ANYTHING)
-        os << ":" << arg.kind;
+    os << arg.kind << " " << arg.reg;
     return os;
 }
 
 std::ostream& operator<<(std::ostream& os, ArgPair arg) {
-    os << arg.mem << " is " << arg.kind << "[" << arg.size;
+    os << arg.kind << " " << arg.mem << "[" << arg.size;
     if (arg.can_be_zero)
         os << "?";
-    os << "]";
+    os << "], uint64_t " << arg.size;
     return os;
 }
 
@@ -185,18 +183,29 @@ struct InstructionPrinterVisitor {
 
     void operator()(Call const& call) {
         os_ << "r0 = " << call.name << ":" << call.func << "(";
-        bool first = true;
-        for (auto single : call.singles) {
-            if (!first)
-                os_ << ", ";
-            first = false;
-            os_ << single;
-        }
-        for (auto pair : call.pairs) {
-            if (!first)
-                os_ << ", ";
-            first = false;
-            os_ << pair;
+        for (uint8_t r = 1; r <= 5; r++) {
+            // Look for a singleton.
+            std::vector<ArgSingle>::const_iterator single =
+                std::find_if(call.singles.begin(), call.singles.end(), [r](ArgSingle arg) { return arg.reg.v == r; });
+            if (single != call.singles.end()) {
+                if (r > 1)
+                    os_ << ", ";
+                os_ << *single;
+                continue;
+            }
+
+            // Look for the start of a pair.
+            std::vector<ArgPair>::const_iterator pair =
+                std::find_if(call.pairs.begin(), call.pairs.end(), [r](ArgPair arg) { return arg.mem.v == r; });
+            if (pair != call.pairs.end()) {
+                if (r > 1)
+                    os_ << ", ";
+                os_ << *pair;
+                continue;
+            }
+
+            // Not found.
+            break;
         }
         os_ << ")";
     }
