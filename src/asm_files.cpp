@@ -126,6 +126,12 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
                                                         " at location " + std::to_string(offset / sizeof(ebpf_inst))));
                     }
 
+                    // Only permit loading the address of the map.
+                    if ((inst.opcode & INST_CLS_MASK) != INST_CLS_LD)
+                    {
+                        throw std::runtime_error(string("Illegal operation on symbol " + symbol_name +
+                                                        " at location " + std::to_string(offset / sizeof(ebpf_inst))));
+                    }
                     inst.src = 1; // magic number for LoadFd
 
                     size_t reloc_value = read_reloc_value(symbol);
