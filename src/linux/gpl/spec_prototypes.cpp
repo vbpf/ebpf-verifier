@@ -1155,6 +1155,7 @@ static const struct EbpfHelperPrototype bpf_skb_change_head_proto = {
         EbpfHelperArgumentType::ANYTHING,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .reallocate_packet = true,
     .context_descriptor = &g_sk_buff
 };
 
@@ -1178,6 +1179,7 @@ static const struct EbpfHelperPrototype bpf_xdp_adjust_head_proto = {
         EbpfHelperArgumentType::PTR_TO_CTX,
         EbpfHelperArgumentType::ANYTHING,
     },
+    .reallocate_packet = true,
     .context_descriptor = &g_xdp_descr
 };
 
