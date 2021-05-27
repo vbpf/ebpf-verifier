@@ -33,6 +33,7 @@ struct checks_db final {
     std::map<label_t, std::vector<std::string>> m_db;
     int total_warnings{};
     int total_unreachable{};
+    int max_instruction_count{};
     std::set<label_t> maybe_nonterminating;
 
     void add(const label_t& label, const std::string& msg) {
@@ -91,12 +92,20 @@ static checks_db generate_report(std::ostream& s,
         });
 
         if (thread_local_options.check_termination) {
-            bool pre_join_terminates = false;
-            for (const label_t& prev_label : bb.prev_blocks_set())
-                pre_join_terminates |= preconditions.at(prev_label).terminates();
+            // Pinpoint the places where divergence might occur.
+            int min_instruction_count_upper_bound = INT_MAX;
+            for (const label_t& prev_label : bb.prev_blocks_set()) {
+                int instruction_count = preconditions.at(prev_label).get_instruction_count_upper_bound();
+                min_instruction_count_upper_bound = std::min(min_instruction_count_upper_bound, instruction_count);
+            }
 
-            if (pre_join_terminates && !from_inv.terminates())
+            constexpr int max_instructions = 100000;
+            int instruction_count_upper_bound = from_inv.get_instruction_count_upper_bound();
+            if ((min_instruction_count_upper_bound < max_instructions) &&
+                (instruction_count_upper_bound >= max_instructions))
                 m_db.add_nontermination(label);
+
+            m_db.max_instruction_count = std::max(m_db.max_instruction_count, instruction_count_upper_bound);
         }
 
         bool pre_bot = from_inv.is_bottom();
@@ -168,7 +177,7 @@ bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, program_info info, const ebp
 
 /// Returned value is true if the program passes verification.
 bool ebpf_verify_program(std::ostream& s, const InstructionSeq& prog, program_info info,
-                         const ebpf_verifier_options_t* options) {
+                         const ebpf_verifier_options_t* options, ebpf_verifier_stats_t* stats) {
     if (options == nullptr)
         options = &ebpf_verifier_default_options;
 
@@ -179,6 +188,11 @@ bool ebpf_verify_program(std::ostream& s, const InstructionSeq& prog, program_in
     checks_db report = get_ebpf_report(s, cfg, info, options);
     if (options->print_failures) {
         print_report(s, report, prog);
+    }
+    if (stats) {
+        stats->total_unreachable = report.total_unreachable;
+        stats->total_warnings = report.total_warnings;
+        stats->max_instruction_count = report.max_instruction_count;
     }
     return (report.total_warnings == 0);
 }
