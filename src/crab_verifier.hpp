@@ -8,7 +8,8 @@
 
 bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options);
 
-bool ebpf_verify_program(std::ostream& s, const InstructionSeq& prog, program_info info, const ebpf_verifier_options_t* options);
+bool ebpf_verify_program(std::ostream& s, const InstructionSeq& prog, program_info info, const ebpf_verifier_options_t* options,
+    ebpf_verifier_stats_t* stats);
 
 int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries, ebpf_verifier_options_t options);
 
