@@ -6,7 +6,8 @@
 #include "crab/cfg.hpp"
 #include "spec_type_descriptors.hpp"
 
-bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options);
+bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options,
+    ebpf_verifier_stats_t* stats);
 
 bool ebpf_verify_program(std::ostream& s, const InstructionSeq& prog, program_info info, const ebpf_verifier_options_t* options,
     ebpf_verifier_stats_t* stats);

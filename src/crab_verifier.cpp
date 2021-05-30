@@ -168,10 +168,16 @@ static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info,
 }
 
 /// Returned value is true if the program passes verification.
-bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options) {
+bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options,
+                       ebpf_verifier_stats_t* stats) {
     if (options == nullptr)
         options = &ebpf_verifier_default_options;
     checks_db report = get_ebpf_report(s, cfg, info, options);
+    if (stats) {
+        stats->total_unreachable = report.total_unreachable;
+        stats->total_warnings = report.total_warnings;
+        stats->max_instruction_count = report.max_instruction_count;
+    }
     return (report.total_warnings == 0);
 }
 
