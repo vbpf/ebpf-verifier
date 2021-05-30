@@ -27,8 +27,12 @@ TEST_CASE("Trivial infinite loop", "[loop][termination]") {
         .platform = &g_ebpf_platform_linux,
         .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")
     };
-    bool pass = run_ebpf_analysis(std::cout, cfg, info, &options);
+    ebpf_verifier_stats_t stats;
+    bool pass = run_ebpf_analysis(std::cout, cfg, info, &options, &stats);
     REQUIRE_FALSE(pass);
+    REQUIRE(stats.max_instruction_count == INT_MAX);
+    REQUIRE(stats.total_unreachable == 0);
+    REQUIRE(stats.total_warnings == 1);
 }
 
 TEST_CASE("Trivial finite loop", "[loop][termination]") {
@@ -56,6 +60,10 @@ TEST_CASE("Trivial finite loop", "[loop][termination]") {
         .platform = &g_ebpf_platform_linux,
         .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")
     };
-    bool pass = run_ebpf_analysis(std::cout, cfg, info, &options);
+    ebpf_verifier_stats_t stats;
+    bool pass = run_ebpf_analysis(std::cout, cfg, info, &options, &stats);
     REQUIRE(pass);
+    REQUIRE(stats.max_instruction_count == 3);
+    REQUIRE(stats.total_unreachable == 1);
+    REQUIRE(stats.total_warnings == 0);
 }

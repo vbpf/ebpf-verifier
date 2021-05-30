@@ -38,8 +38,7 @@ FAIL_UNMARSHAL("build", "wronghelper.o", "xdp")
         std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog); \
         REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error)); \
         auto& prog = std::get<InstructionSeq>(prog_or_error); \
-        cfg_t cfg = prepare_cfg(prog, raw_prog.info, true); \
-        bool res = run_ebpf_analysis(std::cout, cfg, raw_prog.info, options); \
+        bool res = ebpf_verify_program(std::cout, prog, raw_prog.info, options, nullptr); \
         if (pass)                                            \
             REQUIRE(res);                                    \
         else                                                 \
@@ -470,7 +469,7 @@ TEST_SECTION_FAIL("prototype-kernel", "xdp_ddos01_blacklist_kern.o", ".text")
 TEST_SECTION_FAIL("prototype-kernel", "xdp_ddos01_blacklist_kern.o", "xdp_prog")
 
 void test_analyze_thread(cfg_t* cfg, program_info* info, bool* res) {
-    *res = run_ebpf_analysis(std::cout, *cfg, *info, nullptr);
+    *res = run_ebpf_analysis(std::cout, *cfg, *info, nullptr, nullptr);
 }
 
 // Test multithreading
