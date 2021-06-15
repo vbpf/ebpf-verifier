@@ -52,6 +52,11 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
   set(SANITIZE_FLAGS -fsanitize=address -O1 -fno-omit-frame-pointer)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++latest")
+
+  # Make debug builds use static C runtime libs to avoid having
+  # to install them.  Release builds don't need this because
+  # the release DLLs are included in Windows.
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
 endif ()
 
 add_library(ebpfverifier ${LIB_SRC})
