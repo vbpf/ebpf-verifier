@@ -703,7 +703,7 @@ class ebpf_domain_t final {
         if (inv.is_bottom())
             return inv;
 
-        const EbpfContextDescriptor* desc = global_program_info.type.context_descriptor;
+        const ebpf_context_descriptor_t* desc = global_program_info.type.context_descriptor;
 
         inv -= target.value;
 
