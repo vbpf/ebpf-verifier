@@ -25,27 +25,27 @@ constexpr int cgroup_sock_regions = 12 * 4;
 constexpr int sock_ops_regions = 42 * 4 + 2 * 8;
 constexpr int sk_skb_regions = 36 * 4;
 
-constexpr EbpfContextDescriptor sk_buff = {sk_skb_regions, 19 * 4, 20 * 4, 35 * 4};
-constexpr EbpfContextDescriptor xdp_md = {xdp_regions, 0, 1 * 4, 2 * 4};
-constexpr EbpfContextDescriptor sk_msg_md = {17 * 4, 0, 1 * 8, -1}; // TODO: verify
-constexpr EbpfContextDescriptor unspec_descr = {0};
-constexpr EbpfContextDescriptor cgroup_dev_descr = {cgroup_dev_regions};
-constexpr EbpfContextDescriptor kprobe_descr = {kprobe_regions};
-constexpr EbpfContextDescriptor tracepoint_descr = {tracepoint_regions};
-constexpr EbpfContextDescriptor perf_event_descr = {perf_event_regions};
-constexpr EbpfContextDescriptor cgroup_sock_descr = {cgroup_sock_regions};
-constexpr EbpfContextDescriptor sock_ops_descr = {sock_ops_regions};
+constexpr ebpf_context_descriptor_t sk_buff = {sk_skb_regions, 19 * 4, 20 * 4, 35 * 4};
+constexpr ebpf_context_descriptor_t xdp_md = {xdp_regions, 0, 1 * 4, 2 * 4};
+constexpr ebpf_context_descriptor_t sk_msg_md = {17 * 4, 0, 1 * 8, -1}; // TODO: verify
+constexpr ebpf_context_descriptor_t unspec_descr = {0, -1, -1, -1};
+constexpr ebpf_context_descriptor_t cgroup_dev_descr = {cgroup_dev_regions, -1, -1, -1};
+constexpr ebpf_context_descriptor_t kprobe_descr = {kprobe_regions, -1, -1, -1};
+constexpr ebpf_context_descriptor_t tracepoint_descr = {tracepoint_regions, -1, -1, -1};
+constexpr ebpf_context_descriptor_t perf_event_descr = {perf_event_regions, -1, -1, -1};
+constexpr ebpf_context_descriptor_t cgroup_sock_descr = {cgroup_sock_regions, -1, -1, -1};
+constexpr ebpf_context_descriptor_t sock_ops_descr = {sock_ops_regions, -1, -1, -1};
 
-extern const EbpfContextDescriptor g_sk_buff;
-extern const EbpfContextDescriptor g_xdp_md;
-extern const EbpfContextDescriptor g_sk_msg_md;
-extern const EbpfContextDescriptor g_unspec_descr;
-extern const EbpfContextDescriptor g_cgroup_dev_descr;
-extern const EbpfContextDescriptor g_kprobe_descr;
-extern const EbpfContextDescriptor g_tracepoint_descr;
-extern const EbpfContextDescriptor g_perf_event_descr;
-extern const EbpfContextDescriptor g_cgroup_sock_descr;
-extern const EbpfContextDescriptor g_sock_ops_descr;
+extern const ebpf_context_descriptor_t g_sk_buff;
+extern const ebpf_context_descriptor_t g_xdp_md;
+extern const ebpf_context_descriptor_t g_sk_msg_md;
+extern const ebpf_context_descriptor_t g_unspec_descr;
+extern const ebpf_context_descriptor_t g_cgroup_dev_descr;
+extern const ebpf_context_descriptor_t g_kprobe_descr;
+extern const ebpf_context_descriptor_t g_tracepoint_descr;
+extern const ebpf_context_descriptor_t g_perf_event_descr;
+extern const ebpf_context_descriptor_t g_cgroup_sock_descr;
+extern const ebpf_context_descriptor_t g_sock_ops_descr;
 
 // The following all used the sk_buff descriptor and so the ctx is apparently interchangeable.
 #define g_socket_filter_descr g_sk_buff

@@ -4,6 +4,7 @@
 
 #include <string>
 #include <vector>
+#include "ebpf_base.h"
 #include "ebpf_vm_isa.hpp"
 
 constexpr int EBPF_STACK_SIZE = 512;
@@ -24,18 +25,9 @@ struct EbpfMapDescriptor {
     unsigned int inner_map_fd;
 };
 
-// The following struct describes how to access the layout in
-// memory of the data (e.g., the actual packet).
-struct EbpfContextDescriptor {
-    int size{};     // Size of ctx struct.
-    int data = -1;  // Offset into ctx struct of pointer to data.
-    int end = -1;   // Offset into ctx struct of pointer to end of data.
-    int meta = -1;  // Offset into ctx struct of pointer to metadata.
-};
-
 struct EbpfProgramType {
     std::string name; // For ease of display, not used by the verifier.
-    const EbpfContextDescriptor* context_descriptor;
+    const ebpf_context_descriptor_t* context_descriptor;
     uint64_t platform_specific_data; // E.g., integer program type.
     std::vector<std::string> section_prefixes;
     bool is_privileged;
