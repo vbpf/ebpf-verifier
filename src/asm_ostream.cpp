@@ -356,7 +356,7 @@ void print(const InstructionSeq& insts, std::ostream& out, std::optional<const l
                 out << std::setw(8) << pc << ":\t";
             }
             if (std::holds_alternative<Jmp>(ins)) {
-                auto jmp = std::get<Jmp>(ins);
+                auto const& jmp = std::get<Jmp>(ins);
                 if (pc_of_label.count(jmp.target) == 0)
                     throw std::runtime_error(string("Cannot find label ") + to_string(jmp.target));
                 pc_t target_pc = pc_of_label.at(jmp.target);
