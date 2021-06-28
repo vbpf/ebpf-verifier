@@ -220,7 +220,7 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
                     res["adjust_head"] = 1;
             }
             if (std::holds_alternative<Bin>(ins)) {
-                auto bin = std::get<Bin>(ins);
+                auto const& bin = std::get<Bin>(ins);
                 res[bin.is64 ? "arith64" : "arith32"]++;
             }
             res[instype(ins)]++;

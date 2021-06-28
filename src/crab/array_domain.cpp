@@ -284,7 +284,7 @@ array_domain_t::kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const lin
     }
     if (!cells.empty()) {
         // Forget the scalars from the numerical domain
-        for (auto c : cells) {
+        for (auto const& c : cells) {
             inv -= c.get_scalar(kind);
         }
         // Remove the cells. If needed again they they will be re-created.

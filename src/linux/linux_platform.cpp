@@ -157,7 +157,7 @@ void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, c
     }
 
     auto mapdefs = std::vector<bpf_load_map_def>((bpf_load_map_def*)data, (bpf_load_map_def*)(data + size));
-    for (auto s : mapdefs) {
+    for (auto const& s : mapdefs) {
         EbpfMapType type = get_map_type_linux(s.type);
         map_descriptors.emplace_back(EbpfMapDescriptor{
             .original_fd = create_map_linux(s.type, s.key_size, s.value_size, s.max_entries, options),
