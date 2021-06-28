@@ -7,7 +7,7 @@
 .*\.pdf$
 
 # Directories using MIT license but with a separate Copyright
-external/elfio
+external/ELFIO
 
 # Directories using GPL
 src/linux/gpl
