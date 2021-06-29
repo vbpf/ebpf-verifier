@@ -105,14 +105,17 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
             ELFIO::Elf_Word symbol{};
             ELFIO::Elf_Word type;
             ELFIO::Elf_Sxword addend;
+            // Fetch and store relocation count locally to permit static
+            // analysis tools to correctly reason about the code below.
+            ELFIO::Elf_Xword relocation_count = reloc.get_entries_num();
 
             // Below, only relocations of symbols located in the maps section are allowed,
             // so if there are relocations there needs to be a "maps" section.
-            if (reloc.get_entries_num() && !maps_section) {
+            if (relocation_count && !maps_section) {
                 throw std::runtime_error(string("Can't find any maps sections in file ") + path);
             }
 
-            for (ELFIO::Elf_Xword i = 0; i < reloc.get_entries_num(); i++) {
+            for (ELFIO::Elf_Xword i = 0; i < relocation_count; i++) {
                 if (reloc.get_entry(i, offset, symbol, type, addend)) {
                     ebpf_inst& inst = prog.prog[offset / sizeof(ebpf_inst)];
 
