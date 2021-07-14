@@ -28,6 +28,6 @@ TEST_CASE("Trivial loop: middle", "[sanity][loop]") {
         .platform = &g_ebpf_platform_linux,
         .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")
     };
-    bool pass = run_ebpf_analysis(std::cout, cfg, info, &options);
+    bool pass = run_ebpf_analysis(std::cout, cfg, info, &options, nullptr);
     REQUIRE(pass);
 }

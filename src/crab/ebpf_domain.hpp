@@ -404,10 +404,9 @@ class ebpf_domain_t final {
         }
     }
 
-    bool terminates() {
-        using namespace crab::dsl_syntax;
-        constexpr int max_instructions = 100000;
-        return m_inv.entail(variable_t::instruction_count() <= max_instructions);
+    int get_instruction_count_upper_bound() {
+        const auto& ub = m_inv[variable_t::instruction_count()].ub();
+        return (ub.is_finite() && ub.number().value().fits_sint()) ? (int)ub.number().value() : INT_MAX;
     }
 
     void operator()(Assume const& s) {
@@ -713,7 +712,7 @@ class ebpf_domain_t final {
         if (inv.is_bottom())
             return inv;
 
-        const EbpfContextDescriptor* desc = global_program_info.type.context_descriptor;
+        const ebpf_context_descriptor_t* desc = global_program_info.type.context_descriptor;
 
         inv -= target.value;
 

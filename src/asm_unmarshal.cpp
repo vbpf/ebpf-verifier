@@ -272,22 +272,22 @@ struct Unmarshaller {
         };
     }
 
-    static ArgSingle::Kind toArgSingleKind(EbpfHelperArgumentType t) {
+    static ArgSingle::Kind toArgSingleKind(ebpf_argument_type_t t) {
         switch (t) {
-        case EbpfHelperArgumentType::ANYTHING: return ArgSingle::Kind::ANYTHING;
-        case EbpfHelperArgumentType::PTR_TO_MAP: return ArgSingle::Kind::MAP_FD;
-        case EbpfHelperArgumentType::PTR_TO_MAP_KEY: return ArgSingle::Kind::PTR_TO_MAP_KEY;
-        case EbpfHelperArgumentType::PTR_TO_MAP_VALUE: return ArgSingle::Kind::PTR_TO_MAP_VALUE;
-        case EbpfHelperArgumentType::PTR_TO_CTX: return ArgSingle::Kind::PTR_TO_CTX;
+        case EBPF_ARGUMENT_TYPE_ANYTHING: return ArgSingle::Kind::ANYTHING;
+        case EBPF_ARGUMENT_TYPE_PTR_TO_MAP: return ArgSingle::Kind::MAP_FD;
+        case EBPF_ARGUMENT_TYPE_PTR_TO_MAP_KEY: return ArgSingle::Kind::PTR_TO_MAP_KEY;
+        case EBPF_ARGUMENT_TYPE_PTR_TO_MAP_VALUE: return ArgSingle::Kind::PTR_TO_MAP_VALUE;
+        case EBPF_ARGUMENT_TYPE_PTR_TO_CTX: return ArgSingle::Kind::PTR_TO_CTX;
         default: break;
         }
         return {};
     }
-    static ArgPair::Kind toArgPairKind(EbpfHelperArgumentType t) {
+    static ArgPair::Kind toArgPairKind(ebpf_argument_type_t t) {
         switch (t) {
-        case EbpfHelperArgumentType::PTR_TO_MEM_OR_NULL: return ArgPair::Kind::PTR_TO_MEM_OR_NULL;
-        case EbpfHelperArgumentType::PTR_TO_MEM: return ArgPair::Kind::PTR_TO_MEM;
-        case EbpfHelperArgumentType::PTR_TO_UNINIT_MEM: return ArgPair::Kind::PTR_TO_UNINIT_MEM;
+        case EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL: return ArgPair::Kind::PTR_TO_MEM_OR_NULL;
+        case EBPF_ARGUMENT_TYPE_PTR_TO_MEM: return ArgPair::Kind::PTR_TO_MEM;
+        case EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM: return ArgPair::Kind::PTR_TO_UNINIT_MEM;
         default: break;
         }
         return {};
@@ -298,30 +298,32 @@ struct Unmarshaller {
         Call res;
         res.func = imm;
         res.name = proto.name;
-        res.returns_map = proto.return_type == EbpfHelperReturnType::PTR_TO_MAP_VALUE_OR_NULL;
         res.reallocate_packet = proto.reallocate_packet;
-        std::array<EbpfHelperArgumentType, 7> args = {{
-            EbpfHelperArgumentType::DONTCARE,
+        res.returns_map = proto.return_type == EBPF_RETURN_TYPE_PTR_TO_MAP_VALUE_OR_NULL;
+        std::array<ebpf_argument_type_t, 7> args = {{
+            EBPF_ARGUMENT_TYPE_DONTCARE,
             proto.argument_type[0],
             proto.argument_type[1],
             proto.argument_type[2],
             proto.argument_type[3],
             proto.argument_type[4],
-            EbpfHelperArgumentType::DONTCARE}};
+            EBPF_ARGUMENT_TYPE_DONTCARE}};
         for (size_t i = 1; i < args.size() - 1; i++) {
             switch (args[i]) {
-            case EbpfHelperArgumentType::DONTCARE: return res;
-            case EbpfHelperArgumentType::ANYTHING:
-            case EbpfHelperArgumentType::PTR_TO_MAP:
-            case EbpfHelperArgumentType::PTR_TO_MAP_KEY:
-            case EbpfHelperArgumentType::PTR_TO_MAP_VALUE:
-            case EbpfHelperArgumentType::PTR_TO_CTX: res.singles.push_back({toArgSingleKind(args[i]), Reg{(uint8_t)i}}); break;
-            case EbpfHelperArgumentType::CONST_SIZE: assert(false); continue;
-            case EbpfHelperArgumentType::CONST_SIZE_OR_ZERO: assert(false); continue;
-            case EbpfHelperArgumentType::PTR_TO_MEM_OR_NULL:
-            case EbpfHelperArgumentType::PTR_TO_MEM:
-            case EbpfHelperArgumentType::PTR_TO_UNINIT_MEM:
-                bool can_be_zero = (args[i + 1] == EbpfHelperArgumentType::CONST_SIZE_OR_ZERO);
+            case EBPF_ARGUMENT_TYPE_DONTCARE: return res;
+            case EBPF_ARGUMENT_TYPE_ANYTHING:
+            case EBPF_ARGUMENT_TYPE_PTR_TO_MAP:
+            case EBPF_ARGUMENT_TYPE_PTR_TO_MAP_KEY:
+            case EBPF_ARGUMENT_TYPE_PTR_TO_MAP_VALUE:
+            case EBPF_ARGUMENT_TYPE_PTR_TO_CTX:
+                res.singles.push_back({toArgSingleKind(args[i]), Reg{(uint8_t)i}});
+                break;
+            case EBPF_ARGUMENT_TYPE_CONST_SIZE: assert(false); continue;
+            case EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO: assert(false); continue;
+            case EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL:
+            case EBPF_ARGUMENT_TYPE_PTR_TO_MEM:
+            case EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM:
+                bool can_be_zero = (args[i + 1] == EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO);
                 res.pairs.push_back({toArgPairKind(args[i]), Reg{(uint8_t)i}, Reg{(uint8_t)(i + 1)}, can_be_zero});
                 i++;
                 break;

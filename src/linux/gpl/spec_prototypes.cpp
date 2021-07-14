@@ -1,16 +1,16 @@
 #include "platform.hpp"
 #include "spec_type_descriptors.hpp"
 
-const EbpfContextDescriptor g_sk_buff = sk_buff;
-const EbpfContextDescriptor g_xdp_md = xdp_md;
-const EbpfContextDescriptor g_sk_msg_md = sk_msg_md;
-const EbpfContextDescriptor g_unspec_descr = unspec_descr;
-const EbpfContextDescriptor g_cgroup_dev_descr = cgroup_dev_descr;
-const EbpfContextDescriptor g_kprobe_descr = kprobe_descr;
-const EbpfContextDescriptor g_tracepoint_descr = tracepoint_descr;
-const EbpfContextDescriptor g_perf_event_descr = perf_event_descr;
-const EbpfContextDescriptor g_cgroup_sock_descr = cgroup_sock_descr;
-const EbpfContextDescriptor g_sock_ops_descr = sock_ops_descr;
+const ebpf_context_descriptor_t g_sk_buff = sk_buff;
+const ebpf_context_descriptor_t g_xdp_md = xdp_md;
+const ebpf_context_descriptor_t g_sk_msg_md = sk_msg_md;
+const ebpf_context_descriptor_t g_unspec_descr = unspec_descr;
+const ebpf_context_descriptor_t g_cgroup_dev_descr = cgroup_dev_descr;
+const ebpf_context_descriptor_t g_kprobe_descr = kprobe_descr;
+const ebpf_context_descriptor_t g_tracepoint_descr = tracepoint_descr;
+const ebpf_context_descriptor_t g_perf_event_descr = perf_event_descr;
+const ebpf_context_descriptor_t g_cgroup_sock_descr = cgroup_sock_descr;
+const ebpf_context_descriptor_t g_sock_ops_descr = sock_ops_descr;
 
 // eBPF helpers are documented at the following links:
 // https://github.com/iovisor/bpf-docs/blob/master/bpf_helpers.rst
@@ -55,11 +55,11 @@ const struct EbpfHelperPrototype bpf_tail_call_proto = {
     .name = "tail_call",
     //.func		= NULL,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::VOID,
+    .return_type = EBPF_RETURN_TYPE_VOID,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_MAP,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
 };
 
@@ -67,10 +67,10 @@ static const struct EbpfHelperPrototype bpf_override_return_proto = {
     .name = "override_return",
     //.func		= bpf_override_return,
     //.gpl_only	= true,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
 };
 
@@ -86,11 +86,11 @@ static const struct EbpfHelperPrototype bpf_probe_read_proto = {
     .name = "probe_read",
     //.func		= bpf_probe_read,
     //.gpl_only	= true,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_UNINIT_MEM,
-        EbpfHelperArgumentType::CONST_SIZE_OR_ZERO,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
 };
 
@@ -111,11 +111,11 @@ static const struct EbpfHelperPrototype bpf_probe_read_str_proto = {
     .name = "probe_read_str",
     //.func		= bpf_probe_read_str,
     //.gpl_only	= true,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_UNINIT_MEM,
-        EbpfHelperArgumentType::CONST_SIZE_OR_ZERO,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
 };
 
@@ -123,11 +123,11 @@ static const struct EbpfHelperPrototype bpf_probe_write_user_proto = {
     .name = "probe_write_user",
     //.func		= bpf_probe_write_user,
     //.gpl_only	= true,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::PTR_TO_MEM,
-        EbpfHelperArgumentType::CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
 
@@ -139,10 +139,10 @@ static const struct EbpfHelperPrototype bpf_trace_printk_proto = {
     .name = "trace_printk",
     //.func		= bpf_trace_printk,
     //.gpl_only	= true,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_MEM,
-        EbpfHelperArgumentType::CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
 
@@ -150,10 +150,10 @@ static const struct EbpfHelperPrototype bpf_perf_event_read_proto = {
     .name = "perf_event_read",
     //.func		= bpf_perf_event_read,
     //.gpl_only	= true,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_MAP,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
 };
 
@@ -170,12 +170,12 @@ static const struct EbpfHelperPrototype bpf_perf_event_read_value_proto = {
     .name = "perf_event_read_value",
     //.func		= bpf_perf_event_read_value,
     //.gpl_only	= true,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_MAP,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::PTR_TO_UNINIT_MEM,
-        EbpfHelperArgumentType::CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
 
@@ -229,13 +229,13 @@ static const struct EbpfHelperPrototype bpf_perf_event_output_proto = {
     .name = "perf_event_output",
     //.func		= bpf_perf_event_output,
     //.gpl_only	= true,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_MAP,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::PTR_TO_MEM,
-        EbpfHelperArgumentType::CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
     },
 };
 
@@ -248,7 +248,7 @@ static const struct EbpfHelperPrototype bpf_get_current_task_proto = {
     .name = "get_current_task",
     //.func		= bpf_get_current_task,
     //.gpl_only	= true,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
 };
 
 /*
@@ -265,34 +265,34 @@ static const struct EbpfHelperPrototype bpf_current_task_under_cgroup_proto = {
     .name = "current_task_under_cgroup",
     //.func       = bpf_current_task_under_cgroup,
     //.gpl_only   = false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_MAP,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
 };
 
 // static const struct EbpfHelperPrototype bpf_perf_event_output_proto_tp = {
 // 	//.func		= bpf_perf_event_output_tp,
 // 	//.gpl_only	= true,
-// 	.return_type	= EbpfHelperReturnType::INTEGER,
+// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
 // 	.argument_type = {
-// 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::PTR_TO_MAP,
-// 	    EbpfHelperArgumentType::ANYTHING,
-// 	    EbpfHelperArgumentType::PTR_TO_MEM,
-// 	    EbpfHelperArgumentType::CONST_SIZE_OR_ZERO,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+// 	    EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
 // 	},
 // };
 
 // static const struct EbpfHelperPrototype bpf_get_stackid_proto_tp = {
 // 	//.func		= bpf_get_stackid_tp,
 // 	//.gpl_only	= true,
-// 	.return_type	= EbpfHelperReturnType::INTEGER,
+// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
 // 	.argument_type = {
-// 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::PTR_TO_MAP,
-// 	    EbpfHelperArgumentType::ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
 //  },
 // };
 
@@ -300,12 +300,12 @@ static const struct EbpfHelperPrototype bpf_current_task_under_cgroup_proto = {
 // static const struct EbpfHelperPrototype bpf_get_stack_proto_tp = {
 // 	//.func		= bpf_get_stack_tp,
 // 	//.gpl_only	= true,
-// 	.return_type	= EbpfHelperReturnType::INTEGER,
+// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
 // 	.argument_type = {
-// 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::PTR_TO_UNINIT_MEM,
-// 	    EbpfHelperArgumentType::CONST_SIZE_OR_ZERO,
-// 	    EbpfHelperArgumentType::ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+// 	    EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
 //   },
 // };
 
@@ -325,11 +325,11 @@ static const struct EbpfHelperPrototype bpf_perf_prog_read_value_proto = {
     .name = "perf_prog_read_value",
     //.func       = bpf_perf_prog_read_value,
     //.gpl_only   = true,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_UNINIT_MEM,
-        EbpfHelperArgumentType::CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
     .context_descriptor = &g_perf_event_descr
 };
@@ -337,36 +337,36 @@ static const struct EbpfHelperPrototype bpf_perf_prog_read_value_proto = {
 // static const struct EbpfHelperPrototype bpf_perf_event_output_proto_raw_tp = {
 // 	//.func		= bpf_perf_event_output_raw_tp,
 // 	//.gpl_only	= true,
-// 	.return_type	= EbpfHelperReturnType::INTEGER,
+// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
 // 	.argument_type = {
-// 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::PTR_TO_MAP,
-// 	    EbpfHelperArgumentType::ANYTHING,
-// 	    EbpfHelperArgumentType::PTR_TO_MEM,
-// 	    EbpfHelperArgumentType::CONST_SIZE_OR_ZERO,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+// 	    EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
 // 	},
 // };
 
 // static const struct EbpfHelperPrototype bpf_get_stackid_proto_raw_tp = {
 // 	//.func		= bpf_get_stackid_raw_tp,
 // 	//.gpl_only	= true,
-// 	.return_type	= EbpfHelperReturnType::INTEGER,
+// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
 // 	.argument_type = {
-// 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::PTR_TO_MAP,
-// 	    EbpfHelperArgumentType::ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
 //   },
 // };
 
 // static const struct EbpfHelperPrototype bpf_get_stack_proto_raw_tp = {
 // 	//.func		= bpf_get_stack_raw_tp,
 // 	//.gpl_only	= true,
-// 	.return_type	= EbpfHelperReturnType::INTEGER,
+// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
 // 	.argument_type = {
-// 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::PTR_TO_MEM,
-// 	    EbpfHelperArgumentType::CONST_SIZE_OR_ZERO,
-// 	    EbpfHelperArgumentType::ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+// 	    EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
 // 	},
 // };
 
@@ -380,13 +380,13 @@ static const struct EbpfHelperPrototype bpf_map_lookup_elem_proto = {
     .name = "map_lookup_elem",
     //.func		= bpf_map_lookup_elem,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::PTR_TO_MAP_VALUE_OR_NULL,
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_MAP_VALUE_OR_NULL,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_MAP,
-        EbpfHelperArgumentType::PTR_TO_MAP_KEY,
-        EbpfHelperArgumentType::DONTCARE,
-        EbpfHelperArgumentType::DONTCARE,
-        EbpfHelperArgumentType::DONTCARE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP_KEY,
+        EBPF_ARGUMENT_TYPE_DONTCARE,
+        EBPF_ARGUMENT_TYPE_DONTCARE,
+        EBPF_ARGUMENT_TYPE_DONTCARE,
     },
 };
 
@@ -398,13 +398,13 @@ static const struct EbpfHelperPrototype bpf_map_update_elem_proto = {
     .name = "map_update_elem",
     //.func		= bpf_map_update_elem,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_MAP,
-        EbpfHelperArgumentType::PTR_TO_MAP_KEY,
-        EbpfHelperArgumentType::PTR_TO_MAP_VALUE,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::DONTCARE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP_KEY,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP_VALUE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_DONTCARE,
     },
 };
 
@@ -416,13 +416,13 @@ static const struct EbpfHelperPrototype bpf_map_delete_elem_proto = {
     .name = "map_delete_elem",
     //.func		= bpf_map_delete_elem,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_MAP,
-        EbpfHelperArgumentType::PTR_TO_MAP_KEY,
-        EbpfHelperArgumentType::DONTCARE,
-        EbpfHelperArgumentType::DONTCARE,
-        EbpfHelperArgumentType::DONTCARE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP_KEY,
+        EBPF_ARGUMENT_TYPE_DONTCARE,
+        EBPF_ARGUMENT_TYPE_DONTCARE,
+        EBPF_ARGUMENT_TYPE_DONTCARE,
     },
 };
 
@@ -434,21 +434,21 @@ static const struct EbpfHelperPrototype bpf_get_prandom_u32_proto = {
     .name = "get_prandom_u32",
     //.func		= bpf_user_rnd_u32,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
 };
 
 static const struct EbpfHelperPrototype bpf_get_smp_processor_id_proto = {
     .name = "get_smp_processor_id",
     //.func		= bpf_get_smp_processor_id,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
 };
 
 static const struct EbpfHelperPrototype bpf_get_numa_node_id_proto = {
     .name = "get_numa_node_id",
     //.func		= bpf_get_numa_node_id,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
 };
 
 /*
@@ -459,21 +459,21 @@ static const struct EbpfHelperPrototype bpf_ktime_get_ns_proto = {
     .name = "ktime_get_ns",
     //.func		= bpf_ktime_get_ns,
     //.gpl_only	= true,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
 };
 
 static const struct EbpfHelperPrototype bpf_get_current_pid_tgid_proto = {
     .name = "get_current_pid_tgid",
     //.func		= bpf_get_current_pid_tgid,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
 };
 
 static const struct EbpfHelperPrototype bpf_get_current_uid_gid_proto = {
     .name = "get_current_uid_gid",
     //.func		= bpf_get_current_uid_gid,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
 };
 
 /*
@@ -492,10 +492,10 @@ static const struct EbpfHelperPrototype bpf_get_current_comm_proto = {
     .name = "get_current_comm",
     //.func		= bpf_get_current_comm,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_UNINIT_MEM,
-        EbpfHelperArgumentType::CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
 
@@ -503,7 +503,7 @@ static const struct EbpfHelperPrototype bpf_get_current_cgroup_id_proto = {
     .name = "get_current_cgroup_id",
     //.func		= bpf_get_current_cgroup_id,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
 };
 
 /*
@@ -530,13 +530,13 @@ static const struct EbpfHelperPrototype bpf_sock_map_update_proto = {
     .name = "sock_map_update",
     //.func		= bpf_sock_map_update,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_MAP,
-        EbpfHelperArgumentType::PTR_TO_MAP_KEY,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::DONTCARE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP_KEY,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_DONTCARE,
     },
     .context_descriptor = &g_sock_ops_descr
 };
@@ -545,13 +545,13 @@ static const struct EbpfHelperPrototype bpf_sock_hash_update_proto = {
     .name = "sock_hash_update",
     //.func		= bpf_sock_hash_update,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_MAP,
-        EbpfHelperArgumentType::PTR_TO_MAP_KEY,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::DONTCARE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP_KEY,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_DONTCARE,
     },
     .context_descriptor = &g_sock_ops_descr
 };
@@ -573,11 +573,11 @@ static const struct EbpfHelperPrototype bpf_get_stackid_proto = {
     .name = "get_stackid",
     //.func		= bpf_get_stackid,
     //.gpl_only	= true,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_MAP,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
 };
 
@@ -619,12 +619,12 @@ static const struct EbpfHelperPrototype bpf_get_stack_proto = {
     .name = "get_stack",
     //.func		= bpf_get_stack,
     //.gpl_only	= true,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_UNINIT_MEM,
-        EbpfHelperArgumentType::CONST_SIZE_OR_ZERO,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
 };
 
@@ -636,7 +636,7 @@ static const struct EbpfHelperPrototype bpf_get_stack_proto = {
 //     .name = "get_raw_smp_processor_id",
 // 	//.func		= bpf_get_raw_cpu_id,
 // 	//.gpl_only	= false,
-// 	.return_type	= EbpfHelperReturnType::INTEGER,
+// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
 // };
 
 /*
@@ -654,13 +654,13 @@ static const struct EbpfHelperPrototype bpf_skb_store_bytes_proto = {
     .name = "skb_store_bytes",
     //.func		= bpf_skb_store_bytes,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::PTR_TO_MEM,
-        EbpfHelperArgumentType::CONST_SIZE,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -687,12 +687,12 @@ static const struct EbpfHelperPrototype bpf_skb_load_bytes_proto = {
     .name = "skb_load_bytes",
     //.func		= bpf_skb_load_bytes,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::PTR_TO_UNINIT_MEM,
-        EbpfHelperArgumentType::CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -724,13 +724,13 @@ static const struct EbpfHelperPrototype bpf_skb_load_bytes_relative_proto = {
     .name = "skb_load_bytes_relative",
     //.func		= bpf_skb_load_bytes_relative,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::PTR_TO_UNINIT_MEM,
-        EbpfHelperArgumentType::CONST_SIZE,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -739,10 +739,10 @@ static const struct EbpfHelperPrototype bpf_skb_pull_data_proto = {
     .name = "skb_pull_data",
     //.func		= bpf_skb_pull_data,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -750,10 +750,10 @@ static const struct EbpfHelperPrototype bpf_skb_pull_data_proto = {
 // static const struct EbpfHelperPrototype sk_skb_pull_data_proto = {
 // 	//.func		= sk_skb_pull_data,
 // 	//.gpl_only	= false,
-// 	.return_type	= EbpfHelperReturnType::INTEGER,
+// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
 // 	.argument_type = {
-// 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
 // 	},
 // };
 
@@ -772,13 +772,13 @@ static const struct EbpfHelperPrototype bpf_l3_csum_replace_proto = {
     .name = "l3_csum_replace",
     //.func		= bpf_l3_csum_replace,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -799,13 +799,13 @@ static const struct EbpfHelperPrototype bpf_l4_csum_replace_proto = {
     .name = "l4_csum_replace",
     //.func		= bpf_l4_csum_replace,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -824,13 +824,13 @@ static const struct EbpfHelperPrototype bpf_csum_diff_proto = {
     .name = "csum_diff",
     //.func		= bpf_csum_diff,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_MEM_OR_NULL,
-        EbpfHelperArgumentType::CONST_SIZE_OR_ZERO,
-        EbpfHelperArgumentType::PTR_TO_MEM_OR_NULL,
-        EbpfHelperArgumentType::CONST_SIZE_OR_ZERO,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
 };
 
@@ -838,10 +838,10 @@ static const struct EbpfHelperPrototype bpf_csum_update_proto = {
     .name = "csum_update",
     //.func		= bpf_csum_update,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -850,11 +850,11 @@ static const struct EbpfHelperPrototype bpf_clone_redirect_proto = {
     .name = "clone_redirect",
     //.func       = bpf_clone_redirect,
     //.gpl_only   = false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -862,22 +862,22 @@ static const struct EbpfHelperPrototype bpf_redirect_proto = {
     .name = "redirect",
     //.func       = bpf_redirect,
     //.gpl_only   = false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
 };
 static const struct EbpfHelperPrototype bpf_sk_redirect_hash_proto = {
     .name = "sk_redirect_hash",
     //.func       = bpf_sk_redirect_hash,
     //.gpl_only   = false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_MAP,
-        EbpfHelperArgumentType::PTR_TO_MAP_KEY,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP_KEY,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -885,12 +885,12 @@ static const struct EbpfHelperPrototype bpf_sk_redirect_map_proto = {
     .name = "sk_redirect_map",
     //.func       = bpf_sk_redirect_map,
     //.gpl_only   = false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_MAP,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -898,12 +898,12 @@ static const struct EbpfHelperPrototype bpf_msg_redirect_hash_proto = {
     .name = "msg_redirect_hash",
     //.func       = bpf_msg_redirect_hash,
     //.gpl_only   = false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_MAP,
-        EbpfHelperArgumentType::PTR_TO_MAP_KEY,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP_KEY,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_msg_md
 };
@@ -911,12 +911,12 @@ static const struct EbpfHelperPrototype bpf_msg_redirect_map_proto = {
     .name = "msg_redirect_map",
     //.func       = bpf_msg_redirect_map,
     //.gpl_only   = false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_MAP,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_msg_md
 };
@@ -924,10 +924,10 @@ static const struct EbpfHelperPrototype bpf_msg_apply_bytes_proto = {
     .name = "msg_apply_bytes",
     //.func       = bpf_msg_apply_bytes,
     //.gpl_only   = false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_msg_md
 };
@@ -935,10 +935,10 @@ static const struct EbpfHelperPrototype bpf_msg_cork_bytes_proto = {
     .name = "msg_cork_bytes",
     //.func       = bpf_msg_cork_bytes,
     //.gpl_only   = false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_msg_md
 };
@@ -946,12 +946,12 @@ static const struct EbpfHelperPrototype bpf_msg_pull_data_proto = {
     .name = "msg_pull_data",
     //.func		= bpf_msg_pull_data,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_msg_md
 };
@@ -959,25 +959,25 @@ static const struct EbpfHelperPrototype bpf_get_cgroup_classid_proto = {
     .name = "get_cgroup_classid",
     //.func       = bpf_get_cgroup_classid,
     //.gpl_only   = false,
-    .return_type = EbpfHelperReturnType::INTEGER,
-    .argument_type = { EbpfHelperArgumentType::PTR_TO_CTX, },
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = { EBPF_ARGUMENT_TYPE_PTR_TO_CTX, },
     .context_descriptor = &g_sk_buff
 };
 static const struct EbpfHelperPrototype bpf_get_route_realm_proto = {
     .name = "get_route_realm",
     //.func       = bpf_get_route_realm,
     //.gpl_only   = false,
-    .return_type = EbpfHelperReturnType::INTEGER,
-    .argument_type = { EbpfHelperArgumentType::PTR_TO_CTX, },
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = { EBPF_ARGUMENT_TYPE_PTR_TO_CTX, },
     .context_descriptor = &g_sk_buff
 };
 static const struct EbpfHelperPrototype bpf_get_hash_recalc_proto = {
     .name = "get_hash_recalc",
     //.func		= bpf_get_hash_recalc,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -985,9 +985,9 @@ static const struct EbpfHelperPrototype bpf_set_hash_invalid_proto = {
     .name = "set_hash_invalid",
     //.func		= bpf_set_hash_invalid,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -995,10 +995,10 @@ static const struct EbpfHelperPrototype bpf_set_hash_proto = {
     .name = "set_hash",
     //.func		= bpf_set_hash,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1006,11 +1006,11 @@ static const struct EbpfHelperPrototype bpf_skb_vlan_push_proto = {
     .name = "skb_vlan_push",
     //.func       = bpf_skb_vlan_push,
     //.gpl_only   = false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1018,9 +1018,9 @@ static const struct EbpfHelperPrototype bpf_skb_vlan_pop_proto = {
     .name = "skb_vlan_pop",
     //.func       = bpf_skb_vlan_pop,
     //.gpl_only   = false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1040,11 +1040,11 @@ static const struct EbpfHelperPrototype bpf_skb_change_proto_proto = {
     .name = "skb_change_proto",
     //.func		= bpf_skb_change_proto,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1060,10 +1060,10 @@ static const struct EbpfHelperPrototype bpf_skb_change_type_proto = {
     .name = "skb_change_type",
     //.func		= bpf_skb_change_type,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1081,12 +1081,12 @@ static const struct EbpfHelperPrototype bpf_skb_adjust_room_proto = {
     .name = "skb_adjust_room",
     //.func		= bpf_skb_adjust_room,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1104,11 +1104,11 @@ static const struct EbpfHelperPrototype bpf_skb_change_tail_proto = {
     .name = "skb_change_tail",
     //.func		= bpf_skb_change_tail,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1116,11 +1116,11 @@ static const struct EbpfHelperPrototype bpf_skb_change_tail_proto = {
 // static const struct EbpfHelperPrototype sk_skb_change_tail_proto = {
 // 	//.func		= sk_skb_change_tail,
 // 	//.gpl_only	= false,
-// 	.return_type	= EbpfHelperReturnType::INTEGER,
+// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
 // 	.argument_type = {
-// 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::ANYTHING,
-// 	    EbpfHelperArgumentType::ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
 // 	},
 // };
 
@@ -1149,11 +1149,11 @@ static const struct EbpfHelperPrototype bpf_skb_change_head_proto = {
     .name = "skb_change_head",
     //.func		= bpf_skb_change_head,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .reallocate_packet = true,
     .context_descriptor = &g_sk_buff
@@ -1162,11 +1162,11 @@ static const struct EbpfHelperPrototype bpf_skb_change_head_proto = {
 // static const struct EbpfHelperPrototype sk_skb_change_head_proto = {
 // 	//.func		= sk_skb_change_head,
 // 	//.gpl_only	= false,
-// 	.return_type	= EbpfHelperReturnType::INTEGER,
+// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
 // 	.argument_type = {
-// 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::ANYTHING,
-// 	    EbpfHelperArgumentType::ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
 //  },
 // };
 
@@ -1174,10 +1174,10 @@ static const struct EbpfHelperPrototype bpf_xdp_adjust_head_proto = {
     .name = "xdp_adjust_head",
     //.func		= bpf_xdp_adjust_head,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .reallocate_packet = true,
     .context_descriptor = &g_xdp_descr
@@ -1187,10 +1187,10 @@ static const struct EbpfHelperPrototype bpf_xdp_adjust_tail_proto = {
     .name = "xdp_adjust_tail",
     //.func		= bpf_xdp_adjust_tail,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_xdp_descr
 };
@@ -1199,10 +1199,10 @@ static const struct EbpfHelperPrototype bpf_xdp_adjust_meta_proto = {
     .name = "xdp_adjust_meta",
     //.func		= bpf_xdp_adjust_meta,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_xdp_descr
 };
@@ -1211,10 +1211,10 @@ static const struct EbpfHelperPrototype bpf_xdp_adjust_meta_proto = {
 //     .name = "xdp_redirect",
 // 	//.func       = bpf_xdp_redirect,
 // 	//.gpl_only   = false,
-// 	.return_type   = EbpfHelperReturnType::INTEGER,
+// 	.return_type   = EBPF_RETURN_TYPE_INTEGER,
 // 	.argument_type = {
-// 	    EbpfHelperArgumentType::ANYTHING,
-// 	    EbpfHelperArgumentType::ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
 //  },
 // };
 
@@ -1222,11 +1222,11 @@ static const struct EbpfHelperPrototype bpf_xdp_adjust_meta_proto = {
 //     .name = "xdp_redirect_map",
 // 	//.func       = bpf_xdp_redirect_map,
 // 	//.gpl_only   = false,
-// 	.return_type   = EbpfHelperReturnType::INTEGER,
+// 	.return_type   = EBPF_RETURN_TYPE_INTEGER,
 // 	.argument_type = {
-// 	    EbpfHelperArgumentType::PTR_TO_MAP,
-// 	    EbpfHelperArgumentType::ANYTHING,
-// 	    EbpfHelperArgumentType::ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
 // 	},
 // };
 
@@ -1234,13 +1234,13 @@ static const struct EbpfHelperPrototype bpf_xdp_adjust_meta_proto = {
 //     .name = "skb_event_output",
 // 	//.func		= bpf_skb_event_output,
 // 	//.gpl_only	= true,
-// 	.return_type	= EbpfHelperReturnType::INTEGER,
+// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
 // 	.argument_type = {
-// 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::PTR_TO_MAP,
-// 	    EbpfHelperArgumentType::ANYTHING,
-// 	    EbpfHelperArgumentType::PTR_TO_MEM,
-// 	    EbpfHelperArgumentType::CONST_SIZE_OR_ZERO,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+// 	    EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
 // 	},
 // };
 
@@ -1257,12 +1257,12 @@ static const struct EbpfHelperPrototype bpf_skb_get_tunnel_key_proto = {
     .name = "skb_get_tunnel_key",
     //.func		= bpf_skb_get_tunnel_key,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_UNINIT_MEM,
-        EbpfHelperArgumentType::CONST_SIZE,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1279,11 +1279,11 @@ static const struct EbpfHelperPrototype bpf_skb_get_tunnel_opt_proto = {
     .name = "skb_get_tunnel_opt",
     //.func		= bpf_skb_get_tunnel_opt,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_UNINIT_MEM,
-        EbpfHelperArgumentType::CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1301,12 +1301,12 @@ static const struct EbpfHelperPrototype bpf_skb_set_tunnel_key_proto = {
     .name = "skb_set_tunnel_key",
     //.func		= bpf_skb_set_tunnel_key,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_MEM,
-        EbpfHelperArgumentType::CONST_SIZE,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1323,11 +1323,11 @@ static const struct EbpfHelperPrototype bpf_skb_set_tunnel_opt_proto = {
     .name = "skb_set_tunnel_opt",
     //.func		= bpf_skb_set_tunnel_opt,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_MEM,
-        EbpfHelperArgumentType::CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1347,11 +1347,11 @@ static const struct EbpfHelperPrototype bpf_skb_under_cgroup_proto = {
     .name = "skb_under_cgroup",
     //.func		= bpf_skb_under_cgroup,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_MAP,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1360,9 +1360,9 @@ static const struct EbpfHelperPrototype bpf_skb_cgroup_id_proto = {
     .name = "skb_cgroup_id",
     //.func       = bpf_skb_cgroup_id,
     //.gpl_only   = false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1371,13 +1371,13 @@ static const struct EbpfHelperPrototype bpf_skb_cgroup_id_proto = {
 //     .name = "xdp_event_output",
 // 	//.func		= bpf_xdp_event_output,
 // 	//.gpl_only	= true,
-// 	.return_type	= EbpfHelperReturnType::INTEGER,
+// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
 // 	.argument_type = {
-// 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::PTR_TO_MAP,
-// 	    EbpfHelperArgumentType::ANYTHING,
-// 	    EbpfHelperArgumentType::PTR_TO_MEM,
-// 	    EbpfHelperArgumentType::CONST_SIZE_OR_ZERO,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+// 	    EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
 // 	},
 // };
 
@@ -1385,8 +1385,8 @@ static const struct EbpfHelperPrototype bpf_get_socket_cookie_proto = {
     .name = "get_socket_cookie",
     //.func       = bpf_get_socket_cookie,
     //.gpl_only   = false,
-    .return_type = EbpfHelperReturnType::INTEGER,
-    .argument_type = { EbpfHelperArgumentType::PTR_TO_CTX, },
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = { EBPF_ARGUMENT_TYPE_PTR_TO_CTX, },
     .context_descriptor = &g_sk_buff
 };
 
@@ -1394,8 +1394,8 @@ static const struct EbpfHelperPrototype bpf_get_socket_uid_proto = {
     .name = "get_socket_uid",
     //.func       = bpf_get_socket_uid,
     //.gpl_only   = false,
-    .return_type = EbpfHelperReturnType::INTEGER,
-    .argument_type = { EbpfHelperArgumentType::PTR_TO_CTX, },
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = { EBPF_ARGUMENT_TYPE_PTR_TO_CTX, },
     .context_descriptor = &g_sk_buff
 };
 
@@ -1403,13 +1403,13 @@ static const struct EbpfHelperPrototype bpf_setsockopt_proto = {
     .name = "setsockopt",
     //.func		= bpf_setsockopt,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::PTR_TO_MEM,
-        EbpfHelperArgumentType::CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
 
@@ -1428,13 +1428,13 @@ static const struct EbpfHelperPrototype bpf_getsockopt_proto = {
     .name = "getsockopt",
     //.func		= bpf_getsockopt,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::PTR_TO_UNINIT_MEM,
-        EbpfHelperArgumentType::CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
 
@@ -1442,10 +1442,10 @@ static const struct EbpfHelperPrototype bpf_sock_ops_cb_flags_set_proto = {
     .name = "sock_ops_cb_flags_set",
     //.func		= bpf_sock_ops_cb_flags_set,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sock_ops_descr
 };
@@ -1453,11 +1453,11 @@ static const struct EbpfHelperPrototype bpf_bind_proto = {
     .name = "bind",
     //.func		= bpf_bind,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_MEM,
-        EbpfHelperArgumentType::CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
 
@@ -1482,13 +1482,13 @@ static const struct EbpfHelperPrototype bpf_skb_get_xfrm_state_proto = {
     .name = "skb_get_xfrm_state",
     //.func		= bpf_skb_get_xfrm_state,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::PTR_TO_UNINIT_MEM,
-        EbpfHelperArgumentType::CONST_SIZE,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1497,12 +1497,12 @@ static const struct EbpfHelperPrototype bpf_xdp_fib_lookup_proto = {
     .name = "xdp_fib_lookup",
     //.func		= bpf_xdp_fib_lookup,
     //.gpl_only	= true,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::PTR_TO_MEM,
-        EbpfHelperArgumentType::CONST_SIZE,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
 };
 
@@ -1510,12 +1510,12 @@ static const struct EbpfHelperPrototype bpf_xdp_fib_lookup_proto = {
 //     .name = "skb_fib_lookup",
 // 	//.func		= bpf_skb_fib_lookup,
 // 	//.gpl_only	= true,
-// 	.return_type	= EbpfHelperReturnType::INTEGER,
+// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
 // 	.argument_type = {
-// 	    EbpfHelperArgumentType::PTR_TO_CTX,
-// 	    EbpfHelperArgumentType::PTR_TO_MEM,
-// 	    EbpfHelperArgumentType::CONST_SIZE,
-// 	    EbpfHelperArgumentType::ANYTHING,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+// 	    EBPF_ARGUMENT_TYPE_CONST_SIZE,
+// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
 // 	},
 // };
 
@@ -1523,12 +1523,12 @@ static const struct EbpfHelperPrototype bpf_lwt_push_encap_proto = {
     .name = "lwt_push_encap",
     //.func		= bpf_lwt_push_encap,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::PTR_TO_MEM,
-        EbpfHelperArgumentType::CONST_SIZE
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1536,12 +1536,12 @@ static const struct EbpfHelperPrototype bpf_lwt_seg6_store_bytes_proto = {
     .name = "lwt_seg6_store_bytes",
     //.func		= bpf_lwt_seg6_store_bytes,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::PTR_TO_MEM,
-        EbpfHelperArgumentType::CONST_SIZE
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1549,12 +1549,12 @@ static const struct EbpfHelperPrototype bpf_lwt_seg6_action_proto = {
     .name = "lwt_seg6_action",
     //.func		= bpf_lwt_seg6_action,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::PTR_TO_MEM,
-        EbpfHelperArgumentType::CONST_SIZE
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1562,11 +1562,11 @@ static const struct EbpfHelperPrototype bpf_lwt_seg6_adjust_srh_proto = {
     .name = "lwt_seg6_adjust_srh",
     //.func		= bpf_lwt_seg6_adjust_srh,
     //.gpl_only	= false,
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
     .context_descriptor = &g_sk_buff
 };
@@ -1574,21 +1574,21 @@ static const struct EbpfHelperPrototype bpf_rc_repeat_proto = {
     .name = "rc_repeat", // without bpf_ originally
                          //.func	   = bpf_rc_repeat,
                          //.gpl_only  = true, /* rc_repeat is EXPORT_SYMBOL_GPL */
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
     },
 };
 static const struct EbpfHelperPrototype bpf_rc_keydown_proto = {
     .name = "rc_keydown", // without bpf_ originally
                           //.func	   = bpf_rc_keydown,
                           //.gpl_only  = true, /* rc_keydown is EXPORT_SYMBOL_GPL */
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_CTX,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
 };
 
@@ -1713,11 +1713,11 @@ static const struct EbpfHelperPrototype bpf_rc_keydown_proto = {
 // ELAZAR: home brewed
 static const struct EbpfHelperPrototype bpf_redirect_map_proto = {
     .name = "redirect_map",
-    .return_type = EbpfHelperReturnType::INTEGER,
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EbpfHelperArgumentType::PTR_TO_MAP,
-        EbpfHelperArgumentType::ANYTHING,
-        EbpfHelperArgumentType::ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
     },
 };
 
