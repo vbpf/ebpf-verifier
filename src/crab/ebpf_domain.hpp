@@ -290,7 +290,7 @@ class ebpf_domain_t final {
     void forget_packet_pointers() {
         using namespace dsl_syntax;
 
-        initalize_packet(*this);
+        initialize_packet(*this);
 
         for (variable_t v : variable_t::get_type_variables()) {
             // TODO: this is sufficient, but for clarity it may be useful to forget the offset and value too.
@@ -1137,7 +1137,7 @@ class ebpf_domain_t final {
         return o;
     }
 
-    static void initalize_packet(ebpf_domain_t& inv) {
+    static void initialize_packet(ebpf_domain_t& inv) {
         using namespace dsl_syntax;
 
         inv -= variable_t::packet_size();
@@ -1169,7 +1169,7 @@ class ebpf_domain_t final {
         inv.assign(r1.offset, 0);
         inv.assign(r1.type, T_CTX);
 
-        initalize_packet(inv);
+        initialize_packet(inv);
 
         if (check_termination) {
             inv.assign(variable_t::instruction_count(), 0);
