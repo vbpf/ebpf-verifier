@@ -1088,6 +1088,7 @@ static const struct EbpfHelperPrototype bpf_skb_adjust_room_proto = {
         EBPF_ARGUMENT_TYPE_ANYTHING,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
+    .reallocate_packet = true,
     .context_descriptor = &g_sk_buff
 };
 
@@ -1192,6 +1193,7 @@ static const struct EbpfHelperPrototype bpf_xdp_adjust_tail_proto = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
+    .reallocate_packet = true,
     .context_descriptor = &g_xdp_descr
 };
 
@@ -1204,6 +1206,7 @@ static const struct EbpfHelperPrototype bpf_xdp_adjust_meta_proto = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
+    .reallocate_packet = true,
     .context_descriptor = &g_xdp_descr
 };
 
@@ -1568,6 +1571,7 @@ static const struct EbpfHelperPrototype bpf_lwt_seg6_adjust_srh_proto = {
         EBPF_ARGUMENT_TYPE_ANYTHING,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
+    .reallocate_packet = true,
     .context_descriptor = &g_sk_buff
 };
 static const struct EbpfHelperPrototype bpf_rc_repeat_proto = {

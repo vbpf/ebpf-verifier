@@ -14,7 +14,7 @@ struct EbpfHelperPrototype {
     // Arguments are passed in registers R1 to R5.
     ebpf_argument_type_t argument_type[5];
 
-    // Side effect: can this helper perform packet reallocation
+    // Side effect: can this helper perform packet reallocation.
     bool reallocate_packet;
 
     // If R1 holds a context, then this holds a pointer to the context descriptor.
