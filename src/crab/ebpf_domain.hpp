@@ -287,6 +287,18 @@ class ebpf_domain_t final {
         }
     }
 
+    void forget_packet_pointers() {
+        using namespace dsl_syntax;
+
+        initalize_packet(*this);
+
+        for (variable_t v : variable_t::get_type_variables()) {
+            // TODO: this is sufficient, but for clarity it may be useful to forget the offset and value too.
+           if (m_inv.intersect(v == T_PACKET))
+               m_inv -= v;
+        }
+    }
+
     void apply(NumAbsDomain& inv, binop_t op, variable_t x, variable_t y, const number_t& z, bool finite_width = false) {
         inv.apply(op, x, y, z);
         if (finite_width)
@@ -919,6 +931,11 @@ class ebpf_domain_t final {
             }
             }
         }
+
+        if (call.reallocate_packet) {
+            forget_packet_pointers();
+        }
+
         scratch_caller_saved_registers();
         auto r0 = reg_pack(R0_RETURN_VALUE);
         havoc(r0.value);
@@ -1120,6 +1137,22 @@ class ebpf_domain_t final {
         return o;
     }
 
+    static void initalize_packet(ebpf_domain_t& inv) {
+        using namespace dsl_syntax;
+
+        inv -= variable_t::packet_size();
+        inv -= variable_t::meta_offset();
+
+        inv += 0 <= variable_t::packet_size();
+        inv += variable_t::packet_size() < MAX_PACKET_OFF;
+        if (global_program_info.type.context_descriptor->meta >= 0) {
+            inv += variable_t::meta_offset() <= 0;
+            inv += variable_t::meta_offset() >= -4098;
+        } else {
+            inv.assign(variable_t::meta_offset(), 0);
+        }
+    }
+
     static ebpf_domain_t setup_entry(bool check_termination) {
         using namespace dsl_syntax;
 
@@ -1136,14 +1169,8 @@ class ebpf_domain_t final {
         inv.assign(r1.offset, 0);
         inv.assign(r1.type, T_CTX);
 
-        inv += 0 <= variable_t::packet_size();
-        inv += variable_t::packet_size() < MAX_PACKET_OFF;
-        if (global_program_info.type.context_descriptor->meta >= 0) {
-            inv += variable_t::meta_offset() <= 0;
-            inv += variable_t::meta_offset() >= -4098;
-        } else {
-            inv.assign(variable_t::meta_offset(), 0);
-        }
+        initalize_packet(inv);
+
         if (check_termination) {
             inv.assign(variable_t::instruction_count(), 0);
         }
