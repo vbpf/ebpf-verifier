@@ -82,10 +82,10 @@ static auto getMemWidth(uint8_t opcode) -> int {
 
 struct Unmarshaller {
     vector<vector<string>>& notes;
-    const ebpf_platform_t* platform;
+    const program_info& info;
     void note(const string& what) { notes.back().emplace_back(what); }
     void note_next_pc() { notes.emplace_back(); }
-    explicit Unmarshaller(vector<vector<string>>& notes, const ebpf_platform_t* platform) : notes{notes}, platform{platform} { note_next_pc(); }
+    explicit Unmarshaller(vector<vector<string>>& notes, const program_info& info) : notes{notes}, info{info} { note_next_pc(); }
 
     auto getAluOp(size_t pc, ebpf_inst inst) -> std::variant<Bin::Op, Un::Op> {
         switch ((inst.opcode >> 4) & 0xF) {
@@ -257,6 +257,7 @@ struct Unmarshaller {
         if (inst.src == 1) {
             // magic number, meaning we're a per-process file descriptor defining the map.
             // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
+
             return LoadMapFd{.dst = Reg{inst.dst}, .mapfd = inst.imm};
         }
 
@@ -276,6 +277,7 @@ struct Unmarshaller {
         switch (t) {
         case EBPF_ARGUMENT_TYPE_ANYTHING: return ArgSingle::Kind::ANYTHING;
         case EBPF_ARGUMENT_TYPE_PTR_TO_MAP: return ArgSingle::Kind::MAP_FD;
+        case EBPF_ARGUMENT_TYPE_PTR_TO_MAP_OF_PROGRAMS: return ArgSingle::Kind::MAP_FD_PROGRAMS;
         case EBPF_ARGUMENT_TYPE_PTR_TO_MAP_KEY: return ArgSingle::Kind::PTR_TO_MAP_KEY;
         case EBPF_ARGUMENT_TYPE_PTR_TO_MAP_VALUE: return ArgSingle::Kind::PTR_TO_MAP_VALUE;
         case EBPF_ARGUMENT_TYPE_PTR_TO_CTX: return ArgSingle::Kind::PTR_TO_CTX;
@@ -283,6 +285,7 @@ struct Unmarshaller {
         }
         return {};
     }
+
     static ArgPair::Kind toArgPairKind(ebpf_argument_type_t t) {
         switch (t) {
         case EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL: return ArgPair::Kind::PTR_TO_MEM_OR_NULL;
@@ -293,8 +296,8 @@ struct Unmarshaller {
         return {};
     }
 
-    static auto makeCall(const ebpf_platform_t* platform, int32_t imm) {
-        EbpfHelperPrototype proto = platform->get_helper_prototype(imm);
+    auto makeCall(int32_t imm) const {
+        EbpfHelperPrototype proto = info.platform->get_helper_prototype(imm);
         Call res;
         res.func = imm;
         res.name = proto.name;
@@ -313,6 +316,7 @@ struct Unmarshaller {
             case EBPF_ARGUMENT_TYPE_DONTCARE: return res;
             case EBPF_ARGUMENT_TYPE_ANYTHING:
             case EBPF_ARGUMENT_TYPE_PTR_TO_MAP:
+            case EBPF_ARGUMENT_TYPE_PTR_TO_MAP_OF_PROGRAMS:
             case EBPF_ARGUMENT_TYPE_PTR_TO_MAP_KEY:
             case EBPF_ARGUMENT_TYPE_PTR_TO_MAP_VALUE:
             case EBPF_ARGUMENT_TYPE_PTR_TO_CTX:
@@ -331,12 +335,13 @@ struct Unmarshaller {
         }
         return res;
     }
+
     auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, pc_t pc) -> Instruction {
         switch ((inst.opcode >> 4) & 0xF) {
         case 0x8:
-            if (!platform->is_helper_usable(inst.imm))
+            if (!info.platform->is_helper_usable(inst.imm))
                 throw InvalidInstruction(pc, "invalid helper function id");
-            return makeCall(platform, inst.imm);
+            return makeCall(inst.imm);
         case 0x9: return Exit{};
         default: {
             pc_t new_pc = pc + 1 + inst.offset;
@@ -374,7 +379,7 @@ struct Unmarshaller {
             switch (inst.opcode & INST_CLS_MASK) {
             case INST_CLS_LD:
                 if (inst.opcode == INST_OP_LDDW_IMM) {
-                    uint32_t next_imm = pc < insts.size() - 1 ? insts[pc + 1].imm : 0;
+                    int32_t next_imm = pc < insts.size() - 1 ? insts[pc + 1].imm : 0;
                     new_ins = makeLddw(inst, next_imm, insts, static_cast<pc_t>(pc));
                     lddw = true;
                     break;
@@ -434,7 +439,7 @@ struct Unmarshaller {
 std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, vector<vector<string>>& notes) {
     global_program_info = raw_prog.info;
     try {
-        return Unmarshaller{notes, raw_prog.info.platform}.unmarshal(raw_prog.prog);
+        return Unmarshaller{notes, raw_prog.info}.unmarshal(raw_prog.prog);
     } catch (InvalidInstruction& arg) {
         std::ostringstream ss;
         ss << arg.pc << ": " << arg.what() << "\n";

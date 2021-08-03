@@ -21,6 +21,7 @@ std::ostream& operator<<(std::ostream& os, ArgSingle::Kind kind) {
     case ArgSingle::Kind::ANYTHING: return os << "uint64_t";
     case ArgSingle::Kind::PTR_TO_CTX: return os << "ctx";
     case ArgSingle::Kind::MAP_FD: return os << "map_fd";
+    case ArgSingle::Kind::MAP_FD_PROGRAMS: return os << "map_fd (programs)";
     case ArgSingle::Kind::PTR_TO_MAP_KEY: return os << "map_key";
     case ArgSingle::Kind::PTR_TO_MAP_VALUE: return os << "map_value";
     }
@@ -97,6 +98,7 @@ std::ostream& operator<<(std::ostream& os, TypeGroup ts) {
     switch (ts) {
     case TypeGroup::number: return os << "number";
     case TypeGroup::map_fd: return os << "map_fd";
+    case TypeGroup::map_fd_programs: return os << "map_fd_programs";
     case TypeGroup::ctx: return os << "ctx";
     case TypeGroup::packet: return os << "packet";
     case TypeGroup::stack: return os << "stack";

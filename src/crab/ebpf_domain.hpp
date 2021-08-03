@@ -254,7 +254,7 @@ class ebpf_domain_t final {
     void operator-=(variable_t var) { m_inv -= var; }
 
     void assign(variable_t x, const linear_expression_t& e) { m_inv.assign(x, e); }
-    void assign(variable_t x, int e) { m_inv.set(x, interval_t(number_t(e))); }
+    void assign(variable_t x, long e) { m_inv.set(x, interval_t(number_t(e))); }
 
     void apply(arith_binop_t op, variable_t x, variable_t y, const number_t& z) { m_inv.apply(op, x, y, z); }
 
@@ -423,6 +423,7 @@ class ebpf_domain_t final {
             if (stype == dtype) {
                 switch (stype) {
                     case T_MAP: break;
+                    case T_MAP_PROGRAMS: break;
                     case T_UNINIT: break;
                     case T_NUM: {
                         if (!is_unsigned_cmp(cond.op))
@@ -542,7 +543,11 @@ class ebpf_domain_t final {
         auto when_stack = when(m_inv, access_reg.type == T_STACK);
         if (!when_stack.is_bottom()) {
             if (!stack.all_num(when_stack, lb, ub)) {
-                require(when_stack, access_reg.type != T_STACK, "Illegal map update with a non-numerical value.");
+                auto lb_is = when_stack[lb].lb().number();
+                std::string lb_s = lb_is && lb_is->fits_sint() ? std::to_string((int)*lb_is) : "-oo";
+                auto ub_is = when_stack.eval_interval(ub).ub().number();
+                std::string ub_s = ub_is && ub_is->fits_sint() ? std::to_string((int)*ub_is) : "oo";
+                require(when_stack, access_reg.type != T_STACK, "Illegal map update with a non-numerical value [" + lb_s + "-" + ub_s + ")");
             } else if (thread_local_options.strict && map_type.has_value() && map_type->is_array) {
                 // Get offset value.
                 variable_t key_ptr = access_reg.offset;
@@ -657,6 +662,7 @@ class ebpf_domain_t final {
         switch (s.types) {
         case TypeGroup::number: require(m_inv, t == T_NUM, str); break;
         case TypeGroup::map_fd: require(m_inv, t == T_MAP, str); break;
+        case TypeGroup::map_fd_programs: require(m_inv, t == T_MAP_PROGRAMS, str); break;
         case TypeGroup::ctx: require(m_inv, t == T_CTX, str); break;
         case TypeGroup::packet: require(m_inv, t == T_PACKET, str); break;
         case TypeGroup::stack: require(m_inv, t == T_STACK, str); break;
@@ -801,6 +807,7 @@ class ebpf_domain_t final {
                 return;
             }
             case T_MAP: return;
+            case T_MAP_PROGRAMS: return;
             case T_NUM: return;
             case T_CTX: m_inv = do_load_ctx(std::move(m_inv), target, addr, width); break;
             case T_STACK: m_inv = do_load_stack(std::move(m_inv), target, addr, width); break;
@@ -898,6 +905,7 @@ class ebpf_domain_t final {
             switch (param.kind) {
             case ArgSingle::Kind::ANYTHING:
             case ArgSingle::Kind::MAP_FD:
+            case ArgSingle::Kind::MAP_FD_PROGRAMS:
             case ArgSingle::Kind::PTR_TO_MAP_KEY:
             case ArgSingle::Kind::PTR_TO_MAP_VALUE:
             case ArgSingle::Kind::PTR_TO_CTX:
@@ -957,7 +965,13 @@ class ebpf_domain_t final {
 
     void operator()(LoadMapFd const& ins) {
         auto dst = reg_pack(ins.dst);
-        assign(dst.type, T_MAP);
+        const EbpfMapDescriptor& desc = global_program_info.platform->get_map_descriptor(ins.mapfd);
+        const EbpfMapType& type = global_program_info.platform->get_map_type(desc.type);
+        if (type.value_type == EbpfMapValueType::PROGRAM) {
+            assign(dst.type, T_MAP_PROGRAMS);
+        } else {
+            assign(dst.type, T_MAP);
+        }
         assign(dst.value, ins.mapfd);
         havoc(dst.offset);
     }

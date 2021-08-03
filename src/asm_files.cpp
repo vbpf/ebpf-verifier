@@ -26,7 +26,7 @@ static vector<T> vector_of(ELFIO::section* sec) {
 }
 
 int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries, ebpf_verifier_options_t options) {
-    if (map_type.is_value_map_fd) {
+    if (map_type.value_type == EbpfMapValueType::MAP) {
         // Map-in-map is not yet supported.
         return -1;
     }

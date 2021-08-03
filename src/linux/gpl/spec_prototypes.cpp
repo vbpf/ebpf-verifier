@@ -58,7 +58,7 @@ const struct EbpfHelperPrototype bpf_tail_call_proto = {
     .return_type = EBPF_RETURN_TYPE_VOID,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP_OF_PROGRAMS,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
 };

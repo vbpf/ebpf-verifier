@@ -1218,10 +1218,10 @@ std::ostream& operator<<(std::ostream& o, SplitDBM& dom) {
         o << variable << "=";
         if (v_out.lb() == v_out.ub()) {
             if (variable.is_type()) {
-                static const char* type_string[] = {"shared_pointer", "packet_pointer", "stack_pointer", "ctx_pointer", "number", "map_fd", "uninitialized"};
+                static const std::vector<std::string> type_string = {"shared_pointer", "packet_pointer", "stack_pointer", "ctx_pointer", "number", "map_fd", "map_fd_program", "uninitialized"};
                 int type = (int)v_out.lb().number().value();
                 if (type <= 0 && type > -static_cast<int>(std::size(type_string)))
-                    o << type_string[-type];
+                    o << type_string.at(-type);
                 else
                     o << "map_value_of_size(" << v_out.lb() << ")";
             } else

@@ -9,11 +9,15 @@
 
 constexpr int EBPF_STACK_SIZE = 512;
 
+enum class EbpfMapValueType {
+    ANY, MAP, PROGRAM
+};
+
 struct EbpfMapType {
     uint32_t platform_specific_type; // EbpfMapDescriptor.type value.
     std::string name; // For ease of display, not used by the verifier.
     bool is_array; // True if key is integer in range [0,max_entries-1].
-    bool is_value_map_fd; // True if value is map_fd.
+    EbpfMapValueType value_type; // The type of items stored in the map.
 };
 
 struct EbpfMapDescriptor {
