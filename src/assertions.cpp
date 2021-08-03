@@ -57,12 +57,17 @@ class AssertExtractor {
                     res.emplace_back(TypeConstraint{arg.reg, TypeGroup::number});
                 }
                 break;
+            case ArgSingle::Kind::MAP_FD_PROGRAMS:
+                res.emplace_back(TypeConstraint{arg.reg, TypeGroup::map_fd_programs});
+                // Do not update map_fd_reg
+                break;
             case ArgSingle::Kind::MAP_FD:
                 res.emplace_back(TypeConstraint{arg.reg, TypeGroup::map_fd});
                 map_fd_reg = arg.reg;
                 break;
             case ArgSingle::Kind::PTR_TO_MAP_KEY:
             case ArgSingle::Kind::PTR_TO_MAP_VALUE:
+                assert(map_fd_reg);
                 res.emplace_back(TypeConstraint{arg.reg, TypeGroup::stack_or_packet});
                 res.emplace_back(ValidMapKeyValue{arg.reg, *map_fd_reg,
                                                   arg.kind == ArgSingle::Kind::PTR_TO_MAP_KEY});

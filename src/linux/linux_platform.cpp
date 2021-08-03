@@ -90,8 +90,8 @@ static EbpfProgramType get_program_type_linux(const std::string& section, const 
         }
     }
 
-    for (const EbpfProgramType t : linux_program_types) {
-        for (const std::string prefix : t.section_prefixes) {
+    for (const EbpfProgramType& t : linux_program_types) {
+        for (const std::string& prefix : t.section_prefixes) {
             if (section.find(prefix) == 0)
                 return t;
         }
@@ -110,7 +110,7 @@ static const EbpfMapType linux_map_types[] = {
     {BPF_MAP_TYPE(UNSPEC)},
     {BPF_MAP_TYPE(HASH)},
     {BPF_MAP_TYPE(ARRAY), true},
-    {BPF_MAP_TYPE(PROG_ARRAY), true},
+    {BPF_MAP_TYPE(PROG_ARRAY), true, EbpfMapValueType::PROGRAM},
     {BPF_MAP_TYPE(PERF_EVENT_ARRAY), true},
     {BPF_MAP_TYPE(PERCPU_HASH)},
     {BPF_MAP_TYPE(PERCPU_ARRAY), true},
@@ -119,8 +119,8 @@ static const EbpfMapType linux_map_types[] = {
     {BPF_MAP_TYPE(LRU_HASH)},
     {BPF_MAP_TYPE(LRU_PERCPU_HASH)},
     {BPF_MAP_TYPE(LPM_TRIE)},
-    {BPF_MAP_TYPE(ARRAY_OF_MAPS), true, true},
-    {BPF_MAP_TYPE(HASH_OF_MAPS), false, true},
+    {BPF_MAP_TYPE(ARRAY_OF_MAPS), true, EbpfMapValueType::MAP},
+    {BPF_MAP_TYPE(HASH_OF_MAPS), false, EbpfMapValueType::MAP},
     {BPF_MAP_TYPE(DEVMAP)},
     {BPF_MAP_TYPE(SOCKMAP)},
     {BPF_MAP_TYPE(CPUMAP)},
