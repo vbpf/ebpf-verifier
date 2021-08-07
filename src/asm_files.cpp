@@ -30,12 +30,13 @@ int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t val
         // Map-in-map is not yet supported.
         return -1;
     }
-    if ((map_type.is_array && key_size != 4) || (key_size > (1 << 8)))
-        throw std::runtime_error("bad map key size " + std::to_string(key_size));
-    if (value_size > (1 << (31 - 8)))
-        throw std::runtime_error("bad map value size " + std::to_string(value_size));
-    int res = (value_size << 8) + key_size;
-    return res;
+    using EquivalenceKey = std::tuple<uint32_t, uint32_t, uint32_t, uint32_t>;
+    thread_local static std::map<EquivalenceKey, int> cache;
+    EquivalenceKey equiv{map_type.platform_specific_type, key_size, value_size, max_entries};
+    if (!cache.count(equiv)) {
+        cache[equiv] = (int)cache.size();
+    }
+    return cache.at(equiv);
 }
 
 EbpfMapDescriptor* find_map_descriptor(int map_fd) {
