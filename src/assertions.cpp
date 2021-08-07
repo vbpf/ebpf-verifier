@@ -25,6 +25,13 @@ class AssertExtractor {
         return std::get<Imm>(v);
     }
 
+    static vector<Assert> zero_offset_ctx(Reg reg) {
+        vector<Assert> res;
+        res.emplace_back(TypeConstraint{reg, TypeGroup::ctx});
+        res.emplace_back(ZeroOffset{reg});
+        return res;
+    }
+
   public:
     explicit AssertExtractor(program_info info) : info{std::move(info)} {}
 
@@ -34,7 +41,7 @@ class AssertExtractor {
     }
 
     /// Packet access implicitly uses R6, so verify that R6 still has a pointer to the context.
-    vector<Assert> operator()(Packet const& ins) const { return {Assert{TypeConstraint{Reg{6}, TypeGroup::ctx}}}; }
+    vector<Assert> operator()(Packet const& ins) const { return zero_offset_ctx({6}); }
 
     /// Verify that Exit returns a number.
     vector<Assert> operator()(Exit const& e) const { return {Assert{TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::number}}}; }
@@ -61,8 +68,9 @@ class AssertExtractor {
                                                   arg.kind == ArgSingle::Kind::PTR_TO_MAP_KEY});
                 break;
             case ArgSingle::Kind::PTR_TO_CTX:
-                res.emplace_back(TypeConstraint{arg.reg, TypeGroup::ctx});
-                res.emplace_back(ZeroOffset{arg.reg});
+                for (const Assert& a: zero_offset_ctx(arg.reg)) {
+                    res.emplace_back(a);
+                }
                 break;
             }
         }
