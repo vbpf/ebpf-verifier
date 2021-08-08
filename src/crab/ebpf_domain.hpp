@@ -510,7 +510,7 @@ class ebpf_domain_t final {
 
         // Get the actual map_fd value to look up the key size and value size.
         auto fd_reg = reg_pack(s.map_fd_reg);
-        interval_t fd_interval = operator[](fd_reg.value);
+        interval_t fd_interval = operator[](fd_reg.offset);
         std::optional<EbpfMapType> map_type;
         uint32_t max_entries = 0;
         if (fd_interval.is_bottom()) {
@@ -901,10 +901,13 @@ class ebpf_domain_t final {
         using namespace dsl_syntax;
         if (m_inv.is_bottom())
             return;
+        std::optional<Reg> fd_index{};
         for (ArgSingle param : call.singles) {
             switch (param.kind) {
-            case ArgSingle::Kind::ANYTHING:
             case ArgSingle::Kind::MAP_FD:
+                fd_index = param.reg;
+                break;
+            case ArgSingle::Kind::ANYTHING:
             case ArgSingle::Kind::MAP_FD_PROGRAMS:
             case ArgSingle::Kind::PTR_TO_MAP_KEY:
             case ArgSingle::Kind::PTR_TO_MAP_VALUE:
@@ -940,20 +943,22 @@ class ebpf_domain_t final {
             }
         }
 
-        if (call.reallocate_packet) {
-            forget_packet_pointers();
-        }
-
-        scratch_caller_saved_registers();
         auto r0 = reg_pack(R0_RETURN_VALUE);
         havoc(r0.value);
-        if (call.returns_map) {
-            // no support for map-in-map yet:
-            //   if (machine.info.map_defs.at(map_type).type == MapType::ARRAY_OF_MAPS
-            //    || machine.info.map_defs.at(map_type).type == MapType::HASH_OF_MAPS) { }
-            // This is the only way to get a null pointer - note the `<=`:
-            m_inv += 0 <= r0.value;
-            m_inv += r0.value <= PTR_MAX;
+        if (call.is_map_lookup) {
+            // This is the only way to get a null pointer
+            if (fd_index) {
+                if (std::optional<number_t> fd_opt = m_inv[reg_pack(*fd_index).offset].singleton()) {
+                    if (fd_opt->fits_sint()) {
+                        const EbpfMapDescriptor& desc = global_program_info.platform->get_map_descriptor((int)*fd_opt);
+                        if (global_program_info.platform->get_map_type(desc.type).value_type == EbpfMapValueType::MAP) {
+                            do_load_mapfd(r0, (int)desc.inner_map_fd, true);
+                            goto out;
+                        }
+                    }
+                }
+            }
+            assume_valid_ptr(r0, true);
             assign(r0.offset, 0);
             assign(r0.type, variable_t::map_value_size());
         } else {
@@ -961,19 +966,36 @@ class ebpf_domain_t final {
             assign(r0.type, T_NUM);
             // assume(r0.value < 0); for INTEGER_OR_NO_RETURN_IF_SUCCEED.
         }
+out:
+        scratch_caller_saved_registers();
+        if (call.reallocate_packet) {
+            forget_packet_pointers();
+        }
     }
-
-    void operator()(LoadMapFd const& ins) {
-        auto dst = reg_pack(ins.dst);
-        const EbpfMapDescriptor& desc = global_program_info.platform->get_map_descriptor(ins.mapfd);
+    void do_load_mapfd(const reg_pack_t& dst, int mapfd, bool maybe_null) {
+        const EbpfMapDescriptor& desc = global_program_info.platform->get_map_descriptor(mapfd);
         const EbpfMapType& type = global_program_info.platform->get_map_type(desc.type);
         if (type.value_type == EbpfMapValueType::PROGRAM) {
             assign(dst.type, T_MAP_PROGRAMS);
         } else {
             assign(dst.type, T_MAP);
         }
-        assign(dst.value, ins.mapfd);
-        havoc(dst.offset);
+        assign(dst.offset, mapfd);
+        assume_valid_ptr(dst, maybe_null);
+    }
+
+    void operator()(LoadMapFd const& ins) {
+        do_load_mapfd(reg_pack(ins.dst), ins.mapfd, false);
+    }
+
+    void assume_valid_ptr(const reg_pack_t& reg, bool maybe_null) {
+        using namespace crab::dsl_syntax;
+        if (maybe_null) {
+            m_inv += 0 <= reg.value;
+        } else {
+            m_inv += 0 < reg.value;
+        }
+        m_inv += reg.value <= PTR_MAX;
     }
 
     void operator()(Bin const& bin) {

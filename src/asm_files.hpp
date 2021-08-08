@@ -14,4 +14,6 @@ std::vector<raw_program> read_elf(const std::string& path, const std::string& se
 
 void write_binary_file(std::string path, const char* data, size_t size);
 
+void print_map_descriptors();
+
 std::ifstream open_asm_file(std::string path);

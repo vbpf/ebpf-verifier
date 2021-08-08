@@ -136,6 +136,7 @@ int main(int argc, char** argv) {
     auto& prog = std::get<InstructionSeq>(prog_or_error);
     if (!asmfile.empty()) {
         print(prog, asmfile);
+        print_map_descriptors();
     }
 
     if (domain == "zoneCrab") {
@@ -149,7 +150,7 @@ int main(int argc, char** argv) {
         std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
         return !res;
     } else if (domain == "linux") {
-        // Pass the intruction sequence to the Linux kernel verifier.
+        // Pass the instruction sequence to the Linux kernel verifier.
         const auto [res, seconds] = bpf_verify_program(raw_prog.info.type, raw_prog.prog, &ebpf_verifier_options);
         std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
         return !res;

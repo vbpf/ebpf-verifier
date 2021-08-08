@@ -167,7 +167,7 @@ struct ArgPair {
 struct Call {
     int32_t func{};
     std::string name;
-    bool returns_map{};
+    bool is_map_lookup{};
     bool reallocate_packet{};
     std::vector<ArgSingle> singles;
     std::vector<ArgPair> pairs;

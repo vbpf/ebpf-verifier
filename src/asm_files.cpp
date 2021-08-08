@@ -26,15 +26,12 @@ static vector<T> vector_of(ELFIO::section* sec) {
 }
 
 int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries, ebpf_verifier_options_t options) {
-    if (map_type.value_type == EbpfMapValueType::MAP) {
-        // Map-in-map is not yet supported.
-        return -1;
-    }
-    using EquivalenceKey = std::tuple<uint32_t, uint32_t, uint32_t, uint32_t>;
+    using EquivalenceKey = std::tuple<EbpfMapValueType, uint32_t, uint32_t, uint32_t>;
     thread_local static std::map<EquivalenceKey, int> cache;
-    EquivalenceKey equiv{map_type.platform_specific_type, key_size, value_size, max_entries};
+    EquivalenceKey equiv{map_type.value_type, key_size, value_size, map_type.is_array ? max_entries : 0};
     if (!cache.count(equiv)) {
-        cache[equiv] = (int)cache.size();
+        // +1 so 0 is the null FD
+        cache[equiv] = (int)cache.size() + 1;
     }
     return cache.at(equiv);
 }
@@ -163,4 +160,19 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
         throw std::runtime_error(string("Can't find section ") + desired_section + " in file " + path);
     }
     return res;
+}
+
+void print_map_descriptors() {
+    int i = 0;
+    for (const auto& desc : global_program_info.map_descriptors) {
+        std::cout << i << ": ("
+                  << "original_fd = " << desc.original_fd << ", "
+                  << "inner_map_fd = " << desc.inner_map_fd << ", "
+                  << "type = " << desc.type << ", "
+                  << "max_entries = " << desc.max_entries << ", "
+                  << "value_size = " << desc.value_size << ", "
+                  << "key_size = " << desc.key_size <<
+            ")\n";
+        i++;
+    }
 }
