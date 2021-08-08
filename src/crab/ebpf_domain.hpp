@@ -944,7 +944,6 @@ class ebpf_domain_t final {
         }
 
         auto r0 = reg_pack(R0_RETURN_VALUE);
-        havoc(r0.value);
         if (call.is_map_lookup) {
             // This is the only way to get a null pointer
             if (fd_index) {
@@ -958,10 +957,11 @@ class ebpf_domain_t final {
                     }
                 }
             }
-            assume_valid_ptr(r0, true);
+            assign_valid_ptr(r0, true);
             assign(r0.offset, 0);
             assign(r0.type, variable_t::map_value_size());
         } else {
+            havoc(r0.value);
             havoc(r0.offset);
             assign(r0.type, T_NUM);
             // assume(r0.value < 0); for INTEGER_OR_NO_RETURN_IF_SUCCEED.
@@ -972,6 +972,7 @@ out:
             forget_packet_pointers();
         }
     }
+
     void do_load_mapfd(const reg_pack_t& dst, int mapfd, bool maybe_null) {
         const EbpfMapDescriptor& desc = global_program_info.platform->get_map_descriptor(mapfd);
         const EbpfMapType& type = global_program_info.platform->get_map_type(desc.type);
@@ -981,15 +982,16 @@ out:
             assign(dst.type, T_MAP);
         }
         assign(dst.offset, mapfd);
-        assume_valid_ptr(dst, maybe_null);
+        assign_valid_ptr(dst, maybe_null);
     }
 
     void operator()(LoadMapFd const& ins) {
         do_load_mapfd(reg_pack(ins.dst), ins.mapfd, false);
     }
 
-    void assume_valid_ptr(const reg_pack_t& reg, bool maybe_null) {
+    void assign_valid_ptr(const reg_pack_t& reg, bool maybe_null) {
         using namespace crab::dsl_syntax;
+        havoc(reg.value);
         if (maybe_null) {
             m_inv += 0 <= reg.value;
         } else {
