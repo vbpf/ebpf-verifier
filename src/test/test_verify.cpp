@@ -445,6 +445,7 @@ TEST_SECTION("raw_tracepoint/filler/proc_startupdate_2")
 TEST_SECTION("raw_tracepoint/filler/sys_recvfrom_x")
 */
 TEST_SECTION("build", "packet_start_ok.o", "xdp")
+TEST_SECTION("build", "tail_call.o", "xdp_prog")
 
 // Test some programs that ought to fail verification.
 TEST_SECTION_REJECT("build", "badhelpercall.o", ".text")
@@ -456,6 +457,7 @@ TEST_SECTION_REJECT("build", "mapvalue-overrun.o", ".text")
 TEST_SECTION_REJECT("build", "nullmapref.o", "test")
 TEST_SECTION_REJECT("build", "packet_overflow.o", "xdp")
 TEST_SECTION_REJECT("build", "packet_reallocate.o", "socket_filter")
+TEST_SECTION_REJECT("build", "tail_call_bad.o", "xdp_prog")
 
 // The following eBPF programs currently fail verification.
 // If the verifier is later updated to accept them, these should

@@ -9,7 +9,7 @@
 typedef enum _ebpf_return_type {
     EBPF_RETURN_TYPE_INTEGER = 0,
     EBPF_RETURN_TYPE_PTR_TO_MAP_VALUE_OR_NULL,
-    EBPF_RETURN_TYPE_VOID,
+    EBPF_RETURN_TYPE_INTEGER_OR_NO_RETURN_IF_SUCCEED,
 } ebpf_return_type_t;
 
 typedef enum _ebpf_argument_type {
