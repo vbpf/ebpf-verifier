@@ -959,7 +959,7 @@ class ebpf_domain_t final {
         } else {
             havoc(r0.offset);
             assign(r0.type, T_NUM);
-            // assume(r0.value < 0); for VOID, which is actually "no return if succeed".
+            // assume(r0.value < 0); for INTEGER_OR_NO_RETURN_IF_SUCCEED.
         }
     }
 
