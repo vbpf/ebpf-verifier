@@ -161,18 +161,3 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
     }
     return res;
 }
-
-void print_map_descriptors() {
-    int i = 0;
-    for (const auto& desc : global_program_info.map_descriptors) {
-        std::cout << i << ": ("
-                  << "original_fd = " << desc.original_fd << ", "
-                  << "inner_map_fd = " << desc.inner_map_fd << ", "
-                  << "type = " << desc.type << ", "
-                  << "max_entries = " << desc.max_entries << ", "
-                  << "value_size = " << desc.value_size << ", "
-                  << "key_size = " << desc.key_size <<
-            ")\n";
-        i++;
-    }
-}
