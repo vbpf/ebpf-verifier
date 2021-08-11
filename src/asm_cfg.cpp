@@ -160,7 +160,7 @@ static cfg_t to_nondet(const cfg_t& cfg) {
 static std::string instype(Instruction ins) {
     if (std::holds_alternative<Call>(ins)) {
         auto call = std::get<Call>(ins);
-        if (call.returns_map) {
+        if (call.is_map_lookup) {
             return "call_1";
         }
         if (call.pairs.empty()) {

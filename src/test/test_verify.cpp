@@ -281,6 +281,8 @@ TEST_SECTION("linux", "xdp2_kern.o", "xdp1")
 TEST_SECTION("linux", "xdp2skb_meta_kern.o", "tc_mark")
 TEST_SECTION("linux", "xdp2skb_meta_kern.o", "xdp_mark")
 TEST_SECTION("linux", "xdpsock_kern.o", "xdp_sock")
+// Finally passes; still requires double-check
+TEST_SECTION("linux", "map_perf_test_kern.o", "kprobe/sys_connect")
 
 TEST_SECTION("prototype-kernel", "napi_monitor_kern.o", "tracepoint/irq/softirq_entry")
 TEST_SECTION("prototype-kernel", "napi_monitor_kern.o", "tracepoint/irq/softirq_exit")
@@ -463,15 +465,14 @@ TEST_SECTION_REJECT("build", "tail_call_bad.o", "xdp_prog")
 // If the verifier is later updated to accept them, these should
 // be changed to TEST_SECTION().
 
-// Unsupported: map-in-map
-TEST_SECTION_FAIL("linux", "map_perf_test_kern.o", "kprobe/sys_connect")
-TEST_SECTION_FAIL("linux", "test_map_in_map_kern.o", "kprobe/sys_connect")
-
 // Unsupported: ebpf-function
 TEST_SECTION_FAIL("prototype-kernel", "xdp_ddos01_blacklist_kern.o", ".text")
 
 // False positive: correlated branches
 TEST_SECTION_FAIL("prototype-kernel", "xdp_ddos01_blacklist_kern.o", "xdp_prog")
+
+// False positive, unknown cause
+TEST_SECTION_FAIL("linux", "test_map_in_map_kern.o", "kprobe/sys_connect")
 
 void test_analyze_thread(cfg_t* cfg, program_info* info, bool* res) {
     *res = run_ebpf_analysis(std::cout, *cfg, *info, nullptr, nullptr);

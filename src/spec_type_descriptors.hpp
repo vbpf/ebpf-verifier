@@ -36,6 +36,7 @@ struct EbpfProgramType {
     std::vector<std::string> section_prefixes;
     bool is_privileged;
 };
+void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o);
 
 struct program_info {
     const struct ebpf_platform_t* platform;
