@@ -356,8 +356,6 @@ TEST_SECTION("falco", "probe.o", "raw_tracepoint/page_fault_user")
 TEST_SECTION("falco", "probe.o", "raw_tracepoint/sched_switch")
 TEST_SECTION("falco", "probe.o", "raw_tracepoint/signal_deliver")
 
-TEST_SECTION("build", "stackok.o", ".text")
-
 // Test some programs that should pass verification except when the strict flag is set.
 TEST_SECTION_REJECT_IF_STRICT("build", "mapoverflow.o", ".text")
 TEST_SECTION_REJECT_IF_STRICT("build", "mapunderflow.o", ".text")
@@ -446,8 +444,10 @@ TEST_SECTION("raw_tracepoint/filler/sys_sendmsg_x")
 TEST_SECTION("raw_tracepoint/filler/proc_startupdate_2")
 TEST_SECTION("raw_tracepoint/filler/sys_recvfrom_x")
 */
+TEST_SECTION("build", "stackok.o", ".text")
 TEST_SECTION("build", "packet_start_ok.o", "xdp")
 TEST_SECTION("build", "tail_call.o", "xdp_prog")
+TEST_SECTION("build", "map_in_map.o", ".text")
 
 // Test some programs that ought to fail verification.
 TEST_SECTION_REJECT("build", "badhelpercall.o", ".text")
