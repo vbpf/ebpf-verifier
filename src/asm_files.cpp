@@ -36,13 +36,32 @@ int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t val
     return cache.at(equiv);
 }
 
-EbpfMapDescriptor* find_map_descriptor(int map_fd) {
-    for (EbpfMapDescriptor& map : global_program_info.map_descriptors) {
+static EbpfMapDescriptor* find_map_descriptor(program_info& info, int map_fd) {
+    for (EbpfMapDescriptor& map : info.map_descriptors) {
         if (map.original_fd == map_fd) {
             return &map;
         }
     }
     return nullptr;
+}
+
+EbpfMapDescriptor* find_map_descriptor(int map_fd) {
+    return find_map_descriptor(global_program_info, map_fd);
+}
+
+static void validate_map_in_map(const ebpf_platform_t* platform, program_info& info) {
+    int i = 0;
+    for (const EbpfMapDescriptor& outer_map : info.map_descriptors) {
+        if (platform->get_map_type(outer_map.type).value_type == EbpfMapValueType::MAP) {
+            const EbpfMapDescriptor* p_inner_map = find_map_descriptor(info, outer_map.inner_map_fd);
+            assert(p_inner_map);
+            if (p_inner_map->key_size != outer_map.value_size) {
+                throw std::runtime_error(std::string("value_size of map number ") + std::to_string(i) +
+                                         " and key_size for its inner map are different.");
+            }
+        }
+        i++;
+    }
 }
 
 vector<raw_program> read_elf(const std::string& path, const std::string& desired_section, const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
@@ -62,6 +81,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
     ELFIO::section* maps_section = reader.sections["maps"];
     if (maps_section) {
         platform->parse_maps_section(info.map_descriptors, maps_section->get_data(), maps_section->get_size(), platform, *options);
+        validate_map_in_map(platform, info);
     }
 
     ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
