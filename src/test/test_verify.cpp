@@ -17,6 +17,7 @@
 FAIL_LOAD_ELF("cilium", "not-found.o", "2/1")
 FAIL_LOAD_ELF("cilium", "bpf_lxc.o", "not-found")
 FAIL_LOAD_ELF("build", "badrelo.o", ".text")
+FAIL_LOAD_ELF("build", "map_in_map.o", ".text")
 
 #define FAIL_UNMARSHAL(dirname, filename, sectionname) \
     TEST_CASE("Try unmarshalling bad program: " dirname "/" filename, "[unmarshal]") { \
@@ -447,7 +448,6 @@ TEST_SECTION("raw_tracepoint/filler/sys_recvfrom_x")
 TEST_SECTION("build", "stackok.o", ".text")
 TEST_SECTION("build", "packet_start_ok.o", "xdp")
 TEST_SECTION("build", "tail_call.o", "xdp_prog")
-TEST_SECTION("build", "map_in_map.o", ".text")
 
 // Test some programs that ought to fail verification.
 TEST_SECTION_REJECT("build", "badhelpercall.o", ".text")

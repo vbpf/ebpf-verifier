@@ -157,15 +157,25 @@ void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, c
     }
 
     auto mapdefs = std::vector<bpf_load_map_def>((bpf_load_map_def*)data, (bpf_load_map_def*)(data + size));
-    for (auto const& s : mapdefs) {
-        EbpfMapType type = get_map_type_linux(s.type);
-        map_descriptors.emplace_back(EbpfMapDescriptor{
-            .original_fd = create_map_linux(s.type, s.key_size, s.value_size, s.max_entries, options),
-            .type = s.type,
-            .key_size = s.key_size,
-            .value_size = s.value_size,
-            .max_entries = s.max_entries
-        });
+    {
+        int i = 0;
+        for (auto const& s : mapdefs) {
+            EbpfMapType type = get_map_type_linux(s.type);
+            if (type.value_type == EbpfMapValueType::MAP) {
+                if (s.value_size != sizeof(uint32_t)) {
+                    throw std::runtime_error(
+                        std::string("Invalid value_size for map number ") + std::to_string(i)
+                        + "; value_size for map to maps must be " + std::to_string(sizeof(uint32_t)));
+                }
+            }
+            map_descriptors.emplace_back(EbpfMapDescriptor{
+                .original_fd = create_map_linux(s.type, s.key_size, s.value_size, s.max_entries, options),
+                .type = s.type,
+                .key_size = s.key_size,
+                .value_size = s.value_size,
+                .max_entries = s.max_entries});
+            i++;
+        }
     }
     for (size_t i = 0; i < mapdefs.size(); i++) {
         unsigned int inner = mapdefs[i].inner_map_idx;
