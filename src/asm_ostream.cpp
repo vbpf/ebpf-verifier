@@ -203,6 +203,7 @@ struct InstructionPrinterVisitor {
                 if (r > 1)
                     os_ << ", ";
                 os_ << *pair;
+                r++;
                 continue;
             }
 
