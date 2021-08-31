@@ -825,7 +825,7 @@ class ebpf_domain_t final {
     static int get_type(int t) { return t; }
 
     template <typename A, typename X, typename Y, typename Z>
-    void do_store_stack(NumAbsDomain& inv, int width, A addr, X val_type, Y val_value,
+    void do_store_stack(NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_value,
                         std::optional<Z> opt_val_offset) {
         inv.assign(stack.store(inv, data_kind_t::types, addr, width, val_type), val_type);
         if (width == 8) {

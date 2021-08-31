@@ -2062,8 +2062,8 @@ const struct EbpfHelperPrototype prototypes[81] = {
     FN(get_current_cgroup_id),
 };
 
-bool is_helper_usable_linux(unsigned int n) {
-    if (n >= sizeof(prototypes) / sizeof(prototypes[0]) || n < 0)
+bool is_helper_usable_linux(int32_t n) {
+    if (n >= (int)(sizeof(prototypes) / sizeof(prototypes[0])) || n < 0)
         return false;
 
     // If the helper has a context_descriptor, it must match the hook's context_descriptor.
@@ -2074,7 +2074,7 @@ bool is_helper_usable_linux(unsigned int n) {
     return true;
 }
 
-EbpfHelperPrototype get_helper_prototype_linux(unsigned int n) {
+EbpfHelperPrototype get_helper_prototype_linux(int32_t n) {
     if (!is_helper_usable_linux(n))
         throw std::exception();
     return prototypes[n];

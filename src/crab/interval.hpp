@@ -442,7 +442,6 @@ inline interval_t trim_interval(const interval_t& i, const interval_t& j) {
             return interval_t(bound_t{*c + 1}, i.ub());
         } else if (i.ub() == bound_t{*c}) {
             return interval_t(i.lb(), bound_t{*c - 1});
-        } else {
         }
     }
     return i;
