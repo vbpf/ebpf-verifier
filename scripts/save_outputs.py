@@ -2,7 +2,6 @@
 # Copyright (c) Prevail Verifier contributors.
 # SPDX-License-Identifier: MIT
 import subprocess
-import shutil
 import glob
 import os.path
 import os

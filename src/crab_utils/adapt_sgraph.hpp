@@ -169,6 +169,7 @@ class AdaptGraph final {
 
         edge_iter(const smap_t::elt_iter_t& _it, const std::vector<Wt>& _ws) : it(_it), ws(&_ws) {}
         edge_iter(const edge_iter& o) = default;
+        edge_iter& operator=(const edge_iter& o) = default;
         edge_iter() = default;
 
         // XXX: to make sure that we always return the same address

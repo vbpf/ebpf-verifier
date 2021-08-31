@@ -19,7 +19,6 @@ interval_t interval_t::operator/(const interval_t& x) const {
                 return interval_t(_lb / bound_t{c}, _ub / bound_t{c});
             } else if (c < 0) {
                 return interval_t(_ub / bound_t{c}, _lb / bound_t{c});
-            } else {
             }
         }
         // Divisor is not a singleton

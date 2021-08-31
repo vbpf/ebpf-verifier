@@ -19,7 +19,7 @@ static int do_bpf(bpf_cmd cmd, union bpf_attr& attr) { return syscall(321, cmd, 
  *  \return A pair (passed, elapsec_secs)
  */
 
-std::tuple<bool, double> bpf_verify_program(EbpfProgramType type, const std::vector<ebpf_inst>& raw_prog, ebpf_verifier_options_t* options) {
+std::tuple<bool, double> bpf_verify_program(const EbpfProgramType& type, const std::vector<ebpf_inst>& raw_prog, ebpf_verifier_options_t* options) {
     std::vector<char> buf(options->print_failures ? 1000000 : 10);
     buf[0] = 0;
     memset(buf.data(), '\0', buf.size());

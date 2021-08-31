@@ -168,7 +168,7 @@ static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info,
 }
 
 /// Returned value is true if the program passes verification.
-bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options,
+bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, const program_info& info, const ebpf_verifier_options_t* options,
                        ebpf_verifier_stats_t* stats) {
     if (options == nullptr)
         options = &ebpf_verifier_default_options;
@@ -182,7 +182,7 @@ bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, program_info info, const ebp
 }
 
 /// Returned value is true if the program passes verification.
-bool ebpf_verify_program(std::ostream& s, const InstructionSeq& prog, program_info info,
+bool ebpf_verify_program(std::ostream& s, const InstructionSeq& prog, const program_info& info,
                          const ebpf_verifier_options_t* options, ebpf_verifier_stats_t* stats) {
     if (options == nullptr)
         options = &ebpf_verifier_default_options;

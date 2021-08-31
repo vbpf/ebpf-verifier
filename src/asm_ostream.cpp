@@ -348,7 +348,6 @@ void print(const InstructionSeq& insts, std::ostream& out, std::optional<const l
         if (is_satisfied(ins))
             continue;
         if (!label_to_print.has_value() || (label == label_to_print)) {
-            std::ostream& out = visitor.os_;
             if (label.isjump()) {
                 out << "\n";
                 out << label << ":\n";
