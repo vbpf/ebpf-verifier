@@ -8,36 +8,25 @@ namespace crab::domains {
 // We use a global array map
 thread_local array_map_t global_array_map;
 
+static bool maybe_between(const NumAbsDomain& dom, const bound_t& x,
+                          const linear_expression_t& symb_lb,
+                          const linear_expression_t& symb_ub) {
+    using namespace dsl_syntax;
+    assert(x.is_finite());
+    linear_expression_t num(*x.number());
+    NumAbsDomain tmp(dom);
+    tmp += num >= symb_lb;
+    tmp += num <= symb_ub;
+    return !tmp.is_bottom();
+}
+
 // Return true if [symb_lb, symb_ub] may overlap with the cell,
 // where symb_lb and symb_ub are not constant expressions.
 bool cell_t::symbolic_overlap(const linear_expression_t& symb_lb, const linear_expression_t& symb_ub,
                               const NumAbsDomain& dom) const {
-
     interval_t x = to_interval();
-    assert(x.lb().is_finite());
-    assert(x.ub().is_finite());
-    linear_expression_t lb(*(x.lb().number()));
-    linear_expression_t ub(*(x.ub().number()));
-
-    NumAbsDomain tmp1(dom);
-    using namespace dsl_syntax;
-    tmp1 += lb >= symb_lb; //(lb >= symb_lb);
-    tmp1 += lb <= symb_ub; //(lb <= symb_ub);
-    if (!tmp1.is_bottom()) {
-        CRAB_LOG("array-expansion-overlap", std::cout << "\tyes.\n";);
-        return true;
-    }
-
-    NumAbsDomain tmp2(dom);
-    tmp2 += ub >= symb_lb; // (ub >= symb_lb);
-    tmp2 += ub <= symb_ub; // (ub <= symb_ub);
-    if (!tmp2.is_bottom()) {
-        CRAB_LOG("array-expansion-overlap", std::cout << "\tyes.\n";);
-        return true;
-    }
-
-    CRAB_LOG("array-expansion-overlap", std::cout << "\tno.\n";);
-    return false;
+    return maybe_between(dom, x.lb(), symb_lb, symb_ub)
+        || maybe_between(dom, x.ub(), symb_lb, symb_ub);
 }
 
 /**
@@ -56,9 +45,9 @@ void clear_global_state() {
 void offset_map_t::remove_cell(const cell_t& c) {
     offset_t key = c.get_offset();
     if (std::optional<cell_set_t> cells = _map[key]) {
-        if ((*cells).erase(c) > 0) {
+        if (cells->erase(c) > 0) {
             _map.erase(key);
-            if (!(*cells).empty()) {
+            if (!cells->empty()) {
                 // a bit of a waste ...
                 _map[key] = *cells;
             }
@@ -71,17 +60,15 @@ std::vector<cell_t> offset_map_t::get_overlap_cells_symbolic_offset(const NumAbs
                                                                     const linear_expression_t& symb_lb,
                                                                     const linear_expression_t& symb_ub) {
     std::vector<cell_t> out;
-    for (auto it = _map.begin(), et = _map.end(); it != et; ++it) {
-        const cell_set_t& o_cells = it->second;
-        // All cells in o_cells have the same offset. They only differ
-        // in the size. If the largest cell overlaps with [offset,
-        // offset + size) then the rest of cells are considered to
-        // overlap. This is an over-approximation because [offset,
-        // offset+size) can overlap with the largest cell but it
-        // doesn't necessarily overlap with smaller cells. For
-        // efficiency, we assume it overlaps with all.
+    for (const auto& [_offset, o_cells] : _map) {
+        // All cells in o_cells have the same offset. They only differ in the size.
+        // If the largest cell overlaps with [offset, offset + size)
+        // then the rest of cells are considered to overlap.
+        // This is an over-approximation because [offset, offset+size) can overlap
+        // with the largest cell but it doesn't necessarily overlap with smaller cells.
+        // For efficiency, we assume it overlaps with all.
         cell_t largest_cell;
-        for (auto& c : o_cells) {
+        for (const cell_t& c : o_cells) {
             if (largest_cell.is_null()) {
                 largest_cell = c;
             } else {
@@ -105,7 +92,7 @@ std::vector<cell_t> offset_map_t::get_overlap_cells_symbolic_offset(const NumAbs
 void offset_map_t::insert_cell(const cell_t& c) {
     offset_t key = c.get_offset();
     if (std::optional<cell_set_t> cells = _map[key]) {
-        if ((*cells).insert(c).second) {
+        if (cells->insert(c).second) {
             // a bit of a waste ...
             _map.erase(key);
             _map[key] = *cells;
@@ -120,8 +107,8 @@ void offset_map_t::insert_cell(const cell_t& c) {
 std::optional<cell_t> offset_map_t::get_cell(offset_t o, unsigned size) {
     if (std::optional<cell_set_t> cells = _map[o]) {
         cell_t tmp(o, size);
-        auto it = (*cells).find(tmp);
-        if (it != (*cells).end()) {
+        auto it = cells->find(tmp);
+        if (it != cells->end()) {
             return *it;
         }
     }
@@ -220,10 +207,8 @@ std::vector<cell_t> offset_map_t::get_overlap_cells(offset_t o, unsigned size) {
                 continue;
             }
             if (x.overlap(o, size)) {
-                if (!(x == *maybe_c)) {
-                    if (std::find(out.begin(), out.end(), x) == out.end()) {
-                        out.push_back(x);
-                    }
+                if (std::find(out.begin(), out.end(), x) == out.end()) {
+                    out.push_back(x);
                 }
                 continue_outer_loop = true;
             }
@@ -243,8 +228,7 @@ std::ostream& operator<<(std::ostream& o, offset_map_t& m) {
     if (m._map.empty()) {
         o << "empty";
     } else {
-        for (auto it = m._map.begin(), et = m._map.end(); it != et; ++it) {
-            const offset_map_t::cell_set_t& cells = it->second;
+        for (const auto& [_offset, cells] : m._map) {
             o << "{";
             for (auto cit = cells.begin(), cet = cells.end(); cit != cet;) {
                 o << *cit;
