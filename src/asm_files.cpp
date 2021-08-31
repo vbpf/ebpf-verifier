@@ -16,11 +16,9 @@ using std::string;
 using std::vector;
 
 template <typename T>
-static vector<T> vector_of(ELFIO::section* sec) {
-    if (!sec)
-        return {};
-    auto data = sec->get_data();
-    auto size = sec->get_size();
+static vector<T> vector_of(const ELFIO::section& sec) {
+    auto data = sec.get_data();
+    auto size = sec.get_size();
     assert(size % sizeof(T) == 0);
     return {(T*)data, (T*)(data + size)};
 }
@@ -65,7 +63,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
     }
 
     ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
-    auto read_reloc_value = [&symbols,platform](int symbol) -> size_t {
+    auto read_reloc_value = [&symbols,platform](ELFIO::Elf_Word symbol) -> size_t {
         string symbol_name;
         ELFIO::Elf64_Addr value{};
         ELFIO::Elf_Xword size{};
@@ -92,7 +90,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
         info.type = platform->get_program_type(name, path);
         if (section->get_size() == 0)
             continue;
-        raw_program prog{path, name, vector_of<ebpf_inst>(section), info};
+        raw_program prog{path, name, vector_of<ebpf_inst>(*section), info};
         auto prelocs = reader.sections[string(".rel") + name];
         if (!prelocs)
             prelocs = reader.sections[string(".rela") + name];
