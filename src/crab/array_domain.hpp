@@ -56,7 +56,7 @@ namespace crab::domains {
 using NumAbsDomain = SplitDBM;
 
 class offset_t final {
-    index_t _index;
+    index_t _index{};
     int _prefix_length;
 
 public:
