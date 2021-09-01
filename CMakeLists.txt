@@ -48,8 +48,11 @@ file(GLOB ALL_TEST
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
     "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(COMMON_FLAGS -Wall -Wfatal-errors -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8)
-  set(DEBUG_FLAGS -O0 -g3)
-  set(RELEASE_FLAGS -O2 -flto)
+
+  set(RELEASE_FLAGS -O2 -flto -ffat-lto-objects)
+
+  set(DEBUG_FLAGS -O0 -g3 -fno-omit-frame-pointer)
+
   set(SANITIZE_FLAGS -fsanitize=address -O1 -fno-omit-frame-pointer)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++latest")
