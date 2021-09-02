@@ -60,19 +60,19 @@ struct checks_db final {
 
 static checks_db generate_report(std::ostream& s,
                                  cfg_t& cfg,
-                                 crab::invariant_table_t& preconditions,
-                                 crab::invariant_table_t& postconditions) {
+                                 crab::invariant_table_t& pre_invariants,
+                                 crab::invariant_table_t& post_invariants) {
     checks_db m_db;
     for (const label_t& label : cfg.sorted_labels()) {
         basic_block_t& bb = cfg.get_node(label);
 
         if (thread_local_options.print_invariants) {
-            s << "\nPreconditions : " << preconditions.at(label) << "\n";
+            s << "\nPre-invariant : " << pre_invariants.at(label) << "\n";
             s << bb;
-            s << "\nPostconditions: " << postconditions.at(label) << "\n";
+            s << "\nPost-invariant: " << post_invariants.at(label) << "\n";
         }
 
-        ebpf_domain_t from_inv(preconditions.at(label));
+        ebpf_domain_t from_inv(pre_invariants.at(label));
         from_inv.set_require_check([&m_db, label](auto& inv, const linear_constraint_t& cst, const std::string& s) {
             if (inv.is_bottom())
                 return;
@@ -95,7 +95,7 @@ static checks_db generate_report(std::ostream& s,
             // Pinpoint the places where divergence might occur.
             int min_instruction_count_upper_bound = INT_MAX;
             for (const label_t& prev_label : bb.prev_blocks_set()) {
-                int instruction_count = preconditions.at(prev_label).get_instruction_count_upper_bound();
+                int instruction_count = pre_invariants.at(prev_label).get_instruction_count_upper_bound();
                 min_instruction_count_upper_bound = std::min(min_instruction_count_upper_bound, instruction_count);
             }
 
@@ -153,12 +153,12 @@ static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info,
     thread_local_options = *options;
 
     try {
-        // Get dictionaries of preconditions and postconditions for each
+        // Get dictionaries of pre-invariants and post-invariants for each
         // basic block.
-        auto [preconditions, postconditions] = crab::run_forward_analyzer(cfg, options->check_termination);
+        auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, options->check_termination);
 
         // Analyze the control-flow graph.
-        return generate_report(s, cfg, preconditions, postconditions);
+        return generate_report(s, cfg, pre_invariants, post_invariants);
     } catch (std::runtime_error& e) {
         // Convert verifier runtime_error exceptions to failure.
         checks_db db;
