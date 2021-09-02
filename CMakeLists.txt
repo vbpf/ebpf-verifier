@@ -33,6 +33,8 @@ include_directories(./src)
 include_directories(${Boost_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS})
 
+find_package(yaml-cpp REQUIRED)
+
 file(GLOB LIB_SRC
         "./src/*.cpp"
         "./src/crab/*.cpp"
@@ -61,12 +63,17 @@ endif ()
 add_library(ebpfverifier ${LIB_SRC})
 add_executable(check src/main/check.cpp src/main/linux_verifier.cpp)
 add_executable(tests ${ALL_TEST})
+add_executable(run_yaml src/main/run_yaml.cpp)
 
 set_target_properties(check
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
 
 set_target_properties(tests
+        PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
+
+set_target_properties(run_yaml
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
 
@@ -98,3 +105,9 @@ target_link_libraries(tests PRIVATE ebpfverifier)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 target_link_libraries(tests PRIVATE Threads::Threads)
+
+target_compile_options(ebpfverifier PRIVATE ${COMMON_FLAGS})
+
+include_directories(${YAML_CPP_INCLUDE_DIRS})
+target_link_libraries(run_yaml PRIVATE ${YAML_CPP_LIBRARIES})
+target_link_libraries(run_yaml PRIVATE ebpfverifier)

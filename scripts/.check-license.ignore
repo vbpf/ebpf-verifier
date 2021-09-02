@@ -5,6 +5,7 @@
 .*\.md$
 .*\.patch$
 .*\.pdf$
+.*\.yaml$
 
 # Directories using MIT license but with a separate Copyright
 external/ELFIO

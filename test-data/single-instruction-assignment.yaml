@@ -1,0 +1,22 @@
+---
+test-case: assign immediate
+
+pre: ""
+code:
+  r1 = 0
+
+post: |
+  r1.type=number
+  r1.value=0
+
+---
+test-case: assign register
+
+pre: |
+  {}
+
+code: |
+  r1 = r2;
+
+post: |
+  {r1.type=r2.type, r1.value=r2.value, r1.offset=r2.offset}

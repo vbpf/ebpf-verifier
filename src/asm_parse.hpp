@@ -4,8 +4,12 @@
 
 #include <tuple>
 #include <vector>
+#include <string>
 
 #include "asm_syntax.hpp"
 
 Instruction parse_instruction(const std::string& text);
-std::vector<std::tuple<label_t, Instruction>> parse_program(std::istream& is);
+
+InstructionSeq parse_program(std::istream& is);
+
+InstructionSeq parse_unlabeled_program(const std::string& s);

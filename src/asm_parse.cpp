@@ -1,11 +1,13 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
 #include <algorithm>
-#include <boost/lexical_cast.hpp>
 #include <map>
 #include <regex>
 #include <tuple>
 #include <unordered_set>
+#include <sstream>
+
+#include <boost/lexical_cast.hpp>
 
 #include "asm_parse.hpp"
 
@@ -81,7 +83,9 @@ static Deref deref(const std::string& width, const std::string& basereg, const s
     };
 }
 
-Instruction parse_instruction(const std::string& text) {
+Instruction parse_instruction(const std::string& line) {
+    // consider ";" to be a comment
+    std::string text = line.substr(0, line.find(';'));
     std::smatch m;
     if (regex_match(text, m, regex("exit"))) {
         return Exit{};
@@ -142,11 +146,25 @@ Instruction parse_instruction(const std::string& text) {
     return Undefined{0};
 }
 
-std::vector<std::tuple<label_t, Instruction>> parse_program(std::istream& is) {
+InstructionSeq parse_unlabeled_program(const std::string& s) {
+    std::string line;
+    int lineno = 0;
+    InstructionSeq result;
+    std::istringstream is{s};
+    while (std::getline(is, line)) {
+        lineno++;
+        // TODO: handle large instructions
+        label_t label{boost::lexical_cast<int>(lineno)};
+        result.emplace_back(label, parse_instruction(line));
+    }
+    return result;
+}
+
+InstructionSeq parse_program(std::istream& is) {
     std::string line;
     int lineno = 0;
     std::vector<label_t> pc_to_label;
-    std::vector<std::tuple<label_t, Instruction>> labeled_insts;
+    InstructionSeq labeled_insts;
     std::set<label_t> seen_labels;
     std::optional<label_t> next_label;
     while (std::getline(is, line)) {
