@@ -116,7 +116,9 @@ checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info, const 
 
     try {
         // Get dictionaries of pre-invariants and post-invariants for each basic block.
-        auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, options->check_termination);
+        ebpf_domain_t entry_dom = ebpf_domain_t::setup_entry(options->check_termination);
+        auto [pre_invariants, post_invariants] =
+            crab::run_forward_analyzer(cfg, std::move(entry_dom), options->check_termination);
 
         // Analyze the control-flow graph.
         checks_db db = generate_report(cfg, pre_invariants, post_invariants);
@@ -165,7 +167,7 @@ std::tuple<checks_db, string_invariants, string_invariants>
         options = &ebpf_verifier_default_options;
     global_program_info = info;
     cfg_t cfg = prepare_cfg(prog, info, !options->no_simplify);
-    auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, options->check_termination);
+    auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, {}, options->check_termination);
     return {
         generate_report(cfg, pre_invariants, post_invariants),
         to_string_invariants(pre_invariants),
