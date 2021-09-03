@@ -447,6 +447,7 @@ class SplitDBM final {
     }
 
     friend std::ostream& operator<<(std::ostream& o, SplitDBM& dom);
+    std::optional<std::set<std::string>> to_set();
 }; // class SplitDBM
 
 } // namespace domains

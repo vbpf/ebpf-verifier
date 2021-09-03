@@ -1166,6 +1166,10 @@ out:
         }
     }
 
+    std::optional<std::set<std::string>> to_set() {
+        return this->m_inv.to_set();
+    }
+
     friend std::ostream& operator<<(std::ostream& o, ebpf_domain_t dom) {
         if (dom.is_bottom()) {
             o << "_|_";
@@ -1183,7 +1187,8 @@ out:
 
         inv += 0 <= variable_t::packet_size();
         inv += variable_t::packet_size() < MAX_PACKET_OFF;
-        if (global_program_info.type.context_descriptor->meta >= 0) {
+        auto info = global_program_info;
+        if (info.type.context_descriptor->meta >= 0) {
             inv += variable_t::meta_offset() <= 0;
             inv += variable_t::meta_offset() >= -4098;
         } else {

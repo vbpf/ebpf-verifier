@@ -148,14 +148,14 @@ Instruction parse_instruction(const std::string& line) {
 
 InstructionSeq parse_unlabeled_program(const std::string& s) {
     std::string line;
-    int lineno = 0;
     InstructionSeq result;
+    int lineno = 0;
     std::istringstream is{s};
     while (std::getline(is, line)) {
-        lineno++;
         // TODO: handle large instructions
         label_t label{boost::lexical_cast<int>(lineno)};
         result.emplace_back(label, parse_instruction(line));
+        lineno++;
     }
     return result;
 }

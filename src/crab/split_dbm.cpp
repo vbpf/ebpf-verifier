@@ -1187,66 +1187,81 @@ void SplitDBM::forget(const variable_vector_t& variables) {
     }
 }
 
-std::ostream& operator<<(std::ostream& o, SplitDBM& dom) {
+std::optional<std::set<std::string>> SplitDBM::to_set() {
+    normalize();
 
-    dom.normalize();
+    if (this->is_bottom()) {
+        return {};
+    }
+    if (this->is_top()) {
+        return { {} };
+    }
 
-    if (dom.is_bottom()) {
-        return o << "_|_";
-    }
-    if (dom.is_top()) {
-        return o << "{}";
-    }
+    std::set<std::string> result;
     // Intervals
-    bool first = true;
-    o << "{";
-    // Extract all the edges
-    SubGraph<SplitDBM::graph_t> g_excl(dom.g, 0);
-    for (SplitDBM::vert_id v : g_excl.verts()) {
-        if (!dom.rev_map[v])
-            continue;
-        if (!dom.g.elem(0, v) && !dom.g.elem(v, 0))
-            continue;
-        interval_t v_out = interval_t(dom.g.elem(v, 0) ? -number_t(dom.g.edge_val(v, 0)) : bound_t::minus_infinity(),
-                                      dom.g.elem(0, v) ?  number_t(dom.g.edge_val(0, v)) : bound_t::plus_infinity());
 
-        if (first)
-            first = false;
-        else
-            o << ", ";
-        variable_t variable = *(dom.rev_map[v]);
-        o << variable << "=";
+    // Extract all the edges
+    SubGraph<SplitDBM::graph_t> g_excl(this->g, 0);
+    for (SplitDBM::vert_id v : g_excl.verts()) {
+        if (!this->rev_map[v])
+            continue;
+        if (!this->g.elem(0, v) && !this->g.elem(v, 0))
+            continue;
+        interval_t v_out = interval_t(this->g.elem(v, 0) ? -number_t(this->g.edge_val(v, 0)) : bound_t::minus_infinity(),
+                                      this->g.elem(0, v) ?  number_t(this->g.edge_val(0, v)) : bound_t::plus_infinity());
+
+        variable_t variable = *(this->rev_map[v]);
+
+        std::stringstream elem;
+        elem << variable << "=";
         if (v_out.lb() == v_out.ub()) {
             if (variable.is_type()) {
                 static const std::vector<std::string> type_string = {"shared_pointer", "packet_pointer", "stack_pointer", "ctx_pointer", "number", "map_fd", "map_fd_program", "uninitialized"};
                 int type = (int)v_out.lb().number().value();
                 if (type <= 0 && type > -static_cast<int>(std::size(type_string)))
-                    o << type_string.at(-type);
+                    elem << type_string.at(-type);
                 else
-                    o << "map_value_of_size(" << v_out.lb() << ")";
-            } else
-                o << "[" << v_out.lb() << "]";
-        } else
-            o << v_out;
+                    elem << "map_value_of_size(" << v_out.lb() << ")";
+            } else {
+                elem << "[" << v_out.lb() << "]";
+            }
+        } else {
+            elem << v_out;
+        }
+        result.insert(elem.str());
     }
-    if (!first) o << "\n ";
-    first = true;
 
     for (SplitDBM::vert_id s : g_excl.verts()) {
-        if (!dom.rev_map[s])
+        if (!this->rev_map[s])
             continue;
-        variable_t vs = *dom.rev_map[s];
+        variable_t vs = *this->rev_map[s];
         for (SplitDBM::vert_id d : g_excl.succs(s)) {
-            if (!dom.rev_map[d])
+            if (!this->rev_map[d])
                 continue;
-            variable_t vd = *dom.rev_map[d];
-
-            if (first)
-                first = false;
-            else
-                o << ", ";
-            o << vd << "-" << vs << "<=" << g_excl.edge_val(s, d);
+            variable_t vd = *this->rev_map[d];
+            std::stringstream elem;
+            elem << vd << "-" << vs << "<=" << g_excl.edge_val(s, d);
+            result.insert(elem.str());
         }
+    }
+    return result;
+}
+
+std::ostream& operator<<(std::ostream& o, SplitDBM& dom) {
+    std::optional<std::set<std::string>> maybe_items = dom.to_set();
+    if (!maybe_items) {
+        return o << "_|_";
+    }
+    std::set<std::string> items{std::move(*maybe_items)};
+    // Intervals
+    bool first = true;
+    o << "{";
+    for (const auto& item : items) {
+        o << item;
+        if (first)
+            first = false;
+        else
+            o << ", ";
     }
     o << "}";
     return o;

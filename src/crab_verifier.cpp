@@ -25,53 +25,15 @@ thread_local program_info global_program_info;
 thread_local ebpf_verifier_options_t thread_local_options;
 
 // Numerical domains over integers
-//using sdbm_domain_t = crab::domains::SplitDBM;
+// using sdbm_domain_t = crab::domains::SplitDBM;
 using crab::domains::ebpf_domain_t;
 
-// Toy database to store invariants.
-struct checks_db final {
-    std::map<label_t, std::vector<std::string>> m_db;
-    int total_warnings{};
-    int total_unreachable{};
-    int max_instruction_count{};
-    std::set<label_t> maybe_nonterminating;
-
-    void add(const label_t& label, const std::string& msg) {
-        m_db[label].emplace_back(msg);
-    }
-
-    void add_warning(const label_t& label, const std::string& msg) {
-        add(label, msg);
-        total_warnings++;
-    }
-
-    void add_unreachable(const label_t& label, const std::string& msg) {
-        add(label, msg);
-        total_unreachable++;
-    }
-
-    void add_nontermination(const label_t& label) {
-        maybe_nonterminating.insert(label);
-        total_warnings++;
-    }
-
-    checks_db() = default;
-};
-
-static checks_db generate_report(std::ostream& s,
-                                 cfg_t& cfg,
+static checks_db generate_report(cfg_t& cfg,
                                  crab::invariant_table_t& pre_invariants,
                                  crab::invariant_table_t& post_invariants) {
     checks_db m_db;
     for (const label_t& label : cfg.sorted_labels()) {
         basic_block_t& bb = cfg.get_node(label);
-
-        if (thread_local_options.print_invariants) {
-            s << "\nPre-invariant : " << pre_invariants.at(label) << "\n";
-            s << bb;
-            s << "\nPost-invariant: " << post_invariants.at(label) << "\n";
-        }
-
         ebpf_domain_t from_inv(pre_invariants.at(label));
         from_inv.set_require_check([&m_db, label](auto& inv, const linear_constraint_t& cst, const std::string& s) {
             if (inv.is_bottom())
@@ -146,19 +108,26 @@ static void print_report(std::ostream& s, const checks_db& db, const Instruction
     s << db.total_warnings << " errors\n";
 }
 
-static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options) {
+checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options) {
     global_program_info = std::move(info);
     crab::domains::clear_global_state();
     variable_t::clear_thread_local_state();
     thread_local_options = *options;
 
     try {
-        // Get dictionaries of pre-invariants and post-invariants for each
-        // basic block.
+        // Get dictionaries of pre-invariants and post-invariants for each basic block.
         auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, options->check_termination);
 
         // Analyze the control-flow graph.
-        return generate_report(s, cfg, pre_invariants, post_invariants);
+        checks_db db = generate_report(cfg, pre_invariants, post_invariants);
+        if (thread_local_options.print_invariants) {
+            for (const label_t& label : cfg.sorted_labels()) {
+                s << "\nPre-invariant : " << pre_invariants.at(label) << "\n";
+                s << cfg.get_node(label);
+                s << "\nPost-invariant: " << post_invariants.at(label) << "\n";
+            }
+        }
+        return db;
     } catch (std::runtime_error& e) {
         // Convert verifier runtime_error exceptions to failure.
         checks_db db;
@@ -179,6 +148,29 @@ bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, const program_info& info, co
         stats->max_instruction_count = report.max_instruction_count;
     }
     return (report.total_warnings == 0);
+}
+
+static string_invariants to_string_invariants(crab::invariant_table_t& inv_table) {
+    string_invariants res;
+    for (auto& [label, inv]: inv_table) {
+        res.insert_or_assign(label, inv.to_set());
+    }
+    return res;
+}
+
+std::tuple<checks_db, string_invariants, string_invariants>
+        ebpf_verify_program(const InstructionSeq& prog, const program_info& info,
+                            const ebpf_verifier_options_t* options) {
+    if (options == nullptr)
+        options = &ebpf_verifier_default_options;
+    global_program_info = info;
+    cfg_t cfg = prepare_cfg(prog, info, !options->no_simplify);
+    auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, options->check_termination);
+    return {
+        generate_report(cfg, pre_invariants, post_invariants),
+        to_string_invariants(pre_invariants),
+        to_string_invariants(post_invariants)
+    };
 }
 
 /// Returned value is true if the program passes verification.
