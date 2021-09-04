@@ -28,6 +28,36 @@ thread_local ebpf_verifier_options_t thread_local_options;
 // using sdbm_domain_t = crab::domains::SplitDBM;
 using crab::domains::ebpf_domain_t;
 
+// Toy database to store invariants.
+struct checks_db final {
+    std::map<label_t, std::vector<std::string>> m_db;
+    int total_warnings{};
+    int total_unreachable{};
+    int max_instruction_count{};
+    std::set<label_t> maybe_nonterminating;
+
+    void add(const label_t& label, const std::string& msg) {
+        m_db[label].emplace_back(msg);
+    }
+
+    void add_warning(const label_t& label, const std::string& msg) {
+        add(label, msg);
+        total_warnings++;
+    }
+
+    void add_unreachable(const label_t& label, const std::string& msg) {
+        add(label, msg);
+        total_unreachable++;
+    }
+
+    void add_nontermination(const label_t& label) {
+        maybe_nonterminating.insert(label);
+        total_warnings++;
+    }
+
+    checks_db() = default;
+};
+
 static checks_db generate_report(cfg_t& cfg,
                                  crab::invariant_table_t& pre_invariants,
                                  crab::invariant_table_t& post_invariants) {
@@ -160,16 +190,21 @@ static string_invariants to_string_invariants(crab::invariant_table_t& inv_table
     return res;
 }
 
-std::tuple<checks_db, string_invariants, string_invariants>
-        ebpf_verify_program(const InstructionSeq& prog, const program_info& info,
-                            const ebpf_verifier_options_t* options) {
-    if (options == nullptr)
-        options = &ebpf_verifier_default_options;
+std::tuple<ebpf_verifier_stats_t, string_invariants, string_invariants>
+ebpf_analyze_program_for_test(const InstructionSeq& prog, const program_info& info,
+                              bool no_simplify, bool check_termination) {
     global_program_info = info;
-    cfg_t cfg = prepare_cfg(prog, info, !options->no_simplify);
-    auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, {}, options->check_termination);
+    cfg_t cfg = prepare_cfg(prog, info, !no_simplify);
+    auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, {}, check_termination);
+    checks_db report = generate_report(cfg, pre_invariants, post_invariants);
+
+    ebpf_verifier_stats_t stats{
+        .total_unreachable = report.total_unreachable,
+        .total_warnings = report.total_warnings,
+        .max_instruction_count = report.max_instruction_count
+    };
     return {
-        generate_report(cfg, pre_invariants, post_invariants),
+        stats,
         to_string_invariants(pre_invariants),
         to_string_invariants(post_invariants)
     };
