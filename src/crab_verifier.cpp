@@ -199,7 +199,7 @@ ebpf_analyze_program_for_test(const InstructionSeq& prog, const string_invariant
         ? ebpf_domain_t::from_constraints(parse_linear_constraints(*entry_invariant))
         : ebpf_domain_t::bottom();
     global_program_info = info;
-    cfg_t cfg = prepare_cfg(prog, info, !no_simplify);
+    cfg_t cfg = prepare_cfg(prog, info, !no_simplify, false);
     auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, entry_inv, check_termination);
     checks_db report = generate_report(cfg, pre_invariants, post_invariants);
 

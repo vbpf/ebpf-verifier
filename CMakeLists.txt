@@ -31,6 +31,7 @@ include_directories(./external)
 include_directories(./external/ELFIO)
 include_directories(./src)
 include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${YAML_CPP_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS})
 
 find_package(yaml-cpp REQUIRED)
@@ -44,7 +45,12 @@ file(GLOB LIB_SRC
         )
 
 file(GLOB ALL_TEST
-        "./src/test/*.cpp"
+        "./src/test/test.cpp"
+        "./src/test/test_loop.cpp"
+        "./src/test/test_marshal.cpp"
+        "./src/test/test_termination.cpp"
+        "./src/test/test_verify.cpp"
+        "./src/test/test_yaml.cpp"
         )
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
@@ -104,10 +110,11 @@ target_link_libraries(tests PRIVATE ebpfverifier)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
+target_link_libraries(tests PRIVATE ${YAML_CPP_LIBRARIES})
 target_link_libraries(tests PRIVATE Threads::Threads)
 
 target_compile_options(ebpfverifier PRIVATE ${COMMON_FLAGS})
 
-include_directories(${YAML_CPP_INCLUDE_DIRS})
+
 target_link_libraries(run_yaml PRIVATE ${YAML_CPP_LIBRARIES})
 target_link_libraries(run_yaml PRIVATE ebpfverifier)
