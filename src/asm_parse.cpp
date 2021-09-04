@@ -53,13 +53,13 @@ const std::map<std::string, int> str_to_width = {
     {"64", 8},
 };
 
-Reg reg(std::string s) {
+static Reg reg(std::string s) {
     assert(s.at(0) == 'r');
     uint8_t res = (uint8_t)boost::lexical_cast<uint16_t>(s.substr(1));
     return Reg{res};
 }
 
-Imm imm(std::string s) {
+static Imm imm(std::string s) {
     try {
         return Imm{boost::lexical_cast<uint64_t>(s)};
     } catch (const boost::bad_lexical_cast&) {
@@ -67,7 +67,7 @@ Imm imm(std::string s) {
     }
 }
 
-Value reg_or_imm(std::string s) {
+static Value reg_or_imm(std::string s) {
     if (s.at(0) == 'r')
         return reg(s);
     else

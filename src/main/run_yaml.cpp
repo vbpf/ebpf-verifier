@@ -51,6 +51,20 @@ ebpf_platform_t g_platform_test = {
     .get_map_type = ebpf_get_map_type
 };
 
+std::set<std::string> vector_to_set(const std::vector<std::string>& s) {
+    std::set<std::string> res;
+    for (const auto& item : s)
+        res.insert(item);
+    return res;
+}
+
+string_invariant read_invariant(const YAML::Node& node) {
+    std::set<std::string> res = vector_to_set(node.as<std::vector<std::string>>());
+    if (res == std::set<std::string>{"_|_"})
+        return {};
+    return res;
+}
+
 int main() {
     std::ifstream f{"test-data/single-instruction-assignment.yaml"};
     std::vector<YAML::Node> documents = YAML::LoadAll(f);
@@ -58,7 +72,7 @@ int main() {
     for (const YAML::Node& config : documents) {
         std::cout << config["test-case"].as<std::string>() << "\n";
 
-        std::cout << config["pre"].as<std::string>() << "\n";
+        string_invariant assumed_pre_invariant = read_invariant(config["pre"]);
 
         const std::string& code = config["code"].as<std::string>();
         InstructionSeq prog = parse_unlabeled_program(code);
@@ -75,12 +89,37 @@ int main() {
             .section_prefixes={},
             .is_privileged=false
         };
+        string_invariant expected_post_invariant = read_invariant(config["post"]);
+
         program_info info{&g_platform_test, {}, program_type};
-        const auto& [stats, pre_invs, post_invs] = ebpf_analyze_program_for_test(prog, info, true, false);
+        const auto& [stats, pre_invs, post_invs] = ebpf_analyze_program_for_test(prog, assumed_pre_invariant, info,
+                                                                                 true, false);
         const auto& last_invariant = post_invs.at(last_label);
-        if (last_invariant) {
-            for (const std::string& cst : *last_invariant)
-                std::cout << cst << "\n";
+        if (last_invariant != expected_post_invariant) {
+            std::cout << "fail!\n";
+            if (last_invariant && expected_post_invariant) {
+                std::cout << "not expected:\n";
+                for (const std::string& cst : *last_invariant) {
+                    if (!expected_post_invariant->count(cst))
+                        std::cout << cst << "\n";
+                }
+                std::cout << "not required:\n";
+                for (const std::string& cst : *expected_post_invariant) {
+                    if (!last_invariant->count(cst))
+                        std::cout << cst << "\n";
+                }
+            } else {
+                if (!expected_post_invariant) {
+                    std::cout << "Expected _|_, but got this instead:";
+                    for (const std::string& cst : *last_invariant) {
+                        std::cout << cst << "\n";
+                    }
+                } else {
+                    std::cout << "Result is _|_";
+                }
+            }
+        } else {
+            std::cout << "pass!\n";
         }
         std::cout << "---\n\n";
     }

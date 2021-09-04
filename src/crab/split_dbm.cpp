@@ -1,9 +1,8 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: Apache-2.0
-#include "crab/split_dbm.hpp"
-
 #include <utility>
 
+#include "crab/split_dbm.hpp"
 #include "crab_utils/debug.hpp"
 #include "crab_utils/stats.hpp"
 
@@ -1202,6 +1201,10 @@ static std::string to_string(variable_t vd, variable_t vs, const SafeInt64Defaul
     return elem.str();
 }
 
+static const std::vector<std::string> type_string = {
+    "shared", "packet", "stack", "ctx", "number", "map_fd", "map_fd_program", "uninitialized"
+};
+
 std::optional<std::set<std::string>> SplitDBM::to_set() {
     normalize();
 
@@ -1231,8 +1234,6 @@ std::optional<std::set<std::string>> SplitDBM::to_set() {
         elem << variable << "=";
         if (v_out.lb() == v_out.ub()) {
             if (variable.is_type()) {
-                static const std::vector<std::string> type_string = {
-                    "shared", "packet", "stack", "ctx", "number", "map_fd", "map_fd_program", "uninitialized"};
                 int type = (int)v_out.lb().number().value();
                 if (variable.is_in_stack() && type == T_NUM) {
                     // no need to show this
@@ -1243,7 +1244,7 @@ std::optional<std::set<std::string>> SplitDBM::to_set() {
                 else
                     elem << "map_value_of_size(" << v_out.lb() << ")";
             } else {
-                elem << "[" << v_out.lb() << "]";
+                elem << v_out.lb();
             }
         } else {
             elem << v_out;
@@ -1295,5 +1296,4 @@ std::ostream& operator<<(std::ostream& o, SplitDBM& dom) {
     o << "}";
     return o;
 }
-
 } // namespace crab::domains

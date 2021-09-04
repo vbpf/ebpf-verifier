@@ -1196,6 +1196,14 @@ out:
         }
     }
 
+    static ebpf_domain_t from_constraints(const std::vector<linear_constraint_t>& csts) {
+        ebpf_domain_t inv;
+        for (const auto& cst: csts) {
+            inv += cst;
+        }
+        return inv;
+    }
+
     static ebpf_domain_t setup_entry(bool check_termination) {
         using namespace dsl_syntax;
 

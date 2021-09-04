@@ -11,9 +11,13 @@ properties:
   test-case:
     type: string
   pre:
-    type: string
+    type: array
+    items:
+      type: string
   code:
     type: string
   post:
-    type: string
+    type: array
+    items:
+      type: string
 additionalProperties: false

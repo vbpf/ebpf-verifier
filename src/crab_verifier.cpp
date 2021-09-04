@@ -17,6 +17,7 @@
 #include "crab/fwd_analyzer.hpp"
 
 #include "asm_syntax.hpp"
+#include "parse_constraints.hpp"
 #include "crab_verifier.hpp"
 
 using std::string;
@@ -182,20 +183,24 @@ bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, const program_info& info, co
     return (report.total_warnings == 0);
 }
 
-static string_invariants to_string_invariants(crab::invariant_table_t& inv_table) {
-    string_invariants res;
+static string_invariant_map to_string_invariant_map(crab::invariant_table_t& inv_table) {
+    string_invariant_map res;
     for (auto& [label, inv]: inv_table) {
         res.insert_or_assign(label, inv.to_set());
     }
     return res;
 }
 
-std::tuple<ebpf_verifier_stats_t, string_invariants, string_invariants>
-ebpf_analyze_program_for_test(const InstructionSeq& prog, const program_info& info,
+std::tuple<ebpf_verifier_stats_t, string_invariant_map, string_invariant_map>
+ebpf_analyze_program_for_test(const InstructionSeq& prog, const string_invariant& entry_invariant,
+                              const program_info& info,
                               bool no_simplify, bool check_termination) {
+    ebpf_domain_t entry_inv = entry_invariant
+        ? ebpf_domain_t::from_constraints(parse_linear_constraints(*entry_invariant))
+        : ebpf_domain_t::bottom();
     global_program_info = info;
     cfg_t cfg = prepare_cfg(prog, info, !no_simplify);
-    auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, {}, check_termination);
+    auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, entry_inv, check_termination);
     checks_db report = generate_report(cfg, pre_invariants, post_invariants);
 
     ebpf_verifier_stats_t stats{
@@ -205,8 +210,8 @@ ebpf_analyze_program_for_test(const InstructionSeq& prog, const program_info& in
     };
     return {
         stats,
-        to_string_invariants(pre_invariants),
-        to_string_invariants(post_invariants)
+        to_string_invariant_map(pre_invariants),
+        to_string_invariant_map(post_invariants)
     };
 }
 
