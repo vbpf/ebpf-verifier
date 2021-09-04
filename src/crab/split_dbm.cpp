@@ -1187,6 +1187,21 @@ void SplitDBM::forget(const variable_vector_t& variables) {
     }
 }
 
+static std::string to_string(variable_t vd, variable_t vs, const SafeInt64DefaultParams::Wt& w, bool eq) {
+    std::stringstream elem;
+    if (eq) {
+        if (w.operator>(0))
+            elem << vd << "=" << vs << "+" << w;
+        else if (w.operator<(0))
+            elem << vs << "=" << vd << "+" << -w;
+        else
+            elem << std::min(vs, vd) << "=" << std::max(vs, vd);
+    } else {
+        elem << vd << "-" << vs << "<=" << w;
+    }
+    return elem.str();
+}
+
 std::optional<std::set<std::string>> SplitDBM::to_set() {
     normalize();
 
@@ -1216,8 +1231,13 @@ std::optional<std::set<std::string>> SplitDBM::to_set() {
         elem << variable << "=";
         if (v_out.lb() == v_out.ub()) {
             if (variable.is_type()) {
-                static const std::vector<std::string> type_string = {"shared_pointer", "packet_pointer", "stack_pointer", "ctx_pointer", "number", "map_fd", "map_fd_program", "uninitialized"};
+                static const std::vector<std::string> type_string = {
+                    "shared", "packet", "stack", "ctx", "number", "map_fd", "map_fd_program", "uninitialized"};
                 int type = (int)v_out.lb().number().value();
+                if (variable.is_in_stack() && type == T_NUM) {
+                    // no need to show this
+                    continue;
+                }
                 if (type <= 0 && type > -static_cast<int>(std::size(type_string)))
                     elem << type_string.at(-type);
                 else
@@ -1231,6 +1251,7 @@ std::optional<std::set<std::string>> SplitDBM::to_set() {
         result.insert(elem.str());
     }
 
+    std::set<std::tuple<variable_t, variable_t, Wt>> diff_csts;
     for (SplitDBM::vert_id s : g_excl.verts()) {
         if (!this->rev_map[s])
             continue;
@@ -1239,9 +1260,17 @@ std::optional<std::set<std::string>> SplitDBM::to_set() {
             if (!this->rev_map[d])
                 continue;
             variable_t vd = *this->rev_map[d];
-            std::stringstream elem;
-            elem << vd << "-" << vs << "<=" << g_excl.edge_val(s, d);
-            result.insert(elem.str());
+            diff_csts.emplace(vd, vs, g_excl.edge_val(s, d));
+        }
+    }
+    // simplify: x - y <= k && y - x <= -k -> y = x + k
+    for (const auto& [vd, vs, w] : diff_csts) {
+        auto dual = to_string(vs, vd, -w, false);
+        if (result.count(dual)) {
+            result.erase(dual);
+            result.insert(to_string(vs, vd, w, true));
+        } else {
+            result.insert(to_string(vd, vs, w, false));
         }
     }
     return result;
@@ -1257,11 +1286,11 @@ std::ostream& operator<<(std::ostream& o, SplitDBM& dom) {
     bool first = true;
     o << "{";
     for (const auto& item : items) {
-        o << item;
         if (first)
             first = false;
         else
             o << ", ";
+        o << item;
     }
     o << "}";
     return o;
