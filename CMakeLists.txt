@@ -110,11 +110,10 @@ target_link_libraries(tests PRIVATE ebpfverifier)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
-target_link_libraries(tests PRIVATE ${YAML_CPP_LIBRARIES})
+
 target_link_libraries(tests PRIVATE Threads::Threads)
 
+target_link_libraries(ebpfverifier PRIVATE ${YAML_CPP_LIBRARIES})
 target_compile_options(ebpfverifier PRIVATE ${COMMON_FLAGS})
 
-
-target_link_libraries(run_yaml PRIVATE ${YAML_CPP_LIBRARIES})
 target_link_libraries(run_yaml PRIVATE ebpfverifier)
