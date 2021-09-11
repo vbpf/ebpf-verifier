@@ -11,6 +11,7 @@ endif ()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
     "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  find_package(yaml-cpp REQUIRED)
   find_package(Boost REQUIRED)
   set(CMAKE_CXX_STANDARD 17)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
@@ -21,10 +22,23 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     exec_program(${NUGET} ARGS install "Boost" -Version 1.75.0 -ExcludeVersion -OutputDirectory ${CMAKE_BINARY_DIR}/packages)
   endif()
   set(Boost_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/packages/boost/lib/native/include)
-
   # MSVC's C++17 standard option doesn't actually support all the C++17
   # features we use, but its "latest" option does.  However, cmake can't
   # deal with that here, so we set it below.
+
+  set(EXTERNAL_INSTALL_LOCATION ${CMAKE_BINARY_DIR}/packages/yaml-cpp)
+  include(ExternalProject)
+  ExternalProject_Add(yaml-cpp
+          GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+          GIT_TAG "yaml-cpp-0.7.0"
+          GIT_SHALLOW true
+          CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_LOCATION}
+                     -DYAML_MSVC_SHARED_RT=$<$<CONFIG:RELEASE>:ON>
+                     -DYAML_CPP_BUILD_TESTS=OFF
+                     -DYAML_CPP_BUILD_TOOLS=OFF
+          )
+  set(YAML_CPP_LIBRARIES ${EXTERNAL_INSTALL_LOCATION}/lib/yaml-cpp$<$<CONFIG:DEBUG>:d>.lib)
+  set(YAML_CPP_INCLUDE_DIRS ${EXTERNAL_INSTALL_LOCATION}/include/)
 endif ()
 
 include_directories(./external)
@@ -33,8 +47,6 @@ include_directories(./src)
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${YAML_CPP_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS})
-
-find_package(yaml-cpp REQUIRED)
 
 file(GLOB LIB_SRC
         "./src/*.cpp"
@@ -67,6 +79,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 endif ()
 
 add_library(ebpfverifier ${LIB_SRC})
+
 add_executable(check src/main/check.cpp src/main/linux_verifier.cpp)
 add_executable(tests ${ALL_TEST})
 add_executable(run_yaml src/main/run_yaml.cpp)
