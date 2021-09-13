@@ -33,7 +33,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
           GIT_TAG "yaml-cpp-0.7.0"
           GIT_SHALLOW true
           CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_LOCATION}
-                     -DYAML_MSVC_SHARED_RT=$<$<CONFIG:RELEASE>:ON>
+                     -DYAML_MSVC_SHARED_RT=ON
                      -DYAML_CPP_BUILD_TESTS=OFF
                      -DYAML_CPP_BUILD_TOOLS=OFF
           )
