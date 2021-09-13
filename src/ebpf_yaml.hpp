@@ -1,14 +1,25 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
 #pragma once
-#include <string>
 #include <functional>
+#include <string>
 
-struct TestCase;
+#include "crab_verifier.hpp"
 
-void foreach_suite(const std::string& path, std::function<void(const TestCase&)> f);
+struct TestCase {
+    std::string name;
+    string_invariant assumed_pre_invariant;
+    InstructionSeq prog;
+    string_invariant expected_post_invariant;
+};
+
+void foreach_suite(const std::string& path, const std::function<void(const TestCase&)>& f);
 bool all_suites(const std::string& path);
 
-bool run_yaml_test_case(const TestCase& test_case);
+struct Failure {
+    string_invariant expected_but_unseen;
+    string_invariant seen_but_not_expected;
+};
+std::optional<Failure> run_yaml_test_case(const TestCase& test_case);
 
 bool run_yaml(const std::string& path);

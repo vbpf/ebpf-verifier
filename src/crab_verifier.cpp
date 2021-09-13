@@ -17,8 +17,8 @@
 #include "crab/fwd_analyzer.hpp"
 
 #include "asm_syntax.hpp"
-#include "parse_constraints.hpp"
 #include "crab_verifier.hpp"
+#include "string_constraints.hpp"
 
 using std::string;
 
@@ -195,9 +195,9 @@ std::tuple<ebpf_verifier_stats_t, string_invariant_map, string_invariant_map>
 ebpf_analyze_program_for_test(const InstructionSeq& prog, const string_invariant& entry_invariant,
                               const program_info& info,
                               bool no_simplify, bool check_termination) {
-    ebpf_domain_t entry_inv = entry_invariant
-        ? ebpf_domain_t::from_constraints(parse_linear_constraints(*entry_invariant))
-        : ebpf_domain_t::bottom();
+    ebpf_domain_t entry_inv = entry_invariant.is_bottom()
+        ? ebpf_domain_t::bottom()
+        : ebpf_domain_t::from_constraints(parse_linear_constraints(entry_invariant.value()));
     global_program_info = info;
     cfg_t cfg = prepare_cfg(prog, info, !no_simplify, false);
     auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, entry_inv, check_termination);

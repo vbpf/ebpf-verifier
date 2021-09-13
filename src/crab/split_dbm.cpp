@@ -5,6 +5,7 @@
 #include "crab/split_dbm.hpp"
 #include "crab_utils/debug.hpp"
 #include "crab_utils/stats.hpp"
+#include "string_constraints.hpp"
 
 namespace crab::domains {
 
@@ -1205,14 +1206,14 @@ static const std::vector<std::string> type_string = {
     "shared", "packet", "stack", "ctx", "number", "map_fd", "map_fd_program", "uninitialized"
 };
 
-std::optional<std::set<std::string>> SplitDBM::to_set() {
+string_invariant SplitDBM::to_set() {
     normalize();
 
     if (this->is_bottom()) {
-        return {};
+        return string_invariant::bottom();
     }
     if (this->is_top()) {
-        return { {} };
+        return string_invariant::top();
     }
 
     std::set<std::string> result;
@@ -1274,26 +1275,11 @@ std::optional<std::set<std::string>> SplitDBM::to_set() {
             result.insert(to_string(vd, vs, w, false));
         }
     }
-    return result;
+    return string_invariant{result};
 }
 
 std::ostream& operator<<(std::ostream& o, SplitDBM& dom) {
-    std::optional<std::set<std::string>> maybe_items = dom.to_set();
-    if (!maybe_items) {
-        return o << "_|_";
-    }
-    std::set<std::string> items{std::move(*maybe_items)};
-    // Intervals
-    bool first = true;
-    o << "{";
-    for (const auto& item : items) {
-        if (first)
-            first = false;
-        else
-            o << ", ";
-        o << item;
-    }
-    o << "}";
-    return o;
+    return o << dom.to_set();
 }
+
 } // namespace crab::domains

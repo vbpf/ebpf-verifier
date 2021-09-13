@@ -5,9 +5,15 @@
 #include "ebpf_verifier.hpp"
 #include "ebpf_yaml.hpp"
 
-TEST_CASE("YAML suite: single-instruction-assignment", "[yaml]") {
-    // TODO: move out of this framework
-    foreach_suite("test-data/single-instruction-assignment.yaml", [&](const TestCase& test_case){
-        REQUIRE(run_yaml_test_case(test_case));
-    });
-}
+// TODO: move out of this framework
+
+#define YAML_CASE(path) \
+    TEST_CASE("YAML suite: " path, "[yaml]") { \
+        foreach_suite(path, [&](const TestCase& test_case){ \
+            std::optional<Failure> failure = run_yaml_test_case(test_case);\
+            REQUIRE(!failure); \
+        }); \
+    }
+
+YAML_CASE("test-data/single-instruction-assignment.yaml")
+YAML_CASE("test-data/single-instruction-binop.yaml")

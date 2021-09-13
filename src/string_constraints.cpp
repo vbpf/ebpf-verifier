@@ -5,7 +5,7 @@
 
 #include <boost/lexical_cast.hpp>
 
-#include "parse_constraints.hpp"
+#include "string_constraints.hpp"
 
 #include "crab/variable.hpp"
 #include "crab/linear_constraint.hpp"
@@ -91,4 +91,33 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<string>
         }
     }
     return res;
+}
+
+// return a-b, taking account potential optional-none
+string_invariant string_invariant::operator-(const string_invariant& b) const {
+    if (this->is_bottom()) return string_invariant::bottom();
+    string_invariant res = string_invariant::top();
+    for (const std::string& cst : this->value()) {
+        if (b.is_bottom() || !b.contains(cst))
+            res.maybe_inv->insert(cst);
+    }
+    return res;
+}
+
+std::ostream& operator<<(std::ostream& o, const string_invariant& inv) {
+    if (inv.is_bottom()) {
+        return o << "_|_";
+    }
+    // Intervals
+    bool first = true;
+    o << "[";
+    for (const auto& item : inv.maybe_inv.value()) {
+        if (first)
+            first = false;
+        else
+            o << ", ";
+        o << item;
+    }
+    o << "]";
+    return o;
 }

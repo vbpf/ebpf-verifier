@@ -9,6 +9,7 @@
 #include "asm_ostream.hpp"
 #include "ebpf_verifier.hpp"
 #include "ebpf_yaml.hpp"
+#include "string_constraints.hpp"
 
 static EbpfProgramType ebpf_get_program_type(const std::string& section, const std::string& path) {
     return {};
@@ -71,16 +72,9 @@ static std::set<std::string> vector_to_set(const std::vector<std::string>& s) {
 static string_invariant read_invariant(const YAML::Node& node) {
     std::set<std::string> res = vector_to_set(node.as<std::vector<std::string>>());
     if (res == std::set<std::string>{"_|_"})
-        return {};
-    return res;
+        return string_invariant{};
+    return string_invariant{res};
 }
-
-struct TestCase {
-    std::string name;
-    string_invariant assumed_pre_invariant;
-    InstructionSeq prog;
-    string_invariant expected_post_invariant;
-};
 
 static TestCase read_case(const YAML::Node& config) {
     const std::string& name = config["test-case"].as<std::string>();
@@ -105,33 +99,18 @@ static std::vector<TestCase> read_suite(const std::string& path) {
     return res;
 }
 
-struct Failure {
-    string_invariant expected_but_unseen;
-    string_invariant seen_but_not_expected;
-};
-
-// return a-b, taking account potential optional-none
-static std::set<std::string> set_diff(const string_invariant& a, const string_invariant& b) {
-    if (!a) return {};
-    std::set<std::string> res;
-    for (const std::string& cst : *a) {
-        if (!b || !b->count(cst))
-            res.insert(cst);
-    }
-    return res;
-}
 
 static std::optional<Failure> process_results(const string_invariant& expected_post_invariant,
-                                       const string_invariant& actual_last_invariant) {
+                                              const string_invariant& actual_last_invariant) {
     if (actual_last_invariant == expected_post_invariant)
         return {};
     return Failure{
-        .expected_but_unseen = set_diff(expected_post_invariant, actual_last_invariant),
-        .seen_but_not_expected = set_diff(actual_last_invariant, expected_post_invariant),
+        .expected_but_unseen = expected_post_invariant - actual_last_invariant,
+        .seen_but_not_expected = actual_last_invariant - expected_post_invariant,
     };
 }
 
-bool run_yaml_test_case(const TestCase& test_case) {
+std::optional<Failure> run_yaml_test_case(const TestCase& test_case) {
     ebpf_context_descriptor_t context_descriptor{0, -1, -1, -1};
     EbpfProgramType program_type = make_progran_type(test_case.name, &context_descriptor);
 
@@ -140,8 +119,7 @@ bool run_yaml_test_case(const TestCase& test_case) {
                                                                              test_case.assumed_pre_invariant,
                                                                              info, true, false);
     const auto& actual_last_invariant = pre_invs.at(label_t::exit);
-    const auto& failure = process_results(test_case.expected_post_invariant, actual_last_invariant);
-    return !failure;
+    return process_results(test_case.expected_post_invariant, actual_last_invariant);
 }
 
 bool all_suites(const std::string& path) {
@@ -152,7 +130,7 @@ bool all_suites(const std::string& path) {
     return result;
 }
 
-void foreach_suite(const std::string& path, std::function<void(const TestCase&)> f) {
+void foreach_suite(const std::string& path, const std::function<void(const TestCase&)>& f) {
     for (const TestCase& test_case: read_suite(path)) {
         f(test_case);
     }

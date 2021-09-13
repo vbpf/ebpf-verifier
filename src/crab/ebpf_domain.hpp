@@ -27,6 +27,7 @@
 #include "dsl_syntax.hpp"
 #include "helpers.hpp"
 #include "platform.hpp"
+#include "string_constraints.hpp"
 
 #include "crab/array_domain.hpp"
 
@@ -1166,7 +1167,7 @@ out:
         }
     }
 
-    std::optional<std::set<std::string>> to_set() {
+    string_invariant to_set() {
         return this->m_inv.to_set();
     }
 

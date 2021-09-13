@@ -1,9 +1,6 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
 #include <iostream>
-#include <vector>
-
-#include <boost/functional/hash.hpp>
 
 #include "CLI11.hpp"
 
@@ -16,11 +13,17 @@ int main(int argc, char** argv) {
     std::string filename;
     app.add_option("path", filename, "YAML file.")->required()->type_name("FILE");
     CLI11_PARSE(app, argc, argv);
-
-    bool res = all_suites(filename);
-    if (res)
-        std::cout << "pass\n";
-    else
-        std::cout << "failed\n";
+    bool res = true;
+    foreach_suite(filename, [&](const TestCase& test_case) {
+        std::cout << test_case.name << ": " << std::flush;
+        if (const auto& maybe_failure = run_yaml_test_case(test_case)) {
+            std::cout << "+" << maybe_failure->seen_but_not_expected << "\n";
+            std::cout << "-" << maybe_failure->expected_but_unseen << "\n";
+            res = false;
+            std::cout << "failed\n";
+        } else {
+            std::cout << "pass\n";
+        }
+    });
     return !res;
 }
