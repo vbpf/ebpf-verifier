@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include <vector>
+#include <regex>
 #include <set>
 #include <string>
-#include <regex>
+#include <vector>
 
 #include "crab/linear_constraint.hpp"
 

@@ -17,5 +17,10 @@ int main(int argc, char** argv) {
     app.add_option("path", filename, "YAML file.")->required()->type_name("FILE");
     CLI11_PARSE(app, argc, argv);
 
-    return !all_suites(filename);
+    bool res = all_suites(filename);
+    if (res)
+        std::cout << "pass\n";
+    else
+        std::cout << "failed\n";
+    return !res;
 }

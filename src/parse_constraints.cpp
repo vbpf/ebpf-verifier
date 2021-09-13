@@ -37,7 +37,7 @@ static crab::data_kind_t regkind(const string& s) {
     throw std::runtime_error(string() + "Bad kind: " + s);
 }
 
-static long number(string s) {
+static long number(const string& s) {
     try {
         return (long)boost::lexical_cast<int64_t>(s);
     } catch (const boost::bad_lexical_cast&) {
@@ -48,7 +48,7 @@ static long number(string s) {
 static int type(const string& s) {
     static map<string, int> string_to_type{
         {string("uninit"), T_UNINIT},
-        {string("map_programs"), T_MAP_PROGRAMS},
+        {string("map_fd_programs"), T_MAP_PROGRAMS},
         {string("map"), T_MAP},
         {string("number"), T_NUM},
         {string("ctx"), T_CTX},

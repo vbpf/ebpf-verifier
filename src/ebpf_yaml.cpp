@@ -154,7 +154,6 @@ bool all_suites(const std::string& path) {
 
 void foreach_suite(const std::string& path, std::function<void(const TestCase&)> f) {
     for (const TestCase& test_case: read_suite(path)) {
-        // print(prog, std::cout, {});
         f(test_case);
     }
 }
