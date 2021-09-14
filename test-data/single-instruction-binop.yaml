@@ -6,7 +6,8 @@ test-case: add immediate to unknown number
 pre: ["r1.type=number"]
 
 code:
-  r1 += 0
+  <start>: |
+    r1 += 0
 
 post: ["r1.type=number"]
 ---
@@ -15,7 +16,8 @@ test-case: add number register to unknown number
 pre: ["r1.type=number", "r2.type=number"]
 
 code:
-  r1 += r2
+  <start>: |
+    r1 += r2
 
 post: ["r1.type=number", "r2.type=number"]
 ---
@@ -24,7 +26,8 @@ test-case: add immediate to singleton number
 pre: ["r1.type=number", "r1.value=5"]
 
 code:
-  r1 += 3
+  <start>: |
+    r1 += 3
 
 post:
   - r1.type=number
@@ -35,7 +38,8 @@ test-case: add constant register to singleton number
 pre: ["r1.type=number", "r1.value=5", "r2.type=number", "r2.value=7"]
 
 code:
-  r1 += r2
+  <start>: |
+    r1 += r2
 
 post:
   - r1.type=number
@@ -49,7 +53,8 @@ test-case: add immediate to finite interval number
 pre: ["r1.type=number", "r1.value=[5, 10]"]
 
 code:
-  r1 += 5
+  <start>: |
+    r1 += 5
 
 post:
   - r1.type=number
@@ -61,7 +66,8 @@ test-case: add constant register to finite interval number
 pre: ["r1.type=number", "r1.value=[5, 10]", "r2.type=number", "r2.value=5"]
 
 code:
-  r1 += r2
+  <start>: |
+    r1 += r2
 
 post:
   - r1.type=number

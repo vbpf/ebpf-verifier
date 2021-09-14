@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include <iostream>
+#include <variant>
 
 #include <yaml-cpp/yaml.h>
 
@@ -69,32 +70,84 @@ static std::set<std::string> vector_to_set(const std::vector<std::string>& s) {
     return res;
 }
 
-static string_invariant read_invariant(const YAML::Node& node) {
-    std::set<std::string> res = vector_to_set(node.as<std::vector<std::string>>());
+static string_invariant read_invariant(const std::vector<std::string>& raw_invariant) {
+    std::set<std::string> res = vector_to_set(raw_invariant);
     if (res == std::set<std::string>{"_|_"})
         return string_invariant{};
     return string_invariant{res};
 }
 
-static TestCase read_case(const YAML::Node& config) {
-    const std::string& name = config["test-case"].as<std::string>();
-    const std::string& raw_code = config["code"].as<std::string>();
-    InstructionSeq prog = parse_unlabeled_program(raw_code);
-    if (prog.empty()) throw std::runtime_error(std::string("Empty program for test case: ") + name);
+struct RawTestCase {
+    std::string test_case;
+    std::vector<std::string> pre;
+    std::vector<std::tuple<std::string, std::vector<std::string>>> raw_blocks;
+    std::vector<std::string> post;
+};
+
+static std::vector<std::string> parse_block(const YAML::Node& block_node) {
+    std::vector<std::string> block;
+    std::istringstream is{block_node.as<std::string>()};
+    std::string line;
+    while (std::getline(is, line))
+        block.emplace_back(line);
+    return block;
+}
+
+static auto parse_code(const YAML::Node& code_node) {
+    std::vector<std::tuple<std::string, std::vector<std::string>>> res;
+    for (const auto& item : code_node) {
+        res.emplace_back(item.first.as<std::string>(), parse_block(item.second));
+    }
+    return res;
+}
+
+static RawTestCase parse_case(const YAML::Node& case_node) {
+    return RawTestCase {
+        .test_case = case_node["test-case"].as<std::string>(),
+        .pre = case_node["pre"].as<std::vector<std::string>>(),
+        .raw_blocks = parse_code(case_node["code"]),
+        .post = case_node["post"].as<std::vector<std::string>>(),
+    };
+}
+
+static InstructionSeq raw_cfg_to_instruction_seq(const std::vector<std::tuple<std::string, std::vector<std::string>>>& raw_blocks) {
+    std::map<std::string, crab::label_t> label_name_to_label;
+
+    int label_index = 0;
+    for (const auto& [label_name, raw_block] : raw_blocks) {
+        label_name_to_label.emplace(label_name, label_index);
+        // don't count large instructions as 2
+        label_index += raw_block.size();
+    }
+
+    InstructionSeq res;
+    label_index = 0;
+    for (const auto& [label_name, raw_block] : raw_blocks) {
+        for (const std::string& line: raw_block) {
+            const Instruction& ins = parse_instruction(line, label_name_to_label);
+            if (std::holds_alternative<Undefined>(ins))
+                std::cout << "text:" << line << "; ins: " << ins << "\n";
+            res.emplace_back(label_index, ins);
+            label_index++;
+        }
+    }
+    return res;
+}
+
+static TestCase read_case(const RawTestCase& raw_case) {
     return TestCase{
-        .name = name,
-        .assumed_pre_invariant = read_invariant(config["pre"]),
-        .prog = parse_unlabeled_program(raw_code),
-        .expected_post_invariant = read_invariant(config["post"]),
+        .name = raw_case.test_case,
+        .assumed_pre_invariant = read_invariant(raw_case.pre),
+        .instruction_seq = raw_cfg_to_instruction_seq(raw_case.raw_blocks),
+        .expected_post_invariant = read_invariant(raw_case.post),
     };
 }
 
 static std::vector<TestCase> read_suite(const std::string& path) {
     std::ifstream f{path};
-    std::vector<YAML::Node> documents = YAML::LoadAll(f);
     std::vector<TestCase> res;
-    for (const YAML::Node& config : documents) {
-        res.push_back(read_case(config));
+    for (const YAML::Node& config : YAML::LoadAll(f)) {
+        res.push_back(read_case(parse_case(config)));
     }
     return res;
 }
@@ -115,7 +168,7 @@ std::optional<Failure> run_yaml_test_case(const TestCase& test_case) {
     EbpfProgramType program_type = make_progran_type(test_case.name, &context_descriptor);
 
     program_info info{&g_platform_test, {}, program_type};
-    const auto& [stats, pre_invs, post_invs] = ebpf_analyze_program_for_test(test_case.prog,
+    const auto& [stats, pre_invs, post_invs] = ebpf_analyze_program_for_test(test_case.instruction_seq,
                                                                              test_case.assumed_pre_invariant,
                                                                              info, true, false);
     const auto& actual_last_invariant = pre_invs.at(label_t::exit);

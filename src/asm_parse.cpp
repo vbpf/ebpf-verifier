@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <map>
 #include <regex>
-#include <tuple>
 #include <unordered_set>
 #include <sstream>
 
@@ -32,42 +31,42 @@ using std::regex_match;
 #define DEREF STAR PAREN("u(\\d+)" STAR)
 
 #define CMPOP R"_(\s*(&?[=!]=|s?[<>]=?)\s*)_"
-#define LABEL R"_((\w[a-zA-Z_0-9]*))_"
-#define WRAPPED_LABEL "\\s*<" LABEL ">\\s*"
+#define LABEL R"_((<\w[a-zA-Z_0-9]*>))_"
+#define WRAPPED_LABEL "\\s*" LABEL "\\s*"
 
-const std::map<std::string, Bin::Op> str_to_binop = {
+static const std::map<std::string, Bin::Op> str_to_binop = {
     {"", Bin::Op::MOV},   {"+", Bin::Op::ADD},  {"-", Bin::Op::SUB},    {"*", Bin::Op::MUL},
     {"/", Bin::Op::DIV},  {"%", Bin::Op::MOD},  {"|", Bin::Op::OR},     {"&", Bin::Op::AND},
     {"<<", Bin::Op::LSH}, {">>", Bin::Op::RSH}, {">>>", Bin::Op::ARSH}, {"^", Bin::Op::XOR},
 };
 
-const std::map<std::string, Un::Op> str_to_unop = {
+static const std::map<std::string, Un::Op> str_to_unop = {
     {"be16", Un::Op::LE16},
     {"be16", Un::Op::LE32},
     {"be16", Un::Op::LE64},
     {"-", Un::Op::NEG},
 };
 
-const std::map<std::string, Condition::Op> str_to_cmpop = {
+static const std::map<std::string, Condition::Op> str_to_cmpop = {
     {"==", Condition::Op::EQ},  {"!=", Condition::Op::NE},   {"&==", Condition::Op::SET}, {"&!=", Condition::Op::NSET},
     {"<", Condition::Op::LT},   {"<=", Condition::Op::LE},   {">", Condition::Op::GT},    {">=", Condition::Op::GE},
     {"s<", Condition::Op::SLT}, {"s<=", Condition::Op::SLE}, {"s>", Condition::Op::SGT},  {"s>=", Condition::Op::SGE},
 };
 
-const std::map<std::string, int> str_to_width = {
+static const std::map<std::string, int> str_to_width = {
     {"8", 1},
     {"16", 2},
     {"32", 4},
     {"64", 8},
 };
 
-static Reg reg(std::string s) {
+static Reg reg(const std::string& s) {
     assert(s.at(0) == 'r');
     uint8_t res = (uint8_t)boost::lexical_cast<uint16_t>(s.substr(1));
     return Reg{res};
 }
 
-static Imm imm(std::string s) {
+static Imm imm(const std::string& s) {
     try {
         return Imm{boost::lexical_cast<uint64_t>(s)};
     } catch (const boost::bad_lexical_cast&) {
@@ -75,7 +74,7 @@ static Imm imm(std::string s) {
     }
 }
 
-static Value reg_or_imm(std::string s) {
+static Value reg_or_imm(const std::string& s) {
     if (s.at(0) == 'r')
         return reg(s);
     else
@@ -91,7 +90,7 @@ static Deref deref(const std::string& width, const std::string& basereg, const s
     };
 }
 
-Instruction parse_instruction(const std::string& line) {
+Instruction parse_instruction(const std::string& line, const std::map<std::string, label_t>& label_name_to_label) {
     // consider ";" to be a comment
     std::string text = line.substr(0, line.find(';'));
     std::smatch m;
@@ -143,14 +142,14 @@ Instruction parse_instruction(const std::string& line) {
             return Packet{.width = width, .offset = (int)imm(m[2]).v, .regoffset = reg(m[1])};
         return Undefined{0};
     }
-    if (regex_match(text, m, regex("(if " REG CMPOP REG_OR_IMM " )?goto " IMM WRAPPED_LABEL))) {
+    if (regex_match(text, m, regex("(?:if " REG CMPOP REG_OR_IMM " )?goto\\s+(?:" IMM ")?" WRAPPED_LABEL))) {
         // We ignore second IMM
-        Jmp res{.cond = {}, .target = label_t(boost::lexical_cast<int>(m[6]))};
+        Jmp res{.cond = {}, .target = label_name_to_label.at(m[5])};
         if (m[1].matched) {
             res.cond = Condition{
-                .op = str_to_cmpop.at(m[3]),
-                .left = reg(m[2]),
-                .right = reg_or_imm(m[4]),
+                .op = str_to_cmpop.at(m[2]),
+                .left = reg(m[1]),
+                .right = reg_or_imm(m[3]),
             };
         }
         return res;
@@ -158,21 +157,7 @@ Instruction parse_instruction(const std::string& line) {
     return Undefined{0};
 }
 
-InstructionSeq parse_unlabeled_program(const std::string& s) {
-    std::string line;
-    InstructionSeq result;
-    int lineno = 0;
-    std::istringstream is{s};
-    while (std::getline(is, line)) {
-        // TODO: handle large instructions
-        label_t label{boost::lexical_cast<int>(lineno)};
-        result.emplace_back(label, parse_instruction(line));
-        lineno++;
-    }
-    return result;
-}
-
-InstructionSeq parse_program(std::istream& is) {
+static InstructionSeq parse_program(std::istream& is) {
     std::string line;
     int lineno = 0;
     std::vector<label_t> pc_to_label;
@@ -182,7 +167,7 @@ InstructionSeq parse_program(std::istream& is) {
     while (std::getline(is, line)) {
         lineno++;
         std::smatch m;
-        if (regex_search(line, m, regex("^" LABEL ":"))) {
+        if (regex_search(line, m, regex(LABEL ":"))) {
             next_label = label_t(boost::lexical_cast<int>(m[1]));
             if (seen_labels.count(*next_label) != 0)
                 throw std::invalid_argument("duplicate labels");
@@ -193,7 +178,7 @@ InstructionSeq parse_program(std::istream& is) {
         }
         if (line.empty())
             continue;
-        Instruction ins = parse_instruction(line);
+        Instruction ins = parse_instruction(line, {});
         if (std::holds_alternative<Undefined>(ins))
             continue;
 

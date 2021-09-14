@@ -6,7 +6,8 @@ test-case: assign immediate
 pre: []
 
 code:
-  r1 = 0
+  <start>: |
+    r1 = 0
 
 post:
   - r1.type=number
@@ -16,8 +17,9 @@ test-case: assign register
 
 pre: []
 
-code: |
-  r1 = r2;
+code:
+  <start>: |
+    r1 = r2;
 
 post:
   - r1.type=r2.type
@@ -30,7 +32,8 @@ test-case: re-assign immediate
 pre: ["r1.value=5", "r1.type=number"]
 
 code:
-  r1 = 0
+  <start>: |
+    r1 = 0
 
 post:
   - r1.type=number
@@ -41,7 +44,8 @@ test-case: re-assign register
 pre: ["r1.value=[-3, 5]", "r1.type=number"]
 
 code:
-  r1 = 0
+  <start>: |
+    r1 = 0
 
 post:
   - r1.type=number

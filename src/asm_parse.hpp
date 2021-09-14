@@ -8,8 +8,4 @@
 
 #include "asm_syntax.hpp"
 
-Instruction parse_instruction(const std::string& text);
-
-InstructionSeq parse_program(std::istream& is);
-
-InstructionSeq parse_unlabeled_program(const std::string& s);
+Instruction parse_instruction(const std::string& line, const std::map<std::string, label_t>& label_name_to_label);

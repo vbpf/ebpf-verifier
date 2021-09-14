@@ -9,7 +9,7 @@
 struct TestCase {
     std::string name;
     string_invariant assumed_pre_invariant;
-    InstructionSeq prog;
+    InstructionSeq instruction_seq;
     string_invariant expected_post_invariant;
 };
 
