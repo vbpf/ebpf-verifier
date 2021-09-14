@@ -18,6 +18,7 @@ struct string_invariant {
     explicit string_invariant(std::set<std::string> inv) : maybe_inv(std::move(inv)) { };
 
     string_invariant(const string_invariant& inv) = default;
+    string_invariant& operator=(const string_invariant& inv) = default;
 
     [[nodiscard]] bool is_bottom() const { return !maybe_inv; }
     static string_invariant top() { return string_invariant{ {} }; }
