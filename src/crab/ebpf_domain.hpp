@@ -27,6 +27,7 @@
 #include "dsl_syntax.hpp"
 #include "helpers.hpp"
 #include "platform.hpp"
+#include "string_constraints.hpp"
 
 #include "crab/array_domain.hpp"
 
@@ -1166,6 +1167,10 @@ out:
         }
     }
 
+    string_invariant to_set() {
+        return this->m_inv.to_set();
+    }
+
     friend std::ostream& operator<<(std::ostream& o, ebpf_domain_t dom) {
         if (dom.is_bottom()) {
             o << "_|_";
@@ -1183,12 +1188,21 @@ out:
 
         inv += 0 <= variable_t::packet_size();
         inv += variable_t::packet_size() < MAX_PACKET_OFF;
-        if (global_program_info.type.context_descriptor->meta >= 0) {
+        auto info = global_program_info;
+        if (info.type.context_descriptor->meta >= 0) {
             inv += variable_t::meta_offset() <= 0;
             inv += variable_t::meta_offset() >= -4098;
         } else {
             inv.assign(variable_t::meta_offset(), 0);
         }
+    }
+
+    static ebpf_domain_t from_constraints(const std::vector<linear_constraint_t>& csts) {
+        ebpf_domain_t inv;
+        for (const auto& cst: csts) {
+            inv += cst;
+        }
+        return inv;
     }
 
     static ebpf_domain_t setup_entry(bool check_termination) {

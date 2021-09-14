@@ -63,6 +63,7 @@ class variable_t final {
     static variable_t meta_offset();
     static variable_t packet_size();
     static variable_t instruction_count();
+    bool is_in_stack();
 }; // class variable_t
 
 inline size_t hash_value(variable_t v) { return v.hash(); }

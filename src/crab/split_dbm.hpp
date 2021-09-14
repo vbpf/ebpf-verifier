@@ -37,6 +37,7 @@
 #include "crab_utils/safeint.hpp"
 #include "crab_utils/stats.hpp"
 
+#include "string_constraints.hpp"
 //#define CHECK_POTENTIAL
 //#define SDBM_NO_NORMALIZE
 
@@ -447,6 +448,7 @@ class SplitDBM final {
     }
 
     friend std::ostream& operator<<(std::ostream& o, SplitDBM& dom);
+    string_invariant to_set();
 }; // class SplitDBM
 
 } // namespace domains

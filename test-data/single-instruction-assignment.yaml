@@ -1,0 +1,52 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+---
+test-case: assign immediate
+
+pre: []
+
+code:
+  <start>: |
+    r1 = 0
+
+post:
+  - r1.type=number
+  - r1.value=0
+---
+test-case: assign register
+
+pre: []
+
+code:
+  <start>: |
+    r1 = r2;
+
+post:
+  - r1.type=r2.type
+  - r1.value=r2.value
+  - r1.offset=r2.offset
+
+---
+test-case: re-assign immediate
+
+pre: ["r1.value=5", "r1.type=number"]
+
+code:
+  <start>: |
+    r1 = 0
+
+post:
+  - r1.type=number
+  - r1.value=0
+---
+test-case: re-assign register
+
+pre: ["r1.value=[-3, 5]", "r1.type=number"]
+
+code:
+  <start>: |
+    r1 = 0
+
+post:
+  - r1.type=number
+  - r1.value=0

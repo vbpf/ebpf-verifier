@@ -1,0 +1,43 @@
+// Copyright (c) Prevail Verifier contributors.
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include <regex>
+#include <set>
+#include <string>
+#include <vector>
+
+#include "crab/linear_constraint.hpp"
+
+struct string_invariant {
+    std::optional<std::set<std::string>> maybe_inv;
+
+    string_invariant() = default;
+
+    explicit string_invariant(std::set<std::string> inv) : maybe_inv(std::move(inv)) { };
+
+    string_invariant(const string_invariant& inv) = default;
+    string_invariant& operator=(const string_invariant& inv) = default;
+
+    [[nodiscard]] bool is_bottom() const { return !maybe_inv; }
+    static string_invariant top() { return string_invariant{ {} }; }
+    static string_invariant bottom() { return string_invariant{}; }
+
+    [[nodiscard]] const std::set<std::string>& value() const {
+        if (is_bottom()) throw std::runtime_error("cannot iterate bottom");
+        return *maybe_inv;
+    }
+
+    string_invariant operator-(const string_invariant& b) const;
+
+    bool operator==(const string_invariant& other) const { return maybe_inv == other.maybe_inv; }
+
+    [[nodiscard]] bool contains(const std::string& item) const {
+        return !is_bottom() && maybe_inv.value().count(item);
+    }
+
+    friend std::ostream& operator<<(std::ostream&, const string_invariant& inv);
+};
+
+std::vector<linear_constraint_t> parse_linear_constraints(const std::set<std::string>& constraints);
