@@ -22,6 +22,7 @@ using std::regex_match;
 #define OPASSIGN R"_(\s*(\S*)=\s*)_"
 #define ASSIGN R"_(\s*=\s*)_"
 #define LONGLONG R"_(\s*(ll|)\s*)_"
+#define UNOP R"_((-|be16|be32|be64))_"
 
 #define PLUSMINUS R"_((\s*[+-])\s*)_"
 #define LPAREN R"_(\s*\(\s*)_"
@@ -38,6 +39,13 @@ const std::map<std::string, Bin::Op> str_to_binop = {
     {"", Bin::Op::MOV},   {"+", Bin::Op::ADD},  {"-", Bin::Op::SUB},    {"*", Bin::Op::MUL},
     {"/", Bin::Op::DIV},  {"%", Bin::Op::MOD},  {"|", Bin::Op::OR},     {"&", Bin::Op::AND},
     {"<<", Bin::Op::LSH}, {">>", Bin::Op::RSH}, {">>>", Bin::Op::ARSH}, {"^", Bin::Op::XOR},
+};
+
+const std::map<std::string, Un::Op> str_to_unop = {
+    {"be16", Un::Op::LE16},
+    {"be16", Un::Op::LE32},
+    {"be16", Un::Op::LE64},
+    {"-", Un::Op::NEG},
 };
 
 const std::map<std::string, Condition::Op> str_to_cmpop = {
@@ -96,6 +104,10 @@ Instruction parse_instruction(const std::string& line) {
     }
     if (regex_match(text, m, regex(REG OPASSIGN REG))) {
         return Bin{.op = str_to_binop.at(m[2]), .dst = reg(m[1]), .v = reg(m[3]), .is64 = true, .lddw = false};
+    }
+    if (regex_match(text, m, regex(REG ASSIGN UNOP REG))) {
+        if (m[1] != m[3]) throw std::invalid_argument(std::string("Invalid unary operation: ") + text);
+        return Un{.op = str_to_unop.at(m[2]), .dst = reg(m[1])};
     }
     if (regex_match(text, m, regex(REG OPASSIGN IMM LONGLONG))) {
         return Bin{
