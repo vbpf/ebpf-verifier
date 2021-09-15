@@ -18,3 +18,5 @@
 YAML_CASE("test-data/single-instruction-assignment.yaml")
 YAML_CASE("test-data/single-instruction-binop.yaml")
 YAML_CASE("test-data/single-instruction-unop.yaml")
+YAML_CASE("test-data/jump.yaml")
+YAML_CASE("test-data/packet.yaml")
