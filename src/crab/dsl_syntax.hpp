@@ -299,6 +299,10 @@ inline linear_constraint_t operator==(variable_t x, variable_t y) {
     return linear_constraint_t(x - y, constraint_kind_t::EQUALS_ZERO);
 }
 
+inline linear_constraint_t equals(variable_t x, variable_t y) {
+    return linear_constraint_t(x - y, constraint_kind_t::EQUALS_ZERO);
+}
+
 inline linear_constraint_t operator==(const linear_expression_t& e1, const linear_expression_t& e2) {
     return linear_constraint_t(e1 - e2, constraint_kind_t::EQUALS_ZERO);
 }

@@ -21,6 +21,7 @@ std::ostream& operator<<(std::ostream& os, ArgSingle::Kind kind) {
     case ArgSingle::Kind::ANYTHING: return os << "uint64_t";
     case ArgSingle::Kind::PTR_TO_CTX: return os << "ctx";
     case ArgSingle::Kind::MAP_FD: return os << "map_fd";
+    case ArgSingle::Kind::MAP_FD_PROGRAMS: return os << "map_fd_programs";
     case ArgSingle::Kind::PTR_TO_MAP_KEY: return os << "map_key";
     case ArgSingle::Kind::PTR_TO_MAP_VALUE: return os << "map_value";
     }
@@ -93,42 +94,60 @@ std::ostream& operator<<(std::ostream& os, Condition::Op op) {
 
 static string size(int w) { return string("u") + std::to_string(w * 8); }
 
-std::ostream& operator<<(std::ostream& os, TypeGroup ts) {
+static std::string to_string(TypeGroup ts) {
     switch (ts) {
-    case TypeGroup::number: return os << "number";
-    case TypeGroup::map_fd: return os << "map_fd";
-    case TypeGroup::ctx: return os << "ctx";
-    case TypeGroup::packet: return os << "packet";
-    case TypeGroup::stack: return os << "stack";
-    case TypeGroup::shared: return os << "shared";
-    case TypeGroup::mem: return os << "mem";
-    case TypeGroup::pointer: return os << "pointer";
-    case TypeGroup::non_map_fd: return os << "non_map_fd";
-    case TypeGroup::ptr_or_num: return os << "pointer_or_number";
-    case TypeGroup::stack_or_packet: return os << "stack_or_packet";
-    case TypeGroup::mem_or_num: return os << "mem_or_number";
+    case TypeGroup::number: return "number";
+    case TypeGroup::map_fd: return "map_fd";
+    case TypeGroup::map_fd_programs: return "map_fd_programs";
+    case TypeGroup::ctx: return "ctx";
+    case TypeGroup::packet: return "packet";
+    case TypeGroup::stack: return "stack";
+    case TypeGroup::shared: return "shared";
+    case TypeGroup::mem: return "{stack, packet, shared}";
+    case TypeGroup::pointer: return "{ctx, stack, packet, shared}";
+    case TypeGroup::non_map_fd: return "non_map_fd";
+    case TypeGroup::ptr_or_num: return "{number, ctx, stack, packet, shared}";
+    case TypeGroup::stack_or_packet: return "{stack, packet}";
+    case TypeGroup::mem_or_num: return "{number, stack, packet, shared}";
+    default: assert(false);
     }
-    return os;
+    return {};
+}
+
+std::ostream& operator<<(std::ostream& os, TypeGroup ts) {
+    return os << to_string(ts);
 }
 
 std::ostream& operator<<(std::ostream& os, ValidStore const& a) {
-    return os << "!stack(" << a.mem << ") -> num(" << a.val << ")";
+    return os << a.mem << ".type != stack -> " << a.val << ".type == num";
 }
 
 std::ostream& operator<<(std::ostream& os, ValidAccess const& a) {
     if (a.or_null)
-        os << a.reg << " == 0 or ";
-    return os << "valid_access(" << a.reg << ", " << a.offset << ":" << a.width << ")";
+        os << a.reg << ".type == number and " << a.reg << ".value == 0";
+    os << "valid_access(" << a.reg << ".offset";
+    if (a.offset > 0)
+        os << "+" << a.offset;
+    else if (a.offset < 0)
+        os << a.offset;
+
+    if (a.width == (Value)Imm{0}) {
+        // a.width == 0, meaning we only care it's an in-bound pointer,
+        // so it can be compared with another pointer to the same region.
+        os << ") for comparison";
+    } else {
+        os << ", width=" << a.width << ")";
+    }
+    return os;
 }
 
 std::ostream& operator<<(std::ostream& os, ValidSize const& a) {
     auto op = a.can_be_zero ? " >= " : " > ";
-    return os << a.reg << op << 0;
+    return os << a.reg << ".value" << op << 0;
 }
 
 std::ostream& operator<<(std::ostream& os, ValidMapKeyValue const& a) {
-    return os << "within stack(" << a.access_reg << ":" << (a.key ? "key_size" : "value_size") << "(" << a.map_fd_reg
-              << "))";
+    return os << "within stack(" << a.access_reg << ":" << (a.key ? "key_size" : "value_size") << "(" << a.map_fd_reg << "))";
 }
 
 std::ostream& operator<<(std::ostream& os, ZeroOffset const& a) {
@@ -141,10 +160,14 @@ std::ostream& operator<<(std::ostream& os, Comparable const& a) {
 }
 
 std::ostream& operator<<(std::ostream& os, Addable const& a) {
-    return os << a.ptr << " : ptr -> " << a.num << " : num";
+    return os << a.ptr << ".type = ptr -> " << a.num << ".type = number";
 }
 
-std::ostream& operator<<(std::ostream& os, TypeConstraint const& tc) { return os << tc.reg << " is " << tc.types; }
+std::ostream& operator<<(std::ostream& os, TypeConstraint const& tc) {
+    string types = to_string(tc.types);
+    string cmp_op = types[0] == '{' ? "in" : "==";
+    return os << tc.reg << ".type " << cmp_op << " " << tc.types;
+}
 
 std::ostream& operator<<(std::ostream& os, AssertionConstraint const& a) {
     return std::visit([&](const auto& a) -> std::ostream& { return os << a; }, a);
@@ -201,6 +224,7 @@ struct InstructionPrinterVisitor {
                 if (r > 1)
                     os_ << ", ";
                 os_ << *pair;
+                r++;
                 continue;
             }
 
@@ -345,7 +369,6 @@ void print(const InstructionSeq& insts, std::ostream& out, std::optional<const l
         if (is_satisfied(ins))
             continue;
         if (!label_to_print.has_value() || (label == label_to_print)) {
-            std::ostream& out = visitor.os_;
             if (label.isjump()) {
                 out << "\n";
                 out << label << ":\n";
@@ -356,7 +379,7 @@ void print(const InstructionSeq& insts, std::ostream& out, std::optional<const l
                 out << std::setw(8) << pc << ":\t";
             }
             if (std::holds_alternative<Jmp>(ins)) {
-                auto jmp = std::get<Jmp>(ins);
+                auto const& jmp = std::get<Jmp>(ins);
                 if (pc_of_label.count(jmp.target) == 0)
                     throw std::runtime_error(string("Cannot find label ") + to_string(jmp.target));
                 pc_t target_pc = pc_of_label.at(jmp.target);
@@ -370,9 +393,23 @@ void print(const InstructionSeq& insts, std::ostream& out, std::optional<const l
     }
 }
 
-void print(const InstructionSeq& insts, const std::string& outfile) {
-    std::ofstream out{outfile};
-    print(insts, out, {});
+std::ostream& operator<<(std::ostream& o, const EbpfMapDescriptor& desc) {
+    return o << "("
+    << "original_fd = " << desc.original_fd << ", "
+    << "inner_map_fd = " << desc.inner_map_fd << ", "
+    << "type = " << desc.type << ", "
+    << "max_entries = " << desc.max_entries << ", "
+    << "value_size = " << desc.value_size << ", "
+    << "key_size = " << desc.key_size <<
+    ")";
+}
+
+void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o) {
+    int i = 0;
+    for (const auto& desc : descriptors) {
+        o << "map " << i << ":" << desc << "\n";
+        i++;
+    }
 }
 
 void print_dot(const cfg_t& cfg, std::ostream& out) {

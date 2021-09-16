@@ -143,6 +143,7 @@ struct ArgSingle {
     // see comments in spec_prototypes.hpp
     enum class Kind {
         MAP_FD,
+        MAP_FD_PROGRAMS,
         PTR_TO_MAP_KEY,
         PTR_TO_MAP_VALUE,
         PTR_TO_CTX,
@@ -166,7 +167,8 @@ struct ArgPair {
 struct Call {
     int32_t func{};
     std::string name;
-    bool returns_map{};
+    bool is_map_lookup{};
+    bool reallocate_packet{};
     std::vector<ArgSingle> singles;
     std::vector<ArgPair> pairs;
 };
@@ -214,7 +216,16 @@ struct Assume {
 };
 
 // The exact numbers are taken advantage of, in the abstract domain
-enum { T_UNINIT = -6, T_MAP = -5, T_NUM = -4, T_CTX = -3, T_STACK = -2, T_PACKET = -1, T_SHARED = 0 };
+enum {
+    T_UNINIT = -7,
+    T_MAP_PROGRAMS = -6,
+    T_MAP = -5,
+    T_NUM = -4,
+    T_CTX = -3,
+    T_STACK = -2,
+    T_PACKET = -1,
+    T_SHARED = 0
+};
 
 enum class TypeGroup {
     number,
@@ -223,6 +234,7 @@ enum class TypeGroup {
     packet,         ///< pointer to the packet
     stack,          ///< pointer to the stack
     shared,         ///< pointer to shared memory
+    map_fd_programs, // reg == T_MAP_PROGRAMS
     non_map_fd,     // reg >= T_NUM
     mem,            // shared | packet | stack = reg >= T_STACK
     mem_or_num,     // reg >= T_NUM && reg != T_CTX

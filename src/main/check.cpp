@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
             std::cout << "please specify a section\n";
             std::cout << "available sections:\n";
         }
-        if (!desired_section.empty() && raw_progs.size() == 0) {
+        if (!desired_section.empty() && raw_progs.empty()) {
             // We could not find the desired section, so get the full list
             // of possibilities.
             raw_progs = read_elf(filename, string(), &ebpf_verifier_options, platform);
@@ -135,17 +135,23 @@ int main(int argc, char** argv) {
 
     auto& prog = std::get<InstructionSeq>(prog_or_error);
     if (!asmfile.empty()) {
-        print(prog, asmfile);
+        std::ofstream out{asmfile};
+        print(prog, out, {});
+        print_map_descriptors(global_program_info.map_descriptors, out);
     }
 
     if (domain == "zoneCrab") {
+        ebpf_verifier_stats_t verifier_stats;
         const auto [res, seconds] = timed_execution([&] {
-            return ebpf_verify_program(std::cout, prog, raw_prog.info, &ebpf_verifier_options);
+            return ebpf_verify_program(std::cout, prog, raw_prog.info, &ebpf_verifier_options, &verifier_stats);
         });
+        if (ebpf_verifier_options.check_termination && (ebpf_verifier_options.print_failures || ebpf_verifier_options.print_invariants)) {
+            std::cout << "Program terminates within " << verifier_stats.max_instruction_count << " instructions\n";
+        }
         std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
         return !res;
     } else if (domain == "linux") {
-        // Pass the intruction sequence to the Linux kernel verifier.
+        // Pass the instruction sequence to the Linux kernel verifier.
         const auto [res, seconds] = bpf_verify_program(raw_prog.info.type, raw_prog.prog, &ebpf_verifier_options);
         std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
         return !res;

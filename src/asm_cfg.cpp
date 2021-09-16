@@ -36,7 +36,7 @@ static bool has_fall(Instruction ins) {
 }
 
 /// Convert an instruction sequence to a control-flow graph (CFG).
-static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts) {
+static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, bool must_have_exit) {
     cfg_t cfg;
     std::optional<label_t> falling_from = {};
     bool first = true;
@@ -66,8 +66,12 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts) {
         if (std::holds_alternative<Exit>(inst))
             bb >> cfg.get_node(cfg.exit_label());
     }
-    if (falling_from)
-        throw std::invalid_argument{"fallthrough in last instruction"};
+    if (falling_from) {
+        if (must_have_exit)
+            throw std::invalid_argument{"fallthrough in last instruction"};
+        else
+            cfg.get_node(*falling_from) >> cfg.get_node(cfg.exit_label());
+    }
 
     return cfg;
 }
@@ -160,7 +164,7 @@ static cfg_t to_nondet(const cfg_t& cfg) {
 static std::string instype(Instruction ins) {
     if (std::holds_alternative<Call>(ins)) {
         auto call = std::get<Call>(ins);
-        if (call.returns_map) {
+        if (call.is_map_lookup) {
             return "call_1";
         }
         if (call.pairs.empty()) {
@@ -220,7 +224,7 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
                     res["adjust_head"] = 1;
             }
             if (std::holds_alternative<Bin>(ins)) {
-                auto bin = std::get<Bin>(ins);
+                auto const& bin = std::get<Bin>(ins);
                 res[bin.is64 ? "arith64" : "arith32"]++;
             }
             res[instype(ins)]++;
@@ -233,14 +237,14 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
     return res;
 }
 
-cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool simplify) {
+cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool simplify, bool must_have_exit) {
     // Convert the instruction sequence to a deterministic control-flow graph.
-    cfg_t det_cfg = instruction_seq_to_cfg(prog);
+    cfg_t det_cfg = instruction_seq_to_cfg(prog, must_have_exit);
 
     // Annotate the CFG by adding in assertions before every memory instruction.
     explicate_assertions(det_cfg, info);
 
-    // Translate conditional jumps to non-determinstic jumps.
+    // Translate conditional jumps to non-deterministic jumps.
     cfg_t cfg = to_nondet(det_cfg);
 
     // Except when debugging, combine chains of instructions into

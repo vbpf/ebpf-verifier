@@ -56,7 +56,7 @@ namespace crab::domains {
 using NumAbsDomain = SplitDBM;
 
 class offset_t final {
-    index_t _index;
+    index_t _index{};
     int _prefix_length;
 
 public:
@@ -196,7 +196,7 @@ class offset_map_t final {
     void operator-=(const cell_t& c) { remove_cell(c); }
 
     void operator-=(const std::vector<cell_t>& cells) {
-        for (auto c : cells) {
+        for (auto const& c : cells) {
             this->operator-=(c);
         }
     }

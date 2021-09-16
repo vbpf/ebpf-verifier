@@ -4,6 +4,8 @@
 
 #include <memory>
 
+#include <boost/container/flat_map.hpp>
+
 #include "crab_utils/safeint.hpp"
 #include "crab_utils/debug.hpp"
 // Adaptive sparse-set based weighted graph implementation
@@ -16,7 +18,7 @@ class TreeSMap final {
     using val_t = size_t;
 
   private:
-    using col = std::map<key_t, val_t>;
+    using col = boost::container::flat_map<key_t, val_t>;
     col map;
 
   public:
@@ -160,7 +162,7 @@ class AdaptGraph final {
 
     struct edge_iter {
         struct edge_ref {
-            vert_id vert;
+            vert_id vert{};
             Wt val;
         };
 
@@ -169,6 +171,7 @@ class AdaptGraph final {
 
         edge_iter(const smap_t::elt_iter_t& _it, const std::vector<Wt>& _ws) : it(_it), ws(&_ws) {}
         edge_iter(const edge_iter& o) = default;
+        edge_iter& operator=(const edge_iter& o) = default;
         edge_iter() = default;
 
         // XXX: to make sure that we always return the same address

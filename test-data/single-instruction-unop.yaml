@@ -1,0 +1,32 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+---
+test-case: negation of unknown number
+
+pre: ["r1.type=number"]
+
+code:
+  <start>: |
+    r1 = -r1
+
+post: ["r1.type=number"]
+---
+test-case: negation of singleton number
+
+pre: ["r1.type=number", "r1.value=5"]
+
+code:
+  <start>: |
+    r1 = -r1
+
+post: ["r1.type=number", "r1.value=-5"]
+---
+test-case: negation of finite interval number
+
+pre: ["r1.type=number", "r1.value=[-5, 5]"]
+
+code:
+  <start>: |
+    r1 = -r1
+
+post: ["r1.type=number", "r1.value=[-5, 5]"]

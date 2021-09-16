@@ -17,26 +17,22 @@ using std::string;
 using std::vector;
 
 template <typename T>
-static vector<T> vector_of(ELFIO::section* sec) {
-    if (!sec)
-        return {};
-    auto data = sec->get_data();
-    auto size = sec->get_size();
+static vector<T> vector_of(const ELFIO::section& sec) {
+    auto data = sec.get_data();
+    auto size = sec.get_size();
     assert(size % sizeof(T) == 0);
     return {(T*)data, (T*)(data + size)};
 }
 
 int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries, ebpf_verifier_options_t options) {
-    if (map_type.is_value_map_fd) {
-        // Map-in-map is not yet supported.
-        return -1;
+    using EquivalenceKey = std::tuple<EbpfMapValueType, uint32_t, uint32_t, uint32_t>;
+    thread_local static std::map<EquivalenceKey, int> cache;
+    EquivalenceKey equiv{map_type.value_type, key_size, value_size, map_type.is_array ? max_entries : 0};
+    if (!cache.count(equiv)) {
+        // +1 so 0 is the null FD
+        cache[equiv] = (int)cache.size() + 1;
     }
-    if ((map_type.is_array && key_size != 4) || (key_size > (1 << 8)))
-        throw std::runtime_error("bad map key size " + std::to_string(key_size));
-    if (value_size > (1 << (31 - 8)))
-        throw std::runtime_error("bad map value size " + std::to_string(value_size));
-    int res = (value_size << 8) + key_size;
-    return res;
+    return cache.at(equiv);
 }
 
 EbpfMapDescriptor* find_map_descriptor(int map_fd) {
@@ -84,7 +80,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
     parse_map_sections(options, platform, reader, info.map_descriptors, map_section_indices);
 
     ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
-    auto read_reloc_value = [&symbols,platform](int symbol) -> size_t {
+    auto read_reloc_value = [&symbols,platform](ELFIO::Elf_Word symbol) -> size_t {
         string symbol_name;
         ELFIO::Elf64_Addr value{};
         ELFIO::Elf_Xword size{};
@@ -111,7 +107,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
         info.type = platform->get_program_type(name, path);
         if (section->get_size() == 0)
             continue;
-        raw_program prog{path, name, vector_of<ebpf_inst>(section), info};
+        raw_program prog{path, name, vector_of<ebpf_inst>(*section), info};
         auto prelocs = reader.sections[string(".rel") + name];
         if (!prelocs)
             prelocs = reader.sections[string(".rela") + name];
@@ -122,14 +118,17 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
             ELFIO::Elf_Word symbol{};
             ELFIO::Elf_Word type;
             ELFIO::Elf_Sxword addend;
+            // Fetch and store relocation count locally to permit static
+            // analysis tools to correctly reason about the code below.
+            ELFIO::Elf_Xword relocation_count = reloc.get_entries_num();
 
             // Below, only relocations of symbols located in the map sections are allowed,
             // so if there are relocations there needs to be a maps section.
-            if (reloc.get_entries_num() && !map_section_indices.size()) {
+            if (relocation_count && !map_section_indices.size()) {
                 throw std::runtime_error(string("Can't find any maps sections in file ") + path);
             }
 
-            for (ELFIO::Elf_Xword i = 0; i < reloc.get_entries_num(); i++) {
+            for (ELFIO::Elf_Xword i = 0; i < relocation_count; i++) {
                 if (reloc.get_entry(i, offset, symbol, type, addend)) {
                     ebpf_inst& inst = prog.prog[offset / sizeof(ebpf_inst)];
 

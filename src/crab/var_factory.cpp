@@ -33,7 +33,6 @@ void variable_t::clear_thread_local_state() {
         "r8.value",  "r8.offset",  "r8.type",
         "r9.value",  "r9.offset",  "r9.type",
         "r10.value", "r10.offset", "r10.type",
-        "S.value",   "S.offset",   "S.type",
         "data_size", "meta_size",  "map_value_size",
         "map_key_size"};
 }
@@ -56,11 +55,11 @@ std::ostream& operator<<(std::ostream& o, const data_kind_t& s) {
 
 static std::string mk_scalar_name(data_kind_t kind, int o, int size) {
     std::stringstream os;
-    os << "S." << name_of(kind) << "[" << o;
+    os << "s" << "[" << o;
     if (size != 1) {
         os << "..." << o + size - 1;
     }
-    os << "]";
+    os << "]." << name_of(kind);
     return os.str();
 }
 
@@ -74,4 +73,20 @@ variable_t variable_t::meta_offset() { return make("meta_offset"); }
 variable_t variable_t::packet_size() { return make("packet_size"); }
 variable_t variable_t::instruction_count() { return make("instruction_count"); }
 
+static bool ends_with(const std::string& str, const std::string& suffix)
+{
+    return str.size() >= suffix.size() && 0 == str.compare(str.size()-suffix.size(), suffix.size(), suffix);
+}
+
+std::vector<variable_t> variable_t::get_type_variables() {
+    std::vector<variable_t> res;
+    for (const std::string& name: names) {
+        if (ends_with(name, ".type"))
+            res.push_back(make(name));
+    }
+    return res;
+}
+bool variable_t::is_in_stack() {
+    return this->name()[0] == 's';
+}
 } // end namespace crab

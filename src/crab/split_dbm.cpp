@@ -1,11 +1,11 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: Apache-2.0
-#include "crab/split_dbm.hpp"
-
 #include <utility>
 
+#include "crab/split_dbm.hpp"
 #include "crab_utils/debug.hpp"
 #include "crab_utils/stats.hpp"
+#include "string_constraints.hpp"
 
 namespace crab::domains {
 
@@ -1187,69 +1187,99 @@ void SplitDBM::forget(const variable_vector_t& variables) {
     }
 }
 
-std::ostream& operator<<(std::ostream& o, SplitDBM& dom) {
-
-    dom.normalize();
-
-    if (dom.is_bottom()) {
-        return o << "_|_";
-    }
-    if (dom.is_top()) {
-        return o << "{}";
-    }
-    // Intervals
-    bool first = true;
-    o << "{";
-    // Extract all the edges
-    SubGraph<SplitDBM::graph_t> g_excl(dom.g, 0);
-    for (SplitDBM::vert_id v : g_excl.verts()) {
-        if (!dom.rev_map[v])
-            continue;
-        if (!dom.g.elem(0, v) && !dom.g.elem(v, 0))
-            continue;
-        interval_t v_out = interval_t(dom.g.elem(v, 0) ? -number_t(dom.g.edge_val(v, 0)) : bound_t::minus_infinity(),
-                                      dom.g.elem(0, v) ?  number_t(dom.g.edge_val(0, v)) : bound_t::plus_infinity());
-
-        if (first)
-            first = false;
+static std::string to_string(variable_t vd, variable_t vs, const SafeInt64DefaultParams::Wt& w, bool eq) {
+    std::stringstream elem;
+    if (eq) {
+        if (w.operator>(0))
+            elem << vd << "=" << vs << "+" << w;
+        else if (w.operator<(0))
+            elem << vs << "=" << vd << "+" << -w;
         else
-            o << ", ";
-        variable_t variable = *(dom.rev_map[v]);
-        o << variable << "=";
+            elem << std::min(vs, vd) << "=" << std::max(vs, vd);
+    } else {
+        elem << vd << "-" << vs << "<=" << w;
+    }
+    return elem.str();
+}
+
+static const std::vector<std::string> type_string = {
+    "shared", "packet", "stack", "ctx", "number", "map_fd", "map_fd_program", "uninitialized"
+};
+
+string_invariant SplitDBM::to_set() {
+    normalize();
+
+    if (this->is_bottom()) {
+        return string_invariant::bottom();
+    }
+    if (this->is_top()) {
+        return string_invariant::top();
+    }
+
+    std::set<std::string> result;
+    // Intervals
+
+    // Extract all the edges
+    SubGraph<SplitDBM::graph_t> g_excl(this->g, 0);
+    for (SplitDBM::vert_id v : g_excl.verts()) {
+        if (!this->rev_map[v])
+            continue;
+        if (!this->g.elem(0, v) && !this->g.elem(v, 0))
+            continue;
+        interval_t v_out = interval_t(this->g.elem(v, 0) ? -number_t(this->g.edge_val(v, 0)) : bound_t::minus_infinity(),
+                                      this->g.elem(0, v) ?  number_t(this->g.edge_val(0, v)) : bound_t::plus_infinity());
+
+        variable_t variable = *(this->rev_map[v]);
+
+        std::stringstream elem;
+        elem << variable << "=";
         if (v_out.lb() == v_out.ub()) {
             if (variable.is_type()) {
-                static const char* type_string[] = {"shared_pointer", "packet_pointer", "stack_pointer", "ctx_pointer", "number", "map_fd", "uninitialized"};
                 int type = (int)v_out.lb().number().value();
+                if (variable.is_in_stack() && type == T_NUM) {
+                    // no need to show this
+                    continue;
+                }
                 if (type <= 0 && type > -static_cast<int>(std::size(type_string)))
-                    o << type_string[-type];
+                    elem << type_string.at(-type);
                 else
-                    o << "map_value_of_size(" << v_out.lb() << ")";
-            } else
-                o << "[" << v_out.lb() << "]";
-        } else
-            o << v_out;
+                    elem << "map_value_of_size(" << v_out.lb() << ")";
+            } else {
+                elem << v_out.lb();
+            }
+        } else {
+            elem << v_out;
+        }
+        result.insert(elem.str());
     }
-    if (!first) o << "\n ";
-    first = true;
 
+    std::set<std::tuple<variable_t, variable_t, Wt>> diff_csts;
     for (SplitDBM::vert_id s : g_excl.verts()) {
-        if (!dom.rev_map[s])
+        if (!this->rev_map[s])
             continue;
-        variable_t vs = *dom.rev_map[s];
+        variable_t vs = *this->rev_map[s];
         for (SplitDBM::vert_id d : g_excl.succs(s)) {
-            if (!dom.rev_map[d])
+            if (!this->rev_map[d])
                 continue;
-            variable_t vd = *dom.rev_map[d];
-
-            if (first)
-                first = false;
-            else
-                o << ", ";
-            o << vd << "-" << vs << "<=" << g_excl.edge_val(s, d);
+            variable_t vd = *this->rev_map[d];
+            diff_csts.emplace(vd, vs, g_excl.edge_val(s, d));
         }
     }
-    o << "}";
-    return o;
+    // simplify: x - y <= k && y - x <= -k -> y = x + k
+    for (const auto& [vd, vs, w] : diff_csts) {
+        auto dual = to_string(vs, vd, -w, false);
+        if (result.count(dual)) {
+            result.erase(dual);
+            result.insert(to_string(vs, vd, w, true));
+        } else {
+            result.insert(to_string(vd, vs, w, false));
+        }
+    }
+    return string_invariant{result};
+}
+
+std::ostream& operator<<(std::ostream& o, SplitDBM& dom) {
+    return o << dom.to_set();
 }
 
 } // namespace crab::domains

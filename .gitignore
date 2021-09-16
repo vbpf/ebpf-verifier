@@ -12,3 +12,9 @@ build
 html
 Debug/*
 Release/*
+.idea/
+.vs/
+CMakeSettings.json
+cmake-build-debug/
+cmake-build-release/
+cmake-build-sanitize/

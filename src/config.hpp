@@ -15,4 +15,10 @@ struct ebpf_verifier_options_t {
     bool strict;
 };
 
+struct ebpf_verifier_stats_t {
+    int total_unreachable;
+    int total_warnings;
+    int max_instruction_count;
+};
+
 extern const ebpf_verifier_options_t ebpf_verifier_default_options;

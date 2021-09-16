@@ -27,6 +27,7 @@
 #include "dsl_syntax.hpp"
 #include "helpers.hpp"
 #include "platform.hpp"
+#include "string_constraints.hpp"
 
 #include "crab/array_domain.hpp"
 
@@ -254,7 +255,7 @@ class ebpf_domain_t final {
     void operator-=(variable_t var) { m_inv -= var; }
 
     void assign(variable_t x, const linear_expression_t& e) { m_inv.assign(x, e); }
-    void assign(variable_t x, int e) { m_inv.set(x, interval_t(number_t(e))); }
+    void assign(variable_t x, long e) { m_inv.set(x, interval_t(number_t(e))); }
 
     void apply(arith_binop_t op, variable_t x, variable_t y, const number_t& z) { m_inv.apply(op, x, y, z); }
 
@@ -284,6 +285,18 @@ class ebpf_domain_t final {
             havoc(reg.value);
             havoc(reg.offset);
             havoc(reg.type);
+        }
+    }
+
+    void forget_packet_pointers() {
+        using namespace dsl_syntax;
+
+        initialize_packet(*this);
+
+        for (variable_t v : variable_t::get_type_variables()) {
+            // TODO: this is sufficient, but for clarity it may be useful to forget the offset and value too.
+           if (m_inv.intersect(v == T_PACKET))
+               m_inv -= v;
         }
     }
 
@@ -395,10 +408,9 @@ class ebpf_domain_t final {
         }
     }
 
-    bool terminates() {
-        using namespace crab::dsl_syntax;
-        constexpr int max_instructions = 100000;
-        return m_inv.entail(variable_t::instruction_count() <= max_instructions);
+    int get_instruction_count_upper_bound() {
+        const auto& ub = m_inv[variable_t::instruction_count()].ub();
+        return (ub.is_finite() && ub.number().value().fits_sint()) ? (int)ub.number().value() : INT_MAX;
     }
 
     void operator()(Assume const& s) {
@@ -412,6 +424,7 @@ class ebpf_domain_t final {
             if (stype == dtype) {
                 switch (stype) {
                     case T_MAP: break;
+                    case T_MAP_PROGRAMS: break;
                     case T_UNINIT: break;
                     case T_NUM: {
                         if (!is_unsigned_cmp(cond.op))
@@ -498,7 +511,7 @@ class ebpf_domain_t final {
 
         // Get the actual map_fd value to look up the key size and value size.
         auto fd_reg = reg_pack(s.map_fd_reg);
-        interval_t fd_interval = operator[](fd_reg.value);
+        interval_t fd_interval = operator[](fd_reg.offset);
         std::optional<EbpfMapType> map_type;
         uint32_t max_entries = 0;
         if (fd_interval.is_bottom()) {
@@ -531,7 +544,11 @@ class ebpf_domain_t final {
         auto when_stack = when(m_inv, access_reg.type == T_STACK);
         if (!when_stack.is_bottom()) {
             if (!stack.all_num(when_stack, lb, ub)) {
-                require(when_stack, access_reg.type != T_STACK, "Illegal map update with a non-numerical value.");
+                auto lb_is = when_stack[lb].lb().number();
+                std::string lb_s = lb_is && lb_is->fits_sint() ? std::to_string((int)*lb_is) : "-oo";
+                auto ub_is = when_stack.eval_interval(ub).ub().number();
+                std::string ub_s = ub_is && ub_is->fits_sint() ? std::to_string((int)*ub_is) : "oo";
+                require(when_stack, access_reg.type != T_STACK, "Illegal map update with a non-numerical value [" + lb_s + "-" + ub_s + ")");
             } else if (thread_local_options.strict && map_type.has_value() && map_type->is_array) {
                 // Get offset value.
                 variable_t key_ptr = access_reg.offset;
@@ -646,6 +663,7 @@ class ebpf_domain_t final {
         switch (s.types) {
         case TypeGroup::number: require(m_inv, t == T_NUM, str); break;
         case TypeGroup::map_fd: require(m_inv, t == T_MAP, str); break;
+        case TypeGroup::map_fd_programs: require(m_inv, t == T_MAP_PROGRAMS, str); break;
         case TypeGroup::ctx: require(m_inv, t == T_CTX, str); break;
         case TypeGroup::packet: require(m_inv, t == T_PACKET, str); break;
         case TypeGroup::stack: require(m_inv, t == T_STACK, str); break;
@@ -704,7 +722,7 @@ class ebpf_domain_t final {
         if (inv.is_bottom())
             return inv;
 
-        const EbpfContextDescriptor* desc = global_program_info.type.context_descriptor;
+        const ebpf_context_descriptor_t* desc = global_program_info.type.context_descriptor;
 
         inv -= target.value;
 
@@ -790,6 +808,7 @@ class ebpf_domain_t final {
                 return;
             }
             case T_MAP: return;
+            case T_MAP_PROGRAMS: return;
             case T_NUM: return;
             case T_CTX: m_inv = do_load_ctx(std::move(m_inv), target, addr, width); break;
             case T_STACK: m_inv = do_load_stack(std::move(m_inv), target, addr, width); break;
@@ -807,7 +826,7 @@ class ebpf_domain_t final {
     static int get_type(int t) { return t; }
 
     template <typename A, typename X, typename Y, typename Z>
-    void do_store_stack(NumAbsDomain& inv, int width, A addr, X val_type, Y val_value,
+    void do_store_stack(NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_value,
                         std::optional<Z> opt_val_offset) {
         inv.assign(stack.store(inv, data_kind_t::types, addr, width, val_type), val_type);
         if (width == 8) {
@@ -883,10 +902,14 @@ class ebpf_domain_t final {
         using namespace dsl_syntax;
         if (m_inv.is_bottom())
             return;
+        std::optional<Reg> fd_index{};
         for (ArgSingle param : call.singles) {
             switch (param.kind) {
-            case ArgSingle::Kind::ANYTHING:
             case ArgSingle::Kind::MAP_FD:
+                fd_index = param.reg;
+                break;
+            case ArgSingle::Kind::ANYTHING:
+            case ArgSingle::Kind::MAP_FD_PROGRAMS:
             case ArgSingle::Kind::PTR_TO_MAP_KEY:
             case ArgSingle::Kind::PTR_TO_MAP_VALUE:
             case ArgSingle::Kind::PTR_TO_CTX:
@@ -920,30 +943,62 @@ class ebpf_domain_t final {
             }
             }
         }
-        scratch_caller_saved_registers();
+
         auto r0 = reg_pack(R0_RETURN_VALUE);
-        havoc(r0.value);
-        if (call.returns_map) {
-            // no support for map-in-map yet:
-            //   if (machine.info.map_defs.at(map_type).type == MapType::ARRAY_OF_MAPS
-            //    || machine.info.map_defs.at(map_type).type == MapType::HASH_OF_MAPS) { }
-            // This is the only way to get a null pointer - note the `<=`:
-            m_inv += 0 <= r0.value;
-            m_inv += r0.value <= PTR_MAX;
+        if (call.is_map_lookup) {
+            // This is the only way to get a null pointer
+            if (fd_index) {
+                if (std::optional<number_t> fd_opt = m_inv[reg_pack(*fd_index).offset].singleton()) {
+                    if (fd_opt->fits_sint()) {
+                        const EbpfMapDescriptor& desc = global_program_info.platform->get_map_descriptor((int)*fd_opt);
+                        if (global_program_info.platform->get_map_type(desc.type).value_type == EbpfMapValueType::MAP) {
+                            do_load_mapfd(r0, (int)desc.inner_map_fd, true);
+                            goto out;
+                        }
+                    }
+                }
+            }
+            assign_valid_ptr(r0, true);
             assign(r0.offset, 0);
             assign(r0.type, variable_t::map_value_size());
         } else {
+            havoc(r0.value);
             havoc(r0.offset);
             assign(r0.type, T_NUM);
-            // assume(r0.value < 0); for VOID, which is actually "no return if succeed".
+            // assume(r0.value < 0); for INTEGER_OR_NO_RETURN_IF_SUCCEED.
+        }
+out:
+        scratch_caller_saved_registers();
+        if (call.reallocate_packet) {
+            forget_packet_pointers();
         }
     }
 
+    void do_load_mapfd(const reg_pack_t& dst, int mapfd, bool maybe_null) {
+        const EbpfMapDescriptor& desc = global_program_info.platform->get_map_descriptor(mapfd);
+        const EbpfMapType& type = global_program_info.platform->get_map_type(desc.type);
+        if (type.value_type == EbpfMapValueType::PROGRAM) {
+            assign(dst.type, T_MAP_PROGRAMS);
+        } else {
+            assign(dst.type, T_MAP);
+        }
+        assign(dst.offset, mapfd);
+        assign_valid_ptr(dst, maybe_null);
+    }
+
     void operator()(LoadMapFd const& ins) {
-        auto dst = reg_pack(ins.dst);
-        assign(dst.type, T_MAP);
-        assign(dst.value, ins.mapfd);
-        havoc(dst.offset);
+        do_load_mapfd(reg_pack(ins.dst), ins.mapfd, false);
+    }
+
+    void assign_valid_ptr(const reg_pack_t& reg, bool maybe_null) {
+        using namespace crab::dsl_syntax;
+        havoc(reg.value);
+        if (maybe_null) {
+            m_inv += 0 <= reg.value;
+        } else {
+            m_inv += 0 < reg.value;
+        }
+        m_inv += reg.value <= PTR_MAX;
     }
 
     void operator()(Bin const& bin) {
@@ -1112,6 +1167,10 @@ class ebpf_domain_t final {
         }
     }
 
+    string_invariant to_set() {
+        return this->m_inv.to_set();
+    }
+
     friend std::ostream& operator<<(std::ostream& o, ebpf_domain_t dom) {
         if (dom.is_bottom()) {
             o << "_|_";
@@ -1119,6 +1178,31 @@ class ebpf_domain_t final {
             o << dom.m_inv << "\nStack: " << dom.stack;
         }
         return o;
+    }
+
+    static void initialize_packet(ebpf_domain_t& inv) {
+        using namespace dsl_syntax;
+
+        inv -= variable_t::packet_size();
+        inv -= variable_t::meta_offset();
+
+        inv += 0 <= variable_t::packet_size();
+        inv += variable_t::packet_size() < MAX_PACKET_OFF;
+        auto info = global_program_info;
+        if (info.type.context_descriptor->meta >= 0) {
+            inv += variable_t::meta_offset() <= 0;
+            inv += variable_t::meta_offset() >= -4098;
+        } else {
+            inv.assign(variable_t::meta_offset(), 0);
+        }
+    }
+
+    static ebpf_domain_t from_constraints(const std::vector<linear_constraint_t>& csts) {
+        ebpf_domain_t inv;
+        for (const auto& cst: csts) {
+            inv += cst;
+        }
+        return inv;
     }
 
     static ebpf_domain_t setup_entry(bool check_termination) {
@@ -1137,14 +1221,8 @@ class ebpf_domain_t final {
         inv.assign(r1.offset, 0);
         inv.assign(r1.type, T_CTX);
 
-        inv += 0 <= variable_t::packet_size();
-        inv += variable_t::packet_size() < MAX_PACKET_OFF;
-        if (global_program_info.type.context_descriptor->meta >= 0) {
-            inv += variable_t::meta_offset() <= 0;
-            inv += variable_t::meta_offset() >= -4098;
-        } else {
-            inv.assign(variable_t::meta_offset(), 0);
-        }
+        initialize_packet(inv);
+
         if (check_termination) {
             inv.assign(variable_t::instruction_count(), 0);
         }

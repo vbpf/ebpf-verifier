@@ -30,8 +30,8 @@ class safe_i64 {
     using wideint_t = boost::multiprecision::int128_t;
 #endif
 
-    [[nodiscard]] static int64_t get_max() { return std::numeric_limits<int64_t>::max(); }
-    [[nodiscard]] static int64_t get_min() { return std::numeric_limits<int64_t>::min(); }
+    [[nodiscard]] static constexpr int64_t get_max() { return std::numeric_limits<int64_t>::max(); }
+    [[nodiscard]] static constexpr int64_t get_min() { return std::numeric_limits<int64_t>::min(); }
 
     static int checked_add(int64_t a, int64_t b, int64_t* rp) {
         wideint_t lr = (wideint_t)a + (wideint_t)b;

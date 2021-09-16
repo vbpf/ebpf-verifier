@@ -38,8 +38,7 @@ FAIL_UNMARSHAL("build", "wronghelper.o", "xdp")
         std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog); \
         REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error)); \
         auto& prog = std::get<InstructionSeq>(prog_or_error); \
-        cfg_t cfg = prepare_cfg(prog, raw_prog.info, true); \
-        bool res = run_ebpf_analysis(std::cout, cfg, raw_prog.info, options); \
+        bool res = ebpf_verify_program(std::cout, prog, raw_prog.info, options, nullptr); \
         if (pass)                                            \
             REQUIRE(res);                                    \
         else                                                 \
@@ -282,6 +281,8 @@ TEST_SECTION("linux", "xdp2_kern.o", "xdp1")
 TEST_SECTION("linux", "xdp2skb_meta_kern.o", "tc_mark")
 TEST_SECTION("linux", "xdp2skb_meta_kern.o", "xdp_mark")
 TEST_SECTION("linux", "xdpsock_kern.o", "xdp_sock")
+// Finally passes; still requires double-check
+TEST_SECTION("linux", "map_perf_test_kern.o", "kprobe/sys_connect")
 
 TEST_SECTION("prototype-kernel", "napi_monitor_kern.o", "tracepoint/irq/softirq_entry")
 TEST_SECTION("prototype-kernel", "napi_monitor_kern.o", "tracepoint/irq/softirq_exit")
@@ -354,8 +355,6 @@ TEST_SECTION("falco", "probe.o", "raw_tracepoint/page_fault_kernel")
 TEST_SECTION("falco", "probe.o", "raw_tracepoint/page_fault_user")
 TEST_SECTION("falco", "probe.o", "raw_tracepoint/sched_switch")
 TEST_SECTION("falco", "probe.o", "raw_tracepoint/signal_deliver")
-
-TEST_SECTION("build", "stackok.o", ".text")
 
 // Test some programs that should pass verification except when the strict flag is set.
 TEST_SECTION_REJECT_IF_STRICT("build", "mapoverflow.o", ".text")
@@ -445,6 +444,10 @@ TEST_SECTION("raw_tracepoint/filler/sys_sendmsg_x")
 TEST_SECTION("raw_tracepoint/filler/proc_startupdate_2")
 TEST_SECTION("raw_tracepoint/filler/sys_recvfrom_x")
 */
+TEST_SECTION("build", "stackok.o", ".text")
+TEST_SECTION("build", "packet_start_ok.o", "xdp")
+TEST_SECTION("build", "tail_call.o", "xdp_prog")
+TEST_SECTION("build", "map_in_map.o", ".text")
 
 // Test some programs that ought to fail verification.
 TEST_SECTION_REJECT("build", "badhelpercall.o", ".text")
@@ -454,14 +457,13 @@ TEST_SECTION_REJECT("build", "exposeptr.o", ".text")
 TEST_SECTION_REJECT("build", "exposeptr2.o", ".text")
 TEST_SECTION_REJECT("build", "mapvalue-overrun.o", ".text")
 TEST_SECTION_REJECT("build", "nullmapref.o", "test")
+TEST_SECTION_REJECT("build", "packet_overflow.o", "xdp")
+TEST_SECTION_REJECT("build", "packet_reallocate.o", "socket_filter")
+TEST_SECTION_REJECT("build", "tail_call_bad.o", "xdp_prog")
 
 // The following eBPF programs currently fail verification.
 // If the verifier is later updated to accept them, these should
 // be changed to TEST_SECTION().
-
-// Unsupported: map-in-map
-TEST_SECTION_FAIL("linux", "map_perf_test_kern.o", "kprobe/sys_connect")
-TEST_SECTION_FAIL("linux", "test_map_in_map_kern.o", "kprobe/sys_connect")
 
 // Unsupported: ebpf-function
 TEST_SECTION_FAIL("prototype-kernel", "xdp_ddos01_blacklist_kern.o", ".text")
@@ -469,8 +471,11 @@ TEST_SECTION_FAIL("prototype-kernel", "xdp_ddos01_blacklist_kern.o", ".text")
 // False positive: correlated branches
 TEST_SECTION_FAIL("prototype-kernel", "xdp_ddos01_blacklist_kern.o", "xdp_prog")
 
+// False positive, unknown cause
+TEST_SECTION_FAIL("linux", "test_map_in_map_kern.o", "kprobe/sys_connect")
+
 void test_analyze_thread(cfg_t* cfg, program_info* info, bool* res) {
-    *res = run_ebpf_analysis(std::cout, *cfg, *info, nullptr);
+    *res = run_ebpf_analysis(std::cout, *cfg, *info, nullptr, nullptr);
 }
 
 // Test multithreading

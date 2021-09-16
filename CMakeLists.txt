@@ -11,6 +11,7 @@ endif ()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
     "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  find_package(yaml-cpp REQUIRED)
   find_package(Boost REQUIRED)
   set(CMAKE_CXX_STANDARD 17)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
@@ -21,15 +22,30 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     exec_program(${NUGET} ARGS install "Boost" -Version 1.75.0 -ExcludeVersion -OutputDirectory ${CMAKE_BINARY_DIR}/packages)
   endif()
   set(Boost_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/packages/boost/lib/native/include)
-
   # MSVC's C++17 standard option doesn't actually support all the C++17
   # features we use, but its "latest" option does.  However, cmake can't
   # deal with that here, so we set it below.
+
+  set(EXTERNAL_INSTALL_LOCATION ${CMAKE_BINARY_DIR}/packages/yaml-cpp)
+  include(ExternalProject)
+  ExternalProject_Add(yaml-cpp
+          GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+          GIT_TAG "yaml-cpp-0.7.0"
+          GIT_SHALLOW true
+          CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_LOCATION}
+                     -DYAML_MSVC_SHARED_RT=ON
+                     -DYAML_CPP_BUILD_TESTS=OFF
+                     -DYAML_CPP_BUILD_TOOLS=OFF
+          )
+  set(YAML_CPP_LIBRARIES ${EXTERNAL_INSTALL_LOCATION}/lib/yaml-cpp$<$<CONFIG:DEBUG>:d>.lib)
+  set(YAML_CPP_INCLUDE_DIRS ${EXTERNAL_INSTALL_LOCATION}/include/)
 endif ()
 
 include_directories(./external)
+include_directories(./external/ELFIO)
 include_directories(./src)
 include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${YAML_CPP_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS})
 
 file(GLOB LIB_SRC
@@ -41,28 +57,42 @@ file(GLOB LIB_SRC
         )
 
 file(GLOB ALL_TEST
-        "./src/test/*.cpp"
+        "./src/test/test.cpp"
+        "./src/test/test_loop.cpp"
+        "./src/test/test_marshal.cpp"
+        "./src/test/test_termination.cpp"
+        "./src/test/test_verify.cpp"
+        "./src/test/test_yaml.cpp"
         )
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
     "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(COMMON_FLAGS -Wall -Wfatal-errors -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8)
-  set(DEBUG_FLAGS -O0 -g3)
-  set(RELEASE_FLAGS -O2 -flto)
+
+  set(RELEASE_FLAGS -O2 -flto -ffat-lto-objects)
+
+  set(DEBUG_FLAGS -O0 -g3 -fno-omit-frame-pointer)
+
   set(SANITIZE_FLAGS -fsanitize=address -O1 -fno-omit-frame-pointer)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++latest")
 endif ()
 
 add_library(ebpfverifier ${LIB_SRC})
+
 add_executable(check src/main/check.cpp src/main/linux_verifier.cpp)
 add_executable(tests ${ALL_TEST})
+add_executable(run_yaml src/main/run_yaml.cpp)
 
 set_target_properties(check
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
 
 set_target_properties(tests
+        PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
+
+set_target_properties(run_yaml
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
 
@@ -93,4 +123,10 @@ target_link_libraries(tests PRIVATE ebpfverifier)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
+
 target_link_libraries(tests PRIVATE Threads::Threads)
+
+target_link_libraries(ebpfverifier PRIVATE ${YAML_CPP_LIBRARIES})
+target_compile_options(ebpfverifier PRIVATE ${COMMON_FLAGS})
+
+target_link_libraries(run_yaml PRIVATE ebpfverifier)
