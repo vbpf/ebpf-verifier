@@ -44,14 +44,14 @@ EbpfMapDescriptor* find_map_descriptor(int map_fd) {
     return nullptr;
 }
 
+// Maps sections are identified as any section called "maps", or matching "maps/<map-name>".
 bool is_map_section(const std::string& name) {
     std::string maps_prefix = "maps/";
     return name == "maps" || (name.length() > 5 && name.compare(0, maps_prefix.length(), maps_prefix) == 0);
 }
 
 // parse_maps_sections processes all maps sections in the provided ELF file by calling the platform-specific maps
-// parser. The section index of each maps section is inserted into section_indices. Maps sections are identified as any
-// section called "maps", or matching "maps/<map-name>".
+// parser. The section index of each maps section is inserted into section_indices.
 void parse_map_sections(const ebpf_verifier_options_t* options, const ebpf_platform_t* platform, const ELFIO::elfio& reader, std::vector<EbpfMapDescriptor>& map_descriptors, std::set<ELFIO::Elf_Half>& section_indices) {
     for (ELFIO::Elf_Half i = 0; i < reader.sections.size(); ++i) {
         auto s = reader.sections[i];
