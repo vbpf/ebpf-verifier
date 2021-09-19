@@ -15,7 +15,7 @@ SplitDBM::vert_id SplitDBM::get_vert(variable_t v) {
         return (*it).second;
 
     vert_id vert(g.new_vertex());
-    vert_map.insert(vmap_elt_t(v, vert));
+    vert_map.emplace(v, vert);
     // Initialize
     assert(vert <= rev_map.size());
     if (vert < rev_map.size()) {
@@ -25,7 +25,7 @@ SplitDBM::vert_id SplitDBM::get_vert(variable_t v) {
         potential.emplace_back(0);
         rev_map.push_back(v);
     }
-    vert_map.insert(vmap_elt_t(v, vert));
+    vert_map.emplace(v, vert);
 
     assert(vert != 0);
 
@@ -492,7 +492,7 @@ SplitDBM SplitDBM::operator|(const SplitDBM& _o) & {
         auto it = o.vert_map.find(v);
         // Variable exists in both
         if (it != o.vert_map.end()) {
-            out_vmap.insert(vmap_elt_t(v, static_cast<vert_id>(perm_x.size())));
+            out_vmap.emplace(v, static_cast<vert_id>(perm_x.size()));
             out_revmap.push_back(v);
 
             pot_rx.push_back(potential[n] - potential[0]);
@@ -665,7 +665,7 @@ SplitDBM SplitDBM::widen(SplitDBM o) {
             auto it = o.vert_map.find(v);
             // Variable exists in both
             if (it != o.vert_map.end()) {
-                out_vmap.insert(vmap_elt_t(v, static_cast<vert_id>(perm_x.size())));
+                out_vmap.emplace(v, static_cast<vert_id>(perm_x.size()));
                 out_revmap.push_back(v);
 
                 widen_pot.push_back(potential[n] - potential[0]);
@@ -726,7 +726,7 @@ SplitDBM SplitDBM::operator&(SplitDBM o) {
         meet_rev.push_back(std::nullopt);
         for (auto [v, n] : vert_map) {
             vert_id vv = static_cast<vert_id>(perm_x.size());
-            meet_verts.insert(vmap_elt_t(v, vv));
+            meet_verts.emplace(v, vv);
             meet_rev.push_back(v);
 
             perm_x.push_back(n);
@@ -745,7 +745,7 @@ SplitDBM SplitDBM::operator&(SplitDBM o) {
                 perm_y.push_back(n);
                 perm_x.push_back(-1);
                 meet_pi.push_back(o.potential[n] - o.potential[0]);
-                meet_verts.insert(vmap_elt_t(v, vv));
+                meet_verts.emplace(v, vv);
             } else {
                 perm_y[it->second] = n;
             }
@@ -952,7 +952,7 @@ void SplitDBM::assign(variable_t x, const linear_expression_t& e) {
             }
             // Clear the old x vertex
             operator-=(x);
-            vert_map.insert(vmap_elt_t(x, vert));
+            vert_map.emplace(x, vert);
         } else {
             set(x, x_int);
         }
@@ -962,40 +962,6 @@ void SplitDBM::assign(variable_t x, const linear_expression_t& e) {
     // this->operator-=(x);
     // g.check_adjs();
     CRAB_LOG("zones-split", std::cout << "---" << x << ":=" << e << "\n" << *this << "\n");
-}
-
-void SplitDBM::rename(const variable_vector_t& from, const variable_vector_t& to) {
-    CrabStats::count("SplitDBM.count.rename");
-    ScopedCrabStats __st__("SplitDBM.rename");
-
-    if (is_top() || is_bottom())
-        return;
-
-    // renaming vert_map by creating a new vert_map since we are
-    // modifying the keys.
-    // rev_map is modified in-place since we only modify values.
-    CRAB_LOG("zones-split", std::cout << "Replacing {"; for (auto v
-                                                             : from) std::cout
-                                                        << v << ";";
-             std::cout << "} with "; for (auto v
-                                          : to) std::cout
-                                     << v << ";";
-             std::cout << "}:\n"; std::cout << *this << "\n";);
-
-    vert_map_t new_vert_map;
-    for (auto kv : vert_map) {
-        ptrdiff_t pos = std::distance(from.begin(), std::find(from.begin(), from.end(), kv.first));
-        if ((long unsigned)pos < from.size()) {
-            variable_t new_v(to[pos]);
-            new_vert_map.insert(vmap_elt_t(new_v, kv.second));
-            rev_map[kv.second] = new_v;
-        } else {
-            new_vert_map.insert(kv);
-        }
-    }
-    std::swap(vert_map, new_vert_map);
-
-    CRAB_LOG("zones-split", std::cout << "RESULT=" << *this << "\n");
 }
 
 SplitDBM SplitDBM::narrow(SplitDBM o) {
