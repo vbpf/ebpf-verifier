@@ -22,3 +22,4 @@ struct ebpf_verifier_stats_t {
 };
 
 extern const ebpf_verifier_options_t ebpf_verifier_default_options;
+extern thread_local ebpf_verifier_options_t thread_local_options;

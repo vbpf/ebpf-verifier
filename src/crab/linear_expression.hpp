@@ -23,7 +23,7 @@ class linear_expression_t final {
     number_t _constant_term;
 
     // Get the coefficient for a given variable, which is 0 if it has no term in the expression.
-    number_t coefficient_of(const variable_t& variable) const {
+    [[nodiscard]] number_t coefficient_of(const variable_t& variable) const {
         auto it = _variable_terms.find(variable);
         if (it == _variable_terms.end()) {
             return 0;
@@ -33,10 +33,12 @@ class linear_expression_t final {
 
   public:
     linear_expression_t(signed long long int coefficient) : _constant_term(coefficient) {}
-    linear_expression_t(const number_t& coefficient) : _constant_term(coefficient) {}
+    linear_expression_t(number_t coefficient) : _constant_term(std::move(coefficient)) {}
     linear_expression_t(const variable_t& variable) { _variable_terms[variable] = 1; }
     linear_expression_t(const number_t& coefficient, const variable_t& variable) { _variable_terms[variable] = coefficient; }
-    linear_expression_t(const variable_terms_t& variable_terms, const number_t& constant_term) : _variable_terms(variable_terms), _constant_term(constant_term) {}
+    linear_expression_t(variable_terms_t variable_terms, number_t constant_term)
+            : _variable_terms(std::move(variable_terms)),
+              _constant_term(std::move(constant_term)) {}
 
     // Allow a caller to access individual terms.
     [[nodiscard]] const variable_terms_t& variable_terms() const { return _variable_terms; }

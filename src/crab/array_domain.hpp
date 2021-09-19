@@ -66,7 +66,7 @@ public:
     offset_t(index_t index, int prefix_length) : _index(index), _prefix_length(prefix_length) {}
     explicit operator int() const { return static_cast<int>(_index); }
     operator index_t() const { return _index; }
-    int prefix_length() const { return _prefix_length; }
+    [[nodiscard]] int prefix_length() const { return _prefix_length; }
 
     index_t operator[](int n) const { return (_index >> (bitsize - 1 - n)) & 1; }
 };

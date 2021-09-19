@@ -25,10 +25,6 @@ using std::string;
 thread_local program_info global_program_info;
 thread_local ebpf_verifier_options_t thread_local_options;
 
-// Numerical domains over integers
-// using sdbm_domain_t = crab::domains::SplitDBM;
-using crab::domains::ebpf_domain_t;
-
 // Toy database to store invariants.
 struct checks_db final {
     std::map<label_t, std::vector<std::string>> m_db;
