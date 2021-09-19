@@ -16,9 +16,6 @@
 
 #include "crab/array_domain.hpp"
 #include "crab/ebpf_domain.hpp"
-#include "crab/interval.hpp"
-#include "crab/split_dbm.hpp"
-#include "crab/variable.hpp"
 
 #include "asm_ostream.hpp"
 #include "config.hpp"
