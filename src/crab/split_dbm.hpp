@@ -390,8 +390,6 @@ class SplitDBM final {
 
     void forget(const variable_vector_t& variables);
 
-    void rename(const variable_vector_t& from, const variable_vector_t& to);
-
     // -- begin array_sgraph_domain_helper_traits
 
     // -- end array_sgraph_domain_helper_traits
