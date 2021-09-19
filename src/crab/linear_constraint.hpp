@@ -14,6 +14,16 @@ enum class constraint_kind_t {
     NOT_ZERO
 };
 
+inline constraint_kind_t negate(constraint_kind_t constraint) {
+    switch (constraint){
+    case constraint_kind_t::NOT_ZERO : return constraint_kind_t::EQUALS_ZERO;
+    case constraint_kind_t::EQUALS_ZERO : return constraint_kind_t::NOT_ZERO;
+    case constraint_kind_t::LESS_THAN_ZERO : return constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO;
+    case constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO : return constraint_kind_t::LESS_THAN_ZERO;
+    default : throw std::exception();
+    }
+}
+
 class linear_constraint_t final {
   private:
     linear_expression_t _expression = linear_expression_t(0);
@@ -50,23 +60,26 @@ class linear_constraint_t final {
 
     // Construct the logical NOT of this constraint.
     [[nodiscard]] linear_constraint_t negate() const {
-        switch (_constraint_kind) {
+        const constraint_kind_t inverse_constraint_kind = ::negate(_constraint_kind);
+        switch (_constraint_kind){
         case constraint_kind_t::NOT_ZERO:
-            return linear_constraint_t(_expression, constraint_kind_t::EQUALS_ZERO);
         case constraint_kind_t::EQUALS_ZERO:
-            return linear_constraint_t(_expression, constraint_kind_t::NOT_ZERO);
+            return linear_constraint_t{_expression, inverse_constraint_kind};
         case constraint_kind_t::LESS_THAN_ZERO:
-            return linear_constraint_t(-_expression, constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO);
         case constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO:
-            return linear_constraint_t(-_expression, constraint_kind_t::LESS_THAN_ZERO);
-        default: throw std::exception();
+            return linear_constraint_t{-_expression, inverse_constraint_kind};
+        default : throw std::exception();
         }
     }
+
+    static linear_constraint_t FALSE() {
+        return linear_constraint_t{linear_expression_t(0), constraint_kind_t::NOT_ZERO};
+    };
+
 };
 
 // Output a linear constraint to a stream.
-inline std::ostream& operator<<(std::ostream& o, const linear_constraint_t& constraint)
-{
+inline std::ostream& operator<<(std::ostream& o, const linear_constraint_t& constraint) {
     if (constraint.is_contradiction()) {
         o << "false";
     } else if (constraint.is_tautology()) {
@@ -87,4 +100,4 @@ inline std::ostream& operator<<(std::ostream& o, const linear_constraint_t& cons
         o << constraint_kind_label[kind] << -expression.constant_term();
     }
     return o;
-};
+}

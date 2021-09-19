@@ -11,8 +11,6 @@
 
 namespace crab {
 
-using domains::ebpf_domain_t;
-
 // Simple visitor to check if node is a member of the wto component.
 class member_component_visitor final {
     label_t _node;
