@@ -22,9 +22,9 @@
 #include <optional>
 #include <type_traits>
 #include <unordered_set>
+#include <utility>
 
 #include <boost/container/flat_map.hpp>
-#include <utility>
 
 #include "crab/interval.hpp"
 #include "crab/linear_constraint.hpp"
@@ -38,8 +38,20 @@
 #include "crab_utils/stats.hpp"
 
 #include "string_constraints.hpp"
-//#define CHECK_POTENTIAL
-//#define SDBM_NO_NORMALIZE
+
+// These constants are mostly used in ebpf_domain.cpp, but some uses
+// in split_dbm.cpp and array_domain.cpp require them to be declared here.
+// The exact numbers are taken advantage of in ebpf_domain_t
+enum type_encoding_t {
+    T_UNINIT = -7,
+    T_MAP_PROGRAMS = -6,
+    T_MAP = -5,
+    T_NUM = -4,
+    T_CTX = -3,
+    T_STACK = -2,
+    T_PACKET = -1,
+    T_SHARED = 0
+};
 
 namespace crab {
 
@@ -227,7 +239,7 @@ class SplitDBM final {
         return x_out;
     }
 
-    // Resore potential after an edge addition
+    // Restore potential after an edge addition
     bool repair_potential(vert_id src, vert_id dest) { return GrOps::repair_potential(g, potential, src, dest); }
 
     // Restore closure after a single edge addition

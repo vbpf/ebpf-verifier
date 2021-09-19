@@ -7,6 +7,7 @@
 
 #include "string_constraints.hpp"
 
+#include "crab/split_dbm.hpp"
 #include "crab/variable.hpp"
 #include "crab/linear_constraint.hpp"
 #include "crab/dsl_syntax.hpp"
@@ -45,8 +46,8 @@ static long number(const string& s) {
     }
 }
 
-static int type(const string& s) {
-    static map<string, int> string_to_type{
+static type_encoding_t string_to_type_encoding(const string& s) {
+    static map<string, type_encoding_t> string_to_type{
         {string("uninit"), T_UNINIT},
         {string("map_fd_programs"), T_MAP_PROGRAMS},
         {string("map"), T_MAP},
@@ -76,7 +77,7 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<string>
             res.push_back(equals(d, s));
         } else if (regex_match(cst_text, m, regex(REG DOT "type" "=" TYPE))) {
             variable_t d = variable_t::reg(data_kind_t::types, regnum(m[1]));
-            res.push_back(d == type(m[2]));
+            res.push_back(d == string_to_type_encoding(m[2]));
         } else if (regex_match(cst_text, m, regex(REG DOT KIND "=" IMM))) {
             variable_t d = variable_t::reg(regkind(m[2]), regnum(m[1]));
             res.push_back(d == number(m[3]));

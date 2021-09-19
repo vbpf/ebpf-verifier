@@ -215,18 +215,6 @@ struct Assume {
     Condition cond;
 };
 
-// The exact numbers are taken advantage of, in the abstract domain
-enum {
-    T_UNINIT = -7,
-    T_MAP_PROGRAMS = -6,
-    T_MAP = -5,
-    T_NUM = -4,
-    T_CTX = -3,
-    T_STACK = -2,
-    T_PACKET = -1,
-    T_SHARED = 0
-};
-
 enum class TypeGroup {
     number,
     map_fd,

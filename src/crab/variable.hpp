@@ -42,12 +42,12 @@ class variable_t final {
 
     [[nodiscard]] std::string name() const { return names.at(_id); }
 
-    bool is_type() { return names.at(_id).find(".type") != std::string::npos; }
+    [[nodiscard]] bool is_type() const { return names.at(_id).find(".type") != std::string::npos; }
 
     friend std::ostream& operator<<(std::ostream& o, variable_t v)  { return o << names.at(v._id); }
 
     // var_factory portion.
-    // This singleton is eBPF-specific, to avoid life time issues and/or passing factory explicitly everywhere:
+    // This singleton is eBPF-specific, to avoid lifetime issues and/or passing factory explicitly everywhere:
   private:
     static variable_t make(const std::string& name);
     static thread_local std::vector<std::string> names;
@@ -64,8 +64,10 @@ class variable_t final {
     static variable_t packet_size();
     static variable_t instruction_count();
     bool is_in_stack();
-}; // class variable_t
 
-inline size_t hash_value(variable_t v) { return v.hash(); }
+    struct Hasher {
+        std::size_t operator()(const variable_t& v) const { return v.hash(); }
+    };
+}; // class variable_t
 
 } // namespace crab
