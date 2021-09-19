@@ -24,35 +24,35 @@ class bitset_domain_t final {
 
     [[nodiscard]] bool is_bottom() const { return false; }
 
-    bool operator<=(const bitset_domain_t& other) {
+    bool operator<=(const bitset_domain_t& other) const {
         return (non_numerical_bytes | other.non_numerical_bytes) == other.non_numerical_bytes;
     }
 
-    bool operator==(const bitset_domain_t& other) { return non_numerical_bytes == other.non_numerical_bytes; }
+    bool operator==(const bitset_domain_t& other) const { return non_numerical_bytes == other.non_numerical_bytes; }
 
     void operator|=(const bitset_domain_t& other) { non_numerical_bytes |= other.non_numerical_bytes; }
 
-    bitset_domain_t operator|(bitset_domain_t&& other) {
+    bitset_domain_t operator|(bitset_domain_t&& other) const {
         return non_numerical_bytes | other.non_numerical_bytes;
     }
 
-    bitset_domain_t operator|(const bitset_domain_t& other) {
+    bitset_domain_t operator|(const bitset_domain_t& other) const {
         return non_numerical_bytes | other.non_numerical_bytes;
     }
 
-    bitset_domain_t operator&(const bitset_domain_t& other) {
+    bitset_domain_t operator&(const bitset_domain_t& other) const {
         return non_numerical_bytes & other.non_numerical_bytes;
     }
 
-    bitset_domain_t widen(const bitset_domain_t& other) {
+    bitset_domain_t widen(const bitset_domain_t& other) const {
         return non_numerical_bytes | other.non_numerical_bytes;
     }
 
-    bitset_domain_t narrow(const bitset_domain_t& other) {
+    bitset_domain_t narrow(const bitset_domain_t& other) const {
         return non_numerical_bytes & other.non_numerical_bytes;
     }
 
-    std::pair<bool, bool> uniformity(size_t lb, int width) {
+    std::pair<bool, bool> uniformity(size_t lb, int width) const {
         bool only_num = true;
         bool only_non_num = true;
         for (int j = 0; j < width; j++) {
@@ -78,7 +78,7 @@ class bitset_domain_t final {
     friend std::ostream& operator<<(std::ostream& o, const bitset_domain_t& array);
 
     // Test whether all values in the range [lb,ub) are numerical.
-    bool all_num(int lb, int ub) {
+    bool all_num(int lb, int ub) const {
         assert(lb < ub);
         if (lb < 0 || ub > (int)non_numerical_bytes.size())
             return false;

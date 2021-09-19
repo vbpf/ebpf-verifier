@@ -1,12 +1,21 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: Apache-2.0
 
+#include <algorithm>
+#include <bitset>
+#include <optional>
+#include <set>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
 #include "crab/array_domain.hpp"
 
-namespace crab::domains {
+#include "asm_ostream.hpp"
+#include "dsl_syntax.hpp"
+#include "spec_type_descriptors.hpp"
 
-// We use a global array map
-thread_local array_map_t global_array_map;
+namespace crab::domains {
 
 static bool maybe_between(const NumAbsDomain& dom, const bound_t& x,
                           const linear_expression_t& symb_lb,
@@ -20,6 +29,128 @@ static bool maybe_between(const NumAbsDomain& dom, const bound_t& x,
     return !tmp.is_bottom();
 }
 
+class offset_t final {
+    index_t _index{};
+    int _prefix_length;
+
+  public:
+    static constexpr int bitsize = 8 * sizeof(index_t);
+    offset_t() : _prefix_length(bitsize) {}
+    offset_t(index_t index) : _index(index), _prefix_length(bitsize) {}
+    offset_t(index_t index, int prefix_length) : _index(index), _prefix_length(prefix_length) {}
+    explicit operator int() const { return static_cast<int>(_index); }
+    operator index_t() const { return _index; }
+    [[nodiscard]] int prefix_length() const { return _prefix_length; }
+
+    index_t operator[](int n) const { return (_index >> (bitsize - 1 - n)) & 1; }
+};
+
+// NOTE: required by radix_tree
+// Get the length of a key, which is the size usable with the [] operator.
+[[maybe_unused]]
+int radix_length(const offset_t& offset) {
+    return offset.prefix_length();
+}
+
+// NOTE: required by radix_tree
+// Get a range of bits out of the middle of a key, starting at [begin] for a given length.
+[[maybe_unused]]
+offset_t radix_substr(const offset_t& key, int begin, int length)
+{
+    uint64_t mask;
+
+    if (length == offset_t::bitsize)
+        mask = 0;
+    else
+        mask = ((index_t)1) << length;
+
+    mask -= 1;
+    mask <<= offset_t::bitsize - length - begin;
+
+    index_t value = (((index_t)key) & mask) << begin;
+    return offset_t{value, length};
+}
+
+// NOTE: required by radix_tree
+// Concatenate two bit patterns.
+[[maybe_unused]]
+offset_t radix_join(const offset_t& entry1, const offset_t& entry2)
+{
+    index_t value1 = (index_t)entry1;
+    index_t value2 = (index_t)entry2;
+    index_t value = value1 | (value2 >> entry1.prefix_length());
+    int prefix_length = entry1.prefix_length() + entry2.prefix_length();
+
+    return offset_t{value, prefix_length};
+}
+
+/***
+   Conceptually, a cell is tuple of an array, offset, size, and
+   scalar variable such that:
+
+_scalar = array[_offset, _offset + 1, ..., _offset + _size - 1]
+
+    For simplicity, we don't carry the array inside the cell class.
+    Only, offset_map objects can create cells. They will consider the
+            array when generating the scalar variable.
+*/
+class cell_t final {
+  private:
+    friend class offset_map_t;
+
+    offset_t _offset{};
+    unsigned _size{};
+
+    // Only offset_map_t can create cells
+    cell_t() = default;
+
+    cell_t(offset_t offset, unsigned size) : _offset(offset), _size(size) {}
+
+    static interval_t to_interval(const offset_t o, unsigned size) {
+        return {static_cast<int>(o), static_cast<int>(o) + static_cast<int>(size - 1)};
+    }
+
+    [[nodiscard]] interval_t to_interval() const { return to_interval(_offset, _size); }
+
+  public:
+    [[nodiscard]] bool is_null() const { return _offset == 0 && _size == 0; }
+
+    [[nodiscard]] offset_t get_offset() const { return _offset; }
+
+    [[nodiscard]] variable_t get_scalar(data_kind_t kind) const { return variable_t::cell_var(kind, _offset, _size); }
+
+    // ignore the scalar variable
+    bool operator==(const cell_t& o) const { return to_interval() == o.to_interval(); }
+
+    // ignore the scalar variable
+    bool operator<(const cell_t& o) const {
+        if (_offset == o._offset)
+            return _size < o._size;
+        return _offset < o._offset;
+    }
+
+    // Return true if [o, o + size) definitely overlaps with the cell,
+    // where o is a constant expression.
+    [[nodiscard]]
+    bool overlap(const offset_t& o, unsigned size) const {
+        interval_t x = to_interval();
+        interval_t y = to_interval(o, size);
+        bool res = (!(x & y).is_bottom());
+        CRAB_LOG("array-expansion-overlap",
+                 std::cout << "**Checking if " << x << " overlaps with " << y << "=" << res << "\n";);
+        return res;
+    }
+
+    // Return true if [symb_lb, symb_ub] may overlap with the cell,
+    // where symb_lb and symb_ub are not constant expressions.
+    [[nodiscard]]
+    bool symbolic_overlap(const linear_expression_t& symb_lb,
+                     const linear_expression_t& symb_ub,
+                     const NumAbsDomain& dom) const;
+
+    friend std::ostream& operator<<(std::ostream& o, const cell_t& c) { return o << "cell(" << c.to_interval() << ")"; }
+};
+
 // Return true if [symb_lb, symb_ub] may overlap with the cell,
 // where symb_lb and symb_ub are not constant expressions.
 bool cell_t::symbolic_overlap(const linear_expression_t& symb_lb, const linear_expression_t& symb_ub,
@@ -29,18 +160,79 @@ bool cell_t::symbolic_overlap(const linear_expression_t& symb_lb, const linear_e
         || maybe_between(dom, x.ub(), symb_lb, symb_ub);
 }
 
-/**
-    Ugly this needs to be fixed: needed if multiple analyses are
-    run so we can clear the array map from one run to another.
-**/
-void clear_global_state() {
-    if (!global_array_map.empty()) {
-        if constexpr (crab::CrabSanityCheckFlag) {
-            CRAB_WARN("array_expansion static variable map is being cleared");
+// Map offsets to cells
+class offset_map_t final {
+  private:
+    friend class array_domain_t;
+
+    using cell_set_t = std::set<cell_t>;
+
+    /*
+      The keys in the patricia tree are processing in big-endian
+      order. This means that the keys are sorted. Sortedness is
+      very important to efficiently perform operations such as
+      checking for overlap cells. Since keys are treated as bit
+      patterns, negative offsets can be used but they are treated
+      as large unsigned numbers.
+    */
+    using patricia_tree_t = radix_tree<offset_t, cell_set_t>;
+
+    patricia_tree_t _map;
+
+    // for algorithm::lower_bound and algorithm::upper_bound
+    struct compare_binding_t {
+        bool operator()(const typename patricia_tree_t::value_type& kv, const offset_t& o) const { return kv.first < o; }
+        bool operator()(const offset_t& o, const typename patricia_tree_t::value_type& kv) const { return o < kv.first; }
+        bool operator()(const typename patricia_tree_t::value_type& kv1,
+                        const typename patricia_tree_t::value_type& kv2) const {
+            return kv1.first < kv2.first;
         }
-        global_array_map.clear();
+    };
+
+    void remove_cell(const cell_t& c);
+
+    void insert_cell(const cell_t& c);
+
+    [[nodiscard]] std::optional<cell_t> get_cell(offset_t o, unsigned size);
+
+    cell_t mk_cell(offset_t o, unsigned size);
+
+  public:
+    offset_map_t() = default;
+
+    [[nodiscard]] bool empty() const { return _map.empty(); }
+
+    [[nodiscard]] std::size_t size() const { return _map.size(); }
+
+    void operator-=(const cell_t& c) { remove_cell(c); }
+
+    void operator-=(const std::vector<cell_t>& cells) {
+        for (auto const& c : cells) {
+            this->operator-=(c);
+        }
     }
-}
+
+    // Return in out all cells that might overlap with (o, size).
+    std::vector<cell_t> get_overlap_cells(offset_t o, unsigned size);
+
+    [[nodiscard]] std::vector<cell_t> get_overlap_cells_symbolic_offset(const NumAbsDomain& dom,
+                                                                        const linear_expression_t& symb_lb,
+                                                                        const linear_expression_t& symb_ub);
+
+    friend std::ostream& operator<<(std::ostream& o, offset_map_t& m);
+
+    /* Operations needed if used as value in a separate_domain */
+    [[nodiscard]] bool is_top() const { return empty(); }
+    [[nodiscard]] bool is_bottom() const { return false; }
+    /*
+       We don't distinguish between bottom and top.
+       This is fine because separate_domain only calls bottom if
+       operator[] is called over a bottom state. Thus, we will make
+       sure that we don't call operator[] in that case.
+    */
+    static offset_map_t bottom() { return offset_map_t(); }
+    static offset_map_t top() { return offset_map_t(); }
+};
 
 void offset_map_t::remove_cell(const cell_t& c) {
     offset_t key = c.get_offset();
@@ -224,6 +416,28 @@ std::vector<cell_t> offset_map_t::get_overlap_cells(offset_t o, unsigned size) {
     return out;
 }
 
+// We use a global array map
+using array_map_t = std::unordered_map<data_kind_t, offset_map_t>;
+
+thread_local array_map_t global_array_map;
+
+static offset_map_t& lookup_array_map(data_kind_t kind) {
+    return global_array_map[kind];
+}
+
+/**
+    Ugly this needs to be fixed: needed if multiple analyses are
+    run so we can clear the array map from one run to another.
+**/
+void clear_global_state() {
+    if (!global_array_map.empty()) {
+        if constexpr (crab::CrabSanityCheckFlag) {
+            CRAB_WARN("array_expansion static variable map is being cleared");
+        }
+        global_array_map.clear();
+    }
+}
+
 std::ostream& operator<<(std::ostream& o, offset_map_t& m) {
     if (m._map.empty()) {
         o << "empty";
@@ -243,8 +457,9 @@ std::ostream& operator<<(std::ostream& o, offset_map_t& m) {
     return o;
 }
 
-std::optional<std::pair<offset_t, unsigned>>
-array_domain_t::kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, const linear_expression_t& elem_size) {
+// we can only treat this as non-member because we use global state
+static std::optional<std::pair<offset_t, unsigned>>
+kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, const linear_expression_t& elem_size) {
     std::optional<std::pair<offset_t, unsigned>> res;
 
     offset_map_t& offset_map = lookup_array_map(kind);
@@ -359,32 +574,91 @@ std::optional<variable_t> array_domain_t::store(NumAbsDomain& inv, data_kind_t k
     return {};
 }
 
-// Get a range of bits out of the middle of a key, starting at [begin] for a given length.
-offset_t radix_substr(const offset_t& key, int begin, int length)
-{
-    uint64_t mask;
-
-    if (length == offset_t::bitsize)
-        mask = 0;
-    else
-        mask = ((index_t)1) << length;
-
-    mask -= 1;
-    mask <<= offset_t::bitsize - length - begin;
-
-    index_t value = (((index_t)key) & mask) << begin;
-    return offset_t{value, length};
+void array_domain_t::havoc(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size) {
+    auto maybe_cell = kill_and_find_var(inv, kind, idx, elem_size);
+    if (maybe_cell && kind == data_kind_t::types) {
+        auto [offset, size] = *maybe_cell;
+        num_bytes.havoc(offset, size);
+    }
 }
 
-// Concatenate two bit patterns.
-offset_t radix_join(const offset_t& entry1, const offset_t& entry2)
-{
-    index_t value1 = (index_t)entry1;
-    index_t value2 = (index_t)entry2;
-    index_t value = value1 | (value2 >> entry1.prefix_length());
-    int prefix_length = entry1.prefix_length() + entry2.prefix_length();
+void array_domain_t::store_numbers(NumAbsDomain& inv, variable_t _idx, variable_t _width) {
 
-    return offset_t{value, prefix_length};
+    // TODO: this should be an user parameter.
+    const number_t max_num_elems = EBPF_STACK_SIZE;
+
+    if (is_bottom())
+        return;
+
+    std::optional<number_t> idx_n = inv[_idx].singleton();
+    if (!idx_n) {
+        CRAB_WARN("array expansion store range ignored because ", "lower bound is not constant");
+        return;
+    }
+
+    std::optional<number_t> width = inv[_width].singleton();
+    if (!width) {
+        CRAB_WARN("array expansion store range ignored because ", "upper bound is not constant");
+        return;
+    }
+
+    if (*idx_n + *width > max_num_elems) {
+        CRAB_WARN("array expansion store range ignored because ",
+                  "the number of elements is larger than default limit of ", max_num_elems);
+        return;
+    }
+    num_bytes.reset((int)*idx_n, (int)*width);
 }
 
+void array_domain_t::set_to_top() {
+    num_bytes.set_to_top();
+}
+
+void array_domain_t::set_to_bottom() { num_bytes.set_to_bottom(); }
+
+bool array_domain_t::is_bottom() const { return num_bytes.is_bottom(); }
+
+bool array_domain_t::is_top() const { return num_bytes.is_top(); }
+
+bool array_domain_t::operator<=(const array_domain_t& other) const { return num_bytes <= other.num_bytes; }
+
+bool array_domain_t::operator==(const array_domain_t& other) const {
+    return num_bytes == other.num_bytes;
+}
+
+void array_domain_t::operator|=(const array_domain_t& other) {
+    if (is_bottom()) {
+        *this = other;
+        return;
+    }
+    num_bytes |= other.num_bytes;
+}
+
+array_domain_t array_domain_t::operator|(const array_domain_t& other) & {
+    return array_domain_t(num_bytes | other.num_bytes);
+}
+
+array_domain_t array_domain_t::operator|(const array_domain_t& other) && {
+    return array_domain_t(num_bytes | other.num_bytes);
+}
+
+array_domain_t array_domain_t::operator&(array_domain_t other) {
+    return array_domain_t(num_bytes & other.num_bytes);
+}
+
+array_domain_t array_domain_t::widen(const array_domain_t& other) {
+    return array_domain_t(num_bytes | other.num_bytes);
+}
+
+array_domain_t array_domain_t::widening_thresholds(const array_domain_t& other, const iterators::thresholds_t& ts) {
+    return array_domain_t(num_bytes | other.num_bytes);
+}
+
+array_domain_t array_domain_t::narrow(const array_domain_t& other) {
+    return array_domain_t(num_bytes & other.num_bytes);
+}
+
+std::ostream& operator<<(std::ostream& o, const array_domain_t& dom) {
+    return o << dom.num_bytes;
+}
 } // namespace crab::domains
