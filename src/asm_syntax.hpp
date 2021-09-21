@@ -7,6 +7,7 @@
 #include <tuple>
 #include <variant>
 #include <vector>
+#include <unordered_set>
 
 #include "crab/variable.hpp"
 
@@ -285,9 +286,12 @@ using AssertionConstraint =
     std::variant<Comparable, Addable, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint, ZeroOffset>;
 
 struct Assert {
-    AssertionConstraint cst;
-    bool satisfied = false;
-    Assert(AssertionConstraint cst, bool satisfied=false): cst(cst), satisfied(satisfied) { }
+    std::vector<AssertionConstraint> csts;
+//    Assert() = default;
+//    Assert(const std::set<AssertionConstraint>& csts): csts(csts) { }
+    void insert(const AssertionConstraint& cst) {
+        csts.push_back(cst);
+    }
 };
 
 #define DECLARE_EQ4(T, f1, f2, f3, f4)                                       \
@@ -360,7 +364,7 @@ DECLARE_EQ2(ValidStore, mem, val)
 DECLARE_EQ4(ValidAccess, reg, offset, width, or_null)
 DECLARE_EQ3(ValidMapKeyValue, access_reg, map_fd_reg, key)
 DECLARE_EQ1(ZeroOffset, reg)
-DECLARE_EQ1(Assert, cst)
+DECLARE_EQ1(Assert, csts)
 
 }
 

@@ -639,7 +639,10 @@ void ebpf_domain_t::operator()(const ZeroOffset& s) {
     require(m_inv, reg.offset == 0, to_string(s));
 }
 
-void ebpf_domain_t::operator()(const Assert& stmt) { std::visit(*this, stmt.cst); };
+void ebpf_domain_t::operator()(const Assert& stmt) {
+    for (const auto& cst: stmt.csts)
+        std::visit(*this, cst);
+};
 
 void ebpf_domain_t::operator()(const Packet& a) {
     auto reg = reg_pack(R0_RETURN_VALUE);
@@ -650,6 +653,7 @@ void ebpf_domain_t::operator()(const Packet& a) {
 }
 
 NumAbsDomain ebpf_domain_t::do_load_stack(NumAbsDomain inv, const reg_pack_t& target, const linear_expression_t& addr, int width) {
+    crab::interval_t address = inv.eval_interval(addr);
     if (width == 1 || width == 2 || width == 4 || width == 8) {
         inv.assign(target.type, stack.load(inv, data_kind_t::types, addr, width));
         inv.assign(target.value, stack.load(inv,  data_kind_t::values, addr, width));

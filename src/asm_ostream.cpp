@@ -306,9 +306,9 @@ struct InstructionPrinterVisitor {
     }
 
     void operator()(Assert const& a) {
-        os_ << "assert " << a.cst;
-        if (a.satisfied)
-            os_ << " V";
+        os_ << "assert ";
+        for (const auto& cst: a.csts)
+            os_ << cst;
     }
 };
 
@@ -356,18 +356,12 @@ auto get_labels(const InstructionSeq& insts) {
     return pc_of_label;
 }
 
-static bool is_satisfied(Instruction ins) {
-    return std::holds_alternative<Assert>(ins) && std::get<Assert>(ins).satisfied;
-}
-
 void print(const InstructionSeq& insts, std::ostream& out, std::optional<const label_t> label_to_print) {
     auto pc_of_label = get_labels(insts);
     pc_t pc = 0;
     InstructionPrinterVisitor visitor{out};
     for (const LabeledInstruction& labeled_inst : insts) {
         const auto& [label, ins] = labeled_inst;
-        if (is_satisfied(ins))
-            continue;
         if (!label_to_print.has_value() || (label == label_to_print)) {
             if (label.isjump()) {
                 out << "\n";
@@ -420,8 +414,6 @@ void print_dot(const cfg_t& cfg, std::ostream& out) {
 
         const auto& bb = cfg.get_node(label);
         for (const auto& ins : bb) {
-            if (is_satisfied(ins))
-                continue;
             out << ins << "\\l";
         }
 

@@ -25,56 +25,56 @@ class AssertExtractor {
         return std::get<Imm>(v);
     }
 
-    static vector<Assert> zero_offset_ctx(Reg reg) {
-        vector<Assert> res;
-        res.emplace_back(TypeConstraint{reg, TypeGroup::ctx});
-        res.emplace_back(ZeroOffset{reg});
-        return res;
+    static Assert zero_offset_ctx(Reg reg) {
+        return Assert{{
+            TypeConstraint{reg, TypeGroup::ctx},
+            ZeroOffset{reg}
+        }};
     }
 
   public:
     explicit AssertExtractor(program_info info) : info{std::move(info)} {}
 
     template <typename T>
-    vector<Assert> operator()(T) const {
+    Assert operator()(T) const {
         return {};
     }
 
     /// Packet access implicitly uses R6, so verify that R6 still has a pointer to the context.
-    vector<Assert> operator()(Packet const& ins) const { return zero_offset_ctx({6}); }
+    Assert operator()(Packet const& ins) const { return zero_offset_ctx({6}); }
 
     /// Verify that Exit returns a number.
-    vector<Assert> operator()(Exit const& e) const { return {Assert{TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::number}}}; }
+    Assert operator()(Exit const& e) const { return Assert{{TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::number}}}; }
 
-    vector<Assert> operator()(Call const& call) const {
-        vector<Assert> res;
+    Assert operator()(Call const& call) const {
+        Assert res;
         std::optional<Reg> map_fd_reg;
         for (ArgSingle arg : call.singles) {
             switch (arg.kind) {
             case ArgSingle::Kind::ANYTHING:
                 // avoid pointer leakage:
                 if (!info.type.is_privileged) {
-                    res.emplace_back(TypeConstraint{arg.reg, TypeGroup::number});
+                    res.insert(TypeConstraint{arg.reg, TypeGroup::number});
                 }
                 break;
             case ArgSingle::Kind::MAP_FD_PROGRAMS:
-                res.emplace_back(TypeConstraint{arg.reg, TypeGroup::map_fd_programs});
+                res.insert(TypeConstraint{arg.reg, TypeGroup::map_fd_programs});
                 // Do not update map_fd_reg
                 break;
             case ArgSingle::Kind::MAP_FD:
-                res.emplace_back(TypeConstraint{arg.reg, TypeGroup::map_fd});
+                res.insert(TypeConstraint{arg.reg, TypeGroup::map_fd});
                 map_fd_reg = arg.reg;
                 break;
             case ArgSingle::Kind::PTR_TO_MAP_KEY:
             case ArgSingle::Kind::PTR_TO_MAP_VALUE:
                 assert(map_fd_reg);
-                res.emplace_back(TypeConstraint{arg.reg, TypeGroup::stack_or_packet});
-                res.emplace_back(ValidMapKeyValue{arg.reg, *map_fd_reg,
+                res.insert(TypeConstraint{arg.reg, TypeGroup::stack_or_packet});
+                res.insert(ValidMapKeyValue{arg.reg, *map_fd_reg,
                                                   arg.kind == ArgSingle::Kind::PTR_TO_MAP_KEY});
                 break;
             case ArgSingle::Kind::PTR_TO_CTX:
-                for (const Assert& a: zero_offset_ctx(arg.reg)) {
-                    res.emplace_back(a);
+                for (const auto& cst: zero_offset_ctx(arg.reg).csts) {
+                    res.insert(cst);
                 }
                 break;
             }
@@ -82,110 +82,112 @@ class AssertExtractor {
         for (ArgPair arg : call.pairs) {
             switch (arg.kind) {
             case ArgPair::Kind::PTR_TO_MEM_OR_NULL:
-                res.emplace_back(TypeConstraint{arg.mem, TypeGroup::mem_or_num});
+                res.insert(TypeConstraint{arg.mem, TypeGroup::mem_or_num});
                 break;
             case ArgPair::Kind::PTR_TO_MEM:
                 /* LINUX: pointer to valid memory (stack, packet, map value) */
                 // TODO: check initialization
-                res.emplace_back(TypeConstraint{arg.mem, TypeGroup::mem});
+                res.insert(TypeConstraint{arg.mem, TypeGroup::mem});
                 break;
             case ArgPair::Kind::PTR_TO_UNINIT_MEM:
                 // memory may be uninitialized, i.e. write only
-                res.emplace_back(TypeConstraint{arg.mem, TypeGroup::mem});
+                res.insert(TypeConstraint{arg.mem, TypeGroup::mem});
                 break;
             }
             // TODO: reg is constant (or maybe it's not important)
-            res.emplace_back(TypeConstraint{arg.size, TypeGroup::number});
-            res.emplace_back(ValidSize{arg.size, arg.can_be_zero});
-            res.emplace_back(ValidAccess{arg.mem, 0, arg.size,
+            res.insert(TypeConstraint{arg.size, TypeGroup::number});
+            res.insert(ValidSize{arg.size, arg.can_be_zero});
+            res.insert(ValidAccess{arg.mem, 0, arg.size,
                                          arg.kind == ArgPair::Kind::PTR_TO_MEM_OR_NULL});
         }
         return res;
     }
 
     [[nodiscard]]
-    vector<Assert> explicate(Condition cond) const {
+    Assert explicate(Condition cond) const {
         if (info.type.is_privileged)
             return {};
-        vector<Assert> res;
-        res.emplace_back(ValidAccess{cond.left});
+        Assert res;
+        res.insert(ValidAccess{cond.left});
         if (std::holds_alternative<Imm>(cond.right)) {
             if (imm(cond.right).v != 0) {
-                res.emplace_back(TypeConstraint{cond.left, TypeGroup::number});
+                res.insert(TypeConstraint{cond.left, TypeGroup::number});
             } else {
                 // OK - map_fd is just another pointer
                 // Anything can be compared to 0
             }
         } else {
-            res.emplace_back(ValidAccess{reg(cond.right)});
+            res.insert(ValidAccess{reg(cond.right)});
             if (cond.op != Condition::Op::EQ && cond.op != Condition::Op::NE) {
-                res.emplace_back(TypeConstraint{cond.left, TypeGroup::non_map_fd});
+                res.insert(TypeConstraint{cond.left, TypeGroup::non_map_fd});
             }
-            res.emplace_back(Comparable{cond.left, reg(cond.right)});
+            res.insert(Comparable{cond.left, reg(cond.right)});
         }
         return res;
     }
 
-    vector<Assert> operator()(Assume ins) const { return explicate(ins.cond); }
+    Assert operator()(Assume ins) const { return explicate(ins.cond); }
 
-    vector<Assert> operator()(Jmp ins) const {
+    Assert operator()(Jmp ins) const {
         if (!ins.cond)
             return {};
         return explicate(*ins.cond);
     }
 
-    vector<Assert> operator()(Mem ins) const {
-        vector<Assert> res;
+    Assert operator()(Mem ins) const {
+        Assert res;
         Reg basereg = ins.access.basereg;
         Imm width{static_cast<uint32_t>(ins.access.width)};
         int offset = ins.access.offset;
         if (basereg.v == R10_STACK_POINTER) {
             // We know we are accessing the stack.
-            res.emplace_back(ValidAccess{basereg, offset, width, false});
+            res.insert(ValidAccess{basereg, offset, width, false});
         } else {
-            res.emplace_back(TypeConstraint{basereg, TypeGroup::pointer});
-            res.emplace_back(ValidAccess{basereg, offset, width, false});
+            res.insert(TypeConstraint{basereg, TypeGroup::pointer});
+            res.insert(ValidAccess{basereg, offset, width, false});
             if (!info.type.is_privileged && !ins.is_load && std::holds_alternative<Reg>(ins.value)) {
                 if (width.v != 8)
-                    res.emplace_back(TypeConstraint{reg(ins.value), TypeGroup::number});
+                    res.insert(TypeConstraint{reg(ins.value), TypeGroup::number});
                 else
-                    res.emplace_back(ValidStore{ins.access.basereg, reg(ins.value)});
+                    res.insert(ValidStore{ins.access.basereg, reg(ins.value)});
             }
         }
         return res;
     }
 
-    vector<Assert> operator()(LockAdd ins) const {
-        vector<Assert> res;
-        res.emplace_back(TypeConstraint{ins.access.basereg, TypeGroup::shared});
-        res.emplace_back(ValidAccess{ins.access.basereg, ins.access.offset,
-                                     Imm{static_cast<uint32_t>(ins.access.width)}, false});
-        return res;
+    Assert operator()(LockAdd ins) const {
+        return Assert{{
+            TypeConstraint{ins.access.basereg, TypeGroup::shared},
+            ValidAccess{ins.access.basereg, ins.access.offset,
+                        Imm{static_cast<uint32_t>(ins.access.width)}, false}
+        }};
     }
 
-    vector<Assert> operator()(Bin ins) const {
+    Assert operator()(Bin ins) const {
         switch (ins.op) {
         case Bin::Op::MOV: return {};
         case Bin::Op::ADD:
             if (std::holds_alternative<Reg>(ins.v)) {
-                return {
-                    Assert{Addable{reg(ins.v), ins.dst}},
-                    Assert{Addable{ins.dst, reg(ins.v)}}
-                };
+                return Assert{{
+                    Addable{reg(ins.v), ins.dst},
+                    Addable{ins.dst, reg(ins.v)}
+                }};
             }
             return {};
         case Bin::Op::SUB:
             if (std::holds_alternative<Reg>(ins.v)) {
-                vector<Assert> res;
                 // disallow map-map since same type does not mean same offset
                 // TODO: map identities
-                res.emplace_back(TypeConstraint{ins.dst, TypeGroup::ptr_or_num});
-                res.emplace_back(Comparable{reg(ins.v), ins.dst});
-                return res;
+                return Assert{{
+                        TypeConstraint{ins.dst, TypeGroup::ptr_or_num},
+                    Comparable { reg(ins.v), ins.dst }
+                }};
             }
             return {};
         default:
-            return { Assert{TypeConstraint{ins.dst, TypeGroup::number}} };
+            return Assert{{
+                TypeConstraint{ins.dst, TypeGroup::number}
+            }};
         }
     }
 };
@@ -200,8 +202,7 @@ void explicate_assertions(cfg_t& cfg, const program_info& info) {
         (void)label; // unused
         vector<Instruction> insts;
         for (const auto& ins : vector<Instruction>(bb.begin(), bb.end())) {
-            for (auto a : std::visit(AssertExtractor{info}, ins))
-                insts.emplace_back(a);
+            insts.emplace_back(std::visit(AssertExtractor{info}, ins));
             insts.push_back(ins);
         }
         bb.swap_instructions(insts);
