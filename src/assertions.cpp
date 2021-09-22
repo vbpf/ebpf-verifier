@@ -176,25 +176,35 @@ class AssertExtractor {
 
     Assert operator()(Bin ins) const {
         switch (ins.op) {
-        case Bin::Op::MOV: return {};
+        case Bin::Op::MOV:
+            return {};
         case Bin::Op::ADD:
             if (std::holds_alternative<Reg>(ins.v)) {
+                auto src = reg(ins.v);
                 return Assert{{
-                    Addable{reg(ins.v), ins.dst},
-                    Addable{ins.dst, reg(ins.v)}
+                    TypeConstraint{ins.dst, TypeGroup::ptr_or_num},
+                    TypeConstraint{src, TypeGroup::ptr_or_num},
+                    Addable{src, ins.dst},
+                    Addable{ins.dst, src}
+                }};
+            } else {
+                return Assert{{
+                    TypeConstraint{ins.dst, TypeGroup::ptr_or_num}
                 }};
             }
-            return {};
         case Bin::Op::SUB:
             if (std::holds_alternative<Reg>(ins.v)) {
                 // disallow map-map since same type does not mean same offset
                 // TODO: map identities
                 return Assert{{
-                        TypeConstraint{ins.dst, TypeGroup::ptr_or_num},
-                    Comparable { reg(ins.v), ins.dst }
+                    TypeConstraint{ins.dst, TypeGroup::ptr_or_num},
+                    Comparable{reg(ins.v), ins.dst}
+                }};
+            } else {
+                return Assert{{
+                    TypeConstraint{ins.dst, TypeGroup::ptr_or_num}
                 }};
             }
-            return {};
         default:
             return Assert{{
                 TypeConstraint{ins.dst, TypeGroup::number}

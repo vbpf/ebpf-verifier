@@ -475,15 +475,13 @@ void ebpf_domain_t::operator()(const Comparable& s) {
 }
 
 void ebpf_domain_t::operator()(const Addable& s) {
-    // TODO: double check this covers all cases. What happens when type <= T_NUM?
+    // We already know both registers are either pointer or numbers
+    // This constraint is only: s.ptr is ptr -> s.num is number
     using namespace crab::dsl_syntax;
-    linear_constraint_t cond = reg_pack(s.ptr).type > T_NUM;
-    NumAbsDomain is_ptr{m_inv};
-    is_ptr += cond;
-    require(is_ptr, reg_pack(s.num).type == T_NUM, "only numbers can be added to pointers (" + to_string(s) + ")");
-
-    m_inv += cond.negate();
-    m_inv |= std::move(is_ptr);
+    auto is_ptr = when(reg_pack(s.ptr).type > T_NUM);
+    require(is_ptr,
+            reg_pack(s.num).type == T_NUM,
+            "only numbers can be added to pointers (" + to_string(s) + ")");
 }
 
 void ebpf_domain_t::operator()(const ValidSize& s) {
