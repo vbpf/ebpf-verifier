@@ -35,6 +35,11 @@ int main(int argc, char** argv) {
             std::cout << "Unexpected: " << maybe_failure->seen_but_not_expected << "\n";
             std::cout << "Unseen: " << maybe_failure->expected_but_unseen << "\n";
             res = false;
+            for (const auto& [label, items]: maybe_failure->db.m_db) {
+                std::cout << label << ": ";
+                for (const auto& item : items)
+                    std::cout << item << "\n";
+            }
             std::cout << "failed\n";
         } else {
             std::cout << "pass\n";
