@@ -153,26 +153,22 @@ static std::vector<TestCase> read_suite(const std::string& path) {
 }
 
 
-static std::optional<Failure> process_results(const string_invariant& expected_post_invariant,
-                                              const string_invariant& actual_last_invariant) {
-    if (actual_last_invariant == expected_post_invariant)
-        return {};
-    return Failure{
-        .expected_but_unseen = expected_post_invariant - actual_last_invariant,
-        .seen_but_not_expected = actual_last_invariant - expected_post_invariant,
-    };
-}
-
 std::optional<Failure> run_yaml_test_case(const TestCase& test_case) {
     ebpf_context_descriptor_t context_descriptor{0, -1, -1, -1};
     EbpfProgramType program_type = make_progran_type(test_case.name, &context_descriptor);
 
     program_info info{&g_platform_test, {}, program_type};
-    const auto& [stats, pre_invs, post_invs] = ebpf_analyze_program_for_test(test_case.instruction_seq,
+    const auto& [db, pre_invs, post_invs] = ebpf_analyze_program_for_test(test_case.instruction_seq,
                                                                              test_case.assumed_pre_invariant,
                                                                              info, true, false);
     const auto& actual_last_invariant = pre_invs.at(label_t::exit);
-    return process_results(test_case.expected_post_invariant, actual_last_invariant);
+    if (actual_last_invariant == test_case.expected_post_invariant && db.total_warnings == 0)
+        return {};
+    return Failure{
+        .expected_but_unseen = test_case.expected_post_invariant - actual_last_invariant,
+        .seen_but_not_expected = actual_last_invariant - test_case.expected_post_invariant,
+        .db = db
+    };
 }
 
 bool all_suites(const std::string& path) {

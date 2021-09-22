@@ -34,7 +34,7 @@ post:
 ---
 test-case: simple conditional jump forward
 
-pre: []
+pre: [r1.type=number]
 
 code:
   <start>: |
@@ -47,3 +47,4 @@ code:
 post:
   - r0.type=number
   - r0.value=[0, 1]
+  - r1.type=number

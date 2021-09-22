@@ -19,7 +19,9 @@ bool all_suites(const std::string& path);
 struct Failure {
     string_invariant expected_but_unseen;
     string_invariant seen_but_not_expected;
+    checks_db db;
 };
+
 std::optional<Failure> run_yaml_test_case(const TestCase& test_case);
 
 bool run_yaml(const std::string& path);
