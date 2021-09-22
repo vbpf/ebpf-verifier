@@ -313,8 +313,7 @@ void ebpf_domain_t::assume(const linear_constraint_t& cst) { ::assume(m_inv, cst
 
 void ebpf_domain_t::require(NumAbsDomain& inv, const linear_constraint_t& cst, const std::string& s) {
     if (check_require)
-        check_require(inv, cst, std::move(s));
-    ::assume(inv, cst);
+        check_require(inv, cst, s);
 }
 
 /// Forget everything we know about the value of a variable.
@@ -475,13 +474,10 @@ void ebpf_domain_t::operator()(const Comparable& s) { require(m_inv, eq(reg_pack
 
 void ebpf_domain_t::operator()(const Addable& s) {
     using namespace crab::dsl_syntax;
-    linear_constraint_t cond = reg_pack(s.ptr).type > T_NUM;
-    NumAbsDomain is_ptr{m_inv};
-    is_ptr += cond;
-    require(is_ptr, reg_pack(s.num).type == T_NUM, "only numbers can be added to pointers (" + to_string(s) + ")");
-
-    m_inv += cond.negate();
-    m_inv |= std::move(is_ptr);
+    auto is_ptr = when(reg_pack(s.ptr).type > T_NUM);
+    require(is_ptr,
+            reg_pack(s.num).type == T_NUM,
+            "only numbers can be added to pointers (" + to_string(s) + ")");
 }
 
 void ebpf_domain_t::operator()(const ValidSize& s) {

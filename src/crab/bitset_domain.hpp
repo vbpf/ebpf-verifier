@@ -44,15 +44,19 @@ class bitset_domain_t final {
         return non_numerical_bytes & other.non_numerical_bytes;
     }
 
+    [[nodiscard]]
     bitset_domain_t widen(const bitset_domain_t& other) const {
         return non_numerical_bytes | other.non_numerical_bytes;
     }
 
+    [[nodiscard]]
     bitset_domain_t narrow(const bitset_domain_t& other) const {
         return non_numerical_bytes & other.non_numerical_bytes;
     }
 
+    [[nodiscard]]
     std::pair<bool, bool> uniformity(size_t lb, int width) const {
+        width = std::min(width, (int)(EBPF_STACK_SIZE - lb));
         bool only_num = true;
         bool only_non_num = true;
         for (int j = 0; j < width; j++) {
@@ -64,12 +68,14 @@ class bitset_domain_t final {
     }
 
     void reset(size_t lb, int n) {
+        n = std::min(n, (int)(EBPF_STACK_SIZE - lb));
         for (int i = 0; i < n; i++) {
             non_numerical_bytes.reset(lb + i);
         }
     }
 
     void havoc(size_t lb, int width) {
+        width = std::min(width, (int)(EBPF_STACK_SIZE - lb));
         for (int i = 0; i < width; i++) {
             non_numerical_bytes.set(lb + i);
         }
@@ -78,8 +84,11 @@ class bitset_domain_t final {
     friend std::ostream& operator<<(std::ostream& o, const bitset_domain_t& array);
 
     // Test whether all values in the range [lb,ub) are numerical.
+    [[nodiscard]]
     bool all_num(int lb, int ub) const {
         assert(lb < ub);
+        lb = std::max(lb, 0);
+        ub = std::min(ub, EBPF_STACK_SIZE);
         if (lb < 0 || ub > (int)non_numerical_bytes.size())
             return false;
 
