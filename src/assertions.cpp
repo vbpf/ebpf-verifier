@@ -35,16 +35,21 @@ class AssertExtractor {
   public:
     explicit AssertExtractor(program_info info) : info{std::move(info)} {}
 
-    template <typename T>
-    Assert operator()(T) const {
-        return {};
-    }
+    Assert operator()(Undefined const& ins) const { assert(0); return {}; }
+
+    Assert operator()(Assert const& ins) const { assert(0); return {}; }
+
+    Assert operator()(LoadMapFd const& ins) const { return {}; }
 
     /// Packet access implicitly uses R6, so verify that R6 still has a pointer to the context.
     Assert operator()(Packet const& ins) const { return zero_offset_ctx({6}); }
 
     /// Verify that Exit returns a number.
-    Assert operator()(Exit const& e) const { return Assert{{TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::number}}}; }
+    Assert operator()(Exit const& e) const {
+        return Assert{{
+            TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::number}
+        }};
+    }
 
     Assert operator()(Call const& call) const {
         Assert res;
@@ -160,6 +165,12 @@ class AssertExtractor {
             TypeConstraint{ins.access.basereg, TypeGroup::shared},
             ValidAccess{ins.access.basereg, ins.access.offset,
                         Imm{static_cast<uint32_t>(ins.access.width)}, false}
+        }};
+    }
+
+    Assert operator()(Un ins) {
+        return Assert{{
+            TypeConstraint{ins.dst, TypeGroup::number}
         }};
     }
 

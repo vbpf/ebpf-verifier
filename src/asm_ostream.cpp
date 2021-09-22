@@ -308,7 +308,7 @@ struct InstructionPrinterVisitor {
     void operator()(Assert const& a) {
         os_ << "assert ";
         for (const auto& cst: a.csts)
-            os_ << cst;
+            os_ << cst << " & ";
     }
 };
 

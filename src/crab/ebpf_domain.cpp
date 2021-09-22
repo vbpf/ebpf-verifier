@@ -322,12 +322,6 @@ void ebpf_domain_t::havoc(variable_t v) { m_inv -= v; }
 
 void ebpf_domain_t::assign(variable_t lhs, variable_t rhs) { m_inv.assign(lhs, rhs); }
 
-void ebpf_domain_t::assert_no_pointer(const reg_pack_t& reg) {
-    using namespace crab::dsl_syntax;
-    require(m_inv, reg.type == T_NUM, "invalid operation on a non-numerical value");
-    havoc(reg.offset);
-}
-
 static linear_constraint_t is_shared(variable_t v) {
     using namespace crab::dsl_syntax;
     return v > T_SHARED;
@@ -456,6 +450,7 @@ void ebpf_domain_t::operator()(const Assume& s) {
 }
 
 void ebpf_domain_t::operator()(const Undefined& a) {}
+
 void ebpf_domain_t::operator()(const Un& stmt) {
     auto dst = reg_pack(stmt.dst);
     switch (stmt.op) {
@@ -463,20 +458,24 @@ void ebpf_domain_t::operator()(const Un& stmt) {
     case Un::Op::LE32:
     case Un::Op::LE64:
         havoc(dst.value);
-        assert_no_pointer(dst);
+        havoc(dst.offset);
         break;
     case Un::Op::NEG:
         neg(dst.value);
-        assert_no_pointer(dst);
+        havoc(dst.offset);
         break;
     }
 }
+
 void ebpf_domain_t::operator()(const Exit& a) {}
 void ebpf_domain_t::operator()(const Jmp& a) {}
 
-void ebpf_domain_t::operator()(const Comparable& s) { require(m_inv, eq(reg_pack(s.r1).type, reg_pack(s.r2).type), to_string(s)); }
+void ebpf_domain_t::operator()(const Comparable& s) {
+    require(m_inv, eq(reg_pack(s.r1).type, reg_pack(s.r2).type), to_string(s));
+}
 
 void ebpf_domain_t::operator()(const Addable& s) {
+    // TODO: double check this covers all cases. What happens when type <= T_NUM?
     using namespace crab::dsl_syntax;
     linear_constraint_t cond = reg_pack(s.ptr).type > T_NUM;
     NumAbsDomain is_ptr{m_inv};
@@ -983,19 +982,19 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             break;
         case Bin::Op::MUL:
             mul(dst.value, imm);
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         case Bin::Op::DIV:
             div(dst.value, imm);
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         case Bin::Op::MOD:
             rem(dst.value, imm);
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         case Bin::Op::OR:
             bitwise_or(dst.value, imm);
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         case Bin::Op::AND:
             // FIX: what to do with ptr&-8 as in counter/simple_loop_unrolled?
@@ -1004,17 +1003,17 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 assume(dst.value <= imm);
                 assume(0 <= dst.value);
             }
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         case Bin::Op::LSH:
             // avoid signedness and overflow issues in shl_overflow(dst.value, imm);
             shl_overflow(dst.value, imm);
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         case Bin::Op::RSH:
             // avoid signedness and overflow issues in lshr(dst.value, imm);
             havoc(dst.value);
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         case Bin::Op::ARSH:
             // avoid signedness and overflow issues in ashr(dst.value, imm);
@@ -1022,11 +1021,11 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             havoc(dst.value);
             // assume(dst.value <= (1 << (64 - imm)));
             // assume(dst.value >= -(1 << (64 - imm)));
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         case Bin::Op::XOR:
             bitwise_xor(dst.value, imm);
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         }
     } else {
@@ -1073,41 +1072,41 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         }
         case Bin::Op::MUL:
             mul(dst.value, src.value);
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         case Bin::Op::DIV:
             // DIV is not checked for zerodiv
             div(dst.value, src.value);
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         case Bin::Op::MOD:
             // See DIV comment
             rem(dst.value, src.value);
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         case Bin::Op::OR:
             bitwise_or(dst.value, src.value);
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         case Bin::Op::AND:
             bitwise_and(dst.value, src.value);
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         case Bin::Op::LSH:
             shl_overflow(dst.value, src.value);
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         case Bin::Op::RSH:
             havoc(dst.value);
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         case Bin::Op::ARSH:
             havoc(dst.value);
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         case Bin::Op::XOR:
             bitwise_xor(dst.value, src.value);
-            assert_no_pointer(dst);
+            havoc(dst.offset);
             break;
         case Bin::Op::MOV:
             assign(dst.value, src.value);
