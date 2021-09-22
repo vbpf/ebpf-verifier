@@ -41,7 +41,7 @@ class ebpf_domain_t final {
     ebpf_domain_t widening_thresholds(const ebpf_domain_t& other, const crab::iterators::thresholds_t& ts);
     ebpf_domain_t narrow(const ebpf_domain_t& other);
 
-    typedef void check_require_func_t(NumAbsDomain&, const linear_constraint_t&, std::string);
+    typedef bool check_require_func_t(NumAbsDomain&, const linear_constraint_t&, std::string);
     void set_require_check(std::function<check_require_func_t> f);
     int get_instruction_count_upper_bound();
     static ebpf_domain_t setup_entry(bool check_termination);

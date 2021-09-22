@@ -314,6 +314,10 @@ void ebpf_domain_t::assume(const linear_constraint_t& cst) { ::assume(m_inv, cst
 void ebpf_domain_t::require(NumAbsDomain& inv, const linear_constraint_t& cst, const std::string& s) {
     if (check_require)
         check_require(inv, cst, s);
+    if (thread_local_options.assume_assertions) {
+        // avoid redundant errors
+        ::assume(inv, cst);
+    }
 }
 
 /// Forget everything we know about the value of a variable.

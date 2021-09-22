@@ -34,19 +34,22 @@ static checks_db generate_report(cfg_t& cfg,
         ebpf_domain_t from_inv(pre_invariants.at(label));
         from_inv.set_require_check([&m_db, label](auto& inv, const linear_constraint_t& cst, const std::string& s) {
             if (inv.is_bottom())
-                return;
+                return true;
             if (cst.is_contradiction()) {
                 m_db.add_warning(label, std::string("Contradiction: ") + s);
-                return;
+                return false;
             }
 
             if (inv.entail(cst)) {
                 // add_redundant(s);
+                return true;
             } else if (inv.intersect(cst)) {
                 // TODO: add_error() if imply negation
                 m_db.add_warning(label, s);
+                return false;
             } else {
                 m_db.add_warning(label, std::string("assertion failed: ") + s);
+                return false;
             }
         });
 
