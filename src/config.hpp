@@ -4,6 +4,7 @@
 
 struct ebpf_verifier_options_t {
     bool check_termination;
+    bool assume_assertions;
     bool print_invariants;
     bool print_failures;
     bool no_simplify;
