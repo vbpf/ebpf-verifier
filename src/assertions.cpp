@@ -35,10 +35,11 @@ class AssertExtractor {
   public:
     explicit AssertExtractor(program_info info) : info{std::move(info)} {}
 
-    template <typename T>
-    vector<Assert> operator()(T) const {
-        return {};
-    }
+    vector<Assert> operator()(Undefined const& ins) const { assert(0); return {}; }
+
+    vector<Assert> operator()(Assert const& ins) const { assert(0); return {}; }
+
+    vector<Assert> operator()(LoadMapFd const& ins) const { return {}; }
 
     /// Packet access implicitly uses R6, so verify that R6 still has a pointer to the context.
     vector<Assert> operator()(Packet const& ins) const { return zero_offset_ctx({6}); }
@@ -163,17 +164,29 @@ class AssertExtractor {
         return res;
     }
 
+    vector<Assert> operator()(Un ins) {
+        return {
+            Assert{TypeConstraint{ins.dst, TypeGroup::number}}
+        };
+    }
+
     vector<Assert> operator()(Bin ins) const {
         switch (ins.op) {
         case Bin::Op::MOV: return {};
         case Bin::Op::ADD:
             if (std::holds_alternative<Reg>(ins.v)) {
+                auto src = reg(ins.v);
                 return {
-                    Assert{Addable{reg(ins.v), ins.dst}},
-                    Assert{Addable{ins.dst, reg(ins.v)}}
+                    Assert{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}},
+                    Assert{TypeConstraint{src, TypeGroup::ptr_or_num}},
+                    Assert{Addable{src, ins.dst}},
+                    Assert{Addable{ins.dst, src}}
+                };
+            } else {
+                return {
+                    Assert{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}}
                 };
             }
-            return {};
         case Bin::Op::SUB:
             if (std::holds_alternative<Reg>(ins.v)) {
                 vector<Assert> res;
@@ -182,8 +195,11 @@ class AssertExtractor {
                 res.emplace_back(TypeConstraint{ins.dst, TypeGroup::ptr_or_num});
                 res.emplace_back(Comparable{reg(ins.v), ins.dst});
                 return res;
+            } else {
+                return {
+                    Assert{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}}
+                };
             }
-            return {};
         default:
             return { Assert{TypeConstraint{ins.dst, TypeGroup::number}} };
         }
