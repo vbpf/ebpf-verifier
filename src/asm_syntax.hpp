@@ -219,17 +219,17 @@ struct Assume {
 enum class TypeGroup {
     number,
     map_fd,
-    ctx,            ///< pointer to the special memory region named 'ctx'
-    packet,         ///< pointer to the packet
-    stack,          ///< pointer to the stack
-    shared,         ///< pointer to shared memory
-    map_fd_programs, // reg == T_MAP_PROGRAMS
-    non_map_fd,     // reg >= T_NUM
-    mem,            // shared | packet | stack = reg >= T_STACK
-    mem_or_num,     // reg >= T_NUM && reg != T_CTX
-    pointer,        // reg >= T_CTX
-    ptr_or_num,     // reg >= T_NUM
-    stack_or_packet // reg >= T_STACK && reg <= T_PACKET
+    ctx,              ///< pointer to the special memory region named 'ctx'
+    packet,           ///< pointer to the packet
+    stack,            ///< pointer to the stack
+    shared,           ///< pointer to shared memory
+    map_fd_programs,  ///< reg == T_MAP_PROGRAMS
+    non_map_fd,       ///< reg >= T_NUM
+    mem,              ///< shared | packet | stack = reg >= T_STACK
+    mem_or_num,       ///< reg >= T_NUM && reg != T_CTX
+    pointer,          ///< reg >= T_CTX
+    ptr_or_num,       ///< reg >= T_NUM
+    stack_or_packet   ///< reg >= T_STACK && reg <= T_PACKET
 };
 
 /// Condition check whether something is a valid size.

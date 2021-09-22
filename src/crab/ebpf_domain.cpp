@@ -4,7 +4,6 @@
 // This file is eBPF-specific, not derived from CRAB.
 
 #include <algorithm>
-#include <bitset>
 #include <functional>
 #include <optional>
 #include <utility>
@@ -313,8 +312,7 @@ void ebpf_domain_t::assume(const linear_constraint_t& cst) { ::assume(m_inv, cst
 
 void ebpf_domain_t::require(NumAbsDomain& inv, const linear_constraint_t& cst, const std::string& s) {
     if (check_require)
-        check_require(inv, cst, std::move(s));
-    ::assume(inv, cst);
+        check_require(inv, cst, s);
 }
 
 /// Forget everything we know about the value of a variable.
