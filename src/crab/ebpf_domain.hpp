@@ -141,7 +141,6 @@ class ebpf_domain_t final {
     void overflow(variable_t lhs);
 
     void assign_valid_ptr(const reg_pack_t& reg, bool maybe_null);
-    void assert_no_pointer(const reg_pack_t& reg);
 
     void require(crab::domains::NumAbsDomain& inv, const linear_constraint_t& cst, const std::string& s);
 
