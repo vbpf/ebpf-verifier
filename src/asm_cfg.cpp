@@ -121,9 +121,8 @@ static cfg_t to_nondet(const cfg_t& cfg) {
         basic_block_t& newbb = res.insert(this_label);
 
         for (const auto& ins : bb) {
-            if (!std::holds_alternative<Jmp>(ins)) {
-                newbb.insert(ins);
-            }
+            // We can avoid inserting Jmp to newbb, but then blocks will end with an assertion instead of an instruction
+            newbb.insert(ins);
         }
 
         for (const label_t& prev_label : bb.prev_blocks_set()) {
@@ -147,6 +146,7 @@ static cfg_t to_nondet(const cfg_t& cfg) {
             for (auto const& [next_label, cond1] : jumps) {
                 label_t jump_label = label_t::make_jump(mid_label, next_label);
                 basic_block_t& jump_bb = res.insert(jump_label);
+                jump_bb.insert<Assert>(); // maintain parity - alternating assert/cmd
                 jump_bb.insert<Assume>(cond1);
                 newbb >> jump_bb;
                 jump_bb >> res.insert(next_label);
@@ -242,7 +242,9 @@ cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool sim
     cfg_t det_cfg = instruction_seq_to_cfg(prog, must_have_exit);
 
     // Annotate the CFG by adding in assertions before every memory instruction.
-    explicate_assertions(det_cfg, info);
+    for (auto& [label, bb] : det_cfg) {
+        explicate_assertions(bb, info);
+    }
 
     // Translate conditional jumps to non-deterministic jumps.
     cfg_t cfg = to_nondet(det_cfg);
@@ -255,6 +257,10 @@ cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool sim
     // keep track of.
     if (simplify) {
         cfg.simplify();
+    }
+
+    for (auto& [label, bb] : cfg) {
+        propagate_assertions_backwards(bb);
     }
 
     return cfg;

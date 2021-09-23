@@ -122,6 +122,10 @@ class basic_block_t final {
         b.m_prev.erase(m_label);
     }
 
+    Instruction& at(int i) {
+        return m_ts.at(i);
+    }
+
     // insert all statements of other at the back
     void move_back(basic_block_t& other) {
         m_ts.reserve(m_ts.size() + other.m_ts.size());
@@ -542,7 +546,8 @@ std::map<std::string, int> collect_stats(const cfg_t&);
 
 cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool simplify, bool must_have_exit=true);
 
-void explicate_assertions(cfg_t& cfg, const program_info& info);
+void explicate_assertions(crab::basic_block_t& cfg, const program_info& info);
+void propagate_assertions_backwards(crab::basic_block_t& block);
 
 void print_dot(const cfg_t& cfg, std::ostream& out);
 void print_dot(const cfg_t& cfg, const std::string& outfile);
