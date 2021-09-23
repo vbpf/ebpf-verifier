@@ -286,8 +286,7 @@ using AssertionConstraint =
 
 struct Assert {
     AssertionConstraint cst;
-    bool satisfied = false;
-    Assert(AssertionConstraint cst, bool satisfied=false): cst(cst), satisfied(satisfied) { }
+    Assert(AssertionConstraint cst): cst(cst) { }
 };
 
 #define DECLARE_EQ4(T, f1, f2, f3, f4)                                       \
