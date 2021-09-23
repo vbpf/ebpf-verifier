@@ -60,11 +60,13 @@ namespace asm_syntax {
 /// Immediate argument.
 struct Imm {
     uint64_t v{};
+    auto operator<=>(const Imm&) const = default;
 };
 
 /// Register argument.
 struct Reg {
     uint8_t v{};
+    auto operator<=>(const Reg&) const = default;
 };
 
 using Value = std::variant<Imm, Reg>;
@@ -91,6 +93,7 @@ struct Bin {
     Value v;
     bool is64{};
     bool lddw{};
+    auto operator<=>(const Bin&) const = default;
 };
 
 /// Unary operation.
@@ -102,8 +105,9 @@ struct Un {
         NEG,
     };
 
-    Op op;
+    Op op{};
     Reg dst;
+    auto operator<=>(const Un&) const = default;
 };
 
 /// This instruction is encoded similarly to LDDW.
@@ -111,6 +115,7 @@ struct Un {
 struct LoadMapFd {
     Reg dst;
     int mapfd{};
+    auto operator<=>(const LoadMapFd&) const = default;
 };
 
 struct Condition {
@@ -132,11 +137,13 @@ struct Condition {
     Op op;
     Reg left;
     Value right;
+    auto operator<=>(const Condition&) const = default;
 };
 
 struct Jmp {
     std::optional<Condition> cond;
     label_t target;
+    auto operator<=>(const Jmp&) const = default;
 };
 
 struct ArgSingle {
@@ -150,6 +157,7 @@ struct ArgSingle {
         ANYTHING,
     } kind{};
     Reg reg;
+    auto operator<=>(const ArgSingle&) const = default;
 };
 
 /// Pair of arguments to a function for pointer and size.
@@ -162,6 +170,7 @@ struct ArgPair {
     Reg mem;            ///< Pointer.
     Reg size;           ///< Size of space pointed to.
     bool can_be_zero{};
+    auto operator<=>(const ArgPair&) const = default;
 };
 
 struct Call {
@@ -171,14 +180,23 @@ struct Call {
     bool reallocate_packet{};
     std::vector<ArgSingle> singles;
     std::vector<ArgPair> pairs;
+    auto operator<=>(const Call& other) const {
+        return this->func <=> other.func;
+    };
+    bool operator==(const Call& other) const {
+        return this->func == other.func;
+    }
 };
 
-struct Exit {};
+struct Exit {
+    auto operator<=>(const Exit&) const = default;
+};
 
 struct Deref {
     int width{};
     Reg basereg;
     int offset{};
+    auto operator<=>(const Deref&) const = default;
 };
 
 /// Load/store instruction.
@@ -186,6 +204,7 @@ struct Mem {
     Deref access;
     Value value;
     bool is_load{};
+    auto operator<=>(const Mem&) const = default;
 };
 
 /// A special instruction for checked access to packets; it is actually a
@@ -195,17 +214,20 @@ struct Packet {
     int width{};
     int offset{};
     std::optional<Reg> regoffset;
+    auto operator<=>(const Packet&) const = default;
 };
 
 /// Special instruction for incrementing values inside shared memory.
 struct LockAdd {
     Deref access;
     Reg valreg;
+    auto operator<=>(const LockAdd&) const = default;
 };
 
 /// Not an instruction, just used for failure cases.
 struct Undefined {
     int opcode{};
+    auto operator<=>(const Undefined&) const = default;
 };
 
 /// When a CFG is translated to its nondeterministic form, Conditional Jump
@@ -213,6 +235,7 @@ struct Undefined {
 /// the branch and before each jump target.
 struct Assume {
     Condition cond;
+    auto operator<=>(const Assume&) const = default;
 };
 
 enum class TypeGroup {
@@ -235,6 +258,7 @@ enum class TypeGroup {
 struct ValidSize {
     Reg reg;
     bool can_be_zero{};
+    auto operator<=>(const ValidSize&) const = default;
 };
 
 /// Condition check whether two registers can be compared with each other.
@@ -243,12 +267,14 @@ struct ValidSize {
 struct Comparable {
     Reg r1;
     Reg r2;
+    auto operator<=>(const Comparable&) const = default;
 };
 
 // ptr: ptr -> num : num
 struct Addable {
     Reg ptr;
     Reg num;
+    auto operator<=>(const Addable&) const = default;
 };
 
 struct ValidAccess {
@@ -256,6 +282,7 @@ struct ValidAccess {
     int offset{};
     Value width{Imm{0}};
     bool or_null{};
+    auto operator<=>(const ValidAccess&) const = default;
 };
 
 /// Condition check whether something is a valid key value.
@@ -263,22 +290,25 @@ struct ValidMapKeyValue {
     Reg access_reg;
     Reg map_fd_reg;
     bool key{};
+    auto operator<=>(const ValidMapKeyValue&) const = default;
 };
 
 // "if mem is not stack, val is num"
 struct ValidStore {
     Reg mem;
     Reg val;
+    auto operator<=>(const ValidStore&) const = default;
 };
 
 struct TypeConstraint {
     Reg reg;
     TypeGroup types;
+    auto operator<=>(const TypeConstraint&) const = default;
 };
 
-/// Condition check whether something is a valid size.
 struct ZeroOffset {
     Reg reg;
+    auto operator<=>(const ZeroOffset&) const = default;
 };
 
 using AssertionConstraint =
@@ -287,18 +317,8 @@ using AssertionConstraint =
 struct Assert {
     AssertionConstraint cst;
     Assert(AssertionConstraint cst): cst(cst) { }
+    auto operator<=>(const Assert&) const = default;
 };
-
-#define DECLARE_EQ4(T, f1, f2, f3, f4)                                       \
-    inline bool operator==(T const& a, T const& b) {                         \
-        return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4; \
-    }
-#define DECLARE_EQ3(T, f1, f2, f3) \
-    inline bool operator==(T const& a, T const& b) { return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3; }
-#define DECLARE_EQ2(T, f1, f2) \
-    inline bool operator==(T const& a, T const& b) { return a.f1 == b.f1 && a.f2 == b.f2; }
-#define DECLARE_EQ1(T, f1) \
-    inline bool operator==(T const& a, T const& b) { return a.f1 == b.f1; }
 
 using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Exit, Jmp, Mem, Packet, LockAdd, Assume, Assert>;
 
@@ -306,60 +326,6 @@ using LabeledInstruction = std::tuple<label_t, Instruction>;
 using InstructionSeq = std::vector<LabeledInstruction>;
 
 using pc_t = uint16_t;
-
-// Helpers:
-
-struct InstructionVisitorPrototype {
-    void operator()(Undefined const& a);
-    void operator()(LoadMapFd const& a);
-    void operator()(Bin const& a);
-    void operator()(Un const& a);
-    void operator()(Call const& a);
-    void operator()(Exit const& a);
-    void operator()(Jmp const& a);
-    void operator()(Assume const& a);
-    void operator()(Assert const& a);
-    void operator()(Packet const& a);
-    void operator()(Mem const& a);
-    void operator()(LockAdd const& a);
-};
-
-inline bool operator==(Imm const& a, Imm const& b) { return a.v == b.v; }
-inline bool operator==(Reg const& a, Reg const& b) { return a.v == b.v; }
-inline bool operator==(Deref const& a, Deref const& b) {
-    return a.basereg == b.basereg && a.offset == b.offset && a.width == b.width;
-}
-inline bool operator==(Condition const& a, Condition const& b) {
-    return a.left == b.left && a.op == b.op && a.right == b.right;
-}
-inline bool operator==(Undefined const& a, Undefined const& b) { return a.opcode == b.opcode; }
-inline bool operator==(LoadMapFd const& a, LoadMapFd const& b) { return a.dst == b.dst && a.mapfd == b.mapfd; }
-inline bool operator==(Bin const& a, Bin const& b) {
-    return a.op == b.op && a.dst == b.dst && a.is64 == b.is64 && a.v == b.v && a.lddw == b.lddw;
-}
-inline bool operator==(Un const& a, Un const& b) { return a.op == b.op && a.dst == b.dst; }
-inline bool operator==(Call const& a, Call const& b) { return a.func == b.func; }
-inline bool operator==(Exit const& a, Exit const& b) { return true; }
-inline bool operator==(Jmp const& a, Jmp const& b) { return a.cond == b.cond && a.target == b.target; }
-inline bool operator==(Packet const& a, Packet const& b) {
-    return a.offset == b.offset && a.regoffset == b.regoffset && a.width == b.width;
-}
-inline bool operator==(Mem const& a, Mem const& b) {
-    return a.access == b.access && a.value == b.value && a.is_load == b.is_load;
-}
-inline bool operator==(LockAdd const& a, LockAdd const& b) { return a.access == b.access && a.valreg == b.valreg; }
-inline bool operator==(Assume const& a, Assume const& b) { return a.cond == b.cond; }
-bool operator==(Assert const& a, Assert const& b);
-
-DECLARE_EQ2(TypeConstraint, reg, types)
-DECLARE_EQ2(ValidSize, reg, can_be_zero)
-DECLARE_EQ2(Comparable, r1, r2)
-DECLARE_EQ2(Addable, ptr, num)
-DECLARE_EQ2(ValidStore, mem, val)
-DECLARE_EQ4(ValidAccess, reg, offset, width, or_null)
-DECLARE_EQ3(ValidMapKeyValue, access_reg, map_fd_reg, key)
-DECLARE_EQ1(ZeroOffset, reg)
-DECLARE_EQ1(Assert, cst)
 
 }
 
