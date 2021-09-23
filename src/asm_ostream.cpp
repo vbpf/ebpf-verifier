@@ -306,7 +306,9 @@ struct InstructionPrinterVisitor {
     }
 
     void operator()(Assert const& a) {
-        os_ << "assert " << a.cst;
+        os_ << "assert ";
+        for (const auto& cst: a.csts)
+            os_ << cst << " & ";
     }
 };
 
@@ -387,13 +389,13 @@ void print(const InstructionSeq& insts, std::ostream& out, std::optional<const l
 
 std::ostream& operator<<(std::ostream& o, const EbpfMapDescriptor& desc) {
     return o << "("
-    << "original_fd = " << desc.original_fd << ", "
-    << "inner_map_fd = " << desc.inner_map_fd << ", "
-    << "type = " << desc.type << ", "
-    << "max_entries = " << desc.max_entries << ", "
-    << "value_size = " << desc.value_size << ", "
-    << "key_size = " << desc.key_size <<
-    ")";
+             << "original_fd = " << desc.original_fd << ", "
+             << "inner_map_fd = " << desc.inner_map_fd << ", "
+             << "type = " << desc.type << ", "
+             << "max_entries = " << desc.max_entries << ", "
+             << "value_size = " << desc.value_size << ", "
+             << "key_size = " << desc.key_size <<
+           ")";
 }
 
 void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o) {

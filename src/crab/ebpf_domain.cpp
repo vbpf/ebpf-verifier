@@ -636,7 +636,10 @@ void ebpf_domain_t::operator()(const ZeroOffset& s) {
     require(m_inv, reg.offset == 0, to_string(s));
 }
 
-void ebpf_domain_t::operator()(const Assert& stmt) { std::visit(*this, stmt.cst); };
+void ebpf_domain_t::operator()(const Assert& stmt) {
+    for (const auto& cst : stmt.csts)
+        std::visit(*this, cst);
+};
 
 void ebpf_domain_t::operator()(const Packet& a) {
     auto reg = reg_pack(R0_RETURN_VALUE);

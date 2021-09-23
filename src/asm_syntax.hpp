@@ -315,9 +315,11 @@ using AssertionConstraint =
     std::variant<Comparable, Addable, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint, ZeroOffset>;
 
 struct Assert {
-    AssertionConstraint cst;
-    Assert(AssertionConstraint cst): cst(cst) { }
+    std::set<AssertionConstraint> csts;
     auto operator<=>(const Assert&) const = default;
+    void insert(const AssertionConstraint& cst) {
+        csts.insert(cst);
+    }
 };
 
 using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Exit, Jmp, Mem, Packet, LockAdd, Assume, Assert>;
