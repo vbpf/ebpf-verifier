@@ -66,7 +66,7 @@ class interleaved_fwd_fixpoint_iterator_t final {
     const bool check_termination;
 
   private:
-    inline void set_pre(const label_t& label, const ebpf_domain_t& v) { _pre[label] = v; }
+    inline void set_pre(const label_t& label, ebpf_domain_t v) { _pre[label] = std::move(v); }
 
     inline void transform_to_post(const label_t& label, ebpf_domain_t pre) {
         basic_block_t& bb = _cfg.get_node(label);
@@ -118,14 +118,14 @@ class interleaved_fwd_fixpoint_iterator_t final {
 
     void operator()(std::shared_ptr<wto_cycle_t>& cycle);
 
-    friend std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg, const ebpf_domain_t& entry_inv, bool check_termination);
+    friend std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg, const ebpf_domain_t entry_inv, bool check_termination);
 };
 
-std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg, const ebpf_domain_t& entry_inv, bool check_termination) {
-    // Go over the CFG in weak topological order (accounting for loops).
+std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg, ebpf_domain_t entry_inv, bool check_termination) {
     constexpr unsigned int descending_iterations = 2000000;
     interleaved_fwd_fixpoint_iterator_t analyzer(cfg, descending_iterations, check_termination);
-    analyzer.set_pre(cfg.entry_label(), entry_inv);
+    analyzer.set_pre(cfg.entry_label(), std::move(entry_inv));
+    // Go over the CFG in weak topological order (accounting for loops).
     for (auto& component : analyzer._wto) {
         std::visit(analyzer, *component);
     }

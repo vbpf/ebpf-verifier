@@ -306,7 +306,7 @@ struct InstructionPrinterVisitor {
     }
 
     void operator()(Assert const& a) {
-        os_ << "assert ";
+        os_ << "assert all ";
         for (const auto& cst: a.csts)
             os_ << cst << " & ";
     }
@@ -360,8 +360,7 @@ void print(const InstructionSeq& insts, std::ostream& out, std::optional<const l
     auto pc_of_label = get_labels(insts);
     pc_t pc = 0;
     InstructionPrinterVisitor visitor{out};
-    for (const LabeledInstruction& labeled_inst : insts) {
-        const auto& [label, ins] = labeled_inst;
+    for (const auto& [label, ins] : insts) {
         if (!label_to_print.has_value() || (label == label_to_print)) {
             if (label.isjump()) {
                 out << "\n";
@@ -378,6 +377,10 @@ void print(const InstructionSeq& insts, std::ostream& out, std::optional<const l
                     throw std::runtime_error(string("Cannot find label ") + to_string(jmp.target));
                 pc_t target_pc = pc_of_label.at(jmp.target);
                 visitor(jmp, target_pc - (int)pc - 1);
+            } else if (std::holds_alternative<Assert>(ins)) {
+                for (const auto& cst : std::get<Assert>(ins).csts) {
+                    out << "assert " << cst << "\n";
+                }
             } else {
                 std::visit(visitor, ins);
             }
@@ -434,8 +437,14 @@ void print_dot(const cfg_t& cfg, const std::string& outfile) {
 
 std::ostream& operator<<(std::ostream& o, const basic_block_t& bb) {
     o << bb.label() << ":\n";
-    for (auto const& s : bb) {
-        o << "  " << s << ";\n";
+    for (auto const& ins : bb) {
+        if (std::holds_alternative<Assert>(ins)) {
+            for (const auto& cst : std::get<Assert>(ins).csts) {
+                o << "  assert " << cst << ";\n";
+            }
+        } else if (!std::holds_alternative<Jmp>(ins)) {
+            o << "  " << ins << ";\n";
+        }
     }
     auto [it, et] = bb.next_blocks();
     if (it != et) {

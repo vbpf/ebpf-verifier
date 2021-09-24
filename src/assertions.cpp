@@ -148,10 +148,7 @@ class AssertExtractor {
         int offset = ins.access.offset;
         if (basereg.v == R10_STACK_POINTER) {
             // We know we are accessing the stack.
-            if (offset < -EBPF_STACK_SIZE || offset + (int)width.v >= 0) {
-                // This assertion will fail
-                res.insert(ValidAccess{basereg, offset, width, false});
-            }
+            res.insert(ValidAccess{basereg, offset, width, false});
         } else {
             res.insert(TypeConstraint{basereg, TypeGroup::pointer});
             res.insert(ValidAccess{basereg, offset, width, false});
@@ -232,6 +229,29 @@ void explicate_assertions(crab::basic_block_t& bb, const program_info& info) {
     bb.swap_instructions(insts);
 }
 
+static constexpr AssertionConstraint TRUE_CONSTRAINT = TypeConstraint{Reg{10}, TypeGroup::stack};
+static constexpr AssertionConstraint FALSE_CONSTRAINT = TypeConstraint{Reg{10}, TypeGroup::number};
+
+bool is_trivial(const AssertionConstraint& cst) {
+    if (const auto* pcst = std::get_if<TypeConstraint>(&cst)) {
+        if (pcst->reg == Reg{10}) {
+            switch (pcst->types) {
+            case TypeGroup::number:
+            case TypeGroup::map_fd:
+            case TypeGroup::map_fd_programs:
+            case TypeGroup::ctx:
+            case TypeGroup::shared:
+                return false;
+            default:
+                return true;
+            }
+        }
+    } else if (const auto* pcst = std::get_if<Comparable>(&cst)) {
+        return pcst->r1 == pcst->r2;
+    }
+    return false;
+}
+
 struct Propagator {
     template<typename Cst> std::optional<AssertionConstraint> operator()(const Cst&, const Undefined&) { return {}; }
     template<typename Cst> std::optional<AssertionConstraint> operator()(const Cst&, const Exit&) { assert(false); return {}; }
@@ -274,7 +294,18 @@ struct Propagator {
     std::optional<AssertionConstraint> operator()(const ValidStore&, const LockAdd&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidStore&, const Assume&) { return {}; }
 
-    std::optional<AssertionConstraint> operator()(const ValidSize&, const Bin&) { return {}; }
+    std::optional<AssertionConstraint> operator()(const ValidSize& cst, const Bin& bin) {
+        if (std::holds_alternative<Imm>(bin.v)) {
+            assert(cst.reg == bin.dst);
+            if (bin.op == Bin::Op::MOV) {
+                if (std::get<Imm>(bin.v).v >= (cst.can_be_zero ? 0 : 1))
+                    return TRUE_CONSTRAINT;
+                else
+                    return FALSE_CONSTRAINT;
+            }
+        }
+        return {};
+    }
     std::optional<AssertionConstraint> operator()(const ValidSize&, const Un&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidSize&, const LoadMapFd&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidSize&, const Call&) { return {}; }
@@ -292,14 +323,45 @@ struct Propagator {
     std::optional<AssertionConstraint> operator()(const ValidMapKeyValue&, const LockAdd&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidMapKeyValue&, const Assume&) { return {}; }
 
-    std::optional<AssertionConstraint> operator()(const TypeConstraint&, const Bin&) { return {}; }
+    std::optional<AssertionConstraint> operator()(const TypeConstraint& cst, const Bin& bin) {
+        if (std::holds_alternative<Imm>(bin.v)) {
+            assert(cst.reg == bin.dst);
+            if (bin.op == Bin::Op::MOV) {
+                if (cst.types == TypeGroup::number) return TRUE_CONSTRAINT;
+                if (cst.types == TypeGroup::ptr_or_num) return TRUE_CONSTRAINT;
+                if (cst.types == TypeGroup::mem_or_num) return TRUE_CONSTRAINT;
+                if (cst.types == TypeGroup::non_map_fd) return TRUE_CONSTRAINT;
+                // not necessarily false, since checking against null is sometimes valid:
+                return {};
+            } else {
+                // "x op= NUM" never changes the type of x
+                return cst;
+            }
+        } else {
+            switch (bin.op) {
+            case Bin::Op::MOV:
+            case Bin::Op::ADD:
+            case Bin::Op::SUB:
+                return {};
+            default:
+                // Most binary operations do not change the type of dst
+                return cst;
+            }
+        }
+    }
+
     std::optional<AssertionConstraint> operator()(const TypeConstraint&, const Un&) { return {}; }
     std::optional<AssertionConstraint> operator()(const TypeConstraint&, const LoadMapFd&) { return {}; }
     std::optional<AssertionConstraint> operator()(const TypeConstraint&, const Call&) { return {}; }
     std::optional<AssertionConstraint> operator()(const TypeConstraint&, const Mem&) { return {}; }
     std::optional<AssertionConstraint> operator()(const TypeConstraint&, const Packet&) { return {}; }
     std::optional<AssertionConstraint> operator()(const TypeConstraint&, const LockAdd&) { return {}; }
-    std::optional<AssertionConstraint> operator()(const TypeConstraint&, const Assume&) { return {}; }
+    std::optional<AssertionConstraint> operator()(const TypeConstraint& cst, const Assume& ins) {
+        if (std::holds_alternative<Imm>(ins.cond.right) && ins.cond.right != (Value)Imm{0}) {
+            return this->operator()(cst, Bin{Bin::Op::MOV, ins.cond.left, ins.cond.right});
+        }
+        return {};
+    }
 
     std::optional<AssertionConstraint> operator()(const ZeroOffset&, const Bin&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ZeroOffset&, const Un&) { return {}; }
@@ -339,7 +401,7 @@ struct DefFinder {
     std::set<Reg> operator()(const Assume& ins) {
         return {
             Reg{0}, Reg{1}, Reg{2}, Reg{3}, Reg{4},
-            Reg{5}, Reg{6}, Reg{7}, Reg{8}, Reg{9},
+            Reg{5}, Reg{6}, Reg{7}, Reg{8}, Reg{9}, Reg{10}
         };
     }
 
@@ -360,7 +422,59 @@ struct UseFinder {
     std::set<Reg> operator()(const ZeroOffset& cst) { return {cst.reg}; }
 };
 
+struct RegReplacer {
+    // given dst = src, replace dst with src
+    // e.g.: cst is "r1 < 0"
+    // to propagate it before the assignment "r1 = r2"
+    // we need to change it to "r2 < 0"
+    const Reg& dst;
+    const Reg& src;
+
+    void replace(Reg& candidate) {
+        if (candidate == dst) candidate = src;
+    }
+    void replace(Value& candidate) {
+        if (candidate == (Value)dst) candidate = (Value)src;
+    }
+    template<typename... Args>
+    void replace(Args&&... args) {
+        (replace(args), ...);
+    }
+
+    template<class> static constexpr bool always_false_v = false;
+
+    template<typename Cst>
+    AssertionConstraint operator()(const Cst& cst) {
+        Cst res = cst;
+        if constexpr (std::is_same_v<Cst, Comparable>)
+            replace(res.r1, res.r2);
+        else if constexpr (std::is_same_v<Cst, Addable>)
+            replace(res.num, res.ptr);
+        else if constexpr (std::is_same_v<Cst, ValidAccess>)
+            replace(res.reg, res.width);
+        else if constexpr (std::is_same_v<Cst, ValidStore>)
+            replace(res.mem, res.val);
+        else if constexpr (std::is_same_v<Cst, ValidSize>)
+            replace(res.reg);
+        else if constexpr (std::is_same_v<Cst, ValidMapKeyValue>)
+            replace(res.access_reg, res.map_fd_reg);
+        else if constexpr (std::is_same_v<Cst, TypeConstraint>)
+            replace(res.reg);
+        else if constexpr (std::is_same_v<Cst, ZeroOffset>)
+            replace(res.reg);
+        else
+            static_assert(always_false_v<Cst>, "non-exhaustive visitor!");
+        return res;
+    }
+};
+
 static std::optional<AssertionConstraint> try_propagate(const AssertionConstraint& cst, const Instruction& ins) {
+    if (const auto* pbin = std::get_if<Bin>(&ins)) {
+        if (pbin->op == Bin::Op::MOV && std::holds_alternative<Reg>(pbin->v)) {
+            RegReplacer replacer{pbin->dst, std::get<Reg>(pbin->v)};
+            return std::visit(replacer, cst);
+        }
+    }
     auto cst_uses = std::visit(UseFinder{}, cst);
     auto ins_defs = std::visit(DefFinder{}, ins);
     for (const Reg& defined_in_instruction : ins_defs) {
@@ -389,7 +503,8 @@ void propagate_assertions_backwards(crab::basic_block_t& block) {
         for (const AssertionConstraint& cst : next_csts) {
             if (std::optional<AssertionConstraint> propagated_cst = try_propagate(cst, ins)) {
                 next_assertion.csts.erase(cst);
-                prev_assertion.insert(*propagated_cst);
+                if (!is_trivial(*propagated_cst))
+                    prev_assertion.insert(*propagated_cst);
             }
         }
 
