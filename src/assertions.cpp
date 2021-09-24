@@ -109,15 +109,17 @@ class AssertExtractor {
         if (info.type.is_privileged)
             return {};
         vector<Assert> res;
-        res.emplace_back(ValidAccess{cond.left});
         if (std::holds_alternative<Imm>(cond.right)) {
             if (imm(cond.right).v != 0) {
+                // no need to check for valid access, it must be a number
                 res.emplace_back(TypeConstraint{cond.left, TypeGroup::number});
             } else {
+                res.emplace_back(ValidAccess{cond.left});
                 // OK - map_fd is just another pointer
                 // Anything can be compared to 0
             }
         } else {
+            res.emplace_back(ValidAccess{cond.left});
             res.emplace_back(ValidAccess{reg(cond.right)});
             if (cond.op != Condition::Op::EQ && cond.op != Condition::Op::NE) {
                 res.emplace_back(TypeConstraint{cond.left, TypeGroup::non_map_fd});
