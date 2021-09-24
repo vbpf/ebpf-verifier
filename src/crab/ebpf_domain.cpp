@@ -474,7 +474,9 @@ void ebpf_domain_t::operator()(const Exit& a) {}
 
 void ebpf_domain_t::operator()(const Jmp& a) {}
 
-void ebpf_domain_t::operator()(const Comparable& s) { require(m_inv, eq(reg_pack(s.r1).type, reg_pack(s.r2).type), to_string(s)); }
+void ebpf_domain_t::operator()(const SameType& s) {
+    require(m_inv, eq(reg_pack(s.r1).type, reg_pack(s.r2).type), to_string(s));
+}
 
 void ebpf_domain_t::operator()(const Addable& s) {
     using namespace crab::dsl_syntax;

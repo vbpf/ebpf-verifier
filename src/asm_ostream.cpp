@@ -154,7 +154,7 @@ std::ostream& operator<<(std::ostream& os, ZeroOffset const& a) {
     return os << crab::variable_t::reg(crab::data_kind_t::offsets, a.reg.v) << " == 0";
 }
 
-std::ostream& operator<<(std::ostream& os, Comparable const& a) {
+std::ostream& operator<<(std::ostream& os, SameType const& a) {
     return os << crab::variable_t::reg(crab::data_kind_t::types, a.r1.v) << " == "
               << crab::variable_t::reg(crab::data_kind_t::types, a.r2.v);
 }

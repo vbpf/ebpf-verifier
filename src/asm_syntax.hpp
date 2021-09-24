@@ -264,10 +264,10 @@ struct ValidSize {
 /// Condition check whether two registers can be compared with each other.
 /// For example, one is not allowed to compare a number with a pointer,
 /// or compare pointers to different memory regions.
-struct Comparable {
+struct SameType {
     Reg r1;
     Reg r2;
-    auto operator<=>(const Comparable&) const = default;
+    auto operator<=>(const SameType&) const = default;
 };
 
 // ptr: ptr -> num : num
@@ -312,7 +312,7 @@ struct ZeroOffset {
 };
 
 using AssertionConstraint =
-    std::variant<Comparable, Addable, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint, ZeroOffset>;
+    std::variant<SameType, Addable, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint, ZeroOffset>;
 
 struct Assert {
     std::set<AssertionConstraint> csts;
