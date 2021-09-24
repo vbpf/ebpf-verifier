@@ -144,7 +144,10 @@ class AssertExtractor {
         int offset = ins.access.offset;
         if (basereg.v == R10_STACK_POINTER) {
             // We know we are accessing the stack.
-            res.emplace_back(ValidAccess{basereg, offset, width, false});
+            if (offset < -EBPF_STACK_SIZE || offset + (int)width.v >= 0) {
+                // This assertion will fail
+                res.emplace_back(ValidAccess{basereg, offset, width, false});
+            }
         } else {
             res.emplace_back(TypeConstraint{basereg, TypeGroup::pointer});
             res.emplace_back(ValidAccess{basereg, offset, width, false});
