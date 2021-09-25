@@ -73,7 +73,13 @@ struct Propagator {
     std::optional<AssertionConstraint> operator()(const SameType&, const LockAdd&) { return {}; }
     std::optional<AssertionConstraint> operator()(const SameType&, const Assume&) { return {}; }
 
-    std::optional<AssertionConstraint> operator()(const Addable&, const Mov&) { return {}; }
+    std::optional<AssertionConstraint> operator()(const Addable& ins, const Mov& mov) {
+        if (mov.dst == ins.num && std::holds_alternative<Imm>(mov.v))
+            return TRUE_CONSTRAINT;
+        if (mov.dst == ins.ptr && ins.ptr == Reg{10})
+            return TypeConstraint{ins.num, TypeGroup::number};
+        return {};
+    }
     std::optional<AssertionConstraint> operator()(const Addable&, const Bin&) { return {}; }
     std::optional<AssertionConstraint> operator()(const Addable&, const Un&) { return {}; }
     std::optional<AssertionConstraint> operator()(const Addable&, const LoadMapFd&) { return {}; }
