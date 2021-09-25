@@ -13,7 +13,7 @@ TEST_CASE("Trivial loop: middle", "[sanity][loop]") {
     basic_block_t& middle = cfg.insert(label_t(1));
     basic_block_t& exit = cfg.get_node(cfg.exit_label());
 
-    entry.insert(Bin{.op = Bin::Op::MOV, .dst = Reg{0}, .v = Imm{0}, .is64 = true});
+    entry.insert(Mov{.dst = Reg{0}, .v = Imm{0}, .is64 = true});
     middle.insert(Bin{.op = Bin::Op::ADD, .dst = Reg{0}, .v = Imm{1}, .is64 = true});
 
     cfg.get_node(cfg.entry_label()) >> entry;

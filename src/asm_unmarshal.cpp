@@ -100,7 +100,6 @@ struct Unmarshaller {
         case 0x8: return Un::Op::NEG;
         case 0x9: return Bin::Op::MOD;
         case 0xa: return Bin::Op::XOR;
-        case 0xb: return Bin::Op::MOV;
         case 0xc:
             if ((inst.opcode & INST_CLS_MASK) == INST_CLS_ALU)
                 note("arsh32 is not allowed");
@@ -232,6 +231,13 @@ struct Unmarshaller {
     auto makeAluOp(size_t pc, ebpf_inst inst) -> Instruction {
         if (inst.dst == R10_STACK_POINTER)
             note("Invalid target r10");
+        if (((inst.opcode >> 4) & 0xF) == 0xb) {
+            return Mov{
+                .dst = Reg{inst.dst},
+                .v = getBinValue(inst),
+                .is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64,
+            };
+        }
         return std::visit(overloaded{[&](Un::Op op) -> Instruction { return Un{.op = op, .dst = Reg{inst.dst}}; },
                                      [&](Bin::Op op) -> Instruction {
                                          Bin res{
@@ -264,8 +270,7 @@ struct Unmarshaller {
         ebpf_inst next = insts[pc + 1];
         if (next.opcode != 0 || next.dst != 0 || next.src != 0 || next.offset != 0)
             note("invalid LDDW");
-        return Bin{
-            .op = Bin::Op::MOV,
+        return Mov{
             .dst = Reg{inst.dst},
             .v = Imm{merge(inst.imm, next_imm)},
             .is64 = true,

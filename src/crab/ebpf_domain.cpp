@@ -953,6 +953,30 @@ void ebpf_domain_t::assign_valid_ptr(const reg_pack_t& reg, bool maybe_null) {
     m_inv += reg.value <= PTR_MAX;
 }
 
+void ebpf_domain_t::operator()(const Mov& bin) {
+    using namespace crab::dsl_syntax;
+
+    auto dst = reg_pack(bin.dst);
+
+    if (std::holds_alternative<Imm>(bin.v)) {
+        // dst = K
+        int imm = static_cast<int>(std::get<Imm>(bin.v).v);
+        assign(dst.value, imm);
+        assign(dst.type, T_NUM);
+        havoc(dst.offset);
+    } else {
+        // dst = src
+        auto src = reg_pack(std::get<Reg>(bin.v));
+
+        assign(dst.value, src.value);
+        assign(dst.offset, src.offset);
+        assign(dst.type, src.type);
+    }
+    if (!bin.is64) {
+        bitwise_and(dst.value, UINT32_MAX);
+    }
+}
+
 void ebpf_domain_t::operator()(const Bin& bin) {
     using namespace crab::dsl_syntax;
 
@@ -962,11 +986,6 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         // dst += K
         int imm = static_cast<int>(std::get<Imm>(bin.v).v);
         switch (bin.op) {
-        case Bin::Op::MOV:
-            assign(dst.value, imm);
-            assign(dst.type, T_NUM);
-            havoc(dst.offset);
-            break;
         case Bin::Op::ADD:
             if (imm == 0)
                 return;
@@ -1106,11 +1125,6 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::XOR:
             bitwise_xor(dst.value, src.value);
             havoc(dst.offset);
-            break;
-        case Bin::Op::MOV:
-            assign(dst.value, src.value);
-            assign(dst.offset, src.offset);
-            assign(dst.type, src.type);
             break;
         }
     }

@@ -43,7 +43,6 @@ static uint8_t op(Bin::Op op) {
     case Op::RSH: return 0x7;
     case Op::MOD: return 0x9;
     case Op::XOR: return 0xa;
-    case Op::MOV: return 0xb;
     case Op::ARSH: return 0xc;
     }
     assert(false);
@@ -83,6 +82,26 @@ struct MarshalVisitor {
 
     vector<ebpf_inst> operator()(LoadMapFd const& b) { return makeLddw(b.dst, true, b.mapfd, 0); }
 
+    vector<ebpf_inst> operator()(Mov const& b) {
+        if (b.lddw) {
+            assert(std::holds_alternative<Imm>(b.v));
+            auto [imm, next_imm] = split(std::get<Imm>(b.v).v);
+            return makeLddw(b.dst, false, imm, next_imm);
+        }
+
+        ebpf_inst res{.opcode = static_cast<uint8_t>((b.is64 ? INST_CLS_ALU64 : INST_CLS_ALU) | (0xb << 4)),
+                      .dst = b.dst.v,
+                      .src = 0,
+                      .offset = 0,
+                      .imm = 0};
+        std::visit(overloaded{[&](Reg right) {
+                                  res.opcode |= INST_SRC_REG;
+                                  res.src = right.v;
+                              },
+                              [&](Imm right) { res.imm = static_cast<int32_t>(right.v); }},
+                   b.v);
+        return {res};
+    }
     vector<ebpf_inst> operator()(Bin const& b) {
         if (b.lddw) {
             assert(std::holds_alternative<Imm>(b.v));

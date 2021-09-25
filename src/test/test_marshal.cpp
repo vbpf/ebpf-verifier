@@ -20,7 +20,7 @@ static const auto ws = {1, 2, 4, 8};
 
 TEST_CASE("disasm_marshal", "[disasm][marshal]") {
     SECTION("Bin") {
-        auto ops = {Bin::Op::MOV, Bin::Op::ADD, Bin::Op::SUB, Bin::Op::MUL, Bin::Op::DIV,  Bin::Op::MOD,
+        auto ops = {Bin::Op::ADD, Bin::Op::SUB, Bin::Op::MUL, Bin::Op::DIV,  Bin::Op::MOD,
                     Bin::Op::OR,  Bin::Op::AND, Bin::Op::LSH, Bin::Op::RSH, Bin::Op::ARSH, Bin::Op::XOR};
         SECTION("Reg src") {
             for (auto op : ops) {
@@ -36,7 +36,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
             }
             SECTION("LDDW") {
                 compare_marshal_unmarshal(
-                    Bin{.op = Bin::Op::MOV, .dst = Reg{1}, .v = Imm{2}, .is64 = true, .lddw = true}, true);
+                    Mov{.dst = Reg{1}, .v = Imm{2}, .is64 = true, .lddw = true}, true);
             }
         }
     }

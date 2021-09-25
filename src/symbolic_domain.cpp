@@ -39,22 +39,23 @@ struct Propagator {
     template<typename Cst> std::optional<AssertionConstraint> operator()(const Cst&, const Jmp&) { assert(false); return {}; }
     template<typename Cst> std::optional<AssertionConstraint> operator()(const Cst&, const Assert&) { assert(false); return {}; }
 
+    std::optional<AssertionConstraint> operator()(const SameType& cst, const Mov& bin) {
+        if (std::holds_alternative<Imm>(bin.v)) {
+            TypeGroup type = std::get<Imm>(bin.v).v == 0 ? TypeGroup::ptr_or_num : TypeGroup::number;
+            if (bin.dst == cst.r1) return TypeConstraint{cst.r2, type};
+            else if (bin.dst == cst.r2) return TypeConstraint{cst.r1, type};
+            else assert(false);
+            return {};
+        } else {
+            return {};
+        }
+    }
     std::optional<AssertionConstraint> operator()(const SameType& cst, const Bin& bin) {
         if (std::holds_alternative<Imm>(bin.v)) {
-            if (bin.op == Bin::Op::MOV) {
-                TypeGroup type = std::get<Imm>(bin.v).v == 0 ? TypeGroup::ptr_or_num : TypeGroup::number;
-                if (bin.dst == cst.r1) return TypeConstraint{cst.r2, type};
-                else if (bin.dst == cst.r2) return TypeConstraint{cst.r1, type};
-                else assert(false);
-                return {};
-            } else {
-                // "x op= NUM" never changes the type of x
-                return cst;
-            }
+            // "x op= NUM" never changes the type of x
+            return cst;
         } else {
             switch (bin.op) {
-            case Bin::Op::MOV: // we probably shouldn't get here
-                return {};
             case Bin::Op::ADD:
             case Bin::Op::SUB:
                 return {};
@@ -64,9 +65,7 @@ struct Propagator {
             }
         }
     }
-    std::optional<AssertionConstraint> operator()(const SameType& cst, const Un&) {
-        return cst;
-    }
+    std::optional<AssertionConstraint> operator()(const SameType& cst, const Un&) { return cst; }
     std::optional<AssertionConstraint> operator()(const SameType&, const LoadMapFd&) { return {}; }
     std::optional<AssertionConstraint> operator()(const SameType&, const Call&) { return {}; }
     std::optional<AssertionConstraint> operator()(const SameType&, const Mem&) { return {}; }
@@ -74,6 +73,7 @@ struct Propagator {
     std::optional<AssertionConstraint> operator()(const SameType&, const LockAdd&) { return {}; }
     std::optional<AssertionConstraint> operator()(const SameType&, const Assume&) { return {}; }
 
+    std::optional<AssertionConstraint> operator()(const Addable&, const Mov&) { return {}; }
     std::optional<AssertionConstraint> operator()(const Addable&, const Bin&) { return {}; }
     std::optional<AssertionConstraint> operator()(const Addable&, const Un&) { return {}; }
     std::optional<AssertionConstraint> operator()(const Addable&, const LoadMapFd&) { return {}; }
@@ -83,6 +83,7 @@ struct Propagator {
     std::optional<AssertionConstraint> operator()(const Addable&, const LockAdd&) { return {}; }
     std::optional<AssertionConstraint> operator()(const Addable&, const Assume&) { return {}; }
 
+    std::optional<AssertionConstraint> operator()(const ValidAccess&, const Mov&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidAccess&, const Bin&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidAccess&, const Un&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidAccess&, const LoadMapFd&) { return {}; }
@@ -92,6 +93,7 @@ struct Propagator {
     std::optional<AssertionConstraint> operator()(const ValidAccess&, const LockAdd&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidAccess&, const Assume&) { return {}; }
 
+    std::optional<AssertionConstraint> operator()(const ValidStore&, const Mov&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidStore&, const Bin&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidStore&, const Un&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidStore&, const LoadMapFd&) { return {}; }
@@ -101,18 +103,17 @@ struct Propagator {
     std::optional<AssertionConstraint> operator()(const ValidStore&, const LockAdd&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidStore&, const Assume&) { return {}; }
 
-    std::optional<AssertionConstraint> operator()(const ValidSize& cst, const Bin& bin) {
+    std::optional<AssertionConstraint> operator()(const ValidSize& cst, const Mov& bin) {
         if (std::holds_alternative<Imm>(bin.v)) {
             assert(cst.reg == bin.dst);
-            if (bin.op == Bin::Op::MOV) {
-                if (std::get<Imm>(bin.v).v >= (cst.can_be_zero ? 0 : 1))
-                    return TRUE_CONSTRAINT;
-                else
-                    return FALSE_CONSTRAINT;
-            }
+            if (std::get<Imm>(bin.v).v >= (cst.can_be_zero ? 0 : 1))
+                return TRUE_CONSTRAINT;
+            else
+                return FALSE_CONSTRAINT;
         }
         return {};
     }
+    std::optional<AssertionConstraint> operator()(const ValidSize& cst, const Bin& bin) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidSize&, const Un&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidSize&, const LoadMapFd&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidSize&, const Call&) { return {}; }
@@ -121,6 +122,7 @@ struct Propagator {
     std::optional<AssertionConstraint> operator()(const ValidSize&, const LockAdd&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidSize&, const Assume&) { return {}; }
 
+    std::optional<AssertionConstraint> operator()(const ValidMapKeyValue&, const Mov&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidMapKeyValue&, const Bin&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidMapKeyValue&, const Un&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidMapKeyValue&, const LoadMapFd&) { return {}; }
@@ -130,23 +132,27 @@ struct Propagator {
     std::optional<AssertionConstraint> operator()(const ValidMapKeyValue&, const LockAdd&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidMapKeyValue&, const Assume&) { return {}; }
 
+    std::optional<AssertionConstraint> operator()(const TypeConstraint& cst, const Mov& bin) {
+        if (std::holds_alternative<Imm>(bin.v)) {
+            assert(cst.reg == bin.dst);
+            if (cst.types == TypeGroup::number) return TRUE_CONSTRAINT;
+            if (cst.types == TypeGroup::ptr_or_num) return TRUE_CONSTRAINT;
+            if (cst.types == TypeGroup::mem_or_num) return TRUE_CONSTRAINT;
+            if (cst.types == TypeGroup::non_map_fd) return TRUE_CONSTRAINT;
+            // not necessarily false, since checking against null is sometimes valid:
+            return {};
+        } else {
+            return cst;
+        }
+    }
+
     std::optional<AssertionConstraint> operator()(const TypeConstraint& cst, const Bin& bin) {
         if (std::holds_alternative<Imm>(bin.v)) {
             assert(cst.reg == bin.dst);
-            if (bin.op == Bin::Op::MOV) {
-                if (cst.types == TypeGroup::number) return TRUE_CONSTRAINT;
-                if (cst.types == TypeGroup::ptr_or_num) return TRUE_CONSTRAINT;
-                if (cst.types == TypeGroup::mem_or_num) return TRUE_CONSTRAINT;
-                if (cst.types == TypeGroup::non_map_fd) return TRUE_CONSTRAINT;
-                // not necessarily false, since checking against null is sometimes valid:
-                return {};
-            } else {
-                // "x op= NUM" never changes the type of x
-                return cst;
-            }
+            // "x op= NUM" never changes the type of x
+            return cst;
         } else {
             switch (bin.op) {
-            case Bin::Op::MOV:
             case Bin::Op::ADD:
             case Bin::Op::SUB:
                 return {};
@@ -165,11 +171,12 @@ struct Propagator {
     std::optional<AssertionConstraint> operator()(const TypeConstraint&, const LockAdd&) { return {}; }
     std::optional<AssertionConstraint> operator()(const TypeConstraint& cst, const Assume& ins) {
         if (std::holds_alternative<Imm>(ins.cond.right) && ins.cond.right != (Value)Imm{0}) {
-            return this->operator()(cst, Bin{Bin::Op::MOV, ins.cond.left, ins.cond.right});
+            return this->operator()(cst, Mov{ins.cond.left, ins.cond.right});
         }
         return {};
     }
 
+    std::optional<AssertionConstraint> operator()(const ZeroOffset&, const Mov&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ZeroOffset&, const Bin&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ZeroOffset&, const Un&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ZeroOffset&, const LoadMapFd&) { return {}; }
@@ -189,6 +196,9 @@ static std::set<Reg> reg_and_maybe(const Reg& r, const Value& maybe) {
 }
 
 struct DefFinder {
+    std::set<Reg> operator()(const Mov& ins) {
+        return {ins.dst};
+    }
     std::set<Reg> operator()(const Bin& ins) {
         if (ins.op == Bin::Op::DIV || ins.op == Bin::Op::MOD) {
             // the semantics of division by zero mean ins.src is also affected; it is assumed to not be zero
@@ -277,13 +287,11 @@ struct RegReplacer {
 };
 
 static std::optional<AssertionConstraint> try_propagate(AssertionConstraint cst, const Instruction& ins) {
-    if (const auto* pbin = std::get_if<Bin>(&ins)) {
-        if (pbin->op == Bin::Op::MOV) {
-            RegReplacer replacer{pbin->dst, pbin->v};
-            std::optional<AssertionConstraint> maybe_cst = std::visit(replacer, cst);
-            if (maybe_cst)
-                cst = *maybe_cst;
-        }
+    if (const auto* pbin = std::get_if<Mov>(&ins)) {
+        RegReplacer replacer{pbin->dst, pbin->v};
+        std::optional<AssertionConstraint> maybe_cst = std::visit(replacer, cst);
+        if (maybe_cst)
+            cst = *maybe_cst;
     }
     auto cst_uses = std::visit(UseFinder{}, cst);
     auto ins_defs = std::visit(DefFinder{}, ins);
@@ -313,8 +321,9 @@ void propagate_assertions_backwards(crab::basic_block_t& block) {
         for (const AssertionConstraint& cst : next_csts) {
             if (std::optional<AssertionConstraint> propagated_cst = try_propagate(cst, ins)) {
                 next_assertion.csts.erase(cst);
-                if (!is_trivial(*propagated_cst))
+                if (!is_trivial(*propagated_cst)) {
                     prev_assertion.insert(*propagated_cst);
+                }
             }
         }
 

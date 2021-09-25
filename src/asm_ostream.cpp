@@ -55,7 +55,6 @@ std::ostream& operator<<(std::ostream& os, ArgPair arg) {
 std::ostream& operator<<(std::ostream& os, Bin::Op op) {
     using Op = Bin::Op;
     switch (op) {
-    case Op::MOV: return os;
     case Op::ADD: return os << "+";
     case Op::SUB: return os << "-";
     case Op::MUL: return os << "*";
@@ -184,6 +183,14 @@ struct InstructionPrinterVisitor {
     void operator()(Undefined const& a) { os_ << "Undefined{" << a.opcode << "}"; }
 
     void operator()(LoadMapFd const& b) { os_ << b.dst << " = map_fd " << b.mapfd; }
+
+    void operator()(Mov const& b) {
+        os_ << b.dst << " " << "= " << b.v;
+        if (b.lddw)
+            os_ << " ll";
+        if (!b.is64)
+            os_ << " & 0xFFFFFFFF";
+    }
 
     void operator()(Bin const& b) {
         os_ << b.dst << " " << b.op << "= " << b.v;

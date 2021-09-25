@@ -180,9 +180,9 @@ static std::string instype(Instruction ins) {
         return "load_store";
     } else if (std::holds_alternative<Packet>(ins)) {
         return "packet_access";
+    } else if (std::holds_alternative<Mov>(ins)) {
+        return "assign";
     } else if (std::holds_alternative<Bin>(ins)) {
-        if (std::get<Bin>(ins).op == Bin::Op::MOV)
-            return "assign";
         return "arith";
     } else if (std::holds_alternative<Un>(ins)) {
         return "arith";
@@ -236,6 +236,17 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
     }
     return res;
 }
+static int count_assertions(const cfg_t& cfg) {
+    int total_assertions = 0;
+    for (auto& [label, bb] : cfg) {
+        for (const auto& ins : bb) {
+            if (std::holds_alternative<Assert>(ins)) {
+                total_assertions += std::get<Assert>(ins).csts.size();
+            }
+        }
+    }
+    return total_assertions;
+}
 
 cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool simplify, bool must_have_exit) {
     // Convert the instruction sequence to a deterministic control-flow graph.
@@ -245,6 +256,7 @@ cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool sim
     for (auto& [label, bb] : det_cfg) {
         explicate_assertions(bb, info);
     }
+    int total_assertions = count_assertions(det_cfg);
 
     // Translate conditional jumps to non-deterministic jumps.
     cfg_t cfg = to_nondet(det_cfg);
@@ -262,6 +274,7 @@ cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool sim
     for (auto& [label, bb] : cfg) {
         propagate_assertions_backwards(bb);
     }
-
+    std::cout << "Total assertions: " << total_assertions << "\n";
+    std::cout << "Resolved: " << count_assertions(cfg) << "\n";
     return cfg;
 }

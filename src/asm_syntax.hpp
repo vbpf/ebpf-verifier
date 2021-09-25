@@ -71,10 +71,17 @@ struct Reg {
 
 using Value = std::variant<Imm, Reg>;
 
+struct Mov {
+    Reg dst;      ///< Destination.
+    Value v;
+    bool is64{};
+    bool lddw{};
+    auto operator<=>(const Mov&) const = default;
+};
+
 /// Binary operation.
 struct Bin {
     enum class Op {
-        MOV,
         ADD,
         SUB,
         MUL,
@@ -322,7 +329,7 @@ struct Assert {
     }
 };
 
-using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Exit, Jmp, Mem, Packet, LockAdd, Assume, Assert>;
+using Instruction = std::variant<Undefined, Mov, Bin, Un, LoadMapFd, Call, Exit, Jmp, Mem, Packet, LockAdd, Assume, Assert>;
 
 using LabeledInstruction = std::tuple<label_t, Instruction>;
 using InstructionSeq = std::vector<LabeledInstruction>;

@@ -35,7 +35,7 @@ using std::regex_match;
 #define WRAPPED_LABEL "\\s*" LABEL "\\s*"
 
 static const std::map<std::string, Bin::Op> str_to_binop = {
-    {"", Bin::Op::MOV},   {"+", Bin::Op::ADD},  {"-", Bin::Op::SUB},    {"*", Bin::Op::MUL},
+    {"+", Bin::Op::ADD},  {"-", Bin::Op::SUB},    {"*", Bin::Op::MUL},
     {"/", Bin::Op::DIV},  {"%", Bin::Op::MOD},  {"|", Bin::Op::OR},     {"&", Bin::Op::AND},
     {"<<", Bin::Op::LSH}, {">>", Bin::Op::RSH}, {">>>", Bin::Op::ARSH}, {"^", Bin::Op::XOR},
 };
@@ -101,12 +101,18 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         int func = boost::lexical_cast<int>(m[1]);
         return Call{.func = func};
     }
+    if (regex_match(text, m, regex(REG ASSIGN REG))) {
+        return Mov{.dst = reg(m[1]), .v = reg(m[2]), .is64 = true, .lddw = false};
+    }
     if (regex_match(text, m, regex(REG OPASSIGN REG))) {
         return Bin{.op = str_to_binop.at(m[2]), .dst = reg(m[1]), .v = reg(m[3]), .is64 = true, .lddw = false};
     }
     if (regex_match(text, m, regex(REG ASSIGN UNOP REG))) {
         if (m[1] != m[3]) throw std::invalid_argument(std::string("Invalid unary operation: ") + text);
         return Un{.op = str_to_unop.at(m[2]), .dst = reg(m[1])};
+    }
+    if (regex_match(text, m, regex(REG ASSIGN IMM LONGLONG))) {
+        return Mov{.dst = reg(m[1]), .v = imm(m[2]), .is64 = true, .lddw = !m[3].str().empty()};
     }
     if (regex_match(text, m, regex(REG OPASSIGN IMM LONGLONG))) {
         return Bin{
