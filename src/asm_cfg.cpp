@@ -236,6 +236,7 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
     }
     return res;
 }
+
 static int count_assertions(const cfg_t& cfg) {
     int total_assertions = 0;
     for (auto& [label, bb] : cfg) {
@@ -274,7 +275,7 @@ cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool sim
     for (auto& [label, bb] : cfg) {
         propagate_assertions_backwards(bb);
     }
-    std::cout << "Total assertions: " << total_assertions << "\n";
-    std::cout << "Resolved: " << count_assertions(cfg) << "\n";
+//    std::cout << "Total assertions: " << total_assertions << "\n";
+//    std::cout << "Resolved: " << count_assertions(cfg) << "\n";
     return cfg;
 }

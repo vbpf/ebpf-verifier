@@ -29,6 +29,9 @@ static bool is_trivial(const AssertionConstraint& cst) {
         }
     } else if (const auto* pcst = std::get_if<SameType>(&cst)) {
         return pcst->r1 == pcst->r2;
+    } else if (const auto* pcst = std::get_if<ValidAccess>(&cst)) {
+        return pcst->reg == Reg{10} && pcst->offset > -EBPF_STACK_SIZE
+               && std::holds_alternative<Imm>(pcst->width) && pcst->offset + (long)std::get<Imm>(pcst->width).v <= 0;
     }
     return false;
 }
@@ -89,8 +92,31 @@ struct Propagator {
     std::optional<AssertionConstraint> operator()(const Addable&, const LockAdd&) { return {}; }
     std::optional<AssertionConstraint> operator()(const Addable&, const Assume&) { return {}; }
 
-    std::optional<AssertionConstraint> operator()(const ValidAccess&, const Mov&) { return {}; }
-    std::optional<AssertionConstraint> operator()(const ValidAccess&, const Bin&) { return {}; }
+    std::optional<AssertionConstraint> operator()(const ValidAccess& cst, const Mov& mov) {
+        if (cst.reg != mov.dst)
+            return {};
+        if (std::holds_alternative<Imm>(mov.v)) {
+            if (cst.width == (Value)Imm{0}) {
+                return TRUE_CONSTRAINT;
+            }
+        }
+        return {};
+    }
+    std::optional<AssertionConstraint> operator()(ValidAccess cst, const Bin& bin) {
+        if (cst.reg != bin.dst)
+            return {};
+        if (std::holds_alternative<Imm>(bin.v)) {
+            auto offset = (int64_t)std::get<Imm>(bin.v).v;
+            if (bin.op == Bin::Op::ADD) {
+                cst.offset += offset;
+                return cst;
+            } else if (bin.op == Bin::Op::SUB) {
+                cst.offset -= offset;
+                return cst;
+            }
+        }
+        return {};
+    }
     std::optional<AssertionConstraint> operator()(const ValidAccess&, const Un&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidAccess&, const LoadMapFd&) { return {}; }
     std::optional<AssertionConstraint> operator()(const ValidAccess&, const Call&) { return {}; }
@@ -171,7 +197,18 @@ struct Propagator {
 
     std::optional<AssertionConstraint> operator()(const TypeConstraint&, const Un&) { return {}; }
     std::optional<AssertionConstraint> operator()(const TypeConstraint&, const LoadMapFd&) { return {}; }
-    std::optional<AssertionConstraint> operator()(const TypeConstraint&, const Call&) { return {}; }
+    std::optional<AssertionConstraint> operator()(const TypeConstraint& cst, const Call& call) {
+        if (cst.reg != Reg{0}) return {};
+        if (call.is_map_lookup) {
+            // Elaborated querying is needed to make sure this looks up the right map
+            return {};
+        } else {
+            if (cst.types == TypeGroup::number || cst.types == TypeGroup::ptr_or_num || cst.types == TypeGroup::mem_or_num) {
+                return TRUE_CONSTRAINT;
+            }
+        }
+        return {};
+    }
     std::optional<AssertionConstraint> operator()(const TypeConstraint&, const Mem&) { return {}; }
     std::optional<AssertionConstraint> operator()(const TypeConstraint&, const Packet&) { return {}; }
     std::optional<AssertionConstraint> operator()(const TypeConstraint&, const LockAdd&) { return {}; }
