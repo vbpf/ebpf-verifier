@@ -129,8 +129,6 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assert> operator()(Assume ins) const { return explicate(ins.cond); }
-
     vector<Assert> operator()(Jmp ins) const {
         if (!ins.cond)
             return {};

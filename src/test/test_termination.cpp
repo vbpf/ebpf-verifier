@@ -45,7 +45,7 @@ TEST_CASE("Trivial finite loop", "[loop][termination]") {
 
     Reg r{0};
     start.insert(Bin{.op = Bin::Op::MOV, .dst = r, .v = Imm{0}, .is64 = true});
-    middle.insert(Assume{{.op=Condition::Op::GT, .left=r, .right=Imm{10}}});
+    middle.set_assume({.op=Condition::Op::GT, .left=r, .right=Imm{10}});
     middle.insert(Bin{.op = Bin::Op::ADD, .dst = r, .v = Imm{1}, .is64 = true});
 
     entry >> start;
@@ -63,7 +63,7 @@ TEST_CASE("Trivial finite loop", "[loop][termination]") {
     ebpf_verifier_stats_t stats;
     bool pass = run_ebpf_analysis(std::cout, cfg, info, &options, &stats);
     REQUIRE(pass);
-    REQUIRE(stats.max_instruction_count == 3);
+    REQUIRE(stats.max_instruction_count == 2);
     REQUIRE(stats.total_unreachable == 1);
     REQUIRE(stats.total_warnings == 0);
 }

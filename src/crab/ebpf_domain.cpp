@@ -397,9 +397,8 @@ NumAbsDomain ebpf_domain_t::check_access_context(NumAbsDomain inv, const linear_
     return inv;
 }
 
-void ebpf_domain_t::operator()(const Assume& s) {
+void ebpf_domain_t::operator()(const Condition& cond) {
     using namespace crab::dsl_syntax;
-    Condition cond = s.cond;
     auto dst = reg_pack(cond.left);
     if (std::holds_alternative<Reg>(cond.right)) {
         auto src = reg_pack(std::get<Reg>(cond.right));

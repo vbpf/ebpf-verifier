@@ -113,7 +113,7 @@ static vector<label_t> unique(const std::pair<T, T>& be) {
 
 /// Get a non-deterministic version of a control-flow graph,
 /// i.e., where instead of using if/else, both branches are taken
-/// simultaneously, and are replaced by Assume instructions
+/// simultaneously, and are replaced by Condition
 /// immediately after the branch.
 static cfg_t to_nondet(const cfg_t& cfg) {
     cfg_t res;
@@ -147,7 +147,7 @@ static cfg_t to_nondet(const cfg_t& cfg) {
             for (auto const& [next_label, cond1] : jumps) {
                 label_t jump_label = label_t::make_jump(mid_label, next_label);
                 basic_block_t& jump_bb = res.insert(jump_label);
-                jump_bb.insert<Assume>(cond1);
+                jump_bb.set_assume(cond1);
                 newbb >> jump_bb;
                 jump_bb >> res.insert(next_label);
             }
@@ -188,8 +188,6 @@ static std::string instype(Instruction ins) {
         return "arith";
     } else if (std::holds_alternative<LoadMapFd>(ins)) {
         return "assign";
-    } else if (std::holds_alternative<Assume>(ins)) {
-        return "assume";
     } else {
         return "other";
     }

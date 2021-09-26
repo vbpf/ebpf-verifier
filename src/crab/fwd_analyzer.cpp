@@ -100,6 +100,14 @@ class interleaved_fwd_fixpoint_iterator_t final {
         }
         return res;
     }
+    ebpf_domain_t join_all_prevs_then_assume(const label_t& node) {
+        ebpf_domain_t res = join_all_prevs(node);
+        const basic_block_t& bb = _cfg.get_node(node);
+        if (auto condition = bb.get_assume()) {
+            res(*condition);
+        }
+        return res;
+    }
 
   public:
     explicit interleaved_fwd_fixpoint_iterator_t(cfg_t& cfg, unsigned int descending_iterations, bool check_termination)
@@ -141,7 +149,7 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(const label_t& node) {
         return;
     }
 
-    ebpf_domain_t pre = node == _cfg.entry_label() ? get_pre(node) : join_all_prevs(node);
+    ebpf_domain_t pre = node == _cfg.entry_label() ? get_pre(node) : join_all_prevs_then_assume(node);
 
     set_pre(node, pre);
     transform_to_post(node, pre);
@@ -183,7 +191,7 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(std::shared_ptr<wto_cycle_t
         for (auto& component : *cycle) {
             std::visit(*this, *component);
         }
-        ebpf_domain_t new_pre = join_all_prevs(head);
+        ebpf_domain_t new_pre = join_all_prevs_then_assume(head);
         if (new_pre <= pre) {
             // Post-fixpoint reached
             set_pre(head, new_pre);
@@ -206,7 +214,7 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(std::shared_ptr<wto_cycle_t
         for (auto& component : *cycle) {
             std::visit(*this, *component);
         }
-        ebpf_domain_t new_pre = join_all_prevs(head);
+        ebpf_domain_t new_pre = join_all_prevs_then_assume(head);
         if (pre <= new_pre) {
             // No more refinement possible(pre == new_pre)
             break;

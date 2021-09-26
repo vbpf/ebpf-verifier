@@ -57,11 +57,19 @@ class basic_block_t final {
     label_t m_label;
     stmt_list_t m_ts;
     label_vec_t m_prev, m_next;
+    std::optional<Condition> assume;
 
   public:
     template <typename T, typename... Args>
     void insert(Args&&... args) {
         m_ts.emplace_back(T{std::forward<Args>(args)...});
+    }
+
+    void set_assume(const Condition& condition) {
+        assume = condition;
+    }
+    const std::optional<Condition>& get_assume() const {
+        return assume;
     }
 
     void insert(const Instruction& arg) {
@@ -155,6 +163,10 @@ class basic_block_rev_t final {
     basic_block_t& _bb;
 
     explicit basic_block_rev_t(basic_block_t& bb) : _bb(bb) {}
+
+    const std::optional<Condition>& get_assume() const {
+        return _bb.get_assume();
+    }
 
     [[nodiscard]] label_t label() const { return _bb.label(); }
 

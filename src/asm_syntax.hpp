@@ -113,6 +113,10 @@ struct LoadMapFd {
     int mapfd{};
 };
 
+
+/// When a CFG is translated to its nondeterministic form, Conditional Jump
+/// instructions are replaced by two conditions, immediately after
+/// the branch and before each jump target.
 struct Condition {
     enum class Op {
         EQ,
@@ -208,13 +212,6 @@ struct Undefined {
     int opcode{};
 };
 
-/// When a CFG is translated to its nondeterministic form, Conditional Jump
-/// instructions are replaced by two Assume instructions, immediately after
-/// the branch and before each jump target.
-struct Assume {
-    Condition cond;
-};
-
 enum class TypeGroup {
     number,
     map_fd,
@@ -300,7 +297,7 @@ struct Assert {
 #define DECLARE_EQ1(T, f1) \
     inline bool operator==(T const& a, T const& b) { return a.f1 == b.f1; }
 
-using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Exit, Jmp, Mem, Packet, LockAdd, Assume, Assert>;
+using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Exit, Jmp, Mem, Packet, LockAdd, Assert>;
 
 using LabeledInstruction = std::tuple<label_t, Instruction>;
 using InstructionSeq = std::vector<LabeledInstruction>;
@@ -317,7 +314,6 @@ struct InstructionVisitorPrototype {
     void operator()(Call const& a);
     void operator()(Exit const& a);
     void operator()(Jmp const& a);
-    void operator()(Assume const& a);
     void operator()(Assert const& a);
     void operator()(Packet const& a);
     void operator()(Mem const& a);
@@ -348,7 +344,6 @@ inline bool operator==(Mem const& a, Mem const& b) {
     return a.access == b.access && a.value == b.value && a.is_load == b.is_load;
 }
 inline bool operator==(LockAdd const& a, LockAdd const& b) { return a.access == b.access && a.valreg == b.valreg; }
-inline bool operator==(Assume const& a, Assume const& b) { return a.cond == b.cond; }
 bool operator==(Assert const& a, Assert const& b);
 
 DECLARE_EQ2(TypeConstraint, reg, types)

@@ -70,6 +70,7 @@ static checks_db generate_report(cfg_t& cfg,
             m_db.max_instruction_count = std::max(m_db.max_instruction_count, instruction_count_upper_bound);
         }
 
+        // This does not work now; after assumption, invariant is never bottom
         bool pre_bot = from_inv.is_bottom();
 
         from_inv(bb, thread_local_options.check_termination);
@@ -124,9 +125,14 @@ checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info, const 
         checks_db db = generate_report(cfg, pre_invariants, post_invariants);
         if (thread_local_options.print_invariants) {
             for (const label_t& label : cfg.sorted_labels()) {
-                s << "\nPre-invariant : " << pre_invariants.at(label) << "\n";
-                s << cfg.get_node(label);
-                s << "\nPost-invariant: " << post_invariants.at(label) << "\n";
+                const basic_block_t& bb = cfg.get_node(label);
+                s << "\n";
+                if (auto condition = bb.get_assume())
+                    s << "Assuming      : [" <<  *condition << "]\n";
+                s << "Pre-invariant : " << pre_invariants.at(label) << "\n";
+                s << "|\n";
+                s << bb << "|\n";
+                s << "Post-invariant: " << post_invariants.at(label) << "\n";
             }
         }
         return db;

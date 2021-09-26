@@ -54,7 +54,7 @@ class ebpf_domain_t final {
 
     void operator()(const Addable&);
     void operator()(const Assert&);
-    void operator()(const Assume&);
+    void operator()(const Condition&);
     void operator()(const Bin&);
     void operator()(const Call&);
     void operator()(const Comparable&);

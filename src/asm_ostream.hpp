@@ -24,6 +24,7 @@ std::string to_string(Instruction const& ins);
 
 std::ostream& operator<<(std::ostream& os, Bin::Op op);
 std::ostream& operator<<(std::ostream& os, Condition::Op op);
+std::ostream& operator<<(std::ostream& os, Condition const& cond);
 
 inline std::ostream& operator<<(std::ostream& os, Imm imm) { return os << (int32_t)imm.v; }
 inline std::ostream& operator<<(std::ostream& os, Reg const& a) { return os << "r" << (int)a.v; }
@@ -43,7 +44,6 @@ inline std::ostream& operator<<(std::ostream& os, Jmp const& a) { return os << (
 inline std::ostream& operator<<(std::ostream& os, Packet const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, Mem const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, LockAdd const& a) { return os << (Instruction)a; }
-inline std::ostream& operator<<(std::ostream& os, Assume const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, Assert const& a) { return os << (Instruction)a; }
 std::ostream& operator<<(std::ostream& os, AssertionConstraint const& a);
 std::string to_string(AssertionConstraint const& constraint);

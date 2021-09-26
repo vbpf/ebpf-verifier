@@ -92,6 +92,10 @@ std::ostream& operator<<(std::ostream& os, Condition::Op op) {
     return os;
 }
 
+std::ostream& operator<<(std::ostream& os, Condition const& cond) {
+    return os << cond.left << " " << cond.op << " " << cond.right;
+}
+
 static string size(int w) { return string("u") + std::to_string(w * 8); }
 
 static std::string to_string(TypeGroup ts) {
@@ -240,9 +244,7 @@ struct InstructionPrinterVisitor {
         // A "standalone" jump instruction.
         // Print the label without offset calculations.
         if (b.cond) {
-            os_ << "if ";
-            print(*b.cond);
-            os_ << " ";
+            os_ << "if " << *b.cond << " ";
         }
         os_ << "goto label <" << to_string(b.target) << ">";
     }
@@ -252,9 +254,7 @@ struct InstructionPrinterVisitor {
         string target = sign + std::to_string(offset) + " <" + to_string(b.target) + ">";
 
         if (b.cond) {
-            os_ << "if ";
-            print(*b.cond);
-            os_ << " ";
+            os_ << "if " << *b.cond << " ";
         }
         os_ << "goto " << target;
     }
@@ -282,8 +282,6 @@ struct InstructionPrinterVisitor {
         os_ << "(" << access.basereg << sign << offset << ")";
     }
 
-    void print(Condition const& cond) { os_ << cond.left << " " << cond.op << " " << cond.right; }
-
     void operator()(Mem const& b) {
         if (b.is_load) {
             os_ << b.value << " = ";
@@ -298,11 +296,6 @@ struct InstructionPrinterVisitor {
         os_ << "lock ";
         print(b.access);
         os_ << " += " << b.valreg;
-    }
-
-    void operator()(Assume const& b) {
-        os_ << "assume ";
-        print(b.cond);
     }
 
     void operator()(Assert const& a) {
@@ -432,6 +425,8 @@ void print_dot(const cfg_t& cfg, const std::string& outfile) {
 
 std::ostream& operator<<(std::ostream& o, const basic_block_t& bb) {
     o << bb.label() << ":\n";
+
+    // if (auto condition = bb.get_assume()) { o << "assume " << *condition << "\n"; }
     for (auto const& s : bb) {
         o << "  " << s << ";\n";
     }
