@@ -313,6 +313,11 @@ class SplitDBM final {
             return *this;
         return static_cast<SplitDBM&>(*this) | o;
     }
+    SplitDBM operator|(SplitDBM&& o) && {
+        if (o.is_bottom())
+            return *this;
+        return static_cast<SplitDBM&>(*this) | o;
+    }
 
     SplitDBM widen(SplitDBM o);
 

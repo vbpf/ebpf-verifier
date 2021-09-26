@@ -360,7 +360,7 @@ int ebpf_domain_t::get_instruction_count_upper_bound() {
     return (ub.is_finite() && ub.number().value().fits_sint()) ? (int)ub.number().value() : INT_MAX;
 }
 
-NumAbsDomain ebpf_domain_t::check_access_packet(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
+void ebpf_domain_t::check_access_packet(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
                                                 bool is_comparison_check) {
     using namespace crab::dsl_syntax;
     require(inv, lb >= variable_t::meta_offset(), std::string("Lower bound must be at least meta_offset") + s);
@@ -370,31 +370,27 @@ NumAbsDomain ebpf_domain_t::check_access_packet(NumAbsDomain inv, const linear_e
     else
         require(inv, ub <= variable_t::packet_size(),
                 std::string("Upper bound must be at most packet_size") + s);
-    return inv;
 }
 
-NumAbsDomain ebpf_domain_t::check_access_stack(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s) {
+void ebpf_domain_t::check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s) {
     using namespace crab::dsl_syntax;
     require(inv, lb >= 0, std::string("Lower bound must be at least 0") + s);
     require(inv, ub <= EBPF_STACK_SIZE, std::string("Upper bound must be at most EBPF_STACK_SIZE") + s + std::string(", make sure to bounds check any pointer access"));
-    return inv;
 }
 
-NumAbsDomain ebpf_domain_t::check_access_shared(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
+void ebpf_domain_t::check_access_shared(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
                                         variable_t reg_type) {
     using namespace crab::dsl_syntax;
     require(inv, lb >= 0, std::string("Lower bound must be at least 0") + s);
     require(inv, ub <= reg_type, std::string("Upper bound must be at most ") + reg_type.name() + s);
-    return inv;
 }
 
-NumAbsDomain ebpf_domain_t::check_access_context(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s) {
+void ebpf_domain_t::check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s) {
     using namespace crab::dsl_syntax;
     require(inv, lb >= 0, std::string("Lower bound must be at least 0") + s);
     require(inv, ub <= global_program_info.type.context_descriptor->size,
             std::string("Upper bound must be at most ") + std::to_string(global_program_info.type.context_descriptor->size) +
                 s);
-    return inv;
 }
 
 void ebpf_domain_t::operator()(const Assume& s) {
@@ -549,9 +545,11 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
             }
         }
     }
-
-    m_inv = check_access_packet(when(access_reg.type == T_PACKET), lb, ub, m, false) |
-            check_access_stack(when(access_reg.type == T_STACK), lb, ub, m);
+    auto t_packet = when(access_reg.type == T_PACKET);
+    check_access_packet(t_packet, lb, ub, m, false);
+    m_inv += access_reg.type == T_STACK;
+    check_access_stack(m_inv, lb, ub, m);
+    m_inv |= std::move(t_packet);
 }
 
 void ebpf_domain_t::operator()(const ValidAccess& s) {
@@ -565,12 +563,46 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
         ? lb + std::get<Imm>(s.width).v
         : lb + reg_pack(std::get<Reg>(s.width)).value;
     std::string m = std::string(" (") + to_string(s) + ")";
-
-    NumAbsDomain assume_ptr =
-        check_access_packet(when(reg.type == T_PACKET), lb, ub, m, is_comparison_check) |
-        check_access_stack(when(reg.type == T_STACK), lb, ub, m) |
-        check_access_shared(when(is_shared(reg.type)), lb, ub, m, reg.type) |
-        check_access_context(when(reg.type == T_CTX), lb, ub, m);
+    if (auto type_singleton = m_inv.eval_interval(reg.type).singleton()) {
+        switch (static_cast<int>(*type_singleton)) {
+        case T_PACKET:
+            check_access_packet(m_inv, lb, ub, m, is_comparison_check);
+            // if within bounds, it can never be null
+            return;
+        case T_STACK:
+            check_access_stack(m_inv, lb, ub, m);
+            // if within bounds, it can never be null
+            return;
+        case T_CTX:
+            check_access_context(m_inv, lb, ub, m);
+            // if within bounds, it can never be null
+            return;
+        case T_NUM:
+            if (is_comparison_check)
+                return;
+            if (s.or_null) {
+                require(m_inv, reg.value == 0, "Non-null number");
+                return;
+            } else {
+                require(m_inv, linear_constraint_t::FALSE(), "Only pointers can be dereferenced");
+                return;
+            }
+        default:
+            if (*type_singleton > T_SHARED) {
+                check_access_shared(m_inv, lb, ub, m, reg.type);
+                if (!is_comparison_check && !s.or_null) require(m_inv, reg.value > 0, "Possible null access");
+                return;
+            } else {
+                require(m_inv, linear_constraint_t::FALSE(), "Invalid type");
+                return;
+            }
+        }
+    }
+    auto t_packet = when(reg.type == T_PACKET); check_access_packet(t_packet, lb, ub, m, is_comparison_check);
+    auto t_stack = when(reg.type == T_STACK); check_access_stack(t_stack, lb, ub, m);
+    auto t_shared = when(is_shared(reg.type)); check_access_shared(t_shared, lb, ub, m, reg.type);
+    auto t_context = when(reg.type == T_CTX); check_access_context(t_context, lb, ub, m);
+    NumAbsDomain assume_ptr = std::move(t_packet) | std::move(t_stack) | std::move(t_shared) | std::move(t_context);
     if (is_comparison_check) {
         assume(reg.type <= T_NUM);
         m_inv |= std::move(assume_ptr);
@@ -579,7 +611,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
         if (s.or_null) {
             require(m_inv, reg.type >= T_NUM, "Must be a pointer or null");
             assume(reg.type == T_NUM);
-            require(m_inv, reg.value == 0, "Pointers may be compared only to the number 0");
+            require(m_inv, reg.value == 0, "Non-null pointer");
             m_inv |= std::move(assume_ptr);
             return;
         } else {
