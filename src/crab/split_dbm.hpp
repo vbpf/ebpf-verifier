@@ -437,7 +437,25 @@ class SplitDBM final {
             return true;
         if (rhs.is_contradiction())
             return false;
-
+        interval_t interval = eval_interval(rhs.expression());
+        switch (rhs.kind()) {
+        case constraint_kind_t::EQUALS_ZERO:
+            if (interval.singleton() == std::optional<number_t>(number_t(0)))
+                return true;
+            break;
+        case constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO:
+            if (interval.ub() <= number_t(0))
+                return true;
+            break;
+        case constraint_kind_t::LESS_THAN_ZERO:
+            if (interval.ub() < number_t(0))
+                return true;
+            break;
+        case constraint_kind_t::NOT_ZERO:
+            if (interval.ub() < number_t(0) || interval.lb() > number_t(0))
+                return true;
+            break;
+        }
         if (rhs.kind() == constraint_kind_t::EQUALS_ZERO) {
             // try to convert the equality into inequalities so when it's
             // negated we do not have disequalities.
