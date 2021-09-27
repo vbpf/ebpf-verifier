@@ -33,8 +33,8 @@ void variable_t::clear_thread_local_state() {
         "r8.value",  "r8.offset",  "r8.type",
         "r9.value",  "r9.offset",  "r9.type",
         "r10.value", "r10.offset", "r10.type",
-        "data_size", "meta_size",  "map_value_size",
-        "map_key_size"};
+        "data_size", "meta_size",
+    };
 }
 
 static std::string name_of(data_kind_t kind) {
@@ -67,8 +67,6 @@ variable_t variable_t::cell_var(data_kind_t array, index_t offset, unsigned size
     return make(mk_scalar_name(array, - (512 - (int)offset), (int)size));
 }
 
-variable_t variable_t::map_value_size() { return make("map_value_size"); }
-variable_t variable_t::map_key_size() { return make("map_key_size"); }
 variable_t variable_t::meta_offset() { return make("meta_offset"); }
 variable_t variable_t::packet_size() { return make("packet_size"); }
 variable_t variable_t::instruction_count() { return make("instruction_count"); }

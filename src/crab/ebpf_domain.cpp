@@ -490,40 +490,31 @@ void ebpf_domain_t::operator()(const ValidSize& s) {
     require(m_inv, s.can_be_zero ? r.value >= 0 : r.value > 0, to_string(s));
 }
 
+std::optional<EbpfMapDescriptor> ebpf_domain_t::get_map_descriptor(const Reg& map_fd_reg) {
+    // Get the actual map_fd value to look up the key size and value size.
+    if (auto fd_opt = m_inv[reg_pack(map_fd_reg).offset].singleton()) {
+        return global_program_info.platform->get_map_descriptor((int)*fd_opt);
+    } else {
+        return {};
+    }
+}
+
 void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
     using namespace crab::dsl_syntax;
 
-    // Get the actual map_fd value to look up the key size and value size.
-    auto fd_reg = reg_pack(s.map_fd_reg);
-    crab::interval_t fd_interval = m_inv[fd_reg.offset];
-    std::optional<EbpfMapType> map_type;
-    uint32_t max_entries = 0;
-    if (fd_interval.is_bottom()) {
-        m_inv.set(variable_t::map_value_size(), crab::interval_t::bottom());
-        m_inv.set(variable_t::map_key_size(), crab::interval_t::bottom());
-    } else {
-        std::optional<number_t> fd_opt = fd_interval.singleton();
-        if (fd_opt.has_value()) {
-            number_t map_fd = *fd_opt;
-            EbpfMapDescriptor& map_descriptor = global_program_info.platform->get_map_descriptor((int)map_fd);
-            m_inv.assign(variable_t::map_value_size(), (int)map_descriptor.value_size);
-            m_inv.assign(variable_t::map_key_size(), (int)map_descriptor.key_size);
-            map_type = global_program_info.platform->get_map_type(map_descriptor.type);
-            max_entries = map_descriptor.max_entries;
-        } else {
-            m_inv.set(variable_t::map_value_size(), crab::interval_t::top());
-            m_inv.set(variable_t::map_key_size(), crab::interval_t::top());
-        }
+    auto maybe_map_descriptor = get_map_descriptor(s.map_fd_reg);
+    if (!maybe_map_descriptor) {
+        require(m_inv, linear_constraint_t::FALSE(), "Map fd is not singleton");
+        return;
     }
-
     auto access_reg = reg_pack(s.access_reg);
-
-    variable_t lb = access_reg.offset;
-    variable_t width = s.key ? variable_t::map_key_size() : variable_t::map_value_size();
-    linear_expression_t ub = lb + width;
     std::string m = std::string(" (") + to_string(s) + ")";
     require(m_inv, access_reg.type >= T_STACK, "Only stack or packet can be used as a parameter" + m);
     require(m_inv, access_reg.type <= T_PACKET, "Only stack or packet can be used as a parameter" + m);
+
+    variable_t lb = access_reg.offset;
+    int width = s.key ? (int)maybe_map_descriptor->key_size : (int)maybe_map_descriptor->value_size;
+    linear_expression_t ub = lb + width;
 
     auto when_stack = when(access_reg.type == T_STACK);
     if (!when_stack.is_bottom()) {
@@ -533,25 +524,28 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
             auto ub_is = when_stack.eval_interval(ub).ub().number();
             std::string ub_s = ub_is && ub_is->fits_sint() ? std::to_string((int)*ub_is) : "oo";
             require(when_stack, access_reg.type != T_STACK, "Illegal map update with a non-numerical value [" + lb_s + "-" + ub_s + ")");
-        } else if (thread_local_options.strict && map_type.has_value() && map_type->is_array) {
-            // Get offset value.
-            variable_t key_ptr = access_reg.offset;
-            std::optional<number_t> offset = m_inv[key_ptr].singleton();
-            if (!offset.has_value()) {
-                require(m_inv, linear_constraint_t::FALSE(), "Pointer must be a singleton");
-            } else if (s.key) {
-                // Look up the value pointed to by the key pointer.
-                variable_t key_value =
-                    variable_t::cell_var(data_kind_t::values, (uint64_t)offset.value(), sizeof(uint32_t));
+        } else if (thread_local_options.strict && maybe_map_descriptor.has_value()) {
+            EbpfMapType map_type = global_program_info.platform->get_map_type(maybe_map_descriptor->type);
+            if (map_type.is_array) {
+                // Get offset value.
+                variable_t key_ptr = access_reg.offset;
+                std::optional<number_t> offset = m_inv[key_ptr].singleton();
+                if (!offset.has_value()) {
+                    require(m_inv, linear_constraint_t::FALSE(), "Pointer must be a singleton");
+                } else if (s.key) {
+                    // Look up the value pointed to by the key pointer.
+                    variable_t key_value =
+                        variable_t::cell_var(data_kind_t::values, (uint64_t)offset.value(), sizeof(uint32_t));
 
-                require(m_inv, key_value < max_entries, "Array index overflow");
-                require(m_inv, key_value >= 0, "Array index underflow");
+                    require(m_inv, key_value < maybe_map_descriptor->max_entries, "Array index overflow");
+                    require(m_inv, key_value >= 0, "Array index underflow");
+                }
             }
         }
     }
 
     m_inv = check_access_packet(when(access_reg.type == T_PACKET), lb, ub, m, false) |
-            check_access_stack(when(access_reg.type == T_STACK), lb, ub, m);
+            check_access_stack(std::move(when_stack), lb, ub, m);
 }
 
 void ebpf_domain_t::operator()(const ValidAccess& s) {
@@ -637,10 +631,6 @@ void ebpf_domain_t::operator()(const ZeroOffset& s) {
 }
 
 void ebpf_domain_t::operator()(const Assert& stmt) {
-    if (!check_require && !thread_local_options.assume_assertions) {
-        // nothing to do here
-        return;
-    }
     std::visit(*this, stmt.cst);
 };
 
@@ -855,11 +845,11 @@ void ebpf_domain_t::operator()(const Call& call) {
     using namespace crab::dsl_syntax;
     if (m_inv.is_bottom())
         return;
-    std::optional<Reg> fd_index{};
+    std::optional<Reg> maybe_fd_reg{};
     for (ArgSingle param : call.singles) {
         switch (param.kind) {
         case ArgSingle::Kind::MAP_FD:
-            fd_index = param.reg;
+            maybe_fd_reg = param.reg;
             break;
         case ArgSingle::Kind::ANYTHING:
         case ArgSingle::Kind::MAP_FD_PROGRAMS:
@@ -900,20 +890,21 @@ void ebpf_domain_t::operator()(const Call& call) {
     auto r0 = reg_pack(R0_RETURN_VALUE);
     if (call.is_map_lookup) {
         // This is the only way to get a null pointer
-        if (fd_index) {
-            if (std::optional<number_t> fd_opt = m_inv[reg_pack(*fd_index).offset].singleton()) {
-                if (fd_opt->fits_sint()) {
-                    const EbpfMapDescriptor& desc = global_program_info.platform->get_map_descriptor((int)*fd_opt);
-                    if (global_program_info.platform->get_map_type(desc.type).value_type == EbpfMapValueType::MAP) {
-                        do_load_mapfd(r0, (int)desc.inner_map_fd, true);
-                        goto out;
-                    }
+        if (maybe_fd_reg) {
+            if (auto maybe_map_descriptor = get_map_descriptor(*maybe_fd_reg)) {
+                if (global_program_info.platform->get_map_type(maybe_map_descriptor->type).value_type == EbpfMapValueType::MAP) {
+                    do_load_mapfd(r0, (int)maybe_map_descriptor->inner_map_fd, true);
+                } else {
+                    assign_valid_ptr(r0, true);
+                    assign(r0.offset, 0);
+                    assign(r0.type, maybe_map_descriptor->value_size);
                 }
+                goto out;
             }
         }
         assign_valid_ptr(r0, true);
         assign(r0.offset, 0);
-        assign(r0.type, variable_t::map_value_size());
+        assign(r0.type, T_SHARED); // unknown map
     } else {
         havoc(r0.value);
         havoc(r0.offset);
