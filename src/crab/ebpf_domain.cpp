@@ -173,7 +173,7 @@ void ebpf_domain_t::operator|=(ebpf_domain_t&& other) {
         *this = other;
         return;
     }
-    m_inv |= other.m_inv;
+    m_inv |= std::move(other.m_inv);
     stack |= other.stack;
 }
 
@@ -183,7 +183,7 @@ void ebpf_domain_t::operator|=(const ebpf_domain_t& other) {
 }
 
 ebpf_domain_t ebpf_domain_t::operator|(ebpf_domain_t&& other) {
-    return ebpf_domain_t(m_inv | other.m_inv, stack | other.stack);
+    return ebpf_domain_t(m_inv | std::move(other.m_inv), stack | other.stack);
 }
 
 ebpf_domain_t ebpf_domain_t::operator|(const ebpf_domain_t& other) & {
