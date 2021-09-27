@@ -101,12 +101,11 @@ class TreeSMap final {
 };
 
 class AdaptGraph final {
-    using Weight = safe_i64;  // same as SafeInt64DefaultParams::Wt; previously template
     using smap_t = TreeSMap;
 
   public:
+    using Weight = safe_i64;  // same as SafeInt64DefaultParams::Weight; previously template
     using vert_id = unsigned int;
-    using Wt = Weight;
 
     AdaptGraph() : edge_count(0) {}
 
@@ -163,13 +162,13 @@ class AdaptGraph final {
     struct edge_iter {
         struct edge_ref {
             vert_id vert{};
-            Wt val;
+            Weight val;
         };
 
         smap_t::elt_iter_t it{};
-        const std::vector<Wt>* ws{};
+        const std::vector<Weight>* ws{};
 
-        edge_iter(const smap_t::elt_iter_t& _it, const std::vector<Wt>& _ws) : it(_it), ws(&_ws) {}
+        edge_iter(const smap_t::elt_iter_t& _it, const std::vector<Weight>& _ws) : it(_it), ws(&_ws) {}
         edge_iter(const edge_iter& o) = default;
         edge_iter& operator=(const edge_iter& o) = default;
         edge_iter() = default;
@@ -197,7 +196,7 @@ class AdaptGraph final {
         using iterator = edge_iter;
 
         elt_range_t r;
-        const std::vector<Wt>& ws;
+        const std::vector<Weight>& ws;
 
         [[nodiscard]] edge_iter begin() const { return edge_iter(r.begin(), ws); }
         [[nodiscard]] edge_iter end() const { return edge_iter(r.end(), ws); }
@@ -289,29 +288,29 @@ class AdaptGraph final {
 
     bool elem(vert_id s, vert_id d) { return _succs[s].contains(d); }
 
-    Wt& edge_val(vert_id s, vert_id d) {
+    Weight& edge_val(vert_id s, vert_id d) {
         return _ws[*_succs[s].lookup(d)];
     }
 
     class mut_val_ref_t {
       public:
         mut_val_ref_t() : w(nullptr) {}
-        operator Wt() const {
+        operator Weight() const {
             assert(w);
             return *w;
         }
-        [[nodiscard]] Wt get() const {
+        [[nodiscard]] Weight get() const {
             assert(w);
             return *w;
         }
-        void operator=(Wt* _w) { w = _w; }
-        void operator=(Wt _w) {
+        void operator=(Weight* _w) { w = _w; }
+        void operator=(Weight _w) {
             assert(w);
             *w = _w;
         }
 
       private:
-        Wt* w;
+        Weight* w;
     };
 
     bool lookup(vert_id s, vert_id d, mut_val_ref_t* w) {
@@ -322,7 +321,7 @@ class AdaptGraph final {
         return false;
     }
 
-    void add_edge(vert_id s, Wt w, vert_id d) {
+    void add_edge(vert_id s, Weight w, vert_id d) {
         size_t idx;
         if (!free_widx.empty()) {
             idx = free_widx.back();
@@ -338,7 +337,7 @@ class AdaptGraph final {
         edge_count++;
     }
 
-    void update_edge(vert_id s, Wt w, vert_id d) {
+    void update_edge(vert_id s, Weight w, vert_id d) {
         if (auto idx = _succs[s].lookup(d)) {
             _ws[*idx] = std::min(_ws[*idx], w);
         } else {
@@ -346,7 +345,7 @@ class AdaptGraph final {
         }
     }
 
-    void set_edge(vert_id s, Wt w, vert_id d) {
+    void set_edge(vert_id s, Weight w, vert_id d) {
         if (auto idx = _succs[s].lookup(d)) {
             _ws[*idx] = w;
         } else {
@@ -384,7 +383,7 @@ class AdaptGraph final {
     // We'll see what the performance costs are like.
     std::vector<smap_t> _preds;
     std::vector<smap_t> _succs;
-    std::vector<Wt> _ws;
+    std::vector<Weight> _ws;
 
     size_t edge_count;
 

@@ -62,7 +62,7 @@ using binop_t = std::variant<arith_binop_t, bitwise_binop_t>;
 
 namespace domains {
 
-/** DBM weights (Wt) can be represented using one of the following
+/** DBM weights (Weight) can be represented using one of the following
  * types:
  *
  * 1) basic integer type: e.g., long
@@ -78,22 +78,22 @@ namespace domains {
  **/
 
 struct SafeInt64DefaultParams {
-    using Wt = safe_i64;
+    using Weight = safe_i64;
     using graph_t = AdaptGraph;
 };
 
 /**
- * Helper to translate from Number to DBM Wt (graph weights).  Number
+ * Helper to translate from Number to DBM Weight (graph weights).  Number
  * used to be the template parameter of the DBM-based abstract domain to
- * represent a number. Number might not fit into Wt type.
+ * represent a number. Number might not fit into Weight type.
  **/
-inline SafeInt64DefaultParams::Wt convert_NtoW(const z_number& n, bool& overflow) {
+inline SafeInt64DefaultParams::Weight convert_NtoW(const z_number& n, bool& overflow) {
     overflow = false;
     if (!n.fits_sint64()) {
         overflow = true;
         return 0;
     }
-    return SafeInt64DefaultParams::Wt(n);
+    return SafeInt64DefaultParams::Weight(n);
 }
 
 class SplitDBM final {
@@ -101,7 +101,7 @@ class SplitDBM final {
     using variable_vector_t = std::vector<variable_t>;
 
     using Params = SafeInt64DefaultParams;
-    using Wt = typename Params::Wt;
+    using Weight = typename Params::Weight;
     using graph_t = typename Params::graph_t;
     using vert_id = typename graph_t::vert_id;
     using vert_map_t = boost::container::flat_map<variable_t, vert_id>;
@@ -111,7 +111,7 @@ class SplitDBM final {
     using GrPerm = GraphPerm<graph_t>;
     using edge_vector = typename GrOps::edge_vector;
     // < <x, y>, k> == x - y <= k.
-    using diffcst_t = std::pair<std::pair<variable_t, variable_t>, Wt>;
+    using diffcst_t = std::pair<std::pair<variable_t, variable_t>, Weight>;
     using vert_set_t = std::unordered_set<vert_id>;
 
   private:
@@ -122,7 +122,7 @@ class SplitDBM final {
     vert_map_t vert_map; // Mapping from variables to vertices
     rev_map_t rev_map;
     graph_t g;                 // The underlying relation graph
-    std::vector<Wt> potential; // Stored potential for the vertex
+    std::vector<Weight> potential; // Stored potential for the vertex
     vert_set_t unstable;
     bool _is_bottom;
 
@@ -137,24 +137,24 @@ class SplitDBM final {
     };
 
     // Evaluate the potential value of a variable.
-    Wt pot_value(variable_t v) {
+    Weight pot_value(variable_t v) {
         auto it = vert_map.find(v);
         if (it != vert_map.end())
             return potential[(*it).second];
-        return ((Wt)0);
+        return ((Weight)0);
     }
 
     // Evaluate an expression under the chosen potentials
-    Wt eval_expression(const linear_expression_t& e, bool overflow) {
-        Wt res(convert_NtoW(e.constant_term(), overflow));
+    Weight eval_expression(const linear_expression_t& e, bool overflow) {
+        Weight res(convert_NtoW(e.constant_term(), overflow));
         if (overflow) {
-            return Wt(0);
+            return Weight(0);
         }
 
         for (const auto& [variable, coefficient] : e.variable_terms()) {
-            Wt coef = convert_NtoW(coefficient, overflow);
+            Weight coef = convert_NtoW(coefficient, overflow);
             if (overflow) {
-                return Wt(0);
+                return Weight(0);
             }
             res += (pot_value(variable) - potential[0]) * coef;
         }
@@ -190,11 +190,11 @@ class SplitDBM final {
                             bool extract_upper_bounds,
                             /* foreach {v, k} \in diff_csts we have
                                the difference constraint v - k <= k */
-                            std::vector<std::pair<variable_t, Wt>>& diff_csts);
+                            std::vector<std::pair<variable_t, Weight>>& diff_csts);
 
     // Turn an assignment into a set of difference constraints.
-    void diffcsts_of_assign(variable_t x, const linear_expression_t& exp, std::vector<std::pair<variable_t, Wt>>& lb,
-                            std::vector<std::pair<variable_t, Wt>>& ub) {
+    void diffcsts_of_assign(variable_t x, const linear_expression_t& exp, std::vector<std::pair<variable_t, Weight>>& lb,
+                            std::vector<std::pair<variable_t, Weight>>& ub) {
         diffcsts_of_assign(x, exp, true, ub);
         diffcsts_of_assign(x, exp, false, lb);
     }
@@ -207,9 +207,9 @@ class SplitDBM final {
                              /* difference contraints */
                              std::vector<diffcst_t>& csts,
                              /* x >= lb for each {x,lb} in lbs */
-                             std::vector<std::pair<variable_t, Wt>>& lbs,
+                             std::vector<std::pair<variable_t, Weight>>& lbs,
                              /* x <= ub for each {x,ub} in ubs */
-                             std::vector<std::pair<variable_t, Wt>>& ubs);
+                             std::vector<std::pair<variable_t, Weight>>& ubs);
 
     bool add_linear_leq(const linear_expression_t& exp);
 
@@ -253,7 +253,7 @@ class SplitDBM final {
     }
 
     // FIXME: Rewrite to avoid copying if o is _|_
-    SplitDBM(vert_map_t&& _vert_map, rev_map_t&& _rev_map, graph_t&& _g, std::vector<Wt>&& _potential,
+    SplitDBM(vert_map_t&& _vert_map, rev_map_t&& _rev_map, graph_t&& _g, std::vector<Weight>&& _potential,
              vert_set_t&& _unstable)
         : vert_map(std::move(_vert_map)), rev_map(std::move(_rev_map)), g(std::move(_g)),
           potential(std::move(_potential)), unstable(std::move(_unstable)), _is_bottom(false) {
