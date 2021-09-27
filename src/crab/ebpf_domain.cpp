@@ -581,6 +581,13 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
                 require(m_inv, linear_constraint_t::FALSE(), "Only pointers can be dereferenced");
                 return;
             }
+        case T_MAP:
+        case T_MAP_PROGRAMS:
+            if (is_comparison_check) {
+                return;
+            } else {
+                require(m_inv, linear_constraint_t::FALSE(), "FDs cannot be dereferenced directly");
+            }
         default:
             if (*type_singleton > T_SHARED) {
                 check_access_shared(m_inv, lb, ub, m, reg.type);
