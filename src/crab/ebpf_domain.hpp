@@ -134,7 +134,7 @@ class ebpf_domain_t final {
     NumAbsDomain when(const linear_constraint_t& condition);
 
     void scratch_caller_saved_registers();
-
+    std::optional<EbpfMapDescriptor> get_map_descriptor(const Reg& map_fd_reg);
     void forget_packet_pointers();
     void do_load_mapfd(const reg_pack_t& dst, int mapfd, bool maybe_null);
 

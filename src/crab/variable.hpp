@@ -11,7 +11,6 @@
 
 #include "crab_utils/bignums.hpp"
 #include "crab_utils/debug.hpp"
-#include "radix_tree/radix_tree.hpp"
 using index_t = uint64_t;
 
 /* Basic type definitions */
@@ -58,8 +57,6 @@ class variable_t final {
     static std::vector<variable_t> get_type_variables();
     static variable_t reg(data_kind_t, int);
     static variable_t cell_var(data_kind_t array, index_t offset, unsigned size);
-    static variable_t map_value_size();
-    static variable_t map_key_size();
     static variable_t meta_offset();
     static variable_t packet_size();
     static variable_t instruction_count();

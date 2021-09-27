@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <map>
 #include <sys/stat.h>
 
 #include "asm_files.hpp"
