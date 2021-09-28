@@ -182,16 +182,16 @@ void ebpf_domain_t::operator|=(const ebpf_domain_t& other) {
     operator|=(std::move(tmp));
 }
 
-ebpf_domain_t ebpf_domain_t::operator|(ebpf_domain_t&& other) {
+ebpf_domain_t ebpf_domain_t::operator|(ebpf_domain_t&& other) const {
     return ebpf_domain_t(m_inv | std::move(other.m_inv), stack | other.stack);
 }
 
-ebpf_domain_t ebpf_domain_t::operator|(const ebpf_domain_t& other) & {
+ebpf_domain_t ebpf_domain_t::operator|(const ebpf_domain_t& other) const& {
     return ebpf_domain_t(m_inv | other.m_inv, stack | other.stack);
 }
 
 ebpf_domain_t ebpf_domain_t::operator|(const ebpf_domain_t& other) && {
-    return ebpf_domain_t(m_inv | other.m_inv, stack | other.stack);
+    return ebpf_domain_t(other.m_inv | std::move(m_inv), other.stack | std::move(stack));
 }
 
 ebpf_domain_t ebpf_domain_t::operator&(const ebpf_domain_t& other) const {

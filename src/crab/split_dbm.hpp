@@ -309,7 +309,27 @@ class SplitDBM final {
         }
     }
 
-    SplitDBM operator|(const SplitDBM& o) const;
+    SplitDBM operator|(const SplitDBM& o) const&;
+
+    SplitDBM operator|(SplitDBM&& o) && {
+        if (is_bottom() || o.is_top())
+            return std::move(o);
+        if (is_top() || o.is_bottom())
+            return std::move(*this);
+        return ((const SplitDBM&)*this) | (const SplitDBM&)o;
+    }
+
+    SplitDBM operator|(const SplitDBM& o) && {
+        if (is_top() || o.is_bottom())
+            return std::move(*this);
+        return ((const SplitDBM&)*this) | o;
+    }
+
+    SplitDBM operator|(SplitDBM&& o) const& {
+        if (is_bottom() || o.is_top())
+            return std::move(o);
+        return (*this) | (const SplitDBM&)o;
+    }
 
     SplitDBM widen(const SplitDBM& o) const;
 

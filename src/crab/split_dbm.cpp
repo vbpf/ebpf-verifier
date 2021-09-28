@@ -456,7 +456,7 @@ bool SplitDBM::operator<=(const SplitDBM& o) const {
     }
 }
 
-SplitDBM SplitDBM::operator|(const SplitDBM& o) const {
+SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
     CrabStats::count("SplitDBM.count.join");
     ScopedCrabStats __st__("SplitDBM.join");
 

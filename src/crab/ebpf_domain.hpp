@@ -33,8 +33,8 @@ class ebpf_domain_t final {
     bool operator==(const ebpf_domain_t& other) const;
     void operator|=(ebpf_domain_t&& other);
     void operator|=(const ebpf_domain_t& other);
-    ebpf_domain_t operator|(ebpf_domain_t&& other);
-    ebpf_domain_t operator|(const ebpf_domain_t& other) &;
+    ebpf_domain_t operator|(ebpf_domain_t&& other) const;
+    ebpf_domain_t operator|(const ebpf_domain_t& other) const&;
     ebpf_domain_t operator|(const ebpf_domain_t& other) &&;
     ebpf_domain_t operator&(const ebpf_domain_t& other) const;
     ebpf_domain_t widen(const ebpf_domain_t& other);
