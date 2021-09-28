@@ -30,13 +30,13 @@ class ebpf_domain_t final {
     bool is_bottom() const;
     bool is_top() const;
     bool operator<=(const ebpf_domain_t& other);
-    bool operator==(ebpf_domain_t other);
+    bool operator==(const ebpf_domain_t& other) const;
     void operator|=(ebpf_domain_t&& other);
     void operator|=(const ebpf_domain_t& other);
     ebpf_domain_t operator|(ebpf_domain_t&& other);
     ebpf_domain_t operator|(const ebpf_domain_t& other) &;
     ebpf_domain_t operator|(const ebpf_domain_t& other) &&;
-    ebpf_domain_t operator&(ebpf_domain_t other);
+    ebpf_domain_t operator&(const ebpf_domain_t& other) const;
     ebpf_domain_t widen(const ebpf_domain_t& other);
     ebpf_domain_t widening_thresholds(const ebpf_domain_t& other, const crab::iterators::thresholds_t& ts);
     ebpf_domain_t narrow(const ebpf_domain_t& other);
@@ -123,7 +123,7 @@ class ebpf_domain_t final {
     void lshr(variable_t lhs, variable_t op2);
     void lshr(variable_t lhs, const number_t& op2);
     void ashr(variable_t lhs, variable_t op2);
-    void ashr(variable_t lhs, number_t op2);
+    void ashr(variable_t lhs, const number_t& op2);
 
     void assume(const linear_constraint_t& cst);
 
@@ -164,7 +164,7 @@ class ebpf_domain_t final {
     template <typename Type, typename Value>
     void do_mem_store(const Mem& b, Type val_type, Value val_value, std::optional<variable_t> opt_val_offset);
 
-    friend std::ostream& operator<<(std::ostream& o, ebpf_domain_t dom);
+    friend std::ostream& operator<<(std::ostream& o, const ebpf_domain_t& dom);
 
     static void initialize_packet(ebpf_domain_t& inv);
 

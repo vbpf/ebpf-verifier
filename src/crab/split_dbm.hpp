@@ -161,7 +161,7 @@ class SplitDBM final {
         return res;
     }
 
-    interval_t compute_residual(const linear_expression_t& e, variable_t pivot) {
+    interval_t compute_residual(const linear_expression_t& e, variable_t pivot) const {
         interval_t residual(-e.constant_term());
         for (const auto& [variable, coefficient] : e.variable_terms()) {
             if (variable != pivot) {

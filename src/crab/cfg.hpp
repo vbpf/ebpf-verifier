@@ -85,9 +85,9 @@ class basic_block_t final {
 
     [[nodiscard]] size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
 
-    std::pair<neighbour_const_iterator, neighbour_const_iterator> next_blocks() const { return std::make_pair(m_next.begin(), m_next.end()); }
+    [[nodiscard]] std::pair<neighbour_const_iterator, neighbour_const_iterator> next_blocks() const { return std::make_pair(m_next.begin(), m_next.end()); }
 
-    std::pair<neighbour_const_iterator, neighbour_const_iterator> prev_blocks() const { return std::make_pair(m_prev.begin(), m_prev.end()); }
+    [[nodiscard]] std::pair<neighbour_const_iterator, neighbour_const_iterator> prev_blocks() const { return std::make_pair(m_prev.begin(), m_prev.end()); }
 
     [[nodiscard]] const label_vec_t& next_blocks_set() const {
         return m_next;
@@ -153,10 +153,6 @@ class basic_block_rev_t final {
     [[nodiscard]] const_iterator end() const { return _bb.rend(); }
 
     [[nodiscard]] std::size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
-
-    std::pair<neighbour_const_iterator, neighbour_const_iterator> next_blocks() { return _bb.prev_blocks(); }
-
-    std::pair<neighbour_const_iterator, neighbour_const_iterator> prev_blocks() { return _bb.next_blocks(); }
 
     [[nodiscard]] std::pair<neighbour_const_iterator, neighbour_const_iterator> next_blocks() const { return _bb.prev_blocks(); }
 

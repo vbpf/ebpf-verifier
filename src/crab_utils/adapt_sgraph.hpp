@@ -221,8 +221,8 @@ class AdaptGraph final {
     using neighbour_range = adj_range_t;
     using neighbour_const_range = adj_const_range_t;
 
-    adj_const_range_t succs(vert_id v) const { return _succs[v].keys(); }
-    adj_const_range_t preds(vert_id v) const { return _preds[v].keys(); }
+    [[nodiscard]] adj_const_range_t succs(vert_id v) const { return _succs[v].keys(); }
+    [[nodiscard]] adj_const_range_t preds(vert_id v) const { return _preds[v].keys(); }
 
     using fwd_edge_range = edge_const_range_t;
     using rev_edge_range = edge_const_range_t;
@@ -334,7 +334,7 @@ class AdaptGraph final {
         return false;
     }
 
-    std::optional<Weight> lookup(vert_id s, vert_id d) const {
+    [[nodiscard]] std::optional<Weight> lookup(vert_id s, vert_id d) const {
         if (auto idx = _succs[s].lookup(d)) {
             return _ws[*idx];
         }
