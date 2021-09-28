@@ -19,34 +19,7 @@ namespace crab {
 // Graph views - for when we want to traverse some mutation
 // of the graph without actually constructing it.
 // ============
-template <class V>
-class num_range final {
-  public:
-    class value_ref {
-      public:
-        explicit value_ref(const V& _v) : v(_v) {}
-        const V& operator*() const { return v; }
-        value_ref& operator++() {
-            v++;
-            return *this;
-        }
-        value_ref& operator--() {
-            v--;
-            return *this;
-        }
-        bool operator!=(const value_ref& o) const { return v < o.v; }
 
-      protected:
-        V v;
-    };
-    explicit num_range(const V& _after) : after(_after) {}
-
-    value_ref begin() const { return value_ref((V)0); }
-    value_ref end() const { return value_ref(after); }
-
-  protected:
-    V after;
-};
 
 // Processing a graph under a (possibly incomplete)
 // permutation of vertices.
@@ -57,11 +30,10 @@ class GraphPerm {
   public:
     using vert_id = typename G::vert_id;
     using Weight = typename G::Weight;
-    using g_pred_range = typename G::pred_range;
-    using g_succ_range = typename G::succ_range;
+    using g_neighbour_const_range = typename G::neighbour_const_range;
     using mut_val_ref_t = typename G::mut_val_ref_t;
 
-    GraphPerm(std::vector<vert_id>& _perm, G& _g) : g(_g), perm(_perm), inv(_g.size(), -1) {
+    GraphPerm(const std::vector<vert_id>& _perm, G& _g) : g(_g), perm(_perm), inv(_g.size(), -1) {
         for (unsigned int vi = 0; vi < perm.size(); vi++) {
             if (perm[vi] == -1)
                 continue;
@@ -77,10 +49,16 @@ class GraphPerm {
         return g.elem(perm[x], perm[y]);
     }
 
-    bool lookup(vert_id x, vert_id y, mut_val_ref_t* w) const {
+    bool lookup(vert_id x, vert_id y, mut_val_ref_t* w) {
         if (perm[x] > g.size() || perm[y] > g.size())
             return false;
         return g.lookup(perm[x], perm[y], w);
+    }
+
+    std::optional<Weight> lookup(vert_id x, vert_id y) const {
+        if (perm[x] > g.size() || perm[y] > g.size())
+            return {};
+        return g.lookup(perm[x], perm[y]);
     }
 
     // Precondition: elem(x, y) is true.
@@ -96,75 +74,100 @@ class GraphPerm {
     }
 
     // Number of allocated vertices
-    size_t size() const { return perm.size(); }
+    [[nodiscard]] size_t size() const { return perm.size(); }
 
-    using vert_range = num_range<vert_id>;
-    using vert_iterator = typename num_range<vert_id>::value_ref;
-    vert_range verts() const { return vert_range(static_cast<vert_id>(perm.size())); }
+    class vert_const_range final {
+      public:
+        class iterator final {
+          public:
+            explicit iterator(const vert_id& _v) : v(_v) {}
+            const vert_id& operator*() const { return v; }
+            iterator& operator++() {
+                v++;
+                return *this;
+            }
+            iterator& operator--() {
+                v--;
+                return *this;
+            }
+            bool operator!=(const iterator& o) const { return v < o.v; }
+
+          private:
+            vert_id v;
+        };
+        explicit vert_const_range(const vert_id& _after) : after(_after) {}
+
+        iterator begin() const { return iterator((vert_id)0); }
+        iterator end() const { return iterator(after); }
+
+      private:
+        vert_id after;
+    };
+    using vert_const_iterator = typename vert_const_range::iterator;
+
+    vert_const_range verts() const { return vert_const_range(static_cast<vert_id>(perm.size())); }
 
     // GKG: Should probably modify this to handle cases where
     // the vertex iterator isn't just a vert_id*.
     template <class ItG>
-    class adj_iterator {
+    class adj_const_iterator final {
       public:
-        adj_iterator(std::vector<vert_id>& _inv, const ItG& _v) : inv(_inv), v(_v) {}
+        adj_const_iterator(const std::vector<vert_id>& _inv, const ItG& _v) : inv(_inv), v(_v) {}
 
         vert_id operator*() const { return inv[*v]; }
 
-        adj_iterator& operator++() {
+        adj_const_iterator& operator++() {
             ++v;
             return *this;
         }
 
-        bool operator!=(const adj_iterator& other) {
+        bool operator!=(const adj_const_iterator& other) {
             while (v != other.v && inv[*v] == (-1))
                 ++v;
             return v != other.v;
         }
 
-      protected:
-        std::vector<vert_id>& inv;
+      private:
+        const std::vector<vert_id>& inv;
         ItG v;
     };
 
     template <class ItG>
-    class e_adj_iterator {
+    class e_adj_const_iterator final {
       public:
         using edge_ref = typename ItG::edge_ref;
 
-        e_adj_iterator(std::vector<vert_id>& _inv, const ItG& _v) : inv(_inv), v(_v) {}
+        e_adj_const_iterator(const std::vector<vert_id>& _inv, const ItG& _v) : inv(_inv), v(_v) {}
 
         edge_ref operator*() const { return edge_ref{inv[(*v).vert], (*v).val}; }
 
-        e_adj_iterator& operator++() {
+        e_adj_const_iterator& operator++() {
             ++v;
             return *this;
         }
 
-        bool operator!=(const e_adj_iterator& other) {
+        bool operator!=(const e_adj_const_iterator& other) {
             while (v != other.v && inv[(*v).vert] == (-1))
                 ++v;
             return v != other.v;
         }
 
-      protected:
-        std::vector<vert_id>& inv;
+      private:
+        const std::vector<vert_id>& inv;
         ItG v;
     };
 
     template <class RG, class It>
-    class adj_list {
+    class adj_list final {
       public:
         using ItG = typename RG::iterator;
-        using adj_list_t = adj_list<RG, It>;
-        //      using adj_iter_t = adj_iterator<ItG>;
 
         using iterator = It;
 
-        adj_list(std::vector<vert_id>& _perm, std::vector<vert_id>& _inv, const RG& _adj)
+        adj_list(const std::vector<vert_id>& _perm, const std::vector<vert_id>& _inv, const RG& _adj)
             : perm(_perm), inv(_inv), adj(_adj) {}
 
-        adj_list(std::vector<vert_id>& _perm, std::vector<vert_id>& _inv) : perm(_perm), inv(_inv), adj() {}
+        adj_list(const std::vector<vert_id>& _perm, const std::vector<vert_id>& _inv) : perm(_perm), inv(_inv), adj() {}
 
         iterator begin() const {
             if (adj)
@@ -179,51 +182,88 @@ class GraphPerm {
                 return iterator(inv, ItG::empty_iterator());
         }
 
-        bool mem(unsigned int v) const {
+        [[nodiscard]] bool mem(unsigned int v) const {
             if (!adj || perm[v] == (-1))
                 return false;
             return (*adj).mem(perm[v]);
         }
 
-      protected:
-        std::vector<vert_id>& perm;
-        std::vector<vert_id>& inv;
+      private:
+        const std::vector<vert_id>& perm;
+        const std::vector<vert_id>& inv;
         std::optional<RG> adj;
     };
 
-    using pred_range = adj_list<typename G::pred_range, adj_iterator<typename G::pred_range::iterator>>;
-    using succ_range = adj_list<typename G::succ_range, adj_iterator<typename G::succ_range::iterator>>;
+    template <class RG, class It>
+    class const_adj_list final {
+      public:
+        using ItG = typename RG::iterator;
 
-    using e_pred_range = adj_list<typename G::e_pred_range, e_adj_iterator<typename G::e_pred_range::iterator>>;
-    using e_succ_range = adj_list<typename G::e_succ_range, e_adj_iterator<typename G::e_succ_range::iterator>>;
+        using iterator = It;
 
-    succ_range succs(vert_id v) {
+        const_adj_list(const std::vector<vert_id>& _perm, const std::vector<vert_id>& _inv, const RG& _adj)
+            : perm(_perm), inv(_inv), adj(_adj) {}
+
+        const_adj_list(const std::vector<vert_id>& _perm, const std::vector<vert_id>& _inv) : perm(_perm), inv(_inv), adj() {}
+
+        iterator begin() const {
+            if (adj)
+                return iterator(inv, (*adj).begin());
+            else
+                return iterator(inv, ItG::empty_iterator());
+        }
+        iterator end() const {
+            if (adj)
+                return iterator(inv, (*adj).end());
+            else
+                return iterator(inv, ItG::empty_iterator());
+        }
+
+        [[nodiscard]] bool mem(unsigned int v) const {
+            if (!adj || perm[v] == (-1))
+                return false;
+            return (*adj).mem(perm[v]);
+        }
+
+      private:
+        const std::vector<vert_id>& perm;
+        const std::vector<vert_id>& inv;
+        std::optional<RG> adj;
+    };
+
+//    using neighbour_range = adj_list<typename G::neighbour_range, adj_iterator<typename G::neighbour_range::iterator>>;
+//    using e_neighbour_range = adj_list<typename G::e_neighbour_range, e_adj_iterator<typename G::e_neighbour_range::iterator>>;
+
+    using neighbour_const_range = const_adj_list<typename G::neighbour_const_range, adj_const_iterator<typename G::neighbour_const_range::iterator>>;
+    using e_neighbour_const_range = const_adj_list<typename G::e_neighbour_const_range, e_adj_const_iterator<typename G::e_neighbour_const_range::iterator>>;
+
+    neighbour_const_range succs(vert_id v) const {
         if (perm[v] == (-1))
-            return succ_range(perm, inv);
+            return neighbour_const_range(perm, inv);
         else
-            return succ_range(perm, inv, g.succs(perm[v]));
+            return neighbour_const_range(perm, inv, g.succs(perm[v]));
     }
-    pred_range preds(vert_id v) {
+    neighbour_const_range preds(vert_id v) const {
         if (perm[v] == (-1))
-            return pred_range(perm, inv);
+            return neighbour_const_range(perm, inv);
         else
-            return pred_range(perm, inv, g.preds(perm[v]));
+            return neighbour_const_range(perm, inv, g.preds(perm[v]));
     }
 
-    e_succ_range e_succs(vert_id v) {
+    e_neighbour_const_range e_succs(vert_id v) const {
         if (perm[v] == (-1))
-            return e_succ_range(perm, inv);
+            return e_neighbour_const_range(perm, inv);
         else
-            return e_succ_range(perm, inv, g.e_succs(perm[v]));
+            return e_neighbour_const_range(perm, inv, g.e_succs(perm[v]));
     }
-    e_pred_range e_preds(vert_id v) {
+    e_neighbour_const_range e_preds(vert_id v) const {
         if (perm[v] == (-1))
-            return e_pred_range(perm, inv);
+            return e_neighbour_const_range(perm, inv);
         else
-            return e_pred_range(perm, inv, g.e_preds(perm[v]));
+            return e_neighbour_const_range(perm, inv, g.e_preds(perm[v]));
     }
 
-    G& g;
+    const G& g;
     std::vector<vert_id> perm;
     std::vector<vert_id> inv;
 };
@@ -235,11 +275,8 @@ class SubGraph {
     using vert_id = typename G::vert_id;
     using Weight = typename G::Weight;
 
-    using g_pred_range = typename G::pred_range;
-    using g_succ_range = typename G::succ_range;
-
-    using g_e_pred_range = typename G::e_pred_range;
-    using g_e_succ_range = typename G::e_succ_range;
+    using g_neighbour_const_range = typename G::neighbour_const_range;
+    using g_e_neighbour_const_range = typename G::e_neighbour_const_range;
 
     using mut_val_ref_t = typename G::mut_val_ref_t;
 
@@ -247,7 +284,13 @@ class SubGraph {
 
     bool elem(vert_id x, vert_id y) const { return (x != v_ex && y != v_ex && g.elem(x, y)); }
 
-    bool lookup(vert_id x, vert_id y, mut_val_ref_t* w) const { return (x != v_ex && y != v_ex && g.lookup(x, y, w)); }
+    bool lookup(vert_id x, vert_id y, mut_val_ref_t* w) {
+        return (x != v_ex && y != v_ex && g.lookup(x, y, w));
+    }
+
+    std::optional<Weight> lookup(vert_id x, vert_id y) const {
+        return (x != v_ex && y != v_ex) ? g.lookup(x, y) : std::optional<Weight>{};
+    }
 
     Weight edge_val(vert_id x, vert_id y) const { return g.edge_val(x, y); }
 
@@ -259,7 +302,7 @@ class SubGraph {
     void clear() { assert(0 && "SubGraph::clear not implemented."); }
 
     // Number of allocated vertices
-    size_t size() const { return g.size(); }
+    [[nodiscard]] size_t size() const { return g.size(); }
 
     // Assumption: (x, y) not in mtx
     void add_edge(vert_id x, Weight wt, vert_id y) {
@@ -278,37 +321,37 @@ class SubGraph {
         g.update_edge(s, w, d, op);
     }
 
-    class vert_iterator {
+    class vert_const_iterator {
       public:
-        vert_iterator(const typename G::vert_iterator& _iG, vert_id _v_ex) : v_ex(_v_ex), iG(_iG) {}
+        vert_const_iterator(const typename G::vert_const_iterator& _iG, vert_id _v_ex) : v_ex(_v_ex), iG(_iG) {}
 
         // Skipping of v_ex is done entirely by !=.
         // So we _MUST_ test it != verts.end() before dereferencing.
         vert_id operator*() { return *iG; }
-        vert_iterator operator++() {
+        vert_const_iterator operator++() {
             ++iG;
             return *this;
         }
-        bool operator!=(const vert_iterator& o) {
+        bool operator!=(const vert_const_iterator& o) {
             if (iG != o.iG && (*iG) == v_ex)
                 ++iG;
             return iG != o.iG;
         }
 
         vert_id v_ex;
-        typename G::vert_iterator iG;
+        typename G::vert_const_iterator iG;
     };
-    class vert_range {
+    class vert_const_range {
       public:
-        vert_range(const typename G::vert_range& _rG, vert_id _v_ex) : rG(_rG), v_ex(_v_ex) {}
+        vert_const_range(const typename G::vert_const_range& _rG, vert_id _v_ex) : rG(_rG), v_ex(_v_ex) {}
 
-        vert_iterator begin() const { return vert_iterator(rG.begin(), v_ex); }
-        vert_iterator end() const { return vert_iterator(rG.end(), v_ex); }
+        vert_const_iterator begin() const { return vert_const_iterator(rG.begin(), v_ex); }
+        vert_const_iterator end() const { return vert_const_iterator(rG.end(), v_ex); }
 
-        typename G::vert_range rG;
+        typename G::vert_const_range rG;
         vert_id v_ex;
     };
-    vert_range verts() const { return vert_range(g.verts(), v_ex); }
+    vert_const_range verts() const { return vert_const_range(g.verts(), v_ex); }
 
     template <class It>
     class adj_iterator {
@@ -364,22 +407,19 @@ class SubGraph {
         R rG;
         vert_id v_ex;
     };
-    using pred_range = adj_list<g_pred_range, adj_iterator<typename g_pred_range::iterator>>;
-    using succ_range = adj_list<g_succ_range, adj_iterator<typename g_succ_range::iterator>>;
+    using neighbour_const_range = adj_list<g_neighbour_const_range, adj_iterator<typename g_neighbour_const_range::iterator>>;
+    using e_neighbour_const_range = adj_list<g_e_neighbour_const_range, e_adj_iterator<typename g_e_neighbour_const_range::iterator>>;
 
-    using e_pred_range = adj_list<g_e_pred_range, e_adj_iterator<typename g_e_pred_range::iterator>>;
-    using e_succ_range = adj_list<g_e_succ_range, e_adj_iterator<typename g_e_succ_range::iterator>>;
-
-    succ_range succs(vert_id v) {
+    neighbour_const_range succs(vert_id v) const {
         //      assert(v != v_ex);
-        return succ_range(g.succs(v), v_ex);
+        return neighbour_const_range(g.succs(v), v_ex);
     }
-    pred_range preds(vert_id v) {
+    neighbour_const_range preds(vert_id v) const {
         //      assert(v != v_ex);
-        return pred_range(g.preds(v), v_ex);
+        return neighbour_const_range(g.preds(v), v_ex);
     }
-    e_succ_range e_succs(vert_id v) { return e_succ_range(g.e_succs(v), v_ex); }
-    e_pred_range e_preds(vert_id v) { return e_pred_range(g.e_preds(v), v_ex); }
+    e_neighbour_const_range e_succs(vert_id v) const { return e_neighbour_const_range(g.e_succs(v), v_ex); }
+    e_neighbour_const_range e_preds(vert_id v) const { return e_neighbour_const_range(g.e_preds(v), v_ex); }
 
     G& g;
     vert_id v_ex;
@@ -396,12 +436,15 @@ class GraphRev {
     // using g_adj_list = typename G::adj_list;
     using mut_val_ref_t = typename G::mut_val_ref_t;
 
-    GraphRev(G& _g) : g(_g) {}
+    explicit GraphRev(G& _g) : g(_g) {}
 
     // Check whether an edge is live
     bool elem(vert_id x, vert_id y) const { return g.elem(y, x); }
 
-    bool lookup(vert_id x, vert_id y, mut_val_ref_t* w) const { return g.lookup(y, x, w); }
+    bool lookup(vert_id x, vert_id y, mut_val_ref_t* w) {
+        return g.lookup(y, x, w);
+    }
+    std::optional<Weight> lookup(vert_id x, vert_id y) const { return g.lookup(y, x); }
 
     // Precondition: elem(x, y) is true.
     Weight edge_val(vert_id x, vert_id y) const { return g.edge_val(y, x); }
@@ -410,22 +453,20 @@ class GraphRev {
     Weight operator()(vert_id x, vert_id y) const { return g(y, x); }
 
     // Number of allocated vertices
-    int size() const { return g.size(); }
+    [[nodiscard]] int size() const { return g.size(); }
 
     //    using adj_list = typename G::adj_list;
-    using pred_range = typename G::succ_range;
-    using succ_range = typename G::pred_range;
 
-    using e_pred_range = typename G::e_succ_range;
-    using e_succ_range = typename G::e_pred_range;
+    using neighbour_const_range = typename G::neighbour_const_range;
+    using e_neighbour_const_range = typename G::e_neighbour_const_range;
 
-    typename G::vert_range verts() const { return g.verts(); }
+    typename G::vert_const_range verts() const { return g.verts(); }
 
-    succ_range succs(vert_id v) { return g.preds(v); }
-    succ_range preds(vert_id v) { return g.succs(v); }
+    neighbour_const_range succs(vert_id v) const { return g.preds(v); }
+    neighbour_const_range preds(vert_id v) const { return g.succs(v); }
 
-    e_succ_range e_succs(vert_id v) { return g.e_preds(v); }
-    e_pred_range e_preds(vert_id v) { return g.e_succs(v); }
+    e_neighbour_const_range e_succs(vert_id v) const { return g.e_preds(v); }
+    e_neighbour_const_range e_preds(vert_id v) const { return g.e_succs(v); }
     G& g;
 };
 
@@ -541,7 +582,7 @@ class GraphOps {
 
     // Syntactic meet
     template <class G1, class G2>
-    static graph_t meet(G1& l, G2& r, bool& is_closed) {
+    static graph_t meet(const G1& l, const G2& r, bool& is_closed) {
         assert(l.size() == r.size());
 
         /*
@@ -574,17 +615,17 @@ class GraphOps {
     }
 
     template <class G1, class G2>
-    static graph_t widen(G1& l, G2& r, std::vector<vert_id>& unstable) {
+    static graph_t widen(const G1& l, const G2& r, std::vector<vert_id>& unstable) {
         assert(l.size() == r.size());
         size_t sz = l.size();
         graph_t g;
         g.growTo(sz);
-        mut_val_ref_t wl;
         for (vert_id s : r.verts()) {
             for (auto e : r.e_succs(s)) {
                 vert_id d = e.vert;
-                if (l.lookup(s, d, &wl) && e.val <= wl)
-                    g.add_edge(s, wl, d);
+                if (auto wl = l.lookup(s, d))
+                    if (e.val <= *wl)
+                        g.add_edge(s, *wl, d);
             }
 
             // Check if this vertex is stable
@@ -754,7 +795,7 @@ class GraphOps {
     }
 
     template <class G, class G1, class G2, class P>
-    static void close_after_meet(G& g, const P& pots, G1& l, G2& r, edge_vector& delta) {
+    static void close_after_meet(const G& g, const P& pots, const G1& l, const G2& r, edge_vector& delta) {
         // We assume the syntactic meet has already been computed,
         // and potentials have been initialized.
         // We just want to restore closure.
@@ -764,7 +805,6 @@ class GraphOps {
         delta.clear();
 
         std::vector<std::vector<vert_id>> colour_succs(2 * sz);
-        mut_val_ref_t w;
 
         // Partition edges into r-only/rb/b-only.
         for (vert_id s : g.verts()) {
@@ -773,10 +813,12 @@ class GraphOps {
             for (auto e : g.e_succs(s)) {
                 unsigned char mark = 0;
                 vert_id d = e.vert;
-                if (l.lookup(s, d, &w) && w.get() == e.val)
-                    mark |= E_LEFT;
-                if (r.lookup(s, d, &w) && w.get() == e.val)
-                    mark |= E_RIGHT;
+                if (auto w = l.lookup(s, d))
+                    if (*w == e.val)
+                        mark |= E_LEFT;
+                if (auto w = r.lookup(s, d))
+                    if (*w == e.val)
+                        mark |= E_RIGHT;
                 // Add them to the appropriate coloured successor list
                 // Could do it inline, but this'll do.
                 assert(mark != 0);
@@ -838,12 +880,12 @@ class GraphOps {
             heap.insert(dest);
         }
 
-        mut_val_ref_t w;
         while (!heap.empty()) {
             int es = heap.removeMin();
             Weight es_cost = dists[es] + p[es]; // If it's on the queue, distance is not infinite.
             Weight es_val = es_cost - p[src];
-            if (!g.lookup(src, es, &w) || w.get() > es_val)
+            auto w = g.lookup(src, es);
+            if (!w || *w > es_val)
                 out.push_back(std::make_pair(es, es_val));
 
             for (auto e_ed : g.e_succs(es)) {
@@ -892,13 +934,15 @@ class GraphOps {
             heap.insert(dest);
         }
 
-        mut_val_ref_t w;
         while (!heap.empty()) {
             int es = heap.removeMin();
             Weight es_cost = dists[es] + p[es]; // If it's on the queue, distance is not infinite.
             Weight es_val = es_cost - p[src];
-            if (!g.lookup(src, es, &w) || w.get() > es_val)
-                out.push_back(std::make_pair(es, es_val));
+            {
+                auto w = g.lookup(src, es);
+                if (!w || *w > es_val)
+                    out.push_back(std::make_pair(es, es_val));
+            }
 
             if (vert_marks[es] == (E_LEFT | E_RIGHT))
                 continue;
