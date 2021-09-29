@@ -30,13 +30,13 @@ class ebpf_domain_t final {
     bool is_bottom() const;
     bool is_top() const;
     bool operator<=(const ebpf_domain_t& other);
-    bool operator==(ebpf_domain_t other);
+    bool operator==(const ebpf_domain_t& other) const;
     void operator|=(ebpf_domain_t&& other);
     void operator|=(const ebpf_domain_t& other);
-    ebpf_domain_t operator|(ebpf_domain_t&& other);
-    ebpf_domain_t operator|(const ebpf_domain_t& other) &;
+    ebpf_domain_t operator|(ebpf_domain_t&& other) const;
+    ebpf_domain_t operator|(const ebpf_domain_t& other) const&;
     ebpf_domain_t operator|(const ebpf_domain_t& other) &&;
-    ebpf_domain_t operator&(ebpf_domain_t other);
+    ebpf_domain_t operator&(const ebpf_domain_t& other) const;
     ebpf_domain_t widen(const ebpf_domain_t& other);
     ebpf_domain_t widening_thresholds(const ebpf_domain_t& other, const crab::iterators::thresholds_t& ts);
     ebpf_domain_t narrow(const ebpf_domain_t& other);
@@ -124,7 +124,7 @@ class ebpf_domain_t final {
     void lshr(variable_t lhs, variable_t op2);
     void lshr(variable_t lhs, const number_t& op2);
     void ashr(variable_t lhs, variable_t op2);
-    void ashr(variable_t lhs, number_t op2);
+    void ashr(variable_t lhs, const number_t& op2);
 
     void assume(const linear_constraint_t& cst);
 
@@ -135,7 +135,7 @@ class ebpf_domain_t final {
     NumAbsDomain when(const linear_constraint_t& condition);
 
     void scratch_caller_saved_registers();
-
+    std::optional<EbpfMapDescriptor> get_map_descriptor(const Reg& map_fd_reg);
     void forget_packet_pointers();
     void do_load_mapfd(const reg_pack_t& dst, int mapfd, bool maybe_null);
 
@@ -146,12 +146,12 @@ class ebpf_domain_t final {
     void require(crab::domains::NumAbsDomain& inv, const linear_constraint_t& cst, const std::string& s);
 
     // memory check / load / store
-    NumAbsDomain check_access_stack(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s);
-    NumAbsDomain check_access_packet(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
+    void check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s);
+    void check_access_packet(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
                                      bool is_comparison_check);
-    NumAbsDomain check_access_shared(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
+    void check_access_shared(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
                                      variable_t reg_type);
-    NumAbsDomain check_access_context(NumAbsDomain inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s);
+    void check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s);
 
     NumAbsDomain do_load_stack(NumAbsDomain inv, const reg_pack_t& target, const linear_expression_t& addr, int width);
     NumAbsDomain do_load_ctx(NumAbsDomain inv, const reg_pack_t& target, const linear_expression_t& addr_vague, int width);
@@ -165,7 +165,7 @@ class ebpf_domain_t final {
     template <typename Type, typename Value>
     void do_mem_store(const Mem& b, Type val_type, Value val_value, std::optional<variable_t> opt_val_offset);
 
-    friend std::ostream& operator<<(std::ostream& o, ebpf_domain_t dom);
+    friend std::ostream& operator<<(std::ostream& o, const ebpf_domain_t& dom);
 
     static void initialize_packet(ebpf_domain_t& inv);
 

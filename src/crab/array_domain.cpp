@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "radix_tree/radix_tree.hpp"
 #include "crab/array_domain.hpp"
 
 #include "asm_ostream.hpp"
@@ -236,15 +237,7 @@ class offset_map_t final {
 
 void offset_map_t::remove_cell(const cell_t& c) {
     offset_t key = c.get_offset();
-    if (std::optional<cell_set_t> cells = _map[key]) {
-        if (cells->erase(c) > 0) {
-            _map.erase(key);
-            if (!cells->empty()) {
-                // a bit of a waste ...
-                _map[key] = *cells;
-            }
-        }
-    }
+    _map[key].erase(c);
 }
 
 [[nodiscard]]
@@ -283,26 +276,14 @@ std::vector<cell_t> offset_map_t::get_overlap_cells_symbolic_offset(const NumAbs
 
 void offset_map_t::insert_cell(const cell_t& c) {
     offset_t key = c.get_offset();
-    if (std::optional<cell_set_t> cells = _map[key]) {
-        if (cells->insert(c).second) {
-            // a bit of a waste ...
-            _map.erase(key);
-            _map[key] = *cells;
-        }
-    } else {
-        cell_set_t new_cells;
-        new_cells.insert(c);
-        _map[key] = new_cells;
-    }
+    _map[key].insert(c);
 }
 
 std::optional<cell_t> offset_map_t::get_cell(offset_t o, unsigned size) {
-    if (std::optional<cell_set_t> cells = _map[o]) {
-        cell_t tmp(o, size);
-        auto it = cells->find(tmp);
-        if (it != cells->end()) {
-            return *it;
-        }
+    cell_set_t& cells = _map[o];
+    auto it = cells.find(cell_t(o, size));
+    if (it != cells.end()) {
+        return *it;
     }
     // not found
     return {};
@@ -634,27 +615,23 @@ void array_domain_t::operator|=(const array_domain_t& other) {
     num_bytes |= other.num_bytes;
 }
 
-array_domain_t array_domain_t::operator|(const array_domain_t& other) & {
+array_domain_t array_domain_t::operator|(const array_domain_t& other) const {
     return array_domain_t(num_bytes | other.num_bytes);
 }
 
-array_domain_t array_domain_t::operator|(const array_domain_t& other) && {
-    return array_domain_t(num_bytes | other.num_bytes);
-}
-
-array_domain_t array_domain_t::operator&(array_domain_t other) {
+array_domain_t array_domain_t::operator&(const array_domain_t& other) const {
     return array_domain_t(num_bytes & other.num_bytes);
 }
 
-array_domain_t array_domain_t::widen(const array_domain_t& other) {
+array_domain_t array_domain_t::widen(const array_domain_t& other) const {
     return array_domain_t(num_bytes | other.num_bytes);
 }
 
-array_domain_t array_domain_t::widening_thresholds(const array_domain_t& other, const iterators::thresholds_t& ts) {
+array_domain_t array_domain_t::widening_thresholds(const array_domain_t& other, const iterators::thresholds_t& ts) const {
     return array_domain_t(num_bytes | other.num_bytes);
 }
 
-array_domain_t array_domain_t::narrow(const array_domain_t& other) {
+array_domain_t array_domain_t::narrow(const array_domain_t& other) const {
     return array_domain_t(num_bytes & other.num_bytes);
 }
 

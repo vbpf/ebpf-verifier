@@ -25,8 +25,8 @@ class linear_constraint_t final {
     [[nodiscard]] const linear_expression_t& expression() const { return _expression; }
     [[nodiscard]] constraint_kind_t kind() const { return _constraint_kind; }
 
-    // Test whether the constraint is guaranteed to be false.
-    [[nodiscard]] bool is_contradiction() const {
+    // Test whether the constraint is guaranteed to be true.
+    [[nodiscard]] bool is_tautology() const {
         if (!_expression.is_constant()) {
             return false;
         }
@@ -40,12 +40,12 @@ class linear_constraint_t final {
         }
     }
 
-    // Test whether the constraint is guaranteed to be true.
-    [[nodiscard]] bool is_tautology() const {
+    // Test whether the constraint is guaranteed to be false.
+    [[nodiscard]] bool is_contradiction() const {
         if (!_expression.is_constant()) {
             return false;
         }
-        return !is_contradiction();
+        return !is_tautology();
     }
 
     // Construct the logical NOT of this constraint.
