@@ -853,58 +853,6 @@ class GraphOps {
         }
     }
 
-    // Straight implementation of Dijkstra's algorithm
-    template <class G, class P>
-    static void dijkstra(G& g, const P& p, vert_id src, std::vector<std::pair<vert_id, Weight>>& out) {
-        size_t sz = g.size();
-        if (sz == 0)
-            return;
-        grow_scratch(sz);
-
-        // Reset all vertices to infty.
-        dist_ts[ts_idx] = ts++;
-        ts_idx = (ts_idx + 1) % dists.size();
-
-        dists[src] = Weight(0);
-        dist_ts[src] = ts;
-
-        WtComp comp(dists);
-        WtHeap heap(comp);
-
-        for (auto e : g.e_succs(src)) {
-            vert_id dest = e.vert;
-            dists[dest] = p[src] + e.val - p[dest];
-            dist_ts[dest] = ts;
-
-            vert_marks[dest] = edge_marks[sz * src + dest];
-            heap.insert(dest);
-        }
-
-        while (!heap.empty()) {
-            int es = heap.removeMin();
-            Weight es_cost = dists[es] + p[es]; // If it's on the queue, distance is not infinite.
-            Weight es_val = es_cost - p[src];
-            auto w = g.lookup(src, es);
-            if (!w || *w > es_val)
-                out.push_back(std::make_pair(es, es_val));
-
-            for (auto e_ed : g.e_succs(es)) {
-                vert_id ed(e_ed.vert);
-                Weight v = es_cost + e_ed.val - p[ed];
-                if (dist_ts[ed] != ts || v < dists[ed]) {
-                    dists[ed] = v;
-                    dist_ts[ed] = ts;
-
-                    if (heap.inHeap(ed)) {
-                        heap.decrease(ed);
-                    } else {
-                        heap.insert(ed);
-                    }
-                }
-            }
-        }
-    }
-
     // P is some vector-alike holding a valid system of potentials.
     // Don't need to clear/initialize
     template <class G, class P>
