@@ -846,9 +846,9 @@ class GraphOps {
 
     static void apply_delta(graph_t& g, const edge_vector& delta) {
         for (const auto& [s, d, w] : delta) {
-            //        assert(e.first.first != e.first.second);
-            //        assert(e.first.first < g.size());
-            //        assert(e.first.second < g.size());
+            //        assert(s != d);
+            //        assert(s < g.size());
+            //        assert(d < g.size());
             g.set_edge(s, w, d);
         }
     }
