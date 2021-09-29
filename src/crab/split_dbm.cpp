@@ -926,11 +926,11 @@ void SplitDBM::assign(variable_t x, const linear_expression_t& e) {
 
             edge_vector delta;
             for (auto [var, n] : diffs_lb) {
-                delta.push_back({{vert, get_vert(var)}, -n});
+                delta.emplace_back(vert, get_vert(var), -n);
             }
 
             for (auto [var, n] : diffs_ub) {
-                delta.push_back({{get_vert(var), vert}, n});
+                delta.emplace_back(get_vert(var), vert, n);
             }
 
             // apply_delta should be safe here, as x has no edges in G.

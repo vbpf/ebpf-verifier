@@ -489,12 +489,12 @@ class GraphOps {
     using vert_id = typename graph_t::vert_id;
     using mut_val_ref_t = typename graph_t::mut_val_ref_t;
 
-    using edge_vector = std::vector<std::pair<std::pair<vert_id, vert_id>, Weight>>;
+    using edge_vector = std::vector<std::tuple<vert_id, vert_id, Weight>>;
 
     using WtComp = DistComp<std::vector<Weight>>;
     using WtHeap = Heap<WtComp>;
 
-    using edge_ref = std::pair<std::pair<vert_id, vert_id>, Weight>;
+    using edge_ref = std::tuple<vert_id, vert_id, Weight>;
 
     //===========================================
     // Enums used to mark vertices/edges during algorithms
@@ -553,8 +553,8 @@ class GraphOps {
 
         // Initialize new elements as necessary.
         while (dists.size() < scratch_sz) {
-            dists.push_back(Weight());
-            dists_alt.push_back(Weight());
+            dists.emplace_back();
+            dists_alt.emplace_back();
             dist_ts.push_back(ts - 1);
         }
     }
@@ -666,7 +666,7 @@ class GraphOps {
 
         // If v is a root node, pop the stack and generate an SCC
         if (dual_queue[v] == (vert_marks[v] >> 1)) {
-            sccs.push_back(std::vector<vert_id>());
+            sccs.emplace_back();
             std::vector<vert_id>& scc(sccs.back());
             int w;
             do {
@@ -833,23 +833,23 @@ class GraphOps {
 
         // We can run the chromatic Dijkstra variant
         // on each source.
-        std::vector<std::pair<vert_id, Weight>> adjs;
+        std::vector<std::tuple<vert_id, Weight>> adjs;
         //      for(vert_id v = 0; v < sz; v++)
         for (vert_id v : g.verts()) {
             adjs.clear();
             chrome_dijkstra(g, pots, colour_succs, v, adjs);
 
-            for (std::pair<vert_id, Weight>& p : adjs)
-                delta.push_back(std::make_pair(std::make_pair(v, p.first), p.second));
+            for (const auto& [d, w] : adjs)
+                delta.emplace_back(v, d, w);
         }
     }
 
     static void apply_delta(graph_t& g, edge_vector& delta) {
-        for (std::pair<std::pair<vert_id, vert_id>, Weight>& e : delta) {
+        for (const auto& [s, d, w] : delta) {
             //        assert(e.first.first != e.first.second);
             //        assert(e.first.first < g.size());
             //        assert(e.first.second < g.size());
-            g.set_edge(e.first.first, e.second, e.first.second);
+            g.set_edge(s, w, d);
         }
     }
 
@@ -857,7 +857,7 @@ class GraphOps {
     // Don't need to clear/initialize
     template <class G, class P>
     static void chrome_dijkstra(G& g, const P& p, std::vector<std::vector<vert_id>>& colour_succs, vert_id src,
-                                std::vector<std::pair<vert_id, Weight>>& out) {
+                                std::vector<std::tuple<vert_id, Weight>>& out) {
         size_t sz = g.size();
         if (sz == 0)
             return;
@@ -889,7 +889,7 @@ class GraphOps {
             {
                 auto w = g.lookup(src, es);
                 if (!w || *w > es_val)
-                    out.push_back(std::make_pair(es, es_val));
+                    out.emplace_back(es, es_val);
             }
 
             if (vert_marks[es] == (E_LEFT | E_RIGHT))
@@ -922,7 +922,7 @@ class GraphOps {
     // GKG: Factor out common elements of this & the previous algorithm.
     template <class G, class P, class S>
     static void dijkstra_recover(G& g, const P& p, const S& is_stable, vert_id src,
-                                 std::vector<std::pair<vert_id, Weight>>& out) {
+                                 std::vector<std::tuple<vert_id, Weight>>& out) {
         size_t sz = g.size();
         if (sz == 0)
             return;
@@ -956,7 +956,7 @@ class GraphOps {
             Weight es_cost = dists[es] + p[es]; // If it's on the queue, distance is not infinite.
             Weight es_val = es_cost - p[src];
             if (!g.lookup(src, es, &w) || w.get() > es_val)
-                out.push_back(std::make_pair(es, es_val));
+                out.emplace_back(es, es_val);
 
             if (vert_marks[es] == V_STABLE)
                 continue;
@@ -1046,13 +1046,13 @@ class GraphOps {
             edge_marks[v] = is_stable[v] ? V_STABLE : V_UNSTABLE;
         }
 
-        std::vector<std::pair<vert_id, Weight>> aux;
+        std::vector<std::tuple<vert_id, Weight>> aux;
         for (vert_id v : g.verts()) {
             if (!edge_marks[v]) {
                 aux.clear();
                 dijkstra_recover(g, p, edge_marks, v, aux);
                 for (auto [vid, wt] : aux)
-                    delta.push_back(std::make_pair(std::make_pair(v, vid), wt));
+                    delta.emplace_back(v, vid, wt);
             }
         }
     }
@@ -1092,7 +1092,7 @@ class GraphOps {
     // Compute the transitive closure of edges reachable from v, assuming
     // (1) the subgraph G \ {v} is closed, and (2) P is a valid model of G.
     template <class G, class P>
-    static void close_after_assign_fwd(G& g, const P& p, vert_id v, std::vector<std::pair<vert_id, Weight>>& aux) {
+    static void close_after_assign_fwd(G& g, const P& p, vert_id v, std::vector<std::tuple<vert_id, Weight>>& aux) {
         // Initialize the queue and distances.
         for (vert_id u : g.verts())
             vert_marks[u] = 0;
@@ -1135,7 +1135,7 @@ class GraphOps {
         // Now collect the adjacencies, and clear vertex flags
         // FIXME: This collects _all_ edges from x, not just new ones.
         for (adj_head = dual_queue; adj_head < reach_tail; adj_head++) {
-            aux.push_back(std::make_pair(*adj_head, dists[*adj_head]));
+            aux.emplace_back(*adj_head, dists[*adj_head]);
             vert_marks[*adj_head] = 0;
         }
     }
@@ -1145,17 +1145,17 @@ class GraphOps {
         size_t sz = g.size();
         grow_scratch(sz);
         {
-            std::vector<std::pair<vert_id, Weight>> aux;
+            std::vector<std::tuple<vert_id, Weight>> aux;
             close_after_assign_fwd(g, p, v, aux);
             for (auto [vid, wt] : aux)
-                delta.push_back(std::make_pair(std::make_pair(v, vid), wt));
+                delta.emplace_back(v, vid, wt);
         }
         {
-            std::vector<std::pair<vert_id, Weight>> aux;
+            std::vector<std::tuple<vert_id, Weight>> aux;
             GraphRev<G> g_rev(g);
             close_after_assign_fwd(g_rev, make_negp(p), v, aux);
             for (auto [vid, wt] : aux)
-                delta.push_back(std::make_pair(std::make_pair(vid, v), wt));
+                delta.emplace_back(vid, v, wt);
         }
     }
 };
