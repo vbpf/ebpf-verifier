@@ -644,7 +644,7 @@ class GraphOps {
     // Duped pretty much verbatim from Wikipedia
     // Abuses 'dual_queue' to store indices.
     template <class G>
-    static void strong_connect(G& x, std::vector<vert_id>& stack, int& index, vert_id v,
+    static void strong_connect(const G& x, std::vector<vert_id>& stack, int& index, vert_id v,
                                std::vector<std::vector<vert_id>>& sccs) {
         vert_marks[v] = (index << 1) | 1;
         // assert(vert_marks[v]&1);
@@ -679,7 +679,7 @@ class GraphOps {
     }
 
     template <class G>
-    static void compute_sccs(G& x, std::vector<std::vector<vert_id>>& out_scc) {
+    static void compute_sccs(const G& x, std::vector<std::vector<vert_id>>& out_scc) {
         size_t sz = x.size();
         grow_scratch(sz);
 
@@ -710,7 +710,7 @@ class GraphOps {
     // Run Bellman-Ford to compute a valid model of a set of difference constraints.
     // Returns false if there is some negative cycle.
     template <class G, class P>
-    static bool select_potentials(G& g, P& potentials) {
+    static bool select_potentials(const G& g, P& potentials) {
         size_t sz = g.size();
         assert(potentials.size() >= sz);
         grow_scratch(sz);
@@ -844,7 +844,7 @@ class GraphOps {
         }
     }
 
-    static void apply_delta(graph_t& g, edge_vector& delta) {
+    static void apply_delta(graph_t& g, const edge_vector& delta) {
         for (const auto& [s, d, w] : delta) {
             //        assert(e.first.first != e.first.second);
             //        assert(e.first.first < g.size());
@@ -856,7 +856,7 @@ class GraphOps {
     // P is some vector-alike holding a valid system of potentials.
     // Don't need to clear/initialize
     template <class G, class P>
-    static void chrome_dijkstra(G& g, const P& p, std::vector<std::vector<vert_id>>& colour_succs, vert_id src,
+    static void chrome_dijkstra(const G& g, const P& p, std::vector<std::vector<vert_id>>& colour_succs, vert_id src,
                                 std::vector<std::tuple<vert_id, Weight>>& out) {
         size_t sz = g.size();
         if (sz == 0)
@@ -921,7 +921,7 @@ class GraphOps {
     // anything that _was_ stable.
     // GKG: Factor out common elements of this & the previous algorithm.
     template <class G, class P, class S>
-    static void dijkstra_recover(G& g, const P& p, const S& is_stable, vert_id src,
+    static void dijkstra_recover(const G& g, const P& p, const S& is_stable, vert_id src,
                                  std::vector<std::tuple<vert_id, Weight>>& out) {
         size_t sz = g.size();
         if (sz == 0)
@@ -950,14 +950,15 @@ class GraphOps {
             heap.insert(dest);
         }
 
-        mut_val_ref_t w;
         while (!heap.empty()) {
             int es = heap.removeMin();
             Weight es_cost = dists[es] + p[es]; // If it's on the queue, distance is not infinite.
             Weight es_val = es_cost - p[src];
-            if (!g.lookup(src, es, &w) || w.get() > es_val)
-                out.emplace_back(es, es_val);
-
+            {
+                auto w = g.lookup(src, es);
+                if (!w || *w > es_val)
+                    out.emplace_back(es, es_val);
+            }
             if (vert_marks[es] == V_STABLE)
                 continue;
 
@@ -985,7 +986,7 @@ class GraphOps {
     }
 
     template <class G, class P>
-    static bool repair_potential(G& g, P& p, vert_id ii, vert_id jj) {
+    static bool repair_potential(const G& g, P& p, vert_id ii, vert_id jj) {
         // Ensure there's enough scratch space.
         size_t sz = g.size();
         // assert(src < (int) sz && dest < (int) sz);
@@ -1035,7 +1036,7 @@ class GraphOps {
     }
 
     template <class G, class P, class V>
-    static void close_after_widen(G& g, P& p, const V& is_stable, edge_vector& delta) {
+    static void close_after_widen(const G& g, const P& p, const V& is_stable, edge_vector& delta) {
         size_t sz = g.size();
         grow_scratch(sz);
         //      assert(orig.size() == sz);
@@ -1092,7 +1093,7 @@ class GraphOps {
     // Compute the transitive closure of edges reachable from v, assuming
     // (1) the subgraph G \ {v} is closed, and (2) P is a valid model of G.
     template <class G, class P>
-    static void close_after_assign_fwd(G& g, const P& p, vert_id v, std::vector<std::tuple<vert_id, Weight>>& aux) {
+    static void close_after_assign_fwd(const G& g, const P& p, vert_id v, std::vector<std::tuple<vert_id, Weight>>& aux) {
         // Initialize the queue and distances.
         for (vert_id u : g.verts())
             vert_marks[u] = 0;
@@ -1141,7 +1142,7 @@ class GraphOps {
     }
 
     template <class G, class P>
-    static void close_after_assign(G& g, P& p, vert_id v, edge_vector& delta) {
+    static void close_after_assign(const G& g, const P& p, vert_id v, edge_vector& delta) {
         size_t sz = g.size();
         grow_scratch(sz);
         {
@@ -1152,7 +1153,7 @@ class GraphOps {
         }
         {
             std::vector<std::tuple<vert_id, Weight>> aux;
-            GraphRev<G> g_rev(g);
+            GraphRev<const G> g_rev(g);
             close_after_assign_fwd(g_rev, make_negp(p), v, aux);
             for (auto [vid, wt] : aux)
                 delta.emplace_back(vid, v, wt);
