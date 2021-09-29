@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         configurations: [Debug, Release]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-21.04
     env:
       # Configuration type to build.  For documentation on how build matrices work, see
       # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
