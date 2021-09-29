@@ -615,27 +615,23 @@ void array_domain_t::operator|=(const array_domain_t& other) {
     num_bytes |= other.num_bytes;
 }
 
-array_domain_t array_domain_t::operator|(const array_domain_t& other) & {
+array_domain_t array_domain_t::operator|(const array_domain_t& other) const {
     return array_domain_t(num_bytes | other.num_bytes);
 }
 
-array_domain_t array_domain_t::operator|(const array_domain_t& other) && {
-    return array_domain_t(num_bytes | other.num_bytes);
-}
-
-array_domain_t array_domain_t::operator&(array_domain_t other) {
+array_domain_t array_domain_t::operator&(const array_domain_t& other) const {
     return array_domain_t(num_bytes & other.num_bytes);
 }
 
-array_domain_t array_domain_t::widen(const array_domain_t& other) {
+array_domain_t array_domain_t::widen(const array_domain_t& other) const {
     return array_domain_t(num_bytes | other.num_bytes);
 }
 
-array_domain_t array_domain_t::widening_thresholds(const array_domain_t& other, const iterators::thresholds_t& ts) {
+array_domain_t array_domain_t::widening_thresholds(const array_domain_t& other, const iterators::thresholds_t& ts) const {
     return array_domain_t(num_bytes | other.num_bytes);
 }
 
-array_domain_t array_domain_t::narrow(const array_domain_t& other) {
+array_domain_t array_domain_t::narrow(const array_domain_t& other) const {
     return array_domain_t(num_bytes & other.num_bytes);
 }
 

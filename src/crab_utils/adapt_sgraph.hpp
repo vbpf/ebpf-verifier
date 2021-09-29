@@ -29,7 +29,7 @@ class TreeSMap final {
     class key_iter_t {
       public:
         key_iter_t() = default;
-        explicit key_iter_t(col::const_iterator _e) : e(_e) {}
+        explicit key_iter_t(const col::const_iterator& _e) : e(_e) {}
 
         // XXX: to make sure that we always return the same address
         // for the "empty" iterator, otherwise we can trigger
@@ -49,15 +49,15 @@ class TreeSMap final {
         col::const_iterator e;
     };
 
-    class key_range_t {
+    class key_const_range_t {
       public:
         using iterator = key_iter_t;
 
-        explicit key_range_t(const col& c) : c{c} {}
+        explicit key_const_range_t(const col& c) : c{c} {}
         [[nodiscard]] size_t size() const { return c.size(); }
 
-        [[nodiscard]] key_iter_t begin() const { return key_iter_t(c.begin()); }
-        [[nodiscard]] key_iter_t end() const { return key_iter_t(c.end()); }
+        [[nodiscard]] key_iter_t begin() const { return key_iter_t(c.cbegin()); }
+        [[nodiscard]] key_iter_t end() const { return key_iter_t(c.cend()); }
 
         const col& c;
     };
@@ -73,8 +73,19 @@ class TreeSMap final {
         const col& c;
     };
 
+    class elt_const_range_t {
+      public:
+        elt_const_range_t(const col& c) : c{c} {}
+        [[nodiscard]] size_t size() const { return c.size(); }
+
+        [[nodiscard]] auto begin() const { return c.cbegin(); }
+        [[nodiscard]] auto end() const { return c.cend(); }
+
+        const col& c;
+    };
+
     [[nodiscard]] elt_range_t elts() const { return elt_range_t(map); }
-    [[nodiscard]] key_range_t keys() const { return key_range_t(map); }
+    [[nodiscard]] key_const_range_t keys() const { return key_const_range_t(map); }
 
     [[nodiscard]] bool contains(key_t k) const {
         return map.count(k);
@@ -130,36 +141,36 @@ class AdaptGraph final {
         return g;
     }
 
-    struct vert_iterator {
+    struct vert_const_iterator {
         vert_id v;
         const std::vector<int>& is_free;
 
         vert_id operator*() const { return v; }
 
-        bool operator!=(const vert_iterator& o) {
+        bool operator!=(const vert_const_iterator& o) {
             while (v < o.v && is_free[v])
                 ++v;
             return v < o.v;
         }
 
-        vert_iterator& operator++() {
+        vert_const_iterator& operator++() {
             ++v;
             return *this;
         }
     };
-    struct vert_range {
+    struct vert_const_range {
         const std::vector<int>& is_free;
 
-        explicit vert_range(const std::vector<int>& _is_free) : is_free(_is_free) {}
+        explicit vert_const_range(const std::vector<int>& _is_free) : is_free(_is_free) {}
 
-        [[nodiscard]] vert_iterator begin() const { return vert_iterator{0, is_free}; }
-        [[nodiscard]] vert_iterator end() const { return vert_iterator{static_cast<vert_id>(is_free.size()), is_free}; }
+        [[nodiscard]] vert_const_iterator begin() const { return vert_const_iterator{0, is_free}; }
+        [[nodiscard]] vert_const_iterator end() const { return vert_const_iterator{static_cast<vert_id>(is_free.size()), is_free}; }
 
         [[nodiscard]] size_t size() const { return is_free.size(); }
     };
-    [[nodiscard]] vert_range verts() const { return vert_range{is_free}; }
+    [[nodiscard]] vert_const_range verts() const { return vert_const_range{is_free}; }
 
-    struct edge_iter {
+    struct edge_const_iter {
         struct edge_ref {
             vert_id vert{};
             Weight val;
@@ -168,58 +179,58 @@ class AdaptGraph final {
         smap_t::elt_iter_t it{};
         const std::vector<Weight>* ws{};
 
-        edge_iter(const smap_t::elt_iter_t& _it, const std::vector<Weight>& _ws) : it(_it), ws(&_ws) {}
-        edge_iter(const edge_iter& o) = default;
-        edge_iter& operator=(const edge_iter& o) = default;
-        edge_iter() = default;
+        edge_const_iter(const smap_t::elt_iter_t& _it, const std::vector<Weight>& _ws) : it(_it), ws(&_ws) {}
+        edge_const_iter(const edge_const_iter& o) = default;
+        edge_const_iter& operator=(const edge_const_iter& o) = default;
+        edge_const_iter() = default;
 
         // XXX: to make sure that we always return the same address
         // for the "empty" iterator, otherwise we can trigger
         // undefined behavior.
-        inline static std::unique_ptr<edge_iter> _empty_iter = std::make_unique<edge_iter>();
-        static edge_iter empty_iterator() {
+        inline static std::unique_ptr<edge_const_iter> _empty_iter = std::make_unique<edge_const_iter>();
+        static edge_const_iter empty_iterator() {
             return *_empty_iter;
         }
 
         edge_ref operator*() const { return edge_ref{it->first, (*ws)[it->second]}; }
-        edge_iter operator++() {
+        edge_const_iter operator++() {
             ++it;
             return *this;
         }
-        bool operator!=(const edge_iter& o) const { return it != o.it; }
+        bool operator!=(const edge_const_iter& o) const { return it != o.it; }
     };
 
-    using adj_range_t = typename smap_t::key_range_t;
 
-    struct edge_range_t {
+    struct edge_const_range_t {
         using elt_range_t = typename smap_t::elt_range_t;
-        using iterator = edge_iter;
+        using iterator = edge_const_iter;
 
         elt_range_t r;
         const std::vector<Weight>& ws;
 
-        [[nodiscard]] edge_iter begin() const { return edge_iter(r.begin(), ws); }
-        [[nodiscard]] edge_iter end() const { return edge_iter(r.end(), ws); }
+        [[nodiscard]] edge_const_iter begin() const { return edge_const_iter(r.begin(), ws); }
+        [[nodiscard]] edge_const_iter end() const { return edge_const_iter(r.end(), ws); }
         [[nodiscard]] size_t size() const { return r.size(); }
     };
 
-    using fwd_edge_iter = edge_iter;
-    using rev_edge_iter = edge_iter;
+    using fwd_edge_const_iter = edge_const_iter;
+    using rev_edge_const_iter = edge_const_iter;
 
-    using pred_range = adj_range_t;
-    using succ_range = adj_range_t;
+    using adj_range_t = typename smap_t::key_const_range_t;
+    using adj_const_range_t = typename smap_t::key_const_range_t;
+    using neighbour_range = adj_range_t;
+    using neighbour_const_range = adj_const_range_t;
 
-    adj_range_t succs(vert_id v) { return _succs[v].keys(); }
-    adj_range_t preds(vert_id v) { return _preds[v].keys(); }
+    [[nodiscard]] adj_const_range_t succs(vert_id v) const { return _succs[v].keys(); }
+    [[nodiscard]] adj_const_range_t preds(vert_id v) const { return _preds[v].keys(); }
 
-    using fwd_edge_range = edge_range_t;
-    using rev_edge_range = edge_range_t;
+    using fwd_edge_range = edge_const_range_t;
+    using rev_edge_range = edge_const_range_t;
 
-    [[nodiscard]] edge_range_t e_succs(vert_id v) const { return {_succs[v].elts(), _ws}; }
-    [[nodiscard]] edge_range_t e_preds(vert_id v) const { return {_preds[v].elts(), _ws}; }
+    [[nodiscard]] edge_const_range_t e_succs(vert_id v) const { return {_succs[v].elts(), _ws}; }
+    [[nodiscard]] edge_const_range_t e_preds(vert_id v) const { return {_preds[v].elts(), _ws}; }
 
-    using e_pred_range = edge_range_t;
-    using e_succ_range = edge_range_t;
+    using e_neighbour_const_range = edge_const_range_t;
 
     // Management
     [[nodiscard]] bool is_empty() const { return edge_count == 0; }
@@ -286,9 +297,11 @@ class AdaptGraph final {
         edge_count = 0;
     }
 
-    bool elem(vert_id s, vert_id d) { return _succs[s].contains(d); }
+    [[nodiscard]] bool elem(vert_id s, vert_id d) const {
+        return _succs[s].contains(d);
+    }
 
-    Weight& edge_val(vert_id s, vert_id d) {
+    const Weight& edge_val(vert_id s, vert_id d) const {
         return _ws[*_succs[s].lookup(d)];
     }
 
@@ -319,6 +332,13 @@ class AdaptGraph final {
             return true;
         }
         return false;
+    }
+
+    [[nodiscard]] std::optional<Weight> lookup(vert_id s, vert_id d) const {
+        if (auto idx = _succs[s].lookup(d)) {
+            return _ws[*idx];
+        }
+        return {};
     }
 
     void add_edge(vert_id s, Weight w, vert_id d) {

@@ -57,12 +57,11 @@ class array_domain_t final {
 
     void operator|=(const array_domain_t& other);
 
-    array_domain_t operator|(const array_domain_t& other) &;
-    array_domain_t operator|(const array_domain_t& other) &&;
-    array_domain_t operator&(array_domain_t other);
-    array_domain_t widen(const array_domain_t& other);
-    array_domain_t widening_thresholds(const array_domain_t& other, const iterators::thresholds_t& ts);
-    array_domain_t narrow(const array_domain_t& other);
+    array_domain_t operator|(const array_domain_t& other) const;
+    array_domain_t operator&(const array_domain_t& other) const;
+    array_domain_t widen(const array_domain_t& other) const;
+    array_domain_t widening_thresholds(const array_domain_t& other, const iterators::thresholds_t& ts) const;
+    array_domain_t narrow(const array_domain_t& other) const;
 
     friend std::ostream& operator<<(std::ostream& o, const array_domain_t& dom);
 

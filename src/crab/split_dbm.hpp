@@ -137,7 +137,7 @@ class SplitDBM final {
     };
 
     // Evaluate the potential value of a variable.
-    Weight pot_value(variable_t v) {
+    Weight pot_value(variable_t v) const {
         auto it = vert_map.find(v);
         if (it != vert_map.end())
             return potential[(*it).second];
@@ -145,7 +145,7 @@ class SplitDBM final {
     }
 
     // Evaluate an expression under the chosen potentials
-    Weight eval_expression(const linear_expression_t& e, bool overflow) {
+    Weight eval_expression(const linear_expression_t& e, bool overflow) const {
         Weight res(convert_NtoW(e.constant_term(), overflow));
         if (overflow) {
             return Weight(0);
@@ -161,7 +161,7 @@ class SplitDBM final {
         return res;
     }
 
-    interval_t compute_residual(const linear_expression_t& e, variable_t pivot) {
+    interval_t compute_residual(const linear_expression_t& e, variable_t pivot) const {
         interval_t residual(-e.constant_term());
         for (const auto& [variable, coefficient] : e.variable_terms()) {
             if (variable != pivot) {
@@ -190,7 +190,7 @@ class SplitDBM final {
                             bool extract_upper_bounds,
                             /* foreach {v, k} \in diff_csts we have
                                the difference constraint v - k <= k */
-                            std::vector<std::pair<variable_t, Weight>>& diff_csts);
+                            std::vector<std::pair<variable_t, Weight>>& diff_csts) const;
 
     // Turn an assignment into a set of difference constraints.
     void diffcsts_of_assign(variable_t x, const linear_expression_t& exp, std::vector<std::pair<variable_t, Weight>>& lb,
@@ -209,7 +209,7 @@ class SplitDBM final {
                              /* x >= lb for each {x,lb} in lbs */
                              std::vector<std::pair<variable_t, Weight>>& lbs,
                              /* x <= ub for each {x,ub} in ubs */
-                             std::vector<std::pair<variable_t, Weight>>& ubs);
+                             std::vector<std::pair<variable_t, Weight>>& ubs) const;
 
     bool add_linear_leq(const linear_expression_t& exp);
 
@@ -224,11 +224,12 @@ class SplitDBM final {
                 add_univar_disequation(variable, *k);
             }
         }
+        normalize();
     }
 
-    interval_t get_interval(variable_t x) { return get_interval(vert_map, g, x); }
+    interval_t get_interval(variable_t x) const { return get_interval(vert_map, g, x); }
 
-    static interval_t get_interval(vert_map_t& m, graph_t& r, variable_t x) {
+    static interval_t get_interval(const vert_map_t& m, const graph_t& r, variable_t x) {
         auto it = m.find(x);
         if (it == m.end()) {
             return interval_t::top();
@@ -265,6 +266,7 @@ class SplitDBM final {
                  std::cout << "#nodes = " << p.first << " #edges=" << p.second << "\n";);
 
         assert(g.size() > 0);
+        normalize();
     }
 
     SplitDBM(const SplitDBM& o) = default;
@@ -295,7 +297,7 @@ class SplitDBM final {
         return g.is_empty();
     }
 
-    bool operator<=(SplitDBM o);
+    bool operator<=(const SplitDBM& o) const;
 
     // FIXME: can be done more efficient
     void operator|=(const SplitDBM& o) { *this = *this | o; }
@@ -307,28 +309,38 @@ class SplitDBM final {
         }
     }
 
-    SplitDBM operator|(const SplitDBM& o) &;
-    SplitDBM operator|(const SplitDBM& o) && {
-        if (o.is_bottom())
-            return *this;
-        return static_cast<SplitDBM&>(*this) | o;
-    }
+    SplitDBM operator|(const SplitDBM& o) const&;
+
     SplitDBM operator|(SplitDBM&& o) && {
-        if (o.is_bottom())
-            return *this;
-        return static_cast<SplitDBM&>(*this) | o;
+        if (is_bottom() || o.is_top())
+            return std::move(o);
+        if (is_top() || o.is_bottom())
+            return std::move(*this);
+        return ((const SplitDBM&)*this) | (const SplitDBM&)o;
     }
 
-    SplitDBM widen(SplitDBM o);
+    SplitDBM operator|(const SplitDBM& o) && {
+        if (is_top() || o.is_bottom())
+            return std::move(*this);
+        return ((const SplitDBM&)*this) | o;
+    }
 
-    SplitDBM widening_thresholds(SplitDBM o, const iterators::thresholds_t& ts) {
+    SplitDBM operator|(SplitDBM&& o) const& {
+        if (is_bottom() || o.is_top())
+            return std::move(o);
+        return (*this) | (const SplitDBM&)o;
+    }
+
+    SplitDBM widen(const SplitDBM& o) const;
+
+    SplitDBM widening_thresholds(const SplitDBM& o, const iterators::thresholds_t& ts) const {
         // TODO: use thresholds
-        return ((*this).widen(std::move(o)));
+        return this->widen(o);
     }
 
-    SplitDBM operator&(SplitDBM o);
+    SplitDBM operator&(const SplitDBM& o) const;
 
-    SplitDBM narrow(SplitDBM o);
+    SplitDBM narrow(const SplitDBM& o) const;
 
     void normalize();
 
@@ -373,17 +385,14 @@ class SplitDBM final {
 
     void operator+=(const linear_constraint_t& cst);
 
-    interval_t eval_interval(const linear_expression_t& e) {
+    interval_t eval_interval(const linear_expression_t& e) const {
         interval_t r{e.constant_term()};
         for (const auto& [variable, coefficient] : e.variable_terms())
             r += coefficient * operator[](variable);
         return r;
     }
 
-    interval_t operator[](variable_t x) {
-        CrabStats::count("SplitDBM.count.to_intervals");
-        ScopedCrabStats __st__("SplitDBM.to_intervals");
-
+    interval_t operator[](variable_t x) const {
         if (is_bottom()) {
             return interval_t::bottom();
         } else {
@@ -403,13 +412,13 @@ class SplitDBM final {
     std::pair<std::size_t, std::size_t> size() const { return {g.size(), g.num_edges()}; }
 
   private:
-    bool entail_aux(const linear_constraint_t& cst) {
+    bool entail_aux(const linear_constraint_t& cst) const {
         SplitDBM dom(*this); // copy is necessary
         dom += cst.negate();
         return dom.is_bottom();
     }
 
-    bool intersect_aux(const linear_constraint_t& cst) {
+    bool intersect_aux(const linear_constraint_t& cst) const {
         SplitDBM dom(*this); // copy is necessary
         dom += cst;
         return !dom.is_bottom();
@@ -426,7 +435,7 @@ class SplitDBM final {
 
 
     // Return true if inv intersects with cst.
-    bool intersect(const linear_constraint_t& cst) {
+    bool intersect(const linear_constraint_t& cst) const {
         if (is_bottom() || cst.is_contradiction())
             return false;
         if (is_top() || cst.is_tautology())
@@ -435,7 +444,7 @@ class SplitDBM final {
     }
 
     // Return true if entails rhs.
-    bool entail(const linear_constraint_t& rhs) {
+    bool entail(const linear_constraint_t& rhs) const {
         if (is_bottom())
             return true;
         if (rhs.is_tautology())
@@ -480,8 +489,8 @@ class SplitDBM final {
         //       if (dom.is_top()) { ... }
     }
 
-    friend std::ostream& operator<<(std::ostream& o, SplitDBM& dom);
-    string_invariant to_set();
+    friend std::ostream& operator<<(std::ostream& o, const SplitDBM& dom);
+    string_invariant to_set() const;
 }; // class SplitDBM
 
 } // namespace domains

@@ -44,10 +44,7 @@ class basic_block_t final {
 
     using label_vec_t = std::set<label_t>;
     using stmt_list_t = std::vector<Instruction>;
-    using succ_iterator = label_vec_t::iterator;
-    using const_succ_iterator = label_vec_t::const_iterator;
-    using pred_iterator = succ_iterator;
-    using const_pred_iterator = const_succ_iterator;
+    using neighbour_const_iterator = label_vec_t::const_iterator;
     using iterator = typename stmt_list_t::iterator;
     using const_iterator = typename stmt_list_t::const_iterator;
     using reverse_iterator = typename stmt_list_t::reverse_iterator;
@@ -88,17 +85,9 @@ class basic_block_t final {
 
     [[nodiscard]] size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
 
-    std::pair<succ_iterator, succ_iterator> next_blocks() { return std::make_pair(m_next.begin(), m_next.end()); }
+    [[nodiscard]] std::pair<neighbour_const_iterator, neighbour_const_iterator> next_blocks() const { return std::make_pair(m_next.begin(), m_next.end()); }
 
-    std::pair<pred_iterator, pred_iterator> prev_blocks() { return std::make_pair(m_prev.begin(), m_prev.end()); }
-
-    [[nodiscard]] std::pair<const_succ_iterator, const_succ_iterator> next_blocks() const {
-        return std::make_pair(m_next.begin(), m_next.end());
-    }
-
-    [[nodiscard]] std::pair<const_pred_iterator, const_pred_iterator> prev_blocks() const {
-        return std::make_pair(m_prev.begin(), m_prev.end());
-    }
+    [[nodiscard]] std::pair<neighbour_const_iterator, neighbour_const_iterator> prev_blocks() const { return std::make_pair(m_prev.begin(), m_prev.end()); }
 
     [[nodiscard]] const label_vec_t& next_blocks_set() const {
         return m_next;
@@ -143,10 +132,7 @@ class basic_block_t final {
 // backward analysis.
 class basic_block_rev_t final {
   public:
-    using succ_iterator = typename basic_block_t::succ_iterator;
-    using const_succ_iterator = typename basic_block_t::const_succ_iterator;
-    using pred_iterator = succ_iterator;
-    using const_pred_iterator = const_succ_iterator;
+    using neighbour_const_iterator = typename basic_block_t::neighbour_const_iterator;
 
     using iterator = typename basic_block_t::reverse_iterator;
     using const_iterator = typename basic_block_t::const_reverse_iterator;
@@ -168,13 +154,9 @@ class basic_block_rev_t final {
 
     [[nodiscard]] std::size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
 
-    std::pair<succ_iterator, succ_iterator> next_blocks() { return _bb.prev_blocks(); }
+    [[nodiscard]] std::pair<neighbour_const_iterator, neighbour_const_iterator> next_blocks() const { return _bb.prev_blocks(); }
 
-    std::pair<pred_iterator, pred_iterator> prev_blocks() { return _bb.next_blocks(); }
-
-    [[nodiscard]] std::pair<const_succ_iterator, const_succ_iterator> next_blocks() const { return _bb.prev_blocks(); }
-
-    [[nodiscard]] std::pair<const_pred_iterator, const_pred_iterator> prev_blocks() const { return _bb.next_blocks(); }
+    [[nodiscard]] std::pair<neighbour_const_iterator, neighbour_const_iterator> prev_blocks() const { return _bb.next_blocks(); }
 
 
     [[nodiscard]] const basic_block_t::label_vec_t& next_blocks_set() const {
@@ -191,15 +173,9 @@ class cfg_t final {
   public:
     using node_t = label_t; // for Bgl graphs
 
-    using succ_iterator = typename basic_block_t::succ_iterator;
-    using pred_iterator = typename basic_block_t::pred_iterator;
-    using const_succ_iterator = typename basic_block_t::const_succ_iterator;
-    using const_pred_iterator = typename basic_block_t::const_pred_iterator;
+    using neighbour_const_iterator = typename basic_block_t::neighbour_const_iterator;
 
-    using succ_range = boost::iterator_range<succ_iterator>;
-    using pred_range = boost::iterator_range<pred_iterator>;
-    using const_succ_range = boost::iterator_range<const_succ_iterator>;
-    using const_pred_range = boost::iterator_range<const_pred_iterator>;
+    using neighbour_const_range = boost::iterator_range<neighbour_const_iterator>;
 
   private:
     using basic_block_map_t = std::map<label_t, basic_block_t>;
@@ -238,17 +214,13 @@ class cfg_t final {
 
     [[nodiscard]] label_t entry_label() const { return label_t::entry; }
 
-    [[nodiscard]] const_succ_range next_nodes(const label_t& _label) const {
+    [[nodiscard]] neighbour_const_range next_nodes(const label_t& _label) const {
         return boost::make_iterator_range(get_node(_label).next_blocks());
     }
 
-    [[nodiscard]] const_pred_range prev_nodes(const label_t& _label) const {
+    [[nodiscard]] neighbour_const_range prev_nodes(const label_t& _label) const {
         return boost::make_iterator_range(get_node(_label).prev_blocks());
     }
-
-    succ_range next_nodes(const label_t& _label) { return boost::make_iterator_range(get_node(_label).next_blocks()); }
-
-    pred_range prev_nodes(const label_t& _label) { return boost::make_iterator_range(get_node(_label).prev_blocks()); }
 
     basic_block_t& get_node(const label_t& _label) {
         auto it = m_blocks.find(_label);
@@ -420,16 +392,10 @@ class cfg_rev_t final {
   public:
     using node_t = label_t; // for Bgl graphs
 
-    using pred_range = typename cfg_t::succ_range;
-    using succ_range = typename cfg_t::pred_range;
-    using const_pred_range = typename cfg_t::const_succ_range;
-    using const_succ_range = typename cfg_t::const_pred_range;
+    using neighbour_const_range = typename cfg_t::neighbour_const_range;
 
     // For BGL
-    using succ_iterator = typename basic_block_t::succ_iterator;
-    using pred_iterator = typename basic_block_t::pred_iterator;
-    using const_succ_iterator = typename basic_block_t::const_succ_iterator;
-    using const_pred_iterator = typename basic_block_t::const_pred_iterator;
+    using neighbour_const_iterator = typename basic_block_t::neighbour_const_iterator;
 
   public:
     using basic_block_rev_map_t = std::map<label_t, basic_block_rev_t>;
@@ -458,13 +424,13 @@ class cfg_rev_t final {
 
     [[nodiscard]] label_t entry_label() const { return _cfg.exit_label(); }
 
-    [[nodiscard]] const_succ_range next_nodes(const label_t& bb) const { return _cfg.prev_nodes(bb); }
+    [[nodiscard]] neighbour_const_range next_nodes(const label_t& bb) const { return _cfg.prev_nodes(bb); }
 
-    [[nodiscard]] const_pred_range prev_nodes(const label_t& bb) const { return _cfg.next_nodes(bb); }
+    [[nodiscard]] neighbour_const_range prev_nodes(const label_t& bb) const { return _cfg.next_nodes(bb); }
 
-    succ_range next_nodes(const label_t& bb) { return _cfg.prev_nodes(bb); }
+    neighbour_const_range next_nodes(const label_t& bb) { return _cfg.prev_nodes(bb); }
 
-    pred_range prev_nodes(const label_t& bb) { return _cfg.next_nodes(bb); }
+    neighbour_const_range prev_nodes(const label_t& bb) { return _cfg.next_nodes(bb); }
 
     basic_block_rev_t& get_node(const label_t& _label) {
         auto it = _rev_bbs.find(_label);

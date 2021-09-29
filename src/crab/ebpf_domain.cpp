@@ -164,7 +164,7 @@ bool ebpf_domain_t::operator<=(const ebpf_domain_t& other) {
     return m_inv <= other.m_inv && stack <= other.stack;
 }
 
-bool ebpf_domain_t::operator==(ebpf_domain_t other) {
+bool ebpf_domain_t::operator==(const ebpf_domain_t& other) const {
     return stack == other.stack && m_inv <= other.m_inv && other.m_inv <= m_inv;
 }
 
@@ -182,20 +182,20 @@ void ebpf_domain_t::operator|=(const ebpf_domain_t& other) {
     operator|=(std::move(tmp));
 }
 
-ebpf_domain_t ebpf_domain_t::operator|(ebpf_domain_t&& other) {
+ebpf_domain_t ebpf_domain_t::operator|(ebpf_domain_t&& other) const {
     return ebpf_domain_t(m_inv | std::move(other.m_inv), stack | other.stack);
 }
 
-ebpf_domain_t ebpf_domain_t::operator|(const ebpf_domain_t& other) & {
+ebpf_domain_t ebpf_domain_t::operator|(const ebpf_domain_t& other) const& {
     return ebpf_domain_t(m_inv | other.m_inv, stack | other.stack);
 }
 
 ebpf_domain_t ebpf_domain_t::operator|(const ebpf_domain_t& other) && {
-    return ebpf_domain_t(m_inv | other.m_inv, stack | other.stack);
+    return ebpf_domain_t(other.m_inv | std::move(m_inv), other.stack | std::move(stack));
 }
 
-ebpf_domain_t ebpf_domain_t::operator&(ebpf_domain_t other) {
-    return ebpf_domain_t(m_inv & std::move(other.m_inv), stack & other.stack);
+ebpf_domain_t ebpf_domain_t::operator&(const ebpf_domain_t& other) const {
+    return ebpf_domain_t(m_inv & other.m_inv, stack & other.stack);
 }
 
 ebpf_domain_t ebpf_domain_t::widen(const ebpf_domain_t& other) {
@@ -305,7 +305,7 @@ void ebpf_domain_t::shl_overflow(variable_t lhs, const number_t& op2) { apply(m_
 void ebpf_domain_t::lshr(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
 void ebpf_domain_t::lshr(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
 void ebpf_domain_t::ashr(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
-void ebpf_domain_t::ashr(variable_t lhs, number_t op2) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
+void ebpf_domain_t::ashr(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
 
 
 static void assume(NumAbsDomain& inv, const linear_constraint_t& cst) { inv += cst; }
@@ -1155,7 +1155,7 @@ string_invariant ebpf_domain_t::to_set() {
     return this->m_inv.to_set();
 }
 
-std::ostream& operator<<(std::ostream& o, ebpf_domain_t dom) {
+std::ostream& operator<<(std::ostream& o, const ebpf_domain_t& dom) {
     if (dom.is_bottom()) {
         o << "_|_";
     } else {
