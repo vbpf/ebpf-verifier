@@ -21,6 +21,8 @@ struct string_invariant {
     string_invariant& operator=(const string_invariant& inv) = default;
 
     [[nodiscard]] bool is_bottom() const { return !maybe_inv; }
+    [[nodiscard]] bool empty() const { return maybe_inv && maybe_inv->empty(); }
+
     static string_invariant top() { return string_invariant{ {} }; }
     static string_invariant bottom() { return string_invariant{}; }
 

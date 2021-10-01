@@ -1,8 +1,12 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
 
+#include <algorithm>
 #include <iostream>
+#include <set>
 #include <variant>
+
+#include <boost/algorithm/string.hpp>
 
 #include <yaml-cpp/yaml.h>
 
@@ -12,7 +16,10 @@
 #include "ebpf_yaml.hpp"
 #include "string_constraints.hpp"
 
-static EbpfProgramType ebpf_get_program_type(const std::string& section, const std::string& path) {
+using std::vector;
+using std::string;
+
+static EbpfProgramType ebpf_get_program_type(const string& section, const string& path) {
     return {};
 }
 
@@ -28,7 +35,7 @@ static bool ebpf_is_helper_usable(int32_t n){
     return false;
 };
 
-static void ebpf_parse_maps_section(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t size,
+static void ebpf_parse_maps_section(vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t size,
                                     const struct ebpf_platform_t* platform, ebpf_verifier_options_t options) {
 }
 
@@ -53,7 +60,7 @@ ebpf_platform_t g_platform_test = {
     .get_map_type = ebpf_get_map_type
 };
 
-static EbpfProgramType make_progran_type(const std::string& name, ebpf_context_descriptor_t* context_descriptor) {
+static EbpfProgramType make_progran_type(const string& name, ebpf_context_descriptor_t* context_descriptor) {
     return EbpfProgramType{
         .name=name,
         .context_descriptor=context_descriptor,
@@ -63,55 +70,70 @@ static EbpfProgramType make_progran_type(const std::string& name, ebpf_context_d
     };
 }
 
-static std::set<std::string> vector_to_set(const std::vector<std::string>& s) {
-    std::set<std::string> res;
+static std::set<string> vector_to_set(const vector<string>& s) {
+    std::set<string> res;
     for (const auto& item : s)
         res.insert(item);
     return res;
 }
 
-static string_invariant read_invariant(const std::vector<std::string>& raw_invariant) {
-    std::set<std::string> res = vector_to_set(raw_invariant);
-    if (res == std::set<std::string>{"_|_"})
+std::set<string> operator-(const std::set<string>& a, const std::set<string>& b) {
+    std::set<string> res;
+    std::set_difference(a.begin(), a.end(), b.begin(), b.end(), std::inserter(res, res.begin()));
+    return res;
+}
+
+
+static string_invariant read_invariant(const vector<string>& raw_invariant) {
+    std::set<string> res = vector_to_set(raw_invariant);
+    if (res == std::set<string>{"_|_"})
         return string_invariant{};
     return string_invariant{res};
 }
 
 struct RawTestCase {
-    std::string test_case;
-    std::vector<std::string> pre;
-    std::vector<std::tuple<std::string, std::vector<std::string>>> raw_blocks;
-    std::vector<std::string> post;
+    string test_case;
+    vector<string> pre;
+    vector<std::tuple<string, vector<string>>> raw_blocks;
+    vector<string> post;
+    std::set<string> messages;
 };
 
-static std::vector<std::string> parse_block(const YAML::Node& block_node) {
-    std::vector<std::string> block;
-    std::istringstream is{block_node.as<std::string>()};
-    std::string line;
+static vector<string> parse_block(const YAML::Node& block_node) {
+    vector<string> block;
+    std::istringstream is{block_node.as<string>()};
+    string line;
     while (std::getline(is, line))
         block.emplace_back(line);
     return block;
 }
 
 static auto parse_code(const YAML::Node& code_node) {
-    std::vector<std::tuple<std::string, std::vector<std::string>>> res;
+    vector<std::tuple<string, vector<string>>> res;
     for (const auto& item : code_node) {
-        res.emplace_back(item.first.as<std::string>(), parse_block(item.second));
+        res.emplace_back(item.first.as<string>(), parse_block(item.second));
     }
     return res;
 }
 
+static std::set<string> as_set_empty_default(const YAML::Node& optional_node) {
+    if (!optional_node.IsDefined() || optional_node.IsNull())
+        return {};
+    return vector_to_set(optional_node.as<vector<string>>());
+}
+
 static RawTestCase parse_case(const YAML::Node& case_node) {
     return RawTestCase {
-        .test_case = case_node["test-case"].as<std::string>(),
-        .pre = case_node["pre"].as<std::vector<std::string>>(),
+        .test_case = case_node["test-case"].as<string>(),
+        .pre = case_node["pre"].as<vector<string>>(),
         .raw_blocks = parse_code(case_node["code"]),
-        .post = case_node["post"].as<std::vector<std::string>>(),
+        .post = case_node["post"].as<vector<string>>(),
+        .messages = as_set_empty_default(case_node["messages"]),
     };
 }
 
-static InstructionSeq raw_cfg_to_instruction_seq(const std::vector<std::tuple<std::string, std::vector<std::string>>>& raw_blocks) {
-    std::map<std::string, crab::label_t> label_name_to_label;
+static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string, vector<string>>>& raw_blocks) {
+    std::map<string, crab::label_t> label_name_to_label;
 
     int label_index = 0;
     for (const auto& [label_name, raw_block] : raw_blocks) {
@@ -123,7 +145,7 @@ static InstructionSeq raw_cfg_to_instruction_seq(const std::vector<std::tuple<st
     InstructionSeq res;
     label_index = 0;
     for (const auto& [label_name, raw_block] : raw_blocks) {
-        for (const std::string& line: raw_block) {
+        for (const string& line: raw_block) {
             const Instruction& ins = parse_instruction(line, label_name_to_label);
             if (std::holds_alternative<Undefined>(ins))
                 std::cout << "text:" << line << "; ins: " << ins << "\n";
@@ -140,38 +162,62 @@ static TestCase read_case(const RawTestCase& raw_case) {
         .assumed_pre_invariant = read_invariant(raw_case.pre),
         .instruction_seq = raw_cfg_to_instruction_seq(raw_case.raw_blocks),
         .expected_post_invariant = read_invariant(raw_case.post),
+        .expected_messages = raw_case.messages
     };
 }
 
-static std::vector<TestCase> read_suite(const std::string& path) {
+static vector<TestCase> read_suite(const string& path) {
     std::ifstream f{path};
-    std::vector<TestCase> res;
+    vector<TestCase> res;
     for (const YAML::Node& config : YAML::LoadAll(f)) {
         res.push_back(read_case(parse_case(config)));
     }
     return res;
 }
 
+static std::set<string> extract_messages(const string& str) {
+    vector<string> output;
+    boost::split(output, str, boost::is_any_of("\n"));
+
+    std::set<string> actual_messages;
+    for (auto& item: output) {
+        boost::trim(item);
+        if (!item.empty())
+            actual_messages.insert(item);
+    }
+    return actual_messages;
+}
+
+template<typename T>
+static Diff<T> make_diff(const T& actual, const T& expected) {
+    return Diff<T> {
+        .unexpected = actual - expected,
+        .unseen = expected - actual,
+    };
+}
 
 std::optional<Failure> run_yaml_test_case(const TestCase& test_case) {
     ebpf_context_descriptor_t context_descriptor{0, -1, -1, -1};
     EbpfProgramType program_type = make_progran_type(test_case.name, &context_descriptor);
 
     program_info info{&g_platform_test, {}, program_type};
-    const auto& [db, pre_invs, post_invs] = ebpf_analyze_program_for_test(test_case.instruction_seq,
-                                                                             test_case.assumed_pre_invariant,
-                                                                             info, true, false);
+
+    std::ostringstream ss;
+    const auto& [pre_invs, post_invs] = ebpf_analyze_program_for_test(ss, test_case.instruction_seq,
+                                                                      test_case.assumed_pre_invariant,
+                                                                      info, true, false);
+    std::set<string> actual_messages = extract_messages(ss.str());
+
     const auto& actual_last_invariant = pre_invs.at(label_t::exit);
-    if (actual_last_invariant == test_case.expected_post_invariant && db.total_warnings == 0)
+    if (actual_last_invariant == test_case.expected_post_invariant && actual_messages == test_case.expected_messages)
         return {};
     return Failure{
-        .expected_but_unseen = test_case.expected_post_invariant - actual_last_invariant,
-        .seen_but_not_expected = actual_last_invariant - test_case.expected_post_invariant,
-        .db = db
+        .invariant = make_diff(actual_last_invariant, test_case.expected_post_invariant),
+        .messages = make_diff(actual_messages, test_case.expected_messages)
     };
 }
 
-bool all_suites(const std::string& path) {
+bool all_suites(const string& path) {
     bool result = true;
     for (const TestCase& test_case: read_suite(path)) {
         result = result && bool(run_yaml_test_case(test_case));
@@ -179,7 +225,7 @@ bool all_suites(const std::string& path) {
     return result;
 }
 
-void foreach_suite(const std::string& path, const std::function<void(const TestCase&)>& f) {
+void foreach_suite(const string& path, const std::function<void(const TestCase&)>& f) {
     for (const TestCase& test_case: read_suite(path)) {
         f(test_case);
     }
