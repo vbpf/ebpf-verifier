@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+#include <boost/algorithm/string.hpp>
+
 #include "crab/ebpf_domain.hpp"
 #include "crab/fwd_analyzer.hpp"
 
@@ -24,6 +26,36 @@ using std::string;
 
 thread_local program_info global_program_info;
 thread_local ebpf_verifier_options_t thread_local_options;
+
+// Toy database to store invariants.
+struct checks_db final {
+    std::map<label_t, std::vector<std::string>> m_db;
+    int total_warnings{};
+    int total_unreachable{};
+    int max_instruction_count{};
+    std::set<label_t> maybe_nonterminating;
+
+    void add(const label_t& label, const std::string& msg) {
+        m_db[label].emplace_back(msg);
+    }
+
+    void add_warning(const label_t& label, const std::string& msg) {
+        add(label, msg);
+        total_warnings++;
+    }
+
+    void add_unreachable(const label_t& label, const std::string& msg) {
+        add(label, msg);
+        total_unreachable++;
+    }
+
+    void add_nontermination(const label_t& label) {
+        maybe_nonterminating.insert(label);
+        total_warnings++;
+    }
+
+    checks_db() = default;
+};
 
 static checks_db generate_report(cfg_t& cfg,
                                  crab::invariant_table_t& pre_invariants,
@@ -81,31 +113,20 @@ static checks_db generate_report(cfg_t& cfg,
     return m_db;
 }
 
-static void print_report(std::ostream& s, const checks_db& db, const InstructionSeq& prog) {
-    s << "\n";
+static void print_report(std::ostream& os, const checks_db& db, const InstructionSeq& prog) {
+    os << "\n";
     for (auto [label, messages] : db.m_db) {
-        // See if there is an instruction with this label.
-        auto it = std::find_if(prog.begin(), prog.end(), [label](const LabeledInstruction& val) {
-            return (std::get<0>(val) == label);
-        });
-        if (it != std::end(prog)) {
-            print(prog, s, label);
-        } else {
-            s << label << ":\n";
-        }
-
         for (const auto& msg : messages)
-            s << "  " << msg << "\n";
+            os << label << ": " << msg << "\n";
     }
-    s << "\n";
+    os << "\n";
     if (!db.maybe_nonterminating.empty()) {
-        s << "Could not prove termination on join into: ";
+        os << "Could not prove termination on join into: ";
         for (const label_t& label : db.maybe_nonterminating) {
-            s << label << ", ";
+            os << label << ", ";
         }
-        s << "\n";
+        os << "\n";
     }
-    s << db.total_warnings << " errors\n";
 }
 
 checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options) {
@@ -160,8 +181,8 @@ static string_invariant_map to_string_invariant_map(crab::invariant_table_t& inv
     return res;
 }
 
-std::tuple<checks_db, string_invariant_map, string_invariant_map>
-ebpf_analyze_program_for_test(const InstructionSeq& prog, const string_invariant& entry_invariant,
+std::tuple<string_invariant_map, string_invariant_map>
+ebpf_analyze_program_for_test(std::ostream& os, const InstructionSeq& prog, const string_invariant& entry_invariant,
                               const program_info& info,
                               bool no_simplify, bool check_termination) {
     ebpf_domain_t entry_inv = entry_invariant.is_bottom()
@@ -171,16 +192,16 @@ ebpf_analyze_program_for_test(const InstructionSeq& prog, const string_invariant
     cfg_t cfg = prepare_cfg(prog, info, !no_simplify, false);
     auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, entry_inv, check_termination);
     checks_db report = generate_report(cfg, pre_invariants, post_invariants);
+    print_report(os, report, prog);
 
     return {
-        report,
         to_string_invariant_map(pre_invariants),
         to_string_invariant_map(post_invariants)
     };
 }
 
 /// Returned value is true if the program passes verification.
-bool ebpf_verify_program(std::ostream& s, const InstructionSeq& prog, const program_info& info,
+bool ebpf_verify_program(std::ostream& os, const InstructionSeq& prog, const program_info& info,
                          const ebpf_verifier_options_t* options, ebpf_verifier_stats_t* stats) {
     if (options == nullptr)
         options = &ebpf_verifier_default_options;
@@ -189,9 +210,9 @@ bool ebpf_verify_program(std::ostream& s, const InstructionSeq& prog, const prog
     // in a "passive", non-deterministic form.
     cfg_t cfg = prepare_cfg(prog, info, !options->no_simplify);
 
-    checks_db report = get_ebpf_report(s, cfg, info, options);
+    checks_db report = get_ebpf_report(os, cfg, info, options);
     if (options->print_failures) {
-        print_report(s, report, prog);
+        print_report(os, report, prog);
     }
     if (stats) {
         stats->total_unreachable = report.total_unreachable;

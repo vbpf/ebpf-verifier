@@ -3,6 +3,7 @@
 #pragma once
 #include <functional>
 #include <string>
+#include <set>
 
 #include "crab_verifier.hpp"
 
@@ -11,15 +12,21 @@ struct TestCase {
     string_invariant assumed_pre_invariant;
     InstructionSeq instruction_seq;
     string_invariant expected_post_invariant;
+    std::set<std::string> expected_messages;
 };
 
 void foreach_suite(const std::string& path, const std::function<void(const TestCase&)>& f);
 bool all_suites(const std::string& path);
 
+template<typename T>
+struct Diff {
+    T unexpected;
+    T unseen;
+};
+
 struct Failure {
-    string_invariant expected_but_unseen;
-    string_invariant seen_but_not_expected;
-    checks_db db;
+    Diff<string_invariant> invariant;
+    Diff<std::set<std::string>> messages;
 };
 
 std::optional<Failure> run_yaml_test_case(const TestCase& test_case);

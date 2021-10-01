@@ -1158,7 +1158,7 @@ static std::string to_string(variable_t vd, variable_t vs, const SafeInt64Defaul
         else if (w.operator<(0))
             elem << vs << "=" << vd << "+" << -w;
         else
-            elem << std::min(vs, vd) << "=" << std::max(vs, vd);
+            elem << std::min(vs.name(), vd.name()) << "=" << std::max(vs.name(), vd.name());
     } else {
         elem << vd << "-" << vs << "<=" << w;
     }

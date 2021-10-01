@@ -27,4 +27,8 @@ properties:
     type: array
     items:
       type: string
+  messages:
+    type: array
+    items:
+      type: string
 additionalProperties: false

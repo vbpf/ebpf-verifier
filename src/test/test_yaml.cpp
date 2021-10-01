@@ -10,7 +10,9 @@
 #define YAML_CASE(path) \
     TEST_CASE("YAML suite: " path, "[yaml]") { \
         foreach_suite(path, [&](const TestCase& test_case){ \
-            std::optional<Failure> failure = run_yaml_test_case(test_case);\
+            std::optional<Failure> failure = run_yaml_test_case(test_case); \
+            if (failure) std::cout << "unseen inv: " << failure->invariant.unseen << "\n"; \
+            if (failure) std::cout << "unexpected inv: " << failure->invariant.unexpected << "\n";           \
             REQUIRE(!failure); \
         }); \
     }

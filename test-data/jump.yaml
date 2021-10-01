@@ -1,6 +1,24 @@
 # Copyright (c) Prevail Verifier contributors.
 # SPDX-License-Identifier: MIT
 ---
+test-case: simple conditional jump forward
+
+pre: [r1.type=number]
+
+code:
+  <start>: |
+    r0 = 0
+    if r1 == 0 goto <out>
+    r0 = 1
+  <out>: |
+    exit
+
+post:
+  - r0.type=number
+  - r0.value=[0, 1]
+  - r1.type=number
+
+---
 test-case: simple unconditional jump forward
 
 pre: []
@@ -30,21 +48,3 @@ code:
 post:
   - r0.type=number
   - r0.value=0
-
----
-test-case: simple conditional jump forward
-
-pre: [r1.type=number]
-
-code:
-  <start>: |
-    r0 = 0
-    if r1 == 0 goto <out>
-    r0 = 1
-  <out>: |
-    exit
-
-post:
-  - r0.type=number
-  - r0.value=[0, 1]
-  - r1.type=number

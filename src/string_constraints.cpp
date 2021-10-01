@@ -70,6 +70,14 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<string>
         std::smatch m;
         if (regex_match(cst_text, m, regex("meta_offset" "=" IMM))) {
             res.push_back(variable_t::meta_offset() == number(m[1]));
+        } else if (regex_match(cst_text, m, regex("packet_size" "=" INTERVAL))) {
+            variable_t d = variable_t::packet_size();
+            res.push_back(number(m[1]) <= d);
+            res.push_back(d <= number(m[2]));
+        } else if (regex_match(cst_text, m, regex("packet_size" "=" REG DOT KIND))) {
+            variable_t d = variable_t::packet_size();
+            variable_t s = variable_t::reg(regkind(m[2]), regnum(m[1]));
+            res.push_back(equals(d, s));
         } else if (regex_match(cst_text, m, regex(REG DOT KIND "=" "packet_size"))) {
             variable_t d = variable_t::reg(regkind(m[2]), regnum(m[1]));
             res.push_back(equals(d, variable_t::packet_size()));
