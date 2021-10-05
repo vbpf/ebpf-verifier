@@ -216,6 +216,8 @@ class interval_t final {
 
     static interval_t bottom() { return interval_t(); }
 
+    [[nodiscard]] std::optional<number_t> finite_size() const { return (_ub - _lb).number(); }
+
   private:
     interval_t() : _lb(0), _ub(-1) {}
 

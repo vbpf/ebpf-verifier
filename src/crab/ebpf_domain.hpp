@@ -134,7 +134,11 @@ class ebpf_domain_t final {
     NumAbsDomain when(const linear_constraint_t& condition);
 
     void scratch_caller_saved_registers();
-    std::optional<EbpfMapDescriptor> get_map_descriptor(const Reg& map_fd_reg);
+    std::optional<uint32_t> get_map_type(const Reg& map_fd_reg) const;
+    std::optional<uint32_t> get_map_inner_map_fd(const Reg& map_fd_reg) const;
+    crab::interval_t get_map_key_size(const Reg& map_fd_reg) const;
+    crab::interval_t get_map_value_size(const Reg& map_fd_reg) const;
+    crab::interval_t get_map_max_entries(const Reg& map_fd_reg) const;
     void forget_packet_pointers();
     void do_load_mapfd(const reg_pack_t& dst, int mapfd, bool maybe_null);
 
@@ -183,5 +187,6 @@ class ebpf_domain_t final {
     crab::domains::array_domain_t stack;
 
     std::function<check_require_func_t> check_require{};
+    bool get_map_fd_range(const Reg& map_fd_reg, int* start_fd, int* end_fd) const;
 
 }; // end ebpf_domain_t
