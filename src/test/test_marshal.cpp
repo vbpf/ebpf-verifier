@@ -43,6 +43,9 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
 
     SECTION("Un") {
         auto ops = {
+            Un::Op::BE16,
+            Un::Op::BE32,
+            Un::Op::BE64,
             Un::Op::LE16,
             Un::Op::LE32,
             Un::Op::LE64,
