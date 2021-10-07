@@ -41,9 +41,12 @@ static const std::map<std::string, Bin::Op> str_to_binop = {
 };
 
 static const std::map<std::string, Un::Op> str_to_unop = {
-    {"be16", Un::Op::LE16},
-    {"be16", Un::Op::LE32},
-    {"be16", Un::Op::LE64},
+    {"be16", Un::Op::BE16},
+    {"be32", Un::Op::BE32},
+    {"be64", Un::Op::BE64},
+    {"le16", Un::Op::LE16},
+    {"le32", Un::Op::LE32},
+    {"le64", Un::Op::LE64},
     {"-", Un::Op::NEG},
 };
 

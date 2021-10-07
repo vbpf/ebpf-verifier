@@ -453,6 +453,9 @@ void ebpf_domain_t::operator()(const Undefined& a) {}
 void ebpf_domain_t::operator()(const Un& stmt) {
     auto dst = reg_pack(stmt.dst);
     switch (stmt.op) {
+    case Un::Op::BE16:
+    case Un::Op::BE32:
+    case Un::Op::BE64:
     case Un::Op::LE16:
     case Un::Op::LE32:
     case Un::Op::LE64:

@@ -54,8 +54,11 @@ static uint8_t imm(Un::Op op) {
     using Op = Un::Op;
     switch (op) {
     case Op::NEG: return 0;
+    case Op::BE16:
     case Op::LE16: return 16;
+    case Op::BE32:
     case Op::LE32: return 32;
+    case Op::BE64:
     case Op::LE64: return 64;
     }
     assert(false);

@@ -96,10 +96,13 @@ struct Bin {
 /// Unary operation.
 struct Un {
     enum class Op {
-        LE16,
-        LE32,
-        LE64,
-        NEG,
+        BE16, // dst = htobe16(dst)
+        BE32, // dst = htobe32(dst)
+        BE64, // dst = htobe64(dst)
+        LE16, // dst = htole16(dst)
+        LE32, // dst = htole32(dst)
+        LE64, // dst = htole64(dst)
+        NEG,  // dst = -dst
     };
 
     Op op;

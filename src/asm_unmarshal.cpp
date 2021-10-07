@@ -107,15 +107,13 @@ struct Unmarshaller {
             return Bin::Op::ARSH;
         case 0xd:
             switch (inst.imm) {
-            case 16: return Un::Op::LE16;
+            case 16: return (inst.opcode & 0x08) ? Un::Op::BE16 : Un::Op::LE16;
             case 32:
                 if ((inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64)
                     throw InvalidInstruction(pc, "invalid endian immediate 32 for 64 bit instruction");
-                return Un::Op::LE32;
+                return (inst.opcode & 0x08) ? Un::Op::BE32 : Un::Op::LE32;
             case 64:
-                if ((inst.opcode & INST_CLS_MASK) == INST_CLS_ALU)
-                    throw InvalidInstruction(pc, "invalid endian immediate 64 for 32 bit instruction");
-                return Un::Op::LE64;
+                return (inst.opcode & 0x08) ? Un::Op::BE64 : Un::Op::LE64;
             default: note("invalid endian immediate; falling back to 64"); return Un::Op::LE64;
             }
         case 0xe: throw InvalidInstruction{pc, "invalid ALU op 0xe"};
