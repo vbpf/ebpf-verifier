@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
-// This file implements Weak Topological Ordering as defined in
-// Bournacle, "Efficient chaotic iteration strategies with widenings", 1993
+// wto.hpp and wto.cpp implement Weak Topological Ordering as defined in
+// Bourdoncle, "Efficient chaotic iteration strategies with widenings", 1993
 // http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.38.3574
 //
 // Using the example from section 3.1 in the paper, the graph:
@@ -22,6 +22,12 @@
 // Each arrow points to a wto_component_t, which can be either a
 // single vertex such as 8, or a cycle such as (5 6).
 
+// Define this to use the old recursive algorithm instead of the new
+// iterative algorithm.  The recursive algorithm can result in a stack
+// overflow but we keep it for now to allow doing a performance
+// comparison.
+#undef RECURSIVE_WTO
+
 #include <stack>
 #include <vector>
 #include "crab/cfg.hpp"
@@ -33,16 +39,50 @@ using wto_partition_t = std::vector<std::shared_ptr<wto_component_t>>;
 
 #include "crab/wto_cycle.hpp"
 
+#ifndef RECURSIVE_WTO
+enum class visit_task_type_t {
+    PushSuccessors = 0,
+    StartVisit = 1, // Start of the Visit() function defined in Figure 4 of the paper.
+    ContinueVisit = 2,
+};
+
+struct visit_args_t {
+    visit_task_type_t type;
+    const label_t& vertex;
+    wto_partition_t& partition;
+    std::weak_ptr<wto_cycle_t> containing_cycle;
+
+    visit_args_t(visit_task_type_t t, const label_t& v, wto_partition_t& p, std::weak_ptr<wto_cycle_t> cc)
+        : type(t), vertex(v), partition(p), containing_cycle(cc) {};
+};
+
+struct wto_vertex_data_t {
+    // Bourdoncle's thesis (reference [4]) is all in French but expands
+    // DFN as "depth first number".
+    int dfn;
+    int head_dfn; // Head value returned from Visit() in the paper.
+    std::shared_ptr<wto_cycle_t> containing_cycle;
+};
+#endif
+
 class wto_t final {
     // Original control-flow graph.
     const crab::cfg_t& _cfg;
 
-    // The following members are named to match the names in the paper,
-    // which never explains their meaning.  Bourdoncle's thesis (reference [4])
-    // is all in French but expands DFN as "depth first number".
+    // The following members are named to match the names in the paper.
+#ifdef RECURSIVE_WTO
+    // Bourdoncle's thesis (reference [4]) is all in French but
+    // expands DFN as "depth first number".
     std::map<label_t, int> _dfn;
-    int _num;
+#else
+    std::map<label_t, wto_vertex_data_t> _vertex_data;
+#endif
+    int _num; // Highest DFN used so far.
     std::stack<label_t> _stack;
+
+#ifndef RECURSIVE_WTO
+    std::stack<visit_args_t> _visit_stack;
+#endif
 
     // Top level components, in reverse order.
     wto_partition_t _components;
@@ -55,8 +95,12 @@ class wto_t final {
     // looked at so we only create a wto_nesting_t for cases we actually need it.
     std::map<label_t, wto_nesting_t> _nesting;
 
-    public:
-
+#ifndef RECURSIVE_WTO
+    void push_successors(const label_t& vertex, wto_partition_t& partition, std::weak_ptr<wto_cycle_t> containing_cycle);
+    void start_visit(const label_t& vertex, wto_partition_t& partition,
+                            std::weak_ptr<wto_cycle_t> containing_cycle);
+    void continue_visit(const label_t& vertex, wto_partition_t& partition, std::weak_ptr<wto_cycle_t> containing_cycle);
+#else
     // Implementation of the Visit() function defined in Figure 4 of the paper.
     int visit(const label_t& vertex, wto_partition_t& partition, std::weak_ptr<wto_cycle_t> containing_cycle) {
         _stack.push(vertex);
@@ -87,9 +131,19 @@ class wto_t final {
                 }
 
                 // Create a new cycle component.
+                // Walk the control flow graph, adding nodes to this cycle.
+                // This is the Component() function described in figure 4 of the paper.
                 auto cycle = std::make_shared<wto_cycle_t>(containing_cycle);
                 auto component = std::make_shared<wto_component_t>(cycle);
-                cycle->initialize(*this, vertex, cycle);
+                for (const label_t& succ : _cfg.next_nodes(vertex)) {
+                    if (dfn(succ) == 0) {
+                        visit(succ, cycle->components(), cycle);
+                    }
+                }
+
+                // Finally, add the vertex at the start of the cycle
+                // (end of the vector which stores the cycle in reverse order).
+                cycle->components().push_back(std::make_shared<wto_component_t>(vertex));
 
                 // Insert the component into the current partition.
                 partition.emplace_back(component);
@@ -109,13 +163,20 @@ class wto_t final {
         }
         return head;
     }
+#endif
 
+    public:
     [[nodiscard]] const crab::cfg_t& cfg() const { return _cfg; }
+#ifdef RECURSIVE_WTO
     [[nodiscard]] int dfn(const label_t& vertex) const { return _dfn.at(vertex); }
+#else
+    [[nodiscard]] int dfn(const label_t& vertex) const { return _vertex_data.at(vertex).dfn; }
+#endif
 
     // Construct a Weak Topological Ordering from a control-flow graph using
     // the algorithm of figure 4 in the paper, where this constructor matches
     // what is shown there as the Partition function.
+#ifdef RECURSIVE_WTO
     wto_t(const cfg_t& cfg) : _cfg(cfg) {
         for (const label_t& label : cfg.labels()) {
             _dfn.emplace(label, 0);
@@ -123,6 +184,9 @@ class wto_t final {
         _num = 0;
         visit(cfg.entry_label(), _components, {});
     }
+#else
+    wto_t(const cfg_t& cfg);
+#endif
 
     [[nodiscard]] wto_partition_t::reverse_iterator begin() { return _components.rbegin(); }
     [[nodiscard]] wto_partition_t::reverse_iterator end() { return _components.rend(); }

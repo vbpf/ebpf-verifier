@@ -5,7 +5,7 @@
 #include <ostream>
 #include "wto.hpp"
 
-// Bournacle, "Efficient chaotic iteration strategies with widenings", 1993
+// Bourdoncle, "Efficient chaotic iteration strategies with widenings", 1993
 // section 3 uses the term "nested component" to refer to what wto_cycle_t implements.
 class wto_cycle_t final {
     // The cycle containing this cycle, or null if there is no parent cycle.
@@ -16,10 +16,6 @@ class wto_cycle_t final {
 
   public:
     wto_cycle_t(std::weak_ptr<wto_cycle_t>& containing_cycle) : _containing_cycle(containing_cycle) {}
-
-    // Finish initializing this cycle.  This must be done right after construction, where
-    // 'self' is a shared pointer pointing to this instance.
-    void initialize(class wto_t& wto, const label_t& vertex, std::shared_ptr<wto_cycle_t>& self);
 
     // Get a vertex of an entry point of the cycle.
     [[nodiscard]] const label_t& head() const {
@@ -33,6 +29,7 @@ class wto_cycle_t final {
     [[nodiscard]] wto_partition_t::reverse_iterator end() { return _components.rend(); }
 
     [[nodiscard]] std::weak_ptr<wto_cycle_t> containing_cycle() const { return _containing_cycle; }
+    [[nodiscard]] wto_partition_t& components() { return _components; }
 };
 
 inline std::ostream& operator<<(std::ostream& o, wto_cycle_t& cycle) {

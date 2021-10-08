@@ -62,6 +62,7 @@ file(GLOB ALL_TEST
         "./src/test/test_marshal.cpp"
         "./src/test/test_termination.cpp"
         "./src/test/test_verify.cpp"
+        "./src/test/test_wto.cpp"
         "./src/test/test_yaml.cpp"
         )
 

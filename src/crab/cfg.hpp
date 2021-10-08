@@ -45,6 +45,7 @@ class basic_block_t final {
     using label_vec_t = std::set<label_t>;
     using stmt_list_t = std::vector<Instruction>;
     using neighbour_const_iterator = label_vec_t::const_iterator;
+    using neighbour_const_reverse_iterator = label_vec_t::const_reverse_iterator;
     using iterator = typename stmt_list_t::iterator;
     using const_iterator = typename stmt_list_t::const_iterator;
     using reverse_iterator = typename stmt_list_t::reverse_iterator;
@@ -86,6 +87,10 @@ class basic_block_t final {
     [[nodiscard]] size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
 
     [[nodiscard]] std::pair<neighbour_const_iterator, neighbour_const_iterator> next_blocks() const { return std::make_pair(m_next.begin(), m_next.end()); }
+    [[nodiscard]] std::pair<neighbour_const_reverse_iterator, neighbour_const_reverse_iterator> next_blocks_reversed() const {
+        return std::make_pair(m_next.rbegin(), m_next.rend());
+    }
+
 
     [[nodiscard]] std::pair<neighbour_const_iterator, neighbour_const_iterator> prev_blocks() const { return std::make_pair(m_prev.begin(), m_prev.end()); }
 
@@ -174,8 +179,10 @@ class cfg_t final {
     using node_t = label_t; // for Bgl graphs
 
     using neighbour_const_iterator = typename basic_block_t::neighbour_const_iterator;
+    using neighbour_const_reverse_iterator = typename basic_block_t::neighbour_const_reverse_iterator;
 
     using neighbour_const_range = boost::iterator_range<neighbour_const_iterator>;
+    using neighbour_const_reverse_range = boost::iterator_range<neighbour_const_reverse_iterator>;
 
   private:
     using basic_block_map_t = std::map<label_t, basic_block_t>;
@@ -216,6 +223,9 @@ class cfg_t final {
 
     [[nodiscard]] neighbour_const_range next_nodes(const label_t& _label) const {
         return boost::make_iterator_range(get_node(_label).next_blocks());
+    }
+    [[nodiscard]] neighbour_const_reverse_range next_nodes_reversed(const label_t& _label) const {
+        return boost::make_iterator_range(get_node(_label).next_blocks_reversed());
     }
 
     [[nodiscard]] neighbour_const_range prev_nodes(const label_t& _label) const {
