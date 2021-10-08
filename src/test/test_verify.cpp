@@ -444,6 +444,7 @@ TEST_SECTION("raw_tracepoint/filler/sys_sendmsg_x")
 TEST_SECTION("raw_tracepoint/filler/proc_startupdate_2")
 TEST_SECTION("raw_tracepoint/filler/sys_recvfrom_x")
 */
+TEST_SECTION("build", "byteswap.o", ".text")
 TEST_SECTION("build", "stackok.o", ".text")
 TEST_SECTION("build", "packet_start_ok.o", "xdp")
 TEST_SECTION("build", "tail_call.o", "xdp_prog")
