@@ -139,6 +139,8 @@ struct MarshalVisitor {
                 .imm = imm(b.op),
             }};
         }
+        assert(false);
+        return {};
     }
 
     vector<ebpf_inst> operator()(Call const& b) {
