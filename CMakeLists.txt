@@ -10,7 +10,7 @@ if (IS_DIRECTORY "${PROJECT_SOURCE_DIR}/.git")
 endif ()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
-    "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   find_package(yaml-cpp REQUIRED)
   find_package(Boost REQUIRED)
   set(CMAKE_CXX_STANDARD 17)
