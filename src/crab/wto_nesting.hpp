@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
-// Bournacle, "Efficient chaotic iteration strategies with widenings", 1993
+// Bourdoncle, "Efficient chaotic iteration strategies with widenings", 1993
 // uses the notation w(c) to refer to the set of heads of the nested components
 // containing a vertex c.  This class holds such a set of heads.  The table
 // mapping c to w(c) is stored outside the class, in wto_t._nesting.
