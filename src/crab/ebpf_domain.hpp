@@ -182,17 +182,19 @@ class ebpf_domain_t final {
 
     std::function<check_require_func_t> check_require{};
 
-    int get_type(variable_t v);
-    int get_type(const reg_pack_t& r);
-    int get_type(int t);
+    struct TypeDomain {
+        int get_type(NumAbsDomain& inv, variable_t v);
+        int get_type(NumAbsDomain& inv, const reg_pack_t& r);
+        int get_type(NumAbsDomain& inv, int t);
 
-    void assign_type(const reg_pack_t& lhs, type_encoding_t t);
-    void assign_type(const reg_pack_t& lhs, const reg_pack_t& rhs);
-    static void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, type_encoding_t t);
-    static void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, const reg_pack_t& rhs);
-    static void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, const std::optional<linear_expression_t>& rhs);
+        static void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, type_encoding_t t);
+        static void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, const reg_pack_t& rhs);
+        static void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, const std::optional<linear_expression_t>& rhs);
 
-    void havoc_type(const reg_pack_t& r);
+        void havoc_type(NumAbsDomain& inv, const reg_pack_t& r);
+    };
+
+    TypeDomain type_inv;
 
     void assign_region_size(const reg_pack_t& r, unsigned int size);
 }; // end ebpf_domain_t
