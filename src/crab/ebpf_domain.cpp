@@ -842,13 +842,7 @@ void ebpf_domain_t::do_load(const Mem& b, const reg_pack_t& target) {
         return;
     }
 
-    int type = get_type(mem_reg);
-    // FIXME: validate - if this is correct, the code below is unreachable
-    if (type == T_UNINIT) {
-        return;
-    }
-
-    switch (type) {
+    switch (get_type(mem_reg)) {
         case T_UNINIT: {
             m_inv = do_load_ctx(when(type_is_ctx(mem_reg)), target, addr, width) |
                     do_load_packet_or_shared(when(type_is_packet_or_shared(mem_reg)), target, addr, width) |
