@@ -1122,9 +1122,9 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 add_overflow(dst.value, src.value);
                 add(dst.offset, src.value);
             } else {
-                type_inv.havoc_type(m_inv, dst);
-                havoc(dst.value);
-                havoc(dst.offset);
+                // We should only reach here if the require() has failed and there's no assume-assert
+                set_to_bottom();
+                return;
             }
             break;
         }
@@ -1141,9 +1141,9 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 havoc(dst.offset);
                 type_inv.assign_type(m_inv, dst, T_NUM);
             } else {
-                type_inv.havoc_type(m_inv, dst);
-                havoc(dst.value);
-                havoc(dst.offset);
+                // We should only reach here if the require() has failed and there's no assume-assert
+                set_to_bottom();
+                return;
             }
             break;
         }
