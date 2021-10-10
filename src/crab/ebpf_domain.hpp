@@ -183,15 +183,16 @@ class ebpf_domain_t final {
     std::function<check_require_func_t> check_require{};
 
     struct TypeDomain {
-        int get_type(NumAbsDomain& inv, variable_t v);
-        int get_type(NumAbsDomain& inv, const reg_pack_t& r);
-        int get_type(NumAbsDomain& inv, int t);
-
         static void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, type_encoding_t t);
         static void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, const reg_pack_t& rhs);
         static void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, const std::optional<linear_expression_t>& rhs);
 
         void havoc_type(NumAbsDomain& inv, const reg_pack_t& r);
+
+        int get_type(const NumAbsDomain& inv, variable_t v) const;
+        int get_type(const NumAbsDomain& inv, const reg_pack_t& r) const;
+        int get_type(const NumAbsDomain& inv, int t) const;
+        std::vector<int> possible_types(const NumAbsDomain& inv, const reg_pack_t& reg) const;
     };
 
     TypeDomain type_inv;

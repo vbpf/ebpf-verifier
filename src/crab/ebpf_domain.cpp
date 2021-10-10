@@ -615,69 +615,44 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
         ? lb + std::get<Imm>(s.width).v
         : lb + reg_pack(std::get<Reg>(s.width)).value;
     std::string m = std::string(" (") + to_string(s) + ")";
-    if (auto type_singleton = m_inv.eval_interval(reg.type).singleton()) {
-        switch (static_cast<int>(*type_singleton)) {
+    for (auto type: type_inv.possible_types(m_inv, reg)) {
+        switch (type) {
         case T_PACKET:
             check_access_packet(m_inv, lb, ub, m, is_comparison_check);
             // if within bounds, it can never be null
-            return;
+            break;
         case T_STACK:
             check_access_stack(m_inv, lb, ub, m);
             // if within bounds, it can never be null
-            return;
+            break;
         case T_CTX:
             check_access_context(m_inv, lb, ub, m);
             // if within bounds, it can never be null
-            return;
+            break;
         case T_NUM:
-            if (is_comparison_check)
-                return;
-            if (s.or_null) {
-                require(m_inv, reg.value == 0, "Non-null number");
-                return;
-            } else {
-                require(m_inv, linear_constraint_t::FALSE(), "Only pointers can be dereferenced");
-                return;
+            if (!is_comparison_check) {
+                if (s.or_null) {
+                    require(m_inv, reg.value == 0, "Non-null number");
+                } else {
+                    require(m_inv, linear_constraint_t::FALSE(), "Only pointers can be dereferenced");
+                }
             }
+            break;
         case T_MAP:
         case T_MAP_PROGRAMS:
-            if (is_comparison_check) {
-                return;
-            } else {
+            if (!is_comparison_check) {
                 require(m_inv, linear_constraint_t::FALSE(), "FDs cannot be dereferenced directly");
             }
+            break;
         default:
-            if (*type_singleton > T_SHARED) {
+            if (type > T_SHARED) {
                 check_access_shared(m_inv, lb, ub, m, reg.type);
-                if (!is_comparison_check && !s.or_null) require(m_inv, reg.value > 0, "Possible null access");
-                return;
+                if (!is_comparison_check && !s.or_null)
+                    require(m_inv, reg.value > 0, "Possible null access");
             } else {
                 require(m_inv, linear_constraint_t::FALSE(), "Invalid type");
-                return;
             }
-        }
-    }
-    auto t_packet = when(type_is_packet(reg)); check_access_packet(t_packet, lb, ub, m, is_comparison_check);
-    auto t_stack = when(type_is_stack(reg)); check_access_stack(t_stack, lb, ub, m);
-    auto t_shared = when(type_is_shared(reg)); check_access_shared(t_shared, lb, ub, m, reg.type);
-    auto t_context = when(type_is_ctx(reg)); check_access_context(t_context, lb, ub, m);
-    NumAbsDomain assume_ptr = std::move(t_packet) | std::move(t_stack) | std::move(t_shared) | std::move(t_context);
-    if (is_comparison_check) {
-        assume(reg.type <= T_NUM);
-        m_inv |= std::move(assume_ptr);
-        return;
-    } else {
-        if (s.or_null) {
-            require(m_inv, type_is_pointer_or_null(reg), "Must be a pointer or null");
-            assume(reg.type == T_NUM);
-            require(m_inv, reg.value == 0, "Non-null pointer");
-            m_inv |= std::move(assume_ptr);
-            return;
-        } else {
-            require(m_inv, type_is_pointer(reg), "Only pointers can be dereferenced");
-            require(m_inv, reg.value > 0, "Possible null access");
-            m_inv = std::move(assume_ptr);
-            return;
+            break;
         }
     }
 }
@@ -850,21 +825,36 @@ void ebpf_domain_t::do_load(const Mem& b, const reg_pack_t& target) {
     }
 }
 
-int ebpf_domain_t::TypeDomain::get_type(NumAbsDomain& inv, const reg_pack_t& r) {
+int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, const reg_pack_t& r) const {
     auto res = inv[r.type].singleton();
     if (!res)
         return T_UNINIT;
     return (int)*res;
 }
 
-int ebpf_domain_t::TypeDomain::get_type(NumAbsDomain& inv, variable_t v) {
+int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, variable_t v) const {
     auto res = inv[v].singleton();
     if (!res)
         return T_UNINIT;
     return (int)*res;
 }
 
-int ebpf_domain_t::TypeDomain::get_type(NumAbsDomain& inv, int t) { return t; }
+int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, int t) const { return t; }
+
+std::vector<int> ebpf_domain_t::TypeDomain::possible_types(const NumAbsDomain& inv, const reg_pack_t& reg) const {
+    crab::interval_t types = inv.eval_interval(reg.type);
+    if (types.is_bottom())
+        return {};
+    std::vector<int> res;
+    if (auto lb = types.lb().number()) {
+        if (auto ub = types.ub().number()) {
+            for (int i = (int)*lb; i <= (int)*ub; i++) {
+                res.push_back(i);
+            }
+        }
+    }
+    return res;
+}
 
 template <typename A, typename X, typename Y, typename Z>
 void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_value,
