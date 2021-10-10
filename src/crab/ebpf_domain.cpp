@@ -930,22 +930,18 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, Value val_value, s
     }
     linear_expression_t addr = linear_expression_t(mem_reg.offset) + offset;
     switch (get_type(mem_reg)) {
-        case T_STACK: do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset); return;
+        case T_STACK:
+            do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset);
+            break;
         case T_UNINIT: { //maybe stack
-            NumAbsDomain assume_not_stack(m_inv);
-#ifdef _MSC_VER
-            // MSVC seems to have a harder time coercing the right things, so force
-            // the correct interpretations.
-            assume_not_stack += (linear_constraint_t)(mem_reg.type != T_STACK);
-            m_inv += crab::dsl_syntax::operator==(mem_reg.type, T_STACK);
-#else
-            assume_not_stack += type_is_not_stack(mem_reg);
-            m_inv += type_is_stack(mem_reg);
-#endif
-            if (!m_inv.is_bottom()) {
-                do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset);
+            NumAbsDomain assume_stack = when(type_is_stack(mem_reg));
+            if (!assume_stack.is_bottom()) {
+                do_store_stack(assume_stack, width, addr, val_type, val_value, opt_val_offset);
             }
-            m_inv |= std::move(assume_not_stack);
+
+            m_inv += type_is_not_stack(mem_reg);
+            m_inv |= std::move(assume_stack);
+            break;
         }
         default: break;
     }
