@@ -189,10 +189,12 @@ class ebpf_domain_t final {
 
         void havoc_type(NumAbsDomain& inv, const reg_pack_t& r);
 
-        int get_type(const NumAbsDomain& inv, variable_t v) const;
-        int get_type(const NumAbsDomain& inv, const reg_pack_t& r) const;
-        int get_type(const NumAbsDomain& inv, int t) const;
-        std::vector<int> possible_types(const NumAbsDomain& inv, const reg_pack_t& reg) const;
+        [[nodiscard]] int get_type(const NumAbsDomain& inv, variable_t v) const;
+        [[nodiscard]] int get_type(const NumAbsDomain& inv, const reg_pack_t& r) const;
+        [[nodiscard]] int get_type(const NumAbsDomain& inv, int t) const;
+        [[nodiscard]] std::vector<int> possible_types(const NumAbsDomain& inv, const reg_pack_t& reg) const;
+        NumAbsDomain join_over_types(const NumAbsDomain& inv, const reg_pack_t& reg,
+                                     const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const;
     };
 
     TypeDomain type_inv;

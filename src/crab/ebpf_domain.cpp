@@ -386,6 +386,55 @@ void ebpf_domain_t::TypeDomain::havoc_type(NumAbsDomain& inv, const reg_pack_t& 
     inv -= r.type;
 }
 
+int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, const reg_pack_t& r) const {
+    auto res = inv[r.type].singleton();
+    if (!res)
+        return T_UNINIT;
+    return (int)*res;
+}
+
+int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, variable_t v) const {
+    auto res = inv[v].singleton();
+    if (!res)
+        return T_UNINIT;
+    return (int)*res;
+}
+
+int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, int t) const { return t; }
+
+std::vector<int> ebpf_domain_t::TypeDomain::possible_types(const NumAbsDomain& inv, const reg_pack_t& reg) const {
+    crab::interval_t types = inv.eval_interval(reg.type);
+    if (types.is_bottom())
+        return {};
+    std::vector<int> res;
+    if (auto lb = types.lb().number()) {
+        if (auto ub = types.ub().number()) {
+            for (int i = (int)*lb; i <= (int)*ub; i++) {
+                res.push_back(i);
+            }
+        }
+    }
+    return res;
+}
+
+NumAbsDomain ebpf_domain_t::TypeDomain::join_over_types(const NumAbsDomain& inv, const reg_pack_t& reg,
+                                                        const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const {
+    crab::interval_t types = inv.eval_interval(reg.type);
+    if (types.is_bottom())
+        return NumAbsDomain(true);
+    NumAbsDomain res(true);
+    if (auto lb = types.lb().number()) {
+        if (auto ub = types.ub().number()) {
+            for (int type = (int)*lb; type <= (int)*ub; type++) {
+                NumAbsDomain tmp(inv);
+                transition(tmp, static_cast<type_encoding_t>(type));
+                res |= tmp;
+            }
+        }
+    }
+    return res;
+}
+
 void ebpf_domain_t::assign_region_size(const reg_pack_t& r, unsigned int size) {
     assign(r.type, size);
 }
@@ -825,37 +874,6 @@ void ebpf_domain_t::do_load(const Mem& b, const reg_pack_t& target) {
     }
 }
 
-int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, const reg_pack_t& r) const {
-    auto res = inv[r.type].singleton();
-    if (!res)
-        return T_UNINIT;
-    return (int)*res;
-}
-
-int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, variable_t v) const {
-    auto res = inv[v].singleton();
-    if (!res)
-        return T_UNINIT;
-    return (int)*res;
-}
-
-int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, int t) const { return t; }
-
-std::vector<int> ebpf_domain_t::TypeDomain::possible_types(const NumAbsDomain& inv, const reg_pack_t& reg) const {
-    crab::interval_t types = inv.eval_interval(reg.type);
-    if (types.is_bottom())
-        return {};
-    std::vector<int> res;
-    if (auto lb = types.lb().number()) {
-        if (auto ub = types.ub().number()) {
-            for (int i = (int)*lb; i <= (int)*ub; i++) {
-                res.push_back(i);
-            }
-        }
-    }
-    return res;
-}
-
 template <typename A, typename X, typename Y, typename Z>
 void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_value,
                     std::optional<Z> opt_val_offset) {
@@ -905,22 +923,11 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, Value val_value, s
         return;
     }
     linear_expression_t addr = linear_expression_t(mem_reg.offset) + offset;
-    switch (type_inv.get_type(m_inv, mem_reg)) {
-        case T_STACK:
-            do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset);
-            break;
-        case T_UNINIT: { //maybe stack
-            NumAbsDomain assume_stack = when(type_is_stack(mem_reg));
-            if (!assume_stack.is_bottom()) {
-                do_store_stack(assume_stack, width, addr, val_type, val_value, opt_val_offset);
-            }
-
-            m_inv += type_is_not_stack(mem_reg);
-            m_inv |= std::move(assume_stack);
-            break;
-        }
-        default: break;
-    }
+    m_inv = type_inv.join_over_types(m_inv, mem_reg, [&](NumAbsDomain& inv, type_encoding_t type) {
+        if (type == T_STACK)
+            do_store_stack(inv, width, addr, val_type, val_value, opt_val_offset);
+        // do nothing for any other type
+    });
 }
 
 void ebpf_domain_t::operator()(const LockAdd& a) {
