@@ -765,13 +765,13 @@ void ebpf_domain_t::operator()(const Packet& a) {
 }
 
 NumAbsDomain ebpf_domain_t::do_load_stack(NumAbsDomain inv, const Reg& target_reg, const linear_expression_t& addr, int width) {
+    type_inv.assign_type(inv, target_reg, stack.load(inv, data_kind_t::types, addr, width));
+
     const reg_pack_t& target = reg_pack(target_reg);
     if (width == 1 || width == 2 || width == 4 || width == 8) {
-        type_inv.assign_type(inv, target_reg, stack.load(inv, data_kind_t::types, addr, width));
         inv.assign(target.value, stack.load(inv,  data_kind_t::values, addr, width));
         inv.assign(target.offset, stack.load(inv, data_kind_t::offsets, addr, width));
     } else {
-        type_inv.assign_type(inv, target_reg, stack.load(inv, data_kind_t::types, addr, width));
         inv -= target.value;
         inv -= target.offset;
     }
