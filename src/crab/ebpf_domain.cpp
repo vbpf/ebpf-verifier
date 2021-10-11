@@ -714,18 +714,8 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
 }
 
 void ebpf_domain_t::operator()(const ValidStore& s) {
-    constexpr auto msg = "Only numbers can be stored to externally-visible regions";
-    using namespace crab::dsl_syntax;
-    if (thread_local_options.assume_assertions) {
-        m_inv = type_inv.join_over_types(m_inv, reg_pack(s.mem), [&](NumAbsDomain& inv, type_encoding_t type) {
-            if (type != T_STACK)
-                require(inv, type_is_number(reg_pack(s.val)), msg);
-        });
-    } else {
-        for (auto type : type_inv.possible_types(m_inv, reg_pack(s.mem)))
-            if (type != T_STACK)
-                require(m_inv, type_is_number(reg_pack(s.val)), msg);
-    }
+    if (!type_inv.implies_type(m_inv, type_is_not_stack(reg_pack(s.mem)), type_is_number(reg_pack(s.val))))
+        require(m_inv, linear_constraint_t::FALSE(), "Only numbers can be stored to externally-visible regions");
 }
 
 void ebpf_domain_t::operator()(const TypeConstraint& s) {
