@@ -376,6 +376,14 @@ void ebpf_domain_t::TypeDomain::assign_type(NumAbsDomain& inv, const reg_pack_t&
     inv.assign(lhs.type, rhs.type);
 }
 
+void ebpf_domain_t::TypeDomain::assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, const Reg& rhs) {
+    inv.assign(lhs, reg_pack(rhs).type);
+}
+
+void ebpf_domain_t::TypeDomain::assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, int rhs) {
+    inv.assign(lhs, rhs);
+}
+
 void ebpf_domain_t::TypeDomain::assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, const std::optional<linear_expression_t>& rhs) {
     inv.assign(lhs.type, rhs);
 }
@@ -386,6 +394,13 @@ void ebpf_domain_t::TypeDomain::havoc_type(NumAbsDomain& inv, const reg_pack_t& 
 
 int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, const reg_pack_t& r) const {
     auto res = inv[r.type].singleton();
+    if (!res)
+        return T_UNINIT;
+    return (int)*res;
+}
+
+int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, const Reg& r) const {
+    auto res = inv[reg_pack(r).type].singleton();
     if (!res)
         return T_UNINIT;
     return (int)*res;
@@ -415,9 +430,9 @@ std::vector<int> ebpf_domain_t::TypeDomain::possible_types(const NumAbsDomain& i
     return res;
 }
 
-NumAbsDomain ebpf_domain_t::TypeDomain::join_over_types(const NumAbsDomain& inv, const reg_pack_t& reg,
+NumAbsDomain ebpf_domain_t::TypeDomain::join_over_types(const NumAbsDomain& inv, const Reg& reg,
                                                         const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const {
-    crab::interval_t types = inv.eval_interval(reg.type);
+    crab::interval_t types = inv.eval_interval(reg_pack(reg).type);
     if (types.is_bottom())
         return NumAbsDomain(true);
     NumAbsDomain res(true);
@@ -434,8 +449,8 @@ NumAbsDomain ebpf_domain_t::TypeDomain::join_over_types(const NumAbsDomain& inv,
     return res;
 }
 
-bool ebpf_domain_t::TypeDomain::same_type(const NumAbsDomain& inv, const reg_pack_t& a, const reg_pack_t& b) const {
-    return inv.entail(eq(a.type, b.type));
+bool ebpf_domain_t::TypeDomain::same_type(const NumAbsDomain& inv, const Reg& a, const Reg& b) const {
+    return inv.entail(eq(reg_pack(a).type, reg_pack(b).type));
 }
 
 bool ebpf_domain_t::TypeDomain::implies_type(const NumAbsDomain& inv, const linear_constraint_t& a, const linear_constraint_t& b) const {
@@ -510,8 +525,8 @@ void ebpf_domain_t::operator()(const Assume& s) {
     auto dst = reg_pack(cond.left);
     if (std::holds_alternative<Reg>(cond.right)) {
         auto src = reg_pack(std::get<Reg>(cond.right));
-        int stype = type_inv.get_type(m_inv, src);
-        int dtype = type_inv.get_type(m_inv, dst);
+        int stype = type_inv.get_type(m_inv, std::get<Reg>(cond.right));
+        int dtype = type_inv.get_type(m_inv, cond.left);
         if (stype == dtype) {
             switch (stype) {
                 case T_MAP: break;
@@ -578,7 +593,7 @@ void ebpf_domain_t::operator()(const Exit& a) {}
 void ebpf_domain_t::operator()(const Jmp& a) {}
 
 void ebpf_domain_t::operator()(const Comparable& s) {
-    if (!type_inv.same_type(m_inv, reg_pack(s.r1), reg_pack(s.r2)))
+    if (!type_inv.same_type(m_inv, s.r1, s.r2))
         require(m_inv, linear_constraint_t::FALSE(), to_string(s));
 }
 
@@ -648,7 +663,7 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
     int width = s.key ? (int)maybe_map_descriptor->key_size : (int)maybe_map_descriptor->value_size;
     linear_expression_t ub = lb + width;
 
-    m_inv = type_inv.join_over_types(m_inv, access_reg, [&](NumAbsDomain& inv, type_encoding_t type) {
+    m_inv = type_inv.join_over_types(m_inv, s.access_reg, [&](NumAbsDomain& inv, type_encoding_t type) {
         if (type == T_STACK) {
             if (!stack.all_num(inv, lb, ub)) {
                 auto lb_is = inv[lb].lb().number();
@@ -694,7 +709,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
         : lb + reg_pack(std::get<Reg>(s.width)).value;
     std::string m = std::string(" (") + to_string(s) + ")";
     // join_over_types instead of simple iteration is only needed for assume-assert
-    m_inv = type_inv.join_over_types(m_inv, reg, [&](NumAbsDomain& inv, type_encoding_t type) {
+    m_inv = type_inv.join_over_types(m_inv, s.reg, [&](NumAbsDomain& inv, type_encoding_t type) {
         switch (type) {
         case T_PACKET:
             check_access_packet(inv, lb, ub, m, is_comparison_check);
@@ -849,7 +864,7 @@ void ebpf_domain_t::do_load(const Mem& b, const reg_pack_t& target) {
         return;
     }
 
-    switch (type_inv.get_type(m_inv, mem_reg)) {
+    switch (type_inv.get_type(m_inv, b.access.basereg)) {
         case T_UNINIT: {
             m_inv = do_load_ctx(when(type_is_ctx(mem_reg)), target, addr, width) |
                     do_load_packet_or_shared(when(type_is_packet_or_shared(mem_reg)), target, addr, width) |
@@ -868,7 +883,7 @@ void ebpf_domain_t::do_load(const Mem& b, const reg_pack_t& target) {
 template <typename A, typename X, typename Y, typename Z>
 void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_value,
                     std::optional<Z> opt_val_offset) {
-    inv.assign(stack.store(inv, data_kind_t::types, addr, width, val_type), val_type);
+    type_inv.assign_type(inv, stack.store_type(inv, addr, width, val_type), val_type);
     if (width == 8) {
         inv.assign(stack.store(inv, data_kind_t::values, addr, width, val_value), val_value);
         if (opt_val_offset && type_inv.get_type(m_inv, val_type) != T_NUM)
@@ -893,7 +908,7 @@ void ebpf_domain_t::operator()(const Mem& b) {
         if (b.is_load) {
             do_load(b, data_reg);
         } else {
-            do_mem_store(b, data_reg.type, data_reg.value, data_reg.offset);
+            do_mem_store(b, std::get<Reg>(b.value), data_reg.value, data_reg.offset);
         }
     } else {
         do_mem_store(b, T_NUM, std::get<Imm>(b.value).v, {});
@@ -914,7 +929,7 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, Value val_value, s
         return;
     }
     linear_expression_t addr = linear_expression_t(mem_reg.offset) + offset;
-    m_inv = type_inv.join_over_types(m_inv, mem_reg, [&](NumAbsDomain& inv, type_encoding_t type) {
+    m_inv = type_inv.join_over_types(m_inv, b.access.basereg, [&](NumAbsDomain& inv, type_encoding_t type) {
         if (type == T_STACK)
             do_store_stack(inv, width, addr, val_type, val_value, opt_val_offset);
         // do nothing for any other type
@@ -956,7 +971,7 @@ void ebpf_domain_t::operator()(const Call& call) {
             variable_t addr = reg_pack(param.mem).offset;
             variable_t width = reg_pack(param.size).value;
 
-            m_inv = type_inv.join_over_types(m_inv, reg_pack(param.mem), [&](NumAbsDomain& inv, type_encoding_t type) {
+            m_inv = type_inv.join_over_types(m_inv, param.mem, [&](NumAbsDomain& inv, type_encoding_t type) {
                 if (type == T_STACK) {
                     // Pointer to a memory region that the called function may change,
                     // so we must havoc.
@@ -1113,8 +1128,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         auto src = reg_pack(std::get<Reg>(bin.v));
         switch (bin.op) {
         case Bin::Op::ADD: {
-            auto stype = type_inv.get_type(m_inv, src);
-            auto dtype = type_inv.get_type(m_inv, dst);
+            auto stype = type_inv.get_type(m_inv, std::get<Reg>(bin.v));
+            auto dtype = type_inv.get_type(m_inv, bin.dst);
             if (stype == T_NUM && dtype == T_NUM) {
                 add_overflow(dst.value, src.value);
             } else if (dtype == T_NUM) {
@@ -1132,8 +1147,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             break;
         }
         case Bin::Op::SUB: {
-            auto stype = type_inv.get_type(m_inv, src);
-            auto dtype = type_inv.get_type(m_inv, dst);
+            auto stype = type_inv.get_type(m_inv, std::get<Reg>(bin.v));
+            auto dtype = type_inv.get_type(m_inv, bin.dst);
             if (dtype == T_NUM && stype == T_NUM) {
                 sub_overflow(dst.value, src.value);
             } else if (stype == T_NUM) {
@@ -1231,6 +1246,7 @@ void ebpf_domain_t::initialize_packet(ebpf_domain_t& inv) {
 }
 
 ebpf_domain_t ebpf_domain_t::from_constraints(const std::vector<linear_constraint_t>& csts) {
+    // TODO: handle type constraints separately
     ebpf_domain_t inv;
     for (const auto& cst: csts) {
         inv += cst;

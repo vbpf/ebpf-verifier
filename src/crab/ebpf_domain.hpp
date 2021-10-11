@@ -186,17 +186,20 @@ class ebpf_domain_t final {
         void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, type_encoding_t t);
         void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, const reg_pack_t& rhs);
         void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, const std::optional<linear_expression_t>& rhs);
+        void assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, const Reg& rhs);
+        void assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, int rhs);
 
         void havoc_type(NumAbsDomain& inv, const reg_pack_t& r);
 
         [[nodiscard]] int get_type(const NumAbsDomain& inv, variable_t v) const;
         [[nodiscard]] int get_type(const NumAbsDomain& inv, const reg_pack_t& r) const;
+        [[nodiscard]] int get_type(const NumAbsDomain& inv, const Reg& r) const;
         [[nodiscard]] int get_type(const NumAbsDomain& inv, int t) const;
         [[nodiscard]] std::vector<int> possible_types(const NumAbsDomain& inv, const reg_pack_t& reg) const;
-        NumAbsDomain join_over_types(const NumAbsDomain& inv, const reg_pack_t& reg,
+        NumAbsDomain join_over_types(const NumAbsDomain& inv, const Reg& reg,
                                      const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const;
 
-        [[nodiscard]] bool same_type(const NumAbsDomain& inv, const reg_pack_t& a, const reg_pack_t& b) const;
+        [[nodiscard]] bool same_type(const NumAbsDomain& inv, const Reg& a, const Reg& b) const;
 
         [[nodiscard]] bool implies_type(const NumAbsDomain& inv, const linear_constraint_t& a, const linear_constraint_t& b) const;
     };
