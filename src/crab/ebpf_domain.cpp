@@ -234,9 +234,7 @@ void ebpf_domain_t::apply(crab::binop_t op, variable_t x, variable_t y, variable
 }
 
 NumAbsDomain ebpf_domain_t::when(const linear_constraint_t& cond) {
-    NumAbsDomain inv = m_inv;
-    inv += cond;
-    return inv;
+    return m_inv.when(cond);
 }
 
 void ebpf_domain_t::scratch_caller_saved_registers() {
@@ -531,18 +529,11 @@ void ebpf_domain_t::operator()(const Assume& s) {
                 }
             }
         }
-        NumAbsDomain different{m_inv};
-        different += neq(dst.type, src.type);
-
-        NumAbsDomain null_src{different};
-        null_src += type_is_pointer(dst);
-        NumAbsDomain null_dst{different};
-        null_dst += type_is_pointer(src);
+        NumAbsDomain different{m_inv.when(neq(dst.type, src.type))};
 
         m_inv += eq(dst.type, src.type);
 
-        NumAbsDomain numbers{m_inv};
-        numbers += type_is_number(dst);
+        NumAbsDomain numbers{m_inv.when(type_is_number(dst))};
         if (!is_unsigned_cmp(cond.op))
             for (const linear_constraint_t& cst : jmp_to_cst_reg(cond.op, dst.value, src.value))
                 numbers += cst;
@@ -552,8 +543,8 @@ void ebpf_domain_t::operator()(const Assume& s) {
 
         m_inv |= std::move(numbers);
 
-        m_inv |= std::move(null_src);
-        m_inv |= std::move(null_dst);
+        m_inv |= different.when(type_is_pointer(dst));
+        m_inv |= std::move(different).when(type_is_pointer(src));
     } else {
         int imm = static_cast<int>(std::get<Imm>(cond.right).v);
         for (const linear_constraint_t& cst : jmp_to_cst_imm(cond.op, dst.value, imm))
@@ -800,7 +791,7 @@ NumAbsDomain ebpf_domain_t::do_load_ctx(NumAbsDomain inv, const reg_pack_t& targ
     if (!maybe_addr) {
         inv -= target.offset;
         if (may_touch_ptr)
-            inv -= target.type;
+            type_inv.havoc_type(inv, target);
         else
             type_inv.assign_type(inv, target, T_NUM);
         return inv;
@@ -817,7 +808,7 @@ NumAbsDomain ebpf_domain_t::do_load_ctx(NumAbsDomain inv, const reg_pack_t& targ
     } else {
         inv -= target.offset;
         if (may_touch_ptr)
-            inv -= target.type;
+            type_inv.havoc_type(inv, target);
         else
             type_inv.assign_type(inv, target, T_NUM);
         return inv;
@@ -961,20 +952,25 @@ void ebpf_domain_t::operator()(const Call& call) {
             break;
 
         case ArgPair::Kind::PTR_TO_UNINIT_MEM: {
-            // Pointer to a memory region that the called function may change,
-            // so we must havoc.
-            crab::interval_t t = m_inv[reg_pack(param.mem).type];
-            if (t[T_STACK]) {
-                variable_t addr = reg_pack(param.mem).offset;
-                variable_t width = reg_pack(param.size).value;
-                stack.havoc(m_inv, data_kind_t::types, addr, width);
-                stack.havoc(m_inv, data_kind_t::values, addr, width);
-                stack.havoc(m_inv, data_kind_t::offsets, addr, width);
-                if (t.singleton()) {
-                    // Functions are not allowed to write sensitive data,
-                    // and initialization is guaranteed
-                    stack.store_numbers(m_inv, addr, width);
+            bool store_numbers = true;
+            variable_t addr = reg_pack(param.mem).offset;
+            variable_t width = reg_pack(param.size).value;
+
+            m_inv = type_inv.join_over_types(m_inv, reg_pack(param.mem), [&](NumAbsDomain& inv, type_encoding_t type) {
+                if (type == T_STACK) {
+                    // Pointer to a memory region that the called function may change,
+                    // so we must havoc.
+                    stack.havoc(inv, data_kind_t::types, addr, width);
+                    stack.havoc(inv, data_kind_t::values, addr, width);
+                    stack.havoc(inv, data_kind_t::offsets, addr, width);
+                } else {
+                    store_numbers = false;
                 }
+            });
+            if (store_numbers) {
+                // Functions are not allowed to write sensitive data,
+                // and initialization is guaranteed
+                stack.store_numbers(m_inv, addr, width);
             }
         }
         }
