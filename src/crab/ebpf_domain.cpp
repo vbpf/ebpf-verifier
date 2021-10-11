@@ -39,12 +39,16 @@ reg_pack_t reg_pack(int i) {
 }
 reg_pack_t reg_pack(Reg r) { return reg_pack(r.v); }
 
-linear_constraint_t eq(variable_t a, variable_t b) {
+static linear_constraint_t eq(variable_t a, variable_t b) {
     using namespace crab::dsl_syntax;
     return {a - b, constraint_kind_t::EQUALS_ZERO};
 }
 
-linear_constraint_t neq(variable_t a, variable_t b) {
+static linear_constraint_t eq_types(const Reg& a, const Reg& b) {
+    return eq(reg_pack(a).type, reg_pack(b).type);
+}
+
+static linear_constraint_t neq(variable_t a, variable_t b) {
     using namespace crab::dsl_syntax;
     return {a - b, constraint_kind_t::NOT_ZERO};
 }
@@ -426,8 +430,20 @@ NumAbsDomain ebpf_domain_t::TypeDomain::join_over_types(const NumAbsDomain& inv,
     return res;
 }
 
+NumAbsDomain ebpf_domain_t::TypeDomain::join_by_if_else(const NumAbsDomain& inv, const linear_constraint_t& condition,
+                                                        const std::function<void(NumAbsDomain&)>& if_true,
+                                                        const std::function<void(NumAbsDomain&)>& if_false) const {
+    NumAbsDomain true_case(inv.when(condition));
+    if_true(true_case);
+
+    NumAbsDomain false_case(inv.when(condition.negate()));
+    if_false(false_case);
+
+    return true_case | false_case;
+}
+
 bool ebpf_domain_t::TypeDomain::same_type(const NumAbsDomain& inv, const Reg& a, const Reg& b) const {
-    return inv.entail(eq(reg_pack(a).type, reg_pack(b).type));
+    return inv.entail(eq_types(a, b));
 }
 
 bool ebpf_domain_t::TypeDomain::implies_type(const NumAbsDomain& inv, const linear_constraint_t& a, const linear_constraint_t& b) const {
@@ -521,22 +537,23 @@ void ebpf_domain_t::operator()(const Assume& s) {
                 }
             }
         }
-        NumAbsDomain different{m_inv.when(neq(dst.type, src.type))};
-
-        m_inv += eq(dst.type, src.type);
-
-        NumAbsDomain numbers{m_inv.when(type_is_number(dst))};
-        if (!is_unsigned_cmp(cond.op))
-            for (const linear_constraint_t& cst : jmp_to_cst_reg(cond.op, dst.value, src.value))
-                numbers += cst;
-
-        m_inv += type_is_pointer(dst);
-        m_inv += jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset);
-
-        m_inv |= std::move(numbers);
-
-        m_inv |= different.when(type_is_pointer(dst));
-        m_inv |= std::move(different).when(type_is_pointer(src));
+        m_inv = type_inv.join_by_if_else(m_inv,
+            eq_types(cond.left, std::get<Reg>(cond.right)),
+            [&](NumAbsDomain& inv) {
+                     inv = type_inv.join_by_if_else(inv,
+                               type_is_number(dst),
+                         [&](NumAbsDomain& inv) {
+                                   if (!is_unsigned_cmp(cond.op))
+                                       for (const linear_constraint_t& cst : jmp_to_cst_reg(cond.op, dst.value, src.value))
+                                           inv += cst;
+                               },
+                        [&](NumAbsDomain& inv) {
+                                    inv += jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset);
+                               });
+            },
+            [&](NumAbsDomain& inv) {
+                // nothing?
+            });
     } else {
         int imm = static_cast<int>(std::get<Imm>(cond.right).v);
         for (const linear_constraint_t& cst : jmp_to_cst_imm(cond.op, dst.value, imm))

@@ -194,12 +194,15 @@ class ebpf_domain_t final {
         [[nodiscard]] int get_type(const NumAbsDomain& inv, variable_t v) const;
         [[nodiscard]] int get_type(const NumAbsDomain& inv, const Reg& r) const;
         [[nodiscard]] int get_type(const NumAbsDomain& inv, int t) const;
-        NumAbsDomain join_over_types(const NumAbsDomain& inv, const Reg& reg,
-                                     const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const;
 
         [[nodiscard]] bool same_type(const NumAbsDomain& inv, const Reg& a, const Reg& b) const;
-
         [[nodiscard]] bool implies_type(const NumAbsDomain& inv, const linear_constraint_t& a, const linear_constraint_t& b) const;
+
+        NumAbsDomain join_over_types(const NumAbsDomain& inv, const Reg& reg,
+                                     const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const;
+        NumAbsDomain join_by_if_else(const NumAbsDomain& inv, const linear_constraint_t& condition,
+                                     const std::function<void(NumAbsDomain&)>& if_true,
+                                     const std::function<void(NumAbsDomain&)>& if_false) const;
     };
 
     TypeDomain type_inv;
