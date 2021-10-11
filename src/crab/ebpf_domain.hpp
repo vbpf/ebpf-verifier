@@ -128,9 +128,6 @@ class ebpf_domain_t final {
     /// Forget everything we know about the value of a variable.
     void havoc(variable_t v);
 
-    // shorthand for "m_inv + condition" (since + is not actually overloaded)
-    NumAbsDomain when(const linear_constraint_t& condition);
-
     void scratch_caller_saved_registers();
     std::optional<EbpfMapDescriptor> get_map_descriptor(const Reg& map_fd_reg);
     void forget_packet_pointers();
@@ -150,9 +147,9 @@ class ebpf_domain_t final {
                                      variable_t reg_type);
     void check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s);
 
-    NumAbsDomain do_load_stack(NumAbsDomain inv, const Reg& target_reg, const linear_expression_t& addr, int width);
-    NumAbsDomain do_load_ctx(NumAbsDomain inv, const Reg& target_reg, const linear_expression_t& addr_vague, int width);
-    NumAbsDomain do_load_packet_or_shared(NumAbsDomain inv, const Reg& target_reg, const linear_expression_t& addr, int width);
+    void do_load_stack(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width);
+    void do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr_vague, int width);
+    void do_load_packet_or_shared(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width);
     void do_load(const Mem& b, const Reg& target_reg);
 
     template <typename A, typename X, typename Y, typename Z>
