@@ -201,6 +201,8 @@ class ebpf_domain_t final {
         NumAbsDomain join_by_if_else(const NumAbsDomain& inv, const linear_constraint_t& condition,
                                      const std::function<void(NumAbsDomain&)>& if_true,
                                      const std::function<void(NumAbsDomain&)>& if_false) const;
+
+        bool is_in_group(const NumAbsDomain& inv, const Reg& r, TypeGroup group) const;
     };
 
     TypeDomain type_inv;

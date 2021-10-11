@@ -450,6 +450,28 @@ bool ebpf_domain_t::TypeDomain::implies_type(const NumAbsDomain& inv, const line
     return inv.when(a).entail(b);
 }
 
+bool ebpf_domain_t::TypeDomain::is_in_group(const NumAbsDomain& m_inv, const Reg& r, TypeGroup group) const {
+    using namespace crab::dsl_syntax;
+    variable_t t = reg_pack(r).type;
+    switch (group) {
+    case TypeGroup::number: return m_inv.entail(t == T_NUM);
+    case TypeGroup::map_fd: return m_inv.entail(t == T_MAP);
+    case TypeGroup::map_fd_programs: return m_inv.entail(t == T_MAP_PROGRAMS);
+    case TypeGroup::ctx: return m_inv.entail(t == T_CTX);
+    case TypeGroup::packet: return m_inv.entail(t == T_PACKET);
+    case TypeGroup::stack: return m_inv.entail(t == T_STACK);
+    case TypeGroup::shared: return m_inv.entail(t > T_SHARED);
+    case TypeGroup::non_map_fd: return m_inv.entail(t >= T_NUM);
+    case TypeGroup::mem: return m_inv.entail(t >= T_STACK);
+    case TypeGroup::mem_or_num:
+        return m_inv.entail(t >= T_NUM) && m_inv.entail(t != T_CTX);
+    case TypeGroup::pointer: return m_inv.entail(t >= T_CTX);
+    case TypeGroup::ptr_or_num: return m_inv.entail(t >= T_NUM);
+    case TypeGroup::stack_or_packet:
+        return m_inv.entail(t >= T_STACK) && m_inv.entail(t <= T_PACKET);
+    }
+}
+
 void ebpf_domain_t::assign_region_size(const Reg& r, unsigned int size) {
     assign(reg_pack(r).type, size);
 }
@@ -602,30 +624,8 @@ void ebpf_domain_t::operator()(const ValidStore& s) {
 }
 
 void ebpf_domain_t::operator()(const TypeConstraint& s) {
-    using namespace crab::dsl_syntax;
-    variable_t t = reg_pack(s.reg).type;
-    std::string str = to_string(s);
-    switch (s.types) {
-    case TypeGroup::number: require(m_inv, t == T_NUM, str); break;
-    case TypeGroup::map_fd: require(m_inv, t == T_MAP, str); break;
-    case TypeGroup::map_fd_programs: require(m_inv, t == T_MAP_PROGRAMS, str); break;
-    case TypeGroup::ctx: require(m_inv, t == T_CTX, str); break;
-    case TypeGroup::packet: require(m_inv, t == T_PACKET, str); break;
-    case TypeGroup::stack: require(m_inv, t == T_STACK, str); break;
-    case TypeGroup::shared: require(m_inv, t > T_SHARED, str); break;
-    case TypeGroup::non_map_fd: require(m_inv, t >= T_NUM, str); break;
-    case TypeGroup::mem: require(m_inv, t >= T_STACK, str); break;
-    case TypeGroup::mem_or_num:
-        require(m_inv, t >= T_NUM, str);
-        require(m_inv, t != T_CTX, str);
-        break;
-    case TypeGroup::pointer: require(m_inv, t >= T_CTX, str); break;
-    case TypeGroup::ptr_or_num: require(m_inv, t >= T_NUM, str); break;
-    case TypeGroup::stack_or_packet:
-        require(m_inv, t >= T_STACK, str);
-        require(m_inv, t <= T_PACKET, str);
-        break;
-    }
+    if (!type_inv.is_in_group(m_inv, s.reg, s.types))
+        require(m_inv, linear_constraint_t::FALSE(), to_string(s));
 }
 
 void ebpf_domain_t::operator()(const ValidSize& s) {
