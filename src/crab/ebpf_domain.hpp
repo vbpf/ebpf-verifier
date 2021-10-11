@@ -13,8 +13,6 @@
 #include "crab/variable.hpp"
 #include "string_constraints.hpp"
 
-struct reg_pack_t;
-
 using NumAbsDomain = crab::domains::NumAbsDomain;
 
 class ebpf_domain_t final {
@@ -207,5 +205,5 @@ class ebpf_domain_t final {
 
     TypeDomain type_inv;
 
-    void assign_region_size(const reg_pack_t& r, unsigned int size);
+    void assign_region_size(const Reg& r, unsigned int size);
 }; // end ebpf_domain_t

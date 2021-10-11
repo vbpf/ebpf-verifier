@@ -450,8 +450,8 @@ bool ebpf_domain_t::TypeDomain::implies_type(const NumAbsDomain& inv, const line
     return inv.when(a).entail(b);
 }
 
-void ebpf_domain_t::assign_region_size(const reg_pack_t& r, unsigned int size) {
-    assign(r.type, size);
+void ebpf_domain_t::assign_region_size(const Reg& r, unsigned int size) {
+    assign(reg_pack(r).type, size);
 }
 
 void ebpf_domain_t::overflow(variable_t lhs) {
@@ -1001,7 +1001,7 @@ void ebpf_domain_t::operator()(const Call& call) {
                 } else {
                     assign_valid_ptr(r0_reg, true);
                     assign(r0_pack.offset, 0);
-                    assign_region_size(r0_pack, maybe_map_descriptor->value_size);
+                    assign_region_size(r0_reg, maybe_map_descriptor->value_size);
                 }
                 goto out;
             }
