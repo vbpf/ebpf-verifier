@@ -435,6 +435,10 @@ NumAbsDomain ebpf_domain_t::TypeDomain::join_over_types(const NumAbsDomain& inv,
     return res;
 }
 
+bool ebpf_domain_t::TypeDomain::same_type(const NumAbsDomain& inv, const reg_pack_t& a, const reg_pack_t& b) const {
+    return inv.entail(eq(a.type, b.type));
+}
+
 void ebpf_domain_t::assign_region_size(const reg_pack_t& r, unsigned int size) {
     assign(r.type, size);
 }
@@ -577,7 +581,10 @@ void ebpf_domain_t::operator()(const Exit& a) {}
 
 void ebpf_domain_t::operator()(const Jmp& a) {}
 
-void ebpf_domain_t::operator()(const Comparable& s) { require(m_inv, eq(reg_pack(s.r1).type, reg_pack(s.r2).type), to_string(s)); }
+void ebpf_domain_t::operator()(const Comparable& s) {
+    if (!type_inv.same_type(m_inv, reg_pack(s.r1), reg_pack(s.r2)))
+        require(m_inv, linear_constraint_t::FALSE(), to_string(s));
+}
 
 void ebpf_domain_t::operator()(const Addable& s) {
     using namespace crab::dsl_syntax;

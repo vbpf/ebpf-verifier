@@ -195,6 +195,8 @@ class ebpf_domain_t final {
         [[nodiscard]] std::vector<int> possible_types(const NumAbsDomain& inv, const reg_pack_t& reg) const;
         NumAbsDomain join_over_types(const NumAbsDomain& inv, const reg_pack_t& reg,
                                      const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const;
+
+        bool same_type(const NumAbsDomain& inv, const reg_pack_t& a, const reg_pack_t& b) const;
     };
 
     TypeDomain type_inv;
