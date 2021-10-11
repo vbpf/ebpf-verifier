@@ -596,6 +596,38 @@ void ebpf_domain_t::operator()(const Addable& s) {
         require(m_inv, linear_constraint_t::FALSE(), "only numbers can be added to pointers (" + to_string(s) + ")");
 }
 
+void ebpf_domain_t::operator()(const ValidStore& s) {
+    if (!type_inv.implies_type(m_inv, type_is_not_stack(reg_pack(s.mem)), type_is_number(reg_pack(s.val))))
+        require(m_inv, linear_constraint_t::FALSE(), "Only numbers can be stored to externally-visible regions");
+}
+
+void ebpf_domain_t::operator()(const TypeConstraint& s) {
+    using namespace crab::dsl_syntax;
+    variable_t t = reg_pack(s.reg).type;
+    std::string str = to_string(s);
+    switch (s.types) {
+    case TypeGroup::number: require(m_inv, t == T_NUM, str); break;
+    case TypeGroup::map_fd: require(m_inv, t == T_MAP, str); break;
+    case TypeGroup::map_fd_programs: require(m_inv, t == T_MAP_PROGRAMS, str); break;
+    case TypeGroup::ctx: require(m_inv, t == T_CTX, str); break;
+    case TypeGroup::packet: require(m_inv, t == T_PACKET, str); break;
+    case TypeGroup::stack: require(m_inv, t == T_STACK, str); break;
+    case TypeGroup::shared: require(m_inv, t > T_SHARED, str); break;
+    case TypeGroup::non_map_fd: require(m_inv, t >= T_NUM, str); break;
+    case TypeGroup::mem: require(m_inv, t >= T_STACK, str); break;
+    case TypeGroup::mem_or_num:
+        require(m_inv, t >= T_NUM, str);
+        require(m_inv, t != T_CTX, str);
+        break;
+    case TypeGroup::pointer: require(m_inv, t >= T_CTX, str); break;
+    case TypeGroup::ptr_or_num: require(m_inv, t >= T_NUM, str); break;
+    case TypeGroup::stack_or_packet:
+        require(m_inv, t >= T_STACK, str);
+        require(m_inv, t <= T_PACKET, str);
+        break;
+    }
+}
+
 void ebpf_domain_t::operator()(const ValidSize& s) {
     using namespace crab::dsl_syntax;
     auto r = reg_pack(s.reg);
@@ -711,38 +743,6 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
             break;
         }
     });
-}
-
-void ebpf_domain_t::operator()(const ValidStore& s) {
-    if (!type_inv.implies_type(m_inv, type_is_not_stack(reg_pack(s.mem)), type_is_number(reg_pack(s.val))))
-        require(m_inv, linear_constraint_t::FALSE(), "Only numbers can be stored to externally-visible regions");
-}
-
-void ebpf_domain_t::operator()(const TypeConstraint& s) {
-    using namespace crab::dsl_syntax;
-    variable_t t = reg_pack(s.reg).type;
-    std::string str = to_string(s);
-    switch (s.types) {
-    case TypeGroup::number: require(m_inv, t == T_NUM, str); break;
-    case TypeGroup::map_fd: require(m_inv, t == T_MAP, str); break;
-    case TypeGroup::map_fd_programs: require(m_inv, t == T_MAP_PROGRAMS, str); break;
-    case TypeGroup::ctx: require(m_inv, t == T_CTX, str); break;
-    case TypeGroup::packet: require(m_inv, t == T_PACKET, str); break;
-    case TypeGroup::stack: require(m_inv, t == T_STACK, str); break;
-    case TypeGroup::shared: require(m_inv, t > T_SHARED, str); break;
-    case TypeGroup::non_map_fd: require(m_inv, t >= T_NUM, str); break;
-    case TypeGroup::mem: require(m_inv, t >= T_STACK, str); break;
-    case TypeGroup::mem_or_num:
-        require(m_inv, t >= T_NUM, str);
-        require(m_inv, t != T_CTX, str);
-        break;
-    case TypeGroup::pointer: require(m_inv, t >= T_CTX, str); break;
-    case TypeGroup::ptr_or_num: require(m_inv, t >= T_NUM, str); break;
-    case TypeGroup::stack_or_packet:
-        require(m_inv, t >= T_STACK, str);
-        require(m_inv, t <= T_PACKET, str);
-        break;
-    }
 }
 
 void ebpf_domain_t::operator()(const ZeroOffset& s) {
