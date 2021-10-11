@@ -136,11 +136,11 @@ class ebpf_domain_t final {
     void scratch_caller_saved_registers();
     std::optional<EbpfMapDescriptor> get_map_descriptor(const Reg& map_fd_reg);
     void forget_packet_pointers();
-    void do_load_mapfd(const Reg& dst_reg, const reg_pack_t& dst, int mapfd, bool maybe_null);
+    void do_load_mapfd(const Reg& dst_reg, int mapfd, bool maybe_null);
 
     void overflow(variable_t lhs);
 
-    void assign_valid_ptr(const reg_pack_t& reg, bool maybe_null);
+    void assign_valid_ptr(const Reg& dst_reg, bool maybe_null);
 
     void require(crab::domains::NumAbsDomain& inv, const linear_constraint_t& cst, const std::string& s);
 
@@ -152,10 +152,10 @@ class ebpf_domain_t final {
                                      variable_t reg_type);
     void check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s);
 
-    NumAbsDomain do_load_stack(NumAbsDomain inv, const Reg& target_reg, const reg_pack_t& target, const linear_expression_t& addr, int width);
-    NumAbsDomain do_load_ctx(NumAbsDomain inv, const Reg& target_reg, const reg_pack_t& target, const linear_expression_t& addr_vague, int width);
-    NumAbsDomain do_load_packet_or_shared(NumAbsDomain inv, const Reg& target_reg, const reg_pack_t& target, const linear_expression_t& addr, int width);
-    void do_load(const Mem& b, const Reg& target_reg, const reg_pack_t& target);
+    NumAbsDomain do_load_stack(NumAbsDomain inv, const Reg& target_reg, const linear_expression_t& addr, int width);
+    NumAbsDomain do_load_ctx(NumAbsDomain inv, const Reg& target_reg, const linear_expression_t& addr_vague, int width);
+    NumAbsDomain do_load_packet_or_shared(NumAbsDomain inv, const Reg& target_reg, const linear_expression_t& addr, int width);
+    void do_load(const Mem& b, const Reg& target_reg);
 
     template <typename A, typename X, typename Y, typename Z>
     void do_store_stack(crab::domains::NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_value,

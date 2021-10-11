@@ -764,7 +764,8 @@ void ebpf_domain_t::operator()(const Packet& a) {
     scratch_caller_saved_registers();
 }
 
-NumAbsDomain ebpf_domain_t::do_load_stack(NumAbsDomain inv, const Reg& target_reg, const reg_pack_t& target, const linear_expression_t& addr, int width) {
+NumAbsDomain ebpf_domain_t::do_load_stack(NumAbsDomain inv, const Reg& target_reg, const linear_expression_t& addr, int width) {
+    const reg_pack_t& target = reg_pack(target_reg);
     if (width == 1 || width == 2 || width == 4 || width == 8) {
         type_inv.assign_type(inv, target_reg, stack.load(inv, data_kind_t::types, addr, width));
         inv.assign(target.value, stack.load(inv,  data_kind_t::values, addr, width));
@@ -777,13 +778,14 @@ NumAbsDomain ebpf_domain_t::do_load_stack(NumAbsDomain inv, const Reg& target_re
     return inv;
 }
 
-NumAbsDomain ebpf_domain_t::do_load_ctx(NumAbsDomain inv, const Reg& target_reg, const reg_pack_t& target, const linear_expression_t& addr_vague, int width) {
+NumAbsDomain ebpf_domain_t::do_load_ctx(NumAbsDomain inv, const Reg& target_reg, const linear_expression_t& addr_vague, int width) {
     using namespace crab::dsl_syntax;
     if (inv.is_bottom())
         return inv;
 
     const ebpf_context_descriptor_t* desc = global_program_info.type.context_descriptor;
 
+    const reg_pack_t& target = reg_pack(target_reg);
     inv -= target.value;
 
     if (desc->end < 0) {
@@ -828,9 +830,10 @@ NumAbsDomain ebpf_domain_t::do_load_ctx(NumAbsDomain inv, const Reg& target_reg,
     return inv;
 }
 
-NumAbsDomain ebpf_domain_t::do_load_packet_or_shared(NumAbsDomain inv, const Reg& target_reg, const reg_pack_t& target, const linear_expression_t& addr, int width) {
+NumAbsDomain ebpf_domain_t::do_load_packet_or_shared(NumAbsDomain inv, const Reg& target_reg, const linear_expression_t& addr, int width) {
     if (inv.is_bottom())
         return inv;
+    const reg_pack_t& target = reg_pack(target_reg);
 
     type_inv.assign_type(inv, target_reg, T_NUM);
     inv -= target.offset;
@@ -846,31 +849,33 @@ NumAbsDomain ebpf_domain_t::do_load_packet_or_shared(NumAbsDomain inv, const Reg
     return inv;
 }
 
-void ebpf_domain_t::do_load(const Mem& b, const Reg& target_reg, const reg_pack_t& target) {
+void ebpf_domain_t::do_load(const Mem& b, const Reg& target_reg) {
     using namespace crab::dsl_syntax;
+    const reg_pack_t& target = reg_pack(target_reg);
+
     auto mem_reg = reg_pack(b.access.basereg);
     int width = b.access.width;
     int offset = b.access.offset;
     linear_expression_t addr = mem_reg.offset + (number_t)offset;
 
     if (b.access.basereg.v == R10_STACK_POINTER) {
-        m_inv = do_load_stack(std::move(m_inv), target_reg, target, addr, width);
+        m_inv = do_load_stack(std::move(m_inv), target_reg, addr, width);
         return;
     }
 
     switch (type_inv.get_type(m_inv, b.access.basereg)) {
         case T_UNINIT: {
-            m_inv = do_load_ctx(when(type_is_ctx(mem_reg)), target_reg, target, addr, width) |
-                    do_load_packet_or_shared(when(type_is_packet_or_shared(mem_reg)), target_reg, target, addr, width) |
-                    do_load_stack(when(type_is_stack(mem_reg)), target_reg, target, addr, width);
+            m_inv = do_load_ctx(when(type_is_ctx(mem_reg)), target_reg, addr, width) |
+                    do_load_packet_or_shared(when(type_is_packet_or_shared(mem_reg)), target_reg, addr, width) |
+                    do_load_stack(when(type_is_stack(mem_reg)), target_reg, addr, width);
             return;
         }
         case T_MAP: return;
         case T_MAP_PROGRAMS: return;
         case T_NUM: return;
-        case T_CTX: m_inv = do_load_ctx(std::move(m_inv), target_reg, target, addr, width); break;
-        case T_STACK: m_inv = do_load_stack(std::move(m_inv), target_reg, target, addr, width); break;
-        default: m_inv = do_load_packet_or_shared(std::move(m_inv), target_reg, target, addr, width); break;
+        case T_CTX: m_inv = do_load_ctx(std::move(m_inv), target_reg, addr, width); break;
+        case T_STACK: m_inv = do_load_stack(std::move(m_inv), target_reg, addr, width); break;
+        default: m_inv = do_load_packet_or_shared(std::move(m_inv), target_reg, addr, width); break;
     }
 }
 
@@ -898,10 +903,10 @@ void ebpf_domain_t::operator()(const Mem& b) {
     if (m_inv.is_bottom())
         return;
     if (std::holds_alternative<Reg>(b.value)) {
-        auto data_reg = reg_pack(std::get<Reg>(b.value));
         if (b.is_load) {
-            do_load(b, std::get<Reg>(b.value), data_reg);
+            do_load(b, std::get<Reg>(b.value));
         } else {
+            auto data_reg = reg_pack(std::get<Reg>(b.value));
             do_mem_store(b, std::get<Reg>(b.value), data_reg.value, data_reg.offset);
         }
     } else {
@@ -992,16 +997,16 @@ void ebpf_domain_t::operator()(const Call& call) {
         if (maybe_fd_reg) {
             if (auto maybe_map_descriptor = get_map_descriptor(*maybe_fd_reg)) {
                 if (global_program_info.platform->get_map_type(maybe_map_descriptor->type).value_type == EbpfMapValueType::MAP) {
-                    do_load_mapfd(r0_reg, r0_pack, (int)maybe_map_descriptor->inner_map_fd, true);
+                    do_load_mapfd(r0_reg, (int)maybe_map_descriptor->inner_map_fd, true);
                 } else {
-                    assign_valid_ptr(r0_pack, true);
+                    assign_valid_ptr(r0_reg, true);
                     assign(r0_pack.offset, 0);
                     assign_region_size(r0_pack, maybe_map_descriptor->value_size);
                 }
                 goto out;
             }
         }
-        assign_valid_ptr(r0_pack, true);
+        assign_valid_ptr(r0_reg, true);
         assign(r0_pack.offset, 0);
         type_inv.assign_type(m_inv, r0_reg, T_SHARED); // unknown map
     } else {
@@ -1017,7 +1022,7 @@ out:
     }
 }
 
-void ebpf_domain_t::do_load_mapfd(const Reg& dst_reg, const reg_pack_t& dst, int mapfd, bool maybe_null) {
+void ebpf_domain_t::do_load_mapfd(const Reg& dst_reg, int mapfd, bool maybe_null) {
     const EbpfMapDescriptor& desc = global_program_info.platform->get_map_descriptor(mapfd);
     const EbpfMapType& type = global_program_info.platform->get_map_type(desc.type);
     if (type.value_type == EbpfMapValueType::PROGRAM) {
@@ -1025,16 +1030,18 @@ void ebpf_domain_t::do_load_mapfd(const Reg& dst_reg, const reg_pack_t& dst, int
     } else {
         type_inv.assign_type(m_inv, dst_reg, T_MAP);
     }
+    const reg_pack_t& dst = reg_pack(dst_reg);
     assign(dst.offset, mapfd);
-    assign_valid_ptr(dst, maybe_null);
+    assign_valid_ptr(dst_reg, maybe_null);
 }
 
 void ebpf_domain_t::operator()(const LoadMapFd& ins) {
-    do_load_mapfd(ins.dst, reg_pack(ins.dst), ins.mapfd, false);
+    do_load_mapfd(ins.dst, ins.mapfd, false);
 }
 
-void ebpf_domain_t::assign_valid_ptr(const reg_pack_t& reg, bool maybe_null) {
+void ebpf_domain_t::assign_valid_ptr(const Reg& dst_reg, bool maybe_null) {
     using namespace crab::dsl_syntax;
+    const reg_pack_t& reg = reg_pack(dst_reg);
     havoc(reg.value);
     if (maybe_null) {
         m_inv += 0 <= reg.value;
