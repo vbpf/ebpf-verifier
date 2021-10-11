@@ -661,46 +661,47 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
         ? lb + std::get<Imm>(s.width).v
         : lb + reg_pack(std::get<Reg>(s.width)).value;
     std::string m = std::string(" (") + to_string(s) + ")";
-    for (auto type: type_inv.possible_types(m_inv, reg)) {
+    // join_over_types instead of simple iteration is only needed for assume-assert
+    m_inv = type_inv.join_over_types(m_inv, reg, [&](NumAbsDomain& inv, type_encoding_t type) {
         switch (type) {
         case T_PACKET:
-            check_access_packet(m_inv, lb, ub, m, is_comparison_check);
+            check_access_packet(inv, lb, ub, m, is_comparison_check);
             // if within bounds, it can never be null
             break;
         case T_STACK:
-            check_access_stack(m_inv, lb, ub, m);
+            check_access_stack(inv, lb, ub, m);
             // if within bounds, it can never be null
             break;
         case T_CTX:
-            check_access_context(m_inv, lb, ub, m);
+            check_access_context(inv, lb, ub, m);
             // if within bounds, it can never be null
             break;
         case T_NUM:
             if (!is_comparison_check) {
                 if (s.or_null) {
-                    require(m_inv, reg.value == 0, "Non-null number");
+                    require(inv, reg.value == 0, "Non-null number");
                 } else {
-                    require(m_inv, linear_constraint_t::FALSE(), "Only pointers can be dereferenced");
+                    require(inv, linear_constraint_t::FALSE(), "Only pointers can be dereferenced");
                 }
             }
             break;
         case T_MAP:
         case T_MAP_PROGRAMS:
             if (!is_comparison_check) {
-                require(m_inv, linear_constraint_t::FALSE(), "FDs cannot be dereferenced directly");
+                require(inv, linear_constraint_t::FALSE(), "FDs cannot be dereferenced directly");
             }
             break;
         default:
             if (type > T_SHARED) {
-                check_access_shared(m_inv, lb, ub, m, reg.type);
+                check_access_shared(inv, lb, ub, m, reg.type);
                 if (!is_comparison_check && !s.or_null)
-                    require(m_inv, reg.value > 0, "Possible null access");
+                    require(inv, reg.value > 0, "Possible null access");
             } else {
-                require(m_inv, linear_constraint_t::FALSE(), "Invalid type");
+                require(inv, linear_constraint_t::FALSE(), "Invalid type");
             }
             break;
         }
-    }
+    });
 }
 
 void ebpf_domain_t::operator()(const ValidStore& s) {
