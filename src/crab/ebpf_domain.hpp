@@ -195,7 +195,6 @@ class ebpf_domain_t final {
         [[nodiscard]] int get_type(const NumAbsDomain& inv, const reg_pack_t& r) const;
         [[nodiscard]] int get_type(const NumAbsDomain& inv, const Reg& r) const;
         [[nodiscard]] int get_type(const NumAbsDomain& inv, int t) const;
-        [[nodiscard]] std::vector<int> possible_types(const NumAbsDomain& inv, const reg_pack_t& reg) const;
         NumAbsDomain join_over_types(const NumAbsDomain& inv, const Reg& reg,
                                      const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const;
 

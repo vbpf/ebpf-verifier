@@ -415,21 +415,6 @@ int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, variable_t v) c
 
 int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, int t) const { return t; }
 
-std::vector<int> ebpf_domain_t::TypeDomain::possible_types(const NumAbsDomain& inv, const reg_pack_t& reg) const {
-    crab::interval_t types = inv.eval_interval(reg.type);
-    if (types.is_bottom())
-        return {};
-    std::vector<int> res;
-    if (auto lb = types.lb().number()) {
-        if (auto ub = types.ub().number()) {
-            for (int i = (int)*lb; i <= (int)*ub; i++) {
-                res.push_back(i);
-            }
-        }
-    }
-    return res;
-}
-
 NumAbsDomain ebpf_domain_t::TypeDomain::join_over_types(const NumAbsDomain& inv, const Reg& reg,
                                                         const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const {
     crab::interval_t types = inv.eval_interval(reg_pack(reg).type);
