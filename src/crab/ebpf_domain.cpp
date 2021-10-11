@@ -786,7 +786,7 @@ NumAbsDomain ebpf_domain_t::do_load_ctx(NumAbsDomain inv, const reg_pack_t& targ
     crab::interval_t interval = inv.eval_interval(addr_vague);
     std::optional<number_t> maybe_addr = interval.singleton();
 
-    bool may_touch_ptr = interval[desc->data] || interval[desc->end] || interval[desc->end];
+    bool may_touch_ptr = interval[desc->data] || interval[desc->meta] || interval[desc->end];
 
     if (!maybe_addr) {
         inv -= target.offset;
