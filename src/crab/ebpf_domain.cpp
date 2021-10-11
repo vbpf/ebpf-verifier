@@ -612,45 +612,42 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
     }
     auto access_reg = reg_pack(s.access_reg);
     std::string m = std::string(" (") + to_string(s) + ")";
-    require(m_inv, access_reg.type >= T_STACK, "Only stack or packet can be used as a parameter" + m);
-    require(m_inv, access_reg.type <= T_PACKET, "Only stack or packet can be used as a parameter" + m);
-
     variable_t lb = access_reg.offset;
     int width = s.key ? (int)maybe_map_descriptor->key_size : (int)maybe_map_descriptor->value_size;
     linear_expression_t ub = lb + width;
 
-    auto when_stack = when(type_is_stack(access_reg));
-    if (!when_stack.is_bottom()) {
-        if (!stack.all_num(when_stack, lb, ub)) {
-            auto lb_is = when_stack[lb].lb().number();
-            std::string lb_s = lb_is && lb_is->fits_sint() ? std::to_string((int)*lb_is) : "-oo";
-            auto ub_is = when_stack.eval_interval(ub).ub().number();
-            std::string ub_s = ub_is && ub_is->fits_sint() ? std::to_string((int)*ub_is) : "oo";
-            require(when_stack, type_is_not_stack(access_reg), "Illegal map update with a non-numerical value [" + lb_s + "-" + ub_s + ")");
-        } else if (thread_local_options.strict && maybe_map_descriptor.has_value()) {
-            EbpfMapType map_type = global_program_info.platform->get_map_type(maybe_map_descriptor->type);
-            if (map_type.is_array) {
-                // Get offset value.
-                variable_t key_ptr = access_reg.offset;
-                std::optional<number_t> offset = m_inv[key_ptr].singleton();
-                if (!offset.has_value()) {
-                    require(m_inv, linear_constraint_t::FALSE(), "Pointer must be a singleton");
-                } else if (s.key) {
-                    // Look up the value pointed to by the key pointer.
-                    variable_t key_value =
-                        variable_t::cell_var(data_kind_t::values, (uint64_t)offset.value(), sizeof(uint32_t));
+    m_inv = type_inv.join_over_types(m_inv, access_reg, [&](NumAbsDomain& inv, type_encoding_t type) {
+        if (type == T_STACK) {
+            if (!stack.all_num(inv, lb, ub)) {
+                auto lb_is = inv[lb].lb().number();
+                std::string lb_s = lb_is && lb_is->fits_sint() ? std::to_string((int)*lb_is) : "-oo";
+                auto ub_is = inv.eval_interval(ub).ub().number();
+                std::string ub_s = ub_is && ub_is->fits_sint() ? std::to_string((int)*ub_is) : "oo";
+                require(inv, type_is_not_stack(access_reg), "Illegal map update with a non-numerical value [" + lb_s + "-" + ub_s + ")");
+            } else if (thread_local_options.strict && maybe_map_descriptor.has_value()) {
+                EbpfMapType map_type = global_program_info.platform->get_map_type(maybe_map_descriptor->type);
+                if (map_type.is_array) {
+                    // Get offset value.
+                    variable_t key_ptr = access_reg.offset;
+                    std::optional<number_t> offset = inv[key_ptr].singleton();
+                    if (!offset.has_value()) {
+                        require(inv, linear_constraint_t::FALSE(), "Pointer must be a singleton");
+                    } else if (s.key) {
+                        // Look up the value pointed to by the key pointer.
+                        variable_t key_value =
+                            variable_t::cell_var(data_kind_t::values, (uint64_t)offset.value(), sizeof(uint32_t));
 
-                    require(m_inv, key_value < maybe_map_descriptor->max_entries, "Array index overflow");
-                    require(m_inv, key_value >= 0, "Array index underflow");
+                        require(inv, key_value < maybe_map_descriptor->max_entries, "Array index overflow");
+                        require(inv, key_value >= 0, "Array index underflow");
+                    }
                 }
             }
+        } else if (type == T_PACKET) {
+            check_access_packet(inv, lb, ub, m, false);
+        } else {
+            require(inv, linear_constraint_t::FALSE(), "Only stack or packet can be used as a parameter" + m);
         }
-    }
-    m_inv += type_is_packet(access_reg);
-    check_access_packet(m_inv, lb, ub, m, false);
-  
-    check_access_stack(when_stack, lb, ub, m);
-    m_inv |= std::move(when_stack);
+    });
 }
 
 void ebpf_domain_t::operator()(const ValidAccess& s) {
