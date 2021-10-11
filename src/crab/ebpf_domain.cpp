@@ -554,7 +554,8 @@ void ebpf_domain_t::operator()(const Assume& s) {
         } else {
             // We should only reach here if `--assume-assert` is off
             assert(!thread_local_options.assume_assertions || is_bottom());
-            m_inv.set_to_bottom();
+            // be sound in any case, it happens to flush out bugs:
+            m_inv.set_to_top();
         }
     } else {
         int imm = static_cast<int>(std::get<Imm>(cond.right).v);
@@ -1104,40 +1105,51 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         auto src = reg_pack(std::get<Reg>(bin.v));
         switch (bin.op) {
         case Bin::Op::ADD: {
-            auto stype = type_inv.get_type(m_inv, std::get<Reg>(bin.v));
-            auto dtype = type_inv.get_type(m_inv, bin.dst);
-            if (stype == T_NUM && dtype == T_NUM) {
+            if (type_inv.same_type(m_inv, bin.dst, std::get<Reg>(bin.v))) {
+                // both must be numbers
                 add_overflow(dst.value, src.value);
-            } else if (dtype == T_NUM) {
-                apply(m_inv, crab::arith_binop_t::ADD, dst.value, src.value, dst.value, true);
-                apply(m_inv, crab::arith_binop_t::ADD, dst.offset, src.offset, dst.value, false);
-                type_inv.assign_type(m_inv, bin.dst, std::get<Reg>(bin.v));
-            } else if (stype == T_NUM) {
-                add_overflow(dst.value, src.value);
-                add(dst.offset, src.value);
             } else {
-                // We should only reach here if the require() has failed and there's no assume-assert
-                set_to_bottom();
-                return;
+                // Here we're not sure that lhs and rhs are the same type; they might be.
+                // But previous assertions should fail unless we know that exactly one of lhs or rhs to is a pointer
+                m_inv = type_inv.join_by_if_else(m_inv,
+                    type_is_number(bin.dst),
+                    [&](NumAbsDomain& inv) {
+                        // num + ptr
+                        apply(inv, crab::arith_binop_t::ADD, dst.value, src.value, dst.value, true);
+                        apply(inv, crab::arith_binop_t::ADD, dst.offset, src.offset, dst.value, false);
+                        type_inv.assign_type(inv, bin.dst, std::get<Reg>(bin.v));
+                    },
+                    [&](NumAbsDomain& inv) {
+                        // ptr + num
+                        apply(inv, crab::arith_binop_t::ADD, dst.value, dst.value, src.value, true);
+                        apply(inv, crab::arith_binop_t::ADD, dst.offset, dst.offset, src.value, false);
+                    }
+                );
             }
             break;
         }
         case Bin::Op::SUB: {
-            auto stype = type_inv.get_type(m_inv, std::get<Reg>(bin.v));
-            auto dtype = type_inv.get_type(m_inv, bin.dst);
-            if (dtype == T_NUM && stype == T_NUM) {
-                sub_overflow(dst.value, src.value);
-            } else if (stype == T_NUM) {
-                sub_overflow(dst.value, src.value);
-                sub(dst.offset, src.value);
-            } else if (stype == dtype && stype < 0) { // subtracting non-shared pointers
-                apply(m_inv, crab::arith_binop_t::SUB, dst.value, dst.offset, src.offset, true);
-                havoc(dst.offset);
-                type_inv.assign_type(m_inv, bin.dst, T_NUM);
+            if (type_inv.same_type(m_inv, bin.dst, std::get<Reg>(bin.v))) {
+                m_inv = type_inv.join_by_if_else(m_inv,
+                    type_is_number(bin.dst),
+                    [&](NumAbsDomain& inv) {
+                        // This is: sub_overflow(inv, dst.value, src.value);
+                        apply(inv, crab::arith_binop_t::SUB, dst.value, dst.value, src.value, true);
+                    },
+                    [&](NumAbsDomain& inv) {
+                        // Assertions should make sure we only perform this on non-shared pointers
+                        apply(inv, crab::arith_binop_t::SUB, dst.value, dst.offset, src.offset, true);
+                        inv -= dst.offset;
+                        type_inv.assign_type(inv, bin.dst, T_NUM);
+                    }
+                );
             } else {
-                // We should only reach here if the require() has failed and there's no assume-assert
-                set_to_bottom();
-                return;
+                // Here we're not sure that lhs and rhs are the same type; they might be, meaning lhs may be a number.
+                // But previous assertions should fail unless we know that rhs is a number.
+                assert(type_inv.get_type(m_inv, std::get<Reg>(bin.v)) == T_NUM);
+                sub_overflow(dst.value, src.value);
+                // No harm comes from subtracting the value from an offset of a number, which is TOP.
+                sub(dst.offset, src.value);
             }
             break;
         }
