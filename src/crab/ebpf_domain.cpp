@@ -433,10 +433,15 @@ NumAbsDomain ebpf_domain_t::TypeDomain::join_over_types(const NumAbsDomain& inv,
         }
     }
     return res;
+    return res;
 }
 
 bool ebpf_domain_t::TypeDomain::same_type(const NumAbsDomain& inv, const reg_pack_t& a, const reg_pack_t& b) const {
     return inv.entail(eq(a.type, b.type));
+}
+
+bool ebpf_domain_t::TypeDomain::implies_type(const NumAbsDomain& inv, const linear_constraint_t& a, const linear_constraint_t& b) const {
+    return inv.when(a).entail(b);
 }
 
 void ebpf_domain_t::assign_region_size(const reg_pack_t& r, unsigned int size) {
@@ -587,11 +592,8 @@ void ebpf_domain_t::operator()(const Comparable& s) {
 }
 
 void ebpf_domain_t::operator()(const Addable& s) {
-    using namespace crab::dsl_syntax;
-    auto is_ptr = when(type_is_pointer(reg_pack(s.ptr)));
-    require(is_ptr,
-            type_is_number(reg_pack(s.num)),
-            "only numbers can be added to pointers (" + to_string(s) + ")");
+    if (!type_inv.implies_type(m_inv, type_is_pointer(reg_pack(s.ptr)),type_is_number(reg_pack(s.num))))
+        require(m_inv, linear_constraint_t::FALSE(), "only numbers can be added to pointers (" + to_string(s) + ")");
 }
 
 void ebpf_domain_t::operator()(const ValidSize& s) {

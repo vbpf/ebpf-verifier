@@ -183,9 +183,9 @@ class ebpf_domain_t final {
     std::function<check_require_func_t> check_require{};
 
     struct TypeDomain {
-        static void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, type_encoding_t t);
-        static void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, const reg_pack_t& rhs);
-        static void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, const std::optional<linear_expression_t>& rhs);
+        void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, type_encoding_t t);
+        void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, const reg_pack_t& rhs);
+        void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, const std::optional<linear_expression_t>& rhs);
 
         void havoc_type(NumAbsDomain& inv, const reg_pack_t& r);
 
@@ -196,7 +196,9 @@ class ebpf_domain_t final {
         NumAbsDomain join_over_types(const NumAbsDomain& inv, const reg_pack_t& reg,
                                      const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const;
 
-        bool same_type(const NumAbsDomain& inv, const reg_pack_t& a, const reg_pack_t& b) const;
+        [[nodiscard]] bool same_type(const NumAbsDomain& inv, const reg_pack_t& a, const reg_pack_t& b) const;
+
+        [[nodiscard]] bool implies_type(const NumAbsDomain& inv, const linear_constraint_t& a, const linear_constraint_t& b) const;
     };
 
     TypeDomain type_inv;

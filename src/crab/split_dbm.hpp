@@ -385,6 +385,12 @@ class SplitDBM final {
 
     void operator+=(const linear_constraint_t& cst);
 
+    SplitDBM when(const linear_constraint_t& cst) const {
+        SplitDBM res(*this);
+        res += cst;
+        return res;
+    }
+
     interval_t eval_interval(const linear_expression_t& e) const {
         interval_t r{e.constant_term()};
         for (const auto& [variable, coefficient] : e.variable_terms())
