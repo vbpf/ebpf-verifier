@@ -136,7 +136,7 @@ class ebpf_domain_t final {
     void scratch_caller_saved_registers();
     std::optional<EbpfMapDescriptor> get_map_descriptor(const Reg& map_fd_reg);
     void forget_packet_pointers();
-    void do_load_mapfd(const reg_pack_t& dst, int mapfd, bool maybe_null);
+    void do_load_mapfd(const Reg& dst_reg, const reg_pack_t& dst, int mapfd, bool maybe_null);
 
     void overflow(variable_t lhs);
 
@@ -152,9 +152,9 @@ class ebpf_domain_t final {
                                      variable_t reg_type);
     void check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s);
 
-    NumAbsDomain do_load_stack(NumAbsDomain inv, const reg_pack_t& target, const linear_expression_t& addr, int width);
+    NumAbsDomain do_load_stack(NumAbsDomain inv, const Reg& target_reg, const reg_pack_t& target, const linear_expression_t& addr, int width);
     NumAbsDomain do_load_ctx(NumAbsDomain inv, const Reg& target_reg, const reg_pack_t& target, const linear_expression_t& addr_vague, int width);
-    NumAbsDomain do_load_packet_or_shared(NumAbsDomain inv, const reg_pack_t& target, const linear_expression_t& addr, int width);
+    NumAbsDomain do_load_packet_or_shared(NumAbsDomain inv, const Reg& target_reg, const reg_pack_t& target, const linear_expression_t& addr, int width);
     void do_load(const Mem& b, const Reg& target_reg, const reg_pack_t& target);
 
     template <typename A, typename X, typename Y, typename Z>
@@ -183,16 +183,15 @@ class ebpf_domain_t final {
     std::function<check_require_func_t> check_require{};
 
     struct TypeDomain {
-        void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, type_encoding_t t);
+        void assign_type(NumAbsDomain& inv, const Reg& lhs, type_encoding_t t);
         void assign_type(NumAbsDomain& inv, const Reg& lhs, const Reg& rhs);
-        void assign_type(NumAbsDomain& inv, const reg_pack_t& lhs, const std::optional<linear_expression_t>& rhs);
+        void assign_type(NumAbsDomain& inv, const Reg& lhs, const std::optional<linear_expression_t>& rhs);
         void assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, const Reg& rhs);
         void assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, int rhs);
 
         void havoc_type(NumAbsDomain& inv, const Reg& r);
 
         [[nodiscard]] int get_type(const NumAbsDomain& inv, variable_t v) const;
-        [[nodiscard]] int get_type(const NumAbsDomain& inv, const reg_pack_t& r) const;
         [[nodiscard]] int get_type(const NumAbsDomain& inv, const Reg& r) const;
         [[nodiscard]] int get_type(const NumAbsDomain& inv, int t) const;
         NumAbsDomain join_over_types(const NumAbsDomain& inv, const Reg& reg,
