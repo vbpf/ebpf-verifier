@@ -50,6 +50,7 @@ post: [
     "packet_size-r3.offset<=65530", "packet_size=[0, 65534]",
     "r3.offset-packet_size<=4", "r1.value=r3.value+4",
     "r2.offset-r3.offset<=65530", "r3.offset-r2.offset<=4",
+    "r1.region_size=r3.region_size"
 ]
 messages:
   - "4: Upper bound must be at most packet_size (valid_access(r1.offset, width=8))"
@@ -60,7 +61,9 @@ test-case: simple valid access
 pre: [
     "meta_offset=0",
     "r1.type=packet", "r1.offset=0", "r1.value=[4098, 2147418112]",
-    "r2.type=packet", "r2.offset=[0, 65534]", "packet_size=r2.offset"
+    "r2.type=packet", "r2.offset=[0, 65534]", "packet_size=r2.offset",
+    "r1.region_size=packet_size",
+    "r2.region_size=packet_size",
 ]
 
 code:
@@ -81,4 +84,11 @@ post: [
     "packet_size-r3.offset<=65526", "packet_size=[0, 65534]",
     "r3.offset-packet_size<=8", "r1.value=r3.value+8",
     "r2.offset-r3.offset<=65526", "r3.offset-r2.offset<=8",
+    "r1.region_size=r3.region_size",
+    "packet_size=r1.region_size", "packet_size=r2.region_size", "packet_size=r3.region_size",
+    "r1.region_size-r3.offset<=65526", "r1.region_size=[0, 65534]", "r1.region_size=r2.offset",
+    "r1.region_size=r2.region_size", "r2.offset=r2.region_size", "r2.offset=r3.region_size",
+    "r2.region_size-r3.offset<=65526", "r2.region_size=[0, 65534]", "r2.region_size=r3.region_size",
+    "r3.offset-r1.region_size<=8", "r3.offset-r2.region_size<=8", "r3.offset-r3.region_size<=8", "r3.region_size-r3.offset<=65526",
+    "r3.region_size=[0, 65534]"
 ]

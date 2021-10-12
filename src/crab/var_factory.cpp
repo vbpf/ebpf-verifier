@@ -22,17 +22,17 @@ thread_local std::vector<std::string> variable_t::names;
 
 void variable_t::clear_thread_local_state() {
     names = std::vector<std::string>{
-        "r0.value",  "r0.offset",  "r0.type",
-        "r1.value",  "r1.offset",  "r1.type",
-        "r2.value",  "r2.offset",  "r2.type",
-        "r3.value",  "r3.offset",  "r3.type",
-        "r4.value",  "r4.offset",  "r4.type",
-        "r5.value",  "r5.offset",  "r5.type",
-        "r6.value",  "r6.offset",  "r6.type",
-        "r7.value",  "r7.offset",  "r7.type",
-        "r8.value",  "r8.offset",  "r8.type",
-        "r9.value",  "r9.offset",  "r9.type",
-        "r10.value", "r10.offset", "r10.type",
+        "r0.value",  "r0.offset",  "r0.type", "r0.region_size",
+        "r1.value",  "r1.offset",  "r1.type", "r1.region_size",
+        "r2.value",  "r2.offset",  "r2.type", "r2.region_size",
+        "r3.value",  "r3.offset",  "r3.type", "r3.region_size",
+        "r4.value",  "r4.offset",  "r4.type", "r4.region_size",
+        "r5.value",  "r5.offset",  "r5.type", "r5.region_size",
+        "r6.value",  "r6.offset",  "r6.type", "r6.region_size",
+        "r7.value",  "r7.offset",  "r7.type", "r7.region_size",
+        "r8.value",  "r8.offset",  "r8.type", "r8.region_size",
+        "r9.value",  "r9.offset",  "r9.type", "r9.region_size",
+        "r10.value", "r10.offset", "r10.type", "r10.region_size",
         "data_size", "meta_size",
     };
 }
@@ -40,6 +40,7 @@ void variable_t::clear_thread_local_state() {
 static std::string name_of(data_kind_t kind) {
     switch (kind) {
     case data_kind_t::offsets: return "offset";
+    case data_kind_t::region_size: return "region_size";
     case data_kind_t::values: return "value";
     case data_kind_t::types: return "type";
     }

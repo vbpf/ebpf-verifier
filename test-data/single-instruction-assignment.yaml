@@ -25,6 +25,7 @@ post:
   - r1.type=r2.type
   - r1.value=r2.value
   - r1.offset=r2.offset
+  - r1.region_size=r2.region_size
 
 ---
 test-case: re-assign immediate
