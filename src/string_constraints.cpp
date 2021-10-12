@@ -20,7 +20,7 @@ using std::string;
 using std::map;
 
 #define REG R"_(\s*(r\d\d?)\s*)_"
-#define KIND R"_(\s*(type|value|offset)\s*)_"
+#define KIND R"_(\s*(type|value|offset|region_size)\s*)_"
 #define IMM R"_(\s*\[?([-+]?\d+)\]?\s*)_"
 #define INTERVAL R"_(\s*\[([-+]?\d+),\s*([-+]?\d+)\]?\s*)_"
 
@@ -34,6 +34,7 @@ static uint8_t regnum(const string& s) {
 static crab::data_kind_t regkind(const string& s) {
     if (s == "type") return crab::data_kind_t::types;
     if (s == "offset") return crab::data_kind_t::offsets;
+    if (s == "region_size") return crab::data_kind_t::region_size;
     if (s == "value") return crab::data_kind_t::values;
     throw std::runtime_error(string() + "Bad kind: " + s);
 }
@@ -55,6 +56,7 @@ static type_encoding_t string_to_type_encoding(const string& s) {
         {string("ctx"), T_CTX},
         {string("stack"), T_STACK},
         {string("packet"), T_PACKET},
+        {string("shared"), T_SHARED},
     };
     if (string_to_type.count(s)) {
         return string_to_type[s];
