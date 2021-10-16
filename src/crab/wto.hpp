@@ -62,6 +62,9 @@ struct wto_vertex_data_t {
     int dfn;
     int head_dfn; // Head value returned from Visit() in the paper.
     std::shared_ptr<wto_cycle_t> containing_cycle;
+
+    wto_vertex_data_t() : dfn(0), head_dfn(0){};
+    wto_vertex_data_t(int d) : dfn(d), head_dfn(0) {};
 };
 #endif
 
