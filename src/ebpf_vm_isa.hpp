@@ -26,7 +26,7 @@ enum {
     INST_CLS_STX = 0x03,
     INST_CLS_ALU = 0x04,
     INST_CLS_JMP = 0x05,
-    INST_CLS_UNUSED = 0x06,
+    INST_CLS_JMP32 = 0x06,
     INST_CLS_ALU64 = 0x07,
 
     INST_SRC_IMM = 0x00,
