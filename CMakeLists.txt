@@ -83,6 +83,7 @@ add_library(ebpfverifier ${LIB_SRC})
 add_executable(check src/main/check.cpp src/main/linux_verifier.cpp)
 add_executable(tests ${ALL_TEST})
 add_executable(run_yaml src/main/run_yaml.cpp)
+add_executable(dump_elf src/main/dump_elf.cpp)
 
 set_target_properties(check
         PROPERTIES
@@ -93,6 +94,10 @@ set_target_properties(tests
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
 
 set_target_properties(run_yaml
+        PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
+
+set_target_properties(dump_elf
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
 

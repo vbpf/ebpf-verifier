@@ -44,26 +44,76 @@ EbpfMapDescriptor* find_map_descriptor(int map_fd) {
 }
 
 // Maps sections are identified as any section called "maps", or matching "maps/<map-name>".
-bool is_map_section(const std::string& name) {
+static bool is_map_section(const std::string& name) {
     std::string maps_prefix = "maps/";
     return name == "maps" || (name.length() > 5 && name.compare(0, maps_prefix.length(), maps_prefix) == 0);
 }
 
 // parse_maps_sections processes all maps sections in the provided ELF file by calling the platform-specific maps
 // parser. The section index of each maps section is inserted into section_indices.
-void parse_map_sections(const ebpf_verifier_options_t* options, const ebpf_platform_t* platform, const ELFIO::elfio& reader, std::vector<EbpfMapDescriptor>& map_descriptors, std::set<ELFIO::Elf_Half>& section_indices) {
-    for (ELFIO::Elf_Half i = 0; i < reader.sections.size(); ++i) {
-        auto s = reader.sections[i];
+static std::vector<EbpfMapDescriptor> parse_map_sections(const ebpf_verifier_options_t* options, const ebpf_platform_t* platform, const ELFIO::elfio& reader) {
+    std::vector<EbpfMapDescriptor> map_descriptors;
+    for (const auto s : reader.sections) {
         if (is_map_section(s->get_name())) {
             platform->parse_maps_section(map_descriptors, s->get_data(), s->get_size(), platform, *options);
-            section_indices.insert(s->get_index());
         }
     }
+    return map_descriptors;
 }
 
-vector<raw_program> read_elf(const std::string& path, const std::string& desired_section, const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
-    if (options == nullptr)
-        options = &ebpf_verifier_default_options;
+enum reloc_type_t { // (see https://www.kernel.org/doc/html/latest/bpf/llvm_reloc.html)
+                         // Description      BitSize  Offset        Calculation
+    R_BPF_NONE=0,        // None
+    R_BPF_64_64=1,       // ld_imm64 insn    32       r_offset + 4  S + A
+    R_BPF_64_ABS64=2,    // normal data      64       r_offset      S + A
+    R_BPF_64_ABS32=3,    // normal data      32       r_offset      S + A
+    R_BPF_64_NODYLD32=4, // .BTF[.ext] data  32       r_offset      S + A
+    R_BPF_64_32=10       // call insn        32       r_offset + 4  (S + A) / 8 - 1
+};
+
+static vector<std::tuple<ELFIO::Elf64_Addr, size_t>> collect_fd_relocs(ELFIO::elfio& reader, const string& name, const ebpf_platform_t* platform) {
+    auto prelocs = reader.sections[string(".rel") + name];
+    if (!prelocs)
+        prelocs = reader.sections[string(".rela") + name];
+    if (!prelocs)
+        return {};
+
+    ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
+
+    vector<std::tuple<ELFIO::Elf64_Addr, size_t>> map_fd_relocs;
+    ELFIO::const_relocation_section_accessor reloc{reader, prelocs};
+    ELFIO::Elf64_Addr offset{};
+    ELFIO::Elf_Word symbol{};
+    unsigned char type{};
+    ELFIO::Elf_Sxword addend{};
+
+    // Fetch and store relocation count locally to permit static
+    // analysis tools to correctly reason about the code below.
+    const ELFIO::Elf_Xword relocation_count = reloc.get_entries_num();
+
+    for (ELFIO::Elf_Xword i = 0; i < relocation_count; i++) {
+        const bool valid_entry = reloc.get_entry(i, offset, symbol, type, addend);
+        std::cout << "type of reloc " << i << "(" << symbol << ", " << offset / sizeof(ebpf_inst) << ") : " << (int)type << "\n";
+        if (valid_entry && (type == R_BPF_64_64 || type == R_BPF_NONE)) {
+
+            string symbol_name;
+            ELFIO::Elf64_Addr symbol_value{};
+            unsigned char symbol_bind{};
+            unsigned char symbol_type{};
+            ELFIO::Elf_Half symbol_section_index{};
+            unsigned char symbol_other{};
+            ELFIO::Elf_Xword symbol_size{};
+
+            symbols.get_symbol(symbol, symbol_name, symbol_value, symbol_size, symbol_bind, symbol_type,
+                               symbol_section_index, symbol_other);
+
+            map_fd_relocs.emplace_back(offset / sizeof(ebpf_inst), symbol_value / platform->map_record_size);
+        }
+    }
+    return map_fd_relocs;
+}
+
+static ELFIO::elfio open_file(const std::string& path) {
     ELFIO::elfio reader;
     if (!reader.load(path)) {
         struct stat st;
@@ -72,30 +122,46 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
         }
         throw std::runtime_error(string("Can't process ELF file ") + path);
     }
+    return reader;
+}
+
+void apply_reloc(raw_program& prog, unsigned long instruction_index, int32_t reloc_value) {
+    ebpf_inst& inst = prog.prog[instruction_index];
+
+    // Only permit loading the address of the map.
+    if ((inst.opcode & INST_CLS_MASK) != INST_CLS_LD) {
+        throw std::runtime_error(string("Illegal operation at location " + std::to_string(instruction_index)));
+    }
+    inst.src = 1; // magic number for LoadFd
+    inst.imm = reloc_value;
+}
+
+vector<raw_program> read_elf(const std::string& path, const std::string& desired_section, const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
+    if (options == nullptr)
+        options = &ebpf_verifier_default_options;
 
     program_info info{platform};
-    std::set<ELFIO::Elf_Half> map_section_indices;
 
-    parse_map_sections(options, platform, reader, info.map_descriptors, map_section_indices);
-
-    ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
-    auto read_reloc_value = [&symbols,platform](ELFIO::Elf_Word symbol) -> size_t {
-        string symbol_name;
-        ELFIO::Elf64_Addr value{};
-        ELFIO::Elf_Xword size{};
-        unsigned char bind{};
-        unsigned char type{};
-        ELFIO::Elf_Half section_index{};
-        unsigned char other{};
-        symbols.get_symbol(symbol, symbol_name, value, size, bind, type, section_index, other);
-
-        return value / platform->map_record_size;
-    };
+    ELFIO::elfio reader = open_file(path);
+    info.map_descriptors = parse_map_sections(options, platform, reader);
 
     vector<raw_program> res;
 
-    for (const auto section : reader.sections) {
+    vector<ELFIO::section*> maps_sections;
+    vector<ELFIO::section*> program_sections;
+    for (const ELFIO::section* section : reader.sections) {
         const string name = section->get_name();
+        //  switch {
+        //  case sec.Name == ".maps":
+        //  	sections[idx] = newElfSection(sec, btfMapSection)
+        //  case sec.Name == ".bss" || sec.Name == ".data" || strings.HasPrefix(sec.Name, ".rodata"):
+        //  	sections[idx] = newElfSection(sec, dataSection)
+        //  case sec.Type == elf.SHT_REL:
+        //  	// Store relocations under the section index of the target
+        //  	relSections[elf.SectionIndex(sec.Info)] = sec
+        //  case sec.Type == elf.SHT_PROGBITS && (sec.Flags&elf.SHF_EXECINSTR) != 0 && sec.Size > 0:
+        //  	sections[idx] = newElfSection(sec, programSection)
+        //  }
         if (!desired_section.empty() && name != desired_section)
             continue;
         if (name == "license" || name == "version" || name == "maps")
@@ -107,63 +173,13 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
         if (section->get_size() == 0)
             continue;
         raw_program prog{path, name, vector_of<ebpf_inst>(*section), info};
-        auto prelocs = reader.sections[string(".rel") + name];
-        if (!prelocs)
-            prelocs = reader.sections[string(".rela") + name];
 
-        if (prelocs) {
-            ELFIO::const_relocation_section_accessor reloc{reader, prelocs};
-            ELFIO::Elf64_Addr offset;
-            ELFIO::Elf_Word symbol{};
-            ELFIO::Elf_Word type;
-            ELFIO::Elf_Sxword addend;
-            // Fetch and store relocation count locally to permit static
-            // analysis tools to correctly reason about the code below.
-            ELFIO::Elf_Xword relocation_count = reloc.get_entries_num();
-
-            // Below, only relocations of symbols located in the map sections are allowed,
-            // so if there are relocations there needs to be a maps section.
-            if (relocation_count && !map_section_indices.size()) {
-                throw std::runtime_error(string("Can't find any maps sections in file ") + path);
+        for (const auto& [instruction_index, reloc_value]: collect_fd_relocs(reader, name, platform)) {
+            if (reloc_value >= info.map_descriptors.size()) {
+                throw std::runtime_error(string("Bad reloc value (") + std::to_string(reloc_value) + "). "
+                                         + "Make sure to compile with -O2.");
             }
-
-            for (ELFIO::Elf_Xword i = 0; i < relocation_count; i++) {
-                if (reloc.get_entry(i, offset, symbol, type, addend)) {
-                    ebpf_inst& inst = prog.prog[offset / sizeof(ebpf_inst)];
-
-                    string symbol_name;
-                    ELFIO::Elf64_Addr symbol_value{};
-                    unsigned char symbol_bind{};
-                    unsigned char symbol_type{};
-                    ELFIO::Elf_Half symbol_section_index{};
-                    unsigned char symbol_other{};
-                    ELFIO::Elf_Xword symbol_size{};
-
-                    symbols.get_symbol(symbol, symbol_name, symbol_value, symbol_size, symbol_bind, symbol_type,
-                                       symbol_section_index, symbol_other);
-
-                    // Only perform relocation for symbols located in the maps section.
-                    if (map_section_indices.find(symbol_section_index) == map_section_indices.end()) {
-                        throw std::runtime_error(string("Unresolved external symbol " + symbol_name +
-                                                        " at location " + std::to_string(offset / sizeof(ebpf_inst))));
-                    }
-
-                    // Only permit loading the address of the map.
-                    if ((inst.opcode & INST_CLS_MASK) != INST_CLS_LD)
-                    {
-                        throw std::runtime_error(string("Illegal operation on symbol " + symbol_name +
-                                                        " at location " + std::to_string(offset / sizeof(ebpf_inst))));
-                    }
-                    inst.src = 1; // magic number for LoadFd
-
-                    size_t reloc_value = read_reloc_value(symbol);
-                    if (reloc_value >= info.map_descriptors.size()) {
-                        throw std::runtime_error(string("Bad reloc value (") + std::to_string(reloc_value) + "). "
-                                                 + "Make sure to compile with -O2.");
-                    }
-                    inst.imm = info.map_descriptors.at(reloc_value).original_fd;
-                }
-            }
+            apply_reloc(prog, instruction_index, info.map_descriptors.at(reloc_value).original_fd);
         }
         res.push_back(prog);
     }

@@ -10,6 +10,9 @@
 
 using std::vector;
 
+inline uint64_t merge(int32_t imm, int32_t next_imm) { return (((uint64_t)next_imm) << 32) | (uint32_t)imm; }
+inline std::tuple<int32_t, int32_t> split(uint64_t v) { return {(uint32_t)v, (uint32_t)(v >> 32)}; }
+
 static uint8_t op(Condition::Op op) {
     using Op = Condition::Op;
     switch (op) {

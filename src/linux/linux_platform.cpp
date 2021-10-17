@@ -150,22 +150,25 @@ EbpfMapType get_map_type_linux(uint32_t platform_specific_type)
     return type;
 }
 
-void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t size, const ebpf_platform_t* platform, ebpf_verifier_options_t options)
+void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t size, const ebpf_platform_t* platform, ebpf_verifier_options_t options, bool is_btf)
 {
     if (size % sizeof(bpf_load_map_def) != 0) {
         throw std::runtime_error(std::string("bad maps section size"));
     }
+    std::vector<bpf_load_map_def> mapdefs;
+    if (is_btf) {
+    } else {
+        mapdefs = std::vector<bpf_load_map_def>((bpf_load_map_def*)data, (bpf_load_map_def*)(data + size));
+        for (auto const& s : mapdefs) {
+            EbpfMapType type = get_map_type_linux(s.type);
+            map_descriptors.emplace_back(EbpfMapDescriptor{
+                .original_fd = create_map_linux(s.type, s.key_size, s.value_size, s.max_entries, options),
+                .type = s.type,
+                .key_size = s.key_size,
+                .value_size = s.value_size,
+                .max_entries = s.max_entries});
+        }
 
-    auto mapdefs = std::vector<bpf_load_map_def>((bpf_load_map_def*)data, (bpf_load_map_def*)(data + size));
-    for (auto const& s : mapdefs) {
-        EbpfMapType type = get_map_type_linux(s.type);
-        map_descriptors.emplace_back(EbpfMapDescriptor{
-            .original_fd = create_map_linux(s.type, s.key_size, s.value_size, s.max_entries, options),
-            .type = s.type,
-            .key_size = s.key_size,
-            .value_size = s.value_size,
-            .max_entries = s.max_entries
-        });
     }
     for (size_t i = 0; i < mapdefs.size(); i++) {
         unsigned int inner = mapdefs[i].inner_map_idx;
@@ -175,6 +178,76 @@ void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, c
         map_descriptors[i].inner_map_fd = map_descriptors.at(inner).original_fd;
     }
 }
+
+// BTF handling
+// reference: https://www.kernel.org/doc/html/latest/bpf/btf.html
+
+struct section_data {
+    /* All offsets are in bytes relative to the end of this header */
+    uint32_t offset;
+    uint32_t length;
+};
+_Static_assert(sizeof(section_data)==8);
+
+struct btf_pre_header_t {
+    uint16_t   magic; // 0xeB9F
+    uint8_t    version;
+    uint8_t    flags;
+    uint32_t   size;
+};
+
+struct btf_header_t {
+    btf_pre_header_t header;
+    section_data type_section;
+    section_data string_section;
+};
+_Static_assert(sizeof(btf_header_t)==24);
+
+struct btf_ext_header {
+    btf_pre_header_t header;
+    section_data   func_info;
+    section_data   line_info;
+};
+_Static_assert(sizeof(btf_ext_header)==24);
+
+enum class BtfKind: unsigned {
+    VOID         = 0,
+    INT          = 1,
+    PTR          = 2,
+    ARRAY        = 3,
+    STRUCT       = 4,
+    UNION        = 5,
+    ENUM         = 6,
+    FORWARD      = 7,
+    TYPEDEF      = 8,
+    VOLATILE     = 9,
+    CONST        = 10,
+    RESTRICT     = 11,
+    FUNC         = 12,
+    FUNC_PROTO   = 13,
+    VAR          = 14,
+    DATA_SECTION = 15,
+    FLOAT        = 16,
+};
+
+struct btf_type {
+    uint32_t name_offset;
+    struct {
+        unsigned vlen:16; // e.g. number of struct's members
+        unsigned reserved:8;
+        unsigned kind:5; // btf_kind_t
+        unsigned unused:2;
+        unsigned kind_flag:1;
+    } info;
+    union {
+        /// Size of the type it is describing. Used by INT, ENUM, STRUCT and UNION.
+        uint32_t size;
+
+        /// A type_id referring to another type,
+        /// used by PTR, TYPEDEF, VOLATILE, CONST, RESTRICT, FUNC and FUNC_PROTO.
+        uint32_t type_id;
+    };
+};
 
 #if __linux__
 static int do_bpf(bpf_cmd cmd, union bpf_attr& attr) { return syscall(321, cmd, &attr, sizeof(attr)); }
@@ -233,7 +306,7 @@ EbpfMapDescriptor& get_map_descriptor_linux(int map_fd)
     // (key size, value size) from the execution context, but this is
     // not yet supported on Linux.
 
-    throw std::runtime_error(std::string("map_fd not found"));
+    throw std::runtime_error(std::string("map_fd not found: ") + std::to_string(map_fd));
 }
 
 const ebpf_platform_t g_ebpf_platform_linux = {
