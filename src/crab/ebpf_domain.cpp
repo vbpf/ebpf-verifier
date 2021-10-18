@@ -596,16 +596,6 @@ crab::interval_t ebpf_domain_t::get_map_max_entries(const Reg& map_fd_reg) const
 void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
     using namespace crab::dsl_syntax;
 
-    auto key_size = get_map_key_size(s.map_fd_reg).singleton();
-    if (!key_size.has_value()) {
-        require(m_inv, linear_constraint_t::FALSE(), "Map key size is not singleton");
-        return;
-    }
-    auto value_size = get_map_value_size(s.map_fd_reg).singleton();
-    if (!value_size.has_value()) {
-        require(m_inv, linear_constraint_t::FALSE(), "Map value size is not singleton");
-        return;
-    }
     auto type = get_map_type(s.map_fd_reg);
 
     auto access_reg = reg_pack(s.access_reg);
@@ -614,7 +604,22 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
     require(m_inv, access_reg.type <= T_PACKET, "Only stack or packet can be used as a parameter" + m);
 
     variable_t lb = access_reg.offset;
-    int width = s.key ? (int)key_size.value() : (int)value_size.value();
+    int width;
+    if (s.key) {
+        auto key_size = get_map_key_size(s.map_fd_reg).singleton();
+        if (!key_size.has_value()) {
+            require(m_inv, linear_constraint_t::FALSE(), "Map key size is not singleton");
+            return;
+        }
+        width = (int)key_size.value();
+    } else {
+        auto value_size = get_map_value_size(s.map_fd_reg).singleton();
+        if (!value_size.has_value()) {
+            require(m_inv, linear_constraint_t::FALSE(), "Map value size is not singleton");
+            return;
+        }
+        width = (int)value_size.value();
+    }
     linear_expression_t ub = lb + width;
 
     auto when_stack = when(access_reg.type == T_STACK);
@@ -638,10 +643,10 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
                     variable_t key_value =
                         variable_t::cell_var(data_kind_t::values, (uint64_t)offset.value(), sizeof(uint32_t));
 
-                    auto max_entries = get_map_max_entries(s.map_fd_reg).lb().number();
-                    if (!max_entries.has_value())
+                    if (auto max_entries = get_map_max_entries(s.map_fd_reg).lb().number())
+                        require(m_inv, key_value < *max_entries, "Array index overflow");
+                    else
                         require(m_inv, linear_constraint_t::FALSE(), "Max entries is not finite");
-                    require(m_inv, key_value < *max_entries, "Array index overflow");
                     require(m_inv, key_value >= 0, "Array index underflow");
                 }
             }
