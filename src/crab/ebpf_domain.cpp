@@ -40,12 +40,16 @@ reg_pack_t reg_pack(int i) {
 }
 reg_pack_t reg_pack(Reg r) { return reg_pack(r.v); }
 
-linear_constraint_t eq(variable_t a, variable_t b) {
+static linear_constraint_t eq(variable_t a, variable_t b) {
     using namespace crab::dsl_syntax;
     return {a - b, constraint_kind_t::EQUALS_ZERO};
 }
 
-linear_constraint_t neq(variable_t a, variable_t b) {
+static linear_constraint_t eq_types(const Reg& a, const Reg& b) {
+    return eq(reg_pack(a).type, reg_pack(b).type);
+}
+
+static linear_constraint_t neq(variable_t a, variable_t b) {
     using namespace crab::dsl_syntax;
     return {a - b, constraint_kind_t::NOT_ZERO};
 }
@@ -234,18 +238,12 @@ void ebpf_domain_t::apply(crab::binop_t op, variable_t x, variable_t y, variable
     std::visit([&](auto top) { apply(top, x, y, z); }, op);
 }
 
-NumAbsDomain ebpf_domain_t::when(const linear_constraint_t& cond) {
-    NumAbsDomain inv = m_inv;
-    inv += cond;
-    return inv;
-}
-
 void ebpf_domain_t::scratch_caller_saved_registers() {
     for (int i = R1_ARG; i <= R5_ARG; i++) {
         auto reg = reg_pack(i);
         havoc(reg.value);
         havoc(reg.offset);
-        havoc(reg.type);
+        type_inv.havoc_type(m_inv, Reg{(uint8_t)i});
     }
 }
 
@@ -326,14 +324,155 @@ void ebpf_domain_t::havoc(variable_t v) { m_inv -= v; }
 
 void ebpf_domain_t::assign(variable_t lhs, variable_t rhs) { m_inv.assign(lhs, rhs); }
 
-static linear_constraint_t is_shared(variable_t v) {
+static linear_constraint_t type_is_shared(const reg_pack_t& r) {
     using namespace crab::dsl_syntax;
-    return v > T_SHARED;
+    return r.type > T_SHARED;
 }
 
-static linear_constraint_t is_pointer(const reg_pack_t& r) {
+static linear_constraint_t type_is_pointer(const reg_pack_t& r) {
     using namespace crab::dsl_syntax;
     return r.type >= T_CTX;
+}
+
+static linear_constraint_t type_is_pointer_or_null(const reg_pack_t& r) {
+    using namespace crab::dsl_syntax;
+    return r.type >= T_NUM;
+}
+
+static linear_constraint_t type_is_number(const Reg& r) {
+    using namespace crab::dsl_syntax;
+    return reg_pack(r).type == T_NUM;
+}
+
+static linear_constraint_t type_is_ctx(const reg_pack_t& r) {
+    using namespace crab::dsl_syntax;
+    return r.type == T_CTX;
+}
+
+static linear_constraint_t type_is_stack(const reg_pack_t& r) {
+    using namespace crab::dsl_syntax;
+    return r.type == T_STACK;
+}
+
+static linear_constraint_t type_is_packet(const reg_pack_t& r) {
+    using namespace crab::dsl_syntax;
+    return r.type == T_PACKET;
+}
+
+static linear_constraint_t type_is_not_stack(const reg_pack_t& r) {
+    using namespace crab::dsl_syntax;
+    return r.type != T_STACK;
+}
+
+static linear_constraint_t type_is_packet_or_shared(const reg_pack_t& r) {
+    using namespace crab::dsl_syntax;
+    return r.type >= T_PACKET;
+}
+
+void ebpf_domain_t::TypeDomain::assign_type(NumAbsDomain& inv, const Reg& lhs, type_encoding_t t) {
+    inv.assign(reg_pack(lhs).type, t);
+}
+
+void ebpf_domain_t::TypeDomain::assign_type(NumAbsDomain& inv, const Reg& lhs, const Reg& rhs) {
+    inv.assign(reg_pack(lhs).type, reg_pack(rhs).type);
+}
+
+void ebpf_domain_t::TypeDomain::assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, const Reg& rhs) {
+    inv.assign(lhs, reg_pack(rhs).type);
+}
+
+void ebpf_domain_t::TypeDomain::assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, int rhs) {
+    inv.assign(lhs, rhs);
+}
+
+void ebpf_domain_t::TypeDomain::assign_type(NumAbsDomain& inv, const Reg& lhs, const std::optional<linear_expression_t>& rhs) {
+    inv.assign(reg_pack(lhs).type, rhs);
+}
+
+void ebpf_domain_t::TypeDomain::havoc_type(NumAbsDomain& inv, const Reg& r) {
+    inv -= reg_pack(r).type;
+}
+
+int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, const Reg& r) const {
+    auto res = inv[reg_pack(r).type].singleton();
+    if (!res)
+        return T_UNINIT;
+    return (int)*res;
+}
+
+int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, variable_t v) const {
+    auto res = inv[v].singleton();
+    if (!res)
+        return T_UNINIT;
+    return (int)*res;
+}
+
+int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, int t) const { return t; }
+
+NumAbsDomain ebpf_domain_t::TypeDomain::join_over_types(const NumAbsDomain& inv, const Reg& reg,
+                                                        const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const {
+    crab::interval_t types = inv.eval_interval(reg_pack(reg).type);
+    if (types.is_bottom())
+        return NumAbsDomain(true);
+    NumAbsDomain res(true);
+    if (auto lb = types.lb().number()) {
+        if (auto ub = types.ub().number()) {
+            for (int type = (int)*lb; type <= (int)*ub; type++) {
+                NumAbsDomain tmp(inv);
+                transition(tmp, static_cast<type_encoding_t>(type));
+                res |= tmp;
+            }
+        }
+    }
+    return res;
+}
+
+NumAbsDomain ebpf_domain_t::TypeDomain::join_by_if_else(const NumAbsDomain& inv, const linear_constraint_t& condition,
+                                                        const std::function<void(NumAbsDomain&)>& if_true,
+                                                        const std::function<void(NumAbsDomain&)>& if_false) const {
+    NumAbsDomain true_case(inv.when(condition));
+    if_true(true_case);
+
+    NumAbsDomain false_case(inv.when(condition.negate()));
+    if_false(false_case);
+
+    return true_case | false_case;
+}
+
+bool ebpf_domain_t::TypeDomain::same_type(const NumAbsDomain& inv, const Reg& a, const Reg& b) const {
+    return inv.entail(eq_types(a, b));
+}
+
+bool ebpf_domain_t::TypeDomain::implies_type(const NumAbsDomain& inv, const linear_constraint_t& a, const linear_constraint_t& b) const {
+    return inv.when(a).entail(b);
+}
+
+bool ebpf_domain_t::TypeDomain::is_in_group(const NumAbsDomain& m_inv, const Reg& r, TypeGroup group) const {
+    using namespace crab::dsl_syntax;
+    variable_t t = reg_pack(r).type;
+    switch (group) {
+    case TypeGroup::number: return m_inv.entail(t == T_NUM);
+    case TypeGroup::map_fd: return m_inv.entail(t == T_MAP);
+    case TypeGroup::map_fd_programs: return m_inv.entail(t == T_MAP_PROGRAMS);
+    case TypeGroup::ctx: return m_inv.entail(t == T_CTX);
+    case TypeGroup::packet: return m_inv.entail(t == T_PACKET);
+    case TypeGroup::stack: return m_inv.entail(t == T_STACK);
+    case TypeGroup::shared: return m_inv.entail(t > T_SHARED);
+    case TypeGroup::non_map_fd: return m_inv.entail(t >= T_NUM);
+    case TypeGroup::mem: return m_inv.entail(t >= T_STACK);
+    case TypeGroup::mem_or_num:
+        return m_inv.entail(t >= T_NUM) && m_inv.entail(t != T_CTX);
+    case TypeGroup::pointer: return m_inv.entail(t >= T_CTX);
+    case TypeGroup::ptr_or_num: return m_inv.entail(t >= T_NUM);
+    case TypeGroup::stack_or_packet:
+        return m_inv.entail(t >= T_STACK) && m_inv.entail(t <= T_PACKET);
+    }
+    assert(false);
+    return false;
+}
+
+void ebpf_domain_t::assign_region_size(const Reg& r, const crab::interval_t& size) {
+    m_inv.set(reg_pack(r).type, size);
 }
 
 void ebpf_domain_t::overflow(variable_t lhs) {
@@ -380,10 +519,10 @@ void ebpf_domain_t::check_access_stack(NumAbsDomain& inv, const linear_expressio
 }
 
 void ebpf_domain_t::check_access_shared(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
-                                        variable_t reg_type) {
+                                        variable_t region_size) {
     using namespace crab::dsl_syntax;
     require(inv, lb >= 0, std::string("Lower bound must be at least 0") + s);
-    require(inv, ub <= reg_type, std::string("Upper bound must be at most ") + reg_type.name() + s);
+    require(inv, ub <= region_size, std::string("Upper bound must be at most ") + region_size.name() + s);
 }
 
 void ebpf_domain_t::check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s) {
@@ -395,53 +534,30 @@ void ebpf_domain_t::check_access_context(NumAbsDomain& inv, const linear_express
 }
 
 void ebpf_domain_t::operator()(const Assume& s) {
-    using namespace crab::dsl_syntax;
     Condition cond = s.cond;
     auto dst = reg_pack(cond.left);
     if (std::holds_alternative<Reg>(cond.right)) {
         auto src = reg_pack(std::get<Reg>(cond.right));
-        int stype = get_type(src.type);
-        int dtype = get_type(dst.type);
-        if (stype == dtype) {
-            switch (stype) {
-                case T_MAP: break;
-                case T_MAP_PROGRAMS: break;
-                case T_UNINIT: break;
-                case T_NUM: {
+        if (type_inv.same_type(m_inv, cond.left, std::get<Reg>(cond.right))) {
+            m_inv = type_inv.join_by_if_else(m_inv,
+                type_is_number(cond.left),
+                [&](NumAbsDomain& inv) {
                     if (!is_unsigned_cmp(cond.op))
                         for (const linear_constraint_t& cst : jmp_to_cst_reg(cond.op, dst.value, src.value))
-                            m_inv += cst;
-                    return;
+                            inv += cst;
+                },
+                [&](NumAbsDomain& inv) {
+                    // Either pointers to a singleton region,
+                    // or an equality comparison on map descriptors/pointers to non-singleton locations
+                    inv += jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset);
                 }
-                default: {
-                    m_inv += jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset);
-                    return;
-                }
-            }
+            );
+        } else {
+            // We should only reach here if `--assume-assert` is off
+            assert(!thread_local_options.assume_assertions || is_bottom());
+            // be sound in any case, it happens to flush out bugs:
+            m_inv.set_to_top();
         }
-        NumAbsDomain different{m_inv};
-        different += neq(dst.type, src.type);
-
-        NumAbsDomain null_src{different};
-        null_src += is_pointer(dst);
-        NumAbsDomain null_dst{different};
-        null_dst += is_pointer(src);
-
-        m_inv += eq(dst.type, src.type);
-
-        NumAbsDomain numbers{m_inv};
-        numbers += dst.type == T_NUM;
-        if (!is_unsigned_cmp(cond.op))
-            for (const linear_constraint_t& cst : jmp_to_cst_reg(cond.op, dst.value, src.value))
-                numbers += cst;
-
-        m_inv += is_pointer(dst);
-        m_inv += jmp_to_cst_offsets_reg(cond.op, dst.offset, src.offset);
-
-        m_inv |= std::move(numbers);
-
-        m_inv |= std::move(null_src);
-        m_inv |= std::move(null_dst);
     } else {
         int imm = static_cast<int>(std::get<Imm>(cond.right).v);
         for (const linear_constraint_t& cst : jmp_to_cst_imm(cond.op, dst.value, imm))
@@ -474,14 +590,24 @@ void ebpf_domain_t::operator()(const Exit& a) {}
 
 void ebpf_domain_t::operator()(const Jmp& a) {}
 
-void ebpf_domain_t::operator()(const Comparable& s) { require(m_inv, eq(reg_pack(s.r1).type, reg_pack(s.r2).type), to_string(s)); }
+void ebpf_domain_t::operator()(const Comparable& s) {
+    if (!type_inv.same_type(m_inv, s.r1, s.r2))
+        require(m_inv, linear_constraint_t::FALSE(), to_string(s));
+}
 
 void ebpf_domain_t::operator()(const Addable& s) {
-    using namespace crab::dsl_syntax;
-    auto is_ptr = when(reg_pack(s.ptr).type > T_NUM);
-    require(is_ptr,
-            reg_pack(s.num).type == T_NUM,
-            "only numbers can be added to pointers (" + to_string(s) + ")");
+    if (!type_inv.implies_type(m_inv, type_is_pointer(reg_pack(s.ptr)),type_is_number(s.num)))
+        require(m_inv, linear_constraint_t::FALSE(), "only numbers can be added to pointers (" + to_string(s) + ")");
+}
+
+void ebpf_domain_t::operator()(const ValidStore& s) {
+    if (!type_inv.implies_type(m_inv, type_is_not_stack(reg_pack(s.mem)), type_is_number(s.val)))
+        require(m_inv, linear_constraint_t::FALSE(), "Only numbers can be stored to externally-visible regions");
+}
+
+void ebpf_domain_t::operator()(const TypeConstraint& s) {
+    if (!type_inv.is_in_group(m_inv, s.reg, s.types))
+        require(m_inv, linear_constraint_t::FALSE(), to_string(s));
 }
 
 void ebpf_domain_t::operator()(const ValidSize& s) {
@@ -596,13 +722,10 @@ crab::interval_t ebpf_domain_t::get_map_max_entries(const Reg& map_fd_reg) const
 void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
     using namespace crab::dsl_syntax;
 
-    auto type = get_map_type(s.map_fd_reg);
+    auto fd_type = get_map_type(s.map_fd_reg);
 
     auto access_reg = reg_pack(s.access_reg);
     std::string m = std::string(" (") + to_string(s) + ")";
-    require(m_inv, access_reg.type >= T_STACK, "Only stack or packet can be used as a parameter" + m);
-    require(m_inv, access_reg.type <= T_PACKET, "Only stack or packet can be used as a parameter" + m);
-
     variable_t lb = access_reg.offset;
     int width;
     if (s.key) {
@@ -622,41 +745,41 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
     }
     linear_expression_t ub = lb + width;
 
-    auto when_stack = when(access_reg.type == T_STACK);
-    if (!when_stack.is_bottom()) {
-        if (!stack.all_num(when_stack, lb, ub)) {
-            auto lb_is = when_stack[lb].lb().number();
-            std::string lb_s = lb_is && lb_is->fits_sint() ? std::to_string((int)*lb_is) : "-oo";
-            auto ub_is = when_stack.eval_interval(ub).ub().number();
-            std::string ub_s = ub_is && ub_is->fits_sint() ? std::to_string((int)*ub_is) : "oo";
-            require(when_stack, access_reg.type != T_STACK, "Illegal map update with a non-numerical value [" + lb_s + "-" + ub_s + ")");
-        } else if (thread_local_options.strict && type.has_value()) {
-            EbpfMapType map_type = global_program_info.platform->get_map_type(*type);
-            if (map_type.is_array) {
-                // Get offset value.
-                variable_t key_ptr = access_reg.offset;
-                std::optional<number_t> offset = m_inv[key_ptr].singleton();
-                if (!offset.has_value()) {
-                    require(m_inv, linear_constraint_t::FALSE(), "Pointer must be a singleton");
-                } else if (s.key) {
-                    // Look up the value pointed to by the key pointer.
-                    variable_t key_value =
-                        variable_t::cell_var(data_kind_t::values, (uint64_t)offset.value(), sizeof(uint32_t));
+    m_inv = type_inv.join_over_types(m_inv, s.access_reg, [&](NumAbsDomain& inv, type_encoding_t access_reg_type) {
+        if (access_reg_type == T_STACK) {
+            if (!stack.all_num(inv, lb, ub)) {
+                auto lb_is = inv[lb].lb().number();
+                std::string lb_s = lb_is && lb_is->fits_sint() ? std::to_string((int)*lb_is) : "-oo";
+                auto ub_is = inv.eval_interval(ub).ub().number();
+                std::string ub_s = ub_is && ub_is->fits_sint() ? std::to_string((int)*ub_is) : "oo";
+                require(inv, linear_constraint_t::FALSE(), "Illegal map update with a non-numerical value [" + lb_s + "-" + ub_s + ")");
+            } else if (thread_local_options.strict && fd_type.has_value()) {
+                EbpfMapType map_type = global_program_info.platform->get_map_type(*fd_type);
+                if (map_type.is_array) {
+                    // Get offset value.
+                    variable_t key_ptr = access_reg.offset;
+                    std::optional<number_t> offset = inv[key_ptr].singleton();
+                    if (!offset.has_value()) {
+                        require(inv, linear_constraint_t::FALSE(), "Pointer must be a singleton");
+                    } else if (s.key) {
+                        // Look up the value pointed to by the key pointer.
+                        variable_t key_value =
+                            variable_t::cell_var(data_kind_t::values, (uint64_t)offset.value(), sizeof(uint32_t));
 
-                    if (auto max_entries = get_map_max_entries(s.map_fd_reg).lb().number())
-                        require(m_inv, key_value < *max_entries, "Array index overflow");
-                    else
-                        require(m_inv, linear_constraint_t::FALSE(), "Max entries is not finite");
-                    require(m_inv, key_value >= 0, "Array index underflow");
+                        if (auto max_entries = get_map_max_entries(s.map_fd_reg).lb().number())
+                            require(m_inv, key_value < *max_entries, "Array index overflow");
+                        else
+                            require(m_inv, linear_constraint_t::FALSE(), "Max entries is not finite");
+                        require(m_inv, key_value >= 0, "Array index underflow");
+                    }
                 }
             }
+        } else if (access_reg_type == T_PACKET) {
+            check_access_packet(inv, lb, ub, m, false);
+        } else {
+            require(inv, linear_constraint_t::FALSE(), "Only stack or packet can be used as a parameter" + m);
         }
-    }
-    m_inv += access_reg.type == T_PACKET;
-    check_access_packet(m_inv, lb, ub, m, false);
-  
-    check_access_stack(when_stack, lb, ub, m);
-    m_inv |= std::move(when_stack);
+    });
 }
 
 void ebpf_domain_t::operator()(const ValidAccess& s) {
@@ -670,110 +793,47 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
         ? lb + std::get<Imm>(s.width).v
         : lb + reg_pack(std::get<Reg>(s.width)).value;
     std::string m = std::string(" (") + to_string(s) + ")";
-    if (auto type_singleton = m_inv.eval_interval(reg.type).singleton()) {
-        switch (static_cast<int>(*type_singleton)) {
+    // join_over_types instead of simple iteration is only needed for assume-assert
+    m_inv = type_inv.join_over_types(m_inv, s.reg, [&](NumAbsDomain& inv, type_encoding_t type) {
+        switch (type) {
         case T_PACKET:
-            check_access_packet(m_inv, lb, ub, m, is_comparison_check);
+            check_access_packet(inv, lb, ub, m, is_comparison_check);
             // if within bounds, it can never be null
-            return;
+            break;
         case T_STACK:
-            check_access_stack(m_inv, lb, ub, m);
+            check_access_stack(inv, lb, ub, m);
             // if within bounds, it can never be null
-            return;
+            break;
         case T_CTX:
-            check_access_context(m_inv, lb, ub, m);
+            check_access_context(inv, lb, ub, m);
             // if within bounds, it can never be null
-            return;
+            break;
         case T_NUM:
-            if (is_comparison_check)
-                return;
-            if (s.or_null) {
-                require(m_inv, reg.value == 0, "Non-null number");
-                return;
-            } else {
-                require(m_inv, linear_constraint_t::FALSE(), "Only pointers can be dereferenced");
-                return;
+            if (!is_comparison_check) {
+                if (s.or_null) {
+                    require(inv, reg.value == 0, "Non-null number");
+                } else {
+                    require(inv, linear_constraint_t::FALSE(), "Only pointers can be dereferenced");
+                }
             }
+            break;
         case T_MAP:
         case T_MAP_PROGRAMS:
-            if (is_comparison_check) {
-                return;
-            } else {
-                require(m_inv, linear_constraint_t::FALSE(), "FDs cannot be dereferenced directly");
+            if (!is_comparison_check) {
+                require(inv, linear_constraint_t::FALSE(), "FDs cannot be dereferenced directly");
             }
+            break;
         default:
-            if (*type_singleton > T_SHARED) {
-                check_access_shared(m_inv, lb, ub, m, reg.type);
-                if (!is_comparison_check && !s.or_null) require(m_inv, reg.value > 0, "Possible null access");
-                return;
+            if (type > T_SHARED) {
+                check_access_shared(inv, lb, ub, m, reg.type);
+                if (!is_comparison_check && !s.or_null)
+                    require(inv, reg.value > 0, "Possible null access");
             } else {
-                require(m_inv, linear_constraint_t::FALSE(), "Invalid type");
-                return;
+                require(inv, linear_constraint_t::FALSE(), "Invalid type");
             }
+            break;
         }
-    }
-    auto t_packet = when(reg.type == T_PACKET); check_access_packet(t_packet, lb, ub, m, is_comparison_check);
-    auto t_stack = when(reg.type == T_STACK); check_access_stack(t_stack, lb, ub, m);
-    auto t_shared = when(is_shared(reg.type)); check_access_shared(t_shared, lb, ub, m, reg.type);
-    auto t_context = when(reg.type == T_CTX); check_access_context(t_context, lb, ub, m);
-    NumAbsDomain assume_ptr = std::move(t_packet) | std::move(t_stack) | std::move(t_shared) | std::move(t_context);
-    if (is_comparison_check) {
-        assume(reg.type <= T_NUM);
-        m_inv |= std::move(assume_ptr);
-        return;
-    } else {
-        if (s.or_null) {
-            require(m_inv, reg.type >= T_NUM, "Must be a pointer or null");
-            assume(reg.type == T_NUM);
-            require(m_inv, reg.value == 0, "Non-null pointer");
-            m_inv |= std::move(assume_ptr);
-            return;
-        } else {
-            require(m_inv, reg.type > T_NUM, "Only pointers can be dereferenced");
-            require(m_inv, reg.value > 0, "Possible null access");
-            m_inv = std::move(assume_ptr);
-            return;
-        }
-    }
-}
-
-void ebpf_domain_t::operator()(const ValidStore& s) {
-    using namespace crab::dsl_syntax;
-    linear_constraint_t cond = reg_pack(s.mem).type != T_STACK;
-
-    NumAbsDomain non_stack{m_inv};
-    non_stack += cond;
-    require(non_stack, reg_pack(s.val).type == T_NUM, "Only numbers can be stored to externally-visible regions");
-
-    m_inv += cond.negate();
-    m_inv |= std::move(non_stack);
-}
-
-void ebpf_domain_t::operator()(const TypeConstraint& s) {
-    using namespace crab::dsl_syntax;
-    variable_t t = reg_pack(s.reg).type;
-    std::string str = to_string(s);
-    switch (s.types) {
-    case TypeGroup::number: require(m_inv, t == T_NUM, str); break;
-    case TypeGroup::map_fd: require(m_inv, t == T_MAP, str); break;
-    case TypeGroup::map_fd_programs: require(m_inv, t == T_MAP_PROGRAMS, str); break;
-    case TypeGroup::ctx: require(m_inv, t == T_CTX, str); break;
-    case TypeGroup::packet: require(m_inv, t == T_PACKET, str); break;
-    case TypeGroup::stack: require(m_inv, t == T_STACK, str); break;
-    case TypeGroup::shared: require(m_inv, t > T_SHARED, str); break;
-    case TypeGroup::non_map_fd: require(m_inv, t >= T_NUM, str); break;
-    case TypeGroup::mem: require(m_inv, t >= T_STACK, str); break;
-    case TypeGroup::mem_or_num:
-        require(m_inv, t >= T_NUM, str);
-        require(m_inv, t != T_CTX, str);
-        break;
-    case TypeGroup::pointer: require(m_inv, t >= T_CTX, str); break;
-    case TypeGroup::ptr_or_num: require(m_inv, t >= T_NUM, str); break;
-    case TypeGroup::stack_or_packet:
-        require(m_inv, t >= T_STACK, str);
-        require(m_inv, t <= T_PACKET, str);
-        break;
-    }
+    });
 }
 
 void ebpf_domain_t::operator()(const ZeroOffset& s) {
@@ -789,52 +849,53 @@ void ebpf_domain_t::operator()(const Assert& stmt) {
 
 void ebpf_domain_t::operator()(const Packet& a) {
     auto reg = reg_pack(R0_RETURN_VALUE);
-    assign(reg.type, T_NUM);
+    type_inv.assign_type(m_inv, Reg{(uint8_t)R0_RETURN_VALUE}, T_NUM);
     havoc(reg.offset);
     havoc(reg.value);
     scratch_caller_saved_registers();
 }
 
-NumAbsDomain ebpf_domain_t::do_load_stack(NumAbsDomain inv, const reg_pack_t& target, const linear_expression_t& addr, int width) {
+void ebpf_domain_t::do_load_stack(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width) {
+    type_inv.assign_type(inv, target_reg, stack.load(inv, data_kind_t::types, addr, width));
+
+    const reg_pack_t& target = reg_pack(target_reg);
     if (width == 1 || width == 2 || width == 4 || width == 8) {
-        inv.assign(target.type, stack.load(inv, data_kind_t::types, addr, width));
         inv.assign(target.value, stack.load(inv,  data_kind_t::values, addr, width));
         inv.assign(target.offset, stack.load(inv, data_kind_t::offsets, addr, width));
     } else {
-        inv.assign(target.type, stack.load(inv, data_kind_t::types, addr, width));
         inv -= target.value;
         inv -= target.offset;
     }
-    return inv;
 }
 
-NumAbsDomain ebpf_domain_t::do_load_ctx(NumAbsDomain inv, const reg_pack_t& target, const linear_expression_t& addr_vague, int width) {
+void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr_vague, int width) {
     using namespace crab::dsl_syntax;
     if (inv.is_bottom())
-        return inv;
+        return;
 
     const ebpf_context_descriptor_t* desc = global_program_info.type.context_descriptor;
 
+    const reg_pack_t& target = reg_pack(target_reg);
     inv -= target.value;
 
     if (desc->end < 0) {
         inv -= target.offset;
-        inv.assign(target.type, T_NUM);
-        return inv;
+        type_inv.assign_type(inv, target_reg, T_NUM);
+        return;
     }
 
     crab::interval_t interval = inv.eval_interval(addr_vague);
     std::optional<number_t> maybe_addr = interval.singleton();
 
-    bool may_touch_ptr = interval[desc->data] || interval[desc->end] || interval[desc->end];
+    bool may_touch_ptr = interval[desc->data] || interval[desc->meta] || interval[desc->end];
 
     if (!maybe_addr) {
         inv -= target.offset;
         if (may_touch_ptr)
-            inv -= target.type;
+            type_inv.havoc_type(inv, target_reg);
         else
-            inv.assign(target.type, T_NUM);
-        return inv;
+            type_inv.assign_type(inv, target_reg, T_NUM);
+        return;
     }
 
     number_t addr = *maybe_addr;
@@ -848,22 +909,22 @@ NumAbsDomain ebpf_domain_t::do_load_ctx(NumAbsDomain inv, const reg_pack_t& targ
     } else {
         inv -= target.offset;
         if (may_touch_ptr)
-            inv -= target.type;
+            type_inv.havoc_type(inv, target_reg);
         else
-            inv.assign(target.type, T_NUM);
-        return inv;
+            type_inv.assign_type(inv, target_reg, T_NUM);
+        return;
     }
-    inv.assign(target.type, T_PACKET);
+    type_inv.assign_type(inv, target_reg, T_PACKET);
     inv += 4098 <= target.value;
     inv += target.value <= PTR_MAX;
-    return inv;
 }
 
-NumAbsDomain ebpf_domain_t::do_load_packet_or_shared(NumAbsDomain inv, const reg_pack_t& target, const linear_expression_t& addr, int width) {
+void ebpf_domain_t::do_load_packet_or_shared(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width) {
     if (inv.is_bottom())
-        return inv;
+        return;
+    const reg_pack_t& target = reg_pack(target_reg);
 
-    inv.assign(target.type, T_NUM);
+    type_inv.assign_type(inv, target_reg, T_NUM);
     inv -= target.offset;
 
     // A 1 or 2 byte copy results in a limited range of values that may be used as array indices.
@@ -874,62 +935,46 @@ NumAbsDomain ebpf_domain_t::do_load_packet_or_shared(NumAbsDomain inv, const reg
     } else {
         inv -= target.value;
     }
-    return inv;
 }
 
-void ebpf_domain_t::do_load(const Mem& b, const reg_pack_t& target) {
+void ebpf_domain_t::do_load(const Mem& b, const Reg& target_reg) {
     using namespace crab::dsl_syntax;
+
     auto mem_reg = reg_pack(b.access.basereg);
     int width = b.access.width;
     int offset = b.access.offset;
     linear_expression_t addr = mem_reg.offset + (number_t)offset;
 
     if (b.access.basereg.v == R10_STACK_POINTER) {
-        m_inv = do_load_stack(std::move(m_inv), target, addr, width);
+        do_load_stack(m_inv, target_reg, addr, width);
         return;
     }
 
-    int type = get_type(mem_reg.type);
-    if (type == T_UNINIT) {
-        return;
-    }
-
-    switch (type) {
-        case T_UNINIT: {
-            m_inv = do_load_ctx(when(mem_reg.type == T_CTX), target, addr, width) |
-                    do_load_packet_or_shared(when(mem_reg.type >= T_PACKET), target, addr, width) |
-                    do_load_stack(when(mem_reg.type == T_STACK), target, addr, width);
-            return;
+    m_inv = type_inv.join_over_types(m_inv, b.access.basereg, [&](NumAbsDomain& inv, type_encoding_t type) {
+        switch (type) {
+            case T_UNINIT: return;
+            case T_MAP: return;
+            case T_MAP_PROGRAMS: return;
+            case T_NUM: return;
+            case T_CTX: do_load_ctx(inv, target_reg, addr, width); break;
+            case T_STACK: do_load_stack(inv, target_reg, addr, width); break;
+            case T_PACKET: do_load_packet_or_shared(inv, target_reg, addr, width); break;
+            default: do_load_packet_or_shared(inv, target_reg, addr, width); break;
         }
-        case T_MAP: return;
-        case T_MAP_PROGRAMS: return;
-        case T_NUM: return;
-        case T_CTX: m_inv = do_load_ctx(std::move(m_inv), target, addr, width); break;
-        case T_STACK: m_inv = do_load_stack(std::move(m_inv), target, addr, width); break;
-        default: m_inv = do_load_packet_or_shared(std::move(m_inv), target, addr, width); break;
-    }
+    });
 }
-
-int ebpf_domain_t::get_type(variable_t v) {
-    auto res = m_inv[v].singleton();
-    if (!res)
-        return T_UNINIT;
-    return (int)*res;
-}
-
-int ebpf_domain_t::get_type(int t) { return t; }
 
 template <typename A, typename X, typename Y, typename Z>
 void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_value,
                     std::optional<Z> opt_val_offset) {
-    inv.assign(stack.store(inv, data_kind_t::types, addr, width, val_type), val_type);
+    type_inv.assign_type(inv, stack.store_type(inv, addr, width, val_type), val_type);
     if (width == 8) {
         inv.assign(stack.store(inv, data_kind_t::values, addr, width, val_value), val_value);
-        if (opt_val_offset && get_type(val_type) != T_NUM)
+        if (opt_val_offset && type_inv.get_type(m_inv, val_type) != T_NUM)
             inv.assign(stack.store(inv, data_kind_t::offsets, addr, width, *opt_val_offset), *opt_val_offset);
         else
             stack.havoc(inv, data_kind_t::offsets, addr, width);
-    } else if ((width == 1 || width == 2 || width == 4) && get_type(val_type) == T_NUM) {
+    } else if ((width == 1 || width == 2 || width == 4) && type_inv.get_type(m_inv, val_type) == T_NUM) {
         // Keep track of numbers on the stack that might be used as array indices.
         inv.assign(stack.store(inv, data_kind_t::values, addr, width, val_value), val_value);
         stack.havoc(inv, data_kind_t::offsets, addr, width);
@@ -943,11 +988,11 @@ void ebpf_domain_t::operator()(const Mem& b) {
     if (m_inv.is_bottom())
         return;
     if (std::holds_alternative<Reg>(b.value)) {
-        auto data_reg = reg_pack(std::get<Reg>(b.value));
         if (b.is_load) {
-            do_load(b, data_reg);
+            do_load(b, std::get<Reg>(b.value));
         } else {
-            do_mem_store(b, data_reg.type, data_reg.value, data_reg.offset);
+            auto data_reg = reg_pack(std::get<Reg>(b.value));
+            do_mem_store(b, std::get<Reg>(b.value), data_reg.value, data_reg.offset);
         }
     } else {
         do_mem_store(b, T_NUM, std::get<Imm>(b.value).v, {});
@@ -968,26 +1013,11 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, Value val_value, s
         return;
     }
     linear_expression_t addr = linear_expression_t(mem_reg.offset) + offset;
-    switch (get_type(mem_reg.type)) {
-        case T_STACK: do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset); return;
-        case T_UNINIT: { //maybe stack
-            NumAbsDomain assume_not_stack(m_inv);
-#ifdef _MSC_VER
-            // MSVC seems to have a harder time coercing the right things, so force
-            // the correct interpretations.
-            assume_not_stack += (linear_constraint_t)(mem_reg.type != T_STACK);
-            m_inv += crab::dsl_syntax::operator==(mem_reg.type, T_STACK);
-#else
-            assume_not_stack += mem_reg.type != T_STACK;
-            m_inv += mem_reg.type == T_STACK;
-#endif
-            if (!m_inv.is_bottom()) {
-                do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_offset);
-            }
-            m_inv |= std::move(assume_not_stack);
-        }
-        default: break;
-    }
+    m_inv = type_inv.join_over_types(m_inv, b.access.basereg, [&](NumAbsDomain& inv, type_encoding_t type) {
+        if (type == T_STACK)
+            do_store_stack(inv, width, addr, val_type, val_value, opt_val_offset);
+        // do nothing for any other type
+    });
 }
 
 void ebpf_domain_t::operator()(const LockAdd& a) {
@@ -1021,52 +1051,57 @@ void ebpf_domain_t::operator()(const Call& call) {
             break;
 
         case ArgPair::Kind::PTR_TO_UNINIT_MEM: {
-            // Pointer to a memory region that the called function may change,
-            // so we must havoc.
-            crab::interval_t t = m_inv[reg_pack(param.mem).type];
-            if (t[T_STACK]) {
-                variable_t addr = reg_pack(param.mem).offset;
-                variable_t width = reg_pack(param.size).value;
-                stack.havoc(m_inv, data_kind_t::types, addr, width);
-                stack.havoc(m_inv, data_kind_t::values, addr, width);
-                stack.havoc(m_inv, data_kind_t::offsets, addr, width);
-                if (t.singleton()) {
-                    // Functions are not allowed to write sensitive data,
-                    // and initialization is guaranteed
-                    stack.store_numbers(m_inv, addr, width);
+            bool store_numbers = true;
+            variable_t addr = reg_pack(param.mem).offset;
+            variable_t width = reg_pack(param.size).value;
+
+            m_inv = type_inv.join_over_types(m_inv, param.mem, [&](NumAbsDomain& inv, type_encoding_t type) {
+                if (type == T_STACK) {
+                    // Pointer to a memory region that the called function may change,
+                    // so we must havoc.
+                    stack.havoc(inv, data_kind_t::types, addr, width);
+                    stack.havoc(inv, data_kind_t::values, addr, width);
+                    stack.havoc(inv, data_kind_t::offsets, addr, width);
+                } else {
+                    store_numbers = false;
                 }
+            });
+            if (store_numbers) {
+                // Functions are not allowed to write sensitive data,
+                // and initialization is guaranteed
+                stack.store_numbers(m_inv, addr, width);
             }
         }
         }
     }
 
-    auto r0 = reg_pack(R0_RETURN_VALUE);
+    Reg r0_reg{(uint8_t)R0_RETURN_VALUE};
+    auto r0_pack = reg_pack(r0_reg);
     if (call.is_map_lookup) {
         // This is the only way to get a null pointer
         if (maybe_fd_reg) {
             if (auto map_type = get_map_type(*maybe_fd_reg)) {
                 if (global_program_info.platform->get_map_type(*map_type).value_type == EbpfMapValueType::MAP) {
-                    auto inner_map_fd = get_map_inner_map_fd(*maybe_fd_reg);
-                    if (inner_map_fd.has_value()) {
-                        do_load_mapfd(r0, (int)*inner_map_fd, true);
+                    if (auto inner_map_fd = get_map_inner_map_fd(*maybe_fd_reg)) {
+                        do_load_mapfd(r0_reg, (int)*inner_map_fd, true);
                         goto out;
                     }
                 } else {
-                    assign_valid_ptr(r0, true);
-                    assign(r0.offset, 0);
-                    m_inv.set(r0.type, get_map_value_size(*maybe_fd_reg));
+                    assign_valid_ptr(r0_reg, true);
+                    assign(r0_pack.offset, 0);
+                    assign_region_size(r0_reg, get_map_value_size(*maybe_fd_reg));
                     goto out;
                 }
             }
         }
-        assign_valid_ptr(r0, true);
-        assign(r0.offset, 0);
-        assign(r0.type, T_SHARED); // unknown map
+        assign_valid_ptr(r0_reg, true);
+        assign(r0_pack.offset, 0);
+        type_inv.assign_type(m_inv, r0_reg, T_SHARED); // unknown map
     } else {
-        havoc(r0.value);
-        havoc(r0.offset);
-        assign(r0.type, T_NUM);
-        // assume(r0.value < 0); for INTEGER_OR_NO_RETURN_IF_SUCCEED.
+        havoc(r0_pack.value);
+        havoc(r0_pack.offset);
+        type_inv.assign_type(m_inv, r0_reg, T_NUM);
+        // assume(r0_pack.value < 0); for INTEGER_OR_NO_RETURN_IF_SUCCEED.
     }
 out:
     scratch_caller_saved_registers();
@@ -1075,24 +1110,26 @@ out:
     }
 }
 
-void ebpf_domain_t::do_load_mapfd(const reg_pack_t& dst, int mapfd, bool maybe_null) {
+void ebpf_domain_t::do_load_mapfd(const Reg& dst_reg, int mapfd, bool maybe_null) {
     const EbpfMapDescriptor& desc = global_program_info.platform->get_map_descriptor(mapfd);
     const EbpfMapType& type = global_program_info.platform->get_map_type(desc.type);
     if (type.value_type == EbpfMapValueType::PROGRAM) {
-        assign(dst.type, T_MAP_PROGRAMS);
+        type_inv.assign_type(m_inv, dst_reg, T_MAP_PROGRAMS);
     } else {
-        assign(dst.type, T_MAP);
+        type_inv.assign_type(m_inv, dst_reg, T_MAP);
     }
+    const reg_pack_t& dst = reg_pack(dst_reg);
     assign(dst.offset, mapfd);
-    assign_valid_ptr(dst, maybe_null);
+    assign_valid_ptr(dst_reg, maybe_null);
 }
 
 void ebpf_domain_t::operator()(const LoadMapFd& ins) {
-    do_load_mapfd(reg_pack(ins.dst), ins.mapfd, false);
+    do_load_mapfd(ins.dst, ins.mapfd, false);
 }
 
-void ebpf_domain_t::assign_valid_ptr(const reg_pack_t& reg, bool maybe_null) {
+void ebpf_domain_t::assign_valid_ptr(const Reg& dst_reg, bool maybe_null) {
     using namespace crab::dsl_syntax;
+    const reg_pack_t& reg = reg_pack(dst_reg);
     havoc(reg.value);
     if (maybe_null) {
         m_inv += 0 <= reg.value;
@@ -1113,7 +1150,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         switch (bin.op) {
         case Bin::Op::MOV:
             assign(dst.value, imm);
-            assign(dst.type, T_NUM);
+            type_inv.assign_type(m_inv, bin.dst, T_NUM);
             havoc(dst.offset);
             break;
         case Bin::Op::ADD:
@@ -1181,40 +1218,51 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         auto src = reg_pack(std::get<Reg>(bin.v));
         switch (bin.op) {
         case Bin::Op::ADD: {
-            auto stype = get_type(src.type);
-            auto dtype = get_type(dst.type);
-            if (stype == T_NUM && dtype == T_NUM) {
+            if (type_inv.same_type(m_inv, bin.dst, std::get<Reg>(bin.v))) {
+                // both must be numbers
                 add_overflow(dst.value, src.value);
-            } else if (dtype == T_NUM) {
-                apply(m_inv, crab::arith_binop_t::ADD, dst.value, src.value, dst.value, true);
-                apply(m_inv, crab::arith_binop_t::ADD, dst.offset, src.offset, dst.value, false);
-                m_inv.assign(dst.type, src.type);
-            } else if (stype == T_NUM) {
-                add_overflow(dst.value, src.value);
-                add(dst.offset, src.value);
             } else {
-                havoc(dst.type);
-                havoc(dst.value);
-                havoc(dst.offset);
+                // Here we're not sure that lhs and rhs are the same type; they might be.
+                // But previous assertions should fail unless we know that exactly one of lhs or rhs to is a pointer
+                m_inv = type_inv.join_by_if_else(m_inv,
+                    type_is_number(bin.dst),
+                    [&](NumAbsDomain& inv) {
+                        // num + ptr
+                        apply(inv, crab::arith_binop_t::ADD, dst.value, src.value, dst.value, true);
+                        apply(inv, crab::arith_binop_t::ADD, dst.offset, src.offset, dst.value, false);
+                        type_inv.assign_type(inv, bin.dst, std::get<Reg>(bin.v));
+                    },
+                    [&](NumAbsDomain& inv) {
+                        // ptr + num
+                        apply(inv, crab::arith_binop_t::ADD, dst.value, dst.value, src.value, true);
+                        apply(inv, crab::arith_binop_t::ADD, dst.offset, dst.offset, src.value, false);
+                    }
+                );
             }
             break;
         }
         case Bin::Op::SUB: {
-            auto stype = get_type(src.type);
-            auto dtype = get_type(dst.type);
-            if (dtype == T_NUM && stype == T_NUM) {
-                sub_overflow(dst.value, src.value);
-            } else if (stype == T_NUM) {
-                sub_overflow(dst.value, src.value);
-                sub(dst.offset, src.value);
-            } else if (stype == dtype && stype < 0) { // subtracting non-shared pointers
-                apply(m_inv, crab::arith_binop_t::SUB, dst.value, dst.offset, src.offset, true);
-                havoc(dst.offset);
-                assign(dst.type, T_NUM);
+            if (type_inv.same_type(m_inv, bin.dst, std::get<Reg>(bin.v))) {
+                m_inv = type_inv.join_by_if_else(m_inv,
+                    type_is_number(bin.dst),
+                    [&](NumAbsDomain& inv) {
+                        // This is: sub_overflow(inv, dst.value, src.value);
+                        apply(inv, crab::arith_binop_t::SUB, dst.value, dst.value, src.value, true);
+                    },
+                    [&](NumAbsDomain& inv) {
+                        // Assertions should make sure we only perform this on non-shared pointers
+                        apply(inv, crab::arith_binop_t::SUB, dst.value, dst.offset, src.offset, true);
+                        inv -= dst.offset;
+                        type_inv.assign_type(inv, bin.dst, T_NUM);
+                    }
+                );
             } else {
-                havoc(dst.type);
-                havoc(dst.value);
-                havoc(dst.offset);
+                // Here we're not sure that lhs and rhs are the same type; they might be, meaning lhs may be a number.
+                // But previous assertions should fail unless we know that rhs is a number.
+                assert(type_inv.get_type(m_inv, std::get<Reg>(bin.v)) == T_NUM);
+                sub_overflow(dst.value, src.value);
+                // No harm comes from subtracting the value from an offset of a number, which is TOP.
+                sub(dst.offset, src.value);
             }
             break;
         }
@@ -1259,7 +1307,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::MOV:
             assign(dst.value, src.value);
             assign(dst.offset, src.offset);
-            assign(dst.type, src.type);
+            type_inv.assign_type(m_inv, bin.dst, std::get<Reg>(bin.v));
             break;
         }
     }
@@ -1299,6 +1347,7 @@ void ebpf_domain_t::initialize_packet(ebpf_domain_t& inv) {
 }
 
 ebpf_domain_t ebpf_domain_t::from_constraints(const std::vector<linear_constraint_t>& csts) {
+    // TODO: handle type constraints separately
     ebpf_domain_t inv;
     for (const auto& cst: csts) {
         inv += cst;
@@ -1311,16 +1360,18 @@ ebpf_domain_t ebpf_domain_t::setup_entry(bool check_termination) {
 
     ebpf_domain_t inv;
     auto r10 = reg_pack(R10_STACK_POINTER);
+    Reg r10_reg{(uint8_t)R10_STACK_POINTER};
     inv += EBPF_STACK_SIZE <= r10.value;
     inv += r10.value <= PTR_MAX;
     inv.assign(r10.offset, EBPF_STACK_SIZE);
-    inv.assign(r10.type, T_STACK);
+    inv.type_inv.assign_type(inv.m_inv, r10_reg, T_STACK);
 
     auto r1 = reg_pack(R1_ARG);
+    Reg r1_reg{(uint8_t)R1_ARG};
     inv += 1 <= r1.value;
     inv += r1.value <= PTR_MAX;
     inv.assign(r1.offset, 0);
-    inv.assign(r1.type, T_CTX);
+    inv.type_inv.assign_type(inv.m_inv, r1_reg, T_CTX);
 
     initialize_packet(inv);
 

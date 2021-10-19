@@ -13,8 +13,6 @@
 #include "crab/variable.hpp"
 #include "string_constraints.hpp"
 
-struct reg_pack_t;
-
 using NumAbsDomain = crab::domains::NumAbsDomain;
 
 class ebpf_domain_t final {
@@ -130,9 +128,6 @@ class ebpf_domain_t final {
     /// Forget everything we know about the value of a variable.
     void havoc(variable_t v);
 
-    // shorthand for "m_inv + condition" (since + is not actually overloaded)
-    NumAbsDomain when(const linear_constraint_t& condition);
-
     void scratch_caller_saved_registers();
     std::optional<uint32_t> get_map_type(const Reg& map_fd_reg) const;
     std::optional<uint32_t> get_map_inner_map_fd(const Reg& map_fd_reg) const;
@@ -140,11 +135,11 @@ class ebpf_domain_t final {
     crab::interval_t get_map_value_size(const Reg& map_fd_reg) const;
     crab::interval_t get_map_max_entries(const Reg& map_fd_reg) const;
     void forget_packet_pointers();
-    void do_load_mapfd(const reg_pack_t& dst, int mapfd, bool maybe_null);
+    void do_load_mapfd(const Reg& dst_reg, int mapfd, bool maybe_null);
 
     void overflow(variable_t lhs);
 
-    void assign_valid_ptr(const reg_pack_t& reg, bool maybe_null);
+    void assign_valid_ptr(const Reg& dst_reg, bool maybe_null);
 
     void require(crab::domains::NumAbsDomain& inv, const linear_constraint_t& cst, const std::string& s);
 
@@ -156,10 +151,10 @@ class ebpf_domain_t final {
                                      variable_t reg_type);
     void check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s);
 
-    NumAbsDomain do_load_stack(NumAbsDomain inv, const reg_pack_t& target, const linear_expression_t& addr, int width);
-    NumAbsDomain do_load_ctx(NumAbsDomain inv, const reg_pack_t& target, const linear_expression_t& addr_vague, int width);
-    NumAbsDomain do_load_packet_or_shared(NumAbsDomain inv, const reg_pack_t& target, const linear_expression_t& addr, int width);
-    void do_load(const Mem& b, const reg_pack_t& target);
+    void do_load_stack(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width);
+    void do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr_vague, int width);
+    void do_load_packet_or_shared(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width);
+    void do_load(const Mem& b, const Reg& target_reg);
 
     template <typename A, typename X, typename Y, typename Z>
     void do_store_stack(crab::domains::NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_value,
@@ -172,8 +167,6 @@ class ebpf_domain_t final {
 
     static void initialize_packet(ebpf_domain_t& inv);
 
-    int get_type(variable_t v);
-    int get_type(int t);
 
   private:
     /// Mapping from variables (including registers, types, offsets,
@@ -189,4 +182,32 @@ class ebpf_domain_t final {
     std::function<check_require_func_t> check_require{};
     bool get_map_fd_range(const Reg& map_fd_reg, int* start_fd, int* end_fd) const;
 
+    struct TypeDomain {
+        void assign_type(NumAbsDomain& inv, const Reg& lhs, type_encoding_t t);
+        void assign_type(NumAbsDomain& inv, const Reg& lhs, const Reg& rhs);
+        void assign_type(NumAbsDomain& inv, const Reg& lhs, const std::optional<linear_expression_t>& rhs);
+        void assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, const Reg& rhs);
+        void assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, int rhs);
+
+        void havoc_type(NumAbsDomain& inv, const Reg& r);
+
+        [[nodiscard]] int get_type(const NumAbsDomain& inv, variable_t v) const;
+        [[nodiscard]] int get_type(const NumAbsDomain& inv, const Reg& r) const;
+        [[nodiscard]] int get_type(const NumAbsDomain& inv, int t) const;
+
+        [[nodiscard]] bool same_type(const NumAbsDomain& inv, const Reg& a, const Reg& b) const;
+        [[nodiscard]] bool implies_type(const NumAbsDomain& inv, const linear_constraint_t& a, const linear_constraint_t& b) const;
+
+        NumAbsDomain join_over_types(const NumAbsDomain& inv, const Reg& reg,
+                                     const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const;
+        NumAbsDomain join_by_if_else(const NumAbsDomain& inv, const linear_constraint_t& condition,
+                                     const std::function<void(NumAbsDomain&)>& if_true,
+                                     const std::function<void(NumAbsDomain&)>& if_false) const;
+
+        bool is_in_group(const NumAbsDomain& inv, const Reg& r, TypeGroup group) const;
+    };
+
+    TypeDomain type_inv;
+
+    void assign_region_size(const Reg& r, const crab::interval_t& size);
 }; // end ebpf_domain_t

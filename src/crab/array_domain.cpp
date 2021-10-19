@@ -555,6 +555,33 @@ std::optional<variable_t> array_domain_t::store(NumAbsDomain& inv, data_kind_t k
     return {};
 }
 
+std::optional<variable_t> array_domain_t::store_type(NumAbsDomain& inv,
+                                                     const linear_expression_t& idx,
+                                                     const linear_expression_t& elem_size,
+                                                     const linear_expression_t& val) {
+    auto kind = data_kind_t::types;
+    auto maybe_cell = kill_and_find_var(inv, kind, idx, elem_size);
+    if (maybe_cell) {
+        // perform strong update
+        auto [offset, size] = *maybe_cell;
+        std::optional<number_t> t = inv.eval_interval(val).singleton();
+        if (t && (int64_t)*t == T_NUM)
+            num_bytes.reset(offset, size);
+        else
+            num_bytes.havoc(offset, size);
+        variable_t v = lookup_array_map(kind).mk_cell(offset, size).get_scalar(kind);
+        return v;
+    }
+    return {};
+}
+
+std::optional<variable_t> array_domain_t::store_type(NumAbsDomain& inv,
+                                                     const linear_expression_t& idx,
+                                                     const linear_expression_t& elem_size,
+                                                     const Reg& reg) {
+    return store_type(inv, idx, elem_size, variable_t::reg(data_kind_t::types, reg.v));
+}
+
 void array_domain_t::havoc(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size) {
     auto maybe_cell = kill_and_find_var(inv, kind, idx, elem_size);
     if (maybe_cell && kind == data_kind_t::types) {
