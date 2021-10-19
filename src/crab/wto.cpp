@@ -39,10 +39,10 @@ void wto_t::start_visit(const label_t& vertex, wto_partition_t& partition, std::
     int min_dfn = INT_MAX;
     for (const label_t& succ : _cfg.next_nodes(vertex)) {
         wto_vertex_data_t& data = _vertex_data[succ];
-        if (_vertex_data[succ].head_dfn != 0 && _vertex_data[succ].dfn != INT_MAX) {
-            min_dfn = _vertex_data[succ].head_dfn;
+        if (data.head_dfn != 0 && data.dfn != INT_MAX) {
+            min_dfn = data.head_dfn;
         } else {
-            min_dfn = _vertex_data[succ].dfn;
+            min_dfn = data.dfn;
         }
         if (min_dfn <= head_dfn) {
             head_dfn = min_dfn;
