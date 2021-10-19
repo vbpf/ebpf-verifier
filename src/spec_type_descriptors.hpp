@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
 #include "ebpf_base.h"
@@ -38,10 +39,17 @@ struct EbpfProgramType {
 };
 void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o);
 
+using EquivalenceKey = std::tuple<
+    EbpfMapValueType /* value_type */,
+    uint32_t /* key_size */,
+    uint32_t /* value_size */,
+    uint32_t /* max_entries */>;
+
 struct program_info {
     const struct ebpf_platform_t* platform;
     std::vector<EbpfMapDescriptor> map_descriptors;
     EbpfProgramType type;
+    std::map<EquivalenceKey, int> cache;
 };
 
 struct raw_program {

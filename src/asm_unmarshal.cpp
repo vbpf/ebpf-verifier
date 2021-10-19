@@ -390,6 +390,7 @@ struct Unmarshaller {
             case INST_CLS_ALU:
             case INST_CLS_ALU64: new_ins = makeAluOp(pc, inst); break;
 
+            case INST_CLS_JMP32:
             case INST_CLS_JMP: {
                 new_ins = makeJmp(inst, insts, static_cast<pc_t>(pc));
                 if (std::holds_alternative<Exit>(new_ins)) {
@@ -402,8 +403,6 @@ struct Unmarshaller {
                 }
                 break;
             }
-
-            case INST_CLS_UNUSED: throw InvalidInstruction(pc, "invalid class 0x6");
             }
             /*
             vector<ebpf_inst> marshalled = marshal(new_ins[0], pc);

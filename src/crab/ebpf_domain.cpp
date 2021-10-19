@@ -19,6 +19,7 @@
 
 #include "asm_ostream.hpp"
 #include "config.hpp"
+#include "crab_verifier.hpp"
 #include "dsl_syntax.hpp"
 #include "platform.hpp"
 #include "string_constraints.hpp"
@@ -253,8 +254,8 @@ void ebpf_domain_t::forget_packet_pointers() {
 
     for (variable_t v : variable_t::get_type_variables()) {
         // TODO: this is sufficient, but for clarity it may be useful to forget the offset and value too.
-       if (m_inv.intersect(v == T_PACKET))
-           m_inv -= v;
+        if (m_inv.intersect(v == T_PACKET))
+            m_inv -= v;
     }
 }
 
@@ -470,8 +471,8 @@ bool ebpf_domain_t::TypeDomain::is_in_group(const NumAbsDomain& m_inv, const Reg
     return false;
 }
 
-void ebpf_domain_t::assign_region_size(const Reg& r, unsigned int size) {
-    assign(reg_pack(r).type, size);
+void ebpf_domain_t::assign_region_size(const Reg& r, const crab::interval_t& size) {
+    m_inv.set(reg_pack(r).type, size);
 }
 
 void ebpf_domain_t::overflow(variable_t lhs) {
@@ -615,39 +616,145 @@ void ebpf_domain_t::operator()(const ValidSize& s) {
     require(m_inv, s.can_be_zero ? r.value >= 0 : r.value > 0, to_string(s));
 }
 
-std::optional<EbpfMapDescriptor> ebpf_domain_t::get_map_descriptor(const Reg& map_fd_reg) {
-    // Get the actual map_fd value to look up the key size and value size.
-    if (auto fd_opt = m_inv[reg_pack(map_fd_reg).offset].singleton()) {
-        return global_program_info.platform->get_map_descriptor((int)*fd_opt);
-    } else {
-        return {};
+// Get the start and end of the range of possible map fd values.
+// In the future, it would be cleaner to use a set rather than an interval
+// for map fds.
+bool ebpf_domain_t::get_map_fd_range(const Reg& map_fd_reg, int* start_fd, int* end_fd) const {
+    const crab::interval_t& map_fd_interval = m_inv[reg_pack(map_fd_reg).offset];
+    auto lb = map_fd_interval.lb().number();
+    auto ub = map_fd_interval.ub().number();
+    if (!lb || !lb->fits_sint() || !ub || !ub->fits_sint())
+        return false;
+    *start_fd = (int)lb.value();
+    *end_fd = (int)ub.value();
+
+    // Cap the maximum range we'll check.
+    const int max_range = 32;
+    return (*map_fd_interval.finite_size() < max_range);
+}
+
+// All maps in the range must have the same type for us to use it.
+std::optional<uint32_t> ebpf_domain_t::get_map_type(const Reg& map_fd_reg) const {
+    int start_fd, end_fd;
+    if (!get_map_fd_range(map_fd_reg, &start_fd, &end_fd))
+        return std::optional<uint32_t>();
+
+    std::optional<uint32_t> type;
+    for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
+        EbpfMapDescriptor* map = find_map_descriptor(map_fd);
+        if (map == nullptr)
+            return std::optional<uint32_t>();
+        if (!type.has_value())
+            type = map->type;
+        else if (map->type != *type)
+            return std::optional<uint32_t>();
     }
+    return type;
+}
+
+// All maps in the range must have the same inner map fd for us to use it.
+std::optional<uint32_t> ebpf_domain_t::get_map_inner_map_fd(const Reg& map_fd_reg) const {
+    int start_fd, end_fd;
+    if (!get_map_fd_range(map_fd_reg, &start_fd, &end_fd))
+        return {};
+
+    std::optional<uint32_t> inner_map_fd;
+    for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
+        EbpfMapDescriptor* map = find_map_descriptor(map_fd);
+        if (map == nullptr)
+            return {};
+        if (!inner_map_fd.has_value())
+            inner_map_fd = map->inner_map_fd;
+        else if (map->type != *inner_map_fd)
+            return {};
+    }
+    return inner_map_fd;
+}
+
+// We can deal with a range of key sizes.
+crab::interval_t ebpf_domain_t::get_map_key_size(const Reg& map_fd_reg) const {
+    int start_fd, end_fd;
+    if (!get_map_fd_range(map_fd_reg, &start_fd, &end_fd))
+        return crab::interval_t::top();
+
+    crab::interval_t result = crab::interval_t::bottom();
+    for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
+        if (EbpfMapDescriptor* map = find_map_descriptor(map_fd))
+            result = result | crab::interval_t(number_t(map->key_size));
+        else
+            return crab::interval_t::top();
+    }
+    return result;
+}
+
+// We can deal with a range of value sizes.
+crab::interval_t ebpf_domain_t::get_map_value_size(const Reg& map_fd_reg) const {
+    int start_fd, end_fd;
+    if (!get_map_fd_range(map_fd_reg, &start_fd, &end_fd))
+        return crab::interval_t::top();
+
+    crab::interval_t result = crab::interval_t::bottom();
+    for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
+        if (EbpfMapDescriptor* map = find_map_descriptor(map_fd))
+            result = result | crab::interval_t(number_t(map->value_size));
+        else
+            return crab::interval_t::top();
+    }
+    return result;
+}
+
+// We can deal with a range of max_entries values.
+crab::interval_t ebpf_domain_t::get_map_max_entries(const Reg& map_fd_reg) const {
+    int start_fd, end_fd;
+    if (!get_map_fd_range(map_fd_reg, &start_fd, &end_fd))
+        return crab::interval_t::top();
+
+    crab::interval_t result = crab::interval_t::bottom();
+    for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
+        if (EbpfMapDescriptor* map = find_map_descriptor(map_fd))
+            result = result | crab::interval_t(number_t(map->max_entries));
+        else
+            return crab::interval_t::top();
+    }
+    return result;
 }
 
 void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
     using namespace crab::dsl_syntax;
 
-    auto maybe_map_descriptor = get_map_descriptor(s.map_fd_reg);
-    if (!maybe_map_descriptor) {
-        require(m_inv, linear_constraint_t::FALSE(), "Map fd is not singleton");
-        return;
-    }
+    auto fd_type = get_map_type(s.map_fd_reg);
+
     auto access_reg = reg_pack(s.access_reg);
     std::string m = std::string(" (") + to_string(s) + ")";
     variable_t lb = access_reg.offset;
-    int width = s.key ? (int)maybe_map_descriptor->key_size : (int)maybe_map_descriptor->value_size;
+    int width;
+    if (s.key) {
+        auto key_size = get_map_key_size(s.map_fd_reg).singleton();
+        if (!key_size.has_value()) {
+            require(m_inv, linear_constraint_t::FALSE(), "Map key size is not singleton");
+            return;
+        }
+        width = (int)key_size.value();
+    } else {
+        auto value_size = get_map_value_size(s.map_fd_reg).singleton();
+        if (!value_size.has_value()) {
+            require(m_inv, linear_constraint_t::FALSE(), "Map value size is not singleton");
+            return;
+        }
+        width = (int)value_size.value();
+    }
     linear_expression_t ub = lb + width;
 
-    m_inv = type_inv.join_over_types(m_inv, s.access_reg, [&](NumAbsDomain& inv, type_encoding_t type) {
-        if (type == T_STACK) {
+    m_inv = type_inv.join_over_types(m_inv, s.access_reg, [&](NumAbsDomain& inv, type_encoding_t access_reg_type) {
+        if (access_reg_type == T_STACK) {
             if (!stack.all_num(inv, lb, ub)) {
                 auto lb_is = inv[lb].lb().number();
                 std::string lb_s = lb_is && lb_is->fits_sint() ? std::to_string((int)*lb_is) : "-oo";
                 auto ub_is = inv.eval_interval(ub).ub().number();
                 std::string ub_s = ub_is && ub_is->fits_sint() ? std::to_string((int)*ub_is) : "oo";
                 require(inv, linear_constraint_t::FALSE(), "Illegal map update with a non-numerical value [" + lb_s + "-" + ub_s + ")");
-            } else if (thread_local_options.strict && maybe_map_descriptor.has_value()) {
-                EbpfMapType map_type = global_program_info.platform->get_map_type(maybe_map_descriptor->type);
+            } else if (thread_local_options.strict && fd_type.has_value()) {
+                EbpfMapType map_type = global_program_info.platform->get_map_type(*fd_type);
                 if (map_type.is_array) {
                     // Get offset value.
                     variable_t key_ptr = access_reg.offset;
@@ -659,12 +766,15 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
                         variable_t key_value =
                             variable_t::cell_var(data_kind_t::values, (uint64_t)offset.value(), sizeof(uint32_t));
 
-                        require(inv, key_value < maybe_map_descriptor->max_entries, "Array index overflow");
-                        require(inv, key_value >= 0, "Array index underflow");
+                        if (auto max_entries = get_map_max_entries(s.map_fd_reg).lb().number())
+                            require(m_inv, key_value < *max_entries, "Array index overflow");
+                        else
+                            require(m_inv, linear_constraint_t::FALSE(), "Max entries is not finite");
+                        require(m_inv, key_value >= 0, "Array index underflow");
                     }
                 }
             }
-        } else if (type == T_PACKET) {
+        } else if (access_reg_type == T_PACKET) {
             check_access_packet(inv, lb, ub, m, false);
         } else {
             require(inv, linear_constraint_t::FALSE(), "Only stack or packet can be used as a parameter" + m);
@@ -970,15 +1080,18 @@ void ebpf_domain_t::operator()(const Call& call) {
     if (call.is_map_lookup) {
         // This is the only way to get a null pointer
         if (maybe_fd_reg) {
-            if (auto maybe_map_descriptor = get_map_descriptor(*maybe_fd_reg)) {
-                if (global_program_info.platform->get_map_type(maybe_map_descriptor->type).value_type == EbpfMapValueType::MAP) {
-                    do_load_mapfd(r0_reg, (int)maybe_map_descriptor->inner_map_fd, true);
+            if (auto map_type = get_map_type(*maybe_fd_reg)) {
+                if (global_program_info.platform->get_map_type(*map_type).value_type == EbpfMapValueType::MAP) {
+                    if (auto inner_map_fd = get_map_inner_map_fd(*maybe_fd_reg)) {
+                        do_load_mapfd(r0_reg, (int)*inner_map_fd, true);
+                        goto out;
+                    }
                 } else {
                     assign_valid_ptr(r0_reg, true);
                     assign(r0_pack.offset, 0);
-                    assign_region_size(r0_reg, maybe_map_descriptor->value_size);
+                    assign_region_size(r0_reg, get_map_value_size(*maybe_fd_reg));
+                    goto out;
                 }
-                goto out;
             }
         }
         assign_valid_ptr(r0_reg, true);
