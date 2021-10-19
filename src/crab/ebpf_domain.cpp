@@ -1233,16 +1233,17 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                     type_is_number(bin.dst),
                     [&](NumAbsDomain& inv) {
                         // num + ptr
-                        apply(inv, crab::arith_binop_t::ADD, dst.value, src.value, dst.value, true);
-                        apply(inv, crab::arith_binop_t::ADD, dst.offset, src.offset, dst.value, false);
+                        apply(inv, crab::arith_binop_t::ADD, dst.offset, dst.value, src.offset, false);
                         type_inv.assign_type(inv, bin.dst, std::get<Reg>(bin.v));
+                        inv.assign(dst.region_size, src.region_size);
                     },
                     [&](NumAbsDomain& inv) {
                         // ptr + num
-                        apply(inv, crab::arith_binop_t::ADD, dst.value, dst.value, src.value, true);
                         apply(inv, crab::arith_binop_t::ADD, dst.offset, dst.offset, src.value, false);
                     }
                 );
+                // careful: change dst.value only after dealing with offset
+                apply(m_inv, crab::arith_binop_t::ADD, dst.value, dst.value, src.value, true);
             }
             break;
         }
