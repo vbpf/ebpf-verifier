@@ -48,11 +48,11 @@ enum class visit_task_type_t {
 
 struct visit_args_t {
     visit_task_type_t type;
-    const label_t& vertex;
+    label_t vertex;
     wto_partition_t& partition;
     std::weak_ptr<wto_cycle_t> containing_cycle;
 
-    visit_args_t(visit_task_type_t t, const label_t& v, wto_partition_t& p, std::weak_ptr<wto_cycle_t> cc)
+    visit_args_t(visit_task_type_t t, label_t v, wto_partition_t& p, std::weak_ptr<wto_cycle_t> cc)
         : type(t), vertex(v), partition(p), containing_cycle(cc) {};
 };
 
