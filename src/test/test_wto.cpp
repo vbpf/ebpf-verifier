@@ -7,7 +7,7 @@
 TEST_CASE("wto figure 1", "[wto]") {
     cfg_t cfg;
 
-    // Construct the example graph in figure 1 of Bournacle,
+    // Construct the example graph in figure 1 of Bourdoncle,
     // "Efficient chaotic iteration strategies with widenings", 1993.
 
     // Add nodes.
@@ -39,7 +39,7 @@ TEST_CASE("wto figure 1", "[wto]") {
 TEST_CASE("wto figure 2a", "[wto]") {
     cfg_t cfg;
 
-    // Construct the example graph in figure 2a of Bournacle,
+    // Construct the example graph in figure 2a of Bourdoncle,
     // "Efficient chaotic iteration strategies with widenings", 1993.
 
     // Add nodes.
@@ -67,7 +67,7 @@ TEST_CASE("wto figure 2a", "[wto]") {
 TEST_CASE("wto figure 2b", "[wto]") {
     cfg_t cfg;
 
-    // Construct the example graph in figure 2b of Bournacle,
+    // Construct the example graph in figure 2b of Bourdoncle,
     // "Efficient chaotic iteration strategies with widenings", 1993.
 
     // Add nodes.
