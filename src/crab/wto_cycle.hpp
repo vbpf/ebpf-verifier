@@ -35,8 +35,18 @@ class wto_cycle_t final {
 inline std::ostream& operator<<(std::ostream& o, wto_cycle_t& cycle) {
     o << "( ";
     for (auto& component : cycle) {
-        std::visit([&o](auto& e) -> std::ostream& { return o << e; }, *component);
+        wto_component_t* c = component.get();
+
+        // For some reason, an Ubuntu Release build can't find the right
+        // function to call via std::visit and just outputs a pointer
+        // value, so we force it to use the right one here.
+        if (std::holds_alternative<std::shared_ptr<class wto_cycle_t>>(*c)) {
+            auto ptr = std::get<std::shared_ptr<class wto_cycle_t>>(*c);
+            o << *ptr;
+        } else
+            std::visit([&o](auto& e) -> std::ostream& { return o << e; }, *component);
         o << " ";
+
     }
     o << ")";
     return o;

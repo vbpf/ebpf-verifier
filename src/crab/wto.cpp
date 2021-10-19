@@ -50,7 +50,9 @@ void wto_t::start_visit(const label_t& vertex, wto_partition_t& partition, std::
         }
     }
 
+    // Create a new cycle component inside the containing cycle.
     auto cycle = std::make_shared<wto_cycle_t>(containing_cycle);
+
     if (head_dfn == vertex_data.dfn) {  
         vertex_data.dfn = INT_MAX;
         label_t& element = _stack.top();
