@@ -61,7 +61,7 @@ post:
   - r1.value=[10, 15]
 
 ---
-test-case: add constant register to finite interval number
+test-case: add constant register number to finite interval number
 
 pre: ["r1.type=number", "r1.value=[5, 10]", "r2.type=number", "r2.value=5"]
 
@@ -76,3 +76,53 @@ post:
   - r2.value=5
   - r1.value-r2.value<=10
   - r2.value-r1.value<=-5
+
+---
+test-case: add interval number register to constant register pointer
+
+pre: ["r2.type=packet", "r2.offset=0", "r2.value=[7, 11]", "r2.region_size=packet_size",
+      "r7.type=number", "r7.value=[3, 5]"]
+
+code:
+  <start>: |
+    r2 += r7
+
+post:
+  - r2.type=packet
+  - r2.offset=[3, 5]
+  - r2.value=[10, 16]
+  - r7.type=number
+  - r7.value=[3, 5]
+  - r7.value-r2.value<=-7
+  - r2.value-r7.value<=11
+  - r2.offset-r2.value<=-7
+  - r2.value-r2.offset<=11
+  - r2.offset=r7.value
+  - packet_size=r2.region_size
+
+---
+test-case: add constant register pointer to interval number
+
+pre: ["r2.type=packet", "r2.offset=0", "r2.value=[7, 11]", "r2.region_size=packet_size",
+      "r7.type=number", "r7.value=[3, 5]"]
+
+code:
+  <start>: |
+    r7 += r2
+
+post:
+  - r7.type=packet
+  - r7.offset=[3, 5]
+  - r7.value=[10, 16]
+  - r2.type=packet
+  - r2.offset=0
+  - r2.value=[7, 11]
+  - r2.value-r7.value<=-3
+  - r7.value-r2.value<=5
+  - r2.offset-r7.offset<=-3
+  - r7.offset-r2.offset<=5
+  - r7.offset-r7.value<=-7
+  - r7.value-r7.offset<=11
+  - packet_size=r2.region_size
+  - packet_size=r7.region_size
+  - r2.region_size=r7.region_size
