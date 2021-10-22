@@ -451,6 +451,7 @@ TEST_SECTION("build", "packet_access.o", "xdp")
 TEST_SECTION("build", "tail_call.o", "xdp_prog")
 TEST_SECTION("build", "map_in_map.o", ".text")
 TEST_SECTION("build", "twomaps.o", ".text");
+TEST_SECTION("build", "twotypes.o", ".text");
 
 // Test some programs that ought to fail verification.
 TEST_SECTION_REJECT("build", "badhelpercall.o", ".text")
