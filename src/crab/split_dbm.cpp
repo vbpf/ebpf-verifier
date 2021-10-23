@@ -1193,23 +1193,36 @@ string_invariant SplitDBM::to_set() const {
         variable_t variable = *(this->rev_map[v]);
 
         std::stringstream elem;
-        elem << variable << "=";
-        if (v_out.lb() == v_out.ub()) {
-            if (variable.is_type()) {
-                int type = (int)v_out.lb().number().value();
-                if (variable.is_in_stack() && type == T_NUM) {
+        elem << variable;
+        if (variable.is_type()) {
+            int lb = (int)v_out.lb().number().value();
+            int ub = (int)v_out.ub().number().value();
+            if (lb == ub) {
+                if (variable.is_in_stack() && lb == T_NUM) {
                     // no need to show this
                     continue;
                 }
-                if (type <= 0 && type > -static_cast<int>(std::size(type_string)))
-                    elem << type_string.at(-type);
-                else
-                    elem << "map_value_of_size(" << v_out.lb() << ")";
+                elem << "=" << type_string.at(-lb);
             } else {
-                elem << v_out.lb();
+                if (v_out.is_bottom()) {
+                    elem << "=_|_";
+                } else {
+                    elem << " in {";
+                    for (int type = lb; type <= ub; type++) {
+                        if (type > lb)
+                            elem << ", ";
+                        elem << type_string.at(-type);
+                    }
+                    elem << "}";
+                }
             }
         } else {
-            elem << v_out;
+            elem << "=";
+            if (v_out.lb() == v_out.ub()) {
+                elem << v_out.lb();
+            } else {
+                elem << v_out;
+            }
         }
         result.insert(elem.str());
     }
