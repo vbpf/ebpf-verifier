@@ -127,11 +127,19 @@ std::ostream& operator<<(std::ostream& o, const string_invariant& inv) {
     // Intervals
     bool first = true;
     o << "[";
-    for (const auto& item : inv.maybe_inv.value()) {
+    auto& set = inv.maybe_inv.value();
+    std::string lastbase;
+    for (const auto& item : set) {
         if (first)
             first = false;
         else
             o << ", ";
+        size_t pos = item.find_first_of(".=[");
+        std::string base = item.substr(0, pos);
+        if (base != lastbase) {
+            o << "\n    ";
+            lastbase = base;
+        }
         o << item;
     }
     o << "]";
