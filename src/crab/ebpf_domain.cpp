@@ -325,19 +325,9 @@ void ebpf_domain_t::havoc(variable_t v) { m_inv -= v; }
 
 void ebpf_domain_t::assign(variable_t lhs, variable_t rhs) { m_inv.assign(lhs, rhs); }
 
-static linear_constraint_t type_is_shared(const reg_pack_t& r) {
-    using namespace crab::dsl_syntax;
-    return r.type == T_SHARED;
-}
-
 static linear_constraint_t type_is_pointer(const reg_pack_t& r) {
     using namespace crab::dsl_syntax;
     return r.type >= T_CTX;
-}
-
-static linear_constraint_t type_is_pointer_or_null(const reg_pack_t& r) {
-    using namespace crab::dsl_syntax;
-    return r.type >= T_NUM;
 }
 
 static linear_constraint_t type_is_number(const Reg& r) {
@@ -345,29 +335,9 @@ static linear_constraint_t type_is_number(const Reg& r) {
     return reg_pack(r).type == T_NUM;
 }
 
-static linear_constraint_t type_is_ctx(const reg_pack_t& r) {
-    using namespace crab::dsl_syntax;
-    return r.type == T_CTX;
-}
-
-static linear_constraint_t type_is_stack(const reg_pack_t& r) {
-    using namespace crab::dsl_syntax;
-    return r.type == T_STACK;
-}
-
-static linear_constraint_t type_is_packet(const reg_pack_t& r) {
-    using namespace crab::dsl_syntax;
-    return r.type == T_PACKET;
-}
-
 static linear_constraint_t type_is_not_stack(const reg_pack_t& r) {
     using namespace crab::dsl_syntax;
     return r.type != T_STACK;
-}
-
-static linear_constraint_t type_is_packet_or_shared(const reg_pack_t& r) {
-    using namespace crab::dsl_syntax;
-    return r.type >= T_PACKET;
 }
 
 void ebpf_domain_t::TypeDomain::assign_type(NumAbsDomain& inv, const Reg& lhs, type_encoding_t t) {
@@ -460,13 +430,13 @@ bool ebpf_domain_t::TypeDomain::is_in_group(const NumAbsDomain& m_inv, const Reg
     case TypeGroup::stack: return m_inv.entail(t == T_STACK);
     case TypeGroup::shared: return m_inv.entail(t == T_SHARED);
     case TypeGroup::non_map_fd: return m_inv.entail(t >= T_NUM);
-    case TypeGroup::mem: return m_inv.entail(t >= T_STACK);
+    case TypeGroup::mem: return m_inv.entail(t >= T_PACKET);
     case TypeGroup::mem_or_num:
         return m_inv.entail(t >= T_NUM) && m_inv.entail(t != T_CTX);
     case TypeGroup::pointer: return m_inv.entail(t >= T_CTX);
     case TypeGroup::ptr_or_num: return m_inv.entail(t >= T_NUM);
     case TypeGroup::stack_or_packet:
-        return m_inv.entail(t >= T_STACK) && m_inv.entail(t <= T_PACKET);
+        return m_inv.entail(t >= T_PACKET) && m_inv.entail(t <= T_STACK);
     }
     assert(false);
     return false;
@@ -1373,6 +1343,7 @@ ebpf_domain_t ebpf_domain_t::setup_entry(bool check_termination) {
     inv += r10.value <= PTR_MAX;
     inv.assign(r10.offset, EBPF_STACK_SIZE);
     inv.type_inv.assign_type(inv.m_inv, r10_reg, T_STACK);
+    inv.assign(r10.region_size, EBPF_STACK_SIZE);
 
     auto r1 = reg_pack(R1_ARG);
     Reg r1_reg{(uint8_t)R1_ARG};

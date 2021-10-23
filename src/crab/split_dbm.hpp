@@ -48,8 +48,8 @@ enum type_encoding_t {
     T_MAP = -5,
     T_NUM = -4,
     T_CTX = -3,
-    T_STACK = -2,
-    T_PACKET = -1,
+    T_PACKET = -2,
+    T_STACK = -1,
     T_SHARED = 0
 };
 
