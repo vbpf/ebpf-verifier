@@ -22,25 +22,29 @@ thread_local std::vector<std::string> variable_t::names;
 
 void variable_t::clear_thread_local_state() {
     names = std::vector<std::string>{
-        "r0.value",  "r0.offset",  "r0.type", "r0.shared_region_size",
-        "r1.value",  "r1.offset",  "r1.type", "r1.shared_region_size",
-        "r2.value",  "r2.offset",  "r2.type", "r2.shared_region_size",
-        "r3.value",  "r3.offset",  "r3.type", "r3.shared_region_size",
-        "r4.value",  "r4.offset",  "r4.type", "r4.shared_region_size",
-        "r5.value",  "r5.offset",  "r5.type", "r5.shared_region_size",
-        "r6.value",  "r6.offset",  "r6.type", "r6.shared_region_size",
-        "r7.value",  "r7.offset",  "r7.type", "r7.shared_region_size",
-        "r8.value",  "r8.offset",  "r8.type", "r8.shared_region_size",
-        "r9.value",  "r9.offset",  "r9.type", "r9.shared_region_size",
-        "r10.value", "r10.offset", "r10.type", "r10.shared_region_size",
+        "r0.value", "r0.ctx_offset", "r0.map_offset", "r0.packet_offset", "r0.shared_offset", "r0.stack_offset", "r0.type", "r0.shared_region_size",
+        "r1.value", "r1.ctx_offset", "r1.map_offset", "r1.packet_offset", "r1.shared_offset", "r1.stack_offset", "r1.type", "r1.shared_region_size",
+        "r2.value", "r2.ctx_offset", "r2.map_offset", "r2.packet_offset", "r2.shared_offset", "r2.stack_offset", "r2.type", "r2.shared_region_size",
+        "r3.value", "r3.ctx_offset", "r3.map_offset", "r3.packet_offset", "r3.shared_offset", "r3.stack_offset", "r3.type", "r3.shared_region_size",
+        "r4.value", "r4.ctx_offset", "r4.map_offset", "r4.packet_offset", "r4.shared_offset", "r4.stack_offset", "r4.type", "r4.shared_region_size",
+        "r5.value", "r5.ctx_offset", "r5.map_offset", "r5.packet_offset", "r5.shared_offset", "r5.stack_offset", "r5.type", "r5.shared_region_size",
+        "r6.value", "r6.ctx_offset", "r6.map_offset", "r6.packet_offset", "r6.shared_offset", "r6.stack_offset", "r6.type", "r6.shared_region_size",
+        "r7.value", "r7.ctx_offset", "r7.map_offset", "r7.packet_offset", "r7.shared_offset", "r7.stack_offset", "r7.type", "r7.shared_region_size",
+        "r8.value", "r8.ctx_offset", "r8.map_offset", "r8.packet_offset", "r8.shared_offset", "r8.stack_offset", "r8.type", "r8.shared_region_size",
+        "r9.value", "r9.ctx_offset", "r9.map_offset", "r9.packet_offset", "r9.shared_offset", "r9.stack_offset", "r9.type", "r9.shared_region_size",
+        "r10.value", "r10.ctx_offset", "r10.map_offset", "r10.packet_offset", "r10.shared_offset", "r10.stack_offset", "r10.type", "r10.shared_region_size",
         "data_size", "meta_size",
     };
 }
 
 static std::string name_of(data_kind_t kind) {
     switch (kind) {
-    case data_kind_t::offsets: return "offset";
-    case data_kind_t::shared_region_size: return "shared_region_size";
+    case data_kind_t::ctx_offsets: return "ctx_offset";
+    case data_kind_t::map_offsets: return "map_offset";
+    case data_kind_t::packet_offsets: return "packet_offset";
+    case data_kind_t::shared_offsets: return "shared_offset";
+    case data_kind_t::stack_offsets: return "stack_offset";
+    case data_kind_t::shared_region_sizes: return "shared_region_size";
     case data_kind_t::values: return "value";
     case data_kind_t::types: return "type";
     }

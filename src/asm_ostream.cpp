@@ -151,7 +151,11 @@ std::ostream& operator<<(std::ostream& os, ValidMapKeyValue const& a) {
 }
 
 std::ostream& operator<<(std::ostream& os, ZeroOffset const& a) {
-    return os << crab::variable_t::reg(crab::data_kind_t::offsets, a.reg.v) << " == 0";
+    return os << crab::variable_t::reg(crab::data_kind_t::ctx_offsets, a.reg.v) << " == 0 and"
+              << crab::variable_t::reg(crab::data_kind_t::map_offsets, a.reg.v) << " == 0 and"
+              << crab::variable_t::reg(crab::data_kind_t::packet_offsets, a.reg.v) << " == 0 and"
+              << crab::variable_t::reg(crab::data_kind_t::shared_offsets, a.reg.v) << " == 0 and"
+              << crab::variable_t::reg(crab::data_kind_t::stack_offsets, a.reg.v) << " == 0";
 }
 
 std::ostream& operator<<(std::ostream& os, Comparable const& a) {

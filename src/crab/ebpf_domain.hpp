@@ -127,6 +127,11 @@ class ebpf_domain_t final {
 
     /// Forget everything we know about the value of a variable.
     void havoc(variable_t v);
+    void havoc_offsets(const Reg& reg);
+
+    std::optional<variable_t> get_type_offset_variable(const Reg& reg) const;
+    void add_extra_invariant(std::map<crab::variable_t, crab::interval_t>& extra_invariants, variable_t v,
+                             ebpf_domain_t& other) const;
 
     void scratch_caller_saved_registers();
     std::optional<uint32_t> get_map_type(const Reg& map_fd_reg) const;
@@ -158,12 +163,19 @@ class ebpf_domain_t final {
 
     template <typename A, typename X, typename Y>
     void do_store_stack(crab::domains::NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_value,
-                        std::optional<variable_t> opt_val_offset,
+                        std::optional<variable_t> opt_val_ctx_offset,
+                        std::optional<variable_t> opt_val_map_offset,
+                        std::optional<variable_t> opt_val_packet_offset,
+                        std::optional<variable_t> opt_val_shared_offset, std::optional<variable_t> opt_val_stack_offset,
                         std::optional<variable_t> opt_val_shared_region_size);
 
     template <typename Type, typename Value>
     void do_mem_store(const Mem& b, Type val_type, Value val_value,
-                      std::optional<variable_t> opt_val_offset,
+                      std::optional<variable_t> opt_val_ctx_offset,
+                      std::optional<variable_t> opt_val_map_offset,
+                      std::optional<variable_t> opt_val_packet_offset,
+                      std::optional<variable_t> opt_val_shared_offset,
+                      std::optional<variable_t> opt_val_stack_offset,
                       std::optional<variable_t> opt_val_shared_region_size);
 
     friend std::ostream& operator<<(std::ostream& o, const ebpf_domain_t& dom);

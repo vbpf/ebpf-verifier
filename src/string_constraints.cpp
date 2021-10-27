@@ -34,8 +34,10 @@ static uint8_t regnum(const string& s) {
 
 static crab::data_kind_t regkind(const string& s) {
     if (s == "type") return crab::data_kind_t::types;
-    if (s == "offset") return crab::data_kind_t::offsets;
-    if (s == "shared_region_size") return crab::data_kind_t::shared_region_size;
+    if (s == "packet_offset") return crab::data_kind_t::packet_offsets;
+    if (s == "shared_offset") return crab::data_kind_t::shared_offsets;
+    if (s == "stack_offset") return crab::data_kind_t::stack_offsets;
+    if (s == "shared_region_size") return crab::data_kind_t::shared_region_sizes;
     if (s == "value") return crab::data_kind_t::values;
     throw std::runtime_error(string() + "Bad kind: " + s);
 }
