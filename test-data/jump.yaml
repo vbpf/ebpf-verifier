@@ -72,8 +72,10 @@ post:
   - r1.packet_offset=8
   - r2.type=stack
   - r2.stack_offset=4
+  - r2.numeric_size=0
   - r10.type=stack
   - r10.stack_offset=512
+  - r10.numeric_size=0
   - s[504...511].type in {packet, stack}
   - s[504...511].packet_offset=8
   - s[504...511].stack_offset=4

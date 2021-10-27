@@ -61,6 +61,7 @@ code:
 post:
   - r10.type=stack
   - r10.stack_offset=512
+  - r10.numeric_size=0
   - s[504...511].type=number
   - s[504...511].value=0
 ---
@@ -77,6 +78,7 @@ post:
   - r1.value=0
   - r10.type=stack
   - r10.stack_offset=512
+  - r10.numeric_size=0
   - s[504...511].type=number
   - s[504...511].value=0
 ---
@@ -94,6 +96,7 @@ post:
   - r1.value=s[504...511].value
   - r10.type=stack
   - r10.stack_offset=512
+  - r10.numeric_size=0
   - s[504...511].type=packet
   - s[504...511].packet_offset=0
 ---
@@ -108,6 +111,7 @@ code:
 post:
   - r10.type=stack
   - r10.stack_offset=512
+  - r10.numeric_size=0
   - s[500...511].type=number
   - s[504...511].value=0
 ---
@@ -125,6 +129,7 @@ post:
   - r1.value=s[504...511].value
   - r10.type=stack
   - r10.stack_offset=512
+  - r10.numeric_size=0
   - s[500...503].type=number
   - s[504...511].type=packet
   - s[504...511].packet_offset=0
@@ -157,10 +162,11 @@ post:
   - r2.type=stack
   - r2.stack_offset=0
   - r1.value=r2.value
+  - r1.numeric_size=r2.numeric_size
 ---
 test-case: assign register shared value
 
-pre: ["r1.type=shared", "r1.shared_offset=0", "r1.shared_region_size=16"]
+pre: ["r1.type=shared", "r1.shared_offset=0", "r1.shared_region_size=16", "r1.numeric_size=16"]
 
 code:
   <start>: |
@@ -170,14 +176,16 @@ post:
   - r1.type=shared
   - r1.shared_offset=0
   - r1.shared_region_size=16
+  - r1.numeric_size=16
   - r2.type=shared
   - r2.shared_offset=0
   - r2.shared_region_size=16
+  - r2.numeric_size=16
   - r1.value=r2.value
 ---
 test-case: assign register combination value
 
-pre: ["r1.type=[-1,0]", "r1.shared_offset=0", "r1.shared_region_size=16", "r1.stack_offset=500"]
+pre: ["r1.type=[-1,0]", "r1.shared_offset=0", "r1.shared_region_size=16", "r1.stack_offset=500", "r1.numeric_size=16"]
 
 code:
   <start>: |
@@ -188,9 +196,11 @@ post:
   - r1.shared_offset=0
   - r1.shared_region_size=16
   - r1.stack_offset=500
+  - r1.numeric_size=16
   - r2.type in {stack, shared}
   - r2.shared_offset=0
   - r2.shared_region_size=16
   - r2.stack_offset=500
+  - r2.numeric_size=16
   - r1.type=r2.type
   - r1.value=r2.value

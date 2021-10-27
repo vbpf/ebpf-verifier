@@ -50,6 +50,9 @@ post: [
     "packet_size-r3.packet_offset<=65530", "packet_size=[0, 65534]",
     "r3.packet_offset-packet_size<=4", "r1.value=r3.value+4",
     "r2.packet_offset-r3.packet_offset<=65530", "r3.packet_offset-r2.packet_offset<=4",
+    "r3.numeric_size-r3.packet_offset<=65526", "r3.numeric_size=[-4, 65530]",
+    "r3.numeric_size=packet_size+4", "r3.numeric_size=r2.packet_offset+4",
+    "r3.packet_offset-r3.numeric_size<=8"
 ]
 messages:
   - "4: Upper bound must be at most packet_size (valid_access(r1.offset, width=8))"
@@ -80,5 +83,8 @@ post: [
     "r3.type=packet", "r3.packet_offset=8", "r3.value=[4106, 2147418120]",
     "packet_size-r3.packet_offset<=65526", "packet_size=[0, 65534]",
     "r3.packet_offset-packet_size<=8", "r1.value=r3.value+8",
-    "r2.packet_offset-r3.packet_offset<=65526", "r3.packet_offset-r2.packet_offset<=8"
+    "r2.packet_offset-r3.packet_offset<=65526", "r3.packet_offset-r2.packet_offset<=8",
+    "r3.numeric_size-r3.packet_offset<=65518", "r3.numeric_size=[-8, 65526]",
+    "r3.numeric_size=packet_size+8", "r3.numeric_size=r2.packet_offset+8",
+    "r3.packet_offset-r3.numeric_size<=16",
 ]
