@@ -147,9 +147,9 @@ class ebpf_domain_t final {
     void check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s);
     void check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s);
     void check_access_packet(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
-                             std::optional<variable_t> region_size);
+                             std::optional<variable_t> shared_region_size);
     void check_access_shared(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
-                             variable_t region_size);
+                             variable_t shared_region_size);
 
     void do_load_stack(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width);
     void do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr_vague, int width);
@@ -159,12 +159,12 @@ class ebpf_domain_t final {
     template <typename A, typename X, typename Y>
     void do_store_stack(crab::domains::NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_value,
                         std::optional<variable_t> opt_val_offset,
-                        std::optional<variable_t> opt_val_region_size);
+                        std::optional<variable_t> opt_val_shared_region_size);
 
     template <typename Type, typename Value>
     void do_mem_store(const Mem& b, Type val_type, Value val_value,
                       std::optional<variable_t> opt_val_offset,
-                      std::optional<variable_t> opt_val_region_size);
+                      std::optional<variable_t> opt_val_shared_region_size);
 
     friend std::ostream& operator<<(std::ostream& o, const ebpf_domain_t& dom);
 
@@ -211,6 +211,4 @@ class ebpf_domain_t final {
     };
 
     TypeDomain type_inv;
-
-    void assign_region_size(const Reg& r, const crab::interval_t& size);
 }; // end ebpf_domain_t

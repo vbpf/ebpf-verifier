@@ -20,7 +20,7 @@ using std::string;
 using std::map;
 
 #define REG R"_(\s*(r\d\d?)\s*)_"
-#define KIND R"_(\s*(type|value|offset|region_size)\s*)_"
+#define KIND R"_(\s*(type|value|offset|shared_region_size)\s*)_"
 #define IMM R"_(\s*\[?([-+]?\d+)\]?\s*)_"
 #define INTERVAL R"_(\s*\[([-+]?\d+),\s*([-+]?\d+)\]?\s*)_"
 #define ARRAY_RANGE R"_(\s*\[([-+]?\d+)\.\.\.\s*([-+]?\d+)\]?\s*)_"
@@ -35,7 +35,7 @@ static uint8_t regnum(const string& s) {
 static crab::data_kind_t regkind(const string& s) {
     if (s == "type") return crab::data_kind_t::types;
     if (s == "offset") return crab::data_kind_t::offsets;
-    if (s == "region_size") return crab::data_kind_t::region_size;
+    if (s == "shared_region_size") return crab::data_kind_t::shared_region_size;
     if (s == "value") return crab::data_kind_t::values;
     throw std::runtime_error(string() + "Bad kind: " + s);
 }

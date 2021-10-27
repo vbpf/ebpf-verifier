@@ -18,7 +18,7 @@ using index_t = uint64_t;
 namespace crab {
 
 // XXX: this is eBPF-specific.
-enum class data_kind_t { types, values, offsets, region_size };
+enum class data_kind_t { types, values, offsets, shared_region_size };
 std::ostream& operator<<(std::ostream& o, const data_kind_t& s);
 
 // Wrapper for typed variables used by the crab abstract domains and linear_constraints.
