@@ -34,6 +34,8 @@ static uint8_t regnum(const string& s) {
 
 static crab::data_kind_t regkind(const string& s) {
     if (s == "type") return crab::data_kind_t::types;
+    if (s == "ctx_offset") return crab::data_kind_t::ctx_offsets;
+    if (s == "map_offset") return crab::data_kind_t::map_offsets;
     if (s == "packet_offset") return crab::data_kind_t::packet_offsets;
     if (s == "shared_offset") return crab::data_kind_t::shared_offsets;
     if (s == "stack_offset") return crab::data_kind_t::stack_offsets;

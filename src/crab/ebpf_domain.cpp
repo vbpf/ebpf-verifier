@@ -226,12 +226,12 @@ void ebpf_domain_t::operator|=(ebpf_domain_t&& other) {
     std::map<crab::variable_t, crab::interval_t> extra_invariants;
     for (int i = R0_RETURN_VALUE; i <= R10_STACK_POINTER; i++) {
         auto reg = reg_pack(i);
-        add_extra_invariant(extra_invariants, reg.shared_region_size, other);
         add_extra_invariant(extra_invariants, reg.ctx_offset, other);
         add_extra_invariant(extra_invariants, reg.map_offset, other);
         add_extra_invariant(extra_invariants, reg.packet_offset, other);
         add_extra_invariant(extra_invariants, reg.shared_offset, other);
         add_extra_invariant(extra_invariants, reg.stack_offset, other);
+        add_extra_invariant(extra_invariants, reg.shared_region_size, other);
     }
 
     // Do a normal join operation on the domain.
@@ -624,13 +624,11 @@ void ebpf_domain_t::operator()(const Un& stmt) {
     case Un::Op::LE32:
     case Un::Op::LE64:
         havoc(dst.value);
-        havoc(dst.stack_offset);
-        havoc(dst.shared_offset);
+        havoc_offsets(stmt.dst);
         break;
     case Un::Op::NEG:
         neg(dst.value);
-        havoc(dst.stack_offset);
-        havoc(dst.shared_offset);
+        havoc_offsets(stmt.dst);
         break;
     }
 }
@@ -669,7 +667,7 @@ void ebpf_domain_t::operator()(const ValidSize& s) {
 // In the future, it would be cleaner to use a set rather than an interval
 // for map fds.
 bool ebpf_domain_t::get_map_fd_range(const Reg& map_fd_reg, int* start_fd, int* end_fd) const {
-    const crab::interval_t& map_fd_interval = m_inv[get_type_offset_variable(map_fd_reg).value()];
+    const crab::interval_t& map_fd_interval = m_inv[reg_pack(map_fd_reg).map_offset];
     auto lb = map_fd_interval.lb().number();
     auto ub = map_fd_interval.ub().number();
     if (!lb || !lb->fits_sint() || !ub || !ub->fits_sint())
@@ -839,7 +837,6 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
     bool is_comparison_check = s.width == (Value)Imm{0};
 
     auto reg = reg_pack(s.reg);
-
     std::string m = std::string(" (") + to_string(s) + ")";
     // join_over_types instead of simple iteration is only needed for assume-assert
     m_inv = type_inv.join_over_types(m_inv, s.reg, [&](NumAbsDomain& inv, type_encoding_t type) {
@@ -914,7 +911,7 @@ void ebpf_domain_t::operator()(const Assert& stmt) {
 void ebpf_domain_t::operator()(const Packet& a) {
     auto reg = reg_pack(R0_RETURN_VALUE);
     Reg r0_reg{(uint8_t)R0_RETURN_VALUE};
-    type_inv.assign_type(m_inv, Reg{(uint8_t)R0_RETURN_VALUE}, T_NUM);
+    type_inv.assign_type(m_inv, r0_reg, T_NUM);
     havoc_offsets(r0_reg);
     havoc(reg.value);
     scratch_caller_saved_registers();
@@ -922,20 +919,29 @@ void ebpf_domain_t::operator()(const Packet& a) {
 
 void ebpf_domain_t::do_load_stack(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width) {
     type_inv.assign_type(inv, target_reg, stack.load(inv, data_kind_t::types, addr, width));
+    havoc_offsets(target_reg);
 
     const reg_pack_t& target = reg_pack(target_reg);
     if (width == 1 || width == 2 || width == 4 || width == 8) {
         inv.assign(target.value, stack.load(inv,  data_kind_t::values, addr, width));
-        inv.assign(target.ctx_offset, stack.load(inv, data_kind_t::ctx_offsets, addr, width));
-        inv.assign(target.map_offset, stack.load(inv, data_kind_t::map_offsets, addr, width));
-        inv.assign(target.packet_offset, stack.load(inv, data_kind_t::packet_offsets, addr, width));
-        inv.assign(target.shared_offset, stack.load(inv, data_kind_t::shared_offsets, addr, width));
-        inv.assign(target.stack_offset, stack.load(inv, data_kind_t::stack_offsets, addr, width));
+        havoc_offsets(target_reg);
+        int type = type_inv.get_type(m_inv, target.type);
+        switch (type) {
+        case T_CTX: inv.assign(target.ctx_offset, stack.load(inv, data_kind_t::ctx_offsets, addr, width)); break;
+        case T_MAP:
+        case T_MAP_PROGRAMS: inv.assign(target.map_offset, stack.load(inv, data_kind_t::map_offsets, addr, width)); break;
+        case T_PACKET: inv.assign(target.packet_offset, stack.load(inv, data_kind_t::packet_offsets, addr, width)); break;
+        case T_SHARED:
+            inv.assign(target.shared_offset, stack.load(inv, data_kind_t::shared_offsets, addr, width));
+            inv.assign(target.shared_region_size, stack.load(inv, data_kind_t::shared_region_sizes, addr, width));
+            break;
+        case T_STACK: inv.assign(target.stack_offset, stack.load(inv, data_kind_t::stack_offsets, addr, width)); break;
+        default: break;
+        }
     } else {
         inv -= target.value;
-        havoc_offsets(target_reg);
+        havoc(target.shared_region_size);
     }
-    havoc(target.shared_region_size);
 }
 
 void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr_vague, int width) {
@@ -977,7 +983,7 @@ void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const 
     } else if (addr == desc->meta) {
         inv.assign(target.packet_offset, variable_t::meta_offset());
     } else {
-        inv -= target.packet_offset;
+        havoc_offsets(target_reg);
         if (may_touch_ptr)
             type_inv.havoc_type(inv, target_reg);
         else
@@ -1016,7 +1022,7 @@ void ebpf_domain_t::do_load(const Mem& b, const Reg& target_reg) {
     int offset = b.access.offset;
 
     if (b.access.basereg.v == R10_STACK_POINTER) {
-        linear_expression_t addr = get_type_offset_variable(b.access.basereg).value() + (number_t)offset;
+        linear_expression_t addr = mem_reg.stack_offset + (number_t)offset;
         do_load_stack(m_inv, target_reg, addr, width);
         return;
     }
@@ -1056,8 +1062,9 @@ void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, 
                                    std::optional<variable_t> opt_val_ctx_offset,
                                    std::optional<variable_t> opt_val_map_offset,
                                    std::optional<variable_t> opt_val_packet_offset,
-                                   std::optional<variable_t> opt_val_shared_offset, std::optional<variable_t> opt_val_stack_offset,
-    std::optional<variable_t> opt_val_shared_region_size) {
+                                   std::optional<variable_t> opt_val_shared_offset,
+                                   std::optional<variable_t> opt_val_stack_offset,
+                                   std::optional<variable_t> opt_val_shared_region_size) {
     type_inv.assign_type(inv, stack.store_type(inv, addr, width, val_type), val_type);
     if (width == 8) {
         inv.assign(stack.store(inv, data_kind_t::values, addr, width, val_value), val_value);
@@ -1120,7 +1127,7 @@ void ebpf_domain_t::operator()(const Mem& b) {
             auto data = std::get<Reg>(b.value);
             auto data_reg = reg_pack(data);
             do_mem_store(b, data, data_reg.value, data_reg.ctx_offset, data_reg.map_offset,
-                data_reg.packet_offset, data_reg.shared_offset, data_reg.stack_offset,
+                         data_reg.packet_offset, data_reg.shared_offset, data_reg.stack_offset,
                          data_reg.shared_region_size);
         }
     } else {
@@ -1145,8 +1152,7 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, Value val_value,
     if (b.access.basereg.v == R10_STACK_POINTER) {
         int addr = EBPF_STACK_SIZE + offset;
         do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_ctx_offset, opt_val_map_offset,
-                       opt_val_packet_offset,
-                       opt_val_shared_offset, opt_val_stack_offset, opt_val_shared_region_size);
+                       opt_val_packet_offset, opt_val_shared_offset, opt_val_stack_offset, opt_val_shared_region_size);
         return;
     }
     linear_expression_t addr = linear_expression_t(get_type_offset_variable(b.access.basereg).value()) + offset;
@@ -1428,8 +1434,10 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                     havoc(dst.region_size);
                 } else {
                     sub_overflow(dst.value, src.value);
-                    // No harm comes from subtracting the value from an offset of a number, which is TOP.
                     sub(get_type_offset_variable(bin.dst).value(), src.value);
+                    auto dst_offset = get_type_offset_variable(bin.dst);
+                    if (dst_offset.has_value())
+                        sub(dst_offset.value(), src.value);
                 }
             }
             break;
@@ -1474,6 +1482,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             break;
         case Bin::Op::MOV: 
             assign(dst.value, src.value);
+            havoc_offsets(bin.dst);
+            havoc(dst.shared_region_size);
             {
                 int type = type_inv.get_type(m_inv, src.type);
                 switch (type) {
@@ -1486,7 +1496,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                     assign(dst.shared_offset, src.shared_offset);
                     break;
                 case T_STACK: assign(dst.stack_offset, src.stack_offset); break;
-                default: havoc(dst.shared_region_size); break;
+                default: break;
                 }
             }
             type_inv.assign_type(m_inv, bin.dst, std::get<Reg>(bin.v));
