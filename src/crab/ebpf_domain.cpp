@@ -218,6 +218,9 @@ void ebpf_domain_t::operator|=(ebpf_domain_t&& other) {
         *this = other;
         return;
     }
+    if (other.is_bottom()) {
+        return;
+    }
 
     // Some variables are special in that it is ok for them to not exist
     // in one of the two domains and we want to preserve the value in
