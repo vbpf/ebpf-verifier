@@ -1388,8 +1388,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             apply(inv, crab::arith_binop_t::ADD, get_type_offset_variable(bin.dst, inv).value(), dst.value,
                                   get_type_offset_variable(src_reg, inv).value(),
                                   false);
-
-                        inv.assign(dst.shared_region_size, src.shared_region_size);
+                        if (type_inv.get_type(m_inv, src.type) == T_SHARED)
+                            inv.assign(dst.shared_region_size, src.shared_region_size);
                     },
                     [&](NumAbsDomain& inv) {
                         // ptr + num

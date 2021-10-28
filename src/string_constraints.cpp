@@ -20,7 +20,7 @@ using std::string;
 using std::map;
 
 #define REG R"_(\s*(r\d\d?)\s*)_"
-#define KIND R"_(\s*(type|value|offset|shared_region_size)\s*)_"
+#define KIND R"_(\s*(type|value|ctx_offset|map_offset|packet_offset|shared_offset|stack_offset|shared_region_size)\s*)_"
 #define IMM R"_(\s*\[?([-+]?\d+)\]?\s*)_"
 #define INTERVAL R"_(\s*\[([-+]?\d+),\s*([-+]?\d+)\]?\s*)_"
 #define ARRAY_RANGE R"_(\s*\[([-+]?\d+)\.\.\.\s*([-+]?\d+)\]?\s*)_"
