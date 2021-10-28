@@ -69,7 +69,7 @@ class ebpf_domain_t final {
     void operator()(const ValidMapKeyValue&);
     void operator()(const ValidSize&);
     void operator()(const ValidStore&);
-    void operator()(const ZeroOffset&);
+    void operator()(const ZeroCtxOffset&);
 
   private:
     // private generic domain functions
@@ -129,6 +129,7 @@ class ebpf_domain_t final {
     void havoc(variable_t v);
     void havoc_offsets(const Reg& reg);
 
+    std::optional<variable_t> get_type_offset_variable(const Reg& reg, const NumAbsDomain& inv) const;
     std::optional<variable_t> get_type_offset_variable(const Reg& reg) const;
     void add_extra_invariant(std::map<crab::variable_t, crab::interval_t>& extra_invariants, variable_t v,
                              ebpf_domain_t& other) const;
@@ -166,7 +167,8 @@ class ebpf_domain_t final {
                         std::optional<variable_t> opt_val_ctx_offset,
                         std::optional<variable_t> opt_val_map_offset,
                         std::optional<variable_t> opt_val_packet_offset,
-                        std::optional<variable_t> opt_val_shared_offset, std::optional<variable_t> opt_val_stack_offset,
+                        std::optional<variable_t> opt_val_shared_offset,
+                        std::optional<variable_t> opt_val_stack_offset,
                         std::optional<variable_t> opt_val_shared_region_size);
 
     template <typename Type, typename Value>

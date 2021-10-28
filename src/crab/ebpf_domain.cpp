@@ -141,17 +141,22 @@ static bool is_unsigned_cmp(Condition::Op op) {
     return {};
 }
 
-std::optional<variable_t> ebpf_domain_t::get_type_offset_variable(const Reg& reg) const {
+std::optional<variable_t> ebpf_domain_t::get_type_offset_variable(const Reg& reg, const NumAbsDomain& inv) const {
     reg_pack_t r = reg_pack(reg);
-    int type = type_inv.get_type(m_inv, r.type);
+    int type = type_inv.get_type(inv, r.type);
     switch (type) {
     case T_CTX: return r.ctx_offset;
-    case T_MAP: return r.map_offset;
+    case T_MAP:
+    case T_MAP_PROGRAMS:  return r.map_offset;
     case T_PACKET: return r.packet_offset;
     case T_SHARED: return r.shared_offset;
     case T_STACK: return r.stack_offset;
     default: return {};
     }
+}
+
+std::optional<variable_t> ebpf_domain_t::get_type_offset_variable(const Reg& reg) const {
+    return get_type_offset_variable(reg, m_inv);
 }
 
 void ebpf_domain_t::set_require_check(std::function<check_require_func_t> f) { check_require = std::move(f); }
@@ -196,6 +201,11 @@ void ebpf_domain_t::add_extra_invariant(std::map<crab::variable_t, crab::interva
                                         ebpf_domain_t& other) const {
     crab::interval_t i1 = m_inv.eval_interval(v);
     crab::interval_t i2 = other.m_inv.eval_interval(v);
+
+    // This code currently makes a simplifying assumption that a type-specific
+    // register variable cannot be top if the associated type is permitted for the
+    // register.  If it can, then the code below should be updated to instead test
+    // whether the type is permitted.
     if (!i1.is_top() && i2.is_top()) {
         extra_invariants.emplace(v, i1);
     } else if (!i2.is_top() && i1.is_top()) {
@@ -890,10 +900,10 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
     });
 }
 
-void ebpf_domain_t::operator()(const ZeroOffset& s) {
+void ebpf_domain_t::operator()(const ZeroCtxOffset& s) {
     using namespace crab::dsl_syntax;
     auto reg = reg_pack(s.reg);
-    require(m_inv, reg.shared_offset == 0, to_string(s));
+    require(m_inv, reg.ctx_offset == 0, to_string(s));
 }
 
 void ebpf_domain_t::operator()(const Assert& stmt) {
@@ -939,7 +949,7 @@ void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const 
     inv -= target.value;
 
     if (desc->end < 0) {
-        inv -= get_type_offset_variable(target_reg).value();
+        havoc_offsets(target_reg);
         type_inv.assign_type(inv, target_reg, T_NUM);
         return;
     }
@@ -950,7 +960,7 @@ void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const 
     bool may_touch_ptr = interval[desc->data] || interval[desc->meta] || interval[desc->end];
 
     if (!maybe_addr) {
-        inv -= get_type_offset_variable(target_reg).value();
+        havoc_offsets(target_reg);
         if (may_touch_ptr)
             type_inv.havoc_type(inv, target_reg);
         else
@@ -961,13 +971,13 @@ void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const 
     number_t addr = *maybe_addr;
 
     if (addr == desc->data) {
-        inv.assign(get_type_offset_variable(target_reg), 0);
+        inv.assign(target.packet_offset, 0);
     } else if (addr == desc->end) {
-        inv.assign(get_type_offset_variable(target_reg), variable_t::packet_size());
+        inv.assign(target.packet_offset, variable_t::packet_size());
     } else if (addr == desc->meta) {
-        inv.assign(get_type_offset_variable(target_reg), variable_t::meta_offset());
+        inv.assign(target.packet_offset, variable_t::meta_offset());
     } else {
-        inv -= get_type_offset_variable(target_reg).value();
+        inv -= target.packet_offset;
         if (may_touch_ptr)
             type_inv.havoc_type(inv, target_reg);
         else
@@ -1222,16 +1232,14 @@ void ebpf_domain_t::operator()(const Call& call) {
                     }
                 } else {
                     assign_valid_ptr(r0_reg, true);
-                    auto v = get_type_offset_variable(r0_reg);
-                    if (v.has_value())
-                        assign(v.value(), 0);
-                    m_inv.set(reg_pack(r0_reg).shared_region_size, get_map_value_size(*maybe_fd_reg));
+                    assign(r0_pack.shared_offset, 0);
+                    m_inv.set(r0_pack.shared_region_size, get_map_value_size(*maybe_fd_reg));
                     type_inv.assign_type(m_inv, r0_reg, T_SHARED);
                 }
             }
         }
         assign_valid_ptr(r0_reg, true);
-        assign(get_type_offset_variable(r0_reg).value(), 0);
+        assign(r0_pack.shared_offset, 0);
         type_inv.assign_type(m_inv, r0_reg, T_SHARED);
     } else {
         havoc(r0_pack.value);
@@ -1255,7 +1263,7 @@ void ebpf_domain_t::do_load_mapfd(const Reg& dst_reg, int mapfd, bool maybe_null
         type_inv.assign_type(m_inv, dst_reg, T_MAP);
     }
     const reg_pack_t& dst = reg_pack(dst_reg);
-    assign(get_type_offset_variable(dst_reg).value(), mapfd);
+    assign(dst.map_offset, mapfd);
     assign_valid_ptr(dst_reg, maybe_null);
 }
 
@@ -1283,6 +1291,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
     if (std::holds_alternative<Imm>(bin.v)) {
         // dst += K
         int imm = static_cast<int>(std::get<Imm>(bin.v).v);
+        auto offset = get_type_offset_variable(bin.dst);
         switch (bin.op) {
         case Bin::Op::MOV:
             assign(dst.value, imm);
@@ -1293,13 +1302,15 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             if (imm == 0)
                 return;
             add_overflow(dst.value, imm);
-            add(get_type_offset_variable(bin.dst).value(), imm);
+            if (offset.has_value())
+                add(offset.value(), imm);
             break;
         case Bin::Op::SUB:
             if (imm == 0)
                 return;
             sub_overflow(dst.value, imm);
-            sub(get_type_offset_variable(bin.dst).value(), imm);
+            if (offset.has_value())
+                sub(offset.value(), imm);
             break;
         case Bin::Op::MUL:
             mul(dst.value, imm);
@@ -1365,16 +1376,21 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                     type_is_number(bin.dst),
                     [&](NumAbsDomain& inv) {
                         // num + ptr
-                        apply(inv, crab::arith_binop_t::ADD, get_type_offset_variable(bin.dst).value(), dst.value,
-                              get_type_offset_variable(src_reg).value(), false);
-                        type_inv.assign_type(inv, bin.dst, std::get<Reg>(bin.v));
+                        type_inv.assign_type(inv, bin.dst, src_reg);
+                        auto dst_offset = get_type_offset_variable(bin.dst, inv);
+                        if (dst_offset.has_value())
+                            apply(inv, crab::arith_binop_t::ADD, get_type_offset_variable(bin.dst, inv).value(), dst.value,
+                                  get_type_offset_variable(src_reg, inv).value(),
+                                  false);
+
                         inv.assign(dst.shared_region_size, src.shared_region_size);
                     },
                     [&](NumAbsDomain& inv) {
                         // ptr + num
-                        apply(inv, crab::arith_binop_t::ADD, get_type_offset_variable(bin.dst).value(),
-                              get_type_offset_variable(bin.dst).value(), src.value,
-                              false);
+                        auto dst_offset = get_type_offset_variable(bin.dst, inv);
+                        if (dst_offset.has_value())
+                            apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst_offset.value(), src.value,
+                                  false);
                     }
                 );
                 // careful: change dst.value only after dealing with offset
@@ -1392,10 +1408,12 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                     },
                     [&](NumAbsDomain& inv) {
                         // Assertions should make sure we only perform this on non-shared pointers
-                        apply(inv, crab::arith_binop_t::SUB, dst.value, get_type_offset_variable(bin.dst).value(),
-                              get_type_offset_variable(src_reg).value(),
-                              true);
-                        inv -= get_type_offset_variable(bin.dst).value();
+                        auto dst_offset = get_type_offset_variable(bin.dst, inv);
+                        if (dst_offset.has_value()) {
+                            apply(inv, crab::arith_binop_t::SUB, dst.value, dst_offset.value(),
+                                  get_type_offset_variable(src_reg).value(), true);
+                            inv -= dst_offset.value();
+                        }
                         inv -= dst.shared_region_size;
                         type_inv.assign_type(inv, bin.dst, T_NUM);
                     }
@@ -1459,6 +1477,9 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             {
                 int type = type_inv.get_type(m_inv, src.type);
                 switch (type) {
+                case T_CTX: assign(dst.ctx_offset, src.ctx_offset); break;
+                case T_MAP:
+                case T_MAP_PROGRAMS: assign(dst.map_offset, src.map_offset); break;
                 case T_PACKET: assign(dst.packet_offset, src.packet_offset); break;
                 case T_SHARED:
                     assign(dst.shared_region_size, src.shared_region_size);
