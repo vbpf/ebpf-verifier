@@ -955,6 +955,7 @@ void ebpf_domain_t::do_load_stack(NumAbsDomain& inv, const Reg& target_reg, cons
     if (width == 1 || width == 2 || width == 4 || width == 8) {
         inv.assign(target.value, stack.load(inv,  data_kind_t::values, addr, width));
         havoc_offsets(target_reg);
+        havoc(target.shared_region_size);
         int type = type_inv.get_type(m_inv, target.type);
         switch (type) {
         case T_CTX: inv.assign(target.ctx_offset, stack.load(inv, data_kind_t::ctx_offsets, addr, width)); break;
