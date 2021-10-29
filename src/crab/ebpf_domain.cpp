@@ -141,18 +141,21 @@ static bool is_unsigned_cmp(Condition::Op op) {
     return {};
 }
 
-std::optional<variable_t> ebpf_domain_t::get_type_offset_variable(const Reg& reg, const NumAbsDomain& inv) const {
+std::optional<variable_t> ebpf_domain_t::get_type_offset_variable(const Reg& reg, int type) {
     reg_pack_t r = reg_pack(reg);
-    int type = type_inv.get_type(inv, r.type);
     switch (type) {
     case T_CTX: return r.ctx_offset;
     case T_MAP:
-    case T_MAP_PROGRAMS:  return r.map_offset;
+    case T_MAP_PROGRAMS: return r.map_offset;
     case T_PACKET: return r.packet_offset;
     case T_SHARED: return r.shared_offset;
     case T_STACK: return r.stack_offset;
     default: return {};
     }
+}
+
+std::optional<variable_t> ebpf_domain_t::get_type_offset_variable(const Reg& reg, const NumAbsDomain& inv) const {
+    return get_type_offset_variable(reg, type_inv.get_type(inv, reg_pack(reg).type));
 }
 
 std::optional<variable_t> ebpf_domain_t::get_type_offset_variable(const Reg& reg) const {
@@ -196,21 +199,32 @@ bool ebpf_domain_t::operator==(const ebpf_domain_t& other) const {
     return stack == other.stack && m_inv <= other.m_inv && other.m_inv <= m_inv;
 }
 
+// Check whether a given type value is within the range of a given type variable's
+// value.
+bool ebpf_domain_t::variable_has_type(variable_t type_variable, int type) const {
+    crab::interval_t interval = m_inv.eval_interval(type_variable);
+    if (interval.is_top())
+        return true;
+    if (interval.is_bottom())
+        return false;
+    return (interval.lb().number().value_or(INT_MIN) <= type) &&
+           (interval.ub().number().value_or(INT_MAX) >= type);
+}
+
 void ebpf_domain_t::add_extra_invariant(std::map<crab::variable_t, crab::interval_t>& extra_invariants,
+                                        variable_t type_variable,
+                                        int type,
                                         variable_t v,
                                         ebpf_domain_t& other) const {
-    crab::interval_t i1 = m_inv.eval_interval(v);
-    crab::interval_t i2 = other.m_inv.eval_interval(v);
+    bool has_type = variable_has_type(type_variable, type);
+    bool other_has_type = other.variable_has_type(type_variable, type);
 
-    // This code currently makes a simplifying assumption that a type-specific
-    // register variable cannot be top if the associated type is permitted for the
-    // register.  If it can, then the code below should be updated to instead test
-    // whether the type is permitted.
-    if (!i1.is_top() && i2.is_top()) {
-        extra_invariants.emplace(v, i1);
-    } else if (!i2.is_top() && i1.is_top()) {
-        extra_invariants.emplace(v, i2);
-    }
+    // If type is contained in exactly one of type1 or type2,
+    // we need to remember the value.
+    if (has_type && !other_has_type)
+        extra_invariants.emplace(v, m_inv.eval_interval(v));
+    else if (!has_type && other_has_type)
+        extra_invariants.emplace(v, other.m_inv.eval_interval(v));
 }
 
 void ebpf_domain_t::operator|=(ebpf_domain_t&& other) {
@@ -222,19 +236,32 @@ void ebpf_domain_t::operator|=(ebpf_domain_t&& other) {
         return;
     }
 
-    // Some variables are special in that it is ok for them to not exist
-    // in one of the two domains and we want to preserve the value in
-    // the merged result, where the normal join operation would remove
-    // them from the result.  Handle these now.
+    // Some variables are type-specific.  Type-specific variables
+    // for a register can exist in the domain whenever the associated
+    // type value is present in the register's types interval (and the
+    // value is not Top), and are absent otherwise.
+    //
+    // If a type value is legal in exactly one of the two domains, a
+    // normal join operation would remove any type-specific variables
+    // from the resulting merged domain since absence from the other
+    // would be interpreted to mean Top.
+    //
+    // However, when the type value is not present in one domain, any
+    // any type-specific variables for that type are instead to be
+    // interpreted as Bottom, so we want to preserve the values of any
+    // type-specific variables from the other domain where the type
+    // value is legal.
+
     std::map<crab::variable_t, crab::interval_t> extra_invariants;
     for (int i = R0_RETURN_VALUE; i <= R10_STACK_POINTER; i++) {
-        auto reg = reg_pack(i);
-        add_extra_invariant(extra_invariants, reg.ctx_offset, other);
-        add_extra_invariant(extra_invariants, reg.map_offset, other);
-        add_extra_invariant(extra_invariants, reg.packet_offset, other);
-        add_extra_invariant(extra_invariants, reg.shared_offset, other);
-        add_extra_invariant(extra_invariants, reg.stack_offset, other);
-        add_extra_invariant(extra_invariants, reg.shared_region_size, other);
+        auto reg_packed = reg_pack(i);
+        add_extra_invariant(extra_invariants, reg_packed.type, T_CTX, reg_packed.ctx_offset, other);
+        add_extra_invariant(extra_invariants, reg_packed.type, T_MAP, reg_packed.map_offset, other);
+        add_extra_invariant(extra_invariants, reg_packed.type, T_MAP_PROGRAMS, reg_packed.map_offset, other);
+        add_extra_invariant(extra_invariants, reg_packed.type, T_PACKET, reg_packed.packet_offset, other);
+        add_extra_invariant(extra_invariants, reg_packed.type, T_SHARED, reg_packed.shared_offset, other);
+        add_extra_invariant(extra_invariants, reg_packed.type, T_STACK, reg_packed.stack_offset, other);
+        add_extra_invariant(extra_invariants, reg_packed.type, T_SHARED, reg_packed.shared_region_size, other);
     }
 
     // Do a normal join operation on the domain.
