@@ -12,13 +12,13 @@ std::ostream& operator<<(std::ostream& o, const bitset_domain_t& b) {
         if (!first)
             o << ", ";
         first = false;
-        o << "[" << i;
+        o << "[" << EBPF_STACK_SIZE + i;
         int j = i + 1;
         for (; j < 0; j++)
             if (b.non_numerical_bytes[EBPF_STACK_SIZE + j])
                 break;
         if (j > i + 1)
-            o << "..." << j - 1;
+            o << "..." << EBPF_STACK_SIZE + j - 1;
         o << "]";
         i = j;
     }

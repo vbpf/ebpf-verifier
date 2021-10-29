@@ -65,7 +65,7 @@ static std::string mk_scalar_name(data_kind_t kind, int o, int size) {
 }
 
 variable_t variable_t::cell_var(data_kind_t array, index_t offset, unsigned size) {
-    return make(mk_scalar_name(array, - (512 - (int)offset), (int)size));
+    return make(mk_scalar_name(array, (int)offset, (int)size));
 }
 
 variable_t variable_t::meta_offset() { return make("meta_offset"); }
