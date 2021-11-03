@@ -205,8 +205,6 @@ bool ebpf_domain_t::variable_has_type(variable_t type_variable, int type) const 
     crab::interval_t interval = m_inv.eval_interval(type_variable);
     if (interval.is_top())
         return true;
-    if (interval.is_bottom())
-        return false;
     return (interval.lb().number().value_or(INT_MIN) <= type) &&
            (interval.ub().number().value_or(INT_MAX) >= type);
 }
@@ -954,7 +952,6 @@ void ebpf_domain_t::do_load_stack(NumAbsDomain& inv, const Reg& target_reg, cons
     const reg_pack_t& target = reg_pack(target_reg);
     if (width == 1 || width == 2 || width == 4 || width == 8) {
         inv.assign(target.value, stack.load(inv,  data_kind_t::values, addr, width));
-        havoc_offsets(target_reg);
         havoc(target.shared_region_size);
         int type = type_inv.get_type(m_inv, target.type);
         switch (type) {
