@@ -68,7 +68,7 @@ static checks_db generate_report(cfg_t& cfg,
             if (inv.is_bottom())
                 return true;
             if (cst.is_contradiction()) {
-                m_db.add_warning(label, std::string("Contradiction: ") + s);
+                m_db.add_warning(label, s);
                 return false;
             }
 
@@ -80,7 +80,7 @@ static checks_db generate_report(cfg_t& cfg,
                 m_db.add_warning(label, s);
                 return false;
             } else {
-                m_db.add_warning(label, std::string("assertion failed: ") + s);
+                m_db.add_warning(label, s);
                 return false;
             }
         });
