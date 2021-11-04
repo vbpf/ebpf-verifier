@@ -1,0 +1,94 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+---
+test-case: spectre v1 branch succeeds
+
+pre: [
+    "r0.type=number",
+    "r2.type=shared", "r2.offset=0", "r2.value=[4098, 2147418112]", "r2.region_size=32",
+    "r3.type=shared", "r3.offset=0", "r3.value=[4098, 2147418112]", "r3.region_size=8",
+    "r4.type=shared", "r4.offset=0", "r4.value=[4098, 2147418112]", "r4.region_size=8",
+]
+
+code:
+  <start>: |
+    r1 = *(u64 *)(r2 + 0)
+    if r1 > 16 goto <end>
+    r2 += r1
+    r2 = *(u64 *)(r2 + 0)
+    r2 &= 1
+    if r2 != 0 goto <B>
+    r0 = *(u64 *)(r3 + 0)
+    goto <end>
+  <B>: |
+    r0 = *(u64 *)(r4 + 0)
+  <end>: |
+    exit
+
+post:
+  - r2.region_size=32
+  - r2.type in {number, ctx, packet, stack, shared}
+  - r2.type-r1.value<=-4
+  - r1.type=number
+  - r1.value=[0, +oo]
+  - r3.offset=0
+  - r3.region_size=8
+  - r3.type=shared
+  - r3.value=[4098, 2147418112]
+  - r4.offset=0
+  - r4.region_size=8
+  - r4.type=shared
+  - r4.value=[4098, 2147418112]
+  - r2.type-r2.value<=-4
+  - r2.value-r1.value<=2147418095
+  - r2.value-r2.type<=2147418112
+  - r2.value=[0, 2147418112]
+  - r0.type=number
+
+---
+test-case: type confusion fails
+
+pre: [
+    "r0.type=shared", "r0.offset=0", "r0.value=[4098, 2147418112]", "r0.region_size=16",
+    "r6.type=stack", "r6.offset>=0", "r6.value=[4098, 2147418112]",
+    "r9.type=number"
+]
+
+code:
+  <start>: |
+    r0 = *(u64 *)(r0 + 0)
+  <A>: |
+    if r0 != 0 goto <B>
+    r6 = r9
+  <B>: |
+    if r0 != 1 goto <D>
+    r9 = *(u8*)(r6 + 0)
+  <C>: |
+    r9 &= 1
+    r9 *= 8
+    r2 = r10
+    r2 -= r9
+    r3 = *(u8*)(r2 - 8)
+  <D>: |
+    exit
+
+post:
+  - r0.region_size=16
+  - r0.type=number
+  - r6.type in {number, ctx, packet, stack}
+  - r9.type=number
+
+messages:
+  - "4: Only pointers can be dereferenced"
+  - "4: r6.type in {ctx, stack, packet, shared}"
+  - "4: Lower bound must be at least 0 (valid_access(r6.offset, width=1))"
+  - "4: Lower bound must be at least meta_offset (valid_access(r6.offset, width=1))"
+  - "4: Upper bound must be at most 0 (valid_access(r6.offset, width=1))"
+  - "4: Upper bound must be at most EBPF_STACK_SIZE (valid_access(r6.offset, width=1)), make sure to bounds check any pointer access"
+  - "4: Upper bound must be at most packet_size (valid_access(r6.offset, width=1))"
+  - "5: r9.type == number"
+  - "6: r9.type == number"
+  - "8: r2.type in {number, ctx, stack, packet, shared}"
+  - "8: r9.type == r2.type"
+  - "9: Code is unreachable after 9"
+  - "9: r2.type in {ctx, stack, packet, shared}"

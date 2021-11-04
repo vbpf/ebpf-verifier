@@ -102,6 +102,15 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<string>
             variable_t s = variable_t::reg(regkind(m[4]), regnum(m[3]));
             long diff = number(m[5]);
             res.push_back(d - s <= number_t(diff));
+        } else if (regex_match(cst_text, m, regex(REG DOT KIND "-" REG DOT KIND ">=" IMM))) {
+            variable_t d = variable_t::reg(regkind(m[2]), regnum(m[1]));
+            variable_t s = variable_t::reg(regkind(m[4]), regnum(m[3]));
+            long diff = number(m[5]);
+            res.push_back(d - s >= number_t(diff));
+        } else if (regex_match(cst_text, m, regex(REG DOT KIND ">=" IMM))) {
+            variable_t d = variable_t::reg(regkind(m[2]), regnum(m[1]));
+            long diff = number(m[3]);
+            res.push_back(d >= number_t(diff));
         } else {
             throw std::runtime_error(string("Unknown constraint: ") + cst_text);
         }
