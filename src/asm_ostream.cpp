@@ -124,7 +124,7 @@ std::ostream& operator<<(std::ostream& os, ValidStore const& a) {
 
 std::ostream& operator<<(std::ostream& os, ValidAccess const& a) {
     if (a.or_null)
-        os << a.reg << ".type == number and " << a.reg << ".value == 0";
+        os << "(" << a.reg << ".type == number and " << a.reg << ".value == 0) or ";
     os << "valid_access(" << a.reg << ".offset";
     if (a.offset > 0)
         os << "+" << a.offset;
