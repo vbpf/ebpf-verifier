@@ -201,39 +201,32 @@ bool ebpf_domain_t::operator==(const ebpf_domain_t& other) const {
 
 // Check whether a given type value is within the range of a given type variable's
 // value.
-bool ebpf_domain_t::variable_has_type(variable_t type_variable, int type) const {
-    crab::interval_t interval = m_inv.eval_interval(type_variable);
+bool ebpf_domain_t::variable_has_type(const NumAbsDomain& inv, variable_t type_variable, type_encoding_t type) {
+    crab::interval_t interval = inv.eval_interval(type_variable);
     if (interval.is_top())
         return true;
     return (interval.lb().number().value_or(INT_MIN) <= type) &&
            (interval.ub().number().value_or(INT_MAX) >= type);
 }
 
-void ebpf_domain_t::add_extra_invariant(std::map<crab::variable_t, crab::interval_t>& extra_invariants,
+void ebpf_domain_t::add_extra_invariant(NumAbsDomain& dst,
+                                        std::map<crab::variable_t, crab::interval_t>& extra_invariants,
                                         variable_t type_variable,
-                                        int type,
+                                        type_encoding_t type,
                                         variable_t v,
-                                        ebpf_domain_t& other) const {
-    bool has_type = variable_has_type(type_variable, type);
-    bool other_has_type = other.variable_has_type(type_variable, type);
+                                        const NumAbsDomain& src) {
+    bool dst_has_type = variable_has_type(dst, type_variable, type);
+    bool src_has_type = variable_has_type(src, type_variable, type);
 
-    // If type is contained in exactly one of type1 or type2,
+    // If type is contained in exactly one of dst or src,
     // we need to remember the value.
-    if (has_type && !other_has_type)
-        extra_invariants.emplace(v, m_inv.eval_interval(v));
-    else if (!has_type && other_has_type)
-        extra_invariants.emplace(v, other.m_inv.eval_interval(v));
+    if (dst_has_type && !src_has_type)
+        extra_invariants.emplace(v, dst.eval_interval(v));
+    else if (!dst_has_type && src_has_type)
+        extra_invariants.emplace(v, src.eval_interval(v));
 }
 
-void ebpf_domain_t::operator|=(ebpf_domain_t&& other) {
-    if (is_bottom()) {
-        *this = other;
-        return;
-    }
-    if (other.is_bottom()) {
-        return;
-    }
-
+void ebpf_domain_t::join_inv(NumAbsDomain& dst, NumAbsDomain& src) {
     // Some variables are type-specific.  Type-specific variables
     // for a register can exist in the domain whenever the associated
     // type value is present in the register's types interval (and the
@@ -251,24 +244,38 @@ void ebpf_domain_t::operator|=(ebpf_domain_t&& other) {
     // value is legal.
 
     std::map<crab::variable_t, crab::interval_t> extra_invariants;
-    for (int i = R0_RETURN_VALUE; i <= R10_STACK_POINTER; i++) {
-        auto reg_packed = reg_pack(i);
-        add_extra_invariant(extra_invariants, reg_packed.type, T_CTX, reg_packed.ctx_offset, other);
-        add_extra_invariant(extra_invariants, reg_packed.type, T_MAP, reg_packed.map_offset, other);
-        add_extra_invariant(extra_invariants, reg_packed.type, T_MAP_PROGRAMS, reg_packed.map_offset, other);
-        add_extra_invariant(extra_invariants, reg_packed.type, T_PACKET, reg_packed.packet_offset, other);
-        add_extra_invariant(extra_invariants, reg_packed.type, T_SHARED, reg_packed.shared_offset, other);
-        add_extra_invariant(extra_invariants, reg_packed.type, T_STACK, reg_packed.stack_offset, other);
-        add_extra_invariant(extra_invariants, reg_packed.type, T_SHARED, reg_packed.shared_region_size, other);
+    if (!dst.is_bottom()) {
+        for (int i = R0_RETURN_VALUE; i <= R10_STACK_POINTER; i++) {
+            auto reg_packed = reg_pack(i);
+            add_extra_invariant(dst, extra_invariants, reg_packed.type, T_CTX, reg_packed.ctx_offset, src);
+            add_extra_invariant(dst, extra_invariants, reg_packed.type, T_MAP, reg_packed.map_offset, src);
+            add_extra_invariant(dst, extra_invariants, reg_packed.type, T_MAP_PROGRAMS, reg_packed.map_offset, src);
+            add_extra_invariant(dst, extra_invariants, reg_packed.type, T_PACKET, reg_packed.packet_offset, src);
+            add_extra_invariant(dst, extra_invariants, reg_packed.type, T_SHARED, reg_packed.shared_offset, src);
+            add_extra_invariant(dst, extra_invariants, reg_packed.type, T_STACK, reg_packed.stack_offset, src);
+            add_extra_invariant(dst, extra_invariants, reg_packed.type, T_SHARED, reg_packed.shared_region_size, src);
+        }
     }
 
     // Do a normal join operation on the domain.
-    m_inv |= std::move(other.m_inv);
+    dst |= std::move(src);
 
     // Now add in the extra invariants saved above.
     for (auto& [variable, interval] : extra_invariants) {
-        m_inv.set(variable, interval);
+        dst.set(variable, interval);
     }
+}
+
+void ebpf_domain_t::operator|=(ebpf_domain_t&& other) {
+    if (is_bottom()) {
+        *this = other;
+        return;
+    }
+    if (other.is_bottom()) {
+        return;
+    }
+
+    join_inv(m_inv, other.m_inv);
 
     stack |= other.stack;
 }
@@ -486,19 +493,19 @@ NumAbsDomain ebpf_domain_t::TypeDomain::join_over_types(const NumAbsDomain& inv,
     crab::interval_t types = inv.eval_interval(reg_pack(reg).type);
     if (types.is_bottom())
         return NumAbsDomain(true);
-    if (auto lb = types.lb().number()) {
-        if (auto ub = types.ub().number()) {
-            NumAbsDomain res(true);
-            for (int type = (int)*lb; type <= (int)*ub; type++) {
-                NumAbsDomain tmp(inv);
-                transition(tmp, static_cast<type_encoding_t>(type));
-                res |= tmp;
-            }
-            return res;
-        }
+    if (types.is_top()) {
+        NumAbsDomain res(inv);
+        transition(res, static_cast<type_encoding_t>(T_UNINIT));
+        return res;
     }
-    NumAbsDomain res(inv);
-    transition(res, static_cast<type_encoding_t>(T_UNINIT));
+    NumAbsDomain res(true);
+    auto lb = types.lb().is_finite() ? (type_encoding_t)(int)(types.lb().number().value()) : T_MAP_PROGRAMS;
+    auto ub = types.ub().is_finite() ? (type_encoding_t)(int)(types.ub().number().value()) : T_SHARED;
+    for (type_encoding_t type = lb; type <= ub; type = (type_encoding_t)((int)type + 1)) {
+        NumAbsDomain tmp(inv);
+        transition(tmp, type);
+        join_inv(res, tmp); // res |= tmp;
+    }
     return res;
 }
 
@@ -586,11 +593,11 @@ void ebpf_domain_t::check_access_context(NumAbsDomain& inv, const linear_express
 }
 
 void ebpf_domain_t::check_access_packet(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
-                                        std::optional<variable_t> region_size) {
+                                        std::optional<variable_t> packet_size) {
     using namespace crab::dsl_syntax;
     require(inv, lb >= variable_t::meta_offset(), std::string("Lower bound must be at least meta_offset") + s);
-    if (region_size)
-        require(inv, ub <= *region_size,
+    if (packet_size)
+        require(inv, ub <= *packet_size,
                 std::string("Upper bound must be at most packet_size") + s);
     else
         require(inv, ub <= MAX_PACKET_SIZE,
@@ -1183,12 +1190,13 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, Value val_value,
                        opt_val_packet_offset, opt_val_shared_offset, opt_val_stack_offset, opt_val_shared_region_size);
         return;
     }
-    linear_expression_t addr = linear_expression_t(get_type_offset_variable(b.access.basereg).value()) + offset;
     m_inv = type_inv.join_over_types(m_inv, b.access.basereg, [&](NumAbsDomain& inv, type_encoding_t type) {
-        if (type == T_STACK)
+        if (type == T_STACK) {
+            linear_expression_t addr = linear_expression_t(get_type_offset_variable(b.access.basereg, type).value()) + offset;
             do_store_stack(inv, width, addr, val_type, val_value, opt_val_ctx_offset, opt_val_map_offset,
-                           opt_val_packet_offset, opt_val_shared_offset,
-                           opt_val_stack_offset, opt_val_shared_region_size);
+                           opt_val_packet_offset, opt_val_shared_offset, opt_val_stack_offset,
+                           opt_val_shared_region_size);
+        }
         // do nothing for any other type
     });
 }
@@ -1508,25 +1516,27 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             bitwise_xor(dst.value, src.value);
             havoc_offsets(bin.dst);
             break;
-        case Bin::Op::MOV: 
+        case Bin::Op::MOV:
             assign(dst.value, src.value);
             havoc_offsets(bin.dst);
             havoc(dst.shared_region_size);
-            {
-                int type = type_inv.get_type(m_inv, src.type);
+            m_inv = type_inv.join_over_types(m_inv, src_reg, [&](NumAbsDomain& inv, type_encoding_t type) {
+                inv.assign(dst.type, type);
+
                 switch (type) {
-                case T_CTX: assign(dst.ctx_offset, src.ctx_offset); break;
+                case T_CTX: inv.assign(dst.ctx_offset, src.ctx_offset); break;
                 case T_MAP:
-                case T_MAP_PROGRAMS: assign(dst.map_offset, src.map_offset); break;
-                case T_PACKET: assign(dst.packet_offset, src.packet_offset); break;
+                case T_MAP_PROGRAMS: inv.assign(dst.map_offset, src.map_offset); break;
+                case T_PACKET: inv.assign(dst.packet_offset, src.packet_offset); break;
                 case T_SHARED:
-                    assign(dst.shared_region_size, src.shared_region_size);
-                    assign(dst.shared_offset, src.shared_offset);
+                    inv.assign(dst.shared_region_size, src.shared_region_size);
+                    inv.assign(dst.shared_offset, src.shared_offset);
                     break;
-                case T_STACK: assign(dst.stack_offset, src.stack_offset); break;
+                case T_STACK: inv.assign(dst.stack_offset, src.stack_offset); break;
                 default: break;
                 }
-            }
+            });
+            havoc(dst.type);
             type_inv.assign_type(m_inv, bin.dst, std::get<Reg>(bin.v));
             break;
         }

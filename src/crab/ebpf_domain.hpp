@@ -134,9 +134,12 @@ class ebpf_domain_t final {
     static std::optional<variable_t> get_type_offset_variable(const Reg& reg, int type);
     std::optional<variable_t> get_type_offset_variable(const Reg& reg, const NumAbsDomain& inv) const;
     std::optional<variable_t> get_type_offset_variable(const Reg& reg) const;
-    bool variable_has_type(variable_t type_variable, int type) const;
-    void add_extra_invariant(std::map<crab::variable_t, crab::interval_t>& extra_invariants,
-                             variable_t type_variable, int type, variable_t v, ebpf_domain_t& other) const;
+    static bool variable_has_type(const NumAbsDomain& inv, variable_t type_variable, type_encoding_t type);
+    static void join_inv(NumAbsDomain& dst, NumAbsDomain& src);
+    static void add_extra_invariant(NumAbsDomain& dst,
+                                     std::map<crab::variable_t, crab::interval_t>& extra_invariants,
+                                     variable_t type_variable, type_encoding_t type, variable_t v,
+                                     const NumAbsDomain& other);
 
     void scratch_caller_saved_registers();
     std::optional<uint32_t> get_map_type(const Reg& map_fd_reg) const;

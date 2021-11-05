@@ -130,3 +130,69 @@ post:
   - s[500...503].type=number
   - s[504...511].type=packet
   - s[504...511].offset=0
+---
+test-case: assign register number value
+
+pre: ["r1.value=0", "r1.type=number"]
+
+code:
+  <start>: |
+    r2 = r1
+
+post:
+  - r1.type=number
+  - r1.value=0
+  - r2.type=number
+  - r2.value=0
+---
+test-case: assign register stack value
+
+pre: ["r1.type=stack", "r1.stack_offset=0"]
+
+code:
+  <start>: |
+    r2 = r1
+
+post:
+  - r1.type=stack
+  - r1.stack_offset=0
+  - r2.type=stack
+  - r2.stack_offset=0
+  - r1.value=r2.value
+---
+test-case: assign register shared value
+
+pre: ["r1.type=shared", "r1.shared_offset=0", "r1.shared_region_size=16"]
+
+code:
+  <start>: |
+    r2 = r1
+
+post:
+  - r1.type=shared
+  - r1.shared_offset=0
+  - r1.shared_region_size=16
+  - r2.type=shared
+  - r2.shared_offset=0
+  - r2.shared_region_size=16
+  - r1.value=r2.value
+---
+test-case: assign register combination value
+
+pre: ["r1.type=[-1,0]", "r1.shared_offset=0", "r1.shared_region_size=16", "r1.stack_offset=500"]
+
+code:
+  <start>: |
+    r2 = r1
+
+post:
+  - r1.type in {stack, shared}
+  - r1.shared_offset=0
+  - r1.shared_region_size=16
+  - r1.stack_offset=500
+  - r2.type in {stack, shared}
+  - r2.shared_offset=0
+  - r2.shared_region_size=16
+  - r2.stack_offset=500
+  - r1.type=r2.type
+  - r1.value=r2.value
