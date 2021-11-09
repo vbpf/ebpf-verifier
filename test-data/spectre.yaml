@@ -90,5 +90,4 @@ messages:
   - "6: r9.type == number"
   - "8: r2.type in {number, ctx, stack, packet, shared}"
   - "8: r9.type == r2.type"
-  - "9: Code is unreachable after 9"
-  - "9: r2.type in {ctx, stack, packet, shared}"
+  - "8: Code is unreachable after 8"
