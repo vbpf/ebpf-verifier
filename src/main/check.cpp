@@ -51,6 +51,10 @@ int main(int argc, char** argv) {
 
     app.add_flag("--assume-assert", ebpf_verifier_options.assume_assertions, "Assume assertions");
 
+    app.add_flag("--spectre_ssb", ebpf_verifier_options.spectre_SSB, "Verify absence of Speculative Store Bypass (spectre v4) vulnerability");
+
+    app.add_flag("--spectre_pht", ebpf_verifier_options.spectre_PHT, "Verify absence of Pattern History Table (spectre v1) vulnerability");
+
     bool verbose = false;
     app.add_flag("-i", ebpf_verifier_options.print_invariants, "Print invariants");
     app.add_flag("-f", ebpf_verifier_options.print_failures, "Print verifier's failure logs");

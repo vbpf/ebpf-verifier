@@ -46,6 +46,62 @@ post:
   - r0.type=number
 
 ---
+test-case: spectre v1 example from linux
+
+pre: [
+    "r0.type=shared", "r0.offset=0", "r0.value=[4098, 2147418112]", "r0.region_size=8192",
+    "r7.type=shared", "r7.offset=0", "r7.value=[4098, 2147418112]", "r7.region_size=4096",
+    "r10.type=stack", "r10.offset=512", "r10.value=[4098, 2147418112]",
+]
+
+code:
+  <start>: |
+    r4 = r10
+    r4 += -1
+    *(u8 *)(r4 -511) = 0
+    r2 = *(u64 *)(r7 +8)
+    r3 = *(u64 *)(r0 +4608)
+    r3 &= 1
+    r3 &= 2
+    r3 -= 511
+    if r2 != r3 goto <end>
+    r4 += r2
+    r4 = *(u8 *)(r4 +0)
+  <leak>: |
+    r4 &= 1
+    r4 *= 4
+    r0 += r4
+    r0 = *(u8 *)(r0 + 8)
+  <end>: |
+    r0 = 0
+    exit
+
+post:
+  - r0.region_size=8192
+  - r0.type=number
+  - r0.value=0
+  - r10.offset=512
+  - r10.type=stack
+  - r10.value=[4098, 2147418112]
+  - r10.value-r4.value<=2147418112
+  - r2.type=number
+  - r3.type=number
+  - r3.value=[-511, -510]
+  - r4.value-r10.value<=-1
+  - r4.value=[0, 2147418111]
+  - r7.offset=0
+  - r7.region_size=4096
+  - r7.type=shared
+  - r7.value=[4098, 2147418112]
+  - s[0].value=0
+
+messages:
+  - "11: r4.type == number"
+  - "12: r4.type == number"
+  - "13: only numbers can be added to pointers (r0.type = ptr -> r4.type = number)"
+  - "13: only numbers can be added to pointers (r4.type = ptr -> r0.type = number)"
+  - "13: r4.type in {number, ctx, stack, packet, shared}"
+---
 test-case: type confusion fails
 
 pre: [
@@ -91,3 +147,35 @@ messages:
   - "8: r2.type in {number, ctx, stack, packet, shared}"
   - "8: r9.type == r2.type"
   - "8: Code is unreachable after 8"
+
+---
+test-case: spectre v4 example from linux
+
+pre: [
+    "r2.type=number",
+    "r7.type=shared", "r7.offset=0", "r7.value=[4098, 2147418112]", "r7.region_size=4096",
+    "r10.type=stack", "r10.offset=512", "r10.value=[4098, 2147418112]",
+]
+
+code:
+  <start>: |
+    *(u64 *)(r10 -16) = r2
+    r9 = r10
+    r0 = r0 ; train predictor to break r9/r10 dependency using a dummy helper call - omitted
+    *(u64 *)(r10 -16) = r7
+    r2 = *(u64 *)(r9 -16)
+    r3 = *(u8 *)(r2 + 0)
+  <leak>: |
+    r3 &= 1
+    r3 *= 4
+    r0 += r3
+    r0 = *(u8 *)(r0 + 8)
+  <end>: |
+    r0 = 0
+    exit
+post:
+  - r0.region_size=8192
+messages:
+  - "8: r0.type in {number, ctx, stack, packet, shared}"
+  - "9: Code is unreachable after 9"
+  - "9: r0.type in {ctx, stack, packet, shared}"

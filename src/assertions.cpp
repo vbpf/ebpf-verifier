@@ -150,7 +150,8 @@ class AssertExtractor {
             }
         } else {
             res.emplace_back(TypeConstraint{basereg, TypeGroup::pointer});
-            res.emplace_back(ValidAccess{basereg, offset, width, false});
+            res.emplace_back(ValidAccess{basereg, offset, width, false,
+                                            ins.is_load}); // only loads are checked for spectre
             if (!info.type.is_privileged && !ins.is_load && std::holds_alternative<Reg>(ins.value)) {
                 if (width.v != 8)
                     res.emplace_back(TypeConstraint{reg(ins.value), TypeGroup::number});

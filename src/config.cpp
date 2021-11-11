@@ -10,5 +10,7 @@ const ebpf_verifier_options_t ebpf_verifier_default_options = {
     .print_failures = false,
     .no_simplify = false,
     .mock_map_fds = true,
-    .strict = false
+    .strict = false,
+    .spectre_PHT = false,
+    .spectre_SSB = false,
 };

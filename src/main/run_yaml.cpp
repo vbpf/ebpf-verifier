@@ -18,6 +18,9 @@ int main(int argc, char** argv) {
     bool verbose = false;
     app.add_flag("-v", verbose, "Verbose");
 
+//    bool assume_assert = false;
+//    app.add_flag("--assume-assert", assume_assert, "Assume assertions");
+
     bool quiet = false;
     app.add_flag("-q", quiet, "Never print code");
 

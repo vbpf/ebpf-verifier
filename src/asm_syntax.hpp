@@ -259,6 +259,7 @@ struct ValidAccess {
     int offset{};
     Value width{Imm{0}};
     bool or_null{};
+    bool check_spectre{}; // for spectre - only trivial loads can leak information
 };
 
 /// Condition check whether something is a valid key value.

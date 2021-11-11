@@ -501,6 +501,8 @@ void ebpf_domain_t::check_access_shared(NumAbsDomain& inv, const linear_expressi
 }
 
 void ebpf_domain_t::operator()(const Assume& s) {
+    if (thread_local_options.spectre_PHT)
+        return;
     Condition cond = s.cond;
     auto dst = reg_pack(cond.left);
     if (std::holds_alternative<Reg>(cond.right)) {
@@ -809,6 +811,9 @@ void ebpf_domain_t::operator()(const ZeroOffset& s) {
 }
 
 void ebpf_domain_t::operator()(const Assert& stmt) {
+    if (thread_local_options.spectre_PHT || thread_local_options.spectre_SSB)
+        if (!std::holds_alternative<ValidAccess>(stmt.cst) || !std::get<ValidAccess>(stmt.cst).check_spectre)
+            return;
     if (check_require || thread_local_options.assume_assertions)
         std::visit(*this, stmt.cst);
 }
@@ -936,26 +941,25 @@ void ebpf_domain_t::do_load(const Mem& b, const Reg& target_reg) {
 template <typename A, typename X, typename Y>
 void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_value,
                     std::optional<variable_t> opt_val_offset, std::optional<variable_t> opt_val_region_size) {
+    auto prev = inv;
     type_inv.assign_type(inv, stack.store_type(inv, addr, width, val_type), val_type);
-    if (width == 8) {
+
+    if (width == 8 || ((width == 1 || width == 2 || width == 4) && type_inv.get_type(m_inv, val_type) == T_NUM)) {
         inv.assign(stack.store(inv, data_kind_t::values, addr, width, val_value), val_value);
-        if (opt_val_offset && type_inv.get_type(m_inv, val_type) != T_NUM) {
-            inv.assign(stack.store(inv, data_kind_t::offsets, addr, width, *opt_val_offset), *opt_val_offset);
-            inv.assign(stack.store(inv, data_kind_t::region_size, addr, width, *opt_val_region_size), *opt_val_region_size);
-        } else {
-            stack.havoc(inv, data_kind_t::offsets, addr, width);
-            stack.havoc(inv, data_kind_t::region_size, addr, width);
-        }
-    } else if ((width == 1 || width == 2 || width == 4) && type_inv.get_type(m_inv, val_type) == T_NUM) {
-        // Keep track of numbers on the stack that might be used as array indices.
-        inv.assign(stack.store(inv, data_kind_t::values, addr, width, val_value), val_value);
-        stack.havoc(inv, data_kind_t::offsets, addr, width);
-        stack.havoc(inv, data_kind_t::region_size, addr, width);
     } else {
         stack.havoc(inv, data_kind_t::values, addr, width);
+    }
+
+    if (width == 8 && opt_val_offset && type_inv.get_type(m_inv, val_type) != T_NUM) {
+        inv.assign(stack.store(inv, data_kind_t::offsets, addr, width, *opt_val_offset), *opt_val_offset);
+        inv.assign(stack.store(inv, data_kind_t::region_size, addr, width, *opt_val_region_size), *opt_val_region_size);
+    } else {
         stack.havoc(inv, data_kind_t::offsets, addr, width);
         stack.havoc(inv, data_kind_t::region_size, addr, width);
     }
+
+    if (thread_local_options.spectre_SSB)
+        inv |= std::move(prev);
 }
 
 void ebpf_domain_t::operator()(const Mem& b) {
@@ -1235,11 +1239,14 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 );
             } else {
                 // Here we're not sure that lhs and rhs are the same type; they might be, meaning lhs may be a number.
-                // But previous assertions should fail unless we know that rhs is a number.
-                assert(type_inv.get_type(m_inv, std::get<Reg>(bin.v)) == T_NUM);
-                sub_overflow(dst.value, src.value);
-                // No harm comes from subtracting the value from an offset of a number, which is TOP.
-                sub(dst.offset, src.value);
+                if (type_inv.get_type(m_inv, std::get<Reg>(bin.v)) != T_NUM) {
+                    // Previous assertions should fail unless we know that rhs is a number.
+                    set_to_bottom();
+                } else {
+                    sub_overflow(dst.value, src.value);
+                    // No harm comes from subtracting the value from an offset of a number, which is TOP.
+                    sub(dst.offset, src.value);
+                }
             }
             break;
         }
