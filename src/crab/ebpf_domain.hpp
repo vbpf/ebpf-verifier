@@ -148,6 +148,7 @@ class ebpf_domain_t final {
     crab::interval_t get_map_value_size(const Reg& map_fd_reg) const;
     crab::interval_t get_map_max_entries(const Reg& map_fd_reg) const;
     void forget_packet_pointers();
+    void havoc_register(NumAbsDomain& inv, const Reg& reg);
     void do_load_mapfd(const Reg& dst_reg, int mapfd, bool maybe_null);
 
     void overflow(variable_t lhs);
@@ -218,6 +219,10 @@ class ebpf_domain_t final {
         [[nodiscard]] int get_type(const NumAbsDomain& inv, variable_t v) const;
         [[nodiscard]] int get_type(const NumAbsDomain& inv, const Reg& r) const;
         [[nodiscard]] int get_type(const NumAbsDomain& inv, int t) const;
+
+        [[nodiscard]] bool has_type(const NumAbsDomain& inv, variable_t v, type_encoding_t type) const;
+        [[nodiscard]] bool has_type(const NumAbsDomain& inv, const Reg& r, type_encoding_t type) const;
+        [[nodiscard]] bool has_type(const NumAbsDomain& inv, int t, type_encoding_t type) const;
 
         [[nodiscard]] bool same_type(const NumAbsDomain& inv, const Reg& a, const Reg& b) const;
         [[nodiscard]] bool implies_type(const NumAbsDomain& inv, const linear_constraint_t& a, const linear_constraint_t& b) const;
