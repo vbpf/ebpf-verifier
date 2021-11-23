@@ -51,14 +51,39 @@ bool is_map_section(const std::string& name) {
 
 // parse_maps_sections processes all maps sections in the provided ELF file by calling the platform-specific maps
 // parser. The section index of each maps section is inserted into section_indices.
-void parse_map_sections(const ebpf_verifier_options_t* options, const ebpf_platform_t* platform, const ELFIO::elfio& reader, std::vector<EbpfMapDescriptor>& map_descriptors, std::set<ELFIO::Elf_Half>& section_indices) {
+static size_t parse_map_sections(const ebpf_verifier_options_t* options, const ebpf_platform_t* platform, const ELFIO::elfio& reader, std::vector<EbpfMapDescriptor>& map_descriptors, std::set<ELFIO::Elf_Half>& section_indices, ELFIO::const_symbol_section_accessor& symbols) {
+    size_t map_record_size = platform->map_record_size;
     for (ELFIO::Elf_Half i = 0; i < reader.sections.size(); ++i) {
         auto s = reader.sections[i];
-        if (is_map_section(s->get_name())) {
-            platform->parse_maps_section(map_descriptors, s->get_data(), s->get_size(), platform, *options);
-            section_indices.insert(s->get_index());
+        if (!is_map_section(s->get_name()))
+            continue;
+
+        // Count the number of symbols that point into this maps section.
+        int map_count = 0;
+        for (ELFIO::Elf_Xword index = 0; index < symbols.get_symbols_num(); index++) {
+            string symbol_name;
+            ELFIO::Elf64_Addr value{};
+            ELFIO::Elf_Xword size{};
+            unsigned char bind{};
+            unsigned char type{};
+            ELFIO::Elf_Half section_index{};
+            unsigned char other{};
+            symbols.get_symbol(index, symbol_name, value, size, bind, type, section_index, other);
+            if ((section_index == i) && !symbol_name.empty())
+                map_count++;
         }
+
+        if (map_count > 0) {
+            map_record_size = s->get_size() / map_count;
+            if (s->get_size() % map_record_size != 0) {
+                throw std::runtime_error(std::string("bad maps section size"));
+            }
+            platform->parse_maps_section(map_descriptors, s->get_data(), map_record_size, map_count, platform,
+                                         *options);
+        }
+        section_indices.insert(s->get_index());
     }
+    return map_record_size;
 }
 
 vector<raw_program> read_elf(const std::string& path, const std::string& desired_section, const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
@@ -76,10 +101,10 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
     program_info info{platform};
     std::set<ELFIO::Elf_Half> map_section_indices;
 
-    parse_map_sections(options, platform, reader, info.map_descriptors, map_section_indices);
-
     ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
-    auto read_reloc_value = [&symbols,platform](ELFIO::Elf_Word symbol) -> size_t {
+    size_t map_record_size = parse_map_sections(options, platform, reader, info.map_descriptors, map_section_indices, symbols);
+
+    auto read_reloc_value = [&symbols,platform,map_record_size](ELFIO::Elf_Word symbol) -> size_t {
         string symbol_name;
         ELFIO::Elf64_Addr value{};
         ELFIO::Elf_Xword size{};
@@ -89,7 +114,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
         unsigned char other{};
         symbols.get_symbol(symbol, symbol_name, value, size, bind, type, section_index, other);
 
-        return value / platform->map_record_size;
+        return value / map_record_size;
     };
 
     vector<raw_program> res;
