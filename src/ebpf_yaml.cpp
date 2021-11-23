@@ -35,7 +35,7 @@ static bool ebpf_is_helper_usable(int32_t n){
     return false;
 };
 
-static void ebpf_parse_maps_section(vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t size,
+static void ebpf_parse_maps_section(vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t map_record_size, int map_count,
                                     const struct ebpf_platform_t* platform, ebpf_verifier_options_t options) {
 }
 

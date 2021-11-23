@@ -150,13 +150,15 @@ EbpfMapType get_map_type_linux(uint32_t platform_specific_type)
     return type;
 }
 
-void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t size, const ebpf_platform_t* platform, ebpf_verifier_options_t options)
+void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t map_def_size, int map_count, const ebpf_platform_t* platform, ebpf_verifier_options_t options)
 {
-    if (size % sizeof(bpf_load_map_def) != 0) {
-        throw std::runtime_error(std::string("bad maps section size"));
-    }
 
-    auto mapdefs = std::vector<bpf_load_map_def>((bpf_load_map_def*)data, (bpf_load_map_def*)(data + size));
+    auto mapdefs = std::vector<bpf_load_map_def>();
+    for (size_t i = 0; i < map_count; i++) {
+        bpf_load_map_def def = {0};
+        memcpy(&def, data + i * map_def_size, std::min(map_def_size, sizeof(def)));
+        mapdefs.emplace_back(def);
+    }
     for (auto const& s : mapdefs) {
         EbpfMapType type = get_map_type_linux(s.type);
         map_descriptors.emplace_back(EbpfMapDescriptor{
