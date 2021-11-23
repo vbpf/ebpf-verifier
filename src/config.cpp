@@ -13,4 +13,5 @@ const ebpf_verifier_options_t ebpf_verifier_default_options = {
     .strict = false,
     .spectre_PHT = false,
     .spectre_SSB = false,
+    .spectre_SLF = false,
 };

@@ -53,6 +53,8 @@ int main(int argc, char** argv) {
 
     app.add_flag("--spectre_ssb", ebpf_verifier_options.spectre_SSB, "Verify absence of Speculative Store Bypass (spectre v4) vulnerability");
 
+    app.add_flag("--spectre_slf", ebpf_verifier_options.spectre_SLF, "Verify absence of Speculative Store to Load Forwarding (spectre v4) vulnerability");
+
     app.add_flag("--spectre_pht", ebpf_verifier_options.spectre_PHT, "Verify absence of Pattern History Table (spectre v1) vulnerability");
 
     bool verbose = false;

@@ -15,8 +15,9 @@ struct ebpf_verifier_options_t {
     // True to do additional checks for some things that would fail at runtime.
     bool strict;
 
-    bool spectre_PHT;
-    bool spectre_SSB;
+    bool spectre_PHT; //< Spectre V1
+    bool spectre_SSB; //< Spectre V4: Speculative Store Bypass
+    bool spectre_SLF; //< Spectre V4: Store to Load Forwarding
 };
 
 struct ebpf_verifier_stats_t {

@@ -811,7 +811,7 @@ void ebpf_domain_t::operator()(const ZeroOffset& s) {
 }
 
 void ebpf_domain_t::operator()(const Assert& stmt) {
-    if (thread_local_options.spectre_PHT || thread_local_options.spectre_SSB)
+    if (thread_local_options.spectre_PHT || thread_local_options.spectre_SSB || thread_local_options.spectre_SLF)
         if (!std::holds_alternative<ValidAccess>(stmt.cst) || !std::get<ValidAccess>(stmt.cst).check_spectre)
             return;
     if (check_require || thread_local_options.assume_assertions)
@@ -827,9 +827,17 @@ void ebpf_domain_t::operator()(const Packet& a) {
 }
 
 void ebpf_domain_t::do_load_stack(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width) {
+    const reg_pack_t& target = reg_pack(target_reg);
+    if (thread_local_options.spectre_SLF) {
+        inv -= target.value;
+        inv -= target.offset;
+        inv -= target.region_size;
+        type_inv.havoc_type(inv, target_reg);
+        return;
+    }
+
     type_inv.assign_type(inv, target_reg, stack.load(inv, data_kind_t::types, addr, width));
 
-    const reg_pack_t& target = reg_pack(target_reg);
     if (width == 1 || width == 2 || width == 4 || width == 8) {
         inv.assign(target.value, stack.load(inv,  data_kind_t::values, addr, width));
         inv.assign(target.offset, stack.load(inv, data_kind_t::offsets, addr, width));
@@ -941,6 +949,8 @@ void ebpf_domain_t::do_load(const Mem& b, const Reg& target_reg) {
 template <typename A, typename X, typename Y>
 void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_value,
                     std::optional<variable_t> opt_val_offset, std::optional<variable_t> opt_val_region_size) {
+    if (thread_local_options.spectre_SLF)
+        return;
     auto prev = inv;
     type_inv.assign_type(inv, stack.store_type(inv, addr, width, val_type), val_type);
 
