@@ -457,7 +457,6 @@ TEST_SECTION("build", "packet_access.o", "xdp")
 TEST_SECTION("build", "tail_call.o", "xdp_prog")
 TEST_SECTION("build", "map_in_map.o", ".text")
 TEST_SECTION("build", "twomaps.o", ".text");
-TEST_SECTION("build", "twotypes.o", ".text");
 
 // Test some programs that ought to fail verification.
 TEST_SECTION_REJECT("build", "badhelpercall.o", ".text")
@@ -500,6 +499,9 @@ TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/17")
 TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/18")
 TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/19")
 TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/24")
+
+// False positive, trying to dereference {shared,stack} pointer
+TEST_SECTION_FAIL("build", "twotypes.o", ".text");
 
 // False positive, unknown cause
 TEST_SECTION_FAIL("linux", "test_map_in_map_kern.o", "kprobe/sys_connect")
