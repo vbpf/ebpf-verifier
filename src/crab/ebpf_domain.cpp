@@ -385,16 +385,19 @@ NumAbsDomain ebpf_domain_t::TypeDomain::join_over_types(const NumAbsDomain& inv,
     crab::interval_t types = inv.eval_interval(reg_pack(reg).type);
     if (types.is_bottom())
         return NumAbsDomain(true);
-    NumAbsDomain res(true);
     if (auto lb = types.lb().number()) {
         if (auto ub = types.ub().number()) {
+            NumAbsDomain res(true);
             for (int type = (int)*lb; type <= (int)*ub; type++) {
                 NumAbsDomain tmp(inv);
                 transition(tmp, static_cast<type_encoding_t>(type));
                 res |= tmp;
             }
+            return res;
         }
     }
+    NumAbsDomain res(inv);
+    transition(res, static_cast<type_encoding_t>(T_UNINIT));
     return res;
 }
 
@@ -734,10 +737,10 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
                             variable_t::cell_var(data_kind_t::values, (uint64_t)offset.value(), sizeof(uint32_t));
 
                         if (auto max_entries = get_map_max_entries(s.map_fd_reg).lb().number())
-                            require(m_inv, key_value < *max_entries, "Array index overflow");
+                            require(inv, key_value < *max_entries, "Array index overflow");
                         else
-                            require(m_inv, linear_constraint_t::FALSE(), "Max entries is not finite");
-                        require(m_inv, key_value >= 0, "Array index underflow");
+                            require(inv, linear_constraint_t::FALSE(), "Max entries is not finite");
+                        require(inv, key_value >= 0, "Array index underflow");
                     }
                 }
             }
