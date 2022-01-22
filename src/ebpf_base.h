@@ -10,6 +10,7 @@ typedef enum _ebpf_return_type {
     EBPF_RETURN_TYPE_INTEGER = 0,
     EBPF_RETURN_TYPE_PTR_TO_MAP_VALUE_OR_NULL,
     EBPF_RETURN_TYPE_INTEGER_OR_NO_RETURN_IF_SUCCEED,
+    EBPF_RETURN_TYPE_UNSUPPORTED,
 } ebpf_return_type_t;
 
 typedef enum _ebpf_argument_type {
@@ -25,6 +26,7 @@ typedef enum _ebpf_argument_type {
     EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
     EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL,
     EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+    EBPF_ARGUMENT_TYPE_UNSUPPORTED,
 } ebpf_argument_type_t;
 
 

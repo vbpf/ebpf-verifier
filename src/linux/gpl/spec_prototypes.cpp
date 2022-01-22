@@ -1,6 +1,32 @@
 #include "platform.hpp"
 #include "spec_type_descriptors.hpp"
 
+#define EBPF_RETURN_TYPE_PTR_TO_SOCK_COMMON_OR_NULL   EBPF_RETURN_TYPE_UNSUPPORTED
+#define EBPF_RETURN_TYPE_PTR_TO_SOCKET_OR_NULL        EBPF_RETURN_TYPE_UNSUPPORTED
+#define EBPF_RETURN_TYPE_PTR_TO_TCP_SOCKET_OR_NULL    EBPF_RETURN_TYPE_UNSUPPORTED
+#define EBPF_RETURN_TYPE_PTR_TO_ALLOC_MEM_OR_NULL     EBPF_RETURN_TYPE_UNSUPPORTED
+#define EBPF_RETURN_TYPE_PTR_TO_BTF_ID_OR_NULL        EBPF_RETURN_TYPE_UNSUPPORTED
+#define EBPF_RETURN_TYPE_PTR_TO_MEM_OR_BTF_ID_OR_NULL EBPF_RETURN_TYPE_UNSUPPORTED
+#define EBPF_RETURN_TYPE_PTR_TO_BTF_ID                EBPF_RETURN_TYPE_UNSUPPORTED
+#define EBPF_RETURN_TYPE_PTR_TO_MEM_OR_BTF_ID         EBPF_RETURN_TYPE_UNSUPPORTED
+
+#define EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON EBPF_ARGUMENT_TYPE_UNSUPPORTED
+#define EBPF_ARGUMENT_TYPE_PTR_TO_SPIN_LOCK          EBPF_ARGUMENT_TYPE_UNSUPPORTED
+#define EBPF_ARGUMENT_TYPE_PTR_TO_SOCK_COMMON        EBPF_ARGUMENT_TYPE_UNSUPPORTED
+#define EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID             EBPF_ARGUMENT_TYPE_UNSUPPORTED
+#define EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON EBPF_ARGUMENT_TYPE_UNSUPPORTED
+#define EBPF_ARGUMENT_TYPE_PTR_TO_LONG               EBPF_ARGUMENT_TYPE_UNSUPPORTED
+#define EBPF_ARGUMENT_TYPE_PTR_TO_INT                EBPF_ARGUMENT_TYPE_UNSUPPORTED
+#define EBPF_ARGUMENT_TYPE_PTR_TO_CONST_STR          EBPF_ARGUMENT_TYPE_UNSUPPORTED
+#define EBPF_ARGUMENT_TYPE_PTR_TO_FUNC               EBPF_ARGUMENT_TYPE_UNSUPPORTED
+#define EBPF_ARGUMENT_TYPE_PTR_TO_STACK_OR_NULL      EBPF_ARGUMENT_TYPE_UNSUPPORTED
+#define EBPF_ARGUMENT_TYPE_CONST_ALLOC_SIZE_OR_ZERO  EBPF_ARGUMENT_TYPE_UNSUPPORTED
+#define EBPF_ARGUMENT_TYPE_PTR_TO_ALLOC_MEM          EBPF_ARGUMENT_TYPE_UNSUPPORTED
+#define EBPF_ARGUMENT_TYPE_PTR_TO_ALLOC_MEM          EBPF_ARGUMENT_TYPE_UNSUPPORTED
+#define EBPF_ARGUMENT_TYPE_PTR_TO_MAP_VALUE_OR_NULL  EBPF_ARGUMENT_TYPE_UNSUPPORTED
+#define EBPF_ARGUMENT_TYPE_PTR_TO_TIMER              EBPF_ARGUMENT_TYPE_UNSUPPORTED
+#define EBPF_ARGUMENT_TYPE_PTR_TO_PERCPU_BTF_ID      EBPF_ARGUMENT_TYPE_UNSUPPORTED
+
 const ebpf_context_descriptor_t g_sk_buff = sk_buff;
 const ebpf_context_descriptor_t g_xdp_md = xdp_md;
 const ebpf_context_descriptor_t g_sk_msg_md = sk_msg_md;
@@ -20,41 +46,8 @@ static const struct EbpfHelperPrototype bpf_unspec_proto = {
     .name = "unspec",
 };
 
-/* int bpf_tail_call(void *ctx, struct bpf_map *prog_array_map, u32 index)
- * 	Description
- * 		This special helper is used to trigger a "tail call", or in
- * 		other words, to jump into another eBPF program. The same stack
- * 		frame is used (but values on stack and in registers for the
- * 		caller are not accessible to the callee). This mechanism allows
- * 		for program chaining, either for raising the maximum number of
- * 		available eBPF instructions, or to execute given programs in
- * 		conditional blocks. For security reasons, there is an upper
- * 		limit to the number of successive tail calls that can be
- * 		performed.
- *
- * 		Upon call of this helper, the program attempts to jump into a
- * 		program referenced at index *index* in *prog_array_map*, a
- * 		special map of type **BPF_MAP_TYPE_PROG_ARRAY**, and passes
- * 		*ctx*, a pointer to the context.
- *
- * 		If the call succeeds, the kernel immediately runs the first
- * 		instruction of the new program. This is not a function call,
- * 		and it never returns to the previous program. If the call
- * 		fails, then the helper has no effect, and the caller continues
- * 		to run its subsequent instructions. A call can fail if the
- * 		destination program for the jump does not exist (i.e. *index*
- * 		is superior to the number of entries in *prog_array_map*), or
- * 		if the maximum number of tail calls has been reached for this
- * 		chain of programs. This limit is defined in the kernel by the
- * 		macro **MAX_TAIL_CALL_CNT** (not accessible to user space),
- * 		which is currently set to 32.
- * 	Return
- * 		Negative error in case of failure. No return in case of success
- */
 const struct EbpfHelperPrototype bpf_tail_call_proto = {
     .name = "tail_call",
-    //.func		= NULL,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER_OR_NO_RETURN_IF_SUCCEED,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -65,8 +58,6 @@ const struct EbpfHelperPrototype bpf_tail_call_proto = {
 
 static const struct EbpfHelperPrototype bpf_override_return_proto = {
     .name = "override_return",
-    //.func		= bpf_override_return,
-    //.gpl_only	= true,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -74,18 +65,8 @@ static const struct EbpfHelperPrototype bpf_override_return_proto = {
     },
 };
 
-/*
- * int bpf_probe_read(void *dst, u32 size, const void *src)
- * 	Description
- * 		For tracing programs, safely attempt to read *size* bytes from
- * 		address *src* and store the data in *dst*.
- * 	Return
- * 		0 on success, or a negative error in case of failure.
- */
 static const struct EbpfHelperPrototype bpf_probe_read_proto = {
     .name = "probe_read",
-    //.func		= bpf_probe_read,
-    //.gpl_only	= true,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
@@ -94,23 +75,8 @@ static const struct EbpfHelperPrototype bpf_probe_read_proto = {
     },
 };
 
-/*
- * int bpf_probe_read_str(void *dst, int size, const void *unsafe_ptr)
- *     Copy a NUL terminated string from unsafe address. In case the string
- *     length is smaller than size, the target is not padded with further NUL
- *     bytes. In case the string length is larger than size, just count-1
- *     bytes are copied and the last byte is set to NUL.
- *     @dst: destination address
- *     @size: maximum number of bytes to copy, including the trailing NUL
- *     @unsafe_ptr: unsafe address
- *     Return:
- *       > 0 length of the string including the trailing NUL on success
- *       < 0 error
- */
 static const struct EbpfHelperPrototype bpf_probe_read_str_proto = {
     .name = "probe_read_str",
-    //.func		= bpf_probe_read_str,
-    //.gpl_only	= true,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
@@ -121,8 +87,6 @@ static const struct EbpfHelperPrototype bpf_probe_read_str_proto = {
 
 static const struct EbpfHelperPrototype bpf_probe_write_user_proto = {
     .name = "probe_write_user",
-    //.func		= bpf_probe_write_user,
-    //.gpl_only	= true,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_ANYTHING,
@@ -131,14 +95,8 @@ static const struct EbpfHelperPrototype bpf_probe_write_user_proto = {
     },
 };
 
-/*
- * int bpf_trace_printk(const char *fmt, int fmt_size, ...)
- *     Return: length of buffer written or negative error
- */
 static const struct EbpfHelperPrototype bpf_trace_printk_proto = {
     .name = "trace_printk",
-    //.func		= bpf_trace_printk,
-    //.gpl_only	= true,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
@@ -148,8 +106,6 @@ static const struct EbpfHelperPrototype bpf_trace_printk_proto = {
 
 static const struct EbpfHelperPrototype bpf_perf_event_read_proto = {
     .name = "perf_event_read",
-    //.func		= bpf_perf_event_read,
-    //.gpl_only	= true,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
@@ -157,19 +113,8 @@ static const struct EbpfHelperPrototype bpf_perf_event_read_proto = {
     },
 };
 
-/*
- * int bpf_perf_event_read_value(map, flags, buf, buf_size)
- *     read perf event counter value and perf event enabled/running time
- *     @map: pointer to perf_event_array map
- *     @flags: index of event in the map or bitmask flags
- *     @buf: buf to fill
- *     @buf_size: size of the buf
- *     Return: 0 on success or negative error code
- */
 static const struct EbpfHelperPrototype bpf_perf_event_read_value_proto = {
     .name = "perf_event_read_value",
-    //.func		= bpf_perf_event_read_value,
-    //.gpl_only	= true,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
@@ -179,56 +124,8 @@ static const struct EbpfHelperPrototype bpf_perf_event_read_value_proto = {
     },
 };
 
-/*
- * int bpf_perf_event_output(struct pt_reg *ctx, struct bpf_map *map, u64 flags, void *data, u64 size)
- * 	Description
- * 		Write raw *data* blob into a special BPF perf event held by
- * 		*map* of type **BPF_MAP_TYPE_PERF_EVENT_ARRAY**. This perf
- * 		event must have the following attributes: **PERF_SAMPLE_RAW**
- * 		as **sample_type**, **PERF_TYPE_SOFTWARE** as **type**, and
- * 		**PERF_COUNT_SW_BPF_OUTPUT** as **config**.
- *
- * 		The *flags* are used to indicate the index in *map* for which
- * 		the value must be put, masked with **BPF_F_INDEX_MASK**.
- * 		Alternatively, *flags* can be set to **BPF_F_CURRENT_CPU**
- * 		to indicate that the index of the current CPU core should be
- * 		used.
- *
- * 		The value to write, of *size*, is passed through eBPF stack and
- * 		pointed by *data*.
- *
- * 		The context of the program *ctx* needs also be passed to the
- * 		helper.
- *
- * 		On user space, a program willing to read the values needs to
- * 		call **perf_event_open**\ () on the perf event (either for
- * 		one or for all CPUs) and to store the file descriptor into the
- * 		*map*. This must be done before the eBPF program can send data
- * 		into it. An example is available in file
- * 		*samples/bpf/trace_output_user.c* in the Linux kernel source
- * 		tree (the eBPF program counterpart is in
- * 		*samples/bpf/trace_output_kern.c*).
- *
- * 		**bpf_perf_event_output**\ () achieves better performance
- * 		than **bpf_trace_printk**\ () for sharing data with user
- * 		space, and is much better suitable for streaming data from eBPF
- * 		programs.
- *
- * 		Note that this helper is not restricted to tracing use cases
- * 		and can be used with programs attached to TC or XDP as well,
- * 		where it allows for passing data to user space listeners. Data
- * 		can be:
- *
- * 		* Only custom structs,
- * 		* Only the packet payload, or
- * 		* A combination of both.
- * 	Return
- * 		0 on success, or a negative error in case of failure.
- */
 static const struct EbpfHelperPrototype bpf_perf_event_output_proto = {
     .name = "perf_event_output",
-    //.func		= bpf_perf_event_output,
-    //.gpl_only	= true,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -239,32 +136,13 @@ static const struct EbpfHelperPrototype bpf_perf_event_output_proto = {
     },
 };
 
-/*
- * u64 bpf_get_current_task()
- *     Returns current task_struct
- *     Return: current
- */
 static const struct EbpfHelperPrototype bpf_get_current_task_proto = {
     .name = "get_current_task",
-    //.func		= bpf_get_current_task,
-    //.gpl_only	= true,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
 };
 
-/*
- * int bpf_current_task_under_cgroup(map, index)
- *     Check cgroup2 membership of current task
- *     @map: pointer to bpf_map in BPF_MAP_TYPE_CGROUP_ARRAY type
- *     @index: index of the cgroup in the bpf_map
- *     Return:
- *       == 0 current failed the cgroup2 descendant test
- *       == 1 current succeeded the cgroup2 descendant test
- *        < 0 error
- */
 static const struct EbpfHelperPrototype bpf_current_task_under_cgroup_proto = {
     .name = "current_task_under_cgroup",
-    //.func       = bpf_current_task_under_cgroup,
-    //.gpl_only   = false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
@@ -272,59 +150,8 @@ static const struct EbpfHelperPrototype bpf_current_task_under_cgroup_proto = {
     },
 };
 
-// static const struct EbpfHelperPrototype bpf_perf_event_output_proto_tp = {
-// 	//.func		= bpf_perf_event_output_tp,
-// 	//.gpl_only	= true,
-// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
-// 	.argument_type = {
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
-// 	    EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
-// 	},
-// };
-
-// static const struct EbpfHelperPrototype bpf_get_stackid_proto_tp = {
-// 	//.func		= bpf_get_stackid_tp,
-// 	//.gpl_only	= true,
-// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
-// 	.argument_type = {
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-//  },
-// };
-
-// // see bpf_get_stack_proto
-// static const struct EbpfHelperPrototype bpf_get_stack_proto_tp = {
-// 	//.func		= bpf_get_stack_tp,
-// 	//.gpl_only	= true,
-// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
-// 	.argument_type = {
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
-// 	    EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-//   },
-// };
-
-/*
- * int bpf_perf_prog_read_value(struct bpf_perf_event_data *ctx, struct bpf_perf_event_value *buf, u32 buf_size)
- * 	Description
- * 		For en eBPF program attached to a perf event, retrieve the
- * 		value of the event counter associated to *ctx* and store it in
- * 		the structure pointed by *buf* and of size *buf_size*. Enabled
- * 		and running times are also stored in the structure (see
- * 		description of helper **bpf_perf_event_read_value**\ () for
- * 		more details).
- * 	Return
- * 		0 on success, or a negative error in case of failure.
- */
 static const struct EbpfHelperPrototype bpf_perf_prog_read_value_proto = {
     .name = "perf_prog_read_value",
-    //.func       = bpf_perf_prog_read_value,
-    //.gpl_only   = true,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -334,52 +161,8 @@ static const struct EbpfHelperPrototype bpf_perf_prog_read_value_proto = {
     .context_descriptor = &g_perf_event_descr
 };
 
-// static const struct EbpfHelperPrototype bpf_perf_event_output_proto_raw_tp = {
-// 	//.func		= bpf_perf_event_output_raw_tp,
-// 	//.gpl_only	= true,
-// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
-// 	.argument_type = {
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
-// 	    EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
-// 	},
-// };
-
-// static const struct EbpfHelperPrototype bpf_get_stackid_proto_raw_tp = {
-// 	//.func		= bpf_get_stackid_raw_tp,
-// 	//.gpl_only	= true,
-// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
-// 	.argument_type = {
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-//   },
-// };
-
-// static const struct EbpfHelperPrototype bpf_get_stack_proto_raw_tp = {
-// 	//.func		= bpf_get_stack_raw_tp,
-// 	//.gpl_only	= true,
-// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
-// 	.argument_type = {
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
-// 	    EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-// 	},
-// };
-
-/* Always built-in helper functions. */
-
-/*
- * void *bpf_map_lookup_elem(&map, &key)
- *     Return: Map value or NULL
- */
 static const struct EbpfHelperPrototype bpf_map_lookup_elem_proto = {
     .name = "map_lookup_elem",
-    //.func		= bpf_map_lookup_elem,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_PTR_TO_MAP_VALUE_OR_NULL,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
@@ -390,14 +173,8 @@ static const struct EbpfHelperPrototype bpf_map_lookup_elem_proto = {
     },
 };
 
-/*
- * int bpf_map_update_elem(&map, &key, &value, flags)
- *     Return: 0 on success or negative error
- */
 static const struct EbpfHelperPrototype bpf_map_update_elem_proto = {
     .name = "map_update_elem",
-    //.func		= bpf_map_update_elem,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
@@ -408,14 +185,8 @@ static const struct EbpfHelperPrototype bpf_map_update_elem_proto = {
     },
 };
 
-/*
- * int bpf_map_delete_elem(&map, &key)
- *     Return: 0 on success or negative error
- */
 static const struct EbpfHelperPrototype bpf_map_delete_elem_proto = {
     .name = "map_delete_elem",
-    //.func		= bpf_map_delete_elem,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
@@ -426,72 +197,38 @@ static const struct EbpfHelperPrototype bpf_map_delete_elem_proto = {
     },
 };
 
-/*
- * u32 bpf_prandom_u32()
- *     Return: random value
- */
 static const struct EbpfHelperPrototype bpf_get_prandom_u32_proto = {
     .name = "get_prandom_u32",
-    //.func		= bpf_user_rnd_u32,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
 };
 
 static const struct EbpfHelperPrototype bpf_get_smp_processor_id_proto = {
     .name = "get_smp_processor_id",
-    //.func		= bpf_get_smp_processor_id,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
 };
 
 static const struct EbpfHelperPrototype bpf_get_numa_node_id_proto = {
     .name = "get_numa_node_id",
-    //.func		= bpf_get_numa_node_id,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
 };
 
-/*
- * u64 bpf_ktime_get_ns()
- *     Return: current ktime
- */
 static const struct EbpfHelperPrototype bpf_ktime_get_ns_proto = {
     .name = "ktime_get_ns",
-    //.func		= bpf_ktime_get_ns,
-    //.gpl_only	= true,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
 };
 
 static const struct EbpfHelperPrototype bpf_get_current_pid_tgid_proto = {
     .name = "get_current_pid_tgid",
-    //.func		= bpf_get_current_pid_tgid,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
 };
 
 static const struct EbpfHelperPrototype bpf_get_current_uid_gid_proto = {
     .name = "get_current_uid_gid",
-    //.func		= bpf_get_current_uid_gid,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
 };
 
-/*
- * int bpf_get_current_comm(char *buf, u32 size_of_buf)
- * 	Description
- * 		Copy the **comm** attribute of the current task into *buf* of
- * 		*size_of_buf*. The **comm** attribute contains the name of
- * 		the executable (excluding the path) for the current task. The
- * 		*size_of_buf* must be strictly positive. On success, the
- * 		helper makes sure that the *buf* is NUL-terminated. On failure,
- * 		it is filled with zeroes.
- * 	Return
- * 		0 on success, or a negative error in case of failure.
- */
 static const struct EbpfHelperPrototype bpf_get_current_comm_proto = {
     .name = "get_current_comm",
-    //.func		= bpf_get_current_comm,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
@@ -501,35 +238,11 @@ static const struct EbpfHelperPrototype bpf_get_current_comm_proto = {
 
 static const struct EbpfHelperPrototype bpf_get_current_cgroup_id_proto = {
     .name = "get_current_cgroup_id",
-    //.func		= bpf_get_current_cgroup_id,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
 };
 
-/*
- * int bpf_sock_map_update(struct bpf_sock_ops *skops, struct bpf_map *map, void *key, u64 flags)
- * 	Description
- * 		Add an entry to, or update a *map* referencing sockets. The
- * 		*skops* is used as a new value for the entry associated to
- * 		*key*. *flags* is one of:
- *
- * 		**BPF_NOEXIST**
- * 			The entry for *key* must not exist in the map.
- * 		**BPF_EXIST**
- * 			The entry for *key* must already exist in the map.
- * 		**BPF_ANY**
- * 			No condition on the existence of the entry for *key*.
- *
- * 		If the *map* has eBPF programs (parser and verdict), those will
- * 		be inherited by the socket being added. If the socket is
- * 		already attached to eBPF programs, this results in an error.
- * 	Return
- * 		0 on success, or a negative error in case of failure.
- */
 static const struct EbpfHelperPrototype bpf_sock_map_update_proto = {
     .name = "sock_map_update",
-    //.func		= bpf_sock_map_update,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -543,8 +256,6 @@ static const struct EbpfHelperPrototype bpf_sock_map_update_proto = {
 
 static const struct EbpfHelperPrototype bpf_sock_hash_update_proto = {
     .name = "sock_hash_update",
-    //.func		= bpf_sock_hash_update,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -556,23 +267,8 @@ static const struct EbpfHelperPrototype bpf_sock_hash_update_proto = {
     .context_descriptor = &g_sock_ops_descr
 };
 
-/*
- * int bpf_get_stackid(ctx, map, flags)
- *     walk user or kernel stack and return id
- *     @ctx: struct pt_regs*
- *     @map: pointer to stack_trace map
- *     @flags: bits 0-7 - numer of stack frames to skip
- *             bit 8 - collect user stack instead of kernel
- *             bit 9 - compare stacks by hash only
- *             bit 10 - if two different stacks hash into the same stackid
- *                      discard old
- *             other bits - reserved
- *     Return: >= 0 stackid on success or negative error
- */
 static const struct EbpfHelperPrototype bpf_get_stackid_proto = {
     .name = "get_stackid",
-    //.func		= bpf_get_stackid,
-    //.gpl_only	= true,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -581,44 +277,8 @@ static const struct EbpfHelperPrototype bpf_get_stackid_proto = {
     },
 };
 
-/*
- * int bpf_get_stack(struct pt_regs *regs, void *buf, u32 size, u64 flags)
- * 	Description
- * 		Return a user or a kernel stack in bpf program provided buffer.
- * 		To achieve this, the helper needs *ctx*, which is a pointer
- * 		to the context on which the tracing program is executed.
- * 		To store the stacktrace, the bpf program provides *buf* with
- * 		a nonnegative *size*.
- *
- * 		The last argument, *flags*, holds the number of stack frames to
- * 		skip (from 0 to 255), masked with
- * 		**BPF_F_SKIP_FIELD_MASK**. The next bits can be used to set
- * 		the following flags:
- *
- * 		**BPF_F_USER_STACK**
- * 			Collect a user space stack instead of a kernel stack.
- * 		**BPF_F_USER_BUILD_ID**
- * 			Collect buildid+offset instead of ips for user stack,
- * 			only valid if **BPF_F_USER_STACK** is also specified.
- *
- * 		**bpf_get_stack**\ () can collect up to
- * 		**PERF_MAX_STACK_DEPTH** both kernel and user frames, subject
- * 		to sufficient large buffer size. Note that
- * 		this limit can be controlled with the **sysctl** program, and
- * 		that it should be manually increased in order to profile long
- * 		user stacks (such as stacks for Java programs). To do so, use:
- *
- * 		::
- *
- * 			# sysctl kernel.perf_event_max_stack=<new value>
- * 	Return
- * 		A non-negative value equal to or less than *size* on success,
- * 		or a negative error in case of failure.
- */
 static const struct EbpfHelperPrototype bpf_get_stack_proto = {
     .name = "get_stack",
-    //.func		= bpf_get_stack,
-    //.gpl_only	= true,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -628,32 +288,8 @@ static const struct EbpfHelperPrototype bpf_get_stack_proto = {
     },
 };
 
-/*
- * u32 bpf_raw_smp_processor_id()
- *     Return: SMP processor ID
-//  */
-// static const struct EbpfHelperPrototype bpf_get_raw_smp_processor_id_proto = {
-//     .name = "get_raw_smp_processor_id",
-// 	//.func		= bpf_get_raw_cpu_id,
-// 	//.gpl_only	= false,
-// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
-// };
-
-/*
- * int bpf_skb_store_bytes(skb, offset, from, len, flags)
- *     store bytes into packet
- *     @skb: pointer to skb
- *     @offset: offset within packet from skb->mac_header
- *     @from: pointer where to copy bytes from
- *     @len: number of bytes to store into packet
- *     @flags: bit 0 - if true, recompute skb->csum
- *             other bits - reserved
- *     Return: 0 on success or negative error
- */
 static const struct EbpfHelperPrototype bpf_skb_store_bytes_proto = {
     .name = "skb_store_bytes",
-    //.func		= bpf_skb_store_bytes,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -665,28 +301,8 @@ static const struct EbpfHelperPrototype bpf_skb_store_bytes_proto = {
     .context_descriptor = &g_sk_buff
 };
 
-/*
- * int bpf_skb_load_bytes(const struct sk_buff *skb, u32 offset, void *to, u32 len)
- * 	Description
- * 		This helper was provided as an easy way to load data from a
- * 		packet. It can be used to load *len* bytes from *offset* from
- * 		the packet associated to *skb*, into the buffer pointed by
- * 		*to*.
- *
- * 		Since Linux 4.7, usage of this helper has mostly been replaced
- * 		by "direct packet access", enabling packet data to be
- * 		manipulated with *skb*\ **->data** and *skb*\ **->data_end**
- * 		pointing respectively to the first byte of packet data and to
- * 		the byte after the last byte of packet data. However, it
- * 		remains useful if one wishes to read large quantities of data
- * 		at once from a packet into the eBPF stack.
- * 	Return
- * 		0 on success, or a negative error in case of failure.
- */
 static const struct EbpfHelperPrototype bpf_skb_load_bytes_proto = {
     .name = "skb_load_bytes",
-    //.func		= bpf_skb_load_bytes,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -697,33 +313,8 @@ static const struct EbpfHelperPrototype bpf_skb_load_bytes_proto = {
     .context_descriptor = &g_sk_buff
 };
 
-/*
- * int skb_load_bytes_relative(const struct sk_buff *skb, u32 offset, void *to, u32 len, u32 start_header)
- * 	Description
- * 		This helper is similar to **bpf_skb_load_bytes**\ () in that
- * 		it provides an easy way to load *len* bytes from *offset*
- * 		from the packet associated to *skb*, into the buffer pointed
- * 		by *to*. The difference to **bpf_skb_load_bytes**\ () is that
- * 		a fifth argument *start_header* exists in order to select a
- * 		base offset to start from. *start_header* can be one of:
- *
- * 		**BPF_HDR_START_MAC**
- * 			Base offset to load data from is *skb*'s mac header.
- * 		**BPF_HDR_START_NET**
- * 			Base offset to load data from is *skb*'s network header.
- *
- * 		In general, "direct packet access" is the preferred method to
- * 		access packet data, however, this helper is in particular useful
- * 		in socket filters where *skb*\ **->data** does not always point
- * 		to the start of the mac header and where "direct packet access"
- * 		is not available.
- * 	Return
- * 		0 on success, or a negative error in case of failure.
- */
 static const struct EbpfHelperPrototype bpf_skb_load_bytes_relative_proto = {
     .name = "skb_load_bytes_relative",
-    //.func		= bpf_skb_load_bytes_relative,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -737,8 +328,6 @@ static const struct EbpfHelperPrototype bpf_skb_load_bytes_relative_proto = {
 
 static const struct EbpfHelperPrototype bpf_skb_pull_data_proto = {
     .name = "skb_pull_data",
-    //.func		= bpf_skb_pull_data,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -747,31 +336,8 @@ static const struct EbpfHelperPrototype bpf_skb_pull_data_proto = {
     .context_descriptor = &g_sk_buff
 };
 
-// static const struct EbpfHelperPrototype sk_skb_pull_data_proto = {
-// 	//.func		= sk_skb_pull_data,
-// 	//.gpl_only	= false,
-// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
-// 	.argument_type = {
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-// 	},
-// };
-
-/*
- * int bpf_l3_csum_replace(skb, offset, from, to, flags)
- *     recompute IP checksum
- *     @skb: pointer to skb
- *     @offset: offset within packet where IP checksum is located
- *     @from: old value of header field
- *     @to: new value of header field
- *     @flags: bits 0-3 - size of header field
- *             other bits - reserved
- *     Return: 0 on success or negative error
- */
 static const struct EbpfHelperPrototype bpf_l3_csum_replace_proto = {
     .name = "l3_csum_replace",
-    //.func		= bpf_l3_csum_replace,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -783,22 +349,8 @@ static const struct EbpfHelperPrototype bpf_l3_csum_replace_proto = {
     .context_descriptor = &g_sk_buff
 };
 
-/*
- * int bpf_l4_csum_replace(skb, offset, from, to, flags)
- *     recompute TCP/UDP checksum
- *     @skb: pointer to skb
- *     @offset: offset within packet where TCP/UDP checksum is located
- *     @from: old value of header field
- *     @to: new value of header field
- *     @flags: bits 0-3 - size of header field
- *             bit 4 - is pseudo header
- *             other bits - reserved
- *     Return: 0 on success or negative error
- */
 static const struct EbpfHelperPrototype bpf_l4_csum_replace_proto = {
     .name = "l4_csum_replace",
-    //.func		= bpf_l4_csum_replace,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -810,20 +362,8 @@ static const struct EbpfHelperPrototype bpf_l4_csum_replace_proto = {
     .context_descriptor = &g_sk_buff
 };
 
-/*
- * s64 bpf_csum_diff(from, from_size, to, to_size, seed)
- *     calculate csum diff
- *     @from: raw from buffer
- *     @from_size: length of from buffer
- *     @to: raw to buffer
- *     @to_size: length of to buffer
- *     @seed: optional seed
- *     Return: csum result or negative error code
- */
 static const struct EbpfHelperPrototype bpf_csum_diff_proto = {
     .name = "csum_diff",
-    //.func		= bpf_csum_diff,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL,
@@ -836,8 +376,6 @@ static const struct EbpfHelperPrototype bpf_csum_diff_proto = {
 
 static const struct EbpfHelperPrototype bpf_csum_update_proto = {
     .name = "csum_update",
-    //.func		= bpf_csum_update,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -848,8 +386,6 @@ static const struct EbpfHelperPrototype bpf_csum_update_proto = {
 
 static const struct EbpfHelperPrototype bpf_clone_redirect_proto = {
     .name = "clone_redirect",
-    //.func       = bpf_clone_redirect,
-    //.gpl_only   = false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -858,20 +394,18 @@ static const struct EbpfHelperPrototype bpf_clone_redirect_proto = {
     },
     .context_descriptor = &g_sk_buff
 };
+
 static const struct EbpfHelperPrototype bpf_redirect_proto = {
     .name = "redirect",
-    //.func       = bpf_redirect,
-    //.gpl_only   = false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_ANYTHING,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
 };
+
 static const struct EbpfHelperPrototype bpf_sk_redirect_hash_proto = {
     .name = "sk_redirect_hash",
-    //.func       = bpf_sk_redirect_hash,
-    //.gpl_only   = false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -881,10 +415,9 @@ static const struct EbpfHelperPrototype bpf_sk_redirect_hash_proto = {
     },
     .context_descriptor = &g_sk_buff
 };
+
 static const struct EbpfHelperPrototype bpf_sk_redirect_map_proto = {
     .name = "sk_redirect_map",
-    //.func       = bpf_sk_redirect_map,
-    //.gpl_only   = false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -894,10 +427,9 @@ static const struct EbpfHelperPrototype bpf_sk_redirect_map_proto = {
     },
     .context_descriptor = &g_sk_buff
 };
+
 static const struct EbpfHelperPrototype bpf_msg_redirect_hash_proto = {
     .name = "msg_redirect_hash",
-    //.func       = bpf_msg_redirect_hash,
-    //.gpl_only   = false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -907,10 +439,9 @@ static const struct EbpfHelperPrototype bpf_msg_redirect_hash_proto = {
     },
     .context_descriptor = &g_sk_msg_md
 };
+
 static const struct EbpfHelperPrototype bpf_msg_redirect_map_proto = {
     .name = "msg_redirect_map",
-    //.func       = bpf_msg_redirect_map,
-    //.gpl_only   = false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -920,10 +451,9 @@ static const struct EbpfHelperPrototype bpf_msg_redirect_map_proto = {
     },
     .context_descriptor = &g_sk_msg_md
 };
+
 static const struct EbpfHelperPrototype bpf_msg_apply_bytes_proto = {
     .name = "msg_apply_bytes",
-    //.func       = bpf_msg_apply_bytes,
-    //.gpl_only   = false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -931,10 +461,9 @@ static const struct EbpfHelperPrototype bpf_msg_apply_bytes_proto = {
     },
     .context_descriptor = &g_sk_msg_md
 };
+
 static const struct EbpfHelperPrototype bpf_msg_cork_bytes_proto = {
     .name = "msg_cork_bytes",
-    //.func       = bpf_msg_cork_bytes,
-    //.gpl_only   = false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -942,10 +471,9 @@ static const struct EbpfHelperPrototype bpf_msg_cork_bytes_proto = {
     },
     .context_descriptor = &g_sk_msg_md
 };
+
 static const struct EbpfHelperPrototype bpf_msg_pull_data_proto = {
     .name = "msg_pull_data",
-    //.func		= bpf_msg_pull_data,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -957,44 +485,38 @@ static const struct EbpfHelperPrototype bpf_msg_pull_data_proto = {
 };
 static const struct EbpfHelperPrototype bpf_get_cgroup_classid_proto = {
     .name = "get_cgroup_classid",
-    //.func       = bpf_get_cgroup_classid,
-    //.gpl_only   = false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = { EBPF_ARGUMENT_TYPE_PTR_TO_CTX, },
     .context_descriptor = &g_sk_buff
 };
+
 static const struct EbpfHelperPrototype bpf_get_route_realm_proto = {
     .name = "get_route_realm",
-    //.func       = bpf_get_route_realm,
-    //.gpl_only   = false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = { EBPF_ARGUMENT_TYPE_PTR_TO_CTX, },
     .context_descriptor = &g_sk_buff
 };
+
 static const struct EbpfHelperPrototype bpf_get_hash_recalc_proto = {
     .name = "get_hash_recalc",
-    //.func		= bpf_get_hash_recalc,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
     },
     .context_descriptor = &g_sk_buff
 };
+
 static const struct EbpfHelperPrototype bpf_set_hash_invalid_proto = {
     .name = "set_hash_invalid",
-    //.func		= bpf_set_hash_invalid,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
     },
     .context_descriptor = &g_sk_buff
 };
+
 static const struct EbpfHelperPrototype bpf_set_hash_proto = {
     .name = "set_hash",
-    //.func		= bpf_set_hash,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1002,10 +524,9 @@ static const struct EbpfHelperPrototype bpf_set_hash_proto = {
     },
     .context_descriptor = &g_sk_buff
 };
+
 static const struct EbpfHelperPrototype bpf_skb_vlan_push_proto = {
     .name = "skb_vlan_push",
-    //.func       = bpf_skb_vlan_push,
-    //.gpl_only   = false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1014,10 +535,9 @@ static const struct EbpfHelperPrototype bpf_skb_vlan_push_proto = {
     },
     .context_descriptor = &g_sk_buff
 };
+
 static const struct EbpfHelperPrototype bpf_skb_vlan_pop_proto = {
     .name = "skb_vlan_pop",
-    //.func       = bpf_skb_vlan_pop,
-    //.gpl_only   = false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1025,21 +545,8 @@ static const struct EbpfHelperPrototype bpf_skb_vlan_pop_proto = {
     .context_descriptor = &g_sk_buff
 };
 
-/*
- * int bpf_skb_change_proto(skb, proto, flags)
- *     Change protocol of the skb. Currently supported is v4 -> v6,
- *     v6 -> v4 transitions. The helper will also resize the skb. eBPF
- *     program is expected to fill the new headers via skb_store_bytes
- *     and lX_csum_replace.
- *     @skb: pointer to skb
- *     @proto: new skb->protocol type
- *     @flags: reserved
- *     Return: 0 on success or negative error
- */
 static const struct EbpfHelperPrototype bpf_skb_change_proto_proto = {
     .name = "skb_change_proto",
-    //.func		= bpf_skb_change_proto,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1049,17 +556,8 @@ static const struct EbpfHelperPrototype bpf_skb_change_proto_proto = {
     .context_descriptor = &g_sk_buff
 };
 
-/*
- * int bpf_skb_change_type(skb, type)
- *     Change packet type of skb.
- *     @skb: pointer to skb
- *     @type: new skb->pkt_type type
- *     Return: 0 on success or negative error
- */
 static const struct EbpfHelperPrototype bpf_skb_change_type_proto = {
     .name = "skb_change_type",
-    //.func		= bpf_skb_change_type,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1068,19 +566,8 @@ static const struct EbpfHelperPrototype bpf_skb_change_type_proto = {
     .context_descriptor = &g_sk_buff
 };
 
-/*
- * int bpf_skb_adjust_room(skb, len_diff, mode, flags)
- *     Grow or shrink room in sk_buff.
- *     @skb: pointer to skb
- *     @len_diff: (signed) amount of room to grow/shrink
- *     @mode: operation mode (enum bpf_adj_room_mode)
- *     @flags: reserved for future use
- *     Return: 0 on success or negative error code
- */
 static const struct EbpfHelperPrototype bpf_skb_adjust_room_proto = {
     .name = "skb_adjust_room",
-    //.func		= bpf_skb_adjust_room,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1092,19 +579,8 @@ static const struct EbpfHelperPrototype bpf_skb_adjust_room_proto = {
     .context_descriptor = &g_sk_buff
 };
 
-/*
- * int bpf_skb_change_tail(skb, len, flags)
- *     The helper will resize the skb to the given new size, to be used f.e.
- *     with control messages.
- *     @skb: pointer to skb
- *     @len: new skb length
- *     @flags: reserved
- *     Return: 0 on success or negative error
- */
 static const struct EbpfHelperPrototype bpf_skb_change_tail_proto = {
     .name = "skb_change_tail",
-    //.func		= bpf_skb_change_tail,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1114,42 +590,8 @@ static const struct EbpfHelperPrototype bpf_skb_change_tail_proto = {
     .context_descriptor = &g_sk_buff
 };
 
-// static const struct EbpfHelperPrototype sk_skb_change_tail_proto = {
-// 	//.func		= sk_skb_change_tail,
-// 	//.gpl_only	= false,
-// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
-// 	.argument_type = {
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-// 	},
-// };
-
-/* int bpf_skb_change_head(struct sk_buff *skb, u32 len, u64 flags)
- * 	Description
- * 		Grows headroom of packet associated to *skb* and adjusts the
- * 		offset of the MAC header accordingly, adding *len* bytes of
- * 		space. It automatically extends and reallocates memory as
- * 		required.
- *
- * 		This helper can be used on a layer 3 *skb* to push a MAC header
- * 		for redirection into a layer 2 device.
- *
- * 		All values for *flags* are reserved for future usage, and must
- * 		be left at zero.
- *
- * 		A call to this helper is susceptible to change the underlaying
- * 		packet buffer. Therefore, at load time, all checks on pointers
- * 		previously done by the verifier are invalidated and must be
- * 		performed again, if the helper is used in combination with
- * 		direct packet access.
- * 	Return
- * 		0 on success, or a negative error in case of failure.
- */
 static const struct EbpfHelperPrototype bpf_skb_change_head_proto = {
     .name = "skb_change_head",
-    //.func		= bpf_skb_change_head,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1159,22 +601,9 @@ static const struct EbpfHelperPrototype bpf_skb_change_head_proto = {
     .reallocate_packet = true,
     .context_descriptor = &g_sk_buff
 };
-
-// static const struct EbpfHelperPrototype sk_skb_change_head_proto = {
-// 	//.func		= sk_skb_change_head,
-// 	//.gpl_only	= false,
-// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
-// 	.argument_type = {
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-//  },
-// };
 
 static const struct EbpfHelperPrototype bpf_xdp_adjust_head_proto = {
     .name = "xdp_adjust_head",
-    //.func		= bpf_xdp_adjust_head,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1186,8 +615,6 @@ static const struct EbpfHelperPrototype bpf_xdp_adjust_head_proto = {
 
 static const struct EbpfHelperPrototype bpf_xdp_adjust_tail_proto = {
     .name = "xdp_adjust_tail",
-    //.func		= bpf_xdp_adjust_tail,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1199,8 +626,6 @@ static const struct EbpfHelperPrototype bpf_xdp_adjust_tail_proto = {
 
 static const struct EbpfHelperPrototype bpf_xdp_adjust_meta_proto = {
     .name = "xdp_adjust_meta",
-    //.func		= bpf_xdp_adjust_meta,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1210,56 +635,8 @@ static const struct EbpfHelperPrototype bpf_xdp_adjust_meta_proto = {
     .context_descriptor = &g_xdp_descr
 };
 
-// static const struct EbpfHelperPrototype bpf_xdp_redirect_proto = {
-//     .name = "xdp_redirect",
-// 	//.func       = bpf_xdp_redirect,
-// 	//.gpl_only   = false,
-// 	.return_type   = EBPF_RETURN_TYPE_INTEGER,
-// 	.argument_type = {
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-//  },
-// };
-
-// static const struct EbpfHelperPrototype bpf_xdp_redirect_map_proto = {
-//     .name = "xdp_redirect_map",
-// 	//.func       = bpf_xdp_redirect_map,
-// 	//.gpl_only   = false,
-// 	.return_type   = EBPF_RETURN_TYPE_INTEGER,
-// 	.argument_type = {
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-// 	},
-// };
-
-// static const struct EbpfHelperPrototype bpf_skb_event_output_proto = {
-//     .name = "skb_event_output",
-// 	//.func		= bpf_skb_event_output,
-// 	//.gpl_only	= true,
-// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
-// 	.argument_type = {
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
-// 	    EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
-// 	},
-// };
-
-/*
- * int bpf_skb_get_tunnel_key(skb, key, size, flags)
- *     retrieve or populate tunnel metadata
- *     @skb: pointer to skb
- *     @key: pointer to 'struct bpf_tunnel_key'
- *     @size: size of 'struct bpf_tunnel_key'
- *     @flags: room for future extensions
- *     Return: 0 on success or negative error
- */
 static const struct EbpfHelperPrototype bpf_skb_get_tunnel_key_proto = {
     .name = "skb_get_tunnel_key",
-    //.func		= bpf_skb_get_tunnel_key,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1270,18 +647,8 @@ static const struct EbpfHelperPrototype bpf_skb_get_tunnel_key_proto = {
     .context_descriptor = &g_sk_buff
 };
 
-/*
- * int bpf_skb_get_tunnel_opt(skb, opt, size)
- *     retrieve tunnel options metadata
- *     @skb: pointer to skb
- *     @opt: pointer to raw tunnel option data
- *     @size: size of @opt
- *     Return: option size
- */
 static const struct EbpfHelperPrototype bpf_skb_get_tunnel_opt_proto = {
     .name = "skb_get_tunnel_opt",
-    //.func		= bpf_skb_get_tunnel_opt,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1291,19 +658,8 @@ static const struct EbpfHelperPrototype bpf_skb_get_tunnel_opt_proto = {
     .context_descriptor = &g_sk_buff
 };
 
-/*
- * int bpf_skb_set_tunnel_key(skb, key, size, flags)
- *     retrieve or populate tunnel metadata
- *     @skb: pointer to skb
- *     @key: pointer to 'struct bpf_tunnel_key'
- *     @size: size of 'struct bpf_tunnel_key'
- *     @flags: room for future extensions
- *     Return: 0 on success or negative error
- */
 static const struct EbpfHelperPrototype bpf_skb_set_tunnel_key_proto = {
     .name = "skb_set_tunnel_key",
-    //.func		= bpf_skb_set_tunnel_key,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1324,8 +680,6 @@ static const struct EbpfHelperPrototype bpf_skb_set_tunnel_key_proto = {
  */
 static const struct EbpfHelperPrototype bpf_skb_set_tunnel_opt_proto = {
     .name = "skb_set_tunnel_opt",
-    //.func		= bpf_skb_set_tunnel_opt,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1335,21 +689,8 @@ static const struct EbpfHelperPrototype bpf_skb_set_tunnel_opt_proto = {
     .context_descriptor = &g_sk_buff
 };
 
-/*
- * int bpf_skb_under_cgroup(skb, map, index)
- *     Check cgroup2 membership of skb
- *     @skb: pointer to skb
- *     @map: pointer to bpf_map in BPF_MAP_TYPE_CGROUP_ARRAY type
- *     @index: index of the cgroup in the bpf_map
- *     Return:
- *       == 0 skb failed the cgroup2 descendant test
- *       == 1 skb succeeded the cgroup2 descendant test
- *        < 0 error
- */
 static const struct EbpfHelperPrototype bpf_skb_under_cgroup_proto = {
     .name = "skb_under_cgroup",
-    //.func		= bpf_skb_under_cgroup,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1361,8 +702,6 @@ static const struct EbpfHelperPrototype bpf_skb_under_cgroup_proto = {
 
 static const struct EbpfHelperPrototype bpf_skb_cgroup_id_proto = {
     .name = "skb_cgroup_id",
-    //.func       = bpf_skb_cgroup_id,
-    //.gpl_only   = false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1370,24 +709,8 @@ static const struct EbpfHelperPrototype bpf_skb_cgroup_id_proto = {
     .context_descriptor = &g_sk_buff
 };
 
-// static const struct EbpfHelperPrototype bpf_xdp_event_output_proto = {
-//     .name = "xdp_event_output",
-// 	//.func		= bpf_xdp_event_output,
-// 	//.gpl_only	= true,
-// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
-// 	.argument_type = {
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
-// 	    EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
-// 	},
-// };
-
 static const struct EbpfHelperPrototype bpf_get_socket_cookie_proto = {
     .name = "get_socket_cookie",
-    //.func       = bpf_get_socket_cookie,
-    //.gpl_only   = false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = { EBPF_ARGUMENT_TYPE_PTR_TO_CTX, },
     .context_descriptor = &g_sk_buff
@@ -1395,8 +718,6 @@ static const struct EbpfHelperPrototype bpf_get_socket_cookie_proto = {
 
 static const struct EbpfHelperPrototype bpf_get_socket_uid_proto = {
     .name = "get_socket_uid",
-    //.func       = bpf_get_socket_uid,
-    //.gpl_only   = false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = { EBPF_ARGUMENT_TYPE_PTR_TO_CTX, },
     .context_descriptor = &g_sk_buff
@@ -1404,8 +725,6 @@ static const struct EbpfHelperPrototype bpf_get_socket_uid_proto = {
 
 static const struct EbpfHelperPrototype bpf_setsockopt_proto = {
     .name = "setsockopt",
-    //.func		= bpf_setsockopt,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1416,21 +735,8 @@ static const struct EbpfHelperPrototype bpf_setsockopt_proto = {
     },
 };
 
-/*
- * int bpf_getsockopt(bpf_socket, level, optname, optval, optlen)
- *     Calls getsockopt. Not all opts are available.
- *     Supported levels: IPPROTO_TCP
- *     @bpf_socket: pointer to bpf_socket
- *     @level: IPPROTO_TCP
- *     @optname: option name
- *     @optval: pointer to option value
- *     @optlen: length of optval in bytes
- *     Return: 0 or negative error
- */
 static const struct EbpfHelperPrototype bpf_getsockopt_proto = {
     .name = "getsockopt",
-    //.func		= bpf_getsockopt,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1443,8 +749,6 @@ static const struct EbpfHelperPrototype bpf_getsockopt_proto = {
 
 static const struct EbpfHelperPrototype bpf_sock_ops_cb_flags_set_proto = {
     .name = "sock_ops_cb_flags_set",
-    //.func		= bpf_sock_ops_cb_flags_set,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1452,10 +756,9 @@ static const struct EbpfHelperPrototype bpf_sock_ops_cb_flags_set_proto = {
     },
     .context_descriptor = &g_sock_ops_descr
 };
+
 static const struct EbpfHelperPrototype bpf_bind_proto = {
     .name = "bind",
-    //.func		= bpf_bind,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1464,27 +767,8 @@ static const struct EbpfHelperPrototype bpf_bind_proto = {
     },
 };
 
-/*
- * int bpf_skb_get_xfrm_state(struct sk_buff *skb, u32 index, struct bpf_xfrm_state *xfrm_state, u32 size, u64 flags)
- * 	Description
- * 		Retrieve the XFRM state (IP transform framework, see also
- * 		**ip-xfrm(8)**) at *index* in XFRM "security path" for *skb*.
- *
- * 		The retrieved value is stored in the **struct bpf_xfrm_state**
- * 		pointed by *xfrm_state* and of length *size*.
- *
- * 		All values for *flags* are reserved for future usage, and must
- * 		be left at zero.
- *
- * 		This helper is available only if the kernel was compiled with
- * 		**CONFIG_XFRM** configuration option.
- * 	Return
- * 		0 on success, or a negative error in case of failure.
- */
 static const struct EbpfHelperPrototype bpf_skb_get_xfrm_state_proto = {
     .name = "skb_get_xfrm_state",
-    //.func		= bpf_skb_get_xfrm_state,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1496,10 +780,8 @@ static const struct EbpfHelperPrototype bpf_skb_get_xfrm_state_proto = {
     .context_descriptor = &g_sk_buff
 };
 
-static const struct EbpfHelperPrototype bpf_xdp_fib_lookup_proto = {
-    .name = "xdp_fib_lookup",
-    //.func		= bpf_xdp_fib_lookup,
-    //.gpl_only	= true,
+static const struct EbpfHelperPrototype bpf_fib_lookup_proto = {
+    .name = "fib_lookup",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1509,23 +791,8 @@ static const struct EbpfHelperPrototype bpf_xdp_fib_lookup_proto = {
     },
 };
 
-// static const struct EbpfHelperPrototype bpf_skb_fib_lookup_proto = {
-//     .name = "skb_fib_lookup",
-// 	//.func		= bpf_skb_fib_lookup,
-// 	//.gpl_only	= true,
-// 	.return_type	= EBPF_RETURN_TYPE_INTEGER,
-// 	.argument_type = {
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-// 	    EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
-// 	    EBPF_ARGUMENT_TYPE_CONST_SIZE,
-// 	    EBPF_ARGUMENT_TYPE_ANYTHING,
-// 	},
-// };
-
 static const struct EbpfHelperPrototype bpf_lwt_push_encap_proto = {
     .name = "lwt_push_encap",
-    //.func		= bpf_lwt_push_encap,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1535,10 +802,9 @@ static const struct EbpfHelperPrototype bpf_lwt_push_encap_proto = {
     },
     .context_descriptor = &g_sk_buff
 };
+
 static const struct EbpfHelperPrototype bpf_lwt_seg6_store_bytes_proto = {
     .name = "lwt_seg6_store_bytes",
-    //.func		= bpf_lwt_seg6_store_bytes,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1548,10 +814,9 @@ static const struct EbpfHelperPrototype bpf_lwt_seg6_store_bytes_proto = {
     },
     .context_descriptor = &g_sk_buff
 };
+
 static const struct EbpfHelperPrototype bpf_lwt_seg6_action_proto = {
     .name = "lwt_seg6_action",
-    //.func		= bpf_lwt_seg6_action,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1561,10 +826,9 @@ static const struct EbpfHelperPrototype bpf_lwt_seg6_action_proto = {
     },
     .context_descriptor = &g_sk_buff
 };
+
 static const struct EbpfHelperPrototype bpf_lwt_seg6_adjust_srh_proto = {
     .name = "lwt_seg6_adjust_srh",
-    //.func		= bpf_lwt_seg6_adjust_srh,
-    //.gpl_only	= false,
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1574,19 +838,17 @@ static const struct EbpfHelperPrototype bpf_lwt_seg6_adjust_srh_proto = {
     .reallocate_packet = true,
     .context_descriptor = &g_sk_buff
 };
+
 static const struct EbpfHelperPrototype bpf_rc_repeat_proto = {
-    .name = "rc_repeat", // without bpf_ originally
-                         //.func	   = bpf_rc_repeat,
-                         //.gpl_only  = true, /* rc_repeat is EXPORT_SYMBOL_GPL */
+    .name = "rc_repeat",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
     },
 };
+
 static const struct EbpfHelperPrototype bpf_rc_keydown_proto = {
-    .name = "rc_keydown", // without bpf_ originally
-                          //.func	   = bpf_rc_keydown,
-                          //.gpl_only  = true, /* rc_keydown is EXPORT_SYMBOL_GPL */
+    .name = "rc_keydown",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
@@ -1596,125 +858,15 @@ static const struct EbpfHelperPrototype bpf_rc_keydown_proto = {
     },
 };
 
-/* BPF helper function descriptions:
- *
- * void *bpf_map_lookup_elem(&map, &key)
- *     Return: Map value or NULL
- *
- * int bpf_map_update_elem(&map, &key, &value, flags)
- *     Return: 0 on success or negative error
- *
- * int bpf_map_delete_elem(&map, &key)
- *     Return: 0 on success or negative error
- *
- * int bpf_probe_read(void *dst, int size, void *src)
- *     read arbitrary kernel memory
- *     Return: 0 on success or negative error
- *
- * u64 bpf_ktime_get_ns()
- *     Return: current ktime
- *
- * int bpf_trace_printk(const char *fmt, int fmt_size, ...)
- *     Return: length of buffer written or negative error
- *
- * u32 bpf_prandom_u32()
- *     Return: random value
- *
- * u32 bpf_raw_smp_processor_id()
- *     Return: SMP processor ID
- *
- * int bpf_l3_csum_replace(skb, offset, from, to, flags)
- *     recompute IP checksum
- *     @skb: pointer to skb
- *     @offset: offset within packet where IP checksum is located
- *     @from: old value of header field
- *     @to: new value of header field
- *     @flags: bits 0-3 - size of header field
- *             other bits - reserved
- *     Return: 0 on success or negative error
- *
- * int bpf_l4_csum_replace(skb, offset, from, to, flags)
- *     recompute TCP/UDP checksum
- *     @skb: pointer to skb
- *     @offset: offset within packet where TCP/UDP checksum is located
- *     @from: old value of header field
- *     @to: new value of header field
- *     @flags: bits 0-3 - size of header field
- *             bit 4 - is pseudo header
- *             other bits - reserved
- *     Return: 0 on success or negative error
- *
- * int bpf_tail_call(ctx, prog_array_map, index)
- *     jump into another BPF program
- *     @ctx: context pointer passed to next program
- *     @prog_array_map: pointer to map which type is BPF_MAP_TYPE_PROG_ARRAY
- *     @index: 32-bit index inside array that selects specific program to run
- *     Return: 0 on success or negative error
- *//*
- * int bpf_clone_redirect(skb, ifindex, flags)
- *     redirect to another netdev
- *     @skb: pointer to skb
- *     @ifindex: ifindex of the net device
- *     @flags: bit 0 - if set, redirect to ingress instead of egress
- *             other bits - reserved
- *     Return: 0 on success or negative error
- *//*
- * u64 bpf_get_current_pid_tgid()
- *     Return: current->tgid << 32 | current->pid
- *//*
- * u64 bpf_get_current_uid_gid()
- *     Return: current_gid << 32 | current_uid
- *//*
- * int bpf_get_current_comm(char *buf, int size_of_buf)
- *     stores current->comm into buf
- *     Return: 0 on success or negative error
- *//*
- * u32 bpf_get_cgroup_classid(skb)
- *     retrieve a proc's classid
- *     @skb: pointer to skb
- *     Return: classid if != 0
- *//*
- * int bpf_skb_vlan_push(skb, vlan_proto, vlan_tci)
- *     Return: 0 on success or negative error
- *//*
- * int bpf_skb_vlan_pop(skb)
- *     Return: 0 on success or negative error
- *//*
- * int bpf_skb_get_tunnel_key(skb, key, size, flags)
- * int bpf_skb_set_tunnel_key(skb, key, size, flags)
- *     retrieve or populate tunnel metadata
- *     @skb: pointer to skb
- *     @key: pointer to 'struct bpf_tunnel_key'
- *     @size: size of 'struct bpf_tunnel_key'
- *     @flags: room for future extensions
- *     Return: 0 on success or negative error
- *//*
- * u64 bpf_perf_event_read(map, flags)
- *     read perf event counter value
- *     @map: pointer to perf_event_array map
- *     @flags: index of event in the map or bitmask flags
- *     Return: value of perf event counter read or error code
- *//*
- * int bpf_redirect(ifindex, flags)
- *     redirect to another netdev
- *     @ifindex: ifindex of the net device
- *     @flags:
- *	  cls_bpf:
- *          bit 0 - if set, redirect to ingress instead of egress
- *          other bits - reserved
- *	  xdp_bpf:
- *	    all bits - reserved
- *     Return: cls_bpf: TC_ACT_REDIRECT on success or TC_ACT_SHOT on error
- *	       xdp_bfp: XDP_REDIRECT on success or XDP_ABORT on error
- *//*
- * int bpf_redirect_map(map, key, flags)
- *     redirect to endpoint in map
- *     @map: pointer to dev map
- *     @key: index in map to lookup
- *     @flags: --
- *     Return: XDP_REDIRECT on success or XDP_ABORT on error
- */
-// ELAZAR: home brewed
+static const struct EbpfHelperPrototype bpf_get_local_storage_proto = {
+    .name = "get_local_storage",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_MAP_VALUE_OR_NULL, // BUT never NULL. TODO: add type
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
 static const struct EbpfHelperPrototype bpf_redirect_map_proto = {
     .name = "redirect_map",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
@@ -1725,260 +877,1043 @@ static const struct EbpfHelperPrototype bpf_redirect_map_proto = {
     },
 };
 
-/*
- * u32 bpf_get_route_realm(skb)
- *     retrieve a dst's tclassid
- *     @skb: pointer to skb
- *     Return: realm if != 0
- *//*
- * int bpf_perf_event_output(ctx, map, flags, data, size)
- *     output perf raw sample
- *     @ctx: struct pt_regs*
- *     @map: pointer to perf_event_array map
- *     @flags: index of event in the map or bitmask flags
- *     @data: data on stack to be output as raw data
- *     @size: size of data
- *     Return: 0 on success or negative error
- *//*
- * int bpf_get_stackid(ctx, map, flags)
- *     walk user or kernel stack and return id
- *     @ctx: struct pt_regs*
- *     @map: pointer to stack_trace map
- *     @flags: bits 0-7 - numer of stack frames to skip
- *             bit 8 - collect user stack instead of kernel
- *             bit 9 - compare stacks by hash only
- *             bit 10 - if two different stacks hash into the same stackid
- *                      discard old
- *             other bits - reserved
- *     Return: >= 0 stackid on success or negative error
- *//*
- * s64 bpf_csum_diff(from, from_size, to, to_size, seed)
- *     calculate csum diff
- *     @from: raw from buffer
- *     @from_size: length of from buffer
- *     @to: raw to buffer
- *     @to_size: length of to buffer
- *     @seed: optional seed
- *     Return: csum result or negative error code
- *//*
- * int bpf_skb_get_tunnel_opt(skb, opt, size)
- *     retrieve tunnel options metadata
- *     @skb: pointer to skb
- *     @opt: pointer to raw tunnel option data
- *     @size: size of @opt
- *     Return: option size
- *//*
- * int bpf_skb_set_tunnel_opt(skb, opt, size)
- *     populate tunnel options metadata
- *     @skb: pointer to skb
- *     @opt: pointer to raw tunnel option data
- *     @size: size of @opt
- *     Return: 0 on success or negative error
- *//*
- * int bpf_skb_change_proto(skb, proto, flags)
- *     Change protocol of the skb. Currently supported is v4 -> v6,
- *     v6 -> v4 transitions. The helper will also resize the skb. eBPF
- *     program is expected to fill the new headers via skb_store_bytes
- *     and lX_csum_replace.
- *     @skb: pointer to skb
- *     @proto: new skb->protocol type
- *     @flags: reserved
- *     Return: 0 on success or negative error
- *//*
- * int bpf_skb_change_type(skb, type)
- *     Change packet type of skb.
- *     @skb: pointer to skb
- *     @type: new skb->pkt_type type
- *     Return: 0 on success or negative error
- *//*
- * int bpf_skb_under_cgroup(skb, map, index)
- *     Check cgroup2 membership of skb
- *     @skb: pointer to skb
- *     @map: pointer to bpf_map in BPF_MAP_TYPE_CGROUP_ARRAY type
- *     @index: index of the cgroup in the bpf_map
- *     Return:
- *       == 0 skb failed the cgroup2 descendant test
- *       == 1 skb succeeded the cgroup2 descendant test
- *        < 0 error
- *//*
- * u32 bpf_get_hash_recalc(skb)
- *     Retrieve and possibly recalculate skb->hash.
- *     @skb: pointer to skb
- *     Return: hash
- *//*
- * u64 bpf_get_current_task()
- *     Returns current task_struct
- *     Return: current
- *//*
- * int bpf_probe_write_user(void *dst, void *src, int len)
- *     safely attempt to write to a location
- *     @dst: destination address in userspace
- *     @src: source address on stack
- *     @len: number of bytes to copy
- *     Return: 0 on success or negative error
- *//*
- * int bpf_current_task_under_cgroup(map, index)
- *     Check cgroup2 membership of current task
- *     @map: pointer to bpf_map in BPF_MAP_TYPE_CGROUP_ARRAY type
- *     @index: index of the cgroup in the bpf_map
- *     Return:
- *       == 0 current failed the cgroup2 descendant test
- *       == 1 current succeeded the cgroup2 descendant test
- *        < 0 error
- *
- * int bpf_skb_change_tail(skb, len, flags)
- *     The helper will resize the skb to the given new size, to be used f.e.
- *     with control messages.
- *     @skb: pointer to skb
- *     @len: new skb length
- *     @flags: reserved
- *     Return: 0 on success or negative error
- *
- * int bpf_skb_pull_data(skb, len)
- *     The helper will pull in non-linear data in case the skb is non-linear
- *     and not all of len are part of the linear section. Only needed for
- *     read/write with direct packet access.
- *     @skb: pointer to skb
- *     @len: len to make read/writeable
- *     Return: 0 on success or negative error
- *
- * s64 bpf_csum_update(skb, csum)
- *     Adds csum into skb->csum in case of CHECKSUM_COMPLETE.
- *     @skb: pointer to skb
- *     @csum: csum to add
- *     Return: csum on success or negative error
- *
- * void bpf_set_hash_invalid(skb)
- *     Invalidate current skb->hash.
- *     @skb: pointer to skb
- *
- * int bpf_get_numa_node_id()
- *     Return: Id of current NUMA node.
- *
- * int bpf_skb_change_head()
- *     Grows headroom of skb and adjusts MAC header offset accordingly.
- *     Will extends/reallocae as required automatically.
- *     May change skb data pointer and will thus invalidate any check
- *     performed for direct packet access.
- *     @skb: pointer to skb
- *     @len: length of header to be pushed in front
- *     @flags: Flags (unused for now)
- *     Return: 0 on success or negative error
- *
- * int bpf_xdp_adjust_head(xdp_md, delta)
- *     Adjust the xdp_md.data by delta
- *     @xdp_md: pointer to xdp_md
- *     @delta: An positive/negative integer to be added to xdp_md.data
- *     Return: 0 on success or negative on error
- *
- * int bpf_probe_read_str(void *dst, int size, const void *unsafe_ptr)
- *     Copy a NUL terminated string from unsafe address. In case the string
- *     length is smaller than size, the target is not padded with further NUL
- *     bytes. In case the string length is larger than size, just count-1
- *     bytes are copied and the last byte is set to NUL.
- *     @dst: destination address
- *     @size: maximum number of bytes to copy, including the trailing NUL
- *     @unsafe_ptr: unsafe address
- *     Return:
- *       > 0 length of the string including the trailing NUL on success
- *       < 0 error
- *
- * u64 bpf_get_socket_cookie(skb)
- *     Get the cookie for the socket stored inside sk_buff.
- *     @skb: pointer to skb
- *     Return: 8 Bytes non-decreasing number on success or 0 if the socket
- *     field is missing inside sk_buff
- *
- * u32 bpf_get_socket_uid(skb)
- *     Get the owner uid of the socket stored inside sk_buff.
- *     @skb: pointer to skb
- *     Return: uid of the socket owner on success or overflowuid if failed.
- *
- * u32 bpf_set_hash(skb, hash)
- *     Set full skb->hash.
- *     @skb: pointer to skb
- *     @hash: hash to set
- *
- * int bpf_setsockopt(bpf_socket, level, optname, optval, optlen)
- *     Calls setsockopt. Not all opts are available, only those with
- *     integer optvals plus TCP_CONGESTION.
- *     Supported levels: SOL_SOCKET and IPPROTO_TCP
- *     @bpf_socket: pointer to bpf_socket
- *     @level: SOL_SOCKET or IPPROTO_TCP
- *     @optname: option name
- *     @optval: pointer to option value
- *     @optlen: length of optval in bytes
- *     Return: 0 or negative error
- *
- * int bpf_getsockopt(bpf_socket, level, optname, optval, optlen)
- *     Calls getsockopt. Not all opts are available.
- *     Supported levels: IPPROTO_TCP
- *     @bpf_socket: pointer to bpf_socket
- *     @level: IPPROTO_TCP
- *     @optname: option name
- *     @optval: pointer to option value
- *     @optlen: length of optval in bytes
- *     Return: 0 or negative error
- *
- * int bpf_sock_ops_cb_flags_set(bpf_sock_ops, flags)
- *     Set callback flags for sock_ops
- *     @bpf_sock_ops: pointer to bpf_sock_ops_kern struct
- *     @flags: flags value
- *     Return: 0 for no error
- *             -EINVAL if there is no full tcp socket
- *             bits in flags that are not supported by current kernel
- *
- * int bpf_skb_adjust_room(skb, len_diff, mode, flags)
- *     Grow or shrink room in sk_buff.
- *     @skb: pointer to skb
- *     @len_diff: (signed) amount of room to grow/shrink
- *     @mode: operation mode (enum bpf_adj_room_mode)
- *     @flags: reserved for future use
- *     Return: 0 on success or negative error code
- *
- * int bpf_sk_redirect_map(map, key, flags)
- *     Redirect skb to a sock in map using key as a lookup key for the
- *     sock in map.
- *     @map: pointer to sockmap
- *     @key: key to lookup sock in map
- *     @flags: reserved for future use
- *     Return: SK_PASS
- *
- * int bpf_sock_map_update(skops, map, key, flags)
- *	@skops: pointer to bpf_sock_ops
- *	@map: pointer to sockmap to update
- *	@key: key to insert/update sock in map
- *	@flags: same flags as map update elem
- *
- * int bpf_xdp_adjust_meta(xdp_md, delta)
- *     Adjust the xdp_md.data_meta by delta
- *     @xdp_md: pointer to xdp_md
- *     @delta: An positive/negative integer to be added to xdp_md.data_meta
- *     Return: 0 on success or negative on error
- *
- * int bpf_perf_event_read_value(map, flags, buf, buf_size)
- *     read perf event counter value and perf event enabled/running time
- *     @map: pointer to perf_event_array map
- *     @flags: index of event in the map or bitmask flags
- *     @buf: buf to fill
- *     @buf_size: size of the buf
- *     Return: 0 on success or negative error code
- *
- * int bpf_perf_prog_read_value(ctx, buf, buf_size)
- *     read perf prog attached perf event counter and enabled/running time
- *     @ctx: pointer to ctx
- *     @buf: buf to fill
- *     @buf_size: size of the buf
- *     Return : 0 on success or negative error code
- *
- * int bpf_override_return(pt_regs, rc)
- *	@pt_regs: pointer to struct pt_regs
- *	@rc: the return value to set
- */
+static const struct EbpfHelperPrototype bpf_sk_select_reuseport_proto = {
+    .name = "sk_select_reuseport",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP_KEY,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_get_current_ancestor_cgroup_id_proto = {
+    .name = "get_current_ancestor_cgroup_id",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type {
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_sk_lookup_tcp_proto = {
+    .name = "sk_lookup_tcp",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_SOCK_COMMON_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+static const struct EbpfHelperPrototype bpf_sk_lookup_udp_proto = {
+    .name = "sk_lookup_udp",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_SOCKET_OR_NULL,
+    .argument_type {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_sk_release_proto = {
+    .name = "sk_release",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_map_push_elem_proto = {
+    .name = "map_push_elem",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type{
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP_VALUE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_map_pop_elem_proto = {
+    .name = "map_pop_elem",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type{
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP_VALUE, // TODO: uninit
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_map_peek_elem_proto = {
+    .name = "map_peek_elem",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type{
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP, // TODO: const
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP_VALUE, // TODO: uninit
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_msg_push_data_proto = {
+    .name = "msg_push_data",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+    .context_descriptor = &g_sk_msg_md
+};
+
+static const struct EbpfHelperPrototype bpf_msg_pop_data_proto = {
+    .name = "msg_pop_data",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+    .context_descriptor = &g_sk_msg_md
+};
+
+static const struct EbpfHelperPrototype bpf_rc_pointer_rel_proto = {
+    .name = "rc_pointer_rel",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_spin_lock_proto = {
+    .name = "spin_lock",
+    .return_type = EBPF_RETURN_TYPE_INTEGER, // returns 0
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_SPIN_LOCK,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_spin_unlock_proto = {
+    .name = "spin_unlock",
+    .return_type = EBPF_RETURN_TYPE_INTEGER, // returns 0
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_SPIN_LOCK,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_jiffies64_proto = {
+    .name = "jiffies64",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+};
+
+static const struct EbpfHelperPrototype bpf_sk_fullsock_proto = {
+    .name = "sk_fullsock",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_SOCKET_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_SOCK_COMMON,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_tcp_sock_proto = {
+    .name = "tcp_sock",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_TCP_SOCKET_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_SOCK_COMMON,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_skb_ecn_set_ce_proto = {
+    .name = "skb_ecn_set_ce",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_tcp_check_syncookie_proto = {
+    .name = "tcp_check_syncookie",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_get_listener_sock_proto = {
+    .name = "EbpfHelperPrototype",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_TCP_SOCKET_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_SOCK_COMMON,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_skc_lookup_tcp_proto = {
+    .name = "skc_lookup_tcp",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_SOCK_COMMON_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_sysctl_get_name_proto = {
+    .name = "sysctl_get_name",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_sysctl_get_current_value_proto = {
+    .name = "sysctl_get_current_value",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_sysctl_get_new_value_proto = {
+    .name = "sysctl_get_new_value",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_sysctl_set_new_value_proto = {
+    .name = "sysctl_set_new_value",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_strtol_proto = {
+    .name = "strtol",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_LONG,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_strtoul_proto = {
+    .name = "strtoul",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_LONG,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_strncmp_proto = {
+    .name = "strncmp",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CONST_STR,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_sk_storage_get_proto = {
+    .name = "sk_storage_get",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_MAP_VALUE_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP_VALUE, // TODO: OR_NULL,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_sk_storage_get_cg_sock_proto = {
+    .name = "sk_storage_get",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_MAP_VALUE_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX, /* context is 'struct sock' */
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP_VALUE, // TODO: OR_NULL,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_sk_storage_delete_proto = {
+    .name = "sk_storage_delete",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_send_signal_proto = {
+    .name = "send_signal",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_send_signal_thread_proto = {
+    .name = "send_signal_thread",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_tcp_gen_syncookie_proto = {
+    .name = "tcp_gen_syncookie",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_skb_output_proto = {
+    .name = "skb_event_output",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP, // originally const
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO readonly
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+    },
+    //.arg1_btf_id = &bpf_skb_output_btf_ids[0],
+};
+
+static const struct EbpfHelperPrototype bpf_probe_read_user_proto = {
+    .name = "probe_read_user",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_probe_read_user_str_proto = {
+    .name = "probe_read_user_str",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_probe_read_kernel_proto = {
+    .name = "probe_read_kernel",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_probe_read_kernel_str_proto = {
+    .name = "probe_read_kernel_str",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_tcp_send_ack_proto = {
+    .name = "tcp_send_ack",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+    //.arg1_btf_id = &tcp_sock_id[0],
+};
+
+static const struct EbpfHelperPrototype bpf_read_branch_records_proto = {
+    .name = "read_branch_records",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    }
+};
+
+static const struct EbpfHelperPrototype bpf_get_ns_current_pid_tgid_proto = {
+    .name = "get_ns_current_pid_tgid",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM, // TODO: or null
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_xdp_output_proto = {
+    .name = "xdp_event_output",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO : readonly
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+    },
+    // .arg1_btf_id = &bpf_xdp_output_btf_ids[0],
+};
+
+static const struct EbpfHelperPrototype bpf_get_netns_cookie_sock_proto = {
+    .name = "get_netns_cookie_sock",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX, // TODO: or null
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_get_netns_cookie_sock_addr_proto = {
+    .name = "get_netns_cookie_sock_addr",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX, // TODO: or null
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_sk_assign_proto = {
+    .name = "get_netns_cookie_sock",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_ktime_get_boot_ns_proto = {
+    .name = "ktime_get_boot_ns",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+};
+
+static const struct EbpfHelperPrototype bpf_seq_printf_proto = {
+    .name = "seq_printf",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+    },
+    // .arg1_btf_id = &btf_seq_file_ids[0],
+};
+
+static const struct EbpfHelperPrototype bpf_seq_write_proto = {
+    .name = "seq_write",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_sk_cgroup_id_proto = {
+    .name = "sk_cgroup_id",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_sk_ancestor_cgroup_id_proto = {
+    .name = "sk_ancestor_cgroup_id",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON,
+        EBPF_ARGUMENT_TYPE_ANYTHING
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_ringbuf_reserve_proto = {
+    .name = "ringbuf_reserve",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_ALLOC_MEM_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_CONST_ALLOC_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_ringbuf_submit_proto = {
+    .name = "ringbuf_submit",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_ALLOC_MEM,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_ringbuf_discard_proto = {
+    .name = "ringbuf_discard",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_ALLOC_MEM,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_ringbuf_output_proto = {
+    .name = "ringbuf_output",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+const struct EbpfHelperPrototype bpf_ringbuf_query_proto = {
+    .name = "ringbuf_query",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP, // TODO: const
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_csum_level_proto = {
+    .name = "csum_level",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_skc_to_tcp6_sock_proto = {
+    .name = "skc_to_tcp6_sock",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_BTF_ID_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON,
+    },
+    //.ret_btf_id  = &btf_sock_ids[BTF_SOCK_TYPE_TCP6],
+};
+
+static const struct EbpfHelperPrototype bpf_skc_to_tcp_sock_proto = {
+    .name = "skc_to_tcp_sock",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_BTF_ID_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON,
+    },
+    //.ret_btf_id  = &btf_sock_ids[BTF_SOCK_TYPE_TCP],
+};
+
+static const struct EbpfHelperPrototype bpf_skc_to_tcp_timewait_sock_proto = {
+    .name = "skc_to_tcp_timewait_sock",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_BTF_ID_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON,
+    },
+    //.ret_btf_id  = &btf_sock_ids[BTF_SOCK_TYPE_TCP_TW],
+};
+
+static const struct EbpfHelperPrototype bpf_skc_to_tcp_request_sock_proto = {
+    .name = "skc_to_tcp_request_sock",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_BTF_ID_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON,
+    },
+    //.ret_btf_id  = &btf_sock_ids[BTF_SOCK_TYPE_TCP_REQ],
+};
+
+static const struct EbpfHelperPrototype bpf_skc_to_udp6_sock_proto = {
+    .name = "skc_to_udp6_sock",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_BTF_ID_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON,
+    },
+    //.ret_btf_id  = &btf_sock_ids[BTF_SOCK_TYPE_UDP6],
+};
+
+static const struct EbpfHelperPrototype bpf_sock_from_file_proto = {
+    .name = "sock_from_file",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_BTF_ID_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
+    },
+    //.ret_btf_id = &bpf_sock_from_file_btf_ids[0],
+    //.arg1_btf_id = &bpf_sock_from_file_btf_ids[1],
+};
+
+static const struct EbpfHelperPrototype bpf_get_task_stack_proto = {
+    .name = "get_task_stack",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+    // .arg1_btf_id = &bpf_get_task_stack_btf_ids[0],
+};
+
+static const struct EbpfHelperPrototype bpf_sock_ops_load_hdr_opt_proto = {
+    .name = "sock_ops_load_hdr_opt",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_sock_ops_store_hdr_opt_proto = {
+    .name = "sock_ops_store_hdr_opt",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_sock_ops_reserve_hdr_opt_proto = {
+    .name = "sock_ops_reserve_hdr_opt",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_inode_storage_get_proto = {
+    .name = "inode_storage_get",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_MAP_VALUE_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP_VALUE_OR_NULL, // TODO: as argument too
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+    //.arg2_btf_id = &bpf_inode_storage_btf_ids[0],
+};
+
+static const struct EbpfHelperPrototype bpf_inode_storage_delete_proto = {
+    .name = "inode_storage_delete",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
+    },
+    //.arg2_btf_id = &bpf_inode_storage_btf_ids[0],
+};
+
+static const struct EbpfHelperPrototype bpf_d_path_proto = {
+    .name = "d_path",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+    },
+    // .allowed = bpf_d_path_allowed,
+    // .arg1_btf_id = &bpf_d_path_btf_ids[0],
+};
+
+static const struct EbpfHelperPrototype bpf_copy_from_user_proto = {
+    .name = "copy_from_user",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_per_cpu_ptr_proto = {
+    .name = "per_cpu_ptr",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_MEM_OR_BTF_ID_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_PERCPU_BTF_ID,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_this_cpu_ptr_proto = {
+    .name = "this_cpu_ptr",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_MEM_OR_BTF_ID,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_PERCPU_BTF_ID,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_snprintf_btf_proto = {
+    .name = "snprintf_btf",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_seq_printf_btf_proto = {
+    .name = "seq_printf_btf",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+    // .arg1_btf_id	= &btf_seq_file_ids[0],
+};
+
+static const struct EbpfHelperPrototype bpf_skb_cgroup_classid_proto = {
+    .name = "skb_cgroup_classid",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_redirect_neigh_proto = {
+    .name = "redirect_neigh",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_redirect_peer_proto = {
+    .name = "redirect_peer",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_task_storage_get_proto = {
+    .name = "task_storage_get",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_MAP_VALUE_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP_VALUE, // TODO: or null
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+    // .arg2_btf_id = &bpf_task_storage_btf_ids[0],
+};
+
+static const struct EbpfHelperPrototype bpf_task_storage_delete_proto = {
+    .name = "task_storage_delete",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
+    },
+    // .arg2_btf_id = &bpf_task_storage_btf_ids[0],
+};
+
+static const struct EbpfHelperPrototype bpf_get_current_task_btf_proto = {
+    .name = "get_current_task_btf",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_BTF_ID,
+    // .ret_btf_id = &bpf_get_current_btf_ids[0],
+};
+
+static const struct EbpfHelperPrototype bpf_bprm_opts_set_proto = {
+    .name = "bprm_opts_set",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    }
+    // .arg1_btf_id	= &bpf_bprm_opts_set_btf_ids[0],
+};
+
+static const struct EbpfHelperPrototype bpf_ima_inode_hash_proto = {
+    .name = "ima_inode_hash",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+    },
+    //    .allowed	= bpf_ima_inode_hash_allowed,
+    //    .arg1_btf_id	= &bpf_ima_inode_hash_btf_ids[0],
+};
+
+static const struct EbpfHelperPrototype bpf_ktime_get_coarse_ns_proto = {
+    .name = "ktime_get_coarse_ns",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+};
+
+// bpf_skb_check_mtu_proto/bpf_xdp_check_mtu_proto
+static const struct EbpfHelperPrototype bpf_check_mtu_proto = {
+    .name = "check_mtu",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_INT,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_for_each_map_elem_proto = {
+    .name = "for_each_map_elem",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
+        EBPF_ARGUMENT_TYPE_PTR_TO_FUNC,
+        EBPF_ARGUMENT_TYPE_PTR_TO_STACK_OR_NULL,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_snprintf_proto = {
+    .name = "snprintf",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_PTR_TO_CONST_STR,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL, //  TODO: readonly
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_sys_bpf_proto = {
+    .name = "sys_bpf",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, //  TODO: readonly
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_btf_find_by_name_kind_proto = {
+    .name = "btf_find_by_name_kind",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, //  TODO: readonly
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_sys_close_proto = {
+    .name = "sys_close",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_kallsyms_lookup_name_proto = {
+    .name = "kallsyms_lookup_name",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_LONG,
+    }
+};
+
+static const struct EbpfHelperPrototype bpf_timer_init_proto = {
+    .name = "timer_init",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_TIMER,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MAP, // TODO: const
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_timer_set_callback_proto = {
+    .name = "timer_set_callback",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_TIMER,
+        EBPF_ARGUMENT_TYPE_PTR_TO_FUNC,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_timer_start_proto = {
+    .name = "timer_start",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_TIMER,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_timer_cancel_proto = {
+    .name = "timer_cancel",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_TIMER,
+    },
+};
+
+// same signature for bpf_get_func_ip_proto_kprobe/bpf_get_func_ip_proto_tracing
+static const struct EbpfHelperPrototype bpf_get_func_ip_proto = {
+    .name = "get_func_ip",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_get_attach_cookie_proto = {
+    .name = "get_attach_cookie",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_task_pt_regs_proto = {
+    .name = "task_pt_regs",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_BTF_ID,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
+    },
+    //    .arg1_btf_id	= &btf_tracing_ids[BTF_TRACING_TYPE_TASK],
+    //    .ret_btf_id	= &bpf_task_pt_regs_ids[0],
+};
+
+static const struct EbpfHelperPrototype bpf_get_branch_snapshot_proto = {
+    .name = "get_branch_snapshot",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_get_func_arg_proto = {
+    .name = "get_func_arg",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_LONG,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_get_func_ret_proto = {
+    .name = "get_func_ret",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+        EBPF_ARGUMENT_TYPE_PTR_TO_LONG,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_get_func_arg_cnt_proto = {
+    .name = "get_func_arg_cnt",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
+    },
+};
+
+static const struct EbpfHelperPrototype bpf_trace_vprintk_proto = {
+    .name = "trace_vprintk",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_CONST_SIZE,
+        EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
+    },
+};
+
+const struct EbpfHelperPrototype bpf_skc_to_unix_sock_proto = {
+    .name = "skc_to_unix_sock",
+    .return_type = EBPF_RETURN_TYPE_PTR_TO_BTF_ID_OR_NULL,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON,
+    }
+    //    .ret_btf_id		= &btf_sock_ids[BTF_SOCK_TYPE_UNIX],
+};
+
+const struct EbpfHelperPrototype bpf_find_vma_proto = {
+    .name = "find_vma",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_FUNC,
+        EBPF_ARGUMENT_TYPE_PTR_TO_STACK_OR_NULL,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    },
+    // .arg1_btf_id = &btf_tracing_ids[BTF_TRACING_TYPE_TASK],
+};
+
+const struct EbpfHelperPrototype bpf_loop_proto = {
+    .name = "loop",
+    .return_type = EBPF_RETURN_TYPE_INTEGER,
+    .argument_type = {
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+        EBPF_ARGUMENT_TYPE_PTR_TO_FUNC,
+        EBPF_ARGUMENT_TYPE_PTR_TO_STACK_OR_NULL,
+        EBPF_ARGUMENT_TYPE_ANYTHING,
+    }
+};
 
 #define FN(x) bpf_##x##_proto
 // keep this on a round line
-const struct EbpfHelperPrototype prototypes[81] = {
+const struct EbpfHelperPrototype prototypes[] = {
     FN(unspec),
     FN(map_lookup_elem),
     FN(map_update_elem),
@@ -2046,9 +1981,9 @@ const struct EbpfHelperPrototype prototypes[81] = {
     FN(bind),
     FN(xdp_adjust_tail),
     FN(skb_get_xfrm_state),
-    FN(get_stack), // 67
+    FN(get_stack),
     FN(skb_load_bytes_relative),
-    FN(xdp_fib_lookup), // without xdp_ originally
+    FN(fib_lookup),
     FN(sock_hash_update),
     FN(msg_redirect_hash),
     FN(sk_redirect_hash),
@@ -2060,6 +1995,111 @@ const struct EbpfHelperPrototype prototypes[81] = {
     FN(rc_keydown),
     FN(skb_cgroup_id),
     FN(get_current_cgroup_id),
+    FN(get_local_storage),
+    FN(sk_select_reuseport),
+    FN(get_current_cgroup_id),
+    FN(sk_lookup_tcp),
+    FN(sk_lookup_udp),
+    FN(sk_release),
+    FN(map_push_elem),
+    FN(map_pop_elem),
+    FN(map_peek_elem),
+    FN(msg_push_data),
+    FN(msg_pop_data),
+    FN(rc_pointer_rel),
+    FN(spin_lock),
+    FN(spin_unlock),
+    FN(sk_fullsock),
+    FN(tcp_sock),
+    FN(skb_ecn_set_ce),
+    FN(get_listener_sock),
+    FN(skc_lookup_tcp),
+    FN(tcp_check_syncookie),
+    FN(sysctl_get_name),
+    FN(sysctl_get_current_value),
+    FN(sysctl_get_new_value),
+    FN(sysctl_set_new_value),
+    FN(strtol),
+    FN(strtoul),
+    FN(sk_storage_get),
+    FN(sk_storage_delete),
+    FN(send_signal),
+    FN(tcp_gen_syncookie),
+    FN(skb_output),
+    FN(probe_read_user),
+    FN(probe_read_kernel),
+    FN(probe_read_user_str),
+    FN(probe_read_kernel_str),
+    FN(tcp_send_ack),
+    FN(send_signal_thread),
+    FN(jiffies64),
+    FN(read_branch_records),
+    FN(get_ns_current_pid_tgid),
+    FN(xdp_output),
+    FN(get_netns_cookie_sock), // XXX: same signature for bpf_get_netns_cookie_sock_addr_proto  or bpf_get_netns_cookie_sock_addr_proto
+    FN(get_current_ancestor_cgroup_id),
+    FN(sk_assign),
+    FN(ktime_get_boot_ns),
+    FN(seq_printf),
+    FN(seq_write),
+    FN(sk_cgroup_id),
+    FN(sk_ancestor_cgroup_id),
+    FN(ringbuf_output),
+    FN(ringbuf_reserve),
+    FN(ringbuf_submit),
+    FN(ringbuf_discard),
+    FN(ringbuf_query),
+    FN(csum_level),
+    FN(skc_to_tcp6_sock),
+    FN(skc_to_tcp_sock),
+    FN(skc_to_tcp_timewait_sock),
+    FN(skc_to_tcp_request_sock),
+    FN(skc_to_udp6_sock),
+    FN(get_task_stack),
+    FN(sock_ops_load_hdr_opt),
+    FN(sock_ops_store_hdr_opt),
+    FN(sock_ops_reserve_hdr_opt),
+    FN(inode_storage_get),
+    FN(inode_storage_delete),
+    FN(d_path),
+    FN(copy_from_user),
+    FN(snprintf_btf),
+    FN(seq_printf_btf),
+    FN(skb_cgroup_classid),
+    FN(redirect_neigh),
+    FN(per_cpu_ptr),
+    FN(this_cpu_ptr),
+    FN(redirect_peer),
+    FN(task_storage_get),
+    FN(task_storage_delete),
+    FN(get_current_task_btf),
+    FN(bprm_opts_set),
+    FN(ktime_get_coarse_ns),
+    FN(ima_inode_hash),
+    FN(sock_from_file),
+    FN(check_mtu),
+    FN(for_each_map_elem),
+    FN(snprintf),
+    FN(sys_bpf),
+    FN(btf_find_by_name_kind),
+    FN(sys_close),
+    FN(timer_init),
+    FN(timer_set_callback),
+    FN(timer_start),
+    FN(timer_cancel),
+    FN(get_func_ip),
+    FN(get_attach_cookie),
+    FN(task_pt_regs),
+    FN(get_branch_snapshot),
+    FN(trace_vprintk),
+    FN(skc_to_unix_sock),
+    FN(kallsyms_lookup_name),
+    FN(find_vma),
+    FN(loop),
+    FN(strncmp),
+    FN(get_func_arg),
+    FN(get_func_ret),
+    FN(get_func_arg_cnt),
 };
 
 bool is_helper_usable_linux(int32_t n) {
