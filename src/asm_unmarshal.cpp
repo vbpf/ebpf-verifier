@@ -296,6 +296,9 @@ struct Unmarshaller {
 
     auto makeCall(int32_t imm) const {
         EbpfHelperPrototype proto = info.platform->get_helper_prototype(imm);
+        if (proto.return_type == EBPF_RETURN_TYPE_UNSUPPORTED) {
+            throw std::runtime_error(std::string("Unsupported function: ") + proto.name);
+        }
         Call res;
         res.func = imm;
         res.name = proto.name;
@@ -311,6 +314,9 @@ struct Unmarshaller {
             EBPF_ARGUMENT_TYPE_DONTCARE}};
         for (size_t i = 1; i < args.size() - 1; i++) {
             switch (args[i]) {
+            case EBPF_ARGUMENT_TYPE_UNSUPPORTED: {
+                throw std::runtime_error(std::string("Unsupported function: ") + proto.name);
+            }
             case EBPF_ARGUMENT_TYPE_DONTCARE: return res;
             case EBPF_ARGUMENT_TYPE_ANYTHING:
             case EBPF_ARGUMENT_TYPE_PTR_TO_MAP:
