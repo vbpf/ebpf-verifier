@@ -1239,10 +1239,16 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             } else {
                 // Here we're not sure that lhs and rhs are the same type; they might be, meaning lhs may be a number.
                 // But previous assertions should fail unless we know that rhs is a number.
-                assert(type_inv.get_type(m_inv, std::get<Reg>(bin.v)) == T_NUM);
-                sub_overflow(dst.value, src.value);
-                // No harm comes from subtracting the value from an offset of a number, which is TOP.
-                sub(dst.offset, src.value);
+                if (type_inv.get_type(m_inv, std::get<Reg>(bin.v)) != T_NUM) {
+                    type_inv.havoc_type(m_inv, bin.dst);
+                    havoc(dst.value);
+                    havoc(dst.offset);
+                    havoc(dst.region_size);
+                } else {
+                    sub_overflow(dst.value, src.value);
+                    // No harm comes from subtracting the value from an offset of a number, which is TOP.
+                    sub(dst.offset, src.value);
+                }
             }
             break;
         }
