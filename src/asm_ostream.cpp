@@ -350,7 +350,7 @@ int size(Instruction inst) {
 auto get_labels(const InstructionSeq& insts) {
     pc_t pc = 0;
     std::map<label_t, pc_t> pc_of_label;
-    for (auto [label, inst] : insts) {
+    for (auto [label, inst, _] : insts) {
         pc_of_label[label] = pc;
         pc += size(inst);
     }
@@ -360,10 +360,21 @@ auto get_labels(const InstructionSeq& insts) {
 void print(const InstructionSeq& insts, std::ostream& out, std::optional<const label_t> label_to_print) {
     auto pc_of_label = get_labels(insts);
     pc_t pc = 0;
+    std::string previous_source;
     InstructionPrinterVisitor visitor{out};
     for (const LabeledInstruction& labeled_inst : insts) {
-        const auto& [label, ins] = labeled_inst;
+        const auto& [label, ins, line_info] = labeled_inst;
         if (!label_to_print.has_value() || (label == label_to_print)) {
+            if (line_info.has_value()) {
+                auto& [file, source, line, column] = line_info.value();
+                // Only decorate the first instruction associated with a source line.
+                if (source != previous_source)
+                {
+                    out << "; " << file.c_str() << ":" << line << "\n";
+                    out << "; " << source.c_str() << "\n";
+                    previous_source = source;
+                }
+            }
             if (label.isjump()) {
                 out << "\n";
                 out << label << ":\n";

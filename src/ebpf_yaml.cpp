@@ -149,7 +149,7 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
             const Instruction& ins = parse_instruction(line, label_name_to_label);
             if (std::holds_alternative<Undefined>(ins))
                 std::cout << "text:" << line << "; ins: " << ins << "\n";
-            res.emplace_back(label_index, ins);
+            res.emplace_back(label_index, ins, std::optional<btf_line_info>());
             label_index++;
         }
     }

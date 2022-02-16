@@ -52,11 +52,18 @@ struct program_info {
     std::map<EquivalenceKey, int> cache;
 };
 
+using btf_line_info = std::tuple<
+    std::string /* File Name */,
+    std::string /* Source Line */,
+    uint32_t    /* Line Number */,
+    uint32_t    /* Column Number */>;
+
 struct raw_program {
     std::string filename;
     std::string section;
     std::vector<ebpf_inst> prog;
     program_info info;
+    std::vector<btf_line_info> line_info;
 };
 
 extern thread_local program_info global_program_info;

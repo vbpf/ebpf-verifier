@@ -305,7 +305,13 @@ struct Assert {
 
 using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Exit, Jmp, Mem, Packet, LockAdd, Assume, Assert>;
 
-using LabeledInstruction = std::tuple<label_t, Instruction>;
+using btf_line_info = std::tuple<
+    std::string /* File Name */,
+    std::string /* Source Line */,
+    uint32_t    /* Line Number */,
+    uint32_t    /* Column Number */>;
+
+using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info>>;
 using InstructionSeq = std::vector<LabeledInstruction>;
 
 using pc_t = uint16_t;
