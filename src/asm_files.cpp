@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include <cassert>
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
 #include <set>
@@ -9,6 +10,7 @@
 #include <sys/stat.h>
 
 #include "asm_files.hpp"
+#include "btf_parser.h"
 #include "platform.hpp"
 
 #include "elfio/elfio.hpp"
@@ -190,8 +192,42 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
                 }
             }
         }
+        prog.line_info.resize(prog.prog.size());
         res.push_back(prog);
     }
+
+    auto btf = reader.sections[string(".BTF")];
+    auto btf_ext = reader.sections[string(".BTF.ext")];
+    if (btf != nullptr && btf_ext != nullptr) {
+        std::map<std::string, raw_program&> segment_to_program;
+        for (auto& program : res) {
+            segment_to_program.insert({program.section, program});
+        }
+
+        auto visitor = [&](const std::string& section, uint32_t instruction_offset, const std::string& file_name,
+                        const std::string& source, uint32_t line_number, uint32_t column_number) {
+            auto program_iter = segment_to_program.find(section);
+            if (program_iter == segment_to_program.end()) {
+                return;
+            }
+            auto& program = program_iter->second;
+            program.line_info[instruction_offset / sizeof(ebpf_inst)] = {file_name, source, line_number, column_number};
+        };
+
+        btf_parse_line_information(vector_of<uint8_t>(*btf), vector_of<uint8_t>(*btf_ext), visitor);
+
+        // BTF doesn't include line info for every instruction, instead sets it only on the first instruction.
+        for (auto& [name, program] : segment_to_program) {
+            for (size_t i = 1; i < program.line_info.size(); i++) {
+                // If the previous PC has line info, copy it.
+                if ((std::get<2>(program.line_info[i]) == 0) &&
+                    (std::get<2>(program.line_info[i - 1]) != 0)) {
+                    program.line_info[i] = program.line_info[i - 1];
+                }
+            }
+        }
+    }
+
     if (res.empty()) {
         if (desired_section.empty()) {
             throw std::runtime_error(string("Can't find any non-empty TEXT sections in file ") + path);
