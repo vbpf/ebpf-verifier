@@ -55,7 +55,7 @@ void wto_t::start_visit(const label_t& vertex, wto_partition_t& partition, std::
 
     if (head_dfn == vertex_data.dfn) {  
         vertex_data.dfn = INT_MAX;
-        label_t& element = _stack.top();
+        label_t element = _stack.top();
         _stack.pop();
         if (loop) {
             while (element != vertex) {
