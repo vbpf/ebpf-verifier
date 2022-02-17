@@ -2,11 +2,17 @@
 // SPDX-License-Identifier: MIT
 #include "catch.hpp"
 
+#include <filesystem>
 #include <fstream>
 #include <regex>
 #include <string>
 #include <sstream>
 #include <variant>
+
+
+#if !defined(MAX_PATH)
+#define MAX_PATH (256)
+#endif
 
 #include "asm_files.hpp"
 #include "asm_ostream.hpp"
@@ -27,7 +33,7 @@ void verify_printed_string(const std::string file)
     std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
     REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error));
     auto& prog = std::get<InstructionSeq>(prog_or_error);
-    std::string current_directory = get_current_dir_name();
+    std::string current_directory = std::filesystem::current_path().generic_string();
     print(prog, generated_output, {});
     std::ifstream input(std::string(TEST_ASM_FILE_DIRECTORY) + file + std::string(".asm"));
     REQUIRE(input);
