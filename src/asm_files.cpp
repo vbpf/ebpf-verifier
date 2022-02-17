@@ -216,7 +216,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
 
         btf_parse_line_information(vector_of<uint8_t>(*btf), vector_of<uint8_t>(*btf_ext), visitor);
 
-        // BTF doesn't include line info for every instruction, instead sets it only on the first instruction.
+        // BTF doesn't include line info for every instruction, only on the first instruction per source line.
         for (auto& [name, program] : segment_to_program) {
             for (size_t i = 1; i < program.line_info.size(); i++) {
                 // If the previous PC has line info, copy it.
