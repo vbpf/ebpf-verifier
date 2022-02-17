@@ -436,6 +436,9 @@ struct Unmarshaller {
             }
         }
         for (size_t i = 0; i < prog.size(); i++) {
+            if (i >= line_info.size()) {
+                continue;
+            }
             std::get<2>(prog[i]) = line_info[i];
         }
         if (exit_count == 0)
