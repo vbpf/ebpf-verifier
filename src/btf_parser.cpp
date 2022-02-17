@@ -1,13 +1,12 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
 
-#include "btf_parser.h"
-
 #include <map>
 #include <stdexcept>
 #include <string.h>
 
 #include "btf.h"
+#include "btf_parser.h"
 
 void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vector<uint8_t>& btf_ext,
                                 btf_line_info_visitor visitor) {
@@ -15,29 +14,27 @@ void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vect
 
     auto btf_header = reinterpret_cast<const btf_header_t*>(btf.data());
     if (btf_header->magic != BTF_HEADER_MAGIC) {
-        throw std::runtime_error("Invalid .btf section - wrong magic");
+        throw std::runtime_error("Invalid .BTF section - wrong magic");
     }
     if (btf_header->version != BTF_HEADER_VERSION) {
-        throw std::runtime_error("Invalid .btf section - wrong version");
+        throw std::runtime_error("Invalid .BTF section - wrong version");
     }
     if (btf_header->hdr_len < sizeof(btf_header_t)) {
-        throw std::runtime_error("Invalid .btf section - wrong size");
+        throw std::runtime_error("Invalid .BTF section - wrong size");
     }
     if (btf_header->hdr_len > btf.size()) {
-        throw std::runtime_error("Invalid .btf section - invalid header length");
+        throw std::runtime_error("Invalid .BTF section - invalid header length");
     }
     if (btf_header->str_off > btf.size()) {
-        throw std::runtime_error("Invalid .btf section - invalid string offest");
+        throw std::runtime_error("Invalid .BTF section - invalid string offest");
     }
     if ((static_cast<size_t>(btf_header->str_off) + static_cast<size_t>(btf_header->str_len) +
          static_cast<size_t>(btf_header->hdr_len)) > btf.size()) {
-        throw std::runtime_error("Invalid .btf section - invalid string length");
+        throw std::runtime_error("Invalid .BTF section - invalid string length");
     }
 
     for (size_t offset = btf_header->str_off + static_cast<size_t>(btf_header->hdr_len);
          offset < static_cast<size_t>(btf_header->str_off) + static_cast<size_t>(btf_header->str_len);) {
-        //size_t remaining_length = btf_header->str_len - offset;
-        //size_t string_length = strlen(reinterpret_cast<const char*>(btf.data()) + offset);
         std::string value(reinterpret_cast<const char*>(btf.data()) + offset);
         size_t string_offset =
             offset - static_cast<size_t>(btf_header->str_off) - static_cast<size_t>(btf_header->hdr_len);
@@ -46,20 +43,20 @@ void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vect
     }
     auto bpf_ext_header = reinterpret_cast<const btf_ext_header_t*>(btf_ext.data());
     if (bpf_ext_header->magic != BTF_HEADER_MAGIC) {
-        throw std::runtime_error("Invalid .btf.ext section - wrong magic");
+        throw std::runtime_error("Invalid .BTF.ext section - wrong magic");
     }
     if (bpf_ext_header->version != BTF_HEADER_VERSION) {
-        throw std::runtime_error("Invalid .btf.ext section - wrong version");
+        throw std::runtime_error("Invalid .BTF.ext section - wrong version");
     }
     if (bpf_ext_header->hdr_len < sizeof(btf_ext_header_t)) {
-        throw std::runtime_error("Invalid .btf.ext section - wrong size");
+        throw std::runtime_error("Invalid .BTF.ext section - wrong size");
     }
     if (bpf_ext_header->line_info_off > btf_ext.size()) {
-        throw std::runtime_error("Invalid .btf.ex section - invalid line info offest");
+        throw std::runtime_error("Invalid .BTF.ext section - invalid line info offset");
     }
     if ((static_cast<size_t>(bpf_ext_header->line_info_off) + static_cast<size_t>(bpf_ext_header->line_info_len) +
          static_cast<size_t>(bpf_ext_header->hdr_len)) > btf_ext.size()) {
-        throw std::runtime_error("Invalid .btf section - invalid string length");
+        throw std::runtime_error("Invalid .BTF section - invalid string length");
     }
 
     uint32_t line_info_record_size =
@@ -73,7 +70,7 @@ void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vect
         auto section_info = reinterpret_cast<const btf_ext_info_sec_t*>(btf_ext.data() + offset);
         auto section_name = string_table.find(section_info->sec_name_off);
         if (section_name == string_table.end()) {
-            throw std::runtime_error(std::string("Invalid .btf section - invalid string offset ") +
+            throw std::runtime_error(std::string("Invalid .BTF section - invalid string offset ") +
                                      std::to_string(section_info->sec_name_off));
         }
         for (size_t index = 0; index < section_info->num_info; index++) {
