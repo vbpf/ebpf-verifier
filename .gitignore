@@ -5,6 +5,7 @@ counter/samples/*
 **/#*
 check
 tests
+run_yaml
 ./unit-test
 .vscode/*
 logs/*
