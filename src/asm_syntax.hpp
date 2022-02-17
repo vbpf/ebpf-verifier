@@ -10,15 +10,21 @@
 
 #include "crab/variable.hpp"
 
+using btf_line_info = std::tuple<
+    std::string /* File Name */,
+    std::string /* Source Line */,
+    uint32_t    /* Line Number */,
+    uint32_t    /* Column Number */>;
+
 namespace crab {
 struct label_t {
     int from; ///< Jump source, or simply index of instruction
     int to; ///< Jump target or -1
 
-    constexpr explicit label_t(int index, int to=-1) noexcept : from(index), to(to) { }
+    explicit label_t(int index, int to=-1, std::optional<btf_line_info> line_info = {}) noexcept : from(index), to(to), line_info(line_info) { }
 
-    static constexpr label_t make_jump(const label_t& src_label, const label_t& target_label) {
-        return label_t{src_label.from, target_label.from};
+    static label_t make_jump(const label_t& src_label, const label_t& target_label) {
+        return label_t{src_label.from, target_label.from, target_label.line_info};
     }
 
     constexpr bool operator==(const label_t& other) const { return from == other.from && to == other.to; }
@@ -46,6 +52,7 @@ struct label_t {
 
     static const label_t entry;
     static const label_t exit;
+    std::optional<btf_line_info> line_info;
 };
 
 inline const label_t label_t::entry{-1};
@@ -305,13 +312,7 @@ struct Assert {
 
 using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Exit, Jmp, Mem, Packet, LockAdd, Assume, Assert>;
 
-using btf_line_info = std::tuple<
-    std::string /* File Name */,
-    std::string /* Source Line */,
-    uint32_t    /* Line Number */,
-    uint32_t    /* Column Number */>;
-
-using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info>>;
+using LabeledInstruction = std::tuple<label_t, Instruction>;
 using InstructionSeq = std::vector<LabeledInstruction>;
 
 using pc_t = uint16_t;
