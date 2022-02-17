@@ -36,12 +36,12 @@ void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vect
 
     for (size_t offset = btf_header->str_off + static_cast<size_t>(btf_header->hdr_len);
          offset < static_cast<size_t>(btf_header->str_off) + static_cast<size_t>(btf_header->str_len);) {
-        size_t remaining_length = btf_header->str_len - offset;
-        size_t string_length = strnlen(reinterpret_cast<const char*>(btf.data()) + offset, remaining_length);
-        std::string value(reinterpret_cast<const char*>(btf.data()) + offset, string_length);
+        //size_t remaining_length = btf_header->str_len - offset;
+        //size_t string_length = strlen(reinterpret_cast<const char*>(btf.data()) + offset);
+        std::string value(reinterpret_cast<const char*>(btf.data()) + offset);
         size_t string_offset =
             offset - static_cast<size_t>(btf_header->str_off) - static_cast<size_t>(btf_header->hdr_len);
-        offset += string_length + 1;
+        offset += value.size() + 1;
         string_table.insert(std::make_pair(string_offset, value));
     }
     auto bpf_ext_header = reinterpret_cast<const btf_ext_header_t*>(btf_ext.data());
