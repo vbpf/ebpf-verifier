@@ -259,7 +259,7 @@ static int size(Instruction inst) {
 static auto get_labels(const InstructionSeq& insts) {
     pc_t pc = 0;
     std::map<label_t, pc_t> pc_of_label;
-    for (auto [label, inst, _] : insts) {
+    for (auto [label, inst] : insts) {
         pc_of_label[label] = pc;
         pc += size(inst);
     }
@@ -270,7 +270,7 @@ vector<ebpf_inst> marshal(const InstructionSeq& insts) {
     vector<ebpf_inst> res;
     auto pc_of_label = get_labels(insts);
     pc_t pc = 0;
-    for (auto [label, ins, _] : insts) {
+    for (auto [label, ins] : insts) {
         (void)label; // unused
         if (std::holds_alternative<Jmp>(ins)) {
             Jmp& jmp = std::get<Jmp>(ins);

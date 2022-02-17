@@ -11,9 +11,8 @@ static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = 
                       .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")};
     InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", marshal(ins, 0), info}));
     REQUIRE(parsed.size() == 1);
-    auto [_, single, _2] = parsed.back();
+    auto [_, single] = parsed.back();
     (void)_; // unused
-    (void)_2; // unused
     REQUIRE(single == ins);
 }
 

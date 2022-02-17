@@ -426,7 +426,7 @@ struct Unmarshaller {
             if (pc == insts.size() - 1 && fallthrough)
                 note("fallthrough in last instruction");
 
-            prog.emplace_back(label_t(static_cast<int>(pc)), new_ins, std::optional<btf_line_info>());
+            prog.emplace_back(label_t(static_cast<int>(pc)), new_ins);
 
             pc++;
             note_next_pc();
@@ -439,7 +439,7 @@ struct Unmarshaller {
             if (i >= line_info.size()) {
                 continue;
             }
-            std::get<2>(prog[i]) = line_info[i];
+            std::get<0>(prog[i]).line_info = line_info[i];
         }
         if (exit_count == 0)
             note("no exit instruction");
