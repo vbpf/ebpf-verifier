@@ -63,6 +63,7 @@ code:
 post:
   - r10.type=stack
   - r10.offset=512
+  - s[504...511].type=number
   - s[504...511].value=0
 ---
 test-case: stack assign number register
@@ -78,6 +79,7 @@ post:
   - r1.value=0
   - r10.type=stack
   - r10.offset=512
+  - s[504...511].type=number
   - s[504...511].value=0
 ---
 test-case: stack assign packet register

@@ -25,3 +25,32 @@ std::ostream& operator<<(std::ostream& o, const bitset_domain_t& b) {
     o << "}";
     return o;
 }
+
+string_invariant bitset_domain_t::to_set() const
+{
+    if (this->is_bottom()) {
+        return string_invariant::bottom();
+    }
+    if (this->is_top()) {
+        return string_invariant::top();
+    }
+
+    std::set<std::string> result;
+    bool first = true;
+    for (int i = -EBPF_STACK_SIZE; i < 0; i++) {
+        if (non_numerical_bytes[EBPF_STACK_SIZE + i])
+            continue;
+        first = false;
+        std::string value = "s[" + std::to_string(EBPF_STACK_SIZE + i);
+        int j = i + 1;
+        for (; j < 0; j++)
+            if (non_numerical_bytes[EBPF_STACK_SIZE + j])
+                break;
+        if (j > i + 1)
+            value += "..." + std::to_string(EBPF_STACK_SIZE + j - 1);
+        value += "].type=number";
+        result.insert(value);
+        i = j;
+    }
+    return string_invariant{result};
+}
