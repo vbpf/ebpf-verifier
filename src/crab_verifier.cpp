@@ -118,7 +118,7 @@ static void print_report(std::ostream& os, const checks_db& db, const Instructio
     for (auto [label, messages] : db.m_db) {
         for (const auto& msg : messages) {
             if (label.line_info.has_value()) {
-                auto& [file, source, line, colum] = label.line_info.value();
+                auto& [file, source, line, _] = label.line_info.value();
                 os << "; " << file.c_str() << ":" << line << "\n";
                 os << "; " << source.c_str() << "\n";
             }
