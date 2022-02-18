@@ -173,7 +173,7 @@ class ebpf_domain_t final {
     template <typename A, typename X, typename Y>
     void do_store_stack(crab::domains::NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_value,
                         std::optional<variable_t> opt_val_ctx_offset,
-                        std::optional<variable_t> opt_val_map_offset,
+                        std::optional<variable_t> opt_val_map_fd,
                         std::optional<variable_t> opt_val_packet_offset,
                         std::optional<variable_t> opt_val_shared_offset,
                         std::optional<variable_t> opt_val_stack_offset,
@@ -182,7 +182,7 @@ class ebpf_domain_t final {
     template <typename Type, typename Value>
     void do_mem_store(const Mem& b, Type val_type, Value val_value,
                       std::optional<variable_t> opt_val_ctx_offset,
-                      std::optional<variable_t> opt_val_map_offset,
+                      std::optional<variable_t> opt_val_map_fd,
                       std::optional<variable_t> opt_val_packet_offset,
                       std::optional<variable_t> opt_val_shared_offset,
                       std::optional<variable_t> opt_val_stack_offset,
