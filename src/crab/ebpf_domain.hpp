@@ -138,7 +138,7 @@ class ebpf_domain_t final {
     static void join_inv(NumAbsDomain& dst, NumAbsDomain& src);
     static void add_extra_invariant(NumAbsDomain& dst,
                                      std::map<crab::variable_t, crab::interval_t>& extra_invariants,
-                                     variable_t type_variable, type_encoding_t type, variable_t v,
+                                     variable_t type_variable, type_encoding_t type, crab::data_kind_t kind,
                                      const NumAbsDomain& other);
 
     void scratch_caller_saved_registers();

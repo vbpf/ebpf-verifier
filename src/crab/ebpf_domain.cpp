@@ -213,10 +213,11 @@ void ebpf_domain_t::add_extra_invariant(NumAbsDomain& dst,
                                         std::map<crab::variable_t, crab::interval_t>& extra_invariants,
                                         variable_t type_variable,
                                         type_encoding_t type,
-                                        variable_t v,
+                                        data_kind_t kind,
                                         const NumAbsDomain& src) {
     bool dst_has_type = variable_has_type(dst, type_variable, type);
     bool src_has_type = variable_has_type(src, type_variable, type);
+    variable_t v = variable_t::kind_var(kind, type_variable);
 
     // If type is contained in exactly one of dst or src,
     // we need to remember the value.
@@ -253,15 +254,14 @@ void ebpf_domain_t::join_inv(NumAbsDomain& dst, NumAbsDomain& src) {
 
     std::map<crab::variable_t, crab::interval_t> extra_invariants;
     if (!dst.is_bottom()) {
-        for (int i = R0_RETURN_VALUE; i <= R10_STACK_POINTER; i++) {
-            auto reg_packed = reg_pack(i);
-            add_extra_invariant(dst, extra_invariants, reg_packed.type, T_CTX, reg_packed.ctx_offset, src);
-            add_extra_invariant(dst, extra_invariants, reg_packed.type, T_MAP, reg_packed.map_fd, src);
-            add_extra_invariant(dst, extra_invariants, reg_packed.type, T_MAP_PROGRAMS, reg_packed.map_fd, src);
-            add_extra_invariant(dst, extra_invariants, reg_packed.type, T_PACKET, reg_packed.packet_offset, src);
-            add_extra_invariant(dst, extra_invariants, reg_packed.type, T_SHARED, reg_packed.shared_offset, src);
-            add_extra_invariant(dst, extra_invariants, reg_packed.type, T_STACK, reg_packed.stack_offset, src);
-            add_extra_invariant(dst, extra_invariants, reg_packed.type, T_SHARED, reg_packed.shared_region_size, src);
+        for (variable_t v : variable_t::get_type_variables()) {
+            add_extra_invariant(dst, extra_invariants, v, T_CTX, data_kind_t::ctx_offsets, src);
+            add_extra_invariant(dst, extra_invariants, v, T_MAP, data_kind_t::map_fds, src);
+            add_extra_invariant(dst, extra_invariants, v, T_MAP_PROGRAMS, data_kind_t::map_fds, src);
+            add_extra_invariant(dst, extra_invariants, v, T_PACKET, data_kind_t::packet_offsets, src);
+            add_extra_invariant(dst, extra_invariants, v, T_SHARED, data_kind_t::shared_offsets, src);
+            add_extra_invariant(dst, extra_invariants, v, T_STACK, data_kind_t::stack_offsets, src);
+            add_extra_invariant(dst, extra_invariants, v, T_SHARED, data_kind_t::shared_region_sizes, src);
         }
     }
 
@@ -1122,7 +1122,8 @@ void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, 
                                    std::optional<variable_t> opt_val_shared_offset,
                                    std::optional<variable_t> opt_val_stack_offset,
                                    std::optional<variable_t> opt_val_shared_region_size) {
-    type_inv.assign_type(inv, stack.store_type(inv, addr, width, val_type), val_type);
+    std::optional<variable_t> var = stack.store_type(inv, addr, width, val_type);
+    type_inv.assign_type(inv, var, val_type);
     if (width == 8) {
         inv.assign(stack.store(inv, data_kind_t::values, addr, width, val_value), val_value);
 

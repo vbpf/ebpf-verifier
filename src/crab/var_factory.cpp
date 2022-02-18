@@ -72,6 +72,12 @@ variable_t variable_t::cell_var(data_kind_t array, index_t offset, unsigned size
     return make(mk_scalar_name(array, (int)offset, (int)size));
 }
 
+// Given a type variable, get the associated variable of a given kind.
+variable_t variable_t::kind_var(data_kind_t kind, variable_t type_variable) {
+    std::string name = type_variable.name();
+    return make(name.substr(0, name.rfind('.') + 1) + name_of(kind));
+}
+
 variable_t variable_t::meta_offset() { return make("meta_offset"); }
 variable_t variable_t::packet_size() { return make("packet_size"); }
 variable_t variable_t::instruction_count() { return make("instruction_count"); }
