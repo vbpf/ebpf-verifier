@@ -25,16 +25,17 @@ void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vect
     if (btf_header->hdr_len > btf.size()) {
         throw std::runtime_error("Invalid .BTF section - invalid header length");
     }
-    if (btf_header->str_off > btf.size()) {
-        throw std::runtime_error("Invalid .BTF section - invalid string offest");
+
+    size_t string_table_start = static_cast<size_t>(btf_header->hdr_len) + static_cast<size_t>(btf_header->str_off);
+    size_t string_table_end = string_table_start + static_cast<size_t>(btf_header->str_len);
+    if (string_table_start < 0 || string_table_start > btf.size()) {
+        throw std::runtime_error("Invalid .BTF section - invalid string table start");
     }
-    if ((static_cast<size_t>(btf_header->str_off) + static_cast<size_t>(btf_header->str_len) +
-         static_cast<size_t>(btf_header->hdr_len)) > btf.size()) {
-        throw std::runtime_error("Invalid .BTF section - invalid string length");
+    if (string_table_end < 0 || string_table_end > btf.size()) {
+        throw std::runtime_error("Invalid .BTF section - invalid string table end");
     }
 
-    for (size_t offset = btf_header->str_off + static_cast<size_t>(btf_header->hdr_len);
-         offset < static_cast<size_t>(btf_header->str_off) + static_cast<size_t>(btf_header->str_len);) {
+    for (size_t offset = string_table_start; offset < string_table_end;) {
         std::string value(reinterpret_cast<const char*>(btf.data()) + offset);
         size_t string_offset =
             offset - static_cast<size_t>(btf_header->str_off) - static_cast<size_t>(btf_header->hdr_len);
@@ -51,22 +52,22 @@ void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vect
     if (bpf_ext_header->hdr_len < sizeof(btf_ext_header_t)) {
         throw std::runtime_error("Invalid .BTF.ext section - wrong size");
     }
-    if (bpf_ext_header->line_info_off > btf_ext.size()) {
-        throw std::runtime_error("Invalid .BTF.ext section - invalid line info offset");
+
+    size_t line_info_start =
+        static_cast<size_t>(bpf_ext_header->hdr_len) + static_cast<size_t>(bpf_ext_header->line_info_off);
+    size_t line_info_end = line_info_start + static_cast<size_t>(bpf_ext_header->line_info_len);
+
+    if (line_info_start < 0 || line_info_end > btf_ext.size()) {
+        throw std::runtime_error("Invalid .BTF section - invalid btf_line_info table start");
     }
-    if ((static_cast<size_t>(bpf_ext_header->line_info_off) + static_cast<size_t>(bpf_ext_header->line_info_len) +
-         static_cast<size_t>(bpf_ext_header->hdr_len)) > btf_ext.size()) {
-        throw std::runtime_error("Invalid .BTF section - invalid string length");
+    if (line_info_end < 0 || line_info_end > btf_ext.size()) {
+        throw std::runtime_error("Invalid .BTF section - invalid btf_line_info string table end");
     }
 
     uint32_t line_info_record_size =
-        *reinterpret_cast<const uint32_t*>(btf_ext.data() + static_cast<size_t>(bpf_ext_header->hdr_len) +
-                                           static_cast<size_t>(bpf_ext_header->line_info_off));
+        *reinterpret_cast<const uint32_t*>(btf_ext.data() + line_info_start);
 
-    for (size_t offset = static_cast<size_t>(bpf_ext_header->hdr_len) +
-                         static_cast<size_t>(bpf_ext_header->line_info_off) + sizeof(uint32_t);
-         offset < static_cast<size_t>(bpf_ext_header->hdr_len) + static_cast<size_t>(bpf_ext_header->line_info_off) +
-                      static_cast<size_t>(bpf_ext_header->line_info_len);) {
+    for (size_t offset = line_info_start + sizeof(line_info_record_size); offset < line_info_end;) {
         auto section_info = reinterpret_cast<const btf_ext_info_sec_t*>(btf_ext.data() + offset);
         auto section_name = string_table.find(section_info->sec_name_off);
         if (section_name == string_table.end()) {
