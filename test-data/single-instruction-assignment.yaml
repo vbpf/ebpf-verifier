@@ -51,3 +51,49 @@ code:
 post:
   - r1.type=number
   - r1.value=0
+---
+test-case: stack assign immediate
+
+pre: ["r10.type=stack", "r10.offset=512"]
+
+code:
+  <start>: |
+    *(u64 *)(r10 - 8) = 0
+
+post:
+  - r10.type=stack
+  - r10.offset=512
+  - s[504...511].value=0
+---
+test-case: stack assign number register
+
+pre: ["r10.type=stack", "r10.offset=512", "r1.type=number", "r1.value=0"]
+
+code:
+  <start>: |
+    *(u64 *)(r10 - 8) = r1
+
+post:
+  - r1.type=number
+  - r1.value=0
+  - r10.type=stack
+  - r10.offset=512
+  - s[504...511].value=0
+---
+test-case: stack assign packet register
+
+pre: ["r10.type=stack", "r10.offset=512", "r1.type=packet", "r1.offset=0"]
+
+code:
+  <start>: |
+    *(u64 *)(r10 - 8) = r1
+
+post:
+  - r1.type=packet
+  - r1.offset=0
+  - r1.value=s[504...511].value
+  - r1.region_size=s[504...511].region_size
+  - r10.type=stack
+  - r10.offset=512
+  - s[504...511].type=packet
+  - s[504...511].offset=0
