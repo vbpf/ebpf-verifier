@@ -1428,11 +1428,11 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 add_overflow(dst.value, src.value);
             } else {
                 // Here we're not sure that lhs and rhs are the same type; they might be.
-                // But previous assertions should fail unless we know that exactly one of lhs or rhs to is a pointer
+                // But previous assertions should fail unless we know that exactly one of lhs or rhs is a pointer.
                 m_inv = type_inv.join_by_if_else(m_inv,
                     type_is_number(bin.dst),
                     [&](NumAbsDomain& inv) {
-                        // num + ptr
+                        // num += ptr
                         type_inv.assign_type(inv, bin.dst, src_reg);
                         auto dst_offset = get_type_offset_variable(bin.dst, inv);
                         if (dst_offset.has_value())
@@ -1443,7 +1443,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             inv.assign(dst.shared_region_size, src.shared_region_size);
                     },
                     [&](NumAbsDomain& inv) {
-                        // ptr + num
+                        // ptr += num
                         auto dst_offset = get_type_offset_variable(bin.dst, inv);
                         if (dst_offset.has_value())
                             apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst_offset.value(), src.value,
@@ -1457,6 +1457,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         }
         case Bin::Op::SUB: {
             if (type_inv.same_type(m_inv, bin.dst, std::get<Reg>(bin.v))) {
+                // src and dest have the same singleton type.
                 m_inv = type_inv.join_by_if_else(m_inv,
                     type_is_number(bin.dst),
                     [&](NumAbsDomain& inv) {
@@ -1464,7 +1465,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                         apply(inv, crab::arith_binop_t::SUB, dst.value, dst.value, src.value, true);
                     },
                     [&](NumAbsDomain& inv) {
-                        // Assertions should make sure we only perform this on non-shared pointers
+                        // ptr -= ptr
+                        // Assertions should make sure we only perform this on non-shared pointers.
                         auto dst_offset = get_type_offset_variable(bin.dst, inv);
                         if (dst_offset.has_value()) {
                             apply(inv, crab::arith_binop_t::SUB, dst.value, dst_offset.value(),
@@ -1476,8 +1478,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                     }
                 );
             } else {
-                // Here we're not sure that lhs and rhs are the same type; they might be, meaning lhs may be a number.
-                // But previous assertions should fail unless we know that rhs is a number.
+                // We're not sure that lhs and rhs are the same type.
+                // Either they're different, or at least one is not a singleton.
                 if (type_inv.get_type(m_inv, std::get<Reg>(bin.v)) != T_NUM) {
                     type_inv.havoc_type(m_inv, bin.dst);
                     havoc(dst.value);
