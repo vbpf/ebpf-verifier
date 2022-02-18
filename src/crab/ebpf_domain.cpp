@@ -1333,12 +1333,18 @@ void ebpf_domain_t::initialize_packet(ebpf_domain_t& inv) {
     }
 }
 
-ebpf_domain_t ebpf_domain_t::from_constraints(const std::vector<linear_constraint_t>& csts) {
-    // TODO: handle type constraints separately
+ebpf_domain_t ebpf_domain_t::from_constraints(const std::set<std::string>& constraints) {
     ebpf_domain_t inv;
-    for (const auto& cst: csts) {
+    auto numeric_ranges = std::vector<crab::interval_t>();
+    for (const auto& cst : parse_linear_constraints(constraints, numeric_ranges)) {
         inv += cst;
     }
+    for (const crab::interval_t& range : numeric_ranges) {
+        int start = (int)range.lb().number().value();
+        int width = 1 + (int)(range.ub() - range.lb()).number().value();
+        inv.stack.initialize_numbers(start, width);
+    }
+    // TODO: handle other stack type constraints
     return inv;
 }
 

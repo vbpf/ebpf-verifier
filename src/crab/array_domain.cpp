@@ -667,5 +667,4 @@ array_domain_t array_domain_t::narrow(const array_domain_t& other) const {
 std::ostream& operator<<(std::ostream& o, const array_domain_t& dom) {
     return o << dom.num_bytes;
 }
-
 } // namespace crab::domains

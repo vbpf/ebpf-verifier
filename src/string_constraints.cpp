@@ -23,6 +23,7 @@ using std::map;
 #define KIND R"_(\s*(type|value|offset|region_size)\s*)_"
 #define IMM R"_(\s*\[?([-+]?\d+)\]?\s*)_"
 #define INTERVAL R"_(\s*\[([-+]?\d+),\s*([-+]?\d+)\]?\s*)_"
+#define ARRAY_RANGE R"_(\s*\[([-+]?\d+)\.\.\.\s*([-+]?\d+)\]?\s*)_"
 
 #define DOT "[.]"
 #define TYPE R"_(\s*(shared|number|packet|stack|ctx|map_fd|map_fd_program)\s*)_"
@@ -64,7 +65,7 @@ static type_encoding_t string_to_type_encoding(const string& s) {
     throw std::runtime_error(string("Unsupported type name: ") + s);
 }
 
-std::vector<linear_constraint_t> parse_linear_constraints(const std::set<string>& constraints) {
+std::vector<linear_constraint_t> parse_linear_constraints(const std::set<string>& constraints, std::vector<crab::interval_t>& numeric_ranges) {
     using namespace crab::dsl_syntax;
 
     std::vector<linear_constraint_t> res;
@@ -102,6 +103,16 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<string>
             variable_t s = variable_t::reg(regkind(m[4]), regnum(m[3]));
             long diff = number(m[5]);
             res.push_back(d - s <= number_t(diff));
+        } else if (regex_match(cst_text, m, regex("s" ARRAY_RANGE DOT "type" "=" TYPE))) {
+            type_encoding_t type = string_to_type_encoding(m[3]);
+            if (type == type_encoding_t::T_NUM) {
+                numeric_ranges.push_back(crab::interval_t(number(m[1]), number(m[2])));
+            } else {
+                long lb = number(m[1]);
+                long ub = number(m[2]);
+                variable_t d = variable_t::cell_var(data_kind_t::types, lb, ub - lb + 1);
+                res.push_back(d == type);
+            }
         } else {
             throw std::runtime_error(string("Unknown constraint: ") + cst_text);
         }

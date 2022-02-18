@@ -44,7 +44,7 @@ class ebpf_domain_t final {
     int get_instruction_count_upper_bound();
     static ebpf_domain_t setup_entry(bool check_termination);
 
-    static ebpf_domain_t from_constraints(const std::vector<linear_constraint_t>& csts);
+    static ebpf_domain_t from_constraints(const std::set<std::string>& constraints);
     string_invariant to_set();
 
     // abstract transformers
