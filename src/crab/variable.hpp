@@ -60,7 +60,7 @@ class variable_t final {
     static variable_t meta_offset();
     static variable_t packet_size();
     static variable_t instruction_count();
-    bool is_in_stack();
+    [[nodiscard]] bool is_in_stack() const;
 
     struct Hasher {
         std::size_t operator()(const variable_t& v) const { return v.hash(); }

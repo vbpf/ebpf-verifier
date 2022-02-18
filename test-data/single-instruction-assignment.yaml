@@ -99,3 +99,36 @@ post:
   - r10.offset=512
   - s[504...511].type=packet
   - s[504...511].offset=0
+---
+test-case: stack extend numeric range
+
+pre: ["r10.type=stack", "r10.offset=512", "s[500...507].type=number"]
+
+code:
+  <start>: |
+    *(u64 *)(r10 - 8) = 0
+
+post:
+  - r10.type=stack
+  - r10.offset=512
+  - s[500...511].type=number
+  - s[504...511].value=0
+---
+test-case: stack narrow numeric range
+
+pre: ["r10.type=stack", "r10.offset=512", "r1.type=packet", "r1.offset=0", "s[500...507].type=number"]
+
+code:
+  <start>: |
+    *(u64 *)(r10 - 8) = r1
+
+post:
+  - r1.type=packet
+  - r1.offset=0
+  - r1.value=s[504...511].value
+  - r1.region_size=s[504...511].region_size
+  - r10.type=stack
+  - r10.offset=512
+  - s[500...503].type=number
+  - s[504...511].type=packet
+  - s[504...511].offset=0

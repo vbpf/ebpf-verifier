@@ -85,7 +85,7 @@ std::vector<variable_t> variable_t::get_type_variables() {
     }
     return res;
 }
-bool variable_t::is_in_stack() {
+bool variable_t::is_in_stack() const {
     return this->name()[0] == 's';
 }
 } // end namespace crab
