@@ -64,6 +64,7 @@ class array_domain_t final {
     array_domain_t narrow(const array_domain_t& other) const;
 
     friend std::ostream& operator<<(std::ostream& o, const array_domain_t& dom);
+    [[nodiscard]] string_invariant to_set() const;
 
     bool all_num(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub);
 

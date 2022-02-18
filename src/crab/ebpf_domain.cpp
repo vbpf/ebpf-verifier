@@ -1304,7 +1304,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
 }
 
 string_invariant ebpf_domain_t::to_set() {
-    return this->m_inv.to_set();
+    return this->m_inv.to_set() + this->stack.to_set();
 }
 
 std::ostream& operator<<(std::ostream& o, const ebpf_domain_t& dom) {

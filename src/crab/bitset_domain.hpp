@@ -4,6 +4,7 @@
 #include <cassert>
 #include <bitset>
 
+#include "string_constraints.hpp"
 #include "spec_type_descriptors.hpp" // for EBPF_STACK_SIZE
 
 class bitset_domain_t final {
@@ -23,6 +24,8 @@ class bitset_domain_t final {
     [[nodiscard]] bool is_top() const { return non_numerical_bytes.all(); }
 
     [[nodiscard]] bool is_bottom() const { return false; }
+
+    [[nodiscard]] string_invariant to_set() const;
 
     bool operator<=(const bitset_domain_t& other) const {
         return (non_numerical_bytes | other.non_numerical_bytes) == other.non_numerical_bytes;

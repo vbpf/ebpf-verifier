@@ -120,6 +120,18 @@ string_invariant string_invariant::operator-(const string_invariant& b) const {
     return res;
 }
 
+// return a+b, taking account potential optional-none
+string_invariant string_invariant::operator+(const string_invariant& b) const {
+    if (this->is_bottom())
+        return b;
+    string_invariant res = *this;
+    for (const std::string& cst : b.value()) {
+        if (res.is_bottom() || !res.contains(cst))
+            res.maybe_inv->insert(cst);
+    }
+    return res;
+}
+
 std::ostream& operator<<(std::ostream& o, const string_invariant& inv) {
     if (inv.is_bottom()) {
         return o << "_|_";
