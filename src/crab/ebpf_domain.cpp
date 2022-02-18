@@ -230,7 +230,9 @@ void ebpf_domain_t::join_inv(NumAbsDomain& dst, NumAbsDomain& src) {
     // Some variables are type-specific.  Type-specific variables
     // for a register can exist in the domain whenever the associated
     // type value is present in the register's types interval (and the
-    // value is not Top), and are absent otherwise.
+    // value is not Top), and are absent otherwise.  That is, we want
+    // to keep track of implications of the form
+    // "if register R has type=T then R.T_offset has value ...".
     //
     // If a type value is legal in exactly one of the two domains, a
     // normal join operation would remove any type-specific variables
@@ -242,6 +244,12 @@ void ebpf_domain_t::join_inv(NumAbsDomain& dst, NumAbsDomain& src) {
     // interpreted as Bottom, so we want to preserve the values of any
     // type-specific variables from the other domain where the type
     // value is legal.
+    //
+    // Example input:
+    //   r1.type=stack, r1.stack_offset=100
+    //   r1.type=packet, r1.packet_offset=4
+    // Output:
+    //   r1.type={stack,packet}, r1.stack_offset=100, r1.packet_offset=4
 
     std::map<crab::variable_t, crab::interval_t> extra_invariants;
     if (!dst.is_bottom()) {
