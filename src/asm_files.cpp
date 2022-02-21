@@ -220,8 +220,7 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
         for (auto& [name, program] : segment_to_program) {
             for (size_t i = 1; i < program.line_info.size(); i++) {
                 // If the previous PC has line info, copy it.
-                if ((std::get<2>(program.line_info[i]) == 0) &&
-                    (std::get<2>(program.line_info[i - 1]) != 0)) {
+                if ((program.line_info[i].line_number == 0) && (program.line_info[i - 1].line_number != 0)) {
                     program.line_info[i] = program.line_info[i - 1];
                 }
             }

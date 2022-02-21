@@ -369,7 +369,7 @@ struct Unmarshaller {
         }
     }
 
-    vector<LabeledInstruction> unmarshal(vector<ebpf_inst> const& insts, vector<btf_line_info> const& line_info) {
+    vector<LabeledInstruction> unmarshal(vector<ebpf_inst> const& insts, vector<btf_line_info_t> const& line_info) {
         vector<LabeledInstruction> prog;
         int exit_count = 0;
         if (insts.empty()) {
@@ -426,7 +426,7 @@ struct Unmarshaller {
             if (pc == insts.size() - 1 && fallthrough)
                 note("fallthrough in last instruction");
 
-            prog.emplace_back(label_t(static_cast<int>(pc)), new_ins);
+            prog.emplace_back(label_t(static_cast<int>(pc)), new_ins, std::optional<btf_line_info_t>());
 
             pc++;
             note_next_pc();
@@ -437,9 +437,9 @@ struct Unmarshaller {
         }
         for (size_t i = 0; i < prog.size(); i++) {
             if (i >= line_info.size()) {
-                continue;
+                break;
             }
-            std::get<0>(prog[i]).line_info = line_info[i];
+            std::get<2>(prog[i]) = line_info[i];
         }
         if (exit_count == 0)
             note("no exit instruction");
