@@ -187,7 +187,7 @@ static InstructionSeq parse_program(std::istream& is) {
 
         if (!next_label)
             next_label = label_t(static_cast<int>(labeled_insts.size()));
-        labeled_insts.emplace_back(*next_label, ins);
+        labeled_insts.emplace_back(*next_label, ins, std::optional<btf_line_info_t>());
         next_label = {};
     }
     return labeled_insts;

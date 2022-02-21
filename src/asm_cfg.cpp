@@ -40,7 +40,7 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, bool must_have_
     cfg_t cfg;
     std::optional<label_t> falling_from = {};
     bool first = true;
-    for (const auto& [label, inst] : insts) {
+    for (const auto& [label, inst, _] : insts) {
 
         if (std::holds_alternative<Undefined>(inst))
             continue;

@@ -9,22 +9,17 @@
 #include <vector>
 
 #include "crab/variable.hpp"
-
-using btf_line_info = std::tuple<
-    std::string /* File Name */,
-    std::string /* Source Line */,
-    uint32_t    /* Line Number */,
-    uint32_t    /* Column Number */>;
+#include "spec_type_descriptors.hpp"
 
 namespace crab {
 struct label_t {
     int from; ///< Jump source, or simply index of instruction
     int to; ///< Jump target or -1
 
-    explicit label_t(int index, int to=-1, std::optional<btf_line_info> line_info = {}) noexcept : from(index), to(to), line_info(line_info) { }
+    constexpr explicit label_t(int index, int to = -1) noexcept : from(index), to(to) {}
 
-    static label_t make_jump(const label_t& src_label, const label_t& target_label) {
-        return label_t{src_label.from, target_label.from, target_label.line_info};
+    static constexpr label_t make_jump(const label_t& src_label, const label_t& target_label) {
+        return label_t{src_label.from, target_label.from};
     }
 
     constexpr bool operator==(const label_t& other) const { return from == other.from && to == other.to; }
@@ -52,13 +47,12 @@ struct label_t {
 
     static const label_t entry;
     static const label_t exit;
-    std::optional<btf_line_info> line_info;
 };
 
 inline const label_t label_t::entry{-1};
 inline const label_t label_t::exit{-2};
 
-}
+} // namespace crab
 using crab::label_t;
 
 // Assembly syntax.
@@ -312,7 +306,7 @@ struct Assert {
 
 using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Exit, Jmp, Mem, Packet, LockAdd, Assume, Assert>;
 
-using LabeledInstruction = std::tuple<label_t, Instruction>;
+using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
 using InstructionSeq = std::vector<LabeledInstruction>;
 
 using pc_t = uint16_t;

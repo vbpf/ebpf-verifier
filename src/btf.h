@@ -41,8 +41,7 @@
 #define BPF_LINE_INFO_LINE_NUM(line_col) ((line_col) >> 10)
 #define BPF_LINE_INFO_LINE_COL(line_col) ((line_col)&0x3ff)
 
-typedef struct _btf_header
-{
+typedef struct _btf_header {
     uint16_t magic;
     uint8_t version;
     uint8_t flags;
@@ -55,8 +54,7 @@ typedef struct _btf_header
     uint32_t str_len;  /* length of string section     */
 } btf_header_t;
 
-typedef struct _btf_type
-{
+typedef struct _btf_type {
     uint32_t name_off;
     /* "info" bits arrangement
      * bits  0-15: vlen (e.g. # of struct's members)
@@ -74,45 +72,38 @@ typedef struct _btf_type
      * FUNC, FUNC_PROTO, DECL_TAG and TYPE_TAG.
      * "type" is a type_id referring to another type.
      */
-    union
-    {
+    union {
         uint32_t size;
         uint32_t type;
     };
 } btf_type_t;
 
-typedef struct _btf_array
-{
+typedef struct _btf_array {
     uint32_t type;
     uint32_t index_type;
     uint32_t nelems;
 } btf_array_t;
 
-typedef struct _btf_param
-{
+typedef struct _btf_param {
     uint32_t name_off;
     uint32_t type;
 } btf_param_t;
 
-typedef struct _btf_var
-{
+typedef struct _btf_var {
     uint32_t linkage;
 } btf_var_t;
 
-typedef struct _btf_var_secinfo
-{
+typedef struct _btf_var_secinfo {
     uint32_t type;
     uint32_t offset;
     uint32_t size;
 } btf_var_secinfo_t;
 
-typedef struct _btf_decl_tag
-{
+typedef struct _btf_decl_tag {
     uint32_t component_idx;
 } btf_decl_tag_t;
 
-typedef struct _btf_ext_header
-{
+typedef struct _btf_ext_header {
     uint16_t magic;
     uint8_t version;
     uint8_t flags;
@@ -127,8 +118,7 @@ typedef struct _btf_ext_header
 
 #pragma warning(push)
 #pragma warning(disable : 4200) // nonstandard extension used: zero-sized array in struct/union
-typedef struct _btf_ext_info_sec
-{
+typedef struct _btf_ext_info_sec {
     uint32_t sec_name_off; /* offset to section name */
     uint32_t num_info;
     /* Followed by num_info * record_size number of bytes */
@@ -136,14 +126,12 @@ typedef struct _btf_ext_info_sec
 } btf_ext_info_sec_t;
 #pragma warning(pop)
 
-typedef struct _bpf_func_info
-{
+typedef struct _bpf_func_info {
     uint32_t insn_off; /* [0, insn_cnt - 1] */
     uint32_t type_id;  /* pointing to a BTF_KIND_FUNC type */
 } bpf_func_info_t;
 
-typedef struct _bpf_line_info
-{
+typedef struct _bpf_line_info {
     uint32_t insn_off;      /* [0, insn_cnt - 1] */
     uint32_t file_name_off; /* offset to string table for the filename */
     uint32_t line_off;      /* offset to string table for the source line */
