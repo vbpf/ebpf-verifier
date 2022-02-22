@@ -552,6 +552,10 @@ NumAbsDomain ebpf_domain_t::TypeDomain::join_by_if_else(const NumAbsDomain& inv,
     return true_case | false_case;
 }
 
+// TODO: Currently same_type() only returns true for singleton types. It should
+// be updatd to correctly return true for two registers that are known to both hold
+// either a packet or shared, such as immediately following a join of two branches
+// where both had been assigned packet in one branch and shared in the other.
 bool ebpf_domain_t::TypeDomain::same_type(const NumAbsDomain& inv, const Reg& a, const Reg& b) const {
     return inv.entail(eq_types(a, b));
 }
@@ -657,6 +661,8 @@ void ebpf_domain_t::operator()(const Assume& s) {
                             inv += cst;
                 },
                 [&](NumAbsDomain& inv) {
+                    // TODO: update the code below to deal with registers with multiple types
+                    // once same_type() can return true for such cases.
                     // Either pointers to a singleton region,
                     // or an equality comparison on map descriptors/pointers to non-singleton locations
                     auto dst_offset = get_type_offset_variable(cond.left);
@@ -1438,6 +1444,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             } else {
                 // Here we're not sure that lhs and rhs are the same type; they might be.
                 // But previous assertions should fail unless we know that exactly one of lhs or rhs is a pointer.
+                // TODO: update the code below to deal with registers with multiple types.
                 m_inv = type_inv.join_by_if_else(m_inv,
                     type_is_number(bin.dst),
                     [&](NumAbsDomain& inv) {
@@ -1467,6 +1474,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::SUB: {
             if (type_inv.same_type(m_inv, bin.dst, std::get<Reg>(bin.v))) {
                 // src and dest have the same singleton type.
+                // TODO: update the code below to deal with registers with multiple types.
                 m_inv = type_inv.join_by_if_else(m_inv,
                     type_is_number(bin.dst),
                     [&](NumAbsDomain& inv) {
