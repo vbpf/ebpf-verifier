@@ -77,3 +77,74 @@ post:
   - s[504...511].type in {packet, stack}
   - s[504...511].packet_offset=8
   - s[504...511].stack_offset=4
+---
+test-case: same_type
+
+pre: ["r0.type=number",
+      "r8.type=ctx", "r8.ctx_offset=4",
+      "r9.type=ctx", "r9.ctx_offset=0"]
+
+code:
+  <start>: |
+    if r0 == 0 goto <stack>
+  <number>: |
+    r1 = 1
+    r2 = r0
+    goto <out>
+  <stack>: |
+    r1 = r8
+    r2 = r9
+    goto <out>
+  <out>: |
+    r3 = r2
+    r3 -= r1; trigger same_type(r2, r1)
+
+post:
+  - r1.type=r2.type
+  - r0.type=number
+  - r1.ctx_offset=4
+  - r1.type in {number, ctx}
+  - r2.ctx_offset=0
+  - r2.type in {number, ctx}
+  - r3.type=number
+  - r8.ctx_offset=4
+  - r8.type=ctx
+  - r9.ctx_offset=0
+  - r9.type=ctx
+
+---
+test-case: not same_type
+
+pre: ["r0.type=number",
+      "r8.type=ctx", "r8.ctx_offset=4",
+      "r9.type=ctx", "r9.ctx_offset=0"]
+
+code:
+  <start>: |
+    if r0 == 0 goto <stack>
+  <number>: |
+    r1 = 1
+    r2 = r9
+    goto <out>
+  <stack>: |
+    r1 = r8
+    r2 = r0
+    goto <out>
+  <out>: |
+    r3 = r2
+    r3 -= r1; trigger same_type(r2, r1)
+
+
+post:
+  - r0.type=number
+  - r1.type in {number, ctx}
+  - r1.ctx_offset=4
+  - r2.type in {number, ctx}
+  - r2.ctx_offset=0
+  - r8.type=ctx
+  - r8.ctx_offset=4
+  - r9.type=ctx
+  - r9.ctx_offset=0
+
+messages:
+  - "8: r1.type == r3.type"

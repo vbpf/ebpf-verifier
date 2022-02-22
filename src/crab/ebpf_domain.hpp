@@ -130,6 +130,7 @@ class ebpf_domain_t final {
 
     /// Forget everything about all offset variables for a given register.
     void havoc_offsets(const Reg& reg);
+    void havoc_offsets(NumAbsDomain& inv, const Reg& reg);
 
     static std::optional<variable_t> get_type_offset_variable(const Reg& reg, int type);
     std::optional<variable_t> get_type_offset_variable(const Reg& reg, const NumAbsDomain& inv) const;

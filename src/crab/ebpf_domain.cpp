@@ -426,16 +426,7 @@ void ebpf_domain_t::require(NumAbsDomain& inv, const linear_constraint_t& cst, c
 
 /// Forget everything we know about the value of a variable.
 void ebpf_domain_t::havoc(variable_t v) { m_inv -= v; }
-void ebpf_domain_t::havoc_offsets(const Reg& reg) {
-    reg_pack_t r = reg_pack(reg);
-    havoc(r.ctx_offset);
-    havoc(r.map_fd);
-    havoc(r.packet_offset);
-    havoc(r.shared_offset);
-    havoc(r.stack_offset);
-    havoc(r.shared_region_size);
-}
-void ebpf_domain_t::havoc_register(NumAbsDomain& inv, const Reg& reg) {
+void ebpf_domain_t::havoc_offsets(NumAbsDomain& inv, const Reg& reg) {
     reg_pack_t r = reg_pack(reg);
     inv -= r.ctx_offset;
     inv -= r.map_fd;
@@ -443,6 +434,11 @@ void ebpf_domain_t::havoc_register(NumAbsDomain& inv, const Reg& reg) {
     inv -= r.shared_offset;
     inv -= r.shared_region_size;
     inv -= r.stack_offset;
+}
+void ebpf_domain_t::havoc_offsets(const Reg& reg) { havoc_offsets(m_inv, reg); }
+void ebpf_domain_t::havoc_register(NumAbsDomain& inv, const Reg& reg) {
+    reg_pack_t r = reg_pack(reg);
+    havoc_offsets(inv, reg);
     inv -= r.value;
 }
 
@@ -552,10 +548,6 @@ NumAbsDomain ebpf_domain_t::TypeDomain::join_by_if_else(const NumAbsDomain& inv,
     return true_case | false_case;
 }
 
-// TODO: Currently same_type() only returns true for singleton types. It should
-// be updatd to correctly return true for two registers that are known to both hold
-// either a packet or shared, such as immediately following a join of two branches
-// where both had been assigned packet in one branch and shared in the other.
 bool ebpf_domain_t::TypeDomain::same_type(const NumAbsDomain& inv, const Reg& a, const Reg& b) const {
     return inv.entail(eq_types(a, b));
 }
@@ -653,6 +645,7 @@ void ebpf_domain_t::operator()(const Assume& s) {
         auto src_reg = std::get<Reg>(cond.right);
         auto src = reg_pack(src_reg);
         if (type_inv.same_type(m_inv, cond.left, std::get<Reg>(cond.right))) {
+            // TODO: update the code below to deal with registers with multiple types.
             m_inv = type_inv.join_by_if_else(m_inv,
                 type_is_number(cond.left),
                 [&](NumAbsDomain& inv) {
@@ -661,8 +654,6 @@ void ebpf_domain_t::operator()(const Assume& s) {
                             inv += cst;
                 },
                 [&](NumAbsDomain& inv) {
-                    // TODO: update the code below to deal with registers with multiple types
-                    // once same_type() can return true for such cases.
                     // Either pointers to a singleton region,
                     // or an equality comparison on map descriptors/pointers to non-singleton locations
                     auto dst_offset = get_type_offset_variable(cond.left);
@@ -1473,27 +1464,29 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         }
         case Bin::Op::SUB: {
             if (type_inv.same_type(m_inv, bin.dst, std::get<Reg>(bin.v))) {
-                // src and dest have the same singleton type.
-                // TODO: update the code below to deal with registers with multiple types.
-                m_inv = type_inv.join_by_if_else(m_inv,
-                    type_is_number(bin.dst),
-                    [&](NumAbsDomain& inv) {
+                // src and dest have the same type.
+                m_inv = type_inv.join_over_types(m_inv, bin.dst, [&](NumAbsDomain& inv, type_encoding_t type) {
+                    switch (type) {
+                    case T_NUM:
                         // This is: sub_overflow(inv, dst.value, src.value);
                         apply(inv, crab::arith_binop_t::SUB, dst.value, dst.value, src.value, true);
-                    },
-                    [&](NumAbsDomain& inv) {
+                        type_inv.assign_type(inv, bin.dst, T_NUM);
+                        havoc_offsets(inv, bin.dst);
+                        break;
+                    default:
                         // ptr -= ptr
                         // Assertions should make sure we only perform this on non-shared pointers.
-                        auto dst_offset = get_type_offset_variable(bin.dst, inv);
+                        auto dst_offset = get_type_offset_variable(bin.dst, type);
                         if (dst_offset.has_value()) {
                             apply(inv, crab::arith_binop_t::SUB, dst.value, dst_offset.value(),
-                                  get_type_offset_variable(src_reg).value(), true);
+                                  get_type_offset_variable(src_reg, type).value(), true);
                             inv -= dst_offset.value();
                         }
                         inv -= dst.shared_region_size;
                         type_inv.assign_type(inv, bin.dst, T_NUM);
+                        break;
                     }
-                );
+                });
             } else {
                 // We're not sure that lhs and rhs are the same type.
                 // Either they're different, or at least one is not a singleton.
