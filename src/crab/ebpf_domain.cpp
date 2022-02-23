@@ -645,23 +645,20 @@ void ebpf_domain_t::operator()(const Assume& s) {
         auto src_reg = std::get<Reg>(cond.right);
         auto src = reg_pack(src_reg);
         if (type_inv.same_type(m_inv, cond.left, std::get<Reg>(cond.right))) {
-            // TODO: update the code below to deal with registers with multiple types.
-            m_inv = type_inv.join_by_if_else(m_inv,
-                type_is_number(cond.left),
-                [&](NumAbsDomain& inv) {
+            m_inv = type_inv.join_over_types(m_inv, cond.left, [&](NumAbsDomain& inv, type_encoding_t type) {
+                if (type == T_NUM) {
                     if (!is_unsigned_cmp(cond.op))
                         for (const linear_constraint_t& cst : jmp_to_cst_reg(cond.op, dst.value, src.value))
                             inv += cst;
-                },
-                [&](NumAbsDomain& inv) {
+                } else {
                     // Either pointers to a singleton region,
                     // or an equality comparison on map descriptors/pointers to non-singleton locations
-                    auto dst_offset = get_type_offset_variable(cond.left);
-                    auto src_offset = get_type_offset_variable(src_reg);
+                    auto dst_offset = get_type_offset_variable(cond.left, type);
+                    auto src_offset = get_type_offset_variable(src_reg, type);
                     if (dst_offset.has_value() && src_offset.has_value())
                         inv += jmp_to_cst_offsets_reg(cond.op, dst_offset.value(), src_offset.value());
                 }
-            );
+            });
         } else {
             // We should only reach here if `--assume-assert` is off
             assert(!thread_local_options.assume_assertions || is_bottom());

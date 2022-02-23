@@ -148,3 +148,129 @@ post:
 
 messages:
   - "8: r1.type == r3.type"
+---
+test-case: multiple types add ok
+
+pre: ["r0.type=number",
+      "r8.type=ctx", "r8.ctx_offset=0",
+      "r9.type=packet", "r9.packet_offset=0"]
+
+code:
+  <start>: |
+    r1 = 4
+    if r0 == 0 goto <ctxnum>
+  <numctx>: |
+    r2 = r8
+    goto <out>
+  <ctxnum>: |
+    r2 = r9
+    goto <out>
+  <out>: |
+    r3 = r1
+    r3 += r2
+    r4 = r2
+    r4 += r1
+
+post:
+  - r0.type=number
+  - r1.type=number
+  - r1.value=4
+  - r2.ctx_offset=0
+  - r2.packet_offset=0
+  - r2.type in {ctx, packet}
+  - r3.ctx_offset=4
+  - r3.packet_offset=4
+  - r3.type in {ctx, packet}
+  - r4.ctx_offset=4
+  - r4.packet_offset=4
+  - r4.type in {ctx, packet}
+  - r8.ctx_offset=0
+  - r8.type=ctx
+  - r9.packet_offset=0
+  - r9.type=packet
+---
+test-case: multiple types add fail
+
+pre: ["r0.type=number",
+      "r8.type=ctx", "r8.ctx_offset=0"]
+
+code:
+  <start>: |
+    if r0 == 0 goto <ctxnum>
+  <numctx>: |
+    r1 = 4
+    r2 = r8
+    goto <out>
+  <ctxnum>: |
+    r1 = r8
+    r2 = 4
+    goto <out>
+  <out>: |
+    r3 = r1
+    r3 += r2; the domain does not currently store inequalities so we can't yet tell that this is safe
+
+post:
+  - r0.type=number
+  - r1.ctx_offset=0
+  - r1.type in {number, ctx}
+  - r1.value=4
+  - r2.ctx_offset=0
+  - r2.type in {number, ctx}
+  - r2.value=4
+  - r3.ctx_offset=4
+  - r3.type=ctx
+  - r8.ctx_offset=0
+  - r8.type=ctx
+
+messages:
+  - "8: only numbers can be added to pointers (r2.type = ptr -> r3.type = number)"
+  - "8: only numbers can be added to pointers (r3.type = ptr -> r2.type = number)"
+---
+test-case: multiple types compare
+
+pre: ["r0.type=number",
+      "r6.type=stack", "r6.stack_offset=4",
+      "r7.type=stack", "r7.stack_offset=0",
+      "r8.type=packet", "r8.packet_offset=4",
+      "r9.type=packet", "r9.packet_offset=0",
+      "meta_offset=0"]
+
+code:
+  <start>: |
+    if r0 == 0 goto <packet>
+  <stack>: |
+    r1 = r6
+    r2 = r7
+    goto <join>
+  <packet>: |
+    r1 = r8
+    r2 = r9
+    goto <join>
+  <join>: |
+    if r1 == r2 goto <out> ; trigger same_type(r1, r2)
+    r0 = 42
+  <out>: |
+    exit
+
+post:
+  - meta_offset=0
+  - r0.type=number
+  - r0.value=42
+  - r1.stack_offset=4
+  - r1.packet_offset=4
+  - r1.type in {packet, stack}
+  - r1.type=r2.type
+  - r2.stack_offset=0
+  - r2.packet_offset=0
+  - r2.type in {packet, stack}
+  - r6.type=stack
+  - r6.stack_offset=4
+  - r7.type=stack
+  - r7.stack_offset=0
+  - r8.type=packet
+  - r8.packet_offset=4
+  - r9.type=packet
+  - r9.packet_offset=0
+
+messages:
+  - "7:9: Code is unreachable after 7:9"
