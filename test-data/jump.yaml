@@ -78,7 +78,7 @@ post:
   - s[504...511].packet_offset=8
   - s[504...511].stack_offset=4
 ---
-test-case: same_type
+test-case: same_type subtract
 
 pre: ["r0.type=number",
       "r8.type=ctx", "r8.ctx_offset=4",
@@ -86,12 +86,12 @@ pre: ["r0.type=number",
 
 code:
   <start>: |
-    if r0 == 0 goto <stack>
+    if r0 == 0 goto <ctx>
   <number>: |
     r1 = 1
     r2 = r0
     goto <out>
-  <stack>: |
+  <ctx>: |
     r1 = r8
     r2 = r9
     goto <out>
@@ -100,10 +100,10 @@ code:
     r3 -= r1; trigger same_type(r2, r1)
 
 post:
-  - r1.type=r2.type
   - r0.type=number
   - r1.ctx_offset=4
   - r1.type in {number, ctx}
+  - r1.type=r2.type
   - r2.ctx_offset=0
   - r2.type in {number, ctx}
   - r3.type=number
@@ -121,12 +121,12 @@ pre: ["r0.type=number",
 
 code:
   <start>: |
-    if r0 == 0 goto <stack>
+    if r0 == 0 goto <ctx>
   <number>: |
     r1 = 1
     r2 = r9
     goto <out>
-  <stack>: |
+  <ctx>: |
     r1 = r8
     r2 = r0
     goto <out>
@@ -137,14 +137,14 @@ code:
 
 post:
   - r0.type=number
-  - r1.type in {number, ctx}
   - r1.ctx_offset=4
-  - r2.type in {number, ctx}
+  - r1.type in {number, ctx}
   - r2.ctx_offset=0
-  - r8.type=ctx
+  - r2.type in {number, ctx}
   - r8.ctx_offset=4
-  - r9.type=ctx
+  - r8.type=ctx
   - r9.ctx_offset=0
+  - r9.type=ctx
 
 messages:
   - "8: r1.type == r3.type"
@@ -192,7 +192,7 @@ post:
 test-case: multiple types add fail
 
 pre: ["r0.type=number",
-      "r8.type=ctx", "r8.ctx_offset=0"]
+      "r8.type=ctx", "r8.ctx_offset=0", "r8.value=1024"]
 
 code:
   <start>: |
@@ -213,14 +213,36 @@ post:
   - r0.type=number
   - r1.ctx_offset=0
   - r1.type in {number, ctx}
-  - r1.value=4
+  - r1.type-r1.value<=-8
+  - r1.type-r3.ctx_offset<=-7
+  - r1.type-r3.value<=-12
+  - r1.value-r1.type<=1027
+  - r1.value-r3.ctx_offset<=1020
+  - r1.value-r3.value<=-4
+  - r1.value=[4, 1024]
   - r2.ctx_offset=0
   - r2.type in {number, ctx}
-  - r2.value=4
-  - r3.ctx_offset=4
+  - r2.ctx_offset-r3.ctx_offset<=-4
+  - r2.type-r2.value<=-8
+  - r2.type-r3.value<=-12
+  - r2.value-r2.type<=1027
+  - r2.value-r3.value<=-4
+  - r2.value=[4, 1024]
   - r3.type=ctx
+  - r3.ctx_offset-r1.type<=1028
+  - r3.ctx_offset-r1.value<=1020
+  - r3.ctx_offset-r2.ctx_offset<=1024
+  - r3.ctx_offset-r3.value<=1016
+  - r3.ctx_offset=[4, 1024]
+  - r3.value-r1.type<=2051
+  - r3.value-r1.value<=1024
+  - r3.value-r2.type<=2051
+  - r3.value-r2.value<=1024
+  - r3.value-r3.ctx_offset<=2044
+  - r3.value=[8, 2048]
   - r8.ctx_offset=0
   - r8.type=ctx
+  - r8.value=1024
 
 messages:
   - "8: only numbers can be added to pointers (r2.type = ptr -> r3.type = number)"

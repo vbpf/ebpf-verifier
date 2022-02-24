@@ -1432,28 +1432,29 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             } else {
                 // Here we're not sure that lhs and rhs are the same type; they might be.
                 // But previous assertions should fail unless we know that exactly one of lhs or rhs is a pointer.
-                // TODO: update the code below to deal with registers with multiple types.
-                m_inv = type_inv.join_by_if_else(m_inv,
-                    type_is_number(bin.dst),
-                    [&](NumAbsDomain& inv) {
-                        // num += ptr
-                        type_inv.assign_type(inv, bin.dst, src_reg);
-                        auto dst_offset = get_type_offset_variable(bin.dst, inv);
-                        if (dst_offset.has_value())
-                            apply(inv, crab::arith_binop_t::ADD, get_type_offset_variable(bin.dst, inv).value(), dst.value,
-                                  get_type_offset_variable(src_reg, inv).value(),
-                                  false);
-                        if (type_inv.has_type(m_inv, src.type, T_SHARED))
-                            inv.assign(dst.shared_region_size, src.shared_region_size);
-                    },
-                    [&](NumAbsDomain& inv) {
-                        // ptr += num
-                        auto dst_offset = get_type_offset_variable(bin.dst, inv);
-                        if (dst_offset.has_value())
-                            apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst_offset.value(), src.value,
-                                  false);
-                    }
-                );
+                m_inv = type_inv.join_over_types(m_inv, bin.dst, [&](NumAbsDomain& inv, type_encoding_t dst_type) {
+                    inv = type_inv.join_over_types(m_inv, src_reg, [&](NumAbsDomain& inv, type_encoding_t src_type) {
+                        if (dst_type == T_NUM && src_type != T_NUM) {
+                            // num += ptr
+                            type_inv.assign_type(inv, bin.dst, src_type);
+                            auto dst_offset = get_type_offset_variable(bin.dst, src_type);
+                            if (dst_offset.has_value())
+                                apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst.value,
+                                      get_type_offset_variable(src_reg, src_type).value(), false);
+                            if (src_type == T_SHARED)
+                                inv.assign(dst.shared_region_size, src.shared_region_size);
+                        } else if (dst_type != T_NUM && src_type == T_NUM) {
+                            // ptr += num
+                            type_inv.assign_type(inv, bin.dst, dst_type);
+                            auto dst_offset = get_type_offset_variable(bin.dst, dst_type);
+                            if (dst_offset.has_value())
+                                apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst_offset.value(), src.value,
+                                      false);
+                        } else {
+                            inv.set_to_bottom();
+                        }
+                    });
+                });
                 // careful: change dst.value only after dealing with offset
                 apply(m_inv, crab::arith_binop_t::ADD, dst.value, dst.value, src.value, true);
             }
