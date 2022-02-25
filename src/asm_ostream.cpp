@@ -357,7 +357,8 @@ auto get_labels(const InstructionSeq& insts) {
     return pc_of_label;
 }
 
-void print(const InstructionSeq& insts, std::ostream& out, std::optional<const label_t> label_to_print) {
+void print(const InstructionSeq& insts, std::ostream& out, std::optional<const label_t> label_to_print,
+           bool print_line_info) {
     auto pc_of_label = get_labels(insts);
     pc_t pc = 0;
     std::string previous_source;
@@ -365,12 +366,11 @@ void print(const InstructionSeq& insts, std::ostream& out, std::optional<const l
     for (const LabeledInstruction& labeled_inst : insts) {
         const auto& [label, ins, line_info] = labeled_inst;
         if (!label_to_print.has_value() || (label == label_to_print)) {
-            if (line_info.has_value()) {
+            if (line_info.has_value() && print_line_info) {
                 auto& [file, source, line, column] = line_info.value();
                 // Only decorate the first instruction associated with a source line.
                 if (source != previous_source) {
-                    out << "; " << file.c_str() << ":" << line << "\n";
-                    out << "; " << source.c_str() << "\n";
+                    out << line_info.value();
                     previous_source = source;
                 }
             }
@@ -484,4 +484,10 @@ std::ostream& operator<<(std::ostream& o, const cfg_t& cfg) {
         o << cfg.get_node(label);
     }
     return o;
+}
+
+std::ostream& operator<<(std::ostream& os, const btf_line_info_t& line_info) {
+    os << "; " << line_info.file_name << ":" << line_info.line_number << "\n";
+    os << "; " << line_info.source_line << "\n";
+    return os;
 }

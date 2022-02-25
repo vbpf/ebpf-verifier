@@ -14,6 +14,8 @@ struct ebpf_verifier_options_t {
 
     // True to do additional checks for some things that would fail at runtime.
     bool strict;
+
+    bool print_line_info;
 };
 
 struct ebpf_verifier_stats_t {

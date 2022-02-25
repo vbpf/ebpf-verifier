@@ -57,6 +57,7 @@ int main(int argc, char** argv) {
     app.add_flag("-s", ebpf_verifier_options.strict, "Apply additional checks that would cause runtime failures");
     app.add_flag("-v", verbose, "Print both invariants and failures");
     app.add_flag("--no-simplify", ebpf_verifier_options.no_simplify, "Do not simplify");
+    app.add_flag("--line-info", ebpf_verifier_options.print_line_info, "Print line information");
 
     std::string asmfile;
     app.add_option("--asm", asmfile, "Print disassembly to FILE")->type_name("FILE");
