@@ -113,13 +113,23 @@ static checks_db generate_report(cfg_t& cfg,
     return m_db;
 }
 
+auto get_line_info(const InstructionSeq& insts) {
+    std::map<int, std::optional<btf_line_info_t>> label_to_line_info;
+    for (auto& [label, inst, line_info] : insts) {
+        if (line_info.has_value())
+            label_to_line_info.insert({label.from, line_info});
+    }
+    return label_to_line_info;
+}
+
 static void print_report(std::ostream& os, const checks_db& db, const InstructionSeq& prog) {
+    auto label_to_line_info = get_line_info(prog);
     os << "\n";
     for (auto [label, messages] : db.m_db) {
         for (const auto& msg : messages) {
-            auto line_info = std::get<2>(prog[label.from]);
-            if (line_info.has_value()) {
-                auto& [file, source, line, _] = line_info.value();
+            auto line_info = label_to_line_info.find(label.from);
+            if (line_info != label_to_line_info.end()) {
+                auto& [file, source, line, _] = (*line_info).second.value();
                 os << "; " << file.c_str() << ":" << line << "\n";
                 os << "; " << source.c_str() << "\n";
             }
