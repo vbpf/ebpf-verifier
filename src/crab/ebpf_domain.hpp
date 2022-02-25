@@ -16,6 +16,8 @@
 using NumAbsDomain = crab::domains::NumAbsDomain;
 
 class ebpf_domain_t final {
+    struct TypeDomain;
+
   public:
     ebpf_domain_t();
     ebpf_domain_t(crab::domains::NumAbsDomain inv, crab::domains::array_domain_t stack);
@@ -135,12 +137,6 @@ class ebpf_domain_t final {
     static std::optional<variable_t> get_type_offset_variable(const Reg& reg, int type);
     std::optional<variable_t> get_type_offset_variable(const Reg& reg, const NumAbsDomain& inv) const;
     std::optional<variable_t> get_type_offset_variable(const Reg& reg) const;
-    static bool variable_has_type(const NumAbsDomain& inv, variable_t type_variable, type_encoding_t type);
-    static void join_inv(NumAbsDomain& dst, NumAbsDomain& src);
-    static void add_extra_invariant(NumAbsDomain& dst,
-                                     std::map<crab::variable_t, crab::interval_t>& extra_invariants,
-                                     variable_t type_variable, type_encoding_t type, crab::data_kind_t kind,
-                                     const NumAbsDomain& other);
 
     void scratch_caller_saved_registers();
     std::optional<uint32_t> get_map_type(const Reg& map_fd_reg) const;
@@ -233,6 +229,11 @@ class ebpf_domain_t final {
         NumAbsDomain join_by_if_else(const NumAbsDomain& inv, const linear_constraint_t& condition,
                                      const std::function<void(NumAbsDomain&)>& if_true,
                                      const std::function<void(NumAbsDomain&)>& if_false) const;
+        void selectively_join_based_on_type(NumAbsDomain& dst, NumAbsDomain& src) const;
+        void add_extra_invariant(NumAbsDomain& dst,
+                                 std::map<crab::variable_t, crab::interval_t>& extra_invariants,
+                                 variable_t type_variable, type_encoding_t type, crab::data_kind_t kind,
+                                 const NumAbsDomain& other) const;
 
         bool is_in_group(const NumAbsDomain& inv, const Reg& r, TypeGroup group) const;
     };

@@ -199,24 +199,15 @@ bool ebpf_domain_t::operator==(const ebpf_domain_t& other) const {
     return stack == other.stack && m_inv <= other.m_inv && other.m_inv <= m_inv;
 }
 
-// Check whether a given type value is within the range of a given type variable's
-// value.
-bool ebpf_domain_t::variable_has_type(const NumAbsDomain& inv, variable_t type_variable, type_encoding_t type) {
-    crab::interval_t interval = inv.eval_interval(type_variable);
-    if (interval.is_top())
-        return true;
-    return (interval.lb().number().value_or(INT_MIN) <= type) &&
-           (interval.ub().number().value_or(INT_MAX) >= type);
-}
-
-void ebpf_domain_t::add_extra_invariant(NumAbsDomain& dst,
-                                        std::map<crab::variable_t, crab::interval_t>& extra_invariants,
-                                        variable_t type_variable,
-                                        type_encoding_t type,
-                                        data_kind_t kind,
-                                        const NumAbsDomain& src) {
-    bool dst_has_type = variable_has_type(dst, type_variable, type);
-    bool src_has_type = variable_has_type(src, type_variable, type);
+void ebpf_domain_t::TypeDomain::add_extra_invariant(NumAbsDomain& dst,
+                                                    std::map<crab::variable_t,
+                                                    crab::interval_t>& extra_invariants,
+                                                    variable_t type_variable,
+                                                    type_encoding_t type,
+                                                    data_kind_t kind,
+                                                    const NumAbsDomain& src) const {
+    bool dst_has_type = has_type(dst, type_variable, type);
+    bool src_has_type = has_type(src, type_variable, type);
     variable_t v = variable_t::kind_var(kind, type_variable);
 
     // If type is contained in exactly one of dst or src,
@@ -227,7 +218,7 @@ void ebpf_domain_t::add_extra_invariant(NumAbsDomain& dst,
         extra_invariants.emplace(v, src.eval_interval(v));
 }
 
-void ebpf_domain_t::join_inv(NumAbsDomain& dst, NumAbsDomain& src) {
+void ebpf_domain_t::TypeDomain::selectively_join_based_on_type(NumAbsDomain& dst, NumAbsDomain& src) const {
     // Some variables are type-specific.  Type-specific variables
     // for a register can exist in the domain whenever the associated
     // type value is present in the register's types interval (and the
@@ -283,7 +274,7 @@ void ebpf_domain_t::operator|=(ebpf_domain_t&& other) {
         return;
     }
 
-    join_inv(m_inv, other.m_inv);
+    type_inv.selectively_join_based_on_type(m_inv, other.m_inv);
 
     stack |= other.stack;
 }
@@ -499,6 +490,7 @@ int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, variable_t v) c
 
 int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, int t) const { return t; }
 
+// Check whether a given type value is within the range of a given type variable's value.
 bool ebpf_domain_t::TypeDomain::has_type(const NumAbsDomain& inv, const Reg& r, type_encoding_t type) const {
     crab::interval_t interval = inv[reg_pack(r).type];
     if (interval.is_top())
@@ -531,7 +523,7 @@ NumAbsDomain ebpf_domain_t::TypeDomain::join_over_types(const NumAbsDomain& inv,
     for (type_encoding_t type = lb; type <= ub; type = (type_encoding_t)((int)type + 1)) {
         NumAbsDomain tmp(inv);
         transition(tmp, type);
-        join_inv(res, tmp); // res |= tmp;
+        selectively_join_based_on_type(res, tmp); // res |= tmp;
     }
     return res;
 }
