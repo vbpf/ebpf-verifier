@@ -122,16 +122,15 @@ auto get_line_info(const InstructionSeq& insts) {
     return label_to_line_info;
 }
 
-static void print_report(std::ostream& os, const checks_db& db, const InstructionSeq& prog) {
+static void print_report(std::ostream& os, const checks_db& db, const InstructionSeq& prog, bool print_line_info) {
     auto label_to_line_info = get_line_info(prog);
     os << "\n";
     for (auto [label, messages] : db.m_db) {
         for (const auto& msg : messages) {
-            auto line_info = label_to_line_info.find(label.from);
-            if (line_info != label_to_line_info.end()) {
-                auto& [file, source, line, _] = (*line_info).second.value();
-                os << "; " << file.c_str() << ":" << line << "\n";
-                os << "; " << source.c_str() << "\n";
+            if (print_line_info) {
+                auto line_info = label_to_line_info.find(label.from);
+                if (line_info != label_to_line_info.end() && line_info->second.has_value())
+                    os << line_info->second.value();
             }
             os << label << ": " << msg << "\n";
         }
@@ -209,7 +208,7 @@ ebpf_analyze_program_for_test(std::ostream& os, const InstructionSeq& prog, cons
     cfg_t cfg = prepare_cfg(prog, info, !no_simplify, false);
     auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, entry_inv, check_termination);
     checks_db report = generate_report(cfg, pre_invariants, post_invariants);
-    print_report(os, report, prog);
+    print_report(os, report, prog, false);
 
     return {
         to_string_invariant_map(pre_invariants),
@@ -229,7 +228,7 @@ bool ebpf_verify_program(std::ostream& os, const InstructionSeq& prog, const pro
 
     checks_db report = get_ebpf_report(os, cfg, info, options);
     if (options->print_failures) {
-        print_report(os, report, prog);
+        print_report(os, report, prog, options->print_line_info);
     }
     if (stats) {
         stats->total_unreachable = report.total_unreachable;
