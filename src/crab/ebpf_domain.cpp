@@ -645,10 +645,9 @@ void ebpf_domain_t::operator()(const Assume& s) {
                 } else {
                     // Either pointers to a singleton region,
                     // or an equality comparison on map descriptors/pointers to non-singleton locations
-                    auto dst_offset = get_type_offset_variable(cond.left, type);
-                    auto src_offset = get_type_offset_variable(src_reg, type);
-                    if (dst_offset.has_value() && src_offset.has_value())
-                        inv += jmp_to_cst_offsets_reg(cond.op, dst_offset.value(), src_offset.value());
+                    if (auto dst_offset = get_type_offset_variable(cond.left, type))
+                        if (auto src_offset = get_type_offset_variable(src_reg, type))
+                            inv += jmp_to_cst_offsets_reg(cond.op, dst_offset.value(), src_offset.value());
                 }
             });
         } else {
@@ -1425,12 +1424,11 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 // Here we're not sure that lhs and rhs are the same type; they might be.
                 // But previous assertions should fail unless we know that exactly one of lhs or rhs is a pointer.
                 m_inv = type_inv.join_over_types(m_inv, bin.dst, [&](NumAbsDomain& inv, type_encoding_t dst_type) {
-                    inv = type_inv.join_over_types(m_inv, src_reg, [&](NumAbsDomain& inv, type_encoding_t src_type) {
+                    inv = type_inv.join_over_types(inv, src_reg, [&](NumAbsDomain& inv, type_encoding_t src_type) {
                         if (dst_type == T_NUM && src_type != T_NUM) {
                             // num += ptr
                             type_inv.assign_type(inv, bin.dst, src_type);
-                            auto dst_offset = get_type_offset_variable(bin.dst, src_type);
-                            if (dst_offset.has_value())
+                            if (auto dst_offset = get_type_offset_variable(bin.dst, src_type))
                                 apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst.value,
                                       get_type_offset_variable(src_reg, src_type).value(), false);
                             if (src_type == T_SHARED)
@@ -1438,11 +1436,13 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                         } else if (dst_type != T_NUM && src_type == T_NUM) {
                             // ptr += num
                             type_inv.assign_type(inv, bin.dst, dst_type);
-                            auto dst_offset = get_type_offset_variable(bin.dst, dst_type);
-                            if (dst_offset.has_value())
+                            if (auto dst_offset = get_type_offset_variable(bin.dst, dst_type))
                                 apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst_offset.value(), src.value,
                                       false);
                         } else {
+                            // We ignore the cases here that do not match the assumption described
+                            // above.  Joining bottom with another results will leave the other
+                            // results unchanged.
                             inv.set_to_bottom();
                         }
                     });
@@ -1466,8 +1466,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                     default:
                         // ptr -= ptr
                         // Assertions should make sure we only perform this on non-shared pointers.
-                        auto dst_offset = get_type_offset_variable(bin.dst, type);
-                        if (dst_offset.has_value()) {
+                        if (auto dst_offset = get_type_offset_variable(bin.dst, type)) {
                             apply(inv, crab::arith_binop_t::SUB, dst.value, dst_offset.value(),
                                   get_type_offset_variable(src_reg, type).value(), true);
                             inv -= dst_offset.value();
@@ -1487,8 +1486,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 } else {
                     sub_overflow(dst.value, src.value);
                     sub(get_type_offset_variable(bin.dst).value(), src.value);
-                    auto dst_offset = get_type_offset_variable(bin.dst);
-                    if (dst_offset.has_value())
+                    if (auto dst_offset = get_type_offset_variable(bin.dst))
                         sub(dst_offset.value(), src.value);
                 }
             }
