@@ -80,7 +80,7 @@ post:
 ---
 test-case: add interval number register to constant register pointer
 
-pre: ["r2.type=packet", "r2.offset=0", "r2.value=[7, 11]", "r2.region_size=packet_size",
+pre: ["r2.type=packet", "r2.packet_offset=0", "r2.value=[7, 11]",
       "r7.type=number", "r7.value=[3, 5]"]
 
 code:
@@ -89,21 +89,20 @@ code:
 
 post:
   - r2.type=packet
-  - r2.offset=[3, 5]
+  - r2.packet_offset=[3, 5]
   - r2.value=[10, 16]
   - r7.type=number
   - r7.value=[3, 5]
   - r7.value-r2.value<=-7
   - r2.value-r7.value<=11
-  - r2.offset-r2.value<=-7
-  - r2.value-r2.offset<=11
-  - r2.offset=r7.value
-  - packet_size=r2.region_size
+  - r2.packet_offset-r2.value<=-7
+  - r2.value-r2.packet_offset<=11
+  - r2.packet_offset=r7.value
 
 ---
 test-case: add constant register pointer to interval number
 
-pre: ["r2.type=packet", "r2.offset=0", "r2.value=[7, 11]", "r2.region_size=packet_size",
+pre: ["r2.type=packet", "r2.packet_offset=0", "r2.value=[7, 11]",
       "r7.type=number", "r7.value=[3, 5]"]
 
 code:
@@ -112,17 +111,32 @@ code:
 
 post:
   - r7.type=packet
-  - r7.offset=[3, 5]
+  - r7.packet_offset=[3, 5]
   - r7.value=[10, 16]
   - r2.type=packet
-  - r2.offset=0
+  - r2.packet_offset=0
   - r2.value=[7, 11]
   - r2.value-r7.value<=-3
   - r7.value-r2.value<=5
-  - r2.offset-r7.offset<=-3
-  - r7.offset-r2.offset<=5
-  - r7.offset-r7.value<=-7
-  - r7.value-r7.offset<=11
-  - packet_size=r2.region_size
-  - packet_size=r7.region_size
-  - r2.region_size=r7.region_size
+  - r2.packet_offset-r7.packet_offset<=-3
+  - r7.packet_offset-r2.packet_offset<=5
+  - r7.packet_offset-r7.value<=-7
+  - r7.value-r7.packet_offset<=11
+
+---
+test-case: subtract dual-typed pointers
+
+pre: ["r2.type=[-2, -1]", "r2.packet_offset=4", "r2.stack_offset=4",
+      "r3.type=[-2, -1]", "r3.packet_offset=8", "r3.stack_offset=8"]
+
+code:
+  <start>: |
+    r3 -= r2
+
+post:
+  - r2.type in {packet, stack}
+  - r2.packet_offset=4
+  - r2.stack_offset=4
+
+messages:
+  - "0: r2.type == r3.type"

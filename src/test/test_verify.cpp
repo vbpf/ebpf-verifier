@@ -297,6 +297,7 @@ TEST_SECTION("prototype-kernel", "napi_monitor_kern.o", "tracepoint/napi/napi_po
 TEST_SECTION("prototype-kernel", "tc_bench01_redirect_kern.o", "ingress_redirect")
 TEST_SECTION("prototype-kernel", "xdp_bench01_mem_access_cost_kern.o", "xdp_bench01")
 TEST_SECTION("prototype-kernel", "xdp_bench02_drop_pattern_kern.o", "xdp_bench02")
+TEST_SECTION("prototype-kernel", "xdp_ddos01_blacklist_kern.o", "xdp_prog")
 TEST_SECTION("prototype-kernel", "xdp_monitor_kern.o", "tracepoint/xdp/xdp_redirect")
 TEST_SECTION("prototype-kernel", "xdp_monitor_kern.o", "tracepoint/xdp/xdp_redirect_err")
 TEST_SECTION("prototype-kernel", "xdp_monitor_kern.o", "tracepoint/xdp/xdp_redirect_map_err")
@@ -457,6 +458,7 @@ TEST_SECTION("build", "packet_access.o", "xdp")
 TEST_SECTION("build", "tail_call.o", "xdp_prog")
 TEST_SECTION("build", "map_in_map.o", ".text")
 TEST_SECTION("build", "twomaps.o", ".text");
+TEST_SECTION("build", "twotypes.o", ".text");
 
 // Test some programs that ought to fail verification.
 TEST_SECTION_REJECT("build", "badhelpercall.o", ".text")
@@ -477,9 +479,6 @@ TEST_SECTION_REJECT("build", "tail_call_bad.o", "xdp_prog")
 // Unsupported: ebpf-function
 TEST_SECTION_FAIL("prototype-kernel", "xdp_ddos01_blacklist_kern.o", ".text")
 
-// False positive: correlated branches
-TEST_SECTION_FAIL("prototype-kernel", "xdp_ddos01_blacklist_kern.o", "xdp_prog")
-
 // Unsupported: offset not tracked separately per pointer type
 TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "2/7")
 TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "2/10")
@@ -499,9 +498,6 @@ TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/17")
 TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/18")
 TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/19")
 TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/24")
-
-// False positive, trying to dereference {shared,stack} pointer
-TEST_SECTION_FAIL("build", "twotypes.o", ".text");
 
 // False positive, unknown cause
 TEST_SECTION_FAIL("linux", "test_map_in_map_kern.o", "kprobe/sys_connect")

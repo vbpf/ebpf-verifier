@@ -150,8 +150,8 @@ std::ostream& operator<<(std::ostream& os, ValidMapKeyValue const& a) {
     return os << "within stack(" << a.access_reg << ":" << (a.key ? "key_size" : "value_size") << "(" << a.map_fd_reg << "))";
 }
 
-std::ostream& operator<<(std::ostream& os, ZeroOffset const& a) {
-    return os << crab::variable_t::reg(crab::data_kind_t::offsets, a.reg.v) << " == 0";
+std::ostream& operator<<(std::ostream& os, ZeroCtxOffset const& a) {
+    return os << crab::variable_t::reg(crab::data_kind_t::ctx_offsets, a.reg.v) << " == 0";
 }
 
 std::ostream& operator<<(std::ostream& os, Comparable const& a) {

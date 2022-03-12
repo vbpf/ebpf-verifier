@@ -16,6 +16,8 @@
 using NumAbsDomain = crab::domains::NumAbsDomain;
 
 class ebpf_domain_t final {
+    struct TypeDomain;
+
   public:
     ebpf_domain_t();
     ebpf_domain_t(crab::domains::NumAbsDomain inv, crab::domains::array_domain_t stack);
@@ -69,7 +71,7 @@ class ebpf_domain_t final {
     void operator()(const ValidMapKeyValue&);
     void operator()(const ValidSize&);
     void operator()(const ValidStore&);
-    void operator()(const ZeroOffset&);
+    void operator()(const ZeroCtxOffset&);
 
   private:
     // private generic domain functions
@@ -128,6 +130,14 @@ class ebpf_domain_t final {
     /// Forget everything we know about the value of a variable.
     void havoc(variable_t v);
 
+    /// Forget everything about all offset variables for a given register.
+    void havoc_offsets(const Reg& reg);
+    void havoc_offsets(NumAbsDomain& inv, const Reg& reg);
+
+    static std::optional<variable_t> get_type_offset_variable(const Reg& reg, int type);
+    std::optional<variable_t> get_type_offset_variable(const Reg& reg, const NumAbsDomain& inv) const;
+    std::optional<variable_t> get_type_offset_variable(const Reg& reg) const;
+
     void scratch_caller_saved_registers();
     std::optional<uint32_t> get_map_type(const Reg& map_fd_reg) const;
     std::optional<uint32_t> get_map_inner_map_fd(const Reg& map_fd_reg) const;
@@ -135,6 +145,7 @@ class ebpf_domain_t final {
     crab::interval_t get_map_value_size(const Reg& map_fd_reg) const;
     crab::interval_t get_map_max_entries(const Reg& map_fd_reg) const;
     void forget_packet_pointers();
+    void havoc_register(NumAbsDomain& inv, const Reg& reg);
     void do_load_mapfd(const Reg& dst_reg, int mapfd, bool maybe_null);
 
     void overflow(variable_t lhs);
@@ -147,9 +158,9 @@ class ebpf_domain_t final {
     void check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s);
     void check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s);
     void check_access_packet(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
-                             std::optional<variable_t> region_size);
+                             std::optional<variable_t> shared_region_size);
     void check_access_shared(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
-                             variable_t region_size);
+                             variable_t shared_region_size);
 
     void do_load_stack(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width);
     void do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr_vague, int width);
@@ -158,13 +169,21 @@ class ebpf_domain_t final {
 
     template <typename A, typename X, typename Y>
     void do_store_stack(crab::domains::NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_value,
-                        std::optional<variable_t> opt_val_offset,
-                        std::optional<variable_t> opt_val_region_size);
+                        std::optional<variable_t> opt_val_ctx_offset,
+                        std::optional<variable_t> opt_val_map_fd,
+                        std::optional<variable_t> opt_val_packet_offset,
+                        std::optional<variable_t> opt_val_shared_offset,
+                        std::optional<variable_t> opt_val_stack_offset,
+                        std::optional<variable_t> opt_val_shared_region_size);
 
     template <typename Type, typename Value>
     void do_mem_store(const Mem& b, Type val_type, Value val_value,
-                      std::optional<variable_t> opt_val_offset,
-                      std::optional<variable_t> opt_val_region_size);
+                      std::optional<variable_t> opt_val_ctx_offset,
+                      std::optional<variable_t> opt_val_map_fd,
+                      std::optional<variable_t> opt_val_packet_offset,
+                      std::optional<variable_t> opt_val_shared_offset,
+                      std::optional<variable_t> opt_val_stack_offset,
+                      std::optional<variable_t> opt_val_shared_region_size);
 
     friend std::ostream& operator<<(std::ostream& o, const ebpf_domain_t& dom);
 
@@ -198,6 +217,10 @@ class ebpf_domain_t final {
         [[nodiscard]] int get_type(const NumAbsDomain& inv, const Reg& r) const;
         [[nodiscard]] int get_type(const NumAbsDomain& inv, int t) const;
 
+        [[nodiscard]] bool has_type(const NumAbsDomain& inv, variable_t v, type_encoding_t type) const;
+        [[nodiscard]] bool has_type(const NumAbsDomain& inv, const Reg& r, type_encoding_t type) const;
+        [[nodiscard]] bool has_type(const NumAbsDomain& inv, int t, type_encoding_t type) const;
+
         [[nodiscard]] bool same_type(const NumAbsDomain& inv, const Reg& a, const Reg& b) const;
         [[nodiscard]] bool implies_type(const NumAbsDomain& inv, const linear_constraint_t& a, const linear_constraint_t& b) const;
 
@@ -206,11 +229,14 @@ class ebpf_domain_t final {
         NumAbsDomain join_by_if_else(const NumAbsDomain& inv, const linear_constraint_t& condition,
                                      const std::function<void(NumAbsDomain&)>& if_true,
                                      const std::function<void(NumAbsDomain&)>& if_false) const;
+        void selectively_join_based_on_type(NumAbsDomain& dst, NumAbsDomain& src) const;
+        void add_extra_invariant(NumAbsDomain& dst,
+                                 std::map<crab::variable_t, crab::interval_t>& extra_invariants,
+                                 variable_t type_variable, type_encoding_t type, crab::data_kind_t kind,
+                                 const NumAbsDomain& other) const;
 
         bool is_in_group(const NumAbsDomain& inv, const Reg& r, TypeGroup group) const;
     };
 
     TypeDomain type_inv;
-
-    void assign_region_size(const Reg& r, const crab::interval_t& size);
 }; // end ebpf_domain_t

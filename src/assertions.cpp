@@ -28,7 +28,7 @@ class AssertExtractor {
     static vector<Assert> zero_offset_ctx(Reg reg) {
         vector<Assert> res;
         res.emplace_back(TypeConstraint{reg, TypeGroup::ctx});
-        res.emplace_back(ZeroOffset{reg});
+        res.emplace_back(ZeroCtxOffset{reg});
         return res;
     }
 
