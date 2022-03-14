@@ -163,6 +163,7 @@ class ebpf_domain_t final {
                              variable_t shared_region_size);
 
     void recompute_numeric_size(NumAbsDomain& inv, const Reg& reg);
+    void recompute_numeric_size(NumAbsDomain& inv, variable_t type_variable);
     void do_load_stack(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width, const Reg& src_reg);
     void do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr_vague, int width);
     void do_load_packet_or_shared(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width);

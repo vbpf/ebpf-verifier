@@ -347,17 +347,14 @@ void ebpf_domain_t::scratch_caller_saved_registers() {
 void ebpf_domain_t::forget_packet_pointers() {
     using namespace crab::dsl_syntax;
 
-    // Havoc and recompute any r*.numeric_size for packets.
-    for (int i = R0_RETURN_VALUE; i <= R10_STACK_POINTER; i++) {
-        auto reg_packed = reg_pack(i);
-
-        if (type_inv.has_type(m_inv, reg_packed.type, T_PACKET)) {
-            Reg reg{(uint8_t)i};
-            havoc(reg_packed.type);
-            havoc(reg_packed.packet_offset);
-            havoc(reg_packed.value);
-            havoc(reg_packed.numeric_size);
-            recompute_numeric_size(m_inv, reg);
+    // Havoc and recompute numeric_size for packet type variables.
+    for (variable_t type_variable : variable_t::get_type_variables()) {
+        if (type_inv.has_type(m_inv, type_variable, T_PACKET)) {
+            havoc(variable_t::kind_var(data_kind_t::types, type_variable));
+            havoc(variable_t::kind_var(data_kind_t::packet_offsets, type_variable));
+            havoc(variable_t::kind_var(data_kind_t::values, type_variable));
+            havoc(variable_t::kind_var(data_kind_t::numeric_sizes, type_variable));
+            recompute_numeric_size(m_inv, type_variable);
         }
     }
 
@@ -992,6 +989,7 @@ void ebpf_domain_t::do_load_stack(NumAbsDomain& inv, const Reg& target_reg, cons
     havoc_register(inv, target_reg);
     if (width == 1 || width == 2 || width == 4 || width == 8) {
         inv.assign(target.value, stack.load(inv,  data_kind_t::values, addr, width));
+        inv.assign(target.numeric_size, stack.load(inv, data_kind_t::numeric_sizes, addr, width));
 
         if (type_inv.has_type(m_inv, target.type, T_CTX))
             inv.assign(target.ctx_offset, stack.load(inv, data_kind_t::ctx_offsets, addr, width));
@@ -1178,23 +1176,22 @@ void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, 
         stack.havoc(inv, data_kind_t::shared_region_sizes, addr, width);
     }
 
-    // Update any r*.numeric_size for stack type registers.
+    // Update any r*.numeric_size for stack type variables.
     auto updated_lb = m_inv.eval_interval(addr).lb();
     auto updated_ub = m_inv.eval_interval(addr).ub() + width;
-    for (int i = R0_RETURN_VALUE; i <= R10_STACK_POINTER; i++) {
-        auto reg_packed = reg_pack(i);
+    for (variable_t type_variable : variable_t::get_type_variables()) {
+        if (!type_inv.has_type(m_inv, type_variable, T_STACK))
+            continue;
+        variable_t stack_offset_variable = variable_t::kind_var(data_kind_t::stack_offsets, type_variable);
+        variable_t numeric_size_variable = variable_t::kind_var(data_kind_t::numeric_sizes, type_variable);
 
-        if (type_inv.has_type(m_inv, reg_packed.type, T_STACK)) {
-            auto reg_lb = m_inv.eval_interval(reg_packed.stack_offset).lb();
-            auto reg_ub =
-                (m_inv.eval_interval(reg_packed.stack_offset) + m_inv.eval_interval(reg_packed.numeric_size)).ub();
+        auto reg_lb = m_inv.eval_interval(stack_offset_variable).lb();
+        auto reg_ub = (m_inv.eval_interval(stack_offset_variable) + m_inv.eval_interval(numeric_size_variable)).ub();
 
-            // See if the register's numeric interval overlaps with changed bytes.
-            if (updated_lb <= reg_ub && updated_ub >= reg_lb) {
-                Reg reg{(uint8_t)i};
-                havoc(reg_packed.numeric_size);
-                recompute_numeric_size(m_inv, reg);
-            }
+        // See if the variable's numeric interval overlaps with changed bytes.
+        if (updated_lb <= reg_ub && updated_ub >= reg_lb) {
+            havoc(numeric_size_variable);
+            recompute_numeric_size(m_inv, type_variable);
         }
     }
 }
@@ -1376,26 +1373,34 @@ void ebpf_domain_t::assign_valid_ptr(const Reg& dst_reg, bool maybe_null) {
 
 // If nothing is known of the numeric_size and there is just a
 // single type value, try to recompute the numeric_size.
-void ebpf_domain_t::recompute_numeric_size(NumAbsDomain& inv, const Reg& reg) {
-    auto mem_reg = reg_pack(reg);
+void ebpf_domain_t::recompute_numeric_size(NumAbsDomain& inv, variable_t type_variable) {
+    variable_t numeric_size_variable = variable_t::kind_var(data_kind_t::numeric_sizes, type_variable);
 
-    if (!inv.eval_interval(mem_reg.numeric_size).is_top())
+    if (!inv.eval_interval(numeric_size_variable).is_top())
         return;
 
-    int type = type_inv.get_type(inv, mem_reg.type);
+    int type = type_inv.get_type(inv, type_variable);
     switch (type) {
     case T_PACKET:
-        apply(inv, crab::arith_binop_t::SUB, mem_reg.numeric_size, variable_t::packet_size(), mem_reg.packet_offset,
+        apply(inv, crab::arith_binop_t::SUB, numeric_size_variable, variable_t::packet_size(),
+              variable_t::kind_var(data_kind_t::packet_offsets, type_variable),
               false);
         break;
     case T_SHARED:
-        apply(inv, crab::arith_binop_t::SUB, mem_reg.numeric_size, mem_reg.shared_region_size, mem_reg.shared_offset,
+        apply(inv, crab::arith_binop_t::SUB, numeric_size_variable,
+              variable_t::kind_var(data_kind_t::shared_region_sizes, type_variable),
+              variable_t::kind_var(data_kind_t::shared_offsets, type_variable),
               false);
         break;
     case T_STACK:
-        inv.assign(mem_reg.numeric_size, stack.min_all_num_size(inv, mem_reg.stack_offset));
+        inv.assign(numeric_size_variable,
+                   stack.min_all_num_size(inv, variable_t::kind_var(data_kind_t::stack_offsets, type_variable)));
         break;
     }
+}
+
+void ebpf_domain_t::recompute_numeric_size(NumAbsDomain& inv, const Reg& reg) {
+    recompute_numeric_size(inv, reg_pack(reg).type);
 }
 
 void ebpf_domain_t::operator()(const Bin& bin) {

@@ -487,9 +487,11 @@ int array_domain_t::min_all_num_size(NumAbsDomain& inv, variable_t offset) const
     auto max_ub = inv.eval_interval(offset).ub().number();
     if (!min_lb || !max_ub || !min_lb->fits_sint() || !max_ub->fits_sint())
         return false;
+    auto lb = (int)min_lb.value();
+    auto ub = (int)max_ub.value();
     int min_size = EBPF_STACK_SIZE;
-    for (int i = (int)min_lb.value(); i <= (int)max_ub.value(); i++) {
-        min_size = std::min(min_size, this->num_bytes.all_num_width((int)*min_lb));
+    for (int i = lb; i <= ub; i++) {
+        min_size = std::min(min_size, this->num_bytes.all_num_width(i));
     }
     return min_size;
 }
