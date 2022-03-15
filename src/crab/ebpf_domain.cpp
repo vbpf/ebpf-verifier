@@ -1176,7 +1176,16 @@ void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, 
         stack.havoc(inv, data_kind_t::shared_region_sizes, addr, width);
     }
 
-    // Update any r*.numeric_size for stack type variables.
+    // Update numeric_size for any stack type variables.
+    // The numeric_size is similar to a typedef of an integer pointer,
+    // e.g., is it a uint8_t* or a uint16_t* or a uint64_t* etc.
+    // Since it is common in code to form a larger integer value from
+    // component parts (e.g., in htons, ntohl, etc.) it is important to
+    // be able to expand/contract the size based on observations, while
+    // still tracking whether one can safely dereference the variable
+    // to get number of a given length.  So numeric_size holds the number
+    // of continuous bytes that are known to be numeric, regardless of
+    // whether the pointer is to stack space, packet space, etc.
     auto updated_lb = m_inv.eval_interval(addr).lb();
     auto updated_ub = m_inv.eval_interval(addr).ub() + width;
     for (variable_t type_variable : variable_t::get_type_variables()) {

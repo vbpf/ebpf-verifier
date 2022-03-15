@@ -490,9 +490,8 @@ int array_domain_t::min_all_num_size(NumAbsDomain& inv, variable_t offset) const
     auto lb = (int)min_lb.value();
     auto ub = (int)max_ub.value();
     int min_size = EBPF_STACK_SIZE;
-    for (int i = lb; i <= ub; i++) {
+    for (int i = lb; i <= ub; i++)
         min_size = std::min(min_size, this->num_bytes.all_num_width(i));
-    }
     return min_size;
 }
 
