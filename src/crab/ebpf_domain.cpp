@@ -427,6 +427,7 @@ void ebpf_domain_t::havoc_offsets(NumAbsDomain& inv, const Reg& reg) {
     reg_pack_t r = reg_pack(reg);
     inv -= r.ctx_offset;
     inv -= r.map_fd;
+    inv -= r.numeric_size;
     inv -= r.packet_offset;
     inv -= r.shared_offset;
     inv -= r.shared_region_size;
@@ -682,12 +683,10 @@ void ebpf_domain_t::operator()(const Un& stmt) {
     case Un::Op::LE64:
         havoc(dst.value);
         havoc_offsets(stmt.dst);
-        havoc(dst.numeric_size);
         break;
     case Un::Op::NEG:
         neg(dst.value);
         havoc_offsets(stmt.dst);
-        havoc(dst.numeric_size);
         break;
     }
 }
@@ -972,7 +971,6 @@ void ebpf_domain_t::operator()(const Packet& a) {
     Reg r0_reg{(uint8_t)R0_RETURN_VALUE};
     type_inv.assign_type(m_inv, r0_reg, T_NUM);
     havoc_offsets(r0_reg);
-    havoc(reg.numeric_size);
     havoc(reg.value);
     scratch_caller_saved_registers();
 }
@@ -1426,7 +1424,6 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             assign(dst.value, imm);
             type_inv.assign_type(m_inv, bin.dst, T_NUM);
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::ADD:
             if (imm == 0)
@@ -1457,22 +1454,18 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::MUL:
             mul(dst.value, imm);
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::DIV:
             div(dst.value, imm);
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::MOD:
             rem(dst.value, imm);
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::OR:
             bitwise_or(dst.value, imm);
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::AND:
             // FIX: what to do with ptr&-8 as in counter/simple_loop_unrolled?
@@ -1482,19 +1475,16 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 assume(0 <= dst.value);
             }
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::LSH:
             // avoid signedness and overflow issues in shl_overflow(dst.value, imm);
             shl_overflow(dst.value, imm);
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::RSH:
             // avoid signedness and overflow issues in lshr(dst.value, imm);
             havoc(dst.value);
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::ARSH:
             // avoid signedness and overflow issues in ashr(dst.value, imm);
@@ -1503,12 +1493,10 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             // assume(dst.value <= (1 << (64 - imm)));
             // assume(dst.value >= -(1 << (64 - imm)));
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::XOR:
             bitwise_xor(dst.value, imm);
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         }
     } else {
@@ -1602,55 +1590,44 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::MUL:
             mul(dst.value, src.value);
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::DIV:
             // DIV is not checked for zerodiv
             div(dst.value, src.value);
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::MOD:
             // See DIV comment
             rem(dst.value, src.value);
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::OR:
             bitwise_or(dst.value, src.value);
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::AND:
             bitwise_and(dst.value, src.value);
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::LSH:
             shl_overflow(dst.value, src.value);
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::RSH:
             havoc(dst.value);
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::ARSH:
             havoc(dst.value);
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::XOR:
             bitwise_xor(dst.value, src.value);
             havoc_offsets(bin.dst);
-            havoc(dst.numeric_size);
             break;
         case Bin::Op::MOV:
             assign(dst.value, src.value);
             havoc_offsets(bin.dst);
-            havoc(dst.shared_region_size);
-            havoc(dst.numeric_size);
             m_inv = type_inv.join_over_types(m_inv, src_reg, [&](NumAbsDomain& inv, type_encoding_t type) {
                 inv.assign(dst.type, type);
 
