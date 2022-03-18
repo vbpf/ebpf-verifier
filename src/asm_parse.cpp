@@ -14,8 +14,10 @@ using std::regex;
 using std::regex_match;
 
 #define REG R"_((r\d\d?)\s*)_"
+#define WREG R"_((r\d\d?|w\d\d?)\s*)_"
 #define IMM R"_(([-+]?\d+))_"
 #define REG_OR_IMM R"_(([+-]?\d+|r\d\d?)\s*)_"
+#define WREG_OR_IMM R"_(([+-]?\d+|r\d\d?|w\d\d?)\s*)_"
 
 #define FUNC IMM
 #define OPASSIGN R"_(\s*(\S*)=\s*)_"
@@ -64,7 +66,7 @@ static const std::map<std::string, int> str_to_width = {
 };
 
 static Reg reg(const std::string& s) {
-    assert(s.at(0) == 'r');
+    assert(s.at(0) == 'r' || s.at(0) == 'w');
     uint8_t res = (uint8_t)boost::lexical_cast<uint16_t>(s.substr(1));
     return Reg{res};
 }
@@ -78,7 +80,7 @@ static Imm imm(const std::string& s) {
 }
 
 static Value reg_or_imm(const std::string& s) {
-    if (s.at(0) == 'r')
+    if (s.at(0) == 'w' || s.at(0) == 'r')
         return reg(s);
     else
         return imm(s);
@@ -111,9 +113,10 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         if (m[1] != m[3]) throw std::invalid_argument(std::string("Invalid unary operation: ") + text);
         return Un{.op = str_to_unop.at(m[2]), .dst = reg(m[1])};
     }
-    if (regex_match(text, m, regex(REG OPASSIGN IMM LONGLONG))) {
+    if (regex_match(text, m, regex(WREG OPASSIGN IMM LONGLONG))) {
+        std::string r = m[1];
         return Bin{
-            .op = str_to_binop.at(m[2]), .dst = reg(m[1]), .v = imm(m[3]), .is64 = true, .lddw = !m[4].str().empty()};
+            .op = str_to_binop.at(m[2]), .dst = reg(r), .v = imm(m[3]), .is64 = (r.at(0) != 'w'), .lddw = !m[4].str().empty()};
     }
     if (regex_match(text, m, regex(REG ASSIGN DEREF PAREN(REG PLUSMINUS IMM)))) {
         return Mem{
@@ -145,7 +148,7 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
             return Packet{.width = width, .offset = (int)imm(m[2]).v, .regoffset = reg(m[1])};
         return Undefined{0};
     }
-    if (regex_match(text, m, regex("(?:if " REG CMPOP REG_OR_IMM " )?goto\\s+(?:" IMM ")?" WRAPPED_LABEL))) {
+    if (regex_match(text, m, regex("(?:if " WREG CMPOP REG_OR_IMM " )?goto\\s+(?:" IMM ")?" WRAPPED_LABEL))) {
         // We ignore second IMM
         Jmp res{.cond = {}, .target = label_name_to_label.at(m[5])};
         if (m[1].matched) {

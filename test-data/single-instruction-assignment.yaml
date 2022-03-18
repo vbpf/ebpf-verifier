@@ -7,7 +7,7 @@ pre: []
 
 code:
   <start>: |
-    r1 = 0
+    w1 = 0
 
 post:
   - r1.type=number

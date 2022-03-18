@@ -340,3 +340,26 @@ post:
 
 messages:
   - "7: Upper bound must be at most packet_size (valid_access(r1.offset-8, width=8))"
+---
+test-case: 32-bit compare
+
+pre: ["r4.type=number", "r4.value=-22"]
+
+code:
+  <start>: |
+    if w4 != 0 goto <good>
+    r0 = 1 ; this should never happen
+  <good>: |
+    r0 = 0
+    goto <out>
+  <out>: |
+    exit
+
+post:
+  - r0.type=number
+  - r0.value=0
+  - r4.type=number
+  - r4.value=-22
+
+messages:
+  - "0:1: Code is unreachable after 0:1"
