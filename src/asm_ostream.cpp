@@ -185,12 +185,14 @@ struct InstructionPrinterVisitor {
 
     void operator()(LoadMapFd const& b) { os_ << b.dst << " = map_fd " << b.mapfd; }
 
+    // llvm-objdump uses "w<number>" for 32-bit operations and "r<number>" for 64-bit operations.
+    // We use the same convention here for consistency.
+    static std::string reg_name(Reg const& a, bool is64) { return ((is64) ? "r" : "w") + std::to_string(a.v); }
+
     void operator()(Bin const& b) {
-        os_ << b.dst << " " << b.op << "= " << b.v;
+        os_ << reg_name(b.dst, b.is64) << " " << b.op << "= " << b.v;
         if (b.lddw)
             os_ << " ll";
-        if (!b.is64)
-            os_ << " & 0xFFFFFFFF";
     }
 
     void operator()(Un const& b) {
