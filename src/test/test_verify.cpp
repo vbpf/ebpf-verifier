@@ -479,7 +479,7 @@ TEST_SECTION_REJECT("build", "tail_call_bad.o", "xdp_prog")
 // Unsupported: ebpf-function
 TEST_SECTION_FAIL("prototype-kernel", "xdp_ddos01_blacklist_kern.o", ".text")
 
-// Unsupported: offset not tracked separately per pointer type
+// Unsupported: lost implications
 TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "2/7")
 TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "2/10")
 TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "2/15")

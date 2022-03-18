@@ -296,3 +296,43 @@ post:
 
 messages:
   - "7:9: Code is unreachable after 7:9"
+---
+test-case: lost implications
+
+pre: ["meta_offset=0", "packet_size=[36, 65534]",
+      "r1.type=packet", "r1.packet_offset=54",
+      "r2.type=packet", "r2.packet_offset=packet_size"]
+
+code:
+  <start>: |
+    r0 = 0
+    if r1 > r2 goto <bad>
+    r4 = 0                ; r1 is within packet
+    goto <join>
+  <bad>: |
+    r4 = 1                ; r1 is past end of packet
+    goto <join>
+  <join>: |
+    if r4 == 1 goto <end> ; skip to end if r1 is past end of packet
+    r0 = *(u64 *)(r1 - 8) ; this should be safe to dereference but the verifier fails it
+  <end>: |
+    exit
+
+post:
+  - meta_offset=0
+  - packet_size=[36, 65534]
+  - packet_size=r2.packet_offset
+  - packet_size-r1.packet_offset<=65480
+  - r0.type=number
+  - r1.type=packet
+  - r1.packet_offset=54
+  - r1.packet_offset-packet_size<=18
+  - r1.packet_offset-r2.packet_offset<=18
+  - r2.type=packet
+  - r2.packet_offset=[36, 65534]
+  - r2.packet_offset-r1.packet_offset<=65480
+  - r4.type=number
+  - r4.value=[0, 1]
+
+messages:
+  - "7: Upper bound must be at most packet_size (valid_access(r1.offset-8, width=8))"
