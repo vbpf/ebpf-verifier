@@ -20,7 +20,7 @@ using std::string;
 using std::map;
 
 #define REG R"_(\s*(r\d\d?)\s*)_"
-#define KIND R"_(\s*(type|value|ctx_offset|map_fd|packet_offset|shared_offset|stack_offset|shared_region_size|numeric_size)\s*)_"
+#define KIND R"_(\s*(type|value|ctx_offset|map_fd|packet_offset|shared_offset|stack_offset|shared_region_size|stack_numeric_size)\s*)_"
 #define IMM R"_(\s*\[?([-+]?\d+)\]?\s*)_"
 #define INTERVAL R"_(\s*\[([-+]?\d+),\s*([-+]?\d+)\]?\s*)_"
 #define ARRAY_RANGE R"_(\s*\[([-+]?\d+)\.\.\.\s*([-+]?\d+)\]?\s*)_"
@@ -36,11 +36,11 @@ static crab::data_kind_t regkind(const string& s) {
     if (s == "type") return crab::data_kind_t::types;
     if (s == "ctx_offset") return crab::data_kind_t::ctx_offsets;
     if (s == "map_fd") return crab::data_kind_t::map_fds;
-    if (s == "numeric_size") return crab::data_kind_t::numeric_sizes;
     if (s == "packet_offset") return crab::data_kind_t::packet_offsets;
     if (s == "shared_offset") return crab::data_kind_t::shared_offsets;
     if (s == "stack_offset") return crab::data_kind_t::stack_offsets;
     if (s == "shared_region_size") return crab::data_kind_t::shared_region_sizes;
+    if (s == "stack_numeric_size") return crab::data_kind_t::stack_numeric_sizes;
     if (s == "value") return crab::data_kind_t::values;
     throw std::runtime_error(string() + "Bad kind: " + s);
 }

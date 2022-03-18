@@ -17,83 +17,78 @@ post:
   - r1.value=s[504...511].value
   - r2.type=stack
   - r2.stack_offset=504
-  - r2.numeric_size=8
+  - r2.stack_numeric_size=8
   - r10.type=stack
   - r10.stack_offset=512
-  - r10.numeric_size=0
   - s[504...511].type=number
 
 ---
 test-case: havoc numeric size
 
-pre: ["r2.type=stack", "r2.stack_offset=504", "r2.numeric_size=8",
-      "r10.type=stack", "r10.stack_offset=512", "r10.numeric_size=0",
+pre: ["r2.type=stack", "r2.stack_offset=504", "r2.stack_numeric_size=8",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[504...511].type=number"]
 
 code:
   <start>: |
-    *(u8 *)(r10 - 8) = r3 ; this should force r2.numeric_size to become 0
+    *(u8 *)(r10 - 8) = r3 ; this should force r2.stack_numeric_size to become 0
 
 post:
   - r2.type=stack
   - r2.stack_offset=504
-  - r2.numeric_size=0
   - r3.type=s[504].type
   - r10.type=stack
   - r10.stack_offset=512
-  - r10.numeric_size=0
   - s[505...511].type=number
 
 ---
 test-case: shorten numeric size from int64* to int32*
 
-pre: ["r2.type=stack", "r2.stack_offset=504", "r2.numeric_size=8",
-      "r10.type=stack", "r10.stack_offset=512", "r10.numeric_size=0",
+pre: ["r2.type=stack", "r2.stack_offset=504", "r2.stack_numeric_size=8",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[504...511].type=number"]
 
 code:
   <start>: |
-    *(u32 *)(r10 - 4) = r3 ; this should update r2.numeric_size to be reduced to 4
+    *(u32 *)(r10 - 4) = r3 ; this should update r2.stack_numeric_size to be reduced to 4
 
 post:
   - r2.type=stack
   - r2.stack_offset=504
-  - r2.numeric_size=4
+  - r2.stack_numeric_size=4
   - r3.type=s[508...511].type
   - r10.type=stack
   - r10.stack_offset=512
-  - r10.numeric_size=0
   - s[504...507].type=number
 
 ---
 test-case: lengthen numeric size from int32* to int64*
 
 pre: ["r1.type=number",
-      "r2.type=stack", "r2.stack_offset=504", "r2.numeric_size=4",
-      "r10.type=stack", "r10.stack_offset=512", "r10.numeric_size=0",
+      "r2.type=stack", "r2.stack_offset=504", "r2.stack_numeric_size=4",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[504...507].type=number"]
 
 code:
   <start>: |
-    *(u32 *)(r10 - 4) = r1 ; this should update r2.numeric_size to be expanded to 8
+    *(u32 *)(r10 - 4) = r1 ; this should update r2.stack_numeric_size to be expanded to 8
 
 post:
   - r1.type=number
   - r1.value=s[508...511].value
   - r2.type=stack
   - r2.stack_offset=504
-  - r2.numeric_size=8
+  - r2.stack_numeric_size=8
   - r10.type=stack
   - r10.stack_offset=512
-  - r10.numeric_size=0
   - s[504...511].type=number
 
 ---
 test-case: join two stack ranges
 
 pre: ["r0.type=number",
-      "r2.type=stack", "r2.stack_offset=512", "r2.numeric_size=0",
-      "r10.type=stack", "r10.stack_offset=512", "r10.numeric_size=0",
+      "r2.type=stack", "r2.stack_offset=512",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[496...511].type=number"]
 
 code:
@@ -112,10 +107,9 @@ post:
   - r1.type=number
   - r2.type=stack
   - r2.stack_offset=[496, 504]
-  - r2.numeric_size=[8, 16]
+  - r2.stack_numeric_size=[8, 16]
   - r10.type=stack
   - r10.stack_offset=512
-  - r10.numeric_size=0
   - s[496...511].type=number
 
 ---
@@ -124,31 +118,28 @@ test-case: havoc if write after join
 pre:
   - r2.type=stack
   - r2.stack_offset=[496, 504]
-  - r2.numeric_size=[8, 16]
+  - r2.stack_numeric_size=[8, 16]
   - r10.type=stack
   - r10.stack_offset=512
-  - r10.numeric_size=0
   - s[496...511].type=number
 
 code:
   <start>: |
-    *(u8 *)(r10 - 16) = r0 ; this should reset r2.numeric_size to 0
+    *(u8 *)(r10 - 16) = r0 ; this should reset r2.stack_numeric_size to 0
 
 post:
   - r0.type=s[496].type
   - r2.type=stack
   - r2.stack_offset=[496, 504]
-  - r2.numeric_size=0
   - r10.type=stack
   - r10.stack_offset=512
-  - r10.numeric_size=0
   - s[497...511].type=number
 
 ---
 test-case: store and load stack pointer from stack
 
-pre: ["r2.type=stack", "r2.stack_offset=504", "r2.numeric_size=8",
-      "r10.type=stack", "r10.stack_offset=512", "r10.numeric_size=0",
+pre: ["r2.type=stack", "r2.stack_offset=504", "r2.stack_numeric_size=8",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[504...511].type=number"]
 
 code:
@@ -159,17 +150,16 @@ code:
 post:
   - r2.type=stack
   - r2.stack_offset=504
-  - r2.numeric_size=8
+  - r2.stack_numeric_size=8
   - r2.value=s[496...503].value
   - r2.value=r3.value
   - r3.type=stack
   - r3.stack_offset=504
-  - r3.numeric_size=8
+  - r3.stack_numeric_size=8
   - r3.value=s[496...503].value
   - r10.type=stack
   - r10.stack_offset=512
-  - r10.numeric_size=0
   - s[496...503].type=stack
   - s[496...503].stack_offset=504
-  - s[496...503].numeric_size=8
+  - s[496...503].stack_numeric_size=8
   - s[504...511].type=number

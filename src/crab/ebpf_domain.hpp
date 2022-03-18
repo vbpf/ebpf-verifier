@@ -162,8 +162,8 @@ class ebpf_domain_t final {
     void check_access_shared(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
                              variable_t shared_region_size);
 
-    void recompute_numeric_size(NumAbsDomain& inv, const Reg& reg);
-    void recompute_numeric_size(NumAbsDomain& inv, variable_t type_variable);
+    void recompute_stack_numeric_size(NumAbsDomain& inv, const Reg& reg);
+    void recompute_stack_numeric_size(NumAbsDomain& inv, variable_t type_variable);
     void do_load_stack(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width, const Reg& src_reg);
     void do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr_vague, int width);
     void do_load_packet_or_shared(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width);
@@ -176,7 +176,8 @@ class ebpf_domain_t final {
                         std::optional<variable_t> opt_val_packet_offset,
                         std::optional<variable_t> opt_val_shared_offset,
                         std::optional<variable_t> opt_val_stack_offset,
-                        std::optional<variable_t> opt_val_shared_region_size);
+                        std::optional<variable_t> opt_val_shared_region_size,
+                        std::optional<variable_t> opt_val_stack_numeric_size);
 
     template <typename Type, typename Value>
     void do_mem_store(const Mem& b, Type val_type, Value val_value,
@@ -185,7 +186,8 @@ class ebpf_domain_t final {
                       std::optional<variable_t> opt_val_packet_offset,
                       std::optional<variable_t> opt_val_shared_offset,
                       std::optional<variable_t> opt_val_stack_offset,
-                      std::optional<variable_t> opt_val_shared_region_size);
+                      std::optional<variable_t> opt_val_shared_region_size,
+                      std::optional<variable_t> opt_val_stack_numeric_size);
 
     friend std::ostream& operator<<(std::ostream& o, const ebpf_domain_t& dom);
 
