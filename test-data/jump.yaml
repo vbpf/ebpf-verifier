@@ -297,7 +297,7 @@ post:
 messages:
   - "7:9: Code is unreachable after 7:9"
 ---
-test-case: lost implications
+test-case: lost implications in correlated branches
 
 pre: ["meta_offset=0", "packet_size=[36, 65534]",
       "r1.type=packet", "r1.packet_offset=54",
