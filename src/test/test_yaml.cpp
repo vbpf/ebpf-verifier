@@ -13,7 +13,7 @@
             std::optional<Failure> failure = run_yaml_test_case(test_case); \
             if (failure) std::cout << "test case: " << test_case.name << "\n"; \
             if (failure) std::cout << "unseen inv: " << failure->invariant.unseen << "\n"; \
-            if (failure) std::cout << "unexpected inv: " << failure->invariant.unexpected << "\n";           \
+            if (failure) std::cout << "unexpected inv: " << failure->invariant.unexpected << "\n"; \
             REQUIRE(!failure); \
         }); \
     }
