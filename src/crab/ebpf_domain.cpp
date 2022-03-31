@@ -985,7 +985,6 @@ void ebpf_domain_t::do_load_stack(NumAbsDomain& inv, const Reg& target_reg, cons
     havoc_register(inv, target_reg);
     if (width == 1 || width == 2 || width == 4 || width == 8) {
         inv.assign(target.value, stack.load(inv,  data_kind_t::values, addr, width));
-        inv.assign(target.stack_numeric_size, stack.load(inv, data_kind_t::stack_numeric_sizes, addr, width));
 
         if (type_inv.has_type(m_inv, target.type, T_CTX))
             inv.assign(target.ctx_offset, stack.load(inv, data_kind_t::ctx_offsets, addr, width));
@@ -997,8 +996,10 @@ void ebpf_domain_t::do_load_stack(NumAbsDomain& inv, const Reg& target_reg, cons
             inv.assign(target.shared_offset, stack.load(inv, data_kind_t::shared_offsets, addr, width));
             inv.assign(target.shared_region_size, stack.load(inv, data_kind_t::shared_region_sizes, addr, width));
         }
-        if (type_inv.has_type(m_inv, target.type, T_STACK))
+        if (type_inv.has_type(m_inv, target.type, T_STACK)) {
             inv.assign(target.stack_offset, stack.load(inv, data_kind_t::stack_offsets, addr, width));
+            inv.assign(target.stack_numeric_size, stack.load(inv, data_kind_t::stack_numeric_sizes, addr, width));
+        }
     }
 }
 
@@ -1177,14 +1178,8 @@ void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, 
     }
 
     // Update stack_numeric_size for any stack type variables.
-    // The stack_numeric_size is similar to a typedef of an integer pointer,
-    // e.g., is it a uint8_t* or a uint16_t* or a uint64_t* etc.
-    // Since it is common in code to form a larger integer value from
-    // component parts (e.g., in htons, ntohl, etc.) it is important to
-    // be able to expand/contract the size based on observations, while
-    // still tracking whether one can safely dereference the variable
-    // to get number of a given length.  So stack_numeric_size holds the number
-    // of continuous bytes that are known to be numeric.
+    // stack_numeric_size holds the number of continuous bytes
+    // starting from stack_offset that are known to be numeric.
     auto updated_lb = m_inv.eval_interval(addr).lb();
     auto updated_ub = m_inv.eval_interval(addr).ub() + width;
     for (variable_t type_variable : variable_t::get_type_variables()) {
