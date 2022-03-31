@@ -1508,9 +1508,23 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                         } else if (dst_type != T_NUM && src_type == T_NUM) {
                             // ptr += num
                             type_inv.assign_type(inv, bin.dst, dst_type);
-                            if (auto dst_offset = get_type_offset_variable(bin.dst, dst_type))
+                            if (auto dst_offset = get_type_offset_variable(bin.dst, dst_type)) {
                                 apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst_offset.value(), src.value,
                                       false);
+                                if (dst_type == T_STACK) {
+                                    variable_t stack_numeric_size_variable =
+                                        variable_t::kind_var(data_kind_t::stack_numeric_sizes, reg_pack(bin.dst).type);
+                                    // Reduce the numeric size.
+                                    auto ub = m_inv.eval_interval(src.value).lb().number();
+                                    auto lb = m_inv.eval_interval(src.value).lb().number();
+                                    if (ub && ub.value().fits_sint() && ((int)ub.value() > 0) && lb &&
+                                        lb.value().fits_sint())
+                                        apply(inv, crab::arith_binop_t::SUB, stack_numeric_size_variable,
+                                              stack_numeric_size_variable, src.value, false);
+                                    else
+                                        inv -= stack_numeric_size_variable;
+                                }
+                            }
                         } else {
                             // We ignore the cases here that do not match the assumption described
                             // above.  Joining bottom with another results will leave the other
@@ -1543,14 +1557,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                                   get_type_offset_variable(src_reg, type).value(), true);
                             inv -= dst_offset.value();
                         }
-                        inv -= dst.shared_region_size;
-                        auto lb = m_inv.eval_interval(src.value).lb().number();
-                        if (lb && lb.value().fits_sint() && ((int)lb.value() > 0))
-                            // Narrow the numeric size.
-                            apply(inv, crab::arith_binop_t::SUB, dst.stack_numeric_size, dst.stack_numeric_size, src.value, false);
-                        else
-                            havoc(dst.stack_numeric_size);
-                        recompute_stack_numeric_size(inv, bin.dst);
+                        havoc_offsets(inv, bin.dst);
                         type_inv.assign_type(inv, bin.dst, T_NUM);
                         break;
                     }
@@ -1565,8 +1572,22 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 } else {
                     sub_overflow(dst.value, src.value);
                     sub(get_type_offset_variable(bin.dst).value(), src.value);
-                    if (auto dst_offset = get_type_offset_variable(bin.dst))
+                    if (auto dst_offset = get_type_offset_variable(bin.dst)) {
                         sub(dst_offset.value(), src.value);
+                        if (type_inv.has_type(m_inv, dst.type, T_PACKET)) {
+                            variable_t stack_numeric_size_variable =
+                                variable_t::kind_var(data_kind_t::stack_numeric_sizes, reg_pack(bin.dst).type);
+                            // Reduce the numeric size.
+                            auto ub = m_inv.eval_interval(src.value).lb().number();
+                            auto lb = m_inv.eval_interval(src.value).lb().number();
+                            if (ub && ub.value().fits_sint() && ((int)ub.value() < 0) && lb &&
+                                lb.value().fits_sint())
+                                apply(m_inv, crab::arith_binop_t::ADD, stack_numeric_size_variable,
+                                      stack_numeric_size_variable, src.value, false);
+                            else
+                                m_inv -= stack_numeric_size_variable;
+                        }
+                    }
                 }
             }
             break;

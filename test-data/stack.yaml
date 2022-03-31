@@ -163,3 +163,65 @@ post:
   - s[496...503].stack_offset=504
   - s[496...503].stack_numeric_size=8
   - s[504...511].type=number
+---
+test-case: subtract stack pointers
+
+pre: ["r1.type=stack", "r1.stack_offset=[500,504]", "r1.stack_numeric_size=8",
+      "r10.type=stack", "r10.stack_offset=512",
+      "s[500...511].type=number"]
+
+code:
+  <start>: |
+    r1 -= r10
+
+post:
+  - r1.type=number
+  - r1.value=[-12, -8]
+  - r10.stack_offset=512
+  - r10.type=stack
+  - s[500...511].type=number
+---
+test-case: advance stack pointer
+
+pre: ["r1.type=stack", "r1.stack_offset=[500,504]", "r1.stack_numeric_size=8",
+      "r2.type=number", "r2.value=2",
+      "r10.type=stack", "r10.stack_offset=512",
+      "s[500...511].type=number"]
+
+code:
+  <start>: |
+    r1 += r2
+
+post:
+  - r1.type=stack
+  - r1.stack_offset=[502, 506]
+  - r1.stack_numeric_size=6
+  - r1.stack_offset-r2.value<=504
+  - r2.type=number
+  - r2.value=2
+  - r2.value-r1.stack_offset<=-500
+  - r10.stack_offset=512
+  - r10.type=stack
+  - s[500...511].type=number
+---
+test-case: retreat stack pointer
+
+pre: ["r1.type=stack", "r1.stack_offset=[500,504]", "r1.stack_numeric_size=8",
+      "r2.type=number", "r2.value=-2",
+      "r10.type=stack", "r10.stack_offset=512",
+      "s[500...511].type=number"]
+
+code:
+  <start>: |
+    r1 += r2
+
+post:
+  - r1.type=stack
+  - r1.stack_offset=[498, 502]
+  - r1.stack_offset-r2.value<=504
+  - r2.type=number
+  - r2.value=-2
+  - r2.value-r1.stack_offset<=-500
+  - r10.stack_offset=512
+  - r10.type=stack
+  - s[500...511].type=number
