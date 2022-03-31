@@ -67,7 +67,7 @@ class array_domain_t final {
     [[nodiscard]] string_invariant to_set() const;
 
     bool all_num(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub);
-    [[nodiscard]] int min_all_num_size(NumAbsDomain& inv, variable_t offset) const;
+    [[nodiscard]] int min_all_num_size(const NumAbsDomain& inv, variable_t offset) const;
 
     std::optional<linear_expression_t> load(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, int width);
     std::optional<variable_t> store(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size,

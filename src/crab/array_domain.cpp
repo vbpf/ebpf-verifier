@@ -482,11 +482,11 @@ bool array_domain_t::all_num(NumAbsDomain& inv, const linear_expression_t& lb, c
 }
 
 // Get the number of bytes, starting at offset, that are known to be numbers.
-int array_domain_t::min_all_num_size(NumAbsDomain& inv, variable_t offset) const {
+int array_domain_t::min_all_num_size(const NumAbsDomain& inv, variable_t offset) const {
     auto min_lb = inv.eval_interval(offset).lb().number();
     auto max_ub = inv.eval_interval(offset).ub().number();
     if (!min_lb || !max_ub || !min_lb->fits_sint() || !max_ub->fits_sint())
-        return false;
+        return 0;
     auto lb = (int)min_lb.value();
     auto ub = (int)max_ub.value();
     int min_size = EBPF_STACK_SIZE;
