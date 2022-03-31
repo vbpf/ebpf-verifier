@@ -1395,6 +1395,22 @@ void ebpf_domain_t::recompute_stack_numeric_size(NumAbsDomain& inv, const Reg& r
     recompute_stack_numeric_size(inv, reg_pack(reg).type);
 }
 
+void ebpf_domain_t::add(const Reg& reg, int imm) {
+    auto dst = reg_pack(reg);
+    auto offset = get_type_offset_variable(reg);
+    add_overflow(dst.value, imm);
+    if (offset.has_value()) {
+        add(offset.value(), imm);
+        if (imm > 0)
+            // Since the start offset is increasing but
+            // the end offset is not, the numeric size decreases.
+            sub(dst.stack_numeric_size, imm);
+        else if (imm < 0)
+            havoc(dst.stack_numeric_size);
+        recompute_stack_numeric_size(m_inv, reg);
+    }
+}
+
 void ebpf_domain_t::operator()(const Bin& bin) {
     using namespace crab::dsl_syntax;
 
@@ -1403,7 +1419,6 @@ void ebpf_domain_t::operator()(const Bin& bin) {
     if (std::holds_alternative<Imm>(bin.v)) {
         // dst += K
         int imm = static_cast<int>(std::get<Imm>(bin.v).v);
-        auto offset = get_type_offset_variable(bin.dst);
         switch (bin.op) {
         case Bin::Op::MOV:
             assign(dst.value, imm);
@@ -1413,28 +1428,12 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::ADD:
             if (imm == 0)
                 return;
-            add_overflow(dst.value, imm);
-            if (offset.has_value()) {
-                add(offset.value(), imm);
-                if (imm > 0)
-                    sub(dst.stack_numeric_size, imm);
-                else if (imm < 0)
-                    havoc(dst.stack_numeric_size);
-                recompute_stack_numeric_size(m_inv, bin.dst);
-            }
+            add(bin.dst, imm);
             break;
         case Bin::Op::SUB:
             if (imm == 0)
                 return;
-            sub_overflow(dst.value, imm);
-            if (offset.has_value()) {
-                sub(offset.value(), imm);
-                if (imm > 0)
-                    add(dst.stack_numeric_size, imm);
-                else if (imm > 0)
-                    havoc(dst.stack_numeric_size);
-                recompute_stack_numeric_size(m_inv, bin.dst);
-            }
+            add(bin.dst, -imm);
             break;
         case Bin::Op::MUL:
             mul(dst.value, imm);
@@ -1698,7 +1697,8 @@ ebpf_domain_t ebpf_domain_t::setup_entry(bool check_termination) {
     inv += EBPF_STACK_SIZE <= r10.value;
     inv += r10.value <= PTR_MAX;
     inv.assign(r10.stack_offset, EBPF_STACK_SIZE);
-    inv.assign(r10.stack_numeric_size, 0);
+    // stack_numeric_size would be 0, but TOP has the same result
+    // so no need to assign it.
     inv.type_inv.assign_type(inv.m_inv, r10_reg, T_STACK);
 
     auto r1 = reg_pack(R1_ARG);

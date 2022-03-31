@@ -92,6 +92,7 @@ class ebpf_domain_t final {
     void apply(crab::domains::NumAbsDomain& inv, crab::binop_t op, variable_t x, variable_t y, const number_t& z, bool finite_width = false);
     void apply(crab::domains::NumAbsDomain& inv, crab::binop_t op, variable_t x, variable_t y, variable_t z, bool finite_width = false);
 
+    void add(const Reg& reg, int imm);
     void add(variable_t lhs, variable_t op2);
     void add(variable_t lhs, const number_t& op2);
     void sub(variable_t lhs, variable_t op2);
