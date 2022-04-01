@@ -1515,7 +1515,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                                     variable_t stack_numeric_size_variable =
                                         variable_t::kind_var(data_kind_t::stack_numeric_sizes, reg_pack(bin.dst).type);
                                     // Reduce the numeric size.
-                                    auto ub = m_inv.eval_interval(src.value).lb().number();
+                                    auto ub = m_inv.eval_interval(src.value).ub().number();
                                     auto lb = m_inv.eval_interval(src.value).lb().number();
                                     if (ub && ub.value().fits_sint() && ((int)ub.value() > 0) && lb &&
                                         lb.value().fits_sint())
@@ -1578,7 +1578,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             variable_t stack_numeric_size_variable =
                                 variable_t::kind_var(data_kind_t::stack_numeric_sizes, reg_pack(bin.dst).type);
                             // Reduce the numeric size.
-                            auto ub = m_inv.eval_interval(src.value).lb().number();
+                            auto ub = m_inv.eval_interval(src.value).ub().number();
                             auto lb = m_inv.eval_interval(src.value).lb().number();
                             if (ub && ub.value().fits_sint() && ((int)ub.value() < 0) && lb &&
                                 lb.value().fits_sint())
