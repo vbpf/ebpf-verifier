@@ -113,7 +113,7 @@ post:
   - s[496...511].type=number
 
 ---
-test-case: havoc if write after join
+test-case: havoc if clobber stack bytes
 
 pre:
   - r2.type=stack

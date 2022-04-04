@@ -975,11 +975,9 @@ void ebpf_domain_t::operator()(const Packet& a) {
 
 void ebpf_domain_t::do_load_stack(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width, const Reg& src_reg) {
     type_inv.assign_type(inv, target_reg, stack.load(inv, data_kind_t::types, addr, width));
-    if (auto lb = inv.eval_interval(reg_pack(src_reg).stack_numeric_size).lb().number()) {
-        int min_all_numeric = (int)lb.value();
-        if (width <= min_all_numeric)
-            type_inv.assign_type(inv, target_reg, T_NUM);
-    }
+    using namespace crab::dsl_syntax;
+    if (inv.entail(width <= reg_pack(src_reg).stack_numeric_size))
+        type_inv.assign_type(inv, target_reg, T_NUM);
 
     const reg_pack_t& target = reg_pack(target_reg);
     havoc_register(inv, target_reg);
@@ -1188,11 +1186,10 @@ void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, 
         variable_t stack_offset_variable = variable_t::kind_var(data_kind_t::stack_offsets, type_variable);
         variable_t stack_numeric_size_variable = variable_t::kind_var(data_kind_t::stack_numeric_sizes, type_variable);
 
-        auto reg_lb = m_inv.eval_interval(stack_offset_variable).lb();
-        auto reg_ub = (m_inv.eval_interval(stack_offset_variable) + m_inv.eval_interval(stack_numeric_size_variable)).ub();
-
+        using namespace crab::dsl_syntax;
         // See if the variable's numeric interval overlaps with changed bytes.
-        if (updated_lb <= reg_ub && updated_ub >= reg_lb) {
+        if (m_inv.intersect(addr <= stack_offset_variable + stack_numeric_size_variable) &&
+            m_inv.intersect(addr + width >= stack_offset_variable)) {
             havoc(stack_numeric_size_variable);
             recompute_stack_numeric_size(m_inv, type_variable);
         }
@@ -1512,17 +1509,14 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                                 apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst_offset.value(), src.value,
                                       false);
                                 if (dst_type == T_STACK) {
-                                    variable_t stack_numeric_size_variable =
-                                        variable_t::kind_var(data_kind_t::stack_numeric_sizes, reg_pack(bin.dst).type);
                                     // Reduce the numeric size.
-                                    auto ub = m_inv.eval_interval(src.value).ub().number();
-                                    auto lb = m_inv.eval_interval(src.value).lb().number();
-                                    if (ub && ub.value().fits_sint() && ((int)ub.value() > 0) && lb &&
-                                        lb.value().fits_sint())
-                                        apply(inv, crab::arith_binop_t::SUB, stack_numeric_size_variable,
-                                              stack_numeric_size_variable, src.value, false);
-                                    else
-                                        inv -= stack_numeric_size_variable;
+                                    using namespace crab::dsl_syntax;
+                                    if (m_inv.intersect(src.value < 0)) {
+                                        inv -= dst.stack_numeric_size;
+                                        recompute_stack_numeric_size(inv, dst.type);
+                                    } else
+                                        apply(inv, crab::arith_binop_t::SUB, dst.stack_numeric_size,
+                                              dst.stack_numeric_size, src.value, false);
                                 }
                             }
                         } else {
@@ -1575,17 +1569,14 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                     if (auto dst_offset = get_type_offset_variable(bin.dst)) {
                         sub(dst_offset.value(), src.value);
                         if (type_inv.has_type(m_inv, dst.type, T_PACKET)) {
-                            variable_t stack_numeric_size_variable =
-                                variable_t::kind_var(data_kind_t::stack_numeric_sizes, reg_pack(bin.dst).type);
                             // Reduce the numeric size.
-                            auto ub = m_inv.eval_interval(src.value).ub().number();
-                            auto lb = m_inv.eval_interval(src.value).lb().number();
-                            if (ub && ub.value().fits_sint() && ((int)ub.value() < 0) && lb &&
-                                lb.value().fits_sint())
-                                apply(m_inv, crab::arith_binop_t::ADD, stack_numeric_size_variable,
-                                      stack_numeric_size_variable, src.value, false);
-                            else
-                                m_inv -= stack_numeric_size_variable;
+                            using namespace crab::dsl_syntax;
+                            if (m_inv.intersect(src.value > 0)) {
+                                m_inv -= dst.stack_numeric_size;
+                                recompute_stack_numeric_size(m_inv, dst.type);
+                            } else
+                                apply(m_inv, crab::arith_binop_t::ADD, dst.stack_numeric_size,
+                                      dst.stack_numeric_size, src.value, false);
                         }
                     }
                 }
