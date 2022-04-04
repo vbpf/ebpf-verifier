@@ -1565,10 +1565,9 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                     havoc_offsets(bin.dst);
                 } else {
                     sub_overflow(dst.value, src.value);
-                    sub(get_type_offset_variable(bin.dst).value(), src.value);
                     if (auto dst_offset = get_type_offset_variable(bin.dst)) {
                         sub(dst_offset.value(), src.value);
-                        if (type_inv.has_type(m_inv, dst.type, T_PACKET)) {
+                        if (type_inv.has_type(m_inv, dst.type, T_STACK)) {
                             // Reduce the numeric size.
                             using namespace crab::dsl_syntax;
                             if (m_inv.intersect(src.value > 0)) {
