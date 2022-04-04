@@ -225,3 +225,27 @@ post:
   - r10.stack_offset=512
   - r10.type=stack
   - s[500...511].type=number
+---
+test-case: retreat stack pointer to increase numeric size
+
+pre: ["r1.type=stack", "r1.stack_offset=[500,504]", "r1.stack_numeric_size=8",
+      "r2.type=number", "r2.value=2",
+      "r10.type=stack", "r10.stack_offset=512",
+      "s[498...511].type=number"]
+
+code:
+  <start>: |
+    r1 -= r2 ; this will currently fail to validate due to issue #321
+
+post:
+  - r1.type=stack
+  - r1.stack_offset=[498, 502]
+  - r1.stack_numeric_size=10
+  - r2.type=number
+  - r2.value=2
+  - r10.stack_offset=512
+  - r10.type=stack
+  - s[498...511].type=number
+
+messages:
+    - "0: r2.type == r1.type"
