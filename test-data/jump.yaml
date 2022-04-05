@@ -53,8 +53,9 @@ test-case: join stack
 
 pre: ["r0.type=number",
       "r1.type=packet", "r1.packet_offset=8",
-      "r2.type=stack", "r2.stack_offset=4",
-      "r10.type=stack", "r10.stack_offset=512"]
+      "r2.type=stack", "r2.stack_offset=4", "r2.stack_numeric_size=8",
+      "r10.type=stack", "r10.stack_offset=512",
+      "s[4...11].type=number"]
 
 code:
   <start>: |
@@ -72,11 +73,14 @@ post:
   - r1.packet_offset=8
   - r2.type=stack
   - r2.stack_offset=4
+  - r2.stack_numeric_size=8
   - r10.type=stack
   - r10.stack_offset=512
+  - s[4...11].type=number
   - s[504...511].type in {packet, stack}
   - s[504...511].packet_offset=8
   - s[504...511].stack_offset=4
+  - s[504...511].stack_numeric_size=8
 ---
 test-case: same_type subtract
 

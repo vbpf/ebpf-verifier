@@ -481,6 +481,17 @@ bool array_domain_t::all_num(NumAbsDomain& inv, const linear_expression_t& lb, c
     return this->num_bytes.all_num((int)*min_lb, (int)*max_ub);
 }
 
+// Get the number of bytes, starting at offset, that are known to be numbers.
+int array_domain_t::min_all_num_size(const NumAbsDomain& inv, variable_t offset) const {
+    auto min_lb = inv.eval_interval(offset).lb().number();
+    auto max_ub = inv.eval_interval(offset).ub().number();
+    if (!min_lb || !max_ub || !min_lb->fits_sint() || !max_ub->fits_sint())
+        return 0;
+    auto lb = (int)min_lb.value();
+    auto ub = (int)max_ub.value();
+    return std::max(0, this->num_bytes.all_num_width(lb) - (ub - lb));
+}
+
 std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, int width) {
     interval_t ii = inv.eval_interval(i);
     if (std::optional<number_t> n = ii.singleton()) {

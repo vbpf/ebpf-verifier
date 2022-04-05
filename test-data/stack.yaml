@@ -1,0 +1,251 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+---
+test-case: set numeric size
+
+pre: ["r1.type=number",
+      "r2.type=stack", "r2.stack_offset=512",
+      "r10.type=stack", "r10.stack_offset=512"]
+
+code:
+  <start>: |
+    *(u64 *)(r10 - 8) = r1
+    r2 -= 8
+
+post:
+  - r1.type=number
+  - r1.value=s[504...511].value
+  - r2.type=stack
+  - r2.stack_offset=504
+  - r2.stack_numeric_size=8
+  - r10.type=stack
+  - r10.stack_offset=512
+  - s[504...511].type=number
+
+---
+test-case: havoc numeric size
+
+pre: ["r2.type=stack", "r2.stack_offset=504", "r2.stack_numeric_size=8",
+      "r10.type=stack", "r10.stack_offset=512",
+      "s[504...511].type=number"]
+
+code:
+  <start>: |
+    *(u8 *)(r10 - 8) = r3 ; this should force r2.stack_numeric_size to become 0
+
+post:
+  - r2.type=stack
+  - r2.stack_offset=504
+  - r3.type=s[504].type
+  - r10.type=stack
+  - r10.stack_offset=512
+  - s[505...511].type=number
+
+---
+test-case: shorten numeric size from int64* to int32*
+
+pre: ["r2.type=stack", "r2.stack_offset=504", "r2.stack_numeric_size=8",
+      "r10.type=stack", "r10.stack_offset=512",
+      "s[504...511].type=number"]
+
+code:
+  <start>: |
+    *(u32 *)(r10 - 4) = r3 ; this should update r2.stack_numeric_size to be reduced to 4
+
+post:
+  - r2.type=stack
+  - r2.stack_offset=504
+  - r2.stack_numeric_size=4
+  - r3.type=s[508...511].type
+  - r10.type=stack
+  - r10.stack_offset=512
+  - s[504...507].type=number
+
+---
+test-case: lengthen numeric size from int32* to int64*
+
+pre: ["r1.type=number",
+      "r2.type=stack", "r2.stack_offset=504", "r2.stack_numeric_size=4",
+      "r10.type=stack", "r10.stack_offset=512",
+      "s[504...507].type=number"]
+
+code:
+  <start>: |
+    *(u32 *)(r10 - 4) = r1 ; this should update r2.stack_numeric_size to be expanded to 8
+
+post:
+  - r1.type=number
+  - r1.value=s[508...511].value
+  - r2.type=stack
+  - r2.stack_offset=504
+  - r2.stack_numeric_size=8
+  - r10.type=stack
+  - r10.stack_offset=512
+  - s[504...511].type=number
+
+---
+test-case: join two stack ranges
+
+pre: ["r0.type=number",
+      "r2.type=stack", "r2.stack_offset=512",
+      "r10.type=stack", "r10.stack_offset=512",
+      "s[496...511].type=number"]
+
+code:
+  <start>: |
+    if r0 == 0 goto <mid>
+    r2 -= 8                ; r2 is an int64_t* (aka int8_t[8]) pointing into stack memory
+    goto <out>
+  <mid>: |
+    r2 -= 16               ; r2 is an int64_t* (aka int8_t[8]) pointing into stack memory
+  <out>: |
+    r1 = *(u64 *)(r2 - 0)  ; r1 should be able to dereference the int64_t* pointer
+    exit
+
+post:
+  - r0.type=number
+  - r1.type=number
+  - r2.type=stack
+  - r2.stack_offset=[496, 504]
+  - r2.stack_numeric_size=[8, 16]
+  - r10.type=stack
+  - r10.stack_offset=512
+  - s[496...511].type=number
+
+---
+test-case: havoc if clobber stack bytes
+
+pre:
+  - r2.type=stack
+  - r2.stack_offset=[496, 504]
+  - r2.stack_numeric_size=[8, 16]
+  - r10.type=stack
+  - r10.stack_offset=512
+  - s[496...511].type=number
+
+code:
+  <start>: |
+    *(u8 *)(r10 - 16) = r0 ; this should reset r2.stack_numeric_size to 0
+
+post:
+  - r0.type=s[496].type
+  - r2.type=stack
+  - r2.stack_offset=[496, 504]
+  - r10.type=stack
+  - r10.stack_offset=512
+  - s[497...511].type=number
+
+---
+test-case: store and load stack pointer from stack
+
+pre: ["r2.type=stack", "r2.stack_offset=504", "r2.stack_numeric_size=8",
+      "r10.type=stack", "r10.stack_offset=512",
+      "s[504...511].type=number"]
+
+code:
+  <start>: |
+    *(u64 *)(r10 - 16) = r2
+    r3 = *(u64 *)(r10 - 16)
+
+post:
+  - r2.type=stack
+  - r2.stack_offset=504
+  - r2.stack_numeric_size=8
+  - r2.value=s[496...503].value
+  - r2.value=r3.value
+  - r3.type=stack
+  - r3.stack_offset=504
+  - r3.stack_numeric_size=8
+  - r3.value=s[496...503].value
+  - r10.type=stack
+  - r10.stack_offset=512
+  - s[496...503].type=stack
+  - s[496...503].stack_offset=504
+  - s[496...503].stack_numeric_size=8
+  - s[504...511].type=number
+---
+test-case: subtract stack pointers
+
+pre: ["r1.type=stack", "r1.stack_offset=[500,504]", "r1.stack_numeric_size=8",
+      "r10.type=stack", "r10.stack_offset=512",
+      "s[500...511].type=number"]
+
+code:
+  <start>: |
+    r1 -= r10
+
+post:
+  - r1.type=number
+  - r1.value=[-12, -8]
+  - r10.stack_offset=512
+  - r10.type=stack
+  - s[500...511].type=number
+---
+test-case: advance stack pointer
+
+pre: ["r1.type=stack", "r1.stack_offset=[500,504]", "r1.stack_numeric_size=8",
+      "r2.type=number", "r2.value=2",
+      "r10.type=stack", "r10.stack_offset=512",
+      "s[500...511].type=number"]
+
+code:
+  <start>: |
+    r1 += r2
+
+post:
+  - r1.type=stack
+  - r1.stack_offset=[502, 506]
+  - r1.stack_numeric_size=6
+  - r1.stack_offset-r2.value<=504
+  - r2.type=number
+  - r2.value=2
+  - r2.value-r1.stack_offset<=-500
+  - r10.stack_offset=512
+  - r10.type=stack
+  - s[500...511].type=number
+---
+test-case: retreat stack pointer
+
+pre: ["r1.type=stack", "r1.stack_offset=[500,504]", "r1.stack_numeric_size=8",
+      "r2.type=number", "r2.value=-2",
+      "r10.type=stack", "r10.stack_offset=512",
+      "s[500...511].type=number"]
+
+code:
+  <start>: |
+    r1 += r2
+
+post:
+  - r1.type=stack
+  - r1.stack_offset=[498, 502]
+  - r1.stack_offset-r2.value<=504
+  - r2.type=number
+  - r2.value=-2
+  - r2.value-r1.stack_offset<=-500
+  - r10.stack_offset=512
+  - r10.type=stack
+  - s[500...511].type=number
+---
+test-case: retreat stack pointer to increase numeric size
+
+pre: ["r1.type=stack", "r1.stack_offset=[500,504]", "r1.stack_numeric_size=8",
+      "r2.type=number", "r2.value=2",
+      "r10.type=stack", "r10.stack_offset=512",
+      "s[498...511].type=number"]
+
+code:
+  <start>: |
+    r1 -= r2 ; this will currently fail to validate due to issue #321
+
+post:
+  - r1.type=stack
+  - r1.stack_offset=[498, 502]
+  - r1.stack_numeric_size=10
+  - r2.type=number
+  - r2.value=2
+  - r10.stack_offset=512
+  - r10.type=stack
+  - s[498...511].type=number
+
+messages:
+    - "0: r2.type == r1.type"

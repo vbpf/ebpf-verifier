@@ -49,7 +49,7 @@ post: [
     "r3.type=packet", "r3.packet_offset=4", "r3.value=[4102, 2147418116]",
     "packet_size-r3.packet_offset<=65530", "packet_size=[0, 65534]",
     "r3.packet_offset-packet_size<=4", "r1.value=r3.value+4",
-    "r2.packet_offset-r3.packet_offset<=65530", "r3.packet_offset-r2.packet_offset<=4",
+    "r2.packet_offset-r3.packet_offset<=65530", "r3.packet_offset-r2.packet_offset<=4"
 ]
 messages:
   - "4: Upper bound must be at most packet_size (valid_access(r1.offset, width=8))"

@@ -70,6 +70,14 @@ class bitset_domain_t final {
         return std::make_pair(only_num, only_non_num);
     }
 
+    // Get the number of bytes, starting at lb, known to be numbers.
+    [[nodiscard]] int all_num_width(size_t lb) const {
+        size_t ub = lb;
+        while ((ub < EBPF_STACK_SIZE) && !non_numerical_bytes[ub])
+            ub++;
+        return (int)(ub - lb);
+    }
+
     void reset(size_t lb, int n) {
         n = std::min(n, (int)(EBPF_STACK_SIZE - lb));
         for (int i = 0; i < n; i++) {

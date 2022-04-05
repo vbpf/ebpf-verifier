@@ -157,6 +157,7 @@ post:
   - r2.type=stack
   - r2.stack_offset=0
   - r1.value=r2.value
+  - r1.stack_numeric_size=r2.stack_numeric_size
 ---
 test-case: assign register shared value
 
@@ -177,7 +178,7 @@ post:
 ---
 test-case: assign register combination value
 
-pre: ["r1.type=[-1,0]", "r1.shared_offset=0", "r1.shared_region_size=16", "r1.stack_offset=500"]
+pre: ["r1.type=[-1,0]", "r1.shared_offset=0", "r1.shared_region_size=16", "r1.stack_offset=500", "r1.stack_numeric_size=16"]
 
 code:
   <start>: |
@@ -188,9 +189,11 @@ post:
   - r1.shared_offset=0
   - r1.shared_region_size=16
   - r1.stack_offset=500
+  - r1.stack_numeric_size=16
   - r2.type in {stack, shared}
   - r2.shared_offset=0
   - r2.shared_region_size=16
   - r2.stack_offset=500
+  - r2.stack_numeric_size=16
   - r1.type=r2.type
   - r1.value=r2.value
