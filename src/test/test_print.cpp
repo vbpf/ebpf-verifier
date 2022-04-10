@@ -2,12 +2,10 @@
 // SPDX-License-Identifier: MIT
 #include "catch.hpp"
 
-#include <fstream>
-#include <regex>
 #include <string>
-#include <sstream>
 #include <variant>
 
+#include <boost/algorithm/string/trim.hpp>
 
 #if !defined(MAX_PATH)
 #define MAX_PATH (256)
@@ -24,26 +22,28 @@
         verify_printed_string(#file);\
     }
 
-void verify_printed_string(const std::string file)
+void verify_printed_string(const std::string& file)
 {
     std::stringstream generated_output;
     auto raw_progs = read_elf(std::string(TEST_OBJECT_FILE_DIRECTORY) + file + ".o", "", nullptr, &g_ebpf_platform_linux);
     raw_program raw_prog = raw_progs.back();
     std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
     REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error));
-    auto& prog = std::get<InstructionSeq>(prog_or_error);
-    print(prog, generated_output, {}, true);
-    std::ifstream input(std::string(TEST_ASM_FILE_DIRECTORY) + file + std::string(".asm"));
-    REQUIRE(input);
-    std::string line;
-    std::string expected_output;
-    std::string output = generated_output.str();
-    while (std::getline(input, line))
-    {
-        expected_output += line;
-        expected_output += "\n";
+    auto& program = std::get<InstructionSeq>(prog_or_error);
+    print(program, generated_output, {}, true);
+    std::ifstream expected_stream(std::string(TEST_ASM_FILE_DIRECTORY) + file + std::string(".asm"));
+    REQUIRE(expected_stream);
+    std::string expected_line;
+    std::string actual_line;
+    while (std::getline(expected_stream, expected_line)) {
+        bool has_more = (bool)std::getline(generated_output, actual_line);
+        REQUIRE(has_more);
+        boost::algorithm::trim_right(expected_line);
+        boost::algorithm::trim_right(actual_line);
+        REQUIRE(expected_line == actual_line);
     }
-    REQUIRE(expected_output == output);
+    bool has_more = (bool)std::getline(expected_stream, actual_line);
+    REQUIRE_FALSE(has_more);
 }
 
 
