@@ -1211,7 +1211,6 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, Value val_value, c
     if (m_inv.is_bottom())
         return;
     using namespace crab::dsl_syntax;
-    auto mem_reg = reg_pack(b.access.basereg);
     int width = b.access.width;
     int offset = b.access.offset;
     if (b.access.basereg.v == R10_STACK_POINTER) {
