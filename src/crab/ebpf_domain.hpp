@@ -15,6 +15,8 @@
 
 using NumAbsDomain = crab::domains::NumAbsDomain;
 
+struct reg_pack_t;
+
 class ebpf_domain_t final {
     struct TypeDomain;
 
@@ -172,23 +174,10 @@ class ebpf_domain_t final {
 
     template <typename A, typename X, typename Y>
     void do_store_stack(crab::domains::NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_value,
-                        std::optional<variable_t> opt_val_ctx_offset,
-                        std::optional<variable_t> opt_val_map_fd,
-                        std::optional<variable_t> opt_val_packet_offset,
-                        std::optional<variable_t> opt_val_shared_offset,
-                        std::optional<variable_t> opt_val_stack_offset,
-                        std::optional<variable_t> opt_val_shared_region_size,
-                        std::optional<variable_t> opt_val_stack_numeric_size);
+                        const std::optional<reg_pack_t>& opt_val_reg);
 
     template <typename Type, typename Value>
-    void do_mem_store(const Mem& b, Type val_type, Value val_value,
-                      std::optional<variable_t> opt_val_ctx_offset,
-                      std::optional<variable_t> opt_val_map_fd,
-                      std::optional<variable_t> opt_val_packet_offset,
-                      std::optional<variable_t> opt_val_shared_offset,
-                      std::optional<variable_t> opt_val_stack_offset,
-                      std::optional<variable_t> opt_val_shared_region_size,
-                      std::optional<variable_t> opt_val_stack_numeric_size);
+    void do_mem_store(const Mem& b, Type val_type, Value val_value, const std::optional<reg_pack_t>& opt_val_reg);
 
     friend std::ostream& operator<<(std::ostream& o, const ebpf_domain_t& dom);
 
@@ -240,7 +229,7 @@ class ebpf_domain_t final {
                                  variable_t type_variable, type_encoding_t type, crab::data_kind_t kind,
                                  const NumAbsDomain& other) const;
 
-        bool is_in_group(const NumAbsDomain& inv, const Reg& r, TypeGroup group) const;
+        [[nodiscard]] bool is_in_group(const NumAbsDomain& inv, const Reg& r, TypeGroup group) const;
     };
 
     TypeDomain type_inv;
