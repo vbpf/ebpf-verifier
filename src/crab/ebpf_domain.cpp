@@ -1111,50 +1111,44 @@ void ebpf_domain_t::do_load(const Mem& b, const Reg& target_reg) {
 
 template <typename A, typename X, typename Y>
 void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_value,
-                                   std::optional<variable_t> opt_val_ctx_offset,
-                                   std::optional<variable_t> opt_val_map_fd,
-                                   std::optional<variable_t> opt_val_packet_offset,
-                                   std::optional<variable_t> opt_val_shared_offset,
-                                   std::optional<variable_t> opt_val_stack_offset,
-                                   std::optional<variable_t> opt_val_shared_region_size,
-                                   std::optional<variable_t> opt_val_stack_numeric_size) {
+                                   const std::optional<reg_pack_t>& opt_val_reg) {
     std::optional<variable_t> var = stack.store_type(inv, addr, width, val_type);
     type_inv.assign_type(inv, var, val_type);
     if (width == 8) {
         inv.assign(stack.store(inv, data_kind_t::values, addr, width, val_value), val_value);
 
-        if (opt_val_ctx_offset && type_inv.has_type(m_inv, val_type, T_CTX)) {
-            inv.assign(stack.store(inv, data_kind_t::ctx_offsets, addr, width, *opt_val_ctx_offset), *opt_val_ctx_offset);
+        if (opt_val_reg && type_inv.has_type(m_inv, val_type, T_CTX)) {
+            inv.assign(stack.store(inv, data_kind_t::ctx_offsets, addr, width, opt_val_reg->ctx_offset), opt_val_reg->ctx_offset);
         } else {
             stack.havoc(inv, data_kind_t::ctx_offsets, addr, width);
         }
 
-        if (opt_val_map_fd && (type_inv.has_type(m_inv, val_type, T_MAP) ||
+        if (opt_val_reg && (type_inv.has_type(m_inv, val_type, T_MAP) ||
                                    type_inv.has_type(m_inv, val_type, T_MAP_PROGRAMS))) {
-            inv.assign(stack.store(inv, data_kind_t::map_fds, addr, width, *opt_val_map_fd), *opt_val_map_fd);
+            inv.assign(stack.store(inv, data_kind_t::map_fds, addr, width, opt_val_reg->map_fd), opt_val_reg->map_fd);
         } else {
             stack.havoc(inv, data_kind_t::map_fds, addr, width);
         }
 
-        if (opt_val_packet_offset && type_inv.has_type(m_inv, val_type, T_PACKET)) {
-            inv.assign(stack.store(inv, data_kind_t::packet_offsets, addr, width, *opt_val_packet_offset), *opt_val_packet_offset);
+        if (opt_val_reg && type_inv.has_type(m_inv, val_type, T_PACKET)) {
+            inv.assign(stack.store(inv, data_kind_t::packet_offsets, addr, width, opt_val_reg->packet_offset), opt_val_reg->packet_offset);
         } else {
             stack.havoc(inv, data_kind_t::packet_offsets, addr, width);
         }
 
-        if (opt_val_shared_offset && type_inv.has_type(m_inv, val_type, T_SHARED)) {
-            inv.assign(stack.store(inv, data_kind_t::shared_offsets, addr, width, *opt_val_shared_offset), *opt_val_shared_offset);
-            inv.assign(stack.store(inv, data_kind_t::shared_region_sizes, addr, width, *opt_val_shared_region_size),
-                       *opt_val_shared_region_size);
+        if (opt_val_reg && type_inv.has_type(m_inv, val_type, T_SHARED)) {
+            inv.assign(stack.store(inv, data_kind_t::shared_offsets, addr, width, opt_val_reg->shared_offset), opt_val_reg->shared_offset);
+            inv.assign(stack.store(inv, data_kind_t::shared_region_sizes, addr, width, opt_val_reg->shared_region_size),
+                       opt_val_reg->shared_region_size);
         } else {
             stack.havoc(inv, data_kind_t::shared_region_sizes, addr, width);
             stack.havoc(inv, data_kind_t::shared_offsets, addr, width);
         }
 
-        if (opt_val_stack_offset && type_inv.has_type(m_inv, val_type, T_STACK)) {
-            inv.assign(stack.store(inv, data_kind_t::stack_offsets, addr, width, *opt_val_stack_offset), *opt_val_stack_offset);
-            inv.assign(stack.store(inv, data_kind_t::stack_numeric_sizes, addr, width, *opt_val_stack_numeric_size),
-                       *opt_val_stack_numeric_size);
+        if (opt_val_reg && type_inv.has_type(m_inv, val_type, T_STACK)) {
+            inv.assign(stack.store(inv, data_kind_t::stack_offsets, addr, width, opt_val_reg->stack_offset), opt_val_reg->stack_offset);
+            inv.assign(stack.store(inv, data_kind_t::stack_numeric_sizes, addr, width, opt_val_reg->stack_numeric_size),
+                       opt_val_reg->stack_numeric_size);
         } else {
             stack.havoc(inv, data_kind_t::stack_offsets, addr, width);
             stack.havoc(inv, data_kind_t::stack_numeric_sizes, addr, width);
@@ -1205,24 +1199,15 @@ void ebpf_domain_t::operator()(const Mem& b) {
         } else {
             auto data = std::get<Reg>(b.value);
             auto data_reg = reg_pack(data);
-            do_mem_store(b, data, data_reg.value, data_reg.ctx_offset, data_reg.map_fd,
-                         data_reg.packet_offset, data_reg.shared_offset, data_reg.stack_offset,
-                         data_reg.shared_region_size, data_reg.stack_numeric_size);
+            do_mem_store(b, data, data_reg.value, data_reg);
         }
     } else {
-        do_mem_store(b, T_NUM, std::get<Imm>(b.value).v, {}, {}, {}, {}, {}, {}, {});
+        do_mem_store(b, T_NUM, std::get<Imm>(b.value).v, {});
     }
 }
 
 template <typename Type, typename Value>
-void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, Value val_value,
-                                 std::optional<variable_t> opt_val_ctx_offset,
-                                 std::optional<variable_t> opt_val_map_fd,
-                                 std::optional<variable_t> opt_val_packet_offset,
-                                 std::optional<variable_t> opt_val_shared_offset,
-                                 std::optional<variable_t> opt_val_stack_offset,
-                                 std::optional<variable_t> opt_val_shared_region_size,
-                                 std::optional<variable_t> opt_val_stack_numeric_size) {
+void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, Value val_value, const std::optional<reg_pack_t>& val_reg) {
     if (m_inv.is_bottom())
         return;
     using namespace crab::dsl_syntax;
@@ -1231,17 +1216,13 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, Value val_value,
     int offset = b.access.offset;
     if (b.access.basereg.v == R10_STACK_POINTER) {
         int addr = EBPF_STACK_SIZE + offset;
-        do_store_stack(m_inv, width, addr, val_type, val_value, opt_val_ctx_offset, opt_val_map_fd,
-                       opt_val_packet_offset, opt_val_shared_offset, opt_val_stack_offset, opt_val_shared_region_size,
-                       opt_val_stack_numeric_size);
+        do_store_stack(m_inv, width, addr, val_type, val_value, val_reg);
         return;
     }
     m_inv = type_inv.join_over_types(m_inv, b.access.basereg, [&](NumAbsDomain& inv, type_encoding_t type) {
         if (type == T_STACK) {
             linear_expression_t addr = linear_expression_t(get_type_offset_variable(b.access.basereg, type).value()) + offset;
-            do_store_stack(inv, width, addr, val_type, val_value, opt_val_ctx_offset, opt_val_map_fd,
-                           opt_val_packet_offset, opt_val_shared_offset, opt_val_stack_offset,
-                           opt_val_shared_region_size, opt_val_stack_numeric_size);
+            do_store_stack(inv, width, addr, val_type, val_value, val_reg);
         }
         // do nothing for any other type
     });
