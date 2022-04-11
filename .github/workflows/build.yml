@@ -3,6 +3,12 @@ name: CPP CI
 on:
   pull_request:
 
+concurrency:
+  # Cancel any CI/CD workflow currently in progress for the same PR.
+  # Allow running concurrently with any other commits.
+  group: build-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   build_ubuntu:
     strategy:
@@ -36,7 +42,7 @@ jobs:
     strategy:
       matrix:
         configurations: [Debug, Release]
-    runs-on: windows-latest
+    runs-on: windows-2019
     env:
       # Configuration type to build.  For documentation on how build matrices work, see
       # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
