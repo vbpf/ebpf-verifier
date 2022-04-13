@@ -42,7 +42,7 @@ jobs:
       - name: Generate code coverage report
         run: |
           cd build
-          gcovr -r .. --cobertura ../ebpf-verifier.xml --gcov-ignore-parse-errors
+          gcovr -r .. -e ../external/ --cobertura ../ebpf-verifier.xml --gcov-ignore-parse-errors
 
       - name: Upload Report to Codecov
         uses: codecov/codecov-action@e3c560433a6cc60aec8812599b7844a7b4fa0d71
