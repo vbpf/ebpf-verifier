@@ -89,14 +89,21 @@ static size_t parse_map_sections(const ebpf_verifier_options_t* options, const e
 }
 
 vector<raw_program> read_elf(const std::string& path, const std::string& desired_section, const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
+    if (std::ifstream stream{path, std::ios::in | std::ios::binary}) {
+        return read_elf(stream, path, desired_section, options, platform);
+    }
+    struct stat st;
+    if (stat(path.c_str(), &st)) {
+        throw std::runtime_error(string(strerror(errno)) + " opening " + path);
+    }
+    throw std::runtime_error(string("Can't process ELF file ") + path);
+}
+
+vector<raw_program> read_elf(std::istream& input_stream, const std::string& path, const std::string& desired_section, const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
     if (options == nullptr)
         options = &ebpf_verifier_default_options;
     ELFIO::elfio reader;
-    if (!reader.load(path)) {
-        struct stat st;
-        if (stat(path.c_str(), &st)) {
-            throw std::runtime_error(string(strerror(errno)) + " opening " + path);
-        }
+    if (!reader.load(input_stream)) {
         throw std::runtime_error(string("Can't process ELF file ") + path);
     }
 
