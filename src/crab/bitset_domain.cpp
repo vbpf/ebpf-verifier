@@ -36,11 +36,9 @@ string_invariant bitset_domain_t::to_set() const
     }
 
     std::set<std::string> result;
-    bool first = true;
     for (int i = -EBPF_STACK_SIZE; i < 0; i++) {
         if (non_numerical_bytes[EBPF_STACK_SIZE + i])
             continue;
-        first = false;
         std::string value = "s[" + std::to_string(EBPF_STACK_SIZE + i);
         int j = i + 1;
         for (; j < 0; j++)

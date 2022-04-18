@@ -154,7 +154,7 @@ void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, c
 {
 
     auto mapdefs = std::vector<bpf_load_map_def>();
-    for (size_t i = 0; i < map_count; i++) {
+    for (int i = 0; i < map_count; i++) {
         bpf_load_map_def def = {0};
         memcpy(&def, data + i * map_def_size, std::min(map_def_size, sizeof(def)));
         mapdefs.emplace_back(def);
