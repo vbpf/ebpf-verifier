@@ -204,6 +204,7 @@ ebpf_analyze_program_for_test(std::ostream& os, const InstructionSeq& prog, cons
     ebpf_domain_t entry_inv = entry_invariant.is_bottom()
         ? ebpf_domain_t::bottom()
         : ebpf_domain_t::from_constraints(entry_invariant.value());
+    assert(!entry_inv.is_bottom());
     global_program_info = info;
     cfg_t cfg = prepare_cfg(prog, info, !no_simplify, false);
     auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, entry_inv, check_termination);

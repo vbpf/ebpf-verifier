@@ -230,6 +230,7 @@ class ebpf_domain_t final {
                                  const NumAbsDomain& other) const;
 
         [[nodiscard]] bool is_in_group(const NumAbsDomain& inv, const Reg& r, TypeGroup group) const;
+        bool is_pointer_to_singleton_region(const NumAbsDomain& inv, Reg r);
     };
 
     TypeDomain type_inv;

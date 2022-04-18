@@ -1,0 +1,91 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+---
+test-case: allow subtraction of packet pointers
+
+pre: ["r2.type=packet", "r2.packet_offset=4", "meta_offset=-4", "packet_size=[16,32]",
+      "r3.type=packet", "r3.packet_offset=8"]
+
+code:
+  <start>: |
+    r3 -= r2
+
+post:
+  - r2.type=packet
+  - r2.packet_offset=4
+  - r3.type=number
+  - r3.value=4
+  - meta_offset=-4
+  - packet_size=[16, 32]
+
+---
+test-case: disallow subtraction of unequal dual-typed pointers
+
+pre: ["r2.type=[-2, -1]", "r2.packet_offset=4", "r2.stack_offset=4",
+      "r3.type=[-2, -1]", "r3.packet_offset=8", "r3.stack_offset=8"]
+
+code:
+  <start>: |
+    r3 -= r2
+
+post:
+  - r2.type in {packet, stack}
+  - r2.packet_offset=4
+  - r2.stack_offset=4
+
+messages:
+  - "0: Cannot subtract pointers to different regions"
+
+---
+test-case: allow subtraction of equal dual-typed pointers
+
+pre: ["r2.type=[-2, -1]", "r2.packet_offset=4", "r2.stack_offset=4",
+      "r3.type=[-2, -1]", "r3.packet_offset=8", "r3.stack_offset=8",
+      "r2.type=r3.type", "meta_offset=-4", "packet_size=[16,32]"]
+
+code:
+  <start>: |
+    r3 -= r2
+
+post:
+  - r2.type in {packet, stack}
+  - r2.packet_offset=4
+  - r2.stack_offset=4
+  - r3.type=number
+  - r3.value=4
+  - meta_offset=-4
+  - packet_size=[16, 32]
+
+---
+test-case: allow subtraction of numeric register from valid pointer
+
+pre: ["r1.type=stack", "r1.stack_offset=[500, 504]",
+      "r2.type=number", "r2.value=4"]
+
+code:
+  <start>: |
+    r1 -= r2
+
+post:
+  - r1.type=stack
+  - r1.stack_offset=[496, 500]
+  - r2.type=number
+  - r2.value=4
+
+---
+test-case: disallow subtraction of pointer from invalid pointer to a singleton region
+
+pre: ["r1.type=stack", "r1.stack_offset=[500, 580]",
+      "r2.type=stack", "r2.stack_offset=[140, 230]"]
+
+code:
+  <start>: |
+    r1 -= r2
+
+post:
+  - r1.type=number
+  - r1.value=[270, 440]
+  - r2.type=stack
+  - r2.stack_offset=[140, 230]
+messages:
+  - "0: Upper bound must be at most EBPF_STACK_SIZE (valid_access(r1.offset) for comparison/subtraction)"
