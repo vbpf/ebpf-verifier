@@ -29,6 +29,8 @@ struct Failure {
     Diff<std::set<std::string>> messages;
 };
 
+void print_failure(const Failure& failure, std::ostream& out);
+
 std::optional<Failure> run_yaml_test_case(const TestCase& test_case);
 
 bool run_yaml(const std::string& path);

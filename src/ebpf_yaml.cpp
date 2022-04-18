@@ -217,6 +217,30 @@ std::optional<Failure> run_yaml_test_case(const TestCase& test_case) {
     };
 }
 
+
+void print_failure(const Failure& failure, std::ostream& out) {
+    constexpr auto INDENT = "  ";
+    if (!failure.invariant.unexpected.empty()) {
+        std::cout << "Unexpected properties:\n" << INDENT << failure.invariant.unexpected << "\n";
+    }
+    if (!failure.invariant.unseen.empty()) {
+        std::cout << "Unseen properties:\n" << INDENT << failure.invariant.unseen << "\n";
+    }
+
+    if (!failure.messages.unexpected.empty()) {
+        std::cout << "Unexpected messages:\n";
+        for (const auto& item : failure.messages.unexpected) {
+            std::cout << INDENT << item << "\n";
+        }
+    }
+    if (!failure.messages.unseen.empty()) {
+        std::cout << "Unseen messages:\n";
+        for (const auto& item : failure.messages.unseen) {
+            std::cout << INDENT << item << "\n";
+        }
+    }
+}
+
 bool all_suites(const string& path) {
     bool result = true;
     for (const TestCase& test_case: read_suite(path)) {
