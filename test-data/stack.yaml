@@ -235,7 +235,7 @@ pre: ["r1.type=stack", "r1.stack_offset=[500,504]", "r1.stack_numeric_size=8",
 
 code:
   <start>: |
-    r1 -= r2 ; this will currently fail to validate due to issue #321
+    r1 -= r2
 
 post:
   - r1.type=stack
@@ -246,6 +246,3 @@ post:
   - r10.stack_offset=512
   - r10.type=stack
   - s[498...511].type=number
-
-messages:
-    - "0: r2.type == r1.type"

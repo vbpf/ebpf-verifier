@@ -572,6 +572,8 @@ bool ebpf_domain_t::TypeDomain::is_in_group(const NumAbsDomain& m_inv, const Reg
     case TypeGroup::ptr_or_num: return m_inv.entail(t >= T_NUM);
     case TypeGroup::stack_or_packet:
         return m_inv.entail(t >= T_PACKET) && m_inv.entail(t <= T_STACK);
+    case TypeGroup::singleton_ptr:
+        return m_inv.entail(t >= T_CTX) && m_inv.entail(t <= T_STACK);
     }
     assert(false);
     return false;
@@ -605,7 +607,7 @@ int ebpf_domain_t::get_instruction_count_upper_bound() {
 void ebpf_domain_t::check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s) {
     using namespace crab::dsl_syntax;
     require(inv, lb >= 0, std::string("Lower bound must be at least 0") + s);
-    require(inv, ub <= EBPF_STACK_SIZE, std::string("Upper bound must be at most EBPF_STACK_SIZE") + s + std::string(", make sure to bounds check any pointer access"));
+    require(inv, ub <= EBPF_STACK_SIZE, std::string("Upper bound must be at most EBPF_STACK_SIZE") + s);
 }
 
 void ebpf_domain_t::check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s) {
@@ -694,13 +696,28 @@ void ebpf_domain_t::operator()(const Exit& a) {}
 void ebpf_domain_t::operator()(const Jmp& a) {}
 
 void ebpf_domain_t::operator()(const Comparable& s) {
-    if (!type_inv.same_type(m_inv, s.r1, s.r2))
-        require(m_inv, linear_constraint_t::FALSE(), to_string(s));
+    using namespace crab::dsl_syntax;
+    if (type_inv.same_type(m_inv, s.r1, s.r2)) {
+        // Same type. If both are numbers, that's okay. Otherwise:
+        auto inv = m_inv.when(reg_pack(s.r2).type != T_NUM);
+        // We must check that they belong to a singleton region:
+        if (!type_inv.is_in_group(inv, s.r1, TypeGroup::singleton_ptr)) {
+            require(inv, linear_constraint_t::FALSE(), "Cannot subtract pointers to non-singleton regions");
+            return;
+        }
+        // And, to avoid wraparound errors, they must be within bounds.
+        this->operator()(ValidAccess{s.r1, 0, Imm{0}, false});
+        this->operator()(ValidAccess{s.r2, 0, Imm{0}, false});
+    } else {
+        // _Maybe_ different types, so r2 must be a number.
+        // We checked in a previous assertion that r1 is a pointer or a number.
+        require(m_inv, reg_pack(s.r2).type == T_NUM, "Cannot subtract pointers to different regions");
+    };
 }
 
 void ebpf_domain_t::operator()(const Addable& s) {
     if (!type_inv.implies_type(m_inv, type_is_pointer(reg_pack(s.ptr)),type_is_number(s.num)))
-        require(m_inv, linear_constraint_t::FALSE(), "only numbers can be added to pointers (" + to_string(s) + ")");
+        require(m_inv, linear_constraint_t::FALSE(), "Only numbers can be added to pointers (" + to_string(s) + ")");
 }
 
 void ebpf_domain_t::operator()(const ValidStore& s) {

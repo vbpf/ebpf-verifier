@@ -108,6 +108,7 @@ static std::string to_string(TypeGroup ts) {
     case TypeGroup::non_map_fd: return "non_map_fd";
     case TypeGroup::ptr_or_num: return "{number, ctx, stack, packet, shared}";
     case TypeGroup::stack_or_packet: return "{stack, packet}";
+    case TypeGroup::singleton_ptr: return "{ctx, stack, packet}";
     case TypeGroup::mem_or_num: return "{number, stack, packet, shared}";
     default: assert(false);
     }
@@ -134,7 +135,7 @@ std::ostream& operator<<(std::ostream& os, ValidAccess const& a) {
     if (a.width == (Value)Imm{0}) {
         // a.width == 0, meaning we only care it's an in-bound pointer,
         // so it can be compared with another pointer to the same region.
-        os << ") for comparison";
+        os << ") for comparison/subtraction";
     } else {
         os << ", width=" << a.width << ")";
     }
@@ -155,8 +156,10 @@ std::ostream& operator<<(std::ostream& os, ZeroCtxOffset const& a) {
 }
 
 std::ostream& operator<<(std::ostream& os, Comparable const& a) {
+    if (a.or_r2_is_number)
+            os << crab::variable_t::reg(crab::data_kind_t::types, a.r2.v) << " = number, or ";
     return os << crab::variable_t::reg(crab::data_kind_t::types, a.r1.v) << " == "
-              << crab::variable_t::reg(crab::data_kind_t::types, a.r2.v);
+              << crab::variable_t::reg(crab::data_kind_t::types, a.r2.v) << " in " << to_string(TypeGroup::singleton_ptr);
 }
 
 std::ostream& operator<<(std::ostream& os, Addable const& a) {

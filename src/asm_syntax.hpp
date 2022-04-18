@@ -232,7 +232,8 @@ enum class TypeGroup {
     mem_or_num,      ///< reg >= T_NUM && reg != T_CTX
     pointer,         ///< reg >= T_CTX
     ptr_or_num,      ///< reg >= T_NUM
-    stack_or_packet  ///< reg <= T_STACK && reg >= T_PACKET
+    stack_or_packet, ///< reg <= T_STACK && reg >= T_PACKET
+    singleton_ptr,   ///< reg <= T_STACK && reg >= T_CTX
 };
 
 /// Condition check whether something is a valid size.
@@ -247,6 +248,7 @@ struct ValidSize {
 struct Comparable {
     Reg r1;
     Reg r2;
+    bool or_r2_is_number{}; ///< true for subtraction, false for comparison
 };
 
 // ptr: ptr -> num : num
