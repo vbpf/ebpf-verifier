@@ -17,7 +17,25 @@ post:
   - r3.value=4
   - meta_offset=-4
   - packet_size=[16, 32]
+---
+test-case: disallow subtraction of shared pointers
 
+pre: ["r2.type=shared", "r2.shared_region_size=8", "r2.shared_offset=4",
+      "r3.type=shared", "r3.shared_region_size=8", "r3.shared_offset=8"]
+
+code:
+  <start>: |
+    r3 -= r2
+
+post:
+  - r2.type=shared
+  - r2.shared_offset=4
+  - r2.shared_region_size=8
+  - r3.type=number
+  - r3.value=4
+
+messages:
+  - "0: Cannot subtract pointers to non-singleton regions"
 ---
 test-case: disallow subtraction of unequal dual-typed pointers
 
