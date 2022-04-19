@@ -158,11 +158,11 @@ class ebpf_domain_t final {
     void require(crab::domains::NumAbsDomain& inv, const linear_constraint_t& cst, const std::string& s);
 
     // memory check / load / store
-    void check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s);
-    void check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s);
-    void check_access_packet(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
+    void check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub);
+    void check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub);
+    void check_access_packet(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
                              std::optional<variable_t> shared_region_size);
-    void check_access_shared(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
+    void check_access_shared(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
                              variable_t shared_region_size);
 
     void recompute_stack_numeric_size(NumAbsDomain& inv, const Reg& reg);
@@ -230,8 +230,8 @@ class ebpf_domain_t final {
                                  const NumAbsDomain& other) const;
 
         [[nodiscard]] bool is_in_group(const NumAbsDomain& inv, const Reg& r, TypeGroup group) const;
-        bool is_pointer_to_singleton_region(const NumAbsDomain& inv, Reg r);
     };
 
     TypeDomain type_inv;
+    std::string current_assertion;
 }; // end ebpf_domain_t

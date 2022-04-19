@@ -120,12 +120,12 @@ std::ostream& operator<<(std::ostream& os, TypeGroup ts) {
 }
 
 std::ostream& operator<<(std::ostream& os, ValidStore const& a) {
-    return os << a.mem << ".type != stack -> " << a.val << ".type == num";
+    return os << a.mem << ".type != stack -> " << TypeConstraint{a.val, TypeGroup::number};
 }
 
 std::ostream& operator<<(std::ostream& os, ValidAccess const& a) {
     if (a.or_null)
-        os << "(" << a.reg << ".type == number and " << a.reg << ".value == 0) or ";
+        os << "(" << TypeConstraint{a.reg, TypeGroup::number} << " and " << a.reg << ".value == 0) or ";
     os << "valid_access(" << a.reg << ".offset";
     if (a.offset > 0)
         os << "+" << a.offset;
@@ -140,6 +140,10 @@ std::ostream& operator<<(std::ostream& os, ValidAccess const& a) {
         os << ", width=" << a.width << ")";
     }
     return os;
+}
+
+static crab::variable_t typereg(const Reg& r) {
+    return crab::variable_t::reg(crab::data_kind_t::types, r.v);
 }
 
 std::ostream& operator<<(std::ostream& os, ValidSize const& a) {
@@ -157,19 +161,19 @@ std::ostream& operator<<(std::ostream& os, ZeroCtxOffset const& a) {
 
 std::ostream& operator<<(std::ostream& os, Comparable const& a) {
     if (a.or_r2_is_number)
-            os << crab::variable_t::reg(crab::data_kind_t::types, a.r2.v) << " = number, or ";
-    return os << crab::variable_t::reg(crab::data_kind_t::types, a.r1.v) << " == "
-              << crab::variable_t::reg(crab::data_kind_t::types, a.r2.v) << " in " << to_string(TypeGroup::singleton_ptr);
+        os << TypeConstraint{a.r2, TypeGroup::number} << " or ";
+    return os << typereg(a.r1) << " == "
+              << typereg(a.r2) << " in " << to_string(TypeGroup::singleton_ptr);
 }
 
 std::ostream& operator<<(std::ostream& os, Addable const& a) {
-    return os << a.ptr << ".type = ptr -> " << a.num << ".type = number";
+    return os << TypeConstraint{a.ptr, TypeGroup::pointer} << " -> " << TypeConstraint{a.num, TypeGroup::number};
 }
 
 std::ostream& operator<<(std::ostream& os, TypeConstraint const& tc) {
     string types = to_string(tc.types);
     string cmp_op = types[0] == '{' ? "in" : "==";
-    return os << tc.reg << ".type " << cmp_op << " " << tc.types;
+    return os << typereg(tc.reg) << " " << cmp_op << " " << tc.types;
 }
 
 std::ostream& operator<<(std::ostream& os, AssertionConstraint const& a) {

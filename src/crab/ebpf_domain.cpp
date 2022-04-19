@@ -412,7 +412,7 @@ void ebpf_domain_t::assume(const linear_constraint_t& cst) { ::assume(m_inv, cst
 
 void ebpf_domain_t::require(NumAbsDomain& inv, const linear_constraint_t& cst, const std::string& s) {
     if (check_require)
-        check_require(inv, cst, s);
+        check_require(inv, cst, s + " (" + this->current_assertion + ")");
     if (thread_local_options.assume_assertions) {
         // avoid redundant errors
         ::assume(inv, cst);
@@ -604,37 +604,34 @@ int ebpf_domain_t::get_instruction_count_upper_bound() {
     return (ub.is_finite() && ub.number().value().fits_sint()) ? (int)ub.number().value() : INT_MAX;
 }
 
-void ebpf_domain_t::check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s) {
+void ebpf_domain_t::check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) {
     using namespace crab::dsl_syntax;
-    require(inv, lb >= 0, std::string("Lower bound must be at least 0") + s);
-    require(inv, ub <= EBPF_STACK_SIZE, std::string("Upper bound must be at most EBPF_STACK_SIZE") + s);
+    require(inv, lb >= 0, "Lower bound must be at least 0");
+    require(inv, ub <= EBPF_STACK_SIZE, "Upper bound must be at most EBPF_STACK_SIZE");
 }
 
-void ebpf_domain_t::check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s) {
+void ebpf_domain_t::check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) {
     using namespace crab::dsl_syntax;
-    require(inv, lb >= 0, std::string("Lower bound must be at least 0") + s);
+    require(inv, lb >= 0, "Lower bound must be at least 0");
     require(inv, ub <= global_program_info.type.context_descriptor->size,
-            std::string("Upper bound must be at most ") + std::to_string(global_program_info.type.context_descriptor->size) +
-                s);
+            std::string("Upper bound must be at most ") + std::to_string(global_program_info.type.context_descriptor->size));
 }
 
-void ebpf_domain_t::check_access_packet(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
+void ebpf_domain_t::check_access_packet(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
                                         std::optional<variable_t> packet_size) {
     using namespace crab::dsl_syntax;
-    require(inv, lb >= variable_t::meta_offset(), std::string("Lower bound must be at least meta_offset") + s);
+    require(inv, lb >= variable_t::meta_offset(), "Lower bound must be at least meta_offset");
     if (packet_size)
-        require(inv, ub <= *packet_size,
-                std::string("Upper bound must be at most packet_size") + s);
+        require(inv, ub <= *packet_size, "Upper bound must be at most packet_size");
     else
-        require(inv, ub <= MAX_PACKET_SIZE,
-                std::string("Upper bound must be at most ") + std::to_string(MAX_PACKET_SIZE) + s);
+        require(inv, ub <= MAX_PACKET_SIZE, std::string{"Upper bound must be at most "} + std::to_string(MAX_PACKET_SIZE));
 }
 
-void ebpf_domain_t::check_access_shared(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, const std::string& s,
+void ebpf_domain_t::check_access_shared(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
                                         variable_t region_size) {
     using namespace crab::dsl_syntax;
-    require(inv, lb >= 0, std::string("Lower bound must be at least 0") + s);
-    require(inv, ub <= region_size, std::string("Upper bound must be at most ") + region_size.name() + s);
+    require(inv, lb >= 0, "Lower bound must be at least 0");
+    require(inv, ub <= region_size, std::string("Upper bound must be at most ") + region_size.name());
 }
 
 void ebpf_domain_t::operator()(const Assume& s) {
@@ -717,7 +714,7 @@ void ebpf_domain_t::operator()(const Comparable& s) {
 
 void ebpf_domain_t::operator()(const Addable& s) {
     if (!type_inv.implies_type(m_inv, type_is_pointer(reg_pack(s.ptr)),type_is_number(s.num)))
-        require(m_inv, linear_constraint_t::FALSE(), "Only numbers can be added to pointers (" + to_string(s) + ")");
+        require(m_inv, linear_constraint_t::FALSE(), "Only numbers can be added to pointers");
 }
 
 void ebpf_domain_t::operator()(const ValidStore& s) {
@@ -727,13 +724,13 @@ void ebpf_domain_t::operator()(const ValidStore& s) {
 
 void ebpf_domain_t::operator()(const TypeConstraint& s) {
     if (!type_inv.is_in_group(m_inv, s.reg, s.types))
-        require(m_inv, linear_constraint_t::FALSE(), to_string(s));
+        require(m_inv, linear_constraint_t::FALSE(), "");
 }
 
 void ebpf_domain_t::operator()(const ValidSize& s) {
     using namespace crab::dsl_syntax;
     auto r = reg_pack(s.reg);
-    require(m_inv, s.can_be_zero ? r.value >= 0 : r.value > 0, to_string(s));
+    require(m_inv, s.can_be_zero ? r.value >= 0 : r.value > 0, "");
 }
 
 // Get the start and end of the range of possible map fd values.
@@ -845,7 +842,6 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
     auto fd_type = get_map_type(s.map_fd_reg);
 
     auto access_reg = reg_pack(s.access_reg);
-    std::string m = std::string(" (") + to_string(s) + ")";
     int width;
     if (s.key) {
         auto key_size = get_map_key_size(s.map_fd_reg).singleton();
@@ -897,9 +893,9 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
         } else if (access_reg_type == T_PACKET) {
             variable_t lb = access_reg.packet_offset;
             linear_expression_t ub = lb + width;
-            check_access_packet(inv, lb, ub, m, {});
+            check_access_packet(inv, lb, ub, {});
         } else {
-            require(inv, linear_constraint_t::FALSE(), "Only stack or packet can be used as a parameter" + m);
+            require(inv, linear_constraint_t::FALSE(), "Only stack or packet can be used as a parameter");
         }
     });
 }
@@ -910,7 +906,6 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
     bool is_comparison_check = s.width == (Value)Imm{0};
 
     auto reg = reg_pack(s.reg);
-    std::string m = std::string(" (") + to_string(s) + ")";
     // join_over_types instead of simple iteration is only needed for assume-assert
     m_inv = type_inv.join_over_types(m_inv, s.reg, [&](NumAbsDomain& inv, type_encoding_t type) {
         switch (type) {
@@ -918,7 +913,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
             linear_expression_t lb = reg.packet_offset + s.offset;
             linear_expression_t ub = std::holds_alternative<Imm>(s.width) ? lb + std::get<Imm>(s.width).v
                                                                           : lb + reg_pack(std::get<Reg>(s.width)).value;
-            check_access_packet(inv, lb, ub, m,
+            check_access_packet(inv, lb, ub,
                                 is_comparison_check ? std::optional<variable_t>{} : variable_t::packet_size());
             // if within bounds, it can never be null
             break;
@@ -927,7 +922,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
             linear_expression_t lb = reg.stack_offset + s.offset;
             linear_expression_t ub = std::holds_alternative<Imm>(s.width) ? lb + std::get<Imm>(s.width).v
                                                                           : lb + reg_pack(std::get<Reg>(s.width)).value;
-            check_access_stack(inv, lb, ub, m);
+            check_access_stack(inv, lb, ub);
             // if within bounds, it can never be null
             break;
         }
@@ -935,7 +930,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
             linear_expression_t lb = reg.ctx_offset + s.offset;
             linear_expression_t ub = std::holds_alternative<Imm>(s.width) ? lb + std::get<Imm>(s.width).v
                                                                           : lb + reg_pack(std::get<Reg>(s.width)).value;
-            check_access_context(inv, lb, ub, m);
+            check_access_context(inv, lb, ub);
             // if within bounds, it can never be null
             break;
         }
@@ -957,8 +952,8 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
         case T_SHARED: {
             linear_expression_t lb = reg.shared_offset + s.offset;
             linear_expression_t ub = std::holds_alternative<Imm>(s.width) ? lb + std::get<Imm>(s.width).v
-                                                                          : lb + reg_pack(std::get<Reg>(s.width)).value;
-            check_access_shared(inv, lb, ub, m, reg.shared_region_size);
+                                                                             : lb + reg_pack(std::get<Reg>(s.width)).value;
+            check_access_shared(inv, lb, ub, reg.shared_region_size);
             if (!is_comparison_check && !s.or_null)
                 require(inv, reg.value > 0, "Possible null access");
             break;
@@ -973,12 +968,15 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
 void ebpf_domain_t::operator()(const ZeroCtxOffset& s) {
     using namespace crab::dsl_syntax;
     auto reg = reg_pack(s.reg);
-    require(m_inv, reg.ctx_offset == 0, to_string(s));
+    require(m_inv, reg.ctx_offset == 0, "");
 }
 
 void ebpf_domain_t::operator()(const Assert& stmt) {
-    if (check_require || thread_local_options.assume_assertions)
+    if (check_require || thread_local_options.assume_assertions) {
+        this->current_assertion = to_string(stmt.cst);
         std::visit(*this, stmt.cst);
+        this->current_assertion.clear();
+    }
 }
 
 void ebpf_domain_t::operator()(const Packet& a) {
