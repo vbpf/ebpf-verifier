@@ -45,7 +45,7 @@ jobs:
           gcovr -r .. -e ../external/ --cobertura ../ebpf-verifier.xml --gcov-ignore-parse-errors
 
       - name: Upload Report to Codecov
-        uses: codecov/codecov-action@e3c560433a6cc60aec8812599b7844a7b4fa0d71
+        uses: codecov/codecov-action@81cd2dc8148241f03f5839d295e000b8f761e378
         with:
           files: ebpf-verifier.xml
           fail_ci_if_error: true
