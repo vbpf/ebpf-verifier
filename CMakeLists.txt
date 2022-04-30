@@ -108,6 +108,7 @@ target_compile_options(ebpfverifier PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAG
 # can cause problems if other projects/repos want to reference the ebpfverifier vcxproj file,
 # so we force a constant GUID here.
 set(ebpfverifier_GUID_CMAKE "7d5b4e68-c0fa-3f86-9405-f6400219b440" CACHE INTERNAL "Project GUID")
+set(yaml-cpp_GUID_CMAKE "98d56b8a-d8eb-3d98-b8ee-c83696b4d58a" CACHE INTERNAL "Project GUID")
 
 target_compile_options(check PRIVATE ${COMMON_FLAGS})
 target_compile_options(check PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
