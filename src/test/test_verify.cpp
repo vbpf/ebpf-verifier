@@ -472,6 +472,7 @@ TEST_SECTION_REJECT("build", "nullmapref.o", "test")
 TEST_SECTION_REJECT("build", "packet_overflow.o", "xdp")
 TEST_SECTION_REJECT("build", "packet_reallocate.o", "socket_filter")
 TEST_SECTION_REJECT("build", "tail_call_bad.o", "xdp_prog")
+TEST_SECTION_REJECT("build", "ringbuf_uninit.o", ".text");
 
 // The following eBPF programs currently fail verification.
 // If the verifier is later updated to accept them, these should
