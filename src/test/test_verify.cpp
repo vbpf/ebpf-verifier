@@ -68,6 +68,11 @@ FAIL_UNMARSHAL("build", "wronghelper.o", "xdp")
         VERIFY_SECTION(project, filename, section, nullptr, true); \
     }
 
+#define TEST_SECTION_REJECT_FAIL(project, filename, section) \
+    TEST_CASE("expect failure ebpf-samples/" project "/" filename " " section, "[!shouldfail][verify][samples][" project "]") { \
+        VERIFY_SECTION(project, filename, section, nullptr, false); \
+    }
+
 TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "1/0xdc06")
 TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "2/1")
 TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "2/3")
@@ -472,7 +477,7 @@ TEST_SECTION_REJECT("build", "nullmapref.o", "test")
 TEST_SECTION_REJECT("build", "packet_overflow.o", "xdp")
 TEST_SECTION_REJECT("build", "packet_reallocate.o", "socket_filter")
 TEST_SECTION_REJECT("build", "tail_call_bad.o", "xdp_prog")
-TEST_SECTION_REJECT("build", "ringbuf_uninit.o", ".text");
+TEST_SECTION_REJECT_FAIL("build", "ringbuf_uninit.o", ".text");
 
 // The following eBPF programs currently fail verification.
 // If the verifier is later updated to accept them, these should
