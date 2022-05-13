@@ -69,7 +69,7 @@ static const struct EbpfHelperPrototype bpf_probe_read_proto = {
     .name = "probe_read",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -79,7 +79,7 @@ static const struct EbpfHelperPrototype bpf_probe_read_str_proto = {
     .name = "probe_read_str",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -90,7 +90,7 @@ static const struct EbpfHelperPrototype bpf_probe_write_user_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_ANYTHING,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
@@ -99,7 +99,7 @@ static const struct EbpfHelperPrototype bpf_trace_printk_proto = {
     .name = "trace_printk",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
@@ -119,7 +119,7 @@ static const struct EbpfHelperPrototype bpf_perf_event_read_value_proto = {
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
         EBPF_ARGUMENT_TYPE_ANYTHING,
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
@@ -131,7 +131,7 @@ static const struct EbpfHelperPrototype bpf_perf_event_output_proto = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
         EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
         EBPF_ARGUMENT_TYPE_ANYTHING,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
     },
 };
@@ -155,7 +155,7 @@ static const struct EbpfHelperPrototype bpf_perf_prog_read_value_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
     .context_descriptor = &g_perf_event_descr
@@ -231,7 +231,7 @@ static const struct EbpfHelperPrototype bpf_get_current_comm_proto = {
     .name = "get_current_comm",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
@@ -282,7 +282,7 @@ static const struct EbpfHelperPrototype bpf_get_stack_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -294,7 +294,7 @@ static const struct EbpfHelperPrototype bpf_skb_store_bytes_proto = {
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
         EBPF_ARGUMENT_TYPE_ANYTHING,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -307,7 +307,7 @@ static const struct EbpfHelperPrototype bpf_skb_load_bytes_proto = {
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
         EBPF_ARGUMENT_TYPE_ANYTHING,
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
     .context_descriptor = &g_sk_buff
@@ -319,7 +319,7 @@ static const struct EbpfHelperPrototype bpf_skb_load_bytes_relative_proto = {
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
         EBPF_ARGUMENT_TYPE_ANYTHING,
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -366,9 +366,9 @@ static const struct EbpfHelperPrototype bpf_csum_diff_proto = {
     .name = "csum_diff",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM_OR_NULL,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM_OR_NULL,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -640,7 +640,7 @@ static const struct EbpfHelperPrototype bpf_skb_get_tunnel_key_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -652,7 +652,7 @@ static const struct EbpfHelperPrototype bpf_skb_get_tunnel_opt_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
     .context_descriptor = &g_sk_buff
@@ -663,7 +663,7 @@ static const struct EbpfHelperPrototype bpf_skb_set_tunnel_key_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -683,7 +683,7 @@ static const struct EbpfHelperPrototype bpf_skb_set_tunnel_opt_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
     .context_descriptor = &g_sk_buff
@@ -730,7 +730,7 @@ static const struct EbpfHelperPrototype bpf_setsockopt_proto = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
         EBPF_ARGUMENT_TYPE_ANYTHING,
         EBPF_ARGUMENT_TYPE_ANYTHING,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
@@ -742,7 +742,7 @@ static const struct EbpfHelperPrototype bpf_getsockopt_proto = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
         EBPF_ARGUMENT_TYPE_ANYTHING,
         EBPF_ARGUMENT_TYPE_ANYTHING,
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
@@ -762,7 +762,7 @@ static const struct EbpfHelperPrototype bpf_bind_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
@@ -773,7 +773,7 @@ static const struct EbpfHelperPrototype bpf_skb_get_xfrm_state_proto = {
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
         EBPF_ARGUMENT_TYPE_ANYTHING,
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -785,7 +785,7 @@ static const struct EbpfHelperPrototype bpf_fib_lookup_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -797,7 +797,7 @@ static const struct EbpfHelperPrototype bpf_lwt_push_encap_proto = {
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
         EBPF_ARGUMENT_TYPE_ANYTHING,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE
     },
     .context_descriptor = &g_sk_buff
@@ -809,7 +809,7 @@ static const struct EbpfHelperPrototype bpf_lwt_seg6_store_bytes_proto = {
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
         EBPF_ARGUMENT_TYPE_ANYTHING,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE
     },
     .context_descriptor = &g_sk_buff
@@ -821,7 +821,7 @@ static const struct EbpfHelperPrototype bpf_lwt_seg6_action_proto = {
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
         EBPF_ARGUMENT_TYPE_ANYTHING,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE
     },
     .context_descriptor = &g_sk_buff
@@ -901,7 +901,7 @@ static const struct EbpfHelperPrototype bpf_sk_lookup_tcp_proto = {
     .return_type = EBPF_RETURN_TYPE_PTR_TO_SOCK_COMMON_OR_NULL,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM, // TODO: readonly
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
         EBPF_ARGUMENT_TYPE_ANYTHING,
         EBPF_ARGUMENT_TYPE_ANYTHING,
@@ -912,7 +912,7 @@ static const struct EbpfHelperPrototype bpf_sk_lookup_udp_proto = {
     .return_type = EBPF_RETURN_TYPE_PTR_TO_SOCKET_OR_NULL,
     .argument_type {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM, // TODO: readonly
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
         EBPF_ARGUMENT_TYPE_ANYTHING,
         EBPF_ARGUMENT_TYPE_ANYTHING,
@@ -1039,9 +1039,9 @@ static const struct EbpfHelperPrototype bpf_tcp_check_syncookie_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM, // TODO: readonly
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM, // TODO: readonly
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
@@ -1059,7 +1059,7 @@ static const struct EbpfHelperPrototype bpf_skc_lookup_tcp_proto = {
     .return_type = EBPF_RETURN_TYPE_PTR_TO_SOCK_COMMON_OR_NULL,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM, // TODO: readonly
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
         EBPF_ARGUMENT_TYPE_ANYTHING,
         EBPF_ARGUMENT_TYPE_ANYTHING,
@@ -1071,7 +1071,7 @@ static const struct EbpfHelperPrototype bpf_sysctl_get_name_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -1082,7 +1082,7 @@ static const struct EbpfHelperPrototype bpf_sysctl_get_current_value_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
@@ -1092,7 +1092,7 @@ static const struct EbpfHelperPrototype bpf_sysctl_get_new_value_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
@@ -1102,7 +1102,7 @@ static const struct EbpfHelperPrototype bpf_sysctl_set_new_value_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM, // TODO: readonly
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
@@ -1111,7 +1111,7 @@ static const struct EbpfHelperPrototype bpf_strtol_proto = {
     .name = "strtol",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM, // TODO: readonly
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
         EBPF_ARGUMENT_TYPE_ANYTHING,
         EBPF_ARGUMENT_TYPE_PTR_TO_LONG,
@@ -1122,7 +1122,7 @@ static const struct EbpfHelperPrototype bpf_strtoul_proto = {
     .name = "strtoul",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM, // TODO: readonly
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
         EBPF_ARGUMENT_TYPE_ANYTHING,
         EBPF_ARGUMENT_TYPE_PTR_TO_LONG,
@@ -1133,7 +1133,7 @@ static const struct EbpfHelperPrototype bpf_strncmp_proto = {
     .name = "strncmp",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
         EBPF_ARGUMENT_TYPE_PTR_TO_CONST_STR,
     },
@@ -1191,9 +1191,9 @@ static const struct EbpfHelperPrototype bpf_tcp_gen_syncookie_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID_SOCK_COMMON,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM, // TODO: readonly
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM, // TODO: readonly
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
@@ -1205,7 +1205,7 @@ static const struct EbpfHelperPrototype bpf_skb_output_proto = {
         EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
         EBPF_ARGUMENT_TYPE_PTR_TO_MAP, // originally const
         EBPF_ARGUMENT_TYPE_ANYTHING,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO readonly
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM, // TODO readonly
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
     },
     //.arg1_btf_id = &bpf_skb_output_btf_ids[0],
@@ -1215,7 +1215,7 @@ static const struct EbpfHelperPrototype bpf_probe_read_user_proto = {
     .name = "probe_read_user",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -1225,7 +1225,7 @@ static const struct EbpfHelperPrototype bpf_probe_read_user_str_proto = {
     .name = "probe_read_user_str",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -1235,7 +1235,7 @@ static const struct EbpfHelperPrototype bpf_probe_read_kernel_proto = {
     .name = "probe_read_kernel",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -1245,7 +1245,7 @@ static const struct EbpfHelperPrototype bpf_probe_read_kernel_str_proto = {
     .name = "probe_read_kernel_str",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -1266,7 +1266,7 @@ static const struct EbpfHelperPrototype bpf_read_branch_records_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM_OR_NULL,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     }
@@ -1278,7 +1278,7 @@ static const struct EbpfHelperPrototype bpf_get_ns_current_pid_tgid_proto = {
     .argument_type = {
         EBPF_ARGUMENT_TYPE_ANYTHING,
         EBPF_ARGUMENT_TYPE_ANYTHING,
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM, // TODO: or null
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM, // TODO: or null
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
@@ -1290,7 +1290,7 @@ static const struct EbpfHelperPrototype bpf_xdp_output_proto = {
         EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
         EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
         EBPF_ARGUMENT_TYPE_ANYTHING,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO : readonly
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM, // TODO : readonly
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
     },
     // .arg1_btf_id = &bpf_xdp_output_btf_ids[0],
@@ -1332,9 +1332,9 @@ static const struct EbpfHelperPrototype bpf_seq_printf_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM_OR_NULL,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
     },
     // .arg1_btf_id = &btf_seq_file_ids[0],
@@ -1345,7 +1345,7 @@ static const struct EbpfHelperPrototype bpf_seq_write_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
     },
 };
@@ -1400,7 +1400,7 @@ static const struct EbpfHelperPrototype bpf_ringbuf_output_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_MAP,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -1484,7 +1484,7 @@ static const struct EbpfHelperPrototype bpf_get_task_stack_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -1496,7 +1496,7 @@ static const struct EbpfHelperPrototype bpf_sock_ops_load_hdr_opt_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -1507,7 +1507,7 @@ static const struct EbpfHelperPrototype bpf_sock_ops_store_hdr_opt_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_CTX,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -1550,7 +1550,7 @@ static const struct EbpfHelperPrototype bpf_d_path_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
     },
     // .allowed = bpf_d_path_allowed,
@@ -1561,7 +1561,7 @@ static const struct EbpfHelperPrototype bpf_copy_from_user_proto = {
     .name = "copy_from_user",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -1588,9 +1588,9 @@ static const struct EbpfHelperPrototype bpf_snprintf_btf_proto = {
     .name = "snprintf_btf",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -1601,7 +1601,7 @@ static const struct EbpfHelperPrototype bpf_seq_printf_btf_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -1621,7 +1621,7 @@ static const struct EbpfHelperPrototype bpf_redirect_neigh_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_ANYTHING,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM_OR_NULL,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
         EBPF_ARGUMENT_TYPE_ANYTHING,
     },
@@ -1679,7 +1679,7 @@ static const struct EbpfHelperPrototype bpf_ima_inode_hash_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_PTR_TO_BTF_ID,
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
     //    .allowed	= bpf_ima_inode_hash_allowed,
@@ -1719,10 +1719,10 @@ static const struct EbpfHelperPrototype bpf_snprintf_proto = {
     .name = "snprintf",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM_OR_NULL,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
         EBPF_ARGUMENT_TYPE_PTR_TO_CONST_STR,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL, //  TODO: readonly
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM_OR_NULL, //  TODO: readonly
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
     },
 };
@@ -1732,7 +1732,7 @@ static const struct EbpfHelperPrototype bpf_sys_bpf_proto = {
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
         EBPF_ARGUMENT_TYPE_ANYTHING,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, //  TODO: readonly
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM, //  TODO: readonly
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
     },
 };
@@ -1741,7 +1741,7 @@ static const struct EbpfHelperPrototype bpf_btf_find_by_name_kind_proto = {
     .name = "btf_find_by_name_kind",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, //  TODO: readonly
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM, //  TODO: readonly
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
         EBPF_ARGUMENT_TYPE_ANYTHING,
         EBPF_ARGUMENT_TYPE_ANYTHING,
@@ -1760,7 +1760,7 @@ static const struct EbpfHelperPrototype bpf_kallsyms_lookup_name_proto = {
     .name = "kallsyms_lookup_name",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
         EBPF_ARGUMENT_TYPE_ANYTHING,
         EBPF_ARGUMENT_TYPE_PTR_TO_LONG,
@@ -1835,7 +1835,7 @@ static const struct EbpfHelperPrototype bpf_get_branch_snapshot_proto = {
     .name = "get_branch_snapshot",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM,
+        EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM,
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
     },
 };
@@ -1871,9 +1871,9 @@ static const struct EbpfHelperPrototype bpf_trace_vprintk_proto = {
     .name = "trace_vprintk",
     .return_type = EBPF_RETURN_TYPE_INTEGER,
     .argument_type = {
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM, // TODO: readonly
         EBPF_ARGUMENT_TYPE_CONST_SIZE,
-        EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL, // TODO: readonly
+        EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM_OR_NULL, // TODO: readonly
         EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO,
     },
 };

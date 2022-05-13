@@ -894,6 +894,7 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
             variable_t lb = access_reg.packet_offset;
             linear_expression_t ub = lb + width;
             check_access_packet(inv, lb, ub, {});
+            // Packet memory is both readable and writable.
         } else {
             require(inv, linear_constraint_t::FALSE(), "Only stack or packet can be used as a parameter");
         }
@@ -916,6 +917,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
             check_access_packet(inv, lb, ub,
                                 is_comparison_check ? std::optional<variable_t>{} : variable_t::packet_size());
             // if within bounds, it can never be null
+            // Context memory is both readable and writable.
             break;
         }
         case T_STACK: {
@@ -924,6 +926,22 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
                                                                           : lb + reg_pack(std::get<Reg>(s.width)).value;
             check_access_stack(inv, lb, ub);
             // if within bounds, it can never be null
+            if (s.access_type == AccessType::read) {
+                // Require that the stack range contains numbers.
+                if (!stack.all_num(inv, lb, ub)) {
+                    if (s.offset < 0) {
+                        require(inv, linear_constraint_t::FALSE(), "Stack content is not numeric");
+                    } else if (std::holds_alternative<Imm>(s.width)) {
+                        if (!inv.entail(std::get<Imm>(s.width).v <= reg.stack_numeric_size - s.offset)) {
+                            require(inv, linear_constraint_t::FALSE(), "Stack content is not numeric");
+                        }
+                    } else {
+                        if (!inv.entail(reg_pack(std::get<Reg>(s.width)).value <= reg.stack_numeric_size - s.offset)) {
+                            require(inv, linear_constraint_t::FALSE(), "Stack content is not numeric");
+                        }
+                    }
+                }
+            }
             break;
         }
         case T_CTX: {
@@ -932,6 +950,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
                                                                           : lb + reg_pack(std::get<Reg>(s.width)).value;
             check_access_context(inv, lb, ub);
             // if within bounds, it can never be null
+            // The context is both readable and writable.
             break;
         }
         case T_NUM:
@@ -956,6 +975,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
             check_access_shared(inv, lb, ub, reg.shared_region_size);
             if (!is_comparison_check && !s.or_null)
                 require(inv, reg.value > 0, "Possible null access");
+            // Shared memory is zero-initialized when created so is safe to read and write.
             break;
         }
         default:
@@ -1267,12 +1287,12 @@ void ebpf_domain_t::operator()(const Call& call) {
     }
     for (ArgPair param : call.pairs) {
         switch (param.kind) {
-        case ArgPair::Kind::PTR_TO_MEM_OR_NULL:
-        case ArgPair::Kind::PTR_TO_MEM:
+        case ArgPair::Kind::PTR_TO_READABLE_MEM_OR_NULL:
+        case ArgPair::Kind::PTR_TO_READABLE_MEM:
             // Do nothing. No side effect allowed.
             break;
 
-        case ArgPair::Kind::PTR_TO_UNINIT_MEM: {
+        case ArgPair::Kind::PTR_TO_WRITABLE_MEM: {
             bool store_numbers = true;
             variable_t addr = get_type_offset_variable(param.mem).value();
             variable_t width = reg_pack(param.size).value;

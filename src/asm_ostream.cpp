@@ -31,9 +31,9 @@ std::ostream& operator<<(std::ostream& os, ArgSingle::Kind kind) {
 
 std::ostream& operator<<(std::ostream& os, ArgPair::Kind kind) {
     switch (kind) {
-    case ArgPair::Kind::PTR_TO_MEM: return os << "mem";
-    case ArgPair::Kind::PTR_TO_MEM_OR_NULL: return os << "mem?";
-    case ArgPair::Kind::PTR_TO_UNINIT_MEM: return os << "out";
+    case ArgPair::Kind::PTR_TO_READABLE_MEM: return os << "mem";
+    case ArgPair::Kind::PTR_TO_READABLE_MEM_OR_NULL: return os << "mem?";
+    case ArgPair::Kind::PTR_TO_WRITABLE_MEM: return os << "out";
     }
     assert(false);
     return os;
@@ -137,7 +137,11 @@ std::ostream& operator<<(std::ostream& os, ValidAccess const& a) {
         // so it can be compared with another pointer to the same region.
         os << ") for comparison/subtraction";
     } else {
-        os << ", width=" << a.width << ")";
+        os << ", width=" << a.width << ") for ";
+        if (a.access_type == AccessType::read)
+            os << "read";
+        else
+            os << "write";
     }
     return os;
 }

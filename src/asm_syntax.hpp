@@ -159,9 +159,9 @@ struct ArgSingle {
 /// Pair of arguments to a function for pointer and size.
 struct ArgPair {
     enum class Kind {
-        PTR_TO_MEM,
-        PTR_TO_MEM_OR_NULL,
-        PTR_TO_UNINIT_MEM,
+        PTR_TO_READABLE_MEM,
+        PTR_TO_READABLE_MEM_OR_NULL,
+        PTR_TO_WRITABLE_MEM,
     } kind{};
     Reg mem;            ///< Pointer.
     Reg size;           ///< Size of space pointed to.
@@ -257,11 +257,18 @@ struct Addable {
     Reg num;
 };
 
+enum class AccessType {
+    compare,
+    read,  // Memory pointed to must be initialized.
+    write, // Memory pointed to must be writable.
+};
+
 struct ValidAccess {
     Reg reg;
     int offset{};
     Value width{Imm{0}};
     bool or_null{};
+    AccessType access_type{};
 };
 
 /// Condition check whether something is a valid key value.
@@ -295,9 +302,9 @@ struct Assert {
     Assert(AssertionConstraint cst): cst(cst) { }
 };
 
-#define DECLARE_EQ4(T, f1, f2, f3, f4)                                       \
-    inline bool operator==(T const& a, T const& b) {                         \
-        return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4; \
+#define DECLARE_EQ5(T, f1, f2, f3, f4, f5)                                                   \
+    inline bool operator==(T const& a, T const& b) {                                         \
+        return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4 && a.f5 == b.f5; \
     }
 #define DECLARE_EQ3(T, f1, f2, f3) \
     inline bool operator==(T const& a, T const& b) { return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3; }
@@ -362,7 +369,7 @@ DECLARE_EQ2(ValidSize, reg, can_be_zero)
 DECLARE_EQ2(Comparable, r1, r2)
 DECLARE_EQ2(Addable, ptr, num)
 DECLARE_EQ2(ValidStore, mem, val)
-DECLARE_EQ4(ValidAccess, reg, offset, width, or_null)
+DECLARE_EQ5(ValidAccess, reg, offset, width, or_null, access_type)
 DECLARE_EQ3(ValidMapKeyValue, access_reg, map_fd_reg, key)
 DECLARE_EQ1(ZeroCtxOffset, reg)
 DECLARE_EQ1(Assert, cst)

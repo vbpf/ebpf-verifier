@@ -286,9 +286,9 @@ struct Unmarshaller {
 
     static ArgPair::Kind toArgPairKind(ebpf_argument_type_t t) {
         switch (t) {
-        case EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL: return ArgPair::Kind::PTR_TO_MEM_OR_NULL;
-        case EBPF_ARGUMENT_TYPE_PTR_TO_MEM: return ArgPair::Kind::PTR_TO_MEM;
-        case EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM: return ArgPair::Kind::PTR_TO_UNINIT_MEM;
+        case EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM_OR_NULL: return ArgPair::Kind::PTR_TO_READABLE_MEM_OR_NULL;
+        case EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM: return ArgPair::Kind::PTR_TO_READABLE_MEM;
+        case EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM: return ArgPair::Kind::PTR_TO_WRITABLE_MEM;
         default: break;
         }
         return {};
@@ -328,9 +328,9 @@ struct Unmarshaller {
                 break;
             case EBPF_ARGUMENT_TYPE_CONST_SIZE: assert(false); continue;
             case EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO: assert(false); continue;
-            case EBPF_ARGUMENT_TYPE_PTR_TO_MEM_OR_NULL:
-            case EBPF_ARGUMENT_TYPE_PTR_TO_MEM:
-            case EBPF_ARGUMENT_TYPE_PTR_TO_UNINIT_MEM:
+            case EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM_OR_NULL:
+            case EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM:
+            case EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM:
                 bool can_be_zero = (args[i + 1] == EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO);
                 res.pairs.push_back({toArgPairKind(args[i]), Reg{(uint8_t)i}, Reg{(uint8_t)(i + 1)}, can_be_zero});
                 i++;
