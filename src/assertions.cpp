@@ -81,25 +81,25 @@ class AssertExtractor {
             }
         }
         for (ArgPair arg : call.pairs) {
+            res.emplace_back(TypeConstraint{arg.size, TypeGroup::number});
+            res.emplace_back(ValidSize{arg.size, arg.can_be_zero});
             switch (arg.kind) {
-            case ArgPair::Kind::PTR_TO_MEM_OR_NULL:
+            case ArgPair::Kind::PTR_TO_READABLE_MEM_OR_NULL:
                 res.emplace_back(TypeConstraint{arg.mem, TypeGroup::mem_or_num});
+                res.emplace_back(ValidAccess{arg.mem, 0, arg.size, true, AccessType::read});
                 break;
-            case ArgPair::Kind::PTR_TO_MEM:
-                /* LINUX: pointer to valid memory (stack, packet, map value) */
-                // TODO: check initialization
+            case ArgPair::Kind::PTR_TO_READABLE_MEM:
+                /* pointer to valid memory (stack, packet, map value) */
                 res.emplace_back(TypeConstraint{arg.mem, TypeGroup::mem});
+                res.emplace_back(ValidAccess{arg.mem, 0, arg.size, false, AccessType::read});
                 break;
-            case ArgPair::Kind::PTR_TO_UNINIT_MEM:
+            case ArgPair::Kind::PTR_TO_WRITABLE_MEM:
                 // memory may be uninitialized, i.e. write only
                 res.emplace_back(TypeConstraint{arg.mem, TypeGroup::mem});
+                res.emplace_back(ValidAccess{arg.mem, 0, arg.size, false, AccessType::write});
                 break;
             }
             // TODO: reg is constant (or maybe it's not important)
-            res.emplace_back(TypeConstraint{arg.size, TypeGroup::number});
-            res.emplace_back(ValidSize{arg.size, arg.can_be_zero});
-            res.emplace_back(ValidAccess{arg.mem, 0, arg.size,
-                                         arg.kind == ArgPair::Kind::PTR_TO_MEM_OR_NULL});
         }
         return res;
     }
@@ -146,11 +146,12 @@ class AssertExtractor {
             // We know we are accessing the stack.
             if (offset < -EBPF_STACK_SIZE || offset + (int)width.v >= 0) {
                 // This assertion will fail
-                res.emplace_back(ValidAccess{basereg, offset, width, false});
+                res.emplace_back(ValidAccess{basereg, offset, width, false, ins.is_load ? AccessType::read : AccessType::write});
             }
         } else {
             res.emplace_back(TypeConstraint{basereg, TypeGroup::pointer});
-            res.emplace_back(ValidAccess{basereg, offset, width, false});
+            res.emplace_back(
+                ValidAccess{basereg, offset, width, false, ins.is_load ? AccessType::read : AccessType::write});
             if (!info.type.is_privileged && !ins.is_load && std::holds_alternative<Reg>(ins.value)) {
                 if (width.v != 8)
                     res.emplace_back(TypeConstraint{reg(ins.value), TypeGroup::number});
