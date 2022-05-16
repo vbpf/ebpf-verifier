@@ -105,11 +105,8 @@ code:
 post:
   - r0.type=number
 
-# The above snippet currently succeeds, but ought to fail with the message below.
-# This is fixed in PR #336.
-#
-#messages:
-#  - "0: Stack content is not numeric (valid_access(r2.offset, width=r3) for read)"
+messages:
+  - "0: Stack content is not numeric (valid_access(r2.offset, width=r3) for read)"
 ---
 test-case: bpf_ringbuf_output with context value
 
