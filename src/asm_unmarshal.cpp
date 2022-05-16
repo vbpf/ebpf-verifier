@@ -461,3 +461,10 @@ std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog)
     vector<vector<string>> notes;
     return unmarshal(raw_prog, notes);
 }
+
+Call make_call(int imm, const ebpf_platform_t& platform)
+{
+    vector<vector<string>> notes;
+    program_info info{.platform = &platform};
+    return Unmarshaller{notes, info}.makeCall(imm);
+}

@@ -57,7 +57,7 @@ static type_encoding_t string_to_type_encoding(const string& s) {
     static map<string, type_encoding_t> string_to_type{
         {string("uninit"), T_UNINIT},
         {string("map_fd_programs"), T_MAP_PROGRAMS},
-        {string("map"), T_MAP},
+        {string("map_fd"), T_MAP},
         {string("number"), T_NUM},
         {string("ctx"), T_CTX},
         {string("stack"), T_STACK},

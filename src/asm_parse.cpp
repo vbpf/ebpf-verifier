@@ -9,6 +9,8 @@
 #include <boost/lexical_cast.hpp>
 
 #include "asm_parse.hpp"
+#include "asm_unmarshal.hpp"
+#include "platform.hpp"
 
 using std::regex;
 using std::regex_match;
@@ -104,7 +106,7 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
     }
     if (regex_match(text, m, regex("call " FUNC))) {
         int func = boost::lexical_cast<int>(m[1]);
-        return Call{.func = func};
+        return make_call(func, g_ebpf_platform_linux);
     }
     if (regex_match(text, m, regex(REG OPASSIGN REG))) {
         return Bin{.op = str_to_binop.at(m[2]), .dst = reg(m[1]), .v = reg(m[3]), .is64 = true, .lddw = false};

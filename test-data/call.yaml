@@ -1,0 +1,177 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+---
+test-case: bpf_map_lookup_elem
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=stack", "r2.stack_offset=504",
+      "s[504...511].type=number"]
+
+code:
+  <start>: |
+    call 1; bpf_map_lookup_elem
+
+post:
+  - r0.type=shared
+  - r0.shared_offset=0
+  - r0.shared_region_size=4
+  - r0.value=[0, 2147418112]
+  - s[504...511].type=number
+---
+test-case: bpf_map_lookup_elem with non-numeric stack key
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=stack"]
+
+code:
+  <start>: |
+    call 1; bpf_map_lookup_elem
+
+post:
+  - r0.type=shared
+  - r0.shared_offset=0
+  - r0.shared_region_size=4
+  - r0.value=[0, 2147418112]
+
+messages:
+  - "0: Illegal map update with a non-numerical value [-oo-oo) (within stack(r2:key_size(r1)))"
+---
+test-case: bpf_map_update_elem with non-numeric stack value
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=stack", "r2.stack_offset=504",
+      "r3.type=stack", "r3.stack_offset=496",
+      "r4.type=number",
+      "s[504...511].type=number"]
+
+code:
+  <start>: |
+    call 2; bpf_map_update_elem
+
+post:
+  - r0.type=number
+  - s[504...511].type=number
+
+messages:
+  - "0: Illegal map update with a non-numerical value [496-500) (within stack(r3:value_size(r1)))"
+---
+test-case: bpf_map_update_elem with context value
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=stack", "r2.stack_offset=504",
+      "r3.type=ctx", "r3.ctx_offset=0",
+      "r4.type=number",
+      "s[504...511].type=number"]
+
+code:
+  <start>: |
+    call 2; bpf_map_update_elem
+
+post:
+  - r0.type=number
+  - s[504...511].type=number
+
+messages:
+  - "0:  (r3.type in {stack, packet})"
+  - "0: Only stack or packet can be used as a parameter (within stack(r3:value_size(r1)))"
+---
+test-case: bpf_ringbuf_output with numeric stack value
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=stack", "r2.stack_offset=504",
+      "r3.type=number", "r3.value=8",
+      "r4.type=number",
+      "s[504...511].type=number"]
+
+code:
+  <start>: |
+    call 130; bpf_ringbuf_output
+
+post:
+  - r0.type=number
+  - s[504...511].type=number
+---
+test-case: bpf_ringbuf_output with non-numeric stack value
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=stack", "r2.stack_offset=504",
+      "r3.type=number", "r3.value=8",
+      "r4.type=number"]
+
+code:
+  <start>: |
+    call 130; bpf_ringbuf_output
+
+post:
+  - r0.type=number
+
+# The above snippet currently succeeds, but ought to fail with the message below.
+# This is fixed in PR #336.
+#
+#messages:
+#  - "0: Stack content is not numeric (valid_access(r2.offset, width=r3) for read)"
+---
+test-case: bpf_ringbuf_output with context value
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=ctx", "r2.ctx_offset=0",
+      "r3.type=number", "r3.value=8",
+      "r4.type=number",
+      "s[504...511].type=number"]
+
+code:
+  <start>: |
+    call 130; bpf_ringbuf_output
+
+post:
+  - r0.type=number
+  - s[504...511].type=number
+
+messages:
+  - "0:  (r2.type in {stack, packet, shared})"
+---
+test-case: bpf_get_stack
+
+pre: ["r1.type=ctx", "r1.ctx_offset=0",
+      "r2.type=stack", "r2.stack_offset=504",
+      "r3.type=number", "r3.value=8",
+      "r4.type=number"]
+
+code:
+  <start>: |
+    call 67; bpf_get_stack
+
+post:
+  - r0.type=number
+  - s[504...511].type=number
+---
+test-case: bpf_get_stack overwriting ctx
+
+pre: ["r1.type=ctx", "r1.ctx_offset=0",
+      "r2.type=ctx", "r2.ctx_offset=0",
+      "r3.type=number", "r3.value=8",
+      "r4.type=number"]
+
+code:
+  <start>: |
+    call 67; bpf_get_stack
+
+post:
+  - r0.type=number
+
+messages:
+  - "0:  (r2.type in {stack, packet, shared})"
+---
+test-case: bpf_get_stack writing into shared memory
+
+pre: ["r1.type=ctx", "r1.ctx_offset=0",
+      "r2.type=shared", "r2.shared_offset=0", "r2.shared_region_size=64", "r2.value=[1, 2147418112]",
+      "r3.type=number", "r3.value=64",
+      "r4.type=number"]
+
+code:
+  <start>: |
+    call 67; bpf_get_stack, doesn't this leak pointers into the shared memory?
+
+post:
+  - r0.type=number

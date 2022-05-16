@@ -42,9 +42,9 @@ static void ebpf_parse_maps_section(vector<EbpfMapDescriptor>& map_descriptors, 
 static EbpfMapDescriptor test_map_descriptor = {
     .original_fd=0,
     .type=0,
-    .key_size=0,
-    .value_size=0,
-    .max_entries=0,
+    .key_size=sizeof(uint32_t),
+    .value_size=sizeof(uint32_t),
+    .max_entries=4,
     .inner_map_fd=0
 };
 
