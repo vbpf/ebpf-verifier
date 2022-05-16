@@ -21,3 +21,4 @@
  */
 std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, std::vector<std::vector<std::string>>& notes);
 std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog);
+Call make_call(int func, const ebpf_platform_t& platform);
