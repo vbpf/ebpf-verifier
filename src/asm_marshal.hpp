@@ -8,3 +8,4 @@
 
 std::vector<ebpf_inst> marshal(const Instruction& ins, pc_t pc);
 // TODO marshal to ostream?
+std::vector<ebpf_inst> marshal(const std::vector<Instruction>& insts);
