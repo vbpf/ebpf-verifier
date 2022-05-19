@@ -1,3 +1,5 @@
+[![Coverage Status](https://coveralls.io/repos/github/vbpf/ebpf-verifier/badge.svg?branch=main)](https://coveralls.io/github/vbpf/ebpf-verifier?branch=main)[![CodeQL](https://github.com/vbpf/ebpf-verifier/actions/workflows/codeql-analysis.yml/badge.svg?branch=main)](https://github.com/vbpf/ebpf-verifier/actions/workflows/codeql-analysis.yml)
+
 # PREVAIL
 ## a Polynomial-Runtime EBPF Verifier using an Abstract Interpretation Layer
 
