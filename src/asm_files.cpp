@@ -24,6 +24,7 @@ static vector<T> vector_of(const ELFIO::section& sec) {
     auto data = sec.get_data();
     auto size = sec.get_size();
     assert(size % sizeof(T) == 0);
+    assert(size <= UINT32_MAX);
     return {(T*)data, (T*)(data + size)};
 }
 
@@ -110,7 +111,12 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
     program_info info{platform};
     std::set<ELFIO::Elf_Half> map_section_indices;
 
-    ELFIO::const_symbol_section_accessor symbols{reader, reader.sections[".symtab"]};
+    auto symbol_section = reader.sections["symtab"];
+    if (!symbol_section) {
+        throw std::runtime_error(string("No symbol section found in ELF file ") + path);
+    }
+
+    ELFIO::const_symbol_section_accessor symbols{reader, symbol_section};
     size_t map_record_size = parse_map_sections(options, platform, reader, info.map_descriptors, map_section_indices, symbols);
 
     auto read_reloc_value = [&symbols,platform,map_record_size](ELFIO::Elf_Word symbol) -> size_t {
