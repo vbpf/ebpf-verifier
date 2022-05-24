@@ -111,7 +111,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
     program_info info{platform};
     std::set<ELFIO::Elf_Half> map_section_indices;
 
-    auto symbol_section = reader.sections["symtab"];
+    auto symbol_section = reader.sections[".symtab"];
     if (!symbol_section) {
         throw std::runtime_error(string("No symbol section found in ELF file ") + path);
     }
