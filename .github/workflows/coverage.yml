@@ -42,16 +42,8 @@ jobs:
       - name: Generate code coverage report
         run: |
           cd build
-          gcovr -r .. -e '../external/.*' -e '../src/test/.*' --cobertura ../ebpf-verifier.xml --gcov-ignore-parse-errors --exclude-unreachable-branches
           mkdir ../coverage
           lcov --capture --directory . --output-file ../coverage/lcov.info
-
-      - name: Upload Report to Codecov
-        uses: codecov/codecov-action@81cd2dc8148241f03f5839d295e000b8f761e378
-        with:
-          files: ebpf-verifier.xml
-          fail_ci_if_error: true
-          functionalities: fix
 
       - name: Coveralls Parallel
         uses: coverallsapp/github-action@master
