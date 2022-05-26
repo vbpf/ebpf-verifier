@@ -23,8 +23,9 @@ template <typename T>
 static vector<T> vector_of(const ELFIO::section& sec) {
     auto data = sec.get_data();
     auto size = sec.get_size();
-    assert(size % sizeof(T) == 0);
-    assert(size <= UINT32_MAX);
+    if ((size % sizeof(T) != 0) || size > UINT32_MAX || !data) {
+        throw std::runtime_error("Invalid argument to vector_of");
+    }
     return {(T*)data, (T*)(data + size)};
 }
 
@@ -78,6 +79,9 @@ static size_t parse_map_sections(const ebpf_verifier_options_t* options, const e
 
         if (map_count > 0) {
             map_record_size = s->get_size() / map_count;
+            if (s->get_data() == nullptr) {
+                throw std::runtime_error(std::string("bad maps section"));
+            }
             if (s->get_size() % map_record_size != 0) {
                 throw std::runtime_error(std::string("bad maps section size"));
             }
@@ -144,7 +148,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
             continue;
         }
         info.type = platform->get_program_type(name, path);
-        if (section->get_size() == 0)
+        if ((section->get_size() == 0) || (section->get_data() == nullptr))
             continue;
         raw_program prog{path, name, vector_of<ebpf_inst>(*section), info};
         auto prelocs = reader.sections[string(".rel") + name];
@@ -152,6 +156,9 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
             prelocs = reader.sections[string(".rela") + name];
 
         if (prelocs) {
+            if (!prelocs->get_data()) {
+                throw std::runtime_error("Malformed relocation data");
+            }
             ELFIO::const_relocation_section_accessor reloc{reader, prelocs};
             ELFIO::Elf64_Addr offset;
             ELFIO::Elf_Word symbol{};
@@ -169,6 +176,9 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
             for (ELFIO::Elf_Xword i = 0; i < relocation_count; i++) {
                 if (reloc.get_entry(i, offset, symbol, type, addend)) {
+                    if ((offset / sizeof(ebpf_inst)) >= prog.prog.size()) {
+                        throw std::runtime_error("Invalid relocation data");
+                    }
                     ebpf_inst& inst = prog.prog[offset / sizeof(ebpf_inst)];
 
                     string symbol_name;
@@ -224,6 +234,9 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                 return;
             }
             auto& program = program_iter->second;
+            if ((instruction_offset / sizeof(ebpf_inst)) >= program.line_info.size()) {
+                throw std::runtime_error("Invalid BTF data");
+            }
             program.line_info[instruction_offset / sizeof(ebpf_inst)] = {file_name, source, line_number, column_number};
         };
 
