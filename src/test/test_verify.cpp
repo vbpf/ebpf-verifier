@@ -29,6 +29,7 @@ FAIL_LOAD_ELF("build", "badrelo.o", ".text")
 
 // Some intentional unmarshal failures
 FAIL_UNMARSHAL("build", "wronghelper.o", "xdp")
+FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
 
 #define VERIFY_SECTION(dirname, filename, sectionname, options, pass) \
     do { \
