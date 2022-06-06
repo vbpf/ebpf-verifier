@@ -248,7 +248,7 @@ struct Unmarshaller {
 
     auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& insts, pc_t pc) -> Instruction {
         if (pc >= insts.size() - 1)
-            note("incomplete LDDW");
+            throw InvalidInstruction(pc, "incomplete LDDW");
         if (inst.src > 1 || inst.dst > R10_STACK_POINTER || inst.offset != 0)
             note("LDDW uses reserved fields");
 
