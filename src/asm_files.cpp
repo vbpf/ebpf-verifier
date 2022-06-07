@@ -120,6 +120,13 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         throw std::runtime_error(string("No symbol section found in ELF file ") + path);
     }
 
+    // Make sure the ELFIO library will be able to parse the symbol section correctly.
+    auto expected_entry_size =
+        (reader.get_class() == ELFIO::ELFCLASS32) ? sizeof(ELFIO::Elf32_Sym) : sizeof(ELFIO::Elf64_Sym);
+    if (symbol_section->get_entry_size() != expected_entry_size) {
+        throw std::runtime_error(string("Invalid symbol section found in ELF file ") + path);
+    }
+
     ELFIO::const_symbol_section_accessor symbols{reader, symbol_section};
     size_t map_record_size = parse_map_sections(options, platform, reader, info.map_descriptors, map_section_indices, symbols);
 
