@@ -17,6 +17,7 @@
 FAIL_LOAD_ELF("cilium", "not-found.o", "2/1")
 FAIL_LOAD_ELF("cilium", "bpf_lxc.o", "not-found")
 FAIL_LOAD_ELF("build", "badrelo.o", ".text")
+FAIL_LOAD_ELF("invalid", "badsymsize.o", "xdp_redirect_map")
 
 #define FAIL_UNMARSHAL(dirname, filename, sectionname) \
     TEST_CASE("Try unmarshalling bad program: " dirname "/" filename, "[unmarshal]") { \
