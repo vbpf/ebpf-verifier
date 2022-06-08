@@ -36,12 +36,15 @@ void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vect
     }
 
     for (size_t offset = string_table_start; offset < string_table_end;) {
-        std::string value(reinterpret_cast<const char*>(btf.data()) + offset);
+        const char* string_start = reinterpret_cast<const char*>(btf.data()) + offset;
+        size_t string_length = strnlen(string_start, btf.size() - offset);
+        std::string value(string_start, string_length);
         size_t string_offset =
             offset - static_cast<size_t>(btf_header->str_off) - static_cast<size_t>(btf_header->hdr_len);
         offset += value.size() + 1;
         string_table.insert(std::make_pair(string_offset, value));
     }
+
     auto bpf_ext_header = reinterpret_cast<const btf_ext_header_t*>(btf_ext.data());
     if (bpf_ext_header->magic != BTF_HEADER_MAGIC) {
         throw std::runtime_error("Invalid .BTF.ext section - wrong magic");
