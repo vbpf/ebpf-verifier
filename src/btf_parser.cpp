@@ -12,6 +12,9 @@ void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vect
                                 btf_line_info_visitor visitor) {
     std::map<size_t, std::string> string_table;
 
+    if (btf.size() < sizeof(btf_header_t)) {
+        throw std::runtime_error("Invalid .BTF section - section too small");
+    }
     auto btf_header = reinterpret_cast<const btf_header_t*>(btf.data());
     if (btf_header->magic != BTF_HEADER_MAGIC) {
         throw std::runtime_error("Invalid .BTF section - wrong magic");
@@ -45,6 +48,9 @@ void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vect
         string_table.insert(std::make_pair(string_offset, value));
     }
 
+    if (btf_ext.size() < sizeof(btf_ext_header_t)) {
+        throw std::runtime_error("Invalid .BTF.ext section - section too small");
+    }
     auto bpf_ext_header = reinterpret_cast<const btf_ext_header_t*>(btf_ext.data());
     if (bpf_ext_header->magic != BTF_HEADER_MAGIC) {
         throw std::runtime_error("Invalid .BTF.ext section - wrong magic");
