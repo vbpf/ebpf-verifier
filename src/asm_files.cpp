@@ -79,7 +79,7 @@ static size_t parse_map_sections(const ebpf_verifier_options_t* options, const e
 
         if (map_count > 0) {
             map_record_size = s->get_size() / map_count;
-            if (s->get_data() == nullptr) {
+            if ((s->get_data() == nullptr) || (s->get_size() == 0)) {
                 throw std::runtime_error(std::string("bad maps section"));
             }
             if (s->get_size() % map_record_size != 0) {
