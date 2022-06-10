@@ -169,7 +169,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
             ELFIO::const_relocation_section_accessor reloc{reader, prelocs};
             ELFIO::Elf64_Addr offset;
             ELFIO::Elf_Word symbol{};
-            unsigned char type;
+            unsigned type;
             ELFIO::Elf_Sxword addend;
             // Fetch and store relocation count locally to permit static
             // analysis tools to correctly reason about the code below.
