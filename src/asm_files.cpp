@@ -154,9 +154,9 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         if (name != ".text" && name.find('.') == 0) {
             continue;
         }
-        info.type = platform->get_program_type(name, path);
         if ((section->get_size() == 0) || (section->get_data() == nullptr))
             continue;
+        info.type = platform->get_program_type(name, path);
         raw_program prog{path, name, vector_of<ebpf_inst>(*section), info};
         auto prelocs = reader.sections[string(".rel") + name];
         if (!prelocs)
