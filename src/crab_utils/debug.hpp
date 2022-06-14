@@ -32,7 +32,7 @@ extern unsigned CrabVerbosity;
     } while (0)
 
 template <typename... ArgTypes>
-inline void ___print___(ArgTypes... args) {
+inline void ___print___(std::ostream& os, ArgTypes... args) {
     // trick to expand variadic argument pack without recursion
     using expand_variadic_pack = int[];
     // first zero is to prevent empty braced-init-list
@@ -40,27 +40,28 @@ inline void ___print___(ArgTypes... args) {
     // trick is to use the side effect of list-initializer to call a function
     // on every argument.
     // (void) is to suppress "statement has no effect" warnings
-    (void)expand_variadic_pack{0, ((std::cerr << args), void(), 0)...};
+    (void)expand_variadic_pack{0, ((os << args), void(), 0)...};
 }
 
-#define CRAB_ERROR(...)              \
-    do {                             \
-        std::cerr << "CRAB ERROR: "; \
-        ___print___(__VA_ARGS__);    \
-        std::cerr << "\n";           \
-        std::exit(EXIT_FAILURE);     \
+#define CRAB_ERROR(...)                     \
+    do {                                    \
+        std::ostringstream os;              \
+        os << "CRAB ERROR: ";               \
+        ___print___(os, __VA_ARGS__);       \
+        os << "\n";                         \
+        throw std::runtime_error(os.str()); \
     } while (0)
 
 extern bool CrabWarningFlag;
 void CrabEnableWarningMsg(bool b);
 
-#define CRAB_WARN(...)                     \
-    do {                                   \
-        if (crab::CrabWarningFlag) {       \
-            std::cerr << "CRAB WARNING: "; \
-            ___print___(__VA_ARGS__);      \
-            std::cerr << "\n";             \
-        }                                  \
+#define CRAB_WARN(...)                           \
+    do {                                         \
+        if (crab::CrabWarningFlag) {             \
+            std::cerr << "CRAB WARNING: ";       \
+            ___print___(std::cerr, __VA_ARGS__); \
+            std::cerr << "\n";                   \
+        }                                        \
     } while (0)
 
 constexpr bool CrabSanityCheckFlag = false;
