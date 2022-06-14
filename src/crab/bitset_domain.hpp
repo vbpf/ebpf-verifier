@@ -63,6 +63,9 @@ class bitset_domain_t final {
         bool only_num = true;
         bool only_non_num = true;
         for (int j = 0; j < width; j++) {
+            if (lb + j >= non_numerical_bytes.size()) {
+                throw std::runtime_error("bitset index out of range");
+            }
             bool b = non_numerical_bytes[lb + j];
             only_num &= !b;
             only_non_num &= b;

@@ -47,7 +47,7 @@ inline void ___print___(std::ostream& os, ArgTypes... args) {
     do {                                    \
         std::ostringstream os;              \
         os << "CRAB ERROR: ";               \
-        ___print___(os, __VA_ARGS__);       \
+        crab::___print___(os, __VA_ARGS__); \
         os << "\n";                         \
         throw std::runtime_error(os.str()); \
     } while (0)
