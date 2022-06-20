@@ -1,6 +1,18 @@
 # Copyright (c) Prevail Verifier contributors.
 # SPDX-License-Identifier: MIT
 ---
+test-case: subtract a register from itself
+
+pre: ["r1.type=number"]
+
+code:
+  <start>: |
+    r1 -= r1
+
+post:
+  - r1.type=number
+  - r1.value=0
+---
 test-case: allow subtraction of packet pointers
 
 pre: ["r2.type=packet", "r2.packet_offset=4", "meta_offset=-4", "packet_size=[16,32]",

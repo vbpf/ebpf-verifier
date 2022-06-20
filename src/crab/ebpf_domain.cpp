@@ -1534,6 +1534,10 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                                               dst.stack_numeric_size, src.value, false);
                                 }
                             }
+                        } else if (dst_type == T_NUM && src_type == T_NUM) {
+                            // dst and src don't necessarily have the same type, but among the possibilities
+                            // enumerated is the case where they are both numbers.
+                            apply(inv, crab::arith_binop_t::ADD, dst.value, dst.value, src.value, true);
                         } else {
                             // We ignore the cases here that do not match the assumption described
                             // above.  Joining bottom with another results will leave the other
