@@ -35,7 +35,11 @@ class linear_expression_t final {
     linear_expression_t(signed long long int coefficient) : _constant_term(coefficient) {}
     linear_expression_t(number_t coefficient) : _constant_term(std::move(coefficient)) {}
     linear_expression_t(const variable_t& variable) { _variable_terms[variable] = 1; }
-    linear_expression_t(const number_t& coefficient, const variable_t& variable) { _variable_terms[variable] = coefficient; }
+    linear_expression_t(const number_t& coefficient, const variable_t& variable) {
+        if (coefficient != 0) {
+            _variable_terms[variable] = coefficient;
+        }
+    }
     linear_expression_t(variable_terms_t variable_terms, number_t constant_term)
             : _constant_term(std::move(constant_term)) {
         for (const auto& [variable, coefficient] : variable_terms) {
