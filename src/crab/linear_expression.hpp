@@ -101,7 +101,7 @@ class linear_expression_t final {
     [[nodiscard]] linear_expression_t operator-(const variable_t& variable) const {
         variable_terms_t variable_terms = _variable_terms;
         number_t new_coefficient = coefficient_of(variable) - 1;
-        if (!new_coefficient.fits_sint() || ((int)new_coefficient) != 0) {
+        if (new_coefficient != 0) {
             variable_terms[variable] = new_coefficient;
         } else {
             variable_terms.erase(variable);
@@ -116,6 +116,8 @@ class linear_expression_t final {
             number_t new_coefficient = coefficient_of(variable) - coefficient;
             if (new_coefficient != 0) {
                 variable_terms[variable] = new_coefficient;
+            } else {
+                variable_terms.erase(variable);
             }
         }
         return linear_expression_t(variable_terms, _constant_term - expression.constant_term());
