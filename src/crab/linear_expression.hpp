@@ -37,8 +37,13 @@ class linear_expression_t final {
     linear_expression_t(const variable_t& variable) { _variable_terms[variable] = 1; }
     linear_expression_t(const number_t& coefficient, const variable_t& variable) { _variable_terms[variable] = coefficient; }
     linear_expression_t(variable_terms_t variable_terms, number_t constant_term)
-            : _variable_terms(std::move(variable_terms)),
-              _constant_term(std::move(constant_term)) {}
+            : _constant_term(std::move(constant_term)) {
+        for (const auto& [variable, coefficient] : variable_terms) {
+            if (coefficient != 0) {
+                _variable_terms.emplace(variable, coefficient);
+            }
+        }
+    }
 
     // Allow a caller to access individual terms.
     [[nodiscard]] const variable_terms_t& variable_terms() const { return _variable_terms; }
@@ -67,10 +72,7 @@ class linear_expression_t final {
     // Add a variable (with coefficient of 1) to a linear expression.
     [[nodiscard]] linear_expression_t operator+(const variable_t& variable) const {
         variable_terms_t variable_terms = _variable_terms;
-        number_t new_coefficient = coefficient_of(variable) + 1;
-        if (new_coefficient != 0) {
-            variable_terms[variable] = new_coefficient;
-        }
+        variable_terms[variable] = coefficient_of(variable) + 1;
         return linear_expression_t(variable_terms, _constant_term);
     }
 
@@ -78,10 +80,7 @@ class linear_expression_t final {
     [[nodiscard]] linear_expression_t operator+(const linear_expression_t& expression) const {
         variable_terms_t variable_terms = _variable_terms;
         for (const auto& [variable, coefficient] : expression.variable_terms()) {
-            number_t new_coefficient = coefficient_of(variable) + coefficient;
-            if (new_coefficient != 0) {
-                variable_terms[variable] = new_coefficient;
-            }
+            variable_terms[variable] = coefficient_of(variable) + coefficient;
         }
         return linear_expression_t(variable_terms, _constant_term + expression.constant_term());
     }
@@ -100,12 +99,7 @@ class linear_expression_t final {
     // Subtract a variable (with coefficient of 1) from a linear expression.
     [[nodiscard]] linear_expression_t operator-(const variable_t& variable) const {
         variable_terms_t variable_terms = _variable_terms;
-        number_t new_coefficient = coefficient_of(variable) - 1;
-        if (new_coefficient != 0) {
-            variable_terms[variable] = new_coefficient;
-        } else {
-            variable_terms.erase(variable);
-        }
+        variable_terms[variable] = coefficient_of(variable) - 1;
         return linear_expression_t(variable_terms, _constant_term);
     }
 
@@ -113,12 +107,7 @@ class linear_expression_t final {
     [[nodiscard]] linear_expression_t operator-(const linear_expression_t& expression) const {
         variable_terms_t variable_terms = _variable_terms;
         for (const auto& [variable, coefficient] : expression.variable_terms()) {
-            number_t new_coefficient = coefficient_of(variable) - coefficient;
-            if (new_coefficient != 0) {
-                variable_terms[variable] = new_coefficient;
-            } else {
-                variable_terms.erase(variable);
-            }
+            variable_terms[variable] = coefficient_of(variable) - coefficient;
         }
         return linear_expression_t(variable_terms, _constant_term - expression.constant_term());
     }
