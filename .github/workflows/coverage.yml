@@ -37,13 +37,12 @@ jobs:
           cmake --build build -j $(nproc)
 
       - name: Run unit tests
-        run: ./tests -d yes
+        run: ./tests --abort --reporter compact
 
       - name: Generate code coverage report
         run: |
-          cd build
-          mkdir ../coverage
-          lcov --capture --directory . --output-file ../coverage/lcov.info
+          mkdir coverage
+          lcov --capture --directory build --include '*/ebpf-verifier/src/*' --output-file coverage/lcov.info
 
       - name: Coveralls Parallel
         uses: coverallsapp/github-action@master
