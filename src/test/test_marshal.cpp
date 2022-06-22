@@ -17,6 +17,13 @@ static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = 
     REQUIRE(single == ins);
 }
 
+static void check_marshal_unmarshal_fail(const Instruction& ins, std::string expected_error_message) {
+    program_info info{.platform = &g_ebpf_platform_linux,
+                      .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")};
+    std::string error_message = std::get<std::string>(unmarshal(raw_program{"", "", marshal(ins, 0), info}));
+    REQUIRE(error_message == expected_error_message);
+}
+
 static const auto ws = {1, 2, 4, 8};
 
 TEST_CASE("disasm_marshal", "[disasm][marshal]") {
@@ -67,12 +74,18 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
             for (auto op : ops) {
                 Condition cond{.op = op, .left = Reg{1}, .right = Reg{2}};
                 compare_marshal_unmarshal(Jmp{.cond = cond, .target = label_t(0)});
+
+                // The following should fail unmarshalling since it jumps past the end of the instruction set.
+                check_marshal_unmarshal_fail(Jmp{.cond = cond, .target = label_t(1)}, "0: jump out of bounds\n");
             }
         }
         SECTION("Imm right") {
             for (auto op : ops) {
                 Condition cond{.op = op, .left = Reg{1}, .right = Imm{2}};
                 compare_marshal_unmarshal(Jmp{.cond = cond, .target = label_t(0)});
+
+                // The following should fail unmarshalling since it jumps past the end of the instruction set.
+                check_marshal_unmarshal_fail(Jmp{.cond = cond, .target = label_t(1)}, "0: jump out of bounds\n");
             }
         }
     }
