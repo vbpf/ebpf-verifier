@@ -22,6 +22,7 @@
 YAML_CASE("test-data/assign.yaml")
 YAML_CASE("test-data/add.yaml")
 YAML_CASE("test-data/call.yaml")
+YAML_CASE("test-data/divmod.yaml")
 YAML_CASE("test-data/subtract.yaml")
 YAML_CASE("test-data/unop.yaml")
 YAML_CASE("test-data/jump.yaml")
