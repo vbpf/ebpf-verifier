@@ -81,6 +81,34 @@ post:
   - r2.type=number
   - r2.value=[-5, 5]
 ---
+test-case: non-zero divided by possibly zero register 2
+
+pre: ["r1.type=number", "r1.value=6", "r2.type=number", "r2.value=[-5, 0]"]
+
+code:
+  <start>: |
+    r1 /= r2  ; this could divide by 0
+
+post:
+  - r1.type=number
+  - r1.value=[-6, -1]
+  - r2.type=number
+  - r2.value=[-5, 0]
+---
+test-case: zero divided by possibly zero register 2
+
+pre: ["r1.type=number", "r1.value=0", "r2.type=number", "r2.value=[-5, 0]"]
+
+code:
+  <start>: |
+    r1 /= r2 ; this could divide by 0 but ok to set to 0
+
+post:
+  - r1.type=number
+  - r1.value=0
+  - r2.type=number
+  - r2.value=[-5, 0]
+---
 test-case: non-zero divided by undefined value register
 
 pre: ["r1.type=number", "r1.value=6", "r2.type=number"]
@@ -185,6 +213,34 @@ post:
   - r1.value=[0, 4]
   - r2.type=number
   - r2.value=[-5, 5]
+---
+test-case: non-zero modulo possibly zero register 2
+
+pre: ["r1.type=number", "r1.value=6", "r2.type=number", "r2.value=[-5, 0]"]
+
+code:
+  <start>: |
+    r1 %= r2 ; this could do modulo 0 so could set r1 = r2
+
+post:
+  - r1.type=number
+  - r1.value=[0, 4]
+  - r2.type=number
+  - r2.value=[-5, 0]
+---
+test-case: zero modulo possibly zero register 2
+
+pre: ["r1.type=number", "r1.value=0", "r2.type=number", "r2.value=[-5, 0]"]
+
+code:
+  <start>: |
+    r1 %= r2 ; this could do modulo 0 so could set r1 = r2
+
+post:
+  - r1.type=number
+  - r1.value=[0, 4]
+  - r2.type=number
+  - r2.value=[-5, 0]
 ---
 test-case: non-zero modulo undefined value register
 
