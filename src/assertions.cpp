@@ -206,6 +206,14 @@ class AssertExtractor {
                     Assert{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}}
                 };
             }
+        case Bin::Op::DIV:
+        case Bin::Op::MOD:
+            if (std::holds_alternative<Reg>(ins.v)) {
+                auto src = reg(ins.v);
+                return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}, Assert{NonZeroNumber{src}}};
+            } else {
+                return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}};
+            }
         default:
             return { Assert{TypeConstraint{ins.dst, TypeGroup::number}} };
         }
