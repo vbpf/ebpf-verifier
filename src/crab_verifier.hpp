@@ -25,8 +25,7 @@ ebpf_analyze_program_for_test(
     const InstructionSeq& prog,
     const string_invariant& entry_invariant,
     const program_info& info,
-    bool no_simplify,
-    bool check_termination);
+    const ebpf_verifier_options_t& options);
 
 int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries, ebpf_verifier_options_t options);
 

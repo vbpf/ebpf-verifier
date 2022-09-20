@@ -717,12 +717,13 @@ void ebpf_domain_t::operator()(const Addable& s) {
         require(m_inv, linear_constraint_t::FALSE(), "Only numbers can be added to pointers");
 }
 
-void ebpf_domain_t::operator()(const NonZeroNumber& s) {
+void ebpf_domain_t::operator()(const ValidDivisor& s) {
     using namespace crab::dsl_syntax;
     auto reg = reg_pack(s.reg);
     if (!type_inv.implies_type(m_inv, type_is_pointer(reg), type_is_number(s.reg)))
         require(m_inv, linear_constraint_t::FALSE(), "Only numbers can be used as divisors");
-    require(m_inv, reg.value != 0, "Possible division by zero");
+    if (!thread_local_options.allow_division_by_zero)
+        require(m_inv, reg.value != 0, "Possible division by zero");
 }
 
 void ebpf_domain_t::operator()(const ValidStore& s) {

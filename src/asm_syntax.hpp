@@ -258,7 +258,7 @@ struct Addable {
 };
 
 // Condition check whether a register contains a non-zero number.
-struct NonZeroNumber {
+struct ValidDivisor {
     Reg reg;
 };
 
@@ -300,7 +300,7 @@ struct ZeroCtxOffset {
 };
 
 using AssertionConstraint =
-    std::variant<Comparable, Addable, NonZeroNumber, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint, ZeroCtxOffset>;
+    std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint, ZeroCtxOffset>;
 
 struct Assert {
     AssertionConstraint cst;
@@ -373,7 +373,7 @@ DECLARE_EQ2(TypeConstraint, reg, types)
 DECLARE_EQ2(ValidSize, reg, can_be_zero)
 DECLARE_EQ2(Comparable, r1, r2)
 DECLARE_EQ2(Addable, ptr, num)
-DECLARE_EQ1(NonZeroNumber, reg)
+DECLARE_EQ1(ValidDivisor, reg)
 DECLARE_EQ2(ValidStore, mem, val)
 DECLARE_EQ5(ValidAccess, reg, offset, width, or_null, access_type)
 DECLARE_EQ3(ValidMapKeyValue, access_reg, map_fd_reg, key)
