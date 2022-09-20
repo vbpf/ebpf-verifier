@@ -174,7 +174,7 @@ std::ostream& operator<<(std::ostream& os, Addable const& a) {
     return os << TypeConstraint{a.ptr, TypeGroup::pointer} << " -> " << TypeConstraint{a.num, TypeGroup::number};
 }
 
-std::ostream& operator<<(std::ostream& os, NonZeroNumber const& a) {
+std::ostream& operator<<(std::ostream& os, ValidDivisor const& a) {
     return os << a.reg << " != 0";
 }
 

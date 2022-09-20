@@ -9,6 +9,7 @@
 
 struct TestCase {
     std::string name;
+    ebpf_verifier_options_t options;
     string_invariant assumed_pre_invariant;
     InstructionSeq instruction_seq;
     string_invariant expected_post_invariant;

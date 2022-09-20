@@ -241,7 +241,7 @@ struct Unmarshaller {
                                              .v = getBinValue(pc, inst),
                                              .is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64,
                                          };
-                                         if (op == Bin::Op::DIV || op == Bin::Op::MOD)
+                                         if (!thread_local_options.allow_division_by_zero && (op == Bin::Op::DIV || op == Bin::Op::MOD))
                                              if (std::holds_alternative<Imm>(res.v) && std::get<Imm>(res.v).v == 0)
                                                  note("division by zero");
                                          return res;

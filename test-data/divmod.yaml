@@ -58,6 +58,22 @@ post:
 messages:
   - "0: Possible division by zero (r2 != 0)"
 ---
+test-case: non-zero divided by zero register without warning
+
+options: ["allow_division_by_zero"]
+
+pre: ["r1.type=number", "r1.value=6", "r2.type=number", "r2.value=0"]
+
+code:
+  <start>: |
+    r1 /= r2
+
+post:
+  - r1.type=number
+  - r1.value=0
+  - r2.type=number
+  - r2.value=0
+---
 test-case: zero divided by zero register
 
 pre: ["r1.type=number", "r1.value=0", "r2.type=number", "r2.value=0"]
@@ -214,6 +230,22 @@ post:
 
 messages:
   - "0: Possible division by zero (r2 != 0)"
+---
+test-case: non-zero modulo zero register without warning
+
+options: ["allow_division_by_zero"]
+
+pre: ["r1.type=number", "r1.value=-6", "r2.type=number", "r2.value=0"]
+
+code:
+  <start>: |
+    r1 %= r2
+
+post:
+  - r1.type=number
+  - r1.value=-6
+  - r2.type=number
+  - r2.value=0
 ---
 test-case: zero modulo zero register
 
