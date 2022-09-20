@@ -45,6 +45,8 @@ test-case: non-zero divided by zero register
 
 pre: ["r1.type=number", "r1.value=6", "r2.type=number", "r2.value=0"]
 
+options: ["!allow_division_by_zero"]
+
 code:
   <start>: |
     r1 /= r2
@@ -59,8 +61,6 @@ messages:
   - "0: Possible division by zero (r2 != 0)"
 ---
 test-case: non-zero divided by zero register without warning
-
-options: ["allow_division_by_zero"]
 
 pre: ["r1.type=number", "r1.value=6", "r2.type=number", "r2.value=0"]
 
@@ -77,6 +77,8 @@ post:
 test-case: zero divided by zero register
 
 pre: ["r1.type=number", "r1.value=0", "r2.type=number", "r2.value=0"]
+
+options: ["!allow_division_by_zero"]
 
 code:
   <start>: |
@@ -95,6 +97,8 @@ test-case: non-zero divided by possibly zero register
 
 pre: ["r1.type=number", "r1.value=6", "r2.type=number", "r2.value=[-5, 5]"]
 
+options: ["!allow_division_by_zero"]
+
 code:
   <start>: |
     r1 /= r2  ; this could divide by 0
@@ -111,6 +115,8 @@ messages:
 test-case: zero divided by possibly zero register
 
 pre: ["r1.type=number", "r1.value=0", "r2.type=number", "r2.value=[-5, 5]"]
+
+options: ["!allow_division_by_zero"]
 
 code:
   <start>: |
@@ -129,6 +135,8 @@ test-case: non-zero divided by possibly zero register 2
 
 pre: ["r1.type=number", "r1.value=6", "r2.type=number", "r2.value=[-5, 0]"]
 
+options: ["!allow_division_by_zero"]
+
 code:
   <start>: |
     r1 /= r2  ; this could divide by 0
@@ -143,6 +151,8 @@ messages:
   - "0: Possible division by zero (r2 != 0)"
 ---
 test-case: zero divided by possibly zero register 2
+
+options: ["!allow_division_by_zero"]
 
 pre: ["r1.type=number", "r1.value=0", "r2.type=number", "r2.value=[-5, 0]"]
 
@@ -161,6 +171,8 @@ messages:
 ---
 test-case: non-zero divided by undefined value register
 
+options: ["!allow_division_by_zero"]
+
 pre: ["r1.type=number", "r1.value=6", "r2.type=number"]
 
 code:
@@ -175,6 +187,8 @@ messages:
   - "0: Possible division by zero (r2 != 0)"
 ---
 test-case: zero divided by undefined value register
+
+options: ["!allow_division_by_zero"]
 
 pre: ["r1.type=number", "r1.value=0", "r2.type=number"]
 
@@ -216,6 +230,8 @@ post:
 ---
 test-case: non-zero modulo zero register
 
+options: ["!allow_division_by_zero"]
+
 pre: ["r1.type=number", "r1.value=-6", "r2.type=number", "r2.value=0"]
 
 code:
@@ -233,8 +249,6 @@ messages:
 ---
 test-case: non-zero modulo zero register without warning
 
-options: ["allow_division_by_zero"]
-
 pre: ["r1.type=number", "r1.value=-6", "r2.type=number", "r2.value=0"]
 
 code:
@@ -248,6 +262,8 @@ post:
   - r2.value=0
 ---
 test-case: zero modulo zero register
+
+options: ["!allow_division_by_zero"]
 
 pre: ["r1.type=number", "r1.value=0", "r2.type=number", "r2.value=0"]
 
@@ -266,6 +282,8 @@ messages:
 ---
 test-case: non-zero modulo possibly zero register
 
+options: ["!allow_division_by_zero"]
+
 pre: ["r1.type=number", "r1.value=6", "r2.type=number", "r2.value=[-5, 5]"]
 
 code:
@@ -282,6 +300,8 @@ messages:
   - "0: Possible division by zero (r2 != 0)"
 ---
 test-case: zero modulo possibly zero register
+
+options: ["!allow_division_by_zero"]
 
 pre: ["r1.type=number", "r1.value=0", "r2.type=number", "r2.value=[-5, 5]"]
 
@@ -300,6 +320,8 @@ messages:
 ---
 test-case: non-zero modulo possibly zero register 2
 
+options: ["!allow_division_by_zero"]
+
 pre: ["r1.type=number", "r1.value=6", "r2.type=number", "r2.value=[-5, 0]"]
 
 code:
@@ -316,6 +338,8 @@ messages:
   - "0: Possible division by zero (r2 != 0)"
 ---
 test-case: zero modulo possibly zero register 2
+
+options: ["!allow_division_by_zero"]
 
 pre: ["r1.type=number", "r1.value=0", "r2.type=number", "r2.value=[-5, 0]"]
 
@@ -334,6 +358,8 @@ messages:
 ---
 test-case: non-zero modulo undefined value register
 
+options: ["!allow_division_by_zero"]
+
 pre: ["r1.type=number", "r1.value=6", "r2.type=number"]
 
 code:
@@ -349,6 +375,8 @@ messages:
   - "0: Possible division by zero (r2 != 0)"
 ---
 test-case: zero modulo undefined value register
+
+options: ["!allow_division_by_zero"]
 
 pre: ["r1.type=number", "r1.value=0", "r2.type=number"]
 
