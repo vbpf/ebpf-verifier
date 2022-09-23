@@ -187,7 +187,7 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, "plain LD");
             bool isLoad = getMemIsLoad(inst.opcode);
             if (isLoad && inst.dst == R10_STACK_POINTER)
-                note("Cannot modify r10");
+                throw InvalidInstruction(pc, "Cannot modify r10");
             bool isImm = !(inst.opcode & 1);
 
             assert(!(isLoad && isImm));
@@ -232,7 +232,7 @@ struct Unmarshaller {
 
     auto makeAluOp(size_t pc, ebpf_inst inst) -> Instruction {
         if (inst.dst == R10_STACK_POINTER)
-            note("Invalid target r10");
+            throw InvalidInstruction(pc, "Invalid target r10");
         return std::visit(overloaded{[&](Un::Op op) -> Instruction { return Un{.op = op, .dst = Reg{inst.dst}}; },
                                      [&](Bin::Op op) -> Instruction {
                                          Bin res{

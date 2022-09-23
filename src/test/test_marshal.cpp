@@ -54,8 +54,8 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
                     Bin{.op = Bin::Op::MOV, .dst = Reg{1}, .v = Imm{2}, .is64 = true, .lddw = true}, true);
             }
             SECTION("r10") {
-                // BUG: This ought to fail but doesn't.
-                compare_marshal_unmarshal(Bin{.op = Bin::Op::ADD, .dst = Reg{10}, .v = Imm{4}, .is64 = true});
+                check_marshal_unmarshal_fail(Bin{.op = Bin::Op::ADD, .dst = Reg{10}, .v = Imm{4}, .is64=true},
+                                             "0: Invalid target r10\n");
             }
         }
     }
@@ -182,8 +182,8 @@ TEST_CASE("disasm_marshal_Mem", "[disasm][marshal]") {
         access.basereg = Reg{0};
         access.offset = 0;
         access.width = 8;
-        // BUG: This ought to fail but doesn't.
-        compare_marshal_unmarshal(Mem{.access = access, .value = Reg{10}, .is_load = true});
+        check_marshal_unmarshal_fail(Mem{.access = access, .value = Reg{10}, .is_load = true},
+                                     "0: Cannot modify r10\n");
     }
     SECTION("Store Register") {
         for (int w : ws) {
