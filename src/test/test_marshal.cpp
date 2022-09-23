@@ -205,11 +205,11 @@ TEST_CASE("fail unmarshal", "[disasm][marshal]") {
     check_unmarshal_fail(ebpf_inst{.opcode = ((INST_XADD << 5) | INST_SIZE_H | INST_CLS_STX)}, "0: Bad instruction\n");
     check_unmarshal_fail(ebpf_inst{.opcode = INST_OP_CALL | INST_SRC_REG}, "0: Bad instruction\n");
     check_unmarshal_fail(ebpf_inst{.opcode = INST_OP_LDDW_IMM}, "0: incomplete LDDW\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = BPF_ADD | INST_SRC_IMM | INST_CLS_ALU64, .offset = 8},
+    check_unmarshal_fail(ebpf_inst{.opcode = INST_ALU_OP_ADD | INST_SRC_IMM | INST_CLS_ALU64, .offset = 8},
                          "0: nonzero offset for register alu op\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = BPF_ADD | INST_SRC_IMM | INST_CLS_ALU64, .src = 8},
+    check_unmarshal_fail(ebpf_inst{.opcode = INST_ALU_OP_ADD | INST_SRC_IMM | INST_CLS_ALU64, .src = 8},
                          "0: nonzero src for register alu op\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = BPF_ADD | INST_SRC_REG | INST_CLS_ALU64, .imm = 8},
+    check_unmarshal_fail(ebpf_inst{.opcode = INST_ALU_OP_ADD | INST_SRC_REG | INST_CLS_ALU64, .imm = 8},
                          "0: nonzero imm for register alu op\n");
     check_unmarshal_fail(ebpf_inst{.opcode = (INST_ABS << 5) | INST_SIZE_W | INST_CLS_LDX, .imm = 8},
                          "0: ABS but not LD\n");

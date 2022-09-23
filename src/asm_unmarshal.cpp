@@ -89,23 +89,23 @@ struct Unmarshaller {
 
     auto getAluOp(size_t pc, ebpf_inst inst) -> std::variant<Bin::Op, Un::Op> {
         switch (inst.opcode & INST_ALU_OP_MASK) {
-        case BPF_ADD: return Bin::Op::ADD;
-        case BPF_SUB: return Bin::Op::SUB;
-        case BPF_MUL: return Bin::Op::MUL;
-        case BPF_DIV: return Bin::Op::DIV;
-        case BPF_OR: return Bin::Op::OR;
-        case BPF_AND: return Bin::Op::AND;
-        case BPF_LSH: return Bin::Op::LSH;
-        case BPF_RSH: return Bin::Op::RSH;
-        case BPF_NEG: return Un::Op::NEG;
-        case BPF_MOD: return Bin::Op::MOD;
-        case BPF_XOR: return Bin::Op::XOR;
-        case BPF_MOV: return Bin::Op::MOV;
-        case BPF_ARSH:
+        case INST_ALU_OP_ADD: return Bin::Op::ADD;
+        case INST_ALU_OP_SUB: return Bin::Op::SUB;
+        case INST_ALU_OP_MUL: return Bin::Op::MUL;
+        case INST_ALU_OP_DIV: return Bin::Op::DIV;
+        case INST_ALU_OP_OR: return Bin::Op::OR;
+        case INST_ALU_OP_AND: return Bin::Op::AND;
+        case INST_ALU_OP_LSH: return Bin::Op::LSH;
+        case INST_ALU_OP_RSH: return Bin::Op::RSH;
+        case INST_ALU_OP_NEG: return Un::Op::NEG;
+        case INST_ALU_OP_MOD: return Bin::Op::MOD;
+        case INST_ALU_OP_XOR: return Bin::Op::XOR;
+        case INST_ALU_OP_MOV: return Bin::Op::MOV;
+        case INST_ALU_OP_ARSH:
             if ((inst.opcode & INST_CLS_MASK) == INST_CLS_ALU)
                 note("arsh32 is not allowed");
             return Bin::Op::ARSH;
-        case BPF_END:
+        case INST_ALU_OP_END:
             switch (inst.imm) {
             case 16: return (inst.opcode & 0x08) ? Un::Op::BE16 : Un::Op::LE16;
             case 32:
