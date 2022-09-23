@@ -88,24 +88,24 @@ struct Unmarshaller {
     explicit Unmarshaller(vector<vector<string>>& notes, const program_info& info) : notes{notes}, info{info} { note_next_pc(); }
 
     auto getAluOp(size_t pc, ebpf_inst inst) -> std::variant<Bin::Op, Un::Op> {
-        switch ((inst.opcode >> 4) & 0xF) {
-        case 0x0: return Bin::Op::ADD;
-        case 0x1: return Bin::Op::SUB;
-        case 0x2: return Bin::Op::MUL;
-        case 0x3: return Bin::Op::DIV;
-        case 0x4: return Bin::Op::OR;
-        case 0x5: return Bin::Op::AND;
-        case 0x6: return Bin::Op::LSH;
-        case 0x7: return Bin::Op::RSH;
-        case 0x8: return Un::Op::NEG;
-        case 0x9: return Bin::Op::MOD;
-        case 0xa: return Bin::Op::XOR;
-        case 0xb: return Bin::Op::MOV;
-        case 0xc:
+        switch (inst.opcode & INST_ALU_OP_MASK) {
+        case BPF_ADD: return Bin::Op::ADD;
+        case BPF_SUB: return Bin::Op::SUB;
+        case BPF_MUL: return Bin::Op::MUL;
+        case BPF_DIV: return Bin::Op::DIV;
+        case BPF_OR: return Bin::Op::OR;
+        case BPF_AND: return Bin::Op::AND;
+        case BPF_LSH: return Bin::Op::LSH;
+        case BPF_RSH: return Bin::Op::RSH;
+        case BPF_NEG: return Un::Op::NEG;
+        case BPF_MOD: return Bin::Op::MOD;
+        case BPF_XOR: return Bin::Op::XOR;
+        case BPF_MOV: return Bin::Op::MOV;
+        case BPF_ARSH:
             if ((inst.opcode & INST_CLS_MASK) == INST_CLS_ALU)
                 note("arsh32 is not allowed");
             return Bin::Op::ARSH;
-        case 0xd:
+        case BPF_END:
             switch (inst.imm) {
             case 16: return (inst.opcode & 0x08) ? Un::Op::BE16 : Un::Op::LE16;
             case 32:
@@ -114,24 +114,25 @@ struct Unmarshaller {
                 return (inst.opcode & 0x08) ? Un::Op::BE32 : Un::Op::LE32;
             case 64:
                 return (inst.opcode & 0x08) ? Un::Op::BE64 : Un::Op::LE64;
-            default: note("invalid endian immediate; falling back to 64"); return Un::Op::LE64;
+            default:
+                throw InvalidInstruction(pc, "invalid endian immediate");
             }
-        case 0xe: throw InvalidInstruction{pc, "invalid ALU op 0xe"};
-        case 0xf: throw InvalidInstruction{pc, "invalid ALU op 0xf"};
+        case 0xe0: throw InvalidInstruction{pc, "invalid ALU op 0xe0"};
+        case 0xf0: throw InvalidInstruction{pc, "invalid ALU op 0xf0"};
         }
         return {};
     }
 
-    auto getBinValue(ebpf_inst inst) -> Value {
+    auto getBinValue(pc_t pc, ebpf_inst inst) -> Value {
         if (inst.offset != 0)
-            note("nonzero offset for register alu op");
+            throw InvalidInstruction{pc, "nonzero offset for register alu op"};
         if (inst.opcode & INST_SRC_REG) {
             if (inst.imm != 0)
-                note("nonzero imm for register alu op");
+                throw InvalidInstruction{pc, "nonzero imm for register alu op"};
             return Reg{inst.src};
         } else {
             if (inst.src != 0)
-                note("nonzero src for register alu op");
+                throw InvalidInstruction{pc, "nonzero src for register alu op"};
             return Imm{(uint32_t)inst.imm};
         }
     }
@@ -158,31 +159,32 @@ struct Unmarshaller {
         return {};
     }
 
-    auto makeMemOp(ebpf_inst inst) -> Instruction {
+    auto makeMemOp(pc_t pc, ebpf_inst inst) -> Instruction {
         if (inst.dst > R10_STACK_POINTER || inst.src > R10_STACK_POINTER)
-            note("Bad register");
+            throw InvalidInstruction(pc, "Bad register");
 
         int width = getMemWidth(inst.opcode);
         bool isLD = (inst.opcode & INST_CLS_MASK) == INST_CLS_LD;
         switch ((inst.opcode & INST_MODE_MASK) >> 5) {
-        case 0: note("Bad instruction"); return Undefined{(int)inst.opcode};
+        case 0:
+            throw InvalidInstruction(pc, "Bad instruction");
         case INST_ABS:
             if (!isLD)
-                throw UnsupportedMemoryMode{"ABS but not LD"};
+                throw InvalidInstruction(pc, "ABS but not LD");
             if (width == 8)
                 note("invalid opcode LDABSDW");
             return Packet{.width = width, .offset = inst.imm, .regoffset = {}};
 
         case INST_IND:
             if (!isLD)
-                throw UnsupportedMemoryMode{"IND but not LD"};
+                throw InvalidInstruction(pc, "IND but not LD");
             if (width == 8)
                 note("invalid opcode LDINDDW");
             return Packet{.width = width, .offset = inst.imm, .regoffset = Reg{inst.src}};
 
         case INST_MEM: {
             if (isLD)
-                throw UnsupportedMemoryMode{"plain LD"};
+                throw InvalidInstruction(pc, "plain LD");
             bool isLoad = getMemIsLoad(inst.opcode);
             if (isLoad && inst.dst == R10_STACK_POINTER)
                 note("Cannot modify r10");
@@ -208,11 +210,11 @@ struct Unmarshaller {
             return res;
         }
 
-        case INST_LEN: throw UnsupportedMemoryMode{"LEN"};
-
-        case INST_MSH: throw UnsupportedMemoryMode{"MSH"};
-
         case INST_XADD:
+            if (((inst.opcode & INST_CLS_MASK) != INST_CLS_STX) ||
+                ((inst.opcode & INST_SIZE_MASK) != INST_SIZE_W &&
+                 (inst.opcode & INST_SIZE_MASK) != INST_SIZE_DW))
+                throw InvalidInstruction(pc, "Bad instruction");
             return LockAdd{
                 .access =
                     Deref{
@@ -222,7 +224,8 @@ struct Unmarshaller {
                     },
                 .valreg = Reg{inst.src},
             };
-        case INST_MEM_UNUSED: throw UnsupportedMemoryMode{"Memory mode 7"};
+        default:
+            throw InvalidInstruction(pc, "Bad instruction");
         }
         return {};
     }
@@ -235,7 +238,7 @@ struct Unmarshaller {
                                          Bin res{
                                              .op = op,
                                              .dst = Reg{inst.dst},
-                                             .v = getBinValue(inst),
+                                             .v = getBinValue(pc, inst),
                                              .is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64,
                                          };
                                          if (op == Bin::Op::DIV || op == Bin::Op::MOD)
@@ -343,6 +346,8 @@ struct Unmarshaller {
     auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, pc_t pc) -> Instruction {
         switch ((inst.opcode >> 4) & 0xF) {
         case 0x8:
+            if (inst.opcode & INST_SRC_REG)
+                throw InvalidInstruction(pc, "Bad instruction");
             if (!info.platform->is_helper_usable(inst.imm))
                 throw InvalidInstruction(pc, "invalid helper function id");
             return makeCall(inst.imm);
@@ -391,7 +396,7 @@ struct Unmarshaller {
                 // fallthrough
             case INST_CLS_LDX:
             case INST_CLS_ST:
-            case INST_CLS_STX: new_ins = makeMemOp(inst); break;
+            case INST_CLS_STX: new_ins = makeMemOp(pc, inst); break;
 
             case INST_CLS_ALU:
             case INST_CLS_ALU64: new_ins = makeAluOp(pc, inst); break;
