@@ -57,20 +57,20 @@ enum {
 };
 
 enum {
-    BPF_ADD  = 0x00,
-    BPF_SUB  = 0x10,
-    BPF_MUL  = 0x20,
-    BPF_DIV  = 0x30,
-    BPF_OR   = 0x40,
-    BPF_AND  = 0x50,
-    BPF_LSH  = 0x60,
-    BPF_RSH  = 0x70,
-    BPF_NEG  = 0x80,
-    BPF_MOD  = 0x90,
-    BPF_XOR  = 0xa0,
-    BPF_MOV  = 0xb0,
-    BPF_ARSH = 0xc0,
-    BPF_END  = 0xd0,
+    INST_ALU_OP_ADD  = 0x00,
+    INST_ALU_OP_SUB  = 0x10,
+    INST_ALU_OP_MUL  = 0x20,
+    INST_ALU_OP_DIV  = 0x30,
+    INST_ALU_OP_OR   = 0x40,
+    INST_ALU_OP_AND  = 0x50,
+    INST_ALU_OP_LSH  = 0x60,
+    INST_ALU_OP_RSH  = 0x70,
+    INST_ALU_OP_NEG  = 0x80,
+    INST_ALU_OP_MOD  = 0x90,
+    INST_ALU_OP_XOR  = 0xa0,
+    INST_ALU_OP_MOV  = 0xb0,
+    INST_ALU_OP_ARSH = 0xc0,
+    INST_ALU_OP_END  = 0xd0,
     INST_ALU_OP_MASK = 0xf0
 };
 
