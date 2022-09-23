@@ -46,6 +46,10 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
                 compare_marshal_unmarshal(
                     Bin{.op = Bin::Op::MOV, .dst = Reg{1}, .v = Imm{2}, .is64 = true, .lddw = true}, true);
             }
+            SECTION("r10") {
+                // BUG: This ought to fail but doesn't.
+                compare_marshal_unmarshal(Bin{.op = Bin::Op::ADD, .dst = Reg{10}, .v = Imm{4}, .is64 = true});
+            }
         }
     }
 
@@ -163,6 +167,14 @@ TEST_CASE("disasm_marshal_Mem", "[disasm][marshal]") {
             access.width = w;
             compare_marshal_unmarshal(Mem{.access = access, .value = Reg{3}, .is_load = true});
         }
+    }
+    SECTION("Load R10") {
+        Deref access;
+        access.basereg = Reg{0};
+        access.offset = 0;
+        access.width = 8;
+        // BUG: This ought to fail but doesn't.
+        compare_marshal_unmarshal(Mem{.access = access, .value = Reg{10}, .is_load = true});
     }
     SECTION("Store Register") {
         for (int w : ws) {
