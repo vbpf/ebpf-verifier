@@ -93,7 +93,6 @@ static string_invariant read_invariant(const vector<string>& raw_invariant) {
 
 struct RawTestCase {
     string test_case;
-    std::set<string> options;
     vector<string> pre;
     vector<std::tuple<string, vector<string>>> raw_blocks;
     vector<string> post;
@@ -126,7 +125,6 @@ static std::set<string> as_set_empty_default(const YAML::Node& optional_node) {
 static RawTestCase parse_case(const YAML::Node& case_node) {
     return RawTestCase {
         .test_case = case_node["test-case"].as<string>(),
-        .options = as_set_empty_default(case_node["options"]),
         .pre = case_node["pre"].as<vector<string>>(),
         .raw_blocks = parse_code(case_node["code"]),
         .post = case_node["post"].as<vector<string>>(),
@@ -158,24 +156,9 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
     return res;
 }
 
-static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& raw_options) {
-    ebpf_verifier_options_t options = ebpf_verifier_default_options;
-
-    // All YAML tests use no_simplify.
-    options.no_simplify = true;
-
-    for (string name : raw_options) {
-        if (name == "allow_division_by_zero") {
-            options.allow_division_by_zero = true;
-        }
-    }
-    return options;
-}
-
 static TestCase read_case(const RawTestCase& raw_case) {
     return TestCase{
         .name = raw_case.test_case,
-        .options = raw_options_to_options(raw_case.options),
         .assumed_pre_invariant = read_invariant(raw_case.pre),
         .instruction_seq = raw_cfg_to_instruction_seq(raw_case.raw_blocks),
         .expected_post_invariant = read_invariant(raw_case.post),
@@ -222,7 +205,7 @@ std::optional<Failure> run_yaml_test_case(const TestCase& test_case) {
     std::ostringstream ss;
     const auto& [pre_invs, post_invs] = ebpf_analyze_program_for_test(ss, test_case.instruction_seq,
                                                                       test_case.assumed_pre_invariant,
-                                                                      info, test_case.options);
+                                                                      info, true, false);
     std::set<string> actual_messages = extract_messages(ss.str());
 
     const auto& actual_last_invariant = pre_invs.at(label_t::exit);

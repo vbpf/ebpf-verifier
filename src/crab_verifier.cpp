@@ -199,15 +199,15 @@ static string_invariant_map to_string_invariant_map(crab::invariant_table_t& inv
 
 std::tuple<string_invariant_map, string_invariant_map>
 ebpf_analyze_program_for_test(std::ostream& os, const InstructionSeq& prog, const string_invariant& entry_invariant,
-                              const program_info& info, const ebpf_verifier_options_t& options) {
-    thread_local_options = options;
+                              const program_info& info,
+                              bool no_simplify, bool check_termination) {
     ebpf_domain_t entry_inv = entry_invariant.is_bottom()
         ? ebpf_domain_t::bottom()
         : ebpf_domain_t::from_constraints(entry_invariant.value());
     assert(!entry_inv.is_bottom());
     global_program_info = info;
-    cfg_t cfg = prepare_cfg(prog, info, !options.no_simplify, false);
-    auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, entry_inv, options.check_termination);
+    cfg_t cfg = prepare_cfg(prog, info, !no_simplify, false);
+    auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, entry_inv, check_termination);
     checks_db report = generate_report(cfg, pre_invariants, post_invariants);
     print_report(os, report, prog, false);
 
