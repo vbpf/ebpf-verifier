@@ -19,20 +19,15 @@ interval_t interval_t::operator/(const interval_t& x) const {
                 return interval_t(_lb / bound_t{c}, _ub / bound_t{c});
             } else if (c < 0) {
                 return interval_t(_ub / bound_t{c}, _lb / bound_t{c});
-            } else {
-                // The eBPF ISA defines division by 0 as resulting in 0.
-                return interval_t(number_t(0));
             }
         }
         // Divisor is not a singleton
         using z_interval = interval_t;
         if (x[0]) {
-            // The divisor contains 0.
             z_interval l(x._lb, z_bound(-1));
             z_interval u(z_bound(1), x._ub);
-            return (operator/(l) | operator/(u) | z_interval(number_t(0)));
+            return (operator/(l) | operator/(u));
         } else if (operator[](0)) {
-            // The dividend contains 0.
             z_interval l(_lb, z_bound(-1));
             z_interval u(z_bound(1), _ub);
             return ((l / x) | (u / x) | z_interval(number_t(0)));
@@ -60,22 +55,15 @@ interval_t interval_t::SRem(const interval_t& x) const {
         number_t divisor = *x.singleton();
 
         if (divisor == 0) {
-            return interval_t(dividend);
+            return bottom();
         }
 
         return interval_t(dividend % divisor);
-    } else if (x[0]) {
-        // The divisor contains 0.
-        interval_t l(x._lb, z_bound(-1));
-        interval_t u(z_bound(1), x._ub);
-        return SRem(l) | SRem(u) | *this;
     } else if (x.ub().is_finite() && x.lb().is_finite()) {
-        number_t min_divisor = min(abs(*x.lb().number()), abs(*x.ub().number()));
         number_t max_divisor = max(abs(*x.lb().number()), abs(*x.ub().number()));
 
-        if (ub() < min_divisor && -lb() < min_divisor) {
-            // The modulo operation won't change the destination register.
-            return *this;
+        if (max_divisor == 0) {
+            return bottom();
         }
 
         if (lb() < 0) {
@@ -88,8 +76,7 @@ interval_t interval_t::SRem(const interval_t& x) const {
             return interval_t(0, max_divisor - 1);
         }
     } else {
-        // Divisor has infinite range, so result can be anything between the dividend and zero.
-        return *this | interval_t(number_t(0));
+        return top();
     }
 }
 

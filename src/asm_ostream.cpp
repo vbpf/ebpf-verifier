@@ -174,10 +174,6 @@ std::ostream& operator<<(std::ostream& os, Addable const& a) {
     return os << TypeConstraint{a.ptr, TypeGroup::pointer} << " -> " << TypeConstraint{a.num, TypeGroup::number};
 }
 
-std::ostream& operator<<(std::ostream& os, NonZeroNumber const& a) {
-    return os << a.reg << " != 0";
-}
-
 std::ostream& operator<<(std::ostream& os, TypeConstraint const& tc) {
     string types = to_string(tc.types);
     string cmp_op = types[0] == '{' ? "in" : "==";

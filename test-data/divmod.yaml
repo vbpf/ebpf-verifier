@@ -1,22 +1,6 @@
 # Copyright (c) Prevail Verifier contributors.
 # SPDX-License-Identifier: MIT
 ---
-test-case: integer divided by non-integer
-
-pre: ["r1.type=number", "r1.value=6", "r2.value=1"]
-
-code:
-  <start>: |
-    r1 /= r2
-
-post:
-  - r1.type=number
-  - r1.value=6
-  - r2.value=1
-
-messages:
-  - "0: Only numbers can be used as divisors (r2 != 0)"
----
 test-case: non-zero divided by zero immediate
 
 pre: ["r1.type=number", "r1.value=6"]
@@ -25,9 +9,10 @@ code:
   <start>: |
     r1 /= 0
 
-post:
-  - r1.type=number
-  - r1.value=0
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
 ---
 test-case: zero divided by zero immediate
 
@@ -37,9 +22,10 @@ code:
   <start>: |
     r1 /= 0
 
-post:
-  - r1.type=number
-  - r1.value=0
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
 ---
 test-case: non-zero divided by zero register
 
@@ -49,14 +35,10 @@ code:
   <start>: |
     r1 /= r2
 
-post:
-  - r1.type=number
-  - r1.value=0
-  - r2.type=number
-  - r2.value=0
+post: []
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0: Code is unreachable after 0"
 ---
 test-case: zero divided by zero register
 
@@ -66,14 +48,10 @@ code:
   <start>: |
     r1 /= r2
 
-post:
-  - r1.type=number
-  - r1.value=0
-  - r2.type=number
-  - r2.value=0
+post: []
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0: Code is unreachable after 0"
 ---
 test-case: non-zero divided by possibly zero register
 
@@ -88,9 +66,6 @@ post:
   - r1.value=[-6, 6]
   - r2.type=number
   - r2.value=[-5, 5]
-
-messages:
-  - "0: Possible division by zero (r2 != 0)"
 ---
 test-case: zero divided by possibly zero register
 
@@ -105,9 +80,6 @@ post:
   - r1.value=0
   - r2.type=number
   - r2.value=[-5, 5]
-
-messages:
-  - "0: Possible division by zero (r2 != 0)"
 ---
 test-case: non-zero divided by possibly zero register 2
 
@@ -119,12 +91,9 @@ code:
 
 post:
   - r1.type=number
-  - r1.value=[-6, 0]
+  - r1.value=[-6, -1]
   - r2.type=number
   - r2.value=[-5, 0]
-
-messages:
-  - "0: Possible division by zero (r2 != 0)"
 ---
 test-case: zero divided by possibly zero register 2
 
@@ -139,9 +108,6 @@ post:
   - r1.value=0
   - r2.type=number
   - r2.value=[-5, 0]
-
-messages:
-  - "0: Possible division by zero (r2 != 0)"
 ---
 test-case: non-zero divided by undefined value register
 
@@ -154,9 +120,6 @@ code:
 post:
   - r1.type=number
   - r2.type=number
-
-messages:
-  - "0: Possible division by zero (r2 != 0)"
 ---
 test-case: zero divided by undefined value register
 
@@ -170,21 +133,19 @@ post:
   - r1.type=number
   - r1.value=0
   - r2.type=number
-
-messages:
-  - "0: Possible division by zero (r2 != 0)"
 ---
 test-case: non-zero modulo zero immediate
 
-pre: ["r1.type=number", "r1.value=-6"]
+pre: ["r1.type=number", "r1.value=6"]
 
 code:
   <start>: |
     r1 %= 0
 
-post:
-  - r1.type=number
-  - r1.value=-6
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
 ---
 test-case: zero modulo zero immediate
 
@@ -194,26 +155,23 @@ code:
   <start>: |
     r1 %= 0
 
-post:
-  - r1.type=number
-  - r1.value=0
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
 ---
 test-case: non-zero modulo zero register
 
-pre: ["r1.type=number", "r1.value=-6", "r2.type=number", "r2.value=0"]
+pre: ["r1.type=number", "r1.value=6", "r2.type=number", "r2.value=0"]
 
 code:
   <start>: |
     r1 %= r2
 
-post:
-  - r1.type=number
-  - r1.value=-6
-  - r2.type=number
-  - r2.value=0
+post: []
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0: Code is unreachable after 0"
 ---
 test-case: zero modulo zero register
 
@@ -223,14 +181,10 @@ code:
   <start>: |
     r1 %= r2
 
-post:
-  - r1.type=number
-  - r1.value=0
-  - r2.type=number
-  - r2.value=0
+post: []
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0: Code is unreachable after 0"
 ---
 test-case: non-zero modulo possibly zero register
 
@@ -242,12 +196,9 @@ code:
 
 post:
   - r1.type=number
-  - r1.value=[0, 6]
+  - r1.value=[0, 4]
   - r2.type=number
   - r2.value=[-5, 5]
-
-messages:
-  - "0: Possible division by zero (r2 != 0)"
 ---
 test-case: zero modulo possibly zero register
 
@@ -259,12 +210,9 @@ code:
 
 post:
   - r1.type=number
-  - r1.value=0
+  - r1.value=[0, 4]
   - r2.type=number
   - r2.value=[-5, 5]
-
-messages:
-  - "0: Possible division by zero (r2 != 0)"
 ---
 test-case: non-zero modulo possibly zero register 2
 
@@ -276,12 +224,9 @@ code:
 
 post:
   - r1.type=number
-  - r1.value=[0, 6]
+  - r1.value=[0, 4]
   - r2.type=number
   - r2.value=[-5, 0]
-
-messages:
-  - "0: Possible division by zero (r2 != 0)"
 ---
 test-case: zero modulo possibly zero register 2
 
@@ -293,12 +238,9 @@ code:
 
 post:
   - r1.type=number
-  - r1.value=0
+  - r1.value=[0, 4]
   - r2.type=number
   - r2.value=[-5, 0]
-
-messages:
-  - "0: Possible division by zero (r2 != 0)"
 ---
 test-case: non-zero modulo undefined value register
 
@@ -310,11 +252,7 @@ code:
 
 post:
   - r1.type=number
-  - r1.value=[0, 6]
   - r2.type=number
-
-messages:
-  - "0: Possible division by zero (r2 != 0)"
 ---
 test-case: zero modulo undefined value register
 
@@ -326,13 +264,9 @@ code:
 
 post:
   - r1.type=number
-  - r1.value=0
   - r2.type=number
-
-messages:
-  - "0: Possible division by zero (r2 != 0)"
 ---
-test-case: negative modulo positive
+test-case: negative modulo negative
 
 pre: ["r1.type=number", "r1.value=-13"]
 
@@ -356,20 +290,6 @@ post:
   - r1.type=number
   - r1.value=1
 ---
-test-case: positive modulo negative range
-
-pre: ["r1.type=number", "r1.value=13", "r2.type=number", "r2.value=[-3, -2]"]
-
-code:
-  <start>: |
-    r1 %= -3
-
-post:
-  - r1.type=number
-  - r1.value=1
-  - r2.type=number
-  - r2.value=[-3, -2]
----
 test-case: negative modulo negative
 
 pre: ["r1.type=number", "r1.value=-13"]
@@ -382,20 +302,6 @@ post:
   - r1.type=number
   - r1.value=-1
 ---
-test-case: negative modulo negative range
-
-pre: ["r1.type=number", "r1.value=-13", "r2.type=number", "r2.value=[-3, -2]"]
-
-code:
-  <start>: |
-    r1 %= -3
-
-post:
-  - r1.type=number
-  - r1.value=-1
-  - r2.type=number
-  - r2.value=[-3, -2]
----
 test-case: smaller modulo larger
 
 pre: ["r1.type=number", "r1.value=6", "r2.type=number", "r2.value=[7, 10]"]
@@ -406,6 +312,6 @@ code:
 
 post:
   - r1.type=number
-  - r1.value=6
+  - r1.value=[0, 9]
   - r2.type=number
   - r2.value=[7, 10]
