@@ -12,5 +12,5 @@ const ebpf_verifier_options_t ebpf_verifier_default_options = {
     .mock_map_fds = true,
     .strict = false,
     .print_line_info = false,
-    .allow_division_by_zero = true,
+    .allow_division_by_zero = false,
 };

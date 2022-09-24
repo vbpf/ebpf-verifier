@@ -165,8 +165,8 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
     options.no_simplify = true;
 
     for (string name : raw_options) {
-        if (name == "!allow_division_by_zero") {
-            options.allow_division_by_zero = false;
+        if (name == "allow_division_by_zero") {
+            options.allow_division_by_zero = true;
         }
     }
     return options;
