@@ -301,17 +301,3 @@ code:
 post:
   - r1.type=number
   - r1.value=-1
----
-test-case: smaller modulo larger
-
-pre: ["r1.type=number", "r1.value=6", "r2.type=number", "r2.value=[7, 10]"]
-
-code:
-  <start>: |
-    r1 %= r2
-
-post:
-  - r1.type=number
-  - r1.value=[0, 9]
-  - r2.type=number
-  - r2.value=[7, 10]
