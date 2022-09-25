@@ -107,13 +107,13 @@ struct Unmarshaller {
             return Bin::Op::ARSH;
         case INST_ALU_OP_END:
             switch (inst.imm) {
-            case 16: return (inst.opcode & 0x08) ? Un::Op::BE16 : Un::Op::LE16;
+            case 16: return (inst.opcode & INST_END_BE) ? Un::Op::BE16 : Un::Op::LE16;
             case 32:
                 if ((inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64)
                     throw InvalidInstruction(pc, "invalid endian immediate 32 for 64 bit instruction");
-                return (inst.opcode & 0x08) ? Un::Op::BE32 : Un::Op::LE32;
+                return (inst.opcode & INST_END_BE) ? Un::Op::BE32 : Un::Op::LE32;
             case 64:
-                return (inst.opcode & 0x08) ? Un::Op::BE64 : Un::Op::LE64;
+                return (inst.opcode & INST_END_BE) ? Un::Op::BE64 : Un::Op::LE64;
             default:
                 throw InvalidInstruction(pc, "invalid endian immediate");
             }
@@ -351,7 +351,13 @@ struct Unmarshaller {
             if (!info.platform->is_helper_usable(inst.imm))
                 throw InvalidInstruction(pc, "invalid helper function id");
             return makeCall(inst.imm);
-        case 0x9: return Exit{};
+        case 0x9:
+            if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP)
+                throw InvalidInstruction(pc, "Bad instruction");
+            return Exit{};
+        case 0x0:
+            if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP)
+                throw InvalidInstruction(pc, "Bad instruction");
         default: {
             pc_t new_pc = pc + 1 + inst.offset;
             if (new_pc >= insts.size())
