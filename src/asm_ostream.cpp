@@ -59,8 +59,8 @@ std::ostream& operator<<(std::ostream& os, Bin::Op op) {
     case Op::ADD: return os << "+";
     case Op::SUB: return os << "-";
     case Op::MUL: return os << "*";
-    case Op::DIV: return os << "/";
-    case Op::MOD: return os << "%";
+    case Op::UDIV: return os << "/";
+    case Op::UMOD: return os << "%";
     case Op::OR: return os << "|";
     case Op::AND: return os << "&";
     case Op::LSH: return os << "<<";

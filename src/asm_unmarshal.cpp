@@ -92,13 +92,13 @@ struct Unmarshaller {
         case INST_ALU_OP_ADD: return Bin::Op::ADD;
         case INST_ALU_OP_SUB: return Bin::Op::SUB;
         case INST_ALU_OP_MUL: return Bin::Op::MUL;
-        case INST_ALU_OP_DIV: return Bin::Op::DIV;
+        case INST_ALU_OP_DIV: return Bin::Op::UDIV;
         case INST_ALU_OP_OR: return Bin::Op::OR;
         case INST_ALU_OP_AND: return Bin::Op::AND;
         case INST_ALU_OP_LSH: return Bin::Op::LSH;
         case INST_ALU_OP_RSH: return Bin::Op::RSH;
         case INST_ALU_OP_NEG: return Un::Op::NEG;
-        case INST_ALU_OP_MOD: return Bin::Op::MOD;
+        case INST_ALU_OP_MOD: return Bin::Op::UMOD;
         case INST_ALU_OP_XOR: return Bin::Op::XOR;
         case INST_ALU_OP_MOV: return Bin::Op::MOV;
         case INST_ALU_OP_ARSH:
@@ -241,7 +241,7 @@ struct Unmarshaller {
                                              .v = getBinValue(pc, inst),
                                              .is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64,
                                          };
-                                         if (!thread_local_options.allow_division_by_zero && (op == Bin::Op::DIV || op == Bin::Op::MOD))
+                                         if (!thread_local_options.allow_division_by_zero && (op == Bin::Op::UDIV || op == Bin::Op::UMOD))
                                              if (std::holds_alternative<Imm>(res.v) && std::get<Imm>(res.v).v == 0)
                                                  note("division by zero");
                                          return res;

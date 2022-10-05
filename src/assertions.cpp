@@ -206,8 +206,8 @@ class AssertExtractor {
                     Assert{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}}
                 };
             }
-        case Bin::Op::DIV:
-        case Bin::Op::MOD:
+        case Bin::Op::UDIV:
+        case Bin::Op::UMOD:
             if (std::holds_alternative<Reg>(ins.v)) {
                 auto src = reg(ins.v);
                 return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}, Assert{ValidDivisor{src}}};

@@ -107,12 +107,12 @@ class ebpf_domain_t final {
     void neg(variable_t lhs);
     void mul(variable_t lhs, variable_t op2);
     void mul(variable_t lhs, const number_t& op2);
-    void div(variable_t lhs, variable_t op2);
-    void div(variable_t lhs, const number_t& op2);
+    void sdiv(variable_t lhs, variable_t op2);
+    void sdiv(variable_t lhs, const number_t& op2);
     void udiv(variable_t lhs, variable_t op2);
     void udiv(variable_t lhs, const number_t& op2);
-    void rem(variable_t lhs, variable_t op2);
-    void rem(variable_t lhs, const number_t& op2, bool mod = true);
+    void srem(variable_t lhs, variable_t op2);
+    void srem(variable_t lhs, const number_t& op2, bool mod = true);
     void urem(variable_t lhs, variable_t op2);
     void urem(variable_t lhs, const number_t& op2);
 

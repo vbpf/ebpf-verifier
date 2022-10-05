@@ -4,6 +4,7 @@
 
 namespace crab {
 
+// Signed division. eBPF has no instruction for this.
 interval_t interval_t::operator/(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
@@ -50,6 +51,52 @@ interval_t interval_t::operator/(const interval_t& x) const {
     }
 }
 
+// Unsigned division
+interval_t interval_t::UDiv(const interval_t& x) const {
+    if (is_bottom() || x.is_bottom()) {
+        return bottom();
+    } else {
+        // Divisor is a singleton:
+        //   the linear interval solver can perform many divisions where
+        //   the divisor is a singleton interval. We optimize for this case.
+        if (std::optional<number_t> n = x.singleton()) {
+            number_t c = n->cast_to_uint64_t();
+            if (c == 1) {
+                return *this;
+            } else if (c > 0) {
+                return interval_t(_lb.UDiv(bound_t{c}), _ub.UDiv(bound_t{c}));
+            } else {
+                // The eBPF ISA defines division by 0 as resulting in 0.
+                return interval_t(number_t(0));
+            }
+        }
+        // Divisor is not a singleton
+        using z_interval = interval_t;
+        if (x[0]) {
+            // The divisor contains 0.
+            z_interval l(x._lb, z_bound(-1));
+            z_interval u(z_bound(1), x._ub);
+            return (UDiv(l) | UDiv(u) | z_interval(number_t(0)));
+        } else if (operator[](0)) {
+            // The dividend contains 0.
+            z_interval l(_lb, z_bound(-1));
+            z_interval u(z_bound(1), _ub);
+            return (l.UDiv(x) | u.UDiv(x) | z_interval(number_t(0)));
+        } else {
+            // Neither the dividend nor the divisor contains 0
+            z_interval a = (_ub < 0)
+                               ? (*this + ((x._ub < 0) ? (x + z_interval(number_t(1))) : (z_interval(number_t(1)) - x)))
+                               : *this;
+            bound_t ll = a._lb.UDiv(x._lb);
+            bound_t lu = a._lb.UDiv(x._ub);
+            bound_t ul = a._ub.UDiv(x._lb);
+            bound_t uu = a._ub.UDiv(x._ub);
+            return interval_t(bound_t::min(ll, lu, ul, uu), bound_t::max(ll, lu, ul, uu));
+        }
+    }
+}
+
+// Signed remainder (modulo). eBPF has no instruction for this.
 interval_t interval_t::SRem(const interval_t& x) const {
     // note that the sign of the divisor does not matter
 
@@ -93,37 +140,51 @@ interval_t interval_t::SRem(const interval_t& x) const {
     }
 }
 
+// Unsigned remainder (modulo).
 interval_t interval_t::URem(const interval_t& x) const {
 
     if (is_bottom() || x.is_bottom()) {
         return bottom();
-    } else if (singleton() && x.singleton()) {
-        number_t dividend = *singleton();
-        number_t divisor = *x.singleton();
-
-        if (divisor < 0) {
-            return top();
-        } else if (divisor == 0) {
-            return bottom();
-        } else if (dividend < 0) {
-            // dividend is treated as an unsigned integer.
-            // we would need the size to be more precise
-            return interval_t(0, divisor - 1);
-        } else {
-            return interval_t(dividend % divisor);
-        }
-    } else if (x.ub().is_finite() && x.lb().is_finite()) {
-        number_t max_divisor = *x.ub().number();
-
-        if (x.lb() < 0 || x.ub() < 0) {
-            return top();
-        } else if (max_divisor == 0) {
-            return bottom();
-        }
-
-        return interval_t(0, max_divisor - 1);
     } else {
-        return top();
+        // Divisor is a singleton:
+        //   the linear interval solver can perform many divisions where
+        //   the divisor is a singleton interval. We optimize for this case.
+        if (std::optional<number_t> n = x.singleton()) {
+            number_t c = *n;
+            if (c > 0) {
+                return interval_t(_lb.UMod(bound_t{c}), _ub.UMod(bound_t{c}));
+            } else {
+                // The eBPF ISA defines modulo 0 as being unchanged.
+                return *this;
+            }
+        }
+        // Divisor is not a singleton
+        using z_interval = interval_t;
+        if (x[0]) {
+            // The divisor contains 0.
+            z_interval l(x._lb, z_bound(-1));
+            z_interval u(z_bound(1), x._ub);
+            return (URem(l) | URem(u) | *this);
+        } else if (operator[](0)) {
+            // The dividend contains 0.
+            z_interval l(_lb, z_bound(-1));
+            z_interval u(z_bound(1), _ub);
+            return (l.URem(x) | u.URem(x) | *this);
+        } else {
+            // Neither the dividend nor the divisor contains 0
+            if (x._lb.is_infinite() || x._ub.is_infinite()) {
+                // Divisor is infinite. A "negative" dividend could result in anything except
+                // a value between the upper bound and 0, so set to top.  A "positive" dividend
+                // could result in anything between 0 and the dividend - 1.
+                return (_ub < 0) ? top() : ((*this - 1) | interval_t(number_t(0)));
+            } else if (_ub.number()->cast_to_uint64_t() < x._lb.number()->cast_to_uint64_t()) {
+                // Dividend lower than divisor, so the dividend is the remainder.
+                return *this;
+            } else {
+                number_t max_divisor = x._ub.number()->cast_to_uint64_t();
+                return interval_t(0, max_divisor - 1);
+            }
+        }
     }
 }
 
