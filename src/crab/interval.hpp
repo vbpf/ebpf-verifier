@@ -141,6 +141,34 @@ class bound_t final {
         }
     }
 
+    bound_t UDiv(const bound_t& x) const {
+        if (x._n == 0) {
+            CRAB_ERROR("Bound: division by zero");
+        } else if (is_finite() && x.is_finite()) {
+            number_t dividend = (_n >= 0) ? _n : number_t(_n.cast_to_uint64_t());
+            number_t divisor = (x._n >= 0) ? x._n : number_t(x._n.cast_to_uint64_t());
+            return bound_t(false, dividend / divisor);
+        } else if (is_finite() && x.is_infinite()) {
+            return 0;
+        } else {
+            return plus_infinity();
+        }
+    }
+
+    bound_t UMod(const bound_t& x) const {
+        if (x._n == 0) {
+            CRAB_ERROR("Bound: modulo zero");
+        } else if (is_finite() && x.is_finite()) {
+            number_t dividend = (_n >= 0) ? _n : number_t(_n.cast_to_uint64_t());
+            number_t divisor = (x._n >= 0) ? x._n : number_t(x._n.cast_to_uint64_t());
+            return bound_t(false, dividend % divisor);
+        } else if (is_finite() && x.is_infinite()) {
+            return *this;
+        } else {
+            return plus_infinity();
+        }
+    }
+
     bound_t& operator/=(const bound_t& x) { return operator=(operator/(x)); }
 
     bool operator<(const bound_t& x) const { return !operator>=(x); }
@@ -395,13 +423,7 @@ class interval_t final {
 
     // division and remainder operations
 
-    [[nodiscard]] interval_t UDiv(const interval_t& x) const {
-        if (is_bottom() || x.is_bottom()) {
-            return bottom();
-        } else {
-            return top();
-        }
-    }
+    [[nodiscard]] interval_t UDiv(const interval_t& x) const;
 
     [[nodiscard]] interval_t SRem(const interval_t& x) const;
 

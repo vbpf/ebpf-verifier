@@ -36,12 +36,12 @@ static uint8_t op(Bin::Op op) {
     case Op::ADD: return 0x0;
     case Op::SUB: return 0x1;
     case Op::MUL: return 0x2;
-    case Op::DIV: return 0x3;
+    case Op::UDIV: return 0x3;
     case Op::OR: return 0x4;
     case Op::AND: return 0x5;
     case Op::LSH: return 0x6;
     case Op::RSH: return 0x7;
-    case Op::MOD: return 0x9;
+    case Op::UMOD: return 0x9;
     case Op::XOR: return 0xa;
     case Op::MOV: return 0xb;
     case Op::ARSH: return 0xc;

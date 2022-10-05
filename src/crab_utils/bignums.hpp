@@ -86,6 +86,28 @@ class z_number final {
 
     [[nodiscard]] bool fits_uint64() const { return ((_n >= 0) && (_n <= ULLONG_MAX)); }
 
+    [[nodiscard]] uint64_t cast_to_uint64_t() const {
+        if (fits_uint64()) {
+            return (uint64_t)_n;
+        } else if (fits_sint64()) {
+            // Convert 64 bits from int64_t to uint64_t.
+            return (uint64_t)(int64_t)_n;
+        } else {
+            CRAB_ERROR("z_number ", _n.str(), " does not fit into an unsigned 64-bit integer");
+        }
+    }
+
+        [[nodiscard]] int64_t cast_to_int64_t() const {
+        if (fits_sint64()) {
+            return (int64_t)_n;
+        } else if (fits_uint64()) {
+            // Convert 64 bits from uint64_t to int64_t.
+            return (int64_t)(uint64_t)_n;
+        } else {
+            CRAB_ERROR("z_number ", _n.str(), " does not fit into a signed 64-bit integer");
+        }
+    }
+
     z_number operator+(const z_number& x) const {
         return z_number(_n + x._n);
     }

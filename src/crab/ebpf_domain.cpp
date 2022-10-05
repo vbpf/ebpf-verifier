@@ -382,12 +382,12 @@ void ebpf_domain_t::sub_overflow(variable_t lhs, const number_t& op2) { apply(m_
 void ebpf_domain_t::neg(variable_t lhs) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, (number_t)-1, true); }
 void ebpf_domain_t::mul(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, op2, true); }
 void ebpf_domain_t::mul(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, op2, true); }
-void ebpf_domain_t::div(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SDIV, lhs, lhs, op2, true); }
-void ebpf_domain_t::div(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::SDIV, lhs, lhs, op2, true); }
+void ebpf_domain_t::sdiv(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SDIV, lhs, lhs, op2, true); }
+void ebpf_domain_t::sdiv(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::SDIV, lhs, lhs, op2, true); }
 void ebpf_domain_t::udiv(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::UDIV, lhs, lhs, op2, true); }
 void ebpf_domain_t::udiv(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::UDIV, lhs, lhs, op2, true); }
-void ebpf_domain_t::rem(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SREM, lhs, lhs, op2, true); }
-void ebpf_domain_t::rem(variable_t lhs, const number_t& op2, bool mod) {
+void ebpf_domain_t::srem(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SREM, lhs, lhs, op2, true); }
+void ebpf_domain_t::srem(variable_t lhs, const number_t& op2, bool mod) {
     apply(m_inv, crab::arith_binop_t::SREM, lhs, lhs, op2, mod);
 }
 void ebpf_domain_t::urem(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::UREM, lhs, lhs, op2, true); }
@@ -1460,12 +1460,12 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             mul(dst.value, imm);
             havoc_offsets(bin.dst);
             break;
-        case Bin::Op::DIV:
-            div(dst.value, imm);
+        case Bin::Op::UDIV:
+            udiv(dst.value, imm);
             havoc_offsets(bin.dst);
             break;
-        case Bin::Op::MOD:
-            rem(dst.value, imm);
+        case Bin::Op::UMOD:
+            urem(dst.value, imm);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::OR:
@@ -1614,14 +1614,12 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             mul(dst.value, src.value);
             havoc_offsets(bin.dst);
             break;
-        case Bin::Op::DIV:
-            // DIV is not checked for zerodiv
-            div(dst.value, src.value);
+        case Bin::Op::UDIV:
+            udiv(dst.value, src.value);
             havoc_offsets(bin.dst);
             break;
-        case Bin::Op::MOD:
-            // See DIV comment
-            rem(dst.value, src.value);
+        case Bin::Op::UMOD:
+            urem(dst.value, src.value);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::OR:
