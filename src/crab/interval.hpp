@@ -145,8 +145,8 @@ class bound_t final {
         if (x._n == 0) {
             CRAB_ERROR("Bound: division by zero");
         } else if (is_finite() && x.is_finite()) {
-            number_t dividend = (_n >= 0) ? _n : number_t(_n.cast_to_uint64_t());
-            number_t divisor = (x._n >= 0) ? x._n : number_t(x._n.cast_to_uint64_t());
+            number_t dividend = (_n >= 0) ? _n : number_t((unsigned long long)_n.cast_to_uint64_t());
+            number_t divisor = (x._n >= 0) ? x._n : number_t((unsigned long long)x._n.cast_to_uint64_t());
             return bound_t(false, dividend / divisor);
         } else if (is_finite() && x.is_infinite()) {
             return 0;
@@ -159,8 +159,8 @@ class bound_t final {
         if (x._n == 0) {
             CRAB_ERROR("Bound: modulo zero");
         } else if (is_finite() && x.is_finite()) {
-            number_t dividend = (_n >= 0) ? _n : number_t(_n.cast_to_uint64_t());
-            number_t divisor = (x._n >= 0) ? x._n : number_t(x._n.cast_to_uint64_t());
+            number_t dividend = (_n >= 0) ? _n : number_t((unsigned long long)_n.cast_to_uint64_t());
+            number_t divisor = (x._n >= 0) ? x._n : number_t((unsigned long long)x._n.cast_to_uint64_t());
             return bound_t(false, dividend % divisor);
         } else if (is_finite() && x.is_infinite()) {
             return *this;
