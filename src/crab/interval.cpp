@@ -60,7 +60,7 @@ interval_t interval_t::UDiv(const interval_t& x) const {
         //   the linear interval solver can perform many divisions where
         //   the divisor is a singleton interval. We optimize for this case.
         if (std::optional<number_t> n = x.singleton()) {
-            number_t c = n->cast_to_uint64_t();
+            number_t c((unsigned long long)n->cast_to_uint64_t());
             if (c == 1) {
                 return *this;
             } else if (c > 0) {
