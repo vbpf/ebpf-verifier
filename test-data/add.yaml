@@ -1,6 +1,30 @@
 # Copyright (c) Prevail Verifier contributors.
 # SPDX-License-Identifier: MIT
 ---
+test-case: add immediate to large singleton number
+
+pre: ["r0.type=number", "r0.value=2147483647"]
+
+code:
+  <start>: |
+    r0 += 2 ; make sure value does not become a negative 64 bit number
+
+post:
+  - r0.type=number
+  - r0.value=2147483649
+---
+test-case: add immediate to large number range
+
+pre: ["r0.type=number", "r0.value=[2147483645, 2147483647]"]
+
+code:
+  <start>: |
+    r0 += 4 ; make sure value does not become a negative 64 bit number
+
+post:
+  - r0.type=number
+  - r0.value=[2147483649, 2147483651]
+---
 test-case: add immediate to unknown number
 
 pre: ["r1.type=number"]
