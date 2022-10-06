@@ -39,11 +39,15 @@ inline linear_expression_t operator+(variable_t x, const linear_expression_t& e)
 
 inline linear_expression_t operator-(variable_t x, const number_t& n) { return linear_expression_t(x).operator-(n); }
 
+inline linear_expression_t operator-(variable_t x, int64_t n) { return linear_expression_t(x).operator-(n); }
+
 inline linear_expression_t operator-(variable_t x, int n) { return linear_expression_t(x).operator-(n); }
 
 inline linear_expression_t operator-(number_t n, variable_t x) {
     return linear_expression_t(number_t(-1), x).operator+(n);
 }
+
+inline linear_expression_t operator-(int64_t n, variable_t x) { return linear_expression_t(number_t(-1), x).operator+(n); }
 
 inline linear_expression_t operator-(int n, variable_t x) { return linear_expression_t(number_t(-1), x).operator+(n); }
 
@@ -93,11 +97,19 @@ inline linear_constraint_t operator<=(variable_t x, int n) {
     return linear_constraint_t(x - n, constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO);
 }
 
+inline linear_constraint_t operator<=(variable_t x, int64_t n) {
+    return linear_constraint_t(x - n, constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO);
+}
+
 inline linear_constraint_t operator<=(number_t n, variable_t x) {
     return linear_constraint_t(n - x, constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO);
 }
 
 inline linear_constraint_t operator<=(int n, variable_t x) {
+    return linear_constraint_t(n - x, constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO);
+}
+
+inline linear_constraint_t operator<=(int64_t n, variable_t x) {
     return linear_constraint_t(n - x, constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO);
 }
 
@@ -280,6 +292,10 @@ inline linear_constraint_t operator==(variable_t x, const linear_expression_t& e
 }
 
 inline linear_constraint_t operator==(variable_t x, const number_t& n) {
+    return linear_constraint_t(x - n, constraint_kind_t::EQUALS_ZERO);
+}
+
+inline linear_constraint_t operator==(variable_t x, int64_t n) {
     return linear_constraint_t(x - n, constraint_kind_t::EQUALS_ZERO);
 }
 

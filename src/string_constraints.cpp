@@ -45,9 +45,9 @@ static crab::data_kind_t regkind(const string& s) {
     throw std::runtime_error(string() + "Bad kind: " + s);
 }
 
-static long number(const string& s) {
+static int64_t number(const string& s) {
     try {
-        return (long)boost::lexical_cast<int64_t>(s);
+        return boost::lexical_cast<int64_t>(s);
     } catch (const boost::bad_lexical_cast&) {
         throw std::invalid_argument("number too large");
     }
@@ -113,8 +113,8 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<string>
             if (type == type_encoding_t::T_NUM) {
                 numeric_ranges.push_back(crab::interval_t(number(m[1]), number(m[2])));
             } else {
-                long lb = number(m[1]);
-                long ub = number(m[2]);
+                int64_t lb = number(m[1]);
+                int64_t ub = number(m[2]);
                 variable_t d = variable_t::cell_var(data_kind_t::types, lb, ub - lb + 1);
                 res.push_back(d == type);
             }
