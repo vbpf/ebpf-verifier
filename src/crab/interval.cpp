@@ -181,7 +181,7 @@ interval_t interval_t::URem(const interval_t& x) const {
                 // Dividend lower than divisor, so the dividend is the remainder.
                 return *this;
             } else {
-                number_t max_divisor = x._ub.number()->cast_to_uint64_t();
+                number_t max_divisor = number_t((unsigned long long)x._ub.number()->cast_to_uint64_t());
                 return interval_t(0, max_divisor - 1);
             }
         }
