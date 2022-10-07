@@ -23,7 +23,7 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          sudo apt install libboost-dev libyaml-cpp-dev lcov
+          sudo apt install libboost-dev libboost-filesystem-dev libboost-program-options-dev libyaml-cpp-dev lcov
           pip install gcovr
 
       - uses: actions/checkout@v3

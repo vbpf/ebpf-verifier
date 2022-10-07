@@ -20,8 +20,11 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     message("ERROR: You must first install nuget.exe from https://www.nuget.org/downloads")
   else ()
     exec_program(${NUGET} ARGS install "Boost" -Version 1.78.0 -ExcludeVersion -OutputDirectory ${CMAKE_BINARY_DIR}/packages)
+    set(BOOST_VERSION 1.78.0)
   endif()
   set(Boost_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/packages/boost/lib/native/include)
+  set(Boost_LIBRARY_DIRS ${CMAKE_BINARY_DIR}/packages/boost_filesystem-vc142/lib/native)
+
   # MSVC's "std:c++20" option is the current standard that supports all the C++17
   # features we use. However, cmake can't deal with that here, so we set it below.
 
@@ -57,6 +60,7 @@ file(GLOB LIB_SRC
 
 file(GLOB ALL_TEST
         "./src/test/test.cpp"
+        "./src/test/test_conformance.cpp"
         "./src/test/test_loop.cpp"
         "./src/test/test_marshal.cpp"
         "./src/test/test_print.cpp"
@@ -84,6 +88,7 @@ add_library(ebpfverifier ${LIB_SRC})
 add_executable(check src/main/check.cpp src/main/linux_verifier.cpp)
 add_executable(tests ${ALL_TEST})
 add_executable(run_yaml src/main/run_yaml.cpp)
+add_executable(conformance_check src/test/conformance_check.cpp)
 
 set_target_properties(check
         PROPERTIES
@@ -97,10 +102,16 @@ set_target_properties(run_yaml
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
 
+set_target_properties(conformance_check
+        PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
+
 target_compile_options(ebpfverifier PRIVATE ${COMMON_FLAGS})
 target_compile_options(ebpfverifier PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
 target_compile_options(ebpfverifier PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
 target_compile_options(ebpfverifier PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
+
+add_subdirectory("external/bpf_conformance/src")
 
 # CMake derives a Visual Studio project GUID from the file path but can be overridden via a property
 # (see https://gitlab.kitware.com/cmake/cmake/-/commit/c85367f4).  Using a non-constant GUID
@@ -115,11 +126,14 @@ target_compile_options(check PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
 target_compile_options(check PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
 target_link_libraries(check PRIVATE ebpfverifier)
 
+message("Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
 target_compile_options(tests PRIVATE ${COMMON_FLAGS})
 target_compile_options(tests PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
 target_compile_options(tests PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
 target_compile_options(tests PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
 target_link_libraries(tests PRIVATE ebpfverifier)
+target_link_libraries(tests PRIVATE bpf_conformance)
+target_link_libraries(tests PRIVATE ${CMAKE_DL_LIBS})
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -130,3 +144,4 @@ target_link_libraries(ebpfverifier PRIVATE ${YAML_CPP_LIBRARIES})
 target_compile_options(ebpfverifier PRIVATE ${COMMON_FLAGS})
 
 target_link_libraries(run_yaml PRIVATE ebpfverifier)
+target_link_libraries(conformance_check PRIVATE ebpfverifier)

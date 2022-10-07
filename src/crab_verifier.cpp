@@ -199,7 +199,7 @@ static string_invariant_map to_string_invariant_map(crab::invariant_table_t& inv
 
 std::tuple<string_invariant_map, string_invariant_map>
 ebpf_analyze_program_for_test(std::ostream& os, const InstructionSeq& prog, const string_invariant& entry_invariant,
-                              const program_info& info, const ebpf_verifier_options_t& options) {
+                              const program_info& info, const ebpf_verifier_options_t& options, bool* result) {
     thread_local_options = options;
     ebpf_domain_t entry_inv = entry_invariant.is_bottom()
         ? ebpf_domain_t::bottom()
@@ -209,7 +209,15 @@ ebpf_analyze_program_for_test(std::ostream& os, const InstructionSeq& prog, cons
     cfg_t cfg = prepare_cfg(prog, info, !options.no_simplify, false);
     auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, entry_inv, options.check_termination);
     checks_db report = generate_report(cfg, pre_invariants, post_invariants);
+    if (thread_local_options.print_invariants) {
+        for (const label_t& label : cfg.sorted_labels()) {
+            std::cerr << "\nPre-invariant : " << pre_invariants.at(label) << "\n";
+            std::cerr << cfg.get_node(label);
+            std::cerr << "\nPost-invariant: " << post_invariants.at(label) << "\n";
+        }
+    }
     print_report(os, report, prog, false);
+    *result = (report.total_warnings == 0);
 
     return {
         to_string_invariant_map(pre_invariants),

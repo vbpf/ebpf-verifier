@@ -60,7 +60,7 @@ interval_t interval_t::UDiv(const interval_t& x) const {
         //   the linear interval solver can perform many divisions where
         //   the divisor is a singleton interval. We optimize for this case.
         if (std::optional<number_t> n = x.singleton()) {
-            number_t c((unsigned long long)n->cast_to_uint64_t());
+            number_t c((unsigned long long)n->cast_to_uint64());
             if (c == 1) {
                 return *this;
             } else if (c > 0) {
@@ -177,11 +177,11 @@ interval_t interval_t::URem(const interval_t& x) const {
                 // a value between the upper bound and 0, so set to top.  A "positive" dividend
                 // could result in anything between 0 and the dividend - 1.
                 return (_ub < 0) ? top() : ((*this - 1) | interval_t(number_t(0)));
-            } else if (_ub.number()->cast_to_uint64_t() < x._lb.number()->cast_to_uint64_t()) {
+            } else if (_ub.number()->cast_to_uint64() < x._lb.number()->cast_to_uint64()) {
                 // Dividend lower than divisor, so the dividend is the remainder.
                 return *this;
             } else {
-                number_t max_divisor = number_t((unsigned long long)x._ub.number()->cast_to_uint64_t());
+                number_t max_divisor = number_t((unsigned long long)x._ub.number()->cast_to_uint64());
                 return interval_t(0, max_divisor - 1);
             }
         }
