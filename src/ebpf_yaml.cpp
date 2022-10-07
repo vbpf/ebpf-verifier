@@ -220,9 +220,10 @@ std::optional<Failure> run_yaml_test_case(const TestCase& test_case) {
     program_info info{&g_platform_test, {}, program_type};
 
     std::ostringstream ss;
+    bool result;
     const auto& [pre_invs, post_invs] = ebpf_analyze_program_for_test(ss, test_case.instruction_seq,
                                                                       test_case.assumed_pre_invariant,
-                                                                      info, test_case.options);
+                                                                      info, test_case.options, &result);
     std::set<string> actual_messages = extract_messages(ss.str());
 
     const auto& actual_last_invariant = pre_invs.at(label_t::exit);
@@ -234,6 +235,109 @@ std::optional<Failure> run_yaml_test_case(const TestCase& test_case) {
     };
 }
 
+template <typename T>
+static vector<T> vector_of(std::vector<uint8_t> bytes) {
+    auto data = bytes.data();
+    auto size = bytes.size();
+    if ((size % sizeof(T) != 0) || size > UINT32_MAX || !data) {
+        throw std::runtime_error("Invalid argument to vector_of");
+    }
+    return {(T*)data, (T*)(data + size)};
+}
+
+bool run_conformance_test_case(std::vector<uint8_t> memory_bytes, std::vector<uint8_t> program_bytes,
+                               uint64_t* r0_value, bool debug) {
+    ebpf_context_descriptor_t context_descriptor{64, -1, -1, -1};
+    EbpfProgramType program_type = make_program_type("conformance_check", &context_descriptor);
+
+    program_info info{&g_platform_test, {}, program_type};
+
+    if (memory_bytes.size() > EBPF_STACK_SIZE) {
+        std::cout << "memory size overflow\n";
+        return false;
+    }
+
+    try {
+        auto insts = vector_of<ebpf_inst>(program_bytes);
+        string_invariant pre_invariant = string_invariant::top();
+        if (!memory_bytes.empty()) {
+            std::set<std::string> more = {
+                "r1.type=stack",
+                "r1.stack_offset=" + std::to_string(EBPF_STACK_SIZE - memory_bytes.size()),
+                "r1.stack_numeric_size=" + std::to_string(memory_bytes.size()),
+                "r10.type=stack",
+                "r10.stack_offset=" + std::to_string(EBPF_STACK_SIZE),
+                                          "s[" + std::to_string(EBPF_STACK_SIZE - memory_bytes.size()) + "..." +
+                                              std::to_string(EBPF_STACK_SIZE - 1) + "].type=number"
+            };
+
+            int offset = EBPF_STACK_SIZE - memory_bytes.size();
+            if (offset % 2 != 0) {
+                uint8_t value = memory_bytes[offset + memory_bytes.size() - EBPF_STACK_SIZE];
+                more.insert("s[" + std::to_string(offset) + "..." + std::to_string(offset) +
+                            "].value=" + std::to_string(value));
+                offset++;
+            }
+            if (offset % 4 != 0) {
+                uint16_t value;
+                memcpy(&value, memory_bytes.data() + offset + memory_bytes.size() - EBPF_STACK_SIZE, sizeof(value));
+                more.insert("s[" + std::to_string(offset) + "..." + std::to_string(offset + 1) +
+                            "].value=" + std::to_string(value));
+                offset += 2;
+            }
+            if (offset % 8 != 0) {
+                uint32_t value;
+                memcpy(&value, memory_bytes.data() + offset + memory_bytes.size() - EBPF_STACK_SIZE, sizeof(value));
+                more.insert("s[" + std::to_string(offset) + "..." + std::to_string(offset + 3) +
+                            "].value=" + std::to_string(value));
+                offset += 4;
+            }
+            while (offset < EBPF_STACK_SIZE) {
+                int64_t value;
+                memcpy(&value, memory_bytes.data() + offset + memory_bytes.size() - EBPF_STACK_SIZE, sizeof(value));
+                more.insert("s[" + std::to_string(offset) + "..." + std::to_string(offset + 7) +
+                            "].value=" + std::to_string(value));
+                offset += 8;
+            }
+
+            pre_invariant = pre_invariant + string_invariant(more);
+        }
+        raw_program raw_prog{.prog = insts};
+
+        // Convert the raw program section to a set of instructions.
+        std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
+        if (std::holds_alternative<string>(prog_or_error)) {
+            std::cout << "unmarshaling error at " << std::get<string>(prog_or_error) << "\n";
+            return false;
+        }
+
+        auto& prog = std::get<InstructionSeq>(prog_or_error);
+
+        ebpf_verifier_options_t options = ebpf_verifier_default_options;
+        if (debug) {
+            options.print_failures = true;
+            options.print_invariants = true;
+            options.no_simplify = true;
+        }
+
+        std::ostringstream ss;
+        bool result;
+        const auto& [pre_invs, post_invs] =
+            ebpf_analyze_program_for_test(ss, prog, pre_invariant, info, options, &result);
+
+        *r0_value = 0;
+        const auto& actual_last_invariant = pre_invs.at(label_t::exit);
+        for (std::string invariant : actual_last_invariant.value()) {
+            if (invariant.rfind("r0.value=", 0) == 0) {
+                *r0_value = std::stoull(invariant.substr(9));
+                return result;
+            }
+        }
+        return false;
+    } catch (...) {
+        return false;
+    }
+}
 
 void print_failure(const Failure& failure, std::ostream& out) {
     constexpr auto INDENT = "  ";

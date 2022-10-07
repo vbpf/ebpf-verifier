@@ -62,7 +62,7 @@ jobs:
     #    uses a compiled language
     - name: Install dependencies
       run: |
-        sudo apt install libboost-dev libyaml-cpp-dev
+        sudo apt install libboost-dev libboost-filesystem-dev libboost-program-options-dev libyaml-cpp-dev
         
     - run: |
         mkdir build

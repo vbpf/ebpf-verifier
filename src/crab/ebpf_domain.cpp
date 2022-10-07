@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "boost/endian/conversion.hpp"
 #include "boost/range/algorithm/set_algorithm.hpp"
 
 #include "crab_utils/stats.hpp"
@@ -109,25 +110,53 @@ static std::vector<linear_constraint_t> jmp_to_cst_imm(Condition::Op op, variabl
 
 /** Linear constraint for a numerical comparison between registers.
  */
-static std::vector<linear_constraint_t> jmp_to_cst_reg(Condition::Op op, variable_t dst_value, variable_t src_value) {
+static std::vector<linear_constraint_t> signed_jmp_to_cst_reg(Condition::Op op, variable_t dst_value, variable_t src_value) {
     using namespace crab::dsl_syntax;
     using Op = Condition::Op;
     switch (op) {
     case Op::EQ: return {eq(dst_value, src_value)};
     case Op::NE: return {neq(dst_value, src_value)};
-    case Op::GE: return {dst_value >= src_value}; // FIX unsigned
     case Op::SGE: return {dst_value >= src_value};
-    case Op::LE: return {dst_value <= src_value, 0 <= dst_value}; // FIX unsigned
     case Op::SLE: return {dst_value <= src_value};
-    case Op::GT: return {dst_value > src_value}; // FIX unsigned
     case Op::SGT: return {dst_value > src_value};
     // Note: reverse the test as a workaround strange lookup:
-    case Op::LT: return {src_value > dst_value}; // FIX unsigned
     case Op::SLT: return {src_value > dst_value};
     case Op::SET: throw std::exception();
     case Op::NSET: return {};
+    default: throw std::exception();
     }
     return {};
+}
+
+static std::vector<linear_constraint_t> unsigned_jmp_to_cst_reg(const NumAbsDomain& inv, Condition::Op op,
+                                                                variable_t dst_value,
+                                                              variable_t src_value) {
+    using namespace crab::dsl_syntax;
+    using Op = Condition::Op;
+
+    // TODO: we could perhaps add new linear_constraint kinds
+    // or support ranges, but for now we just handle singletons directly here
+    // as needed for the eBPF conformance tests.
+    auto src_interval = inv.eval_interval(src_value);
+    auto dst_interval = inv.eval_interval(dst_value);
+    std::optional<number_t> src_n = src_interval.singleton();
+    std::optional<number_t> dst_n = dst_interval.singleton();
+    if (!src_n || !dst_n || !src_n->fits_sint64() || !dst_n->fits_sint64()) {
+        return {};
+    }
+    uint64_t src_int_value = (uint64_t)(int64_t)src_n.value();
+    uint64_t dst_int_value = (uint64_t)(int64_t)dst_n.value();
+
+    bool result;
+    switch (op) {
+    case Op::GE: result = (dst_int_value >= src_int_value); break;
+    case Op::LE: result = (dst_int_value <= src_int_value); break;
+    case Op::GT: result = (dst_int_value > src_int_value); break;
+    case Op::LT: result = (dst_int_value < src_int_value); break;
+    default: throw std::exception();
+    }
+
+    return {(result) ? linear_constraint_t::FALSE().negate() : linear_constraint_t::FALSE()};
 }
 
 static bool is_unsigned_cmp(Condition::Op op) {
@@ -643,8 +672,11 @@ void ebpf_domain_t::operator()(const Assume& s) {
         if (type_inv.same_type(m_inv, cond.left, std::get<Reg>(cond.right))) {
             m_inv = type_inv.join_over_types(m_inv, cond.left, [&](NumAbsDomain& inv, type_encoding_t type) {
                 if (type == T_NUM) {
-                    if (!is_unsigned_cmp(cond.op))
-                        for (const linear_constraint_t& cst : jmp_to_cst_reg(cond.op, dst.value, src.value))
+                    if (is_unsigned_cmp(cond.op))
+                        for (const linear_constraint_t& cst : unsigned_jmp_to_cst_reg(m_inv, cond.op, dst.value, src.value))
+                            inv += cst;
+                    else
+                        for (const linear_constraint_t& cst : signed_jmp_to_cst_reg(cond.op, dst.value, src.value))
                             inv += cst;
                 } else {
                     // Either pointers to a singleton region,
@@ -673,11 +705,98 @@ void ebpf_domain_t::operator()(const Un& stmt) {
     auto dst = reg_pack(stmt.dst);
     switch (stmt.op) {
     case Un::Op::BE16:
+        if (m_inv.entail(type_is_number(stmt.dst))) {
+            auto dst = reg_pack(stmt.dst);
+            auto interval = m_inv.eval_interval(dst.value);
+            if (std::optional<number_t> n = interval.singleton()) {
+                if (n->fits_uint64()) {
+                    uint16_t input = (uint16_t)(uint64_t)n.value();
+                    uint16_t output = boost::endian::native_to_big(input);
+                    m_inv.set(dst.value, crab::interval_t(number_t(output), number_t(output)));
+                    break;
+                }
+            }
+        }
+        havoc(dst.value);
+        havoc_offsets(stmt.dst);
+        break;
     case Un::Op::BE32:
+        if (m_inv.entail(type_is_number(stmt.dst))) {
+            auto dst = reg_pack(stmt.dst);
+            auto interval = m_inv.eval_interval(dst.value);
+            if (std::optional<number_t> n = interval.singleton()) {
+                if (n->fits_uint64()) {
+                    uint32_t input = (uint32_t)(uint64_t)n.value();
+                    uint32_t output = boost::endian::native_to_big(input);
+                    m_inv.set(dst.value, crab::interval_t(number_t(output), number_t(output)));
+                    break;
+                }
+            }
+        }
+        havoc(dst.value);
+        havoc_offsets(stmt.dst);
+        break;
     case Un::Op::BE64:
+        if (m_inv.entail(type_is_number(stmt.dst))) {
+            auto dst = reg_pack(stmt.dst);
+            auto interval = m_inv.eval_interval(dst.value);
+            if (std::optional<number_t> n = interval.singleton()) {
+                if (n->fits_sint64()) {
+                    int64_t input = (int64_t)n.value();
+                    int64_t output = boost::endian::native_to_big(input);
+                    m_inv.set(dst.value, crab::interval_t(number_t(output), number_t(output)));
+                    break;
+                }
+            }
+        }
+        havoc(dst.value);
+        havoc_offsets(stmt.dst);
+        break;
     case Un::Op::LE16:
+        if (m_inv.entail(type_is_number(stmt.dst))) {
+            auto dst = reg_pack(stmt.dst);
+            auto interval = m_inv.eval_interval(dst.value);
+            if (std::optional<number_t> n = interval.singleton()) {
+                if (n->fits_uint64()) {
+                    uint16_t input = (uint16_t)(uint64_t)n.value();
+                    uint16_t output = boost::endian::native_to_little(input);
+                    m_inv.set(dst.value, crab::interval_t(output, output));
+                    break;
+                }
+            }
+        }
+        havoc(dst.value);
+        havoc_offsets(stmt.dst);
+        break;
     case Un::Op::LE32:
+        if (m_inv.entail(type_is_number(stmt.dst))) {
+            auto dst = reg_pack(stmt.dst);
+            auto interval = m_inv.eval_interval(dst.value);
+            if (std::optional<number_t> n = interval.singleton()) {
+                if (n->fits_uint64()) {
+                    uint32_t input = (uint32_t)(uint64_t)n.value();
+                    uint32_t output = boost::endian::native_to_little(input);
+                    m_inv.set(dst.value, crab::interval_t(output, output));
+                    break;
+                }
+            }
+        }
+        havoc(dst.value);
+        havoc_offsets(stmt.dst);
+        break;
     case Un::Op::LE64:
+        if (m_inv.entail(type_is_number(stmt.dst))) {
+            auto dst = reg_pack(stmt.dst);
+            auto interval = m_inv.eval_interval(dst.value);
+            if (std::optional<number_t> n = interval.singleton()) {
+                if (n->fits_uint64()) {
+                    uint64_t input = (uint64_t)n.value();
+                    uint32_t output = boost::endian::native_to_little(input);
+                    m_inv.set(dst.value, crab::interval_t(output, output));
+                    break;
+                }
+            }
+        }
         havoc(dst.value);
         havoc_offsets(stmt.dst);
         break;
@@ -1028,17 +1147,17 @@ void ebpf_domain_t::do_load_stack(NumAbsDomain& inv, const Reg& target_reg, cons
     if (width == 1 || width == 2 || width == 4 || width == 8) {
         inv.assign(target.value, stack.load(inv,  data_kind_t::values, addr, width));
 
-        if (type_inv.has_type(m_inv, target.type, T_CTX))
+        if (type_inv.has_type(inv, target.type, T_CTX))
             inv.assign(target.ctx_offset, stack.load(inv, data_kind_t::ctx_offsets, addr, width));
-        if (type_inv.has_type(m_inv, target.type, T_MAP) || type_inv.has_type(m_inv, target.type, T_MAP_PROGRAMS))
+        if (type_inv.has_type(inv, target.type, T_MAP) || type_inv.has_type(inv, target.type, T_MAP_PROGRAMS))
             inv.assign(target.map_fd, stack.load(inv, data_kind_t::map_fds, addr, width));
-        if (type_inv.has_type(m_inv, target.type, T_PACKET))
+        if (type_inv.has_type(inv, target.type, T_PACKET))
             inv.assign(target.packet_offset, stack.load(inv, data_kind_t::packet_offsets, addr, width));
-        if (type_inv.has_type(m_inv, target.type, T_SHARED)) {
+        if (type_inv.has_type(inv, target.type, T_SHARED)) {
             inv.assign(target.shared_offset, stack.load(inv, data_kind_t::shared_offsets, addr, width));
             inv.assign(target.shared_region_size, stack.load(inv, data_kind_t::shared_region_sizes, addr, width));
         }
-        if (type_inv.has_type(m_inv, target.type, T_STACK)) {
+        if (type_inv.has_type(inv, target.type, T_STACK)) {
             inv.assign(target.stack_offset, stack.load(inv, data_kind_t::stack_offsets, addr, width));
             inv.assign(target.stack_numeric_size, stack.load(inv, data_kind_t::stack_numeric_sizes, addr, width));
         }
@@ -1487,11 +1606,41 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::RSH:
+            if (m_inv.entail(type_is_number(bin.dst))) {
+                auto interval = m_inv.eval_interval(dst.value);
+                if (std::optional<number_t> n = interval.singleton()) {
+                    if (n->fits_sint64()) {
+                        uint64_t input = (uint64_t)(int64_t)n.value();
+                        if (!bin.is64) {
+                            input &= UINT32_MAX;
+                        }
+                        uint64_t output = (int64_t)(input >> imm);
+                        m_inv.set(dst.value, crab::interval_t(number_t((unsigned long long)output),
+                                                              number_t((unsigned long long)output)));
+                        break;
+                    }
+                }
+            }
             // avoid signedness and overflow issues in lshr(dst.value, imm);
             havoc(dst.value);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::ARSH:
+            if (m_inv.entail(type_is_number(bin.dst))) {
+                auto interval = m_inv.eval_interval(dst.value);
+                if (std::optional<number_t> n = interval.singleton()) {
+                    if (n->fits_sint64()) {
+                        int64_t input = (int64_t)n.value();
+                        if (!bin.is64) {
+                            input = (int32_t)(input & UINT32_MAX);
+                        }
+                        int64_t output = (int64_t)(input >> imm);
+                        m_inv.set(dst.value, crab::interval_t(number_t((signed long long)output),
+                                                              number_t((signed long long)output)));
+                        break;
+                    }
+                }
+            }
             // avoid signedness and overflow issues in ashr(dst.value, imm);
             // = (int64_t)dst >> imm;
             havoc(dst.value);
@@ -1635,6 +1784,23 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::RSH:
+            if (m_inv.entail(type_is_number(bin.dst)) && m_inv.entail(type_is_number(std::get<Reg>(bin.v)))) {
+                auto dst_interval = m_inv.eval_interval(dst.value);
+                auto src_interval = m_inv.eval_interval(src.value);
+                std::optional<number_t> dst_n = dst_interval.singleton();
+                std::optional<number_t> src_n = src_interval.singleton();
+                if (dst_n && src_n) {
+                    if (dst_n->fits_sint64() && src_n->fits_sint64()) {
+                        uint64_t input = (uint64_t)(int64_t)dst_n.value();
+                        if (!bin.is64) {
+                            input &= UINT32_MAX;
+                        }
+                        uint64_t output = (int64_t)(input >> (int64_t)src_n.value());
+                        m_inv.set(dst.value, crab::interval_t(number_t((unsigned long long)output), number_t((unsigned long long)output)));
+                        break;
+                    }
+                }
+            }
             havoc(dst.value);
             havoc_offsets(bin.dst);
             break;
