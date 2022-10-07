@@ -167,10 +167,9 @@ TEST_SECTION("cilium", "bpf_overlay.o", "from-overlay")
 
 TEST_SECTION("cilium", "bpf_xdp.o", "from-netdev")
 
-TEST_SECTION("cilium", "bpf_xdp_dsr_linux.o", "from-netdev")
+TEST_SECTION("cilium", "bpf_xdp_dsr_linux_v1_1.o", "from-netdev")
 TEST_SECTION("cilium", "bpf_xdp_dsr_linux.o", "2/1")
 
-TEST_SECTION("cilium", "bpf_xdp_snat_linux.o", "from-netdev")
 TEST_SECTION("cilium", "bpf_xdp_snat_linux.o", "2/1")
 
 TEST_SECTION("linux", "cpustat_kern.o", "tracepoint/power/cpu_frequency")
@@ -507,6 +506,10 @@ TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/17")
 TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/18")
 TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/19")
 TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/24")
+
+// Unsupported: JMP32
+TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "from-netdev")
+TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "from-netdev")
 
 // False positive, unknown cause
 TEST_SECTION_FAIL("linux", "test_map_in_map_kern.o", "kprobe/sys_connect")
