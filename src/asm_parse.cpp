@@ -100,6 +100,9 @@ static Deref deref(const std::string& width, const std::string& basereg, const s
 Instruction parse_instruction(const std::string& line, const std::map<std::string, label_t>& label_name_to_label) {
     // consider ";" to be a comment
     std::string text = line.substr(0, line.find(';'));
+    size_t end = text.find_last_not_of(" ");
+    if (end != std::string::npos)
+        text = text.substr(0, end + 1);
     std::smatch m;
     if (regex_match(text, m, regex("exit"))) {
         return Exit{};
@@ -158,6 +161,7 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
                 .op = str_to_cmpop.at(m[2]),
                 .left = reg(m[1]),
                 .right = reg_or_imm(m[3]),
+                .is64 = (((const std::string&)m[1]).at(0) == 'r')
             };
         }
         return res;

@@ -362,8 +362,6 @@ struct Unmarshaller {
             if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP)
                 throw InvalidInstruction(pc, "Bad instruction");
         default: {
-            if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP)
-                throw InvalidInstruction(pc, "JMP32 is not yet supported");
             pc_t new_pc = pc + 1 + inst.offset;
             if (new_pc >= insts.size())
                 throw InvalidInstruction(pc, "jump out of bounds");
@@ -376,6 +374,7 @@ struct Unmarshaller {
                                                         .left = Reg{inst.dst},
                                                         .right = (inst.opcode & INST_SRC_REG) ? (Value)Reg{inst.src}
                                                                                               : Imm{(uint32_t)inst.imm},
+                                                        .is64 = ((inst.opcode & INST_CLS_MASK) == INST_CLS_JMP)
                                                     };
             return Jmp{
                 .cond = cond,

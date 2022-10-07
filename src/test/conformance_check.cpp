@@ -65,20 +65,27 @@ int main(int argc, char** argv) {
         std::getline(std::cin, program_string);
     }
 
-    const auto& [result, r0_value] =
+    const auto& result =
         run_conformance_test_case(base16_decode(memory_string), base16_decode(program_string), debug);
-    if (!r0_value) {
-        // Write failure reason to stdout which is all that the bpf conformance library looks at.
-        if (!result) {
-            std::cout << "Verification failed\n";
-        } else {
-            std::cout << "Couldn't determine r0 value\n";
-        }
+    if (!result.success) {
+        // Write failure reason to stdout since the bpf conformance library does not look at stderr.
+        std::cout << "Verification failed\n";
+        return 1;
+    }
+    if (result.r0_value.is_top()) {
+        std::cout << "Couldn't determine r0 value\n";
+        return 1;
+    }
+    if (!result.r0_value.singleton()) {
+        std::cout << "r0 value is range [" << result.r0_value.lb() << ", " << result.r0_value.ub() << "]\n";
         return 1;
     }
 
     // Print output so the conformance test suite can check it.
-    std::cout << std::hex << r0_value.value() << std::endl;
+    if (result.r0_value.singleton() && result.r0_value.singleton().value().fits_cast_to_int64())
+        std::cout << std::hex << result.r0_value.singleton().value().cast_to_uint64() << std::endl;
+    else
+        std::cout << result.r0_value << std::endl;
 
     return 0;
 }

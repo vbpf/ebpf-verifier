@@ -137,6 +137,7 @@ struct Condition {
     Op op;
     Reg left;
     Value right;
+    bool is64{};
 };
 
 struct Jmp {

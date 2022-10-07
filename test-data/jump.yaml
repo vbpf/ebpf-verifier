@@ -1,6 +1,26 @@
 # Copyright (c) Prevail Verifier contributors.
 # SPDX-License-Identifier: MIT
 ---
+test-case: JMP32
+
+pre: ["r0.type=number", "r0.value=0", "r1.type=number", "r1.value=4294967294"]
+
+code:
+  <start>: |
+    if w1 s> 0 goto <label_0> ; 0xfffffffe should be negative in a 32-bit comparison
+    r0 = 1                    ; this should be executed
+  <label_0>: |
+    exit
+
+post:
+  - r0.type=number
+  - r0.value=1
+  - r1.type=number
+  - r1.value=4294967294
+
+messages:
+  - "0:2: Code is unreachable after 0:2"
+---
 test-case: simple conditional jump forward
 
 pre: [r1.type=number]
@@ -370,6 +390,26 @@ post:
   - r0.value=0
   - r4.type=number
   - r4.value=-22
+
+messages:
+  - "0:1: Code is unreachable after 0:1"
+---
+test-case: unsigned comparison of negative number
+
+pre: ["r0.type=number", "r0.value=1", "r1.type=number", "r1.value=-1"]
+
+code:
+  <start>: |
+    if r1 > 0 goto <label_0> ; unsigned comparison so should be true
+    r0 = 0                   ; this should not be executed
+  <label_0>: |
+    exit                     ; this is ok to execute but currently fails verification
+
+post:
+  - r0.type=number
+  - r0.value=1
+  - r1.type=number
+  - r1.value=-1
 
 messages:
   - "0:1: Code is unreachable after 0:1"

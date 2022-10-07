@@ -11,7 +11,7 @@ enum class constraint_kind_t {
     EQUALS_ZERO,
     LESS_THAN_OR_EQUALS_ZERO,
     LESS_THAN_ZERO,
-    NOT_ZERO
+    NOT_ZERO,
 };
 
 class linear_constraint_t final {
@@ -65,6 +65,10 @@ class linear_constraint_t final {
 
     static linear_constraint_t FALSE() {
         return linear_constraint_t{linear_expression_t(0), constraint_kind_t::NOT_ZERO};
+    };
+
+    static linear_constraint_t TRUE() {
+        return linear_constraint_t{linear_expression_t(0), constraint_kind_t::EQUALS_ZERO};
     };
 
 };

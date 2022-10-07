@@ -33,6 +33,12 @@ struct Failure {
 void print_failure(const Failure& failure, std::ostream& out);
 
 std::optional<Failure> run_yaml_test_case(const TestCase& test_case);
-std::tuple<bool, std::optional<uint64_t>> run_conformance_test_case(const std::vector<uint8_t>& memory_bytes, const std::vector<uint8_t>& program_bytes, bool debug);
+
+struct ConformanceTestResult {
+    bool success;
+    crab::interval_t r0_value = crab::interval_t::top();
+};
+
+ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memory_bytes, const std::vector<uint8_t>& program_bytes, bool debug);
 
 bool run_yaml(const std::string& path);

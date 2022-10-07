@@ -102,7 +102,7 @@ static Condition::Op reverse(Condition::Op op) {
 }
 
 /// Get the inverse of a given comparison condition.
-static Condition reverse(Condition cond) { return {.op = reverse(cond.op), .left = cond.left, .right = cond.right}; }
+static Condition reverse(Condition cond) { return {.op = reverse(cond.op), .left = cond.left, .right = cond.right, .is64 = cond.is64}; }
 
 template <typename T>
 static vector<label_t> unique(const std::pair<T, T>& be) {

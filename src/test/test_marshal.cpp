@@ -237,5 +237,5 @@ TEST_CASE("fail unmarshal", "[disasm][marshal]") {
                          "0: Bad instruction\n");
     check_unmarshal_fail(ebpf_inst{.opcode = INST_CLS_JMP32}, "0: Bad instruction\n");
     check_unmarshal_fail(ebpf_inst{.opcode = 0x90 | INST_CLS_JMP32}, "0: Bad instruction\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = 0x10 | INST_CLS_JMP32}, "0: JMP32 is not yet supported\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = 0x10 | INST_CLS_JMP32}, "0: jump out of bounds\n");
 }
