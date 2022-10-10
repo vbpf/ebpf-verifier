@@ -86,31 +86,97 @@ static linear_constraint_t jmp_to_cst_offsets_reg(Condition::Op op, variable_t d
     }
 }
 
+static std::vector<linear_constraint_t> bit_jmp_to_cst_interval(const NumAbsDomain& inv, Condition::Op op,
+                                                                variable_t dst_value, crab::interval_t src_interval) {
+    using namespace crab::dsl_syntax;
+    using Op = Condition::Op;
+
+    auto dst_interval = inv.eval_interval(dst_value);
+    std::optional<number_t> dst_n = dst_interval.singleton();
+    if (!dst_n || !dst_n.value().fits_cast_to_int64())
+        return {};
+
+    std::optional<number_t> src_n = src_interval.singleton();
+    if (!src_n || !src_n->fits_cast_to_int64())
+        return {};
+    uint64_t src_int_value = src_n.value().cast_to_uint64();
+
+    bool result;
+    switch (op) {
+    case Op::SET: result = ((dst_n.value().cast_to_uint64() & src_int_value) != 0); break;
+    case Op::NSET: result = ((dst_n.value().cast_to_uint64() & src_int_value) == 0); break;
+    default: throw std::exception();
+    }
+
+    return {(result) ? linear_constraint_t::FALSE().negate() : linear_constraint_t::FALSE()};
+}
+
+static std::vector<linear_constraint_t> unsigned_jmp_to_cst_interval(const NumAbsDomain& inv, Condition::Op op,
+                                                                     variable_t dst_value,
+                                                                     crab::interval_t src_interval) {
+    using namespace crab::dsl_syntax;
+    using Op = Condition::Op;
+
+    if ((op == Op::LE) && src_interval.lb().number().has_value() && src_interval.ub().number().has_value()) {
+        uint64_t dst_lb_value = src_interval.lb().number().value().cast_to_uint64();
+        uint64_t dst_ub_value = src_interval.ub().number().value().cast_to_uint64();
+        if (dst_lb_value <= dst_ub_value) {
+            return {dst_value <= dst_ub_value, 0 <= dst_value};
+        }
+    }
+
+    // TODO: support a range, but for now we just handle singletons directly here
+    // as needed for the eBPF conformance tests.
+    std::optional<number_t> src_n = src_interval.singleton();
+    if (!src_n || !src_n->fits_cast_to_int64())
+        return {};
+    uint64_t src_int_value = src_n.value().cast_to_uint64();
+
+    auto dst_interval = inv.eval_interval(dst_value);
+    std::optional<number_t> dst_lb = dst_interval.lb().number();
+    std::optional<number_t> dst_ub = dst_interval.ub().number();
+    if (!dst_lb || !dst_lb.value().fits_cast_to_int64() || !dst_ub || !dst_ub.value().fits_cast_to_int64())
+        return {};
+    uint64_t dst_lb_value = dst_lb.value().cast_to_uint64();
+    uint64_t dst_ub_value = dst_ub.value().cast_to_uint64();
+    std::optional<number_t> dst_n = dst_interval.singleton();
+
+    bool result;
+    switch (op) {
+    case Op::GE: result = (dst_lb_value >= src_int_value); break;
+    case Op::LE: result = (dst_ub_value <= src_int_value); break;
+    case Op::GT: result = (dst_lb_value > src_int_value); break;
+    case Op::LT: result = (dst_ub_value < src_int_value); break;
+    default: throw std::exception();
+    }
+
+    return {(result) ? linear_constraint_t::FALSE().negate() : linear_constraint_t::FALSE()};
+}
+
 /** Linear constraints for a comparison with a constant.
  */
-static std::vector<linear_constraint_t> jmp_to_cst_imm(Condition::Op op, variable_t dst_value, int imm) {
+static std::vector<linear_constraint_t> jmp_to_cst_imm(const NumAbsDomain& inv, Condition::Op op, variable_t dst_value,
+                                                       int imm) {
     using namespace crab::dsl_syntax;
     using Op = Condition::Op;
     switch (op) {
     case Op::EQ: return {dst_value == imm};
     case Op::NE: return {dst_value != imm};
-    case Op::GE: return {dst_value >= (unsigned)imm}; // FIX unsigned
     case Op::SGE: return {dst_value >= imm};
-    case Op::LE: return {dst_value <= imm, 0 <= dst_value}; // FIX unsigned
     case Op::SLE: return {dst_value <= imm};
-    case Op::GT: return {dst_value > (unsigned)imm}; // FIX unsigned
     case Op::SGT: return {dst_value > imm};
-    case Op::LT: return {dst_value < (unsigned)imm}; // FIX unsigned
     case Op::SLT: return {dst_value < imm};
-    case Op::SET: throw std::exception();
-    case Op::NSET: return {};
+    case Op::SET:
+    case Op::NSET: return bit_jmp_to_cst_interval(inv, op, dst_value, crab::interval_t(imm, imm));
+    default: return unsigned_jmp_to_cst_interval(inv, op, dst_value, crab::interval_t(imm, imm));
     }
     return {};
 }
 
 /** Linear constraint for a numerical comparison between registers.
  */
-static std::vector<linear_constraint_t> signed_jmp_to_cst_reg(Condition::Op op, variable_t dst_value, variable_t src_value) {
+static std::vector<linear_constraint_t> jmp_to_cst_reg(const NumAbsDomain& inv, Condition::Op op, variable_t dst_value,
+                                                       variable_t src_value) {
     using namespace crab::dsl_syntax;
     using Op = Condition::Op;
     switch (op) {
@@ -121,42 +187,11 @@ static std::vector<linear_constraint_t> signed_jmp_to_cst_reg(Condition::Op op, 
     case Op::SGT: return {dst_value > src_value};
     // Note: reverse the test as a workaround strange lookup:
     case Op::SLT: return {src_value > dst_value};
-    case Op::SET: throw std::exception();
-    case Op::NSET: return {};
-    default: throw std::exception();
+    case Op::SET:
+    case Op::NSET: return bit_jmp_to_cst_interval(inv, op, dst_value, inv.eval_interval(src_value));
+    default: return unsigned_jmp_to_cst_interval(inv, op, dst_value, inv.eval_interval(src_value));
     }
     return {};
-}
-
-static std::vector<linear_constraint_t> unsigned_jmp_to_cst_reg(const NumAbsDomain& inv, Condition::Op op,
-                                                                variable_t dst_value,
-                                                              variable_t src_value) {
-    using namespace crab::dsl_syntax;
-    using Op = Condition::Op;
-
-    // TODO: we could perhaps add new linear_constraint kinds
-    // or support ranges, but for now we just handle singletons directly here
-    // as needed for the eBPF conformance tests.
-    auto src_interval = inv.eval_interval(src_value);
-    auto dst_interval = inv.eval_interval(dst_value);
-    std::optional<number_t> src_n = src_interval.singleton();
-    std::optional<number_t> dst_n = dst_interval.singleton();
-    if (!src_n || !dst_n || !src_n->fits_sint64() || !dst_n->fits_sint64()) {
-        return {};
-    }
-    uint64_t src_int_value = (uint64_t)(int64_t)src_n.value();
-    uint64_t dst_int_value = (uint64_t)(int64_t)dst_n.value();
-
-    bool result;
-    switch (op) {
-    case Op::GE: result = (dst_int_value >= src_int_value); break;
-    case Op::LE: result = (dst_int_value <= src_int_value); break;
-    case Op::GT: result = (dst_int_value > src_int_value); break;
-    case Op::LT: result = (dst_int_value < src_int_value); break;
-    default: throw std::exception();
-    }
-
-    return {(result) ? linear_constraint_t::FALSE().negate() : linear_constraint_t::FALSE()};
 }
 
 static bool is_unsigned_cmp(Condition::Op op) {
@@ -672,13 +707,8 @@ void ebpf_domain_t::operator()(const Assume& s) {
         if (type_inv.same_type(m_inv, cond.left, std::get<Reg>(cond.right))) {
             m_inv = type_inv.join_over_types(m_inv, cond.left, [&](NumAbsDomain& inv, type_encoding_t type) {
                 if (type == T_NUM) {
-                    if (is_unsigned_cmp(cond.op)) {
-                        for (const linear_constraint_t& cst : unsigned_jmp_to_cst_reg(m_inv, cond.op, dst.value, src.value))
-                            inv += cst;
-		    } else {
-                        for (const linear_constraint_t& cst : signed_jmp_to_cst_reg(cond.op, dst.value, src.value))
-                            inv += cst;
-		    }
+                    for (const linear_constraint_t& cst : jmp_to_cst_reg(m_inv, cond.op, dst.value, src.value))
+                        inv += cst;
                 } else {
                     // Either pointers to a singleton region,
                     // or an equality comparison on map descriptors/pointers to non-singleton locations
@@ -695,7 +725,7 @@ void ebpf_domain_t::operator()(const Assume& s) {
         }
     } else {
         int imm = static_cast<int>(std::get<Imm>(cond.right).v);
-        for (const linear_constraint_t& cst : jmp_to_cst_imm(cond.op, dst.value, imm))
+        for (const linear_constraint_t& cst : jmp_to_cst_imm(m_inv, cond.op, dst.value, imm))
             assume(cst);
     }
 }
@@ -709,7 +739,7 @@ void ebpf_domain_t::operator()(const Un& stmt) {
             auto interval = m_inv.eval_interval(dst.value);
             if (std::optional<number_t> n = interval.singleton()) {
                 if (n->fits_sint64() || n->fits_uint64()) {
-                    input = (decltype(input))n.value().cast_to_int64();
+                    input = (decltype(input))n.value().cast_to_sint64();
                     decltype(input) output = be_or_le(input);
                     m_inv.set(dst.value, crab::interval_t(number_t(output), number_t(output)));
                     return;

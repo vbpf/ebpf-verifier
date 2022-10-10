@@ -214,7 +214,7 @@ static Diff<T> make_diff(const T& actual, const T& expected) {
 }
 
 std::optional<Failure> run_yaml_test_case(const TestCase& test_case) {
-    ebpf_context_descriptor_t context_descriptor{64, -1, -1, -1};
+    ebpf_context_descriptor_t context_descriptor{64, 0, 8, -1};
     EbpfProgramType program_type = make_program_type(test_case.name, &context_descriptor);
 
     program_info info{&g_platform_test, {}, program_type};

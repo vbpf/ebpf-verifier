@@ -87,6 +87,8 @@ class z_number final {
 
     [[nodiscard]] bool fits_uint64() const { return ((_n >= 0) && (_n <= ULLONG_MAX)); }
 
+    [[nodiscard]] bool fits_cast_to_int64() const { return fits_uint64() || fits_sint64(); }
+
     [[nodiscard]] uint64_t cast_to_uint64() const {
         if (fits_uint64()) {
             return (uint64_t)_n;
@@ -98,7 +100,7 @@ class z_number final {
         }
     }
 
-    [[nodiscard]] int64_t cast_to_int64() const {
+    [[nodiscard]] int64_t cast_to_sint64() const {
         if (fits_sint64()) {
             return (int64_t)_n;
         } else if (fits_uint64()) {
