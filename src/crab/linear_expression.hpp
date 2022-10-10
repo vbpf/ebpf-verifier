@@ -96,6 +96,12 @@ class linear_expression_t final {
     [[nodiscard]] linear_expression_t operator-(signed long long int constant) const {
         return operator-(number_t(constant));
     }
+    [[nodiscard]] linear_expression_t operator-(unsigned long long int constant) const {
+        return operator-(number_t(constant));
+    }
+    [[nodiscard]] linear_expression_t operator-(int constant) const {
+        return operator-(number_t(constant));
+    }
     [[nodiscard]] linear_expression_t operator-(const number_t& constant) const {
         return linear_expression_t(variable_terms_t(_variable_terms), _constant_term - constant);
     }
