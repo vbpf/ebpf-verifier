@@ -67,17 +67,17 @@ void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vect
     size_t line_info_end = line_info_start + static_cast<size_t>(bpf_ext_header->line_info_len);
 
     if (line_info_start < 0 || line_info_end > btf_ext.size()) {
-        throw std::runtime_error("Invalid .BTF section - invalid btf_line_info table start");
+        throw std::runtime_error("Invalid .BTF.ext section - invalid btf_line_info table start");
     }
     if (line_info_end < 0 || line_info_end > btf_ext.size()) {
-        throw std::runtime_error("Invalid .BTF section - invalid btf_line_info string table end");
+        throw std::runtime_error("Invalid .BTF.ext section - invalid btf_line_info string table end");
     }
 
     uint32_t line_info_record_size =
         *reinterpret_cast<const uint32_t*>(btf_ext.data() + line_info_start);
 
     if (line_info_record_size < sizeof(bpf_line_info_t)) {
-        throw std::runtime_error(std::string("Invalid .BTF section - invalid line info record size"));
+        throw std::runtime_error(std::string("Invalid .BTF.ext section - invalid line info record size"));
     }
 
     for (size_t offset = line_info_start + sizeof(line_info_record_size); offset < line_info_end;) {
@@ -85,12 +85,12 @@ void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vect
         size_t section_info_size = offsetof(btf_ext_info_sec_t, data) + static_cast<size_t>(line_info_record_size) *
                                                                             static_cast<size_t>(section_info->num_info);
         if ((offset + section_info_size) > line_info_end) {
-            throw std::runtime_error(std::string("Invalid .BTF section - invalid size"));
+            throw std::runtime_error(std::string("Invalid .BTF.ext section - invalid size"));
         }
 
         auto section_name = string_table.find(section_info->sec_name_off);
         if (section_name == string_table.end()) {
-            throw std::runtime_error(std::string("Invalid .BTF section - invalid string offset ") +
+            throw std::runtime_error(std::string("Invalid .BTF.ext section - invalid string offset ") +
                                      std::to_string(section_info->sec_name_off));
         }
         for (size_t index = 0; index < section_info->num_info; index++) {
