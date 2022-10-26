@@ -22,9 +22,8 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     exec_program(${NUGET} ARGS install "Boost" -Version 1.78.0 -ExcludeVersion -OutputDirectory ${CMAKE_BINARY_DIR}/packages)
   endif()
   set(Boost_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/packages/boost/lib/native/include)
-  # MSVC's C++17 standard option doesn't actually support all the C++17
-  # features we use, but its "latest" option does.  However, cmake can't
-  # deal with that here, so we set it below.
+  # MSVC's "std:c++20" option is the current standard that supports all the C++17
+  # features we use. However, cmake can't deal with that here, so we set it below.
 
   set(EXTERNAL_INSTALL_LOCATION ${CMAKE_BINARY_DIR}/packages/yaml-cpp)
   include(ExternalProject)
