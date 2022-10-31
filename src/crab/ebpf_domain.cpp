@@ -672,12 +672,13 @@ void ebpf_domain_t::operator()(const Assume& s) {
         if (type_inv.same_type(m_inv, cond.left, std::get<Reg>(cond.right))) {
             m_inv = type_inv.join_over_types(m_inv, cond.left, [&](NumAbsDomain& inv, type_encoding_t type) {
                 if (type == T_NUM) {
-                    if (is_unsigned_cmp(cond.op))
+                    if (is_unsigned_cmp(cond.op)) {
                         for (const linear_constraint_t& cst : unsigned_jmp_to_cst_reg(m_inv, cond.op, dst.value, src.value))
                             inv += cst;
-                    else
+		    } else {
                         for (const linear_constraint_t& cst : signed_jmp_to_cst_reg(cond.op, dst.value, src.value))
                             inv += cst;
+		    }
                 } else {
                     // Either pointers to a singleton region,
                     // or an equality comparison on map descriptors/pointers to non-singleton locations
@@ -706,7 +707,6 @@ void ebpf_domain_t::operator()(const Un& stmt) {
     switch (stmt.op) {
     case Un::Op::BE16:
         if (m_inv.entail(type_is_number(stmt.dst))) {
-            auto dst = reg_pack(stmt.dst);
             auto interval = m_inv.eval_interval(dst.value);
             if (std::optional<number_t> n = interval.singleton()) {
                 if (n->fits_uint64()) {
@@ -722,7 +722,6 @@ void ebpf_domain_t::operator()(const Un& stmt) {
         break;
     case Un::Op::BE32:
         if (m_inv.entail(type_is_number(stmt.dst))) {
-            auto dst = reg_pack(stmt.dst);
             auto interval = m_inv.eval_interval(dst.value);
             if (std::optional<number_t> n = interval.singleton()) {
                 if (n->fits_uint64()) {
@@ -738,7 +737,6 @@ void ebpf_domain_t::operator()(const Un& stmt) {
         break;
     case Un::Op::BE64:
         if (m_inv.entail(type_is_number(stmt.dst))) {
-            auto dst = reg_pack(stmt.dst);
             auto interval = m_inv.eval_interval(dst.value);
             if (std::optional<number_t> n = interval.singleton()) {
                 if (n->fits_sint64()) {
@@ -754,7 +752,6 @@ void ebpf_domain_t::operator()(const Un& stmt) {
         break;
     case Un::Op::LE16:
         if (m_inv.entail(type_is_number(stmt.dst))) {
-            auto dst = reg_pack(stmt.dst);
             auto interval = m_inv.eval_interval(dst.value);
             if (std::optional<number_t> n = interval.singleton()) {
                 if (n->fits_uint64()) {
@@ -770,7 +767,6 @@ void ebpf_domain_t::operator()(const Un& stmt) {
         break;
     case Un::Op::LE32:
         if (m_inv.entail(type_is_number(stmt.dst))) {
-            auto dst = reg_pack(stmt.dst);
             auto interval = m_inv.eval_interval(dst.value);
             if (std::optional<number_t> n = interval.singleton()) {
                 if (n->fits_uint64()) {
@@ -786,12 +782,11 @@ void ebpf_domain_t::operator()(const Un& stmt) {
         break;
     case Un::Op::LE64:
         if (m_inv.entail(type_is_number(stmt.dst))) {
-            auto dst = reg_pack(stmt.dst);
             auto interval = m_inv.eval_interval(dst.value);
             if (std::optional<number_t> n = interval.singleton()) {
                 if (n->fits_uint64()) {
                     uint64_t input = (uint64_t)n.value();
-                    uint32_t output = boost::endian::native_to_little(input);
+                    uint64_t output = boost::endian::native_to_little(input);
                     m_inv.set(dst.value, crab::interval_t(output, output));
                     break;
                 }

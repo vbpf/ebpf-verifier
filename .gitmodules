@@ -8,5 +8,5 @@
 	path = external/ELFIO
 	url = https://github.com/serge1/ELFIO.git
 [submodule "external/bpf_conformance"]
-    path = external/bpf_conformance
-    url = https://github.com/Alan-Jowett/bpf_conformance.git
+	path = external/bpf_conformance
+	url = https://github.com/Alan-Jowett/bpf_conformance.git

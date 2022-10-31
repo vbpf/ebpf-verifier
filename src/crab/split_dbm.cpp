@@ -1094,11 +1094,11 @@ void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t 
     CrabStats::count("SplitDBM.count.apply");
     ScopedCrabStats __st__("SplitDBM.apply");
 
+    // Convert to intervals and perform the operation
     interval_t yi = operator[](y);
     interval_t zi = operator[](z);
     interval_t xi = interval_t::bottom();
 
-    // Convert to intervals and perform the operation
     this->operator-=(x);
 
     switch (op) {

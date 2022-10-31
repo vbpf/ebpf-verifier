@@ -21,9 +21,7 @@ using string = std::string;
  * @param[in] input String containing hex bytes.
  * @return Vector of bytes.
  */
-std::vector<uint8_t>
-base16_decode(const std::string& input)
-{
+std::vector<uint8_t> base16_decode(const std::string& input) {
     std::vector<uint8_t> output;
     std::stringstream ss(input);
     std::string value;
@@ -42,8 +40,7 @@ base16_decode(const std::string& input)
  * the first agument. It then executes the BPF program and prints the
  * value of r0 at the end of execution.
  */
-int
-main(int argc, char** argv)
+int main(int argc, char** argv)
 {
     bool debug = false;
     std::vector<std::string> args(argv, argv + argc);
@@ -90,7 +87,7 @@ main(int argc, char** argv)
         return 1;
     }
 
-    // Print output.
+    // Print output so the conformance test suite can check it.
     std::cout << std::hex << r0_value << std::endl;
 
     return 0;
