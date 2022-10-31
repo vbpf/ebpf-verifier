@@ -11,6 +11,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "CLI11.hpp"
 #include "ebpf_verifier.hpp"
 #include "ebpf_yaml.hpp"
 using string = std::string;
@@ -41,37 +42,14 @@ std::vector<uint8_t> base16_decode(const std::string& input) {
  * value of r0 at the end of execution.
  */
 int main(int argc, char** argv) {
+    CLI::App app{"Check conformance"};
     bool debug = false;
-    std::vector<std::string> args(argv, argv + argc);
-    std::string program_string;
+    app.add_flag("--debug", debug, "Debug");
     std::string memory_string;
-
-    for (int argindex = 1; argindex < argc; argindex++) {
-        std::string arg = argv[argindex];
-        if (arg.empty()) {
-            continue;
-        }
-        if (arg == "--help") {
-            std::cerr << "usage: " << argv[0]
-                      << " [--program <base16 program bytes>] [<base16 memory bytes>] [--debug]\n";
-            return 1;
-        }
-        if ((arg == "--program") && (argindex + 1 < argc)) {
-            program_string = argv[argindex + 1];
-            argindex++;
-            continue;
-        }
-        if (arg == "--debug") {
-            debug = true;
-            continue;
-        }
-        if (memory_string.empty()) {
-            memory_string = arg;
-            continue;
-        }
-        std::cerr << "Unexpected argument: " << arg << std::endl;
-        return 1;
-    }
+    app.add_option("--memory,memory", memory_string, "base16 memory bytes");
+    std::string program_string;
+    app.add_option("--program", program_string, "base16 program bytes");
+    CLI11_PARSE(app, argc, argv);
 
     if (program_string.empty()) {
         std::getline(std::cin, program_string);
