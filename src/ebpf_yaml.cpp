@@ -236,7 +236,7 @@ std::optional<Failure> run_yaml_test_case(const TestCase& test_case) {
 }
 
 template <typename T>
-static vector<T> vector_of(std::vector<uint8_t> bytes) {
+static vector<T> vector_of(const std::vector<uint8_t>& bytes) {
     auto data = bytes.data();
     auto size = bytes.size();
     if ((size % sizeof(T) != 0) || size > UINT32_MAX || !data) {
@@ -245,7 +245,8 @@ static vector<T> vector_of(std::vector<uint8_t> bytes) {
     return {(T*)data, (T*)(data + size)};
 }
 
-bool run_conformance_test_case(std::vector<uint8_t> memory_bytes, std::vector<uint8_t> program_bytes,
+bool run_conformance_test_case(const std::vector<uint8_t>& memory_bytes,
+		               const std::vector<uint8_t>& program_bytes,
                                uint64_t* r0_value, bool debug) {
     ebpf_context_descriptor_t context_descriptor{64, -1, -1, -1};
     EbpfProgramType program_type = make_program_type("conformance_check", &context_descriptor);
@@ -253,7 +254,7 @@ bool run_conformance_test_case(std::vector<uint8_t> memory_bytes, std::vector<ui
     program_info info{&g_platform_test, {}, program_type};
 
     if (memory_bytes.size() > EBPF_STACK_SIZE) {
-        std::cout << "memory size overflow\n";
+        std::cerr << "memory size overflow\n";
         return false;
     }
 
@@ -307,7 +308,7 @@ bool run_conformance_test_case(std::vector<uint8_t> memory_bytes, std::vector<ui
         // Convert the raw program section to a set of instructions.
         std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
         if (std::holds_alternative<string>(prog_or_error)) {
-            std::cout << "unmarshaling error at " << std::get<string>(prog_or_error) << "\n";
+            std::cerr << "unmarshaling error at " << std::get<string>(prog_or_error) << "\n";
             return false;
         }
 
@@ -327,7 +328,7 @@ bool run_conformance_test_case(std::vector<uint8_t> memory_bytes, std::vector<ui
 
         *r0_value = 0;
         const auto& actual_last_invariant = pre_invs.at(label_t::exit);
-        for (std::string invariant : actual_last_invariant.value()) {
+        for (const std::string& invariant : actual_last_invariant.value()) {
             if (invariant.rfind("r0.value=", 0) == 0) {
                 *r0_value = std::stoull(invariant.substr(9));
                 return result;
