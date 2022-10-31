@@ -29,8 +29,10 @@ std::vector<uint8_t> base16_decode(const std::string& input) {
     while (std::getline(ss, value, ' ')) {
         try {
             output.push_back(std::stoi(value, nullptr, 16));
-        } catch (...) {
-            // Ignore invalid values.
+        } catch (std::invalid_argument) {
+            std::cerr << "base16_decode failed\n";
+        } catch (std::out_of_range) {
+            std::cerr << "base16_decode failed\n";
         }
     }
     return output;
@@ -55,9 +57,8 @@ int main(int argc, char** argv) {
         std::getline(std::cin, program_string);
     }
 
-    uint64_t r0_value;
-    bool result = run_conformance_test_case(base16_decode(memory_string), base16_decode(program_string), &r0_value, debug);
-    if (!result) {
+    std::optional<uint64_t> r0_value = run_conformance_test_case(base16_decode(memory_string), base16_decode(program_string), debug);
+    if (!r0_value) {
         if (debug) {
             std::cerr << "Verification failed\n";
         }
@@ -65,7 +66,7 @@ int main(int argc, char** argv) {
     }
 
     // Print output so the conformance test suite can check it.
-    std::cout << std::hex << r0_value << std::endl;
+    std::cout << std::hex << r0_value.value() << std::endl;
 
     return 0;
 }

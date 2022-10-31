@@ -245,9 +245,9 @@ static vector<T> vector_of(const std::vector<uint8_t>& bytes) {
     return {(T*)data, (T*)(data + size)};
 }
 
-bool run_conformance_test_case(const std::vector<uint8_t>& memory_bytes,
-		               const std::vector<uint8_t>& program_bytes,
-                               uint64_t* r0_value, bool debug) {
+std::optional<uint64_t> run_conformance_test_case(const std::vector<uint8_t>& memory_bytes,
+		                                          const std::vector<uint8_t>& program_bytes,
+                                                  bool debug) {
     ebpf_context_descriptor_t context_descriptor{64, -1, -1, -1};
     EbpfProgramType program_type = make_program_type("conformance_check", &context_descriptor);
 
@@ -309,7 +309,7 @@ bool run_conformance_test_case(const std::vector<uint8_t>& memory_bytes,
         std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
         if (std::holds_alternative<string>(prog_or_error)) {
             std::cerr << "unmarshaling error at " << std::get<string>(prog_or_error) << "\n";
-            return false;
+            return {};
         }
 
         auto& prog = std::get<InstructionSeq>(prog_or_error);
@@ -326,17 +326,15 @@ bool run_conformance_test_case(const std::vector<uint8_t>& memory_bytes,
         const auto& [pre_invs, post_invs] =
             ebpf_analyze_program_for_test(null_stream, prog, pre_invariant, info, options, &result);
 
-        *r0_value = 0;
         const auto& actual_last_invariant = pre_invs.at(label_t::exit);
         for (const std::string& invariant : actual_last_invariant.value()) {
             if (invariant.rfind("r0.value=", 0) == 0) {
-                *r0_value = std::stoull(invariant.substr(9));
-                return result;
+                return std::stoull(invariant.substr(9));
             }
         }
-        return false;
+        return {};
     } catch (...) {
-        return false;
+        return {};
     }
 }
 
