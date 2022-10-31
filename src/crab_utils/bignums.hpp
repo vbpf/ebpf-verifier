@@ -27,6 +27,7 @@ class z_number final {
 
     z_number(signed long long int n) { _n = n; }
     z_number(unsigned long long int n) { _n = n; }
+    z_number(unsigned long int n) { _n = n; }
     z_number(int n) { _n = n; }
     z_number(unsigned int n) { _n = n; }
     z_number(long n) { _n = n; }

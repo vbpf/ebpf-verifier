@@ -254,6 +254,32 @@ void add_stack_variable(std::set<std::string>& more, int& offset, const std::vec
     offset += sizeof(T);
 }
 
+void initialize_stack_contents(string_invariant& pre_invariant, const std::vector<uint8_t>& memory_bytes) {
+    std::set<std::string> more = {"r1.type=stack",
+                                  "r1.stack_offset=" + std::to_string(EBPF_STACK_SIZE - memory_bytes.size()),
+                                  "r1.stack_numeric_size=" + std::to_string(memory_bytes.size()),
+                                  "r10.type=stack",
+                                  "r10.stack_offset=" + std::to_string(EBPF_STACK_SIZE),
+                                  "s[" + std::to_string(EBPF_STACK_SIZE - memory_bytes.size()) + "..." +
+                                      std::to_string(EBPF_STACK_SIZE - 1) + "].type=number"};
+
+    int offset = EBPF_STACK_SIZE - memory_bytes.size();
+    if (offset % 2 != 0) {
+        add_stack_variable<uint8_t>(more, offset, memory_bytes);
+    }
+    if (offset % 4 != 0) {
+        add_stack_variable<uint16_t>(more, offset, memory_bytes);
+    }
+    if (offset % 8 != 0) {
+        add_stack_variable<uint32_t>(more, offset, memory_bytes);
+    }
+    while (offset < EBPF_STACK_SIZE) {
+        add_stack_variable<int64_t>(more, offset, memory_bytes);
+    }
+
+    pre_invariant = pre_invariant + string_invariant(more);
+}
+
 std::optional<uint64_t> run_conformance_test_case(const std::vector<uint8_t>& memory_bytes,
                                                   const std::vector<uint8_t>& program_bytes, bool debug) {
     ebpf_context_descriptor_t context_descriptor{64, -1, -1, -1};
@@ -261,37 +287,15 @@ std::optional<uint64_t> run_conformance_test_case(const std::vector<uint8_t>& me
 
     program_info info{&g_platform_test, {}, program_type};
 
-    if (memory_bytes.size() > EBPF_STACK_SIZE) {
-        std::cerr << "memory size overflow\n";
-        return false;
-    }
-
     auto insts = vector_of<ebpf_inst>(program_bytes);
     string_invariant pre_invariant = string_invariant::top();
+
     if (!memory_bytes.empty()) {
-        std::set<std::string> more = {"r1.type=stack",
-                                      "r1.stack_offset=" + std::to_string(EBPF_STACK_SIZE - memory_bytes.size()),
-                                      "r1.stack_numeric_size=" + std::to_string(memory_bytes.size()),
-                                      "r10.type=stack",
-                                      "r10.stack_offset=" + std::to_string(EBPF_STACK_SIZE),
-                                      "s[" + std::to_string(EBPF_STACK_SIZE - memory_bytes.size()) + "..." +
-                                          std::to_string(EBPF_STACK_SIZE - 1) + "].type=number"};
-
-        int offset = EBPF_STACK_SIZE - memory_bytes.size();
-        if (offset % 2 != 0) {
-            add_stack_variable<uint8_t>(more, offset, memory_bytes);
+        if (memory_bytes.size() > EBPF_STACK_SIZE) {
+            std::cerr << "memory size overflow\n";
+            return false;
         }
-        if (offset % 4 != 0) {
-            add_stack_variable<uint16_t>(more, offset, memory_bytes);
-        }
-        if (offset % 8 != 0) {
-            add_stack_variable<uint32_t>(more, offset, memory_bytes);
-        }
-        while (offset < EBPF_STACK_SIZE) {
-            add_stack_variable<int64_t>(more, offset, memory_bytes);
-        }
-
-        pre_invariant = pre_invariant + string_invariant(more);
+        initialize_stack_contents(pre_invariant, memory_bytes);
     }
     raw_program raw_prog{.prog = insts};
 
