@@ -180,6 +180,9 @@ class ebpf_domain_t final {
     template <typename Type, typename Value>
     void do_mem_store(const Mem& b, Type val_type, Value val_value, const std::optional<reg_pack_t>& opt_val_reg);
 
+    template <typename T>
+    void swap_endianness(const Un& stmt, const auto& be_or_le);
+
     friend std::ostream& operator<<(std::ostream& o, const ebpf_domain_t& dom);
 
     static void initialize_packet(ebpf_domain_t& inv);

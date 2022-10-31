@@ -40,8 +40,7 @@ std::vector<uint8_t> base16_decode(const std::string& input) {
  * the first agument. It then executes the BPF program and prints the
  * value of r0 at the end of execution.
  */
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
     bool debug = false;
     std::vector<std::string> args(argv, argv + argc);
     std::string program_string;

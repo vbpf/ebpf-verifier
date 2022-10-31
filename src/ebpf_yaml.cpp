@@ -321,10 +321,10 @@ bool run_conformance_test_case(const std::vector<uint8_t>& memory_bytes,
             options.no_simplify = true;
         }
 
-        std::ostringstream ss;
+        std::ostringstream null_stream;
         bool result;
         const auto& [pre_invs, post_invs] =
-            ebpf_analyze_program_for_test(ss, prog, pre_invariant, info, options, &result);
+            ebpf_analyze_program_for_test(null_stream, prog, pre_invariant, info, options, &result);
 
         *r0_value = 0;
         const auto& actual_last_invariant = pre_invs.at(label_t::exit);

@@ -702,100 +702,46 @@ void ebpf_domain_t::operator()(const Assume& s) {
 
 void ebpf_domain_t::operator()(const Undefined& a) {}
 
-void ebpf_domain_t::operator()(const Un& stmt) {
+template <typename T>
+void ebpf_domain_t::swap_endianness(const Un& stmt, const auto& be_or_le) {
     auto dst = reg_pack(stmt.dst);
+    if (m_inv.entail(type_is_number(stmt.dst))) {
+        auto interval = m_inv.eval_interval(dst.value);
+        if (std::optional<number_t> n = interval.singleton()) {
+            if (n->fits_sint64() || n->fits_uint64()) {
+                T input = (T)n.value().cast_to_int64();
+                T output = be_or_le(input);
+                m_inv.set(dst.value, crab::interval_t(number_t(output), number_t(output)));
+                return;
+            }
+        }
+    }
+    havoc(dst.value);
+    havoc_offsets(stmt.dst);
+}
+
+void ebpf_domain_t::operator()(const Un& stmt) {
     switch (stmt.op) {
     case Un::Op::BE16:
-        if (m_inv.entail(type_is_number(stmt.dst))) {
-            auto interval = m_inv.eval_interval(dst.value);
-            if (std::optional<number_t> n = interval.singleton()) {
-                if (n->fits_uint64()) {
-                    uint16_t input = (uint16_t)(uint64_t)n.value();
-                    uint16_t output = boost::endian::native_to_big(input);
-                    m_inv.set(dst.value, crab::interval_t(number_t(output), number_t(output)));
-                    break;
-                }
-            }
-        }
-        havoc(dst.value);
-        havoc_offsets(stmt.dst);
+        swap_endianness<uint16_t>(stmt, boost::endian::native_to_big<uint16_t>);
         break;
     case Un::Op::BE32:
-        if (m_inv.entail(type_is_number(stmt.dst))) {
-            auto interval = m_inv.eval_interval(dst.value);
-            if (std::optional<number_t> n = interval.singleton()) {
-                if (n->fits_uint64()) {
-                    uint32_t input = (uint32_t)(uint64_t)n.value();
-                    uint32_t output = boost::endian::native_to_big(input);
-                    m_inv.set(dst.value, crab::interval_t(number_t(output), number_t(output)));
-                    break;
-                }
-            }
-        }
-        havoc(dst.value);
-        havoc_offsets(stmt.dst);
+        swap_endianness<uint32_t>(stmt, boost::endian::native_to_big<uint32_t>);
         break;
     case Un::Op::BE64:
-        if (m_inv.entail(type_is_number(stmt.dst))) {
-            auto interval = m_inv.eval_interval(dst.value);
-            if (std::optional<number_t> n = interval.singleton()) {
-                if (n->fits_sint64()) {
-                    int64_t input = (int64_t)n.value();
-                    int64_t output = boost::endian::native_to_big(input);
-                    m_inv.set(dst.value, crab::interval_t(number_t(output), number_t(output)));
-                    break;
-                }
-            }
-        }
-        havoc(dst.value);
-        havoc_offsets(stmt.dst);
+        swap_endianness<uint64_t>(stmt, boost::endian::native_to_big<uint64_t>);
         break;
     case Un::Op::LE16:
-        if (m_inv.entail(type_is_number(stmt.dst))) {
-            auto interval = m_inv.eval_interval(dst.value);
-            if (std::optional<number_t> n = interval.singleton()) {
-                if (n->fits_uint64()) {
-                    uint16_t input = (uint16_t)(uint64_t)n.value();
-                    uint16_t output = boost::endian::native_to_little(input);
-                    m_inv.set(dst.value, crab::interval_t(output, output));
-                    break;
-                }
-            }
-        }
-        havoc(dst.value);
-        havoc_offsets(stmt.dst);
+        swap_endianness<uint16_t>(stmt, boost::endian::native_to_little<uint16_t>);
         break;
     case Un::Op::LE32:
-        if (m_inv.entail(type_is_number(stmt.dst))) {
-            auto interval = m_inv.eval_interval(dst.value);
-            if (std::optional<number_t> n = interval.singleton()) {
-                if (n->fits_uint64()) {
-                    uint32_t input = (uint32_t)(uint64_t)n.value();
-                    uint32_t output = boost::endian::native_to_little(input);
-                    m_inv.set(dst.value, crab::interval_t(output, output));
-                    break;
-                }
-            }
-        }
-        havoc(dst.value);
-        havoc_offsets(stmt.dst);
+        swap_endianness<uint32_t>(stmt, boost::endian::native_to_little<uint32_t>);
         break;
     case Un::Op::LE64:
-        if (m_inv.entail(type_is_number(stmt.dst))) {
-            auto interval = m_inv.eval_interval(dst.value);
-            if (std::optional<number_t> n = interval.singleton()) {
-                if (n->fits_uint64()) {
-                    uint64_t input = (uint64_t)n.value();
-                    uint64_t output = boost::endian::native_to_little(input);
-                    m_inv.set(dst.value, crab::interval_t(output, output));
-                    break;
-                }
-            }
-        }
-        havoc(dst.value);
-        havoc_offsets(stmt.dst);
+        swap_endianness<uint64_t>(stmt, boost::endian::native_to_little<uint64_t>);
         break;
     case Un::Op::NEG:
+        auto dst = reg_pack(stmt.dst);
         neg(dst.value);
         havoc_offsets(stmt.dst);
         break;
