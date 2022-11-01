@@ -27,12 +27,14 @@ std::vector<uint8_t> base16_decode(const std::string& input) {
     std::stringstream ss(input);
     std::string value;
     while (std::getline(ss, value, ' ')) {
+        if (value.empty())
+            continue;
         try {
             output.push_back(std::stoi(value, nullptr, 16));
         } catch (std::invalid_argument) {
-            std::cerr << "base16_decode failed\n";
+            std::cerr << "base16_decode failed to decode " << value << "\n";
         } catch (std::out_of_range) {
-            std::cerr << "base16_decode failed\n";
+            std::cerr << "base16_decode failed to decode " << value << "\n";
         }
     }
     return output;
