@@ -53,6 +53,12 @@ int main(int argc, char** argv) {
     app.add_option("--memory,memory", memory_string, "base16 memory bytes");
     std::string program_string;
     app.add_option("--program", program_string, "base16 program bytes");
+    std::string other_positional_argument;
+
+    // Currently the conformance test project passes an empty string as an additional
+    // positional argument. We need to accept it to make CLI11 parsing pass until
+    // the test project is fixed.
+    app.add_option("other", other_positional_argument, "Other");
     CLI11_PARSE(app, argc, argv);
 
     if (program_string.empty()) {
