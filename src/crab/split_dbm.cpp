@@ -1098,7 +1098,6 @@ void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t 
     interval_t yi = operator[](y);
     interval_t zi = operator[](z);
     interval_t xi = interval_t::bottom();
-
     switch (op) {
     case bitwise_binop_t::AND: xi = yi.And(zi); break;
     case bitwise_binop_t::OR: xi = yi.Or(zi); break;

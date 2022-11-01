@@ -201,9 +201,9 @@ static string_invariant_map to_string_invariant_map(crab::invariant_table_t& inv
     return res;
 }
 
-std::tuple<string_invariant_map, string_invariant_map>
+std::tuple<string_invariant, bool>
 ebpf_analyze_program_for_test(std::ostream& os, const InstructionSeq& prog, const string_invariant& entry_invariant,
-                              const program_info& info, const ebpf_verifier_options_t& options, bool* result) {
+                              const program_info& info, const ebpf_verifier_options_t& options) {
     thread_local_options = options;
     ebpf_domain_t entry_inv = entry_invariant.is_bottom()
         ? ebpf_domain_t::bottom()
@@ -214,11 +214,12 @@ ebpf_analyze_program_for_test(std::ostream& os, const InstructionSeq& prog, cons
     auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, entry_inv, options.check_termination);
     checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
     print_report(os, report, prog, false);
-    *result = (report.total_warnings == 0);
+
+    auto pre_invariant_map = to_string_invariant_map(pre_invariants);
 
     return {
-        to_string_invariant_map(pre_invariants),
-        to_string_invariant_map(post_invariants)
+        pre_invariant_map.at(label_t::exit),
+        (report.total_warnings == 0)
     };
 }
 

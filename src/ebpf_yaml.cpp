@@ -220,13 +220,12 @@ std::optional<Failure> run_yaml_test_case(const TestCase& test_case) {
     program_info info{&g_platform_test, {}, program_type};
 
     std::ostringstream ss;
-    bool result;
-    const auto& [pre_invs, post_invs] = ebpf_analyze_program_for_test(ss, test_case.instruction_seq,
-                                                                      test_case.assumed_pre_invariant,
-                                                                      info, test_case.options, &result);
+    const auto& [actual_last_invariant, result] = ebpf_analyze_program_for_test(
+        ss, test_case.instruction_seq,
+        test_case.assumed_pre_invariant,
+        info, test_case.options);
     std::set<string> actual_messages = extract_messages(ss.str());
 
-    const auto& actual_last_invariant = pre_invs.at(label_t::exit);
     if (actual_last_invariant == test_case.expected_post_invariant && actual_messages == test_case.expected_messages)
         return {};
     return Failure{
@@ -317,11 +316,9 @@ std::optional<uint64_t> run_conformance_test_case(const std::vector<uint8_t>& me
 
     try {
         std::ostringstream null_stream;
-        bool result;
-        const auto& [pre_invs, post_invs] =
-            ebpf_analyze_program_for_test(null_stream, prog, pre_invariant, info, options, &result);
+        const auto& [actual_last_invariant, result] =
+            ebpf_analyze_program_for_test(null_stream, prog, pre_invariant, info, options);
 
-        const auto& actual_last_invariant = pre_invs.at(label_t::exit);
         for (const std::string& invariant : actual_last_invariant.value()) {
             if (invariant.rfind("r0.value=", 0) == 0) {
                 return std::stoull(invariant.substr(9));
