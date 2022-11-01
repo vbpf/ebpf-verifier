@@ -315,16 +315,21 @@ std::optional<uint64_t> run_conformance_test_case(const std::vector<uint8_t>& me
         options.no_simplify = true;
     }
 
-    std::ostringstream null_stream;
-    bool result;
-    const auto& [pre_invs, post_invs] =
-        ebpf_analyze_program_for_test(null_stream, prog, pre_invariant, info, options, &result);
+    try {
+        std::ostringstream null_stream;
+        bool result;
+        const auto& [pre_invs, post_invs] =
+            ebpf_analyze_program_for_test(null_stream, prog, pre_invariant, info, options, &result);
 
-    const auto& actual_last_invariant = pre_invs.at(label_t::exit);
-    for (const std::string& invariant : actual_last_invariant.value()) {
-        if (invariant.rfind("r0.value=", 0) == 0) {
-            return std::stoull(invariant.substr(9));
+        const auto& actual_last_invariant = pre_invs.at(label_t::exit);
+        for (const std::string& invariant : actual_last_invariant.value()) {
+            if (invariant.rfind("r0.value=", 0) == 0) {
+                return std::stoull(invariant.substr(9));
+            }
         }
+    } catch (std::exception) {
+        // Catch exceptions thrown in ebpf_domain.cpp.
+        return {};
     }
     return {};
 }
