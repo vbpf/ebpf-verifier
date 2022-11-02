@@ -1743,6 +1743,26 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::ARSH:
+            if (m_inv.entail(type_is_number(bin.dst)) && m_inv.entail(type_is_number(std::get<Reg>(bin.v)))) {
+                auto dst_interval = m_inv.eval_interval(dst.value);
+                auto src_interval = m_inv.eval_interval(src.value);
+                std::optional<number_t> dst_n = dst_interval.singleton();
+                std::optional<number_t> src_n = src_interval.singleton();
+                if (dst_n && src_n) {
+                    if (dst_n->fits_sint64() && src_n->fits_sint64()) {
+                        int64_t input = (int64_t)dst_n.value();
+                        if (bin.is64) {
+                            int64_t output = (int64_t)(input >> (int64_t)src_n.value());
+                            m_inv.set(dst.value, crab::interval_t(number_t((unsigned long long)output),
+                                                                  number_t((unsigned long long)output)));
+                        } else {
+                            int32_t output = (int32_t)((int32_t)input >> (int32_t)src_n.value());
+                            m_inv.set(dst.value, crab::interval_t(number_t((uint32_t)output), number_t((uint32_t)output)));
+                        }
+                        break;
+                    }
+                }
+            }
             havoc(dst.value);
             havoc_offsets(bin.dst);
             break;
