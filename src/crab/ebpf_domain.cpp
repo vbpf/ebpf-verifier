@@ -139,7 +139,6 @@ static std::vector<linear_constraint_t> unsigned_jmp_to_cst_interval(const NumAb
         return {};
     uint64_t dst_lb_value = dst_lb.value().cast_to_uint64();
     uint64_t dst_ub_value = dst_ub.value().cast_to_uint64();
-    std::optional<number_t> dst_n = dst_interval.singleton();
 
     bool result;
     switch (op) {
