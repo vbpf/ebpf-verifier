@@ -27,6 +27,7 @@ class z_number final {
 
     z_number(signed long long int n) { _n = n; }
     z_number(unsigned long long int n) { _n = n; }
+    z_number(unsigned long int n) { _n = n; }
     z_number(int n) { _n = n; }
     z_number(unsigned int n) { _n = n; }
     z_number(long n) { _n = n; }
@@ -86,7 +87,7 @@ class z_number final {
 
     [[nodiscard]] bool fits_uint64() const { return ((_n >= 0) && (_n <= ULLONG_MAX)); }
 
-    [[nodiscard]] uint64_t cast_to_uint64_t() const {
+    [[nodiscard]] uint64_t cast_to_uint64() const {
         if (fits_uint64()) {
             return (uint64_t)_n;
         } else if (fits_sint64()) {
@@ -97,7 +98,7 @@ class z_number final {
         }
     }
 
-        [[nodiscard]] int64_t cast_to_int64_t() const {
+    [[nodiscard]] int64_t cast_to_int64() const {
         if (fits_sint64()) {
             return (int64_t)_n;
         } else if (fits_uint64()) {

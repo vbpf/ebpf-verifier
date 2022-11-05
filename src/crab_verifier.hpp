@@ -19,13 +19,10 @@ bool ebpf_verify_program(
 
 using string_invariant_map = std::map<crab::label_t, string_invariant>;
 
-std::tuple<string_invariant_map, string_invariant_map>
-ebpf_analyze_program_for_test(
-    std::ostream& os,
-    const InstructionSeq& prog,
-    const string_invariant& entry_invariant,
-    const program_info& info,
-    const ebpf_verifier_options_t& options);
+std::tuple<string_invariant, bool> ebpf_analyze_program_for_test(std::ostream& os, const InstructionSeq& prog,
+                                                                 const string_invariant& entry_invariant,
+                                                                 const program_info& info,
+                                                                 const ebpf_verifier_options_t& options);
 
 int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries, ebpf_verifier_options_t options);
 

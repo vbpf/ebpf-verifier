@@ -145,6 +145,20 @@ static void print_report(std::ostream& os, const checks_db& db, const Instructio
     }
 }
 
+checks_db get_analysis_report(std::ostream& s, cfg_t& cfg, crab::invariant_table_t& pre_invariants,
+                              crab::invariant_table_t& post_invariants) {
+    // Analyze the control-flow graph.
+    checks_db db = generate_report(cfg, pre_invariants, post_invariants);
+    if (thread_local_options.print_invariants) {
+        for (const label_t& label : cfg.sorted_labels()) {
+            s << "\nPre-invariant : " << pre_invariants.at(label) << "\n";
+            s << cfg.get_node(label);
+            s << "\nPost-invariant: " << post_invariants.at(label) << "\n";
+        }
+    }
+    return db;
+}
+
 checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options) {
     global_program_info = std::move(info);
     crab::domains::clear_global_state();
@@ -156,17 +170,7 @@ checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info, const 
         ebpf_domain_t entry_dom = ebpf_domain_t::setup_entry(options->check_termination);
         auto [pre_invariants, post_invariants] =
             crab::run_forward_analyzer(cfg, std::move(entry_dom), options->check_termination);
-
-        // Analyze the control-flow graph.
-        checks_db db = generate_report(cfg, pre_invariants, post_invariants);
-        if (thread_local_options.print_invariants) {
-            for (const label_t& label : cfg.sorted_labels()) {
-                s << "\nPre-invariant : " << pre_invariants.at(label) << "\n";
-                s << cfg.get_node(label);
-                s << "\nPost-invariant: " << post_invariants.at(label) << "\n";
-            }
-        }
-        return db;
+        return get_analysis_report(s, cfg, pre_invariants, post_invariants);
     } catch (std::runtime_error& e) {
         // Convert verifier runtime_error exceptions to failure.
         checks_db db;
@@ -197,7 +201,7 @@ static string_invariant_map to_string_invariant_map(crab::invariant_table_t& inv
     return res;
 }
 
-std::tuple<string_invariant_map, string_invariant_map>
+std::tuple<string_invariant, bool>
 ebpf_analyze_program_for_test(std::ostream& os, const InstructionSeq& prog, const string_invariant& entry_invariant,
                               const program_info& info, const ebpf_verifier_options_t& options) {
     thread_local_options = options;
@@ -208,12 +212,14 @@ ebpf_analyze_program_for_test(std::ostream& os, const InstructionSeq& prog, cons
     global_program_info = info;
     cfg_t cfg = prepare_cfg(prog, info, !options.no_simplify, false);
     auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, entry_inv, options.check_termination);
-    checks_db report = generate_report(cfg, pre_invariants, post_invariants);
+    checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
     print_report(os, report, prog, false);
 
+    auto pre_invariant_map = to_string_invariant_map(pre_invariants);
+
     return {
-        to_string_invariant_map(pre_invariants),
-        to_string_invariant_map(post_invariants)
+        pre_invariant_map.at(label_t::exit),
+        (report.total_warnings == 0)
     };
 }
 

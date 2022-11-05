@@ -118,6 +118,11 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<string>
                 variable_t d = variable_t::cell_var(data_kind_t::types, lb, ub - lb + 1);
                 res.push_back(d == type);
             }
+        } else if (regex_match(cst_text, m, regex("s" ARRAY_RANGE DOT "value" "=" IMM))) {
+            int64_t lb = number(m[1]);
+            int64_t ub = number(m[2]);
+            variable_t d = variable_t::cell_var(data_kind_t::values, lb, ub - lb + 1);
+            res.push_back(d == number(m[3]));
         } else {
             throw std::runtime_error(string("Unknown constraint: ") + cst_text);
         }
