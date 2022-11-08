@@ -65,10 +65,14 @@ int main(int argc, char** argv) {
         std::getline(std::cin, program_string);
     }
 
-    std::optional<uint64_t> r0_value = run_conformance_test_case(base16_decode(memory_string), base16_decode(program_string), debug);
+    const auto& [result, r0_value] =
+        run_conformance_test_case(base16_decode(memory_string), base16_decode(program_string), debug);
     if (!r0_value) {
-        if (debug) {
-            std::cerr << "Verification failed\n";
+        // Write failure reason to stdout which is all that the bpf conformance library looks at.
+        if (!result) {
+            std::cout << "Verification failed\n";
+        } else {
+            std::cout << "Couldn't determine r0 value\n";
         }
         return 1;
     }
