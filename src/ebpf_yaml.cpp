@@ -141,7 +141,7 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
     for (const auto& [label_name, raw_block] : raw_blocks) {
         label_name_to_label.emplace(label_name, label_index);
         // don't count large instructions as 2
-        label_index += raw_block.size();
+        label_index += (int)raw_block.size();
     }
 
     InstructionSeq res;
@@ -262,7 +262,7 @@ string_invariant stack_contents_invariant(const std::vector<uint8_t>& memory_byt
                                   "s[" + std::to_string(EBPF_STACK_SIZE - memory_bytes.size()) + "..." +
                                       std::to_string(EBPF_STACK_SIZE - 1) + "].type=number"};
 
-    int offset = EBPF_STACK_SIZE - memory_bytes.size();
+    int offset = EBPF_STACK_SIZE - (int)memory_bytes.size();
     if (offset % 2 != 0) {
         add_stack_variable<uint8_t>(more, offset, memory_bytes);
     }
@@ -279,7 +279,7 @@ string_invariant stack_contents_invariant(const std::vector<uint8_t>& memory_byt
     return string_invariant(more);
 }
 
-std::optional<uint64_t> run_conformance_test_case(const std::vector<uint8_t>& memory_bytes,
+std::tuple<bool, std::optional<uint64_t>> run_conformance_test_case(const std::vector<uint8_t>& memory_bytes,
                                                   const std::vector<uint8_t>& program_bytes, bool debug) {
     ebpf_context_descriptor_t context_descriptor{64, -1, -1, -1};
     EbpfProgramType program_type = make_program_type("conformance_check", &context_descriptor);
@@ -292,11 +292,12 @@ std::optional<uint64_t> run_conformance_test_case(const std::vector<uint8_t>& me
     if (!memory_bytes.empty()) {
         if (memory_bytes.size() > EBPF_STACK_SIZE) {
             std::cerr << "memory size overflow\n";
-            return false;
+            return {};
         }
         pre_invariant = pre_invariant + stack_contents_invariant(memory_bytes);
     }
     raw_program raw_prog{.prog = insts};
+    raw_prog.info.platform = &g_ebpf_platform_linux;
 
     // Convert the raw program section to a set of instructions.
     std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
@@ -321,14 +322,14 @@ std::optional<uint64_t> run_conformance_test_case(const std::vector<uint8_t>& me
 
         for (const std::string& invariant : actual_last_invariant.value()) {
             if (invariant.rfind("r0.value=", 0) == 0) {
-                return std::stoull(invariant.substr(9));
+                return {result, std::stoull(invariant.substr(9))};
             }
         }
+        return {result, {}};
     } catch (std::exception) {
         // Catch exceptions thrown in ebpf_domain.cpp.
         return {};
     }
-    return {};
 }
 
 void print_failure(const Failure& failure, std::ostream& out) {
