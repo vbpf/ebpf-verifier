@@ -215,6 +215,8 @@ struct Unmarshaller {
                 ((inst.opcode & INST_SIZE_MASK) != INST_SIZE_W &&
                  (inst.opcode & INST_SIZE_MASK) != INST_SIZE_DW))
                 throw InvalidInstruction(pc, "Bad instruction");
+            if (inst.imm != 0)
+                throw InvalidInstruction(pc, "Unsupported atomic instruction");
             return LockAdd{
                 .access =
                     Deref{

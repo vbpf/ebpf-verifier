@@ -382,7 +382,7 @@ void ebpf_domain_t::operator+=(const linear_constraint_t& cst) { m_inv += cst; }
 void ebpf_domain_t::operator-=(variable_t var) { m_inv -= var; }
 
 void ebpf_domain_t::assign(variable_t x, const linear_expression_t& e) { m_inv.assign(x, e); }
-void ebpf_domain_t::assign(variable_t x, long e) { m_inv.set(x, crab::interval_t(number_t(e))); }
+void ebpf_domain_t::assign(variable_t x, int64_t e) { m_inv.set(x, crab::interval_t(number_t(e))); }
 
 void ebpf_domain_t::apply(crab::arith_binop_t op, variable_t x, variable_t y, const number_t& z) { m_inv.apply(op, x, y, z); }
 
@@ -1525,7 +1525,13 @@ void ebpf_domain_t::operator()(const Bin& bin) {
 
     if (std::holds_alternative<Imm>(bin.v)) {
         // dst += K
-        int imm = static_cast<int>(std::get<Imm>(bin.v).v);
+        int64_t imm;
+        if (bin.is64) {
+            imm = static_cast<int64_t>(std::get<Imm>(bin.v).v);
+        } else {
+            imm = static_cast<int>(std::get<Imm>(bin.v).v);
+            bitwise_and(dst.value, UINT32_MAX);
+        }
         switch (bin.op) {
         case Bin::Op::MOV:
             assign(dst.value, imm);
@@ -1785,7 +1791,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             m_inv.set(dst.value, crab::interval_t(number_t((unsigned long long)output),
                                                                   number_t((unsigned long long)output)));
                         } else {
-                            int32_t output = (int32_t)((int32_t)input >> (int32_t)src_n.value());
+                            int32_t output = (int32_t)((int32_t)input >> (int32_t)(int64_t)src_n.value());
                             m_inv.set(dst.value, crab::interval_t(number_t((uint32_t)output), number_t((uint32_t)output)));
                         }
                         break;
