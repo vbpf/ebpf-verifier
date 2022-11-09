@@ -28,7 +28,7 @@ std::string to_string(Instruction const& ins);
 std::ostream& operator<<(std::ostream& os, Bin::Op op);
 std::ostream& operator<<(std::ostream& os, Condition::Op op);
 
-inline std::ostream& operator<<(std::ostream& os, Imm imm) { return os << (int32_t)imm.v; }
+inline std::ostream& operator<<(std::ostream& os, Imm imm) { return os << (int64_t)imm.v; }
 inline std::ostream& operator<<(std::ostream& os, Reg const& a) { return os << "r" << (int)a.v; }
 inline std::ostream& operator<<(std::ostream& os, Value const& a) {
     if (std::holds_alternative<Imm>(a))

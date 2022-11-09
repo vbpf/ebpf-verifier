@@ -83,7 +83,7 @@ class ebpf_domain_t final {
 
     void assign(variable_t lhs, variable_t rhs);
     void assign(variable_t x, const linear_expression_t& e);
-    void assign(variable_t x, long e);
+    void assign(variable_t x, int64_t e);
 
     void apply(crab::arith_binop_t op, variable_t x, variable_t y, const number_t& z);
     void apply(crab::arith_binop_t op, variable_t x, variable_t y, variable_t z);
