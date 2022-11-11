@@ -1111,7 +1111,7 @@ void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t 
     normalize();
 }
 
-void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, const number_t& k) {
+void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, const number_t& k, int finite_width) {
     CrabStats::count("SplitDBM.count.apply");
     ScopedCrabStats __st__("SplitDBM.apply");
 

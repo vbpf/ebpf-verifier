@@ -236,7 +236,7 @@ struct Unmarshaller {
     auto makeAluOp(size_t pc, ebpf_inst inst) -> Instruction {
         if (inst.dst == R10_STACK_POINTER)
             throw InvalidInstruction(pc, "Invalid target r10");
-        return std::visit(overloaded{[&](Un::Op op) -> Instruction { return Un{.op = op, .dst = Reg{inst.dst}}; },
+        return std::visit(overloaded{[&](Un::Op op) -> Instruction { return Un{.op = op, .dst = Reg{inst.dst}, .is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64}; },
                                      [&](Bin::Op op) -> Instruction {
                                          Bin res{
                                              .op = op,
