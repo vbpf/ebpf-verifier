@@ -227,17 +227,17 @@ class SplitDBM final {
         normalize();
     }
 
-    interval_t get_interval(variable_t x) const { return get_interval(vert_map, g, x); }
+    interval_t get_interval(variable_t x, int finite_width) const { return get_interval(vert_map, g, x, finite_width); }
 
-    static interval_t get_interval(const vert_map_t& m, const graph_t& r, variable_t x) {
+    static interval_t get_interval(const vert_map_t& m, const graph_t& r, variable_t x, int finite_width) {
         auto it = m.find(x);
         if (it == m.end()) {
             return interval_t::top();
         }
         vert_id v = (*it).second;
-        interval_t x_out = interval_t(r.elem(v, 0) ? -number_t(r.edge_val(v, 0)) : bound_t::minus_infinity(),
-                                      r.elem(0, v) ? number_t(r.edge_val(0, v)) : bound_t::plus_infinity());
-        return x_out;
+        bound_t lb = (r.elem(v, 0)) ? (-number_t(r.edge_val(v, 0))).cast_to_finite_width(finite_width) : bound_t::minus_infinity();
+        bound_t ub = (r.elem(0, v)) ? number_t(r.edge_val(0, v)).cast_to_finite_width(finite_width) : bound_t::plus_infinity();
+        return interval_t(lb, ub);
     }
 
     // Restore potential after an edge addition
@@ -366,12 +366,12 @@ class SplitDBM final {
         }
     };
 
-    void apply(arith_binop_t op, variable_t x, variable_t y, variable_t z);
+    void apply(arith_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width);
 
-    void apply(arith_binop_t op, variable_t x, variable_t y, const number_t& k);
+    void apply(arith_binop_t op, variable_t x, variable_t y, const number_t& k, int finite_width);
 
     // bitwise_operators_api
-    void apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t z);
+    void apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width);
 
     void apply(bitwise_binop_t op, variable_t x, variable_t y, const number_t& k);
 
@@ -379,8 +379,8 @@ class SplitDBM final {
         std::visit([&](auto top) { apply(top, x, y, z); }, op);
     }
 
-    void apply(binop_t op, variable_t x, variable_t y, variable_t z) {
-        std::visit([&](auto top) { apply(top, x, y, z); }, op);
+    void apply(binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) {
+        std::visit([&](auto top) { apply(top, x, y, z, finite_width); }, op);
     }
 
     void operator+=(const linear_constraint_t& cst);
@@ -402,7 +402,7 @@ class SplitDBM final {
         if (is_bottom()) {
             return interval_t::bottom();
         } else {
-            return get_interval(vert_map, g, x);
+            return get_interval(vert_map, g, x, 0);
         }
     }
 

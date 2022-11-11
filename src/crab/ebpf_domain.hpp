@@ -86,47 +86,47 @@ class ebpf_domain_t final {
     void assign(variable_t x, int64_t e);
 
     void apply(crab::arith_binop_t op, variable_t x, variable_t y, const number_t& z);
-    void apply(crab::arith_binop_t op, variable_t x, variable_t y, variable_t z);
-    void apply(crab::bitwise_binop_t op, variable_t x, variable_t y, variable_t z);
+    void apply(crab::arith_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width);
+    void apply(crab::bitwise_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width);
     void apply(crab::bitwise_binop_t op, variable_t x, variable_t y, const number_t& k);
     void apply(crab::binop_t op, variable_t x, variable_t y, const number_t& z);
-    void apply(crab::binop_t op, variable_t x, variable_t y, variable_t z);
+    void apply(crab::binop_t op, variable_t x, variable_t y, variable_t z,int finite_width);
 
-    void apply(crab::domains::NumAbsDomain& inv, crab::binop_t op, variable_t x, variable_t y, const number_t& z, bool finite_width = false);
-    void apply(crab::domains::NumAbsDomain& inv, crab::binop_t op, variable_t x, variable_t y, variable_t z, bool finite_width = false);
+    void apply(crab::domains::NumAbsDomain& inv, crab::binop_t op, variable_t x, variable_t y, const number_t& z, int finite_width);
+    void apply(crab::domains::NumAbsDomain& inv, crab::binop_t op, variable_t x, variable_t y, variable_t z, int finite_width);
 
-    void add(const Reg& reg, int imm);
+    void add(const Reg& reg, int imm, int finite_width);
     void add(variable_t lhs, variable_t op2);
     void add(variable_t lhs, const number_t& op2);
     void sub(variable_t lhs, variable_t op2);
     void sub(variable_t lhs, const number_t& op2);
-    void add_overflow(variable_t lhs, variable_t op2);
-    void add_overflow(variable_t lhs, const number_t& op2);
-    void sub_overflow(variable_t lhs, variable_t op2);
-    void sub_overflow(variable_t lhs, const number_t& op2);
+    void add_overflow(variable_t lhs, variable_t op2, int finite_width);
+    void add_overflow(variable_t lhs, const number_t& op2, int finite_width);
+    void sub_overflow(variable_t lhs, variable_t op2, int finite_width);
+    void sub_overflow(variable_t lhs, const number_t& op2, int finite_width);
     void neg(variable_t lhs);
-    void mul(variable_t lhs, variable_t op2);
+    void mul(variable_t lhs, variable_t op2, int finite_width);
     void mul(variable_t lhs, const number_t& op2);
-    void sdiv(variable_t lhs, variable_t op2);
+    void sdiv(variable_t lhs, variable_t op2, int finite_width);
     void sdiv(variable_t lhs, const number_t& op2);
-    void udiv(variable_t lhs, variable_t op2);
+    void udiv(variable_t lhs, variable_t op2, int finite_width);
     void udiv(variable_t lhs, const number_t& op2);
-    void srem(variable_t lhs, variable_t op2);
+    void srem(variable_t lhs, variable_t op2, int finite_width);
     void srem(variable_t lhs, const number_t& op2, bool mod = true);
-    void urem(variable_t lhs, variable_t op2);
+    void urem(variable_t lhs, variable_t op2, int finite_width);
     void urem(variable_t lhs, const number_t& op2);
 
-    void bitwise_and(variable_t lhs, variable_t op2);
+    void bitwise_and(variable_t lhs, variable_t op2, int finite_width);
     void bitwise_and(variable_t lhs, const number_t& op2);
-    void bitwise_or(variable_t lhs, variable_t op2);
+    void bitwise_or(variable_t lhs, variable_t op2, int finite_width);
     void bitwise_or(variable_t lhs, const number_t& op2);
-    void bitwise_xor(variable_t lhs, variable_t op2);
+    void bitwise_xor(variable_t lhs, variable_t op2, int finite_width);
     void bitwise_xor(variable_t lhs, const number_t& op2);
     void shl_overflow(variable_t lhs, variable_t op2);
     void shl_overflow(variable_t lhs, const number_t& op2);
-    void lshr(variable_t lhs, variable_t op2);
+    void lshr(variable_t lhs, variable_t op2, int finite_width);
     void lshr(variable_t lhs, const number_t& op2);
-    void ashr(variable_t lhs, variable_t op2);
+    void ashr(variable_t lhs, variable_t op2, int finite_width);
     void ashr(variable_t lhs, const number_t& op2);
 
     void assume(const linear_constraint_t& cst);
@@ -152,7 +152,7 @@ class ebpf_domain_t final {
     void havoc_register(NumAbsDomain& inv, const Reg& reg);
     void do_load_mapfd(const Reg& dst_reg, int mapfd, bool maybe_null);
 
-    void overflow(variable_t lhs);
+    void overflow(variable_t lhs, int finite_width);
 
     void assign_valid_ptr(const Reg& dst_reg, bool maybe_null);
 

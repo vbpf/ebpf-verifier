@@ -386,9 +386,9 @@ void ebpf_domain_t::assign(variable_t x, int64_t e) { m_inv.set(x, crab::interva
 
 void ebpf_domain_t::apply(crab::arith_binop_t op, variable_t x, variable_t y, const number_t& z) { m_inv.apply(op, x, y, z); }
 
-void ebpf_domain_t::apply(crab::arith_binop_t op, variable_t x, variable_t y, variable_t z) { m_inv.apply(op, x, y, z); }
+void ebpf_domain_t::apply(crab::arith_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) { m_inv.apply(op, x, y, z, finite_width); }
 
-void ebpf_domain_t::apply(crab::bitwise_binop_t op, variable_t x, variable_t y, variable_t z) { m_inv.apply(op, x, y, z); }
+void ebpf_domain_t::apply(crab::bitwise_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) { m_inv.apply(op, x, y, z, finite_width); }
 
 void ebpf_domain_t::apply(crab::bitwise_binop_t op, variable_t x, variable_t y, const number_t& k) { m_inv.apply(op, x, y, k); }
 
@@ -396,8 +396,8 @@ void ebpf_domain_t::apply(crab::binop_t op, variable_t x, variable_t y, const nu
     std::visit([&](auto top) { apply(top, x, y, z); }, op);
 }
 
-void ebpf_domain_t::apply(crab::binop_t op, variable_t x, variable_t y, variable_t z) {
-    std::visit([&](auto top) { apply(top, x, y, z); }, op);
+void ebpf_domain_t::apply(crab::binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) {
+    std::visit([&](auto top) { apply(top, x, y, z, finite_width); }, op);
 }
 
 void ebpf_domain_t::scratch_caller_saved_registers() {
@@ -422,52 +422,52 @@ void ebpf_domain_t::forget_packet_pointers() {
     initialize_packet(*this);
 }
 
-void ebpf_domain_t::apply(NumAbsDomain& inv, crab::binop_t op, variable_t x, variable_t y, const number_t& z, bool finite_width) {
+void ebpf_domain_t::apply(NumAbsDomain& inv, crab::binop_t op, variable_t x, variable_t y, const number_t& z, int finite_width) {
     inv.apply(op, x, y, z);
     if (finite_width)
-        overflow(x);
+        overflow(x, finite_width);
 }
 
-void ebpf_domain_t::apply(NumAbsDomain& inv, crab::binop_t op, variable_t x, variable_t y, variable_t z, bool finite_width) {
-    inv.apply(op, x, y, z);
+void ebpf_domain_t::apply(NumAbsDomain& inv, crab::binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) {
+    inv.apply(op, x, y, z, finite_width);
     if (finite_width)
-        overflow(x);
+        overflow(x, finite_width);
 }
 
-void ebpf_domain_t::add(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2); }
-void ebpf_domain_t::add(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2); }
-void ebpf_domain_t::sub(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2); }
-void ebpf_domain_t::sub(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2); }
-void ebpf_domain_t::add_overflow(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2, true); }
-void ebpf_domain_t::add_overflow(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2, true); }
-void ebpf_domain_t::sub_overflow(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2, true); }
-void ebpf_domain_t::sub_overflow(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2, true); }
+void ebpf_domain_t::add(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2, 0); }
+void ebpf_domain_t::add(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2, 0); }
+void ebpf_domain_t::sub(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2, 0); }
+void ebpf_domain_t::sub(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2, 0); }
+void ebpf_domain_t::add_overflow(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2, finite_width); }
+void ebpf_domain_t::add_overflow(variable_t lhs, const number_t& op2, int finite_width) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2, finite_width); }
+void ebpf_domain_t::sub_overflow(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2, finite_width); }
+void ebpf_domain_t::sub_overflow(variable_t lhs, const number_t& op2, int finite_width) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2, finite_width); }
 void ebpf_domain_t::neg(variable_t lhs) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, (number_t)-1, true); }
-void ebpf_domain_t::mul(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, op2, true); }
+void ebpf_domain_t::mul(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, op2, finite_width); }
 void ebpf_domain_t::mul(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, op2, true); }
-void ebpf_domain_t::sdiv(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SDIV, lhs, lhs, op2, true); }
+void ebpf_domain_t::sdiv(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::arith_binop_t::SDIV, lhs, lhs, op2, finite_width); }
 void ebpf_domain_t::sdiv(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::SDIV, lhs, lhs, op2, true); }
-void ebpf_domain_t::udiv(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::UDIV, lhs, lhs, op2, true); }
+void ebpf_domain_t::udiv(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::arith_binop_t::UDIV, lhs, lhs, op2, finite_width); }
 void ebpf_domain_t::udiv(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::UDIV, lhs, lhs, op2, true); }
-void ebpf_domain_t::srem(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SREM, lhs, lhs, op2, true); }
+void ebpf_domain_t::srem(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::arith_binop_t::SREM, lhs, lhs, op2, finite_width); }
 void ebpf_domain_t::srem(variable_t lhs, const number_t& op2, bool mod) {
     apply(m_inv, crab::arith_binop_t::SREM, lhs, lhs, op2, mod);
 }
-void ebpf_domain_t::urem(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::UREM, lhs, lhs, op2, true); }
+void ebpf_domain_t::urem(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::arith_binop_t::UREM, lhs, lhs, op2, finite_width); }
 void ebpf_domain_t::urem(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::UREM, lhs, lhs, op2, true); }
 
-void ebpf_domain_t::bitwise_and(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::AND, lhs, lhs, op2); }
-void ebpf_domain_t::bitwise_and(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::AND, lhs, lhs, op2); }
-void ebpf_domain_t::bitwise_or(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::OR, lhs, lhs, op2); }
-void ebpf_domain_t::bitwise_or(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::OR, lhs, lhs, op2); }
-void ebpf_domain_t::bitwise_xor(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::XOR, lhs, lhs, op2); }
-void ebpf_domain_t::bitwise_xor(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::XOR, lhs, lhs, op2); }
+void ebpf_domain_t::bitwise_and(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::bitwise_binop_t::AND, lhs, lhs, op2, finite_width); }
+void ebpf_domain_t::bitwise_and(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::AND, lhs, lhs, op2, 0); }
+void ebpf_domain_t::bitwise_or(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::bitwise_binop_t::OR, lhs, lhs, op2, finite_width); }
+void ebpf_domain_t::bitwise_or(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::OR, lhs, lhs, op2, 0); }
+void ebpf_domain_t::bitwise_xor(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::bitwise_binop_t::XOR, lhs, lhs, op2, finite_width); }
+void ebpf_domain_t::bitwise_xor(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::XOR, lhs, lhs, op2, 0); }
 void ebpf_domain_t::shl_overflow(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::SHL, lhs, lhs, op2, true); }
 void ebpf_domain_t::shl_overflow(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::SHL, lhs, lhs, op2, true); }
-void ebpf_domain_t::lshr(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
-void ebpf_domain_t::lshr(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2); }
-void ebpf_domain_t::ashr(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
-void ebpf_domain_t::ashr(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2); }
+void ebpf_domain_t::lshr(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2, finite_width); }
+void ebpf_domain_t::lshr(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2, 0); }
+void ebpf_domain_t::ashr(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2, finite_width); }
+void ebpf_domain_t::ashr(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2, 0); }
 
 
 static void assume(NumAbsDomain& inv, const linear_constraint_t& cst) { inv += cst; }
@@ -642,12 +642,19 @@ bool ebpf_domain_t::TypeDomain::is_in_group(const NumAbsDomain& m_inv, const Reg
     return false;
 }
 
-void ebpf_domain_t::overflow(variable_t lhs) {
+void ebpf_domain_t::overflow(variable_t lhs, int finite_width) {
     using namespace crab::dsl_syntax;
     auto interval = m_inv[lhs];
-    // handle overflow, assuming 64 bit
-    number_t max(std::numeric_limits<int64_t>::max() / 2);
-    number_t min(std::numeric_limits<int64_t>::min() / 2);
+    // handle overflow
+    number_t min, max;
+    if (finite_width == 64) {
+        max = number_t(std::numeric_limits<int64_t>::max() / 2);
+        min = number_t(std::numeric_limits<int64_t>::min() / 2);
+    } else if (finite_width == 32) {
+        max = number_t(std::numeric_limits<int32_t>::max() / 2);
+        min = number_t(std::numeric_limits<int32_t>::min() / 2);
+    } else
+        throw std::exception();
     if (interval.lb() <= min || interval.ub() >= max)
         havoc(lhs);
 }
@@ -1027,7 +1034,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
                     if (s.offset < 0) {
                         require(inv, linear_constraint_t::FALSE(), "Stack content is not numeric");
                     } else if (std::holds_alternative<Imm>(s.width)) {
-                        if (!inv.entail(std::get<Imm>(s.width).v <= reg.stack_numeric_size - s.offset)) {
+                        if (!inv.entail(((int)std::get<Imm>(s.width).v) <= reg.stack_numeric_size - s.offset)) {
                             require(inv, linear_constraint_t::FALSE(), "Stack content is not numeric");
                         }
                     } else {
@@ -1502,10 +1509,10 @@ void ebpf_domain_t::recompute_stack_numeric_size(NumAbsDomain& inv, const Reg& r
     recompute_stack_numeric_size(inv, reg_pack(reg).type);
 }
 
-void ebpf_domain_t::add(const Reg& reg, int imm) {
+void ebpf_domain_t::add(const Reg& reg, int imm, int finite_width) {
     auto dst = reg_pack(reg);
     auto offset = get_type_offset_variable(reg);
-    add_overflow(dst.value, imm);
+    add_overflow(dst.value, imm, finite_width);
     if (offset.has_value()) {
         add(offset.value(), imm);
         if (imm > 0)
@@ -1522,13 +1529,16 @@ void ebpf_domain_t::operator()(const Bin& bin) {
     using namespace crab::dsl_syntax;
 
     auto dst = reg_pack(bin.dst);
+    int finite_width = (bin.is64) ? 64 : 32;
 
     if (std::holds_alternative<Imm>(bin.v)) {
         // dst += K
         int64_t imm;
         if (bin.is64) {
+            // Use the full signed value.
             imm = static_cast<int64_t>(std::get<Imm>(bin.v).v);
         } else {
+            // Use only the low 32 bits of the value.
             imm = static_cast<int>(std::get<Imm>(bin.v).v);
             bitwise_and(dst.value, UINT32_MAX);
         }
@@ -1541,12 +1551,12 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::ADD:
             if (imm == 0)
                 return;
-            add(bin.dst, imm);
+            add(bin.dst, (int)imm, finite_width);
             break;
         case Bin::Op::SUB:
             if (imm == 0)
                 return;
-            add(bin.dst, -imm);
+            add(bin.dst, (int)-imm, finite_width);
             break;
         case Bin::Op::MUL:
             mul(dst.value, imm);
@@ -1634,7 +1644,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::ADD: {
             if (type_inv.same_type(m_inv, bin.dst, std::get<Reg>(bin.v))) {
                 // both must be numbers
-                add_overflow(dst.value, src.value);
+                add_overflow(dst.value, src.value, finite_width);
             } else {
                 // Here we're not sure that lhs and rhs are the same type; they might be.
                 // But previous assertions should fail unless we know that exactly one of lhs or rhs is a pointer.
@@ -1645,15 +1655,14 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             type_inv.assign_type(inv, bin.dst, src_type);
                             if (auto dst_offset = get_type_offset_variable(bin.dst, src_type))
                                 apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst.value,
-                                      get_type_offset_variable(src_reg, src_type).value(), false);
+                                      get_type_offset_variable(src_reg, src_type).value(), 0);
                             if (src_type == T_SHARED)
                                 inv.assign(dst.shared_region_size, src.shared_region_size);
                         } else if (dst_type != T_NUM && src_type == T_NUM) {
                             // ptr += num
                             type_inv.assign_type(inv, bin.dst, dst_type);
                             if (auto dst_offset = get_type_offset_variable(bin.dst, dst_type)) {
-                                apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst_offset.value(), src.value,
-                                      false);
+                                apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst_offset.value(), src.value, 0);
                                 if (dst_type == T_STACK) {
                                     // Reduce the numeric size.
                                     using namespace crab::dsl_syntax;
@@ -1662,13 +1671,13 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                                         recompute_stack_numeric_size(inv, dst.type);
                                     } else
                                         apply(inv, crab::arith_binop_t::SUB, dst.stack_numeric_size,
-                                              dst.stack_numeric_size, src.value, false);
+                                              dst.stack_numeric_size, src.value, 0);
                                 }
                             }
                         } else if (dst_type == T_NUM && src_type == T_NUM) {
                             // dst and src don't necessarily have the same type, but among the possibilities
                             // enumerated is the case where they are both numbers.
-                            apply(inv, crab::arith_binop_t::ADD, dst.value, dst.value, src.value, true);
+                            apply(inv, crab::arith_binop_t::ADD, dst.value, dst.value, src.value, finite_width);
                         } else {
                             // We ignore the cases here that do not match the assumption described
                             // above.  Joining bottom with another results will leave the other
@@ -1678,7 +1687,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                     });
                 });
                 // careful: change dst.value only after dealing with offset
-                apply(m_inv, crab::arith_binop_t::ADD, dst.value, dst.value, src.value, true);
+                apply(m_inv, crab::arith_binop_t::ADD, dst.value, dst.value, src.value, finite_width);
             }
             break;
         }
@@ -1688,8 +1697,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 m_inv = type_inv.join_over_types(m_inv, bin.dst, [&](NumAbsDomain& inv, type_encoding_t type) {
                     switch (type) {
                     case T_NUM:
-                        // This is: sub_overflow(inv, dst.value, src.value);
-                        apply(inv, crab::arith_binop_t::SUB, dst.value, dst.value, src.value, true);
+                        // This is: sub_overflow(inv, dst.value, src.value, finite_width);
+                        apply(inv, crab::arith_binop_t::SUB, dst.value, dst.value, src.value, finite_width);
                         type_inv.assign_type(inv, bin.dst, T_NUM);
                         havoc_offsets(inv, bin.dst);
                         break;
@@ -1698,7 +1707,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                         // Assertions should make sure we only perform this on non-shared pointers.
                         if (auto dst_offset = get_type_offset_variable(bin.dst, type)) {
                             apply(inv, crab::arith_binop_t::SUB, dst.value, dst_offset.value(),
-                                  get_type_offset_variable(src_reg, type).value(), true);
+                                  get_type_offset_variable(src_reg, type).value(), finite_width);
                             inv -= dst_offset.value();
                         }
                         havoc_offsets(inv, bin.dst);
@@ -1714,7 +1723,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                     havoc(dst.value);
                     havoc_offsets(bin.dst);
                 } else {
-                    sub_overflow(dst.value, src.value);
+                    sub_overflow(dst.value, src.value, finite_width);
                     if (auto dst_offset = get_type_offset_variable(bin.dst)) {
                         sub(dst_offset.value(), src.value);
                         if (type_inv.has_type(m_inv, dst.type, T_STACK)) {
@@ -1725,7 +1734,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                                 recompute_stack_numeric_size(m_inv, dst.type);
                             } else
                                 apply(m_inv, crab::arith_binop_t::ADD, dst.stack_numeric_size,
-                                      dst.stack_numeric_size, src.value, false);
+                                      dst.stack_numeric_size, src.value, 0);
                         }
                     }
                 }
@@ -1733,23 +1742,23 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             break;
         }
         case Bin::Op::MUL:
-            mul(dst.value, src.value);
+            mul(dst.value, src.value, finite_width);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::UDIV:
-            udiv(dst.value, src.value);
+            udiv(dst.value, src.value, finite_width);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::UMOD:
-            urem(dst.value, src.value);
+            urem(dst.value, src.value, finite_width);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::OR:
-            bitwise_or(dst.value, src.value);
+            bitwise_or(dst.value, src.value, finite_width);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::AND:
-            bitwise_and(dst.value, src.value);
+            bitwise_and(dst.value, src.value, finite_width);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::LSH:
@@ -1802,7 +1811,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::XOR:
-            bitwise_xor(dst.value, src.value);
+            bitwise_xor(dst.value, src.value, finite_width);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::MOV:

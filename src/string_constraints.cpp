@@ -106,22 +106,22 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<string>
         } else if (regex_match(cst_text, m, regex(REG DOT KIND "-" REG DOT KIND "<=" IMM))) {
             variable_t d = variable_t::reg(regkind(m[2]), regnum(m[1]));
             variable_t s = variable_t::reg(regkind(m[4]), regnum(m[3]));
-            long diff = number(m[5]);
+            int64_t diff = number(m[5]);
             res.push_back(d - s <= number_t(diff));
         } else if (regex_match(cst_text, m, regex("s" ARRAY_RANGE DOT "type" "=" TYPE))) {
             type_encoding_t type = string_to_type_encoding(m[3]);
             if (type == type_encoding_t::T_NUM) {
-                numeric_ranges.push_back(crab::interval_t(number(m[1]), number(m[2])));
+                numeric_ranges.push_back(crab::interval_t((int)number(m[1]), (int)number(m[2])));
             } else {
                 int64_t lb = number(m[1]);
                 int64_t ub = number(m[2]);
-                variable_t d = variable_t::cell_var(data_kind_t::types, lb, ub - lb + 1);
+                variable_t d = variable_t::cell_var(data_kind_t::types, lb, (unsigned int)(ub - lb + 1));
                 res.push_back(d == type);
             }
         } else if (regex_match(cst_text, m, regex("s" ARRAY_RANGE DOT "value" "=" IMM))) {
             int64_t lb = number(m[1]);
             int64_t ub = number(m[2]);
-            variable_t d = variable_t::cell_var(data_kind_t::values, lb, ub - lb + 1);
+            variable_t d = variable_t::cell_var(data_kind_t::values, lb, (unsigned int)(ub - lb + 1));
             res.push_back(d == number(m[3]));
         } else {
             throw std::runtime_error(string("Unknown constraint: ") + cst_text);
