@@ -18,7 +18,8 @@ void test_conformance(std::string filename, bpf_conformance_test_result_t expect
         auto& [file_result, reason] = result[file];
         REQUIRE(file_result == expected_result);
         if (file_result != bpf_conformance_test_result_t::TEST_RESULT_PASS && !expected_reason.empty()) {
-            REQUIRE(reason == "Plugin returned error code 1 and output " + expected_reason + "\r");
+            reason.erase(reason.find_last_not_of(" \n\r\t") + 1); // Remove trailing whitespace.
+            REQUIRE(reason == "Plugin returned error code 1 and output " + expected_reason);
         }
     }
 }
