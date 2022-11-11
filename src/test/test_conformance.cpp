@@ -17,7 +17,7 @@ void test_conformance(std::string filename, bpf_conformance_test_result_t expect
     for (auto file : test_files) {
         auto& [file_result, reason] = result[file];
         REQUIRE(file_result == expected_result);
-        if (file_result != bpf_conformance_test_result_t::TEST_RESULT_PASS) {
+        if (file_result != bpf_conformance_test_result_t::TEST_RESULT_PASS && !expected_reason.empty()) {
             REQUIRE(reason == "Plugin returned error code 1 and output " + expected_reason + "\r");
         }
     }
@@ -40,6 +40,12 @@ void test_conformance(std::string filename, bpf_conformance_test_result_t expect
 #define TEST_CONFORMANCE_TOP(filename) \
     TEST_CASE("conformance_check " filename, "[conformance]") { \
         test_conformance(filename, bpf_conformance_test_result_t::TEST_RESULT_FAIL, "Couldn't determine r0 value"); \
+    }
+
+// At least one test fails that shouldn't. This indicates a bug where an unsafe program might be verified.
+#define TEST_CONFORMANCE_FAIL(filename) \
+    TEST_CASE("expect failure conformance_check " filename, "[conformance][!shouldfail]") { \
+        test_conformance(filename, bpf_conformance_test_result_t::TEST_RESULT_PASS, {}); \
     }
 
 TEST_CONFORMANCE("add.data")
@@ -154,7 +160,7 @@ TEST_CONFORMANCE("mul64-imm.data")
 TEST_CONFORMANCE("mul64-reg.data")
 TEST_CONFORMANCE("neg.data")
 TEST_CONFORMANCE("neg64.data")
-TEST_CONFORMANCE("prime.data") // FAILS!!
+TEST_CONFORMANCE_FAIL("prime.data")
 TEST_CONFORMANCE("rsh-reg.data")
 TEST_CONFORMANCE("rsh32.data")
 TEST_CONFORMANCE_VERIFICATION_FAILED("stack.data")
