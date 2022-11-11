@@ -108,6 +108,7 @@ struct Un {
 
     Op op;
     Reg dst;
+    bool is64{};
 };
 
 /// This instruction is encoded similarly to LDDW.
