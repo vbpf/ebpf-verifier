@@ -133,7 +133,8 @@ struct Unmarshaller {
         } else {
             if (inst.src != 0)
                 throw InvalidInstruction{pc, "nonzero src for register alu op"};
-            return Imm{(uint32_t)inst.imm};
+            // Imm is a signed 32-bit number.  Sign extend it to 64-bits for storage.
+            return Imm{(uint64_t)(int64_t)(int32_t)inst.imm};
         }
     }
 
