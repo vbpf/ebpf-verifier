@@ -100,6 +100,7 @@ class z_number final {
         }
     }
 
+    // For 64-bit operations, get the value as a signed 64-bit integer.
     [[nodiscard]] int64_t cast_to_sint64() const {
         if (fits_sint64()) {
             return (int64_t)_n;
@@ -108,6 +109,21 @@ class z_number final {
             return (int64_t)(uint64_t)_n;
         } else {
             CRAB_ERROR("z_number ", _n.str(), " does not fit into a signed 64-bit integer");
+        }
+    }
+
+    // For 32-bit operations, get the low 32 bits as a signed integer.
+    [[nodiscard]] int32_t cast_to_sint32() const {
+        return (int32_t)cast_to_sint64();
+    }
+
+    // Allow casting to int32_t or int64_t as needed for finite width operations.
+    [[nodiscard]] z_number cast_to_finite_width(int finite_width) const {
+        switch (finite_width) {
+        case 0: return *this; // No finite width.
+        case 32: return cast_to_sint32();
+        case 64: return cast_to_sint64();
+        default: CRAB_ERROR("invalid finite width");
         }
     }
 

@@ -323,7 +323,7 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
 
 void SplitDBM::add_univar_disequation(variable_t x, const number_t& n) {
     bool overflow;
-    interval_t i = get_interval(x);
+    interval_t i = get_interval(x, 0);
     interval_t new_i = trim_interval(i, interval_t(n));
     if (new_i.is_bottom()) {
         set_to_bottom();
@@ -1048,7 +1048,7 @@ void SplitDBM::set(variable_t x, const interval_t& intv) {
     normalize();
 }
 
-void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, variable_t z) {
+void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) {
     CrabStats::count("SplitDBM.count.apply");
     ScopedCrabStats __st__("SplitDBM.apply");
 
@@ -1059,17 +1059,17 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, variable_t z)
     case arith_binop_t::ADD: assign(x, linear_expression_t(y) + z); break;
     case arith_binop_t::SUB: assign(x, linear_expression_t(y) - z); break;
     // For the rest of operations, we fall back on intervals.
-    case arith_binop_t::MUL: set(x, get_interval(y) * get_interval(z)); break;
-    case arith_binop_t::SDIV: set(x, get_interval(y) / get_interval(z)); break;
-    case arith_binop_t::UDIV: set(x, get_interval(y).UDiv(get_interval(z))); break;
-    case arith_binop_t::SREM: set(x, get_interval(y).SRem(get_interval(z))); break;
-    case arith_binop_t::UREM: set(x, get_interval(y).URem(get_interval(z))); break;
+    case arith_binop_t::MUL: set(x, get_interval(y, finite_width) * get_interval(z, finite_width)); break;
+    case arith_binop_t::SDIV: set(x, get_interval(y, finite_width) / get_interval(z, finite_width)); break;
+    case arith_binop_t::UDIV: set(x, get_interval(y, finite_width).UDiv(get_interval(z, finite_width))); break;
+    case arith_binop_t::SREM: set(x, get_interval(y, finite_width).SRem(get_interval(z, finite_width))); break;
+    case arith_binop_t::UREM: set(x, get_interval(y, finite_width).URem(get_interval(z, finite_width))); break;
     default: CRAB_ERROR("DBM: unreachable");
     }
     normalize();
 }
 
-void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, const number_t& k) {
+void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, const number_t& k, int finite_width) {
     CrabStats::count("SplitDBM.count.apply");
     ScopedCrabStats __st__("SplitDBM.apply");
 
@@ -1081,16 +1081,16 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, const number_
     case arith_binop_t::SUB: assign(x, linear_expression_t(y) - k); break;
     case arith_binop_t::MUL: assign(x, linear_expression_t(k, y)); break;
     // For the rest of operations, we fall back on intervals.
-    case arith_binop_t::SDIV: set(x, get_interval(y) / interval_t(k)); break;
-    case arith_binop_t::UDIV: set(x, get_interval(y).UDiv(interval_t(k))); break;
-    case arith_binop_t::SREM: set(x, get_interval(y).SRem(interval_t(k))); break;
-    case arith_binop_t::UREM: set(x, get_interval(y).URem(interval_t(k))); break;
+    case arith_binop_t::SDIV: set(x, get_interval(y, finite_width) / interval_t(k)); break;
+    case arith_binop_t::UDIV: set(x, get_interval(y, finite_width).UDiv(interval_t(k))); break;
+    case arith_binop_t::SREM: set(x, get_interval(y, finite_width).SRem(interval_t(k))); break;
+    case arith_binop_t::UREM: set(x, get_interval(y, finite_width).URem(interval_t(k))); break;
     default: CRAB_ERROR("DBM: unreachable");
     }
     normalize();
 }
 
-void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t z) {
+void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) {
     CrabStats::count("SplitDBM.count.apply");
     ScopedCrabStats __st__("SplitDBM.apply");
 
