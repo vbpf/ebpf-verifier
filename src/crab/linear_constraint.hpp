@@ -11,7 +11,7 @@ enum class constraint_kind_t {
     EQUALS_ZERO,
     LESS_THAN_OR_EQUALS_ZERO,
     LESS_THAN_ZERO,
-    NOT_ZERO,
+    NOT_ZERO
 };
 
 class linear_constraint_t final {
