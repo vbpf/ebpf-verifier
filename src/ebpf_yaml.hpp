@@ -35,7 +35,7 @@ void print_failure(const Failure& failure, std::ostream& out);
 std::optional<Failure> run_yaml_test_case(const TestCase& test_case);
 
 struct ConformanceTestResult {
-    bool success;
+    bool success{};
     crab::interval_t r0_value = crab::interval_t::top();
 };
 
