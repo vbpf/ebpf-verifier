@@ -326,8 +326,9 @@ ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memo
                 if (invariant[9] == '[') {
                     lb = std::stoull(invariant.substr(10));
                     ub = std::stoull(invariant.substr(invariant.find(",", 10) + 1));
-                } else
+                } else {
                     lb = ub = std::stoull(invariant.substr(9));
+                }
                 return {result, crab::interval_t(lb, ub)};
             }
         }
