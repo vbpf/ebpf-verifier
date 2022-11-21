@@ -302,7 +302,7 @@ struct InstructionPrinterVisitor {
         os_ << "(" << access.basereg << sign << offset << ")";
     }
 
-    void print(Condition const& cond) { os_ << cond.left << " " << cond.op << " " << cond.right; }
+    void print(Condition const& cond) { os_ << cond.left << " " << ((!cond.is64) ? "w" : "") << cond.op << " " << cond.right; }
 
     void operator()(Mem const& b) {
         if (b.is_load) {

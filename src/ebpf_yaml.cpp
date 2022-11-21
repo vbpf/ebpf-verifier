@@ -279,8 +279,8 @@ string_invariant stack_contents_invariant(const std::vector<uint8_t>& memory_byt
     return string_invariant(more);
 }
 
-std::tuple<bool, std::optional<uint64_t>> run_conformance_test_case(const std::vector<uint8_t>& memory_bytes,
-                                                  const std::vector<uint8_t>& program_bytes, bool debug) {
+ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memory_bytes,
+                                                const std::vector<uint8_t>& program_bytes, bool debug) {
     ebpf_context_descriptor_t context_descriptor{64, -1, -1, -1};
     EbpfProgramType program_type = make_program_type("conformance_check", &context_descriptor);
 
@@ -322,10 +322,17 @@ std::tuple<bool, std::optional<uint64_t>> run_conformance_test_case(const std::v
 
         for (const std::string& invariant : actual_last_invariant.value()) {
             if (invariant.rfind("r0.value=", 0) == 0) {
-                return {result, std::stoull(invariant.substr(9))};
+                int64_t lb, ub;
+                if (invariant[9] == '[') {
+                    lb = std::stoull(invariant.substr(10));
+                    ub = std::stoull(invariant.substr(invariant.find(",", 10) + 1));
+                } else {
+                    lb = ub = std::stoull(invariant.substr(9));
+                }
+                return {result, crab::interval_t(lb, ub)};
             }
         }
-        return {result, {}};
+        return {result, crab::interval_t::top()};
     } catch (std::exception) {
         // Catch exceptions thrown in ebpf_domain.cpp.
         return {};

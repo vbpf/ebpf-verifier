@@ -50,7 +50,7 @@ class bound_t final {
     static bound_t minus_infinity() { return bound_t(true, -1); }
 
   public:
-    bound_t(int n) : _is_infinite(false), _n(n) {}
+    bound_t(int64_t n) : _is_infinite(false), _n(n) {}
 
     explicit bound_t(const std::string& s) : _n(1) {
         if (s == "+oo") {

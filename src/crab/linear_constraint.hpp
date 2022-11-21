@@ -67,6 +67,10 @@ class linear_constraint_t final {
         return linear_constraint_t{linear_expression_t(0), constraint_kind_t::NOT_ZERO};
     };
 
+    static linear_constraint_t TRUE() {
+        return linear_constraint_t{linear_expression_t(0), constraint_kind_t::EQUALS_ZERO};
+    };
+
 };
 
 // Output a linear constraint to a stream.
