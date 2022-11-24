@@ -145,7 +145,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
     vector<raw_program> res;
 
-    for (const auto section : reader.sections) {
+    for (const auto& section : reader.sections) {
         const string name = section->get_name();
         if (!desired_section.empty() && name != desired_section)
             continue;
