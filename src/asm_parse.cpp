@@ -169,6 +169,7 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
     return Undefined{0};
 }
 
+[[maybe_unused]]
 static InstructionSeq parse_program(std::istream& is) {
     std::string line;
     int lineno = 0;

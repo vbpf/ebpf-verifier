@@ -96,7 +96,7 @@ class TreeSMap final {
         if (v != map.end()) {
             return {v->second};
         }
-        return {};
+        return std::nullopt;
     }
 
     // precondition: k \in S
