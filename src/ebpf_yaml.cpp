@@ -333,7 +333,7 @@ ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memo
             }
         }
         return {result, crab::interval_t::top()};
-    } catch (std::exception) {
+    } catch (const std::exception&) {
         // Catch exceptions thrown in ebpf_domain.cpp.
         return {};
     }

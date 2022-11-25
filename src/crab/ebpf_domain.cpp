@@ -289,18 +289,6 @@ static std::vector<linear_constraint_t> jmp_to_cst_reg(const NumAbsDomain& inv, 
     }
 }
 
-static bool is_unsigned_cmp(Condition::Op op) {
-    using Op = Condition::Op;
-    switch (op) {
-    case Op::GE:
-    case Op::LE:
-    case Op::GT:
-    case Op::LT: return true;
-    default: return false;
-    }
-    return {};
-}
-
 std::optional<variable_t> ebpf_domain_t::get_type_offset_variable(const Reg& reg, int type) {
     reg_pack_t r = reg_pack(reg);
     switch (type) {
