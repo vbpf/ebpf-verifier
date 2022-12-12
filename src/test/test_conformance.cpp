@@ -43,10 +43,11 @@ void test_conformance(std::string filename, bpf_conformance_test_result_t expect
         test_conformance(filename, bpf_conformance_test_result_t::TEST_RESULT_FAIL, "Couldn't determine r0 value"); \
     }
 
-// At least one test fails that shouldn't. This indicates a bug where an unsafe program might be verified.
-#define TEST_CONFORMANCE_FAIL(filename) \
-    TEST_CASE("expect failure conformance_check " filename, "[conformance][!shouldfail]") { \
-        test_conformance(filename, bpf_conformance_test_result_t::TEST_RESULT_PASS, {}); \
+// Any tests that return a range are safe, but are not as precise as they
+// could be and so may prevent legitimate programs from being usable.
+#define TEST_CONFORMANCE_RANGE(filename, range)                                                                  \
+    TEST_CASE("conformance_check " filename, "[conformance]") {                                                  \
+        test_conformance(filename, bpf_conformance_test_result_t::TEST_RESULT_FAIL, "r0 value is range " range); \
     }
 
 TEST_CONFORMANCE("add.data")
@@ -161,7 +162,7 @@ TEST_CONFORMANCE("mul64-imm.data")
 TEST_CONFORMANCE("mul64-reg.data")
 TEST_CONFORMANCE("neg.data")
 TEST_CONFORMANCE("neg64.data")
-TEST_CONFORMANCE_VERIFICATION_FAILED("prime.data")
+TEST_CONFORMANCE_RANGE("prime.data", "[0, 1]")
 TEST_CONFORMANCE("rsh-reg.data")
 TEST_CONFORMANCE("rsh32.data")
 TEST_CONFORMANCE_VERIFICATION_FAILED("stack.data")

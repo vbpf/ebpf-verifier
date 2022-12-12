@@ -206,7 +206,9 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(std::shared_ptr<wto_cycle_t
         transform_to_post(head, pre);
 
         for (auto& component : *cycle) {
-            std::visit(*this, *component);
+            wto_component_t c = *component;
+            if (!std::holds_alternative<label_t>(c) || (std::get<label_t>(c) != head))
+                std::visit(*this, *component);
         }
         ebpf_domain_t new_pre = join_all_prevs(head);
         if (pre <= new_pre) {
