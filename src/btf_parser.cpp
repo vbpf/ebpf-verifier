@@ -72,6 +72,9 @@ void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vect
     if (line_info_end < 0 || line_info_end > btf_ext.size()) {
         throw std::runtime_error("Invalid .BTF.ext section - invalid btf_line_info string table end");
     }
+    if (static_cast<size_t>(bpf_ext_header->line_info_off)<4){
+        throw std::runtime_error("Invalid .BTF.ext section - invalid line info off size");
+    }
 
     uint32_t line_info_record_size =
         *reinterpret_cast<const uint32_t*>(btf_ext.data() + line_info_start);
