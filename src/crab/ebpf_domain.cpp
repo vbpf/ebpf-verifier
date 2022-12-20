@@ -1980,8 +1980,11 @@ void ebpf_domain_t::initialize_packet(ebpf_domain_t& inv) {
     }
 }
 
-ebpf_domain_t ebpf_domain_t::from_constraints(const std::set<std::string>& constraints) {
+ebpf_domain_t ebpf_domain_t::from_constraints(const std::set<std::string>& constraints, bool setup_constraints) {
     ebpf_domain_t inv;
+    if (setup_constraints) {
+        inv = ebpf_domain_t::setup_entry(false, false);
+    }
     auto numeric_ranges = std::vector<crab::interval_t>();
     for (const auto& cst : parse_linear_constraints(constraints, numeric_ranges)) {
         inv += cst;
@@ -1995,7 +1998,7 @@ ebpf_domain_t ebpf_domain_t::from_constraints(const std::set<std::string>& const
     return inv;
 }
 
-ebpf_domain_t ebpf_domain_t::setup_entry(bool check_termination) {
+ebpf_domain_t ebpf_domain_t::setup_entry(bool check_termination, bool init_r1) {
     using namespace crab::dsl_syntax;
 
     ebpf_domain_t inv;
@@ -2008,12 +2011,14 @@ ebpf_domain_t ebpf_domain_t::setup_entry(bool check_termination) {
     // so no need to assign it.
     inv.type_inv.assign_type(inv.m_inv, r10_reg, T_STACK);
 
-    auto r1 = reg_pack(R1_ARG);
-    Reg r1_reg{(uint8_t)R1_ARG};
-    inv += 1 <= r1.value;
-    inv += r1.value <= PTR_MAX;
-    inv.assign(r1.ctx_offset, 0);
-    inv.type_inv.assign_type(inv.m_inv, r1_reg, T_CTX);
+    if (init_r1) {
+        auto r1 = reg_pack(R1_ARG);
+        Reg r1_reg{(uint8_t)R1_ARG};
+        inv += 1 <= r1.value;
+        inv += r1.value <= PTR_MAX;
+        inv.assign(r1.ctx_offset, 0);
+        inv.type_inv.assign_type(inv.m_inv, r1_reg, T_CTX);
+    }
 
     initialize_packet(inv);
 

@@ -161,8 +161,9 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
 static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& raw_options) {
     ebpf_verifier_options_t options = ebpf_verifier_default_options;
 
-    // All YAML tests use no_simplify.
+    // All YAML tests use no_simplify and !setup_constraints.
     options.no_simplify = true;
+    options.setup_constraints = false;
 
     for (string name : raw_options) {
         if (name == "!allow_division_by_zero") {
