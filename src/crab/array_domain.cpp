@@ -419,6 +419,11 @@ void clear_global_state() {
     }
 }
 
+void array_domain_t::initialize_numbers(int lb, int width) {
+    num_bytes.reset(lb, width);
+    lookup_array_map(data_kind_t::values).mk_cell(lb, width);
+}
+
 std::ostream& operator<<(std::ostream& o, offset_map_t& m) {
     if (m._map.empty()) {
         o << "empty";
@@ -492,6 +497,18 @@ int array_domain_t::min_all_num_size(const NumAbsDomain& inv, variable_t offset)
     return std::max(0, this->num_bytes.all_num_width(lb) - (ub - lb));
 }
 
+// Get one byte of a value.
+std::optional<uint8_t> get_value_byte(NumAbsDomain& inv, offset_t o, int width) {
+    variable_t v = variable_t::cell_var(data_kind_t::values, (o / width) * width, width);
+    std::optional<number_t> t = inv.eval_interval(v).singleton();
+    if (!t) {
+        return {};
+    }
+    uint64_t n = t->cast_to_uint64();
+    uint8_t* bytes = (uint8_t*)&n;
+    return bytes[o % width];
+}
+
 std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, int width) {
     interval_t ii = inv.eval_interval(i);
     if (std::optional<number_t> n = ii.singleton()) {
@@ -508,6 +525,57 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
         }
         offset_t o(k);
         unsigned size = (long)width;
+        std::optional<cell_t> cell = lookup_array_map(kind).get_cell(o, size);
+        if (cell) {
+            return cell->get_scalar(kind);
+        }
+        if (kind == data_kind_t::values) {
+            // Copy bytes into result_buffer, taking into account that the
+            // bytes might be in different stack variables and might be unaligned.
+            uint8_t result_buffer[8];
+            bool found = true;
+            for (unsigned int index = 0; index < size; index++) {
+                offset_t byte_offset = o + index;
+                uint64_t buffer;
+                std::optional<uint8_t> b = get_value_byte(inv, byte_offset, 8);
+                if (!b) {
+                    b = get_value_byte(inv, byte_offset, 4);
+                    if (!b) {
+                        b = get_value_byte(inv, byte_offset, 2);
+                        if (!b) {
+                            b = get_value_byte(inv, byte_offset, 1);
+                        }
+                    }
+                }
+                if (b) {
+                    result_buffer[index] = *b;
+                } else {
+                    found = false;
+                    break;
+                }
+            }
+            if (found) {
+                // We have an aligned result in result_buffer so we can now
+                // convert to an integer.
+                if (size == 1) {
+                    uint8_t b = *result_buffer;
+                    return b;
+                }
+                if (size == 2) {
+                    uint16_t b = *(uint16_t*)result_buffer;
+                    return b;
+                }
+                if (size == 4) {
+                    uint32_t b = *(uint32_t*)result_buffer;
+                    return b;
+                }
+                if (size == 8) {
+                    uint64_t b = *(uint64_t*)result_buffer;
+                    return b;
+                }
+            }
+        }
+
         std::vector<cell_t> cells = offset_map.get_overlap_cells(o, size);
         if (cells.empty()) {
             cell_t c = offset_map.mk_cell(o, size);
@@ -520,7 +588,8 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
                       " because it overlaps with ", cells.size(), " cells");
             /*
                 TODO: we can apply here "Value Recomposition" 'a la'
-                Mine'06 to construct values of some type from a sequence
+                Mine'06 (https://arxiv.org/pdf/cs/0703074.pdf)
+                to construct values of some type from a sequence
                 of bytes. It can be endian-independent but it would more
                 precise if we choose between little- and big-endian.
             */
