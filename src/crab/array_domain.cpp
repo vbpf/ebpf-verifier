@@ -525,8 +525,7 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
         }
         offset_t o(k);
         unsigned size = (long)width;
-        std::optional<cell_t> cell = lookup_array_map(kind).get_cell(o, size);
-        if (cell) {
+        if (auto cell = lookup_array_map(kind).get_cell(o, size)) {
             return cell->get_scalar(kind);
         }
         if (kind == data_kind_t::values) {
