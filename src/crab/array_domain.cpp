@@ -535,7 +535,6 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
             bool found = true;
             for (unsigned int index = 0; index < size; index++) {
                 offset_t byte_offset = o + index;
-                uint64_t buffer;
                 std::optional<uint8_t> b = get_value_byte(inv, byte_offset, 8);
                 if (!b) {
                     b = get_value_byte(inv, byte_offset, 4);
