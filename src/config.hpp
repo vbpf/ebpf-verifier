@@ -17,6 +17,7 @@ struct ebpf_verifier_options_t {
 
     bool print_line_info;
     bool allow_division_by_zero;
+    bool setup_constraints;
 };
 
 struct ebpf_verifier_stats_t {

@@ -46,9 +46,9 @@ class ebpf_domain_t final {
     typedef bool check_require_func_t(NumAbsDomain&, const linear_constraint_t&, std::string);
     void set_require_check(std::function<check_require_func_t> f);
     int get_instruction_count_upper_bound();
-    static ebpf_domain_t setup_entry(bool check_termination);
+    static ebpf_domain_t setup_entry(bool check_termination, bool init_r1);
 
-    static ebpf_domain_t from_constraints(const std::set<std::string>& constraints);
+    static ebpf_domain_t from_constraints(const std::set<std::string>& constraints, bool setup_constraints);
     string_invariant to_set();
 
     // abstract transformers

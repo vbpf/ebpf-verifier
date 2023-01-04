@@ -839,7 +839,7 @@ void ebpf_domain_t::operator()(const Un& stmt) {
         if (m_inv.entail(type_is_number(stmt.dst))) {
             auto interval = m_inv.eval_interval(dst.value);
             if (std::optional<number_t> n = interval.singleton()) {
-                if (n->fits_sint64() || n->fits_uint64()) {
+                if (n->fits_cast_to_int64()) {
                     input = (decltype(input))n.value().cast_to_sint64();
                     decltype(input) output = be_or_le(input);
                     m_inv.set(dst.value, crab::interval_t(number_t(output), number_t(output)));
@@ -850,6 +850,9 @@ void ebpf_domain_t::operator()(const Un& stmt) {
         havoc(dst.value);
         havoc_offsets(stmt.dst);
     };
+    // Swap bytes.  For 64-bit types we need the weights to fit in a
+    // signed int64, but for smaller types we don't want sign extension
+    // so we use unsigned which still fits in a signed int64.
     switch (stmt.op) {
     case Un::Op::BE16:
         swap_endianness(uint16_t(0), boost::endian::native_to_big<uint16_t>);
@@ -858,7 +861,7 @@ void ebpf_domain_t::operator()(const Un& stmt) {
         swap_endianness(uint32_t(0), boost::endian::native_to_big<uint32_t>);
         break;
     case Un::Op::BE64:
-        swap_endianness(uint64_t(0), boost::endian::native_to_big<uint64_t>);
+        swap_endianness(int64_t(0), boost::endian::native_to_big<int64_t>);
         break;
     case Un::Op::LE16:
         swap_endianness(uint16_t(0), boost::endian::native_to_little<uint16_t>);
@@ -867,7 +870,7 @@ void ebpf_domain_t::operator()(const Un& stmt) {
         swap_endianness(uint32_t(0), boost::endian::native_to_little<uint32_t>);
         break;
     case Un::Op::LE64:
-        swap_endianness(uint64_t(0), boost::endian::native_to_little<uint64_t>);
+        swap_endianness(int64_t(0), boost::endian::native_to_little<int64_t>);
         break;
     case Un::Op::NEG:
         neg(dst.value, stmt.is64 ? 64 : 32);
@@ -1212,9 +1215,12 @@ void ebpf_domain_t::do_load_stack(NumAbsDomain& inv, const Reg& target_reg, cons
         type_inv.assign_type(inv, target_reg, T_NUM);
 
     const reg_pack_t& target = reg_pack(target_reg);
-    havoc_register(inv, target_reg);
     if (width == 1 || width == 2 || width == 4 || width == 8) {
-        inv.assign(target.value, stack.load(inv,  data_kind_t::values, addr, width));
+        // Use the addr before we havoc the destination register since we might be getting the
+        // addr from that same register.
+        std::optional<linear_expression_t> result = stack.load(inv, data_kind_t::values, addr, width);
+        havoc_register(inv, target_reg);
+        inv.assign(target.value, result);
 
         if (type_inv.has_type(inv, target.type, T_CTX))
             inv.assign(target.ctx_offset, stack.load(inv, data_kind_t::ctx_offsets, addr, width));
@@ -1230,7 +1236,8 @@ void ebpf_domain_t::do_load_stack(NumAbsDomain& inv, const Reg& target_reg, cons
             inv.assign(target.stack_offset, stack.load(inv, data_kind_t::stack_offsets, addr, width));
             inv.assign(target.stack_numeric_size, stack.load(inv, data_kind_t::stack_numeric_sizes, addr, width));
         }
-    }
+    } else
+        havoc_register(inv, target_reg);
 }
 
 void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr_vague, int width) {
@@ -1973,8 +1980,11 @@ void ebpf_domain_t::initialize_packet(ebpf_domain_t& inv) {
     }
 }
 
-ebpf_domain_t ebpf_domain_t::from_constraints(const std::set<std::string>& constraints) {
+ebpf_domain_t ebpf_domain_t::from_constraints(const std::set<std::string>& constraints, bool setup_constraints) {
     ebpf_domain_t inv;
+    if (setup_constraints) {
+        inv = ebpf_domain_t::setup_entry(false, false);
+    }
     auto numeric_ranges = std::vector<crab::interval_t>();
     for (const auto& cst : parse_linear_constraints(constraints, numeric_ranges)) {
         inv += cst;
@@ -1988,7 +1998,7 @@ ebpf_domain_t ebpf_domain_t::from_constraints(const std::set<std::string>& const
     return inv;
 }
 
-ebpf_domain_t ebpf_domain_t::setup_entry(bool check_termination) {
+ebpf_domain_t ebpf_domain_t::setup_entry(bool check_termination, bool init_r1) {
     using namespace crab::dsl_syntax;
 
     ebpf_domain_t inv;
@@ -2001,12 +2011,14 @@ ebpf_domain_t ebpf_domain_t::setup_entry(bool check_termination) {
     // so no need to assign it.
     inv.type_inv.assign_type(inv.m_inv, r10_reg, T_STACK);
 
-    auto r1 = reg_pack(R1_ARG);
-    Reg r1_reg{(uint8_t)R1_ARG};
-    inv += 1 <= r1.value;
-    inv += r1.value <= PTR_MAX;
-    inv.assign(r1.ctx_offset, 0);
-    inv.type_inv.assign_type(inv.m_inv, r1_reg, T_CTX);
+    if (init_r1) {
+        auto r1 = reg_pack(R1_ARG);
+        Reg r1_reg{(uint8_t)R1_ARG};
+        inv += 1 <= r1.value;
+        inv += r1.value <= PTR_MAX;
+        inv.assign(r1.ctx_offset, 0);
+        inv.type_inv.assign_type(inv.m_inv, r1_reg, T_CTX);
+    }
 
     initialize_packet(inv);
 

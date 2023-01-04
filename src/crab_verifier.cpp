@@ -167,7 +167,7 @@ checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info, const 
 
     try {
         // Get dictionaries of pre-invariants and post-invariants for each basic block.
-        ebpf_domain_t entry_dom = ebpf_domain_t::setup_entry(options->check_termination);
+        ebpf_domain_t entry_dom = ebpf_domain_t::setup_entry(options->check_termination, true);
         auto [pre_invariants, post_invariants] =
             crab::run_forward_analyzer(cfg, std::move(entry_dom), options->check_termination);
         return get_analysis_report(s, cfg, pre_invariants, post_invariants);
@@ -205,11 +205,11 @@ std::tuple<string_invariant, bool>
 ebpf_analyze_program_for_test(std::ostream& os, const InstructionSeq& prog, const string_invariant& entry_invariant,
                               const program_info& info, const ebpf_verifier_options_t& options) {
     thread_local_options = options;
+    global_program_info = info;
     ebpf_domain_t entry_inv = entry_invariant.is_bottom()
         ? ebpf_domain_t::bottom()
-        : ebpf_domain_t::from_constraints(entry_invariant.value());
+        : ebpf_domain_t::from_constraints(entry_invariant.value(), options.setup_constraints);
     assert(!entry_inv.is_bottom());
-    global_program_info = info;
     cfg_t cfg = prepare_cfg(prog, info, !options.no_simplify, false);
     auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, entry_inv, options.check_termination);
     checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
