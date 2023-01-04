@@ -66,7 +66,7 @@ void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vect
         static_cast<size_t>(bpf_ext_header->hdr_len) + static_cast<size_t>(bpf_ext_header->line_info_off);
     size_t line_info_end = line_info_start + static_cast<size_t>(bpf_ext_header->line_info_len);
 
-    if (line_info_start < 0 || line_info_end > btf_ext.size()) {
+    if (line_info_start < 0) {
         throw std::runtime_error("Invalid .BTF.ext section - invalid btf_line_info table start");
     }
     if (line_info_end < 0 || line_info_end > btf_ext.size()) {
@@ -74,6 +74,9 @@ void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vect
     }
     if (static_cast<size_t>(bpf_ext_header->line_info_off) < 4) {
         throw std::runtime_error("Invalid .BTF.ext section - invalid line info off size");
+    }
+    if (line_info_start + sizeof(uint32_t) > line_info_end) {
+        throw std::runtime_error("Invalid .BTF.ext section - invalid btf_line_info table size");
     }
 
     uint32_t line_info_record_size =
