@@ -107,6 +107,8 @@ set_target_properties(conformance_check
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
 
+add_dependencies(tests conformance_check)
+
 target_compile_options(ebpfverifier PRIVATE ${COMMON_FLAGS})
 target_compile_options(ebpfverifier PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
 target_compile_options(ebpfverifier PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
