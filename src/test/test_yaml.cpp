@@ -1,6 +1,6 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
-#include "catch.hpp"
+#include <catch2/catch_all.hpp>
 
 #include "ebpf_verifier.hpp"
 #include "ebpf_yaml.hpp"

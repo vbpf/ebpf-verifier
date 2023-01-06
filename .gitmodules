@@ -10,7 +10,3 @@
 [submodule "external/bpf_conformance"]
 	path = external/bpf_conformance
 	url = https://github.com/Alan-Jowett/bpf_conformance.git
-[submodule "external/Catch2"]
-	path = external/Catch2
-	url = https://github.com/catchorg/Catch2.git
-	branch = v2.x

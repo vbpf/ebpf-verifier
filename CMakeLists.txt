@@ -3,6 +3,14 @@
 cmake_minimum_required(VERSION 3.10)
 project(ebpf_verifier)
 
+include(FetchContent)
+FetchContent_Declare(
+  Catch2
+  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+  GIT_TAG        ac93f1943762f6fc92f0dc5bac0d720a33a27530
+)
+FetchContent_MakeAvailable(Catch2)
+
 if (IS_DIRECTORY "${PROJECT_SOURCE_DIR}/.git")
   # Install Git pre-commit hook
   file(COPY scripts/pre-commit scripts/commit-msg
@@ -44,7 +52,6 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 endif ()
 
 include_directories(./external)
-include_directories(./external/Catch2/single_include/catch2)
 include_directories(./external/ELFIO)
 include_directories(./src)
 include_directories(${Boost_INCLUDE_DIRS})
@@ -142,6 +149,7 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 target_link_libraries(tests PRIVATE Threads::Threads)
+target_link_libraries(tests PRIVATE Catch2::Catch2WithMain)
 
 target_link_libraries(ebpfverifier PRIVATE ${YAML_CPP_LIBRARIES})
 target_compile_options(ebpfverifier PRIVATE ${COMMON_FLAGS})
