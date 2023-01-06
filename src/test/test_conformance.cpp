@@ -1,6 +1,6 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
-#include "catch.hpp"
+#include <catch2/catch_all.hpp>
 #include <boost/dll/runtime_symbol_info.hpp>
 #include "../external/bpf_conformance/include/bpf_conformance.h"
 

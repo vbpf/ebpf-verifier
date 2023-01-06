@@ -1,7 +1,7 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
 #include <thread>
-#include "catch.hpp"
+#include <catch2/catch_all.hpp>
 #include "ebpf_verifier.hpp"
 
 #define FAIL_LOAD_ELF(dirname, filename, sectionname) \
