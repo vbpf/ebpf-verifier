@@ -3,7 +3,6 @@
 
 // This file is eBPF-specific, not derived from CRAB.
 
-#include <algorithm>
 #include <bitset>
 #include <functional>
 #include <optional>
@@ -20,7 +19,6 @@
 
 #include "asm_ostream.hpp"
 #include "config.hpp"
-#include "crab_verifier.hpp"
 #include "dsl_syntax.hpp"
 #include "platform.hpp"
 #include "string_constraints.hpp"
@@ -29,7 +27,15 @@ using crab::domains::NumAbsDomain;
 using crab::data_kind_t;
 
 struct reg_pack_t {
-    variable_t value, ctx_offset, map_fd, packet_offset, shared_offset, stack_offset, type, shared_region_size, stack_numeric_size;
+    variable_t value;
+    variable_t ctx_offset;
+    variable_t map_fd;
+    variable_t packet_offset;
+    variable_t shared_offset;
+    variable_t stack_offset;
+    variable_t type;
+    variable_t shared_region_size;
+    variable_t stack_numeric_size;
 };
 
 reg_pack_t reg_pack(int i) {
@@ -379,7 +385,7 @@ void ebpf_domain_t::TypeDomain::selectively_join_based_on_type(NumAbsDomain& dst
     // from the resulting merged domain since absence from the other
     // would be interpreted to mean Top.
     //
-    // However, when the type value is not present in one domain, any
+    // However, when the type value is not present in one domain,
     // any type-specific variables for that type are instead to be
     // interpreted as Bottom, so we want to preserve the values of any
     // type-specific variables from the other domain where the type
