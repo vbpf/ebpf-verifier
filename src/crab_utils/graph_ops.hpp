@@ -1141,6 +1141,66 @@ class GraphOps {
         }
     }
 
+    static void close_over_edge(graph_t& g, vert_id ii, vert_id jj) {
+        assert(ii != 0 && jj != 0);
+        SubGraph<graph_t> g_excl(g, 0);
+
+        Weight c = g_excl.edge_val(ii, jj);
+
+        std::vector<std::pair<vert_id, Weight>> src_dec;
+        for (auto edge : g_excl.e_preds(ii)) {
+            vert_id se = edge.vert;
+            Weight wt_sij = edge.val + c;
+
+            assert(g_excl.succs(se).begin() != g_excl.succs(se).end());
+            if (se != jj) {
+                typename graph_t::mut_val_ref_t w;
+                if (g_excl.lookup(se, jj, &w)) {
+                    if (w.get() <= wt_sij)
+                        continue;
+                    w = wt_sij;
+                } else {
+                    g_excl.add_edge(se, wt_sij, jj);
+                }
+                src_dec.emplace_back(se, edge.val);
+            }
+        }
+
+        std::vector<std::pair<vert_id, Weight>> dest_dec;
+        for (auto edge : g_excl.e_succs(jj)) {
+            vert_id de = edge.vert;
+            Weight wt_ijd = edge.val + c;
+            if (de != ii) {
+                typename graph_t::mut_val_ref_t w;
+                if (g_excl.lookup(ii, de, &w)) {
+                    if (w.get() <= wt_ijd)
+                        continue;
+                    w = wt_ijd;
+                } else {
+                    g_excl.add_edge(ii, wt_ijd, de);
+                }
+                dest_dec.emplace_back(de, edge.val);
+            }
+        }
+
+        for (auto [se, p1] : src_dec) {
+            Weight wt_sij = c + p1;
+            for (auto [de, p2] : dest_dec) {
+                Weight wt_sijd = wt_sij + p2;
+                typename graph_t::mut_val_ref_t w;
+                if (g.lookup(se, de, &w)) {
+                    if (w.get() <= wt_sijd)
+                        continue;
+                    w = wt_sijd;
+                } else {
+                    g.add_edge(se, wt_sijd, de);
+                }
+            }
+        }
+
+        // Closure is now updated.
+    }
+
     template <class G, class P>
     static void close_after_assign(const G& g, const P& p, vert_id v, edge_vector& delta) {
         size_t sz = g.size();
