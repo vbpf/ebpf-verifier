@@ -395,6 +395,8 @@ class interval_t final {
 
     interval_t& operator/=(const interval_t& x) { return operator=(operator/(x)); }
 
+    [[nodiscard]] bool is_singleton() const { return _lb == _ub; }
+
     [[nodiscard]] std::optional<number_t> singleton() const {
         if (!is_bottom() && _lb == _ub) {
             return _lb.number();
