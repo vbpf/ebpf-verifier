@@ -97,7 +97,6 @@ class SplitDBM final {
     graph_t g;                 // The underlying relation graph
     std::vector<Weight> potential; // Stored potential for the vertex
     vert_set_t unstable;
-    bool _is_bottom{};
 
     vert_id get_vert(variable_t v);
     // Evaluate the potential value of a variable.
@@ -148,7 +147,7 @@ class SplitDBM final {
     bool add_linear_leq(const linear_expression_t& exp);
 
     // x != n
-    void add_univar_disequation(variable_t x, const number_t& n);
+    bool add_univar_disequation(variable_t x, const number_t& n);
 
     [[nodiscard]] interval_t get_interval(variable_t x, int finite_width) const;
 
@@ -157,11 +156,10 @@ class SplitDBM final {
 
     void normalize();
 
-    // FIXME: Rewrite to avoid copying if o is _|_
     SplitDBM(vert_map_t&& _vert_map, rev_map_t&& _rev_map, graph_t&& _g, std::vector<Weight>&& _potential,
              vert_set_t&& _unstable)
         : vert_map(std::move(_vert_map)), rev_map(std::move(_rev_map)), g(std::move(_g)),
-          potential(std::move(_potential)), unstable(std::move(_unstable)), _is_bottom(false) {
+          potential(std::move(_potential)), unstable(std::move(_unstable)) {
 
         CrabStats::count("SplitDBM.count.copy");
         ScopedCrabStats __st__("SplitDBM.copy");
@@ -174,7 +172,7 @@ class SplitDBM final {
     }
 
   public:
-    explicit SplitDBM(bool is_bottom = false) : _is_bottom(is_bottom) {
+    explicit SplitDBM() {
         g.growTo(1); // Allocate the zero vector
         potential.emplace_back(0);
         rev_map.push_back(std::nullopt);
@@ -188,23 +186,12 @@ class SplitDBM final {
 
     void set_to_top() {
         this->~SplitDBM();
-        new (this) SplitDBM(false);
+        new (this) SplitDBM();
     }
 
-    void set_to_bottom() {
-        this->~SplitDBM();
-        new (this) SplitDBM(true);
-    }
-
-    [[nodiscard]] bool is_bottom() const { return _is_bottom; }
-
-    static SplitDBM top() { return SplitDBM(false); }
-
-    static SplitDBM bottom() { return SplitDBM(true); }
+    static SplitDBM top() { return SplitDBM(); }
 
     [[nodiscard]] bool is_top() const {
-        if (_is_bottom)
-            return false;
         return g.is_empty();
     }
 
@@ -213,31 +200,27 @@ class SplitDBM final {
     // FIXME: can be done more efficient
     void operator|=(const SplitDBM& o) { *this = *this | o; }
     void operator|=(SplitDBM&& o) {
-        if (is_bottom()) {
-            std::swap(*this, o);
-        } else {
-            *this = *this | o;
-        }
+        *this = *this | o;
     }
 
     SplitDBM operator|(const SplitDBM& o) const&;
 
     SplitDBM operator|(SplitDBM&& o) && {
-        if (is_bottom() || o.is_top())
+        if (o.is_top())
             return std::move(o);
-        if (is_top() || o.is_bottom())
+        if (is_top())
             return std::move(*this);
         return ((const SplitDBM&)*this) | (const SplitDBM&)o;
     }
 
     SplitDBM operator|(const SplitDBM& o) && {
-        if (is_top() || o.is_bottom())
+        if (is_top())
             return std::move(*this);
         return ((const SplitDBM&)*this) | o;
     }
 
     SplitDBM operator|(SplitDBM&& o) const& {
-        if (is_bottom() || o.is_top())
+        if (o.is_top())
             return std::move(o);
         return (*this) | (const SplitDBM&)o;
     }
@@ -249,7 +232,7 @@ class SplitDBM final {
         return this->widen(o);
     }
 
-    SplitDBM operator&(const SplitDBM& o) const;
+    std::optional<SplitDBM> meet(const SplitDBM& o) const;
 
     [[nodiscard]] SplitDBM narrow(const SplitDBM& o) const;
 
@@ -293,13 +276,7 @@ class SplitDBM final {
         std::visit([&](auto top) { apply(top, x, y, z, finite_width); }, op);
     }
 
-    void operator+=(const linear_constraint_t& cst);
-
-    [[nodiscard]] SplitDBM when(const linear_constraint_t& cst) const {
-        SplitDBM res(*this);
-        res += cst;
-        return res;
-    }
+    bool add_constraint(const linear_constraint_t& cst);
 
     [[nodiscard]] interval_t eval_interval(const linear_expression_t& e) const;
 
@@ -315,12 +292,12 @@ class SplitDBM final {
   private:
     [[nodiscard]] bool entail_aux(const linear_constraint_t& cst) const {
         // copy is necessary
-        return this->when(cst.negate()).is_bottom();
+        return !SplitDBM(*this).add_constraint(cst.negate());
     }
 
     [[nodiscard]] bool intersect_aux(const linear_constraint_t& cst) const {
         // copy is necessary
-        return !this->when(cst).is_bottom();
+        return SplitDBM(*this).add_constraint(cst);
     }
 
   public:
