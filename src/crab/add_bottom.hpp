@@ -19,16 +19,8 @@ class AddBottom final {
 
   public:
 
-//
-//    template <typename... Args>
-//    AddBottom(Args&&... args) : dom{T{std::forward<Args>(args)...}} { }
-//
     template<typename T>
-    explicit AddBottom(T&& _dom) : dom{std::forward<T>(_dom)} {
-        if (dom && dom->is_bottom()) {
-            dom = std::nullopt;
-        }
-    }
+    explicit AddBottom(T&& _dom) : dom{std::forward<T>(_dom)} {}
     AddBottom(const AddBottom& other) = default;
     AddBottom(AddBottom& other) = default;
     AddBottom(AddBottom&& other) = default;
@@ -113,7 +105,9 @@ class AddBottom final {
     AddBottom operator&(const AddBottom& o) const {
         if (!dom || !o.dom)
             return bottom();
-        return AddBottom((*dom) & (*o.dom));
+        if (auto res = (*dom).meet(*o.dom))
+            return AddBottom(*res);
+        return bottom();
     }
 
     [[nodiscard]] AddBottom narrow(const AddBottom& o) const {
@@ -123,8 +117,12 @@ class AddBottom final {
     }
 
     [[nodiscard]] AddBottom when(const linear_constraint_t& cst) const {
-        if (dom)
-            return AddBottom(dom->when(cst));
+        if (dom) {
+            AddBottom result(*dom);
+            if (!result.dom->add_constraint(cst))
+                result.dom = {};
+            return result;
+        }
         return bottom();
     }
 
@@ -142,10 +140,9 @@ class AddBottom final {
     template<typename V>
     void assign(variable_t x, const V& value) {
         if (dom) {
+            // XXX: maybe needs to return false when becomes bottom
+            // is this possible?
             dom->assign(x, value);
-            if (dom->is_bottom()) {
-                dom = {};
-            }
         }
     };
 
@@ -153,17 +150,12 @@ class AddBottom final {
     void apply(Op op, variable_t x, const Left& left, const Right& right, int finite_width) {
         if (dom) {
             dom->apply(op, x, left, right, finite_width);
-            if (dom->is_bottom()) {
-                dom = {};
-            }
         }
     }
 
     void operator+=(const linear_constraint_t& cst) {
         if (dom) {
-            dom->operator+=(cst);
-            // TODO: remove
-            if (dom->is_bottom()) {
+            if (!dom->add_constraint(cst)) {
                 dom = {};
             }
         }
@@ -186,9 +178,6 @@ class AddBottom final {
             dom = {};
         } else if (dom) {
             dom->set(x, intv);
-            if (dom->is_bottom()) {
-                dom = {};
-            }
         }
     }
 
