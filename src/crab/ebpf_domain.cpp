@@ -459,10 +459,6 @@ ebpf_domain_t ebpf_domain_t::widen(const ebpf_domain_t& other) {
     return ebpf_domain_t(m_inv.widen(other.m_inv), stack | other.stack);
 }
 
-ebpf_domain_t ebpf_domain_t::widening_thresholds(const ebpf_domain_t& other, const crab::iterators::thresholds_t& ts) {
-    return ebpf_domain_t(m_inv.widening_thresholds(other.m_inv, ts), stack | other.stack);
-}
-
 ebpf_domain_t ebpf_domain_t::narrow(const ebpf_domain_t& other) {
     return ebpf_domain_t(m_inv.narrow(other.m_inv), stack & other.stack);
 }
@@ -667,13 +663,13 @@ NumAbsDomain ebpf_domain_t::TypeDomain::join_over_types(const NumAbsDomain& inv,
                                                         const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const {
     crab::interval_t types = inv.eval_interval(reg_pack(reg).type);
     if (types.is_bottom())
-        return NumAbsDomain(true);
+        return NumAbsDomain::bottom();
     if (types.is_top()) {
         NumAbsDomain res(inv);
         transition(res, static_cast<type_encoding_t>(T_UNINIT));
         return res;
     }
-    NumAbsDomain res(true);
+    NumAbsDomain res = NumAbsDomain::bottom();
     auto lb = types.lb().is_finite() ? (type_encoding_t)(int)(types.lb().number().value()) : T_MAP_PROGRAMS;
     auto ub = types.ub().is_finite() ? (type_encoding_t)(int)(types.ub().number().value()) : T_SHARED;
     for (type_encoding_t type = lb; type <= ub; type = (type_encoding_t)((int)type + 1)) {

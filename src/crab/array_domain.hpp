@@ -28,14 +28,14 @@
 #include <utility>
 
 #include "crab/variable.hpp"
-#include "crab/split_dbm.hpp"
+#include "crab/add_bottom.hpp"
 
 #include "crab/bitset_domain.hpp"
 
 namespace crab::domains {
 
 // Numerical abstract domain.
-using NumAbsDomain = SplitDBM;
+using NumAbsDomain = AddBottom;
 
 void clear_global_state();
 
