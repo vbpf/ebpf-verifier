@@ -214,7 +214,14 @@ static Diff<T> make_diff(const T& actual, const T& expected) {
     };
 }
 
-std::optional<Failure> run_yaml_test_case(const TestCase& test_case) {
+std::optional<Failure> run_yaml_test_case(const TestCase& _test_case, bool debug) {
+    TestCase test_case = _test_case;
+    if (debug) {
+        test_case.options.print_failures = true;
+        test_case.options.print_invariants = true;
+        test_case.options.no_simplify = true;
+    }
+
     ebpf_context_descriptor_t context_descriptor{64, 0, 8, -1};
     EbpfProgramType program_type = make_program_type(test_case.name, &context_descriptor);
 
@@ -344,9 +351,13 @@ void print_failure(const Failure& failure, std::ostream& out) {
     constexpr auto INDENT = "  ";
     if (!failure.invariant.unexpected.empty()) {
         std::cout << "Unexpected properties:\n" << INDENT << failure.invariant.unexpected << "\n";
+    } else {
+        std::cout << "Unexpected properties: None\n";
     }
     if (!failure.invariant.unseen.empty()) {
         std::cout << "Unseen properties:\n" << INDENT << failure.invariant.unseen << "\n";
+    } else {
+        std::cout << "Unseen properties: None\n";
     }
 
     if (!failure.messages.unexpected.empty()) {
@@ -354,12 +365,17 @@ void print_failure(const Failure& failure, std::ostream& out) {
         for (const auto& item : failure.messages.unexpected) {
             std::cout << INDENT << item << "\n";
         }
+    } else {
+        std::cout << "Unexpected messages: None\n";
     }
+
     if (!failure.messages.unseen.empty()) {
         std::cout << "Unseen messages:\n";
         for (const auto& item : failure.messages.unseen) {
             std::cout << INDENT << item << "\n";
         }
+    } else {
+        std::cout << "Unseen messages: None\n";
     }
 }
 

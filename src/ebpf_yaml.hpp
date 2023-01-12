@@ -32,7 +32,7 @@ struct Failure {
 
 void print_failure(const Failure& failure, std::ostream& out);
 
-std::optional<Failure> run_yaml_test_case(const TestCase& test_case);
+std::optional<Failure> run_yaml_test_case(const TestCase& test_case, bool debug = false);
 
 struct ConformanceTestResult {
     bool success{};
