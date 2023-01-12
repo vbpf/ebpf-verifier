@@ -615,7 +615,7 @@ class GraphOps {
     }
 
     template <class G1, class G2>
-    static graph_t widen(const G1& l, const G2& r, std::vector<vert_id>& unstable) {
+    static graph_t widen(const G1& l, const G2& r, std::unordered_set<vert_id>& unstable) {
         assert(l.size() == r.size());
         size_t sz = l.size();
         graph_t g;
@@ -631,7 +631,7 @@ class GraphOps {
             // Check if this vertex is stable
             for (vert_id d : l.succs(s)) {
                 if (!g.elem(s, d)) {
-                    unstable.push_back(s);
+                    unstable.insert(s);
                     break;
                 }
             }
@@ -795,14 +795,13 @@ class GraphOps {
     }
 
     template <class G, class G1, class G2, class P>
-    static void close_after_meet(const G& g, const P& pots, const G1& l, const G2& r, edge_vector& delta) {
+    static edge_vector close_after_meet(const G& g, const P& pots, const G1& l, const G2& r) {
         // We assume the syntactic meet has already been computed,
         // and potentials have been initialized.
         // We just want to restore closure.
         assert(l.size() == r.size());
         size_t sz = l.size();
         grow_scratch(sz);
-        delta.clear();
 
         std::vector<std::vector<vert_id>> colour_succs(2 * sz);
 
@@ -835,6 +834,7 @@ class GraphOps {
         // on each source.
         std::vector<std::tuple<vert_id, Weight>> adjs;
         //      for(vert_id v = 0; v < sz; v++)
+        edge_vector delta;
         for (vert_id v : g.verts()) {
             adjs.clear();
             chrome_dijkstra(g, pots, colour_succs, v, adjs);
@@ -842,6 +842,7 @@ class GraphOps {
             for (const auto& [d, w] : adjs)
                 delta.emplace_back(v, d, w);
         }
+        return delta;
     }
 
     static void apply_delta(graph_t& g, const edge_vector& delta) {
@@ -1036,7 +1037,7 @@ class GraphOps {
     }
 
     template <class G, class P, class V>
-    static void close_after_widen(const G& g, const P& p, const V& is_stable, edge_vector& delta) {
+    static edge_vector close_after_widen(const G& g, const P& p, const V& is_stable) {
         size_t sz = g.size();
         grow_scratch(sz);
         //      assert(orig.size() == sz);
@@ -1046,7 +1047,7 @@ class GraphOps {
             // Should really just switch this to allocating types of a fixed-size buffer.
             edge_marks[v] = is_stable[v] ? V_STABLE : V_UNSTABLE;
         }
-
+        edge_vector delta;
         std::vector<std::tuple<vert_id, Weight>> aux;
         for (vert_id v : g.verts()) {
             if (!edge_marks[v]) {
@@ -1056,6 +1057,7 @@ class GraphOps {
                     delta.emplace_back(v, vid, wt);
             }
         }
+        return delta;
     }
 
     // Used for sorting successors of some vertex by increasing slack.
@@ -1202,9 +1204,10 @@ class GraphOps {
     }
 
     template <class G, class P>
-    static void close_after_assign(const G& g, const P& p, vert_id v, edge_vector& delta) {
+    static edge_vector close_after_assign(const G& g, const P& p, vert_id v) {
         size_t sz = g.size();
         grow_scratch(sz);
+        edge_vector delta;
         {
             std::vector<std::tuple<vert_id, Weight>> aux;
             close_after_assign_fwd(g, p, v, aux);
@@ -1218,6 +1221,7 @@ class GraphOps {
             for (auto [vid, wt] : aux)
                 delta.emplace_back(vid, v, wt);
         }
+        return delta;
     }
 };
 
