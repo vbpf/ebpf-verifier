@@ -268,9 +268,7 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
         }
         GrOps::close_over_edge(g, src, dest);
     }
-    edge_vector delta;
-    GrOps::close_after_assign(g, potential, 0, delta);
-    GrOps::apply_delta(g, delta);
+    GrOps::apply_delta(g, GrOps::close_after_assign(g, potential, 0));
     normalize();
     return true;
 }
@@ -468,13 +466,10 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
         }
     }
     // Apply the deferred relations, and re-close.
-    edge_vector delta;
     bool is_closed;
     graph_t g_rx(GrOps::meet(gx, g_ix_ry, is_closed));
     if (!is_closed) {
-        SubGraph<graph_t> g_rx_excl(g_rx, 0);
-        GrOps::close_after_meet(g_rx_excl, pot_rx, gx, g_ix_ry, delta);
-        GrOps::apply_delta(g_rx, delta);
+        GrOps::apply_delta(g_rx, GrOps::close_after_meet(SubGraph<graph_t>(g_rx, 0), pot_rx, gx, g_ix_ry));
     }
 
     graph_t g_rx_iy;
@@ -490,14 +485,10 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
                     g_rx_iy.add_edge(s, *ws + *wd, d);
         }
     }
-    delta.clear();
     // Similarly, should use a SubGraph view.
     graph_t g_ry(GrOps::meet(gy, g_rx_iy, is_closed));
     if (!is_closed) {
-
-        SubGraph<graph_t> g_ry_excl(g_ry, 0);
-        GrOps::close_after_meet(g_ry_excl, pot_ry, gy, g_rx_iy, delta);
-        GrOps::apply_delta(g_ry, delta);
+        GrOps::apply_delta(g_ry, GrOps::close_after_meet(SubGraph<graph_t>(g_ry, 0), pot_ry, gy, g_rx_iy));
     }
 
     // We now have the relevant set of relations. Because g_rx and g_ry are closed,
@@ -612,10 +603,7 @@ SplitDBM SplitDBM::widen(const SplitDBM& o) const {
 
     // Now perform the widening
     vert_set_t widen_unstable(unstable);
-    std::vector<vert_id> destabilized;
-    graph_t widen_g(GrOps::widen(gx, gy, destabilized));
-    for (vert_id v : destabilized)
-        widen_unstable.insert(v);
+    graph_t widen_g(GrOps::widen(gx, gy, widen_unstable));
 
     SplitDBM res(std::move(out_vmap),
                  std::move(out_revmap),
@@ -699,19 +687,11 @@ std::optional<SplitDBM> SplitDBM::meet(const SplitDBM& o) const {
     }
 
     if (!is_closed) {
-        edge_vector delta;
-        SubGraph<graph_t> meet_g_excl(meet_g, 0);
-        // GrOps::close_after_meet(meet_g_excl, meet_pi, gx, gy, delta);
-
-        GrOps::close_after_meet(meet_g_excl, meet_pi, gx, gy, delta);
-
-        GrOps::apply_delta(meet_g, delta);
+        GrOps::apply_delta(meet_g, GrOps::close_after_meet(SubGraph<graph_t>(meet_g, 0), meet_pi, gx, gy));
 
         // Recover updated LBs and UBs.<
 
-        delta.clear();
-        GrOps::close_after_assign(meet_g, meet_pi, 0, delta);
-        GrOps::apply_delta(meet_g, delta);
+        GrOps::apply_delta(meet_g, GrOps::close_after_assign(meet_g, meet_pi, 0));
     }
     SplitDBM res(std::move(meet_verts), std::move(meet_rev), std::move(meet_g), std::move(meet_pi), vert_set_t());
     CRAB_LOG("zones-split", std::cout << "Result meet:\n" << res << "\n");
@@ -820,7 +800,6 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
         }
     }
 
-
     // JN: it seems that we can only do this if
     // close_bounds_inline is disabled (which in eBPF is always the case).
     // Otherwise, the meet operator misses some non-redundant edges.
@@ -855,21 +834,20 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
         rev_map[vert] = lhs;
     }
 
-    edge_vector delta;
-    for (auto [var, n] : diffs_lb) {
-        delta.emplace_back(vert, get_vert(var), -n);
-    }
+    {
+        edge_vector delta;
+        for (auto [var, n] : diffs_lb) {
+            delta.emplace_back(vert, get_vert(var), -n);
+        }
 
-    for (auto [var, n] : diffs_ub) {
-        delta.emplace_back(get_vert(var), vert, n);
-    }
+        for (auto [var, n] : diffs_ub) {
+            delta.emplace_back(get_vert(var), vert, n);
+        }
 
-    // apply_delta should be safe here, as x has no edges in G.
-    GrOps::apply_delta(g, delta);
-    delta.clear();
-    SubGraph<graph_t> g_excl(g, 0);
-    GrOps::close_after_assign(g_excl, potential, vert, delta);
-    GrOps::apply_delta(g, delta);
+        // apply_delta should be safe here, as x has no edges in G.
+        GrOps::apply_delta(g, delta);
+    }
+    GrOps::apply_delta(g, GrOps::close_after_assign(SubGraph<graph_t>(g, 0), potential, vert));
 
     if (lb_w) {
         g.update_edge(vert, *lb_w, 0);
@@ -917,13 +895,9 @@ void SplitDBM::normalize() {
     edge_vector delta;
     // GrOps::close_after_widen(g, potential, vert_set_wrap_t(unstable), delta);
     // GKG: Check
-    SubGraph<graph_t> g_excl(g, 0);
-
-    GrOps::close_after_widen(g_excl, potential, vert_set_wrap_t(unstable), delta);
+    GrOps::apply_delta(g, GrOps::close_after_widen(SubGraph<graph_t>(g, 0), potential, vert_set_wrap_t(unstable)));
     // Retrieve variable bounds
-    GrOps::close_after_assign(g, potential, 0, delta);
-
-    GrOps::apply_delta(g, delta);
+    GrOps::apply_delta(g, GrOps::close_after_assign(g, potential, 0));
 
     unstable.clear();
 }
