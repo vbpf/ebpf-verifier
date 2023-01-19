@@ -153,6 +153,17 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
             return Packet{.width = width, .offset = (int)imm(m[2]).v, .regoffset = reg(m[1])};
         return Undefined{0};
     }
+    if (regex_match(text, m, regex("assume " WREG CMPOP REG_OR_IMM))) {
+        Assume res{
+            Condition{
+                .op = str_to_cmpop.at(m[2]),
+                .left = reg(m[1]),
+                .right = reg_or_imm(m[3]),
+                .is64 = (((const std::string&)m[1]).at(0) == 'r')
+            }
+        };
+        return res;
+    }
     if (regex_match(text, m, regex("(?:if " WREG CMPOP REG_OR_IMM " )?goto\\s+(?:" IMM ")?" WRAPPED_LABEL))) {
         // We ignore second IMM
         Jmp res{.cond = {}, .target = label_name_to_label.at(m[5])};
