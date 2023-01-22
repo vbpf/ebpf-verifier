@@ -1,0 +1,62 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+---
+test-case: "parse 0 invariant"
+pre: ["r1.value=0"]
+code:
+  <start>: r1 = r1
+post: ["r1.value=0"]
+---
+test-case: "parse -1 invariant"
+pre: ["r1.value=-1"]
+code:
+  <start>: r1 = r1
+post: ["r1.value=-1"]
+---
+test-case: "parse INT_MIN+1 invariant"  # smallest number that does not underflow
+pre: ["r1.value=-9223372036854775807"]
+code:
+  <start>: r1 = r1
+post: ["r1.value=-9223372036854775807"]
+---
+test-case: "parse INT_MAX-6 invariant"  # largest number that does not overflow
+pre: ["r1.value=9223372036854775801"]
+code:
+  <start>: r1 = r1
+post: ["r1.value=9223372036854775801"]
+---
+test-case: "parse -1 code"  # smallest number that does not underflow
+pre: []
+code:
+  <start>: r1 = -1
+post: ["r1.type=number", "r1.value=-1"]
+---
+test-case: "parse unsigned -1 code"  # smallest number that does not underflow
+pre: []
+code:
+  <start>: r1 = 18446744073709551615
+post: ["r1.type=number", "r1.value=-1"]
+---
+test-case: "parse INT_MIN+1 code"  # smallest number that does not underflow
+pre: []
+code:
+  <start>: r1 = -9223372036854775807
+post: ["r1.type=number", "r1.value=-9223372036854775807"]
+---
+test-case: "parse unsigned INT_MIN+1 code"  # smallest number that does not underflow
+pre: []
+code:
+  <start>: r1 = 9223372036854775809
+post: ["r1.type=number", "r1.value=-9223372036854775807"]
+---
+test-case: "parse INT_MAX-6 code"
+pre: []
+code:
+  <start>: r1 = 9223372036854775801
+post: ["r1.type=number", "r1.value=9223372036854775801"]
+---
+test-case: "parse INT_MAX code" # largest number that does not overflow
+pre: []
+code:
+  <start>: r1 = 9223372036854775807
+post: ["r1.type=number", "r1.value=9223372036854775807"]
