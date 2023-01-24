@@ -67,13 +67,13 @@ code:
   <start>: r1 = 0x10
 post: ["r1.type=number", "r1.value=16"]
 ---
-test-case: "parse hex for negative number"
+test-case: "parse 32-bit hex for negative number"
 pre: []
 code:
   <start>: r1 = 0xffffffff
 post: ["r1.type=number", "r1.value=-1"]
 ---
-test-case: "parse long hex for negative number"
+test-case: "parse 64-bit hex for negative number"
 pre: []
 code:
   <start>: r1 = 0xffffffffffffffffll
