@@ -99,7 +99,7 @@ class bitset_domain_t final {
 
     // Test whether all values in the range [lb,ub) are numerical.
     [[nodiscard]]
-    bool all_num(int lb, int ub) const {
+    bool all_num(int32_t lb, int32_t ub) const {
         assert(lb < ub);
         lb = std::max(lb, 0);
         ub = std::min(ub, EBPF_STACK_SIZE);

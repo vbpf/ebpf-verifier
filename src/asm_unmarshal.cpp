@@ -123,6 +123,10 @@ struct Unmarshaller {
         return {};
     }
 
+    uint64_t sign_extend(int32_t imm) { return (uint64_t)(int64_t)imm; }
+
+    uint64_t zero_extend(int32_t imm) { return (uint64_t)(uint32_t)imm; }
+
     auto getBinValue(pc_t pc, ebpf_inst inst) -> Value {
         if (inst.offset != 0)
             throw InvalidInstruction{pc, "nonzero offset for register alu op"};
@@ -134,7 +138,7 @@ struct Unmarshaller {
             if (inst.src != 0)
                 throw InvalidInstruction{pc, "nonzero src for register alu op"};
             // Imm is a signed 32-bit number.  Sign extend it to 64-bits for storage.
-            return Imm{(uint64_t)(int64_t)(int32_t)inst.imm};
+            return Imm{sign_extend(inst.imm)};
         }
     }
 
@@ -205,7 +209,7 @@ struct Unmarshaller {
                         .offset = inst.offset,
                     },
                 .value =
-                    isLoad ? (Value)Reg{inst.dst} : (isImm ? (Value)Imm{(uint32_t)inst.imm} : (Value)Reg{inst.src}),
+                    isLoad ? (Value)Reg{inst.dst} : (isImm ? (Value)Imm{zero_extend(inst.imm)} : (Value)Reg{inst.src}),
                 .is_load = isLoad,
             };
             return res;
@@ -373,7 +377,7 @@ struct Unmarshaller {
                                                         .op = getJmpOp(pc, inst.opcode),
                                                         .left = Reg{inst.dst},
                                                         .right = (inst.opcode & INST_SRC_REG) ? (Value)Reg{inst.src}
-                                                                                              : Imm{(uint32_t)inst.imm},
+                                                                                              : Imm{sign_extend(inst.imm)},
                                                         .is64 = ((inst.opcode & INST_CLS_MASK) == INST_CLS_JMP)
                                                     };
             return Jmp{

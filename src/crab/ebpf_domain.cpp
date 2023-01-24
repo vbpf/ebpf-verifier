@@ -68,12 +68,11 @@ static linear_constraint_t neq(variable_t a, variable_t b) {
 }
 
 constexpr int MAX_PACKET_SIZE = 0xffff;
-constexpr int64_t MY_INT_MAX = INT_MAX;
-constexpr int64_t PTR_MAX = MY_INT_MAX - MAX_PACKET_SIZE;
+constexpr int64_t PTR_MAX = std::numeric_limits<int32_t>::max() - MAX_PACKET_SIZE;
 
 /** Linear constraint for a pointer comparison.
  */
-static linear_constraint_t jmp_to_cst_offsets_reg(Condition::Op op, bool is64, variable_t dst_offset,
+static linear_constraint_t assume_cst_offsets_reg(Condition::Op op, bool is64, variable_t dst_offset,
                                                   variable_t src_offset) {
     using namespace crab::dsl_syntax;
     using Op = Condition::Op;
@@ -93,7 +92,7 @@ static linear_constraint_t jmp_to_cst_offsets_reg(Condition::Op op, bool is64, v
     }
 }
 
-static std::vector<linear_constraint_t> bit_jmp_to_cst_interval(const NumAbsDomain& inv, Condition::Op op, bool is64,
+static std::vector<linear_constraint_t> assume_bit_cst_interval(const NumAbsDomain& inv, Condition::Op op, bool is64,
                                                                 variable_t dst_value, crab::interval_t src_interval) {
     using namespace crab::dsl_syntax;
     using Op = Condition::Op;
@@ -120,14 +119,14 @@ static std::vector<linear_constraint_t> bit_jmp_to_cst_interval(const NumAbsDoma
     return {(result) ? linear_constraint_t::TRUE() : linear_constraint_t::FALSE()};
 }
 
-static std::vector<linear_constraint_t> signed_jmp_to_cst_interval(const NumAbsDomain& inv, Condition::Op op,
+static std::vector<linear_constraint_t> assume_signed_cst_interval(const NumAbsDomain& inv, Condition::Op op,
                                                                    bool is64, variable_t dst_value,
                                                                    crab::interval_t src_interval) {
     using namespace crab::dsl_syntax;
     using Op = Condition::Op;
 
     // TODO: support a range, but for now we just handle singletons directly here
-    // as needed for the eBPF conformance tests.
+    //       as needed for the eBPF conformance tests.
     std::optional<number_t> src_n = src_interval.singleton();
     if (!src_n || !src_n->fits_cast_to_int64())
         return {};
@@ -194,56 +193,96 @@ static std::vector<linear_constraint_t> signed_jmp_to_cst_interval(const NumAbsD
     }
 }
 
-static std::vector<linear_constraint_t> unsigned_jmp_to_cst_interval(const NumAbsDomain& inv, Condition::Op op,
-                                                                     bool is64, variable_t dst_value,
-                                                                     crab::interval_t src_interval) {
-    using namespace crab::dsl_syntax;
-    using Op = Condition::Op;
+static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAbsDomain& inv, Condition::Op op,
+                                                                     bool is64, variable_t left,
+                                                                     const linear_expression_t& right) {
+    using crab::interval_t;
 
-    if (is64 && (op == Op::LE) && src_interval.lb().number().has_value() && src_interval.ub().number().has_value()) {
-        uint64_t dst_lb_value = src_interval.lb().number().value().cast_to_uint64();
-        uint64_t dst_ub_value = src_interval.ub().number().value().cast_to_uint64();
-        if (dst_lb_value <= dst_ub_value) {
-            return {dst_value <= dst_ub_value, 0 <= dst_value};
+    interval_t left_interval = inv.eval_interval(left);
+    if (!(left_interval <= interval_t::signed_int(true)))
+        left_interval = interval_t::signed_int(true);
+    interval_t right_interval = inv.eval_interval(right);
+    if (!(right_interval <= interval_t::signed_int(true)))
+        right_interval = interval_t::signed_int(true);
+
+    const bool is_lt = op == Condition::Op::LT || op == Condition::Op::LE;
+    bool strict = op == Condition::Op::LT || op == Condition::Op::GT;
+
+    if (!is64) {
+        if ((left_interval <= interval_t::nonnegative_int(false) && right_interval <= interval_t::nonnegative_int(false))
+            || (left_interval <= interval_t::negative_int(false) && right_interval <= interval_t::negative_int(false))) {
+            is64 = true;
+            // fallthrough as 64bit, including deduction of relational information
+        } else {
+            if (!(left_interval <= interval_t::signed_int(false)))
+                left_interval = left_interval.And(interval_t{number_t{std::numeric_limits<uint32_t>::max()}});
+            if (!(right_interval <= interval_t::signed_int(false)))
+                right_interval = right_interval.And(interval_t{number_t{std::numeric_limits<uint32_t>::max()}});
+            // continue as 32bit
         }
     }
 
-    // TODO: support a range, but for now we just handle singletons directly here
-    // as needed for the eBPF conformance tests.
-    std::optional<number_t> src_n = src_interval.singleton();
-    if (!src_n || !src_n->fits_cast_to_int64())
-        return {};
-    uint64_t src_int_value = src_n.value().cast_to_uint64();
-
-    auto dst_interval = inv.eval_interval(dst_value);
-    std::optional<number_t> dst_lb = dst_interval.lb().number();
-    std::optional<number_t> dst_ub = dst_interval.ub().number();
-    if (!dst_lb || !dst_lb.value().fits_cast_to_int64() || !dst_ub || !dst_ub.value().fits_cast_to_int64())
-        return {};
-    uint64_t dst_lb_value = dst_lb.value().cast_to_uint64();
-    uint64_t dst_ub_value = dst_ub.value().cast_to_uint64();
-    if (!is64) {
-        src_int_value = (uint32_t)src_int_value;
-        dst_lb_value = (uint32_t)dst_lb_value;
-        dst_ub_value = (uint32_t)dst_ub_value;
+    if ((left_interval & right_interval).is_bottom() || (strict && (left_interval & right_interval).is_singleton())) {
+        if ((left_interval <= interval_t::nonnegative_int(is64) && right_interval <= interval_t::nonnegative_int(is64))
+         || (left_interval <= interval_t::negative_int(is64) && right_interval <= interval_t::negative_int(is64))) {
+            auto llb = left_interval.lb();
+            auto lub = left_interval.ub();
+            auto rlb = right_interval.lb();
+            auto rub = right_interval.ub();
+            if (is_lt  && (strict ? (llb >= rub) : (llb >  rub)))
+                return {linear_constraint_t::FALSE()};
+            if (!is_lt && (strict ? (lub <= rlb) : (lub <  rlb)))
+                return {linear_constraint_t::FALSE()};
+        }
     }
 
-    bool result;
-    switch (op) {
-    case Op::GE: result = (dst_lb_value >= src_int_value); break;
-    case Op::LE: result = (dst_ub_value <= src_int_value); break;
-    case Op::GT: result = (dst_lb_value > src_int_value); break;
-    case Op::LT: result = (dst_ub_value < src_int_value); break;
-    default: throw std::exception();
+    const interval_t side_interval = is_lt ? interval_t::nonnegative_int(is64)
+                                           : interval_t::negative_int(is64);
+
+    const interval_t other_side_interval = is_lt ? interval_t::negative_int(is64)
+                                                 : interval_t::nonnegative_int(is64);
+
+    if (left_interval <= other_side_interval && right_interval <= side_interval) {
+        return {linear_constraint_t::FALSE()};
     }
 
-    return {(result) ? linear_constraint_t::TRUE() : linear_constraint_t::FALSE()};
+    if (left_interval <= side_interval && right_interval <= other_side_interval) {
+        // This part is not an over approximation; it is exact.
+        return {linear_constraint_t::TRUE()};
+    }
+
+    if (is64) {
+        // only in the 64bit case we can derive relational information
+        if (right_interval <= side_interval) {
+            using namespace crab::dsl_syntax;
+            if (is_lt) {
+                return {number_t{0} <= left, strict ? (left < right) : (left <= right)};
+            } else {
+                return {number_t{0} > left, strict ? (left > right) : (left >= right)};
+            }
+        }
+
+        if ((left_interval <= side_interval       && right_interval <= side_interval)
+         || (left_interval <= other_side_interval && right_interval <= other_side_interval)) {
+            // When no boundary is crossed, we can use the normal comparison.
+            using namespace crab::dsl_syntax;
+            if (is_lt) {
+                return {strict ? (left < right) : (left <= right)};
+            } else {
+                return {strict ? (left > right) : (left >= right)};
+            }
+        }
+    }
+    // is_lt:  as signed, this means k is in [min_int, 0], and (unsigned)var < k may be positive
+    // !is_lt: as signed, this means k is in [0, max_int], and (unsigned)var > k may be negative
+    // we have no way to represent this
+    return {};
 }
 
 /** Linear constraints for a comparison with a constant.
  */
-static std::vector<linear_constraint_t> jmp_to_cst_imm(const NumAbsDomain& inv, Condition::Op op, bool is64, variable_t dst_value,
-                                                       int imm) {
+static std::vector<linear_constraint_t> assume_cst_imm(const NumAbsDomain& inv, Condition::Op op, bool is64, variable_t dst_value,
+                                                       int64_t imm) {
     using namespace crab::dsl_syntax;
     using Op = Condition::Op;
     switch (op) {
@@ -252,17 +291,20 @@ static std::vector<linear_constraint_t> jmp_to_cst_imm(const NumAbsDomain& inv, 
     case Op::SGE:
     case Op::SLE:
     case Op::SGT:
-    case Op::SLT: return signed_jmp_to_cst_interval(inv, op, is64, dst_value, crab::interval_t(imm, imm));
+    case Op::SLT: return assume_signed_cst_interval(inv, op, is64, dst_value, crab::interval_t(imm, imm));
     case Op::SET:
-    case Op::NSET: return bit_jmp_to_cst_interval(inv, op, is64, dst_value, crab::interval_t(imm, imm));
-    default: return unsigned_jmp_to_cst_interval(inv, op, is64, dst_value, crab::interval_t(imm, imm));
+    case Op::NSET: return assume_bit_cst_interval(inv, op, is64, dst_value, crab::interval_t(imm, imm));
+    case Op::GE:
+    case Op::LE:
+    case Op::GT:
+    case Op::LT: return assume_unsigned_cst_interval(inv, op, is64, dst_value, imm);
     }
     return {};
 }
 
 /** Linear constraint for a numerical comparison between registers.
  */
-static std::vector<linear_constraint_t> jmp_to_cst_reg(const NumAbsDomain& inv, Condition::Op op, bool is64, variable_t dst_value,
+static std::vector<linear_constraint_t> assume_cst_reg(const NumAbsDomain& inv, Condition::Op op, bool is64, variable_t dst_value,
                                                        variable_t src_value) {
     using namespace crab::dsl_syntax;
     using Op = Condition::Op;
@@ -276,8 +318,11 @@ static std::vector<linear_constraint_t> jmp_to_cst_reg(const NumAbsDomain& inv, 
         // Note: reverse the test as a workaround strange lookup:
         case Op::SLT: return {src_value > dst_value};
         case Op::SET:
-        case Op::NSET: return bit_jmp_to_cst_interval(inv, op, is64, dst_value, inv.eval_interval(src_value));
-        default: return unsigned_jmp_to_cst_interval(inv, op, is64, dst_value, inv.eval_interval(src_value));
+        case Op::NSET: return assume_bit_cst_interval(inv, op, is64, dst_value, inv.eval_interval(src_value));
+        case Op::GE:
+        case Op::LE:
+        case Op::GT:
+        case Op::LT: return assume_unsigned_cst_interval(inv, op, is64, dst_value, src_value);
         }
     } else {
         switch (op) {
@@ -287,12 +332,19 @@ static std::vector<linear_constraint_t> jmp_to_cst_reg(const NumAbsDomain& inv, 
         case Op::SLE:
         case Op::SGT:
         case Op::SLT:
-            return signed_jmp_to_cst_interval(inv, op, is64, dst_value, inv.eval_interval(src_value));
+            return assume_signed_cst_interval(inv, op, is64, dst_value, inv.eval_interval(src_value));
         case Op::SET:
-        case Op::NSET: return bit_jmp_to_cst_interval(inv, op, is64, dst_value, inv.eval_interval(src_value));
-        default: return unsigned_jmp_to_cst_interval(inv, op, is64, dst_value, inv.eval_interval(src_value));
+        case Op::NSET:
+            return assume_bit_cst_interval(inv, op, is64, dst_value, inv.eval_interval(src_value));
+        case Op::GE:
+        case Op::LE:
+        case Op::GT:
+        case Op::LT:
+            return assume_unsigned_cst_interval(inv, op, is64, dst_value, src_value);
         }
     }
+    assert(false);
+    throw std::exception();
 }
 
 std::optional<variable_t> ebpf_domain_t::get_type_offset_variable(const Reg& reg, int type) {
@@ -553,7 +605,6 @@ void ebpf_domain_t::lshr(variable_t lhs, const number_t& op2) { apply(m_inv, cra
 void ebpf_domain_t::ashr(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2, finite_width); }
 void ebpf_domain_t::ashr(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2, 0); }
 
-
 static void assume(NumAbsDomain& inv, const linear_constraint_t& cst) { inv += cst; }
 void ebpf_domain_t::assume(const linear_constraint_t& cst) { ::assume(m_inv, cst); }
 
@@ -768,7 +819,7 @@ void ebpf_domain_t::operator()(const basic_block_t& bb, bool check_termination) 
 
 int ebpf_domain_t::get_instruction_count_upper_bound() {
     const auto& ub = m_inv[variable_t::instruction_count()].ub();
-    return (ub.is_finite() && ub.number().value().fits_sint()) ? (int)ub.number().value() : INT_MAX;
+    return (ub.is_finite() && ub.number().value().fits_sint32()) ? (int)ub.number().value() : INT_MAX;
 }
 
 void ebpf_domain_t::check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) {
@@ -810,14 +861,14 @@ void ebpf_domain_t::operator()(const Assume& s) {
         if (type_inv.same_type(m_inv, cond.left, std::get<Reg>(cond.right))) {
             m_inv = type_inv.join_over_types(m_inv, cond.left, [&](NumAbsDomain& inv, type_encoding_t type) {
                 if (type == T_NUM) {
-                    for (const linear_constraint_t& cst : jmp_to_cst_reg(m_inv, cond.op, cond.is64, dst.value, src.value))
+                    for (const linear_constraint_t& cst : assume_cst_reg(m_inv, cond.op, cond.is64, dst.value, src.value))
                         inv += cst;
                 } else {
                     // Either pointers to a singleton region,
                     // or an equality comparison on map descriptors/pointers to non-singleton locations
                     if (auto dst_offset = get_type_offset_variable(cond.left, type))
                         if (auto src_offset = get_type_offset_variable(src_reg, type))
-                            inv += jmp_to_cst_offsets_reg(cond.op, cond.is64, dst_offset.value(), src_offset.value());
+                            inv += assume_cst_offsets_reg(cond.op, cond.is64, dst_offset.value(), src_offset.value());
                 }
             });
         } else {
@@ -827,8 +878,8 @@ void ebpf_domain_t::operator()(const Assume& s) {
             m_inv.set_to_top();
         }
     } else {
-        int imm = static_cast<int>(std::get<Imm>(cond.right).v);
-        for (const linear_constraint_t& cst : jmp_to_cst_imm(m_inv, cond.op, cond.is64, dst.value, imm))
+        int64_t imm = static_cast<int64_t>(std::get<Imm>(cond.right).v);
+        for (const linear_constraint_t& cst : assume_cst_imm(m_inv, cond.op, cond.is64, dst.value, imm))
             assume(cst);
     }
 }
@@ -853,7 +904,7 @@ void ebpf_domain_t::operator()(const Un& stmt) {
         havoc_offsets(stmt.dst);
     };
     // Swap bytes.  For 64-bit types we need the weights to fit in a
-    // signed int64, but for smaller types we don't want sign extension
+    // signed int64, but for smaller types we don't want sign extension,
     // so we use unsigned which still fits in a signed int64.
     switch (stmt.op) {
     case Un::Op::BE16:
@@ -938,14 +989,14 @@ void ebpf_domain_t::operator()(const ValidSize& s) {
 // Get the start and end of the range of possible map fd values.
 // In the future, it would be cleaner to use a set rather than an interval
 // for map fds.
-bool ebpf_domain_t::get_map_fd_range(const Reg& map_fd_reg, int* start_fd, int* end_fd) const {
+bool ebpf_domain_t::get_map_fd_range(const Reg& map_fd_reg, int32_t* start_fd, int32_t* end_fd) const {
     const crab::interval_t& map_fd_interval = m_inv[reg_pack(map_fd_reg).map_fd];
     auto lb = map_fd_interval.lb().number();
     auto ub = map_fd_interval.ub().number();
-    if (!lb || !lb->fits_sint() || !ub || !ub->fits_sint())
+    if (!lb || !lb->fits_sint32() || !ub || !ub->fits_sint32())
         return false;
-    *start_fd = (int)lb.value();
-    *end_fd = (int)ub.value();
+    *start_fd = (int32_t)lb.value();
+    *end_fd = (int32_t)ub.value();
 
     // Cap the maximum range we'll check.
     const int max_range = 32;
@@ -954,12 +1005,12 @@ bool ebpf_domain_t::get_map_fd_range(const Reg& map_fd_reg, int* start_fd, int* 
 
 // All maps in the range must have the same type for us to use it.
 std::optional<uint32_t> ebpf_domain_t::get_map_type(const Reg& map_fd_reg) const {
-    int start_fd, end_fd;
+    int32_t start_fd, end_fd;
     if (!get_map_fd_range(map_fd_reg, &start_fd, &end_fd))
         return std::optional<uint32_t>();
 
     std::optional<uint32_t> type;
-    for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
+    for (int32_t map_fd = start_fd; map_fd <= end_fd; map_fd++) {
         EbpfMapDescriptor* map = &global_program_info.platform->get_map_descriptor(map_fd);
         if (map == nullptr)
             return std::optional<uint32_t>();
@@ -1067,9 +1118,9 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
             linear_expression_t ub = lb + width;
             if (!stack.all_num(inv, lb, ub)) {
                 auto lb_is = inv[lb].lb().number();
-                std::string lb_s = lb_is && lb_is->fits_sint() ? std::to_string((int)*lb_is) : "-oo";
+                std::string lb_s = lb_is && lb_is->fits_sint32() ? std::to_string((int32_t)*lb_is) : "-oo";
                 auto ub_is = inv.eval_interval(ub).ub().number();
-                std::string ub_s = ub_is && ub_is->fits_sint() ? std::to_string((int)*ub_is) : "oo";
+                std::string ub_s = ub_is && ub_is->fits_sint32() ? std::to_string((int32_t)*ub_is) : "oo";
                 require(inv, linear_constraint_t::FALSE(), "Illegal map update with a non-numerical value [" + lb_s + "-" + ub_s + ")");
             } else if (thread_local_options.strict && fd_type.has_value()) {
                 EbpfMapType map_type = global_program_info.platform->get_map_type(*fd_type);
@@ -1702,8 +1753,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             input &= UINT32_MAX;
                         }
                         uint64_t output = (int64_t)(input >> imm);
-                        m_inv.set(dst.value, crab::interval_t(number_t((unsigned long long)output),
-                                                              number_t((unsigned long long)output)));
+                        m_inv.set(dst.value, crab::interval_t{number_t{output}});
                         break;
                     }
                 }
@@ -1882,7 +1932,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             input &= UINT32_MAX;
                         }
                         uint64_t output = (int64_t)(input >> (int64_t)src_n.value());
-                        m_inv.set(dst.value, crab::interval_t(number_t((unsigned long long)output), number_t((unsigned long long)output)));
+                        m_inv.set(dst.value, crab::interval_t{number_t{output}});
                         break;
                     }
                 }
@@ -1901,8 +1951,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                         int64_t input = (int64_t)dst_n.value();
                         if (bin.is64) {
                             int64_t output = (int64_t)(input >> (int64_t)src_n.value());
-                            m_inv.set(dst.value, crab::interval_t(number_t((unsigned long long)output),
-                                                                  number_t((unsigned long long)output)));
+                            m_inv.set(dst.value, crab::interval_t{number_t{output}});
                         } else {
                             int32_t output = (int32_t)((int32_t)input >> (int32_t)(int64_t)src_n.value());
                             m_inv.set(dst.value, crab::interval_t(number_t((uint32_t)output), number_t((uint32_t)output)));

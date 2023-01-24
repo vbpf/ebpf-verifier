@@ -148,10 +148,15 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
     label_index = 0;
     for (const auto& [label_name, raw_block] : raw_blocks) {
         for (const string& line : raw_block) {
-            const Instruction& ins = parse_instruction(line, label_name_to_label);
-            if (std::holds_alternative<Undefined>(ins))
-                std::cout << "text:" << line << "; ins: " << ins << "\n";
-            res.emplace_back(label_index, ins, std::optional<btf_line_info_t>());
+            try {
+                const Instruction& ins = parse_instruction(line, label_name_to_label);
+                if (std::holds_alternative<Undefined>(ins))
+                    std::cout << "text:" << line << "; ins: " << ins << "\n";
+                res.emplace_back(label_index, ins, std::optional<btf_line_info_t>());
+            } catch (const std::exception& e) {
+                std::cout << "text:" << line << "; error: " << e.what() << "\n";
+                res.emplace_back(label_index, Undefined{0}, std::optional<btf_line_info_t>());
+            }
             label_index++;
         }
     }
@@ -318,6 +323,7 @@ ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memo
 
     ebpf_verifier_options_t options = ebpf_verifier_default_options;
     if (debug) {
+        print(prog, std::cout, {});
         options.print_failures = true;
         options.print_invariants = true;
         options.no_simplify = true;

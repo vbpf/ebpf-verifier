@@ -4,6 +4,7 @@
 counter/samples/*
 **/#*
 check
+conformance_check
 tests
 run_yaml
 ./unit-test
