@@ -198,7 +198,7 @@ class ebpf_domain_t final {
     crab::domains::array_domain_t stack;
 
     std::function<check_require_func_t> check_require{};
-    bool get_map_fd_range(const Reg& map_fd_reg, int* start_fd, int* end_fd) const;
+    bool get_map_fd_range(const Reg& map_fd_reg, int32_t* start_fd, int32_t* end_fd) const;
 
     struct TypeDomain {
         void assign_type(NumAbsDomain& inv, const Reg& lhs, type_encoding_t t);

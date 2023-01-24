@@ -145,8 +145,8 @@ class bound_t final {
         if (x._n == 0) {
             CRAB_ERROR("Bound: division by zero");
         } else if (is_finite() && x.is_finite()) {
-            number_t dividend = (_n >= 0) ? _n : number_t((unsigned long long)_n.cast_to_uint64());
-            number_t divisor = (x._n >= 0) ? x._n : number_t((unsigned long long)x._n.cast_to_uint64());
+            number_t dividend = (_n >= 0) ? _n : number_t{_n.cast_to_uint64()};
+            number_t divisor = (x._n >= 0) ? x._n : number_t{x._n.cast_to_uint64()};
             return bound_t(false, dividend / divisor);
         } else if (is_finite() && x.is_infinite()) {
             return 0;
@@ -159,8 +159,8 @@ class bound_t final {
         if (x._n == 0) {
             CRAB_ERROR("Bound: modulo zero");
         } else if (is_finite() && x.is_finite()) {
-            number_t dividend = (_n >= 0) ? _n : number_t((unsigned long long)_n.cast_to_uint64());
-            number_t divisor = (x._n >= 0) ? x._n : number_t((unsigned long long)x._n.cast_to_uint64());
+            number_t dividend = (_n >= 0) ? _n : number_t{_n.cast_to_uint64()};
+            number_t divisor = (x._n >= 0) ? x._n : number_t{x._n.cast_to_uint64()};
             return bound_t(false, dividend % divisor);
         } else if (is_finite() && x.is_infinite()) {
             return *this;
@@ -444,6 +444,27 @@ class interval_t final {
 
     [[nodiscard]] interval_t AShr(const interval_t& x) const;
 
+    static const interval_t nonnegative_int(bool is64) {
+        if (is64) {
+            return {0, number_t{std::numeric_limits<int64_t>::max()}};
+        } else {
+            return {0, number_t{std::numeric_limits<int32_t>::max()}};
+        }
+    }
+    static const interval_t negative_int(bool is64) {
+        if (is64) {
+            return {number_t{std::numeric_limits<int64_t>::min()}, -1};
+        } else {
+            return {number_t{std::numeric_limits<int32_t>::min()}, -1};
+        }
+    }
+    static const interval_t signed_int(bool is64) {
+        if (is64) {
+            return {number_t{std::numeric_limits<int64_t>::min()}, number_t{std::numeric_limits<int64_t>::max()}};
+        } else {
+            return {number_t{std::numeric_limits<int32_t>::min()}, number_t{std::numeric_limits<int32_t>::max()}};
+        }
+    }
 }; //  class interval
 
 inline interval_t operator+(const number_t& c, const interval_t& x) { return interval_t(c) + x; }
@@ -473,4 +494,7 @@ inline interval_t trim_interval(const interval_t& i, const interval_t& j) {
     return i;
 }
 
+
 } // namespace crab
+
+std::string to_string(const crab::interval_t& interval);

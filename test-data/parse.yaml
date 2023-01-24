@@ -34,29 +34,47 @@ post: ["r1.type=number", "r1.value=-1"]
 test-case: "parse unsigned -1 code"  # smallest number that does not underflow
 pre: []
 code:
-  <start>: r1 = 18446744073709551615
+  <start>: r1 = 18446744073709551615ll
 post: ["r1.type=number", "r1.value=-1"]
 ---
 test-case: "parse INT_MIN+1 code"  # smallest number that does not underflow
 pre: []
 code:
-  <start>: r1 = -9223372036854775807
+  <start>: r1 = -9223372036854775807ll
 post: ["r1.type=number", "r1.value=-9223372036854775807"]
 ---
 test-case: "parse unsigned INT_MIN+1 code"  # smallest number that does not underflow
 pre: []
 code:
-  <start>: r1 = 9223372036854775809
+  <start>: r1 = 9223372036854775809ll
 post: ["r1.type=number", "r1.value=-9223372036854775807"]
 ---
 test-case: "parse INT_MAX-6 code"
 pre: []
 code:
-  <start>: r1 = 9223372036854775801
+  <start>: r1 = 9223372036854775801ll
 post: ["r1.type=number", "r1.value=9223372036854775801"]
 ---
 test-case: "parse INT_MAX code" # largest number that does not overflow
 pre: []
 code:
-  <start>: r1 = 9223372036854775807
+  <start>: r1 = 9223372036854775807ll
 post: ["r1.type=number", "r1.value=9223372036854775807"]
+---
+test-case: "parse short hex"
+pre: []
+code:
+  <start>: r1 = 0x10
+post: ["r1.type=number", "r1.value=16"]
+---
+test-case: "parse hex for negative number"
+pre: []
+code:
+  <start>: r1 = 0xffffffff
+post: ["r1.type=number", "r1.value=-1"]
+---
+test-case: "parse long hex for negative number"
+pre: []
+code:
+  <start>: r1 = 0xffffffffffffffffll
+post: ["r1.type=number", "r1.value=-1"]

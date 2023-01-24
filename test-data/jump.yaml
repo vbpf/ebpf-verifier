@@ -49,6 +49,114 @@ post:
   - r0.type=number
   - r0.value=0
 ---
+test-case: assume number s< imm
+
+pre: [r1.type=number]
+
+code:
+  <start>: |
+    assume r1 s< 10
+
+post:
+  - r1.type=number
+  - r1.value=[-oo, 9]
+---
+test-case: assume lt imm
+
+pre: [r1.type=number]
+
+code:
+  <start>: |
+    assume r1 < 10
+
+post:
+  - r1.type=number
+  - r1.value=[0, 9]
+---
+test-case: assume interval < imm
+
+pre: ["r1.type=number", "r1.value=[0, 2]"]
+
+code:
+  <start>: |
+    assume r1 < 2
+
+post:
+  - r1.type=number
+  - r1.value=[0, 1]
+---
+test-case: assume interval <= imm
+
+pre: ["r1.type=number", "r1.value=[0, 3]"]
+
+code:
+  <start>: |
+    assume r1 <= 2
+
+post:
+  - r1.type=number
+  - r1.value=[0, 2]
+---
+test-case: jslt-imm
+
+pre: []
+
+code:
+  <start>: |
+    r0 = 0
+    r1 = 0xfffffffe
+    if r1 s< 0xfffffffd goto <exit> ; Not taken
+    if r1 s< 0xfffffffe goto <exit> ; Not taken
+    if r1 s< 0xffffffff goto <exit1> ; Taken
+  <exit>: |
+    exit
+  <exit1>: |
+    r0 = 1
+    goto <exit>
+
+post:
+  - r1.type=number
+  - r1.value=-2
+  - r0.type=number
+  - r0.value=1
+messages:
+  - "2:5: Code is unreachable after 2:5"
+  - "3:5: Code is unreachable after 3:5"
+  - "4:5: Code is unreachable after 4:5"
+---
+test-case: jump-32
+
+pre: []
+
+code:
+  <start>: |
+    r1 = 1
+    r1 <<= 32
+    r1 |= 5
+    if w1 < 4 goto <exit0> ; Not taken
+    if w1 < 5 goto <exit0> ; Not taken
+    if w1 < 6 goto <exit1> ; Taken
+    goto <exit0>
+  <exit1>: |
+    r1 *= r1 ; del r1
+    r0 = 1
+    goto <exit>
+  <exit0>: |
+    r1 *= r1 ; del r1
+    r0 = 0
+    goto <exit>
+  <exit>: |
+    exit
+
+post:
+  - r1.type=number
+  - r0.type=number
+  - r0.value=1
+messages:
+  - "3:10: Code is unreachable after 3:10"
+  - "4:10: Code is unreachable after 4:10"
+  - "5:6: Code is unreachable after 5:6"
+---
 test-case: join stack
 
 pre: ["r0.type=number",

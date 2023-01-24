@@ -61,7 +61,7 @@ interval_t interval_t::UDiv(const interval_t& x) const {
         //   the divisor is a singleton interval. We optimize for this case.
         std::optional<number_t> n = x.singleton();
         if (n && n->fits_cast_to_int64()) {
-            number_t c((unsigned long long)n->cast_to_uint64());
+            number_t c{n->cast_to_uint64()};
             if (c == 1) {
                 return *this;
             } else if (c > 0) {
@@ -182,7 +182,7 @@ interval_t interval_t::URem(const interval_t& x) const {
                 // Dividend lower than divisor, so the dividend is the remainder.
                 return *this;
             } else {
-                number_t max_divisor = number_t((unsigned long long)x._ub.number()->cast_to_uint64());
+                number_t max_divisor = number_t{x._ub.number()->cast_to_uint64()};
                 return interval_t(0, max_divisor - 1);
             }
         }

@@ -481,16 +481,16 @@ kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t
 bool array_domain_t::all_num(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) {
     auto min_lb = inv.eval_interval(lb).lb().number();
     auto max_ub = inv.eval_interval(ub).ub().number();
-    if (!min_lb || !max_ub || !min_lb->fits_sint() || !max_ub->fits_sint())
+    if (!min_lb || !max_ub || !min_lb->fits_sint32() || !max_ub->fits_sint32())
         return false;
-    return this->num_bytes.all_num((int)*min_lb, (int)*max_ub);
+    return this->num_bytes.all_num((int32_t)*min_lb, (int32_t)*max_ub);
 }
 
 // Get the number of bytes, starting at offset, that are known to be numbers.
 int array_domain_t::min_all_num_size(const NumAbsDomain& inv, variable_t offset) const {
     auto min_lb = inv.eval_interval(offset).lb().number();
     auto max_ub = inv.eval_interval(offset).ub().number();
-    if (!min_lb || !max_ub || !min_lb->fits_sint() || !max_ub->fits_sint())
+    if (!min_lb || !max_ub || !min_lb->fits_sint32() || !max_ub->fits_sint32())
         return 0;
     auto lb = (int)min_lb.value();
     auto ub = (int)max_ub.value();
@@ -598,8 +598,8 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
         auto ub = ii.ub().number();
         if (lb.has_value() && ub.has_value()) {
             z_number fullwidth = ub.value() - lb.value() + width;
-            if (lb.value().fits_uint() && fullwidth.fits_uint()) {
-                auto [only_num, only_non_num] = num_bytes.uniformity((unsigned int)lb.value(), (unsigned int)fullwidth);
+            if (lb.value().fits_uint32() && fullwidth.fits_uint32()) {
+                auto [only_num, only_non_num] = num_bytes.uniformity((uint32_t)lb.value(), (uint32_t)fullwidth);
                 if (only_num) {
                     return T_NUM;
                 }

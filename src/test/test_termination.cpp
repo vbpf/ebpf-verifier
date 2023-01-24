@@ -45,7 +45,7 @@ TEST_CASE("Trivial finite loop", "[loop][termination]") {
 
     Reg r{0};
     start.insert(Bin{.op = Bin::Op::MOV, .dst = r, .v = Imm{0}, .is64 = true});
-    middle.insert(Assume{{.op=Condition::Op::GT, .left=r, .right=Imm{10}}});
+    middle.insert(Assume{{.op=Condition::Op::GT, .left=r, .right=Imm{10}, .is64=true}});
     middle.insert(Bin{.op = Bin::Op::ADD, .dst = r, .v = Imm{1}, .is64 = true});
 
     entry >> start;

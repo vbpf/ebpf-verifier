@@ -208,11 +208,15 @@ inline linear_constraint_t operator<(variable_t x, const number_t& n) {
 }
 
 inline linear_constraint_t operator<(variable_t x, int64_t n) {
-    return linear_constraint_t(x - n, constraint_kind_t::LESS_THAN_ZERO);
+    return linear_constraint_t(x - number_t{n}, constraint_kind_t::LESS_THAN_ZERO);
+}
+
+inline linear_constraint_t operator<(variable_t x, uint64_t n) {
+    return linear_constraint_t(x - number_t{n}, constraint_kind_t::LESS_THAN_ZERO);
 }
 
 inline linear_constraint_t operator<(variable_t x, int n) {
-    return linear_constraint_t(x - n, constraint_kind_t::LESS_THAN_ZERO);
+    return linear_constraint_t(x - number_t{n}, constraint_kind_t::LESS_THAN_ZERO);
 }
 
 inline linear_constraint_t operator<(number_t n, variable_t x) {

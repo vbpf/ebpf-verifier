@@ -49,16 +49,16 @@ class z_number final {
         }
     }
 
-    explicit operator int() const {
-        if (!fits_sint()) {
+    explicit operator int32_t() const {
+        if (!fits_sint32()) {
             CRAB_ERROR("z_number ", _n.str(), " does not fit into a signed integer");
         } else {
             return (int)_n;
         }
     }
 
-    explicit operator unsigned int() const {
-        if (!fits_uint()) {
+    explicit operator uint32_t() const {
+        if (!fits_uint32()) {
             CRAB_ERROR("z_number ", _n.str(), " does not fit into an unsigned integer");
         } else {
             return (unsigned int)_n;
@@ -72,11 +72,11 @@ class z_number final {
         return hasher(_n.str());
     }
 
-    [[nodiscard]] bool fits_sint() const {
+    [[nodiscard]] bool fits_sint32() const {
         return ((_n >= INT_MIN) && (_n <= INT_MAX));
     }
 
-    [[nodiscard]] bool fits_uint() const { return ((_n >= 0) && (_n <= UINT_MAX)); }
+    [[nodiscard]] bool fits_uint32() const { return ((_n >= 0) && (_n <= UINT_MAX)); }
 
     [[nodiscard]] bool fits_sint64() const {
         // "long long" is always 64-bits, whereas "long" varies
@@ -97,6 +97,17 @@ class z_number final {
             return (uint64_t)(int64_t)_n;
         } else {
             CRAB_ERROR("z_number ", _n.str(), " does not fit into an unsigned 64-bit integer");
+        }
+    }
+
+    [[nodiscard]] uint64_t cast_to_uint32() const {
+        if (fits_uint32()) {
+            return (uint32_t)_n;
+        } else if (fits_sint32()) {
+            // Convert 32 bits from int32_t to uint32_t.
+            return (uint32_t)(int32_t)_n;
+        } else {
+            CRAB_ERROR("z_number ", _n.str(), " does not fit into an unsigned 32-bit integer");
         }
     }
 
@@ -267,19 +278,19 @@ class z_number final {
     z_number operator^(int x) const { return z_number(_n ^ x); }
 
     z_number operator<<(z_number x) const {
-        if (!x.fits_sint()) {
-            CRAB_ERROR("z_number ", x._n.str(), " does not fit into an int");
+        if (!x.fits_sint32()) {
+            CRAB_ERROR("z_number ", x._n.str(), " does not fit into an int32");
         }
-        return z_number(_n << (int)x);
+        return z_number(_n << (int32_t)x);
     }
 
     z_number operator<<(int x) const { return z_number(_n << x); }
 
     z_number operator>>(z_number x) const {
-        if (!x.fits_sint()) {
-            CRAB_ERROR("z_number ", x._n.str(), " does not fit into an int");
+        if (!x.fits_sint32()) {
+            CRAB_ERROR("z_number ", x._n.str(), " does not fit into an int32");
         }
-        return z_number(_n >> (int)x);
+        return z_number(_n >> (int32_t)x);
     }
 
     z_number operator>>(int x) const { return z_number(_n >> x); }

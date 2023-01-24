@@ -115,7 +115,7 @@ struct Un {
 /// See comment in makeLddw() at asm_unmarshal.cpp
 struct LoadMapFd {
     Reg dst;
-    int mapfd{};
+    int32_t mapfd{};
 };
 
 struct Condition {
@@ -182,9 +182,9 @@ struct Call {
 struct Exit {};
 
 struct Deref {
-    int width{};
+    int32_t width{};
     Reg basereg;
-    int offset{};
+    int32_t offset{};
 };
 
 /// Load/store instruction.
@@ -198,8 +198,8 @@ struct Mem {
 /// function call, and analyzed as one, e.g., by scratching caller-saved
 /// registers after it is performed.
 struct Packet {
-    int width{};
-    int offset{};
+    int32_t width{};
+    int32_t offset{};
     std::optional<Reg> regoffset;
 };
 
@@ -272,7 +272,7 @@ enum class AccessType {
 
 struct ValidAccess {
     Reg reg;
-    int offset{};
+    int32_t offset{};
     Value width{Imm{0}};
     bool or_null{};
     AccessType access_type{};

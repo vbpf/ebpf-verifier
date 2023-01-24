@@ -5,6 +5,7 @@
 #include <regex>
 #include <unordered_set>
 #include <sstream>
+#include <string>
 
 #include <boost/lexical_cast.hpp>
 
@@ -20,10 +21,9 @@ using std::regex;
 using std::regex_match;
 
 #define REG R"_(\s*(r\d\d?)\s*)_"
-#define WREG R"_(\s*(r\d\d?|w\d\d?)\s*)_"
-#define IMM R"_(\s*\[?([-+]?\d+)\]?\s*)_"
-#define REG_OR_IMM R"_(\s*([+-]?\d+|r\d\d?)\s*)_"
-#define WREG_OR_IMM R"_(([+-]?\d+|r\d\d?|w\d\d?)\s*)_"
+#define WREG R"_(\s*([wr]\d\d?)\s*)_"
+#define IMM R"_(\s*\[?([-+]?(?:0x)?[0-9a-f]+)\]?\s*)_"
+#define REG_OR_IMM R"_(\s*([+-]?(?:0x)?[0-9a-f]+|r\d\d?)\s*)_"
 
 #define FUNC IMM
 #define OPASSIGN R"_(\s*(\S*)=\s*)_"
@@ -84,36 +84,31 @@ static Reg reg(const std::string& s) {
     return Reg{res};
 }
 
-static int64_t signed_number(const std::string& s) {
-    try {
-        return boost::lexical_cast<int64_t>(s);
-    } catch (const boost::bad_lexical_cast&) {
-        throw std::invalid_argument("signed number is out of range");
-    }
-}
+static Imm imm(const std::string& s, bool lddw) {
+    int base = s.find("0x") != std::string::npos ? 16 : 10;
 
-static uint64_t unsigned_number(const std::string& s) {
-    try {
-        return boost::lexical_cast<uint64_t>(s);
-    } catch (const boost::bad_lexical_cast&) {
-        throw std::invalid_argument("unsigned number is out of range");
-    }
-}
-
-static Imm imm(const std::string& s) {
-    if (s.at(0) == '-') {
-        return Imm{(uint64_t)signed_number(s)};
+    if (lddw) {
+        if (s.at(0) == '-')
+            return Imm{(uint64_t)std::stoll(s, nullptr, base)};
+        else
+            return Imm{std::stoull(s, nullptr, base)};
     } else {
-        return Imm{unsigned_number(s)};
+        if (s.at(0) == '-')
+            return Imm{(uint64_t)(int64_t)std::stol(s, nullptr, base)};
+        else
+            return Imm{(uint64_t)(int64_t)(int32_t)std::stoul(s, nullptr, base)};
     }
 }
 
+static int64_t signed_number(const std::string& s) {
+    return std::stoll(s);
+}
 
 static Value reg_or_imm(const std::string& s) {
     if (s.at(0) == 'w' || s.at(0) == 'r')
         return reg(s);
     else
-        return imm(s);
+        return imm(s, false);
 }
 
 static Deref deref(const std::string& width, const std::string& basereg, const std::string& sign, const std::string& _offset) {
@@ -148,8 +143,10 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
     }
     if (regex_match(text, m, regex(WREG OPASSIGN IMM LONGLONG))) {
         std::string r = m[1];
+        bool is64 = r.at(0) != 'w';
+        bool lddw = !m[4].str().empty();
         return Bin{
-            .op = str_to_binop.at(m[2]), .dst = reg(r), .v = imm(m[3]), .is64 = (r.at(0) != 'w'), .lddw = !m[4].str().empty()};
+            .op = str_to_binop.at(m[2]), .dst = reg(r), .v = imm(m[3], lddw), .is64 = is64, .lddw = lddw};
     }
     if (regex_match(text, m, regex(REG ASSIGN DEREF PAREN(REG PLUSMINUS IMM)))) {
         return Mem{
@@ -174,11 +171,11 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         if (regex_match(access, m, regex(REG)))
             return Packet{.width = width, .offset = 0, .regoffset = reg(m[1])};
         if (regex_match(access, m, regex(IMM)))
-            return Packet{.width = width, .offset = (int)imm(m[1]).v, .regoffset = {}};
+            return Packet{.width = width, .offset = (int32_t)imm(m[1], false).v, .regoffset = {}};
         if (regex_match(access, m, regex(REG PLUSMINUS REG)))
             return Packet{.width = width, .offset = 0 /* ? */, .regoffset = reg(m[2])};
         if (regex_match(access, m, regex(REG PLUSMINUS IMM)))
-            return Packet{.width = width, .offset = (int)imm(m[2]).v, .regoffset = reg(m[1])};
+            return Packet{.width = width, .offset = (int32_t)imm(m[2], false).v, .regoffset = reg(m[1])};
         return Undefined{0};
     }
     if (regex_match(text, m, regex("assume " WREG CMPOP REG_OR_IMM))) {
