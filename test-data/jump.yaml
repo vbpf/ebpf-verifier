@@ -61,7 +61,7 @@ post:
   - r1.type=number
   - r1.value=[-oo, 9]
 ---
-test-case: assume lt imm
+test-case: assume number < imm
 
 pre: [r1.type=number]
 
