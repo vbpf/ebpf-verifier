@@ -9,10 +9,26 @@ post: []
 messages:
   - "0: Code is unreachable after 0"
 ---
+test-case: "assume 0 w< 0 implies bottom"
+pre: ["r1.type=number", "r1.value=0"]
+code:
+  <start>: assume w1 < 0
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
 test-case: "assume -1 < 0 implies bottom"
 pre: ["r1.type=number", "r1.value=-1"]
 code:
   <start>: assume r1 < 0
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
+test-case: "assume -1 w< 0 implies bottom"
+pre: ["r1.type=number", "r1.value=-1"]
+code:
+  <start>: assume w1 < 0
 post: []
 messages:
   - "0: Code is unreachable after 0"
@@ -25,10 +41,26 @@ post: []
 messages:
   - "0: Code is unreachable after 0"
 ---
+test-case: "assume -1 w< 1 implies bottom"
+pre: ["r1.type=number", "r1.value=-1"]
+code:
+  <start>: assume w1 < 1
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
 test-case: "assume 1 < 0 implies bottom"
 pre: ["r1.type=number", "r1.value=1"]
 code:
   <start>: assume r1 < 0
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
+test-case: "assume 1 w< 0 implies bottom"
+pre: ["r1.type=number", "r1.value=1"]
+code:
+  <start>: assume w1 < 0
 post: []
 messages:
   - "0: Code is unreachable after 0"
@@ -41,10 +73,26 @@ post: []
 messages:
   - "0: Code is unreachable after 0"
 ---
+test-case: "assume 1 w< 1 implies bottom"
+pre: ["r1.type=number", "r1.value=1"]
+code:
+  <start>: assume w1 < 1
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
 test-case: "assume 2 < 1 implies bottom"
 pre: ["r1.type=number", "r1.value=2"]
 code:
   <start>: assume r1 < 1
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
+test-case: "assume 2 w< 1 implies bottom"
+pre: ["r1.type=number", "r1.value=2"]
+code:
+  <start>: assume w1 < 1
 post: []
 messages:
   - "0: Code is unreachable after 0"
@@ -57,10 +105,26 @@ post: []
 messages:
   - "0: Code is unreachable after 0"
 ---
+test-case: "assume [0, 1] w< 0 implies bottom"
+pre: ["r1.type=number", "r1.value=[0, 1]"]
+code:
+  <start>: assume w1 < 0
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
 test-case: "assume [2, 3] < 1 implies bottom"
 pre: ["r1.type=number", "r1.value=[2, 3]"]
 code:
   <start>: assume r1 < 1
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
+test-case: "assume [2, 3] w< 1 implies bottom"
+pre: ["r1.type=number", "r1.value=[2, 3]"]
+code:
+  <start>: assume w1 < 1
 post: []
 messages:
   - "0: Code is unreachable after 0"
@@ -73,10 +137,26 @@ post: []
 messages:
   - "0: Code is unreachable after 0"
 ---
+test-case: "assume [-2, -1] w< 0 implies bottom"
+pre: ["r1.type=number", "r1.value=[-2, -1]"]
+code:
+  <start>: assume w1 < 1
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
 test-case: "assume [-3, -2] < -3 implies bottom"
 pre: ["r1.type=number", "r1.value=[-3, -2]"]
 code:
   <start>: assume r1 < -3
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
+test-case: "assume [-3, -2] w< -3 implies bottom"
+pre: ["r1.type=number", "r1.value=[-3, -2]"]
+code:
+  <start>: assume w1 < -3
 post: []
 messages:
   - "0: Code is unreachable after 0"
@@ -89,10 +169,26 @@ post: []
 messages:
   - "0: Code is unreachable after 0"
 ---
+test-case: "assume [-3, -2] w< -4 implies bottom"
+pre: ["r1.type=number", "r1.value=[-3, -2]"]
+code:
+  <start>: assume w1 < -4
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
 test-case: "assume 1 < [0, 1] implies bottom"
 pre: ["r1.type=number", "r1.value=1", "r2.type=number", "r2.value=[0, 1]"]
 code:
   <start>: assume r1 < r2
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
+test-case: "assume 1 w< [0, 1] implies bottom"
+pre: ["r1.type=number", "r1.value=1", "r2.type=number", "r2.value=[0, 1]"]
+code:
+  <start>: assume w1 < r2
 post: []
 messages:
   - "0: Code is unreachable after 0"
@@ -105,10 +201,26 @@ post: []
 messages:
   - "0: Code is unreachable after 0"
 ---
+test-case: "assume -1 w< [0, 1] implies bottom"
+pre: ["r1.type=number", "r1.value=-1", "r2.type=number", "r2.value=[0, 1]"]
+code:
+  <start>: assume w1 < r2
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
 test-case: "assume -1 < [1, 2] implies bottom"
 pre: ["r1.type=number", "r1.value=-1", "r2.type=number", "r2.value=[1, 2]"]
 code:
   <start>: assume r1 < r2
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
+test-case: "assume -1 w< [1, 2] implies bottom"
+pre: ["r1.type=number", "r1.value=-1", "r2.type=number", "r2.value=[1, 2]"]
+code:
+  <start>: assume w1 < r2
 post: []
 messages:
   - "0: Code is unreachable after 0"
@@ -121,10 +233,26 @@ post: []
 messages:
   - "0: Code is unreachable after 0"
 ---
+test-case: "assume 2 w< [0, 1] implies bottom"
+pre: ["r1.type=number", "r1.value=2", "r2.type=number", "r2.value=[0, 1]"]
+code:
+  <start>: assume w1 < r2
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
 test-case: "assume 1 < [0, 1] implies bottom"
 pre: ["r1.type=number", "r1.value=1", "r2.type=number", "r2.value=[0, 1]"]
 code:
   <start>: assume r1 < r2
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
+test-case: "assume 1 w< [0, 1] implies bottom"
+pre: ["r1.type=number", "r1.value=1", "r2.type=number", "r2.value=[0, 1]"]
+code:
+  <start>: assume w1 < r2
 post: []
 messages:
   - "0: Code is unreachable after 0"
@@ -137,10 +265,26 @@ post: []
 messages:
   - "0: Code is unreachable after 0"
 ---
+test-case: "assume 2 w< [0, 1] implies bottom"
+pre: ["r1.type=number", "r1.value=1", "r2.type=number", "r2.value=[0, 1]"]
+code:
+  <start>: assume w1 < r2
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
 test-case: "assume [2, 3] < [1, 2] implies bottom"
 pre: ["r1.type=number", "r1.value=[2, 3]", "r2.type=number", "r2.value=[1, 2]"]
 code:
   <start>: assume r1 < r2
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
+test-case: "assume [2, 3] w< [1, 2] implies bottom"
+pre: ["r1.type=number", "r1.value=[2, 3]", "r2.type=number", "r2.value=[1, 2]"]
+code:
+  <start>: assume w1 < r2
 post: []
 messages:
   - "0: Code is unreachable after 0"
@@ -153,6 +297,14 @@ post: []
 messages:
   - "0: Code is unreachable after 0"
 ---
+test-case: "assume [-2, -1] w< [0, 1] implies bottom"
+pre: ["r1.type=number", "r1.value=[-2, -1]", "r2.type=number", "r2.value=[0, 1]"]
+code:
+  <start>: assume w1 < r2
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
 test-case: "assume [-3, -2] < [-4, -3] implies bottom"
 pre: ["r1.type=number", "r1.value=[-3, -2]", "r2.type=number", "r2.value=[-4, -3]"]
 code:
@@ -161,10 +313,26 @@ post: []
 messages:
   - "0: Code is unreachable after 0"
 ---
+test-case: "assume [-3, -2] w< [-4, -3] implies bottom"
+pre: ["r1.type=number", "r1.value=[-3, -2]", "r2.type=number", "r2.value=[-4, -3]"]
+code:
+  <start>: assume w1 < r2
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
 test-case: "assume [-3, -2] < [-5, -4] implies bottom"
 pre: ["r1.type=number", "r1.value=[-3, -2]", "r2.type=number", "r2.value=[-5, -4]"]
 code:
   <start>: assume r1 < r2
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
+test-case: "assume [-3, -2] w< [-5, -4] implies bottom"
+pre: ["r1.type=number", "r1.value=[-3, -2]", "r2.type=number", "r2.value=[-5, -4]"]
+code:
+  <start>: assume w1 < r2
 post: []
 messages:
   - "0: Code is unreachable after 0"
@@ -179,10 +347,46 @@ post: []
 messages:
   - "1: Code is unreachable after 1"
 ---
+test-case: "assume INT_MIN+1 w< 0 implies bottom"
+pre: []
+code:
+  <start>:  |
+    r1 = -9223372036854775807ll
+    assume w1 < 0
+post: []
+messages:
+  - "1: Code is unreachable after 1"
+---
+test-case: "assume INT_MIN+1 w< 2 nop"
+pre: []
+code:
+  <start>:  |
+    r1 = -9223372036854775807ll
+    assume w1 < 2
+post: ["r1.type=number", "r1.value=-9223372036854775807"]
+---
 test-case: "assume [INT_MIN+1, -1] < 0 implies bottom"
 pre: ["r1.type=number", "r1.value=[-9223372036854775807, -1]"]
 code:
   <start>: assume r1 < 0
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
+test-case: "assume [INT32_MIN, -1] w< 0 implies bottom"
+pre: ["r1.type=number", "r1.value=[-2147483648, -1]"]
+code:
+  <start>:  |
+    assume w1 < 0
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
+test-case: "assume something w< 0 implies bottom"
+pre: ["r1.type=number", "r1.value=-4294967298"]
+code:
+  <start>:  |
+    assume w1 < 0
 post: []
 messages:
   - "0: Code is unreachable after 0"
@@ -436,6 +640,16 @@ post: ["r1.type=number", "r1.value=[0, 9223372036854775807]",
        "r2.type=number", "r2.value=[0, 9223372036854775807]",
        "r2.value-r1.value<=0"]
 ---
+test-case: "assume [INT_MIN, -1] >= [INT_MIN, -1] implies relation"
+pre: ["r1.type=number", "r1.value=[-9223372036854775807, -1]",
+      "r2.type=number", "r2.value=[-9223372036854775807, -1]"]
+code:
+  <start>: |
+    assume r1 >= r2
+post: ["r1.type=number", "r1.value=[-9223372036854775807, -1]",
+       "r2.type=number", "r2.value=[-9223372036854775807, -1]",
+       "r2.value-r1.value<=0"]
+---
 test-case: "assume [0, INT_MAX] < [0, INT_MAX] implies narrowing and relation"
 pre: ["r1.type=number", "r1.value=[0, 9223372036854775807]",
       "r2.type=number", "r2.value=[0, 9223372036854775807]"]
@@ -446,6 +660,16 @@ post: ["r1.type=number", "r1.value=[0, 9223372036854775806]",
        "r2.type=number", "r2.value=[1, 9223372036854775807]",
        "r1.value-r2.value<=-1"]
 ---
+test-case: "assume [INT_MIN, -1] < [INT_MIN, -1] implies narrowing and relation"
+pre: ["r1.type=number", "r1.value=[-9223372036854775807, -1]",
+      "r2.type=number", "r2.value=[-9223372036854775807, -1]"]
+code:
+  <start>: |
+    assume r1 < r2
+post: ["r1.type=number", "r1.value=[-9223372036854775807, -2]",
+       "r2.type=number", "r2.value=[-9223372036854775806, -1]",
+       "r1.value-r2.value<=-1"]
+---
 test-case: "assume [0, INT_MAX] > [0, INT_MAX] implies narrowing and relation"
 pre: ["r1.type=number", "r1.value=[0, 9223372036854775807]",
       "r2.type=number", "r2.value=[0, 9223372036854775807]"]
@@ -454,6 +678,16 @@ code:
     assume r1 > r2
 post: ["r1.type=number", "r1.value=[1, 9223372036854775807]",
        "r2.type=number", "r2.value=[0, 9223372036854775806]",
+       "r2.value-r1.value<=-1"]
+---
+test-case: "assume [INT_MIN, -1] > [INT_MIN, -1] implies narrowing and relation"
+pre: ["r1.type=number", "r1.value=[-9223372036854775807, -1]",
+      "r2.type=number", "r2.value=[-9223372036854775807, -1]"]
+code:
+  <start>: |
+    assume r1 > r2
+post: ["r1.type=number", "r1.value=[-9223372036854775806, -1]",
+       "r2.type=number", "r2.value=[-9223372036854775807, -2]",
        "r2.value-r1.value<=-1"]
 ---
 test-case: "assume [-1, 1] <= [-1, 1] nop"

@@ -199,11 +199,12 @@ static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAb
     using crab::interval_t;
 
     interval_t left_interval = inv.eval_interval(left);
-    if (!(left_interval <= interval_t::signed_int(true)))
-        left_interval = interval_t::signed_int(true);
     interval_t right_interval = inv.eval_interval(right);
-    if (!(right_interval <= interval_t::signed_int(true)))
-        right_interval = interval_t::signed_int(true);
+    for (interval_t* interval : {&left_interval, &right_interval}) {
+        if (!(*interval <= interval_t::signed_int(true))) {
+            *interval = interval_t::signed_int(true);
+        }
+    }
 
     const bool is_lt = op == Condition::Op::LT || op == Condition::Op::LE;
     bool strict = op == Condition::Op::LT || op == Condition::Op::GT;
@@ -214,10 +215,16 @@ static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAb
             is64 = true;
             // fallthrough as 64bit, including deduction of relational information
         } else {
-            if (!(left_interval <= interval_t::signed_int(false)))
-                left_interval = left_interval.And(interval_t{number_t{std::numeric_limits<uint32_t>::max()}});
-            if (!(right_interval <= interval_t::signed_int(false)))
-                right_interval = right_interval.And(interval_t{number_t{std::numeric_limits<uint32_t>::max()}});
+            for (interval_t* interval : {&left_interval, &right_interval}) {
+                if (!(*interval <= interval_t::signed_int(false))) {
+                    if (auto as_num = interval->singleton()) {
+                        int32_t num = (int32_t)(as_num->cast_to_uint64() & 0xffffffff);
+                        *interval = interval_t{crab::bound_t{num}};
+                    } else {
+                        *interval = interval_t::signed_int(false);
+                    }
+                }
+            }
             // continue as 32bit
         }
     }
