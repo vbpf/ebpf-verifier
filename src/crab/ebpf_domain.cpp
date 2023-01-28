@@ -218,7 +218,7 @@ static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAb
             for (interval_t* interval : {&left_interval, &right_interval}) {
                 if (!(*interval <= interval_t::signed_int(false))) {
                     if (auto as_num = interval->singleton()) {
-                        int32_t num = (int32_t)(as_num->cast_to_uint64() & 0xffffffff);
+                        auto num = (int32_t)(as_num->cast_to_uint64() & 0xffffffff);
                         *interval = interval_t{crab::bound_t{num}};
                     } else {
                         *interval = interval_t::signed_int(false);
@@ -230,16 +230,24 @@ static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAb
     }
 
     if ((left_interval & right_interval).is_bottom() || (strict && (left_interval & right_interval).is_singleton())) {
+        auto llb = left_interval.lb();
+        auto lub = left_interval.ub();
+        auto rlb = right_interval.lb();
+        auto rub = right_interval.ub();
         if ((left_interval <= interval_t::nonnegative_int(is64) && right_interval <= interval_t::nonnegative_int(is64))
          || (left_interval <= interval_t::negative_int(is64) && right_interval <= interval_t::negative_int(is64))) {
-            auto llb = left_interval.lb();
-            auto lub = left_interval.ub();
-            auto rlb = right_interval.lb();
-            auto rub = right_interval.ub();
             if (is_lt  && (strict ? (llb >= rub) : (llb >  rub)))
                 return {linear_constraint_t::FALSE()};
             if (!is_lt && (strict ? (lub <= rlb) : (lub <  rlb)))
                 return {linear_constraint_t::FALSE()};
+        }
+        if (is64) {
+            using namespace crab::dsl_syntax;
+            if (!is_lt && lub <= rlb) {
+                return {number_t{0} > left};
+            } else if (is_lt && llb >= rub) {
+                return {number_t{0} <= left};
+            }
         }
     }
 

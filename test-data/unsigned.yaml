@@ -708,12 +708,61 @@ code:
     assume w1 > 0
 post: ["r1.type=number", "r1.value=[-1, 1]"]
 ---
-test-case: "assume [-1, 1] > 1 nop"
+test-case: "assume [-1, 1] > 1 narrows"
 pre: ["r1.type=number", "r1.value=[-1, 1]"]
 code:
   <start>: |
     assume r1 > 1
-post: ["r1.type=number", "r1.value=[-1, 1]"]
+post: ["r1.type=number", "r1.value=-1"]
+---
+test-case: "assume [-1, 1] > [1, 2] narrows"
+pre: ["r1.type=number", "r1.value=[-1, 1]", "r2.type=number", "r2.value=[1, 2]"]
+code:
+  <start>: |
+    assume r1 > r2
+post: ["r1.type=number", "r1.value=-1", "r2.type=number", "r2.value=[1, 2]"]
+---
+test-case: "assume [-1, 1] >= 2 narrows"
+pre: ["r1.type=number", "r1.value=[-1, 1]"]
+code:
+  <start>: |
+    assume r1 >= 2
+post: ["r1.type=number", "r1.value=-1"]
+---
+test-case: "assume [-1, 1] >= [2, 3] narrows"
+pre: ["r1.type=number", "r1.value=[-1, 1]", "r2.type=number", "r2.value=[2, 3]"]
+code:
+  <start>: |
+    assume r1 > r2
+post: ["r1.type=number", "r1.value=-1", "r2.type=number", "r2.value=[2, 3]"]
+---
+test-case: "assume [-1, 1] < -1 narrows"
+pre: ["r1.type=number", "r1.value=[-1, 1]"]
+code:
+  <start>: |
+    assume r1 < -1
+post: ["r1.type=number", "r1.value=[0, 1]"]
+---
+test-case: "assume [-1, 1] <= -2 narrows"
+pre: ["r1.type=number", "r1.value=[-1, 1]"]
+code:
+  <start>: |
+    assume r1 <= -2
+post: ["r1.type=number", "r1.value=[0, 1]"]
+---
+test-case: "assume [-1, 2] > 1 nop"
+pre: ["r1.type=number", "r1.value=[-1, 2]"]
+code:
+  <start>: |
+    assume r1 > 1
+post: ["r1.type=number", "r1.value=[-1, 2]"]
+---
+test-case: "assume [-1, 2] >= 2 nop"
+pre: ["r1.type=number", "r1.value=[-1, 2]"]
+code:
+  <start>: |
+    assume r1 > 1
+post: ["r1.type=number", "r1.value=[-1, 2]"]
 ---
 test-case: "assume [-1, 1] w> 1 nop"
 pre: ["r1.type=number", "r1.value=[-1, 1]"]
