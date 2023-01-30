@@ -207,11 +207,6 @@ interval_t interval_t::And(const interval_t& x) const {
                 uint32_t ub32_n = (uint32_t)ub_n;
                 uint64_t width_n = width.value().cast_to_uint64();
                 uint32_t width32_n = (uint32_t)width_n;
-                #if 1
-                std::cout << "DEBUG AND: lb " << lb_n << " (u32) " << lb32_n << "\n";
-                std::cout << "DEBUG AND: ub " << ub_n << " (u32) " << ub32_n << "\n";
-                std::cout << "DEBUG AND: wi " << width_n << " (u32) " << width32_n << "\n";
-                #endif
                 if ((width_n <= UINT32_MAX) && (lb32_n < ub32_n) && (lb32_n + width32_n == ub32_n)) {
                     return interval_t{lb32_n, ub32_n};
                 }
@@ -223,9 +218,6 @@ interval_t interval_t::And(const interval_t& x) const {
         } else if (lb() >= 0 && x.lb() >= 0) {
             return interval_t(0, bound_t::min(ub(), x.ub()));
         } else {
-            #if 0
-            std::cout << "DEBUG AND: left " << *this << " right " << x << "\n";
-            #endif
             return top();
         }
     }

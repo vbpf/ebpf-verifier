@@ -824,14 +824,7 @@ void ebpf_domain_t::overflow(variable_t lhs, int finite_width) {
 
 void ebpf_domain_t::operator()(const basic_block_t& bb, bool check_termination) {
     for (const Instruction& statement : bb) {
-        #if 0
-        std::cout << "DEBUG BEFORE: " << *this << "\n";
-        std::cout << statement << "\n";
-        #endif
         std::visit(*this, statement);
-        #if 0
-        std::cout << "DEBUG AFTER: " << *this << "\n";
-        #endif
     }
     if (check_termination) {
         // +1 to avoid being tricked by empty loops
@@ -1717,13 +1710,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         } else {
             // Use only the low 32 bits of the value.
             imm = static_cast<int>(std::get<Imm>(bin.v).v);
-            #if 1
-            std::cout << "DEBUG 32: " << *this << "\n";
-            #endif
             bitwise_and(dst.value, UINT32_MAX);
-            #if 1
-            std::cout << "DEBUG 32: " << *this << "\n";
-            #endif
         }
         switch (bin.op) {
         case Bin::Op::MOV:
@@ -1769,10 +1756,6 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::LSH:
             if (m_inv.entail(type_is_number(bin.dst))) {
                 auto interval = m_inv.eval_interval(dst.value);
-#if 1
-                std::cout << "DEBUG: m_inv= " << m_inv << "\n";
-                std::cout << "DEBUG: interval= " << interval << "\n";
-#endif
                 if (std::optional<number_t> n = interval.singleton()) {
                     if (n->fits_sint64()) {
                         uint64_t input = (uint64_t)(int64_t)n.value();
@@ -1792,14 +1775,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                         m_inv.set(dst.value, crab::interval_t{lb_n, ub_n});
                         break;
                     } else {
-#if 1
-                        std::cout << "DEBUG: [" << lb << ", " << ub << "]\n";
-#endif
                         number_t lb_w = lb.cast_to_finite_width(finite_width);
                         number_t ub_w = ub.cast_to_finite_width(finite_width);
-#if 1
-                        std::cout << "DEBUG: [" << lb_w << ", " << ub_w << "]\n";
-#endif
                         uint64_t lb_n = lb_w.cast_to_uint32() << imm;
                         uint64_t ub_n = ub_w.cast_to_uint32() << imm;
                         if (lb_n > ub_n) {
@@ -1807,9 +1784,6 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             m_inv.set(dst.value, crab::interval_t{0, UINT32_MAX});
                         } else {
                             // Range is contiguous as a uint32_t.
-#if 1
-                            std::cout << "DEBUG: [" << lb_n << ", " << ub_n << "]\n";
-#endif
                             m_inv.set(dst.value, crab::interval_t{lb_n, ub_n});
                         }
                         break;
@@ -1826,10 +1800,6 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::RSH:
             if (m_inv.entail(type_is_number(bin.dst))) {
                 auto interval = m_inv.eval_interval(dst.value);
-                #if 0
-                std::cout << "DEBUG: m_inv= " << m_inv << "\n";
-                std::cout << "DEBUG: interval= " << interval << "\n";
-                #endif
                 if (std::optional<number_t> n = interval.singleton()) {
                     if (n->fits_sint64()) {
                         uint64_t input = (uint64_t)(int64_t)n.value();
@@ -1849,14 +1819,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                         m_inv.set(dst.value, crab::interval_t{lb_n, ub_n});
                         break;
                     } else {
-                        #if 0
-                        std::cout << "DEBUG: [" << lb << ", " << ub << "]\n";
-                        #endif
                         number_t lb_w = lb.cast_to_finite_width(finite_width);
                         number_t ub_w = ub.cast_to_finite_width(finite_width);
-                        #if 0
-                        std::cout << "DEBUG: [" << lb_w << ", " << ub_w << "]\n";
-                        #endif
                         uint64_t lb_n = lb_w.cast_to_uint32() >> imm;
                         uint64_t ub_n = ub_w.cast_to_uint32() >> imm;
                         if (lb_n > ub_n) {
@@ -1864,9 +1828,6 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             m_inv.set(dst.value, crab::interval_t{0, UINT32_MAX >> imm});
                         } else {
                             // Range is contiguous as a uint32_t.
-                            #if 0
-                            std::cout << "DEBUG: [" << lb_n << ", " << ub_n << "]\n";
-                            #endif
                             m_inv.set(dst.value, crab::interval_t{lb_n, ub_n});
                         }
                         break;
@@ -2115,13 +2076,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         }
     }
     if (!bin.is64) {
-#if 1
-        std::cout << "DEBUG BEFORE 32: " << *this << "\n";
-        #endif
         bitwise_and(dst.value, UINT32_MAX);
-        #if 1
-        std::cout << "DEBUG AFTER 32: " << *this << "\n";
-    #endif
     }
 }
 
