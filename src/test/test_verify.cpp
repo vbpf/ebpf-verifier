@@ -169,9 +169,12 @@ TEST_SECTION("cilium", "bpf_xdp.o", "from-netdev")
 
 TEST_SECTION("cilium", "bpf_xdp_dsr_linux_v1_1.o", "from-netdev")
 TEST_SECTION("cilium", "bpf_xdp_dsr_linux.o", "2/1")
+TEST_SECTION("cilium", "bpf_xdp_dsr_linux.o", "2/18")
 TEST_SECTION("cilium", "bpf_xdp_dsr_linux.o", "from-netdev")
 
 TEST_SECTION("cilium", "bpf_xdp_snat_linux.o", "2/1")
+TEST_SECTION("cilium", "bpf_xdp_snat_linux.o", "2/10")
+TEST_SECTION("cilium", "bpf_xdp_snat_linux.o", "2/18")
 TEST_SECTION("cilium", "bpf_xdp_snat_linux.o", "from-netdev")
 
 TEST_SECTION("linux", "cpustat_kern.o", "tracepoint/power/cpu_frequency")
@@ -504,12 +507,6 @@ TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "2/24")
 TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "2/15")
 
 TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "2/17")
-
-// Failure: trying to access r4 where r4.packet_offset=[0, 255] and packet_size=[54, 65534]
-// Root cause: r5.value=[0, 65535] 209: w5 >>= 8; clears r5 instead of yielding [0, 255]
-TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "2/18")
-TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/10")
-TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/18")
 
 TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "2/19")
 

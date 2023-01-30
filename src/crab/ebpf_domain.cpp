@@ -1762,7 +1762,13 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                         if (!bin.is64) {
                             input &= UINT32_MAX;
                         }
-                        uint64_t output = (int64_t)(input << imm);
+                        // 0x8000000000000000 will throw an exception if passed to m_inv.set
+                        // as an int64_t interval per arsh64.data conformance test.
+                        // But mod64.data passes with an int64_t which passes 0xb185843600000000
+                        // as does stxdw.data which passes 0x8877665500000000, but that is because
+                        // they don't have relationships.  In the future we need a way of handling
+                        // relationships between the full range of uiint64_t.
+                        uint64_t output = input << imm;
                         m_inv.set(dst.value, crab::interval_t{number_t{output}});
                         break;
                     }
