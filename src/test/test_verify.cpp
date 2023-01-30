@@ -169,12 +169,15 @@ TEST_SECTION("cilium", "bpf_xdp.o", "from-netdev")
 
 TEST_SECTION("cilium", "bpf_xdp_dsr_linux_v1_1.o", "from-netdev")
 TEST_SECTION("cilium", "bpf_xdp_dsr_linux.o", "2/1")
+TEST_SECTION("cilium", "bpf_xdp_dsr_linux.o", "2/10")
 TEST_SECTION("cilium", "bpf_xdp_dsr_linux.o", "2/18")
+TEST_SECTION("cilium", "bpf_xdp_dsr_linux.o", "2/24")
 TEST_SECTION("cilium", "bpf_xdp_dsr_linux.o", "from-netdev")
 
 TEST_SECTION("cilium", "bpf_xdp_snat_linux.o", "2/1")
 TEST_SECTION("cilium", "bpf_xdp_snat_linux.o", "2/10")
 TEST_SECTION("cilium", "bpf_xdp_snat_linux.o", "2/18")
+TEST_SECTION("cilium", "bpf_xdp_snat_linux.o", "2/24")
 TEST_SECTION("cilium", "bpf_xdp_snat_linux.o", "from-netdev")
 
 TEST_SECTION("linux", "cpustat_kern.o", "tracepoint/power/cpu_frequency")
@@ -500,9 +503,7 @@ TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "2/7")
 // then checking that the result is != 0. The minor issue is not handling the int32 comparison precisely enough.
 // The bigger issue is that the convexity of the numerical domain means that precise handling would still get
 // [-22, -1] which is not sufficient (at most -2 is needed)
-TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "2/10")
 TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "2/21")
-TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "2/24")
 
 TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "2/15")
 
@@ -521,9 +522,6 @@ TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/15")
 TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/17")
 TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/19")
 
-// Failure (&255): assert r5.type == number; w5 &= 255;
-// fails since in one branch (77) r5 is a number but in another (92:93) it is a packet
-TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/24")
 // Failure (&255): assert r3.type == number; w3 &= 255;
 TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "2/16")
 TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/16")
