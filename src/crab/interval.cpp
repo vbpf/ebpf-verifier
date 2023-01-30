@@ -198,9 +198,34 @@ interval_t interval_t::And(const interval_t& x) const {
 
         if (left_op && right_op) {
             return interval_t((*left_op) & (*right_op));
+        } else if (right_op && right_op.value().fits_uint32() && right_op.value().cast_to_uint32() == UINT32_MAX) {
+            // Handle bitwise-AND with UINT32_MAX, which we do for 32-bit operations.
+            if (auto width = finite_size()) {
+                uint64_t lb_n = lb().number().value().cast_to_uint64();
+                uint32_t lb32_n = (uint32_t)lb_n;
+                uint64_t ub_n = ub().number().value().cast_to_uint64();
+                uint32_t ub32_n = (uint32_t)ub_n;
+                uint64_t width_n = width.value().cast_to_uint64();
+                uint32_t width32_n = (uint32_t)width_n;
+                #if 1
+                std::cout << "DEBUG AND: lb " << lb_n << " (u32) " << lb32_n << "\n";
+                std::cout << "DEBUG AND: ub " << ub_n << " (u32) " << ub32_n << "\n";
+                std::cout << "DEBUG AND: wi " << width_n << " (u32) " << width32_n << "\n";
+                #endif
+                if ((width_n <= UINT32_MAX) && (lb32_n < ub32_n) && (lb32_n + width32_n == ub32_n)) {
+                    return interval_t{lb32_n, ub32_n};
+                }
+            }
+
+            // Return the full range of all 32-bit numbers.  Use unsigned bounds to
+            // avoid setting other bits via sign extension.
+            return interval_t{0, UINT32_MAX};
         } else if (lb() >= 0 && x.lb() >= 0) {
             return interval_t(0, bound_t::min(ub(), x.ub()));
         } else {
+            #if 0
+            std::cout << "DEBUG AND: left " << *this << " right " << x << "\n";
+            #endif
             return top();
         }
     }
