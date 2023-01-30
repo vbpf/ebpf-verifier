@@ -1767,7 +1767,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                         // But mod64.data passes with an int64_t which passes 0xb185843600000000
                         // as does stxdw.data which passes 0x8877665500000000, but that is because
                         // they don't have relationships.  In the future we need a way of handling
-                        // relationships between the full range of uiint64_t.
+                        // relationships between the full range of uint64_t.
                         uint64_t output = input << imm;
                         m_inv.set(dst.value, crab::interval_t{number_t{output}});
                         break;

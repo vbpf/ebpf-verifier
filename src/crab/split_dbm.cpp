@@ -1239,6 +1239,12 @@ static interval_t get_interval(const SplitDBM::vert_map_t& m, const SplitDBM::gr
     SplitDBM::vert_id v = it->second;
     bound_t lb = (r.elem(v, 0)) ? (-number_t(r.edge_val(v, 0))).cast_to_finite_width(finite_width) : bound_t::minus_infinity();
     bound_t ub = (r.elem(0, v)) ? number_t(r.edge_val(0, v)).cast_to_finite_width(finite_width) : bound_t::plus_infinity();
+
+    // [0, 4294967295] with finite_width = 32 results in [0, -1] which would give bottom, whereas we want to
+    // retain [0, 4294967295].  cast_to_finite_width always gives signed numbers, but we can try unsigned.
+    if ((finite_width == 32) && (lb >= 0) && (ub < 0)) {
+        ub = number_t(r.edge_val(0, v)).cast_to_uint32();
+    }
     return {lb, ub};
 }
 
