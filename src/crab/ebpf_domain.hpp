@@ -129,8 +129,10 @@ class ebpf_domain_t final {
     void bitwise_or(variable_t lhss, variable_t lhsu, const number_t& op2);
     void bitwise_xor(variable_t lhsss, variable_t lhsu, variable_t op2, int finite_width);
     void bitwise_xor(variable_t lhss, variable_t lhsu, const number_t& op2);
+    void shl(const Reg& reg, int imm, int finite_width);
     void shl_overflow(variable_t lhss, variable_t lhsu, variable_t op2);
     void shl_overflow(variable_t lhss, variable_t lhsu, const number_t& op2);
+    void shr(const Reg& reg, int imm, int finite_width);
     void lshr(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width);
     void lshr(variable_t lhss, variable_t lhsu, const number_t& op2);
     void ashr(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width);
