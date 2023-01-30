@@ -138,8 +138,9 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         int func = boost::lexical_cast<int>(m[1]);
         return make_call(func, g_ebpf_platform_linux);
     }
-    if (regex_match(text, m, regex(REG OPASSIGN REG))) {
-        return Bin{.op = str_to_binop.at(m[2]), .dst = reg(m[1]), .v = reg(m[3]), .is64 = true, .lddw = false};
+    if (regex_match(text, m, regex(WREG OPASSIGN REG))) {
+        std::string r = m[1];
+        return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = reg(m[3]), .is64 = r.at(0) != 'w', .lddw = false};
     }
     if (regex_match(text, m, regex(WREG ASSIGN UNOP WREG))) {
         if (m[1] != m[3]) throw std::invalid_argument(std::string("Invalid unary operation: ") + text);
