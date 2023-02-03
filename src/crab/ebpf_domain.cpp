@@ -1779,7 +1779,6 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                         uint64_t lb_n = lb.cast_to_uint64() << imm;
                         uint64_t ub_n = ub.cast_to_uint64() << imm;
                         m_inv.set(dst.value, crab::interval_t{lb_n, ub_n});
-                        break;
                     } else {
                         number_t lb_w = lb.cast_to_finite_width(finite_width);
                         number_t ub_w = ub.cast_to_finite_width(finite_width);
@@ -1792,8 +1791,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             // Range is contiguous as a uint32_t.
                             m_inv.set(dst.value, crab::interval_t{lb_n, ub_n});
                         }
-                        break;
                     }
+                    break;
                 } else if (!bin.is64) {
                     m_inv.set(dst.value, crab::interval_t{0, UINT32_MAX});
                     break;
@@ -1806,24 +1805,13 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::RSH:
             if (m_inv.entail(type_is_number(bin.dst))) {
                 auto interval = m_inv.eval_interval(dst.value);
-                if (std::optional<number_t> n = interval.singleton()) {
-                    if (n->fits_sint64()) {
-                        uint64_t input = (uint64_t)(int64_t)n.value();
-                        if (!bin.is64) {
-                            input &= UINT32_MAX;
-                        }
-                        uint64_t output = (int64_t)(input >> imm);
-                        m_inv.set(dst.value, crab::interval_t{number_t{output}});
-                        break;
-                    }
-                } else if (interval.finite_size()) {
+                if (interval.finite_size()) {
                     number_t lb = interval.lb().number().value();
                     number_t ub = interval.ub().number().value();
                     if (bin.is64) {
                         uint64_t lb_n = lb.cast_to_uint64() >> imm;
                         uint64_t ub_n = ub.cast_to_uint64() >> imm;
                         m_inv.set(dst.value, crab::interval_t{lb_n, ub_n});
-                        break;
                     } else {
                         number_t lb_w = lb.cast_to_finite_width(finite_width);
                         number_t ub_w = ub.cast_to_finite_width(finite_width);
@@ -1836,15 +1824,13 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             // Range is contiguous as a uint32_t.
                             m_inv.set(dst.value, crab::interval_t{lb_n, ub_n});
                         }
-                        break;
                     }
                 } else if (!bin.is64) {
                     m_inv.set(dst.value, crab::interval_t{0, UINT32_MAX >> imm});
-                    break;
                 } else {
                     m_inv.set(dst.value, crab::interval_t{0, UINT64_MAX >> imm});
-                    break;
                 }
+                break;
             }
             // avoid signedness and overflow issues in lshr(dst.value, imm);
             havoc(dst.value);
