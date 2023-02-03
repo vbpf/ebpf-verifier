@@ -1839,7 +1839,10 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                         break;
                     }
                 } else if (!bin.is64) {
-                    m_inv.set(dst.value, crab::interval_t{0, UINT32_MAX});
+                    m_inv.set(dst.value, crab::interval_t{0, UINT32_MAX >> imm});
+                    break;
+                } else {
+                    m_inv.set(dst.value, crab::interval_t{0, UINT64_MAX >> imm});
                     break;
                 }
             }
