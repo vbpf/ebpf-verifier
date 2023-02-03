@@ -64,7 +64,7 @@ namespace domains {
  **/
 
 struct SafeInt64DefaultParams {
-    using Weight = safe_i64;
+    using Weight = z_number;
     using graph_t = AdaptGraph;
 };
 
