@@ -254,7 +254,6 @@ TEST_SECTION("linux", "trace_event_kern.o", "perf_event")
 TEST_SECTION("linux", "trace_output_kern.o", "kprobe/sys_write")
 TEST_SECTION("linux", "tracex1_kern.o", "kprobe/__netif_receive_skb_core")
 TEST_SECTION("linux", "tracex2_kern.o", "kprobe/kfree_skb")
-TEST_SECTION("linux", "tracex2_kern.o", "kprobe/sys_write")
 TEST_SECTION("linux", "tracex3_kern.o", "kprobe/blk_account_io_completion")
 TEST_SECTION("linux", "tracex3_kern.o", "kprobe/blk_start_request")
 TEST_SECTION("linux", "tracex4_kern.o", "kprobe/kmem_cache_free")
@@ -494,6 +493,9 @@ TEST_SECTION_REJECT("build", "ringbuf_uninit.o", ".text");
 
 // Unsupported: ebpf-function
 TEST_SECTION_FAIL("prototype-kernel", "xdp_ddos01_blacklist_kern.o", ".text")
+
+// Unsupported: need number_t weights to represent relationships
+TEST_SECTION_FAIL("linux", "tracex2_kern.o", "kprobe/sys_write")
 
 // Unsupported: implications are lost in correlated branches
 TEST_SECTION_FAIL("cilium", "bpf_xdp_dsr_linux.o", "2/7")
