@@ -145,6 +145,41 @@ post:
   - r1.type=number
   - r1.value=[0, 4294967295]
 ---
+test-case: 32-bit left shift interval with another wrap
+
+pre: ["r1.type=number", "r1.value=[2, 65537]"]
+
+code:
+  <start>: |
+    w1 <<= 16 ; [2, 0x10001] << 16 = [0, 0xffffffff]
+
+post:
+  - r1.type=number
+  - r1.value=[0, 4294967295]
+---
+test-case: 64-bit left shift top
+
+pre: ["r1.type=number"]
+
+code:
+  <start>: |
+    r1 <<= 16
+
+post:
+  - r1.type=number
+---
+test-case: 32-bit left shift top
+
+pre: ["r1.type=number"]
+
+code:
+  <start>: |
+    w1 <<= 16
+
+post:
+  - r1.type=number
+  - r1.value=[0, 4294967295]
+---
 test-case: 32-bit left shift interval with longer wrap
 
 pre: ["r1.type=number", "r1.value=[1, 65538]"]

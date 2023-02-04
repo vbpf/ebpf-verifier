@@ -1775,61 +1775,52 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 } else if (interval.finite_size()) {
                     number_t lb = interval.lb().number().value();
                     number_t ub = interval.ub().number().value();
+                    uint64_t lb_n;
+                    uint64_t ub_n;
                     if (bin.is64) {
-                        uint64_t lb_n = lb.cast_to_uint64() << imm;
-                        uint64_t ub_n = ub.cast_to_uint64() << imm;
-                        m_inv.set(dst.value, crab::interval_t{lb_n, ub_n});
+                        lb_n = lb.cast_to_uint64() << imm;
+                        ub_n = ub.cast_to_uint64() << imm;
                     } else {
                         number_t lb_w = lb.cast_to_finite_width(finite_width);
                         number_t ub_w = ub.cast_to_finite_width(finite_width);
-                        uint64_t lb_n = lb_w.cast_to_uint32() << imm;
-                        uint64_t ub_n = ub_w.cast_to_uint32() << imm;
+                        lb_n = (lb_w.cast_to_uint32() << imm) & UINT32_MAX;
+                        ub_n = (ub_w.cast_to_uint32() << imm) & UINT32_MAX;
                         if (lb_n > ub_n) {
                             // Range is an int32_t, so use the full uint32_t range.
-                            m_inv.set(dst.value, crab::interval_t{0, UINT32_MAX});
-                        } else {
-                            // Range is contiguous as a uint32_t.
-                            m_inv.set(dst.value, crab::interval_t{lb_n, ub_n});
+                            lb_n = 0;
+                            ub_n = UINT32_MAX;
                         }
                     }
-                    break;
-                } else if (!bin.is64) {
-                    m_inv.set(dst.value, crab::interval_t{0, UINT32_MAX});
+                    m_inv.set(dst.value, crab::interval_t{lb_n, ub_n});
                     break;
                 }
             }
-            // avoid signedness and overflow issues in shl_overflow(dst.value, imm);
             shl_overflow(dst.value, imm);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::RSH:
             if (m_inv.entail(type_is_number(bin.dst))) {
                 auto interval = m_inv.eval_interval(dst.value);
+                uint64_t lb_n = 0;
+                uint64_t ub_n = UINT64_MAX >> imm;
                 if (interval.finite_size()) {
                     number_t lb = interval.lb().number().value();
                     number_t ub = interval.ub().number().value();
                     if (bin.is64) {
-                        uint64_t lb_n = lb.cast_to_uint64() >> imm;
-                        uint64_t ub_n = ub.cast_to_uint64() >> imm;
-                        m_inv.set(dst.value, crab::interval_t{lb_n, ub_n});
+                        lb_n = lb.cast_to_uint64() >> imm;
+                        ub_n = ub.cast_to_uint64() >> imm;
                     } else {
                         number_t lb_w = lb.cast_to_finite_width(finite_width);
                         number_t ub_w = ub.cast_to_finite_width(finite_width);
-                        uint64_t lb_n = lb_w.cast_to_uint32() >> imm;
-                        uint64_t ub_n = ub_w.cast_to_uint32() >> imm;
-                        if (lb_n > ub_n) {
-                            // Range is an int32_t, so use the full uint32_t range.
-                            m_inv.set(dst.value, crab::interval_t{0, UINT32_MAX >> imm});
-                        } else {
-                            // Range is contiguous as a uint32_t.
-                            m_inv.set(dst.value, crab::interval_t{lb_n, ub_n});
-                        }
+                        lb_n = lb_w.cast_to_uint32() >> imm;
+                        ub_n = ub_w.cast_to_uint32() >> imm;
+
+                        // The interval must be valid since a signed range crossing 0
+                        // was earlier converted to a full unsigned range.
+                        assert(lb_n <= ub_n);
                     }
-                } else if (!bin.is64) {
-                    m_inv.set(dst.value, crab::interval_t{0, UINT32_MAX >> imm});
-                } else {
-                    m_inv.set(dst.value, crab::interval_t{0, UINT64_MAX >> imm});
                 }
+                m_inv.set(dst.value, crab::interval_t{lb_n, ub_n});
                 break;
             }
             // avoid signedness and overflow issues in lshr(dst.value, imm);
