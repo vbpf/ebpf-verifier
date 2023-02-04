@@ -121,6 +121,17 @@ post:
   - r1.type=number
   - r1.value=[65536, 4294967296]
 ---
+test-case: 64-bit left shift interval with wrap
+
+pre: ["r1.type=number", "r1.value=[0, 4294967296]"]
+
+code:
+  <start>: |
+    r1 <<= 32 ; [0, 0x100000000] << 32 = [0, 0xffffffff00000000] not [0,0]
+
+post:
+  - r1.type=number
+---
 test-case: 32-bit left shift interval
 
 pre: ["r1.type=number", "r1.value=[1, 65535]"]
@@ -139,11 +150,11 @@ pre: ["r1.type=number", "r1.value=[1, 65537]"]
 
 code:
   <start>: |
-    w1 <<= 16 ; [1, 0x10001] << 16 = [0, 0xffffffff]
+    w1 <<= 16 ; [1, 0x10001] << 16 = [0, 0xffff0000]
 
 post:
   - r1.type=number
-  - r1.value=[0, 4294967295]
+  - r1.value=[0, 4294901760]
 ---
 test-case: 32-bit left shift interval with another wrap
 
@@ -151,11 +162,11 @@ pre: ["r1.type=number", "r1.value=[2, 65537]"]
 
 code:
   <start>: |
-    w1 <<= 16 ; [2, 0x10001] << 16 = [0, 0xffffffff]
+    w1 <<= 16 ; [2, 0x10001] << 16 = [0, 0xffff0000]
 
 post:
   - r1.type=number
-  - r1.value=[0, 4294967295]
+  - r1.value=[0, 4294901760]
 ---
 test-case: 64-bit left shift top
 
@@ -174,11 +185,11 @@ pre: ["r1.type=number"]
 
 code:
   <start>: |
-    w1 <<= 16
+    w1 <<= 16 ; [0, 0xffffffff] << 16 = [0, 0xffff0000]
 
 post:
   - r1.type=number
-  - r1.value=[0, 4294967295]
+  - r1.value=[0, 4294901760]
 ---
 test-case: 32-bit left shift interval with longer wrap
 
@@ -186,11 +197,23 @@ pre: ["r1.type=number", "r1.value=[1, 65538]"]
 
 code:
   <start>: |
-    w1 <<= 16 ; [1, 0x10001] << 16 = [0, 0xffffffff]
+    w1 <<= 16 ; [1, 0x10001] << 16 = [0, 0xffff0000]
 
 post:
   - r1.type=number
-  - r1.value=[0, 4294967295]
+  - r1.value=[0, 4294901760]
+---
+test-case: 32-bit left shift interval with another long wrap
+
+pre: ["r1.type=number", "r1.value=[1, 65539]"]
+
+code:
+  <start>: |
+    w1 <<= 16 ; [1, 0x10002] << 16 = [0, 0xffff0000]
+
+post:
+  - r1.type=number
+  - r1.value=[0, 4294901760]
 ---
 test-case: 32-bit left shift interval with negatives
 
@@ -210,8 +233,8 @@ pre: ["r1.type=number", "r1.value=[-1, 0]"]
 
 code:
   <start>: |
-    w1 <<= 8 ; [0xffffffffffffffff, 0x1] << 8 = [0, 0xffffffff]
+    w1 <<= 8 ; [0xffffffffffffffff, 0x1] << 8 = [0, 0xffffff00]
 
 post:
   - r1.type=number
-  - r1.value=[0, 4294967295]
+  - r1.value=[0, 4294967040]

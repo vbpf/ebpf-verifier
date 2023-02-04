@@ -1775,23 +1775,41 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 } else if (interval.finite_size()) {
                     number_t lb = interval.lb().number().value();
                     number_t ub = interval.ub().number().value();
-                    uint64_t lb_n;
-                    uint64_t ub_n;
+                    uint64_t lb_n = lb.cast_to_uint64();
+                    uint64_t ub_n = ub.cast_to_uint64();
                     if (bin.is64) {
-                        lb_n = lb.cast_to_uint64() << imm;
-                        ub_n = ub.cast_to_uint64() << imm;
-                    } else {
-                        number_t lb_w = lb.cast_to_finite_width(finite_width);
-                        number_t ub_w = ub.cast_to_finite_width(finite_width);
-                        lb_n = (lb_w.cast_to_uint32() << imm) & UINT32_MAX;
-                        ub_n = (ub_w.cast_to_uint32() << imm) & UINT32_MAX;
-                        if (lb_n > ub_n) {
-                            // Range is an int32_t, so use the full uint32_t range.
+                        if ((lb_n >> (64 - imm)) != (ub_n >> (64 - imm))) {
+                            // The bits that will be shifted out to the left are different,
+                            // which means all combinations of remaining bits are possible.
                             lb_n = 0;
-                            ub_n = UINT32_MAX;
+                            ub_n = UINT64_MAX << imm;
+                        } else {
+                            // The bits that will be shifted out to the left are identical
+                            // for all values in the interval, so we can safely shift left
+                            // to get a new interval.
+                            lb_n <<= imm;
+                            ub_n <<= imm;
+                        }
+                    } else {
+                        if ((lb_n >> (32 - imm)) != (ub_n >> (32 - imm))) {
+                            // The bits that will be shifted out to the left are different,
+                            // which means all combinations of remaining bits are possible.
+                            lb_n = 0;
+                            ub_n = (UINT32_MAX << imm) & UINT32_MAX;
+                        } else {
+                            // The bits that will be shifted out to the left are identical
+                            // for all values in the interval, so we can safely shift left
+                            // to get a new interval.
+                            lb_n = (lb_n << imm) & UINT32_MAX;
+                            ub_n = (ub_n << imm) & UINT32_MAX;
                         }
                     }
-                    m_inv.set(dst.value, crab::interval_t{lb_n, ub_n});
+                    if (ub_n > INT64_MAX) {
+                        // We can't yet represent an interval larger than INT64_MAX.
+                        havoc(dst.value);
+                    } else {
+                        m_inv.set(dst.value, crab::interval_t{lb_n, ub_n});
+                    }
                     break;
                 }
             }
