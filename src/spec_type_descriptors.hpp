@@ -8,6 +8,8 @@
 #include "ebpf_base.h"
 #include "ebpf_vm_isa.hpp"
 
+#include "crab_utils/lazy_allocator.hpp"
+
 constexpr int EBPF_STACK_SIZE = 512;
 
 enum class EbpfMapValueType {
@@ -46,7 +48,7 @@ using EquivalenceKey = std::tuple<
     uint32_t /* max_entries */>;
 
 struct program_info {
-    const struct ebpf_platform_t* platform;
+    const struct ebpf_platform_t* platform = nullptr;
     std::vector<EbpfMapDescriptor> map_descriptors;
     EbpfProgramType type;
     std::map<EquivalenceKey, int> cache;
@@ -67,4 +69,4 @@ struct raw_program {
     std::vector<btf_line_info_t> line_info;
 };
 
-extern thread_local program_info global_program_info;
+extern thread_local crab::lazy_allocator<program_info> global_program_info;

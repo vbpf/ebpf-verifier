@@ -846,8 +846,8 @@ void ebpf_domain_t::check_access_stack(NumAbsDomain& inv, const linear_expressio
 void ebpf_domain_t::check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) {
     using namespace crab::dsl_syntax;
     require(inv, lb >= 0, "Lower bound must be at least 0");
-    require(inv, ub <= global_program_info.type.context_descriptor->size,
-            std::string("Upper bound must be at most ") + std::to_string(global_program_info.type.context_descriptor->size));
+    require(inv, ub <= global_program_info->type.context_descriptor->size,
+            std::string("Upper bound must be at most ") + std::to_string(global_program_info->type.context_descriptor->size));
 }
 
 void ebpf_domain_t::check_access_packet(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
@@ -1026,7 +1026,7 @@ std::optional<uint32_t> ebpf_domain_t::get_map_type(const Reg& map_fd_reg) const
 
     std::optional<uint32_t> type;
     for (int32_t map_fd = start_fd; map_fd <= end_fd; map_fd++) {
-        EbpfMapDescriptor* map = &global_program_info.platform->get_map_descriptor(map_fd);
+        EbpfMapDescriptor* map = &global_program_info->platform->get_map_descriptor(map_fd);
         if (map == nullptr)
             return std::optional<uint32_t>();
         if (!type.has_value())
@@ -1045,7 +1045,7 @@ std::optional<uint32_t> ebpf_domain_t::get_map_inner_map_fd(const Reg& map_fd_re
 
     std::optional<uint32_t> inner_map_fd;
     for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
-        EbpfMapDescriptor* map = &global_program_info.platform->get_map_descriptor(map_fd);
+        EbpfMapDescriptor* map = &global_program_info->platform->get_map_descriptor(map_fd);
         if (map == nullptr)
             return {};
         if (!inner_map_fd.has_value())
@@ -1064,7 +1064,7 @@ crab::interval_t ebpf_domain_t::get_map_key_size(const Reg& map_fd_reg) const {
 
     crab::interval_t result = crab::interval_t::bottom();
     for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
-        if (EbpfMapDescriptor* map = &global_program_info.platform->get_map_descriptor(map_fd))
+        if (EbpfMapDescriptor* map = &global_program_info->platform->get_map_descriptor(map_fd))
             result = result | crab::interval_t(number_t(map->key_size));
         else
             return crab::interval_t::top();
@@ -1080,7 +1080,7 @@ crab::interval_t ebpf_domain_t::get_map_value_size(const Reg& map_fd_reg) const 
 
     crab::interval_t result = crab::interval_t::bottom();
     for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
-        if (EbpfMapDescriptor* map = &global_program_info.platform->get_map_descriptor(map_fd))
+        if (EbpfMapDescriptor* map = &global_program_info->platform->get_map_descriptor(map_fd))
             result = result | crab::interval_t(number_t(map->value_size));
         else
             return crab::interval_t::top();
@@ -1096,7 +1096,7 @@ crab::interval_t ebpf_domain_t::get_map_max_entries(const Reg& map_fd_reg) const
 
     crab::interval_t result = crab::interval_t::bottom();
     for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
-        if (EbpfMapDescriptor* map = &global_program_info.platform->get_map_descriptor(map_fd))
+        if (EbpfMapDescriptor* map = &global_program_info->platform->get_map_descriptor(map_fd))
             result = result | crab::interval_t(number_t(map->max_entries));
         else
             return crab::interval_t::top();
@@ -1138,7 +1138,7 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
                 std::string ub_s = ub_is && ub_is->fits_sint32() ? std::to_string((int32_t)*ub_is) : "oo";
                 require(inv, linear_constraint_t::FALSE(), "Illegal map update with a non-numerical value [" + lb_s + "-" + ub_s + ")");
             } else if (thread_local_options.strict && fd_type.has_value()) {
-                EbpfMapType map_type = global_program_info.platform->get_map_type(*fd_type);
+                EbpfMapType map_type = global_program_info->platform->get_map_type(*fd_type);
                 if (map_type.is_array) {
                     // Get offset value.
                     variable_t key_ptr = access_reg.stack_offset;
@@ -1313,7 +1313,7 @@ void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const 
     if (inv.is_bottom())
         return;
 
-    const ebpf_context_descriptor_t* desc = global_program_info.type.context_descriptor;
+    const ebpf_context_descriptor_t* desc = global_program_info->type.context_descriptor;
 
     const reg_pack_t& target = reg_pack(target_reg);
 
@@ -1601,7 +1601,7 @@ void ebpf_domain_t::operator()(const Call& call) {
         // This is the only way to get a null pointer
         if (maybe_fd_reg) {
             if (auto map_type = get_map_type(*maybe_fd_reg)) {
-                if (global_program_info.platform->get_map_type(*map_type).value_type == EbpfMapValueType::MAP) {
+                if (global_program_info->platform->get_map_type(*map_type).value_type == EbpfMapValueType::MAP) {
                     if (auto inner_map_fd = get_map_inner_map_fd(*maybe_fd_reg)) {
                         do_load_mapfd(r0_reg, (int)*inner_map_fd, true);
                         goto out;
@@ -1631,8 +1631,8 @@ out:
 }
 
 void ebpf_domain_t::do_load_mapfd(const Reg& dst_reg, int mapfd, bool maybe_null) {
-    const EbpfMapDescriptor& desc = global_program_info.platform->get_map_descriptor(mapfd);
-    const EbpfMapType& type = global_program_info.platform->get_map_type(desc.type);
+    const EbpfMapDescriptor& desc = global_program_info->platform->get_map_descriptor(mapfd);
+    const EbpfMapType& type = global_program_info->platform->get_map_type(desc.type);
     if (type.value_type == EbpfMapValueType::PROGRAM) {
         type_inv.assign_type(m_inv, dst_reg, T_MAP_PROGRAMS);
     } else {
@@ -2037,7 +2037,7 @@ void ebpf_domain_t::initialize_packet(ebpf_domain_t& inv) {
 
     inv += 0 <= variable_t::packet_size();
     inv += variable_t::packet_size() < MAX_PACKET_SIZE;
-    auto info = global_program_info;
+    auto info = *global_program_info;
     if (info.type.context_descriptor->meta >= 0) {
         inv += variable_t::meta_offset() <= 0;
         inv += variable_t::meta_offset() >= -4098;

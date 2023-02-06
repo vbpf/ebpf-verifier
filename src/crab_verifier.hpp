@@ -27,3 +27,5 @@ std::tuple<string_invariant, bool> ebpf_analyze_program_for_test(std::ostream& o
 int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries, ebpf_verifier_options_t options);
 
 EbpfMapDescriptor* find_map_descriptor(int map_fd);
+
+void ebpf_verifier_clear_thread_local_state();

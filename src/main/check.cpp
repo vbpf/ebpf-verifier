@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
     if (!asmfile.empty()) {
         std::ofstream out{asmfile};
         print(prog, out, {});
-        print_map_descriptors(global_program_info.map_descriptors, out);
+        print_map_descriptors(global_program_info->map_descriptors, out);
     }
 
     if (domain == "zoneCrab") {
@@ -182,5 +182,10 @@ int main(int argc, char** argv) {
     } else {
         assert(false);
     }
+
+    // Call clear thread local state to ensure that the verifier does not
+    // leak memory.
+    ebpf_verifier_clear_thread_local_state();
+
     return 0;
 }

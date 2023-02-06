@@ -11,6 +11,7 @@
 
 #include "crab_utils/bignums.hpp"
 #include "crab_utils/debug.hpp"
+#include "crab_utils/lazy_allocator.hpp"
 using index_t = uint64_t;
 
 /* Basic type definitions */
@@ -39,17 +40,28 @@ class variable_t final {
     bool operator<(variable_t o) const { return _id < o._id; }
 
 
-    [[nodiscard]] std::string name() const { return names.at(_id); }
+    [[nodiscard]] std::string name() const { return names->at(_id); }
 
-    [[nodiscard]] bool is_type() const { return names.at(_id).find(".type") != std::string::npos; }
+    [[nodiscard]] bool is_type() const { return names->at(_id).find(".type") != std::string::npos; }
 
-    friend std::ostream& operator<<(std::ostream& o, variable_t v)  { return o << names.at(v._id); }
+    friend std::ostream& operator<<(std::ostream& o, variable_t v)  { return o << names->at(v._id); }
 
     // var_factory portion.
     // This singleton is eBPF-specific, to avoid lifetime issues and/or passing factory explicitly everywhere:
   private:
     static variable_t make(const std::string& name);
-    static thread_local std::vector<std::string> names;
+    static std::vector<std::string> _default_names();
+
+    /**
+     * @brief Factory to alway return the initial variable names.
+     *
+     * @tparam[in] T Should always be std::vector<std::string>.
+     */
+    template <typename T>
+    struct variable_name_factory {
+        T operator()() { return _default_names(); }
+    };
+    static thread_local crab::lazy_allocator<std::vector<std::string>, variable_name_factory> names;
 
   public:
     static void clear_thread_local_state();

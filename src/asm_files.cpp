@@ -31,15 +31,15 @@ static vector<T> vector_of(const ELFIO::section& sec) {
 
 int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries, ebpf_verifier_options_t options) {
     EquivalenceKey equiv{map_type.value_type, key_size, value_size, map_type.is_array ? max_entries : 0};
-    if (!global_program_info.cache.count(equiv)) {
+    if (!global_program_info->cache.count(equiv)) {
         // +1 so 0 is the null FD
-        global_program_info.cache[equiv] = (int)global_program_info.cache.size() + 1;
+        global_program_info->cache[equiv] = (int)global_program_info->cache.size() + 1;
     }
-    return global_program_info.cache.at(equiv);
+    return global_program_info->cache.at(equiv);
 }
 
 EbpfMapDescriptor* find_map_descriptor(int map_fd) {
-    for (EbpfMapDescriptor& map : global_program_info.map_descriptors) {
+    for (EbpfMapDescriptor& map : global_program_info->map_descriptors) {
         if (map.original_fd == map_fd) {
             return &map;
         }

@@ -17,6 +17,7 @@
 
 #include "crab/ebpf_domain.hpp"
 #include "crab/fwd_analyzer.hpp"
+#include "crab_utils/lazy_allocator.hpp"
 
 #include "asm_syntax.hpp"
 #include "crab_verifier.hpp"
@@ -24,7 +25,7 @@
 
 using std::string;
 
-thread_local program_info global_program_info;
+thread_local crab::lazy_allocator<program_info> global_program_info;
 thread_local ebpf_verifier_options_t thread_local_options;
 
 // Toy database to store invariants.
@@ -243,4 +244,13 @@ bool ebpf_verify_program(std::ostream& os, const InstructionSeq& prog, const pro
         stats->max_instruction_count = report.max_instruction_count;
     }
     return (report.total_warnings == 0);
+}
+
+void ebpf_verifier_clear_thread_local_state()
+{
+    variable_t::clear_thread_local_state();
+    crab::CrabStats::clear_thread_local_state();
+    global_program_info.clear();
+    crab::domains::clear_thread_local_state();
+    crab::domains::SplitDBM::clear_thread_local_state();
 }

@@ -400,10 +400,15 @@ std::vector<cell_t> offset_map_t::get_overlap_cells(offset_t o, unsigned size) {
 // We use a global array map
 using array_map_t = std::unordered_map<data_kind_t, offset_map_t>;
 
-thread_local array_map_t global_array_map;
+static thread_local crab::lazy_allocator<array_map_t> global_array_map;
+
+void clear_thread_local_state()
+{
+    global_array_map.clear();
+}
 
 static offset_map_t& lookup_array_map(data_kind_t kind) {
-    return global_array_map[kind];
+    return (*global_array_map)[kind];
 }
 
 /**
@@ -411,11 +416,11 @@ static offset_map_t& lookup_array_map(data_kind_t kind) {
     run so we can clear the array map from one run to another.
 **/
 void clear_global_state() {
-    if (!global_array_map.empty()) {
+    if (!global_array_map->empty()) {
         if constexpr (crab::CrabSanityCheckFlag) {
             CRAB_WARN("array_expansion static variable map is being cleared");
         }
-        global_array_map.clear();
+        global_array_map->clear();
     }
 }
 
