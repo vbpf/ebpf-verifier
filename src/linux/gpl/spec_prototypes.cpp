@@ -2108,7 +2108,7 @@ bool is_helper_usable_linux(int32_t n) {
 
     // If the helper has a context_descriptor, it must match the hook's context_descriptor.
     if ((prototypes[n].context_descriptor != nullptr) &&
-        (prototypes[n].context_descriptor != global_program_info.type.context_descriptor))
+        (prototypes[n].context_descriptor != global_program_info->type.context_descriptor))
         return false;
 
     return true;

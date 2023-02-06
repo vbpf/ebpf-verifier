@@ -5,23 +5,22 @@
  */
 
 #include "crab/variable.hpp"
+#include "crab_utils/lazy_allocator.hpp"
 
 namespace crab {
 
 variable_t variable_t::make(const std::string& name) {
-    auto it = std::find(names.begin(), names.end(), name);
-    if (it == names.end()) {
-        names.emplace_back(name);
-        return variable_t(names.size() - 1);
+    auto it = std::find(names->begin(), names->end(), name);
+    if (it == names->end()) {
+        names->emplace_back(name);
+        return variable_t(names->size() - 1);
     } else {
-        return variable_t(std::distance(names.begin(), it));
+        return variable_t(std::distance(names->begin(), it));
     }
 }
 
-thread_local std::vector<std::string> variable_t::names;
-
-void variable_t::clear_thread_local_state() {
-    names = std::vector<std::string>{
+std::vector<std::string> variable_t::_default_names() {
+    return std::vector<std::string>{
         "r0.value", "r0.ctx_offset", "r0.map_fd", "r0.packet_offset", "r0.shared_offset", "r0.stack_offset", "r0.type", "r0.shared_region_size", "r0.stack_numeric_size",
         "r1.value", "r1.ctx_offset", "r1.map_fd", "r1.packet_offset", "r1.shared_offset", "r1.stack_offset", "r1.type", "r1.shared_region_size", "r1.stack_numeric_size",
         "r2.value", "r2.ctx_offset", "r2.map_fd", "r2.packet_offset", "r2.shared_offset", "r2.stack_offset", "r2.type", "r2.shared_region_size", "r2.stack_numeric_size",
@@ -35,6 +34,13 @@ void variable_t::clear_thread_local_state() {
         "r10.value", "r10.ctx_offset", "r10.map_fd", "r10.packet_offset", "r10.shared_offset", "r10.stack_offset", "r10.type", "r10.shared_region_size", "r10.stack_numeric_size",
         "data_size", "meta_size",
     };
+};
+
+thread_local crab::lazy_allocator<std::vector<std::string>, variable_t::variable_name_factory> variable_t::names;
+
+void
+variable_t::clear_thread_local_state() {
+    names.clear();
 }
 
 static std::string name_of(data_kind_t kind) {
@@ -90,7 +96,7 @@ static bool ends_with(const std::string& str, const std::string& suffix)
 
 std::vector<variable_t> variable_t::get_type_variables() {
     std::vector<variable_t> res;
-    for (const std::string& name: names) {
+    for (const std::string& name: *names) {
         if (ends_with(name, ".type"))
             res.push_back(make(name));
     }

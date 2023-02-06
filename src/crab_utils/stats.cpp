@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "stats.hpp"
 
+#include <optional>
 #ifdef _WIN32
 #include <windows.h>
 #undef max
@@ -12,8 +13,14 @@
 
 namespace crab {
 
-thread_local std::map<std::string, unsigned> CrabStats::counters;
-thread_local std::map<std::string, Stopwatch> CrabStats::sw;
+thread_local crab::lazy_allocator<std::map<std::string, unsigned>> CrabStats::counters;
+thread_local crab::lazy_allocator<std::map<std::string, Stopwatch>> CrabStats::sw;
+
+void CrabStats::clear_thread_local_state()
+{
+    counters.clear();
+    sw.clear();
+}
 
 // Gets the amount of user CPU time used, in microseconds.
 long Stopwatch::systemTime() const {
@@ -87,31 +94,31 @@ void CrabStats::reset() {
     sw.clear();
 }
 
-void CrabStats::count(const std::string& name) { ++counters[name]; }
-void CrabStats::count_max(const std::string& name, unsigned v) { counters[name] = std::max(counters[name], v); }
+void CrabStats::count(const std::string& name) { ++(*counters)[name]; }
+void CrabStats::count_max(const std::string& name, unsigned v) { (*counters)[name] = std::max((*counters)[name], v); }
 
-unsigned CrabStats::uset(const std::string& n, unsigned v) { return counters[n] = v; }
-unsigned CrabStats::get(const std::string& n) { return counters[n]; }
+unsigned CrabStats::uset(const std::string& n, unsigned v) { return (*counters)[n] = v; }
+unsigned CrabStats::get(const std::string& n) { return (*counters)[n]; }
 
-void CrabStats::start(const std::string& name) { sw[name].start(); }
-void CrabStats::stop(const std::string& name) { sw[name].stop(); }
-void CrabStats::resume(const std::string& name) { sw[name].resume(); }
+void CrabStats::start(const std::string& name) { (*sw)[name].start(); }
+void CrabStats::stop(const std::string& name) { (*sw)[name].stop(); }
+void CrabStats::resume(const std::string& name) { (*sw)[name].resume(); }
 
 /** Outputs all statistics to std output */
 void CrabStats::Print(std::ostream& OS) {
     OS << "\n\n************** STATS ***************** \n";
-    for (auto& kv : counters)
+    for (auto& kv : (*counters))
         OS << kv.first << ": " << kv.second << "\n";
-    for (auto& kv : sw)
+    for (auto& kv : (*sw))
         OS << kv.first << ": " << kv.second << "\n";
     OS << "************** STATS END ***************** \n";
 }
 
 void CrabStats::PrintBrunch(std::ostream& OS) {
     OS << "\n\n************** BRUNCH STATS ***************** \n";
-    for (auto& kv : counters)
+    for (auto& kv : (*counters))
         OS << "BRUNCH_STAT " << kv.first << " " << kv.second << "\n";
-    for (auto& kv : sw)
+    for (auto& kv : (*sw))
         OS << "BRUNCH_STAT " << kv.first << " " << (kv.second).toSeconds() << "sec \n";
     OS << "************** BRUNCH STATS END ***************** \n";
 }

@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         configurations: [Debug, Release]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
       # Configuration type to build.  For documentation on how build matrices work, see
       # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
@@ -26,7 +26,7 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          sudo apt install libboost-dev libboost-filesystem-dev libboost-program-options-dev libyaml-cpp-dev
+          sudo apt install libboost-dev libboost-filesystem-dev libboost-program-options-dev libyaml-cpp-dev valgrind
 
       - uses: actions/checkout@v3
         with:
@@ -40,6 +40,11 @@ jobs:
 
       - name: Run unit tests
         run: ./tests -d yes
+
+      - name: Test for memory leaks
+        # Any memory leaks will cause the test to fail
+        # This BPF program was chosen because it is the largest one in the repo
+        run: valgrind --leak-check=full --errors-for-leak-kinds=all  --show-leak-kinds=all --error-exitcode=1 ./check ebpf-samples/cilium/bpf_xdp_snat_linux_v1.o 2/1
 
   build_windows:
     strategy:

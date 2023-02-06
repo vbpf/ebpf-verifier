@@ -39,6 +39,8 @@ using NumAbsDomain = AddBottom;
 
 void clear_global_state();
 
+void clear_thread_local_state();
+
 class array_domain_t final {
     bitset_domain_t num_bytes;
 
