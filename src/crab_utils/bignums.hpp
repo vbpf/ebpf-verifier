@@ -100,6 +100,16 @@ class z_number final {
         }
     }
 
+    [[nodiscard]] uint64_t truncate_to_uint64() const {
+        if (fits_sint64()) {
+            // Convert 64 bits from int64_t to uint64_t.
+            return (uint64_t)(int64_t)_n;
+        } else {
+            // Truncate to fit into an unsigned 64-bit integer.
+            return (uint64_t)_n;
+        }
+    }
+
     [[nodiscard]] uint64_t cast_to_uint32() const {
         if (fits_uint32()) {
             return (uint32_t)_n;
@@ -109,6 +119,10 @@ class z_number final {
         } else {
             CRAB_ERROR("z_number ", _n.str(), " does not fit into an unsigned 32-bit integer");
         }
+    }
+
+    [[nodiscard]] uint64_t truncate_to_uint32() const {
+        return (uint32_t)truncate_to_uint64();
     }
 
     // For 64-bit operations, get the value as a signed 64-bit integer.
@@ -123,17 +137,64 @@ class z_number final {
         }
     }
 
+    // For 64-bit operations, get the value as a signed 64-bit integer.
+    [[nodiscard]] int64_t truncate_to_sint64() const {
+        if (fits_sint64()) {
+            return (int64_t)_n;
+        } else {
+            // z_number does not fit into a signed 64-bit integer, so truncate it to fit.
+            return (int64_t)(uint64_t)_n;
+        }
+    }
+
     // For 32-bit operations, get the low 32 bits as a signed integer.
     [[nodiscard]] int32_t cast_to_sint32() const {
         return (int32_t)cast_to_sint64();
     }
 
+    // For 32-bit operations, get the low 32 bits as a signed integer.
+    [[nodiscard]] int32_t truncate_to_sint32() const {
+        return (int32_t)truncate_to_sint64();
+    }
+
     // Allow casting to int32_t or int64_t as needed for finite width operations.
-    [[nodiscard]] z_number cast_to_finite_width(int finite_width) const {
+    [[nodiscard]] z_number cast_to_signed_finite_width(int finite_width) const {
         switch (finite_width) {
         case 0: return *this; // No finite width.
         case 32: return cast_to_sint32();
         case 64: return cast_to_sint64();
+        default: CRAB_ERROR("invalid finite width");
+        }
+    }
+
+    // Allow casting to uint32_t or uint64_t as needed for finite width operations.
+    [[nodiscard]] z_number cast_to_unsigned_finite_width(int finite_width) const {
+        switch (finite_width) {
+        case 0: return *this; // No finite width.
+        case 32: return cast_to_uint32();
+        case 64: return cast_to_uint64();
+        default: CRAB_ERROR("invalid finite width");
+        }
+    }
+
+    // Allow truncating to int32_t or int64_t as needed for finite width operations.
+    // Unlike casting, truncating will not throw a crab error if the number doesn't fit.
+    [[nodiscard]] z_number truncate_to_signed_finite_width(int finite_width) const {
+        switch (finite_width) {
+        case 0: return *this; // No finite width.
+        case 32: return truncate_to_sint32();
+        case 64: return truncate_to_sint64();
+        default: CRAB_ERROR("invalid finite width");
+        }
+    }
+
+    // Allow truncating to uint32_t or uint64_t as needed for finite width operations.
+    // Unlike casting, truncating will not throw a crab error if the number doesn't fit.
+    [[nodiscard]] z_number truncate_to_unsigned_finite_width(int finite_width) const {
+        switch (finite_width) {
+        case 0: return *this; // No finite width.
+        case 32: return truncate_to_uint32();
+        case 64: return truncate_to_uint64();
         default: CRAB_ERROR("invalid finite width");
         }
     }

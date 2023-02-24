@@ -1,0 +1,108 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+---
+test-case: compute negative interval without wrap
+
+pre: ["r1.type=number", "r1.value=[1, 3]"]
+
+code:
+  <start>: |
+    r1 += -4 ; this should remain a signed interval
+
+post:
+  - r1.type=number
+  - r1.value=[-3, -1]
+---
+test-case: compute negative interval using overflow
+
+pre: ["r1.type=number", "r1.value=[9223372036854775805, 9223372036854775807]", "r2.type=number", "r2.value=9223372036854775807"]
+
+code:
+  <start>: |
+    r1 += r2 ; [INT64_MAX+INT64_MAX-2, INT64_MAX+INT64_MAX]
+
+post:
+  - r1.type=number
+  - r1.value=[-4, -2]
+  - r2.type=number
+  - r2.value=9223372036854775807
+---
+test-case: compute an interval that can only be represented using an unsigned interval
+
+pre: ["r1.type=number", "r1.value=[9223372036854775805, 9223372036854775807]"]
+
+code:
+  <start>: |
+    r1 += 2 ; result is [INT64_MAX, INT64_MAX+2]
+
+post:
+  - r1.type=number
+  - r1.value=[9223372036854775807, 9223372036854775809]
+---
+test-case: compute negative interval from unsigned interval with overflow
+
+pre: ["r1.type=number", "r1.value=[9223372036854775805, 9223372036854775807]"]
+
+code:
+  <start>: |
+    r1 += 2 ; result is [INT64_MAX, INT64_MAX+2] => unsigned interval
+    r1 += 1 ; result is [INT64_MAX+1, INT64_MAX+3] => [INT64_MIN, INT64_MIN+2]
+
+post:
+  - r1.type=number
+  - r1.value=[-9223372036854775808, -9223372036854775806]
+---
+test-case: cast signed interval crossing 0 to unsigned
+
+pre: ["r0.type=number", "r0.value=0", "r1.type=number", "r1.value=[-1, 1]"]
+
+code:
+  <start>: |
+    if r1 < 2 goto <label_0> ; unsigned comparison so should go to TOP and be both true and false
+    r0 = 1
+  <label_0>: |
+    exit
+
+post:
+  - r0.type=number
+  - r0.value=[0, 1]
+  - r1.type=number
+  - r1.value=[-1, 1]
+---
+test-case: cast unsigned interval crossing ((uint64_t)INT64_MAX) to signed
+
+pre: ["r0.type=number", "r0.value=0", "r1.type=number", "r1.value=[9223372036854775805, 9223372036854775807]"]
+
+code:
+  <start>: |
+    r1 += 2 ; result is [INT64_MAX, INT64_MAX+2] as an unsigned interval
+    if r1 s> 0 goto <label_0> ; signed comparison so should go to TOP and be both true and false
+    r0 = 1
+  <label_0>: |
+    exit
+
+post:
+  - r0.type=number
+  - r0.value=[0, 1]
+  - r1.type=number
+  - r1.value=[9223372036854775807, 9223372036854775809]
+---
+test-case: full range
+
+pre: ["r0.type=number", "r1.type=number", "r1.value=[0, 9223372036854775807]", "r2.type=number", "r2.value=9223372036854775807"]
+
+code:
+  <start>: |
+    r1 += 0
+    if r0 == 0 goto <label_0> ; [0, INT64_MAX]
+    r1 += r2
+    r1 += 1                   ; [INT64_MIN, -1]
+  <label_0>: |
+    exit
+
+post:
+  - r0.type=number
+  - r1.type=number
+  - r1.value=[-9223372036854775808, 9223372036854775807]
+  - r2.type=number
+  - r2.value=9223372036854775807

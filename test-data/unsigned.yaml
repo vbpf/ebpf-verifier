@@ -515,13 +515,15 @@ post: []
 messages:
   - "0: Code is unreachable after 0"
 ---
-test-case: "assume [INT_MAX, INT_MAX+1] < 1 yields 0"
+test-case: "assume [INT_MAX, INT_MAX+1] < 1 implies bottom"
 pre: ["r1.type=number", "r1.value=[9223372036854775803, 9223372036854775804]"]
 code:
   <start>: |
     r1 += 4
     assume r1 < 1
-post: ["r1.type=number", "r1.value=0"]
+post: []
+messages:
+  - "1: Code is unreachable after 1"
 ---
 test-case: "assume 0 < 1 nop"
 pre: []

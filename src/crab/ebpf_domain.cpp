@@ -132,10 +132,10 @@ static std::vector<linear_constraint_t> assume_signed_cst_interval(const NumAbsD
         return {};
     int64_t src_int_value = src_n.value().cast_to_sint64();
 
+    auto dst_interval = inv.eval_interval(dst_value);
+    std::optional<number_t> dst_lb = dst_interval.lb().number();
+    std::optional<number_t> dst_ub = dst_interval.ub().number();
     if (!is64) {
-        auto dst_interval = inv.eval_interval(dst_value);
-        std::optional<number_t> dst_lb = dst_interval.lb().number();
-        std::optional<number_t> dst_ub = dst_interval.ub().number();
         if (!dst_lb || !dst_lb.value().fits_cast_to_int64() || !dst_ub || !dst_ub.value().fits_cast_to_int64())
             return {};
         int32_t dst_lb_value = (int32_t)dst_lb.value().cast_to_sint64();
@@ -180,6 +180,10 @@ static std::vector<linear_constraint_t> assume_signed_cst_interval(const NumAbsD
             return {};
         default: throw std::exception();
         }
+    } else if (dst_ub && !dst_ub.value().fits_sint64()) {
+        // Interval cannot fit in a signed interval, but we need a signed comparison,
+        // so we must treat it as top.
+        return {};
     } else {
         switch (op) {
         case Op::EQ: return {dst_value == src_int_value};
@@ -800,14 +804,28 @@ void ebpf_domain_t::overflow_bounds(variable_t lhs, number_t min, number_t max, 
         havoc(lhs);
         return;
     }
-    number_t lb = interval.lb().number().value().cast_to_finite_width(finite_width);
-    number_t ub = interval.ub().number().value().cast_to_finite_width(finite_width);
-    if (lb > ub) {
-        // Range wraps in the middle, so we cannot represent as an interval.
+    if (interval.is_bottom()) {
         havoc(lhs);
         return;
     }
-    m_inv[lhs] = crab::interval_t{lb, ub};
+    number_t lb_value = interval.lb().number().value();
+    number_t ub_value = interval.ub().number().value();
+    number_t lb = lb_value.truncate_to_signed_finite_width(finite_width);
+    number_t ub = ub_value.truncate_to_signed_finite_width(finite_width);
+    if (lb > ub) {
+        // Range wraps in the middle, so we cannot represent as a signed interval.
+        lb = lb_value.truncate_to_unsigned_finite_width(finite_width);
+        ub = ub_value.truncate_to_unsigned_finite_width(finite_width);
+        if (lb > ub) {
+            havoc(lhs);
+            return;
+        }
+    }
+    auto new_interval = crab::interval_t{lb, ub};
+    if (new_interval != interval) {
+        // Update the variable, which will lose any relationships to other variables.
+        m_inv.set(lhs, new_interval);
+    }
 }
 
 void ebpf_domain_t::overflow(variable_t lhs, int finite_width) {
@@ -2057,7 +2075,7 @@ ebpf_domain_t ebpf_domain_t::from_constraints(const std::set<std::string>& const
     }
     for (const crab::interval_t& range : numeric_ranges) {
         int start = (int)range.lb().number().value();
-        int width = 1 + (int)(range.ub() - range.lb()).number().value();
+        int width = 1 + (int)range.finite_size().value();
         inv.stack.initialize_numbers(start, width);
     }
     // TODO: handle other stack type constraints
