@@ -138,11 +138,11 @@ code:
     if w1 < 6 goto <exit1> ; Taken
     goto <exit0>
   <exit1>: |
-    r1 *= r1 ; del r1
+    r1 *= r1
     r0 = 1
     goto <exit>
   <exit0>: |
-    r1 *= r1 ; del r1
+    r1 *= r1
     r0 = 0
     goto <exit>
   <exit>: |
@@ -150,6 +150,7 @@ code:
 
 post:
   - r1.type=number
+  - r1.value=42949672985
   - r0.type=number
   - r0.value=1
 messages:
