@@ -53,7 +53,7 @@ class variable_t final {
     static std::vector<std::string> _default_names();
 
     /**
-     * @brief Factory to alway return the initial variable names.
+     * @brief Factory to always return the initial variable names.
      *
      * @tparam[in] T Should always be std::vector<std::string>.
      */

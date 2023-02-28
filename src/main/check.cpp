@@ -25,7 +25,17 @@ static size_t hash(const raw_program& raw_prog) {
     return boost::hash_range(start, end);
 }
 
+template <void (on_exit)()>
+struct at_scope_exit
+{
+    at_scope_exit() = default;
+    ~at_scope_exit() { on_exit(); }
+};
+
 int main(int argc, char** argv) {
+    // Always call ebpf_verifier_clear_thread_local_state on scope exit.
+    at_scope_exit<ebpf_verifier_clear_thread_local_state> clear_thread_local_state;
+
     ebpf_verifier_options_t ebpf_verifier_options = ebpf_verifier_default_options;
 
     // Parse command line arguments:
@@ -182,10 +192,6 @@ int main(int argc, char** argv) {
     } else {
         assert(false);
     }
-
-    // Call clear thread local state to ensure that the verifier does not
-    // leak memory.
-    ebpf_verifier_clear_thread_local_state();
 
     return 0;
 }
