@@ -835,7 +835,7 @@ class GraphOps {
                 case E_RIGHT: colour_succs[2 * s + 1].push_back(d); break;
                 default: break;
                 }
-                (*edge_marks)[sz * s + d] = mark;
+                edge_marks->at(sz * s + d) = mark;
             }
         }
 
@@ -886,7 +886,7 @@ class GraphOps {
             dists->at(dest) = p[src] + e.val - p[dest];
             dist_ts->at(dest) = ts;
 
-            vert_marks->at(dest) = (*edge_marks)[sz * src + dest];
+            vert_marks->at(dest) = edge_marks->at(sz * src + dest);
             heap.insert(dest);
         }
 
@@ -911,7 +911,7 @@ class GraphOps {
                 if (dist_ts->at(ed) != ts || v < dists->at(ed)) {
                     dists->at(ed) = v;
                     dist_ts->at(ed) = ts;
-                    vert_marks->at(ed) = (*edge_marks)[sz * es + ed];
+                    vert_marks->at(ed) = edge_marks->at(sz * es + ed);
 
                     if (heap.inHeap(ed)) {
                         heap.decrease(ed);
@@ -919,7 +919,7 @@ class GraphOps {
                         heap.insert(ed);
                     }
                 } else if (v == dists->at(ed)) {
-                    vert_marks->at(ed) |= (*edge_marks)[sz * es + ed];
+                    vert_marks->at(ed) |= edge_marks->at(sz * es + ed);
                 }
             }
         }
