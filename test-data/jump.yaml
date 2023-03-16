@@ -138,11 +138,9 @@ code:
     if w1 < 6 goto <exit1> ; Taken
     goto <exit0>
   <exit1>: |
-    r1 *= r1
     r0 = 1
     goto <exit>
   <exit0>: |
-    r1 *= r1
     r0 = 0
     goto <exit>
   <exit>: |
@@ -150,12 +148,12 @@ code:
 
 post:
   - r1.type=number
-  - r1.value=42949672985
+  - r1.value=4294967301
   - r0.type=number
   - r0.value=1
 messages:
-  - "3:10: Code is unreachable after 3:10"
-  - "4:10: Code is unreachable after 4:10"
+  - "3:9: Code is unreachable after 3:9"
+  - "4:9: Code is unreachable after 4:9"
   - "5:6: Code is unreachable after 5:6"
 ---
 test-case: join stack
