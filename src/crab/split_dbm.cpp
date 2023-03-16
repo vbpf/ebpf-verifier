@@ -43,7 +43,16 @@ SplitDBM::vert_id SplitDBM::get_vert(variable_t v) {
  * used to be the template parameter of the DBM-based abstract domain to
  * represent a number. Number might not fit into Weight type.
  **/
-static SafeInt64DefaultParams::Weight convert_NtoW(const z_number& n, bool& overflow) {
+SafeInt64DefaultParams::Weight SafeInt64DefaultParams::convert_NtoW(const z_number& n, bool& overflow) {
+    overflow = false;
+    if (!n.fits_sint64()) {
+        overflow = true;
+        return 0;
+    }
+    return {n};
+}
+
+Z_NumberDefaultParams::Weight Z_NumberDefaultParams::convert_NtoW(const z_number& n, bool& overflow) {
     overflow = false;
     return {n};
 }
@@ -60,13 +69,13 @@ void SplitDBM::diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
     std::vector<std::pair<variable_t, Weight>> terms;
     bool overflow;
 
-    Weight residual(convert_NtoW(exp.constant_term(), overflow));
+    Weight residual(Params::convert_NtoW(exp.constant_term(), overflow));
     if (overflow) {
         return;
     }
 
     for (auto [y, n] : exp.variable_terms()) {
-        Weight coeff(convert_NtoW(n, overflow));
+        Weight coeff(Params::convert_NtoW(n, overflow));
         if (overflow) {
             continue;
         }
@@ -78,7 +87,7 @@ void SplitDBM::diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
             if (y_val.is_infinite()) {
                 return;
             }
-            residual += convert_NtoW(*(y_val.number()), overflow) * coeff;
+            residual += Params::convert_NtoW(*(y_val.number()), overflow) * coeff;
             if (overflow) {
                 continue;
             }
@@ -92,7 +101,7 @@ void SplitDBM::diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
                 }
                 unbounded_var = y;
             } else {
-                Weight ymax(convert_NtoW(*(y_val.number()), overflow));
+                Weight ymax(Params::convert_NtoW(*(y_val.number()), overflow));
                 if (overflow) {
                     continue;
                 }
@@ -122,13 +131,13 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
                                    std::vector<std::pair<variable_t, Weight>>& ubs) const {
     bool underflow, overflow;
 
-    Weight exp_ub = -convert_NtoW(exp.constant_term(), overflow);
+    Weight exp_ub = -Params::convert_NtoW(exp.constant_term(), overflow);
     if (overflow) {
         return;
     }
 
     // temporary hack
-    convert_NtoW(exp.constant_term() - 1, underflow);
+    Params::convert_NtoW(exp.constant_term() - 1, underflow);
     if (underflow) {
         // We don't like MIN either because the code will compute
         // minus MIN, and it will silently overflow.
@@ -142,7 +151,7 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
 
     std::vector<std::pair<std::pair<Weight, variable_t>, Weight>> pos_terms, neg_terms;
     for (auto [y, n] : exp.variable_terms()) {
-        Weight coeff(convert_NtoW(n, overflow));
+        Weight coeff(Params::convert_NtoW(n, overflow));
         if (overflow) {
             continue;
         }
@@ -155,7 +164,7 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
                 unbounded_lbvar = y;
                 unbounded_lbcoeff = coeff;
             } else {
-                Weight ymin(convert_NtoW(*y_lb.number(), overflow));
+                Weight ymin(Params::convert_NtoW(*y_lb.number(), overflow));
                 if (overflow) {
                     continue;
                 }
@@ -171,7 +180,7 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
                 unbounded_ubvar = y;
                 unbounded_ubcoeff = -coeff;
             } else {
-                Weight ymax(convert_NtoW(*y_ub.number(), overflow));
+                Weight ymax(Params::convert_NtoW(*y_ub.number(), overflow));
                 if (overflow) {
                     continue;
                 }
@@ -283,7 +292,7 @@ bool SplitDBM::add_univar_disequation(variable_t x, const number_t& n) {
     if (new_i.lb().is_finite()) {
         // strengthen lb
         bool overflow;
-        Weight lb_val = convert_NtoW(-(*new_i.lb().number()), overflow);
+        Weight lb_val = Params::convert_NtoW(-(*new_i.lb().number()), overflow);
         if (overflow) {
             return true;
         }
@@ -309,7 +318,7 @@ bool SplitDBM::add_univar_disequation(variable_t x, const number_t& n) {
     if (new_i.ub().is_finite()) {
         // strengthen ub
         bool overflow;
-        Weight ub_val = convert_NtoW(*new_i.ub().number(), overflow);
+        Weight ub_val = Params::convert_NtoW(*new_i.ub().number(), overflow);
         if (overflow) {
             return true;
         }
@@ -778,7 +787,7 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
     std::optional<Weight> lb_w, ub_w;
     bool overflow{};
     if (value_interval.lb().is_finite()) {
-        lb_w = convert_NtoW(-(*value_interval.lb().number()), overflow);
+        lb_w = Params::convert_NtoW(-(*value_interval.lb().number()), overflow);
         if (overflow) {
             operator-=(lhs);
             CRAB_LOG("zones-split", std::cout << "---" << lhs << ":=" << e << "\n" << *this << "\n");
@@ -787,7 +796,7 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
         }
     }
     if (value_interval.ub().is_finite()) {
-        ub_w = convert_NtoW(*value_interval.ub().number(), overflow);
+        ub_w = Params::convert_NtoW(*value_interval.ub().number(), overflow);
         if (overflow) {
             operator-=(lhs);
             CRAB_LOG("zones-split", std::cout << "---" << lhs << ":=" << e << "\n" << *this << "\n");
@@ -913,7 +922,7 @@ void SplitDBM::set(variable_t x, const interval_t& intv) {
     vert_id v = get_vert(x);
     bool overflow;
     if (intv.ub().is_finite()) {
-        Weight ub = convert_NtoW(*(intv.ub().number()), overflow);
+        Weight ub = Params::convert_NtoW(*(intv.ub().number()), overflow);
         if (overflow) {
             normalize();
             return;
@@ -922,7 +931,7 @@ void SplitDBM::set(variable_t x, const interval_t& intv) {
         g.set_edge(0, ub, v);
     }
     if (intv.lb().is_finite()) {
-        Weight lb = convert_NtoW(*(intv.lb().number()), overflow);
+        Weight lb = Params::convert_NtoW(*(intv.lb().number()), overflow);
         if (overflow) {
             normalize();
             return;
@@ -1133,10 +1142,10 @@ SplitDBM::Weight SplitDBM::eval_expression(const linear_expression_t& e, bool ov
         return {0};
     }
 
-    Weight res(convert_NtoW(e.constant_term(), overflow));
+    Weight res(Params::convert_NtoW(e.constant_term(), overflow));
     assert(!overflow);
     for (const auto& [variable, coefficient] : e.variable_terms()) {
-        Weight coef = convert_NtoW(coefficient, overflow);
+        Weight coef = Params::convert_NtoW(coefficient, overflow);
         if (overflow) {
             return Weight(0);
         }

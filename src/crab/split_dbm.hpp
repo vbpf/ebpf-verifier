@@ -63,14 +63,21 @@ namespace domains {
  * when reasoning about programs with wraparound semantics.
  **/
 
-struct SafeInt64DefaultParams {
+struct Z_NumberDefaultParams {
     using Weight = z_number;
     using graph_t = AdaptGraph;
+    static Weight convert_NtoW(const z_number& n, bool& overflow);
+};
+
+struct SafeInt64DefaultParams {
+    using Weight = safe_i64;
+    using graph_t = AdaptGraph;
+    static Weight convert_NtoW(const z_number& n, bool& overflow);
 };
 
 class SplitDBM final {
   public:
-    using Params = SafeInt64DefaultParams;
+    using Params = Z_NumberDefaultParams;
     using graph_t = typename Params::graph_t;
     using Weight = typename Params::Weight;
     using vert_id = typename graph_t::vert_id;
