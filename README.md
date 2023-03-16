@@ -18,7 +18,7 @@ sudo apt install libboost-filesystem-dev libboost-program-options-dev
 ### Dependencies from vanilla Windows
 
 * Install [git](https://git-scm.com/download/win)
-* Install [Visual Studio Build Tools 2019](https://aka.ms/vs/16/release/vs_buildtools.exe) and choose the "C++ build tools" workload (Visual Studio Build Tools 2019 has support for CMake Version 3.15).
+* Install [Visual Studio Build Tools 2022](https://aka.ms/vs/17/release/vs_buildtools.exe) and choose the "C++ build tools" workload (Visual Studio Build Tools 2022 has support for CMake Version 3.25).
 * Install [nuget.exe](https://www.nuget.org/downloads)
 
 ### Installation
