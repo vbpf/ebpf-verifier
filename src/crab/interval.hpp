@@ -444,6 +444,25 @@ class interval_t final {
 
     [[nodiscard]] interval_t AShr(const interval_t& x) const;
 
+    interval_t truncate_to_uint(bool is64) {
+        interval_t new_interval = *this;
+        if (!(*this <= interval_t::unsigned_int(is64))) {
+            if (auto size = finite_size()) {
+                auto llb = lb().number()->truncate_to_unsigned_finite_width(is64 ? 64 : 32);
+                auto lub = ub().number()->truncate_to_unsigned_finite_width(is64 ? 64 : 32);
+                if ((llb <= lub) && (is64 ? size->fits_uint64() : size->fits_uint32())) {
+                    // Interval can be accurately represented in 64 bits.
+                    new_interval = interval_t{llb, lub};
+                } else {
+                    new_interval = interval_t::unsigned_int(is64);
+                }
+            } else {
+                new_interval = interval_t::unsigned_int(is64);
+            }
+        }
+        return new_interval;
+    }
+
     static const interval_t nonnegative_int(bool is64) {
         if (is64) {
             return {0, number_t{std::numeric_limits<int64_t>::max()}};
@@ -463,6 +482,20 @@ class interval_t final {
             return {number_t{std::numeric_limits<int64_t>::min()}, number_t{std::numeric_limits<int64_t>::max()}};
         } else {
             return {number_t{std::numeric_limits<int32_t>::min()}, number_t{std::numeric_limits<int32_t>::max()}};
+        }
+    }
+    static const interval_t unsigned_int(bool is64) {
+        if (is64) {
+            return {0, number_t{std::numeric_limits<uint64_t>::max()}};
+        } else {
+            return {0, number_t{std::numeric_limits<uint32_t>::max()}};
+        }
+    }
+    static const interval_t unsigned_high(bool is64) {
+        if (is64) {
+            return {number_t{std::numeric_limits<int64_t>::max()} + 1, number_t{std::numeric_limits<uint64_t>::max()}};
+        } else {
+            return {number_t{std::numeric_limits<int32_t>::max()} + 1, number_t{std::numeric_limits<uint32_t>::max()}};
         }
     }
 }; //  class interval
@@ -489,6 +522,8 @@ inline interval_t trim_interval(const interval_t& i, const interval_t& j) {
             return interval_t(bound_t{*c + 1}, i.ub());
         } else if (i.ub() == bound_t{*c}) {
             return interval_t(i.lb(), bound_t{*c - 1});
+        } else if (i.is_top() && (*c == 0)) {
+            return {1, number_t{std::numeric_limits<uint64_t>::max()}};
         }
     }
     return i;

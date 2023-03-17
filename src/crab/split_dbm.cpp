@@ -1035,7 +1035,7 @@ void SplitDBM::forget(const variable_vector_t& variables) {
     normalize();
 }
 
-static std::string to_string(variable_t vd, variable_t vs, const SafeInt64DefaultParams::Weight& w, bool eq) {
+static std::string to_string(variable_t vd, variable_t vs, const SplitDBM::Params::Weight& w, bool eq) {
     std::stringstream elem;
     if (eq) {
         if (w.operator>(0))
@@ -1244,8 +1244,14 @@ static interval_t get_interval(const SplitDBM::vert_map_t& m, const SplitDBM::gr
         return interval_t::top();
     }
     SplitDBM::vert_id v = it->second;
-    bound_t lb = (r.elem(v, 0)) ? (-number_t(r.edge_val(v, 0))).cast_to_signed_finite_width(finite_width) : bound_t::minus_infinity();
-    bound_t ub = (r.elem(0, v)) ? number_t(r.edge_val(0, v)).cast_to_signed_finite_width(finite_width) : bound_t::plus_infinity();
+    bound_t lb = bound_t::minus_infinity();
+    bound_t ub = bound_t::plus_infinity();
+    if (r.elem(v, 0))
+        lb = x.is_unsigned() ? (-number_t(r.edge_val(v, 0))).truncate_to_unsigned_finite_width(finite_width)
+                             : (-number_t(r.edge_val(v, 0))).truncate_to_signed_finite_width(finite_width);
+    if (r.elem(0, v))
+        ub = x.is_unsigned() ? number_t(r.edge_val(0, v)).truncate_to_unsigned_finite_width(finite_width)
+                             : number_t(r.edge_val(0, v)).truncate_to_signed_finite_width(finite_width);
 
     // [0, 4294967295] with finite_width = 32 results in [0, -1] which would give bottom, whereas we want to
     // retain [0, 4294967295].  cast_to_signed_finite_width always gives signed numbers, but we can try unsigned.

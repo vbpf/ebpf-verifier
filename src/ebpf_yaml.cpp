@@ -257,13 +257,17 @@ static vector<T> vector_of(const std::vector<uint8_t>& bytes) {
     return {(T*)data, (T*)(data + size)};
 }
 
-template <typename T>
+template <typename TS, typename TU>
 void add_stack_variable(std::set<std::string>& more, int& offset, const std::vector<uint8_t>& memory_bytes) {
-    T value;
-    memcpy(&value, memory_bytes.data() + offset + memory_bytes.size() - EBPF_STACK_SIZE, sizeof(T));
-    more.insert("s[" + std::to_string(offset) + "..." + std::to_string(offset + sizeof(T) - 1) +
-                "].value=" + std::to_string(value));
-    offset += sizeof(T);
+    TS svalue;
+    TU uvalue;
+    memcpy(&svalue, memory_bytes.data() + offset + memory_bytes.size() - EBPF_STACK_SIZE, sizeof(TS));
+    memcpy(&uvalue, memory_bytes.data() + offset + memory_bytes.size() - EBPF_STACK_SIZE, sizeof(TU));
+    more.insert("s[" + std::to_string(offset) + "..." + std::to_string(offset + sizeof(TS) - 1) +
+                "].svalue" + "=" + std::to_string(svalue));
+    more.insert("s[" + std::to_string(offset) + "..." + std::to_string(offset + sizeof(TU) - 1) +
+                "].uvalue" + "=" + std::to_string(uvalue));
+    offset += sizeof(TS);
 }
 
 string_invariant stack_contents_invariant(const std::vector<uint8_t>& memory_bytes) {
@@ -277,16 +281,16 @@ string_invariant stack_contents_invariant(const std::vector<uint8_t>& memory_byt
 
     int offset = EBPF_STACK_SIZE - (int)memory_bytes.size();
     if (offset % 2 != 0) {
-        add_stack_variable<uint8_t>(more, offset, memory_bytes);
+        add_stack_variable<int8_t, uint8_t>(more, offset, memory_bytes);
     }
     if (offset % 4 != 0) {
-        add_stack_variable<uint16_t>(more, offset, memory_bytes);
+        add_stack_variable<int16_t, uint16_t>(more, offset, memory_bytes);
     }
     if (offset % 8 != 0) {
-        add_stack_variable<uint32_t>(more, offset, memory_bytes);
+        add_stack_variable<int32_t, uint32_t>(more, offset, memory_bytes);
     }
     while (offset < EBPF_STACK_SIZE) {
-        add_stack_variable<int64_t>(more, offset, memory_bytes);
+        add_stack_variable<int64_t, uint64_t>(more, offset, memory_bytes);
     }
 
     return string_invariant(more);
@@ -335,13 +339,13 @@ ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memo
             ebpf_analyze_program_for_test(null_stream, prog, pre_invariant, info, options);
 
         for (const std::string& invariant : actual_last_invariant.value()) {
-            if (invariant.rfind("r0.value=", 0) == 0) {
+            if (invariant.rfind("r0.svalue=", 0) == 0) {
                 int64_t lb, ub;
-                if (invariant[9] == '[') {
-                    lb = std::stoull(invariant.substr(10));
-                    ub = std::stoull(invariant.substr(invariant.find(",", 10) + 1));
+                if (invariant[10] == '[') {
+                    lb = std::stoll(invariant.substr(11));
+                    ub = std::stoll(invariant.substr(invariant.find(",", 11) + 1));
                 } else {
-                    lb = ub = std::stoull(invariant.substr(9));
+                    lb = ub = std::stoll(invariant.substr(10));
                 }
                 return {result, crab::interval_t(lb, ub)};
             }

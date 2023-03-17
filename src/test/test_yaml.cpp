@@ -21,6 +21,7 @@
 
 YAML_CASE("test-data/add.yaml")
 YAML_CASE("test-data/assign.yaml")
+YAML_CASE("test-data/bitop.yaml")
 YAML_CASE("test-data/call.yaml")
 YAML_CASE("test-data/divmod.yaml")
 YAML_CASE("test-data/full64.yaml")

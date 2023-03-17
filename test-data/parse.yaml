@@ -2,79 +2,79 @@
 # SPDX-License-Identifier: MIT
 ---
 test-case: "parse 0 invariant"
-pre: ["r1.value=0"]
+pre: ["r1.svalue=0", "r1.uvalue=0"]
 code:
   <start>: r1 = r1
-post: ["r1.value=0"]
+post: ["r1.svalue=0", "r1.uvalue=0"]
 ---
 test-case: "parse -1 invariant"
-pre: ["r1.value=-1"]
+pre: ["r1.svalue=-1", "r1.uvalue=18446744073709551615"]
 code:
   <start>: r1 = r1
-post: ["r1.value=-1"]
+post: ["r1.svalue=-1", "r1.uvalue=18446744073709551615"]
 ---
 test-case: "parse INT_MIN+1 invariant"  # smallest number that does not underflow
-pre: ["r1.value=-9223372036854775807"]
+pre: ["r1.svalue=-9223372036854775807", "r1.uvalue=9223372036854775809"]
 code:
   <start>: r1 = r1
-post: ["r1.value=-9223372036854775807"]
+post: ["r1.svalue=-9223372036854775807", "r1.uvalue=9223372036854775809"]
 ---
 test-case: "parse INT_MAX-6 invariant"  # largest number that does not overflow
-pre: ["r1.value=9223372036854775801"]
+pre: ["r1.svalue=9223372036854775801", "r1.uvalue=9223372036854775801"]
 code:
   <start>: r1 = r1
-post: ["r1.value=9223372036854775801"]
+post: ["r1.svalue=9223372036854775801", "r1.uvalue=9223372036854775801"]
 ---
 test-case: "parse -1 code"  # smallest number that does not underflow
 pre: []
 code:
   <start>: r1 = -1
-post: ["r1.type=number", "r1.value=-1"]
+post: ["r1.type=number", "r1.svalue=-1", "r1.uvalue=18446744073709551615"]
 ---
 test-case: "parse unsigned -1 code"  # smallest number that does not underflow
 pre: []
 code:
   <start>: r1 = 18446744073709551615ll
-post: ["r1.type=number", "r1.value=-1"]
+post: ["r1.type=number", "r1.svalue=-1", "r1.uvalue=18446744073709551615"]
 ---
 test-case: "parse INT_MIN+1 code"  # smallest number that does not underflow
 pre: []
 code:
   <start>: r1 = -9223372036854775807ll
-post: ["r1.type=number", "r1.value=-9223372036854775807"]
+post: ["r1.type=number", "r1.svalue=-9223372036854775807", "r1.uvalue=9223372036854775809"]
 ---
 test-case: "parse unsigned INT_MIN+1 code"  # smallest number that does not underflow
 pre: []
 code:
   <start>: r1 = 9223372036854775809ll
-post: ["r1.type=number", "r1.value=-9223372036854775807"]
+post: ["r1.type=number", "r1.svalue=-9223372036854775807", "r1.uvalue=9223372036854775809"]
 ---
 test-case: "parse INT_MAX-6 code"
 pre: []
 code:
   <start>: r1 = 9223372036854775801ll
-post: ["r1.type=number", "r1.value=9223372036854775801"]
+post: ["r1.type=number", "r1.svalue=9223372036854775801", "r1.uvalue=9223372036854775801"]
 ---
 test-case: "parse INT_MAX code" # largest number that does not overflow
 pre: []
 code:
   <start>: r1 = 9223372036854775807ll
-post: ["r1.type=number", "r1.value=9223372036854775807"]
+post: ["r1.type=number", "r1.svalue=9223372036854775807", "r1.uvalue=9223372036854775807"]
 ---
 test-case: "parse short hex"
 pre: []
 code:
   <start>: r1 = 0x10
-post: ["r1.type=number", "r1.value=16"]
+post: ["r1.type=number", "r1.svalue=16", "r1.uvalue=16"]
 ---
 test-case: "parse 32-bit hex for negative number"
 pre: []
 code:
   <start>: r1 = 0xffffffff
-post: ["r1.type=number", "r1.value=-1"]
+post: ["r1.type=number", "r1.svalue=-1", "r1.uvalue=18446744073709551615"]
 ---
 test-case: "parse 64-bit hex for negative number"
 pre: []
 code:
   <start>: r1 = 0xffffffffffffffffll
-post: ["r1.type=number", "r1.value=-1"]
+post: ["r1.type=number", "r1.svalue=-1", "r1.uvalue=18446744073709551615"]

@@ -426,7 +426,7 @@ void clear_global_state() {
 
 void array_domain_t::initialize_numbers(int lb, int width) {
     num_bytes.reset(lb, width);
-    lookup_array_map(data_kind_t::values).mk_cell(lb, width);
+    lookup_array_map(data_kind_t::svalues).mk_cell(lb, width);
 }
 
 std::ostream& operator<<(std::ostream& o, offset_map_t& m) {
@@ -476,6 +476,13 @@ kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t
         // Forget the scalars from the numerical domain
         for (auto const& c : cells) {
             inv -= c.get_scalar(kind);
+
+            // Forget signed and unsigned values together.
+            if (kind == data_kind_t::svalues) {
+                inv -= c.get_scalar(data_kind_t::uvalues);
+            } else if (kind == data_kind_t::uvalues) {
+                inv -= c.get_scalar(data_kind_t::svalues);
+            }
         }
         // Remove the cells. If needed again they they will be re-created.
         offset_map -= cells;
@@ -504,7 +511,7 @@ int array_domain_t::min_all_num_size(const NumAbsDomain& inv, variable_t offset)
 
 // Get one byte of a value.
 std::optional<uint8_t> get_value_byte(NumAbsDomain& inv, offset_t o, int width) {
-    variable_t v = variable_t::cell_var(data_kind_t::values, (o / width) * width, width);
+    variable_t v = variable_t::cell_var(data_kind_t::svalues, (o / width) * width, width);
     std::optional<number_t> t = inv.eval_interval(v).singleton();
     if (!t) {
         return {};
@@ -533,7 +540,7 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
         if (auto cell = lookup_array_map(kind).get_cell(o, size)) {
             return cell->get_scalar(kind);
         }
-        if (kind == data_kind_t::values) {
+        if ((kind == data_kind_t::svalues) || (kind == data_kind_t::uvalues)) {
             // Copy bytes into result_buffer, taking into account that the
             // bytes might be in different stack variables and might be unaligned.
             uint8_t result_buffer[8];
@@ -574,7 +581,7 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
                 }
                 if (size == 8) {
                     uint64_t b = *(uint64_t*)result_buffer;
-                    return b;
+                    return (kind == data_kind_t::uvalues) ? number_t(b) : number_t((int64_t)b);
                 }
             }
         }
