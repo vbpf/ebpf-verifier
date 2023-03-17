@@ -3,7 +3,7 @@
 ---
 test-case: add immediate to large singleton number
 
-pre: ["r0.type=number", "r0.value=2147483647"]
+pre: ["r0.type=number", "r0.svalue=2147483647", "r0.uvalue=2147483647"]
 
 code:
   <start>: |
@@ -11,11 +11,12 @@ code:
 
 post:
   - r0.type=number
-  - r0.value=2147483649
+  - r0.svalue=2147483649
+  - r0.uvalue=2147483649
 ---
 test-case: add immediate to large number range
 
-pre: ["r0.type=number", "r0.value=[2147483645, 2147483647]"]
+pre: ["r0.type=number", "r0.svalue=[2147483645, 2147483647]", "r0.uvalue=[2147483645, 2147483647]"]
 
 code:
   <start>: |
@@ -23,7 +24,9 @@ code:
 
 post:
   - r0.type=number
-  - r0.value=[2147483649, 2147483651]
+  - r0.svalue=[2147483649, 2147483651]
+  - r0.uvalue=[2147483649, 2147483651]
+  - r0.svalue=r0.uvalue
 ---
 test-case: add immediate to unknown number
 
@@ -47,7 +50,7 @@ post: ["r1.type=number", "r2.type=number"]
 ---
 test-case: add immediate to singleton number
 
-pre: ["r1.type=number", "r1.value=5"]
+pre: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5"]
 
 code:
   <start>: |
@@ -55,11 +58,13 @@ code:
 
 post:
   - r1.type=number
-  - r1.value=8
+  - r1.svalue=8
+  - r1.uvalue=8
 ---
 test-case: add constant register to singleton number
 
-pre: ["r1.type=number", "r1.value=5", "r2.type=number", "r2.value=7"]
+pre: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5",
+      "r2.type=number", "r2.svalue=7", "r2.uvalue=7"]
 
 code:
   <start>: |
@@ -67,14 +72,16 @@ code:
 
 post:
   - r1.type=number
-  - r1.value=12
+  - r1.svalue=12
+  - r1.uvalue=12
   - r2.type=number
-  - r2.value=7
+  - r2.svalue=7
+  - r2.uvalue=7
 
 ---
 test-case: add immediate to finite interval number
 
-pre: ["r1.type=number", "r1.value=[5, 10]"]
+pre: ["r1.type=number", "r1.svalue=[5, 10]", "r1.uvalue=[5, 10]"]
 
 code:
   <start>: |
@@ -82,12 +89,15 @@ code:
 
 post:
   - r1.type=number
-  - r1.value=[10, 15]
+  - r1.svalue=[10, 15]
+  - r1.uvalue=[10, 15]
+  - r1.svalue=r1.uvalue
 
 ---
 test-case: add constant register number to finite interval number
 
-pre: ["r1.type=number", "r1.value=[5, 10]", "r2.type=number", "r2.value=5"]
+pre: ["r1.type=number", "r1.svalue=[5, 10]", "r1.uvalue=[5, 10]",
+      "r2.type=number", "r2.svalue=5", "r2.uvalue=5"]
 
 code:
   <start>: |
@@ -95,17 +105,22 @@ code:
 
 post:
   - r1.type=number
-  - r1.value=[10, 15]
+  - r1.svalue=[10, 15]
+  - r1.uvalue=[10, 15]
   - r2.type=number
-  - r2.value=5
-  - r1.value-r2.value<=10
-  - r2.value-r1.value<=-5
+  - r2.svalue=5
+  - r2.uvalue=5
+  - r1.svalue=r1.uvalue
+  - r1.svalue-r2.svalue<=10
+  - r1.uvalue-r2.svalue<=10
+  - r2.svalue-r1.svalue<=-5
+  - r2.svalue-r1.uvalue<=-5
 
 ---
 test-case: add interval number register to constant register pointer
 
-pre: ["r2.type=packet", "r2.packet_offset=0", "r2.value=[7, 11]",
-      "r7.type=number", "r7.value=[3, 5]"]
+pre: ["r2.type=packet", "r2.packet_offset=0", "r2.svalue=[7, 11]", "r2.uvalue=[7, 11]",
+      "r7.type=number", "r7.svalue=[3, 5]", "r7.uvalue=[3, 5]"]
 
 code:
   <start>: |
@@ -114,20 +129,27 @@ code:
 post:
   - r2.type=packet
   - r2.packet_offset=[3, 5]
-  - r2.value=[10, 16]
+  - r2.svalue=[10, 16]
+  - r2.uvalue=[10, 16]
+  - r2.svalue=r2.uvalue
   - r7.type=number
-  - r7.value=[3, 5]
-  - r7.value-r2.value<=-7
-  - r2.value-r7.value<=11
-  - r2.packet_offset-r2.value<=-7
-  - r2.value-r2.packet_offset<=11
-  - r2.packet_offset=r7.value
+  - r7.svalue=[3, 5]
+  - r7.uvalue=[3, 5]
+  - r7.svalue-r2.svalue<=-7
+  - r7.svalue-r2.uvalue<=-7
+  - r2.svalue-r7.svalue<=11
+  - r2.uvalue-r7.svalue<=11
+  - r2.packet_offset-r2.svalue<=-7
+  - r2.packet_offset-r2.uvalue<=-7
+  - r2.svalue-r2.packet_offset<=11
+  - r2.uvalue-r2.packet_offset<=11
+  - r2.packet_offset=r7.svalue
 
 ---
 test-case: add constant register pointer to interval number
 
-pre: ["r2.type=packet", "r2.packet_offset=0", "r2.value=[7, 11]",
-      "r7.type=number", "r7.value=[3, 5]"]
+pre: ["r2.type=packet", "r2.packet_offset=0", "r2.svalue=[7, 11]", "r2.uvalue=[7, 11]",
+      "r7.type=number", "r7.svalue=[3, 5]", "r7.uvalue=[3, 5]"]
 
 code:
   <start>: |
@@ -136,13 +158,20 @@ code:
 post:
   - r7.type=packet
   - r7.packet_offset=[3, 5]
-  - r7.value=[10, 16]
+  - r7.svalue=[10, 16]
+  - r7.uvalue=[10, 16]
+  - r7.svalue=r7.uvalue
   - r2.type=packet
   - r2.packet_offset=0
-  - r2.value=[7, 11]
-  - r2.value-r7.value<=-3
-  - r7.value-r2.value<=5
+  - r2.svalue=[7, 11]
+  - r2.uvalue=[7, 11]
+  - r2.svalue-r7.svalue<=-3
+  - r2.svalue-r7.uvalue<=-3
+  - r7.svalue-r2.svalue<=5
+  - r7.uvalue-r2.svalue<=5
   - r2.packet_offset-r7.packet_offset<=-3
   - r7.packet_offset-r2.packet_offset<=5
-  - r7.packet_offset-r7.value<=-7
-  - r7.value-r7.packet_offset<=11
+  - r7.packet_offset-r7.svalue<=-7
+  - r7.packet_offset-r7.uvalue<=-7
+  - r7.svalue-r7.packet_offset<=11
+  - r7.uvalue-r7.packet_offset<=11

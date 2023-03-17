@@ -11,22 +11,32 @@ code:
 
 post: ["r1.type=number"]
 ---
-test-case: negation of singleton number
+test-case: negation of 32-bit singleton number
 
-pre: ["r1.type=number", "r1.value=5"]
+pre: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5"]
+
+code:
+  <start>: |
+    w1 = -w1
+
+post: ["r1.type=number", "r1.svalue=4294967291", "r1.uvalue=4294967291"]
+---
+test-case: negation of 64-bit singleton number
+
+pre: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5"]
 
 code:
   <start>: |
     r1 = -r1
 
-post: ["r1.type=number", "r1.value=-5"]
+post: ["r1.type=number", "r1.svalue=-5", "r1.uvalue=18446744073709551611"]
 ---
 test-case: negation of finite interval number
 
-pre: ["r1.type=number", "r1.value=[-5, 5]"]
+pre: ["r1.type=number", "r1.svalue=[-5, 5]"]
 
 code:
   <start>: |
     r1 = -r1
 
-post: ["r1.type=number", "r1.value=[-5, 5]"]
+post: ["r1.type=number", "r1.svalue=[-5, 5]"]

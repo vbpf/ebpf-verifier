@@ -27,7 +27,8 @@ using crab::domains::NumAbsDomain;
 using crab::data_kind_t;
 
 struct reg_pack_t {
-    variable_t value;
+    variable_t svalue; // int64_t value.
+    variable_t uvalue; // uint64_t value.
     variable_t ctx_offset;
     variable_t map_fd;
     variable_t packet_offset;
@@ -40,7 +41,8 @@ struct reg_pack_t {
 
 reg_pack_t reg_pack(int i) {
     return {
-        variable_t::reg(data_kind_t::values, i),
+        variable_t::reg(data_kind_t::svalues, i),
+        variable_t::reg(data_kind_t::uvalues, i),
         variable_t::reg(data_kind_t::ctx_offsets, i),
         variable_t::reg(data_kind_t::map_fds, i),
         variable_t::reg(data_kind_t::packet_offsets, i),
@@ -93,11 +95,11 @@ static linear_constraint_t assume_cst_offsets_reg(Condition::Op op, bool is64, v
 }
 
 static std::vector<linear_constraint_t> assume_bit_cst_interval(const NumAbsDomain& inv, Condition::Op op, bool is64,
-                                                                variable_t dst_value, crab::interval_t src_interval) {
+                                                                variable_t dst_uvalue, crab::interval_t src_interval) {
     using namespace crab::dsl_syntax;
     using Op = Condition::Op;
 
-    auto dst_interval = inv.eval_interval(dst_value);
+    auto dst_interval = inv.eval_interval(dst_uvalue);
     std::optional<number_t> dst_n = dst_interval.singleton();
     if (!dst_n || !dst_n.value().fits_cast_to_int64())
         return {};
@@ -119,8 +121,8 @@ static std::vector<linear_constraint_t> assume_bit_cst_interval(const NumAbsDoma
     return {(result) ? linear_constraint_t::TRUE() : linear_constraint_t::FALSE()};
 }
 
-static std::vector<linear_constraint_t> assume_signed_cst_interval(const NumAbsDomain& inv, Condition::Op op,
-                                                                   bool is64, variable_t dst_value,
+static std::vector<linear_constraint_t> assume_signed_cst_interval(const NumAbsDomain& inv, Condition::Op op, bool is64,
+                                                                   variable_t dst_svalue, variable_t dst_uvalue,
                                                                    crab::interval_t src_interval) {
     using namespace crab::dsl_syntax;
     using Op = Condition::Op;
@@ -132,7 +134,7 @@ static std::vector<linear_constraint_t> assume_signed_cst_interval(const NumAbsD
         return {};
     int64_t src_int_value = src_n.value().cast_to_sint64();
 
-    auto dst_interval = inv.eval_interval(dst_value);
+    auto dst_interval = inv.eval_interval(dst_svalue);
     std::optional<number_t> dst_lb = dst_interval.lb().number();
     std::optional<number_t> dst_ub = dst_interval.ub().number();
     if (!is64) {
@@ -186,27 +188,60 @@ static std::vector<linear_constraint_t> assume_signed_cst_interval(const NumAbsD
         return {};
     } else {
         switch (op) {
-        case Op::EQ: return {dst_value == src_int_value};
-        case Op::NE: return {dst_value != src_int_value};
-        case Op::SGE: return {dst_value >= src_int_value};
-        case Op::SLE: return {dst_value <= src_int_value};
-        case Op::SGT: return {dst_value > src_int_value};
-        case Op::SLT: return {dst_value < src_int_value};
+        case Op::EQ: return {dst_svalue == src_int_value};
+        case Op::NE: return {dst_svalue != src_int_value};
+        case Op::SGE: return {dst_svalue >= src_int_value};
+        case Op::SLE: return {dst_svalue <= src_int_value};
+        case Op::SGT: return {dst_svalue > src_int_value};
+        case Op::SLT: return {dst_svalue < src_int_value};
         default: throw std::exception();
         }
     }
 }
 
 static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAbsDomain& inv, Condition::Op op,
-                                                                     bool is64, variable_t left,
-                                                                     const linear_expression_t& right) {
+                                                                     bool is64, variable_t left_svalue, variable_t left_uvalue,
+                                                                     const linear_expression_t& right_svalue,
+                                                                     const linear_expression_t& right_uvalue) {
     using crab::interval_t;
 
-    interval_t left_interval = inv.eval_interval(left);
-    interval_t right_interval = inv.eval_interval(right);
+    interval_t left_interval = inv.eval_interval(left_uvalue);
+    interval_t left_interval_low = left_interval;
+    interval_t left_interval_high = interval_t::bottom();
+    if (left_interval.is_top()) {
+        left_interval = inv.eval_interval(left_svalue);
+        if (!left_interval.is_top()) {
+            // The interval is TOP as an unsigned interval but is represented precisely as a signed interval,
+            // so split into two unsigned intervals that can be treated separately.
+            left_interval_low = interval_t(0, left_interval.ub()).truncate_to_uint(true);
+            left_interval_high = interval_t(left_interval.lb(), -1).truncate_to_uint(true);
+        }
+    }
+
+    interval_t right_interval = inv.eval_interval(right_uvalue);
     for (interval_t* interval : {&left_interval, &right_interval}) {
-        if (!(*interval <= interval_t::signed_int(true))) {
-            *interval = interval_t::signed_int(true);
+        if (!(*interval <= interval_t::unsigned_int(true))) {
+            *interval = interval->truncate_to_uint(true);
+        }
+    }
+
+    // Handle uvalue != right.
+    if (op == Condition::Op::NE) {
+        if (auto rn = right_interval.singleton()) {
+            using namespace crab::dsl_syntax;
+            if (rn == left_interval.truncate_to_uint(is64).lb().number()) {
+                // NE lower bound is same as GT lower bound.
+                op = Condition::Op::GT;
+                right_interval = interval_t{left_interval.lb()};
+            } else if (rn == left_interval.ub().number()) {
+                // NE upper bound is same as LT lower bound.
+                op = Condition::Op::LT;
+                right_interval = interval_t{left_interval.ub()};
+            } else {
+                return {};
+            }
+        } else {
+            return {};
         }
     }
 
@@ -220,75 +255,166 @@ static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAb
             // fallthrough as 64bit, including deduction of relational information
         } else {
             for (interval_t* interval : {&left_interval, &right_interval}) {
-                if (!(*interval <= interval_t::signed_int(false))) {
-                    if (auto as_num = interval->singleton()) {
-                        auto num = (int32_t)(as_num->cast_to_uint64() & 0xffffffff);
-                        *interval = interval_t{crab::bound_t{num}};
-                    } else {
-                        *interval = interval_t::signed_int(false);
-                    }
+                if (!(*interval <= interval_t::unsigned_int(false))) {
+                    *interval = interval->truncate_to_uint(false);
                 }
             }
             // continue as 32bit
         }
     }
 
-    if ((left_interval & right_interval).is_bottom() || (strict && (left_interval & right_interval).is_singleton())) {
-        auto llb = left_interval.lb();
-        auto lub = left_interval.ub();
-        auto rlb = right_interval.lb();
-        auto rub = right_interval.ub();
-        if ((left_interval <= interval_t::nonnegative_int(is64) && right_interval <= interval_t::nonnegative_int(is64))
-         || (left_interval <= interval_t::negative_int(is64) && right_interval <= interval_t::negative_int(is64))) {
-            if (is_lt  && (strict ? (llb >= rub) : (llb >  rub)))
-                return {linear_constraint_t::FALSE()};
-            if (!is_lt && (strict ? (lub <= rlb) : (lub <  rlb)))
-                return {linear_constraint_t::FALSE()};
+    using namespace crab::dsl_syntax;
+    auto llb = left_interval.lb();
+    auto lub = left_interval.ub();
+    auto rlb = right_interval.lb();
+    auto rub = right_interval.ub();
+    if ((left_interval <= interval_t::nonnegative_int(is64) && right_interval <= interval_t::nonnegative_int(is64)) ||
+        (left_interval <= interval_t::unsigned_high(is64) && right_interval <= interval_t::unsigned_high(is64))) {
+        // Both sides are entirely in the same half of the address space so we can try a direct comparison.
+        if (is_lt && (strict ? (llb >= rub) : (llb > rub)))
+            return {linear_constraint_t::FALSE()};
+        if (!is_lt && (strict ? (lub <= rlb) : (lub < rlb)))
+            return {linear_constraint_t::FALSE()};
+    }
+    auto lllb = left_interval_low.truncate_to_uint(is64).lb();
+    auto llub = left_interval_low.truncate_to_uint(is64).ub();
+    auto lhlb = left_interval_high.truncate_to_uint(is64).lb();
+    auto lhub = left_interval_high.truncate_to_uint(is64).ub();
+
+    if (is64) {
+        if (!is_lt && (right_interval <= interval_t::nonnegative_int(is64)) && (strict ? (llub <= rlb) : (llub < rlb))) {
+            // The low interval is out of range.
+            if (strict)
+                return {left_uvalue > right_uvalue, left_uvalue >= *lhlb.number(),
+                        left_uvalue <= std::numeric_limits<uint64_t>::max(), left_svalue < 0};
+            else
+                return {left_uvalue >= right_uvalue, left_uvalue >= *lhlb.number(),
+                        left_uvalue <= std::numeric_limits<uint64_t>::max(), left_svalue < 0};
         }
-        if (is64) {
-            using namespace crab::dsl_syntax;
-            if (!is_lt && lub <= rlb) {
-                return {number_t{0} > left};
-            } else if (is_lt && llb >= rub) {
-                return {number_t{0} <= left};
-            }
+        if (is_lt && (right_interval <= interval_t::nonnegative_int(is64)) && (strict ? (lllb >= rub) : (lllb > rub))) {
+            // The high interval is out of range.
+            auto lsub = inv.eval_interval(left_svalue).ub();
+            if (auto lsubn = lsub.number())
+                return {left_uvalue >= 0,
+                        ((strict) ? left_uvalue < right_uvalue : left_uvalue <= right_uvalue),
+                        left_uvalue <= *lsub.number(),
+                        left_svalue >= 0};
+            else
+                return {left_uvalue >= 0,
+                        ((strict) ? left_uvalue < right_uvalue : left_uvalue <= right_uvalue),
+                        left_svalue >= 0};
+        }
+        if (is_lt && (right_interval <= interval_t::unsigned_high(is64)) && (strict ? (lhlb >= rub) : (lhlb > rub))) {
+            // The high interval is out of range.
+            auto lsub = inv.eval_interval(left_svalue).ub();
+            if (auto lsubn = lsub.number())
+                return {left_uvalue >= 0,
+                        ((strict) ? left_uvalue < *rub.number() : left_uvalue <= *rub.number()),
+                        left_uvalue <= *lsub.number(),
+                        left_svalue >= 0};
+            else
+                return {left_uvalue >= 0,
+                        ((strict) ? left_uvalue < *rub.number() : left_uvalue <= *rub.number()),
+                        left_svalue >= 0};
+        }
+    } else {
+        // 32-bit compare.
+        if (is_lt && (right_interval <= interval_t::nonnegative_int(is64)) &&
+            (strict ? (lllb >= rub) : (lllb > rub))) {
+            // The high interval is out of range.
+            if (strict)
+                return {left_uvalue >= 0, left_uvalue < right_uvalue, left_svalue >= 0};
+            else
+                return {left_uvalue >= 0, left_uvalue <= right_uvalue, left_svalue >= 0};
         }
     }
-
-    const interval_t side_interval = is_lt ? interval_t::nonnegative_int(is64)
-                                           : interval_t::negative_int(is64);
-
-    const interval_t other_side_interval = is_lt ? interval_t::negative_int(is64)
-                                                 : interval_t::nonnegative_int(is64);
-
-    if (left_interval <= other_side_interval && right_interval <= side_interval) {
+    if (!is_lt && (strict ? (lub <= rlb) : (lub < rlb))) {
+        // Left unsigned interval is lower than right unsigned interval.
+        return {number_t{0} > left_uvalue};
+    } else if (is_lt && (strict ? (llb >= rub) : (llb > rub))) {
+        // Left unsigned interval is higher than right unsigned interval.
         return {linear_constraint_t::FALSE()};
     }
 
-    if (left_interval <= side_interval && right_interval <= other_side_interval) {
-        // This part is not an over approximation; it is exact.
-        return {linear_constraint_t::TRUE()};
-    }
-
     if (is64) {
-        // only in the 64bit case we can derive relational information
-        if (right_interval <= side_interval) {
-            using namespace crab::dsl_syntax;
-            if (is_lt) {
-                return {number_t{0} <= left, strict ? (left < right) : (left <= right)};
+        using namespace crab::dsl_syntax;
+        if (is_lt) {
+            if (right_interval <= interval_t::signed_int(is64)) {
+                // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX].
+                return {number_t{0} <= left_uvalue, strict ? (left_uvalue < right_uvalue) : (left_uvalue <= right_uvalue),
+                        number_t{0} <= left_svalue, strict ? (left_svalue < right_svalue) : (left_svalue <= right_svalue)};
+            } else if (left_interval <= interval_t::unsigned_high(is64) && right_interval <= interval_t::unsigned_high(is64)) {
+                // Interval can be represented as both an svalue and a uvalue since it fits in [INT_MAX+1, UINT_MAX].
+                return {
+                    number_t{0} <= left_uvalue,
+                    strict ? (left_uvalue < right_uvalue) : (left_uvalue <= right_uvalue),
+                    strict ? (left_svalue < right_svalue) : (left_svalue <= right_svalue)};
+            } else if (left_interval == interval_t::unsigned_int(is64)) {
+                // Interval can only be represented as a uvalue.
+                return {strict ? (left_uvalue < right_uvalue) : (left_uvalue <= right_uvalue)};
             } else {
-                return {number_t{0} > left, strict ? (left > right) : (left >= right)};
+                // Interval can only be represented as a uvalue.
+                return {number_t{0} <= left_uvalue,
+                        strict ? (left_uvalue < right_uvalue) : (left_uvalue <= right_uvalue),
+                        left_uvalue <= std::numeric_limits<uint64_t>::max()};
+            }
+        } else {
+            if (right_interval <= interval_t::unsigned_high(is64)) {
+                // Interval can be represented as both an svalue and a uvalue since it fits in [INT_MAX+1, UINT_MAX].
+                return {number_t{0} <= left_uvalue,
+                        strict ? (left_uvalue > right_uvalue) : (left_uvalue >= right_uvalue),
+                        strict ? (left_svalue > right_svalue) : (left_svalue >= right_svalue),
+                        left_uvalue <= std::numeric_limits<uint64_t>::max()};
+            } else if (left_interval <= interval_t::nonnegative_int(is64) && right_interval <= interval_t::nonnegative_int(is64)) {
+                // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX].
+                return {number_t{0} <= left_uvalue,
+                        strict ? (left_uvalue > right_uvalue) : (left_uvalue >= right_uvalue),
+                        strict ? (left_svalue > right_svalue) : (left_svalue >= right_svalue),
+                        left_uvalue <= std::numeric_limits<uint64_t>::max()};
+            }  else {
+                // Interval can only be represented as a uvalue.
+                return {number_t{0} <= left_uvalue, strict ? (left_uvalue > right_uvalue) : (left_uvalue >= right_uvalue),
+                        left_uvalue <= std::numeric_limits<uint64_t>::max()};
             }
         }
-
-        if ((left_interval <= side_interval       && right_interval <= side_interval)
-         || (left_interval <= other_side_interval && right_interval <= other_side_interval)) {
-            // When no boundary is crossed, we can use the normal comparison.
-            using namespace crab::dsl_syntax;
-            if (is_lt) {
-                return {strict ? (left < right) : (left <= right)};
-            } else {
-                return {strict ? (left > right) : (left >= right)};
+    } else {
+        // 32-bit compare.
+        using namespace crab::dsl_syntax;
+        if (is_lt) {
+            if (inv.eval_interval(left_uvalue) <= interval_t::nonnegative_int(is64) &&
+                inv.eval_interval(right_uvalue) <= interval_t::nonnegative_int(is64)) {
+                // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT32_MAX].
+                return {number_t{0} <= left_uvalue,
+                        strict ? (left_uvalue < right_uvalue) : (left_uvalue <= right_uvalue),
+                        strict ? (left_svalue < right_svalue) : (left_svalue <= right_svalue),
+                        left_uvalue <= std::numeric_limits<uint64_t>::max()};
+            } else if (inv.eval_interval(left_svalue) <= interval_t::negative_int(is64) &&
+                       inv.eval_interval(right_svalue) <= interval_t::negative_int(is64)) {
+                // Interval can be represented as both an svalue and a uvalue since it fits in [INT32_MIN, -1].
+                return {number_t{0} <= left_uvalue,
+                        strict ? (left_uvalue < right_uvalue) : (left_uvalue <= right_uvalue),
+                        strict ? (left_svalue < right_svalue) : (left_svalue <= right_svalue),
+                        left_uvalue <= std::numeric_limits<uint64_t>::max()};
+            } else if (inv.eval_interval(left_uvalue) <= interval_t::unsigned_int(is64) &&
+                       inv.eval_interval(right_uvalue) <= interval_t::unsigned_int(is64)) {
+                // Interval can only be represented as a uvalue.
+                return {number_t{0} <= left_uvalue,
+                        strict ? (left_uvalue < right_svalue) : (left_uvalue <= right_svalue),
+                        left_uvalue <= std::numeric_limits<uint64_t>::max()};
+            }
+        } else {
+            if (right_interval <= interval_t::unsigned_high(false)) {
+                // Interval can be represented as both an svalue and a uvalue since it fits in [INT32_MAX+1, UINT32_MAX].
+                return {number_t{0} <= left_uvalue,
+                        strict ? (left_uvalue > right_uvalue) : (left_uvalue >= right_uvalue),
+                        strict ? (left_svalue > right_svalue) : (left_svalue >= right_svalue),
+                        left_uvalue <= std::numeric_limits<uint64_t>::max()};
+            } else if (inv.eval_interval(left_uvalue) <= interval_t::unsigned_int(is64) &&
+                       inv.eval_interval(right_uvalue) <= interval_t::unsigned_int(is64)) {
+                // Interval can only be represented as a uvalue.
+                return {number_t{0} <= left_uvalue,
+                        strict ? (left_uvalue > right_uvalue) : (left_uvalue >= right_uvalue),
+                        left_uvalue <= std::numeric_limits<uint64_t>::max()};
             }
         }
     }
@@ -300,48 +426,49 @@ static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAb
 
 /** Linear constraints for a comparison with a constant.
  */
-static std::vector<linear_constraint_t> assume_cst_imm(const NumAbsDomain& inv, Condition::Op op, bool is64, variable_t dst_value,
+static std::vector<linear_constraint_t> assume_cst_imm(const NumAbsDomain& inv, Condition::Op op, bool is64, variable_t dst_svalue, variable_t dst_uvalue,
                                                        int64_t imm) {
     using namespace crab::dsl_syntax;
     using Op = Condition::Op;
     switch (op) {
     case Op::EQ:
-    case Op::NE:
     case Op::SGE:
     case Op::SLE:
     case Op::SGT:
-    case Op::SLT: return assume_signed_cst_interval(inv, op, is64, dst_value, crab::interval_t(imm, imm));
+    case Op::SLT: return assume_signed_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, crab::interval_t(imm, imm));
     case Op::SET:
-    case Op::NSET: return assume_bit_cst_interval(inv, op, is64, dst_value, crab::interval_t(imm, imm));
+    case Op::NSET: return assume_bit_cst_interval(inv, op, is64, dst_uvalue, crab::interval_t(imm, imm));
+    case Op::NE:
     case Op::GE:
     case Op::LE:
     case Op::GT:
-    case Op::LT: return assume_unsigned_cst_interval(inv, op, is64, dst_value, imm);
+    case Op::LT: return assume_unsigned_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, imm, (uint64_t)imm);
     }
     return {};
 }
 
 /** Linear constraint for a numerical comparison between registers.
  */
-static std::vector<linear_constraint_t> assume_cst_reg(const NumAbsDomain& inv, Condition::Op op, bool is64, variable_t dst_value,
-                                                       variable_t src_value) {
+static std::vector<linear_constraint_t> assume_cst_reg(const NumAbsDomain& inv, Condition::Op op, bool is64,
+                                                       variable_t dst_svalue, variable_t dst_uvalue,
+                                                       variable_t src_svalue, variable_t src_uvalue) {
     using namespace crab::dsl_syntax;
     using Op = Condition::Op;
     if (is64) {
         switch (op) {
-        case Op::EQ: return {eq(dst_value, src_value)};
-        case Op::NE: return {neq(dst_value, src_value)};
-        case Op::SGE: return {dst_value >= src_value};
-        case Op::SLE: return {dst_value <= src_value};
-        case Op::SGT: return {dst_value > src_value};
+        case Op::EQ: return {eq(dst_svalue, src_svalue)};
+        case Op::NE: return {neq(dst_svalue, src_svalue)};
+        case Op::SGE: return {dst_svalue >= src_svalue};
+        case Op::SLE: return {dst_svalue <= src_svalue};
+        case Op::SGT: return {dst_svalue > src_svalue};
         // Note: reverse the test as a workaround strange lookup:
-        case Op::SLT: return {src_value > dst_value};
+        case Op::SLT: return {src_svalue > dst_svalue};
         case Op::SET:
-        case Op::NSET: return assume_bit_cst_interval(inv, op, is64, dst_value, inv.eval_interval(src_value));
+        case Op::NSET: return assume_bit_cst_interval(inv, op, is64, dst_uvalue, inv.eval_interval(src_uvalue));
         case Op::GE:
         case Op::LE:
         case Op::GT:
-        case Op::LT: return assume_unsigned_cst_interval(inv, op, is64, dst_value, src_value);
+        case Op::LT: return assume_unsigned_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, src_svalue, src_uvalue);
         }
     } else {
         switch (op) {
@@ -351,15 +478,15 @@ static std::vector<linear_constraint_t> assume_cst_reg(const NumAbsDomain& inv, 
         case Op::SLE:
         case Op::SGT:
         case Op::SLT:
-            return assume_signed_cst_interval(inv, op, is64, dst_value, inv.eval_interval(src_value));
+            return assume_signed_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, inv.eval_interval(src_svalue));
         case Op::SET:
         case Op::NSET:
-            return assume_bit_cst_interval(inv, op, is64, dst_value, inv.eval_interval(src_value));
+            return assume_bit_cst_interval(inv, op, is64, dst_uvalue, inv.eval_interval(src_uvalue));
         case Op::GE:
         case Op::LE:
         case Op::GT:
         case Op::LT:
-            return assume_unsigned_cst_interval(inv, op, is64, dst_value, src_value);
+            return assume_unsigned_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, src_svalue, src_uvalue);
         }
     }
     assert(false);
@@ -572,57 +699,151 @@ void ebpf_domain_t::forget_packet_pointers() {
         if (type_inv.has_type(m_inv, type_variable, T_PACKET)) {
             havoc(variable_t::kind_var(data_kind_t::types, type_variable));
             havoc(variable_t::kind_var(data_kind_t::packet_offsets, type_variable));
-            havoc(variable_t::kind_var(data_kind_t::values, type_variable));
+            havoc(variable_t::kind_var(data_kind_t::svalues, type_variable));
+            havoc(variable_t::kind_var(data_kind_t::uvalues, type_variable));
         }
     }
 
     initialize_packet(*this);
 }
 
-void ebpf_domain_t::apply(NumAbsDomain& inv, crab::binop_t op, variable_t x, variable_t y, const number_t& z, int finite_width) {
-    inv.apply(op, x, y, z, finite_width);
-    if (finite_width)
-        overflow(x, finite_width);
+void ebpf_domain_t::apply_signed(NumAbsDomain& inv, crab::binop_t op, variable_t xs, variable_t xu, variable_t y,
+                                const number_t& z, int finite_width) {
+    inv.apply(op, xs, y, z, finite_width);
+    if (finite_width) {
+        inv.assign(xu, xs);
+        overflow_signed(inv, xs, finite_width);
+        overflow_unsigned(inv, xu, finite_width);
+    }
 }
 
-void ebpf_domain_t::apply(NumAbsDomain& inv, crab::binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) {
-    inv.apply(op, x, y, z, finite_width);
-    if (finite_width)
-        overflow(x, finite_width);
+void ebpf_domain_t::apply_unsigned(NumAbsDomain& inv, crab::binop_t op, variable_t xs, variable_t xu, variable_t y,
+                                   const number_t& z, int finite_width) {
+    inv.apply(op, xu, y, z, finite_width);
+    if (finite_width) {
+        inv.assign(xs, xu);
+        overflow_signed(inv, xs, finite_width);
+        overflow_unsigned(inv, xu, finite_width);
+    }
 }
 
-void ebpf_domain_t::add(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2, 0); }
-void ebpf_domain_t::add(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2, 0); }
-void ebpf_domain_t::sub(variable_t lhs, variable_t op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2, 0); }
-void ebpf_domain_t::sub(variable_t lhs, const number_t& op2) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2, 0); }
-void ebpf_domain_t::add_overflow(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::add_overflow(variable_t lhs, const number_t& op2, int finite_width) { apply(m_inv, crab::arith_binop_t::ADD, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::sub_overflow(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::sub_overflow(variable_t lhs, const number_t& op2, int finite_width) { apply(m_inv, crab::arith_binop_t::SUB, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::neg(variable_t lhs, int finite_width) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, (number_t)-1, finite_width); }
-void ebpf_domain_t::mul(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::mul(variable_t lhs, const number_t& op2, int finite_width) { apply(m_inv, crab::arith_binop_t::MUL, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::sdiv(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::arith_binop_t::SDIV, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::sdiv(variable_t lhs, const number_t& op2, int finite_width) { apply(m_inv, crab::arith_binop_t::SDIV, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::udiv(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::arith_binop_t::UDIV, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::udiv(variable_t lhs, const number_t& op2, int finite_width) { apply(m_inv, crab::arith_binop_t::UDIV, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::srem(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::arith_binop_t::SREM, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::srem(variable_t lhs, const number_t& op2, int finite_width) { apply(m_inv, crab::arith_binop_t::SREM, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::urem(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::arith_binop_t::UREM, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::urem(variable_t lhs, const number_t& op2, int finite_width) { apply(m_inv, crab::arith_binop_t::UREM, lhs, lhs, op2, finite_width); }
+void ebpf_domain_t::apply_signed(NumAbsDomain& inv, crab::binop_t op, variable_t xs, variable_t xu, variable_t y,
+                                 variable_t z, int finite_width) {
+    inv.apply(op, xs, y, z, finite_width);
+    if (finite_width) {
+        inv.assign(xu, xs);
+        overflow_signed(inv, xs, finite_width);
+        overflow_unsigned(inv, xu, finite_width);
+    }
+}
 
-void ebpf_domain_t::bitwise_and(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::bitwise_binop_t::AND, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::bitwise_and(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::AND, lhs, lhs, op2, 0); }
-void ebpf_domain_t::bitwise_or(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::bitwise_binop_t::OR, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::bitwise_or(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::OR, lhs, lhs, op2, 0); }
-void ebpf_domain_t::bitwise_xor(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::bitwise_binop_t::XOR, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::bitwise_xor(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::XOR, lhs, lhs, op2, 0); }
-void ebpf_domain_t::shl_overflow(variable_t lhs, variable_t op2) { apply(m_inv, crab::bitwise_binop_t::SHL, lhs, lhs, op2, 64); }
-void ebpf_domain_t::shl_overflow(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::SHL, lhs, lhs, op2, 64); }
-void ebpf_domain_t::lshr(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::lshr(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::LSHR, lhs, lhs, op2, 0); }
-void ebpf_domain_t::ashr(variable_t lhs, variable_t op2, int finite_width) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2, finite_width); }
-void ebpf_domain_t::ashr(variable_t lhs, const number_t& op2) { apply(m_inv, crab::bitwise_binop_t::ASHR, lhs, lhs, op2, 0); }
+void ebpf_domain_t::apply_unsigned(NumAbsDomain& inv, crab::binop_t op, variable_t xs, variable_t xu, variable_t y,
+                                 variable_t z, int finite_width) {
+    inv.apply(op, xu, y, z, finite_width);
+    if (finite_width) {
+        inv.assign(xs, xu);
+        overflow_signed(inv, xs, finite_width);
+        overflow_unsigned(inv, xu, finite_width);
+    }
+}
+
+void ebpf_domain_t::apply(NumAbsDomain& inv, crab::binop_t op, variable_t x, variable_t y, variable_t z) {
+    inv.apply(op, x, y, z, 0);
+}
+
+void ebpf_domain_t::add(variable_t lhs, variable_t op2) { apply_signed(m_inv, crab::arith_binop_t::ADD, lhs, lhs, lhs, op2, 0); }
+void ebpf_domain_t::add(variable_t lhs, const number_t& op2) { apply_signed(m_inv, crab::arith_binop_t::ADD, lhs, lhs, lhs, op2, 0); }
+void ebpf_domain_t::sub(variable_t lhs, variable_t op2) { apply_signed(m_inv, crab::arith_binop_t::SUB, lhs, lhs, lhs, op2, 0); }
+void ebpf_domain_t::sub(variable_t lhs, const number_t& op2) { apply_signed(m_inv, crab::arith_binop_t::SUB, lhs, lhs, lhs, op2, 0); }
+
+// Add/subtract with overflow are both signed and unsigned. We can use either one of the two to compute the
+// result before adjusting for overflow, though if one is top we want to use the other to retain precision.
+void ebpf_domain_t::add_overflow(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+    apply_signed(m_inv, crab::arith_binop_t::ADD, lhss, lhsu, ((!m_inv.eval_interval(lhss).is_top()) ? lhss : lhsu), op2, finite_width);
+}
+void ebpf_domain_t::add_overflow(variable_t lhss, variable_t lhsu, const number_t& op2, int finite_width) {
+    apply_signed(m_inv, crab::arith_binop_t::ADD, lhss, lhsu, ((!m_inv.eval_interval(lhss).is_top()) ? lhss : lhsu), op2, finite_width);
+}
+void ebpf_domain_t::sub_overflow(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+    apply_signed(m_inv, crab::arith_binop_t::SUB, lhss, lhsu, ((!m_inv.eval_interval(lhss).is_top()) ? lhss : lhsu), op2, finite_width);
+}
+void ebpf_domain_t::sub_overflow(variable_t lhss, variable_t lhsu, const number_t& op2, int finite_width) {
+    apply_signed(m_inv, crab::arith_binop_t::SUB, lhss, lhsu, ((!m_inv.eval_interval(lhss).is_top()) ? lhss : lhsu), op2, finite_width);
+}
+
+void ebpf_domain_t::neg(variable_t lhss, variable_t lhsu, int finite_width) {
+    apply_signed(m_inv, crab::arith_binop_t::MUL, lhss, lhsu, lhss, (number_t)-1, finite_width);
+}
+void ebpf_domain_t::mul(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+    apply_signed(m_inv, crab::arith_binop_t::MUL, lhss, lhsu, lhss, op2, finite_width);
+}
+void ebpf_domain_t::mul(variable_t lhss, variable_t lhsu, const number_t& op2, int finite_width) {
+    apply_signed(m_inv, crab::arith_binop_t::MUL, lhss, lhsu, lhss, op2, finite_width);
+}
+void ebpf_domain_t::sdiv(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+    apply_signed(m_inv, crab::arith_binop_t::SDIV, lhss, lhsu, lhss, op2, finite_width);
+}
+void ebpf_domain_t::sdiv(variable_t lhss, variable_t lhsu, const number_t& op2, int finite_width) {
+    apply_signed(m_inv, crab::arith_binop_t::SDIV, lhss, lhsu, lhss, op2, finite_width);
+}
+void ebpf_domain_t::udiv(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+    apply_unsigned(m_inv, crab::arith_binop_t::UDIV, lhss, lhsu, lhsu, op2, finite_width);
+}
+void ebpf_domain_t::udiv(variable_t lhss, variable_t lhsu, const number_t& op2, int finite_width) {
+    apply_unsigned(m_inv, crab::arith_binop_t::UDIV, lhss, lhsu, lhsu, op2, finite_width);
+}
+void ebpf_domain_t::srem(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+    apply_signed(m_inv, crab::arith_binop_t::SREM, lhss, lhsu, lhss, op2, finite_width);
+}
+void ebpf_domain_t::srem(variable_t lhss, variable_t lhsu, const number_t& op2, int finite_width) {
+    apply_signed(m_inv, crab::arith_binop_t::SREM, lhss, lhsu, lhss, op2, finite_width);
+}
+void ebpf_domain_t::urem(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+    apply_unsigned(m_inv, crab::arith_binop_t::UREM, lhss, lhsu, lhsu, op2, finite_width);
+}
+void ebpf_domain_t::urem(variable_t lhss, variable_t lhsu, const number_t& op2, int finite_width) {
+    apply_unsigned(m_inv, crab::arith_binop_t::UREM, lhss, lhsu, lhsu, op2, finite_width);
+}
+
+void ebpf_domain_t::bitwise_and(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+    apply_unsigned(m_inv, crab::bitwise_binop_t::AND, lhss, lhsu, lhsu, op2, finite_width);
+}
+void ebpf_domain_t::bitwise_and(variable_t lhss, variable_t lhsu, const number_t& op2) {
+    // Use finite width 64 to make the svalue be set as well as the uvalue.
+    apply_unsigned(m_inv, crab::bitwise_binop_t::AND, lhss, lhsu, lhsu, op2, 64);
+}
+void ebpf_domain_t::bitwise_or(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+    apply_unsigned(m_inv, crab::bitwise_binop_t::OR, lhss, lhsu, lhsu, op2, finite_width);
+}
+void ebpf_domain_t::bitwise_or(variable_t lhss, variable_t lhsu, const number_t& op2) {
+    apply_unsigned(m_inv, crab::bitwise_binop_t::OR, lhss, lhsu, lhsu, op2, 64);
+}
+void ebpf_domain_t::bitwise_xor(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+    apply_unsigned(m_inv, crab::bitwise_binop_t::XOR, lhss, lhsu, lhsu, op2, finite_width);
+}
+void ebpf_domain_t::bitwise_xor(variable_t lhss, variable_t lhsu, const number_t& op2) {
+    apply_unsigned(m_inv, crab::bitwise_binop_t::XOR, lhss, lhsu, lhsu, op2, 64);
+}
+void ebpf_domain_t::shl_overflow(variable_t lhss, variable_t lhsu, variable_t op2) {
+    apply_unsigned(m_inv, crab::bitwise_binop_t::SHL, lhss, lhsu, lhsu, op2, 64);
+}
+void ebpf_domain_t::shl_overflow(variable_t lhss, variable_t lhsu, const number_t& op2) {
+    apply_unsigned(m_inv, crab::bitwise_binop_t::SHL, lhss, lhsu, lhsu, op2, 64);
+}
+void ebpf_domain_t::lshr(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+    apply_unsigned(m_inv, crab::bitwise_binop_t::LSHR, lhss, lhsu, lhsu, op2, finite_width);
+}
+void ebpf_domain_t::lshr(variable_t lhss, variable_t lhsu, const number_t& op2) {
+    apply_signed(m_inv, crab::bitwise_binop_t::LSHR, lhss, lhsu, lhsu, op2, 0);
+    apply_unsigned(m_inv, crab::bitwise_binop_t::LSHR, lhss, lhsu, lhsu, op2, 0);
+}
+void ebpf_domain_t::ashr(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+    apply_signed(m_inv, crab::bitwise_binop_t::ASHR, lhss, lhsu, lhss, op2, finite_width);
+}
+void ebpf_domain_t::ashr(variable_t lhss, variable_t lhsu, const number_t& op2) {
+    apply_signed(m_inv, crab::bitwise_binop_t::ASHR, lhss, lhsu, lhss, op2, 0);
+    apply_unsigned(m_inv, crab::bitwise_binop_t::ASHR, lhss, lhsu, lhss, op2, 0);
+}
 
 static void assume(NumAbsDomain& inv, const linear_constraint_t& cst) { inv += cst; }
 void ebpf_domain_t::assume(const linear_constraint_t& cst) { ::assume(m_inv, cst); }
@@ -652,7 +873,8 @@ void ebpf_domain_t::havoc_offsets(const Reg& reg) { havoc_offsets(m_inv, reg); }
 void ebpf_domain_t::havoc_register(NumAbsDomain& inv, const Reg& reg) {
     reg_pack_t r = reg_pack(reg);
     havoc_offsets(inv, reg);
-    inv -= r.value;
+    inv -= r.svalue;
+    inv -= r.uvalue;
 }
 
 void ebpf_domain_t::assign(variable_t lhs, variable_t rhs) { m_inv.assign(lhs, rhs); }
@@ -796,46 +1018,63 @@ bool ebpf_domain_t::TypeDomain::is_in_group(const NumAbsDomain& m_inv, const Reg
     return false;
 }
 
-void ebpf_domain_t::overflow_bounds(variable_t lhs, number_t min, number_t max, number_t span, int finite_width) {
+void ebpf_domain_t::overflow_bounds(NumAbsDomain& inv, variable_t lhs, number_t span, int finite_width, bool issigned) {
     using namespace crab::dsl_syntax;
-    auto interval = m_inv[lhs];
+    auto interval = inv[lhs];
     if (interval.ub() - interval.lb() >= span) {
         // Interval covers the full space.
-        havoc(lhs);
+        inv -= lhs;
         return;
     }
     if (interval.is_bottom()) {
-        havoc(lhs);
+        inv -= lhs;
         return;
     }
     number_t lb_value = interval.lb().number().value();
     number_t ub_value = interval.ub().number().value();
-    number_t lb = lb_value.truncate_to_signed_finite_width(finite_width);
-    number_t ub = ub_value.truncate_to_signed_finite_width(finite_width);
+
+    // Compute the interval, taking overflow into account.
+    // For a signed result, we need to ensure the signed and unsigned results match
+    // so for a 32-bit operation, 0x80000000 should be a positive 64-bit number not
+    // a sign extended negative one.
+    number_t lb = lb_value.truncate_to_unsigned_finite_width(finite_width);
+    number_t ub = ub_value.truncate_to_unsigned_finite_width(finite_width);
+    if (issigned) {
+        lb = lb.truncate_to_sint64();
+        ub = ub.truncate_to_sint64();
+    }
     if (lb > ub) {
-        // Range wraps in the middle, so we cannot represent as a signed interval.
-        lb = lb_value.truncate_to_unsigned_finite_width(finite_width);
-        ub = ub_value.truncate_to_unsigned_finite_width(finite_width);
-        if (lb > ub) {
-            havoc(lhs);
-            return;
-        }
+        // Range wraps in the middle, so we cannot represent as an unsigned interval.
+        inv -= lhs;
+        return;
     }
     auto new_interval = crab::interval_t{lb, ub};
     if (new_interval != interval) {
         // Update the variable, which will lose any relationships to other variables.
-        m_inv.set(lhs, new_interval);
+        inv.set(lhs, new_interval);
     }
 }
 
-void ebpf_domain_t::overflow(variable_t lhs, int finite_width) {
+void ebpf_domain_t::overflow_signed(NumAbsDomain& inv, variable_t lhs, int finite_width) {
     using namespace crab::dsl_syntax;
-    auto interval = m_inv[lhs];
+    auto interval = inv[lhs];
     // handle overflow
     if (finite_width == 64)
-        overflow_bounds(lhs, std::numeric_limits<int64_t>::min(), std::numeric_limits<int64_t>::max(), std::numeric_limits<uint64_t>::max(), finite_width);
+        overflow_bounds(inv, lhs, std::numeric_limits<uint64_t>::max(), finite_width, true);
     else if (finite_width == 32)
-        overflow_bounds(lhs, std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max(), std::numeric_limits<uint32_t>::max(), finite_width);
+        overflow_bounds(inv, lhs, std::numeric_limits<uint32_t>::max(), finite_width, true);
+    else
+        throw std::exception();
+}
+
+void ebpf_domain_t::overflow_unsigned(NumAbsDomain& inv, variable_t lhs, int finite_width) {
+    using namespace crab::dsl_syntax;
+    auto interval = inv[lhs];
+    // handle overflow
+    if (finite_width == 64)
+        overflow_bounds(inv, lhs, std::numeric_limits<uint64_t>::max(), finite_width, false);
+    else if (finite_width == 32)
+        overflow_bounds(inv, lhs, std::numeric_limits<uint32_t>::max(), finite_width, false);
     else
         throw std::exception();
 }
@@ -894,7 +1133,7 @@ void ebpf_domain_t::operator()(const Assume& s) {
         if (type_inv.same_type(m_inv, cond.left, std::get<Reg>(cond.right))) {
             m_inv = type_inv.join_over_types(m_inv, cond.left, [&](NumAbsDomain& inv, type_encoding_t type) {
                 if (type == T_NUM) {
-                    for (const linear_constraint_t& cst : assume_cst_reg(m_inv, cond.op, cond.is64, dst.value, src.value))
+                    for (const linear_constraint_t& cst : assume_cst_reg(m_inv, cond.op, cond.is64, dst.svalue, dst.uvalue, src.svalue, src.uvalue))
                         inv += cst;
                 } else {
                     // Either pointers to a singleton region,
@@ -912,7 +1151,7 @@ void ebpf_domain_t::operator()(const Assume& s) {
         }
     } else {
         int64_t imm = static_cast<int64_t>(std::get<Imm>(cond.right).v);
-        for (const linear_constraint_t& cst : assume_cst_imm(m_inv, cond.op, cond.is64, dst.value, imm))
+        for (const linear_constraint_t& cst : assume_cst_imm(m_inv, cond.op, cond.is64, dst.svalue, dst.uvalue, imm))
             assume(cst);
     }
 }
@@ -921,19 +1160,19 @@ void ebpf_domain_t::operator()(const Undefined& a) {}
 
 void ebpf_domain_t::operator()(const Un& stmt) {
     auto dst = reg_pack(stmt.dst);
-    auto swap_endianness = [&](auto input, const auto& be_or_le) {
+    auto swap_endianness = [&](variable_t v, auto input, const auto& be_or_le) {
         if (m_inv.entail(type_is_number(stmt.dst))) {
-            auto interval = m_inv.eval_interval(dst.value);
+            auto interval = m_inv.eval_interval(v);
             if (std::optional<number_t> n = interval.singleton()) {
                 if (n->fits_cast_to_int64()) {
                     input = (decltype(input))n.value().cast_to_sint64();
                     decltype(input) output = be_or_le(input);
-                    m_inv.set(dst.value, crab::interval_t(number_t(output), number_t(output)));
+                    m_inv.set(v, crab::interval_t(number_t(output), number_t(output)));
                     return;
                 }
             }
         }
-        havoc(dst.value);
+        havoc(v);
         havoc_offsets(stmt.dst);
     };
     // Swap bytes.  For 64-bit types we need the weights to fit in a
@@ -941,25 +1180,31 @@ void ebpf_domain_t::operator()(const Un& stmt) {
     // so we use unsigned which still fits in a signed int64.
     switch (stmt.op) {
     case Un::Op::BE16:
-        swap_endianness(uint16_t(0), boost::endian::native_to_big<uint16_t>);
+        swap_endianness(dst.svalue, uint16_t(0), boost::endian::native_to_big<uint16_t>);
+        swap_endianness(dst.uvalue, uint16_t(0), boost::endian::native_to_big<uint16_t>);
         break;
     case Un::Op::BE32:
-        swap_endianness(uint32_t(0), boost::endian::native_to_big<uint32_t>);
+        swap_endianness(dst.svalue, uint32_t(0), boost::endian::native_to_big<uint32_t>);
+        swap_endianness(dst.uvalue, uint32_t(0), boost::endian::native_to_big<uint32_t>);
         break;
     case Un::Op::BE64:
-        swap_endianness(int64_t(0), boost::endian::native_to_big<int64_t>);
+        swap_endianness(dst.svalue, int64_t(0), boost::endian::native_to_big<int64_t>);
+        swap_endianness(dst.uvalue, uint64_t(0), boost::endian::native_to_big<uint64_t>);
         break;
     case Un::Op::LE16:
-        swap_endianness(uint16_t(0), boost::endian::native_to_little<uint16_t>);
+        swap_endianness(dst.svalue, uint16_t(0), boost::endian::native_to_little<uint16_t>);
+        swap_endianness(dst.uvalue, uint16_t(0), boost::endian::native_to_little<uint16_t>);
         break;
     case Un::Op::LE32:
-        swap_endianness(uint32_t(0), boost::endian::native_to_little<uint32_t>);
+        swap_endianness(dst.svalue, uint32_t(0), boost::endian::native_to_little<uint32_t>);
+        swap_endianness(dst.uvalue, uint32_t(0), boost::endian::native_to_little<uint32_t>);
         break;
     case Un::Op::LE64:
-        swap_endianness(int64_t(0), boost::endian::native_to_little<int64_t>);
+        swap_endianness(dst.svalue, int64_t(0), boost::endian::native_to_little<int64_t>);
+        swap_endianness(dst.svalue, uint64_t(0), boost::endian::native_to_little<uint64_t>);
         break;
     case Un::Op::NEG:
-        neg(dst.value, stmt.is64 ? 64 : 32);
+        neg(dst.svalue, dst.uvalue, stmt.is64 ? 64 : 32);
         havoc_offsets(stmt.dst);
         break;
     }
@@ -999,8 +1244,10 @@ void ebpf_domain_t::operator()(const ValidDivisor& s) {
     auto reg = reg_pack(s.reg);
     if (!type_inv.implies_type(m_inv, type_is_pointer(reg), type_is_number(s.reg)))
         require(m_inv, linear_constraint_t::FALSE(), "Only numbers can be used as divisors");
-    if (!thread_local_options.allow_division_by_zero)
-        require(m_inv, reg.value != 0, "Possible division by zero");
+    if (!thread_local_options.allow_division_by_zero) {
+        // Division is an unsigned operation. There are no eBPF instructions for signed division.
+        require(m_inv, reg.uvalue != 0, "Possible division by zero");
+    }
 }
 
 void ebpf_domain_t::operator()(const ValidStore& s) {
@@ -1016,7 +1263,7 @@ void ebpf_domain_t::operator()(const TypeConstraint& s) {
 void ebpf_domain_t::operator()(const ValidSize& s) {
     using namespace crab::dsl_syntax;
     auto r = reg_pack(s.reg);
-    require(m_inv, s.can_be_zero ? r.value >= 0 : r.value > 0, "");
+    require(m_inv, s.can_be_zero ? r.svalue >= 0 : r.svalue > 0, "");
 }
 
 // Get the start and end of the range of possible map fd values.
@@ -1166,7 +1413,7 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
                     } else if (s.key) {
                         // Look up the value pointed to by the key pointer.
                         variable_t key_value =
-                            variable_t::cell_var(data_kind_t::values, (uint64_t)offset.value(), sizeof(uint32_t));
+                            variable_t::cell_var(data_kind_t::svalues, (uint64_t)offset.value(), sizeof(uint32_t));
 
                         if (auto max_entries = get_map_max_entries(s.map_fd_reg).lb().number())
                             require(inv, key_value < *max_entries, "Array index overflow");
@@ -1199,7 +1446,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
         case T_PACKET: {
             linear_expression_t lb = reg.packet_offset + s.offset;
             linear_expression_t ub = std::holds_alternative<Imm>(s.width) ? lb + std::get<Imm>(s.width).v
-                                                                          : lb + reg_pack(std::get<Reg>(s.width)).value;
+                                                                          : lb + reg_pack(std::get<Reg>(s.width)).svalue;
             check_access_packet(inv, lb, ub,
                                 is_comparison_check ? std::optional<variable_t>{} : variable_t::packet_size());
             // if within bounds, it can never be null
@@ -1209,7 +1456,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
         case T_STACK: {
             linear_expression_t lb = reg.stack_offset + s.offset;
             linear_expression_t ub = std::holds_alternative<Imm>(s.width) ? lb + std::get<Imm>(s.width).v
-                                                                          : lb + reg_pack(std::get<Reg>(s.width)).value;
+                                                                          : lb + reg_pack(std::get<Reg>(s.width)).svalue;
             check_access_stack(inv, lb, ub);
             // if within bounds, it can never be null
             if (s.access_type == AccessType::read) {
@@ -1222,7 +1469,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
                             require(inv, linear_constraint_t::FALSE(), "Stack content is not numeric");
                         }
                     } else {
-                        if (!inv.entail(reg_pack(std::get<Reg>(s.width)).value <= reg.stack_numeric_size - s.offset)) {
+                        if (!inv.entail(reg_pack(std::get<Reg>(s.width)).svalue <= reg.stack_numeric_size - s.offset)) {
                             require(inv, linear_constraint_t::FALSE(), "Stack content is not numeric");
                         }
                     }
@@ -1233,7 +1480,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
         case T_CTX: {
             linear_expression_t lb = reg.ctx_offset + s.offset;
             linear_expression_t ub = std::holds_alternative<Imm>(s.width) ? lb + std::get<Imm>(s.width).v
-                                                                          : lb + reg_pack(std::get<Reg>(s.width)).value;
+                                                                          : lb + reg_pack(std::get<Reg>(s.width)).svalue;
             check_access_context(inv, lb, ub);
             // if within bounds, it can never be null
             // The context is both readable and writable.
@@ -1242,7 +1489,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
         case T_NUM:
             if (!is_comparison_check) {
                 if (s.or_null) {
-                    require(inv, reg.value == 0, "Non-null number");
+                    require(inv, reg.svalue == 0, "Non-null number");
                 } else {
                     require(inv, linear_constraint_t::FALSE(), "Only pointers can be dereferenced");
                 }
@@ -1257,10 +1504,10 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
         case T_SHARED: {
             linear_expression_t lb = reg.shared_offset + s.offset;
             linear_expression_t ub = std::holds_alternative<Imm>(s.width) ? lb + std::get<Imm>(s.width).v
-                                                                             : lb + reg_pack(std::get<Reg>(s.width)).value;
+                                                                             : lb + reg_pack(std::get<Reg>(s.width)).svalue;
             check_access_shared(inv, lb, ub, reg.shared_region_size);
             if (!is_comparison_check && !s.or_null)
-                require(inv, reg.value > 0, "Possible null access");
+                require(inv, reg.svalue > 0, "Possible null access");
             // Shared memory is zero-initialized when created so is safe to read and write.
             break;
         }
@@ -1290,7 +1537,8 @@ void ebpf_domain_t::operator()(const Packet& a) {
     Reg r0_reg{(uint8_t)R0_RETURN_VALUE};
     type_inv.assign_type(m_inv, r0_reg, T_NUM);
     havoc_offsets(r0_reg);
-    havoc(reg.value);
+    havoc(reg.svalue);
+    havoc(reg.uvalue);
     scratch_caller_saved_registers();
 }
 
@@ -1304,9 +1552,11 @@ void ebpf_domain_t::do_load_stack(NumAbsDomain& inv, const Reg& target_reg, cons
     if (width == 1 || width == 2 || width == 4 || width == 8) {
         // Use the addr before we havoc the destination register since we might be getting the
         // addr from that same register.
-        std::optional<linear_expression_t> result = stack.load(inv, data_kind_t::values, addr, width);
+        std::optional<linear_expression_t> sresult = stack.load(inv, data_kind_t::svalues, addr, width);
+        std::optional<linear_expression_t> uresult = stack.load(inv, data_kind_t::uvalues, addr, width);
         havoc_register(inv, target_reg);
-        inv.assign(target.value, result);
+        inv.assign(target.svalue, sresult);
+        inv.assign(target.uvalue, uresult);
 
         if (type_inv.has_type(inv, target.type, T_CTX))
             inv.assign(target.ctx_offset, stack.load(inv, data_kind_t::ctx_offsets, addr, width));
@@ -1371,8 +1621,8 @@ void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const 
         return;
     }
     type_inv.assign_type(inv, target_reg, T_PACKET);
-    inv += 4098 <= target.value;
-    inv += target.value <= PTR_MAX;
+    inv += 4098 <= target.svalue;
+    inv += target.svalue <= PTR_MAX;
 }
 
 void ebpf_domain_t::do_load_packet_or_shared(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width) {
@@ -1385,9 +1635,11 @@ void ebpf_domain_t::do_load_packet_or_shared(NumAbsDomain& inv, const Reg& targe
 
     // A 1 or 2 byte copy results in a limited range of values that may be used as array indices.
     if (width == 1) {
-        inv.set(target.value, crab::interval_t(0, UINT8_MAX));
+        inv.set(target.svalue, crab::interval_t(0, UINT8_MAX));
+        inv.set(target.uvalue, crab::interval_t(0, UINT8_MAX));
     } else if (width == 2) {
-        inv.set(target.value, crab::interval_t(0, UINT16_MAX));
+        inv.set(target.svalue, crab::interval_t(0, UINT16_MAX));
+        inv.set(target.uvalue, crab::interval_t(0, UINT16_MAX));
     }
 }
 
@@ -1434,13 +1686,14 @@ void ebpf_domain_t::do_load(const Mem& b, const Reg& target_reg) {
     });
 }
 
-template <typename A, typename X, typename Y>
-void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_value,
+template <typename A, typename X, typename Y, typename Z>
+void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_svalue, Z val_uvalue,
                                    const std::optional<reg_pack_t>& opt_val_reg) {
     std::optional<variable_t> var = stack.store_type(inv, addr, width, val_type);
     type_inv.assign_type(inv, var, val_type);
     if (width == 8) {
-        inv.assign(stack.store(inv, data_kind_t::values, addr, width, val_value), val_value);
+        inv.assign(stack.store(inv, data_kind_t::svalues, addr, width, val_svalue), val_svalue);
+        inv.assign(stack.store(inv, data_kind_t::uvalues, addr, width, val_uvalue), val_uvalue);
 
         if (opt_val_reg && type_inv.has_type(m_inv, val_type, T_CTX)) {
             inv.assign(stack.store(inv, data_kind_t::ctx_offsets, addr, width, opt_val_reg->ctx_offset), opt_val_reg->ctx_offset);
@@ -1481,9 +1734,11 @@ void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, 
     } else {
         if ((width == 1 || width == 2 || width == 4) && type_inv.get_type(m_inv, val_type) == T_NUM) {
             // Keep track of numbers on the stack that might be used as array indices.
-            inv.assign(stack.store(inv, data_kind_t::values, addr, width, val_value), val_value);
+            inv.assign(stack.store(inv, data_kind_t::svalues, addr, width, val_svalue), val_svalue);
+            inv.assign(stack.store(inv, data_kind_t::uvalues, addr, width, val_uvalue), val_uvalue);
         } else {
-            stack.havoc(inv, data_kind_t::values, addr, width);
+            stack.havoc(inv, data_kind_t::svalues, addr, width);
+            stack.havoc(inv, data_kind_t::uvalues, addr, width);
         }
         stack.havoc(inv, data_kind_t::ctx_offsets, addr, width);
         stack.havoc(inv, data_kind_t::map_fds, addr, width);
@@ -1524,15 +1779,15 @@ void ebpf_domain_t::operator()(const Mem& b) {
         } else {
             auto data = std::get<Reg>(b.value);
             auto data_reg = reg_pack(data);
-            do_mem_store(b, data, data_reg.value, data_reg);
+            do_mem_store(b, data, data_reg.svalue, data_reg.uvalue, data_reg);
         }
     } else {
-        do_mem_store(b, T_NUM, std::get<Imm>(b.value).v, {});
+        do_mem_store(b, T_NUM, (int64_t)std::get<Imm>(b.value).v, (uint64_t)std::get<Imm>(b.value).v, {});
     }
 }
 
-template <typename Type, typename Value>
-void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, Value val_value, const std::optional<reg_pack_t>& val_reg) {
+template <typename Type, typename SValue, typename UValue>
+void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue, UValue val_uvalue, const std::optional<reg_pack_t>& val_reg) {
     if (m_inv.is_bottom())
         return;
     using namespace crab::dsl_syntax;
@@ -1540,13 +1795,13 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, Value val_value, c
     int offset = b.access.offset;
     if (b.access.basereg.v == R10_STACK_POINTER) {
         int addr = EBPF_STACK_SIZE + offset;
-        do_store_stack(m_inv, width, addr, val_type, val_value, val_reg);
+        do_store_stack(m_inv, width, addr, val_type, val_svalue, val_uvalue, val_reg);
         return;
     }
     m_inv = type_inv.join_over_types(m_inv, b.access.basereg, [&](NumAbsDomain& inv, type_encoding_t type) {
         if (type == T_STACK) {
             linear_expression_t addr = linear_expression_t(get_type_offset_variable(b.access.basereg, type).value()) + offset;
-            do_store_stack(inv, width, addr, val_type, val_value, val_reg);
+            do_store_stack(inv, width, addr, val_type, val_svalue, val_uvalue, val_reg);
         }
         // do nothing for any other type
     });
@@ -1585,14 +1840,15 @@ void ebpf_domain_t::operator()(const Call& call) {
         case ArgPair::Kind::PTR_TO_WRITABLE_MEM: {
             bool store_numbers = true;
             variable_t addr = get_type_offset_variable(param.mem).value();
-            variable_t width = reg_pack(param.size).value;
+            variable_t width = reg_pack(param.size).svalue;
 
             m_inv = type_inv.join_over_types(m_inv, param.mem, [&](NumAbsDomain& inv, type_encoding_t type) {
                 if (type == T_STACK) {
                     // Pointer to a memory region that the called function may change,
                     // so we must havoc.
                     stack.havoc(inv, data_kind_t::types, addr, width);
-                    stack.havoc(inv, data_kind_t::values, addr, width);
+                    stack.havoc(inv, data_kind_t::svalues, addr, width);
+                    stack.havoc(inv, data_kind_t::uvalues, addr, width);
                     stack.havoc(inv, data_kind_t::ctx_offsets, addr, width);
                     stack.havoc(inv, data_kind_t::map_fds, addr, width);
                     stack.havoc(inv, data_kind_t::packet_offsets, addr, width);
@@ -1636,7 +1892,8 @@ void ebpf_domain_t::operator()(const Call& call) {
         assign(r0_pack.shared_offset, 0);
         type_inv.assign_type(m_inv, r0_reg, T_SHARED);
     } else {
-        havoc(r0_pack.value);
+        havoc(r0_pack.svalue);
+        havoc(r0_pack.uvalue);
         havoc_offsets(r0_reg);
         type_inv.assign_type(m_inv, r0_reg, T_NUM);
         // assume(r0_pack.value < 0); for INTEGER_OR_NO_RETURN_IF_SUCCEED.
@@ -1668,13 +1925,15 @@ void ebpf_domain_t::operator()(const LoadMapFd& ins) {
 void ebpf_domain_t::assign_valid_ptr(const Reg& dst_reg, bool maybe_null) {
     using namespace crab::dsl_syntax;
     const reg_pack_t& reg = reg_pack(dst_reg);
-    havoc(reg.value);
+    havoc(reg.svalue);
+    havoc(reg.uvalue);
     if (maybe_null) {
-        m_inv += 0 <= reg.value;
+        m_inv += 0 <= reg.svalue;
     } else {
-        m_inv += 0 < reg.value;
+        m_inv += 0 < reg.svalue;
     }
-    m_inv += reg.value <= PTR_MAX;
+    m_inv += reg.svalue <= PTR_MAX;
+    assign(reg.uvalue, reg.svalue);
 }
 
 // If nothing is known of the stack_numeric_size,
@@ -1700,7 +1959,7 @@ void ebpf_domain_t::recompute_stack_numeric_size(NumAbsDomain& inv, const Reg& r
 void ebpf_domain_t::add(const Reg& reg, int imm, int finite_width) {
     auto dst = reg_pack(reg);
     auto offset = get_type_offset_variable(reg);
-    add_overflow(dst.value, imm, finite_width);
+    add_overflow(dst.svalue, dst.uvalue, imm, finite_width);
     if (offset.has_value()) {
         add(offset.value(), imm);
         if (imm > 0)
@@ -1728,11 +1987,13 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         } else {
             // Use only the low 32 bits of the value.
             imm = static_cast<int>(std::get<Imm>(bin.v).v);
-            bitwise_and(dst.value, UINT32_MAX);
+            bitwise_and(dst.svalue, dst.uvalue, UINT32_MAX);
         }
         switch (bin.op) {
         case Bin::Op::MOV:
-            assign(dst.value, imm);
+            assign(dst.svalue, imm);
+            assign(dst.uvalue, imm);
+            overflow_unsigned(m_inv, dst.uvalue, (bin.is64) ? 64 : 32);
             type_inv.assign_type(m_inv, bin.dst, T_NUM);
             havoc_offsets(bin.dst);
             break;
@@ -1747,57 +2008,61 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             add(bin.dst, (int)-imm, finite_width);
             break;
         case Bin::Op::MUL:
-            mul(dst.value, imm, finite_width);
+            mul(dst.svalue, dst.uvalue, imm, finite_width);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::UDIV:
-            udiv(dst.value, imm, finite_width);
+            udiv(dst.svalue, dst.uvalue, imm, finite_width);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::UMOD:
-            urem(dst.value, imm, finite_width);
+            urem(dst.svalue, dst.uvalue, imm, finite_width);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::OR:
-            bitwise_or(dst.value, imm);
+            bitwise_or(dst.svalue, dst.uvalue, imm);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::AND:
             // FIX: what to do with ptr&-8 as in counter/simple_loop_unrolled?
-            bitwise_and(dst.value, imm);
+            bitwise_and(dst.svalue, dst.uvalue, imm);
             if ((int32_t)imm > 0) {
-                assume(dst.value <= imm);
-                assume(0 <= dst.value);
+                // AND with immediate is only a 32-bit operation so svalue and uvalue are the same.
+                assume(dst.svalue <= imm);
+                assume(dst.uvalue <= imm);
+                assume(0 <= dst.svalue);
+                assume(0 <= dst.uvalue);
             }
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::LSH:
-            // avoid signedness and overflow issues in shl_overflow(dst.value, imm);
-            shl_overflow(dst.value, imm);
+            shl_overflow(dst.svalue, dst.uvalue, imm);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::RSH:
             if (m_inv.entail(type_is_number(bin.dst))) {
-                auto interval = m_inv.eval_interval(dst.value);
+                auto interval = m_inv.eval_interval(dst.uvalue);
                 if (std::optional<number_t> n = interval.singleton()) {
                     if (n->fits_sint64()) {
                         uint64_t input = (uint64_t)(int64_t)n.value();
                         if (!bin.is64) {
                             input &= UINT32_MAX;
                         }
-                        uint64_t output = (int64_t)(input >> imm);
-                        m_inv.set(dst.value, crab::interval_t{number_t{output}});
+                        uint64_t output = (input >> imm);
+                        m_inv.set(dst.svalue, crab::interval_t{number_t{(int64_t)output}});
+                        m_inv.set(dst.uvalue, crab::interval_t{number_t{(uint64_t)output}});
                         break;
                     }
                 }
             }
             // avoid signedness and overflow issues in lshr(dst.value, imm);
-            havoc(dst.value);
+            havoc(dst.svalue);
+            havoc(dst.uvalue);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::ARSH:
             if (m_inv.entail(type_is_number(bin.dst))) {
-                auto interval = m_inv.eval_interval(dst.value);
+                auto interval = m_inv.eval_interval(dst.svalue);
                 if (std::optional<number_t> n = interval.singleton()) {
                     if (n->fits_sint64()) {
                         int64_t input = (int64_t)n.value();
@@ -1805,21 +2070,24 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             input = (int32_t)(input & UINT32_MAX);
                         }
                         int64_t output = (int64_t)(input >> imm);
-                        m_inv.set(dst.value, crab::interval_t(number_t((signed long long)output),
-                                                              number_t((signed long long)output)));
+                        m_inv.set(dst.svalue, crab::interval_t(number_t((signed long long)output),
+                                                               number_t((signed long long)output)));
+                        m_inv.set(dst.uvalue, crab::interval_t(number_t((uint64_t)output),
+                                                               number_t((uint64_t)output)));
                         break;
                     }
                 }
             }
             // avoid signedness and overflow issues in ashr(dst.value, imm);
             // = (int64_t)dst >> imm;
-            havoc(dst.value);
+            havoc(dst.svalue);
+            havoc(dst.uvalue);
             // assume(dst.value <= (1 << (64 - imm)));
             // assume(dst.value >= -(1 << (64 - imm)));
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::XOR:
-            bitwise_xor(dst.value, imm);
+            bitwise_xor(dst.svalue, dst.uvalue, imm);
             havoc_offsets(bin.dst);
             break;
         }
@@ -1831,7 +2099,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::ADD: {
             if (type_inv.same_type(m_inv, bin.dst, std::get<Reg>(bin.v))) {
                 // both must be numbers
-                add_overflow(dst.value, src.value, finite_width);
+                add_overflow(dst.svalue, dst.uvalue, src.svalue, finite_width);
             } else {
                 // Here we're not sure that lhs and rhs are the same type; they might be.
                 // But previous assertions should fail unless we know that exactly one of lhs or rhs is a pointer.
@@ -1841,30 +2109,32 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             // num += ptr
                             type_inv.assign_type(inv, bin.dst, src_type);
                             if (auto dst_offset = get_type_offset_variable(bin.dst, src_type))
-                                apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst.value,
-                                      get_type_offset_variable(src_reg, src_type).value(), 0);
+                                apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst.svalue,
+                                      get_type_offset_variable(src_reg, src_type).value());
                             if (src_type == T_SHARED)
                                 inv.assign(dst.shared_region_size, src.shared_region_size);
                         } else if (dst_type != T_NUM && src_type == T_NUM) {
                             // ptr += num
                             type_inv.assign_type(inv, bin.dst, dst_type);
                             if (auto dst_offset = get_type_offset_variable(bin.dst, dst_type)) {
-                                apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst_offset.value(), src.value, 0);
+                                apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst_offset.value(), src.svalue);
                                 if (dst_type == T_STACK) {
                                     // Reduce the numeric size.
                                     using namespace crab::dsl_syntax;
-                                    if (m_inv.intersect(src.value < 0)) {
+                                    if (m_inv.intersect(src.svalue < 0)) {
                                         inv -= dst.stack_numeric_size;
                                         recompute_stack_numeric_size(inv, dst.type);
                                     } else
-                                        apply(inv, crab::arith_binop_t::SUB, dst.stack_numeric_size,
-                                              dst.stack_numeric_size, src.value, 0);
+                                        apply_signed(inv, crab::arith_binop_t::SUB, dst.stack_numeric_size,
+                                                     dst.stack_numeric_size,
+                                                     dst.stack_numeric_size, src.svalue, 0);
                                 }
                             }
                         } else if (dst_type == T_NUM && src_type == T_NUM) {
                             // dst and src don't necessarily have the same type, but among the possibilities
                             // enumerated is the case where they are both numbers.
-                            apply(inv, crab::arith_binop_t::ADD, dst.value, dst.value, src.value, finite_width);
+                            apply_signed(inv, crab::arith_binop_t::ADD, dst.svalue, dst.uvalue, dst.svalue, src.svalue,
+                                         finite_width);
                         } else {
                             // We ignore the cases here that do not match the assumption described
                             // above.  Joining bottom with another results will leave the other
@@ -1874,7 +2144,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                     });
                 });
                 // careful: change dst.value only after dealing with offset
-                apply(m_inv, crab::arith_binop_t::ADD, dst.value, dst.value, src.value, finite_width);
+                apply_signed(m_inv, crab::arith_binop_t::ADD, dst.svalue, dst.uvalue, dst.svalue, src.svalue, finite_width);
             }
             break;
         }
@@ -1885,7 +2155,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                     switch (type) {
                     case T_NUM:
                         // This is: sub_overflow(inv, dst.value, src.value, finite_width);
-                        apply(inv, crab::arith_binop_t::SUB, dst.value, dst.value, src.value, finite_width);
+                        apply_signed(inv, crab::arith_binop_t::SUB, dst.svalue, dst.uvalue, dst.svalue, src.svalue,
+                                     finite_width);
                         type_inv.assign_type(inv, bin.dst, T_NUM);
                         havoc_offsets(inv, bin.dst);
                         break;
@@ -1893,8 +2164,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                         // ptr -= ptr
                         // Assertions should make sure we only perform this on non-shared pointers.
                         if (auto dst_offset = get_type_offset_variable(bin.dst, type)) {
-                            apply(inv, crab::arith_binop_t::SUB, dst.value, dst_offset.value(),
-                                  get_type_offset_variable(src_reg, type).value(), finite_width);
+                            apply_signed(inv, crab::arith_binop_t::SUB, dst.svalue, dst.uvalue, dst_offset.value(),
+                                         get_type_offset_variable(src_reg, type).value(), finite_width);
                             inv -= dst_offset.value();
                         }
                         havoc_offsets(inv, bin.dst);
@@ -1907,21 +2178,22 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 // Either they're different, or at least one is not a singleton.
                 if (type_inv.get_type(m_inv, std::get<Reg>(bin.v)) != T_NUM) {
                     type_inv.havoc_type(m_inv, bin.dst);
-                    havoc(dst.value);
+                    havoc(dst.svalue);
+                    havoc(dst.uvalue);
                     havoc_offsets(bin.dst);
                 } else {
-                    sub_overflow(dst.value, src.value, finite_width);
+                    sub_overflow(dst.svalue, dst.uvalue, src.svalue, finite_width);
                     if (auto dst_offset = get_type_offset_variable(bin.dst)) {
-                        sub(dst_offset.value(), src.value);
+                        sub(dst_offset.value(), src.svalue);
                         if (type_inv.has_type(m_inv, dst.type, T_STACK)) {
                             // Reduce the numeric size.
                             using namespace crab::dsl_syntax;
-                            if (m_inv.intersect(src.value > 0)) {
+                            if (m_inv.intersect(src.svalue > 0)) {
                                 m_inv -= dst.stack_numeric_size;
                                 recompute_stack_numeric_size(m_inv, dst.type);
                             } else
                                 apply(m_inv, crab::arith_binop_t::ADD, dst.stack_numeric_size,
-                                      dst.stack_numeric_size, src.value, 0);
+                                      dst.stack_numeric_size, src.svalue);
                         }
                     }
                 }
@@ -1929,33 +2201,33 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             break;
         }
         case Bin::Op::MUL:
-            mul(dst.value, src.value, finite_width);
+            mul(dst.svalue, dst.uvalue, src.svalue, finite_width);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::UDIV:
-            udiv(dst.value, src.value, finite_width);
+            udiv(dst.svalue, dst.uvalue, src.uvalue, finite_width);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::UMOD:
-            urem(dst.value, src.value, finite_width);
+            urem(dst.svalue, dst.uvalue, src.uvalue, finite_width);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::OR:
-            bitwise_or(dst.value, src.value, finite_width);
+            bitwise_or(dst.svalue, dst.uvalue, src.uvalue, finite_width);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::AND:
-            bitwise_and(dst.value, src.value, finite_width);
+            bitwise_and(dst.svalue, dst.uvalue, src.uvalue, finite_width);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::LSH:
-            shl_overflow(dst.value, src.value);
+            shl_overflow(dst.svalue, dst.uvalue, src.uvalue);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::RSH:
             if (m_inv.entail(type_is_number(bin.dst)) && m_inv.entail(type_is_number(std::get<Reg>(bin.v)))) {
-                auto dst_interval = m_inv.eval_interval(dst.value);
-                auto src_interval = m_inv.eval_interval(src.value);
+                auto dst_interval = m_inv.eval_interval(dst.uvalue);
+                auto src_interval = m_inv.eval_interval(src.uvalue);
                 std::optional<number_t> dst_n = dst_interval.singleton();
                 std::optional<number_t> src_n = src_interval.singleton();
                 if (dst_n && src_n) {
@@ -1965,18 +2237,20 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             input &= UINT32_MAX;
                         }
                         uint64_t output = (int64_t)(input >> (int64_t)src_n.value());
-                        m_inv.set(dst.value, crab::interval_t{number_t{output}});
+                        m_inv.set(dst.uvalue, crab::interval_t{number_t{output}});
+                        m_inv.set(dst.svalue, crab::interval_t{number_t{(signed long long)output}});
                         break;
                     }
                 }
             }
-            havoc(dst.value);
+            havoc(dst.svalue);
+            havoc(dst.uvalue);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::ARSH:
             if (m_inv.entail(type_is_number(bin.dst)) && m_inv.entail(type_is_number(std::get<Reg>(bin.v)))) {
-                auto dst_interval = m_inv.eval_interval(dst.value);
-                auto src_interval = m_inv.eval_interval(src.value);
+                auto dst_interval = m_inv.eval_interval(dst.svalue);
+                auto src_interval = m_inv.eval_interval(src.svalue);
                 std::optional<number_t> dst_n = dst_interval.singleton();
                 std::optional<number_t> src_n = src_interval.singleton();
                 if (dst_n && src_n) {
@@ -1984,24 +2258,28 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                         int64_t input = (int64_t)dst_n.value();
                         if (bin.is64) {
                             int64_t output = (int64_t)(input >> (int64_t)src_n.value());
-                            m_inv.set(dst.value, crab::interval_t{number_t{output}});
+                            m_inv.set(dst.svalue, crab::interval_t{number_t{output}});
+                            m_inv.set(dst.uvalue, crab::interval_t{number_t{(uint64_t)output}});
                         } else {
                             int32_t output = (int32_t)((int32_t)input >> (int32_t)(int64_t)src_n.value());
-                            m_inv.set(dst.value, crab::interval_t(number_t((uint32_t)output), number_t((uint32_t)output)));
+                            m_inv.set(dst.svalue, crab::interval_t(number_t((uint32_t)output), number_t((uint32_t)output)));
+                            m_inv.set(dst.uvalue, crab::interval_t(number_t((uint32_t)output), number_t((uint32_t)output)));
                         }
                         break;
                     }
                 }
             }
-            havoc(dst.value);
+            havoc(dst.svalue);
+            havoc(dst.uvalue);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::XOR:
-            bitwise_xor(dst.value, src.value, finite_width);
+            bitwise_xor(dst.svalue, dst.uvalue, src.uvalue, finite_width);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::MOV:
-            assign(dst.value, src.value);
+            assign(dst.svalue, src.svalue);
+            assign(dst.uvalue, src.uvalue);
             havoc_offsets(bin.dst);
             m_inv = type_inv.join_over_types(m_inv, src_reg, [&](NumAbsDomain& inv, type_encoding_t type) {
                 inv.assign(dst.type, type);
@@ -2030,7 +2308,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         }
     }
     if (!bin.is64) {
-        bitwise_and(dst.value, UINT32_MAX);
+        bitwise_and(dst.svalue, dst.uvalue, UINT32_MAX);
     }
 }
 
@@ -2088,8 +2366,8 @@ ebpf_domain_t ebpf_domain_t::setup_entry(bool check_termination, bool init_r1) {
     ebpf_domain_t inv;
     auto r10 = reg_pack(R10_STACK_POINTER);
     Reg r10_reg{(uint8_t)R10_STACK_POINTER};
-    inv += EBPF_STACK_SIZE <= r10.value;
-    inv += r10.value <= PTR_MAX;
+    inv += EBPF_STACK_SIZE <= r10.svalue;
+    inv += r10.svalue <= PTR_MAX;
     inv.assign(r10.stack_offset, EBPF_STACK_SIZE);
     // stack_numeric_size would be 0, but TOP has the same result
     // so no need to assign it.
@@ -2098,8 +2376,8 @@ ebpf_domain_t ebpf_domain_t::setup_entry(bool check_termination, bool init_r1) {
     if (init_r1) {
         auto r1 = reg_pack(R1_ARG);
         Reg r1_reg{(uint8_t)R1_ARG};
-        inv += 1 <= r1.value;
-        inv += r1.value <= PTR_MAX;
+        inv += 1 <= r1.svalue;
+        inv += r1.svalue <= PTR_MAX;
         inv.assign(r1.ctx_offset, 0);
         inv.type_inv.assign_type(inv.m_inv, r1_reg, T_CTX);
     }

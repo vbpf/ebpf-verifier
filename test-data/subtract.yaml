@@ -3,7 +3,7 @@
 ---
 test-case: subtract immediate from large singleton number
 
-pre: ["r0.type=number", "r0.value=2147483649"]
+pre: ["r0.type=number", "r0.svalue=2147483649", "r0.uvalue=2147483649"]
 
 code:
   <start>: |
@@ -11,11 +11,12 @@ code:
 
 post:
   - r0.type=number
-  - r0.value=2147483647
+  - r0.svalue=2147483647
+  - r0.uvalue=2147483647
 ---
 test-case: subtract immediate from large number range
 
-pre: ["r0.type=number", "r0.value=[2147483649, 2147483651]"]
+pre: ["r0.type=number", "r0.svalue=[2147483649, 2147483651]", "r0.uvalue=[2147483649, 2147483651]"]
 
 code:
   <start>: |
@@ -23,7 +24,9 @@ code:
 
 post:
   - r0.type=number
-  - r0.value=[2147483645, 2147483647]
+  - r0.svalue=[2147483645, 2147483647]
+  - r0.uvalue=[2147483645, 2147483647]
+  - r0.svalue=r0.uvalue
 ---
 test-case: subtract a register from itself
 
@@ -35,7 +38,8 @@ code:
 
 post:
   - r1.type=number
-  - r1.value=0
+  - r1.svalue=0
+  - r1.uvalue=0
 ---
 test-case: allow subtraction of packet pointers
 
@@ -50,7 +54,8 @@ post:
   - r2.type=packet
   - r2.packet_offset=4
   - r3.type=number
-  - r3.value=4
+  - r3.svalue=4
+  - r3.uvalue=4
   - meta_offset=-4
   - packet_size=[16, 32]
 ---
@@ -68,7 +73,8 @@ post:
   - r2.shared_offset=4
   - r2.shared_region_size=8
   - r3.type=number
-  - r3.value=4
+  - r3.svalue=4
+  - r3.uvalue=4
 
 messages:
   - "0: Cannot subtract pointers to non-singleton regions (r2.type == number or r3.type == r2.type in {ctx, stack, packet})"
@@ -106,7 +112,8 @@ post:
   - r2.packet_offset=4
   - r2.stack_offset=4
   - r3.type=number
-  - r3.value=4
+  - r3.svalue=4
+  - r3.uvalue=4
   - meta_offset=-4
   - packet_size=[16, 32]
 
@@ -114,7 +121,7 @@ post:
 test-case: allow subtraction of numeric register from valid pointer
 
 pre: ["r1.type=stack", "r1.stack_offset=[500, 504]",
-      "r2.type=number", "r2.value=4"]
+      "r2.type=number", "r2.svalue=4", "r2.uvalue=4"]
 
 code:
   <start>: |
@@ -124,7 +131,8 @@ post:
   - r1.type=stack
   - r1.stack_offset=[496, 500]
   - r2.type=number
-  - r2.value=4
+  - r2.svalue=4
+  - r2.uvalue=4
 
 ---
 test-case: disallow subtraction of pointer from invalid pointer to a singleton region
@@ -138,7 +146,9 @@ code:
 
 post:
   - r1.type=number
-  - r1.value=[270, 440]
+  - r1.svalue=[270, 440]
+  - r1.uvalue=[270, 440]
+  - r1.svalue=r1.uvalue
   - r2.type=stack
   - r2.stack_offset=[140, 230]
 messages:
