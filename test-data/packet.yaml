@@ -70,7 +70,7 @@ post: [
     "r2.type=packet", "r2.packet_offset=[0, 65534]", "packet_size=r2.packet_offset",
     "r3.type=packet", "r3.packet_offset=4", "r3.value=[4102, 2147418116]",
     "packet_size-r3.packet_offset<=65530", "packet_size=[0, 65534]",
-    "r3.packet_offset-packet_size<=4", "r1.value=r3.value+4",
+    "r3.packet_offset-packet_size<=4", "r3.value=r1.value+4",
     "r2.packet_offset-r3.packet_offset<=65530", "r3.packet_offset-r2.packet_offset<=4"
 ]
 messages:
@@ -101,6 +101,6 @@ post: [
     "r2.type=packet", "r2.packet_offset=[0, 65534]", "packet_size=r2.packet_offset",
     "r3.type=packet", "r3.packet_offset=8", "r3.value=[4106, 2147418120]",
     "packet_size-r3.packet_offset<=65526", "packet_size=[0, 65534]",
-    "r3.packet_offset-packet_size<=8", "r1.value=r3.value+8",
+    "r3.packet_offset-packet_size<=8", "r3.value=r1.value+8",
     "r2.packet_offset-r3.packet_offset<=65526", "r3.packet_offset-r2.packet_offset<=8"
 ]

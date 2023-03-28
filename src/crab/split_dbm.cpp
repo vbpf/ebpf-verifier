@@ -1139,12 +1139,14 @@ string_invariant SplitDBM::to_set() const {
             diff_csts.emplace(vd, vs, g_excl.edge_val(s, d));
         }
     }
-    // simplify: x - y <= k && y - x <= -k -> y = x + k
+    // simplify: x - y <= k && y - x <= -k
+    //        -> x <= y + k <= x
+    //        -> x = y + k
     for (const auto& [vd, vs, w] : diff_csts) {
         auto dual = to_string(vs, vd, -w, false);
         if (result.count(dual)) {
             result.erase(dual);
-            result.insert(to_string(vs, vd, w, true));
+            result.insert(to_string(vd, vs, w, true));
         } else {
             result.insert(to_string(vd, vs, w, false));
         }
