@@ -87,6 +87,10 @@ void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vect
     }
 
     for (size_t offset = line_info_start + sizeof(line_info_record_size); offset < line_info_end;) {
+        if ((offset + offsetof(btf_ext_info_sec_t, data)) > line_info_end) {
+            throw std::runtime_error(std::string("Invalid info section offset"));
+        }
+
         auto section_info = reinterpret_cast<const btf_ext_info_sec_t*>(btf_ext.data() + offset);
         size_t section_info_size = offsetof(btf_ext_info_sec_t, data) + static_cast<size_t>(line_info_record_size) *
                                                                             static_cast<size_t>(section_info->num_info);
