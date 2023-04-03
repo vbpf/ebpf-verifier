@@ -23,6 +23,16 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
   find_package(Boost REQUIRED)
   set(CMAKE_CXX_STANDARD 17)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+  list(APPEND CMAKE_CONFIGURATION_TYPES FuzzerDebug)
+  list(REMOVE_DUPLICATES CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES}" CACHE STRING
+      "Add the configurations that we need"
+      FORCE)
+  set(CMAKE_EXE_LINKER_FLAGS_FUZZERDEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
+  set(CMAKE_SHARED_LINKER_FLAGS_FUZZERDEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG}")
+  set(CMAKE_C_FLAGS_FUZZERDEBUG "${CMAKE_C_FLAGS_DEBUG} /fsanitize-coverage=inline-bool-flag /fsanitize-coverage=edge /fsanitize-coverage=trace-cmp /fsanitize-coverage=trace-div /ZH:SHA_256")
+  set(CMAKE_CXX_FLAGS_FUZZERDEBUG "${CMAKE_CXX_FLAGS_DEBUG} /fsanitize-coverage=inline-bool-flag /fsanitize-coverage=edge /fsanitize-coverage=trace-cmp /fsanitize-coverage=trace-div /ZH:SHA_256")
+
   find_program(NUGET nuget)
   if (NOT NUGET)
     message("ERROR: You must first install nuget.exe from https://www.nuget.org/downloads")
