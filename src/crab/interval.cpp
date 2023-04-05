@@ -200,6 +200,8 @@ interval_t interval_t::And(const interval_t& x) const {
             return interval_t((*left_op) & (*right_op));
         } else if (lb() >= 0 && x.lb() >= 0) {
             return interval_t(0, bound_t::min(ub(), x.ub()));
+        } else if (x.lb() >= 0) {
+            return interval_t(0, x.ub());
         } else {
             return top();
         }

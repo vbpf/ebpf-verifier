@@ -65,6 +65,36 @@ post:
   - r1.type=number
   - r1.svalue=[-oo, 9]
 ---
+test-case: assume number w== imm
+
+pre: [r1.type=number, r1.svalue=4294967307, r1.uvalue=4294967307]
+
+code:
+  <start>: |
+    assume w1 == 11
+
+post:
+  - r1.type=number
+  - r1.svalue=4294967307
+  - r1.uvalue=4294967307
+---
+test-case: assume number w!= reg
+
+pre: [r1.type=number, r1.svalue=10, r1.uvalue=10,
+      r2.type=number, r2.svalue=11, r2.uvalue=11]
+
+code:
+  <start>: |
+    assume w1 != r2
+
+post:
+  - r1.type=number
+  - r1.svalue=10
+  - r1.uvalue=10
+  - r2.type=number
+  - r2.svalue=11
+  - r2.uvalue=11
+---
 test-case: assume number < imm
 
 pre: [r1.type=number]

@@ -444,6 +444,25 @@ class interval_t final {
 
     [[nodiscard]] interval_t AShr(const interval_t& x) const;
 
+    interval_t truncate_to_sint(bool is64) {
+        interval_t new_interval = *this;
+        if (!(*this <= interval_t::signed_int(is64))) {
+            if (auto size = finite_size()) {
+                auto llb = lb().number()->truncate_to_signed_finite_width(is64 ? 64 : 32);
+                auto lub = ub().number()->truncate_to_signed_finite_width(is64 ? 64 : 32);
+                if ((llb <= lub) && (is64 ? size->fits_sint64() : size->fits_sint32())) {
+                    // Interval can be accurately represented in 64 bits.
+                    new_interval = interval_t{llb, lub};
+                } else {
+                    new_interval = interval_t::signed_int(is64);
+                }
+            } else {
+                new_interval = interval_t::signed_int(is64);
+            }
+        }
+        return new_interval;
+    }
+
     interval_t truncate_to_uint(bool is64) {
         interval_t new_interval = *this;
         if (!(*this <= interval_t::unsigned_int(is64))) {
@@ -463,6 +482,8 @@ class interval_t final {
         return new_interval;
     }
 
+    // Return a non-negative interval in the range [0, INT_MAX],
+    // which can be represented as both an svalue and a uvalue.
     static const interval_t nonnegative_int(bool is64) {
         if (is64) {
             return {0, number_t{std::numeric_limits<int64_t>::max()}};
@@ -470,6 +491,9 @@ class interval_t final {
             return {0, number_t{std::numeric_limits<int32_t>::max()}};
         }
     }
+    // Return an interval in the range [INT_MIN, -1], which can only
+    // be represented as an svalue.  The uvalue equivalent using the same
+    // bits would be unsigned_high().
     static const interval_t negative_int(bool is64) {
         if (is64) {
             return {number_t{std::numeric_limits<int64_t>::min()}, -1};
@@ -477,6 +501,8 @@ class interval_t final {
             return {number_t{std::numeric_limits<int32_t>::min()}, -1};
         }
     }
+    // Return an interval in the range [INT_MIN, INT_MAX] which can only
+    // be represented as an svalue.
     static const interval_t signed_int(bool is64) {
         if (is64) {
             return {number_t{std::numeric_limits<int64_t>::min()}, number_t{std::numeric_limits<int64_t>::max()}};
@@ -484,6 +510,8 @@ class interval_t final {
             return {number_t{std::numeric_limits<int32_t>::min()}, number_t{std::numeric_limits<int32_t>::max()}};
         }
     }
+    // Return an interval in the range [0, UINT_MAX] which can only be
+    // represented as a uvalue.
     static const interval_t unsigned_int(bool is64) {
         if (is64) {
             return {0, number_t{std::numeric_limits<uint64_t>::max()}};
@@ -491,6 +519,9 @@ class interval_t final {
             return {0, number_t{std::numeric_limits<uint32_t>::max()}};
         }
     }
+    // Return an interval in the range [INT_MAX+1, UINT_MAX], which can only
+    // be represented as a uvalue.  The svalue equivalent using the same
+    // bits would be negative_int().
     static const interval_t unsigned_high(bool is64) {
         if (is64) {
             return {number_t{std::numeric_limits<int64_t>::max()} + 1, number_t{std::numeric_limits<uint64_t>::max()}};

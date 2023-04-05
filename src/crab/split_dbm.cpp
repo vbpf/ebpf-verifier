@@ -1252,12 +1252,6 @@ static interval_t get_interval(const SplitDBM::vert_map_t& m, const SplitDBM::gr
     if (r.elem(0, v))
         ub = x.is_unsigned() ? number_t(r.edge_val(0, v)).truncate_to_unsigned_finite_width(finite_width)
                              : number_t(r.edge_val(0, v)).truncate_to_signed_finite_width(finite_width);
-
-    // [0, 4294967295] with finite_width = 32 results in [0, -1] which would give bottom, whereas we want to
-    // retain [0, 4294967295].  cast_to_signed_finite_width always gives signed numbers, but we can try unsigned.
-    if ((finite_width == 32) && (lb >= 0) && (ub < 0)) {
-        ub = number_t(r.edge_val(0, v)).cast_to_uint32();
-    }
     return {lb, ub};
 }
 

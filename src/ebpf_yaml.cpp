@@ -257,8 +257,9 @@ static vector<T> vector_of(const std::vector<uint8_t>& bytes) {
     return {(T*)data, (T*)(data + size)};
 }
 
-template <typename TS, typename TU>
+template <typename TS>
 void add_stack_variable(std::set<std::string>& more, int& offset, const std::vector<uint8_t>& memory_bytes) {
+    typedef typename std::make_unsigned<TS>::type TU;
     TS svalue;
     TU uvalue;
     memcpy(&svalue, memory_bytes.data() + offset + memory_bytes.size() - EBPF_STACK_SIZE, sizeof(TS));
@@ -281,16 +282,16 @@ string_invariant stack_contents_invariant(const std::vector<uint8_t>& memory_byt
 
     int offset = EBPF_STACK_SIZE - (int)memory_bytes.size();
     if (offset % 2 != 0) {
-        add_stack_variable<int8_t, uint8_t>(more, offset, memory_bytes);
+        add_stack_variable<int8_t>(more, offset, memory_bytes);
     }
     if (offset % 4 != 0) {
-        add_stack_variable<int16_t, uint16_t>(more, offset, memory_bytes);
+        add_stack_variable<int16_t>(more, offset, memory_bytes);
     }
     if (offset % 8 != 0) {
-        add_stack_variable<int32_t, uint32_t>(more, offset, memory_bytes);
+        add_stack_variable<int32_t>(more, offset, memory_bytes);
     }
     while (offset < EBPF_STACK_SIZE) {
-        add_stack_variable<int64_t, uint64_t>(more, offset, memory_bytes);
+        add_stack_variable<int64_t>(more, offset, memory_bytes);
     }
 
     return string_invariant(more);
