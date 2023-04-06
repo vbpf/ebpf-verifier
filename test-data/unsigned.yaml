@@ -733,7 +733,7 @@ pre: ["r1.type=number", "r1.svalue=[-1, 1]"]
 code:
   <start>: |
     assume r1 > 0
-post: ["r1.type=number", "r1.svalue=[-1, 1]", "r1.uvalue=[1, 18446744073709551615]"]
+post: ["r1.type=number", "r1.svalue=[-1, 1]", "r1.uvalue=[1, +oo]"]
 ---
 test-case: "assume [-1, 1] w> 0 nop"
 pre: ["r1.type=number", "r1.svalue=[-1, 1]"]
@@ -795,14 +795,14 @@ pre: ["r1.type=number", "r1.svalue=[-1, 2]"]
 code:
   <start>: |
     assume r1 > 1
-post: ["r1.type=number", "r1.svalue=[-1, 2]", "r1.uvalue=[2, 18446744073709551615]"]
+post: ["r1.type=number", "r1.svalue=[-1, 2]", "r1.uvalue=[2, +oo]"]
 ---
 test-case: "assume [-1, 2] >= 2 narrows uvalue"
 pre: ["r1.type=number", "r1.svalue=[-1, 2]"]
 code:
   <start>: |
     assume r1 > 1
-post: ["r1.type=number", "r1.svalue=[-1, 2]", "r1.uvalue=[2, 18446744073709551615]"]
+post: ["r1.type=number", "r1.svalue=[-1, 2]", "r1.uvalue=[2, +oo]"]
 ---
 test-case: "assume [-1, 1] w> 1 nop"
 pre: ["r1.type=number", "r1.svalue=[-1, 1]"]
@@ -816,7 +816,7 @@ pre: ["r1.type=number"]
 code:
   <start>: |
     assume r1 > 1
-post: ["r1.type=number", "r1.uvalue=[2, 18446744073709551615]"]
+post: ["r1.type=number", "r1.uvalue=[2, +oo]"]
 ---
 test-case: "assume TOP w> 1 nop"
 pre: ["r1.type=number"]
