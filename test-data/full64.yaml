@@ -109,7 +109,7 @@ code:
 
 post:
   - r0.type=number
-  - r0.uvalue=[1, 18446744073709551615]
+  - r0.uvalue=[1, +oo]
 ---
 test-case: create unsigned infinite interval
 
@@ -121,7 +121,7 @@ code:
 
 post:
   - r0.type=number
-  - r0.uvalue=[1, 18446744073709551615]
+  - r0.uvalue=[1, +oo]
 ---
 test-case: create signed infinite interval
 
