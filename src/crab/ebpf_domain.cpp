@@ -171,6 +171,8 @@ static std::vector<linear_constraint_t> assume_signed_cst_interval(const NumAbsD
 
     // Handle svalue == right.
     if (op == Condition::Op::EQ) {
+        if (is64 && right_interval.finite_size())
+            return {left_svalue >= *right_interval.lb().number(), left_svalue <= *right_interval.ub().number()};
         if (auto rn = right_interval.singleton()) {
             if (auto ln = left_interval.singleton()) {
                 if (*ln == *rn) {

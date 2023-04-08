@@ -111,6 +111,20 @@ post:
   - r0.type=number
   - r0.uvalue=[1, +oo]
 ---
+test-case: equals 0
+
+pre: ["r0.type=number", "r0.svalue=[0, 1]", "r0.uvalue=[0, 1]", "r0.svalue=r0.uvalue"]
+
+code:
+  <start>: |
+    assume r0 == 0
+
+post:
+  - r0.type=number
+  - r0.svalue=0
+  - r0.uvalue=0
+  - r0.svalue=r0.uvalue
+---
 test-case: create unsigned infinite interval
 
 pre: ["r0.type=number"]
