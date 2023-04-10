@@ -197,6 +197,9 @@ interval_t interval_t::And(const interval_t& x) const {
         std::optional<number_t> left_op = singleton();
         std::optional<number_t> right_op = x.singleton();
 
+        assert(is_top() || (lb() >= 0));
+        assert(x.is_top() || (x.lb() >= 0));
+
         if (left_op && right_op) {
             return interval_t((*left_op) & (*right_op));
         } else if (!is_top() && !x.is_top()) {
