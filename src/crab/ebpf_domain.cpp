@@ -174,11 +174,27 @@ static std::vector<linear_constraint_t> assume_signed_cst_interval(const NumAbsD
         if (is64 && right_interval.finite_size())
             return {left_svalue >= *right_interval.lb().number(), left_svalue <= *right_interval.ub().number()};
         if (auto rn = right_interval.singleton()) {
-            if (auto ln = left_interval.singleton()) {
-                if (*ln == *rn) {
-                    return {linear_constraint_t::TRUE()};
+            // Handle 32-bit comparisons.
+            if (auto size = inv.eval_interval(left_svalue).finite_size()) {
+                // Find the lowest 64-bit svalue in range that == right.
+                int64_t lb = inv.eval_interval(left_svalue).lb().number()->cast_to_sint64();
+                int64_t lb_match = ((lb & 0xFFFFFFFF00000000) | rn->cast_to_sint64());
+                if (lb_match < lb) {
+                    lb += 0x100000000;
+                }
+
+                // Find the highest 64-bit svalue in range that == right.
+                int64_t ub = inv.eval_interval(left_svalue).ub().number()->cast_to_sint64();
+                int64_t ub_match = ((ub & 0xFFFFFFFF00000000) | rn->cast_to_sint64());
+                if (ub_match > ub) {
+                    lb -= 0x100000000;
+                }
+
+                if ((uint64_t)lb_match <= (uint64_t)ub_match) {
+                    return {left_svalue >= lb_match, left_svalue <= ub_match,
+                            left_uvalue >= number_t((uint64_t)lb_match), left_uvalue <= number_t((uint64_t)ub_match)};
                 } else {
-                    return {linear_constraint_t::FALSE()};
+                    return {left_svalue >= lb_match, left_svalue <= ub_match};
                 }
             }
         }
