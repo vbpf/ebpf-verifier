@@ -999,6 +999,7 @@ void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t 
     normalize();
 }
 
+// Apply a bitwise operator to a uvalue.
 void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, const number_t& k, int finite_width) {
     CrabStats::count("SplitDBM.count.apply");
     ScopedCrabStats __st__("SplitDBM.apply");
@@ -1006,7 +1007,7 @@ void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, const numbe
     // Convert to intervals and perform the operation
     normalize();
     interval_t yi = this->operator[](y);
-    interval_t zi(k);
+    interval_t zi(number_t(k.cast_to_uint64()));
     interval_t xi = interval_t::bottom();
 
     switch (op) {

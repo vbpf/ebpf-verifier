@@ -91,6 +91,18 @@ post:
   - r1.svalue=4294967307
   - r1.uvalue=4294967307
 ---
+test-case: assume range w== imm goes to bottom
+
+pre: ["r1.type=number", "r1.svalue=[4294967306, 4294967307]", "r1.uvalue=[4294967306, 4294967307]"]
+
+code:
+  <start>: |
+    assume w1 == 13
+
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
 test-case: assume number w!= reg
 
 pre: [r1.type=number, r1.svalue=10, r1.uvalue=10,
