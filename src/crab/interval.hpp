@@ -444,7 +444,7 @@ class interval_t final {
 
     [[nodiscard]] interval_t AShr(const interval_t& x) const;
 
-    interval_t truncate_to_sint(bool is64) {
+    interval_t truncate_to_sint(bool is64) const {
         interval_t new_interval = *this;
         if (!(*this <= interval_t::signed_int(is64))) {
             if (auto size = finite_size()) {

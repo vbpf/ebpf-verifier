@@ -98,6 +98,7 @@ post:
   - r1.type=number
   - r1.svalue=9223372036854775807
   - r1.uvalue=9223372036854775807
+  - r1.svalue=r1.uvalue
 ---
 test-case: not equal 0
 
@@ -147,7 +148,9 @@ code:
 
 post:
   - r0.type=number
-  - r0.svalue=[1, +oo]
+  - r0.svalue=[1, 9223372036854775807]
+  - r0.uvalue=[1, 9223372036854775807]
+  - r0.svalue=r0.uvalue
 ---
 test-case: addition with signed infinite interval
 
@@ -160,3 +163,4 @@ code:
 
 post:
   - r0.type=number
+  - r0.uvalue=[3, 9223372036854775809]
