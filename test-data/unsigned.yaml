@@ -718,8 +718,6 @@ code:
 post: ["r1.type=number", "r1.svalue=2147483647", "r1.uvalue=2147483647", "r1.svalue=r1.uvalue",
         "r2.type=number", "r2.svalue=2147483647", "r2.uvalue=2147483647",
         "r2.uvalue-r1.svalue<=0",  # missing: r1.svalue-r2.uvalue<=0; probably avoiding overflow in SplitDBM
-        "r2.svalue-r1.svalue<=0",  # missing: r1.svalue-r2.svalue<=0; probably avoiding overflow in SplitDBM
-        "r2.svalue-r1.uvalue<=0",  # missing: r1.uvalue-r2.svalue<=0; probably avoiding overflow in SplitDBM
         "r2.uvalue-r1.uvalue<=0"]  # missing: r1.uvalue-r2.uvalue<=0; probably avoiding overflow in SplitDBM
 ---
 test-case: "assume 4294967301 w>= 5 nop"
@@ -1098,6 +1096,12 @@ code:
   <start>: assume r1 != 1
 post: ["r1.type=number", "r1.svalue=2", "r1.uvalue=2"]
 ---
+test-case: "assume [1, 2] w< 2 narrows to 1"
+pre: ["r1.type=number", "r1.svalue=[1, 2]", "r1.uvalue=[1, 2]"]
+code:
+  <start>: assume w1 < 2
+post: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1"]
+---
 test-case: "assume 4294967307 w!= 11 implies bottom"
 pre: ["r1.type=number", "r1.svalue=4294967307", "r1.uvalue=4294967307"]
 code:
@@ -1105,3 +1109,32 @@ code:
 post: []
 messages:
   - "0: Code is unreachable after 0"
+---
+test-case: "assume [3, 4] w< 2 implies bottom"
+pre: ["r1.type=number", "r1.svalue=[3, 4]", "r1.uvalue=[3, 4]"]
+code:
+  <start>: assume w1 < 2
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
+test-case: "assume [UINT32_MAX+1, UINT32_MAX+5] w< 2"
+pre: ["r1.type=number", "r1.uvalue=[4294967296, 4294967300]"]
+code:
+  <start>: assume w1 < 2
+post: ["r1.type=number", "r1.uvalue=[4294967296, 4294967300]"] # could be narrowed in future
+---
+test-case: "assume [1, 4] w< INT32_MAX+5"
+pre: ["r1.type=number", "r1.uvalue=[1, 4]",
+      "r2.type=number", "r2.svalue=[1, 2147483652]", "r2.uvalue=[1, 2147483652]", "r2.svalue=r2.uvalue"]
+code:
+  <start>: assume w1 < r2
+post:
+  - r1.type=number
+  - r1.uvalue=[1, 4]
+  - r1.uvalue-r2.svalue<=-1
+  - r1.uvalue-r2.uvalue<=-1
+  - r2.type=number
+  - r2.svalue=[2, 2147483652]
+  - r2.uvalue=[2, 2147483652]
+  - r2.svalue=r2.uvalue

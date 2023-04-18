@@ -463,7 +463,7 @@ class interval_t final {
         return new_interval;
     }
 
-    interval_t truncate_to_uint(bool is64) {
+    interval_t truncate_to_uint(bool is64) const {
         interval_t new_interval = *this;
         if (!(*this <= interval_t::unsigned_int(is64))) {
             if (auto size = finite_size()) {
