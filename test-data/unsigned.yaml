@@ -859,7 +859,7 @@ code:
     r2 = 9223372036854775807ll
     assume r1 > r2
 post: ["r1.type=number", "r1.svalue=-1", "r1.uvalue=18446744073709551615",
-       "r2.type=number", "r2.svalue=9223372036854775807", "r2.uvalue=9223372036854775807", "r2.uvalue-r1.uvalue<=-1"]
+       "r2.type=number", "r2.svalue=9223372036854775807", "r2.uvalue=9223372036854775807"]
 ---
 test-case: "assume -1 w> INT32_MAX nop"
 pre: []
@@ -876,7 +876,7 @@ code:
     r2 = 9223372036854775807ll
     assume r1 > r2
 post: ["r1.type=number", "r1.svalue=[-9223372036854775807, -1]", "r1.uvalue=[9223372036854775809, 18446744073709551615]",
-       "r2.type=number", "r2.svalue=9223372036854775807", "r2.uvalue=9223372036854775807", "r2.uvalue-r1.uvalue<=-1"]
+       "r2.type=number", "r2.svalue=9223372036854775807", "r2.uvalue=9223372036854775807"]
 ---
 test-case: "assume [INT32_MIN, -1] w> INT32_MAX nop"
 pre: ["r1.type=number", "r1.svalue=[-2147483648, -1]", "r1.uvalue=[18446744071562067968, 18446744073709551615]"]
@@ -892,7 +892,7 @@ code:
   <start>: |
     assume r1 > r2
 post: ["r1.type=number", "r1.svalue=[-9223372036854775807, -1]", "r1.uvalue=[9223372036854775809, 18446744073709551615]",
-       "r2.type=number", "r2.svalue=[0, 9223372036854775807]", "r2.uvalue=[0, 9223372036854775807]", "r2.uvalue-r1.uvalue<=-1"]
+       "r2.type=number", "r2.svalue=[0, 9223372036854775807]", "r2.uvalue=[0, 9223372036854775807]"]
 ---
 test-case: "assume [INT32_MIN, -1] w> [0, INT32_MAX] nop"
 pre: ["r1.type=number", "r1.svalue=[-2147483648, -1]", "r1.uvalue=[18446744071562067968, 18446744073709551615]",
@@ -1138,3 +1138,119 @@ post:
   - r2.svalue=[2, 2147483652]
   - r2.uvalue=[2, 2147483652]
   - r2.svalue=r2.uvalue
+---
+test-case: signed 64-bit negative LT
+pre: ["r1.type=number", "r1.svalue=[-3, -1]", "r1.uvalue=[18446744073709551613, 18446744073709551615]"]
+code:
+  <start>: assume r1 s< -2
+post: ["r1.type=number", "r1.svalue=-3", "r1.uvalue=18446744073709551613"]
+---
+test-case: signed 64-bit positive LT
+pre: ["r1.type=number", "r1.svalue=[1, 3]", "r1.uvalue=[1, 3]", "r1.svalue=r1.uvalue"]
+code:
+  <start>: assume r1 s< 2
+post: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1", "r1.svalue=r1.uvalue"]
+---
+test-case: signed 64-bit LT
+pre: ["r1.type=number", "r1.svalue=[-1, 1]"]
+code:
+  <start>: assume r1 s< 1
+post: ["r1.type=number", "r1.svalue=[-1, 0]"]
+---
+test-case: signed 64-bit GT
+pre: ["r1.type=number", "r1.svalue=[-1, 2]"]
+code:
+  <start>: assume r1 s> 0
+post: ["r1.type=number", "r1.svalue=[1, 2]", "r1.uvalue=[1, 2]", "r1.svalue=r1.uvalue"]
+---
+test-case: signed 32-bit negative LT
+pre: ["r1.type=number", "r1.svalue=[-3, -1]", "r1.uvalue=[18446744073709551613, 18446744073709551615]"]
+code:
+  <start>: assume w1 s< -2
+post: ["r1.type=number", "r1.svalue=-3", "r1.uvalue=18446744073709551613"]
+---
+test-case: signed 32-bit positive LT
+pre: ["r1.type=number", "r1.svalue=[1, 3]", "r1.uvalue=[1, 3]", "r1.svalue=r1.uvalue"]
+code:
+  <start>: assume w1 s< 2
+post: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1", "r1.svalue=r1.uvalue"]
+---
+test-case: signed 32-bit LT
+pre: ["r1.type=number", "r1.svalue=[-1, 1]"]
+code:
+  <start>: assume w1 s< 1
+post: ["r1.type=number", "r1.svalue=[-1, 0]"]
+---
+test-case: signed 32-bit negative GT
+pre: ["r1.type=number", "r1.svalue=[-4, -1]", "r1.uvalue=[18446744073709551612, 18446744073709551615]"]
+code:
+  <start>: assume w1 s> -3
+post: ["r1.type=number", "r1.svalue=[-2, -1]", "r1.uvalue=[18446744073709551614, 18446744073709551615]"]
+---
+test-case: signed 32-bit positive GT
+pre: ["r1.type=number", "r1.svalue=[1, 4]", "r1.uvalue=[1, 4]", "r1.svalue=r1.uvalue"]
+code:
+  <start>: assume w1 s> 2
+post: ["r1.type=number", "r1.svalue=[3, 4]", "r1.uvalue=[3, 4]", "r1.svalue=r1.uvalue"]
+---
+test-case: signed 32-bit GT
+pre: ["r1.type=number", "r1.svalue=[-1, 2]"]
+code:
+  <start>: assume w1 s> 0
+post: ["r1.type=number", "r1.svalue=[1, 2]", "r1.uvalue=[1, 2]", "r1.svalue=r1.uvalue"]
+---
+test-case: "assume TOP s> 0 narrows to [1, INT64_MAX]"
+pre: ["r1.type=number"]
+code:
+  <start>: assume r1 s> 0
+post:
+  - r1.type=number
+  - r1.svalue=[1, 9223372036854775807]
+  - r1.uvalue=[1, 9223372036854775807]
+  - r1.svalue=r1.uvalue
+---
+test-case: "assume [-2, 2] s> -2"
+pre: ["r1.type=number", "r1.svalue=[-2, 2]"]
+code:
+  <start>: assume r1 s> -2
+post: ["r1.type=number", "r1.svalue=[-1, 2]"]
+---
+test-case: "assume [0, 3] s> 1"
+pre: ["r1.type=number", "r1.svalue=[0, 3]", "r1.uvalue=[0, 3]", "r1.svalue=r1.uvalue"]
+code:
+  <start>: assume r1 s> 1
+post: ["r1.type=number", "r1.svalue=[2, 3]", "r1.uvalue=[2, 3]", "r1.svalue=r1.uvalue"]
+---
+test-case: "assume [0, 3] s> 1"
+pre: ["r1.type=number", "r1.svalue=[0, 3]", "r1.uvalue=[0, 3]", "r1.svalue=r1.uvalue"]
+code:
+  <start>: assume r1 s> 1
+post: ["r1.type=number", "r1.svalue=[2, 3]", "r1.uvalue=[2, 3]", "r1.svalue=r1.uvalue"]
+---
+test-case: "assume [-4, -1] s> -3"
+pre: ["r1.type=number", "r1.svalue=[-4, -1]", "r1.uvalue=[18446744073709551612, 18446744073709551615]"]
+code:
+  <start>: assume r1 s> -3
+post: ["r1.type=number", "r1.svalue=[-2, -1]", "r1.uvalue=[18446744073709551614, 18446744073709551615]"]
+---
+test-case: "assume 32-bit 0xFFFFFFFE s<= 0"
+pre: ["r1.type=number", "r1.svalue=4294967294", "r1.uvalue=4294967294"]
+code:
+  <start>: assume w1 s<= 0
+post: ["r1.type=number", "r1.svalue=4294967294", "r1.uvalue=4294967294"]
+---
+test-case: "assume 32-bit 0xFFFFFFFE s> 0 implies bottom"
+pre: ["r1.type=number", "r1.svalue=4294967294", "r1.uvalue=4294967294"]
+code:
+  <start>: assume w1 s> 0
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
+test-case: signed 32-bit GT reg
+pre: ["r1.type=number", "r1.svalue=[-2, 2]", "r2.type=number", "r2.svalue=[-2, 2]"]
+code:
+  <start>: assume w1 s> r2
+post: ["r1.type=number", "r1.svalue=[-1, 2]",
+       "r2.type=number", "r2.svalue=[-2, 1]",
+       "r2.svalue-r1.svalue<=-1"]
