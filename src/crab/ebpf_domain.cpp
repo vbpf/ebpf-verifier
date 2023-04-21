@@ -664,11 +664,19 @@ static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAb
         return {linear_constraint_t::FALSE()};
     }
     if (is_lt && (strict ? (lub < rlb) : (lub <= rlb))) {
-        // Left unsigned interval is lower than right unsigned interval.
-        return {linear_constraint_t::TRUE()};
+        // Left unsigned interval is lower than right unsigned interval. We still add a
+        // relationship for use when widening, such as is used in the prime conformance test.
+        if (is64)
+            return {strict ? left_uvalue < right_uvalue : left_uvalue <= right_uvalue};
+        else
+            return {linear_constraint_t::TRUE()};
     } else if (!is_lt && (strict ? (llb > rub) : (llb >= rub))) {
-        // Left unsigned interval is higher than right unsigned interval.
-        return {linear_constraint_t::TRUE()};
+        // Left unsigned interval is higher than right unsigned interval. We still add a
+        // relationship for use when widening, such as is used in the prime conformance test.
+        if (is64)
+            return {strict ? left_uvalue > right_uvalue : left_uvalue >= right_uvalue};
+        else
+            return {linear_constraint_t::TRUE()};
     }
 
     if (is64) {
