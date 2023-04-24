@@ -106,14 +106,15 @@ code:
 
 post:
   - r0.type=number
+  - r0.uvalue=[0, +oo]
   - r1.type=number
   - r2.type=stack
   - r2.stack_offset=[496, 504]
+  - r2.stack_offset-r0.uvalue<=503
   - r2.stack_numeric_size=[8, 16]
   - r10.type=stack
   - r10.stack_offset=512
   - s[496...511].type=number
-
 ---
 test-case: havoc if clobber stack bytes
 

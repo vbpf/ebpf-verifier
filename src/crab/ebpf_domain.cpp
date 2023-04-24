@@ -121,7 +121,19 @@ static std::vector<linear_constraint_t> assume_bit_cst_interval(const NumAbsDoma
     return {(result) ? linear_constraint_t::TRUE() : linear_constraint_t::FALSE()};
 }
 
-static std::vector<linear_constraint_t> assume_signed_equality(const NumAbsDomain& inv, bool is64,
+static std::vector<linear_constraint_t> assume_signed_64bit_eq(const NumAbsDomain& inv, variable_t left_svalue,
+                                                               variable_t left_uvalue,
+                                                               crab::interval_t& right_interval,
+                                                               const linear_expression_t& right_svalue,
+                                                               const linear_expression_t& right_uvalue) {
+    using namespace crab::dsl_syntax;
+    if (right_interval <= crab::interval_t::nonnegative_int(true) && !right_interval.is_singleton())
+        return {(left_svalue == right_svalue), (left_uvalue == right_uvalue), eq(left_svalue, left_uvalue)};
+    else
+        return {(left_svalue == right_svalue), (left_uvalue == right_uvalue)};
+}
+
+static std::vector<linear_constraint_t> assume_signed_32bit_eq(const NumAbsDomain& inv,
                                                                variable_t left_svalue, variable_t left_uvalue,
                                                                crab::interval_t& right_interval) {
     using namespace crab::dsl_syntax;
@@ -129,24 +141,33 @@ static std::vector<linear_constraint_t> assume_signed_equality(const NumAbsDomai
     if (!right_interval.finite_size())
         return {};
 
-    // For a 64-bit operation, we can do direct comparisons.
-    if (is64)
-        return {left_svalue >= *right_interval.lb().number(), left_svalue <= *right_interval.ub().number()};
-
-    // Handle 32-bit comparisons.
     if (auto rn = right_interval.singleton()) {
         if (auto size = inv.eval_interval(left_svalue).finite_size()) {
             // Find the lowest 64-bit svalue whose low 32 bits match the singleton.
+
+            // Get lower bound as a 64-bit value.
             int64_t lb = inv.eval_interval(left_svalue).lb().number()->cast_to_sint64();
-            int64_t lb_match = ((lb & 0xFFFFFFFF00000000) | rn->cast_to_sint64());
+
+            // Use the high 32-bits from the left lower bound and the low 32-bits from the right singleton.
+            // The result might be lower than the lower bound.
+            int64_t lb_match = ((lb & 0xFFFFFFFF00000000) | (rn->cast_to_sint64() & 0xFFFFFFFF));
             if (lb_match < lb) {
+                // The result is lower than the left interval, so try the next higher matching 64-bit value.
+                // It's ok if this goes higher than the left upper bound.
                 lb += 0x100000000;
             }
 
             // Find the highest 64-bit svalue whose low 32 bits match the singleton.
+
+            // Get upper bound as a 64-bit value.
             int64_t ub = inv.eval_interval(left_svalue).ub().number()->cast_to_sint64();
-            int64_t ub_match = ((ub & 0xFFFFFFFF00000000) | rn->cast_to_sint64());
+
+            // Use the high 32-bits from the left upper bound and the low 32-bits from the right singleton.
+            // The result might be higher than the upper bound.
+            int64_t ub_match = ((ub & 0xFFFFFFFF00000000) | (rn->cast_to_sint64() & 0xFFFFFFFF));
             if (ub_match > ub) {
+                // The result is higher than the left interval, so try the next lower matching 64-bit value.
+                // It's ok if this goes lower than the left lower bound.
                 lb -= 0x100000000;
             }
 
@@ -427,7 +448,10 @@ static std::vector<linear_constraint_t> assume_signed_cst_interval(const NumAbsD
 
     if (op == Condition::Op::EQ) {
         // Handle svalue == right.
-        return assume_signed_equality(inv, is64, left_svalue, left_uvalue, right_interval);
+        if (is64)
+            return assume_signed_64bit_eq(inv, left_svalue, left_uvalue, right_interval, right_svalue, right_uvalue);
+        else
+            return assume_signed_32bit_eq(inv, left_svalue, left_uvalue, right_interval);
     }
 
     const bool is_lt = op == Condition::Op::SLT || op == Condition::Op::SLE;
@@ -728,7 +752,13 @@ static std::vector<linear_constraint_t> assume_cst_reg(const NumAbsDomain& inv, 
     using Op = Condition::Op;
     if (is64) {
         switch (op) {
-        case Op::EQ: return {eq(dst_svalue, src_svalue)};
+        case Op::EQ: {
+            crab::interval_t src_interval = inv.eval_interval(src_svalue);
+            if (!src_interval.is_singleton() && (src_interval <= crab::interval_t::nonnegative_int(true)))
+                return {eq(dst_svalue, src_svalue), eq(dst_uvalue, src_uvalue), eq(dst_svalue, dst_uvalue)};
+            else
+                return {eq(dst_svalue, src_svalue), eq(dst_uvalue, src_uvalue)};
+        }
         case Op::NE: return {neq(dst_svalue, src_svalue)};
         case Op::SGE: return {dst_svalue >= src_svalue};
         case Op::SLE: return {dst_svalue <= src_svalue};
