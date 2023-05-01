@@ -260,7 +260,7 @@ struct Unmarshaller {
         if (pc >= insts.size() - 1)
             throw InvalidInstruction(pc, "incomplete LDDW");
         if (inst.src > 1 || inst.dst > R10_STACK_POINTER || inst.offset != 0)
-            note("LDDW uses reserved fields");
+            throw InvalidInstruction(pc, "LDDW uses reserved fields");
 
         if (inst.src == 1) {
             // magic number, meaning we're a per-process file descriptor defining the map.
@@ -271,7 +271,7 @@ struct Unmarshaller {
 
         ebpf_inst next = insts[pc + 1];
         if (next.opcode != 0 || next.dst != 0 || next.src != 0 || next.offset != 0)
-            note("invalid LDDW");
+            throw InvalidInstruction(pc, "invalid LDDW");
         return Bin{
             .op = Bin::Op::MOV,
             .dst = Reg{inst.dst},
