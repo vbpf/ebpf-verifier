@@ -159,9 +159,9 @@ class ebpf_domain_t final {
     void havoc_register(NumAbsDomain& inv, const Reg& reg);
     void do_load_mapfd(const Reg& dst_reg, int mapfd, bool maybe_null);
 
-    void overflow_signed(NumAbsDomain& inv, variable_t lhs, int finite_width);
-    void overflow_unsigned(NumAbsDomain& inv, variable_t lhs, int finite_width);
-    void overflow_bounds(NumAbsDomain& inv, variable_t lhs, number_t span, int finite_width, bool issigned);
+    static void overflow_signed(NumAbsDomain& inv, variable_t lhs, int finite_width);
+    static void overflow_unsigned(NumAbsDomain& inv, variable_t lhs, int finite_width);
+    static void overflow_bounds(NumAbsDomain& inv, variable_t lhs, number_t span, int finite_width, bool issigned);
 
     void assign_valid_ptr(const Reg& dst_reg, bool maybe_null);
 

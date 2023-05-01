@@ -1001,7 +1001,7 @@ void ebpf_domain_t::forget_packet_pointers() {
 }
 
 void ebpf_domain_t::apply_signed(NumAbsDomain& inv, crab::binop_t op, variable_t xs, variable_t xu, variable_t y,
-                                const number_t& z, int finite_width) {
+                                 const number_t& z, int finite_width) {
     inv.apply(op, xs, y, z, finite_width);
     if (finite_width) {
         inv.assign(xu, xs);
@@ -1031,7 +1031,7 @@ void ebpf_domain_t::apply_signed(NumAbsDomain& inv, crab::binop_t op, variable_t
 }
 
 void ebpf_domain_t::apply_unsigned(NumAbsDomain& inv, crab::binop_t op, variable_t xs, variable_t xu, variable_t y,
-                                 variable_t z, int finite_width) {
+                                   variable_t z, int finite_width) {
     inv.apply(op, xu, y, z, finite_width);
     if (finite_width) {
         inv.assign(xs, xu);
@@ -1349,27 +1349,19 @@ void ebpf_domain_t::overflow_bounds(NumAbsDomain& inv, variable_t lhs, number_t 
 }
 
 void ebpf_domain_t::overflow_signed(NumAbsDomain& inv, variable_t lhs, int finite_width) {
-    using namespace crab::dsl_syntax;
-    auto interval = inv[lhs];
-    // handle overflow
-    if (finite_width == 64)
-        overflow_bounds(inv, lhs, std::numeric_limits<uint64_t>::max(), finite_width, true);
-    else if (finite_width == 32)
-        overflow_bounds(inv, lhs, std::numeric_limits<uint32_t>::max(), finite_width, true);
-    else
-        throw std::exception();
+    auto span{
+         finite_width == 64 ? crab::z_number{std::numeric_limits<uint64_t>::max()}
+       : finite_width == 32 ? crab::z_number{std::numeric_limits<uint32_t>::max()}
+       : throw std::exception()};
+    overflow_bounds(inv, lhs, span, finite_width, true);
 }
 
 void ebpf_domain_t::overflow_unsigned(NumAbsDomain& inv, variable_t lhs, int finite_width) {
-    using namespace crab::dsl_syntax;
-    auto interval = inv[lhs];
-    // handle overflow
-    if (finite_width == 64)
-        overflow_bounds(inv, lhs, std::numeric_limits<uint64_t>::max(), finite_width, false);
-    else if (finite_width == 32)
-        overflow_bounds(inv, lhs, std::numeric_limits<uint32_t>::max(), finite_width, false);
-    else
-        throw std::exception();
+    auto span{
+         finite_width == 64 ? crab::z_number{std::numeric_limits<uint64_t>::max()}
+       : finite_width == 32 ? crab::z_number{std::numeric_limits<uint32_t>::max()}
+       : throw std::exception()};
+    overflow_bounds(inv, lhs, span, finite_width, false);
 }
 
 void ebpf_domain_t::operator()(const basic_block_t& bb, bool check_termination) {
@@ -2363,8 +2355,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             input = (int32_t)(input & UINT32_MAX);
                         }
                         int64_t output = (int64_t)(input >> imm);
-                        m_inv.set(dst.svalue, crab::interval_t(number_t((signed long long)output),
-                                                               number_t((signed long long)output)));
+                        m_inv.set(dst.svalue, crab::interval_t(number_t(output),
+                                                               number_t(output)));
                         m_inv.set(dst.uvalue, crab::interval_t(number_t((uint64_t)output),
                                                                number_t((uint64_t)output)));
                         break;
@@ -2531,7 +2523,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                         }
                         uint64_t output = (int64_t)(input >> (int64_t)src_n.value());
                         m_inv.set(dst.uvalue, crab::interval_t{number_t{output}});
-                        m_inv.set(dst.svalue, crab::interval_t{number_t{(signed long long)output}});
+                        m_inv.set(dst.svalue, crab::interval_t{number_t{(int64_t)output}});
                         break;
                     }
                 }
