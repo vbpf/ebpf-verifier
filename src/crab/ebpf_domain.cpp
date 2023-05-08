@@ -2294,7 +2294,7 @@ void ebpf_domain_t::shl(const Reg& dst_reg, int imm, int finite_width) {
     havoc_offsets(dst_reg);
 }
 
-void ebpf_domain_t::shr(const Reg& dst_reg, int imm, int finite_width) {
+void ebpf_domain_t::lshr(const Reg& dst_reg, int imm, int finite_width) {
     reg_pack_t dst = reg_pack(dst_reg);
     if (m_inv.entail(type_is_number(dst))) {
         auto interval = m_inv.eval_interval(dst.uvalue);
@@ -2325,7 +2325,51 @@ void ebpf_domain_t::shr(const Reg& dst_reg, int imm, int finite_width) {
         }
         return;
     }
-    // avoid signedness and overflow issues in lshr(dst.value, imm);
+    havoc(dst.svalue);
+    havoc(dst.uvalue);
+    havoc_offsets(dst_reg);
+}
+
+void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_svalue, int finite_width) {
+    using namespace crab;
+
+    reg_pack_t dst = reg_pack(dst_reg);
+    if (m_inv.entail(type_is_number(dst))) {
+        interval_t left_interval = interval_t::bottom();
+        interval_t right_interval = interval_t::bottom();
+        interval_t left_interval_positive = interval_t::bottom();
+        interval_t left_interval_negative = interval_t::bottom();
+        get_signed_intervals(m_inv, (finite_width == 64), dst.svalue, dst.uvalue, right_svalue, left_interval,
+                             right_interval, left_interval_positive, left_interval_negative);
+        if (auto sn = right_interval.singleton()) {
+            int64_t imm = sn->cast_to_sint64();
+
+            int64_t lb_n = INT64_MIN >> imm;
+            int64_t ub_n = INT64_MAX >> imm;
+            if (left_interval.finite_size()) {
+                number_t lb = left_interval.lb().number().value();
+                number_t ub = left_interval.ub().number().value();
+                if (finite_width == 64) {
+                    lb_n = lb.cast_to_sint64() >> imm;
+                    ub_n = ub.cast_to_sint64() >> imm;
+                } else {
+                    number_t lb_w = lb.cast_to_signed_finite_width(finite_width) >> imm;
+                    number_t ub_w = ub.cast_to_signed_finite_width(finite_width) >> imm;
+                    if (lb_w.cast_to_uint32() <= ub_w.cast_to_uint32()) {
+                        lb_n = lb_w.cast_to_uint32();
+                        ub_n = ub_w.cast_to_uint32();
+                    }
+                }
+            }
+            m_inv.set(dst.svalue, crab::interval_t{lb_n, ub_n});
+            if ((uint64_t)ub_n >= (uint64_t)lb_n) {
+                m_inv.assign(dst.uvalue, dst.svalue);
+            } else {
+                havoc(dst.uvalue);
+            }
+            return;
+        }
+    }
     havoc(dst.svalue);
     havoc(dst.uvalue);
     havoc_offsets(dst_reg);
@@ -2398,33 +2442,10 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             shl(bin.dst, (int32_t)imm, finite_width);
             break;
         case Bin::Op::RSH:
-            shr(bin.dst, (int32_t)imm, finite_width);
+            lshr(bin.dst, (int32_t)imm, finite_width);
             break;
         case Bin::Op::ARSH:
-            if (m_inv.entail(type_is_number(bin.dst))) {
-                auto interval = m_inv.eval_interval(dst.svalue);
-                if (std::optional<number_t> n = interval.singleton()) {
-                    if (n->fits_cast_to_int64()) {
-                        int64_t input = n->cast_to_sint64();
-                        if (!bin.is64) {
-                            input = (int32_t)(input & UINT32_MAX);
-                        }
-                        int64_t output = (int64_t)(input >> imm);
-                        m_inv.set(dst.svalue, crab::interval_t(number_t(output),
-                                                               number_t(output)));
-                        m_inv.set(dst.uvalue, crab::interval_t(number_t((uint64_t)output),
-                                                               number_t((uint64_t)output)));
-                        break;
-                    }
-                }
-            }
-            // avoid signedness and overflow issues in ashr(dst.value, imm);
-            // = (int64_t)dst >> imm;
-            havoc(dst.svalue);
-            havoc(dst.uvalue);
-            // assume(dst.value <= (1 << (64 - imm)));
-            // assume(dst.value >= -(1 << (64 - imm)));
-            havoc_offsets(bin.dst);
+            ashr(bin.dst, (int32_t)imm, finite_width);
             break;
         case Bin::Op::XOR:
             bitwise_xor(dst.svalue, dst.uvalue, imm);
@@ -2590,7 +2611,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             // Use only the low 32 bits of the value.
                             bitwise_and(dst.svalue, dst.uvalue, UINT32_MAX);
                         }
-                        shr(bin.dst, (int32_t)imm, finite_width);
+                        lshr(bin.dst, (int32_t)imm, finite_width);
                         break;
                     }
                 }
@@ -2600,26 +2621,9 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::ARSH:
-            if (m_inv.entail(type_is_number(bin.dst)) && m_inv.entail(type_is_number(std::get<Reg>(bin.v)))) {
-                auto dst_interval = m_inv.eval_interval(dst.svalue);
-                auto src_interval = m_inv.eval_interval(src.svalue);
-                std::optional<number_t> dst_n = dst_interval.singleton();
-                std::optional<number_t> src_n = src_interval.singleton();
-                if (dst_n && src_n) {
-                    if (dst_n->fits_sint64() && src_n->fits_sint64()) {
-                        int64_t input = (int64_t)dst_n.value();
-                        if (bin.is64) {
-                            int64_t output = (int64_t)(input >> (int64_t)src_n.value());
-                            m_inv.set(dst.svalue, crab::interval_t{number_t{output}});
-                            m_inv.set(dst.uvalue, crab::interval_t{number_t{(uint64_t)output}});
-                        } else {
-                            int32_t output = (int32_t)((int32_t)input >> (int32_t)(int64_t)src_n.value());
-                            m_inv.set(dst.svalue, crab::interval_t(number_t((uint32_t)output), number_t((uint32_t)output)));
-                            m_inv.set(dst.uvalue, crab::interval_t(number_t((uint32_t)output), number_t((uint32_t)output)));
-                        }
-                        break;
-                    }
-                }
+            if (m_inv.entail(type_is_number(src_reg))) {
+                ashr(bin.dst, src.svalue, finite_width);
+                break;
             }
             havoc(dst.svalue);
             havoc(dst.uvalue);

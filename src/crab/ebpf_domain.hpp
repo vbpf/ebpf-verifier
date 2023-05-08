@@ -132,9 +132,10 @@ class ebpf_domain_t final {
     void shl(const Reg& reg, int imm, int finite_width);
     void shl_overflow(variable_t lhss, variable_t lhsu, variable_t op2);
     void shl_overflow(variable_t lhss, variable_t lhsu, const number_t& op2);
-    void shr(const Reg& reg, int imm, int finite_width);
+    void lshr(const Reg& reg, int imm, int finite_width);
     void lshr(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width);
     void lshr(variable_t lhss, variable_t lhsu, const number_t& op2);
+    void ashr(const Reg& reg, const linear_expression_t& right_svalue, int finite_width);
     void ashr(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width);
     void ashr(variable_t lhss, variable_t lhsu, const number_t& op2);
 
