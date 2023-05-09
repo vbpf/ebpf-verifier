@@ -2261,6 +2261,10 @@ void ebpf_domain_t::add(const Reg& reg, int imm, int finite_width) {
 
 void ebpf_domain_t::shl(const Reg& dst_reg, int imm, int finite_width) {
     reg_pack_t dst = reg_pack(dst_reg);
+
+    // The BPF ISA requires masking the imm.
+    imm &= finite_width - 1;
+
     if (m_inv.entail(type_is_number(dst))) {
         auto interval = m_inv.eval_interval(dst.uvalue);
         if (interval.finite_size()) {
@@ -2296,6 +2300,10 @@ void ebpf_domain_t::shl(const Reg& dst_reg, int imm, int finite_width) {
 
 void ebpf_domain_t::lshr(const Reg& dst_reg, int imm, int finite_width) {
     reg_pack_t dst = reg_pack(dst_reg);
+
+    // The BPF ISA requires masking the imm.
+    imm &= finite_width - 1;
+
     if (m_inv.entail(type_is_number(dst))) {
         auto interval = m_inv.eval_interval(dst.uvalue);
         uint64_t lb_n = 0;
@@ -2342,7 +2350,8 @@ void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_sv
         get_signed_intervals(m_inv, (finite_width == 64), dst.svalue, dst.uvalue, right_svalue, left_interval,
                              right_interval, left_interval_positive, left_interval_negative);
         if (auto sn = right_interval.singleton()) {
-            int64_t imm = sn->cast_to_sint64();
+            // The BPF ISA requires masking the imm.
+            int64_t imm = sn->cast_to_sint64() & (finite_width - 1);
 
             int64_t lb_n = INT64_MIN >> imm;
             int64_t ub_n = INT64_MAX >> imm;
@@ -2353,8 +2362,8 @@ void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_sv
                     lb_n = lb.cast_to_sint64() >> imm;
                     ub_n = ub.cast_to_sint64() >> imm;
                 } else {
-                    number_t lb_w = lb.cast_to_signed_finite_width(finite_width) >> imm;
-                    number_t ub_w = ub.cast_to_signed_finite_width(finite_width) >> imm;
+                    number_t lb_w = lb.cast_to_signed_finite_width(finite_width) >> (int)imm;
+                    number_t ub_w = ub.cast_to_signed_finite_width(finite_width) >> (int)imm;
                     if (lb_w.cast_to_uint32() <= ub_w.cast_to_uint32()) {
                         lb_n = lb_w.cast_to_uint32();
                         ub_n = ub_w.cast_to_uint32();
@@ -2586,7 +2595,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 auto src = reg_pack(src_reg);
                 auto src_interval = m_inv.eval_interval(src.uvalue);
                 if (std::optional<number_t> sn = src_interval.singleton()) {
-                    uint64_t imm = sn->cast_to_uint64();
+                    uint64_t imm = sn->cast_to_uint64() & (bin.is64 ? 63 : 31);
                     if (imm <= INT32_MAX) {
                         if (!bin.is64) {
                             // Use only the low 32 bits of the value.
@@ -2605,7 +2614,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 auto src = reg_pack(src_reg);
                 auto src_interval = m_inv.eval_interval(src.uvalue);
                 if (std::optional<number_t> sn = src_interval.singleton()) {
-                    uint64_t imm = sn->cast_to_uint64();
+                    uint64_t imm = sn->cast_to_uint64() & (bin.is64 ? 63 : 31);
                     if (imm <= INT32_MAX) {
                         if (!bin.is64) {
                             // Use only the low 32 bits of the value.

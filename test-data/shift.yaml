@@ -27,6 +27,58 @@ post:
   - r1.svalue=65536
   - r1.uvalue=65536
 ---
+test-case: 64-bit unsigned right shift singleton by negative imm
+
+pre: ["r1.type=number", "r1.svalue=4294967297", "r1.uvalue=4294967297"]
+
+code:
+  <start>: |
+    r1 >>= -48 ; 0x100000001 >> -48 = 0x10000
+
+post:
+  - r1.type=number
+  - r1.svalue=65536
+  - r1.uvalue=65536
+---
+test-case: 64-bit signed right shift singleton by negative imm
+
+pre: ["r1.type=number", "r1.svalue=4294967297", "r1.uvalue=4294967297"]
+
+code:
+  <start>: |
+    r1 s>>= -48 ; 0x100000001 s>> -48 = 0x10000
+
+post:
+  - r1.type=number
+  - r1.svalue=65536
+  - r1.uvalue=65536
+---
+test-case: 64-bit unsigned right shift singleton by high imm
+
+pre: ["r1.type=number", "r1.svalue=4294967297", "r1.uvalue=4294967297"]
+
+code:
+  <start>: |
+    r1 >>= 80 ; 0x100000001 >> 80 = 0x10000
+
+post:
+  - r1.type=number
+  - r1.svalue=65536
+  - r1.uvalue=65536
+---
+test-case: 64-bit signed right shift singleton by high imm
+
+pre: ["r1.type=number", "r1.svalue=4294967297", "r1.uvalue=4294967297"]
+
+code:
+  <start>: |
+    r1 s>>= 80 ; 0x100000001 s>> 80 = 0x10000
+
+post:
+  - r1.type=number
+  - r1.svalue=65536
+  - r1.uvalue=65536
+---
 test-case: 64-bit unsigned right shift singleton by reg
 
 pre: ["r1.type=number", "r1.svalue=4294967297", "r1.uvalue=4294967297",
@@ -81,6 +133,58 @@ pre: ["r1.type=number", "r1.svalue=65535", "r1.uvalue=65535"]
 code:
   <start>: |
     w1 s>>= 8 ; 0xffff s>> 8 = 0xff
+
+post:
+  - r1.type=number
+  - r1.svalue=255
+  - r1.uvalue=255
+---
+test-case: 32-bit unsigned right shift singleton by negative imm
+
+pre: ["r1.type=number", "r1.svalue=65535", "r1.uvalue=65535"]
+
+code:
+  <start>: |
+    w1 >>= -24 ; 0xffff >> -24 = 0xff
+
+post:
+  - r1.type=number
+  - r1.svalue=255
+  - r1.uvalue=255
+---
+test-case: 32-bit signed right shift singleton by negative imm
+
+pre: ["r1.type=number", "r1.svalue=65535", "r1.uvalue=65535"]
+
+code:
+  <start>: |
+    w1 s>>= -24 ; 0xffff s>> -24 = 0xff
+
+post:
+  - r1.type=number
+  - r1.svalue=255
+  - r1.uvalue=255
+---
+test-case: 32-bit unsigned right shift singleton by high imm
+
+pre: ["r1.type=number", "r1.svalue=65535", "r1.uvalue=65535"]
+
+code:
+  <start>: |
+    w1 >>= 40 ; 0xffff >> 40 = 0xff
+
+post:
+  - r1.type=number
+  - r1.svalue=255
+  - r1.uvalue=255
+---
+test-case: 32-bit signed right shift singleton by high imm
+
+pre: ["r1.type=number", "r1.svalue=65535", "r1.uvalue=65535"]
+
+code:
+  <start>: |
+    w1 s>>= 40 ; 0xffff s>> 40 = 0xff
 
 post:
   - r1.type=number
@@ -454,6 +558,32 @@ post:
   - r1.svalue=4294967296
   - r1.uvalue=4294967296
 ---
+test-case: 64-bit left shift singleton by negative imm
+
+pre: ["r1.type=number", "r1.svalue=65536", "r1.uvalue=65536"]
+
+code:
+  <start>: |
+    r1 <<= -48 ; 0x10000 << -48 = 0x100000000
+
+post:
+  - r1.type=number
+  - r1.svalue=4294967296
+  - r1.uvalue=4294967296
+---
+test-case: 64-bit left shift singleton by high imm
+
+pre: ["r1.type=number", "r1.svalue=65536", "r1.uvalue=65536"]
+
+code:
+  <start>: |
+    r1 <<= 80 ; 0x10000 << 80 = 0x100000000
+
+post:
+  - r1.type=number
+  - r1.svalue=4294967296
+  - r1.uvalue=4294967296
+---
 test-case: 64-bit left shift singleton by reg
 
 pre: ["r1.type=number", "r1.svalue=65536", "r1.uvalue=65536",
@@ -478,6 +608,32 @@ pre: ["r1.type=number", "r1.svalue=65537", "r1.uvalue=65537"]
 code:
   <start>: |
     w1 <<= 16 ; 0x100001 << 16 = 0x10000
+
+post:
+  - r1.type=number
+  - r1.svalue=65536
+  - r1.uvalue=65536
+---
+test-case: 32-bit left shift singleton by negative imm
+
+pre: ["r1.type=number", "r1.svalue=65537", "r1.uvalue=65537"]
+
+code:
+  <start>: |
+    w1 <<= -16 ; 0x100001 << -16 = 0x10000
+
+post:
+  - r1.type=number
+  - r1.svalue=65536
+  - r1.uvalue=65536
+---
+test-case: 32-bit left shift singleton by high imm
+
+pre: ["r1.type=number", "r1.svalue=65537", "r1.uvalue=65537"]
+
+code:
+  <start>: |
+    w1 <<= 48 ; 0x100001 << 48 = 0x10000
 
 post:
   - r1.type=number
