@@ -20,6 +20,10 @@
 using std::regex;
 using std::regex_match;
 
+using crab::number_t;
+using crab::linear_constraint_t;
+using crab::linear_expression_t;
+
 #define REG R"_(\s*(r\d\d?)\s*)_"
 #define WREG R"_(\s*([wr]\d\d?)\s*)_"
 #define IMM R"_(\s*\[?([-+]?(?:0x)?[0-9a-f]+)\]?\s*)_"
@@ -42,6 +46,7 @@ using std::regex_match;
 #define LABEL R"_((<\w[a-zA-Z_0-9]*>))_"
 #define WRAPPED_LABEL "\\s*" LABEL "\\s*"
 
+#define SPECIAL_VAR R"_(\s*(packet_size|meta_offset)\s*)_"
 #define KIND R"_(\s*(type|svalue|uvalue|ctx_offset|map_fd|packet_offset|shared_offset|stack_offset|shared_region_size|stack_numeric_size)\s*)_"
 #define INTERVAL R"_(\s*\[([-+]?\d+),\s*([-+]?\d+)\]?\s*)_"
 #define ARRAY_RANGE R"_(\s*\[([-+]?\d+)\.\.\.\s*([-+]?\d+)\]?\s*)_"
@@ -100,12 +105,12 @@ static Imm imm(const std::string& s, bool lddw) {
     }
 }
 
-static int64_t signed_number(const std::string& s) {
-    return std::stoll(s);
+static number_t signed_number(const std::string& s) {
+    return static_cast<int64_t>(std::stoll(s));
 }
 
-static uint64_t unsigned_number(const std::string& s) {
-    return std::stoull(s);
+static number_t unsigned_number(const std::string& s) {
+    return static_cast<uint64_t>(std::stoull(s));
 }
 
 static Value reg_or_imm(const std::string& s) {
@@ -248,6 +253,12 @@ static uint8_t regnum(const std::string& s) {
     return (uint8_t)boost::lexical_cast<uint16_t>(s.substr(1));
 }
 
+static crab::variable_t special_var(const std::string& s) {
+    if (s == "packet_size") return crab::variable_t::packet_size();
+    if (s == "meta_offset") return crab::variable_t::meta_offset();
+    throw std::runtime_error(std::string() + "Bad special variable: " + s);
+}
+
 static crab::data_kind_t regkind(const std::string& s) {
     if (s == "type") return crab::data_kind_t::types;
     if (s == "ctx_offset") return crab::data_kind_t::ctx_offsets;
@@ -286,67 +297,75 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<std::st
     std::vector<linear_constraint_t> res;
     for (const std::string& cst_text : constraints) {
         std::smatch m;
-        if (regex_match(cst_text, m, regex("meta_offset" "=" IMM))) {
-            res.push_back(variable_t::meta_offset() == signed_number(m[1]));
-        } else if (regex_match(cst_text, m, regex("packet_size" "=" INTERVAL))) {
-            variable_t d = variable_t::packet_size();
-            res.push_back(signed_number(m[1]) <= d);
-            res.push_back(d <= signed_number(m[2]));
-        } else if (regex_match(cst_text, m, regex("packet_size" "=" REG DOT KIND))) {
-            variable_t d = variable_t::packet_size();
-            variable_t s = variable_t::reg(regkind(m[2]), regnum(m[1]));
-            res.push_back(equals(d, s));
-        } else if (regex_match(cst_text, m, regex(REG DOT KIND "=" "packet_size"))) {
-            variable_t d = variable_t::reg(regkind(m[2]), regnum(m[1]));
-            res.push_back(equals(d, variable_t::packet_size()));
+        if (regex_match(cst_text, m, regex(SPECIAL_VAR "=" IMM))) {
+            res.push_back(special_var(m[1]) == signed_number(m[2]));
+        } else if (regex_match(cst_text, m, regex(SPECIAL_VAR "=" INTERVAL))) {
+            variable_t d = special_var(m[1]);
+            number_t lb{signed_number(m[2])};
+            number_t ub{signed_number(m[3])};
+            res.push_back(lb <= d);
+            res.push_back(d <= ub);
+        } else if (regex_match(cst_text, m, regex(SPECIAL_VAR "=" REG DOT KIND))) {
+            linear_expression_t d = special_var(m[1]);
+            linear_expression_t s = variable_t::reg(regkind(m[3]), regnum(m[2]));
+            res.push_back(d == s);
+        } else if (regex_match(cst_text, m, regex(REG DOT KIND "=" SPECIAL_VAR))) {
+            linear_expression_t d = variable_t::reg(regkind(m[2]), regnum(m[1]));
+            linear_expression_t s = special_var(m[3]);
+            res.push_back(d == s);
         } else if (regex_match(cst_text, m, regex(REG DOT KIND "=" REG DOT KIND))) {
-            variable_t d = variable_t::reg(regkind(m[2]), regnum(m[1]));
-            variable_t s = variable_t::reg(regkind(m[4]), regnum(m[3]));
-            res.push_back(equals(d, s));
+            linear_expression_t d = variable_t::reg(regkind(m[2]), regnum(m[1]));
+            linear_expression_t s = variable_t::reg(regkind(m[4]), regnum(m[3]));
+            res.push_back(d == s);
         } else if (regex_match(cst_text, m, regex(REG DOT "type" "=" TYPE))) {
             variable_t d = variable_t::reg(crab::data_kind_t::types, regnum(m[1]));
             res.push_back(d == string_to_type_encoding(m[2]));
         } else if (regex_match(cst_text, m, regex(REG DOT KIND "=" IMM))) {
             variable_t d = variable_t::reg(regkind(m[2]), regnum(m[1]));
+            number_t value;
             if (m[2] == "uvalue") {
-                res.push_back(d == number_t(unsigned_number(m[3])));
+                value = unsigned_number(m[3]);
             } else {
-                res.push_back(d == signed_number(m[3]));
+                value = signed_number(m[3]);
             }
+            res.push_back(d == value);
         } else if (regex_match(cst_text, m, regex(REG DOT KIND "=" INTERVAL))) {
             variable_t d = variable_t::reg(regkind(m[2]), regnum(m[1]));
+            number_t lb, ub;
             if (m[2] == "uvalue") {
-                res.push_back(number_t(unsigned_number(m[3])) <= d);
-                res.push_back(d <= number_t(unsigned_number(m[4])));
+                lb = unsigned_number(m[3]);
+                ub = unsigned_number(m[4]);
             } else {
-                res.push_back(signed_number(m[3]) <= d);
-                res.push_back(d <= signed_number(m[4]));
+                lb = signed_number(m[3]);
+                ub = signed_number(m[4]);
             }
+            res.push_back(lb <= d);
+            res.push_back(d <= ub);
         } else if (regex_match(cst_text, m, regex(REG DOT KIND "-" REG DOT KIND "<=" IMM))) {
             variable_t d = variable_t::reg(regkind(m[2]), regnum(m[1]));
             variable_t s = variable_t::reg(regkind(m[4]), regnum(m[3]));
-            int64_t diff = signed_number(m[5]);
-            res.push_back(d - s <= number_t(diff));
+            number_t diff = signed_number(m[5]);
+            res.push_back(d - s <= diff);
         } else if (regex_match(cst_text, m, regex("s" ARRAY_RANGE DOT "type" "=" TYPE))) {
             type_encoding_t type = string_to_type_encoding(m[3]);
             if (type == type_encoding_t::T_NUM) {
-                numeric_ranges.push_back(crab::interval_t(signed_number(m[1]), signed_number(m[2])));
+                numeric_ranges.emplace_back(signed_number(m[1]), signed_number(m[2]));
             } else {
-                int64_t lb = signed_number(m[1]);
-                int64_t ub = signed_number(m[2]);
-                variable_t d = variable_t::cell_var(crab::data_kind_t::types, lb, (unsigned int)(ub - lb + 1));
+                number_t lb = signed_number(m[1]);
+                number_t ub = signed_number(m[2]);
+                variable_t d = variable_t::cell_var(crab::data_kind_t::types, lb, ub - lb + 1);
                 res.push_back(d == type);
             }
         } else if (regex_match(cst_text, m, regex("s" ARRAY_RANGE DOT "svalue" "=" IMM))) {
-            int64_t lb = signed_number(m[1]);
-            int64_t ub = signed_number(m[2]);
-            variable_t d = variable_t::cell_var(crab::data_kind_t::svalues, lb, (unsigned int)(ub - lb + 1));
+            number_t lb = signed_number(m[1]);
+            number_t ub = signed_number(m[2]);
+            variable_t d = variable_t::cell_var(crab::data_kind_t::svalues, lb, ub - lb + 1);
             res.push_back(d == signed_number(m[3]));
         } else if (regex_match(cst_text, m, regex("s" ARRAY_RANGE DOT "uvalue" "=" IMM))) {
-            int64_t lb = signed_number(m[1]);
-            int64_t ub = signed_number(m[2]);
-            variable_t d = variable_t::cell_var(crab::data_kind_t::uvalues, lb, (unsigned int)(ub - lb + 1));
-            res.push_back(d == number_t(unsigned_number(m[3])));
+            number_t lb = signed_number(m[1]);
+            number_t ub = signed_number(m[2]);
+            variable_t d = variable_t::cell_var(crab::data_kind_t::uvalues, lb, ub - lb + 1);
+            res.push_back(d == unsigned_number(m[3]));
         } else {
             throw std::runtime_error(std::string("Unknown constraint: ") + cst_text);
         }

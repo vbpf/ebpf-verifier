@@ -12,6 +12,10 @@ required:
 properties:
   test-case:
     type: string
+  options:
+    type: array
+    items:
+      type: string
   pre:
     type: array
     items:

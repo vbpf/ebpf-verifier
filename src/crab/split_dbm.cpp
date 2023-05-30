@@ -737,7 +737,7 @@ bool SplitDBM::add_constraint(const linear_constraint_t& cst) {
     case constraint_kind_t::LESS_THAN_ZERO: {
         // We try to convert a strict to non-strict.
         // e < 0 --> e <= -1
-        auto nc = linear_constraint_t(cst.expression() + 1, constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO);
+        auto nc = linear_constraint_t(cst.expression().plus(1), constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO);
         if (!add_linear_leq(nc.expression())) {
             return false;
         }
@@ -746,7 +746,7 @@ bool SplitDBM::add_constraint(const linear_constraint_t& cst) {
     }
     case constraint_kind_t::EQUALS_ZERO: {
         const linear_expression_t& exp = cst.expression();
-        if (!add_linear_leq(exp) || !add_linear_leq(-exp)) {
+        if (!add_linear_leq(exp) || !add_linear_leq(exp.negate())) {
             CRAB_LOG("zones-split", std::cout << " ~~> _|_"
                                               << "\n");
             return false;
@@ -947,8 +947,8 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, variable_t z,
     ScopedCrabStats __st__("SplitDBM.apply");
 
     switch (op) {
-    case arith_binop_t::ADD: assign(x, linear_expression_t(y) + z); break;
-    case arith_binop_t::SUB: assign(x, linear_expression_t(y) - z); break;
+    case arith_binop_t::ADD: assign(x, linear_expression_t(y).plus(z)); break;
+    case arith_binop_t::SUB: assign(x, linear_expression_t(y).subtract(z)); break;
     // For the rest of operations, we fall back on intervals.
     case arith_binop_t::MUL: set(x, get_interval(y, finite_width) * get_interval(z, finite_width)); break;
     case arith_binop_t::SDIV: set(x, get_interval(y, finite_width) / get_interval(z, finite_width)); break;
@@ -965,8 +965,8 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, const number_
     ScopedCrabStats __st__("SplitDBM.apply");
 
     switch (op) {
-    case arith_binop_t::ADD: assign(x, linear_expression_t(y) + k); break;
-    case arith_binop_t::SUB: assign(x, linear_expression_t(y) - k); break;
+    case arith_binop_t::ADD: assign(x, linear_expression_t(y).plus(k)); break;
+    case arith_binop_t::SUB: assign(x, linear_expression_t(y).subtract(k)); break;
     case arith_binop_t::MUL: assign(x, linear_expression_t(k, y)); break;
     // For the rest of operations, we fall back on intervals.
     case arith_binop_t::SDIV: set(x, get_interval(y, finite_width) / interval_t(k)); break;
@@ -1172,6 +1172,7 @@ SplitDBM::Weight SplitDBM::pot_value(variable_t v) const {
 }
 
 interval_t SplitDBM::eval_interval(const linear_expression_t& e) const {
+    using namespace crab::interval_operators;
     interval_t r{e.constant_term()};
     for (const auto& [variable, coefficient] : e.variable_terms())
         r += coefficient * operator[](variable);
@@ -1216,7 +1217,7 @@ bool SplitDBM::entail(const linear_constraint_t& rhs) const {
         // try to convert the equality into inequalities so when it's
         // negated we do not have disequalities.
         return entail_aux(linear_constraint_t(rhs.expression(), constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO)) &&
-               entail_aux(linear_constraint_t(rhs.expression() * number_t(-1),
+               entail_aux(linear_constraint_t(rhs.expression().negate(),
                                               constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO));
     } else {
         return entail_aux(rhs);

@@ -9,6 +9,7 @@
 #include <optional>
 #include <vector>
 
+#include "asm_syntax.hpp"
 #include "crab_utils/bignums.hpp"
 #include "crab_utils/debug.hpp"
 #include "crab_utils/lazy_allocator.hpp"
@@ -70,11 +71,12 @@ class variable_t final {
 
     static std::vector<variable_t> get_type_variables();
     static variable_t reg(data_kind_t, int);
-    static variable_t cell_var(data_kind_t array, index_t offset, unsigned size);
+    static variable_t cell_var(data_kind_t array, const number_t& offset, const number_t& size);
     static variable_t kind_var(data_kind_t kind, variable_t type_variable);
     static variable_t meta_offset();
     static variable_t packet_size();
     static variable_t instruction_count();
+
     [[nodiscard]] bool is_in_stack() const;
 
     struct Hasher {

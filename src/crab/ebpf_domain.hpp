@@ -13,7 +13,9 @@
 #include "crab/variable.hpp"
 #include "string_constraints.hpp"
 
-using NumAbsDomain = crab::domains::NumAbsDomain;
+namespace crab {
+
+using NumAbsDomain = domains::NumAbsDomain;
 
 struct reg_pack_t;
 
@@ -45,7 +47,7 @@ class ebpf_domain_t final {
 
     typedef bool check_require_func_t(NumAbsDomain&, const linear_constraint_t&, std::string);
     void set_require_check(std::function<check_require_func_t> f);
-    int get_instruction_count_upper_bound();
+    bound_t get_instruction_count_upper_bound();
     static ebpf_domain_t setup_entry(bool check_termination, bool init_r1);
 
     static ebpf_domain_t from_constraints(const std::set<std::string>& constraints, bool setup_constraints);
@@ -133,11 +135,7 @@ class ebpf_domain_t final {
     void shl_overflow(variable_t lhss, variable_t lhsu, variable_t op2);
     void shl_overflow(variable_t lhss, variable_t lhsu, const number_t& op2);
     void lshr(const Reg& reg, int imm, int finite_width);
-    void lshr(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width);
-    void lshr(variable_t lhss, variable_t lhsu, const number_t& op2);
     void ashr(const Reg& reg, const linear_expression_t& right_svalue, int finite_width);
-    void ashr(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width);
-    void ashr(variable_t lhss, variable_t lhsu, const number_t& op2);
 
     void assume(const linear_constraint_t& cst);
 
@@ -185,8 +183,8 @@ class ebpf_domain_t final {
     void do_load_packet_or_shared(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width);
     void do_load(const Mem& b, const Reg& target_reg);
 
-    template <typename A, typename X, typename Y, typename Z>
-    void do_store_stack(crab::domains::NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_svalue, Z val_uvalue,
+    template <typename X, typename Y, typename Z>
+    void do_store_stack(crab::domains::NumAbsDomain& inv, const number_t& width, const linear_expression_t& addr, X val_type, Y val_svalue, Z val_uvalue,
                         const std::optional<reg_pack_t>& opt_val_reg);
 
     template <typename Type, typename SValue, typename UValue>
@@ -217,17 +215,17 @@ class ebpf_domain_t final {
         void assign_type(NumAbsDomain& inv, const Reg& lhs, const Reg& rhs);
         void assign_type(NumAbsDomain& inv, const Reg& lhs, const std::optional<linear_expression_t>& rhs);
         void assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, const Reg& rhs);
-        void assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, int rhs);
+        void assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, const number_t& rhs);
 
         void havoc_type(NumAbsDomain& inv, const Reg& r);
 
         [[nodiscard]] int get_type(const NumAbsDomain& inv, variable_t v) const;
         [[nodiscard]] int get_type(const NumAbsDomain& inv, const Reg& r) const;
-        [[nodiscard]] int get_type(const NumAbsDomain& inv, int t) const;
+        [[nodiscard]] int get_type(const NumAbsDomain& inv, const number_t& t) const;
 
         [[nodiscard]] bool has_type(const NumAbsDomain& inv, variable_t v, type_encoding_t type) const;
         [[nodiscard]] bool has_type(const NumAbsDomain& inv, const Reg& r, type_encoding_t type) const;
-        [[nodiscard]] bool has_type(const NumAbsDomain& inv, int t, type_encoding_t type) const;
+        [[nodiscard]] bool has_type(const NumAbsDomain& inv, const number_t& t, type_encoding_t type) const;
 
         [[nodiscard]] bool same_type(const NumAbsDomain& inv, const Reg& a, const Reg& b) const;
         [[nodiscard]] bool implies_type(const NumAbsDomain& inv, const linear_constraint_t& a, const linear_constraint_t& b) const;
@@ -249,3 +247,5 @@ class ebpf_domain_t final {
     TypeDomain type_inv;
     std::string current_assertion;
 }; // end ebpf_domain_t
+
+}

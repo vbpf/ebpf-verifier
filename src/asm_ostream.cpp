@@ -328,6 +328,7 @@ struct InstructionPrinterVisitor {
     void operator()(Assert const& a) {
         os_ << "assert " << a.cst;
     }
+
 };
 
 string to_string(label_t const& label) {
@@ -509,8 +510,11 @@ std::ostream& operator<<(std::ostream& os, const btf_line_info_t& line_info) {
     return os;
 }
 
-std::string to_string(const crab::interval_t& interval) {
+
+std::string crab::z_number::to_string() const { return _n.str(); }
+
+std::string crab::interval_t::to_string() const {
     std::ostringstream s;
-    s << interval;
+    s << *this;
     return s.str();
 }

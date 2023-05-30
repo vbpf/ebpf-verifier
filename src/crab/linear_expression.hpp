@@ -5,9 +5,8 @@
 #include <map>
 #include "variable.hpp"
 
-using number_t = crab::z_number;
-using variable_t = crab::variable_t;
 
+namespace crab {
 // A linear expression is of the form: Ax + By + Cz + ... + N.
 // That is, a sum of terms where each term is either a
 // coefficient * variable, or simply a coefficient
@@ -19,8 +18,8 @@ class linear_expression_t final {
     using variable_terms_t = std::map<variable_t, number_t>;
 
   private:
-    variable_terms_t _variable_terms;
-    number_t _constant_term;
+    number_t _constant_term{};
+    variable_terms_t _variable_terms{};
 
     // Get the coefficient for a given variable, which is 0 if it has no term in the expression.
     [[nodiscard]] number_t coefficient_of(const variable_t& variable) const {
@@ -32,16 +31,18 @@ class linear_expression_t final {
     }
 
   public:
-    linear_expression_t(signed long long int coefficient) : _constant_term(coefficient) {}
     linear_expression_t(number_t coefficient) : _constant_term(std::move(coefficient)) {}
-    linear_expression_t(const variable_t& variable) { _variable_terms[variable] = 1; }
+
+    linear_expression_t(variable_t variable) { _variable_terms[variable] = 1; }
+
     linear_expression_t(const number_t& coefficient, const variable_t& variable) {
         if (coefficient != 0) {
             _variable_terms[variable] = coefficient;
         }
     }
+
     linear_expression_t(variable_terms_t variable_terms, number_t constant_term)
-            : _constant_term(std::move(constant_term)) {
+        : _constant_term(std::move(constant_term)) {
         for (const auto& [variable, coefficient] : variable_terms) {
             if (coefficient != 0) {
                 _variable_terms.emplace(variable, coefficient);
@@ -57,7 +58,7 @@ class linear_expression_t final {
     [[nodiscard]] bool is_constant() const { return _variable_terms.empty(); }
 
     // Multiply a linear expression by a constant.
-    [[nodiscard]] linear_expression_t operator*(const number_t& constant) const {
+    [[nodiscard]] linear_expression_t multiply(const number_t& constant) const {
         variable_terms_t variable_terms;
         for (const auto& [variable, coefficient] : _variable_terms) {
             variable_terms.emplace(variable, coefficient * constant);
@@ -66,22 +67,19 @@ class linear_expression_t final {
     }
 
     // Add a constant to a linear expression.
-    [[nodiscard]] linear_expression_t operator+(signed long long int constant) const {
-        return operator+(number_t(constant));
-    }
-    [[nodiscard]] linear_expression_t operator+(const number_t& constant) const {
+    [[nodiscard]] linear_expression_t plus(const number_t& constant) const {
         return linear_expression_t(variable_terms_t(_variable_terms), _constant_term + constant);
     }
 
     // Add a variable (with coefficient of 1) to a linear expression.
-    [[nodiscard]] linear_expression_t operator+(const variable_t& variable) const {
+    [[nodiscard]] linear_expression_t plus(const variable_t& variable) const {
         variable_terms_t variable_terms = _variable_terms;
         variable_terms[variable] = coefficient_of(variable) + 1;
         return linear_expression_t(variable_terms, _constant_term);
     }
 
     // Add two expressions.
-    [[nodiscard]] linear_expression_t operator+(const linear_expression_t& expression) const {
+    [[nodiscard]] linear_expression_t plus(const linear_expression_t& expression) const {
         variable_terms_t variable_terms = _variable_terms;
         for (const auto& [variable, coefficient] : expression.variable_terms()) {
             variable_terms[variable] = coefficient_of(variable) + coefficient;
@@ -90,31 +88,22 @@ class linear_expression_t final {
     }
 
     // Apply unary minus to an expression.
-    [[nodiscard]] linear_expression_t operator-() const { return operator*(-1); }
+    [[nodiscard]] linear_expression_t negate() const { return multiply(-1); }
 
     // Subtract a constant from a linear expression.
-    [[nodiscard]] linear_expression_t operator-(signed long long int constant) const {
-        return operator-(number_t(constant));
-    }
-    [[nodiscard]] linear_expression_t operator-(unsigned long long int constant) const {
-        return operator-(number_t(constant));
-    }
-    [[nodiscard]] linear_expression_t operator-(int constant) const {
-        return operator-(number_t(constant));
-    }
-    [[nodiscard]] linear_expression_t operator-(const number_t& constant) const {
+    [[nodiscard]] linear_expression_t subtract(const number_t& constant) const {
         return linear_expression_t(variable_terms_t(_variable_terms), _constant_term - constant);
     }
 
     // Subtract a variable (with coefficient of 1) from a linear expression.
-    [[nodiscard]] linear_expression_t operator-(const variable_t& variable) const {
+    [[nodiscard]] linear_expression_t subtract(const variable_t& variable) const {
         variable_terms_t variable_terms = _variable_terms;
         variable_terms[variable] = coefficient_of(variable) - 1;
         return linear_expression_t(variable_terms, _constant_term);
     }
 
     // Subtract one expression from another.
-    [[nodiscard]] linear_expression_t operator-(const linear_expression_t& expression) const {
+    [[nodiscard]] linear_expression_t subtract(const linear_expression_t& expression) const {
         variable_terms_t variable_terms = _variable_terms;
         for (const auto& [variable, coefficient] : expression.variable_terms()) {
             variable_terms[variable] = coefficient_of(variable) - coefficient;
@@ -139,8 +128,7 @@ class linear_expression_t final {
 };
 
 // Output a linear expression to a stream.
-inline std::ostream& operator<<(std::ostream& o, const linear_expression_t& expression)
-{
+inline std::ostream& operator<<(std::ostream& o, const linear_expression_t& expression) {
     expression.output_variable_terms(o);
 
     // Output the constant term.
@@ -151,4 +139,6 @@ inline std::ostream& operator<<(std::ostream& o, const linear_expression_t& expr
         o << " + " << constant;
     }
     return o;
+}
+
 }

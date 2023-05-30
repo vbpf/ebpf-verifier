@@ -50,8 +50,6 @@ class bound_t final {
     static bound_t minus_infinity() { return bound_t(true, -1); }
 
   public:
-    bound_t(int64_t n) : _is_infinite(false), _n(n) {}
-
     explicit bound_t(const std::string& s) : _n(1) {
         if (s == "+oo") {
             _is_infinite = true;
@@ -141,7 +139,7 @@ class bound_t final {
         }
     }
 
-    bound_t UDiv(const bound_t& x) const {
+    [[nodiscard]] bound_t UDiv(const bound_t& x) const {
         if (x._n == 0) {
             CRAB_ERROR("Bound: division by zero");
         } else if (is_finite() && x.is_finite()) {
@@ -149,13 +147,13 @@ class bound_t final {
             number_t divisor = (x._n >= 0) ? x._n : number_t{x._n.cast_to_uint64()};
             return bound_t(false, dividend / divisor);
         } else if (is_finite() && x.is_infinite()) {
-            return 0;
+            return number_t{0};
         } else {
             return plus_infinity();
         }
     }
 
-    bound_t UMod(const bound_t& x) const {
+    [[nodiscard]] bound_t UMod(const bound_t& x) const {
         if (x._n == 0) {
             CRAB_ERROR("Bound: modulo zero");
         } else if (is_finite() && x.is_finite()) {
@@ -204,7 +202,7 @@ class bound_t final {
     }
 
     [[nodiscard]] bound_t abs() const {
-        if (operator>=(bound_t{0})) {
+        if (operator>=(number_t{0})) {
             return *this;
         } else {
             return operator-();
@@ -247,7 +245,7 @@ class interval_t final {
     [[nodiscard]] std::optional<number_t> finite_size() const { return (_ub - _lb).number(); }
 
   private:
-    interval_t() : _lb(0), _ub(-1) {}
+    interval_t() : _lb(number_t{0}), _ub(-1) {}
 
     static number_t abs(const number_t& x) { return x < 0 ? -x : x; }
 
@@ -256,11 +254,11 @@ class interval_t final {
     static number_t min(const number_t& x, const number_t& y) { return x.operator<(y) ? x : y; }
 
   public:
-    interval_t(const bound_t& lb, const bound_t& ub) : _lb(lb > ub ? bound_t{0}  : lb),
+    interval_t(const bound_t& lb, const bound_t& ub) : _lb(lb > ub ? bound_t{number_t{0}}  : lb),
                                                        _ub(lb > ub ? bound_t{-1} : ub) {
     }
 
-    explicit interval_t(const bound_t& b) : _lb(b.is_infinite() ? bound_t{0}  : b),
+    explicit interval_t(const bound_t& b) : _lb(b.is_infinite() ? bound_t{number_t{0}}  : b),
                                             _ub(b.is_infinite() ? bound_t{-1} : b) {
     }
 
@@ -444,7 +442,7 @@ class interval_t final {
 
     [[nodiscard]] interval_t AShr(const interval_t& x) const;
 
-    interval_t truncate_to_sint(bool is64) const {
+    [[nodiscard]] interval_t truncate_to_sint(bool is64) const {
         interval_t new_interval = *this;
         if (!(*this <= interval_t::signed_int(is64))) {
             if (auto size = finite_size()) {
@@ -463,7 +461,7 @@ class interval_t final {
         return new_interval;
     }
 
-    interval_t truncate_to_uint(bool is64) const {
+    [[nodiscard]] interval_t truncate_to_uint(bool is64) const {
         interval_t new_interval = *this;
         if (!(*this <= interval_t::unsigned_int(is64))) {
             if (auto size = finite_size()) {
@@ -484,26 +482,26 @@ class interval_t final {
 
     // Return a non-negative interval in the range [0, INT_MAX],
     // which can be represented as both an svalue and a uvalue.
-    static const interval_t nonnegative_int(bool is64) {
+    static interval_t nonnegative_int(bool is64) {
         if (is64) {
-            return {0, number_t{std::numeric_limits<int64_t>::max()}};
+            return {number_t{0}, number_t{std::numeric_limits<int64_t>::max()}};
         } else {
-            return {0, number_t{std::numeric_limits<int32_t>::max()}};
+            return {number_t{0}, number_t{std::numeric_limits<int32_t>::max()}};
         }
     }
     // Return an interval in the range [INT_MIN, -1], which can only
     // be represented as an svalue.  The uvalue equivalent using the same
     // bits would be unsigned_high().
-    static const interval_t negative_int(bool is64) {
+    static interval_t negative_int(bool is64) {
         if (is64) {
-            return {number_t{std::numeric_limits<int64_t>::min()}, -1};
+            return {number_t{std::numeric_limits<int64_t>::min()}, number_t{-1}};
         } else {
-            return {number_t{std::numeric_limits<int32_t>::min()}, -1};
+            return {number_t{std::numeric_limits<int32_t>::min()}, number_t{-1}};
         }
     }
     // Return an interval in the range [INT_MIN, INT_MAX] which can only
     // be represented as an svalue.
-    static const interval_t signed_int(bool is64) {
+    static interval_t signed_int(bool is64) {
         if (is64) {
             return {number_t{std::numeric_limits<int64_t>::min()}, number_t{std::numeric_limits<int64_t>::max()}};
         } else {
@@ -512,24 +510,28 @@ class interval_t final {
     }
     // Return an interval in the range [0, UINT_MAX] which can only be
     // represented as a uvalue.
-    static const interval_t unsigned_int(bool is64) {
+    static interval_t unsigned_int(bool is64) {
         if (is64) {
-            return {0, number_t{std::numeric_limits<uint64_t>::max()}};
+            return {number_t{0}, number_t{std::numeric_limits<uint64_t>::max()}};
         } else {
-            return {0, number_t{std::numeric_limits<uint32_t>::max()}};
+            return {number_t{0}, number_t{std::numeric_limits<uint32_t>::max()}};
         }
     }
     // Return an interval in the range [INT_MAX+1, UINT_MAX], which can only
     // be represented as a uvalue.  The svalue equivalent using the same
     // bits would be negative_int().
-    static const interval_t unsigned_high(bool is64) {
+    static interval_t unsigned_high(bool is64) {
         if (is64) {
             return {number_t{std::numeric_limits<int64_t>::max()} + 1, number_t{std::numeric_limits<uint64_t>::max()}};
         } else {
             return {number_t{std::numeric_limits<int32_t>::max()} + 1, number_t{std::numeric_limits<uint32_t>::max()}};
         }
     }
+
+    [[nodiscard]] std::string to_string() const;
 }; //  class interval
+
+namespace interval_operators {
 
 inline interval_t operator+(const number_t& c, const interval_t& x) { return interval_t(c) + x; }
 
@@ -547,6 +549,8 @@ inline interval_t operator-(const number_t& c, const interval_t& x) { return int
 
 inline interval_t operator-(const interval_t& x, const number_t& c) { return x - interval_t(c); }
 
+}
+
 inline interval_t trim_interval(const interval_t& i, const interval_t& j) {
     if (std::optional<number_t> c = j.singleton()) {
         if (i.lb() == bound_t{*c}) {
@@ -554,7 +558,7 @@ inline interval_t trim_interval(const interval_t& i, const interval_t& j) {
         } else if (i.ub() == bound_t{*c}) {
             return interval_t(i.lb(), bound_t{*c - 1});
         } else if (i.is_top() && (*c == 0)) {
-            return {1, number_t{std::numeric_limits<uint64_t>::max()}};
+            return {number_t{1}, number_t{std::numeric_limits<uint64_t>::max()}};
         }
     }
     return i;

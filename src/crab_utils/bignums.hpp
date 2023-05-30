@@ -203,15 +203,9 @@ class z_number final {
         return z_number(_n + x._n);
     }
 
-    z_number operator+(int x) const { return operator+(z_number(x)); }
-
     z_number operator*(const z_number& x) const { return z_number(_n * x._n); }
 
-    z_number operator*(int x) const { return operator*(z_number(x)); }
-
     z_number operator-(const z_number& x) const { return z_number(_n - x._n); }
-
-    z_number operator-(int x) const { return operator-(z_number(x)); }
 
     z_number operator-() const { return z_number(-_n); }
 
@@ -223,8 +217,6 @@ class z_number final {
         }
     }
 
-    z_number operator/(int x) const { return operator/(z_number(x)); }
-
     z_number operator%(const z_number& x) const {
         if (x._n.is_zero()) {
             CRAB_ERROR("z_number: division by zero [2]");
@@ -233,28 +225,20 @@ class z_number final {
         }
     }
 
-    z_number operator%(int x) const { return operator%(z_number(x)); }
-
     z_number& operator+=(const z_number& x) {
         _n += x._n;
         return *this;
     }
-
-    z_number& operator+=(int x) { return operator+=(z_number(x)); }
 
     z_number& operator*=(const z_number& x) {
         _n *= x._n;
         return *this;
     }
 
-    z_number& operator*=(int x) { return operator*=(z_number(x)); }
-
     z_number& operator-=(const z_number& x) {
         _n -= x._n;
         return *this;
     }
-
-    z_number& operator-=(int x) { return operator-=(z_number(x)); }
 
     z_number& operator/=(const z_number& x) {
         if (x._n.is_zero()) {
@@ -265,8 +249,6 @@ class z_number final {
         }
     }
 
-    z_number& operator/=(int x) { return operator/=(z_number(x)); }
-
     z_number& operator%=(const z_number& x) {
         if (x._n.is_zero()) {
             CRAB_ERROR("z_number: division by zero [4]");
@@ -275,8 +257,6 @@ class z_number final {
             return *this;
         }
     }
-
-    z_number& operator%=(int x) { return operator%=(z_number(x)); }
 
     z_number& operator--() & {
         _n--;
@@ -304,39 +284,21 @@ class z_number final {
         return (_n == x._n);
     }
 
-    bool operator==(int x) const { return operator==(z_number(x)); }
-
     bool operator!=(const z_number& x) const { return (_n != x._n); }
-
-    bool operator!=(int x) const { return operator!=(z_number(x)); }
 
     bool operator<(const z_number& x) const { return (_n < x._n); }
 
-    bool operator<(int x) const { return operator<(z_number(x)); }
-
     bool operator<=(const z_number& x) const { return (_n <= x._n); }
-
-    bool operator<=(int x) const { return operator<=(z_number(x)); }
 
     bool operator>(const z_number& x) const { return (_n > x._n); }
 
-    bool operator>(int x) const { return operator>(z_number(x)); }
-
     bool operator>=(const z_number& x) const { return (_n >= x._n); }
-
-    bool operator>=(int x) const { return operator>=(z_number(x)); }
 
     z_number operator&(const z_number& x) const { return z_number(_n & x._n); }
 
-    z_number operator&(int x) const { return z_number(_n & x); }
-
     z_number operator|(const z_number& x) const { return z_number(_n | x._n); }
 
-    z_number operator|(int x) const { return z_number(_n | x); }
-
     z_number operator^(const z_number& x) const { return z_number(_n ^ x._n); }
-
-    z_number operator^(int x) const { return z_number(_n ^ x); }
 
     z_number operator<<(z_number x) const {
         if (!x.fits_sint32()) {
@@ -345,16 +307,12 @@ class z_number final {
         return z_number(_n << (int32_t)x);
     }
 
-    z_number operator<<(int x) const { return z_number(_n << x); }
-
     z_number operator>>(z_number x) const {
         if (!x.fits_sint32()) {
             CRAB_ERROR("z_number ", x._n.str(), " does not fit into an int32");
         }
         return z_number(_n >> (int32_t)x);
     }
-
-    z_number operator>>(int x) const { return z_number(_n >> x); }
 
     [[nodiscard]] z_number fill_ones() const {
         if (_n.is_zero()) {
@@ -371,10 +329,11 @@ class z_number final {
         return o << z._n.str();
     }
 
-}; // class z_number
+    [[nodiscard]] std::string to_string() const;
+};
+// class z_number
 
 using number_t = z_number;
 
 inline std::size_t hash_value(const z_number& z) { return z.hash(); }
-
 } // namespace crab
