@@ -24,8 +24,7 @@
 #include "string_constraints.hpp"
 
 using crab::domains::NumAbsDomain;
-using crab::data_kind_t;
-
+namespace crab {
 struct reg_pack_t {
     variable_t svalue; // int64_t value.
     variable_t uvalue; // uint64_t value.
@@ -60,9 +59,7 @@ static linear_constraint_t eq(variable_t a, variable_t b) {
     return {a - b, constraint_kind_t::EQUALS_ZERO};
 }
 
-static linear_constraint_t eq_types(const Reg& a, const Reg& b) {
-    return eq(reg_pack(a).type, reg_pack(b).type);
-}
+static linear_constraint_t eq_types(const Reg& a, const Reg& b) { return eq(reg_pack(a).type, reg_pack(b).type); }
 
 static linear_constraint_t neq(variable_t a, variable_t b) {
     using namespace crab::dsl_syntax;
@@ -122,8 +119,7 @@ static std::vector<linear_constraint_t> assume_bit_cst_interval(const NumAbsDoma
 }
 
 static std::vector<linear_constraint_t> assume_signed_64bit_eq(const NumAbsDomain& inv, variable_t left_svalue,
-                                                               variable_t left_uvalue,
-                                                               crab::interval_t& right_interval,
+                                                               variable_t left_uvalue, crab::interval_t& right_interval,
                                                                const linear_expression_t& right_svalue,
                                                                const linear_expression_t& right_uvalue) {
     using namespace crab::dsl_syntax;
@@ -133,8 +129,8 @@ static std::vector<linear_constraint_t> assume_signed_64bit_eq(const NumAbsDomai
         return {(left_svalue == right_svalue), (left_uvalue == right_uvalue)};
 }
 
-static std::vector<linear_constraint_t> assume_signed_32bit_eq(const NumAbsDomain& inv,
-                                                               variable_t left_svalue, variable_t left_uvalue,
+static std::vector<linear_constraint_t> assume_signed_32bit_eq(const NumAbsDomain& inv, variable_t left_svalue,
+                                                               variable_t left_uvalue,
                                                                crab::interval_t& right_interval) {
     using namespace crab::dsl_syntax;
 
@@ -171,8 +167,7 @@ static std::vector<linear_constraint_t> assume_signed_32bit_eq(const NumAbsDomai
             if ((uint64_t)lb_match <= (uint64_t)ub_match) {
                 // The interval is also valid when cast to a uvalue, meaning
                 // both bounds are positive or both are negative.
-                return {left_svalue >= lb_match, left_svalue <= ub_match,
-                        left_uvalue >= number_t((uint64_t)lb_match),
+                return {left_svalue >= lb_match, left_svalue <= ub_match, left_uvalue >= number_t((uint64_t)lb_match),
                         left_uvalue <= number_t((uint64_t)ub_match)};
             } else {
                 // The interval can only be represented as an svalue.
@@ -185,12 +180,9 @@ static std::vector<linear_constraint_t> assume_signed_32bit_eq(const NumAbsDomai
 
 // Given left and right values, get the left and right intervals, and also split
 // the left interval into separate negative and positive intervals.
-static void get_signed_intervals(const NumAbsDomain& inv, bool is64,
-                                 variable_t left_svalue, variable_t left_uvalue,
-                                 const linear_expression_t& right_svalue,
-                                 crab::interval_t& left_interval,
-                                 crab::interval_t& right_interval,
-                                 crab::interval_t& left_interval_positive,
+static void get_signed_intervals(const NumAbsDomain& inv, bool is64, variable_t left_svalue, variable_t left_uvalue,
+                                 const linear_expression_t& right_svalue, crab::interval_t& left_interval,
+                                 crab::interval_t& right_interval, crab::interval_t& left_interval_positive,
                                  crab::interval_t& left_interval_negative) {
     using crab::interval_t;
     using namespace crab::dsl_syntax;
@@ -223,8 +215,8 @@ static void get_signed_intervals(const NumAbsDomain& inv, bool is64,
             // The interval is TOP as a signed interval but is represented precisely as an unsigned interval,
             // so split into two signed intervals that can be treated separately.
             left_interval_positive = left_interval & interval_t::nonnegative_int(true);
-            int64_t lih_ub = left_interval.ub().number() ? left_interval.ub().number()->truncate_to_sint64() : -1;
-            left_interval_negative = interval_t(std::numeric_limits<int64_t>::min(), lih_ub);
+            number_t lih_ub = left_interval.ub().number() ? left_interval.ub().number()->truncate_to_sint64() : -1;
+            left_interval_negative = interval_t(number_t{std::numeric_limits<int64_t>::min()}, lih_ub);
         } else {
             left_interval_positive = interval_t::nonnegative_int(true);
             left_interval_negative = interval_t::negative_int(true);
@@ -274,8 +266,8 @@ static void get_unsigned_intervals(const NumAbsDomain& inv, bool is64, variable_
         if (!left_interval.is_top()) {
             // The interval is TOP as an unsigned interval but is represented precisely as a signed interval,
             // so split into two unsigned intervals that can be treated separately.
-            left_interval_low = interval_t(0, left_interval.ub()).truncate_to_uint(true);
-            left_interval_high = interval_t(left_interval.lb(), -1).truncate_to_uint(true);
+            left_interval_low = interval_t(number_t{0}, left_interval.ub()).truncate_to_uint(true);
+            left_interval_high = interval_t(left_interval.lb(), number_t{-1}).truncate_to_uint(true);
         } else {
             left_interval_low = interval_t::nonnegative_int(true);
             left_interval_high = interval_t::unsigned_high(true);
@@ -289,13 +281,11 @@ static void get_unsigned_intervals(const NumAbsDomain& inv, bool is64, variable_
     }
 }
 
-static std::vector<linear_constraint_t> assume_signed_64bit_lt(const NumAbsDomain& inv, bool strict,
-                                                               variable_t left_svalue, variable_t left_uvalue,
-                                                               const crab::interval_t& left_interval_positive,
-                                                               const crab::interval_t& left_interval_negative,
-                                                               const linear_expression_t& right_svalue,
-                                                               const linear_expression_t& right_uvalue,
-                                                               const crab::interval_t& right_interval) {
+static std::vector<linear_constraint_t>
+assume_signed_64bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_svalue, variable_t left_uvalue,
+                       const crab::interval_t& left_interval_positive, const crab::interval_t& left_interval_negative,
+                       const linear_expression_t& right_svalue, const linear_expression_t& right_uvalue,
+                       const crab::interval_t& right_interval) {
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
@@ -318,13 +308,11 @@ static std::vector<linear_constraint_t> assume_signed_64bit_lt(const NumAbsDomai
     }
 }
 
-static std::vector<linear_constraint_t> assume_signed_32bit_lt(const NumAbsDomain& inv, bool strict,
-                                                               variable_t left_svalue, variable_t left_uvalue,
-                                                               const crab::interval_t& left_interval_positive,
-                                                               const crab::interval_t& left_interval_negative,
-                                                               const linear_expression_t& right_svalue,
-                                                               const linear_expression_t& right_uvalue,
-                                                               const crab::interval_t& right_interval) {
+static std::vector<linear_constraint_t>
+assume_signed_32bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_svalue, variable_t left_uvalue,
+                       const crab::interval_t& left_interval_positive, const crab::interval_t& left_interval_negative,
+                       const linear_expression_t& right_svalue, const linear_expression_t& right_uvalue,
+                       const crab::interval_t& right_interval) {
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
@@ -357,22 +345,23 @@ static std::vector<linear_constraint_t> assume_signed_32bit_lt(const NumAbsDomai
     }
 }
 
-static std::vector<linear_constraint_t> assume_signed_64bit_gt(const NumAbsDomain& inv, bool strict,
-                                                               variable_t left_svalue, variable_t left_uvalue,
-                                                               const crab::interval_t& left_interval_positive,
-                                                               const crab::interval_t& left_interval_negative,
-                                                               const linear_expression_t& right_svalue,
-                                                               const linear_expression_t& right_uvalue,
-                                                               const crab::interval_t& right_interval) {
+static std::vector<linear_constraint_t>
+assume_signed_64bit_gt(const NumAbsDomain& inv, bool strict, variable_t left_svalue, variable_t left_uvalue,
+                       const crab::interval_t& left_interval_positive, const crab::interval_t& left_interval_negative,
+                       const linear_expression_t& right_svalue, const linear_expression_t& right_uvalue,
+                       const crab::interval_t& right_interval) {
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
     if (right_interval <= interval_t::nonnegative_int(true)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX].
         auto lpub = left_interval_positive.truncate_to_sint(true).ub();
-        return {left_svalue >= 0, strict ? left_svalue > right_svalue : left_svalue >= right_svalue,
-                left_svalue <= left_uvalue, left_svalue >= left_uvalue,
-                left_uvalue >= 0, strict ? left_uvalue > right_uvalue : left_uvalue >= right_uvalue,
+        return {left_svalue >= 0,
+                strict ? left_svalue > right_svalue : left_svalue >= right_svalue,
+                left_svalue <= left_uvalue,
+                left_svalue >= left_uvalue,
+                left_uvalue >= 0,
+                strict ? left_uvalue > right_uvalue : left_uvalue >= right_uvalue,
                 left_uvalue <= *lpub.number()};
     } else if ((left_interval_negative | left_interval_positive) <= interval_t::negative_int(true) &&
                right_interval <= interval_t::negative_int(true)) {
@@ -387,13 +376,11 @@ static std::vector<linear_constraint_t> assume_signed_64bit_gt(const NumAbsDomai
     }
 }
 
-static std::vector<linear_constraint_t> assume_signed_32bit_gt(const NumAbsDomain& inv, bool strict,
-                                                               variable_t left_svalue, variable_t left_uvalue,
-                                                               const crab::interval_t& left_interval_positive,
-                                                               const crab::interval_t& left_interval_negative,
-                                                               const linear_expression_t& right_svalue,
-                                                               const linear_expression_t& right_uvalue,
-                                                               const crab::interval_t& right_interval) {
+static std::vector<linear_constraint_t>
+assume_signed_32bit_gt(const NumAbsDomain& inv, bool strict, variable_t left_svalue, variable_t left_uvalue,
+                       const crab::interval_t& left_interval_positive, const crab::interval_t& left_interval_negative,
+                       const linear_expression_t& right_svalue, const linear_expression_t& right_uvalue,
+                       const crab::interval_t& right_interval) {
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
@@ -438,10 +425,8 @@ static std::vector<linear_constraint_t> assume_signed_cst_interval(const NumAbsD
     interval_t right_interval = interval_t::bottom();
     interval_t left_interval_positive = interval_t::bottom();
     interval_t left_interval_negative = interval_t::bottom();
-    get_signed_intervals(inv, is64, left_svalue, left_uvalue,
-                         right_svalue, left_interval,
-                         right_interval, left_interval_positive,
-                         left_interval_negative);
+    get_signed_intervals(inv, is64, left_svalue, left_uvalue, right_svalue, left_interval, right_interval,
+                         left_interval_positive, left_interval_negative);
 
     if (op == Condition::Op::EQ) {
         // Handle svalue == right.
@@ -492,13 +477,11 @@ static std::vector<linear_constraint_t> assume_signed_cst_interval(const NumAbsD
     return {};
 }
 
-static std::vector<linear_constraint_t> assume_unsigned_64bit_lt(const NumAbsDomain& inv, bool strict,
-                                                                 variable_t left_svalue, variable_t left_uvalue,
-                                                                 const crab::interval_t& left_interval_low,
-                                                                 const crab::interval_t& left_interval_high,
-                                                                 const linear_expression_t& right_svalue,
-                                                                 const linear_expression_t& right_uvalue,
-                                                                 const crab::interval_t& right_interval) {
+static std::vector<linear_constraint_t>
+assume_unsigned_64bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_svalue, variable_t left_uvalue,
+                         const crab::interval_t& left_interval_low, const crab::interval_t& left_interval_high,
+                         const linear_expression_t& right_svalue, const linear_expression_t& right_uvalue,
+                         const crab::interval_t& right_interval) {
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
@@ -542,13 +525,11 @@ static std::vector<linear_constraint_t> assume_unsigned_64bit_lt(const NumAbsDom
     }
 }
 
-static std::vector<linear_constraint_t> assume_unsigned_32bit_lt(const NumAbsDomain& inv, bool strict,
-                                                                 variable_t left_svalue, variable_t left_uvalue,
-                                                                 const crab::interval_t& left_interval_low,
-                                                                 const crab::interval_t& left_interval_high,
-                                                                 const linear_expression_t& right_svalue,
-                                                                 const linear_expression_t& right_uvalue,
-                                                                 const crab::interval_t& right_interval) {
+static std::vector<linear_constraint_t>
+assume_unsigned_32bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_svalue, variable_t left_uvalue,
+                         const crab::interval_t& left_interval_low, const crab::interval_t& left_interval_high,
+                         const linear_expression_t& right_svalue, const linear_expression_t& right_uvalue,
+                         const crab::interval_t& right_interval) {
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
@@ -572,13 +553,11 @@ static std::vector<linear_constraint_t> assume_unsigned_32bit_lt(const NumAbsDom
     }
 }
 
-static std::vector<linear_constraint_t> assume_unsigned_64bit_gt(const NumAbsDomain& inv, bool strict,
-                                                                 variable_t left_svalue, variable_t left_uvalue,
-                                                                 const crab::interval_t& left_interval_low,
-                                                                 const crab::interval_t& left_interval_high,
-                                                                 const linear_expression_t& right_svalue,
-                                                                 const linear_expression_t& right_uvalue,
-                                                                 const crab::interval_t& right_interval) {
+static std::vector<linear_constraint_t>
+assume_unsigned_64bit_gt(const NumAbsDomain& inv, bool strict, variable_t left_svalue, variable_t left_uvalue,
+                         const crab::interval_t& left_interval_low, const crab::interval_t& left_interval_high,
+                         const linear_expression_t& right_svalue, const linear_expression_t& right_uvalue,
+                         const crab::interval_t& right_interval) {
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
@@ -607,13 +586,11 @@ static std::vector<linear_constraint_t> assume_unsigned_64bit_gt(const NumAbsDom
     }
 }
 
-static std::vector<linear_constraint_t>assume_unsigned_32bit_gt(const NumAbsDomain& inv, bool strict,
-                                                                variable_t left_svalue, variable_t left_uvalue,
-                                                                const crab::interval_t& left_interval_low,
-                                                                const crab::interval_t& left_interval_high,
-                                                                const linear_expression_t& right_svalue,
-                                                                const linear_expression_t& right_uvalue,
-                                                                const crab::interval_t& right_interval) {
+static std::vector<linear_constraint_t>
+assume_unsigned_32bit_gt(const NumAbsDomain& inv, bool strict, variable_t left_svalue, variable_t left_uvalue,
+                         const crab::interval_t& left_interval_low, const crab::interval_t& left_interval_high,
+                         const linear_expression_t& right_svalue, const linear_expression_t& right_uvalue,
+                         const crab::interval_t& right_interval) {
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
@@ -631,8 +608,9 @@ static std::vector<linear_constraint_t>assume_unsigned_32bit_gt(const NumAbsDoma
     };
 }
 
-static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAbsDomain& inv, Condition::Op op, bool is64,
-                                                                     variable_t left_svalue, variable_t left_uvalue,
+static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAbsDomain& inv, Condition::Op op,
+                                                                     bool is64, variable_t left_svalue,
+                                                                     variable_t left_uvalue,
                                                                      const linear_expression_t& right_svalue,
                                                                      const linear_expression_t& right_uvalue) {
     using crab::interval_t;
@@ -703,8 +681,8 @@ static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAb
                                             left_interval_high, right_svalue, right_uvalue, right_interval);
     } else {
         if (is_lt)
-            return assume_unsigned_32bit_lt(inv, strict, left_svalue, left_uvalue, left_interval_low, left_interval_high,
-                                            right_svalue, right_uvalue, right_interval);
+            return assume_unsigned_32bit_lt(inv, strict, left_svalue, left_uvalue, left_interval_low,
+                                            left_interval_high, right_svalue, right_uvalue, right_interval);
         else
             return assume_unsigned_32bit_gt(inv, strict, left_svalue, left_uvalue, left_interval_low,
                                             left_interval_high, right_svalue, right_uvalue, right_interval);
@@ -713,8 +691,8 @@ static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAb
 
 /** Linear constraints for a comparison with a constant.
  */
-static std::vector<linear_constraint_t> assume_cst_imm(const NumAbsDomain& inv, Condition::Op op, bool is64, variable_t dst_svalue, variable_t dst_uvalue,
-                                                       int64_t imm) {
+static std::vector<linear_constraint_t> assume_cst_imm(const NumAbsDomain& inv, Condition::Op op, bool is64,
+                                                       variable_t dst_svalue, variable_t dst_uvalue, int64_t imm) {
     using namespace crab::dsl_syntax;
     using Op = Condition::Op;
     switch (op) {
@@ -722,14 +700,18 @@ static std::vector<linear_constraint_t> assume_cst_imm(const NumAbsDomain& inv, 
     case Op::SGE:
     case Op::SLE:
     case Op::SGT:
-    case Op::SLT: return assume_signed_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, imm, number_t((uint64_t)imm));
+    case Op::SLT:
+        return assume_signed_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, number_t{imm},
+                                          number_t{(uint64_t)imm});
     case Op::SET:
-    case Op::NSET: return assume_bit_cst_interval(inv, op, is64, dst_uvalue, crab::interval_t(imm, imm));
+    case Op::NSET: return assume_bit_cst_interval(inv, op, is64, dst_uvalue, crab::interval_t(imm));
     case Op::NE:
     case Op::GE:
     case Op::LE:
     case Op::GT:
-    case Op::LT: return assume_unsigned_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, imm, number_t((uint64_t)imm));
+    case Op::LT:
+        return assume_unsigned_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, number_t{imm},
+                                            number_t{(uint64_t)imm});
     }
     return {};
 }
@@ -769,17 +751,14 @@ static std::vector<linear_constraint_t> assume_cst_reg(const NumAbsDomain& inv, 
         case Op::SGE:
         case Op::SLE:
         case Op::SGT:
-        case Op::SLT:
-            return assume_signed_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, src_svalue, src_uvalue);
+        case Op::SLT: return assume_signed_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, src_svalue, src_uvalue);
         case Op::SET:
-        case Op::NSET:
-            return assume_bit_cst_interval(inv, op, is64, dst_uvalue, inv.eval_interval(src_uvalue));
+        case Op::NSET: return assume_bit_cst_interval(inv, op, is64, dst_uvalue, inv.eval_interval(src_uvalue));
         case Op::NE:
         case Op::GE:
         case Op::LE:
         case Op::GT:
-        case Op::LT:
-            return assume_unsigned_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, src_svalue, src_uvalue);
+        case Op::LT: return assume_unsigned_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, src_svalue, src_uvalue);
         }
     }
     assert(false);
@@ -823,7 +802,8 @@ ebpf_domain_t ebpf_domain_t::bottom() {
 
 ebpf_domain_t::ebpf_domain_t() : m_inv(NumAbsDomain::top()) {}
 
-ebpf_domain_t::ebpf_domain_t(NumAbsDomain inv, crab::domains::array_domain_t stack) : m_inv(std::move(inv)), stack(stack) {}
+ebpf_domain_t::ebpf_domain_t(NumAbsDomain inv, crab::domains::array_domain_t stack)
+    : m_inv(std::move(inv)), stack(stack) {}
 
 void ebpf_domain_t::set_to_top() {
     m_inv.set_to_top();
@@ -836,20 +816,15 @@ bool ebpf_domain_t::is_bottom() const { return m_inv.is_bottom(); }
 
 bool ebpf_domain_t::is_top() const { return m_inv.is_top() && stack.is_top(); }
 
-bool ebpf_domain_t::operator<=(const ebpf_domain_t& other) {
-    return m_inv <= other.m_inv && stack <= other.stack;
-}
+bool ebpf_domain_t::operator<=(const ebpf_domain_t& other) { return m_inv <= other.m_inv && stack <= other.stack; }
 
 bool ebpf_domain_t::operator==(const ebpf_domain_t& other) const {
     return stack == other.stack && m_inv <= other.m_inv && other.m_inv <= m_inv;
 }
 
 void ebpf_domain_t::TypeDomain::add_extra_invariant(NumAbsDomain& dst,
-                                                    std::map<crab::variable_t,
-                                                    crab::interval_t>& extra_invariants,
-                                                    variable_t type_variable,
-                                                    type_encoding_t type,
-                                                    data_kind_t kind,
+                                                    std::map<crab::variable_t, crab::interval_t>& extra_invariants,
+                                                    variable_t type_variable, type_encoding_t type, data_kind_t kind,
                                                     const NumAbsDomain& src) const {
     bool dst_has_type = has_type(dst, type_variable, type);
     bool src_has_type = has_type(src, type_variable, type);
@@ -939,7 +914,7 @@ ebpf_domain_t ebpf_domain_t::operator|(const ebpf_domain_t& other) const& {
 }
 
 ebpf_domain_t ebpf_domain_t::operator|(const ebpf_domain_t& other) && {
-    return ebpf_domain_t(other.m_inv | std::move(m_inv), other.stack | std::move(stack));
+    return ebpf_domain_t(other.m_inv | std::move(m_inv), other.stack | stack);
 }
 
 ebpf_domain_t ebpf_domain_t::operator&(const ebpf_domain_t& other) const {
@@ -961,13 +936,21 @@ void ebpf_domain_t::operator-=(variable_t var) { m_inv -= var; }
 void ebpf_domain_t::assign(variable_t x, const linear_expression_t& e) { m_inv.assign(x, e); }
 void ebpf_domain_t::assign(variable_t x, int64_t e) { m_inv.set(x, crab::interval_t(number_t(e))); }
 
-void ebpf_domain_t::apply(crab::arith_binop_t op, variable_t x, variable_t y, const number_t& z, int finite_width) { m_inv.apply(op, x, y, z, finite_width); }
+void ebpf_domain_t::apply(crab::arith_binop_t op, variable_t x, variable_t y, const number_t& z, int finite_width) {
+    m_inv.apply(op, x, y, z, finite_width);
+}
 
-void ebpf_domain_t::apply(crab::arith_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) { m_inv.apply(op, x, y, z, finite_width); }
+void ebpf_domain_t::apply(crab::arith_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) {
+    m_inv.apply(op, x, y, z, finite_width);
+}
 
-void ebpf_domain_t::apply(crab::bitwise_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) { m_inv.apply(op, x, y, z, finite_width); }
+void ebpf_domain_t::apply(crab::bitwise_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) {
+    m_inv.apply(op, x, y, z, finite_width);
+}
 
-void ebpf_domain_t::apply(crab::bitwise_binop_t op, variable_t x, variable_t y, const number_t& k, int finite_width) { m_inv.apply(op, x, y, k, finite_width); }
+void ebpf_domain_t::apply(crab::bitwise_binop_t op, variable_t x, variable_t y, const number_t& k, int finite_width) {
+    m_inv.apply(op, x, y, k, finite_width);
+}
 
 void ebpf_domain_t::apply(crab::binop_t op, variable_t x, variable_t y, const number_t& z, int finite_width) {
     std::visit([&](auto top) { apply(top, x, y, z, finite_width); }, op);
@@ -1044,24 +1027,36 @@ void ebpf_domain_t::apply(NumAbsDomain& inv, crab::binop_t op, variable_t x, var
     inv.apply(op, x, y, z, 0);
 }
 
-void ebpf_domain_t::add(variable_t lhs, variable_t op2) { apply_signed(m_inv, crab::arith_binop_t::ADD, lhs, lhs, lhs, op2, 0); }
-void ebpf_domain_t::add(variable_t lhs, const number_t& op2) { apply_signed(m_inv, crab::arith_binop_t::ADD, lhs, lhs, lhs, op2, 0); }
-void ebpf_domain_t::sub(variable_t lhs, variable_t op2) { apply_signed(m_inv, crab::arith_binop_t::SUB, lhs, lhs, lhs, op2, 0); }
-void ebpf_domain_t::sub(variable_t lhs, const number_t& op2) { apply_signed(m_inv, crab::arith_binop_t::SUB, lhs, lhs, lhs, op2, 0); }
+void ebpf_domain_t::add(variable_t lhs, variable_t op2) {
+    apply_signed(m_inv, crab::arith_binop_t::ADD, lhs, lhs, lhs, op2, 0);
+}
+void ebpf_domain_t::add(variable_t lhs, const number_t& op2) {
+    apply_signed(m_inv, crab::arith_binop_t::ADD, lhs, lhs, lhs, op2, 0);
+}
+void ebpf_domain_t::sub(variable_t lhs, variable_t op2) {
+    apply_signed(m_inv, crab::arith_binop_t::SUB, lhs, lhs, lhs, op2, 0);
+}
+void ebpf_domain_t::sub(variable_t lhs, const number_t& op2) {
+    apply_signed(m_inv, crab::arith_binop_t::SUB, lhs, lhs, lhs, op2, 0);
+}
 
 // Add/subtract with overflow are both signed and unsigned. We can use either one of the two to compute the
 // result before adjusting for overflow, though if one is top we want to use the other to retain precision.
 void ebpf_domain_t::add_overflow(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
-    apply_signed(m_inv, crab::arith_binop_t::ADD, lhss, lhsu, ((!m_inv.eval_interval(lhss).is_top()) ? lhss : lhsu), op2, finite_width);
+    apply_signed(m_inv, crab::arith_binop_t::ADD, lhss, lhsu, ((!m_inv.eval_interval(lhss).is_top()) ? lhss : lhsu),
+                 op2, finite_width);
 }
 void ebpf_domain_t::add_overflow(variable_t lhss, variable_t lhsu, const number_t& op2, int finite_width) {
-    apply_signed(m_inv, crab::arith_binop_t::ADD, lhss, lhsu, ((!m_inv.eval_interval(lhss).is_top()) ? lhss : lhsu), op2, finite_width);
+    apply_signed(m_inv, crab::arith_binop_t::ADD, lhss, lhsu, ((!m_inv.eval_interval(lhss).is_top()) ? lhss : lhsu),
+                 op2, finite_width);
 }
 void ebpf_domain_t::sub_overflow(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
-    apply_signed(m_inv, crab::arith_binop_t::SUB, lhss, lhsu, ((!m_inv.eval_interval(lhss).is_top()) ? lhss : lhsu), op2, finite_width);
+    apply_signed(m_inv, crab::arith_binop_t::SUB, lhss, lhsu, ((!m_inv.eval_interval(lhss).is_top()) ? lhss : lhsu),
+                 op2, finite_width);
 }
 void ebpf_domain_t::sub_overflow(variable_t lhss, variable_t lhsu, const number_t& op2, int finite_width) {
-    apply_signed(m_inv, crab::arith_binop_t::SUB, lhss, lhsu, ((!m_inv.eval_interval(lhss).is_top()) ? lhss : lhsu), op2, finite_width);
+    apply_signed(m_inv, crab::arith_binop_t::SUB, lhss, lhsu, ((!m_inv.eval_interval(lhss).is_top()) ? lhss : lhsu),
+                 op2, finite_width);
 }
 
 void ebpf_domain_t::neg(variable_t lhss, variable_t lhsu, int finite_width) {
@@ -1123,30 +1118,16 @@ void ebpf_domain_t::shl_overflow(variable_t lhss, variable_t lhsu, variable_t op
 void ebpf_domain_t::shl_overflow(variable_t lhss, variable_t lhsu, const number_t& op2) {
     apply_unsigned(m_inv, crab::bitwise_binop_t::SHL, lhss, lhsu, lhsu, op2, 64);
 }
-void ebpf_domain_t::lshr(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
-    apply_unsigned(m_inv, crab::bitwise_binop_t::LSHR, lhss, lhsu, lhsu, op2, finite_width);
-}
-void ebpf_domain_t::lshr(variable_t lhss, variable_t lhsu, const number_t& op2) {
-    apply_signed(m_inv, crab::bitwise_binop_t::LSHR, lhss, lhsu, lhsu, op2, 0);
-    apply_unsigned(m_inv, crab::bitwise_binop_t::LSHR, lhss, lhsu, lhsu, op2, 0);
-}
-void ebpf_domain_t::ashr(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
-    apply_signed(m_inv, crab::bitwise_binop_t::ASHR, lhss, lhsu, lhss, op2, finite_width);
-}
-void ebpf_domain_t::ashr(variable_t lhss, variable_t lhsu, const number_t& op2) {
-    apply_signed(m_inv, crab::bitwise_binop_t::ASHR, lhss, lhsu, lhss, op2, 0);
-    apply_unsigned(m_inv, crab::bitwise_binop_t::ASHR, lhss, lhsu, lhss, op2, 0);
-}
 
 static void assume(NumAbsDomain& inv, const linear_constraint_t& cst) { inv += cst; }
-void ebpf_domain_t::assume(const linear_constraint_t& cst) { ::assume(m_inv, cst); }
+void ebpf_domain_t::assume(const linear_constraint_t& cst) { crab::assume(m_inv, cst); }
 
 void ebpf_domain_t::require(NumAbsDomain& inv, const linear_constraint_t& cst, const std::string& s) {
     if (check_require)
         check_require(inv, cst, s + " (" + this->current_assertion + ")");
     if (thread_local_options.assume_assertions) {
         // avoid redundant errors
-        ::assume(inv, cst);
+        crab::assume(inv, cst);
     }
 }
 
@@ -1201,17 +1182,16 @@ void ebpf_domain_t::TypeDomain::assign_type(NumAbsDomain& inv, std::optional<var
     inv.assign(lhs, reg_pack(rhs).type);
 }
 
-void ebpf_domain_t::TypeDomain::assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, int rhs) {
+void ebpf_domain_t::TypeDomain::assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, const number_t& rhs) {
     inv.assign(lhs, rhs);
 }
 
-void ebpf_domain_t::TypeDomain::assign_type(NumAbsDomain& inv, const Reg& lhs, const std::optional<linear_expression_t>& rhs) {
+void ebpf_domain_t::TypeDomain::assign_type(NumAbsDomain& inv, const Reg& lhs,
+                                            const std::optional<linear_expression_t>& rhs) {
     inv.assign(reg_pack(lhs).type, rhs);
 }
 
-void ebpf_domain_t::TypeDomain::havoc_type(NumAbsDomain& inv, const Reg& r) {
-    inv -= reg_pack(r).type;
-}
+void ebpf_domain_t::TypeDomain::havoc_type(NumAbsDomain& inv, const Reg& r) { inv -= reg_pack(r).type; }
 
 int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, const Reg& r) const {
     auto res = inv[reg_pack(r).type].singleton();
@@ -1227,7 +1207,7 @@ int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, variable_t v) c
     return (int)*res;
 }
 
-int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, int t) const { return t; }
+int ebpf_domain_t::TypeDomain::get_type(const NumAbsDomain& inv, const number_t& t) const { return (int)t; }
 
 // Check whether a given type value is within the range of a given type variable's value.
 bool ebpf_domain_t::TypeDomain::has_type(const NumAbsDomain& inv, const Reg& r, type_encoding_t type) const {
@@ -1244,10 +1224,13 @@ bool ebpf_domain_t::TypeDomain::has_type(const NumAbsDomain& inv, variable_t v, 
     return (interval.lb().number().value_or(INT_MIN) <= type) && (interval.ub().number().value_or(INT_MAX) >= type);
 }
 
-bool ebpf_domain_t::TypeDomain::has_type(const NumAbsDomain& inv, int t, type_encoding_t type) const { return t == type; }
+bool ebpf_domain_t::TypeDomain::has_type(const NumAbsDomain& inv, const number_t& t, type_encoding_t type) const {
+    return t == number_t{type};
+}
 
-NumAbsDomain ebpf_domain_t::TypeDomain::join_over_types(const NumAbsDomain& inv, const Reg& reg,
-                                                        const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const {
+NumAbsDomain ebpf_domain_t::TypeDomain::join_over_types(
+    const NumAbsDomain& inv, const Reg& reg,
+    const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const {
     crab::interval_t types = inv.eval_interval(reg_pack(reg).type);
     if (types.is_bottom())
         return NumAbsDomain::bottom();
@@ -1283,7 +1266,8 @@ bool ebpf_domain_t::TypeDomain::same_type(const NumAbsDomain& inv, const Reg& a,
     return inv.entail(eq_types(a, b));
 }
 
-bool ebpf_domain_t::TypeDomain::implies_type(const NumAbsDomain& inv, const linear_constraint_t& a, const linear_constraint_t& b) const {
+bool ebpf_domain_t::TypeDomain::implies_type(const NumAbsDomain& inv, const linear_constraint_t& a,
+                                             const linear_constraint_t& b) const {
     return inv.when(a).entail(b);
 }
 
@@ -1300,14 +1284,11 @@ bool ebpf_domain_t::TypeDomain::is_in_group(const NumAbsDomain& m_inv, const Reg
     case TypeGroup::shared: return m_inv.entail(t == T_SHARED);
     case TypeGroup::non_map_fd: return m_inv.entail(t >= T_NUM);
     case TypeGroup::mem: return m_inv.entail(t >= T_PACKET);
-    case TypeGroup::mem_or_num:
-        return m_inv.entail(t >= T_NUM) && m_inv.entail(t != T_CTX);
+    case TypeGroup::mem_or_num: return m_inv.entail(t >= T_NUM) && m_inv.entail(t != T_CTX);
     case TypeGroup::pointer: return m_inv.entail(t >= T_CTX);
     case TypeGroup::ptr_or_num: return m_inv.entail(t >= T_NUM);
-    case TypeGroup::stack_or_packet:
-        return m_inv.entail(t >= T_PACKET) && m_inv.entail(t <= T_STACK);
-    case TypeGroup::singleton_ptr:
-        return m_inv.entail(t >= T_CTX) && m_inv.entail(t <= T_STACK);
+    case TypeGroup::stack_or_packet: return m_inv.entail(t >= T_PACKET) && m_inv.entail(t <= T_STACK);
+    case TypeGroup::singleton_ptr: return m_inv.entail(t >= T_CTX) && m_inv.entail(t <= T_STACK);
     }
     assert(false);
     return false;
@@ -1351,18 +1332,16 @@ void ebpf_domain_t::overflow_bounds(NumAbsDomain& inv, variable_t lhs, number_t 
 }
 
 void ebpf_domain_t::overflow_signed(NumAbsDomain& inv, variable_t lhs, int finite_width) {
-    auto span{
-         finite_width == 64 ? crab::z_number{std::numeric_limits<uint64_t>::max()}
-       : finite_width == 32 ? crab::z_number{std::numeric_limits<uint32_t>::max()}
-       : throw std::exception()};
+    auto span{finite_width == 64   ? crab::z_number{std::numeric_limits<uint64_t>::max()}
+              : finite_width == 32 ? crab::z_number{std::numeric_limits<uint32_t>::max()}
+                                   : throw std::exception()};
     overflow_bounds(inv, lhs, span, finite_width, true);
 }
 
 void ebpf_domain_t::overflow_unsigned(NumAbsDomain& inv, variable_t lhs, int finite_width) {
-    auto span{
-         finite_width == 64 ? crab::z_number{std::numeric_limits<uint64_t>::max()}
-       : finite_width == 32 ? crab::z_number{std::numeric_limits<uint32_t>::max()}
-       : throw std::exception()};
+    auto span{finite_width == 64   ? crab::z_number{std::numeric_limits<uint64_t>::max()}
+              : finite_width == 32 ? crab::z_number{std::numeric_limits<uint32_t>::max()}
+                                   : throw std::exception()};
     overflow_bounds(inv, lhs, span, finite_width, false);
 }
 
@@ -1376,22 +1355,25 @@ void ebpf_domain_t::operator()(const basic_block_t& bb, bool check_termination) 
     }
 }
 
-int ebpf_domain_t::get_instruction_count_upper_bound() {
+bound_t ebpf_domain_t::get_instruction_count_upper_bound() {
     const auto& ub = m_inv[variable_t::instruction_count()].ub();
-    return (ub.is_finite() && ub.number().value().fits_sint32()) ? (int)ub.number().value() : INT_MAX;
+    return ub;
 }
 
-void ebpf_domain_t::check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) {
+void ebpf_domain_t::check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb,
+                                       const linear_expression_t& ub) {
     using namespace crab::dsl_syntax;
     require(inv, lb >= 0, "Lower bound must be at least 0");
     require(inv, ub <= EBPF_STACK_SIZE, "Upper bound must be at most EBPF_STACK_SIZE");
 }
 
-void ebpf_domain_t::check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) {
+void ebpf_domain_t::check_access_context(NumAbsDomain& inv, const linear_expression_t& lb,
+                                         const linear_expression_t& ub) {
     using namespace crab::dsl_syntax;
     require(inv, lb >= 0, "Lower bound must be at least 0");
     require(inv, ub <= global_program_info->type.context_descriptor->size,
-            std::string("Upper bound must be at most ") + std::to_string(global_program_info->type.context_descriptor->size));
+            std::string("Upper bound must be at most ") +
+                std::to_string(global_program_info->type.context_descriptor->size));
 }
 
 void ebpf_domain_t::check_access_packet(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
@@ -1401,7 +1383,8 @@ void ebpf_domain_t::check_access_packet(NumAbsDomain& inv, const linear_expressi
     if (packet_size)
         require(inv, ub <= *packet_size, "Upper bound must be at most packet_size");
     else
-        require(inv, ub <= MAX_PACKET_SIZE, std::string{"Upper bound must be at most "} + std::to_string(MAX_PACKET_SIZE));
+        require(inv, ub <= MAX_PACKET_SIZE,
+                std::string{"Upper bound must be at most "} + std::to_string(MAX_PACKET_SIZE));
 }
 
 void ebpf_domain_t::check_access_shared(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
@@ -1420,7 +1403,8 @@ void ebpf_domain_t::operator()(const Assume& s) {
         if (type_inv.same_type(m_inv, cond.left, std::get<Reg>(cond.right))) {
             m_inv = type_inv.join_over_types(m_inv, cond.left, [&](NumAbsDomain& inv, type_encoding_t type) {
                 if (type == T_NUM) {
-                    for (const linear_constraint_t& cst : assume_cst_reg(m_inv, cond.op, cond.is64, dst.svalue, dst.uvalue, src.svalue, src.uvalue))
+                    for (const linear_constraint_t& cst :
+                         assume_cst_reg(m_inv, cond.op, cond.is64, dst.svalue, dst.uvalue, src.svalue, src.uvalue))
                         inv += cst;
                 } else {
                     // Either pointers to a singleton region,
@@ -1522,7 +1506,7 @@ void ebpf_domain_t::operator()(const Comparable& s) {
 }
 
 void ebpf_domain_t::operator()(const Addable& s) {
-    if (!type_inv.implies_type(m_inv, type_is_pointer(reg_pack(s.ptr)),type_is_number(s.num)))
+    if (!type_inv.implies_type(m_inv, type_is_pointer(reg_pack(s.ptr)), type_is_number(s.num)))
         require(m_inv, linear_constraint_t::FALSE(), "Only numbers can be added to pointers");
 }
 
@@ -1688,7 +1672,8 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
                 std::string lb_s = lb_is && lb_is->fits_sint32() ? std::to_string((int32_t)*lb_is) : "-oo";
                 auto ub_is = inv.eval_interval(ub).ub().number();
                 std::string ub_s = ub_is && ub_is->fits_sint32() ? std::to_string((int32_t)*ub_is) : "oo";
-                require(inv, linear_constraint_t::FALSE(), "Illegal map update with a non-numerical value [" + lb_s + "-" + ub_s + ")");
+                require(inv, linear_constraint_t::FALSE(),
+                        "Illegal map update with a non-numerical value [" + lb_s + "-" + ub_s + ")");
             } else if (thread_local_options.strict && fd_type.has_value()) {
                 EbpfMapType map_type = global_program_info->platform->get_map_type(*fd_type);
                 if (map_type.is_array) {
@@ -1732,8 +1717,9 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
         switch (type) {
         case T_PACKET: {
             linear_expression_t lb = reg.packet_offset + s.offset;
-            linear_expression_t ub = std::holds_alternative<Imm>(s.width) ? lb + std::get<Imm>(s.width).v
-                                                                          : lb + reg_pack(std::get<Reg>(s.width)).svalue;
+            linear_expression_t ub = std::holds_alternative<Imm>(s.width)
+                                         ? lb + std::get<Imm>(s.width).v
+                                         : lb + reg_pack(std::get<Reg>(s.width)).svalue;
             check_access_packet(inv, lb, ub,
                                 is_comparison_check ? std::optional<variable_t>{} : variable_t::packet_size());
             // if within bounds, it can never be null
@@ -1742,8 +1728,9 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
         }
         case T_STACK: {
             linear_expression_t lb = reg.stack_offset + s.offset;
-            linear_expression_t ub = std::holds_alternative<Imm>(s.width) ? lb + std::get<Imm>(s.width).v
-                                                                          : lb + reg_pack(std::get<Reg>(s.width)).svalue;
+            linear_expression_t ub = std::holds_alternative<Imm>(s.width)
+                                         ? lb + std::get<Imm>(s.width).v
+                                         : lb + reg_pack(std::get<Reg>(s.width)).svalue;
             check_access_stack(inv, lb, ub);
             // if within bounds, it can never be null
             if (s.access_type == AccessType::read) {
@@ -1766,8 +1753,9 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
         }
         case T_CTX: {
             linear_expression_t lb = reg.ctx_offset + s.offset;
-            linear_expression_t ub = std::holds_alternative<Imm>(s.width) ? lb + std::get<Imm>(s.width).v
-                                                                          : lb + reg_pack(std::get<Reg>(s.width)).svalue;
+            linear_expression_t ub = std::holds_alternative<Imm>(s.width)
+                                         ? lb + std::get<Imm>(s.width).v
+                                         : lb + reg_pack(std::get<Reg>(s.width)).svalue;
             check_access_context(inv, lb, ub);
             // if within bounds, it can never be null
             // The context is both readable and writable.
@@ -1790,17 +1778,16 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
             break;
         case T_SHARED: {
             linear_expression_t lb = reg.shared_offset + s.offset;
-            linear_expression_t ub = std::holds_alternative<Imm>(s.width) ? lb + std::get<Imm>(s.width).v
-                                                                             : lb + reg_pack(std::get<Reg>(s.width)).svalue;
+            linear_expression_t ub = std::holds_alternative<Imm>(s.width)
+                                         ? lb + std::get<Imm>(s.width).v
+                                         : lb + reg_pack(std::get<Reg>(s.width)).svalue;
             check_access_shared(inv, lb, ub, reg.shared_region_size);
             if (!is_comparison_check && !s.or_null)
                 require(inv, reg.svalue > 0, "Possible null access");
             // Shared memory is zero-initialized when created so is safe to read and write.
             break;
         }
-        default:
-            require(inv, linear_constraint_t::FALSE(), "Invalid type");
-            break;
+        default: require(inv, linear_constraint_t::FALSE(), "Invalid type"); break;
         }
     });
 }
@@ -1829,7 +1816,8 @@ void ebpf_domain_t::operator()(const Packet& a) {
     scratch_caller_saved_registers();
 }
 
-void ebpf_domain_t::do_load_stack(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width, const Reg& src_reg) {
+void ebpf_domain_t::do_load_stack(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width,
+                                  const Reg& src_reg) {
     type_inv.assign_type(inv, target_reg, stack.load(inv, data_kind_t::types, addr, width));
     using namespace crab::dsl_syntax;
     if (inv.entail(width <= reg_pack(src_reg).stack_numeric_size))
@@ -1863,7 +1851,8 @@ void ebpf_domain_t::do_load_stack(NumAbsDomain& inv, const Reg& target_reg, cons
         havoc_register(inv, target_reg);
 }
 
-void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr_vague, int width) {
+void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr_vague,
+                                int width) {
     using namespace crab::dsl_syntax;
     if (inv.is_bottom())
         return;
@@ -1912,7 +1901,8 @@ void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const 
     inv += target.svalue <= PTR_MAX;
 }
 
-void ebpf_domain_t::do_load_packet_or_shared(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width) {
+void ebpf_domain_t::do_load_packet_or_shared(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr,
+                                             int width) {
     if (inv.is_bottom())
         return;
     const reg_pack_t& target = reg_pack(target_reg);
@@ -1922,11 +1912,11 @@ void ebpf_domain_t::do_load_packet_or_shared(NumAbsDomain& inv, const Reg& targe
 
     // A 1 or 2 byte copy results in a limited range of values that may be used as array indices.
     if (width == 1) {
-        inv.set(target.svalue, crab::interval_t(0, UINT8_MAX));
-        inv.set(target.uvalue, crab::interval_t(0, UINT8_MAX));
+        inv.set(target.svalue, crab::interval_t(number_t{0}, number_t{UINT8_MAX}));
+        inv.set(target.uvalue, crab::interval_t(number_t{0}, number_t{UINT8_MAX}));
     } else if (width == 2) {
-        inv.set(target.svalue, crab::interval_t(0, UINT16_MAX));
-        inv.set(target.uvalue, crab::interval_t(0, UINT16_MAX));
+        inv.set(target.svalue, crab::interval_t(number_t{0}, number_t{UINT16_MAX}));
+        inv.set(target.uvalue, crab::interval_t(number_t{0}, number_t{UINT16_MAX}));
     }
 }
 
@@ -1945,36 +1935,37 @@ void ebpf_domain_t::do_load(const Mem& b, const Reg& target_reg) {
 
     m_inv = type_inv.join_over_types(m_inv, b.access.basereg, [&](NumAbsDomain& inv, type_encoding_t type) {
         switch (type) {
-            case T_UNINIT: return;
-            case T_MAP: return;
-            case T_MAP_PROGRAMS: return;
-            case T_NUM: return;
-            case T_CTX: {
-                linear_expression_t addr = mem_reg.ctx_offset + (number_t)offset;
-                do_load_ctx(inv, target_reg, addr, width);
-                break;
-            }
-            case T_STACK: {
-                linear_expression_t addr = mem_reg.stack_offset + (number_t)offset;
-                do_load_stack(inv, target_reg, addr, width, b.access.basereg);
-                break;
-            }
-            case T_PACKET: {
-                linear_expression_t addr = mem_reg.packet_offset + (number_t)offset;
-                do_load_packet_or_shared(inv, target_reg, addr, width);
-                break;
-            }
-            default: {
-                linear_expression_t addr = mem_reg.shared_offset + (number_t)offset;
-                do_load_packet_or_shared(inv, target_reg, addr, width);
-                break;
-            }
+        case T_UNINIT: return;
+        case T_MAP: return;
+        case T_MAP_PROGRAMS: return;
+        case T_NUM: return;
+        case T_CTX: {
+            linear_expression_t addr = mem_reg.ctx_offset + (number_t)offset;
+            do_load_ctx(inv, target_reg, addr, width);
+            break;
+        }
+        case T_STACK: {
+            linear_expression_t addr = mem_reg.stack_offset + (number_t)offset;
+            do_load_stack(inv, target_reg, addr, width, b.access.basereg);
+            break;
+        }
+        case T_PACKET: {
+            linear_expression_t addr = mem_reg.packet_offset + (number_t)offset;
+            do_load_packet_or_shared(inv, target_reg, addr, width);
+            break;
+        }
+        default: {
+            linear_expression_t addr = mem_reg.shared_offset + (number_t)offset;
+            do_load_packet_or_shared(inv, target_reg, addr, width);
+            break;
+        }
         }
     });
 }
 
-template <typename A, typename X, typename Y, typename Z>
-void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, X val_type, Y val_svalue, Z val_uvalue,
+template <typename X, typename Y, typename Z>
+void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, const number_t& width, const linear_expression_t& addr,
+                                   X val_type, Y val_svalue, Z val_uvalue,
                                    const std::optional<reg_pack_t>& opt_val_reg) {
     std::optional<variable_t> var = stack.store_type(inv, addr, width, val_type);
     type_inv.assign_type(inv, var, val_type);
@@ -1983,26 +1974,29 @@ void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, 
         inv.assign(stack.store(inv, data_kind_t::uvalues, addr, width, val_uvalue), val_uvalue);
 
         if (opt_val_reg && type_inv.has_type(m_inv, val_type, T_CTX)) {
-            inv.assign(stack.store(inv, data_kind_t::ctx_offsets, addr, width, opt_val_reg->ctx_offset), opt_val_reg->ctx_offset);
+            inv.assign(stack.store(inv, data_kind_t::ctx_offsets, addr, width, opt_val_reg->ctx_offset),
+                       opt_val_reg->ctx_offset);
         } else {
             stack.havoc(inv, data_kind_t::ctx_offsets, addr, width);
         }
 
-        if (opt_val_reg && (type_inv.has_type(m_inv, val_type, T_MAP) ||
-                                   type_inv.has_type(m_inv, val_type, T_MAP_PROGRAMS))) {
+        if (opt_val_reg &&
+            (type_inv.has_type(m_inv, val_type, T_MAP) || type_inv.has_type(m_inv, val_type, T_MAP_PROGRAMS))) {
             inv.assign(stack.store(inv, data_kind_t::map_fds, addr, width, opt_val_reg->map_fd), opt_val_reg->map_fd);
         } else {
             stack.havoc(inv, data_kind_t::map_fds, addr, width);
         }
 
         if (opt_val_reg && type_inv.has_type(m_inv, val_type, T_PACKET)) {
-            inv.assign(stack.store(inv, data_kind_t::packet_offsets, addr, width, opt_val_reg->packet_offset), opt_val_reg->packet_offset);
+            inv.assign(stack.store(inv, data_kind_t::packet_offsets, addr, width, opt_val_reg->packet_offset),
+                       opt_val_reg->packet_offset);
         } else {
             stack.havoc(inv, data_kind_t::packet_offsets, addr, width);
         }
 
         if (opt_val_reg && type_inv.has_type(m_inv, val_type, T_SHARED)) {
-            inv.assign(stack.store(inv, data_kind_t::shared_offsets, addr, width, opt_val_reg->shared_offset), opt_val_reg->shared_offset);
+            inv.assign(stack.store(inv, data_kind_t::shared_offsets, addr, width, opt_val_reg->shared_offset),
+                       opt_val_reg->shared_offset);
             inv.assign(stack.store(inv, data_kind_t::shared_region_sizes, addr, width, opt_val_reg->shared_region_size),
                        opt_val_reg->shared_region_size);
         } else {
@@ -2011,7 +2005,8 @@ void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, 
         }
 
         if (opt_val_reg && type_inv.has_type(m_inv, val_type, T_STACK)) {
-            inv.assign(stack.store(inv, data_kind_t::stack_offsets, addr, width, opt_val_reg->stack_offset), opt_val_reg->stack_offset);
+            inv.assign(stack.store(inv, data_kind_t::stack_offsets, addr, width, opt_val_reg->stack_offset),
+                       opt_val_reg->stack_offset);
             inv.assign(stack.store(inv, data_kind_t::stack_numeric_sizes, addr, width, opt_val_reg->stack_numeric_size),
                        opt_val_reg->stack_numeric_size);
         } else {
@@ -2037,8 +2032,7 @@ void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, 
     }
 
     // Update stack_numeric_size for any stack type variables.
-    // stack_numeric_size holds the number of continuous bytes
-    // starting from stack_offset that are known to be numeric.
+    // stack_numeric_size holds the number of continuous bytes starting from stack_offset that are known to be numeric.
     auto updated_lb = m_inv.eval_interval(addr).lb();
     auto updated_ub = m_inv.eval_interval(addr).ub() + width;
     for (variable_t type_variable : variable_t::get_type_variables()) {
@@ -2049,8 +2043,8 @@ void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, int width, const A& addr, 
 
         using namespace crab::dsl_syntax;
         // See if the variable's numeric interval overlaps with changed bytes.
-        if (m_inv.intersect(addr <= stack_offset_variable + stack_numeric_size_variable) &&
-            m_inv.intersect(addr + width >= stack_offset_variable)) {
+        if (m_inv.intersect(crab::dsl_syntax::operator<=(addr, stack_offset_variable + stack_numeric_size_variable)) &&
+            m_inv.intersect(crab::dsl_syntax::operator>=(addr + width, stack_offset_variable))) {
             havoc(stack_numeric_size_variable);
             recompute_stack_numeric_size(m_inv, type_variable);
         }
@@ -2069,26 +2063,29 @@ void ebpf_domain_t::operator()(const Mem& b) {
             do_mem_store(b, data, data_reg.svalue, data_reg.uvalue, data_reg);
         }
     } else {
-        do_mem_store(b, T_NUM, (int64_t)std::get<Imm>(b.value).v, (uint64_t)std::get<Imm>(b.value).v, {});
+        do_mem_store(b, number_t{T_NUM}, number_t{(int64_t)std::get<Imm>(b.value).v},
+                     number_t{(uint64_t)std::get<Imm>(b.value).v}, {});
     }
 }
 
 template <typename Type, typename SValue, typename UValue>
-void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue, UValue val_uvalue, const std::optional<reg_pack_t>& val_reg) {
+void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue, UValue val_uvalue,
+                                 const std::optional<reg_pack_t>& val_reg) {
     if (m_inv.is_bottom())
         return;
-    using namespace crab::dsl_syntax;
     int width = b.access.width;
-    int offset = b.access.offset;
+    number_t offset{b.access.offset};
     if (b.access.basereg.v == R10_STACK_POINTER) {
-        int addr = EBPF_STACK_SIZE + offset;
-        do_store_stack(m_inv, width, addr, val_type, val_svalue, val_uvalue, val_reg);
+        number_t base_addr{EBPF_STACK_SIZE};
+        do_store_stack(m_inv, width, base_addr + offset, val_type, val_svalue, val_uvalue, val_reg);
         return;
     }
     m_inv = type_inv.join_over_types(m_inv, b.access.basereg, [&](NumAbsDomain& inv, type_encoding_t type) {
         if (type == T_STACK) {
-            linear_expression_t addr = linear_expression_t(get_type_offset_variable(b.access.basereg, type).value()) + offset;
-            do_store_stack(inv, width, addr, val_type, val_svalue, val_uvalue, val_reg);
+            linear_expression_t base_addr =
+                linear_expression_t(get_type_offset_variable(b.access.basereg, type).value());
+            do_store_stack(inv, width, crab::dsl_syntax::operator+(base_addr, offset), val_type, val_svalue, val_uvalue,
+                           val_reg);
         }
         // do nothing for any other type
     });
@@ -2105,9 +2102,7 @@ void ebpf_domain_t::operator()(const Call& call) {
     std::optional<Reg> maybe_fd_reg{};
     for (ArgSingle param : call.singles) {
         switch (param.kind) {
-        case ArgSingle::Kind::MAP_FD:
-            maybe_fd_reg = param.reg;
-            break;
+        case ArgSingle::Kind::MAP_FD: maybe_fd_reg = param.reg; break;
         case ArgSingle::Kind::ANYTHING:
         case ArgSingle::Kind::MAP_FD_PROGRAMS:
         case ArgSingle::Kind::PTR_TO_MAP_KEY:
@@ -2205,9 +2200,7 @@ void ebpf_domain_t::do_load_mapfd(const Reg& dst_reg, int mapfd, bool maybe_null
     assign_valid_ptr(dst_reg, maybe_null);
 }
 
-void ebpf_domain_t::operator()(const LoadMapFd& ins) {
-    do_load_mapfd(ins.dst, ins.mapfd, false);
-}
+void ebpf_domain_t::operator()(const LoadMapFd& ins) { do_load_mapfd(ins.dst, ins.mapfd, false); }
 
 void ebpf_domain_t::assign_valid_ptr(const Reg& dst_reg, bool maybe_null) {
     using namespace crab::dsl_syntax;
@@ -2232,8 +2225,7 @@ void ebpf_domain_t::recompute_stack_numeric_size(NumAbsDomain& inv, variable_t t
         return;
 
     if (type_inv.has_type(inv, type_variable, T_STACK)) {
-        int numeric_size =
-            stack.min_all_num_size(inv, variable_t::kind_var(data_kind_t::stack_offsets, type_variable));
+        int numeric_size = stack.min_all_num_size(inv, variable_t::kind_var(data_kind_t::stack_offsets, type_variable));
         if (numeric_size > 0)
             inv.assign(stack_numeric_size_variable, numeric_size);
     }
@@ -2306,8 +2298,8 @@ void ebpf_domain_t::lshr(const Reg& dst_reg, int imm, int finite_width) {
 
     if (m_inv.entail(type_is_number(dst))) {
         auto interval = m_inv.eval_interval(dst.uvalue);
-        uint64_t lb_n = 0;
-        uint64_t ub_n = UINT64_MAX >> imm;
+        number_t lb_n{0};
+        number_t ub_n{UINT64_MAX >> imm};
         if (interval.finite_size()) {
             number_t lb = interval.lb().number().value();
             number_t ub = interval.ub().number().value();
@@ -2327,6 +2319,7 @@ void ebpf_domain_t::lshr(const Reg& dst_reg, int imm, int finite_width) {
         }
         m_inv.set(dst.uvalue, crab::interval_t{lb_n, ub_n});
         if ((int64_t)ub_n >= (int64_t)lb_n) {
+            // ? m_inv.set(dst.svalue, crab::interval_t{number_t{(int64_t)lb_n}, number_t{(int64_t)ub_n}});
             m_inv.assign(dst.svalue, dst.uvalue);
         } else {
             havoc(dst.svalue);
@@ -2370,7 +2363,7 @@ void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_sv
                     }
                 }
             }
-            m_inv.set(dst.svalue, crab::interval_t{lb_n, ub_n});
+            m_inv.set(dst.svalue, crab::interval_t{number_t{lb_n}, number_t{ub_n}});
             if ((uint64_t)ub_n >= (uint64_t)lb_n) {
                 m_inv.assign(dst.uvalue, dst.svalue);
             } else {
@@ -2447,15 +2440,9 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             }
             havoc_offsets(bin.dst);
             break;
-        case Bin::Op::LSH:
-            shl(bin.dst, (int32_t)imm, finite_width);
-            break;
-        case Bin::Op::RSH:
-            lshr(bin.dst, (int32_t)imm, finite_width);
-            break;
-        case Bin::Op::ARSH:
-            ashr(bin.dst, (int32_t)imm, finite_width);
-            break;
+        case Bin::Op::LSH: shl(bin.dst, (int32_t)imm, finite_width); break;
+        case Bin::Op::RSH: lshr(bin.dst, (int32_t)imm, finite_width); break;
+        case Bin::Op::ARSH: ashr(bin.dst, number_t{(int32_t)imm}, finite_width); break;
         case Bin::Op::XOR:
             bitwise_xor(dst.svalue, dst.uvalue, imm);
             havoc_offsets(bin.dst);
@@ -2487,7 +2474,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             // ptr += num
                             type_inv.assign_type(inv, bin.dst, dst_type);
                             if (auto dst_offset = get_type_offset_variable(bin.dst, dst_type)) {
-                                apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst_offset.value(), src.svalue);
+                                apply(inv, crab::arith_binop_t::ADD, dst_offset.value(), dst_offset.value(),
+                                      src.svalue);
                                 if (dst_type == T_STACK) {
                                     // Reduce the numeric size.
                                     using namespace crab::dsl_syntax;
@@ -2496,8 +2484,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                                         recompute_stack_numeric_size(inv, dst.type);
                                     } else
                                         apply_signed(inv, crab::arith_binop_t::SUB, dst.stack_numeric_size,
-                                                     dst.stack_numeric_size,
-                                                     dst.stack_numeric_size, src.svalue, 0);
+                                                     dst.stack_numeric_size, dst.stack_numeric_size, src.svalue, 0);
                                 }
                             }
                         } else if (dst_type == T_NUM && src_type == T_NUM) {
@@ -2514,7 +2501,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                     });
                 });
                 // careful: change dst.value only after dealing with offset
-                apply_signed(m_inv, crab::arith_binop_t::ADD, dst.svalue, dst.uvalue, dst.svalue, src.svalue, finite_width);
+                apply_signed(m_inv, crab::arith_binop_t::ADD, dst.svalue, dst.uvalue, dst.svalue, src.svalue,
+                             finite_width);
             }
             break;
         }
@@ -2562,8 +2550,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                                 m_inv -= dst.stack_numeric_size;
                                 recompute_stack_numeric_size(m_inv, dst.type);
                             } else
-                                apply(m_inv, crab::arith_binop_t::ADD, dst.stack_numeric_size,
-                                      dst.stack_numeric_size, src.svalue);
+                                apply(m_inv, crab::arith_binop_t::ADD, dst.stack_numeric_size, dst.stack_numeric_size,
+                                      src.svalue);
                         }
                     }
                 }
@@ -2653,9 +2641,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 case T_CTX: inv.assign(dst.ctx_offset, src.ctx_offset); break;
                 case T_MAP:
                 case T_MAP_PROGRAMS: inv.assign(dst.map_fd, src.map_fd); break;
-                case T_PACKET:
-                    inv.assign(dst.packet_offset, src.packet_offset);
-                    break;
+                case T_PACKET: inv.assign(dst.packet_offset, src.packet_offset); break;
                 case T_SHARED:
                     inv.assign(dst.shared_region_size, src.shared_region_size);
                     inv.assign(dst.shared_offset, src.shared_offset);
@@ -2677,9 +2663,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
     }
 }
 
-string_invariant ebpf_domain_t::to_set() {
-    return this->m_inv.to_set() + this->stack.to_set();
-}
+string_invariant ebpf_domain_t::to_set() { return this->m_inv.to_set() + this->stack.to_set(); }
 
 std::ostream& operator<<(std::ostream& o, const ebpf_domain_t& dom) {
     if (dom.is_bottom()) {
@@ -2748,9 +2732,10 @@ ebpf_domain_t ebpf_domain_t::setup_entry(bool check_termination, bool init_r1) {
     }
 
     initialize_packet(inv);
-
     if (check_termination) {
         inv.assign(variable_t::instruction_count(), 0);
     }
     return inv;
 }
+
+} // namespace crab

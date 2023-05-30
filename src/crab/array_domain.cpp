@@ -108,7 +108,7 @@ class cell_t final {
     cell_t(offset_t offset, unsigned size) : _offset(offset), _size(size) {}
 
     static interval_t to_interval(const offset_t o, unsigned size) {
-        return {static_cast<int>(o), static_cast<int>(o) + static_cast<int>(size - 1)};
+        return {number_t{static_cast<int>(o)}, number_t{static_cast<int>(o)} + number_t{static_cast<int>(size - 1)}};
     }
 
     [[nodiscard]] interval_t to_interval() const { return to_interval(_offset, _size); }
@@ -118,7 +118,7 @@ class cell_t final {
 
     [[nodiscard]] offset_t get_offset() const { return _offset; }
 
-    [[nodiscard]] variable_t get_scalar(data_kind_t kind) const { return variable_t::cell_var(kind, _offset, _size); }
+    [[nodiscard]] variable_t get_scalar(data_kind_t kind) const { return variable_t::cell_var(kind, number_t{_offset}, _size); }
 
     // ignore the scalar variable
     bool operator==(const cell_t& o) const { return to_interval() == o.to_interval(); }
@@ -460,7 +460,7 @@ kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t
         interval_t i_elem_size = inv.eval_interval(elem_size);
         std::optional<number_t> n_bytes = i_elem_size.singleton();
         if (n_bytes) {
-            unsigned int size = (unsigned int)(*n_bytes);
+            auto size = static_cast<unsigned int>(*n_bytes);
             // -- Constant index: kill overlapping cells
             offset_t o((uint64_t)*n);
             cells = offset_map.get_overlap_cells(o, size);
@@ -469,8 +469,7 @@ kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t
     }
     if (!res) {
         // -- Non-constant index: kill overlapping cells
-        cells = offset_map.get_overlap_cells_symbolic_offset(inv, linear_expression_t(i),
-                                                             linear_expression_t(i + elem_size));
+        cells = offset_map.get_overlap_cells_symbolic_offset(inv, i, i.plus(elem_size));
     }
     if (!cells.empty()) {
         // Forget the scalars from the numerical domain
@@ -484,7 +483,7 @@ kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t
                 inv -= c.get_scalar(data_kind_t::svalues);
             }
         }
-        // Remove the cells. If needed again they they will be re-created.
+        // Remove the cells. If needed again they will be re-created.
         offset_map -= cells;
     }
     return res;
@@ -529,7 +528,7 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
         if (kind == data_kind_t::types) {
             auto [only_num, only_non_num] = num_bytes.uniformity(k, width);
             if (only_num) {
-                return T_NUM;
+                return number_t{T_NUM};
             }
             if (!only_non_num || width != 8) {
                 return {};
@@ -569,15 +568,15 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
                 // convert to an integer.
                 if (size == 1) {
                     uint8_t b = *result_buffer;
-                    return b;
+                    return number_t{b};
                 }
                 if (size == 2) {
                     uint16_t b = *(uint16_t*)result_buffer;
-                    return b;
+                    return number_t{b};
                 }
                 if (size == 4) {
                     uint32_t b = *(uint32_t*)result_buffer;
-                    return b;
+                    return number_t{b};
                 }
                 if (size == 8) {
                     uint64_t b = *(uint64_t*)result_buffer;
@@ -613,7 +612,7 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
             if (lb.value().fits_uint32() && fullwidth.fits_uint32()) {
                 auto [only_num, only_non_num] = num_bytes.uniformity((uint32_t)lb.value(), (uint32_t)fullwidth);
                 if (only_num) {
-                    return T_NUM;
+                    return number_t{T_NUM};
                 }
             }
         }

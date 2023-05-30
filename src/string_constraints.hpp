@@ -58,4 +58,4 @@ struct string_invariant {
     friend std::ostream& operator<<(std::ostream&, const string_invariant& inv);
 };
 
-std::vector<linear_constraint_t> parse_linear_constraints(const std::set<std::string>& constraints, std::vector<crab::interval_t>& numeric_ranges);
+std::vector<crab::linear_constraint_t> parse_linear_constraints(const std::set<std::string>& constraints, std::vector<crab::interval_t>& numeric_ranges);

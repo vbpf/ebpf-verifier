@@ -170,9 +170,15 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
     options.no_simplify = true;
     options.setup_constraints = false;
 
-    for (string name : raw_options) {
+    for (const string& name : raw_options) {
         if (name == "!allow_division_by_zero") {
             options.allow_division_by_zero = false;
+        } else if (name == "termination") {
+            options.check_termination = true;
+        } else if (name == "strict") {
+            options.strict = true;
+        } else {
+            throw std::runtime_error("Unknown option: " + name);
         }
     }
     return options;
@@ -341,7 +347,7 @@ ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memo
 
         for (const std::string& invariant : actual_last_invariant.value()) {
             if (invariant.rfind("r0.svalue=", 0) == 0) {
-                int64_t lb, ub;
+                crab::number_t lb, ub;
                 if (invariant[10] == '[') {
                     lb = std::stoll(invariant.substr(11));
                     ub = std::stoll(invariant.substr(invariant.find(",", 11) + 1));

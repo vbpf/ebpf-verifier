@@ -35,9 +35,9 @@ class AssertExtractor {
   public:
     explicit AssertExtractor(program_info info) : info{std::move(info)} {}
 
-    vector<Assert> operator()(Undefined const& ins) const { assert(0); return {}; }
+    vector<Assert> operator()(Undefined const& ins) const { assert(false); return {}; }
 
-    vector<Assert> operator()(Assert const& ins) const { assert(0); return {}; }
+    vector<Assert> operator()(Assert const& ins) const { assert(false); return {}; }
 
     vector<Assert> operator()(LoadMapFd const& ins) const { return {}; }
 
@@ -217,6 +217,8 @@ class AssertExtractor {
         default:
             return { Assert{TypeConstraint{ins.dst, TypeGroup::number}} };
         }
+        assert(false);
+        return {};
     }
 };
 

@@ -4,6 +4,7 @@
  * Factories for variable names.
  */
 
+#include "asm_syntax.hpp"
 #include "crab/variable.hpp"
 #include "crab_utils/lazy_allocator.hpp"
 
@@ -38,8 +39,7 @@ std::vector<std::string> variable_t::_default_names() {
 
 thread_local crab::lazy_allocator<std::vector<std::string>, variable_t::variable_name_factory> variable_t::names;
 
-void
-variable_t::clear_thread_local_state() {
+void variable_t::clear_thread_local_state() {
     names.clear();
 }
 
@@ -66,7 +66,7 @@ std::ostream& operator<<(std::ostream& o, const data_kind_t& s) {
     return o << name_of(s);
 }
 
-static std::string mk_scalar_name(data_kind_t kind, int o, int size) {
+static std::string mk_scalar_name(data_kind_t kind, const number_t& o, const number_t& size) {
     std::stringstream os;
     os << "s" << "[" << o;
     if (size != 1) {
@@ -76,8 +76,8 @@ static std::string mk_scalar_name(data_kind_t kind, int o, int size) {
     return os.str();
 }
 
-variable_t variable_t::cell_var(data_kind_t array, index_t offset, unsigned size) {
-    return make(mk_scalar_name(array, (int)offset, (int)size));
+variable_t variable_t::cell_var(data_kind_t array, const number_t& offset, const number_t& size) {
+    return make(mk_scalar_name(array, offset.cast_to_uint64(), size));
 }
 
 // Given a type variable, get the associated variable of a given kind.
@@ -103,7 +103,9 @@ std::vector<variable_t> variable_t::get_type_variables() {
     }
     return res;
 }
+
 bool variable_t::is_in_stack() const {
     return this->name()[0] == 's';
 }
+
 } // end namespace crab

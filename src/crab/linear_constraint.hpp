@@ -6,6 +6,7 @@
 
 // A linear constraint is of the form:
 //    <linear expression> <operator> 0
+namespace crab {
 
 enum class constraint_kind_t {
     EQUALS_ZERO,
@@ -56,9 +57,9 @@ class linear_constraint_t final {
         case constraint_kind_t::EQUALS_ZERO:
             return linear_constraint_t(_expression, constraint_kind_t::NOT_ZERO);
         case constraint_kind_t::LESS_THAN_ZERO:
-            return linear_constraint_t(-_expression, constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO);
+            return linear_constraint_t(_expression.negate(), constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO);
         case constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO:
-            return linear_constraint_t(-_expression, constraint_kind_t::LESS_THAN_ZERO);
+            return linear_constraint_t(_expression.negate(), constraint_kind_t::LESS_THAN_ZERO);
         default: throw std::exception();
         }
     }
@@ -95,4 +96,6 @@ inline std::ostream& operator<<(std::ostream& o, const linear_constraint_t& cons
         o << constraint_kind_label[kind] << -expression.constant_term();
     }
     return o;
+}
+
 }

@@ -14,17 +14,17 @@ void thresholds_t::add(bound_t v1) {
             auto ub = std::upper_bound(m_thresholds.begin(), m_thresholds.end(), v);
 
             // don't add consecutive thresholds
-            if (v > 0) {
+            if (v > number_t{0}) {
                 auto prev = ub;
                 --prev;
                 if (prev != m_thresholds.begin()) {
-                    if (*prev + 1 == v) {
+                    if (*prev + number_t{1} == v) {
                         *prev = v;
                         return;
                     }
                 }
-            } else if (v < 0) {
-                if (*ub - 1 == v) {
+            } else if (v < number_t{0}) {
+                if (*ub - number_t{1} == v) {
                     *ub = v;
                     return;
                 }

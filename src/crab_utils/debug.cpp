@@ -10,4 +10,5 @@ unsigned CrabVerbosity = 0;
 
 bool CrabWarningFlag = false;
 void CrabEnableWarningMsg(bool v) { CrabWarningFlag = v; }
+
 } // namespace crab
