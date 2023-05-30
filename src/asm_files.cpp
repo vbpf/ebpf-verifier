@@ -194,7 +194,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                 auto [symbol_name, symbol_section_index] = get_symbol_name_and_section_index(symbols, index);
 
                 // Only perform relocation for symbols located in the maps section.
-                if (map_section_indices.find(symbol_section_index) == map_section_indices.end()) {
+                if (!map_section_indices.contains(symbol_section_index)) {
                     std::string unresolved_symbol = "Unresolved external symbol " + symbol_name +
                                                     " in section " + name + " at location " + std::to_string(offset / sizeof(ebpf_inst));
                     unresolved_symbols.push_back(unresolved_symbol);
