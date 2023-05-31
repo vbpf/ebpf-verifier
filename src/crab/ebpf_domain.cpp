@@ -1578,7 +1578,7 @@ std::optional<uint32_t> ebpf_domain_t::get_map_type(const Reg& map_fd_reg) const
 
     std::optional<uint32_t> type;
     for (int32_t map_fd = start_fd; map_fd <= end_fd; map_fd++) {
-        EbpfMapDescriptor* map = &global_program_info->platform->get_map_descriptor(map_fd);
+        EbpfMapDescriptor* map = get_map_descriptor_from_platform_or_program_info(map_fd);
         if (map == nullptr)
             return std::optional<uint32_t>();
         if (!type.has_value())
@@ -1597,7 +1597,7 @@ std::optional<uint32_t> ebpf_domain_t::get_map_inner_map_fd(const Reg& map_fd_re
 
     std::optional<uint32_t> inner_map_fd;
     for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
-        EbpfMapDescriptor* map = &global_program_info->platform->get_map_descriptor(map_fd);
+        EbpfMapDescriptor* map = get_map_descriptor_from_platform_or_program_info(map_fd);
         if (map == nullptr)
             return {};
         if (!inner_map_fd.has_value())
@@ -1616,7 +1616,7 @@ crab::interval_t ebpf_domain_t::get_map_key_size(const Reg& map_fd_reg) const {
 
     crab::interval_t result = crab::interval_t::bottom();
     for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
-        if (EbpfMapDescriptor* map = &global_program_info->platform->get_map_descriptor(map_fd))
+        if (EbpfMapDescriptor* map = get_map_descriptor_from_platform_or_program_info(map_fd))
             result = result | crab::interval_t(number_t(map->key_size));
         else
             return crab::interval_t::top();
@@ -1632,7 +1632,7 @@ crab::interval_t ebpf_domain_t::get_map_value_size(const Reg& map_fd_reg) const 
 
     crab::interval_t result = crab::interval_t::bottom();
     for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
-        if (EbpfMapDescriptor* map = &global_program_info->platform->get_map_descriptor(map_fd))
+        if (EbpfMapDescriptor* map = get_map_descriptor_from_platform_or_program_info(map_fd))
             result = result | crab::interval_t(number_t(map->value_size));
         else
             return crab::interval_t::top();
@@ -1648,7 +1648,7 @@ crab::interval_t ebpf_domain_t::get_map_max_entries(const Reg& map_fd_reg) const
 
     crab::interval_t result = crab::interval_t::bottom();
     for (int map_fd = start_fd; map_fd <= end_fd; map_fd++) {
-        if (EbpfMapDescriptor* map = &global_program_info->platform->get_map_descriptor(map_fd))
+        if (EbpfMapDescriptor* map = get_map_descriptor_from_platform_or_program_info(map_fd))
             result = result | crab::interval_t(number_t(map->max_entries));
         else
             return crab::interval_t::top();
@@ -2193,7 +2193,7 @@ out:
 }
 
 void ebpf_domain_t::do_load_mapfd(const Reg& dst_reg, int mapfd, bool maybe_null) {
-    const EbpfMapDescriptor& desc = global_program_info->platform->get_map_descriptor(mapfd);
+    const EbpfMapDescriptor& desc = *get_map_descriptor_from_platform_or_program_info(mapfd);
     const EbpfMapType& type = global_program_info->platform->get_map_type(desc.type);
     if (type.value_type == EbpfMapValueType::PROGRAM) {
         type_inv.assign_type(m_inv, dst_reg, T_MAP_PROGRAMS);
