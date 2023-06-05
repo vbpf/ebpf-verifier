@@ -18,12 +18,9 @@
 #define TEST_OBJECT_FILE_DIRECTORY "ebpf-samples/build/"
 #define TEST_JSON_FILE_DIRECTORY "ebpf-samples/json/"
 #define BTF_CASE(file) \
-    TEST_CASE("BTF suite: " #file, "[BTF]") { \
-        verify_BTF_json(#file);\
-    }
+    TEST_CASE("BTF suite: " #file, "[BTF]") { verify_BTF_json(#file); }
 
-void verify_BTF_json(const std::string& file)
-{
+void verify_BTF_json(const std::string& file) {
     std::stringstream generated_output;
     auto reader = ELFIO::elfio();
     REQUIRE(reader.load(std::string(TEST_OBJECT_FILE_DIRECTORY) + file + ".o"));
@@ -54,7 +51,6 @@ void verify_BTF_json(const std::string& file)
     bool has_more = (bool)std::getline(expected_stream, actual_line);
     REQUIRE_FALSE(has_more);
 }
-
 
 BTF_CASE(byteswap)
 BTF_CASE(ctxoffset)

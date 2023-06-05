@@ -190,7 +190,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         int pseudo_fd = 1;
         // Gather the typeids for each map and assign a pseudo-fd to each map.
         for (auto &map_descriptor : info.map_descriptors) {
-            if (!type_id_to_fd_map.contains(map_descriptor.original_fd)) {
+            if (type_id_to_fd_map.find(map_descriptor.original_fd) == type_id_to_fd_map.end()) {
                 type_id_to_fd_map[map_descriptor.original_fd] = pseudo_fd++;
             }
         }
@@ -202,7 +202,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
             }
         }
         map_section_indices.insert(reader.sections[string(".maps")]->get_index());
-    } else if (btf && btf_ext) {
+    } else {
         map_record_size_or_map_offsets = parse_map_sections(options, platform, reader, info.map_descriptors, map_section_indices, symbols);
     }
 
