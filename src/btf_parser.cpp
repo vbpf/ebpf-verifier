@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 #include <map>
+#include <set>
 #include <stdexcept>
 #include <string.h>
-#include <set>
 
 #include "btf.h"
 #include "btf_parser.h"
@@ -21,7 +21,8 @@
  * @return Value of type T read from the .BTF section
  */
 template <typename T>
-static T _read_btf(const std::vector<uint8_t>& btf, size_t& offset, size_t minimum_offset = 0, size_t maximum_offset = 0) {
+static T _read_btf(const std::vector<uint8_t>& btf, size_t& offset, size_t minimum_offset = 0,
+                   size_t maximum_offset = 0) {
     size_t length = 0;
     if (maximum_offset == 0) {
         maximum_offset = btf.size();
@@ -185,23 +186,19 @@ void btf_parse_types(const std::vector<uint8_t>& btf, btf_type_visitor visitor) 
         auto btf_type = _read_btf<btf_type_t>(btf, offset, type_start, type_end);
         if (btf_type.name_off) {
             name = _btf_find_string(string_table, btf_type.name_off);
-        }
-        else {
+        } else {
             // Throw for types that should have a name.
             switch (BPF_TYPE_INFO_KIND(btf_type.info)) {
-                case BTF_KIND_INT:
-                case BTF_KIND_FWD:
-                case BTF_KIND_TYPEDEF:
-                case BTF_KIND_FUNC:
-                case BTF_KIND_VAR:
-                case BTF_KIND_DATASEC:
-                case BTF_KIND_FLOAT:
-                case BTF_KIND_DECL_TAG:
-                case BTF_KIND_TYPE_TAG:
-                    throw std::runtime_error("Invalid .BTF section - missing name");
-                default:
-                    name = std::nullopt;
-                    break;
+            case BTF_KIND_INT:
+            case BTF_KIND_FWD:
+            case BTF_KIND_TYPEDEF:
+            case BTF_KIND_FUNC:
+            case BTF_KIND_VAR:
+            case BTF_KIND_DATASEC:
+            case BTF_KIND_FLOAT:
+            case BTF_KIND_DECL_TAG:
+            case BTF_KIND_TYPE_TAG: throw std::runtime_error("Invalid .BTF section - missing name");
+            default: name = std::nullopt; break;
             }
         }
         btf_kind kind;
@@ -323,15 +320,16 @@ void btf_parse_types(const std::vector<uint8_t>& btf, btf_type_visitor visitor) 
             break;
         }
         case BTF_KIND_FUNC: {
-            btf_kind_func kind_func;
-            kind_func.name = name.value();
-            kind_func.type = btf_type.type;
-            kind_func.linkage = static_cast<decltype(btf_kind_func::linkage)>(BPF_TYPE_INFO_VLEN(btf_type.info));
-            kind = kind_func;
+            btf_kind_function kind_function;
+            kind_function.name = name.value();
+            kind_function.type = btf_type.type;
+            kind_function.linkage = static_cast<decltype(kind_function.linkage)>(BPF_TYPE_INFO_VLEN(btf_type.info));
+            // kind_func.linkage = BPF_TYPE_INFO_VLEN(btf_type.info);
+            kind = kind_function;
             break;
         }
         case BTF_KIND_FUNC_PROTO: {
-            btf_kind_function kind_function;
+            btf_kind_function_prototype kind_function;
             uint32_t param_count = BPF_TYPE_INFO_VLEN(btf_type.info);
             for (uint32_t index = 0; index < param_count; index++) {
                 auto btf_param = _read_btf<btf_param_t>(btf, offset, type_start, type_end);
@@ -417,36 +415,29 @@ void btf_parse_types(const std::vector<uint8_t>& btf, btf_type_visitor visitor) 
     }
 }
 
-std::string pretty_print_json(const std::string& input)
-{
+std::string pretty_print_json(const std::string& input) {
     // Walk over the input string, inserting newlines and indentation.
     std::string output;
     int indent = 0;
     bool in_string = false;
-    for (size_t i = 0; i < input.size(); i++)
-    {
+    for (size_t i = 0; i < input.size(); i++) {
         char c = input[i];
-        if (c == '"')
-        {
+        if (c == '"') {
             in_string = !in_string;
         }
-        if (in_string)
-        {
+        if (in_string) {
             output += c;
             continue;
         }
-        switch (c)
-        {
+        switch (c) {
         case '{':
         case '[':
             output += c;
-            if (i + 1 < input.size() && input[i + 1] != '}' && input[i + 1] != ']')
-            {
+            if (i + 1 < input.size() && input[i + 1] != '}' && input[i + 1] != ']') {
                 output += '\n';
                 indent += 2;
                 output += std::string(indent, ' ');
-            }
-            else {
+            } else {
                 output += input[++i];
             }
             break;
@@ -466,64 +457,51 @@ std::string pretty_print_json(const std::string& input)
             output += c;
             output += ' ';
             break;
-        default:
-            output += c;
-            break;
+        default: output += c; break;
         }
     }
     return output;
 }
 
 template <typename T>
-void print_json_value(bool& first, const std::string& name, T value, std::ostream& out)
-{
+void print_json_value(bool& first, const std::string& name, T value, std::ostream& out) {
     // If T is a string type, print it as a string, then quote the value.
-    if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, const char*> || std::is_same_v<T, char*>)
-    {
+    if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, const char*> || std::is_same_v<T, char*>) {
         out << (first ? "" : ",") << "\"" << name << "\":\"" << value << "\"";
         first = false;
     }
     // If T is a bool, print it as a string, then quote the value.
-    else if constexpr (std::is_same_v<T, bool>)
-    {
+    else if constexpr (std::is_same_v<T, bool>) {
         out << (first ? "" : ",") << "\"" << name << "\":" << (value ? "true" : "false");
         first = false;
     }
     // If T is a std::optional<std::string>, then only print if it's present
-    else if constexpr (std::is_same_v<T, std::optional<std::string>>)
-    {
-        if (value.has_value())
-        {
+    else if constexpr (std::is_same_v<T, std::optional<std::string>>) {
+        if (value.has_value()) {
             out << (first ? "" : ",") << "\"" << name << "\":\"" << value.value() << "\"";
             first = false;
         }
-    }
-    else
-    {
+    } else {
         out << (first ? "" : ",") << "\"" << name << "\":" << std::to_string(value);
         first = false;
     }
 }
 
-void print_array_start(const std::string& name, std::ostream& out)
-{
-    out << "\"" << name << "\":[";
-}
+void print_array_start(const std::string& name, std::ostream& out) { out << "\"" << name << "\":["; }
 
-void print_array_end(std::ostream& out)
-{
-    out << "]";
-}
+void print_array_end(std::ostream& out) { out << "]"; }
 
-#define PRINT_JSON_FIXED(name, value) \
-    print_json_value(first, name, value, out);
+#define PRINT_JSON_FIXED(name, value) print_json_value(first, name, value, out);
 
-#define PRINT_JSON_VALUE(object, value) \
-    print_json_value(first, #value, object.value, out)
+#define PRINT_JSON_VALUE(object, value) print_json_value(first, #value, object.value, out)
 
 #define PRINT_JSON_TYPE(object, value) \
-    if (!first) { out << ",";} else { first = false; }; \
-    out << "\"" << #value << "\":"; \
+    if (!first) {                      \
+        out << ",";                    \
+    } else {                           \
+        first = false;                 \
+    };                                 \
+    out << "\"" << #value << "\":";    \
     print_btf_kind(object.value, id_to_kind.at(object.value));
 
 #define PRINT_JSON_ARRAY_START(object, value) \
@@ -537,22 +515,25 @@ void print_array_end(std::ostream& out)
         bool first = true;
 
 #define PRINT_JSON_ARRAY_END() \
-    print_array_end(out); \
+    print_array_end(out);      \
     }
 
 #define PRINT_JSON_OBJECT_START() \
-    if (!first) { out << ",";} else { first = false; }; \
-    {\
-    bool first = true; \
-    out << "{";
+    if (!first) {                 \
+        out << ",";               \
+    } else {                      \
+        first = false;            \
+    };                            \
+    {                             \
+        bool first = true;        \
+        out << "{";
 
 #define PRINT_JSON_OBJECT_END() \
-    out << "}";\
+    out << "}";                 \
     }
 
-void btf_type_to_json(const std::map<btf_type_id, btf_kind>& id_to_kind, std::ostream& out)
-{
-    std::function<void (btf_type_id, const btf_kind&)> print_btf_kind = [&](btf_type_id id, const btf_kind& kind) {
+void btf_type_to_json(const std::map<btf_type_id, btf_kind>& id_to_kind, std::ostream& out) {
+    std::function<void(btf_type_id, const btf_kind&)> print_btf_kind = [&](btf_type_id id, const btf_kind& kind) {
         bool first = true;
         PRINT_JSON_OBJECT_START();
         PRINT_JSON_FIXED("id", id);
@@ -750,13 +731,11 @@ void btf_type_to_json(const std::map<btf_type_id, btf_kind>& id_to_kind, std::os
                 PRINT_JSON_VALUE(member, name);
                 PRINT_JSON_VALUE(member, value);
                 PRINT_JSON_OBJECT_END();
-
             }
             PRINT_JSON_ARRAY_END();
             break;
         }
-        default:
-            PRINT_JSON_FIXED("kind_type", "UNKNOWN");
+        default: PRINT_JSON_FIXED("kind_type", "UNKNOWN");
         }
         PRINT_JSON_OBJECT_END();
     };
@@ -814,7 +793,7 @@ void btf_type_to_json(const std::map<btf_type_id, btf_kind>& id_to_kind, std::os
     bool first = true;
     PRINT_JSON_OBJECT_START();
     PRINT_JSON_ARRAY_START("", btf_kinds);
-    for (const auto & [id, kind] : id_to_kind) {
+    for (const auto& [id, kind] : id_to_kind) {
         // Skip non-root types.
         if (root_types.find(id) == root_types.end()) {
             continue;
@@ -868,52 +847,31 @@ size_t btf_type_data::get_size(btf_type_id id) const {
     auto kind = id_to_kind.at(id);
 
     switch (kind.index()) {
-    case BTF_KIND_INT:
-        return std::get<BTF_KIND_INT>(kind).size_in_bytes;
-    case BTF_KIND_PTR:
-        return sizeof(void*);
+    case BTF_KIND_INT: return std::get<BTF_KIND_INT>(kind).size_in_bytes;
+    case BTF_KIND_PTR: return sizeof(void*);
     case BTF_KIND_ARRAY:
         return std::get<BTF_KIND_ARRAY>(kind).count_of_elements * get_size(std::get<BTF_KIND_ARRAY>(kind).element_type);
-    case BTF_KIND_STRUCT:
-        return std::get<BTF_KIND_STRUCT>(kind).size_in_bytes;
-    case BTF_KIND_UNION:
-        return std::get<BTF_KIND_UNION>(kind).size_in_bytes;
-    case BTF_KIND_ENUM:
-        return std::get<BTF_KIND_ENUM>(kind).size_in_bytes;
-    case BTF_KIND_FWD:
-        return 0;
-    case BTF_KIND_TYPEDEF:
-        return get_size(std::get<BTF_KIND_TYPEDEF>(kind).type);
-    case BTF_KIND_VOLATILE:
-        return get_size(std::get<BTF_KIND_VOLATILE>(kind).type);
-    case BTF_KIND_CONST:
-        return get_size(std::get<BTF_KIND_CONST>(kind).type);
-    case BTF_KIND_RESTRICT:
-        return get_size(std::get<BTF_KIND_RESTRICT>(kind).type);
-    case BTF_KIND_FUNC_PROTO:
-        return 0;
-    case BTF_KIND_FUNC:
-        return 0;
-    case BTF_KIND_VAR:
-        return get_size(std::get<BTF_KIND_VAR>(kind).type);
-    case BTF_KIND_DATASEC:
-        return 0;
-    case BTF_KIND_FLOAT:
-        return std::get<BTF_KIND_FLOAT>(kind).size_in_bytes;
-    case BTF_KIND_DECL_TAG:
-        return get_size(std::get<BTF_KIND_DECL_TAG>(kind).type);
-    case BTF_KIND_TYPE_TAG:
-        return get_size(std::get<BTF_KIND_TYPE_TAG>(kind).type);
-    case BTF_KIND_ENUM64:
-        return std::get<BTF_KIND_ENUM64>(kind).size_in_bytes;
-    default:
-        throw std::runtime_error("unknown BTF type kind");
+    case BTF_KIND_STRUCT: return std::get<BTF_KIND_STRUCT>(kind).size_in_bytes;
+    case BTF_KIND_UNION: return std::get<BTF_KIND_UNION>(kind).size_in_bytes;
+    case BTF_KIND_ENUM: return std::get<BTF_KIND_ENUM>(kind).size_in_bytes;
+    case BTF_KIND_FWD: return 0;
+    case BTF_KIND_TYPEDEF: return get_size(std::get<BTF_KIND_TYPEDEF>(kind).type);
+    case BTF_KIND_VOLATILE: return get_size(std::get<BTF_KIND_VOLATILE>(kind).type);
+    case BTF_KIND_CONST: return get_size(std::get<BTF_KIND_CONST>(kind).type);
+    case BTF_KIND_RESTRICT: return get_size(std::get<BTF_KIND_RESTRICT>(kind).type);
+    case BTF_KIND_FUNC_PROTO: return 0;
+    case BTF_KIND_FUNC: return 0;
+    case BTF_KIND_VAR: return get_size(std::get<BTF_KIND_VAR>(kind).type);
+    case BTF_KIND_DATASEC: return 0;
+    case BTF_KIND_FLOAT: return std::get<BTF_KIND_FLOAT>(kind).size_in_bytes;
+    case BTF_KIND_DECL_TAG: return get_size(std::get<BTF_KIND_DECL_TAG>(kind).type);
+    case BTF_KIND_TYPE_TAG: return get_size(std::get<BTF_KIND_TYPE_TAG>(kind).type);
+    case BTF_KIND_ENUM64: return std::get<BTF_KIND_ENUM64>(kind).size_in_bytes;
+    default: throw std::runtime_error("unknown BTF type kind");
     }
 }
 
-void btf_type_data::to_json(std::ostream& out) const {
-    btf_type_to_json(id_to_kind, out);
-}
+void btf_type_data::to_json(std::ostream& out) const { btf_type_to_json(id_to_kind, out); }
 
 /**
  * @brief Given the BTF type ID of a value declared via the __uint macro, return the value.
@@ -922,8 +880,7 @@ void btf_type_data::to_json(std::ostream& out) const {
  * @param[in] id_to_kind The map from BTF type ID to BTF type kind.
  * @return The value.
  */
-static uint32_t value_from_BTF__uint(const btf_type_data& btf_types, btf_type_id type_id)
-{
+static uint32_t value_from_BTF__uint(const btf_type_data& btf_types, btf_type_id type_id) {
     // The __uint macro is defined as follows:
     // #define __uint(name, val) int (*name)[val]
     // So, we need to get the value of val from the BTF type.
@@ -949,8 +906,7 @@ static uint32_t value_from_BTF__uint(const btf_type_data& btf_types, btf_type_id
  * @param[in] id_to_kind The map from BTF type ID to BTF type kind.
  * @return The map descriptor.
  */
-static EbpfMapDescriptor get_map_descriptor_from_btf(const btf_type_data& btf_types, btf_type_id map_type_id)
-{
+static EbpfMapDescriptor get_map_descriptor_from_btf(const btf_type_data& btf_types, btf_type_id map_type_id) {
     btf_type_id type = 0;
     btf_type_id max_entries = 0;
     btf_type_id key = 0;
@@ -1024,16 +980,15 @@ static EbpfMapDescriptor get_map_descriptor_from_btf(const btf_type_data& btf_ty
         // Verify this is a pointer to a BTF map definition.
         auto map_def = btf_types.get_kind(std::get<BTF_KIND_PTR>(ptr).type);
         map_descriptor.inner_map_fd = static_cast<int>(std::get<BTF_KIND_PTR>(ptr).type);
-    }
-    else {
+    } else {
         map_descriptor.inner_map_fd = -1;
     }
 
     return map_descriptor;
 }
 
-std::map<std::string, size_t> parse_btf_map_sections(const btf_type_data& btf_data, std::vector<EbpfMapDescriptor>& map_descriptors)
-{
+std::map<std::string, size_t> parse_btf_map_sections(const btf_type_data& btf_data,
+                                                     std::vector<EbpfMapDescriptor>& map_descriptors) {
     std::map<std::string, size_t> map_offset_to_descriptor_index;
     auto maps_section_kind = btf_data.get_kind(btf_data.get_id(".maps"));
 

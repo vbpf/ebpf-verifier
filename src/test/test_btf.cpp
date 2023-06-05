@@ -22,16 +22,6 @@
         verify_BTF_json(#file);\
     }
 
-template <typename T>
-static std::vector<T> vector_of(const ELFIO::section& sec) {
-    auto data = sec.get_data();
-    auto size = sec.get_size();
-    if ((size % sizeof(T) != 0) || size > UINT32_MAX || !data) {
-        throw std::runtime_error("Invalid argument to vector_of");
-    }
-    return {(T*)data, (T*)(data + size)};
-}
-
 void verify_BTF_json(const std::string& file)
 {
     std::stringstream generated_output;
@@ -40,7 +30,7 @@ void verify_BTF_json(const std::string& file)
 
     auto btf = reader.sections[".BTF"];
 
-    btf_type_data btf_data = vector_of<uint8_t>(*btf);
+    btf_type_data btf_data = std::vector<uint8_t>({btf->get_data(), btf->get_data() + btf->get_size()});
 
     btf_data.to_json(generated_output);
 
