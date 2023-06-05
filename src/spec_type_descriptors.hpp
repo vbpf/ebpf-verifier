@@ -40,7 +40,6 @@ struct EbpfProgramType {
     bool is_privileged {};
 };
 void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o);
-EbpfMapDescriptor* get_map_descriptor_from_platform_or_program_info(int map_fd);
 
 using EquivalenceKey = std::tuple<
     EbpfMapValueType /* value_type */,

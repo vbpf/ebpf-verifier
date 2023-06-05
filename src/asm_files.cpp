@@ -48,16 +48,6 @@ EbpfMapDescriptor* find_map_descriptor(int map_fd) {
     return nullptr;
 }
 
-EbpfMapDescriptor* get_map_descriptor_from_platform_or_program_info(int map_fd)
-{
-    if (global_program_info->map_descriptors.size() > 0) {
-        return &global_program_info->platform->get_map_descriptor(map_fd);
-    }
-    else {
-        return find_map_descriptor(map_fd);
-    }
-}
-
 // Maps sections are identified as any section called "maps", or matching "maps/<map-name>".
 bool is_map_section(const std::string& name) {
     std::string maps_prefix = "maps/";
