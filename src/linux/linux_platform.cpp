@@ -150,15 +150,17 @@ EbpfMapType get_map_type_linux(uint32_t platform_specific_type)
     return type;
 }
 
-void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t map_def_size, int map_count, const ebpf_platform_t* platform, ebpf_verifier_options_t options)
-{
-
+void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t map_def_size,
+                              int map_count, const ebpf_platform_t* platform, ebpf_verifier_options_t options) {
+    // Copy map definitions from the ELF section into a local list.
     auto mapdefs = std::vector<bpf_load_map_def>();
     for (int i = 0; i < map_count; i++) {
         bpf_load_map_def def = {0};
         memcpy(&def, data + i * map_def_size, std::min(map_def_size, sizeof(def)));
         mapdefs.emplace_back(def);
     }
+
+    // Add map definitions into the map_descriptors list.
     for (auto const& s : mapdefs) {
         EbpfMapType type = get_map_type_linux(s.type);
         map_descriptors.emplace_back(EbpfMapDescriptor{
@@ -166,11 +168,17 @@ void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, c
             .type = s.type,
             .key_size = s.key_size,
             .value_size = s.value_size,
-            .max_entries = s.max_entries
+            .max_entries = s.max_entries,
+            .inner_map_fd = s.inner_map_idx // Temporarily fill in the index. This will be replaced in the
+                                            // resolve_inner_map_references pass.
         });
     }
-    for (size_t i = 0; i < mapdefs.size(); i++) {
-        unsigned int inner = mapdefs[i].inner_map_idx;
+}
+
+// Initialize the inner_map_fd in each map descriptor.
+void resolve_inner_map_references_linux(std::vector<EbpfMapDescriptor>& map_descriptors) {
+    for (size_t i = 0; i < map_descriptors.size(); i++) {
+        unsigned int inner = map_descriptors[i].inner_map_fd; // Get the inner_map_idx back.
         if (inner >= map_descriptors.size())
             throw std::runtime_error(std::string("bad inner map index ") + std::to_string(inner)
                                      + " for map " + std::to_string(i));
@@ -246,4 +254,5 @@ const ebpf_platform_t g_ebpf_platform_linux = {
     parse_maps_section_linux,
     get_map_descriptor_linux,
     get_map_type_linux,
+    resolve_inner_map_references_linux
 };
