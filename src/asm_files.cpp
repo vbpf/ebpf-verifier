@@ -108,6 +108,7 @@ static size_t parse_map_sections(const ebpf_verifier_options_t* options, const e
         }
         section_indices.insert(s->get_index());
     }
+    platform->resolve_inner_map_references(map_descriptors);
     return map_record_size;
 }
 
