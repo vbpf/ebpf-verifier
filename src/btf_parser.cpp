@@ -842,8 +842,12 @@ btf_type_id btf_type_data::dereference_pointer(btf_type_id id) const {
 }
 
 size_t btf_type_data::get_size(btf_type_id id) const {
-    // Compute the effective size of a BTF type.
+    // Validate that this is a valid type id.
+    if (id_to_kind.find(id) == id_to_kind.end()) {
+        throw std::runtime_error("BTF type id not found: " + std::to_string(id));
+    }
 
+    // Compute the effective size of a BTF type.
     auto kind = id_to_kind.at(id);
 
     switch (kind.index()) {
