@@ -24,10 +24,15 @@
 #define BTF_KIND_FLOAT 16      /* Floating point       */
 #define BTF_KIND_DECL_TAG 17   /* Decl Tag     */
 #define BTF_KIND_TYPE_TAG 18   /* Type Tag     */
+#define BTF_KIND_ENUM64 19     /* Enum w/64bit values  */
 
 #define BTF_INT_ENCODING(VAL) (((VAL)&0x0f000000) >> 24)
 #define BTF_INT_OFFSET(VAL) (((VAL)&0x00ff0000) >> 16)
 #define BTF_INT_BITS(VAL) ((VAL)&0x000000ff)
+
+#define BTF_INT_SIGNED ( 1 << 0 )
+#define BTF_INT_CHAR ( 1 << 1 )
+#define BTF_INT_BOOL ( 1 << 2 )
 
 #define BTF_MEMBER_BITFIELD_SIZE(val) ((val) >> 24)
 #define BTF_MEMBER_BIT_OFFSET(val) ((val)&0xffffff)
@@ -78,6 +83,10 @@ typedef struct _btf_type {
     };
 } btf_type_t;
 
+#define BPF_TYPE_INFO_VLEN(info) ((info)&0xffff)
+#define BPF_TYPE_INFO_KIND(info) (((info) >> 24) & 0x1f)
+#define BPF_TYPE_INFO_KIND_FLAG(info) (((info) >> 31) & 0x1)
+
 typedef struct _btf_array {
     uint32_t type;
     uint32_t index_type;
@@ -102,6 +111,23 @@ typedef struct _btf_var_secinfo {
 typedef struct _btf_decl_tag {
     uint32_t component_idx;
 } btf_decl_tag_t;
+
+typedef struct _btf_member {
+    uint32_t name_off;
+    uint32_t type;
+    uint32_t offset;
+} btf_member_t;
+
+typedef struct _btf_enum {
+    uint32_t name_off;
+    uint32_t val;
+} btf_enum_t;
+
+typedef struct _btf_enum64 {
+    uint32_t name_off;
+    uint32_t val_lo32;
+    uint32_t val_hi32;
+} btf_enum64_t;
 
 typedef struct _btf_ext_header {
     uint16_t magic;

@@ -70,6 +70,7 @@ int main(int argc, char** argv) {
     app.add_flag("--no-division-by-zero", no_division_by_zero, "Do not allow division by zero");
     app.add_flag("--no-simplify", ebpf_verifier_options.no_simplify, "Do not simplify");
     app.add_flag("--line-info", ebpf_verifier_options.print_line_info, "Print line information");
+    app.add_flag("--print-btf-types", ebpf_verifier_options.dump_btf_types_json, "Print BTF types");
 
     std::string asmfile;
     app.add_option("--asm", asmfile, "Print disassembly to FILE")->type_name("FILE");

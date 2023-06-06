@@ -78,6 +78,7 @@ file(GLOB LIB_SRC
 
 file(GLOB ALL_TEST
         "./src/test/test.cpp"
+        "./src/test/test_btf.cpp"
         "./src/test/test_conformance.cpp"
         "./src/test/test_loop.cpp"
         "./src/test/test_marshal.cpp"

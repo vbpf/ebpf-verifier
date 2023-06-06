@@ -30,7 +30,8 @@ void verify_printed_string(const std::string& file)
     std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
     REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error));
     auto& program = std::get<InstructionSeq>(prog_or_error);
-    print(program, generated_output, {}, true);
+    print(program, generated_output, {});
+    print_map_descriptors(raw_prog.info.map_descriptors, generated_output);
     std::ifstream expected_stream(std::string(TEST_ASM_FILE_DIRECTORY) + file + std::string(".asm"));
     REQUIRE(expected_stream);
     std::string expected_line;

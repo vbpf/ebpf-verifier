@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 
 #include "asm_files.hpp"
+#include "btf.h"
 #include "btf_parser.h"
 #include "platform.hpp"
 
@@ -132,6 +133,10 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
     program_info info{platform};
     std::set<ELFIO::Elf_Half> map_section_indices;
 
+    auto btf = reader.sections[string(".BTF")];
+    auto btf_ext = reader.sections[string(".BTF.ext")];
+    std::optional<btf_type_data> btf_data;
+
     auto symbol_section = reader.sections[".symtab"];
     if (!symbol_section) {
         throw std::runtime_error(string("No symbol section found in ELF file ") + path);
@@ -146,7 +151,50 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
     }
 
     ELFIO::const_symbol_section_accessor symbols{reader, symbol_section};
-    size_t map_record_size = parse_map_sections(options, platform, reader, info.map_descriptors, map_section_indices, symbols);
+
+    if (btf) {
+        // Parse the BTF type data.
+        btf_data = vector_of<uint8_t>(*btf);
+        if (options->dump_btf_types_json) {
+            std::stringstream output;
+            std::cout << "Dumping BTF data for" << path << std::endl;
+            // Dump the BTF data to cout for debugging purposes.
+            btf_data->to_json(output);
+            std::cout << pretty_print_json(output.str()) << std::endl;
+            std::cout << std::endl;
+        }
+    }
+
+    std::variant<size_t, std::map<std::string, size_t>>  map_record_size_or_map_offsets = size_t(0);
+    if (reader.sections[string(".maps")]) {
+        if (!btf_data.has_value()){
+            throw std::runtime_error(string("No BTF section found in ELF file ") + path);
+        }
+        map_record_size_or_map_offsets = parse_btf_map_sections(btf_data.value(), info.map_descriptors);
+        // Prevail requires:
+        // Map fds are sequential starting from 1.
+        // Map fds are assigned in the order of the maps in the ELF file.
+
+        // Build a map from the original type id to the pseudo-fd.
+        std::map<int, int> type_id_to_fd_map;
+        int pseudo_fd = 1;
+        // Gather the typeids for each map and assign a pseudo-fd to each map.
+        for (auto &map_descriptor : info.map_descriptors) {
+            if (type_id_to_fd_map.find(map_descriptor.original_fd) == type_id_to_fd_map.end()) {
+                type_id_to_fd_map[map_descriptor.original_fd] = pseudo_fd++;
+            }
+        }
+        // Replace the typeids with the pseudo-fds.
+        for (auto &map_descriptor : info.map_descriptors) {
+            map_descriptor.original_fd = type_id_to_fd_map[map_descriptor.original_fd];
+            if (map_descriptor.inner_map_fd != -1) {
+                map_descriptor.inner_map_fd = type_id_to_fd_map[map_descriptor.inner_map_fd];
+            }
+        }
+        map_section_indices.insert(reader.sections[string(".maps")]->get_index());
+    } else {
+        map_record_size_or_map_offsets = parse_map_sections(options, platform, reader, info.map_descriptors, map_section_indices, symbols);
+    }
 
     vector<raw_program> res;
     vector<string> unresolved_symbols;
@@ -208,12 +256,31 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                 }
                 inst.src = 1; // magic number for LoadFd
 
-                size_t reloc_value = get_value(symbols, index) / map_record_size;
-                if (reloc_value >= info.map_descriptors.size()) {
-                    throw std::runtime_error("Bad reloc value (" + std::to_string(reloc_value) + "). "
-                                             + "Make sure to compile with -O2.");
+                // Relocation value is an offset into the "maps" or ".maps" section.
+                size_t relocation_offset = get_value(symbols, index);
+                if (map_record_size_or_map_offsets.index() == 0) {
+                    // The older maps section format uses a single map_record_size value, so we can
+                    // calculate the map descriptor index directly.
+                    size_t reloc_value = relocation_offset / std::get<0>(map_record_size_or_map_offsets);
+                    if (reloc_value >= info.map_descriptors.size()) {
+                        throw std::runtime_error("Bad reloc value (" + std::to_string(reloc_value) + "). "
+                                                + "Make sure to compile with -O2.");
+                    }
+
+                    inst.imm = info.map_descriptors.at(reloc_value).original_fd;
                 }
-                inst.imm = info.map_descriptors.at(reloc_value).original_fd;
+                else {
+                    // The newer .maps section format uses a variable-length map descriptor array,
+                    // so we need to look up the map descriptor index in a map.
+                    auto& map_descriptors_offsets = std::get<1>(map_record_size_or_map_offsets);
+                    auto it = map_descriptors_offsets.find(symbol_name);
+
+                    if (it == map_descriptors_offsets.end()) {
+                        throw std::runtime_error("Bad reloc value (" + std::to_string(index) + "). "
+                                                + "Make sure to compile with -O2.");
+                    }
+                    inst.imm = info.map_descriptors.at(it->second).original_fd;
+                }
             }
         }
         prog.line_info.resize(prog.prog.size());
@@ -231,8 +298,6 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                                  "\nMake sure to inline all function calls.");
     }
 
-    auto btf = reader.sections[string(".BTF")];
-    auto btf_ext = reader.sections[string(".BTF.ext")];
     if (btf != nullptr && btf_ext != nullptr) {
         std::map<std::string, raw_program&> segment_to_program;
         for (auto& program : res) {
