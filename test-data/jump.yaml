@@ -648,3 +648,52 @@ post:
 
 messages:
   - "0:2: Code is unreachable after 0:2"
+---
+test-case: assume map_fd == map_fd
+
+pre: ["r1.type=map_fd"]
+
+code:
+  <start>: |
+    assume r1 == r1
+
+post:
+  - r1.type=map_fd
+---
+test-case: assume map_fd != map_fd
+
+pre: ["r1.type=map_fd"]
+
+code:
+  <start>: |
+    assume r1 != r1
+
+post: []
+messages:
+  - "0: Code is unreachable after 0"
+---
+test-case: assume map_fd1 != map_fd2
+
+pre: ["r1.type=map_fd", "r1.map_fd=1", "r2.type=map_fd", "r2.map_fd=2"]
+
+code:
+  <start>: |
+    assume r1 != r2
+
+post:
+  - r1.type=map_fd
+  - r1.map_fd=1
+  - r2.type=map_fd
+  - r2.map_fd=2
+---
+test-case: assume map_fd1 != map_fd2
+
+pre: ["r1.type=map_fd", "r1.map_fd=1", "r2.type=map_fd", "r2.map_fd=1"]
+
+code:
+  <start>: |
+    assume r1 != r2
+
+post: []
+messages:
+  - "0: Code is unreachable after 0"

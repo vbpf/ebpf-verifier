@@ -1491,7 +1491,8 @@ void ebpf_domain_t::operator()(const Comparable& s) {
         // Same type. If both are numbers, that's okay. Otherwise:
         auto inv = m_inv.when(reg_pack(s.r2).type != T_NUM);
         // We must check that they belong to a singleton region:
-        if (!type_inv.is_in_group(inv, s.r1, TypeGroup::singleton_ptr)) {
+        if (!type_inv.is_in_group(inv, s.r1, TypeGroup::singleton_ptr) &&
+            !type_inv.is_in_group(inv, s.r1, TypeGroup::map_fd)) {
             require(inv, linear_constraint_t::FALSE(), "Cannot subtract pointers to non-singleton regions");
             return;
         }
