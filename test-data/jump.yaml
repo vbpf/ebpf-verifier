@@ -697,3 +697,21 @@ code:
 post: []
 messages:
   - "0: Code is unreachable after 0"
+---
+test-case: assume map_fd1 < map_fd2
+
+pre: ["r1.type=map_fd", "r1.map_fd=1", "r2.type=map_fd", "r2.map_fd=2"]
+
+code:
+  <start>: |
+    assume r1 < r2
+
+post:
+  - r1.type=map_fd
+  - r1.map_fd=1
+  - r2.type=map_fd
+  - r2.map_fd=2
+  - r1.map_fd-r2.map_fd<=-1
+
+messages:
+  - "0:  (r1.type == non_map_fd)"
