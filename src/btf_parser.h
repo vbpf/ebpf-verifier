@@ -224,6 +224,7 @@ class btf_type_data {
     void to_json(std::ostream& out) const;
 
   private:
+    void validate_type_graph(btf_type_id id, std::set<btf_type_id>& visited) const;
     std::map<btf_type_id, btf_kind> id_to_kind;
     std::map<std::string, btf_type_id> name_to_id;
 };
