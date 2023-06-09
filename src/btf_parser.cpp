@@ -815,6 +815,11 @@ btf_type_data::btf_type_data(const std::vector<uint8_t>& btf_data) {
         }
     };
     btf_parse_types(btf_data, visitor);
+    // Validate that the type graph is valid.
+    for (const auto& [id, kind] : id_to_kind) {
+        std::set<btf_type_id> visited;
+        validate_type_graph(id, visited);
+    }
 }
 
 btf_type_id btf_type_data::get_id(const std::string& name) const {
@@ -872,6 +877,66 @@ size_t btf_type_data::get_size(btf_type_id id) const {
 }
 
 void btf_type_data::to_json(std::ostream& out) const { btf_type_to_json(id_to_kind, out); }
+
+void btf_type_data::validate_type_graph(btf_type_id id, std::set<btf_type_id>& visited) const {
+    // BTF types must be an acyclic graph. This function validates that the type graph is acyclic.
+    if (visited.find(id) != visited.end()) {
+        throw std::runtime_error("BTF type cycle detected: " + std::to_string(id));
+    }
+
+    auto kind = get_kind(id);
+    switch (kind.index()) {
+    case 0: break;
+    case BTF_KIND_INT: break;
+    case BTF_KIND_PTR: validate_type_graph(std::get<BTF_KIND_PTR>(kind).type, visited); break;
+    case BTF_KIND_ARRAY:
+        validate_type_graph(std::get<BTF_KIND_ARRAY>(kind).element_type, visited);
+        validate_type_graph(std::get<BTF_KIND_ARRAY>(kind).index_type, visited);
+        break;
+    case BTF_KIND_STRUCT: {
+        auto& struct_ = std::get<BTF_KIND_STRUCT>(kind);
+        for (auto& member : struct_.members) {
+            validate_type_graph(member.type, visited);
+        }
+        break;
+    }
+    case BTF_KIND_UNION: {
+        auto& union_ = std::get<BTF_KIND_UNION>(kind);
+        for (auto& member : union_.members) {
+            validate_type_graph(member.type, visited);
+        }
+        break;
+    }
+    case BTF_KIND_ENUM: break;
+    case BTF_KIND_FWD: break;
+    case BTF_KIND_TYPEDEF: validate_type_graph(std::get<BTF_KIND_TYPEDEF>(kind).type, visited); break;
+    case BTF_KIND_VOLATILE: validate_type_graph(std::get<BTF_KIND_VOLATILE>(kind).type, visited); break;
+    case BTF_KIND_CONST: validate_type_graph(std::get<BTF_KIND_CONST>(kind).type, visited); break;
+    case BTF_KIND_RESTRICT: validate_type_graph(std::get<BTF_KIND_RESTRICT>(kind).type, visited); break;
+    case BTF_KIND_FUNC: validate_type_graph(std::get<BTF_KIND_FUNC>(kind).type, visited); break;
+    case BTF_KIND_FUNC_PROTO: {
+        auto& prototype = std::get<BTF_KIND_FUNC_PROTO>(kind);
+        for (auto& parameter : prototype.parameters) {
+            validate_type_graph(parameter.type, visited);
+        }
+        validate_type_graph(prototype.return_type, visited);
+        break;
+    }
+    case BTF_KIND_VAR: validate_type_graph(std::get<BTF_KIND_VAR>(kind).type, visited); break;
+    case BTF_KIND_DATASEC: {
+        auto& datasec = std::get<BTF_KIND_DATASEC>(kind);
+        for (auto& variable : datasec.members) {
+            validate_type_graph(variable.type, visited);
+        }
+        break;
+    }
+    case BTF_KIND_FLOAT: break;
+    case BTF_KIND_DECL_TAG: validate_type_graph(std::get<BTF_KIND_DECL_TAG>(kind).type, visited); break;
+    case BTF_KIND_TYPE_TAG: validate_type_graph(std::get<BTF_KIND_TYPE_TAG>(kind).type, visited); break;
+    case BTF_KIND_ENUM64: break;
+    default: throw std::runtime_error("unknown BTF type kind " + std::to_string(kind.index()));
+    }
+}
 
 /**
  * @brief Given the BTF type ID of a value declared via the __uint macro, return the value.
@@ -956,13 +1021,21 @@ static EbpfMapDescriptor get_map_descriptor_from_btf(const btf_type_data& btf_ty
 
     // Optional fields.
     if (key) {
-        map_descriptor.key_size = btf_types.get_size(key);
+        size_t key_size = btf_types.get_size(key);
+        if (key_size > UINT32_MAX) {
+            throw std::runtime_error("key size too large");
+        }
+        map_descriptor.key_size = static_cast<uint32_t>(key_size);
     } else if (key_size) {
         map_descriptor.key_size = value_from_BTF__uint(btf_types, key_size);
     }
 
     if (value) {
-        map_descriptor.value_size = btf_types.get_size(value);
+        size_t value_size = btf_types.get_size(value);
+        if (value_size > UINT32_MAX) {
+            throw std::runtime_error("value size too large");
+        }
+        map_descriptor.value_size = static_cast<uint32_t>(value_size);
     } else if (value_size) {
         map_descriptor.value_size = value_from_BTF__uint(btf_types, value_size);
     }
