@@ -204,7 +204,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         const string name = section->get_name();
         if (!desired_section.empty() && name != desired_section)
             continue;
-        if (name == "license" || name == "version" || name == "maps")
+        if (name == "license" || name == "version" || is_map_section(name))
             continue;
         if (name != ".text" && name.find('.') == 0) {
             continue;
@@ -287,7 +287,6 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         prog.line_info.resize(prog.prog.size());
         res.push_back(prog);
     }
-
 
     // Below, only relocations of symbols located in the map sections are allowed,
     // so if there are relocations there needs to be a maps section.
