@@ -155,7 +155,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
     if (btf) {
         // Parse the BTF type data.
-        btf_data = vector_of<uint8_t>(*btf);
+        btf_data = vector_of<std::byte>(*btf);
         if (options->dump_btf_types_json) {
             std::stringstream output;
             std::cout << "Dumping BTF data for" << path << std::endl;
@@ -317,7 +317,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
             program.line_info[instruction_offset / sizeof(ebpf_inst)] = {file_name, source, line_number, column_number};
         };
 
-        btf_parse_line_information(vector_of<uint8_t>(*btf), vector_of<uint8_t>(*btf_ext), visitor);
+        btf_parse_line_information(vector_of<std::byte>(*btf), vector_of<std::byte>(*btf_ext), visitor);
 
         // BTF doesn't include line info for every instruction, only on the first instruction per source line.
         for (auto& [name, program] : segment_to_program) {
