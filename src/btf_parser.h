@@ -182,7 +182,7 @@ using btf_type_visitor = std::function<void(btf_type_id, const std::optional<std
  * line info).
  * @param[in] visitor Function to invoke on each btf_line_info record.
  */
-void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vector<uint8_t>& btf_ext,
+void btf_parse_line_information(const std::vector<std::byte>& btf, const std::vector<std::byte>& btf_ext,
                                 btf_line_info_visitor visitor);
 
 /**
@@ -192,7 +192,9 @@ void btf_parse_line_information(const std::vector<uint8_t>& btf, const std::vect
  * @param[in] btf The .BTF section (containing type info and strings).
  * @param[in] visitor Function to invoke on each btf_type record.
  */
-void btf_parse_types(const std::vector<uint8_t>& btf, btf_type_visitor visitor);
+void btf_parse_types(const std::vector<std::byte>& btf, btf_type_visitor visitor);
+
+std::vector<std::byte> btf_serialize_types(const std::vector<btf_kind>& btf_kind);
 
 /**
  * @brief Given a map of btf_type_id to btf_kind, print the types as JSON to
@@ -215,13 +217,16 @@ std::string pretty_print_json(const std::string& input);
 
 class btf_type_data {
   public:
-    btf_type_data(const std::vector<uint8_t>& btf_data);
+    btf_type_data() = default;
+    btf_type_data(const std::vector<std::byte>& btf_data);
     ~btf_type_data() = default;
     btf_type_id get_id(const std::string& name) const;
     btf_kind get_kind(btf_type_id id) const;
     btf_type_id dereference_pointer(btf_type_id id) const;
     size_t get_size(btf_type_id id) const;
     void to_json(std::ostream& out) const;
+    std::vector<std::byte> to_bytes() const;
+    void append(const btf_kind& kind);
 
   private:
     void validate_type_graph(btf_type_id id, std::set<btf_type_id>& visited) const;
