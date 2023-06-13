@@ -88,7 +88,7 @@ variable_t variable_t::kind_var(data_kind_t kind, variable_t type_variable) {
 
 variable_t variable_t::meta_offset() { return make("meta_offset"); }
 variable_t variable_t::packet_size() { return make("packet_size"); }
-variable_t variable_t::instruction_count() { return make("instruction_count"); }
+variable_t variable_t::instruction_count(const std::string& label) { return make("pc[" + label + "]"); }
 
 static bool ends_with(const std::string& str, const std::string& suffix)
 {
@@ -108,4 +108,12 @@ bool variable_t::is_in_stack() const {
     return this->name()[0] == 's';
 }
 
+std::vector<variable_t> variable_t::get_instruction_counters() {
+    std::vector<variable_t> res;
+    for (const std::string& name: *names) {
+        if (name.find("pc") == 0)
+            res.push_back(make(name));
+    }
+    return res;
+}
 } // end namespace crab

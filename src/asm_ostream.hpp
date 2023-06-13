@@ -48,5 +48,6 @@ inline std::ostream& operator<<(std::ostream& os, Mem const& a) { return os << (
 inline std::ostream& operator<<(std::ostream& os, LockAdd const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, Assume const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, Assert const& a) { return os << (Instruction)a; }
+inline std::ostream& operator<<(std::ostream& os, IncrementLoopCounter const& a) { return os << (Instruction)a; }
 std::ostream& operator<<(std::ostream& os, AssertionConstraint const& a);
 std::string to_string(AssertionConstraint const& constraint);

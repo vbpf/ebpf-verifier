@@ -38,6 +38,8 @@ class AssertExtractor {
 
     vector<Assert> operator()(Assert const& ins) const { assert(false); return {}; }
 
+    vector<Assert> operator()(IncrementLoopCounter ins) const { assert(false); return {}; }
+
     vector<Assert> operator()(LoadMapFd const& ins) const { return {}; }
 
     /// Packet access implicitly uses R6, so verify that R6 still has a pointer to the context.

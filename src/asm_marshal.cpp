@@ -229,6 +229,10 @@ struct MarshalVisitor {
             .offset = static_cast<int16_t>(b.access.offset),
             .imm = 0}};
     }
+
+    vector<ebpf_inst> operator()(IncrementLoopCounter const& ins) {
+        return {};
+    }
 };
 
 vector<ebpf_inst> marshal(const Instruction& ins, pc_t pc) { return std::visit(MarshalVisitor{label_to_offset(pc)}, ins); }

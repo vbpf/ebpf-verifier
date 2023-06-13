@@ -219,7 +219,7 @@ pre: ["r1.ctx_offset=0", "r1.type=ctx", "r1.svalue=[1, 2147418112]", "r1.uvalue=
 
 code:
   <start>: |
-    r2 = *(u32 *)(r1 + 8)
+    r2 = *(u32 *)(r1 + 4)
 
 post:
   - packet_size=r2.packet_offset
