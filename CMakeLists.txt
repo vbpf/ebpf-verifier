@@ -64,6 +64,7 @@ endif ()
 include_directories(./external)
 include_directories(./external/ELFIO)
 include_directories(./src)
+include_directories(./external/libbtf)
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${YAML_CPP_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIRS})
@@ -78,7 +79,6 @@ file(GLOB LIB_SRC
 
 file(GLOB ALL_TEST
         "./src/test/test.cpp"
-        "./src/test/test_btf.cpp"
         "./src/test/test_conformance.cpp"
         "./src/test/test_loop.cpp"
         "./src/test/test_marshal.cpp"
@@ -133,6 +133,7 @@ target_compile_options(ebpfverifier PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}
 target_compile_options(ebpfverifier PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
 
 add_subdirectory("external/bpf_conformance/src")
+add_subdirectory("external/libbtf")
 
 # CMake derives a Visual Studio project GUID from the file path but can be overridden via a property
 # (see https://gitlab.kitware.com/cmake/cmake/-/commit/c85367f4).  Using a non-constant GUID
@@ -163,6 +164,7 @@ target_link_libraries(tests PRIVATE Threads::Threads)
 target_link_libraries(tests PRIVATE Catch2::Catch2WithMain)
 
 target_link_libraries(ebpfverifier PRIVATE ${YAML_CPP_LIBRARIES})
+target_link_libraries(ebpfverifier PRIVATE libbtf)
 target_compile_options(ebpfverifier PRIVATE ${COMMON_FLAGS})
 
 target_link_libraries(run_yaml PRIVATE ebpfverifier)

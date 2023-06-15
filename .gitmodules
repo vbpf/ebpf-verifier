@@ -10,3 +10,6 @@
 [submodule "external/bpf_conformance"]
 	path = external/bpf_conformance
 	url = https://github.com/Alan-Jowett/bpf_conformance.git
+[submodule "external/libbtf"]
+	path = external/libbtf
+	url = https://github.com/Alan-Jowett/libbtf.git
