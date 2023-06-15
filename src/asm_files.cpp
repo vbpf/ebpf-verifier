@@ -10,8 +10,10 @@
 #include <sys/stat.h>
 
 #include "asm_files.hpp"
-#include "btf.h"
-#include "btf_parser.h"
+#include "libbtf/btf.h"
+#include "libbtf/btf_json.h"
+#include "libbtf/btf_map.h"
+#include "libbtf/btf_parse.h"
 #include "platform.hpp"
 
 #include "elfio/elfio.hpp"
@@ -136,7 +138,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
     auto btf = reader.sections[string(".BTF")];
     auto btf_ext = reader.sections[string(".BTF.ext")];
-    std::optional<btf_type_data> btf_data;
+    std::optional<libbtf::btf_type_data> btf_data;
 
     auto symbol_section = reader.sections[".symtab"];
     if (!symbol_section) {
@@ -161,7 +163,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
             std::cout << "Dumping BTF data for" << path << std::endl;
             // Dump the BTF data to cout for debugging purposes.
             btf_data->to_json(output);
-            std::cout << pretty_print_json(output.str()) << std::endl;
+            std::cout << libbtf::pretty_print_json(output.str()) << std::endl;
             std::cout << std::endl;
         }
     }
@@ -171,7 +173,21 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         if (!btf_data.has_value()){
             throw std::runtime_error(string("No BTF section found in ELF file ") + path);
         }
-        map_record_size_or_map_offsets = parse_btf_map_sections(btf_data.value(), info.map_descriptors);
+        //map_record_size_or_map_offsets = parse_btf_map_sections(btf_data.value(), info.map_descriptors);
+        auto map_data = libbtf::parse_btf_map_section(btf_data.value());
+        std::map<std::string, size_t> map_offsets;
+        for (auto& map : map_data) {
+            map_offsets.insert({map.name, info.map_descriptors.size()});
+            info.map_descriptors.push_back({
+                .original_fd = static_cast<int>(map.type_id),
+                .type = map.map_type,
+                .key_size = map.key_size,
+                .value_size = map.value_size,
+                .max_entries = map.max_entries,
+                .inner_map_fd = map.inner_map_type_id != 0 ? map.inner_map_type_id : -1,
+            });
+        }
+        map_record_size_or_map_offsets = map_offsets;
         // Prevail requires:
         // Map fds are sequential starting from 1.
         // Map fds are assigned in the order of the maps in the ELF file.
@@ -317,7 +333,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
             program.line_info[instruction_offset / sizeof(ebpf_inst)] = {file_name, source, line_number, column_number};
         };
 
-        btf_parse_line_information(vector_of<std::byte>(*btf), vector_of<std::byte>(*btf_ext), visitor);
+        libbtf::btf_parse_line_information(vector_of<std::byte>(*btf), vector_of<std::byte>(*btf_ext), visitor);
 
         // BTF doesn't include line info for every instruction, only on the first instruction per source line.
         for (auto& [name, program] : segment_to_program) {
