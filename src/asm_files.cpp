@@ -173,7 +173,6 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         if (!btf_data.has_value()){
             throw std::runtime_error(string("No BTF section found in ELF file ") + path);
         }
-        //map_record_size_or_map_offsets = parse_btf_map_sections(btf_data.value(), info.map_descriptors);
         auto map_data = libbtf::parse_btf_map_section(btf_data.value());
         std::map<std::string, size_t> map_offsets;
         for (auto& map : map_data) {
