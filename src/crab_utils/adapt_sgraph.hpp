@@ -22,7 +22,6 @@ class TreeSMap final {
     col map;
 
   public:
-    using elt_t = std::pair<key_t, val_t>;
     using elt_iter_t = col::const_iterator;
     [[nodiscard]] size_t size() const { return map.size(); }
 
@@ -142,7 +141,7 @@ class AdaptGraph final {
     }
 
     struct vert_const_iterator {
-        vert_id v;
+        vert_id v{};
         const std::vector<int>& is_free;
 
         vert_id operator*() const { return v; }
@@ -401,14 +400,14 @@ class AdaptGraph final {
 
     // Ick. This'll have another indirection on every operation.
     // We'll see what the performance costs are like.
-    std::vector<smap_t> _preds;
-    std::vector<smap_t> _succs;
-    std::vector<Weight> _ws;
+    std::vector<smap_t> _preds{};
+    std::vector<smap_t> _succs{};
+    std::vector<Weight> _ws{};
 
-    size_t edge_count;
+    size_t edge_count{};
 
-    std::vector<int> is_free;
-    std::vector<vert_id> free_id;
-    std::vector<size_t> free_widx;
+    std::vector<int> is_free{};
+    std::vector<vert_id> free_id{};
+    std::vector<size_t> free_widx{};
 };
 } // namespace crab

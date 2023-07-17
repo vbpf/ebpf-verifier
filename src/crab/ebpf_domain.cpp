@@ -4,15 +4,12 @@
 // This file is eBPF-specific, not derived from CRAB.
 
 #include <bitset>
-#include <functional>
 #include <optional>
 #include <utility>
 #include <vector>
 
 #include "boost/endian/conversion.hpp"
 #include "boost/range/algorithm/set_algorithm.hpp"
-
-#include "crab_utils/stats.hpp"
 
 #include "crab/array_domain.hpp"
 #include "crab/ebpf_domain.hpp"
@@ -289,10 +286,6 @@ assume_signed_64bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_sva
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
-    auto rlb = right_interval.lb();
-    auto lnub = left_interval_negative.truncate_to_sint(true).ub();
-    auto lnlb = left_interval_negative.truncate_to_sint(true).lb();
-
     if (right_interval <= interval_t::negative_int(true)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [INT_MIN, -1].
         return {strict ? (left_svalue < right_svalue) : (left_svalue <= right_svalue), number_t{0} <= left_uvalue,
@@ -316,9 +309,6 @@ assume_signed_32bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_sva
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
-    auto rlb = right_interval.lb();
-    auto lpub = left_interval_positive.truncate_to_sint(false).ub();
-
     if (right_interval <= interval_t::negative_int(false)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [INT_MIN, -1],
         // aka [INT_MAX+1, UINT_MAX].
@@ -327,7 +317,8 @@ assume_signed_32bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_sva
                 strict ? (left_svalue < right_svalue) : (left_svalue <= right_svalue)};
     } else if ((left_interval_negative | left_interval_positive) <= interval_t::nonnegative_int(false) &&
                right_interval <= interval_t::nonnegative_int(false)) {
-        // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX].
+        // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX]
+        auto lpub = left_interval_positive.truncate_to_sint(false).ub();
         return {left_svalue >= 0,
                 strict ? left_svalue < right_svalue : left_svalue <= right_svalue,
                 left_svalue <= left_uvalue,
@@ -383,9 +374,6 @@ assume_signed_32bit_gt(const NumAbsDomain& inv, bool strict, variable_t left_sva
                        const crab::interval_t& right_interval) {
     using crab::interval_t;
     using namespace crab::dsl_syntax;
-
-    auto rlb = right_interval.lb();
-    auto lpub = left_interval_positive.truncate_to_sint(false).ub();
 
     if (right_interval <= interval_t::nonnegative_int(false)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX].
@@ -1271,24 +1259,24 @@ bool ebpf_domain_t::TypeDomain::implies_type(const NumAbsDomain& inv, const line
     return inv.when(a).entail(b);
 }
 
-bool ebpf_domain_t::TypeDomain::is_in_group(const NumAbsDomain& m_inv, const Reg& r, TypeGroup group) const {
+bool ebpf_domain_t::TypeDomain::is_in_group(const NumAbsDomain& inv, const Reg& r, TypeGroup group) const {
     using namespace crab::dsl_syntax;
     variable_t t = reg_pack(r).type;
     switch (group) {
-    case TypeGroup::number: return m_inv.entail(t == T_NUM);
-    case TypeGroup::map_fd: return m_inv.entail(t == T_MAP);
-    case TypeGroup::map_fd_programs: return m_inv.entail(t == T_MAP_PROGRAMS);
-    case TypeGroup::ctx: return m_inv.entail(t == T_CTX);
-    case TypeGroup::packet: return m_inv.entail(t == T_PACKET);
-    case TypeGroup::stack: return m_inv.entail(t == T_STACK);
-    case TypeGroup::shared: return m_inv.entail(t == T_SHARED);
-    case TypeGroup::non_map_fd: return m_inv.entail(t >= T_NUM);
-    case TypeGroup::mem: return m_inv.entail(t >= T_PACKET);
-    case TypeGroup::mem_or_num: return m_inv.entail(t >= T_NUM) && m_inv.entail(t != T_CTX);
-    case TypeGroup::pointer: return m_inv.entail(t >= T_CTX);
-    case TypeGroup::ptr_or_num: return m_inv.entail(t >= T_NUM);
-    case TypeGroup::stack_or_packet: return m_inv.entail(t >= T_PACKET) && m_inv.entail(t <= T_STACK);
-    case TypeGroup::singleton_ptr: return m_inv.entail(t >= T_CTX) && m_inv.entail(t <= T_STACK);
+    case TypeGroup::number: return inv.entail(t == T_NUM);
+    case TypeGroup::map_fd: return inv.entail(t == T_MAP);
+    case TypeGroup::map_fd_programs: return inv.entail(t == T_MAP_PROGRAMS);
+    case TypeGroup::ctx: return inv.entail(t == T_CTX);
+    case TypeGroup::packet: return inv.entail(t == T_PACKET);
+    case TypeGroup::stack: return inv.entail(t == T_STACK);
+    case TypeGroup::shared: return inv.entail(t == T_SHARED);
+    case TypeGroup::non_map_fd: return inv.entail(t >= T_NUM);
+    case TypeGroup::mem: return inv.entail(t >= T_PACKET);
+    case TypeGroup::mem_or_num: return inv.entail(t >= T_NUM) && inv.entail(t != T_CTX);
+    case TypeGroup::pointer: return inv.entail(t >= T_CTX);
+    case TypeGroup::ptr_or_num: return inv.entail(t >= T_NUM);
+    case TypeGroup::stack_or_packet: return inv.entail(t >= T_PACKET) && inv.entail(t <= T_STACK);
+    case TypeGroup::singleton_ptr: return inv.entail(t >= T_CTX) && inv.entail(t <= T_STACK);
     }
     assert(false);
     return false;
@@ -2581,7 +2569,6 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             break;
         case Bin::Op::LSH:
             if (m_inv.entail(type_is_number(src_reg))) {
-                auto src = reg_pack(src_reg);
                 auto src_interval = m_inv.eval_interval(src.uvalue);
                 if (std::optional<number_t> sn = src_interval.singleton()) {
                     uint64_t imm = sn->cast_to_uint64() & (bin.is64 ? 63 : 31);
@@ -2600,7 +2587,6 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             break;
         case Bin::Op::RSH:
             if (m_inv.entail(type_is_number(src_reg))) {
-                auto src = reg_pack(src_reg);
                 auto src_interval = m_inv.eval_interval(src.uvalue);
                 if (std::optional<number_t> sn = src_interval.singleton()) {
                     uint64_t imm = sn->cast_to_uint64() & (bin.is64 ? 63 : 31);

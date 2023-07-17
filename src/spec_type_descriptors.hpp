@@ -32,13 +32,16 @@ struct EbpfMapDescriptor {
     unsigned int inner_map_fd;
 };
 
+constexpr unsigned int DEFAULT_MAP_FD = 0xffffffff;
+
 struct EbpfProgramType {
-    std::string name; // For ease of display, not used by the verifier.
-    const ebpf_context_descriptor_t* context_descriptor {};
-    uint64_t platform_specific_data {}; // E.g., integer program type.
-    std::vector<std::string> section_prefixes;
-    bool is_privileged {};
+    std::string name{}; // For ease of display, not used by the verifier.
+    const ebpf_context_descriptor_t* context_descriptor{};
+    uint64_t platform_specific_data{}; // E.g., integer program type.
+    std::vector<std::string> section_prefixes{};
+    bool is_privileged{};
 };
+
 void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o);
 
 using EquivalenceKey = std::tuple<
@@ -48,25 +51,25 @@ using EquivalenceKey = std::tuple<
     uint32_t /* max_entries */>;
 
 struct program_info {
-    const struct ebpf_platform_t* platform = nullptr;
-    std::vector<EbpfMapDescriptor> map_descriptors;
-    EbpfProgramType type;
-    std::map<EquivalenceKey, int> cache;
+    const struct ebpf_platform_t* platform{};
+    std::vector<EbpfMapDescriptor> map_descriptors{};
+    EbpfProgramType type{};
+    std::map<EquivalenceKey, int> cache{};
 };
 
-typedef struct _btf_line_info {
-    std::string file_name;
-    std::string source_line;
-    uint32_t line_number;
-    uint32_t column_number;
-} btf_line_info_t;
+struct btf_line_info_t {
+    std::string file_name{};
+    std::string source_line{};
+    uint32_t line_number{};
+    uint32_t column_number{};
+};
 
 struct raw_program {
-    std::string filename;
-    std::string section;
-    std::vector<ebpf_inst> prog;
-    program_info info;
-    std::vector<btf_line_info_t> line_info;
+    std::string filename{};
+    std::string section{};
+    std::vector<ebpf_inst> prog{};
+    program_info info{};
+    std::vector<btf_line_info_t> line_info{};
 };
 
 extern thread_local crab::lazy_allocator<program_info> global_program_info;

@@ -57,9 +57,7 @@ enum {
     INST_OP_JA = (INST_CLS_JMP | 0x00),
     INST_OP_CALL = (INST_CLS_JMP | 0x80),
     INST_OP_EXIT = (INST_CLS_JMP | 0x90),
-};
 
-enum {
     INST_ALU_OP_ADD  = 0x00,
     INST_ALU_OP_SUB  = 0x10,
     INST_ALU_OP_MUL  = 0x20,
@@ -74,10 +72,8 @@ enum {
     INST_ALU_OP_MOV  = 0xb0,
     INST_ALU_OP_ARSH = 0xc0,
     INST_ALU_OP_END  = 0xd0,
-    INST_ALU_OP_MASK = 0xf0
-};
+    INST_ALU_OP_MASK = 0xf0,
 
-enum {
     R0_RETURN_VALUE = 0,
     R1_ARG = 1,
     R2_ARG = 2,

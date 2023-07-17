@@ -37,7 +37,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   if (NOT NUGET)
     message("ERROR: You must first install nuget.exe from https://www.nuget.org/downloads")
   else ()
-    exec_program(${NUGET} ARGS install "Boost" -Version 1.81.0 -ExcludeVersion -OutputDirectory ${CMAKE_BINARY_DIR}/packages)
+    execute_process(${NUGET} ARGS install "Boost" -Version 1.81.0 -ExcludeVersion -OutputDirectory ${CMAKE_BINARY_DIR}/packages)
     set(BOOST_VERSION 1.81.0)
   endif()
   set(Boost_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/packages/boost/lib/native/include)
@@ -93,7 +93,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
     "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(COMMON_FLAGS -Wall -Wfatal-errors -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8)
 
-  set(RELEASE_FLAGS -O2 -flto -ffat-lto-objects)
+  set(RELEASE_FLAGS -O2 -flto=auto -ffat-lto-objects)
 
   set(DEBUG_FLAGS -O0 -g3 -fno-omit-frame-pointer)
 
