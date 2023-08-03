@@ -469,6 +469,7 @@ TEST_SECTION("build", "map_in_map_legacy.o", ".text")
 TEST_SECTION("build", "twomaps.o", ".text");
 TEST_SECTION("build", "twostackvars.o", ".text");
 TEST_SECTION("build", "twotypes.o", ".text");
+TEST_SECTION("build", "prog_array.o", ".text");
 
 // Test some programs that ought to fail verification.
 TEST_SECTION_REJECT("build", "badhelpercall.o", ".text")
