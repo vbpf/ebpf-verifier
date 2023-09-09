@@ -28,7 +28,7 @@ jobs:
         run: |
           sudo apt install libboost-dev libboost-filesystem-dev libboost-program-options-dev libyaml-cpp-dev valgrind
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
 
@@ -57,7 +57,7 @@ jobs:
       BUILD_CONFIGURATION: ${{matrix.configurations}}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
 
