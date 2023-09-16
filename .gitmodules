@@ -12,4 +12,4 @@
 	url = https://github.com/Alan-Jowett/bpf_conformance.git
 [submodule "external/libbtf"]
 	path = external/libbtf
-	url = https://github.com/Alan-Jowett/libbtf.git
+	url = https://github.com/microsoft/libbtf.git
