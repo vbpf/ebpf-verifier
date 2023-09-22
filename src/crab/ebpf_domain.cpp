@@ -1478,6 +1478,20 @@ void ebpf_domain_t::operator()(const Un& stmt) {
         neg(dst.svalue, dst.uvalue, stmt.is64 ? 64 : 32);
         havoc_offsets(stmt.dst);
         break;
+    case Un::Op::ZEXT32:
+    case Un::Op::SEXT32: {
+        // keep relational information if zext32/sext32 is no-op
+        if (stmt.op == Un::Op::ZEXT32 && m_inv.eval_interval(dst.uvalue) <= interval_t::unsigned_int(false)) {
+            break;
+        }
+        if (stmt.op == Un::Op::SEXT32 && m_inv.eval_interval(dst.svalue) <= interval_t::signed_int(false)) {
+            break;
+        }
+        auto [lsh, rsh] = splitExt32(stmt);
+        (*this)(lsh);
+        (*this)(rsh);
+        break;
+    }
     }
 }
 

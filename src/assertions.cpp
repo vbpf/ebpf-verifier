@@ -172,6 +172,7 @@ class AssertExtractor {
 
     vector<Assert> operator()(Un ins) {
         return {
+            // This is also true for ZEXT and SEXT
             Assert{TypeConstraint{ins.dst, TypeGroup::number}}
         };
     }

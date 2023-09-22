@@ -60,6 +60,8 @@ static uint8_t imm(Un::Op op) {
     case Op::LE32: return 32;
     case Op::BE64:
     case Op::LE64: return 64;
+    case Op::ZEXT32:
+    case Op::SEXT32: return 32;
     }
     assert(false);
     return {};
@@ -138,6 +140,13 @@ struct MarshalVisitor {
                 .offset = 0,
                 .imm = imm(b.op),
             }};
+        case Un::Op::ZEXT32:
+        case Un::Op::SEXT32: {
+            auto [lsh, rsh] = splitExt32(b);
+            auto lshift = this->operator()(lsh);
+            auto rshift = this->operator()(rsh);
+            return {lshift[0], rshift[0]};
+        }
         }
         assert(false);
         return {};

@@ -80,6 +80,10 @@ static auto getMemWidth(uint8_t opcode) -> int {
 //     return {};
 // }
 
+static Instruction shift32(Reg dst, Bin::Op op) {
+    return (Instruction)Bin{.op=op,.dst = dst, .v = Imm{32}, .is64=true, .lddw=false};
+}
+
 struct Unmarshaller {
     vector<vector<string>>& notes;
     const program_info& info;
@@ -397,14 +401,14 @@ struct Unmarshaller {
         for (size_t pc = 0; pc < insts.size();) {
             ebpf_inst inst = insts[pc];
             Instruction new_ins;
-            bool lddw = false;
+            bool skip_instruction = false;
             bool fallthrough = true;
             switch (inst.opcode & INST_CLS_MASK) {
             case INST_CLS_LD:
                 if (inst.opcode == INST_OP_LDDW_IMM) {
                     int32_t next_imm = pc < insts.size() - 1 ? insts[pc + 1].imm : 0;
                     new_ins = makeLddw(inst, next_imm, insts, static_cast<pc_t>(pc));
-                    lddw = true;
+                    skip_instruction = true;
                     break;
                 }
                 // fallthrough
@@ -413,7 +417,32 @@ struct Unmarshaller {
             case INST_CLS_STX: new_ins = makeMemOp(pc, inst); break;
 
             case INST_CLS_ALU:
-            case INST_CLS_ALU64: new_ins = makeAluOp(pc, inst); break;
+            case INST_CLS_ALU64: {
+                new_ins = makeAluOp(pc, inst);
+
+                // Merge (rX <<= 32; rX >>>= 32) into rX = zext32 rX
+                //       (rX <<= 32; rX >>= 32)  into rX = sext32 rX
+                if (pc >= insts.size() - 1)
+                    break;
+                ebpf_inst next = insts[pc + 1];
+                auto dst = Reg{inst.dst};
+
+                if (new_ins != shift32(dst, Bin::Op::LSH))
+                    break;
+
+                if ((next.opcode & INST_CLS_MASK) != INST_CLS_ALU64)
+                    break;
+                auto next_ins = makeAluOp(pc+1, next);
+                if (next_ins == shift32(dst, Bin::Op::RSH)) {
+                    new_ins = Un{.op = Un::Op::ZEXT32, .dst = dst, .is64 = true};
+                    skip_instruction = true;
+                } else if (next_ins == shift32(dst, Bin::Op::ARSH)) {
+                    new_ins = Un{.op = Un::Op::SEXT32, .dst = dst, .is64 = true};
+                    skip_instruction = true;
+                }
+
+                break;
+            }
 
             case INST_CLS_JMP32:
             case INST_CLS_JMP: {
@@ -454,7 +483,7 @@ struct Unmarshaller {
 
             pc++;
             note_next_pc();
-            if (lddw) {
+            if (skip_instruction) {
                 pc++;
                 note_next_pc();
             }

@@ -97,19 +97,27 @@ struct Bin {
 /// Unary operation.
 struct Un {
     enum class Op {
-        BE16, // dst = htobe16(dst)
-        BE32, // dst = htobe32(dst)
-        BE64, // dst = htobe64(dst)
-        LE16, // dst = htole16(dst)
-        LE32, // dst = htole32(dst)
-        LE64, // dst = htole64(dst)
-        NEG,  // dst = -dst
+        BE16, /// dst = htobe16(dst)
+        BE32, /// dst = htobe32(dst)
+        BE64, /// dst = htobe64(dst)
+        LE16, /// dst = htole16(dst)
+        LE32, /// dst = htole32(dst)
+        LE64, /// dst = htole64(dst)
+        NEG,  /// dst = -dst
+        ZEXT32, /// Zero extension: dst <<= 32; dst >>>= 32
+        SEXT32, /// Sign extension: dst <<= 32; dst >>= 32
     };
 
     Op op;
     Reg dst;
     bool is64{};
 };
+
+inline std::tuple<Bin, Bin> splitExt32(Un un) {
+    Bin::Op rshift_op = un.op == Un::Op::ZEXT32 ? Bin::Op::RSH : Bin::Op::ARSH;
+    return {Bin{.op = Bin::Op::LSH, .dst = un.dst, .v = Imm{.v = 32}, .is64 = true, .lddw = false},
+            Bin{.op = rshift_op, .dst = un.dst, .v = Imm{.v = 32}, .is64 = true, .lddw = false}};
+}
 
 /// This instruction is encoded similarly to LDDW.
 /// See comment in makeLddw() at asm_unmarshal.cpp

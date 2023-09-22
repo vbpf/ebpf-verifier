@@ -33,7 +33,7 @@ using crab::linear_expression_t;
 #define OPASSIGN R"_(\s*(\S*)=\s*)_"
 #define ASSIGN R"_(\s*=\s*)_"
 #define LONGLONG R"_(\s*(ll|)\s*)_"
-#define UNOP R"_((-|be16|be32|be64))_"
+#define UNOP R"_((-|be16|be32|be64|zext32|sext32))_"
 
 #define PLUSMINUS R"_((\s*[+-])\s*)_"
 #define LPAREN R"_(\s*\(\s*)_"
@@ -68,6 +68,8 @@ static const std::map<std::string, Un::Op> str_to_unop = {
     {"le32", Un::Op::LE32},
     {"le64", Un::Op::LE64},
     {"-", Un::Op::NEG},
+    {"zext32", Un::Op::ZEXT32},
+    {"sext32", Un::Op::SEXT32},
 };
 
 static const std::map<std::string, Condition::Op> str_to_cmpop = {
@@ -148,10 +150,18 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = reg(m[3]), .is64 = r.at(0) != 'w', .lddw = false};
     }
     if (regex_match(text, m, regex(WREG ASSIGN UNOP WREG))) {
-        if (m[1] != m[3]) throw std::invalid_argument(std::string("Invalid unary operation: ") + text);
-        std::string r = m[1];
-        bool is64 = r.at(0) != 'w';
-        return Un{.op = str_to_unop.at(m[2]), .dst = reg(m[1]), .is64 = is64};
+        std::string lhs = m[1];
+        std::string rhs = m[3];
+        bool is64 = lhs.at(0) != 'w';
+        auto op = str_to_unop.at(m[2]);
+        if (op == Un::Op::ZEXT32 || op == Un::Op::SEXT32) {
+            if (lhs.at(0) != 'r' || rhs.at(0) != 'w' || reg(lhs) != reg(rhs)) {
+                throw std::invalid_argument("zext/sext operations must be between r and w versions of the same register: rX = zext32 wX.");
+            }
+        } else if (m[1] != m[3]) {
+            throw std::invalid_argument("Unary operations must operate on the same register.");
+        }
+        return Un{.op = op, .dst = reg(lhs), .is64 = is64};
     }
     if (regex_match(text, m, regex(WREG OPASSIGN IMM LONGLONG))) {
         std::string r = m[1];

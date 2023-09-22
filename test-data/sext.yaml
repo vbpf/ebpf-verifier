@@ -1,0 +1,72 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+
+# Tests for signed/unsigned extension
+---
+test-case: small zext relational nop
+
+pre: ["r1.type=number", "r1.uvalue=[0, 5]",
+      "r2.type=number", "r2.uvalue=[0, 5]",
+      "r1.uvalue=r2.uvalue"]
+
+code:
+  <start>: |
+    r1 = zext32 w1 ; nop
+
+post:
+  - r1.type=number
+  - r1.uvalue=[0, 5]
+  - r2.type=number
+  - r2.uvalue=[0, 5]
+  - r1.uvalue=r2.uvalue
+---
+test-case: small sext relational nop
+
+pre: ["r1.type=number", "r1.svalue=[-5, 5]",
+      "r2.type=number", "r2.svalue=[-5, 5]",
+      "r1.svalue=r2.svalue"]
+
+code:
+  <start>: |
+    r1 = sext32 w1 ; nop
+
+post:
+  - r1.type=number
+  - r1.svalue=[-5, 5]
+  - r2.type=number
+  - r2.svalue=[-5, 5]
+  - r1.svalue=r2.svalue
+---
+test-case: large zext relational is two shifts
+
+pre: ["r1.type=number", "r1.uvalue=[0, 4294967299]",
+      "r2.type=number", "r2.uvalue=[0, 4294967299]",
+      "r1.uvalue=r2.uvalue"]
+
+code:
+  <start>: |
+    r1 = zext32 w1 ; nop
+
+post:
+  - r1.type=number
+  - r1.svalue=[0, 4294967295]
+  - r1.svalue=r1.uvalue
+  - r1.uvalue=[0, 4294967295]
+  - r2.type=number
+  - r2.uvalue=[0, 4294967299]
+---
+test-case: large sext relational is two shifts
+
+pre: ["r1.type=number", "r1.svalue=[-5, 4294967299]",
+      "r2.type=number", "r2.svalue=[-5, 4294967299]",
+      "r1.svalue=r2.svalue"]
+
+code:
+  <start>: |
+    r1 = sext32 w1 ; nop
+
+post:
+  - r1.type=number
+  - r1.svalue=[-2147483648, 2147483647]
+  - r2.type=number
+  - r2.svalue=[-5, 4294967299]

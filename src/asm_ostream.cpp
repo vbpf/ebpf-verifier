@@ -220,6 +220,8 @@ struct InstructionPrinterVisitor {
         case Un::Op::LE32: os_ << "le32 "; break;
         case Un::Op::LE64: os_ << "le64 "; break;
         case Un::Op::NEG: os_ << "-"; break;
+        case Un::Op::ZEXT32: os_ << "zext32 "; break;
+        case Un::Op::SEXT32: os_ << "sext32 "; break;
         }
         os_ << b.dst;
     }

@@ -69,9 +69,11 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
             Un::Op::LE32,
             Un::Op::LE64,
             Un::Op::NEG,
+            Un::Op::ZEXT32,
+            Un::Op::SEXT32,
         };
         for (auto op : ops)
-            compare_marshal_unmarshal(Un{.op = op, .dst = Reg{1}});
+            compare_marshal_unmarshal(Un{.op = op, .dst = Reg{1}, .is64 = true});
     }
 
     SECTION("LoadMapFd") { compare_marshal_unmarshal(LoadMapFd{.dst = Reg{1}, .mapfd = 1}, true); }
