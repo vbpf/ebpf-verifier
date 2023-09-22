@@ -201,6 +201,7 @@ post:
   - r1.uvalue=[255, 511]
   - r1.svalue=r1.uvalue
   - r2.type=number
+  - r2.svalue=[-128, 127]
 ---
 test-case: movsx16 register range to 64 bits
 
@@ -232,6 +233,7 @@ post:
   - r1.uvalue=[65535, 131071]
   - r1.svalue=r1.uvalue
   - r2.type=number
+  - r2.svalue=[-32768, 32767]
 ---
 test-case: movsx32 register range to 64 bits
 
@@ -263,3 +265,4 @@ post:
   - r1.uvalue=[4294967295, 8589934591]
   - r1.svalue=r1.uvalue
   - r2.type=number
+  - r2.svalue=[-2147483648, 2147483647]

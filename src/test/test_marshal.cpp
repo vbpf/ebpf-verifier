@@ -23,6 +23,23 @@ static void compare_unmarshal_marshal(const ebpf_inst& ins, const ebpf_inst& exp
     REQUIRE(memcmp(&expected_result, &result, sizeof(result)) == 0);
 }
 
+// Verify that if we unmarshal two instructions and then re-marshal it,
+// we get what we expect.
+static void compare_unmarshal_marshal(const ebpf_inst& ins1, const ebpf_inst& ins2, const ebpf_inst& expected_result) {
+    program_info info{.platform = &g_ebpf_platform_linux,
+                      .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")};
+    const ebpf_inst exit{.opcode = INST_OP_EXIT};
+    InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", {ins1, ins2, exit, exit}, info}));
+    REQUIRE(parsed.size() == 3);
+    auto [_, single, _2] = parsed.front();
+    (void)_;  // unused
+    (void)_2; // unused
+    std::vector<ebpf_inst> marshaled = marshal(single, 0);
+    REQUIRE(marshaled.size() == 1);
+    ebpf_inst result = marshaled.back();
+    REQUIRE(memcmp(&expected_result, &result, sizeof(result)) == 0);
+}
+
 // Verify that if we unmarshal a 64-bit immediate instruction and then re-marshal it,
 // we get what we expect.
 static void compare_unmarshal_marshal(const ebpf_inst& ins1, const ebpf_inst& ins2, const ebpf_inst& expected_result1,
@@ -131,7 +148,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
             Un::Op::SWAP64
         };
         for (auto op : ops)
-            compare_marshal_unmarshal(Un{.op = op, .dst = Reg{1}});
+            compare_marshal_unmarshal(Un{.op = op, .dst = Reg{1}, .is64 = true});
     }
 
     SECTION("LoadMapFd") { compare_marshal_unmarshal(LoadMapFd{.dst = Reg{1}, .mapfd = 1}, true); }
@@ -270,6 +287,20 @@ TEST_CASE("disasm_marshal_Mem", "[disasm][marshal]") {
             compare_marshal_unmarshal(Mem{.access = access, .value = Imm{5}, .is_load = false});
         }
     }
+}
+
+TEST_CASE("unmarshal extension opcodes", "[disasm][marshal]") {
+    // Merge (rX <<= 32; rX >>>= 32) into wX = rX.
+    compare_unmarshal_marshal(
+        ebpf_inst{.opcode = INST_ALU_OP_LSH | INST_SRC_IMM | INST_CLS_ALU64, .dst = 1, .imm = 32},
+        ebpf_inst{.opcode = INST_ALU_OP_RSH | INST_SRC_IMM | INST_CLS_ALU64, .dst = 1, .imm = 32},
+        ebpf_inst{.opcode = INST_ALU_OP_MOV | INST_SRC_REG | INST_CLS_ALU, .dst = 1, .src = 1});
+
+    // Merge (rX <<= 32; rX >>= 32)  into rX s32= rX.
+    compare_unmarshal_marshal(
+        ebpf_inst{.opcode = INST_ALU_OP_LSH | INST_SRC_IMM | INST_CLS_ALU64, .dst = 1, .imm = 32},
+        ebpf_inst{.opcode = INST_ALU_OP_ARSH | INST_SRC_IMM | INST_CLS_ALU64, .dst = 1, .imm = 32},
+        ebpf_inst{.opcode = INST_ALU_OP_MOV | INST_SRC_REG | INST_CLS_ALU64, .dst = 1, .src = 1, .offset = 32});
 }
 
 TEST_CASE("fail unmarshal invalid opcodes", "[disasm][marshal]") {
