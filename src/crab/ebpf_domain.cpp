@@ -2376,18 +2376,20 @@ void ebpf_domain_t::lshr(const Reg& dst_reg, int imm, int finite_width) {
     havoc_offsets(dst_reg);
 }
 
+static inline int _movsx_bits(Bin::Op op) {
+    switch (op) {
+    case Bin::Op::MOVSX8: return 8;
+    case Bin::Op::MOVSX16: return 16;
+    case Bin::Op::MOVSX32: return 32;
+    default: throw std::exception();
+    }
+}
+
 void ebpf_domain_t::sign_extend(const Reg& dst_reg, const linear_expression_t& right_svalue, int finite_width,
                                 Bin::Op op) {
     using namespace crab;
 
-    int bits;
-    switch (op) {
-    case Bin::Op::MOVSX8: bits = 8; break;
-    case Bin::Op::MOVSX16: bits = 16; break;
-    case Bin::Op::MOVSX32: bits = 32; break;
-    default: throw std::exception();
-    }
-
+    int bits = _movsx_bits(op);
     reg_pack_t dst = reg_pack(dst_reg);
     interval_t right_interval = m_inv.eval_interval(right_svalue);
     type_inv.assign_type(m_inv, dst_reg, T_NUM);
@@ -2395,8 +2397,11 @@ void ebpf_domain_t::sign_extend(const Reg& dst_reg, const linear_expression_t& r
     int64_t span = 1ULL << bits;
     if (right_interval.ub() - right_interval.lb() >= number_t{span}) {
         // Interval covers the full space.
-        havoc(dst.svalue);
-        return;
+        if (bits == 64) {
+            havoc(dst.svalue);
+            return;
+        }
+        right_interval = interval_t::signed_int(bits);
     }
     int64_t mask = 1ULL << (bits - 1);
 
@@ -2486,11 +2491,6 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             overflow_unsigned(m_inv, dst.uvalue, (bin.is64) ? 64 : 32);
             type_inv.assign_type(m_inv, bin.dst, T_NUM);
             havoc_offsets(bin.dst);
-            break;
-        case Bin::Op::MOVSX8:
-        case Bin::Op::MOVSX16:
-        case Bin::Op::MOVSX32:
-            sign_extend(bin.dst, number_t{(int32_t)imm}, finite_width, bin.op);
             break;
         case Bin::Op::ADD:
             if (imm == 0)
@@ -2737,6 +2737,10 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::MOVSX8:
         case Bin::Op::MOVSX16:
         case Bin::Op::MOVSX32:
+            // Keep relational information if operation is a no-op.
+            if ((dst.svalue == src.svalue) && (m_inv.eval_interval(dst.svalue) <= interval_t::signed_int(_movsx_bits(bin.op)))) {
+                return;
+            }
             if (m_inv.entail(type_is_number(src_reg))) {
                 sign_extend(bin.dst, src.svalue, finite_width, bin.op);
                 break;
@@ -2746,6 +2750,10 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::MOV:
+            // Keep relational information if operation is a no-op.
+            if ((dst.svalue == src.svalue) && (m_inv.eval_interval(dst.uvalue) <= interval_t::unsigned_int(bin.is64))) {
+                return;
+            }
             assign(dst.svalue, src.svalue);
             assign(dst.uvalue, src.uvalue);
             havoc_offsets(bin.dst);

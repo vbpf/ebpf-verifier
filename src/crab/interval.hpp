@@ -497,13 +497,16 @@ class interval_t final {
     }
     // Return an interval in the range [INT_MIN, INT_MAX] which can only
     // be represented as an svalue.
-    static interval_t signed_int(bool is64) {
-        if (is64) {
-            return {number_t{std::numeric_limits<int64_t>::min()}, number_t{std::numeric_limits<int64_t>::max()}};
-        } else {
-            return {number_t{std::numeric_limits<int32_t>::min()}, number_t{std::numeric_limits<int32_t>::max()}};
+    static interval_t signed_int(int bits) {
+        switch (bits) {
+        case 64: return {number_t{std::numeric_limits<int64_t>::min()}, number_t{std::numeric_limits<int64_t>::max()}};
+        case 32: return {number_t{std::numeric_limits<int32_t>::min()}, number_t{std::numeric_limits<int32_t>::max()}};
+        case 16: return {number_t{std::numeric_limits<int16_t>::min()}, number_t{std::numeric_limits<int16_t>::max()}};
+        case 8: return {number_t{std::numeric_limits<int8_t>::min()}, number_t{std::numeric_limits<int8_t>::max()}};
+        default: throw std::exception();
         }
     }
+    static interval_t signed_int(bool is64) { return signed_int(is64 ? 64 : 32); }
     // Return an interval in the range [0, UINT_MAX] which can only be
     // represented as a uvalue.
     static interval_t unsigned_int(bool is64) {
