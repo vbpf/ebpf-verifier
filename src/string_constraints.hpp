@@ -26,7 +26,7 @@ enum type_encoding_t {
 };
 
 struct string_invariant {
-    std::optional<std::set<std::string>> maybe_inv;
+    std::optional<std::set<std::string>> maybe_inv{};
 
     string_invariant() = default;
 

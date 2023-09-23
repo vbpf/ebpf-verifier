@@ -1,7 +1,6 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
 #include <cassert>
-#include <cstring> // memcmp
 #include <iostream>
 #include <string>
 #include <vector>
@@ -429,19 +428,6 @@ struct Unmarshaller {
                 break;
             }
             }
-            /*
-            vector<ebpf_inst> marshalled = marshal(new_ins[0], pc);
-            ebpf_inst actual = marshalled[0];
-            if (std::memcmp(&actual, &inst, sizeof(inst))) {
-                std::cerr << "new: " << new_ins[0] << "\n";
-                compare("opcode", actual.opcode, inst.opcode);
-                compare("dst", actual.dst, inst.dst);
-                compare("src", actual.src, inst.src);
-                compare("offset", actual.offset, inst.offset);
-                compare("imm", actual.imm, inst.imm);
-                std::cerr << "\n";
-            }
-            */
             if (pc == insts.size() - 1 && fallthrough)
                 note("fallthrough in last instruction");
 

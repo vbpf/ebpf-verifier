@@ -1,22 +1,20 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
-#include <cassert>
 #include <iostream>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
-#include <set>
-#include <map>
 #include <sys/stat.h>
 
-#include "asm_files.hpp"
 #include "libbtf/btf.h"
 #include "libbtf/btf_json.h"
 #include "libbtf/btf_map.h"
 #include "libbtf/btf_parse.h"
-#include "platform.hpp"
-
 #include "elfio/elfio.hpp"
+
+#include "asm_files.hpp"
+#include "platform.hpp"
 
 using std::cout;
 using std::string;
@@ -183,7 +181,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                 .key_size = map.key_size,
                 .value_size = map.value_size,
                 .max_entries = map.max_entries,
-                .inner_map_fd = map.inner_map_type_id != 0 ? map.inner_map_type_id : -1,
+                .inner_map_fd = map.inner_map_type_id != 0 ? map.inner_map_type_id : DEFAULT_MAP_FD,
             });
         }
         map_record_size_or_map_offsets = map_offsets;
@@ -203,7 +201,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         // Replace the typeids with the pseudo-fds.
         for (auto &map_descriptor : info.map_descriptors) {
             map_descriptor.original_fd = type_id_to_fd_map[map_descriptor.original_fd];
-            if (map_descriptor.inner_map_fd != -1) {
+            if (map_descriptor.inner_map_fd != DEFAULT_MAP_FD) {
                 map_descriptor.inner_map_fd = type_id_to_fd_map[map_descriptor.inner_map_fd];
             }
         }

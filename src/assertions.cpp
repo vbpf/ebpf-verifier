@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "asm_syntax.hpp"
-#include "ebpf_vm_isa.hpp"
 #include "platform.hpp"
 #include "crab/cfg.hpp"
 
