@@ -29,11 +29,11 @@ static EbpfMapType ebpf_get_map_type(uint32_t platform_specific_type) {
 
 static EbpfHelperPrototype ebpf_get_helper_prototype(int32_t n) {
     return {};
-};
+}
 
 static bool ebpf_is_helper_usable(int32_t n){
     return false;
-};
+}
 
 static void ebpf_parse_maps_section(vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t map_record_size, int map_count,
                                     const struct ebpf_platform_t* platform, ebpf_verifier_options_t options) {
@@ -225,15 +225,14 @@ static Diff<T> make_diff(const T& actual, const T& expected) {
     };
 }
 
-std::optional<Failure> run_yaml_test_case(const TestCase& _test_case, bool debug) {
-    TestCase test_case = _test_case;
+std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
     if (debug) {
         test_case.options.print_failures = true;
         test_case.options.print_invariants = true;
         test_case.options.no_simplify = true;
     }
 
-    ebpf_context_descriptor_t context_descriptor{64, 0, 8, -1};
+    ebpf_context_descriptor_t context_descriptor{64, 0, 4, -1};
     EbpfProgramType program_type = make_program_type(test_case.name, &context_descriptor);
 
     program_info info{&g_platform_test, {}, program_type};

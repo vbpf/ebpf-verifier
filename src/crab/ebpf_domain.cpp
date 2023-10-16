@@ -909,8 +909,39 @@ ebpf_domain_t ebpf_domain_t::operator&(const ebpf_domain_t& other) const {
     return ebpf_domain_t(m_inv & other.m_inv, stack & other.stack);
 }
 
-ebpf_domain_t ebpf_domain_t::widen(const ebpf_domain_t& other) {
-    return ebpf_domain_t(m_inv.widen(other.m_inv), stack | other.stack);
+ebpf_domain_t ebpf_domain_t::calculate_constant_limits() {
+    ebpf_domain_t inv;
+    using namespace crab::dsl_syntax;
+    for (int i : {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}) {
+        auto r = reg_pack(i);
+        inv += r.svalue <= std::numeric_limits<int32_t>::max();
+        inv += r.svalue >= std::numeric_limits<int32_t>::min();
+        inv += r.uvalue <= std::numeric_limits<uint32_t>::max();
+        inv += r.uvalue >= 0;
+        inv += r.stack_offset <= EBPF_STACK_SIZE;
+        inv += r.stack_offset >= 0;
+        inv += r.shared_offset <= r.shared_region_size;
+        inv += r.shared_offset >= 0;
+        inv += r.packet_offset <= variable_t::packet_size();
+        inv += r.packet_offset >= 0;
+        if (thread_local_options.check_termination) {
+            for (variable_t counter : variable_t::get_instruction_counters()) {
+                inv += counter <= std::numeric_limits<int32_t>::max();
+                inv += counter >= 0;
+                inv += counter <= r.svalue;
+            }
+        }
+    }
+    return inv;
+}
+
+static const ebpf_domain_t constant_limits = ebpf_domain_t::calculate_constant_limits();
+
+ebpf_domain_t ebpf_domain_t::widen(const ebpf_domain_t& other, bool to_constants) {
+    ebpf_domain_t res{m_inv.widen(other.m_inv), stack | other.stack};
+    if (to_constants)
+        return res & constant_limits;
+    return res;
 }
 
 ebpf_domain_t ebpf_domain_t::narrow(const ebpf_domain_t& other) {
@@ -1333,19 +1364,10 @@ void ebpf_domain_t::overflow_unsigned(NumAbsDomain& inv, variable_t lhs, int fin
     overflow_bounds(inv, lhs, span, finite_width, false);
 }
 
-void ebpf_domain_t::operator()(const basic_block_t& bb, bool check_termination) {
+void ebpf_domain_t::operator()(const basic_block_t& bb) {
     for (const Instruction& statement : bb) {
         std::visit(*this, statement);
     }
-    if (check_termination) {
-        // +1 to avoid being tricked by empty loops
-        add(variable_t::instruction_count(), crab::number_t((unsigned)bb.size() + 1));
-    }
-}
-
-bound_t ebpf_domain_t::get_instruction_count_upper_bound() {
-    const auto& ub = m_inv[variable_t::instruction_count()].ub();
-    return ub;
 }
 
 void ebpf_domain_t::check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb,
@@ -2681,7 +2703,7 @@ void ebpf_domain_t::initialize_packet(ebpf_domain_t& inv) {
 ebpf_domain_t ebpf_domain_t::from_constraints(const std::set<std::string>& constraints, bool setup_constraints) {
     ebpf_domain_t inv;
     if (setup_constraints) {
-        inv = ebpf_domain_t::setup_entry(false, false);
+        inv = ebpf_domain_t::setup_entry(false);
     }
     auto numeric_ranges = std::vector<crab::interval_t>();
     for (const auto& cst : parse_linear_constraints(constraints, numeric_ranges)) {
@@ -2696,7 +2718,7 @@ ebpf_domain_t ebpf_domain_t::from_constraints(const std::set<std::string>& const
     return inv;
 }
 
-ebpf_domain_t ebpf_domain_t::setup_entry(bool check_termination, bool init_r1) {
+ebpf_domain_t ebpf_domain_t::setup_entry(bool init_r1) {
     using namespace crab::dsl_syntax;
 
     ebpf_domain_t inv;
@@ -2719,10 +2741,21 @@ ebpf_domain_t ebpf_domain_t::setup_entry(bool check_termination, bool init_r1) {
     }
 
     initialize_packet(inv);
-    if (check_termination) {
-        inv.assign(variable_t::instruction_count(), 0);
-    }
     return inv;
 }
 
+void ebpf_domain_t::initialize_instruction_count(const label_t label) {
+    m_inv.assign(variable_t::instruction_count(to_string(label)), 0);
+}
+
+bound_t ebpf_domain_t::get_instruction_count_upper_bound() {
+    crab::bound_t ub{number_t{0}};
+    for (variable_t counter : variable_t::get_instruction_counters())
+        ub += std::max(ub, m_inv[counter].ub());
+    return ub;
+}
+
+void ebpf_domain_t::operator()(const IncrementLoopCounter& ins) {
+    this->add(variable_t::instruction_count(to_string(ins.name)), 1);
+}
 } // namespace crab

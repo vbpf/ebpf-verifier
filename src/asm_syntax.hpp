@@ -309,7 +309,11 @@ struct Assert {
     Assert(AssertionConstraint cst): cst(cst) { }
 };
 
-using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Exit, Jmp, Mem, Packet, LockAdd, Assume, Assert>;
+struct IncrementLoopCounter {
+    label_t name;
+};
+
+using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Exit, Jmp, Mem, Packet, LockAdd, Assume, Assert, IncrementLoopCounter>;
 
 using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
 using InstructionSeq = std::vector<LabeledInstruction>;
@@ -382,6 +386,7 @@ DECLARE_EQ5(ValidAccess, reg, offset, width, or_null, access_type)
 DECLARE_EQ3(ValidMapKeyValue, access_reg, map_fd_reg, key)
 DECLARE_EQ1(ZeroCtxOffset, reg)
 DECLARE_EQ1(Assert, cst)
+DECLARE_EQ1(IncrementLoopCounter, name)
 
 }
 

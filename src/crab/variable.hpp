@@ -75,8 +75,8 @@ class variable_t final {
     static variable_t kind_var(data_kind_t kind, variable_t type_variable);
     static variable_t meta_offset();
     static variable_t packet_size();
-    static variable_t instruction_count();
-
+    static std::vector<variable_t> get_instruction_counters();
+    static variable_t instruction_count(const std::string& label);
     [[nodiscard]] bool is_in_stack() const;
 
     struct Hasher {

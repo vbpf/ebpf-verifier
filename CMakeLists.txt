@@ -80,10 +80,8 @@ file(GLOB LIB_SRC
 file(GLOB ALL_TEST
         "./src/test/test.cpp"
         "./src/test/test_conformance.cpp"
-        "./src/test/test_loop.cpp"
         "./src/test/test_marshal.cpp"
         "./src/test/test_print.cpp"
-        "./src/test/test_termination.cpp"
         "./src/test/test_verify.cpp"
         "./src/test/test_wto.cpp"
         "./src/test/test_yaml.cpp"

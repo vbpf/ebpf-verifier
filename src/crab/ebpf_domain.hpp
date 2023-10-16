@@ -41,20 +41,20 @@ class ebpf_domain_t final {
     ebpf_domain_t operator|(const ebpf_domain_t& other) const&;
     ebpf_domain_t operator|(const ebpf_domain_t& other) &&;
     ebpf_domain_t operator&(const ebpf_domain_t& other) const;
-    ebpf_domain_t widen(const ebpf_domain_t& other);
+    ebpf_domain_t widen(const ebpf_domain_t& other, bool to_constants);
     ebpf_domain_t widening_thresholds(const ebpf_domain_t& other, const crab::iterators::thresholds_t& ts);
     ebpf_domain_t narrow(const ebpf_domain_t& other);
 
     typedef bool check_require_func_t(NumAbsDomain&, const linear_constraint_t&, std::string);
     void set_require_check(std::function<check_require_func_t> f);
     bound_t get_instruction_count_upper_bound();
-    static ebpf_domain_t setup_entry(bool check_termination, bool init_r1);
+    static ebpf_domain_t setup_entry(bool init_r1);
 
     static ebpf_domain_t from_constraints(const std::set<std::string>& constraints, bool setup_constraints);
     string_invariant to_set();
 
     // abstract transformers
-    void operator()(const basic_block_t& bb, bool check_termination);
+    void operator()(const basic_block_t& bb);
 
     void operator()(const Addable&);
     void operator()(const Assert&);
@@ -77,7 +77,10 @@ class ebpf_domain_t final {
     void operator()(const ValidSize&);
     void operator()(const ValidStore&);
     void operator()(const ZeroCtxOffset&);
+    void operator()(const IncrementLoopCounter&);
 
+    void initialize_instruction_count(label_t label);
+    static ebpf_domain_t calculate_constant_limits();
   private:
     // private generic domain functions
     void operator+=(const linear_constraint_t& cst);
