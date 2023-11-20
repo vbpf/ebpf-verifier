@@ -91,13 +91,23 @@ struct Unmarshaller {
         case INST_ALU_OP_ADD: return Bin::Op::ADD;
         case INST_ALU_OP_SUB: return Bin::Op::SUB;
         case INST_ALU_OP_MUL: return Bin::Op::MUL;
-        case INST_ALU_OP_DIV: return Bin::Op::UDIV;
+        case INST_ALU_OP_DIV:
+            switch (inst.offset) {
+            case 0: return Bin::Op::UDIV;
+            case 1: return Bin::Op::SDIV;
+            default: throw InvalidInstruction{pc, "invalid ALU op 0x30"};
+            }
         case INST_ALU_OP_OR: return Bin::Op::OR;
         case INST_ALU_OP_AND: return Bin::Op::AND;
         case INST_ALU_OP_LSH: return Bin::Op::LSH;
         case INST_ALU_OP_RSH: return Bin::Op::RSH;
         case INST_ALU_OP_NEG: return Un::Op::NEG;
-        case INST_ALU_OP_MOD: return Bin::Op::UMOD;
+        case INST_ALU_OP_MOD:
+            switch (inst.offset) {
+            case 0: return Bin::Op::UMOD;
+            case 1: return Bin::Op::SMOD;
+            default: throw InvalidInstruction{pc, "invalid ALU op 0x90"};
+            }
         case INST_ALU_OP_XOR: return Bin::Op::XOR;
         case INST_ALU_OP_MOV: return Bin::Op::MOV;
         case INST_ALU_OP_ARSH:

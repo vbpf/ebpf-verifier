@@ -58,6 +58,7 @@ static const std::map<std::string, Bin::Op> str_to_binop = {
     {"", Bin::Op::MOV},   {"+", Bin::Op::ADD},  {"-", Bin::Op::SUB},    {"*", Bin::Op::MUL},
     {"/", Bin::Op::UDIV}, {"%", Bin::Op::UMOD}, {"|", Bin::Op::OR},     {"&", Bin::Op::AND},
     {"<<", Bin::Op::LSH}, {">>", Bin::Op::RSH}, {"s>>", Bin::Op::ARSH}, {"^", Bin::Op::XOR},
+    {"s/", Bin::Op::SDIV}, {"s%", Bin::Op::SMOD},
 };
 
 static const std::map<std::string, Un::Op> str_to_unop = {

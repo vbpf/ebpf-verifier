@@ -1,0 +1,571 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+---
+test-case: integer divided by non-integer
+
+pre: ["r1.type=number", "r1.svalue=6", "r1.uvalue=6",
+      "r2.svalue=1", "r2.uvalue=1"]
+
+code:
+  <start>: |
+    r1 s/= r2
+
+post:
+  - r1.type=number
+  - r1.svalue=6
+  - r1.uvalue=6
+  - r2.svalue=1
+  - r2.uvalue=1
+
+messages:
+  - "0: Only numbers can be used as divisors (r2 != 0)"
+---
+test-case: non-zero divided by zero immediate
+
+pre: ["r1.type=number", "r1.svalue=6", "r1.uvalue=6"]
+
+code:
+  <start>: |
+    r1 s/= 0
+
+post:
+  - r1.type=number
+  - r1.svalue=0
+  - r1.uvalue=0
+---
+test-case: zero divided by zero immediate
+
+pre: ["r1.type=number", "r1.svalue=0", "r1.uvalue=0"]
+
+code:
+  <start>: |
+    r1 s/= 0
+
+post:
+  - r1.type=number
+  - r1.svalue=0
+  - r1.uvalue=0
+---
+test-case: non-zero divided by zero register
+
+pre: ["r1.type=number", "r1.svalue=6", "r1.uvalue=6",
+      "r2.type=number", "r2.svalue=0", "r2.uvalue=0"]
+
+options: ["!allow_division_by_zero"]
+
+code:
+  <start>: |
+    r1 s/= r2
+
+post:
+  - r1.type=number
+  - r1.svalue=0
+  - r1.uvalue=0
+  - r2.type=number
+  - r2.svalue=0
+  - r2.uvalue=0
+
+messages:
+  - "0: Possible division by zero (r2 != 0)"
+---
+test-case: non-zero divided by zero register without warning
+
+pre: ["r1.type=number", "r1.svalue=6", "r1.uvalue=6",
+      "r2.type=number", "r2.svalue=0", "r2.uvalue=0"]
+
+code:
+  <start>: |
+    r1 s/= r2
+
+post:
+  - r1.type=number
+  - r1.svalue=0
+  - r1.uvalue=0
+  - r2.type=number
+  - r2.svalue=0
+  - r2.uvalue=0
+---
+test-case: zero divided by zero register
+
+pre: ["r1.type=number", "r1.svalue=0", "r1.uvalue=0",
+      "r2.type=number", "r2.svalue=0", "r2.uvalue=0"]
+
+options: ["!allow_division_by_zero"]
+
+code:
+  <start>: |
+    r1 s/= r2
+
+post:
+  - r1.type=number
+  - r1.svalue=0
+  - r1.uvalue=0
+  - r2.type=number
+  - r2.svalue=0
+  - r2.uvalue=0
+
+messages:
+  - "0: Possible division by zero (r2 != 0)"
+---
+test-case: non-zero divided by possibly zero register
+
+pre: ["r1.type=number", "r1.svalue=6", "r1.uvalue=6",
+      "r2.type=number", "r2.svalue=[-5, 5]"]
+
+options: ["!allow_division_by_zero"]
+
+code:
+  <start>: |
+    r1 s/= r2  ; this could divide by 0
+
+post:
+  - r1.type=number
+  - r1.svalue=[-6, 6]
+  - r2.type=number
+  - r2.svalue=[-5, 5]
+
+messages:
+  - "0: Possible division by zero (r2 != 0)"
+---
+test-case: zero divided by possibly zero register
+
+pre: ["r1.type=number", "r1.svalue=0", "r1.uvalue=0",
+      "r2.type=number", "r2.svalue=[-5, 5]"]
+
+options: ["!allow_division_by_zero"]
+
+code:
+  <start>: |
+    r1 s/= r2 ; this could divide by 0 but ok to set to 0
+
+post:
+  - r1.type=number
+  - r1.svalue=0
+  - r1.uvalue=0
+  - r2.type=number
+  - r2.svalue=[-5, 5]
+
+messages:
+  - "0: Possible division by zero (r2 != 0)"
+---
+test-case: non-zero divided by possibly zero register 2
+
+pre: ["r1.type=number", "r1.svalue=6", "r1.uvalue=6",
+      "r2.type=number", "r2.svalue=[0, 5]", "r2.uvalue=[0, 5]", "r2.svalue=r2.uvalue"]
+
+options: ["!allow_division_by_zero"]
+
+code:
+  <start>: |
+    r1 s/= r2  ; this could divide by 0
+
+post:
+  - r1.type=number
+  - r1.svalue=[0, 6]
+  - r1.uvalue=[0, 6]
+  - r1.svalue=r1.uvalue
+  - r2.type=number
+  - r2.svalue=[0, 5]
+  - r2.uvalue=[0, 5]
+  - r2.svalue=r2.uvalue
+
+messages:
+  - "0: Possible division by zero (r2 != 0)"
+---
+test-case: zero divided by possibly zero register 2
+
+options: ["!allow_division_by_zero"]
+
+pre: ["r1.type=number", "r1.svalue=0", "r1.uvalue=0",
+      "r2.type=number", "r2.svalue=[-5, 0]"]
+
+code:
+  <start>: |
+    r1 s/= r2 ; this could divide by 0 but ok to set to 0
+
+post:
+  - r1.type=number
+  - r1.svalue=0
+  - r1.uvalue=0
+  - r2.type=number
+  - r2.svalue=[-5, 0]
+
+messages:
+  - "0: Possible division by zero (r2 != 0)"
+---
+test-case: non-zero divided by undefined value register
+
+options: ["!allow_division_by_zero"]
+
+pre: ["r1.type=number", "r1.svalue=6", "r1.uvalue=6",
+      "r2.type=number"]
+
+code:
+  <start>: |
+    r1 s/= r2  ; this could divide by 0
+
+post:
+  - r1.type=number
+  - r1.svalue=[-6, 6]
+  - r2.type=number
+
+messages:
+  - "0: Possible division by zero (r2 != 0)"
+---
+test-case: zero divided by undefined value register
+
+options: ["!allow_division_by_zero"]
+
+pre: ["r1.type=number", "r1.svalue=0", "r1.uvalue=0",
+      "r2.type=number"]
+
+code:
+  <start>: |
+    r1 s/= r2  ; this could divide by 0
+
+post:
+  - r1.type=number
+  - r1.svalue=0
+  - r1.uvalue=0
+  - r2.type=number
+
+messages:
+  - "0: Possible division by zero (r2 != 0)"
+---
+test-case: undefined value register divided by signed non-zero range
+
+pre: ["r1.type=number", "r1.svalue=[-9223372036854775808, -1]",
+      "r2.type=number"]
+
+code:
+  <start>: |
+    r2 s/= r1
+
+post:
+  - r1.type=number
+  - r1.svalue=[-9223372036854775808, -1]
+  - r2.type=number
+---
+test-case: non-zero modulo zero immediate
+
+pre: ["r1.type=number", "r1.svalue=-6", "r1.uvalue=18446744073709551610"]
+
+code:
+  <start>: |
+    r1 s%= 0
+
+post:
+  - r1.type=number
+  - r1.svalue=-6
+  - r1.uvalue=18446744073709551610
+---
+test-case: zero modulo zero immediate
+
+pre: ["r1.type=number", "r1.svalue=0", "r1.uvalue=0"]
+
+code:
+  <start>: |
+    r1 s%= 0
+
+post:
+  - r1.type=number
+  - r1.svalue=0
+  - r1.uvalue=0
+---
+test-case: non-zero modulo zero register
+
+options: ["!allow_division_by_zero"]
+
+pre: ["r1.type=number", "r1.svalue=-6", "r1.uvalue=18446744073709551610",
+      "r2.type=number", "r2.svalue=0", "r2.uvalue=0"]
+
+code:
+  <start>: |
+    r1 s%= r2
+
+post:
+  - r1.type=number
+  - r1.svalue=-6
+  - r1.uvalue=18446744073709551610
+  - r2.type=number
+  - r2.svalue=0
+  - r2.uvalue=0
+
+messages:
+  - "0: Possible division by zero (r2 != 0)"
+---
+test-case: non-zero modulo zero register without warning
+
+pre: ["r1.type=number", "r1.svalue=-6", "r1.uvalue=18446744073709551610",
+      "r2.type=number", "r2.svalue=0", "r2.uvalue=0"]
+
+code:
+  <start>: |
+    r1 s%= r2
+
+post:
+  - r1.type=number
+  - r1.svalue=-6
+  - r1.uvalue=18446744073709551610
+  - r2.type=number
+  - r2.svalue=0
+  - r2.uvalue=0
+---
+test-case: zero modulo zero register
+
+options: ["!allow_division_by_zero"]
+
+pre: ["r1.type=number", "r1.svalue=0", "r1.uvalue=0",
+      "r2.type=number", "r2.svalue=0", "r2.uvalue=0"]
+
+code:
+  <start>: |
+    r1 s%= r2
+
+post:
+  - r1.type=number
+  - r1.svalue=0
+  - r1.uvalue=0
+  - r2.type=number
+  - r2.svalue=0
+  - r2.uvalue=0
+
+messages:
+  - "0: Possible division by zero (r2 != 0)"
+---
+test-case: non-zero modulo possibly zero register
+
+options: ["!allow_division_by_zero"]
+
+pre: ["r1.type=number", "r1.svalue=6", "r1.uvalue=6",
+      "r2.type=number", "r2.svalue=[-5, 5]"]
+
+code:
+  <start>: |
+    r1 s%= r2 ; this could do modulo 0 so could set r1 = r2
+
+post:
+  - r1.type=number
+  - r1.svalue=[0, 6]
+  - r1.uvalue=[0, 6]
+  - r1.svalue=r1.uvalue
+  - r2.type=number
+  - r2.svalue=[-5, 5]
+
+messages:
+  - "0: Possible division by zero (r2 != 0)"
+---
+test-case: zero modulo possibly zero register
+
+options: ["!allow_division_by_zero"]
+
+pre: ["r1.type=number", "r1.svalue=0", "r1.uvalue=0",
+      "r2.type=number", "r2.svalue=[-5, 5]"]
+
+code:
+  <start>: |
+    r1 s%= r2 ; this could do modulo 0 so could set r1 = r2
+
+post:
+  - r1.type=number
+  - r1.svalue=0
+  - r1.uvalue=0
+  - r2.type=number
+  - r2.svalue=[-5, 5]
+
+messages:
+  - "0: Possible division by zero (r2 != 0)"
+---
+test-case: non-zero modulo possibly zero register 2
+
+options: ["!allow_division_by_zero"]
+
+pre: ["r1.type=number", "r1.svalue=6", "r1.uvalue=6",
+      "r2.type=number", "r2.svalue=[0, 5]", "r2.uvalue=[0, 5]", "r2.svalue=r2.uvalue"]
+
+code:
+  <start>: |
+    r1 s%= r2 ; this could do modulo 0 so could set r1 = r2
+
+post:
+  - r1.type=number
+  - r1.svalue=[0, 6]
+  - r1.uvalue=[0, 6]
+  - r1.svalue=r1.uvalue
+  - r2.type=number
+  - r2.svalue=[0, 5]
+  - r2.uvalue=[0, 5]
+  - r2.svalue=r2.uvalue
+
+messages:
+  - "0: Possible division by zero (r2 != 0)"
+---
+test-case: zero modulo possibly zero register 2
+
+options: ["!allow_division_by_zero"]
+
+pre: ["r1.type=number", "r1.svalue=0", "r1.uvalue=0",
+      "r2.type=number", "r2.svalue=[-5, 0]"]
+
+code:
+  <start>: |
+    r1 s%= r2 ; this could do modulo 0 so could set r1 = r2
+
+post:
+  - r1.type=number
+  - r1.svalue=0
+  - r1.uvalue=0
+  - r2.type=number
+  - r2.svalue=[-5, 0]
+
+messages:
+  - "0: Possible division by zero (r2 != 0)"
+---
+test-case: non-zero modulo undefined value register
+
+options: ["!allow_division_by_zero"]
+
+pre: ["r1.type=number", "r1.svalue=6", "r1.uvalue=6",
+      "r2.type=number"]
+
+code:
+  <start>: |
+    r1 s%= r2  ; this could be modulo 0
+
+post:
+  - r1.type=number
+  - r1.svalue=[0, 6]
+  - r1.uvalue=[0, 6]
+  - r1.svalue=r1.uvalue
+  - r2.type=number
+
+messages:
+  - "0: Possible division by zero (r2 != 0)"
+---
+test-case: zero modulo undefined value register
+
+options: ["!allow_division_by_zero"]
+
+pre: ["r1.type=number", "r1.svalue=0", "r1.uvalue=0",
+      "r2.type=number"]
+
+code:
+  <start>: |
+    r1 s%= r2  ; this could be modulo 0
+
+post:
+  - r1.type=number
+  - r1.svalue=0
+  - r1.uvalue=0
+  - r2.type=number
+
+messages:
+  - "0: Possible division by zero (r2 != 0)"
+---
+test-case: positive modulo positive range
+
+pre: ["r1.type=number", "r1.svalue=6", "r1.uvalue=6",
+      "r2.type=number", "r2.svalue=[1, 5]", "r2.uvalue=[1, 5]"]
+
+code:
+  <start>: |
+    r1 s%= r2
+
+post:
+  - r1.type=number
+  - r1.svalue=[0, 4]
+  - r1.uvalue=[0, 4]
+  - r1.svalue=r1.uvalue
+  - r2.type=number
+  - r2.svalue=[1, 5]
+  - r2.uvalue=[1, 5]
+---
+test-case: negative modulo positive
+
+pre: ["r1.type=number", "r1.svalue=-13", "r1.uvalue=18446744073709551603"]
+
+code:
+  <start>: |
+    r1 s%= 4
+
+post:
+  - r1.type=number
+  - r1.svalue=-1
+  - r1.uvalue=18446744073709551615
+---
+test-case: positive modulo negative
+
+pre: ["r1.type=number", "r1.svalue=13", "r1.uvalue=13"]
+
+code:
+  <start>: |
+    r1 s%= -3
+
+post:
+  - r1.type=number
+  - r1.svalue=1
+  - r1.uvalue=1
+---
+test-case: positive modulo negative range
+
+pre: ["r1.type=number", "r1.svalue=13", "r1.uvalue=13",
+      "r2.type=number", "r2.svalue=[-3, -2]", "r2.uvalue=[18446744073709551613, 18446744073709551614]"]
+
+code:
+  <start>: |
+    r1 s%= r2
+
+post:
+  - r1.type=number
+  - r1.svalue=[0, 2]
+  - r1.uvalue=[0, 2]
+  - r1.svalue=r1.uvalue
+  - r2.type=number
+  - r2.svalue=[-3, -2]
+  - r2.uvalue=[18446744073709551613, 18446744073709551614]
+---
+test-case: negative modulo negative
+
+pre: ["r1.type=number", "r1.svalue=-13", "r1.uvalue=18446744073709551603"]
+
+code:
+  <start>: |
+    r1 s%= -3
+
+post:
+  - r1.type=number
+  - r1.svalue=-1
+  - r1.uvalue=18446744073709551615
+---
+test-case: negative modulo negative range
+
+pre: ["r1.type=number", "r1.svalue=-13", "r1.uvalue=18446744073709551603",
+      "r2.type=number", "r2.svalue=[-3, -2]", "r2.uvalue=[18446744073709551613, 18446744073709551614]"]
+
+code:
+  <start>: |
+    r1 s%= r2
+
+post:
+  - r1.type=number
+  - r1.svalue=[-2, 0]
+  - r2.type=number
+  - r2.svalue=[-3, -2]
+  - r2.uvalue=[18446744073709551613, 18446744073709551614]
+---
+test-case: smaller modulo larger
+
+pre: ["r1.type=number", "r1.svalue=6", "r1.uvalue=6",
+      "r2.type=number", "r2.svalue=[7, 10]", "r2.uvalue=[7, 10]"]
+
+code:
+  <start>: |
+    r1 s%= r2
+
+post:
+  - r1.type=number
+  - r1.svalue=6
+  - r1.uvalue=6
+  - r2.type=number
+  - r2.svalue=[7, 10]
+  - r2.uvalue=[7, 10]

@@ -209,9 +209,12 @@ class AssertExtractor {
             }
         case Bin::Op::UDIV:
         case Bin::Op::UMOD:
+        case Bin::Op::SDIV:
+        case Bin::Op::SMOD:
             if (std::holds_alternative<Reg>(ins.v)) {
                 auto src = reg(ins.v);
-                return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}, Assert{ValidDivisor{src}}};
+                bool is_signed = (ins.op == Bin::Op::SDIV || ins.op == Bin::Op::SMOD);
+                return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}, Assert{ValidDivisor{src, is_signed}}};
             } else {
                 return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}};
             }
