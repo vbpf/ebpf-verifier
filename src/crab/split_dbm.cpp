@@ -951,7 +951,7 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, variable_t z,
     case arith_binop_t::SUB: assign(x, linear_expression_t(y).subtract(z)); break;
     // For the rest of operations, we fall back on intervals.
     case arith_binop_t::MUL: set(x, get_interval(y, finite_width) * get_interval(z, finite_width)); break;
-    case arith_binop_t::SDIV: set(x, get_interval(y, finite_width) / get_interval(z, finite_width)); break;
+    case arith_binop_t::SDIV: set(x, get_interval(y, finite_width).SDiv(get_interval(z, finite_width))); break;
     case arith_binop_t::UDIV: set(x, get_interval(y, finite_width).UDiv(get_interval(z, finite_width))); break;
     case arith_binop_t::SREM: set(x, get_interval(y, finite_width).SRem(get_interval(z, finite_width))); break;
     case arith_binop_t::UREM: set(x, get_interval(y, finite_width).URem(get_interval(z, finite_width))); break;
@@ -969,7 +969,7 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, const number_
     case arith_binop_t::SUB: assign(x, linear_expression_t(y).subtract(k)); break;
     case arith_binop_t::MUL: assign(x, linear_expression_t(k, y)); break;
     // For the rest of operations, we fall back on intervals.
-    case arith_binop_t::SDIV: set(x, get_interval(y, finite_width) / interval_t(k)); break;
+    case arith_binop_t::SDIV: set(x, get_interval(y, finite_width).SDiv(interval_t(k))); break;
     case arith_binop_t::UDIV: set(x, get_interval(y, finite_width).UDiv(interval_t(k))); break;
     case arith_binop_t::SREM: set(x, get_interval(y, finite_width).SRem(interval_t(k))); break;
     case arith_binop_t::UREM: set(x, get_interval(y, finite_width).URem(interval_t(k))); break;

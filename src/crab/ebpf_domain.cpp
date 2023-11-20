@@ -1527,8 +1527,8 @@ void ebpf_domain_t::operator()(const ValidDivisor& s) {
     if (!type_inv.implies_type(m_inv, type_is_pointer(reg), type_is_number(s.reg)))
         require(m_inv, linear_constraint_t::FALSE(), "Only numbers can be used as divisors");
     if (!thread_local_options.allow_division_by_zero) {
-        // Division is an unsigned operation. There are no eBPF instructions for signed division.
-        require(m_inv, reg.uvalue != 0, "Possible division by zero");
+        auto v = s.is_signed ? reg.svalue : reg.uvalue;
+        require(m_inv, v != 0, "Possible division by zero");
     }
 }
 
@@ -2435,6 +2435,14 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             urem(dst.svalue, dst.uvalue, imm, finite_width);
             havoc_offsets(bin.dst);
             break;
+        case Bin::Op::SDIV:
+            sdiv(dst.svalue, dst.uvalue, imm, finite_width);
+            havoc_offsets(bin.dst);
+            break;
+        case Bin::Op::SMOD:
+            srem(dst.svalue, dst.uvalue, imm, finite_width);
+            havoc_offsets(bin.dst);
+            break;
         case Bin::Op::OR:
             bitwise_or(dst.svalue, dst.uvalue, imm);
             havoc_offsets(bin.dst);
@@ -2579,6 +2587,14 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             break;
         case Bin::Op::UMOD:
             urem(dst.svalue, dst.uvalue, src.uvalue, finite_width);
+            havoc_offsets(bin.dst);
+            break;
+        case Bin::Op::SDIV:
+            sdiv(dst.svalue, dst.uvalue, src.svalue, finite_width);
+            havoc_offsets(bin.dst);
+            break;
+        case Bin::Op::SMOD:
+            srem(dst.svalue, dst.uvalue, src.svalue, finite_width);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::OR:

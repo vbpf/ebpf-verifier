@@ -51,7 +51,54 @@ interval_t interval_t::operator/(const interval_t& x) const {
     }
 }
 
-// Unsigned division
+// Signed division.
+interval_t interval_t::SDiv(const interval_t& x) const {
+    if (is_bottom() || x.is_bottom()) {
+        return bottom();
+    } else {
+        // Divisor is a singleton:
+        //   the linear interval solver can perform many divisions where
+        //   the divisor is a singleton interval. We optimize for this case.
+        std::optional<number_t> n = x.singleton();
+        if (n && n->fits_cast_to_int64()) {
+            number_t c{n->cast_to_sint64()};
+            if (c == 1) {
+                return *this;
+            } else if (c != 0) {
+                return interval_t(_lb / bound_t{c}, _ub / bound_t{c});
+            } else {
+                // The eBPF ISA defines division by 0 as resulting in 0.
+                return interval_t(number_t(0));
+            }
+        }
+        // Divisor is not a singleton
+        using z_interval = interval_t;
+        if (x[0]) {
+            // The divisor contains 0.
+            z_interval l(x._lb, z_bound(-1));
+            z_interval u(z_bound(1), x._ub);
+            return (SDiv(l) | SDiv(u) | z_interval(number_t(0)));
+        } else if (operator[](0)) {
+            // The dividend contains 0.
+            z_interval l(_lb, z_bound(-1));
+            z_interval u(z_bound(1), _ub);
+            return (l.SDiv(x) | u.SDiv(x) | z_interval(number_t(0)));
+        } else {
+            // Neither the dividend nor the divisor contains 0
+            z_interval a =
+                (_ub < number_t{0})
+                    ? (*this + ((x._ub < number_t{0}) ? (x + z_interval(number_t(1))) : (z_interval(number_t(1)) - x)))
+                    : *this;
+            bound_t ll = a._lb / x._lb;
+            bound_t lu = a._lb / x._ub;
+            bound_t ul = a._ub / x._lb;
+            bound_t uu = a._ub / x._ub;
+            return interval_t(bound_t::min(ll, lu, ul, uu), bound_t::max(ll, lu, ul, uu));
+        }
+    }
+}
+
+// Unsigned division.
 interval_t interval_t::UDiv(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
@@ -97,7 +144,7 @@ interval_t interval_t::UDiv(const interval_t& x) const {
     }
 }
 
-// Signed remainder (modulo). eBPF has no instruction for this.
+// Signed remainder (modulo).
 interval_t interval_t::SRem(const interval_t& x) const {
     // note that the sign of the divisor does not matter
 
