@@ -2342,6 +2342,46 @@ void ebpf_domain_t::lshr(const Reg& dst_reg, int imm, int finite_width) {
     havoc_offsets(dst_reg);
 }
 
+void ebpf_domain_t::sign_extend(const Reg& dst_reg, const linear_expression_t& right_svalue, int finite_width,
+                                Bin::Op op) {
+    using namespace crab;
+
+    int bits;
+    switch (op) {
+    case Bin::Op::MOVSX8: bits = 8; break;
+    case Bin::Op::MOVSX16: bits = 16; break;
+    case Bin::Op::MOVSX32: bits = 32; break;
+    default: throw std::exception();
+    }
+
+    reg_pack_t dst = reg_pack(dst_reg);
+    interval_t right_interval = m_inv.eval_interval(right_svalue);
+    type_inv.assign_type(m_inv, dst_reg, T_NUM);
+    havoc_offsets(dst_reg);
+    int64_t span = 1ULL << bits;
+    if (right_interval.ub() - right_interval.lb() >= number_t{span}) {
+        // Interval covers the full space.
+        havoc(dst.svalue);
+        return;
+    }
+    int64_t mask = 1ULL << (bits - 1);
+
+    // Sign extend each bound.
+    int64_t lb = right_interval.lb().number().value().cast_to_sint64();
+    lb &= (span - 1);
+    lb = (lb ^ mask) - mask;
+    int64_t ub = right_interval.ub().number().value().cast_to_sint64();
+    ub &= (span - 1);
+    ub = (ub ^ mask) - mask;
+    m_inv.set(dst.svalue, crab::interval_t{number_t{lb}, number_t{ub}});
+
+    if (finite_width) {
+        m_inv.assign(dst.uvalue, dst.svalue);
+        overflow_signed(m_inv, dst.svalue, finite_width);
+        overflow_unsigned(m_inv, dst.uvalue, finite_width);
+    }
+}
+
 void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_svalue, int finite_width) {
     using namespace crab;
 
@@ -2412,6 +2452,11 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             overflow_unsigned(m_inv, dst.uvalue, (bin.is64) ? 64 : 32);
             type_inv.assign_type(m_inv, bin.dst, T_NUM);
             havoc_offsets(bin.dst);
+            break;
+        case Bin::Op::MOVSX8:
+        case Bin::Op::MOVSX16:
+        case Bin::Op::MOVSX32:
+            sign_extend(bin.dst, number_t{(int32_t)imm}, finite_width, bin.op);
             break;
         case Bin::Op::ADD:
             if (imm == 0)
@@ -2653,6 +2698,17 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             break;
         case Bin::Op::XOR:
             bitwise_xor(dst.svalue, dst.uvalue, src.uvalue, finite_width);
+            havoc_offsets(bin.dst);
+            break;
+        case Bin::Op::MOVSX8:
+        case Bin::Op::MOVSX16:
+        case Bin::Op::MOVSX32:
+            if (m_inv.entail(type_is_number(src_reg))) {
+                sign_extend(bin.dst, src.svalue, finite_width, bin.op);
+                break;
+            }
+            havoc(dst.svalue);
+            havoc(dst.uvalue);
             havoc_offsets(bin.dst);
             break;
         case Bin::Op::MOV:

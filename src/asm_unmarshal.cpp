@@ -109,7 +109,14 @@ struct Unmarshaller {
             default: throw InvalidInstruction{pc, "invalid ALU op 0x90"};
             }
         case INST_ALU_OP_XOR: return Bin::Op::XOR;
-        case INST_ALU_OP_MOV: return Bin::Op::MOV;
+        case INST_ALU_OP_MOV:
+            switch (inst.offset) {
+            case 0: return Bin::Op::MOV;
+            case 8: return Bin::Op::MOVSX8;
+            case 16: return Bin::Op::MOVSX16;
+            case 32: return Bin::Op::MOVSX32;
+            default: throw InvalidInstruction{pc, "invalid ALU op 0xb0"};
+            }
         case INST_ALU_OP_ARSH:
             if ((inst.opcode & INST_CLS_MASK) == INST_CLS_ALU)
                 note("arsh32 is not allowed");

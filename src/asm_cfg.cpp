@@ -181,9 +181,13 @@ static std::string instype(Instruction ins) {
     } else if (std::holds_alternative<Packet>(ins)) {
         return "packet_access";
     } else if (std::holds_alternative<Bin>(ins)) {
-        if (std::get<Bin>(ins).op == Bin::Op::MOV)
-            return "assign";
-        return "arith";
+        switch (std::get<Bin>(ins).op) {
+        case Bin::Op::MOV:
+        case Bin::Op::MOVSX8:
+        case Bin::Op::MOVSX16:
+        case Bin::Op::MOVSX32: return "assign";
+        default: return "arith";
+        }
     } else if (std::holds_alternative<Un>(ins)) {
         return "arith";
     } else if (std::holds_alternative<LoadMapFd>(ins)) {
