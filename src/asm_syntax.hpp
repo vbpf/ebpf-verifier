@@ -87,6 +87,9 @@ struct Bin {
         XOR,
         SDIV,
         SMOD,
+        MOVSX8,
+        MOVSX16,
+        MOVSX32,
     };
 
     Op op;

@@ -56,6 +56,9 @@ std::ostream& operator<<(std::ostream& os, Bin::Op op) {
     using Op = Bin::Op;
     switch (op) {
     case Op::MOV: return os;
+    case Op::MOVSX8: return os << "s8";
+    case Op::MOVSX16: return os << "s16";
+    case Op::MOVSX32: return os << "s32";
     case Op::ADD: return os << "+";
     case Op::SUB: return os << "-";
     case Op::MUL: return os << "*";

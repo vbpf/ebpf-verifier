@@ -36,18 +36,35 @@ static uint8_t op(Bin::Op op) {
     case Op::ADD: return 0x0;
     case Op::SUB: return 0x1;
     case Op::MUL: return 0x2;
+    case Op::SDIV:
     case Op::UDIV: return 0x3;
     case Op::OR: return 0x4;
     case Op::AND: return 0x5;
     case Op::LSH: return 0x6;
     case Op::RSH: return 0x7;
+    case Op::SMOD:
     case Op::UMOD: return 0x9;
     case Op::XOR: return 0xa;
-    case Op::MOV: return 0xb;
+    case Op::MOV:
+    case Op::MOVSX8:
+    case Op::MOVSX16:
+    case Op::MOVSX32: return 0xb;
     case Op::ARSH: return 0xc;
     }
     assert(false);
     return {};
+}
+
+static int16_t offset(Bin::Op op) {
+    using Op = Bin::Op;
+    switch (op) {
+    case Op::SDIV:
+    case Op::SMOD: return 1;
+    case Op::MOVSX8: return 8;
+    case Op::MOVSX16: return 16;
+    case Op::MOVSX32: return 32;
+    }
+    return 0;
 }
 
 static uint8_t imm(Un::Op op) {
@@ -96,7 +113,7 @@ struct MarshalVisitor {
         ebpf_inst res{.opcode = static_cast<uint8_t>((b.is64 ? INST_CLS_ALU64 : INST_CLS_ALU) | (op(b.op) << 4)),
                       .dst = b.dst.v,
                       .src = 0,
-                      .offset = 0,
+                      .offset = offset(b.op),
                       .imm = 0};
         std::visit(overloaded{[&](Reg right) {
                                   res.opcode |= INST_SRC_REG;

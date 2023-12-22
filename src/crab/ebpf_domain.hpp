@@ -139,6 +139,7 @@ class ebpf_domain_t final {
     void shl_overflow(variable_t lhss, variable_t lhsu, const number_t& op2);
     void lshr(const Reg& reg, int imm, int finite_width);
     void ashr(const Reg& reg, const linear_expression_t& right_svalue, int finite_width);
+    void sign_extend(const Reg& dst_reg, const linear_expression_t& right_svalue, int finite_width, Bin::Op op);
 
     void assume(const linear_constraint_t& cst);
 
