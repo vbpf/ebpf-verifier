@@ -208,6 +208,12 @@ TEST_CASE("disasm_marshal_Mem", "[disasm][marshal]") {
 TEST_CASE("fail unmarshal", "[disasm][marshal]") {
     check_unmarshal_fail(ebpf_inst{.opcode = ((INST_MEM << 5) | INST_SIZE_B | INST_CLS_LDX), .dst = 11, .imm = 8},
                          "0: Bad register\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = ((INST_MEM << 5) | INST_SIZE_B | INST_CLS_LDX), .dst = 1, .src = 11},
+                         "0: Bad register\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = (INST_ALU_OP_MOV | INST_SRC_IMM | INST_CLS_ALU), .dst = 11, .imm = 8},
+                         "0: Bad register\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = (INST_ALU_OP_MOV | INST_SRC_REG | INST_CLS_ALU), .dst = 1, .src = 11},
+                         "0: Bad register\n");
     check_unmarshal_fail(ebpf_inst{.opcode = ((INST_MEM << 5) | INST_SIZE_W | INST_CLS_LD)},
                          "0: plain LD\n");
     check_unmarshal_fail(ebpf_inst{.opcode = INST_ALU_OP_END | INST_END_LE | INST_CLS_ALU, .dst = 1, .imm = 8}, "0: invalid endian immediate\n");
