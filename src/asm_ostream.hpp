@@ -11,8 +11,21 @@
 
 #include "asm_syntax.hpp"
 
-inline std::function<int16_t(label_t)> label_to_offset(pc_t pc) {
-    return [=](const label_t& label) { return label.from - pc - 1; };
+// We use a 16-bit offset whenever it fits in 16 bits.
+inline std::function<int16_t(label_t)> label_to_offset16(pc_t pc) {
+    return [=](const label_t& label) {
+        int64_t offset = label.from - (int64_t)pc - 1;
+        return (offset >= INT16_MIN && offset <= INT16_MAX) ? (int16_t)offset : 0;
+    };
+}
+
+// We use the JA32 opcode with the offset in 'imm' when the offset
+// of an unconditional jump doesn't fit in a int16_t.
+inline std::function<int32_t(label_t)> label_to_offset32(pc_t pc) {
+    return [=](const label_t& label) {
+        int64_t offset = label.from - (int64_t)pc - 1;
+        return (offset >= INT16_MIN && offset <= INT16_MAX) ? 0 : (int32_t)offset;
+    };
 }
 
 std::ostream& operator<<(std::ostream& os, const btf_line_info_t& line_info);

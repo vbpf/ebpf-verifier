@@ -6,6 +6,25 @@
 #include "asm_marshal.hpp"
 #include "asm_unmarshal.hpp"
 
+// Verify that if we unmarshal an instruction and then re-marshal it,
+// we get what we expect.
+static void compare_unmarshal_marshal(const ebpf_inst& ins, const ebpf_inst& expected_result) {
+    program_info info{.platform = &g_ebpf_platform_linux,
+                      .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")};
+    const ebpf_inst exit{.opcode = INST_OP_EXIT};
+    InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", {ins, exit, exit}, info}));
+    REQUIRE(parsed.size() == 3);
+    auto [_, single, _2] = parsed.front();
+    (void)_;  // unused
+    (void)_2; // unused
+    std::vector<ebpf_inst> marshaled = marshal(single, 0);
+    REQUIRE(marshaled.size() == 1);
+    ebpf_inst result = marshaled.back();
+    REQUIRE(memcmp(&expected_result, &result, sizeof(result)) == 0);
+}
+
+// Verify that if we marshal an instruction and then unmarshal it,
+// we get the original.
 static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = false) {
     program_info info{.platform = &g_ebpf_platform_linux,
                       .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")};
@@ -81,6 +100,13 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
             // Condition::Op::NSET, does not exist in ebpf
                     Condition::Op::NE, Condition::Op::SGT, Condition::Op::SGE, Condition::Op::LT, Condition::Op::LE,
                     Condition::Op::SLT, Condition::Op::SLE};
+        SECTION("goto offset") {
+            ebpf_inst jmp_offset{.opcode = INST_OP_JA16, .offset = 1};
+            compare_unmarshal_marshal(jmp_offset, jmp_offset);
+
+            // JA32 +1 is equivalent to JA16 +1 since the offset fits in 16 bits.
+            compare_unmarshal_marshal(ebpf_inst{.opcode = INST_OP_JA32, .imm = 1}, jmp_offset);
+        }
         SECTION("Reg right") {
             for (auto op : ops) {
                 Condition cond{.op = op, .left = Reg{1}, .right = Reg{2}};
@@ -241,7 +267,7 @@ TEST_CASE("fail unmarshal", "[disasm][marshal]") {
                          "0: Bad instruction\n");
     check_unmarshal_fail(ebpf_inst{.opcode = (INST_MEM_UNUSED << 5) | INST_SIZE_W | INST_CLS_LDX, .imm = 8},
                          "0: Bad instruction\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = INST_CLS_JMP32}, "0: Bad instruction\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = INST_CLS_JMP32}, "0: jump out of bounds\n");
     check_unmarshal_fail(ebpf_inst{.opcode = 0x90 | INST_CLS_JMP32}, "0: Bad instruction\n");
     check_unmarshal_fail(ebpf_inst{.opcode = 0x10 | INST_CLS_JMP32}, "0: jump out of bounds\n");
 }

@@ -336,7 +336,8 @@ using InstructionSeq = std::vector<LabeledInstruction>;
 #define DECLARE_EQ1(T, f1) \
     inline bool operator==(T const& a, T const& b) { return a.f1 == b.f1; }
 
-using pc_t = uint16_t;
+// cpu=v4 supports 32-bit PC offsets so we need a large enough type.
+using pc_t = size_t;
 
 // Helpers:
 
