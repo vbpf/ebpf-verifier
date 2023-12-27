@@ -381,16 +381,19 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, "Bad instruction");
             return Exit{};
         case 0x0:
-            if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP)
+            if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP &&
+                (inst.opcode & INST_CLS_MASK) != INST_CLS_JMP32)
                 throw InvalidInstruction(pc, "Bad instruction");
         default: {
-            pc_t new_pc = pc + 1 + inst.offset;
+            int32_t offset = (inst.opcode == INST_OP_JA32) ? inst.imm : inst.offset;
+            pc_t new_pc = pc + 1 + offset;
             if (new_pc >= insts.size())
                 throw InvalidInstruction(pc, "jump out of bounds");
             else if (insts[new_pc].opcode == 0)
                 throw InvalidInstruction(pc, "jump to middle of lddw");
 
-            auto cond = inst.opcode == INST_OP_JA ? std::optional<Condition>{}
+            auto cond = (inst.opcode == INST_OP_JA16 || inst.opcode == INST_OP_JA32)
+                                                  ? std::optional<Condition>{}
                                                   : Condition{
                                                         .op = getJmpOp(pc, inst.opcode),
                                                         .left = Reg{inst.dst},
@@ -400,7 +403,7 @@ struct Unmarshaller {
                                                     };
             return Jmp{
                 .cond = cond,
-                .target = label_t{new_pc},
+                .target = label_t{(int)new_pc},
             };
         }
         }

@@ -94,7 +94,8 @@ struct MarshalVisitor {
     }
 
   public:
-    std::function<auto(label_t)->int16_t> label_to_offset;
+    std::function<auto(label_t)->int16_t> label_to_offset16;
+    std::function<auto(label_t)->int32_t> label_to_offset32;
 
     vector<ebpf_inst> operator()(Undefined const& a) {
         assert(false);
@@ -179,7 +180,7 @@ struct MarshalVisitor {
                 .opcode = static_cast<uint8_t>(INST_CLS_JMP | (op(b.cond->op) << 4)),
                 .dst = b.cond->left.v,
                 .src = 0,
-                .offset = label_to_offset(b.target),
+                .offset = label_to_offset16(b.target),
             };
             visit(overloaded{[&](Reg right) {
                                  res.opcode |= INST_SRC_REG;
@@ -189,7 +190,11 @@ struct MarshalVisitor {
                   b.cond->right);
             return {res};
         } else {
-            return {ebpf_inst{.opcode = INST_OP_JA, .dst = 0, .src = 0, .offset = label_to_offset(b.target), .imm = 0}};
+            int32_t imm = label_to_offset32(b.target);
+            if (imm != 0)
+                return {ebpf_inst{.opcode = INST_OP_JA32, .imm = imm}};
+            else
+                return {ebpf_inst{.opcode = INST_OP_JA16, .offset = label_to_offset16(b.target)}};
         }
     }
 
@@ -252,7 +257,9 @@ struct MarshalVisitor {
     }
 };
 
-vector<ebpf_inst> marshal(const Instruction& ins, pc_t pc) { return std::visit(MarshalVisitor{label_to_offset(pc)}, ins); }
+vector<ebpf_inst> marshal(const Instruction& ins, pc_t pc) {
+    return std::visit(MarshalVisitor{label_to_offset16(pc), label_to_offset32(pc)}, ins);
+}
 
 vector<ebpf_inst> marshal(const vector<Instruction>& insts) {
     vector<ebpf_inst> res;
