@@ -33,7 +33,7 @@ using crab::linear_expression_t;
 #define OPASSIGN R"_(\s*(\S*)=\s*)_"
 #define ASSIGN R"_(\s*=\s*)_"
 #define LONGLONG R"_(\s*(ll|)\s*)_"
-#define UNOP R"_((-|be16|be32|be64))_"
+#define UNOP R"_((-|be16|be32|be64|le16|le32|le64))_"
 
 #define PLUSMINUS R"_((\s*[+-])\s*)_"
 #define LPAREN R"_(\s*\(\s*)_"
