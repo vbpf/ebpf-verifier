@@ -1484,6 +1484,18 @@ void ebpf_domain_t::operator()(const Un& stmt) {
         swap_endianness(dst.svalue, int64_t(0), boost::endian::native_to_little<int64_t>);
         swap_endianness(dst.svalue, uint64_t(0), boost::endian::native_to_little<uint64_t>);
         break;
+    case Un::Op::SWAP16:
+        swap_endianness(dst.svalue, uint16_t(0), boost::endian::endian_reverse<uint16_t>);
+        swap_endianness(dst.uvalue, uint16_t(0), boost::endian::endian_reverse<uint16_t>);
+        break;
+    case Un::Op::SWAP32:
+        swap_endianness(dst.svalue, uint32_t(0), boost::endian::endian_reverse<uint32_t>);
+        swap_endianness(dst.uvalue, uint32_t(0), boost::endian::endian_reverse<uint32_t>);
+        break;
+    case Un::Op::SWAP64:
+        swap_endianness(dst.svalue, int64_t(0), boost::endian::endian_reverse<int64_t>);
+        swap_endianness(dst.uvalue, uint64_t(0), boost::endian::endian_reverse<uint64_t>);
+        break;
     case Un::Op::NEG:
         neg(dst.svalue, dst.uvalue, stmt.is64 ? 64 : 32);
         havoc_offsets(stmt.dst);

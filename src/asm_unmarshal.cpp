@@ -123,9 +123,14 @@ struct Unmarshaller {
             return Bin::Op::ARSH;
         case INST_ALU_OP_END:
             if ((inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64) {
-                std::string error_message =
-                    "invalid endian immediate " + std::to_string(inst.imm) + " for 64 bit instruction";
-                throw InvalidInstruction(pc, error_message.c_str());
+                if (inst.opcode & INST_END_BE)
+                    throw InvalidInstruction(pc, "invalid endian immediate");
+                switch (inst.imm) {
+                case 16: return Un::Op::SWAP16;
+                case 32: return Un::Op::SWAP32;
+                case 64: return Un::Op::SWAP64;
+                default: throw InvalidInstruction(pc, "invalid endian immediate");
+                }
             }
             switch (inst.imm) {
             case 16: return (inst.opcode & INST_END_BE) ? Un::Op::BE16 : Un::Op::LE16;
