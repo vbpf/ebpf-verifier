@@ -47,7 +47,9 @@ static void check_unmarshal_fail(ebpf_inst inst, std::string expected_error_mess
     program_info info{.platform = &g_ebpf_platform_linux,
                       .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")};
     std::vector<ebpf_inst> insns = {inst};
-    std::string error_message = std::get<std::string>(unmarshal(raw_program{"", "", insns, info}));
+    auto result = unmarshal(raw_program{"", "", insns, info});
+    REQUIRE(std::holds_alternative<std::string>(result));
+    std::string error_message = std::get<std::string>(result);
     REQUIRE(error_message == expected_error_message);
 }
 
@@ -270,4 +272,6 @@ TEST_CASE("fail unmarshal", "[disasm][marshal]") {
     check_unmarshal_fail(ebpf_inst{.opcode = INST_CLS_JMP32}, "0: jump out of bounds\n");
     check_unmarshal_fail(ebpf_inst{.opcode = 0x90 | INST_CLS_JMP32}, "0: Bad instruction\n");
     check_unmarshal_fail(ebpf_inst{.opcode = 0x10 | INST_CLS_JMP32}, "0: jump out of bounds\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = INST_ALU_OP_END | INST_CLS_ALU64, .imm = 0}, "0: invalid endian immediate 0 for 64 bit instruction\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = INST_ALU_OP_END | INST_CLS_ALU64, .imm = 16}, "0: invalid endian immediate 16 for 64 bit instruction\n");
 }
