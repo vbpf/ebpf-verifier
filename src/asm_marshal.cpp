@@ -72,11 +72,14 @@ static uint8_t imm(Un::Op op) {
     switch (op) {
     case Op::NEG: return 0;
     case Op::BE16:
-    case Op::LE16: return 16;
+    case Op::LE16:
+    case Op::SWAP16: return 16;
     case Op::BE32:
-    case Op::LE32: return 32;
+    case Op::LE32:
+    case Op::SWAP32: return 32;
     case Op::BE64:
-    case Op::LE64: return 64;
+    case Op::LE64:
+    case Op::SWAP64: return 64;
     }
     assert(false);
     return {};
@@ -151,6 +154,16 @@ struct MarshalVisitor {
         case Un::Op::BE64:
             return {ebpf_inst{
                 .opcode = static_cast<uint8_t>(INST_CLS_ALU | 0x8 | (0xd << 4)),
+                .dst = b.dst.v,
+                .src = 0,
+                .offset = 0,
+                .imm = imm(b.op),
+            }};
+        case Un::Op::SWAP16:
+        case Un::Op::SWAP32:
+        case Un::Op::SWAP64:
+            return {ebpf_inst{
+                .opcode = static_cast<uint8_t>(INST_CLS_ALU64 | (0xd << 4)),
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,

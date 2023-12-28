@@ -272,6 +272,6 @@ TEST_CASE("fail unmarshal", "[disasm][marshal]") {
     check_unmarshal_fail(ebpf_inst{.opcode = INST_CLS_JMP32}, "0: jump out of bounds\n");
     check_unmarshal_fail(ebpf_inst{.opcode = 0x90 | INST_CLS_JMP32}, "0: Bad instruction\n");
     check_unmarshal_fail(ebpf_inst{.opcode = 0x10 | INST_CLS_JMP32}, "0: jump out of bounds\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = INST_ALU_OP_END | INST_CLS_ALU64, .imm = 0}, "0: invalid endian immediate 0 for 64 bit instruction\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = INST_ALU_OP_END | INST_CLS_ALU64, .imm = 16}, "0: invalid endian immediate 16 for 64 bit instruction\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = INST_ALU_OP_END | INST_CLS_ALU, .imm = 0}, "0: invalid endian immediate\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = INST_ALU_OP_END | INST_CLS_ALU64, .imm = 0}, "0: invalid endian immediate\n");
 }

@@ -33,7 +33,7 @@ using crab::linear_expression_t;
 #define OPASSIGN R"_(\s*(\S*)=\s*)_"
 #define ASSIGN R"_(\s*=\s*)_"
 #define LONGLONG R"_(\s*(ll|)\s*)_"
-#define UNOP R"_((-|be16|be32|be64|le16|le32|le64))_"
+#define UNOP R"_((-|be16|be32|be64|le16|le32|le64|swap16|swap32|swap64))_"
 
 #define PLUSMINUS R"_((\s*[+-])\s*)_"
 #define LPAREN R"_(\s*\(\s*)_"
@@ -69,6 +69,9 @@ static const std::map<std::string, Un::Op> str_to_unop = {
     {"le16", Un::Op::LE16},
     {"le32", Un::Op::LE32},
     {"le64", Un::Op::LE64},
+    {"swap16", Un::Op::SWAP16},
+    {"swap32", Un::Op::SWAP32},
+    {"swap64", Un::Op::SWAP64},
     {"-", Un::Op::NEG},
 };
 

@@ -108,6 +108,9 @@ struct Un {
         LE16, // dst = htole16(dst)
         LE32, // dst = htole32(dst)
         LE64, // dst = htole64(dst)
+        SWAP16, // dst = bswap16(dst)
+        SWAP32, // dst = bswap32(dst)
+        SWAP64, // dst = bswap64(dst)
         NEG,  // dst = -dst
     };
 

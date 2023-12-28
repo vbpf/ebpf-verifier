@@ -71,6 +71,16 @@ code:
 
 post: ["r1.type=number", "r1.svalue=2396871057337221120", "r1.uvalue=2396871057337221120"]
 ---
+test-case: be16 range
+
+pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.svalue=r1.uvalue"]
+
+code:
+  <start>: |
+    r1 = be16 r1 ; [0x0000, 0x0002] -> [0x0000, 0x2000] but currently we just lose the range
+
+post: ["r1.type=number"]
+---
 test-case: le16 singleton
 
 pre: ["r1.type=number", "r1.svalue=6636321", "r1.uvalue=6636321"]
@@ -111,12 +121,42 @@ code:
 
 post: ["r1.type=number"]
 ---
-test-case: be16 range
+test-case: swap16 singleton
+
+pre: ["r1.type=number", "r1.svalue=6636321", "r1.uvalue=6636321"]
+
+code:
+  <start>: |
+    r1 = swap16 r1 ; 0x654321 -> 0x2143
+
+post: ["r1.type=number", "r1.svalue=8515", "r1.uvalue=8515"]
+---
+test-case: swap32 singleton
+
+pre: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
+
+code:
+  <start>: |
+    r1 = swap32 r1 ; 0x0987654321 -> 0x21436587
+
+post: ["r1.type=number", "r1.svalue=558065031", "r1.uvalue=558065031"]
+---
+test-case: swap64 singleton
+
+pre: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
+
+code:
+  <start>: |
+    r1 = swap64 r1 ; 0x0987654321 -> 0x2143658709000000
+
+post: ["r1.type=number", "r1.svalue=2396871057337221120", "r1.uvalue=2396871057337221120"]
+---
+test-case: swap16 range
 
 pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.svalue=r1.uvalue"]
 
 code:
   <start>: |
-    r1 = be16 r1 ; [0x0000, 0x0002] -> [0x0000, 0x2000] but currently we just lose the range
+    r1 = swap16 r1 ; [0x0000, 0x0002] -> [0x0000, 0x2000] but currently we just lose the range
 
 post: ["r1.type=number"]
