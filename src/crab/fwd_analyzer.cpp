@@ -124,7 +124,7 @@ std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg,
             }
         }
         for (const label_t& label : cycle_heads) {
-            entry_inv.initialize_instruction_count(label);
+            entry_inv.initialize_loop_counter(label);
             cfg.get_node(label).insert(IncrementLoopCounter{label});
         }
     }
