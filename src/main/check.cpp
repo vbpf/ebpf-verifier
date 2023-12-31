@@ -161,8 +161,8 @@ int main(int argc, char** argv) {
         const auto [res, seconds] = timed_execution([&] {
             return ebpf_verify_program(std::cout, prog, raw_prog.info, &ebpf_verifier_options, &verifier_stats);
         });
-        if (ebpf_verifier_options.check_termination && (ebpf_verifier_options.print_failures || ebpf_verifier_options.print_invariants)) {
-            std::cout << "Program terminates within " << verifier_stats.max_instruction_count << " instructions\n";
+        if (res && ebpf_verifier_options.check_termination && (ebpf_verifier_options.print_failures || ebpf_verifier_options.print_invariants)) {
+            std::cout << "Program terminates within " << verifier_stats.max_loop_count << " loop iterations\n";
         }
         std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
         return !res;

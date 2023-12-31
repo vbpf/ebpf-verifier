@@ -47,7 +47,7 @@ class ebpf_domain_t final {
 
     typedef bool check_require_func_t(NumAbsDomain&, const linear_constraint_t&, std::string);
     void set_require_check(std::function<check_require_func_t> f);
-    bound_t get_instruction_count_upper_bound();
+    bound_t get_loop_count_upper_bound();
     static ebpf_domain_t setup_entry(bool init_r1);
 
     static ebpf_domain_t from_constraints(const std::set<std::string>& constraints, bool setup_constraints);
@@ -79,7 +79,7 @@ class ebpf_domain_t final {
     void operator()(const ZeroCtxOffset&);
     void operator()(const IncrementLoopCounter&);
 
-    void initialize_instruction_count(label_t label);
+    void initialize_loop_counter(label_t label);
     static ebpf_domain_t calculate_constant_limits();
   private:
     // private generic domain functions

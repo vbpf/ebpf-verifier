@@ -925,7 +925,7 @@ ebpf_domain_t ebpf_domain_t::calculate_constant_limits() {
         inv += r.packet_offset <= variable_t::packet_size();
         inv += r.packet_offset >= 0;
         if (thread_local_options.check_termination) {
-            for (variable_t counter : variable_t::get_instruction_counters()) {
+            for (variable_t counter : variable_t::get_loop_counters()) {
                 inv += counter <= std::numeric_limits<int32_t>::max();
                 inv += counter >= 0;
                 inv += counter <= r.svalue;
@@ -2828,18 +2828,18 @@ ebpf_domain_t ebpf_domain_t::setup_entry(bool init_r1) {
     return inv;
 }
 
-void ebpf_domain_t::initialize_instruction_count(const label_t label) {
-    m_inv.assign(variable_t::instruction_count(to_string(label)), 0);
+void ebpf_domain_t::initialize_loop_counter(const label_t label) {
+    m_inv.assign(variable_t::loop_counter(to_string(label)), 0);
 }
 
-bound_t ebpf_domain_t::get_instruction_count_upper_bound() {
+bound_t ebpf_domain_t::get_loop_count_upper_bound() {
     crab::bound_t ub{number_t{0}};
-    for (variable_t counter : variable_t::get_instruction_counters())
-        ub += std::max(ub, m_inv[counter].ub());
+    for (variable_t counter : variable_t::get_loop_counters())
+        ub = std::max(ub, m_inv[counter].ub());
     return ub;
 }
 
 void ebpf_domain_t::operator()(const IncrementLoopCounter& ins) {
-    this->add(variable_t::instruction_count(to_string(ins.name)), 1);
+    this->add(variable_t::loop_counter(to_string(ins.name)), 1);
 }
 } // namespace crab

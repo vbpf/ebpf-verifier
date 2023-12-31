@@ -31,7 +31,7 @@ struct checks_db final {
     std::map<label_t, std::vector<std::string>> m_db{};
     int total_warnings{};
     int total_unreachable{};
-    crab::bound_t max_instruction_count{crab::number_t{0}};
+    crab::bound_t max_loop_count{crab::number_t{0}};
 
     void add(const label_t& label, const std::string& msg) { m_db[label].emplace_back(msg); }
 
@@ -45,8 +45,8 @@ struct checks_db final {
         total_unreachable++;
     }
 
-    [[nodiscard]] int get_max_instruction_count() const {
-        auto m = this->max_instruction_count.number();
+    [[nodiscard]] int get_max_loop_count() const {
+        auto m = this->max_loop_count.number();
         if (m && m->fits_sint32())
             return m->cast_to_sint32();
         else
@@ -94,7 +94,7 @@ static checks_db generate_report(cfg_t& cfg, crab::invariant_table_t& pre_invari
 
     if (thread_local_options.check_termination) {
         auto last_inv = post_invariants.at(cfg.exit_label());
-        m_db.max_instruction_count = last_inv.get_instruction_count_upper_bound();
+        m_db.max_loop_count = last_inv.get_loop_count_upper_bound();
     }
     return m_db;
 }
@@ -122,8 +122,8 @@ static void print_report(std::ostream& os, const checks_db& db, const Instructio
         }
     }
     os << "\n";
-    crab::number_t max_instructions{100000};
-    if (db.max_instruction_count > max_instructions) {
+    crab::number_t max_loop_count{100000};
+    if (db.max_loop_count > max_loop_count) {
         os << "Could not prove termination.\n";
     }
 }
@@ -171,7 +171,7 @@ bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, const program_info& info, co
     if (stats) {
         stats->total_unreachable = report.total_unreachable;
         stats->total_warnings = report.total_warnings;
-        stats->max_instruction_count = report.get_max_instruction_count();
+        stats->max_loop_count = report.get_max_loop_count();
     }
     return (report.total_warnings == 0);
 }
@@ -224,7 +224,7 @@ bool ebpf_verify_program(std::ostream& os, const InstructionSeq& prog, const pro
     if (stats) {
         stats->total_unreachable = report.total_unreachable;
         stats->total_warnings = report.total_warnings;
-        stats->max_instruction_count = report.get_max_instruction_count();
+        stats->max_loop_count = report.get_max_loop_count();
     }
     return (report.total_warnings == 0);
 }

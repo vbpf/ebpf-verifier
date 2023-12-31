@@ -338,7 +338,7 @@ struct InstructionPrinterVisitor {
     }
 
     void operator()(IncrementLoopCounter const& a) {
-        os_ << crab::variable_t::instruction_count(to_string(a.name)) << "++";
+        os_ << crab::variable_t::loop_counter(to_string(a.name)) << "++";
     }
 };
 
