@@ -2144,7 +2144,12 @@ void ebpf_domain_t::operator()(const Call& call) {
 
         case ArgPair::Kind::PTR_TO_WRITABLE_MEM: {
             bool store_numbers = true;
-            variable_t addr = get_type_offset_variable(param.mem).value();
+            auto variable = get_type_offset_variable(param.mem);
+            if (!variable.has_value()) {
+                require(m_inv, linear_constraint_t::FALSE(), "Argument must be a pointer to writable memory");
+                return;
+            }
+            variable_t addr = variable.value();
             variable_t width = reg_pack(param.size).svalue;
 
             m_inv = type_inv.join_over_types(m_inv, param.mem, [&](NumAbsDomain& inv, type_encoding_t type) {
