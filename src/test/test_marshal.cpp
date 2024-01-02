@@ -434,11 +434,20 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
         }
     }
 
-    SECTION("LockAdd") {
+    SECTION("Atomic") {
         for (int w : ws) {
             if (w == 4 || w == 8) {
                 Deref access{.width = w, .basereg = Reg{2}, .offset = 17};
-                compare_marshal_unmarshal(LockAdd{.access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::ADD, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::ADD_FETCH, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::OR, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::OR_FETCH, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::AND, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::AND_FETCH, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::XOR, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::XOR_FETCH, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::XCHG, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::CMPXCHG, .access = access, .valreg = Reg{1}});
             }
         }
     }
@@ -450,7 +459,7 @@ TEST_CASE("marshal", "[disasm][marshal]") {
         Mem m{.access = access, .value = Reg{3}, .is_load = true};
         auto ins = marshal(m, 0).at(0);
         ebpf_inst expect{
-            .opcode = (uint8_t)(INST_CLS_LD | (INST_MEM << 5) | width_to_opcode(1) | 0x1),
+            .opcode = (uint8_t)(INST_CLS_LD | INST_MODE_MEM | width_to_opcode(1) | 0x1),
             .dst = 3,
             .src = 4,
             .offset = 6,
@@ -473,7 +482,7 @@ TEST_CASE("marshal", "[disasm][marshal]") {
         REQUIRE(ins.dst == 4);
         REQUIRE(ins.offset == 6);
         REQUIRE(ins.imm == 0);
-        REQUIRE(ins.opcode == (uint8_t)(INST_CLS_ST | (INST_MEM << 5) | width_to_opcode(1) | 0x1));
+        REQUIRE(ins.opcode == (uint8_t)(INST_CLS_ST | INST_MODE_MEM | width_to_opcode(1) | 0x1));
     }
     SECTION("StoreImm") {
         Deref access{.width = 1, .basereg = Reg{4}, .offset = 6};
@@ -482,7 +491,7 @@ TEST_CASE("marshal", "[disasm][marshal]") {
         REQUIRE(ins.dst == 4);
         REQUIRE(ins.offset == 6);
         REQUIRE(ins.imm == 3);
-        REQUIRE(ins.opcode == (uint8_t)(INST_CLS_ST | (INST_MEM << 5) | width_to_opcode(1) | 0x0));
+        REQUIRE(ins.opcode == (uint8_t)(INST_CLS_ST | INST_MODE_MEM | width_to_opcode(1) | 0x0));
     }
 }
 

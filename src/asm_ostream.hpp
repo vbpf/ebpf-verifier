@@ -59,7 +59,7 @@ inline std::ostream& operator<<(std::ostream& os, Exit const& a) { return os << 
 inline std::ostream& operator<<(std::ostream& os, Jmp const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, Packet const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, Mem const& a) { return os << (Instruction)a; }
-inline std::ostream& operator<<(std::ostream& os, LockAdd const& a) { return os << (Instruction)a; }
+inline std::ostream& operator<<(std::ostream& os, Atomic const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, Assume const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, Assert const& a) { return os << (Instruction)a; }
 inline std::ostream& operator<<(std::ostream& os, IncrementLoopCounter const& a) { return os << (Instruction)a; }

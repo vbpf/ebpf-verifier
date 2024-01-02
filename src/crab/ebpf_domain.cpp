@@ -2154,8 +2154,61 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue,
     });
 }
 
-void ebpf_domain_t::operator()(const LockAdd& a) {
-    // nothing to do here
+void ebpf_domain_t::operator()(const Atomic& a) {
+    if (m_inv.is_bottom())
+        return;
+    if (!m_inv.entail(type_is_pointer(reg_pack(a.access.basereg))) ||
+        !m_inv.entail(type_is_number(reg_pack(a.valreg)))) {
+        return;
+    }
+
+    // Fetch the current value into the R11 pseudo-register.
+    Reg r11{R11_ATOMIC_SCRATCH};
+    Mem mem = {.access = a.access, .value = r11, .is_load = true};
+    (*this)(mem);
+
+    // Compute the new value in R11.
+    Bin bin {.dst = r11, .v = a.valreg, .is64 = (a.access.width == sizeof(uint64_t)), .lddw = false};
+    switch ((Atomic::Op)((uint32_t)a.op & (uint32_t)Atomic::Op::BASE_MASK)) {
+    case Atomic::Op::ADD: bin.op = Bin::Op::ADD; break;
+    case Atomic::Op::OR: bin.op = Bin::Op::OR; break;
+    case Atomic::Op::AND: bin.op = Bin::Op::AND; break;
+    case Atomic::Op::XOR: bin.op = Bin::Op::XOR; break;
+    case Atomic::Op::XCHG_BASE:
+    case Atomic::Op::CMPXCHG_BASE: bin.op = Bin::Op::MOV; break;
+    default: throw std::exception();
+    }
+    (*this)(bin);
+
+    if (a.op == Atomic::Op::CMPXCHG) {
+        // For CMPXCHG, store the original value in r0.
+        Reg r0{R0_RETURN_VALUE};
+        Mem mem = {.access = a.access, .value = r0, .is_load = true};
+        (*this)(mem);
+
+        // For the destination, there are 3 possibilities:
+        // 1) dst.value == r0.value : set R11 to valreg
+        // 2) dst.value != r0.value : don't modify R11
+        // 3) dst.value may or may not == r0.value : set R11 to the union of R11 and valreg
+        // For now we just havoc the value of R11.
+        havoc_register(m_inv, r11);
+    } else if ((uint32_t)a.op & (uint32_t)Atomic::Op::FETCH) {
+        // For other FETCH operations, store the original value in the src register.
+        mem.value = a.valreg;
+        mem.is_load = true;
+        (*this)(mem);
+    }
+
+    // Store the new value back in the original shared memory location.
+    // Note that do_mem_store() currently doesn't track shared memory values,
+    // but stack memory values are tracked and are legal here.
+    mem.value = r11;
+    mem.is_load = false;
+    (*this)(mem);
+
+    // Clear the R11 pseudo-register.
+    havoc_register(m_inv, r11);
+    type_inv.havoc_type(m_inv, r11);
 }
 
 void ebpf_domain_t::operator()(const Call& call) {
