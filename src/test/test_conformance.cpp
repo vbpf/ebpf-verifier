@@ -13,7 +13,7 @@ void test_conformance(std::string filename, bpf_conformance_test_result_t expect
     std::filesystem::path plugin_path =
         test_path.remove_filename().append("conformance_check" + extension.string()).string();
     std::map<std::filesystem::path, std::tuple<bpf_conformance_test_result_t, std::string>> result =
-        bpf_conformance(test_files, plugin_path, {}, {}, {}, bpf_conformance_test_CPU_version_t::v3,
+        bpf_conformance(test_files, plugin_path, {}, {}, {}, bpf_conformance_test_CPU_version_t::v4,
                         bpf_conformance_list_instructions_t::LIST_INSTRUCTIONS_NONE, true);
     for (auto file : test_files) {
         auto& [file_result, reason] = result[file];
@@ -34,21 +34,21 @@ void test_conformance(std::string filename, bpf_conformance_test_result_t expect
 // legitimate programs from being usable.
 #define TEST_CONFORMANCE_VERIFICATION_FAILED(filename) \
     TEST_CASE("conformance_check " filename, "[conformance]") { \
-        test_conformance(filename, bpf_conformance_test_result_t::TEST_RESULT_FAIL, "Verification failed"); \
+        test_conformance(filename, bpf_conformance_test_result_t::TEST_RESULT_ERROR, "Verification failed"); \
     }
 
 // Any tests that return top are safe, but are not as precise as they
 // could be and so may prevent legitimate programs from being usable.
 #define TEST_CONFORMANCE_TOP(filename) \
     TEST_CASE("conformance_check " filename, "[conformance]") { \
-        test_conformance(filename, bpf_conformance_test_result_t::TEST_RESULT_FAIL, "Couldn't determine r0 value"); \
+        test_conformance(filename, bpf_conformance_test_result_t::TEST_RESULT_ERROR, "Couldn't determine r0 value"); \
     }
 
 // Any tests that return a range are safe, but are not as precise as they
 // could be and so may prevent legitimate programs from being usable.
 #define TEST_CONFORMANCE_RANGE(filename, range)                                                                  \
     TEST_CASE("conformance_check " filename, "[conformance]") {                                                  \
-        test_conformance(filename, bpf_conformance_test_result_t::TEST_RESULT_FAIL, "r0 value is range " range); \
+        test_conformance(filename, bpf_conformance_test_result_t::TEST_RESULT_ERROR, "r0 value is range " range); \
     }
 
 TEST_CONFORMANCE("add.data")
@@ -74,8 +74,9 @@ TEST_CONFORMANCE("be16.data")
 TEST_CONFORMANCE("be32-high.data")
 TEST_CONFORMANCE("be32.data")
 TEST_CONFORMANCE("be64.data")
+TEST_CONFORMANCE_VERIFICATION_FAILED("call_local.data")
 TEST_CONFORMANCE("call_unwind_fail.data")
-TEST_CONFORMANCE("div-by-zero-reg.data")
+TEST_CONFORMANCE("div32-by-zero-reg.data")
 TEST_CONFORMANCE("div32-high-divisor.data")
 TEST_CONFORMANCE("div32-imm.data")
 TEST_CONFORMANCE("div32-reg.data")
@@ -149,6 +150,14 @@ TEST_CONFORMANCE_VERIFICATION_FAILED("lock_and.data")
 TEST_CONFORMANCE_VERIFICATION_FAILED("lock_and32.data")
 TEST_CONFORMANCE_VERIFICATION_FAILED("lock_cmpxchg.data")
 TEST_CONFORMANCE_VERIFICATION_FAILED("lock_cmpxchg32.data")
+TEST_CONFORMANCE_VERIFICATION_FAILED("lock_fetch_add.data")
+TEST_CONFORMANCE_VERIFICATION_FAILED("lock_fetch_add32.data")
+TEST_CONFORMANCE_VERIFICATION_FAILED("lock_fetch_and.data")
+TEST_CONFORMANCE_VERIFICATION_FAILED("lock_fetch_and32.data")
+TEST_CONFORMANCE_VERIFICATION_FAILED("lock_fetch_or.data")
+TEST_CONFORMANCE_VERIFICATION_FAILED("lock_fetch_or32.data")
+TEST_CONFORMANCE_VERIFICATION_FAILED("lock_fetch_xor.data")
+TEST_CONFORMANCE_VERIFICATION_FAILED("lock_fetch_xor32.data")
 TEST_CONFORMANCE_VERIFICATION_FAILED("lock_or.data")
 TEST_CONFORMANCE_VERIFICATION_FAILED("lock_or32.data")
 TEST_CONFORMANCE_VERIFICATION_FAILED("lock_xchg.data")
@@ -195,6 +204,12 @@ TEST_CONFORMANCE("rsh64-imm-neg.data")
 TEST_CONFORMANCE("rsh64-reg.data")
 TEST_CONFORMANCE("rsh64-reg-high.data")
 TEST_CONFORMANCE("rsh64-reg-neg.data")
+TEST_CONFORMANCE("sdiv32-by-zero-reg.data")
+TEST_CONFORMANCE("sdiv32-imm.data")
+TEST_CONFORMANCE("sdiv32-reg.data")
+TEST_CONFORMANCE("sdiv64-by-zero-reg.data")
+TEST_CONFORMANCE("sdiv64-imm.data")
+TEST_CONFORMANCE("sdiv64-reg.data")
 TEST_CONFORMANCE("stack.data")
 TEST_CONFORMANCE("stb.data")
 TEST_CONFORMANCE("stdw.data")
