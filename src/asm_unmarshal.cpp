@@ -87,28 +87,20 @@ struct Unmarshaller {
     explicit Unmarshaller(vector<vector<string>>& notes, const program_info& info) : notes{notes}, info{info} { note_next_pc(); }
 
     auto getAluOp(size_t pc, ebpf_inst inst) -> std::variant<Bin::Op, Un::Op> {
+        // First handle instructions that support a non-zero offset.
         switch (inst.opcode & INST_ALU_OP_MASK) {
-        case INST_ALU_OP_ADD: return Bin::Op::ADD;
-        case INST_ALU_OP_SUB: return Bin::Op::SUB;
-        case INST_ALU_OP_MUL: return Bin::Op::MUL;
         case INST_ALU_OP_DIV:
             switch (inst.offset) {
             case 0: return Bin::Op::UDIV;
             case 1: return Bin::Op::SDIV;
             default: throw InvalidInstruction{pc, "invalid ALU op 0x30"};
             }
-        case INST_ALU_OP_OR: return Bin::Op::OR;
-        case INST_ALU_OP_AND: return Bin::Op::AND;
-        case INST_ALU_OP_LSH: return Bin::Op::LSH;
-        case INST_ALU_OP_RSH: return Bin::Op::RSH;
-        case INST_ALU_OP_NEG: return Un::Op::NEG;
         case INST_ALU_OP_MOD:
             switch (inst.offset) {
             case 0: return Bin::Op::UMOD;
             case 1: return Bin::Op::SMOD;
             default: throw InvalidInstruction{pc, "invalid ALU op 0x90"};
             }
-        case INST_ALU_OP_XOR: return Bin::Op::XOR;
         case INST_ALU_OP_MOV:
             switch (inst.offset) {
             case 0: return Bin::Op::MOV;
@@ -117,6 +109,22 @@ struct Unmarshaller {
             case 32: return Bin::Op::MOVSX32;
             default: throw InvalidInstruction{pc, "invalid ALU op 0xb0"};
             }
+        }
+
+        // All the rest require a zero offset.
+        if (inst.offset != 0)
+            throw InvalidInstruction{pc, "nonzero offset for register alu op"};
+
+        switch (inst.opcode & INST_ALU_OP_MASK) {
+        case INST_ALU_OP_ADD: return Bin::Op::ADD;
+        case INST_ALU_OP_SUB: return Bin::Op::SUB;
+        case INST_ALU_OP_MUL: return Bin::Op::MUL;
+        case INST_ALU_OP_OR: return Bin::Op::OR;
+        case INST_ALU_OP_AND: return Bin::Op::AND;
+        case INST_ALU_OP_LSH: return Bin::Op::LSH;
+        case INST_ALU_OP_RSH: return Bin::Op::RSH;
+        case INST_ALU_OP_NEG: return Un::Op::NEG;
+        case INST_ALU_OP_XOR: return Bin::Op::XOR;
         case INST_ALU_OP_ARSH:
             if ((inst.opcode & INST_CLS_MASK) == INST_CLS_ALU)
                 note("arsh32 is not allowed");
@@ -150,8 +158,6 @@ struct Unmarshaller {
     uint64_t zero_extend(int32_t imm) { return (uint64_t)(uint32_t)imm; }
 
     auto getBinValue(pc_t pc, ebpf_inst inst) -> Value {
-        if (inst.offset != 0)
-            throw InvalidInstruction{pc, "nonzero offset for register alu op"};
         if (inst.opcode & INST_SRC_REG) {
             if (inst.imm != 0)
                 throw InvalidInstruction{pc, "nonzero imm for register alu op"};
