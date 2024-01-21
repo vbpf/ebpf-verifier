@@ -88,16 +88,20 @@ static const auto ws = {1, 2, 4, 8};
 
 TEST_CASE("disasm_marshal", "[disasm][marshal]") {
     SECTION("Bin") {
-        auto ops = {Bin::Op::MOV, Bin::Op::ADD, Bin::Op::SUB, Bin::Op::MUL, Bin::Op::UDIV,  Bin::Op::UMOD,
-                    Bin::Op::OR,  Bin::Op::AND, Bin::Op::LSH, Bin::Op::RSH, Bin::Op::ARSH, Bin::Op::XOR,
-                    Bin::Op::SDIV, Bin::Op::SMOD, Bin::Op::MOVSX8, Bin::Op::MOVSX16, Bin::Op::MOVSX32};
         SECTION("Reg src") {
+            auto ops = {Bin::Op::MOV,  Bin::Op::ADD,  Bin::Op::SUB,    Bin::Op::MUL,     Bin::Op::UDIV,   Bin::Op::UMOD,
+                        Bin::Op::OR,   Bin::Op::AND,  Bin::Op::LSH,    Bin::Op::RSH,     Bin::Op::ARSH,   Bin::Op::XOR,
+                        Bin::Op::SDIV, Bin::Op::SMOD, Bin::Op::MOVSX8, Bin::Op::MOVSX16, Bin::Op::MOVSX32};
             for (auto op : ops) {
                 compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Reg{2}, .is64 = true});
                 compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Reg{2}, .is64 = false});
             }
         }
         SECTION("Imm src") {
+            // MOVSX* instructions are not defined for Imm, only Reg.
+            auto ops = {Bin::Op::MOV,  Bin::Op::ADD, Bin::Op::SUB,  Bin::Op::MUL, Bin::Op::UDIV,
+                        Bin::Op::UMOD, Bin::Op::OR,  Bin::Op::AND,  Bin::Op::LSH, Bin::Op::RSH,
+                        Bin::Op::ARSH, Bin::Op::XOR, Bin::Op::SDIV, Bin::Op::SMOD};
             for (auto op : ops) {
                 compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Imm{2}, .is64 = false});
                 compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Imm{2}, .is64 = true});
@@ -377,6 +381,8 @@ TEST_CASE("fail unmarshal misc", "[disasm][marshal]") {
                          "0: Bad register\n");
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0xb4 */ (INST_ALU_OP_MOV | INST_SRC_IMM | INST_CLS_ALU), .dst = 11, .imm = 8},
                          "0: Bad register\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xb4 */ INST_ALU_OP_MOV | INST_SRC_IMM | INST_CLS_ALU, .offset = 8},
+                         "0: invalid offset for op 0xb4\n");
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0xbc */ (INST_ALU_OP_MOV | INST_SRC_REG | INST_CLS_ALU), .dst = 1, .src = 11},
                          "0: Bad register\n");
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0xd4 */ INST_ALU_OP_END | INST_END_LE | INST_CLS_ALU, .dst = 1, .imm = 8},
