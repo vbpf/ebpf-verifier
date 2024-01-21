@@ -110,6 +110,8 @@ struct Unmarshaller {
             default: throw InvalidInstruction(pc, make_opcode_message("invalid offset for", inst.opcode));
             }
         case INST_ALU_OP_MOV:
+            if (inst.offset > 0 && !(inst.opcode & INST_SRC_REG))
+                throw InvalidInstruction(pc, make_opcode_message("invalid offset for", inst.opcode));
             switch (inst.offset) {
             case 0: return Bin::Op::MOV;
             case 8: return Bin::Op::MOVSX8;
