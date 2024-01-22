@@ -87,6 +87,10 @@ class array_domain_t final {
     // Perform array stores over an array segment
     void store_numbers(NumAbsDomain& inv, variable_t _idx, variable_t _width);
 
+    void split_number_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i,
+                          const linear_expression_t& elem_size);
+    void split_cell(NumAbsDomain& inv, data_kind_t kind, int cell_start_index, unsigned int len);
+
     void initialize_numbers(int lb, int width);
 };
 
