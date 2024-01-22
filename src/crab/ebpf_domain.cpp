@@ -1467,6 +1467,7 @@ void ebpf_domain_t::operator()(const Un& stmt) {
     // Swap bytes.  For 64-bit types we need the weights to fit in a
     // signed int64, but for smaller types we don't want sign extension,
     // so we use unsigned which still fits in a signed int64.
+    // TODO: use the big_endian property of the platform.
     switch (stmt.op) {
     case Un::Op::BE16:
         swap_endianness(dst.svalue, uint16_t(0), boost::endian::native_to_big<uint16_t>);
