@@ -476,6 +476,7 @@ TEST_SECTION("build", "prog_array.o", ".text");
 TEST_SECTION_REJECT("build", "badhelpercall.o", ".text")
 TEST_SECTION_REJECT("build", "ctxoffset.o", "sockops")
 TEST_SECTION_REJECT("build", "badmapptr.o", "test")
+TEST_SECTION_FAIL("build", "dependent_read.o", "xdp")
 TEST_SECTION_REJECT("build", "exposeptr.o", ".text")
 TEST_SECTION_REJECT("build", "exposeptr2.o", ".text")
 TEST_SECTION_REJECT("build", "mapvalue-overrun.o", ".text")
