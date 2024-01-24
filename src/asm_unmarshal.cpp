@@ -123,7 +123,12 @@ struct Unmarshaller {
         case INST_ALU_OP_AND: return Bin::Op::AND;
         case INST_ALU_OP_LSH: return Bin::Op::LSH;
         case INST_ALU_OP_RSH: return Bin::Op::RSH;
-        case INST_ALU_OP_NEG: return Un::Op::NEG;
+        case INST_ALU_OP_NEG:
+            if (inst.opcode & INST_SRC_REG) {
+                // Negation is a unary operation. The SRC bit must be 0.
+                throw InvalidInstruction{pc, "Bad instruction"};
+            }
+            return Un::Op::NEG;
         case INST_ALU_OP_XOR: return Bin::Op::XOR;
         case INST_ALU_OP_ARSH:
             if ((inst.opcode & INST_CLS_MASK) == INST_CLS_ALU)
@@ -389,7 +394,7 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, "invalid helper function id");
             return makeCall(inst.imm);
         case INST_EXIT:
-            if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP)
+            if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP || (inst.opcode & INST_SRC_REG))
                 throw InvalidInstruction(pc, "Bad instruction");
             return Exit{};
         case INST_JA:

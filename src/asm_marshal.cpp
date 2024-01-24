@@ -133,7 +133,7 @@ struct MarshalVisitor {
         case Un::Op::NEG:
             return {ebpf_inst{
                 // FIX: should be INST_CLS_ALU / INST_CLS_ALU64
-                .opcode = static_cast<uint8_t>(INST_CLS_ALU | 0x3 | (0x8 << 4)),
+                .opcode = static_cast<uint8_t>(INST_CLS_ALU | 0x3 | INST_ALU_OP_NEG),
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,
@@ -143,7 +143,7 @@ struct MarshalVisitor {
         case Un::Op::LE32:
         case Un::Op::LE64:
             return {ebpf_inst{
-                .opcode = static_cast<uint8_t>(INST_CLS_ALU | (0xd << 4)),
+                .opcode = static_cast<uint8_t>(INST_CLS_ALU | INST_ALU_OP_END),
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,
@@ -153,7 +153,7 @@ struct MarshalVisitor {
         case Un::Op::BE32:
         case Un::Op::BE64:
             return {ebpf_inst{
-                .opcode = static_cast<uint8_t>(INST_CLS_ALU | 0x8 | (0xd << 4)),
+                .opcode = static_cast<uint8_t>(INST_CLS_ALU | INST_END_BE | INST_ALU_OP_END),
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,
@@ -163,7 +163,7 @@ struct MarshalVisitor {
         case Un::Op::SWAP32:
         case Un::Op::SWAP64:
             return {ebpf_inst{
-                .opcode = static_cast<uint8_t>(INST_CLS_ALU64 | (0xd << 4)),
+                .opcode = static_cast<uint8_t>(INST_CLS_ALU64 | INST_ALU_OP_END),
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,
