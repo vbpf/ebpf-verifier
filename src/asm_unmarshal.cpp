@@ -132,11 +132,13 @@ struct Unmarshaller {
         case INST_ALU_OP_LSH: return Bin::Op::LSH;
         case INST_ALU_OP_RSH: return Bin::Op::RSH;
         case INST_ALU_OP_NEG:
-            // Negation is a unary operation. The SRC bit and src field must be 0.
+            // Negation is a unary operation. The SRC bit, src, and imm must be all 0.
             if (inst.opcode & INST_SRC_REG)
                 throw InvalidInstruction{pc, inst.opcode};
             if (inst.src != 0)
                 throw InvalidInstruction{pc, make_opcode_message("nonzero src for register", inst.opcode)};
+            if (inst.imm != 0)
+                throw InvalidInstruction(pc, make_opcode_message("nonzero imm for", inst.opcode));
             return Un::Op::NEG;
         case INST_ALU_OP_XOR: return Bin::Op::XOR;
         case INST_ALU_OP_ARSH:
@@ -176,7 +178,7 @@ struct Unmarshaller {
     auto getBinValue(pc_t pc, ebpf_inst inst) -> Value {
         if (inst.opcode & INST_SRC_REG) {
             if (inst.imm != 0)
-                throw InvalidInstruction{pc, "nonzero imm for register alu op"};
+                throw InvalidInstruction(pc, make_opcode_message("nonzero imm for", inst.opcode));
             return Reg{inst.src};
         } else {
             if (inst.src != 0)
@@ -240,6 +242,8 @@ struct Unmarshaller {
             bool isImm = !(inst.opcode & 1);
             if (isImm && inst.src != 0)
                 throw InvalidInstruction(pc, make_opcode_message("nonzero src for register", inst.opcode));
+            if (!isImm && inst.imm != 0)
+                throw InvalidInstruction(pc, make_opcode_message("nonzero imm for", inst.opcode));
 
             assert(!(isLoad && isImm));
             uint8_t basereg = isLoad ? inst.src : inst.dst;
@@ -400,6 +404,8 @@ struct Unmarshaller {
     auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, pc_t pc) -> Instruction {
         switch ((inst.opcode >> 4) & 0xF) {
         case INST_CALL:
+            if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP)
+                throw InvalidInstruction(pc, inst.opcode);
             if (inst.opcode & INST_SRC_REG)
                 throw InvalidInstruction(pc, inst.opcode);
             if (!info.platform->is_helper_usable(inst.imm))
@@ -410,6 +416,8 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, inst.opcode);
             if (inst.src != 0)
                 throw InvalidInstruction(pc, make_opcode_message("nonzero src for register", inst.opcode));
+            if (inst.imm != 0)
+                throw InvalidInstruction(pc, make_opcode_message("nonzero imm for", inst.opcode));
             return Exit{};
         case INST_JA:
             if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP &&
@@ -417,11 +425,15 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, inst.opcode);
             if (inst.opcode & INST_SRC_REG)
                 throw InvalidInstruction(pc, inst.opcode);
+            if ((inst.opcode & INST_CLS_MASK) == INST_CLS_JMP && (inst.imm != 0))
+                throw InvalidInstruction(pc, make_opcode_message("nonzero imm for", inst.opcode));
         default: {
-            // Validate the opcode and src first.
+            // First validate the opcode, src, and imm.
             auto op = getJmpOp(pc, inst.opcode);
             if (!(inst.opcode & INST_SRC_REG) && (inst.src != 0))
                 throw InvalidInstruction(pc, make_opcode_message("nonzero src for register", inst.opcode));
+            if ((inst.opcode & INST_SRC_REG) && (inst.imm != 0))
+                throw InvalidInstruction(pc, make_opcode_message("nonzero imm for", inst.opcode));
 
             int32_t offset = (inst.opcode == INST_OP_JA32) ? inst.imm : inst.offset;
             pc_t new_pc = pc + 1 + offset;
