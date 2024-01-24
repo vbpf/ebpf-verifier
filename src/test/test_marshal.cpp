@@ -269,21 +269,26 @@ TEST_CASE("fail unmarshal imm0 opcodes", "[disasm][marshal]") {
                               0x71, 0x73, 0x79, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f, 0x84, 0x87, 0x95, 0x9c, 0x9f, 0xac, 0xad,
                               0xae, 0xaf, 0xbc, 0xbd, 0xbe, 0xbf, 0xcc, 0xcd, 0xce, 0xcf, 0xdd, 0xde};
     for (int i = 0; i < sizeof(imm0_opcodes); i++) {
-        printf("[0x%x]\n", imm0_opcodes[i]);
         std::ostringstream oss;
         oss << "0: nonzero imm for op 0x" << std::hex << (int)imm0_opcodes[i] << std::endl;
         check_unmarshal_fail(ebpf_inst{.opcode = imm0_opcodes[i], .imm = 1}, oss.str().c_str());
     }
 }
 
-TEST_CASE("fail unmarshal", "[disasm][marshal]") {
+TEST_CASE("fail unmarshal off0 opcodes", "[disasm][marshal]") {
+    // The following opcodes are only defined for offset = 0.
+    uint8_t off0_opcodes[] = {0x04, 0x06, 0x07, 0x0c, 0x0f, 0x14, 0x17, 0x1c, 0x1f, 0x24, 0x27, 0x2c, 0x2f, 0x44, 0x47,
+                              0x4c, 0x4f, 0x54, 0x57, 0x5c, 0x5f, 0x64, 0x67, 0x6c, 0x6f, 0x74, 0x77, 0x7c, 0x7f, 0x84,
+                              0x85, 0x87, 0x95, 0xa4, 0xa7, 0xac, 0xaf, 0xc4, 0xc7, 0xcc, 0xcf, 0xd4, 0xd7, 0xdc};
+    for (int i = 0; i < sizeof(off0_opcodes); i++) {
+        std::ostringstream oss;
+        oss << "0: nonzero offset for op 0x" << std::hex << (int)off0_opcodes[i] << std::endl;
+        check_unmarshal_fail(ebpf_inst{.opcode = off0_opcodes[i], .offset = 1}, oss.str().c_str());
+    }
+}
+
+TEST_CASE("fail unmarshal misc", "[disasm][marshal]") {
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0x06 */ INST_CLS_JMP32}, "0: jump out of bounds\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x07 */ INST_ALU_OP_ADD | INST_SRC_IMM | INST_CLS_ALU64, .offset = 8},
-                         "0: nonzero offset for register alu op\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x07 */ INST_ALU_OP_ADD | INST_SRC_IMM | INST_CLS_ALU64, .src = 8},
-                         "0: nonzero src for register alu op\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x0f */ INST_ALU_OP_ADD | INST_SRC_REG | INST_CLS_ALU64, .imm = 8},
-                         "0: nonzero imm for register alu op\n");
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0x16 */ 0x10 | INST_CLS_JMP32}, "0: jump out of bounds\n");
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM}, "0: incomplete LDDW\n");
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0x21 */ (INST_ABS << 5) | INST_SIZE_W | INST_CLS_LDX, .imm = 8},

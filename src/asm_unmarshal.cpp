@@ -121,7 +121,7 @@ struct Unmarshaller {
 
         // All the rest require a zero offset.
         if (inst.offset != 0)
-            throw InvalidInstruction{pc, "nonzero offset for register alu op"};
+            throw InvalidInstruction(pc, make_opcode_message("nonzero offset for", inst.opcode));
 
         switch (inst.opcode & INST_ALU_OP_MASK) {
         case INST_ALU_OP_ADD: return Bin::Op::ADD;
@@ -408,6 +408,8 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, inst.opcode);
             if (inst.opcode & INST_SRC_REG)
                 throw InvalidInstruction(pc, inst.opcode);
+            if (inst.offset != 0)
+                throw InvalidInstruction(pc, make_opcode_message("nonzero offset for", inst.opcode));
             if (!info.platform->is_helper_usable(inst.imm))
                 throw InvalidInstruction(pc, "invalid helper function id");
             return makeCall(inst.imm);
@@ -418,6 +420,8 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, make_opcode_message("nonzero src for register", inst.opcode));
             if (inst.imm != 0)
                 throw InvalidInstruction(pc, make_opcode_message("nonzero imm for", inst.opcode));
+            if (inst.offset != 0)
+                throw InvalidInstruction(pc, make_opcode_message("nonzero offset for", inst.opcode));
             return Exit{};
         case INST_JA:
             if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP &&
@@ -427,6 +431,8 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, inst.opcode);
             if ((inst.opcode & INST_CLS_MASK) == INST_CLS_JMP && (inst.imm != 0))
                 throw InvalidInstruction(pc, make_opcode_message("nonzero imm for", inst.opcode));
+            if ((inst.opcode & INST_CLS_MASK) == INST_CLS_JMP32 && (inst.offset != 0))
+                throw InvalidInstruction(pc, make_opcode_message("nonzero offset for", inst.opcode));
         default: {
             // First validate the opcode, src, and imm.
             auto op = getJmpOp(pc, inst.opcode);
