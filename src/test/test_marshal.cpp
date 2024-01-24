@@ -234,44 +234,63 @@ TEST_CASE("disasm_marshal_Mem", "[disasm][marshal]") {
 }
 
 TEST_CASE("fail unmarshal", "[disasm][marshal]") {
-    check_unmarshal_fail(ebpf_inst{.opcode = ((INST_MEM << 5) | INST_SIZE_B | INST_CLS_LDX), .dst = 11, .imm = 8},
-                         "0: Bad register\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = ((INST_MEM << 5) | INST_SIZE_B | INST_CLS_LDX), .dst = 1, .src = 11},
-                         "0: Bad register\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = (INST_ALU_OP_MOV | INST_SRC_IMM | INST_CLS_ALU), .dst = 11, .imm = 8},
-                         "0: Bad register\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = (INST_ALU_OP_MOV | INST_SRC_REG | INST_CLS_ALU), .dst = 1, .src = 11},
-                         "0: Bad register\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = ((INST_MEM << 5) | INST_SIZE_W | INST_CLS_LD)},
-                         "0: plain LD\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = INST_ALU_OP_END | INST_END_LE | INST_CLS_ALU, .dst = 1, .imm = 8}, "0: invalid endian immediate\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = INST_ALU_OP_END | INST_END_BE | INST_CLS_ALU, .dst = 1, .imm = 8}, "0: invalid endian immediate\n");
-    check_unmarshal_fail(ebpf_inst{}, "0: Bad instruction\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = INST_CLS_LDX}, "0: Bad instruction\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = ((INST_XADD << 5) | INST_CLS_ST)}, "0: Bad instruction\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = ((INST_XADD << 5) | INST_SIZE_B | INST_CLS_STX)}, "0: Bad instruction\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = ((INST_XADD << 5) | INST_SIZE_H | INST_CLS_STX)}, "0: Bad instruction\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = INST_OP_CALL | INST_SRC_REG}, "0: Bad instruction\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = INST_OP_LDDW_IMM}, "0: incomplete LDDW\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = INST_ALU_OP_ADD | INST_SRC_IMM | INST_CLS_ALU64, .offset = 8},
+    uint8_t bad_opcodes[] = {
+        0x00, 0x01, 0x02, 0x03, 0x08, 0x09, 0x0a, 0x0b, 0x0d, 0x0e, 0x10, 0x11, 0x12, 0x13, 0x19, 0x1a, 0x1b, 0x60,
+        0x68, 0x70, 0x78, 0x80, 0x81, 0x82, 0x83, 0x86, 0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f, 0x90, 0x91,
+        0x92, 0x93, 0x96, 0x98, 0x99, 0x9a, 0x9b, 0x9d, 0x9e, 0xa0, 0xa1, 0xa2, 0xa3, 0xa8, 0xa9, 0xaa, 0xab, 0xb0,
+        0xb1, 0xb2, 0xb3, 0xb8, 0xb9, 0xba, 0xbb, 0xc0, 0xc1, 0xc2, 0xc8, 0xc9, 0xca, 0xcb, 0xd0, 0xd1, 0xd2, 0xd3,
+        0xd8, 0xd9, 0xda, 0xdf, 0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed,
+        0xee, 0xef, 0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff};
+    for (int i = 0; i < sizeof(bad_opcodes); i++) {
+        printf("[0x%x]\n", bad_opcodes[i]);
+        check_unmarshal_fail(ebpf_inst{.opcode = bad_opcodes[i]}, "0: Bad instruction\n");
+    }
+    check_unmarshal_fail(ebpf_inst{.opcode = 0x00}, "0: Bad instruction\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x01 */ INST_CLS_LDX}, "0: Bad instruction\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = 0x02}, "0: Bad instruction\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = 0x03}, "0: Bad instruction\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x06 */ INST_CLS_JMP32}, "0: jump out of bounds\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x07 */ INST_ALU_OP_ADD | INST_SRC_IMM | INST_CLS_ALU64, .offset = 8},
                          "0: nonzero offset for register alu op\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = INST_ALU_OP_ADD | INST_SRC_IMM | INST_CLS_ALU64, .src = 8},
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x07 */ INST_ALU_OP_ADD | INST_SRC_IMM | INST_CLS_ALU64, .src = 8},
                          "0: nonzero src for register alu op\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = INST_ALU_OP_ADD | INST_SRC_REG | INST_CLS_ALU64, .imm = 8},
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x0f */ INST_ALU_OP_ADD | INST_SRC_REG | INST_CLS_ALU64, .imm = 8},
                          "0: nonzero imm for register alu op\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = (INST_ABS << 5) | INST_SIZE_W | INST_CLS_LDX, .imm = 8},
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x16 */ 0x10 | INST_CLS_JMP32}, "0: jump out of bounds\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM}, "0: incomplete LDDW\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x21 */ (INST_ABS << 5) | INST_SIZE_W | INST_CLS_LDX, .imm = 8},
                          "0: ABS but not LD\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = (INST_IND << 5) | INST_SIZE_W | INST_CLS_LDX, .imm = 8},
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x41 */ (INST_IND << 5) | INST_SIZE_W | INST_CLS_LDX, .imm = 8},
                          "0: IND but not LD\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = (INST_LEN << 5) | INST_SIZE_W | INST_CLS_LDX, .imm = 8},
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x60 */ ((INST_MEM << 5) | INST_SIZE_W | INST_CLS_LD)},
                          "0: Bad instruction\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = (INST_MSH << 5) | INST_SIZE_W | INST_CLS_LDX, .imm = 8},
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x71 */ ((INST_MEM << 5) | INST_SIZE_B | INST_CLS_LDX), .dst = 11, .imm = 8},
+                         "0: Bad register\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x71 */ ((INST_MEM << 5) | INST_SIZE_B | INST_CLS_LDX), .dst = 1, .src = 11},
+                         "0: Bad register\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x81 */ (INST_LEN << 5) | INST_SIZE_W | INST_CLS_LDX, .imm = 8},
                          "0: Bad instruction\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = (INST_MEM_UNUSED << 5) | INST_SIZE_W | INST_CLS_LDX, .imm = 8},
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x8d */ INST_OP_CALL | INST_SRC_REG}, "0: Bad instruction\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x96 */ 0x90 | INST_CLS_JMP32}, "0: Bad instruction\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xa1 */ (INST_MSH << 5) | INST_SIZE_W | INST_CLS_LDX, .imm = 8},
                          "0: Bad instruction\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = INST_CLS_JMP32}, "0: jump out of bounds\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = 0x90 | INST_CLS_JMP32}, "0: Bad instruction\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = 0x10 | INST_CLS_JMP32}, "0: jump out of bounds\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = INST_ALU_OP_END | INST_CLS_ALU, .imm = 0}, "0: invalid endian immediate\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = INST_ALU_OP_END | INST_CLS_ALU64, .imm = 0}, "0: invalid endian immediate\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xb4 */ (INST_ALU_OP_MOV | INST_SRC_IMM | INST_CLS_ALU), .dst = 11, .imm = 8},
+                         "0: Bad register\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xbc */ (INST_ALU_OP_MOV | INST_SRC_REG | INST_CLS_ALU), .dst = 1, .src = 11},
+                         "0: Bad register\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xc2 */ ((INST_XADD << 5) | INST_CLS_ST)}, "0: Bad instruction\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xcb */ ((INST_XADD << 5) | INST_SIZE_H | INST_CLS_STX)},
+                         "0: Bad instruction\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xd3 */ ((INST_XADD << 5) | INST_SIZE_B | INST_CLS_STX)},
+                         "0: Bad instruction\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xd4 */ INST_ALU_OP_END | INST_END_LE | INST_CLS_ALU, .dst = 1, .imm = 8},
+                         "0: invalid endian immediate\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xd4 */ INST_ALU_OP_END | INST_END_LE | INST_CLS_ALU, .imm = 0},
+                         "0: invalid endian immediate\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xd7 */ INST_ALU_OP_END | INST_END_LE | INST_CLS_ALU64, .imm = 0},
+                         "0: invalid endian immediate\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xdc */ INST_ALU_OP_END | INST_END_BE | INST_CLS_ALU, .dst = 1, .imm = 8},
+                         "0: invalid endian immediate\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xe1 */ (INST_MEM_UNUSED << 5) | INST_SIZE_W | INST_CLS_LDX, .imm = 8},
+                         "0: Bad instruction\n");
 }

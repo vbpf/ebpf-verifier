@@ -217,7 +217,7 @@ struct Unmarshaller {
 
         case INST_MEM: {
             if (isLD)
-                throw InvalidInstruction(pc, "plain LD");
+                throw InvalidInstruction(pc, "Bad instruction");
             bool isLoad = getMemIsLoad(inst.opcode);
             if (isLoad && inst.dst == R10_STACK_POINTER)
                 throw InvalidInstruction(pc, "Cannot modify r10");
@@ -382,19 +382,21 @@ struct Unmarshaller {
 
     auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, pc_t pc) -> Instruction {
         switch ((inst.opcode >> 4) & 0xF) {
-        case 0x8:
+        case INST_CALL:
             if (inst.opcode & INST_SRC_REG)
                 throw InvalidInstruction(pc, "Bad instruction");
             if (!info.platform->is_helper_usable(inst.imm))
                 throw InvalidInstruction(pc, "invalid helper function id");
             return makeCall(inst.imm);
-        case 0x9:
+        case INST_EXIT:
             if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP)
                 throw InvalidInstruction(pc, "Bad instruction");
             return Exit{};
-        case 0x0:
+        case INST_JA:
             if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP &&
                 (inst.opcode & INST_CLS_MASK) != INST_CLS_JMP32)
+                throw InvalidInstruction(pc, "Bad instruction");
+            if (inst.opcode & INST_SRC_REG)
                 throw InvalidInstruction(pc, "Bad instruction");
         default: {
             int32_t offset = (inst.opcode == INST_OP_JA32) ? inst.imm : inst.offset;
