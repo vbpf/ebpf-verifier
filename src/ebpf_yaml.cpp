@@ -322,8 +322,15 @@ ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memo
     raw_program raw_prog{.prog = insts};
     raw_prog.info.platform = &g_ebpf_platform_linux;
 
+    ebpf_verifier_options_t options = ebpf_verifier_default_options;
+    if (debug) {
+        options.print_failures = true;
+        options.print_invariants = true;
+        options.no_simplify = true;
+    }
+
     // Convert the raw program section to a set of instructions.
-    std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
+    std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog, &options);
     if (std::holds_alternative<string>(prog_or_error)) {
         std::cerr << "unmarshaling error at " << std::get<string>(prog_or_error) << "\n";
         return {};
@@ -331,12 +338,8 @@ ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memo
 
     auto& prog = std::get<InstructionSeq>(prog_or_error);
 
-    ebpf_verifier_options_t options = ebpf_verifier_default_options;
     if (debug) {
         print(prog, std::cout, {});
-        options.print_failures = true;
-        options.print_invariants = true;
-        options.no_simplify = true;
     }
 
     try {

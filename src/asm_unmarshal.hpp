@@ -15,10 +15,13 @@
 /** Translate a sequence of eBPF instructions (elf binary format) to a sequence
  *  of Instructions.
  *
- *  \param raw_prog is the input program to parse.
- *  \param notes is where errors and warnings are written to.
+ *  \param[in] raw_prog The input program to parse.
+ *  \param[in] options Verifier options.
+ *  \param[out] notes Where errors and warnings are written to.
  *  \return a sequence of instruction if successful, an error string otherwise.
  */
-std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, std::vector<std::vector<std::string>>& notes);
-std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog);
+std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, const ebpf_verifier_options_t* options,
+                                                    std::vector<std::vector<std::string>>& notes);
+std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog,
+                                                    const ebpf_verifier_options_t* options);
 Call make_call(int func, const ebpf_platform_t& platform);

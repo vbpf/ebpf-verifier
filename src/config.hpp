@@ -20,6 +20,8 @@ struct ebpf_verifier_options_t {
     bool setup_constraints;
 
     bool dump_btf_types_json;
+
+    bool legacy; // True to enable support for legacy packet access instructions.
 };
 
 struct ebpf_verifier_stats_t {

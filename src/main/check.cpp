@@ -67,6 +67,7 @@ int main(int argc, char** argv) {
     app.add_flag("-s", ebpf_verifier_options.strict, "Apply additional checks that would cause runtime failures");
     app.add_flag("-v", verbose, "Print both invariants and failures");
     bool no_division_by_zero = false;
+    app.add_flag("--legacy", ebpf_verifier_options.legacy, "Allow deprecated packet access instructions");
     app.add_flag("--no-division-by-zero", no_division_by_zero, "Do not allow division by zero");
     app.add_flag("--no-simplify", ebpf_verifier_options.no_simplify, "Do not simplify");
     app.add_flag("--line-info", ebpf_verifier_options.print_line_info, "Print line information");
@@ -143,7 +144,7 @@ int main(int argc, char** argv) {
     raw_program raw_prog = raw_progs.back();
 
     // Convert the raw program section to a set of instructions.
-    std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
+    std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog, &ebpf_verifier_options);
     if (std::holds_alternative<string>(prog_or_error)) {
         std::cout << "unmarshaling error at " << std::get<string>(prog_or_error) << "\n";
         return 1;

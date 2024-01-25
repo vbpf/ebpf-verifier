@@ -24,7 +24,7 @@ FAIL_LOAD_ELF("invalid", "badsymsize.o", "xdp_redirect_map")
         auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &g_ebpf_platform_linux); \
         REQUIRE(raw_progs.size() == 1); \
         raw_program raw_prog = raw_progs.back(); \
-        std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog); \
+        std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog, nullptr); \
         REQUIRE(std::holds_alternative<std::string>(prog_or_error)); \
     }
 
@@ -37,7 +37,7 @@ FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
         auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &g_ebpf_platform_linux); \
         REQUIRE(raw_progs.size() == 1); \
         raw_program raw_prog = raw_progs.back(); \
-        std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog); \
+        std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog, options); \
         REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error)); \
         auto& prog = std::get<InstructionSeq>(prog_or_error); \
         bool res = ebpf_verify_program(std::cout, prog, raw_prog.info, options, nullptr); \
@@ -73,6 +73,15 @@ FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
 #define TEST_SECTION_REJECT_FAIL(project, filename, section) \
     TEST_CASE("expect failure ebpf-samples/" project "/" filename " " section, "[!shouldfail][verify][samples][" project "]") { \
         VERIFY_SECTION(project, filename, section, nullptr, false); \
+    }
+
+#define TEST_SECTION_LEGACY(project, filename, section) \
+    TEST_CASE("./check ebpf-samples/" project "/" filename " " section, "[verify][samples][" project "]") { \
+        ebpf_verifier_options_t options = ebpf_verifier_default_options;                                    \
+        options.legacy = true;                                                                              \
+        VERIFY_SECTION(project, filename, section, &options, true);                                         \
+        options.legacy = false;                                                                             \
+        VERIFY_SECTION(project, filename, section, &options, false);                                        \
     }
 
 TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "1/0xdc06")
@@ -191,7 +200,7 @@ TEST_SECTION("linux", "offwaketime_kern.o", "tracepoint/sched/sched_switch")
 TEST_SECTION("linux", "sampleip_kern.o", "perf_event")
 TEST_SECTION("linux", "sock_flags_kern.o", "cgroup/sock1")
 TEST_SECTION("linux", "sock_flags_kern.o", "cgroup/sock2")
-TEST_SECTION("linux", "sockex1_kern.o", "socket1")
+TEST_SECTION_LEGACY("linux", "sockex1_kern.o", "socket1")
 TEST_SECTION("linux", "sockex2_kern.o", "socket2")
 TEST_SECTION("linux", "sockex3_kern.o", "socket/3")
 TEST_SECTION("linux", "sockex3_kern.o", "socket/4")
@@ -544,18 +553,20 @@ void test_analyze_thread(cfg_t* cfg, program_info* info, bool* res) {
 
 // Test multithreading
 TEST_CASE("multithreading", "[verify][multithreading]") {
-    auto raw_progs1 = read_elf("ebpf-samples/bpf_cilium_test/bpf_netdev.o", "2/1", nullptr, &g_ebpf_platform_linux);
+    ebpf_verifier_options_t* options = nullptr;
+
+    auto raw_progs1 = read_elf("ebpf-samples/bpf_cilium_test/bpf_netdev.o", "2/1", options, &g_ebpf_platform_linux);
     REQUIRE(raw_progs1.size() == 1);
     raw_program raw_prog1 = raw_progs1.back();
-    std::variant<InstructionSeq, std::string> prog_or_error1 = unmarshal(raw_prog1);
+    std::variant<InstructionSeq, std::string> prog_or_error1 = unmarshal(raw_prog1, options);
     REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error1));
     auto& prog1 = std::get<InstructionSeq>(prog_or_error1);
     cfg_t cfg1 = prepare_cfg(prog1, raw_prog1.info, true);
 
-    auto raw_progs2 = read_elf("ebpf-samples/bpf_cilium_test/bpf_netdev.o", "2/2", nullptr, &g_ebpf_platform_linux);
+    auto raw_progs2 = read_elf("ebpf-samples/bpf_cilium_test/bpf_netdev.o", "2/2", options, &g_ebpf_platform_linux);
     REQUIRE(raw_progs2.size() == 1);
     raw_program raw_prog2 = raw_progs2.back();
-    std::variant<InstructionSeq, std::string> prog_or_error2 = unmarshal(raw_prog2);
+    std::variant<InstructionSeq, std::string> prog_or_error2 = unmarshal(raw_prog2, options);
     REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error2));
     auto& prog2 = std::get<InstructionSeq>(prog_or_error2);
     cfg_t cfg2 = prepare_cfg(prog2, raw_prog2.info, true);
