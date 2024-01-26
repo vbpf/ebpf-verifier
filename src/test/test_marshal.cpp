@@ -321,13 +321,11 @@ TEST_CASE("check unmarshal legacy opcodes", "[disasm][marshal]") {
 
     for (uint8_t opcode : unsupported_legacy_opcodes) {
         std::ostringstream oss;
-        printf("[0x%x]\n", opcode);
         oss << "0: Bad instruction op 0x" << std::hex << (int)opcode << std::endl;
         check_unmarshal_fail(ebpf_inst{.opcode = opcode}, oss.str().c_str(), &options);
     }
 
     for (uint8_t opcode : supported_legacy_opcodes) {
-        printf("[0x%x]\n", opcode);
         compare_unmarshal_marshal(ebpf_inst{.opcode = opcode}, ebpf_inst{.opcode = opcode}, &options);
     }
 
