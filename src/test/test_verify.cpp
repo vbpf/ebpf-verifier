@@ -20,7 +20,7 @@ FAIL_LOAD_ELF("build", "badrelo.o", ".text")
 FAIL_LOAD_ELF("invalid", "badsymsize.o", "xdp_redirect_map")
 
 #define FAIL_UNMARSHAL(dirname, filename, sectionname) \
-    TEST_CASE("Try unmarshalling bad program: " dirname "/" filename, "[unmarshal]") { \
+    TEST_CASE("Try unmarshalling bad program: " dirname "/" filename " " sectionname, "[unmarshal]") { \
         auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &g_ebpf_platform_linux); \
         REQUIRE(raw_progs.size() == 1); \
         raw_program raw_prog = raw_progs.back(); \
@@ -80,9 +80,8 @@ FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
         ebpf_verifier_options_t options = ebpf_verifier_default_options;                                    \
         options.legacy = true;                                                                              \
         VERIFY_SECTION(project, filename, section, &options, true);                                         \
-        options.legacy = false;                                                                             \
-        VERIFY_SECTION(project, filename, section, &options, false);                                        \
-    }
+    }                                                                                                       \
+    FAIL_UNMARSHAL(project, filename, section)
 
 TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "1/0xdc06")
 TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "2/1")
