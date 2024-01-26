@@ -106,3 +106,105 @@ post: [
     "r3.svalue=r3.uvalue",
     "r2.packet_offset-r3.packet_offset<=65526", "r3.packet_offset-r2.packet_offset<=8"
 ]
+---
+test-case: legacy 1 byte packet access imm
+
+pre: [
+    "r1.type=number",
+    "r6.type=ctx", "r6.ctx_offset=0"
+]
+
+code:
+  <start>: |
+    r0 = *(u8 *)skb[23]
+
+post: [
+    "r0.type=number",
+    "r6.type=ctx", "r6.ctx_offset=0"
+]
+---
+test-case: legacy 2 byte packet access imm
+
+pre: [
+    "r1.type=number",
+    "r6.type=ctx", "r6.ctx_offset=0"
+]
+
+code:
+  <start>: |
+    r0 = *(u16 *)skb[23]
+
+post: [
+    "r0.type=number",
+    "r6.type=ctx", "r6.ctx_offset=0"
+]
+---
+test-case: legacy 4 byte packet access imm
+
+pre: [
+    "r1.type=number",
+    "r6.type=ctx", "r6.ctx_offset=0"
+]
+
+code:
+  <start>: |
+    r0 = *(u32 *)skb[23]
+
+post: [
+    "r0.type=number",
+    "r6.type=ctx", "r6.ctx_offset=0"
+]
+---
+test-case: legacy 1 byte packet access reg
+
+pre: [
+    "r1.type=number",
+    "r6.type=ctx", "r6.ctx_offset=0",
+    "r7.type=number", "r7.svalue=23", "r7.uvalue=23"
+]
+
+code:
+  <start>: |
+    r0 = *(u8 *)skb[r7]
+
+post: [
+    "r0.type=number",
+    "r6.type=ctx", "r6.ctx_offset=0",
+    "r7.type=number", "r7.svalue=23", "r7.uvalue=23"
+]
+---
+test-case: legacy 2 byte packet access reg
+
+pre: [
+    "r1.type=number",
+    "r6.type=ctx", "r6.ctx_offset=0",
+    "r7.type=number", "r7.svalue=23", "r7.uvalue=23"
+]
+
+code:
+  <start>: |
+    r0 = *(u16 *)skb[r7]
+
+post: [
+    "r0.type=number",
+    "r6.type=ctx", "r6.ctx_offset=0",
+    "r7.type=number", "r7.svalue=23", "r7.uvalue=23"
+]
+---
+test-case: legacy 4 byte packet access reg
+
+pre: [
+    "r1.type=number",
+    "r6.type=ctx", "r6.ctx_offset=0",
+    "r7.type=number", "r7.svalue=23", "r7.uvalue=23"
+]
+
+code:
+  <start>: |
+    r0 = *(u32 *)skb[r7]
+
+post: [
+    "r0.type=number",
+    "r6.type=ctx", "r6.ctx_offset=0",
+    "r7.type=number", "r7.svalue=23", "r7.uvalue=23"
+]

@@ -169,6 +169,7 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
     // All YAML tests use no_simplify and !setup_constraints.
     options.no_simplify = true;
     options.setup_constraints = false;
+    options.legacy = true;
 
     for (const string& name : raw_options) {
         if (name == "!allow_division_by_zero") {
