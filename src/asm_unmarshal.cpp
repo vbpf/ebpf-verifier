@@ -310,19 +310,21 @@ struct Unmarshaller {
     auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& insts, pc_t pc) -> Instruction {
         if (pc >= insts.size() - 1)
             throw InvalidInstruction(pc, "incomplete LDDW");
+        ebpf_inst next = insts[pc + 1];
+        if (next.opcode != 0 || next.dst != 0 || next.src != 0 || next.offset != 0)
+            throw InvalidInstruction(pc, "invalid LDDW");
         if (inst.src > 1 || inst.dst > R10_STACK_POINTER || inst.offset != 0)
             throw InvalidInstruction(pc, "LDDW uses reserved fields");
 
         if (inst.src == 1) {
             // magic number, meaning we're a per-process file descriptor defining the map.
             // (for details, look for BPF_PSEUDO_MAP_FD in the kernel)
-
+            if (next.imm != 0) {
+                throw InvalidInstruction(pc, "LDDW uses reserved fields");
+            }
             return LoadMapFd{.dst = Reg{inst.dst}, .mapfd = inst.imm};
         }
 
-        ebpf_inst next = insts[pc + 1];
-        if (next.opcode != 0 || next.dst != 0 || next.src != 0 || next.offset != 0)
-            throw InvalidInstruction(pc, "invalid LDDW");
         return Bin{
             .op = Bin::Op::MOV,
             .dst = Reg{inst.dst},
