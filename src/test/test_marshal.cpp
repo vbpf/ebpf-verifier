@@ -58,7 +58,8 @@ static const auto ws = {1, 2, 4, 8};
 TEST_CASE("disasm_marshal", "[disasm][marshal]") {
     SECTION("Bin") {
         auto ops = {Bin::Op::MOV, Bin::Op::ADD, Bin::Op::SUB, Bin::Op::MUL, Bin::Op::UDIV,  Bin::Op::UMOD,
-                    Bin::Op::OR,  Bin::Op::AND, Bin::Op::LSH, Bin::Op::RSH, Bin::Op::ARSH, Bin::Op::XOR};
+                    Bin::Op::OR,  Bin::Op::AND, Bin::Op::LSH, Bin::Op::RSH, Bin::Op::ARSH, Bin::Op::XOR,
+                    Bin::Op::SDIV, Bin::Op::SMOD, Bin::Op::MOVSX8, Bin::Op::MOVSX16, Bin::Op::MOVSX32};
         SECTION("Reg src") {
             for (auto op : ops) {
                 compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Reg{2}, .is64 = true});
@@ -90,6 +91,9 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
             Un::Op::LE32,
             Un::Op::LE64,
             Un::Op::NEG,
+            Un::Op::SWAP16,
+            Un::Op::SWAP32,
+            Un::Op::SWAP64
         };
         for (auto op : ops)
             compare_marshal_unmarshal(Un{.op = op, .dst = Reg{1}});
@@ -284,6 +288,16 @@ TEST_CASE("fail unmarshal off0 opcodes", "[disasm][marshal]") {
         std::ostringstream oss;
         oss << "0: nonzero offset for op 0x" << std::hex << (int)off0_opcodes[i] << std::endl;
         check_unmarshal_fail(ebpf_inst{.opcode = off0_opcodes[i], .offset = 1}, oss.str().c_str());
+    }
+}
+
+TEST_CASE("fail unmarshal offset opcodes", "[disasm][marshal]") {
+    // The following opcodes are defined for multiple other offset values, but not offset = 2 for example.
+    uint8_t off2_opcodes[] = {0x34, 0x37, 0x3c, 0x3f, 0x94, 0x97, 0x9c, 0x9f, 0xb4, 0xb7, 0xbc, 0xbf};
+    for (int i = 0; i < sizeof(off2_opcodes); i++) {
+        std::ostringstream oss;
+        oss << "0: invalid offset for op 0x" << std::hex << (int)off2_opcodes[i] << std::endl;
+        check_unmarshal_fail(ebpf_inst{.opcode = off2_opcodes[i], .offset = 2}, oss.str().c_str());
     }
 }
 

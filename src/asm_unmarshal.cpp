@@ -101,13 +101,13 @@ struct Unmarshaller {
             switch (inst.offset) {
             case 0: return Bin::Op::UDIV;
             case 1: return Bin::Op::SDIV;
-            default: throw InvalidInstruction{pc, "invalid ALU op 0x30"};
+            default: throw InvalidInstruction(pc, make_opcode_message("invalid offset for", inst.opcode));
             }
         case INST_ALU_OP_MOD:
             switch (inst.offset) {
             case 0: return Bin::Op::UMOD;
             case 1: return Bin::Op::SMOD;
-            default: throw InvalidInstruction{pc, "invalid ALU op 0x90"};
+            default: throw InvalidInstruction(pc, make_opcode_message("invalid offset for", inst.opcode));
             }
         case INST_ALU_OP_MOV:
             switch (inst.offset) {
@@ -115,7 +115,7 @@ struct Unmarshaller {
             case 8: return Bin::Op::MOVSX8;
             case 16: return Bin::Op::MOVSX16;
             case 32: return Bin::Op::MOVSX32;
-            default: throw InvalidInstruction{pc, "invalid ALU op 0xb0"};
+            default: throw InvalidInstruction(pc, make_opcode_message("invalid offset for", inst.opcode));
             }
         }
 
