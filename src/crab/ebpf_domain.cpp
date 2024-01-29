@@ -1906,12 +1906,16 @@ void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const 
 
     number_t addr = *maybe_addr;
 
+    int ptrwidth = desc->end - desc->data;
     if (addr == desc->data) {
-        inv.assign(target.packet_offset, 0);
+        if (width == ptrwidth)
+            inv.assign(target.packet_offset, 0);
     } else if (addr == desc->end) {
-        inv.assign(target.packet_offset, variable_t::packet_size());
+        if (width == ptrwidth)
+            inv.assign(target.packet_offset, variable_t::packet_size());
     } else if (addr == desc->meta) {
-        inv.assign(target.packet_offset, variable_t::meta_offset());
+        if (width == ptrwidth)
+            inv.assign(target.packet_offset, variable_t::meta_offset());
     } else {
         if (may_touch_ptr)
             type_inv.havoc_type(inv, target_reg);
@@ -1919,9 +1923,11 @@ void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const 
             type_inv.assign_type(inv, target_reg, T_NUM);
         return;
     }
-    type_inv.assign_type(inv, target_reg, T_PACKET);
-    inv += 4098 <= target.svalue;
-    inv += target.svalue <= PTR_MAX;
+    if (width == ptrwidth) {
+        type_inv.assign_type(inv, target_reg, T_PACKET);
+        inv += 4098 <= target.svalue;
+        inv += target.svalue <= PTR_MAX;
+    }
 }
 
 void ebpf_domain_t::do_load_packet_or_shared(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr,
@@ -2733,30 +2739,52 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             assign(dst.uvalue, src.uvalue);
             havoc_offsets(bin.dst);
             m_inv = type_inv.join_over_types(m_inv, src_reg, [&](NumAbsDomain& inv, type_encoding_t type) {
-                inv.assign(dst.type, type);
-
                 switch (type) {
-                case T_CTX: inv.assign(dst.ctx_offset, src.ctx_offset); break;
+                case T_CTX:
+                    if (bin.is64) {
+                        inv.assign(dst.type, type);
+                        inv.assign(dst.ctx_offset, src.ctx_offset);
+                    }
+                    break;
                 case T_MAP:
-                case T_MAP_PROGRAMS: inv.assign(dst.map_fd, src.map_fd); break;
-                case T_PACKET: inv.assign(dst.packet_offset, src.packet_offset); break;
+                case T_MAP_PROGRAMS:
+                    if (bin.is64) {
+                        inv.assign(dst.type, type);
+                        inv.assign(dst.map_fd, src.map_fd);
+                    }
+                    break;
+                case T_PACKET:
+                    if (bin.is64) {
+                        inv.assign(dst.type, type);
+                        inv.assign(dst.packet_offset, src.packet_offset);
+                    }
+                    break;
                 case T_SHARED:
-                    inv.assign(dst.shared_region_size, src.shared_region_size);
-                    inv.assign(dst.shared_offset, src.shared_offset);
+                    if (bin.is64) {
+                        inv.assign(dst.type, type);
+                        inv.assign(dst.shared_region_size, src.shared_region_size);
+                        inv.assign(dst.shared_offset, src.shared_offset);
+                    }
                     break;
                 case T_STACK:
-                    inv.assign(dst.stack_offset, src.stack_offset);
-                    inv.assign(dst.stack_numeric_size, src.stack_numeric_size);
+                    if (bin.is64) {
+                        inv.assign(dst.type, type);
+                        inv.assign(dst.stack_offset, src.stack_offset);
+                        inv.assign(dst.stack_numeric_size, src.stack_numeric_size);
+                    }
                     break;
-                default: break;
+                default: inv.assign(dst.type, type); break;
                 }
             });
-            if ((bin.dst.v != std::get<Reg>(bin.v).v) || (type_inv.get_type(m_inv, dst.type) == T_UNINIT)) {
-                // Only forget the destination type if we're copying from a different register,
-                // or from the same uninitialized register.
-                havoc(dst.type);
+            if (bin.is64) {
+                // Add dst.type=src.type invariant.
+                if ((bin.dst.v != std::get<Reg>(bin.v).v) || (type_inv.get_type(m_inv, dst.type) == T_UNINIT)) {
+                    // Only forget the destination type if we're copying from a different register,
+                    // or from the same uninitialized register.
+                    havoc(dst.type);
+                }
+                type_inv.assign_type(m_inv, bin.dst, std::get<Reg>(bin.v));
             }
-            type_inv.assign_type(m_inv, bin.dst, std::get<Reg>(bin.v));
             break;
         }
     }
