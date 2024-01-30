@@ -1917,15 +1917,15 @@ void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const 
     // but at runtime they will be 64-bit pointers.  We can use the offset values
     // for verification like we use map_fd's as a proxy for maps which
     // at runtime are actually 64-bit memory pointers.
-    int ptrwidth = desc->end - desc->data;
+    int offset_width = desc->end - desc->data;
     if (addr == desc->data) {
-        if (width == ptrwidth)
+        if (width == offset_width)
             inv.assign(target.packet_offset, 0);
     } else if (addr == desc->end) {
-        if (width == ptrwidth)
+        if (width == offset_width)
             inv.assign(target.packet_offset, variable_t::packet_size());
     } else if (addr == desc->meta) {
-        if (width == ptrwidth)
+        if (width == offset_width)
             inv.assign(target.packet_offset, variable_t::meta_offset());
     } else {
         if (may_touch_ptr)
@@ -1934,7 +1934,7 @@ void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const 
             type_inv.assign_type(inv, target_reg, T_NUM);
         return;
     }
-    if (width == ptrwidth) {
+    if (width == offset_width) {
         type_inv.assign_type(inv, target_reg, T_PACKET);
         inv += 4098 <= target.svalue;
         inv += target.svalue <= PTR_MAX;
