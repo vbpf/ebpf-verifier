@@ -64,6 +64,13 @@ static linear_constraint_t neq(variable_t a, variable_t b) {
 }
 
 constexpr int MAX_PACKET_SIZE = 0xffff;
+
+// Pointers in the BPF VM are defined to be 64 bits.  Some contexts, like
+// data, data_end, and meta in Linux's struct xdp_md are only 32 bit offsets
+// from a base address not exposed to the program, but when a program is loaded,
+// the offsets get replaced with 64-bit address pointers.  However, we currently
+// need to do pointer arithmetic on 64-bit numbers so for now we cap the interval
+// to 32 bits.
 constexpr int64_t PTR_MAX = std::numeric_limits<int32_t>::max() - MAX_PACKET_SIZE;
 
 /** Linear constraint for a pointer comparison.
@@ -1906,6 +1913,10 @@ void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const 
 
     number_t addr = *maybe_addr;
 
+    // We use offsets for packet data, data_end, and meta during verification,
+    // but at runtime they will be 64-bit pointers.  We can use the offset values
+    // for verification like we use map_fd's as a proxy for maps which
+    // at runtime are actually 64-bit memory pointers.
     int ptrwidth = desc->end - desc->data;
     if (addr == desc->data) {
         if (width == ptrwidth)
