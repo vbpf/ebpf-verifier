@@ -2751,7 +2751,11 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 default: break;
                 }
             });
-            havoc(dst.type);
+            if ((bin.dst.v != std::get<Reg>(bin.v).v) || (type_inv.get_type(m_inv, dst.type) == T_UNINIT)) {
+                // Only forget the destination type if we're copying from a different register,
+                // or from the same uninitialized register.
+                havoc(dst.type);
+            }
             type_inv.assign_type(m_inv, bin.dst, std::get<Reg>(bin.v));
             break;
         }
