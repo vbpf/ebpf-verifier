@@ -68,6 +68,8 @@ int main(int argc, char** argv) {
     app.add_flag("-v", verbose, "Print both invariants and failures");
     bool legacy = false;
     app.add_flag("--legacy", legacy, "Allow deprecated packet access instructions");
+    bool callx = false;
+    app.add_flag("--callx", callx, "Allow callx instructions");
     bool no_division_by_zero = false;
     app.add_flag("--no-division-by-zero", no_division_by_zero, "Do not allow division by zero");
     app.add_flag("--no-simplify", ebpf_verifier_options.no_simplify, "Do not simplify");
@@ -115,6 +117,7 @@ int main(int argc, char** argv) {
         ebpf_verifier_options.mock_map_fds = false;
     ebpf_platform_t platform = g_ebpf_platform_linux;
     platform.legacy = legacy;
+    platform.callx = callx;
 
     // Read a set of raw program sections from an ELF file.
     vector<raw_program> raw_progs;

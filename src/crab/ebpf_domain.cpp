@@ -15,6 +15,7 @@
 #include "crab/ebpf_domain.hpp"
 
 #include "asm_ostream.hpp"
+#include "asm_unmarshal.hpp"
 #include "config.hpp"
 #include "dsl_syntax.hpp"
 #include "platform.hpp"
@@ -1561,6 +1562,28 @@ void ebpf_domain_t::operator()(const TypeConstraint& s) {
         require(m_inv, linear_constraint_t::FALSE(), "");
 }
 
+void ebpf_domain_t::operator()(const FuncConstraint& s) {
+    // Look up the helper function id.
+    const reg_pack_t& reg = reg_pack(s.reg);
+    auto src_interval = m_inv.eval_interval(reg.svalue);
+    if (std::optional<number_t> sn = src_interval.singleton()) {
+        if (sn->fits_sint32()) {
+            // We can now process it as if the id was immediate.
+            int32_t imm = sn->cast_to_sint32();
+            if (!global_program_info->platform->is_helper_usable(imm)) {
+                require(m_inv, linear_constraint_t::FALSE(), "invalid helper function id " + std::to_string(imm));
+                return;
+            }
+            Call call = make_call(imm, *global_program_info->platform);
+            for (Assert a : get_assertions(call, *global_program_info)) {
+                (*this)(a);
+            }
+            return;
+        }
+    }
+    require(m_inv, linear_constraint_t::FALSE(), "callx helper function id is not a valid singleton");
+}
+
 void ebpf_domain_t::operator()(const ValidSize& s) {
     using namespace crab::dsl_syntax;
     auto r = reg_pack(s.reg);
@@ -2229,6 +2252,28 @@ out:
     scratch_caller_saved_registers();
     if (call.reallocate_packet) {
         forget_packet_pointers();
+    }
+}
+
+void ebpf_domain_t::operator()(const Callx& callx) {
+    using namespace crab::dsl_syntax;
+    if (m_inv.is_bottom())
+        return;
+
+    // Look up the helper function id.
+    const reg_pack_t& reg = reg_pack(callx.func);
+    auto src_interval = m_inv.eval_interval(reg.svalue);
+    if (std::optional<number_t> sn = src_interval.singleton()) {
+        if (sn->fits_sint32()) {
+            // We can now process it as if the id was immediate.
+            int32_t imm = sn->cast_to_sint32();
+            if (!global_program_info->platform->is_helper_usable(imm)) {
+                return;
+            }
+            Call call = make_call(imm, *global_program_info->platform);
+            (*this)(call);
+            return;
+        }
     }
 }
 

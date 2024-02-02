@@ -174,6 +174,8 @@ static std::string instype(Instruction ins) {
             }
         }
         return "call_mem";
+    } else if (std::holds_alternative<Callx>(ins)) {
+        return "callx";
     } else if (std::holds_alternative<Mem>(ins)) {
         return std::get<Mem>(ins).is_load ? "load" : "store";
     } else if (std::holds_alternative<LockAdd>(ins)) {

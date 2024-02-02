@@ -205,6 +205,11 @@ struct Exit {
     constexpr bool operator==(const Exit&) const = default;
 };
 
+struct Callx {
+    Reg func;
+    constexpr bool operator==(const Callx&) const = default;
+};
+
 struct Deref {
     int32_t width{};
     Reg basereg;
@@ -335,6 +340,11 @@ struct TypeConstraint {
     constexpr bool operator==(const TypeConstraint&) const = default;
 };
 
+struct FuncConstraint {
+    Reg reg;
+    constexpr bool operator==(const FuncConstraint&) const = default;
+};
+
 /// Condition check whether something is a valid size.
 struct ZeroCtxOffset {
     Reg reg;
@@ -342,7 +352,7 @@ struct ZeroCtxOffset {
 };
 
 using AssertionConstraint =
-    std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint, ZeroCtxOffset>;
+    std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint, FuncConstraint, ZeroCtxOffset>;
 
 struct Assert {
     AssertionConstraint cst;
@@ -355,7 +365,7 @@ struct IncrementLoopCounter {
     constexpr bool operator==(const IncrementLoopCounter&) const = default;
 };
 
-using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Exit, Jmp, Mem, Packet, LockAdd, Assume, Assert, IncrementLoopCounter>;
+using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Callx, Exit, Jmp, Mem, Packet, LockAdd, Assume, Assert, IncrementLoopCounter>;
 
 using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
 using InstructionSeq = std::vector<LabeledInstruction>;
