@@ -220,12 +220,12 @@ struct Unmarshaller {
         switch ((inst.opcode & INST_MODE_MASK) >> 5) {
         case 0: throw InvalidInstruction(pc, inst.opcode);
         case INST_ABS:
-            if (!thread_local_options.legacy || !isLD || (width == 8))
+            if (!info.platform->legacy || !isLD || (width == 8))
                 throw InvalidInstruction(pc, inst.opcode);
             return Packet{.width = width, .offset = inst.imm, .regoffset = {}};
 
         case INST_IND:
-            if (!thread_local_options.legacy || !isLD || (width == 8))
+            if (!info.platform->legacy || !isLD || (width == 8))
                 throw InvalidInstruction(pc, inst.opcode);
             return Packet{.width = width, .offset = inst.imm, .regoffset = Reg{inst.src}};
 

@@ -9,9 +9,10 @@
 // Verify that if we unmarshal an instruction and then re-marshal it,
 // we get what we expect.
 static void compare_unmarshal_marshal(const ebpf_inst& ins, const ebpf_inst& expected_result,
-                                      const ebpf_verifier_options_t* options = nullptr) {
-    program_info info{.platform = &g_ebpf_platform_linux,
-                      .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")};
+                                      const ebpf_verifier_options_t* options = nullptr,
+                                      const ebpf_platform_t* platform = &g_ebpf_platform_linux) {
+    program_info info{.platform = platform,
+                      .type = platform->get_program_type("unspec", "unspec")};
     const ebpf_inst exit{.opcode = INST_OP_EXIT};
     InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", {ins, exit, exit}, info}, options));
     REQUIRE(parsed.size() == 3);
@@ -27,9 +28,10 @@ static void compare_unmarshal_marshal(const ebpf_inst& ins, const ebpf_inst& exp
 // Verify that if we marshal an instruction and then unmarshal it,
 // we get the original.
 static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = false,
-                                      const ebpf_verifier_options_t* options = nullptr) {
-    program_info info{.platform = &g_ebpf_platform_linux,
-                      .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")};
+                                      const ebpf_verifier_options_t* options = nullptr,
+                                      const ebpf_platform_t* platform = &g_ebpf_platform_linux) {
+    program_info info{.platform = platform,
+                      .type = platform->get_program_type("unspec", "unspec")};
     InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", marshal(ins, 0), info}, options));
     REQUIRE(parsed.size() == 1);
     auto [_, single, _2] = parsed.back();
@@ -38,17 +40,19 @@ static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = 
     REQUIRE(single == ins);
 }
 
-static void check_marshal_unmarshal_fail(const Instruction& ins, std::string expected_error_message) {
-    program_info info{.platform = &g_ebpf_platform_linux,
-                      .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")};
+static void check_marshal_unmarshal_fail(const Instruction& ins, std::string expected_error_message,
+                                         const ebpf_platform_t* platform = &g_ebpf_platform_linux) {
+    program_info info{.platform = platform,
+                      .type = platform->get_program_type("unspec", "unspec")};
     std::string error_message = std::get<std::string>(unmarshal(raw_program{"", "", marshal(ins, 0), info}, nullptr));
     REQUIRE(error_message == expected_error_message);
 }
 
 static void check_unmarshal_fail(ebpf_inst inst, std::string expected_error_message,
-                                 const ebpf_verifier_options_t* options = nullptr) {
-    program_info info{.platform = &g_ebpf_platform_linux,
-                      .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")};
+                                 const ebpf_verifier_options_t* options = nullptr,
+                                 const ebpf_platform_t* platform = &g_ebpf_platform_linux) {
+    program_info info{.platform = platform,
+                      .type = platform->get_program_type("unspec", "unspec")};
     std::vector<ebpf_inst> insns = {inst};
     auto result = unmarshal(raw_program{"", "", insns, info}, options);
     REQUIRE(std::holds_alternative<std::string>(result));
@@ -144,12 +148,10 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
     SECTION("Exit") { compare_marshal_unmarshal(Exit{}); }
 
     SECTION("Packet") {
-        ebpf_verifier_options_t options = ebpf_verifier_default_options;
-        options.legacy = true;
         for (int w : ws) {
             if (w != 8) {
-                compare_marshal_unmarshal(Packet{.width = w, .offset = 7, .regoffset = {}}, false, &options);
-                compare_marshal_unmarshal(Packet{.width = w, .offset = 7, .regoffset = Reg{2}}, false, &options);
+                compare_marshal_unmarshal(Packet{.width = w, .offset = 7, .regoffset = {}});
+                compare_marshal_unmarshal(Packet{.width = w, .offset = 7, .regoffset = Reg{2}});
             }
         }
     }
@@ -314,33 +316,30 @@ TEST_CASE("check unmarshal legacy opcodes", "[disasm][marshal]") {
     static uint8_t unsupported_legacy_opcodes[] = {0x21, 0x22, 0x23, 0x29, 0x2a, 0x2b, 0x31, 0x32, 0x33,
                                                    0x38, 0x39, 0x3a, 0x3b, 0x41, 0x42, 0x43, 0x49, 0x4a,
                                                    0x4b, 0x51, 0x52, 0x53, 0x58, 0x59, 0x5a, 0x5b};
-    ebpf_verifier_options_t options = ebpf_verifier_default_options;
-
-    // Enable support.
-    options.legacy = true;
 
     for (uint8_t opcode : unsupported_legacy_opcodes) {
         std::ostringstream oss;
         oss << "0: Bad instruction op 0x" << std::hex << (int)opcode << std::endl;
-        check_unmarshal_fail(ebpf_inst{.opcode = opcode}, oss.str().c_str(), &options);
+        check_unmarshal_fail(ebpf_inst{.opcode = opcode}, oss.str().c_str());
     }
 
     for (uint8_t opcode : supported_legacy_opcodes) {
-        compare_unmarshal_marshal(ebpf_inst{.opcode = opcode}, ebpf_inst{.opcode = opcode}, &options);
+        compare_unmarshal_marshal(ebpf_inst{.opcode = opcode}, ebpf_inst{.opcode = opcode});
     }
 
-    // Disable support.
-    options.legacy = false;
+    // Disable legacy support.
+    ebpf_platform_t platform = g_ebpf_platform_linux;
+    platform.legacy = false;
 
     for (uint8_t opcode : unsupported_legacy_opcodes) {
         std::ostringstream oss;
         oss << "0: Bad instruction op 0x" << std::hex << (int)opcode << std::endl;
-        check_unmarshal_fail(ebpf_inst{.opcode = opcode}, oss.str().c_str(), &options);
+        check_unmarshal_fail(ebpf_inst{.opcode = opcode}, oss.str().c_str(), nullptr, &platform);
     }
     for (uint8_t opcode : supported_legacy_opcodes) {
         std::ostringstream oss;
         oss << "0: Bad instruction op 0x" << std::hex << (int)opcode << std::endl;
-        check_unmarshal_fail(ebpf_inst{.opcode = opcode}, oss.str().c_str(), &options);
+        check_unmarshal_fail(ebpf_inst{.opcode = opcode}, oss.str().c_str(), nullptr, &platform);
     }
 }
 
