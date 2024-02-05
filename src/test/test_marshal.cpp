@@ -25,6 +25,26 @@ static void compare_unmarshal_marshal(const ebpf_inst& ins, const ebpf_inst& exp
     REQUIRE(memcmp(&expected_result, &result, sizeof(result)) == 0);
 }
 
+// Verify that if we unmarshal a 64-bit immediate instruction and then re-marshal it,
+// we get what we expect.
+static void compare_unmarshal_marshal(const ebpf_inst& ins1, const ebpf_inst& ins2, const ebpf_inst& expected_result1,
+                                      const ebpf_inst& expected_result2) {
+    program_info info{.platform = &g_ebpf_platform_linux,
+                      .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")};
+    const ebpf_inst exit{.opcode = INST_OP_EXIT};
+    InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", {ins1, ins2, exit, exit}, info}));
+    REQUIRE(parsed.size() == 3);
+    auto [_, single, _2] = parsed.front();
+    (void)_;  // unused
+    (void)_2; // unused
+    std::vector<ebpf_inst> marshaled = marshal(single, 0);
+    REQUIRE(marshaled.size() == 2);
+    ebpf_inst result1 = marshaled.front();
+    REQUIRE(memcmp(&expected_result1, &result1, sizeof(result1)) == 0);
+    ebpf_inst result2 = marshaled.back();
+    REQUIRE(memcmp(&expected_result2, &result2, sizeof(result2)) == 0);
+}
+
 // Verify that if we marshal an instruction and then unmarshal it,
 // we get the original.
 static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = false,
@@ -60,20 +80,35 @@ static void check_unmarshal_fail(ebpf_inst inst, std::string expected_error_mess
     REQUIRE(error_message == expected_error_message);
 }
 
+// Check that unmarshaling a 64-bit immediate instruction fails.
+static void check_unmarshal_fail(ebpf_inst inst1, ebpf_inst inst2, std::string expected_error_message) {
+    program_info info{.platform = &g_ebpf_platform_linux,
+                      .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")};
+    std::vector<ebpf_inst> insns = {inst1, inst2};
+    auto result = unmarshal(raw_program{"", "", insns, info});
+    REQUIRE(std::holds_alternative<std::string>(result));
+    std::string error_message = std::get<std::string>(result);
+    REQUIRE(error_message == expected_error_message);
+}
+
 static const auto ws = {1, 2, 4, 8};
 
 TEST_CASE("disasm_marshal", "[disasm][marshal]") {
     SECTION("Bin") {
-        auto ops = {Bin::Op::MOV, Bin::Op::ADD, Bin::Op::SUB, Bin::Op::MUL, Bin::Op::UDIV,  Bin::Op::UMOD,
-                    Bin::Op::OR,  Bin::Op::AND, Bin::Op::LSH, Bin::Op::RSH, Bin::Op::ARSH, Bin::Op::XOR,
-                    Bin::Op::SDIV, Bin::Op::SMOD, Bin::Op::MOVSX8, Bin::Op::MOVSX16, Bin::Op::MOVSX32};
         SECTION("Reg src") {
+            auto ops = {Bin::Op::MOV,  Bin::Op::ADD,  Bin::Op::SUB,    Bin::Op::MUL,     Bin::Op::UDIV,   Bin::Op::UMOD,
+                        Bin::Op::OR,   Bin::Op::AND,  Bin::Op::LSH,    Bin::Op::RSH,     Bin::Op::ARSH,   Bin::Op::XOR,
+                        Bin::Op::SDIV, Bin::Op::SMOD, Bin::Op::MOVSX8, Bin::Op::MOVSX16, Bin::Op::MOVSX32};
             for (auto op : ops) {
                 compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Reg{2}, .is64 = true});
                 compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Reg{2}, .is64 = false});
             }
         }
         SECTION("Imm src") {
+            // MOVSX* instructions are not defined for Imm, only Reg.
+            auto ops = {Bin::Op::MOV,  Bin::Op::ADD, Bin::Op::SUB,  Bin::Op::MUL, Bin::Op::UDIV,
+                        Bin::Op::UMOD, Bin::Op::OR,  Bin::Op::AND,  Bin::Op::LSH, Bin::Op::RSH,
+                        Bin::Op::ARSH, Bin::Op::XOR, Bin::Op::SDIV, Bin::Op::SMOD};
             for (auto op : ops) {
                 compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Imm{2}, .is64 = false});
                 compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Imm{2}, .is64 = true});
@@ -343,16 +378,50 @@ TEST_CASE("check unmarshal legacy opcodes", "[disasm][marshal]") {
     }
 }
 
+TEST_CASE("unmarshal 64bit immediate", "[disasm][marshal]") {
+    compare_unmarshal_marshal(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = 0, .imm = 1}, ebpf_inst{.imm = 2},
+                              ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = 0, .imm = 1}, ebpf_inst{.imm = 2});
+    compare_unmarshal_marshal(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = 0, .imm = 1}, ebpf_inst{},
+                              ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = 0, .imm = 1}, ebpf_inst{});
+
+    for (uint8_t src = 0; src <= 7; src++) {
+        check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = src}, "0: incomplete LDDW\n");
+        check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = src},
+                             ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM}, "0: invalid LDDW\n");
+    }
+
+    // No supported src values use the offset field.
+    for (uint8_t src = 0; src <= 1; src++) {
+        check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = src, .offset = 1}, ebpf_inst{},
+                             "0: LDDW uses reserved fields\n");
+    }
+
+    // Verify that unsupported src values fail.
+    // TODO: support src = 2 through 6.
+    for (uint8_t src = 2; src <= 7; src++) {
+        check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = src}, ebpf_inst{},
+                             "0: LDDW uses reserved fields\n");
+    }
+
+    // When src = {1, 3, 4, 5}, next_imm must be 0.
+    for (uint8_t src : {1, 3, 4, 5}) {
+        check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = src}, ebpf_inst{.imm = 1},
+                             "0: LDDW uses reserved fields\n");
+    }
+}
+
+
 TEST_CASE("fail unmarshal misc", "[disasm][marshal]") {
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0x06 */ INST_CLS_JMP32}, "0: jump out of bounds\n");
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0x16 */ 0x10 | INST_CLS_JMP32}, "0: jump out of bounds\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM}, "0: incomplete LDDW\n");
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0x71 */ ((INST_MEM << 5) | INST_SIZE_B | INST_CLS_LDX), .dst = 11, .imm = 8},
                          "0: Bad register\n");
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0x71 */ ((INST_MEM << 5) | INST_SIZE_B | INST_CLS_LDX), .dst = 1, .src = 11},
                          "0: Bad register\n");
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0xb4 */ (INST_ALU_OP_MOV | INST_SRC_IMM | INST_CLS_ALU), .dst = 11, .imm = 8},
                          "0: Bad register\n");
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xb4 */ INST_ALU_OP_MOV | INST_SRC_IMM | INST_CLS_ALU, .offset = 8},
+                         "0: invalid offset for op 0xb4\n");
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0xbc */ (INST_ALU_OP_MOV | INST_SRC_REG | INST_CLS_ALU), .dst = 1, .src = 11},
                          "0: Bad register\n");
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0xd4 */ INST_ALU_OP_END | INST_END_LE | INST_CLS_ALU, .dst = 1, .imm = 8},
