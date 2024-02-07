@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
     raw_program raw_prog = raw_progs.back();
 
     // Convert the raw program section to a set of instructions.
-    std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog, &ebpf_verifier_options);
+    std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
     if (std::holds_alternative<string>(prog_or_error)) {
         std::cout << "unmarshaling error at " << std::get<string>(prog_or_error) << "\n";
         return 1;

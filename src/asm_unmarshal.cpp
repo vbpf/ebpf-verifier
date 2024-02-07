@@ -529,9 +529,8 @@ struct Unmarshaller {
     }
 };
 
-std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, const ebpf_verifier_options_t* options, vector<vector<string>>& notes) {
+std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, vector<vector<string>>& notes) {
     global_program_info = raw_prog.info;
-    thread_local_options = (options != nullptr) ? *options : ebpf_verifier_default_options;
     try {
         return Unmarshaller{notes, raw_prog.info}.unmarshal(raw_prog.prog, raw_prog.line_info);
     } catch (InvalidInstruction& arg) {
@@ -541,9 +540,9 @@ std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog,
     }
 }
 
-std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog, const ebpf_verifier_options_t* options) {
+std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog) {
     vector<vector<string>> notes;
-    return unmarshal(raw_prog, options, notes);
+    return unmarshal(raw_prog, notes);
 }
 
 Call make_call(int imm, const ebpf_platform_t& platform)

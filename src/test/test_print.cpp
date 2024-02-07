@@ -27,7 +27,7 @@ void verify_printed_string(const std::string& file)
     std::stringstream generated_output;
     auto raw_progs = read_elf(std::string(TEST_OBJECT_FILE_DIRECTORY) + file + ".o", "", nullptr, &g_ebpf_platform_linux);
     raw_program raw_prog = raw_progs.back();
-    std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog, nullptr);
+    std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
     REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error));
     auto& program = std::get<InstructionSeq>(prog_or_error);
     print(program, generated_output, {});
