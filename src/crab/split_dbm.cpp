@@ -1052,7 +1052,7 @@ static std::string to_string(variable_t vd, variable_t vs, const SplitDBM::Param
 }
 
 static const std::vector<std::string> type_string = {
-    "shared", "stack", "packet", "ctx", "number", "map_fd", "map_fd_program", "uninitialized"
+    "shared", "stack", "packet", "ctx", "number", "map_fd", "map_fd_programs", "uninitialized"
 };
 
 string_invariant SplitDBM::to_set() const {
