@@ -90,6 +90,17 @@ static void check_unmarshal_fail(ebpf_inst inst, std::string expected_error_mess
     REQUIRE(error_message == expected_error_message);
 }
 
+static void check_unmarshal_fail_goto(ebpf_inst inst, std::string expected_error_message) {
+    program_info info{.platform = &g_ebpf_platform_linux,
+                      .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")};
+    const ebpf_inst exit{.opcode = INST_OP_EXIT};
+    std::vector<ebpf_inst> insns = {inst, exit, exit};
+    auto result = unmarshal(raw_program{"", "", insns, info});
+    REQUIRE(std::holds_alternative<std::string>(result));
+    std::string error_message = std::get<std::string>(result);
+    REQUIRE(error_message == expected_error_message);
+}
+
 // Check that unmarshaling a 64-bit immediate instruction fails.
 static void check_unmarshal_fail(ebpf_inst inst1, ebpf_inst inst2, std::string expected_error_message) {
     program_info info{.platform = &g_ebpf_platform_linux,
@@ -425,10 +436,14 @@ TEST_CASE("unmarshal 64bit immediate", "[disasm][marshal]") {
                              ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM}, "0: invalid LDDW\n");
     }
 
-    // No supported src values use the offset field.
     for (uint8_t src = 0; src <= 1; src++) {
+        // No supported src values use the offset field.
         check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = src, .offset = 1}, ebpf_inst{},
                              "0: LDDW uses reserved fields\n");
+
+        // All supported src values require a valid dst register.
+        check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .dst = 11, .src = src}, ebpf_inst{},
+                             "0: Bad register\n");
     }
 
     // Verify that unsupported src values fail.
@@ -445,20 +460,47 @@ TEST_CASE("unmarshal 64bit immediate", "[disasm][marshal]") {
     }
 }
 
+TEST_CASE("fail unmarshal bad dst register", "[disasm][marshal]") {
+    // The following opcodes require a valid dst register (with offset 0).
+    uint8_t dst_reg_opcodes[] = {0x04, 0x07, 0x0c, 0x14, 0x17, 0x1c, 0x1f, 0x24, 0x27, 0x2c, 0x2f, 0x34, 0x37, 0x3c,
+                                 0x3f, 0x44, 0x47, 0x4c, 0x4f, 0x54, 0x57, 0x5c, 0x5f, 0x61, 0x62, 0x63, 0x64, 0x67,
+                                 0x69, 0x6a, 0x6b, 0x6c, 0x6f, 0x71, 0x72, 0x73, 0x74, 0x77, 0x79, 0x7a, 0x7b, 0x7c,
+                                 0x7f, 0x84, 0x87, 0x94, 0x97, 0x9c, 0x9f, 0xa4, 0xa7, 0xac, 0xaf, 0xb4, 0xb7, 0xbc,
+                                 0xbf, 0xc3, 0xc4, 0xc7, 0xcc, 0xcf, 0xd4, 0xd7, 0xdb, 0xdc};
+    for (int i = 0; i < sizeof(dst_reg_opcodes); i++)
+        check_unmarshal_fail(ebpf_inst{.opcode = dst_reg_opcodes[i], .dst = 11}, "0: Bad register\n");
+
+    // The following conditional jump opcodes require a valid dst register (with a non-zero jump offset).
+    uint8_t jmp_dst_reg_opcodes[] = {0x15, 0x16, 0x1d, 0x1e, 0x25, 0x26, 0x2d, 0x2e, 0x35, 0x36, 0x3d,
+                                     0x3e, 0x45, 0x46, 0x4d, 0x4e, 0x55, 0x56, 0x5d, 0x5e, 0x65, 0x66,
+                                     0x6d, 0x6e, 0x75, 0x76, 0x7d, 0x7e, 0xa5, 0xa6, 0xad, 0xae, 0xb5,
+                                     0xb6, 0xbd, 0xbe, 0xc5, 0xc6, 0xcd, 0xce, 0xd5, 0xd6, 0xdd, 0xde};
+    for (int i = 0; i < sizeof(jmp_dst_reg_opcodes); i++)
+        check_unmarshal_fail_goto(ebpf_inst{.opcode = jmp_dst_reg_opcodes[i], .dst = 11, .offset = 1},
+                                  "0: Bad register\n");
+}
+
+TEST_CASE("fail unmarshal bad src register", "[disasm][marshal]") {
+    // The following opcodes require a valid src register (with offset 0).
+    uint8_t src_reg_opcodes[] = {0x0c, 0x0f, 0x1c, 0x1f, 0x2c, 0x2f, 0x3c, 0x3f, 0x4c, 0x4f, 0x5c, 0x5f,
+                                 0x61, 0x63, 0x69, 0x6b, 0x6c, 0x6f, 0x71, 0x73, 0x79, 0x7b, 0x7c, 0x7f,
+                                 0x9c, 0x9f, 0xac, 0xaf, 0xbc, 0xbf, 0xc3, 0xcc, 0xcf, 0xdb};
+    for (int i = 0; i < sizeof(src_reg_opcodes); i++)
+        check_unmarshal_fail(ebpf_inst{.opcode = src_reg_opcodes[i], .src = 11}, "0: Bad register\n");
+
+    // The following conditional jump opcodes require a valid src register (with a non-zero jump offset).
+    uint8_t jmp_src_reg_opcodes[] = {0x1d, 0x1e, 0x2d, 0x2e, 0x3d, 0x3e, 0x4d, 0x4e, 0x5d, 0x5e, 0x6d,
+                                     0x6e, 0x7d, 0x7e, 0xad, 0xae, 0xbd, 0xbe, 0xcd, 0xce, 0xdd, 0xde};
+    for (int i = 0; i < sizeof(jmp_src_reg_opcodes); i++)
+        check_unmarshal_fail_goto(ebpf_inst{.opcode = jmp_src_reg_opcodes[i], .dst = 11, .offset = 1},
+                                  "0: Bad register\n");
+}
 
 TEST_CASE("fail unmarshal misc", "[disasm][marshal]") {
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0x06 */ INST_CLS_JMP32}, "0: jump out of bounds\n");
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0x16 */ 0x10 | INST_CLS_JMP32}, "0: jump out of bounds\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x71 */ ((INST_MEM << 5) | INST_SIZE_B | INST_CLS_LDX), .dst = 11, .imm = 8},
-                         "0: Bad register\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x71 */ ((INST_MEM << 5) | INST_SIZE_B | INST_CLS_LDX), .dst = 1, .src = 11},
-                         "0: Bad register\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xb4 */ (INST_ALU_OP_MOV | INST_SRC_IMM | INST_CLS_ALU), .dst = 11, .imm = 8},
-                         "0: Bad register\n");
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0xb4 */ INST_ALU_OP_MOV | INST_SRC_IMM | INST_CLS_ALU, .offset = 8},
                          "0: invalid offset for op 0xb4\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xbc */ (INST_ALU_OP_MOV | INST_SRC_REG | INST_CLS_ALU), .dst = 1, .src = 11},
-                         "0: Bad register\n");
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0xd4 */ INST_ALU_OP_END | INST_END_LE | INST_CLS_ALU, .dst = 1, .imm = 8},
                          "0: invalid endian immediate\n");
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0xd4 */ INST_ALU_OP_END | INST_END_LE | INST_CLS_ALU, .imm = 0},

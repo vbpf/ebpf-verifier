@@ -316,8 +316,10 @@ struct Unmarshaller {
         ebpf_inst next = insts[pc + 1];
         if (next.opcode != 0 || next.dst != 0 || next.src != 0 || next.offset != 0)
             throw InvalidInstruction(pc, "invalid LDDW");
-        if (inst.src > 1 || inst.dst > R10_STACK_POINTER || inst.offset != 0)
+        if (inst.src > 1 || inst.offset != 0)
             throw InvalidInstruction(pc, "LDDW uses reserved fields");
+        if (inst.dst > R10_STACK_POINTER)
+            throw InvalidInstruction(pc, "Bad register");
 
         if (inst.src == 1) {
             // magic number, meaning we're a per-process file descriptor defining the map.
@@ -452,6 +454,8 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, "jump out of bounds");
             else if (insts[new_pc].opcode == 0)
                 throw InvalidInstruction(pc, "jump to middle of lddw");
+            if (inst.opcode != INST_OP_JA16 && inst.opcode != INST_OP_JA32 && inst.dst > R10_STACK_POINTER)
+                throw InvalidInstruction(pc, "Bad register");
 
             auto cond = (inst.opcode == INST_OP_JA16 || inst.opcode == INST_OP_JA32)
                                                   ? std::optional<Condition>{}
