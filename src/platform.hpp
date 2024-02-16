@@ -43,7 +43,7 @@ struct ebpf_platform_t {
     ebpf_get_map_type_fn get_map_type;
     ebpf_resolve_inner_map_references_fn resolve_inner_map_references;
 
-    // Options indicating support for various instructions.
+    // Option indicating support for various deprecated instructions.
     bool legacy;
 };
 
