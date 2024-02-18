@@ -25,9 +25,10 @@ static uint8_t op(Condition::Op op) {
     case Op::LE: return 0xb;
     case Op::SLT: return 0xc;
     case Op::SLE: return 0xd;
+    default:
+        assert(false);
+        return {};
     }
-    assert(false);
-    return {};
 }
 
 static uint8_t op(Bin::Op op) {
@@ -50,9 +51,10 @@ static uint8_t op(Bin::Op op) {
     case Op::MOVSX16:
     case Op::MOVSX32: return 0xb;
     case Op::ARSH: return 0xc;
+    default:
+        assert(false);
+        return {};
     }
-    assert(false);
-    return {};
 }
 
 static int16_t offset(Bin::Op op) {
@@ -63,8 +65,10 @@ static int16_t offset(Bin::Op op) {
     case Op::MOVSX8: return 8;
     case Op::MOVSX16: return 16;
     case Op::MOVSX32: return 32;
+    default:
+        assert(false);
+        return {};
     }
-    return 0;
 }
 
 static uint8_t imm(Un::Op op) {
@@ -80,9 +84,10 @@ static uint8_t imm(Un::Op op) {
     case Op::BE64:
     case Op::LE64:
     case Op::SWAP64: return 64;
+    default:
+        assert(false);
+        return {};
     }
-    assert(false);
-    return {};
 }
 
 struct MarshalVisitor {
@@ -169,9 +174,10 @@ struct MarshalVisitor {
                 .offset = 0,
                 .imm = imm(b.op),
             }};
+        default:
+            assert(false);
+            return {};
         }
-        assert(false);
-        return {};
     }
 
     vector<ebpf_inst> operator()(Call const& b) {

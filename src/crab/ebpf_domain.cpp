@@ -2545,6 +2545,9 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             bitwise_xor(dst.svalue, dst.uvalue, imm);
             havoc_offsets(bin.dst);
             break;
+        default:
+            assert(false);
+            return;
         }
     } else {
         // dst op= src
@@ -2805,6 +2808,9 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 type_inv.assign_type(m_inv, bin.dst, std::get<Reg>(bin.v));
             }
             break;
+        default:
+            assert(false);
+            return;
         }
     }
     if (!bin.is64) {
