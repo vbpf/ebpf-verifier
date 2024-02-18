@@ -202,7 +202,7 @@ struct Mem {
     bool is_load{};
 };
 
-/// A special instruction for checked access to packets; it is actually a
+/// A deprecated instruction for checked access to packets; it is actually a
 /// function call, and analyzed as one, e.g., by scratching caller-saved
 /// registers after it is performed.
 struct Packet {

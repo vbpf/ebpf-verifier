@@ -66,6 +66,8 @@ int main(int argc, char** argv) {
     app.add_flag("-f", ebpf_verifier_options.print_failures, "Print verifier's failure logs");
     app.add_flag("-s", ebpf_verifier_options.strict, "Apply additional checks that would cause runtime failures");
     app.add_flag("-v", verbose, "Print both invariants and failures");
+    bool legacy = false;
+    app.add_flag("--legacy", legacy, "Allow deprecated packet access instructions");
     bool no_division_by_zero = false;
     app.add_flag("--no-division-by-zero", no_division_by_zero, "Do not allow division by zero");
     app.add_flag("--no-simplify", ebpf_verifier_options.no_simplify, "Do not simplify");
@@ -111,12 +113,13 @@ int main(int argc, char** argv) {
 
     if (domain == "linux")
         ebpf_verifier_options.mock_map_fds = false;
-    const ebpf_platform_t* platform = &g_ebpf_platform_linux;
+    ebpf_platform_t platform = g_ebpf_platform_linux;
+    platform.legacy = legacy;
 
     // Read a set of raw program sections from an ELF file.
     vector<raw_program> raw_progs;
     try {
-        raw_progs = read_elf(filename, desired_section, &ebpf_verifier_options, platform);
+        raw_progs = read_elf(filename, desired_section, &ebpf_verifier_options, &platform);
     } catch (std::runtime_error& e) {
         std::cerr << "error: " << e.what() << std::endl;
         return 1;
@@ -130,7 +133,7 @@ int main(int argc, char** argv) {
         if (!desired_section.empty() && raw_progs.empty()) {
             // We could not find the desired section, so get the full list
             // of possibilities.
-            raw_progs = read_elf(filename, string(), &ebpf_verifier_options, platform);
+            raw_progs = read_elf(filename, string(), &ebpf_verifier_options, &platform);
         }
         for (const raw_program& raw_prog : raw_progs) {
             std::cout << raw_prog.section << " ";

@@ -226,17 +226,13 @@ struct Unmarshaller {
         switch ((inst.opcode & INST_MODE_MASK) >> 5) {
         case 0: throw InvalidInstruction(pc, inst.opcode);
         case INST_ABS:
-            if (!isLD)
-                throw InvalidInstruction(pc, "ABS but not LD");
-            if (width == 8)
-                note("invalid opcode LDABSDW");
+            if (!info.platform->legacy || !isLD || (width == 8))
+                throw InvalidInstruction(pc, inst.opcode);
             return Packet{.width = width, .offset = inst.imm, .regoffset = {}};
 
         case INST_IND:
-            if (!isLD)
-                throw InvalidInstruction(pc, "IND but not LD");
-            if (width == 8)
-                note("invalid opcode LDINDDW");
+            if (!info.platform->legacy || !isLD || (width == 8))
+                throw InvalidInstruction(pc, inst.opcode);
             return Packet{.width = width, .offset = inst.imm, .regoffset = Reg{inst.src}};
 
         case INST_MEM: {

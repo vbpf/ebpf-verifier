@@ -57,7 +57,8 @@ ebpf_platform_t g_platform_test = {
     .map_record_size = 0,
     .parse_maps_section = ebpf_parse_maps_section,
     .get_map_descriptor = ebpf_get_map_descriptor,
-    .get_map_type = ebpf_get_map_type
+    .get_map_type = ebpf_get_map_type,
+    .legacy = true,
 };
 
 static EbpfProgramType make_program_type(const string& name, ebpf_context_descriptor_t* context_descriptor) {

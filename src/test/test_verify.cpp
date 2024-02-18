@@ -20,7 +20,7 @@ FAIL_LOAD_ELF("build", "badrelo.o", ".text")
 FAIL_LOAD_ELF("invalid", "badsymsize.o", "xdp_redirect_map")
 
 #define FAIL_UNMARSHAL(dirname, filename, sectionname) \
-    TEST_CASE("Try unmarshalling bad program: " dirname "/" filename, "[unmarshal]") { \
+    TEST_CASE("Try unmarshalling bad program: " dirname "/" filename " " sectionname, "[unmarshal]") { \
         auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &g_ebpf_platform_linux); \
         REQUIRE(raw_progs.size() == 1); \
         raw_program raw_prog = raw_progs.back(); \
@@ -32,9 +32,9 @@ FAIL_LOAD_ELF("invalid", "badsymsize.o", "xdp_redirect_map")
 FAIL_UNMARSHAL("build", "wronghelper.o", "xdp")
 FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
 
-#define VERIFY_SECTION(dirname, filename, sectionname, options, pass) \
+#define VERIFY_SECTION(dirname, filename, sectionname, options, platform, pass) \
     do { \
-        auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &g_ebpf_platform_linux); \
+        auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, platform); \
         REQUIRE(raw_progs.size() == 1); \
         raw_program raw_prog = raw_progs.back(); \
         std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog); \
@@ -49,30 +49,42 @@ FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
 
 #define TEST_SECTION(project, filename, section) \
     TEST_CASE("./check ebpf-samples/" project "/" filename " " section, "[verify][samples][" project "]") { \
-        VERIFY_SECTION(project, filename, section, nullptr, true); \
+        VERIFY_SECTION(project, filename, section, nullptr, &g_ebpf_platform_linux, true); \
     }
 
 #define TEST_SECTION_REJECT(project, filename, section) \
     TEST_CASE("./check ebpf-samples/" project "/" filename " " section, "[verify][samples][" project "]") { \
-        VERIFY_SECTION(project, filename, section, nullptr, false); \
+        VERIFY_SECTION(project, filename, section, nullptr, &g_ebpf_platform_linux, false); \
     }
 
 #define TEST_SECTION_REJECT_IF_STRICT(project, filename, section) \
     TEST_CASE("./check ebpf-samples/" project "/" filename " " section, "[verify][samples][" project "]") { \
         ebpf_verifier_options_t options = ebpf_verifier_default_options; \
-        VERIFY_SECTION(project, filename, section, &options, true); \
+        VERIFY_SECTION(project, filename, section, &options, &g_ebpf_platform_linux, true); \
         options.strict = true; \
-        VERIFY_SECTION(project, filename, section, &options, false); \
+        VERIFY_SECTION(project, filename, section, &options, &g_ebpf_platform_linux, false); \
     }
 
 #define TEST_SECTION_FAIL(project, filename, section) \
     TEST_CASE("expect failure ebpf-samples/" project "/" filename " " section, "[!shouldfail][verify][samples][" project "]") { \
-        VERIFY_SECTION(project, filename, section, nullptr, true); \
+        VERIFY_SECTION(project, filename, section, nullptr, &g_ebpf_platform_linux, true); \
     }
 
 #define TEST_SECTION_REJECT_FAIL(project, filename, section) \
     TEST_CASE("expect failure ebpf-samples/" project "/" filename " " section, "[!shouldfail][verify][samples][" project "]") { \
-        VERIFY_SECTION(project, filename, section, nullptr, false); \
+        VERIFY_SECTION(project, filename, section, nullptr, &g_ebpf_platform_linux, false); \
+    }
+
+#define TEST_SECTION_LEGACY(dirname, filename, sectionname) \
+    TEST_SECTION(dirname, filename, sectionname) \
+    TEST_CASE("Try unmarshalling bad program: " dirname "/" filename " " sectionname, "[unmarshal]") { \
+        ebpf_platform_t platform = g_ebpf_platform_linux; \
+        platform.legacy = false; \
+        auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &platform); \
+        REQUIRE(raw_progs.size() == 1); \
+        raw_program raw_prog = raw_progs.back(); \
+        std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog); \
+        REQUIRE(std::holds_alternative<std::string>(prog_or_error)); \
     }
 
 TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "1/0xdc06")
@@ -82,7 +94,7 @@ TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "2/4")
 TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "2/5")
 TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "2/6")
 TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "2/7")
-TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "2/10")
+TEST_SECTION_LEGACY("bpf_cilium_test", "bpf_lxc_jit.o", "2/10")
 TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "from-container")
 
 TEST_SECTION("bpf_cilium_test", "bpf_lxc-DUNKNOWN.o", "1/0x1010")
@@ -93,7 +105,7 @@ TEST_SECTION("bpf_cilium_test", "bpf_lxc-DUNKNOWN.o", "2/4")
 TEST_SECTION("bpf_cilium_test", "bpf_lxc-DUNKNOWN.o", "2/5")
 TEST_SECTION("bpf_cilium_test", "bpf_lxc-DUNKNOWN.o", "2/6")
 TEST_SECTION("bpf_cilium_test", "bpf_lxc-DUNKNOWN.o", "2/7")
-TEST_SECTION("bpf_cilium_test", "bpf_lxc-DUNKNOWN.o", "from-container")
+TEST_SECTION_LEGACY("bpf_cilium_test", "bpf_lxc-DUNKNOWN.o", "from-container")
 
 TEST_SECTION("bpf_cilium_test", "bpf_lxc-DDROP_ALL.o", "1/0x1010")
 TEST_SECTION("bpf_cilium_test", "bpf_lxc-DDROP_ALL.o", "2/1")
@@ -111,7 +123,7 @@ TEST_SECTION("bpf_cilium_test", "bpf_netdev.o", "2/3")
 TEST_SECTION("bpf_cilium_test", "bpf_netdev.o", "2/4")
 TEST_SECTION("bpf_cilium_test", "bpf_netdev.o", "2/5")
 TEST_SECTION("bpf_cilium_test", "bpf_netdev.o", "2/7")
-TEST_SECTION("bpf_cilium_test", "bpf_netdev.o", "from-netdev")
+TEST_SECTION_LEGACY("bpf_cilium_test", "bpf_netdev.o", "from-netdev")
 
 TEST_SECTION("bpf_cilium_test", "bpf_overlay.o", "2/1")
 TEST_SECTION("bpf_cilium_test", "bpf_overlay.o", "2/2")
@@ -120,7 +132,7 @@ TEST_SECTION("bpf_cilium_test", "bpf_overlay.o", "2/4")
 TEST_SECTION("bpf_cilium_test", "bpf_overlay.o", "2/5")
 TEST_SECTION("bpf_cilium_test", "bpf_overlay.o", "2/7")
 TEST_SECTION("bpf_cilium_test", "bpf_overlay.o", "3/2")
-TEST_SECTION("bpf_cilium_test", "bpf_overlay.o", "from-overlay")
+TEST_SECTION_LEGACY("bpf_cilium_test", "bpf_overlay.o", "from-overlay")
 
 TEST_SECTION("bpf_cilium_test", "bpf_lb-DLB_L3.o", "2/1")
 TEST_SECTION("bpf_cilium_test", "bpf_lb-DLB_L3.o", "2/2")
@@ -146,7 +158,7 @@ TEST_SECTION("cilium", "bpf_lxc.o", "2/6")
 TEST_SECTION("cilium", "bpf_lxc.o", "2/7")
 TEST_SECTION("cilium", "bpf_lxc.o", "2/8")
 TEST_SECTION("cilium", "bpf_lxc.o", "2/9")
-TEST_SECTION("cilium", "bpf_lxc.o", "2/10")
+TEST_SECTION_LEGACY("cilium", "bpf_lxc.o", "2/10")
 TEST_SECTION("cilium", "bpf_lxc.o", "2/11")
 TEST_SECTION("cilium", "bpf_lxc.o", "2/12")
 TEST_SECTION("cilium", "bpf_lxc.o", "from-container")
@@ -156,14 +168,14 @@ TEST_SECTION("cilium", "bpf_netdev.o", "2/3")
 TEST_SECTION("cilium", "bpf_netdev.o", "2/4")
 TEST_SECTION("cilium", "bpf_netdev.o", "2/5")
 TEST_SECTION("cilium", "bpf_netdev.o", "2/7")
-TEST_SECTION("cilium", "bpf_netdev.o", "from-netdev")
+TEST_SECTION_LEGACY("cilium", "bpf_netdev.o", "from-netdev")
 
 TEST_SECTION("cilium", "bpf_overlay.o", "2/1")
 TEST_SECTION("cilium", "bpf_overlay.o", "2/3")
 TEST_SECTION("cilium", "bpf_overlay.o", "2/4")
 TEST_SECTION("cilium", "bpf_overlay.o", "2/5")
 TEST_SECTION("cilium", "bpf_overlay.o", "2/7")
-TEST_SECTION("cilium", "bpf_overlay.o", "from-overlay")
+TEST_SECTION_LEGACY("cilium", "bpf_overlay.o", "from-overlay")
 
 TEST_SECTION("cilium", "bpf_xdp.o", "from-netdev")
 
@@ -191,13 +203,13 @@ TEST_SECTION("linux", "offwaketime_kern.o", "tracepoint/sched/sched_switch")
 TEST_SECTION("linux", "sampleip_kern.o", "perf_event")
 TEST_SECTION("linux", "sock_flags_kern.o", "cgroup/sock1")
 TEST_SECTION("linux", "sock_flags_kern.o", "cgroup/sock2")
-TEST_SECTION("linux", "sockex1_kern.o", "socket1")
-TEST_SECTION("linux", "sockex2_kern.o", "socket2")
-TEST_SECTION("linux", "sockex3_kern.o", "socket/3")
-TEST_SECTION("linux", "sockex3_kern.o", "socket/4")
-TEST_SECTION("linux", "sockex3_kern.o", "socket/1")
-TEST_SECTION("linux", "sockex3_kern.o", "socket/2")
-TEST_SECTION("linux", "sockex3_kern.o", "socket/0")
+TEST_SECTION_LEGACY("linux", "sockex1_kern.o", "socket1")
+TEST_SECTION_LEGACY("linux", "sockex2_kern.o", "socket2")
+TEST_SECTION_LEGACY("linux", "sockex3_kern.o", "socket/3")
+TEST_SECTION_LEGACY("linux", "sockex3_kern.o", "socket/4")
+TEST_SECTION_LEGACY("linux", "sockex3_kern.o", "socket/1")
+TEST_SECTION_LEGACY("linux", "sockex3_kern.o", "socket/2")
+TEST_SECTION_LEGACY("linux", "sockex3_kern.o", "socket/0")
 TEST_SECTION("linux", "spintest_kern.o", "kprobe/__htab_percpu_map_update_elem")
 TEST_SECTION("linux", "spintest_kern.o", "kprobe/_raw_spin_lock")
 TEST_SECTION("linux", "spintest_kern.o", "kprobe/_raw_spin_lock_bh")
@@ -227,7 +239,7 @@ TEST_SECTION("linux", "tcp_basertt_kern.o", "sockops")
 TEST_SECTION("linux", "tcp_bufs_kern.o", "sockops")
 TEST_SECTION("linux", "tcp_cong_kern.o", "sockops")
 TEST_SECTION("linux", "tcp_iw_kern.o", "sockops")
-TEST_SECTION("linux", "tcbpf1_kern.o", "classifier")
+TEST_SECTION_LEGACY("linux", "tcbpf1_kern.o", "classifier")
 TEST_SECTION("linux", "tcbpf1_kern.o", "clone_redirect_recv")
 TEST_SECTION("linux", "tcbpf1_kern.o", "clone_redirect_xmit")
 TEST_SECTION("linux", "tcbpf1_kern.o", "redirect_recv")
@@ -335,7 +347,7 @@ TEST_SECTION("prototype-kernel", "xdp_vlan01_kern.o", "xdp_vlan_remove_outer2")
 TEST_SECTION("ovs", "datapath.o", "tail-0")
 TEST_SECTION("ovs", "datapath.o", "tail-1")
 TEST_SECTION("ovs", "datapath.o", "tail-2")
-TEST_SECTION("ovs", "datapath.o", "tail-3")
+TEST_SECTION_LEGACY("ovs", "datapath.o", "tail-3")
 TEST_SECTION("ovs", "datapath.o", "tail-4")
 TEST_SECTION("ovs", "datapath.o", "tail-5")
 TEST_SECTION("ovs", "datapath.o", "tail-7")
@@ -343,7 +355,7 @@ TEST_SECTION("ovs", "datapath.o", "tail-8")
 TEST_SECTION("ovs", "datapath.o", "tail-11")
 TEST_SECTION("ovs", "datapath.o", "tail-12")
 TEST_SECTION("ovs", "datapath.o", "tail-13")
-TEST_SECTION("ovs", "datapath.o", "tail-32")
+TEST_SECTION_LEGACY("ovs", "datapath.o", "tail-32")
 TEST_SECTION("ovs", "datapath.o", "tail-33")
 TEST_SECTION("ovs", "datapath.o", "tail-35")
 TEST_SECTION("ovs", "datapath.o", "af_xdp")
@@ -352,8 +364,8 @@ TEST_SECTION("ovs", "datapath.o", "egress")
 TEST_SECTION("ovs", "datapath.o", "ingress")
 TEST_SECTION("ovs", "datapath.o", "xdp")
 
-TEST_SECTION("suricata", "bypass_filter.o", "filter")
-TEST_SECTION("suricata", "lb.o", "loadbalancer")
+TEST_SECTION_LEGACY("suricata", "bypass_filter.o", "filter")
+TEST_SECTION_LEGACY("suricata", "lb.o", "loadbalancer")
 TEST_SECTION("suricata", "filter.o", "filter")
 TEST_SECTION("suricata", "vlan_filter.o", "filter")
 TEST_SECTION("suricata", "xdp_filter.o", "xdp")

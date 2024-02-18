@@ -44,8 +44,8 @@ enum {
 
     INST_MODE_MASK = 0xe0,
 
-    INST_ABS = 1,
-    INST_IND = 2,
+    INST_ABS = 1, // Deprecated
+    INST_IND = 2, // Deprecated
     INST_MEM = 3,
     INST_LEN = 4,
     INST_MSH = 5,
