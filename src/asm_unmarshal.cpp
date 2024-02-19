@@ -115,7 +115,7 @@ struct Unmarshaller {
             }
         case INST_ALU_OP_MOV:
             if (inst.offset > 0 && !(inst.opcode & INST_SRC_REG))
-                throw InvalidInstruction(pc, make_opcode_message("invalid offset for", inst.opcode));
+                throw InvalidInstruction(pc, make_opcode_message("nonzero offset for", inst.opcode));
             switch (inst.offset) {
             case 0: return Bin::Op::MOV;
             case 8: return Bin::Op::MOVSX8;
@@ -142,7 +142,7 @@ struct Unmarshaller {
             if (inst.opcode & INST_SRC_REG)
                 throw InvalidInstruction{pc, inst.opcode};
             if (inst.src != 0)
-                throw InvalidInstruction{pc, make_opcode_message("nonzero src for register", inst.opcode)};
+                throw InvalidInstruction{pc, inst.opcode};
             if (inst.imm != 0)
                 throw InvalidInstruction(pc, make_opcode_message("nonzero imm for", inst.opcode));
             return Un::Op::NEG;
@@ -153,7 +153,7 @@ struct Unmarshaller {
             return Bin::Op::ARSH;
         case INST_ALU_OP_END:
             if (inst.src != 0)
-                throw InvalidInstruction{pc, make_opcode_message("nonzero src for register", inst.opcode)};
+                throw InvalidInstruction{pc, inst.opcode};
             if ((inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64) {
                 if (inst.opcode & INST_END_BE)
                     throw InvalidInstruction(pc, inst.opcode);
@@ -161,7 +161,7 @@ struct Unmarshaller {
                 case 16: return Un::Op::SWAP16;
                 case 32: return Un::Op::SWAP32;
                 case 64: return Un::Op::SWAP64;
-                default: throw InvalidInstruction(pc, "invalid endian immediate");
+                default: throw InvalidInstruction(pc, "Unsupported immediate");
                 }
             }
             switch (inst.imm) {
@@ -169,7 +169,7 @@ struct Unmarshaller {
             case 32: return (inst.opcode & INST_END_BE) ? Un::Op::BE32 : Un::Op::LE32;
             case 64: return (inst.opcode & INST_END_BE) ? Un::Op::BE64 : Un::Op::LE64;
             default:
-                throw InvalidInstruction(pc, "invalid endian immediate");
+                throw InvalidInstruction(pc, "Unsupported immediate");
             }
         case 0xe0: throw InvalidInstruction{pc, inst.opcode};
         case 0xf0: throw InvalidInstruction{pc, inst.opcode};
@@ -188,7 +188,7 @@ struct Unmarshaller {
             return Reg{inst.src};
         } else {
             if (inst.src != 0)
-                throw InvalidInstruction{pc, make_opcode_message("nonzero src for register", inst.opcode)};
+                throw InvalidInstruction{pc, inst.opcode};
             // Imm is a signed 32-bit number.  Sign extend it to 64-bits for storage.
             return Imm{sign_extend(inst.imm)};
         }
@@ -228,11 +228,23 @@ struct Unmarshaller {
         case INST_ABS:
             if (!info.platform->legacy || !isLD || (width == 8))
                 throw InvalidInstruction(pc, inst.opcode);
+            if (inst.dst != 0)
+                throw InvalidInstruction(pc, make_opcode_message("nonzero dst for register", inst.opcode));
+            if (inst.src > 0)
+                throw InvalidInstruction(pc, make_opcode_message("Bad instruction", inst.opcode));
+            if (inst.offset != 0)
+                throw InvalidInstruction(pc, make_opcode_message("nonzero offset for", inst.opcode));
             return Packet{.width = width, .offset = inst.imm, .regoffset = {}};
 
         case INST_IND:
             if (!info.platform->legacy || !isLD || (width == 8))
                 throw InvalidInstruction(pc, inst.opcode);
+            if (inst.dst != 0)
+                throw InvalidInstruction(pc, make_opcode_message("nonzero dst for register", inst.opcode));
+            if (inst.src > R10_STACK_POINTER)
+                throw InvalidInstruction(pc, "Bad register");
+            if (inst.offset != 0)
+                throw InvalidInstruction(pc, make_opcode_message("nonzero offset for", inst.opcode));
             return Packet{.width = width, .offset = inst.imm, .regoffset = Reg{inst.src}};
 
         case INST_MEM: {
@@ -243,7 +255,7 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, "Cannot modify r10");
             bool isImm = !(inst.opcode & 1);
             if (isImm && inst.src != 0)
-                throw InvalidInstruction(pc, make_opcode_message("nonzero src for register", inst.opcode));
+                throw InvalidInstruction(pc, inst.opcode);
             if (!isImm && inst.imm != 0)
                 throw InvalidInstruction(pc, make_opcode_message("nonzero imm for", inst.opcode));
 
@@ -273,7 +285,7 @@ struct Unmarshaller {
                  (inst.opcode & INST_SIZE_MASK) != INST_SIZE_DW))
                 throw InvalidInstruction(pc, inst.opcode);
             if (inst.imm != 0)
-                throw InvalidInstruction(pc, "Unsupported atomic instruction");
+                throw InvalidInstruction(pc, "Unsupported immediate");
             return LockAdd{
                 .access =
                     Deref{
@@ -316,8 +328,10 @@ struct Unmarshaller {
         ebpf_inst next = insts[pc + 1];
         if (next.opcode != 0 || next.dst != 0 || next.src != 0 || next.offset != 0)
             throw InvalidInstruction(pc, "invalid LDDW");
-        if (inst.src > 1 || inst.offset != 0)
-            throw InvalidInstruction(pc, "LDDW uses reserved fields");
+        if (inst.src > 1)
+            throw InvalidInstruction(pc, make_opcode_message("Bad instruction", inst.opcode));
+        if (inst.offset != 0)
+            throw InvalidInstruction(pc, make_opcode_message("nonzero offset for", inst.opcode));
         if (inst.dst > R10_STACK_POINTER)
             throw InvalidInstruction(pc, "Bad register");
 
@@ -415,8 +429,12 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, inst.opcode);
             if (inst.opcode & INST_SRC_REG)
                 throw InvalidInstruction(pc, inst.opcode);
+            if (inst.src > 0)
+                throw InvalidInstruction(pc, inst.opcode);
             if (inst.offset != 0)
                 throw InvalidInstruction(pc, make_opcode_message("nonzero offset for", inst.opcode));
+            if (inst.dst != 0)
+                throw InvalidInstruction(pc, make_opcode_message("nonzero dst for register", inst.opcode));
             if (!info.platform->is_helper_usable(inst.imm))
                 throw InvalidInstruction(pc, "invalid helper function id");
             return makeCall(inst.imm);
@@ -424,7 +442,9 @@ struct Unmarshaller {
             if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP || (inst.opcode & INST_SRC_REG))
                 throw InvalidInstruction(pc, inst.opcode);
             if (inst.src != 0)
-                throw InvalidInstruction(pc, make_opcode_message("nonzero src for register", inst.opcode));
+                throw InvalidInstruction(pc, inst.opcode);
+            if (inst.dst != 0)
+                throw InvalidInstruction(pc, make_opcode_message("nonzero dst for register", inst.opcode));
             if (inst.imm != 0)
                 throw InvalidInstruction(pc, make_opcode_message("nonzero imm for", inst.opcode));
             if (inst.offset != 0)
@@ -440,11 +460,13 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, make_opcode_message("nonzero imm for", inst.opcode));
             if ((inst.opcode & INST_CLS_MASK) == INST_CLS_JMP32 && (inst.offset != 0))
                 throw InvalidInstruction(pc, make_opcode_message("nonzero offset for", inst.opcode));
+            if (inst.dst != 0)
+                throw InvalidInstruction(pc, make_opcode_message("nonzero dst for register", inst.opcode));
         default: {
             // First validate the opcode, src, and imm.
             auto op = getJmpOp(pc, inst.opcode);
             if (!(inst.opcode & INST_SRC_REG) && (inst.src != 0))
-                throw InvalidInstruction(pc, make_opcode_message("nonzero src for register", inst.opcode));
+                throw InvalidInstruction(pc, inst.opcode);
             if ((inst.opcode & INST_SRC_REG) && (inst.imm != 0))
                 throw InvalidInstruction(pc, make_opcode_message("nonzero imm for", inst.opcode));
 
@@ -454,8 +476,12 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, "jump out of bounds");
             else if (insts[new_pc].opcode == 0)
                 throw InvalidInstruction(pc, "jump to middle of lddw");
-            if (inst.opcode != INST_OP_JA16 && inst.opcode != INST_OP_JA32 && inst.dst > R10_STACK_POINTER)
-                throw InvalidInstruction(pc, "Bad register");
+            if (inst.opcode != INST_OP_JA16 && inst.opcode != INST_OP_JA32) {
+                if (inst.dst > R10_STACK_POINTER)
+                    throw InvalidInstruction(pc, "Bad register");
+                if ((inst.opcode & INST_SRC_REG) && (inst.src > R10_STACK_POINTER))
+                    throw InvalidInstruction(pc, "Bad register");
+            }
 
             auto cond = (inst.opcode == INST_OP_JA16 || inst.opcode == INST_OP_JA32)
                                                   ? std::optional<Condition>{}
