@@ -97,7 +97,17 @@ std::ostream& operator<<(std::ostream& os, Condition::Op op) {
     return os;
 }
 
-static string size(int w) { return string("u") + std::to_string(w * 8); }
+static string size(Width w) {
+    switch (w) {
+    case Width::BIT8: return "u8";
+    case Width::BIT16: return "u16";
+    case Width::BIT32: return "u32";
+    case Width::BIT64: return "u64";
+    default:
+        assert(false);
+        return {};
+    }
+}
 
 static std::string to_string(TypeGroup ts) {
     switch (ts) {
@@ -218,16 +228,10 @@ struct InstructionPrinterVisitor {
     void operator()(Un const& b) {
         os_ << b.dst << " = ";
         switch (b.op) {
-        case Un::Op::BE16: os_ << "be16 "; break;
-        case Un::Op::BE32: os_ << "be32 "; break;
-        case Un::Op::BE64: os_ << "be64 "; break;
-        case Un::Op::LE16: os_ << "le16 "; break;
-        case Un::Op::LE32: os_ << "le32 "; break;
-        case Un::Op::LE64: os_ << "le64 "; break;
-        case Un::Op::SWAP16: os_ << "swap16 "; break;
-        case Un::Op::SWAP32: os_ << "swap32 "; break;
-        case Un::Op::SWAP64: os_ << "swap64 "; break;
-        case Un::Op::NEG: os_ << "-"; break;
+        case Un::Op::BE: os_ << "be" << width_in_bits(b.width) << " "; break;
+        case Un::Op::LE: os_ << "le" << width_in_bits(b.width) << " "; break;
+        case Un::Op::SWAP: os_ << "swap" << width_in_bits(b.width) << " "; break;
+        case Un::Op::NEG: os_ << "-" << " "; break;
         }
         os_ << b.dst;
     }

@@ -3,6 +3,7 @@
 #pragma once
 #include <cinttypes>
 #include <tuple>
+#include "crab_utils/bignums.hpp"
 
 // Header describing the Instruction Set Architecture (ISA)
 // for the eBPF virtual machine.
@@ -93,7 +94,7 @@ enum {
 };
 
 int opcode_to_width(uint8_t opcode);
-uint8_t width_to_opcode(int width);
+uint8_t width_to_opcode(Width width);
 
 inline uint64_t merge(int32_t imm, int32_t next_imm) { return (((uint64_t)next_imm) << 32) | (uint32_t)imm; }
 inline std::tuple<int32_t, int32_t> split(uint64_t v) { return {(uint32_t)v, (uint32_t)(v >> 32)}; }

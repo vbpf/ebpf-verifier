@@ -1,6 +1,5 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
-#include <algorithm>
 #include <map>
 #include <regex>
 #include <unordered_set>
@@ -33,7 +32,9 @@ using crab::linear_expression_t;
 #define OPASSIGN R"_(\s*(\S*)=\s*)_"
 #define ASSIGN R"_(\s*=\s*)_"
 #define LONGLONG R"_(\s*(ll|)\s*)_"
-#define UNOP R"_((-|be16|be32|be64|le16|le32|le64|swap16|swap32|swap64))_"
+#define MINUS R"_(-)_"
+#define BYTESWAP R"_((be|le|swap))_"
+#define WIDTH R"_((16|32|64))_"
 
 #define PLUSMINUS R"_((\s*[+-])\s*)_"
 #define LPAREN R"_(\s*\(\s*)_"
@@ -55,42 +56,40 @@ using crab::linear_expression_t;
 #define TYPE R"_(\s*(shared|number|packet|stack|ctx|map_fd|map_fd_programs)\s*)_"
 
 static const std::map<std::string, Bin::Op> str_to_binop = {
-    {"", Bin::Op::MOV},   {"+", Bin::Op::ADD},  {"-", Bin::Op::SUB},    {"*", Bin::Op::MUL},
-    {"/", Bin::Op::UDIV}, {"%", Bin::Op::UMOD}, {"|", Bin::Op::OR},     {"&", Bin::Op::AND},
-    {"<<", Bin::Op::LSH}, {">>", Bin::Op::RSH}, {"s>>", Bin::Op::ARSH}, {"^", Bin::Op::XOR},
-    {"s/", Bin::Op::SDIV}, {"s%", Bin::Op::SMOD}, {"s8", Bin::Op::MOVSX8}, {"s16", Bin::Op::MOVSX16},
-    {"s32", Bin::Op::MOVSX32},
+    {"", Bin::Op::MOV}, {"s8", Bin::Op::MOVSX8}, {"s16", Bin::Op::MOVSX16}, {"s32", Bin::Op::MOVSX32},
+    {"+", Bin::Op::ADD}, {"-", Bin::Op::SUB}, {"*", Bin::Op::MUL},
+    {"/", Bin::Op::UDIV}, {"%", Bin::Op::UMOD},
+    {"s/", Bin::Op::SDIV}, {"s%", Bin::Op::SMOD},
+    {"<<", Bin::Op::LSH}, {">>", Bin::Op::RSH}, {"s>>", Bin::Op::ARSH},
+    {"|", Bin::Op::OR}, {"&", Bin::Op::AND}, {"^", Bin::Op::XOR},
 };
 
 static const std::map<std::string, Un::Op> str_to_unop = {
-    {"be16", Un::Op::BE16},
-    {"be32", Un::Op::BE32},
-    {"be64", Un::Op::BE64},
-    {"le16", Un::Op::LE16},
-    {"le32", Un::Op::LE32},
-    {"le64", Un::Op::LE64},
-    {"swap16", Un::Op::SWAP16},
-    {"swap32", Un::Op::SWAP32},
-    {"swap64", Un::Op::SWAP64},
+    {"be", Un::Op::BE},
+    {"le", Un::Op::LE},
+    {"swap", Un::Op::SWAP},
     {"-", Un::Op::NEG},
 };
 
 static const std::map<std::string, Condition::Op> str_to_cmpop = {
-    {"==", Condition::Op::EQ},  {"!=", Condition::Op::NE},   {"&==", Condition::Op::SET}, {"&!=", Condition::Op::NSET},
-    {"<", Condition::Op::LT},   {"<=", Condition::Op::LE},   {">", Condition::Op::GT},    {">=", Condition::Op::GE},
-    {"s<", Condition::Op::SLT}, {"s<=", Condition::Op::SLE}, {"s>", Condition::Op::SGT},  {"s>=", Condition::Op::SGE},
+    {"==", Condition::Op::EQ},  {"!=", Condition::Op::NE},
+    {"&==", Condition::Op::SET}, {"&!=", Condition::Op::NSET},
+    {"<", Condition::Op::LT}, {">", Condition::Op::GT},
+    {"<=", Condition::Op::LE}, {">=", Condition::Op::GE},
+    {"s<", Condition::Op::SLT}, {"s>", Condition::Op::SGT},
+    {"s<=", Condition::Op::SLE}, {"s>=", Condition::Op::SGE},
 };
 
-static const std::map<std::string, int> str_to_width = {
-    {"8", 1},
-    {"16", 2},
-    {"32", 4},
-    {"64", 8},
+static const std::map<std::string, Width> str_to_width = {
+    {"8", 8_bit},
+    {"16", 16_bit},
+    {"32", 32_bit},
+    {"64", 64_bit},
 };
 
 static Reg reg(const std::string& s) {
     assert(s.at(0) == 'r' || s.at(0) == 'w');
-    uint8_t res = (uint8_t)boost::lexical_cast<uint16_t>(s.substr(1));
+    auto res = (uint8_t)boost::lexical_cast<uint16_t>(s.substr(1));
     return Reg{res};
 }
 
@@ -152,11 +151,16 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         std::string r = m[1];
         return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = reg(m[3]), .is64 = r.at(0) != 'w', .lddw = false};
     }
-    if (regex_match(text, m, regex(WREG ASSIGN UNOP WREG))) {
-        if (m[1] != m[3]) throw std::invalid_argument(std::string("Invalid unary operation: ") + text);
+    if (regex_match(text, m, regex(WREG ASSIGN MINUS WREG))) {
+        if (m[1] != m[2]) throw std::invalid_argument(std::string("Invalid unary operation: ") + text);
         std::string r = m[1];
         bool is64 = r.at(0) != 'w';
-        return Un{.op = str_to_unop.at(m[2]), .dst = reg(m[1]), .is64 = is64};
+        return Un{.op = Un::Op::NEG, .dst = reg(m[1]), .width = is64 ? 64_bit : 32_bit};
+    }
+    if (regex_match(text, m, regex(WREG ASSIGN BYTESWAP WIDTH WREG))) {
+        std::string r = m[1];
+        if (r != m[4]) throw std::invalid_argument(std::string("Invalid unary operation: ") + text);
+        return Un{.op = str_to_unop.at(m[2]), .dst = reg(r), .width = str_to_width.at(m[3])};
     }
     if (regex_match(text, m, regex(WREG OPASSIGN IMM LONGLONG))) {
         std::string r = m[1];

@@ -9,7 +9,7 @@
 
 #include <iosfwd>
 #include <set>
-#include <stdarg.h>
+#include <cstdarg>
 #include <string>
 
 namespace crab {

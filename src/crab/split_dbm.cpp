@@ -279,7 +279,7 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
 }
 
 bool SplitDBM::add_univar_disequation(variable_t x, const number_t& n) {
-    interval_t i = get_interval(x, 0);
+    interval_t i = get_interval(x, {});
     interval_t new_i = trim_interval(i, interval_t(n));
     if (new_i.is_bottom()) {
         return false;
@@ -942,7 +942,7 @@ void SplitDBM::set(variable_t x, const interval_t& intv) {
     normalize();
 }
 
-void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) {
+void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, variable_t z, std::optional<Width> finite_width) {
     CrabStats::count("SplitDBM.count.apply");
     ScopedCrabStats __st__("SplitDBM.apply");
 
@@ -960,7 +960,7 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, variable_t z,
     normalize();
 }
 
-void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, const number_t& k, int finite_width) {
+void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, const number_t& k, std::optional<Width> finite_width) {
     CrabStats::count("SplitDBM.count.apply");
     ScopedCrabStats __st__("SplitDBM.apply");
 
@@ -978,7 +978,7 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, const number_
     normalize();
 }
 
-void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) {
+void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t z, std::optional<Width> finite_width) {
     CrabStats::count("SplitDBM.count.apply");
     ScopedCrabStats __st__("SplitDBM.apply");
 
@@ -1000,7 +1000,7 @@ void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t 
 }
 
 // Apply a bitwise operator to a uvalue.
-void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, const number_t& k, int finite_width) {
+void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, const number_t& k, std::optional<Width> finite_width) {
     CrabStats::count("SplitDBM.count.apply");
     ScopedCrabStats __st__("SplitDBM.apply");
 
@@ -1240,7 +1240,7 @@ void SplitDBM::diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
 }
 
 static interval_t get_interval(const SplitDBM::vert_map_t& m, const SplitDBM::graph_t& r, variable_t x,
-                               int finite_width) {
+                               std::optional<Width> finite_width) {
     auto it = m.find(x);
     if (it == m.end()) {
         return interval_t::top();
@@ -1257,12 +1257,12 @@ static interval_t get_interval(const SplitDBM::vert_map_t& m, const SplitDBM::gr
     return {lb, ub};
 }
 
-interval_t SplitDBM::get_interval(variable_t x, int finite_width) const {
+interval_t SplitDBM::get_interval(variable_t x, std::optional<Width> finite_width) const {
     return crab::domains::get_interval(vert_map, g, x, finite_width);
 }
 
 interval_t SplitDBM::operator[](variable_t x) const {
-    return crab::domains::get_interval(vert_map, g, x, 0);
+    return crab::domains::get_interval(vert_map, g, x, {});
 }
 
 } // namespace crab::domains

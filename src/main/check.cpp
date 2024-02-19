@@ -148,7 +148,7 @@ int main(int argc, char** argv) {
     // Convert the raw program section to a set of instructions.
     std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
     if (std::holds_alternative<string>(prog_or_error)) {
-        std::cout << "unmarshaling error at " << std::get<string>(prog_or_error) << "\n";
+        std::cout << "unmarshalling error at " << std::get<string>(prog_or_error) << "\n";
         return 1;
     }
 

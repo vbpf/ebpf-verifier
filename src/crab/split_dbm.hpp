@@ -156,7 +156,7 @@ class SplitDBM final {
     // x != n
     bool add_univar_disequation(variable_t x, const number_t& n);
 
-    [[nodiscard]] interval_t get_interval(variable_t x, int finite_width) const;
+    [[nodiscard]] interval_t get_interval(variable_t x, std::optional<Width> finite_width) const;
 
     // Restore potential after an edge addition
     bool repair_potential(vert_id src, vert_id dest) { return GrOps::repair_potential(g, potential, src, dest); }
@@ -266,20 +266,20 @@ class SplitDBM final {
         }
     };
 
-    void apply(arith_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width);
+    void apply(arith_binop_t op, variable_t x, variable_t y, variable_t z, std::optional<Width> finite_width);
 
-    void apply(arith_binop_t op, variable_t x, variable_t y, const number_t& k, int finite_width);
+    void apply(arith_binop_t op, variable_t x, variable_t y, const number_t& k, std::optional<Width> finite_width);
 
     // bitwise_operators_api
-    void apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width);
+    void apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t z, std::optional<Width> finite_width);
 
-    void apply(bitwise_binop_t op, variable_t x, variable_t y, const number_t& k, int finite_width);
+    void apply(bitwise_binop_t op, variable_t x, variable_t y, const number_t& k, std::optional<Width> finite_width);
 
-    void apply(binop_t op, variable_t x, variable_t y, const number_t& z, int finite_width) {
+    void apply(binop_t op, variable_t x, variable_t y, const number_t& z, std::optional<Width> finite_width) {
         std::visit([&](auto top) { apply(top, x, y, z, finite_width); }, op);
     }
 
-    void apply(binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) {
+    void apply(binop_t op, variable_t x, variable_t y, variable_t z, std::optional<Width> finite_width) {
         std::visit([&](auto top) { apply(top, x, y, z, finite_width); }, op);
     }
 

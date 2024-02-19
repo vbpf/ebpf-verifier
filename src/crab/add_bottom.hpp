@@ -147,7 +147,7 @@ class AddBottom final {
     };
 
     template<typename Op, typename Left, typename Right>
-    void apply(Op op, variable_t x, const Left& left, const Right& right, int finite_width) {
+    void apply(Op op, variable_t x, const Left& left, const Right& right, std::optional<Width> finite_width) {
         if (dom) {
             dom->apply(op, x, left, right, finite_width);
         }

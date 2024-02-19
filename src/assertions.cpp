@@ -141,7 +141,7 @@ class AssertExtractor {
     vector<Assert> operator()(Mem ins) const {
         vector<Assert> res;
         Reg basereg = ins.access.basereg;
-        Imm width{static_cast<uint32_t>(ins.access.width)};
+        Imm width{static_cast<uint32_t>(width_in_bytes(ins.access.width))};
         int offset = ins.access.offset;
         if (basereg.v == R10_STACK_POINTER) {
             // We know we are accessing the stack.
@@ -167,7 +167,7 @@ class AssertExtractor {
         vector<Assert> res;
         res.emplace_back(TypeConstraint{ins.access.basereg, TypeGroup::shared});
         res.emplace_back(ValidAccess{ins.access.basereg, ins.access.offset,
-                                     Imm{static_cast<uint32_t>(ins.access.width)}, false});
+                                     Imm{static_cast<uint32_t>(width_in_bytes(ins.access.width))}, false});
         return res;
     }
 

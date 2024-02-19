@@ -326,7 +326,7 @@ ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memo
     // Convert the raw program section to a set of instructions.
     std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
     if (std::holds_alternative<string>(prog_or_error)) {
-        std::cerr << "unmarshaling error at " << std::get<string>(prog_or_error) << "\n";
+        std::cerr << "unmarshalling error at " << std::get<string>(prog_or_error) << "\n";
         return {};
     }
 

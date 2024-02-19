@@ -442,8 +442,8 @@ class interval_t final {
         interval_t new_interval = *this;
         if (!(*this <= interval_t::signed_int(is64))) {
             if (auto size = finite_size()) {
-                auto llb = lb().number()->truncate_to_signed_finite_width(is64 ? 64 : 32);
-                auto lub = ub().number()->truncate_to_signed_finite_width(is64 ? 64 : 32);
+                auto llb = lb().number()->truncate_to_signed_finite_width(is64 ? 64_bit : 32_bit);
+                auto lub = ub().number()->truncate_to_signed_finite_width(is64 ? 64_bit : 32_bit);
                 if ((llb <= lub) && (is64 ? size->fits_sint64() : size->fits_sint32())) {
                     // Interval can be accurately represented in 64 bits.
                     new_interval = interval_t{llb, lub};
@@ -461,8 +461,8 @@ class interval_t final {
         interval_t new_interval = *this;
         if (!(*this <= interval_t::unsigned_int(is64))) {
             if (auto size = finite_size()) {
-                auto llb = lb().number()->truncate_to_unsigned_finite_width(is64 ? 64 : 32);
-                auto lub = ub().number()->truncate_to_unsigned_finite_width(is64 ? 64 : 32);
+                auto llb = lb().number()->truncate_to_unsigned_finite_width(is64 ? 64_bit : 32_bit);
+                auto lub = ub().number()->truncate_to_unsigned_finite_width(is64 ? 64_bit : 32_bit);
                 if ((llb <= lub) && (is64 ? size->fits_uint64() : size->fits_uint32())) {
                     // Interval can be accurately represented in 64 bits.
                     new_interval = interval_t{llb, lub};

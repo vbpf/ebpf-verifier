@@ -962,27 +962,27 @@ void ebpf_domain_t::operator-=(variable_t var) { m_inv -= var; }
 void ebpf_domain_t::assign(variable_t x, const linear_expression_t& e) { m_inv.assign(x, e); }
 void ebpf_domain_t::assign(variable_t x, int64_t e) { m_inv.set(x, crab::interval_t(number_t(e))); }
 
-void ebpf_domain_t::apply(crab::arith_binop_t op, variable_t x, variable_t y, const number_t& z, int finite_width) {
+void ebpf_domain_t::apply(crab::arith_binop_t op, variable_t x, variable_t y, const number_t& z, std::optional<Width> finite_width) {
     m_inv.apply(op, x, y, z, finite_width);
 }
 
-void ebpf_domain_t::apply(crab::arith_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) {
+void ebpf_domain_t::apply(crab::arith_binop_t op, variable_t x, variable_t y, variable_t z, std::optional<Width> finite_width) {
     m_inv.apply(op, x, y, z, finite_width);
 }
 
-void ebpf_domain_t::apply(crab::bitwise_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) {
+void ebpf_domain_t::apply(crab::bitwise_binop_t op, variable_t x, variable_t y, variable_t z, std::optional<Width> finite_width) {
     m_inv.apply(op, x, y, z, finite_width);
 }
 
-void ebpf_domain_t::apply(crab::bitwise_binop_t op, variable_t x, variable_t y, const number_t& k, int finite_width) {
+void ebpf_domain_t::apply(crab::bitwise_binop_t op, variable_t x, variable_t y, const number_t& k, std::optional<Width> finite_width) {
     m_inv.apply(op, x, y, k, finite_width);
 }
 
-void ebpf_domain_t::apply(crab::binop_t op, variable_t x, variable_t y, const number_t& z, int finite_width) {
+void ebpf_domain_t::apply(crab::binop_t op, variable_t x, variable_t y, const number_t& z, std::optional<Width> finite_width) {
     std::visit([&](auto top) { apply(top, x, y, z, finite_width); }, op);
 }
 
-void ebpf_domain_t::apply(crab::binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) {
+void ebpf_domain_t::apply(crab::binop_t op, variable_t x, variable_t y, variable_t z, std::optional<Width> finite_width) {
     std::visit([&](auto top) { apply(top, x, y, z, finite_width); }, op);
 }
 
@@ -1010,139 +1010,139 @@ void ebpf_domain_t::forget_packet_pointers() {
 }
 
 void ebpf_domain_t::apply_signed(NumAbsDomain& inv, crab::binop_t op, variable_t xs, variable_t xu, variable_t y,
-                                 const number_t& z, int finite_width) {
+                                 const number_t& z, std::optional<Width> finite_width) {
     inv.apply(op, xs, y, z, finite_width);
     if (finite_width) {
         inv.assign(xu, xs);
-        overflow_signed(inv, xs, finite_width);
-        overflow_unsigned(inv, xu, finite_width);
+        overflow_signed(inv, xs, *finite_width);
+        overflow_unsigned(inv, xu, *finite_width);
     }
 }
 
 void ebpf_domain_t::apply_unsigned(NumAbsDomain& inv, crab::binop_t op, variable_t xs, variable_t xu, variable_t y,
-                                   const number_t& z, int finite_width) {
+                                   const number_t& z, std::optional<Width> finite_width) {
     inv.apply(op, xu, y, z, finite_width);
     if (finite_width) {
         inv.assign(xs, xu);
-        overflow_signed(inv, xs, finite_width);
-        overflow_unsigned(inv, xu, finite_width);
+        overflow_signed(inv, xs, *finite_width);
+        overflow_unsigned(inv, xu, *finite_width);
     }
 }
 
 void ebpf_domain_t::apply_signed(NumAbsDomain& inv, crab::binop_t op, variable_t xs, variable_t xu, variable_t y,
-                                 variable_t z, int finite_width) {
+                                 variable_t z, std::optional<Width> finite_width) {
     inv.apply(op, xs, y, z, finite_width);
     if (finite_width) {
         inv.assign(xu, xs);
-        overflow_signed(inv, xs, finite_width);
-        overflow_unsigned(inv, xu, finite_width);
+        overflow_signed(inv, xs, *finite_width);
+        overflow_unsigned(inv, xu, *finite_width);
     }
 }
 
 void ebpf_domain_t::apply_unsigned(NumAbsDomain& inv, crab::binop_t op, variable_t xs, variable_t xu, variable_t y,
-                                   variable_t z, int finite_width) {
+                                   variable_t z, std::optional<Width> finite_width) {
     inv.apply(op, xu, y, z, finite_width);
     if (finite_width) {
         inv.assign(xs, xu);
-        overflow_signed(inv, xs, finite_width);
-        overflow_unsigned(inv, xu, finite_width);
+        overflow_signed(inv, xs, *finite_width);
+        overflow_unsigned(inv, xu, *finite_width);
     }
 }
 
 void ebpf_domain_t::apply(NumAbsDomain& inv, crab::binop_t op, variable_t x, variable_t y, variable_t z) {
-    inv.apply(op, x, y, z, 0);
+    inv.apply(op, x, y, z, {});
 }
 
 void ebpf_domain_t::add(variable_t lhs, variable_t op2) {
-    apply_signed(m_inv, crab::arith_binop_t::ADD, lhs, lhs, lhs, op2, 0);
+    apply_signed(m_inv, crab::arith_binop_t::ADD, lhs, lhs, lhs, op2, {});
 }
 void ebpf_domain_t::add(variable_t lhs, const number_t& op2) {
-    apply_signed(m_inv, crab::arith_binop_t::ADD, lhs, lhs, lhs, op2, 0);
+    apply_signed(m_inv, crab::arith_binop_t::ADD, lhs, lhs, lhs, op2, {});
 }
 void ebpf_domain_t::sub(variable_t lhs, variable_t op2) {
-    apply_signed(m_inv, crab::arith_binop_t::SUB, lhs, lhs, lhs, op2, 0);
+    apply_signed(m_inv, crab::arith_binop_t::SUB, lhs, lhs, lhs, op2, {});
 }
 void ebpf_domain_t::sub(variable_t lhs, const number_t& op2) {
-    apply_signed(m_inv, crab::arith_binop_t::SUB, lhs, lhs, lhs, op2, 0);
+    apply_signed(m_inv, crab::arith_binop_t::SUB, lhs, lhs, lhs, op2, {});
 }
 
 // Add/subtract with overflow are both signed and unsigned. We can use either one of the two to compute the
 // result before adjusting for overflow, though if one is top we want to use the other to retain precision.
-void ebpf_domain_t::add_overflow(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+void ebpf_domain_t::add_overflow(variable_t lhss, variable_t lhsu, variable_t op2, Width finite_width) {
     apply_signed(m_inv, crab::arith_binop_t::ADD, lhss, lhsu, ((!m_inv.eval_interval(lhss).is_top()) ? lhss : lhsu),
                  op2, finite_width);
 }
-void ebpf_domain_t::add_overflow(variable_t lhss, variable_t lhsu, const number_t& op2, int finite_width) {
+void ebpf_domain_t::add_overflow(variable_t lhss, variable_t lhsu, const number_t& op2, Width finite_width) {
     apply_signed(m_inv, crab::arith_binop_t::ADD, lhss, lhsu, ((!m_inv.eval_interval(lhss).is_top()) ? lhss : lhsu),
                  op2, finite_width);
 }
-void ebpf_domain_t::sub_overflow(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+void ebpf_domain_t::sub_overflow(variable_t lhss, variable_t lhsu, variable_t op2, Width finite_width) {
     apply_signed(m_inv, crab::arith_binop_t::SUB, lhss, lhsu, ((!m_inv.eval_interval(lhss).is_top()) ? lhss : lhsu),
                  op2, finite_width);
 }
-void ebpf_domain_t::sub_overflow(variable_t lhss, variable_t lhsu, const number_t& op2, int finite_width) {
+void ebpf_domain_t::sub_overflow(variable_t lhss, variable_t lhsu, const number_t& op2, Width finite_width) {
     apply_signed(m_inv, crab::arith_binop_t::SUB, lhss, lhsu, ((!m_inv.eval_interval(lhss).is_top()) ? lhss : lhsu),
                  op2, finite_width);
 }
 
-void ebpf_domain_t::neg(variable_t lhss, variable_t lhsu, int finite_width) {
+void ebpf_domain_t::neg(variable_t lhss, variable_t lhsu, Width finite_width) {
     apply_signed(m_inv, crab::arith_binop_t::MUL, lhss, lhsu, lhss, (number_t)-1, finite_width);
 }
-void ebpf_domain_t::mul(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+void ebpf_domain_t::mul(variable_t lhss, variable_t lhsu, variable_t op2, Width finite_width) {
     apply_signed(m_inv, crab::arith_binop_t::MUL, lhss, lhsu, lhss, op2, finite_width);
 }
-void ebpf_domain_t::mul(variable_t lhss, variable_t lhsu, const number_t& op2, int finite_width) {
+void ebpf_domain_t::mul(variable_t lhss, variable_t lhsu, const number_t& op2, Width finite_width) {
     apply_signed(m_inv, crab::arith_binop_t::MUL, lhss, lhsu, lhss, op2, finite_width);
 }
-void ebpf_domain_t::sdiv(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+void ebpf_domain_t::sdiv(variable_t lhss, variable_t lhsu, variable_t op2, Width finite_width) {
     apply_signed(m_inv, crab::arith_binop_t::SDIV, lhss, lhsu, lhss, op2, finite_width);
 }
-void ebpf_domain_t::sdiv(variable_t lhss, variable_t lhsu, const number_t& op2, int finite_width) {
+void ebpf_domain_t::sdiv(variable_t lhss, variable_t lhsu, const number_t& op2, Width finite_width) {
     apply_signed(m_inv, crab::arith_binop_t::SDIV, lhss, lhsu, lhss, op2, finite_width);
 }
-void ebpf_domain_t::udiv(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+void ebpf_domain_t::udiv(variable_t lhss, variable_t lhsu, variable_t op2, Width finite_width) {
     apply_unsigned(m_inv, crab::arith_binop_t::UDIV, lhss, lhsu, lhsu, op2, finite_width);
 }
-void ebpf_domain_t::udiv(variable_t lhss, variable_t lhsu, const number_t& op2, int finite_width) {
+void ebpf_domain_t::udiv(variable_t lhss, variable_t lhsu, const number_t& op2, Width finite_width) {
     apply_unsigned(m_inv, crab::arith_binop_t::UDIV, lhss, lhsu, lhsu, op2, finite_width);
 }
-void ebpf_domain_t::srem(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+void ebpf_domain_t::srem(variable_t lhss, variable_t lhsu, variable_t op2, Width finite_width) {
     apply_signed(m_inv, crab::arith_binop_t::SREM, lhss, lhsu, lhss, op2, finite_width);
 }
-void ebpf_domain_t::srem(variable_t lhss, variable_t lhsu, const number_t& op2, int finite_width) {
+void ebpf_domain_t::srem(variable_t lhss, variable_t lhsu, const number_t& op2, Width finite_width) {
     apply_signed(m_inv, crab::arith_binop_t::SREM, lhss, lhsu, lhss, op2, finite_width);
 }
-void ebpf_domain_t::urem(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+void ebpf_domain_t::urem(variable_t lhss, variable_t lhsu, variable_t op2, Width finite_width) {
     apply_unsigned(m_inv, crab::arith_binop_t::UREM, lhss, lhsu, lhsu, op2, finite_width);
 }
-void ebpf_domain_t::urem(variable_t lhss, variable_t lhsu, const number_t& op2, int finite_width) {
+void ebpf_domain_t::urem(variable_t lhss, variable_t lhsu, const number_t& op2, Width finite_width) {
     apply_unsigned(m_inv, crab::arith_binop_t::UREM, lhss, lhsu, lhsu, op2, finite_width);
 }
 
-void ebpf_domain_t::bitwise_and(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+void ebpf_domain_t::bitwise_and(variable_t lhss, variable_t lhsu, variable_t op2, Width finite_width) {
     apply_unsigned(m_inv, crab::bitwise_binop_t::AND, lhss, lhsu, lhsu, op2, finite_width);
 }
 void ebpf_domain_t::bitwise_and(variable_t lhss, variable_t lhsu, const number_t& op2) {
     // Use finite width 64 to make the svalue be set as well as the uvalue.
-    apply_unsigned(m_inv, crab::bitwise_binop_t::AND, lhss, lhsu, lhsu, op2, 64);
+    apply_unsigned(m_inv, crab::bitwise_binop_t::AND, lhss, lhsu, lhsu, op2, 64_bit);
 }
-void ebpf_domain_t::bitwise_or(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+void ebpf_domain_t::bitwise_or(variable_t lhss, variable_t lhsu, variable_t op2, Width finite_width) {
     apply_unsigned(m_inv, crab::bitwise_binop_t::OR, lhss, lhsu, lhsu, op2, finite_width);
 }
 void ebpf_domain_t::bitwise_or(variable_t lhss, variable_t lhsu, const number_t& op2) {
-    apply_unsigned(m_inv, crab::bitwise_binop_t::OR, lhss, lhsu, lhsu, op2, 64);
+    apply_unsigned(m_inv, crab::bitwise_binop_t::OR, lhss, lhsu, lhsu, op2, 64_bit);
 }
-void ebpf_domain_t::bitwise_xor(variable_t lhss, variable_t lhsu, variable_t op2, int finite_width) {
+void ebpf_domain_t::bitwise_xor(variable_t lhss, variable_t lhsu, variable_t op2, Width finite_width) {
     apply_unsigned(m_inv, crab::bitwise_binop_t::XOR, lhss, lhsu, lhsu, op2, finite_width);
 }
 void ebpf_domain_t::bitwise_xor(variable_t lhss, variable_t lhsu, const number_t& op2) {
-    apply_unsigned(m_inv, crab::bitwise_binop_t::XOR, lhss, lhsu, lhsu, op2, 64);
+    apply_unsigned(m_inv, crab::bitwise_binop_t::XOR, lhss, lhsu, lhsu, op2, 64_bit);
 }
 void ebpf_domain_t::shl_overflow(variable_t lhss, variable_t lhsu, variable_t op2) {
-    apply_unsigned(m_inv, crab::bitwise_binop_t::SHL, lhss, lhsu, lhsu, op2, 64);
+    apply_unsigned(m_inv, crab::bitwise_binop_t::SHL, lhss, lhsu, lhsu, op2, 64_bit);
 }
 void ebpf_domain_t::shl_overflow(variable_t lhss, variable_t lhsu, const number_t& op2) {
-    apply_unsigned(m_inv, crab::bitwise_binop_t::SHL, lhss, lhsu, lhsu, op2, 64);
+    apply_unsigned(m_inv, crab::bitwise_binop_t::SHL, lhss, lhsu, lhsu, op2, 64_bit);
 }
 
 static void assume(NumAbsDomain& inv, const linear_constraint_t& cst) { inv += cst; }
@@ -1320,7 +1320,7 @@ bool ebpf_domain_t::TypeDomain::is_in_group(const NumAbsDomain& inv, const Reg& 
     return false;
 }
 
-void ebpf_domain_t::overflow_bounds(NumAbsDomain& inv, variable_t lhs, number_t span, int finite_width, bool issigned) {
+void ebpf_domain_t::overflow_bounds(NumAbsDomain& inv, variable_t lhs, number_t span, Width finite_width, bool issigned) {
     using namespace crab::dsl_syntax;
     auto interval = inv[lhs];
     if (interval.ub() - interval.lb() >= span) {
@@ -1357,16 +1357,16 @@ void ebpf_domain_t::overflow_bounds(NumAbsDomain& inv, variable_t lhs, number_t 
     }
 }
 
-void ebpf_domain_t::overflow_signed(NumAbsDomain& inv, variable_t lhs, int finite_width) {
-    auto span{finite_width == 64   ? crab::z_number{std::numeric_limits<uint64_t>::max()}
-              : finite_width == 32 ? crab::z_number{std::numeric_limits<uint32_t>::max()}
+void ebpf_domain_t::overflow_signed(NumAbsDomain& inv, variable_t lhs, Width finite_width) {
+    auto span{finite_width == 64_bit   ? crab::z_number{std::numeric_limits<uint64_t>::max()}
+              : finite_width == 32_bit ? crab::z_number{std::numeric_limits<uint32_t>::max()}
                                    : throw std::exception()};
     overflow_bounds(inv, lhs, span, finite_width, true);
 }
 
-void ebpf_domain_t::overflow_unsigned(NumAbsDomain& inv, variable_t lhs, int finite_width) {
-    auto span{finite_width == 64   ? crab::z_number{std::numeric_limits<uint64_t>::max()}
-              : finite_width == 32 ? crab::z_number{std::numeric_limits<uint32_t>::max()}
+void ebpf_domain_t::overflow_unsigned(NumAbsDomain& inv, variable_t lhs, Width finite_width) {
+    auto span{finite_width == 64_bit   ? crab::z_number{std::numeric_limits<uint64_t>::max()}
+              : finite_width == 32_bit ? crab::z_number{std::numeric_limits<uint32_t>::max()}
                                    : throw std::exception()};
     overflow_bounds(inv, lhs, span, finite_width, false);
 }
@@ -1448,14 +1448,13 @@ void ebpf_domain_t::operator()(const Undefined& a) {}
 
 void ebpf_domain_t::operator()(const Un& stmt) {
     auto dst = reg_pack(stmt.dst);
-    auto swap_endianness = [&](variable_t v, auto input, const auto& be_or_le) {
+    auto swap_endianness = [&](variable_t v, auto be_or_le) -> void {
         if (m_inv.entail(type_is_number(stmt.dst))) {
             auto interval = m_inv.eval_interval(v);
             if (std::optional<number_t> n = interval.singleton()) {
                 if (n->fits_cast_to_int64()) {
-                    input = (decltype(input))n.value().cast_to_sint64();
-                    decltype(input) output = be_or_le(input);
-                    m_inv.set(v, crab::interval_t(number_t(output), number_t(output)));
+                    number_t output{be_or_le(n.value().cast_to_sint64())};
+                    m_inv.set(v, crab::interval_t(output, output));
                     return;
                 }
             }
@@ -1467,46 +1466,61 @@ void ebpf_domain_t::operator()(const Un& stmt) {
     // signed int64, but for smaller types we don't want sign extension,
     // so we use unsigned which still fits in a signed int64.
     switch (stmt.op) {
-    case Un::Op::BE16:
-        swap_endianness(dst.svalue, uint16_t(0), boost::endian::native_to_big<uint16_t>);
-        swap_endianness(dst.uvalue, uint16_t(0), boost::endian::native_to_big<uint16_t>);
-        break;
-    case Un::Op::BE32:
-        swap_endianness(dst.svalue, uint32_t(0), boost::endian::native_to_big<uint32_t>);
-        swap_endianness(dst.uvalue, uint32_t(0), boost::endian::native_to_big<uint32_t>);
-        break;
-    case Un::Op::BE64:
-        swap_endianness(dst.svalue, int64_t(0), boost::endian::native_to_big<int64_t>);
-        swap_endianness(dst.uvalue, uint64_t(0), boost::endian::native_to_big<uint64_t>);
-        break;
-    case Un::Op::LE16:
-        swap_endianness(dst.svalue, uint16_t(0), boost::endian::native_to_little<uint16_t>);
-        swap_endianness(dst.uvalue, uint16_t(0), boost::endian::native_to_little<uint16_t>);
-        break;
-    case Un::Op::LE32:
-        swap_endianness(dst.svalue, uint32_t(0), boost::endian::native_to_little<uint32_t>);
-        swap_endianness(dst.uvalue, uint32_t(0), boost::endian::native_to_little<uint32_t>);
-        break;
-    case Un::Op::LE64:
-        swap_endianness(dst.svalue, int64_t(0), boost::endian::native_to_little<int64_t>);
-        swap_endianness(dst.svalue, uint64_t(0), boost::endian::native_to_little<uint64_t>);
-        break;
-    case Un::Op::SWAP16:
-        swap_endianness(dst.svalue, uint16_t(0), boost::endian::endian_reverse<uint16_t>);
-        swap_endianness(dst.uvalue, uint16_t(0), boost::endian::endian_reverse<uint16_t>);
-        break;
-    case Un::Op::SWAP32:
-        swap_endianness(dst.svalue, uint32_t(0), boost::endian::endian_reverse<uint32_t>);
-        swap_endianness(dst.uvalue, uint32_t(0), boost::endian::endian_reverse<uint32_t>);
-        break;
-    case Un::Op::SWAP64:
-        swap_endianness(dst.svalue, int64_t(0), boost::endian::endian_reverse<int64_t>);
-        swap_endianness(dst.uvalue, uint64_t(0), boost::endian::endian_reverse<uint64_t>);
-        break;
+    case Un::Op::BE:
+        switch (stmt.width) {
+        case 8_bit: throw std::runtime_error("Invalid: 8-bit endianness BE");
+        case 16_bit:
+            swap_endianness(dst.svalue, boost::endian::native_to_big<uint16_t>);
+            swap_endianness(dst.uvalue, boost::endian::native_to_big<uint16_t>);
+            return;
+        case 32_bit:
+            swap_endianness(dst.svalue, boost::endian::native_to_big<uint32_t>);
+            swap_endianness(dst.uvalue, boost::endian::native_to_big<uint32_t>);
+            return;
+        case 64_bit:
+            swap_endianness(dst.svalue, boost::endian::native_to_big<int64_t>);
+            swap_endianness(dst.uvalue, boost::endian::native_to_big<uint64_t>);
+            return;
+        default: throw std::runtime_error("Invalid: unknown endianness BE");
+        }
+    case Un::Op::LE:
+        switch (stmt.width) {
+        case 8_bit: throw std::runtime_error("Invalid: 8-bit endianness LE");
+        case 16_bit:
+            swap_endianness(dst.svalue, boost::endian::native_to_little<uint16_t>);
+            swap_endianness(dst.uvalue, boost::endian::native_to_little<uint16_t>);
+            return;
+        case 32_bit:
+            swap_endianness(dst.svalue, boost::endian::native_to_little<uint32_t>);
+            swap_endianness(dst.uvalue, boost::endian::native_to_little<uint32_t>);
+            return;
+        case 64_bit:
+            swap_endianness(dst.svalue, boost::endian::native_to_little<int64_t>);
+            swap_endianness(dst.uvalue, boost::endian::native_to_little<uint64_t>);
+            return;
+        default: throw std::runtime_error("Invalid: unknown endianness LE");
+        }
+    case Un::Op::SWAP:
+        switch (stmt.width) {
+        case 8_bit: throw std::runtime_error("Invalid: 8-bit endianness swap");
+        case 16_bit:
+            swap_endianness(dst.svalue, boost::endian::endian_reverse<uint16_t>);
+            swap_endianness(dst.uvalue, boost::endian::endian_reverse<uint16_t>);
+            return;
+        case 32_bit:
+            swap_endianness(dst.svalue, boost::endian::endian_reverse<uint32_t>);
+            swap_endianness(dst.uvalue, boost::endian::endian_reverse<uint32_t>);
+            return;
+        case 64_bit:
+            swap_endianness(dst.svalue, boost::endian::endian_reverse<int64_t>);
+            swap_endianness(dst.uvalue, boost::endian::endian_reverse<uint64_t>);
+            return;
+        default: throw std::runtime_error("Invalid: unknown endianness swap");
+        }
     case Un::Op::NEG:
-        neg(dst.svalue, dst.uvalue, stmt.is64 ? 64 : 32);
+        neg(dst.svalue, dst.uvalue, stmt.width);
         havoc_offsets(stmt.dst);
-        break;
+        return;
     }
 }
 
@@ -1964,12 +1978,12 @@ void ebpf_domain_t::do_load(const Mem& b, const Reg& target_reg) {
     using namespace crab::dsl_syntax;
 
     auto mem_reg = reg_pack(b.access.basereg);
-    int width = b.access.width;
+    Width width = b.access.width;
     int offset = b.access.offset;
 
     if (b.access.basereg.v == R10_STACK_POINTER) {
         linear_expression_t addr = mem_reg.stack_offset + (number_t)offset;
-        do_load_stack(m_inv, target_reg, addr, width, b.access.basereg);
+        do_load_stack(m_inv, target_reg, addr, width_in_bytes(width), b.access.basereg);
         return;
     }
 
@@ -1981,22 +1995,22 @@ void ebpf_domain_t::do_load(const Mem& b, const Reg& target_reg) {
         case T_NUM: return;
         case T_CTX: {
             linear_expression_t addr = mem_reg.ctx_offset + (number_t)offset;
-            do_load_ctx(inv, target_reg, addr, width);
+            do_load_ctx(inv, target_reg, addr, width_in_bytes(width));
             break;
         }
         case T_STACK: {
             linear_expression_t addr = mem_reg.stack_offset + (number_t)offset;
-            do_load_stack(inv, target_reg, addr, width, b.access.basereg);
+            do_load_stack(inv, target_reg, addr, width_in_bytes(width), b.access.basereg);
             break;
         }
         case T_PACKET: {
             linear_expression_t addr = mem_reg.packet_offset + (number_t)offset;
-            do_load_packet_or_shared(inv, target_reg, addr, width);
+            do_load_packet_or_shared(inv, target_reg, addr, width_in_bytes(width));
             break;
         }
         default: {
             linear_expression_t addr = mem_reg.shared_offset + (number_t)offset;
-            do_load_packet_or_shared(inv, target_reg, addr, width);
+            do_load_packet_or_shared(inv, target_reg, addr, width_in_bytes(width));
             break;
         }
         }
@@ -2113,7 +2127,7 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue,
                                  const std::optional<reg_pack_t>& val_reg) {
     if (m_inv.is_bottom())
         return;
-    int width = b.access.width;
+    int width = width_in_bytes(b.access.width);
     number_t offset{b.access.offset};
     if (b.access.basereg.v == R10_STACK_POINTER) {
         number_t base_addr{EBPF_STACK_SIZE};
@@ -2280,7 +2294,7 @@ void ebpf_domain_t::recompute_stack_numeric_size(NumAbsDomain& inv, const Reg& r
     recompute_stack_numeric_size(inv, reg_pack(reg).type);
 }
 
-void ebpf_domain_t::add(const Reg& reg, int imm, int finite_width) {
+void ebpf_domain_t::add(const Reg& reg, int imm, Width finite_width) {
     auto dst = reg_pack(reg);
     auto offset = get_type_offset_variable(reg);
     add_overflow(dst.svalue, dst.uvalue, imm, finite_width);
@@ -2296,11 +2310,11 @@ void ebpf_domain_t::add(const Reg& reg, int imm, int finite_width) {
     }
 }
 
-void ebpf_domain_t::shl(const Reg& dst_reg, int imm, int finite_width) {
+void ebpf_domain_t::shl(const Reg& dst_reg, int imm, Width finite_width) {
     reg_pack_t dst = reg_pack(dst_reg);
 
     // The BPF ISA requires masking the imm.
-    imm &= finite_width - 1;
+    imm &= width_in_bits(finite_width) - 1;
 
     if (m_inv.entail(type_is_number(dst))) {
         auto interval = m_inv.eval_interval(dst.uvalue);
@@ -2309,8 +2323,8 @@ void ebpf_domain_t::shl(const Reg& dst_reg, int imm, int finite_width) {
             number_t ub = interval.ub().number().value();
             uint64_t lb_n = lb.cast_to_uint64();
             uint64_t ub_n = ub.cast_to_uint64();
-            uint64_t uint_max = (finite_width == 64) ? UINT64_MAX : UINT32_MAX;
-            if ((lb_n >> (finite_width - imm)) != (ub_n >> (finite_width - imm))) {
+            uint64_t uint_max = (finite_width == 64_bit) ? UINT64_MAX : UINT32_MAX;
+            if ((lb_n >> (width_in_bits(finite_width) - imm)) != (ub_n >> (width_in_bits(finite_width) - imm))) {
                 // The bits that will be shifted out to the left are different,
                 // which means all combinations of remaining bits are possible.
                 lb_n = 0;
@@ -2335,11 +2349,11 @@ void ebpf_domain_t::shl(const Reg& dst_reg, int imm, int finite_width) {
     havoc_offsets(dst_reg);
 }
 
-void ebpf_domain_t::lshr(const Reg& dst_reg, int imm, int finite_width) {
+void ebpf_domain_t::lshr(const Reg& dst_reg, int imm, Width finite_width) {
     reg_pack_t dst = reg_pack(dst_reg);
 
     // The BPF ISA requires masking the imm.
-    imm &= finite_width - 1;
+    imm &= width_in_bits(finite_width) - 1;
 
     if (m_inv.entail(type_is_number(dst))) {
         auto interval = m_inv.eval_interval(dst.uvalue);
@@ -2348,7 +2362,7 @@ void ebpf_domain_t::lshr(const Reg& dst_reg, int imm, int finite_width) {
         if (interval.finite_size()) {
             number_t lb = interval.lb().number().value();
             number_t ub = interval.ub().number().value();
-            if (finite_width == 64) {
+            if (finite_width == 64_bit) {
                 lb_n = lb.cast_to_uint64() >> imm;
                 ub_n = ub.cast_to_uint64() >> imm;
             } else {
@@ -2385,7 +2399,7 @@ static inline int _movsx_bits(Bin::Op op) {
     }
 }
 
-void ebpf_domain_t::sign_extend(const Reg& dst_reg, const linear_expression_t& right_svalue, int finite_width,
+void ebpf_domain_t::sign_extend(const Reg& dst_reg, const linear_expression_t& right_svalue, std::optional<Width> finite_width,
                                 Bin::Op op) {
     using namespace crab;
 
@@ -2416,12 +2430,12 @@ void ebpf_domain_t::sign_extend(const Reg& dst_reg, const linear_expression_t& r
 
     if (finite_width) {
         m_inv.assign(dst.uvalue, dst.svalue);
-        overflow_signed(m_inv, dst.svalue, finite_width);
-        overflow_unsigned(m_inv, dst.uvalue, finite_width);
+        overflow_signed(m_inv, dst.svalue, *finite_width);
+        overflow_unsigned(m_inv, dst.uvalue, *finite_width);
     }
 }
 
-void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_svalue, int finite_width) {
+void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_svalue, Width finite_width) {
     using namespace crab;
 
     reg_pack_t dst = reg_pack(dst_reg);
@@ -2430,18 +2444,18 @@ void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_sv
         interval_t right_interval = interval_t::bottom();
         interval_t left_interval_positive = interval_t::bottom();
         interval_t left_interval_negative = interval_t::bottom();
-        get_signed_intervals(m_inv, (finite_width == 64), dst.svalue, dst.uvalue, right_svalue, left_interval,
+        get_signed_intervals(m_inv, (finite_width == 64_bit), dst.svalue, dst.uvalue, right_svalue, left_interval,
                              right_interval, left_interval_positive, left_interval_negative);
         if (auto sn = right_interval.singleton()) {
             // The BPF ISA requires masking the imm.
-            int64_t imm = sn->cast_to_sint64() & (finite_width - 1);
+            int64_t imm = sn->cast_to_sint64() & (width_in_bits(finite_width) - 1);
 
             int64_t lb_n = INT64_MIN >> imm;
             int64_t ub_n = INT64_MAX >> imm;
             if (left_interval.finite_size()) {
                 number_t lb = left_interval.lb().number().value();
                 number_t ub = left_interval.ub().number().value();
-                if (finite_width == 64) {
+                if (finite_width == 64_bit) {
                     lb_n = lb.cast_to_sint64() >> imm;
                     ub_n = ub.cast_to_sint64() >> imm;
                 } else {
@@ -2471,7 +2485,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
     using namespace crab::dsl_syntax;
 
     auto dst = reg_pack(bin.dst);
-    int finite_width = (bin.is64) ? 64 : 32;
+    Width finite_width = bin.is64 ? 64_bit : 32_bit;
 
     if (std::holds_alternative<Imm>(bin.v)) {
         // dst += K
@@ -2488,7 +2502,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::MOV:
             assign(dst.svalue, imm);
             assign(dst.uvalue, imm);
-            overflow_unsigned(m_inv, dst.uvalue, (bin.is64) ? 64 : 32);
+            overflow_unsigned(m_inv, dst.uvalue, bin.is64 ? 64_bit : 32_bit);
             type_inv.assign_type(m_inv, bin.dst, T_NUM);
             havoc_offsets(bin.dst);
             break;
@@ -2585,7 +2599,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                                         recompute_stack_numeric_size(inv, dst.type);
                                     } else
                                         apply_signed(inv, crab::arith_binop_t::SUB, dst.stack_numeric_size,
-                                                     dst.stack_numeric_size, dst.stack_numeric_size, src.svalue, 0);
+                                                     dst.stack_numeric_size, dst.stack_numeric_size, src.svalue, {});
                                 }
                             }
                         } else if (dst_type == T_NUM && src_type == T_NUM) {

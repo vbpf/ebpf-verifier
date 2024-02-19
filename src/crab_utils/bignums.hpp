@@ -14,6 +14,53 @@
 #include "debug.hpp"
 using boost::multiprecision::cpp_int;
 
+enum class Width {
+    BIT8,
+    BIT16,
+    BIT32,
+    BIT64,
+};
+
+inline constexpr Width operator ""_bit(unsigned long long c) {
+    if (c == 8) return Width::BIT8;
+    if (c == 16) return Width::BIT16;
+    if (c == 32) return Width::BIT32;
+    if (c == 64) return Width::BIT64;
+    assert(false);
+}
+
+inline constexpr Width width_from_bytes(unsigned long long c) {
+    if (c == 8) return Width::BIT8;
+    if (c == 16) return Width::BIT16;
+    if (c == 32) return Width::BIT32;
+    if (c == 64) return Width::BIT64;
+    throw std::runtime_error("invalid width");
+}
+
+inline constexpr int width_in_bytes(Width w) {
+    switch (w) {
+    case Width::BIT8: return 1;
+    case Width::BIT16: return 2;
+    case Width::BIT32: return 4;
+    case Width::BIT64: return 8;
+    default:
+        assert(false);
+        return 0;
+    }
+}
+
+inline constexpr int width_in_bits(Width w) {
+    switch (w) {
+    case Width::BIT8: return 8;
+    case Width::BIT16: return 16;
+    case Width::BIT32: return 32;
+    case Width::BIT64: return 64;
+    default:
+        assert(false);
+        return 0;
+    }
+}
+
 namespace crab {
 
 class z_number final {
@@ -158,44 +205,60 @@ class z_number final {
     }
 
     // Allow casting to int32_t or int64_t as needed for finite width operations.
-    [[nodiscard]] z_number cast_to_signed_finite_width(int finite_width) const {
-        switch (finite_width) {
-        case 0: return *this; // No finite width.
-        case 32: return cast_to_sint32();
-        case 64: return cast_to_sint64();
-        default: CRAB_ERROR("invalid finite width");
+    [[nodiscard]] z_number cast_to_signed_finite_width(std::optional<Width> finite_width) const {
+        if (!finite_width)
+            return *this;
+        switch (*finite_width) {
+        case 8_bit: case 16_bit: CRAB_ERROR("invalid finite width");
+        case 32_bit: return cast_to_sint32();
+        case 64_bit: return cast_to_sint64();
+        default:
+            assert(false);
+            return *this;
         }
     }
 
     // Allow casting to uint32_t or uint64_t as needed for finite width operations.
-    [[nodiscard]] z_number cast_to_unsigned_finite_width(int finite_width) const {
-        switch (finite_width) {
-        case 0: return *this; // No finite width.
-        case 32: return cast_to_uint32();
-        case 64: return cast_to_uint64();
-        default: CRAB_ERROR("invalid finite width");
+    [[nodiscard]] z_number cast_to_unsigned_finite_width(std::optional<Width> finite_width) const {
+        if (!finite_width)
+            return *this;
+        switch (*finite_width) {
+        case 8_bit: case 16_bit: CRAB_ERROR("invalid finite width");
+        case 32_bit: return cast_to_uint32();
+        case 64_bit: return cast_to_uint64();
+        default:
+            assert(false);
+            return *this;
         }
     }
 
     // Allow truncating to int32_t or int64_t as needed for finite width operations.
     // Unlike casting, truncating will not throw a crab error if the number doesn't fit.
-    [[nodiscard]] z_number truncate_to_signed_finite_width(int finite_width) const {
-        switch (finite_width) {
-        case 0: return *this; // No finite width.
-        case 32: return truncate_to_sint32();
-        case 64: return truncate_to_sint64();
-        default: CRAB_ERROR("invalid finite width");
+    [[nodiscard]] z_number truncate_to_signed_finite_width(std::optional<Width> finite_width) const {
+        if (!finite_width)
+            return *this;
+        switch (*finite_width) {
+        case 8_bit: case 16_bit: CRAB_ERROR("invalid finite width");
+        case 32_bit: return truncate_to_sint32();
+        case 64_bit: return truncate_to_sint64();
+        default:
+            assert(false);
+            return *this;
         }
     }
 
     // Allow truncating to uint32_t or uint64_t as needed for finite width operations.
     // Unlike casting, truncating will not throw a crab error if the number doesn't fit.
-    [[nodiscard]] z_number truncate_to_unsigned_finite_width(int finite_width) const {
-        switch (finite_width) {
-        case 0: return *this; // No finite width.
-        case 32: return truncate_to_uint32();
-        case 64: return truncate_to_uint64();
-        default: CRAB_ERROR("invalid finite width");
+    [[nodiscard]] z_number truncate_to_unsigned_finite_width(std::optional<Width> finite_width) const {
+        if (!finite_width)
+            return *this;
+        switch (*finite_width) {
+        case 8_bit: case 16_bit: CRAB_ERROR("invalid finite width");
+        case 32_bit: return truncate_to_uint32();
+        case 64_bit: return truncate_to_uint64();
+        default:
+            assert(false);
+            return *this;
         }
     }
 

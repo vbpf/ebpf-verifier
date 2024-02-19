@@ -18,20 +18,22 @@ int opcode_to_width(uint8_t opcode) {
     case INST_SIZE_H: return 2;
     case INST_SIZE_W: return 4;
     case INST_SIZE_DW: return 8;
+    default:
+        assert(false);
+        return {};
     }
-    assert(false);
-    return {};
 }
 
-uint8_t width_to_opcode(int width) {
+uint8_t width_to_opcode(Width width) {
     switch (width) {
-    case 1: return INST_SIZE_B;
-    case 2: return INST_SIZE_H;
-    case 4: return INST_SIZE_W;
-    case 8: return INST_SIZE_DW;
+    case 8_bit: return INST_SIZE_B;
+    case 16_bit: return INST_SIZE_H;
+    case 32_bit: return INST_SIZE_W;
+    case 64_bit: return INST_SIZE_DW;
+    default:
+        assert(false);
+        return {};
     }
-    assert(false);
-    return {};
 }
 
 template <typename T>
@@ -53,10 +55,6 @@ struct InvalidInstruction : std::invalid_argument {
     InvalidInstruction(size_t pc, uint8_t opcode) : std::invalid_argument{make_opcode_message("Bad instruction", opcode)}, pc{pc} {}
 };
 
-struct UnsupportedMemoryMode : std::invalid_argument {
-    explicit UnsupportedMemoryMode(const char* what) : std::invalid_argument{what} {}
-};
-
 static auto getMemIsLoad(uint8_t opcode) -> bool {
     switch (opcode & INST_CLS_MASK) {
     case INST_CLS_LD:
@@ -67,25 +65,15 @@ static auto getMemIsLoad(uint8_t opcode) -> bool {
     return {};
 }
 
-static auto getMemWidth(uint8_t opcode) -> int {
+static auto getMemWidth(uint8_t opcode) -> Width {
     switch (opcode & INST_SIZE_MASK) {
-    case INST_SIZE_B: return 1;
-    case INST_SIZE_H: return 2;
-    case INST_SIZE_W: return 4;
-    case INST_SIZE_DW: return 8;
+    case INST_SIZE_B: return 8_bit;
+    case INST_SIZE_H: return 16_bit;
+    case INST_SIZE_W: return 32_bit;
+    case INST_SIZE_DW: return 64_bit;
     }
     return {};
 }
-
-// static auto getMemX(uint8_t opcode) -> bool {
-//     switch (opcode & INST_CLS_MASK) {
-//         case INST_CLS_LD : return false;
-//         case INST_CLS_ST : return false;
-//         case INST_CLS_LDX: return true;
-//         case INST_CLS_STX: return true;
-//     }
-//     return {};
-// }
 
 static Instruction shift32(Reg dst, Bin::Op op) {
     return (Instruction)Bin{.op=op,.dst = dst, .v = Imm{32}, .is64=true, .lddw=false};
@@ -157,20 +145,9 @@ struct Unmarshaller {
             if ((inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64) {
                 if (inst.opcode & INST_END_BE)
                     throw InvalidInstruction(pc, inst.opcode);
-                switch (inst.imm) {
-                case 16: return Un::Op::SWAP16;
-                case 32: return Un::Op::SWAP32;
-                case 64: return Un::Op::SWAP64;
-                default: throw InvalidInstruction(pc, "invalid endian immediate");
-                }
+                return Un::Op::SWAP;
             }
-            switch (inst.imm) {
-            case 16: return (inst.opcode & INST_END_BE) ? Un::Op::BE16 : Un::Op::LE16;
-            case 32: return (inst.opcode & INST_END_BE) ? Un::Op::BE32 : Un::Op::LE32;
-            case 64: return (inst.opcode & INST_END_BE) ? Un::Op::BE64 : Un::Op::LE64;
-            default:
-                throw InvalidInstruction(pc, "invalid endian immediate");
-            }
+            return (inst.opcode & INST_END_BE) ? Un::Op::BE : Un::Op::LE;
         case 0xe0: throw InvalidInstruction{pc, inst.opcode};
         case 0xf0: throw InvalidInstruction{pc, inst.opcode};
         }
@@ -221,17 +198,17 @@ struct Unmarshaller {
         if (inst.dst > R10_STACK_POINTER || inst.src > R10_STACK_POINTER)
             throw InvalidInstruction(pc, "Bad register");
 
-        int width = getMemWidth(inst.opcode);
+        Width width = getMemWidth(inst.opcode);
         bool isLD = (inst.opcode & INST_CLS_MASK) == INST_CLS_LD;
         switch ((inst.opcode & INST_MODE_MASK) >> 5) {
         case 0: throw InvalidInstruction(pc, inst.opcode);
         case INST_ABS:
-            if (!info.platform->legacy || !isLD || (width == 8))
+            if (!info.platform->legacy || !isLD || (width == 64_bit))
                 throw InvalidInstruction(pc, inst.opcode);
             return Packet{.width = width, .offset = inst.imm, .regoffset = {}};
 
         case INST_IND:
-            if (!info.platform->legacy || !isLD || (width == 8))
+            if (!info.platform->legacy || !isLD || (width == 64_bit))
                 throw InvalidInstruction(pc, inst.opcode);
             return Packet{.width = width, .offset = inst.imm, .regoffset = Reg{inst.src}};
 
@@ -293,20 +270,33 @@ struct Unmarshaller {
             throw InvalidInstruction(pc, "Invalid target r10");
         if (inst.dst > R10_STACK_POINTER || inst.src > R10_STACK_POINTER)
             throw InvalidInstruction(pc, "Bad register");
-        return std::visit(overloaded{[&](Un::Op op) -> Instruction { return Un{.op = op, .dst = Reg{inst.dst}, .is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64}; },
-                                     [&](Bin::Op op) -> Instruction {
-                                         Bin res{
-                                             .op = op,
-                                             .dst = Reg{inst.dst},
-                                             .v = getBinValue(pc, inst),
-                                             .is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64,
-                                         };
-                                         if (!thread_local_options.allow_division_by_zero && (op == Bin::Op::UDIV || op == Bin::Op::UMOD))
-                                             if (std::holds_alternative<Imm>(res.v) && std::get<Imm>(res.v).v == 0)
-                                                 note("division by zero");
-                                         return res;
-                                     }},
-                          getAluOp(pc, inst));
+        return std::visit(overloaded{
+              [&](Un::Op op) -> Instruction {
+                  if (op == Un::Op::NEG) {
+                      Width width = ((inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64) ? 64_bit : 32_bit;
+                      return Un{.op = op, .dst = Reg{inst.dst}, .width = width};
+                  } else {
+                      switch (inst.imm) {
+                      case 16: case 32: case 64:
+                          return Un{.op = op, .dst = Reg{inst.dst}, .width = width_from_bytes(inst.imm)};
+                      default: throw InvalidInstruction(pc, "invalid endian immediate");
+                      }
+                  }
+              },
+              [&](Bin::Op op) -> Instruction {
+                 Bin res{
+                     .op = op,
+                     .dst = Reg{inst.dst},
+                     .v = getBinValue(pc, inst),
+                     .is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64,
+                 };
+                 if (!thread_local_options.allow_division_by_zero && (op == Bin::Op::UDIV || op == Bin::Op::UMOD))
+                     if (std::holds_alternative<Imm>(res.v) && std::get<Imm>(res.v).v == 0)
+                         note("division by zero");
+                 return res;
+             }
+          },
+          getAluOp(pc, inst));
     }
 
     auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& insts, pc_t pc) -> Instruction {
@@ -359,7 +349,8 @@ struct Unmarshaller {
         return {};
     }
 
-    auto makeCall(int32_t imm) const {
+    [[nodiscard]]
+    auto makeCall(int32_t imm) const -> Call {
         EbpfHelperPrototype proto = info.platform->get_helper_prototype(imm);
         if (proto.return_type == EBPF_RETURN_TYPE_UNSUPPORTED) {
             throw std::runtime_error(std::string("Unsupported function: ") + proto.name);
@@ -574,8 +565,7 @@ std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog)
     return unmarshal(raw_prog, notes);
 }
 
-Call make_call(int imm, const ebpf_platform_t& platform)
-{
+Call make_call(int imm, const ebpf_platform_t& platform) {
     vector<vector<string>> notes;
     program_info info{.platform = &platform};
     return Unmarshaller{notes, info}.makeCall(imm);

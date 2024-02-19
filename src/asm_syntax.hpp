@@ -8,6 +8,7 @@
 #include <variant>
 #include <vector>
 
+#include "crab_utils/bignums.hpp"
 #include "crab/variable.hpp"
 #include "spec_type_descriptors.hpp"
 
@@ -104,21 +105,15 @@ struct Bin {
 /// Unary operation.
 struct Un {
     enum class Op {
-        BE16, // dst = htobe16(dst)
-        BE32, // dst = htobe32(dst)
-        BE64, // dst = htobe64(dst)
-        LE16, // dst = htole16(dst)
-        LE32, // dst = htole32(dst)
-        LE64, // dst = htole64(dst)
-        SWAP16, // dst = bswap16(dst)
-        SWAP32, // dst = bswap32(dst)
-        SWAP64, // dst = bswap64(dst)
+        BE, // dst = htobe16/32/64(dst)
+        LE, // dst = htole16/32/64(dst)
+        SWAP, // dst = bswap16/32/64(dst)
         NEG,  // dst = -dst
     };
 
     Op op;
     Reg dst;
-    bool is64{};
+    Width width{};
     constexpr bool operator==(const Un&) const = default;
 };
 
@@ -201,7 +196,7 @@ struct Exit {
 };
 
 struct Deref {
-    int32_t width{};
+    Width width{};
     Reg basereg;
     int32_t offset{};
     constexpr bool operator==(const Deref&) const = default;
@@ -219,7 +214,7 @@ struct Mem {
 /// function call, and analyzed as one, e.g., by scratching caller-saved
 /// registers after it is performed.
 struct Packet {
-    int32_t width{};
+    Width width{};
     int32_t offset{};
     std::optional<Reg> regoffset;
     constexpr bool operator==(const Packet&) const = default;

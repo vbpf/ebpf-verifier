@@ -65,35 +65,14 @@ static int16_t offset(Bin::Op op) {
     case Op::MOVSX8: return 8;
     case Op::MOVSX16: return 16;
     case Op::MOVSX32: return 32;
-    default:
-        assert(false);
-        return {};
-    }
-}
-
-static uint8_t imm(Un::Op op) {
-    using Op = Un::Op;
-    switch (op) {
-    case Op::NEG: return 0;
-    case Op::BE16:
-    case Op::LE16:
-    case Op::SWAP16: return 16;
-    case Op::BE32:
-    case Op::LE32:
-    case Op::SWAP32: return 32;
-    case Op::BE64:
-    case Op::LE64:
-    case Op::SWAP64: return 64;
-    default:
-        assert(false);
-        return {};
+    default: return 0;
     }
 }
 
 struct MarshalVisitor {
   private:
     static vector<ebpf_inst> makeLddw(Reg dst, bool isFd, int32_t imm, int32_t next_imm) {
-        return {ebpf_inst{.opcode = static_cast<uint8_t>(INST_CLS_LD | width_to_opcode(8)),
+        return {ebpf_inst{.opcode = static_cast<uint8_t>(INST_CLS_LD | width_to_opcode(64_bit)),
                           .dst = dst.v,
                           .src = static_cast<uint8_t>(isFd ? 1 : 0),
                           .offset = 0,
@@ -119,60 +98,61 @@ struct MarshalVisitor {
             return makeLddw(b.dst, false, imm, next_imm);
         }
 
-        ebpf_inst res{.opcode = static_cast<uint8_t>((b.is64 ? INST_CLS_ALU64 : INST_CLS_ALU) | (op(b.op) << 4)),
+        auto cls = b.is64 ? INST_CLS_ALU64 : INST_CLS_ALU;
+        ebpf_inst res{.opcode = static_cast<uint8_t>(cls | (op(b.op) << 4)),
                       .dst = b.dst.v,
                       .src = 0,
                       .offset = offset(b.op),
                       .imm = 0};
-        std::visit(overloaded{[&](Reg right) {
-                                  res.opcode |= INST_SRC_REG;
-                                  res.src = right.v;
-                              },
-                              [&](Imm right) { res.imm = static_cast<int32_t>(right.v); }},
+        std::visit(overloaded{
+                       [&](Reg right) {
+                           res.opcode |= INST_SRC_REG;
+                           res.src = right.v;
+                       },
+                       [&](Imm right) {
+                           res.imm = static_cast<int32_t>(right.v);
+                       }
+                   },
                    b.v);
         return {res};
     }
 
     vector<ebpf_inst> operator()(Un const& b) {
+        if (b.op == Un::Op::NEG && b.width == 16_bit) {
+            throw std::runtime_error("16-bit ALU operations are unsupported for NEG");
+        }
         switch (b.op) {
         case Un::Op::NEG:
             return {ebpf_inst{
-                // FIX: should be INST_CLS_ALU / INST_CLS_ALU64
-                .opcode = static_cast<uint8_t>(INST_CLS_ALU | 0x3 | INST_ALU_OP_NEG),
+                .opcode = static_cast<uint8_t>((b.width == 32_bit ? INST_CLS_ALU : INST_CLS_ALU64) | INST_ALU_OP_NEG),
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,
-                .imm = imm(b.op),
+                .imm = 0,
             }};
-        case Un::Op::LE16:
-        case Un::Op::LE32:
-        case Un::Op::LE64:
+        case Un::Op::LE:
             return {ebpf_inst{
-                .opcode = static_cast<uint8_t>(INST_CLS_ALU | INST_ALU_OP_END),
+                .opcode = static_cast<uint8_t>(INST_CLS_ALU | INST_END_LE | INST_ALU_OP_END),
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,
-                .imm = imm(b.op),
+                .imm = width_in_bits(b.width),
             }};
-        case Un::Op::BE16:
-        case Un::Op::BE32:
-        case Un::Op::BE64:
+        case Un::Op::BE:
             return {ebpf_inst{
                 .opcode = static_cast<uint8_t>(INST_CLS_ALU | INST_END_BE | INST_ALU_OP_END),
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,
-                .imm = imm(b.op),
+                .imm = width_in_bits(b.width),
             }};
-        case Un::Op::SWAP16:
-        case Un::Op::SWAP32:
-        case Un::Op::SWAP64:
+        case Un::Op::SWAP:
             return {ebpf_inst{
-                .opcode = static_cast<uint8_t>(INST_CLS_ALU64 | INST_ALU_OP_END),
+                .opcode = static_cast<uint8_t>(INST_CLS_ALU64 | INST_END_LE | INST_ALU_OP_END),
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,
-                .imm = imm(b.op),
+                .imm = width_in_bits(b.width),
             }};
         default:
             assert(false);
@@ -195,8 +175,9 @@ struct MarshalVisitor {
 
     vector<ebpf_inst> operator()(Jmp const& b) {
         if (b.cond) {
+            uint8_t cls = static_cast<uint8_t>(b.cond->is64 ? INST_CLS_JMP : INST_CLS_JMP32) | (op(b.cond->op) << 4);
             ebpf_inst res{
-                .opcode = static_cast<uint8_t>(INST_CLS_JMP | (op(b.cond->op) << 4)),
+                .opcode = cls,
                 .dst = b.cond->left.v,
                 .src = 0,
                 .offset = label_to_offset16(b.target),
