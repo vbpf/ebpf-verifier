@@ -6,14 +6,21 @@
 #include "asm_marshal.hpp"
 #include "asm_unmarshal.hpp"
 
+// Below we define a tample of instruction templates that specify
+// what values each field are allowed to contain.  We first define
+// a set of sentinel values that mean certain types of wildcards.
+// For example, MEM_OFFSET and JMP_OFFSET are different wildcards
+// for the 'offset' field of an instruction.  Any non-sentinel values
+// in an instruction template are treated as literals.
+
 #define MEM_OFFSET 3 // Any valid memory offset value.
 #define JMP_OFFSET 5 // Any valid jump offset value.
-#define DST 7 // Destination register number between 0 and 10 inclusive.
-#define SRC 9 // Source register number between 0 and 10 inclusive.
+#define DST 7 // Any destination register number.
+#define SRC 9 // Any source register number.
 #define IMM -1 // Any imm value.
 
-// The following table is derived from the table in the Appendix
-// of the BPF ISA specification (draft-ietf-bpf-isa).
+// The following table is derived from the table in the Appendix of the
+// BPF ISA specification (https://datatracker.ietf.org/doc/draft-ietf-bpf-isa/).
 ebpf_inst instruction_template[] = {
     // opcode, dst, src, offset, imm.
     {0x04, DST, 0, 0, IMM},
@@ -110,8 +117,10 @@ ebpf_inst instruction_template[] = {
     {0x7f, DST, SRC, 0, 0},
     {0x84, DST, 0, 0, 0},
     {0x85, 0, 0, 0, IMM},
-    // {0x85, 0, 1, 0, IMM}, call local not yet supported
-    // {0x85, 0, 2, 0, IMM}, call by BTF ID not yet supported
+    // TODO(issue #582): Add support for subprograms (call_local).
+    // {0x85, 0, 1, 0, IMM},
+    // TODO(issue #590): Add support for calling a helper function by BTF ID.
+    // {0x85, 0, 2, 0, IMM},
     {0x87, DST, 0, 0, 0},
     {0x94, DST, 0, 0, IMM},
     {0x94, DST, 0, 1, IMM},
@@ -507,25 +516,26 @@ TEST_CASE("unmarshal extension opcodes", "[disasm][marshal]") {
         ebpf_inst{.opcode = INST_ALU_OP_MOV | INST_SRC_REG | INST_CLS_ALU64, .dst = 1, .src = 1, .offset = 32});
 }
 
+// Check that unmarshaling an invalid instruction fails with a given message.
 static void check_unmarshal_instruction_fail(ebpf_inst& inst, const char* message) {
     if (inst.offset == JMP_OFFSET) {
         inst.offset = 1;
         check_unmarshal_fail_goto(inst, message);
-    } else {
-        if (inst.opcode == 0x18)
-            check_unmarshal_fail(inst, ebpf_inst{}, message);
-        else
-            check_unmarshal_fail(inst, message);
-    }
+    } else if (inst.opcode == INST_OP_LDDW_IMM)
+        check_unmarshal_fail(inst, ebpf_inst{}, message);
+    else
+        check_unmarshal_fail(inst, message);
 }
 
-// Check other 'dst' values for previous instruction.
+// Check that various 'dst' variations between two valid instruction templates fail.
 static void check_instruction_dst_variations(const ebpf_inst& previous_template, const ebpf_inst* next_template) {
     ebpf_inst inst = previous_template;
     if (inst.dst == DST) {
-        inst.dst = 11;
+        inst.dst = R10_STACK_POINTER + 1; // Not a valid register.
         check_unmarshal_instruction_fail(inst, "0: Bad register\n");
     } else {
+        // This instruction doesn't put a register number in the 'dst' field.
+        // Just try the next value unless that's what the next template has.
         inst.dst++;
         if (!next_template || memcmp(&inst, next_template, sizeof(inst)) != 0) {
             std::ostringstream oss;
@@ -538,13 +548,15 @@ static void check_instruction_dst_variations(const ebpf_inst& previous_template,
     }
 }
 
-// Check other 'src' values for previous instruction.
+// Check that various 'src' variations between two valid instruction templates fail.
 static void check_instruction_src_variations(const ebpf_inst& previous_template, const ebpf_inst* next_template) {
     ebpf_inst inst = previous_template;
     if (inst.src == SRC) {
-        inst.src = 11;
+        inst.src = R10_STACK_POINTER + 1; // Not a valid register.
         check_unmarshal_instruction_fail(inst, "0: Bad register\n");
     } else {
+        // This instruction doesn't put a register number in the 'src' field.
+        // Just try the next value unless that's what the next template has.
         inst.src++;
         if (!next_template || memcmp(&inst, next_template, sizeof(inst)) != 0) {
             std::ostringstream oss;
@@ -554,13 +566,15 @@ static void check_instruction_src_variations(const ebpf_inst& previous_template,
     }
 }
 
-// Check other 'offset' values for previous instruction.
+// Check that various 'offset' variations between two valid instruction templates fail.
 static void check_instruction_offset_variations(const ebpf_inst& previous_template, const ebpf_inst* next_template) {
     ebpf_inst inst = previous_template;
     if (inst.offset == JMP_OFFSET) {
-        inst.offset = 0;
+        inst.offset = 0; // Not a valid jump offset.
         check_unmarshal_instruction_fail(inst, "0: jump out of bounds\n");
     } else if (inst.offset != MEM_OFFSET) {
+        // This instruction limits what can appear in the 'offset' field.
+        // Just try the next value unless that's what the next template has.
         inst.offset++;
         if (!next_template || memcmp(&inst, next_template, sizeof(inst)) != 0) {
             std::ostringstream oss;
@@ -573,13 +587,15 @@ static void check_instruction_offset_variations(const ebpf_inst& previous_templa
     }
 }
 
-// Check other 'imm' values for previous instruction.
+// Check that various 'imm' variations between two valid instruction templates fail.
 static void check_instruction_imm_variations(const ebpf_inst& previous_template, const ebpf_inst* next_template) {
     ebpf_inst inst = previous_template;
     if (inst.imm == JMP_OFFSET) {
-        inst.imm = 0;
+        inst.imm = 0; // Not a valid jump offset.
         check_unmarshal_instruction_fail(inst, "0: jump out of bounds\n");
     } else if (inst.imm != IMM) {
+        // This instruction limits what can appear in the 'imm' field.
+        // Just try the next value unless that's what the next template has.
         inst.imm++;
         if (!next_template || memcmp(&inst, next_template, sizeof(inst)) != 0) {
             std::ostringstream oss;
@@ -591,7 +607,9 @@ static void check_instruction_imm_variations(const ebpf_inst& previous_template,
         }
     }
 
-    if (next_template && previous_template.opcode != next_template->opcode && next_template->imm > 0 && next_template->imm != JMP_OFFSET) {
+    // Some instructions only permit non-zero imm values.
+    // If the next template is for one of those, check the zero value now.
+    if (next_template && (previous_template.opcode != next_template->opcode) && (next_template->imm > 0) && (next_template->imm != JMP_OFFSET)) {
         inst = *next_template;
         inst.imm = 0;
         std::ostringstream oss;
@@ -600,6 +618,7 @@ static void check_instruction_imm_variations(const ebpf_inst& previous_template,
     }
 }
 
+// Check that various variations between two valid instruction templates fail.
 static void check_instruction_variations(const ebpf_inst* previous_template, const ebpf_inst* next_template) {
     if (previous_template) {
         check_instruction_dst_variations(*previous_template, next_template);
@@ -608,9 +627,9 @@ static void check_instruction_variations(const ebpf_inst* previous_template, con
         check_instruction_imm_variations(*previous_template, next_template);
     }
 
-    // Compose any instructions that use invalid opcodes in between the previous and next templates.
-    int next_opcode = (next_template) ? next_template->opcode : 0x100;
+    // Check any invalid opcodes in between the previous and next templates.
     int previous_opcode = (previous_template) ? previous_template->opcode : -1;
+    int next_opcode = (next_template) ? next_template->opcode : 0x100;
     for (int opcode = previous_opcode + 1; opcode < next_opcode; opcode++) {
         ebpf_inst inst{.opcode = (uint8_t)opcode};
         std::ostringstream oss;
@@ -619,12 +638,12 @@ static void check_instruction_variations(const ebpf_inst* previous_template, con
     }
 }
 
-TEST_CASE("unmarshal opcodes", "[disasm][marshal]") {
+TEST_CASE("fail unmarshal bad instructions", "[disasm][marshal]") {
     size_t template_count = std::size(instruction_template);
     for (int index = 0; index < template_count; index++)
         check_instruction_variations((index > 0) ? &instruction_template[index - 1] : nullptr, &instruction_template[index]);
 
-    // Check any remaining opcodes.
+    // Check any remaining variations after the last template.
     check_instruction_variations(&instruction_template[template_count - 1], nullptr);
 }
 
@@ -647,8 +666,7 @@ TEST_CASE("check unmarshal legacy opcodes", "[disasm][marshal]") {
 
 TEST_CASE("unmarshal 64bit immediate", "[disasm][marshal]") {
     compare_unmarshal_marshal(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = 0, .imm = 1}, ebpf_inst{.imm = 2},
-                              ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = 0, .imm = 1},
-                              ebpf_inst{.imm = 2});
+                              ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = 0, .imm = 1}, ebpf_inst{.imm = 2});
     compare_unmarshal_marshal(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = 0, .imm = 1}, ebpf_inst{},
                               ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = 0, .imm = 1}, ebpf_inst{});
 
