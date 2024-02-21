@@ -138,7 +138,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
         compare_marshal_unmarshal(Un{.op = Un::Op::NEG, .dst = Reg{1}, .is64 = true});
     }
     SECTION("Endian") {
-        // FIX: `.is64` field is unused; the difference in value is accidental.
+        // FIX: `.is64` comes from the instruction class (BPF_ALU or BPF_ALU64) but is unused since it can be derived from `.op`.
         {
             auto ops = {
                 Un::Op::BE16,
