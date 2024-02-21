@@ -135,6 +135,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
     }
     SECTION("Neg") {
         compare_marshal_unmarshal(Un{.op = Un::Op::NEG, .dst = Reg{1}, .is64 = false});
+        compare_marshal_unmarshal(Un{.op = Un::Op::NEG, .dst = Reg{1}, .is64 = true});
     }
     SECTION("Endian") {
         // FIX: `.is64` field is unused; the difference in value is accidental.
