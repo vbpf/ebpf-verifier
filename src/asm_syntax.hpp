@@ -183,12 +183,16 @@ struct ArgPair {
 
 struct Call {
     int32_t func{};
+    constexpr bool operator==(const Call& other) const {
+        return func == other.func;
+    }
+
+    // TODO: move name and signature information somewhere else
     std::string name;
     bool is_map_lookup{};
     bool reallocate_packet{};
     std::vector<ArgSingle> singles;
     std::vector<ArgPair> pairs;
-    constexpr bool operator==(const Call&) const = default;
 };
 
 struct Exit {
