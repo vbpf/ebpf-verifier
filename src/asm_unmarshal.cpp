@@ -293,13 +293,14 @@ struct Unmarshaller {
             throw InvalidInstruction(pc, "Invalid target r10");
         if (inst.dst > R10_STACK_POINTER || inst.src > R10_STACK_POINTER)
             throw InvalidInstruction(pc, "Bad register");
-        return std::visit(overloaded{[&](Un::Op op) -> Instruction { return Un{.op = op, .dst = Reg{inst.dst}, .is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64}; },
+        bool is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64;
+        return std::visit(overloaded{[&](Un::Op op) -> Instruction { return Un{.op = op, .dst = Reg{inst.dst}, .is64 = is64}; },
                                      [&](Bin::Op op) -> Instruction {
                                          Bin res{
                                              .op = op,
                                              .dst = Reg{inst.dst},
                                              .v = getBinValue(pc, inst),
-                                             .is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64,
+                                             .is64 = is64,
                                          };
                                          if (!thread_local_options.allow_division_by_zero && (op == Bin::Op::UDIV || op == Bin::Op::UMOD))
                                              if (std::holds_alternative<Imm>(res.v) && std::get<Imm>(res.v).v == 0)

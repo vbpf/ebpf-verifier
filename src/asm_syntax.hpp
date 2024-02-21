@@ -22,8 +22,8 @@ struct label_t {
         return label_t{src_label.from, target_label.from};
     }
 
-    constexpr bool operator==(const label_t& other) const { return from == other.from && to == other.to; }
-    constexpr bool operator!=(const label_t& other) const { return !(*this == other); }
+    constexpr bool operator==(const label_t&) const = default;
+
     constexpr bool operator<(const label_t& other) const {
         if (this == &other) return false;
         if (*this == label_t::exit) return false;
@@ -61,11 +61,13 @@ namespace asm_syntax {
 /// Immediate argument.
 struct Imm {
     uint64_t v{};
+    constexpr bool operator==(const Imm&) const = default;
 };
 
 /// Register argument.
 struct Reg {
     uint8_t v{};
+    constexpr bool operator==(const Reg&) const = default;
 };
 
 using Value = std::variant<Imm, Reg>;
@@ -97,6 +99,7 @@ struct Bin {
     Value v;
     bool is64{};
     bool lddw{};
+    constexpr bool operator==(const Bin&) const = default;
 };
 
 /// Unary operation.
@@ -117,6 +120,7 @@ struct Un {
     Op op;
     Reg dst;
     bool is64{};
+    constexpr bool operator==(const Un&) const = default;
 };
 
 /// This instruction is encoded similarly to LDDW.
@@ -124,6 +128,7 @@ struct Un {
 struct LoadMapFd {
     Reg dst;
     int32_t mapfd{};
+    constexpr bool operator==(const LoadMapFd&) const = default;
 };
 
 struct Condition {
@@ -146,11 +151,13 @@ struct Condition {
     Reg left;
     Value right;
     bool is64{};
+    constexpr bool operator==(const Condition&) const = default;
 };
 
 struct Jmp {
     std::optional<Condition> cond;
     label_t target;
+    constexpr bool operator==(const Jmp&) const = default;
 };
 
 struct ArgSingle {
@@ -164,6 +171,7 @@ struct ArgSingle {
         ANYTHING,
     } kind{};
     Reg reg;
+    constexpr bool operator==(const ArgSingle&) const = default;
 };
 
 /// Pair of arguments to a function for pointer and size.
@@ -176,10 +184,16 @@ struct ArgPair {
     Reg mem;            ///< Pointer.
     Reg size;           ///< Size of space pointed to.
     bool can_be_zero{};
+    constexpr bool operator==(const ArgPair&) const = default;
 };
 
 struct Call {
     int32_t func{};
+    constexpr bool operator==(const Call& other) const {
+        return func == other.func;
+    }
+
+    // TODO: move name and signature information somewhere else
     std::string name;
     bool is_map_lookup{};
     bool reallocate_packet{};
@@ -187,12 +201,15 @@ struct Call {
     std::vector<ArgPair> pairs;
 };
 
-struct Exit {};
+struct Exit {
+    constexpr bool operator==(const Exit&) const = default;
+};
 
 struct Deref {
     int32_t width{};
     Reg basereg;
     int32_t offset{};
+    constexpr bool operator==(const Deref&) const = default;
 };
 
 /// Load/store instruction.
@@ -200,6 +217,7 @@ struct Mem {
     Deref access;
     Value value;
     bool is_load{};
+    constexpr bool operator==(const Mem&) const = default;
 };
 
 /// A deprecated instruction for checked access to packets; it is actually a
@@ -209,17 +227,20 @@ struct Packet {
     int32_t width{};
     int32_t offset{};
     std::optional<Reg> regoffset;
+    constexpr bool operator==(const Packet&) const = default;
 };
 
 /// Special instruction for incrementing values inside shared memory.
 struct LockAdd {
     Deref access;
     Reg valreg;
+    constexpr bool operator==(const LockAdd&) const = default;
 };
 
 /// Not an instruction, just used for failure cases.
 struct Undefined {
     int opcode{};
+    constexpr bool operator==(const Undefined&) const = default;
 };
 
 /// When a CFG is translated to its nondeterministic form, Conditional Jump
@@ -227,6 +248,7 @@ struct Undefined {
 /// the branch and before each jump target.
 struct Assume {
     Condition cond;
+    constexpr bool operator==(const Assume&) const = default;
 };
 
 enum class TypeGroup {
@@ -250,6 +272,7 @@ enum class TypeGroup {
 struct ValidSize {
     Reg reg;
     bool can_be_zero{};
+    constexpr bool operator==(const ValidSize&) const = default;
 };
 
 /// Condition check whether two registers can be compared with each other.
@@ -259,18 +282,21 @@ struct Comparable {
     Reg r1;
     Reg r2;
     bool or_r2_is_number{}; ///< true for subtraction, false for comparison
+    constexpr bool operator==(const Comparable&) const = default;
 };
 
 // ptr: ptr -> num : num
 struct Addable {
     Reg ptr;
     Reg num;
+    constexpr bool operator==(const Addable&) const = default;
 };
 
 // Condition check whether a register contains a non-zero number.
 struct ValidDivisor {
     Reg reg;
     bool is_signed{};
+    constexpr bool operator==(const ValidDivisor&) const = default;
 };
 
 enum class AccessType {
@@ -285,6 +311,7 @@ struct ValidAccess {
     Value width{Imm{0}};
     bool or_null{};
     AccessType access_type{};
+    constexpr bool operator==(const ValidAccess&) const = default;
 };
 
 /// Condition check whether something is a valid key value.
@@ -292,22 +319,26 @@ struct ValidMapKeyValue {
     Reg access_reg;
     Reg map_fd_reg;
     bool key{};
+    constexpr bool operator==(const ValidMapKeyValue&) const = default;
 };
 
 // "if mem is not stack, val is num"
 struct ValidStore {
     Reg mem;
     Reg val;
+    constexpr bool operator==(const ValidStore&) const = default;
 };
 
 struct TypeConstraint {
     Reg reg;
     TypeGroup types;
+    constexpr bool operator==(const TypeConstraint&) const = default;
 };
 
 /// Condition check whether something is a valid size.
 struct ZeroCtxOffset {
     Reg reg;
+    constexpr bool operator==(const ZeroCtxOffset&) const = default;
 };
 
 using AssertionConstraint =
@@ -316,10 +347,12 @@ using AssertionConstraint =
 struct Assert {
     AssertionConstraint cst;
     Assert(AssertionConstraint cst): cst(cst) { }
+    constexpr bool operator==(const Assert&) const = default;
 };
 
 struct IncrementLoopCounter {
     label_t name;
+    constexpr bool operator==(const IncrementLoopCounter&) const = default;
 };
 
 using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Exit, Jmp, Mem, Packet, LockAdd, Assume, Assert, IncrementLoopCounter>;
@@ -327,76 +360,8 @@ using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Exit, Jmp,
 using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
 using InstructionSeq = std::vector<LabeledInstruction>;
 
-
-#define DECLARE_EQ5(T, f1, f2, f3, f4, f5)                                                   \
-    inline bool operator==(T const& a, T const& b) {                                         \
-        return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3 && a.f4 == b.f4 && a.f5 == b.f5; \
-    }
-#define DECLARE_EQ3(T, f1, f2, f3) \
-    inline bool operator==(T const& a, T const& b) { return a.f1 == b.f1 && a.f2 == b.f2 && a.f3 == b.f3; }
-#define DECLARE_EQ2(T, f1, f2) \
-    inline bool operator==(T const& a, T const& b) { return a.f1 == b.f1 && a.f2 == b.f2; }
-#define DECLARE_EQ1(T, f1) \
-    inline bool operator==(T const& a, T const& b) { return a.f1 == b.f1; }
-
 // cpu=v4 supports 32-bit PC offsets so we need a large enough type.
 using pc_t = size_t;
-
-// Helpers:
-
-struct InstructionVisitorPrototype {
-    void operator()(Undefined const& a);
-    void operator()(LoadMapFd const& a);
-    void operator()(Bin const& a);
-    void operator()(Un const& a);
-    void operator()(Call const& a);
-    void operator()(Exit const& a);
-    void operator()(Jmp const& a);
-    void operator()(Assume const& a);
-    void operator()(Assert const& a);
-    void operator()(Packet const& a);
-    void operator()(Mem const& a);
-    void operator()(LockAdd const& a);
-};
-
-inline bool operator==(Imm const& a, Imm const& b) { return a.v == b.v; }
-inline bool operator==(Reg const& a, Reg const& b) { return a.v == b.v; }
-inline bool operator==(Deref const& a, Deref const& b) {
-    return a.basereg == b.basereg && a.offset == b.offset && a.width == b.width;
-}
-inline bool operator==(Condition const& a, Condition const& b) {
-    return a.left == b.left && a.op == b.op && a.right == b.right;
-}
-inline bool operator==(Undefined const& a, Undefined const& b) { return a.opcode == b.opcode; }
-inline bool operator==(LoadMapFd const& a, LoadMapFd const& b) { return a.dst == b.dst && a.mapfd == b.mapfd; }
-inline bool operator==(Bin const& a, Bin const& b) {
-    return a.op == b.op && a.dst == b.dst && a.is64 == b.is64 && a.v == b.v && a.lddw == b.lddw;
-}
-inline bool operator==(Un const& a, Un const& b) { return a.op == b.op && a.dst == b.dst; }
-inline bool operator==(Call const& a, Call const& b) { return a.func == b.func; }
-inline bool operator==(Exit const& a, Exit const& b) { return true; }
-inline bool operator==(Jmp const& a, Jmp const& b) { return a.cond == b.cond && a.target == b.target; }
-inline bool operator==(Packet const& a, Packet const& b) {
-    return a.offset == b.offset && a.regoffset == b.regoffset && a.width == b.width;
-}
-inline bool operator==(Mem const& a, Mem const& b) {
-    return a.access == b.access && a.value == b.value && a.is_load == b.is_load;
-}
-inline bool operator==(LockAdd const& a, LockAdd const& b) { return a.access == b.access && a.valreg == b.valreg; }
-inline bool operator==(Assume const& a, Assume const& b) { return a.cond == b.cond; }
-bool operator==(Assert const& a, Assert const& b);
-
-DECLARE_EQ2(TypeConstraint, reg, types)
-DECLARE_EQ2(ValidSize, reg, can_be_zero)
-DECLARE_EQ2(Comparable, r1, r2)
-DECLARE_EQ2(Addable, ptr, num)
-DECLARE_EQ2(ValidDivisor, reg, is_signed)
-DECLARE_EQ2(ValidStore, mem, val)
-DECLARE_EQ5(ValidAccess, reg, offset, width, or_null, access_type)
-DECLARE_EQ3(ValidMapKeyValue, access_reg, map_fd_reg, key)
-DECLARE_EQ1(ZeroCtxOffset, reg)
-DECLARE_EQ1(Assert, cst)
-DECLARE_EQ1(IncrementLoopCounter, name)
 
 }
 
@@ -406,5 +371,3 @@ template <class... Ts>
 struct overloaded : Ts... {
     using Ts::operator()...;
 };
-template <class... Ts>
-overloaded(Ts...)->overloaded<Ts...>;

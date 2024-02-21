@@ -67,10 +67,10 @@ static int16_t offset(Bin::Op op) {
     return 0;
 }
 
-static uint8_t imm(Un::Op op) {
+static uint8_t imm_endian(Un::Op op) {
     using Op = Un::Op;
     switch (op) {
-    case Op::NEG: return 0;
+    case Op::NEG: assert(false); return 0;
     case Op::BE16:
     case Op::LE16:
     case Op::SWAP16: return 16;
@@ -132,22 +132,21 @@ struct MarshalVisitor {
         switch (b.op) {
         case Un::Op::NEG:
             return {ebpf_inst{
-                // FIX: should be INST_CLS_ALU / INST_CLS_ALU64
-                .opcode = static_cast<uint8_t>(INST_CLS_ALU | 0x3 | INST_ALU_OP_NEG),
+                .opcode = static_cast<uint8_t>((b.is64 ? INST_CLS_ALU64 : INST_CLS_ALU) | INST_ALU_OP_NEG),
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,
-                .imm = imm(b.op),
+                .imm = 0,
             }};
         case Un::Op::LE16:
         case Un::Op::LE32:
         case Un::Op::LE64:
             return {ebpf_inst{
-                .opcode = static_cast<uint8_t>(INST_CLS_ALU | INST_ALU_OP_END),
+                .opcode = static_cast<uint8_t>(INST_CLS_ALU | INST_END_LE | INST_ALU_OP_END),
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,
-                .imm = imm(b.op),
+                .imm = imm_endian(b.op),
             }};
         case Un::Op::BE16:
         case Un::Op::BE32:
@@ -157,7 +156,7 @@ struct MarshalVisitor {
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,
-                .imm = imm(b.op),
+                .imm = imm_endian(b.op),
             }};
         case Un::Op::SWAP16:
         case Un::Op::SWAP32:
@@ -167,7 +166,7 @@ struct MarshalVisitor {
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,
-                .imm = imm(b.op),
+                .imm = imm_endian(b.op),
             }};
         }
         assert(false);
