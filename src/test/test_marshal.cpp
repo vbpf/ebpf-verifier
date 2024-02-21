@@ -133,22 +133,32 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
             }
         }
     }
-
-    SECTION("Un") {
-        auto ops = {
-            Un::Op::BE16,
-            Un::Op::BE32,
-            Un::Op::BE64,
-            Un::Op::LE16,
-            Un::Op::LE32,
-            Un::Op::LE64,
-            Un::Op::NEG,
-            Un::Op::SWAP16,
-            Un::Op::SWAP32,
-            Un::Op::SWAP64
-        };
-        for (auto op : ops)
-            compare_marshal_unmarshal(Un{.op = op, .dst = Reg{1}, .is64 = true});
+    SECTION("Neg") {
+        compare_marshal_unmarshal(Un{.op = Un::Op::NEG, .dst = Reg{1}, .is64 = false});
+    }
+    SECTION("Endian") {
+        // FIX: `.is64` field is unused; the difference in value is accidental.
+        {
+            auto ops = {
+                Un::Op::BE16,
+                Un::Op::BE32,
+                Un::Op::BE64,
+                Un::Op::LE16,
+                Un::Op::LE32,
+                Un::Op::LE64,
+            };
+            for (auto op : ops)
+                compare_marshal_unmarshal(Un{.op = op, .dst = Reg{1}, .is64 = false});
+        }
+        {
+            auto ops = {
+                Un::Op::SWAP16,
+                Un::Op::SWAP32,
+                Un::Op::SWAP64,
+            };
+            for (auto op : ops)
+                compare_marshal_unmarshal(Un{.op = op, .dst = Reg{1}, .is64 = true});
+        }
     }
 
     SECTION("LoadMapFd") { compare_marshal_unmarshal(LoadMapFd{.dst = Reg{1}, .mapfd = 1}, true); }
@@ -167,7 +177,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
         }
         SECTION("Reg right") {
             for (auto op : ops) {
-                Condition cond{.op = op, .left = Reg{1}, .right = Reg{2}};
+                Condition cond{.op = op, .left = Reg{1}, .right = Reg{2}, .is64 = true};
                 compare_marshal_unmarshal(Jmp{.cond = cond, .target = label_t(0)});
 
                 // The following should fail unmarshalling since it jumps past the end of the instruction set.
@@ -176,7 +186,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
         }
         SECTION("Imm right") {
             for (auto op : ops) {
-                Condition cond{.op = op, .left = Reg{1}, .right = Imm{2}};
+                Condition cond{.op = op, .left = Reg{1}, .right = Imm{2}, .is64 = true};
                 compare_marshal_unmarshal(Jmp{.cond = cond, .target = label_t(0)});
 
                 // The following should fail unmarshalling since it jumps past the end of the instruction set.
