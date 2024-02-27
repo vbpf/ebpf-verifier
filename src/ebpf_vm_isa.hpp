@@ -15,6 +15,7 @@ struct ebpf_inst {
     std::uint8_t src : 4; //< Source register
     std::int16_t offset;
     std::int32_t imm;     //< Immediate constant
+    constexpr bool operator==(const ebpf_inst&) const = default;
 };
 
 enum {
