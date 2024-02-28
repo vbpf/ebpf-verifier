@@ -544,7 +544,7 @@ static void check_instruction_dst_variations(const ebpf_inst& previous_template,
                 oss << "0: nonzero dst for register op 0x" << std::hex << (int)inst.opcode << std::endl;
             else
                 oss << "0: bad instruction op 0x" << std::hex << (int)inst.opcode << std::endl;
-            check_unmarshal_instruction_fail(inst, oss.str().c_str());
+            check_unmarshal_instruction_fail(inst, oss.str());
         }
     }
 }
@@ -562,7 +562,7 @@ static void check_instruction_src_variations(const ebpf_inst& previous_template,
         if (inst != next_template) {
             std::ostringstream oss;
             oss << "0: bad instruction op 0x" << std::hex << (int)inst.opcode << std::endl;
-            check_unmarshal_instruction_fail(inst, oss.str().c_str());
+            check_unmarshal_instruction_fail(inst, oss.str());
         }
     }
 }
@@ -579,11 +579,12 @@ static void check_instruction_offset_variations(const ebpf_inst& previous_templa
         inst.offset++;
         if (inst != next_template) {
             std::ostringstream oss;
-            if (inst.offset == 1 && (!next_template || next_template->opcode != inst.opcode || next_template->offset == 0))
+            if (inst.offset == 1 &&
+                (!next_template || next_template->opcode != inst.opcode || next_template->offset == 0))
                 oss << "0: nonzero offset for op 0x" << std::hex << (int)inst.opcode << std::endl;
             else
                 oss << "0: invalid offset for op 0x" << std::hex << (int)inst.opcode << std::endl;
-            check_unmarshal_instruction_fail(inst, oss.str().c_str());
+            check_unmarshal_instruction_fail(inst, oss.str());
         }
     }
 }
@@ -604,7 +605,7 @@ static void check_instruction_imm_variations(const ebpf_inst& previous_template,
                 oss << "0: nonzero imm for op 0x" << std::hex << (int)inst.opcode << std::endl;
             else
                 oss << "0: unsupported immediate" << std::endl;
-            check_unmarshal_instruction_fail(inst, oss.str().c_str());
+            check_unmarshal_instruction_fail(inst, oss.str());
         }
     }
 
@@ -613,9 +614,7 @@ static void check_instruction_imm_variations(const ebpf_inst& previous_template,
     if (next_template && (previous_template.opcode != next_template->opcode) && (next_template->imm > 0) && (next_template->imm != JMP_OFFSET)) {
         inst = *next_template;
         inst.imm = 0;
-        std::ostringstream oss;
-        oss << "0: unsupported immediate" << std::endl;
-        check_unmarshal_instruction_fail(inst, oss.str().c_str());
+        check_unmarshal_instruction_fail(inst, "0: unsupported immediate\n");
     }
 }
 
@@ -635,7 +634,7 @@ static void check_instruction_variations(std::optional<const ebpf_inst> previous
         ebpf_inst inst{.opcode = (uint8_t)opcode};
         std::ostringstream oss;
         oss << "0: bad instruction op 0x" << std::hex << opcode << std::endl;
-        check_unmarshal_fail(inst, oss.str().c_str());
+        check_unmarshal_fail(inst, oss.str());
     }
 }
 
@@ -665,7 +664,7 @@ TEST_CASE("check unmarshal legacy opcodes", "[disasm][marshal]") {
     for (uint8_t opcode : supported_legacy_opcodes) {
         std::ostringstream oss;
         oss << "0: bad instruction op 0x" << std::hex << (int)opcode << std::endl;
-        check_unmarshal_fail(ebpf_inst{.opcode = opcode}, oss.str().c_str(), platform);
+        check_unmarshal_fail(ebpf_inst{.opcode = opcode}, oss.str(), platform);
     }
 }
 
