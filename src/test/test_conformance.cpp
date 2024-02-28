@@ -14,7 +14,7 @@ void test_conformance(std::string filename, bpf_conformance_test_result_t expect
         test_path.remove_filename().append("conformance_check" + extension.string()).string();
     std::map<std::filesystem::path, std::tuple<bpf_conformance_test_result_t, std::string>> result = bpf_conformance(
         test_files, plugin_path, {}, {}, {}, bpf_conformance_test_CPU_version_t::v4,
-        _bpf_conformance_groups::default_groups, bpf_conformance_list_instructions_t::LIST_INSTRUCTIONS_NONE, true);
+        bpf_conformance_groups_t::default_groups, bpf_conformance_list_instructions_t::LIST_INSTRUCTIONS_NONE, true);
     for (auto file : test_files) {
         auto& [file_result, reason] = result[file];
         REQUIRE(file_result == expected_result);

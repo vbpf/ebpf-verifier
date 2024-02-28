@@ -6,6 +6,196 @@
 #include "asm_marshal.hpp"
 #include "asm_unmarshal.hpp"
 
+// Below we define a tample of instruction templates that specify
+// what values each field are allowed to contain.  We first define
+// a set of sentinel values that mean certain types of wildcards.
+// For example, MEM_OFFSET and JMP_OFFSET are different wildcards
+// for the 'offset' field of an instruction.  Any non-sentinel values
+// in an instruction template are treated as literals.
+
+constexpr int MEM_OFFSET = 3; // Any valid memory offset value.
+constexpr int JMP_OFFSET = 5; // Any valid jump offset value.
+constexpr int DST = 7; // Any destination register number.
+constexpr int SRC = 9; // Any source register number.
+constexpr int IMM = -1; // Any imm value.
+constexpr int INVALID_REGISTER = R10_STACK_POINTER + 1; // Not a valid register.
+
+// The following table is derived from the table in the Appendix of the
+// BPF ISA specification (https://datatracker.ietf.org/doc/draft-ietf-bpf-isa/).
+static const ebpf_inst instruction_template[] = {
+    // opcode, dst, src, offset, imm.
+    {0x04, DST, 0, 0, IMM},
+    {0x05, 0, 0, JMP_OFFSET, 0},
+    {0x06, 0, 0, 0, JMP_OFFSET},
+    {0x07, DST, 0, 0, IMM},
+    {0x0c, DST, SRC, 0, 0},
+    {0x0f, DST, SRC, 0, 0},
+    {0x14, DST, 0, 0, IMM},
+    {0x15, DST, 0, JMP_OFFSET, IMM},
+    {0x16, DST, 0, JMP_OFFSET, IMM},
+    {0x17, DST, 0, 0, IMM},
+    {0x18, DST, 0, 0, IMM},
+    {0x18, DST, 1, 0, IMM},
+    // TODO(issue #533): add support for LDDW with src_reg > 1.
+    // {0x18, DST, 2, 0, IMM},
+    // {0x18, DST, 3, 0, IMM},
+    // {0x18, DST, 4, 0, IMM},
+    // {0x18, DST, 5, 0, IMM},
+    // {0x18, DST, 6, 0, IMM},
+    {0x1c, DST, SRC, 0, 0},
+    {0x1d, DST, SRC, JMP_OFFSET, 0},
+    {0x1e, DST, SRC, JMP_OFFSET, 0},
+    {0x1f, DST, SRC, 0, 0},
+    {0x20, 0, 0, 0, IMM},
+    {0x24, DST, 0, 0, IMM},
+    {0x25, DST, 0, JMP_OFFSET, IMM},
+    {0x26, DST, 0, JMP_OFFSET, IMM},
+    {0x27, DST, 0, 0, IMM},
+    {0x28, 0, 0, 0, IMM},
+    {0x2c, DST, SRC, 0, 0},
+    {0x2d, DST, SRC, JMP_OFFSET, 0},
+    {0x2e, DST, SRC, JMP_OFFSET, 0},
+    {0x2f, DST, SRC, 0, 0},
+    {0x30, 0, 0, 0, IMM},
+    {0x34, DST, 0, 0, IMM},
+    {0x34, DST, 0, 1, IMM},
+    {0x35, DST, 0, JMP_OFFSET, IMM},
+    {0x36, DST, 0, JMP_OFFSET, IMM},
+    {0x37, DST, 0, 0, IMM},
+    {0x37, DST, 0, 1, IMM},
+    {0x3c, DST, SRC, 0, 0},
+    {0x3c, DST, SRC, 1, 0},
+    {0x3d, DST, SRC, JMP_OFFSET, 0},
+    {0x3e, DST, SRC, JMP_OFFSET, 0},
+    {0x3f, DST, SRC, 0, 0},
+    {0x3f, DST, SRC, 1, 0},
+    {0x40, 0, SRC, 0, IMM},
+    {0x44, DST, 0, 0, IMM},
+    {0x45, DST, 0, JMP_OFFSET, IMM},
+    {0x46, DST, 0, JMP_OFFSET, IMM},
+    {0x47, DST, 0, 0, IMM},
+    {0x48, 0, SRC, 0, IMM},
+    {0x4c, DST, SRC, 0, 0},
+    {0x4d, DST, SRC, JMP_OFFSET, 0},
+    {0x4e, DST, SRC, JMP_OFFSET, 0},
+    {0x4f, DST, SRC, 0, 0},
+    {0x50, 0, SRC, 0, IMM},
+    {0x54, DST, 0, 0, IMM},
+    {0x55, DST, 0, JMP_OFFSET, IMM},
+    {0x56, DST, 0, JMP_OFFSET, IMM},
+    {0x57, DST, 0, 0, IMM},
+    {0x5c, DST, SRC, 0, 0},
+    {0x5d, DST, SRC, JMP_OFFSET, 0},
+    {0x5e, DST, SRC, JMP_OFFSET, 0},
+    {0x5f, DST, SRC, 0, 0},
+    {0x61, DST, SRC, MEM_OFFSET, 0},
+    {0x62, DST, 0, MEM_OFFSET, IMM},
+    {0x63, DST, SRC, MEM_OFFSET, 0},
+    {0x64, DST, 0, 0, IMM},
+    {0x65, DST, 0, JMP_OFFSET, IMM},
+    {0x66, DST, 0, JMP_OFFSET, IMM},
+    {0x67, DST, 0, 0, IMM},
+    {0x69, DST, SRC, MEM_OFFSET, 0},
+    {0x6a, DST, 0, MEM_OFFSET, IMM},
+    {0x6b, DST, SRC, MEM_OFFSET, 0},
+    {0x6c, DST, SRC, 0, 0},
+    {0x6d, DST, SRC, JMP_OFFSET, 0},
+    {0x6e, DST, SRC, JMP_OFFSET, 0},
+    {0x6f, DST, SRC, 0, 0},
+    {0x71, DST, SRC, MEM_OFFSET, 0},
+    {0x72, DST, 0, MEM_OFFSET, IMM},
+    {0x73, DST, SRC, MEM_OFFSET, 0},
+    {0x74, DST, 0, 0, IMM},
+    {0x75, DST, 0, JMP_OFFSET, IMM},
+    {0x76, DST, 0, JMP_OFFSET, IMM},
+    {0x77, DST, 0, 0, IMM},
+    {0x79, DST, SRC, MEM_OFFSET, 0},
+    {0x7a, DST, 0, MEM_OFFSET, IMM},
+    {0x7b, DST, SRC, MEM_OFFSET, 0},
+    {0x7c, DST, SRC, 0, 0},
+    {0x7d, DST, SRC, JMP_OFFSET, 0},
+    {0x7e, DST, SRC, JMP_OFFSET, 0},
+    {0x7f, DST, SRC, 0, 0},
+    {0x84, DST, 0, 0, 0},
+    {0x85, 0, 0, 0, IMM},
+    // TODO(issue #582): Add support for subprograms (call_local).
+    // {0x85, 0, 1, 0, IMM},
+    // TODO(issue #590): Add support for calling a helper function by BTF ID.
+    // {0x85, 0, 2, 0, IMM},
+    {0x87, DST, 0, 0, 0},
+    {0x94, DST, 0, 0, IMM},
+    {0x94, DST, 0, 1, IMM},
+    {0x95, 0, 0, 0, 0},
+    {0x97, DST, 0, 0, IMM},
+    {0x97, DST, 0, 1, IMM},
+    {0x9c, DST, SRC, 0, 0},
+    {0x9c, DST, SRC, 1, 0},
+    {0x9f, DST, SRC, 0, 0},
+    {0x9f, DST, SRC, 1, 0},
+    {0xa4, DST, 0, 0, IMM},
+    {0xa5, DST, 0, JMP_OFFSET, IMM},
+    {0xa6, DST, 0, JMP_OFFSET, IMM},
+    {0xa7, DST, 0, 0, IMM},
+    {0xac, DST, SRC, 0, 0},
+    {0xad, DST, SRC, JMP_OFFSET, 0},
+    {0xae, DST, SRC, JMP_OFFSET, 0},
+    {0xaf, DST, SRC, 0, 0},
+    {0xb4, DST, 0, 0, IMM},
+    {0xb5, DST, 0, JMP_OFFSET, IMM},
+    {0xb6, DST, 0, JMP_OFFSET, IMM},
+    {0xb7, DST, 0, 0, IMM},
+    {0xbc, DST, SRC, 0, 0},
+    {0xbc, DST, SRC, 8, 0},
+    {0xbc, DST, SRC, 16, 0},
+    {0xbd, DST, SRC, JMP_OFFSET, 0},
+    {0xbe, DST, SRC, JMP_OFFSET, 0},
+    {0xbf, DST, SRC, 0, 0},
+    {0xbf, DST, SRC, 8, 0},
+    {0xbf, DST, SRC, 16, 0},
+    {0xbf, DST, SRC, 32, 0},
+    {0xc3, DST, SRC, MEM_OFFSET, 0x00},
+    {0xc3, DST, SRC, MEM_OFFSET, 0x01},
+    {0xc3, DST, SRC, MEM_OFFSET, 0x40},
+    {0xc3, DST, SRC, MEM_OFFSET, 0x41},
+    {0xc3, DST, SRC, MEM_OFFSET, 0x50},
+    {0xc3, DST, SRC, MEM_OFFSET, 0x51},
+    {0xc3, DST, SRC, MEM_OFFSET, 0xa0},
+    {0xc3, DST, SRC, MEM_OFFSET, 0xa1},
+    {0xc3, DST, SRC, MEM_OFFSET, 0xe1},
+    {0xc3, DST, SRC, MEM_OFFSET, 0xf1},
+    {0xc4, DST, 0, 0, IMM},
+    {0xc5, DST, 0, JMP_OFFSET, IMM},
+    {0xc6, DST, 0, JMP_OFFSET, IMM},
+    {0xc7, DST, 0, 0, IMM},
+    {0xcc, DST, SRC, 0, 0},
+    {0xcd, DST, SRC, JMP_OFFSET, 0},
+    {0xce, DST, SRC, JMP_OFFSET, 0},
+    {0xcf, DST, SRC, 0, 0},
+    {0xd4, DST, 0, 0, 0x10},
+    {0xd4, DST, 0, 0, 0x20},
+    {0xd4, DST, 0, 0, 0x40},
+    {0xd5, DST, 0, JMP_OFFSET, IMM},
+    {0xd6, DST, 0, JMP_OFFSET, IMM},
+    {0xd7, DST, 0, 0, 0x10},
+    {0xd7, DST, 0, 0, 0x20},
+    {0xd7, DST, 0, 0, 0x40},
+    {0xdb, DST, SRC, MEM_OFFSET, 0x00},
+    {0xdb, DST, SRC, MEM_OFFSET, 0x01},
+    {0xdb, DST, SRC, MEM_OFFSET, 0x40},
+    {0xdb, DST, SRC, MEM_OFFSET, 0x41},
+    {0xdb, DST, SRC, MEM_OFFSET, 0x50},
+    {0xdb, DST, SRC, MEM_OFFSET, 0x51},
+    {0xdb, DST, SRC, MEM_OFFSET, 0xa0},
+    {0xdb, DST, SRC, MEM_OFFSET, 0xa1},
+    {0xdb, DST, SRC, MEM_OFFSET, 0xe1},
+    {0xdb, DST, SRC, MEM_OFFSET, 0xf1},
+    {0xdc, DST, 0, 0, 0x10},
+    {0xdc, DST, 0, 0, 0x20},
+    {0xdc, DST, 0, 0, 0x40},
+    {0xdd, DST, SRC, JMP_OFFSET, 0},
+    {0xde, DST, SRC, JMP_OFFSET, 0},
+};
+
 // Verify that if we unmarshal an instruction and then re-marshal it,
 // we get what we expect.
 static void compare_unmarshal_marshal(const ebpf_inst& ins, const ebpf_inst& expected_result, const ebpf_platform_t* platform = &g_ebpf_platform_linux) {
@@ -62,9 +252,9 @@ static void compare_unmarshal_marshal(const ebpf_inst& ins1, const ebpf_inst& in
 
 // Verify that if we marshal an instruction and then unmarshal it,
 // we get the original.
-static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = false, const ebpf_platform_t* platform = &g_ebpf_platform_linux) {
-    program_info info{.platform = platform,
-                      .type = platform->get_program_type("unspec", "unspec")};
+static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = false, const ebpf_platform_t& platform = g_ebpf_platform_linux) {
+    program_info info{.platform = &platform,
+                      .type = platform.get_program_type("unspec", "unspec")};
     InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", marshal(ins, 0), info}));
     REQUIRE(parsed.size() == 1);
     auto [_, single, _2] = parsed.back();
@@ -73,17 +263,28 @@ static void compare_marshal_unmarshal(const Instruction& ins, bool double_cmd = 
     REQUIRE(single == ins);
 }
 
-static void check_marshal_unmarshal_fail(const Instruction& ins, std::string expected_error_message, const ebpf_platform_t* platform = &g_ebpf_platform_linux) {
-    program_info info{.platform = platform,
-                      .type = platform->get_program_type("unspec", "unspec")};
+static void check_marshal_unmarshal_fail(const Instruction& ins, std::string expected_error_message, const ebpf_platform_t& platform = g_ebpf_platform_linux) {
+    program_info info{.platform = &platform,
+                      .type = platform.get_program_type("unspec", "unspec")};
     std::string error_message = std::get<std::string>(unmarshal(raw_program{"", "", marshal(ins, 0), info}));
     REQUIRE(error_message == expected_error_message);
 }
 
-static void check_unmarshal_fail(ebpf_inst inst, std::string expected_error_message, const ebpf_platform_t* platform = &g_ebpf_platform_linux) {
-    program_info info{.platform = platform,
-                      .type = platform->get_program_type("unspec", "unspec")};
+static void check_unmarshal_fail(ebpf_inst inst, std::string expected_error_message, const ebpf_platform_t& platform = g_ebpf_platform_linux) {
+    program_info info{.platform = &platform,
+                      .type = platform.get_program_type("unspec", "unspec")};
     std::vector<ebpf_inst> insns = {inst};
+    auto result = unmarshal(raw_program{"", "", insns, info});
+    REQUIRE(std::holds_alternative<std::string>(result));
+    std::string error_message = std::get<std::string>(result);
+    REQUIRE(error_message == expected_error_message);
+}
+
+static void check_unmarshal_fail_goto(ebpf_inst inst, const std::string& expected_error_message) {
+    program_info info{.platform = &g_ebpf_platform_linux,
+                      .type = g_ebpf_platform_linux.get_program_type("unspec", "unspec")};
+    const ebpf_inst exit{.opcode = INST_OP_EXIT};
+    std::vector<ebpf_inst> insns{inst, exit, exit};
     auto result = unmarshal(raw_program{"", "", insns, info});
     REQUIRE(std::holds_alternative<std::string>(result));
     std::string error_message = std::get<std::string>(result);
@@ -316,83 +517,143 @@ TEST_CASE("unmarshal extension opcodes", "[disasm][marshal]") {
         ebpf_inst{.opcode = INST_ALU_OP_MOV | INST_SRC_REG | INST_CLS_ALU64, .dst = 1, .src = 1, .offset = 32});
 }
 
-TEST_CASE("fail unmarshal invalid opcodes", "[disasm][marshal]") {
-    // The following opcodes are undefined and should generate bad instruction errors.
-    uint8_t bad_opcodes[] = {
-        0x00, 0x01, 0x02, 0x03, 0x08, 0x09, 0x0a, 0x0b, 0x0d, 0x0e, 0x10, 0x11, 0x12, 0x13, 0x19, 0x1a, 0x1b, 0x60,
-        0x68, 0x70, 0x78, 0x80, 0x81, 0x82, 0x83, 0x86, 0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f, 0x90, 0x91,
-        0x92, 0x93, 0x96, 0x98, 0x99, 0x9a, 0x9b, 0x9d, 0x9e, 0xa0, 0xa1, 0xa2, 0xa3, 0xa8, 0xa9, 0xaa, 0xab, 0xb0,
-        0xb1, 0xb2, 0xb3, 0xb8, 0xb9, 0xba, 0xbb, 0xc0, 0xc1, 0xc2, 0xc8, 0xc9, 0xca, 0xcb, 0xd0, 0xd1, 0xd2, 0xd3,
-        0xd8, 0xd9, 0xda, 0xdf, 0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed,
-        0xee, 0xef, 0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff};
-    for (int i = 0; i < sizeof(bad_opcodes); i++) {
-        std::ostringstream oss;
-        oss << "0: Bad instruction op 0x" << std::hex << (int)bad_opcodes[i] << std::endl;
-        check_unmarshal_fail(ebpf_inst{.opcode = bad_opcodes[i]}, oss.str().c_str());
+// Check that unmarshaling an invalid instruction fails with a given message.
+static void check_unmarshal_instruction_fail(ebpf_inst& inst, const std::string& message) {
+    if (inst.offset == JMP_OFFSET) {
+        inst.offset = 1;
+        check_unmarshal_fail_goto(inst, message);
+    } else if (inst.opcode == INST_OP_LDDW_IMM)
+        check_unmarshal_fail(inst, ebpf_inst{}, message);
+    else
+        check_unmarshal_fail(inst, message);
+}
+
+// Check that various 'dst' variations between two valid instruction templates fail.
+static void check_instruction_dst_variations(const ebpf_inst& previous_template, std::optional<const ebpf_inst> next_template) {
+    ebpf_inst inst = previous_template;
+    if (inst.dst == DST) {
+        inst.dst = INVALID_REGISTER;
+        check_unmarshal_instruction_fail(inst, "0: bad register\n");
+    } else {
+        // This instruction doesn't put a register number in the 'dst' field.
+        // Just try the next value unless that's what the next template has.
+        inst.dst++;
+        if (inst != next_template) {
+            std::ostringstream oss;
+            if (inst.dst == 1)
+                oss << "0: nonzero dst for register op 0x" << std::hex << (int)inst.opcode << std::endl;
+            else
+                oss << "0: bad instruction op 0x" << std::hex << (int)inst.opcode << std::endl;
+            check_unmarshal_instruction_fail(inst, oss.str());
+        }
     }
 }
 
-TEST_CASE("fail unmarshal src0 opcodes", "[disasm][marshal]") {
-    // The following opcodes are only defined for src = 0.
-    uint8_t src0_opcodes[] = {0x04, 0x05, 0x06, 0x07, 0x14, 0x15, 0x16, 0x17, 0x24, 0x25, 0x26, 0x27, 0x34, 0x35, 0x36,
-                              0x37, 0x44, 0x45, 0x46, 0x47, 0x54, 0x55, 0x56, 0x57, 0x62, 0x64, 0x65, 0x66, 0x67, 0x6a,
-                              0x72, 0x74, 0x75, 0x76, 0x77, 0x7a, 0x84, 0x87, 0x94, 0x95, 0x97, 0xa4, 0xa5, 0xa6, 0xa7,
-                              0xb4, 0xb5, 0xb6, 0xb7, 0xc4, 0xc5, 0xc6, 0xc7, 0xd4, 0xd5, 0xd6, 0xd7, 0xdc};
-    for (int i = 0; i < sizeof(src0_opcodes); i++) {
-        std::ostringstream oss;
-        oss << "0: nonzero src for register op 0x" << std::hex << (int)src0_opcodes[i] << std::endl;
-        check_unmarshal_fail(ebpf_inst{.opcode = src0_opcodes[i], .src = 1}, oss.str().c_str());
+// Check that various 'src' variations between two valid instruction templates fail.
+static void check_instruction_src_variations(const ebpf_inst& previous_template, std::optional<const ebpf_inst> next_template) {
+    ebpf_inst inst = previous_template;
+    if (inst.src == SRC) {
+        inst.src = INVALID_REGISTER;
+        check_unmarshal_instruction_fail(inst, "0: bad register\n");
+    } else {
+        // This instruction doesn't put a register number in the 'src' field.
+        // Just try the next value unless that's what the next template has.
+        inst.src++;
+        if (inst != next_template) {
+            std::ostringstream oss;
+            oss << "0: bad instruction op 0x" << std::hex << (int)inst.opcode << std::endl;
+            check_unmarshal_instruction_fail(inst, oss.str());
+        }
     }
 }
 
-TEST_CASE("fail unmarshal imm0 opcodes", "[disasm][marshal]") {
-    // The following opcodes are only defined for imm = 0.
-    uint8_t imm0_opcodes[] = {0x05, 0x0c, 0x0f, 0x1c, 0x1d, 0x1e, 0x1f, 0x2c, 0x2d, 0x2e, 0x2f, 0x3d, 0x3e, 0x3f, 0x4c,
-                              0x4d, 0x4e, 0x4f, 0x5c, 0x5d, 0x5e, 0x5f, 0x61, 0x63, 0x69, 0x6b, 0x6c, 0x6d, 0x6e, 0x6f,
-                              0x71, 0x73, 0x79, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f, 0x84, 0x87, 0x95, 0x9c, 0x9f, 0xac, 0xad,
-                              0xae, 0xaf, 0xbc, 0xbd, 0xbe, 0xbf, 0xcc, 0xcd, 0xce, 0xcf, 0xdd, 0xde};
-    for (int i = 0; i < sizeof(imm0_opcodes); i++) {
-        std::ostringstream oss;
-        oss << "0: nonzero imm for op 0x" << std::hex << (int)imm0_opcodes[i] << std::endl;
-        check_unmarshal_fail(ebpf_inst{.opcode = imm0_opcodes[i], .imm = 1}, oss.str().c_str());
+// Check that various 'offset' variations between two valid instruction templates fail.
+static void check_instruction_offset_variations(const ebpf_inst& previous_template, std::optional<const ebpf_inst> next_template) {
+    ebpf_inst inst = previous_template;
+    if (inst.offset == JMP_OFFSET) {
+        inst.offset = 0; // Not a valid jump offset.
+        check_unmarshal_instruction_fail(inst, "0: jump out of bounds\n");
+    } else if (inst.offset != MEM_OFFSET) {
+        // This instruction limits what can appear in the 'offset' field.
+        // Just try the next value unless that's what the next template has.
+        inst.offset++;
+        if (inst != next_template) {
+            std::ostringstream oss;
+            if (inst.offset == 1 &&
+                (!next_template || next_template->opcode != inst.opcode || next_template->offset == 0))
+                oss << "0: nonzero offset for op 0x" << std::hex << (int)inst.opcode << std::endl;
+            else
+                oss << "0: invalid offset for op 0x" << std::hex << (int)inst.opcode << std::endl;
+            check_unmarshal_instruction_fail(inst, oss.str());
+        }
     }
 }
 
-TEST_CASE("fail unmarshal off0 opcodes", "[disasm][marshal]") {
-    // The following opcodes are only defined for offset = 0.
-    uint8_t off0_opcodes[] = {0x04, 0x06, 0x07, 0x0c, 0x0f, 0x14, 0x17, 0x1c, 0x1f, 0x24, 0x27, 0x2c, 0x2f, 0x44, 0x47,
-                              0x4c, 0x4f, 0x54, 0x57, 0x5c, 0x5f, 0x64, 0x67, 0x6c, 0x6f, 0x74, 0x77, 0x7c, 0x7f, 0x84,
-                              0x85, 0x87, 0x95, 0xa4, 0xa7, 0xac, 0xaf, 0xc4, 0xc7, 0xcc, 0xcf, 0xd4, 0xd7, 0xdc};
-    for (int i = 0; i < sizeof(off0_opcodes); i++) {
-        std::ostringstream oss;
-        oss << "0: nonzero offset for op 0x" << std::hex << (int)off0_opcodes[i] << std::endl;
-        check_unmarshal_fail(ebpf_inst{.opcode = off0_opcodes[i], .offset = 1}, oss.str().c_str());
+// Check that various 'imm' variations between two valid instruction templates fail.
+static void check_instruction_imm_variations(const ebpf_inst& previous_template, std::optional<const ebpf_inst> next_template) {
+    ebpf_inst inst = previous_template;
+    if (inst.imm == JMP_OFFSET) {
+        inst.imm = 0; // Not a valid jump offset.
+        check_unmarshal_instruction_fail(inst, "0: jump out of bounds\n");
+    } else if (inst.imm != IMM) {
+        // This instruction limits what can appear in the 'imm' field.
+        // Just try the next value unless that's what the next template has.
+        inst.imm++;
+        if (inst != next_template) {
+            std::ostringstream oss;
+            if (inst.imm == 1)
+                oss << "0: nonzero imm for op 0x" << std::hex << (int)inst.opcode << std::endl;
+            else
+                oss << "0: unsupported immediate" << std::endl;
+            check_unmarshal_instruction_fail(inst, oss.str());
+        }
+    }
+
+    // Some instructions only permit non-zero imm values.
+    // If the next template is for one of those, check the zero value now.
+    if (next_template && (previous_template.opcode != next_template->opcode) && (next_template->imm > 0) && (next_template->imm != JMP_OFFSET)) {
+        inst = *next_template;
+        inst.imm = 0;
+        check_unmarshal_instruction_fail(inst, "0: unsupported immediate\n");
     }
 }
 
-TEST_CASE("fail unmarshal offset opcodes", "[disasm][marshal]") {
-    // The following opcodes are defined for multiple other offset values, but not offset = 2 for example.
-    uint8_t off2_opcodes[] = {0x34, 0x37, 0x3c, 0x3f, 0x94, 0x97, 0x9c, 0x9f, 0xb4, 0xb7, 0xbc, 0xbf};
-    for (int i = 0; i < sizeof(off2_opcodes); i++) {
-        std::ostringstream oss;
-        oss << "0: invalid offset for op 0x" << std::hex << (int)off2_opcodes[i] << std::endl;
-        check_unmarshal_fail(ebpf_inst{.opcode = off2_opcodes[i], .offset = 2}, oss.str().c_str());
+// Check that various variations between two valid instruction templates fail.
+static void check_instruction_variations(std::optional<const ebpf_inst> previous_template, std::optional<const ebpf_inst> next_template) {
+    if (previous_template) {
+        check_instruction_dst_variations(*previous_template, next_template);
+        check_instruction_src_variations(*previous_template, next_template);
+        check_instruction_offset_variations(*previous_template, next_template);
+        check_instruction_imm_variations(*previous_template, next_template);
     }
+
+    // Check any invalid opcodes in between the previous and next templates.
+    int previous_opcode = previous_template ? previous_template->opcode : -1;
+    int next_opcode = next_template ? next_template->opcode : 0x100;
+    for (int opcode = previous_opcode + 1; opcode < next_opcode; opcode++) {
+        ebpf_inst inst{.opcode = (uint8_t)opcode};
+        std::ostringstream oss;
+        oss << "0: bad instruction op 0x" << std::hex << opcode << std::endl;
+        check_unmarshal_fail(inst, oss.str());
+    }
+}
+
+TEST_CASE("fail unmarshal bad instructions", "[disasm][marshal]") {
+    size_t template_count = std::size(instruction_template);
+
+    // Check any variations before the first template.
+    check_instruction_variations({}, instruction_template[0]);
+
+    for (int index = 1; index < template_count; index++)
+        check_instruction_variations(instruction_template[index - 1], instruction_template[index]);
+
+    // Check any remaining variations after the last template.
+    check_instruction_variations(instruction_template[template_count - 1], {});
 }
 
 TEST_CASE("check unmarshal legacy opcodes", "[disasm][marshal]") {
     // The following opcodes are deprecated and should no longer be used.
     static uint8_t supported_legacy_opcodes[] = {0x20, 0x28, 0x30, 0x40, 0x48, 0x50};
-    static uint8_t unsupported_legacy_opcodes[] = {0x21, 0x22, 0x23, 0x29, 0x2a, 0x2b, 0x31, 0x32, 0x33,
-                                                   0x38, 0x39, 0x3a, 0x3b, 0x41, 0x42, 0x43, 0x49, 0x4a,
-                                                   0x4b, 0x51, 0x52, 0x53, 0x58, 0x59, 0x5a, 0x5b};
-
-    for (uint8_t opcode : unsupported_legacy_opcodes) {
-        std::ostringstream oss;
-        oss << "0: Bad instruction op 0x" << std::hex << (int)opcode << std::endl;
-        check_unmarshal_fail(ebpf_inst{.opcode = opcode}, oss.str().c_str());
-    }
-
     for (uint8_t opcode : supported_legacy_opcodes) {
         compare_unmarshal_marshal(ebpf_inst{.opcode = opcode}, ebpf_inst{.opcode = opcode});
     }
@@ -400,16 +661,10 @@ TEST_CASE("check unmarshal legacy opcodes", "[disasm][marshal]") {
     // Disable legacy support.
     ebpf_platform_t platform = g_ebpf_platform_linux;
     platform.legacy = false;
-
-    for (uint8_t opcode : unsupported_legacy_opcodes) {
-        std::ostringstream oss;
-        oss << "0: Bad instruction op 0x" << std::hex << (int)opcode << std::endl;
-        check_unmarshal_fail(ebpf_inst{.opcode = opcode}, oss.str().c_str(), &platform);
-    }
     for (uint8_t opcode : supported_legacy_opcodes) {
         std::ostringstream oss;
-        oss << "0: Bad instruction op 0x" << std::hex << (int)opcode << std::endl;
-        check_unmarshal_fail(ebpf_inst{.opcode = opcode}, oss.str().c_str(), &platform);
+        oss << "0: bad instruction op 0x" << std::hex << (int)opcode << std::endl;
+        check_unmarshal_fail(ebpf_inst{.opcode = opcode}, oss.str(), platform);
     }
 }
 
@@ -420,51 +675,13 @@ TEST_CASE("unmarshal 64bit immediate", "[disasm][marshal]") {
                               ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = 0, .imm = 1}, ebpf_inst{});
 
     for (uint8_t src = 0; src <= 7; src++) {
-        check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = src}, "0: incomplete LDDW\n");
+        check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = src}, "0: incomplete lddw\n");
         check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = src},
-                             ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM}, "0: invalid LDDW\n");
-    }
-
-    // No supported src values use the offset field.
-    for (uint8_t src = 0; src <= 1; src++) {
-        check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = src, .offset = 1}, ebpf_inst{},
-                             "0: LDDW uses reserved fields\n");
-    }
-
-    // Verify that unsupported src values fail.
-    // TODO: support src = 2 through 6.
-    for (uint8_t src = 2; src <= 7; src++) {
-        check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = src}, ebpf_inst{},
-                             "0: LDDW uses reserved fields\n");
+                             ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM}, "0: invalid lddw\n");
     }
 
     // When src = {1, 3, 4, 5}, next_imm must be 0.
-    for (uint8_t src : {1, 3, 4, 5}) {
-        check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = src}, ebpf_inst{.imm = 1},
-                             "0: LDDW uses reserved fields\n");
-    }
-}
-
-
-TEST_CASE("fail unmarshal misc", "[disasm][marshal]") {
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x06 */ INST_CLS_JMP32}, "0: jump out of bounds\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x16 */ 0x10 | INST_CLS_JMP32}, "0: jump out of bounds\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x71 */ ((INST_MEM << 5) | INST_SIZE_B | INST_CLS_LDX), .dst = 11, .imm = 8},
-                         "0: Bad register\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x71 */ ((INST_MEM << 5) | INST_SIZE_B | INST_CLS_LDX), .dst = 1, .src = 11},
-                         "0: Bad register\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xb4 */ (INST_ALU_OP_MOV | INST_SRC_IMM | INST_CLS_ALU), .dst = 11, .imm = 8},
-                         "0: Bad register\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xb4 */ INST_ALU_OP_MOV | INST_SRC_IMM | INST_CLS_ALU, .offset = 8},
-                         "0: invalid offset for op 0xb4\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xbc */ (INST_ALU_OP_MOV | INST_SRC_REG | INST_CLS_ALU), .dst = 1, .src = 11},
-                         "0: Bad register\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xd4 */ INST_ALU_OP_END | INST_END_LE | INST_CLS_ALU, .dst = 1, .imm = 8},
-                         "0: invalid endian immediate\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xd4 */ INST_ALU_OP_END | INST_END_LE | INST_CLS_ALU, .imm = 0},
-                         "0: invalid endian immediate\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xd7 */ INST_ALU_OP_END | INST_END_LE | INST_CLS_ALU64, .imm = 0},
-                         "0: invalid endian immediate\n");
-    check_unmarshal_fail(ebpf_inst{.opcode = /* 0xdc */ INST_ALU_OP_END | INST_END_BE | INST_CLS_ALU, .dst = 1, .imm = 8},
-                         "0: invalid endian immediate\n");
+    // TODO(issue #533): add support for LDDW with src_reg > 1.
+    check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = 1}, ebpf_inst{.imm = 1},
+                         "0: lddw uses reserved fields\n");
 }
