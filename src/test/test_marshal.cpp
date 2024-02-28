@@ -533,7 +533,7 @@ static void check_instruction_dst_variations(const ebpf_inst& previous_template,
     ebpf_inst inst = previous_template;
     if (inst.dst == DST) {
         inst.dst = INVALID_REGISTER;
-        check_unmarshal_instruction_fail(inst, "0: Bad register\n");
+        check_unmarshal_instruction_fail(inst, "0: bad register\n");
     } else {
         // This instruction doesn't put a register number in the 'dst' field.
         // Just try the next value unless that's what the next template has.
@@ -543,7 +543,7 @@ static void check_instruction_dst_variations(const ebpf_inst& previous_template,
             if (inst.dst == 1)
                 oss << "0: nonzero dst for register op 0x" << std::hex << (int)inst.opcode << std::endl;
             else
-                oss << "0: Bad instruction op 0x" << std::hex << (int)inst.opcode << std::endl;
+                oss << "0: bad instruction op 0x" << std::hex << (int)inst.opcode << std::endl;
             check_unmarshal_instruction_fail(inst, oss.str().c_str());
         }
     }
@@ -554,14 +554,14 @@ static void check_instruction_src_variations(const ebpf_inst& previous_template,
     ebpf_inst inst = previous_template;
     if (inst.src == SRC) {
         inst.src = INVALID_REGISTER;
-        check_unmarshal_instruction_fail(inst, "0: Bad register\n");
+        check_unmarshal_instruction_fail(inst, "0: bad register\n");
     } else {
         // This instruction doesn't put a register number in the 'src' field.
         // Just try the next value unless that's what the next template has.
         inst.src++;
         if (inst != next_template) {
             std::ostringstream oss;
-            oss << "0: Bad instruction op 0x" << std::hex << (int)inst.opcode << std::endl;
+            oss << "0: bad instruction op 0x" << std::hex << (int)inst.opcode << std::endl;
             check_unmarshal_instruction_fail(inst, oss.str().c_str());
         }
     }
@@ -603,7 +603,7 @@ static void check_instruction_imm_variations(const ebpf_inst& previous_template,
             if (inst.imm == 1)
                 oss << "0: nonzero imm for op 0x" << std::hex << (int)inst.opcode << std::endl;
             else
-                oss << "0: Unsupported immediate" << std::endl;
+                oss << "0: unsupported immediate" << std::endl;
             check_unmarshal_instruction_fail(inst, oss.str().c_str());
         }
     }
@@ -614,7 +614,7 @@ static void check_instruction_imm_variations(const ebpf_inst& previous_template,
         inst = *next_template;
         inst.imm = 0;
         std::ostringstream oss;
-        oss << "0: Unsupported immediate" << std::endl;
+        oss << "0: unsupported immediate" << std::endl;
         check_unmarshal_instruction_fail(inst, oss.str().c_str());
     }
 }
@@ -634,7 +634,7 @@ static void check_instruction_variations(std::optional<const ebpf_inst> previous
     for (int opcode = previous_opcode + 1; opcode < next_opcode; opcode++) {
         ebpf_inst inst{.opcode = (uint8_t)opcode};
         std::ostringstream oss;
-        oss << "0: Bad instruction op 0x" << std::hex << opcode << std::endl;
+        oss << "0: bad instruction op 0x" << std::hex << opcode << std::endl;
         check_unmarshal_fail(inst, oss.str().c_str());
     }
 }
@@ -664,7 +664,7 @@ TEST_CASE("check unmarshal legacy opcodes", "[disasm][marshal]") {
     platform.legacy = false;
     for (uint8_t opcode : supported_legacy_opcodes) {
         std::ostringstream oss;
-        oss << "0: Bad instruction op 0x" << std::hex << (int)opcode << std::endl;
+        oss << "0: bad instruction op 0x" << std::hex << (int)opcode << std::endl;
         check_unmarshal_fail(ebpf_inst{.opcode = opcode}, oss.str().c_str(), platform);
     }
 }
@@ -676,13 +676,13 @@ TEST_CASE("unmarshal 64bit immediate", "[disasm][marshal]") {
                               ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = 0, .imm = 1}, ebpf_inst{});
 
     for (uint8_t src = 0; src <= 7; src++) {
-        check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = src}, "0: incomplete LDDW\n");
+        check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = src}, "0: incomplete lddw\n");
         check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = src},
-                             ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM}, "0: invalid LDDW\n");
+                             ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM}, "0: invalid lddw\n");
     }
 
     // When src = {1, 3, 4, 5}, next_imm must be 0.
     // TODO(issue #533): add support for LDDW with src_reg > 1.
     check_unmarshal_fail(ebpf_inst{.opcode = /* 0x18 */ INST_OP_LDDW_IMM, .src = 1}, ebpf_inst{.imm = 1},
-                         "0: LDDW uses reserved fields\n");
+                         "0: lddw uses reserved fields\n");
 }
