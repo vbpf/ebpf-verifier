@@ -1566,7 +1566,7 @@ void ebpf_domain_t::operator()(const FuncConstraint& s) {
     // Look up the helper function id.
     const reg_pack_t& reg = reg_pack(s.reg);
     auto src_interval = m_inv.eval_interval(reg.svalue);
-    if (std::optional<number_t> sn = src_interval.singleton()) {
+    if (auto sn = src_interval.singleton()) {
         if (sn->fits_sint32()) {
             // We can now process it as if the id was immediate.
             int32_t imm = sn->cast_to_sint32();
@@ -2263,7 +2263,7 @@ void ebpf_domain_t::operator()(const Callx& callx) {
     // Look up the helper function id.
     const reg_pack_t& reg = reg_pack(callx.func);
     auto src_interval = m_inv.eval_interval(reg.svalue);
-    if (std::optional<number_t> sn = src_interval.singleton()) {
+    if (auto sn = src_interval.singleton()) {
         if (sn->fits_sint32()) {
             // We can now process it as if the id was immediate.
             int32_t imm = sn->cast_to_sint32();

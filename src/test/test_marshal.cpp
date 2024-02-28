@@ -21,10 +21,10 @@ constexpr int SRC = 9; // Any source register number.
 constexpr int IMM = -1; // Any imm value.
 constexpr int INVALID_REGISTER = R10_STACK_POINTER + 1; // Not a valid register.
 
-typedef struct {
+struct ebpf_instruction_template_t {
     ebpf_inst inst;
     bpf_conformance_groups_t groups;
-} ebpf_instruction_template_t;
+};
 
 // The following table is derived from the table in the Appendix of the
 // BPF ISA specification (https://datatracker.ietf.org/doc/draft-ietf-bpf-isa/).
@@ -406,7 +406,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
         // Test callx without support.
         std::ostringstream oss;
         oss << "0: bad instruction op 0x" << std::hex << INST_OP_CALLX << std::endl;
-        check_unmarshal_fail(ebpf_inst{.opcode = INST_OP_CALLX}, oss.str().c_str());
+        check_unmarshal_fail(ebpf_inst{.opcode = INST_OP_CALLX}, oss.str());
 
         // Test callx with support.  Note that callx puts the register number in 'dst' not 'src'.
         ebpf_platform_t platform = g_ebpf_platform_linux;
