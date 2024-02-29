@@ -76,7 +76,7 @@ post:
   - s[504...511].type=number
 
 messages:
-  - "0:  (r3.type in {stack, packet})"
+  - "0: Invalid type (r3.type in {stack, packet})"
   - "0: Only stack or packet can be used as a parameter (within stack(r3:value_size(r1)))"
 ---
 test-case: bpf_ringbuf_output with numeric stack value
@@ -129,7 +129,7 @@ post:
   - s[504...511].type=number
 
 messages:
-  - "0:  (r2.type in {stack, packet, shared})"
+  - "0: Invalid type (r2.type in {stack, packet, shared})"
 ---
 test-case: bpf_get_stack
 
@@ -161,7 +161,7 @@ post:
   - r0.type=number
 
 messages:
-  - "0:  (r2.type in {stack, packet, shared})"
+  - "0: Invalid type (r2.type in {stack, packet, shared})"
 ---
 test-case: bpf_get_stack writing into shared memory
 

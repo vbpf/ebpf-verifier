@@ -1559,7 +1559,7 @@ void ebpf_domain_t::operator()(const ValidStore& s) {
 
 void ebpf_domain_t::operator()(const TypeConstraint& s) {
     if (!type_inv.is_in_group(m_inv, s.reg, s.types))
-        require(m_inv, linear_constraint_t::FALSE(), "");
+        require(m_inv, linear_constraint_t::FALSE(), "Invalid type");
 }
 
 void ebpf_domain_t::operator()(const FuncConstraint& s) {
@@ -1587,7 +1587,7 @@ void ebpf_domain_t::operator()(const FuncConstraint& s) {
 void ebpf_domain_t::operator()(const ValidSize& s) {
     using namespace crab::dsl_syntax;
     auto r = reg_pack(s.reg);
-    require(m_inv, s.can_be_zero ? r.svalue >= 0 : r.svalue > 0, "");
+    require(m_inv, s.can_be_zero ? r.svalue >= 0 : r.svalue > 0, "Invalid size");
 }
 
 // Get the start and end of the range of possible map fd values.
@@ -1848,7 +1848,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
 void ebpf_domain_t::operator()(const ZeroCtxOffset& s) {
     using namespace crab::dsl_syntax;
     auto reg = reg_pack(s.reg);
-    require(m_inv, reg.ctx_offset == 0, "");
+    require(m_inv, reg.ctx_offset == 0, "Nonzero context offset");
 }
 
 void ebpf_domain_t::operator()(const Assert& stmt) {
