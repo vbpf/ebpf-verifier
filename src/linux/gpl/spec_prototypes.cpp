@@ -44,6 +44,7 @@ const ebpf_context_descriptor_t g_sock_ops_descr = sock_ops_descr;
 
 static const struct EbpfHelperPrototype bpf_unspec_proto = {
     .name = "unspec",
+    .return_type = EBPF_RETURN_TYPE_UNSUPPORTED
 };
 
 const struct EbpfHelperPrototype bpf_tail_call_proto = {

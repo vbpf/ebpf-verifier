@@ -61,8 +61,10 @@ class ebpf_domain_t final {
     void operator()(const Assume&);
     void operator()(const Bin&);
     void operator()(const Call&);
+    void operator()(const Callx&);
     void operator()(const Comparable&);
     void operator()(const Exit&);
+    void operator()(const FuncConstraint&);
     void operator()(const Jmp&);
     void operator()(const LoadMapFd&);
     void operator()(const LockAdd&);

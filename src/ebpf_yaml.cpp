@@ -19,20 +19,25 @@
 using std::vector;
 using std::string;
 
+// The YAML tests for Call depend on Linux prototypes.
+// parse_instruction() in asm_parse.cpp explicitly uses
+// g_ebpf_platform_linux when parsing Call instructions
+// so we do the same here.
+
 static EbpfProgramType ebpf_get_program_type(const string& section, const string& path) {
-    return {};
+    return g_ebpf_platform_linux.get_program_type(section, path);
 }
 
 static EbpfMapType ebpf_get_map_type(uint32_t platform_specific_type) {
-    return {};
+    return g_ebpf_platform_linux.get_map_type(platform_specific_type);
 }
 
 static EbpfHelperPrototype ebpf_get_helper_prototype(int32_t n) {
-    return {};
+    return g_ebpf_platform_linux.get_helper_prototype(n);
 }
 
-static bool ebpf_is_helper_usable(int32_t n){
-    return false;
+static bool ebpf_is_helper_usable(int32_t n) {
+    return g_ebpf_platform_linux.is_helper_usable(n);
 }
 
 static void ebpf_parse_maps_section(vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t map_record_size, int map_count,
@@ -59,6 +64,7 @@ ebpf_platform_t g_platform_test = {
     .get_map_descriptor = ebpf_get_map_descriptor,
     .get_map_type = ebpf_get_map_type,
     .legacy = true,
+    .callx = true
 };
 
 static EbpfProgramType make_program_type(const string& name, ebpf_context_descriptor_t* context_descriptor) {
@@ -321,7 +327,9 @@ ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memo
         pre_invariant = pre_invariant + stack_contents_invariant(memory_bytes);
     }
     raw_program raw_prog{.prog = insts};
-    raw_prog.info.platform = &g_ebpf_platform_linux;
+    ebpf_platform_t platform = g_ebpf_platform_linux;
+    platform.callx = true;
+    raw_prog.info.platform = &platform;
 
     // Convert the raw program section to a set of instructions.
     std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);

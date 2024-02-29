@@ -252,7 +252,7 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, inst.opcode);
             bool isLoad = getMemIsLoad(inst.opcode);
             if (isLoad && inst.dst == R10_STACK_POINTER)
-                throw InvalidInstruction(pc, "Cannot modify r10");
+                throw InvalidInstruction(pc, "cannot modify r10");
             bool isImm = !(inst.opcode & 1);
             if (isImm && inst.src != 0)
                 throw InvalidInstruction(pc, inst.opcode);
@@ -302,7 +302,7 @@ struct Unmarshaller {
 
     auto makeAluOp(size_t pc, ebpf_inst inst) -> Instruction {
         if (inst.dst == R10_STACK_POINTER)
-            throw InvalidInstruction(pc, "Invalid target r10");
+            throw InvalidInstruction(pc, "invalid target r10");
         if (inst.dst > R10_STACK_POINTER || inst.src > R10_STACK_POINTER)
             throw InvalidInstruction(pc, "bad register");
         bool is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_ALU64;
@@ -379,7 +379,7 @@ struct Unmarshaller {
     auto makeCall(int32_t imm) const {
         EbpfHelperPrototype proto = info.platform->get_helper_prototype(imm);
         if (proto.return_type == EBPF_RETURN_TYPE_UNSUPPORTED) {
-            throw std::runtime_error(std::string("Unsupported function: ") + proto.name);
+            throw std::runtime_error(std::string("unsupported function: ") + proto.name);
         }
         Call res;
         res.func = imm;
@@ -397,7 +397,7 @@ struct Unmarshaller {
         for (size_t i = 1; i < args.size() - 1; i++) {
             switch (args[i]) {
             case EBPF_ARGUMENT_TYPE_UNSUPPORTED: {
-                throw std::runtime_error(std::string("Unsupported function: ") + proto.name);
+                throw std::runtime_error(std::string("unsupported function: ") + proto.name);
             }
             case EBPF_ARGUMENT_TYPE_DONTCARE: return res;
             case EBPF_ARGUMENT_TYPE_ANYTHING:
@@ -422,21 +422,38 @@ struct Unmarshaller {
         return res;
     }
 
+    auto makeCallx(ebpf_inst inst, pc_t pc) const {
+        // callx puts the register number in the 'dst' field rather than the 'src' field.
+        if (inst.dst > R10_STACK_POINTER)
+            throw InvalidInstruction(pc, "bad register");
+        if (inst.imm != 0) {
+            // Clang prior to v19 put the register number into the 'imm' field.
+            if (inst.dst > 0)
+                throw InvalidInstruction(pc, make_opcode_message("nonzero imm for", inst.opcode));
+            if (inst.imm < 0 || inst.imm > R10_STACK_POINTER)
+                throw InvalidInstruction(pc, "bad register");
+            return Callx{(uint8_t)inst.imm};
+        }
+        return Callx{inst.dst};
+    }
+
     auto makeJmp(ebpf_inst inst, const vector<ebpf_inst>& insts, pc_t pc) -> Instruction {
         switch ((inst.opcode >> 4) & 0xF) {
         case INST_CALL:
             if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP)
                 throw InvalidInstruction(pc, inst.opcode);
-            if (inst.opcode & INST_SRC_REG)
+            if (!info.platform->callx && (inst.opcode & INST_SRC_REG))
                 throw InvalidInstruction(pc, inst.opcode);
             if (inst.src > 0)
                 throw InvalidInstruction(pc, inst.opcode);
             if (inst.offset != 0)
                 throw InvalidInstruction(pc, make_opcode_message("nonzero offset for", inst.opcode));
+            if (inst.opcode & INST_SRC_REG)
+                return makeCallx(inst, pc);
             if (inst.dst != 0)
                 throw InvalidInstruction(pc, make_opcode_message("nonzero dst for register", inst.opcode));
             if (!info.platform->is_helper_usable(inst.imm))
-                throw InvalidInstruction(pc, "invalid helper function id");
+                throw InvalidInstruction(pc, "invalid helper function id " + std::to_string(inst.imm));
             return makeCall(inst.imm);
         case INST_EXIT:
             if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP || (inst.opcode & INST_SRC_REG))

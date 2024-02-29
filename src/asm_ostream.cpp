@@ -189,6 +189,10 @@ std::ostream& operator<<(std::ostream& os, TypeConstraint const& tc) {
     return os << typereg(tc.reg) << " " << cmp_op << " " << tc.types;
 }
 
+std::ostream& operator<<(std::ostream& os, FuncConstraint const& fc) {
+    return os << typereg(fc.reg) << " is helper";
+}
+
 std::ostream& operator<<(std::ostream& os, AssertionConstraint const& a) {
     return std::visit([&](const auto& a) -> std::ostream& { return os << a; }, a);
 }
@@ -261,6 +265,8 @@ struct InstructionPrinterVisitor {
         }
         os_ << ")";
     }
+
+    void operator()(Callx const& callx) { os_ << "callx " << callx.func; }
 
     void operator()(Exit const& b) { os_ << "exit"; }
 
