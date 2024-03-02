@@ -32,6 +32,44 @@ struct at_scope_exit
     ~at_scope_exit() { on_exit(); }
 };
 
+static const std::map<std::string, bpf_conformance_groups_t> _conformance_groups = {
+    {"atomic32", bpf_conformance_groups_t::atomic32},
+    {"atomic64", bpf_conformance_groups_t::atomic64},
+    {"base32", bpf_conformance_groups_t::base32},
+    {"base64", bpf_conformance_groups_t::base64},
+    {"callx", bpf_conformance_groups_t::callx},
+    {"divmul32", bpf_conformance_groups_t::divmul32},
+    {"divmul64", bpf_conformance_groups_t::divmul64},
+    {"packet", bpf_conformance_groups_t::packet}};
+
+static std::optional<bpf_conformance_groups_t> _get_conformance_group_by_name(std::string group) {
+    if (!_conformance_groups.contains(group)) {
+        return {};
+    }
+    return _conformance_groups.find(group)->second;
+}
+
+static std::string _get_conformance_group_names() {
+    std::string result;
+    for (const auto& entry : _conformance_groups) {
+        if (!result.empty()) {
+            result += ", ";
+        }
+        result += entry.first;
+    }
+    return result;
+}
+
+// Given a string containing comma-separated tokens, split them into a list of strings.
+static std::vector<std::string> get_string_vector(std::string list) {
+    std::vector<std::string> string_vector;
+    std::string element;
+    for (std::istringstream iss(list); std::getline(iss, element, ',');) {
+        string_vector.push_back(element);
+    }
+    return string_vector;
+}
+
 int main(int argc, char** argv) {
     // Always call ebpf_verifier_clear_thread_local_state on scope exit.
     at_scope_exit<ebpf_verifier_clear_thread_local_state> clear_thread_local_state;
@@ -66,10 +104,12 @@ int main(int argc, char** argv) {
     app.add_flag("-f", ebpf_verifier_options.print_failures, "Print verifier's failure logs");
     app.add_flag("-s", ebpf_verifier_options.strict, "Apply additional checks that would cause runtime failures");
     app.add_flag("-v", verbose, "Print both invariants and failures");
-    bool legacy = false;
-    app.add_flag("--legacy", legacy, "Allow deprecated packet access instructions");
-    bool callx = false;
-    app.add_flag("--callx", callx, "Allow callx instructions");
+    std::string include_groups;
+    app.add_option("include_groups", include_groups,
+                   "Include conformance groups (valid group names: " + _get_conformance_group_names() + ")");
+    std::string exclude_groups;
+    app.add_option("exclude_groups", exclude_groups,
+                   "Exclude conformance groups (valid group names: " + _get_conformance_group_names() + ")");
     bool no_division_by_zero = false;
     app.add_flag("--no-division-by-zero", no_division_by_zero, "Do not allow division by zero");
     app.add_flag("--no-simplify", ebpf_verifier_options.no_simplify, "Do not simplify");
@@ -87,6 +127,26 @@ int main(int argc, char** argv) {
     if (verbose)
         ebpf_verifier_options.print_invariants = ebpf_verifier_options.print_failures = true;
     ebpf_verifier_options.allow_division_by_zero = !no_division_by_zero;
+
+    // Enable default conformance groups, which don't include callx or packet.
+    ebpf_platform_t platform = g_ebpf_platform_linux;
+    platform.supported_conformance_groups = bpf_conformance_groups_t::default_groups;
+    for (auto group_name : get_string_vector(include_groups)) {
+        if (auto group = _get_conformance_group_by_name(group_name)) {
+            platform.supported_conformance_groups |= *group;
+        } else {
+            std::cout << "Invalid group: " << group_name << std::endl;
+            return 1;
+        }
+    }
+    for (auto group_name : get_string_vector(exclude_groups)) {
+        if (auto group = _get_conformance_group_by_name(group_name)) {
+            platform.supported_conformance_groups &= ~(*group);
+        } else {
+            std::cout << "Invalid group: " << group_name << std::endl;
+            return 1;
+        }
+    }
 
     // Main program
 
@@ -115,9 +175,6 @@ int main(int argc, char** argv) {
 
     if (domain == "linux")
         ebpf_verifier_options.mock_map_fds = false;
-    ebpf_platform_t platform = g_ebpf_platform_linux;
-    platform.legacy = legacy;
-    platform.callx = callx;
 
     // Read a set of raw program sections from an ELF file.
     vector<raw_program> raw_progs;
