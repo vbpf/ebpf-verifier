@@ -18,6 +18,11 @@ jobs:
       matrix:
         configurations: [Debug, Release]
         options: ['AddressSanitizer', 'NoSanitizer']
+        exclude:
+          - configurations: Release
+            options: AddressSanitizer
+
+
     runs-on: ubuntu-latest
     env:
       # Configuration type to build.  For documentation on how build matrices work, see
@@ -37,7 +42,7 @@ jobs:
       - name: Build
         run: |
           if [ "${{matrix.options}}" = "AddressSanitizer" ]; then
-            export SANITIZER_FLAGS="-fsanitize=address -fsanitize=undefined"
+            export SANITIZER_FLAGS="-fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all -fsanitize-coverage=inline-bool-flag -fsanitize-coverage=edge -fsanitize-coverage=trace-cmp -fsanitize-coverage=trace-div"
             wget https://apt.llvm.org/llvm.sh
             chmod +x llvm.sh
             sudo ./llvm.sh 18
