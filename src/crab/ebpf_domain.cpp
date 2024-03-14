@@ -2157,15 +2157,14 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue,
 void ebpf_domain_t::operator()(const Atomic& a) {
     if (m_inv.is_bottom())
         return;
-    if (!m_inv.entail(type_is_pointer(reg_pack(a.access.basereg))) ||
+    if (m_inv.entail(type_is_not_stack(reg_pack(a.access.basereg))) ||
         !m_inv.entail(type_is_number(reg_pack(a.valreg)))) {
         return;
     }
 
     // Fetch the current value into the R11 pseudo-register.
-    Reg r11{R11_ATOMIC_SCRATCH};
-    Mem mem = {.access = a.access, .value = r11, .is_load = true};
-    (*this)(mem);
+    Reg r11{R11_ATOMIC_SCRATCH};;
+    (*this)(Mem{.access = a.access, .value = r11, .is_load = true});
 
     // Compute the new value in R11.
     Bin bin {.dst = r11, .v = a.valreg, .is64 = (a.access.width == sizeof(uint64_t)), .lddw = false};
@@ -2183,8 +2182,7 @@ void ebpf_domain_t::operator()(const Atomic& a) {
     if (a.op == Atomic::Op::CMPXCHG) {
         // For CMPXCHG, store the original value in r0.
         Reg r0{R0_RETURN_VALUE};
-        Mem mem = {.access = a.access, .value = r0, .is_load = true};
-        (*this)(mem);
+        (*this)(Mem{.access = a.access, .value = r0, .is_load = true});
 
         // For the destination, there are 3 possibilities:
         // 1) dst.value == r0.value : set R11 to valreg
@@ -2194,17 +2192,13 @@ void ebpf_domain_t::operator()(const Atomic& a) {
         havoc_register(m_inv, r11);
     } else if ((uint32_t)a.op & (uint32_t)Atomic::Op::FETCH) {
         // For other FETCH operations, store the original value in the src register.
-        mem.value = a.valreg;
-        mem.is_load = true;
-        (*this)(mem);
+        (*this)(Mem{.access = a.access, .value = a.valreg, .is_load = true});
     }
 
     // Store the new value back in the original shared memory location.
     // Note that do_mem_store() currently doesn't track shared memory values,
     // but stack memory values are tracked and are legal here.
-    mem.value = r11;
-    mem.is_load = false;
-    (*this)(mem);
+    (*this)(Mem{.access = a.access, .value = r11, .is_load = false});
 
     // Clear the R11 pseudo-register.
     havoc_register(m_inv, r11);
