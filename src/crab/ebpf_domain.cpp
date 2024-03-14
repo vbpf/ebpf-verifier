@@ -2161,9 +2161,18 @@ void ebpf_domain_t::operator()(const Atomic& a) {
         !m_inv.entail(type_is_number(reg_pack(a.valreg)))) {
         return;
     }
+    if (m_inv.entail(type_is_not_stack(reg_pack(a.access.basereg)))) {
+        // Shared memory regions are volatile so we can just havoc
+        // any register that will be updated.
+        if (a.op == Atomic::Op::CMPXCHG)
+            havoc_register(m_inv, Reg{R0_RETURN_VALUE});
+        else if (a.fetch)
+            havoc_register(m_inv, a.valreg);
+        return;
+    }
 
     // Fetch the current value into the R11 pseudo-register.
-    Reg r11{R11_ATOMIC_SCRATCH};
+    const Reg r11{R11_ATOMIC_SCRATCH};
     (*this)(Mem{.access = a.access, .value = r11, .is_load = true});
 
     // Compute the new value in R11.
@@ -2181,8 +2190,7 @@ void ebpf_domain_t::operator()(const Atomic& a) {
 
     if (a.op == Atomic::Op::CMPXCHG) {
         // For CMPXCHG, store the original value in r0.
-        Reg r0{R0_RETURN_VALUE};
-        (*this)(Mem{.access = a.access, .value = r0, .is_load = true});
+        (*this)(Mem{.access = a.access, .value = Reg{R0_RETURN_VALUE}, .is_load = true});
 
         // For the destination, there are 3 possibilities:
         // 1) dst.value == r0.value : set R11 to valreg
