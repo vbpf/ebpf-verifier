@@ -177,6 +177,21 @@ struct Unmarshaller {
         return {};
     }
 
+    auto getAtomicOp(size_t pc, ebpf_inst inst) -> Atomic::Op {
+        Atomic::Op op = (Atomic::Op)(inst.imm & ~INST_FETCH);
+        switch (op) {
+        case Atomic::Op::XCHG:
+        case Atomic::Op::CMPXCHG:
+            if ((inst.imm & INST_FETCH) == 0)
+                throw InvalidInstruction(pc, "unsupported immediate");
+        case Atomic::Op::ADD:
+        case Atomic::Op::OR:
+        case Atomic::Op::AND:
+        case Atomic::Op::XOR: return op;
+        }
+        throw InvalidInstruction(pc, "unsupported immediate");
+    }
+
     uint64_t sign_extend(int32_t imm) { return (uint64_t)(int64_t)imm; }
 
     uint64_t zero_extend(int32_t imm) { return (uint64_t)(uint32_t)imm; }
@@ -223,9 +238,10 @@ struct Unmarshaller {
 
         int width = getMemWidth(inst.opcode);
         bool isLD = (inst.opcode & INST_CLS_MASK) == INST_CLS_LD;
-        switch ((inst.opcode & INST_MODE_MASK) >> 5) {
-        case 0: throw InvalidInstruction(pc, inst.opcode);
-        case INST_ABS:
+        switch (inst.opcode & INST_MODE_MASK) {
+        case INST_MODE_IMM:
+            throw InvalidInstruction(pc, inst.opcode);
+        case INST_MODE_ABS:
             if (!info.platform->legacy || !isLD || (width == 8))
                 throw InvalidInstruction(pc, inst.opcode);
             if (inst.dst != 0)
@@ -236,7 +252,7 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, make_opcode_message("nonzero offset for", inst.opcode));
             return Packet{.width = width, .offset = inst.imm, .regoffset = {}};
 
-        case INST_IND:
+        case INST_MODE_IND:
             if (!info.platform->legacy || !isLD || (width == 8))
                 throw InvalidInstruction(pc, inst.opcode);
             if (inst.dst != 0)
@@ -247,7 +263,7 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, make_opcode_message("nonzero offset for", inst.opcode));
             return Packet{.width = width, .offset = inst.imm, .regoffset = Reg{inst.src}};
 
-        case INST_MEM: {
+        case INST_MODE_MEM: {
             if (isLD)
                 throw InvalidInstruction(pc, inst.opcode);
             bool isLoad = getMemIsLoad(inst.opcode);
@@ -279,14 +295,14 @@ struct Unmarshaller {
             return res;
         }
 
-        case INST_XADD:
+        case INST_MODE_ATOMIC:
             if (((inst.opcode & INST_CLS_MASK) != INST_CLS_STX) ||
                 ((inst.opcode & INST_SIZE_MASK) != INST_SIZE_W &&
                  (inst.opcode & INST_SIZE_MASK) != INST_SIZE_DW))
                 throw InvalidInstruction(pc, inst.opcode);
-            if (inst.imm != 0)
-                throw InvalidInstruction(pc, "unsupported immediate");
-            return LockAdd{
+            return Atomic{
+                .op = getAtomicOp(pc, inst),
+                .fetch = (inst.imm & INST_FETCH) == INST_FETCH,
                 .access =
                     Deref{
                         .width = width,

@@ -170,11 +170,17 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assert> operator()(LockAdd ins) const {
+    vector<Assert> operator()(Atomic ins) const {
         vector<Assert> res;
-        res.emplace_back(TypeConstraint{ins.access.basereg, TypeGroup::shared});
+        res.emplace_back(TypeConstraint{ins.access.basereg, TypeGroup::pointer});
         res.emplace_back(ValidAccess{ins.access.basereg, ins.access.offset,
                                      Imm{static_cast<uint32_t>(ins.access.width)}, false});
+        if (ins.op == Atomic::Op::CMPXCHG) {
+            // The memory contents pointed to by ins.access will be compared
+            // against the value of the ins.valreg register.  Only numbers are
+            // supported.
+            res.emplace_back(TypeConstraint{ins.valreg, TypeGroup::number});
+        }
         return res;
     }
 

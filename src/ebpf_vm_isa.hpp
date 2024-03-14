@@ -45,15 +45,18 @@ enum {
 
     INST_MODE_MASK = 0xe0,
 
-    INST_ABS = 1, // Deprecated
-    INST_IND = 2, // Deprecated
-    INST_MEM = 3,
-    INST_LEN = 4,
-    INST_MSH = 5,
-    INST_XADD = 6,
-    INST_MEM_UNUSED = 7,
+    INST_MODE_IMM = 0x00, // 64-bit immediate instructions
+    INST_MODE_ABS = 0x20, // legacy BPF packet access (absolute)
+    INST_MODE_IND = 0x40, // legacy BPF packet access (indirect)
+    INST_MODE_MEM = 0x60, // regular load and store operations
+    INST_MODE_MEMSX = 0x80, // sign-extension load operations
+    INST_MODE_UNUSED1 = 0xa0,
+    INST_MODE_ATOMIC = 0xc0, // atomic operations
+    INST_MODE_UNUSED2 = 0xe0,
 
     INST_OP_LDDW_IMM = (INST_CLS_LD | INST_SRC_IMM | INST_SIZE_DW), // Special
+
+    INST_FETCH = 0x1,
 
     INST_JA = 0x0,
     INST_CALL = 0x8,
@@ -91,7 +94,8 @@ enum {
     R7 = 7,
     R8 = 8,
     R9 = 9,
-    R10_STACK_POINTER = 10
+    R10_STACK_POINTER = 10,
+    R11_ATOMIC_SCRATCH = 11, // Pseudo-register used internally for atomic instructions.
 };
 
 int opcode_to_width(uint8_t opcode);
