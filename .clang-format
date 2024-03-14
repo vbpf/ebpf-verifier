@@ -4,6 +4,6 @@ AlwaysBreakTemplateDeclarations: Yes
 AllowShortCaseLabelsOnASingleLine: true
 PointerAlignment: Left
 AlignEscapedNewlines: Left
-#BreakAfterAttributes: Always
+BreakAfterAttributes: Always
 PenaltyReturnTypeOnItsOwnLine: 60
 AlwaysBreakAfterReturnType: None
