@@ -178,17 +178,16 @@ struct Unmarshaller {
     }
 
     auto getAtomicOp(size_t pc, ebpf_inst inst) -> Atomic::Op {
-        switch ((Atomic::Op)inst.imm) {
-        case Atomic::Op::ADD:
-        case Atomic::Op::ADD_FETCH:
-        case Atomic::Op::OR:
-        case Atomic::Op::OR_FETCH:
-        case Atomic::Op::AND:
-        case Atomic::Op::AND_FETCH:
-        case Atomic::Op::XOR:
-        case Atomic::Op::XOR_FETCH:
+        Atomic::Op op = (Atomic::Op)(inst.imm & ~INST_FETCH);
+        switch (op) {
         case Atomic::Op::XCHG:
-        case Atomic::Op::CMPXCHG: return (Atomic::Op)inst.imm;
+        case Atomic::Op::CMPXCHG:
+            if ((inst.imm & INST_FETCH) == 0)
+                throw InvalidInstruction(pc, "unsupported immediate");
+        case Atomic::Op::ADD:
+        case Atomic::Op::OR:
+        case Atomic::Op::AND:
+        case Atomic::Op::XOR: return op;
         }
         throw InvalidInstruction(pc, "unsupported immediate");
     }
@@ -303,6 +302,7 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, inst.opcode);
             return Atomic{
                 .op = getAtomicOp(pc, inst),
+                .fetch = (inst.imm & INST_FETCH) == INST_FETCH,
                 .access =
                     Deref{
                         .width = width,

@@ -90,12 +90,6 @@ static const std::map<std::string, Atomic::Op> str_to_atomicop = {
     {"x", Atomic::Op::XCHG},
     {"cx", Atomic::Op::CMPXCHG}};
 
-static const std::map<std::string, Atomic::Op> str_to_atomicfetchop = {
-    {"+", Atomic::Op::ADD_FETCH},
-    {"|", Atomic::Op::OR_FETCH},
-    {"&", Atomic::Op::AND_FETCH},
-    {"^", Atomic::Op::XOR_FETCH}};
-
 static const std::map<std::string, int> str_to_width = {
     {"8", 1},
     {"16", 2},
@@ -198,14 +192,17 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         };
     }
     if (regex_match(text, m, regex("lock " DEREF PAREN(REG PLUSMINUS IMM) " " ATOMICOP " " REG))) {
+        Atomic::Op op = str_to_atomicop.at(m[5]);
         return Atomic{
-            .op = str_to_atomicop.at(m[5]),
+            .op = op,
+            .fetch = (op == Atomic::Op::XCHG || op == Atomic::Op::CMPXCHG),
             .access = deref(m[1], m[2], m[3], m[4]),
             .valreg = reg(m[6])};
     }
     if (regex_match(text, m, regex("lock " DEREF PAREN(REG PLUSMINUS IMM) " " ATOMICOP " " REG " fetch"))) {
         return Atomic{
-            .op = str_to_atomicfetchop.at(m[5]),
+            .op = str_to_atomicop.at(m[5]),
+            .fetch = true,
             .access = deref(m[1], m[2], m[3], m[4]),
             .valreg = reg(m[6])};
     }

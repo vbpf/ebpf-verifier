@@ -2168,13 +2168,13 @@ void ebpf_domain_t::operator()(const Atomic& a) {
 
     // Compute the new value in R11.
     Bin bin {.dst = r11, .v = a.valreg, .is64 = (a.access.width == sizeof(uint64_t)), .lddw = false};
-    switch ((Atomic::Op)((uint32_t)a.op & (uint32_t)Atomic::Op::BASE_MASK)) {
+    switch (a.op) {
     case Atomic::Op::ADD: bin.op = Bin::Op::ADD; break;
     case Atomic::Op::OR: bin.op = Bin::Op::OR; break;
     case Atomic::Op::AND: bin.op = Bin::Op::AND; break;
     case Atomic::Op::XOR: bin.op = Bin::Op::XOR; break;
-    case Atomic::Op::XCHG_BASE:
-    case Atomic::Op::CMPXCHG_BASE: bin.op = Bin::Op::MOV; break;
+    case Atomic::Op::XCHG:
+    case Atomic::Op::CMPXCHG: bin.op = Bin::Op::MOV; break;
     default: throw std::exception();
     }
     (*this)(bin);
@@ -2190,7 +2190,7 @@ void ebpf_domain_t::operator()(const Atomic& a) {
         // 3) dst.value may or may not == r0.value : set R11 to the union of R11 and valreg
         // For now we just havoc the value of R11.
         havoc_register(m_inv, r11);
-    } else if ((uint32_t)a.op & (uint32_t)Atomic::Op::FETCH) {
+    } else if (a.fetch) {
         // For other FETCH operations, store the original value in the src register.
         (*this)(Mem{.access = a.access, .value = a.valreg, .is_load = true});
     }

@@ -333,17 +333,17 @@ struct InstructionPrinterVisitor {
         print(b.access);
         os_ << " ";
         bool showfetch = true;
-        switch ((Atomic::Op)((uint32_t)b.op & (uint32_t)Atomic::Op::BASE_MASK)) {
+        switch (b.op) {
         case Atomic::Op::ADD: os_ << "+"; break;
         case Atomic::Op::OR : os_ << "|"; break;
         case Atomic::Op::AND: os_ << "&"; break;
         case Atomic::Op::XOR: os_ << "^"; break;
-        case Atomic::Op::XCHG_BASE: os_ << "x"; showfetch = false; break;
-        case Atomic::Op::CMPXCHG_BASE: os_ << "cx"; showfetch = false; break;
+        case Atomic::Op::XCHG: os_ << "x"; showfetch = false; break;
+        case Atomic::Op::CMPXCHG: os_ << "cx"; showfetch = false; break;
         }
         os_ << "= " << b.valreg;
 
-        if (showfetch && ((uint32_t)b.op & (uint32_t)Atomic::Op::FETCH)) {
+        if (showfetch && b.fetch) {
             os_ << " fetch";
         }
     }

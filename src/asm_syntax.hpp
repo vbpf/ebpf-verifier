@@ -236,27 +236,20 @@ struct Packet {
 };
 
 /// Special instruction for atomically updating values inside shared memory.
+/// The analysis just treats an atomic operation as a series of consecutive
+/// operations, and the atomicity itself is not significant.
 struct Atomic {
     enum class Op {
-        FETCH = 0x01,
-        BASE_MASK = 0xf0, // Not including the FETCH flag.
-
         ADD = 0x00,
-        ADD_FETCH = (ADD | FETCH),
         OR = 0x40,
-        OR_FETCH = (OR | FETCH),
         AND = 0x50,
-        AND_FETCH = (AND | FETCH),
         XOR = 0xa0,
-        XOR_FETCH = (XOR | FETCH),
-        XCHG_BASE = 0xe0,    // Not valid by itself
-        CMPXCHG_BASE = 0xf0, // Not valid by itself
-
-        XCHG = (XCHG_BASE | FETCH),
-        CMPXCHG = (CMPXCHG_BASE | FETCH),
+        XCHG = 0xe0,    // Only valid with fetch=true.
+        CMPXCHG = 0xf0, // Only valid with fetch=true.
     };
 
     Op op;
+    bool fetch;
     Deref access;
     Reg valreg;
     constexpr bool operator==(const Atomic&) const = default;

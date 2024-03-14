@@ -262,12 +262,15 @@ struct MarshalVisitor {
     }
 
     vector<ebpf_inst> operator()(Atomic const& b) {
+        int32_t imm = (int32_t)b.op;
+        if (b.fetch)
+            imm |= INST_FETCH;
         return {ebpf_inst{
             .opcode = static_cast<uint8_t>(INST_CLS_STX | INST_MODE_ATOMIC | width_to_opcode(b.access.width)),
             .dst = b.access.basereg.v,
             .src = b.valreg.v,
             .offset = static_cast<int16_t>(b.access.offset),
-            .imm = (int32_t)b.op}};
+            .imm = imm}};
     }
 
     vector<ebpf_inst> operator()(IncrementLoopCounter const& ins) {

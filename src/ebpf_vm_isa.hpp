@@ -56,6 +56,8 @@ enum {
 
     INST_OP_LDDW_IMM = (INST_CLS_LD | INST_SRC_IMM | INST_SIZE_DW), // Special
 
+    INST_FETCH = 0x1,
+
     INST_JA = 0x0,
     INST_CALL = 0x8,
     INST_EXIT = 0x9,

@@ -438,16 +438,16 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
         for (int w : ws) {
             if (w == 4 || w == 8) {
                 Deref access{.width = w, .basereg = Reg{2}, .offset = 17};
-                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::ADD, .access = access, .valreg = Reg{1}});
-                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::ADD_FETCH, .access = access, .valreg = Reg{1}});
-                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::OR, .access = access, .valreg = Reg{1}});
-                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::OR_FETCH, .access = access, .valreg = Reg{1}});
-                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::AND, .access = access, .valreg = Reg{1}});
-                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::AND_FETCH, .access = access, .valreg = Reg{1}});
-                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::XOR, .access = access, .valreg = Reg{1}});
-                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::XOR_FETCH, .access = access, .valreg = Reg{1}});
-                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::XCHG, .access = access, .valreg = Reg{1}});
-                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::CMPXCHG, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::ADD, .fetch = false, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::ADD, .fetch = true, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::OR, .fetch = false, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::OR, .fetch = true, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::AND, .fetch = false, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::AND, .fetch = true, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::XOR, .fetch = false, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::XOR, .fetch = true, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::XCHG, .fetch = true, .access = access, .valreg = Reg{1}});
+                compare_marshal_unmarshal(Atomic{.op = Atomic::Op::CMPXCHG, .fetch = true, .access = access, .valreg = Reg{1}});
             }
         }
     }
