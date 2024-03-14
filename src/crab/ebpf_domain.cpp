@@ -2157,13 +2157,13 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue,
 void ebpf_domain_t::operator()(const Atomic& a) {
     if (m_inv.is_bottom())
         return;
-    if (m_inv.entail(type_is_not_stack(reg_pack(a.access.basereg))) ||
+    if (!m_inv.entail(type_is_pointer(reg_pack(a.access.basereg))) ||
         !m_inv.entail(type_is_number(reg_pack(a.valreg)))) {
         return;
     }
 
     // Fetch the current value into the R11 pseudo-register.
-    Reg r11{R11_ATOMIC_SCRATCH};;
+    Reg r11{R11_ATOMIC_SCRATCH};
     (*this)(Mem{.access = a.access, .value = r11, .is_load = true});
 
     // Compute the new value in R11.
