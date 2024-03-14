@@ -191,18 +191,11 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
             .is_load = false,
         };
     }
-    if (regex_match(text, m, regex("lock " DEREF PAREN(REG PLUSMINUS IMM) " " ATOMICOP " " REG))) {
+    if (regex_match(text, m, regex("lock " DEREF PAREN(REG PLUSMINUS IMM) " " ATOMICOP " " REG "( fetch)?"))) {
         Atomic::Op op = str_to_atomicop.at(m[5]);
         return Atomic{
             .op = op,
-            .fetch = (op == Atomic::Op::XCHG || op == Atomic::Op::CMPXCHG),
-            .access = deref(m[1], m[2], m[3], m[4]),
-            .valreg = reg(m[6])};
-    }
-    if (regex_match(text, m, regex("lock " DEREF PAREN(REG PLUSMINUS IMM) " " ATOMICOP " " REG " fetch"))) {
-        return Atomic{
-            .op = str_to_atomicop.at(m[5]),
-            .fetch = true,
+            .fetch = m[7].matched || op == Atomic::Op::XCHG || op == Atomic::Op::CMPXCHG,
             .access = deref(m[1], m[2], m[3], m[4]),
             .valreg = reg(m[6])};
     }

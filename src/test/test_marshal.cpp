@@ -446,7 +446,13 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
                 compare_marshal_unmarshal(Atomic{.op = Atomic::Op::AND, .fetch = true, .access = access, .valreg = Reg{1}});
                 compare_marshal_unmarshal(Atomic{.op = Atomic::Op::XOR, .fetch = false, .access = access, .valreg = Reg{1}});
                 compare_marshal_unmarshal(Atomic{.op = Atomic::Op::XOR, .fetch = true, .access = access, .valreg = Reg{1}});
+                check_marshal_unmarshal_fail(
+                    Atomic{.op = Atomic::Op::XCHG, .fetch = false, .access = access, .valreg = Reg{1}},
+                    "0: unsupported immediate\n");
                 compare_marshal_unmarshal(Atomic{.op = Atomic::Op::XCHG, .fetch = true, .access = access, .valreg = Reg{1}});
+                check_marshal_unmarshal_fail(
+                    Atomic{.op = Atomic::Op::CMPXCHG, .fetch = false, .access = access, .valreg = Reg{1}},
+                    "0: unsupported immediate\n");
                 compare_marshal_unmarshal(Atomic{.op = Atomic::Op::CMPXCHG, .fetch = true, .access = access, .valreg = Reg{1}});
             }
         }

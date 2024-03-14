@@ -249,7 +249,7 @@ struct Atomic {
     };
 
     Op op;
-    bool fetch;
+    bool fetch{};
     Deref access;
     Reg valreg;
     constexpr bool operator==(const Atomic&) const = default;
