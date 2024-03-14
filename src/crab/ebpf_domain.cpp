@@ -2154,6 +2154,22 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue,
     });
 }
 
+// Construct a Bin operation that does the main operation that a given Atomic operation does atomically.
+static Bin atomic_to_bin(const Atomic& a) {
+    Bin bin{
+        .dst = Reg{R11_ATOMIC_SCRATCH}, .v = a.valreg, .is64 = (a.access.width == sizeof(uint64_t)), .lddw = false};
+    switch (a.op) {
+    case Atomic::Op::ADD: bin.op = Bin::Op::ADD; break;
+    case Atomic::Op::OR: bin.op = Bin::Op::OR; break;
+    case Atomic::Op::AND: bin.op = Bin::Op::AND; break;
+    case Atomic::Op::XOR: bin.op = Bin::Op::XOR; break;
+    case Atomic::Op::XCHG:
+    case Atomic::Op::CMPXCHG: bin.op = Bin::Op::MOV; break;
+    default: throw std::exception();
+    }
+    return bin;
+}
+
 void ebpf_domain_t::operator()(const Atomic& a) {
     if (m_inv.is_bottom())
         return;
@@ -2176,17 +2192,7 @@ void ebpf_domain_t::operator()(const Atomic& a) {
     (*this)(Mem{.access = a.access, .value = r11, .is_load = true});
 
     // Compute the new value in R11.
-    Bin bin {.dst = r11, .v = a.valreg, .is64 = (a.access.width == sizeof(uint64_t)), .lddw = false};
-    switch (a.op) {
-    case Atomic::Op::ADD: bin.op = Bin::Op::ADD; break;
-    case Atomic::Op::OR: bin.op = Bin::Op::OR; break;
-    case Atomic::Op::AND: bin.op = Bin::Op::AND; break;
-    case Atomic::Op::XOR: bin.op = Bin::Op::XOR; break;
-    case Atomic::Op::XCHG:
-    case Atomic::Op::CMPXCHG: bin.op = Bin::Op::MOV; break;
-    default: throw std::exception();
-    }
-    (*this)(bin);
+    (*this)(atomic_to_bin(a));
 
     if (a.op == Atomic::Op::CMPXCHG) {
         // For CMPXCHG, store the original value in r0.
