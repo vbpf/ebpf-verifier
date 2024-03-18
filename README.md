@@ -48,8 +48,9 @@ cmake --build build --config Release
 
 Make on MacOS:
 ```
-CMAKE_PREFIX_PATH=$(brew --prefix) CPATH=$(brew --prefix)/include LIBRARY_PATH=$(brew --prefix)/lib cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$(brew --prefix llvm)/bin/clang -DCMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++
-CPATH=$(brew --prefix)/include LIBRARY_PATH=$(brew --prefix)/lib cmake --build build
+export CPATH=$(brew --prefix)/include LIBRARY_PATH=$(brew --prefix)/lib CMAKE_PREFIX_PATH=$(brew --prefix)
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$(brew --prefix llvm)/bin/clang -DCMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++
+cmake --build build
 ```
 
 ### Running with Docker
