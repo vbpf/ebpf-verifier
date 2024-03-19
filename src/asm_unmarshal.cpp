@@ -336,8 +336,6 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, inst.opcode);
             if (!info.platform->supports_group(((inst.opcode & INST_SIZE_MASK) == INST_SIZE_DW) ? bpf_conformance_groups_t::atomic64 : bpf_conformance_groups_t::atomic32))
                  throw InvalidInstruction(pc, inst.opcode);
-            if (inst.imm != 0)
-                throw InvalidInstruction(pc, make_opcode_message("nonzero imm for", inst.opcode));
             return Atomic{
                 .op = getAtomicOp(pc, inst),
                 .fetch = (inst.imm & INST_FETCH) == INST_FETCH,
