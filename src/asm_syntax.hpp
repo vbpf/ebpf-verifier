@@ -15,11 +15,13 @@ namespace crab {
 struct label_t {
     int from; ///< Jump source, or simply index of instruction
     int to; ///< Jump target or -1
+    std::string stack_frame_prefix;
 
-    constexpr explicit label_t(int index, int to = -1) noexcept : from(index), to(to) {}
+    constexpr explicit label_t(int index, int to = -1, std::string stack_frame_prefix = {}) noexcept
+        : from(index), to(to), stack_frame_prefix(stack_frame_prefix) {}
 
     static constexpr label_t make_jump(const label_t& src_label, const label_t& target_label) {
-        return label_t{src_label.from, target_label.from};
+        return label_t{src_label.from, target_label.from, target_label.stack_frame_prefix};
     }
 
     constexpr bool operator==(const label_t&) const = default;
@@ -28,7 +30,7 @@ struct label_t {
         if (this == &other) return false;
         if (*this == label_t::exit) return false;
         if (other == label_t::exit) return true;
-        return from < other.from || (from == other.from && to < other.to);
+        return (stack_frame_prefix < other.stack_frame_prefix || (stack_frame_prefix == other.stack_frame_prefix && (from < other.from || (from == other.from && to < other.to))));
     }
 
     // no hash; intended for use in ordered containers.
@@ -40,6 +42,8 @@ struct label_t {
             return os << "entry";
         if (label == exit)
             return os << "exit";
+        if (!label.stack_frame_prefix.empty())
+            os << label.stack_frame_prefix << "/";
         if (label.to == -1)
             return os << label.from;
         return os << label.from << ":" << label.to;

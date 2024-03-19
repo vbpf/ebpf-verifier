@@ -35,11 +35,67 @@ static bool has_fall(Instruction ins) {
     return true;
 }
 
+/// Convert a macro to nodes in a control-flow graph.
+static void add_cfg_nodes(cfg_t& cfg, label_t caller_label, label_t entry_label, const InstructionSeq& insts) {
+    // TODO: clean up this function either by making a common helper or by removing constant fields
+    // like must_have_exit.
+    bool must_have_exit = true;
+    std::optional<label_t> falling_from = {};
+    bool first = true;
+
+    // Get the label of the node to go to on returning from the macro.
+    basic_block_t& exit_to_node = cfg.get_node(cfg.next_nodes(caller_label).front());
+    basic_block_t& caller_node = cfg.get_node(caller_label);
+
+    // Walk the transitive closure of cfg nodes starting at entry_label and ending at any exit.
+    std::list<label_t> macro_labels;
+    macro_labels.push_back(entry_label);
+    for (auto it = macro_labels.begin(); it != macro_labels.end(); it++) {
+        label_t macro_label = *it;
+
+        // Clone the macro_label into a new label with the caller_label as prefix.
+        const label_t label(macro_label.from, macro_label.to, to_string(caller_label));
+        auto& bb = cfg.insert(label);
+        for (const auto inst : cfg.get_node(macro_label))
+            bb.insert(inst);
+
+        if (first) {
+            // Add an edge from the caller to the new basic block.
+            first = false;
+            caller_node >> bb;
+        }
+
+        // Add an edge from any other predecessors.
+        const auto& prev_macro_nodes = cfg.prev_nodes(macro_label);
+        for (const auto& prev_macro_label : prev_macro_nodes) {
+            const label_t prev_label(prev_macro_label.from, prev_macro_label.to, to_string(caller_label));
+            const auto& labels = cfg.labels();
+            if (std::find(labels.begin(), labels.end(), prev_label) != labels.end())
+                cfg.get_node(prev_label) >> bb;
+        }
+
+        const auto& next_macro_nodes = cfg.next_nodes(macro_label);
+        for (const auto& next_macro_label : next_macro_nodes) {
+            if (next_macro_label == cfg.exit_label()) {
+                // Add edge to the block to execute upon returning from the macro.
+                bb >> exit_to_node;
+            }  else if (std::find(macro_labels.begin(), macro_labels.end(), next_macro_label) == macro_labels.end())
+                macro_labels.push_back(next_macro_label);
+        }
+    }
+
+    // Remove the original edge from the caller node to its successor,
+    // since processing now goes through the macro instead.
+    caller_node -= exit_to_node;
+}
+
 /// Convert an instruction sequence to a control-flow graph (CFG).
 static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, bool must_have_exit) {
     cfg_t cfg;
     std::optional<label_t> falling_from = {};
     bool first = true;
+
+    // Do a first pass ignoring all function macro calls.
     for (const auto& [label, inst, _] : insts) {
 
         if (std::holds_alternative<Undefined>(inst))
@@ -71,6 +127,13 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, bool must_have_
             throw std::invalid_argument{"fallthrough in last instruction"};
         else
             cfg.get_node(*falling_from) >> cfg.get_node(cfg.exit_label());
+    }
+
+    // Now replace macros. We have to do this as a second pass so that
+    // we only replace with nodes that are actually reachable.
+    for (const auto& [label, inst, _] : insts) {
+        if (std::holds_alternative<CallLocal>(inst))
+            add_cfg_nodes(cfg, label, std::get<CallLocal>(inst).target, insts);
     }
 
     return cfg;
