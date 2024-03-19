@@ -1,0 +1,77 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+---
+test-case: call local
+
+pre: []
+
+code:
+  <start>: |
+    call <sub>
+    exit
+  <sub>
+    r0 = 1
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=1
+  - r0.uvalue=1
+---
+test-case: nested call local
+
+pre: []
+
+code:
+  <start>: |
+    call <sub1>
+    exit
+  <sub1>
+    call <sub2>
+    exit
+  <sub2>
+    r0 = 1
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=1
+  - r0.uvalue=1
+---
+test-case: too many nested calls
+
+pre: []
+
+code:
+  <start>: |
+    call <sub1>
+    exit
+  <sub1>
+    call <sub2>
+    exit
+  <sub2>
+    call <sub3>
+    exit
+  <sub3>
+    call <sub4>
+    exit
+  <sub4>
+    call <sub5>
+    exit
+  <sub5>
+    call <sub6>
+    exit
+  <sub6>
+    call <sub7>
+    exit
+  <sub7>
+    call <sub8>
+    exit
+  <sub8>
+    r0 = 1
+    exit
+
+post: []
+
+messages:
+  - "too many call stack frames"
