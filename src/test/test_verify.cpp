@@ -79,7 +79,7 @@ FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
     TEST_SECTION(dirname, filename, sectionname) \
     TEST_CASE("Try unmarshalling bad program: " dirname "/" filename " " sectionname, "[unmarshal]") { \
         ebpf_platform_t platform = g_ebpf_platform_linux; \
-        platform.legacy = false; \
+        platform.supported_conformance_groups &= ~bpf_conformance_groups_t::packet; \
         auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &platform); \
         REQUIRE(raw_progs.size() == 1); \
         raw_program raw_prog = raw_progs.back(); \

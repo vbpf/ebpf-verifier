@@ -6,6 +6,7 @@
 // that supports eBPF can have an ebpf_platform_t struct that the verifier
 // can use to call platform-specific functions.
 
+#include "../external/bpf_conformance/include/bpf_conformance.h"
 #include "config.hpp"
 #include "spec_type_descriptors.hpp"
 #include "helpers.hpp"
@@ -42,10 +43,11 @@ struct ebpf_platform_t {
     ebpf_get_map_descriptor_fn get_map_descriptor;
     ebpf_get_map_type_fn get_map_type;
     ebpf_resolve_inner_map_references_fn resolve_inner_map_references;
+    bpf_conformance_groups_t supported_conformance_groups;
 
-    // Fields indicating support for various instruction types.
-    bool legacy;
-    bool callx;
+    bool supports_group(bpf_conformance_groups_t group) const {
+        return (supported_conformance_groups & group) == group;
+    }
 };
 
 extern const ebpf_platform_t g_ebpf_platform_linux;

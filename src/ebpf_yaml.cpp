@@ -63,8 +63,8 @@ ebpf_platform_t g_platform_test = {
     .parse_maps_section = ebpf_parse_maps_section,
     .get_map_descriptor = ebpf_get_map_descriptor,
     .get_map_type = ebpf_get_map_type,
-    .legacy = true,
-    .callx = true
+    .supported_conformance_groups =
+        bpf_conformance_groups_t::default_groups | bpf_conformance_groups_t::packet | bpf_conformance_groups_t::callx
 };
 
 static EbpfProgramType make_program_type(const string& name, ebpf_context_descriptor_t* context_descriptor) {
@@ -328,7 +328,7 @@ ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memo
     }
     raw_program raw_prog{.prog = insts};
     ebpf_platform_t platform = g_ebpf_platform_linux;
-    platform.callx = true;
+    platform.supported_conformance_groups |= bpf_conformance_groups_t::callx;
     raw_prog.info.platform = &platform;
 
     // Convert the raw program section to a set of instructions.
