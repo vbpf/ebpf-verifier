@@ -61,6 +61,7 @@ class ebpf_domain_t final {
     void operator()(const Assume&);
     void operator()(const Bin&);
     void operator()(const Call&);
+    void operator()(const CallLocal&);
     void operator()(const Callx&);
     void operator()(const Comparable&);
     void operator()(const Exit&);
@@ -75,6 +76,7 @@ class ebpf_domain_t final {
     void operator()(const Un&);
     void operator()(const Undefined&);
     void operator()(const ValidAccess&);
+    void operator()(const ValidCall&);
     void operator()(const ValidMapKeyValue&);
     void operator()(const ValidSize&);
     void operator()(const ValidStore&);

@@ -76,6 +76,10 @@ static std::string mk_scalar_name(data_kind_t kind, const number_t& o, const num
     return os.str();
 }
 
+variable_t variable_t::stack_frame_var(data_kind_t kind, int i, std::string prefix) {
+    return make(prefix + STACK_FRAME_DELIMITER + "r" + std::to_string(i) + "." + name_of(kind));
+}
+
 variable_t variable_t::cell_var(data_kind_t array, const number_t& offset, const number_t& size) {
     return make(mk_scalar_name(array, offset.cast_to_uint64(), size));
 }

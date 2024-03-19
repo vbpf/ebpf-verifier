@@ -175,13 +175,21 @@ struct MarshalVisitor {
 
     vector<ebpf_inst> operator()(Call const& b) {
         return {
-            ebpf_inst{.opcode = static_cast<uint8_t>(INST_OP_CALL | INST_SRC_IMM), .dst = 0, .src = 0, .offset = 0, .imm = b.func}};
+            ebpf_inst{.opcode = static_cast<uint8_t>(INST_OP_CALL), .dst = 0, .src = INST_CALL_STATIC_HELPER, .offset = 0, .imm = b.func}};
+    }
+
+    vector<ebpf_inst> operator()(CallLocal const& b) {
+        return {ebpf_inst{.opcode = static_cast<uint8_t>(INST_OP_CALL),
+                          .dst = 0,
+                          .src = INST_CALL_LOCAL,
+                          .offset = 0,
+                          .imm = label_to_offset32(b.target)}};
     }
 
     vector<ebpf_inst> operator()(Callx const& b) {
         // callx is defined to have the register in 'dst' not in 'src'.
         return {
-            ebpf_inst{.opcode = static_cast<uint8_t>(INST_OP_CALL | INST_SRC_REG), .dst = b.func.v, .src = 0, .offset = 0}};
+            ebpf_inst{.opcode = static_cast<uint8_t>(INST_OP_CALLX), .dst = b.func.v, .src = INST_CALL_STATIC_HELPER, .offset = 0}};
     }
 
     vector<ebpf_inst> operator()(Exit const& b) {

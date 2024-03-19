@@ -1,0 +1,229 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+---
+test-case: call local
+
+pre: []
+
+code:
+  <start>: |
+    call <sub>
+    r0 += 2
+    exit
+  <sub>: |
+    r0 = 1
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=3
+  - r0.uvalue=3
+---
+test-case: call local with simplify
+
+pre: []
+
+options: ["simplify"]
+
+code:
+  <start>: |
+    call <sub>
+    r0 += 2
+    exit
+  <sub>: |
+    r0 = 1
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=3
+  - r0.uvalue=3
+---
+test-case: call local with multiple calls
+
+pre: []
+
+code:
+  <start>: |
+    r0 = 1
+    call <sub>
+    call <sub>
+    r0 += 2
+    exit
+  <sub>: |
+    r0 += 3
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=9
+  - r0.uvalue=9
+---
+test-case: nested call local
+
+pre: []
+
+code:
+  <start>: |
+    call <sub1>
+    exit
+  <sub1>: |
+    call <sub2>
+    exit
+  <sub2>: |
+    call <sub3>
+    exit
+  <sub3>: |
+    call <sub4>
+    exit
+  <sub4>: |
+    call <sub5>
+    exit
+  <sub5>: |
+    call <sub6>
+    exit
+  <sub6>: |
+    call <sub7>
+    exit
+  <sub7>: |
+    r0 = 1
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=1
+  - r0.uvalue=1
+---
+test-case: too many nested calls
+
+pre: []
+
+code:
+  <start>: |
+    call <sub1>
+    exit
+  <sub1>: |
+    call <sub2>
+    exit
+  <sub2>: |
+    call <sub3>
+    exit
+  <sub3>: |
+    call <sub4>
+    exit
+  <sub4>: |
+    call <sub5>
+    exit
+  <sub5>: |
+    call <sub6>
+    exit
+  <sub6>: |
+    call <sub7>
+    exit
+  <sub7>: |
+    call <sub8>
+    exit
+  <sub8>: |
+    r0 = 1
+    exit
+
+post: []
+
+messages:
+  - "too many call stack frames"
+---
+test-case: infinite recursion
+
+pre: []
+
+code:
+  <start>: |
+    call <sub1>
+    exit
+  <sub1>: |
+    call <sub1>
+    exit
+
+post: []
+
+messages:
+  - "too many call stack frames"
+---
+test-case: jump within a subfunction
+
+pre: []
+
+code:
+  <start>: |
+    call <sub>
+    r0 += 2
+    exit
+  <sub>: |
+    goto <sub2>
+    exit
+  <sub2>: |
+    r0 = 1
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=3
+  - r0.uvalue=3
+---
+test-case: jump out of a subfunction
+
+pre: []
+
+code:
+  <start>: |
+    r0 = 1
+    call <sub>
+  <more>: |
+    r0 += 2
+    exit
+  <sub>: |
+    goto <more>
+
+post:
+  - r0.type=number
+  - r0.svalue=5
+  - r0.uvalue=5
+---
+test-case: call local must preserve R6-R9
+
+pre: []
+
+code:
+  <start>: |
+    r6 = 0
+    call <sub>
+    r0 = 0
+    exit
+  <sub>: |
+    r6 = 1
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=0
+  - r0.uvalue=0
+  - r6.type=number
+  - r6.svalue=0
+  - r6.uvalue=0
+---
+test-case: disallow tail call from within a subprogram
+
+pre: ["r0.type=number", "r1.type=ctx", "r1.ctx_offset=0", "r2.type=map_fd_programs", "r3.type=number"]
+
+code:
+  <start>: |
+    call <sub>
+    exit
+  <sub>: |
+    call 12; bpf_tail_call
+    exit
+
+post: ["r0.type=number"]
+
+messages:
+  - "0/2: tail call not supported in subprogram (valid call(tail_call))"
