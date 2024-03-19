@@ -9,7 +9,7 @@ code:
   <start>: |
     call <sub>
     exit
-  <sub>
+  <sub>: |
     r0 = 1
     exit
 
@@ -26,10 +26,10 @@ code:
   <start>: |
     call <sub1>
     exit
-  <sub1>
+  <sub1>: |
     call <sub2>
     exit
-  <sub2>
+  <sub2>: |
     r0 = 1
     exit
 
@@ -46,29 +46,46 @@ code:
   <start>: |
     call <sub1>
     exit
-  <sub1>
+  <sub1>: |
     call <sub2>
     exit
-  <sub2>
+  <sub2>: |
     call <sub3>
     exit
-  <sub3>
+  <sub3>: |
     call <sub4>
     exit
-  <sub4>
+  <sub4>: |
     call <sub5>
     exit
-  <sub5>
+  <sub5>: |
     call <sub6>
     exit
-  <sub6>
+  <sub6>: |
     call <sub7>
     exit
-  <sub7>
+  <sub7>: |
     call <sub8>
     exit
-  <sub8>
+  <sub8>: |
     r0 = 1
+    exit
+
+post: []
+
+messages:
+  - "too many call stack frames"
+---
+test-case: infinite recursion
+
+pre: []
+
+code:
+  <start>: |
+    call <sub1>
+    exit
+  <sub1>: |
+    call <sub1>
     exit
 
 post: []
@@ -85,11 +102,11 @@ code:
     r6 = 0
     call <sub>
     exit
-  <sub>
+  <sub>: |
     r6 = 1
     exit
 
-post []
+post: []
 
 messages:
   - "r6 is not preserved"

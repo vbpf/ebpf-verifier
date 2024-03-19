@@ -158,7 +158,7 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         return make_call(func, g_ebpf_platform_linux);
     }
     if (regex_match(text, m, regex("call " WRAPPED_LABEL))) {
-        return CallLocal{.target = label_name_to_label.at(m[5])};
+        return CallLocal{.target = label_name_to_label.at(m[1])};
     }
     if (regex_match(text, m, regex("callx " REG))) {
         return Callx{reg(m[1])};
