@@ -266,6 +266,8 @@ struct InstructionPrinterVisitor {
         os_ << ")";
     }
 
+    void operator()(CallLocal const& call) { os_ << "call <" << to_string(call.target) << ">"; }
+
     void operator()(Callx const& callx) { os_ << "callx " << callx.func; }
 
     void operator()(Exit const& b) { os_ << "exit"; }

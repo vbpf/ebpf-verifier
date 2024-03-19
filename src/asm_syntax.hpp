@@ -201,10 +201,17 @@ struct Call {
     std::vector<ArgPair> pairs;
 };
 
+// Call a "function" (macro) within the eBPF program.
+struct CallLocal {
+    label_t target;
+    constexpr bool operator==(const CallLocal&) const = default;
+};
+
 struct Exit {
     constexpr bool operator==(const Exit&) const = default;
 };
 
+// Experimental callx instruction.
 struct Callx {
     Reg func;
     constexpr bool operator==(const Callx&) const = default;
@@ -378,7 +385,7 @@ struct IncrementLoopCounter {
     constexpr bool operator==(const IncrementLoopCounter&) const = default;
 };
 
-using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Callx, Exit, Jmp, Mem, Packet, Atomic, Assume, Assert, IncrementLoopCounter>;
+using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, CallLocal, Callx, Exit, Jmp, Mem, Packet, Atomic, Assume, Assert, IncrementLoopCounter>;
 
 using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
 using InstructionSeq = std::vector<LabeledInstruction>;

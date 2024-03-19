@@ -75,3 +75,21 @@ post: []
 
 messages:
   - "too many call stack frames"
+---
+test-case: call local must preserve R6-R9
+
+pre: []
+
+code:
+  <start>: |
+    r6 = 0
+    call <sub>
+    exit
+  <sub>
+    r6 = 1
+    exit
+
+post []
+
+messages:
+  - "r6 is not preserved"

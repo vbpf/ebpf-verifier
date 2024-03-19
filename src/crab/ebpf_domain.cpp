@@ -2316,6 +2316,9 @@ out:
     }
 }
 
+void ebpf_domain_t::operator()(const CallLocal& call) {
+}
+
 void ebpf_domain_t::operator()(const Callx& callx) {
     using namespace crab::dsl_syntax;
     if (m_inv.is_bottom())

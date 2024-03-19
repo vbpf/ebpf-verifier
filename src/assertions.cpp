@@ -105,6 +105,12 @@ class AssertExtractor {
         return res;
     }
 
+    vector<Assert> operator()(CallLocal const& call) const {
+        vector<Assert> res;
+        // TODO add a constraint on the number of stack frames
+        return res;
+    }
+
     vector<Assert> operator()(Callx const& callx) const {
         vector<Assert> res;
         res.emplace_back(TypeConstraint{callx.func, TypeGroup::number});
