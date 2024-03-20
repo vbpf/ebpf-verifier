@@ -114,6 +114,46 @@ post: []
 messages:
   - "too many call stack frames"
 ---
+test-case: jump within a subfunction
+
+pre: []
+
+code:
+  <start>: |
+    call <sub>
+    r0 += 2
+    exit
+  <sub>: |
+    goto <sub2>
+    exit
+  <sub2>: |
+    r0 = 1
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=3
+  - r0.uvalue=3
+---
+test-case: jump out of a subfunction
+
+pre: []
+
+code:
+  <start>: |
+    r0 = 1
+    call <sub>
+  <more>: |
+    r0 += 2
+    exit
+  <sub>: |
+    goto <more>
+
+post:
+  - r0.type=number
+  - r0.svalue=5
+  - r0.uvalue=5
+---
 test-case: call local must preserve R6-R9
 
 pre: []
