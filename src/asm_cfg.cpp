@@ -91,11 +91,17 @@ static void add_cfg_nodes(cfg_t& cfg, label_t caller_label, label_t entry_label,
     caller_node -= exit_to_node;
 
     // Now replace any nested macros.
+    string caller_label_str = to_string(caller_label);
+    int stack_frame_depth = std::count(caller_label_str.begin(), caller_label_str.end(), '/') + 2;
+    const int MAX_CALL_STACK_FRAMES = 8;
     for (auto& macro_label : macro_labels) {
-        const label_t label(macro_label.from, macro_label.to, to_string(caller_label));
+        const label_t label(macro_label.from, macro_label.to, caller_label_str);
         for (const auto inst : cfg.get_node(label)) {
-            if (std::holds_alternative<CallLocal>(inst))
+            if (std::holds_alternative<CallLocal>(inst)) {
+                if (stack_frame_depth >= MAX_CALL_STACK_FRAMES)
+                    throw std::runtime_error{"too many call stack frames"};
                 add_cfg_nodes(cfg, label, std::get<CallLocal>(inst).target, insts);
+            }
         }
     }
 }

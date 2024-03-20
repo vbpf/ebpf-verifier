@@ -105,11 +105,7 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assert> operator()(CallLocal const& call) const {
-        vector<Assert> res;
-        // TODO add a constraint on the number of stack frames
-        return res;
-    }
+    vector<Assert> operator()(CallLocal const& call) const { return {}; }
 
     vector<Assert> operator()(Callx const& callx) const {
         vector<Assert> res;
