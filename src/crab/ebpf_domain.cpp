@@ -1515,7 +1515,18 @@ void ebpf_domain_t::operator()(const Un& stmt) {
     }
 }
 
-void ebpf_domain_t::operator()(const Exit& a) {}
+void ebpf_domain_t::operator()(const Exit& a) {
+    // Clean up any state for the current stack frame.
+    std::string prefix = global_current_label->stack_frame_prefix;
+    if (prefix.empty())
+        return;
+    for (int r = R6; r <= R9; r++) {
+        for (data_kind_t kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes;
+             kind = (data_kind_t)((int)kind + 1)) {
+            havoc(variable_t::stack_frame_var(kind, r, prefix));
+        }
+    }
+}
 
 void ebpf_domain_t::operator()(const Jmp& a) {}
 
