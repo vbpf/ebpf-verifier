@@ -8,6 +8,7 @@ pre: []
 code:
   <start>: |
     call <sub>
+    r0 += 2
     exit
   <sub>: |
     r0 = 1
@@ -15,8 +16,28 @@ code:
 
 post:
   - r0.type=number
-  - r0.svalue=1
-  - r0.uvalue=1
+  - r0.svalue=3
+  - r0.uvalue=3
+---
+test-case: call local with multiple calls
+
+pre: []
+
+code:
+  <start>: |
+    r0 = 1
+    call <sub>
+    call <sub>
+    r0 += 2
+    exit
+  <sub>: |
+    r0 += 3
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=9
+  - r0.uvalue=9
 ---
 test-case: nested call local
 

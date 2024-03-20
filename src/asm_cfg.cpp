@@ -35,7 +35,7 @@ static bool has_fall(Instruction ins) {
     return true;
 }
 
-/// Convert a macro to nodes in a control-flow graph.
+/// Update a control-flow graph to inline function macros.
 static void add_cfg_nodes(cfg_t& cfg, label_t caller_label, label_t entry_label, const InstructionSeq& insts) {
     // TODO: clean up this function either by making a common helper or by removing constant fields
     // like must_have_exit.
@@ -79,14 +79,25 @@ static void add_cfg_nodes(cfg_t& cfg, label_t caller_label, label_t entry_label,
             if (next_macro_label == cfg.exit_label()) {
                 // Add edge to the block to execute upon returning from the macro.
                 bb >> exit_to_node;
-            }  else if (std::find(macro_labels.begin(), macro_labels.end(), next_macro_label) == macro_labels.end())
+            } else if (std::find(macro_labels.begin(), macro_labels.end(), next_macro_label) == macro_labels.end()) {
+                // Push any successor labels onto the list to be processed.
                 macro_labels.push_back(next_macro_label);
+            }
         }
     }
 
     // Remove the original edge from the caller node to its successor,
     // since processing now goes through the macro instead.
     caller_node -= exit_to_node;
+
+    // Now replace any nested macros.
+    for (auto& macro_label : macro_labels) {
+        const label_t label(macro_label.from, macro_label.to, to_string(caller_label));
+        for (const auto inst : cfg.get_node(label)) {
+            if (std::holds_alternative<CallLocal>(inst))
+                add_cfg_nodes(cfg, label, std::get<CallLocal>(inst).target, insts);
+        }
+    }
 }
 
 /// Convert an instruction sequence to a control-flow graph (CFG).
