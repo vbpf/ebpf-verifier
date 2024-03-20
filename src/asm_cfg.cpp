@@ -92,7 +92,7 @@ static void add_cfg_nodes(cfg_t& cfg, label_t caller_label, label_t entry_label,
 
     // Now replace any nested macros.
     string caller_label_str = to_string(caller_label);
-    int stack_frame_depth = std::count(caller_label_str.begin(), caller_label_str.end(), '/') + 2;
+    int stack_frame_depth = std::count(caller_label_str.begin(), caller_label_str.end(), STACK_FRAME_DELIMITER) + 2;
     const int MAX_CALL_STACK_FRAMES = 8;
     for (auto& macro_label : macro_labels) {
         const label_t label(macro_label.from, macro_label.to, caller_label_str);

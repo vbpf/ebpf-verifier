@@ -11,6 +11,8 @@
 #include "crab/variable.hpp"
 #include "spec_type_descriptors.hpp"
 
+constexpr char STACK_FRAME_DELIMITER = '/';
+
 namespace crab {
 struct label_t {
     int from; ///< Jump source, or simply index of instruction
@@ -43,7 +45,7 @@ struct label_t {
         if (label == exit)
             return os << "exit";
         if (!label.stack_frame_prefix.empty())
-            os << label.stack_frame_prefix << "/";
+            os << label.stack_frame_prefix << STACK_FRAME_DELIMITER;
         if (label.to == -1)
             return os << label.from;
         return os << label.from << ":" << label.to;
