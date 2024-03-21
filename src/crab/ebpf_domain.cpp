@@ -1524,7 +1524,10 @@ void ebpf_domain_t::operator()(const Exit& a) {
     for (int r = R6; r <= R9; r++) {
         for (data_kind_t kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes;
              kind = (data_kind_t)((int)kind + 1)) {
-            havoc(variable_t::stack_frame_var(kind, r, prefix));
+            variable_t src_var = variable_t::stack_frame_var(kind, r, prefix);
+            if (!m_inv[src_var].is_top())
+                assign(variable_t::reg(kind, r), src_var);
+            havoc(src_var);
         }
     }
 }
@@ -1576,19 +1579,6 @@ void ebpf_domain_t::operator()(const ValidStore& s) {
 void ebpf_domain_t::operator()(const TypeConstraint& s) {
     if (!type_inv.is_in_group(m_inv, s.reg, s.types))
         require(m_inv, linear_constraint_t::FALSE(), "Invalid type");
-}
-
-void ebpf_domain_t::operator()(const PreservedConstraint& s) {
-    std::string prefix = global_current_label->stack_frame_prefix;
-    if (prefix.empty())
-        return;
-    int r = s.reg.v;
-    for (data_kind_t kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes;
-         kind = (data_kind_t)((int)kind + 1)) {
-        variable_t src_var = variable_t::reg(kind, r);
-        if (!m_inv[src_var].is_top())
-            require(m_inv, eq(variable_t::stack_frame_var(kind, r, prefix), src_var), "register preservation check failed");
-    }
 }
 
 void ebpf_domain_t::operator()(const FuncConstraint& s) {

@@ -193,9 +193,6 @@ std::ostream& operator<<(std::ostream& os, FuncConstraint const& fc) {
     return os << typereg(fc.reg) << " is helper";
 }
 
-std::ostream& operator<<(std::ostream& os, PreservedConstraint const& fc) {
-    return os << fc.reg << " is preserved"; }
-
 std::ostream& operator<<(std::ostream& os, AssertionConstraint const& a) {
     return std::visit([&](const auto& a) -> std::ostream& { return os << a; }, a);
 }

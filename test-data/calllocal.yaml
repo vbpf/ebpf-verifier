@@ -173,8 +173,5 @@ post:
   - r0.svalue=0
   - r0.uvalue=0
   - r6.type=number
-  - r6.svalue=1
-  - r6.uvalue=1
-
-messages:
-  - "1/5: register preservation check failed (r6 is preserved)"
+  - r6.svalue=0
+  - r6.uvalue=0

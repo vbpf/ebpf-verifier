@@ -53,10 +53,6 @@ class AssertExtractor {
         if (global_current_label->stack_frame_prefix.empty()) {
             // Verify that Exit returns a number.
             res.emplace_back(TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::number});
-        } else {
-            // Verify that R6-R9 are preserved.
-            for (uint8_t r = R6; r <= R9; r++)
-                res.emplace_back(PreservedConstraint{Reg(r)});
         }
 
         return res;
