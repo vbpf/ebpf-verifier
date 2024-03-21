@@ -371,6 +371,11 @@ struct FuncConstraint {
     constexpr bool operator==(const FuncConstraint&) const = default;
 };
 
+struct PreservedConstraint {
+    Reg reg;
+    constexpr bool operator==(const PreservedConstraint&) const = default;
+};
+
 /// Condition check whether something is a valid size.
 struct ZeroCtxOffset {
     Reg reg;
@@ -378,7 +383,7 @@ struct ZeroCtxOffset {
 };
 
 using AssertionConstraint =
-    std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint, FuncConstraint, ZeroCtxOffset>;
+    std::variant<Comparable, Addable, ValidDivisor, PreservedConstraint, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint, FuncConstraint, ZeroCtxOffset>;
 
 struct Assert {
     AssertionConstraint cst;

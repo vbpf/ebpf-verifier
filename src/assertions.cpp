@@ -13,6 +13,8 @@ using std::string;
 using std::to_string;
 using std::vector;
 
+extern thread_local std::optional<label_t> global_current_label;
+
 class AssertExtractor {
     program_info info;
 
@@ -45,8 +47,20 @@ class AssertExtractor {
     /// Packet access implicitly uses R6, so verify that R6 still has a pointer to the context.
     vector<Assert> operator()(Packet const& ins) const { return zero_offset_ctx({6}); }
 
-    /// Verify that Exit returns a number.
-    vector<Assert> operator()(Exit const& e) const { return {Assert{TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::number}}}; }
+    vector<Assert> operator()(Exit const& e) const {
+        vector<Assert> res;
+
+        if (global_current_label->stack_frame_prefix.empty()) {
+            // Verify that Exit returns a number.
+            res.emplace_back(TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::number});
+        } else {
+            // Verify that R6-R9 are preserved.
+            for (uint8_t r = R6; r <= R9; r++)
+                res.emplace_back(PreservedConstraint{Reg(r)});
+        }
+
+        return res;
+    }
 
     vector<Assert> operator()(Call const& call) const {
         vector<Assert> res;
@@ -262,11 +276,13 @@ void explicate_assertions(cfg_t& cfg, const program_info& info) {
     for (auto& [label, bb] : cfg) {
         (void)label; // unused
         vector<Instruction> insts;
+        global_current_label = bb.label();
         for (const auto& ins : vector<Instruction>(bb.begin(), bb.end())) {
             for (auto a : get_assertions(ins, info))
                 insts.emplace_back(a);
             insts.push_back(ins);
         }
+        global_current_label.reset();
         bb.swap_instructions(insts);
     }
 }

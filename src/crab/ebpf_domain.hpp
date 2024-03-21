@@ -72,6 +72,7 @@ class ebpf_domain_t final {
     void operator()(const Mem&);
     void operator()(const ValidDivisor&);
     void operator()(const Packet&);
+    void operator()(const PreservedConstraint&);
     void operator()(const TypeConstraint&);
     void operator()(const Un&);
     void operator()(const Undefined&);
