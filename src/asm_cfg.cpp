@@ -37,14 +37,14 @@ static bool has_fall(Instruction ins) {
 
 /// Update a control-flow graph to inline function macros.
 static void add_cfg_nodes(cfg_t& cfg, label_t caller_label, label_t entry_label) {
-    // TODO: clean up this function either by making a common helper or by removing constant fields
-    // like must_have_exit.
-    bool must_have_exit = true;
-    std::optional<label_t> falling_from = {};
     bool first = true;
 
     // Get the label of the node to go to on returning from the macro.
     basic_block_t& exit_to_node = cfg.get_node(cfg.next_nodes(caller_label).front());
+
+    // Construct the variable prefix to use for the new stack frame,
+    // and store a copy in the CallLocal instruction since the instruction-specific
+    // labels may only exist until the CFG is simplified.
     basic_block_t& caller_node = cfg.get_node(caller_label);
     std::string stack_frame_prefix = to_string(caller_label);
     for (auto& inst : caller_node) {
@@ -53,13 +53,14 @@ static void add_cfg_nodes(cfg_t& cfg, label_t caller_label, label_t entry_label)
         }
     }
 
-    // Walk the transitive closure of cfg nodes starting at entry_label and ending at any exit.
+    // Walk the transitive closure of CFG nodes starting at entry_label and ending at
+    // any exit instruction,
     std::list<label_t> macro_labels;
     macro_labels.push_back(entry_label);
     for (auto it = macro_labels.begin(); it != macro_labels.end(); it++) {
         label_t macro_label = *it;
 
-        // Clone the macro_label into a new label with the stack frame prefix.
+        // Clone the macro block into a new block with the new stack frame prefix.
         const label_t label(macro_label.from, macro_label.to, stack_frame_prefix);
         auto& bb = cfg.insert(label);
         for (auto inst : cfg.get_node(macro_label)) {
@@ -70,7 +71,7 @@ static void add_cfg_nodes(cfg_t& cfg, label_t caller_label, label_t entry_label)
         }
 
         if (first) {
-            // Add an edge from the caller to the new basic block.
+            // Add an edge from the caller to the new block.
             first = false;
             caller_node >> bb;
         }
@@ -84,23 +85,25 @@ static void add_cfg_nodes(cfg_t& cfg, label_t caller_label, label_t entry_label)
                 cfg.get_node(prev_label) >> bb;
         }
 
+        // Walk all successor nodes.
         const auto& next_macro_nodes = cfg.next_nodes(macro_label);
         for (const auto& next_macro_label : next_macro_nodes) {
             if (next_macro_label == cfg.exit_label()) {
-                // Add edge to the block to execute upon returning from the macro.
+                // This is an exit transition, so add edge to the block to execute
+                // upon returning from the macro.
                 bb >> exit_to_node;
             } else if (std::find(macro_labels.begin(), macro_labels.end(), next_macro_label) == macro_labels.end()) {
-                // Push any successor labels onto the list to be processed.
+                // Push any other unprocessed successor label onto the list to be processed.
                 macro_labels.push_back(next_macro_label);
             }
         }
     }
 
     // Remove the original edge from the caller node to its successor,
-    // since processing now goes through the macro instead.
+    // since processing now goes through the function macro instead.
     caller_node -= exit_to_node;
 
-    // Now replace any nested macros.
+    // Finally, recurse to replace any nested function macros.
     string caller_label_str = to_string(caller_label);
     int stack_frame_depth = std::count(caller_label_str.begin(), caller_label_str.end(), STACK_FRAME_DELIMITER) + 2;
     const int MAX_CALL_STACK_FRAMES = 8;
@@ -157,7 +160,8 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, bool must_have_
     }
 
     // Now replace macros. We have to do this as a second pass so that
-    // we only replace with nodes that are actually reachable.
+    // we only add new nodes that are actually reachable, based on the
+    // results of the first pass.
     for (auto& [label, inst, _] : insts) {
         if (std::holds_alternative<CallLocal>(inst)) {
             add_cfg_nodes(cfg, label, std::get<CallLocal>(inst).target);

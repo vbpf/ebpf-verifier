@@ -349,7 +349,7 @@ class cfg_t final {
                 // delete next_bb entirely
                 remove(next_bb.label());
             }
-        };
+        }
     }
 
     [[nodiscard]] std::vector<label_t> sorted_labels() const {
@@ -528,4 +528,4 @@ void print_dot(const cfg_t& cfg, const std::string& outfile);
 
 std::ostream& operator<<(std::ostream& o, const crab::basic_block_t& bb);
 std::ostream& operator<<(std::ostream& o, const crab::basic_block_rev_t& bb);
-std::ostream& operator<<(std::ostream& o, const crab::cfg_t& cfg);
+std::ostream& operator<<(std::ostream& o, const cfg_t& cfg);

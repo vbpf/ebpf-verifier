@@ -438,6 +438,7 @@ struct Unmarshaller {
         return res;
     }
 
+    /// Given a program counter and an offset, get the label of the target instruction.
     label_t getJumpTarget(int32_t offset, const vector<ebpf_inst>& insts, pc_t pc) const {
         pc_t new_pc = pc + 1 + offset;
         if (new_pc >= insts.size())

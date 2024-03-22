@@ -15,7 +15,7 @@ using std::vector;
 
 class AssertExtractor {
     program_info info;
-    std::optional<label_t> current_label;
+    std::optional<label_t> current_label; ///< Pre-simplification label this assert is part of.
 
     static Reg reg(Value v) {
         return std::get<Reg>(v);
@@ -48,12 +48,10 @@ class AssertExtractor {
 
     vector<Assert> operator()(Exit const& e) const {
         vector<Assert> res;
-
         if (current_label->stack_frame_prefix.empty()) {
             // Verify that Exit returns a number.
             res.emplace_back(TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::number});
         }
-
         return res;
     }
 
