@@ -36,7 +36,7 @@ static bool has_fall(Instruction ins) {
 }
 
 /// Update a control-flow graph to inline function macros.
-static void add_cfg_nodes(cfg_t& cfg, label_t caller_label, label_t entry_label, const InstructionSeq& insts) {
+static void add_cfg_nodes(cfg_t& cfg, label_t caller_label, label_t entry_label) {
     // TODO: clean up this function either by making a common helper or by removing constant fields
     // like must_have_exit.
     bool must_have_exit = true;
@@ -46,6 +46,12 @@ static void add_cfg_nodes(cfg_t& cfg, label_t caller_label, label_t entry_label,
     // Get the label of the node to go to on returning from the macro.
     basic_block_t& exit_to_node = cfg.get_node(cfg.next_nodes(caller_label).front());
     basic_block_t& caller_node = cfg.get_node(caller_label);
+    std::string stack_frame_prefix = to_string(caller_label);
+    for (auto& inst : caller_node) {
+        if (std::holds_alternative<CallLocal>(inst)) {
+            std::get<CallLocal>(inst).stack_frame_prefix = stack_frame_prefix;
+        }
+    }
 
     // Walk the transitive closure of cfg nodes starting at entry_label and ending at any exit.
     std::list<label_t> macro_labels;
@@ -53,11 +59,15 @@ static void add_cfg_nodes(cfg_t& cfg, label_t caller_label, label_t entry_label,
     for (auto it = macro_labels.begin(); it != macro_labels.end(); it++) {
         label_t macro_label = *it;
 
-        // Clone the macro_label into a new label with the caller_label as prefix.
-        const label_t label(macro_label.from, macro_label.to, to_string(caller_label));
+        // Clone the macro_label into a new label with the stack frame prefix.
+        const label_t label(macro_label.from, macro_label.to, stack_frame_prefix);
         auto& bb = cfg.insert(label);
-        for (const auto inst : cfg.get_node(macro_label))
+        for (auto inst : cfg.get_node(macro_label)) {
+            if (std::holds_alternative<Exit>(inst)) {
+                std::get<Exit>(inst).stack_frame_prefix = label.stack_frame_prefix;
+            }
             bb.insert(inst);
+        }
 
         if (first) {
             // Add an edge from the caller to the new basic block.
@@ -100,7 +110,7 @@ static void add_cfg_nodes(cfg_t& cfg, label_t caller_label, label_t entry_label,
             if (std::holds_alternative<CallLocal>(inst)) {
                 if (stack_frame_depth >= MAX_CALL_STACK_FRAMES)
                     throw std::runtime_error{"too many call stack frames"};
-                add_cfg_nodes(cfg, label, std::get<CallLocal>(inst).target, insts);
+                add_cfg_nodes(cfg, label, std::get<CallLocal>(inst).target);
             }
         }
     }
@@ -148,9 +158,10 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, bool must_have_
 
     // Now replace macros. We have to do this as a second pass so that
     // we only replace with nodes that are actually reachable.
-    for (const auto& [label, inst, _] : insts) {
-        if (std::holds_alternative<CallLocal>(inst))
-            add_cfg_nodes(cfg, label, std::get<CallLocal>(inst).target, insts);
+    for (auto& [label, inst, _] : insts) {
+        if (std::holds_alternative<CallLocal>(inst)) {
+            add_cfg_nodes(cfg, label, std::get<CallLocal>(inst).target);
+        }
     }
 
     return cfg;
@@ -340,8 +351,45 @@ cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool sim
     // so the fewer basic blocks we have, the less information it has to
     // keep track of.
     if (simplify) {
+        std::cout << "CFG1: " << cfg << "\n";
         cfg.simplify();
+        std::cout << "CFG2: " << cfg << "\n";
     }
 
     return cfg;
+}
+
+// TODO: remove this.
+#include "asm_ostream.hpp"
+void crab::cfg_t::dump_cfg(std::string str) {
+    std::cout << str << ": ";
+    for (const label_t& label : sorted_labels()) {
+        basic_block_t& bb = get_node(label);
+        std::cout << bb.label() << ":\n";
+        #if 0
+        for (auto const& s : bb) {
+            std::cout << "  " << s << ";\n";
+        }
+        #endif
+        auto [it, et] = bb.next_blocks();
+        if (it != et) {
+            std::cout << "  "
+              << "goto ";
+            for (; it != et;) {
+                std::cout << *it;
+                ++it;
+                if (it == et) {
+                    std::cout << ";";
+                } else {
+                    std::cout << ",";
+                }
+            }
+        }
+        std::cout << "\n";
+        std::cout << "edges to:";
+        for (const label_t& edge : next_nodes(label))
+            std::cout << " " << edge;
+        std::cout << "\n";
+    }
+    std::cout << "\n";
 }

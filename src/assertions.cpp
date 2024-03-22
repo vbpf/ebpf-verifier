@@ -13,7 +13,13 @@ using std::string;
 using std::to_string;
 using std::vector;
 
+#if 1
+// TODO: move this to another argument of the visitor, or remove it if not used.
+thread_local std::optional<label_t> global_current_label;
+#endif
+#if 0
 extern thread_local std::optional<label_t> global_current_label;
+#endif
 
 class AssertExtractor {
     program_info info;
@@ -272,13 +278,17 @@ void explicate_assertions(cfg_t& cfg, const program_info& info) {
     for (auto& [label, bb] : cfg) {
         (void)label; // unused
         vector<Instruction> insts;
+        #if 1
         global_current_label = bb.label();
+        #endif
         for (const auto& ins : vector<Instruction>(bb.begin(), bb.end())) {
             for (auto a : get_assertions(ins, info))
                 insts.emplace_back(a);
             insts.push_back(ins);
         }
+        #if 1
         global_current_label.reset();
+        #endif
         bb.swap_instructions(insts);
     }
 }

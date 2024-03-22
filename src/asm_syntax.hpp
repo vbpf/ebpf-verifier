@@ -17,7 +17,7 @@ namespace crab {
 struct label_t {
     int from; ///< Jump source, or simply index of instruction
     int to; ///< Jump target or -1
-    std::string stack_frame_prefix;
+    std::string stack_frame_prefix; ///< Variable prefix when entering this label.
 
     constexpr explicit label_t(int index, int to = -1, std::string stack_frame_prefix = {}) noexcept
         : from(index), to(to), stack_frame_prefix(stack_frame_prefix) {}
@@ -210,10 +210,12 @@ struct Call {
 // Call a "function" (macro) within the eBPF program.
 struct CallLocal {
     label_t target;
+    std::string stack_frame_prefix; ///< Variable prefix to be used within the call.
     constexpr bool operator==(const CallLocal&) const = default;
 };
 
 struct Exit {
+    std::string stack_frame_prefix; ///< Variable prefix to clean up when exiting.
     constexpr bool operator==(const Exit&) const = default;
 };
 

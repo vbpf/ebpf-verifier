@@ -21,9 +21,6 @@
 #include "platform.hpp"
 #include "string_constraints.hpp"
 
-// TODO: move this to another argument of the visitor.
-thread_local std::optional<label_t> global_current_label;
-
 using crab::domains::NumAbsDomain;
 namespace crab {
 struct reg_pack_t {
@@ -1376,11 +1373,9 @@ void ebpf_domain_t::overflow_unsigned(NumAbsDomain& inv, variable_t lhs, int fin
 }
 
 void ebpf_domain_t::operator()(const basic_block_t& bb) {
-    global_current_label = bb.label();
     for (const Instruction& statement : bb) {
         std::visit(*this, statement);
     }
-    global_current_label.reset();
 }
 
 void ebpf_domain_t::check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb,
@@ -1518,7 +1513,7 @@ void ebpf_domain_t::operator()(const Un& stmt) {
 
 void ebpf_domain_t::operator()(const Exit& a) {
     // Clean up any state for the current stack frame.
-    std::string prefix = global_current_label->stack_frame_prefix;
+    std::string prefix = a.stack_frame_prefix;
     if (prefix.empty())
         return;
     for (int r = R6; r <= R9; r++) {
@@ -2340,18 +2335,13 @@ void ebpf_domain_t::operator()(const CallLocal& call) {
     if (m_inv.is_bottom())
         return;
 
-    // Get variable prefix for the new stack frame.
-    std::string prefix = std::to_string(global_current_label->from);
-    if (!global_current_label->stack_frame_prefix.empty())
-        prefix = global_current_label->stack_frame_prefix + STACK_FRAME_DELIMITER + prefix;
-
     // Create variables specific to the new call stack frame that store
     // copies of the states of r6 through r9.
     for (int r = R6; r <= R9; r++) {
         for (data_kind_t kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes; kind = (data_kind_t)((int)kind + 1)) {
             variable_t src_var = variable_t::reg(kind, r);
             if (!m_inv[src_var].is_top())
-                assign(variable_t::stack_frame_var(kind, r, prefix), src_var);
+                assign(variable_t::stack_frame_var(kind, r, call.stack_frame_prefix), src_var);
         }
     }
 }

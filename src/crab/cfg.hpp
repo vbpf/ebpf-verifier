@@ -315,14 +315,21 @@ class cfg_t final {
 
     [[nodiscard]] size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
 
+    void dump_cfg(std::string str);
+
     void simplify() {
         std::set<label_t> worklist(this->label_begin(), this->label_end());
         while (!worklist.empty()) {
             label_t label = *worklist.begin();
             worklist.erase(label);
+            #if 0
+            dump_cfg("SIM");
+            std::cout << "Processing label " << label << "...\n";
+            #endif
 
             basic_block_t& bb = get_node(label);
             if (bb.in_degree() == 1 && get_parent(label).out_degree() == 1) {
+                std::cout << "No change for " << label << "\n ";
                 continue;
             }
             while (bb.out_degree() == 1) {
@@ -347,7 +354,7 @@ class cfg_t final {
                 // delete next_bb entirely
                 remove(next_bb.label());
             }
-        }
+        };
     }
 
     [[nodiscard]] std::vector<label_t> sorted_labels() const {
@@ -526,4 +533,4 @@ void print_dot(const cfg_t& cfg, const std::string& outfile);
 
 std::ostream& operator<<(std::ostream& o, const crab::basic_block_t& bb);
 std::ostream& operator<<(std::ostream& o, const crab::basic_block_rev_t& bb);
-std::ostream& operator<<(std::ostream& o, const cfg_t& cfg);
+std::ostream& operator<<(std::ostream& o, const crab::cfg_t& cfg);
