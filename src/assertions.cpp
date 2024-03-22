@@ -13,13 +13,9 @@ using std::string;
 using std::to_string;
 using std::vector;
 
-#if 1
-// TODO: move this to another argument of the visitor, or remove it if not used.
-thread_local std::optional<label_t> global_current_label;
-#endif
-
 class AssertExtractor {
     program_info info;
+    std::optional<label_t> current_label;
 
     static Reg reg(Value v) {
         return std::get<Reg>(v);
@@ -37,7 +33,7 @@ class AssertExtractor {
     }
 
   public:
-    explicit AssertExtractor(program_info info) : info{std::move(info)} {}
+    explicit AssertExtractor(program_info info, std::optional<label_t> label) : info{std::move(info)}, current_label(label) {}
 
     vector<Assert> operator()(Undefined const& ins) const { assert(false); return {}; }
 
@@ -53,7 +49,7 @@ class AssertExtractor {
     vector<Assert> operator()(Exit const& e) const {
         vector<Assert> res;
 
-        if (global_current_label->stack_frame_prefix.empty()) {
+        if (current_label->stack_frame_prefix.empty()) {
             // Verify that Exit returns a number.
             res.emplace_back(TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::number});
         }
@@ -262,8 +258,8 @@ class AssertExtractor {
     }
 };
 
-vector<Assert> get_assertions(Instruction ins, const program_info& info) {
-    return std::visit(AssertExtractor{info}, ins);
+vector<Assert> get_assertions(Instruction ins, const program_info& info, std::optional<label_t> label) {
+    return std::visit(AssertExtractor{info, label}, ins);
 }
 
 /// Annotate the CFG by adding explicit assertions for all the preconditions
@@ -275,17 +271,11 @@ void explicate_assertions(cfg_t& cfg, const program_info& info) {
     for (auto& [label, bb] : cfg) {
         (void)label; // unused
         vector<Instruction> insts;
-        #if 1
-        global_current_label = bb.label();
-        #endif
         for (const auto& ins : vector<Instruction>(bb.begin(), bb.end())) {
-            for (auto a : get_assertions(ins, info))
+            for (auto a : get_assertions(ins, info, bb.label()))
                 insts.emplace_back(a);
             insts.push_back(ins);
         }
-        #if 1
-        global_current_label.reset();
-        #endif
         bb.swap_instructions(insts);
     }
 }

@@ -1589,7 +1589,7 @@ void ebpf_domain_t::operator()(const FuncConstraint& s) {
                 return;
             }
             Call call = make_call(imm, *global_program_info->platform);
-            for (Assert a : get_assertions(call, *global_program_info)) {
+            for (Assert a : get_assertions(call, *global_program_info, {})) {
                 (*this)(a);
             }
             return;
