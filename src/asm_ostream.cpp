@@ -266,6 +266,8 @@ struct InstructionPrinterVisitor {
         os_ << ")";
     }
 
+    void operator()(CallLocal const& call) { os_ << "call <" << to_string(call.target) << ">"; }
+
     void operator()(Callx const& callx) { os_ << "callx " << callx.func; }
 
     void operator()(Exit const& b) { os_ << "exit"; }
@@ -531,6 +533,10 @@ std::ostream& operator<<(std::ostream& o, const crab::basic_block_rev_t& bb) {
 std::ostream& operator<<(std::ostream& o, const cfg_t& cfg) {
     for (const label_t& label : cfg.sorted_labels()) {
         o << cfg.get_node(label);
+        o << "edges to:";
+        for (const label_t& next_label : cfg.next_nodes(label))
+            o << " " << next_label;
+        o << "\n";
     }
     return o;
 }

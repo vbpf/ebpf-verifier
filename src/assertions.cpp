@@ -15,6 +15,7 @@ using std::vector;
 
 class AssertExtractor {
     program_info info;
+    std::optional<label_t> current_label; ///< Pre-simplification label this assert is part of.
 
     static Reg reg(Value v) {
         return std::get<Reg>(v);
@@ -32,7 +33,7 @@ class AssertExtractor {
     }
 
   public:
-    explicit AssertExtractor(program_info info) : info{std::move(info)} {}
+    explicit AssertExtractor(program_info info, std::optional<label_t> label) : info{std::move(info)}, current_label(label) {}
 
     vector<Assert> operator()(Undefined const& ins) const { assert(false); return {}; }
 
@@ -45,8 +46,14 @@ class AssertExtractor {
     /// Packet access implicitly uses R6, so verify that R6 still has a pointer to the context.
     vector<Assert> operator()(Packet const& ins) const { return zero_offset_ctx({6}); }
 
-    /// Verify that Exit returns a number.
-    vector<Assert> operator()(Exit const& e) const { return {Assert{TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::number}}}; }
+    vector<Assert> operator()(Exit const& e) const {
+        vector<Assert> res;
+        if (current_label->stack_frame_prefix.empty()) {
+            // Verify that Exit returns a number.
+            res.emplace_back(TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::number});
+        }
+        return res;
+    }
 
     vector<Assert> operator()(Call const& call) const {
         vector<Assert> res;
@@ -104,6 +111,8 @@ class AssertExtractor {
         }
         return res;
     }
+
+    vector<Assert> operator()(CallLocal const& call) const { return {}; }
 
     vector<Assert> operator()(Callx const& callx) const {
         vector<Assert> res;
@@ -247,8 +256,8 @@ class AssertExtractor {
     }
 };
 
-vector<Assert> get_assertions(Instruction ins, const program_info& info) {
-    return std::visit(AssertExtractor{info}, ins);
+vector<Assert> get_assertions(Instruction ins, const program_info& info, std::optional<label_t> label) {
+    return std::visit(AssertExtractor{info, label}, ins);
 }
 
 /// Annotate the CFG by adding explicit assertions for all the preconditions
@@ -261,7 +270,7 @@ void explicate_assertions(cfg_t& cfg, const program_info& info) {
         (void)label; // unused
         vector<Instruction> insts;
         for (const auto& ins : vector<Instruction>(bb.begin(), bb.end())) {
-            for (auto a : get_assertions(ins, info))
+            for (auto a : get_assertions(ins, info, bb.label()))
                 insts.emplace_back(a);
             insts.push_back(ins);
         }

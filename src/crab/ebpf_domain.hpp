@@ -61,6 +61,7 @@ class ebpf_domain_t final {
     void operator()(const Assume&);
     void operator()(const Bin&);
     void operator()(const Call&);
+    void operator()(const CallLocal&);
     void operator()(const Callx&);
     void operator()(const Comparable&);
     void operator()(const Exit&);

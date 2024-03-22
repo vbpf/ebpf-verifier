@@ -1511,7 +1511,21 @@ void ebpf_domain_t::operator()(const Un& stmt) {
     }
 }
 
-void ebpf_domain_t::operator()(const Exit& a) {}
+void ebpf_domain_t::operator()(const Exit& a) {
+    // Clean up any state for the current stack frame.
+    std::string prefix = a.stack_frame_prefix;
+    if (prefix.empty())
+        return;
+    for (int r = R6; r <= R9; r++) {
+        for (data_kind_t kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes;
+             kind = (data_kind_t)((int)kind + 1)) {
+            variable_t src_var = variable_t::stack_frame_var(kind, r, prefix);
+            if (!m_inv[src_var].is_top())
+                assign(variable_t::reg(kind, r), src_var);
+            havoc(src_var);
+        }
+    }
+}
 
 void ebpf_domain_t::operator()(const Jmp& a) {}
 
@@ -1575,7 +1589,7 @@ void ebpf_domain_t::operator()(const FuncConstraint& s) {
                 return;
             }
             Call call = make_call(imm, *global_program_info->platform);
-            for (Assert a : get_assertions(call, *global_program_info)) {
+            for (Assert a : get_assertions(call, *global_program_info, {})) {
                 (*this)(a);
             }
             return;
@@ -2313,6 +2327,22 @@ out:
     scratch_caller_saved_registers();
     if (call.reallocate_packet) {
         forget_packet_pointers();
+    }
+}
+
+void ebpf_domain_t::operator()(const CallLocal& call) {
+    using namespace crab::dsl_syntax;
+    if (m_inv.is_bottom())
+        return;
+
+    // Create variables specific to the new call stack frame that store
+    // copies of the states of r6 through r9.
+    for (int r = R6; r <= R9; r++) {
+        for (data_kind_t kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes; kind = (data_kind_t)((int)kind + 1)) {
+            variable_t src_var = variable_t::reg(kind, r);
+            if (!m_inv[src_var].is_top())
+                assign(variable_t::stack_frame_var(kind, r, call.stack_frame_prefix), src_var);
+        }
     }
 }
 

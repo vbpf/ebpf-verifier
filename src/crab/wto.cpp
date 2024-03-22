@@ -127,7 +127,7 @@ wto_t::wto_t(const cfg_t& cfg) : _cfg(cfg) {
 
     // Keep processing tasks until we're done.
     while (!_visit_stack.empty()) {
-        visit_args_t& args2 = _visit_stack.top();
+        visit_args_t args2 = _visit_stack.top();
         _visit_stack.pop();
         switch (args2.type) {
         case visit_task_type_t::PushSuccessors: push_successors(args2.vertex, args2.partition, args2.containing_cycle); break;
