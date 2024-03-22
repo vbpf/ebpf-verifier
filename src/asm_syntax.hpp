@@ -19,14 +19,18 @@ struct label_t {
     int to; ///< Jump target or -1
     std::string stack_frame_prefix; ///< Variable prefix when calling this label.
 
-    constexpr explicit label_t(int index, int to = -1, std::string stack_frame_prefix = {}) noexcept
+    explicit label_t(int index, int to = -1, std::string stack_frame_prefix = {}) noexcept
         : from(index), to(to), stack_frame_prefix(stack_frame_prefix) {}
 
-    static constexpr label_t make_jump(const label_t& src_label, const label_t& target_label) {
+    static label_t make_jump(const label_t& src_label, const label_t& target_label) {
         return label_t{src_label.from, target_label.from, target_label.stack_frame_prefix};
     }
 
-    constexpr bool operator==(const label_t&) const = default;
+    constexpr bool operator==(const label_t& other) const noexcept {
+        // operator== for std::string is not constexpr on all compilers so we cannot use the default.
+        // We can however use std::string.compare().
+        return from == other.from && to == other.to && stack_frame_prefix.compare(other.stack_frame_prefix) == 0;
+    }
 
     constexpr bool operator<(const label_t& other) const {
         if (this == &other) return false;
@@ -211,12 +215,20 @@ struct Call {
 struct CallLocal {
     label_t target;
     std::string stack_frame_prefix; ///< Variable prefix to be used within the call.
-    constexpr bool operator==(const CallLocal&) const = default;
+    constexpr bool operator==(const CallLocal& other) const noexcept {
+        // operator== for std::string is not constexpr on all compilers so we cannot use the default.
+        // We can however use std::string.compare().
+        return target == other.target && stack_frame_prefix.compare(other.stack_frame_prefix) == 0;
+    }
 };
 
 struct Exit {
     std::string stack_frame_prefix; ///< Variable prefix to clean up when exiting.
-    constexpr bool operator==(const Exit&) const = default;
+    constexpr bool operator==(const Exit& other) const noexcept {
+        // operator== for std::string is not constexpr on all compilers so we cannot use the default.
+        // We can however use std::string.compare().
+        return stack_frame_prefix.compare(other.stack_frame_prefix) == 0;
+    }
 };
 
 /// Experimental callx instruction.
