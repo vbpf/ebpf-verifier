@@ -19,6 +19,26 @@ post:
   - r0.svalue=3
   - r0.uvalue=3
 ---
+test-case: call local with simplify
+
+pre: []
+
+options: ["simplify"]
+
+code:
+  <start>: |
+    call <sub>
+    r0 += 2
+    exit
+  <sub>: |
+    r0 = 1
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=3
+  - r0.uvalue=3
+---
 test-case: call local with multiple calls
 
 pre: []

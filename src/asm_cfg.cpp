@@ -351,45 +351,8 @@ cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool sim
     // so the fewer basic blocks we have, the less information it has to
     // keep track of.
     if (simplify) {
-        std::cout << "CFG1: " << cfg << "\n";
         cfg.simplify();
-        std::cout << "CFG2: " << cfg << "\n";
     }
 
     return cfg;
-}
-
-// TODO: remove this.
-#include "asm_ostream.hpp"
-void crab::cfg_t::dump_cfg(std::string str) {
-    std::cout << str << ": ";
-    for (const label_t& label : sorted_labels()) {
-        basic_block_t& bb = get_node(label);
-        std::cout << bb.label() << ":\n";
-        #if 0
-        for (auto const& s : bb) {
-            std::cout << "  " << s << ";\n";
-        }
-        #endif
-        auto [it, et] = bb.next_blocks();
-        if (it != et) {
-            std::cout << "  "
-              << "goto ";
-            for (; it != et;) {
-                std::cout << *it;
-                ++it;
-                if (it == et) {
-                    std::cout << ";";
-                } else {
-                    std::cout << ",";
-                }
-            }
-        }
-        std::cout << "\n";
-        std::cout << "edges to:";
-        for (const label_t& edge : next_nodes(label))
-            std::cout << " " << edge;
-        std::cout << "\n";
-    }
-    std::cout << "\n";
 }

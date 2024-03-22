@@ -173,8 +173,10 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
 static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& raw_options) {
     ebpf_verifier_options_t options = ebpf_verifier_default_options;
 
-    // All YAML tests use no_simplify and !setup_constraints.
+    // Use no_simplify for YAML tests unless otherwise specified.
     options.no_simplify = true;
+
+    // All YAML tests use !setup_constraints.
     options.setup_constraints = false;
 
     for (const string& name : raw_options) {
@@ -184,6 +186,8 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
             options.check_termination = true;
         } else if (name == "strict") {
             options.strict = true;
+        } else if (name == "simplify") {
+            options.no_simplify = false;
         } else {
             throw std::runtime_error("Unknown option: " + name);
         }
@@ -236,7 +240,6 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
     if (debug) {
         test_case.options.print_failures = true;
         test_case.options.print_invariants = true;
-        test_case.options.no_simplify = true;
     }
 
     ebpf_context_descriptor_t context_descriptor{64, 0, 4, -1};

@@ -17,7 +17,7 @@ namespace crab {
 struct label_t {
     int from; ///< Jump source, or simply index of instruction
     int to; ///< Jump target or -1
-    std::string stack_frame_prefix; ///< Variable prefix when entering this label.
+    std::string stack_frame_prefix; ///< Variable prefix when calling this label.
 
     constexpr explicit label_t(int index, int to = -1, std::string stack_frame_prefix = {}) noexcept
         : from(index), to(to), stack_frame_prefix(stack_frame_prefix) {}
@@ -207,7 +207,7 @@ struct Call {
     std::vector<ArgPair> pairs;
 };
 
-// Call a "function" (macro) within the eBPF program.
+/// Call a "function" (macro) within the same program.
 struct CallLocal {
     label_t target;
     std::string stack_frame_prefix; ///< Variable prefix to be used within the call.
@@ -219,7 +219,7 @@ struct Exit {
     constexpr bool operator==(const Exit&) const = default;
 };
 
-// Experimental callx instruction.
+/// Experimental callx instruction.
 struct Callx {
     Reg func;
     constexpr bool operator==(const Callx&) const = default;
@@ -379,8 +379,8 @@ struct ZeroCtxOffset {
     constexpr bool operator==(const ZeroCtxOffset&) const = default;
 };
 
-using AssertionConstraint = std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize,
-                                         ValidMapKeyValue, TypeConstraint, FuncConstraint, ZeroCtxOffset>;
+using AssertionConstraint =
+    std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint, FuncConstraint, ZeroCtxOffset>;
 
 struct Assert {
     AssertionConstraint cst;

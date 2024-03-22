@@ -17,9 +17,6 @@ using std::vector;
 // TODO: move this to another argument of the visitor, or remove it if not used.
 thread_local std::optional<label_t> global_current_label;
 #endif
-#if 0
-extern thread_local std::optional<label_t> global_current_label;
-#endif
 
 class AssertExtractor {
     program_info info;

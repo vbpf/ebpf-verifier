@@ -322,14 +322,9 @@ class cfg_t final {
         while (!worklist.empty()) {
             label_t label = *worklist.begin();
             worklist.erase(label);
-            #if 0
-            dump_cfg("SIM");
-            std::cout << "Processing label " << label << "...\n";
-            #endif
 
             basic_block_t& bb = get_node(label);
             if (bb.in_degree() == 1 && get_parent(label).out_degree() == 1) {
-                std::cout << "No change for " << label << "\n ";
                 continue;
             }
             while (bb.out_degree() == 1) {

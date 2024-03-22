@@ -534,8 +534,8 @@ std::ostream& operator<<(std::ostream& o, const cfg_t& cfg) {
     for (const label_t& label : cfg.sorted_labels()) {
         o << cfg.get_node(label);
         o << "edges to:";
-        for (const label_t& edge : cfg.next_nodes(label))
-            o << " " << edge;
+        for (const label_t& next_label : cfg.next_nodes(label))
+            o << " " << next_label;
         o << "\n";
     }
     return o;
