@@ -26,11 +26,7 @@ struct label_t {
         return label_t{src_label.from, target_label.from, target_label.stack_frame_prefix};
     }
 
-    constexpr bool operator==(const label_t& other) const noexcept {
-        // operator== for std::string is not constexpr on all compilers so we cannot use the default.
-        // We can however use std::string.compare().
-        return from == other.from && to == other.to && stack_frame_prefix.compare(other.stack_frame_prefix) == 0;
-    }
+    bool operator==(const label_t& other) const noexcept = default;
 
     constexpr bool operator<(const label_t& other) const {
         if (this == &other) return false;
@@ -167,7 +163,7 @@ struct Condition {
 struct Jmp {
     std::optional<Condition> cond;
     label_t target;
-    constexpr bool operator==(const Jmp&) const = default;
+    bool operator==(const Jmp&) const = default;
 };
 
 struct ArgSingle {
@@ -215,20 +211,12 @@ struct Call {
 struct CallLocal {
     label_t target;
     std::string stack_frame_prefix; ///< Variable prefix to be used within the call.
-    constexpr bool operator==(const CallLocal& other) const noexcept {
-        // operator== for std::string is not constexpr on all compilers so we cannot use the default.
-        // We can however use std::string.compare().
-        return target == other.target && stack_frame_prefix.compare(other.stack_frame_prefix) == 0;
-    }
+    bool operator==(const CallLocal& other) const noexcept = default;
 };
 
 struct Exit {
     std::string stack_frame_prefix; ///< Variable prefix to clean up when exiting.
-    constexpr bool operator==(const Exit& other) const noexcept {
-        // operator== for std::string is not constexpr on all compilers so we cannot use the default.
-        // We can however use std::string.compare().
-        return stack_frame_prefix.compare(other.stack_frame_prefix) == 0;
-    }
+    bool operator==(const Exit& other) const noexcept = default;
 };
 
 /// Experimental callx instruction.
@@ -402,7 +390,7 @@ struct Assert {
 
 struct IncrementLoopCounter {
     label_t name;
-    constexpr bool operator==(const IncrementLoopCounter&) const = default;
+    bool operator==(const IncrementLoopCounter&) const = default;
 };
 
 using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, CallLocal, Callx, Exit, Jmp, Mem, Packet, Atomic, Assume, Assert, IncrementLoopCounter>;
