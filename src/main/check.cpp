@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/functional/hash.hpp>
 
 #include "CLI11.hpp"
@@ -63,10 +64,8 @@ static std::string _get_conformance_group_names() {
 // Given a string containing comma-separated tokens, split them into a list of strings.
 static std::vector<std::string> get_string_vector(std::string list) {
     std::vector<std::string> string_vector;
-    std::string element;
-    for (std::istringstream iss(list); std::getline(iss, element, ',');) {
-        string_vector.push_back(element);
-    }
+    if (!list.empty())
+       boost::split(string_vector, list, boost::is_any_of(","));
     return string_vector;
 }
 
@@ -135,7 +134,7 @@ int main(int argc, char** argv) {
         if (auto group = _get_conformance_group_by_name(group_name)) {
             platform.supported_conformance_groups |= *group;
         } else {
-            std::cout << "Invalid group: " << group_name << std::endl;
+            std::cerr << "Invalid group: " << group_name << std::endl;
             return 1;
         }
     }
@@ -143,7 +142,7 @@ int main(int argc, char** argv) {
         if (auto group = _get_conformance_group_by_name(group_name)) {
             platform.supported_conformance_groups &= ~(*group);
         } else {
-            std::cout << "Invalid group: " << group_name << std::endl;
+            std::cerr << "Invalid group: " << group_name << std::endl;
             return 1;
         }
     }
