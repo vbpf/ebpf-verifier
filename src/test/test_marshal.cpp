@@ -5,7 +5,6 @@
 #include "asm_ostream.hpp"
 #include "asm_marshal.hpp"
 #include "asm_unmarshal.hpp"
-#include "../external/bpf_conformance/include/bpf_conformance.h"
 
 // Below we define a tample of instruction templates that specify
 // what values each field are allowed to contain.  We first define
@@ -17,6 +16,7 @@
 constexpr int MEM_OFFSET = 3; // Any valid memory offset value.
 constexpr int JMP_OFFSET = 5; // Any valid jump offset value.
 constexpr int DST = 7; // Any destination register number.
+constexpr int HELPER_ID = 8; // Any helper ID.
 constexpr int SRC = 9; // Any source register number.
 constexpr int IMM = -1; // Any imm value.
 constexpr int INVALID_REGISTER = R10_STACK_POINTER + 1; // Not a valid register.
@@ -29,179 +29,195 @@ struct ebpf_instruction_template_t {
 // The following table is derived from the table in the Appendix of the
 // BPF ISA specification (https://datatracker.ietf.org/doc/draft-ietf-bpf-isa/).
 static const ebpf_instruction_template_t instruction_template[] = {
-    // opcode, dst, src, offset, imm.
-    {0x04, DST, 0, 0, IMM},
-    {0x05, 0, 0, JMP_OFFSET, 0},
-    {0x06, 0, 0, 0, JMP_OFFSET},
-    {0x07, DST, 0, 0, IMM},
-    {0x0c, DST, SRC, 0, 0},
-    {0x0f, DST, SRC, 0, 0},
-    {0x14, DST, 0, 0, IMM},
-    {0x15, DST, 0, JMP_OFFSET, IMM},
-    {0x16, DST, 0, JMP_OFFSET, IMM},
-    {0x17, DST, 0, 0, IMM},
-    {0x18, DST, 0, 0, IMM},
-    {0x18, DST, 1, 0, IMM},
+    // {opcode, dst, src, offset, imm}, group
+    {{0x04, DST, 0, 0, IMM}, bpf_conformance_groups_t::base32},
+    {{0x05, 0, 0, JMP_OFFSET, 0}, bpf_conformance_groups_t::base32},
+    {{0x06, 0, 0, 0, JMP_OFFSET}, bpf_conformance_groups_t::base32},
+    {{0x07, DST, 0, 0, IMM}, bpf_conformance_groups_t::base64},
+    {{0x0c, DST, SRC, 0, 0}, bpf_conformance_groups_t::base32},
+    {{0x0f, DST, SRC, 0, 0}, bpf_conformance_groups_t::base64},
+    {{0x14, DST, 0, 0, IMM}, bpf_conformance_groups_t::base32},
+    {{0x15, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base64},
+    {{0x16, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base32},
+    {{0x17, DST, 0, 0, IMM}, bpf_conformance_groups_t::base64},
+    {{0x18, DST, 0, 0, IMM}, bpf_conformance_groups_t::base64},
+    {{0x18, DST, 1, 0, IMM}, bpf_conformance_groups_t::base64},
     // TODO(issue #533): add support for LDDW with src_reg > 1.
-    // {0x18, DST, 2, 0, IMM},
-    // {0x18, DST, 3, 0, IMM},
-    // {0x18, DST, 4, 0, IMM},
-    // {0x18, DST, 5, 0, IMM},
-    // {0x18, DST, 6, 0, IMM},
-    {0x1c, DST, SRC, 0, 0},
-    {0x1d, DST, SRC, JMP_OFFSET, 0},
-    {0x1e, DST, SRC, JMP_OFFSET, 0},
-    {0x1f, DST, SRC, 0, 0},
-    {0x20, 0, 0, 0, IMM},
-    {0x24, DST, 0, 0, IMM},
-    {0x25, DST, 0, JMP_OFFSET, IMM},
-    {0x26, DST, 0, JMP_OFFSET, IMM},
-    {0x27, DST, 0, 0, IMM},
-    {0x28, 0, 0, 0, IMM},
-    {0x2c, DST, SRC, 0, 0},
-    {0x2d, DST, SRC, JMP_OFFSET, 0},
-    {0x2e, DST, SRC, JMP_OFFSET, 0},
-    {0x2f, DST, SRC, 0, 0},
-    {0x30, 0, 0, 0, IMM},
-    {0x34, DST, 0, 0, IMM},
-    {0x34, DST, 0, 1, IMM},
-    {0x35, DST, 0, JMP_OFFSET, IMM},
-    {0x36, DST, 0, JMP_OFFSET, IMM},
-    {0x37, DST, 0, 0, IMM},
-    {0x37, DST, 0, 1, IMM},
-    {0x3c, DST, SRC, 0, 0},
-    {0x3c, DST, SRC, 1, 0},
-    {0x3d, DST, SRC, JMP_OFFSET, 0},
-    {0x3e, DST, SRC, JMP_OFFSET, 0},
-    {0x3f, DST, SRC, 0, 0},
-    {0x3f, DST, SRC, 1, 0},
-    {0x40, 0, SRC, 0, IMM},
-    {0x44, DST, 0, 0, IMM},
-    {0x45, DST, 0, JMP_OFFSET, IMM},
-    {0x46, DST, 0, JMP_OFFSET, IMM},
-    {0x47, DST, 0, 0, IMM},
-    {0x48, 0, SRC, 0, IMM},
-    {0x4c, DST, SRC, 0, 0},
-    {0x4d, DST, SRC, JMP_OFFSET, 0},
-    {0x4e, DST, SRC, JMP_OFFSET, 0},
-    {0x4f, DST, SRC, 0, 0},
-    {0x50, 0, SRC, 0, IMM},
-    {0x54, DST, 0, 0, IMM},
-    {0x55, DST, 0, JMP_OFFSET, IMM},
-    {0x56, DST, 0, JMP_OFFSET, IMM},
-    {0x57, DST, 0, 0, IMM},
-    {0x5c, DST, SRC, 0, 0},
-    {0x5d, DST, SRC, JMP_OFFSET, 0},
-    {0x5e, DST, SRC, JMP_OFFSET, 0},
-    {0x5f, DST, SRC, 0, 0},
-    {0x61, DST, SRC, MEM_OFFSET, 0},
-    {0x62, DST, 0, MEM_OFFSET, IMM},
-    {0x63, DST, SRC, MEM_OFFSET, 0},
-    {0x64, DST, 0, 0, IMM},
-    {0x65, DST, 0, JMP_OFFSET, IMM},
-    {0x66, DST, 0, JMP_OFFSET, IMM},
-    {0x67, DST, 0, 0, IMM},
-    {0x69, DST, SRC, MEM_OFFSET, 0},
-    {0x6a, DST, 0, MEM_OFFSET, IMM},
-    {0x6b, DST, SRC, MEM_OFFSET, 0},
-    {0x6c, DST, SRC, 0, 0},
-    {0x6d, DST, SRC, JMP_OFFSET, 0},
-    {0x6e, DST, SRC, JMP_OFFSET, 0},
-    {0x6f, DST, SRC, 0, 0},
-    {0x71, DST, SRC, MEM_OFFSET, 0},
-    {0x72, DST, 0, MEM_OFFSET, IMM},
-    {0x73, DST, SRC, MEM_OFFSET, 0},
-    {0x74, DST, 0, 0, IMM},
-    {0x75, DST, 0, JMP_OFFSET, IMM},
-    {0x76, DST, 0, JMP_OFFSET, IMM},
-    {0x77, DST, 0, 0, IMM},
-    {0x79, DST, SRC, MEM_OFFSET, 0},
-    {0x7a, DST, 0, MEM_OFFSET, IMM},
-    {0x7b, DST, SRC, MEM_OFFSET, 0},
-    {0x7c, DST, SRC, 0, 0},
-    {0x7d, DST, SRC, JMP_OFFSET, 0},
-    {0x7e, DST, SRC, JMP_OFFSET, 0},
-    {0x7f, DST, SRC, 0, 0},
-    {0x84, DST, 0, 0, 0},
-    {0x85, 0, 0, 0, IMM},
+    // {{0x18, DST, 2, 0, IMM}, bpf_conformance_groups_t::base64},
+    // {{0x18, DST, 3, 0, IMM}, bpf_conformance_groups_t::base64},
+    // {{0x18, DST, 4, 0, IMM}, bpf_conformance_groups_t::base64},
+    // {{0x18, DST, 5, 0, IMM}, bpf_conformance_groups_t::base64},
+    // {{0x18, DST, 6, 0, IMM}, bpf_conformance_groups_t::base64},
+    {{0x1c, DST, SRC, 0, 0}, bpf_conformance_groups_t::base32},
+    {{0x1d, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base64},
+    {{0x1e, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base32},
+    {{0x1f, DST, SRC, 0, 0}, bpf_conformance_groups_t::base64},
+    {{0x20, 0, 0, 0, IMM}, bpf_conformance_groups_t::packet},
+    {{0x24, DST, 0, 0, IMM}, bpf_conformance_groups_t::divmul32},
+    {{0x25, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base64},
+    {{0x26, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base32},
+    {{0x27, DST, 0, 0, IMM}, bpf_conformance_groups_t::divmul64},
+    {{0x28, 0, 0, 0, IMM}, bpf_conformance_groups_t::packet},
+    {{0x2c, DST, SRC, 0, 0}, bpf_conformance_groups_t::divmul32},
+    {{0x2d, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base64},
+    {{0x2e, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base32},
+    {{0x2f, DST, SRC, 0, 0}, bpf_conformance_groups_t::divmul64},
+    {{0x30, 0, 0, 0, IMM}, bpf_conformance_groups_t::packet},
+    {{0x34, DST, 0, 0, IMM}, bpf_conformance_groups_t::divmul32},
+    {{0x34, DST, 0, 1, IMM}, bpf_conformance_groups_t::divmul32},
+    {{0x35, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base64},
+    {{0x36, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base32},
+    {{0x37, DST, 0, 0, IMM}, bpf_conformance_groups_t::divmul64},
+    {{0x37, DST, 0, 1, IMM}, bpf_conformance_groups_t::divmul64},
+    {{0x3c, DST, SRC, 0, 0}, bpf_conformance_groups_t::divmul32},
+    {{0x3c, DST, SRC, 1, 0}, bpf_conformance_groups_t::divmul32},
+    {{0x3d, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base64},
+    {{0x3e, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base32},
+    {{0x3f, DST, SRC, 0, 0}, bpf_conformance_groups_t::divmul64},
+    {{0x3f, DST, SRC, 1, 0}, bpf_conformance_groups_t::divmul64},
+    {{0x40, 0, SRC, 0, IMM}, bpf_conformance_groups_t::packet},
+    {{0x44, DST, 0, 0, IMM}, bpf_conformance_groups_t::base32},
+    {{0x45, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base64},
+    {{0x46, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base32},
+    {{0x47, DST, 0, 0, IMM}, bpf_conformance_groups_t::base64},
+    {{0x48, 0, SRC, 0, IMM}, bpf_conformance_groups_t::packet},
+    {{0x4c, DST, SRC, 0, 0}, bpf_conformance_groups_t::base32},
+    {{0x4d, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base64},
+    {{0x4e, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base32},
+    {{0x4f, DST, SRC, 0, 0}, bpf_conformance_groups_t::base64},
+    {{0x50, 0, SRC, 0, IMM}, bpf_conformance_groups_t::packet},
+    {{0x54, DST, 0, 0, IMM}, bpf_conformance_groups_t::base32},
+    {{0x55, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base64},
+    {{0x56, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base32},
+    {{0x57, DST, 0, 0, IMM}, bpf_conformance_groups_t::base64},
+    {{0x5c, DST, SRC, 0, 0}, bpf_conformance_groups_t::base32},
+    {{0x5d, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base64},
+    {{0x5e, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base32},
+    {{0x5f, DST, SRC, 0, 0}, bpf_conformance_groups_t::base64},
+    {{0x61, DST, SRC, MEM_OFFSET, 0}, bpf_conformance_groups_t::base32},
+    {{0x62, DST, 0, MEM_OFFSET, IMM}, bpf_conformance_groups_t::base32},
+    {{0x63, DST, SRC, MEM_OFFSET, 0}, bpf_conformance_groups_t::base32},
+    {{0x64, DST, 0, 0, IMM}, bpf_conformance_groups_t::base32},
+    {{0x65, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base64},
+    {{0x66, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base32},
+    {{0x67, DST, 0, 0, IMM}, bpf_conformance_groups_t::base64},
+    {{0x69, DST, SRC, MEM_OFFSET, 0}, bpf_conformance_groups_t::base32},
+    {{0x6a, DST, 0, MEM_OFFSET, IMM}, bpf_conformance_groups_t::base32},
+    {{0x6b, DST, SRC, MEM_OFFSET, 0}, bpf_conformance_groups_t::base32},
+    {{0x6c, DST, SRC, 0, 0}, bpf_conformance_groups_t::base32},
+    {{0x6d, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base64},
+    {{0x6e, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base32},
+    {{0x6f, DST, SRC, 0, 0}, bpf_conformance_groups_t::base64},
+    {{0x71, DST, SRC, MEM_OFFSET, 0}, bpf_conformance_groups_t::base32},
+    {{0x72, DST, 0, MEM_OFFSET, IMM}, bpf_conformance_groups_t::base32},
+    {{0x73, DST, SRC, MEM_OFFSET, 0}, bpf_conformance_groups_t::base32},
+    {{0x74, DST, 0, 0, IMM}, bpf_conformance_groups_t::base32},
+    {{0x75, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base64},
+    {{0x76, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base32},
+    {{0x77, DST, 0, 0, IMM}, bpf_conformance_groups_t::base64},
+    {{0x79, DST, SRC, MEM_OFFSET, 0}, bpf_conformance_groups_t::base64},
+    {{0x7a, DST, 0, MEM_OFFSET, IMM}, bpf_conformance_groups_t::base64},
+    {{0x7b, DST, SRC, MEM_OFFSET, 0}, bpf_conformance_groups_t::base64},
+    {{0x7c, DST, SRC, 0, 0}, bpf_conformance_groups_t::base32},
+    {{0x7d, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base64},
+    {{0x7e, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base32},
+    {{0x7f, DST, SRC, 0, 0}, bpf_conformance_groups_t::base64},
+    {{0x84, DST, 0, 0, 0}, bpf_conformance_groups_t::base32},
+    {{0x85, 0, 0, 0, HELPER_ID}, bpf_conformance_groups_t::base32},
     // TODO(issue #582): Add support for subprograms (call_local).
-    // {0x85, 0, 1, 0, IMM},
+    // {{0x85, 0, 1, 0, IMM}, bpf_conformance_groups_t::base32},
     // TODO(issue #590): Add support for calling a helper function by BTF ID.
-    // {0x85, 0, 2, 0, IMM},
-    {0x87, DST, 0, 0, 0},
+    // {{0x85, 0, 2, 0, IMM}, bpf_conformance_groups_t::base32},
+    {{0x87, DST, 0, 0, 0}, bpf_conformance_groups_t::base64},
     {{0x8d, DST, 0, 0, 0}, bpf_conformance_groups_t::callx},
-    {0x94, DST, 0, 0, IMM},
-    {0x94, DST, 0, 1, IMM},
-    {0x95, 0, 0, 0, 0},
-    {0x97, DST, 0, 0, IMM},
-    {0x97, DST, 0, 1, IMM},
-    {0x9c, DST, SRC, 0, 0},
-    {0x9c, DST, SRC, 1, 0},
-    {0x9f, DST, SRC, 0, 0},
-    {0x9f, DST, SRC, 1, 0},
-    {0xa4, DST, 0, 0, IMM},
-    {0xa5, DST, 0, JMP_OFFSET, IMM},
-    {0xa6, DST, 0, JMP_OFFSET, IMM},
-    {0xa7, DST, 0, 0, IMM},
-    {0xac, DST, SRC, 0, 0},
-    {0xad, DST, SRC, JMP_OFFSET, 0},
-    {0xae, DST, SRC, JMP_OFFSET, 0},
-    {0xaf, DST, SRC, 0, 0},
-    {0xb4, DST, 0, 0, IMM},
-    {0xb5, DST, 0, JMP_OFFSET, IMM},
-    {0xb6, DST, 0, JMP_OFFSET, IMM},
-    {0xb7, DST, 0, 0, IMM},
-    {0xbc, DST, SRC, 0, 0},
-    {0xbc, DST, SRC, 8, 0},
-    {0xbc, DST, SRC, 16, 0},
-    {0xbd, DST, SRC, JMP_OFFSET, 0},
-    {0xbe, DST, SRC, JMP_OFFSET, 0},
-    {0xbf, DST, SRC, 0, 0},
-    {0xbf, DST, SRC, 8, 0},
-    {0xbf, DST, SRC, 16, 0},
-    {0xbf, DST, SRC, 32, 0},
-    {0xc3, DST, SRC, MEM_OFFSET, 0x00},
-    {0xc3, DST, SRC, MEM_OFFSET, 0x01},
-    {0xc3, DST, SRC, MEM_OFFSET, 0x40},
-    {0xc3, DST, SRC, MEM_OFFSET, 0x41},
-    {0xc3, DST, SRC, MEM_OFFSET, 0x50},
-    {0xc3, DST, SRC, MEM_OFFSET, 0x51},
-    {0xc3, DST, SRC, MEM_OFFSET, 0xa0},
-    {0xc3, DST, SRC, MEM_OFFSET, 0xa1},
-    {0xc3, DST, SRC, MEM_OFFSET, 0xe1},
-    {0xc3, DST, SRC, MEM_OFFSET, 0xf1},
-    {0xc4, DST, 0, 0, IMM},
-    {0xc5, DST, 0, JMP_OFFSET, IMM},
-    {0xc6, DST, 0, JMP_OFFSET, IMM},
-    {0xc7, DST, 0, 0, IMM},
-    {0xcc, DST, SRC, 0, 0},
-    {0xcd, DST, SRC, JMP_OFFSET, 0},
-    {0xce, DST, SRC, JMP_OFFSET, 0},
-    {0xcf, DST, SRC, 0, 0},
-    {0xd4, DST, 0, 0, 0x10},
-    {0xd4, DST, 0, 0, 0x20},
-    {0xd4, DST, 0, 0, 0x40},
-    {0xd5, DST, 0, JMP_OFFSET, IMM},
-    {0xd6, DST, 0, JMP_OFFSET, IMM},
-    {0xd7, DST, 0, 0, 0x10},
-    {0xd7, DST, 0, 0, 0x20},
-    {0xd7, DST, 0, 0, 0x40},
-    {0xdb, DST, SRC, MEM_OFFSET, 0x00},
-    {0xdb, DST, SRC, MEM_OFFSET, 0x01},
-    {0xdb, DST, SRC, MEM_OFFSET, 0x40},
-    {0xdb, DST, SRC, MEM_OFFSET, 0x41},
-    {0xdb, DST, SRC, MEM_OFFSET, 0x50},
-    {0xdb, DST, SRC, MEM_OFFSET, 0x51},
-    {0xdb, DST, SRC, MEM_OFFSET, 0xa0},
-    {0xdb, DST, SRC, MEM_OFFSET, 0xa1},
-    {0xdb, DST, SRC, MEM_OFFSET, 0xe1},
-    {0xdb, DST, SRC, MEM_OFFSET, 0xf1},
-    {0xdc, DST, 0, 0, 0x10},
-    {0xdc, DST, 0, 0, 0x20},
-    {0xdc, DST, 0, 0, 0x40},
-    {0xdd, DST, SRC, JMP_OFFSET, 0},
-    {0xde, DST, SRC, JMP_OFFSET, 0},
+    {{0x94, DST, 0, 0, IMM}, bpf_conformance_groups_t::divmul32},
+    {{0x94, DST, 0, 1, IMM}, bpf_conformance_groups_t::divmul32},
+    {{0x95, 0, 0, 0, 0}, bpf_conformance_groups_t::base32},
+    {{0x97, DST, 0, 0, IMM}, bpf_conformance_groups_t::divmul64},
+    {{0x97, DST, 0, 1, IMM}, bpf_conformance_groups_t::divmul64},
+    {{0x9c, DST, SRC, 0, 0}, bpf_conformance_groups_t::divmul32},
+    {{0x9c, DST, SRC, 1, 0}, bpf_conformance_groups_t::divmul32},
+    {{0x9f, DST, SRC, 0, 0}, bpf_conformance_groups_t::divmul64},
+    {{0x9f, DST, SRC, 1, 0}, bpf_conformance_groups_t::divmul64},
+    {{0xa4, DST, 0, 0, IMM}, bpf_conformance_groups_t::base32},
+    {{0xa5, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base64},
+    {{0xa6, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base32},
+    {{0xa7, DST, 0, 0, IMM}, bpf_conformance_groups_t::base64},
+    {{0xac, DST, SRC, 0, 0}, bpf_conformance_groups_t::base32},
+    {{0xad, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base64},
+    {{0xae, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base32},
+    {{0xaf, DST, SRC, 0, 0}, bpf_conformance_groups_t::base64},
+    {{0xb4, DST, 0, 0, IMM}, bpf_conformance_groups_t::base32},
+    {{0xb5, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base64},
+    {{0xb6, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base32},
+    {{0xb7, DST, 0, 0, IMM}, bpf_conformance_groups_t::base64},
+    {{0xbc, DST, SRC, 0, 0}, bpf_conformance_groups_t::base32},
+    {{0xbc, DST, SRC, 8, 0}, bpf_conformance_groups_t::base32},
+    {{0xbc, DST, SRC, 16, 0}, bpf_conformance_groups_t::base32},
+    {{0xbd, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base64},
+    {{0xbe, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base32},
+    {{0xbf, DST, SRC, 0, 0}, bpf_conformance_groups_t::base64},
+    {{0xbf, DST, SRC, 8, 0}, bpf_conformance_groups_t::base64},
+    {{0xbf, DST, SRC, 16, 0}, bpf_conformance_groups_t::base64},
+    {{0xbf, DST, SRC, 32, 0}, bpf_conformance_groups_t::base64},
+    {{0xc3, DST, SRC, MEM_OFFSET, 0x00}, bpf_conformance_groups_t::atomic32},
+    {{0xc3, DST, SRC, MEM_OFFSET, 0x01}, bpf_conformance_groups_t::atomic32},
+    {{0xc3, DST, SRC, MEM_OFFSET, 0x40}, bpf_conformance_groups_t::atomic32},
+    {{0xc3, DST, SRC, MEM_OFFSET, 0x41}, bpf_conformance_groups_t::atomic32},
+    {{0xc3, DST, SRC, MEM_OFFSET, 0x50}, bpf_conformance_groups_t::atomic32},
+    {{0xc3, DST, SRC, MEM_OFFSET, 0x51}, bpf_conformance_groups_t::atomic32},
+    {{0xc3, DST, SRC, MEM_OFFSET, 0xa0}, bpf_conformance_groups_t::atomic32},
+    {{0xc3, DST, SRC, MEM_OFFSET, 0xa1}, bpf_conformance_groups_t::atomic32},
+    {{0xc3, DST, SRC, MEM_OFFSET, 0xe1}, bpf_conformance_groups_t::atomic32},
+    {{0xc3, DST, SRC, MEM_OFFSET, 0xf1}, bpf_conformance_groups_t::atomic32},
+    {{0xc4, DST, 0, 0, IMM}, bpf_conformance_groups_t::base32},
+    {{0xc5, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base64},
+    {{0xc6, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base32},
+    {{0xc7, DST, 0, 0, IMM}, bpf_conformance_groups_t::base64},
+    {{0xcc, DST, SRC, 0, 0}, bpf_conformance_groups_t::base32},
+    {{0xcd, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base64},
+    {{0xce, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base32},
+    {{0xcf, DST, SRC, 0, 0}, bpf_conformance_groups_t::base64},
+    {{0xd4, DST, 0, 0, 0x10}, bpf_conformance_groups_t::base32},
+    {{0xd4, DST, 0, 0, 0x20}, bpf_conformance_groups_t::base32},
+    {{0xd4, DST, 0, 0, 0x40}, bpf_conformance_groups_t::base64},
+    {{0xd5, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base64},
+    {{0xd6, DST, 0, JMP_OFFSET, IMM}, bpf_conformance_groups_t::base32},
+    {{0xd7, DST, 0, 0, 0x10}, bpf_conformance_groups_t::base32},
+    {{0xd7, DST, 0, 0, 0x20}, bpf_conformance_groups_t::base32},
+    {{0xd7, DST, 0, 0, 0x40}, bpf_conformance_groups_t::base64},
+    {{0xdb, DST, SRC, MEM_OFFSET, 0x00}, bpf_conformance_groups_t::atomic64},
+    {{0xdb, DST, SRC, MEM_OFFSET, 0x01}, bpf_conformance_groups_t::atomic64},
+    {{0xdb, DST, SRC, MEM_OFFSET, 0x40}, bpf_conformance_groups_t::atomic64},
+    {{0xdb, DST, SRC, MEM_OFFSET, 0x41}, bpf_conformance_groups_t::atomic64},
+    {{0xdb, DST, SRC, MEM_OFFSET, 0x50}, bpf_conformance_groups_t::atomic64},
+    {{0xdb, DST, SRC, MEM_OFFSET, 0x51}, bpf_conformance_groups_t::atomic64},
+    {{0xdb, DST, SRC, MEM_OFFSET, 0xa0}, bpf_conformance_groups_t::atomic64},
+    {{0xdb, DST, SRC, MEM_OFFSET, 0xa1}, bpf_conformance_groups_t::atomic64},
+    {{0xdb, DST, SRC, MEM_OFFSET, 0xe1}, bpf_conformance_groups_t::atomic64},
+    {{0xdb, DST, SRC, MEM_OFFSET, 0xf1}, bpf_conformance_groups_t::atomic64},
+    {{0xdc, DST, 0, 0, 0x10}, bpf_conformance_groups_t::base32},
+    {{0xdc, DST, 0, 0, 0x20}, bpf_conformance_groups_t::base32},
+    {{0xdc, DST, 0, 0, 0x40}, bpf_conformance_groups_t::base64},
+    {{0xdd, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base64},
+    {{0xde, DST, SRC, JMP_OFFSET, 0}, bpf_conformance_groups_t::base32},
 };
+
+// Verify that we can successfully unmarshal an instruction.
+static void check_unmarshal_succeed(const ebpf_inst& ins, const ebpf_platform_t& platform = g_ebpf_platform_linux) {
+    program_info info{.platform = &platform, .type = platform.get_program_type("unspec", "unspec")};
+    const ebpf_inst exit{.opcode = INST_OP_EXIT};
+    InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", {ins, exit, exit}, info}));
+    REQUIRE(parsed.size() == 3);
+}
+
+// Verify that we can successfully unmarshal a 64-bit immediate instruction.
+static void check_unmarshal_succeed(ebpf_inst inst1, ebpf_inst inst2, const ebpf_platform_t& platform = g_ebpf_platform_linux) {
+    program_info info{.platform = &platform, .type = platform.get_program_type("unspec", "unspec")};
+    const ebpf_inst exit{.opcode = INST_OP_EXIT};
+    InstructionSeq parsed = std::get<InstructionSeq>(unmarshal(raw_program{"", "", {inst1, inst2, exit, exit}, info}));
+    REQUIRE(parsed.size() == 3);
+}
 
 // Verify that if we unmarshal an instruction and then re-marshal it,
 // we get what we expect.
@@ -410,7 +426,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
 
         // Test callx with support.  Note that callx puts the register number in 'dst' not 'src'.
         ebpf_platform_t platform = g_ebpf_platform_linux;
-        platform.callx = true;
+        platform.supported_conformance_groups |= bpf_conformance_groups_t::callx;
         compare_marshal_unmarshal(Callx{8}, false, platform);
         ebpf_inst callx{.opcode = INST_OP_CALLX, .dst = 8};
         compare_unmarshal_marshal(callx, callx, platform);
@@ -566,8 +582,7 @@ static void check_unmarshal_instruction_fail(ebpf_inst& inst, const std::string&
 
 static ebpf_platform_t get_template_platform(const ebpf_instruction_template_t& previous_template) {
     ebpf_platform_t platform = g_ebpf_platform_linux;
-    if ((previous_template.groups & bpf_conformance_groups_t::callx) != bpf_conformance_groups_t::none)
-        platform.callx = true;
+    platform.supported_conformance_groups |= previous_template.groups;
     return platform;
 }
 
@@ -642,7 +657,7 @@ static void check_instruction_imm_variations(const ebpf_instruction_template_t& 
     if (inst.imm == JMP_OFFSET) {
         inst.imm = 0; // Not a valid jump offset.
         check_unmarshal_instruction_fail(inst, "0: jump out of bounds\n", platform);
-    } else if (inst.imm != IMM) {
+    } else if (inst.imm != IMM && inst.imm != HELPER_ID) {
         // This instruction limits what can appear in the 'imm' field.
         // Just try the next value unless that's what the next template has.
         inst.imm++;
@@ -659,7 +674,8 @@ static void check_instruction_imm_variations(const ebpf_instruction_template_t& 
     // Some instructions only permit non-zero imm values.
     // If the next template is for one of those, check the zero value now.
     if (next_template && (previous_template.inst.opcode != next_template->inst.opcode) &&
-        (next_template->inst.imm > 0) && (next_template->inst.imm != JMP_OFFSET)) {
+        (next_template->inst.imm > 0) && (next_template->inst.imm != HELPER_ID) &&
+        (next_template->inst.imm != JMP_OFFSET)) {
         inst = next_template->inst;
         inst.imm = 0;
         check_unmarshal_instruction_fail(inst, "0: unsupported immediate\n");
@@ -699,6 +715,29 @@ TEST_CASE("fail unmarshal bad instructions", "[disasm][marshal]") {
     check_instruction_variations(instruction_template[template_count - 1], {});
 }
 
+TEST_CASE("check unmarshal conformance groups", "[disasm][marshal]") {
+    for (const auto& current : instruction_template) {
+        // Try unmarshaling without support.
+        ebpf_platform_t platform = g_ebpf_platform_linux;
+        platform.supported_conformance_groups &= ~current.groups;
+        std::ostringstream oss;
+        oss << "0: bad instruction op 0x" << std::hex << (int)current.inst.opcode << std::endl;
+        check_unmarshal_fail(current.inst, oss.str(), platform);
+
+        // Try unmarshaling with support.
+        platform.supported_conformance_groups |= current.groups;
+        ebpf_inst inst = current.inst;
+        if (inst.offset == JMP_OFFSET)
+            inst.offset = 1;
+        if (inst.imm == JMP_OFFSET)
+            inst.imm = 1;
+        if (inst.opcode == INST_OP_LDDW_IMM)
+            check_unmarshal_succeed(inst, ebpf_inst{}, platform);
+        else
+            check_unmarshal_succeed(inst, platform);
+    }
+}
+
 TEST_CASE("check unmarshal legacy opcodes", "[disasm][marshal]") {
     // The following opcodes are deprecated and should no longer be used.
     static uint8_t supported_legacy_opcodes[] = {0x20, 0x28, 0x30, 0x40, 0x48, 0x50};
@@ -706,9 +745,9 @@ TEST_CASE("check unmarshal legacy opcodes", "[disasm][marshal]") {
         compare_unmarshal_marshal(ebpf_inst{.opcode = opcode}, ebpf_inst{.opcode = opcode});
     }
 
-    // Disable legacy support.
+    // Disable legacy packet instruction support.
     ebpf_platform_t platform = g_ebpf_platform_linux;
-    platform.legacy = false;
+    platform.supported_conformance_groups &= ~bpf_conformance_groups_t::packet;
     for (uint8_t opcode : supported_legacy_opcodes) {
         std::ostringstream oss;
         oss << "0: bad instruction op 0x" << std::hex << (int)opcode << std::endl;

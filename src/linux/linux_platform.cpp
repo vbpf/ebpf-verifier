@@ -255,6 +255,5 @@ const ebpf_platform_t g_ebpf_platform_linux = {
     get_map_descriptor_linux,
     get_map_type_linux,
     resolve_inner_map_references_linux,
-    true, // Legacy packet access instructions
-    false // No callx instructions
+    bpf_conformance_groups_t::default_groups | bpf_conformance_groups_t::packet
 };
