@@ -1447,6 +1447,12 @@ void ebpf_domain_t::operator()(const Assume& s) {
 
 void ebpf_domain_t::operator()(const Undefined& a) {}
 
+// Simple truncation function usable with swap_endianness().
+template <class T>
+BOOST_CONSTEXPR T truncate(T x) BOOST_NOEXCEPT {
+    return x;
+}
+
 void ebpf_domain_t::operator()(const Un& stmt) {
     auto dst = reg_pack(stmt.dst);
     auto swap_endianness = [&](variable_t v, auto input, const auto& be_or_le) {
@@ -1464,34 +1470,57 @@ void ebpf_domain_t::operator()(const Un& stmt) {
         havoc(v);
         havoc_offsets(stmt.dst);
     };
-    // Swap bytes.  For 64-bit types we need the weights to fit in a
+    // Swap bytes if needed.  For 64-bit types we need the weights to fit in a
     // signed int64, but for smaller types we don't want sign extension,
     // so we use unsigned which still fits in a signed int64.
-    // TODO: use the big_endian property of the platform.
     switch (stmt.op) {
     case Un::Op::BE16:
-        swap_endianness(dst.svalue, uint16_t(0), boost::endian::native_to_big<uint16_t>);
-        swap_endianness(dst.uvalue, uint16_t(0), boost::endian::native_to_big<uint16_t>);
+        if (!thread_local_options.big_endian) {
+            swap_endianness(dst.svalue, uint16_t(0), boost::endian::endian_reverse<uint16_t>);
+            swap_endianness(dst.uvalue, uint16_t(0), boost::endian::endian_reverse<uint16_t>);
+        } else {
+            swap_endianness(dst.svalue, uint16_t(0), truncate<uint16_t>);
+            swap_endianness(dst.uvalue, uint16_t(0), truncate<uint16_t>);
+        }
         break;
     case Un::Op::BE32:
-        swap_endianness(dst.svalue, uint32_t(0), boost::endian::native_to_big<uint32_t>);
-        swap_endianness(dst.uvalue, uint32_t(0), boost::endian::native_to_big<uint32_t>);
+        if (!thread_local_options.big_endian) {
+            swap_endianness(dst.svalue, uint32_t(0), boost::endian::endian_reverse<uint32_t>);
+            swap_endianness(dst.uvalue, uint32_t(0), boost::endian::endian_reverse<uint32_t>);
+        } else {
+            swap_endianness(dst.svalue, uint32_t(0), truncate<uint32_t>);
+            swap_endianness(dst.uvalue, uint32_t(0), truncate<uint32_t>);
+        }
         break;
     case Un::Op::BE64:
-        swap_endianness(dst.svalue, int64_t(0), boost::endian::native_to_big<int64_t>);
-        swap_endianness(dst.uvalue, uint64_t(0), boost::endian::native_to_big<uint64_t>);
+        if (!thread_local_options.big_endian) {
+            swap_endianness(dst.svalue, int64_t(0), boost::endian::endian_reverse<int64_t>);
+            swap_endianness(dst.uvalue, uint64_t(0), boost::endian::endian_reverse<uint64_t>);
+        }
         break;
     case Un::Op::LE16:
-        swap_endianness(dst.svalue, uint16_t(0), boost::endian::native_to_little<uint16_t>);
-        swap_endianness(dst.uvalue, uint16_t(0), boost::endian::native_to_little<uint16_t>);
+        if (thread_local_options.big_endian) {
+            swap_endianness(dst.svalue, uint16_t(0), boost::endian::endian_reverse<uint16_t>);
+            swap_endianness(dst.uvalue, uint16_t(0), boost::endian::endian_reverse<uint16_t>);
+        } else {
+            swap_endianness(dst.svalue, uint16_t(0), truncate<uint16_t>);
+            swap_endianness(dst.uvalue, uint16_t(0), truncate<uint16_t>);
+        }
         break;
     case Un::Op::LE32:
-        swap_endianness(dst.svalue, uint32_t(0), boost::endian::native_to_little<uint32_t>);
-        swap_endianness(dst.uvalue, uint32_t(0), boost::endian::native_to_little<uint32_t>);
+        if (thread_local_options.big_endian) {
+            swap_endianness(dst.svalue, uint32_t(0), boost::endian::endian_reverse<uint32_t>);
+            swap_endianness(dst.uvalue, uint32_t(0), boost::endian::endian_reverse<uint32_t>);
+        } else {
+            swap_endianness(dst.svalue, uint32_t(0), truncate<uint32_t>);
+            swap_endianness(dst.uvalue, uint32_t(0), truncate<uint32_t>);
+        }
         break;
     case Un::Op::LE64:
-        swap_endianness(dst.svalue, int64_t(0), boost::endian::native_to_little<int64_t>);
-        swap_endianness(dst.svalue, uint64_t(0), boost::endian::native_to_little<uint64_t>);
+        if (thread_local_options.big_endian) {
+            swap_endianness(dst.svalue, int64_t(0), boost::endian::endian_reverse<int64_t>);
+            swap_endianness(dst.uvalue, uint64_t(0), boost::endian::endian_reverse<uint64_t>);
+        }
         break;
     case Un::Op::SWAP16:
         swap_endianness(dst.svalue, uint16_t(0), boost::endian::endian_reverse<uint16_t>);
