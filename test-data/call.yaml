@@ -176,3 +176,18 @@ code:
 
 post:
   - r0.type=number
+---
+test-case: bpf_trace_printk with negative size buffer
+
+pre: ["r1.type=stack", "r1.stack_offset=504",
+      "r2.type=number", "r2.svalue=-13", "r2.uvalue=18446744073709551603"]
+
+code:
+  <start>: |
+    call 6; bpf_trace_printk
+
+post:
+  - r0.type=number
+
+messages:
+  - "0: Invalid size (r2.value > 0)"

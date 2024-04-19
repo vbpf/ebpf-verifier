@@ -493,6 +493,13 @@ bool array_domain_t::all_num(NumAbsDomain& inv, const linear_expression_t& lb, c
     auto max_ub = inv.eval_interval(ub).ub().number();
     if (!min_lb || !max_ub || !min_lb->fits_sint32() || !max_ub->fits_sint32())
         return false;
+
+    // The all_num() call requires a legal range. If we have an illegal range,
+    // we should have already generated an error about the invalid range so just
+    // return true now to avoid an extra error about a non-numeric range.
+    if (*min_lb >= *max_ub)
+        return true;
+
     return this->num_bytes.all_num((int32_t)*min_lb, (int32_t)*max_ub);
 }
 
