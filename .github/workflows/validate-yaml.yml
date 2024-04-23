@@ -1,0 +1,29 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+#
+# For documentation on the github environment, see
+# https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
+#
+# For documentation on the syntax of this file, see
+# https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions
+name: Validate-YAML
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-yaml:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout GEDCOM.io
+        uses: actions/checkout@v4
+
+      - name: Validate YAML
+        run: yamllint . .github .github/workflows test-data
