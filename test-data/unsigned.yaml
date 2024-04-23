@@ -360,7 +360,7 @@ messages:
 test-case: "assume INT_MIN+1 < 0 implies bottom"
 pre: []
 code:
-  <start>:  |
+  <start>: |
     r1 = -9223372036854775807ll
     assume r1 < 0
 post: []
@@ -370,7 +370,7 @@ messages:
 test-case: "assume INT_MIN+1 w< 0 implies bottom"
 pre: []
 code:
-  <start>:  |
+  <start>: |
     r1 = -9223372036854775807ll
     assume w1 < 0
 post: []
@@ -380,7 +380,7 @@ messages:
 test-case: "assume INT_MIN+1 w< 2 nop"
 pre: []
 code:
-  <start>:  |
+  <start>: |
     r1 = -9223372036854775807ll
     assume w1 < 2
 post: ["r1.type=number", "r1.svalue=-9223372036854775807", "r1.uvalue=9223372036854775809"]
@@ -396,7 +396,7 @@ messages:
 test-case: "assume [INT32_MIN, -1] w< 0 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[-2147483648, -1]", "r1.uvalue=[18446744071562067968, 18446744073709551615]"]
 code:
-  <start>:  |
+  <start>: |
     assume w1 < 0
 post: []
 messages:
@@ -405,7 +405,7 @@ messages:
 test-case: "assume something w< 0 implies bottom"
 pre: ["r1.type=number", "r1.svalue=-4294967298", "r1.uvalue=18446744069414584318"]
 code:
-  <start>:  |
+  <start>: |
     assume w1 < 0
 post: []
 messages:
@@ -703,11 +703,11 @@ code:
     r2 = 9223372036854775803ll
     assume r1 >= r2
 post: ["r1.type=number", "r1.svalue=9223372036854775803", "r1.uvalue=9223372036854775803", "r1.svalue=r1.uvalue",
-        "r2.type=number", "r2.svalue=9223372036854775803", "r2.uvalue=9223372036854775803",
-        "r2.uvalue-r1.svalue<=0",  # missing: r1.svalue-r2.uvalue<=0; probably avoiding overflow in SplitDBM
-        "r2.svalue-r1.svalue<=0",  # missing: r1.svalue-r2.svalue<=0; probably avoiding overflow in SplitDBM
-        "r2.svalue-r1.uvalue<=0",  # missing: r1.uvalue-r2.svalue<=0; probably avoiding overflow in SplitDBM
-        "r2.uvalue-r1.uvalue<=0"]  # missing: r1.uvalue-r2.uvalue<=0; probably avoiding overflow in SplitDBM
+       "r2.type=number", "r2.svalue=9223372036854775803", "r2.uvalue=9223372036854775803",
+       "r2.uvalue-r1.svalue<=0",  # missing: r1.svalue-r2.uvalue<=0; probably avoiding overflow in SplitDBM
+       "r2.svalue-r1.svalue<=0",  # missing: r1.svalue-r2.svalue<=0; probably avoiding overflow in SplitDBM
+       "r2.svalue-r1.uvalue<=0",  # missing: r1.uvalue-r2.svalue<=0; probably avoiding overflow in SplitDBM
+       "r2.uvalue-r1.uvalue<=0"]  # missing: r1.uvalue-r2.uvalue<=0; probably avoiding overflow in SplitDBM
 ---
 test-case: "assume [0, INT32_MAX] w>= INT32_MAX narrows to INT32_MAX"
 pre: ["r1.type=number", "r1.svalue=[0, 2147483647]", "r1.uvalue=[0, 2147483647]", "r1.svalue=r1.uvalue"]
@@ -716,9 +716,9 @@ code:
     r2 = 2147483647
     assume w1 >= r2
 post: ["r1.type=number", "r1.svalue=2147483647", "r1.uvalue=2147483647", "r1.svalue=r1.uvalue",
-        "r2.type=number", "r2.svalue=2147483647", "r2.uvalue=2147483647",
-        "r2.uvalue-r1.svalue<=0",  # missing: r1.svalue-r2.uvalue<=0; probably avoiding overflow in SplitDBM
-        "r2.uvalue-r1.uvalue<=0"]  # missing: r1.uvalue-r2.uvalue<=0; probably avoiding overflow in SplitDBM
+       "r2.type=number", "r2.svalue=2147483647", "r2.uvalue=2147483647",
+       "r2.uvalue-r1.svalue<=0",  # missing: r1.svalue-r2.uvalue<=0; probably avoiding overflow in SplitDBM
+       "r2.uvalue-r1.uvalue<=0"]  # missing: r1.uvalue-r2.uvalue<=0; probably avoiding overflow in SplitDBM
 ---
 test-case: "assume 4294967301 w>= 5 nop"
 pre: ["r1.type=number", "r1.svalue=4294967301", "r1.uvalue=4294967301"]

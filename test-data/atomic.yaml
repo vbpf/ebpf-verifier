@@ -271,8 +271,8 @@ code:
     lock *(u32 *)(r2 + 4) += r1
 
 post: ["r1.type=number", "r1.svalue=2", "r1.uvalue=2",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...7].type=number", "s[4...7].svalue=3", "s[4...7].uvalue=3"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...7].type=number", "s[4...7].svalue=3", "s[4...7].uvalue=3"]
 ---
 test-case: atomic 32-bit ADD and fetch stack
 
@@ -285,8 +285,8 @@ code:
     lock *(u32 *)(r2 + 4) += r1 fetch
 
 post: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...7].type=number", "s[4...7].svalue=3", "s[4...7].uvalue=3"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...7].type=number", "s[4...7].svalue=3", "s[4...7].uvalue=3"]
 ---
 test-case: atomic 64-bit ADD stack
 
@@ -299,8 +299,8 @@ code:
     lock *(u64 *)(r2 + 4) += r1
 
 post: ["r1.type=number", "r1.svalue=2", "r1.uvalue=2",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...11].type=number", "s[4...11].svalue=3", "s[4...11].uvalue=3"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...11].type=number", "s[4...11].svalue=3", "s[4...11].uvalue=3"]
 ---
 test-case: atomic 64-bit ADD and fetch stack
 
@@ -313,8 +313,8 @@ code:
     lock *(u64 *)(r2 + 4) += r1 fetch
 
 post: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...11].type=number", "s[4...11].svalue=3", "s[4...11].uvalue=3"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...11].type=number", "s[4...11].svalue=3", "s[4...11].uvalue=3"]
 ---
 test-case: atomic 32-bit AND stack
 
@@ -327,8 +327,8 @@ code:
     lock *(u32 *)(r2 + 4) &= r1
 
 post: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...7].type=number", "s[4...7].svalue=1", "s[4...7].uvalue=1"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...7].type=number", "s[4...7].svalue=1", "s[4...7].uvalue=1"]
 ---
 test-case: atomic 32-bit AND and fetch stack
 
@@ -341,8 +341,8 @@ code:
     lock *(u32 *)(r2 + 4) &= r1 fetch
 
 post: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...7].type=number", "s[4...7].svalue=1", "s[4...7].uvalue=1"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...7].type=number", "s[4...7].svalue=1", "s[4...7].uvalue=1"]
 ---
 test-case: atomic 64-bit AND stack
 
@@ -355,8 +355,8 @@ code:
     lock *(u64 *)(r2 + 4) &= r1
 
 post: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...11].type=number", "s[4...11].svalue=1", "s[4...11].uvalue=1"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...11].type=number", "s[4...11].svalue=1", "s[4...11].uvalue=1"]
 ---
 test-case: atomic 64-bit AND and fetch stack
 
@@ -369,8 +369,8 @@ code:
     lock *(u64 *)(r2 + 4) &= r1 fetch
 
 post: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...11].type=number", "s[4...11].svalue=1", "s[4...11].uvalue=1"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...11].type=number", "s[4...11].svalue=1", "s[4...11].uvalue=1"]
 ---
 test-case: atomic 32-bit OR stack
 
@@ -383,8 +383,8 @@ code:
     lock *(u32 *)(r2 + 4) |= r1
 
 post: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...7].type=number", "s[4...7].svalue=7", "s[4...7].uvalue=7"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...7].type=number", "s[4...7].svalue=7", "s[4...7].uvalue=7"]
 ---
 test-case: atomic 32-bit OR and fetch stack
 
@@ -397,8 +397,8 @@ code:
     lock *(u32 *)(r2 + 4) |= r1 fetch
 
 post: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...7].type=number", "s[4...7].svalue=7", "s[4...7].uvalue=7"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...7].type=number", "s[4...7].svalue=7", "s[4...7].uvalue=7"]
 ---
 test-case: atomic 64-bit OR stack
 
@@ -411,8 +411,8 @@ code:
     lock *(u64 *)(r2 + 4) |= r1
 
 post: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...11].type=number", "s[4...11].svalue=7", "s[4...11].uvalue=7"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...11].type=number", "s[4...11].svalue=7", "s[4...11].uvalue=7"]
 ---
 test-case: atomic 64-bit OR and fetch stack
 
@@ -425,8 +425,8 @@ code:
     lock *(u64 *)(r2 + 4) |= r1 fetch
 
 post: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...11].type=number", "s[4...11].svalue=7", "s[4...11].uvalue=7"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...11].type=number", "s[4...11].svalue=7", "s[4...11].uvalue=7"]
 ---
 test-case: atomic 32-bit XOR stack
 
@@ -439,8 +439,8 @@ code:
     lock *(u32 *)(r2 + 4) ^= r1
 
 post: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...7].type=number", "s[4...7].svalue=6", "s[4...7].uvalue=6"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...7].type=number", "s[4...7].svalue=6", "s[4...7].uvalue=6"]
 ---
 test-case: atomic 32-bit XOR and fetch stack
 
@@ -453,8 +453,8 @@ code:
     lock *(u32 *)(r2 + 4) ^= r1 fetch
 
 post: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...7].type=number", "s[4...7].svalue=6", "s[4...7].uvalue=6"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...7].type=number", "s[4...7].svalue=6", "s[4...7].uvalue=6"]
 ---
 test-case: atomic 64-bit XOR stack
 
@@ -467,8 +467,8 @@ code:
     lock *(u64 *)(r2 + 4) ^= r1
 
 post: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...11].type=number", "s[4...11].svalue=6", "s[4...11].uvalue=6"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...11].type=number", "s[4...11].svalue=6", "s[4...11].uvalue=6"]
 ---
 test-case: atomic 64-bit XOR and fetch stack
 
@@ -481,8 +481,8 @@ code:
     lock *(u64 *)(r2 + 4) ^= r1 fetch
 
 post: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...11].type=number", "s[4...11].svalue=6", "s[4...11].uvalue=6"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...11].type=number", "s[4...11].svalue=6", "s[4...11].uvalue=6"]
 ---
 test-case: atomic 32-bit XCHG stack
 
@@ -495,8 +495,8 @@ code:
     lock *(u32 *)(r2 + 4) x= r1
 
 post: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...7].type=number", "s[4...7].svalue=2", "s[4...7].uvalue=2"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...7].type=number", "s[4...7].svalue=2", "s[4...7].uvalue=2"]
 ---
 test-case: atomic 64-bit XCHG stack
 
@@ -509,8 +509,8 @@ code:
     lock *(u64 *)(r2 + 4) x= r1
 
 post: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5",
-      "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
-      "s[4...11].type=number", "s[4...11].svalue=2", "s[4...11].uvalue=2"]
+       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "s[4...11].type=number", "s[4...11].svalue=2", "s[4...11].uvalue=2"]
 ---
 test-case: atomic 32-bit CMPXCHG stack
 
@@ -554,7 +554,7 @@ code:
     lock *(u32 *)(r2 + 4) += r1
 
 post: ["r1.type=number", "r1.svalue=2", "r1.uvalue=2",
-      "r2.type=number", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue"]
+       "r2.type=number", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue"]
 
 messages:
   - "0: Invalid type (r2.type in {ctx, stack, packet, shared})"
