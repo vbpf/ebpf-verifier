@@ -502,6 +502,10 @@ TEST_SECTION_REJECT("build", "ringbuf_uninit.o", ".text");
 // If the verifier is later updated to accept them, these should
 // be changed to TEST_SECTION().
 
+// Issue: https://github.com/vbpf/ebpf-verifier/issues/620
+// Inserting value from map 1 into map 2 should be supported, but fails.
+TEST_SECTION_FAIL("build", "store_map_value_in_map.o", ".text")
+
 // Unsupported: ebpf-function
 TEST_SECTION_FAIL("prototype-kernel", "xdp_ddos01_blacklist_kern.o", ".text")
 
