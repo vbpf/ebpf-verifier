@@ -140,7 +140,7 @@ post:
   - r8.uvalue=2
 
 messages:
-  - "0: Invalid type (r3.type in {stack, packet})"
+  - "0: Invalid type (r3.type in {stack, packet, shared})"
   - "0: Only stack or packet can be used as a parameter (within stack(r3:value_size(r1)))"
 ---
 test-case: callx bpf_ringbuf_output with numeric stack value
