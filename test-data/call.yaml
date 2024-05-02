@@ -20,6 +20,65 @@ post:
   - r0.svalue=r0.uvalue
   - s[504...511].type=number
 ---
+test-case: bpf_map_lookup_elem shared key
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=shared", "r2.shared_offset=0", "r2.shared_region_size=4", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]"]
+
+code:
+  <start>: |
+    call 1; bpf_map_lookup_elem
+
+post:
+  - r0.type=shared
+  - r0.shared_offset=0
+  - r0.shared_region_size=4
+  - r0.svalue=[0, 2147418112]
+  - r0.uvalue=[0, 2147418112]
+  - r0.svalue=r0.uvalue
+
+---
+test-case: bpf_map_lookup_elem shared key - maybe null
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=shared", "r2.shared_offset=0", "r2.shared_region_size=4", "r2.svalue=[0, 2147418112]", "r2.uvalue=[0, 2147418112]"]
+
+code:
+  <start>: |
+    call 1; bpf_map_lookup_elem
+
+post:
+  - r0.type=shared
+  - r0.shared_offset=0
+  - r0.shared_region_size=4
+  - r0.svalue=[0, 2147418112]
+  - r0.uvalue=[0, 2147418112]
+  - r0.svalue=r0.uvalue
+
+messages:
+  - "0: Possible null access (within stack(r2:key_size(r1)))"
+
+---
+test-case: bpf_map_lookup_elem shared key - too small
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=shared", "r2.shared_offset=0", "r2.shared_region_size=2", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]"]
+
+code:
+  <start>: |
+    call 1; bpf_map_lookup_elem
+
+post:
+  - r0.type=shared
+  - r0.shared_offset=0
+  - r0.shared_region_size=4
+  - r0.svalue=[0, 2147418112]
+  - r0.uvalue=[0, 2147418112]
+  - r0.svalue=r0.uvalue
+
+messages:
+  - "0: Upper bound must be at most r2.shared_region_size (within stack(r2:key_size(r1)))"
+---
 test-case: bpf_map_lookup_elem with non-numeric stack key
 
 pre: ["r1.type=map_fd", "r1.map_fd=1",
