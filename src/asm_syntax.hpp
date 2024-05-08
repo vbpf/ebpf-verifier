@@ -235,11 +235,24 @@ struct Packet {
     constexpr bool operator==(const Packet&) const = default;
 };
 
-/// Special instruction for incrementing values inside shared memory.
-struct LockAdd {
+/// Special instruction for atomically updating values inside shared memory.
+/// The analysis just treats an atomic operation as a series of consecutive
+/// operations, and the atomicity itself is not significant.
+struct Atomic {
+    enum class Op {
+        ADD = 0x00,
+        OR = 0x40,
+        AND = 0x50,
+        XOR = 0xa0,
+        XCHG = 0xe0,    // Only valid with fetch=true.
+        CMPXCHG = 0xf0, // Only valid with fetch=true.
+    };
+
+    Op op;
+    bool fetch{};
     Deref access;
     Reg valreg;
-    constexpr bool operator==(const LockAdd&) const = default;
+    constexpr bool operator==(const Atomic&) const = default;
 };
 
 /// Not an instruction, just used for failure cases.
@@ -365,7 +378,7 @@ struct IncrementLoopCounter {
     constexpr bool operator==(const IncrementLoopCounter&) const = default;
 };
 
-using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Callx, Exit, Jmp, Mem, Packet, LockAdd, Assume, Assert, IncrementLoopCounter>;
+using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Callx, Exit, Jmp, Mem, Packet, Atomic, Assume, Assert, IncrementLoopCounter>;
 
 using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
 using InstructionSeq = std::vector<LabeledInstruction>;

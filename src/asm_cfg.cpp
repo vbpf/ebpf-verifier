@@ -178,7 +178,7 @@ static std::string instype(Instruction ins) {
         return "callx";
     } else if (std::holds_alternative<Mem>(ins)) {
         return std::get<Mem>(ins).is_load ? "load" : "store";
-    } else if (std::holds_alternative<LockAdd>(ins)) {
+    } else if (std::holds_alternative<Atomic>(ins)) {
         return "load_store";
     } else if (std::holds_alternative<Packet>(ins)) {
         return "packet_access";

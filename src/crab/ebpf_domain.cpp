@@ -2154,8 +2154,69 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue,
     });
 }
 
-void ebpf_domain_t::operator()(const LockAdd& a) {
-    // nothing to do here
+// Construct a Bin operation that does the main operation that a given Atomic operation does atomically.
+static Bin atomic_to_bin(const Atomic& a) {
+    Bin bin{
+        .dst = Reg{R11_ATOMIC_SCRATCH}, .v = a.valreg, .is64 = (a.access.width == sizeof(uint64_t)), .lddw = false};
+    switch (a.op) {
+    case Atomic::Op::ADD: bin.op = Bin::Op::ADD; break;
+    case Atomic::Op::OR: bin.op = Bin::Op::OR; break;
+    case Atomic::Op::AND: bin.op = Bin::Op::AND; break;
+    case Atomic::Op::XOR: bin.op = Bin::Op::XOR; break;
+    case Atomic::Op::XCHG:
+    case Atomic::Op::CMPXCHG: bin.op = Bin::Op::MOV; break;
+    default: throw std::exception();
+    }
+    return bin;
+}
+
+void ebpf_domain_t::operator()(const Atomic& a) {
+    if (m_inv.is_bottom())
+        return;
+    if (!m_inv.entail(type_is_pointer(reg_pack(a.access.basereg))) ||
+        !m_inv.entail(type_is_number(reg_pack(a.valreg)))) {
+        return;
+    }
+    if (m_inv.entail(type_is_not_stack(reg_pack(a.access.basereg)))) {
+        // Shared memory regions are volatile so we can just havoc
+        // any register that will be updated.
+        if (a.op == Atomic::Op::CMPXCHG)
+            havoc_register(m_inv, Reg{R0_RETURN_VALUE});
+        else if (a.fetch)
+            havoc_register(m_inv, a.valreg);
+        return;
+    }
+
+    // Fetch the current value into the R11 pseudo-register.
+    const Reg r11{R11_ATOMIC_SCRATCH};
+    (*this)(Mem{.access = a.access, .value = r11, .is_load = true});
+
+    // Compute the new value in R11.
+    (*this)(atomic_to_bin(a));
+
+    if (a.op == Atomic::Op::CMPXCHG) {
+        // For CMPXCHG, store the original value in r0.
+        (*this)(Mem{.access = a.access, .value = Reg{R0_RETURN_VALUE}, .is_load = true});
+
+        // For the destination, there are 3 possibilities:
+        // 1) dst.value == r0.value : set R11 to valreg
+        // 2) dst.value != r0.value : don't modify R11
+        // 3) dst.value may or may not == r0.value : set R11 to the union of R11 and valreg
+        // For now we just havoc the value of R11.
+        havoc_register(m_inv, r11);
+    } else if (a.fetch) {
+        // For other FETCH operations, store the original value in the src register.
+        (*this)(Mem{.access = a.access, .value = a.valreg, .is_load = true});
+    }
+
+    // Store the new value back in the original shared memory location.
+    // Note that do_mem_store() currently doesn't track shared memory values,
+    // but stack memory values are tracked and are legal here.
+    (*this)(Mem{.access = a.access, .value = r11, .is_load = false});
+
+    // Clear the R11 pseudo-register.
+    havoc_register(m_inv, r11);
+    type_inv.havoc_type(m_inv, r11);
 }
 
 void ebpf_domain_t::operator()(const Call& call) {

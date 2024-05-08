@@ -219,7 +219,7 @@ struct MarshalVisitor {
     vector<ebpf_inst> operator()(Mem const& b) {
         Deref access = b.access;
         ebpf_inst res{
-            .opcode = static_cast<uint8_t>((INST_MEM << 5) | width_to_opcode(access.width)),
+            .opcode = static_cast<uint8_t>(INST_MODE_MEM | width_to_opcode(access.width)),
             .dst = 0,
             .src = 0,
             .offset = static_cast<int16_t>(access.offset),
@@ -253,21 +253,24 @@ struct MarshalVisitor {
             .imm = static_cast<int32_t>(b.offset),
         };
         if (b.regoffset) {
-            res.opcode |= (INST_IND << 5);
+            res.opcode |= INST_MODE_IND;
             res.src = b.regoffset->v;
         } else {
-            res.opcode |= (INST_ABS << 5);
+            res.opcode |= INST_MODE_ABS;
         }
         return {res};
     }
 
-    vector<ebpf_inst> operator()(LockAdd const& b) {
+    vector<ebpf_inst> operator()(Atomic const& b) {
+        int32_t imm = (int32_t)b.op;
+        if (b.fetch)
+            imm |= INST_FETCH;
         return {ebpf_inst{
-            .opcode = static_cast<uint8_t>(INST_CLS_ST | 0x1 | (INST_XADD << 5) | width_to_opcode(b.access.width)),
+            .opcode = static_cast<uint8_t>(INST_CLS_STX | INST_MODE_ATOMIC | width_to_opcode(b.access.width)),
             .dst = b.access.basereg.v,
             .src = b.valreg.v,
             .offset = static_cast<int16_t>(b.access.offset),
-            .imm = 0}};
+            .imm = imm}};
     }
 
     vector<ebpf_inst> operator()(IncrementLoopCounter const& ins) {

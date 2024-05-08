@@ -328,10 +328,24 @@ struct InstructionPrinterVisitor {
         }
     }
 
-    void operator()(LockAdd const& b) {
+    void operator()(Atomic const& b) {
         os_ << "lock ";
         print(b.access);
-        os_ << " += " << b.valreg;
+        os_ << " ";
+        bool showfetch = true;
+        switch (b.op) {
+        case Atomic::Op::ADD: os_ << "+"; break;
+        case Atomic::Op::OR : os_ << "|"; break;
+        case Atomic::Op::AND: os_ << "&"; break;
+        case Atomic::Op::XOR: os_ << "^"; break;
+        case Atomic::Op::XCHG: os_ << "x"; showfetch = false; break;
+        case Atomic::Op::CMPXCHG: os_ << "cx"; showfetch = false; break;
+        }
+        os_ << "= " << b.valreg;
+
+        if (showfetch && b.fetch) {
+            os_ << " fetch";
+        }
     }
 
     void operator()(Assume const& b) {
