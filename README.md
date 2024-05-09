@@ -21,6 +21,12 @@ sudo apt install libboost-filesystem-dev libboost-program-options-dev
 * Install [Visual Studio Build Tools 2022](https://aka.ms/vs/17/release/vs_buildtools.exe) and choose the "C++ build tools" workload (Visual Studio Build Tools 2022 has support for CMake Version 3.25).
 * Install [nuget.exe](https://www.nuget.org/downloads)
 
+### Dependencies from MacOS
+```bash
+brew install llvm cmake boost yaml-cpp
+```
+The system llvm currently comes with Clang 15, which isn't enough to compile the ebpf-verifier as it depends on C++20. Brew's llvm comes with Clang 17.
+
 ### Installation
 Clone:
 ```
@@ -38,6 +44,13 @@ Make on Windows (which uses a multi-configuration generator):
 ```
 cmake -B build
 cmake --build build --config Release
+```
+
+Make on MacOS:
+```
+export CPATH=$(brew --prefix)/include LIBRARY_PATH=$(brew --prefix)/lib CMAKE_PREFIX_PATH=$(brew --prefix)
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$(brew --prefix llvm)/bin/clang -DCMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++
+cmake --build build
 ```
 
 ### Running with Docker
