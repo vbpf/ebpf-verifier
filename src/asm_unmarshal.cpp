@@ -464,11 +464,24 @@ struct Unmarshaller {
             case EBPF_ARGUMENT_TYPE_PTR_TO_CTX:
                 res.singles.push_back({toArgSingleKind(args[i]), Reg{(uint8_t)i}});
                 break;
-            case EBPF_ARGUMENT_TYPE_CONST_SIZE: assert(false); continue;
-            case EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO: assert(false); continue;
+            case EBPF_ARGUMENT_TYPE_CONST_SIZE: {
+                // Sanity check: This argument should never be seen in isolation.
+                throw std::runtime_error(std::string("mismatched EBPF_ARGUMENT_TYPE_PTR_TO* and EBPF_ARGUMENT_TYPE_CONST_SIZE: ") + proto.name);
+            }
+            case EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO:{
+                // Sanity check: This argument should never be seen in isolation.
+                throw std::runtime_error(std::string("mismatched EBPF_ARGUMENT_TYPE_PTR_TO* and EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO: ") + proto.name);
+            }
             case EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM_OR_NULL:
             case EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM:
             case EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM:
+                // Sanity check: This argument must be followed by EBPF_ARGUMENT_TYPE_CONST_SIZE or EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO.
+                if (args.size() - i < 2) {
+                    throw std::runtime_error(std::string("missing EBPF_ARGUMENT_TYPE_CONST_SIZE or EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO: ") + proto.name);
+                }
+                if (args[i + 1] != EBPF_ARGUMENT_TYPE_CONST_SIZE && args[i + 1] != EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO) {
+                    throw std::runtime_error(std::string("Pointer argument not followed by EBPF_ARGUMENT_TYPE_CONST_SIZE or EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO: ") + proto.name);
+                }
                 bool can_be_zero = (args[i + 1] == EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO);
                 res.pairs.push_back({toArgPairKind(args[i]), Reg{(uint8_t)i}, Reg{(uint8_t)(i + 1)}, can_be_zero});
                 i++;
