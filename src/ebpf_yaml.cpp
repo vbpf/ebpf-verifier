@@ -239,6 +239,8 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
         test_case.options.no_simplify = true;
     }
 
+    test_case.options.print_failures = true;
+
     ebpf_context_descriptor_t context_descriptor{64, 0, 4, -1};
     EbpfProgramType program_type = make_program_type(test_case.name, &context_descriptor);
 
