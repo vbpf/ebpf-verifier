@@ -108,20 +108,78 @@ static auto get_line_info(const InstructionSeq& insts) {
     return label_to_line_info;
 }
 
-static void print_report(std::ostream& os, const checks_db& db, const InstructionSeq& prog, bool print_line_info) {
-    auto label_to_line_info = get_line_info(prog);
-    os << "\n";
-    for (auto [label, messages] : db.m_db) {
-        for (const auto& msg : messages) {
-            if (print_line_info) {
-                auto line_info = label_to_line_info.find(label.from);
-                if (line_info != label_to_line_info.end())
-                    os << line_info->second;
+class print_label_visitor final {
+    std::set<label_t> printed_labels;
+    std::ostream& m_os;
+    const checks_db& m_db;
+    std::optional<std::map<int, btf_line_info_t>> label_to_line_info;
+    wto_t m_wto;
+
+public:
+    explicit print_label_visitor(cfg_t& cfg, const checks_db& db, std::ostream& os, std::optional<std::map<int, btf_line_info_t>> line_info) : m_os(os), m_db(db), label_to_line_info(line_info), m_wto(cfg) {}
+
+    void operator()(const label_t& label) { 
+        if (printed_labels.find(label) == printed_labels.end()) {
+            printed_labels.insert(label);
+            auto it = m_db.m_db.find(label);
+            if (it != m_db.m_db.end()) {
+                if (label_to_line_info) {
+                    auto line_info = label_to_line_info->find(label.from);
+                    if (line_info != label_to_line_info->end())
+                        m_os << line_info->second;
+                }
+
+                for (const auto& msg : it->second) {
+                    m_os << label << ": " << msg << "\n";
+                }
             }
-            os << label << ": " << msg << "\n";
+        }
+    }    
+
+    void operator()(std::shared_ptr<wto_cycle_t>& cycle) {
+        for (auto component : *cycle) {
+            std::visit(*this, *component);
         }
     }
+
+    void print_labels()
+    {
+        for (const auto& component : m_wto) {
+            std::visit(*this, *component);
+        }
+    }
+};
+
+static void print_report(std::ostream& os, const checks_db& db, const InstructionSeq& prog, const ebpf_verifier_options_t& options, cfg_t& cfg) {
+    auto label_to_line_info = get_line_info(prog);
     os << "\n";
+    
+    if (options.print_failures_in_weak_topological_order){
+        std::set<label_t> printed_labels;
+        std::optional<std::map<int, btf_line_info_t>> label_to_line_info_opt;
+        if (options.print_line_info) {
+            label_to_line_info_opt = label_to_line_info;
+        }
+
+        print_label_visitor visitor(cfg, db, os, label_to_line_info_opt);
+
+        visitor.print_labels();
+        os << "\n";
+    }
+
+    if (options.print_failures) {
+        for (auto [label, messages] : db.m_db) {
+            for (const auto& msg : messages) {
+                if (options.print_line_info) {
+                    auto line_info = label_to_line_info.find(label.from);
+                    if (line_info != label_to_line_info.end())
+                        os << line_info->second;
+                }
+                os << label << ": " << msg << "\n";
+            }
+        }
+        os << "\n";
+    }
     crab::number_t max_loop_count{100000};
     if (db.max_loop_count > max_loop_count) {
         os << "Could not prove termination.\n";
@@ -200,7 +258,7 @@ std::tuple<string_invariant, bool> ebpf_analyze_program_for_test(std::ostream& o
     cfg_t cfg = prepare_cfg(prog, info, !options.no_simplify, false);
     auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, std::move(entry_inv));
     checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
-    print_report(os, report, prog, false);
+    print_report(os, report, prog, options, cfg);
 
     auto pre_invariant_map = to_string_invariant_map(pre_invariants);
 
@@ -219,7 +277,7 @@ bool ebpf_verify_program(std::ostream& os, const InstructionSeq& prog, const pro
 
     checks_db report = get_ebpf_report(os, cfg, info, options);
     if (options->print_failures) {
-        print_report(os, report, prog, options->print_line_info);
+        print_report(os, report, prog, *options, cfg);
     }
     if (stats) {
         stats->total_unreachable = report.total_unreachable;
