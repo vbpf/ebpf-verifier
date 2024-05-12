@@ -41,9 +41,11 @@ code:
 
 post: ["r1.type=number", "r1.svalue=[-5, 5]"]
 ---
-test-case: be16 singleton
+test-case: be16 singleton on little-endian
 
 pre: ["r1.type=number", "r1.svalue=6636321", "r1.uvalue=6636321"]
+
+options: ["!big_endian"]
 
 code:
   <start>: |
@@ -51,9 +53,23 @@ code:
 
 post: ["r1.type=number", "r1.svalue=8515", "r1.uvalue=8515"]
 ---
-test-case: be32 singleton
+test-case: be16 singleton on big-endian
+
+pre: ["r1.type=number", "r1.svalue=6636321", "r1.uvalue=6636321"]
+
+options: ["big_endian"]
+
+code:
+  <start>: |
+    r1 = be16 r1 ; 0x654321 -> 0x4321
+
+post: ["r1.type=number", "r1.svalue=17185", "r1.uvalue=17185"]
+---
+test-case: be32 singleton on little-endian
 
 pre: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
+
+options: ["!big_endian"]
 
 code:
   <start>: |
@@ -61,9 +77,23 @@ code:
 
 post: ["r1.type=number", "r1.svalue=558065031", "r1.uvalue=558065031"]
 ---
-test-case: be64 singleton
+test-case: be32 singleton on big-endian
 
 pre: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
+
+options: ["big_endian"]
+
+code:
+  <start>: |
+    r1 = be32 r1 ; 0x0987654321 -> 0x87654321
+
+post: ["r1.type=number", "r1.svalue=2271560481", "r1.uvalue=2271560481"]
+---
+test-case: be64 singleton on little-endian
+
+pre: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
+
+options: ["!big_endian"]
 
 code:
   <start>: |
@@ -71,9 +101,23 @@ code:
 
 post: ["r1.type=number", "r1.svalue=2396871057337221120", "r1.uvalue=2396871057337221120"]
 ---
-test-case: be16 range
+test-case: be64 singleton on big-endian
+
+pre: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
+
+options: ["big_endian"]
+
+code:
+  <start>: |
+    r1 = be64 r1 ; nop
+
+post: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
+---
+test-case: be16 range on little-endian
 
 pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.svalue=r1.uvalue"]
+
+options: ["!big_endian"]
 
 code:
   <start>: |
@@ -81,9 +125,23 @@ code:
 
 post: ["r1.type=number"]
 ---
-test-case: le16 singleton
+test-case: be16 range on big-endian
+
+pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.svalue=r1.uvalue"]
+
+options: ["big_endian"]
+
+code:
+  <start>: |
+    r1 = be16 r1 ; nop. this could preserve the range but we don't support that yet
+
+post: ["r1.type=number"]
+---
+test-case: le16 singleton on little-endian
 
 pre: ["r1.type=number", "r1.svalue=6636321", "r1.uvalue=6636321"]
+
+options: ["!big_endian"]
 
 code:
   <start>: |
@@ -91,9 +149,23 @@ code:
 
 post: ["r1.type=number", "r1.svalue=17185", "r1.uvalue=17185"]
 ---
-test-case: le32 singleton
+test-case: le16 singleton on big-endian
+
+pre: ["r1.type=number", "r1.svalue=6636321", "r1.uvalue=6636321"]
+
+options: ["big_endian"]
+
+code:
+  <start>: |
+    r1 = le16 r1 ; 0x654321 -> 0x2143
+
+post: ["r1.type=number", "r1.svalue=8515", "r1.uvalue=8515"]
+---
+test-case: le32 singleton on little-endian
 
 pre: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
+
+options: ["!big_endian"]
 
 code:
   <start>: |
@@ -101,29 +173,71 @@ code:
 
 post: ["r1.type=number", "r1.svalue=2271560481", "r1.uvalue=2271560481"]
 ---
-test-case: le64 singleton
+test-case: le32 singleton on big-endian
 
 pre: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
+
+options: ["big_endian"]
+
+code:
+  <start>: |
+    r1 = le32 r1 ; 0x0987654321 -> 0x21436587
+
+post: ["r1.type=number", "r1.svalue=558065031", "r1.uvalue=558065031"]
+---
+test-case: le64 singleton on little-endian
+
+pre: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
+
+options: ["!big_endian"]
+
+code:
+  <start>: |
+    r1 = le64 r1 ; nop
+
+post: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
+---
+test-case: le64 singleton on big-endian
+
+pre: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
+
+options: ["big_endian"]
 
 code:
   <start>: |
     r1 = le64 r1 ; 0x0987654321 -> 0x2143658709000000
 
-post: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
+post: ["r1.type=number", "r1.svalue=2396871057337221120", "r1.uvalue=2396871057337221120"]
 ---
-test-case: le16 range
+test-case: le16 range on little-endian
 
 pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.svalue=r1.uvalue"]
 
+options: ["!big_endian"]
+
 code:
   <start>: |
-    r1 = le16 r1 ; this could preserve the range but we don't support that yet
+    r1 = le16 r1 ; nop. this could preserve the range but we don't support that yet
 
 post: ["r1.type=number"]
 ---
-test-case: swap16 singleton
+test-case: le16 range on big-endian
+
+pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.svalue=r1.uvalue"]
+
+options: ["!big_endian"]
+
+code:
+  <start>: |
+    r1 = le16 r1
+
+post: ["r1.type=number"]
+---
+test-case: swap16 singleton on little-endian
 
 pre: ["r1.type=number", "r1.svalue=6636321", "r1.uvalue=6636321"]
+
+options: ["!big_endian"]
 
 code:
   <start>: |
@@ -131,9 +245,23 @@ code:
 
 post: ["r1.type=number", "r1.svalue=8515", "r1.uvalue=8515"]
 ---
-test-case: swap32 singleton
+test-case: swap16 singleton on big-endian
+
+pre: ["r1.type=number", "r1.svalue=6636321", "r1.uvalue=6636321"]
+
+options: ["big_endian"]
+
+code:
+  <start>: |
+    r1 = swap16 r1 ; 0x654321 -> 0x2143
+
+post: ["r1.type=number", "r1.svalue=8515", "r1.uvalue=8515"]
+---
+test-case: swap32 singleton on little-endian
 
 pre: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
+
+options: ["!big_endian"]
 
 code:
   <start>: |
@@ -141,9 +269,23 @@ code:
 
 post: ["r1.type=number", "r1.svalue=558065031", "r1.uvalue=558065031"]
 ---
-test-case: swap64 singleton
+test-case: swap32 singleton on big-endian
 
 pre: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
+
+options: ["big_endian"]
+
+code:
+  <start>: |
+    r1 = swap32 r1 ; 0x0987654321 -> 0x21436587
+
+post: ["r1.type=number", "r1.svalue=558065031", "r1.uvalue=558065031"]
+---
+test-case: swap64 singleton on little-endian
+
+pre: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
+
+options: ["!big_endian"]
 
 code:
   <start>: |
@@ -151,9 +293,35 @@ code:
 
 post: ["r1.type=number", "r1.svalue=2396871057337221120", "r1.uvalue=2396871057337221120"]
 ---
-test-case: swap16 range
+test-case: swap64 singleton on big-endian
+
+pre: ["r1.type=number", "r1.svalue=40926266145", "r1.uvalue=40926266145"]
+
+options: ["big_endian"]
+
+code:
+  <start>: |
+    r1 = swap64 r1 ; 0x0987654321 -> 0x2143658709000000
+
+post: ["r1.type=number", "r1.svalue=2396871057337221120", "r1.uvalue=2396871057337221120"]
+---
+test-case: swap16 range on little-endian
 
 pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.svalue=r1.uvalue"]
+
+options: ["!big_endian"]
+
+code:
+  <start>: |
+    r1 = swap16 r1 ; [0x0000, 0x0002] -> [0x0000, 0x2000] but currently we just lose the range
+
+post: ["r1.type=number"]
+---
+test-case: swap16 range on big-endian
+
+pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]", "r1.svalue=r1.uvalue"]
+
+options: ["big_endian"]
 
 code:
   <start>: |

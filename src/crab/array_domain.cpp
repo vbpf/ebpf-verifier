@@ -8,10 +8,13 @@
 #include <utility>
 #include <vector>
 
+#include "boost/endian/conversion.hpp"
+
 #include "radix_tree/radix_tree.hpp"
 #include "crab/array_domain.hpp"
 
 #include "asm_ostream.hpp"
+#include "config.hpp"
 #include "dsl_syntax.hpp"
 #include "spec_type_descriptors.hpp"
 
@@ -110,9 +113,9 @@ class cell_t final {
         return {number_t{static_cast<int>(o)}, number_t{static_cast<int>(o)} + number_t{static_cast<int>(size - 1)}};
     }
 
+  public:
     [[nodiscard]] interval_t to_interval() const { return to_interval(_offset, _size); }
 
-  public:
     [[nodiscard]] bool is_null() const { return _offset == 0 && _size == 0; }
 
     [[nodiscard]] offset_t get_offset() const { return _offset; }
@@ -447,6 +450,68 @@ std::ostream& operator<<(std::ostream& o, offset_map_t& m) {
     return o;
 }
 
+// Create a new cell that is a subset of an existing cell.
+void array_domain_t::split_cell(NumAbsDomain& inv, data_kind_t kind, int cell_start_index, unsigned int len) {
+    assert(kind == data_kind_t::svalues || kind == data_kind_t::uvalues);
+
+    // Get the values from the indicated stack range.
+    std::optional<linear_expression_t> svalue = load(inv, data_kind_t::svalues, number_t(cell_start_index), len);
+    std::optional<linear_expression_t> uvalue = load(inv, data_kind_t::uvalues, number_t(cell_start_index), len);
+
+    // Create a new cell for that range.
+    offset_map_t& offset_map = lookup_array_map(kind);
+    cell_t new_cell = offset_map.mk_cell(cell_start_index, len);
+    inv.assign(new_cell.get_scalar(data_kind_t::svalues), svalue);
+    inv.assign(new_cell.get_scalar(data_kind_t::uvalues), uvalue);
+}
+
+// Prepare to havoc bytes in the middle of a cell by potentially splitting the cell if it is numeric,
+// into the part to the left of the havoced portion, and the part to the right of the havoced portion.
+void array_domain_t::split_number_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i,
+                                      const linear_expression_t& elem_size) {
+    assert(kind == data_kind_t::svalues || kind == data_kind_t::uvalues);
+    offset_map_t& offset_map = lookup_array_map(kind);
+    interval_t ii = inv.eval_interval(i);
+    std::optional<number_t> n = ii.singleton();
+    if (!n) {
+        // We can only split a singleton offset.
+        return;
+    }
+    interval_t i_elem_size = inv.eval_interval(elem_size);
+    std::optional<number_t> n_bytes = i_elem_size.singleton();
+    if (!n_bytes) {
+        // We can only split a singleton size.
+        return;
+    }
+    auto size = static_cast<unsigned int>(*n_bytes);
+    offset_t o((uint64_t)*n);
+
+    std::vector<cell_t> cells = offset_map.get_overlap_cells(o, size);
+    for (cell_t const& c : cells) {
+        interval_t intv = c.to_interval();
+        int cell_start_index = (int)*intv.lb().number();
+        int cell_end_index = (int)*intv.ub().number();
+
+        if (!this->num_bytes.all_num(cell_start_index, cell_end_index + 1) || (cell_end_index + 1 < cell_start_index + sizeof(int64_t))) {
+            // We can only split numeric cells of size 8 or less.
+            continue;
+        }
+
+        if (!inv.eval_interval(c.get_scalar(kind)).is_singleton()) {
+            // We can only split cells with a singleton value.
+            continue;
+        }
+        if (cell_start_index < o) {
+            // Use the bytes to the left of the specified range.
+            split_cell(inv, kind, cell_start_index, (unsigned int)(o - cell_start_index));
+        }
+        if (o + size - 1 < cell_end_index) {
+            // Use the bytes to the right of the specified range.
+            split_cell(inv, kind, (int)(o + size), (unsigned int)(cell_end_index - (o + size - 1)));
+        }
+    }
+}
+
 // we can only treat this as non-member because we use global state
 static std::optional<std::pair<offset_t, unsigned>>
 kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, const linear_expression_t& elem_size) {
@@ -522,6 +587,28 @@ std::optional<uint8_t> get_value_byte(NumAbsDomain& inv, offset_t o, int width) 
         return {};
     }
     uint64_t n = t->cast_to_uint64();
+
+    // Convert value to bytes of the appropriate endian-ness.
+    switch (width) {
+    case sizeof(uint16_t):
+        if (thread_local_options.big_endian)
+            n = boost::endian::native_to_big<uint16_t>(n);
+        else
+            n = boost::endian::native_to_little<uint16_t>(n);
+        break;
+    case sizeof(uint32_t):
+        if (thread_local_options.big_endian)
+            n = boost::endian::native_to_big<uint32_t>(n);
+        else
+            n = boost::endian::native_to_little<uint32_t>(n);
+        break;
+    case sizeof(uint64_t):
+        if (thread_local_options.big_endian)
+            n = boost::endian::native_to_big<uint64_t>(n);
+        else
+            n = boost::endian::native_to_little<uint64_t>(n);
+        break;
+    }
     uint8_t* bytes = (uint8_t*)&n;
     return bytes[o % width];
 }
@@ -578,14 +665,26 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
                 }
                 if (size == 2) {
                     uint16_t b = *(uint16_t*)result_buffer;
+                    if (thread_local_options.big_endian)
+                        b = boost::endian::native_to_big<uint16_t>(b);
+                    else
+                        b = boost::endian::native_to_little<uint16_t>(b);
                     return number_t{b};
                 }
                 if (size == 4) {
                     uint32_t b = *(uint32_t*)result_buffer;
+                    if (thread_local_options.big_endian)
+                        b = boost::endian::native_to_big<uint32_t>(b);
+                    else
+                        b = boost::endian::native_to_little<uint32_t>(b);
                     return number_t{b};
                 }
                 if (size == 8) {
                     uint64_t b = *(uint64_t*)result_buffer;
+                    if (thread_local_options.big_endian)
+                        b = boost::endian::native_to_big<uint64_t>(b);
+                    else
+                        b = boost::endian::native_to_little<uint64_t>(b);
                     return (kind == data_kind_t::uvalues) ? number_t(b) : number_t((int64_t)b);
                 }
             }
@@ -629,11 +728,22 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
     return {};
 }
 
+// We are about to write to a given range of bytes on the stack.
+// Any cells covering that range need to be removed, and any cells that only
+// partially cover that range can be split such that any non-covered portions become new cells.
+static std::optional<std::pair<offset_t, unsigned>> split_and_find_var(array_domain_t& array_domain, NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size) {
+    if (kind == data_kind_t::svalues || kind == data_kind_t::uvalues) {
+        array_domain.split_number_var(inv, kind, idx, elem_size);
+    }
+    return kill_and_find_var(inv, kind, idx, elem_size);
+}
+
+
 std::optional<variable_t> array_domain_t::store(NumAbsDomain& inv, data_kind_t kind,
                                                 const linear_expression_t& idx,
                                                 const linear_expression_t& elem_size,
                                                 const linear_expression_t& val) {
-    auto maybe_cell = kill_and_find_var(inv, kind, idx, elem_size);
+    auto maybe_cell = split_and_find_var(*this, inv, kind, idx, elem_size);
     if (maybe_cell) {
         // perform strong update
         auto [offset, size] = *maybe_cell;
@@ -655,7 +765,7 @@ std::optional<variable_t> array_domain_t::store_type(NumAbsDomain& inv,
                                                      const linear_expression_t& elem_size,
                                                      const linear_expression_t& val) {
     auto kind = data_kind_t::types;
-    auto maybe_cell = kill_and_find_var(inv, kind, idx, elem_size);
+    auto maybe_cell = split_and_find_var(*this, inv, kind, idx, elem_size);
     if (maybe_cell) {
         // perform strong update
         auto [offset, size] = *maybe_cell;
@@ -678,7 +788,7 @@ std::optional<variable_t> array_domain_t::store_type(NumAbsDomain& inv,
 }
 
 void array_domain_t::havoc(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size) {
-    auto maybe_cell = kill_and_find_var(inv, kind, idx, elem_size);
+    auto maybe_cell = split_and_find_var(*this, inv, kind, idx, elem_size);
     if (maybe_cell && kind == data_kind_t::types) {
         auto [offset, size] = *maybe_cell;
         num_bytes.havoc(offset, size);

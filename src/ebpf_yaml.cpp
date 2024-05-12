@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include <algorithm>
+#include <bit>
 #include <iostream>
 #include <set>
 #include <variant>
@@ -177,6 +178,9 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
     options.no_simplify = true;
     options.setup_constraints = false;
 
+    // Default to the machine's native endianness.
+    options.big_endian = (std::endian::native == std::endian::big);
+
     for (const string& name : raw_options) {
         if (name == "!allow_division_by_zero") {
             options.allow_division_by_zero = false;
@@ -184,6 +188,10 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
             options.check_termination = true;
         } else if (name == "strict") {
             options.strict = true;
+        } else if (name == "big_endian") {
+            options.big_endian = true;
+        } else if (name == "!big_endian") {
+            options.big_endian = false;
         } else {
             throw std::runtime_error("Unknown option: " + name);
         }

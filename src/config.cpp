@@ -13,4 +13,5 @@ const ebpf_verifier_options_t ebpf_verifier_default_options = {
     .print_line_info = false,
     .allow_division_by_zero = true,
     .setup_constraints = true,
+    .big_endian = false,
 };
