@@ -20,6 +20,104 @@ post:
   - r0.svalue=r0.uvalue
   - s[504...511].type=number
 ---
+test-case: bpf_map_lookup_elem shared key
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=shared", "r2.shared_offset=0", "r2.shared_region_size=4", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]"]
+
+code:
+  <start>: |
+    call 1; bpf_map_lookup_elem
+
+post:
+  - r0.type=shared
+  - r0.shared_offset=0
+  - r0.shared_region_size=4
+  - r0.svalue=[0, 2147418112]
+  - r0.uvalue=[0, 2147418112]
+  - r0.svalue=r0.uvalue
+---
+test-case: bpf_map_lookup_elem packet key
+
+pre: [ "meta_offset=0",
+      "r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=packet", "r2.packet_offset=0", "packet_size=4"]
+
+code:
+  <start>: |
+    call 1; bpf_map_lookup_elem
+
+post:
+  - r0.type=shared
+  - r0.shared_offset=0
+  - r0.shared_region_size=4
+  - r0.svalue=[0, 2147418112]
+  - r0.uvalue=[0, 2147418112]
+  - r0.svalue=r0.uvalue
+  - meta_offset=0
+  - packet_size=4
+---
+test-case: bpf_map_lookup_elem shared key - maybe null
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=shared", "r2.shared_offset=0", "r2.shared_region_size=4", "r2.svalue=[0, 2147418112]", "r2.uvalue=[0, 2147418112]"]
+
+code:
+  <start>: |
+    call 1; bpf_map_lookup_elem
+
+post:
+  - r0.type=shared
+  - r0.shared_offset=0
+  - r0.shared_region_size=4
+  - r0.svalue=[0, 2147418112]
+  - r0.uvalue=[0, 2147418112]
+  - r0.svalue=r0.uvalue
+
+messages:
+  - "0: Possible null access (within stack(r2:key_size(r1)))"
+
+---
+test-case: bpf_map_lookup_elem shared key - too small
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=shared", "r2.shared_offset=0", "r2.shared_region_size=2", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]"]
+
+code:
+  <start>: |
+    call 1; bpf_map_lookup_elem
+
+post:
+  - r0.type=shared
+  - r0.shared_offset=0
+  - r0.shared_region_size=4
+  - r0.svalue=[0, 2147418112]
+  - r0.uvalue=[0, 2147418112]
+  - r0.svalue=r0.uvalue
+
+messages:
+  - "0: Upper bound must be at most r2.shared_region_size (within stack(r2:key_size(r1)))"
+---
+test-case: bpf_map_lookup_elem shared key - too small
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=shared", "r2.shared_offset=-2", "r2.shared_region_size=4", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]"]
+
+code:
+  <start>: |
+    call 1; bpf_map_lookup_elem
+
+post:
+  - r0.type=shared
+  - r0.shared_offset=0
+  - r0.shared_region_size=4
+  - r0.svalue=[0, 2147418112]
+  - r0.uvalue=[0, 2147418112]
+  - r0.svalue=r0.uvalue
+
+messages:
+  - "0: Lower bound must be at least 0 (within stack(r2:key_size(r1)))"
+---
 test-case: bpf_map_lookup_elem with non-numeric stack key
 
 pre: ["r1.type=map_fd", "r1.map_fd=1",
@@ -39,6 +137,117 @@ post:
 
 messages:
   - "0: Illegal map update with a non-numerical value [-oo-oo) (within stack(r2:key_size(r1)))"
+---
+test-case: bpf_map_update_elem with numeric stack value
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=stack", "r2.stack_offset=504",
+      "r3.type=stack", "r3.stack_offset=496",
+      "r4.type=number",
+      "s[496...511].type=number"]
+
+code:
+  <start>: |
+    call 2; bpf_map_update_elem
+
+post:
+  - r0.type=number
+  - s[496...511].type=number
+
+---
+test-case: bpf_map_update_elem with shared value
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=stack", "r2.stack_offset=504",
+      "r3.type=shared", "r3.shared_offset=0", "r3.shared_region_size=4", "r3.svalue=[1, 2147418112]", "r3.uvalue=[1, 2147418112]",
+      "r4.type=number",
+      "s[496...511].type=number"]
+
+code:
+  <start>: |
+    call 2; bpf_map_update_elem
+
+post:
+  - r0.type=number
+  - s[496...511].type=number
+
+---
+test-case: bpf_map_update_elem with shared value too small
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=stack", "r2.stack_offset=504",
+      "r3.type=shared", "r3.shared_offset=0", "r3.shared_region_size=2", "r3.svalue=[1, 2147418112]", "r3.uvalue=[1, 2147418112]",
+      "r4.type=number",
+      "s[496...511].type=number"]
+
+code:
+  <start>: |
+    call 2; bpf_map_update_elem
+
+post:
+  - r0.type=number
+  - s[496...511].type=number
+
+messages:
+  - "0: Upper bound must be at most r3.shared_region_size (within stack(r3:value_size(r1)))"
+
+---
+test-case: bpf_map_update_elem with shared value larger than target region
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=stack", "r2.stack_offset=504",
+      "r3.type=shared", "r3.shared_offset=0", "r3.shared_region_size=64", "r3.svalue=[1, 2147418112]", "r3.uvalue=[1, 2147418112]",
+      "r4.type=number",
+      "s[496...511].type=number"]
+
+code:
+  <start>: |
+    call 2; bpf_map_update_elem
+
+post:
+  - r0.type=number
+  - s[496...511].type=number
+
+---
+test-case: bpf_map_update_elem with shared value may be null
+
+pre: ["r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=stack", "r2.stack_offset=504",
+      "r3.type=shared", "r3.shared_offset=0", "r3.shared_region_size=4", "r3.svalue=[0, 2147418112]", "r3.uvalue=[0, 2147418112]",
+      "r4.type=number",
+      "s[496...511].type=number"]
+
+code:
+  <start>: |
+    call 2; bpf_map_update_elem
+
+post:
+  - r0.type=number
+  - s[496...511].type=number
+
+messages:
+  -  "0: Possible null access (within stack(r3:value_size(r1)))"
+
+---
+test-case: bpf_map_update_elem with packet value
+
+pre: ["meta_offset=0",
+      "r1.type=map_fd", "r1.map_fd=1",
+      "r2.type=stack", "r2.stack_offset=504",
+      "r3.type=packet", "r3.packet_offset=0", "packet_size=4",
+      "r4.type=number",
+      "s[496...511].type=number"]
+
+code:
+  <start>: |
+    call 2; bpf_map_update_elem
+
+post:
+  - r0.type=number
+  - s[496...511].type=number
+  - meta_offset=0
+  - packet_size=4
+
 ---
 test-case: bpf_map_update_elem with non-numeric stack value
 
@@ -76,7 +285,7 @@ post:
   - s[504...511].type=number
 
 messages:
-  - "0: Invalid type (r3.type in {stack, packet})"
+  - "0: Invalid type (r3.type in {stack, packet, shared})"
   - "0: Only stack or packet can be used as a parameter (within stack(r3:value_size(r1)))"
 ---
 test-case: bpf_ringbuf_output with numeric stack value

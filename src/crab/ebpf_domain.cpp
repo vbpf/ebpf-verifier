@@ -1783,6 +1783,12 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
             linear_expression_t ub = lb + width;
             check_access_packet(inv, lb, ub, {});
             // Packet memory is both readable and writable.
+        } else if (access_reg_type == T_SHARED) {
+            variable_t lb = access_reg.shared_offset;
+            linear_expression_t ub = lb + width;
+            check_access_shared(inv, lb, ub, access_reg.shared_region_size);
+            require(inv, access_reg.svalue > 0, "Possible null access");
+            // Shared memory is zero-initialized when created so is safe to read and write.
         } else {
             require(inv, linear_constraint_t::FALSE(), "Only stack or packet can be used as a parameter");
         }
