@@ -497,8 +497,7 @@ void array_domain_t::split_number_var(NumAbsDomain& inv, data_kind_t kind, const
             continue;
         }
 
-        std::optional<number_t> old_number = inv.eval_interval(c.get_scalar(kind)).singleton();
-        if (!old_number) {
+        if (!inv.eval_interval(c.get_scalar(kind)).is_singleton()) {
             // We can only split cells with a singleton value.
             continue;
         }
