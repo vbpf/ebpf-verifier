@@ -121,7 +121,7 @@ post:
   - "pc[1]=r0.uvalue"
 ---
 test-case: while loop, eq
-#options: ["termination"]
+# options: ["termination"]
 pre: []
 
 code:
@@ -143,7 +143,7 @@ post:
 #  - "pc[1]=r0.value"
 ---
 test-case: until loop, neq
-#options: ["termination"]
+# options: ["termination"]
 
 pre: []
 
@@ -182,7 +182,7 @@ post:
   - "r0.type=number"
   - "r0.svalue=9"
   - "r0.uvalue=9"
-#  - "r0.svalue=r0.uvalue"
+  # - "r0.svalue=r0.uvalue"
   - "pc[1]=[1, +oo]"
 
 messages:

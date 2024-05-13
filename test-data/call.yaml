@@ -39,7 +39,7 @@ post:
 ---
 test-case: bpf_map_lookup_elem packet key
 
-pre: [ "meta_offset=0",
+pre: ["meta_offset=0",
       "r1.type=map_fd", "r1.map_fd=1",
       "r2.type=packet", "r2.packet_offset=0", "packet_size=4"]
 
@@ -226,7 +226,7 @@ post:
   - s[496...511].type=number
 
 messages:
-  -  "0: Possible null access (within stack(r3:value_size(r1)))"
+  - "0: Possible null access (within stack(r3:value_size(r1)))"
 
 ---
 test-case: bpf_map_update_elem with packet value

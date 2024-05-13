@@ -1125,7 +1125,7 @@ test-case: "assume [UINT32_MAX+1, UINT32_MAX+5] w< 2"
 pre: ["r1.type=number", "r1.uvalue=[4294967296, 4294967300]"]
 code:
   <start>: assume w1 < 2
-post: ["r1.type=number", "r1.uvalue=[4294967296, 4294967300]"] # could be narrowed in future
+post: ["r1.type=number", "r1.uvalue=[4294967296, 4294967300]"]  # could be narrowed in future
 ---
 test-case: "assume [1, 4] w< INT32_MAX+5"
 pre: ["r1.type=number", "r1.uvalue=[1, 4]",
