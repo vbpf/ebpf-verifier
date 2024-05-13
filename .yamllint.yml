@@ -1,0 +1,10 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+#
+# Configuration file for yamllint.  For documentation, see
+# https://yamllint.readthedocs.io/en/stable/configuration.html
+
+extends: default
+
+rules:
+  line-length: disable

@@ -174,9 +174,9 @@ code:
      assume r1 == 1
 
 post:
-   - r1.type=number
-   - r1.svalue=1
-   - r1.uvalue=1
+  - r1.type=number
+  - r1.svalue=1
+  - r1.uvalue=1
 ---
 test-case: equals reg
 
@@ -187,12 +187,12 @@ code:
      assume r1 == 1
 
 post:
-   - r1.type=number
-   - r1.svalue=1
-   - r1.uvalue=1
-   - r2.type=number
-   - r2.svalue=1
-   - r2.uvalue=1
+  - r1.type=number
+  - r1.svalue=1
+  - r1.uvalue=1
+  - r2.type=number
+  - r2.svalue=1
+  - r2.uvalue=1
 ---
 test-case: equals positive interval
 
@@ -204,15 +204,15 @@ code:
      assume r1 == r2
 
 post:
-   - r1.type=number
-   - r1.svalue=[1, 2]
-   - r1.uvalue=[1, 2]
-   - r1.svalue=r1.uvalue
-   - r2.type=number
-   - r2.svalue=[1, 2]
-   - r2.uvalue=[1, 2]
-   - r2.svalue=r2.uvalue
-   - r1.svalue=r2.svalue
-   - r1.svalue=r2.uvalue
-   - r1.uvalue=r2.svalue
-   - r1.uvalue=r2.uvalue
+  - r1.type=number
+  - r1.svalue=[1, 2]
+  - r1.uvalue=[1, 2]
+  - r1.svalue=r1.uvalue
+  - r2.type=number
+  - r2.svalue=[1, 2]
+  - r2.uvalue=[1, 2]
+  - r2.svalue=r2.uvalue
+  - r1.svalue=r2.svalue
+  - r1.svalue=r2.uvalue
+  - r1.uvalue=r2.svalue
+  - r1.uvalue=r2.uvalue
