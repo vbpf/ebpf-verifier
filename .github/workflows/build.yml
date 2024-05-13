@@ -1,6 +1,7 @@
+---
 name: CPP CI
 
-on:
+"on":
   pull_request:
     paths-ignore:
       - '**.md'

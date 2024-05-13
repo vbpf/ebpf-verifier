@@ -6,9 +6,10 @@
 #
 # For documentation on the syntax of this file, see
 # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions
+---
 name: Validate-YAML
 
-on:
+"on":
   push:
     branches: [main]
   pull_request:

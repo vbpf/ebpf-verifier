@@ -1,9 +1,9 @@
 # Copyright (c) Prevail Verifier contributors.
 # SPDX-License-Identifier: MIT
-
+---
 name: CPP Code Coverage
 
-on:
+"on":
   push:
     branches: [main]
   pull_request:

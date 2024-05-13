@@ -55,7 +55,7 @@ code:
   <start>: r1 = 9223372036854775801ll
 post: ["r1.type=number", "r1.svalue=9223372036854775801", "r1.uvalue=9223372036854775801"]
 ---
-test-case: "parse INT_MAX code" # largest number that does not overflow
+test-case: "parse INT_MAX code"  # largest number that does not overflow
 pre: []
 code:
   <start>: r1 = 9223372036854775807ll

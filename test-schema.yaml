@@ -1,5 +1,6 @@
 # Copyright (c) Prevail Verifier contributors.
 # SPDX-License-Identifier: MIT
+---
 id: https://spec.openapis.org/oas/4.0/schema/2021-08-12
 $schema: http://json-schema.org/draft-04/schema#
 description: Validation schema for ebpf-verifier tests
