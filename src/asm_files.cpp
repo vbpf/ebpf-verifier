@@ -141,9 +141,10 @@ std::tuple<string, ELFIO::Elf_Xword> get_program_name_and_size(ELFIO::section& s
                 continue;
             }
             if (relocation_offset == start) {
-                // We found the program name for this progam.
+                // We found the program name for this program.
                 program_name = symbol_name;
             } else if (relocation_offset > start && relocation_offset < start + size) {
+                // We found another program that follows, so truncate the size of this program.
                 size = relocation_offset - start;
             }
         }
@@ -256,7 +257,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
         for (ELFIO::Elf_Xword program_offset = 0; program_offset < section->get_size();) {
             auto [program_name, program_size] = get_program_name_and_size(*section, program_offset, symbols);
-            raw_program prog{path, program_name, vector_of<ebpf_inst>(section->get_data() + program_offset, program_size), info};
+            raw_program prog{path, name, program_name, vector_of<ebpf_inst>(section->get_data() + program_offset, program_size), info};
             auto prelocs = reader.sections[string(".rel") + name];
             if (!prelocs)
                 prelocs = reader.sections[string(".rela") + name];
@@ -293,17 +294,16 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
                     // Only perform relocation for symbols located in the maps section.
                     if (!map_section_indices.contains(symbol_section_index)) {
-                        std::string unresolved_symbol = "Unresolved external symbol " + symbol_name + " in section " +
-                                                        name + " at location " +
-                                                        std::to_string(offset / sizeof(ebpf_inst));
+                        std::string unresolved_symbol = "Unresolved external symbol " + symbol_name +
+                                                        " in section " + name + " at location " + std::to_string(offset / sizeof(ebpf_inst));
                         unresolved_symbols.push_back(unresolved_symbol);
                         continue;
                     }
 
                     // Only permit loading the address of the map.
                     if ((inst.opcode & INST_CLS_MASK) != INST_CLS_LD) {
-                        throw std::runtime_error("Illegal operation on symbol " + symbol_name + " at location " +
-                                                 std::to_string(offset / sizeof(ebpf_inst)));
+                        throw std::runtime_error("Illegal operation on symbol " + symbol_name +
+                                                 " at location " + std::to_string(offset / sizeof(ebpf_inst)));
                     }
                     inst.src = 1; // magic number for LoadFd
 
@@ -314,20 +314,21 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                         // calculate the map descriptor index directly.
                         size_t reloc_value = relocation_offset / std::get<0>(map_record_size_or_map_offsets);
                         if (reloc_value >= info.map_descriptors.size()) {
-                            throw std::runtime_error("Bad reloc value (" + std::to_string(reloc_value) + "). " +
-                                                     "Make sure to compile with -O2.");
+                            throw std::runtime_error("Bad reloc value (" + std::to_string(reloc_value) + "). "
+                                                    + "Make sure to compile with -O2.");
                         }
 
                         inst.imm = info.map_descriptors.at(reloc_value).original_fd;
-                    } else {
+                    }
+                    else {
                         // The newer .maps section format uses a variable-length map descriptor array,
                         // so we need to look up the map descriptor index in a map.
                         auto& map_descriptors_offsets = std::get<1>(map_record_size_or_map_offsets);
                         auto it = map_descriptors_offsets.find(symbol_name);
 
                         if (it == map_descriptors_offsets.end()) {
-                            throw std::runtime_error("Bad reloc value (" + std::to_string(index) + "). " +
-                                                     "Make sure to compile with -O2.");
+                            throw std::runtime_error("Bad reloc value (" + std::to_string(index) + "). "
+                                                    + "Make sure to compile with -O2.");
                         }
                         inst.imm = info.map_descriptors.at(it->second).original_fd;
                     }

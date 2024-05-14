@@ -70,7 +70,7 @@ static std::vector<std::string> get_string_vector(std::string list) {
 }
 
 static std::optional<raw_program> find_program(vector<raw_program>& raw_progs, std::string desired_program) {
-    if (desired_program.empty() && raw_progs.size() != 1) {
+    if (desired_program.empty() && raw_progs.size() == 1) {
         // Select the last program section.
         return raw_progs.back();
     }
@@ -99,11 +99,11 @@ int main(int argc, char** argv) {
 
     std::string desired_section;
 
-    app.add_option("section", desired_section, "Section to analyze")->type_name("SECTION");
+    app.add_option("--section,section", desired_section, "Section to analyze")->type_name("SECTION");
 
     std::string desired_program;
 
-    app.add_option("program", desired_program, "Program to analyze")->type_name("PROGRAM");
+    app.add_option("--function,function", desired_program, "Function to analyze")->type_name("FUNCTION");
     bool list = false;
     app.add_flag("-l", list, "List programs");
 
@@ -213,7 +213,7 @@ int main(int argc, char** argv) {
             raw_progs = read_elf(filename, string(), &ebpf_verifier_options, &platform);
         }
         for (const raw_program& raw_prog : raw_progs) {
-            std::cout << raw_prog.function_name << " ";
+            std::cout << "section=" << raw_prog.section_name << " function=" << raw_prog.function_name << std::endl;
         }
         std::cout << "\n";
         return list ? 0 : 64;
