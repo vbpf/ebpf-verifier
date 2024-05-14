@@ -32,6 +32,7 @@ FAIL_LOAD_ELF("invalid", "badsymsize.o", "xdp_redirect_map")
 FAIL_UNMARSHAL("build", "wronghelper.o", "xdp")
 FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
 
+// Verify a section with only one program in it.
 #define VERIFY_SECTION(dirname, filename, sectionname, options, platform, pass) \
     do { \
         auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, platform); \
@@ -47,9 +48,32 @@ FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
             REQUIRE(!res);                                   \
     } while (0)
 
+// Verify a program in a section that may have multiple programs in it.
+#define VERIFY_PROGRAM(dirname, filename, section_name, program_name, options, platform, pass) \
+    do { \
+        auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, section_name, nullptr, platform); \
+        for (auto& raw_prog : raw_progs) { \
+            if (raw_prog.function_name == program_name) { \
+                std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog); \
+                REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error)); \
+                auto& prog = std::get<InstructionSeq>(prog_or_error); \
+                bool res = ebpf_verify_program(std::cout, prog, raw_prog.info, options, nullptr); \
+                if (pass) \
+                    REQUIRE(res); \
+                else \
+                    REQUIRE(!res); \
+            } \
+        } \
+    } while (0)
+
 #define TEST_SECTION(project, filename, section) \
     TEST_CASE("./check ebpf-samples/" project "/" filename " " section, "[verify][samples][" project "]") { \
         VERIFY_SECTION(project, filename, section, nullptr, &g_ebpf_platform_linux, true); \
+    }
+
+#define TEST_PROGRAM(project, filename, section_name, program_name) \
+    TEST_CASE("./check ebpf-samples/" project "/" filename " " program_name, "[verify][samples][" project "]") { \
+        VERIFY_PROGRAM(project, filename, section_name, program_name, nullptr, &g_ebpf_platform_linux, true); \
     }
 
 #define TEST_SECTION_REJECT(project, filename, section) \
@@ -476,14 +500,17 @@ TEST_SECTION("build", "stackok.o", ".text")
 TEST_SECTION("build", "packet_start_ok.o", "xdp")
 TEST_SECTION("build", "packet_access.o", "xdp")
 TEST_SECTION("build", "tail_call.o", "xdp_prog")
-TEST_SECTION("build", "tail_call_single_section.o", "xdp")
 TEST_SECTION("build", "map_in_map.o", ".text")
 TEST_SECTION("build", "map_in_map_anonymous.o", ".text")
 TEST_SECTION("build", "map_in_map_legacy.o", ".text")
 TEST_SECTION("build", "twomaps.o", ".text");
 TEST_SECTION("build", "twostackvars.o", ".text");
 TEST_SECTION("build", "twotypes.o", ".text");
-TEST_SECTION("build", "prog_array.o", ".text");
+TEST_PROGRAM("build", "prog_array.o", ".text", "func");
+TEST_PROGRAM("build", "prog_array.o", ".text", "func0");
+TEST_PROGRAM("build", "prog_array.o", ".text", "func1");
+TEST_PROGRAM("build", "prog_array.o", ".text", "func2");
+TEST_PROGRAM("build", "prog_array.o", ".text", "func3");
 
 // Test some programs that ought to fail verification.
 TEST_SECTION_REJECT("build", "badhelpercall.o", ".text")

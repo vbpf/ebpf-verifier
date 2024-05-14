@@ -71,7 +71,7 @@ std::tuple<string, ELFIO::Elf_Half> get_symbol_name_and_section_index(ELFIO::con
     return {symbol_name, section_index};
 }
 
-ELFIO::Elf64_Addr get_value(ELFIO::const_symbol_section_accessor& symbols, ELFIO::Elf_Word index) {
+std::tuple<ELFIO::Elf64_Addr, unsigned char> get_value(ELFIO::const_symbol_section_accessor& symbols, ELFIO::Elf_Word index) {
     string symbol_name;
     ELFIO::Elf64_Addr value{};
     ELFIO::Elf_Xword size{};
@@ -80,7 +80,7 @@ ELFIO::Elf64_Addr get_value(ELFIO::const_symbol_section_accessor& symbols, ELFIO
     ELFIO::Elf_Half section_index{};
     unsigned char other{};
     symbols.get_symbol(index, symbol_name, value, size, bind, type, section_index, other);
-    return value;
+    return {value, type};
 }
 
 // parse_maps_sections processes all maps sections in the provided ELF file by calling the platform-specific maps
@@ -129,8 +129,6 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
 }
 
 std::tuple<string, ELFIO::Elf_Xword> get_program_name_and_size(ELFIO::section& sec, ELFIO::Elf_Xword start, ELFIO::const_symbol_section_accessor& symbols) {
-    // By default use the entire section.
-    // TODO: use individual functions
     ELFIO::Elf_Xword symbol_count = symbols.get_symbols_num();
     ELFIO::Elf_Half section_index = sec.get_index();
     string program_name = sec.get_name();
@@ -138,7 +136,10 @@ std::tuple<string, ELFIO::Elf_Xword> get_program_name_and_size(ELFIO::section& s
     for (ELFIO::Elf_Xword index = 0; index < symbol_count; index++) {
         auto [symbol_name, symbol_section_index] = get_symbol_name_and_section_index(symbols, index);
         if (symbol_section_index == section_index && !symbol_name.empty()) {
-            size_t relocation_offset = get_value(symbols, index);
+            auto [relocation_offset, relocation_type] = get_value(symbols, index);
+            if (relocation_type != ELFIO::STT_FUNC) {
+                continue;
+            }
             if (relocation_offset == start) {
                 // We found the program name for this progam.
                 program_name = symbol_name;
@@ -278,7 +279,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                     if (!reloc.get_entry(i, offset, index, type, addend)) {
                         continue;
                     }
-                    if (offset < program_offset || offset >= offset + program_size) {
+                    if (offset < program_offset || offset >= program_offset + program_size) {
                         // Relocation is not for this program.
                         continue;
                     }
@@ -307,7 +308,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                     inst.src = 1; // magic number for LoadFd
 
                     // Relocation value is an offset into the "maps" or ".maps" section.
-                    size_t relocation_offset = get_value(symbols, index);
+                    auto [relocation_offset, relocation_type] = get_value(symbols, index);
                     if (map_record_size_or_map_offsets.index() == 0) {
                         // The older maps section format uses a single map_record_size value, so we can
                         // calculate the map descriptor index directly.
@@ -351,7 +352,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
     if (btf != nullptr && btf_ext != nullptr) {
         std::map<std::string, raw_program&> segment_to_program;
         for (auto& program : res) {
-            segment_to_program.insert({program.section, program});
+            segment_to_program.insert({program.function_name, program});
         }
 
         auto visitor = [&](const std::string& section, uint32_t instruction_offset, const std::string& file_name,
