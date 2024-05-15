@@ -66,7 +66,8 @@ struct btf_line_info_t {
 
 struct raw_program {
     std::string filename{};
-    std::string section{};
+    std::string section_name{};
+    std::string function_name{};
     std::vector<ebpf_inst> prog{};
     program_info info{};
     std::vector<btf_line_info_t> line_info{};

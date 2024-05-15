@@ -69,6 +69,19 @@ static std::vector<std::string> get_string_vector(std::string list) {
     return string_vector;
 }
 
+static std::optional<raw_program> find_program(vector<raw_program>& raw_progs, std::string desired_program) {
+    if (desired_program.empty() && raw_progs.size() == 1) {
+        // Select the last program section.
+        return raw_progs.back();
+    }
+    for (raw_program current_program : raw_progs) {
+        if (current_program.function_name == desired_program) {
+            return current_program;
+        }
+    }
+    return {};
+}
+
 int main(int argc, char** argv) {
     // Always call ebpf_verifier_clear_thread_local_state on scope exit.
     at_scope_exit<ebpf_verifier_clear_thread_local_state> clear_thread_local_state;
@@ -86,9 +99,13 @@ int main(int argc, char** argv) {
 
     std::string desired_section;
 
-    app.add_option("section", desired_section, "Section to analyze")->type_name("SECTION");
+    app.add_option("--section,section", desired_section, "Section to analyze")->type_name("SECTION");
+
+    std::string desired_program;
+
+    app.add_option("--function,function", desired_program, "Function to analyze")->type_name("FUNCTION");
     bool list = false;
-    app.add_flag("-l", list, "List sections");
+    app.add_flag("-l", list, "List programs");
 
     std::string domain = "zoneCrab";
     std::set<string> doms{"stats", "linux", "zoneCrab", "cfg"};
@@ -184,25 +201,24 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    if (list || raw_progs.size() != 1) {
+    std::optional<raw_program> found_prog = find_program(raw_progs, desired_program);
+    if (list || !found_prog) {
         if (!list) {
-            std::cout << "please specify a section\n";
-            std::cout << "available sections:\n";
+            std::cout << "please specify a program\n";
+            std::cout << "available programs:\n";
         }
         if (!desired_section.empty() && raw_progs.empty()) {
-            // We could not find the desired section, so get the full list
+            // We could not find the desired program, so get the full list
             // of possibilities.
             raw_progs = read_elf(filename, string(), &ebpf_verifier_options, &platform);
         }
         for (const raw_program& raw_prog : raw_progs) {
-            std::cout << raw_prog.section << " ";
+            std::cout << "section=" << raw_prog.section_name << " function=" << raw_prog.function_name << std::endl;
         }
         std::cout << "\n";
         return list ? 0 : 64;
     }
-
-    // Select the last program section.
-    raw_program raw_prog = raw_progs.back();
+    raw_program raw_prog = *found_prog;
 
     // Convert the raw program section to a set of instructions.
     std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
