@@ -257,7 +257,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
         for (ELFIO::Elf_Xword program_offset = 0; program_offset < section->get_size();) {
             auto [program_name, program_size] = get_program_name_and_size(*section, program_offset, symbols);
-            raw_program prog{path, name, program_name, vector_of<ebpf_inst>(section->get_data() + program_offset, program_size), info};
+            raw_program prog{path, name, program_offset, program_name, vector_of<ebpf_inst>(section->get_data() + program_offset, program_size), info};
             auto prelocs = reader.sections[string(".rel") + name];
             if (!prelocs)
                 prelocs = reader.sections[string(".rela") + name];
@@ -351,28 +351,25 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
     }
 
     if (btf != nullptr && btf_ext != nullptr) {
-        std::map<std::string, raw_program&> segment_to_program;
-        for (auto& program : res) {
-            segment_to_program.insert({program.function_name, program});
-        }
-
         auto visitor = [&](const std::string& section, uint32_t instruction_offset, const std::string& file_name,
                         const std::string& source, uint32_t line_number, uint32_t column_number) {
-            auto program_iter = segment_to_program.find(section);
-            if (program_iter == segment_to_program.end()) {
-                return;
+            for (auto& program : res) {
+                if ((program.section_name == section) && (instruction_offset >= program.insn_off) &&
+                    (instruction_offset < program.insn_off + program.prog.size() * sizeof(ebpf_inst))) {
+                    size_t inst_index = (instruction_offset - program.insn_off) / sizeof(ebpf_inst);
+                    if (inst_index >= program.line_info.size()) {
+                        throw std::runtime_error("Invalid BTF data");
+                    }
+                    program.line_info[inst_index] = {file_name, source, line_number, column_number};
+                    return;
+                }
             }
-            auto& program = program_iter->second;
-            if ((instruction_offset / sizeof(ebpf_inst)) >= program.line_info.size()) {
-                throw std::runtime_error("Invalid BTF data");
-            }
-            program.line_info[instruction_offset / sizeof(ebpf_inst)] = {file_name, source, line_number, column_number};
         };
 
         libbtf::btf_parse_line_information(vector_of<std::byte>(*btf), vector_of<std::byte>(*btf_ext), visitor);
 
         // BTF doesn't include line info for every instruction, only on the first instruction per source line.
-        for (auto& [name, program] : segment_to_program) {
+        for (auto& program : res) {
             for (size_t i = 1; i < program.line_info.size(); i++) {
                 // If the previous PC has line info, copy it.
                 if ((program.line_info[i].line_number == 0) && (program.line_info[i - 1].line_number != 0)) {
