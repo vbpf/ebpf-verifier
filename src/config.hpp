@@ -7,7 +7,7 @@ struct ebpf_verifier_options_t {
     bool assume_assertions;
     bool print_invariants;
     bool print_failures;
-    bool no_simplify;
+    bool simplify;
 
     // False to use actual map fd's, true to use mock fd's.
     bool mock_map_fds;

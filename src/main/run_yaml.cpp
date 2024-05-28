@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: MIT
 #include <iostream>
 
-#include "CLI11.hpp"
-
 #include "ebpf_verifier.hpp"
 #include "ebpf_yaml.hpp"
+
+// Avoid affecting other headers by macros.
+#include "CLI11.hpp"
 
 int main(int argc, char** argv) {
     CLI::App app{"Run YAML test cases"};

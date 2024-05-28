@@ -75,31 +75,50 @@ The output is three comma-separated values:
 
 ## Usage:
 ```
-A new eBPF verifier
-Usage: ./check [OPTIONS] path [section]
+PREVAIL is a new eBPF verifier based on abstract interpretation.
+Usage: ./check [OPTIONS] path [section] [function]
 
 Positionals:
-  path FILE REQUIRED          Elf file to analyze
+  path TEXT:FILE REQUIRED     Elf file to analyze
   section SECTION             Section to analyze
+  function FUNCTION           Function to analyze
 
 Options:
   -h,--help                   Print this help message and exit
-  -l                          List sections
-  -d,--dom,--domain DOMAIN:{cfg,linux,stats,zoneCrab}
+  --section SECTION           Section to analyze
+  --function FUNCTION         Function to analyze
+  -l                          List programs
+  --domain DOMAIN:{stats,linux,zoneCrab,cfg} [zoneCrab]
                               Abstract domain
-  --termination               Verify termination
-  --assume-assert             Assume assertions
+
+
+Features:
+  --termination,--no-verify-termination{false}
+                              Verify termination. Default: ignore
+  --allow-division-by-zero,--no-division-by-zero{false}
+                              Handling potential division by zero. Default: allow
+  -s,--strict                 Apply additional checks that would cause runtime failures
+  --include_groups GROUPS:{atomic32,atomic64,base32,base64,callx,divmul32,divmul64,packet}
+                              Include conformance groups
+  --exclude_groups GROUPS:{atomic32,atomic64,base32,base64,callx,divmul32,divmul64,packet}
+                              Exclude conformance groups
+
+
+Verbosity:
+  --simplify,--no-simplify{false}
+                              Simplify the CFG before analysis by merging chains of instructions into a single basic block. Default: enabled
+  --line-info                 Print line information
+  --print-btf-types           Print BTF types
+  --assume-assert,--no-assume-assert{false}
+                              Assume assertions (useful for debugging verification failures). Default: disabled
   -i                          Print invariants
   -f                          Print verifier's failure logs
-  -s                          Apply additional checks that would cause runtime failures
   -v                          Print both invariants and failures
-  --no-division-by-zero       Do not allow division by zero
-  --no-simplify               Do not simplify
-  --line-info                 Print line information
+
+
+CFG output:
   --asm FILE                  Print disassembly to FILE
   --dot FILE                  Export control-flow graph to dot FILE
-
-You can use @headers as the path to instead just show the output field headers.
 ```
 
 A standard alternative to the --asm flag is `llvm-objdump -S FILE`.

@@ -8,12 +8,12 @@
 
 #include <iostream>
 #include <sstream>
-#include <optional>
 #include <string>
 #include <vector>
-#include "CLI11.hpp"
 #include "ebpf_verifier.hpp"
 #include "ebpf_yaml.hpp"
+#include "CLI11.hpp"
+
 using string = std::string;
 
 /**
