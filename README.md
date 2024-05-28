@@ -75,31 +75,46 @@ The output is three comma-separated values:
 
 ## Usage:
 ```
-A new eBPF verifier
-Usage: ./check [OPTIONS] path [section]
+PREVAIL is a new eBPF verifier based on abstract interpretation.
+Usage: ./check [OPTIONS] path [section] [function]
 
 Positionals:
-  path FILE REQUIRED          Elf file to analyze
+  path TEXT:FILE REQUIRED     Elf file to analyze
   section SECTION             Section to analyze
+  function FUNCTION           Function to analyze
 
 Options:
   -h,--help                   Print this help message and exit
-  -l                          List sections
-  -d,--dom,--domain DOMAIN:{cfg,linux,stats,zoneCrab}
+  --section SECTION           Section to analyze
+  --function FUNCTION         Function to analyze
+  -l                          List programs
+  --domain DOMAIN:{stats,linux,zoneCrab,cfg} [zoneCrab]
                               Abstract domain
+
+
+Features:
   --termination               Verify termination
-  --assume-assert             Assume assertions
+  --no-division-by-zero       Do not allow division by zero
+  -s,--strict                 Apply additional checks that would cause runtime failures
+  --include_groups TEXT:{atomic32,atomic64,base32,base64,callx,divmul32,divmul64,packet}
+                              Include conformance groups
+  --exclude_groups TEXT:{atomic32,atomic64,base32,base64,callx,divmul32,divmul64,packet}
+                              Exclude conformance groups
+
+
+Verbosity:
+  --no-simplify               Do not simplify the CFG before analysis
+  --line-info                 Print line information
+  --print-btf-types           Print BTF types
+  --assume-assert             Assume assertions. Useful for debugging verification failures.
   -i                          Print invariants
   -f                          Print verifier's failure logs
-  -s                          Apply additional checks that would cause runtime failures
   -v                          Print both invariants and failures
-  --no-division-by-zero       Do not allow division by zero
-  --no-simplify               Do not simplify
-  --line-info                 Print line information
+
+
+CFG output:
   --asm FILE                  Print disassembly to FILE
   --dot FILE                  Export control-flow graph to dot FILE
-
-You can use @headers as the path to instead just show the output field headers.
 ```
 
 A standard alternative to the --asm flag is `llvm-objdump -S FILE`.

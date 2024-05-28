@@ -3,7 +3,6 @@
 #include <iostream>
 #include <vector>
 
-#include <boost/algorithm/string.hpp>
 #include <boost/functional/hash.hpp>
 
 #include "CLI11.hpp"
@@ -50,23 +49,12 @@ static std::optional<bpf_conformance_groups_t> _get_conformance_group_by_name(st
     return _conformance_groups.find(group)->second;
 }
 
-static std::string _get_conformance_group_names() {
-    std::string result;
-    for (const auto& entry : _conformance_groups) {
-        if (!result.empty()) {
-            result += ", ";
-        }
-        result += entry.first;
+static std::set<std::string> _get_conformance_group_names() {
+    std::set<std::string> result;
+    for (const auto& [name, _] : _conformance_groups) {
+        result.insert(name);
     }
     return result;
-}
-
-// Given a string containing comma-separated tokens, split them into a list of strings.
-static std::vector<std::string> get_string_vector(std::string list) {
-    std::vector<std::string> string_vector;
-    if (!list.empty())
-       boost::split(string_vector, list, boost::is_any_of(","));
-    return string_vector;
 }
 
 static std::optional<raw_program> find_program(vector<raw_program>& raw_progs, std::string desired_program) {
@@ -88,58 +76,64 @@ int main(int argc, char** argv) {
 
     ebpf_verifier_options_t ebpf_verifier_options = ebpf_verifier_default_options;
 
-    // Parse command line arguments:
-
     crab::CrabEnableWarningMsg(false);
 
-    CLI::App app{"A new eBPF verifier"};
+    // Parse command line arguments:
+
+    CLI::App app{"PREVAIL is a new eBPF verifier based on abstract interpretation."};
 
     std::string filename;
-    app.add_option("path", filename, "Elf file to analyze")->required()->type_name("FILE");
+    app.add_option("path", filename, "Elf file to analyze")->required()->check(CLI::ExistingFile);
 
     std::string desired_section;
-
     app.add_option("--section,section", desired_section, "Section to analyze")->type_name("SECTION");
 
     std::string desired_program;
-
     app.add_option("--function,function", desired_program, "Function to analyze")->type_name("FUNCTION");
+
     bool list = false;
     app.add_flag("-l", list, "List programs");
 
     std::string domain = "zoneCrab";
-    std::set<string> doms{"stats", "linux", "zoneCrab", "cfg"};
-    app.add_set("-d,--dom,--domain", domain, doms, "Abstract domain")->type_name("DOMAIN");
+    app.add_option("--domain", domain, "Abstract domain")->type_name("DOMAIN")->capture_default_str()
+        ->check(CLI::IsMember({"stats", "linux", "zoneCrab", "cfg"}));
 
-    app.add_flag("--termination", ebpf_verifier_options.check_termination, "Verify termination");
+    app.add_flag("--termination", ebpf_verifier_options.check_termination, "Verify termination")->group("Features");
 
-    app.add_flag("--assume-assert", ebpf_verifier_options.assume_assertions, "Assume assertions");
+    bool no_division_by_zero = false;
+    app.add_flag("--no-division-by-zero", no_division_by_zero, "Do not allow division by zero")->group("Features");
+
+    app.add_flag("--strict,-s", ebpf_verifier_options.strict, "Apply additional checks that would cause runtime failures")->group("Features");
+
+    std::set<std::string> include_groups = _get_conformance_group_names();
+    app.add_option("--include_groups", include_groups, "Include conformance groups")->group("Features")
+        ->expected(0, _conformance_groups.size())
+        ->check(CLI::IsMember(_get_conformance_group_names()));
+
+    std::set<std::string> exclude_groups;
+    app.add_option("--exclude_groups", exclude_groups, "Exclude conformance groups")->group("Features")
+        ->expected(0, _conformance_groups.size())
+        ->check(CLI::IsMember(_get_conformance_group_names()));
+
+    app.add_flag("--no-simplify", ebpf_verifier_options.no_simplify, "Do not simplify the CFG before analysis")->group("Verbosity");
+    app.add_flag("--line-info", ebpf_verifier_options.print_line_info, "Print line information")->group("Verbosity");
+    app.add_flag("--print-btf-types", ebpf_verifier_options.dump_btf_types_json, "Print BTF types")->group("Verbosity");
+
+    app.add_flag("--assume-assert", ebpf_verifier_options.assume_assertions,
+                 "Assume assertions. Useful for debugging verification failures.")->group("Verbosity");
 
     bool verbose = false;
-    app.add_flag("-i", ebpf_verifier_options.print_invariants, "Print invariants");
-    app.add_flag("-f", ebpf_verifier_options.print_failures, "Print verifier's failure logs");
-    app.add_flag("-s", ebpf_verifier_options.strict, "Apply additional checks that would cause runtime failures");
-    app.add_flag("-v", verbose, "Print both invariants and failures");
-    std::string include_groups;
-    app.add_option("include_groups", include_groups,
-                   "Include conformance groups (valid group names: " + _get_conformance_group_names() + ")");
-    std::string exclude_groups;
-    app.add_option("exclude_groups", exclude_groups,
-                   "Exclude conformance groups (valid group names: " + _get_conformance_group_names() + ")");
-    bool no_division_by_zero = false;
-    app.add_flag("--no-division-by-zero", no_division_by_zero, "Do not allow division by zero");
-    app.add_flag("--no-simplify", ebpf_verifier_options.no_simplify, "Do not simplify");
-    app.add_flag("--line-info", ebpf_verifier_options.print_line_info, "Print line information");
-    app.add_flag("--print-btf-types", ebpf_verifier_options.dump_btf_types_json, "Print BTF types");
+    app.add_flag("-i", ebpf_verifier_options.print_invariants, "Print invariants")->group("Verbosity");
+    app.add_flag("-f", ebpf_verifier_options.print_failures, "Print verifier's failure logs")->group("Verbosity");
+    app.add_flag("-v", verbose, "Print both invariants and failures")->group("Verbosity");
 
     std::string asmfile;
-    app.add_option("--asm", asmfile, "Print disassembly to FILE")->type_name("FILE");
+    app.add_option("--asm", asmfile, "Print disassembly to FILE")->group("CFG output")->type_name("FILE");
     std::string dotfile;
-    app.add_option("--dot", dotfile, "Export control-flow graph to dot FILE")->type_name("FILE");
-
-    app.footer("You can use @headers as the path to instead just show the output field headers.\n");
+    app.add_option("--dot", dotfile, "Export control-flow graph to dot FILE")->group("CFG output")->type_name("FILE");
 
     CLI11_PARSE(app, argc, argv);
+
     if (verbose)
         ebpf_verifier_options.print_invariants = ebpf_verifier_options.print_failures = true;
     ebpf_verifier_options.allow_division_by_zero = !no_division_by_zero;
@@ -147,21 +141,11 @@ int main(int argc, char** argv) {
     // Enable default conformance groups, which don't include callx or packet.
     ebpf_platform_t platform = g_ebpf_platform_linux;
     platform.supported_conformance_groups = bpf_conformance_groups_t::default_groups;
-    for (auto group_name : get_string_vector(include_groups)) {
-        if (auto group = _get_conformance_group_by_name(group_name)) {
-            platform.supported_conformance_groups |= *group;
-        } else {
-            std::cerr << "Invalid group: " << group_name << std::endl;
-            return 1;
-        }
+    for (auto group_name : include_groups) {
+        platform.supported_conformance_groups |= _get_conformance_group_by_name(group_name).value();
     }
-    for (auto group_name : get_string_vector(exclude_groups)) {
-        if (auto group = _get_conformance_group_by_name(group_name)) {
-            platform.supported_conformance_groups &= ~(*group);
-        } else {
-            std::cerr << "Invalid group: " << group_name << std::endl;
-            return 1;
-        }
+    for (auto group_name : exclude_groups) {
+        platform.supported_conformance_groups &= _get_conformance_group_by_name(group_name).value();
     }
 
     // Main program
