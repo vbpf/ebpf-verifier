@@ -5,8 +5,6 @@
 
 #include <boost/functional/hash.hpp>
 
-#include "CLI11.hpp"
-
 #include "ebpf_verifier.hpp"
 #ifdef _WIN32
 #include "memsize_windows.hpp"
@@ -15,6 +13,9 @@
 #endif
 #include "linux_verifier.hpp"
 #include "utils.hpp"
+
+// Avoid affecting other headers by macros.
+#include "CLI11.hpp"
 
 using std::string;
 using std::vector;
