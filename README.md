@@ -93,20 +93,24 @@ Options:
 
 
 Features:
-  --termination               Verify termination
-  --no-division-by-zero       Do not allow division by zero
+  --termination,--no-verify-termination{false}
+                              Verify termination. Default: ignore
+  --allow-division-by-zero,--no-division-by-zero{false}
+                              Handling potential division by zero. Default: allow
   -s,--strict                 Apply additional checks that would cause runtime failures
-  --include_groups TEXT:{atomic32,atomic64,base32,base64,callx,divmul32,divmul64,packet}
+  --include_groups GROUPS:{atomic32,atomic64,base32,base64,callx,divmul32,divmul64,packet}
                               Include conformance groups
-  --exclude_groups TEXT:{atomic32,atomic64,base32,base64,callx,divmul32,divmul64,packet}
+  --exclude_groups GROUPS:{atomic32,atomic64,base32,base64,callx,divmul32,divmul64,packet}
                               Exclude conformance groups
 
 
 Verbosity:
-  --no-simplify               Do not simplify the CFG before analysis
+  --simplify,--no-simplify{false}
+                              Simplify the CFG before analysis by merging chains of instructions into a single basic block. Default: enabled
   --line-info                 Print line information
   --print-btf-types           Print BTF types
-  --assume-assert             Assume assertions. Useful for debugging verification failures.
+  --assume-assert,--no-assume-assert{false}
+                              Assume assertions (useful for debugging verification failures). Default: disabled
   -i                          Print invariants
   -f                          Print verifier's failure logs
   -v                          Print both invariants and failures
