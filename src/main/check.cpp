@@ -25,22 +25,17 @@ static size_t hash(const raw_program& raw_prog) {
     return boost::hash_range(start, end);
 }
 
-template <void (on_exit)()>
-struct at_scope_exit
-{
+template <void(on_exit)()>
+struct at_scope_exit {
     at_scope_exit() = default;
     ~at_scope_exit() { on_exit(); }
 };
 
 static const std::map<std::string, bpf_conformance_groups_t> _conformance_groups = {
-    {"atomic32", bpf_conformance_groups_t::atomic32},
-    {"atomic64", bpf_conformance_groups_t::atomic64},
-    {"base32", bpf_conformance_groups_t::base32},
-    {"base64", bpf_conformance_groups_t::base64},
-    {"callx", bpf_conformance_groups_t::callx},
-    {"divmul32", bpf_conformance_groups_t::divmul32},
-    {"divmul64", bpf_conformance_groups_t::divmul64},
-    {"packet", bpf_conformance_groups_t::packet}};
+    {"atomic32", bpf_conformance_groups_t::atomic32}, {"atomic64", bpf_conformance_groups_t::atomic64},
+    {"base32", bpf_conformance_groups_t::base32},     {"base64", bpf_conformance_groups_t::base64},
+    {"callx", bpf_conformance_groups_t::callx},       {"divmul32", bpf_conformance_groups_t::divmul32},
+    {"divmul64", bpf_conformance_groups_t::divmul64}, {"packet", bpf_conformance_groups_t::packet}};
 
 static std::optional<bpf_conformance_groups_t> _get_conformance_group_by_name(std::string group) {
     if (!_conformance_groups.contains(group)) {
@@ -81,6 +76,7 @@ int main(int argc, char** argv) {
     // Parse command line arguments:
 
     CLI::App app{"PREVAIL is a new eBPF verifier based on abstract interpretation."};
+    app.option_defaults()->delimiter(',');
 
     std::string filename;
     app.add_option("path", filename, "Elf file to analyze")->required()->check(CLI::ExistingFile);
@@ -95,36 +91,49 @@ int main(int argc, char** argv) {
     app.add_flag("-l", list, "List programs");
 
     std::string domain = "zoneCrab";
-    app.add_option("--domain", domain, "Abstract domain")->type_name("DOMAIN")->capture_default_str()
+    app.add_option("--domain", domain, "Abstract domain")
+        ->type_name("DOMAIN")
+        ->capture_default_str()
         ->check(CLI::IsMember({"stats", "linux", "zoneCrab", "cfg"}));
 
-    app.add_flag("--termination", ebpf_verifier_options.check_termination, "Verify termination")->group("Features");
+    app.add_flag("--termination,!--no-verify-termination", ebpf_verifier_options.check_termination,
+                 "Verify termination. Default: ignore")
+        ->group("Features");
 
-    bool no_division_by_zero = false;
-    app.add_flag("--no-division-by-zero", no_division_by_zero, "Do not allow division by zero")->group("Features");
+    app.add_flag("--allow-division-by-zero,!--no-division-by-zero", ebpf_verifier_options.allow_division_by_zero,
+                 "Handling potential division by zero. Default: allow")
+        ->group("Features");
 
-    app.add_flag("--strict,-s", ebpf_verifier_options.strict, "Apply additional checks that would cause runtime failures")->group("Features");
+    app.add_flag("--strict,-s", ebpf_verifier_options.strict,
+                 "Apply additional checks that would cause runtime failures")
+        ->group("Features");
 
     std::set<std::string> include_groups = _get_conformance_group_names();
-    app.add_option("--include_groups", include_groups, "Include conformance groups")->group("Features")
+    app.add_option("--include_groups", include_groups, "Include conformance groups")
+        ->group("Features")->type_name("GROUPS")
         ->expected(0, _conformance_groups.size())
         ->check(CLI::IsMember(_get_conformance_group_names()));
 
     std::set<std::string> exclude_groups;
-    app.add_option("--exclude_groups", exclude_groups, "Exclude conformance groups")->group("Features")
+    app.add_option("--exclude_groups", exclude_groups, "Exclude conformance groups")
+        ->group("Features")->type_name("GROUPS")->option_text("")
         ->expected(0, _conformance_groups.size())
         ->check(CLI::IsMember(_get_conformance_group_names()));
 
-    app.add_flag("--no-simplify", ebpf_verifier_options.no_simplify, "Do not simplify the CFG before analysis")->group("Verbosity");
+    app.add_flag("--simplify,!--no-simplify", ebpf_verifier_options.simplify,
+                 "Simplify the CFG before analysis by merging chains of instructions into a single basic block. "
+                 "Default: enabled")
+        ->group("Verbosity");
     app.add_flag("--line-info", ebpf_verifier_options.print_line_info, "Print line information")->group("Verbosity");
     app.add_flag("--print-btf-types", ebpf_verifier_options.dump_btf_types_json, "Print BTF types")->group("Verbosity");
 
-    app.add_flag("--assume-assert", ebpf_verifier_options.assume_assertions,
-                 "Assume assertions. Useful for debugging verification failures.")->group("Verbosity");
+    app.add_flag("--assume-assert,!--no-assume-assert", ebpf_verifier_options.assume_assertions,
+                 "Assume assertions (useful for debugging verification failures). Default: disabled")
+        ->group("Verbosity");
 
-    bool verbose = false;
     app.add_flag("-i", ebpf_verifier_options.print_invariants, "Print invariants")->group("Verbosity");
     app.add_flag("-f", ebpf_verifier_options.print_failures, "Print verifier's failure logs")->group("Verbosity");
+    bool verbose = false;
     app.add_flag("-v", verbose, "Print both invariants and failures")->group("Verbosity");
 
     std::string asmfile;
@@ -136,7 +145,6 @@ int main(int argc, char** argv) {
 
     if (verbose)
         ebpf_verifier_options.print_invariants = ebpf_verifier_options.print_failures = true;
-    ebpf_verifier_options.allow_division_by_zero = !no_division_by_zero;
 
     // Enable default conformance groups, which don't include callx or packet.
     ebpf_platform_t platform = g_ebpf_platform_linux;
@@ -223,7 +231,8 @@ int main(int argc, char** argv) {
         const auto [res, seconds] = timed_execution([&] {
             return ebpf_verify_program(std::cout, prog, raw_prog.info, &ebpf_verifier_options, &verifier_stats);
         });
-        if (res && ebpf_verifier_options.check_termination && (ebpf_verifier_options.print_failures || ebpf_verifier_options.print_invariants)) {
+        if (res && ebpf_verifier_options.check_termination &&
+            (ebpf_verifier_options.print_failures || ebpf_verifier_options.print_invariants)) {
             std::cout << "Program terminates within " << verifier_stats.max_loop_count << " loop iterations\n";
         }
         std::cout << res << "," << seconds << "," << resident_set_size_kb() << "\n";
@@ -235,7 +244,7 @@ int main(int argc, char** argv) {
         return !res;
     } else if (domain == "stats") {
         // Convert the instruction sequence to a control-flow graph.
-        cfg_t cfg = prepare_cfg(prog, raw_prog.info, !ebpf_verifier_options.no_simplify);
+        cfg_t cfg = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.simplify);
 
         // Just print eBPF program stats.
         auto stats = collect_stats(cfg);
@@ -249,7 +258,7 @@ int main(int argc, char** argv) {
         std::cout << "\n";
     } else if (domain == "cfg") {
         // Convert the instruction sequence to a control-flow graph.
-        cfg_t cfg = prepare_cfg(prog, raw_prog.info, !ebpf_verifier_options.no_simplify);
+        cfg_t cfg = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.simplify);
         std::cout << cfg;
         std::cout << "\n";
     } else {

@@ -174,8 +174,8 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
 static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& raw_options) {
     ebpf_verifier_options_t options = ebpf_verifier_default_options;
 
-    // All YAML tests use no_simplify and !setup_constraints.
-    options.no_simplify = true;
+    // All YAML tests use !simplify and !setup_constraints.
+    options.simplify = false;
     options.setup_constraints = false;
 
     // Default to the machine's native endianness.
@@ -244,7 +244,7 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
     if (debug) {
         test_case.options.print_failures = true;
         test_case.options.print_invariants = true;
-        test_case.options.no_simplify = true;
+        test_case.options.simplify = false;
     }
 
     ebpf_context_descriptor_t context_descriptor{64, 0, 4, -1};
@@ -353,7 +353,7 @@ ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memo
         print(prog, std::cout, {});
         options.print_failures = true;
         options.print_invariants = true;
-        options.no_simplify = true;
+        options.simplify = false;
     }
 
     try {
