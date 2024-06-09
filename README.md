@@ -21,6 +21,12 @@ sudo apt install libboost-filesystem-dev libboost-program-options-dev
 * Install [Visual Studio Build Tools 2022](https://aka.ms/vs/17/release/vs_buildtools.exe) and choose the "C++ build tools" workload (Visual Studio Build Tools 2022 has support for CMake Version 3.25).
 * Install [nuget.exe](https://www.nuget.org/downloads)
 
+### Dependencies from MacOS
+```bash
+brew install llvm cmake boost yaml-cpp
+```
+The system llvm currently comes with Clang 15, which isn't enough to compile the ebpf-verifier as it depends on C++20. Brew's llvm comes with Clang 17.
+
 ### Installation
 Clone:
 ```
@@ -38,6 +44,13 @@ Make on Windows (which uses a multi-configuration generator):
 ```
 cmake -B build
 cmake --build build --config Release
+```
+
+Make on MacOS:
+```
+export CPATH=$(brew --prefix)/include LIBRARY_PATH=$(brew --prefix)/lib CMAKE_PREFIX_PATH=$(brew --prefix)
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$(brew --prefix llvm)/bin/clang -DCMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++
+cmake --build build
 ```
 
 ### Running with Docker
@@ -62,31 +75,50 @@ The output is three comma-separated values:
 
 ## Usage:
 ```
-A new eBPF verifier
-Usage: ./check [OPTIONS] path [section]
+PREVAIL is a new eBPF verifier based on abstract interpretation.
+Usage: ./check [OPTIONS] path [section] [function]
 
 Positionals:
-  path FILE REQUIRED          Elf file to analyze
+  path TEXT:FILE REQUIRED     Elf file to analyze
   section SECTION             Section to analyze
+  function FUNCTION           Function to analyze
 
 Options:
   -h,--help                   Print this help message and exit
-  -l                          List sections
-  -d,--dom,--domain DOMAIN:{cfg,linux,stats,zoneCrab}
+  --section SECTION           Section to analyze
+  --function FUNCTION         Function to analyze
+  -l                          List programs
+  --domain DOMAIN:{stats,linux,zoneCrab,cfg} [zoneCrab]
                               Abstract domain
-  --termination               Verify termination
-  --assume-assert             Assume assertions
+
+
+Features:
+  --termination,--no-verify-termination{false}
+                              Verify termination. Default: ignore
+  --allow-division-by-zero,--no-division-by-zero{false}
+                              Handling potential division by zero. Default: allow
+  -s,--strict                 Apply additional checks that would cause runtime failures
+  --include_groups GROUPS:{atomic32,atomic64,base32,base64,callx,divmul32,divmul64,packet}
+                              Include conformance groups
+  --exclude_groups GROUPS:{atomic32,atomic64,base32,base64,callx,divmul32,divmul64,packet}
+                              Exclude conformance groups
+
+
+Verbosity:
+  --simplify,--no-simplify{false}
+                              Simplify the CFG before analysis by merging chains of instructions into a single basic block. Default: enabled
+  --line-info                 Print line information
+  --print-btf-types           Print BTF types
+  --assume-assert,--no-assume-assert{false}
+                              Assume assertions (useful for debugging verification failures). Default: disabled
   -i                          Print invariants
   -f                          Print verifier's failure logs
-  -s                          Apply additional checks that would cause runtime failures
   -v                          Print both invariants and failures
-  --no-division-by-zero       Do not allow division by zero
-  --no-simplify               Do not simplify
-  --line-info                 Print line information
+
+
+CFG output:
   --asm FILE                  Print disassembly to FILE
   --dot FILE                  Export control-flow graph to dot FILE
-
-You can use @headers as the path to instead just show the output field headers.
 ```
 
 A standard alternative to the --asm flag is `llvm-objdump -S FILE`.

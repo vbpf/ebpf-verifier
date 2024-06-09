@@ -197,7 +197,7 @@ std::tuple<string_invariant, bool> ebpf_analyze_program_for_test(std::ostream& o
     ebpf_domain_t entry_inv = ebpf_domain_t::from_constraints(entry_invariant.value(), options.setup_constraints);
     if (entry_inv.is_bottom())
         throw std::runtime_error("Entry invariant is inconsistent");
-    cfg_t cfg = prepare_cfg(prog, info, !options.no_simplify, false);
+    cfg_t cfg = prepare_cfg(prog, info, options.simplify, false);
     auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, std::move(entry_inv));
     checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
     print_report(os, report, prog, false);
@@ -215,7 +215,7 @@ bool ebpf_verify_program(std::ostream& os, const InstructionSeq& prog, const pro
 
     // Convert the instruction sequence to a control-flow graph
     // in a "passive", non-deterministic form.
-    cfg_t cfg = prepare_cfg(prog, info, !options->no_simplify);
+    cfg_t cfg = prepare_cfg(prog, info, options->simplify);
 
     checks_db report = get_ebpf_report(os, cfg, info, options);
     if (options->print_failures) {

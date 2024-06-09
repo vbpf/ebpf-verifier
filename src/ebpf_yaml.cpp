@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include <algorithm>
+#include <bit>
 #include <iostream>
 #include <set>
 #include <variant>
@@ -63,8 +64,8 @@ ebpf_platform_t g_platform_test = {
     .parse_maps_section = ebpf_parse_maps_section,
     .get_map_descriptor = ebpf_get_map_descriptor,
     .get_map_type = ebpf_get_map_type,
-    .legacy = true,
-    .callx = true
+    .supported_conformance_groups =
+        bpf_conformance_groups_t::default_groups | bpf_conformance_groups_t::packet | bpf_conformance_groups_t::callx
 };
 
 static EbpfProgramType make_program_type(const string& name, ebpf_context_descriptor_t* context_descriptor) {
@@ -173,9 +174,12 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
 static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& raw_options) {
     ebpf_verifier_options_t options = ebpf_verifier_default_options;
 
-    // All YAML tests use no_simplify and !setup_constraints.
-    options.no_simplify = true;
+    // All YAML tests use !simplify and !setup_constraints.
+    options.simplify = false;
     options.setup_constraints = false;
+
+    // Default to the machine's native endianness.
+    options.big_endian = (std::endian::native == std::endian::big);
 
     for (const string& name : raw_options) {
         if (name == "!allow_division_by_zero") {
@@ -184,6 +188,10 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
             options.check_termination = true;
         } else if (name == "strict") {
             options.strict = true;
+        } else if (name == "big_endian") {
+            options.big_endian = true;
+        } else if (name == "!big_endian") {
+            options.big_endian = false;
         } else {
             throw std::runtime_error("Unknown option: " + name);
         }
@@ -236,7 +244,7 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
     if (debug) {
         test_case.options.print_failures = true;
         test_case.options.print_invariants = true;
-        test_case.options.no_simplify = true;
+        test_case.options.simplify = false;
     }
 
     ebpf_context_descriptor_t context_descriptor{64, 0, 4, -1};
@@ -328,7 +336,7 @@ ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memo
     }
     raw_program raw_prog{.prog = insts};
     ebpf_platform_t platform = g_ebpf_platform_linux;
-    platform.callx = true;
+    platform.supported_conformance_groups |= bpf_conformance_groups_t::callx;
     raw_prog.info.platform = &platform;
 
     // Convert the raw program section to a set of instructions.
@@ -345,7 +353,7 @@ ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memo
         print(prog, std::cout, {});
         options.print_failures = true;
         options.print_invariants = true;
-        options.no_simplify = true;
+        options.simplify = false;
     }
 
     try {

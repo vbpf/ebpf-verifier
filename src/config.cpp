@@ -7,10 +7,11 @@ const ebpf_verifier_options_t ebpf_verifier_default_options = {
     .assume_assertions = false,
     .print_invariants = false,
     .print_failures = false,
-    .no_simplify = false,
+    .simplify = true,
     .mock_map_fds = true,
     .strict = false,
     .print_line_info = false,
     .allow_division_by_zero = true,
     .setup_constraints = true,
+    .big_endian = false,
 };
