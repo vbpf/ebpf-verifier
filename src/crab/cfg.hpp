@@ -315,8 +315,6 @@ class cfg_t final {
 
     [[nodiscard]] size_t size() const { return static_cast<size_t>(std::distance(begin(), end())); }
 
-    void dump_cfg(std::string str);
-
     void simplify() {
         std::set<label_t> worklist(this->label_begin(), this->label_end());
         while (!worklist.empty()) {

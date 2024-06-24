@@ -995,6 +995,33 @@ void ebpf_domain_t::scratch_caller_saved_registers() {
     }
 }
 
+void ebpf_domain_t::save_callee_saved_registers(const std::string& prefix) {
+    // Create variables specific to the new call stack frame that store
+    // copies of the states of r6 through r9.
+    for (int r = R6; r <= R9; r++) {
+        for (data_kind_t kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes;
+             kind = (data_kind_t)((int)kind + 1)) {
+            variable_t src_var = variable_t::reg(kind, r);
+            if (!m_inv[src_var].is_top())
+                assign(variable_t::stack_frame_var(kind, r, prefix), src_var);
+        }
+    }
+}
+
+void ebpf_domain_t::restore_callee_saved_registers(const std::string& prefix) {
+    for (int r = R6; r <= R9; r++) {
+        for (data_kind_t kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes;
+             kind = (data_kind_t)((int)kind + 1)) {
+            variable_t src_var = variable_t::stack_frame_var(kind, r, prefix);
+            if (!m_inv[src_var].is_top())
+                assign(variable_t::reg(kind, r), src_var);
+            else
+                havoc(variable_t::reg(kind, r));
+            havoc(src_var);
+        }
+    }
+}
+
 void ebpf_domain_t::forget_packet_pointers() {
     using namespace crab::dsl_syntax;
 
@@ -1546,15 +1573,7 @@ void ebpf_domain_t::operator()(const Exit& a) {
     std::string prefix = a.stack_frame_prefix;
     if (prefix.empty())
         return;
-    for (int r = R6; r <= R9; r++) {
-        for (data_kind_t kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes;
-             kind = (data_kind_t)((int)kind + 1)) {
-            variable_t src_var = variable_t::stack_frame_var(kind, r, prefix);
-            if (!m_inv[src_var].is_top())
-                assign(variable_t::reg(kind, r), src_var);
-            havoc(src_var);
-        }
-    }
+    restore_callee_saved_registers(prefix);
 }
 
 void ebpf_domain_t::operator()(const Jmp& a) {}
@@ -2380,16 +2399,7 @@ void ebpf_domain_t::operator()(const CallLocal& call) {
     using namespace crab::dsl_syntax;
     if (m_inv.is_bottom())
         return;
-
-    // Create variables specific to the new call stack frame that store
-    // copies of the states of r6 through r9.
-    for (int r = R6; r <= R9; r++) {
-        for (data_kind_t kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes; kind = (data_kind_t)((int)kind + 1)) {
-            variable_t src_var = variable_t::reg(kind, r);
-            if (!m_inv[src_var].is_top())
-                assign(variable_t::stack_frame_var(kind, r, call.stack_frame_prefix), src_var);
-        }
-    }
+    save_callee_saved_registers(call.stack_frame_prefix);
 }
 
 void ebpf_domain_t::operator()(const Callx& callx) {

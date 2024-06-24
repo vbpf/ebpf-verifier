@@ -159,6 +159,8 @@ class ebpf_domain_t final {
     [[nodiscard]] std::optional<variable_t> get_type_offset_variable(const Reg& reg) const;
 
     void scratch_caller_saved_registers();
+    void save_callee_saved_registers(const std::string& prefix);
+    void restore_callee_saved_registers(const std::string& prefix);
     [[nodiscard]] std::optional<uint32_t> get_map_type(const Reg& map_fd_reg) const;
     [[nodiscard]] std::optional<uint32_t> get_map_inner_map_fd(const Reg& map_fd_reg) const;
     [[nodiscard]] crab::interval_t get_map_key_size(const Reg& map_fd_reg) const;

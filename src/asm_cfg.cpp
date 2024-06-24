@@ -111,7 +111,7 @@ static void add_cfg_nodes(cfg_t& cfg, label_t caller_label, label_t entry_label)
     const int MAX_CALL_STACK_FRAMES = 8;
     for (auto& macro_label : macro_labels) {
         const label_t label(macro_label.from, macro_label.to, caller_label_str);
-        for (const auto inst : cfg.get_node(label)) {
+        for (const auto& inst : cfg.get_node(label)) {
             if (std::holds_alternative<CallLocal>(inst)) {
                 if (stack_frame_depth >= MAX_CALL_STACK_FRAMES)
                     throw std::runtime_error{"too many call stack frames"};
