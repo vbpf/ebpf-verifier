@@ -103,7 +103,7 @@ code:
 
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: assume number w!= reg
 
@@ -186,9 +186,9 @@ post:
   - r0.svalue=1
   - r0.uvalue=1
 messages:
-  - "2:5: Code is unreachable after 2:5"
-  - "3:5: Code is unreachable after 3:5"
-  - "4:5: Code is unreachable after 4:5"
+  - "2:5.0: Code is unreachable after 2:5"
+  - "3:5.0: Code is unreachable after 3:5"
+  - "4:5.0: Code is unreachable after 4:5"
 ---
 test-case: jump-32
 
@@ -220,9 +220,9 @@ post:
   - r0.svalue=1
   - r0.uvalue=1
 messages:
-  - "3:9: Code is unreachable after 3:9"
-  - "4:9: Code is unreachable after 4:9"
-  - "5:6: Code is unreachable after 5:6"
+  - "3:9.0: Code is unreachable after 3:9"
+  - "4:9.0: Code is unreachable after 4:9"
+  - "5:6.0: Code is unreachable after 5:6"
 ---
 test-case: join stack
 
@@ -330,7 +330,7 @@ post:
   - r9.type=ctx
 
 messages:
-  - "8: Cannot subtract pointers to different regions (r1.type == number or r3.type == r1.type in {ctx, stack, packet})"
+  - "8.1: Cannot subtract pointers to different regions (r1.type == number or r3.type == r1.type in {ctx, stack, packet})"
 ---
 test-case: multiple types add ok
 
@@ -483,8 +483,8 @@ post:
   - r8.uvalue=1024
 
 messages:
-  - "8: Only numbers can be added to pointers (r2.type in {ctx, stack, packet, shared} -> r3.type == number)"
-  - "8: Only numbers can be added to pointers (r3.type in {ctx, stack, packet, shared} -> r2.type == number)"
+  - "8.2: Only numbers can be added to pointers (r2.type in {ctx, stack, packet, shared} -> r3.type == number)"
+  - "8.3: Only numbers can be added to pointers (r3.type in {ctx, stack, packet, shared} -> r2.type == number)"
 ---
 test-case: multiple types compare
 
@@ -534,7 +534,7 @@ post:
   - r9.packet_offset=0
 
 messages:
-  - "7:9: Code is unreachable after 7:9"
+  - "7:9.0: Code is unreachable after 7:9"
 ---
 test-case: lost implications in correlated branches
 
@@ -576,7 +576,7 @@ post:
   - r4.svalue=r4.uvalue
 
 messages:
-  - "7: Upper bound must be at most packet_size (valid_access(r1.offset-8, width=8) for read)"
+  - "7.1: Upper bound must be at most packet_size (valid_access(r1.offset-8, width=8) for read)"
 ---
 test-case: 32-bit compare
 
@@ -601,7 +601,7 @@ post:
   - r4.uvalue=18446744073709551594
 
 messages:
-  - "0:1: Code is unreachable after 0:1"
+  - "0:1.0: Code is unreachable after 0:1"
 ---
 test-case: unsigned comparison of negative number
 
@@ -624,7 +624,7 @@ post:
   - r1.uvalue=18446744073709551615
 
 messages:
-  - "0:1: Code is unreachable after 0:1"
+  - "0:1.0: Code is unreachable after 0:1"
 ---
 test-case: JMP32
 
@@ -647,7 +647,7 @@ post:
   - r1.uvalue=4294967294
 
 messages:
-  - "0:2: Code is unreachable after 0:2"
+  - "0:2.0: Code is unreachable after 0:2"
 ---
 test-case: assume map_fd == map_fd
 
@@ -670,7 +670,7 @@ code:
 
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.3: Code is unreachable after 0"
 ---
 test-case: assume map_fd1 != map_fd2
 
@@ -696,7 +696,7 @@ code:
 
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.3: Code is unreachable after 0"
 ---
 test-case: assume map_fd1 < map_fd2
 
@@ -714,4 +714,4 @@ post:
   - r1.map_fd-r2.map_fd<=-1
 
 messages:
-  - "0: Invalid type (r1.type == non_map_fd)"
+  - "0.2: Invalid type (r1.type == non_map_fd)"

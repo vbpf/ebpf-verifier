@@ -28,19 +28,19 @@ thread_local ebpf_verifier_options_t thread_local_options;
 
 // Toy database to store invariants.
 struct checks_db final {
-    std::map<label_t, std::vector<std::string>> m_db{};
+    std::map<crab::location_t, std::vector<std::string>> m_db{};
     int total_warnings{};
     int total_unreachable{};
     crab::bound_t max_loop_count{crab::number_t{0}};
 
-    void add(const label_t& label, const std::string& msg) { m_db[label].emplace_back(msg); }
+    void add(const crab::location_t& label, const std::string& msg) { m_db[label].emplace_back(msg); }
 
-    void add_warning(const label_t& label, const std::string& msg) {
+    void add_warning(const crab::location_t& label, const std::string& msg) {
         add(label, msg);
         total_warnings++;
     }
 
-    void add_unreachable(const label_t& label, const std::string& msg) {
+    void add_unreachable(const crab::location_t& label, const std::string& msg) {
         add(label, msg);
         total_unreachable++;
     }
@@ -55,18 +55,32 @@ struct checks_db final {
     checks_db() = default;
 };
 
+std::string to_string(const ebpf_domain_t& inv) {
+    std::ostringstream s;
+    s << inv;
+    return s.str();
+}
+
+std::string to_string(const crab::NumAbsDomain& inv) {
+    std::ostringstream s;
+    s << inv;
+    return s.str();
+}
+
 static checks_db generate_report(cfg_t& cfg, crab::invariant_table_t& pre_invariants,
                                  crab::invariant_table_t& post_invariants) {
     checks_db m_db;
     for (const label_t& label : cfg.sorted_labels()) {
         basic_block_t& bb = cfg.get_node(label);
         ebpf_domain_t from_inv(pre_invariants.at(label));
+        crab::location_t location{label, 0};
         from_inv.set_require_check(
-            [&m_db, label](auto& inv, const crab::linear_constraint_t& cst, const std::string& s) {
+            [&m_db, &location](auto& inv, const crab::linear_constraint_t& cst, const std::string& s) {
                 if (inv.is_bottom())
                     return true;
+                auto ss = s; // + to_string(inv);
                 if (cst.is_contradiction()) {
-                    m_db.add_warning(label, s);
+                    m_db.add_warning(location, ss);
                     return false;
                 }
 
@@ -75,20 +89,22 @@ static checks_db generate_report(cfg_t& cfg, crab::invariant_table_t& pre_invari
                     return true;
                 } else if (inv.intersect(cst)) {
                     // TODO: add_error() if imply negation
-                    m_db.add_warning(label, s);
+                    m_db.add_warning(location, ss);
                     return false;
                 } else {
-                    m_db.add_warning(label, s);
+                    m_db.add_warning(location, ss);
                     return false;
                 }
             });
 
         bool pre_bot = from_inv.is_bottom();
-
-        from_inv(bb);
-
-        if (!pre_bot && from_inv.is_bottom()) {
-            m_db.add_unreachable(label, std::string("Code is unreachable after ") + to_string(bb.label()));
+        for (int i = 0; i < bb.size(); ++i) {
+            location = {label, i};
+            std::visit(from_inv, bb.at(i));
+            if (!pre_bot && from_inv.is_bottom()) {
+                m_db.add_unreachable(crab::location_t{label, i}, std::string("Code is unreachable after ") + to_string(bb.label()));
+                break;
+            }
         }
     }
 
@@ -111,14 +127,14 @@ static auto get_line_info(const InstructionSeq& insts) {
 static void print_report(std::ostream& os, const checks_db& db, const InstructionSeq& prog, bool print_line_info) {
     auto label_to_line_info = get_line_info(prog);
     os << "\n";
-    for (auto [label, messages] : db.m_db) {
+    for (const auto& [location, messages] : db.m_db) {
         for (const auto& msg : messages) {
             if (print_line_info) {
-                auto line_info = label_to_line_info.find(label.from);
+                auto line_info = label_to_line_info.find(location.label.from);
                 if (line_info != label_to_line_info.end())
                     os << line_info->second;
             }
-            os << label << ": " << msg << "\n";
+            os << location << ": " << msg << "\n";
         }
     }
     os << "\n";
@@ -142,9 +158,9 @@ static checks_db get_analysis_report(std::ostream& s, cfg_t& cfg, crab::invarian
     return db;
 }
 
-static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info,
+static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, const program_info& info,
                                  const ebpf_verifier_options_t* options) {
-    global_program_info = std::move(info);
+    global_program_info = info;
     crab::domains::clear_global_state();
     crab::variable_t::clear_thread_local_state();
     thread_local_options = *options;
@@ -157,7 +173,7 @@ static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info,
     } catch (std::runtime_error& e) {
         // Convert verifier runtime_error exceptions to failure.
         checks_db db;
-        db.add_warning(label_t::exit, e.what());
+        db.add_warning(crab::location_t{label_t::exit, 0}, e.what());
         return db;
     }
 }

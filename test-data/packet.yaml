@@ -17,7 +17,7 @@ post: ["meta_offset=0",
        "r2.type=packet", "r2.packet_offset=[0, 65534]", "packet_size=r2.packet_offset",
        "packet_size=[0, 65534]", "r4.type=number", "r4.svalue=0", "r4.uvalue=0"]
 messages:
-  - "1: Upper bound must be at most packet_size (valid_access(r1.offset, width=8) for write)"
+  - "1.1: Upper bound must be at most packet_size (valid_access(r1.offset, width=8) for write)"
 
 ---
 test-case: simple invalid read
@@ -35,7 +35,7 @@ post: ["meta_offset=0",
        "r2.type=packet", "r2.packet_offset=[0, 65534]", "packet_size=r2.packet_offset",
        "packet_size=[0, 65534]", "r4.type=number"]
 messages:
-  - "0: Upper bound must be at most packet_size (valid_access(r1.offset, width=8) for read)"
+  - "0.1: Upper bound must be at most packet_size (valid_access(r1.offset, width=8) for read)"
 
 ---
 test-case: writing 8 bytes when packet size is 4
@@ -63,7 +63,7 @@ post: ["meta_offset=0",
        "r3.packet_offset-packet_size<=4", "r3.svalue=r1.svalue+4", "r3.uvalue=r1.svalue+4",
        "r2.packet_offset-r3.packet_offset<=65530", "r3.packet_offset-r2.packet_offset<=4"]
 messages:
-  - "4: Upper bound must be at most packet_size (valid_access(r1.offset, width=8) for write)"
+  - "4.1: Upper bound must be at most packet_size (valid_access(r1.offset, width=8) for write)"
 
 ---
 test-case: simple valid access

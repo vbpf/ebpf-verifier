@@ -49,6 +49,20 @@ struct label_t {
     static const label_t exit;
 };
 
+struct location_t {
+    label_t label;
+    int offset{};
+
+    constexpr bool operator==(const location_t&) const = default;
+    constexpr bool operator<(const location_t& other) const {
+        if (this == &other) return false;
+        return label < other.label || (label == other.label && offset < other.offset);
+    }
+    friend std::ostream& operator<<(std::ostream& os, const location_t& location) {
+        return os << location.label << "." << location.offset;
+    }
+};
+
 inline const label_t label_t::entry{-1};
 inline const label_t label_t::exit{-2};
 
