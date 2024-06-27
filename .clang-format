@@ -7,3 +7,4 @@ AlignEscapedNewlines: Left
 BreakAfterAttributes: Always
 PenaltyReturnTypeOnItsOwnLine: 60
 AlwaysBreakAfterReturnType: None
+Cpp11BracedListStyle: true
