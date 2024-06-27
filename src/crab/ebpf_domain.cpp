@@ -1152,6 +1152,7 @@ void ebpf_domain_t::assume(const linear_constraint_t& cst) { crab::assume(m_inv,
 void ebpf_domain_t::require(NumAbsDomain& inv, const linear_constraint_t& cst, const std::string& s) {
     if (check_require)
         check_require(inv, cst, s + " (" + this->current_assertion + ")");
+
     if (thread_local_options.assume_assertions) {
         // avoid redundant errors
         crab::assume(inv, cst);
@@ -2069,8 +2070,10 @@ void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, const number_t& width, con
     std::optional<variable_t> var = stack.store_type(inv, addr, width, val_type);
     type_inv.assign_type(inv, var, val_type);
     if (width == 8) {
-        inv.assign(stack.store(inv, data_kind_t::svalues, addr, width, val_svalue), val_svalue);
-        inv.assign(stack.store(inv, data_kind_t::uvalues, addr, width, val_uvalue), val_uvalue);
+        auto slot_svalue = stack.store(inv, data_kind_t::svalues, addr, width, val_svalue);
+        auto slot_uvalue = stack.store(inv, data_kind_t::uvalues, addr, width, val_uvalue);
+        inv.assign(slot_svalue, val_svalue);
+        inv.assign(slot_uvalue, val_uvalue);
 
         if (opt_val_reg && type_inv.has_type(m_inv, val_type, T_CTX)) {
             inv.assign(stack.store(inv, data_kind_t::ctx_offsets, addr, width, opt_val_reg->ctx_offset),
