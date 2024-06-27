@@ -36,7 +36,6 @@
 #include "crab_utils/graph_ops.hpp"
 #include "crab_utils/safeint.hpp"
 #include "crab_utils/stats.hpp"
-
 #include "string_constraints.hpp"
 
 namespace crab {
@@ -44,7 +43,6 @@ namespace crab {
 enum class arith_binop_t { ADD, SUB, MUL, SDIV, UDIV, SREM, UREM };
 enum class bitwise_binop_t { AND, OR, XOR, SHL, LSHR, ASHR };
 using binop_t = std::variant<arith_binop_t, bitwise_binop_t>;
-
 
 namespace domains {
 
@@ -101,18 +99,21 @@ class SplitDBM final {
     // GKG: ranges are now maintained in the graph
     vert_map_t vert_map; // Mapping from variables to vertices
     rev_map_t rev_map;
-    graph_t g;                 // The underlying relation graph
+    graph_t g;                     // The underlying relation graph
     std::vector<Weight> potential; // Stored potential for the vertex
     vert_set_t unstable;
 
     vert_id get_vert(variable_t v);
     // Evaluate the potential value of a variable.
-    [[nodiscard]] Weight pot_value(variable_t v) const;
+    [[nodiscard]]
+    Weight pot_value(variable_t v) const;
 
     // Evaluate an expression under the chosen potentials
-    [[nodiscard]] Weight eval_expression(const linear_expression_t& e, bool overflow) const;
+    [[nodiscard]]
+    Weight eval_expression(const linear_expression_t& e, bool overflow) const;
 
-    [[nodiscard]] interval_t compute_residual(const linear_expression_t& e, variable_t pivot) const;
+    [[nodiscard]]
+    interval_t compute_residual(const linear_expression_t& e, variable_t pivot) const;
 
     /**
      *  Turn an assignment into a set of difference constraints.
@@ -136,7 +137,8 @@ class SplitDBM final {
                             std::vector<std::pair<variable_t, Weight>>& diff_csts) const;
 
     // Turn an assignment into a set of difference constraints.
-    void diffcsts_of_assign(variable_t x, const linear_expression_t& exp, std::vector<std::pair<variable_t, Weight>>& lb,
+    void diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
+                            std::vector<std::pair<variable_t, Weight>>& lb,
                             std::vector<std::pair<variable_t, Weight>>& ub);
 
     /**
@@ -156,7 +158,8 @@ class SplitDBM final {
     // x != n
     bool add_univar_disequation(variable_t x, const number_t& n);
 
-    [[nodiscard]] interval_t get_interval(variable_t x, int finite_width) const;
+    [[nodiscard]]
+    interval_t get_interval(variable_t x, int finite_width) const;
 
     // Restore potential after an edge addition
     bool repair_potential(vert_id src, vert_id dest) { return GrOps::repair_potential(g, potential, src, dest); }
@@ -198,7 +201,8 @@ class SplitDBM final {
 
     static SplitDBM top() { return SplitDBM(); }
 
-    [[nodiscard]] bool is_top() const {
+    [[nodiscard]]
+    bool is_top() const {
         return g.is_empty();
     }
 
@@ -206,9 +210,7 @@ class SplitDBM final {
 
     // FIXME: can be done more efficient
     void operator|=(const SplitDBM& o) { *this = *this | o; }
-    void operator|=(SplitDBM&& o) {
-        *this = *this | o;
-    }
+    void operator|=(SplitDBM&& o) { *this = *this | o; }
 
     SplitDBM operator|(const SplitDBM& o) const&;
 
@@ -232,16 +234,19 @@ class SplitDBM final {
         return (*this) | (const SplitDBM&)o;
     }
 
-    [[nodiscard]] SplitDBM widen(const SplitDBM& o) const;
+    [[nodiscard]]
+    SplitDBM widen(const SplitDBM& o) const;
 
-    [[nodiscard]] SplitDBM widening_thresholds(const SplitDBM& o, const iterators::thresholds_t& ts) const {
+    [[nodiscard]]
+    SplitDBM widening_thresholds(const SplitDBM& o, const iterators::thresholds_t& ts) const {
         // TODO: use thresholds
         return this->widen(o);
     }
 
     std::optional<SplitDBM> meet(const SplitDBM& o) const;
 
-    [[nodiscard]] SplitDBM narrow(const SplitDBM& o) const;
+    [[nodiscard]]
+    SplitDBM narrow(const SplitDBM& o) const;
 
     void operator-=(variable_t v);
 
@@ -254,9 +259,7 @@ class SplitDBM final {
     }
     void assign(variable_t x, signed long long int n) { assign(x, linear_expression_t(n)); }
 
-    void assign(variable_t x, variable_t v) {
-        assign(x, linear_expression_t{v});
-    }
+    void assign(variable_t x, variable_t v) { assign(x, linear_expression_t{v}); }
 
     void assign(variable_t x, const std::optional<linear_expression_t>& e) {
         if (e) {
@@ -285,7 +288,8 @@ class SplitDBM final {
 
     bool add_constraint(const linear_constraint_t& cst);
 
-    [[nodiscard]] interval_t eval_interval(const linear_expression_t& e) const;
+    [[nodiscard]]
+    interval_t eval_interval(const linear_expression_t& e) const;
 
     interval_t operator[](variable_t x) const;
 
@@ -294,34 +298,39 @@ class SplitDBM final {
     void forget(const variable_vector_t& variables);
 
     // return number of vertices and edges
-    [[nodiscard]] std::pair<std::size_t, std::size_t> size() const { return {g.size(), g.num_edges()}; }
+    [[nodiscard]]
+    std::pair<std::size_t, std::size_t> size() const {
+        return {g.size(), g.num_edges()};
+    }
 
   private:
-    [[nodiscard]] bool entail_aux(const linear_constraint_t& cst) const {
+    [[nodiscard]]
+    bool entail_aux(const linear_constraint_t& cst) const {
         // copy is necessary
         return !SplitDBM(*this).add_constraint(cst.negate());
     }
 
-    [[nodiscard]] bool intersect_aux(const linear_constraint_t& cst) const {
+    [[nodiscard]]
+    bool intersect_aux(const linear_constraint_t& cst) const {
         // copy is necessary
         return SplitDBM(*this).add_constraint(cst);
     }
 
   public:
     // Return true if inv intersects with cst.
-    [[nodiscard]] bool intersect(const linear_constraint_t& cst) const;
+    [[nodiscard]]
+    bool intersect(const linear_constraint_t& cst) const;
 
     // Return true if entails rhs.
-    [[nodiscard]] bool entail(const linear_constraint_t& rhs) const;
+    [[nodiscard]]
+    bool entail(const linear_constraint_t& rhs) const;
 
     friend std::ostream& operator<<(std::ostream& o, const SplitDBM& dom);
-    [[nodiscard]] string_invariant to_set() const;
+    [[nodiscard]]
+    string_invariant to_set() const;
 
   public:
-    static void clear_thread_local_state()
-    {
-        GraphOps<crab::AdaptGraph>::clear_thread_local_state();
-    }
+    static void clear_thread_local_state() { GraphOps<crab::AdaptGraph>::clear_thread_local_state(); }
 }; // class SplitDBM
 
 } // namespace domains

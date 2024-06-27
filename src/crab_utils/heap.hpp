@@ -54,7 +54,8 @@ class Heap {
     inline void percolateDown(int i) {
         int x = heap[i];
         while (static_cast<size_t>(left(i)) < heap.size()) {
-            int child = static_cast<size_t>(right(i)) < heap.size() && lt(heap[right(i)], heap[left(i)]) ? right(i) : left(i);
+            int child =
+                static_cast<size_t>(right(i)) < heap.size() && lt(heap[right(i)], heap[left(i)]) ? right(i) : left(i);
             if (!lt(heap[child], x))
                 break;
             heap[i] = heap[child];
@@ -65,7 +66,8 @@ class Heap {
         indices[x] = i;
     }
 
-    [[nodiscard]] bool heapProperty(int i) const {
+    [[nodiscard]]
+    bool heapProperty(int i) const {
         return i >= heap.size() ||
                ((i == 0 || !lt(heap[i], heap[parent(i)])) && heapProperty(left(i)) && heapProperty(right(i)));
     }
@@ -73,9 +75,18 @@ class Heap {
   public:
     explicit Heap(const Comp& c) : lt(c) {}
 
-    [[nodiscard]] int size() const { return heap.size(); }
-    [[nodiscard]] bool empty() const { return heap.empty(); }
-    [[nodiscard]] bool inHeap(int n) const { return static_cast<size_t>(n) < indices.size() && indices[n] >= 0; }
+    [[nodiscard]]
+    int size() const {
+        return heap.size();
+    }
+    [[nodiscard]]
+    bool empty() const {
+        return heap.empty();
+    }
+    [[nodiscard]]
+    bool inHeap(int n) const {
+        return static_cast<size_t>(n) < indices.size() && indices[n] >= 0;
+    }
     int operator[](int index) const {
         assert(static_cast<size_t>(index) < heap.size());
         return heap[index];

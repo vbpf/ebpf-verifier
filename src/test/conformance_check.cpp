@@ -10,9 +10,10 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include "CLI11.hpp"
 #include "ebpf_verifier.hpp"
 #include "ebpf_yaml.hpp"
-#include "CLI11.hpp"
 
 using string = std::string;
 
@@ -65,8 +66,7 @@ int main(int argc, char** argv) {
         std::getline(std::cin, program_string);
     }
 
-    const auto& result =
-        run_conformance_test_case(base16_decode(memory_string), base16_decode(program_string), debug);
+    const auto& result = run_conformance_test_case(base16_decode(memory_string), base16_decode(program_string), debug);
     if (!result.success) {
         // Write failure reason to stdout since the bpf conformance library does not look at stderr.
         std::cout << "Verification failed\n";

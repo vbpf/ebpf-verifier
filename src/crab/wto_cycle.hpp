@@ -1,8 +1,10 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
 #pragma once
+
 #include <memory>
 #include <ostream>
+
 #include "wto.hpp"
 
 // Bourdoncle, "Efficient chaotic iteration strategies with widenings", 1993
@@ -18,18 +20,31 @@ class wto_cycle_t final {
     wto_cycle_t(std::weak_ptr<wto_cycle_t>& containing_cycle) : _containing_cycle(containing_cycle) {}
 
     // Get a vertex of an entry point of the cycle.
-    [[nodiscard]] const label_t& head() const {
+    [[nodiscard]]
+    const label_t& head() const {
         // Any cycle must start with a vertex, not another cycle,
         // per Definition 1 in the paper.  Since the vector is in reverse
         // order, the head is the last element.
         return std::get<label_t>(*_components.back().get());
     }
 
-    [[nodiscard]] wto_partition_t::reverse_iterator begin() { return _components.rbegin(); }
-    [[nodiscard]] wto_partition_t::reverse_iterator end() { return _components.rend(); }
+    [[nodiscard]]
+    wto_partition_t::reverse_iterator begin() {
+        return _components.rbegin();
+    }
+    [[nodiscard]]
+    wto_partition_t::reverse_iterator end() {
+        return _components.rend();
+    }
 
-    [[nodiscard]] std::weak_ptr<wto_cycle_t> containing_cycle() const { return _containing_cycle; }
-    [[nodiscard]] wto_partition_t& components() { return _components; }
+    [[nodiscard]]
+    std::weak_ptr<wto_cycle_t> containing_cycle() const {
+        return _containing_cycle;
+    }
+    [[nodiscard]]
+    wto_partition_t& components() {
+        return _components;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& o, wto_cycle_t& cycle) {
@@ -46,7 +61,6 @@ inline std::ostream& operator<<(std::ostream& o, wto_cycle_t& cycle) {
         } else
             std::visit([&o](auto& e) -> std::ostream& { return o << e; }, *component);
         o << " ";
-
     }
     o << ")";
     return o;

@@ -38,7 +38,10 @@ class member_component_visitor final {
         }
     }
 
-    [[nodiscard]] bool is_member() const { return _found; }
+    [[nodiscard]]
+    bool is_member() const {
+        return _found;
+    }
 };
 
 class interleaved_fwd_fixpoint_iterator_t final {
@@ -67,8 +70,8 @@ class interleaved_fwd_fixpoint_iterator_t final {
         _post[label] = std::move(pre);
     }
 
-    [[nodiscard]] static ebpf_domain_t extrapolate(ebpf_domain_t before, const ebpf_domain_t& after,
-                                                   unsigned int iteration) {
+    [[nodiscard]]
+    static ebpf_domain_t extrapolate(ebpf_domain_t before, const ebpf_domain_t& after, unsigned int iteration) {
         /// number of iterations until triggering widening
         constexpr auto _widening_delay = 2;
 

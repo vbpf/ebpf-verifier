@@ -3,21 +3,17 @@
 #include <stdexcept>
 #if __linux__
 #include <linux/bpf.h>
-#define PTYPE(name, descr, native_type, prefixes) \
-             {name, descr, native_type, prefixes}
-#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) \
-                        {name, descr, native_type, prefixes, true}
+#define PTYPE(name, descr, native_type, prefixes) {name, descr, native_type, prefixes}
+#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) {name, descr, native_type, prefixes, true}
 #else
-#define PTYPE(name, descr, native_type, prefixes) \
-             {name, descr, 0, prefixes}
-#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) \
-                        {name, descr, 0, prefixes, true}
+#define PTYPE(name, descr, native_type, prefixes) {name, descr, 0, prefixes}
+#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) {name, descr, 0, prefixes, true}
 #endif
 #include "crab_verifier.hpp"
 #include "helpers.hpp"
-#include "platform.hpp"
-#include "linux_platform.hpp"
 #include "linux/gpl/spec_type_descriptors.hpp"
+#include "linux_platform.hpp"
+#include "platform.hpp"
 
 // Map definitions as they appear in an ELF file, so field width matters.
 struct bpf_load_map_def {
@@ -40,11 +36,9 @@ static int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value
 const EbpfProgramType linux_socket_filter_program_type =
     PTYPE("socket_filter", &g_socket_filter_descr, BPF_PROG_TYPE_SOCKET_FILTER, {"socket"});
 
-const EbpfProgramType linux_xdp_program_type =
-    PTYPE("xdp", &g_xdp_descr, BPF_PROG_TYPE_XDP, {"xdp"});
+const EbpfProgramType linux_xdp_program_type = PTYPE("xdp", &g_xdp_descr, BPF_PROG_TYPE_XDP, {"xdp"});
 
-const EbpfProgramType cilium_lxc_program_type =
-    PTYPE("lxc", &g_sched_descr, BPF_PROG_TYPE_SOCKET_FILTER, {});
+const EbpfProgramType cilium_lxc_program_type = PTYPE("lxc", &g_sched_descr, BPF_PROG_TYPE_SOCKET_FILTER, {});
 
 const std::vector<EbpfProgramType> linux_program_types = {
     PTYPE("unspec", &g_unspec_descr, BPF_PROG_TYPE_UNSPEC, {}),
@@ -135,8 +129,7 @@ static const EbpfMapType linux_map_types[] = {
 #endif
 };
 
-EbpfMapType get_map_type_linux(uint32_t platform_specific_type)
-{
+EbpfMapType get_map_type_linux(uint32_t platform_specific_type) {
     uint32_t index = platform_specific_type;
     if ((index == 0) || (index >= sizeof(linux_map_types) / sizeof(linux_map_types[0]))) {
         return linux_map_types[0];
@@ -180,8 +173,8 @@ void resolve_inner_map_references_linux(std::vector<EbpfMapDescriptor>& map_desc
     for (size_t i = 0; i < map_descriptors.size(); i++) {
         unsigned int inner = map_descriptors[i].inner_map_fd; // Get the inner_map_idx back.
         if (inner >= map_descriptors.size())
-            throw std::runtime_error(std::string("bad inner map index ") + std::to_string(inner)
-                                     + " for map " + std::to_string(i));
+            throw std::runtime_error(std::string("bad inner map index ") + std::to_string(inner) + " for map " +
+                                     std::to_string(i));
         map_descriptors[i].inner_map_fd = map_descriptors.at(inner).original_fd;
     }
 }
@@ -195,8 +188,7 @@ static int do_bpf(bpf_cmd cmd, union bpf_attr& attr) { return syscall(321, cmd, 
  *  This function requires admin privileges.
  */
 static int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
-                            ebpf_verifier_options_t options)
-{
+                            ebpf_verifier_options_t options) {
     if (options.mock_map_fds) {
         EbpfMapType type = get_map_type_linux(map_type);
         return create_map_crab(type, key_size, value_size, max_entries, options);
@@ -229,8 +221,7 @@ static int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value
 #endif
 }
 
-EbpfMapDescriptor& get_map_descriptor_linux(int map_fd)
-{
+EbpfMapDescriptor& get_map_descriptor_linux(int map_fd) {
     // First check if we already have the map descriptor cached.
     EbpfMapDescriptor* map = find_map_descriptor(map_fd);
     if (map != nullptr) {
@@ -246,14 +237,13 @@ EbpfMapDescriptor& get_map_descriptor_linux(int map_fd)
     throw std::runtime_error(std::string("map_fd not found"));
 }
 
-const ebpf_platform_t g_ebpf_platform_linux = {
-    get_program_type_linux,
-    get_helper_prototype_linux,
-    is_helper_usable_linux,
-    sizeof(bpf_load_map_def),
-    parse_maps_section_linux,
-    get_map_descriptor_linux,
-    get_map_type_linux,
-    resolve_inner_map_references_linux,
-    bpf_conformance_groups_t::default_groups | bpf_conformance_groups_t::packet
-};
+const ebpf_platform_t g_ebpf_platform_linux = {get_program_type_linux,
+                                               get_helper_prototype_linux,
+                                               is_helper_usable_linux,
+                                               sizeof(bpf_load_map_def),
+                                               parse_maps_section_linux,
+                                               get_map_descriptor_linux,
+                                               get_map_type_linux,
+                                               resolve_inner_map_references_linux,
+                                               bpf_conformance_groups_t::default_groups |
+                                                   bpf_conformance_groups_t::packet};

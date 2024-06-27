@@ -45,7 +45,8 @@ struct checks_db final {
         total_unreachable++;
     }
 
-    [[nodiscard]] int get_max_loop_count() const {
+    [[nodiscard]]
+    int get_max_loop_count() const {
         auto m = this->max_loop_count.number();
         if (m && m->fits_sint32())
             return m->cast_to_sint32();

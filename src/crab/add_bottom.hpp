@@ -11,15 +11,13 @@ namespace crab {
 
 namespace domains {
 
-
 class AddBottom final {
     using T = SplitDBM;
     std::optional<T> dom{};
-    AddBottom() { }
+    AddBottom() {}
 
   public:
-
-    template<typename T>
+    template <typename T>
     explicit AddBottom(T&& _dom) : dom{std::forward<T>(_dom)} {}
     AddBottom(const AddBottom& other) = default;
     AddBottom(AddBottom& other) = default;
@@ -36,17 +34,19 @@ class AddBottom final {
         }
     }
 
-    void set_to_bottom() {
-        dom = {};
-    }
+    void set_to_bottom() { dom = {}; }
 
-    [[nodiscard]] bool is_bottom() const { return !dom; }
+    [[nodiscard]]
+    bool is_bottom() const {
+        return !dom;
+    }
 
     static AddBottom top() { return AddBottom(T::top()); }
 
     static AddBottom bottom() { return AddBottom(); }
 
-    [[nodiscard]] bool is_top() const {
+    [[nodiscard]]
+    bool is_top() const {
         return dom && dom->is_top();
     }
 
@@ -82,7 +82,7 @@ class AddBottom final {
         *dom |= std::move(*o.dom);
     }
 
-    template<typename Left, typename Right>
+    template <typename Left, typename Right>
     friend AddBottom operator|(Left&& left, Right&& right) {
         using LDOM = decltype(*std::forward<Left>(left).dom);
         using RDOM = decltype(*std::forward<Right>(right).dom);
@@ -93,8 +93,8 @@ class AddBottom final {
         return AddBottom(std::forward<LDOM>(*left.dom) | std::forward<RDOM>(*right.dom));
     }
 
-
-    [[nodiscard]] AddBottom widen(const AddBottom& o) const {
+    [[nodiscard]]
+    AddBottom widen(const AddBottom& o) const {
         if (!dom)
             return o;
         if (!o.dom)
@@ -110,13 +110,15 @@ class AddBottom final {
         return bottom();
     }
 
-    [[nodiscard]] AddBottom narrow(const AddBottom& o) const {
+    [[nodiscard]]
+    AddBottom narrow(const AddBottom& o) const {
         if (!dom || !o.dom)
             return bottom();
         return AddBottom(dom->narrow(*o.dom));
     }
 
-    [[nodiscard]] AddBottom when(const linear_constraint_t& cst) const {
+    [[nodiscard]]
+    AddBottom when(const linear_constraint_t& cst) const {
         if (dom) {
             AddBottom result(*dom);
             if (!result.dom->add_constraint(cst))
@@ -137,7 +139,7 @@ class AddBottom final {
         }
     }
 
-    template<typename V>
+    template <typename V>
     void assign(variable_t x, const V& value) {
         if (dom) {
             // XXX: maybe needs to return false when becomes bottom
@@ -146,7 +148,7 @@ class AddBottom final {
         }
     };
 
-    template<typename Op, typename Left, typename Right>
+    template <typename Op, typename Left, typename Right>
     void apply(Op op, variable_t x, const Left& left, const Right& right, int finite_width) {
         if (dom) {
             dom->apply(op, x, left, right, finite_width);
@@ -161,7 +163,8 @@ class AddBottom final {
         }
     }
 
-    [[nodiscard]] interval_t eval_interval(const linear_expression_t& e) const {
+    [[nodiscard]]
+    interval_t eval_interval(const linear_expression_t& e) const {
         if (dom)
             return dom->eval_interval(e);
         return interval_t::bottom();
@@ -182,7 +185,8 @@ class AddBottom final {
     }
 
     // Return true if inv intersects with cst.
-    [[nodiscard]] bool intersect(const linear_constraint_t& cst) const {
+    [[nodiscard]]
+    bool intersect(const linear_constraint_t& cst) const {
         if (dom) {
             return dom->intersect(cst);
         }
@@ -190,7 +194,8 @@ class AddBottom final {
     }
 
     // Return true if entails rhs.
-    [[nodiscard]] bool entail(const linear_constraint_t& cst) const{
+    [[nodiscard]]
+    bool entail(const linear_constraint_t& cst) const {
         if (dom) {
             return dom->entail(cst);
         }
@@ -204,7 +209,8 @@ class AddBottom final {
         return o << "_|_";
     }
 
-    [[nodiscard]] string_invariant to_set() const {
+    [[nodiscard]]
+    string_invariant to_set() const {
         if (dom) {
             return dom->to_set();
         }

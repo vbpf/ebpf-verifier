@@ -1,6 +1,7 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
 #include <catch2/catch_all.hpp>
+
 #include "crab/cfg.hpp"
 #include "crab/wto.hpp"
 
