@@ -55,18 +55,6 @@ struct checks_db final {
     checks_db() = default;
 };
 
-std::string to_string(const ebpf_domain_t& inv) {
-    std::ostringstream s;
-    s << inv;
-    return s.str();
-}
-
-std::string to_string(const crab::NumAbsDomain& inv) {
-    std::ostringstream s;
-    s << inv;
-    return s.str();
-}
-
 static checks_db generate_report(cfg_t& cfg, crab::invariant_table_t& pre_invariants,
                                  crab::invariant_table_t& post_invariants) {
     checks_db m_db;
@@ -78,9 +66,8 @@ static checks_db generate_report(cfg_t& cfg, crab::invariant_table_t& pre_invari
             [&m_db, &location](auto& inv, const crab::linear_constraint_t& cst, const std::string& s) {
                 if (inv.is_bottom())
                     return true;
-                auto ss = s; // + to_string(inv);
                 if (cst.is_contradiction()) {
-                    m_db.add_warning(location, ss);
+                    m_db.add_warning(location, s);
                     return false;
                 }
 
@@ -89,20 +76,20 @@ static checks_db generate_report(cfg_t& cfg, crab::invariant_table_t& pre_invari
                     return true;
                 } else if (inv.intersect(cst)) {
                     // TODO: add_error() if imply negation
-                    m_db.add_warning(location, ss);
+                    m_db.add_warning(location, s);
                     return false;
                 } else {
-                    m_db.add_warning(location, ss);
+                    m_db.add_warning(location, s);
                     return false;
                 }
             });
 
         bool pre_bot = from_inv.is_bottom();
-        for (int i = 0; i < bb.size(); ++i) {
+        for (size_t i = 0; i < bb.size(); ++i) {
             location = {label, i};
             std::visit(from_inv, bb.at(i));
             if (!pre_bot && from_inv.is_bottom()) {
-                m_db.add_unreachable(crab::location_t{label, i}, std::string("Code is unreachable after ") + to_string(bb.label()));
+                m_db.add_unreachable(location, std::string("Code is unreachable after ") + to_string(bb.label()));
                 break;
             }
         }

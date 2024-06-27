@@ -13,8 +13,8 @@
 
 namespace crab {
 struct label_t {
-    int from; ///< Jump source, or simply index of instruction
-    int to; ///< Jump target or -1
+    int from{}; ///< Jump source, or simply index of instruction
+    int to{}; ///< Jump target or -1
 
     constexpr explicit label_t(int index, int to = -1) noexcept : from(index), to(to) {}
 
@@ -51,7 +51,9 @@ struct label_t {
 
 struct location_t {
     label_t label;
-    int offset{};
+    size_t offset{};
+
+    location_t(const label_t& label, size_t offset) : label(label), offset(offset){ }
 
     constexpr bool operator==(const location_t&) const = default;
     constexpr bool operator<(const location_t& other) const {
