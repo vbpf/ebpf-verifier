@@ -13,8 +13,8 @@
 
 namespace crab {
 struct label_t {
-    int from; ///< Jump source, or simply index of instruction
-    int to; ///< Jump target or -1
+    int from{}; ///< Jump source, or simply index of instruction
+    int to{}; ///< Jump target or -1
 
     constexpr explicit label_t(int index, int to = -1) noexcept : from(index), to(to) {}
 
@@ -47,6 +47,22 @@ struct label_t {
 
     static const label_t entry;
     static const label_t exit;
+};
+
+struct location_t {
+    label_t label;
+    size_t offset{};
+
+    location_t(const label_t& label, size_t offset) : label(label), offset(offset){ }
+
+    constexpr bool operator==(const location_t&) const = default;
+    constexpr bool operator<(const location_t& other) const {
+        if (this == &other) return false;
+        return label < other.label || (label == other.label && offset < other.offset);
+    }
+    friend std::ostream& operator<<(std::ostream& os, const location_t& location) {
+        return os << location.label << "." << location.offset;
+    }
 };
 
 inline const label_t label_t::entry{-1};

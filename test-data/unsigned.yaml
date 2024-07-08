@@ -7,7 +7,7 @@ code:
   <start>: assume r1 < 0
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume 0 w< 0 implies bottom"
 pre: ["r1.type=number", "r1.svalue=0", "r1.uvalue=0"]
@@ -15,7 +15,7 @@ code:
   <start>: assume w1 < 0
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume -1 < 0 implies bottom"
 pre: ["r1.type=number", "r1.svalue=-1", "r1.uvalue=18446744073709551615"]
@@ -23,7 +23,7 @@ code:
   <start>: assume r1 < 0
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume -1 w< 0 implies bottom"
 pre: ["r1.type=number", "r1.svalue=-1", "r1.uvalue=18446744073709551615"]
@@ -31,7 +31,7 @@ code:
   <start>: assume w1 < 0
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume -1 < 1 implies bottom"
 pre: ["r1.type=number", "r1.svalue=-1", "r1.uvalue=18446744073709551615"]
@@ -39,7 +39,7 @@ code:
   <start>: assume r1 < 1
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume -1 w< 1 implies bottom"
 pre: ["r1.type=number", "r1.svalue=-1", "r1.uvalue=18446744073709551615"]
@@ -47,7 +47,7 @@ code:
   <start>: assume w1 < 1
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume 1 < 0 implies bottom"
 pre: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1"]
@@ -55,7 +55,7 @@ code:
   <start>: assume r1 < 0
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume 1 w< 0 implies bottom"
 pre: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1"]
@@ -63,7 +63,7 @@ code:
   <start>: assume w1 < 0
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume 1 < 1 implies bottom"
 pre: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1"]
@@ -71,7 +71,7 @@ code:
   <start>: assume r1 < 1
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume 1 w< 1 implies bottom"
 pre: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1"]
@@ -79,7 +79,7 @@ code:
   <start>: assume w1 < 1
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume 2 < 1 implies bottom"
 pre: ["r1.type=number", "r1.svalue=2", "r1.uvalue=2"]
@@ -87,7 +87,7 @@ code:
   <start>: assume r1 < 1
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume 2 w< 1 implies bottom"
 pre: ["r1.type=number", "r1.svalue=2", "r1.uvalue=2"]
@@ -95,7 +95,7 @@ code:
   <start>: assume w1 < 1
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [0, 1] < 0 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[0, 1]", "r1.uvalue=[0, 1]", "r1.svalue=r1.uvalue"]
@@ -103,7 +103,7 @@ code:
   <start>: assume r1 < 0
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [0, 1] w< 0 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[0, 1]", "r1.uvalue=[0, 1]", "r1.svalue=r1.uvalue"]
@@ -111,7 +111,7 @@ code:
   <start>: assume w1 < 0
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [2, 3] < 1 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[2, 3]", "r1.uvalue=[2, 3]", "r1.svalue=r1.uvalue"]
@@ -119,7 +119,7 @@ code:
   <start>: assume r1 < 1
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [2, 3] w< 1 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[2, 3]", "r1.uvalue=[2, 3]", "r1.svalue=r1.uvalue"]
@@ -127,7 +127,7 @@ code:
   <start>: assume w1 < 1
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [-2, -1] < 0 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[-2, -1]", "r1.uvalue=[18446744073709551614, 18446744073709551615]"]
@@ -135,7 +135,7 @@ code:
   <start>: assume r1 < 1
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [-2, -1] w< 0 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[-2, -1]", "r1.uvalue=[18446744073709551614, 18446744073709551615]"]
@@ -143,7 +143,7 @@ code:
   <start>: assume w1 < 1
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [-3, -2] < -3 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[-3, -2]", "r1.uvalue=[18446744073709551613, 18446744073709551614]"]
@@ -151,7 +151,7 @@ code:
   <start>: assume r1 < -3
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [-3, -2] w< -3 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[-3, -2]", "r1.uvalue=[18446744073709551613, 18446744073709551614]"]
@@ -159,7 +159,7 @@ code:
   <start>: assume w1 < -3
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [-3, -2] < -4 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[-3, -2]", "r1.uvalue=[18446744073709551613, 18446744073709551614]"]
@@ -167,7 +167,7 @@ code:
   <start>: assume r1 < -4
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [-3, -2] w< -4 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[-3, -2]", "r1.uvalue=[18446744073709551613, 18446744073709551614]"]
@@ -175,7 +175,7 @@ code:
   <start>: assume w1 < -4
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume 1 < [0, 1] implies bottom"
 pre: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1",
@@ -184,7 +184,7 @@ code:
   <start>: assume r1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume 1 w< [0, 1] implies bottom"
 pre: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1",
@@ -193,7 +193,7 @@ code:
   <start>: assume w1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume -1 < [0, 1] implies bottom"
 pre: ["r1.type=number", "r1.svalue=-1", "r1.uvalue=18446744073709551615",
@@ -202,7 +202,7 @@ code:
   <start>: assume r1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume -1 w< [0, 1] implies bottom"
 pre: ["r1.type=number", "r1.svalue=-1", "r1.uvalue=18446744073709551615",
@@ -211,7 +211,7 @@ code:
   <start>: assume w1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume -1 < [1, 2] implies bottom"
 pre: ["r1.type=number", "r1.svalue=-1", "r1.uvalue=18446744073709551615",
@@ -220,7 +220,7 @@ code:
   <start>: assume r1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume -1 w< [1, 2] implies bottom"
 pre: ["r1.type=number", "r1.svalue=-1", "r1.uvalue=18446744073709551615",
@@ -229,7 +229,7 @@ code:
   <start>: assume w1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume 2 < [0, 1] implies bottom"
 pre: ["r1.type=number", "r1.svalue=2", "r1.uvalue=2",
@@ -238,7 +238,7 @@ code:
   <start>: assume r1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume 2 w< [0, 1] implies bottom"
 pre: ["r1.type=number", "r1.svalue=2", "r1.uvalue=2",
@@ -247,7 +247,7 @@ code:
   <start>: assume w1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume 1 < [0, 1] implies bottom"
 pre: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1",
@@ -256,7 +256,7 @@ code:
   <start>: assume r1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume 1 w< [0, 1] implies bottom"
 pre: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1",
@@ -265,7 +265,7 @@ code:
   <start>: assume w1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume 2 < [0, 1] implies bottom"
 pre: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1",
@@ -274,7 +274,7 @@ code:
   <start>: assume r1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume 2 w< [0, 1] implies bottom"
 pre: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1",
@@ -283,7 +283,7 @@ code:
   <start>: assume w1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume [2, 3] < [1, 2] implies bottom"
 pre: ["r1.type=number", "r1.svalue=[2, 3]", "r1.uvalue=[2, 3]", "r1.svalue=r1.uvalue",
@@ -292,7 +292,7 @@ code:
   <start>: assume r1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume [2, 3] w< [1, 2] implies bottom"
 pre: ["r1.type=number", "r1.svalue=[2, 3]", "r1.uvalue=[2, 3]", "r1.svalue=r1.uvalue",
@@ -301,7 +301,7 @@ code:
   <start>: assume w1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume [-2, -1] < [0, 1] implies bottom"
 pre: ["r1.type=number", "r1.svalue=[-2, -1]", "r1.uvalue=[18446744073709551614, 18446744073709551615]",
@@ -310,7 +310,7 @@ code:
   <start>: assume r1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume [-2, -1] w< [0, 1] implies bottom"
 pre: ["r1.type=number", "r1.svalue=[-2, -1]", "r1.uvalue=[18446744073709551614, 18446744073709551615]",
@@ -319,7 +319,7 @@ code:
   <start>: assume w1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume [-3, -2] < [-4, -3] implies bottom"
 pre: ["r1.type=number", "r1.svalue=[-3, -2]", "r1.uvalue=[18446744073709551613, 18446744073709551614]",
@@ -328,7 +328,7 @@ code:
   <start>: assume r1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume [-3, -2] w< [-4, -3] implies bottom"
 pre: ["r1.type=number", "r1.svalue=[-3, -2]", "r1.uvalue=[18446744073709551613, 18446744073709551614]",
@@ -337,7 +337,7 @@ code:
   <start>: assume w1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume [-3, -2] < [-5, -4] implies bottom"
 pre: ["r1.type=number", "r1.svalue=[-3, -2]", "r1.uvalue=[18446744073709551613, 18446744073709551614]",
@@ -346,7 +346,7 @@ code:
   <start>: assume r1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume [-3, -2] w< [-5, -4] implies bottom"
 pre: ["r1.type=number", "r1.svalue=[-3, -2]", "r1.uvalue=[18446744073709551613, 18446744073709551614]",
@@ -355,7 +355,7 @@ code:
   <start>: assume w1 < r2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.4: Code is unreachable after 0"
 ---
 test-case: "assume INT_MIN+1 < 0 implies bottom"
 pre: []
@@ -365,7 +365,7 @@ code:
     assume r1 < 0
 post: []
 messages:
-  - "1: Code is unreachable after 1"
+  - "1.1: Code is unreachable after 1"
 ---
 test-case: "assume INT_MIN+1 w< 0 implies bottom"
 pre: []
@@ -375,7 +375,7 @@ code:
     assume w1 < 0
 post: []
 messages:
-  - "1: Code is unreachable after 1"
+  - "1.1: Code is unreachable after 1"
 ---
 test-case: "assume INT_MIN+1 w< 2 nop"
 pre: []
@@ -391,7 +391,7 @@ code:
   <start>: assume r1 < 0
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [INT32_MIN, -1] w< 0 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[-2147483648, -1]", "r1.uvalue=[18446744071562067968, 18446744073709551615]"]
@@ -400,7 +400,7 @@ code:
     assume w1 < 0
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume something w< 0 implies bottom"
 pre: ["r1.type=number", "r1.svalue=-4294967298", "r1.uvalue=18446744069414584318"]
@@ -409,7 +409,7 @@ code:
     assume w1 < 0
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume INT_MIN+1 < 1 implies bottom"
 pre: []
@@ -419,7 +419,7 @@ code:
     assume r1 < 1
 post: []
 messages:
-  - "1: Code is unreachable after 1"
+  - "1.1: Code is unreachable after 1"
 ---
 test-case: "assume INT32_MIN w< 1 implies bottom"
 pre: []
@@ -429,7 +429,7 @@ code:
     assume w1 < 1
 post: []
 messages:
-  - "1: Code is unreachable after 1"
+  - "1.1: Code is unreachable after 1"
 ---
 test-case: "assume INT_MIN+1 < INT_MIN+1 implies bottom"
 pre: []
@@ -440,7 +440,7 @@ code:
     assume r1 < r2
 post: []
 messages:
-  - "2: Code is unreachable after 2"
+  - "2.4: Code is unreachable after 2"
 ---
 test-case: "assume INT32_MIN w< INT32_MIN implies bottom"
 pre: []
@@ -451,7 +451,7 @@ code:
     assume w1 < r2
 post: []
 messages:
-  - "2: Code is unreachable after 2"
+  - "2.4: Code is unreachable after 2"
 ---
 test-case: "assume INT_MIN+2 < INT_MIN+1 implies bottom"
 pre: []
@@ -462,7 +462,7 @@ code:
     assume r1 < r2
 post: []
 messages:
-  - "2: Code is unreachable after 2"
+  - "2.4: Code is unreachable after 2"
 ---
 test-case: "assume -1 < INT_MIN+1 implies bottom"
 pre: []
@@ -473,7 +473,7 @@ code:
     assume r1 < r2
 post: []
 messages:
-  - "2: Code is unreachable after 2"
+  - "2.4: Code is unreachable after 2"
 ---
 test-case: "assume -1 w< INT32_MIN implies bottom"
 pre: []
@@ -484,7 +484,7 @@ code:
     assume w1 < r2
 post: []
 messages:
-  - "2: Code is unreachable after 2"
+  - "2.4: Code is unreachable after 2"
 ---
 test-case: "assume INT32_MIN w< INT32_MAX implies bottom"
 pre: []
@@ -495,7 +495,7 @@ code:
     assume w1 < r2
 post: []
 messages:
-  - "2: Code is unreachable after 2"
+  - "2.4: Code is unreachable after 2"
 ---
 test-case: "assume [1, INT_MAX] < 1 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[0, 9223372036854775806]", "r1.uvalue=[0, 9223372036854775806]", "r1.svalue=r1.uvalue"]
@@ -505,7 +505,7 @@ code:
     assume r1 < 1
 post: []
 messages:
-  - "1: Code is unreachable after 1"
+  - "1.1: Code is unreachable after 1"
 ---
 test-case: "assume [1, INT32_MAX] w< 1 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[1, 2147483647]", "r1.uvalue=[1, 2147483647]", "r1.svalue=r1.uvalue"]
@@ -514,7 +514,7 @@ code:
     assume w1 < 1
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [INT_MAX-1, INT_MAX] < 1 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[9223372036854775803, 9223372036854775804]", "r1.uvalue=[9223372036854775803, 9223372036854775804]", "r1.svalue=r1.uvalue"]
@@ -524,7 +524,7 @@ code:
     assume r1 < 1
 post: []
 messages:
-  - "1: Code is unreachable after 1"
+  - "1.1: Code is unreachable after 1"
 ---
 test-case: "assume [INT32_MAX-1, INT32_MAX] < 1 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[2147483646, 2147483647]", "r1.uvalue=[2147483646, 2147483647]", "r1.svalue=r1.uvalue"]
@@ -533,7 +533,7 @@ code:
     assume w1 < 1
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [INT_MAX, INT_MAX+1] < 1 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[9223372036854775803, 9223372036854775804]", "r1.uvalue=[9223372036854775803, 9223372036854775804]", "r1.svalue=r1.uvalue"]
@@ -543,7 +543,7 @@ code:
     assume r1 < 1
 post: []
 messages:
-  - "1: Code is unreachable after 1"
+  - "1.1: Code is unreachable after 1"
 ---
 test-case: "assume 0 < 1 nop"
 pre: []
@@ -596,7 +596,7 @@ code:
     assume r1 > 1
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [0, 1] w> 1 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[0, 1]", "r1.uvalue=[0, 1]", "r1.svalue=r1.uvalue"]
@@ -605,7 +605,7 @@ code:
     assume w1 > 1
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [1, 2] > 1 narrows to 2"
 pre: ["r1.type=number", "r1.svalue=[1, 2]", "r1.uvalue=[1, 2]", "r1.svalue=r1.uvalue"]
@@ -685,7 +685,7 @@ code:
     assume r1 > r2
 post: []
 messages:
-  - "1: Code is unreachable after 1"
+  - "1.4: Code is unreachable after 1"
 ---
 test-case: "assume [0, INT32_MAX] w> INT32_MAX implies bottom"
 pre: ["r1.type=number", "r1.svalue=[0, 2147483647]", "r1.uvalue=[0, 2147483647]", "r1.svalue=r1.uvalue"]
@@ -694,7 +694,7 @@ code:
     assume w1 > 2147483647
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [0, INT_MAX-4] >= INT_MAX-4 narrows to INT_MAX-4"
 pre: ["r1.type=number", "r1.svalue=[0, 9223372036854775803]", "r1.uvalue=[0, 9223372036854775803]", "r1.svalue=r1.uvalue"]
@@ -1085,7 +1085,7 @@ code:
   <start>: assume r1 != 11
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [0, 1] != 1 narrows to 0"
 pre: ["r1.type=number", "r1.svalue=[0, 1]", "r1.uvalue=[0, 1]"]
@@ -1111,7 +1111,7 @@ code:
   <start>: assume w1 != 11
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [3, 4] w< 2 implies bottom"
 pre: ["r1.type=number", "r1.svalue=[3, 4]", "r1.uvalue=[3, 4]"]
@@ -1119,7 +1119,7 @@ code:
   <start>: assume w1 < 2
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: "assume [UINT32_MAX+1, UINT32_MAX+5] w< 2"
 pre: ["r1.type=number", "r1.uvalue=[4294967296, 4294967300]"]
@@ -1248,7 +1248,7 @@ code:
   <start>: assume w1 s> 0
 post: []
 messages:
-  - "0: Code is unreachable after 0"
+  - "0.1: Code is unreachable after 0"
 ---
 test-case: signed 32-bit GT reg
 pre: ["r1.type=number", "r1.svalue=[-2, 2]", "r2.type=number", "r2.svalue=[-2, 2]"]

@@ -77,7 +77,7 @@ post:
   - r3.uvalue=4
 
 messages:
-  - "0: Cannot subtract pointers to non-singleton regions (r2.type == number or r3.type == r2.type in {ctx, stack, packet})"
+  - "0.1: Cannot subtract pointers to non-singleton regions (r2.type == number or r3.type == r2.type in {ctx, stack, packet})"
 ---
 test-case: disallow subtraction of unequal dual-typed pointers
 
@@ -94,7 +94,7 @@ post:
   - r2.stack_offset=4
 
 messages:
-  - "0: Cannot subtract pointers to different regions (r2.type == number or r3.type == r2.type in {ctx, stack, packet})"
+  - "0.1: Cannot subtract pointers to different regions (r2.type == number or r3.type == r2.type in {ctx, stack, packet})"
 
 ---
 test-case: allow subtraction of equal dual-typed pointers
@@ -152,4 +152,4 @@ post:
   - r2.type=stack
   - r2.stack_offset=[140, 230]
 messages:
-  - "0: Upper bound must be at most EBPF_STACK_SIZE (r2.type == number or r1.type == r2.type in {ctx, stack, packet})"
+  - "0.1: Upper bound must be at most EBPF_STACK_SIZE (r2.type == number or r1.type == r2.type in {ctx, stack, packet})"
