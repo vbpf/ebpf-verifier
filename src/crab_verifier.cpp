@@ -145,7 +145,6 @@ static checks_db get_analysis_report(std::ostream& s, cfg_t& cfg, crab::invarian
 static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info,
                                  const ebpf_verifier_options_t* options) {
     global_program_info = std::move(info);
-    crab::domains::clear_global_state();
     crab::variable_t::clear_thread_local_state();
     thread_local_options = *options;
 
@@ -188,7 +187,6 @@ std::tuple<string_invariant, bool> ebpf_analyze_program_for_test(std::ostream& o
                                                                  const string_invariant& entry_invariant,
                                                                  const program_info& info,
                                                                  const ebpf_verifier_options_t& options) {
-    crab::domains::clear_global_state();
     crab::variable_t::clear_thread_local_state();
 
     thread_local_options = options;
@@ -233,6 +231,5 @@ void ebpf_verifier_clear_thread_local_state() {
     crab::variable_t::clear_thread_local_state();
     crab::CrabStats::clear_thread_local_state();
     global_program_info.clear();
-    crab::domains::clear_thread_local_state();
     crab::domains::SplitDBM::clear_thread_local_state();
 }
