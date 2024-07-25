@@ -11,24 +11,28 @@
 #include "crab/variable.hpp"
 #include "spec_type_descriptors.hpp"
 
+constexpr char STACK_FRAME_DELIMITER = '/';
+
 namespace crab {
 struct label_t {
     int from; ///< Jump source, or simply index of instruction
     int to; ///< Jump target or -1
+    std::string stack_frame_prefix; ///< Variable prefix when calling this label.
 
-    constexpr explicit label_t(int index, int to = -1) noexcept : from(index), to(to) {}
+    explicit label_t(int index, int to = -1, std::string stack_frame_prefix = {}) noexcept
+        : from(index), to(to), stack_frame_prefix(stack_frame_prefix) {}
 
-    static constexpr label_t make_jump(const label_t& src_label, const label_t& target_label) {
-        return label_t{src_label.from, target_label.from};
+    static label_t make_jump(const label_t& src_label, const label_t& target_label) {
+        return label_t{src_label.from, target_label.from, target_label.stack_frame_prefix};
     }
 
-    constexpr bool operator==(const label_t&) const = default;
+    bool operator==(const label_t& other) const noexcept = default;
 
     constexpr bool operator<(const label_t& other) const {
         if (this == &other) return false;
         if (*this == label_t::exit) return false;
         if (other == label_t::exit) return true;
-        return from < other.from || (from == other.from && to < other.to);
+        return (stack_frame_prefix < other.stack_frame_prefix || (stack_frame_prefix == other.stack_frame_prefix && (from < other.from || (from == other.from && to < other.to))));
     }
 
     // no hash; intended for use in ordered containers.
@@ -40,6 +44,8 @@ struct label_t {
             return os << "entry";
         if (label == exit)
             return os << "exit";
+        if (!label.stack_frame_prefix.empty())
+            os << label.stack_frame_prefix << STACK_FRAME_DELIMITER;
         if (label.to == -1)
             return os << label.from;
         return os << label.from << ":" << label.to;
@@ -157,7 +163,7 @@ struct Condition {
 struct Jmp {
     std::optional<Condition> cond;
     label_t target;
-    constexpr bool operator==(const Jmp&) const = default;
+    bool operator==(const Jmp&) const = default;
 };
 
 struct ArgSingle {
@@ -199,12 +205,22 @@ struct Call {
     bool reallocate_packet{};
     std::vector<ArgSingle> singles;
     std::vector<ArgPair> pairs;
+    std::string stack_frame_prefix; ///< Variable prefix at point of call.
+};
+
+/// Call a "function" (macro) within the same program.
+struct CallLocal {
+    label_t target;
+    std::string stack_frame_prefix; ///< Variable prefix to be used within the call.
+    bool operator==(const CallLocal& other) const noexcept = default;
 };
 
 struct Exit {
-    constexpr bool operator==(const Exit&) const = default;
+    std::string stack_frame_prefix; ///< Variable prefix to clean up when exiting.
+    bool operator==(const Exit& other) const noexcept = default;
 };
 
+/// Experimental callx instruction.
 struct Callx {
     Reg func;
     constexpr bool operator==(const Callx&) const = default;
@@ -340,6 +356,13 @@ struct ValidMapKeyValue {
     constexpr bool operator==(const ValidMapKeyValue&) const = default;
 };
 
+/// Condition check whether a call is valid in the current context.
+struct ValidCall {
+    int32_t func{};
+    std::string stack_frame_prefix; ///< Variable prefix at point of call.
+    bool operator==(const ValidCall&) const = default;
+};
+
 // "if mem is not stack, val is num"
 struct ValidStore {
     Reg mem;
@@ -365,7 +388,7 @@ struct ZeroCtxOffset {
 };
 
 using AssertionConstraint =
-    std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint, FuncConstraint, ZeroCtxOffset>;
+    std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, ValidCall, TypeConstraint, FuncConstraint, ZeroCtxOffset>;
 
 struct Assert {
     AssertionConstraint cst;
@@ -375,10 +398,10 @@ struct Assert {
 
 struct IncrementLoopCounter {
     label_t name;
-    constexpr bool operator==(const IncrementLoopCounter&) const = default;
+    bool operator==(const IncrementLoopCounter&) const = default;
 };
 
-using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Callx, Exit, Jmp, Mem, Packet, Atomic, Assume, Assert, IncrementLoopCounter>;
+using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, CallLocal, Callx, Exit, Jmp, Mem, Packet, Atomic, Assume, Assert, IncrementLoopCounter>;
 
 using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
 using InstructionSeq = std::vector<LabeledInstruction>;

@@ -71,7 +71,7 @@ std::tuple<string, ELFIO::Elf_Half> get_symbol_name_and_section_index(ELFIO::con
     return {symbol_name, section_index};
 }
 
-std::tuple<ELFIO::Elf64_Addr, unsigned char> get_value(ELFIO::const_symbol_section_accessor& symbols, ELFIO::Elf_Word index) {
+std::tuple<ELFIO::Elf64_Addr, unsigned char> get_value(const ELFIO::const_symbol_section_accessor& symbols, ELFIO::Elf_Word index) {
     string symbol_name;
     ELFIO::Elf64_Addr value{};
     ELFIO::Elf_Xword size{};
@@ -150,6 +150,45 @@ std::tuple<string, ELFIO::Elf_Xword> get_program_name_and_size(ELFIO::section& s
         }
     }
     return {program_name, size};
+}
+
+void relocate_function(ebpf_inst& inst, ELFIO::Elf64_Addr offset, ELFIO::Elf_Word index, const ELFIO::const_symbol_section_accessor& symbols) {
+    auto [relocation_offset, relocation_type] = get_value(symbols, index);
+    inst.imm = ((relocation_offset - offset) / sizeof(ebpf_inst)) - 1;
+}
+
+void relocate_map(ebpf_inst& inst, const std::string& symbol_name, const std::variant<size_t, std::map<std::string, size_t>>& map_record_size_or_map_offsets, const program_info& info, ELFIO::Elf64_Addr offset, ELFIO::Elf_Word index, const ELFIO::const_symbol_section_accessor& symbols) {
+    // Only permit loading the address of the map.
+    if ((inst.opcode & INST_CLS_MASK) != INST_CLS_LD) {
+        throw std::runtime_error("Illegal operation on symbol " + symbol_name + " at location " +
+                                 std::to_string(offset / sizeof(ebpf_inst)));
+    }
+    inst.src = 1; // magic number for LoadFd
+
+    // Relocation value is an offset into the "maps" or ".maps" section.
+    auto [relocation_offset, relocation_type] = get_value(symbols, index);
+    if (map_record_size_or_map_offsets.index() == 0) {
+        // The older maps section format uses a single map_record_size value, so we can
+        // calculate the map descriptor index directly.
+        size_t reloc_value = relocation_offset / std::get<0>(map_record_size_or_map_offsets);
+        if (reloc_value >= info.map_descriptors.size()) {
+            throw std::runtime_error("Bad reloc value (" + std::to_string(reloc_value) + "). " +
+                                     "Make sure to compile with -O2.");
+        }
+
+        inst.imm = info.map_descriptors.at(reloc_value).original_fd;
+    } else {
+        // The newer .maps section format uses a variable-length map descriptor array,
+        // so we need to look up the map descriptor index in a map.
+        auto& map_descriptors_offsets = std::get<1>(map_record_size_or_map_offsets);
+        auto it = map_descriptors_offsets.find(symbol_name);
+
+        if (it == map_descriptors_offsets.end()) {
+            throw std::runtime_error("Bad reloc value (" + std::to_string(index) + "). " +
+                                     "Make sure to compile with -O2.");
+        }
+        inst.imm = info.map_descriptors.at(it->second).original_fd;
+    }
 }
 
 vector<raw_program> read_elf(std::istream& input_stream, const std::string& path, const std::string& desired_section, const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
@@ -292,46 +331,22 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
                     auto [symbol_name, symbol_section_index] = get_symbol_name_and_section_index(symbols, index);
 
-                    // Only perform relocation for symbols located in the maps section.
-                    if (!map_section_indices.contains(symbol_section_index)) {
-                        std::string unresolved_symbol = "Unresolved external symbol " + symbol_name +
-                                                        " in section " + name + " at location " + std::to_string(offset / sizeof(ebpf_inst));
-                        unresolved_symbols.push_back(unresolved_symbol);
+                    // Perform relocation for function symbols.
+                    if ((inst.opcode == INST_OP_CALL) && (inst.src == INST_CALL_LOCAL) &&
+                        (reader.sections[symbol_section_index] == section.get())) {
+                        relocate_function(inst, offset, index, symbols);
                         continue;
                     }
 
-                    // Only permit loading the address of the map.
-                    if ((inst.opcode & INST_CLS_MASK) != INST_CLS_LD) {
-                        throw std::runtime_error("Illegal operation on symbol " + symbol_name +
-                                                 " at location " + std::to_string(offset / sizeof(ebpf_inst)));
+                    // Perform relocation for symbols located in the maps section.
+                    if (map_section_indices.contains(symbol_section_index)) {
+                        relocate_map(inst, symbol_name, map_record_size_or_map_offsets, info, offset, index, symbols);
+                        continue;
                     }
-                    inst.src = 1; // magic number for LoadFd
 
-                    // Relocation value is an offset into the "maps" or ".maps" section.
-                    auto [relocation_offset, relocation_type] = get_value(symbols, index);
-                    if (map_record_size_or_map_offsets.index() == 0) {
-                        // The older maps section format uses a single map_record_size value, so we can
-                        // calculate the map descriptor index directly.
-                        size_t reloc_value = relocation_offset / std::get<0>(map_record_size_or_map_offsets);
-                        if (reloc_value >= info.map_descriptors.size()) {
-                            throw std::runtime_error("Bad reloc value (" + std::to_string(reloc_value) + "). "
-                                                    + "Make sure to compile with -O2.");
-                        }
-
-                        inst.imm = info.map_descriptors.at(reloc_value).original_fd;
-                    }
-                    else {
-                        // The newer .maps section format uses a variable-length map descriptor array,
-                        // so we need to look up the map descriptor index in a map.
-                        auto& map_descriptors_offsets = std::get<1>(map_record_size_or_map_offsets);
-                        auto it = map_descriptors_offsets.find(symbol_name);
-
-                        if (it == map_descriptors_offsets.end()) {
-                            throw std::runtime_error("Bad reloc value (" + std::to_string(index) + "). "
-                                                    + "Make sure to compile with -O2.");
-                        }
-                        inst.imm = info.map_descriptors.at(it->second).original_fd;
-                    }
+                    std::string unresolved_symbol = "Unresolved external symbol " + symbol_name +
+                                                    " in section " + name + " at location " + std::to_string(offset / sizeof(ebpf_inst));
+                    unresolved_symbols.push_back(unresolved_symbol);
                 }
             }
             prog.line_info.resize(prog.prog.size());

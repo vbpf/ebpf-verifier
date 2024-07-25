@@ -491,6 +491,24 @@ struct Unmarshaller {
         return res;
     }
 
+    /// Given a program counter and an offset, get the label of the target instruction.
+    label_t getJumpTarget(int32_t offset, const vector<ebpf_inst>& insts, pc_t pc) const {
+        pc_t new_pc = pc + 1 + offset;
+        if (new_pc >= insts.size())
+            throw InvalidInstruction(pc, "jump out of bounds");
+        else if (insts[new_pc].opcode == 0)
+            throw InvalidInstruction(pc, "jump to middle of lddw");
+        return label_t{(int)new_pc};
+    }
+
+    auto makeCallLocal(ebpf_inst inst, const vector<ebpf_inst>& insts, pc_t pc) const {
+        if (inst.opcode & INST_SRC_REG)
+            throw InvalidInstruction(pc, inst.opcode);
+        if (inst.dst != 0)
+            throw InvalidInstruction(pc, make_opcode_message("nonzero dst for register", inst.opcode));
+        return CallLocal{.target = getJumpTarget(inst.imm, insts, pc)};
+    }
+
     auto makeCallx(ebpf_inst inst, pc_t pc) const {
         // callx puts the register number in the 'dst' field rather than the 'src' field.
         if (inst.dst > R10_STACK_POINTER)
@@ -516,10 +534,12 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, inst.opcode);
             if (!info.platform->supports_group(bpf_conformance_groups_t::base32))
                 throw InvalidInstruction(pc, inst.opcode);
-            if (inst.src > 0)
+            if (inst.src >= INST_CALL_BTF_HELPER)
                 throw InvalidInstruction(pc, inst.opcode);
             if (inst.offset != 0)
                 throw InvalidInstruction(pc, make_opcode_message("nonzero offset for", inst.opcode));
+            if (inst.src == INST_CALL_LOCAL)
+                return makeCallLocal(inst, insts, pc);
             if (inst.opcode & INST_SRC_REG)
                 return makeCallx(inst, pc);
             if (inst.dst != 0)
@@ -566,11 +586,7 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, make_opcode_message("nonzero imm for", inst.opcode));
 
             int32_t offset = (inst.opcode == INST_OP_JA32) ? inst.imm : inst.offset;
-            pc_t new_pc = pc + 1 + offset;
-            if (new_pc >= insts.size())
-                throw InvalidInstruction(pc, "jump out of bounds");
-            else if (insts[new_pc].opcode == 0)
-                throw InvalidInstruction(pc, "jump to middle of lddw");
+            label_t target = getJumpTarget(offset, insts, pc);
             if (inst.opcode != INST_OP_JA16 && inst.opcode != INST_OP_JA32) {
                 if (inst.dst > R10_STACK_POINTER)
                     throw InvalidInstruction(pc, "bad register");
@@ -587,10 +603,7 @@ struct Unmarshaller {
                                                                                               : Imm{sign_extend(inst.imm)},
                                                         .is64 = ((inst.opcode & INST_CLS_MASK) == INST_CLS_JMP)
                                                     };
-            return Jmp{
-                .cond = cond,
-                .target = label_t{(int)new_pc},
-            };
+            return Jmp{.cond = cond, .target = target};
         }
         }
     }
