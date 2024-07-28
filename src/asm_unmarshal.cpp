@@ -50,7 +50,8 @@ struct InvalidInstruction : std::invalid_argument {
     size_t pc;
     explicit InvalidInstruction(size_t pc, const char* what) : std::invalid_argument{what}, pc{pc} {}
     InvalidInstruction(size_t pc, std::string what) : std::invalid_argument{what}, pc{pc} {}
-    InvalidInstruction(size_t pc, uint8_t opcode) : std::invalid_argument{make_opcode_message("bad instruction", opcode)}, pc{pc} {}
+    InvalidInstruction(size_t pc, uint8_t opcode)
+        : std::invalid_argument{make_opcode_message("bad instruction", opcode)}, pc{pc} {}
 };
 
 struct UnsupportedMemoryMode : std::invalid_argument {
@@ -88,7 +89,7 @@ static auto getMemWidth(uint8_t opcode) -> int {
 // }
 
 static Instruction shift32(Reg dst, Bin::Op op) {
-    return (Instruction)Bin{.op=op,.dst = dst, .v = Imm{32}, .is64=true, .lddw=false};
+    return (Instruction)Bin{.op = op, .dst = dst, .v = Imm{32}, .is64 = true, .lddw = false};
 }
 
 struct Unmarshaller {
@@ -96,7 +97,9 @@ struct Unmarshaller {
     const program_info& info;
     void note(const string& what) { notes.back().emplace_back(what); }
     void note_next_pc() { notes.emplace_back(); }
-    explicit Unmarshaller(vector<vector<string>>& notes, const program_info& info) : notes{notes}, info{info} { note_next_pc(); }
+    explicit Unmarshaller(vector<vector<string>>& notes, const program_info& info) : notes{notes}, info{info} {
+        note_next_pc();
+    }
 
     auto getAluOp(size_t pc, ebpf_inst inst) -> std::variant<Bin::Op, Un::Op> {
         // First handle instructions that support a non-zero offset.
@@ -197,8 +200,7 @@ struct Unmarshaller {
                 if (!info.platform->supports_group(bpf_conformance_groups_t::base64))
                     throw InvalidInstruction(pc, inst.opcode);
                 return (inst.opcode & INST_END_BE) ? Un::Op::BE64 : Un::Op::LE64;
-            default:
-                throw InvalidInstruction(pc, "unsupported immediate");
+            default: throw InvalidInstruction(pc, "unsupported immediate");
             }
         case 0xe0: throw InvalidInstruction{pc, inst.opcode};
         case 0xf0: throw InvalidInstruction{pc, inst.opcode};
@@ -266,16 +268,15 @@ struct Unmarshaller {
             throw InvalidInstruction(pc, "bad register");
 
         int width = getMemWidth(inst.opcode);
-        if (!info.platform->supports_group((width == sizeof(uint64_t)) ? bpf_conformance_groups_t::base64 : bpf_conformance_groups_t::base32))
+        if (!info.platform->supports_group((width == sizeof(uint64_t)) ? bpf_conformance_groups_t::base64
+                                                                       : bpf_conformance_groups_t::base32))
             throw InvalidInstruction(pc, inst.opcode);
         bool isLD = (inst.opcode & INST_CLS_MASK) == INST_CLS_LD;
         switch (inst.opcode & INST_MODE_MASK) {
-        case INST_MODE_IMM:
-            throw InvalidInstruction(pc, inst.opcode);
+        case INST_MODE_IMM: throw InvalidInstruction(pc, inst.opcode);
 
         case INST_MODE_ABS:
-            if (!info.platform->supports_group(bpf_conformance_groups_t::packet) ||
-                !isLD || (width == 8))
+            if (!info.platform->supports_group(bpf_conformance_groups_t::packet) || !isLD || (width == 8))
                 throw InvalidInstruction(pc, inst.opcode);
             if (inst.dst != 0)
                 throw InvalidInstruction(pc, make_opcode_message("nonzero dst for register", inst.opcode));
@@ -286,8 +287,7 @@ struct Unmarshaller {
             return Packet{.width = width, .offset = inst.imm, .regoffset = {}};
 
         case INST_MODE_IND:
-            if (!info.platform->supports_group(bpf_conformance_groups_t::packet) ||
-                !isLD || (width == 8))
+            if (!info.platform->supports_group(bpf_conformance_groups_t::packet) || !isLD || (width == 8))
                 throw InvalidInstruction(pc, inst.opcode);
             if (inst.dst != 0)
                 throw InvalidInstruction(pc, make_opcode_message("nonzero dst for register", inst.opcode));
@@ -312,7 +312,8 @@ struct Unmarshaller {
             assert(!(isLoad && isImm));
             uint8_t basereg = isLoad ? inst.src : inst.dst;
 
-            if (basereg == R10_STACK_POINTER && (inst.offset + opcode_to_width(inst.opcode) > 0 || inst.offset < -EBPF_STACK_SIZE)) {
+            if (basereg == R10_STACK_POINTER &&
+                (inst.offset + opcode_to_width(inst.opcode) > 0 || inst.offset < -EBPF_STACK_SIZE)) {
                 note("Stack access out of bounds");
             }
             auto res = Mem{
@@ -331,11 +332,12 @@ struct Unmarshaller {
 
         case INST_MODE_ATOMIC:
             if (((inst.opcode & INST_CLS_MASK) != INST_CLS_STX) ||
-                ((inst.opcode & INST_SIZE_MASK) != INST_SIZE_W &&
-                 (inst.opcode & INST_SIZE_MASK) != INST_SIZE_DW))
+                ((inst.opcode & INST_SIZE_MASK) != INST_SIZE_W && (inst.opcode & INST_SIZE_MASK) != INST_SIZE_DW))
                 throw InvalidInstruction(pc, inst.opcode);
-            if (!info.platform->supports_group(((inst.opcode & INST_SIZE_MASK) == INST_SIZE_DW) ? bpf_conformance_groups_t::atomic64 : bpf_conformance_groups_t::atomic32))
-                 throw InvalidInstruction(pc, inst.opcode);
+            if (!info.platform->supports_group(((inst.opcode & INST_SIZE_MASK) == INST_SIZE_DW)
+                                                   ? bpf_conformance_groups_t::atomic64
+                                                   : bpf_conformance_groups_t::atomic32))
+                throw InvalidInstruction(pc, inst.opcode);
             return Atomic{
                 .op = getAtomicOp(pc, inst),
                 .fetch = (inst.imm & INST_FETCH) == INST_FETCH,
@@ -360,20 +362,22 @@ struct Unmarshaller {
             throw InvalidInstruction(pc, "invalid target r10");
         if (inst.dst > R10_STACK_POINTER || inst.src > R10_STACK_POINTER)
             throw InvalidInstruction(pc, "bad register");
-        return std::visit(overloaded{[&](Un::Op op) -> Instruction { return Un{.op = op, .dst = Reg{inst.dst}, .is64 = is64}; },
-                                     [&](Bin::Op op) -> Instruction {
-                                         Bin res{
-                                             .op = op,
-                                             .dst = Reg{inst.dst},
-                                             .v = getBinValue(pc, inst),
-                                             .is64 = is64,
-                                         };
-                                         if (!thread_local_options.allow_division_by_zero && (op == Bin::Op::UDIV || op == Bin::Op::UMOD))
-                                             if (std::holds_alternative<Imm>(res.v) && std::get<Imm>(res.v).v == 0)
-                                                 note("division by zero");
-                                         return res;
-                                     }},
-                          getAluOp(pc, inst));
+        return std::visit(
+            overloaded{[&](Un::Op op) -> Instruction { return Un{.op = op, .dst = Reg{inst.dst}, .is64 = is64}; },
+                       [&](Bin::Op op) -> Instruction {
+                           Bin res{
+                               .op = op,
+                               .dst = Reg{inst.dst},
+                               .v = getBinValue(pc, inst),
+                               .is64 = is64,
+                           };
+                           if (!thread_local_options.allow_division_by_zero &&
+                               (op == Bin::Op::UDIV || op == Bin::Op::UMOD))
+                               if (std::holds_alternative<Imm>(res.v) && std::get<Imm>(res.v).v == 0)
+                                   note("division by zero");
+                           return res;
+                       }},
+            getAluOp(pc, inst));
     }
 
     auto makeLddw(ebpf_inst inst, int32_t next_imm, const vector<ebpf_inst>& insts, pc_t pc) -> Instruction {
@@ -442,14 +446,9 @@ struct Unmarshaller {
         res.name = proto.name;
         res.reallocate_packet = proto.reallocate_packet;
         res.is_map_lookup = proto.return_type == EBPF_RETURN_TYPE_PTR_TO_MAP_VALUE_OR_NULL;
-        std::array<ebpf_argument_type_t, 7> args = {{
-            EBPF_ARGUMENT_TYPE_DONTCARE,
-            proto.argument_type[0],
-            proto.argument_type[1],
-            proto.argument_type[2],
-            proto.argument_type[3],
-            proto.argument_type[4],
-            EBPF_ARGUMENT_TYPE_DONTCARE}};
+        std::array<ebpf_argument_type_t, 7> args = {
+            {EBPF_ARGUMENT_TYPE_DONTCARE, proto.argument_type[0], proto.argument_type[1], proto.argument_type[2],
+             proto.argument_type[3], proto.argument_type[4], EBPF_ARGUMENT_TYPE_DONTCARE}};
         for (size_t i = 1; i < args.size() - 1; i++) {
             switch (args[i]) {
             case EBPF_ARGUMENT_TYPE_UNSUPPORTED: {
@@ -466,21 +465,33 @@ struct Unmarshaller {
                 break;
             case EBPF_ARGUMENT_TYPE_CONST_SIZE: {
                 // Sanity check: This argument should never be seen in isolation.
-                throw std::runtime_error(std::string("mismatched EBPF_ARGUMENT_TYPE_PTR_TO* and EBPF_ARGUMENT_TYPE_CONST_SIZE: ") + proto.name);
+                throw std::runtime_error(
+                    std::string("mismatched EBPF_ARGUMENT_TYPE_PTR_TO* and EBPF_ARGUMENT_TYPE_CONST_SIZE: ") +
+                    proto.name);
             }
-            case EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO:{
+            case EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO: {
                 // Sanity check: This argument should never be seen in isolation.
-                throw std::runtime_error(std::string("mismatched EBPF_ARGUMENT_TYPE_PTR_TO* and EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO: ") + proto.name);
+                throw std::runtime_error(
+                    std::string("mismatched EBPF_ARGUMENT_TYPE_PTR_TO* and EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO: ") +
+                    proto.name);
             }
             case EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM_OR_NULL:
             case EBPF_ARGUMENT_TYPE_PTR_TO_READABLE_MEM:
             case EBPF_ARGUMENT_TYPE_PTR_TO_WRITABLE_MEM:
-                // Sanity check: This argument must be followed by EBPF_ARGUMENT_TYPE_CONST_SIZE or EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO.
+                // Sanity check: This argument must be followed by EBPF_ARGUMENT_TYPE_CONST_SIZE or
+                // EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO.
                 if (args.size() - i < 2) {
-                    throw std::runtime_error(std::string("missing EBPF_ARGUMENT_TYPE_CONST_SIZE or EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO: ") + proto.name);
+                    throw std::runtime_error(
+                        std::string(
+                            "missing EBPF_ARGUMENT_TYPE_CONST_SIZE or EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO: ") +
+                        proto.name);
                 }
-                if (args[i + 1] != EBPF_ARGUMENT_TYPE_CONST_SIZE && args[i + 1] != EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO) {
-                    throw std::runtime_error(std::string("Pointer argument not followed by EBPF_ARGUMENT_TYPE_CONST_SIZE or EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO: ") + proto.name);
+                if (args[i + 1] != EBPF_ARGUMENT_TYPE_CONST_SIZE &&
+                    args[i + 1] != EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO) {
+                    throw std::runtime_error(
+                        std::string("Pointer argument not followed by EBPF_ARGUMENT_TYPE_CONST_SIZE or "
+                                    "EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO: ") +
+                        proto.name);
                 }
                 bool can_be_zero = (args[i + 1] == EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO);
                 res.pairs.push_back({toArgPairKind(args[i]), Reg{(uint8_t)i}, Reg{(uint8_t)(i + 1)}, can_be_zero});
@@ -511,8 +522,7 @@ struct Unmarshaller {
         case INST_CALL:
             if ((inst.opcode & INST_CLS_MASK) != INST_CLS_JMP)
                 throw InvalidInstruction(pc, inst.opcode);
-            if (!info.platform->supports_group(bpf_conformance_groups_t::callx) &&
-                (inst.opcode & INST_SRC_REG))
+            if (!info.platform->supports_group(bpf_conformance_groups_t::callx) && (inst.opcode & INST_SRC_REG))
                 throw InvalidInstruction(pc, inst.opcode);
             if (!info.platform->supports_group(bpf_conformance_groups_t::base32))
                 throw InvalidInstruction(pc, inst.opcode);
@@ -557,7 +567,8 @@ struct Unmarshaller {
         default: {
             // First validate the opcode, src, and imm.
             auto is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_JMP;
-            if (!info.platform->supports_group(is64 ? bpf_conformance_groups_t::base64 : bpf_conformance_groups_t::base32))
+            if (!info.platform->supports_group(is64 ? bpf_conformance_groups_t::base64
+                                                    : bpf_conformance_groups_t::base32))
                 throw InvalidInstruction(pc, inst.opcode);
             auto op = getJmpOp(pc, inst.opcode);
             if (!(inst.opcode & INST_SRC_REG) && (inst.src != 0))
@@ -579,14 +590,12 @@ struct Unmarshaller {
             }
 
             auto cond = (inst.opcode == INST_OP_JA16 || inst.opcode == INST_OP_JA32)
-                                                  ? std::optional<Condition>{}
-                                                  : Condition{
-                                                        .op = op,
-                                                        .left = Reg{inst.dst},
-                                                        .right = (inst.opcode & INST_SRC_REG) ? (Value)Reg{inst.src}
-                                                                                              : Imm{sign_extend(inst.imm)},
-                                                        .is64 = ((inst.opcode & INST_CLS_MASK) == INST_CLS_JMP)
-                                                    };
+                            ? std::optional<Condition>{}
+                            : Condition{.op = op,
+                                        .left = Reg{inst.dst},
+                                        .right = (inst.opcode & INST_SRC_REG) ? (Value)Reg{inst.src}
+                                                                              : Imm{sign_extend(inst.imm)},
+                                        .is64 = ((inst.opcode & INST_CLS_MASK) == INST_CLS_JMP)};
             return Jmp{
                 .cond = cond,
                 .target = label_t{(int)new_pc},
@@ -635,7 +644,7 @@ struct Unmarshaller {
 
                 if ((next.opcode & INST_CLS_MASK) != INST_CLS_ALU64)
                     break;
-                auto next_ins = makeAluOp(pc+1, next);
+                auto next_ins = makeAluOp(pc + 1, next);
                 if (next_ins == shift32(dst, Bin::Op::RSH)) {
                     new_ins = Bin{.op = Bin::Op::MOV, .dst = dst, .v = dst, .is64 = false};
                     skip_instruction = true;
@@ -700,8 +709,7 @@ std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog)
     return unmarshal(raw_prog, notes);
 }
 
-Call make_call(int imm, const ebpf_platform_t& platform)
-{
+Call make_call(int imm, const ebpf_platform_t& platform) {
     vector<vector<string>> notes;
     program_info info{.platform = &platform};
     return Unmarshaller{notes, info}.makeCall(imm);

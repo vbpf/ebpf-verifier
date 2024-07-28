@@ -1,13 +1,12 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
 #include <cinttypes>
-
 #include <utility>
 #include <vector>
 
 #include "asm_syntax.hpp"
-#include "platform.hpp"
 #include "crab/cfg.hpp"
+#include "platform.hpp"
 
 using std::string;
 using std::to_string;
@@ -16,13 +15,9 @@ using std::vector;
 class AssertExtractor {
     program_info info;
 
-    static Reg reg(Value v) {
-        return std::get<Reg>(v);
-    }
+    static Reg reg(Value v) { return std::get<Reg>(v); }
 
-    static Imm imm(Value v) {
-        return std::get<Imm>(v);
-    }
+    static Imm imm(Value v) { return std::get<Imm>(v); }
 
     static vector<Assert> zero_offset_ctx(Reg reg) {
         vector<Assert> res;
@@ -34,11 +29,20 @@ class AssertExtractor {
   public:
     explicit AssertExtractor(program_info info) : info{std::move(info)} {}
 
-    vector<Assert> operator()(Undefined const& ins) const { assert(false); return {}; }
+    vector<Assert> operator()(Undefined const& ins) const {
+        assert(false);
+        return {};
+    }
 
-    vector<Assert> operator()(Assert const& ins) const { assert(false); return {}; }
+    vector<Assert> operator()(Assert const& ins) const {
+        assert(false);
+        return {};
+    }
 
-    vector<Assert> operator()(IncrementLoopCounter ins) const { assert(false); return {}; }
+    vector<Assert> operator()(IncrementLoopCounter ins) const {
+        assert(false);
+        return {};
+    }
 
     vector<Assert> operator()(LoadMapFd const& ins) const { return {}; }
 
@@ -46,7 +50,9 @@ class AssertExtractor {
     vector<Assert> operator()(Packet const& ins) const { return zero_offset_ctx({6}); }
 
     /// Verify that Exit returns a number.
-    vector<Assert> operator()(Exit const& e) const { return {Assert{TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::number}}}; }
+    vector<Assert> operator()(Exit const& e) const {
+        return {Assert{TypeConstraint{Reg{R0_RETURN_VALUE}, TypeGroup::number}}};
+    }
 
     vector<Assert> operator()(Call const& call) const {
         vector<Assert> res;
@@ -71,11 +77,10 @@ class AssertExtractor {
             case ArgSingle::Kind::PTR_TO_MAP_VALUE:
                 assert(map_fd_reg);
                 res.emplace_back(TypeConstraint{arg.reg, TypeGroup::mem});
-                res.emplace_back(ValidMapKeyValue{arg.reg, *map_fd_reg,
-                                                  arg.kind == ArgSingle::Kind::PTR_TO_MAP_KEY});
+                res.emplace_back(ValidMapKeyValue{arg.reg, *map_fd_reg, arg.kind == ArgSingle::Kind::PTR_TO_MAP_KEY});
                 break;
             case ArgSingle::Kind::PTR_TO_CTX:
-                for (const Assert& a: zero_offset_ctx(arg.reg)) {
+                for (const Assert& a : zero_offset_ctx(arg.reg)) {
                     res.emplace_back(a);
                 }
                 break;
@@ -132,7 +137,7 @@ class AssertExtractor {
             if (cond.op != Condition::Op::EQ && cond.op != Condition::Op::NE) {
                 res.emplace_back(TypeConstraint{cond.left, TypeGroup::non_map_fd});
             }
-            res.emplace_back(Comparable{.r1=cond.left, .r2=reg(cond.right), .or_r2_is_number=false});
+            res.emplace_back(Comparable{.r1 = cond.left, .r2 = reg(cond.right), .or_r2_is_number = false});
         }
         return res;
     }
@@ -154,7 +159,8 @@ class AssertExtractor {
             // We know we are accessing the stack.
             if (offset < -EBPF_STACK_SIZE || offset + (int)width.v >= 0) {
                 // This assertion will fail
-                res.emplace_back(ValidAccess{basereg, offset, width, false, ins.is_load ? AccessType::read : AccessType::write});
+                res.emplace_back(
+                    ValidAccess{basereg, offset, width, false, ins.is_load ? AccessType::read : AccessType::write});
             }
         } else {
             res.emplace_back(TypeConstraint{basereg, TypeGroup::pointer});
@@ -173,8 +179,8 @@ class AssertExtractor {
     vector<Assert> operator()(Atomic ins) const {
         vector<Assert> res;
         res.emplace_back(TypeConstraint{ins.access.basereg, TypeGroup::pointer});
-        res.emplace_back(ValidAccess{ins.access.basereg, ins.access.offset,
-                                     Imm{static_cast<uint32_t>(ins.access.width)}, false});
+        res.emplace_back(
+            ValidAccess{ins.access.basereg, ins.access.offset, Imm{static_cast<uint32_t>(ins.access.width)}, false});
         if (ins.op == Atomic::Op::CMPXCHG) {
             // The memory contents pointed to by ins.access will be compared
             // against the value of the ins.valreg register.  Only numbers are
@@ -184,11 +190,7 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assert> operator()(Un ins) {
-        return {
-            Assert{TypeConstraint{ins.dst, TypeGroup::number}}
-        };
-    }
+    vector<Assert> operator()(Un ins) { return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}}; }
 
     vector<Assert> operator()(Bin ins) const {
         switch (ins.op) {
@@ -204,16 +206,11 @@ class AssertExtractor {
         case Bin::Op::ADD:
             if (std::holds_alternative<Reg>(ins.v)) {
                 auto src = reg(ins.v);
-                return {
-                    Assert{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}},
-                    Assert{TypeConstraint{src, TypeGroup::ptr_or_num}},
-                    Assert{Addable{src, ins.dst}},
-                    Assert{Addable{ins.dst, src}}
-                };
+                return {Assert{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}},
+                        Assert{TypeConstraint{src, TypeGroup::ptr_or_num}}, Assert{Addable{src, ins.dst}},
+                        Assert{Addable{ins.dst, src}}};
             } else {
-                return {
-                    Assert{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}}
-                };
+                return {Assert{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}}};
             }
         case Bin::Op::SUB:
             if (std::holds_alternative<Reg>(ins.v)) {
@@ -221,12 +218,10 @@ class AssertExtractor {
                 // disallow map-map since same type does not mean same offset
                 // TODO: map identities
                 res.emplace_back(TypeConstraint{ins.dst, TypeGroup::ptr_or_num});
-                res.emplace_back(Comparable{.r1=ins.dst, .r2=reg(ins.v), .or_r2_is_number=true});
+                res.emplace_back(Comparable{.r1 = ins.dst, .r2 = reg(ins.v), .or_r2_is_number = true});
                 return res;
             } else {
-                return {
-                    Assert{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}}
-                };
+                return {Assert{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}}};
             }
         case Bin::Op::UDIV:
         case Bin::Op::UMOD:
@@ -239,8 +234,7 @@ class AssertExtractor {
             } else {
                 return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}};
             }
-        default:
-            return { Assert{TypeConstraint{ins.dst, TypeGroup::number}} };
+        default: return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}};
         }
         assert(false);
         return {};

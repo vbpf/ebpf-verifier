@@ -5,22 +5,20 @@
 #include <map>
 #include <string>
 #include <vector>
+
+#include "crab_utils/lazy_allocator.hpp"
 #include "ebpf_base.h"
 #include "ebpf_vm_isa.hpp"
 
-#include "crab_utils/lazy_allocator.hpp"
-
 constexpr int EBPF_STACK_SIZE = 512;
 
-enum class EbpfMapValueType {
-    ANY, MAP, PROGRAM
-};
+enum class EbpfMapValueType { ANY, MAP, PROGRAM };
 
 struct EbpfMapType {
     uint32_t platform_specific_type; // EbpfMapDescriptor.type value.
-    std::string name; // For ease of display, not used by the verifier.
-    bool is_array; // True if key is integer in range [0,max_entries-1].
-    EbpfMapValueType value_type; // The type of items stored in the map.
+    std::string name;                // For ease of display, not used by the verifier.
+    bool is_array;                   // True if key is integer in range [0,max_entries-1].
+    EbpfMapValueType value_type;     // The type of items stored in the map.
 };
 
 struct EbpfMapDescriptor {
@@ -44,11 +42,8 @@ struct EbpfProgramType {
 
 void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o);
 
-using EquivalenceKey = std::tuple<
-    EbpfMapValueType /* value_type */,
-    uint32_t /* key_size */,
-    uint32_t /* value_size */,
-    uint32_t /* max_entries */>;
+using EquivalenceKey = std::tuple<EbpfMapValueType /* value_type */, uint32_t /* key_size */, uint32_t /* value_size */,
+                                  uint32_t /* max_entries */>;
 
 struct program_info {
     const struct ebpf_platform_t* platform{};

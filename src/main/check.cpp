@@ -111,13 +111,16 @@ int main(int argc, char** argv) {
 
     std::set<std::string> include_groups = _get_conformance_group_names();
     app.add_option("--include_groups", include_groups, "Include conformance groups")
-        ->group("Features")->type_name("GROUPS")
+        ->group("Features")
+        ->type_name("GROUPS")
         ->expected(0, _conformance_groups.size())
         ->check(CLI::IsMember(_get_conformance_group_names()));
 
     std::set<std::string> exclude_groups;
     app.add_option("--exclude_groups", exclude_groups, "Exclude conformance groups")
-        ->group("Features")->type_name("GROUPS")->option_text("")
+        ->group("Features")
+        ->type_name("GROUPS")
+        ->option_text("")
         ->expected(0, _conformance_groups.size())
         ->check(CLI::IsMember(_get_conformance_group_names()));
 

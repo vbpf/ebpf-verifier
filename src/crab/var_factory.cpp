@@ -20,6 +20,7 @@ variable_t variable_t::make(const std::string& name) {
     }
 }
 
+// clang-format off
 std::vector<std::string> variable_t::_default_names() {
     return std::vector<std::string>{
         "r0.svalue", "r0.uvalue", "r0.ctx_offset", "r0.map_fd", "r0.packet_offset", "r0.shared_offset", "r0.stack_offset", "r0.type", "r0.shared_region_size", "r0.stack_numeric_size",
@@ -35,13 +36,12 @@ std::vector<std::string> variable_t::_default_names() {
         "r10.svalue", "r10.uvalue", "r10.ctx_offset", "r10.map_fd", "r10.packet_offset", "r10.shared_offset", "r10.stack_offset", "r10.type", "r10.shared_region_size", "r10.stack_numeric_size",
         "data_size", "meta_size",
     };
-};
+}
+// clang-format on
 
 thread_local crab::lazy_allocator<std::vector<std::string>, variable_t::variable_name_factory> variable_t::names;
 
-void variable_t::clear_thread_local_state() {
-    names.clear();
-}
+void variable_t::clear_thread_local_state() { names.clear(); }
 
 static std::string name_of(data_kind_t kind) {
     switch (kind) {
@@ -59,12 +59,9 @@ static std::string name_of(data_kind_t kind) {
     return {};
 }
 
-variable_t variable_t::reg(data_kind_t kind, int i) {
-    return make("r" + std::to_string(i) + "." + name_of(kind)); }
+variable_t variable_t::reg(data_kind_t kind, int i) { return make("r" + std::to_string(i) + "." + name_of(kind)); }
 
-std::ostream& operator<<(std::ostream& o, const data_kind_t& s) {
-    return o << name_of(s);
-}
+std::ostream& operator<<(std::ostream& o, const data_kind_t& s) { return o << name_of(s); }
 
 static std::string mk_scalar_name(data_kind_t kind, const number_t& o, const number_t& size) {
     std::stringstream os;
@@ -90,27 +87,24 @@ variable_t variable_t::meta_offset() { return make("meta_offset"); }
 variable_t variable_t::packet_size() { return make("packet_size"); }
 variable_t variable_t::loop_counter(const std::string& label) { return make("pc[" + label + "]"); }
 
-static bool ends_with(const std::string& str, const std::string& suffix)
-{
-    return str.size() >= suffix.size() && 0 == str.compare(str.size()-suffix.size(), suffix.size(), suffix);
+static bool ends_with(const std::string& str, const std::string& suffix) {
+    return str.size() >= suffix.size() && 0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
 }
 
 std::vector<variable_t> variable_t::get_type_variables() {
     std::vector<variable_t> res;
-    for (const std::string& name: *names) {
+    for (const std::string& name : *names) {
         if (ends_with(name, ".type"))
             res.push_back(make(name));
     }
     return res;
 }
 
-bool variable_t::is_in_stack() const {
-    return this->name()[0] == 's';
-}
+bool variable_t::is_in_stack() const { return this->name()[0] == 's'; }
 
 std::vector<variable_t> variable_t::get_loop_counters() {
     std::vector<variable_t> res;
-    for (const std::string& name: *names) {
+    for (const std::string& name : *names) {
         if (name.find("pc") == 0)
             res.push_back(make(name));
     }

@@ -1,7 +1,7 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
 
-template<typename F>
+template <typename F>
 auto timed_execution(F f) {
     clock_t begin = clock();
 

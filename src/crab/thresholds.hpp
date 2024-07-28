@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-#include <map>
 #include <algorithm>
 #include <climits>
+#include <map>
 
 #include <boost/range/iterator_range.hpp>
 

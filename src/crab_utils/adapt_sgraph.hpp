@@ -6,8 +6,8 @@
 
 #include <boost/container/flat_map.hpp>
 
-#include "crab_utils/safeint.hpp"
 #include "crab_utils/debug.hpp"
+#include "crab_utils/safeint.hpp"
 // Adaptive sparse-set based weighted graph implementation
 
 namespace crab {
@@ -23,7 +23,10 @@ class TreeSMap final {
 
   public:
     using elt_iter_t = col::const_iterator;
-    [[nodiscard]] size_t size() const { return map.size(); }
+    [[nodiscard]]
+    size_t size() const {
+        return map.size();
+    }
 
     class key_iter_t {
       public:
@@ -34,9 +37,7 @@ class TreeSMap final {
         // for the "empty" iterator, otherwise we can trigger
         // undefined behavior.
         inline static std::unique_ptr<key_iter_t> _empty_iter = std::make_unique<key_iter_t>();
-        static key_iter_t empty_iterator() {
-            return *_empty_iter;
-        }
+        static key_iter_t empty_iterator() { return *_empty_iter; }
 
         key_t operator*() const { return e->first; }
         bool operator!=(const key_iter_t& o) const { return e != o.e; }
@@ -53,10 +54,19 @@ class TreeSMap final {
         using iterator = key_iter_t;
 
         explicit key_const_range_t(const col& c) : c{c} {}
-        [[nodiscard]] size_t size() const { return c.size(); }
+        [[nodiscard]]
+        size_t size() const {
+            return c.size();
+        }
 
-        [[nodiscard]] key_iter_t begin() const { return key_iter_t(c.cbegin()); }
-        [[nodiscard]] key_iter_t end() const { return key_iter_t(c.cend()); }
+        [[nodiscard]]
+        key_iter_t begin() const {
+            return key_iter_t(c.cbegin());
+        }
+        [[nodiscard]]
+        key_iter_t end() const {
+            return key_iter_t(c.cend());
+        }
 
         const col& c;
     };
@@ -64,10 +74,19 @@ class TreeSMap final {
     class elt_range_t {
       public:
         elt_range_t(const col& c) : c{c} {}
-        [[nodiscard]] size_t size() const { return c.size(); }
+        [[nodiscard]]
+        size_t size() const {
+            return c.size();
+        }
 
-        [[nodiscard]] auto begin() const { return c.begin(); }
-        [[nodiscard]] auto end() const { return c.end(); }
+        [[nodiscard]]
+        auto begin() const {
+            return c.begin();
+        }
+        [[nodiscard]]
+        auto end() const {
+            return c.end();
+        }
 
         const col& c;
     };
@@ -75,22 +94,39 @@ class TreeSMap final {
     class elt_const_range_t {
       public:
         elt_const_range_t(const col& c) : c{c} {}
-        [[nodiscard]] size_t size() const { return c.size(); }
+        [[nodiscard]]
+        size_t size() const {
+            return c.size();
+        }
 
-        [[nodiscard]] auto begin() const { return c.cbegin(); }
-        [[nodiscard]] auto end() const { return c.cend(); }
+        [[nodiscard]]
+        auto begin() const {
+            return c.cbegin();
+        }
+        [[nodiscard]]
+        auto end() const {
+            return c.cend();
+        }
 
         const col& c;
     };
 
-    [[nodiscard]] elt_range_t elts() const { return elt_range_t(map); }
-    [[nodiscard]] key_const_range_t keys() const { return key_const_range_t(map); }
+    [[nodiscard]]
+    elt_range_t elts() const {
+        return elt_range_t(map);
+    }
+    [[nodiscard]]
+    key_const_range_t keys() const {
+        return key_const_range_t(map);
+    }
 
-    [[nodiscard]] bool contains(key_t k) const {
+    [[nodiscard]]
+    bool contains(key_t k) const {
         return map.count(k);
     }
 
-    [[nodiscard]] std::optional<val_t> lookup(key_t k) const {
+    [[nodiscard]]
+    std::optional<val_t> lookup(key_t k) const {
         auto v = map.find(k);
         if (v != map.end()) {
             return {v->second};
@@ -99,14 +135,10 @@ class TreeSMap final {
     }
 
     // precondition: k \in S
-    void remove(key_t k) {
-        map.erase(k);
-    }
+    void remove(key_t k) { map.erase(k); }
 
     // precondition: k \notin S
-    void add(key_t k, const val_t& v) {
-        map.insert_or_assign(k, v);
-    }
+    void add(key_t k, const val_t& v) { map.insert_or_assign(k, v); }
     void clear() { map.clear(); }
 };
 
@@ -162,12 +194,24 @@ class AdaptGraph final {
 
         explicit vert_const_range(const std::vector<int>& _is_free) : is_free(_is_free) {}
 
-        [[nodiscard]] vert_const_iterator begin() const { return vert_const_iterator{0, is_free}; }
-        [[nodiscard]] vert_const_iterator end() const { return vert_const_iterator{static_cast<vert_id>(is_free.size()), is_free}; }
+        [[nodiscard]]
+        vert_const_iterator begin() const {
+            return vert_const_iterator{0, is_free};
+        }
+        [[nodiscard]]
+        vert_const_iterator end() const {
+            return vert_const_iterator{static_cast<vert_id>(is_free.size()), is_free};
+        }
 
-        [[nodiscard]] size_t size() const { return is_free.size(); }
+        [[nodiscard]]
+        size_t size() const {
+            return is_free.size();
+        }
     };
-    [[nodiscard]] vert_const_range verts() const { return vert_const_range{is_free}; }
+    [[nodiscard]]
+    vert_const_range verts() const {
+        return vert_const_range{is_free};
+    }
 
     struct edge_const_iter {
         struct edge_ref {
@@ -187,9 +231,7 @@ class AdaptGraph final {
         // for the "empty" iterator, otherwise we can trigger
         // undefined behavior.
         inline static std::unique_ptr<edge_const_iter> _empty_iter = std::make_unique<edge_const_iter>();
-        static edge_const_iter empty_iterator() {
-            return *_empty_iter;
-        }
+        static edge_const_iter empty_iterator() { return *_empty_iter; }
 
         edge_ref operator*() const { return edge_ref{it->first, (*ws)[it->second]}; }
         edge_const_iter operator++() {
@@ -199,7 +241,6 @@ class AdaptGraph final {
         bool operator!=(const edge_const_iter& o) const { return it != o.it; }
     };
 
-
     struct edge_const_range_t {
         using elt_range_t = typename smap_t::elt_range_t;
         using iterator = edge_const_iter;
@@ -207,9 +248,18 @@ class AdaptGraph final {
         elt_range_t r;
         const std::vector<Weight>& ws;
 
-        [[nodiscard]] edge_const_iter begin() const { return edge_const_iter(r.begin(), ws); }
-        [[nodiscard]] edge_const_iter end() const { return edge_const_iter(r.end(), ws); }
-        [[nodiscard]] size_t size() const { return r.size(); }
+        [[nodiscard]]
+        edge_const_iter begin() const {
+            return edge_const_iter(r.begin(), ws);
+        }
+        [[nodiscard]]
+        edge_const_iter end() const {
+            return edge_const_iter(r.end(), ws);
+        }
+        [[nodiscard]]
+        size_t size() const {
+            return r.size();
+        }
     };
 
     using fwd_edge_const_iter = edge_const_iter;
@@ -220,21 +270,42 @@ class AdaptGraph final {
     using neighbour_range = adj_range_t;
     using neighbour_const_range = adj_const_range_t;
 
-    [[nodiscard]] adj_const_range_t succs(vert_id v) const { return _succs[v].keys(); }
-    [[nodiscard]] adj_const_range_t preds(vert_id v) const { return _preds[v].keys(); }
+    [[nodiscard]]
+    adj_const_range_t succs(vert_id v) const {
+        return _succs[v].keys();
+    }
+    [[nodiscard]]
+    adj_const_range_t preds(vert_id v) const {
+        return _preds[v].keys();
+    }
 
     using fwd_edge_range = edge_const_range_t;
     using rev_edge_range = edge_const_range_t;
 
-    [[nodiscard]] edge_const_range_t e_succs(vert_id v) const { return {_succs[v].elts(), _ws}; }
-    [[nodiscard]] edge_const_range_t e_preds(vert_id v) const { return {_preds[v].elts(), _ws}; }
+    [[nodiscard]]
+    edge_const_range_t e_succs(vert_id v) const {
+        return {_succs[v].elts(), _ws};
+    }
+    [[nodiscard]]
+    edge_const_range_t e_preds(vert_id v) const {
+        return {_preds[v].elts(), _ws};
+    }
 
     using e_neighbour_const_range = edge_const_range_t;
 
     // Management
-    [[nodiscard]] bool is_empty() const { return edge_count == 0; }
-    [[nodiscard]] size_t size() const { return _succs.size(); }
-    [[nodiscard]] size_t num_edges() const { return edge_count; }
+    [[nodiscard]]
+    bool is_empty() const {
+        return edge_count == 0;
+    }
+    [[nodiscard]]
+    size_t size() const {
+        return _succs.size();
+    }
+    [[nodiscard]]
+    size_t num_edges() const {
+        return edge_count;
+    }
     vert_id new_vertex() {
         vert_id v;
         if (!free_id.empty()) {
@@ -296,13 +367,12 @@ class AdaptGraph final {
         edge_count = 0;
     }
 
-    [[nodiscard]] bool elem(vert_id s, vert_id d) const {
+    [[nodiscard]]
+    bool elem(vert_id s, vert_id d) const {
         return _succs[s].contains(d);
     }
 
-    const Weight& edge_val(vert_id s, vert_id d) const {
-        return _ws[*_succs[s].lookup(d)];
-    }
+    const Weight& edge_val(vert_id s, vert_id d) const { return _ws[*_succs[s].lookup(d)]; }
 
     class mut_val_ref_t {
       public:
@@ -311,7 +381,8 @@ class AdaptGraph final {
             assert(w);
             return *w;
         }
-        [[nodiscard]] Weight get() const {
+        [[nodiscard]]
+        Weight get() const {
             assert(w);
             return *w;
         }
@@ -333,7 +404,8 @@ class AdaptGraph final {
         return false;
     }
 
-    [[nodiscard]] std::optional<Weight> lookup(vert_id s, vert_id d) const {
+    [[nodiscard]]
+    std::optional<Weight> lookup(vert_id s, vert_id d) const {
         if (auto idx = _succs[s].lookup(d)) {
             return _ws[*idx];
         }

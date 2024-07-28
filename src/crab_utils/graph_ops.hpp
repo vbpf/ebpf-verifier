@@ -21,7 +21,6 @@ namespace crab {
 // of the graph without actually constructing it.
 // ============
 
-
 // Processing a graph under a (possibly incomplete)
 // permutation of vertices.
 // We assume perm[x] is unique; otherwise, we'd have
@@ -75,7 +74,10 @@ class GraphPerm {
     }
 
     // Number of allocated vertices
-    [[nodiscard]] size_t size() const { return perm.size(); }
+    [[nodiscard]]
+    size_t size() const {
+        return perm.size();
+    }
 
     class vert_const_range final {
       public:
@@ -183,7 +185,8 @@ class GraphPerm {
                 return iterator(inv, ItG::empty_iterator());
         }
 
-        [[nodiscard]] bool mem(unsigned int v) const {
+        [[nodiscard]]
+        bool mem(unsigned int v) const {
             if (!adj || perm[v] == (-1))
                 return false;
             return (*adj).mem(perm[v]);
@@ -205,7 +208,8 @@ class GraphPerm {
         const_adj_list(const std::vector<vert_id>& _perm, const std::vector<vert_id>& _inv, const RG& _adj)
             : perm(_perm), inv(_inv), adj(_adj) {}
 
-        const_adj_list(const std::vector<vert_id>& _perm, const std::vector<vert_id>& _inv) : perm(_perm), inv(_inv), adj() {}
+        const_adj_list(const std::vector<vert_id>& _perm, const std::vector<vert_id>& _inv)
+            : perm(_perm), inv(_inv), adj() {}
 
         iterator begin() const {
             if (adj)
@@ -220,7 +224,8 @@ class GraphPerm {
                 return iterator(inv, ItG::empty_iterator());
         }
 
-        [[nodiscard]] bool mem(unsigned int v) const {
+        [[nodiscard]]
+        bool mem(unsigned int v) const {
             if (!adj || perm[v] == (-1))
                 return false;
             return (*adj).mem(perm[v]);
@@ -232,11 +237,14 @@ class GraphPerm {
         std::optional<RG> adj;
     };
 
-//    using neighbour_range = adj_list<typename G::neighbour_range, adj_iterator<typename G::neighbour_range::iterator>>;
-//    using e_neighbour_range = adj_list<typename G::e_neighbour_range, e_adj_iterator<typename G::e_neighbour_range::iterator>>;
+    //    using neighbour_range = adj_list<typename G::neighbour_range, adj_iterator<typename
+    //    G::neighbour_range::iterator>>; using e_neighbour_range = adj_list<typename G::e_neighbour_range,
+    //    e_adj_iterator<typename G::e_neighbour_range::iterator>>;
 
-    using neighbour_const_range = const_adj_list<typename G::neighbour_const_range, adj_const_iterator<typename G::neighbour_const_range::iterator>>;
-    using e_neighbour_const_range = const_adj_list<typename G::e_neighbour_const_range, e_adj_const_iterator<typename G::e_neighbour_const_range::iterator>>;
+    using neighbour_const_range = const_adj_list<typename G::neighbour_const_range,
+                                                 adj_const_iterator<typename G::neighbour_const_range::iterator>>;
+    using e_neighbour_const_range = const_adj_list<typename G::e_neighbour_const_range,
+                                                   e_adj_const_iterator<typename G::e_neighbour_const_range::iterator>>;
 
     neighbour_const_range succs(vert_id v) const {
         if (perm[v] == (-1))
@@ -285,9 +293,7 @@ class SubGraph {
 
     bool elem(vert_id x, vert_id y) const { return (x != v_ex && y != v_ex && g.elem(x, y)); }
 
-    bool lookup(vert_id x, vert_id y, mut_val_ref_t* w) {
-        return (x != v_ex && y != v_ex && g.lookup(x, y, w));
-    }
+    bool lookup(vert_id x, vert_id y, mut_val_ref_t* w) { return (x != v_ex && y != v_ex && g.lookup(x, y, w)); }
 
     std::optional<Weight> lookup(vert_id x, vert_id y) const {
         return (x != v_ex && y != v_ex) ? g.lookup(x, y) : std::optional<Weight>{};
@@ -303,7 +309,10 @@ class SubGraph {
     void clear() { assert(0 && "SubGraph::clear not implemented."); }
 
     // Number of allocated vertices
-    [[nodiscard]] size_t size() const { return g.size(); }
+    [[nodiscard]]
+    size_t size() const {
+        return g.size();
+    }
 
     // Assumption: (x, y) not in mtx
     void add_edge(vert_id x, Weight wt, vert_id y) {
@@ -408,8 +417,10 @@ class SubGraph {
         R rG;
         vert_id v_ex;
     };
-    using neighbour_const_range = adj_list<g_neighbour_const_range, adj_iterator<typename g_neighbour_const_range::iterator>>;
-    using e_neighbour_const_range = adj_list<g_e_neighbour_const_range, e_adj_iterator<typename g_e_neighbour_const_range::iterator>>;
+    using neighbour_const_range =
+        adj_list<g_neighbour_const_range, adj_iterator<typename g_neighbour_const_range::iterator>>;
+    using e_neighbour_const_range =
+        adj_list<g_e_neighbour_const_range, e_adj_iterator<typename g_e_neighbour_const_range::iterator>>;
 
     neighbour_const_range succs(vert_id v) const {
         //      assert(v != v_ex);
@@ -442,9 +453,7 @@ class GraphRev {
     // Check whether an edge is live
     bool elem(vert_id x, vert_id y) const { return g.elem(y, x); }
 
-    bool lookup(vert_id x, vert_id y, mut_val_ref_t* w) {
-        return g.lookup(y, x, w);
-    }
+    bool lookup(vert_id x, vert_id y, mut_val_ref_t* w) { return g.lookup(y, x, w); }
     std::optional<Weight> lookup(vert_id x, vert_id y) const { return g.lookup(y, x); }
 
     // Precondition: elem(x, y) is true.
@@ -454,7 +463,10 @@ class GraphRev {
     Weight operator()(vert_id x, vert_id y) const { return g(y, x); }
 
     // Number of allocated vertices
-    [[nodiscard]] int size() const { return g.size(); }
+    [[nodiscard]]
+    int size() const {
+        return g.size();
+    }
 
     //    using adj_list = typename G::adj_list;
 
@@ -530,8 +542,7 @@ class GraphOps {
     static thread_local unsigned int ts;
     static thread_local unsigned int ts_idx;
 
-    static void clear_thread_local_state()
-    {
+    static void clear_thread_local_state() {
         dists.clear();
         dists_alt.clear();
         dist_ts.clear();
@@ -1103,7 +1114,8 @@ class GraphOps {
     // Compute the transitive closure of edges reachable from v, assuming
     // (1) the subgraph G \ {v} is closed, and (2) P is a valid model of G.
     template <class G, class P>
-    static void close_after_assign_fwd(const G& g, const P& p, vert_id v, std::vector<std::tuple<vert_id, Weight>>& aux) {
+    static void close_after_assign_fwd(const G& g, const P& p, vert_id v,
+                                       std::vector<std::tuple<vert_id, Weight>>& aux) {
         // Initialize the queue and distances.
         for (vert_id u : g.verts())
             vert_marks->at(u) = 0;
@@ -1246,7 +1258,6 @@ thread_local lazy_allocator<std::vector<int>> GraphOps<Weight>::vert_marks;
 
 template <class Weight>
 thread_local size_t GraphOps<Weight>::scratch_sz = 0;
-
 
 template <class G>
 thread_local lazy_allocator<std::vector<typename G::Weight>> GraphOps<G>::dists;

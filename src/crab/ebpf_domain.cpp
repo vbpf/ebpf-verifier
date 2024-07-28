@@ -2192,8 +2192,7 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue,
 
 // Construct a Bin operation that does the main operation that a given Atomic operation does atomically.
 static Bin atomic_to_bin(const Atomic& a) {
-    Bin bin{
-        .dst = Reg{R11_ATOMIC_SCRATCH}, .v = a.valreg, .is64 = (a.access.width == sizeof(uint64_t)), .lddw = false};
+    Bin bin{.dst = Reg{R11_ATOMIC_SCRATCH}, .v = a.valreg, .is64 = (a.access.width == sizeof(uint64_t)), .lddw = false};
     switch (a.op) {
     case Atomic::Op::ADD: bin.op = Bin::Op::ADD; break;
     case Atomic::Op::OR: bin.op = Bin::Op::OR; break;
@@ -2880,7 +2879,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::MOVSX16:
         case Bin::Op::MOVSX32:
             // Keep relational information if operation is a no-op.
-            if ((dst.svalue == src.svalue) && (m_inv.eval_interval(dst.svalue) <= interval_t::signed_int(_movsx_bits(bin.op)))) {
+            if ((dst.svalue == src.svalue) &&
+                (m_inv.eval_interval(dst.svalue) <= interval_t::signed_int(_movsx_bits(bin.op)))) {
                 return;
             }
             if (m_inv.entail(type_is_number(src_reg))) {

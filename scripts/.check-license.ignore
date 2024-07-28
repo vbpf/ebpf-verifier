@@ -34,6 +34,7 @@ src/crab_utils/debug.cpp
 src/crab_utils/debug.hpp
 src/crab_utils/graph_ops.cpp
 src/crab_utils/graph_ops.hpp
+src/crab_utils/lazy_allocator.hpp
 src/crab_utils/safeint.hpp
 src/crab_utils/stats.cpp
 src/crab_utils/stats.hpp
@@ -59,6 +60,7 @@ src/crab_utils/heap.hpp
 \.github/workflows/codeql-analysis.yml
 \.gitignore
 \.gitmodules
+\.pre-commit-config.yaml
 Dockerfile
 LICENSE.txt
 LICENSE

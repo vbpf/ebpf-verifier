@@ -3,8 +3,8 @@
 #pragma once
 
 #include <map>
-#include "variable.hpp"
 
+#include "variable.hpp"
 
 namespace crab {
 // A linear expression is of the form: Ax + By + Cz + ... + N.
@@ -22,7 +22,8 @@ class linear_expression_t final {
     variable_terms_t _variable_terms{};
 
     // Get the coefficient for a given variable, which is 0 if it has no term in the expression.
-    [[nodiscard]] number_t coefficient_of(const variable_t& variable) const {
+    [[nodiscard]]
+    number_t coefficient_of(const variable_t& variable) const {
         auto it = _variable_terms.find(variable);
         if (it == _variable_terms.end()) {
             return 0;
@@ -51,14 +52,24 @@ class linear_expression_t final {
     }
 
     // Allow a caller to access individual terms.
-    [[nodiscard]] const variable_terms_t& variable_terms() const { return _variable_terms; }
-    [[nodiscard]] const number_t& constant_term() const { return _constant_term; }
+    [[nodiscard]]
+    const variable_terms_t& variable_terms() const {
+        return _variable_terms;
+    }
+    [[nodiscard]]
+    const number_t& constant_term() const {
+        return _constant_term;
+    }
 
     // Test whether the expression is a constant.
-    [[nodiscard]] bool is_constant() const { return _variable_terms.empty(); }
+    [[nodiscard]]
+    bool is_constant() const {
+        return _variable_terms.empty();
+    }
 
     // Multiply a linear expression by a constant.
-    [[nodiscard]] linear_expression_t multiply(const number_t& constant) const {
+    [[nodiscard]]
+    linear_expression_t multiply(const number_t& constant) const {
         variable_terms_t variable_terms;
         for (const auto& [variable, coefficient] : _variable_terms) {
             variable_terms.emplace(variable, coefficient * constant);
@@ -67,19 +78,22 @@ class linear_expression_t final {
     }
 
     // Add a constant to a linear expression.
-    [[nodiscard]] linear_expression_t plus(const number_t& constant) const {
+    [[nodiscard]]
+    linear_expression_t plus(const number_t& constant) const {
         return linear_expression_t(variable_terms_t(_variable_terms), _constant_term + constant);
     }
 
     // Add a variable (with coefficient of 1) to a linear expression.
-    [[nodiscard]] linear_expression_t plus(const variable_t& variable) const {
+    [[nodiscard]]
+    linear_expression_t plus(const variable_t& variable) const {
         variable_terms_t variable_terms = _variable_terms;
         variable_terms[variable] = coefficient_of(variable) + 1;
         return linear_expression_t(variable_terms, _constant_term);
     }
 
     // Add two expressions.
-    [[nodiscard]] linear_expression_t plus(const linear_expression_t& expression) const {
+    [[nodiscard]]
+    linear_expression_t plus(const linear_expression_t& expression) const {
         variable_terms_t variable_terms = _variable_terms;
         for (const auto& [variable, coefficient] : expression.variable_terms()) {
             variable_terms[variable] = coefficient_of(variable) + coefficient;
@@ -88,22 +102,28 @@ class linear_expression_t final {
     }
 
     // Apply unary minus to an expression.
-    [[nodiscard]] linear_expression_t negate() const { return multiply(-1); }
+    [[nodiscard]]
+    linear_expression_t negate() const {
+        return multiply(-1);
+    }
 
     // Subtract a constant from a linear expression.
-    [[nodiscard]] linear_expression_t subtract(const number_t& constant) const {
+    [[nodiscard]]
+    linear_expression_t subtract(const number_t& constant) const {
         return linear_expression_t(variable_terms_t(_variable_terms), _constant_term - constant);
     }
 
     // Subtract a variable (with coefficient of 1) from a linear expression.
-    [[nodiscard]] linear_expression_t subtract(const variable_t& variable) const {
+    [[nodiscard]]
+    linear_expression_t subtract(const variable_t& variable) const {
         variable_terms_t variable_terms = _variable_terms;
         variable_terms[variable] = coefficient_of(variable) - 1;
         return linear_expression_t(variable_terms, _constant_term);
     }
 
     // Subtract one expression from another.
-    [[nodiscard]] linear_expression_t subtract(const linear_expression_t& expression) const {
+    [[nodiscard]]
+    linear_expression_t subtract(const linear_expression_t& expression) const {
         variable_terms_t variable_terms = _variable_terms;
         for (const auto& [variable, coefficient] : expression.variable_terms()) {
             variable_terms[variable] = coefficient_of(variable) - coefficient;
@@ -141,4 +161,4 @@ inline std::ostream& operator<<(std::ostream& o, const linear_expression_t& expr
     return o;
 }
 
-}
+} // namespace crab

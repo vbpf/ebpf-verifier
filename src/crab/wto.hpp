@@ -30,6 +30,7 @@
 
 #include <stack>
 #include <vector>
+
 #include "crab/cfg.hpp"
 #include "crab/wto_nesting.hpp"
 
@@ -63,7 +64,7 @@ struct wto_vertex_data_t {
     int head_dfn; // Head value returned from Visit() in the paper.
     std::shared_ptr<wto_cycle_t> containing_cycle;
 
-    wto_vertex_data_t() : dfn(0), head_dfn(0){};
+    wto_vertex_data_t() : dfn(0), head_dfn(0) {};
     wto_vertex_data_t(int d) : dfn(d), head_dfn(0) {};
 };
 #endif
@@ -99,9 +100,9 @@ class wto_t final {
     std::map<label_t, wto_nesting_t> _nesting;
 
 #ifndef RECURSIVE_WTO
-    void push_successors(const label_t& vertex, wto_partition_t& partition, std::weak_ptr<wto_cycle_t> containing_cycle);
-    void start_visit(const label_t& vertex, wto_partition_t& partition,
-                            std::weak_ptr<wto_cycle_t> containing_cycle);
+    void push_successors(const label_t& vertex, wto_partition_t& partition,
+                         std::weak_ptr<wto_cycle_t> containing_cycle);
+    void start_visit(const label_t& vertex, wto_partition_t& partition, std::weak_ptr<wto_cycle_t> containing_cycle);
     void continue_visit(const label_t& vertex, wto_partition_t& partition, std::weak_ptr<wto_cycle_t> containing_cycle);
 #else
     // Implementation of the Visit() function defined in Figure 4 of the paper.
@@ -168,12 +169,21 @@ class wto_t final {
     }
 #endif
 
-    public:
-    [[nodiscard]] const crab::cfg_t& cfg() const { return _cfg; }
+  public:
+    [[nodiscard]]
+    const crab::cfg_t& cfg() const {
+        return _cfg;
+    }
 #ifdef RECURSIVE_WTO
-    [[nodiscard]] int dfn(const label_t& vertex) const { return _dfn.at(vertex); }
+    [[nodiscard]]
+    int dfn(const label_t& vertex) const {
+        return _dfn.at(vertex);
+    }
 #else
-    [[nodiscard]] int dfn(const label_t& vertex) const { return _vertex_data.at(vertex).dfn; }
+    [[nodiscard]]
+    int dfn(const label_t& vertex) const {
+        return _vertex_data.at(vertex).dfn;
+    }
 #endif
 
     // Construct a Weak Topological Ordering from a control-flow graph using
@@ -191,8 +201,14 @@ class wto_t final {
     wto_t(const cfg_t& cfg);
 #endif
 
-    [[nodiscard]] wto_partition_t::reverse_iterator begin() { return _components.rbegin(); }
-    [[nodiscard]] wto_partition_t::reverse_iterator end() { return _components.rend(); }
+    [[nodiscard]]
+    wto_partition_t::reverse_iterator begin() {
+        return _components.rbegin();
+    }
+    [[nodiscard]]
+    wto_partition_t::reverse_iterator end() {
+        return _components.rend();
+    }
 
     friend std::ostream& operator<<(std::ostream& o, wto_t& wto) {
         o << wto._components << std::endl;
@@ -247,5 +263,4 @@ class wto_t final {
         _nesting.emplace(label, std::move(n));
         return _nesting.at(label);
     }
-
 };

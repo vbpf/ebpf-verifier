@@ -14,7 +14,7 @@
 namespace crab {
 struct label_t {
     int from; ///< Jump source, or simply index of instruction
-    int to; ///< Jump target or -1
+    int to;   ///< Jump target or -1
 
     constexpr explicit label_t(int index, int to = -1) noexcept : from(index), to(to) {}
 
@@ -25,15 +25,21 @@ struct label_t {
     constexpr bool operator==(const label_t&) const = default;
 
     constexpr bool operator<(const label_t& other) const {
-        if (this == &other) return false;
-        if (*this == label_t::exit) return false;
-        if (other == label_t::exit) return true;
+        if (this == &other)
+            return false;
+        if (*this == label_t::exit)
+            return false;
+        if (other == label_t::exit)
+            return true;
         return from < other.from || (from == other.from && to < other.to);
     }
 
     // no hash; intended for use in ordered containers.
 
-    [[nodiscard]] constexpr bool isjump() const { return to != -1; }
+    [[nodiscard]]
+    constexpr bool isjump() const {
+        return to != -1;
+    }
 
     friend std::ostream& operator<<(std::ostream& os, const label_t& label) {
         if (label == entry)
@@ -95,7 +101,7 @@ struct Bin {
     };
 
     Op op;
-    Reg dst;      ///< Destination.
+    Reg dst; ///< Destination.
     Value v;
     bool is64{};
     bool lddw{};
@@ -105,16 +111,16 @@ struct Bin {
 /// Unary operation.
 struct Un {
     enum class Op {
-        BE16, // dst = htobe16(dst)
-        BE32, // dst = htobe32(dst)
-        BE64, // dst = htobe64(dst)
-        LE16, // dst = htole16(dst)
-        LE32, // dst = htole32(dst)
-        LE64, // dst = htole64(dst)
+        BE16,   // dst = htobe16(dst)
+        BE32,   // dst = htobe32(dst)
+        BE64,   // dst = htobe64(dst)
+        LE16,   // dst = htole16(dst)
+        LE32,   // dst = htole32(dst)
+        LE64,   // dst = htole64(dst)
         SWAP16, // dst = bswap16(dst)
         SWAP32, // dst = bswap32(dst)
         SWAP64, // dst = bswap64(dst)
-        NEG,  // dst = -dst
+        NEG,    // dst = -dst
     };
 
     Op op;
@@ -181,17 +187,15 @@ struct ArgPair {
         PTR_TO_READABLE_MEM_OR_NULL,
         PTR_TO_WRITABLE_MEM,
     } kind{};
-    Reg mem;            ///< Pointer.
-    Reg size;           ///< Size of space pointed to.
+    Reg mem;  ///< Pointer.
+    Reg size; ///< Size of space pointed to.
     bool can_be_zero{};
     constexpr bool operator==(const ArgPair&) const = default;
 };
 
 struct Call {
     int32_t func{};
-    constexpr bool operator==(const Call& other) const {
-        return func == other.func;
-    }
+    constexpr bool operator==(const Call& other) const { return func == other.func; }
 
     // TODO: move name and signature information somewhere else
     std::string name;
@@ -364,12 +368,12 @@ struct ZeroCtxOffset {
     constexpr bool operator==(const ZeroCtxOffset&) const = default;
 };
 
-using AssertionConstraint =
-    std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize, ValidMapKeyValue, TypeConstraint, FuncConstraint, ZeroCtxOffset>;
+using AssertionConstraint = std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize,
+                                         ValidMapKeyValue, TypeConstraint, FuncConstraint, ZeroCtxOffset>;
 
 struct Assert {
     AssertionConstraint cst;
-    Assert(AssertionConstraint cst): cst(cst) { }
+    Assert(AssertionConstraint cst) : cst(cst) {}
     constexpr bool operator==(const Assert&) const = default;
 };
 
@@ -378,7 +382,8 @@ struct IncrementLoopCounter {
     constexpr bool operator==(const IncrementLoopCounter&) const = default;
 };
 
-using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Callx, Exit, Jmp, Mem, Packet, Atomic, Assume, Assert, IncrementLoopCounter>;
+using Instruction = std::variant<Undefined, Bin, Un, LoadMapFd, Call, Callx, Exit, Jmp, Mem, Packet, Atomic, Assume,
+                                 Assert, IncrementLoopCounter>;
 
 using LabeledInstruction = std::tuple<label_t, Instruction, std::optional<btf_line_info_t>>;
 using InstructionSeq = std::vector<LabeledInstruction>;
@@ -386,7 +391,7 @@ using InstructionSeq = std::vector<LabeledInstruction>;
 // cpu=v4 supports 32-bit PC offsets so we need a large enough type.
 using pc_t = size_t;
 
-}
+} // namespace asm_syntax
 
 using namespace asm_syntax;
 

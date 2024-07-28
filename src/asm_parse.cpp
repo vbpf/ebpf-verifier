@@ -3,9 +3,9 @@
 #include <algorithm>
 #include <map>
 #include <regex>
-#include <unordered_set>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 
 #include <boost/lexical_cast.hpp>
 
@@ -16,13 +16,12 @@
 #include "platform.hpp"
 #include "string_constraints.hpp"
 
-
 using std::regex;
 using std::regex_match;
 
-using crab::number_t;
 using crab::linear_constraint_t;
 using crab::linear_expression_t;
+using crab::number_t;
 
 #define REG R"_(\s*(r\d\d?)\s*)_"
 #define WREG R"_(\s*([wr]\d\d?)\s*)_"
@@ -48,7 +47,8 @@ using crab::linear_expression_t;
 #define WRAPPED_LABEL "\\s*" LABEL "\\s*"
 
 #define SPECIAL_VAR R"_(\s*(packet_size|meta_offset)\s*)_"
-#define KIND R"_(\s*(type|svalue|uvalue|ctx_offset|map_fd|packet_offset|shared_offset|stack_offset|shared_region_size|stack_numeric_size)\s*)_"
+#define KIND \
+    R"_(\s*(type|svalue|uvalue|ctx_offset|map_fd|packet_offset|shared_offset|stack_offset|shared_region_size|stack_numeric_size)\s*)_"
 #define INTERVAL R"_(\s*\[([-+]?\d+),\s*([-+]?\d+)\]?\s*)_"
 #define ARRAY_RANGE R"_(\s*\[([-+]?\d+)\.\.\.\s*([-+]?\d+)\]?\s*)_"
 
@@ -56,24 +56,17 @@ using crab::linear_expression_t;
 #define TYPE R"_(\s*(shared|number|packet|stack|ctx|map_fd|map_fd_programs)\s*)_"
 
 static const std::map<std::string, Bin::Op> str_to_binop = {
-    {"", Bin::Op::MOV},   {"+", Bin::Op::ADD},  {"-", Bin::Op::SUB},    {"*", Bin::Op::MUL},
-    {"/", Bin::Op::UDIV}, {"%", Bin::Op::UMOD}, {"|", Bin::Op::OR},     {"&", Bin::Op::AND},
-    {"<<", Bin::Op::LSH}, {">>", Bin::Op::RSH}, {"s>>", Bin::Op::ARSH}, {"^", Bin::Op::XOR},
-    {"s/", Bin::Op::SDIV}, {"s%", Bin::Op::SMOD}, {"s8", Bin::Op::MOVSX8}, {"s16", Bin::Op::MOVSX16},
+    {"", Bin::Op::MOV},        {"+", Bin::Op::ADD},   {"-", Bin::Op::SUB},     {"*", Bin::Op::MUL},
+    {"/", Bin::Op::UDIV},      {"%", Bin::Op::UMOD},  {"|", Bin::Op::OR},      {"&", Bin::Op::AND},
+    {"<<", Bin::Op::LSH},      {">>", Bin::Op::RSH},  {"s>>", Bin::Op::ARSH},  {"^", Bin::Op::XOR},
+    {"s/", Bin::Op::SDIV},     {"s%", Bin::Op::SMOD}, {"s8", Bin::Op::MOVSX8}, {"s16", Bin::Op::MOVSX16},
     {"s32", Bin::Op::MOVSX32},
 };
 
 static const std::map<std::string, Un::Op> str_to_unop = {
-    {"be16", Un::Op::BE16},
-    {"be32", Un::Op::BE32},
-    {"be64", Un::Op::BE64},
-    {"le16", Un::Op::LE16},
-    {"le32", Un::Op::LE32},
-    {"le64", Un::Op::LE64},
-    {"swap16", Un::Op::SWAP16},
-    {"swap32", Un::Op::SWAP32},
-    {"swap64", Un::Op::SWAP64},
-    {"-", Un::Op::NEG},
+    {"be16", Un::Op::BE16},     {"be32", Un::Op::BE32}, {"be64", Un::Op::BE64},     {"le16", Un::Op::LE16},
+    {"le32", Un::Op::LE32},     {"le64", Un::Op::LE64}, {"swap16", Un::Op::SWAP16}, {"swap32", Un::Op::SWAP32},
+    {"swap64", Un::Op::SWAP64}, {"-", Un::Op::NEG},
 };
 
 static const std::map<std::string, Condition::Op> str_to_cmpop = {
@@ -82,13 +75,9 @@ static const std::map<std::string, Condition::Op> str_to_cmpop = {
     {"s<", Condition::Op::SLT}, {"s<=", Condition::Op::SLE}, {"s>", Condition::Op::SGT},  {"s>=", Condition::Op::SGE},
 };
 
-static const std::map<std::string, Atomic::Op> str_to_atomicop = {
-    {"+", Atomic::Op::ADD},
-    {"|", Atomic::Op::OR},
-    {"&", Atomic::Op::AND},
-    {"^", Atomic::Op::XOR},
-    {"x", Atomic::Op::XCHG},
-    {"cx", Atomic::Op::CMPXCHG}};
+static const std::map<std::string, Atomic::Op> str_to_atomicop = {{"+", Atomic::Op::ADD},  {"|", Atomic::Op::OR},
+                                                                  {"&", Atomic::Op::AND},  {"^", Atomic::Op::XOR},
+                                                                  {"x", Atomic::Op::XCHG}, {"cx", Atomic::Op::CMPXCHG}};
 
 static const std::map<std::string, int> str_to_width = {
     {"8", 1},
@@ -119,13 +108,9 @@ static Imm imm(const std::string& s, bool lddw) {
     }
 }
 
-static number_t signed_number(const std::string& s) {
-    return static_cast<int64_t>(std::stoll(s));
-}
+static number_t signed_number(const std::string& s) { return static_cast<int64_t>(std::stoll(s)); }
 
-static number_t unsigned_number(const std::string& s) {
-    return static_cast<uint64_t>(std::stoull(s));
-}
+static number_t unsigned_number(const std::string& s) { return static_cast<uint64_t>(std::stoull(s)); }
 
 static Value reg_or_imm(const std::string& s) {
     if (s.at(0) == 'w' || s.at(0) == 'r')
@@ -134,7 +119,8 @@ static Value reg_or_imm(const std::string& s) {
         return imm(s, false);
 }
 
-static Deref deref(const std::string& width, const std::string& basereg, const std::string& sign, const std::string& _offset) {
+static Deref deref(const std::string& width, const std::string& basereg, const std::string& sign,
+                   const std::string& _offset) {
     int offset = boost::lexical_cast<int>(_offset);
     return Deref{
         .width = str_to_width.at(width),
@@ -165,7 +151,8 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = reg(m[3]), .is64 = r.at(0) != 'w', .lddw = false};
     }
     if (regex_match(text, m, regex(WREG ASSIGN UNOP WREG))) {
-        if (m[1] != m[3]) throw std::invalid_argument(std::string("Invalid unary operation: ") + text);
+        if (m[1] != m[3])
+            throw std::invalid_argument(std::string("Invalid unary operation: ") + text);
         std::string r = m[1];
         bool is64 = r.at(0) != 'w';
         return Un{.op = str_to_unop.at(m[2]), .dst = reg(m[1]), .is64 = is64};
@@ -174,8 +161,7 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         std::string r = m[1];
         bool is64 = r.at(0) != 'w';
         bool lddw = !m[4].str().empty();
-        return Bin{
-            .op = str_to_binop.at(m[2]), .dst = reg(r), .v = imm(m[3], lddw), .is64 = is64, .lddw = lddw};
+        return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = imm(m[3], lddw), .is64 = is64, .lddw = lddw};
     }
     if (regex_match(text, m, regex(REG ASSIGN DEREF PAREN(REG PLUSMINUS IMM)))) {
         return Mem{
@@ -193,11 +179,10 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
     }
     if (regex_match(text, m, regex("lock " DEREF PAREN(REG PLUSMINUS IMM) " " ATOMICOP " " REG "( fetch)?"))) {
         Atomic::Op op = str_to_atomicop.at(m[5]);
-        return Atomic{
-            .op = op,
-            .fetch = m[7].matched || op == Atomic::Op::XCHG || op == Atomic::Op::CMPXCHG,
-            .access = deref(m[1], m[2], m[3], m[4]),
-            .valreg = reg(m[6])};
+        return Atomic{.op = op,
+                      .fetch = m[7].matched || op == Atomic::Op::XCHG || op == Atomic::Op::CMPXCHG,
+                      .access = deref(m[1], m[2], m[3], m[4]),
+                      .valreg = reg(m[6])};
     }
     if (regex_match(text, m, regex("r0 = " DEREF "skb\\[(.*)\\]"))) {
         auto width = str_to_width.at(m[1]);
@@ -213,26 +198,20 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         return Undefined{0};
     }
     if (regex_match(text, m, regex("assume " WREG CMPOP REG_OR_IMM))) {
-        Assume res{
-            Condition{
-                .op = str_to_cmpop.at(m[2]),
-                .left = reg(m[1]),
-                .right = reg_or_imm(m[3]),
-                .is64 = (((const std::string&)m[1]).at(0) == 'r')
-            }
-        };
+        Assume res{Condition{.op = str_to_cmpop.at(m[2]),
+                             .left = reg(m[1]),
+                             .right = reg_or_imm(m[3]),
+                             .is64 = (((const std::string&)m[1]).at(0) == 'r')}};
         return res;
     }
     if (regex_match(text, m, regex("(?:if " WREG CMPOP REG_OR_IMM " )?goto\\s+(?:" IMM ")?" WRAPPED_LABEL))) {
         // We ignore second IMM
         Jmp res{.cond = {}, .target = label_name_to_label.at(m[5])};
         if (m[1].matched) {
-            res.cond = Condition{
-                .op = str_to_cmpop.at(m[2]),
-                .left = reg(m[1]),
-                .right = reg_or_imm(m[3]),
-                .is64 = (((const std::string&)m[1]).at(0) == 'r')
-            };
+            res.cond = Condition{.op = str_to_cmpop.at(m[2]),
+                                 .left = reg(m[1]),
+                                 .right = reg_or_imm(m[3]),
+                                 .is64 = (((const std::string&)m[1]).at(0) == 'r')};
         }
         return res;
     }
@@ -271,40 +250,46 @@ static InstructionSeq parse_program(std::istream& is) {
     return labeled_insts;
 }
 
-static uint8_t regnum(const std::string& s) {
-    return (uint8_t)boost::lexical_cast<uint16_t>(s.substr(1));
-}
+static uint8_t regnum(const std::string& s) { return (uint8_t)boost::lexical_cast<uint16_t>(s.substr(1)); }
 
 static crab::variable_t special_var(const std::string& s) {
-    if (s == "packet_size") return crab::variable_t::packet_size();
-    if (s == "meta_offset") return crab::variable_t::meta_offset();
+    if (s == "packet_size")
+        return crab::variable_t::packet_size();
+    if (s == "meta_offset")
+        return crab::variable_t::meta_offset();
     throw std::runtime_error(std::string() + "Bad special variable: " + s);
 }
 
 static crab::data_kind_t regkind(const std::string& s) {
-    if (s == "type") return crab::data_kind_t::types;
-    if (s == "ctx_offset") return crab::data_kind_t::ctx_offsets;
-    if (s == "map_fd") return crab::data_kind_t::map_fds;
-    if (s == "packet_offset") return crab::data_kind_t::packet_offsets;
-    if (s == "shared_offset") return crab::data_kind_t::shared_offsets;
-    if (s == "stack_offset") return crab::data_kind_t::stack_offsets;
-    if (s == "shared_region_size") return crab::data_kind_t::shared_region_sizes;
-    if (s == "stack_numeric_size") return crab::data_kind_t::stack_numeric_sizes;
-    if (s == "svalue") return crab::data_kind_t::svalues;
-    if (s == "uvalue") return crab::data_kind_t::uvalues;
+    if (s == "type")
+        return crab::data_kind_t::types;
+    if (s == "ctx_offset")
+        return crab::data_kind_t::ctx_offsets;
+    if (s == "map_fd")
+        return crab::data_kind_t::map_fds;
+    if (s == "packet_offset")
+        return crab::data_kind_t::packet_offsets;
+    if (s == "shared_offset")
+        return crab::data_kind_t::shared_offsets;
+    if (s == "stack_offset")
+        return crab::data_kind_t::stack_offsets;
+    if (s == "shared_region_size")
+        return crab::data_kind_t::shared_region_sizes;
+    if (s == "stack_numeric_size")
+        return crab::data_kind_t::stack_numeric_sizes;
+    if (s == "svalue")
+        return crab::data_kind_t::svalues;
+    if (s == "uvalue")
+        return crab::data_kind_t::uvalues;
     throw std::runtime_error(std::string() + "Bad kind: " + s);
 }
 
 static type_encoding_t string_to_type_encoding(const std::string& s) {
     static std::map<std::string, type_encoding_t> string_to_type{
-        {std::string("uninit"), T_UNINIT},
-        {std::string("map_fd_programs"), T_MAP_PROGRAMS},
-        {std::string("map_fd"), T_MAP},
-        {std::string("number"), T_NUM},
-        {std::string("ctx"), T_CTX},
-        {std::string("stack"), T_STACK},
-        {std::string("packet"), T_PACKET},
-        {std::string("shared"), T_SHARED},
+        {std::string("uninit"), T_UNINIT}, {std::string("map_fd_programs"), T_MAP_PROGRAMS},
+        {std::string("map_fd"), T_MAP},    {std::string("number"), T_NUM},
+        {std::string("ctx"), T_CTX},       {std::string("stack"), T_STACK},
+        {std::string("packet"), T_PACKET}, {std::string("shared"), T_SHARED},
     };
     if (string_to_type.count(s)) {
         return string_to_type[s];
@@ -312,7 +297,8 @@ static type_encoding_t string_to_type_encoding(const std::string& s) {
     throw std::runtime_error(std::string("Unsupported type name: ") + s);
 }
 
-std::vector<linear_constraint_t> parse_linear_constraints(const std::set<std::string>& constraints, std::vector<crab::interval_t>& numeric_ranges) {
+std::vector<linear_constraint_t> parse_linear_constraints(const std::set<std::string>& constraints,
+                                                          std::vector<crab::interval_t>& numeric_ranges) {
     using namespace crab::dsl_syntax;
     using crab::variable_t;
 
@@ -339,7 +325,9 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<std::st
             linear_expression_t d = variable_t::reg(regkind(m[2]), regnum(m[1]));
             linear_expression_t s = variable_t::reg(regkind(m[4]), regnum(m[3]));
             res.push_back(d == s);
-        } else if (regex_match(cst_text, m, regex(REG DOT "type" "=" TYPE))) {
+        } else if (regex_match(cst_text, m,
+                               regex(REG DOT "type"
+                                             "=" TYPE))) {
             variable_t d = variable_t::reg(crab::data_kind_t::types, regnum(m[1]));
             res.push_back(d == string_to_type_encoding(m[2]));
         } else if (regex_match(cst_text, m, regex(REG DOT KIND "=" IMM))) {
@@ -368,7 +356,9 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<std::st
             variable_t s = variable_t::reg(regkind(m[4]), regnum(m[3]));
             number_t diff = signed_number(m[5]);
             res.push_back(d - s <= diff);
-        } else if (regex_match(cst_text, m, regex("s" ARRAY_RANGE DOT "type" "=" TYPE))) {
+        } else if (regex_match(cst_text, m,
+                               regex("s" ARRAY_RANGE DOT "type"
+                                     "=" TYPE))) {
             type_encoding_t type = string_to_type_encoding(m[3]);
             if (type == type_encoding_t::T_NUM) {
                 numeric_ranges.emplace_back(signed_number(m[1]), signed_number(m[2]));
@@ -378,12 +368,16 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<std::st
                 variable_t d = variable_t::cell_var(crab::data_kind_t::types, lb, ub - lb + 1);
                 res.push_back(d == type);
             }
-        } else if (regex_match(cst_text, m, regex("s" ARRAY_RANGE DOT "svalue" "=" IMM))) {
+        } else if (regex_match(cst_text, m,
+                               regex("s" ARRAY_RANGE DOT "svalue"
+                                     "=" IMM))) {
             number_t lb = signed_number(m[1]);
             number_t ub = signed_number(m[2]);
             variable_t d = variable_t::cell_var(crab::data_kind_t::svalues, lb, ub - lb + 1);
             res.push_back(d == signed_number(m[3]));
-        } else if (regex_match(cst_text, m, regex("s" ARRAY_RANGE DOT "uvalue" "=" IMM))) {
+        } else if (regex_match(cst_text, m,
+                               regex("s" ARRAY_RANGE DOT "uvalue"
+                                     "=" IMM))) {
             number_t lb = signed_number(m[1]);
             number_t ub = signed_number(m[2]);
             variable_t d = variable_t::cell_var(crab::data_kind_t::uvalues, lb, ub - lb + 1);
@@ -397,7 +391,8 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<std::st
 
 // return a-b, taking account potential optional-none
 string_invariant string_invariant::operator-(const string_invariant& b) const {
-    if (this->is_bottom()) return string_invariant::bottom();
+    if (this->is_bottom())
+        return string_invariant::bottom();
     string_invariant res = string_invariant::top();
     for (const std::string& cst : this->value()) {
         if (b.is_bottom() || !b.contains(cst))

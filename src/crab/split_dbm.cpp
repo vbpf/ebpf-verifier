@@ -610,10 +610,7 @@ SplitDBM SplitDBM::widen(const SplitDBM& o) const {
     vert_set_t widen_unstable(unstable);
     graph_t widen_g(GrOps::widen(gx, gy, widen_unstable));
 
-    SplitDBM res(std::move(out_vmap),
-                 std::move(out_revmap),
-                 std::move(widen_g),
-                 std::move(widen_pot),
+    SplitDBM res(std::move(out_vmap), std::move(out_revmap), std::move(widen_g), std::move(widen_pot),
                  std::move(widen_unstable));
 
     CRAB_LOG("zones-split", std::cout << "Result widening:\n" << res << "\n");
@@ -756,7 +753,7 @@ bool SplitDBM::add_constraint(const linear_constraint_t& cst) {
         break;
     }
     case constraint_kind_t::NOT_ZERO: {
-         // XXX: similar precision as the interval domain
+        // XXX: similar precision as the interval domain
         const linear_expression_t& e = cst.expression();
         for (const auto& [variable, coefficient] : e.variable_terms()) {
             interval_t i = compute_residual(e, variable) / interval_t(coefficient);
@@ -879,7 +876,6 @@ SplitDBM SplitDBM::narrow(const SplitDBM& o) const {
     return {*this};
 }
 
-
 class vert_set_wrap_t {
   public:
     explicit vert_set_wrap_t(const SplitDBM::vert_set_t& _vs) : vs(_vs) {}
@@ -906,7 +902,6 @@ void SplitDBM::normalize() {
 
     unstable.clear();
 }
-
 
 void SplitDBM::set(variable_t x, const interval_t& intv) {
     CrabStats::count("SplitDBM.count.assign");
@@ -1051,9 +1046,8 @@ static std::string to_string(variable_t vd, variable_t vs, const SplitDBM::Param
     return elem.str();
 }
 
-static const std::vector<std::string> type_string = {
-    "shared", "stack", "packet", "ctx", "number", "map_fd", "map_fd_programs", "uninitialized"
-};
+static const std::vector<std::string> type_string = {"shared", "stack",  "packet",          "ctx",
+                                                     "number", "map_fd", "map_fd_programs", "uninitialized"};
 
 string_invariant SplitDBM::to_set() const {
     if (this->is_top()) {
@@ -1070,8 +1064,9 @@ string_invariant SplitDBM::to_set() const {
             continue;
         if (!this->g.elem(0, v) && !this->g.elem(v, 0))
             continue;
-        interval_t v_out = interval_t(this->g.elem(v, 0) ? -number_t(this->g.edge_val(v, 0)) : bound_t::minus_infinity(),
-                                      this->g.elem(0, v) ?  number_t(this->g.edge_val(0, v)) : bound_t::plus_infinity());
+        interval_t v_out =
+            interval_t(this->g.elem(v, 0) ? -number_t(this->g.edge_val(v, 0)) : bound_t::minus_infinity(),
+                       this->g.elem(0, v) ? number_t(this->g.edge_val(0, v)) : bound_t::plus_infinity());
         assert(!v_out.is_bottom());
 
         variable_t variable = *(this->rev_map[v]);
@@ -1134,9 +1129,7 @@ string_invariant SplitDBM::to_set() const {
     return string_invariant{result};
 }
 
-std::ostream& operator<<(std::ostream& o, const SplitDBM& dom) {
-    return o << dom.to_set();
-}
+std::ostream& operator<<(std::ostream& o, const SplitDBM& dom) { return o << dom.to_set(); }
 
 SplitDBM::Weight SplitDBM::eval_expression(const linear_expression_t& e, bool overflow) const {
     if (overflow) {
@@ -1217,8 +1210,7 @@ bool SplitDBM::entail(const linear_constraint_t& rhs) const {
         // try to convert the equality into inequalities so when it's
         // negated we do not have disequalities.
         return entail_aux(linear_constraint_t(rhs.expression(), constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO)) &&
-               entail_aux(linear_constraint_t(rhs.expression().negate(),
-                                              constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO));
+               entail_aux(linear_constraint_t(rhs.expression().negate(), constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO));
     } else {
         return entail_aux(rhs);
     }
@@ -1261,8 +1253,6 @@ interval_t SplitDBM::get_interval(variable_t x, int finite_width) const {
     return crab::domains::get_interval(vert_map, g, x, finite_width);
 }
 
-interval_t SplitDBM::operator[](variable_t x) const {
-    return crab::domains::get_interval(vert_map, g, x, 0);
-}
+interval_t SplitDBM::operator[](variable_t x) const { return crab::domains::get_interval(vert_map, g, x, 0); }
 
 } // namespace crab::domains

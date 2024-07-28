@@ -39,9 +39,10 @@ interval_t interval_t::operator/(const interval_t& x) const {
             return ((l / x) | (u / x) | z_interval(number_t(0)));
         } else {
             // Neither the dividend nor the divisor contains 0
-            z_interval a = (_ub < number_t{0})
-                               ? (*this + ((x._ub < number_t{0}) ? (x + z_interval(number_t(1))) : (z_interval(number_t(1)) - x)))
-                               : *this;
+            z_interval a =
+                (_ub < number_t{0})
+                    ? (*this + ((x._ub < number_t{0}) ? (x + z_interval(number_t(1))) : (z_interval(number_t(1)) - x)))
+                    : *this;
             bound_t ll = a._lb / x._lb;
             bound_t lu = a._lb / x._ub;
             bound_t ul = a._ub / x._lb;
@@ -132,9 +133,10 @@ interval_t interval_t::UDiv(const interval_t& x) const {
             return (l.UDiv(x) | u.UDiv(x) | z_interval(number_t(0)));
         } else {
             // Neither the dividend nor the divisor contains 0
-            z_interval a = (_ub < number_t{0})
-                               ? (*this + ((x._ub < number_t{0}) ? (x + z_interval(number_t(1))) : (z_interval(number_t(1)) - x)))
-                               : *this;
+            z_interval a =
+                (_ub < number_t{0})
+                    ? (*this + ((x._ub < number_t{0}) ? (x + z_interval(number_t(1))) : (z_interval(number_t(1)) - x)))
+                    : *this;
             bound_t ll = a._lb.UDiv(x._lb);
             bound_t lu = a._lb.UDiv(x._ub);
             bound_t ul = a._ub.UDiv(x._lb);
@@ -224,7 +226,7 @@ interval_t interval_t::URem(const interval_t& x) const {
                 // Divisor is infinite. A "negative" dividend could result in anything except
                 // a value between the upper bound and 0, so set to top.  A "positive" dividend
                 // could result in anything between 0 and the dividend - 1.
-                return (_ub < number_t{0}) ? top() : ((*this - interval_t(number_t {1})) | interval_t(number_t(0)));
+                return (_ub < number_t{0}) ? top() : ((*this - interval_t(number_t{1})) | interval_t(number_t(0)));
             } else if (_ub.is_finite() && (_ub.number()->cast_to_uint64() < x._lb.number()->cast_to_uint64())) {
                 // Dividend lower than divisor, so the dividend is the remainder.
                 return *this;

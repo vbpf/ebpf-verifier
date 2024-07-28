@@ -48,6 +48,9 @@ jobs:
         # This BPF program was chosen because it is the largest one in the repo
         run: valgrind --leak-check=full --errors-for-leak-kinds=all  --show-leak-kinds=all --error-exitcode=1 ./check ebpf-samples/cilium/bpf_xdp_snat_linux_v1.o 2/1
 
+      - uses: pre-commit-ci/lite-action@v1.0.2
+        if: always()
+
   build_windows:
     strategy:
       matrix:

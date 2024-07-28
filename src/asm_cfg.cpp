@@ -1,16 +1,15 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
-#include <cassert>
-
 #include <algorithm>
+#include <cassert>
 #include <map>
 #include <optional>
 #include <string>
 #include <vector>
 
-#include "crab_utils/debug.hpp"
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
+#include "crab_utils/debug.hpp"
 
 using std::optional;
 using std::set;
@@ -102,7 +101,9 @@ static Condition::Op reverse(Condition::Op op) {
 }
 
 /// Get the inverse of a given comparison condition.
-static Condition reverse(Condition cond) { return {.op = reverse(cond.op), .left = cond.left, .right = cond.right, .is64 = cond.is64}; }
+static Condition reverse(Condition cond) {
+    return {.op = reverse(cond.op), .left = cond.left, .right = cond.right, .is64 = cond.is64};
+}
 
 template <typename T>
 static vector<label_t> unique(const std::pair<T, T>& be) {
@@ -203,9 +204,9 @@ static std::string instype(Instruction ins) {
 
 std::vector<std::string> stats_headers() {
     return {
-        "basic_blocks", "joins",       "other",      "jumps",         "assign",  "arith",
-        "load",         "store",       "load_store", "packet_access", "call_1",  "call_mem",
-        "call_nomem",   "reallocate",  "map_in_map", "arith64",       "arith32",
+        "basic_blocks", "joins",      "other",      "jumps",         "assign",  "arith",
+        "load",         "store",      "load_store", "packet_access", "call_1",  "call_mem",
+        "call_nomem",   "reallocate", "map_in_map", "arith64",       "arith32",
     };
 }
 

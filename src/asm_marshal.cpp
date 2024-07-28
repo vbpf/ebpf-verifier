@@ -174,14 +174,17 @@ struct MarshalVisitor {
     }
 
     vector<ebpf_inst> operator()(Call const& b) {
-        return {
-            ebpf_inst{.opcode = static_cast<uint8_t>(INST_OP_CALL | INST_SRC_IMM), .dst = 0, .src = 0, .offset = 0, .imm = b.func}};
+        return {ebpf_inst{.opcode = static_cast<uint8_t>(INST_OP_CALL | INST_SRC_IMM),
+                          .dst = 0,
+                          .src = 0,
+                          .offset = 0,
+                          .imm = b.func}};
     }
 
     vector<ebpf_inst> operator()(Callx const& b) {
         // callx is defined to have the register in 'dst' not in 'src'.
-        return {
-            ebpf_inst{.opcode = static_cast<uint8_t>(INST_OP_CALL | INST_SRC_REG), .dst = b.func.v, .src = 0, .offset = 0}};
+        return {ebpf_inst{
+            .opcode = static_cast<uint8_t>(INST_OP_CALL | INST_SRC_REG), .dst = b.func.v, .src = 0, .offset = 0}};
     }
 
     vector<ebpf_inst> operator()(Exit const& b) {
@@ -265,17 +268,15 @@ struct MarshalVisitor {
         int32_t imm = (int32_t)b.op;
         if (b.fetch)
             imm |= INST_FETCH;
-        return {ebpf_inst{
-            .opcode = static_cast<uint8_t>(INST_CLS_STX | INST_MODE_ATOMIC | width_to_opcode(b.access.width)),
-            .dst = b.access.basereg.v,
-            .src = b.valreg.v,
-            .offset = static_cast<int16_t>(b.access.offset),
-            .imm = imm}};
+        return {
+            ebpf_inst{.opcode = static_cast<uint8_t>(INST_CLS_STX | INST_MODE_ATOMIC | width_to_opcode(b.access.width)),
+                      .dst = b.access.basereg.v,
+                      .src = b.valreg.v,
+                      .offset = static_cast<int16_t>(b.access.offset),
+                      .imm = imm}};
     }
 
-    vector<ebpf_inst> operator()(IncrementLoopCounter const& ins) {
-        return {};
-    }
+    vector<ebpf_inst> operator()(IncrementLoopCounter const& ins) { return {}; }
 };
 
 vector<ebpf_inst> marshal(const Instruction& ins, pc_t pc) {
