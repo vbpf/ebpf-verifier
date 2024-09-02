@@ -174,8 +174,10 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
 static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& raw_options) {
     ebpf_verifier_options_t options = ebpf_verifier_default_options;
 
-    // All YAML tests use !simplify and !setup_constraints.
+    // Use ~simplify for YAML tests unless otherwise specified.
     options.simplify = false;
+
+    // All YAML tests use !setup_constraints.
     options.setup_constraints = false;
 
     // Default to the machine's native endianness.
@@ -188,6 +190,8 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
             options.check_termination = true;
         } else if (name == "strict") {
             options.strict = true;
+        } else if (name == "simplify") {
+            options.simplify = true;
         } else if (name == "big_endian") {
             options.big_endian = true;
         } else if (name == "!big_endian") {

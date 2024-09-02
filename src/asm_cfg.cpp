@@ -7,6 +7,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <queue>
 
 #include "crab_utils/debug.hpp"
 #include "asm_syntax.hpp"
@@ -35,11 +36,100 @@ static bool has_fall(Instruction ins) {
     return true;
 }
 
+/// Update a control-flow graph to inline function macros.
+static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t& entry_label) {
+    bool first = true;
+
+    // Get the label of the node to go to on returning from the macro.
+    basic_block_t& exit_to_node = cfg.get_node(cfg.next_nodes(caller_label).front());
+
+    // Construct the variable prefix to use for the new stack frame,
+    // and store a copy in the CallLocal instruction since the instruction-specific
+    // labels may only exist until the CFG is simplified.
+    basic_block_t& caller_node = cfg.get_node(caller_label);
+    std::string stack_frame_prefix = to_string(caller_label);
+    for (auto& inst : caller_node) {
+        if (std::holds_alternative<CallLocal>(inst)) {
+            std::get<CallLocal>(inst).stack_frame_prefix = stack_frame_prefix;
+        }
+    }
+
+    // Walk the transitive closure of CFG nodes starting at entry_label and ending at
+    // any exit instruction,
+    std::queue<label_t> macro_labels{{entry_label}};
+    std::set seen_labels{entry_label};
+    while (!macro_labels.empty()) {
+        label_t macro_label = macro_labels.front();
+        macro_labels.pop();
+
+        // Clone the macro block into a new block with the new stack frame prefix.
+        const label_t label(macro_label.from, macro_label.to, stack_frame_prefix);
+        auto& bb = cfg.insert(label);
+        for (auto inst : cfg.get_node(macro_label)) {
+            if (std::holds_alternative<Exit>(inst)) {
+                std::get<Exit>(inst).stack_frame_prefix = label.stack_frame_prefix;
+            } else if (std::holds_alternative<Call>(inst)) {
+                std::get<Call>(inst).stack_frame_prefix = label.stack_frame_prefix;
+            }
+            bb.insert(inst);
+        }
+
+        if (first) {
+            // Add an edge from the caller to the new block.
+            first = false;
+            caller_node >> bb;
+        }
+
+        // Add an edge from any other predecessors.
+        for (const auto& prev_macro_nodes = cfg.prev_nodes(macro_label);
+             const auto& prev_macro_label : prev_macro_nodes) {
+            const label_t prev_label(prev_macro_label.from, prev_macro_label.to, to_string(caller_label));
+            if (const auto& labels = cfg.labels(); std::ranges::find(labels, prev_label) != labels.end())
+                cfg.get_node(prev_label) >> bb;
+        }
+
+        // Walk all successor nodes.
+        for (const auto& next_macro_nodes = cfg.next_nodes(macro_label);
+             const auto& next_macro_label : next_macro_nodes) {
+            if (next_macro_label == cfg.exit_label()) {
+                // This is an exit transition, so add edge to the block to execute
+                // upon returning from the macro.
+                bb >> exit_to_node;
+            } else if (!seen_labels.contains(next_macro_label)) {
+                // Push any other unprocessed successor label onto the list to be processed.
+                macro_labels.push(next_macro_label);
+                seen_labels.insert(macro_label);
+            }
+        }
+    }
+
+    // Remove the original edge from the caller node to its successor,
+    // since processing now goes through the function macro instead.
+    caller_node -= exit_to_node;
+
+    // Finally, recurse to replace any nested function macros.
+    string caller_label_str = to_string(caller_label);
+    long stack_frame_depth = std::ranges::count(caller_label_str, STACK_FRAME_DELIMITER) + 2;
+    constexpr int MAX_CALL_STACK_FRAMES = 8;
+    for (auto& macro_label : seen_labels) {
+        for (const label_t label(macro_label.from, macro_label.to, caller_label_str);
+             const auto& inst : cfg.get_node(label)) {
+            if (std::holds_alternative<CallLocal>(inst)) {
+                if (stack_frame_depth >= MAX_CALL_STACK_FRAMES)
+                    throw std::runtime_error{"too many call stack frames"};
+                add_cfg_nodes(cfg, label, std::get<CallLocal>(inst).target);
+            }
+        }
+    }
+}
+
 /// Convert an instruction sequence to a control-flow graph (CFG).
 static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, bool must_have_exit) {
     cfg_t cfg;
     std::optional<label_t> falling_from = {};
     bool first = true;
+
+    // Do a first pass ignoring all function macro calls.
     for (const auto& [label, inst, _] : insts) {
 
         if (std::holds_alternative<Undefined>(inst))
@@ -71,6 +161,15 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, bool must_have_
             throw std::invalid_argument{"fallthrough in last instruction"};
         else
             cfg.get_node(*falling_from) >> cfg.get_node(cfg.exit_label());
+    }
+
+    // Now replace macros. We have to do this as a second pass so that
+    // we only add new nodes that are actually reachable, based on the
+    // results of the first pass.
+    for (auto& [label, inst, _] : insts) {
+        if (std::holds_alternative<CallLocal>(inst)) {
+            add_cfg_nodes(cfg, label, std::get<CallLocal>(inst).target);
+        }
     }
 
     return cfg;

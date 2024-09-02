@@ -11,6 +11,9 @@
 #include "crab/cfg.hpp"
 #include "crab/interval.hpp"
 #include "crab/variable.hpp"
+#include "helpers.hpp"
+#include "platform.hpp"
+#include "spec_type_descriptors.hpp"
 
 using std::optional;
 using std::string;
@@ -160,6 +163,11 @@ std::ostream& operator<<(std::ostream& os, ValidSize const& a) {
     return os << a.reg << ".value" << op << 0;
 }
 
+std::ostream& operator<<(std::ostream& os, ValidCall const& a) {
+    EbpfHelperPrototype proto = global_program_info->platform->get_helper_prototype(a.func);
+    return os << "valid call(" << proto.name << ")";
+}
+
 std::ostream& operator<<(std::ostream& os, ValidMapKeyValue const& a) {
     return os << "within stack(" << a.access_reg << ":" << (a.key ? "key_size" : "value_size") << "(" << a.map_fd_reg << "))";
 }
@@ -265,6 +273,8 @@ struct InstructionPrinterVisitor {
         }
         os_ << ")";
     }
+
+    void operator()(CallLocal const& call) { os_ << "call <" << to_string(call.target) << ">"; }
 
     void operator()(Callx const& callx) { os_ << "callx " << callx.func; }
 
@@ -531,6 +541,10 @@ std::ostream& operator<<(std::ostream& o, const crab::basic_block_rev_t& bb) {
 std::ostream& operator<<(std::ostream& o, const cfg_t& cfg) {
     for (const label_t& label : cfg.sorted_labels()) {
         o << cfg.get_node(label);
+        o << "edges to:";
+        for (const label_t& next_label : cfg.next_nodes(label))
+            o << " " << next_label;
+        o << "\n";
     }
     return o;
 }

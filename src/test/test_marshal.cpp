@@ -124,8 +124,7 @@ static const ebpf_instruction_template_t instruction_template[] = {
     {{0x7f, DST, SRC, 0, 0}, bpf_conformance_groups_t::base64},
     {{0x84, DST, 0, 0, 0}, bpf_conformance_groups_t::base32},
     {{0x85, 0, 0, 0, HELPER_ID}, bpf_conformance_groups_t::base32},
-    // TODO(issue #582): Add support for subprograms (call_local).
-    // {{0x85, 0, 1, 0, IMM}, bpf_conformance_groups_t::base32},
+    {{0x85, 0, 1, 0, JMP_OFFSET}, bpf_conformance_groups_t::base32},
     // TODO(issue #590): Add support for calling a helper function by BTF ID.
     // {{0x85, 0, 2, 0, IMM}, bpf_conformance_groups_t::base32},
     {{0x87, DST, 0, 0, 0}, bpf_conformance_groups_t::base64},
@@ -586,6 +585,21 @@ static ebpf_platform_t get_template_platform(const ebpf_instruction_template_t& 
     return platform;
 }
 
+// Check whether an instruction matches an instruction template that may have wildcards.
+static bool matches_template_inst(ebpf_inst inst, ebpf_inst template_inst) {
+    if (inst.opcode != template_inst.opcode)
+        return false;
+    if (inst.dst != template_inst.dst && template_inst.dst != DST)
+        return false;
+    if (inst.src != template_inst.src && template_inst.src != SRC)
+        return false;
+    if (inst.offset != template_inst.offset && template_inst.offset != MEM_OFFSET && template_inst.offset != JMP_OFFSET)
+        return false;
+    if (inst.imm != template_inst.imm && template_inst.imm != IMM && template_inst.imm != JMP_OFFSET)
+        return false;
+    return true;
+}
+
 // Check that various 'dst' variations between two valid instruction templates fail.
 static void check_instruction_dst_variations(const ebpf_instruction_template_t& previous_template, std::optional<const ebpf_instruction_template_t> next_template) {
     ebpf_inst inst = previous_template.inst;
@@ -597,7 +611,7 @@ static void check_instruction_dst_variations(const ebpf_instruction_template_t& 
         // This instruction doesn't put a register number in the 'dst' field.
         // Just try the next value unless that's what the next template has.
         inst.dst++;
-        if (!next_template || (inst != next_template->inst)) {
+        if (!next_template || !matches_template_inst(inst, next_template->inst)) {
             std::ostringstream oss;
             if (inst.dst == 1)
                 oss << "0: nonzero dst for register op 0x" << std::hex << (int)inst.opcode << std::endl;
@@ -619,7 +633,7 @@ static void check_instruction_src_variations(const ebpf_instruction_template_t& 
         // This instruction doesn't put a register number in the 'src' field.
         // Just try the next value unless that's what the next template has.
         inst.src++;
-        if (!next_template || (inst != next_template->inst)) {
+        if (!next_template || !matches_template_inst(inst, next_template->inst)) {
             std::ostringstream oss;
             oss << "0: bad instruction op 0x" << std::hex << (int)inst.opcode << std::endl;
             check_unmarshal_instruction_fail(inst, oss.str(), platform);
@@ -638,7 +652,7 @@ static void check_instruction_offset_variations(const ebpf_instruction_template_
         // This instruction limits what can appear in the 'offset' field.
         // Just try the next value unless that's what the next template has.
         inst.offset++;
-        if (!next_template || (inst != next_template->inst)) {
+        if (!next_template || !matches_template_inst(inst, next_template->inst)) {
             std::ostringstream oss;
             if (inst.offset == 1 &&
                 (!next_template || next_template->inst.opcode != inst.opcode || next_template->inst.offset == 0))
@@ -661,7 +675,7 @@ static void check_instruction_imm_variations(const ebpf_instruction_template_t& 
         // This instruction limits what can appear in the 'imm' field.
         // Just try the next value unless that's what the next template has.
         inst.imm++;
-        if (!next_template || (inst != next_template->inst)) {
+        if (!next_template || !matches_template_inst(inst, next_template->inst)) {
             std::ostringstream oss;
             if (inst.imm == 1)
                 oss << "0: nonzero imm for op 0x" << std::hex << (int)inst.opcode << std::endl;
