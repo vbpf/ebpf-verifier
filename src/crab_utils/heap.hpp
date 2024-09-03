@@ -54,9 +54,11 @@ class Heap {
     inline void percolateDown(int i) {
         int x = heap[i];
         while (static_cast<size_t>(left(i)) < heap.size()) {
-            int child = static_cast<size_t>(right(i)) < heap.size() && lt(heap[right(i)], heap[left(i)]) ? right(i) : left(i);
-            if (!lt(heap[child], x))
+            int child =
+                static_cast<size_t>(right(i)) < heap.size() && lt(heap[right(i)], heap[left(i)]) ? right(i) : left(i);
+            if (!lt(heap[child], x)) {
                 break;
+            }
             heap[i] = heap[child];
             indices[heap[i]] = i;
             i = child;
@@ -65,7 +67,8 @@ class Heap {
         indices[x] = i;
     }
 
-    [[nodiscard]] bool heapProperty(int i) const {
+    [[nodiscard]]
+    bool heapProperty(int i) const {
         return i >= heap.size() ||
                ((i == 0 || !lt(heap[i], heap[parent(i)])) && heapProperty(left(i)) && heapProperty(right(i)));
     }
@@ -73,9 +76,18 @@ class Heap {
   public:
     explicit Heap(const Comp& c) : lt(c) {}
 
-    [[nodiscard]] int size() const { return heap.size(); }
-    [[nodiscard]] bool empty() const { return heap.empty(); }
-    [[nodiscard]] bool inHeap(int n) const { return static_cast<size_t>(n) < indices.size() && indices[n] >= 0; }
+    [[nodiscard]]
+    int size() const {
+        return heap.size();
+    }
+    [[nodiscard]]
+    bool empty() const {
+        return heap.empty();
+    }
+    [[nodiscard]]
+    bool inHeap(int n) const {
+        return static_cast<size_t>(n) < indices.size() && indices[n] >= 0;
+    }
     int operator[](int index) const {
         assert(static_cast<size_t>(index) < heap.size());
         return heap[index];
@@ -88,8 +100,9 @@ class Heap {
 
     void insert(int n) {
         assert(n >= 0);
-        if (static_cast<size_t>(n) >= indices.size())
+        if (static_cast<size_t>(n) >= indices.size()) {
             indices.resize(n + 1, -1);
+        }
         assert(!inHeap(n));
 
         indices[n] = static_cast<int>(heap.size());
@@ -103,17 +116,20 @@ class Heap {
         indices[heap[0]] = 0;
         indices[x] = -1;
         heap.pop_back();
-        if (heap.size() > 1)
+        if (heap.size() > 1) {
             percolateDown(0);
+        }
         return x;
     }
 
     void clear() {
-        for (int i : heap)
+        for (int i : heap) {
             indices[i] = -1;
+        }
 #ifdef NDEBUG
-        for (int i = 0; i < indices.size(); i++)
+        for (int i = 0; i < indices.size(); i++) {
             assert(indices[i] == -1);
+        }
 #endif
         heap.clear();
     }

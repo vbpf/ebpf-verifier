@@ -37,24 +37,25 @@ void thresholds_t::add(bound_t v1) {
 
 std::ostream& operator<<(std::ostream& o, const thresholds_t& t) {
     o << "{";
-    for (typename std::vector<bound_t>::const_iterator it = t.m_thresholds.begin(), et = t.m_thresholds.end(); it != et;) {
+    for (typename std::vector<bound_t>::const_iterator it = t.m_thresholds.begin(), et = t.m_thresholds.end();
+         it != et;) {
         bound_t b(*it);
         o << b;
         ++it;
-        if (it != t.m_thresholds.end())
+        if (it != t.m_thresholds.end()) {
             o << ",";
+        }
     }
     o << "}";
     return o;
 }
 
-void wto_thresholds_t::get_thresholds(const basic_block_t& bb, thresholds_t& thresholds) const {
-
-}
+void wto_thresholds_t::get_thresholds(const basic_block_t& bb, thresholds_t& thresholds) const {}
 
 void wto_thresholds_t::operator()(const label_t& vertex) {
-    if (m_stack.empty())
+    if (m_stack.empty()) {
         return;
+    }
 
     label_t head = m_stack.back();
     auto it = m_head_to_thresholds.find(head);

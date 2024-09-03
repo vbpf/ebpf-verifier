@@ -6,10 +6,10 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <utility>
 
 #include <boost/functional/hash.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
-#include <utility>
 
 #include "debug.hpp"
 using boost::multiprecision::cpp_int;
@@ -67,29 +67,42 @@ class z_number final {
 
     explicit operator cpp_int() const { return _n; }
 
-    [[nodiscard]] std::size_t hash() const {
+    [[nodiscard]]
+    std::size_t hash() const {
         boost::hash<std::string> hasher;
         return hasher(_n.str());
     }
 
-    [[nodiscard]] bool fits_sint32() const {
+    [[nodiscard]]
+    bool fits_sint32() const {
         return ((_n >= INT_MIN) && (_n <= INT_MAX));
     }
 
-    [[nodiscard]] bool fits_uint32() const { return ((_n >= 0) && (_n <= UINT_MAX)); }
+    [[nodiscard]]
+    bool fits_uint32() const {
+        return ((_n >= 0) && (_n <= UINT_MAX));
+    }
 
-    [[nodiscard]] bool fits_sint64() const {
+    [[nodiscard]]
+    bool fits_sint64() const {
         // "long long" is always 64-bits, whereas "long" varies
         // (see https://en.cppreference.com/w/cpp/language/types)
         // so make sure we use 64-bit numbers.
         return ((_n >= LLONG_MIN) && (_n <= LLONG_MAX));
     }
 
-    [[nodiscard]] bool fits_uint64() const { return ((_n >= 0) && (_n <= ULLONG_MAX)); }
+    [[nodiscard]]
+    bool fits_uint64() const {
+        return ((_n >= 0) && (_n <= ULLONG_MAX));
+    }
 
-    [[nodiscard]] bool fits_cast_to_int64() const { return fits_uint64() || fits_sint64(); }
+    [[nodiscard]]
+    bool fits_cast_to_int64() const {
+        return fits_uint64() || fits_sint64();
+    }
 
-    [[nodiscard]] uint64_t cast_to_uint64() const {
+    [[nodiscard]]
+    uint64_t cast_to_uint64() const {
         if (fits_uint64()) {
             return (uint64_t)_n;
         } else if (fits_sint64()) {
@@ -100,7 +113,8 @@ class z_number final {
         }
     }
 
-    [[nodiscard]] uint64_t truncate_to_uint64() const {
+    [[nodiscard]]
+    uint64_t truncate_to_uint64() const {
         if (fits_sint64()) {
             // Convert 64 bits from int64_t to uint64_t.
             return (uint64_t)(int64_t)_n;
@@ -110,7 +124,8 @@ class z_number final {
         }
     }
 
-    [[nodiscard]] uint64_t cast_to_uint32() const {
+    [[nodiscard]]
+    uint64_t cast_to_uint32() const {
         if (fits_uint32()) {
             return (uint32_t)_n;
         } else if (fits_sint32()) {
@@ -121,12 +136,14 @@ class z_number final {
         }
     }
 
-    [[nodiscard]] uint64_t truncate_to_uint32() const {
+    [[nodiscard]]
+    uint64_t truncate_to_uint32() const {
         return (uint32_t)truncate_to_uint64();
     }
 
     // For 64-bit operations, get the value as a signed 64-bit integer.
-    [[nodiscard]] int64_t cast_to_sint64() const {
+    [[nodiscard]]
+    int64_t cast_to_sint64() const {
         if (fits_sint64()) {
             return (int64_t)_n;
         } else if (fits_uint64()) {
@@ -138,7 +155,8 @@ class z_number final {
     }
 
     // For 64-bit operations, get the value as a signed 64-bit integer.
-    [[nodiscard]] int64_t truncate_to_sint64() const {
+    [[nodiscard]]
+    int64_t truncate_to_sint64() const {
         if (fits_sint64()) {
             return (int64_t)_n;
         } else {
@@ -148,17 +166,20 @@ class z_number final {
     }
 
     // For 32-bit operations, get the low 32 bits as a signed integer.
-    [[nodiscard]] int32_t cast_to_sint32() const {
+    [[nodiscard]]
+    int32_t cast_to_sint32() const {
         return (int32_t)cast_to_sint64();
     }
 
     // For 32-bit operations, get the low 32 bits as a signed integer.
-    [[nodiscard]] int32_t truncate_to_sint32() const {
+    [[nodiscard]]
+    int32_t truncate_to_sint32() const {
         return (int32_t)truncate_to_sint64();
     }
 
     // Allow casting to int32_t or int64_t as needed for finite width operations.
-    [[nodiscard]] z_number cast_to_signed_finite_width(int finite_width) const {
+    [[nodiscard]]
+    z_number cast_to_signed_finite_width(int finite_width) const {
         switch (finite_width) {
         case 0: return *this; // No finite width.
         case 32: return cast_to_sint32();
@@ -168,7 +189,8 @@ class z_number final {
     }
 
     // Allow casting to uint32_t or uint64_t as needed for finite width operations.
-    [[nodiscard]] z_number cast_to_unsigned_finite_width(int finite_width) const {
+    [[nodiscard]]
+    z_number cast_to_unsigned_finite_width(int finite_width) const {
         switch (finite_width) {
         case 0: return *this; // No finite width.
         case 32: return cast_to_uint32();
@@ -179,7 +201,8 @@ class z_number final {
 
     // Allow truncating to int32_t or int64_t as needed for finite width operations.
     // Unlike casting, truncating will not throw a crab error if the number doesn't fit.
-    [[nodiscard]] z_number truncate_to_signed_finite_width(int finite_width) const {
+    [[nodiscard]]
+    z_number truncate_to_signed_finite_width(int finite_width) const {
         switch (finite_width) {
         case 0: return *this; // No finite width.
         case 32: return truncate_to_sint32();
@@ -190,7 +213,8 @@ class z_number final {
 
     // Allow truncating to uint32_t or uint64_t as needed for finite width operations.
     // Unlike casting, truncating will not throw a crab error if the number doesn't fit.
-    [[nodiscard]] z_number truncate_to_unsigned_finite_width(int finite_width) const {
+    [[nodiscard]]
+    z_number truncate_to_unsigned_finite_width(int finite_width) const {
         switch (finite_width) {
         case 0: return *this; // No finite width.
         case 32: return truncate_to_uint32();
@@ -199,9 +223,7 @@ class z_number final {
         }
     }
 
-    z_number operator+(const z_number& x) const {
-        return z_number(_n + x._n);
-    }
+    z_number operator+(const z_number& x) const { return z_number(_n + x._n); }
 
     z_number operator*(const z_number& x) const { return z_number(_n * x._n); }
 
@@ -280,9 +302,7 @@ class z_number final {
         return r;
     }
 
-    bool operator==(const z_number& x) const {
-        return (_n == x._n);
-    }
+    bool operator==(const z_number& x) const { return (_n == x._n); }
 
     bool operator!=(const z_number& x) const { return (_n != x._n); }
 
@@ -314,7 +334,8 @@ class z_number final {
         return z_number(_n >> (int32_t)x);
     }
 
-    [[nodiscard]] z_number fill_ones() const {
+    [[nodiscard]]
+    z_number fill_ones() const {
         if (_n.is_zero()) {
             return z_number((signed long long)0);
         }
@@ -325,11 +346,10 @@ class z_number final {
         return result;
     }
 
-    friend std::ostream& operator<<(std::ostream& o, const z_number& z) {
-        return o << z._n.str();
-    }
+    friend std::ostream& operator<<(std::ostream& o, const z_number& z) { return o << z._n.str(); }
 
-    [[nodiscard]] std::string to_string() const;
+    [[nodiscard]]
+    std::string to_string() const;
 };
 // class z_number
 

@@ -5,7 +5,6 @@
 #include <functional>
 #include <ostream>
 #include <variant>
-#include <vector>
 
 #include <boost/lexical_cast.hpp>
 
@@ -44,8 +43,9 @@ std::ostream& operator<<(std::ostream& os, Condition::Op op);
 inline std::ostream& operator<<(std::ostream& os, Imm imm) { return os << (int64_t)imm.v; }
 inline std::ostream& operator<<(std::ostream& os, Reg const& a) { return os << "r" << (int)a.v; }
 inline std::ostream& operator<<(std::ostream& os, Value const& a) {
-    if (std::holds_alternative<Imm>(a))
+    if (std::holds_alternative<Imm>(a)) {
         return os << std::get<Imm>(a);
+    }
     return os << std::get<Reg>(a);
 }
 

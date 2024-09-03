@@ -8,8 +8,8 @@
 
 #include "../external/bpf_conformance/include/bpf_conformance.h"
 #include "config.hpp"
-#include "spec_type_descriptors.hpp"
 #include "helpers.hpp"
+#include "spec_type_descriptors.hpp"
 
 typedef EbpfProgramType (*ebpf_get_program_type_fn)(const std::string& section, const std::string& path);
 
@@ -26,7 +26,9 @@ typedef int (*ebpf_create_map_fn)(uint32_t map_type, uint32_t key_size, uint32_t
 
 // Parse map records and allocate map fd's.
 // In the future we may want to move map fd allocation after the verifier step.
-typedef void (*ebpf_parse_maps_section_fn)(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t map_record_size, int map_count, const struct ebpf_platform_t* platform, ebpf_verifier_options_t options);
+typedef void (*ebpf_parse_maps_section_fn)(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data,
+                                           size_t map_record_size, int map_count,
+                                           const struct ebpf_platform_t* platform, ebpf_verifier_options_t options);
 typedef void (*ebpf_resolve_inner_map_references_fn)(std::vector<EbpfMapDescriptor>& map_descriptors);
 
 typedef EbpfMapDescriptor& (*ebpf_get_map_descriptor_fn)(int map_fd);

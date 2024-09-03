@@ -45,12 +45,14 @@ struct checks_db final {
         total_unreachable++;
     }
 
-    [[nodiscard]] int get_max_loop_count() const {
+    [[nodiscard]]
+    int get_max_loop_count() const {
         auto m = this->max_loop_count.number();
-        if (m && m->fits_sint32())
+        if (m && m->fits_sint32()) {
             return m->cast_to_sint32();
-        else
+        } else {
             return std::numeric_limits<int>::max();
+        }
     }
     checks_db() = default;
 };
@@ -64,8 +66,9 @@ static checks_db generate_report(cfg_t& cfg, crab::invariant_table_t& pre_invari
         crab::location_t location{label, 0};
         from_inv.set_require_check(
             [&m_db, &location](auto& inv, const crab::linear_constraint_t& cst, const std::string& s) {
-                if (inv.is_bottom())
+                if (inv.is_bottom()) {
                     return true;
+                }
                 if (cst.is_contradiction()) {
                     m_db.add_warning(location, s);
                     return false;
@@ -105,8 +108,9 @@ static checks_db generate_report(cfg_t& cfg, crab::invariant_table_t& pre_invari
 static auto get_line_info(const InstructionSeq& insts) {
     std::map<int, btf_line_info_t> label_to_line_info;
     for (auto& [label, inst, line_info] : insts) {
-        if (line_info.has_value())
+        if (line_info.has_value()) {
             label_to_line_info.emplace(label.from, line_info.value());
+        }
     }
     return label_to_line_info;
 }
@@ -118,8 +122,9 @@ static void print_report(std::ostream& os, const checks_db& db, const Instructio
         for (const auto& msg : messages) {
             if (print_line_info) {
                 auto line_info = label_to_line_info.find(location.label.from);
-                if (line_info != label_to_line_info.end())
+                if (line_info != label_to_line_info.end()) {
                     os << line_info->second;
+                }
             }
             os << location << ": " << msg << "\n";
         }
@@ -168,8 +173,9 @@ static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, const program_info
 /// Returned value is true if the program passes verification.
 bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, const program_info& info, const ebpf_verifier_options_t* options,
                        ebpf_verifier_stats_t* stats) {
-    if (options == nullptr)
+    if (options == nullptr) {
         options = &ebpf_verifier_default_options;
+    }
     checks_db report = get_ebpf_report(s, cfg, info, options);
     if (stats) {
         stats->total_unreachable = report.total_unreachable;
@@ -198,23 +204,30 @@ std::tuple<string_invariant, bool> ebpf_analyze_program_for_test(std::ostream& o
     global_program_info = info;
     assert(!entry_invariant.is_bottom());
     ebpf_domain_t entry_inv = ebpf_domain_t::from_constraints(entry_invariant.value(), options.setup_constraints);
-    if (entry_inv.is_bottom())
+    if (entry_inv.is_bottom()) {
         throw std::runtime_error("Entry invariant is inconsistent");
-    cfg_t cfg = prepare_cfg(prog, info, options.simplify, false);
-    auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, std::move(entry_inv));
-    checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
-    print_report(os, report, prog, false);
+    }
+    try {
+        cfg_t cfg = prepare_cfg(prog, info, options.simplify, false);
+        auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, std::move(entry_inv));
+        checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
+        print_report(os, report, prog, false);
 
-    auto pre_invariant_map = to_string_invariant_map(pre_invariants);
+        auto pre_invariant_map = to_string_invariant_map(pre_invariants);
 
-    return {pre_invariant_map.at(label_t::exit), (report.total_warnings == 0)};
+        return {pre_invariant_map.at(label_t::exit), (report.total_warnings == 0)};
+    } catch (std::runtime_error& e) {
+        os << e.what();
+        return {string_invariant::top(), false};
+    }
 }
 
 /// Returned value is true if the program passes verification.
 bool ebpf_verify_program(std::ostream& os, const InstructionSeq& prog, const program_info& info,
                          const ebpf_verifier_options_t* options, ebpf_verifier_stats_t* stats) {
-    if (options == nullptr)
+    if (options == nullptr) {
         options = &ebpf_verifier_default_options;
+    }
 
     // Convert the instruction sequence to a control-flow graph
     // in a "passive", non-deterministic form.

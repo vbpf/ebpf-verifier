@@ -29,7 +29,6 @@ typedef enum _ebpf_argument_type {
     EBPF_ARGUMENT_TYPE_UNSUPPORTED,
 } ebpf_argument_type_t;
 
-
 // The following struct describes how to access the layout in
 // memory of the data (e.g., the actual packet).
 typedef struct _ebpf_context_descriptor {

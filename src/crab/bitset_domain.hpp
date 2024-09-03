@@ -1,11 +1,11 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
 #pragma once
-#include <cassert>
 #include <bitset>
+#include <cassert>
 
-#include "string_constraints.hpp"
 #include "spec_type_descriptors.hpp" // for EBPF_STACK_SIZE
+#include "string_constraints.hpp"
 
 class bitset_domain_t final {
   private:
@@ -21,11 +21,18 @@ class bitset_domain_t final {
 
     void set_to_bottom() { non_numerical_bytes.reset(); }
 
-    [[nodiscard]] bool is_top() const { return non_numerical_bytes.all(); }
+    [[nodiscard]]
+    bool is_top() const {
+        return non_numerical_bytes.all();
+    }
 
-    [[nodiscard]] bool is_bottom() const { return false; }
+    [[nodiscard]]
+    bool is_bottom() const {
+        return false;
+    }
 
-    [[nodiscard]] string_invariant to_set() const;
+    [[nodiscard]]
+    string_invariant to_set() const;
 
     bool operator<=(const bitset_domain_t& other) const {
         return (non_numerical_bytes | other.non_numerical_bytes) == other.non_numerical_bytes;
@@ -35,9 +42,7 @@ class bitset_domain_t final {
 
     void operator|=(const bitset_domain_t& other) { non_numerical_bytes |= other.non_numerical_bytes; }
 
-    bitset_domain_t operator|(bitset_domain_t&& other) const {
-        return non_numerical_bytes | other.non_numerical_bytes;
-    }
+    bitset_domain_t operator|(bitset_domain_t&& other) const { return non_numerical_bytes | other.non_numerical_bytes; }
 
     bitset_domain_t operator|(const bitset_domain_t& other) const {
         return non_numerical_bytes | other.non_numerical_bytes;
@@ -74,10 +79,12 @@ class bitset_domain_t final {
     }
 
     // Get the number of bytes, starting at lb, known to be numbers.
-    [[nodiscard]] int all_num_width(size_t lb) const {
+    [[nodiscard]]
+    int all_num_width(size_t lb) const {
         size_t ub = lb;
-        while ((ub < EBPF_STACK_SIZE) && !non_numerical_bytes[ub])
+        while ((ub < EBPF_STACK_SIZE) && !non_numerical_bytes[ub]) {
             ub++;
+        }
         return (int)(ub - lb);
     }
 
@@ -103,12 +110,15 @@ class bitset_domain_t final {
         assert(lb < ub);
         lb = std::max(lb, 0);
         ub = std::min(ub, EBPF_STACK_SIZE);
-        if (lb < 0 || ub > (int)non_numerical_bytes.size())
+        if (lb < 0 || ub > (int)non_numerical_bytes.size()) {
             return false;
+        }
 
-        for (int i = lb; i < ub; i++)
-            if (non_numerical_bytes[i])
+        for (int i = lb; i < ub; i++) {
+            if (non_numerical_bytes[i]) {
                 return false;
+            }
+        }
         return true;
     }
 };

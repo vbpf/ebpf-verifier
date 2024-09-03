@@ -10,11 +10,10 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include "CLI11.hpp"
 #include "ebpf_verifier.hpp"
 #include "ebpf_yaml.hpp"
-#include "CLI11.hpp"
-
-using string = std::string;
 
 /**
  * @brief Read in a string of hex bytes and return a vector of bytes.
@@ -27,13 +26,14 @@ std::vector<uint8_t> base16_decode(const std::string& input) {
     std::stringstream ss(input);
     std::string value;
     while (std::getline(ss, value, ' ')) {
-        if (value.empty())
+        if (value.empty()) {
             continue;
+        }
         try {
             output.push_back(std::stoi(value, nullptr, 16));
-        } catch (std::invalid_argument) {
+        } catch (std::invalid_argument&) {
             std::cerr << "base16_decode failed to decode " << value << "\n";
-        } catch (std::out_of_range) {
+        } catch (std::out_of_range&) {
             std::cerr << "base16_decode failed to decode " << value << "\n";
         }
     }
@@ -42,7 +42,7 @@ std::vector<uint8_t> base16_decode(const std::string& input) {
 
 /**
  * @brief This program reads BPF instructions from stdin and memory contents from
- * the first agument. It then executes the BPF program and prints the
+ * the first argument. It then executes the BPF program and prints the
  * value of r0 at the end of execution.
  */
 int main(int argc, char** argv) {
@@ -65,8 +65,7 @@ int main(int argc, char** argv) {
         std::getline(std::cin, program_string);
     }
 
-    const auto& result =
-        run_conformance_test_case(base16_decode(memory_string), base16_decode(program_string), debug);
+    const auto& result = run_conformance_test_case(base16_decode(memory_string), base16_decode(program_string), debug);
     if (!result.success) {
         // Write failure reason to stdout since the bpf conformance library does not look at stderr.
         std::cout << "Verification failed\n";
@@ -82,10 +81,11 @@ int main(int argc, char** argv) {
     }
 
     // Print output so the conformance test suite can check it.
-    if (result.r0_value.singleton() && result.r0_value.singleton().value().fits_cast_to_int64())
+    if (result.r0_value.singleton() && result.r0_value.singleton().value().fits_cast_to_int64()) {
         std::cout << std::hex << result.r0_value.singleton().value().cast_to_uint64() << std::endl;
-    else
+    } else {
         std::cout << result.r0_value << std::endl;
+    }
 
     return 0;
 }

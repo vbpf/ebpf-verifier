@@ -1,8 +1,8 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
-#include <catch2/catch_all.hpp>
 #include "crab/cfg.hpp"
 #include "crab/wto.hpp"
+#include <catch2/catch_all.hpp>
 
 TEST_CASE("wto figure 1", "[wto]") {
     cfg_t cfg;

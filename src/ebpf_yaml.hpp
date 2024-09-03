@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <functional>
-#include <string>
 #include <set>
+#include <string>
 
 #include "crab_verifier.hpp"
 
@@ -19,7 +19,7 @@ struct TestCase {
 void foreach_suite(const std::string& path, const std::function<void(const TestCase&)>& f);
 bool all_suites(const std::string& path);
 
-template<typename T>
+template <typename T>
 struct Diff {
     T unexpected;
     T unseen;
@@ -39,6 +39,7 @@ struct ConformanceTestResult {
     crab::interval_t r0_value = crab::interval_t::top();
 };
 
-ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memory_bytes, const std::vector<uint8_t>& program_bytes, bool debug);
+ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memory_bytes,
+                                                const std::vector<uint8_t>& program_bytes, bool debug);
 
 bool run_yaml(const std::string& path);
