@@ -26,7 +26,7 @@ struct label_t {
         return label_t{src_label.from, target_label.from, target_label.stack_frame_prefix};
     }
 
-    constexpr bool operator==(const label_t& other) const noexcept = default;
+    bool operator==(const label_t& other) const noexcept = default;
 
     constexpr bool operator<(const label_t& other) const {
         if (this == &other) {
@@ -76,7 +76,7 @@ struct location_t {
 
     location_t(label_t  label, const size_t offset) : label(std::move(label)), offset(offset){ }
 
-    constexpr bool operator==(const location_t&) const = default;
+    bool operator==(const location_t&) const = default;
     constexpr bool operator<(const location_t& other) const {
         if (this == &other) return false;
         return label < other.label || (label == other.label && offset < other.offset);
