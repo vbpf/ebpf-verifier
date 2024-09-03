@@ -2,8 +2,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
-#include <utility>
-
 #include "crab/cfg.hpp"
 #include "crab/linear_constraint.hpp"
 

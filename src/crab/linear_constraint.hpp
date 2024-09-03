@@ -67,13 +67,13 @@ class linear_constraint_t final {
         }
     }
 
-    static linear_constraint_t FALSE() {
+    static linear_constraint_t false_const() {
         return linear_constraint_t{linear_expression_t(0), constraint_kind_t::NOT_ZERO};
-    };
+    }
 
-    static linear_constraint_t TRUE() {
+    static linear_constraint_t true_const() {
         return linear_constraint_t{linear_expression_t(0), constraint_kind_t::EQUALS_ZERO};
-    };
+    }
 };
 
 // Output a linear constraint to a stream.

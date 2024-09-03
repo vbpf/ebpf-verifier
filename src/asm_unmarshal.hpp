@@ -2,8 +2,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
-#include <istream>
-#include <optional>
 #include <string>
 #include <variant>
 #include <vector>

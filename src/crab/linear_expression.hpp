@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
-#include "variable.hpp"
 #include <map>
+
+#include "variable.hpp"
 
 namespace crab {
 // A linear expression is of the form: Ax + By + Cz + ... + N.

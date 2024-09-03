@@ -3,7 +3,6 @@
 #pragma once
 
 #include <map>
-#include <optional>
 #include <string>
 
 #include "crab/variable.hpp"

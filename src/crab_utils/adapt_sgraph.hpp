@@ -6,9 +6,7 @@
 
 #include <boost/container/flat_map.hpp>
 
-#include "crab_utils/debug.hpp"
 #include "crab_utils/safeint.hpp"
-// Adaptive sparse-set based weighted graph implementation
 
 namespace crab {
 
@@ -142,6 +140,7 @@ class TreeSMap final {
     void clear() { map.clear(); }
 };
 
+// Adaptive sparse-set based weighted graph implementation
 class AdaptGraph final {
     using smap_t = TreeSMap;
 

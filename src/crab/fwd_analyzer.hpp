@@ -3,9 +3,7 @@
 #pragma once
 
 #include <map>
-#include <tuple>
 
-#include "config.hpp"
 #include "crab/cfg.hpp"
 #include "crab/ebpf_domain.hpp"
 
