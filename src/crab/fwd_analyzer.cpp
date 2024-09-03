@@ -9,6 +9,8 @@
 #include "crab/ebpf_domain.hpp"
 #include "crab/fwd_analyzer.hpp"
 
+#include "config.hpp"
+
 namespace crab {
 
 // Simple visitor to check if node is a member of the wto component.

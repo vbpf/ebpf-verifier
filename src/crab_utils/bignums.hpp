@@ -6,10 +6,10 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <utility>
 
 #include <boost/functional/hash.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
-#include <utility>
 
 #include "debug.hpp"
 using boost::multiprecision::cpp_int;

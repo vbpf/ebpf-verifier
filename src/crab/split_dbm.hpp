@@ -20,7 +20,6 @@
 #pragma once
 
 #include <optional>
-#include <type_traits>
 #include <unordered_set>
 #include <utility>
 
@@ -77,9 +76,9 @@ struct SafeInt64DefaultParams {
 class SplitDBM final {
   public:
     using Params = Z_NumberDefaultParams;
-    using graph_t = typename Params::graph_t;
-    using Weight = typename Params::Weight;
-    using vert_id = typename graph_t::vert_id;
+    using graph_t = Params::graph_t;
+    using Weight = Params::Weight;
+    using vert_id = graph_t::vert_id;
     using vert_map_t = boost::container::flat_map<variable_t, vert_id>;
 
   private:
@@ -87,17 +86,12 @@ class SplitDBM final {
 
     using rev_map_t = std::vector<std::optional<variable_t>>;
     using GrOps = GraphOps<graph_t>;
-    using edge_vector = typename GrOps::edge_vector;
+    using edge_vector = GrOps::edge_vector;
     // < <x, y>, k> == x - y <= k.
     using diffcst_t = std::pair<std::pair<variable_t, variable_t>, Weight>;
     using vert_set_t = std::unordered_set<vert_id>;
     friend class vert_set_wrap_t;
 
-  private:
-    //================
-    // Domain data
-    //================
-    // GKG: ranges are now maintained in the graph
     vert_map_t vert_map; // Mapping from variables to vertices
     rev_map_t rev_map;
     graph_t g;                     // The underlying relation graph
@@ -182,11 +176,14 @@ class SplitDBM final {
         normalize();
     }
 
+    // Serves as a static cast for the default join operation
+    SplitDBM const_join(const SplitDBM& o) const& { return *this | o; }
+
   public:
     explicit SplitDBM() {
         g.growTo(1); // Allocate the zero vector
         potential.emplace_back(0);
-        rev_map.push_back(std::nullopt);
+        rev_map.emplace_back(std::nullopt);
     }
 
     SplitDBM(const SplitDBM& o) = default;
@@ -222,21 +219,21 @@ class SplitDBM final {
         if (is_top()) {
             return std::move(*this);
         }
-        return ((const SplitDBM&)*this) | (const SplitDBM&)o;
+        return const_join(o);
     }
 
     SplitDBM operator|(const SplitDBM& o) && {
         if (is_top()) {
             return std::move(*this);
         }
-        return ((const SplitDBM&)*this) | o;
+        return const_join(o);
     }
 
     SplitDBM operator|(SplitDBM&& o) const& {
         if (o.is_top()) {
             return std::move(o);
         }
-        return (*this) | (const SplitDBM&)o;
+        return const_join(o);
     }
 
     [[nodiscard]]
@@ -272,7 +269,7 @@ class SplitDBM final {
         } else {
             *this -= x;
         }
-    };
+    }
 
     void apply(arith_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width);
 

@@ -6,15 +6,14 @@
 // value of r0 at the end of execution.
 // The program is intended to be used with the bpf conformance test suite.
 
-#include "CLI11.hpp"
-#include "ebpf_verifier.hpp"
-#include "ebpf_yaml.hpp"
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
 
-using string = std::string;
+#include "CLI11.hpp"
+#include "ebpf_verifier.hpp"
+#include "ebpf_yaml.hpp"
 
 /**
  * @brief Read in a string of hex bytes and return a vector of bytes.
@@ -32,9 +31,9 @@ std::vector<uint8_t> base16_decode(const std::string& input) {
         }
         try {
             output.push_back(std::stoi(value, nullptr, 16));
-        } catch (std::invalid_argument) {
+        } catch (std::invalid_argument&) {
             std::cerr << "base16_decode failed to decode " << value << "\n";
-        } catch (std::out_of_range) {
+        } catch (std::out_of_range&) {
             std::cerr << "base16_decode failed to decode " << value << "\n";
         }
     }
@@ -43,7 +42,7 @@ std::vector<uint8_t> base16_decode(const std::string& input) {
 
 /**
  * @brief This program reads BPF instructions from stdin and memory contents from
- * the first agument. It then executes the BPF program and prints the
+ * the first argument. It then executes the BPF program and prints the
  * value of r0 at the end of execution.
  */
 int main(int argc, char** argv) {

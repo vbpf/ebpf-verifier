@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
-#include "debug.hpp"
 #include <optional>
+
+#include "debug.hpp"
 
 namespace crab {
 /**

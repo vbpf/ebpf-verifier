@@ -25,7 +25,6 @@
 
 #include <functional>
 #include <optional>
-#include <utility>
 
 #include "crab/add_bottom.hpp"
 #include "crab/variable.hpp"

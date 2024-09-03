@@ -5,7 +5,6 @@
 #include <functional>
 #include <ostream>
 #include <variant>
-#include <vector>
 
 #include <boost/lexical_cast.hpp>
 

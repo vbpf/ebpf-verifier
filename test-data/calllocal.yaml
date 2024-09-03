@@ -226,23 +226,23 @@ post:
   - r0.svalue=0
   - r0.uvalue=0
   - r6.type=packet
-#---
+# ---
 # fails: correlations between callee-saved registers are not preserved
-#test-case: call local must preserve correlations within R6-R9
-#pre: ["r6.type=r7.type"]
-#code:
-#  <start>: |
-#    call <sub>
-#    r0 = 0
-#    exit
-#  <sub>: |
-#    r6 = 1
-#    exit
-#post:
-#  - r0.type=number
-#  - r0.svalue=0
-#  - r0.uvalue=0
-#  - r6.type=r7.type
+# test-case: call local must preserve correlations within R6-R9
+# pre: ["r6.type=r7.type"]
+# code:
+#   <start>: |
+#     call <sub>
+#     r0 = 0
+#     exit
+#   <sub>: |
+#     r6 = 1
+#     exit
+# post:
+#   - r0.type=number
+#   - r0.svalue=0
+#   - r0.uvalue=0
+#   - r6.type=r7.type
 ---
 test-case: disallow tail call from within a subprogram
 

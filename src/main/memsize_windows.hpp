@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
-#include <Psapi.h>
+#include <stdlib.h>
 #include <windows.h>
+
+#include <Psapi.h>
 
 inline long resident_set_size_kb() {
     PROCESS_MEMORY_COUNTERS info;

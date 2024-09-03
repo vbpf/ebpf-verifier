@@ -28,10 +28,11 @@
 // comparison.
 #undef RECURSIVE_WTO
 
-#include "crab/cfg.hpp"
-#include "crab/wto_nesting.hpp"
 #include <stack>
 #include <vector>
+
+#include "crab/cfg.hpp"
+#include "crab/wto_nesting.hpp"
 
 // Define types used by both this header file and wto_cycle.hpp
 using wto_component_t = std::variant<std::shared_ptr<class wto_cycle_t>, label_t>;

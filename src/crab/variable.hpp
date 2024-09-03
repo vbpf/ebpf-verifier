@@ -4,14 +4,10 @@
 
 #include <iosfwd>
 #include <iostream>
-#include <limits>
 #include <memory>
-#include <optional>
 #include <vector>
 
-#include "asm_syntax.hpp"
 #include "crab_utils/bignums.hpp"
-#include "crab_utils/debug.hpp"
 #include "crab_utils/lazy_allocator.hpp"
 using index_t = uint64_t;
 
