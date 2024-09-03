@@ -31,8 +31,10 @@ class ebpf_domain_t final {
     static ebpf_domain_t bottom();
     void set_to_top();
     void set_to_bottom();
-    [[nodiscard]] bool is_bottom() const;
-    [[nodiscard]] bool is_top() const;
+    [[nodiscard]]
+    bool is_bottom() const;
+    [[nodiscard]]
+    bool is_top() const;
     bool operator<=(const ebpf_domain_t& other);
     bool operator==(const ebpf_domain_t& other) const;
     void operator|=(ebpf_domain_t&& other);
@@ -85,6 +87,7 @@ class ebpf_domain_t final {
 
     void initialize_loop_counter(label_t label);
     static ebpf_domain_t calculate_constant_limits();
+
   private:
     // private generic domain functions
     void operator+=(const linear_constraint_t& cst);
@@ -155,17 +158,24 @@ class ebpf_domain_t final {
     void havoc_offsets(NumAbsDomain& inv, const Reg& reg);
 
     static std::optional<variable_t> get_type_offset_variable(const Reg& reg, int type);
-    [[nodiscard]] std::optional<variable_t> get_type_offset_variable(const Reg& reg, const NumAbsDomain& inv) const;
-    [[nodiscard]] std::optional<variable_t> get_type_offset_variable(const Reg& reg) const;
+    [[nodiscard]]
+    std::optional<variable_t> get_type_offset_variable(const Reg& reg, const NumAbsDomain& inv) const;
+    [[nodiscard]]
+    std::optional<variable_t> get_type_offset_variable(const Reg& reg) const;
 
     void scratch_caller_saved_registers();
     void save_callee_saved_registers(const std::string& prefix);
     void restore_callee_saved_registers(const std::string& prefix);
-    [[nodiscard]] std::optional<uint32_t> get_map_type(const Reg& map_fd_reg) const;
-    [[nodiscard]] std::optional<uint32_t> get_map_inner_map_fd(const Reg& map_fd_reg) const;
-    [[nodiscard]] crab::interval_t get_map_key_size(const Reg& map_fd_reg) const;
-    [[nodiscard]] crab::interval_t get_map_value_size(const Reg& map_fd_reg) const;
-    [[nodiscard]] crab::interval_t get_map_max_entries(const Reg& map_fd_reg) const;
+    [[nodiscard]]
+    std::optional<uint32_t> get_map_type(const Reg& map_fd_reg) const;
+    [[nodiscard]]
+    std::optional<uint32_t> get_map_inner_map_fd(const Reg& map_fd_reg) const;
+    [[nodiscard]]
+    crab::interval_t get_map_key_size(const Reg& map_fd_reg) const;
+    [[nodiscard]]
+    crab::interval_t get_map_value_size(const Reg& map_fd_reg) const;
+    [[nodiscard]]
+    crab::interval_t get_map_max_entries(const Reg& map_fd_reg) const;
     void forget_packet_pointers();
     void havoc_register(NumAbsDomain& inv, const Reg& reg);
     void do_load_mapfd(const Reg& dst_reg, int mapfd, bool maybe_null);
@@ -229,30 +239,39 @@ class ebpf_domain_t final {
 
         void havoc_type(NumAbsDomain& inv, const Reg& r);
 
-        [[nodiscard]] int get_type(const NumAbsDomain& inv, variable_t v) const;
-        [[nodiscard]] int get_type(const NumAbsDomain& inv, const Reg& r) const;
-        [[nodiscard]] int get_type(const NumAbsDomain& inv, const number_t& t) const;
+        [[nodiscard]]
+        int get_type(const NumAbsDomain& inv, variable_t v) const;
+        [[nodiscard]]
+        int get_type(const NumAbsDomain& inv, const Reg& r) const;
+        [[nodiscard]]
+        int get_type(const NumAbsDomain& inv, const number_t& t) const;
 
-        [[nodiscard]] bool has_type(const NumAbsDomain& inv, variable_t v, type_encoding_t type) const;
-        [[nodiscard]] bool has_type(const NumAbsDomain& inv, const Reg& r, type_encoding_t type) const;
-        [[nodiscard]] bool has_type(const NumAbsDomain& inv, const number_t& t, type_encoding_t type) const;
+        [[nodiscard]]
+        bool has_type(const NumAbsDomain& inv, variable_t v, type_encoding_t type) const;
+        [[nodiscard]]
+        bool has_type(const NumAbsDomain& inv, const Reg& r, type_encoding_t type) const;
+        [[nodiscard]]
+        bool has_type(const NumAbsDomain& inv, const number_t& t, type_encoding_t type) const;
 
-        [[nodiscard]] bool same_type(const NumAbsDomain& inv, const Reg& a, const Reg& b) const;
-        [[nodiscard]] bool implies_type(const NumAbsDomain& inv, const linear_constraint_t& a,
-                                        const linear_constraint_t& b) const;
+        [[nodiscard]]
+        bool same_type(const NumAbsDomain& inv, const Reg& a, const Reg& b) const;
+        [[nodiscard]]
+        bool implies_type(const NumAbsDomain& inv, const linear_constraint_t& a, const linear_constraint_t& b) const;
 
-        [[nodiscard]] NumAbsDomain
-        join_over_types(const NumAbsDomain& inv, const Reg& reg,
-                        const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const;
-        [[nodiscard]] NumAbsDomain join_by_if_else(const NumAbsDomain& inv, const linear_constraint_t& condition,
-                                                   const std::function<void(NumAbsDomain&)>& if_true,
-                                                   const std::function<void(NumAbsDomain&)>& if_false) const;
+        [[nodiscard]]
+        NumAbsDomain join_over_types(const NumAbsDomain& inv, const Reg& reg,
+                                     const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const;
+        [[nodiscard]]
+        NumAbsDomain join_by_if_else(const NumAbsDomain& inv, const linear_constraint_t& condition,
+                                     const std::function<void(NumAbsDomain&)>& if_true,
+                                     const std::function<void(NumAbsDomain&)>& if_false) const;
         void selectively_join_based_on_type(NumAbsDomain& dst, NumAbsDomain& src) const;
         void add_extra_invariant(NumAbsDomain& dst, std::map<crab::variable_t, crab::interval_t>& extra_invariants,
                                  variable_t type_variable, type_encoding_t type, crab::data_kind_t kind,
                                  const NumAbsDomain& other) const;
 
-        [[nodiscard]] bool is_in_group(const NumAbsDomain& inv, const Reg& r, TypeGroup group) const;
+        [[nodiscard]]
+        bool is_in_group(const NumAbsDomain& inv, const Reg& r, TypeGroup group) const;
     };
 
     TypeDomain type_inv;

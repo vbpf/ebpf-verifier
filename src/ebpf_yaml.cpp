@@ -11,14 +11,14 @@
 
 #include <yaml-cpp/yaml.h>
 
-#include "asm_parse.hpp"
 #include "asm_ostream.hpp"
+#include "asm_parse.hpp"
 #include "ebpf_verifier.hpp"
 #include "ebpf_yaml.hpp"
 #include "string_constraints.hpp"
 
-using std::vector;
 using std::string;
+using std::vector;
 
 // The YAML tests for Call depend on Linux prototypes.
 // parse_instruction() in asm_parse.cpp explicitly uses
@@ -37,51 +37,45 @@ static EbpfHelperPrototype ebpf_get_helper_prototype(int32_t n) {
     return g_ebpf_platform_linux.get_helper_prototype(n);
 }
 
-static bool ebpf_is_helper_usable(int32_t n) {
-    return g_ebpf_platform_linux.is_helper_usable(n);
-}
+static bool ebpf_is_helper_usable(int32_t n) { return g_ebpf_platform_linux.is_helper_usable(n); }
 
-static void ebpf_parse_maps_section(vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t map_record_size, int map_count,
-                                    const struct ebpf_platform_t* platform, ebpf_verifier_options_t options) {
-}
+static void ebpf_parse_maps_section(vector<EbpfMapDescriptor>& map_descriptors, const char* data,
+                                    size_t map_record_size, int map_count, const struct ebpf_platform_t* platform,
+                                    ebpf_verifier_options_t options) {}
 
-static EbpfMapDescriptor test_map_descriptor = {
-    .original_fd=0,
-    .type=0,
-    .key_size=sizeof(uint32_t),
-    .value_size=sizeof(uint32_t),
-    .max_entries=4,
-    .inner_map_fd=0
-};
+static EbpfMapDescriptor test_map_descriptor = {.original_fd = 0,
+                                                .type = 0,
+                                                .key_size = sizeof(uint32_t),
+                                                .value_size = sizeof(uint32_t),
+                                                .max_entries = 4,
+                                                .inner_map_fd = 0};
 
 static EbpfMapDescriptor& ebpf_get_map_descriptor(int map_fd) { return test_map_descriptor; }
 
-ebpf_platform_t g_platform_test = {
-    .get_program_type = ebpf_get_program_type,
-    .get_helper_prototype = ebpf_get_helper_prototype,
-    .is_helper_usable = ebpf_is_helper_usable,
-    .map_record_size = 0,
-    .parse_maps_section = ebpf_parse_maps_section,
-    .get_map_descriptor = ebpf_get_map_descriptor,
-    .get_map_type = ebpf_get_map_type,
-    .supported_conformance_groups =
-        bpf_conformance_groups_t::default_groups | bpf_conformance_groups_t::packet | bpf_conformance_groups_t::callx
-};
+ebpf_platform_t g_platform_test = {.get_program_type = ebpf_get_program_type,
+                                   .get_helper_prototype = ebpf_get_helper_prototype,
+                                   .is_helper_usable = ebpf_is_helper_usable,
+                                   .map_record_size = 0,
+                                   .parse_maps_section = ebpf_parse_maps_section,
+                                   .get_map_descriptor = ebpf_get_map_descriptor,
+                                   .get_map_type = ebpf_get_map_type,
+                                   .supported_conformance_groups = bpf_conformance_groups_t::default_groups |
+                                                                   bpf_conformance_groups_t::packet |
+                                                                   bpf_conformance_groups_t::callx};
 
 static EbpfProgramType make_program_type(const string& name, ebpf_context_descriptor_t* context_descriptor) {
-    return EbpfProgramType{
-        .name=name,
-        .context_descriptor=context_descriptor,
-        .platform_specific_data=0,
-        .section_prefixes={},
-        .is_privileged=false
-    };
+    return EbpfProgramType{.name = name,
+                           .context_descriptor = context_descriptor,
+                           .platform_specific_data = 0,
+                           .section_prefixes = {},
+                           .is_privileged = false};
 }
 
 static std::set<string> vector_to_set(const vector<string>& s) {
     std::set<string> res;
-    for (const auto& item : s)
+    for (const auto& item : s) {
         res.insert(item);
+    }
     return res;
 }
 
@@ -91,11 +85,11 @@ std::set<string> operator-(const std::set<string>& a, const std::set<string>& b)
     return res;
 }
 
-
 static string_invariant read_invariant(const vector<string>& raw_invariant) {
     std::set<string> res = vector_to_set(raw_invariant);
-    if (res == std::set<string>{"_|_"})
+    if (res == std::set<string>{"_|_"}) {
         return string_invariant{};
+    }
     return string_invariant{res};
 }
 
@@ -112,8 +106,9 @@ static vector<string> parse_block(const YAML::Node& block_node) {
     vector<string> block;
     std::istringstream is{block_node.as<string>()};
     string line;
-    while (std::getline(is, line))
+    while (std::getline(is, line)) {
         block.emplace_back(line);
+    }
     return block;
 }
 
@@ -126,13 +121,14 @@ static auto parse_code(const YAML::Node& code_node) {
 }
 
 static std::set<string> as_set_empty_default(const YAML::Node& optional_node) {
-    if (!optional_node.IsDefined() || optional_node.IsNull())
+    if (!optional_node.IsDefined() || optional_node.IsNull()) {
         return {};
+    }
     return vector_to_set(optional_node.as<vector<string>>());
 }
 
 static RawTestCase parse_case(const YAML::Node& case_node) {
-    return RawTestCase {
+    return RawTestCase{
         .test_case = case_node["test-case"].as<string>(),
         .options = as_set_empty_default(case_node["options"]),
         .pre = case_node["pre"].as<vector<string>>(),
@@ -158,8 +154,9 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
         for (const string& line : raw_block) {
             try {
                 const Instruction& ins = parse_instruction(line, label_name_to_label);
-                if (std::holds_alternative<Undefined>(ins))
+                if (std::holds_alternative<Undefined>(ins)) {
                     std::cout << "text:" << line << "; ins: " << ins << "\n";
+                }
                 res.emplace_back(label_index, ins, std::optional<btf_line_info_t>());
             } catch (const std::exception& e) {
                 std::cout << "text:" << line << "; error: " << e.what() << "\n";
@@ -204,14 +201,12 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
 }
 
 static TestCase read_case(const RawTestCase& raw_case) {
-    return TestCase{
-        .name = raw_case.test_case,
-        .options = raw_options_to_options(raw_case.options),
-        .assumed_pre_invariant = read_invariant(raw_case.pre),
-        .instruction_seq = raw_cfg_to_instruction_seq(raw_case.raw_blocks),
-        .expected_post_invariant = read_invariant(raw_case.post),
-        .expected_messages = raw_case.messages
-    };
+    return TestCase{.name = raw_case.test_case,
+                    .options = raw_options_to_options(raw_case.options),
+                    .assumed_pre_invariant = read_invariant(raw_case.pre),
+                    .instruction_seq = raw_cfg_to_instruction_seq(raw_case.raw_blocks),
+                    .expected_post_invariant = read_invariant(raw_case.post),
+                    .expected_messages = raw_case.messages};
 }
 
 static vector<TestCase> read_suite(const string& path) {
@@ -228,17 +223,18 @@ static std::set<string> extract_messages(const string& str) {
     boost::split(output, str, boost::is_any_of("\n"));
 
     std::set<string> actual_messages;
-    for (auto& item: output) {
+    for (auto& item : output) {
         boost::trim(item);
-        if (!item.empty())
+        if (!item.empty()) {
             actual_messages.insert(item);
+        }
     }
     return actual_messages;
 }
 
-template<typename T>
+template <typename T>
 static Diff<T> make_diff(const T& actual, const T& expected) {
-    return Diff<T> {
+    return Diff<T>{
         .unexpected = actual - expected,
         .unseen = expected - actual,
     };
@@ -258,17 +254,14 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
 
     std::ostringstream ss;
     const auto& [actual_last_invariant, result] = ebpf_analyze_program_for_test(
-        ss, test_case.instruction_seq,
-        test_case.assumed_pre_invariant,
-        info, test_case.options);
+        ss, test_case.instruction_seq, test_case.assumed_pre_invariant, info, test_case.options);
     std::set<string> actual_messages = extract_messages(ss.str());
 
-    if (actual_last_invariant == test_case.expected_post_invariant && actual_messages == test_case.expected_messages)
+    if (actual_last_invariant == test_case.expected_post_invariant && actual_messages == test_case.expected_messages) {
         return {};
-    return Failure{
-        .invariant = make_diff(actual_last_invariant, test_case.expected_post_invariant),
-        .messages = make_diff(actual_messages, test_case.expected_messages)
-    };
+    }
+    return Failure{.invariant = make_diff(actual_last_invariant, test_case.expected_post_invariant),
+                   .messages = make_diff(actual_messages, test_case.expected_messages)};
 }
 
 template <typename T>
@@ -288,10 +281,10 @@ void add_stack_variable(std::set<std::string>& more, int& offset, const std::vec
     TU uvalue;
     memcpy(&svalue, memory_bytes.data() + offset + memory_bytes.size() - EBPF_STACK_SIZE, sizeof(TS));
     memcpy(&uvalue, memory_bytes.data() + offset + memory_bytes.size() - EBPF_STACK_SIZE, sizeof(TU));
-    more.insert("s[" + std::to_string(offset) + "..." + std::to_string(offset + sizeof(TS) - 1) +
-                "].svalue" + "=" + std::to_string(svalue));
-    more.insert("s[" + std::to_string(offset) + "..." + std::to_string(offset + sizeof(TU) - 1) +
-                "].uvalue" + "=" + std::to_string(uvalue));
+    more.insert("s[" + std::to_string(offset) + "..." + std::to_string(offset + sizeof(TS) - 1) + "].svalue" + "=" +
+                std::to_string(svalue));
+    more.insert("s[" + std::to_string(offset) + "..." + std::to_string(offset + sizeof(TU) - 1) + "].uvalue" + "=" +
+                std::to_string(uvalue));
     offset += sizeof(TS);
 }
 
@@ -418,14 +411,14 @@ void print_failure(const Failure& failure, std::ostream& out) {
 
 bool all_suites(const string& path) {
     bool result = true;
-    for (const TestCase& test_case: read_suite(path)) {
+    for (const TestCase& test_case : read_suite(path)) {
         result = result && bool(run_yaml_test_case(test_case));
     }
     return result;
 }
 
 void foreach_suite(const string& path, const std::function<void(const TestCase&)>& f) {
-    for (const TestCase& test_case: read_suite(path)) {
+    for (const TestCase& test_case : read_suite(path)) {
         f(test_case);
     }
 }

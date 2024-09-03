@@ -5,13 +5,13 @@
 #include <algorithm>
 #include <map>
 #include <optional>
+#include <queue>
 #include <string>
 #include <vector>
-#include <queue>
 
-#include "crab_utils/debug.hpp"
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
+#include "crab_utils/debug.hpp"
 
 using std::optional;
 using std::set;
@@ -27,11 +27,13 @@ static optional<label_t> get_jump(Instruction ins) {
 }
 
 static bool has_fall(Instruction ins) {
-    if (std::holds_alternative<Exit>(ins))
+    if (std::holds_alternative<Exit>(ins)) {
         return false;
+    }
 
-    if (std::holds_alternative<Jmp>(ins) && !std::get<Jmp>(ins).cond)
+    if (std::holds_alternative<Jmp>(ins) && !std::get<Jmp>(ins).cond) {
         return false;
+    }
 
     return true;
 }
@@ -84,8 +86,9 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
         for (const auto& prev_macro_nodes = cfg.prev_nodes(macro_label);
              const auto& prev_macro_label : prev_macro_nodes) {
             const label_t prev_label(prev_macro_label.from, prev_macro_label.to, to_string(caller_label));
-            if (const auto& labels = cfg.labels(); std::ranges::find(labels, prev_label) != labels.end())
+            if (const auto& labels = cfg.labels(); std::ranges::find(labels, prev_label) != labels.end()) {
                 cfg.get_node(prev_label) >> bb;
+            }
         }
 
         // Walk all successor nodes.
@@ -115,8 +118,9 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
         for (const label_t label(macro_label.from, macro_label.to, caller_label_str);
              const auto& inst : cfg.get_node(label)) {
             if (std::holds_alternative<CallLocal>(inst)) {
-                if (stack_frame_depth >= MAX_CALL_STACK_FRAMES)
+                if (stack_frame_depth >= MAX_CALL_STACK_FRAMES) {
                     throw std::runtime_error{"too many call stack frames"};
+                }
                 add_cfg_nodes(cfg, label, std::get<CallLocal>(inst).target);
             }
         }
@@ -132,8 +136,9 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, bool must_have_
     // Do a first pass ignoring all function macro calls.
     for (const auto& [label, inst, _] : insts) {
 
-        if (std::holds_alternative<Undefined>(inst))
+        if (std::holds_alternative<Undefined>(inst)) {
             continue;
+        }
 
         auto& bb = cfg.insert(label);
 
@@ -147,20 +152,24 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, bool must_have_
             cfg.get_node(*falling_from) >> bb;
             falling_from = {};
         }
-        if (has_fall(inst))
+        if (has_fall(inst)) {
             falling_from = label;
+        }
         auto jump_target = get_jump(inst);
-        if (jump_target)
+        if (jump_target) {
             bb >> cfg.insert(*jump_target);
+        }
 
-        if (std::holds_alternative<Exit>(inst))
+        if (std::holds_alternative<Exit>(inst)) {
             bb >> cfg.get_node(cfg.exit_label());
+        }
     }
     if (falling_from) {
-        if (must_have_exit)
+        if (must_have_exit) {
             throw std::invalid_argument{"fallthrough in last instruction"};
-        else
+        } else {
             cfg.get_node(*falling_from) >> cfg.get_node(cfg.exit_label());
+        }
     }
 
     // Now replace macros. We have to do this as a second pass so that
@@ -201,7 +210,9 @@ static Condition::Op reverse(Condition::Op op) {
 }
 
 /// Get the inverse of a given comparison condition.
-static Condition reverse(Condition cond) { return {.op = reverse(cond.op), .left = cond.left, .right = cond.right, .is64 = cond.is64}; }
+static Condition reverse(Condition cond) {
+    return {.op = reverse(cond.op), .left = cond.left, .right = cond.right, .is64 = cond.is64};
+}
 
 template <typename T>
 static vector<label_t> unique(const std::pair<T, T>& be) {
@@ -251,8 +262,9 @@ static cfg_t to_nondet(const cfg_t& cfg) {
                 jump_bb >> res.insert(next_label);
             }
         } else {
-            for (const auto& label : nextlist)
+            for (const auto& label : nextlist) {
                 newbb >> res.insert(label);
+            }
         }
     }
     return res;
@@ -302,9 +314,9 @@ static std::string instype(Instruction ins) {
 
 std::vector<std::string> stats_headers() {
     return {
-        "basic_blocks", "joins",       "other",      "jumps",         "assign",  "arith",
-        "load",         "store",       "load_store", "packet_access", "call_1",  "call_mem",
-        "call_nomem",   "reallocate",  "map_in_map", "arith64",       "arith32",
+        "basic_blocks", "joins",      "other",      "jumps",         "assign",  "arith",
+        "load",         "store",      "load_store", "packet_access", "call_1",  "call_mem",
+        "call_nomem",   "reallocate", "map_in_map", "arith64",       "arith32",
     };
 }
 
@@ -325,8 +337,9 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
             }
             if (std::holds_alternative<Call>(ins)) {
                 auto call = std::get<Call>(ins);
-                if (call.reallocate_packet)
+                if (call.reallocate_packet) {
                     res["reallocate"] = 1;
+                }
             }
             if (std::holds_alternative<Bin>(ins)) {
                 auto const& bin = std::get<Bin>(ins);
@@ -334,10 +347,12 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
             }
             res[instype(ins)]++;
         }
-        if (unique(bb.prev_blocks()).size() > 1)
+        if (unique(bb.prev_blocks()).size() > 1) {
             res["joins"]++;
-        if (unique(bb.prev_blocks()).size() > 1)
+        }
+        if (unique(bb.prev_blocks()).size() > 1) {
             res["jumps"]++;
+        }
     }
     return res;
 }

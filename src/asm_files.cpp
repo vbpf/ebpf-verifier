@@ -4,14 +4,14 @@
 #include <map>
 #include <set>
 #include <string>
-#include <vector>
 #include <sys/stat.h>
+#include <vector>
 
+#include "elfio/elfio.hpp"
 #include "libbtf/btf.h"
 #include "libbtf/btf_json.h"
 #include "libbtf/btf_map.h"
 #include "libbtf/btf_parse.h"
-#include "elfio/elfio.hpp"
 
 #include "asm_files.hpp"
 #include "platform.hpp"
@@ -35,7 +35,8 @@ static vector<T> vector_of(const ELFIO::section& sec) {
     return vector_of<T>(data, size);
 }
 
-int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries, ebpf_verifier_options_t options) {
+int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
+                    ebpf_verifier_options_t options) {
     EquivalenceKey equiv{map_type.value_type, key_size, value_size, map_type.is_array ? max_entries : 0};
     if (!global_program_info->cache.count(equiv)) {
         // +1 so 0 is the null FD
@@ -59,7 +60,8 @@ bool is_map_section(const std::string& name) {
     return name == "maps" || (name.length() > 5 && name.compare(0, maps_prefix.length(), maps_prefix) == 0);
 }
 
-std::tuple<string, ELFIO::Elf_Half> get_symbol_name_and_section_index(ELFIO::const_symbol_section_accessor& symbols, ELFIO::Elf_Xword index) {
+std::tuple<string, ELFIO::Elf_Half> get_symbol_name_and_section_index(ELFIO::const_symbol_section_accessor& symbols,
+                                                                      ELFIO::Elf_Xword index) {
     string symbol_name;
     ELFIO::Elf64_Addr value{};
     ELFIO::Elf_Xword size{};
@@ -71,7 +73,8 @@ std::tuple<string, ELFIO::Elf_Half> get_symbol_name_and_section_index(ELFIO::con
     return {symbol_name, section_index};
 }
 
-std::tuple<ELFIO::Elf64_Addr, unsigned char> get_value(const ELFIO::const_symbol_section_accessor& symbols, ELFIO::Elf_Word index) {
+std::tuple<ELFIO::Elf64_Addr, unsigned char> get_value(const ELFIO::const_symbol_section_accessor& symbols,
+                                                       ELFIO::Elf_Word index) {
     string symbol_name;
     ELFIO::Elf64_Addr value{};
     ELFIO::Elf_Xword size{};
@@ -85,19 +88,24 @@ std::tuple<ELFIO::Elf64_Addr, unsigned char> get_value(const ELFIO::const_symbol
 
 // parse_maps_sections processes all maps sections in the provided ELF file by calling the platform-specific maps
 // parser. The section index of each maps section is inserted into section_indices.
-static size_t parse_map_sections(const ebpf_verifier_options_t* options, const ebpf_platform_t* platform, const ELFIO::elfio& reader, std::vector<EbpfMapDescriptor>& map_descriptors, std::set<ELFIO::Elf_Half>& section_indices, ELFIO::const_symbol_section_accessor& symbols) {
+static size_t parse_map_sections(const ebpf_verifier_options_t* options, const ebpf_platform_t* platform,
+                                 const ELFIO::elfio& reader, std::vector<EbpfMapDescriptor>& map_descriptors,
+                                 std::set<ELFIO::Elf_Half>& section_indices,
+                                 ELFIO::const_symbol_section_accessor& symbols) {
     size_t map_record_size = platform->map_record_size;
     for (ELFIO::Elf_Half i = 0; i < reader.sections.size(); ++i) {
         auto s = reader.sections[i];
-        if (!is_map_section(s->get_name()))
+        if (!is_map_section(s->get_name())) {
             continue;
+        }
 
         // Count the number of symbols that point into this maps section.
         int map_count = 0;
         for (ELFIO::Elf_Xword index = 0; index < symbols.get_symbols_num(); index++) {
             auto [symbol_name, section_index] = get_symbol_name_and_section_index(symbols, index);
-            if ((section_index == i) && !symbol_name.empty())
+            if ((section_index == i) && !symbol_name.empty()) {
                 map_count++;
+            }
         }
 
         if (map_count > 0) {
@@ -117,7 +125,8 @@ static size_t parse_map_sections(const ebpf_verifier_options_t* options, const e
     return map_record_size;
 }
 
-vector<raw_program> read_elf(const std::string& path, const std::string& desired_section, const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
+vector<raw_program> read_elf(const std::string& path, const std::string& desired_section,
+                             const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
     if (std::ifstream stream{path, std::ios::in | std::ios::binary}) {
         return read_elf(stream, path, desired_section, options, platform);
     }
@@ -128,7 +137,8 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
     throw std::runtime_error(string("Can't process ELF file ") + path);
 }
 
-std::tuple<string, ELFIO::Elf_Xword> get_program_name_and_size(ELFIO::section& sec, ELFIO::Elf_Xword start, ELFIO::const_symbol_section_accessor& symbols) {
+std::tuple<string, ELFIO::Elf_Xword> get_program_name_and_size(ELFIO::section& sec, ELFIO::Elf_Xword start,
+                                                               ELFIO::const_symbol_section_accessor& symbols) {
     ELFIO::Elf_Xword symbol_count = symbols.get_symbols_num();
     ELFIO::Elf_Half section_index = sec.get_index();
     string program_name = sec.get_name();
@@ -152,12 +162,16 @@ std::tuple<string, ELFIO::Elf_Xword> get_program_name_and_size(ELFIO::section& s
     return {program_name, size};
 }
 
-void relocate_function(ebpf_inst& inst, ELFIO::Elf64_Addr offset, ELFIO::Elf_Word index, const ELFIO::const_symbol_section_accessor& symbols) {
+void relocate_function(ebpf_inst& inst, ELFIO::Elf64_Addr offset, ELFIO::Elf_Word index,
+                       const ELFIO::const_symbol_section_accessor& symbols) {
     auto [relocation_offset, relocation_type] = get_value(symbols, index);
     inst.imm = ((relocation_offset - offset) / sizeof(ebpf_inst)) - 1;
 }
 
-void relocate_map(ebpf_inst& inst, const std::string& symbol_name, const std::variant<size_t, std::map<std::string, size_t>>& map_record_size_or_map_offsets, const program_info& info, ELFIO::Elf64_Addr offset, ELFIO::Elf_Word index, const ELFIO::const_symbol_section_accessor& symbols) {
+void relocate_map(ebpf_inst& inst, const std::string& symbol_name,
+                  const std::variant<size_t, std::map<std::string, size_t>>& map_record_size_or_map_offsets,
+                  const program_info& info, ELFIO::Elf64_Addr offset, ELFIO::Elf_Word index,
+                  const ELFIO::const_symbol_section_accessor& symbols) {
     // Only permit loading the address of the map.
     if ((inst.opcode & INST_CLS_MASK) != INST_CLS_LD) {
         throw std::runtime_error("Illegal operation on symbol " + symbol_name + " at location " +
@@ -191,9 +205,11 @@ void relocate_map(ebpf_inst& inst, const std::string& symbol_name, const std::va
     }
 }
 
-vector<raw_program> read_elf(std::istream& input_stream, const std::string& path, const std::string& desired_section, const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
-    if (options == nullptr)
+vector<raw_program> read_elf(std::istream& input_stream, const std::string& path, const std::string& desired_section,
+                             const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
+    if (options == nullptr) {
         options = &ebpf_verifier_default_options;
+    }
     ELFIO::elfio reader;
     if (!reader.load(input_stream)) {
         throw std::runtime_error(string("Can't process ELF file ") + path);
@@ -234,9 +250,9 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         }
     }
 
-    std::variant<size_t, std::map<std::string, size_t>>  map_record_size_or_map_offsets = size_t(0);
+    std::variant<size_t, std::map<std::string, size_t>> map_record_size_or_map_offsets = size_t(0);
     if (reader.sections[string(".maps")]) {
-        if (!btf_data.has_value()){
+        if (!btf_data.has_value()) {
             throw std::runtime_error(string("No BTF section found in ELF file ") + path);
         }
         auto map_data = libbtf::parse_btf_map_section(btf_data.value());
@@ -261,13 +277,13 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         std::map<int, int> type_id_to_fd_map;
         int pseudo_fd = 1;
         // Gather the typeids for each map and assign a pseudo-fd to each map.
-        for (auto &map_descriptor : info.map_descriptors) {
+        for (auto& map_descriptor : info.map_descriptors) {
             if (type_id_to_fd_map.find(map_descriptor.original_fd) == type_id_to_fd_map.end()) {
                 type_id_to_fd_map[map_descriptor.original_fd] = pseudo_fd++;
             }
         }
         // Replace the typeids with the pseudo-fds.
-        for (auto &map_descriptor : info.map_descriptors) {
+        for (auto& map_descriptor : info.map_descriptors) {
             map_descriptor.original_fd = type_id_to_fd_map[map_descriptor.original_fd];
             if (map_descriptor.inner_map_fd != DEFAULT_MAP_FD) {
                 map_descriptor.inner_map_fd = type_id_to_fd_map[map_descriptor.inner_map_fd];
@@ -275,7 +291,8 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         }
         map_section_indices.insert(reader.sections[string(".maps")]->get_index());
     } else {
-        map_record_size_or_map_offsets = parse_map_sections(options, platform, reader, info.map_descriptors, map_section_indices, symbols);
+        map_record_size_or_map_offsets =
+            parse_map_sections(options, platform, reader, info.map_descriptors, map_section_indices, symbols);
     }
 
     vector<raw_program> res;
@@ -283,23 +300,32 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
     for (const auto& section : reader.sections) {
         const string name = section->get_name();
-        if (!desired_section.empty() && name != desired_section)
+        if (!desired_section.empty() && name != desired_section) {
             continue;
-        if (name == "license" || name == "version" || is_map_section(name))
+        }
+        if (name == "license" || name == "version" || is_map_section(name)) {
             continue;
+        }
         if (name != ".text" && name.find('.') == 0) {
             continue;
         }
-        if ((section->get_size() == 0) || (section->get_data() == nullptr))
+        if ((section->get_size() == 0) || (section->get_data() == nullptr)) {
             continue;
+        }
         info.type = platform->get_program_type(name, path);
 
         for (ELFIO::Elf_Xword program_offset = 0; program_offset < section->get_size();) {
             auto [program_name, program_size] = get_program_name_and_size(*section, program_offset, symbols);
-            raw_program prog{path, name, program_offset, program_name, vector_of<ebpf_inst>(section->get_data() + program_offset, program_size), info};
+            raw_program prog{path,
+                             name,
+                             program_offset,
+                             program_name,
+                             vector_of<ebpf_inst>(section->get_data() + program_offset, program_size),
+                             info};
             auto prelocs = reader.sections[string(".rel") + name];
-            if (!prelocs)
+            if (!prelocs) {
                 prelocs = reader.sections[string(".rela") + name];
+            }
 
             if (prelocs) {
                 if (!prelocs->get_data()) {
@@ -344,8 +370,8 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                         continue;
                     }
 
-                    std::string unresolved_symbol = "Unresolved external symbol " + symbol_name +
-                                                    " in section " + name + " at location " + std::to_string(offset / sizeof(ebpf_inst));
+                    std::string unresolved_symbol = "Unresolved external symbol " + symbol_name + " in section " +
+                                                    name + " at location " + std::to_string(offset / sizeof(ebpf_inst));
                     unresolved_symbols.push_back(unresolved_symbol);
                 }
             }
@@ -367,7 +393,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
     if (btf != nullptr && btf_ext != nullptr) {
         auto visitor = [&](const std::string& section, uint32_t instruction_offset, const std::string& file_name,
-                        const std::string& source, uint32_t line_number, uint32_t column_number) {
+                           const std::string& source, uint32_t line_number, uint32_t column_number) {
             for (auto& program : res) {
                 if ((program.section_name == section) && (instruction_offset >= program.insn_off) &&
                     (instruction_offset < program.insn_off + program.prog.size() * sizeof(ebpf_inst))) {

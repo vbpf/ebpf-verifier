@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: MIT
 #if __linux__
 
-#include <unistd.h>
-#include <linux/bpf.h>
 #include <ctime>
+#include <linux/bpf.h>
 #include <tuple>
+#include <unistd.h>
 
 #include "config.hpp"
 #include "linux_verifier.hpp"
@@ -19,7 +19,8 @@ static int do_bpf(bpf_cmd cmd, union bpf_attr& attr) { return syscall(321, cmd, 
  *  \return A pair (passed, elapsec_secs)
  */
 
-std::tuple<bool, double> bpf_verify_program(const EbpfProgramType& type, const std::vector<ebpf_inst>& raw_prog, ebpf_verifier_options_t* options) {
+std::tuple<bool, double> bpf_verify_program(const EbpfProgramType& type, const std::vector<ebpf_inst>& raw_prog,
+                                            ebpf_verifier_options_t* options) {
     std::vector<char> buf(options->print_failures ? 1000000 : 10);
     buf[0] = 0;
     memset(buf.data(), '\0', buf.size());
@@ -38,9 +39,7 @@ std::tuple<bool, double> bpf_verify_program(const EbpfProgramType& type, const s
     attr.kern_version = 0x041800;
     attr.prog_flags = 0;
 
-    const auto [res, elapsed_secs] = timed_execution([&] {
-        return do_bpf(BPF_PROG_LOAD, attr);
-    });
+    const auto [res, elapsed_secs] = timed_execution([&] { return do_bpf(BPF_PROG_LOAD, attr); });
     if (res < 0) {
         if (options->print_failures) {
             std::cerr << "Failed to verify program: " << strerror(errno) << " (" << errno << ")\n";

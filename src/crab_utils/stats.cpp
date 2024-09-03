@@ -16,8 +16,7 @@ namespace crab {
 thread_local crab::lazy_allocator<std::map<std::string, unsigned>> CrabStats::counters;
 thread_local crab::lazy_allocator<std::map<std::string, Stopwatch>> CrabStats::sw;
 
-void CrabStats::clear_thread_local_state()
-{
+void CrabStats::clear_thread_local_state() {
     counters.clear();
     sw.clear();
 }
@@ -65,10 +64,11 @@ void Stopwatch::resume() {
 }
 
 long Stopwatch::getTimeElapsed() const {
-    if (finished < started)
+    if (finished < started) {
         return timeElapsed + systemTime() - started;
-    else
+    } else {
         return timeElapsed + finished - started;
+    }
 }
 
 double Stopwatch::toSeconds() {
@@ -82,10 +82,12 @@ void Stopwatch::Print(std::ostream& out) const {
     long m = time / 60000000L - h * 60;
     float s = ((float)time / 1000000L) - m * 60 - h * 3600;
 
-    if (h > 0)
+    if (h > 0) {
         out << h << "h";
-    if (m > 0)
+    }
+    if (m > 0) {
         out << m << "m";
+    }
     out << s << "s";
 }
 
@@ -107,19 +109,23 @@ void CrabStats::resume(const std::string& name) { (*sw)[name].resume(); }
 /** Outputs all statistics to std output */
 void CrabStats::Print(std::ostream& OS) {
     OS << "\n\n************** STATS ***************** \n";
-    for (auto& kv : (*counters))
+    for (auto& kv : (*counters)) {
         OS << kv.first << ": " << kv.second << "\n";
-    for (auto& kv : (*sw))
+    }
+    for (auto& kv : (*sw)) {
         OS << kv.first << ": " << kv.second << "\n";
+    }
     OS << "************** STATS END ***************** \n";
 }
 
 void CrabStats::PrintBrunch(std::ostream& OS) {
     OS << "\n\n************** BRUNCH STATS ***************** \n";
-    for (auto& kv : (*counters))
+    for (auto& kv : (*counters)) {
         OS << "BRUNCH_STAT " << kv.first << " " << kv.second << "\n";
-    for (auto& kv : (*sw))
+    }
+    for (auto& kv : (*sw)) {
         OS << "BRUNCH_STAT " << kv.first << " " << (kv.second).toSeconds() << "sec \n";
+    }
     OS << "************** BRUNCH STATS END ***************** \n";
 }
 

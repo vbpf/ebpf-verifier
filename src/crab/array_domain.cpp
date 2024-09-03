@@ -10,8 +10,8 @@
 
 #include "boost/endian/conversion.hpp"
 
-#include "radix_tree/radix_tree.hpp"
 #include "crab/array_domain.hpp"
+#include "radix_tree/radix_tree.hpp"
 
 #include "asm_ostream.hpp"
 #include "config.hpp"
@@ -20,8 +20,7 @@
 
 namespace crab::domains {
 
-static bool maybe_between(const NumAbsDomain& dom, const bound_t& x,
-                          const linear_expression_t& symb_lb,
+static bool maybe_between(const NumAbsDomain& dom, const bound_t& x, const linear_expression_t& symb_lb,
                           const linear_expression_t& symb_ub) {
     using namespace dsl_syntax;
     assert(x.is_finite());
@@ -43,7 +42,10 @@ class offset_t final {
     offset_t(index_t index, int prefix_length) : _index(index), _prefix_length(prefix_length) {}
     explicit operator int() const { return static_cast<int>(_index); }
     operator index_t() const { return _index; }
-    [[nodiscard]] int prefix_length() const { return _prefix_length; }
+    [[nodiscard]]
+    int prefix_length() const {
+        return _prefix_length;
+    }
 
     index_t operator[](int n) const { return (_index >> (bitsize - 1 - n)) & 1; }
 };
@@ -58,14 +60,14 @@ int radix_length(const offset_t& offset) {
 // NOTE: required by radix_tree
 // Get a range of bits out of the middle of a key, starting at [begin] for a given length.
 [[maybe_unused]]
-offset_t radix_substr(const offset_t& key, int begin, int length)
-{
+offset_t radix_substr(const offset_t& key, int begin, int length) {
     uint64_t mask;
 
-    if (length == offset_t::bitsize)
+    if (length == offset_t::bitsize) {
         mask = 0;
-    else
+    } else {
         mask = ((index_t)1) << length;
+    }
 
     mask -= 1;
     mask <<= offset_t::bitsize - length - begin;
@@ -77,8 +79,7 @@ offset_t radix_substr(const offset_t& key, int begin, int length)
 // NOTE: required by radix_tree
 // Concatenate two bit patterns.
 [[maybe_unused]]
-offset_t radix_join(const offset_t& entry1, const offset_t& entry2)
-{
+offset_t radix_join(const offset_t& entry1, const offset_t& entry2) {
     index_t value1 = (index_t)entry1;
     index_t value2 = (index_t)entry2;
     index_t value = value1 | (value2 >> entry1.prefix_length());
@@ -114,21 +115,34 @@ class cell_t final {
     }
 
   public:
-    [[nodiscard]] interval_t to_interval() const { return to_interval(_offset, _size); }
+    [[nodiscard]]
+    interval_t to_interval() const {
+        return to_interval(_offset, _size);
+    }
 
-    [[nodiscard]] bool is_null() const { return _offset == 0 && _size == 0; }
+    [[nodiscard]]
+    bool is_null() const {
+        return _offset == 0 && _size == 0;
+    }
 
-    [[nodiscard]] offset_t get_offset() const { return _offset; }
+    [[nodiscard]]
+    offset_t get_offset() const {
+        return _offset;
+    }
 
-    [[nodiscard]] variable_t get_scalar(data_kind_t kind) const { return variable_t::cell_var(kind, number_t{_offset}, _size); }
+    [[nodiscard]]
+    variable_t get_scalar(data_kind_t kind) const {
+        return variable_t::cell_var(kind, number_t{_offset}, _size);
+    }
 
     // ignore the scalar variable
     bool operator==(const cell_t& o) const { return to_interval() == o.to_interval(); }
 
     // ignore the scalar variable
     bool operator<(const cell_t& o) const {
-        if (_offset == o._offset)
+        if (_offset == o._offset) {
             return _size < o._size;
+        }
         return _offset < o._offset;
     }
 
@@ -147,9 +161,8 @@ class cell_t final {
     // Return true if [symb_lb, symb_ub] may overlap with the cell,
     // where symb_lb and symb_ub are not constant expressions.
     [[nodiscard]]
-    bool symbolic_overlap(const linear_expression_t& symb_lb,
-                     const linear_expression_t& symb_ub,
-                     const NumAbsDomain& dom) const;
+    bool symbolic_overlap(const linear_expression_t& symb_lb, const linear_expression_t& symb_ub,
+                          const NumAbsDomain& dom) const;
 
     friend std::ostream& operator<<(std::ostream& o, const cell_t& c) { return o << "cell(" << c.to_interval() << ")"; }
 };
@@ -159,8 +172,7 @@ class cell_t final {
 bool cell_t::symbolic_overlap(const linear_expression_t& symb_lb, const linear_expression_t& symb_ub,
                               const NumAbsDomain& dom) const {
     interval_t x = to_interval();
-    return maybe_between(dom, x.lb(), symb_lb, symb_ub)
-        || maybe_between(dom, x.ub(), symb_lb, symb_ub);
+    return maybe_between(dom, x.lb(), symb_lb, symb_ub) || maybe_between(dom, x.ub(), symb_lb, symb_ub);
 }
 
 // Map offsets to cells
@@ -184,8 +196,12 @@ class offset_map_t final {
 
     // for algorithm::lower_bound and algorithm::upper_bound
     struct compare_binding_t {
-        bool operator()(const typename patricia_tree_t::value_type& kv, const offset_t& o) const { return kv.first < o; }
-        bool operator()(const offset_t& o, const typename patricia_tree_t::value_type& kv) const { return o < kv.first; }
+        bool operator()(const typename patricia_tree_t::value_type& kv, const offset_t& o) const {
+            return kv.first < o;
+        }
+        bool operator()(const offset_t& o, const typename patricia_tree_t::value_type& kv) const {
+            return o < kv.first;
+        }
         bool operator()(const typename patricia_tree_t::value_type& kv1,
                         const typename patricia_tree_t::value_type& kv2) const {
             return kv1.first < kv2.first;
@@ -196,16 +212,23 @@ class offset_map_t final {
 
     void insert_cell(const cell_t& c);
 
-    [[nodiscard]] std::optional<cell_t> get_cell(offset_t o, unsigned size);
+    [[nodiscard]]
+    std::optional<cell_t> get_cell(offset_t o, unsigned size);
 
     cell_t mk_cell(offset_t o, unsigned size);
 
   public:
     offset_map_t() = default;
 
-    [[nodiscard]] bool empty() const { return _map.empty(); }
+    [[nodiscard]]
+    bool empty() const {
+        return _map.empty();
+    }
 
-    [[nodiscard]] std::size_t size() const { return _map.size(); }
+    [[nodiscard]]
+    std::size_t size() const {
+        return _map.size();
+    }
 
     void operator-=(const cell_t& c) { remove_cell(c); }
 
@@ -218,15 +241,21 @@ class offset_map_t final {
     // Return in out all cells that might overlap with (o, size).
     std::vector<cell_t> get_overlap_cells(offset_t o, unsigned size);
 
-    [[nodiscard]] std::vector<cell_t> get_overlap_cells_symbolic_offset(const NumAbsDomain& dom,
-                                                                        const linear_expression_t& symb_lb,
-                                                                        const linear_expression_t& symb_ub);
+    [[nodiscard]]
+    std::vector<cell_t> get_overlap_cells_symbolic_offset(const NumAbsDomain& dom, const linear_expression_t& symb_lb,
+                                                          const linear_expression_t& symb_ub);
 
     friend std::ostream& operator<<(std::ostream& o, offset_map_t& m);
 
     /* Operations needed if used as value in a separate_domain */
-    [[nodiscard]] bool is_top() const { return empty(); }
-    [[nodiscard]] bool is_bottom() const { return false; }
+    [[nodiscard]]
+    bool is_top() const {
+        return empty();
+    }
+    [[nodiscard]]
+    bool is_bottom() const {
+        return false;
+    }
     /*
        We don't distinguish between bottom and top.
        This is fine because separate_domain only calls bottom if
@@ -295,8 +324,9 @@ cell_t offset_map_t::mk_cell(offset_t o, unsigned size) {
     // TODO: check array is the array associated to this offset map
 
     auto maybe_c = get_cell(o, size);
-    if (maybe_c)
+    if (maybe_c) {
         return *maybe_c;
+    }
     // create a new scalar variable for representing the contents
     // of bytes array[o,o+1,..., o+size-1]
     cell_t c(o, size);
@@ -404,14 +434,9 @@ using array_map_t = std::unordered_map<data_kind_t, offset_map_t>;
 
 static thread_local crab::lazy_allocator<array_map_t> global_array_map;
 
-void clear_thread_local_state()
-{
-    global_array_map.clear();
-}
+void clear_thread_local_state() { global_array_map.clear(); }
 
-static offset_map_t& lookup_array_map(data_kind_t kind) {
-    return (*global_array_map)[kind];
-}
+static offset_map_t& lookup_array_map(data_kind_t kind) { return (*global_array_map)[kind]; }
 
 /**
     Ugly this needs to be fixed: needed if multiple analyses are
@@ -492,7 +517,8 @@ void array_domain_t::split_number_var(NumAbsDomain& inv, data_kind_t kind, const
         int cell_start_index = (int)*intv.lb().number();
         int cell_end_index = (int)*intv.ub().number();
 
-        if (!this->num_bytes.all_num(cell_start_index, cell_end_index + 1) || (cell_end_index + 1 < cell_start_index + sizeof(int64_t))) {
+        if (!this->num_bytes.all_num(cell_start_index, cell_end_index + 1) ||
+            (cell_end_index + 1 < cell_start_index + sizeof(int64_t))) {
             // We can only split numeric cells of size 8 or less.
             continue;
         }
@@ -513,8 +539,9 @@ void array_domain_t::split_number_var(NumAbsDomain& inv, data_kind_t kind, const
 }
 
 // we can only treat this as non-member because we use global state
-static std::optional<std::pair<offset_t, unsigned>>
-kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, const linear_expression_t& elem_size) {
+static std::optional<std::pair<offset_t, unsigned>> kill_and_find_var(NumAbsDomain& inv, data_kind_t kind,
+                                                                      const linear_expression_t& i,
+                                                                      const linear_expression_t& elem_size) {
     std::optional<std::pair<offset_t, unsigned>> res;
 
     offset_map_t& offset_map = lookup_array_map(kind);
@@ -556,14 +583,16 @@ kill_and_find_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t
 bool array_domain_t::all_num(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) {
     auto min_lb = inv.eval_interval(lb).lb().number();
     auto max_ub = inv.eval_interval(ub).ub().number();
-    if (!min_lb || !max_ub || !min_lb->fits_sint32() || !max_ub->fits_sint32())
+    if (!min_lb || !max_ub || !min_lb->fits_sint32() || !max_ub->fits_sint32()) {
         return false;
+    }
 
     // The all_num() call requires a legal range. If we have an illegal range,
     // we should have already generated an error about the invalid range so just
     // return true now to avoid an extra error about a non-numeric range.
-    if (*min_lb >= *max_ub)
+    if (*min_lb >= *max_ub) {
         return true;
+    }
 
     return this->num_bytes.all_num((int32_t)*min_lb, (int32_t)*max_ub);
 }
@@ -572,8 +601,9 @@ bool array_domain_t::all_num(NumAbsDomain& inv, const linear_expression_t& lb, c
 int array_domain_t::min_all_num_size(const NumAbsDomain& inv, variable_t offset) const {
     auto min_lb = inv.eval_interval(offset).lb().number();
     auto max_ub = inv.eval_interval(offset).ub().number();
-    if (!min_lb || !max_ub || !min_lb->fits_sint32() || !max_ub->fits_sint32())
+    if (!min_lb || !max_ub || !min_lb->fits_sint32() || !max_ub->fits_sint32()) {
         return 0;
+    }
     auto lb = (int)min_lb.value();
     auto ub = (int)max_ub.value();
     return std::max(0, this->num_bytes.all_num_width(lb) - (ub - lb));
@@ -591,29 +621,33 @@ std::optional<uint8_t> get_value_byte(NumAbsDomain& inv, offset_t o, int width) 
     // Convert value to bytes of the appropriate endian-ness.
     switch (width) {
     case sizeof(uint16_t):
-        if (thread_local_options.big_endian)
+        if (thread_local_options.big_endian) {
             n = boost::endian::native_to_big<uint16_t>(n);
-        else
+        } else {
             n = boost::endian::native_to_little<uint16_t>(n);
+        }
         break;
     case sizeof(uint32_t):
-        if (thread_local_options.big_endian)
+        if (thread_local_options.big_endian) {
             n = boost::endian::native_to_big<uint32_t>(n);
-        else
+        } else {
             n = boost::endian::native_to_little<uint32_t>(n);
+        }
         break;
     case sizeof(uint64_t):
-        if (thread_local_options.big_endian)
+        if (thread_local_options.big_endian) {
             n = boost::endian::native_to_big<uint64_t>(n);
-        else
+        } else {
             n = boost::endian::native_to_little<uint64_t>(n);
+        }
         break;
     }
     uint8_t* bytes = (uint8_t*)&n;
     return bytes[o % width];
 }
 
-std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i, int width) {
+std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_kind_t kind,
+                                                        const linear_expression_t& i, int width) {
     interval_t ii = inv.eval_interval(i);
     if (std::optional<number_t> n = ii.singleton()) {
         offset_map_t& offset_map = lookup_array_map(kind);
@@ -665,26 +699,29 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
                 }
                 if (size == 2) {
                     uint16_t b = *(uint16_t*)result_buffer;
-                    if (thread_local_options.big_endian)
+                    if (thread_local_options.big_endian) {
                         b = boost::endian::native_to_big<uint16_t>(b);
-                    else
+                    } else {
                         b = boost::endian::native_to_little<uint16_t>(b);
+                    }
                     return number_t{b};
                 }
                 if (size == 4) {
                     uint32_t b = *(uint32_t*)result_buffer;
-                    if (thread_local_options.big_endian)
+                    if (thread_local_options.big_endian) {
                         b = boost::endian::native_to_big<uint32_t>(b);
-                    else
+                    } else {
                         b = boost::endian::native_to_little<uint32_t>(b);
+                    }
                     return number_t{b};
                 }
                 if (size == 8) {
                     uint64_t b = *(uint64_t*)result_buffer;
-                    if (thread_local_options.big_endian)
+                    if (thread_local_options.big_endian) {
                         b = boost::endian::native_to_big<uint64_t>(b);
-                    else
+                    } else {
                         b = boost::endian::native_to_little<uint64_t>(b);
+                    }
                     return (kind == data_kind_t::uvalues) ? number_t(b) : number_t((int64_t)b);
                 }
             }
@@ -698,8 +735,8 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
             // would be unsound.
             return c.get_scalar(kind);
         } else {
-            CRAB_WARN("Ignored read from cell ", kind, "[", o, "...", o + size - 1, "]",
-                      " because it overlaps with ", cells.size(), " cells");
+            CRAB_WARN("Ignored read from cell ", kind, "[", o, "...", o + size - 1, "]", " because it overlaps with ",
+                      cells.size(), " cells");
             /*
                 TODO: we can apply here "Value Recomposition" 'a la'
                 Mine'06 (https://arxiv.org/pdf/cs/0703074.pdf)
@@ -731,28 +768,28 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
 // We are about to write to a given range of bytes on the stack.
 // Any cells covering that range need to be removed, and any cells that only
 // partially cover that range can be split such that any non-covered portions become new cells.
-static std::optional<std::pair<offset_t, unsigned>> split_and_find_var(array_domain_t& array_domain, NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size) {
+static std::optional<std::pair<offset_t, unsigned>> split_and_find_var(array_domain_t& array_domain, NumAbsDomain& inv,
+                                                                       data_kind_t kind, const linear_expression_t& idx,
+                                                                       const linear_expression_t& elem_size) {
     if (kind == data_kind_t::svalues || kind == data_kind_t::uvalues) {
         array_domain.split_number_var(inv, kind, idx, elem_size);
     }
     return kill_and_find_var(inv, kind, idx, elem_size);
 }
 
-
-std::optional<variable_t> array_domain_t::store(NumAbsDomain& inv, data_kind_t kind,
-                                                const linear_expression_t& idx,
-                                                const linear_expression_t& elem_size,
-                                                const linear_expression_t& val) {
+std::optional<variable_t> array_domain_t::store(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx,
+                                                const linear_expression_t& elem_size, const linear_expression_t& val) {
     auto maybe_cell = split_and_find_var(*this, inv, kind, idx, elem_size);
     if (maybe_cell) {
         // perform strong update
         auto [offset, size] = *maybe_cell;
         if (kind == data_kind_t::types) {
             std::optional<number_t> t = inv.eval_interval(val).singleton();
-            if (t && (int64_t)*t == T_NUM)
+            if (t && (int64_t)*t == T_NUM) {
                 num_bytes.reset(offset, size);
-            else
+            } else {
                 num_bytes.havoc(offset, size);
+            }
         }
         variable_t v = lookup_array_map(kind).mk_cell(offset, size).get_scalar(kind);
         return v;
@@ -760,8 +797,7 @@ std::optional<variable_t> array_domain_t::store(NumAbsDomain& inv, data_kind_t k
     return {};
 }
 
-std::optional<variable_t> array_domain_t::store_type(NumAbsDomain& inv,
-                                                     const linear_expression_t& idx,
+std::optional<variable_t> array_domain_t::store_type(NumAbsDomain& inv, const linear_expression_t& idx,
                                                      const linear_expression_t& elem_size,
                                                      const linear_expression_t& val) {
     auto kind = data_kind_t::types;
@@ -770,24 +806,24 @@ std::optional<variable_t> array_domain_t::store_type(NumAbsDomain& inv,
         // perform strong update
         auto [offset, size] = *maybe_cell;
         std::optional<number_t> t = inv.eval_interval(val).singleton();
-        if (t && (int64_t)*t == T_NUM)
+        if (t && (int64_t)*t == T_NUM) {
             num_bytes.reset(offset, size);
-        else
+        } else {
             num_bytes.havoc(offset, size);
+        }
         variable_t v = lookup_array_map(kind).mk_cell(offset, size).get_scalar(kind);
         return v;
     }
     return {};
 }
 
-std::optional<variable_t> array_domain_t::store_type(NumAbsDomain& inv,
-                                                     const linear_expression_t& idx,
-                                                     const linear_expression_t& elem_size,
-                                                     const Reg& reg) {
+std::optional<variable_t> array_domain_t::store_type(NumAbsDomain& inv, const linear_expression_t& idx,
+                                                     const linear_expression_t& elem_size, const Reg& reg) {
     return store_type(inv, idx, elem_size, variable_t::reg(data_kind_t::types, reg.v));
 }
 
-void array_domain_t::havoc(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx, const linear_expression_t& elem_size) {
+void array_domain_t::havoc(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx,
+                           const linear_expression_t& elem_size) {
     auto maybe_cell = split_and_find_var(*this, inv, kind, idx, elem_size);
     if (maybe_cell && kind == data_kind_t::types) {
         auto [offset, size] = *maybe_cell;
@@ -800,8 +836,9 @@ void array_domain_t::store_numbers(NumAbsDomain& inv, variable_t _idx, variable_
     // TODO: this should be an user parameter.
     const number_t max_num_elems = EBPF_STACK_SIZE;
 
-    if (is_bottom())
+    if (is_bottom()) {
         return;
+    }
 
     std::optional<number_t> idx_n = inv[_idx].singleton();
     if (!idx_n) {
@@ -823,9 +860,7 @@ void array_domain_t::store_numbers(NumAbsDomain& inv, variable_t _idx, variable_
     num_bytes.reset((int)*idx_n, (int)*width);
 }
 
-void array_domain_t::set_to_top() {
-    num_bytes.set_to_top();
-}
+void array_domain_t::set_to_top() { num_bytes.set_to_top(); }
 
 void array_domain_t::set_to_bottom() { num_bytes.set_to_bottom(); }
 
@@ -837,9 +872,7 @@ string_invariant array_domain_t::to_set() const { return num_bytes.to_set(); }
 
 bool array_domain_t::operator<=(const array_domain_t& other) const { return num_bytes <= other.num_bytes; }
 
-bool array_domain_t::operator==(const array_domain_t& other) const {
-    return num_bytes == other.num_bytes;
-}
+bool array_domain_t::operator==(const array_domain_t& other) const { return num_bytes == other.num_bytes; }
 
 void array_domain_t::operator|=(const array_domain_t& other) {
     if (is_bottom()) {
@@ -861,7 +894,8 @@ array_domain_t array_domain_t::widen(const array_domain_t& other) const {
     return array_domain_t(num_bytes | other.num_bytes);
 }
 
-array_domain_t array_domain_t::widening_thresholds(const array_domain_t& other, const iterators::thresholds_t& ts) const {
+array_domain_t array_domain_t::widening_thresholds(const array_domain_t& other,
+                                                   const iterators::thresholds_t& ts) const {
     return array_domain_t(num_bytes | other.num_bytes);
 }
 
@@ -869,7 +903,5 @@ array_domain_t array_domain_t::narrow(const array_domain_t& other) const {
     return array_domain_t(num_bytes & other.num_bytes);
 }
 
-std::ostream& operator<<(std::ostream& o, const array_domain_t& dom) {
-    return o << dom.num_bytes;
-}
+std::ostream& operator<<(std::ostream& o, const array_domain_t& dom) { return o << dom.num_bytes; }
 } // namespace crab::domains

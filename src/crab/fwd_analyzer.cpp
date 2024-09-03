@@ -30,15 +30,19 @@ class member_component_visitor final {
             _found = (c->head() == _node);
             if (!_found) {
                 for (auto& component : *c) {
-                    if (_found)
+                    if (_found) {
                         break;
+                    }
                     std::visit(*this, *component);
                 }
             }
         }
     }
 
-    [[nodiscard]] bool is_member() const { return _found; }
+    [[nodiscard]]
+    bool is_member() const {
+        return _found;
+    }
 };
 
 class interleaved_fwd_fixpoint_iterator_t final {
@@ -67,8 +71,8 @@ class interleaved_fwd_fixpoint_iterator_t final {
         _post[label] = std::move(pre);
     }
 
-    [[nodiscard]] static ebpf_domain_t extrapolate(ebpf_domain_t before, const ebpf_domain_t& after,
-                                                   unsigned int iteration) {
+    [[nodiscard]]
+    static ebpf_domain_t extrapolate(ebpf_domain_t before, const ebpf_domain_t& after, unsigned int iteration) {
         /// number of iterations until triggering widening
         constexpr auto _widening_delay = 2;
 
@@ -185,8 +189,9 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(std::shared_ptr<wto_cycle_t
         transform_to_post(head, invariant);
         for (auto& component : *cycle) {
             wto_component_t c = *component;
-            if (!std::holds_alternative<label_t>(c) || (std::get<label_t>(c) != head))
+            if (!std::holds_alternative<label_t>(c) || (std::get<label_t>(c) != head)) {
                 std::visit(*this, *component);
+            }
         }
         ebpf_domain_t new_pre = join_all_prevs(head);
         if (new_pre <= invariant) {
@@ -205,16 +210,18 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(std::shared_ptr<wto_cycle_t
 
         for (auto& component : *cycle) {
             wto_component_t c = *component;
-            if (!std::holds_alternative<label_t>(c) || (std::get<label_t>(c) != head))
+            if (!std::holds_alternative<label_t>(c) || (std::get<label_t>(c) != head)) {
                 std::visit(*this, *component);
+            }
         }
         ebpf_domain_t new_pre = join_all_prevs(head);
         if (invariant <= new_pre) {
             // No more refinement possible(pre == new_pre)
             break;
         } else {
-            if (iteration > _descending_iterations)
+            if (iteration > _descending_iterations) {
                 break;
+            }
             invariant = refine(invariant, new_pre, iteration);
             set_pre(head, invariant);
         }
