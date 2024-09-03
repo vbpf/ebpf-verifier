@@ -88,8 +88,9 @@ class cell_t final {
 
     // ignore the scalar variable
     bool operator<(const cell_t& o) const {
-        if (_offset == o._offset)
+        if (_offset == o._offset) {
             return _size < o._size;
+        }
         return _offset < o._offset;
     }
 
@@ -213,13 +214,9 @@ class array_map_t {
     }
     bool operator==(const array_map_t& other) const = default;
 
-    offset_map_t& operator[](data_kind_t kind) {
-        return map[kind];
-    }
+    offset_map_t& operator[](data_kind_t kind) { return map[kind]; }
 
-    const offset_map_t& operator[](data_kind_t kind) const {
-        return map.at(kind);
-    }
+    const offset_map_t& operator[](data_kind_t kind) const { return map.at(kind); }
 
     void operator-=(const cell_t& c) {
         for (auto& [_, v] : map) {
@@ -308,8 +305,10 @@ class array_domain_t final {
 
     void set_to_top();
     void set_to_bottom();
-    [[nodiscard]] bool is_bottom() const;
-    [[nodiscard]] bool is_top() const;
+    [[nodiscard]]
+    bool is_bottom() const;
+    [[nodiscard]]
+    bool is_top() const;
 
     bool operator<=(const array_domain_t& other) const;
     bool operator==(const array_domain_t& other) const;
@@ -323,10 +322,12 @@ class array_domain_t final {
     array_domain_t narrow(const array_domain_t& other) const;
 
     friend std::ostream& operator<<(std::ostream& o, const array_domain_t& dom);
-    [[nodiscard]] string_invariant to_set() const;
+    [[nodiscard]]
+    string_invariant to_set() const;
 
     bool all_num(const NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub);
-    [[nodiscard]] int min_all_num_size(const NumAbsDomain& inv, variable_t offset) const;
+    [[nodiscard]]
+    int min_all_num_size(const NumAbsDomain& inv, variable_t offset) const;
 
     std::optional<linear_expression_t> load(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i,
                                             int width);
@@ -349,8 +350,8 @@ class array_domain_t final {
     void initialize_numbers(int lb, int width);
 
     std::optional<std::pair<offset_t, unsigned>> split_and_find_var(NumAbsDomain& inv, data_kind_t kind,
-                                                                        const linear_expression_t& idx,
-                                                                        const linear_expression_t& elem_size);
+                                                                    const linear_expression_t& idx,
+                                                                    const linear_expression_t& elem_size);
     std::optional<std::pair<offset_t, unsigned>> kill_and_find_var(NumAbsDomain& inv, data_kind_t kind,
                                                                    const linear_expression_t& i,
                                                                    const linear_expression_t& elem_size);
