@@ -32,7 +32,8 @@ void wto_t::push_successors(const label_t& vertex, wto_partition_t& partition,
     }
 }
 
-void wto_t::start_visit(const label_t& vertex, wto_partition_t& partition, std::weak_ptr<wto_cycle_t> containing_cycle) {
+void wto_t::start_visit(const label_t& vertex, wto_partition_t& partition,
+                        std::weak_ptr<wto_cycle_t> containing_cycle) {
     wto_vertex_data_t& vertex_data = _vertex_data[vertex];
     int head_dfn = vertex_data.dfn;
     bool loop = false;
@@ -53,7 +54,7 @@ void wto_t::start_visit(const label_t& vertex, wto_partition_t& partition, std::
     // Create a new cycle component inside the containing cycle.
     auto cycle = std::make_shared<wto_cycle_t>(containing_cycle);
 
-    if (head_dfn == vertex_data.dfn) {  
+    if (head_dfn == vertex_data.dfn) {
         vertex_data.dfn = INT_MAX;
         label_t element = _stack.top();
         _stack.pop();
@@ -97,7 +98,7 @@ void wto_t::start_visit(const label_t& vertex, wto_partition_t& partition, std::
 }
 
 void wto_t::continue_visit(const label_t& vertex, wto_partition_t& partition,
-                        std::weak_ptr<wto_cycle_t> containing_cycle) {
+                           std::weak_ptr<wto_cycle_t> containing_cycle) {
     // Add the vertex at the start of the cycle
     // (end of the vector which stores the cycle in reverse order).
     auto cycle = containing_cycle.lock();
@@ -127,12 +128,16 @@ wto_t::wto_t(const cfg_t& cfg) : _cfg(cfg) {
 
     // Keep processing tasks until we're done.
     while (!_visit_stack.empty()) {
-        visit_args_t& args2 = _visit_stack.top();
+        visit_args_t args2 = _visit_stack.top();
         _visit_stack.pop();
         switch (args2.type) {
-        case visit_task_type_t::PushSuccessors: push_successors(args2.vertex, args2.partition, args2.containing_cycle); break;
+        case visit_task_type_t::PushSuccessors:
+            push_successors(args2.vertex, args2.partition, args2.containing_cycle);
+            break;
         case visit_task_type_t::StartVisit: start_visit(args2.vertex, args2.partition, args2.containing_cycle); break;
-        case visit_task_type_t::ContinueVisit: continue_visit(args2.vertex, args2.partition, args2.containing_cycle); break;
+        case visit_task_type_t::ContinueVisit:
+            continue_visit(args2.vertex, args2.partition, args2.containing_cycle);
+            break;
         default: break;
         }
     }

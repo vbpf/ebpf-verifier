@@ -7,18 +7,23 @@ std::ostream& operator<<(std::ostream& o, const bitset_domain_t& b) {
     o << "Numbers -> {";
     bool first = true;
     for (int i = -EBPF_STACK_SIZE; i < 0; i++) {
-        if (b.non_numerical_bytes[EBPF_STACK_SIZE + i])
+        if (b.non_numerical_bytes[EBPF_STACK_SIZE + i]) {
             continue;
-        if (!first)
+        }
+        if (!first) {
             o << ", ";
+        }
         first = false;
         o << "[" << EBPF_STACK_SIZE + i;
         int j = i + 1;
-        for (; j < 0; j++)
-            if (b.non_numerical_bytes[EBPF_STACK_SIZE + j])
+        for (; j < 0; j++) {
+            if (b.non_numerical_bytes[EBPF_STACK_SIZE + j]) {
                 break;
-        if (j > i + 1)
+            }
+        }
+        if (j > i + 1) {
             o << "..." << EBPF_STACK_SIZE + j - 1;
+        }
         o << "]";
         i = j;
     }
@@ -26,8 +31,7 @@ std::ostream& operator<<(std::ostream& o, const bitset_domain_t& b) {
     return o;
 }
 
-string_invariant bitset_domain_t::to_set() const
-{
+string_invariant bitset_domain_t::to_set() const {
     if (this->is_bottom()) {
         return string_invariant::bottom();
     }
@@ -37,15 +41,19 @@ string_invariant bitset_domain_t::to_set() const
 
     std::set<std::string> result;
     for (int i = -EBPF_STACK_SIZE; i < 0; i++) {
-        if (non_numerical_bytes[EBPF_STACK_SIZE + i])
+        if (non_numerical_bytes[EBPF_STACK_SIZE + i]) {
             continue;
+        }
         std::string value = "s[" + std::to_string(EBPF_STACK_SIZE + i);
         int j = i + 1;
-        for (; j < 0; j++)
-            if (non_numerical_bytes[EBPF_STACK_SIZE + j])
+        for (; j < 0; j++) {
+            if (non_numerical_bytes[EBPF_STACK_SIZE + j]) {
                 break;
-        if (j > i + 1)
+            }
+        }
+        if (j > i + 1) {
             value += "..." + std::to_string(EBPF_STACK_SIZE + j - 1);
+        }
         value += "].type=number";
         result.insert(value);
         i = j;

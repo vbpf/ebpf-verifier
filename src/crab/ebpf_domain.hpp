@@ -63,6 +63,7 @@ class ebpf_domain_t final {
     void operator()(const Assume&);
     void operator()(const Bin&);
     void operator()(const Call&);
+    void operator()(const CallLocal&);
     void operator()(const Callx&);
     void operator()(const Comparable&);
     void operator()(const Exit&);
@@ -77,6 +78,7 @@ class ebpf_domain_t final {
     void operator()(const Un&);
     void operator()(const Undefined&);
     void operator()(const ValidAccess&);
+    void operator()(const ValidCall&);
     void operator()(const ValidMapKeyValue&);
     void operator()(const ValidSize&);
     void operator()(const ValidStore&);
@@ -162,6 +164,10 @@ class ebpf_domain_t final {
     std::optional<variable_t> get_type_offset_variable(const Reg& reg) const;
 
     void scratch_caller_saved_registers();
+  
+    void save_callee_saved_registers(const std::string& prefix);
+    void restore_callee_saved_registers(const std::string& prefix);
+  
     [[nodiscard]]
     std::optional<uint32_t> get_map_type(const Reg& map_fd_reg) const;
     [[nodiscard]]

@@ -123,7 +123,7 @@ static std::vector<linear_constraint_t> assume_bit_cst_interval(const NumAbsDoma
     default: throw std::exception();
     }
 
-    return {(result) ? linear_constraint_t::TRUE() : linear_constraint_t::FALSE()};
+    return {result ? linear_constraint_t::true_const() : linear_constraint_t::false_const()};
 }
 
 static std::vector<linear_constraint_t> assume_signed_64bit_eq(const NumAbsDomain& inv, variable_t left_svalue,
@@ -446,17 +446,17 @@ static std::vector<linear_constraint_t> assume_signed_cst_interval(const NumAbsD
     auto rub = right_interval.ub();
     if (!is_lt && (strict ? (lub <= rlb) : (lub < rlb))) {
         // Left signed interval is lower than right signed interval.
-        return {linear_constraint_t::FALSE()};
+        return {linear_constraint_t::false_const()};
     } else if (is_lt && (strict ? (llb >= rub) : (llb > rub))) {
         // Left signed interval is higher than right signed interval.
-        return {linear_constraint_t::FALSE()};
+        return {linear_constraint_t::false_const()};
     }
     if (is_lt && (strict ? (lub < rlb) : (lub <= rlb))) {
         // Left signed interval is lower than right signed interval.
-        return {linear_constraint_t::TRUE()};
+        return {linear_constraint_t::true_const()};
     } else if (!is_lt && (strict ? (llb > rub) : (llb >= rub))) {
         // Left signed interval is higher than right signed interval.
-        return {linear_constraint_t::TRUE()};
+        return {linear_constraint_t::true_const()};
     }
 
     if (is64) {
@@ -656,10 +656,10 @@ static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAb
     auto rub = right_interval.ub();
     if (!is_lt && (strict ? (lub <= rlb) : (lub < rlb))) {
         // Left unsigned interval is lower than right unsigned interval.
-        return {linear_constraint_t::FALSE()};
+        return {linear_constraint_t::false_const()};
     } else if (is_lt && (strict ? (llb >= rub) : (llb > rub))) {
         // Left unsigned interval is higher than right unsigned interval.
-        return {linear_constraint_t::FALSE()};
+        return {linear_constraint_t::false_const()};
     }
     if (is_lt && (strict ? (lub < rlb) : (lub <= rlb))) {
         // Left unsigned interval is lower than right unsigned interval. We still add a
@@ -667,7 +667,7 @@ static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAb
         if (is64) {
             return {strict ? left_uvalue < right_uvalue : left_uvalue <= right_uvalue};
         } else {
-            return {linear_constraint_t::TRUE()};
+            return {linear_constraint_t::true_const()};
         }
     } else if (!is_lt && (strict ? (llb > rub) : (llb >= rub))) {
         // Left unsigned interval is higher than right unsigned interval. We still add a
@@ -675,7 +675,7 @@ static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAb
         if (is64) {
             return {strict ? left_uvalue > right_uvalue : left_uvalue >= right_uvalue};
         } else {
-            return {linear_constraint_t::TRUE()};
+            return {linear_constraint_t::true_const()};
         }
     }
 
@@ -1011,6 +1011,35 @@ void ebpf_domain_t::scratch_caller_saved_registers() {
     }
 }
 
+void ebpf_domain_t::save_callee_saved_registers(const std::string& prefix) {
+    // Create variables specific to the new call stack frame that store
+    // copies of the states of r6 through r9.
+    for (int r = R6; r <= R9; r++) {
+        for (data_kind_t kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes;
+             kind = (data_kind_t)((int)kind + 1)) {
+            variable_t src_var = variable_t::reg(kind, r);
+            if (!m_inv[src_var].is_top()) {
+                assign(variable_t::stack_frame_var(kind, r, prefix), src_var);
+            }
+        }
+    }
+}
+
+void ebpf_domain_t::restore_callee_saved_registers(const std::string& prefix) {
+    for (int r = R6; r <= R9; r++) {
+        for (data_kind_t kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes;
+             kind = (data_kind_t)((int)kind + 1)) {
+            variable_t src_var = variable_t::stack_frame_var(kind, r, prefix);
+            if (!m_inv[src_var].is_top()) {
+                assign(variable_t::reg(kind, r), src_var);
+            } else {
+                havoc(variable_t::reg(kind, r));
+            }
+            havoc(src_var);
+        }
+    }
+}
+
 void ebpf_domain_t::forget_packet_pointers() {
     using namespace crab::dsl_syntax;
 
@@ -1169,7 +1198,6 @@ void ebpf_domain_t::require(NumAbsDomain& inv, const linear_constraint_t& cst, c
     if (check_require) {
         check_require(inv, cst, s + " (" + this->current_assertion + ")");
     }
-
     if (thread_local_options.assume_assertions) {
         // avoid redundant errors
         crab::assume(inv, cst);
@@ -1569,7 +1597,14 @@ void ebpf_domain_t::operator()(const Un& stmt) {
     }
 }
 
-void ebpf_domain_t::operator()(const Exit& a) {}
+void ebpf_domain_t::operator()(const Exit& a) {
+    // Clean up any state for the current stack frame.
+    std::string prefix = a.stack_frame_prefix;
+    if (prefix.empty()) {
+        return;
+    }
+    restore_callee_saved_registers(prefix);
+}
 
 void ebpf_domain_t::operator()(const Jmp& a) {}
 
@@ -1581,7 +1616,7 @@ void ebpf_domain_t::operator()(const Comparable& s) {
         // We must check that they belong to a singleton region:
         if (!type_inv.is_in_group(inv, s.r1, TypeGroup::singleton_ptr) &&
             !type_inv.is_in_group(inv, s.r1, TypeGroup::map_fd)) {
-            require(inv, linear_constraint_t::FALSE(), "Cannot subtract pointers to non-singleton regions");
+            require(inv, linear_constraint_t::false_const(), "Cannot subtract pointers to non-singleton regions");
             return;
         }
         // And, to avoid wraparound errors, they must be within bounds.
@@ -1596,7 +1631,7 @@ void ebpf_domain_t::operator()(const Comparable& s) {
 
 void ebpf_domain_t::operator()(const Addable& s) {
     if (!type_inv.implies_type(m_inv, type_is_pointer(reg_pack(s.ptr)), type_is_number(s.num))) {
-        require(m_inv, linear_constraint_t::FALSE(), "Only numbers can be added to pointers");
+        require(m_inv, linear_constraint_t::false_const(), "Only numbers can be added to pointers");
     }
 }
 
@@ -1604,7 +1639,7 @@ void ebpf_domain_t::operator()(const ValidDivisor& s) {
     using namespace crab::dsl_syntax;
     auto reg = reg_pack(s.reg);
     if (!type_inv.implies_type(m_inv, type_is_pointer(reg), type_is_number(s.reg))) {
-        require(m_inv, linear_constraint_t::FALSE(), "Only numbers can be used as divisors");
+        require(m_inv, linear_constraint_t::false_const(), "Only numbers can be used as divisors");
     }
     if (!thread_local_options.allow_division_by_zero) {
         auto v = s.is_signed ? reg.svalue : reg.uvalue;
@@ -1614,13 +1649,13 @@ void ebpf_domain_t::operator()(const ValidDivisor& s) {
 
 void ebpf_domain_t::operator()(const ValidStore& s) {
     if (!type_inv.implies_type(m_inv, type_is_not_stack(reg_pack(s.mem)), type_is_number(s.val))) {
-        require(m_inv, linear_constraint_t::FALSE(), "Only numbers can be stored to externally-visible regions");
+        require(m_inv, linear_constraint_t::false_const(), "Only numbers can be stored to externally-visible regions");
     }
 }
 
 void ebpf_domain_t::operator()(const TypeConstraint& s) {
     if (!type_inv.is_in_group(m_inv, s.reg, s.types)) {
-        require(m_inv, linear_constraint_t::FALSE(), "Invalid type");
+        require(m_inv, linear_constraint_t::false_const(), "Invalid type");
     }
 }
 
@@ -1633,17 +1668,17 @@ void ebpf_domain_t::operator()(const FuncConstraint& s) {
             // We can now process it as if the id was immediate.
             int32_t imm = sn->cast_to_sint32();
             if (!global_program_info->platform->is_helper_usable(imm)) {
-                require(m_inv, linear_constraint_t::FALSE(), "invalid helper function id " + std::to_string(imm));
+                require(m_inv, linear_constraint_t::false_const(), "invalid helper function id " + std::to_string(imm));
                 return;
             }
             Call call = make_call(imm, *global_program_info->platform);
-            for (Assert a : get_assertions(call, *global_program_info)) {
+            for (Assert a : get_assertions(call, *global_program_info, {})) {
                 (*this)(a);
             }
             return;
         }
     }
-    require(m_inv, linear_constraint_t::FALSE(), "callx helper function id is not a valid singleton");
+    require(m_inv, linear_constraint_t::false_const(), "callx helper function id is not a valid singleton");
 }
 
 void ebpf_domain_t::operator()(const ValidSize& s) {
@@ -1768,6 +1803,16 @@ crab::interval_t ebpf_domain_t::get_map_max_entries(const Reg& map_fd_reg) const
     return result;
 }
 
+void ebpf_domain_t::operator()(const ValidCall& s) {
+    if (!s.stack_frame_prefix.empty()) {
+        EbpfHelperPrototype proto = global_program_info->platform->get_helper_prototype(s.func);
+        if (proto.return_type == EBPF_RETURN_TYPE_INTEGER_OR_NO_RETURN_IF_SUCCEED) {
+            require(m_inv, linear_constraint_t::false_const(), "tail call not supported in subprogram");
+            return;
+        }
+    }
+}
+
 void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
     using namespace crab::dsl_syntax;
 
@@ -1778,14 +1823,14 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
     if (s.key) {
         auto key_size = get_map_key_size(s.map_fd_reg).singleton();
         if (!key_size.has_value()) {
-            require(m_inv, linear_constraint_t::FALSE(), "Map key size is not singleton");
+            require(m_inv, linear_constraint_t::false_const(), "Map key size is not singleton");
             return;
         }
         width = (int)key_size.value();
     } else {
         auto value_size = get_map_value_size(s.map_fd_reg).singleton();
         if (!value_size.has_value()) {
-            require(m_inv, linear_constraint_t::FALSE(), "Map value size is not singleton");
+            require(m_inv, linear_constraint_t::false_const(), "Map value size is not singleton");
             return;
         }
         width = (int)value_size.value();
@@ -1800,7 +1845,7 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
                 std::string lb_s = lb_is && lb_is->fits_sint32() ? std::to_string((int32_t)*lb_is) : "-oo";
                 auto ub_is = inv.eval_interval(ub).ub().number();
                 std::string ub_s = ub_is && ub_is->fits_sint32() ? std::to_string((int32_t)*ub_is) : "oo";
-                require(inv, linear_constraint_t::FALSE(),
+                require(inv, linear_constraint_t::false_const(),
                         "Illegal map update with a non-numerical value [" + lb_s + "-" + ub_s + ")");
             } else if (thread_local_options.strict && fd_type.has_value()) {
                 EbpfMapType map_type = global_program_info->platform->get_map_type(*fd_type);
@@ -1809,7 +1854,7 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
                     variable_t key_ptr = access_reg.stack_offset;
                     std::optional<number_t> offset = inv[key_ptr].singleton();
                     if (!offset.has_value()) {
-                        require(inv, linear_constraint_t::FALSE(), "Pointer must be a singleton");
+                        require(inv, linear_constraint_t::false_const(), "Pointer must be a singleton");
                     } else if (s.key) {
                         // Look up the value pointed to by the key pointer.
                         variable_t key_value =
@@ -1818,7 +1863,7 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
                         if (auto max_entries = get_map_max_entries(s.map_fd_reg).lb().number()) {
                             require(inv, key_value < *max_entries, "Array index overflow");
                         } else {
-                            require(inv, linear_constraint_t::FALSE(), "Max entries is not finite");
+                            require(inv, linear_constraint_t::false_const(), "Max entries is not finite");
                         }
                         require(inv, key_value >= 0, "Array index underflow");
                     }
@@ -1836,7 +1881,7 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
             require(inv, access_reg.svalue > 0, "Possible null access");
             // Shared memory is zero-initialized when created so is safe to read and write.
         } else {
-            require(inv, linear_constraint_t::FALSE(), "Only stack or packet can be used as a parameter");
+            require(inv, linear_constraint_t::false_const(), "Only stack or packet can be used as a parameter");
         }
     });
 }
@@ -1872,14 +1917,14 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
                 // Require that the stack range contains numbers.
                 if (!stack.all_num(inv, lb, ub)) {
                     if (s.offset < 0) {
-                        require(inv, linear_constraint_t::FALSE(), "Stack content is not numeric");
+                        require(inv, linear_constraint_t::false_const(), "Stack content is not numeric");
                     } else if (std::holds_alternative<Imm>(s.width)) {
                         if (!inv.entail(((int)std::get<Imm>(s.width).v) <= reg.stack_numeric_size - s.offset)) {
-                            require(inv, linear_constraint_t::FALSE(), "Stack content is not numeric");
+                            require(inv, linear_constraint_t::false_const(), "Stack content is not numeric");
                         }
                     } else {
                         if (!inv.entail(reg_pack(std::get<Reg>(s.width)).svalue <= reg.stack_numeric_size - s.offset)) {
-                            require(inv, linear_constraint_t::FALSE(), "Stack content is not numeric");
+                            require(inv, linear_constraint_t::false_const(), "Stack content is not numeric");
                         }
                     }
                 }
@@ -1901,14 +1946,14 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
                 if (s.or_null) {
                     require(inv, reg.svalue == 0, "Non-null number");
                 } else {
-                    require(inv, linear_constraint_t::FALSE(), "Only pointers can be dereferenced");
+                    require(inv, linear_constraint_t::false_const(), "Only pointers can be dereferenced");
                 }
             }
             break;
         case T_MAP:
         case T_MAP_PROGRAMS:
             if (!is_comparison_check) {
-                require(inv, linear_constraint_t::FALSE(), "FDs cannot be dereferenced directly");
+                require(inv, linear_constraint_t::false_const(), "FDs cannot be dereferenced directly");
             }
             break;
         case T_SHARED: {
@@ -1923,7 +1968,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
             // Shared memory is zero-initialized when created so is safe to read and write.
             break;
         }
-        default: require(inv, linear_constraint_t::FALSE(), "Invalid type"); break;
+        default: require(inv, linear_constraint_t::false_const(), "Invalid type"); break;
         }
     });
 }
@@ -2349,7 +2394,7 @@ void ebpf_domain_t::operator()(const Call& call) {
             bool store_numbers = true;
             auto variable = get_type_offset_variable(param.mem);
             if (!variable.has_value()) {
-                require(m_inv, linear_constraint_t::FALSE(), "Argument must be a pointer to writable memory");
+                require(m_inv, linear_constraint_t::false_const(), "Argument must be a pointer to writable memory");
                 return;
             }
             variable_t addr = variable.value();
@@ -2416,6 +2461,14 @@ out:
     if (call.reallocate_packet) {
         forget_packet_pointers();
     }
+}
+
+void ebpf_domain_t::operator()(const CallLocal& call) {
+    using namespace crab::dsl_syntax;
+    if (m_inv.is_bottom()) {
+        return;
+    }
+    save_callee_saved_registers(call.stack_frame_prefix);
 }
 
 void ebpf_domain_t::operator()(const Callx& callx) {

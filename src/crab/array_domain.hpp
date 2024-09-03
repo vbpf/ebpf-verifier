@@ -25,7 +25,6 @@
 
 #include <functional>
 #include <optional>
-#include <utility>
 
 #include <boost/container/flat_map.hpp>
 
@@ -326,6 +325,7 @@ class array_domain_t final {
     string_invariant to_set() const;
 
     bool all_num(const NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub);
+  
     [[nodiscard]]
     int min_all_num_size(const NumAbsDomain& inv, variable_t offset) const;
 

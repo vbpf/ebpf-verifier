@@ -202,14 +202,19 @@ std::tuple<string_invariant, bool> ebpf_analyze_program_for_test(std::ostream& o
     if (entry_inv.is_bottom()) {
         throw std::runtime_error("Entry invariant is inconsistent");
     }
-    cfg_t cfg = prepare_cfg(prog, info, options.simplify, false);
-    auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, std::move(entry_inv));
-    checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
-    print_report(os, report, prog, false);
+    try {
+        cfg_t cfg = prepare_cfg(prog, info, options.simplify, false);
+        auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, std::move(entry_inv));
+        checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
+        print_report(os, report, prog, false);
 
-    auto pre_invariant_map = to_string_invariant_map(pre_invariants);
+        auto pre_invariant_map = to_string_invariant_map(pre_invariants);
 
-    return {pre_invariant_map.at(label_t::exit), (report.total_warnings == 0)};
+        return {pre_invariant_map.at(label_t::exit), (report.total_warnings == 0)};
+    } catch (std::runtime_error& e) {
+        os << e.what();
+        return {string_invariant::top(), false};
+    }
 }
 
 /// Returned value is true if the program passes verification.
