@@ -259,7 +259,7 @@ code:
 post: ["r0.type=number"]
 
 messages:
-  - "0/2: tail call not supported in subprogram (valid call(tail_call))"
+  - "0/2.0: tail call not supported in subprogram (valid call(tail_call))"
 ---
 test-case: call local must preserve R6-R9 types
 

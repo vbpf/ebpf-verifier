@@ -75,7 +75,7 @@ post:
   - r0.svalue=r0.uvalue
 
 messages:
-  - "0.2: Possible null access (within stack(r2:key_size(r1)))"
+  - "0.3: Possible null access (within stack(r2:key_size(r1)))"
 
 ---
 test-case: bpf_map_lookup_elem shared key - too small
