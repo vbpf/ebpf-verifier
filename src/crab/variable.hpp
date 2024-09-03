@@ -20,7 +20,18 @@ using index_t = uint64_t;
 namespace crab {
 
 // data_kind_t is eBPF-specific.
-enum class data_kind_t { types, svalues, uvalues, ctx_offsets, map_fds, packet_offsets, shared_offsets, stack_offsets, shared_region_sizes, stack_numeric_sizes };
+enum class data_kind_t {
+    types,
+    svalues,
+    uvalues,
+    ctx_offsets,
+    map_fds,
+    packet_offsets,
+    shared_offsets,
+    stack_offsets,
+    shared_region_sizes,
+    stack_numeric_sizes
+};
 std::ostream& operator<<(std::ostream& o, const data_kind_t& s);
 
 // Wrapper for typed variables used by the crab abstract domains and linear_constraints.
@@ -31,7 +42,10 @@ class variable_t final {
     explicit variable_t(index_t id) : _id(id) {}
 
   public:
-    [[nodiscard]] std::size_t hash() const { return (size_t)_id; }
+    [[nodiscard]]
+    std::size_t hash() const {
+        return (size_t)_id;
+    }
 
     bool operator==(variable_t o) const { return _id == o._id; }
 
@@ -40,14 +54,22 @@ class variable_t final {
     // for flat_map
     bool operator<(variable_t o) const { return _id < o._id; }
 
+    [[nodiscard]]
+    std::string name() const {
+        return names->at(_id);
+    }
 
-    [[nodiscard]] std::string name() const { return names->at(_id); }
+    [[nodiscard]]
+    bool is_type() const {
+        return names->at(_id).find(".type") != std::string::npos;
+    }
 
-    [[nodiscard]] bool is_type() const { return names->at(_id).find(".type") != std::string::npos; }
+    [[nodiscard]]
+    bool is_unsigned() const {
+        return names->at(_id).find(".uvalue") != std::string::npos;
+    }
 
-    [[nodiscard]] bool is_unsigned() const { return names->at(_id).find(".uvalue") != std::string::npos; }
-
-    friend std::ostream& operator<<(std::ostream& o, variable_t v)  { return o << names->at(v._id); }
+    friend std::ostream& operator<<(std::ostream& o, variable_t v) { return o << names->at(v._id); }
 
     // var_factory portion.
     // This singleton is eBPF-specific, to avoid lifetime issues and/or passing factory explicitly everywhere:
@@ -78,7 +100,8 @@ class variable_t final {
     static variable_t packet_size();
     static std::vector<variable_t> get_loop_counters();
     static variable_t loop_counter(const std::string& label);
-    [[nodiscard]] bool is_in_stack() const;
+    [[nodiscard]]
+    bool is_in_stack() const;
 
     struct Hasher {
         std::size_t operator()(const variable_t& v) const { return v.hash(); }

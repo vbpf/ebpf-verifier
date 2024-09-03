@@ -14,7 +14,7 @@ struct ebpf_inst {
     std::uint8_t dst : 4; //< Destination register
     std::uint8_t src : 4; //< Source register
     std::int16_t offset;
-    std::int32_t imm;     //< Immediate constant
+    std::int32_t imm; //< Immediate constant
     constexpr bool operator==(const ebpf_inst&) const = default;
 };
 
@@ -45,10 +45,10 @@ enum {
 
     INST_MODE_MASK = 0xe0,
 
-    INST_MODE_IMM = 0x00, // 64-bit immediate instructions
-    INST_MODE_ABS = 0x20, // legacy BPF packet access (absolute)
-    INST_MODE_IND = 0x40, // legacy BPF packet access (indirect)
-    INST_MODE_MEM = 0x60, // regular load and store operations
+    INST_MODE_IMM = 0x00,   // 64-bit immediate instructions
+    INST_MODE_ABS = 0x20,   // legacy BPF packet access (absolute)
+    INST_MODE_IND = 0x40,   // legacy BPF packet access (indirect)
+    INST_MODE_MEM = 0x60,   // regular load and store operations
     INST_MODE_MEMSX = 0x80, // sign-extension load operations
     INST_MODE_UNUSED1 = 0xa0,
     INST_MODE_ATOMIC = 0xc0, // atomic operations
@@ -72,20 +72,20 @@ enum {
     INST_CALL_LOCAL = 0x1,
     INST_CALL_BTF_HELPER = 0x2,
 
-    INST_ALU_OP_ADD  = 0x00,
-    INST_ALU_OP_SUB  = 0x10,
-    INST_ALU_OP_MUL  = 0x20,
-    INST_ALU_OP_DIV  = 0x30,
-    INST_ALU_OP_OR   = 0x40,
-    INST_ALU_OP_AND  = 0x50,
-    INST_ALU_OP_LSH  = 0x60,
-    INST_ALU_OP_RSH  = 0x70,
-    INST_ALU_OP_NEG  = 0x80,
-    INST_ALU_OP_MOD  = 0x90,
-    INST_ALU_OP_XOR  = 0xa0,
-    INST_ALU_OP_MOV  = 0xb0,
+    INST_ALU_OP_ADD = 0x00,
+    INST_ALU_OP_SUB = 0x10,
+    INST_ALU_OP_MUL = 0x20,
+    INST_ALU_OP_DIV = 0x30,
+    INST_ALU_OP_OR = 0x40,
+    INST_ALU_OP_AND = 0x50,
+    INST_ALU_OP_LSH = 0x60,
+    INST_ALU_OP_RSH = 0x70,
+    INST_ALU_OP_NEG = 0x80,
+    INST_ALU_OP_MOD = 0x90,
+    INST_ALU_OP_XOR = 0xa0,
+    INST_ALU_OP_MOV = 0xb0,
     INST_ALU_OP_ARSH = 0xc0,
-    INST_ALU_OP_END  = 0xd0,
+    INST_ALU_OP_END = 0xd0,
     INST_ALU_OP_MASK = 0xf0,
 
     R0_RETURN_VALUE = 0,

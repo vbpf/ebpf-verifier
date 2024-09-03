@@ -174,8 +174,11 @@ struct MarshalVisitor {
     }
 
     vector<ebpf_inst> operator()(Call const& b) {
-        return {
-            ebpf_inst{.opcode = static_cast<uint8_t>(INST_OP_CALL), .dst = 0, .src = INST_CALL_STATIC_HELPER, .offset = 0, .imm = b.func}};
+        return {ebpf_inst{.opcode = static_cast<uint8_t>(INST_OP_CALL),
+                          .dst = 0,
+                          .src = INST_CALL_STATIC_HELPER,
+                          .offset = 0,
+                          .imm = b.func}};
     }
 
     vector<ebpf_inst> operator()(CallLocal const& b) {
@@ -188,8 +191,10 @@ struct MarshalVisitor {
 
     vector<ebpf_inst> operator()(Callx const& b) {
         // callx is defined to have the register in 'dst' not in 'src'.
-        return {
-            ebpf_inst{.opcode = static_cast<uint8_t>(INST_OP_CALLX), .dst = b.func.v, .src = INST_CALL_STATIC_HELPER, .offset = 0}};
+        return {ebpf_inst{.opcode = static_cast<uint8_t>(INST_OP_CALLX),
+                          .dst = b.func.v,
+                          .src = INST_CALL_STATIC_HELPER,
+                          .offset = 0}};
     }
 
     vector<ebpf_inst> operator()(Exit const& b) {
@@ -217,10 +222,11 @@ struct MarshalVisitor {
             return {res};
         } else {
             int32_t imm = label_to_offset32(b.target);
-            if (imm != 0)
+            if (imm != 0) {
                 return {ebpf_inst{.opcode = INST_OP_JA32, .imm = imm}};
-            else
+            } else {
                 return {ebpf_inst{.opcode = INST_OP_JA16, .offset = label_to_offset16(b.target)}};
+            }
         }
     }
 
@@ -233,8 +239,9 @@ struct MarshalVisitor {
             .offset = static_cast<int16_t>(access.offset),
         };
         if (b.is_load) {
-            if (!std::holds_alternative<Reg>(b.value))
+            if (!std::holds_alternative<Reg>(b.value)) {
                 throw std::runtime_error(std::string("LD IMM: ") + to_string(b));
+            }
             res.opcode |= INST_CLS_LD | 0x1;
             res.dst = static_cast<uint8_t>(std::get<Reg>(b.value).v);
             res.src = static_cast<uint8_t>(access.basereg.v);
@@ -271,19 +278,18 @@ struct MarshalVisitor {
 
     vector<ebpf_inst> operator()(Atomic const& b) {
         int32_t imm = (int32_t)b.op;
-        if (b.fetch)
+        if (b.fetch) {
             imm |= INST_FETCH;
-        return {ebpf_inst{
-            .opcode = static_cast<uint8_t>(INST_CLS_STX | INST_MODE_ATOMIC | width_to_opcode(b.access.width)),
-            .dst = b.access.basereg.v,
-            .src = b.valreg.v,
-            .offset = static_cast<int16_t>(b.access.offset),
-            .imm = imm}};
+        }
+        return {
+            ebpf_inst{.opcode = static_cast<uint8_t>(INST_CLS_STX | INST_MODE_ATOMIC | width_to_opcode(b.access.width)),
+                      .dst = b.access.basereg.v,
+                      .src = b.valreg.v,
+                      .offset = static_cast<int16_t>(b.access.offset),
+                      .imm = imm}};
     }
 
-    vector<ebpf_inst> operator()(IncrementLoopCounter const& ins) {
-        return {};
-    }
+    vector<ebpf_inst> operator()(IncrementLoopCounter const& ins) { return {}; }
 };
 
 vector<ebpf_inst> marshal(const Instruction& ins, pc_t pc) {
@@ -304,8 +310,9 @@ vector<ebpf_inst> marshal(const vector<Instruction>& insts) {
 
 static int size(Instruction inst) {
     if (std::holds_alternative<Bin>(inst)) {
-        if (std::get<Bin>(inst).lddw)
+        if (std::get<Bin>(inst).lddw) {
             return 2;
+        }
     }
     if (std::holds_alternative<LoadMapFd>(inst)) {
         return 2;
