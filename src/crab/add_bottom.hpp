@@ -48,14 +48,17 @@ class AddBottom final {
         return dom && dom->is_top();
     }
 
-    bool operator<=(const AddBottom& o) const {
+    std::partial_ordering operator<=>(const AddBottom& o) const {
         if (!dom) {
-            return true;
+            if (!o.dom) {
+                return std::partial_ordering::equivalent;
+            }
+            return std::partial_ordering::less;
         }
         if (!o.dom) {
-            return false;
+            return std::partial_ordering::greater;
         }
-        return *dom <= *o.dom;
+        return *dom <=> *o.dom;
     }
 
     void operator|=(const AddBottom& o) {

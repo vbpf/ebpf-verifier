@@ -349,7 +349,7 @@ bool SplitDBM::add_univar_disequation(variable_t x, const number_t& n) {
     return true;
 }
 
-bool SplitDBM::operator<=(const SplitDBM& o) const {
+bool SplitDBM::less(const SplitDBM& o) const {
     // cover all trivial cases to avoid allocating a dbm matrix
     if (o.is_top()) {
         return true;
@@ -409,6 +409,19 @@ bool SplitDBM::operator<=(const SplitDBM& o) const {
     return true;
 }
 
+std::partial_ordering SplitDBM::operator<=>(const SplitDBM& o) const {
+    if (this->less(o)) {
+        if (o.less(*this)) {
+            return std::partial_ordering::equivalent;
+        }
+        return std::partial_ordering::less;
+    }
+    if (o.less(*this)) {
+        return std::partial_ordering::greater;
+    }
+    return std::partial_ordering::unordered;
+}
+
 SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
     if (o.is_top()) {
         return o;
@@ -416,11 +429,6 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
     if (is_top()) {
         return *this;
     }
-    CRAB_LOG("zones-split", std::cout << "Before join:\n"
-                                      << "DBM 1\n"
-                                      << *this << "\n"
-                                      << "DBM 2\n"
-                                      << o << "\n");
     // Figure out the common renaming, initializing the
     // resulting potentials as we go.
     std::vector<vert_id> perm_x{0};
@@ -574,9 +582,6 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
 
     // SplitDBM res(join_range, out_vmap, out_revmap, join_g, join_pot);
     SplitDBM res(std::move(out_vmap), std::move(out_revmap), std::move(join_g), std::move(pot_rx), vert_set_t());
-    // join_g.check_adjs();
-    CRAB_LOG("zones-split", std::cout << "Result join:\n" << res << "\n");
-
     return res;
 }
 
@@ -647,7 +652,7 @@ std::optional<SplitDBM> SplitDBM::meet(const SplitDBM& o) const {
     for (auto [v, n] : o.vert_map) {
         if (auto it = meet_verts.find(v); it != meet_verts.end()) {
             perm_y[it->second] = n;
-        }else {
+        } else {
             auto vv = static_cast<vert_id>(perm_y.size());
             meet_rev.emplace_back(v);
 
@@ -982,11 +987,14 @@ static std::string to_string(const variable_t vd, const variable_t vs, const Spl
                              const bool eq) {
     std::stringstream elem;
     if (eq) {
-        if (w.operator>(0)) {
+        const auto order = w <=> 0;
+        if (order == std::strong_ordering::greater) {
             elem << vd << "=" << vs << "+" << w;
-        } else if (w.operator<(0)) {
+        }
+        if (order == std::strong_ordering::less) {
             elem << vs << "=" << vd << "+" << -w;
-        } else {
+        }
+        if (order == std::strong_ordering::equal) {
             elem << std::min(vs.name(), vd.name()) << "=" << std::max(vs.name(), vd.name());
         }
     } else {

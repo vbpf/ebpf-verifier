@@ -33,11 +33,20 @@ class bitset_domain_t final {
     [[nodiscard]]
     string_invariant to_set() const;
 
-    bool operator<=(const bitset_domain_t& other) const {
-        return (non_numerical_bytes | other.non_numerical_bytes) == other.non_numerical_bytes;
+    std::partial_ordering operator<=>(const bitset_domain_t& other) const {
+        if (non_numerical_bytes == other.non_numerical_bytes) {
+            return std::partial_ordering::equivalent;
+        }
+        const auto meet = non_numerical_bytes & other.non_numerical_bytes;
+        if (meet == non_numerical_bytes) {
+            return std::partial_ordering::less;
+        }
+        if (meet == other.non_numerical_bytes) {
+            return std::partial_ordering::greater;
+        }
+        return std::partial_ordering::unordered;
     }
-
-    bool operator==(const bitset_domain_t& other) const { return non_numerical_bytes == other.non_numerical_bytes; }
+    bool operator==(const bitset_domain_t& other) const = default;
 
     void operator|=(const bitset_domain_t& other) { non_numerical_bytes |= other.non_numerical_bytes; }
 

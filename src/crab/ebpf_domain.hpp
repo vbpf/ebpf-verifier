@@ -34,8 +34,9 @@ class ebpf_domain_t final {
     bool is_bottom() const;
     [[nodiscard]]
     bool is_top() const;
-    bool operator<=(const ebpf_domain_t& other);
-    bool operator==(const ebpf_domain_t& other) const;
+    std::partial_ordering operator<=>(const ebpf_domain_t& other) const;
+    bool operator==(const ebpf_domain_t& other) const = default;
+
     void operator|=(ebpf_domain_t&& other);
     void operator|=(const ebpf_domain_t& other);
     ebpf_domain_t operator|(ebpf_domain_t&& other) const;

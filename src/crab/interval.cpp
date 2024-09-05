@@ -47,7 +47,7 @@ interval_t interval_t::operator/(const interval_t& x) const {
             bound_t lu = a._lb / x._ub;
             bound_t ul = a._ub / x._lb;
             bound_t uu = a._ub / x._ub;
-            return interval_t(bound_t::min(ll, lu, ul, uu), bound_t::max(ll, lu, ul, uu));
+            return interval_t(std::min({ll, lu, ul, uu}), std::max({ll, lu, ul, uu}));
         }
     }
 }
@@ -94,7 +94,7 @@ interval_t interval_t::SDiv(const interval_t& x) const {
             bound_t lu = a._lb / x._ub;
             bound_t ul = a._ub / x._lb;
             bound_t uu = a._ub / x._ub;
-            return interval_t(bound_t::min(ll, lu, ul, uu), bound_t::max(ll, lu, ul, uu));
+            return interval_t(std::min({ll, lu, ul, uu}), std::max({ll, lu, ul, uu}));
         }
     }
 }
@@ -141,7 +141,7 @@ interval_t interval_t::UDiv(const interval_t& x) const {
             bound_t lu = a._lb.UDiv(x._ub);
             bound_t ul = a._ub.UDiv(x._lb);
             bound_t uu = a._ub.UDiv(x._ub);
-            return interval_t(bound_t::min(ll, lu, ul, uu), bound_t::max(ll, lu, ul, uu));
+            return interval_t(std::min({ll, lu, ul, uu}), std::max({ll, lu, ul, uu}));
         }
     }
 }
@@ -167,8 +167,8 @@ interval_t interval_t::SRem(const interval_t& x) const {
         interval_t u(z_bound(1), x._ub);
         return SRem(l) | SRem(u) | *this;
     } else if (x.ub().is_finite() && x.lb().is_finite()) {
-        number_t min_divisor = min(abs(*x.lb().number()), abs(*x.ub().number()));
-        number_t max_divisor = max(abs(*x.lb().number()), abs(*x.ub().number()));
+        number_t min_divisor = std::min(abs(*x.lb().number()), abs(*x.ub().number()));
+        number_t max_divisor = std::max(abs(*x.lb().number()), abs(*x.ub().number()));
 
         if (ub() < min_divisor && -lb() < min_divisor) {
             // The modulo operation won't change the destination register.

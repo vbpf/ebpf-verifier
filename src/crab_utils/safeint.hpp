@@ -72,14 +72,14 @@ class safe_i64 {
   public:
     safe_i64() : m_num(0) {}
 
-    safe_i64(int64_t num) : m_num(num) {}
+    safe_i64(const int64_t num) : m_num(num) {}
 
     safe_i64(const z_number& n) : m_num((int64_t)n) {}
 
     operator int64_t() const { return (int64_t)m_num; }
 
     // TODO: output parameters whether operation overflows
-    safe_i64 operator+(safe_i64 x) const {
+    safe_i64 operator+(const safe_i64 x) const {
         if (auto z = checked_add(m_num, x.m_num)) {
             return safe_i64(*z);
         }
@@ -87,7 +87,7 @@ class safe_i64 {
     }
 
     // TODO: output parameters whether operation overflows
-    safe_i64 operator-(safe_i64 x) const {
+    safe_i64 operator-(const safe_i64 x) const {
         if (auto z = checked_sub(m_num, x.m_num)) {
             return safe_i64(*z);
         }
@@ -95,7 +95,7 @@ class safe_i64 {
     }
 
     // TODO: output parameters whether operation overflows
-    safe_i64 operator*(safe_i64 x) const {
+    safe_i64 operator*(const safe_i64 x) const {
         if (auto z = checked_mul(m_num, x.m_num)) {
             return safe_i64(*z);
         }
@@ -103,7 +103,7 @@ class safe_i64 {
     }
 
     // TODO: output parameters whether operation overflows
-    safe_i64 operator/(safe_i64 x) const {
+    safe_i64 operator/(const safe_i64 x) const {
         if (auto z = checked_div(m_num, x.m_num)) {
             return safe_i64(*z);
         }
@@ -114,22 +114,12 @@ class safe_i64 {
     safe_i64 operator-() const { return safe_i64(0) - *this; }
 
     // TODO: output parameters whether operation overflows
-    safe_i64& operator+=(safe_i64 x) { return *this = *this + x; }
+    safe_i64& operator+=(const safe_i64 x) { return *this = *this + x; }
 
     // TODO: output parameters whether operation overflows
-    safe_i64& operator-=(safe_i64 x) { return *this = *this - x; }
+    safe_i64& operator-=(const safe_i64 x) { return *this = *this - x; }
 
-    bool operator==(safe_i64 x) const { return m_num == x.m_num; }
-
-    bool operator!=(safe_i64 x) const { return m_num != x.m_num; }
-
-    bool operator<(safe_i64 x) const { return m_num < x.m_num; }
-
-    bool operator<=(safe_i64 x) const { return m_num <= x.m_num; }
-
-    bool operator>(safe_i64 x) const { return m_num > x.m_num; }
-
-    bool operator>=(safe_i64 x) const { return m_num >= x.m_num; }
+    std::strong_ordering operator<=>(const safe_i64 x) const { return m_num <=> x.m_num; }
 
     friend std::ostream& operator<<(std::ostream& o, const safe_i64& n) { return o << n.m_num; }
 

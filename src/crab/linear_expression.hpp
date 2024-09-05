@@ -34,7 +34,7 @@ class linear_expression_t final {
   public:
     linear_expression_t(number_t coefficient) : _constant_term(std::move(coefficient)) {}
 
-    linear_expression_t(variable_t variable) { _variable_terms[variable] = 1; }
+    linear_expression_t(const variable_t variable) { _variable_terms[variable] = 1; }
 
     linear_expression_t(const number_t& coefficient, const variable_t& variable) {
         if (coefficient != 0) {
@@ -42,7 +42,7 @@ class linear_expression_t final {
         }
     }
 
-    linear_expression_t(variable_terms_t variable_terms, number_t constant_term)
+    linear_expression_t(const variable_terms_t& variable_terms, number_t constant_term)
         : _constant_term(std::move(constant_term)) {
         for (const auto& [variable, coefficient] : variable_terms) {
             if (coefficient != 0) {
@@ -74,13 +74,13 @@ class linear_expression_t final {
         for (const auto& [variable, coefficient] : _variable_terms) {
             variable_terms.emplace(variable, coefficient * constant);
         }
-        return linear_expression_t(variable_terms, _constant_term * constant);
+        return {variable_terms, _constant_term * constant};
     }
 
     // Add a constant to a linear expression.
     [[nodiscard]]
     linear_expression_t plus(const number_t& constant) const {
-        return linear_expression_t(variable_terms_t(_variable_terms), _constant_term + constant);
+        return {variable_terms_t(_variable_terms), _constant_term + constant};
     }
 
     // Add a variable (with coefficient of 1) to a linear expression.
@@ -88,7 +88,7 @@ class linear_expression_t final {
     linear_expression_t plus(const variable_t& variable) const {
         variable_terms_t variable_terms = _variable_terms;
         variable_terms[variable] = coefficient_of(variable) + 1;
-        return linear_expression_t(variable_terms, _constant_term);
+        return {variable_terms, _constant_term};
     }
 
     // Add two expressions.
@@ -98,7 +98,7 @@ class linear_expression_t final {
         for (const auto& [variable, coefficient] : expression.variable_terms()) {
             variable_terms[variable] = coefficient_of(variable) + coefficient;
         }
-        return linear_expression_t(variable_terms, _constant_term + expression.constant_term());
+        return {variable_terms, _constant_term + expression.constant_term()};
     }
 
     // Apply unary minus to an expression.
@@ -110,7 +110,7 @@ class linear_expression_t final {
     // Subtract a constant from a linear expression.
     [[nodiscard]]
     linear_expression_t subtract(const number_t& constant) const {
-        return linear_expression_t(variable_terms_t(_variable_terms), _constant_term - constant);
+        return {variable_terms_t(_variable_terms), _constant_term - constant};
     }
 
     // Subtract a variable (with coefficient of 1) from a linear expression.
@@ -118,7 +118,7 @@ class linear_expression_t final {
     linear_expression_t subtract(const variable_t& variable) const {
         variable_terms_t variable_terms = _variable_terms;
         variable_terms[variable] = coefficient_of(variable) - 1;
-        return linear_expression_t(variable_terms, _constant_term);
+        return {variable_terms, _constant_term};
     }
 
     // Subtract one expression from another.
@@ -128,7 +128,7 @@ class linear_expression_t final {
         for (const auto& [variable, coefficient] : expression.variable_terms()) {
             variable_terms[variable] = coefficient_of(variable) - coefficient;
         }
-        return linear_expression_t(variable_terms, _constant_term - expression.constant_term());
+        return {variable_terms, _constant_term - expression.constant_term()};
     }
 
     // Output all variable terms to a stream.
@@ -152,7 +152,7 @@ inline std::ostream& operator<<(std::ostream& o, const linear_expression_t& expr
     expression.output_variable_terms(o);
 
     // Output the constant term.
-    number_t constant = expression.constant_term();
+    const number_t& constant = expression.constant_term();
     if (constant < 0) {
         o << constant;
     } else if (constant > 0) {

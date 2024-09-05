@@ -831,10 +831,13 @@ bool ebpf_domain_t::is_bottom() const { return m_inv.is_bottom(); }
 
 bool ebpf_domain_t::is_top() const { return m_inv.is_top() && stack.is_top(); }
 
-bool ebpf_domain_t::operator<=(const ebpf_domain_t& other) { return m_inv <= other.m_inv && stack <= other.stack; }
-
-bool ebpf_domain_t::operator==(const ebpf_domain_t& other) const {
-    return stack == other.stack && m_inv <= other.m_inv && other.m_inv <= m_inv;
+std::partial_ordering ebpf_domain_t::operator<=>(const ebpf_domain_t& other) const {
+    const auto stack_cmp = stack <=> other.stack;
+    if (stack_cmp == std::partial_ordering::unordered) {
+        return std::partial_ordering::unordered;
+    }
+    const auto inv_cmp = m_inv <=> other.m_inv;
+    return combine_partial_ordering(inv_cmp, stack_cmp);
 }
 
 void ebpf_domain_t::TypeDomain::add_extra_invariant(const NumAbsDomain& dst,

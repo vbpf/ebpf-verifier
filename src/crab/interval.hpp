@@ -14,6 +14,16 @@
 #include "crab_utils/bignums.hpp"
 #include "crab_utils/stats.hpp"
 
+inline std::partial_ordering combine_partial_ordering(const std::partial_ordering& a, const std::partial_ordering& b) {
+    if (a == std::partial_ordering::equivalent) {
+        return b;
+    }
+    if (b == std::partial_ordering::equivalent) {
+        return a;
+    }
+    return a == b ? a : std::partial_ordering::unordered;
+}
+
 namespace crab {
 
 class bound_t final {
@@ -33,21 +43,8 @@ class bound_t final {
     }
 
   public:
-    static bound_t min(const bound_t& x, const bound_t& y) { return (x.operator<=(y) ? x : y); }
-
-    static bound_t min(const bound_t& x, const bound_t& y, const bound_t& z) { return min(x, min(y, z)); }
-
-    static bound_t min(const bound_t& x, const bound_t& y, const bound_t& z, const bound_t& t) {
-        return min(x, min(t, y, z));
-    }
-
-    static bound_t max(const bound_t& x, const bound_t& y) { return (x.operator<=(y) ? y : x); }
-
-    static bound_t max(const bound_t& x, const bound_t& y, const bound_t& z) { return max(x, max(y, z)); }
-
-    static bound_t max(const bound_t& x, const bound_t& y, const bound_t& z, const bound_t& t) {
-        return max(x, max(t, y, z));
-    }
+    static bound_t min(const auto... xs) { return std::min({xs...}); }
+    static bound_t max(const auto... xs) { return std::max({xs...}); }
 
     static bound_t plus_infinity() { return bound_t(true, 1); }
 
@@ -182,45 +179,36 @@ class bound_t final {
 
     bound_t& operator/=(const bound_t& x) { return operator=(operator/(x)); }
 
-    bool operator<(const bound_t& x) const { return !operator>=(x); }
-
-    bool operator>(const bound_t& x) const { return !operator<=(x); }
-
-    bool operator==(const bound_t& x) const { return (_is_infinite == x._is_infinite && _n == x._n); }
-
-    bool operator!=(const bound_t& x) const { return !operator==(x); }
-
-    /*	operator<= and operator>= use a somewhat optimized implementation.
+    /*	operator<=> uses a somewhat optimized implementation.
      *	results include up to 20% improvements in performance in the octagon domain
      *	over a more naive implementation.
      */
-    bool operator<=(const bound_t& x) const {
-        if (_is_infinite xor x._is_infinite) {
-            if (_is_infinite) {
-                return _n < 0;
-            }
-            return x._n > 0;
+    std::strong_ordering operator<=>(const bound_t& x) const {
+        if (!_is_infinite && !x._is_infinite) {
+            return _n <=> x._n;
         }
-        return _n <= x._n;
-    }
-
-    bool operator>=(const bound_t& x) const {
-        if (_is_infinite xor x._is_infinite) {
+        if (_is_infinite != x._is_infinite) {
             if (_is_infinite) {
-                return _n > 0;
+                return _n <=> 0;
             }
-            return x._n < 0;
+            return number_t{0} <=> x._n;
         }
-        return _n >= x._n;
+        if (is_minus_infinity() && x.is_plus_infinity()) {
+            return std::strong_ordering::less;
+        }
+        if (is_plus_infinity() && x.is_minus_infinity()) {
+            return std::strong_ordering::greater;
+        }
+        return std::strong_ordering::equal;
     }
+    bool operator==(const bound_t& x) const = default;
 
     [[nodiscard]]
     bound_t abs() const {
-        if (operator>=(number_t{0})) {
+        if ((*this) >= number_t{0}) {
             return *this;
-        } else {
-            return operator-();
         }
+        return operator-();
     }
 
     [[nodiscard]]
@@ -267,10 +255,6 @@ class interval_t final {
 
     static number_t abs(const number_t& x) { return x < 0 ? -x : x; }
 
-    static number_t max(const number_t& x, const number_t& y) { return x.operator<=(y) ? y : x; }
-
-    static number_t min(const number_t& x, const number_t& y) { return x.operator<(y) ? x : y; }
-
   public:
     interval_t(const bound_t& lb, const bound_t& ub)
         : _lb(lb > ub ? bound_t{number_t{0}} : lb), _ub(lb > ub ? bound_t{-1} : ub) {}
@@ -296,7 +280,7 @@ class interval_t final {
 
     [[nodiscard]]
     bool is_bottom() const {
-        return (_lb > _ub);
+        return _lb > _ub;
     }
 
     [[nodiscard]]
@@ -307,21 +291,28 @@ class interval_t final {
     bool operator==(const interval_t& x) const {
         if (is_bottom()) {
             return x.is_bottom();
-        } else {
-            return (_lb == x._lb) && (_ub == x._ub);
         }
+        return _lb == x._lb && _ub == x._ub;
     }
 
-    bool operator!=(const interval_t& x) const { return !operator==(x); }
-
-    bool operator<=(const interval_t& x) const {
+    std::partial_ordering operator<=>(const interval_t& x) const {
         if (is_bottom()) {
-            return true;
-        } else if (x.is_bottom()) {
-            return false;
-        } else {
-            return (x._lb <= _lb) && (_ub <= x._ub);
+            return x.is_bottom() ? std::partial_ordering::equivalent : std::partial_ordering::less;
         }
+        if (x.is_bottom()) {
+            return std::partial_ordering::greater;
+        }
+        if (x == *this) {
+            return std::partial_ordering::equivalent;
+        }
+        const auto join = x | *this;
+        if (join == *this) {
+            return std::partial_ordering::greater;
+        }
+        if (join == x) {
+            return std::partial_ordering::less;
+        }
+        return std::partial_ordering::unordered;
     }
 
     interval_t operator|(const interval_t& x) const {
@@ -330,7 +321,7 @@ class interval_t final {
         } else if (x.is_bottom()) {
             return *this;
         } else {
-            return interval_t(bound_t::min(_lb, x._lb), bound_t::max(_ub, x._ub));
+            return interval_t(std::min(_lb, x._lb), std::max(_ub, x._ub));
         }
     }
 
@@ -338,7 +329,7 @@ class interval_t final {
         if (is_bottom() || x.is_bottom()) {
             return bottom();
         } else {
-            return interval_t(bound_t::max(_lb, x._lb), bound_t::min(_ub, x._ub));
+            return interval_t(std::max(_lb, x._lb), std::min(_ub, x._ub));
         }
     }
 
@@ -413,7 +404,7 @@ class interval_t final {
             bound_t lu = _lb * x._ub;
             bound_t ul = _ub * x._lb;
             bound_t uu = _ub * x._ub;
-            return interval_t(bound_t::min(ll, lu, ul, uu), bound_t::max(ll, lu, ul, uu));
+            return interval_t(std::min({ll, lu, ul, uu}), std::max({ll, lu, ul, uu}));
         }
     }
 
@@ -499,10 +490,10 @@ class interval_t final {
                     // Interval can be accurately represented in 64 bits.
                     new_interval = interval_t{llb, lub};
                 } else {
-                    new_interval = interval_t::signed_int(is64);
+                    new_interval = signed_int(is64);
                 }
             } else {
-                new_interval = interval_t::signed_int(is64);
+                new_interval = signed_int(is64);
             }
         }
         return new_interval;
@@ -540,7 +531,7 @@ class interval_t final {
     // Return an interval in the range [INT_MIN, -1], which can only
     // be represented as an svalue.  The uvalue equivalent using the same
     // bits would be unsigned_high().
-    static interval_t negative_int(bool is64) {
+    static interval_t negative_int(const bool is64) {
         if (is64) {
             return {number_t{std::numeric_limits<int64_t>::min()}, number_t{-1}};
         } else {

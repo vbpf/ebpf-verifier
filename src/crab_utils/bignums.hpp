@@ -302,17 +302,18 @@ class z_number final {
         return r;
     }
 
-    bool operator==(const z_number& x) const { return (_n == x._n); }
-
-    bool operator!=(const z_number& x) const { return (_n != x._n); }
-
-    bool operator<(const z_number& x) const { return (_n < x._n); }
-
-    bool operator<=(const z_number& x) const { return (_n <= x._n); }
-
-    bool operator>(const z_number& x) const { return (_n > x._n); }
-
-    bool operator>=(const z_number& x) const { return (_n >= x._n); }
+    std::strong_ordering operator<=>(const z_number& x) const {
+        if (_n <= x._n) {
+            if (_n == x._n) {
+                return std::strong_ordering::equal;
+            } else {
+                return std::strong_ordering::less;
+            }
+        } else {
+            return std::strong_ordering::greater;
+        }
+    }
+    bool operator==(const z_number& x) const = default;
 
     z_number operator&(const z_number& x) const { return {_n & x._n}; }
 

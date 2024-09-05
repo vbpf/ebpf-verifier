@@ -202,7 +202,9 @@ class SplitDBM final {
         return g.is_empty();
     }
 
-    bool operator<=(const SplitDBM& o) const;
+    std::partial_ordering operator<=>(const SplitDBM& o) const;
+    bool less(const SplitDBM& o) const;
+    // bool operator==(const SplitDBM& o) const = default;
 
     // FIXME: can be done more efficient
     void operator|=(const SplitDBM& o) { *this = *this | o; }

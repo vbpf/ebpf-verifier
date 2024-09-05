@@ -54,8 +54,8 @@ class array_domain_t final {
     [[nodiscard]]
     bool is_top() const;
 
-    bool operator<=(const array_domain_t& other) const;
-    bool operator==(const array_domain_t& other) const;
+    std::partial_ordering operator<=>(const array_domain_t& other) const;
+    bool operator==(const array_domain_t& other) const = default;
 
     void operator|=(const array_domain_t& other);
 

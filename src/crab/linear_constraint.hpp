@@ -15,7 +15,7 @@ class linear_constraint_t final {
     constraint_kind_t _constraint_kind;
 
   public:
-    linear_constraint_t(linear_expression_t expression, constraint_kind_t constraint_kind)
+    linear_constraint_t(linear_expression_t expression, const constraint_kind_t constraint_kind)
         : _expression(std::move(expression)), _constraint_kind(constraint_kind) {}
 
     [[nodiscard]]
