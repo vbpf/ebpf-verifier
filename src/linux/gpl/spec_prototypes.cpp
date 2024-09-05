@@ -2275,7 +2275,7 @@ const EbpfHelperPrototype prototypes[] = {
 };
 
 bool is_helper_usable_linux(int32_t n) {
-    if (n >= (int)(sizeof(prototypes) / sizeof(prototypes[0])) || n < 0) {
+    if (n >= static_cast<int>(sizeof(prototypes) / sizeof(prototypes[0])) || n < 0) {
         return false;
     }
 

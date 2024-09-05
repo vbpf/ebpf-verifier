@@ -15,12 +15,12 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <utility>
 #include <variant>
 #include <vector>
 
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/range/iterator_range.hpp>
 
 #include "crab/variable.hpp"
 #include "crab_utils/bignums.hpp"
@@ -45,10 +45,10 @@ class basic_block_t final {
     using stmt_list_t = std::vector<Instruction>;
     using neighbour_const_iterator = label_vec_t::const_iterator;
     using neighbour_const_reverse_iterator = label_vec_t::const_reverse_iterator;
-    using iterator = typename stmt_list_t::iterator;
-    using const_iterator = typename stmt_list_t::const_iterator;
-    using reverse_iterator = typename stmt_list_t::reverse_iterator;
-    using const_reverse_iterator = typename stmt_list_t::const_reverse_iterator;
+    using iterator = stmt_list_t::iterator;
+    using const_iterator = stmt_list_t::const_iterator;
+    using reverse_iterator = stmt_list_t::reverse_iterator;
+    using const_reverse_iterator = stmt_list_t::const_reverse_iterator;
 
   private:
     label_t m_label;
@@ -67,7 +67,7 @@ class basic_block_t final {
         m_ts.push_back(arg);
     }
 
-    explicit basic_block_t(label_t _label) : m_label(_label) {}
+    explicit basic_block_t(label_t _label) : m_label(std::move(_label)) {}
 
     ~basic_block_t() = default;
 
@@ -144,7 +144,7 @@ class basic_block_t final {
     // insert all statements of other at the back
     void move_back(basic_block_t& other) {
         m_ts.reserve(m_ts.size() + other.m_ts.size());
-        std::move(other.m_ts.begin(), other.m_ts.end(), std::back_inserter(m_ts));
+        std::ranges::move(other.m_ts, std::back_inserter(m_ts));
     }
 
     [[nodiscard]]
@@ -164,12 +164,11 @@ class basic_block_t final {
 // backward analysis.
 class basic_block_rev_t final {
   public:
-    using neighbour_const_iterator = typename basic_block_t::neighbour_const_iterator;
+    using neighbour_const_iterator = basic_block_t::neighbour_const_iterator;
 
-    using iterator = typename basic_block_t::reverse_iterator;
-    using const_iterator = typename basic_block_t::const_reverse_iterator;
+    using iterator = basic_block_t::reverse_iterator;
+    using const_iterator = basic_block_t::const_reverse_iterator;
 
-  public:
     basic_block_t& _bb;
 
     explicit basic_block_rev_t(basic_block_t& bb) : _bb(bb) {}
@@ -224,25 +223,25 @@ class cfg_t final {
   public:
     using node_t = label_t; // for Bgl graphs
 
-    using neighbour_const_iterator = typename basic_block_t::neighbour_const_iterator;
-    using neighbour_const_reverse_iterator = typename basic_block_t::neighbour_const_reverse_iterator;
+    using neighbour_const_iterator = basic_block_t::neighbour_const_iterator;
+    using neighbour_const_reverse_iterator = basic_block_t::neighbour_const_reverse_iterator;
 
     using neighbour_const_range = boost::iterator_range<neighbour_const_iterator>;
     using neighbour_const_reverse_range = boost::iterator_range<neighbour_const_reverse_iterator>;
 
   private:
     using basic_block_map_t = std::map<label_t, basic_block_t>;
-    using binding_t = typename basic_block_map_t::value_type;
+    using binding_t = basic_block_map_t::value_type;
 
     struct get_label {
         label_t operator()(const binding_t& p) const { return p.second.label(); }
     };
 
   public:
-    using iterator = typename basic_block_map_t::iterator;
-    using const_iterator = typename basic_block_map_t::const_iterator;
-    using label_iterator = boost::transform_iterator<get_label, typename basic_block_map_t::iterator>;
-    using const_label_iterator = boost::transform_iterator<get_label, typename basic_block_map_t::const_iterator>;
+    using iterator = basic_block_map_t::iterator;
+    using const_iterator = basic_block_map_t::const_iterator;
+    using label_iterator = boost::transform_iterator<get_label, basic_block_map_t::iterator>;
+    using const_label_iterator = boost::transform_iterator<get_label, basic_block_map_t::const_iterator>;
 
   private:
     basic_block_map_t m_blocks;
@@ -288,7 +287,7 @@ class cfg_t final {
     }
 
     basic_block_t& get_node(const label_t& _label) {
-        auto it = m_blocks.find(_label);
+        const auto it = m_blocks.find(_label);
         if (it == m_blocks.end()) {
             CRAB_ERROR("Basic block ", _label, " not found in the CFG: ", __LINE__);
         }
@@ -297,7 +296,7 @@ class cfg_t final {
 
     [[nodiscard]]
     const basic_block_t& get_node(const label_t& _label) const {
-        auto it = m_blocks.find(_label);
+        const auto it = m_blocks.find(_label);
         if (it == m_blocks.end()) {
             CRAB_ERROR("Basic block ", _label, " not found in the CFG: ", __LINE__);
         }
@@ -307,7 +306,7 @@ class cfg_t final {
     // --- End ikos fixpoint API
 
     basic_block_t& insert(const label_t& _label) {
-        auto it = m_blocks.find(_label);
+        const auto it = m_blocks.find(_label);
         if (it != m_blocks.end()) {
             return it->second;
         }
@@ -340,8 +339,8 @@ class cfg_t final {
             }
         }
 
-        for (auto p : dead_edges) {
-            (*p.first) -= (*p.second);
+        for (auto& p : dead_edges) {
+            *p.first -= *p.second;
         }
 
         m_blocks.erase(_label);
@@ -431,32 +430,32 @@ class cfg_t final {
     // Helpers
     [[nodiscard]]
     bool has_one_child(const label_t& b) const {
-        auto rng = next_nodes(b);
+        const auto rng = next_nodes(b);
         return (std::distance(rng.begin(), rng.end()) == 1);
     }
 
     [[nodiscard]]
     bool has_one_parent(const label_t& b) const {
-        auto rng = prev_nodes(b);
+        const auto rng = prev_nodes(b);
         return (std::distance(rng.begin(), rng.end()) == 1);
     }
 
     basic_block_t& get_child(const label_t& b) {
         assert(has_one_child(b));
-        auto rng = next_nodes(b);
+        const auto rng = next_nodes(b);
         return get_node(*(rng.begin()));
     }
 
     basic_block_t& get_parent(const label_t& b) {
         assert(has_one_parent(b));
-        auto rng = prev_nodes(b);
-        return get_node(*(rng.begin()));
+        const auto rng = prev_nodes(b);
+        return get_node(*rng.begin());
     }
 
     // mark reachable blocks from curId
     template <class AnyCfg>
     void mark_alive_blocks(label_t curId, AnyCfg& cfg_t, visited_t& visited) {
-        if (visited.count(curId) > 0) {
+        if (visited.contains(curId)) {
             return;
         }
         visited.insert(curId);
@@ -476,17 +475,16 @@ class cfg_rev_t final {
   public:
     using node_t = label_t; // for Bgl graphs
 
-    using neighbour_const_range = typename cfg_t::neighbour_const_range;
+    using neighbour_const_range = cfg_t::neighbour_const_range;
 
     // For BGL
-    using neighbour_const_iterator = typename basic_block_t::neighbour_const_iterator;
+    using neighbour_const_iterator = basic_block_t::neighbour_const_iterator;
 
-  public:
     using basic_block_rev_map_t = std::map<label_t, basic_block_rev_t>;
-    using iterator = typename basic_block_rev_map_t::iterator;
-    using const_iterator = typename basic_block_rev_map_t::const_iterator;
-    using label_iterator = typename cfg_t::label_iterator;
-    using const_label_iterator = typename cfg_t::const_label_iterator;
+    using iterator = basic_block_rev_map_t::iterator;
+    using const_iterator = basic_block_rev_map_t::const_iterator;
+    using label_iterator = cfg_t::label_iterator;
+    using const_label_iterator = cfg_t::const_label_iterator;
 
   private:
     cfg_t& _cfg;
@@ -526,7 +524,7 @@ class cfg_rev_t final {
     neighbour_const_range prev_nodes(const label_t& bb) { return _cfg.next_nodes(bb); }
 
     basic_block_rev_t& get_node(const label_t& _label) {
-        auto it = _rev_bbs.find(_label);
+        const auto it = _rev_bbs.find(_label);
         if (it == _rev_bbs.end()) {
             CRAB_ERROR("Basic block ", _label, " not found in the CFG: ", __LINE__);
         }
@@ -535,7 +533,7 @@ class cfg_rev_t final {
 
     [[nodiscard]]
     const basic_block_rev_t& get_node(const label_t& _label) const {
-        auto it = _rev_bbs.find(_label);
+        const auto it = _rev_bbs.find(_label);
         if (it == _rev_bbs.end()) {
             CRAB_ERROR("Basic block ", _label, " not found in the CFG: ", __LINE__);
         }
@@ -572,11 +570,11 @@ inline void cfg_t::remove_useless_blocks() {
     visited_t useful, useless;
     mark_alive_blocks(rev_cfg.entry_label(), rev_cfg, useful);
 
-    if (!useful.count(exit_label())) {
+    if (!useful.contains(exit_label())) {
         CRAB_ERROR("Exit block must be reachable");
     }
     for (auto const& label : labels()) {
-        if (!useful.count(label)) {
+        if (!useful.contains(label)) {
             useless.insert(label);
         }
     }
@@ -591,12 +589,12 @@ inline void cfg_t::remove_unreachable_blocks() {
     mark_alive_blocks(entry_label(), *this, alive);
 
     for (auto const& label : labels()) {
-        if (alive.count(label) <= 0) {
+        if (!alive.contains(label)) {
             dead.insert(label);
         }
     }
 
-    if (dead.count(exit_label())) {
+    if (dead.contains(exit_label())) {
         CRAB_ERROR("Exit block must be reachable");
     }
     for (const auto& _label : dead) {
@@ -616,7 +614,7 @@ std::map<std::string, int> collect_stats(const cfg_t&);
 cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool simplify, bool must_have_exit = true);
 
 void explicate_assertions(cfg_t& cfg, const program_info& info);
-std::vector<Assert> get_assertions(Instruction ins, const program_info& info, std::optional<label_t> label);
+std::vector<Assert> get_assertions(Instruction ins, const program_info& info, const std::optional<label_t>& label);
 
 void print_dot(const cfg_t& cfg, std::ostream& out);
 void print_dot(const cfg_t& cfg, const std::string& outfile);

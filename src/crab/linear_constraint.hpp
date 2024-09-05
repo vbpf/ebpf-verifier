@@ -11,7 +11,6 @@ namespace crab {
 enum class constraint_kind_t { EQUALS_ZERO, LESS_THAN_OR_EQUALS_ZERO, LESS_THAN_ZERO, NOT_ZERO };
 
 class linear_constraint_t final {
-  private:
     linear_expression_t _expression = linear_expression_t(0);
     constraint_kind_t _constraint_kind;
 
@@ -57,12 +56,12 @@ class linear_constraint_t final {
     [[nodiscard]]
     linear_constraint_t negate() const {
         switch (_constraint_kind) {
-        case constraint_kind_t::NOT_ZERO: return linear_constraint_t(_expression, constraint_kind_t::EQUALS_ZERO);
-        case constraint_kind_t::EQUALS_ZERO: return linear_constraint_t(_expression, constraint_kind_t::NOT_ZERO);
+        case constraint_kind_t::NOT_ZERO: return {_expression, constraint_kind_t::EQUALS_ZERO};
+        case constraint_kind_t::EQUALS_ZERO: return {_expression, constraint_kind_t::NOT_ZERO};
         case constraint_kind_t::LESS_THAN_ZERO:
-            return linear_constraint_t(_expression.negate(), constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO);
+            return {_expression.negate(), constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO};
         case constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO:
-            return linear_constraint_t(_expression.negate(), constraint_kind_t::LESS_THAN_ZERO);
+            return {_expression.negate(), constraint_kind_t::LESS_THAN_ZERO};
         default: throw std::exception();
         }
     }
@@ -91,8 +90,8 @@ inline std::ostream& operator<<(std::ostream& o, const linear_constraint_t& cons
         expression.output_variable_terms(o);
 
         const char* constraint_kind_label[] = {" == ", " <= ", " < ", " != "};
-        int kind = (int)constraint.kind();
-        if (kind < 0 || kind >= (int)(sizeof(constraint_kind_label) / sizeof(*constraint_kind_label))) {
+        const int kind = static_cast<int>(constraint.kind());
+        if (kind < 0 || kind >= static_cast<int>(std::size(constraint_kind_label))) {
             throw std::exception();
         }
         o << constraint_kind_label[kind] << -expression.constant_term();

@@ -47,7 +47,8 @@ struct ebpf_platform_t {
     ebpf_resolve_inner_map_references_fn resolve_inner_map_references;
     bpf_conformance_groups_t supported_conformance_groups;
 
-    bool supports_group(bpf_conformance_groups_t group) const {
+    [[nodiscard]]
+    bool supports_group(const bpf_conformance_groups_t group) const {
         return (supported_conformance_groups & group) == group;
     }
 };

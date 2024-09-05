@@ -102,7 +102,7 @@ class bound_t final {
 
     bound_t operator+(const bound_t& x) const {
         if (is_finite() && x.is_finite()) {
-            return bound_t(_n + x._n);
+            return {_n + x._n};
         } else if (is_finite() && x.is_infinite()) {
             return x;
         } else if (is_infinite() && x.is_finite()) {
@@ -255,7 +255,7 @@ class interval_t final {
   public:
     static interval_t top() { return interval_t(bound_t::minus_infinity(), bound_t::plus_infinity()); }
 
-    static interval_t bottom() { return interval_t(); }
+    static interval_t bottom() { return {}; }
 
     [[nodiscard]]
     std::optional<number_t> finite_size() const {
@@ -433,7 +433,7 @@ class interval_t final {
         if (!is_bottom() && _lb == _ub) {
             return _lb.number();
         } else {
-            return std::optional<number_t>();
+            return {};
         }
     }
 

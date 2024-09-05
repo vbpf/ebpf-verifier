@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include <functional>
 #include <optional>
 
 #include "crab/add_bottom.hpp"
@@ -46,7 +45,7 @@ class array_domain_t final {
   public:
     array_domain_t() = default;
 
-    array_domain_t(const bitset_domain_t& num_bytes) : num_bytes(num_bytes) {}
+    explicit array_domain_t(const bitset_domain_t& num_bytes) : num_bytes(num_bytes) {}
 
     void set_to_top();
     void set_to_bottom();
@@ -62,20 +61,24 @@ class array_domain_t final {
 
     array_domain_t operator|(const array_domain_t& other) const;
     array_domain_t operator&(const array_domain_t& other) const;
+    [[nodiscard]]
     array_domain_t widen(const array_domain_t& other) const;
-    array_domain_t widening_thresholds(const array_domain_t& other, const iterators::thresholds_t& ts) const;
+    [[nodiscard]]
+    array_domain_t widening_thresholds(const array_domain_t& other, const thresholds_t& ts) const;
+    [[nodiscard]]
     array_domain_t narrow(const array_domain_t& other) const;
 
     friend std::ostream& operator<<(std::ostream& o, const array_domain_t& dom);
     [[nodiscard]]
     string_invariant to_set() const;
 
-    bool all_num(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub);
+    [[nodiscard]]
+    bool all_num(const NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) const;
     [[nodiscard]]
     int min_all_num_size(const NumAbsDomain& inv, variable_t offset) const;
 
     std::optional<linear_expression_t> load(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i,
-                                            int width);
+                                            int width) const;
     std::optional<variable_t> store(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& idx,
                                     const linear_expression_t& elem_size, const linear_expression_t& val);
     std::optional<variable_t> store_type(NumAbsDomain& inv, const linear_expression_t& idx,
@@ -86,11 +89,11 @@ class array_domain_t final {
                const linear_expression_t& elem_size);
 
     // Perform array stores over an array segment
-    void store_numbers(NumAbsDomain& inv, variable_t _idx, variable_t _width);
+    void store_numbers(const NumAbsDomain& inv, variable_t _idx, variable_t _width);
 
     void split_number_var(NumAbsDomain& inv, data_kind_t kind, const linear_expression_t& i,
-                          const linear_expression_t& elem_size);
-    void split_cell(NumAbsDomain& inv, data_kind_t kind, int cell_start_index, unsigned int len);
+                          const linear_expression_t& elem_size) const;
+    void split_cell(NumAbsDomain& inv, data_kind_t kind, int cell_start_index, unsigned int len) const;
 
     void initialize_numbers(int lb, int width);
 };

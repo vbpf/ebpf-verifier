@@ -12,7 +12,7 @@
 // stack memory.
 
 void wto_t::push_successors(const label_t& vertex, wto_partition_t& partition,
-                            std::weak_ptr<wto_cycle_t> containing_cycle) {
+                            const std::weak_ptr<wto_cycle_t>& containing_cycle) {
     if (_vertex_data[vertex].dfn != 0) {
         // We found an alternate path to a node already visited, so nothing to do.
         return;
@@ -21,7 +21,7 @@ void wto_t::push_successors(const label_t& vertex, wto_partition_t& partition,
     _stack.push(vertex);
 
     // Schedule the next task for this vertex once we're done with anything else.
-    visit_args_t args(visit_task_type_t::StartVisit, vertex, partition, containing_cycle);
+    const visit_args_t args(visit_task_type_t::StartVisit, vertex, partition, containing_cycle);
     _visit_stack.push(args);
 
     for (const label_t& succ : _cfg.next_nodes_reversed(vertex)) {
@@ -39,7 +39,7 @@ void wto_t::start_visit(const label_t& vertex, wto_partition_t& partition,
     bool loop = false;
     int min_dfn = INT_MAX;
     for (const label_t& succ : _cfg.next_nodes(vertex)) {
-        wto_vertex_data_t& data = _vertex_data[succ];
+        const wto_vertex_data_t& data = _vertex_data[succ];
         if (data.head_dfn != 0 && data.dfn != INT_MAX) {
             min_dfn = data.head_dfn;
         } else {
@@ -52,7 +52,7 @@ void wto_t::start_visit(const label_t& vertex, wto_partition_t& partition,
     }
 
     // Create a new cycle component inside the containing cycle.
-    auto cycle = std::make_shared<wto_cycle_t>(containing_cycle);
+    const auto cycle = std::make_shared<wto_cycle_t>(containing_cycle);
 
     if (head_dfn == vertex_data.dfn) {
         vertex_data.dfn = INT_MAX;
@@ -71,7 +71,7 @@ void wto_t::start_visit(const label_t& vertex, wto_partition_t& partition,
             _vertex_data[vertex].containing_cycle = cycle;
 
             // Schedule the next task for this vertex once we're done with anything else.
-            visit_args_t args2(visit_task_type_t::ContinueVisit, vertex, partition, cycle);
+            const visit_args_t args2(visit_task_type_t::ContinueVisit, vertex, partition, cycle);
             _visit_stack.push(args2);
 
             // Walk the control flow graph, adding nodes to this cycle.
@@ -85,7 +85,7 @@ void wto_t::start_visit(const label_t& vertex, wto_partition_t& partition,
             return;
         } else {
             // Create a new vertex component.
-            auto component = std::make_shared<wto_component_t>(wto_component_t(vertex));
+            const auto component = std::make_shared<wto_component_t>(wto_component_t(vertex));
 
             // Insert the vertex into the current partition.
             partition.push_back(component);
@@ -123,7 +123,7 @@ wto_t::wto_t(const cfg_t& cfg) : _cfg(cfg) {
     _num = 0;
 
     // Push the entry vertex on the stack to process.
-    visit_args_t args(visit_task_type_t::PushSuccessors, cfg.entry_label(), _components, {});
+    const visit_args_t args(visit_task_type_t::PushSuccessors, cfg.entry_label(), _components, {});
     _visit_stack.push(args);
 
     // Keep processing tasks until we're done.

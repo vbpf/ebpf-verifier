@@ -13,7 +13,7 @@ bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, const program_info& info, co
 bool ebpf_verify_program(std::ostream& s, const InstructionSeq& prog, const program_info& info,
                          const ebpf_verifier_options_t* options, ebpf_verifier_stats_t* stats);
 
-using string_invariant_map = std::map<crab::label_t, string_invariant>;
+using string_invariant_map = std::map<label_t, string_invariant>;
 
 std::tuple<string_invariant, bool> ebpf_analyze_program_for_test(std::ostream& os, const InstructionSeq& prog,
                                                                  const string_invariant& entry_invariant,

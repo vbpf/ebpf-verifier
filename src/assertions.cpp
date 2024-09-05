@@ -17,9 +17,9 @@ class AssertExtractor {
     program_info info;
     std::optional<label_t> current_label; ///< Pre-simplification label this assert is part of.
 
-    static Reg reg(Value v) { return std::get<Reg>(v); }
+    static Reg reg(const Value& v) { return std::get<Reg>(v); }
 
-    static Imm imm(Value v) { return std::get<Imm>(v); }
+    static Imm imm(const Value& v) { return std::get<Imm>(v); }
 
     static vector<Assert> zero_offset_ctx(Reg reg) {
         vector<Assert> res;
@@ -30,7 +30,7 @@ class AssertExtractor {
 
   public:
     explicit AssertExtractor(program_info info, std::optional<label_t> label)
-        : info{std::move(info)}, current_label(label) {}
+        : info{std::move(info)}, current_label(std::move(label)) {}
 
     vector<Assert> operator()(Undefined const& ins) const {
         assert(false);
@@ -42,7 +42,7 @@ class AssertExtractor {
         return {};
     }
 
-    vector<Assert> operator()(IncrementLoopCounter ins) const {
+    vector<Assert> operator()(const IncrementLoopCounter& ins) const {
         assert(false);
         return {};
     }
@@ -128,7 +128,7 @@ class AssertExtractor {
     }
 
     [[nodiscard]]
-    vector<Assert> explicate(Condition cond) const {
+    vector<Assert> explicate(const Condition& cond) const {
         if (info.type.is_privileged) {
             return {};
         }
@@ -153,23 +153,23 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assert> operator()(Assume ins) const { return explicate(ins.cond); }
+    vector<Assert> operator()(const Assume& ins) const { return explicate(ins.cond); }
 
-    vector<Assert> operator()(Jmp ins) const {
+    vector<Assert> operator()(const Jmp& ins) const {
         if (!ins.cond) {
             return {};
         }
         return explicate(*ins.cond);
     }
 
-    vector<Assert> operator()(Mem ins) const {
+    vector<Assert> operator()(const Mem& ins) const {
         vector<Assert> res;
-        Reg basereg = ins.access.basereg;
+        const Reg basereg = ins.access.basereg;
         Imm width{static_cast<uint32_t>(ins.access.width)};
-        int offset = ins.access.offset;
+        const int offset = ins.access.offset;
         if (basereg.v == R10_STACK_POINTER) {
             // We know we are accessing the stack.
-            if (offset < -EBPF_STACK_SIZE || offset + (int)width.v >= 0) {
+            if (offset < -EBPF_STACK_SIZE || offset + static_cast<int>(width.v) >= 0) {
                 // This assertion will fail
                 res.emplace_back(
                     ValidAccess{basereg, offset, width, false, ins.is_load ? AccessType::read : AccessType::write});
@@ -189,7 +189,7 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assert> operator()(Atomic ins) const {
+    vector<Assert> operator()(const Atomic& ins) const {
         vector<Assert> res;
         res.emplace_back(TypeConstraint{ins.access.basereg, TypeGroup::pointer});
         res.emplace_back(
@@ -203,22 +203,22 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assert> operator()(Un ins) { return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}}; }
+    vector<Assert> operator()(Un ins) const { return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}}; }
 
-    vector<Assert> operator()(Bin ins) const {
+    vector<Assert> operator()(const Bin& ins) const {
         switch (ins.op) {
         case Bin::Op::MOV: return {};
         case Bin::Op::MOVSX8:
         case Bin::Op::MOVSX16:
         case Bin::Op::MOVSX32:
             if (std::holds_alternative<Reg>(ins.v)) {
-                auto src = reg(ins.v);
+                const auto src = reg(ins.v);
                 return {Assert{TypeConstraint{src, TypeGroup::number}}};
             }
             return {};
         case Bin::Op::ADD:
             if (std::holds_alternative<Reg>(ins.v)) {
-                auto src = reg(ins.v);
+                const auto src = reg(ins.v);
                 return {Assert{TypeConstraint{ins.dst, TypeGroup::ptr_or_num}},
                         Assert{TypeConstraint{src, TypeGroup::ptr_or_num}}, Assert{Addable{src, ins.dst}},
                         Assert{Addable{ins.dst, src}}};
@@ -241,8 +241,8 @@ class AssertExtractor {
         case Bin::Op::SDIV:
         case Bin::Op::SMOD:
             if (std::holds_alternative<Reg>(ins.v)) {
-                auto src = reg(ins.v);
-                bool is_signed = (ins.op == Bin::Op::SDIV || ins.op == Bin::Op::SMOD);
+                const auto src = reg(ins.v);
+                const bool is_signed = (ins.op == Bin::Op::SDIV || ins.op == Bin::Op::SMOD);
                 return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}, Assert{ValidDivisor{src, is_signed}}};
             } else {
                 return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}};
@@ -250,11 +250,10 @@ class AssertExtractor {
         default: return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}};
         }
         assert(false);
-        return {};
     }
 };
 
-vector<Assert> get_assertions(Instruction ins, const program_info& info, std::optional<label_t> label) {
+vector<Assert> get_assertions(Instruction ins, const program_info& info, const std::optional<label_t>& label) {
     return std::visit(AssertExtractor{info, label}, ins);
 }
 
@@ -267,7 +266,7 @@ void explicate_assertions(cfg_t& cfg, const program_info& info) {
     for (auto& [label, bb] : cfg) {
         (void)label; // unused
         vector<Instruction> insts;
-        for (const auto& ins : vector<Instruction>(bb.begin(), bb.end())) {
+        for (const auto& ins : vector(bb.begin(), bb.end())) {
             for (auto a : get_assertions(ins, info, bb.label())) {
                 insts.emplace_back(a);
             }

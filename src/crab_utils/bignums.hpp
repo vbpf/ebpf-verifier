@@ -223,19 +223,19 @@ class z_number final {
         }
     }
 
-    z_number operator+(const z_number& x) const { return z_number(_n + x._n); }
+    z_number operator+(const z_number& x) const { return {_n + x._n}; }
 
-    z_number operator*(const z_number& x) const { return z_number(_n * x._n); }
+    z_number operator*(const z_number& x) const { return {_n * x._n}; }
 
-    z_number operator-(const z_number& x) const { return z_number(_n - x._n); }
+    z_number operator-(const z_number& x) const { return {_n - x._n}; }
 
-    z_number operator-() const { return z_number(-_n); }
+    z_number operator-() const { return {-_n}; }
 
     z_number operator/(const z_number& x) const {
         if (x._n.is_zero()) {
             CRAB_ERROR("z_number: division by zero [1]");
         } else {
-            return z_number(_n / x._n);
+            return {_n / x._n};
         }
     }
 
@@ -243,7 +243,7 @@ class z_number final {
         if (x._n.is_zero()) {
             CRAB_ERROR("z_number: division by zero [2]");
         } else {
-            return z_number(_n % x._n);
+            return {_n % x._n};
         }
     }
 
@@ -314,30 +314,30 @@ class z_number final {
 
     bool operator>=(const z_number& x) const { return (_n >= x._n); }
 
-    z_number operator&(const z_number& x) const { return z_number(_n & x._n); }
+    z_number operator&(const z_number& x) const { return {_n & x._n}; }
 
-    z_number operator|(const z_number& x) const { return z_number(_n | x._n); }
+    z_number operator|(const z_number& x) const { return {_n | x._n}; }
 
-    z_number operator^(const z_number& x) const { return z_number(_n ^ x._n); }
+    z_number operator^(const z_number& x) const { return {_n ^ x._n}; }
 
-    z_number operator<<(z_number x) const {
+    z_number operator<<(const z_number& x) const {
         if (!x.fits_sint32()) {
             CRAB_ERROR("z_number ", x._n.str(), " does not fit into an int32");
         }
-        return z_number(_n << (int32_t)x);
+        return {_n << (int32_t)x};
     }
 
-    z_number operator>>(z_number x) const {
+    z_number operator>>(const z_number& x) const {
         if (!x.fits_sint32()) {
             CRAB_ERROR("z_number ", x._n.str(), " does not fit into an int32");
         }
-        return z_number(_n >> (int32_t)x);
+        return {_n >> (int32_t)x};
     }
 
     [[nodiscard]]
     z_number fill_ones() const {
         if (_n.is_zero()) {
-            return z_number((signed long long)0);
+            return {(signed long long)0};
         }
 
         z_number result;

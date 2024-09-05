@@ -5,6 +5,7 @@
 #include <optional>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -19,8 +20,8 @@ struct label_t {
     int to;                         ///< Jump target or -1
     std::string stack_frame_prefix; ///< Variable prefix when calling this label.
 
-    explicit label_t(int index, int to = -1, std::string stack_frame_prefix = {}) noexcept
-        : from(index), to(to), stack_frame_prefix(stack_frame_prefix) {}
+    explicit label_t(const int index, const int to = -1, std::string stack_frame_prefix = {}) noexcept
+        : from(index), to(to), stack_frame_prefix(std::move(stack_frame_prefix)) {}
 
     static label_t make_jump(const label_t& src_label, const label_t& target_label) {
         return label_t{src_label.from, target_label.from, target_label.stack_frame_prefix};
@@ -138,7 +139,7 @@ struct Un {
         NEG,    // dst = -dst
     };
 
-    Op op;
+    Op op{};
     Reg dst;
     bool is64{};
     constexpr bool operator==(const Un&) const = default;
@@ -277,7 +278,7 @@ struct Atomic {
         CMPXCHG = 0xf0, // Only valid with fetch=true.
     };
 
-    Op op;
+    Op op{};
     bool fetch{};
     Deref access;
     Reg valreg;
@@ -405,7 +406,7 @@ using AssertionConstraint = std::variant<Comparable, Addable, ValidDivisor, Vali
 
 struct Assert {
     AssertionConstraint cst;
-    Assert(AssertionConstraint cst) : cst(cst) {}
+    Assert(AssertionConstraint cst) : cst(std::move(cst)) {}
     constexpr bool operator==(const Assert&) const = default;
 };
 

@@ -13,8 +13,8 @@
 
 namespace crab {
 
-thread_local crab::lazy_allocator<std::map<std::string, unsigned>> CrabStats::counters;
-thread_local crab::lazy_allocator<std::map<std::string, Stopwatch>> CrabStats::sw;
+thread_local lazy_allocator<std::map<std::string, unsigned>> CrabStats::counters;
+thread_local lazy_allocator<std::map<std::string, Stopwatch>> CrabStats::sw;
 
 void CrabStats::clear_thread_local_state() {
     counters.clear();
@@ -34,9 +34,9 @@ long Stopwatch::systemTime() const {
 
     return (long)total_us;
 #else
-    struct rusage ru;
+    rusage ru;
     getrusage(RUSAGE_SELF, &ru);
-    long r = ru.ru_utime.tv_sec * 1000000L + ru.ru_utime.tv_usec;
+    const long r = ru.ru_utime.tv_sec * 1000000L + ru.ru_utime.tv_usec;
     return r;
 #endif
 }
@@ -72,7 +72,7 @@ long Stopwatch::getTimeElapsed() const {
 }
 
 double Stopwatch::toSeconds() {
-    double time = ((double)getTimeElapsed() / 1000000);
+    double time = (static_cast<double>(getTimeElapsed()) / 1000000);
     return time;
 }
 
@@ -80,7 +80,7 @@ void Stopwatch::Print(std::ostream& out) const {
     long time = getTimeElapsed();
     long h = time / 3600000000L;
     long m = time / 60000000L - h * 60;
-    float s = ((float)time / 1000000L) - m * 60 - h * 3600;
+    float s = (static_cast<float>(time) / 1000000L) - m * 60 - h * 3600;
 
     if (h > 0) {
         out << h << "h";

@@ -20,27 +20,12 @@ using std::cout;
 using std::string;
 using std::vector;
 
-template <typename T>
-static vector<T> vector_of(const char* data, ELFIO::Elf_Xword size) {
-    if ((size % sizeof(T) != 0) || size > UINT32_MAX || !data) {
-        throw std::runtime_error("Invalid argument to vector_of");
-    }
-    return {(T*)data, (T*)(data + size)};
-}
-
-template <typename T>
-static vector<T> vector_of(const ELFIO::section& sec) {
-    auto data = sec.get_data();
-    auto size = sec.get_size();
-    return vector_of<T>(data, size);
-}
-
 int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
                     ebpf_verifier_options_t options) {
     EquivalenceKey equiv{map_type.value_type, key_size, value_size, map_type.is_array ? max_entries : 0};
     if (!global_program_info->cache.count(equiv)) {
         // +1 so 0 is the null FD
-        global_program_info->cache[equiv] = (int)global_program_info->cache.size() + 1;
+        global_program_info->cache[equiv] = static_cast<int>(global_program_info->cache.size()) + 1;
     }
     return global_program_info->cache.at(equiv);
 }
@@ -250,7 +235,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         }
     }
 
-    std::variant<size_t, std::map<std::string, size_t>> map_record_size_or_map_offsets = size_t(0);
+    std::variant<size_t, std::map<std::string, size_t>> map_record_size_or_map_offsets = static_cast<size_t>(0);
     if (reader.sections[string(".maps")]) {
         if (!btf_data.has_value()) {
             throw std::runtime_error(string("No BTF section found in ELF file ") + path);
@@ -318,7 +303,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
             auto [program_name, program_size] = get_program_name_and_size(*section, program_offset, symbols);
             raw_program prog{path,
                              name,
-                             program_offset,
+                             static_cast<uint32_t>(program_offset),
                              program_name,
                              vector_of<ebpf_inst>(section->get_data() + program_offset, program_size),
                              info};
@@ -358,8 +343,8 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                     auto [symbol_name, symbol_section_index] = get_symbol_name_and_section_index(symbols, index);
 
                     // Perform relocation for function symbols.
-                    if ((inst.opcode == INST_OP_CALL) && (inst.src == INST_CALL_LOCAL) &&
-                        (reader.sections[symbol_section_index] == section.get())) {
+                    if (inst.opcode == INST_OP_CALL && inst.src == INST_CALL_LOCAL &&
+                        reader.sections[symbol_section_index] == section.get()) {
                         relocate_function(inst, offset, index, symbols);
                         continue;
                     }

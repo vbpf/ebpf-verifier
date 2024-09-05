@@ -40,7 +40,7 @@ const EbpfProgramType linux_xdp_program_type = PTYPE("xdp", &g_xdp_descr, BPF_PR
 
 const EbpfProgramType cilium_lxc_program_type = PTYPE("lxc", &g_sched_descr, BPF_PROG_TYPE_SOCKET_FILTER, {});
 
-const std::vector<EbpfProgramType> linux_program_types = {
+const std::vector linux_program_types = {
     PTYPE("unspec", &g_unspec_descr, BPF_PROG_TYPE_UNSPEC, {}),
     linux_socket_filter_program_type,
     linux_xdp_program_type,
@@ -132,7 +132,7 @@ static const EbpfMapType linux_map_types[] = {
 
 EbpfMapType get_map_type_linux(uint32_t platform_specific_type) {
     uint32_t index = platform_specific_type;
-    if ((index == 0) || (index >= sizeof(linux_map_types) / sizeof(linux_map_types[0]))) {
+    if (index == 0 || index >= std::size(linux_map_types)) {
         return linux_map_types[0];
     }
     EbpfMapType type = linux_map_types[index];
@@ -147,9 +147,9 @@ EbpfMapType get_map_type_linux(uint32_t platform_specific_type) {
 void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t map_def_size,
                               int map_count, const ebpf_platform_t* platform, ebpf_verifier_options_t options) {
     // Copy map definitions from the ELF section into a local list.
-    auto mapdefs = std::vector<bpf_load_map_def>();
+    std::vector<bpf_load_map_def> mapdefs;
     for (int i = 0; i < map_count; i++) {
-        bpf_load_map_def def = {0};
+        bpf_load_map_def def{};
         memcpy(&def, data + i * map_def_size, std::min(map_def_size, sizeof(def)));
         mapdefs.emplace_back(def);
     }
@@ -172,7 +172,7 @@ void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, c
 // Initialize the inner_map_fd in each map descriptor.
 void resolve_inner_map_references_linux(std::vector<EbpfMapDescriptor>& map_descriptors) {
     for (size_t i = 0; i < map_descriptors.size(); i++) {
-        unsigned int inner = map_descriptors[i].inner_map_fd; // Get the inner_map_idx back.
+        const unsigned int inner = map_descriptors[i].inner_map_fd; // Get the inner_map_idx back.
         if (inner >= map_descriptors.size()) {
             throw std::runtime_error(std::string("bad inner map index ") + std::to_string(inner) + " for map " +
                                      std::to_string(i));
@@ -182,7 +182,7 @@ void resolve_inner_map_references_linux(std::vector<EbpfMapDescriptor>& map_desc
 }
 
 #if __linux__
-static int do_bpf(bpf_cmd cmd, union bpf_attr& attr) { return syscall(321, cmd, &attr, sizeof(attr)); }
+static int do_bpf(bpf_cmd cmd, bpf_attr& attr) { return syscall(321, cmd, &attr, sizeof(attr)); }
 #endif
 
 /** Try to allocate a Linux map.
@@ -197,7 +197,7 @@ static int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value
     }
 
 #if __linux__
-    union bpf_attr attr{};
+    bpf_attr attr{};
     memset(&attr, '\0', sizeof(attr));
     attr.map_type = map_type;
     attr.key_size = key_size;
@@ -231,7 +231,7 @@ EbpfMapDescriptor& get_map_descriptor_linux(int map_fd) {
     }
 
     // This fd was not created from the maps section of an ELF file,
-    // but it may be an fd created by an app before calling the verifier.
+    // but it may be an FD created by an app before calling the verifier.
     // In this case, we would like to query the map descriptor info
     // (key size, value size) from the execution context, but this is
     // not yet supported on Linux.

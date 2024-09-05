@@ -57,8 +57,8 @@ struct checks_db final {
     checks_db() = default;
 };
 
-static checks_db generate_report(cfg_t& cfg, crab::invariant_table_t& pre_invariants,
-                                 crab::invariant_table_t& post_invariants) {
+static checks_db generate_report(cfg_t& cfg, const crab::invariant_table_t& pre_invariants,
+                                 const crab::invariant_table_t& post_invariants) {
     checks_db m_db;
     for (const label_t& label : cfg.sorted_labels()) {
         basic_block_t& bb = cfg.get_node(label);
@@ -115,7 +115,7 @@ static auto get_line_info(const InstructionSeq& insts) {
 static void print_report(std::ostream& os, const checks_db& db, const InstructionSeq& prog, bool print_line_info) {
     auto label_to_line_info = get_line_info(prog);
     os << "\n";
-    for (auto [label, messages] : db.m_db) {
+    for (const auto& [label, messages] : db.m_db) {
         for (const auto& msg : messages) {
             if (print_line_info) {
                 auto line_info = label_to_line_info.find(label.from);
@@ -133,8 +133,8 @@ static void print_report(std::ostream& os, const checks_db& db, const Instructio
     }
 }
 
-static checks_db get_analysis_report(std::ostream& s, cfg_t& cfg, crab::invariant_table_t& pre_invariants,
-                                     crab::invariant_table_t& post_invariants) {
+static checks_db get_analysis_report(std::ostream& s, cfg_t& cfg, const crab::invariant_table_t& pre_invariants,
+                                     const crab::invariant_table_t& post_invariants) {
     // Analyze the control-flow graph.
     checks_db db = generate_report(cfg, pre_invariants, post_invariants);
     if (thread_local_options.print_invariants) {
@@ -147,9 +147,9 @@ static checks_db get_analysis_report(std::ostream& s, cfg_t& cfg, crab::invarian
     return db;
 }
 
-static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info,
+static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, const program_info& info,
                                  const ebpf_verifier_options_t* options) {
-    global_program_info = std::move(info);
+    global_program_info = info;
     crab::domains::clear_global_state();
     crab::variable_t::clear_thread_local_state();
     thread_local_options = *options;
@@ -207,7 +207,7 @@ std::tuple<string_invariant, bool> ebpf_analyze_program_for_test(std::ostream& o
     try {
         cfg_t cfg = prepare_cfg(prog, info, options.simplify, false);
         auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, std::move(entry_inv));
-        checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
+        const checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
         print_report(os, report, prog, false);
 
         auto pre_invariant_map = to_string_invariant_map(pre_invariants);

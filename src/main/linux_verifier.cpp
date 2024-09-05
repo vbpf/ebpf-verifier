@@ -12,7 +12,7 @@
 #include "spec_type_descriptors.hpp"
 #include "utils.hpp"
 
-static int do_bpf(bpf_cmd cmd, union bpf_attr& attr) { return syscall(321, cmd, &attr, sizeof(attr)); }
+static int do_bpf(bpf_cmd cmd, bpf_attr& attr) { return syscall(321, cmd, &attr, sizeof(attr)); }
 
 /** Run the built-in Linux verifier on a raw eBPF program.
  *
@@ -25,10 +25,10 @@ std::tuple<bool, double> bpf_verify_program(const EbpfProgramType& type, const s
     buf[0] = 0;
     memset(buf.data(), '\0', buf.size());
 
-    union bpf_attr attr{};
+    bpf_attr attr{};
     memset(&attr, '\0', sizeof(attr));
-    attr.prog_type = (__u32)type.platform_specific_data;
-    attr.insn_cnt = (__u32)raw_prog.size();
+    attr.prog_type = static_cast<__u32>(type.platform_specific_data);
+    attr.insn_cnt = static_cast<__u32>(raw_prog.size());
     attr.insns = (__u64)raw_prog.data();
     attr.license = (__u64) "GPL";
     if (options->print_failures) {

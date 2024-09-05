@@ -39,7 +39,7 @@ struct ConformanceTestResult {
     crab::interval_t r0_value = crab::interval_t::top();
 };
 
-ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memory_bytes,
-                                                const std::vector<uint8_t>& program_bytes, bool debug);
+ConformanceTestResult run_conformance_test_case(const std::vector<std::byte>& memory_bytes,
+                                                const std::vector<std::byte>& program_bytes, bool debug);
 
 bool run_yaml(const std::string& path);

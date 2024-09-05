@@ -123,7 +123,7 @@ class SplitDBM final {
      *     x - v <= lb((a-1)*x + b*y + k)
      *     y - v <= lb(a*x + (b-1)*y + k)
      **/
-    void diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
+    void diffcsts_of_assign(const linear_expression_t& exp,
                             /* if true then process the upper
                                bounds, else the lower bounds */
                             bool extract_upper_bounds,
@@ -132,9 +132,8 @@ class SplitDBM final {
                             std::vector<std::pair<variable_t, Weight>>& diff_csts) const;
 
     // Turn an assignment into a set of difference constraints.
-    void diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
-                            std::vector<std::pair<variable_t, Weight>>& lb,
-                            std::vector<std::pair<variable_t, Weight>>& ub);
+    void diffcsts_of_assign(const linear_expression_t& exp, std::vector<std::pair<variable_t, Weight>>& lb,
+                            std::vector<std::pair<variable_t, Weight>>& ub) const;
 
     /**
      * Turn a linear inequality into a set of difference

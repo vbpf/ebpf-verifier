@@ -6,14 +6,14 @@
 // that would typically be shared between the verifier and other
 // eBPF components.
 
-typedef enum _ebpf_return_type {
+typedef enum {
     EBPF_RETURN_TYPE_INTEGER = 0,
     EBPF_RETURN_TYPE_PTR_TO_MAP_VALUE_OR_NULL,
     EBPF_RETURN_TYPE_INTEGER_OR_NO_RETURN_IF_SUCCEED,
     EBPF_RETURN_TYPE_UNSUPPORTED,
 } ebpf_return_type_t;
 
-typedef enum _ebpf_argument_type {
+typedef enum {
     EBPF_ARGUMENT_TYPE_DONTCARE = 0,
     EBPF_ARGUMENT_TYPE_ANYTHING, // All values are valid, e.g., 64-bit flags.
     EBPF_ARGUMENT_TYPE_CONST_SIZE,
@@ -31,7 +31,7 @@ typedef enum _ebpf_argument_type {
 
 // The following struct describes how to access the layout in
 // memory of the data (e.g., the actual packet).
-typedef struct _ebpf_context_descriptor {
+typedef struct {
     int size; // Size of ctx struct.
     int data; // Offset into ctx struct of pointer to data.
     int end;  // Offset into ctx struct of pointer to end of data.

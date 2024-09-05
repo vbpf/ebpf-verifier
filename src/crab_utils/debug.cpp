@@ -9,6 +9,6 @@ std::set<std::string> CrabLog;
 unsigned CrabVerbosity = 0;
 
 bool CrabWarningFlag = false;
-void CrabEnableWarningMsg(bool v) { CrabWarningFlag = v; }
+void CrabEnableWarningMsg(bool b) { CrabWarningFlag = b; }
 
 } // namespace crab

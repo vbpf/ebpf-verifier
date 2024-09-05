@@ -13,7 +13,7 @@ interval_t interval_t::operator/(const interval_t& x) const {
         //   the linear interval solver can perform many divisions where
         //   the divisor is a singleton interval. We optimize for this case.
         if (std::optional<number_t> n = x.singleton()) {
-            number_t c = *n;
+            const number_t& c = *n;
             if (c == number_t{1}) {
                 return *this;
             } else if (c > number_t{0}) {
@@ -254,9 +254,9 @@ interval_t interval_t::And(const interval_t& x) const {
         } else if (right_op && right_op.value().fits_uint32() && right_op.value().cast_to_uint32() == UINT32_MAX) {
             // Handle bitwise-AND with UINT32_MAX, which we do for 32-bit operations.
             if (auto width = finite_size()) {
-                number_t lb32_n = (uint32_t)lb().number()->cast_to_uint64();
-                number_t ub32_n = (uint32_t)ub().number()->cast_to_uint64();
-                number_t width32_n = (uint32_t)width->cast_to_uint64();
+                number_t lb32_n = static_cast<uint32_t>(lb().number()->cast_to_uint64());
+                number_t ub32_n = static_cast<uint32_t>(ub().number()->cast_to_uint64());
+                number_t width32_n = static_cast<uint32_t>(width->cast_to_uint64());
                 if ((width->cast_to_uint64() <= UINT32_MAX) && (lb32_n < ub32_n) && (lb32_n + width32_n == ub32_n)) {
                     return interval_t{lb32_n, ub32_n};
                 }
@@ -281,17 +281,17 @@ interval_t interval_t::Or(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
-        std::optional<number_t> left_op = singleton();
-        std::optional<number_t> right_op = x.singleton();
+        const std::optional<number_t> left_op = singleton();
+        const std::optional<number_t> right_op = x.singleton();
 
         if (left_op && right_op) {
             return interval_t((*left_op) | (*right_op));
         } else if (lb() >= number_t{0} && x.lb() >= number_t{0}) {
-            std::optional<number_t> left_ub = ub().number();
-            std::optional<number_t> right_ub = x.ub().number();
+            const std::optional<number_t> left_ub = ub().number();
+            const std::optional<number_t> right_ub = x.ub().number();
 
             if (left_ub && right_ub) {
-                number_t m = (*left_ub > *right_ub ? *left_ub : *right_ub);
+                const number_t m = (*left_ub > *right_ub ? *left_ub : *right_ub);
                 return interval_t(number_t{0}, m.fill_ones());
             } else {
                 return interval_t(number_t{0}, bound_t::plus_infinity());
@@ -306,8 +306,8 @@ interval_t interval_t::Xor(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
-        std::optional<number_t> left_op = singleton();
-        std::optional<number_t> right_op = x.singleton();
+        const std::optional<number_t> left_op = singleton();
+        const std::optional<number_t> right_op = x.singleton();
 
         if (left_op && right_op) {
             return interval_t((*left_op) ^ (*right_op));
@@ -321,8 +321,8 @@ interval_t interval_t::Shl(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
-        if (std::optional<number_t> shift = x.singleton()) {
-            number_t k = *shift;
+        if (const std::optional<number_t> shift = x.singleton()) {
+            const number_t k = *shift;
             if (k < number_t{0}) {
                 // CRAB_ERROR("lshr shift operand cannot be negative");
                 return top();
@@ -346,8 +346,8 @@ interval_t interval_t::AShr(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
-        if (std::optional<number_t> shift = x.singleton()) {
-            number_t k = *shift;
+        if (const std::optional<number_t> shift = x.singleton()) {
+            const number_t k = *shift;
             if (k < number_t{0}) {
                 // CRAB_ERROR("ashr shift operand cannot be negative");
                 return top();
@@ -371,8 +371,8 @@ interval_t interval_t::LShr(const interval_t& x) const {
     if (is_bottom() || x.is_bottom()) {
         return bottom();
     } else {
-        if (std::optional<number_t> shift = x.singleton()) {
-            number_t k = *shift;
+        if (const std::optional<number_t> shift = x.singleton()) {
+            const number_t k = *shift;
             if (k < number_t{0}) {
                 // CRAB_ERROR("lshr shift operand cannot be negative");
                 return top();
@@ -382,8 +382,8 @@ interval_t interval_t::LShr(const interval_t& x) const {
             // to avoid wasting too much time on it.
             if (k <= 128) {
                 if (lb() >= number_t{0} && ub().is_finite() && shift) {
-                    number_t lb = *this->lb().number();
-                    number_t ub = *this->ub().number();
+                    const number_t lb = *this->lb().number();
+                    const number_t ub = *this->ub().number();
                     return interval_t(lb >> k, ub >> k);
                 }
             }

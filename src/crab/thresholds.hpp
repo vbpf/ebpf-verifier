@@ -65,7 +65,7 @@ class wto_thresholds_t final {
 
     void operator()(const label_t& vertex);
 
-    void operator()(std::shared_ptr<wto_cycle_t>& cycle);
+    void operator()(const std::shared_ptr<wto_cycle_t>& cycle);
 
     friend std::ostream& operator<<(std::ostream& o, const wto_thresholds_t& t);
 

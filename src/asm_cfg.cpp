@@ -11,7 +11,6 @@
 
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
-#include "crab_utils/debug.hpp"
 
 using std::optional;
 using std::set;
@@ -26,7 +25,7 @@ static optional<label_t> get_jump(Instruction ins) {
     return {};
 }
 
-static bool has_fall(Instruction ins) {
+static bool has_fall(const Instruction& ins) {
     if (std::holds_alternative<Exit>(ins)) {
         return false;
     }
@@ -242,17 +241,16 @@ static cfg_t to_nondet(const cfg_t& cfg) {
             pbb >> newbb;
         }
         // note the special case where we jump to fallthrough
-        auto nextlist = bb.next_blocks_set();
-        if (nextlist.size() == 2) {
+        if (auto nextlist = bb.next_blocks_set(); nextlist.size() == 2) {
             label_t mid_label = this_label;
-            Jmp jmp = std::get<Jmp>(*bb.rbegin());
+            auto [cond, target] = std::get<Jmp>(*bb.rbegin());
 
-            nextlist.erase(jmp.target);
+            nextlist.erase(target);
             label_t fallthrough = *nextlist.begin();
 
             vector<std::tuple<label_t, Condition>> jumps{
-                {jmp.target, *jmp.cond},
-                {fallthrough, reverse(*jmp.cond)},
+                {target, *cond},
+                {fallthrough, reverse(*cond)},
             };
             for (auto const& [next_label, cond1] : jumps) {
                 label_t jump_label = label_t::make_jump(mid_label, next_label);
@@ -279,8 +277,8 @@ static std::string instype(Instruction ins) {
             return "call_1";
         }
         if (call.pairs.empty()) {
-            if (std::all_of(call.singles.begin(), call.singles.end(),
-                            [](ArgSingle kr) { return kr.kind == ArgSingle::Kind::ANYTHING; })) {
+            if (std::ranges::all_of(call.singles,
+                                    [](const ArgSingle kr) { return kr.kind == ArgSingle::Kind::ANYTHING; })) {
                 return "call_nomem";
             }
         }

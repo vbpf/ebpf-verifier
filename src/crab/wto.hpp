@@ -101,7 +101,7 @@ class wto_t final {
 
 #ifndef RECURSIVE_WTO
     void push_successors(const label_t& vertex, wto_partition_t& partition,
-                         std::weak_ptr<wto_cycle_t> containing_cycle);
+                         const std::weak_ptr<wto_cycle_t>& containing_cycle);
     void start_visit(const label_t& vertex, wto_partition_t& partition, std::weak_ptr<wto_cycle_t> containing_cycle);
     void continue_visit(const label_t& vertex, wto_partition_t& partition, std::weak_ptr<wto_cycle_t> containing_cycle);
 #else
