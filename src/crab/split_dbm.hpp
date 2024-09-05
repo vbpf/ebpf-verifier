@@ -35,7 +35,6 @@
 #include "crab_utils/graph_ops.hpp"
 #include "crab_utils/safeint.hpp"
 #include "crab_utils/stats.hpp"
-
 #include "string_constraints.hpp"
 
 namespace crab {
@@ -239,7 +238,7 @@ class SplitDBM final {
     SplitDBM widen(const SplitDBM& o) const;
 
     [[nodiscard]]
-    SplitDBM widening_thresholds(const SplitDBM& o, const iterators::thresholds_t& ts) const {
+    SplitDBM widening_thresholds(const SplitDBM& o, const thresholds_t& ts) const {
         // TODO: use thresholds
         return this->widen(o);
     }
@@ -258,9 +257,9 @@ class SplitDBM final {
             assign(*x, e);
         }
     }
-    void assign(variable_t x, signed long long int n) { assign(x, linear_expression_t(n)); }
+    void assign(const variable_t x, signed long long int n) { assign(x, linear_expression_t(n)); }
 
-    void assign(variable_t x, variable_t v) { assign(x, linear_expression_t{v}); }
+    void assign(const variable_t x, const variable_t v) { assign(x, linear_expression_t{v}); }
 
     void assign(variable_t x, const std::optional<linear_expression_t>& e) {
         if (e) {
@@ -331,7 +330,7 @@ class SplitDBM final {
     string_invariant to_set() const;
 
   public:
-    static void clear_thread_local_state() { GraphOps<crab::AdaptGraph>::clear_thread_local_state(); }
+    static void clear_thread_local_state() { GraphOps<AdaptGraph>::clear_thread_local_state(); }
 }; // class SplitDBM
 
 } // namespace domains

@@ -40,7 +40,7 @@ class variable_t final {
   public:
     [[nodiscard]]
     std::size_t hash() const {
-        return (size_t)_id;
+        return _id;
     }
 
     bool operator==(variable_t o) const { return _id == o._id; }
@@ -82,7 +82,7 @@ class variable_t final {
     struct variable_name_factory {
         T operator()() { return _default_names(); }
     };
-    static thread_local crab::lazy_allocator<std::vector<std::string>, variable_name_factory> names;
+    static thread_local lazy_allocator<std::vector<std::string>, variable_name_factory> names;
 
   public:
     static void clear_thread_local_state();

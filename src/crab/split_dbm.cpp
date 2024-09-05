@@ -4,7 +4,6 @@
 
 #include "crab/split_dbm.hpp"
 #include "crab_utils/debug.hpp"
-#include "crab_utils/stats.hpp"
 #include "string_constraints.hpp"
 
 namespace crab::domains {
@@ -12,7 +11,7 @@ namespace crab::domains {
 static std::optional<SplitDBM::vert_id> try_at(const SplitDBM::vert_map_t& map, const variable_t v) {
     const auto it = map.find(v);
     if (it == map.end()) {
-        return std::nullopt;
+        return {};
     }
     return it->second;
 }
@@ -31,7 +30,7 @@ SplitDBM::vert_id SplitDBM::get_vert(variable_t v) {
         rev_map[vert] = v;
     } else {
         potential.emplace_back(0);
-        rev_map.push_back(v);
+        rev_map.emplace_back(v);
     }
     vert_map.emplace(v, vert);
 
@@ -76,16 +75,16 @@ void SplitDBM::diffcsts_of_assign(const linear_expression_t& exp,
         return;
     }
 
-    for (auto [y, n] : exp.variable_terms()) {
+    for (const auto& [y, n] : exp.variable_terms()) {
         Weight coeff(Params::convert_NtoW(n, overflow));
         if (overflow) {
             continue;
         }
 
+        const auto& val = this->operator[](y);
         if (coeff < Weight(0)) {
             // Can't do anything with negative coefficients.
-            auto y_val = (extract_upper_bounds ? this->operator[](y).lb() : this->operator[](y).ub());
-
+            auto y_val = extract_upper_bounds ? val.lb() : val.ub();
             if (y_val.is_infinite()) {
                 return;
             }
@@ -93,17 +92,15 @@ void SplitDBM::diffcsts_of_assign(const linear_expression_t& exp,
             if (overflow) {
                 continue;
             }
-
         } else {
-            auto y_val = (extract_upper_bounds ? this->operator[](y).ub() : this->operator[](y).lb());
-
+            auto y_val = extract_upper_bounds ? val.ub() : val.lb();
             if (y_val.is_infinite()) {
                 if (unbounded_var || coeff != Weight(1)) {
                     return;
                 }
                 unbounded_var = y;
             } else {
-                Weight ymax(Params::convert_NtoW(*(y_val.number()), overflow));
+                Weight ymax(Params::convert_NtoW(*y_val.number(), overflow));
                 if (overflow) {
                     continue;
                 }
@@ -118,7 +115,7 @@ void SplitDBM::diffcsts_of_assign(const linear_expression_t& exp,
         // coefficient
         diff_csts.emplace_back(*unbounded_var, residual);
     } else {
-        for (auto [v, n] : terms) {
+        for (const auto& [v, n] : terms) {
             diff_csts.emplace_back(v, residual - n);
         }
     }
@@ -131,7 +128,7 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
                                    std::vector<std::pair<variable_t, Weight>>& lbs,
                                    /* x <= ub for each {x,ub} in ubs */
                                    std::vector<std::pair<variable_t, Weight>>& ubs) const {
-    bool underflow, overflow;
+    bool underflow{}, overflow{};
 
     Weight exp_ub = -Params::convert_NtoW(exp.constant_term(), overflow);
     if (overflow) {
@@ -152,13 +149,14 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
     std::optional<variable_t> unbounded_ubvar;
 
     std::vector<std::pair<std::pair<Weight, variable_t>, Weight>> pos_terms, neg_terms;
-    for (auto [y, n] : exp.variable_terms()) {
+    for (const auto& [y, n] : exp.variable_terms()) {
         Weight coeff(Params::convert_NtoW(n, overflow));
         if (overflow) {
             continue;
         }
+        const auto y_val = this->operator[](y);
         if (coeff > Weight(0)) {
-            auto y_lb = this->operator[](y).lb();
+            auto y_lb = y_val.lb();
             if (y_lb.is_infinite()) {
                 if (unbounded_lbvar) {
                     return;
@@ -174,7 +172,7 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
                 pos_terms.push_back({{coeff, y}, ymin});
             }
         } else {
-            auto y_ub = this->operator[](y).ub();
+            auto y_ub = y_val.ub();
             if (y_ub.is_infinite()) {
                 if (unbounded_ubvar) {
                     return;
@@ -200,7 +198,7 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
             }
         } else {
             if (unbounded_lbcoeff == Weight(1)) {
-                for (auto [nv, k] : neg_terms) {
+                for (const auto& [nv, k] : neg_terms) {
                     csts.push_back({{x, nv.second}, exp_ub - k});
                 }
             }
@@ -211,22 +209,22 @@ void SplitDBM::diffcsts_of_lin_leq(const linear_expression_t& exp,
         if (unbounded_ubvar) {
             variable_t y(*unbounded_ubvar);
             if (unbounded_ubcoeff == Weight(1)) {
-                for (auto [nv, k] : pos_terms) {
+                for (const auto& [nv, k] : pos_terms) {
                     csts.push_back({{nv.second, y}, exp_ub + k});
                 }
             }
             // Add bounds for y
             lbs.emplace_back(y, -exp_ub / unbounded_ubcoeff);
         } else {
-            for (auto [neg_nv, neg_k] : neg_terms) {
-                for (auto [pos_nv, pos_k] : pos_terms) {
+            for (const auto& [neg_nv, neg_k] : neg_terms) {
+                for (const auto& [pos_nv, pos_k] : pos_terms) {
                     csts.push_back({{pos_nv.second, neg_nv.second}, exp_ub - neg_k + pos_k});
                 }
             }
-            for (auto [neg_nv, neg_k] : neg_terms) {
+            for (const auto& [neg_nv, neg_k] : neg_terms) {
                 lbs.emplace_back(neg_nv.second, -exp_ub / neg_nv.first + neg_k);
             }
-            for (auto [pos_nv, pos_k] : pos_terms) {
+            for (const auto& [pos_nv, pos_k] : pos_terms) {
                 ubs.emplace_back(pos_nv.second, exp_ub / pos_nv.first + pos_k);
             }
         }
@@ -238,7 +236,7 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
     std::vector<diffcst_t> csts;
     diffcsts_of_lin_leq(exp, csts, lbs, ubs);
 
-    for (auto [var, n] : lbs) {
+    for (const auto& [var, n] : lbs) {
         CRAB_LOG("zones-split", std::cout << var << ">=" << n << "\n");
         vert_id vert = get_vert(var);
         if (auto w = g.lookup(vert, 0)) {
@@ -252,7 +250,7 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
             return false;
         }
     }
-    for (auto [var, n] : ubs) {
+    for (const auto& [var, n] : ubs) {
         CRAB_LOG("zones-split", std::cout << var << "<=" << n << "\n");
         vert_id vert = get_vert(var);
         if (auto w = g.lookup(0, vert)) {
@@ -266,7 +264,7 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
         }
     }
 
-    for (auto [diff, k] : csts) {
+    for (const auto& [diff, k] : csts) {
         CRAB_LOG("zones-split", std::cout << diff.first << "-" << diff.second << "<=" << k << "\n");
 
         vert_id src = get_vert(diff.second);
@@ -335,12 +333,12 @@ bool SplitDBM::add_univar_disequation(variable_t x, const number_t& n) {
                     return false;
                 }
                 // Update other bounds
-                for (auto e : g.e_succs(v)) {
-                    if (e.vert == 0) {
+                for (auto [vert, val] : g.e_succs(v)) {
+                    if (vert == 0) {
                         continue;
                     }
-                    g.update_edge(0, e.val + ub_val, e.vert);
-                    if (!repair_potential(0, e.vert)) {
+                    g.update_edge(0, val + ub_val, vert);
+                    if (!repair_potential(0, vert)) {
                         return false;
                     }
                 }
@@ -352,9 +350,6 @@ bool SplitDBM::add_univar_disequation(variable_t x, const number_t& n) {
 }
 
 bool SplitDBM::operator<=(const SplitDBM& o) const {
-    CrabStats::count("SplitDBM.count.leq");
-    ScopedCrabStats __st__("SplitDBM.leq");
-
     // cover all trivial cases to avoid allocating a dbm matrix
     if (o.is_top()) {
         return true;
@@ -391,11 +386,9 @@ bool SplitDBM::operator<=(const SplitDBM& o) const {
 
         assert(vert_renaming[ox] != (unsigned)-1);
         vert_id x = vert_renaming[ox];
-        for (auto edge : o.g.e_succs(ox)) {
-            vert_id oy = edge.vert;
+        for (auto [oy, ow] : o.g.e_succs(ox)) {
             assert(vert_renaming[oy] != (unsigned)-1);
             vert_id y = vert_renaming[oy];
-            Weight ow = edge.val;
 
             if (auto w = g.lookup(x, y)) {
                 if (*w <= ow) {
@@ -417,9 +410,6 @@ bool SplitDBM::operator<=(const SplitDBM& o) const {
 }
 
 SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
-    CrabStats::count("SplitDBM.count.join");
-    ScopedCrabStats __st__("SplitDBM.join");
-
     if (o.is_top()) {
         return o;
     }
@@ -433,27 +423,22 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
                                       << o << "\n");
     // Figure out the common renaming, initializing the
     // resulting potentials as we go.
-    std::vector<vert_id> perm_x;
-    std::vector<vert_id> perm_y;
+    std::vector<vert_id> perm_x{0};
+    std::vector<vert_id> perm_y{0};
     std::vector<variable_t> perm_inv;
 
-    std::vector<Weight> pot_rx;
-    std::vector<Weight> pot_ry;
+    std::vector<Weight> pot_rx{0};
+    std::vector<Weight> pot_ry{0};
     vert_map_t out_vmap;
-    rev_map_t out_revmap;
+    rev_map_t out_revmap{{}};
     // Add the zero vertex
     assert(!potential.empty());
-    pot_rx.emplace_back(0);
-    pot_ry.emplace_back(0);
-    perm_x.push_back(0);
-    perm_y.push_back(0);
-    out_revmap.push_back(std::nullopt);
 
     for (auto [v, n] : vert_map) {
         if (auto y = try_at(o.vert_map, v)) {
             // Variable exists in both
             out_vmap.emplace(v, static_cast<vert_id>(perm_x.size()));
-            out_revmap.push_back(v);
+            out_revmap.emplace_back(v);
 
             pot_rx.push_back(potential[n] - potential[0]);
             // XXX JNL: check this out
@@ -596,15 +581,6 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
 }
 
 SplitDBM SplitDBM::widen(const SplitDBM& o) const {
-    CrabStats::count("SplitDBM.count.widening");
-    ScopedCrabStats __st__("SplitDBM.widening");
-
-    CRAB_LOG("zones-split", std::cout << "Before widening:\n"
-                                      << "DBM 1\n"
-                                      << *this << "\n"
-                                      << "DBM 2\n"
-                                      << o << "\n");
-
     // Figure out the common renaming
     assert(!potential.empty());
     std::vector<Weight> widen_pot = {0};
@@ -616,7 +592,7 @@ SplitDBM SplitDBM::widen(const SplitDBM& o) const {
         if (auto y = try_at(o.vert_map, v)) {
             // Variable exists in both
             out_vmap.emplace(v, static_cast<vert_id>(perm_x.size()));
-            out_revmap.push_back(v);
+            out_revmap.emplace_back(v);
 
             widen_pot.push_back(potential[n] - potential[0]);
             perm_x.push_back(n);
@@ -642,37 +618,25 @@ SplitDBM SplitDBM::widen(const SplitDBM& o) const {
 }
 
 std::optional<SplitDBM> SplitDBM::meet(const SplitDBM& o) const {
-    CrabStats::count("SplitDBM.count.meet");
-    ScopedCrabStats __st__("SplitDBM.meet");
-
     if (is_top()) {
         return o;
     }
     if (o.is_top()) {
         return *this;
     }
-    CRAB_LOG("zones-split", std::cout << "Before meet:\n"
-                                      << "DBM 1\n"
-                                      << *this << "\n"
-                                      << "DBM 2\n"
-                                      << o << "\n");
-
     // We map vertices in the left operand onto a contiguous range.
     // This will often be the identity map, but there might be gaps.
     vert_map_t meet_verts;
-    rev_map_t meet_rev;
+    rev_map_t meet_rev{{}};
 
-    std::vector<vert_id> perm_x;
-    std::vector<vert_id> perm_y;
-    std::vector<Weight> meet_pi;
-    perm_x.push_back(0);
-    perm_y.push_back(0);
-    meet_pi.emplace_back(0);
-    meet_rev.push_back(std::nullopt);
+    std::vector<vert_id> perm_x{0};
+    std::vector<vert_id> perm_y{0};
+    std::vector<Weight> meet_pi{0};
+
     for (auto [v, n] : vert_map) {
-        vert_id vv = static_cast<vert_id>(perm_x.size());
+        auto vv = static_cast<vert_id>(perm_x.size());
         meet_verts.emplace(v, vv);
-        meet_rev.push_back(v);
+        meet_rev.emplace_back(v);
 
         perm_x.push_back(n);
         perm_y.push_back(-1);
@@ -681,26 +645,24 @@ std::optional<SplitDBM> SplitDBM::meet(const SplitDBM& o) const {
 
     // Add missing mappings from the right operand.
     for (auto [v, n] : o.vert_map) {
-        auto it = meet_verts.find(v);
-
-        if (it == meet_verts.end()) {
-            vert_id vv = static_cast<vert_id>(perm_y.size());
-            meet_rev.push_back(v);
+        if (auto it = meet_verts.find(v); it != meet_verts.end()) {
+            perm_y[it->second] = n;
+        }else {
+            auto vv = static_cast<vert_id>(perm_y.size());
+            meet_rev.emplace_back(v);
 
             perm_y.push_back(n);
             perm_x.push_back(-1);
             meet_pi.push_back(o.potential[n] - o.potential[0]);
             meet_verts.emplace(v, vv);
-        } else {
-            perm_y[it->second] = n;
         }
     }
 
     // Build the permuted view of x and y.
     assert(g.size() > 0);
-    GraphPerm<const graph_t> gx(perm_x, g);
+    GraphPerm gx(perm_x, g);
     assert(o.g.size() > 0);
-    GraphPerm<const graph_t> gy(perm_y, o.g);
+    GraphPerm gy(perm_y, o.g);
 
     // Compute the syntactic meet of the permuted graphs.
     bool is_closed;
@@ -715,14 +677,13 @@ std::optional<SplitDBM> SplitDBM::meet(const SplitDBM& o) const {
     }
 
     if (!is_closed) {
-        GrOps::apply_delta(meet_g, GrOps::close_after_meet(SubGraph<graph_t>(meet_g, 0), meet_pi, gx, gy));
+        GrOps::apply_delta(meet_g, GrOps::close_after_meet(SubGraph(meet_g, 0), meet_pi, gx, gy));
 
         // Recover updated LBs and UBs.<
 
         GrOps::apply_delta(meet_g, GrOps::close_after_assign(meet_g, meet_pi, 0));
     }
     SplitDBM res(std::move(meet_verts), std::move(meet_rev), std::move(meet_g), std::move(meet_pi), vert_set_t());
-    CRAB_LOG("zones-split", std::cout << "Result meet:\n" << res << "\n");
     return res;
 }
 
@@ -736,14 +697,9 @@ void SplitDBM::operator-=(const variable_t v) {
 }
 
 bool SplitDBM::add_constraint(const linear_constraint_t& cst) {
-    CrabStats::count("SplitDBM.count.add_constraints");
-    ScopedCrabStats __st__("SplitDBM.add_constraints");
-
     if (cst.is_tautology()) {
         return true;
     }
-
-    // g.check_adjs();
 
     if (cst.is_contradiction()) {
         return false;
@@ -754,35 +710,27 @@ bool SplitDBM::add_constraint(const linear_constraint_t& cst) {
         if (!add_linear_leq(cst.expression())) {
             return false;
         }
-        //  g.check_adjs();
-        CRAB_LOG("zones-split", std::cout << "--- " << cst << "\n" << *this << "\n");
         break;
     }
     case constraint_kind_t::LESS_THAN_ZERO: {
         // We try to convert a strict to non-strict.
         // e < 0 --> e <= -1
-        const auto nc = linear_constraint_t(cst.expression().plus(1), constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO);
-        if (!add_linear_leq(nc.expression())) {
+        if (const auto nc = linear_constraint_t(cst.expression().plus(1), constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO);
+            !add_linear_leq(nc.expression())) {
             return false;
         }
-        CRAB_LOG("zones-split", std::cout << "--- " << cst << "\n" << *this << "\n");
         break;
     }
     case constraint_kind_t::EQUALS_ZERO: {
-        const linear_expression_t& exp = cst.expression();
-        if (!add_linear_leq(exp) || !add_linear_leq(exp.negate())) {
-            CRAB_LOG("zones-split", std::cout << " ~~> _|_"
-                                              << "\n");
+        if (const linear_expression_t& exp = cst.expression(); !add_linear_leq(exp) || !add_linear_leq(exp.negate())) {
             return false;
         }
-        // g.check_adjs();
-        CRAB_LOG("zones-split", std::cout << "--- " << cst << "\n" << *this << "\n");
         break;
     }
     case constraint_kind_t::NOT_ZERO: {
         // XXX: similar precision as the interval domain
-        const linear_expression_t& e = cst.expression();
-        for (const auto& [variable, coefficient] : e.variable_terms()) {
+        for (const linear_expression_t& e = cst.expression();
+             const auto& [variable, coefficient] : e.variable_terms()) {
             interval_t i = compute_residual(e, variable) / interval_t(coefficient);
             if (auto k = i.singleton()) {
                 if (!add_univar_disequation(variable, *k)) {
@@ -793,19 +741,11 @@ bool SplitDBM::add_constraint(const linear_constraint_t& cst) {
     } break;
     }
 
-    CRAB_WARN("Unhandled constraint ", cst, " by split_dbm");
-    CRAB_LOG("zones-split", std::cout << "---" << cst << "\n" << *this << "\n");
     normalize();
     return true;
 }
 
 void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
-    CrabStats::count("SplitDBM.count.assign");
-    ScopedCrabStats __st__("SplitDBM.assign");
-
-    CRAB_LOG("zones-split", std::cout << "Before assign: " << *this << "\n");
-    CRAB_LOG("zones-split", std::cout << lhs << ":=" << e << "\n");
-
     interval_t value_interval = eval_interval(e);
 
     std::optional<Weight> lb_w, ub_w;
@@ -814,7 +754,6 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
         lb_w = Params::convert_NtoW(-(*value_interval.lb().number()), overflow);
         if (overflow) {
             operator-=(lhs);
-            CRAB_LOG("zones-split", std::cout << "---" << lhs << ":=" << e << "\n" << *this << "\n");
             normalize();
             return;
         }
@@ -823,7 +762,6 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
         ub_w = Params::convert_NtoW(*value_interval.ub().number(), overflow);
         if (overflow) {
             operator-=(lhs);
-            CRAB_LOG("zones-split", std::cout << "---" << lhs << ":=" << e << "\n" << *this << "\n");
             normalize();
             return;
         }
@@ -856,7 +794,7 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
     vert_id vert = g.new_vertex();
     assert(vert <= rev_map.size());
     if (vert == rev_map.size()) {
-        rev_map.push_back(lhs);
+        rev_map.emplace_back(lhs);
         potential.push_back(potential[0] + e_val);
     } else {
         potential[vert] = potential[0] + e_val;
@@ -865,11 +803,11 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
 
     {
         edge_vector delta;
-        for (auto [var, n] : diffs_lb) {
+        for (const auto& [var, n] : diffs_lb) {
             delta.emplace_back(vert, get_vert(var), -n);
         }
 
-        for (auto [var, n] : diffs_ub) {
+        for (const auto& [var, n] : diffs_ub) {
             delta.emplace_back(get_vert(var), vert, n);
         }
 
@@ -889,13 +827,9 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
     vert_map.emplace(lhs, vert);
 
     normalize();
-    CRAB_LOG("zones-split", std::cout << "---" << lhs << ":=" << e << "\n" << *this << "\n");
 }
 
 SplitDBM SplitDBM::narrow(const SplitDBM& o) const {
-    CrabStats::count("SplitDBM.count.narrowing");
-    ScopedCrabStats __st__("SplitDBM.narrowing");
-
     if (is_top()) {
         return o;
     }
@@ -913,19 +847,15 @@ class vert_set_wrap_t {
 };
 
 void SplitDBM::normalize() {
-    CrabStats::count("SplitDBM.count.normalize");
-    ScopedCrabStats __st__("SplitDBM.normalize");
-
-    // dbm_canonical(_dbm);
-    // Always maintained in normal form, except for widening
+    // Always maintained in normal form; originally, not when widening
+    // TODO: fix widening
     if (unstable.empty()) {
         return;
     }
 
     edge_vector delta;
-    // GrOps::close_after_widen(g, potential, vert_set_wrap_t(unstable), delta);
     // GKG: Check
-    GrOps::apply_delta(g, GrOps::close_after_widen(SubGraph<graph_t>(g, 0), potential, vert_set_wrap_t(unstable)));
+    GrOps::apply_delta(g, GrOps::close_after_widen(SubGraph(g, 0), potential, vert_set_wrap_t(unstable)));
     // Retrieve variable bounds
     GrOps::apply_delta(g, GrOps::close_after_assign(g, potential, 0));
 
@@ -933,8 +863,6 @@ void SplitDBM::normalize() {
 }
 
 void SplitDBM::set(const variable_t x, const interval_t& intv) {
-    CrabStats::count("SplitDBM.count.assign");
-    ScopedCrabStats __st__("SplitDBM.assign");
     assert(!intv.is_bottom());
 
     this->operator-=(x);
@@ -968,9 +896,6 @@ void SplitDBM::set(const variable_t x, const interval_t& intv) {
 
 void SplitDBM::apply(const arith_binop_t op, const variable_t x, const variable_t y, const variable_t z,
                      const int finite_width) {
-    CrabStats::count("SplitDBM.count.apply");
-    ScopedCrabStats __st__("SplitDBM.apply");
-
     switch (op) {
     case arith_binop_t::ADD: assign(x, linear_expression_t(y).plus(z)); break;
     case arith_binop_t::SUB: assign(x, linear_expression_t(y).subtract(z)); break;
@@ -987,9 +912,6 @@ void SplitDBM::apply(const arith_binop_t op, const variable_t x, const variable_
 
 void SplitDBM::apply(const arith_binop_t op, const variable_t x, const variable_t y, const number_t& k,
                      const int finite_width) {
-    CrabStats::count("SplitDBM.count.apply");
-    ScopedCrabStats __st__("SplitDBM.apply");
-
     switch (op) {
     case arith_binop_t::ADD: assign(x, linear_expression_t(y).plus(k)); break;
     case arith_binop_t::SUB: assign(x, linear_expression_t(y).subtract(k)); break;
@@ -1005,9 +927,6 @@ void SplitDBM::apply(const arith_binop_t op, const variable_t x, const variable_
 }
 
 void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t z, int finite_width) {
-    CrabStats::count("SplitDBM.count.apply");
-    ScopedCrabStats __st__("SplitDBM.apply");
-
     // Convert to intervals and perform the operation
     interval_t yi = this->operator[](y);
     interval_t zi = this->operator[](z);
@@ -1027,9 +946,6 @@ void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, variable_t 
 
 // Apply a bitwise operator to a uvalue.
 void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, const number_t& k, int finite_width) {
-    CrabStats::count("SplitDBM.count.apply");
-    ScopedCrabStats __st__("SplitDBM.apply");
-
     // Convert to intervals and perform the operation
     normalize();
     interval_t yi = this->operator[](y);
@@ -1091,8 +1007,8 @@ string_invariant SplitDBM::to_set() const {
     // Intervals
 
     // Extract all the edges
-    SubGraph<const SplitDBM::graph_t> g_excl(this->g, 0);
-    for (SplitDBM::vert_id v : g_excl.verts()) {
+    SubGraph g_excl(this->g, 0);
+    for (vert_id v : g_excl.verts()) {
         if (!this->rev_map[v]) {
             continue;
         }
@@ -1138,12 +1054,12 @@ string_invariant SplitDBM::to_set() const {
     }
 
     std::set<std::tuple<variable_t, variable_t, Weight>> diff_csts;
-    for (SplitDBM::vert_id s : g_excl.verts()) {
+    for (vert_id s : g_excl.verts()) {
         if (!this->rev_map[s]) {
             continue;
         }
         variable_t vs = *this->rev_map[s];
-        for (SplitDBM::vert_id d : g_excl.succs(s)) {
+        for (vert_id d : g_excl.succs(s)) {
             if (!this->rev_map[d]) {
                 continue;
             }
@@ -1155,8 +1071,7 @@ string_invariant SplitDBM::to_set() const {
     //        -> x <= y + k <= x
     //        -> x = y + k
     for (const auto& [vd, vs, w] : diff_csts) {
-        auto dual = to_string(vs, vd, -w, false);
-        if (result.count(dual)) {
+        if (auto dual = to_string(vs, vd, -w, false); result.contains(dual)) {
             result.erase(dual);
             result.insert(to_string(vd, vs, w, true));
         } else {
@@ -1178,7 +1093,7 @@ SplitDBM::Weight SplitDBM::eval_expression(const linear_expression_t& e, bool ov
     for (const auto& [variable, coefficient] : e.variable_terms()) {
         Weight coef = Params::convert_NtoW(coefficient, overflow);
         if (overflow) {
-            return Weight(0);
+            return {0};
         }
         res += (pot_value(variable) - potential[0]) * coef;
     }
@@ -1298,9 +1213,9 @@ static interval_t get_interval(const SplitDBM::vert_map_t& m, const SplitDBM::gr
 }
 
 interval_t SplitDBM::get_interval(const variable_t x, const int finite_width) const {
-    return crab::domains::get_interval(vert_map, g, x, finite_width);
+    return domains::get_interval(vert_map, g, x, finite_width);
 }
 
-interval_t SplitDBM::operator[](const variable_t x) const { return crab::domains::get_interval(vert_map, g, x, 0); }
+interval_t SplitDBM::operator[](const variable_t x) const { return domains::get_interval(vert_map, g, x, 0); }
 
 } // namespace crab::domains

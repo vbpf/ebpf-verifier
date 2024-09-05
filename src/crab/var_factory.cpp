@@ -11,13 +11,11 @@
 namespace crab {
 
 variable_t variable_t::make(const std::string& name) {
-    const auto it = std::find(names->begin(), names->end(), name);
-    if (it == names->end()) {
-        names->emplace_back(name);
-        return variable_t(names->size() - 1);
-    } else {
+    if (const auto it = std::ranges::find(*names, name); it != names->end()) {
         return variable_t(std::distance(names->begin(), it));
     }
+    names->emplace_back(name);
+    return variable_t(names->size() - 1);
 }
 
 std::vector<std::string> variable_t::_default_names() {
@@ -137,7 +135,7 @@ std::vector<std::string> variable_t::_default_names() {
     };
 };
 
-thread_local crab::lazy_allocator<std::vector<std::string>, variable_t::variable_name_factory> variable_t::names;
+thread_local lazy_allocator<std::vector<std::string>, variable_t::variable_name_factory> variable_t::names;
 
 void variable_t::clear_thread_local_state() { names.clear(); }
 
