@@ -1,7 +1,7 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
-#include <catch2/catch_all.hpp>
 #include <boost/algorithm/string/trim.hpp>
+#include <catch2/catch_all.hpp>
 
 #include "asm_marshal.hpp"
 #include "asm_ostream.hpp"
@@ -553,8 +553,7 @@ TEST_CASE("disasm_marshal_Mem", "[disasm][marshal]") {
         access.basereg = Reg{0};
         access.offset = 0;
         access.width = 8;
-        check_marshal_unmarshal_fail(Mem{.access = access, .value = Reg{10}, .is_load = true},
-                                     "0: cannot modify r10");
+        check_marshal_unmarshal_fail(Mem{.access = access, .value = Reg{10}, .is_load = true}, "0: cannot modify r10");
     }
     SECTION("Store Register") {
         for (const int w : ws) {
@@ -710,7 +709,8 @@ static void check_instruction_imm_variations(const ebpf_instruction_template_t& 
         inst.imm++;
         if (!next_template || !matches_template_inst(inst, next_template->inst)) {
             if (inst.imm == 1) {
-                check_unmarshal_instruction_fail(inst, make_opcode_message("0: nonzero imm for", inst.opcode), platform);
+                check_unmarshal_instruction_fail(inst, make_opcode_message("0: nonzero imm for", inst.opcode),
+                                                 platform);
             } else {
                 check_unmarshal_instruction_fail(inst, "0: unsupported immediate", platform);
             }
@@ -719,9 +719,8 @@ static void check_instruction_imm_variations(const ebpf_instruction_template_t& 
 
     // Some instructions only permit non-zero imm values.
     // If the next template is for one of those, check the zero value now.
-    if (next_template && (previous_template.inst.opcode != next_template->inst.opcode) &&
-        next_template->inst.imm > 0 && next_template->inst.imm != HELPER_ID &&
-        next_template->inst.imm != JMP_OFFSET) {
+    if (next_template && (previous_template.inst.opcode != next_template->inst.opcode) && next_template->inst.imm > 0 &&
+        next_template->inst.imm != HELPER_ID && next_template->inst.imm != JMP_OFFSET) {
         inst = next_template->inst;
         inst.imm = 0;
         check_unmarshal_instruction_fail(inst, "0: unsupported immediate");

@@ -27,7 +27,7 @@ class member_component_visitor final {
         }
     }
 
-    void operator()(std::shared_ptr<wto_cycle_t>& c) {
+    void operator()(const std::shared_ptr<wto_cycle_t>& c) {
         if (!_found) {
             _found = (c->head() == _node);
             if (!_found) {
@@ -73,7 +73,8 @@ class interleaved_fwd_fixpoint_iterator_t final {
     }
 
     [[nodiscard]]
-    static ebpf_domain_t extrapolate(ebpf_domain_t before, const ebpf_domain_t& after, const unsigned int iteration) {
+    static ebpf_domain_t extrapolate(const ebpf_domain_t& before, const ebpf_domain_t& after,
+                                     const unsigned int iteration) {
         /// number of iterations until triggering widening
         constexpr auto _widening_delay = 2;
 
@@ -83,7 +84,7 @@ class interleaved_fwd_fixpoint_iterator_t final {
         return before.widen(after, iteration == _widening_delay);
     }
 
-    static ebpf_domain_t refine(ebpf_domain_t before, const ebpf_domain_t& after, const unsigned int iteration) {
+    static ebpf_domain_t refine(const ebpf_domain_t& before, const ebpf_domain_t& after, const unsigned int iteration) {
         if (iteration == 1) {
             return before & after;
         } else {
@@ -113,7 +114,7 @@ class interleaved_fwd_fixpoint_iterator_t final {
 
     void operator()(const label_t& node);
 
-    void operator()(std::shared_ptr<wto_cycle_t>& cycle);
+    void operator()(const std::shared_ptr<wto_cycle_t>& cycle);
 
     friend std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg, ebpf_domain_t entry_inv);
 };
@@ -155,7 +156,7 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(const label_t& node) {
     transform_to_post(node, pre);
 }
 
-void interleaved_fwd_fixpoint_iterator_t::operator()(std::shared_ptr<wto_cycle_t>& cycle) {
+void interleaved_fwd_fixpoint_iterator_t::operator()(const std::shared_ptr<wto_cycle_t>& cycle) {
     const label_t head = cycle->head();
 
     /** decide whether to skip cycle or not **/
@@ -189,8 +190,7 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(std::shared_ptr<wto_cycle_t
         set_pre(head, invariant);
         transform_to_post(head, invariant);
         for (auto& component : *cycle) {
-            wto_component_t c = *component;
-            if (!std::holds_alternative<label_t>(c) || (std::get<label_t>(c) != head)) {
+            if (wto_component_t c = *component; !std::holds_alternative<label_t>(c) || std::get<label_t>(c) != head) {
                 std::visit(*this, *component);
             }
         }
@@ -200,9 +200,8 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(std::shared_ptr<wto_cycle_t
             set_pre(head, new_pre);
             invariant = std::move(new_pre);
             break;
-        } else {
-            invariant = extrapolate(invariant, new_pre, iteration);
         }
+        invariant = extrapolate(invariant, new_pre, iteration);
     }
 
     for (unsigned int iteration = 1;; ++iteration) {
@@ -210,22 +209,20 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(std::shared_ptr<wto_cycle_t
         transform_to_post(head, invariant);
 
         for (auto& component : *cycle) {
-            wto_component_t c = *component;
-            if (!std::holds_alternative<label_t>(c) || (std::get<label_t>(c) != head)) {
+            if (wto_component_t c = *component; !std::holds_alternative<label_t>(c) || (std::get<label_t>(c) != head)) {
                 std::visit(*this, *component);
             }
+        }
+        if (iteration > _descending_iterations) {
+            break;
         }
         ebpf_domain_t new_pre = join_all_prevs(head);
         if (invariant <= new_pre) {
             // No more refinement possible(pre == new_pre)
             break;
-        } else {
-            if (iteration > _descending_iterations) {
-                break;
-            }
-            invariant = refine(invariant, new_pre, iteration);
-            set_pre(head, invariant);
         }
+        invariant = refine(invariant, new_pre, iteration);
+        set_pre(head, invariant);
     }
 }
 

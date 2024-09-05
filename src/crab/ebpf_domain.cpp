@@ -137,6 +137,10 @@ static std::vector<linear_constraint_t> assume_signed_64bit_eq(const NumAbsDomai
     }
 }
 
+static int64_t high_low(const int64_t high, const int64_t low) {
+    return (high & 0xFFFFFFFF00000000L) | (low & 0xFFFFFFFFL);
+}
+
 static std::vector<linear_constraint_t> assume_signed_32bit_eq(const NumAbsDomain& inv, const variable_t left_svalue,
                                                                const variable_t left_uvalue,
                                                                interval_t& right_interval) {
@@ -151,7 +155,7 @@ static std::vector<linear_constraint_t> assume_signed_32bit_eq(const NumAbsDomai
 
             // Use the high 32-bits from the left lower bound and the low 32-bits from the right singleton.
             // The result might be lower than the lower bound.
-            const int64_t lb_match = lb & 0xFFFFFFFF00000000 | rn->cast_to_sint64() & 0xFFFFFFFF;
+            const int64_t lb_match = high_low(lb, rn->cast_to_sint64());
             if (lb_match < lb) {
                 // The result is lower than the left interval, so try the next higher matching 64-bit value.
                 // It's ok if this goes higher than the left upper bound.
@@ -165,7 +169,7 @@ static std::vector<linear_constraint_t> assume_signed_32bit_eq(const NumAbsDomai
 
             // Use the high 32-bits from the left upper bound and the low 32-bits from the right singleton.
             // The result might be higher than the upper bound.
-            const int64_t ub_match = ub & 0xFFFFFFFF00000000 | rn->cast_to_sint64() & 0xFFFFFFFF;
+            const int64_t ub_match = high_low(ub, rn->cast_to_sint64());
             if (ub_match > ub) {
                 // The result is higher than the left interval, so try the next lower matching 64-bit value.
                 // It's ok if this goes lower than the left lower bound.
@@ -2594,7 +2598,7 @@ void ebpf_domain_t::shl(const Reg& dst_reg, int imm, const int finite_width) {
             uint64_t lb_n = lb.cast_to_uint64();
             uint64_t ub_n = ub.cast_to_uint64();
             const uint64_t uint_max = finite_width == 64 ? UINT64_MAX : UINT32_MAX;
-            if (lb_n >> finite_width - imm != ub_n >> finite_width - imm) {
+            if (lb_n >> (finite_width - imm) != ub_n >> (finite_width - imm)) {
                 // The bits that will be shifted out to the left are different,
                 // which means all combinations of remaining bits are possible.
                 lb_n = 0;
@@ -2687,7 +2691,7 @@ void ebpf_domain_t::sign_extend(const Reg& dst_reg, const linear_expression_t& r
         }
         right_interval = interval_t::signed_int(bits);
     }
-    const int64_t mask = 1ULL << bits - 1;
+    const int64_t mask = 1ULL << (bits - 1);
 
     // Sign extend each bound.
     int64_t lb = right_interval.lb().number().value().cast_to_sint64();
@@ -2718,7 +2722,7 @@ void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_sv
                              right_interval, left_interval_positive, left_interval_negative);
         if (auto sn = right_interval.singleton()) {
             // The BPF ISA requires masking the imm.
-            int64_t imm = sn->cast_to_sint64() & finite_width - 1;
+            int64_t imm = sn->cast_to_sint64() & (finite_width - 1);
 
             int64_t lb_n = INT64_MIN >> imm;
             int64_t ub_n = INT64_MAX >> imm;
