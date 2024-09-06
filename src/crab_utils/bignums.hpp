@@ -16,6 +16,9 @@ using boost::multiprecision::cpp_int;
 
 namespace crab {
 
+template <typename T> concept is_enum = std::is_enum_v<T>;
+
+
 class z_number final {
   private:
     cpp_int _n{nullptr};
@@ -23,14 +26,10 @@ class z_number final {
   public:
     z_number() = default;
     z_number(cpp_int n) : _n(std::move(n)) {}
+    z_number(std::integral auto n): _n{n} { }
+    z_number(is_enum auto n): _n{(int64_t)n} { }
     explicit z_number(const std::string& s) { _n = cpp_int(s); }
 
-    z_number(signed long long int n) { _n = n; }
-    z_number(unsigned long long int n) { _n = n; }
-    z_number(unsigned long int n) { _n = n; }
-    z_number(int n) { _n = n; }
-    z_number(unsigned int n) { _n = n; }
-    z_number(long n) { _n = n; }
 
     // overloaded typecast operators
     explicit operator int64_t() const {
