@@ -17,8 +17,8 @@ using boost::multiprecision::cpp_int;
 
 namespace crab {
 
-template <typename T> concept is_enum = std::is_enum_v<T>;
-
+template <typename T>
+concept is_enum = std::is_enum_v<T>;
 
 class number_t final {
     cpp_int _n{nullptr};
@@ -26,10 +26,9 @@ class number_t final {
   public:
     number_t() = default;
     number_t(cpp_int n) : _n(std::move(n)) {}
-    number_t(std::integral auto n): _n{n} { }
-    number_t(is_enum auto n): _n{static_cast<int64_t>(n)} { }
+    number_t(std::integral auto n) : _n{n} {}
+    number_t(is_enum auto n) : _n{static_cast<int64_t>(n)} {}
     explicit number_t(const std::string& s) { _n = cpp_int(s); }
-
 
     // overloaded typecast operators
     explicit operator int64_t() const {
