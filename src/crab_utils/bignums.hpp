@@ -12,6 +12,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 
 #include "debug.hpp"
+
 using boost::multiprecision::cpp_int;
 
 namespace crab {
@@ -19,48 +20,47 @@ namespace crab {
 template <typename T> concept is_enum = std::is_enum_v<T>;
 
 
-class z_number final {
-  private:
+class number_t final {
     cpp_int _n{nullptr};
 
   public:
-    z_number() = default;
-    z_number(cpp_int n) : _n(std::move(n)) {}
-    z_number(std::integral auto n): _n{n} { }
-    z_number(is_enum auto n): _n{(int64_t)n} { }
-    explicit z_number(const std::string& s) { _n = cpp_int(s); }
+    number_t() = default;
+    number_t(cpp_int n) : _n(std::move(n)) {}
+    number_t(std::integral auto n): _n{n} { }
+    number_t(is_enum auto n): _n{static_cast<int64_t>(n)} { }
+    explicit number_t(const std::string& s) { _n = cpp_int(s); }
 
 
     // overloaded typecast operators
     explicit operator int64_t() const {
         if (!fits_sint64()) {
-            CRAB_ERROR("z_number ", _n.str(), " does not fit into a signed 64-bit integer");
+            CRAB_ERROR("number_t ", _n.str(), " does not fit into a signed 64-bit integer");
         } else {
-            return (int64_t)_n;
+            return static_cast<int64_t>(_n);
         }
     }
 
     explicit operator uint64_t() const {
         if (!fits_uint64()) {
-            CRAB_ERROR("z_number ", _n.str(), " does not fit into an unsigned 64-bit integer");
+            CRAB_ERROR("number_t ", _n.str(), " does not fit into an unsigned 64-bit integer");
         } else {
-            return (uint64_t)_n;
+            return static_cast<uint64_t>(_n);
         }
     }
 
     explicit operator int32_t() const {
         if (!fits_sint32()) {
-            CRAB_ERROR("z_number ", _n.str(), " does not fit into a signed integer");
+            CRAB_ERROR("number_t ", _n.str(), " does not fit into a signed integer");
         } else {
-            return (int)_n;
+            return static_cast<int>(_n);
         }
     }
 
     explicit operator uint32_t() const {
         if (!fits_uint32()) {
-            CRAB_ERROR("z_number ", _n.str(), " does not fit into an unsigned integer");
+            CRAB_ERROR("number_t ", _n.str(), " does not fit into an unsigned integer");
         } else {
-            return (unsigned int)_n;
+            return static_cast<unsigned int>(_n);
         }
     }
 
@@ -103,12 +103,12 @@ class z_number final {
     [[nodiscard]]
     uint64_t cast_to_uint64() const {
         if (fits_uint64()) {
-            return (uint64_t)_n;
+            return static_cast<uint64_t>(_n);
         } else if (fits_sint64()) {
             // Convert 64 bits from int64_t to uint64_t.
-            return (uint64_t)(int64_t)_n;
+            return static_cast<uint64_t>(static_cast<int64_t>(_n));
         } else {
-            CRAB_ERROR("z_number ", _n.str(), " does not fit into an unsigned 64-bit integer");
+            CRAB_ERROR("number_t ", _n.str(), " does not fit into an unsigned 64-bit integer");
         }
     }
 
@@ -116,40 +116,40 @@ class z_number final {
     uint64_t truncate_to_uint64() const {
         if (fits_sint64()) {
             // Convert 64 bits from int64_t to uint64_t.
-            return (uint64_t)(int64_t)_n;
+            return static_cast<uint64_t>(static_cast<int64_t>(_n));
         } else {
             // Truncate to fit into an unsigned 64-bit integer.
-            return (uint64_t)_n;
+            return static_cast<uint64_t>(_n);
         }
     }
 
     [[nodiscard]]
     uint64_t cast_to_uint32() const {
         if (fits_uint32()) {
-            return (uint32_t)_n;
+            return static_cast<uint32_t>(_n);
         } else if (fits_sint32()) {
             // Convert 32 bits from int32_t to uint32_t.
-            return (uint32_t)(int32_t)_n;
+            return static_cast<uint32_t>(static_cast<int32_t>(_n));
         } else {
-            CRAB_ERROR("z_number ", _n.str(), " does not fit into an unsigned 32-bit integer");
+            CRAB_ERROR("number_t ", _n.str(), " does not fit into an unsigned 32-bit integer");
         }
     }
 
     [[nodiscard]]
     uint64_t truncate_to_uint32() const {
-        return (uint32_t)truncate_to_uint64();
+        return static_cast<uint32_t>(truncate_to_uint64());
     }
 
     // For 64-bit operations, get the value as a signed 64-bit integer.
     [[nodiscard]]
     int64_t cast_to_sint64() const {
         if (fits_sint64()) {
-            return (int64_t)_n;
+            return static_cast<int64_t>(_n);
         } else if (fits_uint64()) {
             // Convert 64 bits from uint64_t to int64_t.
-            return (int64_t)(uint64_t)_n;
+            return static_cast<int64_t>(static_cast<uint64_t>(_n));
         } else {
-            CRAB_ERROR("z_number ", _n.str(), " does not fit into a signed 64-bit integer");
+            CRAB_ERROR("number_t ", _n.str(), " does not fit into a signed 64-bit integer");
         }
     }
 
@@ -157,28 +157,28 @@ class z_number final {
     [[nodiscard]]
     int64_t truncate_to_sint64() const {
         if (fits_sint64()) {
-            return (int64_t)_n;
+            return static_cast<int64_t>(_n);
         } else {
-            // z_number does not fit into a signed 64-bit integer, so truncate it to fit.
-            return (int64_t)(uint64_t)_n;
+            // number_t does not fit into a signed 64-bit integer, so truncate it to fit.
+            return static_cast<int64_t>(static_cast<uint64_t>(_n));
         }
     }
 
     // For 32-bit operations, get the low 32 bits as a signed integer.
     [[nodiscard]]
     int32_t cast_to_sint32() const {
-        return (int32_t)cast_to_sint64();
+        return static_cast<int32_t>(cast_to_sint64());
     }
 
     // For 32-bit operations, get the low 32 bits as a signed integer.
     [[nodiscard]]
     int32_t truncate_to_sint32() const {
-        return (int32_t)truncate_to_sint64();
+        return static_cast<int32_t>(truncate_to_sint64());
     }
 
     // Allow casting to int32_t or int64_t as needed for finite width operations.
     [[nodiscard]]
-    z_number cast_to_signed_finite_width(int finite_width) const {
+    number_t cast_to_signed_finite_width(const int finite_width) const {
         switch (finite_width) {
         case 0: return *this; // No finite width.
         case 32: return cast_to_sint32();
@@ -189,7 +189,7 @@ class z_number final {
 
     // Allow casting to uint32_t or uint64_t as needed for finite width operations.
     [[nodiscard]]
-    z_number cast_to_unsigned_finite_width(int finite_width) const {
+    number_t cast_to_unsigned_finite_width(const int finite_width) const {
         switch (finite_width) {
         case 0: return *this; // No finite width.
         case 32: return cast_to_uint32();
@@ -201,7 +201,7 @@ class z_number final {
     // Allow truncating to int32_t or int64_t as needed for finite width operations.
     // Unlike casting, truncating will not throw a crab error if the number doesn't fit.
     [[nodiscard]]
-    z_number truncate_to_signed_finite_width(int finite_width) const {
+    number_t truncate_to_signed_finite_width(const int finite_width) const {
         switch (finite_width) {
         case 0: return *this; // No finite width.
         case 32: return truncate_to_sint32();
@@ -213,7 +213,7 @@ class z_number final {
     // Allow truncating to uint32_t or uint64_t as needed for finite width operations.
     // Unlike casting, truncating will not throw a crab error if the number doesn't fit.
     [[nodiscard]]
-    z_number truncate_to_unsigned_finite_width(int finite_width) const {
+    number_t truncate_to_unsigned_finite_width(const int finite_width) const {
         switch (finite_width) {
         case 0: return *this; // No finite width.
         case 32: return truncate_to_uint32();
@@ -222,86 +222,86 @@ class z_number final {
         }
     }
 
-    z_number operator+(const z_number& x) const { return {_n + x._n}; }
+    number_t operator+(const number_t& x) const { return {_n + x._n}; }
 
-    z_number operator*(const z_number& x) const { return {_n * x._n}; }
+    number_t operator*(const number_t& x) const { return {_n * x._n}; }
 
-    z_number operator-(const z_number& x) const { return {_n - x._n}; }
+    number_t operator-(const number_t& x) const { return {_n - x._n}; }
 
-    z_number operator-() const { return {-_n}; }
+    number_t operator-() const { return {-_n}; }
 
-    z_number operator/(const z_number& x) const {
+    number_t operator/(const number_t& x) const {
         if (x._n.is_zero()) {
-            CRAB_ERROR("z_number: division by zero [1]");
+            CRAB_ERROR("number_t: division by zero [1]");
         } else {
             return {_n / x._n};
         }
     }
 
-    z_number operator%(const z_number& x) const {
+    number_t operator%(const number_t& x) const {
         if (x._n.is_zero()) {
-            CRAB_ERROR("z_number: division by zero [2]");
+            CRAB_ERROR("number_t: division by zero [2]");
         } else {
             return {_n % x._n};
         }
     }
 
-    z_number& operator+=(const z_number& x) {
+    number_t& operator+=(const number_t& x) {
         _n += x._n;
         return *this;
     }
 
-    z_number& operator*=(const z_number& x) {
+    number_t& operator*=(const number_t& x) {
         _n *= x._n;
         return *this;
     }
 
-    z_number& operator-=(const z_number& x) {
+    number_t& operator-=(const number_t& x) {
         _n -= x._n;
         return *this;
     }
 
-    z_number& operator/=(const z_number& x) {
+    number_t& operator/=(const number_t& x) {
         if (x._n.is_zero()) {
-            CRAB_ERROR("z_number: division by zero [3]");
+            CRAB_ERROR("number_t: division by zero [3]");
         } else {
             _n /= x._n;
             return *this;
         }
     }
 
-    z_number& operator%=(const z_number& x) {
+    number_t& operator%=(const number_t& x) {
         if (x._n.is_zero()) {
-            CRAB_ERROR("z_number: division by zero [4]");
+            CRAB_ERROR("number_t: division by zero [4]");
         } else {
             _n %= x._n;
             return *this;
         }
     }
 
-    z_number& operator--() & {
+    number_t& operator--() & {
         _n--;
         return *this;
     }
 
-    z_number& operator++() & {
+    number_t& operator++() & {
         _n++;
         return *this;
     }
 
-    z_number operator++(int) & {
-        z_number r(*this);
+    number_t operator++(int) & {
+        number_t r(*this);
         ++(*this);
         return r;
     }
 
-    z_number operator--(int) & {
-        z_number r(*this);
+    number_t operator--(int) & {
+        number_t r(*this);
         --(*this);
         return r;
     }
 
-    std::strong_ordering operator<=>(const z_number& x) const {
+    std::strong_ordering operator<=>(const number_t& x) const {
         if (_n <= x._n) {
             if (_n == x._n) {
                 return std::strong_ordering::equal;
@@ -312,48 +312,46 @@ class z_number final {
             return std::strong_ordering::greater;
         }
     }
-    bool operator==(const z_number& x) const = default;
+    bool operator==(const number_t& x) const = default;
 
-    z_number operator&(const z_number& x) const { return {_n & x._n}; }
+    number_t operator&(const number_t& x) const { return {_n & x._n}; }
 
-    z_number operator|(const z_number& x) const { return {_n | x._n}; }
+    number_t operator|(const number_t& x) const { return {_n | x._n}; }
 
-    z_number operator^(const z_number& x) const { return {_n ^ x._n}; }
+    number_t operator^(const number_t& x) const { return {_n ^ x._n}; }
 
-    z_number operator<<(const z_number& x) const {
+    number_t operator<<(const number_t& x) const {
         if (!x.fits_sint32()) {
-            CRAB_ERROR("z_number ", x._n.str(), " does not fit into an int32");
+            CRAB_ERROR("number_t ", x._n.str(), " does not fit into an int32");
         }
-        return {_n << (int32_t)x};
+        return {_n << static_cast<int32_t>(x)};
     }
 
-    z_number operator>>(const z_number& x) const {
+    number_t operator>>(const number_t& x) const {
         if (!x.fits_sint32()) {
-            CRAB_ERROR("z_number ", x._n.str(), " does not fit into an int32");
+            CRAB_ERROR("number_t ", x._n.str(), " does not fit into an int32");
         }
-        return {_n >> (int32_t)x};
+        return {_n >> static_cast<int32_t>(x)};
     }
 
     [[nodiscard]]
-    z_number fill_ones() const {
+    number_t fill_ones() const {
         if (_n.is_zero()) {
-            return {(signed long long)0};
+            return {static_cast<signed long long>(0)};
         }
 
-        z_number result;
+        number_t result;
         for (result = 1; result < *this; result = result * 2 + 1)
             ;
         return result;
     }
 
-    friend std::ostream& operator<<(std::ostream& o, const z_number& z) { return o << z._n.str(); }
+    friend std::ostream& operator<<(std::ostream& o, const number_t& z) { return o << z._n.str(); }
 
     [[nodiscard]]
     std::string to_string() const;
 };
-// class z_number
+// class number_t
 
-using number_t = z_number;
-
-inline std::size_t hash_value(const z_number& z) { return z.hash(); }
+inline std::size_t hash_value(const number_t& z) { return z.hash(); }
 } // namespace crab

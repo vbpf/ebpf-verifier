@@ -132,7 +132,7 @@ class cell_t final {
 
     [[nodiscard]]
     variable_t get_scalar(const data_kind_t kind) const {
-        return variable_t::cell_var(kind, number_t{(index_t)_offset}, _size);
+        return variable_t::cell_var(kind, number_t{static_cast<index_t>(_offset)}, _size);
     }
 
     // ignore the scalar variable
@@ -745,7 +745,7 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
         auto lb = ii.lb().number();
         auto ub = ii.ub().number();
         if (lb.has_value() && ub.has_value()) {
-            z_number fullwidth = ub.value() - lb.value() + width;
+            number_t fullwidth = ub.value() - lb.value() + width;
             if (lb.value().fits_uint32() && fullwidth.fits_uint32()) {
                 auto [only_num, only_non_num] =
                     num_bytes.uniformity(static_cast<uint32_t>(lb.value()), static_cast<uint32_t>(fullwidth));

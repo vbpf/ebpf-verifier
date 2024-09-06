@@ -44,7 +44,7 @@ SplitDBM::vert_id SplitDBM::get_vert(variable_t v) {
  * used to be the template parameter of the DBM-based abstract domain to
  * represent a number. Number might not fit into Weight type.
  **/
-SafeInt64DefaultParams::Weight SafeInt64DefaultParams::convert_NtoW(const z_number& n, bool& overflow) {
+SafeInt64DefaultParams::Weight SafeInt64DefaultParams::convert_NtoW(const number_t& n, bool& overflow) {
     overflow = false;
     if (!n.fits_sint64()) {
         overflow = true;
@@ -53,7 +53,7 @@ SafeInt64DefaultParams::Weight SafeInt64DefaultParams::convert_NtoW(const z_numb
     return {n};
 }
 
-Z_NumberDefaultParams::Weight Z_NumberDefaultParams::convert_NtoW(const z_number& n, bool& overflow) {
+Z_NumberDefaultParams::Weight Z_NumberDefaultParams::convert_NtoW(const number_t& n, bool& overflow) {
     overflow = false;
     return {n};
 }

@@ -50,7 +50,7 @@ namespace domains {
  *
  * 1) basic integer type: e.g., long
  * 2) safei64
- * 3) z_number
+ * 3) number_t
  *
  * 1) is the fastest but things can go wrong if some DBM
  * operation overflows. 2) is slower than 1) but it checks for
@@ -61,15 +61,15 @@ namespace domains {
  **/
 
 struct Z_NumberDefaultParams {
-    using Weight = z_number;
+    using Weight = number_t;
     using graph_t = AdaptGraph;
-    static Weight convert_NtoW(const z_number& n, bool& overflow);
+    static Weight convert_NtoW(const number_t& n, bool& overflow);
 };
 
 struct SafeInt64DefaultParams {
     using Weight = safe_i64;
     using graph_t = AdaptGraph;
-    static Weight convert_NtoW(const z_number& n, bool& overflow);
+    static Weight convert_NtoW(const number_t& n, bool& overflow);
 };
 
 class SplitDBM final {

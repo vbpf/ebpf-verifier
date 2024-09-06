@@ -1432,15 +1432,15 @@ void ebpf_domain_t::overflow_bounds(NumAbsDomain& inv, variable_t lhs, number_t 
 }
 
 void ebpf_domain_t::overflow_signed(NumAbsDomain& inv, const variable_t lhs, const int finite_width) {
-    const auto span{finite_width == 64   ? z_number{std::numeric_limits<uint64_t>::max()}
-                    : finite_width == 32 ? z_number{std::numeric_limits<uint32_t>::max()}
+    const auto span{finite_width == 64   ? number_t{std::numeric_limits<uint64_t>::max()}
+                    : finite_width == 32 ? number_t{std::numeric_limits<uint32_t>::max()}
                                          : throw std::exception()};
     overflow_bounds(inv, lhs, span, finite_width, true);
 }
 
 void ebpf_domain_t::overflow_unsigned(NumAbsDomain& inv, const variable_t lhs, const int finite_width) {
-    const auto span{finite_width == 64   ? z_number{std::numeric_limits<uint64_t>::max()}
-                    : finite_width == 32 ? z_number{std::numeric_limits<uint32_t>::max()}
+    const auto span{finite_width == 64   ? number_t{std::numeric_limits<uint64_t>::max()}
+                    : finite_width == 32 ? number_t{std::numeric_limits<uint32_t>::max()}
                                          : throw std::exception()};
     overflow_bounds(inv, lhs, span, finite_width, false);
 }

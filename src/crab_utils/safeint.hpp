@@ -74,7 +74,7 @@ class safe_i64 {
 
     safe_i64(const int64_t num) : m_num(num) {}
 
-    safe_i64(const z_number& n) : m_num((int64_t)n) {}
+    safe_i64(const number_t& n) : m_num((int64_t)n) {}
 
     operator int64_t() const { return (int64_t)m_num; }
 
