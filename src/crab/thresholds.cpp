@@ -5,9 +5,8 @@
 
 namespace crab::inline iterators {
 
-void thresholds_t::add(bound_t v1) {
+void thresholds_t::add(const bound_t& v) {
     if (m_thresholds.size() < m_capacity) {
-        const bound_t v = (v1);
         if (std::ranges::find(m_thresholds, v) == m_thresholds.end()) {
             const auto ub = std::ranges::upper_bound(m_thresholds, v);
 

@@ -847,7 +847,7 @@ class vert_set_wrap_t {
   public:
     explicit vert_set_wrap_t(const SplitDBM::vert_set_t& _vs) : vs(_vs) {}
 
-    bool operator[](const SplitDBM::vert_id v) const { return vs.find(v) != vs.end(); }
+    bool operator[](const SplitDBM::vert_id v) const { return vs.contains(v); }
     const SplitDBM::vert_set_t& vs;
 };
 

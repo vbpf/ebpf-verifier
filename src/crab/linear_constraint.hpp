@@ -33,7 +33,7 @@ class linear_constraint_t final {
         if (!_expression.is_constant()) {
             return false;
         }
-        number_t constant = _expression.constant_term();
+        const number_t constant = _expression.constant_term();
         switch (_constraint_kind) {
         case constraint_kind_t::EQUALS_ZERO: return (constant == 0);
         case constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO: return (constant <= 0);

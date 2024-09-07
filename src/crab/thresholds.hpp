@@ -29,7 +29,7 @@ class thresholds_t final {
         return m_thresholds.size();
     }
 
-    void add(bound_t v1);
+    void add(const bound_t& v);
 
     friend std::ostream& operator<<(std::ostream& o, const thresholds_t& t);
 };

@@ -163,14 +163,6 @@ class SplitDBM final {
              vert_set_t&& _unstable)
         : vert_map(std::move(_vert_map)), rev_map(std::move(_rev_map)), g(std::move(_g)),
           potential(std::move(_potential)), unstable(std::move(_unstable)) {
-
-        CrabStats::count("SplitDBM.count.copy");
-        ScopedCrabStats __st__("SplitDBM.copy");
-
-        CRAB_LOG("zones-split-size", auto p = size();
-                 std::cout << "#nodes = " << p.first << " #edges=" << p.second << "\n";);
-
-        assert(g.size() > 0);
         normalize();
     }
 
