@@ -34,7 +34,7 @@ class TreeSMap final {
         // XXX: to make sure that we always return the same address
         // for the "empty" iterator, otherwise we can trigger
         // undefined behavior.
-        inline static std::unique_ptr<key_iter_t> _empty_iter = std::make_unique<key_iter_t>();
+        inline static auto _empty_iter = std::make_unique<key_iter_t>();
         static key_iter_t empty_iterator() { return *_empty_iter; }
 
         key_t operator*() const { return e->first; }
@@ -119,12 +119,12 @@ class TreeSMap final {
     }
 
     [[nodiscard]]
-    bool contains(key_t k) const {
+    bool contains(const key_t k) const {
         return map.count(k);
     }
 
     [[nodiscard]]
-    std::optional<val_t> lookup(key_t k) const {
+    std::optional<val_t> lookup(const key_t k) const {
         auto v = map.find(k);
         if (v != map.end()) {
             return {v->second};
@@ -133,10 +133,10 @@ class TreeSMap final {
     }
 
     // precondition: k \in S
-    void remove(key_t k) { map.erase(k); }
+    void remove(const key_t k) { map.erase(k); }
 
     // precondition: k \notin S
-    void add(key_t k, const val_t& v) { map.insert_or_assign(k, v); }
+    void add(const key_t k, const val_t& v) { map.insert_or_assign(k, v); }
     void clear() { map.clear(); }
 };
 
@@ -230,7 +230,7 @@ class AdaptGraph final {
         // XXX: to make sure that we always return the same address
         // for the "empty" iterator, otherwise we can trigger
         // undefined behavior.
-        inline static std::unique_ptr<edge_const_iter> _empty_iter = std::make_unique<edge_const_iter>();
+        inline static auto _empty_iter = std::make_unique<edge_const_iter>();
         static edge_const_iter empty_iterator() { return *_empty_iter; }
 
         edge_ref operator*() const { return edge_ref{it->first, (*ws)[it->second]}; }
@@ -242,7 +242,7 @@ class AdaptGraph final {
     };
 
     struct edge_const_range_t {
-        using elt_range_t = typename smap_t::elt_range_t;
+        using elt_range_t = smap_t::elt_range_t;
         using iterator = edge_const_iter;
 
         elt_range_t r;
@@ -265,17 +265,17 @@ class AdaptGraph final {
     using fwd_edge_const_iter = edge_const_iter;
     using rev_edge_const_iter = edge_const_iter;
 
-    using adj_range_t = typename smap_t::key_const_range_t;
-    using adj_const_range_t = typename smap_t::key_const_range_t;
+    using adj_range_t = smap_t::key_const_range_t;
+    using adj_const_range_t = smap_t::key_const_range_t;
     using neighbour_range = adj_range_t;
     using neighbour_const_range = adj_const_range_t;
 
     [[nodiscard]]
-    adj_const_range_t succs(vert_id v) const {
+    adj_const_range_t succs(const vert_id v) const {
         return _succs[v].keys();
     }
     [[nodiscard]]
-    adj_const_range_t preds(vert_id v) const {
+    adj_const_range_t preds(const vert_id v) const {
         return _preds[v].keys();
     }
 
@@ -283,11 +283,11 @@ class AdaptGraph final {
     using rev_edge_range = edge_const_range_t;
 
     [[nodiscard]]
-    edge_const_range_t e_succs(vert_id v) const {
+    edge_const_range_t e_succs(const vert_id v) const {
         return {_succs[v].elts(), _ws};
     }
     [[nodiscard]]
-    edge_const_range_t e_preds(vert_id v) const {
+    edge_const_range_t e_preds(const vert_id v) const {
         return {_preds[v].elts(), _ws};
     }
 
@@ -323,13 +323,13 @@ class AdaptGraph final {
         return v;
     }
 
-    void growTo(size_t v) {
+    void growTo(const size_t v) {
         while (size() < v) {
             new_vertex();
         }
     }
 
-    void forget(vert_id v) {
+    void forget(const vert_id v) {
         if (is_free[v]) {
             return;
         }
@@ -371,11 +371,11 @@ class AdaptGraph final {
     }
 
     [[nodiscard]]
-    bool elem(vert_id s, vert_id d) const {
+    bool elem(const vert_id s, const vert_id d) const {
         return _succs[s].contains(d);
     }
 
-    const Weight& edge_val(vert_id s, vert_id d) const { return _ws[*_succs[s].lookup(d)]; }
+    const Weight& edge_val(const vert_id s, const vert_id d) const { return _ws[*_succs[s].lookup(d)]; }
 
     class mut_val_ref_t {
       public:
@@ -390,7 +390,7 @@ class AdaptGraph final {
             return *w;
         }
         void operator=(Weight* _w) { w = _w; }
-        void operator=(Weight _w) {
+        void operator=(const Weight& _w) {
             assert(w);
             *w = _w;
         }
@@ -399,7 +399,7 @@ class AdaptGraph final {
         Weight* w;
     };
 
-    bool lookup(vert_id s, vert_id d, mut_val_ref_t* w) {
+    bool lookup(const vert_id s, const vert_id d, mut_val_ref_t* w) {
         if (auto idx = _succs[s].lookup(d)) {
             *w = &_ws[*idx];
             return true;
@@ -408,14 +408,14 @@ class AdaptGraph final {
     }
 
     [[nodiscard]]
-    std::optional<Weight> lookup(vert_id s, vert_id d) const {
-        if (auto idx = _succs[s].lookup(d)) {
+    std::optional<Weight> lookup(const vert_id s, const vert_id d) const {
+        if (const auto idx = _succs[s].lookup(d)) {
             return _ws[*idx];
         }
         return {};
     }
 
-    void add_edge(vert_id s, Weight w, vert_id d) {
+    void add_edge(const vert_id s, const Weight& w, const vert_id d) {
         size_t idx;
         if (!free_widx.empty()) {
             idx = free_widx.back();
@@ -431,7 +431,7 @@ class AdaptGraph final {
         edge_count++;
     }
 
-    void update_edge(vert_id s, Weight w, vert_id d) {
+    void update_edge(const vert_id s, const Weight& w, const vert_id d) {
         if (auto idx = _succs[s].lookup(d)) {
             _ws[*idx] = std::min(_ws[*idx], w);
         } else {
@@ -439,7 +439,7 @@ class AdaptGraph final {
         }
     }
 
-    void set_edge(vert_id s, Weight w, vert_id d) {
+    void set_edge(const vert_id s, const Weight& w, const vert_id d) {
         if (auto idx = _succs[s].lookup(d)) {
             _ws[*idx] = w;
         } else {
@@ -448,7 +448,7 @@ class AdaptGraph final {
     }
 
     // XXX: g cannot be marked const for complicated reasons
-    friend std::ostream& operator<<(std::ostream& o, AdaptGraph& g) {
+    friend std::ostream& operator<<(std::ostream& o, const AdaptGraph& g) {
         o << "[|";
         bool first = true;
         for (vert_id v : g.verts()) {

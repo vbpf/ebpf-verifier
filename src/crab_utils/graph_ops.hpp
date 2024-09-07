@@ -90,11 +90,11 @@ class GraphPerm {
             explicit iterator(const vert_id& _v) : v(_v) {}
             const vert_id& operator*() const { return v; }
             iterator& operator++() {
-                v++;
+                ++v;
                 return *this;
             }
             iterator& operator--() {
-                v--;
+                --v;
                 return *this;
             }
             bool operator!=(const iterator& o) const { return v < o.v; }
@@ -104,7 +104,7 @@ class GraphPerm {
         };
         explicit vert_const_range(const vert_id& _after) : after(_after) {}
 
-        iterator begin() const { return iterator((vert_id)0); }
+        iterator begin() const { return iterator(static_cast<vert_id>(0)); }
         iterator end() const { return iterator(after); }
 
       private:
@@ -590,14 +590,13 @@ class GraphOps {
         dual_queue->resize(2 * new_sz);
         vert_marks->resize(new_sz);
 
-        scratch_sz = new_sz;
-
         // Initialize new elements as necessary.
-        while (dists->size() < scratch_sz) {
+        for (int i=dists->size(); i < new_sz; ++i) {
             dists->emplace_back();
             dists_alt->emplace_back();
             dist_ts->push_back(ts - 1);
         }
+        scratch_sz = new_sz;
     }
 
     // Syntactic join.
@@ -615,7 +614,7 @@ class GraphOps {
             for (auto e : l.e_succs(s)) {
                 vert_id d = e.vert;
                 if (r.lookup(s, d, &wr)) {
-                    g.add_edge(s, std::max(e.val, (Weight)wr), d);
+                    g.add_edge(s, std::max(e.val, static_cast<Weight>(wr)), d);
                 }
             }
         }
@@ -705,7 +704,7 @@ class GraphOps {
                 dual_queue->at(v) = std::min(dual_queue->at(v), dual_queue->at(w));
             } else if (vert_marks->at(w) & 1) {
                 // W is on the stack
-                dual_queue->at(v) = std::min(dual_queue->at(v), (vert_id)(vert_marks->at(w) >> 1));
+                dual_queue->at(v) = std::min(dual_queue->at(v), static_cast<vert_id>(vert_marks->at(w) >> 1));
             }
         }
 
@@ -725,16 +724,16 @@ class GraphOps {
 
     template <class G>
     static void compute_sccs(const G& x, std::vector<std::vector<vert_id>>& out_scc) {
-        size_t sz = x.size();
+        const size_t sz = x.size();
         grow_scratch(sz);
 
         for (vert_id v : x.verts()) {
             vert_marks->at(v) = 0;
         }
-        int index = 1;
-        std::vector<vert_id> stack;
         for (vert_id v : x.verts()) {
             if (!vert_marks->at(v)) {
+                int index = 1;
+                std::vector<vert_id> stack;
                 strong_connect(x, stack, index, v, out_scc);
             }
         }
@@ -793,11 +792,11 @@ class GraphOps {
             for (vert_id v : scc) {
                 *qtail = v;
                 vert_marks->at(v) = BF_SCC | BF_QUEUED;
-                qtail++;
+                ++qtail;
             }
 
             for (size_t iter = 0; iter < scc.size(); iter++) {
-                for (; qtail != qhead;) {
+                while (qtail != qhead) {
                     vert_id s = *(--qtail);
                     // If it _was_ on the queue, it must be in the SCC
                     vert_marks->at(s) = BF_SCC;
@@ -812,7 +811,7 @@ class GraphOps {
                             if (vert_marks->at(d) == BF_SCC) {
                                 *next_tail = d;
                                 vert_marks->at(d) = (BF_SCC | BF_QUEUED);
-                                next_tail++;
+                                ++next_tail;
                             }
                         }
                     }
@@ -826,8 +825,8 @@ class GraphOps {
                 }
             }
             // Check if the SCC is feasible.
-            for (; qtail != qhead;) {
-                vert_id s = *(--qtail);
+            while (qtail != qhead) {
+                vert_id s = *--qtail;
                 Weight s_pot = potentials[s];
                 for (auto e : g.e_succs(s)) {
                     vert_id d = e.vert;
@@ -982,7 +981,7 @@ class GraphOps {
     template <class G, class P, class S>
     static void dijkstra_recover(const G& g, const P& p, const S& is_stable, vert_id src,
                                  std::vector<std::tuple<vert_id, Weight>>& out) {
-        size_t sz = g.size();
+        const size_t sz = g.size();
         if (sz == 0) {
             return;
         }
@@ -1051,7 +1050,7 @@ class GraphOps {
     template <class G, class P>
     static bool repair_potential(const G& g, P& p, vert_id ii, vert_id jj) {
         // Ensure there's enough scratch space.
-        size_t sz = g.size();
+        const size_t sz = g.size();
         // assert(src < (int) sz && dest < (int) sz);
         grow_scratch(sz);
 
@@ -1103,7 +1102,7 @@ class GraphOps {
 
     template <class G, class P, class V>
     static edge_vector close_after_widen(const G& g, const P& p, const V& is_stable) {
-        size_t sz = g.size();
+        const size_t sz = g.size();
         grow_scratch(sz);
         //      assert(orig.size() == sz);
 
@@ -1178,14 +1177,14 @@ class GraphOps {
             dists->at(d) = e.val;
             //        assert(p[v] + dists->at(d) - p[d] >= Weight(0));
             *adj_tail = d;
-            adj_tail++;
+            ++adj_tail;
         }
 
         // Sort the immediate edges by increasing slack.
         std::sort(adj_head, adj_tail, make_adjcmp(p));
 
         auto reach_tail = adj_tail;
-        for (; adj_head < adj_tail; adj_head++) {
+        for (; adj_head < adj_tail; ++adj_head) {
             vert_id d = *adj_head;
 
             Weight d_wt = dists->at(d);
@@ -1196,7 +1195,7 @@ class GraphOps {
                     dists->at(e) = e_wt;
                     vert_marks->at(e) = BF_QUEUED;
                     *reach_tail = e;
-                    reach_tail++;
+                    ++reach_tail;
                 } else {
                     dists->at(e) = std::min(e_wt, dists->at(e));
                 }
@@ -1205,7 +1204,7 @@ class GraphOps {
 
         // Now collect the adjacencies, and clear vertex flags
         // FIXME: This collects _all_ edges from x, not just new ones.
-        for (adj_head = dual_queue->begin(); adj_head < reach_tail; adj_head++) {
+        for (adj_head = dual_queue->begin(); adj_head < reach_tail; ++adj_head) {
             aux.emplace_back(*adj_head, dists->at(*adj_head));
             vert_marks->at(*adj_head) = 0;
         }
@@ -1276,7 +1275,7 @@ class GraphOps {
 
     template <class G, class P>
     static edge_vector close_after_assign(const G& g, const P& p, vert_id v) {
-        size_t sz = g.size();
+        const size_t sz = g.size();
         grow_scratch(sz);
         edge_vector delta;
         {

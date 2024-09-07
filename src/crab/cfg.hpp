@@ -18,6 +18,7 @@
 #include <utility>
 #include <variant>
 #include <vector>
+#include <ranges>
 
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/lexical_cast.hpp>
@@ -373,8 +374,8 @@ class cfg_t final {
     std::vector<label_t> labels() const {
         std::vector<label_t> res;
         res.reserve(m_blocks.size());
-        for (const auto& p : m_blocks) {
-            res.push_back(p.first);
+        for (const auto& label : std::ranges::views::keys(m_blocks)) {
+            res.push_back(label);
         }
         return res;
     }
@@ -385,7 +386,7 @@ class cfg_t final {
     }
 
     void simplify() {
-        std::set<label_t> worklist(this->label_begin(), this->label_end());
+        std::set worklist(this->label_begin(), this->label_end());
         while (!worklist.empty()) {
             label_t label = *worklist.begin();
             worklist.erase(label);
@@ -407,8 +408,7 @@ class cfg_t final {
 
                 bb.move_back(next_bb);
                 bb -= next_bb;
-                auto children = next_bb.m_next;
-                for (const label_t& next_next_label : children) {
+                for (auto children = next_bb.m_next; const label_t& next_next_label : children) {
                     basic_block_t& next_next_bb = get_node(next_next_label);
                     bb >> next_next_bb;
                 }
@@ -422,7 +422,7 @@ class cfg_t final {
     [[nodiscard]]
     std::vector<label_t> sorted_labels() const {
         std::vector<label_t> labels = this->labels();
-        std::sort(labels.begin(), labels.end());
+        std::ranges::sort(labels, [](const label_t& a, const label_t& b) { return a < b; });
         return labels;
     }
 
@@ -431,19 +431,19 @@ class cfg_t final {
     [[nodiscard]]
     bool has_one_child(const label_t& b) const {
         const auto rng = next_nodes(b);
-        return (std::distance(rng.begin(), rng.end()) == 1);
+        return std::distance(rng.begin(), rng.end()) == 1;
     }
 
     [[nodiscard]]
     bool has_one_parent(const label_t& b) const {
         const auto rng = prev_nodes(b);
-        return (std::distance(rng.begin(), rng.end()) == 1);
+        return std::distance(rng.begin(), rng.end()) == 1;
     }
 
     basic_block_t& get_child(const label_t& b) {
         assert(has_one_child(b));
         const auto rng = next_nodes(b);
-        return get_node(*(rng.begin()));
+        return get_node(*rng.begin());
     }
 
     basic_block_t& get_parent(const label_t& b) {
@@ -554,9 +554,9 @@ class cfg_rev_t final {
         return _rev_bbs.end();
     }
 
-    label_iterator label_begin() { return _cfg.label_begin(); }
+    label_iterator label_begin() const { return _cfg.label_begin(); }
 
-    label_iterator label_end() { return _cfg.label_end(); }
+    label_iterator label_end() const { return _cfg.label_end(); }
 
     [[nodiscard]]
     label_t exit_label() const {

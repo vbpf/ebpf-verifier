@@ -65,7 +65,7 @@ class variable_t final {
         return names->at(_id).find(".uvalue") != std::string::npos;
     }
 
-    friend std::ostream& operator<<(std::ostream& o, variable_t v) { return o << names->at(v._id); }
+    friend std::ostream& operator<<(std::ostream& o, const variable_t v) { return o << names->at(v._id); }
 
     // var_factory portion.
     // This singleton is eBPF-specific, to avoid lifetime issues and/or passing factory explicitly everywhere:
@@ -73,16 +73,7 @@ class variable_t final {
     static variable_t make(const std::string& name);
     static std::vector<std::string> _default_names();
 
-    /**
-     * @brief Factory to always return the initial variable names.
-     *
-     * @tparam[in] T Should always be std::vector<std::string>.
-     */
-    template <typename T>
-    struct variable_name_factory {
-        T operator()() { return _default_names(); }
-    };
-    static thread_local lazy_allocator<std::vector<std::string>, variable_name_factory> names;
+    static thread_local lazy_allocator<std::vector<std::string>, _default_names> names;
 
   public:
     static void clear_thread_local_state();

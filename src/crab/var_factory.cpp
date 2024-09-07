@@ -135,7 +135,7 @@ std::vector<std::string> variable_t::_default_names() {
     };
 };
 
-thread_local lazy_allocator<std::vector<std::string>, variable_t::variable_name_factory> variable_t::names;
+thread_local lazy_allocator<std::vector<std::string>, variable_t::_default_names> variable_t::names;
 
 void variable_t::clear_thread_local_state() { names.clear(); }
 

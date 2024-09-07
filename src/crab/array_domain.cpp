@@ -12,7 +12,6 @@
 #include "boost/endian/conversion.hpp"
 #include "radix_tree/radix_tree.hpp"
 
-#include "asm_ostream.hpp"
 #include "config.hpp"
 #include "crab/array_domain.hpp"
 #include "dsl_syntax.hpp"

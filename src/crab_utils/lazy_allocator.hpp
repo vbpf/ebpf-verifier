@@ -3,30 +3,16 @@
 #pragma once
 
 #include <optional>
+#include <functional>
 
 #include "debug.hpp"
 
 namespace crab {
-/**
- * @brief The default factory for lazy_allocator that creates objects using the default constructor.
- *
- * @tparam T The type of the object to create.
- */
-template <typename T>
-struct lazy_allocator_default_factory {
-    T operator()() { return T(); }
-};
 
-/**
- * @brief A factory that fails the allocation of objects (to enforce setting the value before using it).
- *
- * @tparam T The type of the object to create.
- */
-template <typename T>
-struct lazy_allocator_no_default_factory {
-    T operator()() { CRAB_ERROR("lazy_allocator_no_default"); }
-};
-
+template<std::default_initializable T>
+T lazy_allocator_default_factory() {
+  return T();
+}
 /**
  * @brief Lazy allocator for objects of type T. The allocator does not allocate the object until it is first accessed.
  *
@@ -35,7 +21,7 @@ struct lazy_allocator_no_default_factory {
  * object of type T. The default factory creates the object using the default constructor. The no_default_factory fails
  * the allocation of the object. The caller can provide a custom factory to create the object in a specific way.
  */
-template <typename T, template <typename TInner> typename factory = lazy_allocator_default_factory>
+template <typename T, T (*factory)() = lazy_allocator_default_factory<T>>
 class lazy_allocator {
     std::optional<T> _value;
 
@@ -47,7 +33,7 @@ class lazy_allocator {
      */
     T& get() {
         if (!_value.has_value()) {
-            _value = factory<T>()();
+            _value = factory();
         }
         return _value.value();
     }

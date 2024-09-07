@@ -33,10 +33,10 @@ struct label_t {
         if (this == &other) {
             return false;
         }
-        if (*this == label_t::exit) {
+        if (*this == exit) {
             return false;
         }
-        if (other == label_t::exit) {
+        if (other == exit) {
             return true;
         }
         return (stack_frame_prefix < other.stack_frame_prefix ||

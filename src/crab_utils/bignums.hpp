@@ -1,5 +1,6 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
+// ReSharper disable CppNonExplicitConvertingConstructor
 #pragma once
 
 #include <climits>
@@ -279,12 +280,12 @@ class number_t final {
     }
 
     number_t& operator--() & {
-        _n--;
+        --_n;
         return *this;
     }
 
     number_t& operator++() & {
-        _n++;
+        ++_n;
         return *this;
     }
 
