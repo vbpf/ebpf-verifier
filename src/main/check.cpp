@@ -21,8 +21,8 @@ using std::string;
 using std::vector;
 
 static size_t hash(const raw_program& raw_prog) {
-    auto start = (char*)raw_prog.prog.data();
-    char* end = start + (raw_prog.prog.size() * sizeof(ebpf_inst));
+    const auto start = reinterpret_cast<const char*>(raw_prog.prog.data());
+    const char* end = start + raw_prog.prog.size() * sizeof(ebpf_inst);
     return boost::hash_range(start, end);
 }
 
@@ -53,7 +53,7 @@ static std::set<std::string> _get_conformance_group_names() {
     return result;
 }
 
-static std::optional<raw_program> find_program(vector<raw_program>& raw_progs, std::string desired_program) {
+static std::optional<raw_program> find_program(vector<raw_program>& raw_progs, const std::string& desired_program) {
     if (desired_program.empty() && raw_progs.size() == 1) {
         // Select the last program section.
         return raw_progs.back();

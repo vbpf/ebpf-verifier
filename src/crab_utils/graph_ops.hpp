@@ -591,7 +591,7 @@ class GraphOps {
         vert_marks->resize(new_sz);
 
         // Initialize new elements as necessary.
-        for (int i=dists->size(); i < new_sz; ++i) {
+        for (int i = dists->size(); i < new_sz; ++i) {
             dists->emplace_back();
             dists_alt->emplace_back();
             dist_ts->push_back(ts - 1);

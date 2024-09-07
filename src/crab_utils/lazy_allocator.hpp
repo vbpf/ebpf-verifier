@@ -3,16 +3,9 @@
 #pragma once
 
 #include <optional>
-#include <functional>
-
-#include "debug.hpp"
 
 namespace crab {
 
-template<std::default_initializable T>
-T lazy_allocator_default_factory() {
-  return T();
-}
 /**
  * @brief Lazy allocator for objects of type T. The allocator does not allocate the object until it is first accessed.
  *
@@ -21,7 +14,7 @@ T lazy_allocator_default_factory() {
  * object of type T. The default factory creates the object using the default constructor. The no_default_factory fails
  * the allocation of the object. The caller can provide a custom factory to create the object in a specific way.
  */
-template <typename T, T (*factory)() = lazy_allocator_default_factory<T>>
+template <typename T, T (*factory)() = nullptr>
 class lazy_allocator {
     std::optional<T> _value;
 
@@ -33,7 +26,11 @@ class lazy_allocator {
      */
     T& get() {
         if (!_value.has_value()) {
-            _value = factory();
+            if constexpr (factory != nullptr) {
+                _value = factory();
+            } else {
+                _value = T{};
+            }
         }
         return _value.value();
     }
