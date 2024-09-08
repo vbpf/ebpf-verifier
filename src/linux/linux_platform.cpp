@@ -144,8 +144,9 @@ EbpfMapType get_map_type_linux(uint32_t platform_specific_type) {
     return type;
 }
 
-void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data, size_t map_def_size,
-                              int map_count, const ebpf_platform_t* platform, ebpf_verifier_options_t options) {
+void parse_maps_section_linux(std::vector<EbpfMapDescriptor>& map_descriptors, const char* data,
+                              const size_t map_def_size, const int map_count, const ebpf_platform_t* platform,
+                              const ebpf_verifier_options_t options) {
     // Copy map definitions from the ELF section into a local list.
     std::vector<bpf_load_map_def> mapdefs;
     for (int i = 0; i < map_count; i++) {
@@ -182,15 +183,15 @@ void resolve_inner_map_references_linux(std::vector<EbpfMapDescriptor>& map_desc
 }
 
 #if __linux__
-static int do_bpf(bpf_cmd cmd, bpf_attr& attr) { return syscall(321, cmd, &attr, sizeof(attr)); }
+static int do_bpf(const bpf_cmd cmd, bpf_attr& attr) { return syscall(321, cmd, &attr, sizeof(attr)); }
 #endif
 
 /** Try to allocate a Linux map.
  *
  *  This function requires admin privileges.
  */
-static int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
-                            ebpf_verifier_options_t options) {
+static int create_map_linux(const uint32_t map_type, const uint32_t key_size, const uint32_t value_size,
+                            const uint32_t max_entries, const ebpf_verifier_options_t options) {
     if (options.mock_map_fds) {
         EbpfMapType type = get_map_type_linux(map_type);
         return create_map_crab(type, key_size, value_size, max_entries, options);
@@ -223,7 +224,7 @@ static int create_map_linux(uint32_t map_type, uint32_t key_size, uint32_t value
 #endif
 }
 
-EbpfMapDescriptor& get_map_descriptor_linux(int map_fd) {
+EbpfMapDescriptor& get_map_descriptor_linux(const int map_fd) {
     // First check if we already have the map descriptor cached.
     EbpfMapDescriptor* map = find_map_descriptor(map_fd);
     if (map != nullptr) {

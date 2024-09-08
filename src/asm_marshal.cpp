@@ -119,11 +119,11 @@ struct MarshalVisitor {
                       .src = 0,
                       .offset = offset(b.op),
                       .imm = 0};
-        std::visit(overloaded{[&](Reg right) {
+        std::visit(overloaded{[&](const Reg right) {
                                   res.opcode |= INST_SRC_REG;
                                   res.src = right.v;
                               },
-                              [&](Imm right) { res.imm = static_cast<int32_t>(right.v); }},
+                              [&](const Imm right) { res.imm = static_cast<int32_t>(right.v); }},
                    b.v);
         return {res};
     }
@@ -213,15 +213,15 @@ struct MarshalVisitor {
                 .src = 0,
                 .offset = label_to_offset16(b.target),
             };
-            visit(overloaded{[&](Reg right) {
+            visit(overloaded{[&](const Reg right) {
                                  res.opcode |= INST_SRC_REG;
                                  res.src = right.v;
                              },
-                             [&](Imm right) { res.imm = static_cast<int32_t>(right.v); }},
+                             [&](const Imm right) { res.imm = static_cast<int32_t>(right.v); }},
                   b.cond->right);
             return {res};
         } else {
-            int32_t imm = label_to_offset32(b.target);
+            const int32_t imm = label_to_offset32(b.target);
             if (imm != 0) {
                 return {ebpf_inst{.opcode = INST_OP_JA32, .imm = imm}};
             } else {
@@ -231,7 +231,7 @@ struct MarshalVisitor {
     }
 
     vector<ebpf_inst> operator()(Mem const& b) const {
-        Deref access = b.access;
+        const Deref access = b.access;
         ebpf_inst res{
             .opcode = static_cast<uint8_t>(INST_MODE_MEM | width_to_opcode(access.width)),
             .dst = 0,
@@ -332,7 +332,7 @@ static auto get_labels(const InstructionSeq& insts) {
 
 vector<ebpf_inst> marshal(const InstructionSeq& insts) {
     vector<ebpf_inst> res;
-    auto pc_of_label = get_labels(insts);
+    const auto pc_of_label = get_labels(insts);
     pc_t pc = 0;
     for (auto [label, ins, _] : insts) {
         (void)label; // unused

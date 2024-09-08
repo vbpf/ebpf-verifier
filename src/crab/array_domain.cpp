@@ -436,7 +436,7 @@ static offset_map_t& lookup_array_map(const data_kind_t kind) { return (*global_
 **/
 void clear_global_state() {
     if (!global_array_map->empty()) {
-        if constexpr (crab::CrabSanityCheckFlag) {
+        if constexpr (CrabSanityCheckFlag) {
             CRAB_WARN("array_expansion static variable map is being cleared");
         }
         global_array_map->clear();

@@ -112,7 +112,8 @@ static auto get_line_info(const InstructionSeq& insts) {
     return label_to_line_info;
 }
 
-static void print_report(std::ostream& os, const checks_db& db, const InstructionSeq& prog, bool print_line_info) {
+static void print_report(std::ostream& os, const checks_db& db, const InstructionSeq& prog,
+                         const bool print_line_info) {
     auto label_to_line_info = get_line_info(prog);
     os << "\n";
     for (const auto& [label, messages] : db.m_db) {
@@ -157,7 +158,7 @@ static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, const program_info
     try {
         // Get dictionaries of pre-invariants and post-invariants for each basic block.
         ebpf_domain_t entry_dom = ebpf_domain_t::setup_entry(true);
-        auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, std::move(entry_dom));
+        auto [pre_invariants, post_invariants] = run_forward_analyzer(cfg, std::move(entry_dom));
         return get_analysis_report(s, cfg, pre_invariants, post_invariants);
     } catch (std::runtime_error& e) {
         // Convert verifier runtime_error exceptions to failure.
@@ -206,7 +207,7 @@ std::tuple<string_invariant, bool> ebpf_analyze_program_for_test(std::ostream& o
     }
     try {
         cfg_t cfg = prepare_cfg(prog, info, options.simplify, false);
-        auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, std::move(entry_inv));
+        auto [pre_invariants, post_invariants] = run_forward_analyzer(cfg, std::move(entry_inv));
         const checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
         print_report(os, report, prog, false);
 

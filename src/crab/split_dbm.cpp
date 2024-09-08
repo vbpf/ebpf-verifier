@@ -61,7 +61,7 @@ Z_NumberDefaultParams::Weight Z_NumberDefaultParams::convert_NtoW(const number_t
 void SplitDBM::diffcsts_of_assign(const linear_expression_t& exp,
                                   /* if true then process the upper
                                      bounds, else the lower bounds */
-                                  bool extract_upper_bounds,
+                                  const bool extract_upper_bounds,
                                   /* foreach {v, k} \in diff_csts we have
                                      the difference constraint v - k <= k */
                                   std::vector<std::pair<variable_t, Weight>>& diff_csts) const {
@@ -461,14 +461,14 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
 
     // Build the permuted view of x and y.
     assert(g.size() > 0);
-    GraphPerm<const graph_t> gx(perm_x, g);
+    GraphPerm gx(perm_x, g);
     assert(o.g.size() > 0);
-    GraphPerm<const graph_t> gy(perm_y, o.g);
+    GraphPerm gy(perm_y, o.g);
 
     // Compute the deferred relations
     graph_t g_ix_ry;
     g_ix_ry.growTo(sz);
-    SubGraph<GraphPerm<const graph_t>> gy_excl(gy, 0);
+    SubGraph gy_excl(gy, 0);
     for (vert_id s : gy_excl.verts()) {
         for (vert_id d : gy_excl.succs(s)) {
             if (auto ws = gx.lookup(s, 0)) {
@@ -482,13 +482,13 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
     bool is_closed;
     graph_t g_rx(GrOps::meet(gx, g_ix_ry, is_closed));
     if (!is_closed) {
-        GrOps::apply_delta(g_rx, GrOps::close_after_meet(SubGraph<graph_t>(g_rx, 0), pot_rx, gx, g_ix_ry));
+        GrOps::apply_delta(g_rx, GrOps::close_after_meet(SubGraph(g_rx, 0), pot_rx, gx, g_ix_ry));
     }
 
     graph_t g_rx_iy;
     g_rx_iy.growTo(sz);
 
-    SubGraph<GraphPerm<const graph_t>> gx_excl(gx, 0);
+    SubGraph gx_excl(gx, 0);
     for (vert_id s : gx_excl.verts()) {
         for (vert_id d : gx_excl.succs(s)) {
             // Assumption: gx.mem(s, d) -> gx.edge_val(s, d) <= ranges[var(s)].ub() - ranges[var(d)].lb()
@@ -503,7 +503,7 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
     // Similarly, should use a SubGraph view.
     graph_t g_ry(GrOps::meet(gy, g_rx_iy, is_closed));
     if (!is_closed) {
-        GrOps::apply_delta(g_ry, GrOps::close_after_meet(SubGraph<graph_t>(g_ry, 0), pot_ry, gy, g_rx_iy));
+        GrOps::apply_delta(g_ry, GrOps::close_after_meet(SubGraph(g_ry, 0), pot_ry, gy, g_rx_iy));
     }
 
     // We now have the relevant set of relations. Because g_rx and g_ry are closed,
@@ -607,9 +607,9 @@ SplitDBM SplitDBM::widen(const SplitDBM& o) const {
 
     // Build the permuted view of x and y.
     assert(g.size() > 0);
-    GraphPerm<const graph_t> gx(perm_x, g);
+    GraphPerm gx(perm_x, g);
     assert(o.g.size() > 0);
-    GraphPerm<const graph_t> gy(perm_y, o.g);
+    GraphPerm gy(perm_y, o.g);
 
     // Now perform the widening
     vert_set_t widen_unstable(unstable);
@@ -819,7 +819,7 @@ void SplitDBM::assign(variable_t lhs, const linear_expression_t& e) {
         // apply_delta should be safe here, as x has no edges in G.
         GrOps::apply_delta(g, delta);
     }
-    GrOps::apply_delta(g, GrOps::close_after_assign(SubGraph<graph_t>(g, 0), potential, vert));
+    GrOps::apply_delta(g, GrOps::close_after_assign(SubGraph(g, 0), potential, vert));
 
     if (lb_w) {
         g.update_edge(vert, *lb_w, 0);
@@ -1154,7 +1154,7 @@ bool SplitDBM::entail(const linear_constraint_t& rhs) const {
     const interval_t interval = eval_interval(rhs.expression());
     switch (rhs.kind()) {
     case constraint_kind_t::EQUALS_ZERO:
-        if (interval.singleton() == std::optional<number_t>(number_t(0))) {
+        if (interval.singleton() == std::optional(number_t(0))) {
             return true;
         }
         break;

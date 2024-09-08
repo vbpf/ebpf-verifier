@@ -20,17 +20,17 @@ using std::cout;
 using std::string;
 using std::vector;
 
-int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
-                    ebpf_verifier_options_t options) {
-    EquivalenceKey equiv{map_type.value_type, key_size, value_size, map_type.is_array ? max_entries : 0};
-    if (!global_program_info->cache.count(equiv)) {
+int create_map_crab(const EbpfMapType& map_type, const uint32_t key_size, const uint32_t value_size,
+                    const uint32_t max_entries, ebpf_verifier_options_t options) {
+    const EquivalenceKey equiv{map_type.value_type, key_size, value_size, map_type.is_array ? max_entries : 0};
+    if (!global_program_info->cache.contains(equiv)) {
         // +1 so 0 is the null FD
         global_program_info->cache[equiv] = static_cast<int>(global_program_info->cache.size()) + 1;
     }
     return global_program_info->cache.at(equiv);
 }
 
-EbpfMapDescriptor* find_map_descriptor(int map_fd) {
+EbpfMapDescriptor* find_map_descriptor(const int map_fd) {
     for (EbpfMapDescriptor& map : global_program_info->map_descriptors) {
         if (map.original_fd == map_fd) {
             return &map;
@@ -41,12 +41,12 @@ EbpfMapDescriptor* find_map_descriptor(int map_fd) {
 
 // Maps sections are identified as any section called "maps", or matching "maps/<map-name>".
 bool is_map_section(const std::string& name) {
-    std::string maps_prefix = "maps/";
+    const std::string maps_prefix = "maps/";
     return name == "maps" || (name.length() > 5 && name.compare(0, maps_prefix.length(), maps_prefix) == 0);
 }
 
-std::tuple<string, ELFIO::Elf_Half> get_symbol_name_and_section_index(ELFIO::const_symbol_section_accessor& symbols,
-                                                                      ELFIO::Elf_Xword index) {
+std::tuple<string, ELFIO::Elf_Half>
+get_symbol_name_and_section_index(const ELFIO::const_symbol_section_accessor& symbols, const ELFIO::Elf_Xword index) {
     string symbol_name;
     ELFIO::Elf64_Addr value{};
     ELFIO::Elf_Xword size{};
@@ -59,7 +59,7 @@ std::tuple<string, ELFIO::Elf_Half> get_symbol_name_and_section_index(ELFIO::con
 }
 
 std::tuple<ELFIO::Elf64_Addr, unsigned char> get_value(const ELFIO::const_symbol_section_accessor& symbols,
-                                                       ELFIO::Elf_Word index) {
+                                                       const ELFIO::Elf_Word index) {
     string symbol_name;
     ELFIO::Elf64_Addr value{};
     ELFIO::Elf_Xword size{};
@@ -76,10 +76,10 @@ std::tuple<ELFIO::Elf64_Addr, unsigned char> get_value(const ELFIO::const_symbol
 static size_t parse_map_sections(const ebpf_verifier_options_t* options, const ebpf_platform_t* platform,
                                  const ELFIO::elfio& reader, std::vector<EbpfMapDescriptor>& map_descriptors,
                                  std::set<ELFIO::Elf_Half>& section_indices,
-                                 ELFIO::const_symbol_section_accessor& symbols) {
+                                 const ELFIO::const_symbol_section_accessor& symbols) {
     size_t map_record_size = platform->map_record_size;
     for (ELFIO::Elf_Half i = 0; i < reader.sections.size(); ++i) {
-        auto s = reader.sections[i];
+        const auto s = reader.sections[i];
         if (!is_map_section(s->get_name())) {
             continue;
         }
@@ -95,7 +95,7 @@ static size_t parse_map_sections(const ebpf_verifier_options_t* options, const e
 
         if (map_count > 0) {
             map_record_size = s->get_size() / map_count;
-            if ((s->get_data() == nullptr) || (map_record_size == 0)) {
+            if (s->get_data() == nullptr || map_record_size == 0) {
                 throw std::runtime_error(std::string("bad maps section"));
             }
             if (s->get_size() % map_record_size != 0) {
@@ -110,10 +110,10 @@ static size_t parse_map_sections(const ebpf_verifier_options_t* options, const e
     return map_record_size;
 }
 
-vector<raw_program> read_elf(const std::string& path, const std::string& desired_section,
+vector<raw_program> read_elf(const std::string& path, const std::string& section,
                              const ebpf_verifier_options_t* options, const ebpf_platform_t* platform) {
     if (std::ifstream stream{path, std::ios::in | std::ios::binary}) {
-        return read_elf(stream, path, desired_section, options, platform);
+        return read_elf(stream, path, section, options, platform);
     }
     struct stat st;
     if (stat(path.c_str(), &st)) {
@@ -122,10 +122,10 @@ vector<raw_program> read_elf(const std::string& path, const std::string& desired
     throw std::runtime_error(string("Can't process ELF file ") + path);
 }
 
-std::tuple<string, ELFIO::Elf_Xword> get_program_name_and_size(ELFIO::section& sec, ELFIO::Elf_Xword start,
-                                                               ELFIO::const_symbol_section_accessor& symbols) {
-    ELFIO::Elf_Xword symbol_count = symbols.get_symbols_num();
-    ELFIO::Elf_Half section_index = sec.get_index();
+std::tuple<string, ELFIO::Elf_Xword> get_program_name_and_size(const ELFIO::section& sec, const ELFIO::Elf_Xword start,
+                                                               const ELFIO::const_symbol_section_accessor& symbols) {
+    const ELFIO::Elf_Xword symbol_count = symbols.get_symbols_num();
+    const ELFIO::Elf_Half section_index = sec.get_index();
     string program_name = sec.get_name();
     ELFIO::Elf_Xword size = sec.get_size() - start;
     for (ELFIO::Elf_Xword index = 0; index < symbol_count; index++) {
@@ -147,15 +147,15 @@ std::tuple<string, ELFIO::Elf_Xword> get_program_name_and_size(ELFIO::section& s
     return {program_name, size};
 }
 
-void relocate_function(ebpf_inst& inst, ELFIO::Elf64_Addr offset, ELFIO::Elf_Word index,
+void relocate_function(ebpf_inst& inst, const ELFIO::Elf64_Addr offset, const ELFIO::Elf_Word index,
                        const ELFIO::const_symbol_section_accessor& symbols) {
     auto [relocation_offset, relocation_type] = get_value(symbols, index);
-    inst.imm = ((relocation_offset - offset) / sizeof(ebpf_inst)) - 1;
+    inst.imm = (relocation_offset - offset) / sizeof(ebpf_inst) - 1;
 }
 
 void relocate_map(ebpf_inst& inst, const std::string& symbol_name,
                   const std::variant<size_t, std::map<std::string, size_t>>& map_record_size_or_map_offsets,
-                  const program_info& info, ELFIO::Elf64_Addr offset, ELFIO::Elf_Word index,
+                  const program_info& info, const ELFIO::Elf64_Addr offset, const ELFIO::Elf_Word index,
                   const ELFIO::const_symbol_section_accessor& symbols) {
     // Only permit loading the address of the map.
     if ((inst.opcode & INST_CLS_MASK) != INST_CLS_LD) {
@@ -169,7 +169,7 @@ void relocate_map(ebpf_inst& inst, const std::string& symbol_name,
     if (map_record_size_or_map_offsets.index() == 0) {
         // The older maps section format uses a single map_record_size value, so we can
         // calculate the map descriptor index directly.
-        size_t reloc_value = relocation_offset / std::get<0>(map_record_size_or_map_offsets);
+        const size_t reloc_value = relocation_offset / std::get<0>(map_record_size_or_map_offsets);
         if (reloc_value >= info.map_descriptors.size()) {
             throw std::runtime_error("Bad reloc value (" + std::to_string(reloc_value) + "). " +
                                      "Make sure to compile with -O2.");
@@ -180,7 +180,7 @@ void relocate_map(ebpf_inst& inst, const std::string& symbol_name,
         // The newer .maps section format uses a variable-length map descriptor array,
         // so we need to look up the map descriptor index in a map.
         auto& map_descriptors_offsets = std::get<1>(map_record_size_or_map_offsets);
-        auto it = map_descriptors_offsets.find(symbol_name);
+        const auto it = map_descriptors_offsets.find(symbol_name);
 
         if (it == map_descriptors_offsets.end()) {
             throw std::runtime_error("Bad reloc value (" + std::to_string(index) + "). " +
@@ -263,7 +263,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         int pseudo_fd = 1;
         // Gather the typeids for each map and assign a pseudo-fd to each map.
         for (auto& map_descriptor : info.map_descriptors) {
-            if (type_id_to_fd_map.find(map_descriptor.original_fd) == type_id_to_fd_map.end()) {
+            if (!type_id_to_fd_map.contains(map_descriptor.original_fd)) {
                 type_id_to_fd_map[map_descriptor.original_fd] = pseudo_fd++;
             }
         }
@@ -377,12 +377,12 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
     }
 
     if (btf != nullptr && btf_ext != nullptr) {
-        auto visitor = [&](const std::string& section, uint32_t instruction_offset, const std::string& file_name,
-                           const std::string& source, uint32_t line_number, uint32_t column_number) {
+        auto visitor = [&](const std::string& section, const uint32_t instruction_offset, const std::string& file_name,
+                           const std::string& source, const uint32_t line_number, const uint32_t column_number) {
             for (auto& program : res) {
-                if ((program.section_name == section) && (instruction_offset >= program.insn_off) &&
-                    (instruction_offset < program.insn_off + program.prog.size() * sizeof(ebpf_inst))) {
-                    size_t inst_index = (instruction_offset - program.insn_off) / sizeof(ebpf_inst);
+                if (program.section_name == section && instruction_offset >= program.insn_off &&
+                    instruction_offset < program.insn_off + program.prog.size() * sizeof(ebpf_inst)) {
+                    const size_t inst_index = (instruction_offset - program.insn_off) / sizeof(ebpf_inst);
                     if (inst_index >= program.line_info.size()) {
                         throw std::runtime_error("Invalid BTF data");
                     }
@@ -398,7 +398,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         for (auto& program : res) {
             for (size_t i = 1; i < program.line_info.size(); i++) {
                 // If the previous PC has line info, copy it.
-                if ((program.line_info[i].line_number == 0) && (program.line_info[i - 1].line_number != 0)) {
+                if (program.line_info[i].line_number == 0 && program.line_info[i - 1].line_number != 0) {
                     program.line_info[i] = program.line_info[i - 1];
                 }
             }

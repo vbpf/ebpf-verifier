@@ -333,7 +333,7 @@ static void check_unmarshal_fail(ebpf_inst inst1, ebpf_inst inst2, std::string e
     REQUIRE(actual_error_message == expected_error_message);
 }
 
-static const auto ws = {1, 2, 4, 8};
+static constexpr auto ws = {1, 2, 4, 8};
 
 TEST_CASE("disasm_marshal", "[disasm][marshal]") {
     SECTION("Bin") {
@@ -608,7 +608,7 @@ static ebpf_platform_t get_template_platform(const ebpf_instruction_template_t& 
 }
 
 // Check whether an instruction matches an instruction template that may have wildcards.
-static bool matches_template_inst(ebpf_inst inst, ebpf_inst template_inst) {
+static bool matches_template_inst(const ebpf_inst inst, const ebpf_inst template_inst) {
     if (inst.opcode != template_inst.opcode) {
         return false;
     }
@@ -630,7 +630,7 @@ static bool matches_template_inst(ebpf_inst inst, ebpf_inst template_inst) {
 
 // Check that various 'dst' variations between two valid instruction templates fail.
 static void check_instruction_dst_variations(const ebpf_instruction_template_t& previous_template,
-                                             std::optional<const ebpf_instruction_template_t> next_template) {
+                                             const std::optional<const ebpf_instruction_template_t> next_template) {
     ebpf_inst inst = previous_template.inst;
     const ebpf_platform_t platform = get_template_platform(previous_template);
     if (inst.dst == DST) {
@@ -654,7 +654,7 @@ static void check_instruction_dst_variations(const ebpf_instruction_template_t& 
 
 // Check that various 'src' variations between two valid instruction templates fail.
 static void check_instruction_src_variations(const ebpf_instruction_template_t& previous_template,
-                                             std::optional<const ebpf_instruction_template_t> next_template) {
+                                             const std::optional<const ebpf_instruction_template_t> next_template) {
     ebpf_inst inst = previous_template.inst;
     const ebpf_platform_t platform = get_template_platform(previous_template);
     if (inst.src == SRC) {
@@ -672,7 +672,7 @@ static void check_instruction_src_variations(const ebpf_instruction_template_t& 
 
 // Check that various 'offset' variations between two valid instruction templates fail.
 static void check_instruction_offset_variations(const ebpf_instruction_template_t& previous_template,
-                                                std::optional<const ebpf_instruction_template_t> next_template) {
+                                                const std::optional<const ebpf_instruction_template_t> next_template) {
     ebpf_inst inst = previous_template.inst;
     const ebpf_platform_t platform = get_template_platform(previous_template);
     if (inst.offset == JMP_OFFSET) {
@@ -697,7 +697,7 @@ static void check_instruction_offset_variations(const ebpf_instruction_template_
 
 // Check that various 'imm' variations between two valid instruction templates fail.
 static void check_instruction_imm_variations(const ebpf_instruction_template_t& previous_template,
-                                             std::optional<const ebpf_instruction_template_t> next_template) {
+                                             const std::optional<const ebpf_instruction_template_t> next_template) {
     ebpf_inst inst = previous_template.inst;
     const ebpf_platform_t platform = get_template_platform(previous_template);
     if (inst.imm == JMP_OFFSET) {
@@ -728,8 +728,8 @@ static void check_instruction_imm_variations(const ebpf_instruction_template_t& 
 }
 
 // Check that various variations between two valid instruction templates fail.
-static void check_instruction_variations(std::optional<const ebpf_instruction_template_t> previous_template,
-                                         std::optional<const ebpf_instruction_template_t> next_template) {
+static void check_instruction_variations(const std::optional<const ebpf_instruction_template_t> previous_template,
+                                         const std::optional<const ebpf_instruction_template_t> next_template) {
     if (previous_template) {
         check_instruction_dst_variations(*previous_template, next_template);
         check_instruction_src_variations(*previous_template, next_template);

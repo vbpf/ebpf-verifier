@@ -127,7 +127,7 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
 }
 
 /// Convert an instruction sequence to a control-flow graph (CFG).
-static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, bool must_have_exit) {
+static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must_have_exit) {
     cfg_t cfg;
     std::optional<label_t> falling_from = {};
     bool first = true;
@@ -154,8 +154,7 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, bool must_have_
         if (has_fall(inst)) {
             falling_from = label;
         }
-        auto jump_target = get_jump(inst);
-        if (jump_target) {
+        if (auto jump_target = get_jump(inst)) {
             bb >> cfg.insert(*jump_target);
         }
 
@@ -184,7 +183,7 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, bool must_have_
 }
 
 /// Get the inverse of a given comparison operation.
-static Condition::Op reverse(Condition::Op op) {
+static Condition::Op reverse(const Condition::Op op) {
     switch (op) {
     case Condition::Op::EQ: return Condition::Op::NE;
     case Condition::Op::NE: return Condition::Op::EQ;
@@ -209,7 +208,7 @@ static Condition::Op reverse(Condition::Op op) {
 }
 
 /// Get the inverse of a given comparison condition.
-static Condition reverse(Condition cond) {
+static Condition reverse(const Condition& cond) {
     return {.op = reverse(cond.op), .left = cond.left, .right = cond.right, .is64 = cond.is64};
 }
 
@@ -270,7 +269,7 @@ static cfg_t to_nondet(const cfg_t& cfg) {
 
 /// Get the type of a given instruction.
 /// Most of these type names are also statistics header labels.
-static std::string instype(Instruction ins) {
+static std::string instype(const Instruction& ins) {
     if (std::holds_alternative<Call>(ins)) {
         auto call = std::get<Call>(ins);
         if (call.is_map_lookup) {
@@ -355,7 +354,8 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
     return res;
 }
 
-cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool simplify, bool must_have_exit) {
+cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const bool simplify,
+                  const bool must_have_exit) {
     // Convert the instruction sequence to a deterministic control-flow graph.
     cfg_t det_cfg = instruction_seq_to_cfg(prog, must_have_exit);
 

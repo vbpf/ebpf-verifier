@@ -58,11 +58,11 @@ struct string_invariant {
     string_invariant operator-(const string_invariant& b) const;
     string_invariant operator+(const string_invariant& b) const;
 
-    bool operator==(const string_invariant& other) const { return maybe_inv == other.maybe_inv; }
+    bool operator==(const string_invariant& other) const = default;
 
     [[nodiscard]]
     bool contains(const std::string& item) const {
-        return !is_bottom() && maybe_inv.value().count(item);
+        return maybe_inv.value().contains(item);
     }
 
     friend std::ostream& operator<<(std::ostream&, const string_invariant& inv);

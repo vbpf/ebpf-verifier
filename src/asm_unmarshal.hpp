@@ -20,7 +20,7 @@
 std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog,
                                                     std::vector<std::vector<std::string>>& notes);
 std::variant<InstructionSeq, std::string> unmarshal(const raw_program& raw_prog);
-Call make_call(int func, const ebpf_platform_t& platform);
+Call make_call(int imm, const ebpf_platform_t& platform);
 
 inline std::string make_opcode_message(const char* msg, const uint8_t opcode) {
     std::ostringstream oss;

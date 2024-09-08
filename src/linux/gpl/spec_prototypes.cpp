@@ -2274,7 +2274,7 @@ constexpr EbpfHelperPrototype prototypes[] = {
     FN(get_func_arg_cnt),
 };
 
-bool is_helper_usable_linux(int32_t n) {
+bool is_helper_usable_linux(const int32_t n) {
     if (n >= static_cast<int>(std::size(prototypes)) || n < 0) {
         return false;
     }
@@ -2288,7 +2288,7 @@ bool is_helper_usable_linux(int32_t n) {
     return true;
 }
 
-EbpfHelperPrototype get_helper_prototype_linux(int32_t n) {
+EbpfHelperPrototype get_helper_prototype_linux(const int32_t n) {
     if (!is_helper_usable_linux(n)) {
         throw std::exception();
     }

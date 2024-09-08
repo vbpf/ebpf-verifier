@@ -10,7 +10,7 @@
 bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, const program_info& info, const ebpf_verifier_options_t* options,
                        ebpf_verifier_stats_t* stats);
 
-bool ebpf_verify_program(std::ostream& s, const InstructionSeq& prog, const program_info& info,
+bool ebpf_verify_program(std::ostream& os, const InstructionSeq& prog, const program_info& info,
                          const ebpf_verifier_options_t* options, ebpf_verifier_stats_t* stats);
 
 using string_invariant_map = std::map<label_t, string_invariant>;

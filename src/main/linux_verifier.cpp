@@ -12,7 +12,7 @@
 #include "spec_type_descriptors.hpp"
 #include "utils.hpp"
 
-static int do_bpf(bpf_cmd cmd, bpf_attr& attr) { return syscall(321, cmd, &attr, sizeof(attr)); }
+static int do_bpf(const bpf_cmd cmd, bpf_attr& attr) { return syscall(321, cmd, &attr, sizeof(attr)); }
 
 /** Run the built-in Linux verifier on a raw eBPF program.
  *
@@ -20,7 +20,7 @@ static int do_bpf(bpf_cmd cmd, bpf_attr& attr) { return syscall(321, cmd, &attr,
  */
 
 std::tuple<bool, double> bpf_verify_program(const EbpfProgramType& type, const std::vector<ebpf_inst>& raw_prog,
-                                            ebpf_verifier_options_t* options) {
+                                            const ebpf_verifier_options_t* options) {
     std::vector<char> buf(options->print_failures ? 1000000 : 10);
     buf[0] = 0;
     memset(buf.data(), '\0', buf.size());
@@ -29,10 +29,10 @@ std::tuple<bool, double> bpf_verify_program(const EbpfProgramType& type, const s
     memset(&attr, '\0', sizeof(attr));
     attr.prog_type = static_cast<__u32>(type.platform_specific_data);
     attr.insn_cnt = static_cast<__u32>(raw_prog.size());
-    attr.insns = (__u64)raw_prog.data();
-    attr.license = (__u64) "GPL";
+    attr.insns = reinterpret_cast<__u64>(raw_prog.data());
+    attr.license = reinterpret_cast<__u64>("GPL");
     if (options->print_failures) {
-        attr.log_buf = (__u64)buf.data();
+        attr.log_buf = reinterpret_cast<__u64>(buf.data());
         attr.log_size = buf.size();
         attr.log_level = 3;
     }
@@ -43,7 +43,7 @@ std::tuple<bool, double> bpf_verify_program(const EbpfProgramType& type, const s
     if (res < 0) {
         if (options->print_failures) {
             std::cerr << "Failed to verify program: " << strerror(errno) << " (" << errno << ")\n";
-            std::cerr << "LOG: " << (char*)attr.log_buf;
+            std::cerr << "LOG: " << reinterpret_cast<const char*>(attr.log_buf);
         }
         return {false, elapsed_secs};
     }

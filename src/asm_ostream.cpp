@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 #include <fstream>
 #include <iomanip>
-#include <iostream>
 #include <variant>
 #include <vector>
 
@@ -520,7 +519,7 @@ std::ostream& operator<<(std::ostream& o, const basic_block_t& bb) {
     if (it != et) {
         o << "  "
           << "goto ";
-        for (; it != et;) {
+        while (it != et) {
             o << *it;
             ++it;
             if (it == et) {

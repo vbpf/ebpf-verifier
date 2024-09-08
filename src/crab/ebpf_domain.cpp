@@ -577,7 +577,7 @@ assume_unsigned_32bit_gt(const NumAbsDomain& inv, const bool strict, const varia
     } else {
         // We can't directly compare the uvalues since they may differ in high order bits.
         return {};
-    };
+    }
 }
 
 static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAbsDomain& inv, Condition::Op op,
@@ -954,7 +954,7 @@ void ebpf_domain_t::save_callee_saved_registers(const std::string& prefix) {
 
 void ebpf_domain_t::restore_callee_saved_registers(const std::string& prefix) {
     for (int r = R6; r <= R9; r++) {
-        for (data_kind_t kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes;
+        for (auto kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes;
              kind = static_cast<data_kind_t>(static_cast<int>(kind) + 1)) {
             const variable_t src_var = variable_t::stack_frame_var(kind, r, prefix);
             if (!m_inv[src_var].is_top()) {
@@ -1418,7 +1418,7 @@ void ebpf_domain_t::operator()(const Comparable& s) {
         // _Maybe_ different types, so r2 must be a number.
         // We checked in a previous assertion that r1 is a pointer or a number.
         require(m_inv, reg_pack(s.r2).type == T_NUM, "Cannot subtract pointers to different regions");
-    };
+    }
 }
 
 void ebpf_domain_t::operator()(const Addable& s) {
@@ -2069,7 +2069,7 @@ void ebpf_domain_t::operator()(const Mem& b) {
 
 template <typename Type, typename SValue, typename UValue>
 void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue, UValue val_uvalue,
-                                 const std::optional<reg_pack_t>& val_reg) {
+                                 const std::optional<reg_pack_t>& opt_val_reg) {
     if (m_inv.is_bottom()) {
         return;
     }
@@ -2077,15 +2077,14 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue,
     const number_t offset{b.access.offset};
     if (b.access.basereg.v == R10_STACK_POINTER) {
         const number_t base_addr{EBPF_STACK_SIZE};
-        do_store_stack(m_inv, width, base_addr + offset, val_type, val_svalue, val_uvalue, val_reg);
+        do_store_stack(m_inv, width, base_addr + offset, val_type, val_svalue, val_uvalue, opt_val_reg);
         return;
     }
     m_inv = type_inv.join_over_types(m_inv, b.access.basereg, [&](NumAbsDomain& inv, const type_encoding_t type) {
         if (type == T_STACK) {
-            const linear_expression_t base_addr =
-                linear_expression_t(get_type_offset_variable(b.access.basereg, type).value());
+            const auto base_addr = linear_expression_t(get_type_offset_variable(b.access.basereg, type).value());
             do_store_stack(inv, width, dsl_syntax::operator+(base_addr, offset), val_type, val_svalue, val_uvalue,
-                           val_reg);
+                           opt_val_reg);
         }
         // do nothing for any other type
     });
@@ -2338,9 +2337,9 @@ void ebpf_domain_t::recompute_stack_numeric_size(NumAbsDomain& inv, const Reg& r
     recompute_stack_numeric_size(inv, reg_pack(reg).type);
 }
 
-void ebpf_domain_t::add(const Reg& reg, const int imm, const int finite_width) {
-    const auto dst = reg_pack(reg);
-    const auto offset = get_type_offset_variable(reg);
+void ebpf_domain_t::add(const Reg& dst_reg, const int imm, const int finite_width) {
+    const auto dst = reg_pack(dst_reg);
+    const auto offset = get_type_offset_variable(dst_reg);
     add_overflow(dst.svalue, dst.uvalue, imm, finite_width);
     if (offset.has_value()) {
         add(offset.value(), imm);
@@ -2351,7 +2350,7 @@ void ebpf_domain_t::add(const Reg& reg, const int imm, const int finite_width) {
         } else if (imm < 0) {
             havoc(dst.stack_numeric_size);
         }
-        recompute_stack_numeric_size(m_inv, reg);
+        recompute_stack_numeric_size(m_inv, dst_reg);
     }
 }
 

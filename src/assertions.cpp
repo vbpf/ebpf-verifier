@@ -7,7 +7,6 @@
 
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
-#include "platform.hpp"
 
 using std::string;
 using std::to_string;
@@ -21,7 +20,7 @@ class AssertExtractor {
 
     static Imm imm(const Value& v) { return std::get<Imm>(v); }
 
-    static vector<Assert> zero_offset_ctx(Reg reg) {
+    static vector<Assert> zero_offset_ctx(const Reg reg) {
         vector<Assert> res;
         res.emplace_back(TypeConstraint{reg, TypeGroup::ctx});
         res.emplace_back(ZeroCtxOffset{reg});
@@ -118,7 +117,7 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assert> operator()(CallLocal const& call) const { return {}; }
+    vector<Assert> operator()(CallLocal const&) const { return {}; }
 
     vector<Assert> operator()(Callx const& callx) const {
         vector<Assert> res;
@@ -203,7 +202,7 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assert> operator()(Un ins) const { return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}}; }
+    vector<Assert> operator()(const Un ins) const { return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}}; }
 
     vector<Assert> operator()(const Bin& ins) const {
         switch (ins.op) {

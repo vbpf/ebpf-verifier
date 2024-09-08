@@ -90,7 +90,7 @@ static Reg reg(const std::string& s) {
     return Reg{res};
 }
 
-static Imm imm(const std::string& s, bool lddw) {
+static Imm imm(const std::string& s, const bool lddw) {
     const int base = s.find("0x") != std::string::npos ? 16 : 10;
 
     if (lddw) {
@@ -103,7 +103,7 @@ static Imm imm(const std::string& s, bool lddw) {
         if (s.at(0) == '-') {
             return Imm{static_cast<uint64_t>((int64_t)std::stol(s, nullptr, base))};
         } else {
-            return Imm{static_cast<uint64_t>((int64_t)(int32_t)std::stoul(s, nullptr, base))};
+            return Imm{static_cast<uint64_t>(static_cast<int64_t>(static_cast<int32_t>(std::stoul(s, nullptr, base))))};
         }
     }
 }
@@ -126,7 +126,7 @@ static Deref deref(const std::string& width, const std::string& basereg, const s
     return Deref{
         .width = str_to_width.at(width),
         .basereg = reg(basereg),
-        .offset = (sign == "-" ? -offset : +offset),
+        .offset = sign == "-" ? -offset : +offset,
     };
 }
 
@@ -238,7 +238,7 @@ static InstructionSeq parse_program(std::istream& is) {
         std::smatch m;
         if (regex_search(line, m, regex(LABEL ":"))) {
             next_label = label_t(boost::lexical_cast<int>(m[1]));
-            if (seen_labels.count(*next_label) != 0) {
+            if (seen_labels.contains(*next_label)) {
                 throw std::invalid_argument("duplicate labels");
             }
             line = m.suffix();
@@ -316,7 +316,7 @@ static type_encoding_t string_to_type_encoding(const std::string& s) {
         {std::string("ctx"), T_CTX},       {std::string("stack"), T_STACK},
         {std::string("packet"), T_PACKET}, {std::string("shared"), T_SHARED},
     };
-    if (string_to_type.count(s)) {
+    if (string_to_type.contains(s)) {
         return string_to_type[s];
     }
     throw std::runtime_error(std::string("Unsupported type name: ") + s);
@@ -385,7 +385,7 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<std::st
                                regex("s" ARRAY_RANGE DOT "type"
                                      "=" TYPE))) {
             type_encoding_t type = string_to_type_encoding(m[3]);
-            if (type == type_encoding_t::T_NUM) {
+            if (type == T_NUM) {
                 numeric_ranges.emplace_back(signed_number(m[1]), signed_number(m[2]));
             } else {
                 number_t lb = signed_number(m[1]);
