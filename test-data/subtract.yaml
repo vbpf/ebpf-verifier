@@ -28,9 +28,22 @@ post:
   - r0.uvalue=[2147483645, 2147483647]
   - r0.svalue=r0.uvalue
 ---
-test-case: subtract a register from itself
+test-case: subtract a number from itself
 
 pre: ["r1.type=number"]
+
+code:
+  <start>: |
+    r1 -= r1
+
+post:
+  - r1.type=number
+  - r1.svalue=0
+  - r1.uvalue=0
+---
+test-case: subtract unknown register from itself
+
+pre: [ ]
 
 code:
   <start>: |
