@@ -43,7 +43,7 @@ post:
 ---
 test-case: subtract unknown register from itself
 
-pre: [ ]
+pre: []
 
 code:
   <start>: |
