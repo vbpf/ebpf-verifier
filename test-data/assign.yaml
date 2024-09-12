@@ -26,7 +26,16 @@ post:
   - r1.type=r2.type
   - r1.svalue=r2.svalue
   - r1.uvalue=r2.uvalue
+---
+test-case: assign self
 
+pre: []
+
+code:
+  <start>: |
+    r1 = r1;
+
+post: []
 ---
 test-case: re-assign immediate
 

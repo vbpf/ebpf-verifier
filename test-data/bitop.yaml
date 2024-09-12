@@ -23,6 +23,16 @@ code:
 post: ["r1.type=number", "r1.svalue=-9223372036854775807", "r1.uvalue=9223372036854775809",
        "r2.type=number", "r2.svalue=1", "r2.uvalue=1"]
 ---
+test-case: Bitwise OR self
+
+pre: ["r1.type=number", "r1.svalue=-9223372036854775808", "r1.uvalue=9223372036854775808"]
+
+code:
+  <start>: |
+    r1 |= r1
+
+post: ["r1.type=number", "r1.svalue=-9223372036854775807", "r1.uvalue=9223372036854775809"]
+---
 test-case: Bitwise XOR imm
 
 pre: ["r1.type=number", "r1.svalue=-9223372036854775807", "r1.uvalue=9223372036854775809"]
@@ -45,6 +55,16 @@ code:
 post: ["r1.type=number", "r1.svalue=-9223372036854775806", "r1.uvalue=9223372036854775810",
        "r2.type=number", "r2.svalue=3", "r2.uvalue=3"]
 ---
+test-case: Bitwise XOR self
+
+pre: ["r1.type=number", "r1.svalue=-9223372036854775807", "r1.uvalue=9223372036854775809"]
+
+code:
+  <start>: |
+    r1 ^= r1
+
+post: ["r1.type=number", "r1.svalue=0", "r1.uvalue=0"]
+---
 test-case: Bitwise AND imm
 
 pre: ["r1.type=number", "r1.svalue=-9223372036854775805", "r1.uvalue=9223372036854775811"]
@@ -66,6 +86,16 @@ code:
 
 post: ["r1.type=number", "r1.svalue=-9223372036854775807", "r1.uvalue=9223372036854775809",
        "r2.type=number", "r2.svalue=-9223372036854775803", "r2.uvalue=9223372036854775813"]
+---
+test-case: Bitwise AND self
+
+pre: ["r1.type=number", "r1.svalue=-9223372036854775805", "r1.uvalue=9223372036854775811"]
+
+code:
+  <start>: |
+    r1 &= r1
+
+post: ["r1.type=number", "r1.svalue=-9223372036854775807", "r1.uvalue=9223372036854775809"]
 ---
 test-case: Bitwise [-1, 1] AND 0 == 0
 

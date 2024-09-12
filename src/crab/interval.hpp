@@ -489,40 +489,40 @@ class interval_t final {
     interval_t AShr(const interval_t& x) const;
 
     [[nodiscard]]
-    interval_t truncate_to_sint(bool is64) const {
+    interval_t truncate_to_sint(int width) const {
         interval_t new_interval = *this;
-        if (!(*this <= interval_t::signed_int(is64))) {
+        if (!(*this <= interval_t::signed_int(width))) {
             if (auto size = finite_size()) {
-                auto llb = lb().number()->truncate_to_signed_finite_width(is64 ? 64 : 32);
-                auto lub = ub().number()->truncate_to_signed_finite_width(is64 ? 64 : 32);
-                if ((llb <= lub) && (is64 ? size->fits_sint64() : size->fits_sint32())) {
-                    // Interval can be accurately represented in 64 bits.
+                auto llb = lb().number()->truncate_to_signed_finite_width(width);
+                auto lub = ub().number()->truncate_to_signed_finite_width(width);
+                if ((llb <= lub) && size->fits_sint(width)) {
+                    // Interval can be accurately represented in 64 width.
                     new_interval = interval_t{llb, lub};
                 } else {
-                    new_interval = interval_t::signed_int(is64);
+                    new_interval = interval_t::signed_int(width);
                 }
             } else {
-                new_interval = interval_t::signed_int(is64);
+                new_interval = interval_t::signed_int(width);
             }
         }
         return new_interval;
     }
 
     [[nodiscard]]
-    interval_t truncate_to_uint(bool is64) const {
+    interval_t truncate_to_uint(int width) const {
         interval_t new_interval = *this;
-        if (!(*this <= interval_t::unsigned_int(is64))) {
+        if (!(*this <= interval_t::unsigned_int(width))) {
             if (auto size = finite_size()) {
-                auto llb = lb().number()->truncate_to_unsigned_finite_width(is64 ? 64 : 32);
-                auto lub = ub().number()->truncate_to_unsigned_finite_width(is64 ? 64 : 32);
-                if ((llb <= lub) && (is64 ? size->fits_uint64() : size->fits_uint32())) {
-                    // Interval can be accurately represented in 64 bits.
+                auto llb = lb().number()->truncate_to_unsigned_finite_width(width);
+                auto lub = ub().number()->truncate_to_unsigned_finite_width(width);
+                if ((llb <= lub) && size->fits_uint(width)) {
+                    // Interval can be accurately represented in 64 width.
                     new_interval = interval_t{llb, lub};
                 } else {
-                    new_interval = interval_t::unsigned_int(is64);
+                    new_interval = interval_t::unsigned_int(width);
                 }
             } else {
-                new_interval = interval_t::unsigned_int(is64);
+                new_interval = interval_t::unsigned_int(width);
             }
         }
         return new_interval;
@@ -530,27 +530,33 @@ class interval_t final {
 
     // Return a non-negative interval in the range [0, INT_MAX],
     // which can be represented as both an svalue and a uvalue.
-    static interval_t nonnegative_int(bool is64) {
-        if (is64) {
-            return {number_t{0}, number_t{std::numeric_limits<int64_t>::max()}};
-        } else {
-            return {number_t{0}, number_t{std::numeric_limits<int32_t>::max()}};
+    static interval_t nonnegative_int(int width) {
+        switch (width) {
+        case 64: return {number_t{0}, number_t{std::numeric_limits<int64_t>::max()}};
+        case 32: return {number_t{0}, number_t{std::numeric_limits<int32_t>::max()}};
+        case 16: return {number_t{0}, number_t{std::numeric_limits<int16_t>::max()}};
+        case 8: return {number_t{0}, number_t{std::numeric_limits<int8_t>::max()}};
+        default: throw std::exception();
         }
     }
+
     // Return an interval in the range [INT_MIN, -1], which can only
     // be represented as an svalue.  The uvalue equivalent using the same
-    // bits would be unsigned_high().
-    static interval_t negative_int(bool is64) {
-        if (is64) {
-            return {number_t{std::numeric_limits<int64_t>::min()}, number_t{-1}};
-        } else {
-            return {number_t{std::numeric_limits<int32_t>::min()}, number_t{-1}};
+    // width would be unsigned_high().
+    static interval_t negative_int(int width) {
+        switch (width) {
+        case 64: return {number_t{std::numeric_limits<int64_t>::min()}, number_t{-1}};
+        case 32: return {number_t{std::numeric_limits<int32_t>::min()}, number_t{-1}};
+        case 16: return {number_t{std::numeric_limits<int16_t>::min()}, number_t{-1}};
+        case 8: return {number_t{std::numeric_limits<int8_t>::min()}, number_t{-1}};
+        default: throw std::exception();
         }
     }
+
     // Return an interval in the range [INT_MIN, INT_MAX] which can only
     // be represented as an svalue.
-    static interval_t signed_int(int bits) {
-        switch (bits) {
+    static interval_t signed_int(int width) {
+        switch (width) {
         case 64: return {number_t{std::numeric_limits<int64_t>::min()}, number_t{std::numeric_limits<int64_t>::max()}};
         case 32: return {number_t{std::numeric_limits<int32_t>::min()}, number_t{std::numeric_limits<int32_t>::max()}};
         case 16: return {number_t{std::numeric_limits<int16_t>::min()}, number_t{std::numeric_limits<int16_t>::max()}};
@@ -558,24 +564,23 @@ class interval_t final {
         default: throw std::exception();
         }
     }
-    static interval_t signed_int(bool is64) { return signed_int(is64 ? 64 : 32); }
+
     // Return an interval in the range [0, UINT_MAX] which can only be
     // represented as a uvalue.
-    static interval_t unsigned_int(bool is64) {
-        if (is64) {
-            return {number_t{0}, number_t{std::numeric_limits<uint64_t>::max()}};
-        } else {
-            return {number_t{0}, number_t{std::numeric_limits<uint32_t>::max()}};
-        }
+    static interval_t unsigned_int(int width) {
+        return {number_t{0}, number_t{1ULL << width} - 1};
     }
+
     // Return an interval in the range [INT_MAX+1, UINT_MAX], which can only
     // be represented as a uvalue.  The svalue equivalent using the same
-    // bits would be negative_int().
-    static interval_t unsigned_high(bool is64) {
-        if (is64) {
-            return {number_t{std::numeric_limits<int64_t>::max()} + 1, number_t{std::numeric_limits<uint64_t>::max()}};
-        } else {
-            return {number_t{std::numeric_limits<int32_t>::max()} + 1, number_t{std::numeric_limits<uint32_t>::max()}};
+    // width would be negative_int().
+    static interval_t unsigned_high(int width) {
+        switch (width) {
+        case 64: return {number_t{std::numeric_limits<int64_t>::max()} + 1, number_t{std::numeric_limits<uint64_t>::max()}};
+        case 32: return {number_t{std::numeric_limits<int32_t>::max()} + 1, number_t{std::numeric_limits<uint32_t>::max()}};
+        case 16: return {number_t{std::numeric_limits<int16_t>::max()} + 1, number_t{std::numeric_limits<uint16_t>::max()}};
+        case 8: return {number_t{std::numeric_limits<int8_t>::max()} + 1, number_t{std::numeric_limits<uint8_t>::max()}};
+        default: throw std::exception();
         }
     }
 
@@ -618,4 +623,4 @@ inline interval_t trim_interval(const interval_t& i, const interval_t& j) {
 
 } // namespace crab
 
-std::string to_string(const crab::interval_t& interval);
+std::string to_string(const crab::interval_t& interval) noexcept;

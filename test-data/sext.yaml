@@ -37,6 +37,58 @@ post:
   - r2.svalue=[-5, 5]
   - r1.svalue=r2.svalue
 ---
+test-case: large sext singleton
+
+pre: ["r1.type=number", "r1.svalue=4294967294", "r1.uvalue=4294967294"]
+
+code:
+  <start>: |
+    r1 s32= r1 ; nop
+
+post:
+  - r1.type=number
+  - r1.svalue=-2
+  - r1.uvalue=18446744073709551614
+---
+test-case: large sext8 self cross boundary
+
+pre: ["r1.type=number", "r1.svalue=[0, 254]", "r1.uvalue=[0, 254]"]
+
+code:
+  <start>: |
+    r1 s8= r1 ; nop
+
+post:
+  - r1.type=number
+  - r1.uvalue=[0, 18446744073709551614]
+  - r1.svalue=[-128, 127]
+---
+test-case: large sext16 self cross boundary
+
+pre: ["r1.type=number", "r1.svalue=[0, 65534]", "r1.uvalue=[0, 65534]"]
+
+code:
+  <start>: |
+    r1 s16= r1 ; nop
+
+post:
+  - r1.type=number
+  - r1.uvalue=[0, 18446744073709551614]
+  - r1.svalue=[-32768, 32767]
+---
+test-case: large sext32 self cross boundary
+
+pre: ["r1.type=number", "r1.svalue=[0, 4294967294]", "r1.uvalue=[0, 4294967294]"]
+
+code:
+  <start>: |
+    r1 s32= r1 ; nop
+
+post:
+  - r1.type=number
+  - r1.uvalue=[0, 18446744073709551614]
+  - r1.svalue=[-2147483648, 2147483647]
+---
 test-case: large zext relational is two shifts
 
 pre: ["r1.type=number", "r1.uvalue=[0, 4294967299]",
@@ -68,5 +120,6 @@ code:
 post:
   - r1.type=number
   - r1.svalue=[-2147483648, 2147483647]
+  - r1.uvalue=[0, 18446744073709551615]
   - r2.type=number
   - r2.svalue=[-5, 4294967299]

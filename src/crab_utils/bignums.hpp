@@ -92,6 +92,28 @@ class z_number final {
     }
 
     [[nodiscard]]
+    bool fits_sint(int bits) const {
+        switch (bits) {
+        case 64: return std::numeric_limits<int64_t>::min() <= _n && _n <= std::numeric_limits<int64_t>::max();
+        case 32: return std::numeric_limits<int32_t>::min() <= _n && _n <= std::numeric_limits<int32_t>::max();
+        case 16: return std::numeric_limits<int16_t>::min() <= _n && _n <= std::numeric_limits<int16_t>::max();
+        case 8: return std::numeric_limits<int8_t>::min() <= _n && _n <= std::numeric_limits<int8_t>::max();
+        default: throw std::exception();
+        }
+    }
+
+    [[nodiscard]]
+    bool fits_uint(int bits) const {
+        switch (bits) {
+        case 64: return std::numeric_limits<uint64_t>::min() <= _n && _n <= std::numeric_limits<uint64_t>::max();
+        case 32: return std::numeric_limits<uint32_t>::min() <= _n && _n <= std::numeric_limits<uint32_t>::max();
+        case 16: return std::numeric_limits<uint16_t>::min() <= _n && _n <= std::numeric_limits<uint16_t>::max();
+        case 8: return std::numeric_limits<uint8_t>::min() <= _n && _n <= std::numeric_limits<uint8_t>::max();
+        default: throw std::exception();
+        }
+    }
+
+    [[nodiscard]]
     bool fits_uint64() const {
         return ((_n >= 0) && (_n <= ULLONG_MAX));
     }
@@ -111,6 +133,21 @@ class z_number final {
         } else {
             CRAB_ERROR("z_number ", _n.str(), " does not fit into an unsigned 64-bit integer");
         }
+    }
+
+    [[nodiscard]]
+    uint64_t truncate_to_uint8() const {
+        return (uint8_t)truncate_to_uint64();
+    }
+
+    [[nodiscard]]
+    uint64_t truncate_to_uint16() const {
+        return (uint16_t)truncate_to_uint64();
+    }
+
+    [[nodiscard]]
+    uint64_t truncate_to_uint32() const {
+        return (uint32_t)truncate_to_uint64();
     }
 
     [[nodiscard]]
@@ -134,11 +171,6 @@ class z_number final {
         } else {
             CRAB_ERROR("z_number ", _n.str(), " does not fit into an unsigned 32-bit integer");
         }
-    }
-
-    [[nodiscard]]
-    uint64_t truncate_to_uint32() const {
-        return (uint32_t)truncate_to_uint64();
     }
 
     // For 64-bit operations, get the value as a signed 64-bit integer.
@@ -217,6 +249,8 @@ class z_number final {
     z_number truncate_to_unsigned_finite_width(int finite_width) const {
         switch (finite_width) {
         case 0: return *this; // No finite width.
+        case 8: return truncate_to_uint8(); // No finite width.
+        case 16: return truncate_to_uint16(); // No finite width.
         case 32: return truncate_to_uint32();
         case 64: return truncate_to_uint64();
         default: CRAB_ERROR("invalid finite width");
@@ -357,3 +391,7 @@ using number_t = z_number;
 
 inline std::size_t hash_value(const z_number& z) { return z.hash(); }
 } // namespace crab
+
+inline std::string to_string(const crab::z_number& n) noexcept {
+    return n.to_string();
+}

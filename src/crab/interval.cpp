@@ -393,3 +393,7 @@ interval_t interval_t::LShr(const interval_t& x) const {
 }
 
 } // namespace crab
+
+std::string to_string(const crab::interval_t& n) noexcept {
+    return n.to_string();
+}
