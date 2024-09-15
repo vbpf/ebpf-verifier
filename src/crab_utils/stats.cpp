@@ -2,13 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "stats.hpp"
 
-#include <optional>
 #ifdef _WIN32
 #include <windows.h>
 #undef max
 #else
 #include <sys/resource.h>
-#include <sys/time.h>
 #endif
 
 namespace crab {
@@ -55,25 +53,12 @@ void Stopwatch::stop() {
     }
 }
 
-void Stopwatch::resume() {
-    if (finished >= started) {
-        timeElapsed += finished - started;
-        started = systemTime();
-        finished = -1;
-    }
-}
-
 long Stopwatch::getTimeElapsed() const {
     if (finished < started) {
         return timeElapsed + systemTime() - started;
     } else {
         return timeElapsed + finished - started;
     }
-}
-
-double Stopwatch::toSeconds() {
-    double time = (static_cast<double>(getTimeElapsed()) / 1000000);
-    return time;
 }
 
 void Stopwatch::Print(std::ostream& out) const {
@@ -97,16 +82,11 @@ void CrabStats::reset() {
 }
 
 void CrabStats::count(const std::string& name) { ++(*counters)[name]; }
-void CrabStats::count_max(const std::string& name, const unsigned v) {
-    (*counters)[name] = std::max((*counters)[name], v);
-}
 
-unsigned CrabStats::uset(const std::string& n, const unsigned v) { return (*counters)[n] = v; }
 unsigned CrabStats::get(const std::string& n) { return (*counters)[n]; }
 
 void CrabStats::start(const std::string& name) { (*sw)[name].start(); }
 void CrabStats::stop(const std::string& name) { (*sw)[name].stop(); }
-void CrabStats::resume(const std::string& name) { (*sw)[name].resume(); }
 
 /** Outputs all statistics to std output */
 void CrabStats::Print(std::ostream& OS) {
@@ -119,27 +99,5 @@ void CrabStats::Print(std::ostream& OS) {
     }
     OS << "************** STATS END ***************** \n";
 }
-
-void CrabStats::PrintBrunch(std::ostream& OS) {
-    OS << "\n\n************** BRUNCH STATS ***************** \n";
-    for (auto& kv : (*counters)) {
-        OS << "BRUNCH_STAT " << kv.first << " " << kv.second << "\n";
-    }
-    for (auto& kv : (*sw)) {
-        OS << "BRUNCH_STAT " << kv.first << " " << (kv.second).toSeconds() << "sec \n";
-    }
-    OS << "************** BRUNCH STATS END ***************** \n";
-}
-
-ScopedCrabStats::ScopedCrabStats(const std::string& name, const bool reset) : m_name(name) {
-    if (reset) {
-        m_name += ".last";
-        CrabStats::start(m_name);
-    } else {
-        CrabStats::resume(m_name);
-    }
-}
-
-ScopedCrabStats::~ScopedCrabStats() { CrabStats::stop(m_name); }
 
 } // namespace crab

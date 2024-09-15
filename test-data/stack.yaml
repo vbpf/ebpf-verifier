@@ -24,6 +24,7 @@ post:
   - r0.type=number
   - r0.svalue=513
   - r0.uvalue=513
+  - Numbers -> {[504...505]}
 ---
 test-case: stack load 16 bits big-endian across multiple variables
 

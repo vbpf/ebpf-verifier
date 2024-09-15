@@ -40,7 +40,7 @@ const EbpfProgramType linux_xdp_program_type = PTYPE("xdp", &g_xdp_descr, BPF_PR
 
 const EbpfProgramType cilium_lxc_program_type = PTYPE("lxc", &g_sched_descr, BPF_PROG_TYPE_SOCKET_FILTER, {});
 
-const std::vector linux_program_types = {
+const std::vector<EbpfProgramType> linux_program_types = {
     PTYPE("unspec", &g_unspec_descr, BPF_PROG_TYPE_UNSPEC, {}),
     linux_socket_filter_program_type,
     linux_xdp_program_type,
