@@ -100,7 +100,7 @@ std::ostream& operator<<(std::ostream& os, const Condition::Op op) {
     return os;
 }
 
-static string size(const int w) { return string("u") + std::to_string(w * 8); }
+static string size(int w) { return string("u") + std::to_string(w * 8); }
 
 static std::string to_string(const TypeGroup ts) {
     switch (ts) {
