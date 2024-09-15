@@ -84,6 +84,13 @@ static const std::map<std::string, int> str_to_width = {
     {"64", 8},
 };
 
+bool is64(const std::string& regprefix) {
+    if (regprefix != "r" && regprefix != "w") {
+        throw std::invalid_argument("Invalid register prefix: " + regprefix);
+    }
+    return regprefix == "r";
+}
+
 static Reg reg(const std::string& s) {
     assert(s.at(0) == 'r' || s.at(0) == 'w');
     const auto res = static_cast<uint8_t>(boost::lexical_cast<uint16_t>(s.substr(1)));
@@ -152,21 +159,19 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
     }
     if (regex_match(text, m, regex(WREG OPASSIGN REG))) {
         std::string r = m[1];
-        return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = reg(m[3]), .is64 = r.at(0) != 'w', .lddw = false};
+        return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = reg(m[3]), .is64 = is64(r), .lddw = false};
     }
     if (regex_match(text, m, regex(WREG ASSIGN UNOP WREG))) {
         if (m[1] != m[3]) {
             throw std::invalid_argument(std::string("Invalid unary operation: ") + text);
         }
         std::string r = m[1];
-        bool is64 = r.at(0) != 'w';
-        return Un{.op = str_to_unop.at(m[2]), .dst = reg(m[1]), .is64 = is64};
+        return Un{.op = str_to_unop.at(m[2]), .dst = reg(r), .is64 = is64(r)};
     }
     if (regex_match(text, m, regex(WREG OPASSIGN IMM LONGLONG))) {
         std::string r = m[1];
-        bool is64 = r.at(0) != 'w';
         bool lddw = !m[4].str().empty();
-        return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = imm(m[3], lddw), .is64 = is64, .lddw = lddw};
+        return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = imm(m[3], lddw), .is64 = is64(r), .lddw = lddw};
     }
     if (regex_match(text, m, regex(REG ASSIGN DEREF PAREN(REG PLUSMINUS IMM)))) {
         return Mem{
@@ -207,20 +212,16 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         return Undefined{};
     }
     if (regex_match(text, m, regex("assume " WREG CMPOP REG_OR_IMM))) {
-        Assume res{Condition{.op = str_to_cmpop.at(m[2]),
-                             .left = reg(m[1]),
-                             .right = reg_or_imm(m[3]),
-                             .is64 = (static_cast<const std::string&>(m[1]).at(0) == 'r')}};
+        Assume res{
+            Condition{.op = str_to_cmpop.at(m[2]), .left = reg(m[1]), .right = reg_or_imm(m[3]), .is64 = is64(m[1])}};
         return res;
     }
     if (regex_match(text, m, regex("(?:if " WREG CMPOP REG_OR_IMM " )?goto\\s+(?:" IMM ")?" WRAPPED_LABEL))) {
         // We ignore second IMM
         Jmp res{.cond = {}, .target = label_name_to_label.at(m[5])};
         if (m[1].matched) {
-            res.cond = Condition{.op = str_to_cmpop.at(m[2]),
-                                 .left = reg(m[1]),
-                                 .right = reg_or_imm(m[3]),
-                                 .is64 = (static_cast<const std::string&>(m[1]).at(0) == 'r')};
+            res.cond = Condition{
+                .op = str_to_cmpop.at(m[2]), .left = reg(m[1]), .right = reg_or_imm(m[3]), .is64 = is64(m[1])};
         }
         return res;
     }

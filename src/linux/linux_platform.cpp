@@ -3,11 +3,15 @@
 #include <stdexcept>
 #if __linux__
 #include <linux/bpf.h>
-#define PTYPE(name, descr, native_type, prefixes) {name, descr, native_type, prefixes}
-#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) {name, descr, native_type, prefixes, true}
+#define PTYPE(name, descr, native_type, prefixes) \
+    { name, descr, native_type, prefixes }
+#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) \
+    { name, descr, native_type, prefixes, true }
 #else
-#define PTYPE(name, descr, native_type, prefixes) {name, descr, 0, prefixes}
-#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) {name, descr, 0, prefixes, true}
+#define PTYPE(name, descr, native_type, prefixes) \
+    { name, descr, 0, prefixes }
+#define PTYPE_PRIVILEGED(name, descr, native_type, prefixes) \
+    { name, descr, 0, prefixes, true }
 #endif
 #include "crab_verifier.hpp"
 #include "helpers.hpp"

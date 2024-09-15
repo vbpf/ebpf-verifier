@@ -30,7 +30,7 @@ struct string_invariant {
 
     string_invariant() = default;
 
-    explicit string_invariant(std::set<std::string> inv) : maybe_inv(std::move(inv)) {};
+    explicit string_invariant(std::set<std::string> inv) : maybe_inv(std::move(inv)){};
 
     string_invariant(const string_invariant& inv) = default;
     string_invariant& operator=(const string_invariant& inv) = default;

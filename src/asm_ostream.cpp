@@ -517,8 +517,7 @@ std::ostream& operator<<(std::ostream& o, const basic_block_t& bb) {
     }
     auto [it, et] = bb.next_blocks();
     if (it != et) {
-        o << "  "
-          << "goto ";
+        o << "  " << "goto ";
         while (it != et) {
             o << *it;
             ++it;
