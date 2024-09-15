@@ -164,8 +164,10 @@ class ebpf_domain_t final {
     std::optional<variable_t> get_type_offset_variable(const Reg& reg) const;
 
     void scratch_caller_saved_registers();
+  
     void save_callee_saved_registers(const std::string& prefix);
     void restore_callee_saved_registers(const std::string& prefix);
+  
     [[nodiscard]]
     std::optional<uint32_t> get_map_type(const Reg& map_fd_reg) const;
     [[nodiscard]]
@@ -228,6 +230,7 @@ class ebpf_domain_t final {
     crab::domains::array_domain_t stack;
 
     std::function<check_require_func_t> check_require{};
+
     bool get_map_fd_range(const Reg& map_fd_reg, int32_t* start_fd, int32_t* end_fd) const;
 
     struct TypeDomain {
