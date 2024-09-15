@@ -62,13 +62,10 @@ struct string_invariant {
 
     [[nodiscard]]
     bool contains(const std::string& item) const {
-        [[nodiscard]]
-        bool contains(const std::string& item) const {
-            if (is_bottom()) {
-                return false;
-            }
-            return maybe_inv.value().contains(item);
+        if (is_bottom()) {
+            return false;
         }
+        return maybe_inv.value().contains(item);
     }
 
     friend std::ostream& operator<<(std::ostream&, const string_invariant& inv);
