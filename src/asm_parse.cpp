@@ -84,11 +84,12 @@ static const std::map<std::string, int> str_to_width = {
     {"64", 8},
 };
 
-bool is64(const std::string& regprefix) {
-    if (regprefix != "r" && regprefix != "w") {
-        throw std::invalid_argument("Invalid register prefix: " + regprefix);
+bool is64(const std::string& reg) {
+    auto regprefix = reg.at(0);
+    if (regprefix != 'r' && regprefix != 'w') {
+        throw std::invalid_argument("Invalid register prefix: " + reg);
     }
-    return regprefix == "r";
+    return regprefix == 'r';
 }
 
 static Reg reg(const std::string& s) {
