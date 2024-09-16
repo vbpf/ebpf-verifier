@@ -17,11 +17,9 @@
 namespace crab {
 
 class bound_t final {
-  private:
     bool _is_infinite;
     number_t _n;
 
-  private:
     bound_t(bool is_infinite, const number_t& n) : _is_infinite(is_infinite), _n(n) {
         if (is_infinite) {
             if (n > 0) {
@@ -53,7 +51,6 @@ class bound_t final {
 
     static bound_t minus_infinity() { return bound_t(true, -1); }
 
-  public:
     explicit bound_t(const std::string& s) : _n(1) {
         if (s == "+oo") {
             _is_infinite = true;
@@ -248,7 +245,6 @@ class bound_t final {
 using z_bound = bound_t;
 
 class interval_t final {
-  private:
     bound_t _lb;
     bound_t _ub;
 
@@ -422,6 +418,13 @@ class interval_t final {
     interval_t operator/(const interval_t& x) const;
 
     interval_t& operator/=(const interval_t& x) { return operator=(operator/(x)); }
+
+    bound_t size() const {
+        if (is_bottom()) {
+            return bound_t{number_t{0}};
+        }
+        return _ub - _lb;
+    }
 
     [[nodiscard]]
     bool is_singleton() const {

@@ -1,103 +1,138 @@
 # Copyright (c) Prevail Verifier contributors.
 # SPDX-License-Identifier: MIT
----
-test-case: movsx8 register to 32 bits
-
-pre: ["r1.svalue=384", "r1.uvalue=384", "r1.type=number", "r1.svalue=r1.uvalue"]
-
-code:
-  <start>: |
-    w2 s8= r1
-
-post:
-  - r1.type=number
-  - r1.svalue=384
-  - r1.uvalue=384
-  - r1.svalue=r1.uvalue
-  - r2.type=number
-  - r2.svalue=4294967168
-  - r2.uvalue=4294967168
----
-test-case: movsx16 register to 32 bits
-
-pre: ["r1.svalue=98304", "r1.uvalue=98304", "r1.type=number", "r1.svalue=r1.uvalue"]
-
-code:
-  <start>: |
-    w2 s16= r1
-
-post:
-  - r1.type=number
-  - r1.svalue=98304
-  - r1.uvalue=98304
-  - r1.svalue=r1.uvalue
-  - r2.type=number
-  - r2.svalue=4294934528
-  - r2.uvalue=4294934528
----
-test-case: movsx8 register to 64 bits
-
-pre: ["r1.svalue=384", "r1.uvalue=384", "r1.type=number", "r1.svalue=r1.uvalue"]
-
-code:
-  <start>: |
-    r2 s8= r1
-
-post:
-  - r1.type=number
-  - r1.svalue=384
-  - r1.uvalue=384
-  - r1.svalue=r1.uvalue
-  - r2.type=number
-  - r2.svalue=-128
-  - r2.uvalue=18446744073709551488
----
-test-case: movsx16 register to 64 bits
-
-pre: ["r1.svalue=98304", "r1.uvalue=98304", "r1.type=number", "r1.svalue=r1.uvalue"]
-
-code:
-  <start>: |
-    r2 s16= r1
-
-post:
-  - r1.type=number
-  - r1.svalue=98304
-  - r1.uvalue=98304
-  - r1.svalue=r1.uvalue
-  - r2.type=number
-  - r2.svalue=-32768
-  - r2.uvalue=18446744073709518848
----
-test-case: movsx32 register to 64 bits
-
-pre: ["r1.svalue=2147483648", "r1.uvalue=2147483648", "r1.type=number", "r1.svalue=r1.uvalue"]
-
-code:
-  <start>: |
-    r2 s32= r1
-
-post:
-  - r1.type=number
-  - r1.svalue=2147483648
-  - r1.uvalue=2147483648
-  - r1.svalue=r1.uvalue
-  - r2.type=number
-  - r2.svalue=-2147483648
-  - r2.uvalue=18446744071562067968
----
-test-case: movsx32 register with a non-number
-
-pre: []
-
-code:
-  <start>: |
-    r2 s32= r1
-
-post: []
-
-messages:
-  - "0: Invalid type (r1.type == number)"
+#---
+#test-case: movsx8 register to 32 bits
+#
+#pre: ["r1.svalue=384", "r1.uvalue=384", "r1.type=number", "r1.svalue=r1.uvalue"]
+#
+#code:
+#  <start>: |
+#    w2 s8= r1
+#
+#post:
+#  - r1.type=number
+#  - r1.svalue=384
+#  - r1.uvalue=384
+#  - r1.svalue=r1.uvalue
+#  - r2.type=number
+#  - r2.svalue=4294967168
+#  - r2.uvalue=4294967168
+#---
+#test-case: movsx16 register to 32 bits
+#
+#pre: ["r1.svalue=98304", "r1.uvalue=98304", "r1.type=number", "r1.svalue=r1.uvalue"]
+#
+#code:
+#  <start>: |
+#    w2 s16= r1
+#
+#post:
+#  - r1.type=number
+#  - r1.svalue=98304
+#  - r1.uvalue=98304
+#  - r1.svalue=r1.uvalue
+#  - r2.type=number
+#  - r2.svalue=4294934528
+#  - r2.uvalue=4294934528
+#---
+#test-case: movsx8 register to 64 bits
+#
+#pre: ["r1.svalue=384", "r1.uvalue=384", "r1.type=number", "r1.svalue=r1.uvalue"]
+#
+#code:
+#  <start>: |
+#    r2 s8= r1
+#
+#post:
+#  - r1.type=number
+#  - r1.svalue=384
+#  - r1.uvalue=384
+#  - r1.svalue=r1.uvalue
+#  - r2.type=number
+#  - r2.svalue=-128
+#  - r2.uvalue=18446744073709551488
+#---
+#test-case: movsx16 register to 64 bits
+#
+#pre: ["r1.svalue=98304", "r1.uvalue=98304", "r1.type=number", "r1.svalue=r1.uvalue"]
+#
+#code:
+#  <start>: |
+#    r2 s16= r1
+#
+#post:
+#  - r1.type=number
+#  - r1.svalue=98304
+#  - r1.uvalue=98304
+#  - r1.svalue=r1.uvalue
+#  - r2.type=number
+#  - r2.svalue=-32768
+#  - r2.uvalue=18446744073709518848
+#---
+#test-case: movsx32 register to 64 bits
+#
+#pre: ["r1.svalue=2147483648", "r1.uvalue=2147483648", "r1.type=number", "r1.svalue=r1.uvalue"]
+#
+#code:
+#  <start>: |
+#    r2 s32= r1
+#
+#post:
+#  - r1.type=number
+#  - r1.svalue=2147483648
+#  - r1.uvalue=2147483648
+#  - r1.svalue=r1.uvalue
+#  - r2.type=number
+#  - r2.svalue=-2147483648
+#  - r2.uvalue=18446744071562067968
+#---
+#test-case: movsx32 register with a non-number
+#
+#pre: []
+#
+#code:
+#  <start>: |
+#    r2 s32= r1
+#
+#post: []
+#
+#messages:
+#  - "0: Invalid type (r1.type == number)"
+#---
+#test-case: movsx8 register range to 32 bits without wrap
+#
+#pre: ["r1.svalue=[128, 130]", "r1.uvalue=[128, 130]", "r1.type=number", "r1.svalue=r1.uvalue"]
+#
+#code:
+#  <start>: |
+#    w2 s8= r1
+#
+#post:
+#  - r1.type=number
+#  - r1.svalue=[128, 130]
+#  - r1.uvalue=[128, 130]
+#  - r1.svalue=r1.uvalue
+#  - r2.type=number
+#  - r2.svalue=[4294967168, 4294967170]
+#  - r2.uvalue=[4294967168, 4294967170]
+#  - r2.svalue=r2.uvalue
+#---
+#test-case: movsx8 register range to 32 bits with wrap
+#
+#pre: ["r1.svalue=[255, 257]", "r1.uvalue=[255, 257]", "r1.type=number", "r1.svalue=r1.uvalue"]
+#
+#code:
+#  <start>: |
+#    w2 s8= r1
+#
+#post:
+#  - r1.type=number
+#  - r1.svalue=[255, 257]
+#  - r1.uvalue=[255, 257]
+#  - r1.svalue=r1.uvalue
+#  - r2.type=number
+#  - r2.svalue=[-1, 1]
+#  - r2.uvalue=[0, 4294967295]
 ---
 test-case: movsx8 register range to 32 bits without wrap
 
@@ -109,30 +144,12 @@ code:
 
 post:
   - r1.type=number
-  - r1.svalue=[128, 130]
-  - r1.uvalue=[128, 130]
-  - r1.svalue=r1.uvalue
-  - r2.type=number
-  - r2.svalue=[4294967168, 4294967170]
-  - r2.uvalue=[4294967168, 4294967170]
-  - r2.svalue=r2.uvalue
----
-test-case: movsx8 register range to 32 bits with wrap
-
-pre: ["r1.svalue=[255, 257]", "r1.uvalue=[255, 257]", "r1.type=number", "r1.svalue=r1.uvalue"]
-
-code:
-  <start>: |
-    w2 s8= r1
-
-post:
-  - r1.type=number
   - r1.svalue=[255, 257]
   - r1.uvalue=[255, 257]
   - r1.svalue=r1.uvalue
   - r2.type=number
-  - r2.svalue=[0, 4294967295]
-  - r2.uvalue=[0, 4294967295]
+  - r2.svalue=[4294934528, 4294934530]
+  - r2.uvalue=[4294934528, 4294934530]
   - r2.svalue=r2.uvalue
 ---
 test-case: movsx16 register range to 32 bits without wrap

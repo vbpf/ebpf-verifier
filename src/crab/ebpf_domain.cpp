@@ -2651,17 +2651,24 @@ static inline int _movsx_width(Bin::Op op) {
 void ebpf_domain_t::sign_extend(const Reg& dst_reg, const variable_t& right_svalue, int target_width,
                                 Bin::Op op) {
     using namespace crab;
-
     int source_width = _movsx_width(op);
-    const interval_t v = m_inv[right_svalue].truncate_to_uint(source_width);
+    interval_t v = m_inv[right_svalue];
+    havoc_register(m_inv, dst_reg);
+    type_inv.assign_type(m_inv, dst_reg, T_NUM);
+    if (v.size() >= interval_t::nonnegative_int(source_width).size()) {
+        return;
+    }
+    const uint64_t mask = (1ULL << source_width) - 1;
+    // round the minimum up to the nearest multiple of 2^source_width
+    const uint64_t floor = v.lb().number().value().cast_to_uint64() & ~mask;
+    v = v - interval_t{floor};
     const interval_t nonnegative = v & interval_t::nonnegative_int(source_width);
-    const interval_t negative = (v & interval_t::unsigned_high(source_width)) - interval_t{number_t{1} << source_width};
-    const interval_t high = negative + interval_t{number_t{1} << target_width};
+    const interval_t source_high = v & interval_t::unsigned_high(source_width);
+    const interval_t negative = source_high + interval_t{interval_t::negative_int(source_width).lb()};
+    const interval_t high = negative + interval_t{interval_t::unsigned_int(target_width).ub()};
     const interval_t svalue = negative | nonnegative;
     const interval_t uvalue = nonnegative | high;
     reg_pack_t dst = reg_pack(dst_reg);
-    havoc_register(m_inv, dst_reg);
-    type_inv.assign_type(m_inv, dst_reg, T_NUM);
     if (svalue != interval_t::signed_int(64)) {
         m_inv.set(dst.svalue, svalue);
     }
@@ -2998,8 +3005,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 return;
             }
             if (m_inv.entail(type_is_number(src_reg))) {
-                sign_extend(bin.dst, src.svalue, finite_width, bin.op);
-                break;
+                sign_extend(bin.dst, src.uvalue, finite_width, bin.op);
+                return; // overflow is handled by sign_extend
             }
             havoc(dst.svalue);
             havoc(dst.uvalue);
