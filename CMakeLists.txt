@@ -91,13 +91,13 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
     "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(COMMON_FLAGS -Wall -Wfatal-errors -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8)
 
-  set(RELEASE_FLAGS -O2 -flto=auto -ffat-lto-objects)
+  set(RELEASE_FLAGS -O2 -flto=auto -ffat-lto-objects -ftrivial-auto-var-init=pattern)
 
   set(DEBUG_FLAGS -O0 -g3 -fno-omit-frame-pointer)
 
   set(SANITIZE_FLAGS -fsanitize=address -O1 -fno-omit-frame-pointer)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++20")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++20" "/RTC1")
 endif ()
 
 add_library(ebpfverifier ${LIB_SRC})
