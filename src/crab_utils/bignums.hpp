@@ -16,21 +16,32 @@ using boost::multiprecision::cpp_int;
 
 namespace crab {
 
+template <typename T>
+concept is_enum = std::is_enum_v<T>;
+
+template <std::integral T>
+T truncate_to(const cpp_int& n) {
+    using U = std::make_unsigned_t<T>;
+    constexpr U mask = std::numeric_limits<U>::max();
+    return static_cast<T>(static_cast<U>(n & mask));
+}
+
+template <std::integral T>
+bool fits(const cpp_int& n) {
+    return std::numeric_limits<T>::min() <= n && n <= std::numeric_limits<T>::max();
+}
+
 class z_number final {
   private:
     cpp_int _n{nullptr};
 
-  public:
+public:
     z_number() = default;
     z_number(cpp_int n) : _n(std::move(n)) {}
+    z_number(std::integral auto n) : _n{n} {}
+    z_number(is_enum auto n) : _n{static_cast<int64_t>(n)} {}
     explicit z_number(const std::string& s) { _n = cpp_int(s); }
 
-    z_number(signed long long int n) { _n = n; }
-    z_number(unsigned long long int n) { _n = n; }
-    z_number(unsigned long int n) { _n = n; }
-    z_number(int n) { _n = n; }
-    z_number(unsigned int n) { _n = n; }
-    z_number(long n) { _n = n; }
 
     // overloaded typecast operators
     explicit operator int64_t() const {
@@ -75,25 +86,22 @@ class z_number final {
 
     [[nodiscard]]
     bool fits_sint32() const {
-        return ((_n >= INT_MIN) && (_n <= INT_MAX));
+        return fits<int32_t>(_n);
     }
 
     [[nodiscard]]
     bool fits_uint32() const {
-        return ((_n >= 0) && (_n <= UINT_MAX));
+        return fits<uint32_t>(_n);
     }
 
     [[nodiscard]]
     bool fits_sint64() const {
-        // "long long" is always 64-bits, whereas "long" varies
-        // (see https://en.cppreference.com/w/cpp/language/types)
-        // so make sure we use 64-bit numbers.
-        return ((_n >= LLONG_MIN) && (_n <= LLONG_MAX));
+        return fits<int64_t>(_n);
     }
 
     [[nodiscard]]
     bool fits_uint64() const {
-        return ((_n >= 0) && (_n <= ULLONG_MAX));
+        return fits<uint64_t>(_n);
     }
 
     [[nodiscard]]
@@ -114,17 +122,6 @@ class z_number final {
     }
 
     [[nodiscard]]
-    uint64_t truncate_to_uint64() const {
-        if (fits_sint64()) {
-            // Convert 64 bits from int64_t to uint64_t.
-            return (uint64_t)(int64_t)_n;
-        } else {
-            // Truncate to fit into an unsigned 64-bit integer.
-            return (uint64_t)_n;
-        }
-    }
-
-    [[nodiscard]]
     uint64_t cast_to_uint32() const {
         if (fits_uint32()) {
             return (uint32_t)_n;
@@ -134,11 +131,6 @@ class z_number final {
         } else {
             CRAB_ERROR("z_number ", _n.str(), " does not fit into an unsigned 32-bit integer");
         }
-    }
-
-    [[nodiscard]]
-    uint64_t truncate_to_uint32() const {
-        return (uint32_t)truncate_to_uint64();
     }
 
     // For 64-bit operations, get the value as a signed 64-bit integer.
@@ -154,27 +146,10 @@ class z_number final {
         }
     }
 
-    // For 64-bit operations, get the value as a signed 64-bit integer.
-    [[nodiscard]]
-    int64_t truncate_to_sint64() const {
-        if (fits_sint64()) {
-            return (int64_t)_n;
-        } else {
-            // z_number does not fit into a signed 64-bit integer, so truncate it to fit.
-            return (int64_t)(uint64_t)_n;
-        }
-    }
-
     // For 32-bit operations, get the low 32 bits as a signed integer.
     [[nodiscard]]
     int32_t cast_to_sint32() const {
         return (int32_t)cast_to_sint64();
-    }
-
-    // For 32-bit operations, get the low 32 bits as a signed integer.
-    [[nodiscard]]
-    int32_t truncate_to_sint32() const {
-        return (int32_t)truncate_to_sint64();
     }
 
     // Allow casting to int32_t or int64_t as needed for finite width operations.
@@ -205,8 +180,10 @@ class z_number final {
     z_number truncate_to_signed_finite_width(int finite_width) const {
         switch (finite_width) {
         case 0: return *this; // No finite width.
-        case 32: return truncate_to_sint32();
-        case 64: return truncate_to_sint64();
+        case 8: return truncate_to<int8_t>(_n);
+        case 16: return truncate_to<int16_t>(_n);
+        case 32: return truncate_to<int32_t>(_n);
+        case 64: return truncate_to<int64_t>(_n);
         default: CRAB_ERROR("invalid finite width");
         }
     }
@@ -217,8 +194,10 @@ class z_number final {
     z_number truncate_to_unsigned_finite_width(int finite_width) const {
         switch (finite_width) {
         case 0: return *this; // No finite width.
-        case 32: return truncate_to_uint32();
-        case 64: return truncate_to_uint64();
+        case 8: return truncate_to<uint8_t>(_n);
+        case 16: return truncate_to<uint16_t>(_n);
+        case 32: return truncate_to<uint32_t>(_n);
+        case 64: return truncate_to<uint64_t>(_n);
         default: CRAB_ERROR("invalid finite width");
         }
     }
