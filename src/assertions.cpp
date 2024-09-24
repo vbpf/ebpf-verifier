@@ -227,6 +227,10 @@ class AssertExtractor {
             }
         case Bin::Op::SUB:
             if (std::holds_alternative<Reg>(ins.v)) {
+                if (std::get<Reg>(ins.v) == ins.dst) {
+                    // We always allow rx -= rx
+                    return {};
+                }
                 vector<Assert> res;
                 // disallow map-map since same type does not mean same offset
                 // TODO: map identities

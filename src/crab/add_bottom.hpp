@@ -4,6 +4,7 @@
 
 #include <optional>
 
+#include "crab/finite_domain.hpp"
 #include "crab/split_dbm.hpp"
 #include "string_constraints.hpp"
 
@@ -12,7 +13,7 @@ namespace crab {
 namespace domains {
 
 class AddBottom final {
-    using T = SplitDBM;
+    using T = FiniteDomain;
     std::optional<T> dom{};
     AddBottom() {}
 
@@ -25,6 +26,12 @@ class AddBottom final {
 
     AddBottom& operator=(const AddBottom& o) = default;
     AddBottom& operator=(AddBottom&& o) = default;
+
+    explicit operator bool() const { return static_cast<bool>(dom); }
+
+    T* operator->() { return &dom.value(); }
+
+    const T* operator->() const { return &dom.value(); }
 
     void set_to_top() {
         if (dom) {
@@ -110,7 +117,7 @@ class AddBottom final {
         if (!dom || !o.dom) {
             return bottom();
         }
-        if (auto res = (*dom).meet(*o.dom)) {
+        if (auto res = dom->meet(*o.dom)) {
             return AddBottom(*res);
         }
         return bottom();
