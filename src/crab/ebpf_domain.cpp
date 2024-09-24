@@ -191,7 +191,7 @@ static void get_signed_intervals(const NumAbsDomain& inv, bool is64, const varia
             // so split into two signed intervals that can be treated separately.
             left_interval_positive = left_interval & interval_t::nonnegative_int(true);
             const number_t lih_ub =
-                left_interval.ub().number() ? left_interval.ub().number()->truncate_to_sint64() : -1;
+                left_interval.ub().number() ? left_interval.ub().number()->truncate_to_signed_finite_width(64) : -1;
             left_interval_negative = interval_t(number_t{std::numeric_limits<int64_t>::min()}, lih_ub);
         } else {
             left_interval_positive = interval_t::nonnegative_int(true);
@@ -1004,8 +1004,8 @@ static void overflow_bounds(NumAbsDomain& inv, variable_t lhs, number_t span, in
     number_t lb = lb_value.truncate_to_unsigned_finite_width(finite_width);
     number_t ub = ub_value.truncate_to_unsigned_finite_width(finite_width);
     if (issigned) {
-        lb = lb.truncate_to_sint64();
-        ub = ub.truncate_to_sint64();
+        lb = lb.truncate_to_signed_finite_width(64);
+        ub = ub.truncate_to_signed_finite_width(64);
     }
     if (lb > ub) {
         // Range wraps in the middle, so we cannot represent as an unsigned interval.
