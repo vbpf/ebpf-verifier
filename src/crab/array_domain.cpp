@@ -132,7 +132,7 @@ class cell_t final {
 
     [[nodiscard]]
     variable_t get_scalar(data_kind_t kind) const {
-        return variable_t::cell_var(kind, number_t{_offset}, _size);
+        return variable_t::cell_var(kind, number_t{static_cast<index_t>(_offset)}, _size);
     }
 
     // ignore the scalar variable
