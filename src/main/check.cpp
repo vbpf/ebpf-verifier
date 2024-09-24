@@ -21,8 +21,8 @@ using std::string;
 using std::vector;
 
 static size_t hash(const raw_program& raw_prog) {
-    char* start = (char*)raw_prog.prog.data();
-    char* end = start + (raw_prog.prog.size() * sizeof(ebpf_inst));
+    const auto start = reinterpret_cast<const char*>(raw_prog.prog.data());
+    const char* end = start + raw_prog.prog.size() * sizeof(ebpf_inst);
     return boost::hash_range(start, end);
 }
 
@@ -38,7 +38,7 @@ static const std::map<std::string, bpf_conformance_groups_t> _conformance_groups
     {"callx", bpf_conformance_groups_t::callx},       {"divmul32", bpf_conformance_groups_t::divmul32},
     {"divmul64", bpf_conformance_groups_t::divmul64}, {"packet", bpf_conformance_groups_t::packet}};
 
-static std::optional<bpf_conformance_groups_t> _get_conformance_group_by_name(std::string group) {
+static std::optional<bpf_conformance_groups_t> _get_conformance_group_by_name(const std::string& group) {
     if (!_conformance_groups.contains(group)) {
         return {};
     }
@@ -53,7 +53,7 @@ static std::set<std::string> _get_conformance_group_names() {
     return result;
 }
 
-static std::optional<raw_program> find_program(vector<raw_program>& raw_progs, std::string desired_program) {
+static std::optional<raw_program> find_program(vector<raw_program>& raw_progs, const std::string& desired_program) {
     if (desired_program.empty() && raw_progs.size() == 1) {
         // Select the last program section.
         return raw_progs.back();

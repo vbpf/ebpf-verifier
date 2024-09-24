@@ -2084,7 +2084,7 @@ constexpr EbpfHelperPrototype bpf_loop_proto = {
 
 #define FN(x) bpf_##x##_proto
 // keep this on a round line
-const EbpfHelperPrototype prototypes[] = {
+constexpr EbpfHelperPrototype prototypes[] = {
     FN(unspec),
     FN(map_lookup_elem),
     FN(map_update_elem),
@@ -2274,8 +2274,8 @@ const EbpfHelperPrototype prototypes[] = {
     FN(get_func_arg_cnt),
 };
 
-bool is_helper_usable_linux(int32_t n) {
-    if (n >= (int)(sizeof(prototypes) / sizeof(prototypes[0])) || n < 0) {
+bool is_helper_usable_linux(const int32_t n) {
+    if (n >= static_cast<int>(std::size(prototypes)) || n < 0) {
         return false;
     }
 
@@ -2288,7 +2288,7 @@ bool is_helper_usable_linux(int32_t n) {
     return true;
 }
 
-EbpfHelperPrototype get_helper_prototype_linux(int32_t n) {
+EbpfHelperPrototype get_helper_prototype_linux(const int32_t n) {
     if (!is_helper_usable_linux(n)) {
         throw std::exception();
     }

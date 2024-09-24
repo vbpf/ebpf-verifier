@@ -19,13 +19,14 @@ FAIL_LOAD_ELF("cilium", "bpf_lxc.o", "not-found")
 FAIL_LOAD_ELF("build", "badrelo.o", ".text")
 FAIL_LOAD_ELF("invalid", "badsymsize.o", "xdp_redirect_map")
 
-#define FAIL_UNMARSHAL(dirname, filename, sectionname)                                                                 \
-    TEST_CASE("Try unmarshalling bad program: " dirname "/" filename " " sectionname, "[unmarshal]") {                 \
-        auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &g_ebpf_platform_linux); \
-        REQUIRE(raw_progs.size() == 1);                                                                                \
-        raw_program raw_prog = raw_progs.back();                                                                       \
-        std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);                                 \
-        REQUIRE(std::holds_alternative<std::string>(prog_or_error));                                                   \
+#define FAIL_UNMARSHAL(dirname, filename, sectionname)                                                    \
+    TEST_CASE("Try unmarshalling bad program: " dirname "/" filename " " sectionname, "[unmarshal]") {    \
+        const auto raw_progs =                                                                            \
+            read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &g_ebpf_platform_linux); \
+        REQUIRE(raw_progs.size() == 1);                                                                   \
+        const raw_program& raw_prog = raw_progs.back();                                                   \
+        std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);                    \
+        REQUIRE(std::holds_alternative<std::string>(prog_or_error));                                      \
     }
 
 // Some intentional unmarshal failures
@@ -33,37 +34,37 @@ FAIL_UNMARSHAL("build", "wronghelper.o", "xdp")
 FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
 
 // Verify a section with only one program in it.
-#define VERIFY_SECTION(dirname, filename, sectionname, options, platform, pass)                          \
-    do {                                                                                                 \
-        auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, platform); \
-        REQUIRE(raw_progs.size() == 1);                                                                  \
-        raw_program raw_prog = raw_progs.back();                                                         \
-        std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);                   \
-        REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error));                                  \
-        auto& prog = std::get<InstructionSeq>(prog_or_error);                                            \
-        bool res = ebpf_verify_program(std::cout, prog, raw_prog.info, options, nullptr);                \
-        if (pass)                                                                                        \
-            REQUIRE(res);                                                                                \
-        else                                                                                             \
-            REQUIRE(!res);                                                                               \
+#define VERIFY_SECTION(dirname, filename, sectionname, options, platform, pass)                                \
+    do {                                                                                                       \
+        const auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, platform); \
+        REQUIRE(raw_progs.size() == 1);                                                                        \
+        const raw_program& raw_prog = raw_progs.back();                                                        \
+        std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);                         \
+        REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error));                                        \
+        auto& prog = std::get<InstructionSeq>(prog_or_error);                                                  \
+        bool res = ebpf_verify_program(std::cout, prog, raw_prog.info, options, nullptr);                      \
+        if (pass)                                                                                              \
+            REQUIRE(res);                                                                                      \
+        else                                                                                                   \
+            REQUIRE(!res);                                                                                     \
     } while (0)
 
 // Verify a program in a section that may have multiple programs in it.
-#define VERIFY_PROGRAM(dirname, filename, section_name, program_name, options, platform, pass)            \
-    do {                                                                                                  \
-        auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, section_name, nullptr, platform); \
-        for (auto& raw_prog : raw_progs) {                                                                \
-            if (raw_prog.function_name == program_name) {                                                 \
-                std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);            \
-                REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error));                           \
-                auto& prog = std::get<InstructionSeq>(prog_or_error);                                     \
-                bool res = ebpf_verify_program(std::cout, prog, raw_prog.info, options, nullptr);         \
-                if (pass)                                                                                 \
-                    REQUIRE(res);                                                                         \
-                else                                                                                      \
-                    REQUIRE(!res);                                                                        \
-            }                                                                                             \
-        }                                                                                                 \
+#define VERIFY_PROGRAM(dirname, filename, section_name, program_name, options, platform, pass)                  \
+    do {                                                                                                        \
+        const auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, section_name, nullptr, platform); \
+        for (const auto& raw_prog : raw_progs) {                                                                \
+            if (raw_prog.function_name == program_name) {                                                       \
+                std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);                  \
+                REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error));                                 \
+                auto& prog = std::get<InstructionSeq>(prog_or_error);                                           \
+                bool res = ebpf_verify_program(std::cout, prog, raw_prog.info, options, nullptr);               \
+                if (pass)                                                                                       \
+                    REQUIRE(res);                                                                               \
+                else                                                                                            \
+                    REQUIRE(!res);                                                                              \
+            }                                                                                                   \
+        }                                                                                                       \
     } while (0)
 
 #define TEST_SECTION(project, filename, section)                                                            \
@@ -101,16 +102,16 @@ FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
         VERIFY_SECTION(project, filename, section, nullptr, &g_ebpf_platform_linux, false); \
     }
 
-#define TEST_SECTION_LEGACY(dirname, filename, sectionname)                                               \
-    TEST_SECTION(dirname, filename, sectionname)                                                          \
-    TEST_CASE("Try unmarshalling bad program: " dirname "/" filename " " sectionname, "[unmarshal]") {    \
-        ebpf_platform_t platform = g_ebpf_platform_linux;                                                 \
-        platform.supported_conformance_groups &= ~bpf_conformance_groups_t::packet;                       \
-        auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &platform); \
-        REQUIRE(raw_progs.size() == 1);                                                                   \
-        raw_program raw_prog = raw_progs.back();                                                          \
-        std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);                    \
-        REQUIRE(std::holds_alternative<std::string>(prog_or_error));                                      \
+#define TEST_SECTION_LEGACY(dirname, filename, sectionname)                                                     \
+    TEST_SECTION(dirname, filename, sectionname)                                                                \
+    TEST_CASE("Try unmarshalling bad program: " dirname "/" filename " " sectionname, "[unmarshal]") {          \
+        ebpf_platform_t platform = g_ebpf_platform_linux;                                                       \
+        platform.supported_conformance_groups &= ~bpf_conformance_groups_t::packet;                             \
+        const auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &platform); \
+        REQUIRE(raw_progs.size() == 1);                                                                         \
+        const raw_program& raw_prog = raw_progs.back();                                                         \
+        std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);                          \
+        REQUIRE(std::holds_alternative<std::string>(prog_or_error));                                            \
     }
 
 TEST_SECTION("bpf_cilium_test", "bpf_lxc_jit.o", "1/0xdc06")

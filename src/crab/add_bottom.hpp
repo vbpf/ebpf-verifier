@@ -7,14 +7,12 @@
 #include "crab/split_dbm.hpp"
 #include "string_constraints.hpp"
 
-namespace crab {
-
-namespace domains {
+namespace crab::domains {
 
 class AddBottom final {
     using T = SplitDBM;
     std::optional<T> dom{};
-    AddBottom() {}
+    AddBottom() = default;
 
   public:
     template <typename T>
@@ -43,21 +41,24 @@ class AddBottom final {
 
     static AddBottom top() { return AddBottom(T::top()); }
 
-    static AddBottom bottom() { return AddBottom(); }
+    static AddBottom bottom() { return {}; }
 
     [[nodiscard]]
     bool is_top() const {
         return dom && dom->is_top();
     }
 
-    bool operator<=(const AddBottom& o) const {
+    std::partial_ordering operator<=>(const AddBottom& o) const {
         if (!dom) {
-            return true;
+            if (!o.dom) {
+                return std::partial_ordering::equivalent;
+            }
+            return std::partial_ordering::less;
         }
         if (!o.dom) {
-            return false;
+            return std::partial_ordering::greater;
         }
-        return *dom <= *o.dom;
+        return *dom <=> *o.dom;
     }
 
     void operator|=(const AddBottom& o) {
@@ -110,7 +111,7 @@ class AddBottom final {
         if (!dom || !o.dom) {
             return bottom();
         }
-        if (auto res = (*dom).meet(*o.dom)) {
+        if (auto res = dom->meet(*o.dom)) {
             return AddBottom(*res);
         }
         return bottom();
@@ -229,5 +230,4 @@ class AddBottom final {
     }
 }; // class AddBottom
 
-} // namespace domains
-} // namespace crab
+} // namespace crab::domains

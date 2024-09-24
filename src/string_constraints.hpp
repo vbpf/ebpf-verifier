@@ -30,7 +30,7 @@ struct string_invariant {
 
     string_invariant() = default;
 
-    explicit string_invariant(std::set<std::string> inv) : maybe_inv(std::move(inv)) {};
+    explicit string_invariant(std::set<std::string> inv) : maybe_inv(std::move(inv)){};
 
     string_invariant(const string_invariant& inv) = default;
     string_invariant& operator=(const string_invariant& inv) = default;
@@ -58,11 +58,14 @@ struct string_invariant {
     string_invariant operator-(const string_invariant& b) const;
     string_invariant operator+(const string_invariant& b) const;
 
-    bool operator==(const string_invariant& other) const { return maybe_inv == other.maybe_inv; }
+    bool operator==(const string_invariant& other) const = default;
 
     [[nodiscard]]
     bool contains(const std::string& item) const {
-        return !is_bottom() && maybe_inv.value().count(item);
+        if (is_bottom()) {
+            return false;
+        }
+        return maybe_inv.value().contains(item);
     }
 
     friend std::ostream& operator<<(std::ostream&, const string_invariant& inv);

@@ -10,9 +10,9 @@
 // for documentation.
 
 struct ebpf_inst {
-    std::uint8_t opcode;
-    std::uint8_t dst : 4; //< Destination register
-    std::uint8_t src : 4; //< Source register
+    uint8_t opcode;
+    uint8_t dst : 4; //< Destination register
+    uint8_t src : 4; //< Source register
     std::int16_t offset;
     std::int32_t imm; //< Immediate constant
     constexpr bool operator==(const ebpf_inst&) const = default;
@@ -102,7 +102,7 @@ enum {
     R11_ATOMIC_SCRATCH = 11, // Pseudo-register used internally for atomic instructions.
 };
 
-int opcode_to_width(uint8_t opcode);
+int opcode_to_width(std::byte opcode);
 uint8_t width_to_opcode(int width);
 
 inline uint64_t merge(int32_t imm, int32_t next_imm) { return (((uint64_t)next_imm) << 32) | (uint32_t)imm; }

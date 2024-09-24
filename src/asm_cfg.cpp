@@ -11,7 +11,6 @@
 
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
-#include "crab_utils/debug.hpp"
 
 using std::optional;
 using std::set;
@@ -26,7 +25,7 @@ static optional<label_t> get_jump(Instruction ins) {
     return {};
 }
 
-static bool has_fall(Instruction ins) {
+static bool has_fall(const Instruction& ins) {
     if (std::holds_alternative<Exit>(ins)) {
         return false;
     }
@@ -128,7 +127,7 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
 }
 
 /// Convert an instruction sequence to a control-flow graph (CFG).
-static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, bool must_have_exit) {
+static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must_have_exit) {
     cfg_t cfg;
     std::optional<label_t> falling_from = {};
     bool first = true;
@@ -155,8 +154,7 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, bool must_have_
         if (has_fall(inst)) {
             falling_from = label;
         }
-        auto jump_target = get_jump(inst);
-        if (jump_target) {
+        if (auto jump_target = get_jump(inst)) {
             bb >> cfg.insert(*jump_target);
         }
 
@@ -185,7 +183,7 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, bool must_have_
 }
 
 /// Get the inverse of a given comparison operation.
-static Condition::Op reverse(Condition::Op op) {
+static Condition::Op reverse(const Condition::Op op) {
     switch (op) {
     case Condition::Op::EQ: return Condition::Op::NE;
     case Condition::Op::NE: return Condition::Op::EQ;
@@ -210,7 +208,7 @@ static Condition::Op reverse(Condition::Op op) {
 }
 
 /// Get the inverse of a given comparison condition.
-static Condition reverse(Condition cond) {
+static Condition reverse(const Condition& cond) {
     return {.op = reverse(cond.op), .left = cond.left, .right = cond.right, .is64 = cond.is64};
 }
 
@@ -242,17 +240,16 @@ static cfg_t to_nondet(const cfg_t& cfg) {
             pbb >> newbb;
         }
         // note the special case where we jump to fallthrough
-        auto nextlist = bb.next_blocks_set();
-        if (nextlist.size() == 2) {
+        if (auto nextlist = bb.next_blocks_set(); nextlist.size() == 2) {
             label_t mid_label = this_label;
-            Jmp jmp = std::get<Jmp>(*bb.rbegin());
+            auto [cond, target] = std::get<Jmp>(*bb.rbegin());
 
-            nextlist.erase(jmp.target);
+            nextlist.erase(target);
             label_t fallthrough = *nextlist.begin();
 
             vector<std::tuple<label_t, Condition>> jumps{
-                {jmp.target, *jmp.cond},
-                {fallthrough, reverse(*jmp.cond)},
+                {target, *cond},
+                {fallthrough, reverse(*cond)},
             };
             for (auto const& [next_label, cond1] : jumps) {
                 label_t jump_label = label_t::make_jump(mid_label, next_label);
@@ -272,15 +269,15 @@ static cfg_t to_nondet(const cfg_t& cfg) {
 
 /// Get the type of a given instruction.
 /// Most of these type names are also statistics header labels.
-static std::string instype(Instruction ins) {
+static std::string instype(const Instruction& ins) {
     if (std::holds_alternative<Call>(ins)) {
         auto call = std::get<Call>(ins);
         if (call.is_map_lookup) {
             return "call_1";
         }
         if (call.pairs.empty()) {
-            if (std::all_of(call.singles.begin(), call.singles.end(),
-                            [](ArgSingle kr) { return kr.kind == ArgSingle::Kind::ANYTHING; })) {
+            if (std::ranges::all_of(call.singles,
+                                    [](const ArgSingle kr) { return kr.kind == ArgSingle::Kind::ANYTHING; })) {
                 return "call_nomem";
             }
         }
@@ -357,7 +354,8 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
     return res;
 }
 
-cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool simplify, bool must_have_exit) {
+cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const bool simplify,
+                  const bool must_have_exit) {
     // Convert the instruction sequence to a deterministic control-flow graph.
     cfg_t det_cfg = instruction_seq_to_cfg(prog, must_have_exit);
 

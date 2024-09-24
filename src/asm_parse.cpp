@@ -1,11 +1,9 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
-#include <algorithm>
 #include <map>
 #include <regex>
 #include <sstream>
 #include <string>
-#include <unordered_set>
 
 #include <boost/lexical_cast.hpp>
 
@@ -86,33 +84,41 @@ static const std::map<std::string, int> str_to_width = {
     {"64", 8},
 };
 
+bool is64(const std::string& reg) {
+    auto regprefix = reg.at(0);
+    if (regprefix != 'r' && regprefix != 'w') {
+        throw std::invalid_argument("Invalid register prefix: " + reg);
+    }
+    return regprefix == 'r';
+}
+
 static Reg reg(const std::string& s) {
     assert(s.at(0) == 'r' || s.at(0) == 'w');
-    uint8_t res = (uint8_t)boost::lexical_cast<uint16_t>(s.substr(1));
+    const auto res = static_cast<uint8_t>(boost::lexical_cast<uint16_t>(s.substr(1)));
     return Reg{res};
 }
 
-static Imm imm(const std::string& s, bool lddw) {
-    int base = s.find("0x") != std::string::npos ? 16 : 10;
+static Imm imm(const std::string& s, const bool lddw) {
+    const int base = s.find("0x") != std::string::npos ? 16 : 10;
 
     if (lddw) {
         if (s.at(0) == '-') {
-            return Imm{(uint64_t)std::stoll(s, nullptr, base)};
+            return Imm{static_cast<uint64_t>(std::stoll(s, nullptr, base))};
         } else {
             return Imm{std::stoull(s, nullptr, base)};
         }
     } else {
         if (s.at(0) == '-') {
-            return Imm{(uint64_t)(int64_t)std::stol(s, nullptr, base)};
+            return Imm{static_cast<uint64_t>((int64_t)std::stol(s, nullptr, base))};
         } else {
-            return Imm{(uint64_t)(int64_t)(int32_t)std::stoul(s, nullptr, base)};
+            return Imm{static_cast<uint64_t>(static_cast<int64_t>(static_cast<int32_t>(std::stoul(s, nullptr, base))))};
         }
     }
 }
 
-static number_t signed_number(const std::string& s) { return static_cast<int64_t>(std::stoll(s)); }
+static number_t signed_number(const std::string& s) { return std::stoll(s); }
 
-static number_t unsigned_number(const std::string& s) { return static_cast<uint64_t>(std::stoull(s)); }
+static number_t unsigned_number(const std::string& s) { return std::stoull(s); }
 
 static Value reg_or_imm(const std::string& s) {
     if (s.at(0) == 'w' || s.at(0) == 'r') {
@@ -124,19 +130,18 @@ static Value reg_or_imm(const std::string& s) {
 
 static Deref deref(const std::string& width, const std::string& basereg, const std::string& sign,
                    const std::string& _offset) {
-    int offset = boost::lexical_cast<int>(_offset);
+    const int offset = boost::lexical_cast<int>(_offset);
     return Deref{
         .width = str_to_width.at(width),
         .basereg = reg(basereg),
-        .offset = (sign == "-" ? -offset : +offset),
+        .offset = sign == "-" ? -offset : +offset,
     };
 }
 
 Instruction parse_instruction(const std::string& line, const std::map<std::string, label_t>& label_name_to_label) {
     // treat ";" as a comment
     std::string text = line.substr(0, line.find(';'));
-    size_t end = text.find_last_not_of(" ");
-    if (end != std::string::npos) {
+    if (size_t end = text.find_last_not_of(' '); end != std::string::npos) {
         text = text.substr(0, end + 1);
     }
     std::smatch m;
@@ -144,8 +149,8 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         return Exit{};
     }
     if (regex_match(text, m, regex("call " FUNC))) {
-        int func = boost::lexical_cast<int>(m[1]);
-        return make_call(func, g_ebpf_platform_linux);
+        int imm = boost::lexical_cast<int>(m[1]);
+        return make_call(imm, g_ebpf_platform_linux);
     }
     if (regex_match(text, m, regex("call " WRAPPED_LABEL))) {
         return CallLocal{.target = label_name_to_label.at(m[1])};
@@ -155,21 +160,19 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
     }
     if (regex_match(text, m, regex(WREG OPASSIGN REG))) {
         std::string r = m[1];
-        return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = reg(m[3]), .is64 = r.at(0) != 'w', .lddw = false};
+        return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = reg(m[3]), .is64 = is64(r), .lddw = false};
     }
     if (regex_match(text, m, regex(WREG ASSIGN UNOP WREG))) {
         if (m[1] != m[3]) {
             throw std::invalid_argument(std::string("Invalid unary operation: ") + text);
         }
         std::string r = m[1];
-        bool is64 = r.at(0) != 'w';
-        return Un{.op = str_to_unop.at(m[2]), .dst = reg(m[1]), .is64 = is64};
+        return Un{.op = str_to_unop.at(m[2]), .dst = reg(r), .is64 = is64(r)};
     }
     if (regex_match(text, m, regex(WREG OPASSIGN IMM LONGLONG))) {
         std::string r = m[1];
-        bool is64 = r.at(0) != 'w';
         bool lddw = !m[4].str().empty();
-        return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = imm(m[3], lddw), .is64 = is64, .lddw = lddw};
+        return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = imm(m[3], lddw), .is64 = is64(r), .lddw = lddw};
     }
     if (regex_match(text, m, regex(REG ASSIGN DEREF PAREN(REG PLUSMINUS IMM)))) {
         return Mem{
@@ -199,35 +202,31 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
             return Packet{.width = width, .offset = 0, .regoffset = reg(m[1])};
         }
         if (regex_match(access, m, regex(IMM))) {
-            return Packet{.width = width, .offset = (int32_t)imm(m[1], false).v, .regoffset = {}};
+            return Packet{.width = width, .offset = static_cast<int32_t>(imm(m[1], false).v), .regoffset = {}};
         }
         if (regex_match(access, m, regex(REG PLUSMINUS REG))) {
             return Packet{.width = width, .offset = 0 /* ? */, .regoffset = reg(m[2])};
         }
         if (regex_match(access, m, regex(REG PLUSMINUS IMM))) {
-            return Packet{.width = width, .offset = (int32_t)imm(m[2], false).v, .regoffset = reg(m[1])};
+            return Packet{.width = width, .offset = static_cast<int32_t>(imm(m[2], false).v), .regoffset = reg(m[1])};
         }
-        return Undefined{0};
+        return Undefined{};
     }
     if (regex_match(text, m, regex("assume " WREG CMPOP REG_OR_IMM))) {
-        Assume res{Condition{.op = str_to_cmpop.at(m[2]),
-                             .left = reg(m[1]),
-                             .right = reg_or_imm(m[3]),
-                             .is64 = (((const std::string&)m[1]).at(0) == 'r')}};
+        Assume res{
+            Condition{.op = str_to_cmpop.at(m[2]), .left = reg(m[1]), .right = reg_or_imm(m[3]), .is64 = is64(m[1])}};
         return res;
     }
     if (regex_match(text, m, regex("(?:if " WREG CMPOP REG_OR_IMM " )?goto\\s+(?:" IMM ")?" WRAPPED_LABEL))) {
         // We ignore second IMM
         Jmp res{.cond = {}, .target = label_name_to_label.at(m[5])};
         if (m[1].matched) {
-            res.cond = Condition{.op = str_to_cmpop.at(m[2]),
-                                 .left = reg(m[1]),
-                                 .right = reg_or_imm(m[3]),
-                                 .is64 = (((const std::string&)m[1]).at(0) == 'r')};
+            res.cond = Condition{
+                .op = str_to_cmpop.at(m[2]), .left = reg(m[1]), .right = reg_or_imm(m[3]), .is64 = is64(m[1])};
         }
         return res;
     }
-    return Undefined{0};
+    return Undefined{};
 }
 
 [[maybe_unused]]
@@ -235,13 +234,13 @@ static InstructionSeq parse_program(std::istream& is) {
     std::string line;
     std::vector<label_t> pc_to_label;
     InstructionSeq labeled_insts;
-    std::set<label_t> seen_labels;
+    const std::set<label_t> seen_labels;
     std::optional<label_t> next_label;
     while (std::getline(is, line)) {
         std::smatch m;
         if (regex_search(line, m, regex(LABEL ":"))) {
             next_label = label_t(boost::lexical_cast<int>(m[1]));
-            if (seen_labels.count(*next_label) != 0) {
+            if (seen_labels.contains(*next_label)) {
                 throw std::invalid_argument("duplicate labels");
             }
             line = m.suffix();
@@ -266,7 +265,7 @@ static InstructionSeq parse_program(std::istream& is) {
     return labeled_insts;
 }
 
-static uint8_t regnum(const std::string& s) { return (uint8_t)boost::lexical_cast<uint16_t>(s.substr(1)); }
+static uint8_t regnum(const std::string& s) { return static_cast<uint8_t>(boost::lexical_cast<uint16_t>(s.substr(1))); }
 
 static crab::variable_t special_var(const std::string& s) {
     if (s == "packet_size") {
@@ -319,7 +318,7 @@ static type_encoding_t string_to_type_encoding(const std::string& s) {
         {std::string("ctx"), T_CTX},       {std::string("stack"), T_STACK},
         {std::string("packet"), T_PACKET}, {std::string("shared"), T_SHARED},
     };
-    if (string_to_type.count(s)) {
+    if (string_to_type.contains(s)) {
         return string_to_type[s];
     }
     throw std::runtime_error(std::string("Unsupported type name: ") + s);
@@ -388,7 +387,7 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<std::st
                                regex("s" ARRAY_RANGE DOT "type"
                                      "=" TYPE))) {
             type_encoding_t type = string_to_type_encoding(m[3]);
-            if (type == type_encoding_t::T_NUM) {
+            if (type == T_NUM) {
                 numeric_ranges.emplace_back(signed_number(m[1]), signed_number(m[2]));
             } else {
                 number_t lb = signed_number(m[1]);
@@ -420,9 +419,9 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<std::st
 // return a-b, taking account potential optional-none
 string_invariant string_invariant::operator-(const string_invariant& b) const {
     if (this->is_bottom()) {
-        return string_invariant::bottom();
+        return bottom();
     }
-    string_invariant res = string_invariant::top();
+    string_invariant res = top();
     for (const std::string& cst : this->value()) {
         if (b.is_bottom() || !b.contains(cst)) {
             res.maybe_inv->insert(cst);
@@ -460,9 +459,8 @@ std::ostream& operator<<(std::ostream& o, const string_invariant& inv) {
         } else {
             o << ", ";
         }
-        size_t pos = item.find_first_of(".=[");
-        std::string base = item.substr(0, pos);
-        if (base != lastbase) {
+        const size_t pos = item.find_first_of(".=[");
+        if (std::string base = item.substr(0, pos); base != lastbase) {
             o << "\n    ";
             lastbase = base;
         }

@@ -40,7 +40,7 @@ class variable_t final {
   public:
     [[nodiscard]]
     std::size_t hash() const {
-        return (size_t)_id;
+        return _id;
     }
 
     bool operator==(variable_t o) const { return _id == o._id; }
@@ -65,7 +65,7 @@ class variable_t final {
         return names->at(_id).find(".uvalue") != std::string::npos;
     }
 
-    friend std::ostream& operator<<(std::ostream& o, variable_t v) { return o << names->at(v._id); }
+    friend std::ostream& operator<<(std::ostream& o, const variable_t v) { return o << names->at(v._id); }
 
     // var_factory portion.
     // This singleton is eBPF-specific, to avoid lifetime issues and/or passing factory explicitly everywhere:
@@ -73,23 +73,14 @@ class variable_t final {
     static variable_t make(const std::string& name);
     static std::vector<std::string> _default_names();
 
-    /**
-     * @brief Factory to always return the initial variable names.
-     *
-     * @tparam[in] T Should always be std::vector<std::string>.
-     */
-    template <typename T>
-    struct variable_name_factory {
-        T operator()() { return _default_names(); }
-    };
-    static thread_local crab::lazy_allocator<std::vector<std::string>, variable_name_factory> names;
+    static thread_local lazy_allocator<std::vector<std::string>, _default_names> names;
 
   public:
     static void clear_thread_local_state();
 
     static std::vector<variable_t> get_type_variables();
     static variable_t reg(data_kind_t, int);
-    static variable_t stack_frame_var(data_kind_t kind, int i, std::string prefix);
+    static variable_t stack_frame_var(data_kind_t kind, int i, const std::string& prefix);
     static variable_t cell_var(data_kind_t array, const number_t& offset, const number_t& size);
     static variable_t kind_var(data_kind_t kind, variable_t type_variable);
     static variable_t meta_offset();

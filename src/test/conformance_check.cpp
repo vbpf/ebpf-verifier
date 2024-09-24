@@ -21,8 +21,8 @@
  * @param[in] input String containing hex bytes.
  * @return Vector of bytes.
  */
-std::vector<uint8_t> base16_decode(const std::string& input) {
-    std::vector<uint8_t> output;
+std::vector<std::byte> base16_decode(const std::string& input) {
+    std::vector<std::byte> output;
     std::stringstream ss(input);
     std::string value;
     while (std::getline(ss, value, ' ')) {
@@ -30,7 +30,7 @@ std::vector<uint8_t> base16_decode(const std::string& input) {
             continue;
         }
         try {
-            output.push_back(std::stoi(value, nullptr, 16));
+            output.emplace_back(static_cast<std::byte>(std::stoul(value, nullptr, 16)));
         } catch (std::invalid_argument&) {
             std::cerr << "base16_decode failed to decode " << value << "\n";
         } catch (std::out_of_range&) {
@@ -45,7 +45,7 @@ std::vector<uint8_t> base16_decode(const std::string& input) {
  * the first argument. It then executes the BPF program and prints the
  * value of r0 at the end of execution.
  */
-int main(int argc, char** argv) {
+int main(const int argc, char** argv) {
     CLI::App app{"Check conformance"};
     bool debug = false;
     app.add_flag("--debug", debug, "Debug");

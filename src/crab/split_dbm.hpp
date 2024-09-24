@@ -35,7 +35,6 @@
 #include "crab_utils/graph_ops.hpp"
 #include "crab_utils/safeint.hpp"
 #include "crab_utils/stats.hpp"
-
 #include "string_constraints.hpp"
 
 namespace crab {
@@ -51,7 +50,7 @@ namespace domains {
  *
  * 1) basic integer type: e.g., long
  * 2) safei64
- * 3) z_number
+ * 3) number_t
  *
  * 1) is the fastest but things can go wrong if some DBM
  * operation overflows. 2) is slower than 1) but it checks for
@@ -62,15 +61,15 @@ namespace domains {
  **/
 
 struct Z_NumberDefaultParams {
-    using Weight = z_number;
+    using Weight = number_t;
     using graph_t = AdaptGraph;
-    static Weight convert_NtoW(const z_number& n, bool& overflow);
+    static Weight convert_NtoW(const number_t& n, bool& overflow);
 };
 
 struct SafeInt64DefaultParams {
     using Weight = safe_i64;
     using graph_t = AdaptGraph;
-    static Weight convert_NtoW(const z_number& n, bool& overflow);
+    static Weight convert_NtoW(const number_t& n, bool& overflow);
 };
 
 class SplitDBM final {
@@ -123,7 +122,7 @@ class SplitDBM final {
      *     x - v <= lb((a-1)*x + b*y + k)
      *     y - v <= lb(a*x + (b-1)*y + k)
      **/
-    void diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
+    void diffcsts_of_assign(const linear_expression_t& exp,
                             /* if true then process the upper
                                bounds, else the lower bounds */
                             bool extract_upper_bounds,
@@ -132,9 +131,8 @@ class SplitDBM final {
                             std::vector<std::pair<variable_t, Weight>>& diff_csts) const;
 
     // Turn an assignment into a set of difference constraints.
-    void diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
-                            std::vector<std::pair<variable_t, Weight>>& lb,
-                            std::vector<std::pair<variable_t, Weight>>& ub);
+    void diffcsts_of_assign(const linear_expression_t& exp, std::vector<std::pair<variable_t, Weight>>& lb,
+                            std::vector<std::pair<variable_t, Weight>>& ub) const;
 
     /**
      * Turn a linear inequality into a set of difference
@@ -165,14 +163,6 @@ class SplitDBM final {
              vert_set_t&& _unstable)
         : vert_map(std::move(_vert_map)), rev_map(std::move(_rev_map)), g(std::move(_g)),
           potential(std::move(_potential)), unstable(std::move(_unstable)) {
-
-        CrabStats::count("SplitDBM.count.copy");
-        ScopedCrabStats __st__("SplitDBM.copy");
-
-        CRAB_LOG("zones-split-size", auto p = size();
-                 std::cout << "#nodes = " << p.first << " #edges=" << p.second << "\n";);
-
-        assert(g.size() > 0);
         normalize();
     }
 
@@ -204,7 +194,9 @@ class SplitDBM final {
         return g.is_empty();
     }
 
-    bool operator<=(const SplitDBM& o) const;
+    std::partial_ordering operator<=>(const SplitDBM& o) const;
+    bool less(const SplitDBM& o) const;
+    // bool operator==(const SplitDBM& o) const = default;
 
     // FIXME: can be done more efficient
     void operator|=(const SplitDBM& o) { *this = *this | o; }
@@ -240,7 +232,7 @@ class SplitDBM final {
     SplitDBM widen(const SplitDBM& o) const;
 
     [[nodiscard]]
-    SplitDBM widening_thresholds(const SplitDBM& o, const iterators::thresholds_t& ts) const {
+    SplitDBM widening_thresholds(const SplitDBM& o, const thresholds_t& ts) const {
         // TODO: use thresholds
         return this->widen(o);
     }
@@ -259,9 +251,9 @@ class SplitDBM final {
             assign(*x, e);
         }
     }
-    void assign(variable_t x, signed long long int n) { assign(x, linear_expression_t(n)); }
+    void assign(const variable_t x, signed long long int n) { assign(x, linear_expression_t(n)); }
 
-    void assign(variable_t x, variable_t v) { assign(x, linear_expression_t{v}); }
+    void assign(const variable_t x, const variable_t v) { assign(x, linear_expression_t{v}); }
 
     void assign(variable_t x, const std::optional<linear_expression_t>& e) {
         if (e) {
@@ -332,7 +324,7 @@ class SplitDBM final {
     string_invariant to_set() const;
 
   public:
-    static void clear_thread_local_state() { GraphOps<crab::AdaptGraph>::clear_thread_local_state(); }
+    static void clear_thread_local_state() { GraphOps<AdaptGraph>::clear_thread_local_state(); }
 }; // class SplitDBM
 
 } // namespace domains

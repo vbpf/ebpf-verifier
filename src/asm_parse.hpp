@@ -3,8 +3,6 @@
 #pragma once
 
 #include <string>
-#include <tuple>
-#include <vector>
 
 #include "asm_syntax.hpp"
 
