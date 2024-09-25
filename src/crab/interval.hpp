@@ -489,9 +489,7 @@ class interval_t final {
         case 16: return truncate_to<int16_t>();
         case 32: return truncate_to<int32_t>();
         case 64: return truncate_to<int64_t>();
-        default: {
-            CRAB_ERROR("invalid width");
-        }
+        default: CRAB_ERROR("Invalid width ", width);
         }
     }
 
@@ -503,9 +501,7 @@ class interval_t final {
         case 16: return truncate_to<uint16_t>();
         case 32: return truncate_to<uint32_t>();
         case 64: return truncate_to<uint64_t>();
-        default: {
-            CRAB_ERROR("invalid width");
-        }
+        default: CRAB_ERROR("Invalid width ", width);
         }
     }
 
@@ -535,7 +531,7 @@ class interval_t final {
         case 16: return full<int16_t>();
         case 32: return full<int32_t>();
         case 64: return full<int64_t>();
-        default: throw std::exception();
+        default: CRAB_ERROR("Invalid width ", width);
         }
     }
 
@@ -545,10 +541,10 @@ class interval_t final {
     static interval_t unsigned_int(const int width) {
         switch (width) {
         case 8: return full<uint8_t>();
-        case 32: return full<uint32_t>();
         case 16: return full<uint16_t>();
+        case 32: return full<uint32_t>();
         case 64: return full<uint64_t>();
-        default: throw std::exception();
+        default: CRAB_ERROR("Invalid width ", width);
         }
     }
 
@@ -561,7 +557,7 @@ class interval_t final {
         case 16: return nonnegative<int16_t>();
         case 32: return nonnegative<int32_t>();
         case 64: return nonnegative<int64_t>();
-        default: throw std::exception();
+        default: CRAB_ERROR("Invalid width ", width);
         }
     }
 
@@ -574,7 +570,7 @@ class interval_t final {
         case 16: return negative<int16_t>();
         case 32: return negative<int32_t>();
         case 64: return negative<int64_t>();
-        default: throw std::exception();
+        default: CRAB_ERROR("Invalid width ", width);
         }
     }
 
@@ -601,15 +597,15 @@ class interval_t final {
 
     interval_t unsigned_high(bool is64) const = delete;
     // Return an interval in the range [INT_MAX+1, UINT_MAX], which can only
-    // be represented as a uvalue.  The svalue equivalent using the same
-    // width would be negative_int().
+    // be represented as a uvalue.
+    // The svalue equivalent using the same width would be negative_int().
     static interval_t unsigned_high(const int width) {
         switch (width) {
-        case 8: return high<uint8_t>(); ;
+        case 8: return high<uint8_t>();
         case 16: return high<uint16_t>();
         case 32: return high<uint32_t>();
         case 64: return high<uint64_t>();
-        default: throw std::exception();
+        default: CRAB_ERROR("Invalid width ", width);
         }
     }
 
