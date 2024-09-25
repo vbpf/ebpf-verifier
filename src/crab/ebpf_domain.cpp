@@ -2057,7 +2057,7 @@ void ebpf_domain_t::do_load_ctx(NumAbsDomain& inv, const Reg& target_reg, const 
     std::optional<number_t> maybe_addr = interval.singleton();
     havoc_register(inv, target_reg);
 
-    bool may_touch_ptr = interval[desc->data] || interval[desc->meta] || interval[desc->end];
+    bool may_touch_ptr = interval.contains(desc->data) || interval.contains(desc->meta) || interval.contains(desc->end);
 
     if (!maybe_addr) {
         if (may_touch_ptr) {
