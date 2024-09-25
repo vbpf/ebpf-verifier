@@ -583,7 +583,7 @@ static std::optional<std::pair<offset_t, unsigned>> kill_and_find_var(NumAbsDoma
 bool array_domain_t::all_num(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) {
     auto min_lb = inv.eval_interval(lb).lb().number();
     auto max_ub = inv.eval_interval(ub).ub().number();
-    if (!min_lb || !max_ub || !min_lb->fits_sint32() || !max_ub->fits_sint32()) {
+    if (!min_lb || !max_ub || !min_lb->fits<int32_t>() || !max_ub->fits<int32_t>()) {
         return false;
     }
 
@@ -601,7 +601,7 @@ bool array_domain_t::all_num(NumAbsDomain& inv, const linear_expression_t& lb, c
 int array_domain_t::min_all_num_size(const NumAbsDomain& inv, variable_t offset) const {
     auto min_lb = inv.eval_interval(offset).lb().number();
     auto max_ub = inv.eval_interval(offset).ub().number();
-    if (!min_lb || !max_ub || !min_lb->fits_sint32() || !max_ub->fits_sint32()) {
+    if (!min_lb || !max_ub || !min_lb->fits<int32_t>() || !max_ub->fits<int32_t>()) {
         return 0;
     }
     auto lb = (int)min_lb.value();
@@ -616,7 +616,7 @@ std::optional<uint8_t> get_value_byte(NumAbsDomain& inv, offset_t o, int width) 
     if (!t) {
         return {};
     }
-    uint64_t n = t->cast_to_uint64();
+    uint64_t n = t->cast_to<uint64_t>();
 
     // Convert value to bytes of the appropriate endian-ness.
     switch (width) {
@@ -751,7 +751,7 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
         auto ub = ii.ub().number();
         if (lb.has_value() && ub.has_value()) {
             z_number fullwidth = ub.value() - lb.value() + width;
-            if (lb.value().fits_uint32() && fullwidth.fits_uint32()) {
+            if (lb.value().fits<uint32_t>() && fullwidth.fits<uint32_t>()) {
                 auto [only_num, only_non_num] = num_bytes.uniformity((uint32_t)lb.value(), (uint32_t)fullwidth);
                 if (only_num) {
                     return number_t{T_NUM};

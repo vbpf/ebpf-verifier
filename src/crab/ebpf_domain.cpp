@@ -103,23 +103,23 @@ static std::vector<linear_constraint_t> assume_bit_cst_interval(const NumAbsDoma
 
     auto dst_interval = inv.eval_interval(dst_uvalue);
     std::optional<number_t> dst_n = dst_interval.singleton();
-    if (!dst_n || !dst_n.value().fits_cast_to_int64()) {
+    if (!dst_n || !dst_n.value().fits_cast_to<int64_t>()) {
         return {};
     }
 
     std::optional<number_t> src_n = src_interval.singleton();
-    if (!src_n || !src_n->fits_cast_to_int64()) {
+    if (!src_n || !src_n->fits_cast_to<int64_t>()) {
         return {};
     }
-    uint64_t src_int_value = src_n.value().cast_to_uint64();
+    uint64_t src_int_value = src_n.value().cast_to<uint64_t>();
     if (!is64) {
         src_int_value = (uint32_t)src_int_value;
     }
 
     bool result;
     switch (op) {
-    case Op::SET: result = ((dst_n.value().cast_to_uint64() & src_int_value) != 0); break;
-    case Op::NSET: result = ((dst_n.value().cast_to_uint64() & src_int_value) == 0); break;
+    case Op::SET: result = ((dst_n.value().cast_to<uint64_t>() & src_int_value) != 0); break;
+    case Op::NSET: result = ((dst_n.value().cast_to<uint64_t>() & src_int_value) == 0); break;
     default: throw std::exception();
     }
 
@@ -148,11 +148,11 @@ static std::vector<linear_constraint_t> assume_signed_32bit_eq(const NumAbsDomai
             // Find the lowest 64-bit svalue whose low 32 bits match the singleton.
 
             // Get lower bound as a 64-bit value.
-            int64_t lb = inv.eval_interval(left_svalue).lb().number()->cast_to_sint64();
+            int64_t lb = inv.eval_interval(left_svalue).lb().number()->cast_to<int64_t>();
 
             // Use the high 32-bits from the left lower bound and the low 32-bits from the right singleton.
             // The result might be lower than the lower bound.
-            int64_t lb_match = ((lb & 0xFFFFFFFF00000000) | (rn->cast_to_sint64() & 0xFFFFFFFF));
+            int64_t lb_match = ((lb & 0xFFFFFFFF00000000) | (rn->cast_to<int64_t>() & 0xFFFFFFFF));
             if (lb_match < lb) {
                 // The result is lower than the left interval, so try the next higher matching 64-bit value.
                 // It's ok if this goes higher than the left upper bound.
@@ -162,11 +162,11 @@ static std::vector<linear_constraint_t> assume_signed_32bit_eq(const NumAbsDomai
             // Find the highest 64-bit svalue whose low 32 bits match the singleton.
 
             // Get upper bound as a 64-bit value.
-            int64_t ub = inv.eval_interval(left_svalue).ub().number()->cast_to_sint64();
+            int64_t ub = inv.eval_interval(left_svalue).ub().number()->cast_to<int64_t>();
 
             // Use the high 32-bits from the left upper bound and the low 32-bits from the right singleton.
             // The result might be higher than the upper bound.
-            int64_t ub_match = ((ub & 0xFFFFFFFF00000000) | (rn->cast_to_sint64() & 0xFFFFFFFF));
+            int64_t ub_match = ((ub & 0xFFFFFFFF00000000) | (rn->cast_to<int64_t>() & 0xFFFFFFFF));
             if (ub_match > ub) {
                 // The result is higher than the left interval, so try the next lower matching 64-bit value.
                 // It's ok if this goes lower than the left lower bound.
@@ -1514,8 +1514,8 @@ void ebpf_domain_t::operator()(const Un& stmt) {
         if (m_inv.entail(type_is_number(stmt.dst))) {
             auto interval = m_inv.eval_interval(v);
             if (std::optional<number_t> n = interval.singleton()) {
-                if (n->fits_cast_to_int64()) {
-                    input = (decltype(input))n.value().cast_to_sint64();
+                if (n->fits_cast_to<int64_t>()) {
+                    input = (decltype(input))n.value().cast_to<int64_t>();
                     decltype(input) output = be_or_le(input);
                     m_inv.set(v, crab::interval_t(number_t(output), number_t(output)));
                     return;
@@ -1663,9 +1663,9 @@ void ebpf_domain_t::operator()(const FuncConstraint& s) {
     const reg_pack_t& reg = reg_pack(s.reg);
     auto src_interval = m_inv.eval_interval(reg.svalue);
     if (auto sn = src_interval.singleton()) {
-        if (sn->fits_sint32()) {
+        if (sn->fits<int32_t>()) {
             // We can now process it as if the id was immediate.
-            int32_t imm = sn->cast_to_sint32();
+            int32_t imm = sn->cast_to<int32_t>();
             if (!global_program_info->platform->is_helper_usable(imm)) {
                 require(m_inv, linear_constraint_t::false_const(), "invalid helper function id " + std::to_string(imm));
                 return;
@@ -1693,7 +1693,7 @@ bool ebpf_domain_t::get_map_fd_range(const Reg& map_fd_reg, int32_t* start_fd, i
     const crab::interval_t& map_fd_interval = m_inv[reg_pack(map_fd_reg).map_fd];
     auto lb = map_fd_interval.lb().number();
     auto ub = map_fd_interval.ub().number();
-    if (!lb || !lb->fits_sint32() || !ub || !ub->fits_sint32()) {
+    if (!lb || !lb->fits<int32_t>() || !ub || !ub->fits<int32_t>()) {
         return false;
     }
     *start_fd = (int32_t)lb.value();
@@ -1841,9 +1841,9 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
             linear_expression_t ub = lb + width;
             if (!stack.all_num(inv, lb, ub)) {
                 auto lb_is = inv[lb].lb().number();
-                std::string lb_s = lb_is && lb_is->fits_sint32() ? std::to_string((int32_t)*lb_is) : "-oo";
+                std::string lb_s = lb_is && lb_is->fits<int32_t>() ? std::to_string((int32_t)*lb_is) : "-oo";
                 auto ub_is = inv.eval_interval(ub).ub().number();
-                std::string ub_s = ub_is && ub_is->fits_sint32() ? std::to_string((int32_t)*ub_is) : "oo";
+                std::string ub_s = ub_is && ub_is->fits<int32_t>() ? std::to_string((int32_t)*ub_is) : "oo";
                 require(inv, linear_constraint_t::false_const(),
                         "Illegal map update with a non-numerical value [" + lb_s + "-" + ub_s + ")");
             } else if (thread_local_options.strict && fd_type.has_value()) {
@@ -2478,9 +2478,9 @@ void ebpf_domain_t::operator()(const Callx& callx) {
     const reg_pack_t& reg = reg_pack(callx.func);
     auto src_interval = m_inv.eval_interval(reg.svalue);
     if (auto sn = src_interval.singleton()) {
-        if (sn->fits_sint32()) {
+        if (sn->fits<int32_t>()) {
             // We can now process it as if the id was immediate.
-            int32_t imm = sn->cast_to_sint32();
+            int32_t imm = sn->cast_to<int32_t>();
             if (!global_program_info->platform->is_helper_usable(imm)) {
                 return;
             }
@@ -2569,8 +2569,8 @@ void ebpf_domain_t::shl(const Reg& dst_reg, int imm, int finite_width) {
         if (interval.finite_size()) {
             number_t lb = interval.lb().number().value();
             number_t ub = interval.ub().number().value();
-            uint64_t lb_n = lb.cast_to_uint64();
-            uint64_t ub_n = ub.cast_to_uint64();
+            uint64_t lb_n = lb.cast_to<uint64_t>();
+            uint64_t ub_n = ub.cast_to<uint64_t>();
             uint64_t uint_max = (finite_width == 64) ? UINT64_MAX : UINT32_MAX;
             if ((lb_n >> (finite_width - imm)) != (ub_n >> (finite_width - imm))) {
                 // The bits that will be shifted out to the left are different,
@@ -2611,13 +2611,13 @@ void ebpf_domain_t::lshr(const Reg& dst_reg, int imm, int finite_width) {
             number_t lb = interval.lb().number().value();
             number_t ub = interval.ub().number().value();
             if (finite_width == 64) {
-                lb_n = lb.cast_to_uint64() >> imm;
-                ub_n = ub.cast_to_uint64() >> imm;
+                lb_n = lb.cast_to<uint64_t>() >> imm;
+                ub_n = ub.cast_to<uint64_t>() >> imm;
             } else {
                 number_t lb_w = lb.cast_to_signed_finite_width(finite_width);
                 number_t ub_w = ub.cast_to_signed_finite_width(finite_width);
-                lb_n = lb_w.cast_to_uint32() >> imm;
-                ub_n = ub_w.cast_to_uint32() >> imm;
+                lb_n = lb_w.cast_to<uint32_t>() >> imm;
+                ub_n = ub_w.cast_to<uint32_t>() >> imm;
 
                 // The interval must be valid since a signed range crossing 0
                 // was earlier converted to a full unsigned range.
@@ -2668,10 +2668,10 @@ void ebpf_domain_t::sign_extend(const Reg& dst_reg, const linear_expression_t& r
     int64_t mask = 1ULL << (bits - 1);
 
     // Sign extend each bound.
-    int64_t lb = right_interval.lb().number().value().cast_to_sint64();
+    int64_t lb = right_interval.lb().number().value().cast_to<int64_t>();
     lb &= (span - 1);
     lb = (lb ^ mask) - mask;
-    int64_t ub = right_interval.ub().number().value().cast_to_sint64();
+    int64_t ub = right_interval.ub().number().value().cast_to<int64_t>();
     ub &= (span - 1);
     ub = (ub ^ mask) - mask;
     m_inv.set(dst.svalue, crab::interval_t{number_t{lb}, number_t{ub}});
@@ -2696,7 +2696,7 @@ void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_sv
                              right_interval, left_interval_positive, left_interval_negative);
         if (auto sn = right_interval.singleton()) {
             // The BPF ISA requires masking the imm.
-            int64_t imm = sn->cast_to_sint64() & (finite_width - 1);
+            int64_t imm = sn->cast_to<int64_t>() & (finite_width - 1);
 
             int64_t lb_n = INT64_MIN >> imm;
             int64_t ub_n = INT64_MAX >> imm;
@@ -2704,14 +2704,14 @@ void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_sv
                 number_t lb = left_interval.lb().number().value();
                 number_t ub = left_interval.ub().number().value();
                 if (finite_width == 64) {
-                    lb_n = lb.cast_to_sint64() >> imm;
-                    ub_n = ub.cast_to_sint64() >> imm;
+                    lb_n = lb.cast_to<int64_t>() >> imm;
+                    ub_n = ub.cast_to<int64_t>() >> imm;
                 } else {
                     number_t lb_w = lb.cast_to_signed_finite_width(finite_width) >> (int)imm;
                     number_t ub_w = ub.cast_to_signed_finite_width(finite_width) >> (int)imm;
-                    if (lb_w.cast_to_uint32() <= ub_w.cast_to_uint32()) {
-                        lb_n = lb_w.cast_to_uint32();
-                        ub_n = ub_w.cast_to_uint32();
+                    if (lb_w.cast_to<uint32_t>() <= ub_w.cast_to<uint32_t>()) {
+                        lb_n = lb_w.cast_to<uint32_t>();
+                        ub_n = ub_w.cast_to<uint32_t>();
                     }
                 }
             }
@@ -2957,7 +2957,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 auto src_interval = m_inv.eval_interval(src.uvalue);
                 if (std::optional<number_t> sn = src_interval.singleton()) {
                     // truncate to uint64?
-                    uint64_t imm = sn->cast_to_uint64() & (bin.is64 ? 63 : 31);
+                    uint64_t imm = sn->cast_to<uint64_t>() & (bin.is64 ? 63 : 31);
                     if (imm <= INT32_MAX) {
                         if (!bin.is64) {
                             // Use only the low 32 bits of the value.
@@ -2975,7 +2975,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             if (m_inv.entail(type_is_number(src_reg))) {
                 auto src_interval = m_inv.eval_interval(src.uvalue);
                 if (std::optional<number_t> sn = src_interval.singleton()) {
-                    uint64_t imm = sn->cast_to_uint64() & (bin.is64 ? 63 : 31);
+                    uint64_t imm = sn->cast_to<uint64_t>() & (bin.is64 ? 63 : 31);
                     if (imm <= INT32_MAX) {
                         if (!bin.is64) {
                             // Use only the low 32 bits of the value.

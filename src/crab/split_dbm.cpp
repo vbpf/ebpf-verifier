@@ -47,7 +47,7 @@ SplitDBM::vert_id SplitDBM::get_vert(variable_t v) {
  **/
 SafeInt64DefaultParams::Weight SafeInt64DefaultParams::convert_NtoW(const z_number& n, bool& overflow) {
     overflow = false;
-    if (!n.fits_sint64()) {
+    if (!n.fits<int64_t>()) {
         overflow = true;
         return 0;
     }
@@ -1031,7 +1031,7 @@ void SplitDBM::apply(bitwise_binop_t op, variable_t x, variable_t y, const numbe
     // Convert to intervals and perform the operation
     normalize();
     interval_t yi = this->operator[](y);
-    interval_t zi(number_t(k.cast_to_uint64()));
+    interval_t zi(number_t(k.cast_to<uint64_t>()));
     interval_t xi = interval_t::bottom();
 
     switch (op) {
