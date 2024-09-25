@@ -98,10 +98,6 @@ class variable_t final {
     static variable_t loop_counter(const std::string& label);
     [[nodiscard]]
     bool is_in_stack() const;
-
-    struct Hasher {
-        std::size_t operator()(const variable_t& v) const { return v.hash(); }
-    };
 }; // class variable_t
 
 } // namespace crab

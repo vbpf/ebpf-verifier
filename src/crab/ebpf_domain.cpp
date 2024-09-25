@@ -207,7 +207,7 @@ static void get_signed_intervals(const NumAbsDomain& inv, bool is64, variable_t 
         } else {
             for (interval_t* interval : {&left_interval, &right_interval}) {
                 if (!(*interval <= interval_t::signed_int(32))) {
-                    *interval = interval->truncate_to_sint(32);
+                    *interval = interval->truncate_to<int32_t>();
                 }
             }
             // continue as 32bit
@@ -223,8 +223,7 @@ static void get_signed_intervals(const NumAbsDomain& inv, bool is64, variable_t 
             // The interval is TOP as a signed interval but is represented precisely as an unsigned interval,
             // so split into two signed intervals that can be treated separately.
             left_interval_positive = left_interval & interval_t::nonnegative(64);
-            number_t lih_ub =
-                left_interval.ub().number() ? left_interval.ub().number()->truncate_to_signed_finite_width(64) : -1;
+            number_t lih_ub = left_interval.ub().number() ? left_interval.ub().number()->truncate_to<int64_t>() : -1;
             left_interval_negative = interval_t(number_t{std::numeric_limits<int64_t>::min()}, lih_ub);
         } else {
             left_interval_positive = interval_t::nonnegative(64);
@@ -234,7 +233,7 @@ static void get_signed_intervals(const NumAbsDomain& inv, bool is64, variable_t 
 
     for (interval_t* interval : {&left_interval, &right_interval}) {
         if (!(*interval <= interval_t::signed_int(64))) {
-            *interval = interval->truncate_to_sint(64);
+            *interval = interval->truncate_to<int64_t>();
         }
     }
 }
@@ -259,7 +258,7 @@ static void get_unsigned_intervals(const NumAbsDomain& inv, bool is64, variable_
         } else {
             for (interval_t* interval : {&left_interval, &right_interval}) {
                 if (!(*interval <= interval_t::unsigned_int(32))) {
-                    *interval = interval->truncate_to_uint(32);
+                    *interval = interval->truncate_to<uint32_t>();
                 }
             }
             // continue as 32bit
@@ -274,8 +273,8 @@ static void get_unsigned_intervals(const NumAbsDomain& inv, bool is64, variable_
         if (!left_interval.is_top()) {
             // The interval is TOP as an unsigned interval but is represented precisely as a signed interval,
             // so split into two unsigned intervals that can be treated separately.
-            left_interval_low = interval_t(number_t{0}, left_interval.ub()).truncate_to_uint(64);
-            left_interval_high = interval_t(left_interval.lb(), number_t{-1}).truncate_to_uint(64);
+            left_interval_low = interval_t(number_t{0}, left_interval.ub()).truncate_to<uint64_t>();
+            left_interval_high = interval_t(left_interval.lb(), number_t{-1}).truncate_to<uint64_t>();
         } else {
             left_interval_low = interval_t::nonnegative(64);
             left_interval_high = interval_t::unsigned_high(64);
@@ -284,7 +283,7 @@ static void get_unsigned_intervals(const NumAbsDomain& inv, bool is64, variable_
 
     for (interval_t* interval : {&left_interval, &right_interval}) {
         if (!(*interval <= interval_t::unsigned_int(64))) {
-            *interval = interval->truncate_to_uint(64);
+            *interval = interval->truncate_to<uint64_t>();
         }
     }
 }
@@ -329,7 +328,7 @@ assume_signed_32bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_sva
     } else if ((left_interval_negative | left_interval_positive) <= interval_t::nonnegative(32) &&
                right_interval <= interval_t::nonnegative(32)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX]
-        auto lpub = left_interval_positive.truncate_to_sint(32).ub();
+        auto lpub = left_interval_positive.truncate_to<int32_t>().ub();
         return {left_svalue >= 0,
                 strict ? left_svalue < right_svalue : left_svalue <= right_svalue,
                 left_svalue <= left_uvalue,
@@ -357,7 +356,7 @@ assume_signed_64bit_gt(const NumAbsDomain& inv, bool strict, variable_t left_sva
 
     if (right_interval <= interval_t::nonnegative(64)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX].
-        auto lpub = left_interval_positive.truncate_to_sint(64).ub();
+        auto lpub = left_interval_positive.truncate_to<int64_t>().ub();
         return {left_svalue >= 0,
                 strict ? left_svalue > right_svalue : left_svalue >= right_svalue,
                 left_svalue <= left_uvalue,
@@ -388,7 +387,7 @@ assume_signed_32bit_gt(const NumAbsDomain& inv, bool strict, variable_t left_sva
 
     if (right_interval <= interval_t::nonnegative(32)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX].
-        auto lpub = left_interval_positive.truncate_to_sint(32).ub();
+        auto lpub = left_interval_positive.truncate_to<int32_t>().ub();
         return {left_svalue >= 0,
                 strict ? left_svalue > right_svalue : left_svalue >= right_svalue,
                 left_svalue <= left_uvalue,
@@ -488,7 +487,7 @@ assume_unsigned_64bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_s
     using namespace crab::dsl_syntax;
 
     auto rub = right_interval.ub();
-    auto lllb = left_interval_low.truncate_to_uint(64).lb();
+    auto lllb = left_interval_low.truncate_to<uint64_t>().lb();
     if ((right_interval <= interval_t::nonnegative(64)) && (strict ? (lllb >= rub) : (lllb > rub))) {
         // The high interval is out of range.
         if (auto lsubn = inv.eval_interval(left_svalue).ub().number()) {
@@ -499,7 +498,7 @@ assume_unsigned_64bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_s
                     left_svalue >= 0};
         }
     }
-    auto lhlb = left_interval_high.truncate_to_uint(64).lb();
+    auto lhlb = left_interval_high.truncate_to<uint64_t>().lb();
     if ((right_interval <= interval_t::unsigned_high(64)) && (strict ? (lhlb >= rub) : (lhlb > rub))) {
         // The high interval is out of range.
         if (auto lsubn = inv.eval_interval(left_svalue).ub().number()) {
@@ -512,7 +511,7 @@ assume_unsigned_64bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_s
     }
     if (right_interval <= interval_t::signed_int(64)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX].
-        auto llub = left_interval_low.truncate_to_uint(64).ub();
+        auto llub = left_interval_low.truncate_to<uint64_t>().ub();
         return {number_t{0} <= left_uvalue, strict ? (left_uvalue < right_uvalue) : (left_uvalue <= right_uvalue),
                 left_uvalue <= *llub.number(), number_t{0} <= left_svalue,
                 strict ? (left_svalue < right_svalue) : (left_svalue <= right_svalue)};
@@ -566,8 +565,8 @@ assume_unsigned_64bit_gt(const NumAbsDomain& inv, bool strict, variable_t left_s
     using namespace crab::dsl_syntax;
 
     auto rlb = right_interval.lb();
-    auto llub = left_interval_low.truncate_to_uint(64).ub();
-    auto lhlb = left_interval_high.truncate_to_uint(64).lb();
+    auto llub = left_interval_low.truncate_to<uint64_t>().ub();
+    auto lhlb = left_interval_high.truncate_to<uint64_t>().lb();
 
     if ((right_interval <= interval_t::nonnegative(64)) && (strict ? (llub <= rlb) : (llub < rlb))) {
         // The low interval is out of range.
@@ -1390,11 +1389,11 @@ void ebpf_domain_t::overflow_bounds(NumAbsDomain& inv, variable_t lhs, number_t 
     // For a signed result, we need to ensure the signed and unsigned results match
     // so for a 32-bit operation, 0x80000000 should be a positive 64-bit number not
     // a sign extended negative one.
-    number_t lb = lb_value.truncate_to_unsigned_finite_width(finite_width);
-    number_t ub = ub_value.truncate_to_unsigned_finite_width(finite_width);
+    number_t lb = lb_value.truncate_to_uint(finite_width);
+    number_t ub = ub_value.truncate_to_uint(finite_width);
     if (issigned) {
-        lb = lb.truncate_to_signed_finite_width(64);
-        ub = ub.truncate_to_signed_finite_width(64);
+        lb = lb.truncate_to<int64_t>();
+        ub = ub.truncate_to<int64_t>();
     }
     if (lb > ub) {
         // Range wraps in the middle, so we cannot represent as an unsigned interval.
@@ -1409,15 +1408,15 @@ void ebpf_domain_t::overflow_bounds(NumAbsDomain& inv, variable_t lhs, number_t 
 }
 
 void ebpf_domain_t::overflow_signed(NumAbsDomain& inv, variable_t lhs, int finite_width) {
-    auto span{finite_width == 64   ? crab::z_number{std::numeric_limits<uint64_t>::max()}
-              : finite_width == 32 ? crab::z_number{std::numeric_limits<uint32_t>::max()}
+    auto span{finite_width == 64   ? crab::number_t{std::numeric_limits<uint64_t>::max()}
+              : finite_width == 32 ? crab::number_t{std::numeric_limits<uint32_t>::max()}
                                    : throw std::exception()};
     overflow_bounds(inv, lhs, span, finite_width, true);
 }
 
 void ebpf_domain_t::overflow_unsigned(NumAbsDomain& inv, variable_t lhs, int finite_width) {
-    auto span{finite_width == 64   ? crab::z_number{std::numeric_limits<uint64_t>::max()}
-              : finite_width == 32 ? crab::z_number{std::numeric_limits<uint32_t>::max()}
+    auto span{finite_width == 64   ? crab::number_t{std::numeric_limits<uint64_t>::max()}
+              : finite_width == 32 ? crab::number_t{std::numeric_limits<uint32_t>::max()}
                                    : throw std::exception()};
     overflow_bounds(inv, lhs, span, finite_width, false);
 }
@@ -2614,8 +2613,8 @@ void ebpf_domain_t::lshr(const Reg& dst_reg, int imm, int finite_width) {
                 lb_n = lb.cast_to<uint64_t>() >> imm;
                 ub_n = ub.cast_to<uint64_t>() >> imm;
             } else {
-                number_t lb_w = lb.cast_to_signed_finite_width(finite_width);
-                number_t ub_w = ub.cast_to_signed_finite_width(finite_width);
+                number_t lb_w = lb.cast_to_sint(finite_width);
+                number_t ub_w = ub.cast_to_sint(finite_width);
                 lb_n = lb_w.cast_to<uint32_t>() >> imm;
                 ub_n = ub_w.cast_to<uint32_t>() >> imm;
 
@@ -2707,8 +2706,8 @@ void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_sv
                     lb_n = lb.cast_to<int64_t>() >> imm;
                     ub_n = ub.cast_to<int64_t>() >> imm;
                 } else {
-                    number_t lb_w = lb.cast_to_signed_finite_width(finite_width) >> (int)imm;
-                    number_t ub_w = ub.cast_to_signed_finite_width(finite_width) >> (int)imm;
+                    number_t lb_w = lb.cast_to_sint(finite_width) >> (int)imm;
+                    number_t ub_w = ub.cast_to_sint(finite_width) >> (int)imm;
                     if (lb_w.cast_to<uint32_t>() <= ub_w.cast_to<uint32_t>()) {
                         lb_n = lb_w.cast_to<uint32_t>();
                         ub_n = ub_w.cast_to<uint32_t>();

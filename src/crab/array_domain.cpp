@@ -750,7 +750,7 @@ std::optional<linear_expression_t> array_domain_t::load(NumAbsDomain& inv, data_
         auto lb = ii.lb().number();
         auto ub = ii.ub().number();
         if (lb.has_value() && ub.has_value()) {
-            z_number fullwidth = ub.value() - lb.value() + width;
+            number_t fullwidth = ub.value() - lb.value() + width;
             if (lb.value().fits<uint32_t>() && fullwidth.fits<uint32_t>()) {
                 auto [only_num, only_non_num] = num_bytes.uniformity((uint32_t)lb.value(), (uint32_t)fullwidth);
                 if (only_num) {
