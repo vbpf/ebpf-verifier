@@ -45,7 +45,7 @@ SplitDBM::vert_id SplitDBM::get_vert(variable_t v) {
  * used to be the template parameter of the DBM-based abstract domain to
  * represent a number. Number might not fit into Weight type.
  **/
-SafeInt64DefaultParams::Weight SafeInt64DefaultParams::convert_NtoW(const z_number& n, bool& overflow) {
+SafeInt64DefaultParams::Weight SafeInt64DefaultParams::convert_NtoW(const number_t& n, bool& overflow) {
     overflow = false;
     if (!n.fits<int64_t>()) {
         overflow = true;
@@ -54,7 +54,7 @@ SafeInt64DefaultParams::Weight SafeInt64DefaultParams::convert_NtoW(const z_numb
     return {n};
 }
 
-Z_NumberDefaultParams::Weight Z_NumberDefaultParams::convert_NtoW(const z_number& n, bool& overflow) {
+Z_NumberDefaultParams::Weight Z_NumberDefaultParams::convert_NtoW(const number_t& n, bool& overflow) {
     overflow = false;
     return {n};
 }
@@ -908,7 +908,7 @@ class vert_set_wrap_t {
   public:
     explicit vert_set_wrap_t(const SplitDBM::vert_set_t& _vs) : vs(_vs) {}
 
-    bool operator[](SplitDBM::vert_id v) const { return vs.find(v) != vs.end(); }
+    bool operator[](SplitDBM::vert_id v) const { return vs.contains(v); }
     const SplitDBM::vert_set_t& vs;
 };
 
@@ -1286,12 +1286,12 @@ static interval_t get_interval(const SplitDBM::vert_map_t& m, const SplitDBM::gr
     bound_t lb = bound_t::minus_infinity();
     bound_t ub = bound_t::plus_infinity();
     if (r.elem(v, 0)) {
-        lb = x.is_unsigned() ? (-number_t(r.edge_val(v, 0))).truncate_to_unsigned_finite_width(finite_width)
-                             : (-number_t(r.edge_val(v, 0))).truncate_to_signed_finite_width(finite_width);
+        lb = x.is_unsigned() ? (-number_t(r.edge_val(v, 0))).truncate_to_uint(finite_width)
+                             : (-number_t(r.edge_val(v, 0))).truncate_to_sint(finite_width);
     }
     if (r.elem(0, v)) {
-        ub = x.is_unsigned() ? number_t(r.edge_val(0, v)).truncate_to_unsigned_finite_width(finite_width)
-                             : number_t(r.edge_val(0, v)).truncate_to_signed_finite_width(finite_width);
+        ub = x.is_unsigned() ? number_t(r.edge_val(0, v)).truncate_to_uint(finite_width)
+                             : number_t(r.edge_val(0, v)).truncate_to_sint(finite_width);
     }
     return {lb, ub};
 }

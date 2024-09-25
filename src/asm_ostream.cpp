@@ -565,7 +565,7 @@ std::ostream& operator<<(std::ostream& os, const btf_line_info_t& line_info) {
     return os;
 }
 
-std::string crab::z_number::to_string() const { return _n.str(); }
+std::string crab::number_t::to_string() const { return _n.str(); }
 
 std::string crab::interval_t::to_string() const {
     std::ostringstream s;
