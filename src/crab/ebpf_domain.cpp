@@ -131,7 +131,7 @@ static std::vector<linear_constraint_t> assume_signed_64bit_eq(const NumAbsDomai
                                                                const linear_expression_t& right_svalue,
                                                                const linear_expression_t& right_uvalue) {
     using namespace crab::dsl_syntax;
-    if (right_interval <= crab::interval_t::nonnegative_int(true) && !right_interval.is_singleton()) {
+    if (right_interval <= crab::interval_t::nonnegative(64) && !right_interval.is_singleton()) {
         return {(left_svalue == right_svalue), (left_uvalue == right_uvalue), eq(left_svalue, left_uvalue)};
     } else {
         return {(left_svalue == right_svalue), (left_uvalue == right_uvalue)};
@@ -200,15 +200,14 @@ static void get_signed_intervals(const NumAbsDomain& inv, bool is64, variable_t 
     left_interval = inv.eval_interval(left_svalue);
     right_interval = inv.eval_interval(right_svalue);
     if (!is64) {
-        if ((left_interval <= interval_t::nonnegative_int(false) &&
-             right_interval <= interval_t::nonnegative_int(false)) ||
-            (left_interval <= interval_t::negative_int(false) && right_interval <= interval_t::negative_int(false))) {
+        if ((left_interval <= interval_t::nonnegative(32) && right_interval <= interval_t::nonnegative(32)) ||
+            (left_interval <= interval_t::negative(32) && right_interval <= interval_t::negative(32))) {
             is64 = true;
             // fallthrough as 64bit, including deduction of relational information
         } else {
             for (interval_t* interval : {&left_interval, &right_interval}) {
-                if (!(*interval <= interval_t::signed_int(false))) {
-                    *interval = interval->truncate_to_sint(false);
+                if (!(*interval <= interval_t::signed_int(32))) {
+                    *interval = interval->truncate_to_sint(32);
                 }
             }
             // continue as 32bit
@@ -216,25 +215,26 @@ static void get_signed_intervals(const NumAbsDomain& inv, bool is64, variable_t 
     }
 
     if (!left_interval.is_top()) {
-        left_interval_positive = left_interval & interval_t::nonnegative_int(true);
-        left_interval_negative = left_interval & interval_t::negative_int(true);
+        left_interval_positive = left_interval & interval_t::nonnegative(64);
+        left_interval_negative = left_interval & interval_t::negative(64);
     } else {
         left_interval = inv.eval_interval(left_uvalue);
         if (!left_interval.is_top()) {
             // The interval is TOP as a signed interval but is represented precisely as an unsigned interval,
             // so split into two signed intervals that can be treated separately.
-            left_interval_positive = left_interval & interval_t::nonnegative_int(true);
-            number_t lih_ub = left_interval.ub().number() ? left_interval.ub().number()->truncate_to_signed_finite_width(64) : -1;
+            left_interval_positive = left_interval & interval_t::nonnegative(64);
+            number_t lih_ub =
+                left_interval.ub().number() ? left_interval.ub().number()->truncate_to_signed_finite_width(64) : -1;
             left_interval_negative = interval_t(number_t{std::numeric_limits<int64_t>::min()}, lih_ub);
         } else {
-            left_interval_positive = interval_t::nonnegative_int(true);
-            left_interval_negative = interval_t::negative_int(true);
+            left_interval_positive = interval_t::nonnegative(64);
+            left_interval_negative = interval_t::negative(64);
         }
     }
 
     for (interval_t* interval : {&left_interval, &right_interval}) {
-        if (!(*interval <= interval_t::signed_int(true))) {
-            *interval = interval->truncate_to_sint(true);
+        if (!(*interval <= interval_t::signed_int(64))) {
+            *interval = interval->truncate_to_sint(64);
         }
     }
 }
@@ -252,15 +252,14 @@ static void get_unsigned_intervals(const NumAbsDomain& inv, bool is64, variable_
     left_interval = inv.eval_interval(left_uvalue);
     right_interval = inv.eval_interval(right_uvalue);
     if (!is64) {
-        if ((left_interval <= interval_t::nonnegative_int(false) &&
-             right_interval <= interval_t::nonnegative_int(false)) ||
-            (left_interval <= interval_t::unsigned_high(false) && right_interval <= interval_t::unsigned_high(false))) {
+        if ((left_interval <= interval_t::nonnegative(32) && right_interval <= interval_t::nonnegative(32)) ||
+            (left_interval <= interval_t::unsigned_high(32) && right_interval <= interval_t::unsigned_high(32))) {
             is64 = true;
             // fallthrough as 64bit, including deduction of relational information
         } else {
             for (interval_t* interval : {&left_interval, &right_interval}) {
-                if (!(*interval <= interval_t::unsigned_int(false))) {
-                    *interval = interval->truncate_to_uint(false);
+                if (!(*interval <= interval_t::unsigned_int(32))) {
+                    *interval = interval->truncate_to_uint(32);
                 }
             }
             // continue as 32bit
@@ -268,24 +267,24 @@ static void get_unsigned_intervals(const NumAbsDomain& inv, bool is64, variable_
     }
 
     if (!left_interval.is_top()) {
-        left_interval_low = left_interval & interval_t::nonnegative_int(true);
-        left_interval_high = left_interval & interval_t::unsigned_high(true);
+        left_interval_low = left_interval & interval_t::nonnegative(64);
+        left_interval_high = left_interval & interval_t::unsigned_high(64);
     } else {
         left_interval = inv.eval_interval(left_svalue);
         if (!left_interval.is_top()) {
             // The interval is TOP as an unsigned interval but is represented precisely as a signed interval,
             // so split into two unsigned intervals that can be treated separately.
-            left_interval_low = interval_t(number_t{0}, left_interval.ub()).truncate_to_uint(true);
-            left_interval_high = interval_t(left_interval.lb(), number_t{-1}).truncate_to_uint(true);
+            left_interval_low = interval_t(number_t{0}, left_interval.ub()).truncate_to_uint(64);
+            left_interval_high = interval_t(left_interval.lb(), number_t{-1}).truncate_to_uint(64);
         } else {
-            left_interval_low = interval_t::nonnegative_int(true);
-            left_interval_high = interval_t::unsigned_high(true);
+            left_interval_low = interval_t::nonnegative(64);
+            left_interval_high = interval_t::unsigned_high(64);
         }
     }
 
     for (interval_t* interval : {&left_interval, &right_interval}) {
-        if (!(*interval <= interval_t::unsigned_int(true))) {
-            *interval = interval->truncate_to_uint(true);
+        if (!(*interval <= interval_t::unsigned_int(64))) {
+            *interval = interval->truncate_to_uint(64);
         }
     }
 }
@@ -298,12 +297,12 @@ assume_signed_64bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_sva
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
-    if (right_interval <= interval_t::negative_int(true)) {
+    if (right_interval <= interval_t::negative(64)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [INT_MIN, -1].
         return {strict ? (left_svalue < right_svalue) : (left_svalue <= right_svalue), number_t{0} <= left_uvalue,
                 strict ? (left_uvalue < right_uvalue) : (left_uvalue <= right_uvalue)};
-    } else if ((left_interval_negative | left_interval_positive) <= interval_t::nonnegative_int(true) &&
-               right_interval <= interval_t::nonnegative_int(true)) {
+    } else if ((left_interval_negative | left_interval_positive) <= interval_t::nonnegative(64) &&
+               right_interval <= interval_t::nonnegative(64)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX].
         return {strict ? (left_svalue < right_svalue) : (left_svalue <= right_svalue), number_t{0} <= left_uvalue,
                 strict ? (left_uvalue < right_uvalue) : (left_uvalue <= right_uvalue)};
@@ -321,16 +320,16 @@ assume_signed_32bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_sva
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
-    if (right_interval <= interval_t::negative_int(false)) {
+    if (right_interval <= interval_t::negative(32)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [INT_MIN, -1],
         // aka [INT_MAX+1, UINT_MAX].
         return {left_uvalue >= (number_t{INT32_MAX} + 1),
                 strict ? (left_uvalue < right_uvalue) : (left_uvalue <= right_uvalue),
                 strict ? (left_svalue < right_svalue) : (left_svalue <= right_svalue)};
-    } else if ((left_interval_negative | left_interval_positive) <= interval_t::nonnegative_int(false) &&
-               right_interval <= interval_t::nonnegative_int(false)) {
+    } else if ((left_interval_negative | left_interval_positive) <= interval_t::nonnegative(32) &&
+               right_interval <= interval_t::nonnegative(32)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX]
-        auto lpub = left_interval_positive.truncate_to_sint(false).ub();
+        auto lpub = left_interval_positive.truncate_to_sint(32).ub();
         return {left_svalue >= 0,
                 strict ? left_svalue < right_svalue : left_svalue <= right_svalue,
                 left_svalue <= left_uvalue,
@@ -338,8 +337,8 @@ assume_signed_32bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_sva
                 left_uvalue >= 0,
                 strict ? left_uvalue < right_uvalue : left_uvalue <= right_uvalue,
                 left_uvalue <= *lpub.number()};
-    } else if (inv.eval_interval(left_svalue) <= interval_t::signed_int(false) &&
-               inv.eval_interval(right_svalue) <= interval_t::signed_int(false)) {
+    } else if (inv.eval_interval(left_svalue) <= interval_t::signed_int(32) &&
+               inv.eval_interval(right_svalue) <= interval_t::signed_int(32)) {
         // Interval can only be represented as an svalue.
         return {strict ? (left_svalue < right_svalue) : (left_svalue <= right_svalue)};
     } else {
@@ -356,9 +355,9 @@ assume_signed_64bit_gt(const NumAbsDomain& inv, bool strict, variable_t left_sva
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
-    if (right_interval <= interval_t::nonnegative_int(true)) {
+    if (right_interval <= interval_t::nonnegative(64)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX].
-        auto lpub = left_interval_positive.truncate_to_sint(true).ub();
+        auto lpub = left_interval_positive.truncate_to_sint(64).ub();
         return {left_svalue >= 0,
                 strict ? left_svalue > right_svalue : left_svalue >= right_svalue,
                 left_svalue <= left_uvalue,
@@ -366,8 +365,8 @@ assume_signed_64bit_gt(const NumAbsDomain& inv, bool strict, variable_t left_sva
                 left_uvalue >= 0,
                 strict ? left_uvalue > right_uvalue : left_uvalue >= right_uvalue,
                 left_uvalue <= *lpub.number()};
-    } else if ((left_interval_negative | left_interval_positive) <= interval_t::negative_int(true) &&
-               right_interval <= interval_t::negative_int(true)) {
+    } else if ((left_interval_negative | left_interval_positive) <= interval_t::negative(64) &&
+               right_interval <= interval_t::negative(64)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [INT_MIN, -1],
         // aka [INT_MAX+1, UINT_MAX].
         return {left_uvalue >= (number_t{INT64_MAX} + 1),
@@ -387,9 +386,9 @@ assume_signed_32bit_gt(const NumAbsDomain& inv, bool strict, variable_t left_sva
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
-    if (right_interval <= interval_t::nonnegative_int(false)) {
+    if (right_interval <= interval_t::nonnegative(32)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX].
-        auto lpub = left_interval_positive.truncate_to_sint(false).ub();
+        auto lpub = left_interval_positive.truncate_to_sint(32).ub();
         return {left_svalue >= 0,
                 strict ? left_svalue > right_svalue : left_svalue >= right_svalue,
                 left_svalue <= left_uvalue,
@@ -397,15 +396,15 @@ assume_signed_32bit_gt(const NumAbsDomain& inv, bool strict, variable_t left_sva
                 left_uvalue >= 0,
                 strict ? left_uvalue > right_uvalue : left_uvalue >= right_uvalue,
                 left_uvalue <= *lpub.number()};
-    } else if ((left_interval_negative | left_interval_positive) <= interval_t::negative_int(false) &&
-               right_interval <= interval_t::negative_int(false)) {
+    } else if ((left_interval_negative | left_interval_positive) <= interval_t::negative(32) &&
+               right_interval <= interval_t::negative(32)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [INT_MIN, -1],
         // aka [INT_MAX+1, UINT_MAX].
         return {left_uvalue >= (number_t{INT32_MAX} + 1),
                 strict ? (left_uvalue > right_uvalue) : (left_uvalue >= right_uvalue),
                 strict ? (left_svalue > right_svalue) : (left_svalue >= right_svalue)};
-    } else if (inv.eval_interval(left_svalue) <= interval_t::signed_int(false) &&
-               inv.eval_interval(right_svalue) <= interval_t::signed_int(false)) {
+    } else if (inv.eval_interval(left_svalue) <= interval_t::signed_int(32) &&
+               inv.eval_interval(right_svalue) <= interval_t::signed_int(32)) {
         // Interval can only be represented as an svalue.
         return {strict ? (left_svalue > right_svalue) : (left_svalue >= right_svalue)};
     } else {
@@ -489,8 +488,8 @@ assume_unsigned_64bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_s
     using namespace crab::dsl_syntax;
 
     auto rub = right_interval.ub();
-    auto lllb = left_interval_low.truncate_to_uint(true).lb();
-    if ((right_interval <= interval_t::nonnegative_int(true)) && (strict ? (lllb >= rub) : (lllb > rub))) {
+    auto lllb = left_interval_low.truncate_to_uint(64).lb();
+    if ((right_interval <= interval_t::nonnegative(64)) && (strict ? (lllb >= rub) : (lllb > rub))) {
         // The high interval is out of range.
         if (auto lsubn = inv.eval_interval(left_svalue).ub().number()) {
             return {left_uvalue >= 0, ((strict) ? left_uvalue < right_uvalue : left_uvalue <= right_uvalue),
@@ -500,8 +499,8 @@ assume_unsigned_64bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_s
                     left_svalue >= 0};
         }
     }
-    auto lhlb = left_interval_high.truncate_to_uint(true).lb();
-    if ((right_interval <= interval_t::unsigned_high(true)) && (strict ? (lhlb >= rub) : (lhlb > rub))) {
+    auto lhlb = left_interval_high.truncate_to_uint(64).lb();
+    if ((right_interval <= interval_t::unsigned_high(64)) && (strict ? (lhlb >= rub) : (lhlb > rub))) {
         // The high interval is out of range.
         if (auto lsubn = inv.eval_interval(left_svalue).ub().number()) {
             return {left_uvalue >= 0, ((strict) ? left_uvalue < *rub.number() : left_uvalue <= *rub.number()),
@@ -511,17 +510,17 @@ assume_unsigned_64bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_s
                     left_svalue >= 0};
         }
     }
-    if (right_interval <= interval_t::signed_int(true)) {
+    if (right_interval <= interval_t::signed_int(64)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX].
-        auto llub = left_interval_low.truncate_to_uint(true).ub();
+        auto llub = left_interval_low.truncate_to_uint(64).ub();
         return {number_t{0} <= left_uvalue, strict ? (left_uvalue < right_uvalue) : (left_uvalue <= right_uvalue),
                 left_uvalue <= *llub.number(), number_t{0} <= left_svalue,
                 strict ? (left_svalue < right_svalue) : (left_svalue <= right_svalue)};
-    } else if (left_interval_low.is_bottom() && right_interval <= interval_t::unsigned_high(true)) {
+    } else if (left_interval_low.is_bottom() && right_interval <= interval_t::unsigned_high(64)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [INT_MAX+1, UINT_MAX].
         return {number_t{0} <= left_uvalue, strict ? (left_uvalue < right_uvalue) : (left_uvalue <= right_uvalue),
                 strict ? (left_svalue < right_svalue) : (left_svalue <= right_svalue)};
-    } else if ((left_interval_low | left_interval_high) == interval_t::unsigned_int(true)) {
+    } else if ((left_interval_low | left_interval_high) == interval_t::unsigned_int(64)) {
         // Interval can only be represented as a uvalue, and was TOP before.
         return {strict ? (left_uvalue < right_uvalue) : (left_uvalue <= right_uvalue)};
     } else {
@@ -538,18 +537,18 @@ assume_unsigned_32bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_s
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
-    if (inv.eval_interval(left_uvalue) <= interval_t::nonnegative_int(false) &&
-        inv.eval_interval(right_uvalue) <= interval_t::nonnegative_int(false)) {
+    if (inv.eval_interval(left_uvalue) <= interval_t::nonnegative(32) &&
+        inv.eval_interval(right_uvalue) <= interval_t::nonnegative(32)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT32_MAX].
         return {number_t{0} <= left_uvalue, strict ? (left_uvalue < right_uvalue) : (left_uvalue <= right_uvalue),
                 strict ? (left_svalue < right_svalue) : (left_svalue <= right_svalue)};
-    } else if (inv.eval_interval(left_svalue) <= interval_t::negative_int(false) &&
-               inv.eval_interval(right_svalue) <= interval_t::negative_int(false)) {
+    } else if (inv.eval_interval(left_svalue) <= interval_t::negative(32) &&
+               inv.eval_interval(right_svalue) <= interval_t::negative(32)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [INT32_MIN, -1].
         return {number_t{0} <= left_uvalue, strict ? (left_uvalue < right_uvalue) : (left_uvalue <= right_uvalue),
                 strict ? (left_svalue < right_svalue) : (left_svalue <= right_svalue)};
-    } else if (inv.eval_interval(left_uvalue) <= interval_t::unsigned_int(false) &&
-               inv.eval_interval(right_uvalue) <= interval_t::unsigned_int(false)) {
+    } else if (inv.eval_interval(left_uvalue) <= interval_t::unsigned_int(32) &&
+               inv.eval_interval(right_uvalue) <= interval_t::unsigned_int(32)) {
         // Interval can only be represented as a uvalue.
         return {number_t{0} <= left_uvalue, strict ? (left_uvalue < right_uvalue) : (left_uvalue <= right_uvalue)};
     } else {
@@ -567,21 +566,21 @@ assume_unsigned_64bit_gt(const NumAbsDomain& inv, bool strict, variable_t left_s
     using namespace crab::dsl_syntax;
 
     auto rlb = right_interval.lb();
-    auto llub = left_interval_low.truncate_to_uint(true).ub();
-    auto lhlb = left_interval_high.truncate_to_uint(true).lb();
+    auto llub = left_interval_low.truncate_to_uint(64).ub();
+    auto lhlb = left_interval_high.truncate_to_uint(64).lb();
 
-    if ((right_interval <= interval_t::nonnegative_int(true)) && (strict ? (llub <= rlb) : (llub < rlb))) {
+    if ((right_interval <= interval_t::nonnegative(64)) && (strict ? (llub <= rlb) : (llub < rlb))) {
         // The low interval is out of range.
         return {(strict) ? (left_uvalue > right_uvalue) : (left_uvalue >= right_uvalue),
                 (*lhlb.number() == number_t(std::numeric_limits<uint64_t>::max())) ? (left_uvalue == *lhlb.number())
                                                                                    : (left_uvalue >= *lhlb.number()),
                 left_svalue < 0};
-    } else if (right_interval <= interval_t::unsigned_high(true)) {
+    } else if (right_interval <= interval_t::unsigned_high(64)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [INT_MAX+1, UINT_MAX].
         return {number_t{0} <= left_uvalue, strict ? (left_uvalue > right_uvalue) : (left_uvalue >= right_uvalue),
                 strict ? (left_svalue > right_svalue) : (left_svalue >= right_svalue)};
-    } else if ((left_interval_low | left_interval_high) <= interval_t::nonnegative_int(true) &&
-               right_interval <= interval_t::nonnegative_int(true)) {
+    } else if ((left_interval_low | left_interval_high) <= interval_t::nonnegative(64) &&
+               right_interval <= interval_t::nonnegative(64)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX].
         return {number_t{0} <= left_uvalue, strict ? (left_uvalue > right_uvalue) : (left_uvalue >= right_uvalue),
                 strict ? (left_svalue > right_svalue) : (left_svalue >= right_svalue)};
@@ -599,12 +598,12 @@ assume_unsigned_32bit_gt(const NumAbsDomain& inv, bool strict, variable_t left_s
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
-    if (right_interval <= interval_t::unsigned_high(false)) {
+    if (right_interval <= interval_t::unsigned_high(32)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [INT32_MAX+1, UINT32_MAX].
         return {number_t{0} <= left_uvalue, strict ? (left_uvalue > right_uvalue) : (left_uvalue >= right_uvalue),
                 strict ? (left_svalue > right_svalue) : (left_svalue >= right_svalue)};
-    } else if (inv.eval_interval(left_uvalue) <= interval_t::unsigned_int(false) &&
-               inv.eval_interval(right_uvalue) <= interval_t::unsigned_int(false)) {
+    } else if (inv.eval_interval(left_uvalue) <= interval_t::unsigned_int(32) &&
+               inv.eval_interval(right_uvalue) <= interval_t::unsigned_int(32)) {
         // Interval can only be represented as a uvalue.
         return {number_t{0} <= left_uvalue, strict ? (left_uvalue > right_uvalue) : (left_uvalue >= right_uvalue)};
     } else {
@@ -631,7 +630,7 @@ static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAb
     // Handle uvalue != right.
     if (op == Condition::Op::NE) {
         if (auto rn = right_interval.singleton()) {
-            if (rn == left_interval.truncate_to_uint(is64).lb().number()) {
+            if (rn == left_interval.truncate_to_uint(is64 ? 64 : 32).lb().number()) {
                 // "NE lower bound" is equivalent to "GT lower bound".
                 op = Condition::Op::GT;
                 right_interval = interval_t{left_interval.lb()};
@@ -736,7 +735,7 @@ static std::vector<linear_constraint_t> assume_cst_reg(const NumAbsDomain& inv, 
         switch (op) {
         case Op::EQ: {
             crab::interval_t src_interval = inv.eval_interval(src_svalue);
-            if (!src_interval.is_singleton() && (src_interval <= crab::interval_t::nonnegative_int(true))) {
+            if (!src_interval.is_singleton() && (src_interval <= crab::interval_t::nonnegative(64))) {
                 return {eq(dst_svalue, src_svalue), eq(dst_uvalue, src_uvalue), eq(dst_svalue, dst_uvalue)};
             } else {
                 return {eq(dst_svalue, src_svalue), eq(dst_uvalue, src_uvalue)};
@@ -2734,7 +2733,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
     using namespace crab::dsl_syntax;
 
     auto dst = reg_pack(bin.dst);
-    int finite_width = (bin.is64) ? 64 : 32;
+    int finite_width = bin.is64 ? 64 : 32;
 
     if (std::holds_alternative<Imm>(bin.v)) {
         // dst += K
@@ -2751,7 +2750,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::MOV:
             assign(dst.svalue, imm);
             assign(dst.uvalue, imm);
-            overflow_unsigned(m_inv, dst.uvalue, (bin.is64) ? 64 : 32);
+            overflow_unsigned(m_inv, dst.uvalue, bin.is64 ? 64 : 32);
             type_inv.assign_type(m_inv, bin.dst, T_NUM);
             havoc_offsets(bin.dst);
             break;
@@ -2957,6 +2956,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             if (m_inv.entail(type_is_number(src_reg))) {
                 auto src_interval = m_inv.eval_interval(src.uvalue);
                 if (std::optional<number_t> sn = src_interval.singleton()) {
+                    // truncate to uint64?
                     uint64_t imm = sn->cast_to_uint64() & (bin.is64 ? 63 : 31);
                     if (imm <= INT32_MAX) {
                         if (!bin.is64) {
@@ -3021,7 +3021,8 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             break;
         case Bin::Op::MOV:
             // Keep relational information if operation is a no-op.
-            if ((dst.svalue == src.svalue) && (m_inv.eval_interval(dst.uvalue) <= interval_t::unsigned_int(bin.is64))) {
+            if ((dst.svalue == src.svalue) &&
+                (m_inv.eval_interval(dst.uvalue) <= interval_t::unsigned_int(bin.is64 ? 64 : 32))) {
                 return;
             }
             assign(dst.svalue, src.svalue);

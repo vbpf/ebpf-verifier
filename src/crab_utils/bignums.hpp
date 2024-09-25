@@ -35,13 +35,12 @@ class z_number final {
   private:
     cpp_int _n{nullptr};
 
-public:
+  public:
     z_number() = default;
     z_number(cpp_int n) : _n(std::move(n)) {}
     z_number(std::integral auto n) : _n{n} {}
     z_number(is_enum auto n) : _n{static_cast<int64_t>(n)} {}
     explicit z_number(const std::string& s) { _n = cpp_int(s); }
-
 
     // overloaded typecast operators
     explicit operator int64_t() const {
@@ -84,24 +83,30 @@ public:
         return hasher(_n.str());
     }
 
+    template <std::integral T>
+    [[nodiscard]]
+    bool fits() const {
+        return crab::fits<T>(_n);
+    }
+
     [[nodiscard]]
     bool fits_sint32() const {
-        return fits<int32_t>(_n);
+        return fits<int32_t>();
     }
 
     [[nodiscard]]
     bool fits_uint32() const {
-        return fits<uint32_t>(_n);
+        return fits<uint32_t>();
     }
 
     [[nodiscard]]
     bool fits_sint64() const {
-        return fits<int64_t>(_n);
+        return fits<int64_t>();
     }
 
     [[nodiscard]]
     bool fits_uint64() const {
-        return fits<uint64_t>(_n);
+        return fits<uint64_t>();
     }
 
     [[nodiscard]]
@@ -121,6 +126,20 @@ public:
         }
     }
 
+    template <std::unsigned_integral U>
+    [[nodiscard]]
+    uint64_t cast_to() const {
+        using S = std::make_signed_t<U>;
+        if (fits<U>()) {
+            return (U)_n;
+        } else if (fits<S>()) {
+            // Convert 32 bits from int32_t to uint32_t.
+            return (U)(S)_n;
+        } else {
+            CRAB_ERROR("z_number ", _n.str(), " does not fit into an unsigned 32-bit integer");
+        }
+    }
+
     [[nodiscard]]
     uint64_t cast_to_uint32() const {
         if (fits_uint32()) {
@@ -131,6 +150,12 @@ public:
         } else {
             CRAB_ERROR("z_number ", _n.str(), " does not fit into an unsigned 32-bit integer");
         }
+    }
+
+    template <std::signed_integral S>
+    [[nodiscard]]
+    int32_t cast_to() const {
+        return (S)cast_to_sint64();
     }
 
     // For 64-bit operations, get the value as a signed 64-bit integer.
@@ -173,6 +198,10 @@ public:
         default: CRAB_ERROR("invalid finite width");
         }
     }
+    template <std::integral T>
+    T truncate_to() const {
+        return crab::truncate_to<T>(_n);
+    }
 
     // Allow truncating to int32_t or int64_t as needed for finite width operations.
     // Unlike casting, truncating will not throw a crab error if the number doesn't fit.
@@ -180,10 +209,10 @@ public:
     z_number truncate_to_signed_finite_width(int finite_width) const {
         switch (finite_width) {
         case 0: return *this; // No finite width.
-        case 8: return truncate_to<int8_t>(_n);
-        case 16: return truncate_to<int16_t>(_n);
-        case 32: return truncate_to<int32_t>(_n);
-        case 64: return truncate_to<int64_t>(_n);
+        case 8: return truncate_to<int8_t>();
+        case 16: return truncate_to<int16_t>();
+        case 32: return truncate_to<int32_t>();
+        case 64: return truncate_to<int64_t>();
         default: CRAB_ERROR("invalid finite width");
         }
     }
@@ -194,10 +223,10 @@ public:
     z_number truncate_to_unsigned_finite_width(int finite_width) const {
         switch (finite_width) {
         case 0: return *this; // No finite width.
-        case 8: return truncate_to<uint8_t>(_n);
-        case 16: return truncate_to<uint16_t>(_n);
-        case 32: return truncate_to<uint32_t>(_n);
-        case 64: return truncate_to<uint64_t>(_n);
+        case 8: return truncate_to<uint8_t>();
+        case 16: return truncate_to<uint16_t>();
+        case 32: return truncate_to<uint32_t>();
+        case 64: return truncate_to<uint64_t>();
         default: CRAB_ERROR("invalid finite width");
         }
     }

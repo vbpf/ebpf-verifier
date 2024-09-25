@@ -29,13 +29,13 @@ interval_t interval_t::operator/(const interval_t& x) const {
         using z_interval = interval_t;
         if (x[0]) {
             // The divisor contains 0.
-            z_interval l(x._lb, z_bound(-1));
-            z_interval u(z_bound(1), x._ub);
+            z_interval l(x._lb, bound_t(-1));
+            z_interval u(bound_t(1), x._ub);
             return (operator/(l) | operator/(u) | z_interval(number_t(0)));
         } else if (operator[](0)) {
             // The dividend contains 0.
-            z_interval l(_lb, z_bound(-1));
-            z_interval u(z_bound(1), _ub);
+            z_interval l(_lb, bound_t(-1));
+            z_interval u(bound_t(1), _ub);
             return ((l / x) | (u / x) | z_interval(number_t(0)));
         } else {
             // Neither the dividend nor the divisor contains 0
@@ -47,7 +47,7 @@ interval_t interval_t::operator/(const interval_t& x) const {
             bound_t lu = a._lb / x._ub;
             bound_t ul = a._ub / x._lb;
             bound_t uu = a._ub / x._ub;
-            return interval_t(bound_t::min(ll, lu, ul, uu), bound_t::max(ll, lu, ul, uu));
+            return interval_t(std::min({ll, lu, ul, uu}), std::max({ll, lu, ul, uu}));
         }
     }
 }
@@ -76,13 +76,13 @@ interval_t interval_t::SDiv(const interval_t& x) const {
         using z_interval = interval_t;
         if (x[0]) {
             // The divisor contains 0.
-            z_interval l(x._lb, z_bound(-1));
-            z_interval u(z_bound(1), x._ub);
+            z_interval l(x._lb, bound_t(-1));
+            z_interval u(bound_t(1), x._ub);
             return (SDiv(l) | SDiv(u) | z_interval(number_t(0)));
         } else if (operator[](0)) {
             // The dividend contains 0.
-            z_interval l(_lb, z_bound(-1));
-            z_interval u(z_bound(1), _ub);
+            z_interval l(_lb, bound_t(-1));
+            z_interval u(bound_t(1), _ub);
             return (l.SDiv(x) | u.SDiv(x) | z_interval(number_t(0)));
         } else {
             // Neither the dividend nor the divisor contains 0
@@ -94,7 +94,7 @@ interval_t interval_t::SDiv(const interval_t& x) const {
             bound_t lu = a._lb / x._ub;
             bound_t ul = a._ub / x._lb;
             bound_t uu = a._ub / x._ub;
-            return interval_t(bound_t::min(ll, lu, ul, uu), bound_t::max(ll, lu, ul, uu));
+            return interval_t(std::min({ll, lu, ul, uu}), std::max({ll, lu, ul, uu}));
         }
     }
 }
@@ -123,13 +123,13 @@ interval_t interval_t::UDiv(const interval_t& x) const {
         using z_interval = interval_t;
         if (x[0]) {
             // The divisor contains 0.
-            z_interval l(x._lb, z_bound(-1));
-            z_interval u(z_bound(1), x._ub);
+            z_interval l(x._lb, bound_t(-1));
+            z_interval u(bound_t(1), x._ub);
             return (UDiv(l) | UDiv(u) | z_interval(number_t(0)));
         } else if (operator[](0)) {
             // The dividend contains 0.
-            z_interval l(_lb, z_bound(-1));
-            z_interval u(z_bound(1), _ub);
+            z_interval l(_lb, bound_t(-1));
+            z_interval u(bound_t(1), _ub);
             return (l.UDiv(x) | u.UDiv(x) | z_interval(number_t(0)));
         } else {
             // Neither the dividend nor the divisor contains 0
@@ -141,7 +141,7 @@ interval_t interval_t::UDiv(const interval_t& x) const {
             bound_t lu = a._lb.UDiv(x._ub);
             bound_t ul = a._ub.UDiv(x._lb);
             bound_t uu = a._ub.UDiv(x._ub);
-            return interval_t(bound_t::min(ll, lu, ul, uu), bound_t::max(ll, lu, ul, uu));
+            return interval_t(std::min({ll, lu, ul, uu}), std::max({ll, lu, ul, uu}));
         }
     }
 }
@@ -163,8 +163,8 @@ interval_t interval_t::SRem(const interval_t& x) const {
         return interval_t(dividend % divisor);
     } else if (x[0]) {
         // The divisor contains 0.
-        interval_t l(x._lb, z_bound(-1));
-        interval_t u(z_bound(1), x._ub);
+        interval_t l(x._lb, bound_t(-1));
+        interval_t u(bound_t(1), x._ub);
         return SRem(l) | SRem(u) | *this;
     } else if (x.ub().is_finite() && x.lb().is_finite()) {
         number_t min_divisor = min(abs(*x.lb().number()), abs(*x.ub().number()));
@@ -212,13 +212,13 @@ interval_t interval_t::URem(const interval_t& x) const {
         using z_interval = interval_t;
         if (x[0]) {
             // The divisor contains 0.
-            z_interval l(x._lb, z_bound(-1));
-            z_interval u(z_bound(1), x._ub);
+            z_interval l(x._lb, bound_t(-1));
+            z_interval u(bound_t(1), x._ub);
             return (URem(l) | URem(u) | *this);
         } else if (operator[](0)) {
             // The dividend contains 0.
-            z_interval l(_lb, z_bound(-1));
-            z_interval u(z_bound(1), _ub);
+            z_interval l(_lb, bound_t(-1));
+            z_interval u(bound_t(1), _ub);
             return (l.URem(x) | u.URem(x) | *this);
         } else {
             // Neither the dividend nor the divisor contains 0
@@ -266,7 +266,7 @@ interval_t interval_t::And(const interval_t& x) const {
             // avoid setting other bits via sign extension.
             return interval_t{number_t{0}, number_t{UINT32_MAX}};
         } else if (!is_top() && !x.is_top()) {
-            return interval_t(number_t{0}, bound_t::min(ub(), x.ub()));
+            return interval_t(number_t{0}, std::min(ub(), x.ub()));
         } else if (!x.is_top()) {
             return interval_t(number_t{0}, x.ub());
         } else if (!is_top()) {
