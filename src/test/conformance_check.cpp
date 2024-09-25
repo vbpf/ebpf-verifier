@@ -81,8 +81,8 @@ int main(int argc, char** argv) {
     }
 
     // Print output so the conformance test suite can check it.
-    if (result.r0_value.singleton() && result.r0_value.singleton().value().fits_cast_to_int64()) {
-        std::cout << std::hex << result.r0_value.singleton().value().cast_to_uint64() << std::endl;
+    if (result.r0_value.singleton() && result.r0_value.singleton().value().fits_cast_to<int64_t>()) {
+        std::cout << std::hex << result.r0_value.singleton().value().cast_to<uint64_t>() << std::endl;
     } else {
         std::cout << result.r0_value << std::endl;
     }

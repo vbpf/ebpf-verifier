@@ -48,8 +48,8 @@ struct checks_db final {
     [[nodiscard]]
     int get_max_loop_count() const {
         auto m = this->max_loop_count.number();
-        if (m && m->fits_sint32()) {
-            return m->cast_to_sint32();
+        if (m && m->fits<int32_t>()) {
+            return m->cast_to<int32_t>();
         } else {
             return std::numeric_limits<int>::max();
         }

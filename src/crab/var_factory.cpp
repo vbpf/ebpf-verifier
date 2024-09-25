@@ -176,7 +176,7 @@ variable_t variable_t::stack_frame_var(data_kind_t kind, int i, std::string pref
 }
 
 variable_t variable_t::cell_var(data_kind_t array, const number_t& offset, const number_t& size) {
-    return make(mk_scalar_name(array, offset.cast_to_uint64(), size));
+    return make(mk_scalar_name(array, offset.cast_to<uint64_t>(), size));
 }
 
 // Given a type variable, get the associated variable of a given kind.

@@ -55,11 +55,11 @@ interval_t interval_t::SDiv(const interval_t& x) const {
         return bottom();
     }
     if (const auto n = x.singleton()) {
-        if (n->fits_cast_to_int64()) {
+        if (n->fits_cast_to<int64_t>()) {
             // Divisor is a singleton:
             //   the linear interval solver can perform many divisions where
             //   the divisor is a singleton interval. We optimize for this case.
-            number_t c{n->cast_to_sint64()};
+            number_t c{n->cast_to<int64_t>()};
             if (c == 1) {
                 return *this;
             } else if (c != 0) {
@@ -100,11 +100,11 @@ interval_t interval_t::UDiv(const interval_t& x) const {
         return bottom();
     }
     if (const auto n = x.singleton()) {
-        if (n->fits_cast_to_int64()) {
+        if (n->fits_cast_to<int64_t>()) {
             // Divisor is a singleton:
             //   the linear interval solver can perform many divisions where
             //   the divisor is a singleton interval. We optimize for this case.
-            number_t c{n->cast_to_uint64()};
+            number_t c{n->cast_to<uint64_t>()};
             if (c == 1) {
                 return *this;
             } else if (c > number_t{0}) {
@@ -215,11 +215,11 @@ interval_t interval_t::URem(const interval_t& x) const {
             // a value between the upper bound and 0, so set to top.  A "positive" dividend
             // could result in anything between 0 and the dividend - 1.
             return (_ub < number_t{0}) ? top() : ((*this - interval_t(number_t{1})) | interval_t(number_t(0)));
-        } else if (_ub.is_finite() && (_ub.number()->cast_to_uint64() < x._lb.number()->cast_to_uint64())) {
+        } else if (_ub.is_finite() && (_ub.number()->cast_to<uint64_t>() < x._lb.number()->cast_to<uint64_t>())) {
             // Dividend lower than divisor, so the dividend is the remainder.
             return *this;
         } else {
-            number_t max_divisor{x._ub.number()->cast_to_uint64()};
+            number_t max_divisor{x._ub.number()->cast_to<uint64_t>()};
             return interval_t(number_t{0}, max_divisor - 1);
         }
     }
@@ -243,7 +243,7 @@ interval_t interval_t::And(const interval_t& x) const {
         if (const auto width = finite_size()) {
             const number_t lb32_n = lb().number()->truncate_to<uint32_t>();
             const number_t ub32_n = ub().number()->truncate_to<uint32_t>();
-            if (width->fits_uint32() && lb32_n < ub32_n && lb32_n + width->truncate_to<uint32_t>() == ub32_n) {
+            if (width->fits<uint32_t>() && lb32_n < ub32_n && lb32_n + width->truncate_to<uint32_t>() == ub32_n) {
                 return interval_t{lb32_n, ub32_n};
             }
         }
