@@ -511,12 +511,14 @@ class interval_t final {
         if (*this <= full<T>()) {
             return *this;
         }
-        if (finite_size()->fits<T>()) {
-            T llb = lb().number()->truncate_to<T>();
-            T lub = ub().number()->truncate_to<T>();
-            if (llb <= lub) {
-                // Interval can be accurately represented in 64 width.
-                return interval_t(llb, lub);
+        if (const auto size = finite_size()) {
+            if (size->fits<T>()) {
+                T llb = lb().number()->truncate_to<T>();
+                T lub = ub().number()->truncate_to<T>();
+                if (llb <= lub) {
+                    // Interval can be accurately represented in 64 width.
+                    return interval_t(llb, lub);
+                }
             }
         }
         return full<T>();
@@ -562,7 +564,7 @@ class interval_t final {
     }
 
     interval_t negative(bool is64) const = delete;
-    // Return a non-negative interval in the range [0, INT_MAX],
+    // Return a negative interval in the range [INT_MIN, -1],
     // which can be represented as both an svalue and a uvalue.
     static interval_t negative(const int width) {
         switch (width) {
