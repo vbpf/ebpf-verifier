@@ -161,7 +161,7 @@ class z_number final {
     }
 
     [[nodiscard]]
-    uint64_t cast_to_uint32() const {
+    uint32_t cast_to_uint32() const {
         if (fits_uint32()) {
             return (uint32_t)_n;
         } else if (fits_sint32()) {

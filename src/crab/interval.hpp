@@ -82,17 +82,16 @@ class bound_t final {
     bound_t operator-() const { return bound_t(_is_infinite, -_n); }
 
     bound_t operator+(const bound_t& x) const {
-        if (is_finite() && x.is_finite()) {
-            return bound_t(_n + x._n);
-        } else if (is_finite() && x.is_infinite()) {
+        if (is_finite()) {
+            if (x.is_finite()) {
+                return bound_t(_n + x._n);
+            }
             return x;
-        } else if (is_infinite() && x.is_finite()) {
-            return *this;
-        } else if (_n == x._n) {
-            return *this;
-        } else {
-            CRAB_ERROR("Bound: undefined operation -oo + +oo");
         }
+        if (x.is_finite() || x._n == _n) {
+            return *this;
+        }
+        CRAB_ERROR("Bound: undefined operation -oo + +oo");
     }
 
     bound_t& operator+=(const bound_t& x) { return operator=(operator+(x)); }
@@ -113,52 +112,50 @@ class bound_t final {
 
     bound_t& operator*=(const bound_t& x) { return operator=(operator*(x)); }
 
-    bound_t operator/(const bound_t& x) const {
+  private:
+    bound_t AbsDiv(const bound_t& x, bound_t (*f)(number_t, number_t)) const {
         if (x._n == 0) {
             CRAB_ERROR("Bound: division by zero");
-        } else if (is_finite() && x.is_finite()) {
-            return bound_t(false, _n / x._n);
-        } else if (is_finite() && x.is_infinite()) {
-            return number_t{0};
-        } else if (is_infinite() && x.is_finite()) {
-            if (x._n > 0) {
-                return *this;
-            } else {
-                return operator-();
-            }
-        } else {
-            return bound_t(true, _n * x._n);
         }
+        if (x.is_infinite()) {
+            if (is_infinite()) {
+                CRAB_ERROR("Bound: inf / inf");
+            }
+            return number_t{0};
+        }
+        if (is_infinite()) {
+            return *this;
+        }
+        return f(_n, x._n);
+    }
+
+  public:
+    bound_t operator/(const bound_t& x) const {
+        return AbsDiv(x, [](number_t dividend, number_t divisor) { return bound_t{dividend / divisor}; });
+    }
+
+    bound_t operator%(const bound_t& x) const {
+        return AbsDiv(x, [](number_t dividend, number_t divisor) { return bound_t{dividend % divisor}; });
     }
 
     [[nodiscard]]
     bound_t UDiv(const bound_t& x) const {
-        if (x._n == 0) {
-            CRAB_ERROR("Bound: division by zero");
-        } else if (is_finite() && x.is_finite()) {
-            number_t dividend = (_n >= 0) ? _n : number_t{_n.cast_to<uint64_t>()};
-            number_t divisor = (x._n >= 0) ? x._n : number_t{x._n.cast_to<uint64_t>()};
-            return bound_t(false, dividend / divisor);
-        } else if (is_finite() && x.is_infinite()) {
-            return number_t{0};
-        } else {
-            return plus_infinity();
-        }
+        using M = uint64_t;
+        return AbsDiv(x, [](number_t dividend, number_t divisor) {
+            dividend = dividend >= 0 ? dividend : number_t{dividend.cast_to<M>()};
+            divisor = divisor >= 0 ? divisor : number_t{divisor.cast_to<M>()};
+            return bound_t{dividend / divisor};
+        });
     }
 
     [[nodiscard]]
-    bound_t UMod(const bound_t& x) const {
-        if (x._n == 0) {
-            CRAB_ERROR("Bound: modulo zero");
-        } else if (is_finite() && x.is_finite()) {
-            number_t dividend = (_n >= 0) ? _n : number_t{_n.cast_to<uint64_t>()};
-            number_t divisor = (x._n >= 0) ? x._n : number_t{x._n.cast_to<uint64_t>()};
-            return bound_t(false, dividend % divisor);
-        } else if (is_finite() && x.is_infinite()) {
-            return *this;
-        } else {
-            return plus_infinity();
-        }
+    bound_t URem(const bound_t& x) const {
+        using M = uint64_t;
+        return AbsDiv(x, [](number_t dividend, number_t divisor) {
+            dividend = dividend >= 0 ? dividend : number_t{dividend.cast_to<M>()};
+            divisor = divisor >= 0 ? divisor : number_t{divisor.cast_to<M>()};
+            return bound_t{dividend % divisor};
+        });
     }
 
     bound_t& operator/=(const bound_t& x) { return operator=(operator/(x)); }
@@ -430,13 +427,12 @@ class interval_t final {
         }
     }
 
-    bool operator[](const number_t& n) const {
+    bool contains(const number_t& n) const {
         if (is_bottom()) {
             return false;
-        } else {
-            bound_t b(n);
-            return (_lb <= b) && (b <= _ub);
         }
+        bound_t b(n);
+        return (_lb <= b) && (b <= _ub);
     }
 
     friend std::ostream& operator<<(std::ostream& o, const interval_t& interval) {
@@ -600,7 +596,7 @@ class interval_t final {
     interval_t unsigned_high(bool is64) const = delete;
     // Return an interval in the range [INT_MAX+1, UINT_MAX], which can only
     // be represented as a uvalue.
-    // The svalue equivalent using the same width would be negative_int().
+    // The svalue equivalent using the same width would be negative().
     static interval_t unsigned_high(const int width) {
         switch (width) {
         case 8: return high<uint8_t>();
