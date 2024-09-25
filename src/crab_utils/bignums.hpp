@@ -26,6 +26,26 @@ T truncate_to(const cpp_int& n) {
     return static_cast<T>(static_cast<U>(n & mask));
 }
 
+// coderabbit implementation - TODO try in the future
+template <std::unsigned_integral U>
+U truncate_to_coderabbit(const cpp_int& n) {
+    constexpr U mask = std::numeric_limits<U>::max();
+    return static_cast<U>(n & mask);
+}
+
+// coderabbit implementation - TODO try in the future
+template <std::signed_integral S>
+S truncate_to_coderabbit(const cpp_int& n) {
+    using U = std::make_unsigned_t<S>;
+    constexpr uint32_t size = sizeof(S) * CHAR_BIT;
+    constexpr U mask = (U{1} << size) - 1;
+    const auto truncated = n & mask;
+    if (truncated >= cpp_int{1} << (size - 1)) {
+        truncated -= cpp_int{1} << size;
+    }
+    return static_cast<S>(truncated);
+}
+
 template <std::integral T>
 bool fits(const cpp_int& n) {
     return std::numeric_limits<T>::min() <= n && n <= std::numeric_limits<T>::max();
@@ -128,7 +148,7 @@ class z_number final {
 
     template <std::unsigned_integral U>
     [[nodiscard]]
-    uint64_t cast_to() const {
+    U cast_to() const {
         using S = std::make_signed_t<U>;
         if (fits<U>()) {
             return (U)_n;
@@ -136,7 +156,7 @@ class z_number final {
             // Convert 32 bits from int32_t to uint32_t.
             return (U)(S)_n;
         } else {
-            CRAB_ERROR("z_number ", _n.str(), " does not fit into an unsigned 32-bit integer");
+            CRAB_ERROR("z_number ", _n.str(), " does not fit into ", typeid(U).name());
         }
     }
 
@@ -154,8 +174,8 @@ class z_number final {
 
     template <std::signed_integral S>
     [[nodiscard]]
-    int32_t cast_to() const {
-        return (S)cast_to_sint64();
+    S cast_to() const {
+        return static_cast<S>(cast_to_sint64());
     }
 
     // For 64-bit operations, get the value as a signed 64-bit integer.
@@ -174,7 +194,7 @@ class z_number final {
     // For 32-bit operations, get the low 32 bits as a signed integer.
     [[nodiscard]]
     int32_t cast_to_sint32() const {
-        return (int32_t)cast_to_sint64();
+        return cast_to<int32_t>();
     }
 
     // Allow casting to int32_t or int64_t as needed for finite width operations.
