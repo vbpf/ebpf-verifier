@@ -4,7 +4,8 @@
 
 #include <map>
 
-#include "variable.hpp"
+#include "crab/variable.hpp"
+#include "crab_utils/num_big.hpp"
 
 namespace crab {
 // A linear expression is of the form: Ax + By + Cz + ... + N.
