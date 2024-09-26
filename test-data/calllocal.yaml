@@ -279,3 +279,34 @@ post:
   - r0.svalue=0
   - r0.uvalue=0
   - r6.type=packet
+---
+test-case: fail infinite self-recursion
+
+pre: []
+
+code:
+  <start>: |
+    call <start>
+    exit
+
+post: []
+
+messages:
+  - "0: illegal recursion"
+---
+test-case: fail infinite recursion with subprogram
+
+pre: []
+
+code:
+  <start>: |
+    call <sub>
+    exit
+  <sub>: |
+    call <start>
+    exit
+
+post: []
+
+messages:
+  - "0/2: illegal recursion"
