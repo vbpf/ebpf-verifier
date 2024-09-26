@@ -43,6 +43,7 @@ class extended_number final {
     }
 
     extended_number(number_t n) : _is_infinite(false), _n(std::move(n)) {}
+    extended_number(std::integral auto n) : _is_infinite(false), _n{n} {}
 
     extended_number(const extended_number& o) = default;
 

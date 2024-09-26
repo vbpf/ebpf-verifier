@@ -259,4 +259,10 @@ class number_t final {
 };
 // class number_t
 
+bool operator<=(std::integral auto left, const number_t& rhs) { return rhs >= left; }
+bool operator<=(is_enum auto left, const number_t& rhs) { return rhs >= left; }
+
+template <typename T>
+concept finite_integral = std::integral<T> || std::is_same_v<T, number_t>;
+
 } // namespace crab
