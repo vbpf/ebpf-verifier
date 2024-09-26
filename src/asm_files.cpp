@@ -22,7 +22,7 @@ using std::vector;
 
 template <typename T>
 static vector<T> vector_of(const char* data, ELFIO::Elf_Xword size) {
-    if ((size % sizeof(T) != 0) || size > UINT32_MAX || !data) {
+    if ((size % sizeof(T) != 0) || size > std::numeric_limits<uint32_t>::max() || !data) {
         throw std::runtime_error("Invalid argument to vector_of");
     }
     return {(T*)data, (T*)(data + size)};

@@ -152,7 +152,7 @@ static std::vector<linear_constraint_t> assume_signed_32bit_eq(const NumAbsDomai
 
             // Use the high 32-bits from the left lower bound and the low 32-bits from the right singleton.
             // The result might be lower than the lower bound.
-            const int64_t lb_match = lb & 0xFFFFFFFF00000000 | rn->cast_to<int64_t>() & 0xFFFFFFFF;
+            const int64_t lb_match = (lb & 0xFFFFFFFF00000000) | (rn->cast_to<int64_t>() & 0xFFFFFFFF);
             if (lb_match < lb) {
                 // The result is lower than the left interval, so try the next higher matching 64-bit value.
                 // It's ok if this goes higher than the left upper bound.
@@ -166,7 +166,7 @@ static std::vector<linear_constraint_t> assume_signed_32bit_eq(const NumAbsDomai
 
             // Use the high 32-bits from the left upper bound and the low 32-bits from the right singleton.
             // The result might be higher than the upper bound.
-            const int64_t ub_match = ub & 0xFFFFFFFF00000000 | rn->cast_to<int64_t>() & 0xFFFFFFFF;
+            const int64_t ub_match = (ub & 0xFFFFFFFF00000000) | (rn->cast_to<int64_t>() & 0xFFFFFFFF);
             if (ub_match > ub) {
                 // The result is higher than the left interval, so try the next lower matching 64-bit value.
                 // It's ok if this goes lower than the left lower bound.
@@ -393,7 +393,7 @@ assume_signed_32bit_gt(const NumAbsDomain& inv, const bool strict, const variabl
                right_interval <= interval_t::negative(32)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [INT_MIN, -1],
         // aka [INT_MAX+1, UINT_MAX].
-        return {left_uvalue >= number_t{INT32_MAX} + 1,
+        return {left_uvalue >= number_t{std::numeric_limits<int32_t>::max()} + 1,
                 strict ? left_uvalue > right_uvalue : left_uvalue >= right_uvalue,
                 strict ? left_svalue > right_svalue : left_svalue >= right_svalue};
     } else if (inv.eval_interval(left_svalue) <= interval_t::signed_int(32) &&
@@ -596,7 +596,8 @@ assume_unsigned_32bit_gt(const NumAbsDomain& inv, const bool strict, const varia
     using namespace crab::dsl_syntax;
 
     if (right_interval <= interval_t::unsigned_high(32)) {
-        // Interval can be represented as both an svalue and a uvalue since it fits in [INT32_MAX+1, UINT32_MAX].
+        // Interval can be represented as both an svalue and a uvalue since it fits in [INT32_MAX+1,
+        // std::numeric_limits<uint32_t>::max()].
         return {0 <= left_uvalue, strict ? left_uvalue > right_uvalue : left_uvalue >= right_uvalue,
                 strict ? left_svalue > right_svalue : left_svalue >= right_svalue};
     } else if (inv.eval_interval(left_uvalue) <= interval_t::unsigned_int(32) &&
@@ -2589,7 +2590,7 @@ void ebpf_domain_t::shl(const Reg& dst_reg, int imm, const int finite_width) {
             uint64_t ub_n = ub.cast_to<uint64_t>();
             const uint64_t uint_max = finite_width == 64 ? std::numeric_limits<uint64_t>::max()
                                                          : static_cast<uint64_t>(std::numeric_limits<uint32_t>::max());
-            if (lb_n >> finite_width - imm != ub_n >> finite_width - imm) {
+            if (lb_n >> (finite_width - imm) != ub_n >> (finite_width - imm)) {
                 // The bits that will be shifted out to the left are different,
                 // which means all combinations of remaining bits are possible.
                 lb_n = 0;
@@ -2682,7 +2683,7 @@ void ebpf_domain_t::sign_extend(const Reg& dst_reg, const linear_expression_t& r
         }
         right_interval = interval_t::signed_int(bits);
     }
-    const int64_t mask = 1ULL << bits - 1;
+    const int64_t mask = 1ULL << (bits - 1);
 
     // Sign extend each bound.
     int64_t lb = right_interval.lb().number().value().cast_to<int64_t>();
@@ -2713,7 +2714,7 @@ void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_sv
                              right_interval, left_interval_positive, left_interval_negative);
         if (auto sn = right_interval.singleton()) {
             // The BPF ISA requires masking the imm.
-            int64_t imm = sn->cast_to<int64_t>() & finite_width - 1;
+            int64_t imm = sn->cast_to<int64_t>() & (finite_width - 1);
 
             int64_t lb_n = std::numeric_limits<int64_t>::min() >> imm;
             int64_t ub_n = std::numeric_limits<int64_t>::max() >> imm;
@@ -2765,7 +2766,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         } else {
             // Use only the low 32 bits of the value.
             imm = static_cast<int>(std::get<Imm>(bin.v).v);
-            bitwise_and(dst.svalue, dst.uvalue, UINT32_MAX);
+            bitwise_and(dst.svalue, dst.uvalue, std::numeric_limits<uint32_t>::max());
         }
         switch (bin.op) {
         case Bin::Op::MOV:
@@ -2981,10 +2982,10 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 if (std::optional<number_t> sn = src_interval.singleton()) {
                     // truncate to uint64?
                     uint64_t imm = sn->cast_to<uint64_t>() & (bin.is64 ? 63 : 31);
-                    if (imm <= INT32_MAX) {
+                    if (imm <= std::numeric_limits<int32_t>::max()) {
                         if (!bin.is64) {
                             // Use only the low 32 bits of the value.
-                            bitwise_and(dst.svalue, dst.uvalue, UINT32_MAX);
+                            bitwise_and(dst.svalue, dst.uvalue, std::numeric_limits<uint32_t>::max());
                         }
                         shl(bin.dst, static_cast<int32_t>(imm), finite_width);
                         break;
@@ -2999,10 +3000,10 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                 auto src_interval = m_inv.eval_interval(src.uvalue);
                 if (std::optional<number_t> sn = src_interval.singleton()) {
                     uint64_t imm = sn->cast_to<uint64_t>() & (bin.is64 ? 63 : 31);
-                    if (imm <= INT32_MAX) {
+                    if (imm <= std::numeric_limits<int32_t>::max()) {
                         if (!bin.is64) {
                             // Use only the low 32 bits of the value.
-                            bitwise_and(dst.svalue, dst.uvalue, UINT32_MAX);
+                            bitwise_and(dst.svalue, dst.uvalue, std::numeric_limits<uint32_t>::max());
                         }
                         lshr(bin.dst, static_cast<int32_t>(imm), finite_width);
                         break;
@@ -3102,7 +3103,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         }
     }
     if (!bin.is64) {
-        bitwise_and(dst.svalue, dst.uvalue, UINT32_MAX);
+        bitwise_and(dst.svalue, dst.uvalue, std::numeric_limits<uint32_t>::max());
     }
 }
 

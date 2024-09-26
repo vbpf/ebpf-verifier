@@ -239,7 +239,7 @@ interval_t interval_t::And(const interval_t& x) const {
         }
     }
     if (x == interval_t{std::numeric_limits<uint32_t>::max()}) {
-        // Handle bitwise-AND with UINT32_MAX, which we do for 32-bit operations.
+        // Handle bitwise-AND with std::numeric_limits<uint32_t>::max(), which we do for 32-bit operations.
         if (const auto width = finite_size()) {
             const number_t lb32_n = lb().number()->truncate_to<uint32_t>();
             const number_t ub32_n = ub().number()->truncate_to<uint32_t>();

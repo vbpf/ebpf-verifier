@@ -943,7 +943,6 @@ void SplitDBM::set(variable_t x, const interval_t& intv) {
     }
 
     vert_id v = get_vert(x);
-    bool overflow;
     if (intv.ub().is_finite()) {
         Weight ub;
         if (convert_NtoW_overflow(*intv.ub().number(), ub)) {
