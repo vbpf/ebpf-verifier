@@ -56,6 +56,7 @@ class interval_t final {
         : _lb(b.is_infinite() ? bound_t{number_t{0}} : b), _ub(b.is_infinite() ? bound_t{-1} : b) {}
 
     explicit interval_t(const number_t& n) : _lb(n), _ub(n) {}
+    explicit interval_t(std::integral auto n) : _lb(n), _ub(n) {}
 
     interval_t(const interval_t& i) = default;
 

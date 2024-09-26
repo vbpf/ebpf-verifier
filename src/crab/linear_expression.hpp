@@ -34,6 +34,8 @@ class linear_expression_t final {
   public:
     linear_expression_t(number_t coefficient) : _constant_term(std::move(coefficient)) {}
 
+    linear_expression_t(std::integral auto coefficient) : _constant_term(coefficient) {}
+    linear_expression_t(is_enum auto coefficient) : _constant_term(coefficient) {}
     linear_expression_t(variable_t variable) { _variable_terms[variable] = 1; }
 
     linear_expression_t(const number_t& coefficient, const variable_t& variable) {
@@ -69,7 +71,7 @@ class linear_expression_t final {
 
     // Multiply a linear expression by a constant.
     [[nodiscard]]
-    linear_expression_t multiply(const number_t& constant) const {
+    linear_expression_t multiply(const finite_integral auto& constant) const {
         variable_terms_t variable_terms;
         for (const auto& [variable, coefficient] : _variable_terms) {
             variable_terms.emplace(variable, coefficient * constant);
@@ -79,7 +81,7 @@ class linear_expression_t final {
 
     // Add a constant to a linear expression.
     [[nodiscard]]
-    linear_expression_t plus(const number_t& constant) const {
+    linear_expression_t plus(const finite_integral auto& constant) const {
         return linear_expression_t(variable_terms_t(_variable_terms), _constant_term + constant);
     }
 
@@ -109,7 +111,7 @@ class linear_expression_t final {
 
     // Subtract a constant from a linear expression.
     [[nodiscard]]
-    linear_expression_t subtract(const number_t& constant) const {
+    linear_expression_t subtract(const finite_integral auto& constant) const {
         return linear_expression_t(variable_terms_t(_variable_terms), _constant_term - constant);
     }
 
