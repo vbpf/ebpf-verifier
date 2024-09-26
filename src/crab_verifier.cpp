@@ -31,7 +31,7 @@ struct checks_db final {
     std::map<label_t, std::vector<std::string>> m_db{};
     int total_warnings{};
     int total_unreachable{};
-    crab::bound_t max_loop_count{crab::number_t{0}};
+    crab::extended_number max_loop_count{crab::number_t{0}};
 
     void add(const label_t& label, const std::string& msg) { m_db[label].emplace_back(msg); }
 

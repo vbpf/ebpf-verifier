@@ -1096,8 +1096,8 @@ string_invariant SplitDBM::to_set() const {
             continue;
         }
         interval_t v_out =
-            interval_t(this->g.elem(v, 0) ? -number_t(this->g.edge_val(v, 0)) : bound_t::minus_infinity(),
-                       this->g.elem(0, v) ? number_t(this->g.edge_val(0, v)) : bound_t::plus_infinity());
+            interval_t(this->g.elem(v, 0) ? -number_t(this->g.edge_val(v, 0)) : extended_number::minus_infinity(),
+                       this->g.elem(0, v) ? number_t(this->g.edge_val(0, v)) : extended_number::plus_infinity());
         assert(!v_out.is_bottom());
 
         variable_t variable = *(this->rev_map[v]);
@@ -1279,8 +1279,8 @@ static interval_t get_interval(const SplitDBM::vert_map_t& m, const SplitDBM::gr
         return interval_t::top();
     }
     SplitDBM::vert_id v = it->second;
-    bound_t lb = bound_t::minus_infinity();
-    bound_t ub = bound_t::plus_infinity();
+    extended_number lb = extended_number::minus_infinity();
+    extended_number ub = extended_number::plus_infinity();
     if (r.elem(v, 0)) {
         lb = x.is_unsigned() ? (-number_t(r.edge_val(v, 0))).truncate_to_uint(finite_width)
                              : (-number_t(r.edge_val(v, 0))).truncate_to_sint(finite_width);

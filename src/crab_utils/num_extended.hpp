@@ -223,6 +223,4 @@ class extended_number final {
 
 }; // class extended_number
 
-using bound_t = extended_number;
-
 } // namespace crab

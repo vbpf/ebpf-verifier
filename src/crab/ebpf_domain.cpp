@@ -3182,8 +3182,8 @@ void ebpf_domain_t::initialize_loop_counter(const label_t& label) {
     m_inv.assign(variable_t::loop_counter(to_string(label)), 0);
 }
 
-bound_t ebpf_domain_t::get_loop_count_upper_bound() const {
-    bound_t ub{0};
+extended_number ebpf_domain_t::get_loop_count_upper_bound() const {
+    extended_number ub{0};
     for (const variable_t counter : variable_t::get_loop_counters()) {
         ub = std::max(ub, m_inv[counter].ub());
     }
