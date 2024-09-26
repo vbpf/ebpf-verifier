@@ -43,7 +43,7 @@ class number_t final {
 
     [[nodiscard]]
     friend std::size_t hash_value(const number_t& z) {
-        return boost::hash_value(z._n.str());
+        return hash_value(z._n);
     }
 
     template <std::integral T>
