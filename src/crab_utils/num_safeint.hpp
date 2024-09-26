@@ -12,7 +12,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #endif
 
-#include "crab_utils/bignums.hpp"
+#include "crab_utils/num_big.hpp"
 
 namespace crab {
 

@@ -30,10 +30,10 @@
 #include "crab/thresholds.hpp"
 #include "crab/variable.hpp"
 #include "crab_utils/adapt_sgraph.hpp"
-#include "crab_utils/bignums.hpp"
 #include "crab_utils/debug.hpp"
 #include "crab_utils/graph_ops.hpp"
-#include "crab_utils/safeint.hpp"
+#include "crab_utils/num_big.hpp"
+#include "crab_utils/num_safeint.hpp"
 #include "crab_utils/stats.hpp"
 
 #include "string_constraints.hpp"
@@ -46,38 +46,10 @@ using binop_t = std::variant<arith_binop_t, bitwise_binop_t>;
 
 namespace domains {
 
-/** DBM weights (Weight) can be represented using one of the following
- * types:
- *
- * 1) basic integer type: e.g., long
- * 2) safei64
- * 3) number_t
- *
- * 1) is the fastest but things can go wrong if some DBM
- * operation overflows. 2) is slower than 1) but it checks for
- * overflow before any DBM operation. 3) is the slowest and it
- * represents weights using unbounded mathematical integers so
- * overflow is not a concern but it might not be what you need
- * when reasoning about programs with wraparound semantics.
- **/
-
-struct Z_NumberDefaultParams {
-    using Weight = number_t;
-    using graph_t = AdaptGraph;
-    static Weight convert_NtoW(const number_t& n, bool& overflow);
-};
-
-struct SafeInt64DefaultParams {
-    using Weight = safe_i64;
-    using graph_t = AdaptGraph;
-    static Weight convert_NtoW(const number_t& n, bool& overflow);
-};
-
 class SplitDBM final {
   public:
-    using Params = Z_NumberDefaultParams;
-    using graph_t = Params::graph_t;
-    using Weight = Params::Weight;
+    using graph_t = AdaptGraph;
+    using Weight = AdaptGraph::Weight;
     using vert_id = graph_t::vert_id;
     using vert_map_t = boost::container::flat_map<variable_t, vert_id>;
 
@@ -105,7 +77,7 @@ class SplitDBM final {
 
     // Evaluate an expression under the chosen potentials
     [[nodiscard]]
-    Weight eval_expression(const linear_expression_t& e, bool overflow) const;
+    bool eval_expression_overflow(const linear_expression_t& e, Weight& out) const;
 
     [[nodiscard]]
     interval_t compute_residual(const linear_expression_t& e, variable_t pivot) const;

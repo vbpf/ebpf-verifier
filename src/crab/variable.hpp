@@ -7,8 +7,8 @@
 #include <memory>
 #include <vector>
 
-#include "crab_utils/bignums.hpp"
 #include "crab_utils/lazy_allocator.hpp"
+#include "crab_utils/num_big.hpp"
 using index_t = uint64_t;
 
 /* Basic type definitions */

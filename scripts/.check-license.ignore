@@ -34,7 +34,8 @@ src/crab_utils/debug.cpp
 src/crab_utils/debug.hpp
 src/crab_utils/graph_ops.cpp
 src/crab_utils/graph_ops.hpp
-src/crab_utils/safeint.hpp
+src/crab_utils/num_safeint.hpp
+src/crab_utils/num_extended.hpp
 src/crab_utils/stats.cpp
 src/crab_utils/stats.hpp
 
