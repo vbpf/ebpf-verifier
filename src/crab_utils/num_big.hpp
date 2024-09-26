@@ -7,7 +7,6 @@
 #include <string>
 #include <utility>
 
-#include <boost/functional/hash.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 
 #include "debug.hpp"
@@ -22,7 +21,7 @@ template <std::integral T>
 using swap_signedness = std::conditional_t<std::is_signed_v<T>, std::make_unsigned_t<T>, std::make_signed_t<T>>;
 
 class number_t final {
-    cpp_int _n{nullptr};
+    cpp_int _n{};
 
   public:
     number_t() = default;
