@@ -268,7 +268,7 @@ template <typename T>
 static vector<T> vector_of(const std::vector<uint8_t>& bytes) {
     auto data = bytes.data();
     auto size = bytes.size();
-    if ((size % sizeof(T) != 0) || size > UINT32_MAX || !data) {
+    if ((size % sizeof(T) != 0) || size > std::numeric_limits<uint32_t>::max() || !data) {
         throw std::runtime_error("Invalid argument to vector_of");
     }
     return {(T*)data, (T*)(data + size)};
