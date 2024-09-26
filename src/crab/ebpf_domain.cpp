@@ -205,11 +205,8 @@ static void get_signed_intervals(const NumAbsDomain& inv, bool is64, variable_t 
             is64 = true;
             // fallthrough as 64bit, including deduction of relational information
         } else {
-            for (interval_t* interval : {&left_interval, &right_interval}) {
-                if (!(*interval <= interval_t::signed_int(32))) {
-                    *interval = interval->truncate_to<int32_t>();
-                }
-            }
+            left_interval = left_interval.truncate_to<int32_t>();
+            right_interval = right_interval.truncate_to<int32_t>();
             // continue as 32bit
         }
     }
@@ -231,11 +228,8 @@ static void get_signed_intervals(const NumAbsDomain& inv, bool is64, variable_t 
         }
     }
 
-    for (interval_t* interval : {&left_interval, &right_interval}) {
-        if (!(*interval <= interval_t::signed_int(64))) {
-            *interval = interval->truncate_to<int64_t>();
-        }
-    }
+    left_interval = left_interval.truncate_to<int64_t>();
+    right_interval = right_interval.truncate_to<int64_t>();
 }
 
 // Given left and right values, get the left and right intervals, and also split
@@ -256,11 +250,8 @@ static void get_unsigned_intervals(const NumAbsDomain& inv, bool is64, variable_
             is64 = true;
             // fallthrough as 64bit, including deduction of relational information
         } else {
-            for (interval_t* interval : {&left_interval, &right_interval}) {
-                if (!(*interval <= interval_t::unsigned_int(32))) {
-                    *interval = interval->truncate_to<uint32_t>();
-                }
-            }
+            left_interval = left_interval.truncate_to<uint32_t>();
+            right_interval = right_interval.truncate_to<uint32_t>();
             // continue as 32bit
         }
     }
@@ -281,11 +272,8 @@ static void get_unsigned_intervals(const NumAbsDomain& inv, bool is64, variable_
         }
     }
 
-    for (interval_t* interval : {&left_interval, &right_interval}) {
-        if (!(*interval <= interval_t::unsigned_int(64))) {
-            *interval = interval->truncate_to<uint64_t>();
-        }
-    }
+    left_interval = left_interval.truncate_to<uint64_t>();
+    right_interval = right_interval.truncate_to<uint64_t>();
 }
 
 static std::vector<linear_constraint_t>

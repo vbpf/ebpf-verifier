@@ -225,14 +225,20 @@ class number_t final {
 
     number_t operator^(const number_t& x) const { return number_t(_n ^ x._n); }
 
-    number_t operator<<(const number_t x) const {
+    number_t operator<<(const number_t& x) const {
+        if (x < 0) {
+            CRAB_ERROR("Shift amount cannot be negative");
+        }
         if (!x.fits<int32_t>()) {
             CRAB_ERROR("number_t ", x._n, " does not fit into an int32");
         }
         return number_t(_n << static_cast<int32_t>(x));
     }
 
-    number_t operator>>(const number_t x) const {
+    number_t operator>>(const number_t& x) const {
+        if (x < 0) {
+            CRAB_ERROR("Shift amount cannot be negative");
+        }
         if (!x.fits<int32_t>()) {
             CRAB_ERROR("number_t ", x._n, " does not fit into an int32");
         }
