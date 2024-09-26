@@ -46,6 +46,10 @@ class extended_number final {
 
     extended_number(const extended_number& o) = default;
 
+    extended_number(extended_number&&) noexcept = default;
+
+    extended_number& operator=(extended_number&&) noexcept = default;
+
     extended_number& operator=(const extended_number& o) {
         if (this != &o) {
             _is_infinite = o._is_infinite;
