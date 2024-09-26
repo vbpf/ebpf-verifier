@@ -60,7 +60,7 @@ bool is_map_section(const std::string& name) {
     return name == "maps" || (name.length() > 5 && name.compare(0, maps_prefix.length(), maps_prefix) == 0);
 }
 
-std::tuple<string, ELFIO::Elf_Half> get_symbol_name_and_section_index(ELFIO::const_symbol_section_accessor& symbols,
+std::tuple<string, ELFIO::Elf_Half> get_symbol_name_and_section_index(const ELFIO::const_symbol_section_accessor& symbols,
                                                                       ELFIO::Elf_Xword index) {
     string symbol_name;
     ELFIO::Elf64_Addr value{};
@@ -74,7 +74,7 @@ std::tuple<string, ELFIO::Elf_Half> get_symbol_name_and_section_index(ELFIO::con
 }
 
 std::tuple<ELFIO::Elf64_Addr, unsigned char> get_value(const ELFIO::const_symbol_section_accessor& symbols,
-                                                       ELFIO::Elf_Word index) {
+                                                       ELFIO::Elf_Xword index) {
     string symbol_name;
     ELFIO::Elf64_Addr value{};
     ELFIO::Elf_Xword size{};
@@ -162,12 +162,6 @@ std::tuple<string, ELFIO::Elf_Xword> get_program_name_and_size(ELFIO::section& s
     return {program_name, size};
 }
 
-void relocate_function(ebpf_inst& inst, ELFIO::Elf64_Addr offset, ELFIO::Elf_Word index,
-                       const ELFIO::const_symbol_section_accessor& symbols) {
-    auto [relocation_offset, relocation_type] = get_value(symbols, index);
-    inst.imm = ((relocation_offset - offset) / sizeof(ebpf_inst)) - 1;
-}
-
 void relocate_map(ebpf_inst& inst, const std::string& symbol_name,
                   const std::variant<size_t, std::map<std::string, size_t>>& map_record_size_or_map_offsets,
                   const program_info& info, ELFIO::Elf64_Addr offset, ELFIO::Elf_Word index,
@@ -202,6 +196,54 @@ void relocate_map(ebpf_inst& inst, const std::string& symbol_name,
                                      "Make sure to compile with -O2.");
         }
         inst.imm = info.map_descriptors.at(it->second).original_fd;
+    }
+}
+
+struct function_relocation {
+    size_t prog_index{};              // Index of source program in vector of raw programs.
+    ELFIO::Elf_Xword source_offset{}; // Instruction offset in source section of source instruction.
+    ELFIO::Elf_Word relocation_entry_index{};
+    std::string target_function_name;
+};
+
+static void append_subprogram(raw_program& prog, ELFIO::section* subprogram_section,
+                              ELFIO::const_symbol_section_accessor& symbols, std::string symbol_name) {
+    // Find subprogram by name.
+    for (ELFIO::Elf_Xword subprogram_offset = 0; subprogram_offset < subprogram_section->get_size();) {
+        auto [subprogram_name, subprogram_size] =
+            get_program_name_and_size(*subprogram_section, subprogram_offset, symbols);
+        if (subprogram_name == symbol_name) {
+            // Append subprogram instructions to the main program.
+            auto subprogram = vector_of<ebpf_inst>(subprogram_section->get_data() + subprogram_offset, subprogram_size);
+            prog.prog.insert(prog.prog.end(), subprogram.begin(), subprogram.end());
+            return;
+        }
+        subprogram_offset += subprogram_size;
+    }
+    assert(false);
+}
+
+static void append_subprograms(raw_program& prog, vector<raw_program>& res, vector<function_relocation>& function_relocations, ELFIO::elfio& reader,
+                               ELFIO::const_symbol_section_accessor& symbols) {
+    // Perform function relocations and fill in the inst.imm values of CallLocal instructions.
+    std::map<std::string, ELFIO::Elf_Xword> subprogram_offsets;
+    for (auto& reloc : function_relocations) {
+        if (res[reloc.prog_index].function_name != prog.function_name) {
+            continue;
+        }
+
+        // Check whether we already appended the target program, and append it if not.
+        if (subprogram_offsets.find(reloc.target_function_name) == subprogram_offsets.end()) {
+            subprogram_offsets[reloc.target_function_name] = prog.prog.size();
+
+            auto [symbol_name, section_index] = get_symbol_name_and_section_index(symbols, reloc.relocation_entry_index);
+            ELFIO::section* subprogram_section = reader.sections[section_index];
+            append_subprogram(prog, subprogram_section, symbols, symbol_name);
+        }
+
+        // Fill in the PC offset into the imm field of the CallLocal instruction.
+        ELFIO::Elf_Xword target_offset = subprogram_offsets[reloc.target_function_name];
+        prog.prog[reloc.source_offset].imm = (int32_t)(target_offset - reloc.source_offset - 1);
     }
 }
 
@@ -298,6 +340,8 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
     vector<raw_program> res;
     vector<string> unresolved_symbols;
 
+    std::map<std::string, raw_program&> segment_to_program;
+    vector<function_relocation> function_relocations;
     for (const auto& section : reader.sections) {
         const string name = section->get_name();
         if (!desired_section.empty() && name != desired_section) {
@@ -322,6 +366,13 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                              program_name,
                              vector_of<ebpf_inst>(section->get_data() + program_offset, program_size),
                              info};
+
+            // We will need to recursively append any subprograms called, but only once
+            // for each subprogram no matter how many times called. So initialize a set
+            // to hold the list of subprogram names included.
+            std::set<string> subprograms{};
+            subprograms.insert(program_name);
+
             auto prelocs = reader.sections[string(".rel") + name];
             if (!prelocs) {
                 prelocs = reader.sections[string(".rela") + name];
@@ -357,11 +408,17 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
                     auto [symbol_name, symbol_section_index] = get_symbol_name_and_section_index(symbols, index);
 
-                    // Perform relocation for function symbols.
+                    // Queue up relocation for function symbols.
                     if ((inst.opcode == INST_OP_CALL) && (inst.src == INST_CALL_LOCAL) &&
                         (reader.sections[symbol_section_index] == section.get())) {
-                        relocate_function(inst, offset, index, symbols);
-                        continue;
+                        {
+                            function_relocation fr{.prog_index = res.size(),
+                                                   .source_offset = offset / sizeof(ebpf_inst),
+                                                   .relocation_entry_index = index,
+                                                   .target_function_name = symbol_name};
+                            function_relocations.push_back(fr);
+                            continue;
+                        }
                     }
 
                     // Perform relocation for symbols located in the maps section.
@@ -377,8 +434,17 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
             }
             prog.line_info.resize(prog.prog.size());
             res.push_back(prog);
+            segment_to_program.insert({res.back().function_name, res.back()});
             program_offset += program_size;
         }
+    }
+
+    // Now that we have all programs in the list, we can recursively append any subprograms
+    // to the calling programs.  We have to keep them as programs themselves in case the caller
+    // wants to verify them separately, but we also have to append them if used as subprograms to
+    // allow the caller to be fully verified since inst.imm can only point into the same program.
+    for (auto& prog : res) {
+        append_subprograms(prog, res, function_relocations, reader, symbols);
     }
 
     // Below, only relocations of symbols located in the map sections are allowed,
