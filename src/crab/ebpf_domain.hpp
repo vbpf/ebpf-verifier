@@ -49,7 +49,7 @@ class ebpf_domain_t final {
 
     typedef bool check_require_func_t(NumAbsDomain&, const linear_constraint_t&, std::string);
     void set_require_check(std::function<check_require_func_t> f);
-    bound_t get_loop_count_upper_bound() const;
+    extended_number get_loop_count_upper_bound() const;
     static ebpf_domain_t setup_entry(bool init_r1);
 
     static ebpf_domain_t from_constraints(const std::set<std::string>& constraints, bool setup_constraints);

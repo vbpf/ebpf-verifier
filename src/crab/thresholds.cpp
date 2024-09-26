@@ -7,9 +7,9 @@ namespace crab {
 
 inline namespace iterators {
 
-void thresholds_t::add(bound_t v1) {
+void thresholds_t::add(extended_number v1) {
     if (m_thresholds.size() < m_size) {
-        bound_t v = (v1);
+        extended_number v = (v1);
         if (std::find(m_thresholds.begin(), m_thresholds.end(), v) == m_thresholds.end()) {
             auto ub = std::upper_bound(m_thresholds.begin(), m_thresholds.end(), v);
 
@@ -37,9 +37,9 @@ void thresholds_t::add(bound_t v1) {
 
 std::ostream& operator<<(std::ostream& o, const thresholds_t& t) {
     o << "{";
-    for (typename std::vector<bound_t>::const_iterator it = t.m_thresholds.begin(), et = t.m_thresholds.end();
+    for (typename std::vector<extended_number>::const_iterator it = t.m_thresholds.begin(), et = t.m_thresholds.end();
          it != et;) {
-        bound_t b(*it);
+        extended_number b(*it);
         o << b;
         ++it;
         if (it != t.m_thresholds.end()) {

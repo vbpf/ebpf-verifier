@@ -17,6 +17,8 @@
 
 namespace crab {
 
+using bound_t = extended_number;
+
 class interval_t final {
     bound_t _lb;
     bound_t _ub;

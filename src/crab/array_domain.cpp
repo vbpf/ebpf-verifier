@@ -20,7 +20,7 @@
 
 namespace crab::domains {
 
-static bool maybe_between(const NumAbsDomain& dom, const bound_t& x, const linear_expression_t& symb_lb,
+static bool maybe_between(const NumAbsDomain& dom, const extended_number& x, const linear_expression_t& symb_lb,
                           const linear_expression_t& symb_ub) {
     using namespace dsl_syntax;
     assert(x.is_finite());
