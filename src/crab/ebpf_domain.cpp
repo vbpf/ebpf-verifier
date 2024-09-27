@@ -357,7 +357,7 @@ assume_signed_64bit_gt(const bool strict, const variable_t left_svalue, const va
     } else if ((left_interval_negative | left_interval_positive) <= interval_t::negative(64) &&
                right_interval <= interval_t::negative(64)) {
         // Interval can be represented as both an svalue and a uvalue since it fits in [INT_MIN, -1],
-        // aka [INT_NAX+1, UINT_MAX].
+        // aka [INT_MAX+1, UINT_MAX].
         return {std::numeric_limits<int64_t>::max() < left_uvalue,
                 strict ? left_uvalue > right_uvalue : left_uvalue >= right_uvalue,
                 strict ? left_svalue > right_svalue : left_svalue >= right_svalue};

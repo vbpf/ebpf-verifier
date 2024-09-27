@@ -90,6 +90,9 @@ class interval_t final {
     [[nodiscard]]
     std::tuple<T, T> bound(T lb, T ub) const {
         interval_t b = interval_t(lb, ub) & *this;
+        if (b.is_bottom()) {
+            CRAB_ERROR("Cannot convert bottom to tuple");
+        }
         return {static_cast<T>(*b._lb.number()), static_cast<T>(*b._ub.number())};
     }
 
