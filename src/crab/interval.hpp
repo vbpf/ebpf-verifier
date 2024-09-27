@@ -54,6 +54,13 @@ class interval_t final {
         }
     }
 
+    template <is_enum T>
+    interval_t(T lb, T ub) : _lb(bound_t{lb}), _ub(bound_t{ub}) {
+        if (lb > ub) {
+            _lb = bound_t{number_t{0}};
+            _ub = bound_t{-1};
+        }
+    }
     explicit interval_t(const bound_t& b)
         : _lb(b.is_infinite() ? bound_t{number_t{0}} : b), _ub(b.is_infinite() ? bound_t{-1} : b) {}
 
@@ -72,6 +79,28 @@ class interval_t final {
     [[nodiscard]]
     bound_t ub() const {
         return _ub;
+    }
+
+    [[nodiscard]]
+    std::tuple<bound_t, bound_t> pair() const {
+        return {_lb, _ub};
+    }
+
+    template <std::integral T>
+    [[nodiscard]]
+    std::tuple<T, T> bound(T lb, T ub) const {
+        interval_t b = interval_t(lb, ub) & *this;
+        if (b.is_bottom()) {
+            CRAB_ERROR("Cannot convert bottom to tuple");
+        }
+        return {static_cast<T>(*b._lb.number()), static_cast<T>(*b._ub.number())};
+    }
+
+    template <is_enum T>
+    [[nodiscard]]
+    std::tuple<T, T> bound(T elb, T eub) const {
+        auto [lb, ub] = bound(static_cast<std::underlying_type_t<T>>(elb), static_cast<std::underlying_type_t<T>>(eub));
+        return {static_cast<T>(lb), static_cast<T>(ub)};
     }
 
     [[nodiscard]]
@@ -427,19 +456,6 @@ inline interval_t operator-(const number_t& c, const interval_t& x) { return int
 inline interval_t operator-(const interval_t& x, const number_t& c) { return x - interval_t(c); }
 
 } // namespace interval_operators
-
-inline interval_t trim_interval(const interval_t& i, const interval_t& j) {
-    if (std::optional<number_t> c = j.singleton()) {
-        if (i.lb() == bound_t{*c}) {
-            return interval_t(bound_t{*c + 1}, i.ub());
-        } else if (i.ub() == bound_t{*c}) {
-            return interval_t(i.lb(), bound_t{*c - 1});
-        } else if (i.is_top() && (*c == 0)) {
-            return {number_t{1}, number_t{std::numeric_limits<uint64_t>::max()}};
-        }
-    }
-    return i;
-}
 
 } // namespace crab
 

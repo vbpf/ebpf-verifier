@@ -282,9 +282,22 @@ bool SplitDBM::add_linear_leq(const linear_expression_t& exp) {
     return true;
 }
 
+static interval_t trim_interval(const interval_t& i, const number_t& n) {
+    if (i.lb() == n) {
+        return interval_t{n + 1, i.ub()};
+    }
+    if (i.ub() == n) {
+        return interval_t{i.lb(), n - 1};
+    }
+    if (i.is_top() && n == 0) {
+        return interval_t{1, std::numeric_limits<uint64_t>::max()};
+    }
+    return i;
+}
+
 bool SplitDBM::add_univar_disequation(variable_t x, const number_t& n) {
     interval_t i = get_interval(x, 0);
-    interval_t new_i = trim_interval(i, interval_t(n));
+    interval_t new_i = trim_interval(i, n);
     if (new_i.is_bottom()) {
         return false;
     }

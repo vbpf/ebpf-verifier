@@ -27,7 +27,7 @@ class number_t final {
     number_t() = default;
     number_t(cpp_int n) : _n(std::move(n)) {}
     number_t(std::integral auto n) : _n{n} {}
-    number_t(is_enum auto n) : _n{static_cast<int64_t>(n)} {}
+    number_t(is_enum auto n) : _n{static_cast<std::underlying_type_t<decltype(n)>>(n)} {}
     explicit number_t(const std::string& s) { _n = cpp_int(s); }
 
     template <std::integral T>
@@ -36,6 +36,11 @@ class number_t final {
             CRAB_ERROR("number_t ", _n, " does not fit into ", typeid(T).name());
         }
         return static_cast<T>(_n);
+    }
+
+    template <is_enum T>
+    T cast_to() const {
+        return static_cast<T>(static_cast<std::underlying_type_t<T>>(_n));
     }
 
     explicit operator cpp_int() const { return _n; }
