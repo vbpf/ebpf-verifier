@@ -199,6 +199,8 @@ void relocate_map(ebpf_inst& inst, const std::string& symbol_name,
     }
 }
 
+// Structure used to keep track of subprogram relocation data until any subprograms
+// are loaded and can be appended to the calling program.
 struct function_relocation {
     size_t prog_index{};              // Index of source program in vector of raw programs.
     ELFIO::Elf_Xword source_offset{}; // Instruction offset in source section of source instruction.
@@ -350,7 +352,6 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
     vector<raw_program> res;
     vector<string> unresolved_symbols;
 
-    std::map<std::string, raw_program&> segment_to_program;
     vector<function_relocation> function_relocations;
     for (const auto& section : reader.sections) {
         const string name = section->get_name();
@@ -442,7 +443,6 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
             }
             prog.line_info.resize(prog.prog.size());
             res.push_back(prog);
-            segment_to_program.insert({res.back().function_name, res.back()});
             program_offset += program_size;
         }
     }
