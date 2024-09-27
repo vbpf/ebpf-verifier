@@ -178,8 +178,6 @@ void relocate_map(ebpf_inst& inst, const std::string& symbol_name,
         // calculate the map descriptor index directly.
         auto [relocation_offset, relocation_type] = get_value(symbols, index);
         reloc_value = relocation_offset / std::get<0>(map_record_size_or_map_offsets);
-
-        inst.imm = info.map_descriptors.at(reloc_value).original_fd;
     } else {
         // The newer .maps section format uses a variable-length map descriptor array,
         // so we need to look up the map descriptor index in a map.
