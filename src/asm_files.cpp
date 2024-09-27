@@ -286,13 +286,6 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         throw std::runtime_error("Can't process ELF file " + path);
     }
 
-    program_info info{platform};
-    std::set<ELFIO::Elf_Half> map_section_indices;
-
-    auto btf = reader.sections[".BTF"];
-    auto btf_ext = reader.sections[".BTF.ext"];
-    std::optional<libbtf::btf_type_data> btf_data;
-
     auto symbol_section = reader.sections[".symtab"];
     if (!symbol_section) {
         throw std::runtime_error("No symbol section found in ELF file " + path);
@@ -305,6 +298,12 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
     if (symbol_section->get_entry_size() != expected_entry_size) {
         throw std::runtime_error("Invalid symbol section found in ELF file " + path);
     }
+
+    program_info info{platform};
+    std::set<ELFIO::Elf_Half> map_section_indices;
+
+    auto btf = reader.sections[".BTF"];
+    std::optional<libbtf::btf_type_data> btf_data;
 
     if (btf) {
         // Parse the BTF type data.
@@ -464,6 +463,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                                  "\nMake sure to inline all function calls.");
     }
 
+    auto btf_ext = reader.sections[".BTF.ext"];
     if (btf && btf_ext) {
         auto visitor = [&](const string& section, const uint32_t instruction_offset, const string& file_name,
                            const string& source, const uint32_t line_number, const uint32_t column_number) {
