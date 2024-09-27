@@ -176,7 +176,7 @@ class ebpf_domain_t final {
     void check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) const;
     void check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) const;
     void check_access_packet(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
-                             std::optional<variable_t> shared_region_size) const;
+                             std::optional<variable_t> packet_size) const;
     void check_access_shared(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
                              variable_t shared_region_size) const;
 
@@ -249,7 +249,7 @@ class ebpf_domain_t final {
         NumAbsDomain join_by_if_else(const NumAbsDomain& inv, const linear_constraint_t& condition,
                                      const std::function<void(NumAbsDomain&)>& if_true,
                                      const std::function<void(NumAbsDomain&)>& if_false) const;
-        void selectively_join_based_on_type(NumAbsDomain& dst, NumAbsDomain& src) const;
+        void selectively_join_based_on_type(NumAbsDomain& dst, NumAbsDomain&& src) const;
         void add_extra_invariant(const NumAbsDomain& dst, std::map<variable_t, interval_t>& extra_invariants,
                                  variable_t type_variable, type_encoding_t type, data_kind_t kind,
                                  const NumAbsDomain& other) const;

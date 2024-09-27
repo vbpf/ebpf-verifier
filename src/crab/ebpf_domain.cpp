@@ -144,11 +144,12 @@ static std::vector<linear_constraint_t> assume_signed_32bit_eq(const NumAbsDomai
     using namespace crab::dsl_syntax;
 
     if (const auto rn = right_interval.singleton()) {
-        if (auto size = inv.eval_interval(left_svalue).finite_size()) {
+        const auto left_svalue_interval = inv.eval_interval(left_svalue);
+        if (auto size = left_svalue_interval.finite_size()) {
             // Find the lowest 64-bit svalue whose low 32 bits match the singleton.
 
             // Get lower bound as a 64-bit value.
-            int64_t lb = inv.eval_interval(left_svalue).lb().number()->cast_to<int64_t>();
+            int64_t lb = left_svalue_interval.lb().number()->cast_to<int64_t>();
 
             // Use the high 32-bits from the left lower bound and the low 32-bits from the right singleton.
             // The result might be lower than the lower bound.
@@ -162,7 +163,7 @@ static std::vector<linear_constraint_t> assume_signed_32bit_eq(const NumAbsDomai
             // Find the highest 64-bit svalue whose low 32 bits match the singleton.
 
             // Get upper bound as a 64-bit value.
-            const int64_t ub = inv.eval_interval(left_svalue).ub().number()->cast_to<int64_t>();
+            const int64_t ub = left_svalue_interval.ub().number()->cast_to<int64_t>();
 
             // Use the high 32-bits from the left upper bound and the low 32-bits from the right singleton.
             // The result might be higher than the upper bound.
@@ -278,10 +279,10 @@ static void get_unsigned_intervals(const NumAbsDomain& inv, bool is64, const var
 }
 
 static std::vector<linear_constraint_t>
-assume_signed_64bit_lt(const NumAbsDomain& inv, const bool strict, const variable_t left_svalue,
-                       const variable_t left_uvalue, const interval_t& left_interval_positive,
-                       const interval_t& left_interval_negative, const linear_expression_t& right_svalue,
-                       const linear_expression_t& right_uvalue, const interval_t& right_interval) {
+assume_signed_64bit_lt(const bool strict, const variable_t left_svalue, const variable_t left_uvalue,
+                       const interval_t& left_interval_positive, const interval_t& left_interval_negative,
+                       const linear_expression_t& right_svalue, const linear_expression_t& right_uvalue,
+                       const interval_t& right_interval) {
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
@@ -309,16 +310,14 @@ assume_signed_32bit_lt(const NumAbsDomain& inv, const bool strict, const variabl
     using namespace crab::dsl_syntax;
 
     if (right_interval <= interval_t::negative(32)) {
-        // Interval can be represented as both an svalue and a uvalue since it fits in
-        // [std::numeric_limits<int32_t>::min(), -1], aka [std::numeric_limits<int32_t>::max()+1,
-        // Ustd::numeric_limits<int32_t>::max()].
+        // Interval can be represented as both an svalue and a uvalue since it fits in [INT_MIN, -1],
+        // aka [INT_MAX+1, UINT_MAX].
         return {std::numeric_limits<int32_t>::max() < left_uvalue,
                 strict ? left_uvalue < right_uvalue : left_uvalue <= right_uvalue,
                 strict ? left_svalue < right_svalue : left_svalue <= right_svalue};
     } else if ((left_interval_negative | left_interval_positive) <= interval_t::nonnegative(32) &&
                right_interval <= interval_t::nonnegative(32)) {
-        // Interval can be represented as both an svalue and a uvalue since it fits in [0,
-        // std::numeric_limits<int32_t>::max()]
+        // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX]
         const auto lpub = left_interval_positive.truncate_to<int32_t>().ub();
         return {left_svalue >= 0,
                 strict ? left_svalue < right_svalue : left_svalue <= right_svalue,
@@ -346,8 +345,7 @@ assume_signed_64bit_gt(const bool strict, const variable_t left_svalue, const va
     using namespace crab::dsl_syntax;
 
     if (right_interval <= interval_t::nonnegative(64)) {
-        // Interval can be represented as both an svalue and a uvalue since it fits in [0,
-        // std::numeric_limits<int32_t>::max()].
+        // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX].
         const auto lpub = left_interval_positive.truncate_to<int64_t>().ub();
         return {left_svalue >= 0,
                 strict ? left_svalue > right_svalue : left_svalue >= right_svalue,
@@ -358,9 +356,8 @@ assume_signed_64bit_gt(const bool strict, const variable_t left_svalue, const va
                 left_uvalue <= *lpub.number()};
     } else if ((left_interval_negative | left_interval_positive) <= interval_t::negative(64) &&
                right_interval <= interval_t::negative(64)) {
-        // Interval can be represented as both an svalue and a uvalue since it fits in
-        // [std::numeric_limits<int32_t>::min(), -1], aka [std::numeric_limits<int32_t>::max()+1,
-        // Ustd::numeric_limits<int32_t>::max()].
+        // Interval can be represented as both an svalue and a uvalue since it fits in [INT_MIN, -1],
+        // aka [INT_NAX+1, UINT_MAX].
         return {std::numeric_limits<int64_t>::max() < left_uvalue,
                 strict ? left_uvalue > right_uvalue : left_uvalue >= right_uvalue,
                 strict ? left_svalue > right_svalue : left_svalue >= right_svalue};
@@ -379,8 +376,7 @@ assume_signed_32bit_gt(const NumAbsDomain& inv, const bool strict, const variabl
     using namespace crab::dsl_syntax;
 
     if (right_interval <= interval_t::nonnegative(32)) {
-        // Interval can be represented as both an svalue and a uvalue since it fits in [0,
-        // std::numeric_limits<int32_t>::max()].
+        // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX].
         const auto lpub = left_interval_positive.truncate_to<int32_t>().ub();
         return {left_svalue >= 0,
                 strict ? left_svalue > right_svalue : left_svalue >= right_svalue,
@@ -453,7 +449,7 @@ static std::vector<linear_constraint_t> assume_signed_cst_interval(const NumAbsD
 
     if (is64) {
         if (is_lt) {
-            return assume_signed_64bit_lt(inv, strict, left_svalue, left_uvalue, left_interval_positive,
+            return assume_signed_64bit_lt(strict, left_svalue, left_uvalue, left_interval_positive,
                                           left_interval_negative, right_svalue, right_uvalue, right_interval);
         } else {
             return assume_signed_64bit_gt(strict, left_svalue, left_uvalue, left_interval_positive,
@@ -504,15 +500,13 @@ assume_unsigned_64bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_s
         }
     }
     if (right_interval <= interval_t::signed_int(64)) {
-        // Interval can be represented as both an svalue and a uvalue since it fits in [0,
-        // std::numeric_limits<int32_t>::max()].
+        // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX].
         auto llub = left_interval_low.truncate_to<uint64_t>().ub();
         return {0 <= left_uvalue, strict ? left_uvalue < right_uvalue : left_uvalue <= right_uvalue,
                 left_uvalue <= *llub.number(), 0 <= left_svalue,
                 strict ? left_svalue < right_svalue : left_svalue <= right_svalue};
     } else if (left_interval_low.is_bottom() && right_interval <= interval_t::unsigned_high(64)) {
-        // Interval can be represented as both an svalue and a uvalue since it fits in
-        // [std::numeric_limits<int32_t>::max()+1, Ustd::numeric_limits<int32_t>::max()].
+        // Interval can be represented as both an svalue and a uvalue since it fits in [INT_MAX+1, UINT_MAX].
         return {0 <= left_uvalue, strict ? left_uvalue < right_uvalue : left_uvalue <= right_uvalue,
                 strict ? left_svalue < right_svalue : left_svalue <= right_svalue};
     } else if ((left_interval_low | left_interval_high) == interval_t::unsigned_int(64)) {
@@ -524,11 +518,11 @@ assume_unsigned_64bit_lt(const NumAbsDomain& inv, bool strict, variable_t left_s
     }
 }
 
-static std::vector<linear_constraint_t>
-assume_unsigned_32bit_lt(const NumAbsDomain& inv, const bool strict, const variable_t left_svalue,
-                         const variable_t left_uvalue, const interval_t& left_interval_low,
-                         const interval_t& left_interval_high, const linear_expression_t& right_svalue,
-                         const linear_expression_t& right_uvalue, const interval_t& right_interval) {
+static std::vector<linear_constraint_t> assume_unsigned_32bit_lt(const NumAbsDomain& inv, const bool strict,
+                                                                 const variable_t left_svalue,
+                                                                 const variable_t left_uvalue,
+                                                                 const linear_expression_t& right_svalue,
+                                                                 const linear_expression_t& right_uvalue) {
     using crab::interval_t;
     using namespace crab::dsl_syntax;
 
@@ -571,14 +565,12 @@ assume_unsigned_64bit_gt(const NumAbsDomain& inv, const bool strict, const varia
                                                                        : left_uvalue >= *lhlb.number(),
                 left_svalue < 0};
     } else if (right_interval <= interval_t::unsigned_high(64)) {
-        // Interval can be represented as both an svalue and a uvalue since it fits in
-        // [std::numeric_limits<int32_t>::max()+1, Ustd::numeric_limits<int32_t>::max()].
+        // Interval can be represented as both an svalue and a uvalue since it fits in [INT_MAX+1, UINT_MAX].
         return {0 <= left_uvalue, strict ? left_uvalue > right_uvalue : left_uvalue >= right_uvalue,
                 strict ? left_svalue > right_svalue : left_svalue >= right_svalue};
     } else if ((left_interval_low | left_interval_high) <= interval_t::nonnegative(64) &&
                right_interval <= interval_t::nonnegative(64)) {
-        // Interval can be represented as both an svalue and a uvalue since it fits in [0,
-        // std::numeric_limits<int32_t>::max()].
+        // Interval can be represented as both an svalue and a uvalue since it fits in [0, INT_MAX].
         return {0 <= left_uvalue, strict ? left_uvalue > right_uvalue : left_uvalue >= right_uvalue,
                 strict ? left_svalue > right_svalue : left_svalue >= right_svalue};
     } else {
@@ -596,8 +588,7 @@ assume_unsigned_32bit_gt(const NumAbsDomain& inv, const bool strict, const varia
     using namespace crab::dsl_syntax;
 
     if (right_interval <= interval_t::unsigned_high(32)) {
-        // Interval can be represented as both an svalue and a uvalue since it fits in [INT32_MAX+1,
-        // std::numeric_limits<uint32_t>::max()].
+        // Interval can be represented as both an svalue and a uvalue since it fits in [INT_MAX+1, UINT_MAX].
         return {0 <= left_uvalue, strict ? left_uvalue > right_uvalue : left_uvalue >= right_uvalue,
                 strict ? left_svalue > right_svalue : left_svalue >= right_svalue};
     } else if (inv.eval_interval(left_uvalue) <= interval_t::unsigned_int(32) &&
@@ -647,15 +638,10 @@ static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAb
     const bool is_lt = op == Condition::Op::LT || op == Condition::Op::LE;
     bool strict = op == Condition::Op::LT || op == Condition::Op::GT;
 
-    auto llb = left_interval.lb();
-    auto lub = left_interval.ub();
-    auto rlb = right_interval.lb();
-    auto rub = right_interval.ub();
-    if (!is_lt && (strict ? lub <= rlb : lub < rlb)) {
+    auto [llb, lub] = left_interval.pair();
+    auto [rlb, rub] = right_interval.pair();
+    if (is_lt ? (strict ? llb >= rub : llb > rub) : (strict ? lub <= rlb : lub < rlb)) {
         // Left unsigned interval is lower than right unsigned interval.
-        return {linear_constraint_t::false_const()};
-    } else if (is_lt && (strict ? llb >= rub : llb > rub)) {
-        // Left unsigned interval is higher than right unsigned interval.
         return {linear_constraint_t::false_const()};
     }
     if (is_lt && (strict ? lub < rlb : lub <= rlb)) {
@@ -663,16 +649,15 @@ static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAb
         // relationship for use when widening, such as is used in the prime conformance test.
         if (is64) {
             return {strict ? left_uvalue < right_uvalue : left_uvalue <= right_uvalue};
-        } else {
-            return {linear_constraint_t::true_const()};
         }
+        return {};
     } else if (!is_lt && (strict ? llb > rub : llb >= rub)) {
         // Left unsigned interval is higher than right unsigned interval. We still add a
         // relationship for use when widening, such as is used in the prime conformance test.
         if (is64) {
             return {strict ? left_uvalue > right_uvalue : left_uvalue >= right_uvalue};
         } else {
-            return {linear_constraint_t::true_const()};
+            return {};
         }
     }
 
@@ -686,8 +671,7 @@ static std::vector<linear_constraint_t> assume_unsigned_cst_interval(const NumAb
         }
     } else {
         if (is_lt) {
-            return assume_unsigned_32bit_lt(inv, strict, left_svalue, left_uvalue, left_interval_low,
-                                            left_interval_high, right_svalue, right_uvalue, right_interval);
+            return assume_unsigned_32bit_lt(inv, strict, left_svalue, left_uvalue, right_svalue, right_uvalue);
         } else {
             return assume_unsigned_32bit_gt(inv, strict, left_svalue, left_uvalue, left_interval_low,
                                             left_interval_high, right_svalue, right_uvalue, right_interval);
@@ -847,7 +831,7 @@ void ebpf_domain_t::TypeDomain::add_extra_invariant(const NumAbsDomain& dst,
     }
 }
 
-void ebpf_domain_t::TypeDomain::selectively_join_based_on_type(NumAbsDomain& dst, NumAbsDomain& src) const {
+void ebpf_domain_t::TypeDomain::selectively_join_based_on_type(NumAbsDomain& dst, NumAbsDomain&& src) const {
     // Some variables are type-specific.  Type-specific variables
     // for a register can exist in the domain whenever the associated
     // type value is present in the register's types interval (and the
@@ -897,16 +881,16 @@ void ebpf_domain_t::TypeDomain::selectively_join_based_on_type(NumAbsDomain& dst
 
 void ebpf_domain_t::operator|=(ebpf_domain_t&& other) {
     if (is_bottom()) {
-        *this = other;
+        *this = std::move(other);
         return;
     }
     if (other.is_bottom()) {
         return;
     }
 
-    type_inv.selectively_join_based_on_type(m_inv, other.m_inv);
+    type_inv.selectively_join_based_on_type(m_inv, std::move(other.m_inv));
 
-    stack |= other.stack;
+    stack |= std::move(other.stack);
 }
 
 void ebpf_domain_t::operator|=(const ebpf_domain_t& other) {
@@ -1359,8 +1343,7 @@ bool ebpf_domain_t::TypeDomain::has_type(const NumAbsDomain& inv, const variable
     if (interval.is_top()) {
         return true;
     }
-    return interval.lb().number().value_or(std::numeric_limits<int32_t>::min()) <= type &&
-           type <= interval.ub().number().value_or(std::numeric_limits<int32_t>::max());
+    return interval.contains(type);
 }
 
 bool ebpf_domain_t::TypeDomain::has_type(const NumAbsDomain& inv, const number_t& t, const type_encoding_t type) const {
@@ -1380,14 +1363,11 @@ NumAbsDomain ebpf_domain_t::TypeDomain::join_over_types(
         return res;
     }
     NumAbsDomain res = NumAbsDomain::bottom();
-    auto lb = types.lb().is_finite() ? static_cast<type_encoding_t>(static_cast<int>(types.lb().number().value()))
-                                     : T_MAP_PROGRAMS;
-    auto ub =
-        types.ub().is_finite() ? static_cast<type_encoding_t>(static_cast<int>(types.ub().number().value())) : T_SHARED;
-    for (type_encoding_t type = lb; type <= ub; type = static_cast<type_encoding_t>(static_cast<int>(type) + 1)) {
+    auto [lb, ub] = types.bound(T_MIN, T_MAX);
+    for (type_encoding_t type = lb; type <= ub; type = static_cast<type_encoding_t>(type + 1)) {
         NumAbsDomain tmp(inv);
         transition(tmp, type);
-        selectively_join_based_on_type(res, tmp); // res |= tmp;
+        selectively_join_based_on_type(res, std::move(tmp)); // res |= tmp;
     }
     return res;
 }
@@ -1471,10 +1451,10 @@ void ebpf_domain_t::check_access_packet(NumAbsDomain& inv, const linear_expressi
 }
 
 void ebpf_domain_t::check_access_shared(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
-                                        const variable_t region_size) const {
+                                        const variable_t shared_region_size) const {
     using namespace crab::dsl_syntax;
     require(inv, lb >= 0, "Lower bound must be at least 0");
-    require(inv, ub <= region_size, std::string("Upper bound must be at most ") + region_size.name());
+    require(inv, ub <= shared_region_size, std::string("Upper bound must be at most ") + shared_region_size.name());
 }
 
 void ebpf_domain_t::operator()(const Assume& s) {
