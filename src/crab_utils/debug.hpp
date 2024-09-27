@@ -52,11 +52,6 @@ inline void ___print___(std::ostream& os, ArgTypes... args) {
         throw std::runtime_error(os.str()); \
     } while (0)
 
-#define RAISE_INVALID_WIDTH(width)                                          \
-    do {                                                                    \
-        throw std::runtime_error("Invalid width " + std::to_string(width)); \
-    } while (0)
-
 extern bool CrabWarningFlag;
 void CrabEnableWarningMsg(bool b);
 
