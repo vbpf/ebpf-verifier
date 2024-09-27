@@ -212,6 +212,10 @@ static void append_subprogram(raw_program& prog, ELFIO::section* subprogram_sect
     for (ELFIO::Elf_Xword subprogram_offset = 0; subprogram_offset < subprogram_section->get_size();) {
         auto [subprogram_name, subprogram_size] =
             get_program_name_and_size(*subprogram_section, subprogram_offset, symbols);
+        if (subprogram_size == 0) {
+            throw std::runtime_error("Zero-size subprogram '" + subprogram_name + "' in section '" +
+                                     subprogram_section->get_name() + "'");
+        }
         if (subprogram_name == symbol_name) {
             // Append subprogram instructions to the main program.
             auto subprogram = vector_of<ebpf_inst>(subprogram_section->get_data() + subprogram_offset, subprogram_size);
@@ -412,14 +416,12 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                     // Queue up relocation for function symbols.
                     if ((inst.opcode == INST_OP_CALL) && (inst.src == INST_CALL_LOCAL) &&
                         (reader.sections[symbol_section_index] == section.get())) {
-                        {
-                            function_relocation fr{.prog_index = res.size(),
-                                                   .source_offset = offset / sizeof(ebpf_inst),
-                                                   .relocation_entry_index = index,
-                                                   .target_function_name = symbol_name};
-                            function_relocations.push_back(fr);
-                            continue;
-                        }
+                        function_relocation fr{.prog_index = res.size(),
+                                               .source_offset = offset / sizeof(ebpf_inst),
+                                               .relocation_entry_index = index,
+                                               .target_function_name = symbol_name};
+                        function_relocations.push_back(fr);
+                        continue;
                     }
 
                     // Perform relocation for symbols located in the maps section.
