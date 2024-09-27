@@ -248,7 +248,12 @@ static void append_subprograms(raw_program& prog, vector<raw_program>& res, vect
 
         // Fill in the PC offset into the imm field of the CallLocal instruction.
         ELFIO::Elf_Xword target_offset = subprogram_offsets[reloc.target_function_name];
-        prog.prog[reloc.source_offset].imm = (int32_t)(target_offset - reloc.source_offset - 1);
+        int64_t offset_diff = (int64_t)(target_offset - reloc.source_offset - 1);
+        if (offset_diff < INT32_MIN || offset_diff > INT32_MAX) {
+            throw std::runtime_error("Offset difference out of int32_t range for instruction at source offset " +
+                                     std::to_string(reloc.source_offset));
+        }
+        prog.prog[reloc.source_offset].imm = (int32_t)offset_diff;
     }
 }
 
