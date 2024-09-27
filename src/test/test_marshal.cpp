@@ -750,12 +750,12 @@ static void check_instruction_variations(std::optional<const ebpf_instruction_te
 }
 
 TEST_CASE("fail unmarshal bad instructions", "[disasm][marshal]") {
-    size_t template_count = std::size(instruction_template);
+    constexpr size_t template_count = std::size(instruction_template);
 
     // Check any variations before the first template.
     check_instruction_variations({}, instruction_template[0]);
 
-    for (int index = 1; index < template_count; index++) {
+    for (size_t index = 1; index < template_count; index++) {
         check_instruction_variations(instruction_template[index - 1], instruction_template[index]);
     }
 
