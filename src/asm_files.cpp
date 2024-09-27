@@ -202,7 +202,7 @@ void relocate_map(ebpf_inst& inst, const std::string& symbol_name,
 struct function_relocation {
     size_t prog_index{};              // Index of source program in vector of raw programs.
     ELFIO::Elf_Xword source_offset{}; // Instruction offset in source section of source instruction.
-    ELFIO::Elf_Word relocation_entry_index{};
+    ELFIO::Elf_Xword relocation_entry_index{};
     std::string target_function_name;
 };
 
@@ -220,7 +220,8 @@ static void append_subprogram(raw_program& prog, ELFIO::section* subprogram_sect
         }
         subprogram_offset += subprogram_size;
     }
-    assert(false);
+    throw std::runtime_error("Subprogram '" + symbol_name + "' not found in section '" +
+                             subprogram_section->get_name() + "'");
 }
 
 static void append_subprograms(raw_program& prog, vector<raw_program>& res, vector<function_relocation>& function_relocations, ELFIO::elfio& reader,
