@@ -208,33 +208,36 @@ struct function_relocation {
     std::string target_function_name;
 };
 
-static void append_subprogram(raw_program& prog, ELFIO::section* subprogram_section,
-                              ELFIO::const_symbol_section_accessor& symbols, std::string symbol_name) {
+static void append_subprogram(raw_program& prog, ELFIO::section& subprogram_section,
+                              ELFIO::const_symbol_section_accessor& symbols, const std::string& symbol_name) {
     // Find subprogram by name.
-    for (ELFIO::Elf_Xword subprogram_offset = 0; subprogram_offset < subprogram_section->get_size();) {
+    for (ELFIO::Elf_Xword subprogram_offset = 0; subprogram_offset < subprogram_section.get_size();) {
         auto [subprogram_name, subprogram_size] =
-            get_program_name_and_size(*subprogram_section, subprogram_offset, symbols);
+            get_program_name_and_size(subprogram_section, subprogram_offset, symbols);
         if (subprogram_size == 0) {
             throw std::runtime_error("Zero-size subprogram '" + subprogram_name + "' in section '" +
-                                     subprogram_section->get_name() + "'");
+                                     subprogram_section.get_name() + "'");
         }
         if (subprogram_name == symbol_name) {
             // Append subprogram instructions to the main program.
-            auto subprogram = vector_of<ebpf_inst>(subprogram_section->get_data() + subprogram_offset, subprogram_size);
+            auto subprogram = vector_of<ebpf_inst>(subprogram_section.get_data() + subprogram_offset, subprogram_size);
             prog.prog.insert(prog.prog.end(), subprogram.begin(), subprogram.end());
             return;
         }
         subprogram_offset += subprogram_size;
     }
     throw std::runtime_error("Subprogram '" + symbol_name + "' not found in section '" +
-                             subprogram_section->get_name() + "'");
+                             subprogram_section.get_name() + "'");
 }
 
-static void append_subprograms(raw_program& prog, vector<raw_program>& res, vector<function_relocation>& function_relocations, ELFIO::elfio& reader,
+static void append_subprograms(raw_program& prog, vector<raw_program>& res, const vector<function_relocation>& function_relocations, ELFIO::elfio& reader,
                                ELFIO::const_symbol_section_accessor& symbols) {
     // Perform function relocations and fill in the inst.imm values of CallLocal instructions.
     std::map<std::string, ELFIO::Elf_Xword> subprogram_offsets;
     for (auto& reloc : function_relocations) {
+        if (reloc.prog_index >= res.size()) {
+            continue;
+        }
         if (res[reloc.prog_index].function_name != prog.function_name) {
             continue;
         }
@@ -244,7 +247,7 @@ static void append_subprograms(raw_program& prog, vector<raw_program>& res, vect
             subprogram_offsets[reloc.target_function_name] = prog.prog.size();
 
             auto [symbol_name, section_index] = get_symbol_name_and_section_index(symbols, reloc.relocation_entry_index);
-            ELFIO::section* subprogram_section = reader.sections[section_index];
+            ELFIO::section& subprogram_section = *reader.sections[section_index];
             append_subprogram(prog, subprogram_section, symbols, symbol_name);
         }
 
@@ -377,12 +380,6 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                              program_name,
                              vector_of<ebpf_inst>(section->get_data() + program_offset, program_size),
                              info};
-
-            // We will need to recursively append any subprograms called, but only once
-            // for each subprogram no matter how many times called. So initialize a set
-            // to hold the list of subprogram names included.
-            std::set<string> subprograms{};
-            subprograms.insert(program_name);
 
             auto prelocs = reader.sections[string(".rel") + name];
             if (!prelocs) {
