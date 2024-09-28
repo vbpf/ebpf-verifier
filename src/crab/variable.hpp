@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 
+#include "crab/variable.hpp"
 #include "crab_utils/lazy_allocator.hpp"
 #include "crab_utils/num_big.hpp"
 using index_t = uint64_t;
@@ -29,6 +30,8 @@ enum class data_kind_t {
     stack_numeric_sizes
 };
 std::ostream& operator<<(std::ostream& o, const data_kind_t& s);
+
+std::vector<std::string> default_variable_names();
 
 // Wrapper for typed variables used by the crab abstract domains and linear_constraints.
 // Being a class (instead of a type alias) enables overloading in dsl_syntax
@@ -71,18 +74,13 @@ class variable_t final {
     // This singleton is eBPF-specific, to avoid lifetime issues and/or passing factory explicitly everywhere:
   private:
     static variable_t make(const std::string& name);
-    static std::vector<std::string> _default_names();
 
     /**
      * @brief Factory to always return the initial variable names.
      *
      * @tparam[in] T Should always be std::vector<std::string>.
      */
-    template <typename T>
-    struct variable_name_factory {
-        T operator()() { return _default_names(); }
-    };
-    static thread_local crab::lazy_allocator<std::vector<std::string>, variable_name_factory> names;
+    static thread_local lazy_allocator<std::vector<std::string>, default_variable_names> names;
 
   public:
     static void clear_thread_local_state();
