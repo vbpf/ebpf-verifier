@@ -23,8 +23,6 @@
 // single vertex such as 8, or a cycle such as (5 6).
 
 #include <memory>
-#include <ostream>
-#include <ranges>
 #include <stack>
 #include <utility>
 #include <vector>
@@ -47,12 +45,7 @@ class wto_nesting_t final {
     bool operator>(const wto_nesting_t& nesting) const;
 
     // Output the nesting in order from outermost to innermost.
-    friend std::ostream& operator<<(std::ostream& o, const wto_nesting_t& nesting) {
-        for (const auto& _head : std::ranges::reverse_view(nesting._heads)) {
-            o << _head << " ";
-        }
-        return o;
-    }
+    friend std::ostream& operator<<(std::ostream& o, const wto_nesting_t& nesting);
 };
 
 // Define types used by both this header file and wto_cycle.hpp
@@ -105,31 +98,19 @@ class wto_cycle_t final {
     }
 
     [[nodiscard]]
-    wto_partition_t::reverse_iterator begin() {
-        return _components.rbegin();
+    wto_partition_t::const_reverse_iterator begin() const {
+        return _components.crbegin();
     }
 
     [[nodiscard]]
-    wto_partition_t::reverse_iterator end() {
-        return _components.rend();
+    wto_partition_t::const_reverse_iterator end() const {
+        return _components.crend();
     }
 
-    [[nodiscard]]
-    std::weak_ptr<wto_cycle_t> containing_cycle() const {
-        return _containing_cycle;
-    }
-
-    [[nodiscard]]
-    wto_partition_t& components() {
-        return _components;
-    }
+    friend class wto_t;
 };
 
-std::ostream& operator<<(std::ostream& o, wto_cycle_t& cycle);
-
-std::ostream& operator<<(std::ostream& o, const std::shared_ptr<wto_cycle_t>& e);
-
-std::ostream& operator<<(std::ostream& o, wto_partition_t& partition);
+struct visit_args_t;
 
 class wto_t final {
     // Original control-flow graph.
@@ -155,7 +136,8 @@ class wto_t final {
 
     void push_successors(const label_t& vertex, wto_partition_t& partition,
                          const std::weak_ptr<wto_cycle_t>& containing_cycle);
-    void start_visit(const label_t& vertex, wto_partition_t& partition, std::weak_ptr<wto_cycle_t> containing_cycle);
+    void start_visit(const label_t& vertex, wto_partition_t& partition,
+                     const std::weak_ptr<wto_cycle_t>& containing_cycle);
     void continue_visit(const label_t& vertex, wto_partition_t& partition,
                         const std::weak_ptr<wto_cycle_t>& containing_cycle);
 
@@ -169,15 +151,15 @@ class wto_t final {
     explicit wto_t(const cfg_t& cfg);
 
     [[nodiscard]]
-    wto_partition_t::reverse_iterator begin() {
-        return _components.rbegin();
+    wto_partition_t::const_reverse_iterator begin() const {
+        return _components.crbegin();
     }
 
     [[nodiscard]]
-    wto_partition_t::reverse_iterator end() {
-        return _components.rend();
+    wto_partition_t::const_reverse_iterator end() const {
+        return _components.crend();
     }
 
-    friend std::ostream& operator<<(std::ostream& o, wto_t& wto) { return o << wto._components << std::endl; }
+    friend std::ostream& operator<<(std::ostream& o, const wto_t& wto);
     const wto_nesting_t& nesting(const label_t& label);
 };

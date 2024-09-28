@@ -1,5 +1,7 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
+#include <ranges>
+
 #include "wto.hpp"
 
 // This file contains an iterative implementation of the recursive algorithm in
@@ -46,7 +48,7 @@ void wto_t::push_successors(const label_t& vertex, wto_partition_t& partition,
 }
 
 void wto_t::start_visit(const label_t& vertex, wto_partition_t& partition,
-                        std::weak_ptr<wto_cycle_t> containing_cycle) {
+                        const std::weak_ptr<wto_cycle_t>& containing_cycle) {
     wto_vertex_data_t& vertex_data = _vertex_data[vertex];
     int head_dfn = vertex_data.dfn;
     bool loop = false;
@@ -68,7 +70,7 @@ void wto_t::start_visit(const label_t& vertex, wto_partition_t& partition,
     const auto cycle = std::make_shared<wto_cycle_t>(containing_cycle);
 
     if (head_dfn == vertex_data.dfn) {
-        vertex_data.dfn = INT_MAX;
+        vertex_data.dfn = std::numeric_limits<decltype(vertex_data.dfn)>::max();
         label_t element = _stack.top();
         _stack.pop();
         if (loop) {
@@ -90,20 +92,16 @@ void wto_t::start_visit(const label_t& vertex, wto_partition_t& partition,
             // This is the Component() function described in figure 4 of the paper.
             for (const label_t& succ : _cfg.next_nodes_reversed(vertex)) {
                 if (_vertex_data.at(succ).dfn == 0) {
-                    _visit_stack.emplace(visit_task_type_t::PushSuccessors, succ, cycle->components(), cycle);
+                    _visit_stack.emplace(visit_task_type_t::PushSuccessors, succ, cycle->_components, cycle);
                 }
             }
             return;
-        } else {
-            // Create a new vertex component.
-            const auto component = std::make_shared<wto_component_t>(wto_component_t(vertex));
-
-            // Insert the vertex into the current partition.
-            partition.push_back(component);
-
-            // Remember that we put the vertex into the caller's cycle.
-            _containing_cycle.emplace(vertex, containing_cycle);
         }
+        // Insert a new vertex component vertex into the current partition.
+        partition.emplace_back(std::make_shared<wto_component_t>(vertex));
+
+        // Remember that we put the vertex into the caller's cycle.
+        _containing_cycle.emplace(vertex, containing_cycle);
     }
     vertex_data.head_dfn = head_dfn;
 }
@@ -114,11 +112,10 @@ void wto_t::continue_visit(const label_t& vertex, wto_partition_t& partition,
     // (end of the vector which stores the cycle in reverse order).
     auto cycle = containing_cycle.lock();
 
-    cycle->components().push_back(std::make_shared<wto_component_t>(vertex));
+    cycle->_components.push_back(std::make_shared<wto_component_t>(vertex));
 
     // Insert the component into the current partition.
-    auto component = std::make_shared<wto_component_t>(cycle);
-    partition.emplace_back(component);
+    partition.emplace_back(std::make_shared<wto_component_t>(cycle));
 
     // Remember that we put the vertex into the new cycle.
     _containing_cycle.emplace(vertex, cycle);
@@ -134,8 +131,7 @@ wto_t::wto_t(const cfg_t& cfg) : _cfg(cfg) {
     _num = 0;
 
     // Push the entry vertex on the stack to process.
-    const visit_args_t args(visit_task_type_t::PushSuccessors, cfg.entry_label(), _components, {});
-    _visit_stack.push(args);
+    _visit_stack.emplace(visit_args_t(visit_task_type_t::PushSuccessors, cfg.entry_label(), _components, {}));
 
     // Keep processing tasks until we're done.
     while (!_visit_stack.empty()) {
@@ -154,39 +150,33 @@ wto_t::wto_t(const cfg_t& cfg) : _cfg(cfg) {
     }
 }
 
-inline std::ostream& operator<<(std::ostream& o, wto_cycle_t& cycle) {
-    o << "( ";
-    for (auto& component : cycle) {
+struct print_visitor {
+    std::ostream& o;
 
-        // For some reason, an Ubuntu Release build can't find the right
-        // function to call via std::visit and just outputs a pointer
-        // value, so we force it to use the right one here.
-        if (const wto_component_t* c = component.get(); std::holds_alternative<std::shared_ptr<wto_cycle_t>>(*c)) {
-            auto ptr = std::get<std::shared_ptr<class wto_cycle_t>>(*c);
-            o << *ptr;
-        } else {
-            std::visit([&o](auto& e) -> std::ostream& { return o << e; }, *component);
+    void operator()(const label_t& label) { o << label; }
+
+    void operator()(const wto_cycle_t& cycle) {
+        o << "( ";
+        for (const auto& component : cycle) {
+            std::visit(*this, *component);
+            o << " ";
         }
-        o << " ";
+        o << ")";
     }
-    o << ")";
-    return o;
-}
 
-std::ostream& operator<<(std::ostream& o, const std::shared_ptr<wto_cycle_t>& e) {
-    if (e != nullptr) {
-        o << *e;
+    void operator()(const std::shared_ptr<wto_cycle_t>& e) {
+        if (e != nullptr) {
+            (*this)(*e);
+        }
     }
-    return o;
-}
 
-std::ostream& operator<<(std::ostream& o, wto_partition_t& partition) {
-    for (auto& p : std::ranges::reverse_view(partition)) {
-        wto_component_t* component = p.get();
-        std::visit([&o](auto& e) -> std::ostream& { return o << e; }, *component) << " ";
+    void operator()(const wto_partition_t& partition) {
+        for (auto& p : std::ranges::reverse_view(partition)) {
+            std::visit(*this, *p.get());
+            o << " ";
+        }
     }
-    return o;
-}
+};
 
 // Get the vertex at the head of the component containing a given
 // label, as discussed in section 4.2 of the paper.  If the label
@@ -209,11 +199,10 @@ std::optional<label_t> wto_t::head(const label_t& label) {
     }
 
     // This label is already the head of a cycle, so get the cycle's parent.
-    const std::shared_ptr<wto_cycle_t> parent = cycle->containing_cycle().lock();
-    if (parent == nullptr) {
-        return {};
+    if (const auto parent = cycle->_containing_cycle.lock()) {
+        return parent->head();
     }
-    return parent->head();
+    return {};
 }
 
 std::vector<label_t> wto_t::collect_heads(const label_t& label) {
@@ -233,4 +222,16 @@ const wto_nesting_t& wto_t::nesting(const label_t& label) {
         _nesting.emplace(label, collect_heads(label));
     }
     return _nesting.at(label);
+}
+
+std::ostream& operator<<(std::ostream& o, const wto_t& wto) {
+    print_visitor{o}(wto._components);
+    return o << std::endl;
+}
+
+std::ostream& operator<<(std::ostream& o, const wto_nesting_t& nesting) {
+    for (const auto& _head : std::ranges::reverse_view(nesting._heads)) {
+        o << _head << " ";
+    }
+    return o;
 }
