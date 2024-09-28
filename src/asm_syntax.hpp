@@ -15,8 +15,8 @@ constexpr char STACK_FRAME_DELIMITER = '/';
 
 namespace crab {
 struct label_t {
-    int from;                       ///< Jump source, or simply index of instruction
-    int to;                         ///< Jump target or -1
+    int from{};                       ///< Jump source, or simply index of instruction
+    int to{};                         ///< Jump target or -1
     std::string stack_frame_prefix; ///< Variable prefix when calling this label.
 
     explicit label_t(int index, int to = -1, std::string stack_frame_prefix = {}) noexcept
@@ -68,6 +68,22 @@ struct label_t {
 
     static const label_t entry;
     static const label_t exit;
+};
+
+struct location_t {
+    label_t label;
+    size_t offset{};
+
+    location_t(label_t  label, const size_t offset) : label(std::move(label)), offset(offset){ }
+
+    bool operator==(const location_t&) const = default;
+    constexpr bool operator<(const location_t& other) const {
+        if (this == &other) return false;
+        return label < other.label || (label == other.label && offset < other.offset);
+    }
+    friend std::ostream& operator<<(std::ostream& os, const location_t& location) {
+        return os << location.label << "." << location.offset;
+    }
 };
 
 inline const label_t label_t::entry{-1};

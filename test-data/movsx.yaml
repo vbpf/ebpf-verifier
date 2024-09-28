@@ -97,7 +97,7 @@ code:
 post: []
 
 messages:
-  - "0: Invalid type (r1.type == number)"
+  - "0.0: Invalid type (r1.type == number)"
 ---
 test-case: movsx8 register range to 32 bits without wrap
 

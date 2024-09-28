@@ -37,7 +37,6 @@ class cfg_t;
 class basic_block_t final {
     friend class cfg_t;
 
-  private:
   public:
     basic_block_t(const basic_block_t&) = delete;
 
@@ -74,6 +73,10 @@ class basic_block_t final {
     [[nodiscard]]
     label_t label() const {
         return m_label;
+    }
+
+    [[nodiscard]] const Instruction& at(size_t idx) const {
+        return m_ts.at(idx);
     }
 
     iterator begin() { return (m_ts.begin()); }

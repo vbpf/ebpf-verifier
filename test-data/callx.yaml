@@ -91,7 +91,7 @@ post:
   - r8.uvalue=1
 
 messages:
-  - "0: Possible null access (within stack(r2:key_size(r1)))"
+  - "0.1: Possible null access (within stack(r2:key_size(r1)))"
 ---
 test-case: callx bpf_map_lookup_elem shared key - too small
 
@@ -115,7 +115,7 @@ post:
   - r8.uvalue=1
 
 messages:
-  - "0: Upper bound must be at most r2.shared_region_size (within stack(r2:key_size(r1)))"
+  - "0.1: Upper bound must be at most r2.shared_region_size (within stack(r2:key_size(r1)))"
 ---
 test-case: callx bpf_map_lookup_elem shared key - too small
 
@@ -139,7 +139,7 @@ post:
   - r8.uvalue=1
 
 messages:
-  - "0: Lower bound must be at least 0 (within stack(r2:key_size(r1)))"
+  - "0.1: Lower bound must be at least 0 (within stack(r2:key_size(r1)))"
 ---
 test-case: callx 0
 
@@ -155,7 +155,7 @@ post:
   - r8.uvalue=1000
 
 messages:
-  - "0: invalid helper function id 1000 (r8.type is helper)"
+  - "0.1: invalid helper function id 1000 (r8.type is helper)"
 ---
 test-case: callx with invalid id
 
@@ -171,7 +171,7 @@ post:
   - r8.uvalue=1000
 
 messages:
-  - "0: invalid helper function id 1000 (r8.type is helper)"
+  - "0.1: invalid helper function id 1000 (r8.type is helper)"
 ---
 test-case: callx with interval
 
@@ -187,7 +187,7 @@ post:
   - r8.uvalue=[1, 2]
 
 messages:
-  - "0: callx helper function id is not a valid singleton (r8.type is helper)"
+  - "0.1: callx helper function id is not a valid singleton (r8.type is helper)"
 ---
 test-case: callx bpf_map_lookup_elem with non-numeric stack key
 
@@ -211,7 +211,7 @@ post:
   - r8.uvalue=1
 
 messages:
-  - "0: Illegal map update with a non-numerical value [-oo-oo) (within stack(r2:key_size(r1)))"
+  - "0.1: Illegal map update with a non-numerical value [-oo-oo) (within stack(r2:key_size(r1)))"
 ---
 test-case: callx bpf_map_update_elem with numeric stack value
 
@@ -276,7 +276,7 @@ post:
   - r8.uvalue=2
 
 messages:
-  - "0: Upper bound must be at most r3.shared_region_size (within stack(r3:value_size(r1)))"
+  - "0.1: Upper bound must be at most r3.shared_region_size (within stack(r3:value_size(r1)))"
 
 ---
 test-case: callx bpf_map_update_elem with shared value larger than target region
@@ -321,7 +321,7 @@ post:
   - r8.uvalue=2
 
 messages:
-  - "0: Possible null access (within stack(r3:value_size(r1)))"
+  - "0.1: Possible null access (within stack(r3:value_size(r1)))"
 
 ---
 test-case: callx bpf_map_update_elem with packet value
@@ -368,7 +368,7 @@ post:
   - r8.uvalue=2
 
 messages:
-  - "0: Illegal map update with a non-numerical value [496-500) (within stack(r3:value_size(r1)))"
+  - "0.1: Illegal map update with a non-numerical value [496-500) (within stack(r3:value_size(r1)))"
 ---
 test-case: callx bpf_map_update_elem with context value
 
@@ -391,8 +391,8 @@ post:
   - r8.uvalue=2
 
 messages:
-  - "0: Invalid type (r3.type in {stack, packet, shared})"
-  - "0: Only stack or packet can be used as a parameter (within stack(r3:value_size(r1)))"
+  - "0.1: Invalid type (r3.type in {stack, packet, shared})"
+  - "0.1: Only stack or packet can be used as a parameter (within stack(r3:value_size(r1)))"
 ---
 test-case: callx bpf_ringbuf_output with numeric stack value
 
@@ -433,7 +433,7 @@ post:
   - r8.uvalue=130
 
 messages:
-  - "0: Stack content is not numeric (valid_access(r2.offset, width=r3) for read)"
+  - "0.1: Stack content is not numeric (valid_access(r2.offset, width=r3) for read)"
 ---
 test-case: callx bpf_ringbuf_output with context value
 
@@ -456,7 +456,7 @@ post:
   - s[504...511].type=number
 
 messages:
-  - "0: Invalid type (r2.type in {stack, packet, shared})"
+  - "0.1: Invalid type (r2.type in {stack, packet, shared})"
 ---
 test-case: callx bpf_get_stack
 
@@ -496,7 +496,7 @@ post:
   - r8.uvalue=67
 
 messages:
-  - "0: Invalid type (r2.type in {stack, packet, shared})"
+  - "0.1: Invalid type (r2.type in {stack, packet, shared})"
 ---
 test-case: callx bpf_get_stack writing into shared memory
 

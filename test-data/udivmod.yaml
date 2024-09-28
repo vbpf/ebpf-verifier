@@ -18,7 +18,7 @@ post:
   - r2.uvalue=1
 
 messages:
-  - "0: Only numbers can be used as divisors (r2 != 0)"
+  - "0.1: Only numbers can be used as divisors (r2 != 0)"
 ---
 test-case: non-zero divided by zero immediate
 
@@ -66,7 +66,7 @@ post:
   - r2.uvalue=0
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0.1: Possible division by zero (r2 != 0)"
 ---
 test-case: non-zero divided by zero register without warning
 
@@ -105,7 +105,7 @@ post:
   - r2.uvalue=0
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0.1: Possible division by zero (r2 != 0)"
 ---
 test-case: non-zero divided by possibly zero register
 
@@ -127,7 +127,7 @@ post:
   - r2.svalue=[-5, 5]
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0.1: Possible division by zero (r2 != 0)"
 ---
 test-case: zero divided by possibly zero register
 
@@ -148,7 +148,7 @@ post:
   - r2.svalue=[-5, 5]
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0.1: Possible division by zero (r2 != 0)"
 ---
 test-case: non-zero divided by possibly zero register 2
 
@@ -172,7 +172,7 @@ post:
   - r2.svalue=r2.uvalue
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0.1: Possible division by zero (r2 != 0)"
 ---
 test-case: zero divided by possibly zero register 2
 
@@ -193,7 +193,7 @@ post:
   - r2.svalue=[-5, 0]
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0.1: Possible division by zero (r2 != 0)"
 ---
 test-case: non-zero divided by undefined value register
 
@@ -214,7 +214,7 @@ post:
   - r2.type=number
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0.1: Possible division by zero (r2 != 0)"
 ---
 test-case: zero divided by undefined value register
 
@@ -234,7 +234,7 @@ post:
   - r2.type=number
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0.1: Possible division by zero (r2 != 0)"
 ---
 test-case: undefined value register divided by unsigned non-zero range
 
@@ -296,7 +296,7 @@ post:
   - r2.uvalue=0
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0.1: Possible division by zero (r2 != 0)"
 ---
 test-case: non-zero modulo zero register without warning
 
@@ -335,7 +335,7 @@ post:
   - r2.uvalue=0
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0.1: Possible division by zero (r2 != 0)"
 ---
 test-case: non-zero modulo possibly zero register
 
@@ -357,7 +357,7 @@ post:
   - r2.svalue=[-5, 5]
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0.1: Possible division by zero (r2 != 0)"
 ---
 test-case: zero modulo possibly zero register
 
@@ -378,7 +378,7 @@ post:
   - r2.svalue=[-5, 5]
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0.1: Possible division by zero (r2 != 0)"
 ---
 test-case: non-zero modulo possibly zero register 2
 
@@ -402,7 +402,7 @@ post:
   - r2.svalue=r2.uvalue
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0.1: Possible division by zero (r2 != 0)"
 ---
 test-case: zero modulo possibly zero register 2
 
@@ -423,7 +423,7 @@ post:
   - r2.svalue=[-5, 0]
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0.1: Possible division by zero (r2 != 0)"
 ---
 test-case: non-zero modulo undefined value register
 
@@ -444,7 +444,7 @@ post:
   - r2.type=number
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0.1: Possible division by zero (r2 != 0)"
 ---
 test-case: zero modulo undefined value register
 
@@ -464,7 +464,7 @@ post:
   - r2.type=number
 
 messages:
-  - "0: Possible division by zero (r2 != 0)"
+  - "0.1: Possible division by zero (r2 != 0)"
 ---
 test-case: positive modulo positive range
 
