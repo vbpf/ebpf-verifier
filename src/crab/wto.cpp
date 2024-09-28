@@ -150,8 +150,11 @@ wto_t::wto_t(const cfg_t& cfg) : _cfg(cfg) {
     }
 }
 
-struct print_visitor {
+class print_visitor {
     std::ostream& o;
+
+  public:
+    explicit print_visitor(std::ostream& o) : o(o) {}
 
     void operator()(const label_t& label) { o << label; }
 
@@ -176,7 +179,19 @@ struct print_visitor {
             o << " ";
         }
     }
+
+    // Output the nesting in order from outermost to innermost.
+    void operator()(const wto_nesting_t& nesting) {
+        for (const auto& _head : std::ranges::reverse_view(nesting._heads)) {
+            o << _head << " ";
+        }
+    }
 };
+
+std::ostream& operator<<(std::ostream& o, const wto_t& wto) {
+    print_visitor{o}(wto._components);
+    return o << std::endl;
+}
 
 // Get the vertex at the head of the component containing a given
 // label, as discussed in section 4.2 of the paper.  If the label
@@ -222,16 +237,4 @@ const wto_nesting_t& wto_t::nesting(const label_t& label) {
         _nesting.emplace(label, collect_heads(label));
     }
     return _nesting.at(label);
-}
-
-std::ostream& operator<<(std::ostream& o, const wto_t& wto) {
-    print_visitor{o}(wto._components);
-    return o << std::endl;
-}
-
-std::ostream& operator<<(std::ostream& o, const wto_nesting_t& nesting) {
-    for (const auto& _head : std::ranges::reverse_view(nesting._heads)) {
-        o << _head << " ";
-    }
-    return o;
 }

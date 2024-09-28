@@ -44,8 +44,7 @@ class wto_nesting_t final {
     // Test whether this nesting is a longer subset of another nesting.
     bool operator>(const wto_nesting_t& nesting) const;
 
-    // Output the nesting in order from outermost to innermost.
-    friend std::ostream& operator<<(std::ostream& o, const wto_nesting_t& nesting);
+    friend class print_visitor;
 };
 
 // Define types used by both this header file and wto_cycle.hpp
@@ -94,7 +93,10 @@ class wto_cycle_t final {
         // Any cycle must start with a vertex, not another cycle,
         // per Definition 1 in the paper.  Since the vector is in reverse
         // order, the head is the last element.
-        return std::get<label_t>(*_components.back().get());
+        if (_components.empty()) {
+            CRAB_ERROR("Empty cycle");
+        }
+        return std::get<label_t>(*_components.back());
     }
 
     [[nodiscard]]
