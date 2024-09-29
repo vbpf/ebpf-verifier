@@ -11,22 +11,6 @@
 #include "crab/interval.hpp"
 #include "crab/linear_constraint.hpp"
 
-// These constants are mostly used in ebpf_domain.cpp, but some uses
-// in split_dbm.cpp and array_domain.cpp require them to be declared here.
-// The exact numbers are taken advantage of in ebpf_domain_t
-enum type_encoding_t {
-    T_UNINIT = -7,
-    T_MAP_PROGRAMS = -6,
-    T_MAP = -5,
-    T_NUM = -4,
-    T_CTX = -3,
-    T_PACKET = -2,
-    T_STACK = -1,
-    T_SHARED = 0
-};
-constexpr type_encoding_t T_MIN = T_MAP_PROGRAMS;
-constexpr type_encoding_t T_MAX = T_SHARED;
-
 struct string_invariant {
     std::optional<std::set<std::string>> maybe_inv{};
 
@@ -64,7 +48,7 @@ struct string_invariant {
 
     [[nodiscard]]
     bool contains(const std::string& item) const {
-        return !is_bottom() && maybe_inv.value().count(item);
+        return maybe_inv.value().contains(item);
     }
 
     friend std::ostream& operator<<(std::ostream&, const string_invariant& inv);

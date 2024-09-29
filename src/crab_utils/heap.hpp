@@ -55,7 +55,7 @@ class Heap {
         while (left(i) < size) {
             int ri = right(i);
             int li = left(i);
-            const int child = static_cast<size_t>(ri) < size && lt(heap[ri], heap[li]) ? ri : li;
+            const int child = ri < size && lt(heap[ri], heap[li]) ? ri : li;
             if (!lt(heap[child], x)) {
                 break;
             }

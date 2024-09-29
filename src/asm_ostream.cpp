@@ -10,6 +10,7 @@
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
 #include "crab/interval.hpp"
+#include "crab/type_encoding.hpp"
 #include "crab/variable.hpp"
 #include "helpers.hpp"
 #include "platform.hpp"
@@ -102,29 +103,6 @@ std::ostream& operator<<(std::ostream& os, Condition::Op op) {
 }
 
 static string size(int w) { return string("u") + std::to_string(w * 8); }
-
-static std::string to_string(TypeGroup ts) {
-    switch (ts) {
-    case TypeGroup::number: return "number";
-    case TypeGroup::map_fd: return "map_fd";
-    case TypeGroup::map_fd_programs: return "map_fd_programs";
-    case TypeGroup::ctx: return "ctx";
-    case TypeGroup::packet: return "packet";
-    case TypeGroup::stack: return "stack";
-    case TypeGroup::shared: return "shared";
-    case TypeGroup::mem: return "{stack, packet, shared}";
-    case TypeGroup::pointer: return "{ctx, stack, packet, shared}";
-    case TypeGroup::non_map_fd: return "non_map_fd";
-    case TypeGroup::ptr_or_num: return "{number, ctx, stack, packet, shared}";
-    case TypeGroup::stack_or_packet: return "{stack, packet}";
-    case TypeGroup::singleton_ptr: return "{ctx, stack, packet}";
-    case TypeGroup::mem_or_num: return "{number, stack, packet, shared}";
-    default: assert(false);
-    }
-    return {};
-}
-
-std::ostream& operator<<(std::ostream& os, TypeGroup ts) { return os << to_string(ts); }
 
 std::ostream& operator<<(std::ostream& os, ValidStore const& a) {
     return os << a.mem << ".type != stack -> " << TypeConstraint{a.val, TypeGroup::number};
