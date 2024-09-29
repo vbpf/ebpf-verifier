@@ -141,29 +141,14 @@ thread_local lazy_allocator<std::vector<std::string>, default_variable_names> va
 
 void variable_t::clear_thread_local_state() { names.clear(); }
 
-static std::string name_of(data_kind_t kind) {
-    switch (kind) {
-    case data_kind_t::ctx_offsets: return "ctx_offset";
-    case data_kind_t::map_fds: return "map_fd";
-    case data_kind_t::packet_offsets: return "packet_offset";
-    case data_kind_t::shared_offsets: return "shared_offset";
-    case data_kind_t::shared_region_sizes: return "shared_region_size";
-    case data_kind_t::stack_numeric_sizes: return "stack_numeric_size";
-    case data_kind_t::stack_offsets: return "stack_offset";
-    case data_kind_t::svalues: return "svalue";
-    case data_kind_t::types: return "type";
-    case data_kind_t::uvalues: return "uvalue";
-    }
-    return {};
-}
-
 variable_t variable_t::reg(data_kind_t kind, int i) { return make("r" + std::to_string(i) + "." + name_of(kind)); }
 
 std::ostream& operator<<(std::ostream& o, const data_kind_t& s) { return o << name_of(s); }
 
 static std::string mk_scalar_name(data_kind_t kind, const number_t& o, const number_t& size) {
     std::stringstream os;
-    os << "s" << "[" << o;
+    os << "s"
+       << "[" << o;
     if (size != 1) {
         os << "..." << o + size - 1;
     }

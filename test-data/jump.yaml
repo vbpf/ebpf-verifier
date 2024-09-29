@@ -714,4 +714,4 @@ post:
   - r1.map_fd-r2.map_fd<=-1
 
 messages:
-  - "0: Invalid type (r1.type == non_map_fd)"
+  - "0: Invalid type (r1.type in {number, ctx, stack, packet, shared})"

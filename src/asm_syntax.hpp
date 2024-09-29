@@ -298,23 +298,6 @@ struct Assume {
     constexpr bool operator==(const Assume&) const = default;
 };
 
-enum class TypeGroup {
-    number,
-    map_fd,
-    ctx,             ///< pointer to the special memory region named 'ctx'
-    packet,          ///< pointer to the packet
-    stack,           ///< pointer to the stack
-    shared,          ///< pointer to shared memory
-    map_fd_programs, ///< reg == T_MAP_PROGRAMS
-    non_map_fd,      ///< reg >= T_NUM
-    mem,             ///< shared | stack | packet = reg >= T_PACKET
-    mem_or_num,      ///< reg >= T_NUM && reg != T_CTX
-    pointer,         ///< reg >= T_CTX
-    ptr_or_num,      ///< reg >= T_NUM
-    stack_or_packet, ///< reg <= T_STACK && reg >= T_PACKET
-    singleton_ptr,   ///< reg <= T_STACK && reg >= T_CTX
-};
-
 /// Condition check whether something is a valid size.
 struct ValidSize {
     Reg reg;
@@ -383,6 +366,7 @@ struct ValidStore {
     constexpr bool operator==(const ValidStore&) const = default;
 };
 
+using crab::TypeGroup;
 struct TypeConstraint {
     Reg reg;
     TypeGroup types;

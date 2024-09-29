@@ -7,29 +7,15 @@
 #include <memory>
 #include <vector>
 
-#include "crab/variable.hpp"
+#include "crab/type_encoding.hpp"
 #include "crab_utils/lazy_allocator.hpp"
 #include "crab_utils/num_big.hpp"
+
 using index_t = uint64_t;
 
 /* Basic type definitions */
 
 namespace crab {
-
-// data_kind_t is eBPF-specific.
-enum class data_kind_t {
-    types,
-    svalues,
-    uvalues,
-    ctx_offsets,
-    map_fds,
-    packet_offsets,
-    shared_offsets,
-    stack_offsets,
-    shared_region_sizes,
-    stack_numeric_sizes
-};
-std::ostream& operator<<(std::ostream& o, const data_kind_t& s);
 
 std::vector<std::string> default_variable_names();
 

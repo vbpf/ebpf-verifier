@@ -6,25 +6,19 @@
 
 #include <functional>
 #include <optional>
-#include <vector>
 
 #include "crab/array_domain.hpp"
 #include "crab/split_dbm.hpp"
+#include "crab/type_domain.hpp"
 #include "crab/variable.hpp"
 #include "string_constraints.hpp"
 
 namespace crab {
 
-using NumAbsDomain = domains::NumAbsDomain;
-
-struct reg_pack_t;
-
 class ebpf_domain_t final {
-    struct TypeDomain;
-
   public:
     ebpf_domain_t();
-    ebpf_domain_t(domains::NumAbsDomain inv, domains::array_domain_t stack);
+    ebpf_domain_t(NumAbsDomain inv, domains::array_domain_t stack);
 
     // Generic abstract domain operations
     static ebpf_domain_t top();
@@ -213,50 +207,6 @@ class ebpf_domain_t final {
 
     std::function<check_require_func_t> check_require{};
     bool get_map_fd_range(const Reg& map_fd_reg, int32_t* start_fd, int32_t* end_fd) const;
-
-    struct TypeDomain {
-        void assign_type(NumAbsDomain& inv, const Reg& lhs, type_encoding_t t);
-        void assign_type(NumAbsDomain& inv, const Reg& lhs, const Reg& rhs);
-        void assign_type(NumAbsDomain& inv, const Reg& lhs, const std::optional<linear_expression_t>& rhs);
-        void assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, const Reg& rhs);
-        void assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, const number_t& rhs);
-
-        void havoc_type(NumAbsDomain& inv, const Reg& r);
-
-        [[nodiscard]]
-        int get_type(const NumAbsDomain& inv, variable_t v) const;
-        [[nodiscard]]
-        int get_type(const NumAbsDomain& inv, const Reg& r) const;
-        [[nodiscard]]
-        int get_type(const NumAbsDomain& inv, const number_t& t) const;
-
-        [[nodiscard]]
-        bool has_type(const NumAbsDomain& inv, variable_t v, type_encoding_t type) const;
-        [[nodiscard]]
-        bool has_type(const NumAbsDomain& inv, const Reg& r, type_encoding_t type) const;
-        [[nodiscard]]
-        bool has_type(const NumAbsDomain& inv, const number_t& t, type_encoding_t type) const;
-
-        [[nodiscard]]
-        bool same_type(const NumAbsDomain& inv, const Reg& a, const Reg& b) const;
-        [[nodiscard]]
-        bool implies_type(const NumAbsDomain& inv, const linear_constraint_t& a, const linear_constraint_t& b) const;
-
-        [[nodiscard]]
-        NumAbsDomain join_over_types(const NumAbsDomain& inv, const Reg& reg,
-                                     const std::function<void(NumAbsDomain&, type_encoding_t)>& transition) const;
-        [[nodiscard]]
-        NumAbsDomain join_by_if_else(const NumAbsDomain& inv, const linear_constraint_t& condition,
-                                     const std::function<void(NumAbsDomain&)>& if_true,
-                                     const std::function<void(NumAbsDomain&)>& if_false) const;
-        void selectively_join_based_on_type(NumAbsDomain& dst, NumAbsDomain&& src) const;
-        void add_extra_invariant(const NumAbsDomain& dst, std::map<variable_t, interval_t>& extra_invariants,
-                                 variable_t type_variable, type_encoding_t type, data_kind_t kind,
-                                 const NumAbsDomain& other) const;
-
-        [[nodiscard]]
-        bool is_in_group(const NumAbsDomain& inv, const Reg& r, TypeGroup group) const;
-    };
 
     TypeDomain type_inv;
     std::string current_assertion;

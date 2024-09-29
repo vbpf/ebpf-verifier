@@ -1,11 +1,9 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: MIT
-#include <algorithm>
 #include <map>
 #include <regex>
 #include <sstream>
 #include <string>
-#include <unordered_set>
 
 #include <boost/lexical_cast.hpp>
 
@@ -13,6 +11,7 @@
 #include "asm_unmarshal.hpp"
 #include "crab/dsl_syntax.hpp"
 #include "crab/linear_constraint.hpp"
+#include "crab/type_encoding.hpp"
 #include "platform.hpp"
 #include "string_constraints.hpp"
 
@@ -241,7 +240,7 @@ static InstructionSeq parse_program(std::istream& is) {
         std::smatch m;
         if (regex_search(line, m, regex(LABEL ":"))) {
             next_label = label_t(boost::lexical_cast<int>(m[1]));
-            if (seen_labels.count(*next_label) != 0) {
+            if (seen_labels.contains(*next_label)) {
                 throw std::invalid_argument("duplicate labels");
             }
             line = m.suffix();
@@ -278,56 +277,10 @@ static crab::variable_t special_var(const std::string& s) {
     throw std::runtime_error(std::string() + "Bad special variable: " + s);
 }
 
-static crab::data_kind_t regkind(const std::string& s) {
-    if (s == "type") {
-        return crab::data_kind_t::types;
-    }
-    if (s == "ctx_offset") {
-        return crab::data_kind_t::ctx_offsets;
-    }
-    if (s == "map_fd") {
-        return crab::data_kind_t::map_fds;
-    }
-    if (s == "packet_offset") {
-        return crab::data_kind_t::packet_offsets;
-    }
-    if (s == "shared_offset") {
-        return crab::data_kind_t::shared_offsets;
-    }
-    if (s == "stack_offset") {
-        return crab::data_kind_t::stack_offsets;
-    }
-    if (s == "shared_region_size") {
-        return crab::data_kind_t::shared_region_sizes;
-    }
-    if (s == "stack_numeric_size") {
-        return crab::data_kind_t::stack_numeric_sizes;
-    }
-    if (s == "svalue") {
-        return crab::data_kind_t::svalues;
-    }
-    if (s == "uvalue") {
-        return crab::data_kind_t::uvalues;
-    }
-    throw std::runtime_error(std::string() + "Bad kind: " + s);
-}
-
-static type_encoding_t string_to_type_encoding(const std::string& s) {
-    static std::map<std::string, type_encoding_t> string_to_type{
-        {std::string("uninit"), T_UNINIT}, {std::string("map_fd_programs"), T_MAP_PROGRAMS},
-        {std::string("map_fd"), T_MAP},    {std::string("number"), T_NUM},
-        {std::string("ctx"), T_CTX},       {std::string("stack"), T_STACK},
-        {std::string("packet"), T_PACKET}, {std::string("shared"), T_SHARED},
-    };
-    if (string_to_type.count(s)) {
-        return string_to_type[s];
-    }
-    throw std::runtime_error(std::string("Unsupported type name: ") + s);
-}
-
 std::vector<linear_constraint_t> parse_linear_constraints(const std::set<std::string>& constraints,
                                                           std::vector<crab::interval_t>& numeric_ranges) {
     using namespace crab::dsl_syntax;
+    using crab::regkind;
     using crab::variable_t;
 
     std::vector<linear_constraint_t> res;
@@ -357,7 +310,7 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<std::st
                                regex(REG DOT "type"
                                              "=" TYPE))) {
             variable_t d = variable_t::reg(crab::data_kind_t::types, regnum(m[1]));
-            res.push_back(d == string_to_type_encoding(m[2]));
+            res.push_back(d == crab::string_to_type_encoding(m[2]));
         } else if (regex_match(cst_text, m, regex(REG DOT KIND "=" IMM))) {
             variable_t d = variable_t::reg(regkind(m[2]), regnum(m[1]));
             number_t value;
@@ -387,8 +340,8 @@ std::vector<linear_constraint_t> parse_linear_constraints(const std::set<std::st
         } else if (regex_match(cst_text, m,
                                regex("s" ARRAY_RANGE DOT "type"
                                      "=" TYPE))) {
-            type_encoding_t type = string_to_type_encoding(m[3]);
-            if (type == type_encoding_t::T_NUM) {
+            crab::type_encoding_t type = crab::string_to_type_encoding(m[3]);
+            if (type == crab::type_encoding_t::T_NUM) {
                 numeric_ranges.emplace_back(signed_number(m[1]), signed_number(m[2]));
             } else {
                 number_t lb = signed_number(m[1]);
