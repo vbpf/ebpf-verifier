@@ -76,9 +76,9 @@ FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
         VERIFY_PROGRAM(project, filename, section_name, program_name, nullptr, &g_ebpf_platform_linux, true);    \
     }
 
-#define TEST_PROGRAM_REJECT(project, filename, section_name, program_name) \
+#define TEST_PROGRAM_REJECT(project, filename, section_name, program_name)                                       \
     TEST_CASE("./check ebpf-samples/" project "/" filename " " program_name, "[verify][samples][" project "]") { \
-        VERIFY_PROGRAM(project, filename, section_name, program_name, nullptr, &g_ebpf_platform_linux, false);    \
+        VERIFY_PROGRAM(project, filename, section_name, program_name, nullptr, &g_ebpf_platform_linux, false);   \
     }
 
 #define TEST_SECTION_REJECT(project, filename, section)                                                     \
@@ -503,7 +503,7 @@ TEST_SECTION("raw_tracepoint/filler/proc_startupdate_2")
 TEST_SECTION("raw_tracepoint/filler/sys_recvfrom_x")
 */
 TEST_PROGRAM_REJECT("build", "bpf2bpf.o", ".text", "plus1"); // Subprogram will fail verification.
-TEST_PROGRAM("build", "bpf2bpf.o", ".text", "func"); // Subprogram can be called from main program.
+TEST_PROGRAM("build", "bpf2bpf.o", ".text", "func");         // Subprogram can be called from main program.
 TEST_SECTION("build", "byteswap.o", ".text")
 TEST_SECTION("build", "stackok.o", ".text")
 TEST_SECTION("build", "packet_start_ok.o", "xdp")
