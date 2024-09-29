@@ -23,15 +23,13 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ******************************************************************************************/
 #include <vector>
 
-//=========================================================================================
-// A heap implementation with support for decrease/increase key.
-//=========================================================================================
-
 namespace crab {
 
-template <std::predicate<int, int> Comp>
+// A heap implementation with support for decrease/increase key.
+// @tparam Comp a predicate that compares two integers.
+template <std::predicate<int, int> Comparator>
 class Heap {
-    Comp lt;
+    Comparator lt;
     std::vector<int> heap;    // heap of ints
     std::vector<int> indices; // int -> index in heap
 
@@ -43,8 +41,8 @@ class Heap {
     void percolateUp(int i) {
         int x = heap[i];
         while (i != 0 && lt(x, heap[parent(i)])) {
-            heap[i] = heap[parent(i)];
-            indices[heap[i]] = i;
+            const int v = heap[i] = heap[parent(i)];
+            indices[v] = i;
             i = parent(i);
         }
         heap[i] = x;
@@ -53,14 +51,16 @@ class Heap {
 
     void percolateDown(int i) {
         const int x = heap[i];
-        while (static_cast<size_t>(left(i)) < heap.size()) {
-            const int child =
-                static_cast<size_t>(right(i)) < heap.size() && lt(heap[right(i)], heap[left(i)]) ? right(i) : left(i);
+        const int size = heap.size();
+        while (left(i) < size) {
+            int ri = right(i);
+            int li = left(i);
+            const int child = static_cast<size_t>(ri) < size && lt(heap[ri], heap[li]) ? ri : li;
             if (!lt(heap[child], x)) {
                 break;
             }
-            heap[i] = heap[child];
-            indices[heap[i]] = i;
+            const int v = heap[i] = heap[child];
+            indices[v] = i;
             i = child;
         }
         heap[i] = x;
@@ -74,7 +74,7 @@ class Heap {
     }
 
   public:
-    explicit Heap(const Comp& c) : lt(c) {}
+    explicit Heap(const Comparator& c) : lt(c) {}
 
     [[nodiscard]]
     int size() const {
@@ -112,8 +112,8 @@ class Heap {
 
     int removeMin() {
         const int x = heap[0];
-        heap[0] = heap.back();
-        indices[heap[0]] = 0;
+        const int v = heap[0] = heap.back();
+        indices[v] = 0;
         indices[x] = -1;
         heap.pop_back();
         if (heap.size() > 1) {
