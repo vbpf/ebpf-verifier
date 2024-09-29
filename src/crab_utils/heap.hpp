@@ -29,18 +29,18 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace crab {
 
-template <class Comp>
+template <std::predicate<int, int> Comp>
 class Heap {
     Comp lt;
     std::vector<int> heap;    // heap of ints
     std::vector<int> indices; // int -> index in heap
 
     // Index "traversal" functions
-    static inline int left(int i) { return i * 2 + 1; }
-    static inline int right(int i) { return (i + 1) * 2; }
-    static inline int parent(int i) { return (i - 1) >> 1; }
+    static int left(const int i) { return i * 2 + 1; }
+    static int right(const int i) { return (i + 1) * 2; }
+    static int parent(const int i) { return (i - 1) >> 1; }
 
-    inline void percolateUp(int i) {
+    void percolateUp(int i) {
         int x = heap[i];
         while (i != 0 && lt(x, heap[parent(i)])) {
             heap[i] = heap[parent(i)];
@@ -51,10 +51,10 @@ class Heap {
         indices[x] = i;
     }
 
-    inline void percolateDown(int i) {
-        int x = heap[i];
+    void percolateDown(int i) {
+        const int x = heap[i];
         while (static_cast<size_t>(left(i)) < heap.size()) {
-            int child =
+            const int child =
                 static_cast<size_t>(right(i)) < heap.size() && lt(heap[right(i)], heap[left(i)]) ? right(i) : left(i);
             if (!lt(heap[child], x)) {
                 break;
@@ -68,7 +68,7 @@ class Heap {
     }
 
     [[nodiscard]]
-    bool heapProperty(int i) const {
+    bool heapProperty(const int i) const {
         return i >= heap.size() ||
                ((i == 0 || !lt(heap[i], heap[parent(i)])) && heapProperty(left(i)) && heapProperty(right(i)));
     }
@@ -85,20 +85,20 @@ class Heap {
         return heap.empty();
     }
     [[nodiscard]]
-    bool inHeap(int n) const {
+    bool inHeap(const int n) const {
         return static_cast<size_t>(n) < indices.size() && indices[n] >= 0;
     }
-    int operator[](int index) const {
+    int operator[](const int index) const {
         assert(static_cast<size_t>(index) < heap.size());
         return heap[index];
     }
 
-    void decrease(int n) {
+    void decrease(const int n) {
         assert(inHeap(n));
         percolateUp(indices[n]);
     }
 
-    void insert(int n) {
+    void insert(const int n) {
         assert(n >= 0);
         if (static_cast<size_t>(n) >= indices.size()) {
             indices.resize(n + 1, -1);
@@ -111,7 +111,7 @@ class Heap {
     }
 
     int removeMin() {
-        int x = heap[0];
+        const int x = heap[0];
         heap[0] = heap.back();
         indices[heap[0]] = 0;
         indices[x] = -1;
@@ -123,7 +123,7 @@ class Heap {
     }
 
     void clear() {
-        for (int i : heap) {
+        for (const int i : heap) {
             indices[i] = -1;
         }
 #ifdef NDEBUG
