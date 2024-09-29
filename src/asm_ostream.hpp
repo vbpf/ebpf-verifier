@@ -29,7 +29,7 @@ inline std::function<int32_t(label_t)> label_to_offset32(pc_t pc) {
 
 std::ostream& operator<<(std::ostream& os, const btf_line_info_t& line_info);
 
-void print(const InstructionSeq& insts, std::ostream& out, std::optional<const label_t> label_to_print,
+void print(const InstructionSeq& insts, std::ostream& out, const std::optional<const label_t>& label_to_print,
            bool print_line_info = false);
 
 std::string to_string(label_t const& label);
@@ -43,8 +43,8 @@ std::ostream& operator<<(std::ostream& os, Condition::Op op);
 inline std::ostream& operator<<(std::ostream& os, Imm imm) { return os << (int64_t)imm.v; }
 inline std::ostream& operator<<(std::ostream& os, Reg const& a) { return os << "r" << (int)a.v; }
 inline std::ostream& operator<<(std::ostream& os, Value const& a) {
-    if (std::holds_alternative<Imm>(a)) {
-        return os << std::get<Imm>(a);
+    if (auto pa = std::get_if<Imm>(&a)) {
+        return os << *pa;
     }
     return os << std::get<Reg>(a);
 }

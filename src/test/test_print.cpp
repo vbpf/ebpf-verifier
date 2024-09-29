@@ -26,9 +26,9 @@ void verify_printed_string(const std::string& file) {
         read_elf(std::string(TEST_OBJECT_FILE_DIRECTORY) + file + ".o", "", nullptr, &g_ebpf_platform_linux);
     const raw_program& raw_prog = raw_progs.back();
     std::variant<InstructionSeq, std::string> prog_or_error = unmarshal(raw_prog);
-    REQUIRE(std::holds_alternative<InstructionSeq>(prog_or_error));
-    auto& program = std::get<InstructionSeq>(prog_or_error);
-    print(program, generated_output, {});
+    auto program = std::get_if<InstructionSeq>(&prog_or_error);
+    REQUIRE(program != nullptr);
+    print(*program, generated_output, {});
     print_map_descriptors(raw_prog.info.map_descriptors, generated_output);
     std::ifstream expected_stream(std::string(TEST_ASM_FILE_DIRECTORY) + file + std::string(".asm"));
     REQUIRE(expected_stream);

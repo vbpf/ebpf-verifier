@@ -120,7 +120,7 @@ std::ostream& operator<<(std::ostream& os, ValidAccess const& a) {
         os << a.offset;
     }
 
-    if (a.width == (Value)Imm{0}) {
+    if (a.width == static_cast<Value>(Imm{0})) {
         // a.width == 0, meaning we only care it's an in-bound pointer,
         // so it can be compared with another pointer to the same region.
         os << ") for comparison/subtraction";
@@ -138,12 +138,12 @@ std::ostream& operator<<(std::ostream& os, ValidAccess const& a) {
 static crab::variable_t typereg(const Reg& r) { return crab::variable_t::reg(crab::data_kind_t::types, r.v); }
 
 std::ostream& operator<<(std::ostream& os, ValidSize const& a) {
-    auto op = a.can_be_zero ? " >= " : " > ";
+    const auto op = a.can_be_zero ? " >= " : " > ";
     return os << a.reg << ".value" << op << 0;
 }
 
 std::ostream& operator<<(std::ostream& os, ValidCall const& a) {
-    EbpfHelperPrototype proto = global_program_info->platform->get_helper_prototype(a.func);
+    const EbpfHelperPrototype proto = global_program_info->platform->get_helper_prototype(a.func);
     return os << "valid call(" << proto.name << ")";
 }
 
@@ -224,8 +224,7 @@ struct InstructionPrinterVisitor {
         os_ << "r0 = " << call.name << ":" << call.func << "(";
         for (uint8_t r = 1; r <= 5; r++) {
             // Look for a singleton.
-            std::vector<ArgSingle>::const_iterator single =
-                std::find_if(call.singles.begin(), call.singles.end(), [r](ArgSingle arg) { return arg.reg.v == r; });
+            auto single = std::ranges::find_if(call.singles, [r](ArgSingle arg) { return arg.reg.v == r; });
             if (single != call.singles.end()) {
                 if (r > 1) {
                     os_ << ", ";
@@ -235,8 +234,7 @@ struct InstructionPrinterVisitor {
             }
 
             // Look for the start of a pair.
-            std::vector<ArgPair>::const_iterator pair =
-                std::find_if(call.pairs.begin(), call.pairs.end(), [r](ArgPair arg) { return arg.mem.v == r; });
+            auto pair = std::ranges::find_if(call.pairs, [r](ArgPair arg) { return arg.mem.v == r; });
             if (pair != call.pairs.end()) {
                 if (r > 1) {
                     os_ << ", ";
@@ -270,8 +268,8 @@ struct InstructionPrinterVisitor {
     }
 
     void operator()(Jmp const& b, int offset) {
-        string sign = offset > 0 ? "+" : "";
-        string target = sign + std::to_string(offset) + " <" + to_string(b.target) + ">";
+        const string sign = offset > 0 ? "+" : "";
+        const string target = sign + std::to_string(offset) + " <" + to_string(b.target) + ">";
 
         if (b.cond) {
             os_ << "if ";
@@ -284,7 +282,7 @@ struct InstructionPrinterVisitor {
     void operator()(Packet const& b) {
         /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
         /* Indirect packet access, R0 = *(uint *) (skb->data + src_reg + imm32) */
-        string s = size(b.width);
+        const string s = size(b.width);
         os_ << "r0 = ";
         os_ << "*(" << s << " *)skb[";
         if (b.regoffset) {
@@ -300,7 +298,7 @@ struct InstructionPrinterVisitor {
     }
 
     void print(Deref const& access) {
-        string sign = access.offset < 0 ? " - " : " + ";
+        const string sign = access.offset < 0 ? " - " : " + ";
         int offset = std::abs(access.offset); // what about INT_MIN?
         os_ << "*(" << size(access.width) << " *)";
         os_ << "(" << access.basereg << sign << offset << ")";
@@ -379,9 +377,9 @@ string to_string(AssertionConstraint const& constraint) {
     return str.str();
 }
 
-int size(Instruction inst) {
-    if (std::holds_alternative<Bin>(inst)) {
-        if (std::get<Bin>(inst).lddw) {
+int size(const Instruction& inst) {
+    if (const auto bin = std::get_if<Bin>(&inst)) {
+        if (bin->lddw) {
             return 2;
         }
     }
@@ -401,9 +399,9 @@ auto get_labels(const InstructionSeq& insts) {
     return pc_of_label;
 }
 
-void print(const InstructionSeq& insts, std::ostream& out, std::optional<const label_t> label_to_print,
+void print(const InstructionSeq& insts, std::ostream& out, const std::optional<const label_t>& label_to_print,
            bool print_line_info) {
-    auto pc_of_label = get_labels(insts);
+    const auto pc_of_label = get_labels(insts);
     pc_t pc = 0;
     std::string previous_source;
     InstructionPrinterVisitor visitor{out};
@@ -427,13 +425,12 @@ void print(const InstructionSeq& insts, std::ostream& out, std::optional<const l
             } else {
                 out << std::setw(8) << pc << ":\t";
             }
-            if (std::holds_alternative<Jmp>(ins)) {
-                auto const& jmp = std::get<Jmp>(ins);
-                if (pc_of_label.count(jmp.target) == 0) {
-                    throw std::runtime_error(string("Cannot find label ") + to_string(jmp.target));
+            if (const auto jmp = std::get_if<Jmp>(&ins)) {
+                if (!pc_of_label.contains(jmp->target)) {
+                    throw std::runtime_error(string("Cannot find label ") + to_string(jmp->target));
                 }
-                pc_t target_pc = pc_of_label.at(jmp.target);
-                visitor(jmp, target_pc - (int)pc - 1);
+                const pc_t target_pc = pc_of_label.at(jmp->target);
+                visitor(*jmp, target_pc - static_cast<int>(pc) - 1);
             } else {
                 std::visit(visitor, ins);
             }
@@ -498,7 +495,7 @@ std::ostream& operator<<(std::ostream& o, const basic_block_t& bb) {
     if (it != et) {
         o << "  "
           << "goto ";
-        for (; it != et;) {
+        while (it != et) {
             o << *it;
             ++it;
             if (it == et) {

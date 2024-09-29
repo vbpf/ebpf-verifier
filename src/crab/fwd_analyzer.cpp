@@ -19,7 +19,7 @@ class member_component_visitor final {
     bool _found;
 
   public:
-    explicit member_component_visitor(label_t node) : _node(node), _found(false) {}
+    explicit member_component_visitor(const label_t& node) : _node(node), _found(false) {}
 
     void operator()(const label_t& vertex) {
         if (!_found) {
@@ -48,7 +48,7 @@ class member_component_visitor final {
 };
 
 class interleaved_fwd_fixpoint_iterator_t final {
-    using iterator = typename invariant_table_t::iterator;
+    using iterator = invariant_table_t::iterator;
 
     cfg_t& _cfg;
     wto_t _wto;
@@ -74,7 +74,7 @@ class interleaved_fwd_fixpoint_iterator_t final {
     }
 
     [[nodiscard]]
-    static ebpf_domain_t extrapolate(ebpf_domain_t before, const ebpf_domain_t& after, unsigned int iteration) {
+    static ebpf_domain_t extrapolate(const ebpf_domain_t& before, const ebpf_domain_t& after, unsigned int iteration) {
         /// number of iterations until triggering widening
         constexpr auto _widening_delay = 2;
 
@@ -84,7 +84,7 @@ class interleaved_fwd_fixpoint_iterator_t final {
         return before.widen(after, iteration == _widening_delay);
     }
 
-    static ebpf_domain_t refine(ebpf_domain_t before, const ebpf_domain_t& after, unsigned int iteration) {
+    static ebpf_domain_t refine(const ebpf_domain_t& before, const ebpf_domain_t& after, unsigned int iteration) {
         if (iteration == 1) {
             return before & after;
         } else {
@@ -125,8 +125,8 @@ std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg,
     if (thread_local_options.check_termination) {
         std::vector<label_t> cycle_heads;
         for (auto& component : analyzer._wto) {
-            if (std::holds_alternative<std::shared_ptr<wto_cycle_t>>(component)) {
-                cycle_heads.push_back(std::get<std::shared_ptr<wto_cycle_t>>(component)->head());
+            if (const auto pc = std::get_if<std::shared_ptr<wto_cycle_t>>(&component)) {
+                cycle_heads.push_back((*pc)->head());
             }
         }
         for (const label_t& label : cycle_heads) {
@@ -190,7 +190,8 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(const std::shared_ptr<wto_c
         set_pre(head, invariant);
         transform_to_post(head, invariant);
         for (auto& component : *cycle) {
-            if (!std::holds_alternative<label_t>(component) || (std::get<label_t>(component) != head)) {
+            const auto plabel = std::get_if<label_t>(&component);
+            if (!plabel || *plabel != head) {
                 std::visit(*this, component);
             }
         }
@@ -210,7 +211,8 @@ void interleaved_fwd_fixpoint_iterator_t::operator()(const std::shared_ptr<wto_c
         transform_to_post(head, invariant);
 
         for (auto& component : *cycle) {
-            if (!std::holds_alternative<label_t>(component) || (std::get<label_t>(component) != head)) {
+            const auto plabel = std::get_if<label_t>(&component);
+            if (!plabel || *plabel != head) {
                 std::visit(*this, component);
             }
         }

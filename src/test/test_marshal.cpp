@@ -299,33 +299,33 @@ static void check_marshal_unmarshal_fail(const Instruction& ins, std::string exp
 static void check_unmarshal_fail(ebpf_inst inst, std::string expected_error_message,
                                  const ebpf_platform_t& platform = g_ebpf_platform_linux) {
     program_info info{.platform = &platform, .type = platform.get_program_type("unspec", "unspec")};
-    std::vector<ebpf_inst> insns = {inst};
+    std::vector insns = {inst};
     auto result = unmarshal(raw_program{"", "", 0, "", insns, info});
-    REQUIRE(std::holds_alternative<std::string>(result));
-    std::string error_message = std::get<std::string>(result);
-    REQUIRE(error_message == expected_error_message);
+    std::string* error_message = std::get_if<std::string>(&result);
+    REQUIRE(error_message != nullptr);
+    REQUIRE(*error_message == expected_error_message);
 }
 
 static void check_unmarshal_fail_goto(ebpf_inst inst, const std::string& expected_error_message,
                                       const ebpf_platform_t& platform = g_ebpf_platform_linux) {
     program_info info{.platform = &platform, .type = platform.get_program_type("unspec", "unspec")};
-    const ebpf_inst exit{.opcode = INST_OP_EXIT};
-    std::vector<ebpf_inst> insns{inst, exit, exit};
+    constexpr ebpf_inst exit{.opcode = INST_OP_EXIT};
+    std::vector insns{inst, exit, exit};
     auto result = unmarshal(raw_program{"", "", 0, "", insns, info});
-    REQUIRE(std::holds_alternative<std::string>(result));
-    std::string error_message = std::get<std::string>(result);
-    REQUIRE(error_message == expected_error_message);
+    std::string* error_message = std::get_if<std::string>(&result);
+    REQUIRE(error_message != nullptr);
+    REQUIRE(*error_message == expected_error_message);
 }
 
 // Check that unmarshaling a 64-bit immediate instruction fails.
 static void check_unmarshal_fail(ebpf_inst inst1, ebpf_inst inst2, std::string expected_error_message,
                                  const ebpf_platform_t& platform = g_ebpf_platform_linux) {
     program_info info{.platform = &platform, .type = platform.get_program_type("unspec", "unspec")};
-    std::vector<ebpf_inst> insns = {inst1, inst2};
+    std::vector insns{inst1, inst2};
     auto result = unmarshal(raw_program{"", "", 0, "", insns, info});
-    REQUIRE(std::holds_alternative<std::string>(result));
-    std::string error_message = std::get<std::string>(result);
-    REQUIRE(error_message == expected_error_message);
+    std::string* error_message = std::get_if<std::string>(&result);
+    REQUIRE(error_message != nullptr);
+    REQUIRE(*error_message == expected_error_message);
 }
 
 static const auto ws = {1, 2, 4, 8};
