@@ -49,8 +49,10 @@ struct wto_vertex_data_t {
     // DFN as "depth first number".
     int dfn{};
     int head_dfn{}; // Head value returned from Visit() in the paper.
+
     std::shared_ptr<wto_cycle_t> containing_cycle;
 };
+constexpr static int DFN_INF = std::numeric_limits<decltype(wto_vertex_data_t::dfn)>::max();
 
 class wto_builder_t final {
     // Original control-flow graph.
@@ -103,13 +105,11 @@ void wto_builder_t::start_visit(const label_t& vertex, wto_partition_t& partitio
     wto_vertex_data_t& vertex_data = _vertex_data[vertex];
     int head_dfn = vertex_data.dfn;
     bool loop = false;
-    int min_dfn = INT_MAX;
     for (const label_t& succ : _cfg.next_nodes(vertex)) {
         const wto_vertex_data_t& data = _vertex_data[succ];
-        if (data.head_dfn != 0 && data.dfn != INT_MAX) {
+        int min_dfn = data.dfn;
+        if (data.head_dfn != 0 && data.dfn != DFN_INF) {
             min_dfn = data.head_dfn;
-        } else {
-            min_dfn = data.dfn;
         }
         if (min_dfn <= head_dfn) {
             head_dfn = min_dfn;
@@ -121,7 +121,7 @@ void wto_builder_t::start_visit(const label_t& vertex, wto_partition_t& partitio
     const auto cycle = std::make_shared<wto_cycle_t>(containing_cycle);
 
     if (head_dfn == vertex_data.dfn) {
-        vertex_data.dfn = std::numeric_limits<decltype(vertex_data.dfn)>::max();
+        vertex_data.dfn = DFN_INF;
         label_t element = _stack.top();
         _stack.pop();
         if (loop) {

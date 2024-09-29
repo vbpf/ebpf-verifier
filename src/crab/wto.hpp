@@ -75,7 +75,10 @@ class wto_cycle_t final {
         if (_components.empty()) {
             CRAB_ERROR("Empty cycle");
         }
-        return std::get<label_t>(_components.back());
+        if (const auto label = std::get_if<label_t>(&_components.back())) {
+            return *label;
+        }
+        CRAB_ERROR("Expected label_t at the back of _components");
     }
 
     [[nodiscard]]
@@ -123,5 +126,3 @@ class wto_t final {
     friend std::ostream& operator<<(std::ostream& o, const wto_t& wto);
     const wto_nesting_t& nesting(const label_t& label);
 };
-
-;
