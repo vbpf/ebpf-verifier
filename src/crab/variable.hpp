@@ -11,10 +11,6 @@
 #include "crab_utils/lazy_allocator.hpp"
 #include "crab_utils/num_big.hpp"
 
-using index_t = uint64_t;
-
-/* Basic type definitions */
-
 namespace crab {
 
 std::vector<std::string> default_variable_names();
@@ -22,22 +18,22 @@ std::vector<std::string> default_variable_names();
 // Wrapper for typed variables used by the crab abstract domains and linear_constraints.
 // Being a class (instead of a type alias) enables overloading in dsl_syntax
 class variable_t final {
-    index_t _id;
+    uint64_t _id;
 
-    explicit variable_t(index_t id) : _id(id) {}
+    explicit variable_t(const uint64_t id) : _id(id) {}
 
   public:
     [[nodiscard]]
     std::size_t hash() const {
-        return (size_t)_id;
+        return _id;
     }
 
-    bool operator==(variable_t o) const { return _id == o._id; }
+    bool operator==(const variable_t o) const { return _id == o._id; }
 
-    bool operator!=(variable_t o) const { return (!(operator==(o))); }
+    bool operator!=(const variable_t o) const { return (!(operator==(o))); }
 
     // for flat_map
-    bool operator<(variable_t o) const { return _id < o._id; }
+    bool operator<(const variable_t o) const { return _id < o._id; }
 
     [[nodiscard]]
     std::string name() const {
@@ -54,7 +50,7 @@ class variable_t final {
         return names->at(_id).find(".uvalue") != std::string::npos;
     }
 
-    friend std::ostream& operator<<(std::ostream& o, variable_t v) { return o << names->at(v._id); }
+    friend std::ostream& operator<<(std::ostream& o, const variable_t v) { return o << names->at(v._id); }
 
     // var_factory portion.
     // This singleton is eBPF-specific, to avoid lifetime issues and/or passing factory explicitly everywhere:

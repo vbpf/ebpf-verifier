@@ -19,6 +19,8 @@
 
 namespace crab::domains {
 
+using index_t = uint64_t;
+
 static bool maybe_between(const NumAbsDomain& dom, const extended_number& x, const linear_expression_t& symb_lb,
                           const linear_expression_t& symb_ub) {
     using namespace dsl_syntax;
@@ -60,7 +62,7 @@ int radix_length(const offset_t& offset) {
 // Get a range of bits out of the middle of a key, starting at [begin] for a given length.
 [[maybe_unused]]
 offset_t radix_substr(const offset_t& key, const int begin, const int length) {
-    uint64_t mask;
+    index_t mask;
 
     if (length == offset_t::bitsize) {
         mask = 0;
@@ -79,11 +81,8 @@ offset_t radix_substr(const offset_t& key, const int begin, const int length) {
 // Concatenate two bit patterns.
 [[maybe_unused]]
 offset_t radix_join(const offset_t& entry1, const offset_t& entry2) {
-    const index_t value1 = (index_t)entry1;
-    const index_t value2 = (index_t)entry2;
-    const index_t value = value1 | (value2 >> entry1.prefix_length());
+    const index_t value = entry1 | (entry2 >> entry1.prefix_length());
     const int prefix_length = entry1.prefix_length() + entry2.prefix_length();
-
     return offset_t{value, prefix_length};
 }
 
@@ -491,7 +490,7 @@ void array_domain_t::split_number_var(NumAbsDomain& inv, data_kind_t kind, const
         return;
     }
     auto size = static_cast<unsigned int>(*n_bytes);
-    offset_t o(static_cast<uint64_t>(*n));
+    offset_t o(static_cast<index_t>(*n));
 
     std::vector<cell_t> cells = offset_map.get_overlap_cells(o, size);
     for (cell_t const& c : cells) {
@@ -500,7 +499,7 @@ void array_domain_t::split_number_var(NumAbsDomain& inv, data_kind_t kind, const
         int cell_end_index = static_cast<int>(*intv.ub().number());
 
         if (!this->num_bytes.all_num(cell_start_index, cell_end_index + 1) ||
-            cell_end_index + 1 < cell_start_index + sizeof(int64_t)) {
+            cell_end_index + 1UL < cell_start_index + sizeof(int64_t)) {
             // We can only split numeric cells of size 8 or less.
             continue;
         }
@@ -509,11 +508,11 @@ void array_domain_t::split_number_var(NumAbsDomain& inv, data_kind_t kind, const
             // We can only split cells with a singleton value.
             continue;
         }
-        if (cell_start_index < o) {
+        if (static_cast<index_t>(cell_start_index) < o) {
             // Use the bytes to the left of the specified range.
             split_cell(inv, kind, cell_start_index, static_cast<unsigned int>(o - cell_start_index));
         }
-        if (o + size - 1 < cell_end_index) {
+        if (o + size < cell_end_index + 1UL) {
             // Use the bytes to the right of the specified range.
             split_cell(inv, kind, static_cast<int>(o + size),
                        static_cast<unsigned int>(cell_end_index - (o + size - 1)));
@@ -535,7 +534,7 @@ static std::optional<std::pair<offset_t, unsigned>> kill_and_find_var(NumAbsDoma
         if (auto n_bytes = i_elem_size.singleton()) {
             auto size = static_cast<unsigned int>(*n_bytes);
             // -- Constant index: kill overlapping cells
-            offset_t o(static_cast<uint64_t>(*n));
+            offset_t o(static_cast<index_t>(*n));
             cells = offset_map.get_overlap_cells(o, size);
             res = std::make_pair(o, size);
         }
@@ -599,7 +598,7 @@ std::optional<uint8_t> get_value_byte(const NumAbsDomain& inv, const offset_t o,
     if (!t) {
         return {};
     }
-    uint64_t n = t->cast_to<uint64_t>();
+    index_t n = t->cast_to<index_t>();
 
     // Convert value to bytes of the appropriate endian-ness.
     switch (width) {
@@ -618,11 +617,11 @@ std::optional<uint8_t> get_value_byte(const NumAbsDomain& inv, const offset_t o,
             n = boost::endian::native_to_little<uint32_t>(n);
         }
         break;
-    case sizeof(uint64_t):
+    case sizeof(index_t):
         if (thread_local_options.big_endian) {
-            n = boost::endian::native_to_big<uint64_t>(n);
+            n = boost::endian::native_to_big<index_t>(n);
         } else {
-            n = boost::endian::native_to_little<uint64_t>(n);
+            n = boost::endian::native_to_little<index_t>(n);
         }
         break;
     default: CRAB_ERROR("Unexpected width ", width);
@@ -700,11 +699,11 @@ std::optional<linear_expression_t> array_domain_t::load(const NumAbsDomain& inv,
                     return b;
                 }
                 if (size == 8) {
-                    uint64_t b = *reinterpret_cast<uint64_t*>(result_buffer);
+                    index_t b = *reinterpret_cast<index_t*>(result_buffer);
                     if (thread_local_options.big_endian) {
-                        b = boost::endian::native_to_big<uint64_t>(b);
+                        b = boost::endian::native_to_big<index_t>(b);
                     } else {
-                        b = boost::endian::native_to_little<uint64_t>(b);
+                        b = boost::endian::native_to_little<index_t>(b);
                     }
                     return kind == data_kind_t::uvalues ? number_t(b) : number_t(static_cast<int64_t>(b));
                 }
