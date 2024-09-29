@@ -66,49 +66,47 @@ FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
         }                                                                                                 \
     } while (0)
 
-#define TEST_SECTION(project, filename, section)                                                            \
-    TEST_CASE("./check ebpf-samples/" project "/" filename " " section, "[verify][samples][" project "]") { \
-        VERIFY_SECTION(project, filename, section, nullptr, &g_ebpf_platform_linux, true);                  \
-    }
-
-#define TEST_PROGRAM(project, filename, section_name, program_name)                                              \
-    TEST_CASE("./check ebpf-samples/" project "/" filename " " program_name, "[verify][samples][" project "]") { \
-        VERIFY_PROGRAM(project, filename, section_name, program_name, nullptr, &g_ebpf_platform_linux, true);    \
-    }
-
-#define TEST_PROGRAM_REJECT(project, filename, section_name, program_name)                                       \
-    TEST_CASE("./check ebpf-samples/" project "/" filename " " program_name, "[verify][samples][" project "]") { \
-        VERIFY_PROGRAM(project, filename, section_name, program_name, nullptr, &g_ebpf_platform_linux, false);   \
-    }
-
-#define TEST_SECTION_REJECT(project, filename, section)                                                     \
-    TEST_CASE("./check ebpf-samples/" project "/" filename " " section, "[verify][samples][" project "]") { \
-        VERIFY_SECTION(project, filename, section, nullptr, &g_ebpf_platform_linux, false);                 \
-    }
-
-#define TEST_SECTION_REJECT_IF_STRICT(project, filename, section)                                           \
-    TEST_CASE("./check ebpf-samples/" project "/" filename " " section, "[verify][samples][" project "]") { \
-        ebpf_verifier_options_t options = ebpf_verifier_default_options;                                    \
-        VERIFY_SECTION(project, filename, section, &options, &g_ebpf_platform_linux, true);                 \
-        options.strict = true;                                                                              \
-        VERIFY_SECTION(project, filename, section, &options, &g_ebpf_platform_linux, false);                \
-    }
-
-#define TEST_SECTION_FAIL(project, filename, section)                                      \
-    TEST_CASE("expect failure ebpf-samples/" project "/" filename " " section,             \
-              "[!shouldfail][verify][samples][" project "]") {                             \
+#define TEST_SECTION(project, filename, section)                                           \
+    TEST_CASE(project "/" filename " " section, "[verify][samples][" project "]") {        \
         VERIFY_SECTION(project, filename, section, nullptr, &g_ebpf_platform_linux, true); \
     }
 
-#define TEST_SECTION_REJECT_FAIL(project, filename, section)                                \
-    TEST_CASE("expect failure ebpf-samples/" project "/" filename " " section,              \
-              "[!shouldfail][verify][samples][" project "]") {                              \
+#define TEST_PROGRAM(project, filename, section_name, program_name)                                           \
+    TEST_CASE(project "/" filename " " program_name, "[verify][samples][" project "]") {                      \
+        VERIFY_PROGRAM(project, filename, section_name, program_name, nullptr, &g_ebpf_platform_linux, true); \
+    }
+
+#define TEST_PROGRAM_REJECT(project, filename, section_name, program_name)                                     \
+    TEST_CASE(project "/" filename " " program_name, "[verify][samples][" project "]") {                       \
+        VERIFY_PROGRAM(project, filename, section_name, program_name, nullptr, &g_ebpf_platform_linux, false); \
+    }
+
+#define TEST_SECTION_REJECT(project, filename, section)                                     \
+    TEST_CASE(project "/" filename " " section, "[verify][samples][" project "]") {         \
         VERIFY_SECTION(project, filename, section, nullptr, &g_ebpf_platform_linux, false); \
+    }
+
+#define TEST_SECTION_REJECT_IF_STRICT(project, filename, section)                            \
+    TEST_CASE(project "/" filename " " section, "[verify][samples][" project "]") {          \
+        ebpf_verifier_options_t options = ebpf_verifier_default_options;                     \
+        VERIFY_SECTION(project, filename, section, &options, &g_ebpf_platform_linux, true);  \
+        options.strict = true;                                                               \
+        VERIFY_SECTION(project, filename, section, &options, &g_ebpf_platform_linux, false); \
+    }
+
+#define TEST_SECTION_FAIL(project, filename, section)                                                              \
+    TEST_CASE("expect failure " project "/" filename " " section, "[!shouldfail][verify][samples][" project "]") { \
+        VERIFY_SECTION(project, filename, section, nullptr, &g_ebpf_platform_linux, true);                         \
+    }
+
+#define TEST_SECTION_REJECT_FAIL(project, filename, section)                                                       \
+    TEST_CASE("expect failure " project "/" filename " " section, "[!shouldfail][verify][samples][" project "]") { \
+        VERIFY_SECTION(project, filename, section, nullptr, &g_ebpf_platform_linux, false);                        \
     }
 
 #define TEST_SECTION_LEGACY(dirname, filename, sectionname)                                               \
     TEST_SECTION(dirname, filename, sectionname)                                                          \
-    TEST_CASE("Try unmarshalling bad program: " dirname "/" filename " " sectionname, "[unmarshal]") {    \
+    TEST_CASE("Fail unmarshalling: " dirname "/" filename " " sectionname, "[unmarshal]") {               \
         ebpf_platform_t platform = g_ebpf_platform_linux;                                                 \
         platform.supported_conformance_groups &= ~bpf_conformance_groups_t::packet;                       \
         auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, sectionname, nullptr, &platform); \
