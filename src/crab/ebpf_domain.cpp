@@ -2510,6 +2510,9 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             type_inv.assign_type(m_inv, bin.dst, T_NUM);
             havoc_offsets(bin.dst);
             break;
+        case Bin::Op::MOVSX8:
+        case Bin::Op::MOVSX16:
+        case Bin::Op::MOVSX32: CRAB_ERROR("Unsupported operation");
         case Bin::Op::ADD:
             if (imm == 0) {
                 return;
