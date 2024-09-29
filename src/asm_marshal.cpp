@@ -109,8 +109,9 @@ struct MarshalVisitor {
 
     vector<ebpf_inst> operator()(Bin const& b) {
         if (b.lddw) {
-            assert(std::holds_alternative<Imm>(b.v));
-            auto [imm, next_imm] = split(std::get<Imm>(b.v).v);
+            const auto pimm = std::get_if<Imm>(&b.v);
+            assert(pimm != nullptr);
+            auto [imm, next_imm] = split(pimm->v);
             return makeLddw(b.dst, false, imm, next_imm);
         }
 
@@ -248,9 +249,9 @@ struct MarshalVisitor {
         } else {
             res.opcode |= INST_CLS_ST;
             res.dst = access.basereg.v;
-            if (std::holds_alternative<Reg>(b.value)) {
+            if (const auto preg = std::get_if<Reg>(&b.value)) {
                 res.opcode |= 0x1;
-                res.src = std::get<Reg>(b.value).v;
+                res.src = preg->v;
             } else {
                 res.opcode |= 0x0;
                 res.imm = static_cast<int32_t>(std::get<Imm>(b.value).v);
@@ -308,9 +309,9 @@ vector<ebpf_inst> marshal(const vector<Instruction>& insts) {
     return res;
 }
 
-static int size(Instruction inst) {
-    if (std::holds_alternative<Bin>(inst)) {
-        if (std::get<Bin>(inst).lddw) {
+static int size(const Instruction& inst) {
+    if (const auto pins = std::get_if<Bin>(&inst)) {
+        if (pins->lddw) {
             return 2;
         }
     }
@@ -336,9 +337,8 @@ vector<ebpf_inst> marshal(const InstructionSeq& insts) {
     pc_t pc = 0;
     for (auto [label, ins, _] : insts) {
         (void)label; // unused
-        if (std::holds_alternative<Jmp>(ins)) {
-            Jmp& jmp = std::get<Jmp>(ins);
-            jmp.target = label_t(pc_of_label.at(jmp.target));
+        if (const auto pins = std::get_if<Jmp>(&ins)) {
+            pins->target = label_t(pc_of_label.at(pins->target));
         }
         for (auto e : marshal(ins, pc)) {
             pc++;

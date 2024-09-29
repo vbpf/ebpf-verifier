@@ -1222,8 +1222,8 @@ void ebpf_domain_t::check_access_shared(NumAbsDomain& inv, const linear_expressi
 void ebpf_domain_t::operator()(const Assume& s) {
     const Condition cond = s.cond;
     const auto dst = reg_pack(cond.left);
-    if (std::holds_alternative<Reg>(cond.right)) {
-        const auto src_reg = std::get<Reg>(cond.right);
+    if (const auto psrc_reg = std::get_if<Reg>(&cond.right)) {
+        const auto src_reg = *psrc_reg;
         const auto src = reg_pack(src_reg);
         if (type_inv.same_type(m_inv, cond.left, std::get<Reg>(cond.right))) {
             m_inv = type_inv.join_over_types(m_inv, cond.left, [&](NumAbsDomain& inv, const type_encoding_t type) {
@@ -1639,7 +1639,14 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
         }
     });
 }
-
+static std::tuple<linear_expression_t, linear_expression_t> lb_ub_access_pair(const ValidAccess& s,
+                                                                              const variable_t offset_var) {
+    using namespace crab::dsl_syntax;
+    linear_expression_t lb = offset_var + s.offset;
+    linear_expression_t ub = std::holds_alternative<Imm>(s.width) ? lb + std::get<Imm>(s.width).v
+                                                                  : lb + reg_pack(std::get<Reg>(s.width)).svalue;
+    return {lb, ub};
+}
 void ebpf_domain_t::operator()(const ValidAccess& s) {
     using namespace crab::dsl_syntax;
 
@@ -1650,10 +1657,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
     m_inv = type_inv.join_over_types(m_inv, s.reg, [&](NumAbsDomain& inv, type_encoding_t type) {
         switch (type) {
         case T_PACKET: {
-            linear_expression_t lb = reg.packet_offset + s.offset;
-            linear_expression_t ub = std::holds_alternative<Imm>(s.width)
-                                         ? lb + std::get<Imm>(s.width).v
-                                         : lb + reg_pack(std::get<Reg>(s.width)).svalue;
+            auto [lb, ub] = lb_ub_access_pair(s, reg.packet_offset);
             check_access_packet(inv, lb, ub,
                                 is_comparison_check ? std::optional<variable_t>{} : variable_t::packet_size());
             // if within bounds, it can never be null
@@ -1661,10 +1665,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
             break;
         }
         case T_STACK: {
-            linear_expression_t lb = reg.stack_offset + s.offset;
-            linear_expression_t ub = std::holds_alternative<Imm>(s.width)
-                                         ? lb + std::get<Imm>(s.width).v
-                                         : lb + reg_pack(std::get<Reg>(s.width)).svalue;
+            auto [lb, ub] = lb_ub_access_pair(s, reg.stack_offset);
             check_access_stack(inv, lb, ub);
             // if within bounds, it can never be null
             if (s.access_type == AccessType::read) {
@@ -1672,9 +1673,8 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
                 if (!stack.all_num(inv, lb, ub)) {
                     if (s.offset < 0) {
                         require(inv, linear_constraint_t::false_const(), "Stack content is not numeric");
-                    } else if (std::holds_alternative<Imm>(s.width)) {
-                        if (!inv.entail(static_cast<int>(std::get<Imm>(s.width).v) <=
-                                        reg.stack_numeric_size - s.offset)) {
+                    } else if (const auto pimm = std::get_if<Imm>(&s.width)) {
+                        if (!inv.entail(static_cast<int>(pimm->v) <= reg.stack_numeric_size - s.offset)) {
                             require(inv, linear_constraint_t::false_const(), "Stack content is not numeric");
                         }
                     } else {
@@ -1687,13 +1687,19 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
             break;
         }
         case T_CTX: {
-            linear_expression_t lb = reg.ctx_offset + s.offset;
-            linear_expression_t ub = std::holds_alternative<Imm>(s.width)
-                                         ? lb + std::get<Imm>(s.width).v
-                                         : lb + reg_pack(std::get<Reg>(s.width)).svalue;
+            auto [lb, ub] = lb_ub_access_pair(s, reg.ctx_offset);
             check_access_context(inv, lb, ub);
             // if within bounds, it can never be null
             // The context is both readable and writable.
+            break;
+        }
+        case T_SHARED: {
+            auto [lb, ub] = lb_ub_access_pair(s, reg.shared_offset);
+            check_access_shared(inv, lb, ub, reg.shared_region_size);
+            if (!is_comparison_check && !s.or_null) {
+                require(inv, reg.svalue > 0, "Possible null access");
+            }
+            // Shared memory is zero-initialized when created so is safe to read and write.
             break;
         }
         case T_NUM:
@@ -1711,18 +1717,6 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
                 require(inv, linear_constraint_t::false_const(), "FDs cannot be dereferenced directly");
             }
             break;
-        case T_SHARED: {
-            linear_expression_t lb = reg.shared_offset + s.offset;
-            linear_expression_t ub = std::holds_alternative<Imm>(s.width)
-                                         ? lb + std::get<Imm>(s.width).v
-                                         : lb + reg_pack(std::get<Reg>(s.width)).svalue;
-            check_access_shared(inv, lb, ub, reg.shared_region_size);
-            if (!is_comparison_check && !s.or_null) {
-                require(inv, reg.svalue > 0, "Possible null access");
-            }
-            // Shared memory is zero-initialized when created so is safe to read and write.
-            break;
-        }
         default: require(inv, linear_constraint_t::false_const(), "Invalid type"); break;
         }
     });
@@ -2016,13 +2010,12 @@ void ebpf_domain_t::operator()(const Mem& b) {
     if (m_inv.is_bottom()) {
         return;
     }
-    if (std::holds_alternative<Reg>(b.value)) {
+    if (const auto preg = std::get_if<Reg>(&b.value)) {
         if (b.is_load) {
-            do_load(b, std::get<Reg>(b.value));
+            do_load(b, *preg);
         } else {
-            const auto data = std::get<Reg>(b.value);
-            auto data_reg = reg_pack(data);
-            do_mem_store(b, data, data_reg.svalue, data_reg.uvalue, data_reg);
+            auto data_reg = reg_pack(*preg);
+            do_mem_store(b, *preg, data_reg.svalue, data_reg.uvalue, data_reg);
         }
     } else {
         do_mem_store(b, number_t{T_NUM}, number_t{static_cast<int64_t>(std::get<Imm>(b.value).v)},
@@ -2498,15 +2491,15 @@ void ebpf_domain_t::operator()(const Bin& bin) {
     auto dst = reg_pack(bin.dst);
     int finite_width = bin.is64 ? 64 : 32;
 
-    if (std::holds_alternative<Imm>(bin.v)) {
+    if (auto pimm = std::get_if<Imm>(&bin.v)) {
         // dst += K
         int64_t imm;
         if (bin.is64) {
             // Use the full signed value.
-            imm = static_cast<int64_t>(std::get<Imm>(bin.v).v);
+            imm = static_cast<int64_t>(pimm->v);
         } else {
             // Use only the low 32 bits of the value.
-            imm = static_cast<int>(std::get<Imm>(bin.v).v);
+            imm = static_cast<int32_t>(pimm->v);
             bitwise_and(dst.svalue, dst.uvalue, std::numeric_limits<uint32_t>::max());
         }
         switch (bin.op) {
