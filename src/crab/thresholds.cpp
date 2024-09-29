@@ -68,7 +68,7 @@ void wto_thresholds_t::operator()(const label_t& vertex) {
     }
 }
 
-void wto_thresholds_t::operator()(std::shared_ptr<wto_cycle_t>& cycle) {
+void wto_thresholds_t::operator()(const std::shared_ptr<wto_cycle_t>& cycle) {
     thresholds_t thresholds(m_max_size);
     auto& bb = m_cfg.get_node(cycle->head());
     get_thresholds(bb, thresholds);
@@ -85,7 +85,7 @@ void wto_thresholds_t::operator()(std::shared_ptr<wto_cycle_t>& cycle) {
     m_head_to_thresholds.insert(std::make_pair(cycle->head(), thresholds));
     m_stack.push_back(cycle->head());
     for (auto& component : *cycle) {
-        std::visit(*this, *component);
+        std::visit(*this, component);
     }
     m_stack.pop_back();
 }

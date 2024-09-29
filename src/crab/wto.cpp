@@ -28,8 +28,59 @@ bool wto_nesting_t::operator>(const wto_nesting_t& nesting) const {
     return true;
 }
 
-void wto_t::push_successors(const label_t& vertex, wto_partition_t& partition,
-                            const std::weak_ptr<wto_cycle_t>& containing_cycle) {
+enum class visit_task_type_t {
+    PushSuccessors = 0,
+    StartVisit = 1, // Start of the Visit() function defined in Figure 4 of the paper.
+    ContinueVisit = 2,
+};
+
+struct visit_args_t {
+    visit_task_type_t type;
+    label_t vertex;
+    wto_partition_t& partition;
+    std::weak_ptr<wto_cycle_t> containing_cycle;
+
+    visit_args_t(const visit_task_type_t t, label_t v, wto_partition_t& p, std::weak_ptr<wto_cycle_t> cc)
+        : type(t), vertex(std::move(v)), partition(p), containing_cycle(std::move(cc)){};
+};
+
+struct wto_vertex_data_t {
+    // Bourdoncle's thesis (reference [4]) is all in French but expands
+    // DFN as "depth first number".
+    int dfn{};
+    int head_dfn{}; // Head value returned from Visit() in the paper.
+    std::shared_ptr<wto_cycle_t> containing_cycle;
+};
+
+class wto_builder_t final {
+    // Original control-flow graph.
+    const cfg_t& _cfg;
+
+    // The following members are named to match the names in the paper.
+    std::map<label_t, wto_vertex_data_t> _vertex_data;
+    int _num; // Highest DFN used so far.
+    std::stack<label_t> _stack;
+
+    std::stack<visit_args_t> _visit_stack;
+
+    void push_successors(const label_t& vertex, wto_partition_t& partition,
+                         const std::weak_ptr<wto_cycle_t>& containing_cycle);
+    void start_visit(const label_t& vertex, wto_partition_t& partition,
+                     const std::weak_ptr<wto_cycle_t>& containing_cycle);
+    void continue_visit(const label_t& vertex, wto_partition_t& partition,
+                        const std::weak_ptr<wto_cycle_t>& containing_cycle);
+
+  public:
+    wto_t wto;
+    // Construct a Weak Topological Ordering from a control-flow graph using
+    // the algorithm of figure 4 in the paper, where this constructor matches
+    // what is shown there as the Partition function.
+    explicit wto_builder_t(const cfg_t& cfg);
+    friend std::ostream& operator<<(std::ostream& o, const wto_builder_t& wto);
+};
+
+void wto_builder_t::push_successors(const label_t& vertex, wto_partition_t& partition,
+                                    const std::weak_ptr<wto_cycle_t>& containing_cycle) {
     if (_vertex_data[vertex].dfn != 0) {
         // We found an alternate path to a node already visited, so nothing to do.
         return;
@@ -47,8 +98,8 @@ void wto_t::push_successors(const label_t& vertex, wto_partition_t& partition,
     }
 }
 
-void wto_t::start_visit(const label_t& vertex, wto_partition_t& partition,
-                        const std::weak_ptr<wto_cycle_t>& containing_cycle) {
+void wto_builder_t::start_visit(const label_t& vertex, wto_partition_t& partition,
+                                const std::weak_ptr<wto_cycle_t>& containing_cycle) {
     wto_vertex_data_t& vertex_data = _vertex_data[vertex];
     int head_dfn = vertex_data.dfn;
     bool loop = false;
@@ -98,30 +149,30 @@ void wto_t::start_visit(const label_t& vertex, wto_partition_t& partition,
             return;
         }
         // Insert a new vertex component vertex into the current partition.
-        partition.emplace_back(std::make_shared<wto_component_t>(vertex));
+        partition.emplace_back(vertex);
 
         // Remember that we put the vertex into the caller's cycle.
-        _containing_cycle.emplace(vertex, containing_cycle);
+        wto._containing_cycle.emplace(vertex, containing_cycle);
     }
     vertex_data.head_dfn = head_dfn;
 }
 
-void wto_t::continue_visit(const label_t& vertex, wto_partition_t& partition,
-                           const std::weak_ptr<wto_cycle_t>& containing_cycle) {
+void wto_builder_t::continue_visit(const label_t& vertex, wto_partition_t& partition,
+                                   const std::weak_ptr<wto_cycle_t>& containing_cycle) {
     // Add the vertex at the start of the cycle
     // (end of the vector which stores the cycle in reverse order).
     auto cycle = containing_cycle.lock();
 
-    cycle->_components.push_back(std::make_shared<wto_component_t>(vertex));
+    cycle->_components.push_back(vertex);
 
     // Insert the component into the current partition.
-    partition.emplace_back(std::make_shared<wto_component_t>(cycle));
+    partition.emplace_back(cycle);
 
     // Remember that we put the vertex into the new cycle.
-    _containing_cycle.emplace(vertex, cycle);
+    wto._containing_cycle.emplace(vertex, cycle);
 }
 
-wto_t::wto_t(const cfg_t& cfg) : _cfg(cfg) {
+wto_builder_t::wto_builder_t(const cfg_t& cfg) : _cfg(cfg) {
     // Create a map for holding a "depth-first number (DFN)" for each vertex.
     for (const label_t& label : cfg.labels()) {
         _vertex_data.emplace(label, 0);
@@ -131,7 +182,7 @@ wto_t::wto_t(const cfg_t& cfg) : _cfg(cfg) {
     _num = 0;
 
     // Push the entry vertex on the stack to process.
-    _visit_stack.emplace(visit_args_t(visit_task_type_t::PushSuccessors, cfg.entry_label(), _components, {}));
+    _visit_stack.emplace(visit_args_t(visit_task_type_t::PushSuccessors, cfg.entry_label(), wto._components, {}));
 
     // Keep processing tasks until we're done.
     while (!_visit_stack.empty()) {
@@ -161,7 +212,7 @@ class print_visitor {
     void operator()(const wto_cycle_t& cycle) {
         o << "( ";
         for (const auto& component : cycle) {
-            std::visit(*this, *component);
+            std::visit(*this, component);
             o << " ";
         }
         o << ")";
@@ -175,7 +226,7 @@ class print_visitor {
 
     void operator()(const wto_partition_t& partition) {
         for (auto& p : std::ranges::reverse_view(partition)) {
-            std::visit(*this, *p.get());
+            std::visit(*this, p);
             o << " ";
         }
     }
@@ -219,6 +270,8 @@ std::optional<label_t> wto_t::head(const label_t& label) {
     }
     return {};
 }
+
+wto_t::wto_t(const cfg_t& cfg) : wto_t{std::move(wto_builder_t(cfg).wto)} {}
 
 std::vector<label_t> wto_t::collect_heads(const label_t& label) {
     std::vector<label_t> heads;
