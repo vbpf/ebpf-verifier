@@ -3,7 +3,7 @@
 ---
 test-case: simple conditional jump forward
 
-pre: [ r1.type=number ]
+pre: [r1.type=number]
 
 code:
   <start>: |
@@ -25,7 +25,7 @@ post:
 ---
 test-case: simple unconditional jump forward
 
-pre: [ ]
+pre: []
 
 code:
   <start>: |
@@ -41,7 +41,7 @@ post:
 ---
 test-case: simple conditional vacuous jump forward
 
-pre: [ ]
+pre: []
 
 code:
   <start>: |
@@ -57,7 +57,7 @@ post:
 ---
 test-case: assume number s< imm
 
-pre: [ r1.type=number ]
+pre: [r1.type=number]
 
 code:
   <start>: |
@@ -69,7 +69,7 @@ post:
 ---
 test-case: assume number w== imm
 
-pre: [ r1.type=number, r1.svalue=4294967307, r1.uvalue=4294967307 ]
+pre: [r1.type=number, r1.svalue=4294967307, r1.uvalue=4294967307]
 
 code:
   <start>: |
@@ -82,7 +82,7 @@ post:
 ---
 test-case: assume range w== imm
 
-pre: [ "r1.type=number", "r1.svalue=[4294967306, 4294967307]", "r1.uvalue=[4294967306, 4294967307]" ]
+pre: ["r1.type=number", "r1.svalue=[4294967306, 4294967307]", "r1.uvalue=[4294967306, 4294967307]"]
 
 code:
   <start>: |
@@ -95,20 +95,20 @@ post:
 ---
 test-case: assume range w== imm goes to bottom
 
-pre: [ "r1.type=number", "r1.svalue=[4294967306, 4294967307]", "r1.uvalue=[4294967306, 4294967307]" ]
+pre: ["r1.type=number", "r1.svalue=[4294967306, 4294967307]", "r1.uvalue=[4294967306, 4294967307]"]
 
 code:
   <start>: |
     assume w1 == 13
 
-post: [ ]
+post: []
 messages:
   - "0: Code is unreachable after 0"
 ---
 test-case: assume number w!= reg
 
-pre: [ r1.type=number, r1.svalue=10, r1.uvalue=10,
-       r2.type=number, r2.svalue=11, r2.uvalue=11 ]
+pre: [r1.type=number, r1.svalue=10, r1.uvalue=10,
+      r2.type=number, r2.svalue=11, r2.uvalue=11]
 
 code:
   <start>: |
@@ -124,7 +124,7 @@ post:
 ---
 test-case: assume number < imm
 
-pre: [ r1.type=number ]
+pre: [r1.type=number]
 
 code:
   <start>: |
@@ -137,7 +137,7 @@ post:
 ---
 test-case: assume interval < imm
 
-pre: [ "r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]" ]
+pre: ["r1.type=number", "r1.svalue=[0, 2]", "r1.uvalue=[0, 2]"]
 
 code:
   <start>: |
@@ -150,7 +150,7 @@ post:
 ---
 test-case: assume interval <= imm
 
-pre: [ "r1.type=number", "r1.svalue=[0, 3]", "r1.uvalue=[0, 3]" ]
+pre: ["r1.type=number", "r1.svalue=[0, 3]", "r1.uvalue=[0, 3]"]
 
 code:
   <start>: |
@@ -163,7 +163,7 @@ post:
 ---
 test-case: jslt-imm
 
-pre: [ ]
+pre: []
 
 code:
   <start>: |
@@ -192,7 +192,7 @@ messages:
 ---
 test-case: jump-32
 
-pre: [ ]
+pre: []
 
 code:
   <start>: |
@@ -226,11 +226,11 @@ messages:
 ---
 test-case: join stack
 
-pre: [ "r0.type=number",
-       "r1.type=packet", "r1.packet_offset=8",
-       "r2.type=stack", "r2.stack_offset=4", "r2.stack_numeric_size=8",
-       "r10.type=stack", "r10.stack_offset=512",
-       "s[4...11].type=number" ]
+pre: ["r0.type=number",
+      "r1.type=packet", "r1.packet_offset=8",
+      "r2.type=stack", "r2.stack_offset=4", "r2.stack_numeric_size=8",
+      "r10.type=stack", "r10.stack_offset=512",
+      "s[4...11].type=number"]
 
 code:
   <start>: |
@@ -260,9 +260,9 @@ post:
 ---
 test-case: same_type subtract
 
-pre: [ "r0.type=number",
-       "r8.type=ctx", "r8.ctx_offset=4",
-       "r9.type=ctx", "r9.ctx_offset=0" ]
+pre: ["r0.type=number",
+      "r8.type=ctx", "r8.ctx_offset=4",
+      "r9.type=ctx", "r9.ctx_offset=0"]
 
 code:
   <start>: |
@@ -296,9 +296,9 @@ post:
 ---
 test-case: not same_type
 
-pre: [ "r0.type=number",
-       "r8.type=ctx", "r8.ctx_offset=4",
-       "r9.type=ctx", "r9.ctx_offset=0" ]
+pre: ["r0.type=number",
+      "r8.type=ctx", "r8.ctx_offset=4",
+      "r9.type=ctx", "r9.ctx_offset=0"]
 
 code:
   <start>: |
@@ -334,9 +334,9 @@ messages:
 ---
 test-case: multiple types add ok
 
-pre: [ "r0.type=number",
-       "r8.type=ctx", "r8.ctx_offset=0",
-       "r9.type=packet", "r9.packet_offset=0" ]
+pre: ["r0.type=number",
+      "r8.type=ctx", "r8.ctx_offset=0",
+      "r9.type=packet", "r9.packet_offset=0"]
 
 code:
   <start>: |
@@ -376,8 +376,8 @@ post:
 ---
 test-case: multiple types add fail
 
-pre: [ "r0.type=number",
-       "r8.type=ctx", "r8.ctx_offset=0", "r8.svalue=1024", "r8.uvalue=1024" ]
+pre: ["r0.type=number",
+      "r8.type=ctx", "r8.ctx_offset=0", "r8.svalue=1024", "r8.uvalue=1024"]
 
 code:
   <start>: |
@@ -488,12 +488,12 @@ messages:
 ---
 test-case: multiple types compare
 
-pre: [ "r0.type=number",
-       "r6.type=stack", "r6.stack_offset=4",
-       "r7.type=stack", "r7.stack_offset=0",
-       "r8.type=packet", "r8.packet_offset=4",
-       "r9.type=packet", "r9.packet_offset=0",
-       "meta_offset=0" ]
+pre: ["r0.type=number",
+      "r6.type=stack", "r6.stack_offset=4",
+      "r7.type=stack", "r7.stack_offset=0",
+      "r8.type=packet", "r8.packet_offset=4",
+      "r9.type=packet", "r9.packet_offset=0",
+      "meta_offset=0"]
 
 code:
   <start>: |
@@ -538,9 +538,9 @@ messages:
 ---
 test-case: lost implications in correlated branches
 
-pre: [ "meta_offset=0", "packet_size=[36, 65534]",
-       "r1.type=packet", "r1.packet_offset=54",
-       "r2.type=packet", "r2.packet_offset=packet_size" ]
+pre: ["meta_offset=0", "packet_size=[36, 65534]",
+      "r1.type=packet", "r1.packet_offset=54",
+      "r2.type=packet", "r2.packet_offset=packet_size"]
 
 code:
   <start>: |
@@ -580,7 +580,7 @@ messages:
 ---
 test-case: 32-bit compare
 
-pre: [ "r4.type=number", "r4.svalue=-22", "r4.uvalue=18446744073709551594" ]
+pre: ["r4.type=number", "r4.svalue=-22", "r4.uvalue=18446744073709551594"]
 
 code:
   <start>: |
@@ -605,8 +605,8 @@ messages:
 ---
 test-case: unsigned comparison of negative number
 
-pre: [ "r0.type=number", "r0.svalue=1", "r0.uvalue=1",
-       "r1.type=number", "r1.svalue=-1", "r1.uvalue=18446744073709551615" ]
+pre: ["r0.type=number", "r0.svalue=1", "r0.uvalue=1",
+      "r1.type=number", "r1.svalue=-1", "r1.uvalue=18446744073709551615"]
 
 code:
   <start>: |
@@ -628,8 +628,8 @@ messages:
 ---
 test-case: JMP32
 
-pre: [ "r0.type=number", "r0.svalue=0", "r0.uvalue=0",
-       "r1.type=number", "r1.svalue=4294967294", "r1.uvalue=4294967294" ]
+pre: ["r0.type=number", "r0.svalue=0", "r0.uvalue=0",
+      "r1.type=number", "r1.svalue=4294967294", "r1.uvalue=4294967294"]
 
 code:
   <start>: |
@@ -651,7 +651,7 @@ messages:
 ---
 test-case: assume map_fd == map_fd
 
-pre: [ "r1.type=map_fd" ]
+pre: ["r1.type=map_fd"]
 
 code:
   <start>: |
@@ -662,19 +662,19 @@ post:
 ---
 test-case: assume map_fd != map_fd
 
-pre: [ "r1.type=map_fd" ]
+pre: ["r1.type=map_fd"]
 
 code:
   <start>: |
     assume r1 != r1
 
-post: [ ]
+post: []
 messages:
   - "0: Code is unreachable after 0"
 ---
 test-case: assume map_fd1 != map_fd2
 
-pre: [ "r1.type=map_fd", "r1.map_fd=1", "r2.type=map_fd", "r2.map_fd=2" ]
+pre: ["r1.type=map_fd", "r1.map_fd=1", "r2.type=map_fd", "r2.map_fd=2"]
 
 code:
   <start>: |
@@ -688,19 +688,19 @@ post:
 ---
 test-case: assume map_fd1 != map_fd2
 
-pre: [ "r1.type=map_fd", "r1.map_fd=1", "r2.type=map_fd", "r2.map_fd=1" ]
+pre: ["r1.type=map_fd", "r1.map_fd=1", "r2.type=map_fd", "r2.map_fd=1"]
 
 code:
   <start>: |
     assume r1 != r2
 
-post: [ ]
+post: []
 messages:
   - "0: Code is unreachable after 0"
 ---
 test-case: assume map_fd1 < map_fd2
 
-pre: [ "r1.type=map_fd", "r1.map_fd=1", "r2.type=map_fd", "r2.map_fd=2" ]
+pre: ["r1.type=map_fd", "r1.map_fd=1", "r2.type=map_fd", "r2.map_fd=2"]
 
 code:
   <start>: |
