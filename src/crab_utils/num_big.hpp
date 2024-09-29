@@ -40,7 +40,7 @@ class number_t final {
 
     template <is_enum T>
     explicit operator T() const {
-        return static_cast<T>(_n);
+        return static_cast<T>(static_cast<std::underlying_type_t<T>>(_n));
     }
 
     template <is_enum T>
