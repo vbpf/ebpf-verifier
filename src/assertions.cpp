@@ -9,6 +9,7 @@
 #include "crab/cfg.hpp"
 #include "platform.hpp"
 
+using crab::TypeGroup;
 using std::string;
 using std::to_string;
 using std::vector;
@@ -146,7 +147,7 @@ class AssertExtractor {
             res.emplace_back(ValidAccess{cond.left});
             res.emplace_back(ValidAccess{reg(cond.right)});
             if (cond.op != Condition::Op::EQ && cond.op != Condition::Op::NE) {
-                res.emplace_back(TypeConstraint{cond.left, TypeGroup::non_map_fd});
+                res.emplace_back(TypeConstraint{cond.left, TypeGroup::ptr_or_num});
             }
             res.emplace_back(Comparable{.r1 = cond.left, .r2 = reg(cond.right), .or_r2_is_number = false});
         }

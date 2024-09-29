@@ -7,8 +7,6 @@
 #include <map>
 #include <optional>
 
-#include <boost/algorithm/string/join.hpp>
-
 #include "crab/array_domain.hpp"
 #include "crab/split_dbm.hpp"
 #include "crab/type_domain.hpp"
@@ -79,16 +77,16 @@ data_kind_t regkind(const std::string& s) {
     throw std::runtime_error(std::string() + "Bad kind: " + s);
 }
 
-std::string type_encoding_to_string(const type_encoding_t s) {
+std::ostream& operator<<(std::ostream& os, const type_encoding_t s) {
     switch (s) {
-    case T_SHARED: return S_SHARED;
-    case T_STACK: return S_STACK;
-    case T_PACKET: return S_PACKET;
-    case T_CTX: return S_CTX;
-    case T_NUM: return S_NUM;
-    case T_MAP: return S_MAP;
-    case T_MAP_PROGRAMS: return S_MAP_PROGRAMS;
-    case T_UNINIT: return S_UNINIT;
+    case T_SHARED: return os << S_SHARED;
+    case T_STACK: return os << S_STACK;
+    case T_PACKET: return os << S_PACKET;
+    case T_CTX: return os << S_CTX;
+    case T_NUM: return os << S_NUM;
+    case T_MAP: return os << S_MAP;
+    case T_MAP_PROGRAMS: return os << S_MAP_PROGRAMS;
+    case T_UNINIT: return os << S_UNINIT;
     default: CRAB_ERROR("Unsupported type encoding", s);
     }
 }
@@ -229,18 +227,12 @@ type_encoding_t TypeDomain::get_type(const NumAbsDomain& inv, const number_t& t)
 // Check whether a given type value is within the range of a given type variable's value.
 bool TypeDomain::has_type(const NumAbsDomain& inv, const Reg& r, const type_encoding_t type) const {
     const interval_t interval = inv[reg_pack(r).type];
-    if (interval.is_top()) {
-        return true;
-    }
-    return interval.lb().number().value_or(INT_MIN) <= type && interval.ub().number().value_or(INT_MAX) >= type;
+    return interval.contains(type);
 }
 
 bool TypeDomain::has_type(const NumAbsDomain& inv, const variable_t v, const type_encoding_t type) const {
     const interval_t interval = inv[v];
-    if (interval.is_top()) {
-        return true;
-    }
-    return interval.lb().number().value_or(INT_MIN) <= type && interval.ub().number().value_or(INT_MAX) >= type;
+    return interval.contains(type);
 }
 
 bool TypeDomain::has_type(const NumAbsDomain& inv, const number_t& t, const type_encoding_t type) const {
@@ -259,11 +251,8 @@ NumAbsDomain TypeDomain::join_over_types(const NumAbsDomain& inv, const Reg& reg
         return res;
     }
     NumAbsDomain res = NumAbsDomain::bottom();
-    auto lb = types.lb().is_finite() ? static_cast<type_encoding_t>(static_cast<int>(types.lb().number().value()))
-                                     : T_MAP_PROGRAMS;
-    auto ub =
-        types.ub().is_finite() ? static_cast<type_encoding_t>(static_cast<int>(types.ub().number().value())) : T_SHARED;
-    for (type_encoding_t type = lb; type <= ub; type = static_cast<type_encoding_t>(static_cast<int>(type) + 1)) {
+    auto [lb, ub] = types.bound(T_MIN, T_MAX);
+    for (type_encoding_t type : iterate_types(lb, ub)) {
         NumAbsDomain tmp(inv);
         transition(tmp, type);
         selectively_join_based_on_type(res, std::move(tmp)); // res |= tmp;
@@ -308,7 +297,6 @@ bool TypeDomain::is_in_group(const NumAbsDomain& inv, const Reg& r, const TypeGr
     case TypeGroup::packet: return inv.entail(t == T_PACKET);
     case TypeGroup::stack: return inv.entail(t == T_STACK);
     case TypeGroup::shared: return inv.entail(t == T_SHARED);
-    case TypeGroup::non_map_fd: return inv.entail(t >= T_NUM);
     case TypeGroup::mem: return inv.entail(t >= T_PACKET);
     case TypeGroup::mem_or_num: return inv.entail(t >= T_NUM) && inv.entail(t != T_CTX);
     case TypeGroup::pointer: return inv.entail(t >= T_CTX);
@@ -319,11 +307,33 @@ bool TypeDomain::is_in_group(const NumAbsDomain& inv, const Reg& r, const TypeGr
     }
 }
 
-} // namespace crab
+std::string typeset_to_string(const std::vector<crab::type_encoding_t>& items) {
+    std::stringstream ss;
+    ss << "{";
+    for (auto it = items.begin(); it != items.end(); ++it) {
+        ss << *it;
+        if (std::next(it) != items.end()) {
+            ss << ", ";
+        }
+    }
+    ss << "}";
+    return ss.str();
+}
 
-std::string join(const std::vector<std::string>& items) { return "{" + boost::algorithm::join(items, ", ") + "}"; }
+bool is_singleton_type(const TypeGroup t) {
+    switch (t) {
+    case TypeGroup::number:
+    case TypeGroup::map_fd:
+    case TypeGroup::map_fd_programs:
+    case TypeGroup::ctx:
+    case TypeGroup::packet:
+    case TypeGroup::stack:
+    case TypeGroup::shared: return true;
+    default: return false;
+    }
+}
 
-std::string to_string(const TypeGroup ts) {
+std::ostream& operator<<(std::ostream& os, const TypeGroup ts) {
     using namespace crab;
     static const std::map<TypeGroup, std::string> string_to_type{
         {TypeGroup::number, S_NUM},
@@ -333,16 +343,17 @@ std::string to_string(const TypeGroup ts) {
         {TypeGroup::packet, S_PACKET},
         {TypeGroup::stack, S_STACK},
         {TypeGroup::shared, S_SHARED},
-        {TypeGroup::mem, join({S_STACK, S_PACKET, S_SHARED})},
-        {TypeGroup::pointer, join({S_CTX, S_STACK, S_PACKET, S_SHARED})},
-        {TypeGroup::non_map_fd, "non_map_fd"},
-        {TypeGroup::ptr_or_num, join({S_NUM, S_CTX, S_STACK, S_PACKET, S_SHARED})},
-        {TypeGroup::stack_or_packet, join({S_STACK, S_PACKET})},
-        {TypeGroup::singleton_ptr, join({S_CTX, S_STACK, S_PACKET})},
-        {TypeGroup::mem_or_num, join({S_NUM, S_STACK, S_PACKET, S_SHARED})},
+        {TypeGroup::mem, typeset_to_string({T_STACK, T_PACKET, T_SHARED})},
+        {TypeGroup::pointer, typeset_to_string({T_CTX, T_STACK, T_PACKET, T_SHARED})},
+        {TypeGroup::ptr_or_num, typeset_to_string({T_NUM, T_CTX, T_STACK, T_PACKET, T_SHARED})},
+        {TypeGroup::stack_or_packet, typeset_to_string({T_STACK, T_PACKET})},
+        {TypeGroup::singleton_ptr, typeset_to_string({T_CTX, T_STACK, T_PACKET})},
+        {TypeGroup::mem_or_num, typeset_to_string({T_NUM, T_STACK, T_PACKET, T_SHARED})},
     };
     if (string_to_type.contains(ts)) {
-        return string_to_type.at(ts);
+        return os << string_to_type.at(ts);
     }
     CRAB_ERROR("Unsupported type group", ts);
 }
+
+} // namespace crab

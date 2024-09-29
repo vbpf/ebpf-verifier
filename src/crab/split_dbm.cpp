@@ -1110,28 +1110,20 @@ string_invariant SplitDBM::to_set() const {
                        this->g.elem(0, v) ? number_t(this->g.edge_val(0, v)) : extended_number::plus_infinity());
         assert(!v_out.is_bottom());
 
-        variable_t variable = *(this->rev_map[v]);
+        variable_t variable = *this->rev_map[v];
 
         std::stringstream elem;
         elem << variable;
         if (variable.is_type()) {
-            auto lb = static_cast<type_encoding_t>(v_out.lb().number().value());
-            auto ub = static_cast<type_encoding_t>(v_out.ub().number().value());
+            auto [lb, ub] = v_out.bound(T_MIN, T_MAX);
             if (lb == ub) {
                 if (variable.is_in_stack() && lb == T_NUM) {
                     // no need to show this
                     continue;
                 }
-                elem << "=" << type_encoding_to_string(lb);
+                elem << "=" << lb;
             } else {
-                elem << " in {";
-                for (auto type : iterate_types(lb, ub)) {
-                    if (type > lb) {
-                        elem << ", ";
-                    }
-                    elem << type_encoding_to_string(type);
-                }
-                elem << "}";
+                elem << " in " << typeset_to_string(iterate_types(lb, ub));
             }
         } else {
             elem << "=";

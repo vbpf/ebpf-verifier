@@ -16,6 +16,7 @@
 #include "platform.hpp"
 #include "spec_type_descriptors.hpp"
 
+using crab::TypeGroup;
 using std::optional;
 using std::string;
 using std::vector;
@@ -159,7 +160,7 @@ std::ostream& operator<<(std::ostream& os, Comparable const& a) {
     if (a.or_r2_is_number) {
         os << TypeConstraint{a.r2, TypeGroup::number} << " or ";
     }
-    return os << typereg(a.r1) << " == " << typereg(a.r2) << " in " << to_string(TypeGroup::singleton_ptr);
+    return os << typereg(a.r1) << " == " << typereg(a.r2) << " in " << TypeGroup::singleton_ptr;
 }
 
 std::ostream& operator<<(std::ostream& os, Addable const& a) {
@@ -169,8 +170,7 @@ std::ostream& operator<<(std::ostream& os, Addable const& a) {
 std::ostream& operator<<(std::ostream& os, ValidDivisor const& a) { return os << a.reg << " != 0"; }
 
 std::ostream& operator<<(std::ostream& os, TypeConstraint const& tc) {
-    string types = to_string(tc.types);
-    string cmp_op = types[0] == '{' ? "in" : "==";
+    const string cmp_op = is_singleton_type(tc.types) ? "==" : "in";
     return os << typereg(tc.reg) << " " << cmp_op << " " << tc.types;
 }
 

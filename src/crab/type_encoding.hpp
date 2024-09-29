@@ -41,11 +41,10 @@ constexpr type_encoding_t T_MIN = T_MAP_PROGRAMS;
 constexpr type_encoding_t T_MAX = T_SHARED;
 
 std::vector<type_encoding_t> iterate_types(type_encoding_t lb, type_encoding_t ub);
+std::string typeset_to_string(const std::vector<type_encoding_t>& items);
 
-std::string type_encoding_to_string(type_encoding_t s);
+std::ostream& operator<<(std::ostream& os, type_encoding_t s);
 type_encoding_t string_to_type_encoding(const std::string& s);
-
-} // namespace crab
 
 enum class TypeGroup {
     number,
@@ -55,7 +54,6 @@ enum class TypeGroup {
     stack,           ///< pointer to the stack
     shared,          ///< pointer to shared memory
     map_fd_programs, ///< reg == T_MAP_PROGRAMS
-    non_map_fd,      ///< reg >= T_NUM
     mem,             ///< shared | stack | packet = reg >= T_PACKET
     mem_or_num,      ///< reg >= T_NUM && reg != T_CTX
     pointer,         ///< reg >= T_CTX
@@ -64,5 +62,6 @@ enum class TypeGroup {
     singleton_ptr,   ///< reg <= T_STACK && reg >= T_CTX
 };
 
-std::string to_string(TypeGroup ts);
-inline std::ostream& operator<<(std::ostream& os, const TypeGroup ts) { return os << to_string(ts); }
+bool is_singleton_type(TypeGroup t);
+std::ostream& operator<<(std::ostream& os, TypeGroup ts);
+} // namespace crab

@@ -366,6 +366,7 @@ struct ValidStore {
     constexpr bool operator==(const ValidStore&) const = default;
 };
 
+using crab::TypeGroup;
 struct TypeConstraint {
     Reg reg;
     TypeGroup types;
