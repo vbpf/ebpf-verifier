@@ -121,17 +121,5 @@ class Heap {
         }
         return x;
     }
-
-    void clear() {
-        for (const int i : heap) {
-            indices[i] = -1;
-        }
-#ifdef NDEBUG
-        for (int i = 0; i < indices.size(); i++) {
-            assert(indices[i] == -1);
-        }
-#endif
-        heap.clear();
-    }
 };
 } // namespace crab
