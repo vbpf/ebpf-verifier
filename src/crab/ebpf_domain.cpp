@@ -10,26 +10,18 @@
 
 #include "boost/endian/conversion.hpp"
 
-#include "crab/array_domain.hpp"
-#include "crab/ebpf_domain.hpp"
-
 #include "asm_ostream.hpp"
 #include "asm_unmarshal.hpp"
 #include "config.hpp"
+#include "crab/array_domain.hpp"
+#include "crab/ebpf_domain.hpp"
+#include "crab_utils/num_safety.hpp"
 #include "dsl_syntax.hpp"
 #include "platform.hpp"
 #include "string_constraints.hpp"
 
 using crab::domains::NumAbsDomain;
 namespace crab {
-
-static auto to_signed(std::unsigned_integral auto x) -> std::make_signed_t<decltype(x)> {
-    return static_cast<std::make_signed_t<decltype(x)>>(x);
-}
-
-static auto to_unsigned(std::signed_integral auto x) -> std::make_unsigned_t<decltype(x)> {
-    return static_cast<std::make_unsigned_t<decltype(x)>>(x);
-}
 
 constexpr int MAX_PACKET_SIZE = 0xffff;
 
@@ -80,7 +72,7 @@ static std::vector<linear_constraint_t> assume_bit_cst_interval(const NumAbsDoma
     }
     uint64_t src_int_value = src_n.value().cast_to<uint64_t>();
     if (!is64) {
-        src_int_value = static_cast<uint32_t>(src_int_value);
+        src_int_value = gsl::narrow_cast<uint32_t>(src_int_value);
     }
 
     bool result;
@@ -1655,7 +1647,7 @@ static std::tuple<linear_expression_t, linear_expression_t> lb_ub_access_pair(co
 void ebpf_domain_t::operator()(const ValidAccess& s) {
     using namespace crab::dsl_syntax;
 
-    const bool is_comparison_check = s.width == static_cast<Value>(Imm{0});
+    const bool is_comparison_check = s.width == Value{Imm{0}};
 
     const auto reg = reg_pack(s.reg);
     // join_over_types instead of simple iteration is only needed for assume-assert
@@ -1679,7 +1671,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
                     if (s.offset < 0) {
                         require(inv, linear_constraint_t::false_const(), "Stack content is not numeric");
                     } else if (const auto pimm = std::get_if<Imm>(&s.width)) {
-                        if (!inv.entail(static_cast<int>(pimm->v) <= reg.stack_numeric_size - s.offset)) {
+                        if (!inv.entail(gsl::narrow<int>(pimm->v) <= reg.stack_numeric_size - s.offset)) {
                             require(inv, linear_constraint_t::false_const(), "Stack content is not numeric");
                         }
                     } else {
@@ -2023,8 +2015,8 @@ void ebpf_domain_t::operator()(const Mem& b) {
             do_mem_store(b, *preg, data_reg.svalue, data_reg.uvalue, data_reg);
         }
     } else {
-        do_mem_store(b, number_t{T_NUM}, number_t{static_cast<int64_t>(std::get<Imm>(b.value).v)},
-                     number_t{static_cast<uint64_t>(std::get<Imm>(b.value).v)}, {});
+        const uint64_t imm = std::get<Imm>(b.value).v;
+        do_mem_store(b, number_t{T_NUM}, number_t{to_signed(imm)}, number_t{imm}, {});
     }
 }
 
@@ -2187,7 +2179,7 @@ void ebpf_domain_t::operator()(const Call& call) {
             if (const auto map_type = get_map_type(*maybe_fd_reg)) {
                 if (global_program_info->platform->get_map_type(*map_type).value_type == EbpfMapValueType::MAP) {
                     if (const auto inner_map_fd = get_map_inner_map_fd(*maybe_fd_reg)) {
-                        do_load_mapfd(r0_reg, static_cast<int>(*inner_map_fd), true);
+                        do_load_mapfd(r0_reg, to_signed(*inner_map_fd), true);
                         goto out;
                     }
                 } else {
@@ -2327,8 +2319,8 @@ void ebpf_domain_t::shl(const Reg& dst_reg, int imm, const int finite_width) {
             const number_t ub = interval.ub().number().value();
             uint64_t lb_n = lb.cast_to<uint64_t>();
             uint64_t ub_n = ub.cast_to<uint64_t>();
-            const uint64_t uint_max = finite_width == 64 ? std::numeric_limits<uint64_t>::max()
-                                                         : static_cast<uint64_t>(std::numeric_limits<uint32_t>::max());
+            const uint64_t uint_max = finite_width == 64 ? uint64_t{std::numeric_limits<uint64_t>::max()}
+                                                         : uint64_t{std::numeric_limits<uint32_t>::max()};
             if (lb_n >> (finite_width - imm) != ub_n >> (finite_width - imm)) {
                 // The bits that will be shifted out to the left are different,
                 // which means all combinations of remaining bits are possible.
@@ -2342,7 +2334,7 @@ void ebpf_domain_t::shl(const Reg& dst_reg, int imm, const int finite_width) {
                 ub_n = ub_n << imm & uint_max;
             }
             m_inv.set(dst.uvalue, interval_t{lb_n, ub_n});
-            if (static_cast<int64_t>(ub_n) >= static_cast<int64_t>(lb_n)) {
+            if (to_signed(ub_n) >= to_signed(lb_n)) {
                 m_inv.assign(dst.svalue, dst.uvalue);
             } else {
                 havoc(dst.svalue);
@@ -2472,7 +2464,7 @@ void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_sv
                 }
             }
             m_inv.set(dst.svalue, interval_t{lb_n, ub_n});
-            if (static_cast<uint64_t>(ub_n) >= static_cast<uint64_t>(lb_n)) {
+            if (to_unsigned(ub_n) >= to_unsigned(lb_n)) {
                 m_inv.assign(dst.uvalue, dst.svalue);
             } else {
                 havoc(dst.uvalue);
@@ -2500,10 +2492,10 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         int64_t imm;
         if (bin.is64) {
             // Use the full signed value.
-            imm = static_cast<int64_t>(pimm->v);
+            imm = to_signed(pimm->v);
         } else {
             // Use only the low 32 bits of the value.
-            imm = static_cast<int32_t>(pimm->v);
+            imm = gsl::narrow_cast<int32_t>(pimm->v);
             bitwise_and(dst.svalue, dst.uvalue, std::numeric_limits<uint32_t>::max());
         }
         switch (bin.op) {
@@ -2521,13 +2513,13 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             if (imm == 0) {
                 return;
             }
-            add(bin.dst, static_cast<int>(imm), finite_width);
+            add(bin.dst, gsl::narrow<int>(imm), finite_width);
             break;
         case Bin::Op::SUB:
             if (imm == 0) {
                 return;
             }
-            add(bin.dst, static_cast<int>(-imm), finite_width);
+            add(bin.dst, gsl::narrow<int>(-imm), finite_width);
             break;
         case Bin::Op::MUL:
             mul(dst.svalue, dst.uvalue, imm, finite_width);
@@ -2556,7 +2548,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::AND:
             // FIX: what to do with ptr&-8 as in counter/simple_loop_unrolled?
             bitwise_and(dst.svalue, dst.uvalue, imm);
-            if (static_cast<int32_t>(imm) > 0) {
+            if (gsl::narrow<int32_t>(imm) > 0) {
                 // AND with immediate is only a 32-bit operation so svalue and uvalue are the same.
                 assume(dst.svalue <= imm);
                 assume(dst.uvalue <= imm);
@@ -2565,9 +2557,9 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             }
             havoc_offsets(bin.dst);
             break;
-        case Bin::Op::LSH: shl(bin.dst, static_cast<int32_t>(imm), finite_width); break;
-        case Bin::Op::RSH: lshr(bin.dst, static_cast<int32_t>(imm), finite_width); break;
-        case Bin::Op::ARSH: ashr(bin.dst, static_cast<int32_t>(imm), finite_width); break;
+        case Bin::Op::LSH: shl(bin.dst, gsl::narrow<int32_t>(imm), finite_width); break;
+        case Bin::Op::RSH: lshr(bin.dst, gsl::narrow<int32_t>(imm), finite_width); break;
+        case Bin::Op::ARSH: ashr(bin.dst, gsl::narrow<int32_t>(imm), finite_width); break;
         case Bin::Op::XOR:
             bitwise_xor(dst.svalue, dst.uvalue, imm);
             havoc_offsets(bin.dst);
@@ -2728,7 +2720,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             // Use only the low 32 bits of the value.
                             bitwise_and(dst.svalue, dst.uvalue, std::numeric_limits<uint32_t>::max());
                         }
-                        shl(bin.dst, static_cast<int32_t>(imm), finite_width);
+                        shl(bin.dst, gsl::narrow_cast<int32_t>(imm), finite_width);
                         break;
                     }
                 }
@@ -2746,7 +2738,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             // Use only the low 32 bits of the value.
                             bitwise_and(dst.svalue, dst.uvalue, std::numeric_limits<uint32_t>::max());
                         }
-                        lshr(bin.dst, static_cast<int32_t>(imm), finite_width);
+                        lshr(bin.dst, gsl::narrow_cast<int32_t>(imm), finite_width);
                         break;
                     }
                 }

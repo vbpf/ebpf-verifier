@@ -9,16 +9,11 @@
 
 #include <boost/multiprecision/cpp_int.hpp>
 
+#include "crab_utils/num_safety.hpp"
 #include "debug.hpp"
 using boost::multiprecision::cpp_int;
 
 namespace crab {
-
-template <typename T>
-concept is_enum = std::is_enum_v<T>;
-
-template <std::integral T>
-using swap_signedness = std::conditional_t<std::is_signed_v<T>, std::make_unsigned_t<T>, std::make_signed_t<T>>;
 
 class number_t final {
     cpp_int _n{};
