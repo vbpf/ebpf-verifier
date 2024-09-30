@@ -88,12 +88,18 @@ class interval_t final {
 
     template <std::integral T>
     [[nodiscard]]
+    std::tuple<T, T> pair() const {
+        return {_lb.number()->narrow<T>(), _ub.number()->narrow<T>()};
+    }
+
+    template <std::integral T>
+    [[nodiscard]]
     std::tuple<T, T> bound(T lb, T ub) const {
-        interval_t b = interval_t(lb, ub) & *this;
+        const interval_t b = interval_t(lb, ub) & *this;
         if (b.is_bottom()) {
             CRAB_ERROR("Cannot convert bottom to tuple");
         }
-        return {static_cast<T>(*b._lb.number()), static_cast<T>(*b._ub.number())};
+        return {b._lb.number()->narrow<T>(), _ub.number()->narrow<T>()};
     }
 
     template <is_enum T>

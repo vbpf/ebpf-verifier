@@ -489,14 +489,14 @@ void array_domain_t::split_number_var(NumAbsDomain& inv, data_kind_t kind, const
         // We can only split a singleton size.
         return;
     }
-    auto size = static_cast<unsigned int>(*n_bytes);
-    offset_t o(static_cast<index_t>(*n));
+    auto size = n_bytes->narrow<unsigned int>();
+    offset_t o(n->narrow<index_t>());
 
     std::vector<cell_t> cells = offset_map.get_overlap_cells(o, size);
     for (cell_t const& c : cells) {
         interval_t intv = c.to_interval();
-        int cell_start_index = static_cast<int>(*intv.lb().number());
-        int cell_end_index = static_cast<int>(*intv.ub().number());
+        int cell_start_index = intv.lb().number()->narrow<int>();
+        int cell_end_index = intv.ub().number()->narrow<int>();
 
         if (!this->num_bytes.all_num(cell_start_index, cell_end_index + 1) ||
             cell_end_index + 1UL < cell_start_index + sizeof(int64_t)) {
@@ -532,9 +532,9 @@ static std::optional<std::pair<offset_t, unsigned>> kill_and_find_var(NumAbsDoma
     if (std::optional<number_t> n = ii.singleton()) {
         interval_t i_elem_size = inv.eval_interval(elem_size);
         if (auto n_bytes = i_elem_size.singleton()) {
-            auto size = static_cast<unsigned int>(*n_bytes);
+            auto size = n_bytes->narrow<unsigned int>();
             // -- Constant index: kill overlapping cells
-            offset_t o(static_cast<index_t>(*n));
+            offset_t o(n->narrow<index_t>());
             cells = offset_map.get_overlap_cells(o, size);
             res = std::make_pair(o, size);
         }
@@ -576,7 +576,7 @@ bool array_domain_t::all_num(const NumAbsDomain& inv, const linear_expression_t&
         return true;
     }
 
-    return this->num_bytes.all_num(static_cast<int32_t>(*min_lb), static_cast<int32_t>(*max_ub));
+    return this->num_bytes.all_num(min_lb->narrow<int32_t>(), max_ub->narrow<int32_t>());
 }
 
 // Get the number of bytes, starting at offset, that are known to be numbers.
@@ -586,8 +586,8 @@ int array_domain_t::min_all_num_size(const NumAbsDomain& inv, const variable_t o
     if (!min_lb || !max_ub || !min_lb->fits<int32_t>() || !max_ub->fits<int32_t>()) {
         return 0;
     }
-    const auto lb = static_cast<int>(min_lb.value());
-    const auto ub = static_cast<int>(max_ub.value());
+    const auto lb = min_lb->narrow<int>();
+    const auto ub = max_ub->narrow<int>();
     return std::max(0, this->num_bytes.all_num_width(lb) - (ub - lb));
 }
 
@@ -635,7 +635,7 @@ std::optional<linear_expression_t> array_domain_t::load(const NumAbsDomain& inv,
     interval_t ii = inv.eval_interval(i);
     if (std::optional<number_t> n = ii.singleton()) {
         offset_map_t& offset_map = lookup_array_map(kind);
-        int64_t k = static_cast<int64_t>(*n);
+        int64_t k = n->narrow<int64_t>();
         if (kind == data_kind_t::types) {
             auto [only_num, only_non_num] = num_bytes.uniformity(k, width);
             if (only_num) {
@@ -730,9 +730,9 @@ std::optional<linear_expression_t> array_domain_t::load(const NumAbsDomain& inv,
         auto ub = ii.ub().number();
         if (lb.has_value() && ub.has_value()) {
             number_t fullwidth = ub.value() - lb.value() + width;
-            if (lb.value().fits<uint32_t>() && fullwidth.fits<uint32_t>()) {
+            if (lb->fits<uint32_t>() && fullwidth.fits<uint32_t>()) {
                 auto [only_num, only_non_num] =
-                    num_bytes.uniformity(static_cast<uint32_t>(lb.value()), static_cast<uint32_t>(fullwidth));
+                    num_bytes.uniformity(lb->narrow<uint32_t>(), fullwidth.narrow<uint32_t>());
                 if (only_num) {
                     return T_NUM;
                 }
@@ -766,7 +766,7 @@ std::optional<variable_t> array_domain_t::store(NumAbsDomain& inv, const data_ki
         auto [offset, size] = *maybe_cell;
         if (kind == data_kind_t::types) {
             const std::optional<number_t> t = inv.eval_interval(val).singleton();
-            if (t && static_cast<int64_t>(*t) == T_NUM) {
+            if (t == number_t{T_NUM}) {
                 num_bytes.reset(offset, size);
             } else {
                 num_bytes.havoc(offset, size);
@@ -786,7 +786,7 @@ std::optional<variable_t> array_domain_t::store_type(NumAbsDomain& inv, const li
         // perform strong update
         auto [offset, size] = *maybe_cell;
         const std::optional<number_t> t = inv.eval_interval(val).singleton();
-        if (t && static_cast<int64_t>(*t) == T_NUM) {
+        if (t == number_t{T_NUM}) {
             num_bytes.reset(offset, size);
         } else {
             num_bytes.havoc(offset, size);
@@ -837,7 +837,7 @@ void array_domain_t::store_numbers(const NumAbsDomain& inv, const variable_t _id
                   "the number of elements is larger than default limit of ", max_num_elems);
         return;
     }
-    num_bytes.reset(static_cast<int>(*idx_n), static_cast<int>(*width));
+    num_bytes.reset(idx_n->narrow<size_t>(), width->narrow<int>());
 }
 
 void array_domain_t::set_to_top() { num_bytes.set_to_top(); }

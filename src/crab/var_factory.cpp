@@ -11,13 +11,12 @@
 namespace crab {
 
 variable_t variable_t::make(const std::string& name) {
-    auto it = std::find(names->begin(), names->end(), name);
+    const auto it = std::find(names->begin(), names->end(), name);
     if (it == names->end()) {
         names->emplace_back(name);
         return variable_t(names->size() - 1);
-    } else {
-        return variable_t(std::distance(names->begin(), it));
     }
+    return variable_t(std::distance(names->begin(), it));
 }
 
 std::vector<std::string> default_variable_names() {
@@ -141,11 +140,13 @@ thread_local lazy_allocator<std::vector<std::string>, default_variable_names> va
 
 void variable_t::clear_thread_local_state() { names.clear(); }
 
-variable_t variable_t::reg(data_kind_t kind, int i) { return make("r" + std::to_string(i) + "." + name_of(kind)); }
+variable_t variable_t::reg(const data_kind_t kind, const int i) {
+    return make("r" + std::to_string(i) + "." + name_of(kind));
+}
 
 std::ostream& operator<<(std::ostream& o, const data_kind_t& s) { return o << name_of(s); }
 
-static std::string mk_scalar_name(data_kind_t kind, const number_t& o, const number_t& size) {
+static std::string mk_scalar_name(const data_kind_t kind, const number_t& o, const number_t& size) {
     std::stringstream os;
     os << "s"
        << "[" << o;
@@ -156,17 +157,17 @@ static std::string mk_scalar_name(data_kind_t kind, const number_t& o, const num
     return os.str();
 }
 
-variable_t variable_t::stack_frame_var(data_kind_t kind, int i, std::string prefix) {
+variable_t variable_t::stack_frame_var(const data_kind_t kind, const int i, const std::string& prefix) {
     return make(prefix + STACK_FRAME_DELIMITER + "r" + std::to_string(i) + "." + name_of(kind));
 }
 
-variable_t variable_t::cell_var(data_kind_t array, const number_t& offset, const number_t& size) {
+variable_t variable_t::cell_var(const data_kind_t array, const number_t& offset, const number_t& size) {
     return make(mk_scalar_name(array, offset.cast_to<uint64_t>(), size));
 }
 
 // Given a type variable, get the associated variable of a given kind.
-variable_t variable_t::kind_var(data_kind_t kind, variable_t type_variable) {
-    std::string name = type_variable.name();
+variable_t variable_t::kind_var(const data_kind_t kind, const variable_t type_variable) {
+    const std::string name = type_variable.name();
     return make(name.substr(0, name.rfind('.') + 1) + name_of(kind));
 }
 

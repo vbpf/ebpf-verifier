@@ -31,7 +31,7 @@ class number_t final {
     explicit number_t(const std::string& s) { _n = cpp_int(s); }
 
     template <std::integral T>
-    explicit operator T() const {
+    T narrow() const {
         if (!fits<T>()) {
             CRAB_ERROR("number_t ", _n, " does not fit into ", typeid(T).name());
         }
@@ -39,7 +39,7 @@ class number_t final {
     }
 
     template <is_enum T>
-    explicit operator T() const {
+    T narrow() const {
         return static_cast<T>(static_cast<std::underlying_type_t<T>>(_n));
     }
 
@@ -241,7 +241,7 @@ class number_t final {
         if (!x.fits<int32_t>()) {
             CRAB_ERROR("number_t ", x._n, " does not fit into an int32");
         }
-        return number_t(_n << static_cast<int32_t>(x));
+        return number_t(_n << x.narrow<int32_t>());
     }
 
     number_t operator>>(const number_t& x) const {
@@ -251,7 +251,7 @@ class number_t final {
         if (!x.fits<int32_t>()) {
             CRAB_ERROR("number_t ", x._n, " does not fit into an int32");
         }
-        return number_t(_n >> static_cast<int32_t>(x));
+        return number_t(_n >> x.narrow<int32_t>());
     }
 
     [[nodiscard]]

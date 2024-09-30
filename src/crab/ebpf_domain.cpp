@@ -1449,8 +1449,8 @@ bool ebpf_domain_t::get_map_fd_range(const Reg& map_fd_reg, int32_t* start_fd, i
     if (!lb || !lb->fits<int32_t>() || !ub || !ub->fits<int32_t>()) {
         return false;
     }
-    *start_fd = static_cast<int32_t>(lb.value());
-    *end_fd = static_cast<int32_t>(ub.value());
+    *start_fd = lb->narrow<int32_t>();
+    *end_fd = ub->narrow<int32_t>();
 
     // Cap the maximum range we'll check.
     constexpr int max_range = 32;
@@ -1578,14 +1578,14 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
             require(m_inv, linear_constraint_t::false_const(), "Map key size is not singleton");
             return;
         }
-        width = static_cast<int>(key_size.value());
+        width = key_size->narrow<int>();
     } else {
         const auto value_size = get_map_value_size(s.map_fd_reg).singleton();
         if (!value_size.has_value()) {
             require(m_inv, linear_constraint_t::false_const(), "Map value size is not singleton");
             return;
         }
-        width = static_cast<int>(value_size.value());
+        width = value_size->narrow<int>();
     }
 
     m_inv = type_inv.join_over_types(m_inv, s.access_reg, [&](NumAbsDomain& inv, type_encoding_t access_reg_type) {
@@ -1594,11 +1594,9 @@ void ebpf_domain_t::operator()(const ValidMapKeyValue& s) {
             linear_expression_t ub = lb + width;
             if (!stack.all_num(inv, lb, ub)) {
                 auto lb_is = inv[lb].lb().number();
-                std::string lb_s =
-                    lb_is && lb_is->fits<int32_t>() ? std::to_string(static_cast<int32_t>(*lb_is)) : "-oo";
+                std::string lb_s = lb_is && lb_is->fits<int32_t>() ? std::to_string(lb_is->narrow<int32_t>()) : "-oo";
                 auto ub_is = inv.eval_interval(ub).ub().number();
-                std::string ub_s =
-                    ub_is && ub_is->fits<int32_t>() ? std::to_string(static_cast<int32_t>(*ub_is)) : "oo";
+                std::string ub_s = ub_is && ub_is->fits<int32_t>() ? std::to_string(ub_is->narrow<int32_t>()) : "oo";
                 require(inv, linear_constraint_t::false_const(),
                         "Illegal map update with a non-numerical value [" + lb_s + "-" + ub_s + ")");
             } else if (thread_local_options.strict && fd_type.has_value()) {
@@ -2377,7 +2375,7 @@ void ebpf_domain_t::lshr(const Reg& dst_reg, int imm, int finite_width) {
             }
         }
         m_inv.set(dst.uvalue, interval_t{lb_n, ub_n});
-        if (static_cast<int64_t>(ub_n) >= static_cast<int64_t>(lb_n)) {
+        if (ub_n.narrow<int64_t>() >= lb_n.narrow<int64_t>()) {
             // ? m_inv.set(dst.svalue, crab::interval_t{number_t{(int64_t)lb_n}, number_t{(int64_t)ub_n}});
             m_inv.assign(dst.svalue, dst.uvalue);
         } else {
@@ -2882,8 +2880,8 @@ ebpf_domain_t ebpf_domain_t::from_constraints(const std::set<std::string>& const
         inv += cst;
     }
     for (const interval_t& range : numeric_ranges) {
-        const int start = static_cast<int>(range.lb().number().value());
-        const int width = 1 + static_cast<int>(range.finite_size().value());
+        const int start = range.lb().number()->narrow<int>();
+        const int width = 1 + range.finite_size()->narrow<int>();
         inv.stack.initialize_numbers(start, width);
     }
     // TODO: handle other stack type constraints
