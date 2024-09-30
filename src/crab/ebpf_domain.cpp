@@ -23,6 +23,14 @@
 using crab::domains::NumAbsDomain;
 namespace crab {
 
+static auto to_signed(std::unsigned_integral auto x) -> std::make_signed_t<decltype(x)> {
+    return static_cast<std::make_signed_t<decltype(x)>>(x);
+}
+
+static auto to_unsigned(std::signed_integral auto x) -> std::make_unsigned_t<decltype(x)> {
+    return static_cast<std::make_unsigned_t<decltype(x)>>(x);
+}
+
 constexpr int MAX_PACKET_SIZE = 0xffff;
 
 // Pointers in the BPF VM are defined to be 64 bits.  Some contexts, like
