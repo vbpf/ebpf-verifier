@@ -39,30 +39,30 @@ class safe_i64 {
         return std::numeric_limits<int64_t>::min();
     }
 
-    static std::optional<int64_t> checked_add(int64_t a, int64_t b) {
-        wideint_t lr = (wideint_t)a + (wideint_t)b;
+    static std::optional<int64_t> checked_add(const int64_t a, const int64_t b) {
+        const wideint_t lr = static_cast<wideint_t>(a) + static_cast<wideint_t>(b);
         if (lr > get_max() || lr < get_min()) {
             return {};
         }
         return static_cast<int64_t>(lr);
     }
 
-    static std::optional<int64_t> checked_sub(int64_t a, int64_t b) {
-        wideint_t lr = (wideint_t)a - (wideint_t)b;
+    static std::optional<int64_t> checked_sub(const int64_t a, const int64_t b) {
+        const wideint_t lr = static_cast<wideint_t>(a) - static_cast<wideint_t>(b);
         if (lr > get_max() || lr < get_min()) {
             return {};
         }
         return static_cast<int64_t>(lr);
     }
-    static std::optional<int64_t> checked_mul(int64_t a, int64_t b) {
-        wideint_t lr = (wideint_t)a * (wideint_t)b;
+    static std::optional<int64_t> checked_mul(const int64_t a, const int64_t b) {
+        const wideint_t lr = static_cast<wideint_t>(a) * static_cast<wideint_t>(b);
         if (lr > get_max() || lr < get_min()) {
             return {};
         }
         return static_cast<int64_t>(lr);
     }
-    static std::optional<int64_t> checked_div(int64_t a, int64_t b) {
-        wideint_t lr = (wideint_t)a / (wideint_t)b;
+    static std::optional<int64_t> checked_div(const int64_t a, const int64_t b) {
+        const wideint_t lr = static_cast<wideint_t>(a) / static_cast<wideint_t>(b);
         if (lr > get_max() || lr < get_min()) {
             return {};
         }
@@ -72,39 +72,39 @@ class safe_i64 {
   public:
     safe_i64() : m_num(0) {}
 
-    safe_i64(int64_t num) : m_num(num) {}
+    safe_i64(const int64_t num) : m_num(num) {}
 
-    safe_i64(const number_t& n) : m_num((int64_t)n) {}
+    safe_i64(const number_t& n) : m_num(n.narrow<int64_t>()) {}
 
     operator int64_t() const { return (int64_t)m_num; }
 
     // TODO: output parameters whether operation overflows
-    safe_i64 operator+(safe_i64 x) const {
-        if (auto z = checked_add(m_num, x.m_num)) {
+    safe_i64 operator+(const safe_i64 x) const {
+        if (const auto z = checked_add(m_num, x.m_num)) {
             return safe_i64(*z);
         }
         CRAB_ERROR("Integer overflow during addition");
     }
 
     // TODO: output parameters whether operation overflows
-    safe_i64 operator-(safe_i64 x) const {
-        if (auto z = checked_sub(m_num, x.m_num)) {
+    safe_i64 operator-(const safe_i64 x) const {
+        if (const auto z = checked_sub(m_num, x.m_num)) {
             return safe_i64(*z);
         }
         CRAB_ERROR("Integer overflow during subtraction");
     }
 
     // TODO: output parameters whether operation overflows
-    safe_i64 operator*(safe_i64 x) const {
-        if (auto z = checked_mul(m_num, x.m_num)) {
+    safe_i64 operator*(const safe_i64 x) const {
+        if (const auto z = checked_mul(m_num, x.m_num)) {
             return safe_i64(*z);
         }
         CRAB_ERROR("Integer overflow during multiplication");
     }
 
     // TODO: output parameters whether operation overflows
-    safe_i64 operator/(safe_i64 x) const {
-        if (auto z = checked_div(m_num, x.m_num)) {
+    safe_i64 operator/(const safe_i64 x) const {
+        if (const auto z = checked_div(m_num, x.m_num)) {
             return safe_i64(*z);
         }
         CRAB_ERROR("Integer overflow during division");
@@ -114,22 +114,22 @@ class safe_i64 {
     safe_i64 operator-() const { return safe_i64(0) - *this; }
 
     // TODO: output parameters whether operation overflows
-    safe_i64& operator+=(safe_i64 x) { return *this = *this + x; }
+    safe_i64& operator+=(const safe_i64 x) { return *this = *this + x; }
 
     // TODO: output parameters whether operation overflows
-    safe_i64& operator-=(safe_i64 x) { return *this = *this - x; }
+    safe_i64& operator-=(const safe_i64 x) { return *this = *this - x; }
 
-    bool operator==(safe_i64 x) const { return m_num == x.m_num; }
+    bool operator==(const safe_i64 x) const { return m_num == x.m_num; }
 
-    bool operator!=(safe_i64 x) const { return m_num != x.m_num; }
+    bool operator!=(const safe_i64 x) const { return m_num != x.m_num; }
 
-    bool operator<(safe_i64 x) const { return m_num < x.m_num; }
+    bool operator<(const safe_i64 x) const { return m_num < x.m_num; }
 
-    bool operator<=(safe_i64 x) const { return m_num <= x.m_num; }
+    bool operator<=(const safe_i64 x) const { return m_num <= x.m_num; }
 
-    bool operator>(safe_i64 x) const { return m_num > x.m_num; }
+    bool operator>(const safe_i64 x) const { return m_num > x.m_num; }
 
-    bool operator>=(safe_i64 x) const { return m_num >= x.m_num; }
+    bool operator>=(const safe_i64 x) const { return m_num >= x.m_num; }
 
     friend std::ostream& operator<<(std::ostream& o, const safe_i64& n) { return o << n.m_num; }
 

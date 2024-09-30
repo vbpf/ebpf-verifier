@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 #include <utility>
 
+#include <gsl/narrow>
+
 #include "crab/split_dbm.hpp"
 #include "crab_utils/debug.hpp"
 #include "crab_utils/stats.hpp"
@@ -11,7 +13,7 @@
 namespace crab::domains {
 
 static std::optional<SplitDBM::vert_id> try_at(const SplitDBM::vert_map_t& map, variable_t v) {
-    auto it = map.find(v);
+    const auto it = map.find(v);
     if (it == map.end()) {
         return std::nullopt;
     }
@@ -19,7 +21,7 @@ static std::optional<SplitDBM::vert_id> try_at(const SplitDBM::vert_map_t& map, 
 }
 
 SplitDBM::vert_id SplitDBM::get_vert(variable_t v) {
-    if (auto y = try_at(vert_map, v)) {
+    if (const auto y = try_at(vert_map, v)) {
         return *y;
     }
 
@@ -739,7 +741,7 @@ std::optional<SplitDBM> SplitDBM::meet(const SplitDBM& o) const {
 }
 
 void SplitDBM::operator-=(variable_t v) {
-    if (auto y = try_at(vert_map, v)) {
+    if (const auto y = try_at(vert_map, v)) {
         g.forget(*y);
         rev_map[*y] = std::nullopt;
         vert_map.erase(v);
@@ -773,7 +775,7 @@ bool SplitDBM::add_constraint(const linear_constraint_t& cst) {
     case constraint_kind_t::LESS_THAN_ZERO: {
         // We try to convert a strict to non-strict.
         // e < 0 --> e <= -1
-        auto nc = linear_constraint_t(cst.expression().plus(1), constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO);
+        const auto nc = linear_constraint_t(cst.expression().plus(1), constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO);
         if (!add_linear_leq(nc.expression())) {
             return false;
         }
@@ -956,7 +958,7 @@ void SplitDBM::set(variable_t x, const interval_t& intv) {
         return;
     }
 
-    vert_id v = get_vert(x);
+    const vert_id v = get_vert(x);
     if (intv.ub().is_finite()) {
         Weight ub;
         if (convert_NtoW_overflow(*intv.ub().number(), ub)) {
@@ -1168,8 +1170,7 @@ string_invariant SplitDBM::to_set() const {
 std::ostream& operator<<(std::ostream& o, const SplitDBM& dom) { return o << dom.to_set(); }
 
 bool SplitDBM::eval_expression_overflow(const linear_expression_t& e, Weight& out) const {
-    [[maybe_unused]]
-    bool overflow = convert_NtoW_overflow(e.constant_term(), out);
+    [[maybe_unused]] const bool overflow = convert_NtoW_overflow(e.constant_term(), out);
     assert(!overflow);
     for (const auto& [variable, coefficient] : e.variable_terms()) {
         Weight coef;
@@ -1193,7 +1194,7 @@ interval_t SplitDBM::compute_residual(const linear_expression_t& e, variable_t p
 }
 
 SplitDBM::Weight SplitDBM::pot_value(variable_t v) const {
-    if (auto y = try_at(vert_map, v)) {
+    if (const auto y = try_at(vert_map, v)) {
         return potential[*y];
     }
     return {0};
@@ -1225,7 +1226,7 @@ bool SplitDBM::entail(const linear_constraint_t& rhs) const {
     if (rhs.is_contradiction()) {
         return false;
     }
-    interval_t interval = eval_interval(rhs.expression());
+    const interval_t interval = eval_interval(rhs.expression());
     switch (rhs.kind()) {
     case constraint_kind_t::EQUALS_ZERO:
         if (interval.singleton() == std::optional(number_t(0))) {
@@ -1277,11 +1278,11 @@ void SplitDBM::diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
 
 static interval_t get_interval(const SplitDBM::vert_map_t& m, const SplitDBM::graph_t& r, variable_t x,
                                int finite_width) {
-    auto it = m.find(x);
+    const auto it = m.find(x);
     if (it == m.end()) {
         return interval_t::top();
     }
-    SplitDBM::vert_id v = it->second;
+    const SplitDBM::vert_id v = it->second;
     extended_number lb = extended_number::minus_infinity();
     extended_number ub = extended_number::plus_infinity();
     if (r.elem(v, 0)) {

@@ -69,7 +69,7 @@ class variable_t final {
 
     static std::vector<variable_t> get_type_variables();
     static variable_t reg(data_kind_t, int);
-    static variable_t stack_frame_var(data_kind_t kind, int i, std::string prefix);
+    static variable_t stack_frame_var(data_kind_t kind, int i, const std::string& prefix);
     static variable_t cell_var(data_kind_t array, const number_t& offset, const number_t& size);
     static variable_t kind_var(data_kind_t kind, variable_t type_variable);
     static variable_t meta_offset();

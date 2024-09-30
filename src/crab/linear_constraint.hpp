@@ -34,12 +34,12 @@ class linear_constraint_t final {
         if (!_expression.is_constant()) {
             return false;
         }
-        number_t constant = _expression.constant_term();
+        const number_t constant = _expression.constant_term();
         switch (_constraint_kind) {
-        case constraint_kind_t::EQUALS_ZERO: return (constant == 0);
-        case constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO: return (constant <= 0);
-        case constraint_kind_t::LESS_THAN_ZERO: return (constant < 0);
-        case constraint_kind_t::NOT_ZERO: return (constant != 0);
+        case constraint_kind_t::EQUALS_ZERO: return constant == 0;
+        case constraint_kind_t::LESS_THAN_OR_EQUALS_ZERO: return constant <= 0;
+        case constraint_kind_t::LESS_THAN_ZERO: return constant < 0;
+        case constraint_kind_t::NOT_ZERO: return constant != 0;
         default: throw std::exception();
         }
     }
@@ -90,9 +90,9 @@ inline std::ostream& operator<<(std::ostream& o, const linear_constraint_t& cons
         const auto& expression = constraint.expression();
         expression.output_variable_terms(o);
 
-        const char* constraint_kind_label[] = {" == ", " <= ", " < ", " != "};
-        int kind = (int)constraint.kind();
-        if (kind < 0 || kind >= (int)(sizeof(constraint_kind_label) / sizeof(*constraint_kind_label))) {
+        constexpr std::array constraint_kind_label{" == ", " <= ", " < ", " != "};
+        const size_t kind = static_cast<size_t>(constraint.kind());
+        if (kind >= std::size(constraint_kind_label)) {
             throw std::exception();
         }
         o << constraint_kind_label[kind] << -expression.constant_term();

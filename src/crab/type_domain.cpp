@@ -209,7 +209,7 @@ type_encoding_t TypeDomain::get_type(const NumAbsDomain& inv, const Reg& r) cons
     if (!res) {
         return T_UNINIT;
     }
-    return static_cast<type_encoding_t>(*res);
+    return res->narrow<type_encoding_t>();
 }
 
 type_encoding_t TypeDomain::get_type(const NumAbsDomain& inv, const variable_t v) const {
@@ -217,11 +217,11 @@ type_encoding_t TypeDomain::get_type(const NumAbsDomain& inv, const variable_t v
     if (!res) {
         return T_UNINIT;
     }
-    return static_cast<type_encoding_t>(*res);
+    return res->narrow<type_encoding_t>();
 }
 
 type_encoding_t TypeDomain::get_type(const NumAbsDomain& inv, const number_t& t) const {
-    return static_cast<type_encoding_t>(t);
+    return t.narrow<type_encoding_t>();
 }
 
 // Check whether a given type value is within the range of a given type variable's value.
