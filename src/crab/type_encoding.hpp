@@ -20,9 +20,12 @@ enum class data_kind_t {
     shared_region_sizes,
     stack_numeric_sizes
 };
+constexpr auto KIND_MIN = data_kind_t::types;
+constexpr auto KIND_MAX = data_kind_t::stack_numeric_sizes;
 
 std::string name_of(data_kind_t kind);
 data_kind_t regkind(const std::string& s);
+std::vector<data_kind_t> iterate_kinds(data_kind_t lb = KIND_MIN, data_kind_t ub = KIND_MAX);
 std::ostream& operator<<(std::ostream& o, const data_kind_t& s);
 
 // The exact numbers are taken advantage of in ebpf_domain_t

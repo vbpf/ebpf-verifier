@@ -17,14 +17,31 @@
 
 namespace crab {
 
-static void operator++(type_encoding_t& t) { t = static_cast<type_encoding_t>(1 + static_cast<int>(t)); }
+template <is_enum T>
+static void operator++(T& t) {
+    t = static_cast<T>(1 + static_cast<std::underlying_type_t<T>>(t));
+}
+
+std::vector<data_kind_t> iterate_kinds(const data_kind_t lb, const data_kind_t ub) {
+    if (lb > ub) {
+        CRAB_ERROR("lower bound ", lb, " is greater than upper bound ", ub);
+    }
+    if (lb < KIND_MIN || ub > KIND_MAX) {
+        CRAB_ERROR("bounds ", lb, " and ", ub, " are out of range");
+    }
+    std::vector<data_kind_t> res;
+    for (data_kind_t i = lb; i <= ub; ++i) {
+        res.push_back(i);
+    }
+    return res;
+}
 
 std::vector<type_encoding_t> iterate_types(const type_encoding_t lb, const type_encoding_t ub) {
     if (lb > ub) {
-        CRAB_ERROR("iterate_types: lower bound ", lb, " is greater than upper bound ", ub);
+        CRAB_ERROR("lower bound ", lb, " is greater than upper bound ", ub);
     }
     if (lb < T_MIN || ub > T_MAX) {
-        CRAB_ERROR("iterate_types: bounds ", lb, " and ", ub, " are out of range");
+        CRAB_ERROR("bounds ", lb, " and ", ub, " are out of range");
     }
     std::vector<type_encoding_t> res;
     for (type_encoding_t i = lb; i <= ub; ++i) {

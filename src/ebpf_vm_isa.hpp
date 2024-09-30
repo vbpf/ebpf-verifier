@@ -87,7 +87,9 @@ enum {
     INST_ALU_OP_ARSH = 0xc0,
     INST_ALU_OP_END = 0xd0,
     INST_ALU_OP_MASK = 0xf0,
+};
 
+enum {
     R0_RETURN_VALUE = 0,
     R1_ARG = 1,
     R2_ARG = 2,

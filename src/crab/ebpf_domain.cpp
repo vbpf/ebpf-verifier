@@ -10,12 +10,12 @@
 
 #include "boost/endian/conversion.hpp"
 
-#include "crab/array_domain.hpp"
-#include "crab/ebpf_domain.hpp"
-
 #include "asm_ostream.hpp"
 #include "asm_unmarshal.hpp"
 #include "config.hpp"
+#include "crab/array_domain.hpp"
+#include "crab/ebpf_domain.hpp"
+#include "crab_utils/num_safety.hpp"
 #include "dsl_syntax.hpp"
 #include "platform.hpp"
 #include "string_constraints.hpp"
@@ -72,7 +72,7 @@ static std::vector<linear_constraint_t> assume_bit_cst_interval(const NumAbsDoma
     }
     uint64_t src_int_value = src_n.value().cast_to<uint64_t>();
     if (!is64) {
-        src_int_value = static_cast<uint32_t>(src_int_value);
+        src_int_value = gsl::narrow_cast<uint32_t>(src_int_value);
     }
 
     bool result;
@@ -134,11 +134,11 @@ static std::vector<linear_constraint_t> assume_signed_32bit_eq(const NumAbsDomai
                 lb -= 0x100000000;
             }
 
-            if (static_cast<uint64_t>(lb_match) <= static_cast<uint64_t>(ub_match)) {
+            if (to_unsigned(lb_match) <= to_unsigned(ub_match)) {
                 // The interval is also valid when cast to a uvalue, meaning
                 // both bounds are positive or both are negative.
-                return {left_svalue >= lb_match, left_svalue <= ub_match,
-                        left_uvalue >= static_cast<uint64_t>(lb_match), left_uvalue <= static_cast<uint64_t>(ub_match)};
+                return {left_svalue >= lb_match, left_svalue <= ub_match, left_uvalue >= to_unsigned(lb_match),
+                        left_uvalue <= to_unsigned(ub_match)};
             } else {
                 // The interval can only be represented as an svalue.
                 return {left_svalue >= lb_match, left_svalue <= ub_match};
@@ -652,7 +652,7 @@ static std::vector<linear_constraint_t> assume_cst_imm(const NumAbsDomain& inv, 
     case Op::SLE:
     case Op::SGT:
     case Op::SLT:
-        return assume_signed_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, imm, static_cast<uint64_t>(imm));
+        return assume_signed_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, imm, gsl::narrow_cast<uint64_t>(imm));
     case Op::SET:
     case Op::NSET: return assume_bit_cst_interval(inv, op, is64, dst_uvalue, interval_t{imm});
     case Op::NE:
@@ -660,7 +660,8 @@ static std::vector<linear_constraint_t> assume_cst_imm(const NumAbsDomain& inv, 
     case Op::LE:
     case Op::GT:
     case Op::LT:
-        return assume_unsigned_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, imm, static_cast<uint64_t>(imm));
+        return assume_unsigned_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, imm,
+                                            gsl::narrow_cast<uint64_t>(imm));
     }
     return {};
 }
@@ -903,7 +904,7 @@ static void havoc_register(NumAbsDomain& inv, const Reg& reg) {
 
 void ebpf_domain_t::scratch_caller_saved_registers() {
     for (int i = R1_ARG; i <= R5_ARG; i++) {
-        Reg r{static_cast<uint8_t>(i)};
+        Reg r{gsl::narrow<uint8_t>(i)};
         havoc_register(m_inv, r);
         type_inv.havoc_type(m_inv, r);
     }
@@ -913,8 +914,7 @@ void ebpf_domain_t::save_callee_saved_registers(const std::string& prefix) {
     // Create variables specific to the new call stack frame that store
     // copies of the states of r6 through r9.
     for (int r = R6; r <= R9; r++) {
-        for (data_kind_t kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes;
-             kind = static_cast<data_kind_t>(static_cast<int>(kind) + 1)) {
+        for (const data_kind_t kind : iterate_kinds()) {
             const variable_t src_var = variable_t::reg(kind, r);
             if (!m_inv[src_var].is_top()) {
                 assign(variable_t::stack_frame_var(kind, r, prefix), src_var);
@@ -925,8 +925,7 @@ void ebpf_domain_t::save_callee_saved_registers(const std::string& prefix) {
 
 void ebpf_domain_t::restore_callee_saved_registers(const std::string& prefix) {
     for (int r = R6; r <= R9; r++) {
-        for (data_kind_t kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes;
-             kind = static_cast<data_kind_t>(static_cast<int>(kind) + 1)) {
+        for (const data_kind_t kind : iterate_kinds()) {
             const variable_t src_var = variable_t::stack_frame_var(kind, r, prefix);
             if (!m_inv[src_var].is_top()) {
                 assign(variable_t::reg(kind, r), src_var);
@@ -1249,7 +1248,7 @@ void ebpf_domain_t::operator()(const Assume& s) {
             m_inv.set_to_top();
         }
     } else {
-        const int64_t imm = static_cast<int64_t>(std::get<Imm>(cond.right).v);
+        const int64_t imm = gsl::narrow_cast<int64_t>(std::get<Imm>(cond.right).v);
         for (const linear_constraint_t& cst : assume_cst_imm(m_inv, cond.op, cond.is64, dst.svalue, dst.uvalue, imm)) {
             assume(cst);
         }
@@ -1648,7 +1647,7 @@ static std::tuple<linear_expression_t, linear_expression_t> lb_ub_access_pair(co
 void ebpf_domain_t::operator()(const ValidAccess& s) {
     using namespace crab::dsl_syntax;
 
-    const bool is_comparison_check = s.width == static_cast<Value>(Imm{0});
+    const bool is_comparison_check = s.width == Value{Imm{0}};
 
     const auto reg = reg_pack(s.reg);
     // join_over_types instead of simple iteration is only needed for assume-assert
@@ -1672,7 +1671,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
                     if (s.offset < 0) {
                         require(inv, linear_constraint_t::false_const(), "Stack content is not numeric");
                     } else if (const auto pimm = std::get_if<Imm>(&s.width)) {
-                        if (!inv.entail(static_cast<int>(pimm->v) <= reg.stack_numeric_size - s.offset)) {
+                        if (!inv.entail(gsl::narrow<int>(pimm->v) <= reg.stack_numeric_size - s.offset)) {
                             require(inv, linear_constraint_t::false_const(), "Stack content is not numeric");
                         }
                     } else {
@@ -2016,8 +2015,8 @@ void ebpf_domain_t::operator()(const Mem& b) {
             do_mem_store(b, *preg, data_reg.svalue, data_reg.uvalue, data_reg);
         }
     } else {
-        do_mem_store(b, number_t{T_NUM}, number_t{static_cast<int64_t>(std::get<Imm>(b.value).v)},
-                     number_t{static_cast<uint64_t>(std::get<Imm>(b.value).v)}, {});
+        const uint64_t imm = std::get<Imm>(b.value).v;
+        do_mem_store(b, number_t{T_NUM}, number_t{to_signed(imm)}, number_t{imm}, {});
     }
 }
 
@@ -2180,7 +2179,7 @@ void ebpf_domain_t::operator()(const Call& call) {
             if (const auto map_type = get_map_type(*maybe_fd_reg)) {
                 if (global_program_info->platform->get_map_type(*map_type).value_type == EbpfMapValueType::MAP) {
                     if (const auto inner_map_fd = get_map_inner_map_fd(*maybe_fd_reg)) {
-                        do_load_mapfd(r0_reg, static_cast<int>(*inner_map_fd), true);
+                        do_load_mapfd(r0_reg, to_signed(*inner_map_fd), true);
                         goto out;
                     }
                 } else {
@@ -2320,8 +2319,8 @@ void ebpf_domain_t::shl(const Reg& dst_reg, int imm, const int finite_width) {
             const number_t ub = interval.ub().number().value();
             uint64_t lb_n = lb.cast_to<uint64_t>();
             uint64_t ub_n = ub.cast_to<uint64_t>();
-            const uint64_t uint_max = finite_width == 64 ? std::numeric_limits<uint64_t>::max()
-                                                         : static_cast<uint64_t>(std::numeric_limits<uint32_t>::max());
+            const uint64_t uint_max = finite_width == 64 ? uint64_t{std::numeric_limits<uint64_t>::max()}
+                                                         : uint64_t{std::numeric_limits<uint32_t>::max()};
             if (lb_n >> (finite_width - imm) != ub_n >> (finite_width - imm)) {
                 // The bits that will be shifted out to the left are different,
                 // which means all combinations of remaining bits are possible.
@@ -2335,7 +2334,7 @@ void ebpf_domain_t::shl(const Reg& dst_reg, int imm, const int finite_width) {
                 ub_n = ub_n << imm & uint_max;
             }
             m_inv.set(dst.uvalue, interval_t{lb_n, ub_n});
-            if (static_cast<int64_t>(ub_n) >= static_cast<int64_t>(lb_n)) {
+            if (to_signed(ub_n) >= to_signed(lb_n)) {
                 m_inv.assign(dst.svalue, dst.uvalue);
             } else {
                 havoc(dst.svalue);
@@ -2456,8 +2455,8 @@ void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_sv
                     lb_n = lb.cast_to<int64_t>() >> imm;
                     ub_n = ub.cast_to<int64_t>() >> imm;
                 } else {
-                    number_t lb_w = lb.cast_to_sint(finite_width) >> static_cast<int>(imm);
-                    number_t ub_w = ub.cast_to_sint(finite_width) >> static_cast<int>(imm);
+                    number_t lb_w = lb.cast_to_sint(finite_width) >> gsl::narrow<int>(imm);
+                    number_t ub_w = ub.cast_to_sint(finite_width) >> gsl::narrow<int>(imm);
                     if (lb_w.cast_to<uint32_t>() <= ub_w.cast_to<uint32_t>()) {
                         lb_n = lb_w.cast_to<uint32_t>();
                         ub_n = ub_w.cast_to<uint32_t>();
@@ -2465,7 +2464,7 @@ void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_sv
                 }
             }
             m_inv.set(dst.svalue, interval_t{lb_n, ub_n});
-            if (static_cast<uint64_t>(ub_n) >= static_cast<uint64_t>(lb_n)) {
+            if (to_unsigned(ub_n) >= to_unsigned(lb_n)) {
                 m_inv.assign(dst.uvalue, dst.svalue);
             } else {
                 havoc(dst.uvalue);
@@ -2493,10 +2492,10 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         int64_t imm;
         if (bin.is64) {
             // Use the full signed value.
-            imm = static_cast<int64_t>(pimm->v);
+            imm = to_signed(pimm->v);
         } else {
             // Use only the low 32 bits of the value.
-            imm = static_cast<int32_t>(pimm->v);
+            imm = gsl::narrow_cast<int32_t>(pimm->v);
             bitwise_and(dst.svalue, dst.uvalue, std::numeric_limits<uint32_t>::max());
         }
         switch (bin.op) {
@@ -2514,13 +2513,13 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             if (imm == 0) {
                 return;
             }
-            add(bin.dst, static_cast<int>(imm), finite_width);
+            add(bin.dst, gsl::narrow<int>(imm), finite_width);
             break;
         case Bin::Op::SUB:
             if (imm == 0) {
                 return;
             }
-            add(bin.dst, static_cast<int>(-imm), finite_width);
+            add(bin.dst, gsl::narrow<int>(-imm), finite_width);
             break;
         case Bin::Op::MUL:
             mul(dst.svalue, dst.uvalue, imm, finite_width);
@@ -2549,7 +2548,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
         case Bin::Op::AND:
             // FIX: what to do with ptr&-8 as in counter/simple_loop_unrolled?
             bitwise_and(dst.svalue, dst.uvalue, imm);
-            if (static_cast<int32_t>(imm) > 0) {
+            if (gsl::narrow<int32_t>(imm) > 0) {
                 // AND with immediate is only a 32-bit operation so svalue and uvalue are the same.
                 assume(dst.svalue <= imm);
                 assume(dst.uvalue <= imm);
@@ -2558,9 +2557,9 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             }
             havoc_offsets(bin.dst);
             break;
-        case Bin::Op::LSH: shl(bin.dst, static_cast<int32_t>(imm), finite_width); break;
-        case Bin::Op::RSH: lshr(bin.dst, static_cast<int32_t>(imm), finite_width); break;
-        case Bin::Op::ARSH: ashr(bin.dst, static_cast<int32_t>(imm), finite_width); break;
+        case Bin::Op::LSH: shl(bin.dst, gsl::narrow<int32_t>(imm), finite_width); break;
+        case Bin::Op::RSH: lshr(bin.dst, gsl::narrow<int32_t>(imm), finite_width); break;
+        case Bin::Op::ARSH: ashr(bin.dst, gsl::narrow<int32_t>(imm), finite_width); break;
         case Bin::Op::XOR:
             bitwise_xor(dst.svalue, dst.uvalue, imm);
             havoc_offsets(bin.dst);
@@ -2721,7 +2720,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             // Use only the low 32 bits of the value.
                             bitwise_and(dst.svalue, dst.uvalue, std::numeric_limits<uint32_t>::max());
                         }
-                        shl(bin.dst, static_cast<int32_t>(imm), finite_width);
+                        shl(bin.dst, gsl::narrow_cast<int32_t>(imm), finite_width);
                         break;
                     }
                 }
@@ -2739,7 +2738,7 @@ void ebpf_domain_t::operator()(const Bin& bin) {
                             // Use only the low 32 bits of the value.
                             bitwise_and(dst.svalue, dst.uvalue, std::numeric_limits<uint32_t>::max());
                         }
-                        lshr(bin.dst, static_cast<int32_t>(imm), finite_width);
+                        lshr(bin.dst, gsl::narrow_cast<int32_t>(imm), finite_width);
                         break;
                     }
                 }

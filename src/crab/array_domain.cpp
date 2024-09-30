@@ -15,6 +15,7 @@
 #include "config.hpp"
 #include "crab/array_domain.hpp"
 #include "crab/dsl_syntax.hpp"
+#include "crab_utils/num_safety.hpp"
 #include "spec_type_descriptors.hpp"
 
 namespace crab::domains {
@@ -109,7 +110,8 @@ class cell_t final {
     cell_t(const offset_t offset, const unsigned size) : _offset(offset), _size(size) {}
 
     static interval_t to_interval(const offset_t o, const unsigned size) {
-        return {gsl::narrow<int>(o), number_t{gsl::narrow<int>(o)} + size - 1};
+        const number_t lb{gsl::narrow<int>(o)};
+        return {lb, lb + size - 1};
     }
 
   public:
@@ -646,7 +648,7 @@ std::optional<linear_expression_t> array_domain_t::load(const NumAbsDomain& inv,
             }
         }
         offset_t o(k);
-        unsigned size = gsl::narrow<unsigned>(width);
+        unsigned size = to_unsigned(width);
         if (auto cell = lookup_array_map(kind).get_cell(o, size)) {
             return cell->get_scalar(kind);
         }
@@ -705,7 +707,7 @@ std::optional<linear_expression_t> array_domain_t::load(const NumAbsDomain& inv,
                     } else {
                         b = boost::endian::native_to_little<index_t>(b);
                     }
-                    return kind == data_kind_t::uvalues ? number_t(b) : number_t(gsl::narrow_cast<int64_t>(b));
+                    return kind == data_kind_t::uvalues ? number_t(b) : number_t(to_signed(b));
                 }
             }
         }
