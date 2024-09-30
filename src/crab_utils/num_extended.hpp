@@ -59,7 +59,7 @@ class extended_number final {
 
     template <is_enum T>
     T narrow() const {
-        return static_cast<T>(narrow<std::underlying_type_t<T>>(_n));
+        return static_cast<T>(narrow<std::underlying_type_t<T>>());
     }
 
     extended_number& operator=(extended_number&&) noexcept = default;
