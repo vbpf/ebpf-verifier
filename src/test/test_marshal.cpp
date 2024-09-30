@@ -499,7 +499,7 @@ TEST_CASE("marshal", "[disasm][marshal]") {
         Mem m{.access = access, .value = Reg{3}, .is_load = true};
         auto ins = marshal(m, 0).at(0);
         ebpf_inst expect{
-            .opcode = static_cast<uint8_t>(INST_CLS_LD | INST_MODE_MEM | width_to_opcode(1) | 0x1),
+            .opcode = gsl::narrow<uint8_t>(INST_CLS_LD | INST_MODE_MEM | width_to_opcode(1) | 0x1),
             .dst = 3,
             .src = 4,
             .offset = 6,

@@ -144,7 +144,7 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
     for (const auto& [label_name, raw_block] : raw_blocks) {
         label_name_to_label.emplace(label_name, label_index);
         // don't count large instructions as 2
-        label_index += static_cast<int>(raw_block.size());
+        label_index += gsl::narrow<int>(raw_block.size());
     }
 
     InstructionSeq res;
@@ -296,7 +296,7 @@ string_invariant stack_contents_invariant(const std::vector<uint8_t>& memory_byt
                                   "s[" + std::to_string(EBPF_STACK_SIZE - memory_bytes.size()) + "..." +
                                       std::to_string(EBPF_STACK_SIZE - 1) + "].type=number"};
 
-    int offset = EBPF_STACK_SIZE - static_cast<int>(memory_bytes.size());
+    int offset = EBPF_STACK_SIZE - gsl::narrow<int>(memory_bytes.size());
     if (offset % 2 != 0) {
         add_stack_variable<int8_t>(more, offset, memory_bytes);
     }

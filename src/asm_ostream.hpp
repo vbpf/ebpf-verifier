@@ -9,14 +9,15 @@
 #include <boost/lexical_cast.hpp>
 
 #include "asm_syntax.hpp"
+#include "crab_utils/num_safety.hpp"
 
 // We use a 16-bit offset whenever it fits in 16 bits.
 inline std::function<int16_t(label_t)> label_to_offset16(pc_t pc) {
     return [=](const label_t& label) {
-        const int64_t offset = label.from - static_cast<int64_t>(pc) - 1;
-        return std::numeric_limits<int16_t>::min() <= offset && offset <= std::numeric_limits<int16_t>::max()
-                   ? static_cast<int16_t>(offset)
-                   : 0;
+        const int64_t offset = label.from - gsl::narrow<int64_t>(pc) - 1;
+        const bool is16 =
+            std::numeric_limits<int16_t>::min() <= offset && offset <= std::numeric_limits<int16_t>::max();
+        return is16 ? gsl::narrow<int16_t>(offset) : 0;
     };
 }
 
@@ -24,8 +25,10 @@ inline std::function<int16_t(label_t)> label_to_offset16(pc_t pc) {
 // of an unconditional jump doesn't fit in a int16_t.
 inline std::function<int32_t(label_t)> label_to_offset32(const pc_t pc) {
     return [=](const label_t& label) {
-        int64_t offset = label.from - static_cast<int64_t>(pc) - 1;
-        return (offset >= INT16_MIN && offset <= INT16_MAX) ? 0 : static_cast<int32_t>(offset);
+        const int64_t offset = label.from - gsl::narrow<int64_t>(pc) - 1;
+        const bool is16 =
+            std::numeric_limits<int16_t>::min() <= offset && offset <= std::numeric_limits<int16_t>::max();
+        return is16 ? 0 : gsl::narrow<int32_t>(offset);
     };
 }
 
@@ -42,8 +45,8 @@ std::string to_string(Instruction const& ins);
 std::ostream& operator<<(std::ostream& os, Bin::Op op);
 std::ostream& operator<<(std::ostream& os, Condition::Op op);
 
-inline std::ostream& operator<<(std::ostream& os, const Imm imm) { return os << static_cast<int64_t>(imm.v); }
-inline std::ostream& operator<<(std::ostream& os, Reg const& a) { return os << "r" << static_cast<int>(a.v); }
+inline std::ostream& operator<<(std::ostream& os, const Imm imm) { return os << gsl::narrow<int64_t>(imm.v); }
+inline std::ostream& operator<<(std::ostream& os, Reg const& a) { return os << "r" << gsl::narrow<int>(a.v); }
 inline std::ostream& operator<<(std::ostream& os, Value const& a) {
     if (auto pa = std::get_if<Imm>(&a)) {
         return os << *pa;
@@ -51,21 +54,19 @@ inline std::ostream& operator<<(std::ostream& os, Value const& a) {
     return os << std::get<Reg>(a);
 }
 
-inline std::ostream& operator<<(std::ostream& os, Undefined const& a) { return os << static_cast<Instruction>(a); }
-inline std::ostream& operator<<(std::ostream& os, LoadMapFd const& a) { return os << static_cast<Instruction>(a); }
-inline std::ostream& operator<<(std::ostream& os, Bin const& a) { return os << static_cast<Instruction>(a); }
-inline std::ostream& operator<<(std::ostream& os, Un const& a) { return os << static_cast<Instruction>(a); }
-inline std::ostream& operator<<(std::ostream& os, Call const& a) { return os << static_cast<Instruction>(a); }
-inline std::ostream& operator<<(std::ostream& os, Callx const& a) { return os << static_cast<Instruction>(a); }
-inline std::ostream& operator<<(std::ostream& os, Exit const& a) { return os << static_cast<Instruction>(a); }
-inline std::ostream& operator<<(std::ostream& os, Jmp const& a) { return os << static_cast<Instruction>(a); }
-inline std::ostream& operator<<(std::ostream& os, Packet const& a) { return os << static_cast<Instruction>(a); }
-inline std::ostream& operator<<(std::ostream& os, Mem const& a) { return os << static_cast<Instruction>(a); }
-inline std::ostream& operator<<(std::ostream& os, Atomic const& a) { return os << static_cast<Instruction>(a); }
-inline std::ostream& operator<<(std::ostream& os, Assume const& a) { return os << static_cast<Instruction>(a); }
-inline std::ostream& operator<<(std::ostream& os, Assert const& a) { return os << static_cast<Instruction>(a); }
-inline std::ostream& operator<<(std::ostream& os, IncrementLoopCounter const& a) {
-    return os << static_cast<Instruction>(a);
-}
+inline std::ostream& operator<<(std::ostream& os, Undefined const& a) { return os << Instruction{a}; }
+inline std::ostream& operator<<(std::ostream& os, LoadMapFd const& a) { return os << Instruction{a}; }
+inline std::ostream& operator<<(std::ostream& os, Bin const& a) { return os << Instruction{a}; }
+inline std::ostream& operator<<(std::ostream& os, Un const& a) { return os << Instruction{a}; }
+inline std::ostream& operator<<(std::ostream& os, Call const& a) { return os << Instruction{a}; }
+inline std::ostream& operator<<(std::ostream& os, Callx const& a) { return os << Instruction{a}; }
+inline std::ostream& operator<<(std::ostream& os, Exit const& a) { return os << Instruction{a}; }
+inline std::ostream& operator<<(std::ostream& os, Jmp const& a) { return os << Instruction{a}; }
+inline std::ostream& operator<<(std::ostream& os, Packet const& a) { return os << Instruction{a}; }
+inline std::ostream& operator<<(std::ostream& os, Mem const& a) { return os << Instruction{a}; }
+inline std::ostream& operator<<(std::ostream& os, Atomic const& a) { return os << Instruction{a}; }
+inline std::ostream& operator<<(std::ostream& os, Assume const& a) { return os << Instruction{a}; }
+inline std::ostream& operator<<(std::ostream& os, Assert const& a) { return os << Instruction{a}; }
+inline std::ostream& operator<<(std::ostream& os, IncrementLoopCounter const& a) { return os << Instruction{a}; }
 std::ostream& operator<<(std::ostream& os, AssertionConstraint const& a);
 std::string to_string(AssertionConstraint const& constraint);
