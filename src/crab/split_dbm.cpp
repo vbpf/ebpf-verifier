@@ -1170,7 +1170,8 @@ string_invariant SplitDBM::to_set() const {
 std::ostream& operator<<(std::ostream& o, const SplitDBM& dom) { return o << dom.to_set(); }
 
 bool SplitDBM::eval_expression_overflow(const linear_expression_t& e, Weight& out) const {
-    [[maybe_unused]] const bool overflow = convert_NtoW_overflow(e.constant_term(), out);
+    [[maybe_unused]]
+    const bool overflow = convert_NtoW_overflow(e.constant_term(), out);
     assert(!overflow);
     for (const auto& [variable, coefficient] : e.variable_terms()) {
         Weight coef;
