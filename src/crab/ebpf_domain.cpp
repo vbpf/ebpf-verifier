@@ -23,6 +23,14 @@
 using crab::domains::NumAbsDomain;
 namespace crab {
 
+static auto to_signed(std::unsigned_integral auto x) -> std::make_signed_t<decltype(x)> {
+    return static_cast<std::make_signed_t<decltype(x)>>(x);
+}
+
+static auto to_unsigned(std::signed_integral auto x) -> std::make_unsigned_t<decltype(x)> {
+    return static_cast<std::make_unsigned_t<decltype(x)>>(x);
+}
+
 constexpr int MAX_PACKET_SIZE = 0xffff;
 
 // Pointers in the BPF VM are defined to be 64 bits.  Some contexts, like
@@ -134,11 +142,11 @@ static std::vector<linear_constraint_t> assume_signed_32bit_eq(const NumAbsDomai
                 lb -= 0x100000000;
             }
 
-            if (static_cast<uint64_t>(lb_match) <= static_cast<uint64_t>(ub_match)) {
+            if (to_unsigned(lb_match) <= to_unsigned(ub_match)) {
                 // The interval is also valid when cast to a uvalue, meaning
                 // both bounds are positive or both are negative.
-                return {left_svalue >= lb_match, left_svalue <= ub_match,
-                        left_uvalue >= static_cast<uint64_t>(lb_match), left_uvalue <= static_cast<uint64_t>(ub_match)};
+                return {left_svalue >= lb_match, left_svalue <= ub_match, left_uvalue >= to_unsigned(lb_match),
+                        left_uvalue <= to_unsigned(ub_match)};
             } else {
                 // The interval can only be represented as an svalue.
                 return {left_svalue >= lb_match, left_svalue <= ub_match};
@@ -652,7 +660,7 @@ static std::vector<linear_constraint_t> assume_cst_imm(const NumAbsDomain& inv, 
     case Op::SLE:
     case Op::SGT:
     case Op::SLT:
-        return assume_signed_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, imm, static_cast<uint64_t>(imm));
+        return assume_signed_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, imm, gsl::narrow_cast<uint64_t>(imm));
     case Op::SET:
     case Op::NSET: return assume_bit_cst_interval(inv, op, is64, dst_uvalue, interval_t{imm});
     case Op::NE:
@@ -660,7 +668,8 @@ static std::vector<linear_constraint_t> assume_cst_imm(const NumAbsDomain& inv, 
     case Op::LE:
     case Op::GT:
     case Op::LT:
-        return assume_unsigned_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, imm, static_cast<uint64_t>(imm));
+        return assume_unsigned_cst_interval(inv, op, is64, dst_svalue, dst_uvalue, imm,
+                                            gsl::narrow_cast<uint64_t>(imm));
     }
     return {};
 }
@@ -903,7 +912,7 @@ static void havoc_register(NumAbsDomain& inv, const Reg& reg) {
 
 void ebpf_domain_t::scratch_caller_saved_registers() {
     for (int i = R1_ARG; i <= R5_ARG; i++) {
-        Reg r{static_cast<uint8_t>(i)};
+        Reg r{gsl::narrow<uint8_t>(i)};
         havoc_register(m_inv, r);
         type_inv.havoc_type(m_inv, r);
     }
@@ -913,8 +922,7 @@ void ebpf_domain_t::save_callee_saved_registers(const std::string& prefix) {
     // Create variables specific to the new call stack frame that store
     // copies of the states of r6 through r9.
     for (int r = R6; r <= R9; r++) {
-        for (data_kind_t kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes;
-             kind = static_cast<data_kind_t>(static_cast<int>(kind) + 1)) {
+        for (const data_kind_t kind : iterate_kinds()) {
             const variable_t src_var = variable_t::reg(kind, r);
             if (!m_inv[src_var].is_top()) {
                 assign(variable_t::stack_frame_var(kind, r, prefix), src_var);
@@ -925,8 +933,7 @@ void ebpf_domain_t::save_callee_saved_registers(const std::string& prefix) {
 
 void ebpf_domain_t::restore_callee_saved_registers(const std::string& prefix) {
     for (int r = R6; r <= R9; r++) {
-        for (data_kind_t kind = data_kind_t::types; kind <= data_kind_t::stack_numeric_sizes;
-             kind = static_cast<data_kind_t>(static_cast<int>(kind) + 1)) {
+        for (const data_kind_t kind : iterate_kinds()) {
             const variable_t src_var = variable_t::stack_frame_var(kind, r, prefix);
             if (!m_inv[src_var].is_top()) {
                 assign(variable_t::reg(kind, r), src_var);
@@ -1249,7 +1256,7 @@ void ebpf_domain_t::operator()(const Assume& s) {
             m_inv.set_to_top();
         }
     } else {
-        const int64_t imm = static_cast<int64_t>(std::get<Imm>(cond.right).v);
+        const int64_t imm = gsl::narrow_cast<int64_t>(std::get<Imm>(cond.right).v);
         for (const linear_constraint_t& cst : assume_cst_imm(m_inv, cond.op, cond.is64, dst.svalue, dst.uvalue, imm)) {
             assume(cst);
         }
@@ -2456,8 +2463,8 @@ void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_sv
                     lb_n = lb.cast_to<int64_t>() >> imm;
                     ub_n = ub.cast_to<int64_t>() >> imm;
                 } else {
-                    number_t lb_w = lb.cast_to_sint(finite_width) >> static_cast<int>(imm);
-                    number_t ub_w = ub.cast_to_sint(finite_width) >> static_cast<int>(imm);
+                    number_t lb_w = lb.cast_to_sint(finite_width) >> gsl::narrow<int>(imm);
+                    number_t ub_w = ub.cast_to_sint(finite_width) >> gsl::narrow<int>(imm);
                     if (lb_w.cast_to<uint32_t>() <= ub_w.cast_to<uint32_t>()) {
                         lb_n = lb_w.cast_to<uint32_t>();
                         ub_n = ub_w.cast_to<uint32_t>();
