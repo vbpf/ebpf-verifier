@@ -14,6 +14,7 @@
 #include "libbtf/btf_parse.h"
 
 #include "asm_files.hpp"
+#include "crab_utils/num_safety.hpp"
 #include "platform.hpp"
 
 using std::string;
@@ -33,11 +34,11 @@ static vector<T> vector_of(const ELFIO::section& sec) {
 }
 
 int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
-                    ebpf_verifier_options_t options) {
+                    ebpf_verifier_options_t) {
     const EquivalenceKey equiv{map_type.value_type, key_size, value_size, map_type.is_array ? max_entries : 0};
     if (!global_program_info->cache.contains(equiv)) {
         // +1 so 0 is the null FD
-        global_program_info->cache[equiv] = static_cast<int>(global_program_info->cache.size()) + 1;
+        global_program_info->cache[equiv] = gsl::narrow<int>(global_program_info->cache.size()) + 1;
     }
     return global_program_info->cache.at(equiv);
 }
@@ -249,13 +250,13 @@ static void append_subprograms(raw_program& prog, const vector<raw_program>& pro
         }
 
         // Fill in the PC offset into the imm field of the CallLocal instruction.
-        const ELFIO::Elf_Xword target_offset = subprogram_offsets[reloc.target_function_name];
-        const auto offset_diff = static_cast<int64_t>(target_offset - reloc.source_offset - 1);
+        const int64_t target_offset = gsl::narrow_cast<int64_t>(subprogram_offsets[reloc.target_function_name]);
+        const auto offset_diff = target_offset - gsl::narrow<int64_t>(reloc.source_offset) - 1;
         if (offset_diff < std::numeric_limits<int32_t>::min() || offset_diff > std::numeric_limits<int32_t>::max()) {
             throw std::runtime_error("Offset difference out of int32_t range for instruction at source offset " +
                                      std::to_string(reloc.source_offset));
         }
-        prog.prog[reloc.source_offset].imm = static_cast<int32_t>(offset_diff);
+        prog.prog[reloc.source_offset].imm = gsl::narrow_cast<int32_t>(offset_diff);
     }
 }
 
@@ -265,7 +266,7 @@ std::map<std::string, size_t> parse_map_section(const libbtf::btf_type_data& btf
     for (auto& map : parse_btf_map_section(btf_data)) {
         map_offsets.emplace(map.name, map_descriptors.size());
         map_descriptors.push_back({
-            .original_fd = static_cast<int>(map.type_id),
+            .original_fd = gsl::narrow_cast<int>(map.type_id),
             .type = map.map_type,
             .key_size = map.key_size,
             .value_size = map.value_size,
@@ -379,7 +380,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
             auto [program_name, program_size] = get_program_name_and_size(*section, program_offset, symbols);
             raw_program prog{path,
                              name,
-                             static_cast<uint32_t>(program_offset),
+                             gsl::narrow_cast<uint32_t>(program_offset),
                              program_name,
                              vector_of<ebpf_inst>(section_data + program_offset, program_size),
                              info};
