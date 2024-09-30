@@ -2451,8 +2451,7 @@ void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_sv
             int64_t lb_n = std::numeric_limits<int64_t>::min() >> imm;
             int64_t ub_n = std::numeric_limits<int64_t>::max() >> imm;
             if (left_interval.finite_size()) {
-                number_t lb = left_interval.lb().number().value();
-                number_t ub = left_interval.ub().number().value();
+                const auto [lb, ub] = left_interval.pair_number();
                 if (finite_width == 64) {
                     lb_n = lb.cast_to<int64_t>() >> imm;
                     ub_n = ub.cast_to<int64_t>() >> imm;
@@ -2880,7 +2879,7 @@ ebpf_domain_t ebpf_domain_t::from_constraints(const std::set<std::string>& const
         inv += cst;
     }
     for (const interval_t& range : numeric_ranges) {
-        const int start = range.lb().number()->narrow<int>();
+        const int start = range.lb().narrow<int>();
         const int width = 1 + range.finite_size()->narrow<int>();
         inv.stack.initialize_numbers(start, width);
     }

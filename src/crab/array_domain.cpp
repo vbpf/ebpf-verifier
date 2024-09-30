@@ -495,8 +495,8 @@ void array_domain_t::split_number_var(NumAbsDomain& inv, data_kind_t kind, const
     std::vector<cell_t> cells = offset_map.get_overlap_cells(o, size);
     for (cell_t const& c : cells) {
         interval_t intv = c.to_interval();
-        int cell_start_index = intv.lb().number()->narrow<int>();
-        int cell_end_index = intv.ub().number()->narrow<int>();
+        int cell_start_index = intv.lb().narrow<int>();
+        int cell_end_index = intv.ub().narrow<int>();
 
         if (!this->num_bytes.all_num(cell_start_index, cell_end_index + 1) ||
             cell_end_index + 1UL < cell_start_index + sizeof(int64_t)) {

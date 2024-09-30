@@ -466,7 +466,7 @@ SplitDBM SplitDBM::operator|(const SplitDBM& o) const& {
     for (auto [v, n] : vert_map) {
         if (auto y = try_at(o.vert_map, v)) {
             // Variable exists in both
-            out_vmap.emplace(v, static_cast<vert_id>(perm_x.size()));
+            out_vmap.emplace(v, gsl::narrow<vert_id>(perm_x.size()));
             out_revmap.push_back(v);
 
             pot_rx.push_back(potential[n] - potential[0]);
@@ -629,7 +629,7 @@ SplitDBM SplitDBM::widen(const SplitDBM& o) const {
     for (auto [v, n] : vert_map) {
         if (auto y = try_at(o.vert_map, v)) {
             // Variable exists in both
-            out_vmap.emplace(v, static_cast<vert_id>(perm_x.size()));
+            out_vmap.emplace(v, gsl::narrow<vert_id>(perm_x.size()));
             out_revmap.push_back(v);
 
             widen_pot.push_back(potential[n] - potential[0]);
@@ -684,7 +684,7 @@ std::optional<SplitDBM> SplitDBM::meet(const SplitDBM& o) const {
     meet_pi.emplace_back(0);
     meet_rev.push_back(std::nullopt);
     for (auto [v, n] : vert_map) {
-        vert_id vv = static_cast<vert_id>(perm_x.size());
+        vert_id vv = gsl::narrow<vert_id>(perm_x.size());
         meet_verts.emplace(v, vv);
         meet_rev.push_back(v);
 
@@ -698,7 +698,7 @@ std::optional<SplitDBM> SplitDBM::meet(const SplitDBM& o) const {
         auto it = meet_verts.find(v);
 
         if (it == meet_verts.end()) {
-            vert_id vv = static_cast<vert_id>(perm_y.size());
+            vert_id vv = gsl::narrow<vert_id>(perm_y.size());
             meet_rev.push_back(v);
 
             perm_y.push_back(n);
