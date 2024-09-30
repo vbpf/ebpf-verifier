@@ -9,8 +9,8 @@
 #include <vector>
 
 #include "boost/endian/conversion.hpp"
-
 #include "radix_tree/radix_tree.hpp"
+#include <gsl/narrow>
 
 #include "config.hpp"
 #include "crab/array_domain.hpp"
@@ -41,7 +41,7 @@ class offset_t final {
     offset_t() : _prefix_length(bitsize) {}
     explicit offset_t(const index_t index) : _index(index), _prefix_length(bitsize) {}
     offset_t(const index_t index, const int prefix_length) : _index(index), _prefix_length(prefix_length) {}
-    explicit operator int() const { return static_cast<int>(_index); }
+    explicit operator int() const { return gsl::narrow<int>(_index); }
     operator index_t() const { return _index; }
     [[nodiscard]]
     int prefix_length() const {
@@ -67,13 +67,13 @@ offset_t radix_substr(const offset_t& key, const int begin, const int length) {
     if (length == offset_t::bitsize) {
         mask = 0;
     } else {
-        mask = static_cast<index_t>(1) << length;
+        mask = index_t{1} << length;
     }
 
     mask -= 1;
     mask <<= offset_t::bitsize - length - begin;
 
-    const index_t value = (static_cast<index_t>(key) & mask) << begin;
+    const index_t value = (gsl::narrow_cast<index_t>(key) & mask) << begin;
     return offset_t{value, length};
 }
 
@@ -109,7 +109,7 @@ class cell_t final {
     cell_t(const offset_t offset, const unsigned size) : _offset(offset), _size(size) {}
 
     static interval_t to_interval(const offset_t o, const unsigned size) {
-        return {static_cast<int>(o), number_t{static_cast<int>(o)} + size - 1};
+        return {gsl::narrow<int>(o), number_t{gsl::narrow<int>(o)} + size - 1};
     }
 
   public:
@@ -130,7 +130,7 @@ class cell_t final {
 
     [[nodiscard]]
     variable_t get_scalar(const data_kind_t kind) const {
-        return variable_t::cell_var(kind, static_cast<index_t>(_offset), _size);
+        return variable_t::cell_var(kind, gsl::narrow<index_t>(_offset), _size);
     }
 
     // ignore the scalar variable
@@ -347,7 +347,7 @@ std::vector<cell_t> offset_map_t::get_overlap_cells(const offset_t o, const unsi
         }
         upto_lb.push_back(lb_it->second);
 
-        for (int i = static_cast<int>(upto_lb.size() - 1); i >= 0; --i) {
+        for (int i = gsl::narrow<int>(upto_lb.size() - 1); i >= 0; --i) {
             ///////
             // All the cells in upto_lb[i] have the same offset. They
             // just differ in the size.
@@ -433,7 +433,7 @@ void clear_global_state() { global_array_map->clear(); }
 
 void array_domain_t::initialize_numbers(const int lb, const int width) {
     num_bytes.reset(lb, width);
-    lookup_array_map(data_kind_t::svalues).mk_cell(offset_t{static_cast<index_t>(lb)}, width);
+    lookup_array_map(data_kind_t::svalues).mk_cell(offset_t{gsl::narrow_cast<index_t>(lb)}, width);
 }
 
 std::ostream& operator<<(std::ostream& o, offset_map_t& m) {
@@ -466,7 +466,7 @@ void array_domain_t::split_cell(NumAbsDomain& inv, const data_kind_t kind, const
 
     // Create a new cell for that range.
     offset_map_t& offset_map = lookup_array_map(kind);
-    const cell_t new_cell = offset_map.mk_cell(offset_t{static_cast<index_t>(cell_start_index)}, len);
+    const cell_t new_cell = offset_map.mk_cell(offset_t{gsl::narrow_cast<index_t>(cell_start_index)}, len);
     inv.assign(new_cell.get_scalar(data_kind_t::svalues), svalue);
     inv.assign(new_cell.get_scalar(data_kind_t::uvalues), uvalue);
 }
@@ -508,14 +508,14 @@ void array_domain_t::split_number_var(NumAbsDomain& inv, data_kind_t kind, const
             // We can only split cells with a singleton value.
             continue;
         }
-        if (static_cast<index_t>(cell_start_index) < o) {
+        if (gsl::narrow_cast<index_t>(cell_start_index) < o) {
             // Use the bytes to the left of the specified range.
-            split_cell(inv, kind, cell_start_index, static_cast<unsigned int>(o - cell_start_index));
+            split_cell(inv, kind, cell_start_index, gsl::narrow<unsigned int>(o - cell_start_index));
         }
         if (o + size < cell_end_index + 1UL) {
             // Use the bytes to the right of the specified range.
-            split_cell(inv, kind, static_cast<int>(o + size),
-                       static_cast<unsigned int>(cell_end_index - (o + size - 1)));
+            split_cell(inv, kind, gsl::narrow<int>(o + size),
+                       gsl::narrow<unsigned int>(cell_end_index - (o + size - 1)));
         }
     }
 }
@@ -646,7 +646,7 @@ std::optional<linear_expression_t> array_domain_t::load(const NumAbsDomain& inv,
             }
         }
         offset_t o(k);
-        unsigned size = static_cast<long>(width);
+        unsigned size = gsl::narrow<unsigned>(width);
         if (auto cell = lookup_array_map(kind).get_cell(o, size)) {
             return cell->get_scalar(kind);
         }
@@ -705,7 +705,7 @@ std::optional<linear_expression_t> array_domain_t::load(const NumAbsDomain& inv,
                     } else {
                         b = boost::endian::native_to_little<index_t>(b);
                     }
-                    return kind == data_kind_t::uvalues ? number_t(b) : number_t(static_cast<int64_t>(b));
+                    return kind == data_kind_t::uvalues ? number_t(b) : number_t(gsl::narrow_cast<int64_t>(b));
                 }
             }
         }
