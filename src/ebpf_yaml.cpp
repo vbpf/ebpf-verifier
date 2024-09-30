@@ -39,9 +39,8 @@ static EbpfHelperPrototype ebpf_get_helper_prototype(int32_t n) {
 
 static bool ebpf_is_helper_usable(int32_t n) { return g_ebpf_platform_linux.is_helper_usable(n); }
 
-static void ebpf_parse_maps_section(vector<EbpfMapDescriptor>& map_descriptors, const char* data,
-                                    size_t map_record_size, int map_count, const struct ebpf_platform_t* platform,
-                                    ebpf_verifier_options_t options) {}
+static void ebpf_parse_maps_section(vector<EbpfMapDescriptor>&, const char*, size_t, int, const ebpf_platform_t*,
+                                    ebpf_verifier_options_t) {}
 
 static EbpfMapDescriptor test_map_descriptor = {.original_fd = 0,
                                                 .type = 0,
@@ -50,7 +49,7 @@ static EbpfMapDescriptor test_map_descriptor = {.original_fd = 0,
                                                 .max_entries = 4,
                                                 .inner_map_fd = 0};
 
-static EbpfMapDescriptor& ebpf_get_map_descriptor(int map_fd) { return test_map_descriptor; }
+static EbpfMapDescriptor& ebpf_get_map_descriptor(int) { return test_map_descriptor; }
 
 ebpf_platform_t g_platform_test = {.get_program_type = ebpf_get_program_type,
                                    .get_helper_prototype = ebpf_get_helper_prototype,
@@ -63,7 +62,7 @@ ebpf_platform_t g_platform_test = {.get_program_type = ebpf_get_program_type,
                                                                    bpf_conformance_groups_t::packet |
                                                                    bpf_conformance_groups_t::callx};
 
-static EbpfProgramType make_program_type(const string& name, ebpf_context_descriptor_t* context_descriptor) {
+static EbpfProgramType make_program_type(const string& name, const ebpf_context_descriptor_t* context_descriptor) {
     return EbpfProgramType{.name = name,
                            .context_descriptor = context_descriptor,
                            .platform_specific_data = 0,
@@ -81,12 +80,12 @@ static std::set<string> vector_to_set(const vector<string>& s) {
 
 std::set<string> operator-(const std::set<string>& a, const std::set<string>& b) {
     std::set<string> res;
-    std::set_difference(a.begin(), a.end(), b.begin(), b.end(), std::inserter(res, res.begin()));
+    std::ranges::set_difference(a, b, std::inserter(res, res.begin()));
     return res;
 }
 
 static string_invariant read_invariant(const vector<string>& raw_invariant) {
-    std::set<string> res = vector_to_set(raw_invariant);
+    const std::set<string> res = vector_to_set(raw_invariant);
     if (res == std::set<string>{"_|_"}) {
         return string_invariant{};
     }
@@ -145,7 +144,7 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
     for (const auto& [label_name, raw_block] : raw_blocks) {
         label_name_to_label.emplace(label_name, label_index);
         // don't count large instructions as 2
-        label_index += (int)raw_block.size();
+        label_index += static_cast<int>(raw_block.size());
     }
 
     InstructionSeq res;
@@ -267,16 +266,16 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
 template <typename T>
 static vector<T> vector_of(const std::vector<uint8_t>& bytes) {
     auto data = bytes.data();
-    auto size = bytes.size();
+    const auto size = bytes.size();
     if ((size % sizeof(T) != 0) || size > std::numeric_limits<uint32_t>::max() || !data) {
         throw std::runtime_error("Invalid argument to vector_of");
     }
-    return {(T*)data, (T*)(data + size)};
+    return {reinterpret_cast<const T*>(data), reinterpret_cast<const T*>(data + size)};
 }
 
 template <typename TS>
 void add_stack_variable(std::set<std::string>& more, int& offset, const std::vector<uint8_t>& memory_bytes) {
-    typedef typename std::make_unsigned<TS>::type TU;
+    using TU = std::make_unsigned_t<TS>;
     TS svalue;
     TU uvalue;
     memcpy(&svalue, memory_bytes.data() + offset + memory_bytes.size() - EBPF_STACK_SIZE, sizeof(TS));
@@ -297,7 +296,7 @@ string_invariant stack_contents_invariant(const std::vector<uint8_t>& memory_byt
                                   "s[" + std::to_string(EBPF_STACK_SIZE - memory_bytes.size()) + "..." +
                                       std::to_string(EBPF_STACK_SIZE - 1) + "].type=number"};
 
-    int offset = EBPF_STACK_SIZE - (int)memory_bytes.size();
+    int offset = EBPF_STACK_SIZE - static_cast<int>(memory_bytes.size());
     if (offset % 2 != 0) {
         add_stack_variable<int8_t>(more, offset, memory_bytes);
     }
@@ -412,7 +411,7 @@ void print_failure(const Failure& failure, std::ostream& out) {
 bool all_suites(const string& path) {
     bool result = true;
     for (const TestCase& test_case : read_suite(path)) {
-        result = result && bool(run_yaml_test_case(test_case));
+        result = result && static_cast<bool>(run_yaml_test_case(test_case));
     }
     return result;
 }

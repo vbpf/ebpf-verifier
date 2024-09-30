@@ -17,9 +17,8 @@ int opcode_to_width(const uint8_t opcode) {
     case INST_SIZE_H: return 2;
     case INST_SIZE_W: return 4;
     case INST_SIZE_DW: return 8;
+    default: CRAB_ERROR("unexpected opcode", opcode);
     }
-    assert(false);
-    return {};
 }
 
 uint8_t width_to_opcode(const int width) {
@@ -28,9 +27,8 @@ uint8_t width_to_opcode(const int width) {
     case 2: return INST_SIZE_H;
     case 4: return INST_SIZE_W;
     case 8: return INST_SIZE_DW;
+    default: CRAB_ERROR("unexpected width", width);
     }
-    assert(false);
-    return {};
 }
 
 template <typename T>
@@ -65,8 +63,8 @@ static auto getMemIsLoad(const uint8_t opcode) -> bool {
     case INST_CLS_LDX: return true;
     case INST_CLS_ST:
     case INST_CLS_STX: return false;
+    default: CRAB_ERROR("unexpected opcode", opcode);
     }
-    return {};
 }
 
 static auto getMemWidth(const uint8_t opcode) -> int {
@@ -75,19 +73,9 @@ static auto getMemWidth(const uint8_t opcode) -> int {
     case INST_SIZE_H: return 2;
     case INST_SIZE_W: return 4;
     case INST_SIZE_DW: return 8;
+    default: CRAB_ERROR("unexpected opcode", opcode);
     }
-    return {};
 }
-
-// static auto getMemX(uint8_t opcode) -> bool {
-//     switch (opcode & INST_CLS_MASK) {
-//         case INST_CLS_LD : return false;
-//         case INST_CLS_ST : return false;
-//         case INST_CLS_LDX: return true;
-//         case INST_CLS_STX: return true;
-//     }
-//     return {};
-// }
 
 static Instruction shift32(const Reg dst, const Bin::Op op) {
     return Bin{.op = op, .dst = dst, .v = Imm{32}, .is64 = true, .lddw = false};
@@ -137,6 +125,7 @@ struct Unmarshaller {
             case 32: return Bin::Op::MOVSX32;
             default: throw InvalidInstruction(pc, make_opcode_message("invalid offset for", inst.opcode));
             }
+        default: break;
         }
 
         // All the rest require a zero offset.
@@ -222,8 +211,8 @@ struct Unmarshaller {
             }
         case 0xe0: throw InvalidInstruction{pc, inst.opcode};
         case 0xf0: throw InvalidInstruction{pc, inst.opcode};
+        default: return {};
         }
-        return {};
     }
 
     static auto getAtomicOp(const size_t pc, const ebpf_inst inst) -> Atomic::Op {
@@ -251,13 +240,12 @@ struct Unmarshaller {
                 throw InvalidInstruction(pc, make_opcode_message("nonzero imm for", inst.opcode));
             }
             return Reg{inst.src};
-        } else {
-            if (inst.src != 0) {
-                throw InvalidInstruction{pc, inst.opcode};
-            }
-            // Imm is a signed 32-bit number.  Sign extend it to 64-bits for storage.
-            return Imm{sign_extend(inst.imm)};
         }
+        if (inst.src != 0) {
+            throw InvalidInstruction{pc, inst.opcode};
+        }
+        // Imm is a signed 32-bit number.  Sign extend it to 64-bits for storage.
+        return Imm{sign_extend(inst.imm)};
     }
 
     static auto getJmpOp(const size_t pc, const uint8_t opcode) -> Condition::Op {
@@ -279,8 +267,8 @@ struct Unmarshaller {
         case 0xd: return Op::SLE;
         case 0xe: throw InvalidInstruction(pc, opcode);
         case 0xf: throw InvalidInstruction(pc, opcode);
+        default: return {};
         }
-        return {};
     }
 
     auto makeMemOp(const pc_t pc, const ebpf_inst inst) -> Instruction {
@@ -559,13 +547,14 @@ struct Unmarshaller {
         const pc_t new_pc = pc + 1 + offset;
         if (new_pc >= insts.size()) {
             throw InvalidInstruction(pc, "jump out of bounds");
-        } else if (insts[new_pc].opcode == 0) {
+        }
+        if (insts[new_pc].opcode == 0) {
             throw InvalidInstruction(pc, "jump to middle of lddw");
         }
         return label_t{static_cast<int>(new_pc)};
     }
 
-    static auto makeCallLocal(const ebpf_inst inst, const vector<ebpf_inst>& insts, const pc_t pc) {
+    static auto makeCallLocal(const ebpf_inst inst, const vector<ebpf_inst>& insts, const pc_t pc) -> CallLocal {
         if (inst.opcode & INST_SRC_REG) {
             throw InvalidInstruction(pc, inst.opcode);
         }
@@ -575,7 +564,7 @@ struct Unmarshaller {
         return CallLocal{.target = getJumpTarget(inst.imm, insts, pc)};
     }
 
-    static auto makeCallx(const ebpf_inst inst, const pc_t pc) {
+    static auto makeCallx(const ebpf_inst inst, const pc_t pc) -> Callx {
         // callx puts the register number in the 'dst' field rather than the 'src' field.
         if (inst.dst > R10_STACK_POINTER) {
             throw InvalidInstruction(pc, "bad register");
@@ -684,7 +673,7 @@ struct Unmarshaller {
                 if (inst.dst > R10_STACK_POINTER) {
                     throw InvalidInstruction(pc, "bad register");
                 }
-                if ((inst.opcode & INST_SRC_REG) && (inst.src > R10_STACK_POINTER)) {
+                if ((inst.opcode & INST_SRC_REG) && inst.src > R10_STACK_POINTER) {
                     throw InvalidInstruction(pc, "bad register");
                 }
             }
@@ -770,6 +759,7 @@ struct Unmarshaller {
                 }
                 break;
             }
+            default: CRAB_ERROR("invalid class: ", inst.opcode & INST_CLS_MASK);
             }
             if (pc == insts.size() - 1 && fallthrough) {
                 note("fallthrough in last instruction");

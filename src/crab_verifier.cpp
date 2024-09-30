@@ -47,18 +47,17 @@ struct checks_db final {
 
     [[nodiscard]]
     int get_max_loop_count() const {
-        auto m = this->max_loop_count.number();
+        const auto m = this->max_loop_count.number();
         if (m && m->fits<int32_t>()) {
             return m->cast_to<int32_t>();
-        } else {
-            return std::numeric_limits<int>::max();
         }
+        return std::numeric_limits<int>::max();
     }
     checks_db() = default;
 };
 
-static checks_db generate_report(cfg_t& cfg, crab::invariant_table_t& pre_invariants,
-                                 crab::invariant_table_t& post_invariants) {
+static checks_db generate_report(cfg_t& cfg, const crab::invariant_table_t& pre_invariants,
+                                 const crab::invariant_table_t& post_invariants) {
     checks_db m_db;
     for (const label_t& label : cfg.sorted_labels()) {
         basic_block_t& bb = cfg.get_node(label);
@@ -86,7 +85,7 @@ static checks_db generate_report(cfg_t& cfg, crab::invariant_table_t& pre_invari
                 }
             });
 
-        bool pre_bot = from_inv.is_bottom();
+        const bool pre_bot = from_inv.is_bottom();
 
         from_inv(bb);
 
@@ -127,14 +126,14 @@ static void print_report(std::ostream& os, const checks_db& db, const Instructio
         }
     }
     os << "\n";
-    crab::number_t max_loop_count{100000};
+    const crab::number_t max_loop_count{100000};
     if (db.max_loop_count > max_loop_count) {
         os << "Could not prove termination.\n";
     }
 }
 
-static checks_db get_analysis_report(std::ostream& s, cfg_t& cfg, crab::invariant_table_t& pre_invariants,
-                                     crab::invariant_table_t& post_invariants) {
+static checks_db get_analysis_report(std::ostream& s, cfg_t& cfg, const crab::invariant_table_t& pre_invariants,
+                                     const crab::invariant_table_t& post_invariants) {
     // Analyze the control-flow graph.
     checks_db db = generate_report(cfg, pre_invariants, post_invariants);
     if (thread_local_options.print_invariants) {
@@ -239,7 +238,7 @@ bool ebpf_verify_program(std::ostream& os, const InstructionSeq& prog, const pro
         stats->total_warnings = report.total_warnings;
         stats->max_loop_count = report.get_max_loop_count();
     }
-    return (report.total_warnings == 0);
+    return report.total_warnings == 0;
 }
 
 void ebpf_verifier_clear_thread_local_state() {
