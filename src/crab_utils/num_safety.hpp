@@ -18,7 +18,7 @@ constexpr auto to_signed(std::unsigned_integral auto x) -> std::make_signed_t<de
     return static_cast<std::make_signed_t<decltype(x)>>(x);
 }
 
-static auto to_unsigned(std::signed_integral auto x) -> std::make_unsigned_t<decltype(x)> {
+constexpr auto to_unsigned(std::signed_integral auto x) -> std::make_unsigned_t<decltype(x)> {
     return static_cast<std::make_unsigned_t<decltype(x)>>(x);
 }
 
