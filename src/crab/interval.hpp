@@ -24,9 +24,9 @@ class interval_t final {
     bound_t _ub;
 
   public:
-    static interval_t top() { return interval_t(bound_t::minus_infinity(), bound_t::plus_infinity()); }
+    static interval_t top() { return interval_t{bound_t::minus_infinity(), bound_t::plus_infinity()}; }
 
-    static interval_t bottom() { return interval_t(); }
+    static interval_t bottom() { return interval_t{}; }
 
     [[nodiscard]]
     std::optional<number_t> finite_size() const {
@@ -89,17 +89,22 @@ class interval_t final {
     template <std::integral T>
     [[nodiscard]]
     std::tuple<T, T> pair() const {
-        return {_lb.number()->narrow<T>(), _ub.number()->narrow<T>()};
+        return {_lb.narrow<T>(), _ub.narrow<T>()};
+    }
+
+    [[nodiscard]]
+    std::tuple<number_t, number_t> pair_number() const {
+        return {_lb.number().value(), _ub.number().value()};
     }
 
     template <std::integral T>
     [[nodiscard]]
     std::tuple<T, T> bound(T lb, T ub) const {
-        const interval_t b = interval_t(lb, ub) & *this;
+        const interval_t b = interval_t{lb, ub} & *this;
         if (b.is_bottom()) {
             CRAB_ERROR("Cannot convert bottom to tuple");
         }
-        return {b._lb.number()->narrow<T>(), _ub.number()->narrow<T>()};
+        return {b._lb.narrow<T>(), b._ub.narrow<T>()};
     }
 
     template <is_enum T>
@@ -145,7 +150,7 @@ class interval_t final {
         } else if (x.is_bottom()) {
             return *this;
         } else {
-            return interval_t(std::min(_lb, x._lb), std::max(_ub, x._ub));
+            return interval_t{std::min(_lb, x._lb), std::max(_ub, x._ub)};
         }
     }
 
@@ -153,7 +158,7 @@ class interval_t final {
         if (is_bottom() || x.is_bottom()) {
             return bottom();
         } else {
-            return interval_t(std::max(_lb, x._lb), std::min(_ub, x._ub));
+            return interval_t{std::max(_lb, x._lb), std::min(_ub, x._ub)};
         }
     }
 
@@ -164,8 +169,8 @@ class interval_t final {
         } else if (x.is_bottom()) {
             return *this;
         } else {
-            return interval_t(x._lb < _lb ? bound_t::minus_infinity() : _lb,
-                              _ub < x._ub ? bound_t::plus_infinity() : _ub);
+            return interval_t{x._lb < _lb ? bound_t::minus_infinity() : _lb,
+                              _ub < x._ub ? bound_t::plus_infinity() : _ub};
         }
     }
 
@@ -176,9 +181,9 @@ class interval_t final {
         } else if (x.is_bottom()) {
             return *this;
         } else {
-            bound_t lb = (x._lb < _lb ? ts.get_prev(x._lb) : _lb);
-            bound_t ub = (_ub < x._ub ? ts.get_next(x._ub) : _ub);
-            return interval_t(lb, ub);
+            bound_t lb = x._lb < _lb ? ts.get_prev(x._lb) : _lb;
+            bound_t ub = _ub < x._ub ? ts.get_next(x._ub) : _ub;
+            return interval_t{lb, ub};
         }
     }
 
@@ -187,8 +192,8 @@ class interval_t final {
         if (is_bottom() || x.is_bottom()) {
             return bottom();
         } else {
-            return interval_t(_lb.is_infinite() && x._lb.is_finite() ? x._lb : _lb,
-                              _ub.is_infinite() && x._ub.is_finite() ? x._ub : _ub);
+            return interval_t{_lb.is_infinite() && x._lb.is_finite() ? x._lb : _lb,
+                              _ub.is_infinite() && x._ub.is_finite() ? x._ub : _ub};
         }
     }
 
@@ -196,7 +201,7 @@ class interval_t final {
         if (is_bottom() || x.is_bottom()) {
             return bottom();
         } else {
-            return interval_t(_lb + x._lb, _ub + x._ub);
+            return interval_t{_lb + x._lb, _ub + x._ub};
         }
     }
 
@@ -206,7 +211,7 @@ class interval_t final {
         if (is_bottom()) {
             return bottom();
         } else {
-            return interval_t(-_ub, -_lb);
+            return interval_t{-_ub, -_lb};
         }
     }
 
@@ -214,7 +219,7 @@ class interval_t final {
         if (is_bottom() || x.is_bottom()) {
             return bottom();
         } else {
-            return interval_t(_lb - x._ub, _ub - x._lb);
+            return interval_t{_lb - x._ub, _ub - x._lb};
         }
     }
 
@@ -228,7 +233,7 @@ class interval_t final {
             bound_t lu = _lb * x._ub;
             bound_t ul = _ub * x._lb;
             bound_t uu = _ub * x._ub;
-            return interval_t(std::min({ll, lu, ul, uu}), std::max({ll, lu, ul, uu}));
+            return interval_t{std::min({ll, lu, ul, uu}), std::max({ll, lu, ul, uu})};
         }
     }
 
@@ -345,7 +350,7 @@ class interval_t final {
                 T lub = ub().number()->truncate_to<T>();
                 if (llb <= lub) {
                     // Interval can be accurately represented in 64 width.
-                    return interval_t(llb, lub);
+                    return interval_t{llb, lub};
                 }
             }
         }
@@ -445,21 +450,21 @@ class interval_t final {
 
 namespace interval_operators {
 
-inline interval_t operator+(const number_t& c, const interval_t& x) { return interval_t(c) + x; }
+inline interval_t operator+(const number_t& c, const interval_t& x) { return interval_t{c} + x; }
 
-inline interval_t operator+(const interval_t& x, const number_t& c) { return x + interval_t(c); }
+inline interval_t operator+(const interval_t& x, const number_t& c) { return x + interval_t{c}; }
 
-inline interval_t operator*(const number_t& c, const interval_t& x) { return interval_t(c) * x; }
+inline interval_t operator*(const number_t& c, const interval_t& x) { return interval_t{c} * x; }
 
-inline interval_t operator*(const interval_t& x, const number_t& c) { return x * interval_t(c); }
+inline interval_t operator*(const interval_t& x, const number_t& c) { return x * interval_t{c}; }
 
-inline interval_t operator/(const number_t& c, const interval_t& x) { return interval_t(c) / x; }
+inline interval_t operator/(const number_t& c, const interval_t& x) { return interval_t{c} / x; }
 
-inline interval_t operator/(const interval_t& x, const number_t& c) { return x / interval_t(c); }
+inline interval_t operator/(const interval_t& x, const number_t& c) { return x / interval_t{c}; }
 
-inline interval_t operator-(const number_t& c, const interval_t& x) { return interval_t(c) - x; }
+inline interval_t operator-(const number_t& c, const interval_t& x) { return interval_t{c} - x; }
 
-inline interval_t operator-(const interval_t& x, const number_t& c) { return x - interval_t(c); }
+inline interval_t operator-(const interval_t& x, const number_t& c) { return x - interval_t{c}; }
 
 } // namespace interval_operators
 

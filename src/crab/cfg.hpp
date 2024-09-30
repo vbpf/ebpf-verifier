@@ -20,14 +20,12 @@
 
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/range/iterator_range.hpp>
-
-#include "crab/variable.hpp"
-#include "crab_utils/debug.hpp"
-#include "crab_utils/num_big.hpp"
+#include <gsl/gsl>
 
 #include "asm_ostream.hpp"
 #include "asm_syntax.hpp"
+#include "crab_utils/debug.hpp"
+#include "crab_utils/num_big.hpp"
 #include "spec_type_descriptors.hpp"
 
 namespace crab {
@@ -100,7 +98,7 @@ class basic_block_t final {
 
     [[nodiscard]]
     size_t size() const {
-        return static_cast<size_t>(std::distance(begin(), end()));
+        return gsl::narrow<size_t>(std::distance(begin(), end()));
     }
 
     [[nodiscard]]
@@ -195,7 +193,7 @@ class basic_block_rev_t final {
 
     [[nodiscard]]
     std::size_t size() const {
-        return static_cast<size_t>(std::distance(begin(), end()));
+        return gsl::narrow<size_t>(std::distance(begin(), end()));
     }
 
     [[nodiscard]]
@@ -382,7 +380,7 @@ class cfg_t final {
 
     [[nodiscard]]
     size_t size() const {
-        return static_cast<size_t>(std::distance(begin(), end()));
+        return gsl::narrow<size_t>(std::distance(begin(), end()));
     }
 
     void simplify() {

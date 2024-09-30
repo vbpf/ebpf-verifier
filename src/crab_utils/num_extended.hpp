@@ -49,6 +49,19 @@ class extended_number final {
 
     extended_number(extended_number&&) noexcept = default;
 
+    template <std::integral T>
+    T narrow() const {
+        if (_is_infinite) {
+            CRAB_ERROR("Bound: cannot narrow infinite value");
+        }
+        return _n.narrow<T>();
+    }
+
+    template <is_enum T>
+    T narrow() const {
+        return static_cast<T>(narrow<std::underlying_type_t<T>>(_n));
+    }
+
     extended_number& operator=(extended_number&&) noexcept = default;
 
     extended_number& operator=(const extended_number& o) {

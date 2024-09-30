@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
+#include <gsl/narrow>
+
 #include "linear_expression.hpp"
 
 // A linear constraint is of the form:
@@ -91,7 +93,7 @@ inline std::ostream& operator<<(std::ostream& o, const linear_constraint_t& cons
         expression.output_variable_terms(o);
 
         constexpr std::array constraint_kind_label{" == ", " <= ", " < ", " != "};
-        const size_t kind = static_cast<size_t>(constraint.kind());
+        const size_t kind = gsl::narrow<size_t>(constraint.kind());
         if (kind >= std::size(constraint_kind_label)) {
             throw std::exception();
         }
