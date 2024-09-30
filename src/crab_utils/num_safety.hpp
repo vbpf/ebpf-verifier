@@ -14,7 +14,7 @@ concept is_enum = std::is_enum_v<T>;
 template <std::integral T>
 using swap_signedness = std::conditional_t<std::is_signed_v<T>, std::make_unsigned_t<T>, std::make_signed_t<T>>;
 
-static auto to_signed(std::unsigned_integral auto x) -> std::make_signed_t<decltype(x)> {
+constexpr auto to_signed(std::unsigned_integral auto x) -> std::make_signed_t<decltype(x)> {
     return static_cast<std::make_signed_t<decltype(x)>>(x);
 }
 
