@@ -267,7 +267,7 @@ struct Unmarshaller {
         case 0xd: return Op::SLE;
         case 0xe: throw InvalidInstruction(pc, opcode);
         case 0xf: throw InvalidInstruction(pc, opcode);
-        default: CRAB_ERROR("Impossible opcode", opcode);
+        default: return {};
         }
     }
 
@@ -662,6 +662,7 @@ struct Unmarshaller {
                                                     : bpf_conformance_groups_t::base32)) {
                 throw InvalidInstruction(pc, inst.opcode);
             }
+            const auto op = getJmpOp(pc, inst.opcode);
             if (!(inst.opcode & INST_SRC_REG) && (inst.src != 0)) {
                 throw InvalidInstruction(pc, inst.opcode);
             }
@@ -682,11 +683,11 @@ struct Unmarshaller {
 
             const auto cond = (inst.opcode == INST_OP_JA16 || inst.opcode == INST_OP_JA32)
                                   ? std::optional<Condition>{}
-                                  : Condition{.op = getJmpOp(pc, inst.opcode),
+                                  : Condition{.op = op,
                                               .left = Reg{inst.dst},
                                               .right = (inst.opcode & INST_SRC_REG) ? static_cast<Value>(Reg{inst.src})
                                                                                     : Imm{sign_extend(inst.imm)},
-                                              .is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_JMP};
+                                              .is64 = ((inst.opcode & INST_CLS_MASK) == INST_CLS_JMP)};
             return Jmp{.cond = cond, .target = target};
         }
         }
