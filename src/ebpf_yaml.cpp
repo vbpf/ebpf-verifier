@@ -362,7 +362,7 @@ ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memo
                 crab::number_t lb, ub;
                 if (invariant[10] == '[') {
                     lb = std::stoll(invariant.substr(11));
-                    ub = std::stoll(invariant.substr(invariant.find(",", 11) + 1));
+                    ub = std::stoll(invariant.substr(invariant.find(',', 11) + 1));
                 } else {
                     lb = ub = std::stoll(invariant.substr(10));
                 }

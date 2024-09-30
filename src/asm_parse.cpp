@@ -87,7 +87,7 @@ static const std::map<std::string, int> str_to_width = {
 
 static Reg reg(const std::string& s) {
     assert(s.at(0) == 'r' || s.at(0) == 'w');
-    uint8_t res = (uint8_t)boost::lexical_cast<uint16_t>(s.substr(1));
+    uint8_t res = static_cast<uint8_t>(boost::lexical_cast<uint16_t>(s.substr(1)));
     return Reg{res};
 }
 
@@ -96,22 +96,22 @@ static Imm imm(const std::string& s, bool lddw) {
 
     if (lddw) {
         if (s.at(0) == '-') {
-            return Imm{(uint64_t)std::stoll(s, nullptr, base)};
+            return Imm{static_cast<uint64_t>(std::stoll(s, nullptr, base))};
         } else {
             return Imm{std::stoull(s, nullptr, base)};
         }
     } else {
         if (s.at(0) == '-') {
-            return Imm{(uint64_t)(int64_t)std::stol(s, nullptr, base)};
+            return Imm{static_cast<uint64_t>(std::stol(s, nullptr, base))};
         } else {
-            return Imm{(uint64_t)(int64_t)(int32_t)std::stoul(s, nullptr, base)};
+            return Imm{static_cast<uint64_t>(static_cast<int64_t>(static_cast<int32_t>(std::stoul(s, nullptr, base))))};
         }
     }
 }
 
-static number_t signed_number(const std::string& s) { return static_cast<int64_t>(std::stoll(s)); }
+static number_t signed_number(const std::string& s) { return std::stoll(s); }
 
-static number_t unsigned_number(const std::string& s) { return static_cast<uint64_t>(std::stoull(s)); }
+static number_t unsigned_number(const std::string& s) { return std::stoull(s); }
 
 static Value reg_or_imm(const std::string& s) {
     if (s.at(0) == 'w' || s.at(0) == 'r') {
@@ -134,7 +134,7 @@ static Deref deref(const std::string& width, const std::string& basereg, const s
 Instruction parse_instruction(const std::string& line, const std::map<std::string, label_t>& label_name_to_label) {
     // treat ";" as a comment
     std::string text = line.substr(0, line.find(';'));
-    size_t end = text.find_last_not_of(" ");
+    size_t end = text.find_last_not_of(' ');
     if (end != std::string::npos) {
         text = text.substr(0, end + 1);
     }
@@ -198,13 +198,13 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
             return Packet{.width = width, .offset = 0, .regoffset = reg(m[1])};
         }
         if (regex_match(access, m, regex(IMM))) {
-            return Packet{.width = width, .offset = (int32_t)imm(m[1], false).v, .regoffset = {}};
+            return Packet{.width = width, .offset = static_cast<int32_t>(imm(m[1], false).v), .regoffset = {}};
         }
         if (regex_match(access, m, regex(REG PLUSMINUS REG))) {
             return Packet{.width = width, .offset = 0 /* ? */, .regoffset = reg(m[2])};
         }
         if (regex_match(access, m, regex(REG PLUSMINUS IMM))) {
-            return Packet{.width = width, .offset = (int32_t)imm(m[2], false).v, .regoffset = reg(m[1])};
+            return Packet{.width = width, .offset = static_cast<int32_t>(imm(m[2], false).v), .regoffset = reg(m[1])};
         }
         return Undefined{0};
     }
@@ -212,7 +212,7 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         Assume res{Condition{.op = str_to_cmpop.at(m[2]),
                              .left = reg(m[1]),
                              .right = reg_or_imm(m[3]),
-                             .is64 = (((const std::string&)m[1]).at(0) == 'r')}};
+                             .is64 = static_cast<const std::string&>(m[1]).at(0) == 'r'}};
         return res;
     }
     if (regex_match(text, m, regex("(?:if " WREG CMPOP REG_OR_IMM " )?goto\\s+(?:" IMM ")?" WRAPPED_LABEL))) {
@@ -222,7 +222,7 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
             res.cond = Condition{.op = str_to_cmpop.at(m[2]),
                                  .left = reg(m[1]),
                                  .right = reg_or_imm(m[3]),
-                                 .is64 = (((const std::string&)m[1]).at(0) == 'r')};
+                                 .is64 = (static_cast<const std::string&>(m[1]).at(0) == 'r')};
         }
         return res;
     }
@@ -265,7 +265,7 @@ static InstructionSeq parse_program(std::istream& is) {
     return labeled_insts;
 }
 
-static uint8_t regnum(const std::string& s) { return (uint8_t)boost::lexical_cast<uint16_t>(s.substr(1)); }
+static uint8_t regnum(const std::string& s) { return static_cast<uint8_t>(boost::lexical_cast<uint16_t>(s.substr(1))); }
 
 static crab::variable_t special_var(const std::string& s) {
     if (s == "packet_size") {

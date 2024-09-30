@@ -73,10 +73,10 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
         const label_t label(macro_label.from, macro_label.to, stack_frame_prefix);
         auto& bb = cfg.insert(label);
         for (auto inst : cfg.get_node(macro_label)) {
-            if (const auto pins = std::get_if<Exit>(&inst)) {
-                pins->stack_frame_prefix = label.stack_frame_prefix;
-            } else if (const auto pins = std::get_if<Call>(&inst)) {
-                pins->stack_frame_prefix = label.stack_frame_prefix;
+            if (const auto pexit = std::get_if<Exit>(&inst)) {
+                pexit->stack_frame_prefix = label.stack_frame_prefix;
+            } else if (const auto pcall = std::get_if<Call>(&inst)) {
+                pcall->stack_frame_prefix = label.stack_frame_prefix;
             }
             bb.insert(inst);
         }

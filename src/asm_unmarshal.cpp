@@ -267,7 +267,7 @@ struct Unmarshaller {
         case 0xd: return Op::SLE;
         case 0xe: throw InvalidInstruction(pc, opcode);
         case 0xf: throw InvalidInstruction(pc, opcode);
-        default: return {};
+        default: CRAB_ERROR("Impossible opcode", opcode);
         }
     }
 
@@ -412,6 +412,7 @@ struct Unmarshaller {
             getAluOp(pc, inst));
     }
 
+    [[nodiscard]]
     auto makeLddw(const ebpf_inst inst, const int32_t next_imm, const vector<ebpf_inst>& insts, const pc_t pc) const
         -> Instruction {
         if (!info.platform->supports_group(bpf_conformance_groups_t::base64)) {
@@ -475,7 +476,8 @@ struct Unmarshaller {
         return {};
     }
 
-    auto makeCall(const int32_t imm) const {
+    [[nodiscard]]
+    auto makeCall(const int32_t imm) const -> Call {
         const EbpfHelperPrototype proto = info.platform->get_helper_prototype(imm);
         if (proto.return_type == EBPF_RETURN_TYPE_UNSUPPORTED) {
             throw std::runtime_error(std::string("unsupported function: ") + proto.name);
@@ -582,6 +584,7 @@ struct Unmarshaller {
         return Callx{inst.dst};
     }
 
+    [[nodiscard]]
     auto makeJmp(const ebpf_inst inst, const vector<ebpf_inst>& insts, const pc_t pc) const -> Instruction {
         switch ((inst.opcode >> 4) & 0xF) {
         case INST_CALL:
@@ -659,7 +662,6 @@ struct Unmarshaller {
                                                     : bpf_conformance_groups_t::base32)) {
                 throw InvalidInstruction(pc, inst.opcode);
             }
-            const auto op = getJmpOp(pc, inst.opcode);
             if (!(inst.opcode & INST_SRC_REG) && (inst.src != 0)) {
                 throw InvalidInstruction(pc, inst.opcode);
             }
@@ -680,11 +682,11 @@ struct Unmarshaller {
 
             const auto cond = (inst.opcode == INST_OP_JA16 || inst.opcode == INST_OP_JA32)
                                   ? std::optional<Condition>{}
-                                  : Condition{.op = op,
+                                  : Condition{.op = getJmpOp(pc, inst.opcode),
                                               .left = Reg{inst.dst},
                                               .right = (inst.opcode & INST_SRC_REG) ? static_cast<Value>(Reg{inst.src})
                                                                                     : Imm{sign_extend(inst.imm)},
-                                              .is64 = ((inst.opcode & INST_CLS_MASK) == INST_CLS_JMP)};
+                                              .is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_JMP};
             return Jmp{.cond = cond, .target = target};
         }
         }
