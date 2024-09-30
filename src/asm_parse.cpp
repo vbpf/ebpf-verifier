@@ -85,33 +85,35 @@ static const std::map<std::string, int> str_to_width = {
     {"64", 8},
 };
 
+static bool is64_reg(const std::string& s) { return s.at(0) == 'r'; }
+
 static Reg reg(const std::string& s) {
     assert(s.at(0) == 'r' || s.at(0) == 'w');
-    uint8_t res = (uint8_t)boost::lexical_cast<uint16_t>(s.substr(1));
+    const uint8_t res = static_cast<uint8_t>(boost::lexical_cast<uint16_t>(s.substr(1)));
     return Reg{res};
 }
 
 static Imm imm(const std::string& s, bool lddw) {
-    int base = s.find("0x") != std::string::npos ? 16 : 10;
+    const int base = s.find("0x") != std::string::npos ? 16 : 10;
 
     if (lddw) {
         if (s.at(0) == '-') {
-            return Imm{(uint64_t)std::stoll(s, nullptr, base)};
+            return Imm{static_cast<uint64_t>(std::stoll(s, nullptr, base))};
         } else {
             return Imm{std::stoull(s, nullptr, base)};
         }
     } else {
         if (s.at(0) == '-') {
-            return Imm{(uint64_t)(int64_t)std::stol(s, nullptr, base)};
+            return Imm{static_cast<uint64_t>(std::stol(s, nullptr, base))};
         } else {
-            return Imm{(uint64_t)(int64_t)(int32_t)std::stoul(s, nullptr, base)};
+            return Imm{static_cast<uint64_t>(static_cast<int64_t>(static_cast<int32_t>(std::stoul(s, nullptr, base))))};
         }
     }
 }
 
-static number_t signed_number(const std::string& s) { return static_cast<int64_t>(std::stoll(s)); }
+static number_t signed_number(const std::string& s) { return std::stoll(s); }
 
-static number_t unsigned_number(const std::string& s) { return static_cast<uint64_t>(std::stoull(s)); }
+static number_t unsigned_number(const std::string& s) { return std::stoull(s); }
 
 static Value reg_or_imm(const std::string& s) {
     if (s.at(0) == 'w' || s.at(0) == 'r') {
@@ -123,7 +125,7 @@ static Value reg_or_imm(const std::string& s) {
 
 static Deref deref(const std::string& width, const std::string& basereg, const std::string& sign,
                    const std::string& _offset) {
-    int offset = boost::lexical_cast<int>(_offset);
+    const int offset = boost::lexical_cast<int>(_offset);
     return Deref{
         .width = str_to_width.at(width),
         .basereg = reg(basereg),
@@ -134,7 +136,7 @@ static Deref deref(const std::string& width, const std::string& basereg, const s
 Instruction parse_instruction(const std::string& line, const std::map<std::string, label_t>& label_name_to_label) {
     // treat ";" as a comment
     std::string text = line.substr(0, line.find(';'));
-    size_t end = text.find_last_not_of(" ");
+    const size_t end = text.find_last_not_of(' ');
     if (end != std::string::npos) {
         text = text.substr(0, end + 1);
     }
@@ -143,7 +145,7 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         return Exit{};
     }
     if (regex_match(text, m, regex("call " FUNC))) {
-        int func = boost::lexical_cast<int>(m[1]);
+        const int func = boost::lexical_cast<int>(m[1]);
         return make_call(func, g_ebpf_platform_linux);
     }
     if (regex_match(text, m, regex("call " WRAPPED_LABEL))) {
@@ -153,22 +155,19 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         return Callx{reg(m[1])};
     }
     if (regex_match(text, m, regex(WREG OPASSIGN REG))) {
-        std::string r = m[1];
-        return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = reg(m[3]), .is64 = r.at(0) != 'w', .lddw = false};
+        const std::string r = m[1];
+        return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = reg(m[3]), .is64 = is64_reg(r), .lddw = false};
     }
     if (regex_match(text, m, regex(WREG ASSIGN UNOP WREG))) {
         if (m[1] != m[3]) {
             throw std::invalid_argument(std::string("Invalid unary operation: ") + text);
         }
-        std::string r = m[1];
-        bool is64 = r.at(0) != 'w';
-        return Un{.op = str_to_unop.at(m[2]), .dst = reg(m[1]), .is64 = is64};
+        return Un{.op = str_to_unop.at(m[2]), .dst = reg(m[1]), .is64 = is64_reg(m[1])};
     }
     if (regex_match(text, m, regex(WREG OPASSIGN IMM LONGLONG))) {
-        std::string r = m[1];
-        bool is64 = r.at(0) != 'w';
-        bool lddw = !m[4].str().empty();
-        return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = imm(m[3], lddw), .is64 = is64, .lddw = lddw};
+        const std::string r = m[1];
+        const bool lddw = !m[4].str().empty();
+        return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = imm(m[3], lddw), .is64 = is64_reg(r), .lddw = lddw};
     }
     if (regex_match(text, m, regex(REG ASSIGN DEREF PAREN(REG PLUSMINUS IMM)))) {
         return Mem{
@@ -185,44 +184,40 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
         };
     }
     if (regex_match(text, m, regex("lock " DEREF PAREN(REG PLUSMINUS IMM) " " ATOMICOP " " REG "( fetch)?"))) {
-        Atomic::Op op = str_to_atomicop.at(m[5]);
+        const Atomic::Op op = str_to_atomicop.at(m[5]);
         return Atomic{.op = op,
                       .fetch = m[7].matched || op == Atomic::Op::XCHG || op == Atomic::Op::CMPXCHG,
                       .access = deref(m[1], m[2], m[3], m[4]),
                       .valreg = reg(m[6])};
     }
     if (regex_match(text, m, regex("r0 = " DEREF "skb\\[(.*)\\]"))) {
-        auto width = str_to_width.at(m[1]);
-        std::string access = m[2].str();
+        const auto width = str_to_width.at(m[1]);
+        const std::string access = m[2].str();
         if (regex_match(access, m, regex(REG))) {
             return Packet{.width = width, .offset = 0, .regoffset = reg(m[1])};
         }
         if (regex_match(access, m, regex(IMM))) {
-            return Packet{.width = width, .offset = (int32_t)imm(m[1], false).v, .regoffset = {}};
+            return Packet{.width = width, .offset = static_cast<int32_t>(imm(m[1], false).v), .regoffset = {}};
         }
         if (regex_match(access, m, regex(REG PLUSMINUS REG))) {
             return Packet{.width = width, .offset = 0 /* ? */, .regoffset = reg(m[2])};
         }
         if (regex_match(access, m, regex(REG PLUSMINUS IMM))) {
-            return Packet{.width = width, .offset = (int32_t)imm(m[2], false).v, .regoffset = reg(m[1])};
+            return Packet{.width = width, .offset = static_cast<int32_t>(imm(m[2], false).v), .regoffset = reg(m[1])};
         }
         return Undefined{0};
     }
     if (regex_match(text, m, regex("assume " WREG CMPOP REG_OR_IMM))) {
-        Assume res{Condition{.op = str_to_cmpop.at(m[2]),
-                             .left = reg(m[1]),
-                             .right = reg_or_imm(m[3]),
-                             .is64 = (((const std::string&)m[1]).at(0) == 'r')}};
+        Assume res{Condition{
+            .op = str_to_cmpop.at(m[2]), .left = reg(m[1]), .right = reg_or_imm(m[3]), .is64 = is64_reg(m[1])}};
         return res;
     }
     if (regex_match(text, m, regex("(?:if " WREG CMPOP REG_OR_IMM " )?goto\\s+(?:" IMM ")?" WRAPPED_LABEL))) {
         // We ignore second IMM
         Jmp res{.cond = {}, .target = label_name_to_label.at(m[5])};
         if (m[1].matched) {
-            res.cond = Condition{.op = str_to_cmpop.at(m[2]),
-                                 .left = reg(m[1]),
-                                 .right = reg_or_imm(m[3]),
-                                 .is64 = (((const std::string&)m[1]).at(0) == 'r')};
+            res.cond = Condition{
+                .op = str_to_cmpop.at(m[2]), .left = reg(m[1]), .right = reg_or_imm(m[3]), .is64 = is64_reg(m[1])};
         }
         return res;
     }
@@ -234,7 +229,7 @@ static InstructionSeq parse_program(std::istream& is) {
     std::string line;
     std::vector<label_t> pc_to_label;
     InstructionSeq labeled_insts;
-    std::set<label_t> seen_labels;
+    const std::set<label_t> seen_labels;
     std::optional<label_t> next_label;
     while (std::getline(is, line)) {
         std::smatch m;
@@ -265,7 +260,7 @@ static InstructionSeq parse_program(std::istream& is) {
     return labeled_insts;
 }
 
-static uint8_t regnum(const std::string& s) { return (uint8_t)boost::lexical_cast<uint16_t>(s.substr(1)); }
+static uint8_t regnum(const std::string& s) { return static_cast<uint8_t>(boost::lexical_cast<uint16_t>(s.substr(1))); }
 
 static crab::variable_t special_var(const std::string& s) {
     if (s == "packet_size") {
@@ -413,7 +408,7 @@ std::ostream& operator<<(std::ostream& o, const string_invariant& inv) {
         } else {
             o << ", ";
         }
-        size_t pos = item.find_first_of(".=[");
+        const size_t pos = item.find_first_of(".=[");
         std::string base = item.substr(0, pos);
         if (base != lastbase) {
             o << "\n    ";

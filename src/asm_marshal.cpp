@@ -278,7 +278,7 @@ struct MarshalVisitor {
     }
 
     vector<ebpf_inst> operator()(Atomic const& b) const {
-        int32_t imm = static_cast<int32_t>(b.op);
+        auto imm = static_cast<int32_t>(b.op);
         if (b.fetch) {
             imm |= INST_FETCH;
         }
@@ -312,7 +312,7 @@ static int size(const Instruction& inst) {
 static auto get_labels(const InstructionSeq& insts) {
     pc_t pc = 0;
     std::map<label_t, pc_t> pc_of_label;
-    for (auto [label, inst, _] : insts) {
+    for (const auto& [label, inst, _] : insts) {
         pc_of_label[label] = pc;
         pc += size(inst);
     }

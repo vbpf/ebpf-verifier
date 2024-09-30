@@ -20,7 +20,7 @@ class AssertExtractor {
 
     static Imm imm(const Value& v) { return std::get<Imm>(v); }
 
-    static vector<Assert> zero_offset_ctx(Reg reg) {
+    static vector<Assert> zero_offset_ctx(const Reg reg) {
         vector<Assert> res;
         res.emplace_back(TypeConstraint{reg, TypeGroup::ctx});
         res.emplace_back(ZeroCtxOffset{reg});
@@ -31,27 +31,27 @@ class AssertExtractor {
     explicit AssertExtractor(program_info info, std::optional<label_t> label)
         : info{std::move(info)}, current_label(label) {}
 
-    vector<Assert> operator()(Undefined const& ins) const {
+    vector<Assert> operator()(Undefined const&) const {
         assert(false);
         return {};
     }
 
-    vector<Assert> operator()(Assert const& ins) const {
+    vector<Assert> operator()(Assert const&) const {
         assert(false);
         return {};
     }
 
-    vector<Assert> operator()(IncrementLoopCounter ins) const {
+    vector<Assert> operator()(IncrementLoopCounter) const {
         assert(false);
         return {};
     }
 
-    vector<Assert> operator()(LoadMapFd const& ins) const { return {}; }
+    vector<Assert> operator()(LoadMapFd const&) const { return {}; }
 
     /// Packet access implicitly uses R6, so verify that R6 still has a pointer to the context.
-    vector<Assert> operator()(Packet const& ins) const { return zero_offset_ctx({6}); }
+    vector<Assert> operator()(Packet const&) const { return zero_offset_ctx({6}); }
 
-    vector<Assert> operator()(Exit const& e) const {
+    vector<Assert> operator()(Exit const&) const {
         vector<Assert> res;
         if (current_label->stack_frame_prefix.empty()) {
             // Verify that Exit returns a number.
