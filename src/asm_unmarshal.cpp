@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "asm_unmarshal.hpp"
+#include "crab_utils/num_safety.hpp"
 #include "ebpf_vm_isa.hpp"
 
 using std::string;
@@ -84,7 +85,9 @@ static Instruction shift32(const Reg dst, const Bin::Op op) {
 struct Unmarshaller {
     vector<vector<string>>& notes;
     const program_info& info;
+    // ReSharper disable once CppMemberFunctionMayBeConst
     void note(const string& what) { notes.back().emplace_back(what); }
+    // ReSharper disable once CppMemberFunctionMayBeConst
     void note_next_pc() { notes.emplace_back(); }
     explicit Unmarshaller(vector<vector<string>>& notes, const program_info& info) : notes{notes}, info{info} {
         note_next_pc();
@@ -216,7 +219,7 @@ struct Unmarshaller {
     }
 
     static auto getAtomicOp(const size_t pc, const ebpf_inst inst) -> Atomic::Op {
-        switch (const auto op = static_cast<Atomic::Op>(inst.imm & ~INST_FETCH)) {
+        switch (const auto op = gsl::narrow<Atomic::Op>(inst.imm & ~INST_FETCH)) {
         case Atomic::Op::XCHG:
         case Atomic::Op::CMPXCHG:
             if ((inst.imm & INST_FETCH) == 0) {
@@ -230,9 +233,9 @@ struct Unmarshaller {
         throw InvalidInstruction(pc, "unsupported immediate");
     }
 
-    static uint64_t sign_extend(const int32_t imm) { return static_cast<uint64_t>(static_cast<int64_t>(imm)); }
+    static uint64_t sign_extend(const int32_t imm) { return crab::to_unsigned(int64_t{imm}); }
 
-    static uint64_t zero_extend(const int32_t imm) { return static_cast<uint64_t>(static_cast<uint32_t>(imm)); }
+    static uint64_t zero_extend(const int32_t imm) { return uint64_t{crab::to_unsigned(imm)}; }
 
     static auto getBinValue(const pc_t pc, const ebpf_inst inst) -> Value {
         if (inst.opcode & INST_SRC_REG) {
@@ -345,9 +348,9 @@ struct Unmarshaller {
                         .basereg = Reg{basereg},
                         .offset = inst.offset,
                     },
-                .value = isLoad ? static_cast<Value>(Reg{inst.dst})
-                                : (isImm ? static_cast<Value>(Imm{zero_extend(inst.imm)})
-                                         : static_cast<Value>(Reg{inst.src})),
+                .value = isLoad  ? Value{Reg{inst.dst}}
+                         : isImm ? Value{Imm{zero_extend(inst.imm)}}
+                                 : Value{Reg{inst.src}},
                 .is_load = isLoad,
             };
             return res;
@@ -502,7 +505,7 @@ struct Unmarshaller {
             case EBPF_ARGUMENT_TYPE_PTR_TO_MAP_KEY:
             case EBPF_ARGUMENT_TYPE_PTR_TO_MAP_VALUE:
             case EBPF_ARGUMENT_TYPE_PTR_TO_CTX:
-                res.singles.push_back({toArgSingleKind(args[i]), Reg{static_cast<uint8_t>(i)}});
+                res.singles.push_back({toArgSingleKind(args[i]), Reg{gsl::narrow<uint8_t>(i)}});
                 break;
             case EBPF_ARGUMENT_TYPE_CONST_SIZE: {
                 // Sanity check: This argument should never be seen in isolation.
@@ -535,8 +538,8 @@ struct Unmarshaller {
                         proto.name);
                 }
                 const bool can_be_zero = (args[i + 1] == EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO);
-                res.pairs.push_back({toArgPairKind(args[i]), Reg{static_cast<uint8_t>(i)},
-                                     Reg{static_cast<uint8_t>(i + 1)}, can_be_zero});
+                res.pairs.push_back({toArgPairKind(args[i]), Reg{gsl::narrow<uint8_t>(i)},
+                                     Reg{gsl::narrow<uint8_t>(i + 1)}, can_be_zero});
                 i++;
                 break;
             }
@@ -553,7 +556,7 @@ struct Unmarshaller {
         if (insts[new_pc].opcode == 0) {
             throw InvalidInstruction(pc, "jump to middle of lddw");
         }
-        return label_t{static_cast<int>(new_pc)};
+        return label_t{gsl::narrow<int>(new_pc)};
     }
 
     static auto makeCallLocal(const ebpf_inst inst, const vector<ebpf_inst>& insts, const pc_t pc) -> CallLocal {
@@ -579,7 +582,7 @@ struct Unmarshaller {
             if (inst.imm < 0 || inst.imm > R10_STACK_POINTER) {
                 throw InvalidInstruction(pc, "bad register");
             }
-            return Callx{static_cast<uint8_t>(inst.imm)};
+            return Callx{gsl::narrow<uint8_t>(inst.imm)};
         }
         return Callx{inst.dst};
     }
@@ -685,9 +688,9 @@ struct Unmarshaller {
                                   ? std::optional<Condition>{}
                                   : Condition{.op = op,
                                               .left = Reg{inst.dst},
-                                              .right = (inst.opcode & INST_SRC_REG) ? static_cast<Value>(Reg{inst.src})
-                                                                                    : Imm{sign_extend(inst.imm)},
-                                              .is64 = ((inst.opcode & INST_CLS_MASK) == INST_CLS_JMP)};
+                                              .right = (inst.opcode & INST_SRC_REG) ? Value{Reg{inst.src}}
+                                                                                    : Value{Imm{sign_extend(inst.imm)}},
+                                              .is64 = (inst.opcode & INST_CLS_MASK) == INST_CLS_JMP};
             return Jmp{.cond = cond, .target = target};
         }
         }
@@ -708,7 +711,7 @@ struct Unmarshaller {
             case INST_CLS_LD:
                 if (inst.opcode == INST_OP_LDDW_IMM) {
                     const int32_t next_imm = pc < insts.size() - 1 ? insts[pc + 1].imm : 0;
-                    new_ins = makeLddw(inst, next_imm, insts, static_cast<pc_t>(pc));
+                    new_ins = makeLddw(inst, next_imm, insts, pc);
                     skip_instruction = true;
                     break;
                 }
@@ -774,7 +777,7 @@ struct Unmarshaller {
                 current_line_info = line_info[pc];
             }
 
-            prog.emplace_back(label_t(static_cast<int>(pc)), new_ins, current_line_info);
+            prog.emplace_back(label_t(gsl::narrow<int>(pc)), new_ins, current_line_info);
 
             pc++;
             note_next_pc();
