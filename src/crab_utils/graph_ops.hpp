@@ -2,43 +2,37 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
+// A set of utility algorithms for manipulating graphs.
+
 #include <algorithm>
 #include <optional>
 
 #include "crab_utils/heap.hpp"
 #include "crab_utils/lazy_allocator.hpp"
-
-//============================
-// A set of utility algorithms for manipulating graphs.
-
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-#endif
+#include "crab_utils/num_safety.hpp"
 
 namespace crab {
 // Graph views - for when we want to traverse some mutation
 // of the graph without actually constructing it.
 // ============
 
-// Processing a graph under a (possibly incomplete)
-// permutation of vertices.
-// We assume perm[x] is unique; otherwise, we'd have
-// to introduce a edges for induced equivalence classes.
+// Processing a graph under a (possibly incomplete) permutation of vertices.
+// We assume perm[x] is unique; otherwise, we'd have to introduce edges for induced equivalence classes.
 template <class G>
 class GraphPerm {
   public:
     using vert_id = typename G::vert_id;
+    constexpr static vert_id invalid_vert = std::numeric_limits<vert_id>::max();
     using Weight = typename G::Weight;
     using g_neighbour_const_range = typename G::neighbour_const_range;
     using mut_val_ref_t = typename G::mut_val_ref_t;
 
-    GraphPerm(const std::vector<vert_id>& _perm, G& _g) : g(_g), perm(_perm), inv(_g.size(), -1) {
+    GraphPerm(const std::vector<vert_id>& _perm, G& _g) : g{_g}, perm{_perm}, inv(_g.size(), invalid_vert) {
         for (unsigned int vi = 0; vi < perm.size(); vi++) {
-            if (perm[vi] == -1) {
+            if (perm[vi] == invalid_vert) {
                 continue;
             }
-            assert(inv[perm[vi]] == -1);
+            assert(inv[perm[vi]] == invalid_vert);
             inv[perm[vi]] = vi;
         }
     }
@@ -87,14 +81,14 @@ class GraphPerm {
       public:
         class iterator final {
           public:
-            explicit iterator(const vert_id& _v) : v(_v) {}
-            const vert_id& operator*() const { return v; }
+            explicit iterator(const vert_id _v) : v{_v} {}
+            vert_id operator*() const { return v; }
             iterator& operator++() {
-                v++;
+                ++v;
                 return *this;
             }
             iterator& operator--() {
-                v--;
+                --v;
                 return *this;
             }
             bool operator!=(const iterator& o) const { return v < o.v; }
@@ -102,17 +96,17 @@ class GraphPerm {
           private:
             vert_id v;
         };
-        explicit vert_const_range(const vert_id& _after) : after(_after) {}
+        explicit vert_const_range(const vert_id _after) : after{_after} {}
 
-        iterator begin() const { return iterator((vert_id)0); }
-        iterator end() const { return iterator(after); }
+        iterator begin() const { return iterator{0}; }
+        iterator end() const { return iterator{after}; }
 
       private:
         vert_id after;
     };
     using vert_const_iterator = typename vert_const_range::iterator;
 
-    vert_const_range verts() const { return vert_const_range(static_cast<vert_id>(perm.size())); }
+    vert_const_range verts() const { return vert_const_range(gsl::narrow<vert_id>(perm.size())); }
 
     // GKG: Should probably modify this to handle cases where
     // the vertex iterator isn't just a vert_id*.
@@ -129,7 +123,7 @@ class GraphPerm {
         }
 
         bool operator!=(const adj_const_iterator& other) {
-            while (v != other.v && inv[*v] == (-1)) {
+            while (v != other.v && inv[*v] == (invalid_vert)) {
                 ++v;
             }
             return v != other.v;
@@ -155,7 +149,7 @@ class GraphPerm {
         }
 
         bool operator!=(const e_adj_const_iterator& other) {
-            while (v != other.v && inv[(*v).vert] == (-1)) {
+            while (v != other.v && inv[(*v).vert] == (invalid_vert)) {
                 ++v;
             }
             return v != other.v;
@@ -181,21 +175,19 @@ class GraphPerm {
         iterator begin() const {
             if (adj) {
                 return iterator(inv, (*adj).begin());
-            } else {
-                return iterator(inv, ItG::empty_iterator());
             }
+            return iterator(inv, ItG::empty_iterator());
         }
         iterator end() const {
             if (adj) {
                 return iterator(inv, (*adj).end());
-            } else {
-                return iterator(inv, ItG::empty_iterator());
             }
+            return iterator(inv, ItG::empty_iterator());
         }
 
         [[nodiscard]]
         bool mem(unsigned int v) const {
-            if (!adj || perm[v] == (-1)) {
+            if (!adj || perm[v] == (invalid_vert)) {
                 return false;
             }
             return (*adj).mem(perm[v]);
@@ -223,21 +215,19 @@ class GraphPerm {
         iterator begin() const {
             if (adj) {
                 return iterator(inv, (*adj).begin());
-            } else {
-                return iterator(inv, ItG::empty_iterator());
             }
+            return iterator(inv, ItG::empty_iterator());
         }
         iterator end() const {
             if (adj) {
                 return iterator(inv, (*adj).end());
-            } else {
-                return iterator(inv, ItG::empty_iterator());
             }
+            return iterator(inv, ItG::empty_iterator());
         }
 
         [[nodiscard]]
         bool mem(unsigned int v) const {
-            if (!adj || perm[v] == (-1)) {
+            if (!adj || perm[v] == (invalid_vert)) {
                 return false;
             }
             return (*adj).mem(perm[v]);
@@ -249,43 +239,35 @@ class GraphPerm {
         std::optional<RG> adj;
     };
 
-    //    using neighbour_range = adj_list<typename G::neighbour_range, adj_iterator<typename
-    //    G::neighbour_range::iterator>>; using e_neighbour_range = adj_list<typename G::e_neighbour_range,
-    //    e_adj_iterator<typename G::e_neighbour_range::iterator>>;
-
     using neighbour_const_range = const_adj_list<typename G::neighbour_const_range,
                                                  adj_const_iterator<typename G::neighbour_const_range::iterator>>;
     using e_neighbour_const_range = const_adj_list<typename G::e_neighbour_const_range,
                                                    e_adj_const_iterator<typename G::e_neighbour_const_range::iterator>>;
 
     neighbour_const_range succs(vert_id v) const {
-        if (perm[v] == (-1)) {
+        if (perm[v] == (invalid_vert)) {
             return neighbour_const_range(perm, inv);
-        } else {
-            return neighbour_const_range(perm, inv, g.succs(perm[v]));
         }
+        return neighbour_const_range(perm, inv, g.succs(perm[v]));
     }
     neighbour_const_range preds(vert_id v) const {
-        if (perm[v] == (-1)) {
+        if (perm[v] == (invalid_vert)) {
             return neighbour_const_range(perm, inv);
-        } else {
-            return neighbour_const_range(perm, inv, g.preds(perm[v]));
         }
+        return neighbour_const_range(perm, inv, g.preds(perm[v]));
     }
 
     e_neighbour_const_range e_succs(vert_id v) const {
-        if (perm[v] == (-1)) {
+        if (perm[v] == (invalid_vert)) {
             return e_neighbour_const_range(perm, inv);
-        } else {
-            return e_neighbour_const_range(perm, inv, g.e_succs(perm[v]));
         }
+        return e_neighbour_const_range(perm, inv, g.e_succs(perm[v]));
     }
     e_neighbour_const_range e_preds(vert_id v) const {
-        if (perm[v] == (-1)) {
+        if (perm[v] == (invalid_vert)) {
             return e_neighbour_const_range(perm, inv);
-        } else {
-            return e_neighbour_const_range(perm, inv, g.e_preds(perm[v]));
         }
+        return e_neighbour_const_range(perm, inv, g.e_preds(perm[v]));
     }
 
     const G& g;
@@ -307,9 +289,9 @@ class SubGraph {
 
     SubGraph(G& _g, vert_id _v_ex) : g(_g), v_ex(_v_ex) {}
 
-    bool elem(vert_id x, vert_id y) const { return (x != v_ex && y != v_ex && g.elem(x, y)); }
+    bool elem(vert_id x, vert_id y) const { return x != v_ex && y != v_ex && g.elem(x, y); }
 
-    bool lookup(vert_id x, vert_id y, mut_val_ref_t* w) { return (x != v_ex && y != v_ex && g.lookup(x, y, w)); }
+    bool lookup(vert_id x, vert_id y, mut_val_ref_t* w) { return x != v_ex && y != v_ex && g.lookup(x, y, w); }
 
     std::optional<Weight> lookup(vert_id x, vert_id y) const {
         return (x != v_ex && y != v_ex) ? g.lookup(x, y) : std::optional<Weight>{};
@@ -321,8 +303,6 @@ class SubGraph {
     Weight operator()(vert_id x, vert_id y) const { return g(x, y); }
 
     void clear_edges() { g.clear_edges(); }
-
-    void clear() { assert(0 && "SubGraph::clear not implemented."); }
 
     // Number of allocated vertices
     [[nodiscard]]
@@ -550,11 +530,9 @@ class GraphOps {
     static thread_local size_t scratch_sz;
 
     // For locality, should combine dists & dist_ts.
-    // Weight must have an empty constructor, but does _not_
-    // need a top or infty element.
-    // dist_ts tells us which distances are current,
-    // and ts_idx prevents wraparound problems, in the unlikely
-    // circumstance that we have more than 2^sizeof(uint) iterations.
+    // Weight must have an empty constructor, but does _not_ need a top or infty element.
+    // dist_ts tells us which distances are current, and ts_idx prevents wraparound problems,
+    // in the unlikely circumstance that we have more than 2^sizeof(uint) iterations.
     static thread_local lazy_allocator<std::vector<Weight>> dists;
     static thread_local lazy_allocator<std::vector<Weight>> dists_alt;
     static thread_local lazy_allocator<std::vector<unsigned int>> dist_ts;
@@ -573,7 +551,7 @@ class GraphOps {
         ts_idx = 0;
     }
 
-    static void grow_scratch(size_t sz) {
+    static void grow_scratch(const size_t sz) {
         if (sz <= scratch_sz) {
             return;
         }
@@ -583,7 +561,7 @@ class GraphOps {
             new_sz = 10; // TODO: Introduce enums for init_sz and growth_factor
         }
         while (new_sz < sz) {
-            new_sz = static_cast<size_t>(new_sz * 1.5);
+            new_sz *= 2;
         }
 
         edge_marks->resize(new_sz * new_sz);
@@ -601,8 +579,7 @@ class GraphOps {
     }
 
     // Syntactic join.
-    template <class G1, class G2>
-    static graph_t join(G1& l, G2& r) {
+    static graph_t join(auto& l, auto& r) {
         // For the join, potentials are preserved
         assert(l.size() == r.size());
         size_t sz = l.size();
@@ -615,7 +592,7 @@ class GraphOps {
             for (auto e : l.e_succs(s)) {
                 vert_id d = e.vert;
                 if (r.lookup(s, d, &wr)) {
-                    g.add_edge(s, std::max(e.val, (Weight)wr), d);
+                    g.add_edge(s, std::max(e.val, static_cast<Weight>(wr)), d);
                 }
             }
         }
@@ -623,23 +600,9 @@ class GraphOps {
     }
 
     // Syntactic meet
-    template <class G1, class G2>
-    static graph_t meet(const G1& l, const G2& r, bool& is_closed) {
+    static graph_t meet(const auto& l, const auto& r, bool& is_closed) {
         assert(l.size() == r.size());
-
-        /*
-              for(vert_id s : l.verts())
-                for(vert_id d : l.succs(s))
-                  if(!r.elem(s, d) || l.edge_val(s, d) < r.edge_val(s, d))
-                    goto r_not_dom;
-              // r dominates
-              is_closed = true;
-              return graph_t::copy(r);
-
-        r_not_dom:
-        */
         graph_t g(graph_t::copy(l));
-        //      bool l_dom = true;
 
         mut_val_ref_t wg;
         for (vert_id s : r.verts()) {
@@ -657,8 +620,7 @@ class GraphOps {
         return g;
     }
 
-    template <class G1, class G2>
-    static graph_t widen(const G1& l, const G2& r, std::unordered_set<vert_id>& unstable) {
+    static graph_t widen(const auto& l, const auto& r, std::unordered_set<vert_id>& unstable) {
         assert(l.size() == r.size());
         size_t sz = l.size();
         graph_t g;
@@ -685,11 +647,10 @@ class GraphOps {
         return g;
     }
 
-    // Compute the strongly connected components
-    // Duped pretty much verbatim from Wikipedia
+    // Compute the strongly connected components.
+    // Duped pretty much verbatim from Wikipedia.
     // Abuses 'dual_queue' to store indices.
-    template <class G>
-    static void strong_connect(const G& x, std::vector<vert_id>& stack, int& index, vert_id v,
+    static void strong_connect(const auto& x, std::vector<vert_id>& stack, int& index, vert_id v,
                                std::vector<std::vector<vert_id>>& sccs) {
         vert_marks->at(v) = (index << 1) | 1;
         // assert(vert_marks->at(v)&1);
@@ -705,50 +666,38 @@ class GraphOps {
                 dual_queue->at(v) = std::min(dual_queue->at(v), dual_queue->at(w));
             } else if (vert_marks->at(w) & 1) {
                 // W is on the stack
-                dual_queue->at(v) = std::min(dual_queue->at(v), (vert_id)(vert_marks->at(w) >> 1));
+                dual_queue->at(v) = std::min(dual_queue->at(v), gsl::narrow<vert_id>(vert_marks->at(w) >> 1));
             }
         }
 
         // If v is a root node, pop the stack and generate an SCC
-        if (dual_queue->at(v) == (vert_marks->at(v) >> 1)) {
+        if (dual_queue->at(v) == gsl::narrow<vert_id>(vert_marks->at(v) >> 1)) {
             sccs.emplace_back();
             std::vector<vert_id>& scc(sccs.back());
-            int w;
+            vert_id w;
             do {
                 w = stack.back();
                 stack.pop_back();
-                vert_marks->at(w) &= (~1);
+                vert_marks->at(w) &= ~1;
                 scc.push_back(w);
             } while (v != w);
         }
     }
 
-    template <class G>
-    static void compute_sccs(const G& x, std::vector<std::vector<vert_id>>& out_scc) {
-        size_t sz = x.size();
+    static void compute_sccs(const auto& x, std::vector<std::vector<vert_id>>& out_scc) {
+        const size_t sz = x.size();
         grow_scratch(sz);
 
         for (vert_id v : x.verts()) {
             vert_marks->at(v) = 0;
         }
-        int index = 1;
-        std::vector<vert_id> stack;
         for (vert_id v : x.verts()) {
             if (!vert_marks->at(v)) {
+                std::vector<vert_id> stack;
+                int index = 1;
                 strong_connect(x, stack, index, v, out_scc);
             }
         }
-        /*
-        printf("[");
-        for(int ii = 0; ii < out_scc.size(); ii++)
-        {
-          printf("[");
-          for(int jj = 0; jj < out_scc[ii].size(); jj++)
-            printf(" %d", out_scc[ii][jj]);
-          printf("]");
-        }
-        printf("]\n");
-        */
 
         for (vert_id v : x.verts()) {
             vert_marks->at(v) = 0;
@@ -757,8 +706,7 @@ class GraphOps {
 
     // Run Bellman-Ford to compute a valid model of a set of difference constraints.
     // Returns false if there is some negative cycle.
-    template <class G, class P>
-    static bool select_potentials(const G& g, P& potentials) {
+    static bool select_potentials(const auto& g, auto& potentials) {
         size_t sz = g.size();
         assert(potentials.size() >= sz);
         grow_scratch(sz);
@@ -766,23 +714,20 @@ class GraphOps {
         std::vector<std::vector<vert_id>> sccs;
         compute_sccs(g, sccs);
 
-        // Currently trusting the call-site to select reasonable
-        // initial values.
-#if 0
-      // Zero existing potentials.
-      // Not strictly necessary, but means we're less
-      // likely to run into over/underflow.
-      //
-      // Though this hurts our chances of early cutoff.
-      for(vert_id v : g.verts())
-        potentials[v] = 0;
-#endif
+        // Currently trusting the call-site to select reasonable initial values.
+        if constexpr (false) {
+            // Zero existing potentials.
+            // Not strictly necessary, but means we're less likely to run into over/underflow.
+            // Though this hurts our chances of early cutoff.
+            for (vert_id v : g.verts()) {
+                potentials[v] = 0;
+            }
+        }
 
         // Run Bellman-ford on each SCC.
         // for(std::vector<vert_id>& scc : sccs)
         // Current implementation returns sccs in reverse topological order.
-        for (auto it = sccs.rbegin(); it != sccs.rend(); ++it) {
-            std::vector<vert_id>& scc(*it);
+        for (std::vector<vert_id>& scc : sccs) {
 
             auto qhead = dual_queue->begin();
             auto qtail = qhead;
@@ -793,12 +738,12 @@ class GraphOps {
             for (vert_id v : scc) {
                 *qtail = v;
                 vert_marks->at(v) = BF_SCC | BF_QUEUED;
-                qtail++;
+                ++qtail;
             }
 
-            for (size_t iter = 0; iter < scc.size(); iter++) {
-                for (; qtail != qhead;) {
-                    vert_id s = *(--qtail);
+            for (vert_id v : scc) {
+                while (qtail != qhead) {
+                    vert_id s = *--qtail;
                     // If it _was_ on the queue, it must be in the SCC
                     vert_marks->at(s) = BF_SCC;
 
@@ -812,7 +757,7 @@ class GraphOps {
                             if (vert_marks->at(d) == BF_SCC) {
                                 *next_tail = d;
                                 vert_marks->at(d) = (BF_SCC | BF_QUEUED);
-                                next_tail++;
+                                ++next_tail;
                             }
                         }
                     }
@@ -826,8 +771,8 @@ class GraphOps {
                 }
             }
             // Check if the SCC is feasible.
-            for (; qtail != qhead;) {
-                vert_id s = *(--qtail);
+            while (qtail != qhead) {
+                vert_id s = *--qtail;
                 Weight s_pot = potentials[s];
                 for (auto e : g.e_succs(s)) {
                     vert_id d = e.vert;
@@ -846,8 +791,7 @@ class GraphOps {
 
     template <class G, class G1, class G2, class P>
     static edge_vector close_after_meet(const G& g, const P& pots, const G1& l, const G2& r) {
-        // We assume the syntactic meet has already been computed,
-        // and potentials have been initialized.
+        // We assume the syntactic meet has already been computed, and potentials have been initialized.
         // We just want to restore closure.
         assert(l.size() == r.size());
         size_t sz = l.size();
@@ -857,8 +801,6 @@ class GraphOps {
 
         // Partition edges into r-only/rb/b-only.
         for (vert_id s : g.verts()) {
-            //        unsigned int g_count = 0;
-            //        unsigned int r_count = 0;
             for (auto e : g.e_succs(s)) {
                 unsigned char mark = 0;
                 vert_id d = e.vert;
@@ -884,10 +826,8 @@ class GraphOps {
             }
         }
 
-        // We can run the chromatic Dijkstra variant
-        // on each source.
+        // We can run the chromatic Dijkstra variant on each source.
         std::vector<std::tuple<vert_id, Weight>> adjs;
-        //      for(vert_id v = 0; v < sz; v++)
         edge_vector delta;
         for (vert_id v : g.verts()) {
             adjs.clear();
@@ -976,13 +916,12 @@ class GraphOps {
         }
     }
 
-    // Run Dijkstra's algorithm, but similar to the chromatic algorithm, avoid expanding
-    // anything that _was_ stable.
+    // Run Dijkstra's algorithm, but similar to the chromatic algorithm, avoid expanding anything that _was_ stable.
     // GKG: Factor out common elements of this & the previous algorithm.
     template <class G, class P, class S>
     static void dijkstra_recover(const G& g, const P& p, const S& is_stable, vert_id src,
                                  std::vector<std::tuple<vert_id, Weight>>& out) {
-        size_t sz = g.size();
+        const size_t sz = g.size();
         if (sz == 0) {
             return;
         }
@@ -1051,7 +990,7 @@ class GraphOps {
     template <class G, class P>
     static bool repair_potential(const G& g, P& p, vert_id ii, vert_id jj) {
         // Ensure there's enough scratch space.
-        size_t sz = g.size();
+        const size_t sz = g.size();
         // assert(src < (int) sz && dest < (int) sz);
         grow_scratch(sz);
 
@@ -1103,7 +1042,7 @@ class GraphOps {
 
     template <class G, class P, class V>
     static edge_vector close_after_widen(const G& g, const P& p, const V& is_stable) {
-        size_t sz = g.size();
+        const size_t sz = g.size();
         grow_scratch(sz);
         //      assert(orig.size() == sz);
 
@@ -1127,41 +1066,23 @@ class GraphOps {
     }
 
     // Used for sorting successors of some vertex by increasing slack.
-    // operator() may only be called on vertices for which
-    // dists is initialized.
+    // operator() may only be called on vertices for which dists is initialized.
     template <class P>
-    class AdjCmp {
-      public:
-        explicit AdjCmp(const P& _p) : p(_p) {}
-
-        bool operator()(vert_id d1, vert_id d2) const { return (dists->at(d1) - p[d1]) < (dists->at(d2) - p[d2]); }
-
-      protected:
+    struct AdjCmp {
+        bool operator()(vert_id d1, vert_id d2) const { return dists->at(d1) - p[d1] < dists->at(d2) - p[d2]; }
         const P& p;
     };
 
     template <class P>
-    static AdjCmp<P> make_adjcmp(const P& p) {
-        return AdjCmp<P>(p);
-    }
-
-    template <class P>
-    class NegP {
-      public:
-        explicit NegP(const P& _p) : p(_p) {}
+    struct NegP {
         Weight operator[](vert_id v) const { return -(p[v]); }
-
         const P& p;
     };
-    template <class P>
-    static NegP<P> make_negp(const P& p) {
-        return NegP<P>(p);
-    }
 
     // Compute the transitive closure of edges reachable from v, assuming
-    // (1) the subgraph G \ {v} is closed, and (2) P is a valid model of G.
-    template <class G, class P>
-    static void close_after_assign_fwd(const G& g, const P& p, vert_id v,
+    // (1) the subgraph G \ {v} is closed, and
+    // (2) P is a valid model of G.
+    static void close_after_assign_fwd(const auto& g, const auto& p, vert_id v,
                                        std::vector<std::tuple<vert_id, Weight>>& aux) {
         // Initialize the queue and distances.
         for (vert_id u : g.verts()) {
@@ -1178,14 +1099,14 @@ class GraphOps {
             dists->at(d) = e.val;
             //        assert(p[v] + dists->at(d) - p[d] >= Weight(0));
             *adj_tail = d;
-            adj_tail++;
+            ++adj_tail;
         }
 
         // Sort the immediate edges by increasing slack.
-        std::sort(adj_head, adj_tail, make_adjcmp(p));
+        std::sort(adj_head, adj_tail, AdjCmp{p});
 
         auto reach_tail = adj_tail;
-        for (; adj_head < adj_tail; adj_head++) {
+        for (; adj_head < adj_tail; ++adj_head) {
             vert_id d = *adj_head;
 
             Weight d_wt = dists->at(d);
@@ -1196,7 +1117,7 @@ class GraphOps {
                     dists->at(e) = e_wt;
                     vert_marks->at(e) = BF_QUEUED;
                     *reach_tail = e;
-                    reach_tail++;
+                    ++reach_tail;
                 } else {
                     dists->at(e) = std::min(e_wt, dists->at(e));
                 }
@@ -1205,7 +1126,7 @@ class GraphOps {
 
         // Now collect the adjacencies, and clear vertex flags
         // FIXME: This collects _all_ edges from x, not just new ones.
-        for (adj_head = dual_queue->begin(); adj_head < reach_tail; adj_head++) {
+        for (adj_head = dual_queue->begin(); adj_head < reach_tail; ++adj_head) {
             aux.emplace_back(*adj_head, dists->at(*adj_head));
             vert_marks->at(*adj_head) = 0;
         }
@@ -1274,9 +1195,8 @@ class GraphOps {
         // Closure is now updated.
     }
 
-    template <class G, class P>
-    static edge_vector close_after_assign(const G& g, const P& p, vert_id v) {
-        size_t sz = g.size();
+    static edge_vector close_after_assign(const auto& g, const auto& p, vert_id v) {
+        const size_t sz = g.size();
         grow_scratch(sz);
         edge_vector delta;
         {
@@ -1288,8 +1208,8 @@ class GraphOps {
         }
         {
             std::vector<std::tuple<vert_id, Weight>> aux;
-            GraphRev<const G> g_rev(g);
-            close_after_assign_fwd(g_rev, make_negp(p), v, aux);
+            GraphRev g_rev{g};
+            close_after_assign_fwd(g_rev, NegP{p}, v, aux);
             for (auto [vid, wt] : aux) {
                 delta.emplace_back(vid, v, wt);
             }
@@ -1324,6 +1244,3 @@ template <class G>
 thread_local unsigned int GraphOps<G>::ts_idx = 0;
 
 } // namespace crab
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
