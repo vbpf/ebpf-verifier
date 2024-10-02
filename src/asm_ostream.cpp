@@ -120,7 +120,7 @@ std::ostream& operator<<(std::ostream& os, ValidAccess const& a) {
         os << a.offset;
     }
 
-    if (a.width == static_cast<Value>(Imm{0})) {
+    if (a.width == Value{Imm{0}}) {
         // a.width == 0, meaning we only care it's an in-bound pointer,
         // so it can be compared with another pointer to the same region.
         os << ") for comparison/subtraction";

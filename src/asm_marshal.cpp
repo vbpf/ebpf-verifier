@@ -7,6 +7,7 @@
 
 #include "asm_marshal.hpp"
 #include "asm_ostream.hpp"
+#include "crab_utils/num_safety.hpp"
 
 using std::vector;
 
@@ -88,9 +89,9 @@ static uint8_t imm_endian(const Un::Op op) {
 struct MarshalVisitor {
   private:
     static vector<ebpf_inst> makeLddw(const Reg dst, const bool isFd, const int32_t imm, const int32_t next_imm) {
-        return {ebpf_inst{.opcode = static_cast<uint8_t>(INST_CLS_LD | width_to_opcode(8)),
+        return {ebpf_inst{.opcode = gsl::narrow<uint8_t>(INST_CLS_LD | width_to_opcode(8)),
                           .dst = dst.v,
-                          .src = static_cast<uint8_t>(isFd ? 1 : 0),
+                          .src = gsl::narrow<uint8_t>(isFd ? 1 : 0),
                           .offset = 0,
                           .imm = imm},
                 ebpf_inst{.opcode = 0, .dst = 0, .src = 0, .offset = 0, .imm = next_imm}};
@@ -115,7 +116,7 @@ struct MarshalVisitor {
             return makeLddw(b.dst, false, imm, next_imm);
         }
 
-        ebpf_inst res{.opcode = static_cast<uint8_t>((b.is64 ? INST_CLS_ALU64 : INST_CLS_ALU) | (op(b.op) << 4)),
+        ebpf_inst res{.opcode = gsl::narrow<uint8_t>((b.is64 ? INST_CLS_ALU64 : INST_CLS_ALU) | (op(b.op) << 4)),
                       .dst = b.dst.v,
                       .src = 0,
                       .offset = offset(b.op),
@@ -124,7 +125,7 @@ struct MarshalVisitor {
                                   res.opcode |= INST_SRC_REG;
                                   res.src = right.v;
                               },
-                              [&](const Imm right) { res.imm = static_cast<int32_t>(right.v); }},
+                              [&](const Imm right) { res.imm = gsl::narrow<int32_t>(right.v); }},
                    b.v);
         return {res};
     }
@@ -133,7 +134,7 @@ struct MarshalVisitor {
         switch (b.op) {
         case Un::Op::NEG:
             return {ebpf_inst{
-                .opcode = static_cast<uint8_t>((b.is64 ? INST_CLS_ALU64 : INST_CLS_ALU) | INST_ALU_OP_NEG),
+                .opcode = gsl::narrow<uint8_t>((b.is64 ? INST_CLS_ALU64 : INST_CLS_ALU) | INST_ALU_OP_NEG),
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,
@@ -143,7 +144,7 @@ struct MarshalVisitor {
         case Un::Op::LE32:
         case Un::Op::LE64:
             return {ebpf_inst{
-                .opcode = static_cast<uint8_t>(INST_CLS_ALU | INST_END_LE | INST_ALU_OP_END),
+                .opcode = gsl::narrow<uint8_t>(INST_CLS_ALU | INST_END_LE | INST_ALU_OP_END),
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,
@@ -153,7 +154,7 @@ struct MarshalVisitor {
         case Un::Op::BE32:
         case Un::Op::BE64:
             return {ebpf_inst{
-                .opcode = static_cast<uint8_t>(INST_CLS_ALU | INST_END_BE | INST_ALU_OP_END),
+                .opcode = gsl::narrow<uint8_t>(INST_CLS_ALU | INST_END_BE | INST_ALU_OP_END),
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,
@@ -163,7 +164,7 @@ struct MarshalVisitor {
         case Un::Op::SWAP32:
         case Un::Op::SWAP64:
             return {ebpf_inst{
-                .opcode = static_cast<uint8_t>(INST_CLS_ALU64 | INST_ALU_OP_END),
+                .opcode = gsl::narrow<uint8_t>(INST_CLS_ALU64 | INST_ALU_OP_END),
                 .dst = b.dst.v,
                 .src = 0,
                 .offset = 0,
@@ -175,7 +176,7 @@ struct MarshalVisitor {
     }
 
     vector<ebpf_inst> operator()(Call const& b) const {
-        return {ebpf_inst{.opcode = static_cast<uint8_t>(INST_OP_CALL),
+        return {ebpf_inst{.opcode = gsl::narrow<uint8_t>(INST_OP_CALL),
                           .dst = 0,
                           .src = INST_CALL_STATIC_HELPER,
                           .offset = 0,
@@ -183,7 +184,7 @@ struct MarshalVisitor {
     }
 
     vector<ebpf_inst> operator()(CallLocal const& b) const {
-        return {ebpf_inst{.opcode = static_cast<uint8_t>(INST_OP_CALL),
+        return {ebpf_inst{.opcode = gsl::narrow<uint8_t>(INST_OP_CALL),
                           .dst = 0,
                           .src = INST_CALL_LOCAL,
                           .offset = 0,
@@ -192,7 +193,7 @@ struct MarshalVisitor {
 
     vector<ebpf_inst> operator()(Callx const& b) const {
         // callx is defined to have the register in 'dst' not in 'src'.
-        return {ebpf_inst{.opcode = static_cast<uint8_t>(INST_OP_CALLX),
+        return {ebpf_inst{.opcode = gsl::narrow<uint8_t>(INST_OP_CALLX),
                           .dst = b.func.v,
                           .src = INST_CALL_STATIC_HELPER,
                           .offset = 0}};
@@ -209,7 +210,7 @@ struct MarshalVisitor {
     vector<ebpf_inst> operator()(Jmp const& b) const {
         if (b.cond) {
             ebpf_inst res{
-                .opcode = static_cast<uint8_t>(INST_CLS_JMP | (op(b.cond->op) << 4)),
+                .opcode = gsl::narrow<uint8_t>(INST_CLS_JMP | (op(b.cond->op) << 4)),
                 .dst = b.cond->left.v,
                 .src = 0,
                 .offset = label_to_offset16(b.target),
@@ -218,7 +219,7 @@ struct MarshalVisitor {
                                  res.opcode |= INST_SRC_REG;
                                  res.src = right.v;
                              },
-                             [&](const Imm right) { res.imm = static_cast<int32_t>(right.v); }},
+                             [&](const Imm right) { res.imm = gsl::narrow<int32_t>(right.v); }},
                   b.cond->right);
             return {res};
         } else {
@@ -234,17 +235,17 @@ struct MarshalVisitor {
     vector<ebpf_inst> operator()(Mem const& b) const {
         const Deref access = b.access;
         ebpf_inst res{
-            .opcode = static_cast<uint8_t>(INST_MODE_MEM | width_to_opcode(access.width)),
+            .opcode = gsl::narrow<uint8_t>(INST_MODE_MEM | width_to_opcode(access.width)),
             .dst = 0,
             .src = 0,
-            .offset = static_cast<int16_t>(access.offset),
+            .offset = gsl::narrow<int16_t>(access.offset),
         };
         if (b.is_load) {
             if (!std::holds_alternative<Reg>(b.value)) {
                 throw std::runtime_error(std::string("LD IMM: ") + to_string(b));
             }
             res.opcode |= INST_CLS_LD | 0x1;
-            res.dst = static_cast<uint8_t>(std::get<Reg>(b.value).v);
+            res.dst = gsl::narrow<uint8_t>(std::get<Reg>(b.value).v);
             res.src = access.basereg.v;
         } else {
             res.opcode |= INST_CLS_ST;
@@ -254,7 +255,7 @@ struct MarshalVisitor {
                 res.src = preg->v;
             } else {
                 res.opcode |= 0x0;
-                res.imm = static_cast<int32_t>(std::get<Imm>(b.value).v);
+                res.imm = gsl::narrow<int32_t>(std::get<Imm>(b.value).v);
             }
         }
         return {res};
@@ -262,11 +263,11 @@ struct MarshalVisitor {
 
     vector<ebpf_inst> operator()(Packet const& b) const {
         ebpf_inst res{
-            .opcode = static_cast<uint8_t>(INST_CLS_LD | width_to_opcode(b.width)),
+            .opcode = gsl::narrow<uint8_t>(INST_CLS_LD | width_to_opcode(b.width)),
             .dst = 0,
             .src = 0,
             .offset = 0,
-            .imm = static_cast<int32_t>(b.offset),
+            .imm = gsl::narrow<int32_t>(b.offset),
         };
         if (b.regoffset) {
             res.opcode |= INST_MODE_IND;
@@ -278,15 +279,15 @@ struct MarshalVisitor {
     }
 
     vector<ebpf_inst> operator()(Atomic const& b) const {
-        auto imm = static_cast<int32_t>(b.op);
+        auto imm = gsl::narrow<int32_t>(b.op);
         if (b.fetch) {
             imm |= INST_FETCH;
         }
         return {
-            ebpf_inst{.opcode = static_cast<uint8_t>(INST_CLS_STX | INST_MODE_ATOMIC | width_to_opcode(b.access.width)),
+            ebpf_inst{.opcode = gsl::narrow<uint8_t>(INST_CLS_STX | INST_MODE_ATOMIC | width_to_opcode(b.access.width)),
                       .dst = b.access.basereg.v,
                       .src = b.valreg.v,
-                      .offset = static_cast<int16_t>(b.access.offset),
+                      .offset = gsl::narrow<int16_t>(b.access.offset),
                       .imm = imm}};
     }
 

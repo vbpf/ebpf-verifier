@@ -30,7 +30,8 @@ long Stopwatch::systemTime() const {
     }
 
     // Convert from 100ns intervals to microseconds.
-    uint64_t total_us = (((uint64_t)user_time.dwHighDateTime << 32) | (uint64_t)user_time.dwLowDateTime) / 10;
+    uint64_t total_us =
+        ((static_cast<uint64_t>(user_time.dwHighDateTime) << 32) | static_cast<uint64_t>(user_time.dwLowDateTime)) / 10;
 
     return (long)total_us;
 #else

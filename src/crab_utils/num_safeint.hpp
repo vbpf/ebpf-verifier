@@ -17,7 +17,6 @@
 namespace crab {
 
 class safe_i64 {
-
     // Current implementation is based on
     // https://blog.regehr.org/archives/1139 using wider integers.
 
@@ -70,13 +69,13 @@ class safe_i64 {
     }
 
   public:
-    safe_i64() : m_num(0) {}
+    safe_i64() : m_num{0} {}
 
-    safe_i64(const int64_t num) : m_num(num) {}
+    safe_i64(const int64_t num) : m_num{num} {}
 
-    safe_i64(const number_t& n) : m_num(n.narrow<int64_t>()) {}
+    safe_i64(const number_t& n) : m_num{n.narrow<int64_t>()} {}
 
-    operator int64_t() const { return (int64_t)m_num; }
+    operator int64_t() const { return m_num; }
 
     // TODO: output parameters whether operation overflows
     safe_i64 operator+(const safe_i64 x) const {
