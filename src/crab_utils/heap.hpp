@@ -23,10 +23,12 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ******************************************************************************************/
 #include <vector>
 
+#include <gsl/narrow>
+
 namespace crab {
 
 // A heap implementation with support for decrease/increase key.
-// @tparam Comp a predicate that compares two integers.
+// @tparam Comparator a predicate that compares two integers.
 template <std::predicate<int, int> Comparator>
 class Heap {
     Comparator lt;
@@ -86,10 +88,10 @@ class Heap {
     }
     [[nodiscard]]
     bool inHeap(const int n) const {
-        return static_cast<size_t>(n) < indices.size() && indices[n] >= 0;
+        return gsl::narrow_cast<size_t>(n) < indices.size() && indices[n] >= 0;
     }
     int operator[](const int index) const {
-        assert(static_cast<size_t>(index) < heap.size());
+        assert(gsl::narrow_cast<size_t>(index) < heap.size());
         return heap[index];
     }
 
@@ -100,12 +102,13 @@ class Heap {
 
     void insert(const int n) {
         assert(n >= 0);
-        if (static_cast<size_t>(n) >= indices.size()) {
+        const auto size = gsl::narrow<int>(heap.size());
+        if (n >= size) {
             indices.resize(n + 1, -1);
         }
         assert(!inHeap(n));
 
-        indices[n] = static_cast<int>(heap.size());
+        indices[n] = size;
         heap.push_back(n);
         percolateUp(indices[n]);
     }
