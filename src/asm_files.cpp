@@ -419,8 +419,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                     auto [symbol_name, symbol_section_index] = get_symbol_name_and_section_index(symbols, index);
 
                     // Queue up relocation for function symbols.
-                    if (inst.opcode == INST_OP_CALL && inst.src == INST_CALL_LOCAL &&
-                        reader.sections[symbol_section_index] == section.get()) {
+                    if (inst.opcode == INST_OP_CALL && inst.src == INST_CALL_LOCAL) {
                         function_relocation fr{.prog_index = res.size(),
                                                .source_offset = offset / sizeof(ebpf_inst),
                                                .relocation_entry_index = index,
