@@ -741,7 +741,7 @@ class GraphOps {
                 ++qtail;
             }
 
-            for (vert_id v : scc) {
+            for (vert_id _ : scc) {
                 while (qtail != qhead) {
                     vert_id s = *--qtail;
                     // If it _was_ on the queue, it must be in the SCC
