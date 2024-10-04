@@ -59,11 +59,11 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
 
     // Walk the transitive closure of CFG nodes starting at entry_label and ending at
     // any exit instruction.
-    std::queue<label_t> macro_labels{{entry_label}};
-    std::set seen_labels{entry_label};
+    std::set<label_t> macro_labels{{entry_label}};
+    std::set<label_t> seen_labels{entry_label};
     while (!macro_labels.empty()) {
-        label_t macro_label = macro_labels.front();
-        macro_labels.pop();
+        label_t macro_label = *macro_labels.begin();
+        macro_labels.erase(macro_label);
 
         if (stack_frame_prefix == macro_label.stack_frame_prefix) {
             throw std::runtime_error{stack_frame_prefix + ": illegal recursion"};
@@ -105,7 +105,9 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
                 bb >> exit_to_node;
             } else if (!seen_labels.contains(next_macro_label)) {
                 // Push any other unprocessed successor label onto the list to be processed.
-                macro_labels.push(next_macro_label);
+                if (!macro_labels.contains(next_macro_label)) {
+                    macro_labels.insert(next_macro_label);
+                }
                 seen_labels.insert(macro_label);
             }
         }
