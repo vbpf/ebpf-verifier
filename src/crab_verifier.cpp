@@ -134,7 +134,7 @@ static void print_report(std::ostream& os, const checks_db& db, const Instructio
 
 static checks_db get_analysis_report(std::ostream& s, cfg_t& cfg, const crab::invariant_table_t& pre_invariants,
                                      const crab::invariant_table_t& post_invariants,
-                                     const std::optional<InstructionSeq>& prog = std::nullopt) {
+                                     const std::optional<InstructionSeq> prog = std::nullopt) {
     // Analyze the control-flow graph.
     checks_db db = generate_report(cfg, pre_invariants, post_invariants);
     if (thread_local_options.print_invariants) {
@@ -162,7 +162,7 @@ static checks_db get_analysis_report(std::ostream& s, cfg_t& cfg, const crab::in
 
 static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info,
                                  const ebpf_verifier_options_t* options,
-                                 const std::optional<InstructionSeq>& prog = std::nullopt) {
+                                 const std::optional<InstructionSeq> prog = std::nullopt) {
     global_program_info = std::move(info);
     crab::domains::clear_global_state();
     crab::variable_t::clear_thread_local_state();
