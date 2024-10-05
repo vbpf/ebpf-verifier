@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <map>
 #include <optional>
-#include <queue>
 #include <string>
 #include <vector>
 
@@ -59,8 +58,8 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
 
     // Walk the transitive closure of CFG nodes starting at entry_label and ending at
     // any exit instruction.
-    std::set<label_t> macro_labels{{entry_label}};
-    std::set<label_t> seen_labels{entry_label};
+    std::set macro_labels{entry_label};
+    std::set seen_labels{entry_label};
     while (!macro_labels.empty()) {
         label_t macro_label = *macro_labels.begin();
         macro_labels.erase(macro_label);
@@ -251,7 +250,7 @@ static cfg_t to_nondet(const cfg_t& cfg) {
         auto nextlist = bb.next_blocks_set();
         if (nextlist.size() == 2) {
             label_t mid_label = this_label;
-            Jmp jmp = std::get<Jmp>(*bb.rbegin());
+            auto jmp = std::get<Jmp>(*bb.rbegin());
 
             nextlist.erase(jmp.target);
             label_t fallthrough = *nextlist.begin();
@@ -360,7 +359,8 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
     return res;
 }
 
-cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool simplify, bool must_have_exit) {
+cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const bool simplify,
+                  const bool must_have_exit) {
     // Convert the instruction sequence to a deterministic control-flow graph.
     cfg_t det_cfg = instruction_seq_to_cfg(prog, must_have_exit);
 
