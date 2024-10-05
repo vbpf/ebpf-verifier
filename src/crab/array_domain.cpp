@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 #include "boost/endian/conversion.hpp"
 #include "radix_tree/radix_tree.hpp"
@@ -72,7 +73,17 @@ offset_t radix_substr(const offset_t& key, const int begin, const int length) {
     }
 
     mask -= 1;
-    mask <<= offset_t::bitsize - length - begin;
+
+    size_t shift_count = offset_t::bitsize - length - begin;
+
+    // Workaround for undefined behavior when shifting by the width of the type.
+    // https://github.com/vbpf/ebpf-verifier/issues/602
+    if (shift_count < offset_t::bitsize) {
+        mask <<= offset_t::bitsize - length - begin;
+    }
+    else {
+        mask = 0;
+    }
 
     const index_t value = (gsl::narrow_cast<index_t>(key) & mask) << begin;
     return offset_t{value, length};
