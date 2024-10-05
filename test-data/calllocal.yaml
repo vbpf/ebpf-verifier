@@ -211,6 +211,30 @@ post:
   - r6.svalue=0
   - r6.uvalue=0
 ---
+test-case: call local with multiple branches
+
+pre: ["r0.type=number"]
+
+code:
+  <start>: |
+    r6 = 0
+    call <sub>
+    r0 = 0
+    exit
+  <sub>: |
+    if r0 == 0 goto <done>
+    r6 = 1
+  <done>: |
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=0
+  - r0.uvalue=0
+  - r6.type=number
+  - r6.svalue=0
+  - r6.uvalue=0
+---
 test-case: call local must preserve R6-R9 types
 pre: ["r6.type=packet"]
 code:
