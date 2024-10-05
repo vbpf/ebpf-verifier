@@ -82,14 +82,17 @@ class Heap {
     int size() const {
         return heap.size();
     }
+
     [[nodiscard]]
     bool empty() const {
         return heap.empty();
     }
+
     [[nodiscard]]
     bool inHeap(const int n) const {
         return gsl::narrow_cast<size_t>(n) < indices.size() && indices[n] >= 0;
     }
+
     int operator[](const int index) const {
         assert(gsl::narrow_cast<size_t>(index) < heap.size());
         return heap[index];
@@ -102,7 +105,7 @@ class Heap {
 
     void insert(const int n) {
         assert(n >= 0);
-        const auto size = gsl::narrow<int>(heap.size());
+        const auto size = gsl::narrow_cast<int>(heap.size());
         if (n >= size) {
             indices.resize(n + 1, -1);
         }
