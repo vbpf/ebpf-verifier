@@ -95,7 +95,7 @@ static checks_db generate_report(cfg_t& cfg, const crab::invariant_table_t& pre_
     }
 
     if (thread_local_options.check_termination) {
-        auto last_inv = post_invariants.at(cfg.exit_label());
+        const auto last_inv = post_invariants.at(cfg.exit_label());
         m_db.max_loop_count = last_inv.get_loop_count_upper_bound();
     }
     return m_db;
@@ -111,7 +111,8 @@ static auto get_line_info(const InstructionSeq& insts) {
     return label_to_line_info;
 }
 
-static void print_report(std::ostream& os, const checks_db& db, const InstructionSeq& prog, bool print_line_info) {
+static void print_report(std::ostream& os, const checks_db& db, const InstructionSeq& prog,
+                         const bool print_line_info) {
     auto label_to_line_info = get_line_info(prog);
     os << "\n";
     for (auto [label, messages] : db.m_db) {
@@ -134,20 +135,20 @@ static void print_report(std::ostream& os, const checks_db& db, const Instructio
 
 static checks_db get_analysis_report(std::ostream& s, cfg_t& cfg, const crab::invariant_table_t& pre_invariants,
                                      const crab::invariant_table_t& post_invariants,
-                                     const std::optional<InstructionSeq> prog = std::nullopt) {
+                                     const std::optional<InstructionSeq>& prog = std::nullopt) {
     // Analyze the control-flow graph.
     checks_db db = generate_report(cfg, pre_invariants, post_invariants);
     if (thread_local_options.print_invariants) {
         std::optional<std::map<int, btf_line_info_t>> line_info_map = std::nullopt;
-        std::string previous_source_line = "";
         if (prog.has_value()) {
             line_info_map = get_line_info(*prog);
         }
+        std::string previous_source_line = "";
         for (const label_t& label : cfg.sorted_labels()) {
             if (line_info_map.has_value()) {
                 auto line_info = line_info_map->find(label.from);
                 // Print line info only once.
-                if ((line_info != line_info_map->end()) && (line_info->second.source_line != previous_source_line)) {
+                if (line_info != line_info_map->end() && line_info->second.source_line != previous_source_line) {
                     s << "\n" << line_info->second << "\n";
                     previous_source_line = line_info->second.source_line;
                 }
@@ -160,9 +161,8 @@ static checks_db get_analysis_report(std::ostream& s, cfg_t& cfg, const crab::in
     return db;
 }
 
-static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info,
-                                 const ebpf_verifier_options_t* options,
-                                 const std::optional<InstructionSeq> prog = std::nullopt) {
+static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options,
+                                 const std::optional<InstructionSeq>& prog = std::nullopt) {
     global_program_info = std::move(info);
     crab::domains::clear_global_state();
     crab::variable_t::clear_thread_local_state();
@@ -171,7 +171,7 @@ static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info,
     try {
         // Get dictionaries of pre-invariants and post-invariants for each basic block.
         ebpf_domain_t entry_dom = ebpf_domain_t::setup_entry(true);
-        auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, std::move(entry_dom));
+        auto [pre_invariants, post_invariants] = run_forward_analyzer(cfg, std::move(entry_dom));
         return get_analysis_report(s, cfg, pre_invariants, post_invariants, prog);
     } catch (std::runtime_error& e) {
         // Convert verifier runtime_error exceptions to failure.
@@ -187,13 +187,13 @@ bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, const program_info& info, co
     if (options == nullptr) {
         options = &ebpf_verifier_default_options;
     }
-    checks_db report = get_ebpf_report(s, cfg, info, options);
+    const checks_db report = get_ebpf_report(s, cfg, info, options);
     if (stats) {
         stats->total_unreachable = report.total_unreachable;
         stats->total_warnings = report.total_warnings;
         stats->max_loop_count = report.get_max_loop_count();
     }
-    return (report.total_warnings == 0);
+    return report.total_warnings == 0;
 }
 
 static string_invariant_map to_string_invariant_map(crab::invariant_table_t& inv_table) {
@@ -220,8 +220,8 @@ std::tuple<string_invariant, bool> ebpf_analyze_program_for_test(std::ostream& o
     }
     try {
         cfg_t cfg = prepare_cfg(prog, info, options.simplify, false);
-        auto [pre_invariants, post_invariants] = crab::run_forward_analyzer(cfg, std::move(entry_inv));
-        checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
+        auto [pre_invariants, post_invariants] = run_forward_analyzer(cfg, std::move(entry_inv));
+        const checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
         print_report(os, report, prog, false);
 
         auto pre_invariant_map = to_string_invariant_map(pre_invariants);
@@ -249,7 +249,7 @@ bool ebpf_verify_program(std::ostream& os, const InstructionSeq& prog, const pro
         prog_opt = prog;
     }
 
-    checks_db report = get_ebpf_report(os, cfg, info, options, prog_opt);
+    const checks_db report = get_ebpf_report(os, cfg, info, options, prog_opt);
     if (options->print_failures) {
         print_report(os, report, prog, options->print_line_info);
     }
