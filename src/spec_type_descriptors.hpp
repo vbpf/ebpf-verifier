@@ -12,6 +12,9 @@
 
 constexpr int EBPF_STACK_SIZE = 512;
 
+// Stack space when subprograms are used.
+constexpr int EBPF_SUBPROGRAM_STACK_SIZE = 256;
+
 enum class EbpfMapValueType { ANY, MAP, PROGRAM };
 
 struct EbpfMapType {
