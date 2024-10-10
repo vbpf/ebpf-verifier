@@ -912,8 +912,8 @@ void ebpf_domain_t::scratch_caller_saved_registers() {
 
 void ebpf_domain_t::save_callee_saved_registers(const std::string& prefix) {
     // Create variables specific to the new call stack frame that store
-    // copies of the states of r6 through r9.
-    for (int r = R6; r <= R9; r++) {
+    // copies of the states of r6 through r10.
+    for (int r = R6; r <= R10_STACK_POINTER; r++) {
         for (const data_kind_t kind : iterate_kinds()) {
             const variable_t src_var = variable_t::reg(kind, r);
             if (!m_inv[src_var].is_top()) {
@@ -924,7 +924,7 @@ void ebpf_domain_t::save_callee_saved_registers(const std::string& prefix) {
 }
 
 void ebpf_domain_t::restore_callee_saved_registers(const std::string& prefix) {
-    for (int r = R6; r <= R9; r++) {
+    for (int r = R6; r <= R10_STACK_POINTER; r++) {
         for (const data_kind_t kind : iterate_kinds()) {
             const variable_t src_var = variable_t::stack_frame_var(kind, r, prefix);
             if (!m_inv[src_var].is_top()) {
@@ -2213,6 +2213,13 @@ void ebpf_domain_t::operator()(const CallLocal& call) {
         return;
     }
     save_callee_saved_registers(call.stack_frame_prefix);
+
+    // Lower r10.stack_offset to be the minimum stack area
+    // already initialized.
+    const auto r10 = reg_pack(R10_STACK_POINTER);
+    sub(r10.stack_offset, EBPF_SUBPROGRAM_STACK_SIZE);
+
+    std::cout << "DEBUG: " << m_inv << "\n";
 }
 
 void ebpf_domain_t::operator()(const Callx& callx) {
