@@ -1,6 +1,30 @@
 # Copyright (c) Prevail Verifier contributors.
 # SPDX-License-Identifier: MIT
 ---
+test-case: call local with stack
+
+pre: ["r10.type=stack", "r10.stack_offset=512",
+      "s[511...511].type=number", "s[511...511].svalue=2", "s[511...511].uvalue=2"]
+
+code:
+  <start>: |
+    call <sub>
+    exit
+  <sub>: |
+    *(u8 *)(r10 - 1) = 1 ; this should not change s[511...511]
+    r0 = *(u8 *)(r10 - 1)
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=1
+  - r0.uvalue=1
+  - r10.type=stack
+  - r10.stack_offset=512
+  - s[511].type=number
+  - s[511].svalue=2
+  - s[511].uvalue=2
+---
 test-case: call local
 
 pre: []
