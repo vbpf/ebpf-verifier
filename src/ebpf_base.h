@@ -37,3 +37,11 @@ typedef struct _ebpf_context_descriptor {
     int end;  // Offset into ctx struct of pointer to end of data.
     int meta; // Offset into ctx struct of pointer to metadata.
 } ebpf_context_descriptor_t;
+
+constexpr int MAX_CALL_STACK_FRAMES = 8;
+
+// Stack space per subprogram.
+constexpr int EBPF_SUBPROGRAM_STACK_SIZE = 512;
+
+// Total stack space usable with nested subprogram calls.
+constexpr int EBPF_TOTAL_STACK_SIZE (MAX_CALL_STACK_FRAMES * EBPF_SUBPROGRAM_STACK_SIZE);

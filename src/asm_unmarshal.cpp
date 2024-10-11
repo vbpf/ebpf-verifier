@@ -338,7 +338,7 @@ struct Unmarshaller {
             const uint8_t basereg = isLoad ? inst.src : inst.dst;
 
             if (basereg == R10_STACK_POINTER &&
-                (inst.offset + opcode_to_width(inst.opcode) > 0 || inst.offset < -EBPF_STACK_SIZE)) {
+                (inst.offset + opcode_to_width(inst.opcode) > 0 || inst.offset < -EBPF_TOTAL_STACK_SIZE)) {
                 note("Stack access out of bounds");
             }
             auto res = Mem{

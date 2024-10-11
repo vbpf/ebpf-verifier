@@ -819,7 +819,7 @@ ebpf_domain_t ebpf_domain_t::calculate_constant_limits() {
         inv += r.svalue >= std::numeric_limits<int32_t>::min();
         inv += r.uvalue <= std::numeric_limits<uint32_t>::max();
         inv += r.uvalue >= 0;
-        inv += r.stack_offset <= EBPF_STACK_SIZE;
+        inv += r.stack_offset <= EBPF_TOTAL_STACK_SIZE;
         inv += r.stack_offset >= 0;
         inv += r.shared_offset <= r.shared_region_size;
         inv += r.shared_offset >= 0;
@@ -1199,7 +1199,7 @@ void ebpf_domain_t::check_access_stack(NumAbsDomain& inv, const linear_expressio
                                        const linear_expression_t& ub) const {
     using namespace crab::dsl_syntax;
     require(inv, lb >= 0, "Lower bound must be at least 0");
-    require(inv, ub <= EBPF_STACK_SIZE, "Upper bound must be at most EBPF_STACK_SIZE");
+    require(inv, ub <= EBPF_TOTAL_STACK_SIZE, "Upper bound must be at most EBPF_TOTAL_STACK_SIZE");
 }
 
 void ebpf_domain_t::check_access_context(NumAbsDomain& inv, const linear_expression_t& lb,
@@ -2911,9 +2911,9 @@ ebpf_domain_t ebpf_domain_t::setup_entry(const bool init_r1) {
     ebpf_domain_t inv;
     const auto r10 = reg_pack(R10_STACK_POINTER);
     constexpr Reg r10_reg{R10_STACK_POINTER};
-    inv += EBPF_STACK_SIZE <= r10.svalue;
+    inv += EBPF_TOTAL_STACK_SIZE <= r10.svalue;
     inv += r10.svalue <= PTR_MAX;
-    inv.assign(r10.stack_offset, EBPF_STACK_SIZE);
+    inv.assign(r10.stack_offset, EBPF_TOTAL_STACK_SIZE);
     // stack_numeric_size would be 0, but TOP has the same result
     // so no need to assign it.
     inv.type_inv.assign_type(inv.m_inv, r10_reg, T_STACK);
