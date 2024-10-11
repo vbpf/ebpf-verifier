@@ -2056,10 +2056,11 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue,
     if (b.access.basereg.v == R10_STACK_POINTER) {
         auto r10_stack_offset = reg_pack(b.access.basereg).stack_offset;
         const auto r10_interval = m_inv.eval_interval(r10_stack_offset);
-        assert(r10_interval.is_singleton());
-        const int32_t stack_offset = r10_interval.singleton()->cast_to<int32_t>();
-        const number_t base_addr{stack_offset};
-        do_store_stack(m_inv, width, base_addr + offset, val_type, val_svalue, val_uvalue, val_reg);
+        if (r10_interval.is_singleton()) {
+            const int32_t stack_offset = r10_interval.singleton()->cast_to<int32_t>();
+            const number_t base_addr{stack_offset};
+            do_store_stack(m_inv, width, base_addr + offset, val_type, val_svalue, val_uvalue, val_reg);
+        }
         return;
     }
     m_inv = type_inv.join_over_types(m_inv, b.access.basereg, [&](NumAbsDomain& inv, const type_encoding_t type) {
