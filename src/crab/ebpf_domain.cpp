@@ -924,6 +924,18 @@ void ebpf_domain_t::save_callee_saved_registers(const std::string& prefix) {
 }
 
 void ebpf_domain_t::restore_callee_saved_registers(const std::string& prefix) {
+    // First havoc the subprogram's stack.
+    variable_t r10_stack_offset = variable_t::reg(data_kind_t::stack_offsets, R10_STACK_POINTER);
+    auto r10_interval = m_inv.eval_interval(r10_stack_offset);
+    if (r10_interval.is_singleton()) {
+        int32_t stack_offset = r10_interval.singleton()->cast_to<int32_t>();
+        int32_t stack_start = stack_offset - EBPF_SUBPROGRAM_STACK_SIZE;
+
+        for (const data_kind_t kind : iterate_kinds()) {
+            stack.havoc(m_inv, kind, stack_start, EBPF_SUBPROGRAM_STACK_SIZE);
+        }
+    }
+
     for (int r = R6; r <= R10_STACK_POINTER; r++) {
         for (const data_kind_t kind : iterate_kinds()) {
             const variable_t src_var = variable_t::stack_frame_var(kind, r, prefix);
@@ -2029,7 +2041,10 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue,
     int width = b.access.width;
     const number_t offset{b.access.offset};
     if (b.access.basereg.v == R10_STACK_POINTER) {
-        const number_t base_addr{EBPF_STACK_SIZE};
+        auto r10_stack_offset = reg_pack(b.access.basereg).stack_offset;
+        const auto r10_interval = m_inv.eval_interval(r10_stack_offset);
+        const int32_t stack_offset = r10_interval.singleton()->cast_to<int32_t>();
+        const number_t base_addr{stack_offset};
         do_store_stack(m_inv, width, base_addr + offset, val_type, val_svalue, val_uvalue, val_reg);
         return;
     }
@@ -2218,8 +2233,6 @@ void ebpf_domain_t::operator()(const CallLocal& call) {
     // already initialized.
     const auto r10 = reg_pack(R10_STACK_POINTER);
     sub(r10.stack_offset, EBPF_SUBPROGRAM_STACK_SIZE);
-
-    std::cout << "DEBUG: " << m_inv << "\n";
 }
 
 void ebpf_domain_t::operator()(const Callx& callx) {
