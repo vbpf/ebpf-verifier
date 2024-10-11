@@ -283,8 +283,8 @@ void add_stack_variable(std::set<std::string>& more, int& offset, const std::vec
     using TU = std::make_unsigned_t<TS>;
     TS svalue;
     TU uvalue;
-    memcpy(&svalue, memory_bytes.data() + offset + memory_bytes.size() - EBPF_STACK_SIZE, sizeof(TS));
-    memcpy(&uvalue, memory_bytes.data() + offset + memory_bytes.size() - EBPF_STACK_SIZE, sizeof(TU));
+    memcpy(&svalue, memory_bytes.data() + offset + memory_bytes.size() - EBPF_TOTAL_STACK_SIZE, sizeof(TS));
+    memcpy(&uvalue, memory_bytes.data() + offset + memory_bytes.size() - EBPF_TOTAL_STACK_SIZE, sizeof(TU));
     more.insert("s[" + std::to_string(offset) + "..." + std::to_string(offset + sizeof(TS) - 1) + "].svalue" + "=" +
                 std::to_string(svalue));
     more.insert("s[" + std::to_string(offset) + "..." + std::to_string(offset + sizeof(TU) - 1) + "].uvalue" + "=" +
@@ -294,14 +294,14 @@ void add_stack_variable(std::set<std::string>& more, int& offset, const std::vec
 
 string_invariant stack_contents_invariant(const std::vector<uint8_t>& memory_bytes) {
     std::set<std::string> more = {"r1.type=stack",
-                                  "r1.stack_offset=" + std::to_string(EBPF_STACK_SIZE - memory_bytes.size()),
+                                  "r1.stack_offset=" + std::to_string(EBPF_TOTAL_STACK_SIZE - memory_bytes.size()),
                                   "r1.stack_numeric_size=" + std::to_string(memory_bytes.size()),
                                   "r10.type=stack",
-                                  "r10.stack_offset=" + std::to_string(EBPF_STACK_SIZE),
-                                  "s[" + std::to_string(EBPF_STACK_SIZE - memory_bytes.size()) + "..." +
-                                      std::to_string(EBPF_STACK_SIZE - 1) + "].type=number"};
+                                  "r10.stack_offset=" + std::to_string(EBPF_TOTAL_STACK_SIZE),
+                                  "s[" + std::to_string(EBPF_TOTAL_STACK_SIZE - memory_bytes.size()) + "..." +
+                                      std::to_string(EBPF_TOTAL_STACK_SIZE - 1) + "].type=number"};
 
-    int offset = EBPF_STACK_SIZE - gsl::narrow<int>(memory_bytes.size());
+    int offset = EBPF_TOTAL_STACK_SIZE - gsl::narrow<int>(memory_bytes.size());
     if (offset % 2 != 0) {
         add_stack_variable<int8_t>(more, offset, memory_bytes);
     }
@@ -311,7 +311,7 @@ string_invariant stack_contents_invariant(const std::vector<uint8_t>& memory_byt
     if (offset % 8 != 0) {
         add_stack_variable<int32_t>(more, offset, memory_bytes);
     }
-    while (offset < EBPF_STACK_SIZE) {
+    while (offset < EBPF_TOTAL_STACK_SIZE) {
         add_stack_variable<int64_t>(more, offset, memory_bytes);
     }
 
@@ -329,7 +329,7 @@ ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memo
     string_invariant pre_invariant = string_invariant::top();
 
     if (!memory_bytes.empty()) {
-        if (memory_bytes.size() > EBPF_STACK_SIZE) {
+        if (memory_bytes.size() > EBPF_TOTAL_STACK_SIZE) {
             std::cerr << "memory size overflow\n";
             return {};
         }

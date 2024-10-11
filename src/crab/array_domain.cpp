@@ -816,7 +816,7 @@ void array_domain_t::havoc(NumAbsDomain& inv, const data_kind_t kind, const line
 void array_domain_t::store_numbers(const NumAbsDomain& inv, const variable_t _idx, const variable_t _width) {
 
     // TODO: this should be an user parameter.
-    const number_t max_num_elems = EBPF_STACK_SIZE;
+    const number_t max_num_elems = EBPF_TOTAL_STACK_SIZE;
 
     if (is_bottom()) {
         return;
