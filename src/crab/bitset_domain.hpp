@@ -109,7 +109,7 @@ class bitset_domain_t final {
     bool all_num(int32_t lb, int32_t ub) const {
         assert(lb < ub);
         lb = std::max(lb, 0);
-        ub = std::min(ub, (int32_t)EBPF_TOTAL_STACK_SIZE);
+        ub = std::min(ub, (int)EBPF_TOTAL_STACK_SIZE);
         if (lb < 0 || ub > (int)non_numerical_bytes.size()) {
             return false;
         }
