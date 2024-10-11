@@ -912,8 +912,8 @@ void ebpf_domain_t::scratch_caller_saved_registers() {
 
 void ebpf_domain_t::save_callee_saved_registers(const std::string& prefix) {
     // Create variables specific to the new call stack frame that store
-    // copies of the states of r6 through r10.
-    for (int r = R6; r <= R10_STACK_POINTER; r++) {
+    // copies of the states of r6 through r9.
+    for (int r = R6; r <= R9; r++) {
         for (const data_kind_t kind : iterate_kinds()) {
             const variable_t src_var = variable_t::reg(kind, r);
             if (!m_inv[src_var].is_top()) {
@@ -924,17 +924,7 @@ void ebpf_domain_t::save_callee_saved_registers(const std::string& prefix) {
 }
 
 void ebpf_domain_t::restore_callee_saved_registers(const std::string& prefix) {
-    // First havoc the subprogram's stack.
-    variable_t r10_stack_offset = variable_t::reg(data_kind_t::stack_offsets, R10_STACK_POINTER);
-    auto r10_interval = m_inv.eval_interval(r10_stack_offset);
-    int32_t stack_offset = r10_interval.singleton()->cast_to<int32_t>();
-    int32_t stack_start = stack_offset - EBPF_SUBPROGRAM_STACK_SIZE;
-    for (const data_kind_t kind : iterate_kinds()) {
-        stack.havoc(m_inv, kind, stack_start, EBPF_SUBPROGRAM_STACK_SIZE);
-    }
-
-    // Now restore registers.
-    for (int r = R6; r <= R10_STACK_POINTER; r++) {
+    for (int r = R6; r <= R9; r++) {
         for (const data_kind_t kind : iterate_kinds()) {
             const variable_t src_var = variable_t::stack_frame_var(kind, r, prefix);
             if (!m_inv[src_var].is_top()) {
@@ -944,6 +934,24 @@ void ebpf_domain_t::restore_callee_saved_registers(const std::string& prefix) {
             }
             havoc(src_var);
         }
+    }
+}
+
+void ebpf_domain_t::havoc_subprogram_stack(const std::string& prefix) {
+    // Calculate the call stack depth being returned from.  Since we're returning
+    // *to* the given prefix, the current call stack is 1 + the number of
+    // '/'-separated labels in the prefix.
+    int call_stack_depth = 2 + std::count(prefix.begin(), prefix.end(), '/');
+
+    variable_t r10_stack_offset = reg_pack(R10_STACK_POINTER).stack_offset;
+    auto intv = m_inv.eval_interval(r10_stack_offset);
+    if (!intv.is_singleton()) {
+        return;
+    }
+    int64_t stack_offset = intv.singleton()->cast_to<int64_t>();
+    int32_t stack_start = stack_offset - EBPF_SUBPROGRAM_STACK_SIZE * call_stack_depth;
+    for (const data_kind_t kind : iterate_kinds()) {
+        stack.havoc(m_inv, kind, stack_start, EBPF_SUBPROGRAM_STACK_SIZE);
     }
 }
 
@@ -1194,12 +1202,15 @@ void ebpf_domain_t::operator()(const basic_block_t& bb) {
 }
 
 void ebpf_domain_t::check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb,
-                                       const linear_expression_t& ub) const {
+                                       const linear_expression_t& ub, int call_stack_depth) const {
     using namespace crab::dsl_syntax;
     variable_t r10_stack_offset = reg_pack(R10_STACK_POINTER).stack_offset;
-    int64_t stack_offset = m_inv.eval_interval(r10_stack_offset).singleton()->cast_to<int64_t>();
-    require(inv, lb >= stack_offset - EBPF_SUBPROGRAM_STACK_SIZE,
-            "Lower bound must be at least r10.stack_offset - EBPF_SUBPROGRAM_STACK_SIZE");
+    auto interval = inv.eval_interval(r10_stack_offset);
+    if (interval.is_singleton()) {
+        int64_t stack_offset = interval.singleton()->cast_to<int64_t>();
+        require(inv, lb >= stack_offset - EBPF_SUBPROGRAM_STACK_SIZE * call_stack_depth,
+                "Lower bound must be at least r10.stack_offset - EBPF_SUBPROGRAM_STACK_SIZE * call_stack_depth");
+    }
     require(inv, ub <= EBPF_TOTAL_STACK_SIZE, "Upper bound must be at most EBPF_TOTAL_STACK_SIZE");
 }
 
@@ -1367,6 +1378,7 @@ void ebpf_domain_t::operator()(const Exit& a) {
     if (prefix.empty()) {
         return;
     }
+    havoc_subprogram_stack(prefix);
     restore_callee_saved_registers(prefix);
 }
 
@@ -1384,8 +1396,8 @@ void ebpf_domain_t::operator()(const Comparable& s) {
             return;
         }
         // And, to avoid wraparound errors, they must be within bounds.
-        this->operator()(ValidAccess{s.r1, 0, Imm{0}, false});
-        this->operator()(ValidAccess{s.r2, 0, Imm{0}, false});
+        this->operator()(ValidAccess{MAX_CALL_STACK_FRAMES, s.r1, 0, Imm{0}, false});
+        this->operator()(ValidAccess{MAX_CALL_STACK_FRAMES, s.r2, 0, Imm{0}, false});
     } else {
         // _Maybe_ different types, so r2 must be a number.
         // We checked in a previous assertion that r1 is a pointer or a number.
@@ -1676,7 +1688,7 @@ void ebpf_domain_t::operator()(const ValidAccess& s) {
         }
         case T_STACK: {
             auto [lb, ub] = lb_ub_access_pair(s, reg.stack_offset);
-            check_access_stack(inv, lb, ub);
+            check_access_stack(inv, lb, ub, s.call_stack_depth);
             // if within bounds, it can never be null
             if (s.access_type == AccessType::read) {
                 // Require that the stack range contains numbers.
@@ -2044,6 +2056,7 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue,
     if (b.access.basereg.v == R10_STACK_POINTER) {
         auto r10_stack_offset = reg_pack(b.access.basereg).stack_offset;
         const auto r10_interval = m_inv.eval_interval(r10_stack_offset);
+        assert(r10_interval.is_singleton());
         const int32_t stack_offset = r10_interval.singleton()->cast_to<int32_t>();
         const number_t base_addr{stack_offset};
         do_store_stack(m_inv, width, base_addr + offset, val_type, val_svalue, val_uvalue, val_reg);
@@ -2229,9 +2242,6 @@ void ebpf_domain_t::operator()(const CallLocal& call) {
         return;
     }
     save_callee_saved_registers(call.stack_frame_prefix);
-
-    const auto r10 = reg_pack(R10_STACK_POINTER);
-    sub(r10.stack_offset, EBPF_SUBPROGRAM_STACK_SIZE);
 }
 
 void ebpf_domain_t::operator()(const Callx& callx) {

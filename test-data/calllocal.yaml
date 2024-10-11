@@ -347,14 +347,14 @@ code:
     r0 += r1              ; r0 = 1 + 2 + 3 = 6
     exit
   <sub1>: |
-    *(u8 *)(r10 - 1) = 2  ; this should not change the caller's stack
+    *(u8 *)(r10 - 513) = 2
     call <sub2>
-    r1 = *(u8 *)(r10 - 1)
+    r1 = *(u8 *)(r10 - 513)
     r0 += r1              ; r0 = 2 + 3 = 5
     exit
   <sub2>: |
-    *(u8 *)(r10 - 1) = 3  ; this should not change the caller's stack
-    r0 = *(u8 *)(r10 - 1)
+    *(u8 *)(r10 - 1025) = 3
+    r0 = *(u8 *)(r10 - 1025)
     exit
 
 post:

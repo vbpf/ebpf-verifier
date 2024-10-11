@@ -51,6 +51,16 @@ struct label_t {
         return to != -1;
     }
 
+    [[nodiscard]]
+    int call_stack_depth() const {
+        // The call stack depth is the number of "/" separated components in the label,
+        // which is one more than the number of "/" separated components in the prefix.
+        if (stack_frame_prefix.empty()) {
+            return 1;
+        }
+        return 2 + std::count(stack_frame_prefix.begin(), stack_frame_prefix.end(), STACK_FRAME_DELIMITER);
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const label_t& label) {
         if (label == entry) {
             return os << "entry";
@@ -337,6 +347,7 @@ enum class AccessType {
 };
 
 struct ValidAccess {
+    int call_stack_depth{};
     Reg reg;
     int32_t offset{};
     Value width{Imm{0}};

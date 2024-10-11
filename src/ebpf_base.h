@@ -38,10 +38,13 @@ typedef struct _ebpf_context_descriptor {
     int meta; // Offset into ctx struct of pointer to metadata.
 } ebpf_context_descriptor_t;
 
+// Maximum number of nested function calls allowed in eBPF programs.
+// This limit helps prevent stack overflow and ensures predictable behavior.
 constexpr int MAX_CALL_STACK_FRAMES = 8;
 
-// Stack space per subprogram.
+// Stack space allocated for each subprogram (in bytes).
+// This ensures each function call has its own dedicated stack space.
 constexpr int EBPF_SUBPROGRAM_STACK_SIZE = 512;
 
 // Total stack space usable with nested subprogram calls.
-constexpr int EBPF_TOTAL_STACK_SIZE (MAX_CALL_STACK_FRAMES * EBPF_SUBPROGRAM_STACK_SIZE);
+constexpr int EBPF_TOTAL_STACK_SIZE = MAX_CALL_STACK_FRAMES * EBPF_SUBPROGRAM_STACK_SIZE;
