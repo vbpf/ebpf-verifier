@@ -940,8 +940,8 @@ void ebpf_domain_t::restore_callee_saved_registers(const std::string& prefix) {
 void ebpf_domain_t::havoc_subprogram_stack(const std::string& prefix) {
     // Calculate the call stack depth being returned from.  Since we're returning
     // *to* the given prefix, the current call stack is 1 + the number of
-    // '/'-separated labels in the prefix.
-    int call_stack_depth = 2 + std::count(prefix.begin(), prefix.end(), '/');
+    // '/'-separated labels in the prefix, hence 2 plus the number of separators in the prefix.
+    int call_stack_depth = 2 + std::count(prefix.begin(), prefix.end(), STACK_FRAME_DELIMITER);
 
     variable_t r10_stack_offset = reg_pack(R10_STACK_POINTER).stack_offset;
     auto intv = m_inv.eval_interval(r10_stack_offset);

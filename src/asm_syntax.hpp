@@ -53,8 +53,9 @@ struct label_t {
 
     [[nodiscard]]
     int call_stack_depth() const {
-        // The call stack depth is the number of "/" separated components in the label,
-        // which is one more than the number of "/" separated components in the prefix.
+        // The call stack depth is the number of '/' separated components in the label,
+        // which is one more than the number of '/' separated components in the prefix,
+        // hence two more than the number of '/' in the prefix, if any.
         if (stack_frame_prefix.empty()) {
             return 1;
         }
