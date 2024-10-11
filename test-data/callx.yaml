@@ -220,6 +220,7 @@ pre: ["r1.type=map_fd", "r1.map_fd=1",
       "r3.type=stack", "r3.stack_offset=496",
       "r4.type=number",
       "r8.type=number", "r8.svalue=2", "r8.uvalue=2",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[496...511].type=number"]
 
 code:
@@ -232,6 +233,8 @@ post:
   - r8.type=number
   - r8.svalue=2
   - r8.uvalue=2
+  - r10.type=stack
+  - r10.stack_offset=512
 
 ---
 test-case: callx bpf_map_update_elem with shared value
@@ -401,6 +404,7 @@ pre: ["r1.type=map_fd", "r1.map_fd=1",
       "r3.type=number", "r3.svalue=8", "r3.uvalue=8",
       "r4.type=number",
       "r8.type=number", "r8.svalue=130", "r8.uvalue=130",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[504...511].type=number"]
 
 code:
@@ -412,6 +416,8 @@ post:
   - r8.type=number
   - r8.svalue=130
   - r8.uvalue=130
+  - r10.type=stack
+  - r10.stack_offset=512
   - s[504...511].type=number
 ---
 test-case: callx bpf_ringbuf_output with non-numeric stack value
@@ -420,7 +426,8 @@ pre: ["r1.type=map_fd", "r1.map_fd=1",
       "r2.type=stack", "r2.stack_offset=504",
       "r3.type=number", "r3.svalue=8", "r3.uvalue=8",
       "r4.type=number",
-      "r8.type=number", "r8.svalue=130", "r8.uvalue=130"]
+      "r8.type=number", "r8.svalue=130", "r8.uvalue=130",
+      "r10.type=stack", "r10.stack_offset=512"]
 
 code:
   <start>: |
@@ -431,6 +438,8 @@ post:
   - r8.type=number
   - r8.svalue=130
   - r8.uvalue=130
+  - r10.type=stack
+  - r10.stack_offset=512
 
 messages:
   - "0: Stack content is not numeric (valid_access(r2.offset, width=r3) for read)"

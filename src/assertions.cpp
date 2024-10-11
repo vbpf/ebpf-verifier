@@ -27,6 +27,12 @@ class AssertExtractor {
         return res;
     }
 
+    ValidAccess make_valid_access(Reg reg, int32_t offset = {}, Value width = Imm{0}, bool or_null = {},
+                                  AccessType access_type = {}) const {
+        int depth = current_label.has_value() ? current_label.value().call_stack_depth() : 1;
+        return ValidAccess{ depth, reg, offset, width, or_null, access_type};
+    }
+
   public:
     explicit AssertExtractor(program_info info, std::optional<label_t> label)
         : info{std::move(info)}, current_label(label) {}
@@ -99,17 +105,17 @@ class AssertExtractor {
             switch (arg.kind) {
             case ArgPair::Kind::PTR_TO_READABLE_MEM_OR_NULL:
                 res.emplace_back(TypeConstraint{arg.mem, TypeGroup::mem_or_num});
-                res.emplace_back(ValidAccess{arg.mem, 0, arg.size, true, AccessType::read});
+                res.emplace_back(make_valid_access(arg.mem, 0, arg.size, true, AccessType::read));
                 break;
             case ArgPair::Kind::PTR_TO_READABLE_MEM:
                 /* pointer to valid memory (stack, packet, map value) */
                 res.emplace_back(TypeConstraint{arg.mem, TypeGroup::mem});
-                res.emplace_back(ValidAccess{arg.mem, 0, arg.size, false, AccessType::read});
+                res.emplace_back(make_valid_access(arg.mem, 0, arg.size, false, AccessType::read));
                 break;
             case ArgPair::Kind::PTR_TO_WRITABLE_MEM:
                 // memory may be uninitialized, i.e. write only
                 res.emplace_back(TypeConstraint{arg.mem, TypeGroup::mem});
-                res.emplace_back(ValidAccess{arg.mem, 0, arg.size, false, AccessType::write});
+                res.emplace_back(make_valid_access(arg.mem, 0, arg.size, false, AccessType::write));
                 break;
             }
             // TODO: reg is constant (or maybe it's not important)
@@ -162,14 +168,14 @@ class AssertExtractor {
                     res.emplace_back(TypeConstraint{cond.left, TypeGroup::number});
                 }
 
-                res.emplace_back(ValidAccess{cond.left});
+                res.emplace_back(make_valid_access(cond.left));
                 // OK - map_fd is just another pointer
                 // Anything can be compared to 0
             }
         } else {
             const auto reg_right = get<Reg>(cond.right);
-            res.emplace_back(ValidAccess{cond.left});
-            res.emplace_back(ValidAccess{reg_right});
+            res.emplace_back(make_valid_access(cond.left));
+            res.emplace_back(make_valid_access(reg_right));
             if (cond.op != Condition::Op::EQ && cond.op != Condition::Op::NE) {
                 res.emplace_back(TypeConstraint{cond.left, TypeGroup::ptr_or_num});
             }
@@ -196,13 +202,13 @@ class AssertExtractor {
             // We know we are accessing the stack.
             if (offset < -EBPF_SUBPROGRAM_STACK_SIZE || offset + static_cast<int>(width.v) > 0) {
                 // This assertion will fail
-                res.emplace_back(
-                    ValidAccess{basereg, offset, width, false, ins.is_load ? AccessType::read : AccessType::write});
+                res.emplace_back(make_valid_access(basereg, offset, width, false,
+                                                   ins.is_load ? AccessType::read : AccessType::write));
             }
         } else {
             res.emplace_back(TypeConstraint{basereg, TypeGroup::pointer});
-            res.emplace_back(
-                ValidAccess{basereg, offset, width, false, ins.is_load ? AccessType::read : AccessType::write});
+            res.emplace_back(make_valid_access(basereg, offset, width, false,
+                                               ins.is_load ? AccessType::read : AccessType::write));
             if (!info.type.is_privileged && !ins.is_load) {
                 if (const auto preg = std::get_if<Reg>(&ins.value)) {
                     if (width.v != 8) {
@@ -221,8 +227,8 @@ class AssertExtractor {
         return {
             Assert{TypeConstraint{ins.valreg, TypeGroup::number}},
             Assert{TypeConstraint{ins.access.basereg, TypeGroup::pointer}},
-            Assert{ValidAccess{ins.access.basereg, ins.access.offset, Imm{static_cast<uint32_t>(ins.access.width)},
-                               false}},
+            Assert{make_valid_access(ins.access.basereg, ins.access.offset,
+                                     Imm{static_cast<uint32_t>(ins.access.width)}, false)},
         };
     }
 

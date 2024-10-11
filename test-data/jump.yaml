@@ -493,6 +493,7 @@ pre: ["r0.type=number",
       "r7.type=stack", "r7.stack_offset=0",
       "r8.type=packet", "r8.packet_offset=4",
       "r9.type=packet", "r9.packet_offset=0",
+      "r10.type=stack", "r10.stack_offset=512",
       "meta_offset=0"]
 
 code:
@@ -532,6 +533,8 @@ post:
   - r8.packet_offset=4
   - r9.type=packet
   - r9.packet_offset=0
+  - r10.type=stack
+  - r10.stack_offset=512
 
 messages:
   - "7:9: Code is unreachable after 7:9"
