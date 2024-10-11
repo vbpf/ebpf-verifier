@@ -1,41 +1,6 @@
 # Copyright (c) Prevail Verifier contributors.
 # SPDX-License-Identifier: MIT
 ---
-test-case: call local with stack
-
-pre: ["r10.type=stack", "r10.stack_offset=1536",
-      "s[1535...1535].type=number", "s[1535...1535].svalue=1", "s[1535...1535].uvalue=1"]
-
-code:
-  <start>: |
-    call <sub1>
-    r1 = *(u8 *)(r10 - 1)
-    r0 += r1              ; r0 = 1 + 2 + 3 = 6
-    exit
-  <sub1>: |
-    *(u8 *)(r10 - 1) = 2  ; this should not change the caller's stack
-    call <sub2>
-    r1 = *(u8 *)(r10 - 1)
-    r0 += r1              ; r0 = 2 + 3 = 5
-    exit
-  <sub2>: |
-    *(u8 *)(r10 - 1) = 3  ; this should not change the caller's stack
-    r0 = *(u8 *)(r10 - 1)
-    exit
-
-post:
-  - r0.type=number
-  - r0.svalue=6
-  - r0.uvalue=6
-  - r1.type=number
-  - r1.svalue=1
-  - r1.uvalue=1
-  - r10.type=stack
-  - r10.stack_offset=1536
-  - s[1535].type=number
-  - s[1535].svalue=1
-  - s[1535].uvalue=1
----
 test-case: call local
 
 pre: []
@@ -369,3 +334,38 @@ post: []
 
 messages:
   - "0/2: illegal recursion"
+---
+test-case: call local with stack
+
+pre: ["r10.type=stack", "r10.stack_offset=1536",
+      "s[1535...1535].type=number", "s[1535...1535].svalue=1", "s[1535...1535].uvalue=1"]
+
+code:
+  <start>: |
+    call <sub1>
+    r1 = *(u8 *)(r10 - 1)
+    r0 += r1              ; r0 = 1 + 2 + 3 = 6
+    exit
+  <sub1>: |
+    *(u8 *)(r10 - 1) = 2  ; this should not change the caller's stack
+    call <sub2>
+    r1 = *(u8 *)(r10 - 1)
+    r0 += r1              ; r0 = 2 + 3 = 5
+    exit
+  <sub2>: |
+    *(u8 *)(r10 - 1) = 3  ; this should not change the caller's stack
+    r0 = *(u8 *)(r10 - 1)
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=6
+  - r0.uvalue=6
+  - r1.type=number
+  - r1.svalue=1
+  - r1.uvalue=1
+  - r10.type=stack
+  - r10.stack_offset=1536
+  - s[1535].type=number
+  - s[1535].svalue=1
+  - s[1535].uvalue=1

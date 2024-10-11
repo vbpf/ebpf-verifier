@@ -1198,7 +1198,10 @@ void ebpf_domain_t::operator()(const basic_block_t& bb) {
 void ebpf_domain_t::check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb,
                                        const linear_expression_t& ub) const {
     using namespace crab::dsl_syntax;
-    require(inv, lb >= 0, "Lower bound must be at least 0");
+    variable_t r10_stack_offset = reg_pack(R10_STACK_POINTER).stack_offset;
+    int64_t stack_offset = m_inv.eval_interval(r10_stack_offset).singleton()->cast_to<int64_t>();
+    require(inv, lb >= stack_offset - EBPF_SUBPROGRAM_STACK_SIZE,
+            "Lower bound must be at least r10.stack_offset - EBPF_SUBPROGRAM_STACK_SIZE");
     require(inv, ub <= EBPF_TOTAL_STACK_SIZE, "Upper bound must be at most EBPF_TOTAL_STACK_SIZE");
 }
 
