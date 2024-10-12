@@ -68,7 +68,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
             -DYAML_CPP_BUILD_TOOLS=OFF
     )
     set(YAML_CPP_LIBRARIES ${EXTERNAL_INSTALL_LOCATION}/lib/yaml-cpp$<$<CONFIG:DEBUG>:d>.lib)
-    set(YAML_CPP_INCLUDE_DIRS ${EXTERNAL_INSTALL_LOCATION}/include/)
+    set(YAML_CPP_INCLUDE_DIR ${EXTERNAL_INSTALL_LOCATION}/include/)
 endif ()
 
 include_directories(./external)
@@ -77,8 +77,11 @@ include_directories(./src)
 include_directories(./external/libbtf)
 include_directories(${GSL_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
-include_directories(${YAML_CPP_INCLUDE_DIRS})
+include_directories(${YAML_CPP_INCLUDE_DIR})
+
+link_directories(${YAML_CPP_LIBRARY_DIR})
 link_directories(${Boost_LIBRARY_DIRS})
+
 
 file(GLOB LIB_SRC
         "./src/*.cpp"
