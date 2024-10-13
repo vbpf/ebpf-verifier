@@ -5,6 +5,8 @@ project(ebpf_verifier)
 
 include(FetchContent)
 
+option(VERIFIER_ENABLE_TESTS "Build tests" ON)
+
 FetchContent_Declare(GSL
         GIT_REPOSITORY "https://github.com/microsoft/GSL"
         GIT_TAG "v4.0.0"
@@ -13,12 +15,14 @@ FetchContent_Declare(GSL
 FetchContent_MakeAvailable(GSL)
 get_target_property(GSL_INCLUDE_DIRS Microsoft.GSL::GSL INTERFACE_INCLUDE_DIRECTORIES)
 
+if (VERIFIER_ENABLE_TESTS)
 FetchContent_Declare(Catch2
         GIT_REPOSITORY "https://github.com/catchorg/Catch2.git"
         GIT_TAG "v3.7.1"
         GIT_SHALLOW ON
 )
 FetchContent_MakeAvailable(Catch2)
+endif()
 
 if (IS_DIRECTORY "${PROJECT_SOURCE_DIR}/.git")
     # Install Git pre-commit hook
@@ -91,6 +95,7 @@ file(GLOB LIB_SRC
         "./src/linux/linux_platform.cpp"
 )
 
+if(VERIFIER_ENABLE_TESTS)
 file(GLOB ALL_TEST
         "./src/test/test_conformance.cpp"
         "./src/test/test_marshal.cpp"
@@ -99,6 +104,7 @@ file(GLOB ALL_TEST
         "./src/test/test_wto.cpp"
         "./src/test/test_yaml.cpp"
 )
+endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
         "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -115,13 +121,16 @@ endif ()
 
 add_library(ebpfverifier ${LIB_SRC})
 
+if(VERIFIER_ENABLE_TESTS)
 add_executable(check src/main/check.cpp src/main/linux_verifier.cpp)
 add_executable(tests ${ALL_TEST})
 add_executable(run_yaml src/main/run_yaml.cpp)
 add_executable(conformance_check src/test/conformance_check.cpp)
+endif()
 
 target_include_directories(ebpfverifier PRIVATE ${GSL_INCLUDE_DIRS})
 
+if(VERIFIER_ENABLE_TESTS)
 set_target_properties(check
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
@@ -139,6 +148,7 @@ set_target_properties(conformance_check
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
 
 add_dependencies(tests conformance_check)
+endif()
 
 target_compile_options(ebpfverifier PRIVATE ${COMMON_FLAGS})
 target_compile_options(ebpfverifier PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
@@ -146,7 +156,9 @@ target_compile_options(ebpfverifier PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}
 target_compile_options(ebpfverifier PUBLIC "$<$<CONFIG:SANITIZE>:${SANITIZE_FLAGS}>")
 
 add_subdirectory("external/bpf_conformance/external/elfio")
+if(VERIFIER_ENABLE_TESTS)
 add_subdirectory("external/bpf_conformance/src")
+endif()
 add_subdirectory("external/libbtf")
 
 # CMake derives a Visual Studio project GUID from the file path but can be overridden via a property
@@ -164,6 +176,7 @@ target_link_libraries(ebpfverifier PRIVATE libbtf)
 target_link_libraries(ebpfverifier PRIVATE Microsoft.GSL::GSL)
 target_compile_options(ebpfverifier PRIVATE ${COMMON_FLAGS})
 
+if(VERIFIER_ENABLE_TESTS)
 target_compile_options(check PRIVATE ${COMMON_FLAGS})
 target_compile_options(check PUBLIC "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
 target_compile_options(check PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_FLAGS}>")
@@ -184,3 +197,4 @@ target_link_libraries(tests PRIVATE Catch2::Catch2WithMain)
 target_link_libraries(run_yaml PRIVATE ebpfverifier)
 
 target_link_libraries(conformance_check PRIVATE ebpfverifier)
+endif()
