@@ -18,6 +18,7 @@ jobs:
     strategy:
       matrix:
         configurations: [Debug, Release]
+        target: [tests, library]
     runs-on: ubuntu-latest
     env:
       # Configuration type to build.  For documentation on how build matrices work, see
@@ -37,13 +38,19 @@ jobs:
       - name: Build
         run: |
           mkdir build
-          cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_CONFIGURATION}}
+          if [ "${{matrix.target}}" = "library" ]; then
+            cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_CONFIGURATION}} -DVERIFIER_ENABLE_TESTS=OFF
+          else
+            cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_CONFIGURATION}} -DVERIFIER_ENABLE_TESTS=ON
+          fi
           cmake --build build -j $(nproc)
 
       - name: Run unit tests
+        if: ${{matrix.target == 'tests'}}
         run: ./tests -d yes
 
       - name: Test for memory leaks
+        if: ${{matrix.target == 'tests'}}
         # Any memory leaks will cause the test to fail
         # This BPF program was chosen because it is the largest one in the repo
         run: valgrind --leak-check=full --errors-for-leak-kinds=all  --show-leak-kinds=all --error-exitcode=1 ./check ebpf-samples/cilium/bpf_xdp_snat_linux_v1.o 2/1
@@ -52,6 +59,7 @@ jobs:
     strategy:
       matrix:
         configurations: [Debug, Release]
+        target: [tests, library]
     runs-on: windows-2022
     env:
       # Configuration type to build.  For documentation on how build matrices work, see
@@ -66,8 +74,13 @@ jobs:
       - name: Build
         run: |
           mkdir build
-          cmake -B build
+          if ("${{matrix.target}}" -eq "library") {
+            cmake -B build -DVERIFIER_ENABLE_TESTS=OFF
+          } else {
+            cmake -B build -DVERIFIER_ENABLE_TESTS=ON
+          }
           cmake --build build -j $(nproc) --config ${{env.BUILD_CONFIGURATION}}
 
       - name: Run unit tests
+        if: ${{matrix.target == 'tests'}}
         run: ./${{env.BUILD_CONFIGURATION}}/tests -d yes
