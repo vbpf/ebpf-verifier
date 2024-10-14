@@ -18,7 +18,7 @@ jobs:
     strategy:
       matrix:
         configurations: [Debug, Release]
-        build_tests: [on, off]
+        build_tests: [true, false]
     runs-on: ubuntu-latest
     env:
       # Configuration type to build.  For documentation on how build matrices work, see
@@ -42,11 +42,11 @@ jobs:
           cmake --build build -j $(nproc)
 
       - name: Run unit tests
-        if: matrix.build_tests == 'on'
+        if: matrix.build_tests
         run: ./tests -d yes
 
       - name: Test for memory leaks
-        if: matrix.build_tests == 'on'
+        if: matrix.build_tests
         # Any memory leaks will cause the test to fail
         # This BPF program was chosen because it is the largest one in the repo
         run: valgrind --leak-check=full --errors-for-leak-kinds=all  --show-leak-kinds=all --error-exitcode=1 ./check ebpf-samples/cilium/bpf_xdp_snat_linux_v1.o 2/1
@@ -55,7 +55,7 @@ jobs:
     strategy:
       matrix:
         configurations: [Debug, Release]
-        build_tests: [on, off]
+        build_tests: [true, false]
     runs-on: windows-2022
     env:
       # Configuration type to build.  For documentation on how build matrices work, see
@@ -74,5 +74,5 @@ jobs:
           cmake --build build -j $(nproc) --config ${{env.BUILD_CONFIGURATION}}
 
       - name: Run unit tests
-        if: matrix.build_tests == 'on'
+        if: matrix.build_tests
         run: ./${{env.BUILD_CONFIGURATION}}/tests -d yes
