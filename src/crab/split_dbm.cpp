@@ -1008,9 +1008,30 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, const number_
     case arith_binop_t::MUL: assign(x, linear_expression_t(k, y)); break;
     // For the rest of operations, we fall back on intervals.
     case arith_binop_t::SDIV: set(x, get_interval(y, finite_width).SDiv(interval_t(k))); break;
-    case arith_binop_t::UDIV: set(x, get_interval(y, finite_width).UDiv(interval_t(k))); break;
+    case arith_binop_t::UDIV: {
+        if (finite_width == 32) {
+            // As defined in the BPF ISA specification, for 32 bit unsigned division the immediate value is
+            // treated as a 32-bit unsigned integer, so we need to cast it to uint32_t.
+            set(x, get_interval(y, finite_width).UDiv(interval_t(k.cast_to<uint32_t>())));
+        } else {
+            // As defined in the BPF ISA specification, for 64 bit unsigned division the immediate value is
+            // treated as a 32-bit signed integer, so we need to cast it to int32_t.
+            set(x, get_interval(y, finite_width).UDiv(interval_t(k.cast_to<int32_t>())));
+        }
+        break;
+    }
     case arith_binop_t::SREM: set(x, get_interval(y, finite_width).SRem(interval_t(k))); break;
-    case arith_binop_t::UREM: set(x, get_interval(y, finite_width).URem(interval_t(k))); break;
+    case arith_binop_t::UREM:
+        if (finite_width == 32) {
+            // As defined in the BPF ISA specification, for 32 bit unsigned modulo the immediate value is
+            // treated as a 32-bit unsigned integer, so we need to cast it to uint32_t.
+            set(x, get_interval(y, finite_width).URem(interval_t(k.cast_to<uint32_t>())));
+        } else {
+            // As defined in the BPF ISA specification, for 64 bit unsigned modulo the immediate value is
+            // treated as a 32-bit signed integer, so we need to cast it to int32_t.
+            set(x, get_interval(y, finite_width).URem(interval_t(k.cast_to<int32_t>())));
+        }
+        break;
     default: CRAB_ERROR("DBM: unreachable");
     }
     normalize();
