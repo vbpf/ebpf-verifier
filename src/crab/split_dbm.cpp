@@ -998,6 +998,32 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, variable_t z,
     normalize();
 }
 
+// As defined in the BPF ISA specification, the immediate value of an unsigned modulo and division is treated
+// differently depending on the width:
+// * for 32 bit, as a 32-bit unsigned integer
+// * for 64 bit, as a 32-bit (not 64 bit) signed integer
+number_t read_imm_for_udiv_or_umod(const number_t& imm, int width) {
+    assert(width == 32 || width == 64);
+    if (width == 32) {
+        return number_t{imm.cast_to<uint32_t>()};
+    } else {
+        return number_t{imm.cast_to<int32_t>()};
+    }
+}
+
+// As defined in the BPF ISA specification, the immediate value of a signed modulo and division is treated
+// differently depending on the width:
+// * for 32 bit, as a 32-bit signed integer
+// * for 64 bit, as a 64-bit signed integer
+number_t read_imm_for_sdiv_or_smod(const number_t& imm, int width) {
+    assert(width == 32 || width == 64);
+    if (width == 32) {
+        return number_t{imm.cast_to<int32_t>()};
+    } else {
+        return number_t{imm.cast_to<int64_t>()};
+    }
+}
+
 void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, const number_t& k, int finite_width) {
     CrabStats::count("SplitDBM.count.apply");
     ScopedCrabStats __st__("SplitDBM.apply");
@@ -1007,31 +1033,10 @@ void SplitDBM::apply(arith_binop_t op, variable_t x, variable_t y, const number_
     case arith_binop_t::SUB: assign(x, linear_expression_t(y).subtract(k)); break;
     case arith_binop_t::MUL: assign(x, linear_expression_t(k, y)); break;
     // For the rest of operations, we fall back on intervals.
-    case arith_binop_t::SDIV: set(x, get_interval(y, finite_width).SDiv(interval_t(k))); break;
-    case arith_binop_t::UDIV: {
-        if (finite_width == 32) {
-            // As defined in the BPF ISA specification, for 32 bit unsigned division the immediate value is
-            // treated as a 32-bit unsigned integer, so we need to cast it to uint32_t.
-            set(x, get_interval(y, finite_width).UDiv(interval_t(k.cast_to<uint32_t>())));
-        } else {
-            // As defined in the BPF ISA specification, for 64 bit unsigned division the immediate value is
-            // treated as a 32-bit signed integer, so we need to cast it to int32_t.
-            set(x, get_interval(y, finite_width).UDiv(interval_t(k.cast_to<int32_t>())));
-        }
-        break;
-    }
-    case arith_binop_t::SREM: set(x, get_interval(y, finite_width).SRem(interval_t(k))); break;
-    case arith_binop_t::UREM:
-        if (finite_width == 32) {
-            // As defined in the BPF ISA specification, for 32 bit unsigned modulo the immediate value is
-            // treated as a 32-bit unsigned integer, so we need to cast it to uint32_t.
-            set(x, get_interval(y, finite_width).URem(interval_t(k.cast_to<uint32_t>())));
-        } else {
-            // As defined in the BPF ISA specification, for 64 bit unsigned modulo the immediate value is
-            // treated as a 32-bit signed integer, so we need to cast it to int32_t.
-            set(x, get_interval(y, finite_width).URem(interval_t(k.cast_to<int32_t>())));
-        }
-        break;
+    case arith_binop_t::SDIV: set(x, get_interval(y, finite_width).SDiv(interval_t(read_imm_for_sdiv_or_smod(k, finite_width)))); break;
+    case arith_binop_t::UDIV: set(x, get_interval(y, finite_width).UDiv(interval_t(read_imm_for_udiv_or_umod(k, finite_width)))); break;
+    case arith_binop_t::SREM: set(x, get_interval(y, finite_width).SRem(interval_t(read_imm_for_sdiv_or_smod(k, finite_width)))); break;
+    case arith_binop_t::UREM: set(x, get_interval(y, finite_width).URem(interval_t(read_imm_for_udiv_or_umod(k, finite_width)))); break;
     default: CRAB_ERROR("DBM: unreachable");
     }
     normalize();
