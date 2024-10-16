@@ -577,17 +577,12 @@ post:
 ---
 test-case: Inverted range after modulo
 
-pre: [r0.type=number]
+pre: ["r0.type=number",
+      "r0.uvalue=[32768, 9223372036854775807]"]
 
 code:
   <start>: |
-    if r0 s< 0x8000 goto <reset>
     r0 %= 0x808
-    goto <exit>
-  <reset>: |
-    r0 = 0
-  <exit>: |
-    exit
 
 post:
   - r0.type=number
