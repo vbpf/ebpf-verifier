@@ -189,12 +189,15 @@ interval_t interval_t::URem(const interval_t& x) const {
     }
     if (const auto dividend = singleton()) {
         if (const auto divisor = x.singleton()) {
-            if (*divisor == 0) {
-                return interval_t(*dividend);
+            if (dividend->fits_cast_to<uint64_t>() && divisor->fits_cast_to<uint64_t>()) {
+                // The BPF ISA defines modulo by 0 as resulting in the original value.
+                if (*divisor == 0) {
+                    return interval_t(*dividend);
+                }
+                uint64_t dividend_val = dividend->cast_to<uint64_t>();
+                uint64_t divisor_val = divisor->cast_to<uint64_t>();
+                return interval_t(dividend_val % divisor_val);
             }
-            uint64_t dividend_val = dividend->cast_to<uint64_t>();
-            uint64_t divisor_val = divisor->cast_to<uint64_t>();
-            return interval_t(dividend_val % divisor_val);
         }
     }
     if (x.contains(0)) {
