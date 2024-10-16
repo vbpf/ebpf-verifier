@@ -573,3 +573,24 @@ post:
   - r2.type=number
   - r2.svalue=[7, 10]
   - r2.uvalue=[7, 10]
+
+---
+test-case: Inverted range after modulo
+
+pre: [r0.type=number]
+
+code:
+  <start>: |
+    if r0 s< 0x8000 goto <reset>
+    r0 %= 0x808
+    goto <exit>
+  <reset>: |
+    r0 = 0
+  <exit>: |
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=[0, 2055]
+  - r0.uvalue=[0, 2055]
+  - r0.svalue=r0.uvalue
