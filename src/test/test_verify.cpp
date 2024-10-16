@@ -510,6 +510,7 @@ TEST_SECTION("build", "tail_call.o", "xdp_prog")
 TEST_SECTION("build", "map_in_map.o", ".text")
 TEST_SECTION("build", "map_in_map_anonymous.o", ".text")
 TEST_SECTION("build", "map_in_map_legacy.o", ".text")
+TEST_SECTION("build", "store_map_value_in_map.o", ".text")
 TEST_SECTION("build", "twomaps.o", ".text");
 TEST_SECTION("build", "twostackvars.o", ".text");
 TEST_SECTION("build", "twotypes.o", ".text");
@@ -536,10 +537,6 @@ TEST_SECTION_REJECT("build", "ringbuf_uninit.o", ".text");
 // The following eBPF programs currently fail verification.
 // If the verifier is later updated to accept them, these should
 // be changed to TEST_SECTION().
-
-// Issue: https://github.com/vbpf/ebpf-verifier/issues/620
-// Inserting value from map 1 into map 2 should be supported, but fails.
-TEST_SECTION_FAIL("build", "store_map_value_in_map.o", ".text")
 
 // Unsupported: ebpf-function
 TEST_SECTION_FAIL("prototype-kernel", "xdp_ddos01_blacklist_kern.o", ".text")
