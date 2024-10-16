@@ -189,19 +189,19 @@ code:
     r0 = r1
 
 invariants-to-check:
-  1:
+  1: # After the first assignment, r1 should be 1.
     - r1.type=number
     - r1.svalue=1
     - r1.uvalue=1
-  2:
+  2: # After the second assignment, r2 should be 2.
     - r2.type=number
     - r2.svalue=2
     - r2.uvalue=2
-  3:
+  3: # After the addition, r1 should be 3.
     - r1.type=number
     - r1.svalue=3
     - r1.uvalue=3
-  -2:
+  -2: # After the last assignment, r0 should be 3.
     - r0.type=number
     - r0.svalue=3
     - r0.uvalue=3
@@ -229,19 +229,19 @@ code:
     r0 = r1
 
 invariants-to-check:
-  1:
+  1: # After the first assignment, r1 should be 1.
     - r1.type=number
     - r1.svalue=1
     - r1.uvalue=1
-  2:
+  2: # After the second assignment, r2 should be 2.
     - r2.type=number
     - r2.svalue=2
     - r2.uvalue=2
-  3:
+  3: # After the addition, r1 should be 3. Invalid invariant to test negative case.
     - r1.type=number
     - r1.svalue=2
     - r1.uvalue=2
-  -2:
+  -2: # After the last assignment, r0 should be 3.
     - r0.type=number
     - r0.svalue=3
     - r0.uvalue=3
@@ -258,4 +258,4 @@ post:
   - r2.uvalue=2
 
 messages:
-  - "3: Concrete invariants at do not match abstract invariants"
+  - "3: Concrete invariants do not match abstract invariants"

@@ -32,6 +32,8 @@ void ebpf_verifier_clear_thread_local_state();
  * verifier constraints at the label. Requires the `store_pre_invariants` option to be set.
  *
  * Abstract constraints are computed by the verifier and stored if the `store_pre_invariants` option is set.
+ * These constraints represent the program state at a specific point in the control flow graph,
+ * as determined by the static analysis performed by the verifier.
  *
  * @param[in,out] os Print output to this stream.
  * @param[in] label The location in the CFG to check against.

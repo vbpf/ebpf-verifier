@@ -128,7 +128,7 @@ static std::set<string> as_set_empty_default(const YAML::Node& optional_node) {
 }
 
 static std::map<std::string, std::set<std::string>> parse_invariants_to_check(const YAML::Node& case_node) {
-    if (!case_node["invariants-to-check"].IsDefined()) {
+    if (!case_node["invariants-to-check"].IsDefined() || case_node["invariants-to-check"].IsNull()) {
         return {};
     }
 
@@ -278,12 +278,14 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
     std::set<string> actual_messages = extract_messages(ss.str());
 
     for (auto& [label, expected_invariant] : test_case.invariants_to_check) {
+        ss.str("");
+        ss.clear();
         if (!ebpf_check_constraints_at_label(ss, label, expected_invariant)) {
             // If debug is enabled, print the output of ebpf_check_constraints_at_label.
             if (debug) {
                 std::cout << ss.str();
             }
-            actual_messages.insert(label + ": Concrete invariants at do not match abstract invariants");
+            actual_messages.insert(label + ": Concrete invariants do not match abstract invariants");
         }
     }
 
