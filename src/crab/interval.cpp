@@ -192,8 +192,8 @@ interval_t interval_t::URem(const interval_t& x) const {
             if (*divisor == 0) {
                 return interval_t(*dividend);
             }
-            auto dividend_val = dividend->cast_to<uint64_t>();
-            auto divisor_val = divisor->cast_to<uint64_t>();
+            uint64_t dividend_val = dividend->cast_to<uint64_t>();
+            uint64_t divisor_val = divisor->cast_to<uint64_t>();
             return interval_t(dividend_val % divisor_val);
         }
     }
