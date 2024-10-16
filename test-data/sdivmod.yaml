@@ -573,6 +573,10 @@ post:
 ---
 test-case: Inverted range after modulo
 
+# Ranges are and divisor are selected so that the result of modulo has
+# inverted range compared (i.e 0x8000 % 0x808 = 0x788 and 0x7FFFFFFFFFFFFFFF % 0x808 = 0x787)
+# This previously caused an issue in the verifier as the range would be bottom (instead of a valid range).
+# Constants were picked by the libfuzzer tool.
 pre: ["r0.type=number",
       "r0.svalue=[32768, 9223372036854775807]"]
 
