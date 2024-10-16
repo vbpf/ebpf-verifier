@@ -162,7 +162,13 @@ static checks_db get_analysis_report(std::ostream& s, cfg_t& cfg, const crab::in
     return db;
 }
 
-static thread_local std::optional<crab::invariant_table_t> save_pre_invariants = std::nullopt;
+static thread_local std::optional<crab::invariant_table_t> saved_pre_invariants = std::nullopt;
+
+static void save_invariants_if_needed(const crab::invariant_table_t& pre_invariants) {
+    if (thread_local_options.store_pre_invariants) {
+        saved_pre_invariants = pre_invariants;
+    }
+}
 
 static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options,
                                  const std::optional<InstructionSeq>& prog = std::nullopt) {
@@ -175,9 +181,7 @@ static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info,
         // Get dictionaries of pre-invariants and post-invariants for each basic block.
         ebpf_domain_t entry_dom = ebpf_domain_t::setup_entry(true);
         auto [pre_invariants, post_invariants] = run_forward_analyzer(cfg, std::move(entry_dom));
-        if (thread_local_options.store_pre_invariants) {
-            save_pre_invariants = pre_invariants;
-        }
+        save_invariants_if_needed(pre_invariants);
         return get_analysis_report(s, cfg, pre_invariants, post_invariants, prog);
     } catch (std::runtime_error& e) {
         // Convert verifier runtime_error exceptions to failure.
@@ -227,9 +231,7 @@ std::tuple<string_invariant, bool> ebpf_analyze_program_for_test(std::ostream& o
     try {
         cfg_t cfg = prepare_cfg(prog, info, options.simplify, false);
         auto [pre_invariants, post_invariants] = run_forward_analyzer(cfg, std::move(entry_inv));
-        if (thread_local_options.store_pre_invariants) {
-            save_pre_invariants = pre_invariants;
-        }
+        save_invariants_if_needed(pre_invariants);
         const checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
         print_report(os, report, prog, false);
 
@@ -276,21 +278,21 @@ void ebpf_verifier_clear_thread_local_state() {
     global_program_info.clear();
     crab::domains::clear_thread_local_state();
     crab::domains::SplitDBM::clear_thread_local_state();
-    save_pre_invariants = std::nullopt;
+    saved_pre_invariants = std::nullopt;
 }
 
 bool ebpf_check_constraints_at_label(std::ostream& os, const std::string& label_string,
                                      const std::set<std::string>& constraints) try {
     label_t label = label_t(label_string);
-    if (!save_pre_invariants.has_value()) {
+    if (!saved_pre_invariants.has_value()) {
         os << "No pre-invariants available\n";
         return false;
     }
-    if (save_pre_invariants.value().find(label) == save_pre_invariants.value().end()) {
+    if (saved_pre_invariants.value().find(label) == saved_pre_invariants.value().end()) {
         os << "No pre-invariants available for label " << label << "\n";
         return false;
     }
-    ebpf_domain_t from_inv(save_pre_invariants.value().at(label));
+    ebpf_domain_t from_inv(saved_pre_invariants.value().at(label));
     auto concrete_domain = ebpf_domain_t::from_constraints(constraints, false);
 
     if (concrete_domain.is_bottom()) {
@@ -327,12 +329,14 @@ bool ebpf_check_constraints_at_label(std::ostream& os, const std::string& label_
 
 std::set<std::string> ebpf_get_invariants_at_label(const std::string& label)
 {
+    // If the label is malformed, throw an exception so the caller can handle it.
     label_t l = label_t(label);
-    if (!save_pre_invariants.has_value()) {
+
+    if (!saved_pre_invariants.has_value()) {
         return {};
     }
-    if (save_pre_invariants.value().find(l) == save_pre_invariants.value().end()) {
+    if (saved_pre_invariants.value().find(l) == saved_pre_invariants.value().end()) {
         return {};
     }
-    return save_pre_invariants.value().at(l).to_set().value();
+    return saved_pre_invariants.value().at(l).to_set().value();
 }
