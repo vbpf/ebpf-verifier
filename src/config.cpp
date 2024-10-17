@@ -14,4 +14,5 @@ const ebpf_verifier_options_t ebpf_verifier_default_options = {
     .allow_division_by_zero = true,
     .setup_constraints = true,
     .big_endian = false,
+    .store_pre_invariants = false, // Enable this to permit usage of the ebpf_check_constraints_at_label and ebpf_get_invariants_at_label functions.
 };

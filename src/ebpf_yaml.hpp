@@ -14,6 +14,7 @@ struct TestCase {
     InstructionSeq instruction_seq;
     string_invariant expected_post_invariant;
     std::set<std::string> expected_messages;
+    std::map<std::string, std::set<std::string>> invariants_to_check; ///< Map from label to expected invariants, used for checking invariants at specific labels.
 };
 
 void foreach_suite(const std::string& path, const std::function<void(const TestCase&)>& f);
