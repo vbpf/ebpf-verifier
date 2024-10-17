@@ -1,0 +1,152 @@
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+---
+test-case: addition of a number and an uninitialized register
+
+pre:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+code:
+  <start>: |
+    r0 += r3
+
+post: []
+
+messages:
+  - "0: Invalid type (r3.type in {number, ctx, stack, packet, shared})"
+  - "CRAB ERROR: Cannot convert bottom to tuple"
+
+---
+test-case: subtraction of a number and an uninitialized register
+
+pre:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+code:
+  <start>: |
+    r0 -= r3
+
+post: []
+
+messages:
+  - "0: Cannot subtract pointers to different regions (r3.type == number or r0.type == r3.type in {ctx, stack, packet})"
+
+---
+test-case: multiplication of a number and an uninitialized register
+
+pre:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+code:
+  <start>: |
+    r0 *= r3
+
+post:
+  - "r0.type=number"
+
+messages:
+  - "0: Invalid type (r3.type == number)"
+
+---
+test-case: division of a number and an uninitialized register
+
+pre:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+code:
+  <start>: |
+    r0 /= r3
+
+post:
+  - "r0.svalue=[0, 1]"
+  - "r0.svalue=r0.uvalue"
+  - "r0.type=number"
+  - "r0.uvalue=[0, 1]"
+
+messages:
+  - "0: Only numbers can be used as divisors (r3 != 0)"
+
+---
+test-case: modulo of a number and an uninitialized register
+
+pre:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+code:
+  <start>: |
+    r0 %= r3
+
+post:
+  - "r0.svalue=[0, 1]"
+  - "r0.svalue=r0.uvalue"
+  - "r0.type=number"
+  - "r0.uvalue=[0, 1]"
+
+messages:
+  - "0: Only numbers can be used as divisors (r3 != 0)"
+
+---
+test-case: AND of a number and an uninitialized register
+
+pre:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+code:
+  <start>: |
+    r0 &= r3
+
+post:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+messages:
+  - "0: Invalid type (r3.type == number)"
+
+---
+test-case: OR of a number and an uninitialized register
+
+pre:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+code:
+  <start>: |
+    r0 |= r3
+
+post:
+  - "r0.type=number"
+
+messages:
+  - "0: Invalid type (r3.type == number)"
+
+---
+test-case: XOR of a number and an uninitialized register
+
+pre:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+code:
+  <start>: |
+    r0 ^= r3
+
+post:
+  - "r0.type=number"
+
+messages:
+  - "0: Invalid type (r3.type == number)"
