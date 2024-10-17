@@ -487,7 +487,7 @@ pre:
 
 code:
   <start>: |
-    lock *(u64 *)(r1 + 0) cx= r5
+    lock *(u64 *)(r1 + 0) x= r5
 
 post:
   - "r1.type=ctx"
