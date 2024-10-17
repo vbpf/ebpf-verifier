@@ -2497,6 +2497,12 @@ void ebpf_domain_t::operator()(const Bin& bin) {
             // Use only the low 32 bits of the value.
             imm = gsl::narrow_cast<int32_t>(pimm->v);
             bitwise_and(dst.svalue, dst.uvalue, std::numeric_limits<uint32_t>::max());
+            // If this is a 32-bit operation and the destination is not a number, forget everything about the register.
+            if (!type_inv.has_type(m_inv, bin.dst, T_NUM)) {
+                havoc_register(m_inv, bin.dst);
+                havoc_offsets(bin.dst);
+                havoc(dst.type);
+            }
         }
         switch (bin.op) {
         case Bin::Op::MOV:
