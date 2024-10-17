@@ -315,3 +315,183 @@ post:
   - "r0.svalue=r3.svalue"
   - "r0.type=r3.type"
   - "r0.uvalue=r3.uvalue"
+
+---
+test-case: Store uninitialized register to context - 8 bytes
+
+pre:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    *(u64 *)(r1 + 0) = r0
+
+post:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+messages:
+  - "0: Only numbers can be stored to externally-visible regions (r1.type != stack -> r0.type == number)"
+
+---
+test-case: Store uninitialized register to context - 4 bytes
+
+pre:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    *(u32 *)(r1 + 0) = r0
+
+post:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+messages:
+  - "0: Invalid type (r0.type == number)"
+
+---
+test-case: Store uninitialized register to context - 2 bytes
+
+pre:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    *(u16 *)(r1 + 0) = r0
+
+post:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+messages:
+  - "0: Invalid type (r0.type == number)"
+
+---
+test-case: Store uninitialized register to context - 1 bytes
+
+pre:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    *(u8 *)(r1 + 0) = r0
+
+post:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+messages:
+  - "0: Invalid type (r0.type == number)"
+
+---
+test-case: Atomic add uninitialized register to context
+
+pre:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    lock *(u64 *)(r1 + 0) += r5
+
+post:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+messages:
+  - "0: Invalid type (r5.type == number)"
+
+---
+test-case: Atomic AND uninitialized register to context
+
+pre:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    lock *(u64 *)(r1 + 0) &= r5
+
+post:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+messages:
+  - "0: Invalid type (r5.type == number)"
+
+---
+test-case: Atomic OR uninitialized register to context
+
+pre:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    lock *(u64 *)(r1 + 0) |= r5
+
+post:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+messages:
+  - "0: Invalid type (r5.type == number)"
+
+---
+test-case: Atomic XOR uninitialized register to context
+
+pre:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    lock *(u64 *)(r1 + 0) |= r5
+
+post:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+messages:
+  - "0: Invalid type (r5.type == number)"
+
+---
+test-case: Atomic XHNG uninitialized register to context
+
+pre:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    lock *(u64 *)(r1 + 0) x= r5
+
+post:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+messages:
+  - "0: Invalid type (r5.type == number)"
+
+---
+test-case: Atomic CMPXCHG uninitialized register to context
+
+pre:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    lock *(u64 *)(r1 + 0) cx= r5
+
+post:
+  - "r1.type=ctx"
+  - "r1.ctx_offset=0"
+
+messages:
+  - "0: Invalid type (r5.type == number)"
