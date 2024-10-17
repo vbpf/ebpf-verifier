@@ -223,6 +223,8 @@ class number_t final {
 
     bool operator>=(const number_t& x) const { return _n >= x._n; }
 
+    number_t abs() const { return _n < 0 ? -_n : _n; }
+
     number_t operator&(const number_t& x) const { return number_t(_n & x._n); }
 
     number_t operator|(const number_t& x) const { return number_t(_n | x._n); }
