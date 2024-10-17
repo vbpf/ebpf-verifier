@@ -75,6 +75,25 @@ messages:
   - "0: Only numbers can be used as divisors (r3 != 0)"
 
 ---
+test-case: signed division of a number and an uninitialized register
+
+pre:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+code:
+  <start>: |
+    r0 s/= r3
+
+post:
+  - "r0.svalue=[-1, 1]"
+  - "r0.type=number"
+
+messages:
+  - "0: Only numbers can be used as divisors (r3 != 0)"
+
+---
 test-case: modulo of a number and an uninitialized register
 
 pre:
@@ -85,6 +104,27 @@ pre:
 code:
   <start>: |
     r0 %= r3
+
+post:
+  - "r0.svalue=[0, 1]"
+  - "r0.svalue=r0.uvalue"
+  - "r0.type=number"
+  - "r0.uvalue=[0, 1]"
+
+messages:
+  - "0: Only numbers can be used as divisors (r3 != 0)"
+
+---
+test-case: signed modulo of a number and an uninitialized register
+
+pre:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+code:
+  <start>: |
+    r0 s%= r3
 
 post:
   - "r0.svalue=[0, 1]"
@@ -150,3 +190,128 @@ post:
 
 messages:
   - "0: Invalid type (r3.type == number)"
+
+---
+test-case: LSH of a number and an uninitialized register
+
+pre:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+code:
+  <start>: |
+    r0 <<= r3
+
+post:
+  - "r0.type=number"
+
+messages:
+  - "0: Invalid type (r3.type == number)"
+
+---
+test-case: RSH of a number and an uninitialized register
+
+pre:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+code:
+  <start>: |
+    r0 >>= r3
+
+post:
+  - "r0.type=number"
+
+messages:
+  - "0: Invalid type (r3.type == number)"
+
+---
+test-case: ARSH of a number and an uninitialized register
+
+pre:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+code:
+  <start>: |
+    r0 s>>= r3
+
+post:
+  - "r0.type=number"
+
+messages:
+  - "0: Invalid type (r3.type == number)"
+
+---
+test-case: MOVSX8 of a number and an uninitialized register
+
+pre:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+code:
+  <start>: |
+    r0 s8= r3
+
+post:
+  - "r0.type=number"
+
+messages:
+  - "0: Invalid type (r3.type == number)"
+
+---
+test-case: MOVSX16 of a number and an uninitialized register
+
+pre:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+code:
+  <start>: |
+    r0 s16= r3
+
+post:
+  - "r0.type=number"
+
+messages:
+  - "0: Invalid type (r3.type == number)"
+
+---
+test-case: MOVSX32 of a number and an uninitialized register
+
+pre:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+code:
+  <start>: |
+    r0 s32= r3
+
+post:
+  - "r0.type=number"
+
+messages:
+  - "0: Invalid type (r3.type == number)"
+
+---
+test-case: MOV of a number and an uninitialized register
+
+pre:
+  - "r0.type=number"
+  - "r0.uvalue=1"
+  - "r0.svalue=1"
+
+code:
+  <start>: |
+    r0 = r3
+
+post:
+  - "r0.svalue=r3.svalue"
+  - "r0.type=r3.type"
+  - "r0.uvalue=r3.uvalue"
