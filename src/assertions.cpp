@@ -196,6 +196,7 @@ class AssertExtractor {
         res.emplace_back(TypeConstraint{ins.access.basereg, TypeGroup::pointer});
         res.emplace_back(
             ValidAccess{ins.access.basereg, ins.access.offset, Imm{static_cast<uint32_t>(ins.access.width)}, false});
+        res.emplace_back(TypeConstraint{ins.valreg, TypeGroup::number});
         if (ins.op == Atomic::Op::CMPXCHG) {
             // The memory contents pointed to by ins.access will be compared
             // against the value of the ins.valreg register.  Only numbers are
@@ -246,7 +247,14 @@ class AssertExtractor {
             }
             return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}};
         }
-        default: return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}};
+        // For all other binary operations, the destination register must be a number and the source must either be an immediate or a number.
+        default:
+            if (const auto src = std::get_if<Reg>(&ins.v)) {
+                return {Assert{TypeConstraint{ins.dst, TypeGroup::number}},
+                        Assert{TypeConstraint{*src, TypeGroup::number}}};
+            } else {
+                return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}};
+            }
         }
         assert(false);
     }
