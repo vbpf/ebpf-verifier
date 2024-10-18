@@ -23,6 +23,29 @@ struct label_t {
     explicit label_t(const int index, const int to = -1, std::string stack_frame_prefix = {}) noexcept
         : from(index), to(to), stack_frame_prefix(std::move(stack_frame_prefix)) {}
 
+    explicit label_t(std::string_view string_label) {
+        auto pos = string_label.find(STACK_FRAME_DELIMITER);
+        if (pos != std::string_view::npos) {
+            stack_frame_prefix = std::string(string_label.substr(0, pos));
+            string_label = string_label.substr(pos + 1);
+        }
+
+        pos = string_label.find(':');
+        try {
+            if (pos != std::string_view::npos) {
+                from = std::stoi(std::string(string_label.substr(0, pos)));
+                to = std::stoi(std::string(string_label.substr(pos + 1)));
+            } else {
+                from = std::stoi(std::string(string_label));
+                to = -1;
+            }
+        } catch (const std::invalid_argument& e) {
+            throw std::invalid_argument("Invalid label format: " + std::string(string_label));
+        } catch (const std::out_of_range& e) {
+            throw std::out_of_range("Label value out of range: " + std::string(string_label));
+        }
+    }
+
     static label_t make_jump(const label_t& src_label, const label_t& target_label) {
         return label_t{src_label.from, target_label.from, target_label.stack_frame_prefix};
     }
