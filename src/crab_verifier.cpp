@@ -97,7 +97,13 @@ static checks_db generate_report(cfg_t& cfg, const crab::invariant_table_t& pre_
     if (thread_local_options.check_termination) {
         const auto last_inv = post_invariants.at(cfg.exit_label());
         m_db.max_loop_count = last_inv.get_loop_count_upper_bound();
+
+         // Check if the exit is unreachable, which could indicate an infinite loop
+        if (last_inv.is_bottom()) {
+            m_db.add_unreachable(label_t::exit, "Exit is unreachable.");
+        }
     }
+
     return m_db;
 }
 
