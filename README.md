@@ -126,7 +126,7 @@ A standard alternative to the --asm flag is `llvm-objdump -S FILE`.
 The cfg can be viewed using `dot` and the standard PDF viewer:
 ```
 sudo apt install graphviz
-./check ebpf-samples/cilium/bpf_lxc.o 2/1 --dot cfg.dot
+./check ebpf-samples/cilium/bpf_lxc.o 2/1 --dot cfg.dot --domain=stats
 dot -Tpdf cfg.dot > cfg.pdf
 ```
 
