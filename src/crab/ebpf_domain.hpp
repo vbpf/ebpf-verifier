@@ -149,6 +149,7 @@ class ebpf_domain_t final {
     void scratch_caller_saved_registers();
     void save_callee_saved_registers(const std::string& prefix);
     void restore_callee_saved_registers(const std::string& prefix);
+    void havoc_subprogram_stack(const std::string& prefix);
     [[nodiscard]]
     std::optional<uint32_t> get_map_type(const Reg& map_fd_reg) const;
     [[nodiscard]]
@@ -167,7 +168,7 @@ class ebpf_domain_t final {
     void require(domains::NumAbsDomain& inv, const linear_constraint_t& cst, const std::string& s) const;
 
     // memory check / load / store
-    void check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) const;
+    void check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, int call_stack_depth) const;
     void check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) const;
     void check_access_packet(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
                              std::optional<variable_t> packet_size) const;

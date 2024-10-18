@@ -264,6 +264,7 @@ test-case: atomic 32-bit ADD stack
 
 pre: ["r1.type=number", "r1.svalue=2", "r1.uvalue=2",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...7].type=number", "s[4...7].svalue=1", "s[4...7].uvalue=1"]
 
 code:
@@ -272,12 +273,14 @@ code:
 
 post: ["r1.type=number", "r1.svalue=2", "r1.uvalue=2",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...7].type=number", "s[4...7].svalue=3", "s[4...7].uvalue=3"]
 ---
 test-case: atomic 32-bit ADD and fetch stack
 
 pre: ["r1.type=number", "r1.svalue=2", "r1.uvalue=2",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...7].type=number", "s[4...7].svalue=1", "s[4...7].uvalue=1"]
 
 code:
@@ -286,12 +289,14 @@ code:
 
 post: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...7].type=number", "s[4...7].svalue=3", "s[4...7].uvalue=3"]
 ---
 test-case: atomic 64-bit ADD stack
 
 pre: ["r1.type=number", "r1.svalue=2", "r1.uvalue=2",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...11].type=number", "s[4...11].svalue=1", "s[4...11].uvalue=1"]
 
 code:
@@ -300,12 +305,14 @@ code:
 
 post: ["r1.type=number", "r1.svalue=2", "r1.uvalue=2",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...11].type=number", "s[4...11].svalue=3", "s[4...11].uvalue=3"]
 ---
 test-case: atomic 64-bit ADD and fetch stack
 
 pre: ["r1.type=number", "r1.svalue=2", "r1.uvalue=2",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...11].type=number", "s[4...11].svalue=1", "s[4...11].uvalue=1"]
 
 code:
@@ -314,12 +321,14 @@ code:
 
 post: ["r1.type=number", "r1.svalue=1", "r1.uvalue=1",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...11].type=number", "s[4...11].svalue=3", "s[4...11].uvalue=3"]
 ---
 test-case: atomic 32-bit AND stack
 
 pre: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...7].type=number", "s[4...7].svalue=5", "s[4...7].uvalue=5"]
 
 code:
@@ -328,12 +337,14 @@ code:
 
 post: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...7].type=number", "s[4...7].svalue=1", "s[4...7].uvalue=1"]
 ---
 test-case: atomic 32-bit AND and fetch stack
 
 pre: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...7].type=number", "s[4...7].svalue=5", "s[4...7].uvalue=5"]
 
 code:
@@ -342,12 +353,14 @@ code:
 
 post: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...7].type=number", "s[4...7].svalue=1", "s[4...7].uvalue=1"]
 ---
 test-case: atomic 64-bit AND stack
 
 pre: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...11].type=number", "s[4...11].svalue=5", "s[4...11].uvalue=5"]
 
 code:
@@ -356,12 +369,14 @@ code:
 
 post: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...11].type=number", "s[4...11].svalue=1", "s[4...11].uvalue=1"]
 ---
 test-case: atomic 64-bit AND and fetch stack
 
 pre: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...11].type=number", "s[4...11].svalue=5", "s[4...11].uvalue=5"]
 
 code:
@@ -370,12 +385,14 @@ code:
 
 post: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...11].type=number", "s[4...11].svalue=1", "s[4...11].uvalue=1"]
 ---
 test-case: atomic 32-bit OR stack
 
 pre: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...7].type=number", "s[4...7].svalue=5", "s[4...7].uvalue=5"]
 
 code:
@@ -384,12 +401,14 @@ code:
 
 post: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...7].type=number", "s[4...7].svalue=7", "s[4...7].uvalue=7"]
 ---
 test-case: atomic 32-bit OR and fetch stack
 
 pre: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...7].type=number", "s[4...7].svalue=5", "s[4...7].uvalue=5"]
 
 code:
@@ -398,12 +417,14 @@ code:
 
 post: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...7].type=number", "s[4...7].svalue=7", "s[4...7].uvalue=7"]
 ---
 test-case: atomic 64-bit OR stack
 
 pre: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...11].type=number", "s[4...11].svalue=5", "s[4...11].uvalue=5"]
 
 code:
@@ -412,12 +433,14 @@ code:
 
 post: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...11].type=number", "s[4...11].svalue=7", "s[4...11].uvalue=7"]
 ---
 test-case: atomic 64-bit OR and fetch stack
 
 pre: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...11].type=number", "s[4...11].svalue=5", "s[4...11].uvalue=5"]
 
 code:
@@ -426,12 +449,14 @@ code:
 
 post: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...11].type=number", "s[4...11].svalue=7", "s[4...11].uvalue=7"]
 ---
 test-case: atomic 32-bit XOR stack
 
 pre: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...7].type=number", "s[4...7].svalue=5", "s[4...7].uvalue=5"]
 
 code:
@@ -440,12 +465,14 @@ code:
 
 post: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...7].type=number", "s[4...7].svalue=6", "s[4...7].uvalue=6"]
 ---
 test-case: atomic 32-bit XOR and fetch stack
 
 pre: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...7].type=number", "s[4...7].svalue=5", "s[4...7].uvalue=5"]
 
 code:
@@ -454,12 +481,14 @@ code:
 
 post: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...7].type=number", "s[4...7].svalue=6", "s[4...7].uvalue=6"]
 ---
 test-case: atomic 64-bit XOR stack
 
 pre: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...11].type=number", "s[4...11].svalue=5", "s[4...11].uvalue=5"]
 
 code:
@@ -468,12 +497,14 @@ code:
 
 post: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...11].type=number", "s[4...11].svalue=6", "s[4...11].uvalue=6"]
 ---
 test-case: atomic 64-bit XOR and fetch stack
 
 pre: ["r1.type=number", "r1.svalue=3", "r1.uvalue=3",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...11].type=number", "s[4...11].svalue=5", "s[4...11].uvalue=5"]
 
 code:
@@ -482,12 +513,14 @@ code:
 
 post: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...11].type=number", "s[4...11].svalue=6", "s[4...11].uvalue=6"]
 ---
 test-case: atomic 32-bit XCHG stack
 
 pre: ["r1.type=number", "r1.svalue=2", "r1.uvalue=2",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...7].type=number", "s[4...7].svalue=5", "s[4...7].uvalue=5"]
 
 code:
@@ -496,12 +529,14 @@ code:
 
 post: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...7].type=number", "s[4...7].svalue=2", "s[4...7].uvalue=2"]
 ---
 test-case: atomic 64-bit XCHG stack
 
 pre: ["r1.type=number", "r1.svalue=2", "r1.uvalue=2",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...11].type=number", "s[4...11].svalue=5", "s[4...11].uvalue=5"]
 
 code:
@@ -510,6 +545,7 @@ code:
 
 post: ["r1.type=number", "r1.svalue=5", "r1.uvalue=5",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...11].type=number", "s[4...11].svalue=2", "s[4...11].uvalue=2"]
 ---
 test-case: atomic 32-bit CMPXCHG stack
@@ -517,6 +553,7 @@ test-case: atomic 32-bit CMPXCHG stack
 pre: ["r0.type=number", "r0.svalue=1", "r0.uvalue=1",
       "r1.type=number", "r1.svalue=2", "r1.uvalue=2",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...7].type=number", "s[4...7].svalue=1", "s[4...7].uvalue=1"]
 
 code:
@@ -526,6 +563,7 @@ code:
 post: ["r0.type=number", "r0.svalue=1", "r0.uvalue=1",
        "r1.type=number", "r1.svalue=2", "r1.uvalue=2",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...7].type=number"]
 ---
 test-case: atomic 64-bit CMPXCHG stack
@@ -533,6 +571,7 @@ test-case: atomic 64-bit CMPXCHG stack
 pre: ["r0.type=number", "r0.svalue=1", "r0.uvalue=1",
       "r1.type=number", "r1.svalue=2", "r1.uvalue=2",
       "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[4...11].type=number", "s[4...11].svalue=1", "s[4...11].uvalue=1"]
 
 code:
@@ -542,6 +581,7 @@ code:
 post: ["r0.type=number", "r0.svalue=1", "r0.uvalue=1",
        "r1.type=number", "r1.svalue=2", "r1.uvalue=2",
        "r2.type=stack", "r2.stack_offset=0", "r2.svalue=[1, 2147418112]", "r2.uvalue=[1, 2147418112]", "r2.svalue=r2.uvalue",
+       "r10.type=stack", "r10.stack_offset=512",
        "s[4...11].type=number"]
 ---
 test-case: atomic 32-bit ADD to non-pointer space

@@ -294,6 +294,7 @@ pre: ["r1.type=map_fd", "r1.map_fd=1",
       "r2.type=stack", "r2.stack_offset=504",
       "r3.type=number", "r3.svalue=8", "r3.uvalue=8",
       "r4.type=number",
+      "r10.type=stack", "r10.stack_offset=512",
       "s[504...511].type=number"]
 
 code:
@@ -302,6 +303,8 @@ code:
 
 post:
   - r0.type=number
+  - r10.type=stack
+  - r10.stack_offset=512
   - s[504...511].type=number
 ---
 test-case: bpf_ringbuf_output with non-numeric stack value
@@ -309,7 +312,8 @@ test-case: bpf_ringbuf_output with non-numeric stack value
 pre: ["r1.type=map_fd", "r1.map_fd=1",
       "r2.type=stack", "r2.stack_offset=504",
       "r3.type=number", "r3.svalue=8", "r3.uvalue=8",
-      "r4.type=number"]
+      "r4.type=number",
+      "r10.type=stack", "r10.stack_offset=512"]
 
 code:
   <start>: |
@@ -317,6 +321,8 @@ code:
 
 post:
   - r0.type=number
+  - r10.type=stack
+  - r10.stack_offset=512
 
 messages:
   - "0: Stack content is not numeric (valid_access(r2.offset, width=r3) for read)"
@@ -345,7 +351,8 @@ test-case: bpf_get_stack
 pre: ["r1.type=ctx", "r1.ctx_offset=0",
       "r2.type=stack", "r2.stack_offset=504",
       "r3.type=number", "r3.svalue=8", "r3.uvalue=8",
-      "r4.type=number"]
+      "r4.type=number",
+      "r10.type=stack", "r10.stack_offset=512"]
 
 code:
   <start>: |
@@ -354,6 +361,8 @@ code:
 post:
   - r0.type=number
   - s[504...511].type=number
+  - r10.type=stack
+  - r10.stack_offset=512
 ---
 test-case: bpf_get_stack overwriting ctx
 
@@ -389,7 +398,8 @@ post:
 test-case: bpf_trace_printk with negative size buffer
 
 pre: ["r1.type=stack", "r1.stack_offset=504",
-      "r2.type=number", "r2.svalue=-13", "r2.uvalue=18446744073709551603"]
+      "r2.type=number", "r2.svalue=-13", "r2.uvalue=18446744073709551603",
+      "r10.type=stack", "r10.stack_offset=512"]
 
 code:
   <start>: |
@@ -397,6 +407,8 @@ code:
 
 post:
   - r0.type=number
+  - r10.type=stack
+  - r10.stack_offset=512
 
 messages:
   - "0: Invalid size (r2.value > 0)"

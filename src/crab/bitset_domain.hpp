@@ -4,12 +4,12 @@
 #include <bitset>
 #include <cassert>
 
-#include "spec_type_descriptors.hpp" // for EBPF_STACK_SIZE
+#include "ebpf_base.h" // for EBPF_TOTAL_STACK_SIZE constant
 #include "string_constraints.hpp"
 
 class bitset_domain_t final {
   private:
-    using bits_t = std::bitset<EBPF_STACK_SIZE>;
+    using bits_t = std::bitset<EBPF_TOTAL_STACK_SIZE>;
     bits_t non_numerical_bytes;
 
   public:
@@ -64,7 +64,7 @@ class bitset_domain_t final {
 
     [[nodiscard]]
     std::pair<bool, bool> uniformity(size_t lb, int width) const {
-        width = std::min(width, (int)(EBPF_STACK_SIZE - lb));
+        width = std::min(width, (int)(EBPF_TOTAL_STACK_SIZE - lb));
         bool only_num = true;
         bool only_non_num = true;
         for (int j = 0; j < width; j++) {
@@ -82,21 +82,21 @@ class bitset_domain_t final {
     [[nodiscard]]
     int all_num_width(size_t lb) const {
         size_t ub = lb;
-        while ((ub < EBPF_STACK_SIZE) && !non_numerical_bytes[ub]) {
+        while ((ub < EBPF_TOTAL_STACK_SIZE) && !non_numerical_bytes[ub]) {
             ub++;
         }
         return (int)(ub - lb);
     }
 
     void reset(size_t lb, int n) {
-        n = std::min(n, (int)(EBPF_STACK_SIZE - lb));
+        n = std::min(n, (int)(EBPF_TOTAL_STACK_SIZE - lb));
         for (int i = 0; i < n; i++) {
             non_numerical_bytes.reset(lb + i);
         }
     }
 
     void havoc(size_t lb, int width) {
-        width = std::min(width, (int)(EBPF_STACK_SIZE - lb));
+        width = std::min(width, (int)(EBPF_TOTAL_STACK_SIZE - lb));
         for (int i = 0; i < width; i++) {
             non_numerical_bytes.set(lb + i);
         }
@@ -109,7 +109,7 @@ class bitset_domain_t final {
     bool all_num(int32_t lb, int32_t ub) const {
         assert(lb < ub);
         lb = std::max(lb, 0);
-        ub = std::min(ub, EBPF_STACK_SIZE);
+        ub = std::min(ub, (int)EBPF_TOTAL_STACK_SIZE);
         if (lb < 0 || ub > (int)non_numerical_bytes.size()) {
             return false;
         }
