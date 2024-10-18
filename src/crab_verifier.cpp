@@ -95,8 +95,10 @@ static checks_db generate_report(cfg_t& cfg, const crab::invariant_table_t& pre_
     }
 
     if (thread_local_options.check_termination) {
-        const auto last_inv = post_invariants.at(cfg.exit_label());
-        m_db.max_loop_count = last_inv.get_loop_count_upper_bound();
+        // Find the highest loop count of blocks that have a post-invariant.
+        for (const auto invariant : post_invariants){
+            m_db.max_loop_count = std::max(m_db.max_loop_count, invariant.second.get_loop_count_upper_bound());
+        }
     }
     return m_db;
 }
