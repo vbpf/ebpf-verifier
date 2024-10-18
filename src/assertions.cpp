@@ -192,12 +192,13 @@ class AssertExtractor {
     }
 
     vector<Assert> operator()(const Atomic& ins) const {
-        vector<Assert> res;
-        res.emplace_back(TypeConstraint{ins.valreg, TypeGroup::number});
-        res.emplace_back(TypeConstraint{ins.access.basereg, TypeGroup::pointer});
-        res.emplace_back(
-            ValidAccess{ins.access.basereg, ins.access.offset, Imm{static_cast<uint32_t>(ins.access.width)}, false});
-        return res;
+
+        return {
+            Assert{TypeConstraint{ins.valreg, TypeGroup::number}},
+            Assert{TypeConstraint{ins.access.basereg, TypeGroup::pointer}},
+            Assert{ValidAccess{ins.access.basereg, ins.access.offset, Imm{static_cast<uint32_t>(ins.access.width)},
+                               false}},
+        };
     }
 
     vector<Assert> operator()(const Un ins) const { return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}}; }
