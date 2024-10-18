@@ -36,12 +36,6 @@ class interval_t final {
   private:
     interval_t() : _lb(number_t{0}), _ub(-1) {}
 
-    static number_t abs(const number_t& x) { return x < 0 ? -x : x; }
-
-    static number_t max(const number_t& x, const number_t& y) { return x.operator<=(y) ? y : x; }
-
-    static number_t min(const number_t& x, const number_t& y) { return x.operator<(y) ? x : y; }
-
   public:
     interval_t(const bound_t& lb, const bound_t& ub)
         : _lb(lb > ub ? bound_t{number_t{0}} : lb), _ub(lb > ub ? bound_t{-1} : ub) {}
@@ -116,12 +110,12 @@ class interval_t final {
 
     [[nodiscard]]
     bool is_bottom() const {
-        return (_lb > _ub);
+        return _lb > _ub;
     }
 
     [[nodiscard]]
     bool is_top() const {
-        return (_lb.is_infinite() && _ub.is_infinite());
+        return _lb.is_infinite() && _ub.is_infinite();
     }
 
     bool operator==(const interval_t& x) const {
@@ -225,17 +219,7 @@ class interval_t final {
 
     interval_t& operator-=(const interval_t& x) { return operator=(operator-(x)); }
 
-    interval_t operator*(const interval_t& x) const {
-        if (is_bottom() || x.is_bottom()) {
-            return bottom();
-        } else {
-            bound_t ll = _lb * x._lb;
-            bound_t lu = _lb * x._ub;
-            bound_t ul = _ub * x._lb;
-            bound_t uu = _ub * x._ub;
-            return interval_t{std::min({ll, lu, ul, uu}), std::max({ll, lu, ul, uu})};
-        }
-    }
+    interval_t operator*(const interval_t& x) const;
 
     interval_t& operator*=(const interval_t& x) { return operator=(operator*(x)); }
 
@@ -268,8 +252,8 @@ class interval_t final {
         if (is_bottom()) {
             return false;
         }
-        bound_t b(n);
-        return (_lb <= b) && (b <= _ub);
+        const bound_t b{n};
+        return _lb <= b && b <= _ub;
     }
 
     friend std::ostream& operator<<(std::ostream& o, const interval_t& interval) {
