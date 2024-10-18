@@ -97,7 +97,18 @@ static checks_db generate_report(cfg_t& cfg, const crab::invariant_table_t& pre_
     if (thread_local_options.check_termination) {
         const auto last_inv = post_invariants.at(cfg.exit_label());
         m_db.max_loop_count = last_inv.get_loop_count_upper_bound();
+
+         // Check if the exit is unreachable, which could indicate an infinite loop
+        if (last_inv.is_bottom()) {
+            m_db.add_warning(label_t::exit, "Exit is unreachable.");
+        }
+
+        const crab::number_t max_loop_count{100000};
+        if (m_db.max_loop_count > max_loop_count) {
+            m_db.add_warning(label_t::exit, "Could not prove termination.");
+        }
     }
+
     return m_db;
 }
 
@@ -127,10 +138,6 @@ static void print_report(std::ostream& os, const checks_db& db, const Instructio
         }
     }
     os << "\n";
-    const crab::number_t max_loop_count{100000};
-    if (db.max_loop_count > max_loop_count) {
-        os << "Could not prove termination.\n";
-    }
 }
 
 static checks_db get_analysis_report(std::ostream& s, cfg_t& cfg, const crab::invariant_table_t& pre_invariants,
