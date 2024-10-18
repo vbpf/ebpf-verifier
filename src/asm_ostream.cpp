@@ -135,6 +135,10 @@ std::ostream& operator<<(std::ostream& os, ValidAccess const& a) {
     return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const BoundedLoopCount& a) {
+    return os << crab::variable_t::loop_counter(to_string(a.name)) << " < " << a.limit;
+}
+
 static crab::variable_t typereg(const Reg& r) { return crab::variable_t::reg(crab::data_kind_t::types, r.v); }
 
 std::ostream& operator<<(std::ostream& os, ValidSize const& a) {

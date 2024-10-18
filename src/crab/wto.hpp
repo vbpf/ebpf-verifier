@@ -125,4 +125,22 @@ class wto_t final {
 
     friend std::ostream& operator<<(std::ostream& o, const wto_t& wto);
     const wto_nesting_t& nesting(const label_t& label);
+
+    /**
+     * Visit the heads of all loops in the WTO.
+     *
+     * @tparam F A callable type with signature void(const label_t&).
+     * @param f The callable to be invoked for each loop head.
+     *
+     * The order in which the heads are visited is not specified.
+     */
+    template<typename F>
+    void visit_loop_heads(F&& f) const {
+        for (const auto& component : *this) {
+            if (const auto pc = std::get_if<std::shared_ptr<wto_cycle_t>>(&component)) {
+                f((*pc)->head());
+            }
+        }
+    }
+
 };

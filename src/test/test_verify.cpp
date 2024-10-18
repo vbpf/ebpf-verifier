@@ -586,7 +586,7 @@ TEST_SECTION_FAIL("cilium", "bpf_xdp_snat_linux.o", "2/16")
 // False positive, unknown cause
 TEST_SECTION_FAIL("linux", "test_map_in_map_kern.o", "kprobe/sys_connect")
 
-void test_analyze_thread(cfg_t* cfg, program_info* info, bool* res) {
+void test_analyze_thread(const cfg_t* cfg, program_info* info, bool* res) {
     *res = run_ebpf_analysis(std::cout, *cfg, *info, nullptr, nullptr);
 }
 
@@ -598,7 +598,7 @@ TEST_CASE("multithreading", "[verify][multithreading]") {
     auto prog_or_error1 = unmarshal(raw_prog1);
     auto prog1 = std::get_if<InstructionSeq>(&prog_or_error1);
     REQUIRE(prog1 != nullptr);
-    cfg_t cfg1 = prepare_cfg(*prog1, raw_prog1.info, true);
+    const cfg_t cfg1 = prepare_cfg(*prog1, raw_prog1.info, true, true);
 
     auto raw_progs2 = read_elf("ebpf-samples/bpf_cilium_test/bpf_netdev.o", "2/2", nullptr, &g_ebpf_platform_linux);
     REQUIRE(raw_progs2.size() == 1);
@@ -606,7 +606,7 @@ TEST_CASE("multithreading", "[verify][multithreading]") {
     auto prog_or_error2 = unmarshal(raw_prog2);
     auto prog2 = std::get_if<InstructionSeq>(&prog_or_error2);
     REQUIRE(prog2 != nullptr);
-    cfg_t cfg2 = prepare_cfg(*prog2, raw_prog2.info, true);
+    const cfg_t cfg2 = prepare_cfg(*prog2, raw_prog2.info, true, true);
 
     bool res1, res2;
     std::thread a(test_analyze_thread, &cfg1, &raw_prog1.info, &res1);

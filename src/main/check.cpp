@@ -250,7 +250,7 @@ int main(int argc, char** argv) {
         return !res;
     } else if (domain == "stats") {
         // Convert the instruction sequence to a control-flow graph.
-        cfg_t cfg = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.simplify);
+        const cfg_t cfg = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.simplify, ebpf_verifier_options.check_termination);
 
         // Just print eBPF program stats.
         auto stats = collect_stats(cfg);
@@ -264,7 +264,7 @@ int main(int argc, char** argv) {
         std::cout << "\n";
     } else if (domain == "cfg") {
         // Convert the instruction sequence to a control-flow graph.
-        cfg_t cfg = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.simplify);
+        const cfg_t cfg = prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.simplify, ebpf_verifier_options.check_termination);
         std::cout << cfg;
         std::cout << "\n";
     } else {

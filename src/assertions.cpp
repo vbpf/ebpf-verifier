@@ -47,9 +47,8 @@ class AssertExtractor {
         return {};
     }
 
-    vector<Assert> operator()(IncrementLoopCounter) const {
-        assert(false);
-        return {};
+    vector<Assert> operator()(IncrementLoopCounter& ipc) const {
+        return {{BoundedLoopCount{ipc.name}}};
     }
 
     vector<Assert> operator()(LoadMapFd const&) const { return {}; }

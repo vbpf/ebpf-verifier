@@ -10,6 +10,7 @@
 
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
+#include "crab/wto.hpp"
 
 using std::optional;
 using std::set;
@@ -359,9 +360,16 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
 }
 
 cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const bool simplify,
-                  const bool must_have_exit) {
+                  const bool check_for_termination, const bool must_have_exit) {
     // Convert the instruction sequence to a deterministic control-flow graph.
     cfg_t det_cfg = instruction_seq_to_cfg(prog, must_have_exit);
+
+    if (check_for_termination) {
+        wto_t wto(det_cfg);
+        wto.visit_loop_heads([&](const label_t& label) {
+            det_cfg.get_node(label).insert_front(IncrementLoopCounter{label});
+        });
+    }
 
     // Annotate the CFG by adding in assertions before every memory instruction.
     explicate_assertions(det_cfg, info);

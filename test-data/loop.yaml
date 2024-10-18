@@ -186,7 +186,7 @@ post:
   - "pc[1]=[1, +oo]"
 
 messages:
-  - "Could not prove termination."
+  - "1: Loop counter is too large (pc[1] < 100000)"
 
 ---
 test-case: realistic forward loop
@@ -266,3 +266,200 @@ post:
   - r4.uvalue-r2.svalue<=0
   - r4.uvalue-r2.uvalue<=0
   - r4.uvalue=[1, 255]
+
+---
+test-case: simple infinite loop, less than
+options: ["termination"]
+
+pre: []
+
+code:
+  <start>: |
+    r0 = 0
+    if r0 < 1 goto <start>
+    exit
+
+post: []
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+  - "0: Loop counter is too large (pc[0] < 100000)"
+---
+test-case: simple infinite loop, less than or equal
+options: ["termination"]
+
+pre: []
+
+code:
+  <start>: |
+    r0 = 0
+    if r0 <= 1 goto <start>
+    exit
+
+post: []
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+  - "0: Loop counter is too large (pc[0] < 100000)"
+
+---
+test-case: simple infinite loop, equal
+options: ["termination"]
+
+pre: []
+
+code:
+  <start>: |
+    r0 = 0
+    if r0 == 0 goto <start>
+    exit
+
+post: []
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+  - "0: Loop counter is too large (pc[0] < 100000)"
+
+---
+test-case: simple infinite loop, greater than
+options: ["termination"]
+
+pre: []
+
+code:
+  <start>: |
+    r0 = 1
+    if r0 > 0 goto <start>
+    exit
+
+post: []
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+  - "0: Loop counter is too large (pc[0] < 100000)"
+
+---
+test-case: simple infinite loop, greater than or equal
+options: ["termination"]
+
+pre: []
+
+code:
+  <start>: |
+    r0 = 1
+    if r0 >= 0 goto <start>
+    exit
+
+post: []
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+  - "0: Loop counter is too large (pc[0] < 100000)"
+---
+test-case: infinite loop with multiple exits
+options: ["termination"]
+pre: []
+code:
+  <start>: |
+    r0 = 1
+    if r0 > 0 goto <loop1>
+    exit
+  <loop1>: |
+    if r0 < 2 goto <start>
+    exit
+post: []
+messages:
+  - "1:2: Code is unreachable after 1:2"
+  - "3:4: Code is unreachable after 3:4"
+  - "0: Loop counter is too large (pc[0] < 100000)"
+
+---
+# Note: This test case terminates after 1000001 iterations, but the verifier assumes that the loop is infinite
+# because it is greater than the default limit of 1000000 iterations.
+test-case: very large loop > 1M iterations
+options: ["termination"]
+pre: [r0.type=number, r0.svalue=0, r0.uvalue=0]
+code:
+  <start>: |
+    r0 += 1
+    if r0 < 1000001 goto <start>
+  <out>: |
+    exit
+post:
+  - "pc[0]=1000001"
+  - "pc[0]=r0.svalue"
+  - "pc[0]=r0.uvalue"
+  - "r0.svalue=1000001"
+  - "r0.svalue=r0.uvalue"
+  - "r0.type=number"
+  - "r0.uvalue=1000001"
+messages:
+  - "0: Loop counter is too large (pc[0] < 100000)"
+
+---
+test-case: possible infinite loop
+options: ["termination"]
+
+pre: [r0.type=number]
+code:
+  <start>: |
+    if r0 > 0 goto <start>
+    exit
+
+post:
+  - "pc[0]=[1, +oo]"
+  - "r0.svalue=0"
+  - "r0.uvalue=0"
+  - "r0.type=number"
+
+messages:
+  - "0: Loop counter is too large (pc[0] < 100000)"
+
+---
+# Check for case where there are backwards jumps that don't form a loop.
+test-case: non-loop backwards jump
+options: ["termination"]
+
+pre: [r0.type=number]
+code:
+  <start>: |
+    r0 = 1
+    goto <two>
+  <one>: |
+    r0 += 1
+    exit
+  <two>: |
+    r0 += 1
+    goto <one>
+
+post:
+  - "r0.svalue=3"
+  - "r0.uvalue=3"
+  - "r0.type=number"
+
+messages: []
+
+---
+# Nested loops with inner infinite loop
+test-case: nested loops with inner infinite loop
+options: ["termination"]
+
+pre:
+  - "r0.type=number"
+  - "r0.svalue=0"
+  - "r0.uvalue=0"
+code:
+  <start>: |
+    r0 += 1
+    if r0 > 10 goto <out>
+  <inner>: |
+    if r0 > 0 goto <inner>
+  <out>: |
+    exit
+
+post: []
+
+messages:
+  - "1:3: Code is unreachable after 1:3"
+  - "2: Loop counter is too large (pc[2] < 100000)"
+  - "2:3: Code is unreachable after 2:3"

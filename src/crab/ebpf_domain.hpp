@@ -78,6 +78,7 @@ class ebpf_domain_t final {
     void operator()(const ValidStore&);
     void operator()(const ZeroCtxOffset&);
     void operator()(const IncrementLoopCounter&);
+    void operator()(const BoundedLoopCount&);
 
     void initialize_loop_counter(const label_t& label);
     static ebpf_domain_t calculate_constant_limits();
