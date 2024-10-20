@@ -99,13 +99,9 @@ file(GLOB LIB_SRC
         "./src/linux/linux_platform.cpp"
 )
 
-# If VERIFIER_ENABLE_TESTS is disabled, remove ebpf_yaml.cpp from the list of sources
-if (NOT VERIFIER_ENABLE_TESTS)
-    list(REMOVE_ITEM LIB_SRC "./src/ebpf_yaml.cpp")
-endif ()
-
 if(VERIFIER_ENABLE_TESTS)
 file(GLOB ALL_TEST
+        "./src/test/ebpf_yaml.cpp"
         "./src/test/test_conformance.cpp"
         "./src/test/test_marshal.cpp"
         "./src/test/test_print.cpp"
