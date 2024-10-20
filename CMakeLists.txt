@@ -101,7 +101,6 @@ file(GLOB LIB_SRC
 
 if(VERIFIER_ENABLE_TESTS)
 file(GLOB ALL_TEST
-        "./src/test/ebpf_yaml.cpp"
         "./src/test/test_conformance.cpp"
         "./src/test/test_marshal.cpp"
         "./src/test/test_print.cpp"
@@ -109,6 +108,7 @@ file(GLOB ALL_TEST
         "./src/test/test_wto.cpp"
         "./src/test/test_yaml.cpp"
 )
+set(LIB_SRC ${LIB_SRC} "./src/test/ebpf_yaml.cpp")
 endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
@@ -136,6 +136,8 @@ endif()
 target_include_directories(ebpfverifier PRIVATE ${GSL_INCLUDE_DIRS})
 
 if(VERIFIER_ENABLE_TESTS)
+target_include_directories(run_yaml PRIVATE src/test)
+
 set_target_properties(check
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/..")
