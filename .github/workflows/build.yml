@@ -29,7 +29,12 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt install libboost-dev libboost-filesystem-dev libboost-program-options-dev libyaml-cpp-dev valgrind
+          sudo apt install libboost-dev libboost-filesystem-dev libboost-program-options-dev
+
+      - name: Install test dependencies
+        if: ${{matrix.target == 'tests'}}
+        run: |
+          sudo apt install libyaml-cpp-dev valgrind
 
       - uses: actions/checkout@v4
         with:
