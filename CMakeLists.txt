@@ -5,7 +5,16 @@ project(ebpf_verifier)
 
 include(FetchContent)
 
-option(VERIFIER_ENABLE_TESTS "Build tests" ON)
+if (IS_DIRECTORY "${PROJECT_SOURCE_DIR}/.git")
+    # Install Git pre-commit hook
+    file(COPY scripts/pre-commit scripts/commit-msg
+            DESTINATION "${PROJECT_SOURCE_DIR}/.git/hooks")
+    option(VERIFIER_ENABLE_TESTS "Build tests" ON)
+else()
+    option(VERIFIER_ENABLE_TESTS "Build tests" OFF)
+endif ()
+
+message("Building tests: ${VERIFIER_ENABLE_TESTS}")
 
 FetchContent_Declare(GSL
         GIT_REPOSITORY "https://github.com/microsoft/GSL"
@@ -24,11 +33,6 @@ FetchContent_Declare(Catch2
 FetchContent_MakeAvailable(Catch2)
 endif()
 
-if (IS_DIRECTORY "${PROJECT_SOURCE_DIR}/.git")
-    # Install Git pre-commit hook
-    file(COPY scripts/pre-commit scripts/commit-msg
-            DESTINATION "${PROJECT_SOURCE_DIR}/.git/hooks")
-endif ()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
         "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
