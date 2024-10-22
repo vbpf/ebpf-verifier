@@ -338,6 +338,8 @@ class AdaptGraph final {
     }
 
     void growTo(size_t v) {
+        _succs.reserve(v);
+        _preds.reserve(v);
         while (size() < v) {
             new_vertex();
         }
