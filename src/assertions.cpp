@@ -168,8 +168,7 @@ class AssertExtractor {
         Imm width{static_cast<uint32_t>(ins.access.width)};
         const int offset = ins.access.offset;
         if (basereg.v == R10_STACK_POINTER) {
-            // We know we are accessing the stack.
-            if (offset < -EBPF_STACK_SIZE || offset + static_cast<int>(width.v) >= 0) {
+            if (offset < -EBPF_STACK_SIZE || offset + static_cast<int>(width.v) > 0) {
                 // This assertion will fail
                 res.emplace_back(
                     ValidAccess{basereg, offset, width, false, ins.is_load ? AccessType::read : AccessType::write});
