@@ -395,3 +395,22 @@ post:
   - "r0.uvalue=100001"
 messages:
   - "exit: Could not prove termination."
+
+---
+test-case: possible infinite loop
+options: ["termination"]
+
+pre: [r0.type=number]
+code:
+    <start>: |
+        if r0 > 0 goto <start>
+        exit
+
+post:
+  - "pc[0]=[1, +oo]"
+  - "r0.svalue=0"
+  - "r0.uvalue=0"
+  - "r0.type=number"
+
+messages:
+  - "exit: Could not prove termination."
