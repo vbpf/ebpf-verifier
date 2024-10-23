@@ -372,3 +372,26 @@ messages:
   - "1:2: Code is unreachable after 1:2"
   - "3:4: Code is unreachable after 3:4"
   - "exit: Exit is unreachable."
+
+---
+# Note: This test case terminates after 100001 iterations, but the verifier assumes that the loop is infinite
+# because it is greater than the default limit of 100000 iterations.
+test-case: very large loop > 100K iterations
+options: ["termination"]
+pre: [r0.type=number, r0.svalue=0, r0.uvalue=0]
+code:
+  <start>: |
+    r0 += 1
+    if r0 < 100001 goto <start>
+  <out>: |
+    exit
+post:
+  - "pc[0]=100001"
+  - "pc[0]=r0.svalue"
+  - "pc[0]=r0.uvalue"
+  - "r0.svalue=100001"
+  - "r0.svalue=r0.uvalue"
+  - "r0.type=number"
+  - "r0.uvalue=100001"
+messages:
+  - "exit: Could not prove termination."
