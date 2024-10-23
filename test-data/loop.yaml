@@ -402,9 +402,9 @@ options: ["termination"]
 
 pre: [r0.type=number]
 code:
-    <start>: |
-        if r0 > 0 goto <start>
-        exit
+  <start>: |
+      if r0 > 0 goto <start>
+      exit
 
 post:
   - "pc[0]=[1, +oo]"
