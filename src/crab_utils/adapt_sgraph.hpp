@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
+#include <cassert>
 #include <memory>
 
 #include <boost/container/flat_map.hpp>
@@ -416,7 +417,7 @@ class AdaptGraph final {
     };
 
     bool lookup(vert_id s, vert_id d, mut_val_ref_t* w) {
-        if (auto idx = _succs[s].lookup(d)) {
+        if (const auto idx = _succs[s].lookup(d)) {
             *w = &_ws[*idx];
             return true;
         }
