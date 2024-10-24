@@ -99,6 +99,7 @@ struct RawTestCase {
     vector<std::tuple<string, vector<string>>> raw_blocks;
     vector<string> post;
     std::set<string> messages;
+    std::map<std::string, std::set<std::string>> invariants_to_check;
 };
 
 static vector<string> parse_block(const YAML::Node& block_node) {
@@ -126,6 +127,19 @@ static std::set<string> as_set_empty_default(const YAML::Node& optional_node) {
     return vector_to_set(optional_node.as<vector<string>>());
 }
 
+static std::map<std::string, std::set<std::string>> parse_invariants_to_check(const YAML::Node& case_node) {
+    if (!case_node["invariants-to-check"].IsDefined() || case_node["invariants-to-check"].IsNull()) {
+        return {};
+    }
+
+    std::map<std::string, std::set<std::string>> res;
+    for (const auto& node : case_node["invariants-to-check"]) {
+        res.emplace(node.first.as<string>(), vector_to_set(node.second.as<vector<string>>()));
+    }
+
+    return res;
+}
+
 static RawTestCase parse_case(const YAML::Node& case_node) {
     return RawTestCase{
         .test_case = case_node["test-case"].as<string>(),
@@ -134,6 +148,7 @@ static RawTestCase parse_case(const YAML::Node& case_node) {
         .raw_blocks = parse_code(case_node["code"]),
         .post = case_node["post"].as<vector<string>>(),
         .messages = as_set_empty_default(case_node["messages"]),
+        .invariants_to_check = parse_invariants_to_check(case_node),
     };
 }
 
@@ -210,7 +225,9 @@ static TestCase read_case(const RawTestCase& raw_case) {
                     .assumed_pre_invariant = read_invariant(raw_case.pre),
                     .instruction_seq = raw_cfg_to_instruction_seq(raw_case.raw_blocks),
                     .expected_post_invariant = read_invariant(raw_case.post),
-                    .expected_messages = raw_case.messages};
+                    .expected_messages = raw_case.messages,
+                    .invariants_to_check = raw_case.invariants_to_check,
+                    };
 }
 
 static vector<TestCase> read_suite(const string& path) {
@@ -251,6 +268,10 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
         test_case.options.simplify = false;
     }
 
+    if (!test_case.invariants_to_check.empty()) {
+        test_case.options.store_pre_invariants = true;
+    }
+
     ebpf_context_descriptor_t context_descriptor{64, 0, 4, -1};
     EbpfProgramType program_type = make_program_type(test_case.name, &context_descriptor);
 
@@ -260,6 +281,18 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
     const auto& [actual_last_invariant, result] = ebpf_analyze_program_for_test(
         ss, test_case.instruction_seq, test_case.assumed_pre_invariant, info, test_case.options);
     std::set<string> actual_messages = extract_messages(ss.str());
+
+    for (auto& [label, expected_invariant] : test_case.invariants_to_check) {
+        ss.str("");
+        ss.clear();
+        if (!ebpf_check_constraints_at_label(ss, label, expected_invariant)) {
+            // If debug is enabled, print the output of ebpf_check_constraints_at_label.
+            if (debug) {
+                std::cout << ss.str();
+            }
+            actual_messages.insert(label + ": Concrete invariants do not match abstract invariants");
+        }
+    }
 
     if (actual_last_invariant == test_case.expected_post_invariant && actual_messages == test_case.expected_messages) {
         return {};

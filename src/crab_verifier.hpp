@@ -26,3 +26,28 @@ int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t val
 EbpfMapDescriptor* find_map_descriptor(int map_fd);
 
 void ebpf_verifier_clear_thread_local_state();
+
+/**
+ * @brief Given a label and a set of concrete constraints, check if the concrete constraints match the abstract
+ * verifier constraints at the label. Requires the `store_pre_invariants` option to be set.
+ *
+ * Abstract constraints are computed by the verifier and stored if the `store_pre_invariants` option is set.
+ * These constraints represent the program state at a specific point in the control flow graph,
+ * as determined by the static analysis performed by the verifier.
+ *
+ * @param[in,out] os Print output to this stream.
+ * @param[in] label The location in the CFG to check against.
+ * @param[in] constraints The concrete state to check.
+ * @return true If the state is valid.
+ * @return false If the state is invalid.
+ */
+bool ebpf_check_constraints_at_label(std::ostream& os, const std::string& label,
+                                     const std::set<std::string>& constraints);
+/**
+ * @brief Get the invariants at a given label. Requires the `store_pre_invariants` option to be set.
+ *
+ * @param[in] label
+ * @return The set of invariants at the given label.
+ * @throw std::out_of_range If the label is not found.
+ */
+std::set<std::string> ebpf_get_invariants_at_label(const std::string& label);
