@@ -421,7 +421,7 @@ CLI11_INLINE std::vector<std::string> compute_win32_argv() {
 
     auto deleter = [](wchar_t **ptr) { LocalFree(ptr); };
     // NOLINTBEGIN(*-avoid-c-arrays)
-    const auto wargv = std::unique_ptr<wchar_t *[], decltype(deleter)>(CommandLineToArgvW(GetCommandLineW(), &argc), deleter);
+    auto wargv = std::unique_ptr<wchar_t *[], decltype(deleter)>(CommandLineToArgvW(GetCommandLineW(), &argc), deleter);
     // NOLINTEND(*-avoid-c-arrays)
 
     if(wargv == nullptr) {
@@ -467,7 +467,7 @@ constexpr int expected_max_vector_size{1 << 29};
 CLI11_INLINE std::vector<std::string> split(const std::string &s, char delim);
 
 /// Simple function to join a string
-template <typename T> std::string join(const T &v, const std::string& delim = ",") {
+template <typename T> std::string join(const T &v, std::string delim = ",") {
     std::ostringstream s;
     auto beg = std::begin(v);
     auto end = std::end(v);
@@ -483,7 +483,7 @@ template <typename T> std::string join(const T &v, const std::string& delim = ",
 template <typename T,
           typename Callable,
           typename = typename std::enable_if<!std::is_constructible<std::string, Callable>::value>::type>
-std::string join(const T &v, Callable func, const std::string& delim = ",") {
+std::string join(const T &v, Callable func, std::string delim = ",") {
     std::ostringstream s;
     auto beg = std::begin(v);
     auto end = std::end(v);
@@ -500,7 +500,7 @@ std::string join(const T &v, Callable func, const std::string& delim = ",") {
 }
 
 /// Join a string in reverse order
-template <typename T> std::string rjoin(const T &v, const std::string& delim = ",") {
+template <typename T> std::string rjoin(const T &v, std::string delim = ",") {
     std::ostringstream s;
     for(std::size_t start = 0; start < v.size(); start++) {
         if(start > 0)
@@ -528,7 +528,7 @@ CLI11_INLINE std::string &rtrim(std::string &str, const std::string &filter);
 inline std::string &trim(std::string &str) { return ltrim(rtrim(str)); }
 
 /// Trim anything from string
-inline std::string &trim(std::string &str, const std::string &filter) { return ltrim(rtrim(str, filter), filter); }
+inline std::string &trim(std::string &str, const std::string filter) { return ltrim(rtrim(str, filter), filter); }
 
 /// Make a copy of the string and then trim it
 inline std::string trim_copy(const std::string &str) {
@@ -698,25 +698,25 @@ CLI11_INLINE std::vector<std::string> split(const std::string &s, char delim) {
 }
 
 CLI11_INLINE std::string &ltrim(std::string &str) {
-    const auto it = std::find_if(str.begin(), str.end(), [](char ch) { return !std::isspace<char>(ch, std::locale()); });
+    auto it = std::find_if(str.begin(), str.end(), [](char ch) { return !std::isspace<char>(ch, std::locale()); });
     str.erase(str.begin(), it);
     return str;
 }
 
 CLI11_INLINE std::string &ltrim(std::string &str, const std::string &filter) {
-    const auto it = std::find_if(str.begin(), str.end(), [&filter](char ch) { return filter.find(ch) == std::string::npos; });
+    auto it = std::find_if(str.begin(), str.end(), [&filter](char ch) { return filter.find(ch) == std::string::npos; });
     str.erase(str.begin(), it);
     return str;
 }
 
 CLI11_INLINE std::string &rtrim(std::string &str) {
-    const auto it = std::find_if(str.rbegin(), str.rend(), [](char ch) { return !std::isspace<char>(ch, std::locale()); });
+    auto it = std::find_if(str.rbegin(), str.rend(), [](char ch) { return !std::isspace<char>(ch, std::locale()); });
     str.erase(it.base(), str.end());
     return str;
 }
 
 CLI11_INLINE std::string &rtrim(std::string &str, const std::string &filter) {
-    const auto it =
+    auto it =
         std::find_if(str.rbegin(), str.rend(), [&filter](char ch) { return filter.find(ch) == std::string::npos; });
     str.erase(it.base(), str.end());
     return str;
@@ -793,7 +793,7 @@ CLI11_INLINE bool valid_name_string(const std::string &str) {
     if(str.empty() || !valid_first_char(str[0])) {
         return false;
     }
-    const auto e = str.end();
+    auto e = str.end();
     for(auto c = str.begin() + 1; c != e; ++c)
         if(!valid_later_char(*c))
             return false;
@@ -815,7 +815,7 @@ CLI11_INLINE std::string find_and_replace(std::string str, std::string from, std
 CLI11_INLINE void remove_default_flag_values(std::string &flags) {
     auto loc = flags.find_first_of('{', 2);
     while(loc != std::string::npos) {
-        const auto finish = flags.find_first_of("},", loc + 1);
+        auto finish = flags.find_first_of("},", loc + 1);
         if((finish != std::string::npos) && (flags[finish] == '}')) {
             flags.erase(flags.begin() + static_cast<std::ptrdiff_t>(loc),
                         flags.begin() + static_cast<std::ptrdiff_t>(finish) + 1);
@@ -826,25 +826,25 @@ CLI11_INLINE void remove_default_flag_values(std::string &flags) {
 }
 
 CLI11_INLINE std::ptrdiff_t
-find_member(std::string name, const std::vector<std::string> &names, bool ignore_case, bool ignore_underscore) {
+find_member(std::string name, const std::vector<std::string> names, bool ignore_case, bool ignore_underscore) {
     auto it = std::end(names);
     if(ignore_case) {
         if(ignore_underscore) {
             name = detail::to_lower(detail::remove_underscore(name));
             it = std::find_if(std::begin(names), std::end(names), [&name](std::string local_name) {
-                return detail::to_lower(detail::remove_underscore(std::move(local_name))) == name;
+                return detail::to_lower(detail::remove_underscore(local_name)) == name;
             });
         } else {
             name = detail::to_lower(name);
             it = std::find_if(std::begin(names), std::end(names), [&name](std::string local_name) {
-                return detail::to_lower(std::move(local_name)) == name;
+                return detail::to_lower(local_name) == name;
             });
         }
 
     } else if(ignore_underscore) {
         name = detail::remove_underscore(name);
         it = std::find_if(std::begin(names), std::end(names), [&name](std::string local_name) {
-            return detail::remove_underscore(std::move(local_name)) == name;
+            return detail::remove_underscore(local_name) == name;
         });
     } else {
         it = std::find(std::begin(names), std::end(names), name);
@@ -865,8 +865,8 @@ CLI11_INLINE bool has_escapable_character(const std::string &str) {
 CLI11_INLINE std::string add_escaped_characters(const std::string &str) {
     std::string out;
     out.reserve(str.size() + 4);
-    for(const char s : str) {
-        const auto sloc = escapedChars.find_first_of(s);
+    for(char s : str) {
+        auto sloc = escapedChars.find_first_of(s);
         if(sloc != std::string::npos) {
             out.push_back('\\');
             out.push_back(escapedCharsCode[sloc]);
@@ -926,7 +926,7 @@ CLI11_INLINE std::string remove_escaped_characters(const std::string &str) {
             if(str.end() - loc < 2) {
                 throw std::invalid_argument("invalid escape sequence " + str);
             }
-            const auto ecloc = escapedCharsCode.find_first_of(*(loc + 1));
+            auto ecloc = escapedCharsCode.find_first_of(*(loc + 1));
             if(ecloc != std::string::npos) {
                 out.push_back(escapedChars[ecloc]);
                 ++loc;
@@ -938,7 +938,7 @@ CLI11_INLINE std::string remove_escaped_characters(const std::string &str) {
                 std::uint32_t code{0};
                 std::uint32_t mplier{16 * 16 * 16};
                 for(int ii = 2; ii < 6; ++ii) {
-                    const std::uint32_t res = hexConvert(*(loc + ii));
+                    std::uint32_t res = hexConvert(*(loc + ii));
                     if(res > 0x0F) {
                         throw std::invalid_argument("unicode sequence must have 4 hex codes " + str);
                     }
@@ -955,7 +955,7 @@ CLI11_INLINE std::string remove_escaped_characters(const std::string &str) {
                 std::uint32_t code{0};
                 std::uint32_t mplier{16 * 16 * 16 * 16 * 16 * 16 * 16};
                 for(int ii = 2; ii < 10; ++ii) {
-                    const std::uint32_t res = hexConvert(*(loc + ii));
+                    std::uint32_t res = hexConvert(*(loc + ii));
                     if(res > 0x0F) {
                         throw std::invalid_argument("unicode sequence must have 8 hex codes " + str);
                     }
@@ -992,7 +992,7 @@ CLI11_INLINE std::size_t close_string_quote(const std::string &str, std::size_t 
 }
 
 CLI11_INLINE std::size_t close_literal_quote(const std::string &str, std::size_t start, char closure_char) {
-    const auto loc = str.find_first_of(closure_char, start + 1);
+    auto loc = str.find_first_of(closure_char, start + 1);
     return (loc != std::string::npos ? loc : str.size());
 }
 
@@ -1053,8 +1053,8 @@ CLI11_INLINE std::vector<std::string> split_up(std::string str, char delimiter) 
     std::vector<std::string> output;
     while(!str.empty()) {
         if(bracketChars.find_first_of(str[0]) != std::string::npos) {
-            const auto bracketLoc = bracketChars.find_first_of(str[0]);
-            const auto end = close_sequence(str, 0, matchBracketChars[bracketLoc]);
+            auto bracketLoc = bracketChars.find_first_of(str[0]);
+            auto end = close_sequence(str, 0, matchBracketChars[bracketLoc]);
             if(end >= str.size()) {
                 output.push_back(std::move(str));
                 str.clear();
@@ -1084,9 +1084,9 @@ CLI11_INLINE std::vector<std::string> split_up(std::string str, char delimiter) 
 }
 
 CLI11_INLINE std::size_t escape_detect(std::string &str, std::size_t offset) {
-    const auto next = str[offset + 1];
+    auto next = str[offset + 1];
     if((next == '\"') || (next == '\'') || (next == '`')) {
-        const auto astart = str.find_last_of("-/ \"\'`", offset - 1);
+        auto astart = str.find_last_of("-/ \"\'`", offset - 1);
         if(astart != std::string::npos) {
             if(str[astart] == ((str[offset] == '=') ? '-' : '/'))
                 str[offset] = ' ';  // interpret this as a space so the split_up works properly
@@ -1099,7 +1099,7 @@ CLI11_INLINE std::string binary_escape_string(const std::string &string_to_escap
     // s is our escaped output string
     std::string escaped_string{};
     // loop through all characters
-    for(const char c : string_to_escape) {
+    for(char c : string_to_escape) {
         // check if a given character is printable
         // the cast is necessary to avoid undefined behaviour
         if(isprint(static_cast<unsigned char>(c)) == 0) {
@@ -1130,7 +1130,7 @@ CLI11_INLINE std::string binary_escape_string(const std::string &string_to_escap
 }
 
 CLI11_INLINE bool is_binary_escaped_string(const std::string &escaped_string) {
-    const size_t ssize = escaped_string.size();
+    size_t ssize = escaped_string.size();
     if(escaped_string.compare(0, 3, "B\"(") == 0 && escaped_string.compare(ssize - 2, 2, ")\"") == 0) {
         return true;
     }
@@ -1140,7 +1140,7 @@ CLI11_INLINE bool is_binary_escaped_string(const std::string &escaped_string) {
 CLI11_INLINE std::string extract_binary_string(const std::string &escaped_string) {
     std::size_t start{0};
     std::size_t tail{0};
-    const size_t ssize = escaped_string.size();
+    size_t ssize = escaped_string.size();
     if(escaped_string.compare(0, 3, "B\"(") == 0 && escaped_string.compare(ssize - 2, 2, ")\"") == 0) {
         start = 3;
         tail = 2;
@@ -1159,11 +1159,11 @@ CLI11_INLINE std::string extract_binary_string(const std::string &escaped_string
     while(loc < ssize - tail) {
         // ssize-2 to skip )" at the end
         if(escaped_string[loc] == '\\' && (escaped_string[loc + 1] == 'x' || escaped_string[loc + 1] == 'X')) {
-            const auto c1 = escaped_string[loc + 2];
-            const auto c2 = escaped_string[loc + 3];
+            auto c1 = escaped_string[loc + 2];
+            auto c2 = escaped_string[loc + 3];
 
-            const std::uint32_t res1 = hexConvert(c1);
-            const std::uint32_t res2 = hexConvert(c2);
+            std::uint32_t res1 = hexConvert(c1);
+            std::uint32_t res2 = hexConvert(c2);
             if(res1 <= 0x0F && res2 <= 0x0F) {
                 loc += 4;
                 outstring.push_back(static_cast<char>(res1 * 16 + res2));
@@ -1294,7 +1294,7 @@ class Error : public std::runtime_error {
     Error(std::string name, std::string msg, int exit_code = static_cast<int>(ExitCodes::BaseClass))
         : runtime_error(msg), actual_exit_code(exit_code), error_name(std::move(name)) {}
 
-    Error(std::string name, std::string msg, ExitCodes exit_code) : Error(std::move(name), std::move(msg), static_cast<int>(exit_code)) {}
+    Error(std::string name, std::string msg, ExitCodes exit_code) : Error(name, msg, static_cast<int>(exit_code)) {}
 };
 
 // Note: Using Error::Error constructors does not work on GCC 4.7
@@ -1433,13 +1433,13 @@ class ConversionError : public ParseError {
 class ValidationError : public ParseError {
     CLI11_ERROR_DEF(ParseError, ValidationError)
     CLI11_ERROR_SIMPLE(ValidationError)
-    explicit ValidationError(const std::string &name, const std::string &msg) : ValidationError(name + ": " + msg) {}
+    explicit ValidationError(std::string name, std::string msg) : ValidationError(name + ": " + msg) {}
 };
 
 /// Thrown when a required option is missing
 class RequiredError : public ParseError {
     CLI11_ERROR_DEF(ParseError, RequiredError)
-    explicit RequiredError(const std::string &name) : RequiredError(name + " is required", ExitCodes::RequiredError) {}
+    explicit RequiredError(std::string name) : RequiredError(name + " is required", ExitCodes::RequiredError) {}
     static RequiredError Subcommand(std::size_t min_subcom) {
         if(min_subcom == 1) {
             return RequiredError("A subcommand");
@@ -1475,28 +1475,28 @@ class RequiredError : public ParseError {
 class ArgumentMismatch : public ParseError {
     CLI11_ERROR_DEF(ParseError, ArgumentMismatch)
     CLI11_ERROR_SIMPLE(ArgumentMismatch)
-    ArgumentMismatch(const std::string &name, int expected, std::size_t received)
+    ArgumentMismatch(std::string name, int expected, std::size_t received)
         : ArgumentMismatch(expected > 0 ? ("Expected exactly " + std::to_string(expected) + " arguments to " + name +
                                            ", got " + std::to_string(received))
                                         : ("Expected at least " + std::to_string(-expected) + " arguments to " + name +
                                            ", got " + std::to_string(received)),
                            ExitCodes::ArgumentMismatch) {}
 
-    static ArgumentMismatch AtLeast(const std::string &name, int num, std::size_t received) {
+    static ArgumentMismatch AtLeast(std::string name, int num, std::size_t received) {
         return ArgumentMismatch(name + ": At least " + std::to_string(num) + " required but received " +
                                 std::to_string(received));
     }
-    static ArgumentMismatch AtMost(const std::string &name, int num, std::size_t received) {
+    static ArgumentMismatch AtMost(std::string name, int num, std::size_t received) {
         return ArgumentMismatch(name + ": At Most " + std::to_string(num) + " required but received " +
                                 std::to_string(received));
     }
-    static ArgumentMismatch TypedAtLeast(const std::string &name, int num, std::string type) {
+    static ArgumentMismatch TypedAtLeast(std::string name, int num, std::string type) {
         return ArgumentMismatch(name + ": " + std::to_string(num) + " required " + type + " missing");
     }
-    static ArgumentMismatch FlagOverride(const std::string &name) {
+    static ArgumentMismatch FlagOverride(std::string name) {
         return ArgumentMismatch(name + " was given a disallowed flag override");
     }
-    static ArgumentMismatch PartialType(const std::string &name, int num, std::string type) {
+    static ArgumentMismatch PartialType(std::string name, int num, std::string type) {
         return ArgumentMismatch(name + ": " + type + " only partially specified: " + std::to_string(num) +
                                 " required for each element");
     }
@@ -1505,14 +1505,14 @@ class ArgumentMismatch : public ParseError {
 /// Thrown when a requires option is missing
 class RequiresError : public ParseError {
     CLI11_ERROR_DEF(ParseError, RequiresError)
-    RequiresError(const std::string &curname, const std::string &subname)
+    RequiresError(std::string curname, std::string subname)
         : RequiresError(curname + " requires " + subname, ExitCodes::RequiresError) {}
 };
 
 /// Thrown when an excludes option is present
 class ExcludesError : public ParseError {
     CLI11_ERROR_DEF(ParseError, ExcludesError)
-    ExcludesError(const std::string &curname, const std::string &subname)
+    ExcludesError(std::string curname, std::string subname)
         : ExcludesError(curname + " excludes " + subname, ExitCodes::ExcludesError) {}
 };
 
@@ -1536,8 +1536,8 @@ class ExtrasError : public ParseError {
 class ConfigError : public ParseError {
     CLI11_ERROR_DEF(ParseError, ConfigError)
     CLI11_ERROR_SIMPLE(ConfigError)
-    static ConfigError Extras(const std::string &item) { return ConfigError("INI was not able to parse " + item); }
-    static ConfigError NotConfigurable(const std::string &item) {
+    static ConfigError Extras(std::string item) { return ConfigError("INI was not able to parse " + item); }
+    static ConfigError NotConfigurable(std::string item) {
         return ConfigError(item + ": This option is not allowed in a configuration file");
     }
 };
@@ -1545,7 +1545,7 @@ class ConfigError : public ParseError {
 /// Thrown when validation fails before parsing
 class InvalidError : public ParseError {
     CLI11_ERROR_DEF(ParseError, InvalidError)
-    explicit InvalidError(const std::string &name)
+    explicit InvalidError(std::string name)
         : InvalidError(name + ": Too many positional arguments with unlimited expected args", ExitCodes::InvalidError) {
     }
 };
@@ -1562,7 +1562,7 @@ class HorribleError : public ParseError {
 /// Thrown when counting a non-existent option
 class OptionNotFound : public Error {
     CLI11_ERROR_DEF(Error, OptionNotFound)
-    explicit OptionNotFound(const std::string &name) : OptionNotFound(name + " not found", ExitCodes::OptionNotFound) {}
+    explicit OptionNotFound(std::string name) : OptionNotFound(name + " not found", ExitCodes::OptionNotFound) {}
 };
 
 #undef CLI11_ERROR_DEF
@@ -2597,7 +2597,7 @@ template <typename T,
           enable_if_t<classify_object<T>::value == object_category::boolean_value, detail::enabler> = detail::dummy>
 bool lexical_cast(const std::string &input, T &output) {
     errno = 0;
-    const auto out = to_flag_value(input);
+    auto out = to_flag_value(input);
     if(errno == 0) {
         output = (out > 0);
     } else if(errno == ERANGE) {
@@ -2639,7 +2639,7 @@ bool lexical_cast(const std::string &input, T &output) {
     XC x{0.0}, y{0.0};
     auto str1 = input;
     bool worked = false;
-    const auto nloc = str1.find_last_of("+-");
+    auto nloc = str1.find_last_of("+-");
     if(nloc != std::string::npos && nloc > 0) {
         worked = lexical_cast(str1.substr(0, nloc), x);
         str1 = str1.substr(nloc);
@@ -2913,7 +2913,7 @@ template <typename AssignTo,
                       detail::enabler> = detail::dummy>
 bool lexical_assign(const std::string &input, AssignTo &output) {
     ConvertTo val{};
-    const bool parse_result = (!input.empty()) ? lexical_cast(input, val) : true;
+    bool parse_result = (!input.empty()) ? lexical_cast(input, val) : true;
     if(parse_result) {
         output = val;
     }
@@ -2929,7 +2929,7 @@ template <
                 detail::enabler> = detail::dummy>
 bool lexical_assign(const std::string &input, AssignTo &output) {
     ConvertTo val{};
-    const bool parse_result = input.empty() ? true : lexical_cast(input, val);
+    bool parse_result = input.empty() ? true : lexical_cast(input, val);
     if(parse_result) {
         output = AssignTo(val);  // use () form of constructor to allow some implicit conversions
     }
@@ -2987,7 +2987,7 @@ bool lexical_conversion(const std::vector<std ::string> &strings, AssignTo &outp
     }
     for(const auto &elem : strings) {
         typename AssignTo::value_type out;
-        const bool retval = lexical_assign<typename AssignTo::value_type, typename ConvertTo::value_type>(elem, out);
+        bool retval = lexical_assign<typename AssignTo::value_type, typename ConvertTo::value_type>(elem, out);
         if(!retval) {
             return false;
         }
@@ -3208,8 +3208,8 @@ bool lexical_conversion(const std::vector<std ::string> &strings, AssignTo &outp
     std::vector<std::string> temp;
     std::size_t ii{0};
     std::size_t icount{0};
-    const std::size_t xcm{type_count<ConvertTo>::value};
-    const auto ii_max = strings.size();
+    std::size_t xcm{type_count<ConvertTo>::value};
+    auto ii_max = strings.size();
     while(ii < ii_max) {
         temp.push_back(strings[ii]);
         ++ii;
@@ -3278,10 +3278,10 @@ inline std::string sum_string_vector(const std::vector<std::string> &values) {
     std::string output;
     for(const auto &arg : values) {
         double tv{0.0};
-        const auto comp = lexical_cast(arg, tv);
+        auto comp = lexical_cast(arg, tv);
         if(!comp) {
             errno = 0;
-            const auto fv = detail::to_flag_value(arg);
+            auto fv = detail::to_flag_value(arg);
             fail = (errno != 0);
             if(fail) {
                 break;
@@ -3345,7 +3345,7 @@ CLI11_INLINE bool split_short(const std::string &current, std::string &name, std
 
 CLI11_INLINE bool split_long(const std::string &current, std::string &name, std::string &value) {
     if(current.size() > 2 && current.compare(0, 2, "--") == 0 && valid_first_char(current[2])) {
-        const auto loc = current.find_first_of('=');
+        auto loc = current.find_first_of('=');
         if(loc != std::string::npos) {
             name = current.substr(2, loc - 2);
             value = current.substr(loc + 1);
@@ -3360,7 +3360,7 @@ CLI11_INLINE bool split_long(const std::string &current, std::string &name, std:
 
 CLI11_INLINE bool split_windows_style(const std::string &current, std::string &name, std::string &value) {
     if(current.size() > 1 && current[0] == '/' && valid_first_char(current[1])) {
-        const auto loc = current.find_first_of(':');
+        auto loc = current.find_first_of(':');
         if(loc != std::string::npos) {
             name = current.substr(1, loc - 1);
             value = current.substr(loc + 1);
@@ -3397,7 +3397,7 @@ CLI11_INLINE std::vector<std::pair<std::string, std::string>> get_default_flag_v
     std::vector<std::pair<std::string, std::string>> output;
     output.reserve(flags.size());
     for(auto &flag : flags) {
-        const auto def_start = flag.find_first_of('{');
+        auto def_start = flag.find_first_of('{');
         std::string defval = "false";
         if((def_start != std::string::npos) && (flag.back() == '}')) {
             defval = flag.substr(def_start + 1);
@@ -3865,7 +3865,7 @@ class Range : public Validator {
         func_ = [min_val, max_val](std::string &input) {
             using CLI::detail::lexical_cast;
             T val;
-            const bool converted = lexical_cast(input, val);
+            bool converted = lexical_cast(input, val);
             if((!converted) || (val < min_val || val > max_val)) {
                 std::stringstream out;
                 out << "Value " << input << " not in range [";
@@ -3903,7 +3903,7 @@ class Bound : public Validator {
         func_ = [min_val, max_val](std::string &input) {
             using CLI::detail::lexical_cast;
             T val;
-            const bool converted = lexical_cast(input, val);
+            bool converted = lexical_cast(input, val);
             if(!converted) {
                 return std::string("Value ") + input + " could not be converted";
             }
@@ -4235,7 +4235,7 @@ class CheckedTransformer : public Validator {
         func_ = [mapping, tfunc, filter_fn](std::string &input) {
             using CLI::detail::lexical_cast;
             local_item_t b;
-            const bool converted = lexical_cast(input, b);
+            bool converted = lexical_cast(input, b);
             if(converted) {
                 if(filter_fn) {
                     b = filter_fn(b);
@@ -4357,13 +4357,13 @@ class AsNumberWithUnit : public Validator {
 
             if(!input.empty()) {
                 using CLI::detail::lexical_cast;
-                const bool converted = lexical_cast(input, num);
+                bool converted = lexical_cast(input, num);
                 if(!converted) {
                     throw ValidationError(std::string("Value ") + input + " could not be converted to " +
                                           detail::type_name<Number>());
                 }
                 // perform safe multiplication
-                const bool ok = detail::checked_multiply(num, it->second);
+                bool ok = detail::checked_multiply(num, it->second);
                 if(!ok) {
                     throw ValidationError(detail::to_string(num) + " multiplied by " + unit +
                                           " factor would cause number overflow. Use smaller value.");
@@ -4497,8 +4497,8 @@ CLI11_INLINE Validator Validator::operator&(const Validator &other) const {
     const std::function<std::string(std::string & filename)> &f2 = other.func_;
 
     newval.func_ = [f1, f2](std::string &input) {
-        const std::string s1 = f1(input);
-        const std::string s2 = f2(input);
+        std::string s1 = f1(input);
+        std::string s2 = f2(input);
         if(!s1.empty() && !s2.empty())
             return std::string("(") + s1 + ") AND (" + s2 + ")";
         return s1 + s2;
@@ -4519,8 +4519,8 @@ CLI11_INLINE Validator Validator::operator|(const Validator &other) const {
     const std::function<std::string(std::string &)> &f2 = other.func_;
 
     newval.func_ = [f1, f2](std::string &input) {
-        const std::string s1 = f1(input);
-        const std::string s2 = f2(input);
+        std::string s1 = f1(input);
+        std::string s2 = f2(input);
         if(s1.empty() || s2.empty())
             return std::string();
 
@@ -4535,14 +4535,14 @@ CLI11_INLINE Validator Validator::operator!() const {
     Validator newval;
     const std::function<std::string()> &dfunc1 = desc_function_;
     newval.desc_function_ = [dfunc1]() {
-        const auto str = dfunc1();
+        auto str = dfunc1();
         return (!str.empty()) ? std::string("NOT ") + str : std::string{};
     };
     // Give references (will make a copy in lambda function)
     const std::function<std::string(std::string & res)> &f1 = func_;
 
     newval.func_ = [f1, dfunc1](std::string &test) -> std::string {
-        const std::string s1 = f1(test);
+        std::string s1 = f1(test);
         if(s1.empty()) {
             return std::string("check ") + dfunc1() + " succeeded improperly";
         }
@@ -4560,8 +4560,8 @@ Validator::_merge_description(const Validator &val1, const Validator &val2, cons
     const std::function<std::string()> &dfunc2 = val2.desc_function_;
 
     desc_function_ = [=]() {
-        const std::string f1 = dfunc1();
-        const std::string f2 = dfunc2();
+        std::string f1 = dfunc1();
+        std::string f2 = dfunc2();
         if((f1.empty()) || (f2.empty())) {
             return f1 + f2;
         }
@@ -4574,7 +4574,7 @@ namespace detail {
 #if defined CLI11_HAS_FILESYSTEM && CLI11_HAS_FILESYSTEM > 0
 CLI11_INLINE path_type check_path(const char *file) noexcept {
     std::error_code ec;
-    const auto stat = std::filesystem::status(to_path(file), ec);
+    auto stat = std::filesystem::status(to_path(file), ec);
     if(ec) {
         return path_type::nonexistent;
     }
@@ -4614,7 +4614,7 @@ CLI11_INLINE path_type check_path(const char *file) noexcept {
 
 CLI11_INLINE ExistingFileValidator::ExistingFileValidator() : Validator("FILE") {
     func_ = [](std::string &filename) {
-        const auto path_result = check_path(filename.c_str());
+        auto path_result = check_path(filename.c_str());
         if(path_result == path_type::nonexistent) {
             return "File does not exist: " + filename;
         }
@@ -4627,7 +4627,7 @@ CLI11_INLINE ExistingFileValidator::ExistingFileValidator() : Validator("FILE") 
 
 CLI11_INLINE ExistingDirectoryValidator::ExistingDirectoryValidator() : Validator("DIR") {
     func_ = [](std::string &filename) {
-        const auto path_result = check_path(filename.c_str());
+        auto path_result = check_path(filename.c_str());
         if(path_result == path_type::nonexistent) {
             return "Directory does not exist: " + filename;
         }
@@ -4640,7 +4640,7 @@ CLI11_INLINE ExistingDirectoryValidator::ExistingDirectoryValidator() : Validato
 
 CLI11_INLINE ExistingPathValidator::ExistingPathValidator() : Validator("PATH(existing)") {
     func_ = [](std::string &filename) {
-        const auto path_result = check_path(filename.c_str());
+        auto path_result = check_path(filename.c_str());
         if(path_result == path_type::nonexistent) {
             return "Path does not exist: " + filename;
         }
@@ -4650,7 +4650,7 @@ CLI11_INLINE ExistingPathValidator::ExistingPathValidator() : Validator("PATH(ex
 
 CLI11_INLINE NonexistentPathValidator::NonexistentPathValidator() : Validator("PATH(non-existing)") {
     func_ = [](std::string &filename) {
-        const auto path_result = check_path(filename.c_str());
+        auto path_result = check_path(filename.c_str());
         if(path_result != path_type::nonexistent) {
             return "Path already exists: " + filename;
         }
@@ -4660,14 +4660,14 @@ CLI11_INLINE NonexistentPathValidator::NonexistentPathValidator() : Validator("P
 
 CLI11_INLINE IPV4Validator::IPV4Validator() : Validator("IPV4") {
     func_ = [](std::string &ip_addr) {
-        const auto result = CLI::detail::split(ip_addr, '.');
+        auto result = CLI::detail::split(ip_addr, '.');
         if(result.size() != 4) {
             return std::string("Invalid IPV4 address must have four parts (") + ip_addr + ')';
         }
         int num = 0;
         for(const auto &var : result) {
             using CLI::detail::lexical_cast;
-            const bool retval = lexical_cast(var, num);
+            bool retval = lexical_cast(var, num);
             if(!retval) {
                 return std::string("Failed parsing number (") + var + ')';
             }
@@ -4734,8 +4734,8 @@ CLI11_INLINE AsSizeValue::AsSizeValue(bool kb_is_1000) : AsNumberWithUnit(get_ma
 
 CLI11_INLINE std::map<std::string, AsSizeValue::result_t> AsSizeValue::init_mapping(bool kb_is_1000) {
     std::map<std::string, result_t> m;
-    const result_t k_factor = kb_is_1000 ? 1000 : 1024;
-    const result_t ki_factor = 1024;
+    result_t k_factor = kb_is_1000 ? 1000 : 1024;
+    result_t ki_factor = 1024;
     result_t k = 1;
     result_t ki = 1;
     m["b"] = 1;
@@ -4773,7 +4773,7 @@ CLI11_INLINE std::pair<std::string, std::string> split_program_name(std::string 
             // program name
             if(commandline[0] == '"' || commandline[0] == '\'' || commandline[0] == '`') {
                 bool embeddedQuote = false;
-                const auto keyChar = commandline[0];
+                auto keyChar = commandline[0];
                 auto end = commandline.find_first_of(keyChar, 1);
                 while((end != std::string::npos) && (commandline[end - 1] == '\\')) {  // deal with escaped quotes
                     end = commandline.find_first_of(keyChar, end + 1);
@@ -5712,7 +5712,7 @@ class Option : public OptionBase<Option> {
     /// bound value only available for types that can be converted to a string
     template <typename X> Option *default_val(const X &val) {
         std::string val_str = detail::to_string(val);
-        const auto old_option_state = current_option_state_;
+        auto old_option_state = current_option_state_;
         results_t old_results{std::move(results_)};
         results_.clear();
         try {
@@ -5879,7 +5879,7 @@ CLI11_INLINE Validator *Option::get_validator(int index) {
 }
 
 CLI11_INLINE bool Option::remove_needs(Option *opt) {
-    const auto iterator = std::find(std::begin(needs_), std::end(needs_), opt);
+    auto iterator = std::find(std::begin(needs_), std::end(needs_), opt);
 
     if(iterator == std::end(needs_)) {
         return false;
@@ -5904,7 +5904,7 @@ CLI11_INLINE Option *Option::excludes(Option *opt) {
 }
 
 CLI11_INLINE bool Option::remove_excludes(Option *opt) {
-    const auto iterator = std::find(std::begin(excludes_), std::end(excludes_), opt);
+    auto iterator = std::find(std::begin(excludes_), std::end(excludes_), opt);
 
     if(iterator == std::end(excludes_)) {
         return false;
@@ -6039,7 +6039,7 @@ CLI11_INLINE void Option::run_callback() {
             return;
         }
         const results_t &send_results = proc_results_.empty() ? results_ : proc_results_;
-        const bool local_result = callback_(send_results);
+        bool local_result = callback_(send_results);
 
         if(!local_result)
             throw ConversionError(get_name(), results_);
@@ -6120,7 +6120,7 @@ CLI11_NODISCARD CLI11_INLINE std::string Option::get_flag_value(const std::strin
     // check for disable flag override_
     if(disable_flag_override_) {
         if(!((input_value.empty()) || (input_value == emptyString))) {
-            const auto default_ind = detail::find_member(name, fnames_, ignore_case_, ignore_underscore_);
+            auto default_ind = detail::find_member(name, fnames_, ignore_case_, ignore_underscore_);
             if(default_ind >= 0) {
                 // We can static cast this to std::size_t because it is more than 0 in this block
                 if(default_flag_values_[static_cast<std::size_t>(default_ind)].second != input_value) {
@@ -6136,7 +6136,7 @@ CLI11_NODISCARD CLI11_INLINE std::string Option::get_flag_value(const std::strin
             }
         }
     }
-    const auto ind = detail::find_member(name, fnames_, ignore_case_, ignore_underscore_);
+    auto ind = detail::find_member(name, fnames_, ignore_case_, ignore_underscore_);
     if((input_value.empty()) || (input_value == emptyString)) {
         if(flag_like_) {
             return (ind < 0) ? trueString : default_flag_values_[static_cast<std::size_t>(ind)].second;
@@ -6148,7 +6148,7 @@ CLI11_NODISCARD CLI11_INLINE std::string Option::get_flag_value(const std::strin
     }
     if(default_flag_values_[static_cast<std::size_t>(ind)].second == falseString) {
         errno = 0;
-        const auto val = detail::to_flag_value(input_value);
+        auto val = detail::to_flag_value(input_value);
         if(errno != 0) {
             errno = 0;
             return input_value;
@@ -6304,7 +6304,7 @@ CLI11_INLINE void Option::_reduce_results(results_t &out, const results_t &origi
         break;
     case MultiOptionPolicy::TakeLast: {
         // Allow multi-option sizes (including 0)
-        const std::size_t trim_size = std::min<std::size_t>(
+        std::size_t trim_size = std::min<std::size_t>(
             static_cast<std::size_t>(std::max<int>(get_items_expected_max(), 1)), original.size());
         if(original.size() != trim_size) {
             out.assign(original.end() - static_cast<results_t::difference_type>(trim_size), original.end());
@@ -6312,7 +6312,7 @@ CLI11_INLINE void Option::_reduce_results(results_t &out, const results_t &origi
     } break;
     case MultiOptionPolicy::Reverse: {
         // Allow multi-option sizes (including 0)
-        const std::size_t trim_size = std::min<std::size_t>(
+        std::size_t trim_size = std::min<std::size_t>(
             static_cast<std::size_t>(std::max<int>(get_items_expected_max(), 1)), original.size());
         if(original.size() != trim_size || trim_size > 1) {
             out.assign(original.end() - static_cast<results_t::difference_type>(trim_size), original.end());
@@ -6320,7 +6320,7 @@ CLI11_INLINE void Option::_reduce_results(results_t &out, const results_t &origi
         std::reverse(out.begin(), out.end());
     } break;
     case MultiOptionPolicy::TakeFirst: {
-        const std::size_t trim_size = std::min<std::size_t>(
+        std::size_t trim_size = std::min<std::size_t>(
             static_cast<std::size_t>(std::max<int>(get_items_expected_max(), 1)), original.size());
         if(original.size() != trim_size) {
             out.assign(original.begin(), original.begin() + static_cast<results_t::difference_type>(trim_size));
@@ -6377,7 +6377,7 @@ CLI11_INLINE std::string Option::_validate(std::string &result, int index) const
         return err_msg;
     }
     for(const auto &vali : validators_) {
-        const auto v = vali.get_application_index();
+        auto v = vali.get_application_index();
         if(v == -1 || v == index) {
             try {
                 err_msg = vali(result);
@@ -7304,7 +7304,7 @@ class App {
 
     /// Check with name instead of pointer to see if subcommand was selected
     CLI11_NODISCARD bool got_subcommand(std::string subcommand_name) const noexcept {
-        const App *sub = get_subcommand_no_throw(subcommand_name);
+        App *sub = get_subcommand_no_throw(subcommand_name);
         return (sub != nullptr) ? (sub->parsed_ > 0) : false;
     }
 
@@ -7325,7 +7325,7 @@ class App {
         if(app == this) {
             throw OptionNotFound("cannot self reference in needs");
         }
-        const auto res = exclude_subcommands_.insert(app);
+        auto res = exclude_subcommands_.insert(app);
         // subcommand exclusion should be symmetric
         if(res.second) {
             app->exclude_subcommands_.insert(this);
@@ -7631,7 +7631,7 @@ class App {
     bool _process_config_file(const std::string &config_file, bool throw_error);
 
     /// Get envname options if not yet passed. Runs on *all* subcommands.
-    void _process_env() const;
+    void _process_env();
 
     /// Process callbacks. Runs on *all* subcommands.
     void _process_callbacks();
@@ -7892,7 +7892,7 @@ CLI11_NODISCARD CLI11_INLINE char **App::ensure_utf8(char **argv) {
 CLI11_INLINE App *App::name(std::string app_name) {
 
     if(parent_ != nullptr) {
-        const std::string oname = name_;
+        std::string oname = name_;
         name_ = app_name;
         const auto &res = _compare_subcommand_names(*this, *_get_fallthrough_parent());
         if(!res.empty()) {
@@ -7939,7 +7939,7 @@ CLI11_INLINE App *App::immediate_callback(bool immediate) {
 CLI11_INLINE App *App::ignore_case(bool value) {
     if(value && !ignore_case_) {
         ignore_case_ = true;
-        const auto *p = (parent_ != nullptr) ? _get_fallthrough_parent() : this;
+        auto *p = (parent_ != nullptr) ? _get_fallthrough_parent() : this;
         const auto &match = _compare_subcommand_names(*this, *p);
         if(!match.empty()) {
             ignore_case_ = false;  // we are throwing so need to be exception invariant
@@ -7953,7 +7953,7 @@ CLI11_INLINE App *App::ignore_case(bool value) {
 CLI11_INLINE App *App::ignore_underscore(bool value) {
     if(value && !ignore_underscore_) {
         ignore_underscore_ = true;
-        const auto *p = (parent_ != nullptr) ? _get_fallthrough_parent() : this;
+        auto *p = (parent_ != nullptr) ? _get_fallthrough_parent() : this;
         const auto &match = _compare_subcommand_names(*this, *p);
         if(!match.empty()) {
             ignore_underscore_ = false;
@@ -7981,19 +7981,19 @@ CLI11_INLINE Option *App::add_option(std::string option_name,
                 test_name.erase(0, 1);
             }
 
-            const auto *op = get_option_no_throw(test_name);
+            auto *op = get_option_no_throw(test_name);
             if(op != nullptr) {
                 throw(OptionAlreadyAdded("added option positional name matches existing option: " + test_name));
             }
         } else if(parent_ != nullptr) {
-            for(const auto &ln : myopt.lnames_) {
-                const auto *op = parent_->get_option_no_throw(ln);
+            for(auto &ln : myopt.lnames_) {
+                auto *op = parent_->get_option_no_throw(ln);
                 if(op != nullptr) {
                     throw(OptionAlreadyAdded("added option matches existing positional option: " + ln));
                 }
             }
-            for(const auto &sn : myopt.snames_) {
-                const auto *op = parent_->get_option_no_throw(sn);
+            for(auto &sn : myopt.snames_) {
+                auto *op = parent_->get_option_no_throw(sn);
                 if(op != nullptr) {
                     throw(OptionAlreadyAdded("added option matches existing positional option: " + sn));
                 }
@@ -8020,7 +8020,7 @@ CLI11_INLINE Option *App::add_option(std::string option_name,
         return option.get();
     }
     // we know something matches now find what it is so we can produce more error information
-    for(const auto &opt : options_) {
+    for(auto &opt : options_) {
         const auto &matchname = opt->matching_name(myopt);
         if(!matchname.empty()) {
             throw(OptionAlreadyAdded("added option matched existing option name: " + matchname));
@@ -8112,7 +8112,7 @@ CLI11_INLINE Option *App::_add_flag_internal(std::string flag_name, CLI::callbac
     }
     // flags cannot have positional values
     if(opt->get_positional()) {
-        const auto pos_name = opt->get_name(true);
+        auto pos_name = opt->get_name(true);
         remove_option(opt);
         throw IncorrectConstruction::PositionalFlag(pos_name);
     }
@@ -8129,7 +8129,7 @@ CLI11_INLINE Option *App::add_flag_callback(std::string flag_name,
     CLI::callback_t fun = [function](const CLI::results_t &res) {
         using CLI::detail::lexical_cast;
         bool trigger{false};
-        const auto result = lexical_cast(res[0], trigger);
+        auto result = lexical_cast(res[0], trigger);
         if(result && trigger) {
             function();
         }
@@ -8185,7 +8185,7 @@ CLI11_INLINE Option *App::set_config(std::string option_name,
 
 CLI11_INLINE bool App::remove_option(Option *opt) {
     // Make sure no links exist
-    for(const Option_p &op : options_) {
+    for(Option_p &op : options_) {
         op->remove_needs(opt);
         op->remove_excludes(opt);
     }
@@ -8195,7 +8195,7 @@ CLI11_INLINE bool App::remove_option(Option *opt) {
     if(help_all_ptr_ == opt)
         help_all_ptr_ = nullptr;
 
-    const auto iterator =
+    auto iterator =
         std::find_if(std::begin(options_), std::end(options_), [opt](const Option_p &v) { return v.get() == opt; });
     if(iterator != std::end(options_)) {
         options_.erase(iterator);
@@ -8210,7 +8210,7 @@ CLI11_INLINE App *App::add_subcommand(std::string subcommand_name, std::string s
             throw IncorrectConstruction(
                 "Subcommand name starts with invalid character, '!' and '-' and control characters");
         }
-        for(const auto c : subcommand_name) {
+        for(auto c : subcommand_name) {
             if(!detail::valid_later_char(c)) {
                 throw IncorrectConstruction(std::string("Subcommand name contains invalid character ('") + c +
                                             "'), all characters are allowed except"
@@ -8225,7 +8225,7 @@ CLI11_INLINE App *App::add_subcommand(std::string subcommand_name, std::string s
 CLI11_INLINE App *App::add_subcommand(CLI::App_p subcom) {
     if(!subcom)
         throw IncorrectConstruction("passed App is not valid");
-    const auto *ckapp = (name_.empty() && parent_ != nullptr) ? _get_fallthrough_parent() : this;
+    auto *ckapp = (name_.empty() && parent_ != nullptr) ? _get_fallthrough_parent() : this;
     const auto &mstrg = _compare_subcommand_names(*subcom, *ckapp);
     if(!mstrg.empty()) {
         throw(OptionAlreadyAdded("subcommand name or alias matches existing subcommand: " + mstrg));
@@ -8237,12 +8237,12 @@ CLI11_INLINE App *App::add_subcommand(CLI::App_p subcom) {
 
 CLI11_INLINE bool App::remove_subcommand(App *subcom) {
     // Make sure no links exist
-    for(const App_p &sub : subcommands_) {
+    for(App_p &sub : subcommands_) {
         sub->remove_excludes(subcom);
         sub->remove_needs(subcom);
     }
 
-    const auto iterator = std::find_if(
+    auto iterator = std::find_if(
         std::begin(subcommands_), std::end(subcommands_), [subcom](const App_p &v) { return v.get() == subcom; });
     if(iterator != std::end(subcommands_)) {
         subcommands_.erase(iterator);
@@ -8273,7 +8273,7 @@ CLI11_NODISCARD CLI11_INLINE App *App::get_subcommand_no_throw(std::string subco
 
 CLI11_NODISCARD CLI11_INLINE App *App::get_subcommand(int index) const {
     if(index >= 0) {
-        const auto uindex = static_cast<unsigned>(index);
+        auto uindex = static_cast<unsigned>(index);
         if(uindex < subcommands_.size())
             return subcommands_[uindex].get();
     }
@@ -8298,7 +8298,7 @@ CLI11_NODISCARD CLI11_INLINE CLI::App_p App::get_subcommand_ptr(std::string subc
 
 CLI11_NODISCARD CLI11_INLINE CLI::App_p App::get_subcommand_ptr(int index) const {
     if(index >= 0) {
-        const auto uindex = static_cast<unsigned>(index);
+        auto uindex = static_cast<unsigned>(index);
         if(uindex < subcommands_.size())
             return subcommands_[uindex];
     }
@@ -8512,7 +8512,7 @@ CLI11_INLINE std::vector<App *> App::get_subcommands(const std::function<bool(Ap
 }
 
 CLI11_INLINE bool App::remove_excludes(Option *opt) {
-    const auto iterator = std::find(std::begin(exclude_options_), std::end(exclude_options_), opt);
+    auto iterator = std::find(std::begin(exclude_options_), std::end(exclude_options_), opt);
     if(iterator == std::end(exclude_options_)) {
         return false;
     }
@@ -8521,7 +8521,7 @@ CLI11_INLINE bool App::remove_excludes(Option *opt) {
 }
 
 CLI11_INLINE bool App::remove_excludes(App *app) {
-    const auto iterator = std::find(std::begin(exclude_subcommands_), std::end(exclude_subcommands_), app);
+    auto iterator = std::find(std::begin(exclude_subcommands_), std::end(exclude_subcommands_), app);
     if(iterator == std::end(exclude_subcommands_)) {
         return false;
     }
@@ -8532,7 +8532,7 @@ CLI11_INLINE bool App::remove_excludes(App *app) {
 }
 
 CLI11_INLINE bool App::remove_needs(Option *opt) {
-    const auto iterator = std::find(std::begin(need_options_), std::end(need_options_), opt);
+    auto iterator = std::find(std::begin(need_options_), std::end(need_options_), opt);
     if(iterator == std::end(need_options_)) {
         return false;
     }
@@ -8541,7 +8541,7 @@ CLI11_INLINE bool App::remove_needs(Option *opt) {
 }
 
 CLI11_INLINE bool App::remove_needs(App *app) {
-    const auto iterator = std::find(std::begin(need_subcommands_), std::end(need_subcommands_), app);
+    auto iterator = std::find(std::begin(need_subcommands_), std::end(need_subcommands_), app);
     if(iterator == std::end(need_subcommands_)) {
         return false;
     }
@@ -8556,7 +8556,7 @@ CLI11_NODISCARD CLI11_INLINE std::string App::help(std::string prev, AppFormatMo
         prev += " " + get_name();
 
     // Delegate to subcommand if needed
-    const auto selected_subcommands = get_subcommands();
+    auto selected_subcommands = get_subcommands();
     if(!selected_subcommands.empty()) {
         return selected_subcommands.back()->help(prev, mode);
     }
@@ -8567,7 +8567,7 @@ CLI11_NODISCARD CLI11_INLINE std::string App::version() const {
     std::string val;
     if(version_ptr_ != nullptr) {
         // copy the results for reuse later
-        const results_t rv = version_ptr_->results();
+        results_t rv = version_ptr_->results();
         version_ptr_->clear();
         version_ptr_->add_result("true");
         try {
@@ -8611,12 +8611,12 @@ CLI11_INLINE std::vector<Option *> App::get_options(const std::function<bool(Opt
 }
 
 CLI11_NODISCARD CLI11_INLINE Option *App::get_option_no_throw(std::string option_name) noexcept {
-    for(const Option_p &opt : options_) {
+    for(Option_p &opt : options_) {
         if(opt->check_name(option_name)) {
             return opt.get();
         }
     }
-    for(const auto &subc : subcommands_) {
+    for(auto &subc : subcommands_) {
         // also check down into nameless subcommands
         if(subc->get_name().empty()) {
             auto *opt = subc->get_option_no_throw(option_name);
@@ -8637,7 +8637,7 @@ CLI11_NODISCARD CLI11_INLINE const Option *App::get_option_no_throw(std::string 
     for(const auto &subc : subcommands_) {
         // also check down into nameless subcommands
         if(subc->get_name().empty()) {
-            const auto *opt = subc->get_option_no_throw(option_name);
+            auto *opt = subc->get_option_no_throw(option_name);
             if(opt != nullptr) {
                 return opt;
             }
@@ -8751,11 +8751,11 @@ CLI11_NODISCARD CLI11_INLINE std::size_t App::remaining_size(bool recurse) const
 
 CLI11_INLINE void App::_validate() const {
     // count the number of positional only args
-    const auto pcount = std::count_if(std::begin(options_), std::end(options_), [](const Option_p &opt) {
+    auto pcount = std::count_if(std::begin(options_), std::end(options_), [](const Option_p &opt) {
         return opt->get_items_expected_max() >= detail::expected_max_vector_size && !opt->nonpositional();
     });
     if(pcount > 1) {
-        const auto pcount_req = std::count_if(std::begin(options_), std::end(options_), [](const Option_p &opt) {
+        auto pcount_req = std::count_if(std::begin(options_), std::end(options_), [](const Option_p &opt) {
             return opt->get_items_expected_max() >= detail::expected_max_vector_size && !opt->nonpositional() &&
                    opt->get_required();
         });
@@ -8817,7 +8817,7 @@ CLI11_INLINE void App::run_callback(bool final_mode, bool suppress_final_callbac
         }
     }
     // now run callbacks for option_groups
-    for(const auto &subc : subcommands_) {
+    for(auto &subc : subcommands_) {
         if(subc->name_.empty() && subc->count_all() > 0) {
             subc->run_callback(true, suppress_final_callback);
         }
@@ -8836,7 +8836,7 @@ CLI11_NODISCARD CLI11_INLINE bool App::_valid_subcommand(const std::string &curr
     if(require_subcommand_max_ != 0 && parsed_subcommands_.size() >= require_subcommand_max_) {
         return parent_ != nullptr && parent_->_valid_subcommand(current, ignore_used);
     }
-    const auto *com = _find_subcommand(current, true, ignore_used);
+    auto *com = _find_subcommand(current, true, ignore_used);
     if(com != nullptr) {
         return true;
     }
@@ -8866,11 +8866,11 @@ CLI11_NODISCARD CLI11_INLINE detail::Classifier App::_recognize(const std::strin
         return detail::Classifier::WINDOWS_STYLE;
     if((current == "++") && !name_.empty() && parent_ != nullptr)
         return detail::Classifier::SUBCOMMAND_TERMINATOR;
-    const auto dotloc = current.find_first_of('.');
+    auto dotloc = current.find_first_of('.');
     if(dotloc != std::string::npos) {
-        const auto *cm = _find_subcommand(current.substr(0, dotloc), true, ignore_used_subcommands);
+        auto *cm = _find_subcommand(current.substr(0, dotloc), true, ignore_used_subcommands);
         if(cm != nullptr) {
-            const auto res = cm->_recognize(current.substr(dotloc + 1), ignore_used_subcommands);
+            auto res = cm->_recognize(current.substr(dotloc + 1), ignore_used_subcommands);
             if(res == detail::Classifier::SUBCOMMAND) {
                 return res;
             }
@@ -8880,10 +8880,10 @@ CLI11_NODISCARD CLI11_INLINE detail::Classifier App::_recognize(const std::strin
 }
 
 CLI11_INLINE bool App::_process_config_file(const std::string &config_file, bool throw_error) {
-    const auto path_result = detail::check_path(config_file.c_str());
+    auto path_result = detail::check_path(config_file.c_str());
     if(path_result == detail::path_type::file) {
         try {
-            const std::vector<ConfigItem> values = config_formatter_->from_file(config_file);
+            std::vector<ConfigItem> values = config_formatter_->from_file(config_file);
             _parse_config(values);
             return true;
         } catch(const FileError &) {
@@ -8901,17 +8901,17 @@ CLI11_INLINE bool App::_process_config_file(const std::string &config_file, bool
 
 CLI11_INLINE void App::_process_config_file() {
     if(config_ptr_ != nullptr) {
-        const bool config_required = config_ptr_->get_required();
-        const auto file_given = config_ptr_->count() > 0;
+        bool config_required = config_ptr_->get_required();
+        auto file_given = config_ptr_->count() > 0;
         if(!(file_given || config_ptr_->envname_.empty())) {
-            const std::string ename_string = detail::get_environment_value(config_ptr_->envname_);
+            std::string ename_string = detail::get_environment_value(config_ptr_->envname_);
             if(!ename_string.empty()) {
                 config_ptr_->add_result(ename_string);
             }
         }
         config_ptr_->run_callback();
 
-        const auto config_files = config_ptr_->as<std::vector<std::string>>();
+        auto config_files = config_ptr_->as<std::vector<std::string>>();
         bool files_used{file_given};
         if(config_files.empty() || config_files.front().empty()) {
             if(config_required) {
@@ -8927,7 +8927,7 @@ CLI11_INLINE void App::_process_config_file() {
         if(!files_used) {
             // this is done so the count shows as 0 if no callbacks were processed
             config_ptr_->clear();
-            const bool force = config_ptr_->force_callback_;
+            bool force = config_ptr_->force_callback_;
             config_ptr_->force_callback_ = false;
             config_ptr_->run_callback();
             config_ptr_->force_callback_ = force;
@@ -8935,7 +8935,7 @@ CLI11_INLINE void App::_process_config_file() {
     }
 }
 
-CLI11_INLINE void App::_process_env() const {
+CLI11_INLINE void App::_process_env() {
     for(const Option_p &opt : options_) {
         if(opt->count() == 0 && !opt->envname_.empty()) {
             std::string ename_string = detail::get_environment_value(opt->envname_);
@@ -8949,7 +8949,7 @@ CLI11_INLINE void App::_process_env() const {
         }
     }
 
-    for(const App_p &sub : subcommands_) {
+    for(App_p &sub : subcommands_) {
         if(sub->get_name().empty() || (sub->count_all() > 0 && !sub->parse_complete_callback_)) {
             // only process environment variables if the callback has actually been triggered already
             sub->_process_env();
@@ -8959,7 +8959,7 @@ CLI11_INLINE void App::_process_env() const {
 
 CLI11_INLINE void App::_process_callbacks() {
 
-    for(const App_p &sub : subcommands_) {
+    for(App_p &sub : subcommands_) {
         // process the priority option_groups first
         if(sub->get_name().empty() && sub->parse_complete_callback_) {
             if(sub->count_all() > 0) {
@@ -8974,7 +8974,7 @@ CLI11_INLINE void App::_process_callbacks() {
             opt->run_callback();
         }
     }
-    for(const App_p &sub : subcommands_) {
+    for(App_p &sub : subcommands_) {
         if(!sub->parse_complete_callback_) {
             sub->_process_callbacks();
         }
@@ -9071,7 +9071,7 @@ CLI11_INLINE void App::_process_requirements() {
     }
     // check for the required number of subcommands
     if(require_subcommand_min_ > 0) {
-        const auto selected_subcommands = get_subcommands();
+        auto selected_subcommands = get_subcommands();
         if(require_subcommand_min_ > selected_subcommands.size())
             throw RequiredError::Subcommand(require_subcommand_min_);
     }
@@ -9080,7 +9080,7 @@ CLI11_INLINE void App::_process_requirements() {
 
     // run this loop to check how many unnamed subcommands were actually used since they are considered options
     // from the perspective of an App
-    for(const App_p &sub : subcommands_) {
+    for(App_p &sub : subcommands_) {
         if(sub->disabled_)
             continue;
         if(sub->name_.empty() && sub->count_all() > 0) {
@@ -9096,7 +9096,7 @@ CLI11_INLINE void App::_process_requirements() {
             return ptr->get_name(false, true);
         });
 
-        const auto subc_list = get_subcommands([](App *app) { return ((app->get_name().empty()) && (!app->disabled_)); });
+        auto subc_list = get_subcommands([](App *app) { return ((app->get_name().empty()) && (!app->disabled_)); });
         if(!subc_list.empty()) {
             option_list += "," + detail::join(subc_list, [](const App *app) { return app->get_display_name(); });
         }
@@ -9104,7 +9104,7 @@ CLI11_INLINE void App::_process_requirements() {
     }
 
     // now process the requirements for subcommands if needed
-    for(const App_p &sub : subcommands_) {
+    for(App_p &sub : subcommands_) {
         if(sub->disabled_)
             continue;
         if(sub->name_.empty() && sub->required_ == false) {
@@ -9155,13 +9155,13 @@ CLI11_INLINE void App::_process() {
 
 CLI11_INLINE void App::_process_extras() {
     if(!(allow_extras_ || prefix_command_)) {
-        const std::size_t num_left_over = remaining_size();
+        std::size_t num_left_over = remaining_size();
         if(num_left_over > 0) {
             throw ExtrasError(name_, remaining(false));
         }
     }
 
-    for(const App_p &sub : subcommands_) {
+    for(App_p &sub : subcommands_) {
         if(sub->count() > 0)
             sub->_process_extras();
     }
@@ -9169,14 +9169,14 @@ CLI11_INLINE void App::_process_extras() {
 
 CLI11_INLINE void App::_process_extras(std::vector<std::string> &args) {
     if(!(allow_extras_ || prefix_command_)) {
-        const std::size_t num_left_over = remaining_size();
+        std::size_t num_left_over = remaining_size();
         if(num_left_over > 0) {
             args = remaining(false);
             throw ExtrasError(name_, args);
         }
     }
 
-    for(const App_p &sub : subcommands_) {
+    for(App_p &sub : subcommands_) {
         if(sub->count() > 0)
             sub->_process_extras(args);
     }
@@ -9184,7 +9184,7 @@ CLI11_INLINE void App::_process_extras(std::vector<std::string> &args) {
 
 CLI11_INLINE void App::increment_parsed() {
     ++parsed_;
-    for(const App_p &sub : subcommands_) {
+    for(App_p &sub : subcommands_) {
         if(sub->get_name().empty())
             sub->increment_parsed();
     }
@@ -9235,7 +9235,7 @@ CLI11_INLINE void App::_parse(std::vector<std::string> &&args) {
 }
 
 CLI11_INLINE void App::_parse_stream(std::istream &input) {
-    const auto values = config_formatter_->from_config(input);
+    auto values = config_formatter_->from_config(input);
     _parse_config(values);
     increment_parsed();
     _trigger_pre_parse(values.size());
@@ -9315,7 +9315,7 @@ CLI11_INLINE bool App::_parse_single_config(const ConfigItem &item, std::size_t 
                 auto res = config_formatter_->to_flag(item);
                 bool converted{false};
                 if(op->get_disable_flag_override()) {
-                    const auto val = detail::to_flag_value(res);
+                    auto val = detail::to_flag_value(res);
                     if(val == 1) {
                         res = op->get_flag_value(item.name, "{}");
                         converted = true;
@@ -9374,7 +9374,7 @@ CLI11_INLINE bool App::_parse_single_config(const ConfigItem &item, std::size_t 
 
 CLI11_INLINE bool App::_parse_single(std::vector<std::string> &args, bool &positional_only) {
     bool retval = true;
-    const detail::Classifier classifier = positional_only ? detail::Classifier::NONE : _recognize(args.back());
+    detail::Classifier classifier = positional_only ? detail::Classifier::NONE : _recognize(args.back());
     switch(classifier) {
     case detail::Classifier::POSITIONAL_MARK:
         args.pop_back();
@@ -9443,8 +9443,8 @@ CLI11_INLINE bool App::_parse_positional(std::vector<std::string> &args, bool ha
 
     if(positionals_at_end_) {
         // deal with the case of required arguments at the end which should take precedence over other arguments
-        const auto arg_rem = args.size();
-        const auto remreq = _count_remaining_positionals(true);
+        auto arg_rem = args.size();
+        auto remreq = _count_remaining_positionals(true);
         if(arg_rem <= remreq) {
             for(const Option_p &opt : options_) {
                 if(opt->get_positional() && opt->required_) {
@@ -9499,7 +9499,7 @@ CLI11_INLINE bool App::_parse_positional(std::vector<std::string> &args, bool ha
         return true;
     }
 
-    for(const auto &subc : subcommands_) {
+    for(auto &subc : subcommands_) {
         if((subc->name_.empty()) && (!subc->disabled_)) {
             if(subc->_parse_positional(args, false)) {
                 if(!subc->pre_parse_called_) {
@@ -9525,7 +9525,7 @@ CLI11_INLINE bool App::_parse_positional(std::vector<std::string> &args, bool ha
     }
     /// now try one last gasp at subcommands that have been executed before, go to root app and try to find a
     /// subcommand in a broader way, if one exists let the parent deal with it
-    const auto *parent_app = (parent_ != nullptr) ? _get_fallthrough_parent() : this;
+    auto *parent_app = (parent_ != nullptr) ? _get_fallthrough_parent() : this;
     com = parent_app->_find_subcommand(args.back(), true, false);
     if(com != nullptr && (com->parent_->require_subcommand_max_ == 0 ||
                           com->parent_->require_subcommand_max_ > com->parent_->parsed_subcommands_.size())) {
@@ -9579,7 +9579,7 @@ CLI11_INLINE bool App::_parse_subcommand(std::vector<std::string> &args) {
     auto *com = _find_subcommand(args.back(), true, true);
     if(com == nullptr) {
         // the main way to get here is using .notation
-        const auto dotloc = args.back().find_first_of('.');
+        auto dotloc = args.back().find_first_of('.');
         if(dotloc != std::string::npos) {
             com = _find_subcommand(args.back().substr(0, dotloc), true, true);
             if(com != nullptr) {
@@ -9838,7 +9838,7 @@ CLI11_INLINE void App::_trigger_pre_parse(std::size_t remaining_args) {
         }
     } else if(immediate_callback_) {
         if(!name_.empty()) {
-            const auto pcnt = parsed_;
+            auto pcnt = parsed_;
             missing_t extras = std::move(missing_);
             clear();
             parsed_ = pcnt;
@@ -9916,7 +9916,7 @@ CLI11_INLINE void App::_move_to_missing(detail::Classifier val_type, const std::
         return;
     }
     // allow extra arguments to be places in an option group if it is allowed there
-    for(const auto &subc : subcommands_) {
+    for(auto &subc : subcommands_) {
         if(subc->name_.empty() && subc->allow_extras_) {
             subc->missing_.emplace_back(val_type, val);
             return;
@@ -9947,7 +9947,7 @@ CLI11_INLINE void App::_move_option(Option *opt, App *app) {
     if(config_ptr_ == opt)
         throw OptionAlreadyAdded("cannot move config file options");
 
-    const auto iterator =
+    auto iterator =
         std::find_if(std::begin(options_), std::end(options_), [opt](const Option_p &v) { return v.get() == opt; });
     if(iterator != std::end(options_)) {
         const auto &opt_p = *iterator;
@@ -9972,7 +9972,7 @@ CLI11_INLINE void TriggerOn(App *trigger_app, App *app_to_enable) {
 }
 
 CLI11_INLINE void TriggerOn(App *trigger_app, std::vector<App *> apps_to_enable) {
-    for(const auto &app : apps_to_enable) {
+    for(auto &app : apps_to_enable) {
         app->enabled_by_default(false);
         app->disabled_by_default();
     }
@@ -9991,7 +9991,7 @@ CLI11_INLINE void TriggerOff(App *trigger_app, App *app_to_enable) {
 }
 
 CLI11_INLINE void TriggerOff(App *trigger_app, std::vector<App *> apps_to_enable) {
-    for(const auto &app : apps_to_enable) {
+    for(auto &app : apps_to_enable) {
         app->disabled_by_default(false);
         app->enabled_by_default();
     }
@@ -10019,10 +10019,10 @@ CLI11_INLINE void deprecate_option(Option *opt, const std::string &replacement) 
 
 CLI11_INLINE void retire_option(App *app, Option *opt) {
     App temp;
-    const auto *option_copy = temp.add_option(opt->get_name(false, true))
-                                  ->type_size(opt->get_type_size_min(), opt->get_type_size_max())
-                                  ->expected(opt->get_expected_min(), opt->get_expected_max())
-                                  ->allow_extra_args(opt->get_allow_extra_args());
+    auto *option_copy = temp.add_option(opt->get_name(false, true))
+                            ->type_size(opt->get_type_size_min(), opt->get_type_size_max())
+                            ->expected(opt->get_expected_min(), opt->get_expected_max())
+                            ->allow_extra_args(opt->get_allow_extra_args());
 
     app->remove_option(opt);
     auto *opt2 = app->add_option(option_copy->get_name(false, true), "option has been retired and has no effect");
@@ -10251,7 +10251,7 @@ checkParentSegments(std::vector<ConfigItem> &output, const std::string &currentS
     std::string estring;
     auto parents = detail::generate_parents(currentSection, estring, parentSeparator);
     if(!output.empty() && output.back().name == "--") {
-        const std::size_t msize = (parents.size() > 1U) ? parents.size() : 2;
+        std::size_t msize = (parents.size() > 1U) ? parents.size() : 2;
         while(output.back().parents.size() >= msize) {
             output.push_back(output.back());
             output.back().parents.pop_back();
@@ -10259,7 +10259,7 @@ checkParentSegments(std::vector<ConfigItem> &output, const std::string &currentS
 
         if(parents.size() > 1) {
             std::size_t common = 0;
-            const std::size_t mpair = (std::min)(output.back().parents.size(), parents.size() - 1);
+            std::size_t mpair = (std::min)(output.back().parents.size(), parents.size() - 1);
             for(std::size_t ii = 0; ii < mpair; ++ii) {
                 if(output.back().parents[ii] != parents[ii]) {
                     break;
@@ -10299,7 +10299,7 @@ CLI11_INLINE bool hasMLString(std::string const &fullString, char check) {
     if(fullString.length() < 3) {
         return false;
     }
-    const auto it = fullString.rbegin();
+    auto it = fullString.rbegin();
     return (*it == check) && (*(it + 1) == check) && (*(it + 2) == check);
 }
 }  // namespace detail
@@ -10729,7 +10729,7 @@ Formatter::make_group(std::string group, bool is_positional, std::vector<const O
 }
 
 CLI11_INLINE std::string Formatter::make_positionals(const App *app) const {
-    const std::vector<const Option *> opts =
+    std::vector<const Option *> opts =
         app->get_options([](const Option *opt) { return !opt->get_group().empty() && opt->get_positional(); });
 
     if(opts.empty())
@@ -10740,7 +10740,7 @@ CLI11_INLINE std::string Formatter::make_positionals(const App *app) const {
 
 CLI11_INLINE std::string Formatter::make_groups(const App *app, AppFormatMode mode) const {
     std::stringstream out;
-    const std::vector<std::string> groups = app->get_groups();
+    std::vector<std::string> groups = app->get_groups();
 
     // Options
     for(const std::string &group : groups) {
@@ -10764,8 +10764,8 @@ CLI11_INLINE std::string Formatter::make_groups(const App *app, AppFormatMode mo
 
 CLI11_INLINE std::string Formatter::make_description(const App *app) const {
     std::string desc = app->get_description();
-    const auto min_options = app->get_require_option_min();
-    const auto max_options = app->get_require_option_max();
+    auto min_options = app->get_require_option_min();
+    auto max_options = app->get_require_option_max();
     if(app->get_required()) {
         desc += " " + get_label("REQUIRED") + " ";
     }
@@ -10789,7 +10789,7 @@ CLI11_INLINE std::string Formatter::make_description(const App *app) const {
 }
 
 CLI11_INLINE std::string Formatter::make_usage(const App *app, std::string name) const {
-    const std::string usage = app->get_usage();
+    std::string usage = app->get_usage();
     if(!usage.empty()) {
         return usage + "\n";
     }
@@ -10801,7 +10801,7 @@ CLI11_INLINE std::string Formatter::make_usage(const App *app, std::string name)
     std::vector<std::string> groups = app->get_groups();
 
     // Print an Options badge if any options exist
-    const std::vector<const Option *> non_pos_options =
+    std::vector<const Option *> non_pos_options =
         app->get_options([](const Option *opt) { return opt->nonpositional(); });
     if(!non_pos_options.empty())
         out << " [" << get_label("OPTIONS") << "]";
@@ -10836,7 +10836,7 @@ CLI11_INLINE std::string Formatter::make_usage(const App *app, std::string name)
 }
 
 CLI11_INLINE std::string Formatter::make_footer(const App *app) const {
-    const std::string footer = app->get_footer();
+    std::string footer = app->get_footer();
     if(footer.empty()) {
         return std::string{};
     }
@@ -10870,7 +10870,7 @@ CLI11_INLINE std::string Formatter::make_help(const App *app, std::string name, 
 CLI11_INLINE std::string Formatter::make_subcommands(const App *app, AppFormatMode mode) const {
     std::stringstream out;
 
-    const std::vector<const App *> subcommands = app->get_subcommands({});
+    std::vector<const App *> subcommands = app->get_subcommands({});
 
     // Make a list in definition order of the groups seen
     std::vector<std::string> subcmd_groups_seen;
