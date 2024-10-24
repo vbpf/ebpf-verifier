@@ -265,7 +265,7 @@ std::map<std::string, size_t> parse_map_section(const libbtf::btf_type_data& btf
     std::map<std::string, size_t> map_offsets;
     for (auto& map : parse_btf_map_section(btf_data)) {
         map_offsets.emplace(map.name, map_descriptors.size());
-        map_descriptors.push_back({
+        map_descriptors.emplace_back(EbpfMapDescriptor{
             .original_fd = gsl::narrow_cast<int>(map.type_id),
             .type = map.map_type,
             .key_size = map.key_size,
@@ -423,8 +423,8 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                         function_relocation fr{.prog_index = res.size(),
                                                .source_offset = offset / sizeof(ebpf_inst),
                                                .relocation_entry_index = index,
-                                               .target_function_name = symbol_name};
-                        function_relocations.push_back(fr);
+                                               .target_function_name = std::move(symbol_name)};
+                        function_relocations.emplace_back(std::move(fr));
                         continue;
                     }
 
@@ -436,11 +436,11 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
                     string unresolved_symbol = "Unresolved external symbol " + symbol_name + " in section " + name +
                                                " at location " + std::to_string(offset / sizeof(ebpf_inst));
-                    unresolved_symbols_errors.push_back(unresolved_symbol);
+                    unresolved_symbols_errors.emplace_back(std::move(unresolved_symbol));
                 }
             }
             prog.line_info.resize(prog.prog.size());
-            res.push_back(prog);
+            res.emplace_back(std::move(prog));
             program_offset += program_size;
         }
     }

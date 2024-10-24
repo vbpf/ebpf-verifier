@@ -73,8 +73,7 @@ long Stopwatch::getTimeElapsed() const {
 }
 
 double Stopwatch::toSeconds() const {
-    return ((double)getTimeElapsed() / 1000000);
-}
+    return (double)getTimeElapsed() / 1000000;
 }
 
 void Stopwatch::Print(std::ostream& out) const {
@@ -130,7 +129,7 @@ void CrabStats::PrintBrunch(std::ostream& OS) {
     OS << "************** BRUNCH STATS END ***************** \n";
 }
 
-ScopedCrabStats::ScopedCrabStats(const std::string& name, bool reset) : m_name(name) {
+ScopedCrabStats::ScopedCrabStats(std::string name, bool reset) : m_name(std::move(name)) {
     if (reset) {
         m_name += ".last";
         CrabStats::start(m_name);

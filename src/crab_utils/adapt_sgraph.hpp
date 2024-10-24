@@ -358,7 +358,7 @@ class AdaptGraph final {
         edge_count -= _succs[v].size();
         _succs[v].clear();
 
-        for (smap_t::key_t k : _preds[v].keys()) {
+        for (const smap_t::key_t k : _preds[v].keys()) {
             _succs[k].remove(v);
         }
         edge_count -= _preds[v].size();
@@ -370,7 +370,7 @@ class AdaptGraph final {
 
     void clear_edges() {
         _ws.clear();
-        for (vert_id v : verts()) {
+        for (const vert_id v : verts()) {
             _succs[v].clear();
             _preds[v].clear();
         }
@@ -426,7 +426,7 @@ class AdaptGraph final {
 
     [[nodiscard]]
     std::optional<Weight> lookup(vert_id s, vert_id d) const {
-        if (auto idx = _succs[s].lookup(d)) {
+        if (const auto idx = _succs[s].lookup(d)) {
             return _ws[*idx];
         }
         return {};
@@ -449,7 +449,7 @@ class AdaptGraph final {
     }
 
     void update_edge(vert_id s, Weight w, vert_id d) {
-        if (auto idx = _succs[s].lookup(d)) {
+        if (const auto idx = _succs[s].lookup(d)) {
             _ws[*idx] = std::min(_ws[*idx], w);
         } else {
             add_edge(s, w, d);
@@ -457,7 +457,7 @@ class AdaptGraph final {
     }
 
     void set_edge(vert_id s, Weight w, vert_id d) {
-        if (auto idx = _succs[s].lookup(d)) {
+        if (const auto idx = _succs[s].lookup(d)) {
             _ws[*idx] = w;
         } else {
             add_edge(s, w, d);
@@ -465,10 +465,10 @@ class AdaptGraph final {
     }
 
     // XXX: g cannot be marked const for complicated reasons
-    friend std::ostream& operator<<(std::ostream& o, AdaptGraph& g) {
+    friend std::ostream& operator<<(std::ostream& o, const AdaptGraph& g) {
         o << "[|";
         bool first = true;
-        for (vert_id v : g.verts()) {
+        for (const vert_id v : g.verts()) {
             auto it = g.e_succs(v).begin();
             auto end = g.e_succs(v).end();
 

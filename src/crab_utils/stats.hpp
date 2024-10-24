@@ -61,7 +61,7 @@ class ScopedCrabStats {
     std::string m_name;
 
   public:
-    explicit ScopedCrabStats(const std::string& name, bool reset = false);
+    explicit ScopedCrabStats(std::string name, bool reset = false);
     ~ScopedCrabStats();
 };
 } // namespace crab

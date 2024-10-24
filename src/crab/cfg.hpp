@@ -15,6 +15,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -62,10 +63,10 @@ class basic_block_t final {
     void insert(const Instruction& arg) {
         assert(label() != label_t::entry);
         assert(label() != label_t::exit);
-        m_ts.push_back(arg);
+        m_ts.emplace_back(arg);
     }
 
-    explicit basic_block_t(label_t _label) : m_label(_label) {}
+    explicit basic_block_t(label_t _label) : m_label(std::move(_label)) {}
 
     ~basic_block_t() = default;
 
@@ -338,7 +339,7 @@ class cfg_t final {
             }
         }
 
-        for (auto p : dead_edges) {
+        for (const auto p : dead_edges) {
             (*p.first) -= (*p.second);
         }
 
@@ -373,7 +374,7 @@ class cfg_t final {
         std::vector<label_t> res;
         res.reserve(m_blocks.size());
         for (const auto& p : m_blocks) {
-            res.push_back(p.first);
+            res.emplace_back(p.first);
         }
         return res;
     }
@@ -524,7 +525,7 @@ class cfg_rev_t final {
     neighbour_const_range prev_nodes(const label_t& bb) { return _cfg.next_nodes(bb); }
 
     basic_block_rev_t& get_node(const label_t& _label) {
-        auto it = _rev_bbs.find(_label);
+        const auto it = _rev_bbs.find(_label);
         if (it == _rev_bbs.end()) {
             CRAB_ERROR("Basic block ", _label, " not found in the CFG: ", __LINE__);
         }
@@ -533,7 +534,7 @@ class cfg_rev_t final {
 
     [[nodiscard]]
     const basic_block_rev_t& get_node(const label_t& _label) const {
-        auto it = _rev_bbs.find(_label);
+        const auto it = _rev_bbs.find(_label);
         if (it == _rev_bbs.end()) {
             CRAB_ERROR("Basic block ", _label, " not found in the CFG: ", __LINE__);
         }
