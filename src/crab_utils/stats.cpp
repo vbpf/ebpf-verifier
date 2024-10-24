@@ -72,9 +72,7 @@ long Stopwatch::getTimeElapsed() const {
     }
 }
 
-double Stopwatch::toSeconds() const {
-    return (double)getTimeElapsed() / 1000000;
-}
+double Stopwatch::toSeconds() const { return (double)getTimeElapsed() / 1000000; }
 
 void Stopwatch::Print(std::ostream& out) const {
     const long time = getTimeElapsed();

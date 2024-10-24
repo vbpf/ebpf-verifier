@@ -788,8 +788,7 @@ bool SplitDBM::add_constraint(const linear_constraint_t& cst) {
     case constraint_kind_t::EQUALS_ZERO: {
         const linear_expression_t& exp = cst.expression();
         if (!add_linear_leq(exp) || !add_linear_leq(exp.negate())) {
-            CRAB_LOG("zones-split", std::cout << " ~~> _|_"
-                                              << "\n");
+            CRAB_LOG("zones-split", std::cout << " ~~> _|_" << "\n");
             return false;
         }
         // g.check_adjs();
