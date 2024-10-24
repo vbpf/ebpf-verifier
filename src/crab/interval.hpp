@@ -175,8 +175,8 @@ class interval_t final {
         } else if (x.is_bottom()) {
             return *this;
         } else {
-            const auto lb = x._lb < _lb ? ts.get_prev(x._lb) : _lb;
-            const auto ub = _ub < x._ub ? ts.get_next(x._ub) : _ub;
+            const bound_t lb = x._lb < _lb ? ts.get_prev(x._lb) : _lb;
+            const bound_t ub = _ub < x._ub ? ts.get_next(x._ub) : _ub;
             return interval_t{lb, ub};
         }
     }
