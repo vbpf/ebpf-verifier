@@ -998,12 +998,6 @@ messages:
   - "0: Code is unreachable after 0"
   - "0: Invalid type (r1.type == number)"
 
-
-
-
-
-
-
 ---
 test-case: JEQ32 with imm 0 and pointer
 options: ["assume_assertions"]
