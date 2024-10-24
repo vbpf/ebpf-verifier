@@ -85,11 +85,11 @@ std::set<string> operator-(const std::set<string>& a, const std::set<string>& b)
 }
 
 static string_invariant read_invariant(const vector<string>& raw_invariant) {
-    const std::set<string> res = vector_to_set(raw_invariant);
+    std::set<string> res = vector_to_set(raw_invariant);
     if (res == std::set<string>{"_|_"}) {
         return string_invariant{};
     }
-    return string_invariant{res};
+    return string_invariant{std::move(res)};
 }
 
 struct RawTestCase {
@@ -315,7 +315,7 @@ string_invariant stack_contents_invariant(const std::vector<uint8_t>& memory_byt
         add_stack_variable<int64_t>(more, offset, memory_bytes);
     }
 
-    return string_invariant(more);
+    return string_invariant(std::move(more));
 }
 
 ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memory_bytes,

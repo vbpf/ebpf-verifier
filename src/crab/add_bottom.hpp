@@ -110,7 +110,7 @@ class AddBottom final {
         if (!dom || !o.dom) {
             return bottom();
         }
-        if (auto res = (*dom).meet(*o.dom)) {
+        if (const auto res = (*dom).meet(*o.dom)) {
             return AddBottom(*res);
         }
         return bottom();

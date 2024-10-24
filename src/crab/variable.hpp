@@ -35,8 +35,9 @@ class variable_t final {
     // for flat_map
     bool operator<(const variable_t o) const { return _id < o._id; }
 
+    // callers can take a copy if they need it
     [[nodiscard]]
-    std::string name() const {
+    const std::string& name() const {
         return names->at(_id);
     }
 
