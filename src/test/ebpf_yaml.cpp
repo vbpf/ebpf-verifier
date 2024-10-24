@@ -179,6 +179,9 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
     // Default to the machine's native endianness.
     options.big_endian = (std::endian::native == std::endian::big);
 
+    // Default to not assuming assertions.
+    options.assume_assertions = false;
+
     for (const string& name : raw_options) {
         if (name == "!allow_division_by_zero") {
             options.allow_division_by_zero = false;
@@ -192,6 +195,8 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
             options.big_endian = true;
         } else if (name == "!big_endian") {
             options.big_endian = false;
+        } else if (name == "assume_assertions") {
+            options.assume_assertions = true;
         } else {
             throw std::runtime_error("Unknown option: " + name);
         }
