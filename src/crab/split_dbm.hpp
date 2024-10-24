@@ -226,7 +226,7 @@ class SplitDBM final {
 
     void assign(variable_t lhs, const linear_expression_t& e);
 
-    void assign(std::optional<variable_t> x, const linear_expression_t& e) {
+    void assign(const std::optional<variable_t>& x, const linear_expression_t& e) {
         if (x) {
             assign(*x, e);
         }

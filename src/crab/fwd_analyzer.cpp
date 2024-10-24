@@ -1,7 +1,9 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: Apache-2.0
+#include <memory>
 #include <utility>
 #include <variant>
+#include <vector>
 
 #include "crab/cfg.hpp"
 #include "crab/wto.hpp"
@@ -126,7 +128,7 @@ std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg,
         std::vector<label_t> cycle_heads;
         for (auto& component : analyzer._wto) {
             if (const auto pc = std::get_if<std::shared_ptr<wto_cycle_t>>(&component)) {
-                cycle_heads.push_back((*pc)->head());
+                cycle_heads.emplace_back((*pc)->head());
             }
         }
         for (const label_t& label : cycle_heads) {

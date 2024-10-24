@@ -167,7 +167,7 @@ variable_t variable_t::cell_var(const data_kind_t array, const number_t& offset,
 
 // Given a type variable, get the associated variable of a given kind.
 variable_t variable_t::kind_var(const data_kind_t kind, const variable_t type_variable) {
-    const std::string name = type_variable.name();
+    const std::string& name = type_variable.name();
     return make(name.substr(0, name.rfind('.') + 1) + name_of(kind));
 }
 

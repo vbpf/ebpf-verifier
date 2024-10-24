@@ -1,6 +1,9 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: Apache-2.0
+#include <cassert>
+#include <optional>
 #include <utility>
+#include <vector>
 
 #include <gsl/narrow>
 
@@ -1200,7 +1203,7 @@ string_invariant SplitDBM::to_set() const {
             result.insert(to_string(vd, vs, w, false));
         }
     }
-    return string_invariant{result};
+    return string_invariant{std::move(result)};
 }
 
 std::ostream& operator<<(std::ostream& o, const SplitDBM& dom) { return o << dom.to_set(); }

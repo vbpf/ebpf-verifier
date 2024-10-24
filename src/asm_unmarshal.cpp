@@ -505,7 +505,7 @@ struct Unmarshaller {
             case EBPF_ARGUMENT_TYPE_PTR_TO_MAP_KEY:
             case EBPF_ARGUMENT_TYPE_PTR_TO_MAP_VALUE:
             case EBPF_ARGUMENT_TYPE_PTR_TO_CTX:
-                res.singles.push_back({toArgSingleKind(args[i]), Reg{gsl::narrow<uint8_t>(i)}});
+                res.singles.emplace_back(ArgSingle{toArgSingleKind(args[i]), Reg{gsl::narrow<uint8_t>(i)}});
                 break;
             case EBPF_ARGUMENT_TYPE_CONST_SIZE: {
                 // Sanity check: This argument should never be seen in isolation.
@@ -538,7 +538,7 @@ struct Unmarshaller {
                         proto.name);
                 }
                 const bool can_be_zero = (args[i + 1] == EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO);
-                res.pairs.push_back({toArgPairKind(args[i]), Reg{gsl::narrow<uint8_t>(i)},
+                res.pairs.emplace_back(ArgPair{toArgPairKind(args[i]), Reg{gsl::narrow<uint8_t>(i)},
                                      Reg{gsl::narrow<uint8_t>(i + 1)}, can_be_zero});
                 i++;
                 break;

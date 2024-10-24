@@ -163,7 +163,7 @@ void wto_builder_t::continue_visit(const label_t& vertex, wto_partition_t& parti
     // (end of the vector which stores the cycle in reverse order).
     auto cycle = containing_cycle.lock();
 
-    cycle->_components.push_back(vertex);
+    cycle->_components.emplace_back(vertex);
 
     // Insert the component into the current partition.
     partition.emplace_back(cycle);
@@ -276,7 +276,7 @@ wto_t::wto_t(const cfg_t& cfg) : wto_t{std::move(wto_builder_t(cfg).wto)} {}
 std::vector<label_t> wto_t::collect_heads(const label_t& label) {
     std::vector<label_t> heads;
     for (auto h = head(label); h; h = head(*h)) {
-        heads.push_back(*h);
+        heads.emplace_back(*h);
     }
     return heads;
 }
