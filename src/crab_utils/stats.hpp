@@ -24,7 +24,7 @@ class Stopwatch {
     void resume();
     long getTimeElapsed() const;
     void Print(std::ostream& out) const;
-    double toSeconds();
+    double toSeconds() const;
 };
 
 inline std::ostream& operator<<(std::ostream& OS, const Stopwatch& sw) {
