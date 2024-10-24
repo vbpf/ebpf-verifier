@@ -148,8 +148,7 @@ std::ostream& operator<<(std::ostream& o, const data_kind_t& s) { return o << na
 
 static std::string mk_scalar_name(const data_kind_t kind, const number_t& o, const number_t& size) {
     std::stringstream os;
-    os << "s"
-       << "[" << o;
+    os << "s" << "[" << o;
     if (size != 1) {
         os << "..." << o + size - 1;
     }

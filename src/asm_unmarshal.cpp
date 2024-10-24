@@ -539,7 +539,7 @@ struct Unmarshaller {
                 }
                 const bool can_be_zero = (args[i + 1] == EBPF_ARGUMENT_TYPE_CONST_SIZE_OR_ZERO);
                 res.pairs.emplace_back(ArgPair{toArgPairKind(args[i]), Reg{gsl::narrow<uint8_t>(i)},
-                                     Reg{gsl::narrow<uint8_t>(i + 1)}, can_be_zero});
+                                               Reg{gsl::narrow<uint8_t>(i + 1)}, can_be_zero});
                 i++;
                 break;
             }

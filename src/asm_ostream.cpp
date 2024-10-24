@@ -440,6 +440,7 @@ void print(const InstructionSeq& insts, std::ostream& out, const std::optional<c
     }
 }
 
+// clang-format off
 std::ostream& operator<<(std::ostream& o, const EbpfMapDescriptor& desc) {
     return o << "("
              << "original_fd = " << desc.original_fd << ", "
@@ -449,6 +450,7 @@ std::ostream& operator<<(std::ostream& o, const EbpfMapDescriptor& desc) {
              << "value_size = " << desc.value_size << ", "
              << "key_size = " << desc.key_size << ")";
 }
+// clang-format on
 
 void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o) {
     int i = 0;
@@ -493,8 +495,7 @@ std::ostream& operator<<(std::ostream& o, const basic_block_t& bb) {
     }
     auto [it, et] = bb.next_blocks();
     if (it != et) {
-        o << "  "
-          << "goto ";
+        o << "  " << "goto ";
         while (it != et) {
             o << *it;
             ++it;
