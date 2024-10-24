@@ -192,6 +192,8 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
             options.big_endian = true;
         } else if (name == "!big_endian") {
             options.big_endian = false;
+        } else if (name == "assume_assertions"){
+            options.assume_assertions = true;
         } else {
             throw std::runtime_error("Unknown option: " + name);
         }
