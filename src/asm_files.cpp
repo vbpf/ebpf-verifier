@@ -406,6 +406,13 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
                     if (!reloc.get_entry(i, offset, index, type, addend)) {
                         continue;
                     }
+
+                    auto [symbol_value, symbol_type] = get_value(symbols, index);
+                    if (symbol_type == ELFIO::STT_SECTION) {
+                        // Skip relocations for sections.
+                        continue;
+                    }
+
                     if (offset < program_offset || offset >= program_offset + program_size) {
                         // Relocation is not for this program.
                         continue;
