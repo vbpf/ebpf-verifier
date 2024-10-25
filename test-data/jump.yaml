@@ -715,3 +715,537 @@ post:
 
 messages:
   - "0: Invalid type (r1.type in {number, ctx, stack, packet, shared})"
+
+# # Test cases for special case of comparison of not a number against a number when immediate is 0
+---
+test-case: JEQ with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if r1 == 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post:
+  - r0.svalue=1
+  - r0.type=number
+  - r0.uvalue=1
+  - r1.ctx_offset=0
+  - r1.svalue=[1, 2147418112]
+  - r1.type=ctx
+
+messages:
+  - "0:2: Code is unreachable after 0:2"
+---
+test-case: JNE with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if r1 != 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "0:1: Code is unreachable after 0:1"
+  - "2: Code is unreachable after 2"
+  - "2: Invalid type (r0.type == number)"
+
+---
+test-case: JSET with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if r1 &== 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "2: Code is unreachable after 2"
+  - "2: Invalid type (r0.type == number)"
+
+---
+test-case: JNSET with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if r1 &!= 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "2: Code is unreachable after 2"
+  - "2: Invalid type (r0.type == number)"
+
+---
+test-case: JLT with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if r1 < 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post:
+  - r0.svalue=1
+  - r0.type=number
+  - r0.uvalue=1
+  - r1.ctx_offset=0
+  - r1.svalue=[1, 2147418112]
+  - r1.type=ctx
+  - r1.uvalue=[0, +oo]
+
+messages:
+  - "0:2: Code is unreachable after 0:2"
+
+---
+test-case: JLE with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if r1 <= 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post:
+  - r0.svalue=1
+  - r0.type=number
+  - r0.uvalue=1
+  - r1.ctx_offset=0
+  - r1.svalue=[1, 2147418112]
+  - r1.type=ctx
+  - r1.uvalue=[1, +oo]
+
+messages:
+  - "0:2: Code is unreachable after 0:2"
+
+---
+test-case: JGT with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if r1 <= 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post:
+  - r0.svalue=1
+  - r0.type=number
+  - r0.uvalue=1
+  - r1.ctx_offset=0
+  - r1.svalue=[1, 2147418112]
+  - r1.type=ctx
+  - r1.uvalue=[1, +oo]
+
+messages:
+  - "0:2: Code is unreachable after 0:2"
+
+---
+test-case: JGE with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if r1 <= 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post:
+  - r0.svalue=1
+  - r0.type=number
+  - r0.uvalue=1
+  - r1.ctx_offset=0
+  - r1.svalue=[1, 2147418112]
+  - r1.type=ctx
+  - r1.uvalue=[1, +oo]
+
+messages:
+  - "0:2: Code is unreachable after 0:2"
+
+---
+test-case: JSLT with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if r1 s< 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
+  - "0: Invalid type (r1.type == number)"
+
+---
+test-case: JSLE with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if r1 s<= 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
+  - "0: Invalid type (r1.type == number)"
+
+---
+test-case: JSGT with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if r1 s<= 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
+  - "0: Invalid type (r1.type == number)"
+
+---
+test-case: JSGE with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if r1 s<= 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
+  - "0: Invalid type (r1.type == number)"
+
+---
+test-case: JEQ32 with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if w1 == 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
+  - "0: Invalid type (r1.type == number)"
+
+---
+test-case: JNE32 with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if w1 != 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
+  - "0: Invalid type (r1.type == number)"
+
+---
+test-case: JSET32 with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if w1 &== 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
+  - "0: Invalid type (r1.type == number)"
+
+---
+test-case: JNSET32 with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if w1 &!= 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
+  - "0: Invalid type (r1.type == number)"
+
+---
+test-case: JLT32 with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if w1 < 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
+  - "0: Invalid type (r1.type == number)"
+
+---
+test-case: JLE32 with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if w1 <= 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
+  - "0: Invalid type (r1.type == number)"
+
+---
+test-case: JGT32 with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if w1 <= 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
+  - "0: Invalid type (r1.type == number)"
+
+---
+test-case: JGE32 with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if w1 <= 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
+  - "0: Invalid type (r1.type == number)"
+
+---
+test-case: JSLT32 with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if w1 s< 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
+  - "0: Invalid type (r1.type == number)"
+
+---
+test-case: JSLE32 with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if w1 s<= 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
+  - "0: Invalid type (r1.type == number)"
+
+---
+test-case: JSGT32 with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if w1 s<= 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
+  - "0: Invalid type (r1.type == number)"
+
+---
+test-case: JSGE32 with imm 0 and pointer
+options: ["assume_assertions"]
+pre:
+  - "r1.type=ctx"
+  - "r1.svalue=[1, 2147418112]"
+  - "r1.ctx_offset=0"
+
+code:
+  <start>: |
+    if w1 s<= 0 goto <exit>
+    r0 = 1
+  <exit>: |
+    exit
+
+post: []
+
+messages:
+  - "0: Code is unreachable after 0"
+  - "0: Invalid type (r1.type == number)"
