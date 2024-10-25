@@ -15,7 +15,6 @@ struct string_invariant {
     std::optional<std::set<std::string>> maybe_inv{};
 
     string_invariant() = default;
-    ~string_invariant() = default;
 
     string_invariant(std::set<std::string>&& inv) : maybe_inv(std::move(inv)) {};
 
