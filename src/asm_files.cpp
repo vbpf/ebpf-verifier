@@ -265,7 +265,7 @@ std::map<std::string, size_t> parse_map_section(const libbtf::btf_type_data& btf
     std::map<std::string, size_t> map_offsets;
     for (auto& map : parse_btf_map_section(btf_data)) {
         map_offsets.emplace(map.name, map_descriptors.size());
-        map_descriptors.emplace_back(EbpfMapDescriptor{
+        map_descriptors.push_back({
             .original_fd = gsl::narrow_cast<int>(map.type_id),
             .type = map.map_type,
             .key_size = map.key_size,
