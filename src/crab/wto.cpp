@@ -276,7 +276,7 @@ wto_t::wto_t(const cfg_t& cfg) : wto_t{std::move(wto_builder_t(cfg).wto)} {}
 std::vector<label_t> wto_t::collect_heads(const label_t& label) {
     std::vector<label_t> heads;
     for (auto h = head(label); h; h = head(*h)) {
-        heads.emplace_back(*h);
+        heads.push_back(*h);
     }
     return heads;
 }
