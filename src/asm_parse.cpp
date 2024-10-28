@@ -154,7 +154,7 @@ Instruction parse_instruction(const std::string& line, const std::map<std::strin
     if (regex_match(text, m, regex("callx " REG))) {
         return Callx{reg(m[1])};
     }
-    if (regex_match(text, m, regex(WREG OPASSIGN REG))) {
+    if (regex_match(text, m, regex(WREG OPASSIGN WREG))) {
         const std::string r = m[1];
         return Bin{.op = str_to_binop.at(m[2]), .dst = reg(r), .v = reg(m[3]), .is64 = is64_reg(r), .lddw = false};
     }
