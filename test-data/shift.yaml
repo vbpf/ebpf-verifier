@@ -1223,7 +1223,7 @@ messages:
   - "1:2: Code is unreachable after 1:2"
 
 ---
-test-case: check that unsigned right shift by 0 is idempotent - MIN_INT64 - via register
+test-case: check that unsigned right shift by 0 is idempotent - MAX_INT64 - via register
 
 pre:
   - r0.type=number
