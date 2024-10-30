@@ -1104,3 +1104,563 @@ post:
   - r2.type=number
   - r2.svalue=32
   - r2.uvalue=32
+
+---
+test-case: check that unsigned right shift by 0 is idempotent - MIN_INT64
+
+pre:
+  - r0.type=number
+  - r0.svalue=-9223372036854775808
+  - r0.uvalue=9223372036854775808
+  - r1.type=number
+  - r1.svalue=-9223372036854775808
+  - r1.uvalue=9223372036854775808
+
+code:
+  <start>: |
+    r0 >>= 0
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=-9223372036854775808
+  - r0.uvalue=9223372036854775808
+  - r1.type=number
+  - r1.svalue=-9223372036854775808
+  - r1.uvalue=9223372036854775808
+  - r0.svalue=r1.svalue
+  - r0.uvalue=r1.uvalue
+  - r2.svalue=1
+  - r2.type=number
+  - r2.uvalue=1
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+
+---
+test-case: check that unsigned right shift by 0 is idempotent - MAX_INT64
+
+pre:
+  - r0.type=number
+  - r0.svalue=9223372036854775807
+  - r0.uvalue=9223372036854775807
+  - r1.type=number
+  - r1.svalue=9223372036854775807
+  - r1.uvalue=9223372036854775807
+
+code:
+  <start>: |
+    r0 >>= 0
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.svalue=9223372036854775807
+  - r0.svalue=r1.svalue
+  - r0.type=number
+  - r0.uvalue=9223372036854775807
+  - r0.uvalue=r1.uvalue
+  - r1.svalue=9223372036854775807
+  - r1.type=number
+  - r1.uvalue=9223372036854775807
+  - r2.svalue=1
+  - r2.type=number
+  - r2.uvalue=1
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+
+---
+test-case: check that unsigned right shift by 0 is idempotent - MIN_INT64 - via register
+
+pre:
+  - r0.type=number
+  - r0.svalue=-9223372036854775808
+  - r0.uvalue=9223372036854775808
+  - r1.type=number
+  - r1.svalue=-9223372036854775808
+  - r1.uvalue=9223372036854775808
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+code:
+  <start>: |
+    r0 >>= r3
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=-9223372036854775808
+  - r0.uvalue=9223372036854775808
+  - r1.type=number
+  - r1.svalue=-9223372036854775808
+  - r1.uvalue=9223372036854775808
+  - r0.svalue=r1.svalue
+  - r0.uvalue=r1.uvalue
+  - r2.svalue=1
+  - r2.type=number
+  - r2.uvalue=1
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+
+---
+test-case: check that unsigned right shift by 0 is idempotent - MAX_INT64 - via register
+
+pre:
+  - r0.type=number
+  - r0.svalue=9223372036854775807
+  - r0.uvalue=9223372036854775807
+  - r1.type=number
+  - r1.svalue=9223372036854775807
+  - r1.uvalue=9223372036854775807
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+code:
+  <start>: |
+    r0 >>= r3
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.svalue=9223372036854775807
+  - r0.svalue=r1.svalue
+  - r0.type=number
+  - r0.uvalue=9223372036854775807
+  - r0.uvalue=r1.uvalue
+  - r1.svalue=9223372036854775807
+  - r1.type=number
+  - r1.uvalue=9223372036854775807
+  - r2.svalue=1
+  - r2.type=number
+  - r2.uvalue=1
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+
+---
+test-case: check that signed right shift by 0 is idempotent - MIN_INT64
+
+pre:
+  - r0.type=number
+  - r0.svalue=-9223372036854775808
+  - r0.uvalue=9223372036854775808
+  - r1.type=number
+  - r1.svalue=-9223372036854775808
+  - r1.uvalue=9223372036854775808
+
+code:
+  <start>: |
+    r0 s>>= 0
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=-9223372036854775808
+  - r0.uvalue=9223372036854775808
+  - r1.type=number
+  - r1.svalue=-9223372036854775808
+  - r1.uvalue=9223372036854775808
+  - r0.svalue=r1.svalue
+  - r0.uvalue=r1.uvalue
+  - r2.svalue=1
+  - r2.type=number
+  - r2.uvalue=1
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+
+---
+test-case: check that signed right shift by 0 is idempotent - MAX_INT64
+
+pre:
+  - r0.type=number
+  - r0.svalue=9223372036854775807
+  - r0.uvalue=9223372036854775807
+  - r1.type=number
+  - r1.svalue=9223372036854775807
+  - r1.uvalue=9223372036854775807
+
+code:
+  <start>: |
+    r0 s>>= 0
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.svalue=9223372036854775807
+  - r0.svalue=r1.svalue
+  - r0.type=number
+  - r0.uvalue=9223372036854775807
+  - r0.uvalue=r1.uvalue
+  - r1.svalue=9223372036854775807
+  - r1.type=number
+  - r1.uvalue=9223372036854775807
+  - r2.svalue=1
+  - r2.type=number
+  - r2.uvalue=1
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+
+---
+test-case: check that signed right shift by 0 is idempotent - MAX_UINT64
+
+pre:
+  - r0.type=number
+  - r0.svalue=-1
+  - r0.uvalue=18446744073709551615
+  - r1.type=number
+  - r1.svalue=-1
+  - r1.uvalue=18446744073709551615
+
+code:
+  <start>: |
+    r0 s>>= 0
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.svalue=-1
+  - r0.svalue=r1.svalue
+  - r0.type=number
+  - r0.uvalue=18446744073709551615
+  - r0.uvalue=r1.uvalue
+  - r1.svalue=-1
+  - r1.type=number
+  - r1.uvalue=18446744073709551615
+  - r2.svalue=1
+  - r2.type=number
+  - r2.uvalue=1
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+
+---
+test-case: check that signed right shift by 0 is idempotent - MIN_INT64 - via register
+
+pre:
+  - r0.type=number
+  - r0.svalue=-9223372036854775808
+  - r0.uvalue=9223372036854775808
+  - r1.type=number
+  - r1.svalue=-9223372036854775808
+  - r1.uvalue=9223372036854775808
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+code:
+  <start>: |
+    r0 s>>= r3
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=-9223372036854775808
+  - r0.uvalue=9223372036854775808
+  - r1.type=number
+  - r1.svalue=-9223372036854775808
+  - r1.uvalue=9223372036854775808
+  - r0.svalue=r1.svalue
+  - r0.uvalue=r1.uvalue
+  - r2.svalue=1
+  - r2.type=number
+  - r2.uvalue=1
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+
+---
+test-case: check that signed right shift by 0 is idempotent - MAX_INT64
+
+pre:
+  - r0.type=number
+  - r0.svalue=9223372036854775807
+  - r0.uvalue=9223372036854775807
+  - r1.type=number
+  - r1.svalue=9223372036854775807
+  - r1.uvalue=9223372036854775807
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+code:
+  <start>: |
+    r0 s>>= r3
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.svalue=9223372036854775807
+  - r0.svalue=r1.svalue
+  - r0.type=number
+  - r0.uvalue=9223372036854775807
+  - r0.uvalue=r1.uvalue
+  - r1.svalue=9223372036854775807
+  - r1.type=number
+  - r1.uvalue=9223372036854775807
+  - r2.svalue=1
+  - r2.type=number
+  - r2.uvalue=1
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+
+---
+test-case: check that signed right shift by 0 is idempotent - MAX_UINT64 - via register
+
+pre:
+  - r0.type=number
+  - r0.svalue=-1
+  - r0.uvalue=18446744073709551615
+  - r1.type=number
+  - r1.svalue=-1
+  - r1.uvalue=18446744073709551615
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+code:
+  <start>: |
+    r0 s>>= r3
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.svalue=-1
+  - r0.svalue=r1.svalue
+  - r0.type=number
+  - r0.uvalue=18446744073709551615
+  - r0.uvalue=r1.uvalue
+  - r1.svalue=-1
+  - r1.type=number
+  - r1.uvalue=18446744073709551615
+  - r2.svalue=1
+  - r2.type=number
+  - r2.uvalue=1
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+
+---
+test-case: check that left shift by 0 is idempotent - MIN_INT64
+
+pre:
+  - r0.type=number
+  - r0.svalue=-9223372036854775808
+  - r0.uvalue=9223372036854775808
+  - r1.type=number
+  - r1.svalue=-9223372036854775808
+  - r1.uvalue=9223372036854775808
+
+code:
+  <start>: |
+    r0 <<= 0
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=-9223372036854775808
+  - r0.uvalue=9223372036854775808
+  - r1.type=number
+  - r1.svalue=-9223372036854775808
+  - r1.uvalue=9223372036854775808
+  - r0.svalue=r1.svalue
+  - r0.uvalue=r1.uvalue
+  - r2.svalue=1
+  - r2.type=number
+  - r2.uvalue=1
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+
+---
+test-case: check that left shift by 0 is idempotent - MAX_INT64
+
+pre:
+  - r0.type=number
+  - r0.svalue=9223372036854775807
+  - r0.uvalue=9223372036854775807
+  - r1.type=number
+  - r1.svalue=9223372036854775807
+  - r1.uvalue=9223372036854775807
+
+code:
+  <start>: |
+    r0 <<= 0
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.svalue=9223372036854775807
+  - r0.svalue=r1.svalue
+  - r0.type=number
+  - r0.uvalue=9223372036854775807
+  - r0.uvalue=r1.uvalue
+  - r1.svalue=9223372036854775807
+  - r1.type=number
+  - r1.uvalue=9223372036854775807
+  - r2.svalue=1
+  - r2.type=number
+  - r2.uvalue=1
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+
+---
+test-case: check that left shift by 0 is idempotent - MIN_INT64 - via register
+
+pre:
+  - r0.type=number
+  - r0.svalue=-9223372036854775808
+  - r0.uvalue=9223372036854775808
+  - r1.type=number
+  - r1.svalue=-9223372036854775808
+  - r1.uvalue=9223372036854775808
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+code:
+  <start>: |
+    r0 <<= r3
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.type=number
+  - r0.svalue=-9223372036854775808
+  - r0.uvalue=9223372036854775808
+  - r1.type=number
+  - r1.svalue=-9223372036854775808
+  - r1.uvalue=9223372036854775808
+  - r0.svalue=r1.svalue
+  - r0.uvalue=r1.uvalue
+  - r2.svalue=1
+  - r2.type=number
+  - r2.uvalue=1
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
+
+---
+test-case: check that left shift by 0 is idempotent - MAX_INT64 - via register
+
+pre:
+  - r0.type=number
+  - r0.svalue=9223372036854775807
+  - r0.uvalue=9223372036854775807
+  - r1.type=number
+  - r1.svalue=9223372036854775807
+  - r1.uvalue=9223372036854775807
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+code:
+  <start>: |
+    r0 <<= r3
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.svalue=9223372036854775807
+  - r0.svalue=r1.svalue
+  - r0.type=number
+  - r0.uvalue=9223372036854775807
+  - r0.uvalue=r1.uvalue
+  - r1.svalue=9223372036854775807
+  - r1.type=number
+  - r1.uvalue=9223372036854775807
+  - r2.svalue=1
+  - r2.type=number
+  - r2.uvalue=1
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+messages:
+  - "1:2: Code is unreachable after 1:2"

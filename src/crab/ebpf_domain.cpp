@@ -2334,11 +2334,9 @@ void ebpf_domain_t::shl(const Reg& dst_reg, int imm, const int finite_width) {
                 ub_n = ub_n << imm & uint_max;
             }
             m_inv.set(dst.uvalue, interval_t{lb_n, ub_n});
-            if (to_signed(ub_n) >= to_signed(lb_n)) {
-                m_inv.assign(dst.svalue, dst.uvalue);
-            } else {
-                havoc(dst.svalue);
-            }
+            m_inv.assign(dst.svalue, dst.uvalue);
+            overflow_signed(m_inv, dst.svalue, finite_width);
+            overflow_unsigned(m_inv, dst.uvalue, finite_width);
             return;
         }
     }
@@ -2374,12 +2372,9 @@ void ebpf_domain_t::lshr(const Reg& dst_reg, int imm, int finite_width) {
             }
         }
         m_inv.set(dst.uvalue, interval_t{lb_n, ub_n});
-        if (ub_n.narrow<int64_t>() >= lb_n.narrow<int64_t>()) {
-            // ? m_inv.set(dst.svalue, crab::interval_t{number_t{(int64_t)lb_n}, number_t{(int64_t)ub_n}});
-            m_inv.assign(dst.svalue, dst.uvalue);
-        } else {
-            havoc(dst.svalue);
-        }
+        m_inv.assign(dst.svalue, dst.uvalue);
+        overflow_signed(m_inv, dst.svalue, finite_width);
+        overflow_unsigned(m_inv, dst.uvalue, finite_width);
         return;
     }
     havoc(dst.svalue);
@@ -2464,11 +2459,9 @@ void ebpf_domain_t::ashr(const Reg& dst_reg, const linear_expression_t& right_sv
                 }
             }
             m_inv.set(dst.svalue, interval_t{lb_n, ub_n});
-            if (to_unsigned(ub_n) >= to_unsigned(lb_n)) {
-                m_inv.assign(dst.uvalue, dst.svalue);
-            } else {
-                havoc(dst.uvalue);
-            }
+            m_inv.assign(dst.uvalue, dst.svalue);
+            overflow_signed(m_inv, dst.svalue, finite_width);
+            overflow_unsigned(m_inv, dst.uvalue, finite_width);
             return;
         }
     }
