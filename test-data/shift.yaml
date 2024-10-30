@@ -1543,7 +1543,7 @@ messages:
   - "1:2: Code is unreachable after 1:2"
 
 ---
-test-case: check that left shift by 0 is idempotent - MAX_INT64
+test-case: check that left shift by 0 is idempotent - MAX_INT64 - via register
 
 pre:
   - r0.type=number
