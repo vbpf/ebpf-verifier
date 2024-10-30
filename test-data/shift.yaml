@@ -1177,3 +1177,88 @@ post:
 
 messages:
   - "1:2: Code is unreachable after 1:2"
+
+---
+test-case: check that unsigned right shift by 0 is idempotent - svalue out of range - via register
+
+pre:
+  - r0.type=number
+  #  This is 0x8000000000000000, which is out of range for a signed 64-bit number.
+  - r0.svalue=-9223372036854775808
+  - r0.uvalue=9223372036854775808
+  - r1.type=number
+  - r1.svalue=-9223372036854775808
+  - r1.uvalue=9223372036854775808
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+code:
+  <start>: |
+    r0 >>= r3
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.type=number
+  - r0.uvalue=9223372036854775808
+  #  Note: The svalue gets havoced by the shift, so we can't check it.
+  - r1.type=number
+  - r1.svalue=-9223372036854775808
+  - r1.uvalue=9223372036854775808
+  - r0.uvalue=r1.uvalue
+  - r2.type=number
+  - r2.svalue=[0, 1]
+  - r2.uvalue=[0, 1]
+  - r2.svalue=r2.uvalue
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+---
+test-case: check that unsigned right shift by 0 is idempotent - valid svalue
+
+pre:
+  - r0.type=number
+  #  This is 0x7fffffffffffffff, which is in range for a signed 64-bit number.
+  - r0.svalue=9223372036854775807
+  - r0.uvalue=9223372036854775807
+  - r1.type=number
+  - r1.svalue=9223372036854775807
+  - r1.uvalue=9223372036854775807
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+code:
+  <start>: |
+    r0 >>= r3
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.svalue=9223372036854775807
+  - r0.svalue=r1.svalue
+  - r0.type=number
+  - r0.uvalue=9223372036854775807
+  - r0.uvalue=r1.uvalue
+  - r1.svalue=9223372036854775807
+  - r1.type=number
+  - r1.uvalue=9223372036854775807
+  - r2.svalue=1
+  - r2.type=number
+  - r2.uvalue=1
+  - r3.type=number
+  - r3.uvalue=0
+  - r3.svalue=0
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
