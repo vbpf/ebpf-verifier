@@ -1106,7 +1106,7 @@ post:
   - r2.uvalue=32
 
 ---
-test-case: check that unsigned right shift by 0 is idempotent
+test-case: check that unsigned right shift by 0 is idempotent - svalue out of range
 
 pre:
   - r0.type=number
@@ -1137,3 +1137,40 @@ post:
   - r2.svalue=[0, 1]
   - r2.uvalue=[0, 1]
   - r2.svalue=r2.uvalue
+
+---
+test-case: check that unsigned right shift by 0 is idempotent - valid svalue
+
+pre:
+  - r0.type=number
+  - r0.svalue=9223372036854775807
+  - r0.uvalue=9223372036854775807
+  - r1.type=number
+  - r1.svalue=9223372036854775807
+  - r1.uvalue=9223372036854775807
+
+code:
+  <start>: |
+    r0 >>= 0
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.svalue=9223372036854775807
+  - r0.svalue=r1.svalue
+  - r0.type=number
+  - r0.uvalue=9223372036854775807
+  - r0.uvalue=r1.uvalue
+  - r1.svalue=9223372036854775807
+  - r1.type=number
+  - r1.uvalue=9223372036854775807
+  - r2.svalue=1
+  - r2.type=number
+  - r2.uvalue=1
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
