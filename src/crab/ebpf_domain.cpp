@@ -2374,7 +2374,8 @@ void ebpf_domain_t::lshr(const Reg& dst_reg, int imm, int finite_width) {
             }
         }
         m_inv.set(dst.uvalue, interval_t{lb_n, ub_n});
-        if (ub_n.narrow<int64_t>() >= lb_n.narrow<int64_t>()) {
+        if ((ub_n.fits<int64_t>() && lb_n.fits<int64_t>()) &&
+            ub_n.narrow<int64_t>() >= lb_n.narrow<int64_t>()) {
             // ? m_inv.set(dst.svalue, crab::interval_t{number_t{(int64_t)lb_n}, number_t{(int64_t)ub_n}});
             m_inv.assign(dst.svalue, dst.uvalue);
         } else {

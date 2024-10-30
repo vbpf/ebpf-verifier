@@ -1104,3 +1104,36 @@ post:
   - r2.type=number
   - r2.svalue=32
   - r2.uvalue=32
+
+---
+test-case: check that unsigned right shift by 0 is idempotent
+
+pre:
+  - r0.type=number
+  - r0.svalue=-8863041185711652825
+  - r0.uvalue=9583702887997898791
+  - r1.type=number
+  - r1.svalue=-8863041185711652825
+  - r1.uvalue=9583702887997898791
+
+code:
+  <start>: |
+    r0 >>= 0
+    if r1 == r0 goto <one>
+    r2 = 0
+    exit
+  <one>: |
+    r2 = 1
+    exit
+
+post:
+  - r0.type=number
+  - r0.uvalue=9583702887997898791
+  - r1.type=number
+  - r1.svalue=-8863041185711652825
+  - r1.uvalue=9583702887997898791
+  - r0.uvalue=r1.uvalue
+  - r2.type=number
+  - r2.svalue=[0, 1]
+  - r2.uvalue=[0, 1]
+  - r2.svalue=r2.uvalue
