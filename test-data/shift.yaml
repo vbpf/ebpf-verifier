@@ -1129,16 +1129,19 @@ code:
 
 post:
   - r0.type=number
+  - r0.svalue=-9223372036854775808
   - r0.uvalue=9223372036854775808
-  #  Note: The svalue gets havoced by the shift, so we can't check it.
   - r1.type=number
   - r1.svalue=-9223372036854775808
   - r1.uvalue=9223372036854775808
+  - r0.svalue=r1.svalue
   - r0.uvalue=r1.uvalue
+  - r2.svalue=1
   - r2.type=number
-  - r2.svalue=[0, 1]
-  - r2.uvalue=[0, 1]
-  - r2.svalue=r2.uvalue
+  - r2.uvalue=1
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
 
 ---
 test-case: check that unsigned right shift by 0 is idempotent - valid svalue
@@ -1205,19 +1208,22 @@ code:
 
 post:
   - r0.type=number
+  - r0.svalue=-9223372036854775808
   - r0.uvalue=9223372036854775808
-  #  Note: The svalue gets havoced by the shift, so we can't check it.
   - r1.type=number
   - r1.svalue=-9223372036854775808
   - r1.uvalue=9223372036854775808
+  - r0.svalue=r1.svalue
   - r0.uvalue=r1.uvalue
+  - r2.svalue=1
   - r2.type=number
-  - r2.svalue=[0, 1]
-  - r2.uvalue=[0, 1]
-  - r2.svalue=r2.uvalue
+  - r2.uvalue=1
   - r3.type=number
   - r3.uvalue=0
   - r3.svalue=0
+
+messages:
+  - "1:2: Code is unreachable after 1:2"
 
 ---
 test-case: check that unsigned right shift by 0 is idempotent - valid svalue
