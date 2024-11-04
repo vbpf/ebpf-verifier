@@ -21,6 +21,7 @@ using std::string;
 using std::vector;
 
 template <typename T>
+    requires std::is_trivially_copyable_v<T>
 static vector<T> vector_of(const char* data, const ELFIO::Elf_Xword size) {
     if (size % sizeof(T) != 0 || size > std::numeric_limits<uint32_t>::max() || !data) {
         throw std::runtime_error("Invalid argument to vector_of");
@@ -29,6 +30,7 @@ static vector<T> vector_of(const char* data, const ELFIO::Elf_Xword size) {
 }
 
 template <typename T>
+    requires std::is_trivially_copyable_v<T>
 static vector<T> vector_of(const ELFIO::section& sec) {
     return vector_of<T>(sec.get_data(), sec.get_size());
 }
