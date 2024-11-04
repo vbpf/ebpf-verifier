@@ -229,7 +229,13 @@ class AssertExtractor {
 
     vector<Assert> operator()(const Bin& ins) const {
         switch (ins.op) {
-        case Bin::Op::MOV: return {};
+        case Bin::Op::MOV:
+            if (const auto src = std::get_if<Reg>(&ins.v)) {
+                if (!ins.is64) {
+                    return {Assert{TypeConstraint{*src, TypeGroup::number}}};
+                }
+            }
+            return {};
         case Bin::Op::MOVSX8:
         case Bin::Op::MOVSX16:
         case Bin::Op::MOVSX32:
