@@ -1,6 +1,9 @@
 // Copyright (c) Prevail Verifier contributors.
 // SPDX-License-Identifier: Apache-2.0
+#include <cassert>
+#include <optional>
 #include <utility>
+#include <vector>
 
 #include <gsl/narrow>
 
@@ -785,8 +788,7 @@ bool SplitDBM::add_constraint(const linear_constraint_t& cst) {
     case constraint_kind_t::EQUALS_ZERO: {
         const linear_expression_t& exp = cst.expression();
         if (!add_linear_leq(exp) || !add_linear_leq(exp.negate())) {
-            CRAB_LOG("zones-split", std::cout << " ~~> _|_"
-                                              << "\n");
+            CRAB_LOG("zones-split", std::cout << " ~~> _|_" << "\n");
             return false;
         }
         // g.check_adjs();
@@ -1200,7 +1202,7 @@ string_invariant SplitDBM::to_set() const {
             result.insert(to_string(vd, vs, w, false));
         }
     }
-    return string_invariant{result};
+    return string_invariant{std::move(result)};
 }
 
 std::ostream& operator<<(std::ostream& o, const SplitDBM& dom) { return o << dom.to_set(); }

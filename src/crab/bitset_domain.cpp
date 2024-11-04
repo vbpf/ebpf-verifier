@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MIT
 #include "bitset_domain.hpp"
 #include <ostream>
+#include <set>
+#include <string>
 
 std::ostream& operator<<(std::ostream& o, const bitset_domain_t& b) {
     o << "Numbers -> {";
@@ -58,5 +60,6 @@ string_invariant bitset_domain_t::to_set() const {
         result.insert(value);
         i = j;
     }
-    return string_invariant{result};
+
+    return string_invariant{std::move(result)};
 }

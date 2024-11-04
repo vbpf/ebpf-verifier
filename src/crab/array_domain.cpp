@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <algorithm>
+#include <cassert>
 #include <optional>
 #include <set>
 #include <unordered_map>
@@ -345,9 +346,9 @@ std::vector<cell_t> offset_map_t::get_overlap_cells(const offset_t o, const unsi
         std::vector<cell_set_t> upto_lb;
         upto_lb.reserve(std::distance(_map.begin(), lb_it));
         for (auto it = _map.begin(), et = lb_it; it != et; ++it) {
-            upto_lb.push_back(it->second);
+            upto_lb.emplace_back(it->second);
         }
-        upto_lb.push_back(lb_it->second);
+        upto_lb.emplace_back(lb_it->second);
 
         for (int i = gsl::narrow<int>(upto_lb.size() - 1); i >= 0; --i) {
             ///////
@@ -494,7 +495,7 @@ void array_domain_t::split_number_var(NumAbsDomain& inv, data_kind_t kind, const
     auto size = n_bytes->narrow<unsigned int>();
     offset_t o(n->narrow<index_t>());
 
-    std::vector<cell_t> cells = offset_map.get_overlap_cells(o, size);
+    const std::vector<cell_t> cells = offset_map.get_overlap_cells(o, size);
     for (cell_t const& c : cells) {
         interval_t intv = c.to_interval();
         int cell_start_index = intv.lb().narrow<int>();
@@ -714,7 +715,7 @@ std::optional<linear_expression_t> array_domain_t::load(const NumAbsDomain& inv,
 
         std::vector<cell_t> cells = offset_map.get_overlap_cells(o, size);
         if (cells.empty()) {
-            cell_t c = offset_map.mk_cell(o, size);
+            const cell_t c = offset_map.mk_cell(o, size);
             // Here it's ok to do assignment (instead of expand) because c is not a summarized variable.
             // Otherwise, it would be unsound.
             return c.get_scalar(kind);

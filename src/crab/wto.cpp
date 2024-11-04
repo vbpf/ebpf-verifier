@@ -163,7 +163,7 @@ void wto_builder_t::continue_visit(const label_t& vertex, wto_partition_t& parti
     // (end of the vector which stores the cycle in reverse order).
     auto cycle = containing_cycle.lock();
 
-    cycle->_components.push_back(vertex);
+    cycle->_components.emplace_back(vertex);
 
     // Insert the component into the current partition.
     partition.emplace_back(cycle);
