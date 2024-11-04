@@ -59,7 +59,7 @@ struct label_t {
         if (stack_frame_prefix.empty()) {
             return 1;
         }
-        return 2 + std::count(stack_frame_prefix.begin(), stack_frame_prefix.end(), STACK_FRAME_DELIMITER);
+        return 2 + std::ranges::count(stack_frame_prefix, STACK_FRAME_DELIMITER);
     }
 
     friend std::ostream& operator<<(std::ostream& os, const label_t& label) {

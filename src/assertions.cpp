@@ -27,10 +27,10 @@ class AssertExtractor {
         return res;
     }
 
-    ValidAccess make_valid_access(Reg reg, int32_t offset = {}, Value width = Imm{0}, bool or_null = {},
-                                  AccessType access_type = {}) const {
-        int depth = current_label.has_value() ? current_label.value().call_stack_depth() : 1;
-        return ValidAccess{ depth, reg, offset, width, or_null, access_type};
+    ValidAccess make_valid_access(const Reg reg, const int32_t offset = {}, const Value& width = Imm{0},
+                                  const bool or_null = {}, const AccessType access_type = {}) const {
+        const int depth = current_label.has_value() ? current_label.value().call_stack_depth() : 1;
+        return ValidAccess{depth, reg, offset, width, or_null, access_type};
     }
 
   public:
@@ -207,8 +207,8 @@ class AssertExtractor {
             }
         } else {
             res.emplace_back(TypeConstraint{basereg, TypeGroup::pointer});
-            res.emplace_back(make_valid_access(basereg, offset, width, false,
-                                               ins.is_load ? AccessType::read : AccessType::write));
+            res.emplace_back(
+                make_valid_access(basereg, offset, width, false, ins.is_load ? AccessType::read : AccessType::write));
             if (!info.type.is_privileged && !ins.is_load) {
                 if (const auto preg = std::get_if<Reg>(&ins.value)) {
                     if (width.v != 8) {

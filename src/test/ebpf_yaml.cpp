@@ -269,30 +269,30 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
 }
 
 template <typename T>
-static vector<T> vector_of(const std::vector<uint8_t>& bytes) {
+static vector<T> vector_of(const std::vector<std::byte>& bytes) {
     auto data = bytes.data();
     const auto size = bytes.size();
-    if ((size % sizeof(T) != 0) || size > std::numeric_limits<uint32_t>::max() || !data) {
+    if (size % sizeof(T) != 0 || size > std::numeric_limits<uint32_t>::max() || !data) {
         throw std::runtime_error("Invalid argument to vector_of");
     }
     return {reinterpret_cast<const T*>(data), reinterpret_cast<const T*>(data + size)};
 }
 
-template <typename TS>
-void add_stack_variable(std::set<std::string>& more, int& offset, const std::vector<uint8_t>& memory_bytes) {
+template <std::signed_integral TS>
+void add_stack_variable(std::set<std::string>& more, int& offset, const std::vector<std::byte>& memory_bytes) {
     using TU = std::make_unsigned_t<TS>;
-    TS svalue;
-    TU uvalue;
-    memcpy(&svalue, memory_bytes.data() + offset + memory_bytes.size() - EBPF_TOTAL_STACK_SIZE, sizeof(TS));
-    memcpy(&uvalue, memory_bytes.data() + offset + memory_bytes.size() - EBPF_TOTAL_STACK_SIZE, sizeof(TU));
-    more.insert("s[" + std::to_string(offset) + "..." + std::to_string(offset + sizeof(TS) - 1) + "].svalue" + "=" +
-                std::to_string(svalue));
-    more.insert("s[" + std::to_string(offset) + "..." + std::to_string(offset + sizeof(TU) - 1) + "].uvalue" + "=" +
-                std::to_string(uvalue));
-    offset += sizeof(TS);
+    constexpr size_t size = sizeof(TS);
+    static_assert(sizeof(TU) == size);
+    const auto src = memory_bytes.data() + offset + memory_bytes.size() - EBPF_TOTAL_STACK_SIZE;
+    const TS svalue{*reinterpret_cast<const TS*>(src)};
+    const TU uvalue{*reinterpret_cast<const TU*>(src)};
+    const auto range = "s[" + std::to_string(offset) + "..." + std::to_string(offset + size - 1) + "]";
+    more.insert(range + ".svalue=" + std::to_string(svalue));
+    more.insert(range + ".uvalue=" + std::to_string(uvalue));
+    offset += size;
 }
 
-string_invariant stack_contents_invariant(const std::vector<uint8_t>& memory_bytes) {
+string_invariant stack_contents_invariant(const std::vector<std::byte>& memory_bytes) {
     std::set<std::string> more = {"r1.type=stack",
                                   "r1.stack_offset=" + std::to_string(EBPF_TOTAL_STACK_SIZE - memory_bytes.size()),
                                   "r1.stack_numeric_size=" + std::to_string(memory_bytes.size()),
@@ -318,8 +318,8 @@ string_invariant stack_contents_invariant(const std::vector<uint8_t>& memory_byt
     return string_invariant(more);
 }
 
-ConformanceTestResult run_conformance_test_case(const std::vector<uint8_t>& memory_bytes,
-                                                const std::vector<uint8_t>& program_bytes, bool debug) {
+ConformanceTestResult run_conformance_test_case(const std::vector<std::byte>& memory_bytes,
+                                                const std::vector<std::byte>& program_bytes, bool debug) {
     ebpf_context_descriptor_t context_descriptor{64, -1, -1, -1};
     EbpfProgramType program_type = make_program_type("conformance_check", &context_descriptor);
 
