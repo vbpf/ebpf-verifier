@@ -269,6 +269,7 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
 }
 
 template <typename T>
+    requires std::is_trivially_copyable_v<T>
 static vector<T> vector_of(const std::vector<std::byte>& bytes) {
     auto data = bytes.data();
     const auto size = bytes.size();
@@ -284,8 +285,10 @@ void add_stack_variable(std::set<std::string>& more, int& offset, const std::vec
     constexpr size_t size = sizeof(TS);
     static_assert(sizeof(TU) == size);
     const auto src = memory_bytes.data() + offset + memory_bytes.size() - EBPF_TOTAL_STACK_SIZE;
-    const TS svalue{*reinterpret_cast<const TS*>(src)};
-    const TU uvalue{*reinterpret_cast<const TU*>(src)};
+    TS svalue;
+    std::memcpy(&svalue, src, size);
+    TU uvalue;
+    std::memcpy(&uvalue, src, size);
     const auto range = "s[" + std::to_string(offset) + "..." + std::to_string(offset + size - 1) + "]";
     more.insert(range + ".svalue=" + std::to_string(svalue));
     more.insert(range + ".uvalue=" + std::to_string(uvalue));
