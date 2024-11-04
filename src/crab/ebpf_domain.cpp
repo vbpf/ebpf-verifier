@@ -941,15 +941,15 @@ void ebpf_domain_t::havoc_subprogram_stack(const std::string& prefix) {
     // Calculate the call stack depth being returned from.  Since we're returning
     // *to* the given prefix, the current call stack is 2 + the number of
     // '/' separators because we need to account for the current frame and the root frame.
-    int call_stack_depth = 2 + std::count(prefix.begin(), prefix.end(), STACK_FRAME_DELIMITER);
+    const int call_stack_depth = 2 + std::ranges::count(prefix, STACK_FRAME_DELIMITER);
 
-    variable_t r10_stack_offset = reg_pack(R10_STACK_POINTER).stack_offset;
-    auto intv = m_inv.eval_interval(r10_stack_offset);
+    const variable_t r10_stack_offset = reg_pack(R10_STACK_POINTER).stack_offset;
+    const auto intv = m_inv.eval_interval(r10_stack_offset);
     if (!intv.is_singleton()) {
         return;
     }
-    int64_t stack_offset = intv.singleton()->cast_to<int64_t>();
-    int32_t stack_start = stack_offset - EBPF_SUBPROGRAM_STACK_SIZE * call_stack_depth;
+    const int64_t stack_offset = intv.singleton()->cast_to<int64_t>();
+    const int32_t stack_start = stack_offset - EBPF_SUBPROGRAM_STACK_SIZE * call_stack_depth;
     for (const data_kind_t kind : iterate_kinds()) {
         stack.havoc(m_inv, kind, stack_start, EBPF_SUBPROGRAM_STACK_SIZE);
     }
@@ -1201,13 +1201,13 @@ void ebpf_domain_t::operator()(const basic_block_t& bb) {
     }
 }
 
-void ebpf_domain_t::check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb,
-                                       const linear_expression_t& ub, int call_stack_depth) const {
+void ebpf_domain_t::check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
+                                       const int call_stack_depth) const {
     using namespace crab::dsl_syntax;
-    variable_t r10_stack_offset = reg_pack(R10_STACK_POINTER).stack_offset;
-    auto interval = inv.eval_interval(r10_stack_offset);
+    const variable_t r10_stack_offset = reg_pack(R10_STACK_POINTER).stack_offset;
+    const auto interval = inv.eval_interval(r10_stack_offset);
     if (interval.is_singleton()) {
-        int64_t stack_offset = interval.singleton()->cast_to<int64_t>();
+        const int64_t stack_offset = interval.singleton()->cast_to<int64_t>();
         require(inv, lb >= stack_offset - EBPF_SUBPROGRAM_STACK_SIZE * call_stack_depth,
                 "Lower bound must be at least r10.stack_offset - EBPF_SUBPROGRAM_STACK_SIZE * call_stack_depth");
     }
@@ -2054,7 +2054,7 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue,
     int width = b.access.width;
     const number_t offset{b.access.offset};
     if (b.access.basereg.v == R10_STACK_POINTER) {
-        auto r10_stack_offset = reg_pack(b.access.basereg).stack_offset;
+        const auto r10_stack_offset = reg_pack(b.access.basereg).stack_offset;
         const auto r10_interval = m_inv.eval_interval(r10_stack_offset);
         if (r10_interval.is_singleton()) {
             const int32_t stack_offset = r10_interval.singleton()->cast_to<int32_t>();
