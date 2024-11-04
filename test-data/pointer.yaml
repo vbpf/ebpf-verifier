@@ -394,6 +394,7 @@ messages:
   - "1: Invalid type (r0.type == number)"
 
 ---
+# Verify that truncating a pointer and converting it to a number is triggers a warning.
 test-case: 32-bit return context pointer
 
 pre:
