@@ -1,6 +1,6 @@
-# # Copyright (c) Prevail Verifier contributors.
-# # SPDX-License-Identifier: MIT
-# ---
+# Copyright (c) Prevail Verifier contributors.
+# SPDX-License-Identifier: MIT
+---
 test-case: 32-bit pointer truncation - addition
 
 pre:
