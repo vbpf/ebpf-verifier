@@ -1,4 +1,4 @@
-# Copyright (c) eBPF for Windows contributors
+# Copyright (c) Prevail Verifier contributors.
 # SPDX-License-Identifier: MIT
 
 $usage=$false;
