@@ -55,7 +55,7 @@ cmake --build build --config Release
 ```bash
 brew install llvm cmake boost yaml-cpp
 ```
-The system llvm currently comes with Clang 15, which isn't enough to compile the ebpf-verifier as it depends on C++20. Brew's llvm comes with Clang 17.
+The system llvm currently comes with Clang 15, which isn't enough to compile the ebpf-verifier, as it depends on C++20. Brew's llvm comes with Clang 17.
 
 #### Make:
 ```
