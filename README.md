@@ -1,60 +1,73 @@
 [![Coverage Status](https://coveralls.io/repos/github/vbpf/ebpf-verifier/badge.svg?branch=main)](https://coveralls.io/github/vbpf/ebpf-verifier?branch=main)[![CodeQL](https://github.com/vbpf/ebpf-verifier/actions/workflows/codeql-analysis.yml/badge.svg?branch=main)](https://github.com/vbpf/ebpf-verifier/actions/workflows/codeql-analysis.yml)
 
-# PREVAIL
+# PREVAIL - A new eBPF verifier
 ## a Polynomial-Runtime EBPF Verifier using an Abstract Interpretation Layer
 
-A new eBPF verifier.
+
 
 The version discussed in the [PLDI paper](https://vbpf.github.io/assets/prevail-paper.pdf) is available [here](https://github.com/vbpf/ebpf-verifier/tree/d29fd26345c3126bf166cf1c45233a9b2f9fb0a0).
 
 ## Getting Started
 
-### Dependencies from vanilla Ubuntu
-```bash
-sudo apt install build-essential git cmake libboost-dev libyaml-cpp-dev
-sudo apt install libboost-filesystem-dev libboost-program-options-dev
-```
-
-### Dependencies from vanilla Windows
-
-* Install [git](https://git-scm.com/download/win)
-* Install [Visual Studio Build Tools 2022](https://aka.ms/vs/17/release/vs_buildtools.exe) and choose the "C++ build tools" workload (Visual Studio Build Tools 2022 has support for CMake Version 3.25).
-* Install [nuget.exe](https://www.nuget.org/downloads)
-
-### Dependencies from MacOS
-```bash
-brew install llvm cmake boost yaml-cpp
-```
-The system llvm currently comes with Clang 15, which isn't enough to compile the ebpf-verifier as it depends on C++20. Brew's llvm comes with Clang 17.
-
-### Installation
 Clone:
 ```
 git clone --recurse-submodules https://github.com/vbpf/ebpf-verifier.git
 cd ebpf-verifier
 ```
 
-Make on Ubuntu:
+### Building
+
+<details open><summary>🐧 Linux</summary>
+
+#### Dependencies (Ubuntu)
+```bash
+sudo apt install build-essential git cmake libboost-dev libyaml-cpp-dev
+sudo apt install libboost-filesystem-dev libboost-program-options-dev
+```
+
+#### Make
 ```
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-Make on Windows (which uses a multi-configuration generator):
+</details>
+
+<details><summary>🪟 Windows</summary>
+  
+#### Dependencies
+* Install [git](https://git-scm.com/download/win)
+* Install [Visual Studio Build Tools 2022](https://aka.ms/vs/17/release/vs_buildtools.exe) and choose the "C++ build tools" workload (Visual Studio Build Tools 2022 has support for CMake Version 3.25).
+* Install [nuget.exe](https://www.nuget.org/downloads)
+
+#### Make on Windows (which uses a multi-configuration generator)
 ```
 cmake -B build
 cmake --build build --config Release
 ```
 
-Make on MacOS:
+</details>
+
+
+<details><summary>🍏 macOS</summary>
+
+#### Dependencies:
+```bash
+brew install llvm cmake boost yaml-cpp
+```
+The system llvm currently comes with Clang 15, which isn't enough to compile the ebpf-verifier as it depends on C++20. Brew's llvm comes with Clang 17.
+
+#### Make:
 ```
 export CPATH=$(brew --prefix)/include LIBRARY_PATH=$(brew --prefix)/lib CMAKE_PREFIX_PATH=$(brew --prefix)
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$(brew --prefix llvm)/bin/clang -DCMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++
 cmake --build build
 ```
+</details>
 
-### Running with Docker
-Build and run:
+<details><summary>🐋 Docker</summary>
+  
+#### Build and run
 ```bash
 docker build -t verifier .
 docker run -it verifier ebpf-samples/cilium/bpf_lxc.o 2/1
@@ -62,6 +75,7 @@ docker run -it verifier ebpf-samples/cilium/bpf_lxc.o 2/1
 # To run the Linux verifier you'll need a privileged container:
 docker run --privileged -it verifier ebpf-samples/linux/cpustat_kern.o --domain=linux
 ```
+</details>
 
 ### Example:
 ```
@@ -73,7 +87,8 @@ The output is three comma-separated values:
 * The runtime of the fixpoint algorithm (in seconds)
 * The peak memory consumption, in kb, as reflected by the resident-set size (rss)
 
-## Usage:
+<details><summary>Usage</summary>
+
 ```
 PREVAIL is a new eBPF verifier based on abstract interpretation.
 Usage: ./check [OPTIONS] path [section] [function]
@@ -129,6 +144,8 @@ sudo apt install graphviz
 ./check ebpf-samples/cilium/bpf_lxc.o 2/1 --dot cfg.dot --domain=stats
 dot -Tpdf cfg.dot > cfg.pdf
 ```
+
+</details>
 
 ## Testing the Linux verifier
 
