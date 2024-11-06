@@ -232,6 +232,9 @@ int main(int argc, char** argv) {
         print_map_descriptors(global_program_info->map_descriptors, out);
     }
 
+    prepare_cfg_options cfg_options = {.simplify = ebpf_verifier_options.simplify,
+                                       .check_for_termination = ebpf_verifier_options.check_termination};
+
     if (domain == "zoneCrab") {
         ebpf_verifier_stats_t verifier_stats;
         const auto [res, seconds] = timed_execution([&] {
@@ -251,7 +254,7 @@ int main(int argc, char** argv) {
     } else if (domain == "stats") {
         // Convert the instruction sequence to a control-flow graph.
         const cfg_t cfg =
-            prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.simplify, ebpf_verifier_options.check_termination);
+            prepare_cfg(prog, raw_prog.info, cfg_options);
 
         // Just print eBPF program stats.
         auto stats = collect_stats(cfg);
@@ -266,7 +269,7 @@ int main(int argc, char** argv) {
     } else if (domain == "cfg") {
         // Convert the instruction sequence to a control-flow graph.
         const cfg_t cfg =
-            prepare_cfg(prog, raw_prog.info, ebpf_verifier_options.simplify, ebpf_verifier_options.check_termination);
+            prepare_cfg(prog, raw_prog.info, cfg_options);
         std::cout << cfg;
         std::cout << "\n";
     } else {

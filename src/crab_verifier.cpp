@@ -221,7 +221,10 @@ std::tuple<string_invariant, bool> ebpf_analyze_program_for_test(std::ostream& o
         throw std::runtime_error("Entry invariant is inconsistent");
     }
     try {
-        const cfg_t cfg = prepare_cfg(prog, info, options.simplify, options.check_termination, false);
+        const cfg_t cfg = prepare_cfg(prog, info,
+                                      {.simplify = options.simplify,
+                                       .check_for_termination = options.check_termination,
+                                       .must_have_exit = false});
         auto [pre_invariants, post_invariants] = run_forward_analyzer(cfg, std::move(entry_inv));
         const checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
         print_report(os, report, prog, false);
@@ -244,7 +247,8 @@ bool ebpf_verify_program(std::ostream& os, const InstructionSeq& prog, const pro
 
     // Convert the instruction sequence to a control-flow graph
     // in a "passive", non-deterministic form.
-    const cfg_t cfg = prepare_cfg(prog, info, options->simplify, options->check_termination);
+    const cfg_t cfg =
+        prepare_cfg(prog, info, {.simplify = options->simplify, .check_for_termination = options->check_termination});
 
     std::optional<InstructionSeq> prog_opt = std::nullopt;
     if (options->print_failures) {
