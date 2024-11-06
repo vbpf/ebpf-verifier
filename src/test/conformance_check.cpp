@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include "CLI11.hpp"
+#include "CLI11/CLI11.hpp"
 #include "ebpf_verifier.hpp"
 #include "ebpf_yaml.hpp"
 

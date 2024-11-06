@@ -15,7 +15,7 @@
 #include "utils.hpp"
 
 // Avoid affecting other headers by macros.
-#include "CLI11.hpp"
+#include "CLI11/CLI11.hpp"
 
 using std::string;
 using std::vector;
