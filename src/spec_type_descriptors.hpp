@@ -40,8 +40,13 @@ struct EbpfProgramType {
 
 void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o);
 
-using EquivalenceKey = std::tuple<EbpfMapValueType /* value_type */, uint32_t /* key_size */, uint32_t /* value_size */,
-                                  uint32_t /* max_entries */>;
+struct EquivalenceKey {
+    EbpfMapValueType value_type;
+    uint32_t key_size;
+    uint32_t value_size;
+    uint32_t max_entries;
+    std::strong_ordering operator<=>(const EquivalenceKey&) const = default;
+};
 
 struct program_info {
     const struct ebpf_platform_t* platform{};
