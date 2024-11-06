@@ -17,7 +17,7 @@ class AddBottom final {
     AddBottom() {}
 
   public:
-    explicit AddBottom(auto&& _dom) : dom{std::forward<decltype(dom)>(_dom)} {}
+    explicit AddBottom(auto&& _dom) : dom{std::forward<decltype(_dom)>(_dom)} {}
     AddBottom(const AddBottom& other) = default;
     AddBottom(AddBottom& other) = default;
     AddBottom(AddBottom&& other) = default;

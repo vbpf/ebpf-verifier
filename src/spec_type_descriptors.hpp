@@ -40,6 +40,8 @@ struct EbpfProgramType {
 
 void print_map_descriptors(const std::vector<EbpfMapDescriptor>& descriptors, std::ostream& o);
 
+// Represents the key characteristics that determine equivalence between eBPF maps.
+// Used to cache and compare map configurations across the program.
 struct EquivalenceKey {
     EbpfMapValueType value_type;
     uint32_t key_size;

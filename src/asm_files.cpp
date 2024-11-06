@@ -35,8 +35,8 @@ static vector<T> vector_of(const ELFIO::section& sec) {
     return vector_of<T>(sec.get_data(), sec.get_size());
 }
 
-int create_map_crab(const EbpfMapType& map_type, uint32_t key_size, uint32_t value_size, uint32_t max_entries,
-                    ebpf_verifier_options_t) {
+int create_map_crab(const EbpfMapType& map_type, const uint32_t key_size, const uint32_t value_size,
+                    const uint32_t max_entries, ebpf_verifier_options_t) {
     const EquivalenceKey equiv{map_type.value_type, key_size, value_size, map_type.is_array ? max_entries : 0};
     if (!global_program_info->cache.contains(equiv)) {
         // +1 so 0 is the null FD
