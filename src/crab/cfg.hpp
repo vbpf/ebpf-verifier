@@ -614,8 +614,11 @@ std::vector<std::string> stats_headers();
 std::map<std::string, int> collect_stats(const cfg_t&);
 
 struct prepare_cfg_options {
+    /// When true, simplifies the control flow graph by merging basic blocks.
     bool simplify = true;
+    /// When true, verifies that the program terminates.
     bool check_for_termination = true;
+    /// When true, ensures the program has a valid exit block.
     bool must_have_exit = true;
 };
 
