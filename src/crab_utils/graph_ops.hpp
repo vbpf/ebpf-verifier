@@ -21,11 +21,11 @@ namespace crab {
 template <class G>
 class GraphPerm {
   public:
-    using vert_id = G::vert_id;
+    using vert_id = typename G::vert_id;
     constexpr static vert_id invalid_vert = std::numeric_limits<vert_id>::max();
-    using Weight = G::Weight;
-    using g_neighbour_const_range = G::neighbour_const_range;
-    using mut_val_ref_t = G::mut_val_ref_t;
+    using Weight = typename G::Weight;
+    using g_neighbour_const_range = typename G::neighbour_const_range;
+    using mut_val_ref_t = typename G::mut_val_ref_t;
 
     GraphPerm(const std::vector<vert_id>& _perm, G& _g) : g{_g}, perm{_perm}, inv(_g.size(), invalid_vert) {
         for (unsigned int vi = 0; vi < perm.size(); vi++) {
@@ -279,13 +279,13 @@ class GraphPerm {
 template <class G>
 class SubGraph {
   public:
-    using vert_id = G::vert_id;
-    using Weight = G::Weight;
+    using vert_id = typename G::vert_id;
+    using Weight = typename G::Weight;
 
-    using g_neighbour_const_range = G::neighbour_const_range;
-    using g_e_neighbour_const_range = G::e_neighbour_const_range;
+    using g_neighbour_const_range = typename G::neighbour_const_range;
+    using g_e_neighbour_const_range = typename G::e_neighbour_const_range;
 
-    using mut_val_ref_t = G::mut_val_ref_t;
+    using mut_val_ref_t = typename G::mut_val_ref_t;
 
     SubGraph(G& _g, vert_id _v_ex) : g(_g), v_ex(_v_ex) {}
 
@@ -383,7 +383,7 @@ class SubGraph {
     template <class It>
     class e_adj_iterator {
       public:
-        using edge_ref = It::edge_ref;
+        using edge_ref = typename It::edge_ref;
 
         e_adj_iterator(const It& _iG, vert_id _v_ex) : iG(_iG), v_ex(_v_ex) {}
         edge_ref operator*() const { return *iG; }
@@ -405,7 +405,7 @@ class SubGraph {
     template <class R, class It>
     class adj_list {
       public:
-        using g_iter = R::iterator;
+        using g_iter = typename R::iterator;
         using iterator = It;
 
         adj_list(const R& _rG, vert_id _v_ex) : rG(_rG), v_ex(_v_ex) {}
@@ -442,10 +442,10 @@ class SubGraph {
 template <class G>
 class GraphRev {
   public:
-    using vert_id = G::vert_id;
-    using Weight = G::Weight;
+    using vert_id = typename G::vert_id;
+    using Weight = typename G::Weight;
     // using g_adj_list = G::adj_list;
-    using mut_val_ref_t = G::mut_val_ref_t;
+    using mut_val_ref_t = typename G::mut_val_ref_t;
 
     explicit GraphRev(G& _g) : g(_g) {}
 
@@ -469,8 +469,8 @@ class GraphRev {
 
     //    using adj_list = G::adj_list;
 
-    using neighbour_const_range = G::neighbour_const_range;
-    using e_neighbour_const_range = G::e_neighbour_const_range;
+    using neighbour_const_range = typename G::neighbour_const_range;
+    using e_neighbour_const_range = typename G::e_neighbour_const_range;
 
     typename G::vert_const_range verts() const { return g.verts(); }
 
