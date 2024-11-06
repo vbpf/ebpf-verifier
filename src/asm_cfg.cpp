@@ -359,7 +359,6 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
     return res;
 }
 
-// ISSUE: 774 - Rationalize the list of bools being passed to prepare_cfg.
 cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const prepare_cfg_options& options) {
     // Convert the instruction sequence to a deterministic control-flow graph.
     cfg_t det_cfg = instruction_seq_to_cfg(prog, options.must_have_exit);
