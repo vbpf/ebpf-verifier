@@ -256,7 +256,7 @@ class AdaptGraph final {
     };
 
     struct edge_const_range_t {
-        using elt_range_t = typename smap_t::elt_range_t;
+        using elt_range_t = smap_t::elt_range_t;
         using iterator = edge_const_iter;
 
         elt_range_t r;
@@ -279,8 +279,8 @@ class AdaptGraph final {
     using fwd_edge_const_iter = edge_const_iter;
     using rev_edge_const_iter = edge_const_iter;
 
-    using adj_range_t = typename smap_t::key_const_range_t;
-    using adj_const_range_t = typename smap_t::key_const_range_t;
+    using adj_range_t = smap_t::key_const_range_t;
+    using adj_const_range_t = smap_t::key_const_range_t;
     using neighbour_range = adj_range_t;
     using neighbour_const_range = adj_const_range_t;
 

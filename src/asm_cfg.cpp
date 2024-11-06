@@ -262,7 +262,7 @@ static cfg_t to_nondet(const cfg_t& cfg) {
             for (auto const& [next_label, cond1] : jumps) {
                 label_t jump_label = label_t::make_jump(mid_label, next_label);
                 basic_block_t& jump_bb = res.insert(jump_label);
-                jump_bb.insert<Assume>(cond1);
+                jump_bb.insert(Assume{cond1});
                 newbb >> jump_bb;
                 jump_bb >> res.insert(next_label);
             }
@@ -370,9 +370,8 @@ cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const bo
     // points. These entry points serve as natural locations for loop counters that help verify program termination.
     if (check_for_termination) {
         wto_t wto(det_cfg);
-        wto.for_each_loop_head([&](const label_t& label) {
-            det_cfg.get_node(label).insert_front(IncrementLoopCounter{label});
-        });
+        wto.for_each_loop_head(
+            [&](const label_t& label) { det_cfg.get_node(label).insert_front(IncrementLoopCounter{label}); });
     }
 
     // Annotate the CFG by adding in assertions before every memory instruction.

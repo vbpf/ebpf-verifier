@@ -96,7 +96,7 @@ static checks_db generate_report(const cfg_t& cfg, const crab::invariant_table_t
 
     if (thread_local_options.check_termination) {
         // Gather the upper bound of loop counts from post-invariants.
-        for (const auto [label, inv] : post_invariants) {
+        for (const auto& [label, inv] : post_invariants) {
             if (inv.is_bottom()) {
                 continue;
             }
@@ -162,7 +162,8 @@ static checks_db get_analysis_report(std::ostream& s, const cfg_t& cfg, const cr
     return db;
 }
 
-static checks_db get_ebpf_report(std::ostream& s, const cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options,
+static checks_db get_ebpf_report(std::ostream& s, const cfg_t& cfg, program_info info,
+                                 const ebpf_verifier_options_t* options,
                                  const std::optional<InstructionSeq>& prog = std::nullopt) {
     global_program_info = std::move(info);
     crab::domains::clear_global_state();
@@ -183,8 +184,8 @@ static checks_db get_ebpf_report(std::ostream& s, const cfg_t& cfg, program_info
 }
 
 /// Returned value is true if the program passes verification.
-bool run_ebpf_analysis(std::ostream& s, const cfg_t& cfg, const program_info& info, const ebpf_verifier_options_t* options,
-                       ebpf_verifier_stats_t* stats) {
+bool run_ebpf_analysis(std::ostream& s, const cfg_t& cfg, const program_info& info,
+                       const ebpf_verifier_options_t* options, ebpf_verifier_stats_t* stats) {
     if (options == nullptr) {
         options = &ebpf_verifier_default_options;
     }

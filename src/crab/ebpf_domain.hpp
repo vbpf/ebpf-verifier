@@ -166,10 +166,11 @@ class ebpf_domain_t final {
 
     void assign_valid_ptr(const Reg& dst_reg, bool maybe_null);
 
-    void require(domains::NumAbsDomain& inv, const linear_constraint_t& cst, const std::string& s) const;
+    void require(NumAbsDomain& inv, const linear_constraint_t& cst, const std::string& s) const;
 
     // memory check / load / store
-    void check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub, int call_stack_depth) const;
+    void check_access_stack(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
+                            int call_stack_depth) const;
     void check_access_context(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub) const;
     void check_access_packet(NumAbsDomain& inv, const linear_expression_t& lb, const linear_expression_t& ub,
                              std::optional<variable_t> packet_size) const;
@@ -184,13 +185,12 @@ class ebpf_domain_t final {
     void do_load_packet_or_shared(NumAbsDomain& inv, const Reg& target_reg, const linear_expression_t& addr, int width);
     void do_load(const Mem& b, const Reg& target_reg);
 
-    template <typename X, typename Y, typename Z>
-    void do_store_stack(domains::NumAbsDomain& inv, const number_t& width, const linear_expression_t& addr, X val_type,
-                        Y val_svalue, Z val_uvalue, const std::optional<reg_pack_t>& opt_val_reg);
+    void do_store_stack(NumAbsDomain& inv, const linear_expression_t& addr, int width,
+                        const linear_expression_t& val_type, const linear_expression_t& val_svalue,
+                        const linear_expression_t& val_uvalue, const std::optional<reg_pack_t>& opt_val_reg);
 
-    template <typename Type, typename SValue, typename UValue>
-    void do_mem_store(const Mem& b, Type val_type, SValue val_svalue, UValue val_uvalue,
-                      const std::optional<reg_pack_t>& opt_val_reg);
+    void do_mem_store(const Mem& b, const linear_expression_t& val_type, const linear_expression_t& val_svalue,
+                      const linear_expression_t& val_uvalue, const std::optional<reg_pack_t>& opt_val_reg);
 
     friend std::ostream& operator<<(std::ostream& o, const ebpf_domain_t& dom);
 
@@ -200,7 +200,7 @@ class ebpf_domain_t final {
     /// Mapping from variables (including registers, types, offsets,
     /// memory locations, etc.) to numeric intervals or relationships
     /// to other variables.
-    domains::NumAbsDomain m_inv;
+    NumAbsDomain m_inv;
 
     /// Represents the stack as a memory region, i.e., an array of bytes,
     /// allowing mapping to variable in the m_inv numeric domains

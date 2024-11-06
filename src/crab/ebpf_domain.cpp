@@ -1946,12 +1946,14 @@ void ebpf_domain_t::do_load(const Mem& b, const Reg& target_reg) {
     });
 }
 
-template <typename X, typename Y, typename Z>
-void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, const number_t& width, const linear_expression_t& addr,
-                                   X val_type, Y val_svalue, Z val_uvalue,
+void ebpf_domain_t::do_store_stack(NumAbsDomain& inv, const linear_expression_t& addr, const int width,
+                                   const linear_expression_t& val_type, const linear_expression_t& val_svalue,
+                                   const linear_expression_t& val_uvalue,
                                    const std::optional<reg_pack_t>& opt_val_reg) {
-    std::optional<variable_t> var = stack.store_type(inv, addr, width, val_type);
-    type_inv.assign_type(inv, var, val_type);
+    {
+        const std::optional<variable_t> var = stack.store_type(inv, addr, width, val_type);
+        type_inv.assign_type(inv, var, val_type);
+    }
     if (width == 8) {
         inv.assign(stack.store(inv, data_kind_t::svalues, addr, width, val_svalue), val_svalue);
         inv.assign(stack.store(inv, data_kind_t::uvalues, addr, width, val_uvalue), val_uvalue);
@@ -2044,22 +2046,22 @@ void ebpf_domain_t::operator()(const Mem& b) {
         if (b.is_load) {
             do_load(b, *preg);
         } else {
-            auto data_reg = reg_pack(*preg);
-            do_mem_store(b, *preg, data_reg.svalue, data_reg.uvalue, data_reg);
+            const auto data_reg = reg_pack(*preg);
+            do_mem_store(b, data_reg.type, data_reg.svalue, data_reg.uvalue, data_reg);
         }
     } else {
         const uint64_t imm = std::get<Imm>(b.value).v;
-        do_mem_store(b, number_t{T_NUM}, number_t{to_signed(imm)}, number_t{imm}, {});
+        do_mem_store(b, T_NUM, to_signed(imm), imm, {});
     }
 }
 
-template <typename Type, typename SValue, typename UValue>
-void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue, UValue val_uvalue,
-                                 const std::optional<reg_pack_t>& val_reg) {
+void ebpf_domain_t::do_mem_store(const Mem& b, const linear_expression_t& val_type,
+                                 const linear_expression_t& val_svalue, const linear_expression_t& val_uvalue,
+                                 const std::optional<reg_pack_t>& opt_val_reg) {
     if (m_inv.is_bottom()) {
         return;
     }
-    int width = b.access.width;
+    const int width = b.access.width;
     const number_t offset{b.access.offset};
     if (b.access.basereg.v == R10_STACK_POINTER) {
         const auto r10_stack_offset = reg_pack(b.access.basereg).stack_offset;
@@ -2067,15 +2069,15 @@ void ebpf_domain_t::do_mem_store(const Mem& b, Type val_type, SValue val_svalue,
         if (r10_interval.is_singleton()) {
             const int32_t stack_offset = r10_interval.singleton()->cast_to<int32_t>();
             const number_t base_addr{stack_offset};
-            do_store_stack(m_inv, width, base_addr + offset, val_type, val_svalue, val_uvalue, val_reg);
+            do_store_stack(m_inv, base_addr + offset, width, val_type, val_svalue, val_uvalue, opt_val_reg);
         }
         return;
     }
     m_inv = type_inv.join_over_types(m_inv, b.access.basereg, [&](NumAbsDomain& inv, const type_encoding_t type) {
         if (type == T_STACK) {
             const auto base_addr = linear_expression_t(get_type_offset_variable(b.access.basereg, type).value());
-            do_store_stack(inv, width, dsl_syntax::operator+(base_addr, offset), val_type, val_svalue, val_uvalue,
-                           val_reg);
+            do_store_stack(inv, dsl_syntax::operator+(base_addr, offset), width, val_type, val_svalue, val_uvalue,
+                           opt_val_reg);
         }
         // do nothing for any other type
     });

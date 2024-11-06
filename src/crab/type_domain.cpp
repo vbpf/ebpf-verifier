@@ -199,20 +199,12 @@ void TypeDomain::selectively_join_based_on_type(NumAbsDomain& dst, NumAbsDomain&
     }
 }
 
-void TypeDomain::assign_type(NumAbsDomain& inv, const Reg& lhs, const type_encoding_t t) {
-    inv.assign(reg_pack(lhs).type, t);
-}
-
 void TypeDomain::assign_type(NumAbsDomain& inv, const Reg& lhs, const Reg& rhs) {
     inv.assign(reg_pack(lhs).type, reg_pack(rhs).type);
 }
 
-void TypeDomain::assign_type(NumAbsDomain& inv, const std::optional<variable_t> lhs, const Reg& rhs) {
-    inv.assign(lhs, reg_pack(rhs).type);
-}
-
-void TypeDomain::assign_type(NumAbsDomain& inv, const std::optional<variable_t> lhs, const number_t& rhs) {
-    inv.assign(lhs, rhs);
+void TypeDomain::assign_type(NumAbsDomain& inv, const std::optional<variable_t> lhs, const linear_expression_t& t) {
+    inv.assign(lhs, t);
 }
 
 void TypeDomain::assign_type(NumAbsDomain& inv, const Reg& lhs, const std::optional<linear_expression_t>& rhs) {
@@ -220,6 +212,14 @@ void TypeDomain::assign_type(NumAbsDomain& inv, const Reg& lhs, const std::optio
 }
 
 void TypeDomain::havoc_type(NumAbsDomain& inv, const Reg& r) { inv -= reg_pack(r).type; }
+
+type_encoding_t TypeDomain::get_type(const NumAbsDomain& inv, const linear_expression_t& v) const {
+    const auto res = inv.eval_interval(v).singleton();
+    if (!res) {
+        return T_UNINIT;
+    }
+    return res->narrow<type_encoding_t>();
+}
 
 type_encoding_t TypeDomain::get_type(const NumAbsDomain& inv, const Reg& r) const {
     const auto res = inv[reg_pack(r).type].singleton();
@@ -229,31 +229,15 @@ type_encoding_t TypeDomain::get_type(const NumAbsDomain& inv, const Reg& r) cons
     return res->narrow<type_encoding_t>();
 }
 
-type_encoding_t TypeDomain::get_type(const NumAbsDomain& inv, const variable_t v) const {
-    const auto res = inv[v].singleton();
-    if (!res) {
-        return T_UNINIT;
-    }
-    return res->narrow<type_encoding_t>();
-}
-
-type_encoding_t TypeDomain::get_type(const NumAbsDomain& inv, const number_t& t) const {
-    return t.narrow<type_encoding_t>();
-}
-
 // Check whether a given type value is within the range of a given type variable's value.
 bool TypeDomain::has_type(const NumAbsDomain& inv, const Reg& r, const type_encoding_t type) const {
     const interval_t interval = inv[reg_pack(r).type];
     return interval.contains(type);
 }
 
-bool TypeDomain::has_type(const NumAbsDomain& inv, const variable_t v, const type_encoding_t type) const {
-    const interval_t interval = inv[v];
+bool TypeDomain::has_type(const NumAbsDomain& inv, const linear_expression_t& v, const type_encoding_t type) const {
+    const interval_t interval = inv.eval_interval(v);
     return interval.contains(type);
-}
-
-bool TypeDomain::has_type(const NumAbsDomain& inv, const number_t& t, const type_encoding_t type) const {
-    return t == number_t{type};
 }
 
 NumAbsDomain TypeDomain::join_over_types(const NumAbsDomain& inv, const Reg& reg,

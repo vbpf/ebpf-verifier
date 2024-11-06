@@ -33,27 +33,21 @@ reg_pack_t reg_pack(int i);
 inline reg_pack_t reg_pack(const Reg r) { return reg_pack(r.v); }
 
 struct TypeDomain {
-    void assign_type(NumAbsDomain& inv, const Reg& lhs, type_encoding_t t);
     void assign_type(NumAbsDomain& inv, const Reg& lhs, const Reg& rhs);
     void assign_type(NumAbsDomain& inv, const Reg& lhs, const std::optional<linear_expression_t>& rhs);
-    void assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, const Reg& rhs);
-    void assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, const number_t& rhs);
+    void assign_type(NumAbsDomain& inv, std::optional<variable_t> lhs, const linear_expression_t& t);
 
     void havoc_type(NumAbsDomain& inv, const Reg& r);
 
     [[nodiscard]]
-    type_encoding_t get_type(const NumAbsDomain& inv, variable_t v) const;
+    type_encoding_t get_type(const NumAbsDomain& inv, const linear_expression_t& v) const;
     [[nodiscard]]
     type_encoding_t get_type(const NumAbsDomain& inv, const Reg& r) const;
-    [[nodiscard]]
-    type_encoding_t get_type(const NumAbsDomain& inv, const number_t& t) const;
 
     [[nodiscard]]
-    bool has_type(const NumAbsDomain& inv, variable_t v, type_encoding_t type) const;
+    bool has_type(const NumAbsDomain& inv, const linear_expression_t& v, type_encoding_t type) const;
     [[nodiscard]]
     bool has_type(const NumAbsDomain& inv, const Reg& r, type_encoding_t type) const;
-    [[nodiscard]]
-    bool has_type(const NumAbsDomain& inv, const number_t& t, type_encoding_t type) const;
 
     [[nodiscard]]
     bool same_type(const NumAbsDomain& inv, const Reg& a, const Reg& b) const;
