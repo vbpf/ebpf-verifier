@@ -65,13 +65,8 @@ class basic_block_t final {
         m_ts.push_back(arg);
     }
 
-    template <typename T, typename... Args>
-    void insert_front(Args&&... args) {
-        assert(label() != label_t::entry);
-        assert(label() != label_t::exit);
-        m_ts.insert(m_ts.begin(), T{std::forward<Args>(args)...});
-    }
-
+    /// Insert an instruction at the front of the basic block.
+    /// @note Cannot modify entry or exit blocks.
     void insert_front(const Instruction& arg) {
         assert(label() != label_t::entry);
         assert(label() != label_t::exit);
