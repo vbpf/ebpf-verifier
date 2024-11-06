@@ -32,7 +32,7 @@ extern unsigned CrabVerbosity;
     } while (0)
 
 template <typename... ArgTypes>
-inline void ___print___(std::ostream& os, ArgTypes... args) {
+void ___print___(std::ostream& os, ArgTypes... args) {
     // trick to expand variadic argument pack without recursion
     using expand_variadic_pack = int[];
     // first zero is to prevent empty braced-init-list

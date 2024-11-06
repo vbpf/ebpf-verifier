@@ -17,8 +17,7 @@ class AddBottom final {
     AddBottom() {}
 
   public:
-    template <typename T>
-    explicit AddBottom(T&& _dom) : dom{std::forward<T>(_dom)} {}
+    explicit AddBottom(auto&& _dom) : dom{std::forward<decltype(dom)>(_dom)} {}
     AddBottom(const AddBottom& other) = default;
     AddBottom(AddBottom& other) = default;
     AddBottom(AddBottom&& other) = default;

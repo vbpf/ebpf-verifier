@@ -43,10 +43,10 @@ class basic_block_t final {
     using stmt_list_t = std::vector<Instruction>;
     using neighbour_const_iterator = label_vec_t::const_iterator;
     using neighbour_const_reverse_iterator = label_vec_t::const_reverse_iterator;
-    using iterator = typename stmt_list_t::iterator;
-    using const_iterator = typename stmt_list_t::const_iterator;
-    using reverse_iterator = typename stmt_list_t::reverse_iterator;
-    using const_reverse_iterator = typename stmt_list_t::const_reverse_iterator;
+    using iterator = stmt_list_t::iterator;
+    using const_iterator = stmt_list_t::const_iterator;
+    using reverse_iterator = stmt_list_t::reverse_iterator;
+    using const_reverse_iterator = stmt_list_t::const_reverse_iterator;
 
   private:
     label_t m_label;
@@ -54,11 +54,6 @@ class basic_block_t final {
     label_vec_t m_prev, m_next;
 
   public:
-    template <typename T, typename... Args>
-    void insert(Args&&... args) {
-        m_ts.emplace_back(T{std::forward<Args>(args)...});
-    }
-
     void insert(const Instruction& arg) {
         assert(label() != label_t::entry);
         assert(label() != label_t::exit);
@@ -73,7 +68,7 @@ class basic_block_t final {
         m_ts.insert(m_ts.begin(), arg);
     }
 
-    explicit basic_block_t(label_t _label) : m_label(_label) {}
+    explicit basic_block_t(label_t _label) : m_label(std::move(_label)) {}
 
     ~basic_block_t() = default;
 
@@ -170,10 +165,10 @@ class basic_block_t final {
 // backward analysis.
 class basic_block_rev_t final {
   public:
-    using neighbour_const_iterator = typename basic_block_t::neighbour_const_iterator;
+    using neighbour_const_iterator = basic_block_t::neighbour_const_iterator;
 
-    using iterator = typename basic_block_t::reverse_iterator;
-    using const_iterator = typename basic_block_t::const_reverse_iterator;
+    using iterator = basic_block_t::reverse_iterator;
+    using const_iterator = basic_block_t::const_reverse_iterator;
 
   public:
     basic_block_t& _bb;
@@ -230,23 +225,23 @@ class cfg_t final {
   public:
     using node_t = label_t; // for Bgl graphs
 
-    using neighbour_const_iterator = typename basic_block_t::neighbour_const_iterator;
-    using neighbour_const_reverse_iterator = typename basic_block_t::neighbour_const_reverse_iterator;
+    using neighbour_const_iterator = basic_block_t::neighbour_const_iterator;
+    using neighbour_const_reverse_iterator = basic_block_t::neighbour_const_reverse_iterator;
 
     using neighbour_const_range = boost::iterator_range<neighbour_const_iterator>;
     using neighbour_const_reverse_range = boost::iterator_range<neighbour_const_reverse_iterator>;
 
   private:
     using basic_block_map_t = std::map<label_t, basic_block_t>;
-    using binding_t = typename basic_block_map_t::value_type;
+    using binding_t = basic_block_map_t::value_type;
 
     struct get_label {
         label_t operator()(const binding_t& p) const { return p.second.label(); }
     };
 
   public:
-    using iterator = typename basic_block_map_t::iterator;
-    using const_iterator = typename basic_block_map_t::const_iterator;
+    using iterator = basic_block_map_t::iterator;
+    using const_iterator = basic_block_map_t::const_iterator;
     using label_iterator = boost::transform_iterator<get_label, typename basic_block_map_t::iterator>;
     using const_label_iterator = boost::transform_iterator<get_label, typename basic_block_map_t::const_iterator>;
 
@@ -482,17 +477,17 @@ class cfg_rev_t final {
   public:
     using node_t = label_t; // for Bgl graphs
 
-    using neighbour_const_range = typename cfg_t::neighbour_const_range;
+    using neighbour_const_range = cfg_t::neighbour_const_range;
 
     // For BGL
-    using neighbour_const_iterator = typename basic_block_t::neighbour_const_iterator;
+    using neighbour_const_iterator = basic_block_t::neighbour_const_iterator;
 
   public:
     using basic_block_rev_map_t = std::map<label_t, basic_block_rev_t>;
-    using iterator = typename basic_block_rev_map_t::iterator;
-    using const_iterator = typename basic_block_rev_map_t::const_iterator;
-    using label_iterator = typename cfg_t::label_iterator;
-    using const_label_iterator = typename cfg_t::const_label_iterator;
+    using iterator = basic_block_rev_map_t::iterator;
+    using const_iterator = basic_block_rev_map_t::const_iterator;
+    using label_iterator = cfg_t::label_iterator;
+    using const_label_iterator = cfg_t::const_label_iterator;
 
   private:
     cfg_t& _cfg;

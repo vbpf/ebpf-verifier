@@ -184,13 +184,11 @@ std::ostream& operator<<(std::ostream& os, AssertionConstraint const& a) {
     return std::visit([&](const auto& a) -> std::ostream& { return os << a; }, a);
 }
 
+// ReSharper disable CppMemberFunctionMayBeConst
 struct InstructionPrinterVisitor {
     std::ostream& os_;
 
-    template <typename T>
-    void visit(const T& item) {
-        std::visit(*this, item);
-    }
+    void visit(const auto& item) { std::visit(*this, item); }
 
     void operator()(Undefined const& a) { os_ << "Undefined{" << a.opcode << "}"; }
 
@@ -357,6 +355,7 @@ struct InstructionPrinterVisitor {
 
     void operator()(IncrementLoopCounter const& a) { os_ << crab::variable_t::loop_counter(to_string(a.name)) << "++"; }
 };
+// ReSharper restore CppMemberFunctionMayBeConst
 
 string to_string(label_t const& label) {
     std::stringstream str;
