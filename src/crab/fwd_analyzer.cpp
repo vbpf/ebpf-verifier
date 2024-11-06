@@ -50,7 +50,7 @@ class member_component_visitor final {
 class interleaved_fwd_fixpoint_iterator_t final {
     using iterator = invariant_table_t::iterator;
 
-    cfg_t& _cfg;
+    const cfg_t& _cfg;
     wto_t _wto;
     invariant_table_t _pre, _post;
 
@@ -68,7 +68,7 @@ class interleaved_fwd_fixpoint_iterator_t final {
     void set_pre(const label_t& label, const ebpf_domain_t& v) { _pre[label] = v; }
 
     void transform_to_post(const label_t& label, ebpf_domain_t pre) {
-        basic_block_t& bb = _cfg.get_node(label);
+        const basic_block_t& bb = _cfg.get_node(label);
         pre(bb);
         _post[label] = std::move(pre);
     }
@@ -101,7 +101,7 @@ class interleaved_fwd_fixpoint_iterator_t final {
     }
 
   public:
-    explicit interleaved_fwd_fixpoint_iterator_t(cfg_t& cfg) : _cfg(cfg), _wto(cfg) {
+    explicit interleaved_fwd_fixpoint_iterator_t(const cfg_t& cfg) : _cfg(cfg), _wto(cfg) {
         for (const auto& label : _cfg.labels()) {
             _pre.emplace(label, ebpf_domain_t::bottom());
             _post.emplace(label, ebpf_domain_t::bottom());
@@ -116,23 +116,18 @@ class interleaved_fwd_fixpoint_iterator_t final {
 
     void operator()(const std::shared_ptr<wto_cycle_t>& cycle);
 
-    friend std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg, ebpf_domain_t entry_inv);
+    friend std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(const cfg_t& cfg, ebpf_domain_t entry_inv);
 };
 
-std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(cfg_t& cfg, ebpf_domain_t entry_inv) {
+std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(const cfg_t& cfg, ebpf_domain_t entry_inv) {
     // Go over the CFG in weak topological order (accounting for loops).
     interleaved_fwd_fixpoint_iterator_t analyzer(cfg);
     if (thread_local_options.check_termination) {
-        std::vector<label_t> cycle_heads;
-        for (auto& component : analyzer._wto) {
-            if (const auto pc = std::get_if<std::shared_ptr<wto_cycle_t>>(&component)) {
-                cycle_heads.push_back((*pc)->head());
-            }
-        }
-        for (const label_t& label : cycle_heads) {
-            entry_inv.initialize_loop_counter(label);
-            cfg.get_node(label).insert(IncrementLoopCounter{label});
-        }
+        // Initialize loop counters for potential loop headers.
+        // This enables enforcement of upper bounds on loop iterations
+        // during program verification.
+        // TODO: Consider making this an instruction instead of an explicit call.
+        analyzer._wto.for_each_loop_head([&](const label_t& label) { entry_inv.initialize_loop_counter(label); });
     }
     analyzer.set_pre(cfg.entry_label(), entry_inv);
     for (auto& component : analyzer._wto) {

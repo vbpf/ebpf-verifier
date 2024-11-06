@@ -397,8 +397,17 @@ struct ZeroCtxOffset {
     constexpr bool operator==(const ZeroCtxOffset&) const = default;
 };
 
+struct BoundedLoopCount {
+    label_t name;
+    bool operator==(const BoundedLoopCount&) const = default;
+    // Maximum number of loop iterations allowed during verification.
+    // This prevents infinite loops while allowing reasonable bounded loops.
+    // When exceeded, verification fails as the loop might not terminate.
+    static constexpr int limit = 100000;
+};
+
 using AssertionConstraint = std::variant<Comparable, Addable, ValidDivisor, ValidAccess, ValidStore, ValidSize,
-                                         ValidMapKeyValue, ValidCall, TypeConstraint, FuncConstraint, ZeroCtxOffset>;
+                                         ValidMapKeyValue, ValidCall, TypeConstraint, FuncConstraint, ZeroCtxOffset, BoundedLoopCount>;
 
 struct Assert {
     AssertionConstraint cst;

@@ -65,6 +65,14 @@ class basic_block_t final {
         m_ts.push_back(arg);
     }
 
+    /// Insert an instruction at the front of the basic block.
+    /// @note Cannot modify entry or exit blocks.
+    void insert_front(const Instruction& arg) {
+        assert(label() != label_t::entry);
+        assert(label() != label_t::exit);
+        m_ts.insert(m_ts.begin(), arg);
+    }
+
     explicit basic_block_t(label_t _label) : m_label(_label) {}
 
     ~basic_block_t() = default;
@@ -611,7 +619,8 @@ std::vector<std::string> stats_headers();
 
 std::map<std::string, int> collect_stats(const cfg_t&);
 
-cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool simplify, bool must_have_exit = true);
+cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool simplify, bool check_for_termination,
+                  bool must_have_exit = true);
 
 void explicate_assertions(cfg_t& cfg, const program_info& info);
 std::vector<Assert> get_assertions(Instruction ins, const program_info& info, const std::optional<label_t>& label);

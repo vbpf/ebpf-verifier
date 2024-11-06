@@ -56,11 +56,11 @@ struct checks_db final {
     checks_db() = default;
 };
 
-static checks_db generate_report(cfg_t& cfg, const crab::invariant_table_t& pre_invariants,
+static checks_db generate_report(const cfg_t& cfg, const crab::invariant_table_t& pre_invariants,
                                  const crab::invariant_table_t& post_invariants) {
     checks_db m_db;
     for (const label_t& label : cfg.sorted_labels()) {
-        basic_block_t& bb = cfg.get_node(label);
+        const basic_block_t& bb = cfg.get_node(label);
         ebpf_domain_t from_inv(pre_invariants.at(label));
         from_inv.set_require_check(
             [&m_db, label](auto& inv, const crab::linear_constraint_t& cst, const std::string& s) {
@@ -95,8 +95,13 @@ static checks_db generate_report(cfg_t& cfg, const crab::invariant_table_t& pre_
     }
 
     if (thread_local_options.check_termination) {
-        const auto last_inv = post_invariants.at(cfg.exit_label());
-        m_db.max_loop_count = last_inv.get_loop_count_upper_bound();
+        // Gather the upper bound of loop counts from post-invariants.
+        for (const auto [label, inv] : post_invariants) {
+            if (inv.is_bottom()) {
+                continue;
+            }
+            m_db.max_loop_count = std::max(m_db.max_loop_count, inv.get_loop_count_upper_bound());
+        }
     }
     return m_db;
 }
@@ -127,13 +132,9 @@ static void print_report(std::ostream& os, const checks_db& db, const Instructio
         }
     }
     os << "\n";
-    const crab::number_t max_loop_count{100000};
-    if (db.max_loop_count > max_loop_count) {
-        os << "Could not prove termination.\n";
-    }
 }
 
-static checks_db get_analysis_report(std::ostream& s, cfg_t& cfg, const crab::invariant_table_t& pre_invariants,
+static checks_db get_analysis_report(std::ostream& s, const cfg_t& cfg, const crab::invariant_table_t& pre_invariants,
                                      const crab::invariant_table_t& post_invariants,
                                      const std::optional<InstructionSeq>& prog = std::nullopt) {
     // Analyze the control-flow graph.
@@ -161,7 +162,7 @@ static checks_db get_analysis_report(std::ostream& s, cfg_t& cfg, const crab::in
     return db;
 }
 
-static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options,
+static checks_db get_ebpf_report(std::ostream& s, const cfg_t& cfg, program_info info, const ebpf_verifier_options_t* options,
                                  const std::optional<InstructionSeq>& prog = std::nullopt) {
     global_program_info = std::move(info);
     crab::domains::clear_global_state();
@@ -182,7 +183,7 @@ static checks_db get_ebpf_report(std::ostream& s, cfg_t& cfg, program_info info,
 }
 
 /// Returned value is true if the program passes verification.
-bool run_ebpf_analysis(std::ostream& s, cfg_t& cfg, const program_info& info, const ebpf_verifier_options_t* options,
+bool run_ebpf_analysis(std::ostream& s, const cfg_t& cfg, const program_info& info, const ebpf_verifier_options_t* options,
                        ebpf_verifier_stats_t* stats) {
     if (options == nullptr) {
         options = &ebpf_verifier_default_options;
@@ -219,7 +220,7 @@ std::tuple<string_invariant, bool> ebpf_analyze_program_for_test(std::ostream& o
         throw std::runtime_error("Entry invariant is inconsistent");
     }
     try {
-        cfg_t cfg = prepare_cfg(prog, info, options.simplify, false);
+        const cfg_t cfg = prepare_cfg(prog, info, options.simplify, options.check_termination, false);
         auto [pre_invariants, post_invariants] = run_forward_analyzer(cfg, std::move(entry_inv));
         const checks_db report = get_analysis_report(std::cerr, cfg, pre_invariants, post_invariants);
         print_report(os, report, prog, false);
@@ -242,7 +243,7 @@ bool ebpf_verify_program(std::ostream& os, const InstructionSeq& prog, const pro
 
     // Convert the instruction sequence to a control-flow graph
     // in a "passive", non-deterministic form.
-    cfg_t cfg = prepare_cfg(prog, info, options->simplify);
+    const cfg_t cfg = prepare_cfg(prog, info, options->simplify, options->check_termination);
 
     std::optional<InstructionSeq> prog_opt = std::nullopt;
     if (options->print_failures) {

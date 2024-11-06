@@ -1435,6 +1435,14 @@ void ebpf_domain_t::operator()(const TypeConstraint& s) {
     }
 }
 
+void ebpf_domain_t::operator()(const BoundedLoopCount& s) {
+    // Enforces an upper bound on loop iterations by checking that the loop counter
+    // does not exceed the specified limit
+    using namespace crab::dsl_syntax;
+    const auto counter = variable_t::loop_counter(to_string(s.name));
+    require(m_inv, counter <= s.limit, "Loop counter is too large");
+}
+
 void ebpf_domain_t::operator()(const FuncConstraint& s) {
     // Look up the helper function id.
     const reg_pack_t& reg = reg_pack(s.reg);
@@ -2954,6 +2962,7 @@ extended_number ebpf_domain_t::get_loop_count_upper_bound() const {
 }
 
 void ebpf_domain_t::operator()(const IncrementLoopCounter& ins) {
-    this->add(variable_t::loop_counter(to_string(ins.name)), 1);
+    const auto counter = variable_t::loop_counter(to_string(ins.name));
+    this->add(counter, 1);
 }
 } // namespace crab

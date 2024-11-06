@@ -10,6 +10,7 @@
 
 #include "asm_syntax.hpp"
 #include "crab/cfg.hpp"
+#include "crab/wto.hpp"
 
 using std::optional;
 using std::set;
@@ -358,10 +359,21 @@ std::map<std::string, int> collect_stats(const cfg_t& cfg) {
     return res;
 }
 
+// ISSUE: 774 - Rationalize the list of bools being passed to prepare_cfg.
 cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const bool simplify,
-                  const bool must_have_exit) {
+                  const bool check_for_termination, const bool must_have_exit) {
     // Convert the instruction sequence to a deterministic control-flow graph.
     cfg_t det_cfg = instruction_seq_to_cfg(prog, must_have_exit);
+
+    // Detect loops using Weak Topological Ordering (WTO) and insert counters at loop entry points. WTO provides a
+    // hierarchical decomposition of the CFG that identifies all strongly connected components (cycles) and their entry
+    // points. These entry points serve as natural locations for loop counters that help verify program termination.
+    if (check_for_termination) {
+        wto_t wto(det_cfg);
+        wto.for_each_loop_head([&](const label_t& label) {
+            det_cfg.get_node(label).insert_front(IncrementLoopCounter{label});
+        });
+    }
 
     // Annotate the CFG by adding in assertions before every memory instruction.
     explicate_assertions(det_cfg, info);
