@@ -67,7 +67,7 @@ struct btf_line_info_t {
 struct raw_program {
     std::string filename{};
     std::string section_name{};
-    uint32_t insn_off{}; // Byte offset in section of first Command in this program.
+    uint32_t insn_off{}; // Byte offset in section of first instruction in this program.
     std::string function_name{};
     std::vector<ebpf_inst> prog{};
     program_info info{};

@@ -289,7 +289,7 @@ static void compare_marshal_unmarshal(const Command& ins, bool double_cmd = fals
     REQUIRE(single.cmd == ins);
 }
 
-static void check_marshal_unmarshal_fail(const Command& ins, std::string expected_error_message,
+static void check_marshal_unmarshal_fail(const Command& ins, const std::string& expected_error_message,
                                          const ebpf_platform_t& platform = g_ebpf_platform_linux) {
     const program_info info{.platform = &platform, .type = platform.get_program_type("unspec", "unspec")};
     auto result = unmarshal(raw_program{"", "", 0, "", marshal(ins, 0), info});
@@ -298,7 +298,7 @@ static void check_marshal_unmarshal_fail(const Command& ins, std::string expecte
     REQUIRE(*error_message == expected_error_message);
 }
 
-static void check_unmarshal_fail(ebpf_inst inst, std::string expected_error_message,
+static void check_unmarshal_fail(ebpf_inst inst, const std::string& expected_error_message,
                                  const ebpf_platform_t& platform = g_ebpf_platform_linux) {
     program_info info{.platform = &platform, .type = platform.get_program_type("unspec", "unspec")};
     std::vector insns = {inst};
@@ -320,7 +320,7 @@ static void check_unmarshal_fail_goto(ebpf_inst inst, const std::string& expecte
 }
 
 // Check that unmarshaling a 64-bit immediate instruction fails.
-static void check_unmarshal_fail(ebpf_inst inst1, ebpf_inst inst2, std::string expected_error_message,
+static void check_unmarshal_fail(ebpf_inst inst1, ebpf_inst inst2, const std::string& expected_error_message,
                                  const ebpf_platform_t& platform = g_ebpf_platform_linux) {
     program_info info{.platform = &platform, .type = platform.get_program_type("unspec", "unspec")};
     std::vector insns{inst1, inst2};

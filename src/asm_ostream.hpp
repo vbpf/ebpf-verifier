@@ -12,7 +12,7 @@
 #include "crab_utils/num_safety.hpp"
 
 // We use a 16-bit offset whenever it fits in 16 bits.
-inline std::function<int16_t(label_t)> label_to_offset16(pc_t pc) {
+inline std::function<int16_t(label_t)> label_to_offset16(const pc_t pc) {
     return [=](const label_t& label) {
         const int64_t offset = label.from - gsl::narrow<int64_t>(pc) - 1;
         const bool is16 =
@@ -22,7 +22,7 @@ inline std::function<int16_t(label_t)> label_to_offset16(pc_t pc) {
 }
 
 // We use the JA32 opcode with the offset in 'imm' when the offset
-// of an unconditional jump doesn't fit in a int16_t.
+// of an unconditional jump doesn't fit in an int16_t.
 inline std::function<int32_t(label_t)> label_to_offset32(const pc_t pc) {
     return [=](const label_t& label) {
         const int64_t offset = label.from - gsl::narrow<int64_t>(pc) - 1;
@@ -54,18 +54,5 @@ inline std::ostream& operator<<(std::ostream& os, Value const& a) {
     return os << std::get<Reg>(a);
 }
 
-inline std::ostream& operator<<(std::ostream& os, Undefined const& a) { return os << Command{a}; }
-inline std::ostream& operator<<(std::ostream& os, LoadMapFd const& a) { return os << Command{a}; }
-inline std::ostream& operator<<(std::ostream& os, Bin const& a) { return os << Command{a}; }
-inline std::ostream& operator<<(std::ostream& os, Un const& a) { return os << Command{a}; }
-inline std::ostream& operator<<(std::ostream& os, Call const& a) { return os << Command{a}; }
-inline std::ostream& operator<<(std::ostream& os, Callx const& a) { return os << Command{a}; }
-inline std::ostream& operator<<(std::ostream& os, Exit const& a) { return os << Command{a}; }
-inline std::ostream& operator<<(std::ostream& os, Jmp const& a) { return os << Command{a}; }
-inline std::ostream& operator<<(std::ostream& os, Packet const& a) { return os << Command{a}; }
-inline std::ostream& operator<<(std::ostream& os, Mem const& a) { return os << Command{a}; }
-inline std::ostream& operator<<(std::ostream& os, Atomic const& a) { return os << Command{a}; }
-inline std::ostream& operator<<(std::ostream& os, Assume const& a) { return os << Command{a}; }
-inline std::ostream& operator<<(std::ostream& os, IncrementLoopCounter const& a) { return os << Command{a}; }
 std::ostream& operator<<(std::ostream& os, const Assertion& a);
 std::string to_string(const Assertion& constraint);
