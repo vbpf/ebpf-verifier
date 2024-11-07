@@ -205,8 +205,6 @@ struct MarshalVisitor {
 
     vector<ebpf_inst> operator()(Assume const&) const { throw std::invalid_argument("Cannot marshal assumptions"); }
 
-    vector<ebpf_inst> operator()(Assertion const&) const { throw std::invalid_argument("Cannot marshal assertions"); }
-
     vector<ebpf_inst> operator()(Jmp const& b) const {
         if (b.cond) {
             ebpf_inst res{

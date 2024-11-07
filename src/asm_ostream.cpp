@@ -416,7 +416,7 @@ void print(const InstructionSeq& insts, std::ostream& out, const std::optional<c
         if (!label_to_print.has_value() || label == label_to_print) {
             if (line_info.has_value() && print_line_info) {
                 auto& [file, source, line, column] = line_info.value();
-                // Only decorate the first Command associated with a source line.
+                // Only decorate the first instruction associated with a source line.
                 if (source != previous_source) {
                     out << line_info.value();
                     previous_source = source;

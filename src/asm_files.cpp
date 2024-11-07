@@ -200,7 +200,7 @@ void relocate_map(ebpf_inst& inst, const std::string& symbol_name,
 // are loaded and can be appended to the calling program.
 struct function_relocation {
     size_t prog_index{};              // Index of source program in vector of raw programs.
-    ELFIO::Elf_Xword source_offset{}; // Instruction offset in source section of source Command.
+    ELFIO::Elf_Xword source_offset{}; // Instruction offset in source section of source instruction.
     ELFIO::Elf_Xword relocation_entry_index{};
     string target_function_name;
 };
@@ -250,7 +250,7 @@ static void append_subprograms(raw_program& prog, const vector<raw_program>& pro
             prog.prog.insert(prog.prog.end(), subprogram.begin(), subprogram.end());
         }
 
-        // Fill in the PC offset into the imm field of the CallLocal Command.
+        // Fill in the PC offset into the imm field of the CallLocal instruction.
         const int64_t target_offset = gsl::narrow_cast<int64_t>(subprogram_offsets[reloc.target_function_name]);
         const auto offset_diff = target_offset - gsl::narrow<int64_t>(reloc.source_offset) - 1;
         if (offset_diff < std::numeric_limits<int32_t>::min() || offset_diff > std::numeric_limits<int32_t>::max()) {
@@ -480,7 +480,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
 
         libbtf::btf_parse_line_information(vector_of<std::byte>(*btf), vector_of<std::byte>(*btf_ext), visitor);
 
-        // BTF doesn't include line info for every instruction, only on the first Command per source line.
+        // BTF doesn't include line info for every instruction, only on the first instruction per source line.
         for (auto& program : res) {
             for (size_t i = 1; i < program.line_info.size(); i++) {
                 // If the previous PC has line info, copy it.

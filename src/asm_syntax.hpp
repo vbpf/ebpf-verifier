@@ -156,7 +156,7 @@ struct Un {
     constexpr bool operator==(const Un&) const = default;
 };
 
-/// This Command is encoded similarly to LDDW.
+/// This instruction is encoded similarly to LDDW.
 /// See comment in makeLddw() at asm_unmarshal.cpp
 struct LoadMapFd {
     Reg dst;
@@ -245,7 +245,7 @@ struct Exit {
     bool operator==(const Exit& other) const noexcept = default;
 };
 
-/// Experimental callx Command.
+/// Experimental callx instruction.
 struct Callx {
     Reg func;
     constexpr bool operator==(const Callx&) const = default;
@@ -258,7 +258,7 @@ struct Deref {
     constexpr bool operator==(const Deref&) const = default;
 };
 
-/// Load/store Command.
+/// Load/store instruction.
 struct Mem {
     Deref access;
     Value value;
@@ -266,7 +266,7 @@ struct Mem {
     constexpr bool operator==(const Mem&) const = default;
 };
 
-/// A deprecated Command for checked access to packets; it is actually a
+/// A deprecated instruction for checked access to packets; it is actually a
 /// function call, and analyzed as one, e.g., by scratching caller-saved
 /// registers after it is performed.
 struct Packet {
@@ -276,7 +276,7 @@ struct Packet {
     constexpr bool operator==(const Packet&) const = default;
 };
 
-/// Special Command for atomically updating values inside shared memory.
+/// Special instruction for atomically updating values inside shared memory.
 /// The analysis just treats an atomic operation as a series of consecutive
 /// operations, and the atomicity itself is not significant.
 struct Atomic {
@@ -296,7 +296,7 @@ struct Atomic {
     constexpr bool operator==(const Atomic&) const = default;
 };
 
-/// Not an Command, just used for failure cases.
+/// Not an instruction, just used for failure cases.
 struct Undefined {
     int opcode{};
     constexpr bool operator==(const Undefined&) const = default;
