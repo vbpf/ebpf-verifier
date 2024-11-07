@@ -365,10 +365,10 @@ class cfg_t final {
     }
 
     //! return a begin iterator of label_t's
-    const_label_iterator label_begin() { return boost::make_transform_iterator(m_blocks.begin(), get_label()); }
+    const_label_iterator label_begin() const { return boost::make_transform_iterator(m_blocks.begin(), get_label()); }
 
     //! return an end iterator of label_t's
-    const_label_iterator label_end() { return boost::make_transform_iterator(m_blocks.end(), get_label()); }
+    const_label_iterator label_end() const { return boost::make_transform_iterator(m_blocks.end(), get_label()); }
 
     //! return a begin iterator of label_t's
     [[nodiscard]]
