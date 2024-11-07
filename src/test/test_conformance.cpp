@@ -6,12 +6,12 @@
 
 #define CONFORMANCE_TEST_PATH "external/bpf_conformance/tests/"
 
-static void test_conformance(std::string filename, bpf_conformance_test_result_t expected_result,
-                             std::string expected_reason) {
+static void test_conformance(const std::string& filename, bpf_conformance_test_result_t expected_result,
+                             const std::string& expected_reason) {
     std::vector<std::filesystem::path> test_files = {CONFORMANCE_TEST_PATH + filename};
     boost::filesystem::path test_path = boost::dll::program_location();
-    boost::filesystem::path extension = test_path.extension();
-    std::filesystem::path plugin_path =
+    const boost::filesystem::path extension = test_path.extension();
+    const std::filesystem::path plugin_path =
         test_path.remove_filename().append("conformance_check" + extension.string()).string();
     std::map<std::filesystem::path, std::tuple<bpf_conformance_test_result_t, std::string>> result =
         bpf_conformance(test_files, plugin_path, {}, {}, {}, bpf_conformance_test_CPU_version_t::v4,

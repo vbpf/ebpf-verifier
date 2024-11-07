@@ -365,10 +365,10 @@ class cfg_t final {
     }
 
     //! return a begin iterator of label_t's
-    label_iterator label_begin() { return boost::make_transform_iterator(m_blocks.begin(), get_label()); }
+    const_label_iterator label_begin() { return boost::make_transform_iterator(m_blocks.begin(), get_label()); }
 
     //! return an end iterator of label_t's
-    label_iterator label_end() { return boost::make_transform_iterator(m_blocks.end(), get_label()); }
+    const_label_iterator label_end() { return boost::make_transform_iterator(m_blocks.end(), get_label()); }
 
     //! return a begin iterator of label_t's
     [[nodiscard]]
@@ -387,7 +387,7 @@ class cfg_t final {
     }
 
     void simplify() {
-        std::set<label_t> worklist(this->label_begin(), this->label_end());
+        std::set worklist(this->label_begin(), this->label_end());
         while (!worklist.empty()) {
             label_t label = *worklist.begin();
             worklist.erase(label);
@@ -556,9 +556,9 @@ class cfg_rev_t final {
         return _rev_bbs.end();
     }
 
-    label_iterator label_begin() const { return _cfg.label_begin(); }
+    const_label_iterator label_begin() const { return _cfg.label_begin(); }
 
-    label_iterator label_end() const { return _cfg.label_end(); }
+    const_label_iterator label_end() const { return _cfg.label_end(); }
 
     [[nodiscard]]
     label_t exit_label() const {
