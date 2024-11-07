@@ -168,7 +168,7 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
 }
 
 static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& raw_options) {
-    ebpf_verifier_options_t options;
+    ebpf_verifier_options_t options{};
 
     // Use ~simplify for YAML tests unless otherwise specified.
     options.cfg_opts.simplify = false;
@@ -355,7 +355,7 @@ ConformanceTestResult run_conformance_test_case(const std::vector<std::byte>& me
 
     auto& prog = std::get<InstructionSeq>(prog_or_error);
 
-    ebpf_verifier_options_t options;
+    ebpf_verifier_options_t options{};
     if (debug) {
         print(prog, std::cout, {});
         options.print_failures = true;
