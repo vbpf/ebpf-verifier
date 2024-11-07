@@ -106,7 +106,7 @@ class SplitDBM final {
     // Turn an assignment into a set of difference constraints.
     void diffcsts_of_assign(variable_t x, const linear_expression_t& exp,
                             std::vector<std::pair<variable_t, Weight>>& lb,
-                            std::vector<std::pair<variable_t, Weight>>& ub);
+                            std::vector<std::pair<variable_t, Weight>>& ub) const;
 
     /**
      * Turn a linear inequality into a set of difference

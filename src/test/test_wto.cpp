@@ -29,7 +29,7 @@ TEST_CASE("wto figure 1", "[wto]") {
     cfg.get_node(label_t(7)) >> cfg.get_node(label_t(8));
     cfg.get_node(label_t(8)) >> cfg.get_node(label_t::exit);
 
-    wto_t wto(cfg);
+    const wto_t wto(cfg);
 
     std::ostringstream os;
     os << wto;
@@ -57,7 +57,7 @@ TEST_CASE("wto figure 2a", "[wto]") {
     cfg.get_node(label_t(4)) >> cfg.get_node(label_t(5));
     cfg.get_node(label_t(5)) >> cfg.get_node(label_t(4));
 
-    wto_t wto(cfg);
+    const wto_t wto(cfg);
 
     std::ostringstream os;
     os << wto;
@@ -84,7 +84,7 @@ TEST_CASE("wto figure 2b", "[wto]") {
     cfg.get_node(label_t(3)) >> cfg.get_node(label_t::exit);
     cfg.get_node(label_t(4)) >> cfg.get_node(label_t(3));
 
-    wto_t wto(cfg);
+    const wto_t wto(cfg);
 
     std::ostringstream os;
     os << wto;

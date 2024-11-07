@@ -104,7 +104,7 @@ class GraphPerm {
       private:
         vert_id after;
     };
-    using vert_const_iterator = vert_const_range::iterator;
+    using vert_const_iterator = typename vert_const_range::iterator;
 
     vert_const_range verts() const { return vert_const_range(gsl::narrow<vert_id>(perm.size())); }
 
@@ -137,7 +137,7 @@ class GraphPerm {
     template <class ItG>
     class e_adj_const_iterator final {
       public:
-        using edge_ref = ItG::edge_ref;
+        using edge_ref = typename ItG::edge_ref;
 
         e_adj_const_iterator(const std::vector<vert_id>& _inv, const ItG& _v) : inv(_inv), v(_v) {}
 
@@ -163,7 +163,7 @@ class GraphPerm {
     template <class RG, class It>
     class adj_list final {
       public:
-        using ItG = RG::iterator;
+        using ItG = typename RG::iterator;
 
         using iterator = It;
 
@@ -202,7 +202,7 @@ class GraphPerm {
     template <class RG, class It>
     class const_adj_list final {
       public:
-        using ItG = RG::iterator;
+        using ItG = typename RG::iterator;
 
         using iterator = It;
 
@@ -495,11 +495,11 @@ class DistComp {
 template <class Gr>
 class GraphOps {
   public:
-    using Weight = Gr::Weight;
+    using Weight = typename Gr::Weight;
     // The following code assumes vert_id is an integer.
     using graph_t = Gr;
-    using vert_id = graph_t::vert_id;
-    using mut_val_ref_t = graph_t::mut_val_ref_t;
+    using vert_id = typename graph_t::vert_id;
+    using mut_val_ref_t = typename graph_t::mut_val_ref_t;
 
     using edge_vector = std::vector<std::tuple<vert_id, vert_id, Weight>>;
 
@@ -589,7 +589,7 @@ class GraphOps {
 
         mut_val_ref_t wr;
         for (vert_id s : l.verts()) {
-            for (auto e : l.e_succs(s)) {
+            for (const auto e : l.e_succs(s)) {
                 vert_id d = e.vert;
                 if (r.lookup(s, d, &wr)) {
                     g.add_edge(s, std::max(e.val, static_cast<Weight>(wr)), d);
@@ -606,7 +606,7 @@ class GraphOps {
 
         mut_val_ref_t wg;
         for (vert_id s : r.verts()) {
-            for (auto e : r.e_succs(s)) {
+            for (const auto e : r.e_succs(s)) {
                 if (!g.lookup(s, e.vert, &wg)) {
                     g.add_edge(s, e.val, e.vert);
                 } else {
@@ -626,7 +626,7 @@ class GraphOps {
         graph_t g;
         g.growTo(sz);
         for (vert_id s : r.verts()) {
-            for (auto e : r.e_succs(s)) {
+            for (const auto e : r.e_succs(s)) {
                 vert_id d = e.vert;
                 if (auto wl = l.lookup(s, d)) {
                     if (e.val <= *wl) {
@@ -749,7 +749,7 @@ class GraphOps {
 
                     Weight s_pot = potentials[s];
 
-                    for (auto e : g.e_succs(s)) {
+                    for (const auto e : g.e_succs(s)) {
                         vert_id d = e.vert;
                         Weight sd_pot = s_pot + e.val;
                         if (sd_pot < potentials[d]) {
@@ -774,7 +774,7 @@ class GraphOps {
             while (qtail != qhead) {
                 vert_id s = *--qtail;
                 Weight s_pot = potentials[s];
-                for (auto e : g.e_succs(s)) {
+                for (const auto e : g.e_succs(s)) {
                     vert_id d = e.vert;
                     if (s_pot + e.val < potentials[d]) {
                         // Cleanup vertex marks
@@ -801,7 +801,7 @@ class GraphOps {
 
         // Partition edges into r-only/rb/b-only.
         for (vert_id s : g.verts()) {
-            for (auto e : g.e_succs(s)) {
+            for (const auto e : g.e_succs(s)) {
                 unsigned char mark = 0;
                 vert_id d = e.vert;
                 if (auto w = l.lookup(s, d)) {
@@ -870,7 +870,7 @@ class GraphOps {
         WtComp comp(*dists);
         WtHeap heap(comp);
 
-        for (auto e : g.e_succs(src)) {
+        for (const auto e : g.e_succs(src)) {
             vert_id dest = e.vert;
             dists->at(dest) = p[src] + e.val - p[dest];
             dist_ts->at(dest) = ts;
@@ -941,7 +941,7 @@ class GraphOps {
         WtComp comp(*dists);
         WtHeap heap(comp);
 
-        for (auto e : g.e_succs(src)) {
+        for (const auto e : g.e_succs(src)) {
             vert_id dest = e.vert;
             dists->at(dest) = p[src] + e.val - p[dest];
             dist_ts->at(dest) = ts;
@@ -967,7 +967,7 @@ class GraphOps {
             char es_mark = is_stable[es] ? V_STABLE : V_UNSTABLE;
 
             // Pick the appropriate set of successors
-            for (auto e : g.e_succs(es)) {
+            for (const auto e : g.e_succs(es)) {
                 vert_id ed = e.vert;
                 Weight v = es_cost + e.val - p[ed];
                 if (dist_ts->at(ed) != ts || v < dists->at(ed)) {
@@ -1014,7 +1014,7 @@ class GraphOps {
 
             dists_alt->at(es) = p[es] + dists->at(es);
 
-            for (auto e : g.e_succs(es)) {
+            for (const auto e : g.e_succs(es)) {
                 vert_id ed = e.vert;
                 if (dists_alt->at(ed) == p[ed]) {
                     Weight gnext_ed = dists_alt->at(es) + e.val - dists_alt->at(ed);
@@ -1057,7 +1057,7 @@ class GraphOps {
             if (!edge_marks->at(v)) {
                 aux.clear();
                 dijkstra_recover(g, p, edge_marks->begin(), v, aux);
-                for (auto [vid, wt] : aux) {
+                for (const auto& [vid, wt] : aux) {
                     delta.emplace_back(v, vid, wt);
                 }
             }
@@ -1093,7 +1093,7 @@ class GraphOps {
         dists->at(v) = Weight(0);
         auto adj_head = dual_queue->begin();
         auto adj_tail = adj_head;
-        for (auto e : g.e_succs(v)) {
+        for (const auto e : g.e_succs(v)) {
             vert_id d = e.vert;
             vert_marks->at(d) = BF_QUEUED;
             dists->at(d) = e.val;
@@ -1110,7 +1110,7 @@ class GraphOps {
             vert_id d = *adj_head;
 
             Weight d_wt = dists->at(d);
-            for (auto edge : g.e_succs(d)) {
+            for (const auto edge : g.e_succs(d)) {
                 vert_id e = edge.vert;
                 Weight e_wt = d_wt + edge.val;
                 if (!vert_marks->at(e)) {
@@ -1139,7 +1139,7 @@ class GraphOps {
         Weight c = g_excl.edge_val(ii, jj);
 
         std::vector<std::pair<vert_id, Weight>> src_dec;
-        for (auto edge : g_excl.e_preds(ii)) {
+        for (const auto edge : g_excl.e_preds(ii)) {
             vert_id se = edge.vert;
             Weight wt_sij = edge.val + c;
 
@@ -1159,7 +1159,7 @@ class GraphOps {
         }
 
         std::vector<std::pair<vert_id, Weight>> dest_dec;
-        for (auto edge : g_excl.e_succs(jj)) {
+        for (const auto edge : g_excl.e_succs(jj)) {
             vert_id de = edge.vert;
             Weight wt_ijd = edge.val + c;
             if (de != ii) {
@@ -1176,9 +1176,9 @@ class GraphOps {
             }
         }
 
-        for (auto [se, p1] : src_dec) {
+        for (const auto& [se, p1] : src_dec) {
             Weight wt_sij = c + p1;
-            for (auto [de, p2] : dest_dec) {
+            for (const auto& [de, p2] : dest_dec) {
                 Weight wt_sijd = wt_sij + p2;
                 typename graph_t::mut_val_ref_t w;
                 if (g.lookup(se, de, &w)) {
@@ -1202,7 +1202,7 @@ class GraphOps {
         {
             std::vector<std::tuple<vert_id, Weight>> aux;
             close_after_assign_fwd(g, p, v, aux);
-            for (auto [vid, wt] : aux) {
+            for (const auto& [vid, wt] : aux) {
                 delta.emplace_back(v, vid, wt);
             }
         }
@@ -1210,7 +1210,7 @@ class GraphOps {
             std::vector<std::tuple<vert_id, Weight>> aux;
             GraphRev g_rev{g};
             close_after_assign_fwd(g_rev, NegP{p}, v, aux);
-            for (auto [vid, wt] : aux) {
+            for (const auto& [vid, wt] : aux) {
                 delta.emplace_back(vid, v, wt);
             }
         }

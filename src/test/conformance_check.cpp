@@ -45,7 +45,7 @@ std::vector<std::byte> base16_decode(const std::string& input) {
  * the first argument. It then executes the BPF program and prints the
  * value of r0 at the end of execution.
  */
-int main(int argc, char** argv) {
+int main(const int argc, char** argv) {
     CLI::App app{"Check conformance"};
     bool debug = false;
     app.add_flag("--debug", debug, "Debug");

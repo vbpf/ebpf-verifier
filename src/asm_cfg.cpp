@@ -50,7 +50,7 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
     // and store a copy in the CallLocal instruction since the instruction-specific
     // labels may only exist until the CFG is simplified.
     basic_block_t& caller_node = cfg.get_node(caller_label);
-    std::string stack_frame_prefix = to_string(caller_label);
+    const std::string stack_frame_prefix = to_string(caller_label);
     for (auto& inst : caller_node) {
         if (const auto pcall = std::get_if<CallLocal>(&inst)) {
             pcall->stack_frame_prefix = stack_frame_prefix;
@@ -70,7 +70,7 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
         }
 
         // Clone the macro block into a new block with the new stack frame prefix.
-        const label_t label(macro_label.from, macro_label.to, stack_frame_prefix);
+        const label_t label{macro_label.from, macro_label.to, stack_frame_prefix};
         auto& bb = cfg.insert(label);
         for (auto inst : cfg.get_node(macro_label)) {
             if (const auto pexit = std::get_if<Exit>(&inst)) {
@@ -119,8 +119,8 @@ static void add_cfg_nodes(cfg_t& cfg, const label_t& caller_label, const label_t
 
     // Finally, recurse to replace any nested function macros.
     string caller_label_str = to_string(caller_label);
-    long stack_frame_depth = std::ranges::count(caller_label_str, STACK_FRAME_DELIMITER) + 2;
-    for (auto& macro_label : seen_labels) {
+    const long stack_frame_depth = std::ranges::count(caller_label_str, STACK_FRAME_DELIMITER) + 2;
+    for (const auto& macro_label : seen_labels) {
         for (const label_t label(macro_label.from, macro_label.to, caller_label_str);
              const auto& inst : cfg.get_node(label)) {
             if (const auto pins = std::get_if<CallLocal>(&inst)) {
@@ -180,7 +180,7 @@ static cfg_t instruction_seq_to_cfg(const InstructionSeq& insts, const bool must
     // Now replace macros. We have to do this as a second pass so that
     // we only add new nodes that are actually reachable, based on the
     // results of the first pass.
-    for (auto& [label, inst, _] : insts) {
+    for (const auto& [label, inst, _] : insts) {
         if (const auto pins = std::get_if<CallLocal>(&inst)) {
             add_cfg_nodes(cfg, label, pins->target);
         }
@@ -232,7 +232,7 @@ static vector<label_t> unique(const std::pair<T, T>& be) {
 /// immediately after the branch.
 static cfg_t to_nondet(const cfg_t& cfg) {
     cfg_t res;
-    for (auto const& [this_label, bb] : cfg) {
+    for (const auto& [this_label, bb] : cfg) {
         basic_block_t& newbb = res.insert(this_label);
 
         for (const auto& ins : bb) {
@@ -259,7 +259,7 @@ static cfg_t to_nondet(const cfg_t& cfg) {
                 {jmp.target, *jmp.cond},
                 {fallthrough, reverse(*jmp.cond)},
             };
-            for (auto const& [next_label, cond1] : jumps) {
+            for (const auto& [next_label, cond1] : jumps) {
                 label_t jump_label = label_t::make_jump(mid_label, next_label);
                 basic_block_t& jump_bb = res.insert(jump_label);
                 jump_bb.insert(Assume{cond1});
@@ -369,7 +369,7 @@ cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const bo
     // hierarchical decomposition of the CFG that identifies all strongly connected components (cycles) and their entry
     // points. These entry points serve as natural locations for loop counters that help verify program termination.
     if (check_for_termination) {
-        wto_t wto(det_cfg);
+        const wto_t wto(det_cfg);
         wto.for_each_loop_head(
             [&](const label_t& label) { det_cfg.get_node(label).insert_front(IncrementLoopCounter{label}); });
     }

@@ -93,7 +93,7 @@ static Reg reg(const std::string& s) {
     return Reg{res};
 }
 
-static Imm imm(const std::string& s, bool lddw) {
+static Imm imm(const std::string& s, const bool lddw) {
     const int base = s.find("0x") != std::string::npos ? 16 : 10;
 
     if (lddw) {

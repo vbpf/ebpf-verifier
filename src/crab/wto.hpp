@@ -133,13 +133,11 @@ class wto_t final {
      *
      * The order in which the heads are visited is not specified.
      */
-    template<typename F>
-    void for_each_loop_head(F&& f) const {
+    void for_each_loop_head(auto&& f) const {
         for (const auto& component : *this) {
             if (const auto pc = std::get_if<std::shared_ptr<wto_cycle_t>>(&component)) {
                 f((*pc)->head());
             }
         }
     }
-
 };

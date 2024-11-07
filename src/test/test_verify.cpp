@@ -52,7 +52,7 @@ FAIL_UNMARSHAL("invalid", "invalid-lddw.o", ".text")
 #define VERIFY_PROGRAM(dirname, filename, section_name, program_name, options, platform, pass)            \
     do {                                                                                                  \
         auto raw_progs = read_elf("ebpf-samples/" dirname "/" filename, section_name, nullptr, platform); \
-        for (auto& raw_prog : raw_progs) {                                                                \
+        for (const auto& raw_prog : raw_progs) {                                                                \
             if (raw_prog.function_name == program_name) {                                                 \
                 auto prog_or_error = unmarshal(raw_prog);                                                 \
                 auto prog = std::get_if<InstructionSeq>(&prog_or_error);                                  \

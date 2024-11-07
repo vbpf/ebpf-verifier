@@ -41,7 +41,7 @@ struct visit_args_t {
     std::weak_ptr<wto_cycle_t> containing_cycle;
 
     visit_args_t(const visit_task_type_t t, label_t v, wto_partition_t& p, std::weak_ptr<wto_cycle_t> cc)
-        : type(t), vertex(std::move(v)), partition(p), containing_cycle(std::move(cc)) {};
+        : type(t), vertex(std::move(v)), partition(p), containing_cycle(std::move(cc)){};
 };
 
 struct wto_vertex_data_t {
@@ -225,7 +225,7 @@ class print_visitor {
     }
 
     void operator()(const wto_partition_t& partition) {
-        for (auto& p : std::ranges::reverse_view(partition)) {
+        for (const auto& p : std::ranges::reverse_view(partition)) {
             std::visit(*this, p);
             o << " ";
         }

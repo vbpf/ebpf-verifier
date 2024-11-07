@@ -194,7 +194,7 @@ void TypeDomain::selectively_join_based_on_type(NumAbsDomain& dst, NumAbsDomain&
     dst |= std::move(src);
 
     // Now add in the extra invariants saved above.
-    for (auto& [variable, interval] : extra_invariants) {
+    for (const auto& [variable, interval] : extra_invariants) {
         dst.set(variable, interval);
     }
 }

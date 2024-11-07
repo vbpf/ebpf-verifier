@@ -226,7 +226,7 @@ class offset_map_t final {
     void operator-=(const cell_t& c) { remove_cell(c); }
 
     void operator-=(const std::vector<cell_t>& cells) {
-        for (auto const& c : cells) {
+        for (const auto& c : cells) {
             this->operator-=(c);
         }
     }
@@ -290,7 +290,7 @@ std::vector<cell_t> offset_map_t::get_overlap_cells_symbolic_offset(const NumAbs
         }
         if (!largest_cell.is_null()) {
             if (largest_cell.symbolic_overlap(symb_lb, symb_ub, dom)) {
-                for (auto& c : o_cells) {
+                for (const auto& c : o_cells) {
                     out.push_back(c);
                 }
             }
@@ -547,7 +547,7 @@ static std::optional<std::pair<offset_t, unsigned>> kill_and_find_var(NumAbsDoma
     }
     if (!cells.empty()) {
         // Forget the scalars from the numerical domain
-        for (auto const& c : cells) {
+        for (const auto& c : cells) {
             inv -= c.get_scalar(kind);
 
             // Forget signed and unsigned values together.

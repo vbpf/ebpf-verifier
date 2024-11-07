@@ -6,8 +6,8 @@
 
 #define CONFORMANCE_TEST_PATH "external/bpf_conformance/tests/"
 
-void test_conformance(std::string filename, bpf_conformance_test_result_t expected_result,
-                      std::string expected_reason) {
+static void test_conformance(std::string filename, bpf_conformance_test_result_t expected_result,
+                             std::string expected_reason) {
     std::vector<std::filesystem::path> test_files = {CONFORMANCE_TEST_PATH + filename};
     boost::filesystem::path test_path = boost::dll::program_location();
     boost::filesystem::path extension = test_path.extension();
@@ -17,7 +17,7 @@ void test_conformance(std::string filename, bpf_conformance_test_result_t expect
         bpf_conformance(test_files, plugin_path, {}, {}, {}, bpf_conformance_test_CPU_version_t::v4,
                         bpf_conformance_groups_t::default_groups | bpf_conformance_groups_t::callx,
                         bpf_conformance_list_instructions_t::LIST_INSTRUCTIONS_NONE, true);
-    for (auto file : test_files) {
+    for (const auto& file : test_files) {
         auto& [file_result, reason] = result[file];
         REQUIRE(file_result == expected_result);
         if (file_result != bpf_conformance_test_result_t::TEST_RESULT_PASS && !expected_reason.empty()) {
