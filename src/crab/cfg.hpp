@@ -613,8 +613,16 @@ std::vector<std::string> stats_headers();
 
 std::map<std::string, int> collect_stats(const cfg_t&);
 
-cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, bool simplify, bool check_for_termination,
-                  bool must_have_exit = true);
+struct prepare_cfg_options {
+    /// When true, simplifies the control flow graph by merging basic blocks.
+    bool simplify = true;
+    /// When true, verifies that the program terminates.
+    bool check_for_termination = false;
+    /// When true, ensures the program has a valid exit block.
+    bool must_have_exit = true;
+};
+
+cfg_t prepare_cfg(const InstructionSeq& prog, const program_info& info, const prepare_cfg_options& options);
 
 void explicate_assertions(cfg_t& cfg, const program_info& info);
 std::vector<Assert> get_assertions(Instruction ins, const program_info& info, const std::optional<label_t>& label);

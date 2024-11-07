@@ -124,7 +124,7 @@ class interleaved_fwd_fixpoint_iterator_t final {
 std::pair<invariant_table_t, invariant_table_t> run_forward_analyzer(const cfg_t& cfg, ebpf_domain_t entry_inv) {
     // Go over the CFG in weak topological order (accounting for loops).
     interleaved_fwd_fixpoint_iterator_t analyzer(cfg);
-    if (thread_local_options.check_termination) {
+    if (thread_local_options.cfg_opts.check_for_termination) {
         // Initialize loop counters for potential loop headers.
         // This enables enforcement of upper bounds on loop iterations
         // during program verification.

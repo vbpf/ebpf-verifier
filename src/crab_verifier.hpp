@@ -7,11 +7,11 @@
 #include "spec_type_descriptors.hpp"
 #include "string_constraints.hpp"
 
-bool run_ebpf_analysis(std::ostream& s, const cfg_t& cfg, const program_info& info, const ebpf_verifier_options_t* options,
-                       ebpf_verifier_stats_t* stats);
+bool run_ebpf_analysis(std::ostream& s, const cfg_t& cfg, const program_info& info,
+                       const ebpf_verifier_options_t& options, ebpf_verifier_stats_t* stats);
 
 bool ebpf_verify_program(std::ostream& os, const InstructionSeq& prog, const program_info& info,
-                         const ebpf_verifier_options_t* options, ebpf_verifier_stats_t* stats);
+                         const ebpf_verifier_options_t& options, ebpf_verifier_stats_t* stats);
 
 using string_invariant_map = std::map<label_t, string_invariant>;
 

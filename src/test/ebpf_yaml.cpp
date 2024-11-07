@@ -168,10 +168,10 @@ static InstructionSeq raw_cfg_to_instruction_seq(const vector<std::tuple<string,
 }
 
 static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& raw_options) {
-    ebpf_verifier_options_t options = ebpf_verifier_default_options;
+    ebpf_verifier_options_t options{};
 
     // Use ~simplify for YAML tests unless otherwise specified.
-    options.simplify = false;
+    options.cfg_opts.simplify = false;
 
     // All YAML tests use !setup_constraints.
     options.setup_constraints = false;
@@ -182,15 +182,18 @@ static ebpf_verifier_options_t raw_options_to_options(const std::set<string>& ra
     // Default to not assuming assertions.
     options.assume_assertions = false;
 
+    // Permit test cases to not have an exit instruction.
+    options.cfg_opts.must_have_exit = false;
+
     for (const string& name : raw_options) {
         if (name == "!allow_division_by_zero") {
             options.allow_division_by_zero = false;
         } else if (name == "termination") {
-            options.check_termination = true;
+            options.cfg_opts.check_for_termination = true;
         } else if (name == "strict") {
             options.strict = true;
         } else if (name == "simplify") {
-            options.simplify = true;
+            options.cfg_opts.simplify = true;
         } else if (name == "big_endian") {
             options.big_endian = true;
         } else if (name == "!big_endian") {
@@ -248,7 +251,7 @@ std::optional<Failure> run_yaml_test_case(TestCase test_case, bool debug) {
     if (debug) {
         test_case.options.print_failures = true;
         test_case.options.print_invariants = true;
-        test_case.options.simplify = false;
+        test_case.options.cfg_opts.simplify = false;
     }
 
     ebpf_context_descriptor_t context_descriptor{64, 0, 4, -1};
@@ -352,12 +355,12 @@ ConformanceTestResult run_conformance_test_case(const std::vector<std::byte>& me
 
     auto& prog = std::get<InstructionSeq>(prog_or_error);
 
-    ebpf_verifier_options_t options = ebpf_verifier_default_options;
+    ebpf_verifier_options_t options{};
     if (debug) {
         print(prog, std::cout, {});
         options.print_failures = true;
         options.print_invariants = true;
-        options.simplify = false;
+        options.cfg_opts.simplify = false;
     }
 
     try {
