@@ -29,15 +29,15 @@ static EbpfProgramType ebpf_get_program_type(const string& section, const string
     return g_ebpf_platform_linux.get_program_type(section, path);
 }
 
-static EbpfMapType ebpf_get_map_type(uint32_t platform_specific_type) {
+static EbpfMapType ebpf_get_map_type(const uint32_t platform_specific_type) {
     return g_ebpf_platform_linux.get_map_type(platform_specific_type);
 }
 
-static EbpfHelperPrototype ebpf_get_helper_prototype(int32_t n) {
+static EbpfHelperPrototype ebpf_get_helper_prototype(const int32_t n) {
     return g_ebpf_platform_linux.get_helper_prototype(n);
 }
 
-static bool ebpf_is_helper_usable(int32_t n) { return g_ebpf_platform_linux.is_helper_usable(n); }
+static bool ebpf_is_helper_usable(const int32_t n) { return g_ebpf_platform_linux.is_helper_usable(n); }
 
 static void ebpf_parse_maps_section(vector<EbpfMapDescriptor>&, const char*, size_t, int, const ebpf_platform_t*,
                                     ebpf_verifier_options_t) {}

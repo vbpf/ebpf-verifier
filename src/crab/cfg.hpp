@@ -145,7 +145,7 @@ class basic_block_t final {
     // insert all statements of other at the back
     void move_back(basic_block_t& other) {
         m_ts.reserve(m_ts.size() + other.m_ts.size());
-        std::move(other.m_ts.begin(), other.m_ts.end(), std::back_inserter(m_ts));
+        std::ranges::move(other.m_ts, std::back_inserter(m_ts));
     }
 
     [[nodiscard]]
@@ -242,8 +242,8 @@ class cfg_t final {
   public:
     using iterator = basic_block_map_t::iterator;
     using const_iterator = basic_block_map_t::const_iterator;
-    using label_iterator = boost::transform_iterator<get_label, typename basic_block_map_t::iterator>;
-    using const_label_iterator = boost::transform_iterator<get_label, typename basic_block_map_t::const_iterator>;
+    using label_iterator = boost::transform_iterator<get_label, basic_block_map_t::iterator>;
+    using const_label_iterator = boost::transform_iterator<get_label, basic_block_map_t::const_iterator>;
 
   private:
     basic_block_map_t m_blocks;
@@ -341,8 +341,8 @@ class cfg_t final {
             }
         }
 
-        for (auto p : dead_edges) {
-            (*p.first) -= (*p.second);
+        for (const auto& p : dead_edges) {
+            *p.first -= *p.second;
         }
 
         m_blocks.erase(_label);
@@ -365,10 +365,10 @@ class cfg_t final {
     }
 
     //! return a begin iterator of label_t's
-    label_iterator label_begin() { return boost::make_transform_iterator(m_blocks.begin(), get_label()); }
+    const_label_iterator label_begin() const { return boost::make_transform_iterator(m_blocks.begin(), get_label()); }
 
     //! return an end iterator of label_t's
-    label_iterator label_end() { return boost::make_transform_iterator(m_blocks.end(), get_label()); }
+    const_label_iterator label_end() const { return boost::make_transform_iterator(m_blocks.end(), get_label()); }
 
     //! return a begin iterator of label_t's
     [[nodiscard]]
@@ -387,7 +387,7 @@ class cfg_t final {
     }
 
     void simplify() {
-        std::set<label_t> worklist(this->label_begin(), this->label_end());
+        std::set worklist(this->label_begin(), this->label_end());
         while (!worklist.empty()) {
             label_t label = *worklist.begin();
             worklist.erase(label);
@@ -457,7 +457,7 @@ class cfg_t final {
     // mark reachable blocks from curId
     template <class AnyCfg>
     void mark_alive_blocks(label_t curId, AnyCfg& cfg_t, visited_t& visited) {
-        if (visited.count(curId) > 0) {
+        if (visited.contains(curId)) {
             return;
         }
         visited.insert(curId);
@@ -482,7 +482,6 @@ class cfg_rev_t final {
     // For BGL
     using neighbour_const_iterator = basic_block_t::neighbour_const_iterator;
 
-  public:
     using basic_block_rev_map_t = std::map<label_t, basic_block_rev_t>;
     using iterator = basic_block_rev_map_t::iterator;
     using const_iterator = basic_block_rev_map_t::const_iterator;
@@ -557,9 +556,9 @@ class cfg_rev_t final {
         return _rev_bbs.end();
     }
 
-    label_iterator label_begin() { return _cfg.label_begin(); }
+    const_label_iterator label_begin() const { return _cfg.label_begin(); }
 
-    label_iterator label_end() { return _cfg.label_end(); }
+    const_label_iterator label_end() const { return _cfg.label_end(); }
 
     [[nodiscard]]
     label_t exit_label() const {
@@ -573,11 +572,11 @@ inline void cfg_t::remove_useless_blocks() {
     visited_t useful, useless;
     mark_alive_blocks(rev_cfg.entry_label(), rev_cfg, useful);
 
-    if (!useful.count(exit_label())) {
+    if (!useful.contains(exit_label())) {
         CRAB_ERROR("Exit block must be reachable");
     }
-    for (auto const& label : labels()) {
-        if (!useful.count(label)) {
+    for (const auto& label : labels()) {
+        if (!useful.contains(label)) {
             useless.insert(label);
         }
     }
@@ -591,13 +590,13 @@ inline void cfg_t::remove_unreachable_blocks() {
     visited_t alive, dead;
     mark_alive_blocks(entry_label(), *this, alive);
 
-    for (auto const& label : labels()) {
-        if (alive.count(label) <= 0) {
+    for (const auto& label : labels()) {
+        if (!alive.contains(label)) {
             dead.insert(label);
         }
     }
 
-    if (dead.count(exit_label())) {
+    if (dead.contains(exit_label())) {
         CRAB_ERROR("Exit block must be reachable");
     }
     for (const auto& _label : dead) {

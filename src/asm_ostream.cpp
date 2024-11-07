@@ -21,7 +21,7 @@ using std::optional;
 using std::string;
 using std::vector;
 
-std::ostream& operator<<(std::ostream& os, ArgSingle::Kind kind) {
+std::ostream& operator<<(std::ostream& os, const ArgSingle::Kind kind) {
     switch (kind) {
     case ArgSingle::Kind::ANYTHING: return os << "uint64_t";
     case ArgSingle::Kind::PTR_TO_CTX: return os << "ctx";
@@ -34,7 +34,7 @@ std::ostream& operator<<(std::ostream& os, ArgSingle::Kind kind) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, ArgPair::Kind kind) {
+std::ostream& operator<<(std::ostream& os, const ArgPair::Kind kind) {
     switch (kind) {
     case ArgPair::Kind::PTR_TO_READABLE_MEM: return os << "mem";
     case ArgPair::Kind::PTR_TO_READABLE_MEM_OR_NULL: return os << "mem?";
@@ -44,12 +44,12 @@ std::ostream& operator<<(std::ostream& os, ArgPair::Kind kind) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, ArgSingle arg) {
+std::ostream& operator<<(std::ostream& os, const ArgSingle arg) {
     os << arg.kind << " " << arg.reg;
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, ArgPair arg) {
+std::ostream& operator<<(std::ostream& os, const ArgPair arg) {
     os << arg.kind << " " << arg.mem << "[" << arg.size;
     if (arg.can_be_zero) {
         os << "?";
@@ -58,7 +58,7 @@ std::ostream& operator<<(std::ostream& os, ArgPair arg) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, Bin::Op op) {
+std::ostream& operator<<(std::ostream& os, const Bin::Op op) {
     using Op = Bin::Op;
     switch (op) {
     case Op::MOV: return os;
@@ -83,7 +83,7 @@ std::ostream& operator<<(std::ostream& os, Bin::Op op) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, Condition::Op op) {
+std::ostream& operator<<(std::ostream& os, const Condition::Op op) {
     using Op = Condition::Op;
     switch (op) {
     case Op::EQ: return os << "==";
@@ -103,7 +103,7 @@ std::ostream& operator<<(std::ostream& os, Condition::Op op) {
     return os;
 }
 
-static string size(int w) { return string("u") + std::to_string(w * 8); }
+static string size(const int w) { return string("u") + std::to_string(w * 8); }
 
 std::ostream& operator<<(std::ostream& os, ValidStore const& a) {
     return os << a.mem << ".type != stack -> " << TypeConstraint{a.val, TypeGroup::number};
@@ -196,7 +196,7 @@ struct InstructionPrinterVisitor {
 
     // llvm-objdump uses "w<number>" for 32-bit operations and "r<number>" for 64-bit operations.
     // We use the same convention here for consistency.
-    static std::string reg_name(Reg const& a, bool is64) { return ((is64) ? "r" : "w") + std::to_string(a.v); }
+    static std::string reg_name(Reg const& a, const bool is64) { return ((is64) ? "r" : "w") + std::to_string(a.v); }
 
     void operator()(Bin const& b) {
         os_ << reg_name(b.dst, b.is64) << " " << b.op << "= " << b.v;
@@ -226,7 +226,7 @@ struct InstructionPrinterVisitor {
         os_ << "r0 = " << call.name << ":" << call.func << "(";
         for (uint8_t r = 1; r <= 5; r++) {
             // Look for a singleton.
-            auto single = std::ranges::find_if(call.singles, [r](ArgSingle arg) { return arg.reg.v == r; });
+            auto single = std::ranges::find_if(call.singles, [r](const ArgSingle arg) { return arg.reg.v == r; });
             if (single != call.singles.end()) {
                 if (r > 1) {
                     os_ << ", ";
@@ -236,7 +236,7 @@ struct InstructionPrinterVisitor {
             }
 
             // Look for the start of a pair.
-            auto pair = std::ranges::find_if(call.pairs, [r](ArgPair arg) { return arg.mem.v == r; });
+            auto pair = std::ranges::find_if(call.pairs, [r](const ArgPair arg) { return arg.mem.v == r; });
             if (pair != call.pairs.end()) {
                 if (r > 1) {
                     os_ << ", ";
@@ -269,7 +269,7 @@ struct InstructionPrinterVisitor {
         os_ << "goto label <" << to_string(b.target) << ">";
     }
 
-    void operator()(Jmp const& b, int offset) {
+    void operator()(Jmp const& b, const int offset) {
         const string sign = offset > 0 ? "+" : "";
         const string target = sign + std::to_string(offset) + " <" + to_string(b.target) + ">";
 
@@ -403,7 +403,7 @@ auto get_labels(const InstructionSeq& insts) {
 }
 
 void print(const InstructionSeq& insts, std::ostream& out, const std::optional<const label_t>& label_to_print,
-           bool print_line_info) {
+           const bool print_line_info) {
     const auto pc_of_label = get_labels(insts);
     pc_t pc = 0;
     std::string previous_source;
@@ -491,7 +491,7 @@ void print_dot(const cfg_t& cfg, const std::string& outfile) {
 
 std::ostream& operator<<(std::ostream& o, const basic_block_t& bb) {
     o << bb.label() << ":\n";
-    for (auto const& s : bb) {
+    for (const auto& s : bb) {
         o << "  " << s << ";\n";
     }
     auto [it, et] = bb.next_blocks();
@@ -514,7 +514,7 @@ std::ostream& operator<<(std::ostream& o, const basic_block_t& bb) {
 
 std::ostream& operator<<(std::ostream& o, const crab::basic_block_rev_t& bb) {
     o << bb.label() << ":\n";
-    for (auto const& s : bb) {
+    for (const auto& s : bb) {
         o << "  " << s << ";\n";
     }
     o << "--> [";

@@ -232,7 +232,7 @@ static void append_subprograms(raw_program& prog, const vector<raw_program>& pro
                                const ELFIO::const_symbol_section_accessor& symbols) {
     // Perform function relocations and fill in the inst.imm values of CallLocal instructions.
     std::map<string, ELFIO::Elf_Xword> subprogram_offsets;
-    for (auto& reloc : function_relocations) {
+    for (const auto& reloc : function_relocations) {
         if (reloc.prog_index >= programs.size()) {
             continue;
         }
@@ -265,7 +265,7 @@ static void append_subprograms(raw_program& prog, const vector<raw_program>& pro
 std::map<std::string, size_t> parse_map_section(const libbtf::btf_type_data& btf_data,
                                                 std::vector<EbpfMapDescriptor>& map_descriptors) {
     std::map<std::string, size_t> map_offsets;
-    for (auto& map : parse_btf_map_section(btf_data)) {
+    for (const auto& map : parse_btf_map_section(btf_data)) {
         map_offsets.emplace(map.name, map_descriptors.size());
         map_descriptors.push_back({
             .original_fd = gsl::narrow_cast<int>(map.type_id),
@@ -339,7 +339,7 @@ vector<raw_program> read_elf(std::istream& input_stream, const std::string& path
         std::map<int, int> type_id_to_fd_map;
         int pseudo_fd = 1;
         // Gather the typeids for each map and assign a pseudo-fd to each map.
-        for (auto& map_descriptor : info.map_descriptors) {
+        for (const auto& map_descriptor : info.map_descriptors) {
             if (!type_id_to_fd_map.contains(map_descriptor.original_fd)) {
                 type_id_to_fd_map[map_descriptor.original_fd] = pseudo_fd++;
             }

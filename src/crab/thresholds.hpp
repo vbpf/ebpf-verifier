@@ -28,7 +28,7 @@ class thresholds_t final {
     size_t m_size;
 
   public:
-    explicit thresholds_t(size_t size = UINT_MAX) : m_size(size) {
+    explicit thresholds_t(const size_t size = UINT_MAX) : m_size(size) {
         m_thresholds.push_back(extended_number::minus_infinity());
         m_thresholds.emplace_back(number_t{0});
         m_thresholds.push_back(extended_number::plus_infinity());
@@ -39,7 +39,7 @@ class thresholds_t final {
         return m_thresholds.size();
     }
 
-    void add(extended_number v1);
+    void add(const extended_number& v1);
 
     friend std::ostream& operator<<(std::ostream& o, const thresholds_t& t);
 };
@@ -61,7 +61,7 @@ class wto_thresholds_t final {
     void get_thresholds(const basic_block_t& bb, thresholds_t& thresholds) const;
 
   public:
-    wto_thresholds_t(cfg_t& cfg, size_t max_size) : m_cfg(cfg), m_max_size(max_size) {}
+    wto_thresholds_t(cfg_t& cfg, const size_t max_size) : m_cfg(cfg), m_max_size(max_size) {}
 
     void operator()(const label_t& vertex);
 

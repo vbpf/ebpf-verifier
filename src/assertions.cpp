@@ -37,26 +37,24 @@ class AssertExtractor {
     explicit AssertExtractor(program_info info, std::optional<label_t> label)
         : info{std::move(info)}, current_label(label) {}
 
-    vector<Assert> operator()(Undefined const&) const {
+    vector<Assert> operator()(const Undefined&) const {
         assert(false);
         return {};
     }
 
-    vector<Assert> operator()(Assert const&) const {
+    vector<Assert> operator()(const Assert&) const {
         assert(false);
         return {};
     }
 
-    vector<Assert> operator()(IncrementLoopCounter& ipc) const {
-        return {{BoundedLoopCount{ipc.name}}};
-    }
+    vector<Assert> operator()(const IncrementLoopCounter& ipc) const { return {{BoundedLoopCount{ipc.name}}}; }
 
-    vector<Assert> operator()(LoadMapFd const&) const { return {}; }
+    vector<Assert> operator()(const LoadMapFd&) const { return {}; }
 
     /// Packet access implicitly uses R6, so verify that R6 still has a pointer to the context.
-    vector<Assert> operator()(Packet const&) const { return zero_offset_ctx({6}); }
+    vector<Assert> operator()(const Packet&) const { return zero_offset_ctx({6}); }
 
-    vector<Assert> operator()(Exit const&) const {
+    vector<Assert> operator()(const Exit&) const {
         vector<Assert> res;
         if (current_label->stack_frame_prefix.empty()) {
             // Verify that Exit returns a number.
@@ -65,7 +63,7 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assert> operator()(Call const& call) const {
+    vector<Assert> operator()(const Call& call) const {
         vector<Assert> res;
         std::optional<Reg> map_fd_reg;
         res.emplace_back(ValidCall{call.func, call.stack_frame_prefix});
@@ -122,9 +120,9 @@ class AssertExtractor {
         return res;
     }
 
-    vector<Assert> operator()(CallLocal const& call) const { return {}; }
+    vector<Assert> operator()(const CallLocal&) const { return {}; }
 
-    vector<Assert> operator()(Callx const& callx) const {
+    vector<Assert> operator()(const Callx& callx) const {
         vector<Assert> res;
         res.emplace_back(TypeConstraint{callx.func, TypeGroup::number});
         res.emplace_back(FuncConstraint{callx.func});
@@ -231,7 +229,7 @@ class AssertExtractor {
         };
     }
 
-    vector<Assert> operator()(const Un ins) const { return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}}; }
+    vector<Assert> operator()(const Un& ins) const { return {Assert{TypeConstraint{ins.dst, TypeGroup::number}}}; }
 
     vector<Assert> operator()(const Bin& ins) const {
         switch (ins.op) {
@@ -305,8 +303,8 @@ void explicate_assertions(cfg_t& cfg, const program_info& info) {
     for (auto& [label, bb] : cfg) {
         (void)label; // unused
         vector<Instruction> insts;
-        for (const auto& ins : vector<Instruction>(bb.begin(), bb.end())) {
-            for (auto a : get_assertions(ins, info, bb.label())) {
+        for (const auto& ins : bb) {
+            for (const auto& a : get_assertions(ins, info, bb.label())) {
                 insts.emplace_back(a);
             }
             insts.push_back(ins);

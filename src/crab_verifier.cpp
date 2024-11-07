@@ -108,7 +108,7 @@ static checks_db generate_report(const cfg_t& cfg, const crab::invariant_table_t
 
 static auto get_line_info(const InstructionSeq& insts) {
     std::map<int, btf_line_info_t> label_to_line_info;
-    for (auto& [label, inst, line_info] : insts) {
+    for (const auto& [label, inst, line_info] : insts) {
         if (line_info.has_value()) {
             label_to_line_info.emplace(label.from, line_info.value());
         }
@@ -120,7 +120,7 @@ static void print_report(std::ostream& os, const checks_db& db, const Instructio
                          const bool print_line_info) {
     auto label_to_line_info = get_line_info(prog);
     os << "\n";
-    for (auto [label, messages] : db.m_db) {
+    for (const auto& [label, messages] : db.m_db) {
         for (const auto& msg : messages) {
             if (print_line_info) {
                 auto line_info = label_to_line_info.find(label.from);
@@ -200,7 +200,7 @@ bool run_ebpf_analysis(std::ostream& s, const cfg_t& cfg, const program_info& in
 
 static string_invariant_map to_string_invariant_map(crab::invariant_table_t& inv_table) {
     string_invariant_map res;
-    for (auto& [label, inv] : inv_table) {
+    for (const auto& [label, inv] : inv_table) {
         res.insert_or_assign(label, inv.to_set());
     }
     return res;

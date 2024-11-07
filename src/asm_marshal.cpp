@@ -327,9 +327,9 @@ vector<ebpf_inst> marshal(const InstructionSeq& insts) {
     for (auto [label, ins, _] : insts) {
         (void)label; // unused
         if (const auto pins = std::get_if<Jmp>(&ins)) {
-            pins->target = label_t(pc_of_label.at(pins->target));
+            pins->target = label_t{gsl::narrow<int>(pc_of_label.at(pins->target))};
         }
-        for (auto e : marshal(ins, pc)) {
+        for (const auto e : marshal(ins, pc)) {
             pc++;
             res.push_back(e);
         }

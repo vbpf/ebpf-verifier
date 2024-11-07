@@ -178,7 +178,7 @@ class AdaptGraph final {
         g.growTo(o.size());
 
         for (vert_id s : o.verts()) {
-            for (auto e : o.e_succs(s)) {
+            for (const auto& e : o.e_succs(s)) {
                 g.add_edge(s, e.val, e.vert);
             }
         }

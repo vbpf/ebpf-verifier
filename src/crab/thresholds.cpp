@@ -7,11 +7,10 @@ namespace crab {
 
 inline namespace iterators {
 
-void thresholds_t::add(extended_number v1) {
+void thresholds_t::add(const extended_number& v) {
     if (m_thresholds.size() < m_size) {
-        extended_number v = (v1);
-        if (std::find(m_thresholds.begin(), m_thresholds.end(), v) == m_thresholds.end()) {
-            auto ub = std::upper_bound(m_thresholds.begin(), m_thresholds.end(), v);
+        if (std::ranges::find(m_thresholds, v) == m_thresholds.end()) {
+            const auto ub = std::ranges::upper_bound(m_thresholds, v);
 
             // don't add consecutive thresholds
             if (v > number_t{0}) {
@@ -37,8 +36,7 @@ void thresholds_t::add(extended_number v1) {
 
 std::ostream& operator<<(std::ostream& o, const thresholds_t& t) {
     o << "{";
-    for (typename std::vector<extended_number>::const_iterator it = t.m_thresholds.begin(), et = t.m_thresholds.end();
-         it != et;) {
+    for (auto it = t.m_thresholds.begin(), et = t.m_thresholds.end(); it != et;) {
         extended_number b(*it);
         o << b;
         ++it;
@@ -57,11 +55,11 @@ void wto_thresholds_t::operator()(const label_t& vertex) {
         return;
     }
 
-    label_t head = m_stack.back();
-    auto it = m_head_to_thresholds.find(head);
+    const label_t head = m_stack.back();
+    const auto it = m_head_to_thresholds.find(head);
     if (it != m_head_to_thresholds.end()) {
         thresholds_t& thresholds = it->second;
-        basic_block_t& bb = m_cfg.get_node(vertex);
+        const basic_block_t& bb = m_cfg.get_node(vertex);
         get_thresholds(bb, thresholds);
     } else {
         CRAB_ERROR("No head found while gathering thresholds");
@@ -70,12 +68,12 @@ void wto_thresholds_t::operator()(const label_t& vertex) {
 
 void wto_thresholds_t::operator()(const std::shared_ptr<wto_cycle_t>& cycle) {
     thresholds_t thresholds(m_max_size);
-    auto& bb = m_cfg.get_node(cycle->head());
+    const auto& bb = m_cfg.get_node(cycle->head());
     get_thresholds(bb, thresholds);
 
     // XXX: if we want to consider constants from loop
     // initializations
-    for (auto pre : boost::make_iterator_range(bb.prev_blocks())) {
+    for (const auto& pre : boost::make_iterator_range(bb.prev_blocks())) {
         if (pre != cycle->head()) {
             auto& pred_bb = m_cfg.get_node(pre);
             get_thresholds(pred_bb, thresholds);
@@ -84,14 +82,14 @@ void wto_thresholds_t::operator()(const std::shared_ptr<wto_cycle_t>& cycle) {
 
     m_head_to_thresholds.insert(std::make_pair(cycle->head(), thresholds));
     m_stack.push_back(cycle->head());
-    for (auto& component : *cycle) {
+    for (const auto& component : *cycle) {
         std::visit(*this, component);
     }
     m_stack.pop_back();
 }
 
 std::ostream& operator<<(std::ostream& o, const wto_thresholds_t& t) {
-    for (auto& [label, th] : t.m_head_to_thresholds) {
+    for (const auto& [label, th] : t.m_head_to_thresholds) {
         o << label << "=" << th << "\n";
     }
     return o;

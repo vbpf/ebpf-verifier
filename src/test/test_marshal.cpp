@@ -337,7 +337,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
             auto ops = {Bin::Op::MOV,  Bin::Op::ADD,  Bin::Op::SUB,    Bin::Op::MUL,     Bin::Op::UDIV,   Bin::Op::UMOD,
                         Bin::Op::OR,   Bin::Op::AND,  Bin::Op::LSH,    Bin::Op::RSH,     Bin::Op::ARSH,   Bin::Op::XOR,
                         Bin::Op::SDIV, Bin::Op::SMOD, Bin::Op::MOVSX8, Bin::Op::MOVSX16, Bin::Op::MOVSX32};
-            for (auto op : ops) {
+            for (const auto op : ops) {
                 compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Reg{2}, .is64 = true});
                 compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Reg{2}, .is64 = false});
             }
@@ -347,7 +347,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
             auto ops = {Bin::Op::MOV,  Bin::Op::ADD, Bin::Op::SUB,  Bin::Op::MUL, Bin::Op::UDIV,
                         Bin::Op::UMOD, Bin::Op::OR,  Bin::Op::AND,  Bin::Op::LSH, Bin::Op::RSH,
                         Bin::Op::ARSH, Bin::Op::XOR, Bin::Op::SDIV, Bin::Op::SMOD};
-            for (auto op : ops) {
+            for (const auto op : ops) {
                 compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Imm{2}, .is64 = false});
                 compare_marshal_unmarshal(Bin{.op = op, .dst = Reg{1}, .v = Imm{2}, .is64 = true});
             }
@@ -372,7 +372,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
             auto ops = {
                 Un::Op::BE16, Un::Op::BE32, Un::Op::BE64, Un::Op::LE16, Un::Op::LE32, Un::Op::LE64,
             };
-            for (auto op : ops) {
+            for (const auto op : ops) {
                 compare_marshal_unmarshal(Un{.op = op, .dst = Reg{1}, .is64 = false});
             }
         }
@@ -382,7 +382,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
                 Un::Op::SWAP32,
                 Un::Op::SWAP64,
             };
-            for (auto op : ops) {
+            for (const auto op : ops) {
                 compare_marshal_unmarshal(Un{.op = op, .dst = Reg{1}, .is64 = true});
             }
         }
@@ -403,7 +403,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
             compare_unmarshal_marshal(ebpf_inst{.opcode = INST_OP_JA32, .imm = 1}, jmp_offset);
         }
         SECTION("Reg right") {
-            for (auto op : ops) {
+            for (const auto op : ops) {
                 Condition cond{.op = op, .left = Reg{1}, .right = Reg{2}, .is64 = true};
                 compare_marshal_unmarshal(Jmp{.cond = cond, .target = label_t(0)});
 
@@ -412,7 +412,7 @@ TEST_CASE("disasm_marshal", "[disasm][marshal]") {
             }
         }
         SECTION("Imm right") {
-            for (auto op : ops) {
+            for (const auto op : ops) {
                 Condition cond{.op = op, .left = Reg{1}, .right = Imm{2}, .is64 = true};
                 compare_marshal_unmarshal(Jmp{.cond = cond, .target = label_t(0)});
 

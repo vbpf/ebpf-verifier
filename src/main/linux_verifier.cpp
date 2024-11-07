@@ -12,7 +12,7 @@
 #include "spec_type_descriptors.hpp"
 #include "utils.hpp"
 
-static int do_bpf(bpf_cmd cmd, union bpf_attr& attr) { return syscall(321, cmd, &attr, sizeof(attr)); }
+static int do_bpf(const bpf_cmd cmd, union bpf_attr& attr) { return syscall(321, cmd, &attr, sizeof(attr)); }
 
 /** Run the built-in Linux verifier on a raw eBPF program.
  *
